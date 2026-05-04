@@ -1165,7 +1165,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText"></span><br><span id="appVersionNameText"></span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b6</span><br><span id="appVersionNameText">Duration timeline, reset and undo consistency</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1347,7 +1347,7 @@ body.cust-open #toolbar{
   <!-- Linha: total + slider -->
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
     <span id="durNum" style="font-size:20px;font-weight:700;color:var(--accent);min-width:42px;flex-shrink:0;">6s</span>
-    <input type="range" class="dur-slider" id="durSlider" min="1" max="60" value="4" style="flex:1;">
+    <input type="range" class="dur-slider" id="durSlider" min="1" max="60" step="0.1" value="4" style="flex:1;">
   </div>
   <!-- Botão Customizar abaixo do slider -->
   <button id="segCustomBtn" onclick="toggleSegBreakdown()"
@@ -3390,8 +3390,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b5';
-const APP_VERSION_NAME = 'v8z4b5 - Time model stabilization';
+const APP_VERSION = 'v8z4b6';
+const APP_VERSION_NAME = 'Duration timeline, reset and undo consistency';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -3514,6 +3514,7 @@ function captureState() {
     framePauses: framePauses.map(p => ({...p})),
     finishMode,
     finishDuration,
+    loopCtrlPt: loopCtrlPt ? {...loopCtrlPt} : null,
   };
 }
 
@@ -3539,15 +3540,16 @@ function restoreState(state) {
   duration  = state.duration;
   easeAmount = state.easeAmount;
   easeMode   = state.easeMode;
-  pauseDuration = state.pauseDuration;
-  loopEnabled = state.loopEnabled;
+  pauseDuration = state.pauseDuration ?? 0;
+  loopEnabled = !!state.loopEnabled;
   loopDuration = state.loopDuration ?? 1.0;
+  loopCtrlPt = state.loopCtrlPt ? {...state.loopCtrlPt} : null;
   segEasings.length = 0;
   (state.segEasings || []).forEach(v => segEasings.push(v));
   framePauses.length = 0;
   (state.framePauses || []).forEach(p => framePauses.push(p ? {...p} : {duration: 0}));
   finishMode = state.finishMode || 'none';
-  finishDuration = state.finishDuration || 0.8;
+  finishDuration = state.finishDuration ?? 0.8;
 
   // Reconstruir DOM de frames e ctrl points
   document.querySelectorAll('.frame').forEach(el => el.remove());
@@ -6184,6 +6186,9 @@ function resetAll() {
   resetGeneratedVideoState();
   // Resetar duração, easing, loop, segmentos
   duration = 4;
+  finishMode = 'none';
+  finishDuration = 0.8;
+  loopDuration = 1.0;
   easeAmount = 0;
   easeMode = 'global';
   smoothAmount = 0;
@@ -6235,6 +6240,8 @@ function resetAll() {
   });
   syncDurationUI();
   applyTemplate(currentTemplate);
+  activeIdx = 0;
+  syncCustomizePanel();
   syncBlurUI();
   updateToolbarLabels();
   showStatus('Resetado');
@@ -6584,6 +6591,8 @@ function setEase(el) {
 }
 
 function setFinishing(mode) {
+  if (finishMode === mode) return;
+  pushUndo();
   finishMode = mode;
   loopEnabled = (mode === 'loop');
 
@@ -6619,6 +6628,8 @@ function setFinishing(mode) {
   }
 
   syncDurationUI();
+  updateToolbarLabels();
+  refreshBreakdownIfOpen();
   if (isPreviewing) { stopPreview(); startPreview(); }
 }
 
@@ -6626,6 +6637,12 @@ function initFinishSlider() {
   const sl  = document.getElementById('finishDurSlider');
   const val = document.getElementById('finishDurVal');
   if (!sl) return;
+  if (sl._finishInited) return;
+  sl._finishInited = true;
+  let finishUndoCaptured = false;
+  sl.addEventListener('touchstart', () => { if (!finishUndoCaptured) { pushUndo(); finishUndoCaptured = true; } }, {passive:true});
+  sl.addEventListener('mousedown', () => { if (!finishUndoCaptured) { pushUndo(); finishUndoCaptured = true; } });
+  sl.addEventListener('change', () => { finishUndoCaptured = false; });
   sl.addEventListener('input', function() {
     finishDuration = parseFloat(this.value);
     if (val) val.textContent = finishDuration.toFixed(1) + 's';
@@ -6870,7 +6887,7 @@ function openPanel(id) {
   if (id === 'Duration')  { initFinishSlider(); }
   if (id === 'Duration')  {
     const dn = document.getElementById('durNum');
-    if (dn) dn.textContent = totalDuration().toFixed(1) + 's';
+    if (dn) dn.textContent = totalDurationFull().toFixed(1) + 's';
   }
   document.body.classList.add('panel-open');
   const overlay = document.getElementById('overlayBg');
@@ -7179,12 +7196,15 @@ function initScaleSlider() {
   let origCX = frames[activeIdx] ? frames[activeIdx].x + frames[activeIdx].w / 2 : null;
   let origCY = frames[activeIdx] ? frames[activeIdx].y + frames[activeIdx].h / 2 : null;
 
+  let scaleUndoCaptured = false;
   newSlider.addEventListener('mousedown', () => {
+    if (!scaleUndoCaptured) { pushUndo(); scaleUndoCaptured = true; }
     const f = frames[activeIdx]; if (!f) return;
     origCX = f.x + f.w / 2;
     origCY = f.y + f.h / 2;
   });
   newSlider.addEventListener('touchstart', () => {
+    if (!scaleUndoCaptured) { pushUndo(); scaleUndoCaptured = true; }
     const f = frames[activeIdx]; if (!f) return;
     origCX = f.x + f.w / 2;
     origCY = f.y + f.h / 2;
@@ -7223,6 +7243,7 @@ function initScaleSlider() {
     origCX = f ? f.x + f.w / 2 : null;
     origCY = f ? f.y + f.h / 2 : null;
   });
+  newSlider.addEventListener('change', () => { scaleUndoCaptured = false; });
   newSlider.addEventListener('touchend', () => {
     const f = frames[activeIdx];
     origCX = f ? f.x + f.w / 2 : null;
@@ -7565,7 +7586,7 @@ function openSegBreakdown() {
     const slider = document.createElement('input');
     slider.type = 'range';
     slider.className = 'dur-slider';
-    slider.min = '0'; slider.max = '15'; slider.step = '0.5';
+    slider.min = '0'; slider.max = '15'; slider.step = '0.1';
     slider.value = segDurations[i] || 1;
     slider.style.cssText = 'flex:1;';
     const val = document.createElement('span');
@@ -7627,16 +7648,34 @@ function distributeSegEqual() {
   showStatus('Distribuído igualmente — total ' + currentTotal.toFixed(1) + 's');
 }
 function syncDurationUI() {
-  const total = totalDuration();
+  const moveTotal = totalDuration();
+  const parts = getDurationParts();
+  const total = parts.total;
   const durSlider = document.getElementById('durSlider');
-  if (durSlider) durSlider.value = Math.min(30, Math.round(total));
+  if (durSlider) durSlider.value = Math.min(60, total).toFixed(1);
   const durNum = document.getElementById('durNum');
   if (durNum) durNum.textContent = total.toFixed(1) + 's';
   const tbDuration = document.getElementById('tbDuration');
-  if (tbDuration) tbDuration.textContent = total.toFixed(1) + 's';
+  if (tbDuration) tbDuration.textContent = totalDurationFull().toFixed(1) + 's';
   // Se breakdown está aberto, atualizar o total
   const segTotal = document.getElementById('segTotal');
-  if (segTotal) segTotal.textContent = '= ' + total.toFixed(1) + 's total';
+  if (segTotal) segTotal.textContent = '= ' + moveTotal.toFixed(1) + 's percurso';
+  const durBreakTotal = document.getElementById('durBreakTotal');
+  const durBreakMove = document.getElementById('durBreakMove');
+  const durBreakInternalPauses = document.getElementById('durBreakInternalPauses');
+  const durBreakFinish = document.getElementById('durBreakFinish');
+  const finishModeRow = document.getElementById('durBreakFinishModeRow');
+  const finishModeLabel = document.getElementById('durBreakFinishModeLabel');
+  const finishModeValue = document.getElementById('durBreakFinishModeValue');
+  if (durBreakTotal) durBreakTotal.textContent = parts.total.toFixed(1) + 's';
+  if (durBreakMove) durBreakMove.textContent = parts.moveDur.toFixed(1) + 's';
+  if (durBreakInternalPauses) durBreakInternalPauses.textContent = parts.internalPauses.toFixed(1) + 's';
+  if (durBreakFinish) durBreakFinish.textContent = parts.finish.toFixed(1) + 's';
+  if (finishModeRow && finishModeLabel && finishModeValue) {
+    if (finishMode === 'loop') { finishModeRow.style.display = 'flex'; finishModeLabel.textContent = 'Loop'; finishModeValue.textContent = loopDuration.toFixed(1) + 's'; }
+    else if (finishMode === 'pause') { finishModeRow.style.display = 'flex'; finishModeLabel.textContent = 'Pausa final'; finishModeValue.textContent = finishDuration.toFixed(1) + 's'; }
+    else { finishModeRow.style.display = 'none'; }
+  }
 }
 
 function syncRatioUI() {
@@ -8381,7 +8420,7 @@ function updateToolbarLabels() {
   const tbFormat = document.getElementById('tbFormat');
   if (tbFormat) tbFormat.textContent = currentRatio;
   const tbDuration = document.getElementById('tbDuration');
-  if (tbDuration) tbDuration.textContent = totalDuration().toFixed(1) + 's';
+  if (tbDuration) tbDuration.textContent = totalDurationFull().toFixed(1) + 's';
 }
 
 // ═══════════════════════════════════════
