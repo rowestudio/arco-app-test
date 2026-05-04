@@ -1372,6 +1372,13 @@ body.cust-open #toolbar{
 
   <!-- Loop separado -->
   <div style="border-top:1px solid var(--border2);padding-top:12px;">
+    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Total</span><span id="durBreakTotal">0.0s</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Percurso</span><span id="durBreakMove">0.0s</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Pausas internas</span><span id="durBreakInternalPauses">0.0s</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Acabamento final</span><span id="durBreakFinish">0.0s</span></div>
+      <div id="durBreakFinishModeRow" style="display:none;justify-content:space-between;font-size:12px;color:var(--text3);"><span id="durBreakFinishModeLabel">Loop</span><span id="durBreakFinishModeValue">0.0s</span></div>
+    </div>
     <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Acabamento</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
       <div class="finish-chip active" data-finish="none" onclick="setFinishing('none')"
@@ -3383,8 +3390,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b4';
-const APP_VERSION_NAME = 'Undo segment duration hotfix';
+const APP_VERSION = 'v8z4b5';
+const APP_VERSION_NAME = 'v8z4b5 - Time model stabilization';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -7513,26 +7520,26 @@ function totalDuration() {
   return totalDurationFromArray(segDurations, frameCount);
 }
 
-// Duração total incluindo loop e pausas — usado nos loops de animação e gravação
-function totalDurationFull() {
+function getDurationParts() {
   const moveDur = totalDuration();
-  let total = moveDur;
-  if (loopEnabled) total += loopDuration;
+  let internalPauses = 0;
   if (easeMode === 'pause' && pauseDuration > 0) {
     const segs = frameCount - 1;
-    total += segs * pauseDuration;
+    internalPauses += segs * pauseDuration;
   }
-  // Pausas individuais por frame
-  if (framePauses.length > 0) {
-    for (let i = 0; i < frameCount; i++) {
-      const d = framePauses[i]?.duration || 0;
-      if (d > 0) total += d;
-    }
+  for (let i = 0; i < frameCount; i++) {
+    const d = framePauses[i]?.duration || 0;
+    if (d > 0) internalPauses += d;
   }
-  if (finishMode === 'pause' && !loopEnabled) {
-    total += finishDuration;
-  }
-  return total;
+  let finish = 0;
+  if (finishMode === 'loop') finish = loopDuration;
+  else if (finishMode === 'pause') finish = finishDuration;
+  return { moveDur, internalPauses, finish, total: moveDur + internalPauses + finish };
+}
+
+// Duração total incluindo loop e pausas — usado nos loops de animação e gravação
+function totalDurationFull() {
+  return getDurationParts().total;
 }
 
 function getSegDuration(seg) {
@@ -8239,13 +8246,38 @@ function ensureFramePauses() {
 }
 
 function updateDurationUI() {
-  const total = totalDurationFull();
+  const parts = getDurationParts();
+  const total = parts.total;
   const durNumEl = document.getElementById('durNum');
   if (durNumEl) durNumEl.textContent = total.toFixed(1) + 's';
   const tbDurationEl = document.getElementById('tbDuration');
   if (tbDurationEl) tbDurationEl.textContent = total.toFixed(1) + 's';
   const segTotalEl = document.getElementById('segTotal');
   if (segTotalEl) segTotalEl.textContent = '= ' + total.toFixed(1) + 's total';
+  const breakTotal = document.getElementById('durBreakTotal');
+  const breakMove = document.getElementById('durBreakMove');
+  const breakPauses = document.getElementById('durBreakInternalPauses');
+  const breakFinish = document.getElementById('durBreakFinish');
+  const finishModeRow = document.getElementById('durBreakFinishModeRow');
+  const finishModeLabel = document.getElementById('durBreakFinishModeLabel');
+  const finishModeValue = document.getElementById('durBreakFinishModeValue');
+  if (breakTotal) breakTotal.textContent = parts.total.toFixed(1) + 's';
+  if (breakMove) breakMove.textContent = parts.moveDur.toFixed(1) + 's';
+  if (breakPauses) breakPauses.textContent = parts.internalPauses.toFixed(1) + 's';
+  if (breakFinish) breakFinish.textContent = parts.finish.toFixed(1) + 's';
+  if (finishModeRow && finishModeLabel && finishModeValue) {
+    if (finishMode === 'loop') {
+      finishModeRow.style.display = 'flex';
+      finishModeLabel.textContent = 'Loop';
+      finishModeValue.textContent = loopDuration.toFixed(1) + 's';
+    } else if (finishMode === 'pause') {
+      finishModeRow.style.display = 'flex';
+      finishModeLabel.textContent = 'Pausa final';
+      finishModeValue.textContent = finishDuration.toFixed(1) + 's';
+    } else {
+      finishModeRow.style.display = 'none';
+    }
+  }
 }
 
 function syncFramePauseUI() {
