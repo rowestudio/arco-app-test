@@ -3384,7 +3384,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
 const APP_VERSION = 'v8z4b4';
-const APP_VERSION_NAME = 'Inserted frame pass-through easing';
+const APP_VERSION_NAME = 'Undo segment duration hotfix';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -6260,8 +6260,16 @@ function selectFormat(chip) {
 // ═══════════════════════════════════════
 // DURATION
 // ═══════════════════════════════════════
+let durSliderUndoCaptured = false;
+durSlider.addEventListener('touchstart', () => {
+  if (!durSliderUndoCaptured) { pushUndo(); durSliderUndoCaptured = true; }
+}, {passive:true});
+durSlider.addEventListener('mousedown', () => {
+  if (!durSliderUndoCaptured) { pushUndo(); durSliderUndoCaptured = true; }
+});
+durSlider.addEventListener('change', () => { durSliderUndoCaptured = false; });
+
 durSlider.addEventListener('input', function () {
-  pushUndo();
   const newTotal = parseFloat(this.value);
   const oldTotal = totalDuration();
   // Garantir que segDurations tem valores antes de redistribuir
@@ -6377,6 +6385,14 @@ function initEasePanel() {
   if (sv) sv.textContent = segDur.toFixed(1) + 's';
   if (sl && !sl._inited) {
     sl._inited = true;
+    let easeSegUndoCaptured = false;
+    sl.addEventListener('touchstart', () => {
+      if (!easeSegUndoCaptured) { pushUndo(); easeSegUndoCaptured = true; }
+    }, {passive:true});
+    sl.addEventListener('mousedown', () => {
+      if (!easeSegUndoCaptured) { pushUndo(); easeSegUndoCaptured = true; }
+    });
+    sl.addEventListener('change', () => { easeSegUndoCaptured = false; });
     sl.addEventListener('input', function() {
       const s = this._seg != null ? this._seg : seg;
       ensureSegDurations();
@@ -7549,12 +7565,19 @@ function openSegBreakdown() {
     val.textContent = (segDurations[i] || 1).toFixed(1) + 's';
     val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;';
     const idx = i;
+    let segUndoCaptured = false;
+    slider.addEventListener('touchstart', () => {
+      if (!segUndoCaptured) { pushUndo(); segUndoCaptured = true; }
+    }, {passive:true});
+    slider.addEventListener('mousedown', () => {
+      if (!segUndoCaptured) { pushUndo(); segUndoCaptured = true; }
+    });
     slider.addEventListener('input', () => {
       segDurations[idx] = parseFloat(slider.value);
       val.textContent = segDurations[idx].toFixed(1) + 's';
       updateSegTotal();
     });
-    slider.addEventListener('change', () => { pushUndo(); });
+    slider.addEventListener('change', () => { segUndoCaptured = false; });
     row.appendChild(lbl);
     row.appendChild(slider);
     row.appendChild(val);
