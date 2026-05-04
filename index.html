@@ -1370,6 +1370,14 @@ body.cust-open #toolbar{
     </button>
   </div>
 
+  <div id="durationSummary" style="display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--border2);padding-top:10px;margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);"><span>Total</span><span id="durSummaryTotal">0.0s</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Percurso</span><span id="durSummaryMovement">0.0s</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Pausas internas</span><span id="durSummaryPauses">0.0s</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Acabamento final</span><span id="durSummaryEnding">0.0s</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span id="durSummaryEndingLabel">Modo ativo</span><span id="durSummaryEndingMode">Nenhum</span></div>
+  </div>
+
   <!-- Loop separado -->
   <div style="border-top:1px solid var(--border2);padding-top:12px;">
     <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Acabamento</div>
@@ -3383,8 +3391,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b4';
-const APP_VERSION_NAME = 'Inserted frame pass-through easing';
+const APP_VERSION = 'v8z4b5';
+const APP_VERSION_NAME = 'Time model stabilization';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -3503,6 +3511,7 @@ function captureState() {
     pauseDuration,
     loopEnabled,
     loopDuration,
+    loopCtrlPt: loopCtrlPt ? {...loopCtrlPt} : null,
     segEasings: [...segEasings],
     framePauses: framePauses.map(p => ({...p})),
     finishMode,
@@ -3535,6 +3544,7 @@ function restoreState(state) {
   pauseDuration = state.pauseDuration;
   loopEnabled = state.loopEnabled;
   loopDuration = state.loopDuration ?? 1.0;
+  loopCtrlPt = state.loopCtrlPt ? {...state.loopCtrlPt} : null;
   segEasings.length = 0;
   (state.segEasings || []).forEach(v => segEasings.push(v));
   framePauses.length = 0;
@@ -4025,7 +4035,10 @@ function ensureGlobalHandle() {
     if (!handleDragState) return;
     endHandle(e);
   });
+  sl.addEventListener('mousedown', () => pushUndo());
+  sl.addEventListener('touchstart', () => pushUndo(), {passive:true});
 }
+
 
 // ═══════════════════════════════════════
 // FRAME DOM
@@ -6561,6 +6574,7 @@ function setEase(el) {
 }
 
 function setFinishing(mode) {
+  pushUndo();
   finishMode = mode;
   loopEnabled = (mode === 'loop');
 
@@ -6596,6 +6610,8 @@ function setFinishing(mode) {
   }
 
   syncDurationUI();
+  refreshBreakdownIfOpen();
+  renderAll();
   if (isPreviewing) { stopPreview(); startPreview(); }
 }
 
@@ -6606,6 +6622,8 @@ function initFinishSlider() {
   sl.addEventListener('input', function() {
     finishDuration = parseFloat(this.value);
     if (val) val.textContent = finishDuration.toFixed(1) + 's';
+    syncDurationUI();
+    refreshBreakdownIfOpen();
     if (isPreviewing) { stopPreview(); startPreview(); }
   });
 }
@@ -7491,33 +7509,36 @@ function ensureSegDurations() {
   segDurations.length = segs;
 }
 
-function totalDuration() {
-  // Soma só os segmentos dos frames — loop NÃO entra aqui
+function getMovementDuration() {
   ensureSegDurations();
   return totalDurationFromArray(segDurations, frameCount);
 }
 
-// Duração total incluindo loop e pausas — usado nos loops de animação e gravação
-function totalDurationFull() {
-  const moveDur = totalDuration();
-  let total = moveDur;
-  if (loopEnabled) total += loopDuration;
-  if (easeMode === 'pause' && pauseDuration > 0) {
-    const segs = frameCount - 1;
-    total += segs * pauseDuration;
-  }
-  // Pausas individuais por frame
-  if (framePauses.length > 0) {
-    for (let i = 0; i < frameCount; i++) {
-      const d = framePauses[i]?.duration || 0;
-      if (d > 0) total += d;
-    }
-  }
-  if (finishMode === 'pause' && !loopEnabled) {
-    total += finishDuration;
-  }
+function getFramePauseDuration() {
+  let total = 0;
+  for (let i = 0; i < frameCount; i++) total += Math.max(0, framePauses[i]?.duration || 0);
+  if (easeMode === 'pause' && pauseDuration > 0) total += Math.max(0, (frameCount - 1) * pauseDuration);
   return total;
 }
+
+function getLoopDuration() {
+  return loopEnabled ? Math.max(0, loopDuration || 0) : 0;
+}
+
+function getFinalPauseDuration() {
+  return (!loopEnabled && finishMode === 'pause') ? Math.max(0, finishDuration || 0) : 0;
+}
+
+function getEndingDuration() {
+  return getLoopDuration() + getFinalPauseDuration();
+}
+
+function getTotalDuration() {
+  return getMovementDuration() + getFramePauseDuration() + getEndingDuration();
+}
+
+function totalDuration() { return getMovementDuration(); }
+function totalDurationFull() { return getTotalDuration(); }
 
 function getSegDuration(seg) {
   const segs = frameCount - 1;
@@ -7597,16 +7618,25 @@ function distributeSegEqual() {
   showStatus('Distribuído igualmente — total ' + currentTotal.toFixed(1) + 's');
 }
 function syncDurationUI() {
-  const total = totalDuration();
+  const movement = getMovementDuration();
+  const pauses = getFramePauseDuration();
+  const ending = getEndingDuration();
+  const total = getTotalDuration();
   const durSlider = document.getElementById('durSlider');
-  if (durSlider) durSlider.value = Math.min(30, Math.round(total));
+  if (durSlider) durSlider.value = Math.min(30, Math.round(movement));
   const durNum = document.getElementById('durNum');
   if (durNum) durNum.textContent = total.toFixed(1) + 's';
   const tbDuration = document.getElementById('tbDuration');
   if (tbDuration) tbDuration.textContent = total.toFixed(1) + 's';
-  // Se breakdown está aberto, atualizar o total
   const segTotal = document.getElementById('segTotal');
-  if (segTotal) segTotal.textContent = '= ' + total.toFixed(1) + 's total';
+  if (segTotal) segTotal.textContent = '= ' + movement.toFixed(1) + 's percurso';
+  const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  setTxt('durSummaryTotal', total.toFixed(1) + 's');
+  setTxt('durSummaryMovement', movement.toFixed(1) + 's');
+  setTxt('durSummaryPauses', pauses.toFixed(1) + 's');
+  setTxt('durSummaryEnding', ending.toFixed(1) + 's');
+  setTxt('durSummaryEndingLabel', loopEnabled ? 'Loop' : (finishMode === 'pause' ? 'Pausa final' : 'Modo ativo'));
+  setTxt('durSummaryEndingMode', loopEnabled ? (getLoopDuration().toFixed(1) + 's') : (finishMode === 'pause' ? (getFinalPauseDuration().toFixed(1) + 's') : 'Nenhum'));
 }
 
 function syncRatioUI() {
@@ -7631,11 +7661,12 @@ function buildProjectData() {
        imageAR > 0.95 ? '1:1 quadrado' : imageAR > 0.7 ? '3:4 retrato' : '9:16 retrato')
     : null;
   return {
-    version: 'v8y3',
+    version: 'v8z4b5',
     currentRatio, duration, easeAmount, easeMode,
     pauseDuration, loopEnabled, frameCount, activeIdx,
     imageAR, imageARLabel, framesNorm,
     loopDuration,
+    loopCtrlPt: loopCtrlPt ? {...loopCtrlPt} : null,
     frameRotations: frameRotations.slice(0, frameCount),
     frameLocked: frameLocked.slice(0, frameCount),
     ctrlPts: ctrlPts.slice(0, frameCount - 1),
