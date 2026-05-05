@@ -1165,7 +1165,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b6</span><br><span id="appVersionNameText">Duration timeline, reset and undo consistency</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b7</span><br><span id="appVersionNameText">Duration reset, default interval and panel undo fixes</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1349,6 +1349,10 @@ body.cust-open #toolbar{
     <span id="durNum" style="font-size:20px;font-weight:700;color:var(--accent);min-width:42px;flex-shrink:0;">6s</span>
     <input type="range" class="dur-slider" id="durSlider" min="1" max="60" step="0.1" value="4" style="flex:1;">
   </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <span style="font-size:12px;color:var(--text3);">Novo intervalo</span>
+    <input id="newSegmentDurationInput" type="number" min="1" step="1" value="2" style="width:72px;padding:6px 8px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:13px;font-weight:600;text-align:right;">
+  </div>
   <!-- Botão Customizar abaixo do slider -->
   <button id="segCustomBtn" onclick="toggleSegBreakdown()"
     style="width:100%;padding:8px 0;border-radius:10px;border:1px solid var(--accent);background:transparent;
@@ -1366,7 +1370,7 @@ body.cust-open #toolbar{
     <button onclick="distributeSegEqual()"
       style="margin-top:6px;width:100%;padding:8px 0;border-radius:10px;border:1px solid var(--border2);
              background:var(--surface2);font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;">
-      Distribuir igual
+      Igualar intervalos
     </button>
   </div>
 
@@ -3390,8 +3394,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b6';
-const APP_VERSION_NAME = 'Duration timeline, reset and undo consistency';
+const APP_VERSION = 'v8z4b7';
+const APP_VERSION_NAME = 'Duration reset, default interval and panel undo fixes';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -3410,6 +3414,7 @@ const exportDims = {'9:16':[720,1280],'3:4':[810,1080],'1:1':[1080,1080],'4:3':[
 
 // Ease
 let duration = 4;
+let defaultNewSegmentDuration = 2;
 let currentTemplate = 'pan-lr';
 let baseFrameW = 0; // largura do F1 no momento da criação — referência de escala 100%
 let loopEnabled  = false;
@@ -3505,6 +3510,7 @@ function captureState() {
     activeIdx,
     currentRatio,
     duration,
+    defaultNewSegmentDuration,
     easeAmount,
     easeMode,
     pauseDuration,
@@ -3538,6 +3544,7 @@ function restoreState(state) {
   activeIdx  = state.activeIdx;
   currentRatio = state.currentRatio;
   duration  = state.duration;
+  defaultNewSegmentDuration = Math.max(1, Math.round(state.defaultNewSegmentDuration ?? 2));
   easeAmount = state.easeAmount;
   easeMode   = state.easeMode;
   pauseDuration = state.pauseDuration ?? 0;
@@ -3664,6 +3671,7 @@ const btnPlay      = document.getElementById('btnPlay');
 const btnGenerate  = document.getElementById('btnGenerate');
 const durSlider    = document.getElementById('durSlider');
 const durNum       = document.getElementById('durNum');
+const newSegmentDurationInput = document.getElementById('newSegmentDurationInput');
 
 function updatePlayButton() {
   const use = document.querySelector('#playIcon use');
@@ -4170,12 +4178,7 @@ function addFrame() {
 
   // Garantir que todos os segmentos existentes estão inicializados
   ensureSegDurations();
-  // Calcular média dos segmentos existentes para o novo
-  const existingSegs = seg; // seg = frameCount - 1 = número de segs antes de adicionar
-  const avg = existingSegs > 0
-    ? segDurations.slice(0, existingSegs).reduce((a, b) => a + b, 0) / existingSegs
-    : duration;
-  segDurations[seg] = Math.max(1, parseFloat(avg.toFixed(1)));
+  segDurations[seg] = Math.max(1, Math.round(defaultNewSegmentDuration || 2));
 
   frameCount++;
   frameRotations[i] = frameRotations[frameCount - 2] || 0;
@@ -6186,6 +6189,7 @@ function resetAll() {
   resetGeneratedVideoState();
   // Resetar duração, easing, loop, segmentos
   duration = 4;
+  defaultNewSegmentDuration = 2;
   finishMode = 'none';
   finishDuration = 0.8;
   loopDuration = 1.0;
@@ -6196,6 +6200,7 @@ function resetAll() {
   loopEnabled = false;
   loopCtrlPt = null;
   segDurations.length = 0;
+  framePauses.length = 0;
   segBlurSettings.length = 0;
   undoStack.length = 0;
   redoStack.length = 0;
@@ -6211,6 +6216,8 @@ function resetAll() {
   if (durSlider) durSlider.value = duration;
   const durNum = document.getElementById('durNum');
   if (durNum) durNum.textContent = duration + 's';
+  const newSegInput = document.getElementById('newSegmentDurationInput');
+  if (newSegInput) newSegInput.value = defaultNewSegmentDuration;
   // Sync ease chips
   document.querySelectorAll('.ease-chip').forEach(c => {
     const isActive = c.dataset.ease === 'constante';
@@ -6303,6 +6310,13 @@ durSlider.addEventListener('input', function () {
   updateToolbarLabels();
   if (isPreviewing) { stopPreview(); startPreview(); }
 });
+if (newSegmentDurationInput) {
+  newSegmentDurationInput.addEventListener('change', function () {
+    const next = Math.max(1, Math.round(parseFloat(this.value) || 2));
+    this.value = next;
+    defaultNewSegmentDuration = next;
+  });
+}
 
 // ═══════════════════════════════════════
 // EASE CHIPS + PAUSE SLIDER
@@ -6693,7 +6707,7 @@ function toggleSegBreakdown() {
     if (btn) btn.textContent = 'Customizar';
   } else {
     openSegBreakdown();
-    if (btn) btn.textContent = 'Distribuir igual';
+    if (btn) btn.textContent = 'Igualar intervalos';
   }
 }
 
@@ -7614,7 +7628,7 @@ function openSegBreakdown() {
   updateSegTotal();
   document.getElementById('segBreakdown').style.display = 'flex';
   const btn = document.getElementById('segCustomBtn');
-  if (btn) btn.textContent = 'Distribuir igual';
+  if (btn) btn.textContent = 'Igualar intervalos';
 }
 
 function closeSegBreakdown() {
@@ -7705,6 +7719,7 @@ function buildProjectData() {
     pauseDuration, loopEnabled, frameCount, activeIdx,
     imageAR, imageARLabel, framesNorm,
     loopDuration,
+    defaultNewSegmentDuration,
     frameRotations: frameRotations.slice(0, frameCount),
     frameLocked: frameLocked.slice(0, frameCount),
     ctrlPts: ctrlPts.slice(0, frameCount - 1),
@@ -7865,6 +7880,7 @@ function applyFrameData(data) {
 
   currentRatio  = data.currentRatio || '9:16';
   duration      = data.duration || 6;
+  defaultNewSegmentDuration = Math.max(1, Math.round(data.defaultNewSegmentDuration ?? 2));
   easeAmount    = data.easeAmount ?? 0;
   easeMode      = data.easeMode || 'global';
   pauseDuration = data.pauseDuration || 0;
@@ -7922,6 +7938,8 @@ function applyFrameData(data) {
 
   const durSlider = document.getElementById('durSlider');
   if (durSlider) durSlider.value = duration;
+  const newSegInput = document.getElementById('newSegmentDurationInput');
+  if (newSegInput) newSegInput.value = defaultNewSegmentDuration;
   syncDurationUI();
   renderAll();
   updateFrameSelector();
@@ -8325,10 +8343,17 @@ function syncFramePauseUI() {
   const val = document.getElementById('framePauseVal');
   if (val) val.textContent = dur.toFixed(1) + 's';
   const slider = document.getElementById('framePauseSlider');
+  let framePauseUndoCaptured = false;
   if (slider) {
     const newSlider = slider.cloneNode(true);
     slider.parentNode.replaceChild(newSlider, slider);
     newSlider.value = dur;
+    const beginGesture = () => {
+      if (frameLocked[activeIdx]) return;
+      if (!framePauseUndoCaptured) { pushUndo(); framePauseUndoCaptured = true; }
+    };
+    newSlider.addEventListener('touchstart', beginGesture, {passive:true});
+    newSlider.addEventListener('mousedown', beginGesture);
     newSlider.addEventListener('input', function() {
       ensureFramePauses();
       const d = parseFloat(this.value);
@@ -8344,6 +8369,7 @@ function syncFramePauseUI() {
       renderAll();
       if (isPreviewing) { stopPreview(); startPreview(); }
     });
+    newSlider.addEventListener('change', () => { framePauseUndoCaptured = false; });
   }
 }
 
@@ -8445,6 +8471,14 @@ rotSlider.addEventListener('input', function() {
   if (rotNum) rotNum.textContent = (frameRotations[activeIdx] >= 0 ? '+' : '') + frameRotations[activeIdx].toFixed(1) + '°';
   renderAll();
 });
+let rotUndoCaptured = false;
+const captureRotUndo = () => {
+  if (frameLocked[activeIdx]) return;
+  if (!rotUndoCaptured) { pushUndo(); rotUndoCaptured = true; }
+};
+rotSlider.addEventListener('touchstart', captureRotUndo, {passive:true});
+rotSlider.addEventListener('mousedown', captureRotUndo);
+rotSlider.addEventListener('change', () => { rotUndoCaptured = false; });
 
 function nudgeRotation(delta, reset=false) {
   if (frameLocked[activeIdx]) return;
