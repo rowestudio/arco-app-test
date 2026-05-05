@@ -1165,7 +1165,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b7</span><br><span id="appVersionNameText">Duration reset, default interval and panel undo fixes</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b8</span><br><span id="appVersionNameText">Finishing slider sync after undo/reset</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1344,7 +1344,7 @@ body.cust-open #toolbar{
   <div class="panel-handle" onclick="closeAll()"></div>
   <div class="panel-title">Duração</div>
 
-  <!-- Linha: total + slider -->
+  <!-- Linha: duração total + slider -->
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
     <span id="durNum" style="font-size:20px;font-weight:700;color:var(--accent);min-width:42px;flex-shrink:0;">6s</span>
     <input type="range" class="dur-slider" id="durSlider" min="1" max="60" step="0.1" value="4" style="flex:1;">
@@ -3394,8 +3394,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b7';
-const APP_VERSION_NAME = 'Duration reset, default interval and panel undo fixes';
+const APP_VERSION = 'v8z4b8';
+const APP_VERSION_NAME = 'Finishing slider sync after undo/reset';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -6604,21 +6604,44 @@ function setEase(el) {
   setEaseChip(el);
 }
 
+function syncFinishingUIFromState() {
+  const loopRow = document.getElementById('loopDurRow');
+  const finishRow = document.getElementById('finishDurRow');
+  const finishLbl = document.getElementById('finishDurLabel');
+  const loopSlider = document.getElementById('loopDurSlider');
+  const loopVal = document.getElementById('loopDurVal');
+  const finishSlider = document.getElementById('finishDurSlider');
+  const finishVal = document.getElementById('finishDurVal');
+
+  document.querySelectorAll('.finish-chip').forEach(c => {
+    const active = c.dataset.finish === finishMode;
+    c.style.borderColor = active ? 'var(--accent)' : 'var(--border2)';
+    c.style.color = active ? 'var(--accent)' : 'var(--text2)';
+  });
+
+  if (loopSlider) loopSlider.value = Number(loopDuration).toFixed(1);
+  if (loopVal) loopVal.textContent = Number(loopDuration).toFixed(1) + 's';
+  if (finishSlider) finishSlider.value = Number(finishDuration).toFixed(1);
+  if (finishVal) finishVal.textContent = Number(finishDuration).toFixed(1) + 's';
+
+  if (finishMode === 'loop') {
+    if (loopRow) loopRow.style.display = 'flex';
+    if (finishRow) finishRow.style.display = 'none';
+  } else if (finishMode === 'pause') {
+    if (loopRow) loopRow.style.display = 'none';
+    if (finishRow) finishRow.style.display = 'flex';
+    if (finishLbl) finishLbl.textContent = 'Duracao da pausa';
+  } else {
+    if (loopRow) loopRow.style.display = 'none';
+    if (finishRow) finishRow.style.display = 'none';
+  }
+}
+
 function setFinishing(mode) {
   if (finishMode === mode) return;
   pushUndo();
   finishMode = mode;
   loopEnabled = (mode === 'loop');
-
-  document.querySelectorAll('.finish-chip').forEach(c => {
-    const active = c.dataset.finish === mode;
-    c.style.borderColor = active ? 'var(--accent)' : 'var(--border2)';
-    c.style.color = active ? 'var(--accent)' : 'var(--text2)';
-  });
-
-  const loopRow   = document.getElementById('loopDurRow');
-  const finishRow = document.getElementById('finishDurRow');
-  const finishLbl = document.getElementById('finishDurLabel');
 
   if (mode === 'loop') {
     loopEnabled = true;
@@ -6629,16 +6652,6 @@ function setFinishing(mode) {
         t: 0.5, perpX: 0, perpY: 0
       };
     }
-    if (loopRow)   loopRow.style.display   = 'flex';
-    if (finishRow) finishRow.style.display = 'none';
-  } else if (mode === 'pause') {
-    if (loopRow)   loopRow.style.display   = 'none';
-    if (finishRow) finishRow.style.display = 'flex';
-    if (finishLbl) finishLbl.textContent   = 'Duracao da pausa';
-  } else {
-    // none
-    if (loopRow)   loopRow.style.display   = 'none';
-    if (finishRow) finishRow.style.display = 'none';
   }
 
   syncDurationUI();
@@ -6660,6 +6673,7 @@ function initFinishSlider() {
   sl.addEventListener('input', function() {
     finishDuration = parseFloat(this.value);
     if (val) val.textContent = finishDuration.toFixed(1) + 's';
+    syncDurationUI();
     if (isPreviewing) { stopPreview(); startPreview(); }
   });
 }
@@ -6900,8 +6914,7 @@ function openPanel(id) {
   if (id === 'Smooth')    { initSmoothSlider(); }
   if (id === 'Duration')  { initFinishSlider(); }
   if (id === 'Duration')  {
-    const dn = document.getElementById('durNum');
-    if (dn) dn.textContent = totalDurationFull().toFixed(1) + 's';
+    syncDurationUI();
   }
   document.body.classList.add('panel-open');
   const overlay = document.getElementById('overlayBg');
@@ -7665,6 +7678,7 @@ function syncDurationUI() {
   const moveTotal = totalDuration();
   const parts = getDurationParts();
   const total = parts.total;
+  syncFinishingUIFromState();
   const durSlider = document.getElementById('durSlider');
   if (durSlider) durSlider.value = Math.min(60, total).toFixed(1);
   const durNum = document.getElementById('durNum');
