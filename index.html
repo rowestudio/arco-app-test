@@ -1165,7 +1165,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b9</span><br><span id="appVersionNameText">Frame pause undo/reset fix</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b10</span><br><span id="appVersionNameText">No undo on frame selection</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3394,8 +3394,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b9';
-const APP_VERSION_NAME = 'Frame pause undo/reset fix';
+const APP_VERSION = 'v8z4b10';
+const APP_VERSION_NAME = 'No undo on frame selection';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4829,7 +4829,6 @@ function startMove(e) {
   e.currentTarget.setPointerCapture?.(e.pointerId);
   activeIdx = fi; renderAll();
   if (frameLocked[fi]) return;
-  pushUndo();
   const pos = getPos(e);
   const sr = stage.getBoundingClientRect();
   const lx = pos.x - sr.left;
@@ -4838,7 +4837,8 @@ function startMove(e) {
     type:'move', fi,
     ox:frames[fi].x, oy:frames[fi].y, sx:pos.x, sy:pos.y,
     grabDX: lx - frames[fi].x,
-    grabDY: ly - frames[fi].y
+    grabDY: ly - frames[fi].y,
+    undoCaptured: false
   };
 }
 
@@ -4849,11 +4849,10 @@ function startResize(e) {
   const dir = e.currentTarget.dataset.dir;
   activeIdx = fi; renderAll();
   if (frameLocked[fi]) return;
-  pushUndo();
   const pos = getPos(e);
   // Todos os cantos fazem escala proporcional
   dragState = { type:'resize', fi, dir, sx:pos.x, sy:pos.y,
-    ox:frames[fi].x, oy:frames[fi].y, ow:frames[fi].w, oh:frames[fi].h };
+    ox:frames[fi].x, oy:frames[fi].y, ow:frames[fi].w, oh:frames[fi].h, undoCaptured:false };
 }
 
 function startCtrlDrag(seg) {
@@ -4978,8 +4977,15 @@ function onMove(e) {
     const sr = stage.getBoundingClientRect();
     const lx = pos.x - sr.left;
     const ly = pos.y - sr.top;
-    frames[fi].x = lx - dragState.grabDX;
-    frames[fi].y = ly - dragState.grabDY;
+    const newX = lx - dragState.grabDX;
+    const newY = ly - dragState.grabDY;
+    if (!dragState.undoCaptured &&
+        (Math.abs(newX - frames[fi].x) > 0.001 || Math.abs(newY - frames[fi].y) > 0.001)) {
+      pushUndo();
+      dragState.undoCaptured = true;
+    }
+    frames[fi].x = newX;
+    frames[fi].y = newY;
     clampFrame(fi);
     syncCtrlPtsForFrame(fi);
     renderAll();
@@ -5003,6 +5009,11 @@ function onMove(e) {
   if (['tl','bl','ml'].includes(dir)) nx = ox + (ow - nw);
   if (['tl','tr','tm'].includes(dir)) ny = oy + (oh - nh);
 
+  if (!dragState.undoCaptured &&
+      (Math.abs(nx - ox) > 0.001 || Math.abs(ny - oy) > 0.001 || Math.abs(nw - ow) > 0.001 || Math.abs(nh - oh) > 0.001)) {
+    pushUndo();
+    dragState.undoCaptured = true;
+  }
   frames[fi] = { x:nx, y:ny, w:nw, h:nh };
   clampFrame(fi);
   syncCtrlPtsForFrame(fi);
