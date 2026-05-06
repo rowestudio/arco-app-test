@@ -1,5 +1,11 @@
 # Changelog
 
+## v8z4b10 — No undo on frame selection
+
+- Correção para evitar criação de estado de Undo ao apenas selecionar frame no stage.
+- Seleção de frame permanece estado de interface; Undo/Redo ficam reservados para mutações reais de edição.
+- Ajuste de limiar mínimo de movimento no drag do frame antes de aplicar mudança e capturar undo.
+
 ## v8z3u — stable candidate
 
 Base congelada para migração ao GitHub/Codex.
