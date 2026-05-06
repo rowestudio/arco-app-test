@@ -1165,7 +1165,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b8</span><br><span id="appVersionNameText">Finishing slider sync after undo/reset</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b9</span><br><span id="appVersionNameText">Frame pause undo/reset fix</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3394,8 +3394,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b8';
-const APP_VERSION_NAME = 'Finishing slider sync after undo/reset';
+const APP_VERSION = 'v8z4b9';
+const APP_VERSION_NAME = 'Frame pause undo/reset fix';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -3588,6 +3588,8 @@ function restoreState(state) {
   // Fechar breakdown se estava aberto
   closeSegBreakdown();
   syncRatioUI();
+  syncCustomizePanel();
+  if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]')) syncFramePauseUI();
   renderAll();
   updateFrameSelector();
   updateUndoRedoUI();
@@ -8244,6 +8246,8 @@ function setPosFromInput() {
 
 function resetFramePause() {
   ensureFramePauses();
+  const hasAnyPause = framePauses.some(p => (p?.duration || 0) !== 0);
+  if (hasAnyPause) pushUndo();
   markProjectDirty('frame-pause-reset');
   if (isCustLocked()) {
     for (let i = 0; i < frameCount; i++) framePauses[i] = { duration: 0 };
@@ -8358,19 +8362,25 @@ function syncFramePauseUI() {
   if (val) val.textContent = dur.toFixed(1) + 's';
   const slider = document.getElementById('framePauseSlider');
   let framePauseUndoCaptured = false;
+  let framePauseStartValue = dur;
   if (slider) {
     const newSlider = slider.cloneNode(true);
     slider.parentNode.replaceChild(newSlider, slider);
     newSlider.value = dur;
     const beginGesture = () => {
       if (frameLocked[activeIdx]) return;
-      if (!framePauseUndoCaptured) { pushUndo(); framePauseUndoCaptured = true; }
+      framePauseStartValue = framePauses[activeIdx]?.duration || 0;
+      framePauseUndoCaptured = false;
     };
     newSlider.addEventListener('touchstart', beginGesture, {passive:true});
     newSlider.addEventListener('mousedown', beginGesture);
     newSlider.addEventListener('input', function() {
       ensureFramePauses();
       const d = parseFloat(this.value);
+      if (!framePauseUndoCaptured && Math.abs(d - framePauseStartValue) > 0.0001) {
+        pushUndo();
+        framePauseUndoCaptured = true;
+      }
       markProjectDirty('frame-pause-change');
       if (isCustLocked()) {
         for (let i = 0; i < frameCount; i++) framePauses[i] = { duration: d };
