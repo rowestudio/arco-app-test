@@ -373,6 +373,18 @@ body.panel-open .stage.out-of-bounds::after{
   -webkit-user-select:none;user-select:none;
 }
 .tb-item:active{background:var(--surface2);}
+
+/* iPhone/Safari: evitar seleção nativa de texto em áreas interativas */
+#pillsRow, #pillsRow *,
+#panelEase, #panelEase *,
+#panelDuration, #panelDuration *,
+#toolbar, #toolbar *,
+.mid-pills, .mid-pills *,
+.tb-item, .tb-item *{
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+}
 /* Stroke icons — garantir que paths dentro de use herdem cor via stroke */
 /* Play e Pause são filled — tratados inline no symbol */
 .top-btn svg, .mid-play svg, .settings-row svg, .preview-btn svg, .preview-download svg {
@@ -1170,7 +1182,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b15</span><br><span id="appVersionNameText">Hotfix: duration panel state and multi-select accumulation</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b15b</span><br><span id="appVersionNameText">Hotfix: duration accordion persistence and Safari text-selection guard</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1366,7 +1378,7 @@ body.cust-open #toolbar{
   </div>
 
   <button type="button" onclick="toggleDurationSection('segments')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
-    <span>Intervalos entre frames</span><span id="durationSectionChevronSegments" style="font-size:18px;font-weight:800;color:var(--accent);line-height:1;">▾</span>
+    <span>Intervalos entre frames</span><span id="durationSectionChevronSegments" style="font-size:20px;font-weight:800;color:var(--accent);line-height:1;">▾</span>
   </button>
   <div id="segBreakdown" style="display:none;flex-direction:column;gap:8px;padding-top:10px;margin-bottom:12px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -1382,14 +1394,14 @@ body.cust-open #toolbar{
   </div>
 
   <button type="button" onclick="toggleDurationSection('pauses')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
-    <span>Pausas por frame</span><span id="durationSectionChevronPauses" style="font-size:18px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
+    <span>Pausas por frame</span><span id="durationSectionChevronPauses" style="font-size:20px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
   </button>
   <div id="framePauseSection" style="display:none;padding-top:10px;margin-bottom:10px;">
     <div id="framePauseRows" style="display:flex;flex-direction:column;max-height:28dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
   </div>
 
   <button type="button" onclick="toggleDurationSection('finish')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
-    <span>Acabamento</span><span id="durationSectionChevronFinish" style="font-size:18px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
+    <span>Acabamento</span><span id="durationSectionChevronFinish" style="font-size:20px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
   </button>
   <div id="finishSection" style="display:none;padding-top:12px;">
     <div style="display:flex;gap:8px;margin-bottom:10px;">
@@ -3402,8 +3414,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b15';
-const APP_VERSION_NAME = 'Hotfix: duration panel state and multi-select accumulation';
+const APP_VERSION = 'v8z4b15b';
+const APP_VERSION_NAME = 'Hotfix: duration accordion persistence and Safari text-selection guard';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -3530,7 +3542,6 @@ function captureState() {
     finishMode,
     finishDuration,
     loopCtrlPt: loopCtrlPt ? {...loopCtrlPt} : null,
-    durationPanelSections: {...durationPanelSections},
   };
 }
 
@@ -3567,9 +3578,6 @@ function restoreState(state) {
   (state.framePauses || []).forEach(p => framePauses.push(p ? {...p} : {duration: 0}));
   finishMode = state.finishMode || 'none';
   finishDuration = state.finishDuration ?? 0.8;
-  durationPanelSections.segments = !!state.durationPanelSections?.segments;
-  durationPanelSections.pauses = !!state.durationPanelSections?.pauses;
-  durationPanelSections.finish = !!state.durationPanelSections?.finish;
 
   // Reconstruir DOM de frames e ctrl points
   document.querySelectorAll('.frame').forEach(el => el.remove());
