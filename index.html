@@ -1170,7 +1170,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b14</span><br><span id="appVersionNameText">Multi-select and duration panel UX fixes</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b15</span><br><span id="appVersionNameText">Hotfix: duration panel state and multi-select accumulation</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1366,7 +1366,7 @@ body.cust-open #toolbar{
   </div>
 
   <button type="button" onclick="toggleDurationSection('segments')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
-    <span>Intervalos entre frames</span><span id="durationSectionChevronSegments">▾</span>
+    <span>Intervalos entre frames</span><span id="durationSectionChevronSegments" style="font-size:18px;font-weight:800;color:var(--accent);line-height:1;">▾</span>
   </button>
   <div id="segBreakdown" style="display:none;flex-direction:column;gap:8px;padding-top:10px;margin-bottom:12px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -1382,24 +1382,16 @@ body.cust-open #toolbar{
   </div>
 
   <button type="button" onclick="toggleDurationSection('pauses')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
-    <span>Pausas por frame</span><span id="durationSectionChevronPauses">▸</span>
+    <span>Pausas por frame</span><span id="durationSectionChevronPauses" style="font-size:18px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
   </button>
   <div id="framePauseSection" style="display:none;padding-top:10px;margin-bottom:10px;">
     <div id="framePauseRows" style="display:flex;flex-direction:column;max-height:28dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
   </div>
 
   <button type="button" onclick="toggleDurationSection('finish')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
-    <span>Acabamento</span><span id="durationSectionChevronFinish">▸</span>
+    <span>Acabamento</span><span id="durationSectionChevronFinish" style="font-size:18px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
   </button>
   <div id="finishSection" style="display:none;padding-top:12px;">
-    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Total</span><span id="durBreakTotal">0.0s</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Percurso</span><span id="durBreakMove">0.0s</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Pausas internas</span><span id="durBreakInternalPauses">0.0s</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Acabamento final</span><span id="durBreakFinish">0.0s</span></div>
-      <div id="durBreakFinishModeRow" style="display:none;justify-content:space-between;font-size:12px;color:var(--text3);"><span id="durBreakFinishModeLabel">Loop</span><span id="durBreakFinishModeValue">0.0s</span></div>
-    </div>
-    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Acabamento</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
       <div class="finish-chip active" data-finish="none" onclick="setFinishing('none')"
         style="flex:1;padding:8px 4px;text-align:center;border-radius:10px;background:var(--surface2);border:1.5px solid var(--accent);cursor:pointer;font-size:12px;font-weight:600;color:var(--accent);">
@@ -3410,8 +3402,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b14';
-const APP_VERSION_NAME = 'Multi-select and duration panel UX fixes';
+const APP_VERSION = 'v8z4b15';
+const APP_VERSION_NAME = 'Hotfix: duration panel state and multi-select accumulation';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -3538,6 +3530,7 @@ function captureState() {
     finishMode,
     finishDuration,
     loopCtrlPt: loopCtrlPt ? {...loopCtrlPt} : null,
+    durationPanelSections: {...durationPanelSections},
   };
 }
 
@@ -3574,6 +3567,9 @@ function restoreState(state) {
   (state.framePauses || []).forEach(p => framePauses.push(p ? {...p} : {duration: 0}));
   finishMode = state.finishMode || 'none';
   finishDuration = state.finishDuration ?? 0.8;
+  durationPanelSections.segments = !!state.durationPanelSections?.segments;
+  durationPanelSections.pauses = !!state.durationPanelSections?.pauses;
+  durationPanelSections.finish = !!state.durationPanelSections?.finish;
 
   // Reconstruir DOM de frames e ctrl points
   document.querySelectorAll('.frame').forEach(el => el.remove());
@@ -4914,6 +4910,7 @@ document.addEventListener('pointerdown', (e) => {
   const bar = document.getElementById('alignBar');
   if (!bar || bar.style.display === 'none') return;
   if (bar.contains(e.target)) return;
+  if (e.target.closest('#pillsRow')) return;
   clearMultiSelect();
 }, true);
 
@@ -7794,9 +7791,6 @@ function syncDurationUI() {
   // Se breakdown está aberto, atualizar o total
   const segTotal = document.getElementById('segTotal');
   if (segTotal) segTotal.textContent = '= ' + moveTotal.toFixed(1) + 's percurso';
-  const durBreakTotal = document.getElementById('durBreakTotal');
-  const durBreakMove = document.getElementById('durBreakMove');
-  const durBreakInternalPauses = document.getElementById('durBreakInternalPauses');
   const durSummaryTotal = document.getElementById('durSummaryTotal');
   const durSummaryMove = document.getElementById('durSummaryMove');
   const durSummaryPauses = document.getElementById('durSummaryPauses');
@@ -7805,19 +7799,6 @@ function syncDurationUI() {
   if (durSummaryMove) durSummaryMove.textContent = parts.moveDur.toFixed(1) + 's';
   if (durSummaryPauses) durSummaryPauses.textContent = parts.internalPauses.toFixed(1) + 's';
   if (durSummaryFinish) durSummaryFinish.textContent = parts.finish.toFixed(1) + 's';
-  const durBreakFinish = document.getElementById('durBreakFinish');
-  const finishModeRow = document.getElementById('durBreakFinishModeRow');
-  const finishModeLabel = document.getElementById('durBreakFinishModeLabel');
-  const finishModeValue = document.getElementById('durBreakFinishModeValue');
-  if (durBreakTotal) durBreakTotal.textContent = parts.total.toFixed(1) + 's';
-  if (durBreakMove) durBreakMove.textContent = parts.moveDur.toFixed(1) + 's';
-  if (durBreakInternalPauses) durBreakInternalPauses.textContent = parts.internalPauses.toFixed(1) + 's';
-  if (durBreakFinish) durBreakFinish.textContent = parts.finish.toFixed(1) + 's';
-  if (finishModeRow && finishModeLabel && finishModeValue) {
-    if (finishMode === 'loop') { finishModeRow.style.display = 'flex'; finishModeLabel.textContent = 'Loop'; finishModeValue.textContent = loopDuration.toFixed(1) + 's'; }
-    else if (finishMode === 'pause') { finishModeRow.style.display = 'flex'; finishModeLabel.textContent = 'Pausa final'; finishModeValue.textContent = finishDuration.toFixed(1) + 's'; }
-    else { finishModeRow.style.display = 'none'; }
-  }
 }
 
 function syncRatioUI() {
