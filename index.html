@@ -1168,7 +1168,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b11</span><br><span id="appVersionNameText">Curve control touch target</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b12</span><br><span id="appVersionNameText">Panel controls undo consistency</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3397,8 +3397,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b11';
-const APP_VERSION_NAME = 'Curve control touch target';
+const APP_VERSION = 'v8z4b12';
+const APP_VERSION_NAME = 'Panel controls undo consistency';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -3590,6 +3590,7 @@ function restoreState(state) {
   });
   // Fechar breakdown se estava aberto
   closeSegBreakdown();
+  if (document.getElementById('panelEase')?.style.display !== 'none') initEasePanel();
   syncRatioUI();
   syncCustomizePanel();
   if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]')) syncFramePauseUI();
@@ -3600,6 +3601,12 @@ function restoreState(state) {
 
 function pushUndo() {
   undoStack.push(captureState());
+  if (undoStack.length > UNDO_MAX) undoStack.shift();
+  redoStack.length = 0;
+  updateUndoRedoUI();
+}
+function pushUndoSnapshot(state) {
+  undoStack.push(state);
   if (undoStack.length > UNDO_MAX) undoStack.shift();
   redoStack.length = 0;
   updateUndoRedoUI();
@@ -6298,13 +6305,29 @@ function selectFormat(chip) {
 // DURATION
 // ═══════════════════════════════════════
 let durSliderUndoCaptured = false;
+let durSliderStartValue = null;
 durSlider.addEventListener('touchstart', () => {
-  if (!durSliderUndoCaptured) { pushUndo(); durSliderUndoCaptured = true; }
+  if (!durSliderUndoCaptured) {
+    durSliderStartValue = totalDuration();
+    pushUndo();
+    durSliderUndoCaptured = true;
+  }
 }, {passive:true});
 durSlider.addEventListener('mousedown', () => {
-  if (!durSliderUndoCaptured) { pushUndo(); durSliderUndoCaptured = true; }
+  if (!durSliderUndoCaptured) {
+    durSliderStartValue = totalDuration();
+    pushUndo();
+    durSliderUndoCaptured = true;
+  }
 });
-durSlider.addEventListener('change', () => { durSliderUndoCaptured = false; });
+durSlider.addEventListener('change', () => {
+  if (durSliderUndoCaptured && durSliderStartValue != null && Math.abs(totalDuration() - durSliderStartValue) < 0.001) {
+    undoStack.pop();
+    updateUndoRedoUI();
+  }
+  durSliderUndoCaptured = false;
+  durSliderStartValue = null;
+});
 
 durSlider.addEventListener('input', function () {
   const newTotal = parseFloat(this.value);
@@ -6496,6 +6519,7 @@ function resetSegGlobalMode() {
 }
 
 function selectSegEase(ease, seg) {
+  if (getSegEase(seg) === ease && !segGlobalMode) return;
   markProjectDirty('segment-ease');
   pushUndo();
   ensureSegEasings();
@@ -6727,18 +6751,7 @@ function toggleLoop() {
 }
 
 function toggleSegBreakdown() {
-  const bd = document.getElementById('segBreakdown');
-  const btn = document.getElementById('segCustomBtn');
-  const isOpen = bd && bd.style.display !== 'none';
-  if (isOpen) {
-    // Quando aberto, clicar distribui igual e fecha
-    distributeSegEqual();
-    if (bd) bd.style.display = 'none';
-    if (btn) btn.textContent = 'Customizar';
-  } else {
-    openSegBreakdown();
-    if (btn) btn.textContent = 'Igualar intervalos';
-  }
+  openSegBreakdown();
 }
 
 // Listener do slider de duração do loop
@@ -7324,6 +7337,12 @@ function applyViewMode() {
 
 function applyTemplate(type) {
   if (!imgEl) { showStatus('Carregue uma imagem primeiro'); return; }
+  const prevState = captureState();
+  const finalizeTemplateApply = () => {
+    const changed = JSON.stringify(captureState()) !== JSON.stringify(prevState);
+    if (changed) pushUndoSnapshot(prevState);
+    showStatus('Template aplicado');
+  };
   markProjectDirty('template');
   closeAll();
   currentTemplate = type;
@@ -7355,6 +7374,7 @@ function applyTemplate(type) {
   if (type === 'manual') {
     initDefaultFrames();
     document.getElementById('tbTemplate').textContent = 'Livre';
+    finalizeTemplateApply();
     return;
   }
 
@@ -7437,7 +7457,7 @@ function applyTemplate(type) {
     syncDurationUI();
     refreshBreakdownIfOpen();
     renderAll();
-    showStatus('Template aplicado');
+    finalizeTemplateApply();
     return;
   } else if (type === 'circle') {
     // 7 frames em círculo + F8 = F1 (mesma posição para fechar o arco)
@@ -7496,7 +7516,7 @@ function applyTemplate(type) {
     syncDurationUI();
     refreshBreakdownIfOpen();
     renderAll();
-    showStatus('Template aplicado');
+    finalizeTemplateApply();
     return;
   }
 
@@ -7523,7 +7543,7 @@ function applyTemplate(type) {
   syncDurationUI();
   refreshBreakdownIfOpen();
   renderAll();
-  showStatus('Template aplicado');
+  finalizeTemplateApply();
 }
 
 function invertFrames() {
@@ -7657,7 +7677,7 @@ function openSegBreakdown() {
   updateSegTotal();
   document.getElementById('segBreakdown').style.display = 'flex';
   const btn = document.getElementById('segCustomBtn');
-  if (btn) btn.textContent = 'Igualar intervalos';
+  if (btn) btn.textContent = 'Customizar';
 }
 
 function closeSegBreakdown() {
