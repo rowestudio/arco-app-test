@@ -1182,7 +1182,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b15b</span><br><span id="appVersionNameText">Hotfix: duration accordion persistence and Safari text-selection guard</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b15c</span><br><span id="appVersionNameText">Hotfix: duration accordion + multi-select undo UI</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1378,7 +1378,7 @@ body.cust-open #toolbar{
   </div>
 
   <button type="button" onclick="toggleDurationSection('segments')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
-    <span>Intervalos entre frames</span><span id="durationSectionChevronSegments" style="font-size:20px;font-weight:800;color:var(--accent);line-height:1;">▾</span>
+    <span>Intervalos entre frames</span><span id="durationSectionChevronSegments" style="font-size:28px;font-weight:800;color:var(--accent);line-height:1;">▾</span>
   </button>
   <div id="segBreakdown" style="display:none;flex-direction:column;gap:8px;padding-top:10px;margin-bottom:12px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -1394,14 +1394,14 @@ body.cust-open #toolbar{
   </div>
 
   <button type="button" onclick="toggleDurationSection('pauses')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
-    <span>Pausas por frame</span><span id="durationSectionChevronPauses" style="font-size:20px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
+    <span>Pausas por frame</span><span id="durationSectionChevronPauses" style="font-size:28px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
   </button>
   <div id="framePauseSection" style="display:none;padding-top:10px;margin-bottom:10px;">
     <div id="framePauseRows" style="display:flex;flex-direction:column;max-height:28dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
   </div>
 
   <button type="button" onclick="toggleDurationSection('finish')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
-    <span>Acabamento</span><span id="durationSectionChevronFinish" style="font-size:20px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
+    <span>Acabamento</span><span id="durationSectionChevronFinish" style="font-size:28px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
   </button>
   <div id="finishSection" style="display:none;padding-top:12px;">
     <div style="display:flex;gap:8px;margin-bottom:10px;">
@@ -3414,8 +3414,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b15b';
-const APP_VERSION_NAME = 'Hotfix: duration accordion persistence and Safari text-selection guard';
+const APP_VERSION = 'v8z4b15c';
+const APP_VERSION_NAME = 'Hotfix: duration accordion + multi-select undo UI';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -3607,8 +3607,8 @@ function restoreState(state) {
     c.classList.toggle('active', isActive);
   });
   // Fechar breakdown se estava aberto
-  closeSegBreakdown();
   if (document.getElementById('panelEase')?.style.display !== 'none') initEasePanel();
+  syncDurationSectionsUI();
   syncRatioUI();
   syncCustomizePanel();
   if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]')) syncFramePauseUI();
@@ -4919,6 +4919,7 @@ document.addEventListener('pointerdown', (e) => {
   if (!bar || bar.style.display === 'none') return;
   if (bar.contains(e.target)) return;
   if (e.target.closest('#pillsRow')) return;
+  if (e.target.closest('#topBtnUndo') || e.target.closest('#topBtnRedo')) return;
   clearMultiSelect();
 }, true);
 
