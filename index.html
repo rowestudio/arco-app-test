@@ -344,6 +344,8 @@ body.panel-open .stage.out-of-bounds::after{
   -webkit-user-select:none;user-select:none;
 }
 .fp.active{background:rgba(255,255,255,.95);color:#000;border-color:rgba(255,255,255,.95);}
+.fp.selected{border-color:#ff9500;box-shadow:0 0 0 1px rgba(255,149,0,.45) inset;background:rgba(255,149,0,.15);color:#ffb257;}
+.fp.active.selected{box-shadow:0 0 0 2px #ff9500 inset;}
 .fp.ghost{opacity:.28;pointer-events:none;}
 .fp:active{transform:scale(.88);}
 .ease-fp{
@@ -1031,7 +1033,7 @@ body.cust-open #toolbar{
 </div>
 
 <!-- ALIGN BAR: aparece quando há seleção múltipla -->
-<div id="alignBar" style="display:none;position:fixed;left:0;right:0;bottom:calc(62px + env(safe-area-inset-bottom));z-index:55;background:var(--surface2);border-top:.5px solid var(--border);padding:6px 12px;">
+<div id="alignBar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--surface2);border-top:.5px solid var(--border);padding:8px 12px calc(8px + env(safe-area-inset-bottom));">
   <div style="display:flex;align-items:center;gap:6px;justify-content:space-between;">
     <span style="font-size:11px;color:var(--text3);flex-shrink:0;" id="alignBarLabel">2 selecionados</span>
     <div style="display:flex;gap:6px;">
@@ -1040,7 +1042,7 @@ body.cust-open #toolbar{
       <div class="chip" style="padding:6px 10px;font-size:12px;" onclick="alignFrames('scale')">= Escala</div>
       <div class="chip" style="padding:6px 10px;font-size:12px;" onclick="alignFrames('distribute')">⟺ Dist</div>
     </div>
-    <div class="chip" style="padding:6px 10px;font-size:12px;color:var(--text3);" onclick="clearMultiSelect()">✕</div>
+    <button type="button" aria-label="Fechar seleção múltipla" class="chip" style="padding:10px;min-width:44px;min-height:44px;font-size:16px;color:var(--text2);display:flex;align-items:center;justify-content:center;" onclick="clearMultiSelect()">✕</button>
   </div>
 </div>
 <div id="custBar" style="display:none;">
@@ -1168,7 +1170,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b12</span><br><span id="appVersionNameText">Panel controls undo consistency</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b14</span><br><span id="appVersionNameText">Multi-select and duration panel UX fixes</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1356,10 +1358,17 @@ body.cust-open #toolbar{
     <span style="font-size:12px;color:var(--text3);">Intervalo padrão</span>
     <input id="newSegmentDurationInput" type="number" min="1" step="1" value="2" style="width:72px;padding:6px 8px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:13px;font-weight:600;text-align:right;">
   </div>
-  <button type="button" onclick="toggleDurationSection('segments')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;">
+  <div id="durationSummaryTop" style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;padding:10px;border-radius:10px;background:var(--surface2);">
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Duração total</span><span id="durSummaryTotal">0.0s</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Percurso</span><span id="durSummaryMove">0.0s</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Pausas</span><span id="durSummaryPauses">0.0s</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Acabamento</span><span id="durSummaryFinish">0.0s</span></div>
+  </div>
+
+  <button type="button" onclick="toggleDurationSection('segments')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
     <span>Intervalos entre frames</span><span id="durationSectionChevronSegments">▾</span>
   </button>
-  <div id="segBreakdown" style="display:none;flex-direction:column;gap:8px;border-top:1px solid var(--border2);padding-top:12px;margin-bottom:12px;">
+  <div id="segBreakdown" style="display:none;flex-direction:column;gap:8px;padding-top:10px;margin-bottom:12px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
       <span style="font-size:12px;font-weight:600;color:var(--text3);">Tempo por segmento</span>
       <span id="segTotal" style="font-size:12px;font-weight:700;color:var(--accent);">= 6s total</span>
@@ -1372,17 +1381,17 @@ body.cust-open #toolbar{
     </button>
   </div>
 
-  <button type="button" onclick="toggleDurationSection('pauses')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;">
+  <button type="button" onclick="toggleDurationSection('pauses')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
     <span>Pausas por frame</span><span id="durationSectionChevronPauses">▸</span>
   </button>
-  <div id="framePauseSection" style="display:none;border-top:1px solid var(--border2);padding-top:10px;margin-bottom:10px;">
+  <div id="framePauseSection" style="display:none;padding-top:10px;margin-bottom:10px;">
     <div id="framePauseRows" style="display:flex;flex-direction:column;max-height:28dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
   </div>
 
-  <button type="button" onclick="toggleDurationSection('finish')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;">
+  <button type="button" onclick="toggleDurationSection('finish')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
     <span>Acabamento</span><span id="durationSectionChevronFinish">▸</span>
   </button>
-  <div id="finishSection" style="display:none;border-top:1px solid var(--border2);padding-top:12px;">
+  <div id="finishSection" style="display:none;padding-top:12px;">
     <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Total</span><span id="durBreakTotal">0.0s</span></div>
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Percurso</span><span id="durBreakMove">0.0s</span></div>
@@ -3401,8 +3410,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b13';
-const APP_VERSION_NAME = 'Duration panel inspector cleanup';
+const APP_VERSION = 'v8z4b14';
+const APP_VERSION_NAME = 'Multi-select and duration panel UX fixes';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4900,6 +4909,13 @@ stage.addEventListener('touchstart', e => {
     isPinching = true;
   }
 }, {passive:false});
+
+document.addEventListener('pointerdown', (e) => {
+  const bar = document.getElementById('alignBar');
+  if (!bar || bar.style.display === 'none') return;
+  if (bar.contains(e.target)) return;
+  clearMultiSelect();
+}, true);
 
 stage.addEventListener('touchmove', e => {
   e.preventDefault();
@@ -6787,22 +6803,30 @@ function renderFramePauseRows() {
   rows.innerHTML = '';
   for (let i = 0; i < frameCount; i++) {
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2);';
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;';
     const lbl = document.createElement('span');
     lbl.textContent = 'F' + (i + 1);
     lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:28px;';
-    const inp = document.createElement('input');
-    inp.type = 'number'; inp.min = '0'; inp.step = '0.1';
-    inp.value = (framePauses[i]?.duration || 0).toFixed(1);
-    inp.style.cssText = 'width:72px;padding:6px 8px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:13px;font-weight:600;text-align:right;';
-    inp.addEventListener('change', () => {
-      const v = Math.max(0, parseFloat(inp.value) || 0);
-      pushUndo();
+    const slider = document.createElement('input');
+    slider.type = 'range'; slider.className = 'dur-slider';
+    slider.min = '0'; slider.max = '5'; slider.step = '0.1';
+    slider.value = (framePauses[i]?.duration || 0).toFixed(1);
+    slider.style.cssText = 'flex:1;';
+    const val = document.createElement('span');
+    val.textContent = (framePauses[i]?.duration || 0).toFixed(1) + 's';
+    val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:34px;text-align:right;';
+    let undoCaptured = false;
+    const captureUndo = () => { if (!undoCaptured) { pushUndo(); undoCaptured = true; } };
+    slider.addEventListener('touchstart', captureUndo, {passive:true});
+    slider.addEventListener('mousedown', captureUndo);
+    slider.addEventListener('input', () => {
+      const v = Math.max(0, parseFloat(slider.value) || 0);
       framePauses[i] = { duration: v };
-      inp.value = v.toFixed(1);
+      val.textContent = v.toFixed(1) + 's';
       syncDurationUI();
     });
-    row.append(lbl, inp);
+    slider.addEventListener('change', () => { undoCaptured = false; });
+    row.append(lbl, slider, val);
     rows.appendChild(row);
   }
 }
@@ -7695,7 +7719,7 @@ function openSegBreakdown() {
   container.innerHTML = '';
   for (let i = 0; i < segs; i++) {
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border2);';
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 0;';
     const lbl = document.createElement('span');
     lbl.textContent = (i+1) + '-' + (i+2);
     lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:52px;flex-shrink:0;';
@@ -7773,6 +7797,14 @@ function syncDurationUI() {
   const durBreakTotal = document.getElementById('durBreakTotal');
   const durBreakMove = document.getElementById('durBreakMove');
   const durBreakInternalPauses = document.getElementById('durBreakInternalPauses');
+  const durSummaryTotal = document.getElementById('durSummaryTotal');
+  const durSummaryMove = document.getElementById('durSummaryMove');
+  const durSummaryPauses = document.getElementById('durSummaryPauses');
+  const durSummaryFinish = document.getElementById('durSummaryFinish');
+  if (durSummaryTotal) durSummaryTotal.textContent = parts.total.toFixed(1) + 's';
+  if (durSummaryMove) durSummaryMove.textContent = parts.moveDur.toFixed(1) + 's';
+  if (durSummaryPauses) durSummaryPauses.textContent = parts.internalPauses.toFixed(1) + 's';
+  if (durSummaryFinish) durSummaryFinish.textContent = parts.finish.toFixed(1) + 's';
   const durBreakFinish = document.getElementById('durBreakFinish');
   const finishModeRow = document.getElementById('durBreakFinishModeRow');
   const finishModeLabel = document.getElementById('durBreakFinishModeLabel');
