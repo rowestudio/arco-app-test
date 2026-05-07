@@ -1031,7 +1031,7 @@ body.cust-open #toolbar{
 </div>
 
 <!-- ALIGN BAR: aparece quando há seleção múltipla -->
-<div id="alignBar" style="display:none;background:var(--surface2);border-top:.5px solid var(--border);padding:6px 12px;flex-shrink:0;">
+<div id="alignBar" style="display:none;position:fixed;left:0;right:0;bottom:calc(62px + env(safe-area-inset-bottom));z-index:55;background:var(--surface2);border-top:.5px solid var(--border);padding:6px 12px;">
   <div style="display:flex;align-items:center;gap:6px;justify-content:space-between;">
     <span style="font-size:11px;color:var(--text3);flex-shrink:0;" id="alignBarLabel">2 selecionados</span>
     <div style="display:flex;gap:6px;">
@@ -1353,17 +1353,12 @@ body.cust-open #toolbar{
     <input type="range" class="dur-slider" id="durSlider" min="1" max="60" step="0.1" value="4" style="flex:1;">
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-    <span style="font-size:12px;color:var(--text3);">Novo intervalo</span>
+    <span style="font-size:12px;color:var(--text3);">Intervalo padrão</span>
     <input id="newSegmentDurationInput" type="number" min="1" step="1" value="2" style="width:72px;padding:6px 8px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:13px;font-weight:600;text-align:right;">
   </div>
-  <!-- Botão Customizar abaixo do slider -->
-  <button id="segCustomBtn" onclick="toggleSegBreakdown()"
-    style="width:100%;padding:8px 0;border-radius:10px;border:1px solid var(--accent);background:transparent;
-           font-size:13px;font-weight:600;color:var(--accent);cursor:pointer;margin-bottom:14px;">
-    Customizar
+  <button type="button" onclick="toggleDurationSection('segments')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;">
+    <span>Intervalos entre frames</span><span id="durationSectionChevronSegments">▾</span>
   </button>
-
-  <!-- Breakdown por segmento -->
   <div id="segBreakdown" style="display:none;flex-direction:column;gap:8px;border-top:1px solid var(--border2);padding-top:12px;margin-bottom:12px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
       <span style="font-size:12px;font-weight:600;color:var(--text3);">Tempo por segmento</span>
@@ -1377,8 +1372,17 @@ body.cust-open #toolbar{
     </button>
   </div>
 
-  <!-- Loop separado -->
-  <div style="border-top:1px solid var(--border2);padding-top:12px;">
+  <button type="button" onclick="toggleDurationSection('pauses')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;">
+    <span>Pausas por frame</span><span id="durationSectionChevronPauses">▸</span>
+  </button>
+  <div id="framePauseSection" style="display:none;border-top:1px solid var(--border2);padding-top:10px;margin-bottom:10px;">
+    <div id="framePauseRows" style="display:flex;flex-direction:column;max-height:28dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
+  </div>
+
+  <button type="button" onclick="toggleDurationSection('finish')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;">
+    <span>Acabamento</span><span id="durationSectionChevronFinish">▸</span>
+  </button>
+  <div id="finishSection" style="display:none;border-top:1px solid var(--border2);padding-top:12px;">
     <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Total</span><span id="durBreakTotal">0.0s</span></div>
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Percurso</span><span id="durBreakMove">0.0s</span></div>
@@ -3397,8 +3401,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b12';
-const APP_VERSION_NAME = 'Panel controls undo consistency';
+const APP_VERSION = 'v8z4b13';
+const APP_VERSION_NAME = 'Duration panel inspector cleanup';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -3430,6 +3434,7 @@ let easeAmount = 0;
 let easeMode = 'global';
 let segEasings = []; // easing por segmento
 let framePauses = []; // pausa por frame: {enabled, duration}
+const durationPanelSections = { segments: false, pauses: false, finish: false };
 
 // State
 let isPreviewing = false, isRecording = false;
@@ -6754,6 +6759,54 @@ function toggleSegBreakdown() {
   openSegBreakdown();
 }
 
+function toggleDurationSection(section) {
+  durationPanelSections[section] = !durationPanelSections[section];
+  syncDurationSectionsUI();
+}
+
+function syncDurationSectionsUI() {
+  const seg = document.getElementById('segBreakdown');
+  const pause = document.getElementById('framePauseSection');
+  const finish = document.getElementById('finishSection');
+  const segCh = document.getElementById('durationSectionChevronSegments');
+  const pauseCh = document.getElementById('durationSectionChevronPauses');
+  const finishCh = document.getElementById('durationSectionChevronFinish');
+  if (seg) seg.style.display = durationPanelSections.segments ? 'flex' : 'none';
+  if (pause) pause.style.display = durationPanelSections.pauses ? 'block' : 'none';
+  if (finish) finish.style.display = durationPanelSections.finish ? 'block' : 'none';
+  if (segCh) segCh.textContent = durationPanelSections.segments ? '▾' : '▸';
+  if (pauseCh) pauseCh.textContent = durationPanelSections.pauses ? '▾' : '▸';
+  if (finishCh) finishCh.textContent = durationPanelSections.finish ? '▾' : '▸';
+  if (durationPanelSections.segments) openSegBreakdown();
+  if (durationPanelSections.pauses) renderFramePauseRows();
+}
+
+function renderFramePauseRows() {
+  const rows = document.getElementById('framePauseRows');
+  if (!rows) return;
+  rows.innerHTML = '';
+  for (let i = 0; i < frameCount; i++) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2);';
+    const lbl = document.createElement('span');
+    lbl.textContent = 'F' + (i + 1);
+    lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:28px;';
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.min = '0'; inp.step = '0.1';
+    inp.value = (framePauses[i]?.duration || 0).toFixed(1);
+    inp.style.cssText = 'width:72px;padding:6px 8px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:13px;font-weight:600;text-align:right;';
+    inp.addEventListener('change', () => {
+      const v = Math.max(0, parseFloat(inp.value) || 0);
+      pushUndo();
+      framePauses[i] = { duration: v };
+      inp.value = v.toFixed(1);
+      syncDurationUI();
+    });
+    row.append(lbl, inp);
+    rows.appendChild(row);
+  }
+}
+
 // Listener do slider de duração do loop
 document.addEventListener('DOMContentLoaded', () => {
   const loopSlider = document.getElementById('loopDurSlider');
@@ -7676,23 +7729,16 @@ function openSegBreakdown() {
   }
   updateSegTotal();
   document.getElementById('segBreakdown').style.display = 'flex';
-  const btn = document.getElementById('segCustomBtn');
-  if (btn) btn.textContent = 'Customizar';
 }
 
 function closeSegBreakdown() {
   const bd = document.getElementById('segBreakdown');
   if (bd) bd.style.display = 'none';
-  const btn = document.getElementById('segCustomBtn');
-  if (btn) btn.textContent = 'Customizar';
 }
 
 // Atualiza o breakdown se estiver aberto — chamado após qualquer mudança em frameCount
 function refreshBreakdownIfOpen() {
-  const bd = document.getElementById('segBreakdown');
-  if (bd && bd.style.display !== 'none') {
-    openSegBreakdown();
-  }
+  syncDurationSectionsUI();
 }
 
 function updateSegTotal() {
