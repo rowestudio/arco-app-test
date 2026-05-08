@@ -1182,7 +1182,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b15e</span><br><span id="appVersionNameText">Stabilization: reset/state integrity sync</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b15f</span><br><span id="appVersionNameText">Fix: frame pause panel sync source-of-truth</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -6855,6 +6855,7 @@ function renderFramePauseRows() {
       framePauses[i] = { duration: v };
       val.textContent = v.toFixed(1) + 's';
       syncDurationUI();
+      if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]') && i === activeIdx) syncFramePauseUI();
     });
     slider.addEventListener('change', () => { undoCaptured = false; });
     row.append(lbl, slider, val);
@@ -8482,7 +8483,8 @@ function updateDurationUI() {
 
 function syncFramePauseUI() {
   ensureFramePauses();
-  const dur = framePauses[activeIdx]?.duration || 0;
+  const frameIdx = activeIdx;
+  const dur = framePauses[frameIdx]?.duration || 0;
   const val = document.getElementById('framePauseVal');
   if (val) val.textContent = dur.toFixed(1) + 's';
   const slider = document.getElementById('framePauseSlider');
@@ -8494,8 +8496,8 @@ function syncFramePauseUI() {
     slider.parentNode.replaceChild(newSlider, slider);
     newSlider.value = dur;
     const beginGesture = () => {
-      if (frameLocked[activeIdx]) return;
-      framePauseStartValue = framePauses[activeIdx]?.duration || 0;
+      if (frameLocked[frameIdx]) return;
+      framePauseStartValue = framePauses[frameIdx]?.duration || 0;
       framePauseUndoCaptured = false;
     };
     newSlider.addEventListener('touchstart', beginGesture, {passive:true});
@@ -8509,10 +8511,11 @@ function syncFramePauseUI() {
         markProjectDirty('frame-pause-change');
         framePauseUndoCaptured = true;
       }
-      framePauses[activeIdx] = { duration: d };
+      framePauses[frameIdx] = { duration: d };
       const v = document.getElementById('framePauseVal');
       if (v) v.textContent = d.toFixed(1) + 's';
-      updateDurationUI();
+      syncDurationUI();
+      if (durationPanelSections.pauses) renderFramePauseRows();
       renderAll();
       if (isPreviewing) { stopPreview(); startPreview(); }
     });
