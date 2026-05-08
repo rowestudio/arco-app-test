@@ -1182,7 +1182,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b15d</span><br><span id="appVersionNameText">Hotfix: pause/template sync + stale MP4 invalidation</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b15e</span><br><span id="appVersionNameText">Stabilization: reset/state integrity sync</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3414,8 +3414,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b15d';
-const APP_VERSION_NAME = 'Hotfix: pause/template sync + stale MP4 invalidation';
+const APP_VERSION = 'v8z4b15e';
+const APP_VERSION_NAME = 'Stabilization: reset/state integrity sync';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -6315,8 +6315,10 @@ function resetAll() {
     s.classList.toggle('active', s.dataset.color === '#000000');
   });
   syncDurationUI();
-  applyTemplate(currentTemplate);
+  applyTemplate('pan-lr');
   activeIdx = 0;
+  normalizeProjectArrays();
+  validateProjectState('after-reset');
   syncCustomizePanel();
   syncBlurUI();
   updateToolbarLabels();
@@ -7451,6 +7453,11 @@ function applyTemplate(type) {
   };
   markProjectDirty('template');
   closeAll();
+  if (type === 'manual') {
+    setTemplateManualIfNeeded();
+    showStatus('Template aplicado');
+    return;
+  }
   currentTemplate = type;
 
   // Resetar acabamento — cada template começa limpo
@@ -7476,12 +7483,6 @@ function applyTemplate(type) {
   frames.length = 0; ctrlPts.length = 0; ctrlPtManual.length = 0;
   frameRotations.length = 0; frameLocked.length = 0; frameCount = 0;
   segEasings.length = 0; segDurations.length = 0; segBlurSettings.length = 0; framePauses.length = 0;
-
-  if (type === 'manual') {
-    setTemplateManualIfNeeded();
-    finalizeTemplateApply();
-    return;
-  }
 
   // Usar dimensões reais da imagem no stage
   const stageEl  = document.getElementById('stage');
@@ -8487,6 +8488,7 @@ function syncFramePauseUI() {
   const slider = document.getElementById('framePauseSlider');
   let framePauseUndoCaptured = false;
   let framePauseStartValue = dur;
+  if (durationPanelSections.pauses) renderFramePauseRows();
   if (slider) {
     const newSlider = slider.cloneNode(true);
     slider.parentNode.replaceChild(newSlider, slider);
