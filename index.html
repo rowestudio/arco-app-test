@@ -1182,7 +1182,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b15c</span><br><span id="appVersionNameText">Hotfix: duration accordion + multi-select undo UI</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b15d</span><br><span id="appVersionNameText">Hotfix: pause/template sync + stale MP4 invalidation</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3414,8 +3414,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b15c';
-const APP_VERSION_NAME = 'Hotfix: duration accordion + multi-select undo UI';
+const APP_VERSION = 'v8z4b15d';
+const APP_VERSION_NAME = 'Hotfix: pause/template sync + stale MP4 invalidation';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -3542,6 +3542,8 @@ function captureState() {
     finishMode,
     finishDuration,
     loopCtrlPt: loopCtrlPt ? {...loopCtrlPt} : null,
+    currentTemplate,
+    templateLabel: document.getElementById('tbTemplate')?.textContent || 'Livre',
   };
 }
 
@@ -3578,6 +3580,9 @@ function restoreState(state) {
   (state.framePauses || []).forEach(p => framePauses.push(p ? {...p} : {duration: 0}));
   finishMode = state.finishMode || 'none';
   finishDuration = state.finishDuration ?? 0.8;
+  currentTemplate = state.currentTemplate || 'manual';
+  const tbTpl = document.getElementById('tbTemplate');
+  if (tbTpl) tbTpl.textContent = state.templateLabel || 'Livre';
 
   // Reconstruir DOM de frames e ctrl points
   document.querySelectorAll('.frame').forEach(el => el.remove());
@@ -4846,9 +4851,6 @@ function startRotate(e) {
 
 function startMove(e) {
   document.body.classList.add('dragging');
-  // Edição manual — label vira Livre
-  const tbl = document.getElementById('tbTemplate');
-  if (tbl && tbl.textContent !== 'Livre') tbl.textContent = 'Livre';
   if (isPreviewing) return;
   if (pinchJustEnded) return; // ignorar touch após pinch
   const fi = parseInt(e.currentTarget.dataset.fi);
@@ -4868,6 +4870,13 @@ function startMove(e) {
     grabDY: ly - frames[fi].y,
     undoCaptured: false
   };
+}
+
+function setTemplateManualIfNeeded() {
+  if (currentTemplate === 'manual') return;
+  currentTemplate = 'manual';
+  const tbl = document.getElementById('tbTemplate');
+  if (tbl && tbl.textContent !== 'Livre') tbl.textContent = 'Livre';
 }
 
 function startResize(e) {
@@ -4997,6 +5006,12 @@ function onMove(e) {
     if (delta < -Math.PI) delta += Math.PI * 2;
     dragState.lastAngle = currentAngle;
     const newRot = (frameRotations[fi] || 0) + delta * 180 / Math.PI;
+    if (!dragState.undoCaptured && Math.abs(delta) > 0.0001) {
+      pushUndo();
+      setTemplateManualIfNeeded();
+      markProjectDirty('rotate-frame');
+      dragState.undoCaptured = true;
+    }
     frameRotations[fi] = Math.round(Math.max(-720, Math.min(720, newRot)) * 10) / 10;
     clampFrame(fi);
     rotSlider.value = frameRotations[fi];
@@ -5019,6 +5034,8 @@ function onMove(e) {
     if (!dragState.undoCaptured &&
         (Math.abs(newX - frames[fi].x) > 0.001 || Math.abs(newY - frames[fi].y) > 0.001)) {
       pushUndo();
+      setTemplateManualIfNeeded();
+      markProjectDirty('move-frame');
       dragState.undoCaptured = true;
     }
     frames[fi].x = newX;
@@ -5049,6 +5066,8 @@ function onMove(e) {
   if (!dragState.undoCaptured &&
       (Math.abs(nx - ox) > 0.001 || Math.abs(ny - oy) > 0.001 || Math.abs(nw - ow) > 0.001 || Math.abs(nh - oh) > 0.001)) {
     pushUndo();
+    setTemplateManualIfNeeded();
+    markProjectDirty('resize-frame');
     dragState.undoCaptured = true;
   }
   frames[fi] = { x:nx, y:ny, w:nw, h:nh };
@@ -6806,6 +6825,7 @@ function syncDurationSectionsUI() {
 function renderFramePauseRows() {
   const rows = document.getElementById('framePauseRows');
   if (!rows) return;
+  ensureFramePauses();
   rows.innerHTML = '';
   for (let i = 0; i < frameCount; i++) {
     const row = document.createElement('div');
@@ -6827,6 +6847,9 @@ function renderFramePauseRows() {
     slider.addEventListener('mousedown', captureUndo);
     slider.addEventListener('input', () => {
       const v = Math.max(0, parseFloat(slider.value) || 0);
+      captureUndo();
+      setTemplateManualIfNeeded();
+      markProjectDirty('frame-pause-row-change');
       framePauses[i] = { duration: v };
       val.textContent = v.toFixed(1) + 's';
       syncDurationUI();
@@ -7455,8 +7478,7 @@ function applyTemplate(type) {
   segEasings.length = 0; segDurations.length = 0; segBlurSettings.length = 0; framePauses.length = 0;
 
   if (type === 'manual') {
-    initDefaultFrames();
-    document.getElementById('tbTemplate').textContent = 'Livre';
+    setTemplateManualIfNeeded();
     finalizeTemplateApply();
     return;
   }
@@ -8481,14 +8503,11 @@ function syncFramePauseUI() {
       const d = parseFloat(this.value);
       if (!framePauseUndoCaptured && Math.abs(d - framePauseStartValue) > 0.0001) {
         pushUndo();
+        setTemplateManualIfNeeded();
+        markProjectDirty('frame-pause-change');
         framePauseUndoCaptured = true;
       }
-      markProjectDirty('frame-pause-change');
-      if (isCustLocked()) {
-        for (let i = 0; i < frameCount; i++) framePauses[i] = { duration: d };
-      } else {
-        framePauses[activeIdx] = { duration: d };
-      }
+      framePauses[activeIdx] = { duration: d };
       const v = document.getElementById('framePauseVal');
       if (v) v.textContent = d.toFixed(1) + 's';
       updateDurationUI();
@@ -8503,6 +8522,7 @@ function applyFramePauseAll() {
   ensureFramePauses();
   pushUndo();
   markProjectDirty('frame-pause-apply-all');
+  setTemplateManualIfNeeded();
   const dur = framePauses[activeIdx]?.duration || 0;
   for (let i = 0; i < frameCount; i++) framePauses[i] = { duration: dur };
   updateDurationUI();
