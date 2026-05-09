@@ -1182,7 +1182,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b15h</span><br><span id="appVersionNameText">Fix: slider interaction stability on iPhone/Safari</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b15i</span><br><span id="appVersionNameText">Fix: slider interaction stability on iPhone/Safari</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3414,7 +3414,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b15h';
+const APP_VERSION = 'v8z4b15i';
 const APP_VERSION_NAME = 'Fix: slider interaction stability on iPhone/Safari';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -3448,6 +3448,18 @@ let easeMode = 'global';
 let segEasings = []; // easing por segmento
 let framePauses = []; // pausa por frame: {enabled, duration}
 const durationPanelSections = { segments: false, pauses: false, finish: false };
+let framePauseRowsEvents = null;
+let framePauseLocalEvents = null;
+
+function teardownFramePauseRows() {
+  if (framePauseRowsEvents?.ctrl) framePauseRowsEvents.ctrl.abort();
+  framePauseRowsEvents = null;
+}
+
+function teardownFramePauseLocalSlider() {
+  if (framePauseLocalEvents?.ctrl) framePauseLocalEvents.ctrl.abort();
+  framePauseLocalEvents = null;
+}
 
 // State
 let isPreviewing = false, isRecording = false;
@@ -6284,6 +6296,8 @@ function resetAll() {
   }
   updateUndoRedoUI();
   closeSegBreakdown();
+  teardownFramePauseRows();
+  teardownFramePauseLocalSlider();
   // Sync UI duração
   const durSlider = document.getElementById('durSlider');
   if (durSlider) durSlider.value = duration;
@@ -6831,6 +6845,7 @@ function syncDurationSectionsUI() {
 function renderFramePauseRows() {
   const rows = document.getElementById('framePauseRows');
   if (!rows) return;
+  teardownFramePauseRows();
   ensureFramePauses();
   rows.innerHTML = '';
   for (let i = 0; i < frameCount; i++) {
@@ -6844,33 +6859,57 @@ function renderFramePauseRows() {
     slider.min = '0'; slider.max = '5'; slider.step = '0.1';
     slider.value = (framePauses[i]?.duration || 0).toFixed(1);
     slider.dataset.frameIndex = String(i);
+    slider.dataset.sliderScope = 'duration-panel';
+    slider.id = `framePauseDurationSlider-${i}`;
     slider.style.cssText = 'flex:1;';
     const val = document.createElement('span');
     val.textContent = (framePauses[i]?.duration || 0).toFixed(1) + 's';
     val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:34px;text-align:right;';
-    let undoCaptured = false;
-    const captureUndo = () => { if (!undoCaptured) { pushUndo(); undoCaptured = true; } };
-    slider.addEventListener('touchstart', captureUndo, {passive:true});
-    slider.addEventListener('mousedown', captureUndo);
-    slider.addEventListener('input', () => {
-      const v = Math.max(0, parseFloat(slider.value) || 0);
-      captureUndo();
-      setTemplateManualIfNeeded();
-      markProjectDirty('frame-pause-row-change');
-      framePauses[i] = { duration: v };
-      val.textContent = v.toFixed(1) + 's';
-      syncDurationUI();
-      if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]') && i === activeIdx) syncFramePauseUI();
-    });
-    const clearGesture = () => { undoCaptured = false; };
-    slider.addEventListener('change', clearGesture);
-    slider.addEventListener('touchend', clearGesture, {passive:true});
-    slider.addEventListener('touchcancel', clearGesture, {passive:true});
-    slider.addEventListener('pointerup', clearGesture);
-    slider.addEventListener('pointercancel', clearGesture);
     row.append(lbl, slider, val);
     rows.appendChild(row);
   }
+
+  const ctrl = new AbortController();
+  const gesture = { frameIndex: -1, startValue: 0, undoCaptured: false, activeSlider: null };
+  const captureStart = (target) => {
+    if (!(target instanceof HTMLInputElement) || target.dataset.sliderScope !== 'duration-panel') return;
+    const idx = Number(target.dataset.frameIndex);
+    if (!Number.isInteger(idx) || frameLocked[idx]) return;
+    gesture.frameIndex = idx;
+    gesture.startValue = framePauses[idx]?.duration || 0;
+    gesture.undoCaptured = false;
+    gesture.activeSlider = target;
+  };
+  const endGesture = () => {
+    gesture.frameIndex = -1;
+    gesture.undoCaptured = false;
+    gesture.activeSlider = null;
+  };
+  rows.addEventListener('pointerdown', (ev) => captureStart(ev.target), { signal: ctrl.signal });
+  rows.addEventListener('touchstart', (ev) => captureStart(ev.target), { signal: ctrl.signal, passive: true });
+  rows.addEventListener('mousedown', (ev) => captureStart(ev.target), { signal: ctrl.signal });
+  rows.addEventListener('input', (ev) => {
+    const slider = ev.target;
+    if (!(slider instanceof HTMLInputElement) || slider.dataset.sliderScope !== 'duration-panel') return;
+    const idx = Number(slider.dataset.frameIndex);
+    if (!Number.isInteger(idx) || frameLocked[idx]) return;
+    const v = Math.max(0, parseFloat(slider.value) || 0);
+    if (!gesture.undoCaptured && gesture.frameIndex === idx && Math.abs(v - gesture.startValue) > 0.0001) {
+      pushUndo();
+      gesture.undoCaptured = true;
+    }
+    setTemplateManualIfNeeded();
+    markProjectDirty('frame-pause-row-change');
+    framePauses[idx] = { duration: v };
+    const val = slider.parentElement?.querySelector('span:last-child');
+    if (val) val.textContent = v.toFixed(1) + 's';
+    syncDurationUI();
+    if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]') && idx === activeIdx) syncFramePauseUI();
+  }, { signal: ctrl.signal });
+  ['change', 'touchend', 'touchcancel', 'pointerup', 'pointercancel'].forEach(type => {
+    rows.addEventListener(type, endGesture, { signal: ctrl.signal, passive: type.startsWith('touch') });
+  });
+  framePauseRowsEvents = { ctrl, gesture };
 }
 
 // Listener do slider de duração do loop
@@ -7221,6 +7260,8 @@ function setSegEase(ease) {
 }
 
 function closeAll() {
+  teardownFramePauseRows();
+  teardownFramePauseLocalSlider();
   closeSegEasePanel();
   resetCustGlobalLocks();
   resetSegGlobalMode();
@@ -8101,6 +8142,8 @@ function applyFrameData(data) {
   if (tbTpl) tbTpl.textContent = 'Livre';
   updateUndoRedoUI();
   closeSegBreakdown();
+  teardownFramePauseRows();
+  teardownFramePauseLocalSlider();
   if (imgNatW) {
     showStatus('Projeto carregado!');
     checkWatermarkWarning();
@@ -8498,49 +8541,51 @@ function syncFramePauseUI() {
   const val = document.getElementById('framePauseVal');
   if (val) val.textContent = dur.toFixed(1) + 's';
   const slider = document.getElementById('framePauseSlider');
-  let framePauseUndoCaptured = false;
-  let framePauseStartValue = dur;
   if (durationPanelSections.pauses) renderFramePauseRows();
+  teardownFramePauseLocalSlider();
   if (slider) {
-    const newSlider = slider.cloneNode(true);
-    slider.parentNode.replaceChild(newSlider, slider);
-    newSlider.value = dur;
-    newSlider.dataset.frameIndex = String(frameIdx);
+    slider.value = dur;
+    slider.dataset.frameIndex = String(frameIdx);
+    slider.dataset.sliderScope = 'context-panel';
+    slider.id = `framePauseContextSlider-${frameIdx}`;
+    const ctrl = new AbortController();
+    const gesture = { startValue: dur, undoCaptured: false };
     const beginGesture = () => {
-      const currentFrameIdx = Number(newSlider.dataset.frameIndex);
+      const currentFrameIdx = Number(slider.dataset.frameIndex);
       if (frameLocked[currentFrameIdx]) return;
-      framePauseStartValue = framePauses[currentFrameIdx]?.duration || 0;
-      framePauseUndoCaptured = false;
+      gesture.startValue = framePauses[currentFrameIdx]?.duration || 0;
+      gesture.undoCaptured = false;
     };
-    newSlider.addEventListener('touchstart', beginGesture, {passive:true});
-    newSlider.addEventListener('mousedown', beginGesture);
-    newSlider.addEventListener('input', function() {
+    const clearFramePauseGesture = () => { gesture.undoCaptured = false; };
+    slider.addEventListener('pointerdown', beginGesture, { signal: ctrl.signal });
+    slider.addEventListener('touchstart', beginGesture, { signal: ctrl.signal, passive: true });
+    slider.addEventListener('mousedown', beginGesture, { signal: ctrl.signal });
+    slider.addEventListener('input', function() {
       ensureFramePauses();
       const currentFrameIdx = Number(this.dataset.frameIndex);
+      if (!Number.isInteger(currentFrameIdx) || frameLocked[currentFrameIdx]) return;
       const d = parseFloat(this.value);
-      if (!framePauseUndoCaptured && Math.abs(d - framePauseStartValue) > 0.0001) {
+      if (!gesture.undoCaptured && Math.abs(d - gesture.startValue) > 0.0001) {
         pushUndo();
         setTemplateManualIfNeeded();
         markProjectDirty('frame-pause-change');
-        framePauseUndoCaptured = true;
+        gesture.undoCaptured = true;
       }
       framePauses[currentFrameIdx] = { duration: d };
       const v = document.getElementById('framePauseVal');
       if (v) v.textContent = d.toFixed(1) + 's';
-      const linkedSlider = document.querySelector(`#framePauseRows input[data-frame-index="${currentFrameIdx}"]`);
+      const linkedSlider = document.querySelector(`#framePauseRows input[data-frame-index="${currentFrameIdx}"][data-slider-scope="duration-panel"]`);
       if (linkedSlider) linkedSlider.value = d.toFixed(1);
       const linkedVal = linkedSlider?.parentElement?.querySelector('span:last-child');
       if (linkedVal) linkedVal.textContent = d.toFixed(1) + 's';
       syncDurationUI();
       renderAll();
       if (isPreviewing) { stopPreview(); startPreview(); }
+    }, { signal: ctrl.signal });
+    ['change', 'touchend', 'touchcancel', 'pointerup', 'pointercancel'].forEach(type => {
+      slider.addEventListener(type, clearFramePauseGesture, { signal: ctrl.signal, passive: type.startsWith('touch') });
     });
-    const clearFramePauseGesture = () => { framePauseUndoCaptured = false; };
-    newSlider.addEventListener('change', clearFramePauseGesture);
-    newSlider.addEventListener('touchend', clearFramePauseGesture, {passive:true});
-    newSlider.addEventListener('touchcancel', clearFramePauseGesture, {passive:true});
-    newSlider.addEventListener('pointerup', clearFramePauseGesture);
-    newSlider.addEventListener('pointercancel', clearFramePauseGesture);
+    framePauseLocalEvents = { ctrl, gesture };
   }
 }
 
