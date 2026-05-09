@@ -4406,67 +4406,6 @@ function autosave() {
   }, 1500);
 }
 
-function checkAutosave() {
-  try {
-    const saved = localStorage.getItem(AUTOSAVE_KEY);
-    const savedImg = localStorage.getItem(AUTOSAVE_IMG_KEY);
-    if (!saved || !savedImg) return;
-    const data = JSON.parse(saved);
-    if (!data || !data.frameCount || data.frameCount < 1) return;
-    // Perguntar ao usuário
-    const overlay = document.getElementById('onboardingOverlay');
-    if (overlay) overlay.style.display = 'none';
-    showRestorePrompt(data, savedImg);
-  } catch(e) {}
-}
-
-function showRestorePrompt(data, imgDataUrl) {
-  const el = document.createElement('div');
-  el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  el.innerHTML = `
-    <div style="background:var(--surface);border-radius:20px;padding:28px;max-width:300px;width:90%;text-align:center;">
-      <div style="font-size:18px;font-weight:800;color:var(--text1);margin-bottom:8px;">Continuar de onde parou?</div>
-      <div style="font-size:13px;color:var(--text3);margin-bottom:20px;">${data.frameCount} frames salvos automaticamente</div>
-      <div style="display:flex;gap:10px;">
-        <button onclick="restoreAutosave()" style="flex:1;padding:12px;border-radius:12px;background:var(--accent);color:#000;font-size:14px;font-weight:700;border:none;cursor:pointer;">Continuar</button>
-        <button onclick="dismissAutosave()" style="flex:1;padding:12px;border-radius:12px;background:var(--surface2);color:var(--text2);font-size:14px;font-weight:600;border:none;cursor:pointer;">Comecar do zero</button>
-      </div>
-    </div>`;
-  document.body.appendChild(el);
-  window._restorePromptEl = el;
-  window._restoreData = { data, imgDataUrl };
-}
-
-function restoreAutosave() {
-  if (!window._restoreData) return;
-  const { data, imgDataUrl } = window._restoreData;
-  const img = new Image();
-  img.onload = () => {
-    imgEl = img;
-    updateTemplateBtn();
-    imgNatW = img.naturalWidth;
-    imgNatH = img.naturalHeight;
-    _imageBaseName = data._imageBaseName || 'arco';
-    stageEl.style.backgroundImage = `url(${imgDataUrl})`;
-    stageEl.style.backgroundSize = 'contain';
-    stageEl.style.backgroundPosition = 'center';
-    stageEl.style.backgroundRepeat = 'no-repeat';
-    computeImageRect();
-    restoreState(data);
-    renderAll();
-    updateFrameSelector();
-    syncDurationUI();
-  };
-  img.src = imgDataUrl;
-  if (window._restorePromptEl) window._restorePromptEl.remove();
-}
-
-function dismissAutosave() {
-  localStorage.removeItem(AUTOSAVE_KEY);
-  localStorage.removeItem(AUTOSAVE_IMG_KEY);
-  if (window._restorePromptEl) window._restorePromptEl.remove();
-}
-
 function renderAll() {
   // Sync pin button with active frame
   const lockBtn = document.getElementById('btnLockFrame');
