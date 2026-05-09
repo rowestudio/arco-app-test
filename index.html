@@ -1123,7 +1123,7 @@ body.cust-open #toolbar{
     <div id="custTabFramepause" class="cust-content" style="display:none;">
       <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Pausa neste frame (0 = sem pausa)</div>
       <div style="display:flex;align-items:center;gap:10px;">
-        <input type="range" class="dur-slider" id="framePauseSlider" min="0" max="5" step="0.1" value="0" style="flex:1;">
+        <input type="range" class="dur-slider" id="framePauseSlider" min="0" max="5" step="0.1" value="0" style="flex:1;touch-action:none;">
         <span id="framePauseVal" style="font-size:14px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;">0s</span>
       </div>
       <div style="display:flex;gap:6px;margin-top:8px;">
@@ -1182,7 +1182,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b15m</span><br><span id="appVersionNameText">Fix: remove iOS scroll layer from duration pause rows</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b15n</span><br><span id="appVersionNameText">Fix: touch-action:none on pause sliders, change fallback on local</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3414,8 +3414,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b15m';
-const APP_VERSION_NAME = 'Fix: remove iOS scroll layer from duration pause rows';
+const APP_VERSION = 'v8z4b15n';
+const APP_VERSION_NAME = 'Fix: touch-action:none on pause sliders, change fallback on local';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -6861,7 +6861,7 @@ function renderFramePauseRows() {
     slider.dataset.frameIndex = String(i);
     slider.dataset.sliderScope = 'duration-panel';
     slider.id = `framePauseDurationSlider-${i}`;
-    slider.style.cssText = 'flex:1;';
+    slider.style.cssText = 'flex:1;touch-action:none;';
     const val = document.createElement('span');
     val.textContent = (framePauses[i]?.duration || 0).toFixed(1) + 's';
     val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:34px;text-align:right;';
@@ -8591,8 +8591,22 @@ function syncFramePauseUI() {
       renderAll();
       if (isPreviewing) { stopPreview(); startPreview(); }
     }, { signal: ctrl.signal });
-    ['change', 'touchend', 'touchcancel', 'pointerup', 'pointercancel'].forEach(type => {
-      slider.addEventListener(type, clearFramePauseGesture, { signal: ctrl.signal, passive: type.startsWith('touch') });
+    slider.addEventListener('change', function() {
+      const currentFrameIdx = Number(this.dataset.frameIndex);
+      if (!Number.isInteger(currentFrameIdx) || frameLocked[currentFrameIdx]) return;
+      const d = parseFloat(this.value);
+      framePauses[currentFrameIdx] = { duration: d };
+      const v = document.getElementById('framePauseVal');
+      if (v) v.textContent = d.toFixed(1) + 's';
+      const linkedSlider = document.querySelector(`#framePauseRows input[data-frame-index="${currentFrameIdx}"][data-slider-scope="duration-panel"]`);
+      if (linkedSlider) linkedSlider.value = d.toFixed(1);
+      const linkedVal = linkedSlider?.parentElement?.querySelector('span:last-child');
+      if (linkedVal) linkedVal.textContent = d.toFixed(1) + 's';
+      syncDurationUI();
+      clearFramePauseGesture();
+    }, { signal: ctrl.signal });
+    ['touchend', 'touchcancel', 'pointerup', 'pointercancel'].forEach(type => {
+      slider.addEventListener(type, clearFramePauseGesture, { signal: ctrl.signal, passive: true });
     });
     framePauseLocalEvents = { ctrl, gesture };
   }
