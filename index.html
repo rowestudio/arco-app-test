@@ -1182,7 +1182,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b15f</span><br><span id="appVersionNameText">Fix: frame pause panel sync source-of-truth</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b15h</span><br><span id="appVersionNameText">Fix: slider interaction stability on iPhone/Safari</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3414,8 +3414,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b15g';
-const APP_VERSION_NAME = 'Fix: new frame pause initialization/sync';
+const APP_VERSION = 'v8z4b15h';
+const APP_VERSION_NAME = 'Fix: slider interaction stability on iPhone/Safari';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -6843,6 +6843,7 @@ function renderFramePauseRows() {
     slider.type = 'range'; slider.className = 'dur-slider';
     slider.min = '0'; slider.max = '5'; slider.step = '0.1';
     slider.value = (framePauses[i]?.duration || 0).toFixed(1);
+    slider.dataset.frameIndex = String(i);
     slider.style.cssText = 'flex:1;';
     const val = document.createElement('span');
     val.textContent = (framePauses[i]?.duration || 0).toFixed(1) + 's';
@@ -6861,7 +6862,12 @@ function renderFramePauseRows() {
       syncDurationUI();
       if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]') && i === activeIdx) syncFramePauseUI();
     });
-    slider.addEventListener('change', () => { undoCaptured = false; });
+    const clearGesture = () => { undoCaptured = false; };
+    slider.addEventListener('change', clearGesture);
+    slider.addEventListener('touchend', clearGesture, {passive:true});
+    slider.addEventListener('touchcancel', clearGesture, {passive:true});
+    slider.addEventListener('pointerup', clearGesture);
+    slider.addEventListener('pointercancel', clearGesture);
     row.append(lbl, slider, val);
     rows.appendChild(row);
   }
@@ -8499,15 +8505,18 @@ function syncFramePauseUI() {
     const newSlider = slider.cloneNode(true);
     slider.parentNode.replaceChild(newSlider, slider);
     newSlider.value = dur;
+    newSlider.dataset.frameIndex = String(frameIdx);
     const beginGesture = () => {
-      if (frameLocked[frameIdx]) return;
-      framePauseStartValue = framePauses[frameIdx]?.duration || 0;
+      const currentFrameIdx = Number(newSlider.dataset.frameIndex);
+      if (frameLocked[currentFrameIdx]) return;
+      framePauseStartValue = framePauses[currentFrameIdx]?.duration || 0;
       framePauseUndoCaptured = false;
     };
     newSlider.addEventListener('touchstart', beginGesture, {passive:true});
     newSlider.addEventListener('mousedown', beginGesture);
     newSlider.addEventListener('input', function() {
       ensureFramePauses();
+      const currentFrameIdx = Number(this.dataset.frameIndex);
       const d = parseFloat(this.value);
       if (!framePauseUndoCaptured && Math.abs(d - framePauseStartValue) > 0.0001) {
         pushUndo();
@@ -8515,15 +8524,23 @@ function syncFramePauseUI() {
         markProjectDirty('frame-pause-change');
         framePauseUndoCaptured = true;
       }
-      framePauses[frameIdx] = { duration: d };
+      framePauses[currentFrameIdx] = { duration: d };
       const v = document.getElementById('framePauseVal');
       if (v) v.textContent = d.toFixed(1) + 's';
+      const linkedSlider = document.querySelector(`#framePauseRows input[data-frame-index="${currentFrameIdx}"]`);
+      if (linkedSlider) linkedSlider.value = d.toFixed(1);
+      const linkedVal = linkedSlider?.parentElement?.querySelector('span:last-child');
+      if (linkedVal) linkedVal.textContent = d.toFixed(1) + 's';
       syncDurationUI();
-      if (durationPanelSections.pauses) renderFramePauseRows();
       renderAll();
       if (isPreviewing) { stopPreview(); startPreview(); }
     });
-    newSlider.addEventListener('change', () => { framePauseUndoCaptured = false; });
+    const clearFramePauseGesture = () => { framePauseUndoCaptured = false; };
+    newSlider.addEventListener('change', clearFramePauseGesture);
+    newSlider.addEventListener('touchend', clearFramePauseGesture, {passive:true});
+    newSlider.addEventListener('touchcancel', clearFramePauseGesture, {passive:true});
+    newSlider.addEventListener('pointerup', clearFramePauseGesture);
+    newSlider.addEventListener('pointercancel', clearFramePauseGesture);
   }
 }
 
