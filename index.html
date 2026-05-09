@@ -1182,7 +1182,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b15k</span><br><span id="appVersionNameText">Fix: slider interaction stability on iPhone/Safari</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b15l</span><br><span id="appVersionNameText">Fix: slider interaction stability on iPhone/Safari</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3414,7 +3414,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b15k';
+const APP_VERSION = 'v8z4b15l';
 const APP_VERSION_NAME = 'Fix: slider interaction stability on iPhone/Safari';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -6888,24 +6888,27 @@ function renderFramePauseRows() {
   rows.addEventListener('pointerdown', (ev) => captureStart(ev.target), { signal: ctrl.signal });
   rows.addEventListener('touchstart', (ev) => captureStart(ev.target), { signal: ctrl.signal, passive: true });
   rows.addEventListener('mousedown', (ev) => captureStart(ev.target), { signal: ctrl.signal });
-  rows.addEventListener('input', (ev) => {
-    const slider = ev.target;
-    if (!(slider instanceof HTMLInputElement) || slider.dataset.sliderScope !== 'duration-panel') return;
-    const idx = Number(slider.dataset.frameIndex);
-    if (!Number.isInteger(idx) || frameLocked[idx]) return;
-    const v = Math.max(0, parseFloat(slider.value) || 0);
-    if (!gesture.undoCaptured && gesture.frameIndex === idx && Math.abs(v - gesture.startValue) > 0.0001) {
-      pushUndo();
-      gesture.undoCaptured = true;
-    }
-    setTemplateManualIfNeeded();
-    markProjectDirty('frame-pause-row-change');
-    framePauses[idx] = { duration: v };
-    const val = slider.parentElement?.querySelector('span:last-child');
-    if (val) val.textContent = v.toFixed(1) + 's';
-    syncDurationUI();
-    if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]') && idx === activeIdx) syncFramePauseUI();
-  }, { signal: ctrl.signal });
+  // Direct per-slider listeners — bypass iOS -webkit-overflow-scrolling:touch bubbling issue
+  rows.querySelectorAll('input[data-slider-scope="duration-panel"]').forEach(sliderEl => {
+    const writeValue = (target) => {
+      const idx = Number(target.dataset.frameIndex);
+      if (!Number.isInteger(idx) || frameLocked[idx]) return;
+      const v = Math.max(0, parseFloat(target.value) || 0);
+      if (!gesture.undoCaptured && gesture.frameIndex === idx && Math.abs(v - gesture.startValue) > 0.0001) {
+        pushUndo();
+        gesture.undoCaptured = true;
+      }
+      setTemplateManualIfNeeded();
+      markProjectDirty('frame-pause-row-change');
+      framePauses[idx] = { duration: v };
+      const val = target.parentElement?.querySelector('span:last-child');
+      if (val) val.textContent = v.toFixed(1) + 's';
+      syncDurationUI();
+      if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]') && idx === activeIdx) syncFramePauseUI();
+    };
+    sliderEl.addEventListener('input', (ev) => writeValue(ev.target), { signal: ctrl.signal });
+    sliderEl.addEventListener('change', (ev) => writeValue(ev.target), { signal: ctrl.signal });
+  });
   ['change', 'touchend', 'touchcancel', 'pointerup', 'pointercancel'].forEach(type => {
     rows.addEventListener(type, endGesture, { signal: ctrl.signal, passive: type.startsWith('touch') });
   });
