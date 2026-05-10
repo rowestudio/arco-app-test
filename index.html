@@ -1124,7 +1124,7 @@ body.cust-open #toolbar{
       <div id="framePauseLocalLabel" style="font-size:11px;color:var(--text3);margin-bottom:4px;">Frame F1</div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Pausa neste frame (0 = sem pausa)</div>
       <div style="display:flex;align-items:center;gap:10px;">
-        <input type="range" class="dur-slider" id="framePauseSlider" min="0" max="5" step="0.1" value="0" style="flex:1;touch-action:none;">
+        <input type="range" class="dur-slider" id="framePauseSlider" min="0" max="5" step="0.1" value="0" style="flex:1;">
         <span id="framePauseVal" style="font-size:14px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;">0s</span>
       </div>
       <div style="display:flex;gap:6px;margin-top:8px;">
@@ -1362,10 +1362,16 @@ body.cust-open #toolbar{
   <div class="panel-handle" onclick="closeAll()"></div>
   <div class="panel-title">Duração</div>
 
-  <!-- Linha: duração total + slider -->
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+  <!-- Linha: duração total final do vídeo (apenas leitura). -->
+  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;">
     <span id="durNum" style="font-size:20px;font-weight:700;color:var(--accent);min-width:42px;flex-shrink:0;">6s</span>
+    <span style="font-size:11px;color:var(--text3);">Duração total · soma de segmentos + pausas + acabamento</span>
+  </div>
+  <!-- Linha: ajuste proporcional dos segmentos (não inclui pausas/acabamento). -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+    <span style="font-size:11px;color:var(--text3);flex-shrink:0;min-width:42px;">Segmentos</span>
     <input type="range" class="dur-slider" id="durSlider" min="1" max="60" step="0.1" value="4" style="flex:1;">
+    <span id="durSegTotal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:42px;text-align:right;">4.0s</span>
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
     <span style="font-size:12px;color:var(--text3);">Intervalo padrão</span>
@@ -1398,6 +1404,11 @@ body.cust-open #toolbar{
     <span>Pausas por frame</span><span id="durationSectionChevronPauses" style="font-size:28px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
   </button>
   <div id="framePauseSection" style="display:none;padding-top:10px;margin-bottom:10px;">
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 0 10px 0;border-bottom:1px solid var(--border2);margin-bottom:6px;">
+      <span style="font-size:12px;font-weight:700;color:var(--text2);min-width:32px;flex-shrink:0;">Tudo</span>
+      <input type="range" class="dur-slider" id="framePauseGlobalSlider" min="0" max="5" step="0.1" value="0" style="flex:1;">
+      <span id="framePauseGlobalVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;">0.0s</span>
+    </div>
     <div id="framePauseRows" style="display:flex;flex-direction:column;"></div>
   </div>
 
@@ -3415,8 +3426,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b15u';
-const APP_VERSION_NAME = 'Stabilize frame pause state sync on iPhone';
+const APP_VERSION = 'v8z4b15v';
+const APP_VERSION_NAME = 'Restore native slider UX for frame pauses on iPhone';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -6869,94 +6880,117 @@ function syncDurationSectionsUI() {
   }
 }
 
-// v8z4b15u: painel Duração usa steppers +/− por frame em vez de slider.
-// Motivo: range sliders nativos no iPhone/Safari capturavam o gesto vertical
-// dentro de uma lista rolável (#panelDuration), causando alteração acidental
-// e conflito com a tentativa de scroll. Steppers são intencionais por toque,
-// não competem com pan-y, e cada interação passa por setFramePause().
+// v8z4b15v: restaurada a UX do painel "Duração dos segmentos" para o painel
+// "Pausas por frame". A v15u trocou os sliders por steppers para resolver um
+// conflito de scroll no iPhone/Safari, mas o problema verdadeiro nunca foi o
+// <input type="range"> nativo — era a implementação custom (touch-action:none,
+// gesture math manual, handlers duplicados). O painel de segmentos prova que
+// um range nativo, com listeners simples (input/change) e sem touch-action
+// override, convive bem com pan-y do container. Reaproveitamos esse padrão
+// aqui: mesma classe .dur-slider, mesmos eventos, mesma estrutura.
 function buildFramePauseRow(i) {
   const row = document.createElement('div');
   row.dataset.framePauseRow = '';
   row.dataset.frameIndex = String(i);
-  row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 0;touch-action:pan-y;';
+  row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 0;';
   const lbl = document.createElement('span');
   lbl.dataset.frameLabel = '';
   lbl.textContent = 'F' + (i + 1);
-  lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:28px;flex-shrink:0;';
-  const minus = document.createElement('button');
-  minus.type = 'button';
-  minus.dataset.pauseStep = '-';
-  minus.textContent = '−';
-  minus.style.cssText = 'width:42px;height:36px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:18px;font-weight:700;cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;';
+  lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:32px;flex-shrink:0;';
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.className = 'dur-slider';
+  slider.dataset.pauseSlider = '';
+  slider.min = String(FRAME_PAUSE_MIN);
+  slider.max = String(FRAME_PAUSE_MAX);
+  slider.step = String(FRAME_PAUSE_STEP);
+  slider.value = (framePauses[i]?.duration || 0).toFixed(1);
+  slider.style.cssText = 'flex:1;';
   const val = document.createElement('span');
   val.dataset.pauseValue = '';
-  val.textContent = '0.0s';
-  val.style.cssText = 'flex:1;text-align:center;font-size:15px;font-weight:700;color:var(--accent);';
-  const plus = document.createElement('button');
-  plus.type = 'button';
-  plus.dataset.pauseStep = '+';
-  plus.textContent = '+';
-  plus.style.cssText = 'width:42px;height:36px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:18px;font-weight:700;cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;';
-  const reset = document.createElement('button');
-  reset.type = 'button';
-  reset.dataset.pauseStep = '0';
-  reset.textContent = '0';
-  reset.style.cssText = 'min-width:30px;height:32px;padding:0 8px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;';
-  row.append(lbl, minus, val, plus, reset);
+  val.textContent = (framePauses[i]?.duration || 0).toFixed(1) + 's';
+  val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;';
+  row.append(lbl, slider, val);
+  _bindFramePauseRowSlider(row, slider, val);
   return row;
 }
 
-function _bindFramePauseRowsDelegated(rows) {
-  if (rows._pauseDelegated) return;
-  rows._pauseDelegated = true;
-
-  let repeatTimer = null;
-  let repeatInterval = null;
-
-  const stepValue = (idx, op) => {
-    ensureFramePauses();
-    const cur = framePauses[idx]?.duration || 0;
-    let next = cur;
-    if (op === '+') next = clampFramePauseValue(cur + FRAME_PAUSE_STEP);
-    else if (op === '-') next = clampFramePauseValue(cur - FRAME_PAUSE_STEP);
-    else if (op === '0') next = 0;
-    if (Math.abs(next - cur) < 0.0001) return false;
-    setFramePause(idx, next, { render: true });
-    return true;
+// Liga listeners do mesmo jeito que openSegBreakdown faz para sliders de
+// segmento: input / change / mouse|touchstart, sem pointer math, sem
+// touch-action override, sem repeat manual. Bind-once por elemento.
+function _bindFramePauseRowSlider(row, slider, valEl) {
+  if (slider._pauseBoundV15v) return;
+  slider._pauseBoundV15v = true;
+  let undoCaptured = false;
+  const captureUndo = () => {
+    const idx = Number(row.dataset.frameIndex);
+    if (!Number.isInteger(idx) || frameLocked[idx]) return;
+    if (!undoCaptured) {
+      pushUndo();
+      setTemplateManualIfNeeded();
+      undoCaptured = true;
+    }
   };
-
-  const stopRepeat = () => {
-    if (repeatTimer) { clearTimeout(repeatTimer); repeatTimer = null; }
-    if (repeatInterval) { clearInterval(repeatInterval); repeatInterval = null; }
-  };
-
-  rows.addEventListener('pointerdown', (ev) => {
-    const btn = ev.target.closest('[data-pause-step]');
-    if (!btn || btn.disabled) return;
-    const row = btn.closest('[data-frame-pause-row]');
-    if (!row) return;
+  slider.addEventListener('mousedown', captureUndo);
+  slider.addEventListener('touchstart', captureUndo, { passive: true });
+  // Durante o drag: estado + label, sem renderAll (mais barato, sem flicker).
+  slider.addEventListener('input', () => {
     const idx = Number(row.dataset.frameIndex);
     if (!Number.isInteger(idx) || idx < 0 || idx >= frameCount || frameLocked[idx]) return;
-    const op = btn.dataset.pauseStep;
-    ev.preventDefault(); // suprime click sintetizado e foco indesejado no iOS
+    captureUndo();
+    setFramePause(idx, slider.value, { render: false });
+  });
+  // Ao soltar: garante renderAll + restart de preview se houver mudança real.
+  slider.addEventListener('change', () => {
+    const idx = Number(row.dataset.frameIndex);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= frameCount || frameLocked[idx]) return;
+    setFramePause(idx, slider.value, { render: true });
+    undoCaptured = false;
+  });
+}
+
+function _bindGlobalFramePauseSliderOnce() {
+  const slider = document.getElementById('framePauseGlobalSlider');
+  const valEl = document.getElementById('framePauseGlobalVal');
+  if (!slider || slider._pauseGlobalBoundV15v) return;
+  slider._pauseGlobalBoundV15v = true;
+  let undoCaptured = false;
+  const captureUndo = () => {
+    if (undoCaptured) return;
     pushUndo();
     setTemplateManualIfNeeded();
-    stepValue(idx, op);
-    if (op === '+' || op === '-') {
-      stopRepeat();
-      repeatTimer = setTimeout(() => {
-        repeatInterval = setInterval(() => {
-          if (!stepValue(idx, op)) stopRepeat();
-        }, 90);
-      }, 380);
+    undoCaptured = true;
+  };
+  const applyAll = (value, opts) => {
+    ensureFramePauses();
+    const v = clampFramePauseValue(value);
+    let changed = false;
+    for (let i = 0; i < frameCount; i++) {
+      if (frameLocked[i]) continue;
+      const cur = framePauses[i]?.duration || 0;
+      if (Math.abs(cur - v) > 0.0001) {
+        framePauses[i] = { duration: v };
+        changed = true;
+      }
     }
+    if (changed) markProjectDirty('frame-pause-global');
+    if (valEl) valEl.textContent = v.toFixed(1) + 's';
+    refreshPauseControls();
+    if ((opts && opts.render) && changed) {
+      renderAll();
+      if (isPreviewing) { stopPreview(); startPreview(); }
+    }
+    return changed;
+  };
+  slider.addEventListener('mousedown', captureUndo);
+  slider.addEventListener('touchstart', captureUndo, { passive: true });
+  slider.addEventListener('input', () => {
+    captureUndo();
+    applyAll(slider.value, { render: false });
   });
-  rows.addEventListener('pointerup', stopRepeat);
-  rows.addEventListener('pointerleave', stopRepeat);
-  rows.addEventListener('pointercancel', stopRepeat);
-  // Bloqueia o click sintetizado — o pointerdown já fez o trabalho.
-  rows.addEventListener('click', (ev) => {
-    if (ev.target.closest('[data-pause-step]')) ev.preventDefault();
+  slider.addEventListener('change', () => {
+    applyAll(slider.value, { render: true });
+    undoCaptured = false;
   });
 }
 
@@ -6964,9 +6998,9 @@ function renderFramePauseRows() {
   const rows = document.getElementById('framePauseRows');
   if (!rows) return;
   ensureFramePauses();
-  _bindFramePauseRowsDelegated(rows);
+  _bindGlobalFramePauseSliderOnce();
 
-  // Reusa linhas existentes (preserva scroll e identidade dos botões).
+  // Reusa linhas existentes (preserva scroll e identidade dos sliders).
   const desired = frameCount;
   let existing = rows.querySelectorAll('[data-frame-pause-row]').length;
   while (existing < desired) {
@@ -7942,8 +7976,16 @@ function syncDurationUI() {
   const parts = getDurationParts();
   const total = parts.total;
   syncFinishingUIFromState();
+  // v8z4b15v: durSlider controla apenas os SEGMENTOS (proporcionalmente).
+  // Antes, o thumb refletia o total final (segmentos + pausas + acabamento)
+  // mas o input handler operava só sobre segDurations — divergência visual.
   const durSlider = document.getElementById('durSlider');
-  if (durSlider) durSlider.value = Math.min(60, total).toFixed(1);
+  if (durSlider) {
+    const next = Math.min(60, moveTotal).toFixed(1);
+    if (parseFloat(durSlider.value) !== parseFloat(next)) durSlider.value = next;
+  }
+  const durSegTotal = document.getElementById('durSegTotal');
+  if (durSegTotal) durSegTotal.textContent = moveTotal.toFixed(1) + 's';
   const durNum = document.getElementById('durNum');
   if (durNum) durNum.textContent = total.toFixed(1) + 's';
   const tbDuration = document.getElementById('tbDuration');
@@ -8661,7 +8703,7 @@ function setFramePause(frameIndex, duration, options) {
 function refreshPauseControls() {
   ensureFramePauses();
 
-  // Painel Duração — linhas com stepper
+  // Painel Duração — linhas com slider nativo (mesma UX dos segmentos).
   const rowsContainer = document.getElementById('framePauseRows');
   if (rowsContainer) {
     Array.from(rowsContainer.querySelectorAll('[data-frame-pause-row]')).forEach((row) => {
@@ -8672,21 +8714,40 @@ function refreshPauseControls() {
       }
       row.style.display = '';
       const cur = framePauses[idx]?.duration || 0;
+      const formatted = cur.toFixed(1);
       const valEl = row.querySelector('[data-pause-value]');
-      if (valEl) valEl.textContent = cur.toFixed(1) + 's';
-      const minus = row.querySelector('[data-pause-step="-"]');
-      const plus = row.querySelector('[data-pause-step="+"]');
-      const reset = row.querySelector('[data-pause-step="0"]');
-      const locked = !!frameLocked[idx];
-      const setBtnState = (btn, disabled) => {
-        if (!btn) return;
-        btn.disabled = !!disabled;
-        btn.style.opacity = btn.disabled ? '0.35' : '1';
-      };
-      setBtnState(minus, locked || cur <= FRAME_PAUSE_MIN + 0.0001);
-      setBtnState(plus,  locked || cur >= FRAME_PAUSE_MAX - 0.0001);
-      setBtnState(reset, locked || Math.abs(cur) < 0.0001);
+      if (valEl) valEl.textContent = formatted + 's';
+      const slider = row.querySelector('[data-pause-slider]');
+      if (slider) {
+        // Só sobrescreve o thumb se o valor divergir — evita interromper drag.
+        if (parseFloat(slider.value) !== parseFloat(formatted)) {
+          slider.value = formatted;
+        }
+        const locked = !!frameLocked[idx];
+        slider.disabled = locked;
+        slider.style.opacity = locked ? '0.35' : '1';
+      }
     });
+  }
+
+  // Pausa global (dentro do painel Duração). Reflete framePauses[0] como
+  // ponto de referência; quando há divergência entre frames, marca com "*".
+  const globalSlider = document.getElementById('framePauseGlobalSlider');
+  const globalVal = document.getElementById('framePauseGlobalVal');
+  if (globalSlider) {
+    const ref = framePauses[0]?.duration || 0;
+    let allEqual = true;
+    for (let i = 1; i < frameCount; i++) {
+      if (Math.abs((framePauses[i]?.duration || 0) - ref) > 0.0001) {
+        allEqual = false;
+        break;
+      }
+    }
+    const formatted = ref.toFixed(1);
+    if (parseFloat(globalSlider.value) !== parseFloat(formatted)) {
+      globalSlider.value = formatted;
+    }
+    if (globalVal) globalVal.textContent = formatted + 's' + (allEqual ? '' : '*');
   }
 
   // Painel local/contextual — slider único
