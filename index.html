@@ -4315,7 +4315,10 @@ function addFrame() {
 
   ensureSegBlurSettings();
   syncDurationUI();
-  if (durationPanelSections.pauses) renderFramePauseRows();
+  if (durationPanelSections.pauses) {
+    renderFramePauseRows();
+    syncDurationControlsFromState();
+  }
   renderAll();
   updateFrameSelector();
   updateToolbarLabels();
@@ -6918,7 +6921,10 @@ function syncDurationSectionsUI() {
   if (pauseCh) pauseCh.textContent = durationPanelSections.pauses ? '▾' : '▸';
   if (finishCh) finishCh.textContent = durationPanelSections.finish ? '▾' : '▸';
   if (durationPanelSections.segments) openSegBreakdown();
-  if (durationPanelSections.pauses) renderFramePauseRows();
+  if (durationPanelSections.pauses) {
+    renderFramePauseRows();
+    syncDurationControlsFromState();
+  }
 }
 
 function renderFramePauseRows() {
@@ -6955,19 +6961,12 @@ function renderFramePauseRows() {
     const writeValue = (target) => {
       const idx = Number(target.dataset.frameIndex);
       if (!Number.isInteger(idx) || frameLocked[idx]) return;
-      const v = setFramePause(idx, target.value);
-      if (v == null) return;
+      if (setFramePause(idx, target.value, { render: true }) == null) return;
       setTemplateManualIfNeeded();
       markProjectDirty('frame-pause-row-change');
-      const val = target.parentElement?.querySelector('span:last-child');
-      if (val) val.textContent = v.toFixed(1) + 's';
-      syncDurationUI();
       if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]') && idx === activeIdx) syncFramePauseUI();
     };
     const binding = bindPauseSlider(sliderEl, () => Number(sliderEl.dataset.frameIndex), (idx, v) => {
-      const val = sliderEl.parentElement?.querySelector('span:last-child');
-      if (val) val.textContent = v.toFixed(1) + 's';
-      syncDurationUI();
       if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]') && idx === activeIdx) syncFramePauseUI();
     });
     if (binding?.ctrl) ctrl.signal.addEventListener('abort', () => binding.ctrl.abort(), { once: true });
@@ -6978,7 +6977,7 @@ function renderFramePauseRows() {
     sliderEl.addEventListener('pointerup', (ev) => writeValue(ev.target), { signal: ctrl.signal });
   });
   framePauseRowsEvents = { ctrl, bindings };
-  refreshPauseSliderVisuals();
+  syncDurationControlsFromState();
 }
 
 // Listener do slider de duração do loop
@@ -8604,7 +8603,7 @@ function updateDurationUI() {
   }
 }
 
-function setFramePause(frameIndex, duration) {
+function setFramePause(frameIndex, duration, options = { render: true }) {
   ensureFramePauses();
   if (!Number.isInteger(frameIndex) || frameIndex < 0 || frameIndex >= frameCount || frameLocked[frameIndex]) return null;
   const value = clampPauseSliderValue({ min: '0', max: '5', step: '0.1' }, parseFloat(duration));
@@ -8619,7 +8618,15 @@ function setFramePause(frameIndex, duration) {
   if (localLabel && activeIdx === frameIndex) localLabel.textContent = value.toFixed(1) + 's';
   updateDurationUI();
   syncDurationUI();
+  if (options?.render !== false) {
+    renderAll();
+    if (isPreviewing) { stopPreview(); startPreview(); }
+  }
   return value;
+}
+
+function syncDurationControlsFromState() {
+  refreshPauseSliderVisuals();
 }
 
 function refreshPauseSliderVisuals() {
@@ -8642,7 +8649,7 @@ function refreshPauseSliderVisuals() {
 }
 
 function applyFramePauseValue(frameIdx, rawValue) {
-  return setFramePause(frameIdx, rawValue);
+  return setFramePause(frameIdx, rawValue, { render: true });
 }
 
 function syncFramePauseUI() {
@@ -8686,41 +8693,23 @@ function syncFramePauseUI() {
       ensureFramePauses();
       const currentFrameIdx = Number(this.dataset.frameIndex);
       if (!Number.isInteger(currentFrameIdx) || frameLocked[currentFrameIdx]) return;
-      const d = setFramePause(currentFrameIdx, this.value);
-      if (d == null) return;
-      const v = document.getElementById('framePauseVal');
-      if (v) v.textContent = d.toFixed(1) + 's';
-      const linkedSlider = document.querySelector(`#framePauseRows input[data-frame-index="${currentFrameIdx}"][data-slider-scope="duration-panel"]`);
-      if (linkedSlider) linkedSlider.value = d.toFixed(1);
-      const linkedVal = linkedSlider?.parentElement?.querySelector('span:last-child');
-      if (linkedVal) linkedVal.textContent = d.toFixed(1) + 's';
-      syncDurationUI();
-      renderAll();
-      if (isPreviewing) { stopPreview(); startPreview(); }
+      if (setFramePause(currentFrameIdx, this.value, { render: true }) == null) return;
     }, { signal: ctrl.signal });
     slider.addEventListener('change', function() {
       const currentFrameIdx = Number(this.dataset.frameIndex);
       if (!Number.isInteger(currentFrameIdx) || frameLocked[currentFrameIdx]) return;
-      const d = setFramePause(currentFrameIdx, this.value);
-      if (d == null) return;
-      const v = document.getElementById('framePauseVal');
-      if (v) v.textContent = d.toFixed(1) + 's';
-      const linkedSlider = document.querySelector(`#framePauseRows input[data-frame-index="${currentFrameIdx}"][data-slider-scope="duration-panel"]`);
-      if (linkedSlider) linkedSlider.value = d.toFixed(1);
-      const linkedVal = linkedSlider?.parentElement?.querySelector('span:last-child');
-      if (linkedVal) linkedVal.textContent = d.toFixed(1) + 's';
-      syncDurationUI();
+      if (setFramePause(currentFrameIdx, this.value, { render: false }) == null) return;
     }, { signal: ctrl.signal });
     slider.addEventListener('touchend', function() {
       const currentFrameIdx = Number(this.dataset.frameIndex);
       if (!Number.isInteger(currentFrameIdx) || frameLocked[currentFrameIdx]) return;
-      if (setFramePause(currentFrameIdx, this.value) == null) return;
+      if (setFramePause(currentFrameIdx, this.value, { render: false }) == null) return;
       refreshPauseSliderVisuals();
     }, { signal: ctrl.signal, passive: true });
     slider.addEventListener('pointerup', function() {
       const currentFrameIdx = Number(this.dataset.frameIndex);
       if (!Number.isInteger(currentFrameIdx) || frameLocked[currentFrameIdx]) return;
-      if (setFramePause(currentFrameIdx, this.value) == null) return;
+      if (setFramePause(currentFrameIdx, this.value, { render: false }) == null) return;
       refreshPauseSliderVisuals();
     }, { signal: ctrl.signal });
     framePauseLocalEvents = { ctrl, binding };
