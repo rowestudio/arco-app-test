@@ -1183,7 +1183,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b15s</span><br><span id="appVersionNameText">Fix: remove auto-resume popup and unify duration scroll</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b15u</span><br><span id="appVersionNameText">Stabilize frame pause state sync on iPhone</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3415,8 +3415,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b15t';
-const APP_VERSION_NAME = 'Fix frame pause sliders state sync';
+const APP_VERSION = 'v8z4b15u';
+const APP_VERSION_NAME = 'Stabilize frame pause state sync on iPhone';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -3447,96 +3447,27 @@ let pendingProjectData = null; // projeto aguardando imagem ser carregada
 let easeAmount = 0;
 let easeMode = 'global';
 let segEasings = []; // easing por segmento
-let framePauses = []; // pausa por frame: {enabled, duration}
+let framePauses = []; // fonte única de verdade: framePauses[i] = { duration: number(s) }
 const durationPanelSections = { segments: false, pauses: false, finish: false };
-let framePauseRowsEvents = null;
-let framePauseLocalEvents = null;
 
-function clampPauseSliderValue(slider, rawValue) {
-  const min = parseFloat(slider.min || '0');
-  const max = parseFloat(slider.max || '5');
-  const step = parseFloat(slider.step || '0.1');
-  const safeMin = Number.isFinite(min) ? min : 0;
-  const safeMax = Number.isFinite(max) ? max : 5;
-  const safeStep = Number.isFinite(step) && step > 0 ? step : 0.1;
-  const clamped = Math.min(safeMax, Math.max(safeMin, Number.isFinite(rawValue) ? rawValue : safeMin));
-  const snapped = safeMin + Math.round((clamped - safeMin) / safeStep) * safeStep;
-  const precision = (slider.step && slider.step.includes('.')) ? slider.step.split('.')[1].length : 1;
-  return Number(Math.min(safeMax, Math.max(safeMin, snapped)).toFixed(precision));
+// Pause clamp constants — single source of truth (v8z4b15u)
+const FRAME_PAUSE_MIN = 0;
+const FRAME_PAUSE_MAX = 5;
+const FRAME_PAUSE_STEP = 0.1;
+
+function clampFramePauseValue(rawValue) {
+  const num = parseFloat(rawValue);
+  if (!Number.isFinite(num)) return FRAME_PAUSE_MIN;
+  const clamped = Math.max(FRAME_PAUSE_MIN, Math.min(FRAME_PAUSE_MAX, num));
+  return Math.round(clamped / FRAME_PAUSE_STEP) * FRAME_PAUSE_STEP;
 }
 
-function bindPauseSlider(sliderEl, getFrameIndex, onValueApplied) {
-  if (!sliderEl) return null;
-  const ctrl = new AbortController();
-  const gesture = { active: false, changed: false, startValue: 0, frameIndex: -1 };
-  const getClientX = (ev) => {
-    if (ev.touches && ev.touches.length) return ev.touches[0].clientX;
-    if (ev.changedTouches && ev.changedTouches.length) return ev.changedTouches[0].clientX;
-    return ev.clientX;
-  };
-  const applyFromEvent = (ev, isStart = false) => {
-    const idx = Number(getFrameIndex());
-    if (!Number.isInteger(idx) || frameLocked[idx]) return;
-    ensureFramePauses();
-    const rect = sliderEl.getBoundingClientRect();
-    if (!rect.width) return;
-    const clientX = getClientX(ev);
-    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    const raw = parseFloat(sliderEl.min || '0') + ratio * ((parseFloat(sliderEl.max || '5')) - (parseFloat(sliderEl.min || '0')));
-    const value = clampPauseSliderValue(sliderEl, raw);
-    if (isStart) {
-      gesture.startValue = framePauses[idx]?.duration || 0;
-      gesture.changed = false;
-      gesture.frameIndex = idx;
-    }
-    if (!gesture.changed && Math.abs(value - gesture.startValue) > 0.0001) {
-      pushUndo();
-      setTemplateManualIfNeeded();
-      markProjectDirty('frame-pause-gesture');
-      gesture.changed = true;
-    }
-    framePauses[idx] = { duration: value };
-    sliderEl.value = value.toFixed(1);
-    if (typeof onValueApplied === 'function') onValueApplied(idx, value);
-  };
-  const onStart = (ev) => {
-    ev.preventDefault();
-    gesture.active = true;
-    applyFromEvent(ev, true);
-  };
-  const onMove = (ev) => {
-    if (!gesture.active) return;
-    ev.preventDefault();
-    applyFromEvent(ev, false);
-  };
-  const onEnd = (ev) => {
-    if (!gesture.active) return;
-    if (ev && ev.cancelable) ev.preventDefault();
-    applyFromEvent(ev, false);
-    gesture.active = false;
-    gesture.frameIndex = -1;
-  };
-  sliderEl.addEventListener('pointerdown', onStart, { signal: ctrl.signal });
-  sliderEl.addEventListener('pointermove', onMove, { signal: ctrl.signal });
-  sliderEl.addEventListener('pointerup', onEnd, { signal: ctrl.signal });
-  sliderEl.addEventListener('pointercancel', onEnd, { signal: ctrl.signal });
-  sliderEl.addEventListener('touchstart', onStart, { signal: ctrl.signal, passive: false });
-  sliderEl.addEventListener('touchmove', onMove, { signal: ctrl.signal, passive: false });
-  sliderEl.addEventListener('touchend', onEnd, { signal: ctrl.signal, passive: false });
-  sliderEl.addEventListener('touchcancel', onEnd, { signal: ctrl.signal, passive: false });
-  sliderEl.addEventListener('mousedown', onStart, { signal: ctrl.signal });
-  return { ctrl, gesture };
-}
-
-function teardownFramePauseRows() {
-  if (framePauseRowsEvents?.ctrl) framePauseRowsEvents.ctrl.abort();
-  framePauseRowsEvents = null;
-}
-
-function teardownFramePauseLocalSlider() {
-  if (framePauseLocalEvents?.ctrl) framePauseLocalEvents.ctrl.abort();
-  framePauseLocalEvents = null;
-}
+// v8z4b15u: o gesture binding customizado foi removido junto com os sliders por
+// frame no painel Duração — substituídos por steppers +/− para evitar conflito
+// de scroll no iPhone/Safari. As funções abaixo permanecem como no-ops apenas
+// para preservar callers existentes (closeAll, resetState, restoreState, etc).
+function teardownFramePauseRows() {}
+function teardownFramePauseLocalSlider() {}
 
 // State
 let isPreviewing = false, isRecording = false;
@@ -3705,7 +3636,10 @@ function restoreState(state) {
   syncDurationSectionsUI();
   syncRatioUI();
   syncCustomizePanel();
+  ensureFramePauses();
+  if (durationPanelSections.pauses) renderFramePauseRows();
   if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]')) syncFramePauseUI();
+  refreshPauseControls();
   renderAll();
   updateFrameSelector();
   updateUndoRedoUI();
@@ -4382,7 +4316,7 @@ function insertFrameAfterActive() {
   frames.splice(b, 0, newFrame);
   frameRotations.splice(b, 0, newRot);
   frameLocked.splice(b, 0, false);
-  framePauses.splice(b, 0, { enabled: false, duration: 0 });
+  framePauses.splice(b, 0, { duration: 0 });
 
   const leftNx = p01x / stageW, leftNy = p01y / stageH;
   const rightNx = p12x / stageW, rightNy = p12y / stageH;
@@ -4419,7 +4353,10 @@ function insertFrameAfterActive() {
   const origBlur = segBlurSettings[a] ? {...segBlurSettings[a]} : cloneDefaultSegBlur();
   segBlurSettings.splice(a, 1, {...origBlur}, {...origBlur});
   ensureSegBlurSettings();
+  ensureFramePauses();
   syncDurationUI();
+  if (durationPanelSections.pauses) renderFramePauseRows();
+  if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]')) syncFramePauseUI();
   renderAll();
   updateFrameSelector();
   updateToolbarLabels();
@@ -4440,10 +4377,15 @@ function removeLastFrame() {
   ctrlPts.splice(i - 1, 1);
   if (segDurations.length >= i) segDurations.splice(i - 1, 1);
   if (segBlurSettings.length >= i) segBlurSettings.splice(i - 1, 1);
+  // v8z4b15u: framePauses ficava órfão após remover frame; alinhamos aqui.
+  if (framePauses.length > i) framePauses.splice(i, 1);
   frameCount--;
   if (activeIdx >= frameCount) activeIdx = frameCount - 1;
+  ensureFramePauses();
   ensureSegBlurSettings();
   syncDurationUI();
+  if (durationPanelSections.pauses) renderFramePauseRows();
+  if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]')) syncFramePauseUI();
   renderAll();
   updateFrameSelector();
   refreshBreakdownIfOpen();
@@ -6927,57 +6869,122 @@ function syncDurationSectionsUI() {
   }
 }
 
+// v8z4b15u: painel Duração usa steppers +/− por frame em vez de slider.
+// Motivo: range sliders nativos no iPhone/Safari capturavam o gesto vertical
+// dentro de uma lista rolável (#panelDuration), causando alteração acidental
+// e conflito com a tentativa de scroll. Steppers são intencionais por toque,
+// não competem com pan-y, e cada interação passa por setFramePause().
+function buildFramePauseRow(i) {
+  const row = document.createElement('div');
+  row.dataset.framePauseRow = '';
+  row.dataset.frameIndex = String(i);
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 0;touch-action:pan-y;';
+  const lbl = document.createElement('span');
+  lbl.dataset.frameLabel = '';
+  lbl.textContent = 'F' + (i + 1);
+  lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:28px;flex-shrink:0;';
+  const minus = document.createElement('button');
+  minus.type = 'button';
+  minus.dataset.pauseStep = '-';
+  minus.textContent = '−';
+  minus.style.cssText = 'width:42px;height:36px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:18px;font-weight:700;cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;';
+  const val = document.createElement('span');
+  val.dataset.pauseValue = '';
+  val.textContent = '0.0s';
+  val.style.cssText = 'flex:1;text-align:center;font-size:15px;font-weight:700;color:var(--accent);';
+  const plus = document.createElement('button');
+  plus.type = 'button';
+  plus.dataset.pauseStep = '+';
+  plus.textContent = '+';
+  plus.style.cssText = 'width:42px;height:36px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:18px;font-weight:700;cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;';
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.dataset.pauseStep = '0';
+  reset.textContent = '0';
+  reset.style.cssText = 'min-width:30px;height:32px;padding:0 8px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;';
+  row.append(lbl, minus, val, plus, reset);
+  return row;
+}
+
+function _bindFramePauseRowsDelegated(rows) {
+  if (rows._pauseDelegated) return;
+  rows._pauseDelegated = true;
+
+  let repeatTimer = null;
+  let repeatInterval = null;
+
+  const stepValue = (idx, op) => {
+    ensureFramePauses();
+    const cur = framePauses[idx]?.duration || 0;
+    let next = cur;
+    if (op === '+') next = clampFramePauseValue(cur + FRAME_PAUSE_STEP);
+    else if (op === '-') next = clampFramePauseValue(cur - FRAME_PAUSE_STEP);
+    else if (op === '0') next = 0;
+    if (Math.abs(next - cur) < 0.0001) return false;
+    setFramePause(idx, next, { render: true });
+    return true;
+  };
+
+  const stopRepeat = () => {
+    if (repeatTimer) { clearTimeout(repeatTimer); repeatTimer = null; }
+    if (repeatInterval) { clearInterval(repeatInterval); repeatInterval = null; }
+  };
+
+  rows.addEventListener('pointerdown', (ev) => {
+    const btn = ev.target.closest('[data-pause-step]');
+    if (!btn || btn.disabled) return;
+    const row = btn.closest('[data-frame-pause-row]');
+    if (!row) return;
+    const idx = Number(row.dataset.frameIndex);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= frameCount || frameLocked[idx]) return;
+    const op = btn.dataset.pauseStep;
+    ev.preventDefault(); // suprime click sintetizado e foco indesejado no iOS
+    pushUndo();
+    setTemplateManualIfNeeded();
+    stepValue(idx, op);
+    if (op === '+' || op === '-') {
+      stopRepeat();
+      repeatTimer = setTimeout(() => {
+        repeatInterval = setInterval(() => {
+          if (!stepValue(idx, op)) stopRepeat();
+        }, 90);
+      }, 380);
+    }
+  });
+  rows.addEventListener('pointerup', stopRepeat);
+  rows.addEventListener('pointerleave', stopRepeat);
+  rows.addEventListener('pointercancel', stopRepeat);
+  // Bloqueia o click sintetizado — o pointerdown já fez o trabalho.
+  rows.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-pause-step]')) ev.preventDefault();
+  });
+}
+
 function renderFramePauseRows() {
   const rows = document.getElementById('framePauseRows');
   if (!rows) return;
-  teardownFramePauseRows();
   ensureFramePauses();
-  rows.innerHTML = '';
-  for (let i = 0; i < frameCount; i++) {
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;';
-    const lbl = document.createElement('span');
-    lbl.textContent = 'F' + (i + 1);
-    lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:28px;';
-    const slider = document.createElement('input');
-    slider.type = 'range'; slider.className = 'dur-slider';
-    slider.min = '0'; slider.max = '5'; slider.step = '0.1';
-    slider.value = (framePauses[i]?.duration || 0).toFixed(1);
-    slider.dataset.frameIndex = String(i);
-    slider.dataset.sliderScope = 'duration-panel';
-    slider.id = `framePauseDurationSlider-${i}`;
-    slider.style.cssText = 'flex:1;touch-action:none;';
-    const val = document.createElement('span');
-    val.textContent = (framePauses[i]?.duration || 0).toFixed(1) + 's';
-    val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:34px;text-align:right;';
-    row.append(lbl, slider, val);
-    rows.appendChild(row);
-  }
+  _bindFramePauseRowsDelegated(rows);
 
-  const ctrl = new AbortController();
-  const bindings = [];
-  // Fallback input/change (non-primary path)
-  rows.querySelectorAll('input[data-slider-scope="duration-panel"]').forEach(sliderEl => {
-    const writeValue = (target) => {
-      const idx = Number(target.dataset.frameIndex);
-      if (!Number.isInteger(idx) || frameLocked[idx]) return;
-      if (setFramePause(idx, target.value, { render: true }) == null) return;
-      setTemplateManualIfNeeded();
-      markProjectDirty('frame-pause-row-change');
-      if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]') && idx === activeIdx) syncFramePauseUI();
-    };
-    const binding = bindPauseSlider(sliderEl, () => Number(sliderEl.dataset.frameIndex), (idx, v) => {
-      if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]') && idx === activeIdx) syncFramePauseUI();
-    });
-    if (binding?.ctrl) ctrl.signal.addEventListener('abort', () => binding.ctrl.abort(), { once: true });
-    bindings.push(binding);
-    sliderEl.addEventListener('input', (ev) => writeValue(ev.target), { signal: ctrl.signal });
-    sliderEl.addEventListener('change', (ev) => writeValue(ev.target), { signal: ctrl.signal });
-    sliderEl.addEventListener('touchend', (ev) => writeValue(ev.target), { signal: ctrl.signal, passive: true });
-    sliderEl.addEventListener('pointerup', (ev) => writeValue(ev.target), { signal: ctrl.signal });
+  // Reusa linhas existentes (preserva scroll e identidade dos botões).
+  const desired = frameCount;
+  let existing = rows.querySelectorAll('[data-frame-pause-row]').length;
+  while (existing < desired) {
+    rows.appendChild(buildFramePauseRow(existing));
+    existing++;
+  }
+  while (existing > desired) {
+    rows.lastElementChild?.remove();
+    existing--;
+  }
+  // Reindexa rótulos / dataset (cobre inserts/removes no meio).
+  Array.from(rows.querySelectorAll('[data-frame-pause-row]')).forEach((row, i) => {
+    row.dataset.frameIndex = String(i);
+    const lbl = row.querySelector('[data-frame-label]');
+    if (lbl) lbl.textContent = 'F' + (i + 1);
   });
-  framePauseRowsEvents = { ctrl, bindings };
-  syncDurationControlsFromState();
+
+  refreshPauseControls();
 }
 
 // Listener do slider de duração do loop
@@ -7988,6 +7995,8 @@ function buildProjectData() {
     ctrlPtManual: ctrlPtManual.slice(0, frameCount - 1),
     segDurations: segDurations.slice(0, frameCount - 1),
     segBlurSettings: segBlurSettings.slice(0, frameCount - 1).map(s => ({...s})),
+    // v8z4b15u: framePauses agora persistem em projetos salvos.
+    framePauses: framePauses.slice(0, frameCount).map(p => ({ duration: Number(p?.duration) || 0 })),
   };
 }
 
@@ -8194,6 +8203,10 @@ function applyFrameData(data) {
   segBlurSettings.length = 0;
   (data.segBlurSettings || []).forEach(v => segBlurSettings.push(v ? {...v} : cloneDefaultSegBlur()));
   ensureSegBlurSettings();
+  // v8z4b15u: restaura framePauses do projeto salvo (antes era descartado).
+  framePauses.length = 0;
+  (data.framePauses || []).forEach(p => framePauses.push(p ? { duration: Number(p.duration) || 0 } : { duration: 0 }));
+  ensureFramePauses();
 
   for (let i = 0; i < frameCount; i++) createFrameDOM(i);
   for (let i = 0; i < frameCount - 1; i++) createCtrlDOM(i);
@@ -8203,6 +8216,9 @@ function applyFrameData(data) {
   const newSegInput = document.getElementById('newSegmentDurationInput');
   if (newSegInput) newSegInput.value = defaultNewSegmentDuration;
   syncDurationUI();
+  if (durationPanelSections.pauses) renderFramePauseRows();
+  if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]')) syncFramePauseUI();
+  refreshPauseControls();
   renderAll();
   updateFrameSelector();
   updateToolbarLabels();
@@ -8211,8 +8227,6 @@ function applyFrameData(data) {
   if (tbTpl) tbTpl.textContent = 'Livre';
   updateUndoRedoUI();
   closeSegBreakdown();
-  teardownFramePauseRows();
-  teardownFramePauseLocalSlider();
   if (imgNatW) {
     showStatus('Projeto carregado!');
     checkWatermarkWarning();
@@ -8495,16 +8509,17 @@ function setPosFromInput() {
 function resetFramePause() {
   ensureFramePauses();
   const hasAnyPause = framePauses.some(p => (p?.duration || 0) !== 0);
-  if (hasAnyPause) pushUndo();
+  if (!hasAnyPause) return;
+  pushUndo();
   markProjectDirty('frame-pause-reset');
   if (isCustLocked()) {
     for (let i = 0; i < frameCount; i++) framePauses[i] = { duration: 0 };
   } else {
     framePauses[activeIdx] = { duration: 0 };
   }
-  syncFramePauseUI();
+  if (durationPanelSections.pauses) renderFramePauseRows();
+  refreshPauseControls();
   renderAll();
-  updateDurationUI();
 }
 
 function updateTemplateBtn() {
@@ -8563,9 +8578,26 @@ function openEaseForSeg(which) {
   openPanel('Ease');
 }
 
+// v8z4b15u — alinha framePauses a frames.length e normaliza cada entrada.
+// Único lugar autorizado a redimensionar o array — chamado por setFramePause,
+// renderFramePauseRows, syncFramePauseUI, addFrame, removeLastFrame, etc.
 function ensureFramePauses() {
   while (framePauses.length < frameCount) framePauses.push({ duration: 0 });
-  framePauses.length = frameCount;
+  while (framePauses.length > frameCount) framePauses.pop();
+  for (let i = 0; i < frameCount; i++) {
+    const p = framePauses[i];
+    if (!p || typeof p !== 'object') {
+      framePauses[i] = { duration: 0 };
+      continue;
+    }
+    const d = parseFloat(p.duration);
+    if (!Number.isFinite(d)) framePauses[i] = { duration: 0 };
+    else if (d < FRAME_PAUSE_MIN || d > FRAME_PAUSE_MAX) {
+      framePauses[i] = { duration: clampFramePauseValue(d) };
+    } else if (typeof p.duration !== 'number') {
+      framePauses[i] = { duration: d };
+    }
+  }
 }
 
 function updateDurationUI() {
@@ -8603,117 +8635,133 @@ function updateDurationUI() {
   }
 }
 
-function setFramePause(frameIndex, duration, options = { render: true }) {
+// v8z4b15u — fonte única de verdade para pausas por frame.
+// Toda escrita em framePauses[] passa por setFramePause(); toda leitura visível
+// passa por refreshPauseControls(). syncFramePausesLength() é o único lugar que
+// alinha o array a frames.length.
+function setFramePause(frameIndex, duration, options) {
   ensureFramePauses();
-  if (!Number.isInteger(frameIndex) || frameIndex < 0 || frameIndex >= frameCount || frameLocked[frameIndex]) return null;
-  const value = clampPauseSliderValue({ min: '0', max: '5', step: '0.1' }, parseFloat(duration));
-  framePauses[frameIndex] = { duration: value };
-  const panelSlider = document.querySelector(`#framePauseRows input[data-frame-index="${frameIndex}"][data-slider-scope="duration-panel"]`);
-  if (panelSlider) panelSlider.value = value.toFixed(1);
-  const panelLabel = panelSlider?.parentElement?.querySelector('span:last-child');
-  if (panelLabel) panelLabel.textContent = value.toFixed(1) + 's';
-  const localSlider = document.getElementById('framePauseSlider');
-  if (localSlider && Number(localSlider.dataset.frameIndex) === frameIndex) localSlider.value = value.toFixed(1);
-  const localLabel = document.getElementById('framePauseVal');
-  if (localLabel && activeIdx === frameIndex) localLabel.textContent = value.toFixed(1) + 's';
-  updateDurationUI();
-  syncDurationUI();
-  if (options?.render !== false) {
+  const idx = Number(frameIndex);
+  if (!Number.isInteger(idx) || idx < 0 || idx >= frameCount || frameLocked[idx]) return null;
+  const value = clampFramePauseValue(duration);
+  const prev = framePauses[idx]?.duration ?? 0;
+  framePauses[idx] = { duration: value };
+  const opts = options || {};
+  if (Math.abs(prev - value) > 0.0001 && opts.silent !== true) {
+    markProjectDirty('frame-pause');
+  }
+  refreshPauseControls();
+  if (opts.render !== false) {
     renderAll();
-    if (isPreviewing) { stopPreview(); startPreview(); }
+    if (isPreviewing && Math.abs(prev - value) > 0.0001) { stopPreview(); startPreview(); }
   }
   return value;
 }
 
-function syncDurationControlsFromState() {
-  refreshPauseSliderVisuals();
-}
-
-function refreshPauseSliderVisuals() {
+function refreshPauseControls() {
   ensureFramePauses();
-  document.querySelectorAll('#framePauseRows input[data-slider-scope="duration-panel"]').forEach((sliderEl) => {
-    const idx = Number(sliderEl.dataset.frameIndex);
-    const value = (framePauses[idx]?.duration || 0).toFixed(1);
-    sliderEl.value = value;
-    const val = sliderEl.parentElement?.querySelector('span:last-child');
-    if (val) val.textContent = value + 's';
-  });
+
+  // Painel Duração — linhas com stepper
+  const rowsContainer = document.getElementById('framePauseRows');
+  if (rowsContainer) {
+    Array.from(rowsContainer.querySelectorAll('[data-frame-pause-row]')).forEach((row) => {
+      const idx = Number(row.dataset.frameIndex);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= frameCount) {
+        row.style.display = 'none';
+        return;
+      }
+      row.style.display = '';
+      const cur = framePauses[idx]?.duration || 0;
+      const valEl = row.querySelector('[data-pause-value]');
+      if (valEl) valEl.textContent = cur.toFixed(1) + 's';
+      const minus = row.querySelector('[data-pause-step="-"]');
+      const plus = row.querySelector('[data-pause-step="+"]');
+      const reset = row.querySelector('[data-pause-step="0"]');
+      const locked = !!frameLocked[idx];
+      const setBtnState = (btn, disabled) => {
+        if (!btn) return;
+        btn.disabled = !!disabled;
+        btn.style.opacity = btn.disabled ? '0.35' : '1';
+      };
+      setBtnState(minus, locked || cur <= FRAME_PAUSE_MIN + 0.0001);
+      setBtnState(plus,  locked || cur >= FRAME_PAUSE_MAX - 0.0001);
+      setBtnState(reset, locked || Math.abs(cur) < 0.0001);
+    });
+  }
+
+  // Painel local/contextual — slider único
   const localSlider = document.getElementById('framePauseSlider');
   if (localSlider) {
-    const idx = Number(localSlider.dataset.frameIndex);
-    const value = (framePauses[idx]?.duration || 0).toFixed(1);
-    localSlider.value = value;
+    const cur = framePauses[activeIdx]?.duration || 0;
+    localSlider.dataset.frameIndex = String(activeIdx);
+    localSlider.dataset.sliderScope = 'context-panel';
+    // Só sobrescreve o valor se diferir — evita interromper drag nativo no iOS.
+    const formatted = cur.toFixed(1);
+    if (parseFloat(localSlider.value) !== parseFloat(formatted)) {
+      localSlider.value = formatted;
+    }
     const localVal = document.getElementById('framePauseVal');
-    if (localVal) localVal.textContent = value + 's';
+    if (localVal) localVal.textContent = formatted + 's';
+    const localLabel = document.getElementById('framePauseLocalLabel');
+    if (localLabel) localLabel.textContent = 'Frame F' + (activeIdx + 1);
   }
+
+  // Totais (toolbar + painel Duração)
+  syncDurationUI();
+  updateDurationUI();
 }
 
+// Aliases mantidos para callers existentes — agora todos roteiam para o mesmo refresh.
+function syncDurationControlsFromState() { refreshPauseControls(); }
+function refreshPauseSliderVisuals() { refreshPauseControls(); }
+function syncFramePausesLength() { ensureFramePauses(); }
 function applyFramePauseValue(frameIdx, rawValue) {
   return setFramePause(frameIdx, rawValue, { render: true });
 }
 
 function syncFramePauseUI() {
   ensureFramePauses();
-  const frameIdx = activeIdx;
-  const dur = framePauses[frameIdx]?.duration || 0;
-  const localLabel = document.getElementById('framePauseLocalLabel');
-  if (localLabel) localLabel.textContent = 'Frame F' + (frameIdx + 1);
-  const val = document.getElementById('framePauseVal');
-  if (val) val.textContent = dur.toFixed(1) + 's';
+  _bindLocalFramePauseSliderOnce();
+  refreshPauseControls();
+}
+
+// Binda o slider do painel local apenas uma vez. As escritas vão direto por
+// setFramePause(); o dataset.frameIndex acompanha activeIdx via refreshPauseControls.
+function _bindLocalFramePauseSliderOnce() {
   const slider = document.getElementById('framePauseSlider');
-  const linkedDurSlider = document.querySelector(
-    `#framePauseRows input[data-frame-index="${frameIdx}"][data-slider-scope="duration-panel"]`
-  );
-  if (linkedDurSlider) {
-    linkedDurSlider.value = dur.toFixed(1);
-    const linkedDurVal = linkedDurSlider.parentElement?.querySelector('span:last-child');
-    if (linkedDurVal) linkedDurVal.textContent = dur.toFixed(1) + 's';
-  }
-  refreshPauseSliderVisuals();
-  teardownFramePauseLocalSlider();
-  if (slider) {
-    slider.value = dur;
-    slider.dataset.frameIndex = String(frameIdx);
-    slider.dataset.sliderScope = 'context-panel';
-    const ctrl = new AbortController();
-    const binding = bindPauseSlider(slider, () => Number(slider.dataset.frameIndex), (currentFrameIdx, d) => {
-      const v = document.getElementById('framePauseVal');
-      if (v) v.textContent = d.toFixed(1) + 's';
-      const linkedSlider = document.querySelector(`#framePauseRows input[data-frame-index="${currentFrameIdx}"][data-slider-scope="duration-panel"]`);
-      if (linkedSlider) linkedSlider.value = d.toFixed(1);
-      const linkedVal = linkedSlider?.parentElement?.querySelector('span:last-child');
-      if (linkedVal) linkedVal.textContent = d.toFixed(1) + 's';
-      syncDurationUI();
-      renderAll();
-      if (isPreviewing) { stopPreview(); startPreview(); }
-    });
-    if (binding?.ctrl) ctrl.signal.addEventListener('abort', () => binding.ctrl.abort(), { once: true });
-    // Fallback input/change (non-primary path)
-    slider.addEventListener('input', function() {
-      ensureFramePauses();
-      const currentFrameIdx = Number(this.dataset.frameIndex);
-      if (!Number.isInteger(currentFrameIdx) || frameLocked[currentFrameIdx]) return;
-      if (setFramePause(currentFrameIdx, this.value, { render: true }) == null) return;
-    }, { signal: ctrl.signal });
-    slider.addEventListener('change', function() {
-      const currentFrameIdx = Number(this.dataset.frameIndex);
-      if (!Number.isInteger(currentFrameIdx) || frameLocked[currentFrameIdx]) return;
-      if (setFramePause(currentFrameIdx, this.value, { render: false }) == null) return;
-    }, { signal: ctrl.signal });
-    slider.addEventListener('touchend', function() {
-      const currentFrameIdx = Number(this.dataset.frameIndex);
-      if (!Number.isInteger(currentFrameIdx) || frameLocked[currentFrameIdx]) return;
-      if (setFramePause(currentFrameIdx, this.value, { render: false }) == null) return;
-      refreshPauseSliderVisuals();
-    }, { signal: ctrl.signal, passive: true });
-    slider.addEventListener('pointerup', function() {
-      const currentFrameIdx = Number(this.dataset.frameIndex);
-      if (!Number.isInteger(currentFrameIdx) || frameLocked[currentFrameIdx]) return;
-      if (setFramePause(currentFrameIdx, this.value, { render: false }) == null) return;
-      refreshPauseSliderVisuals();
-    }, { signal: ctrl.signal });
-    framePauseLocalEvents = { ctrl, binding };
-  }
+  if (!slider || slider._pauseBoundV15u) return;
+  slider._pauseBoundV15u = true;
+  let undoCaptured = false;
+  const captureUndo = () => {
+    const idx = Number(slider.dataset.frameIndex);
+    if (!Number.isInteger(idx) || frameLocked[idx]) return;
+    if (!undoCaptured) {
+      pushUndo();
+      setTemplateManualIfNeeded();
+      undoCaptured = true;
+    }
+  };
+  const releaseUndo = () => { undoCaptured = false; };
+  slider.addEventListener('pointerdown', captureUndo);
+  slider.addEventListener('mousedown', captureUndo);
+  slider.addEventListener('touchstart', captureUndo, { passive: true });
+  // input: durante o drag, atualiza estado sem renderAll (mais barato).
+  slider.addEventListener('input', () => {
+    const idx = Number(slider.dataset.frameIndex);
+    if (!Number.isInteger(idx) || frameLocked[idx]) return;
+    captureUndo();
+    setFramePause(idx, slider.value, { render: false });
+  });
+  // change: ao soltar, garante renderAll + preview restart.
+  slider.addEventListener('change', () => {
+    const idx = Number(slider.dataset.frameIndex);
+    if (!Number.isInteger(idx) || frameLocked[idx]) return;
+    setFramePause(idx, slider.value, { render: true });
+    releaseUndo();
+  });
+  slider.addEventListener('pointerup', releaseUndo);
+  slider.addEventListener('pointercancel', releaseUndo);
+  slider.addEventListener('touchend', releaseUndo, { passive: true });
 }
 
 function applyFramePauseAll() {
@@ -8721,9 +8769,10 @@ function applyFramePauseAll() {
   pushUndo();
   markProjectDirty('frame-pause-apply-all');
   setTemplateManualIfNeeded();
-  const dur = framePauses[activeIdx]?.duration || 0;
+  const dur = clampFramePauseValue(framePauses[activeIdx]?.duration || 0);
   for (let i = 0; i < frameCount; i++) framePauses[i] = { duration: dur };
-  updateDurationUI();
+  if (durationPanelSections.pauses) renderFramePauseRows();
+  refreshPauseControls();
   showStatus('Pausa aplicada a todos os frames');
   if (isPreviewing) { stopPreview(); startPreview(); }
 }

@@ -66,3 +66,11 @@ Quando Fixar estiver ativo em algum frame, usar destaque vermelho, não azul.
 - Correção da regressão em que o ponto de controle da curva influenciava a sensação de easing/velocidade temporal.
 - Restauração da separação entre caminho geométrico (curva) e easing temporal (transição por segmento).
 - Mantida a compatibilidade com o patch v8z4b de inserção de frame dentro da curva.
+
+## v8z4b15u — Stabilize frame pause state sync on iPhone
+
+- **Causa raiz:** múltiplos caminhos paralelos escrevendo em `framePauses[]` (gesture custom em `bindPauseSlider`, listeners `input/change/touchend/pointerup` e `setFramePause`) sem fonte única de verdade. No iPhone/Safari, sliders nativos `input[type=range]` em lista rolável capturavam o pan vertical, causando alteração acidental ao tentar rolar; e o caminho de gesture atualizava o estado mas só refrescava o label/total ao soltar — daí "thumb se mexe e número fica em 0.0s". `removeLastFrame` também não fazia splice de `framePauses`, e o save/load de projeto não persistia pausas.
+- **Centralização:** `setFramePause(idx, duration, opts)` é o único setter; `ensureFramePauses()` (alias `syncFramePausesLength()`) é o único redimensionador; `refreshPauseControls()` é o único refresh visual; `renderFramePauseRows()` reusa linhas e bind delegado único.
+- **UX iPhone:** painel Duração agora usa stepper `−  0.0s  +  0` por frame (touch-action manipulation, hold-to-repeat) em vez de range slider — elimina conflito gesto/scroll. Painel local/contextual segue com slider, mas todas as escritas vão por `setFramePause`.
+- **Persistência:** `framePauses` agora vai junto no `buildProjectData`/`applyFrameData`.
+- **Não foi alterado:** `getStateAtT`, `drawAtT`, motor de animação, curvas/splines, easing, WebCodecs/export, templates, stage/aspect ratio, layout aprovado.
