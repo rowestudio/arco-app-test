@@ -691,7 +691,12 @@ body.panel-open .stage.out-of-bounds::after{
 .ease-card.active .ios-toggle::after, .ios-toggle.active::after{left:22px;}
 
 
-/* v8z3f — ajustes de painéis e estados globais */
+/* v8z4b15y — MENU LOCAL DO FRAME
+   Regra arquitetural: o menu local SUBSTITUI a toolbar inferior principal
+   (ocupa o mesmo slot estrutural, mesma faixa inferior, mesmo z-index lógico).
+   Não cria uma segunda barra ACIMA. Quando #custBar está visível, #toolbar
+   sai completamente do fluxo (display:none) — sem espaço fantasma, sem dupla
+   navegação empilhada. */
 #custBar{
   position:fixed !important;
   left:0 !important;
@@ -702,20 +707,19 @@ body.panel-open .stage.out-of-bounds::after{
   background:var(--surface) !important;
   border-top:.5px solid var(--border) !important;
   padding-bottom:0 !important;
-  max-height:min(34dvh, 252px) !important;
+  max-height:min(38dvh, 280px) !important;
   overflow:hidden !important;
   box-shadow:0 -8px 28px rgba(0,0,0,.45);
 }
 body.cust-open #toolbar{
-  visibility:hidden !important;
-  pointer-events:none !important;
+  display:none !important;
 }
-/* v8z4b15w — controles em cima, ícones embaixo. Antes a tabs row era
-   :first-child e o conteúdo era :last-child; trocamos para alvos por ID
-   para não depender da ordem. */
 #custBarTabs{
   background:var(--surface) !important;
-  border-top:.5px solid var(--border) !important;
+  /* Sem border-top: a barra de ícones ocupa o slot da toolbar e a única
+     borda superior visível é a do próprio #custBar. */
+  padding:6px 4px env(safe-area-inset-bottom, 8px) !important;
+  padding-bottom:max(env(safe-area-inset-bottom, 8px), 8px) !important;
 }
 #custBarContent{
   background:var(--surface) !important;
@@ -723,20 +727,20 @@ body.cust-open #toolbar{
   overflow-y:auto !important;
   -webkit-overflow-scrolling:touch;
 }
-/* v8z4b15w — modo compacto (primeiro toque): só barra de ícones, sem
-   controles. Aplicado pelo JS via classe .compact-mode.
-   v8z4b15x — modo expandido: painel SUBSTITUI a barra de ícones (não
-   empilha). Tabs ficam visíveis apenas em compact-mode. */
+/* Modo compacto (primeiro toque): só barra de ícones, ocupando o mesmo
+   slot da toolbar. Modo expandido: painel da função SUBSTITUI a barra de
+   ícones. Tabs e conteúdo nunca aparecem juntos. */
 #custBar.compact-mode #custBarContent{
   display:none !important;
 }
 #custBar:not(.compact-mode) #custBarTabs{
   display:none !important;
 }
-/* v8z4b15x — cust-tabs com ícone branco em cima e label branco embaixo
-   (mesma linguagem visual da futura toolbar inferior principal). */
+/* v8z4b15y — cust-tabs alinhadas com a futura toolbar inferior principal:
+   ícone branco em cima, label branco embaixo, altura ~72px (mesma ergonomia
+   que .toolbar > .tb-item). */
 #custBar .cust-tab{
-  min-height:60px;
+  min-height:72px;
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -782,15 +786,40 @@ body.cust-open #toolbar{
 #segEasePanel .global-on svg{
   stroke:#ff9500 !important;
 }
+/* v8z4b15y — única superfície que rola verticalmente é #panelDuration.
+   NENHUMA subseção interna pode ter overflow próprio — isso evita nested
+   scroll que sequestra o gesto no iPhone/Safari. */
 #panelDuration{
   max-height:80dvh !important;
   overflow-y:auto !important;
   -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
 }
-#segBreakdown{
-  max-height:48dvh;
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
+#segBreakdown,
+#framePauseSection,
+#finishSection,
+#segRows,
+#framePauseRows{
+  overflow:visible !important;
+  max-height:none !important;
+}
+/* v8z4b15y — slider "Tudo" em estado misto: track e thumb dessaturados,
+   indicando que os frames têm valores diferentes. Arrastar SAI do estado
+   misto e aplica imediatamente a todos os frames. */
+#framePauseGlobalRow.global-mixed #framePauseGlobalSlider{
+  filter:grayscale(1);
+  opacity:.55;
+}
+#framePauseGlobalRow.global-mixed #framePauseGlobalLabel,
+#framePauseGlobalRow.global-mixed #framePauseGlobalVal{
+  color:var(--text3) !important;
+}
+/* v8z4b15y — track levemente mais grossa para conforto visual do slider de pausa. */
+.dur-slider{
+  height:6px;
+}
+.dur-slider::-webkit-slider-thumb{
+  width:30px;height:30px;
 }
 
 </style>
@@ -1118,24 +1147,24 @@ body.cust-open #toolbar{
     <div id="custTabScale" class="cust-content">
       <div style="display:flex;align-items:center;gap:12px;">
         <input type="range" class="dur-slider" id="scaleSlider" min="20" max="300" value="100" step="1" style="flex:1;">
-        <span id="scaleNum" style="font-size:13px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;">100%</span>
+        <span id="scaleNum" style="font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">100%</span>
       </div>
-      <div style="display:flex;gap:10px;margin-top:14px;">
-        <div class="chip" style="padding:11px 16px;font-size:13px;min-height:42px;justify-content:center;" onclick="nudgeScale(-5)">−5%</div>
-        <div class="chip" style="padding:11px 16px;font-size:13px;min-height:42px;justify-content:center;" onclick="nudgeScale(5)">+5%</div>
-        <div class="chip" style="padding:11px 16px;font-size:13px;min-height:42px;justify-content:center;margin-left:auto;" onclick="resetScale()">Reset</div>
+      <div style="display:flex;gap:10px;margin-top:18px;">
+        <div class="chip" style="padding:13px 20px;font-size:14px;min-height:48px;justify-content:center;" onclick="nudgeScale(-5)">−5%</div>
+        <div class="chip" style="padding:13px 20px;font-size:14px;min-height:48px;justify-content:center;" onclick="nudgeScale(5)">+5%</div>
+        <div class="chip" style="padding:13px 20px;font-size:14px;min-height:48px;justify-content:center;margin-left:auto;" onclick="resetScale()">Reset</div>
       </div>
     </div>
     <!-- Aba Rotação -->
     <div id="custTabRot" class="cust-content" style="display:none;">
       <div style="display:flex;align-items:center;gap:12px;">
         <input type="range" class="dur-slider" id="rotSlider" min="-720" max="720" value="0" step="1" style="flex:1;">
-        <span id="rotNum" style="font-size:13px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;">0°</span>
+        <span id="rotNum" style="font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">0°</span>
       </div>
-      <div style="display:flex;gap:10px;margin-top:14px;">
-        <div class="chip" style="padding:11px 16px;font-size:13px;min-height:42px;justify-content:center;" onclick="nudgeRotation(-5)">−5°</div>
-        <div class="chip" style="padding:11px 16px;font-size:13px;min-height:42px;justify-content:center;" onclick="nudgeRotation(5)">+5°</div>
-        <div class="chip" style="padding:11px 16px;font-size:13px;min-height:42px;justify-content:center;margin-left:auto;" onclick="nudgeRotation(0,true)">Reset</div>
+      <div style="display:flex;gap:10px;margin-top:18px;">
+        <div class="chip" style="padding:13px 20px;font-size:14px;min-height:48px;justify-content:center;" onclick="nudgeRotation(-5)">−5°</div>
+        <div class="chip" style="padding:13px 20px;font-size:14px;min-height:48px;justify-content:center;" onclick="nudgeRotation(5)">+5°</div>
+        <div class="chip" style="padding:13px 20px;font-size:14px;min-height:48px;justify-content:center;margin-left:auto;" onclick="nudgeRotation(0,true)">Reset</div>
       </div>
     </div>
     <!-- Aba Posição -->
@@ -1153,16 +1182,16 @@ body.cust-open #toolbar{
         </div>
       </div>
     </div>
-    <!-- Aba Duração/Pausa local -->
+    <!-- Aba Duração/Pausa local — controla apenas a pausa do frame ativo. -->
     <div id="custTabFramepause" class="cust-content" style="display:none;">
-      <div id="framePauseLocalLabel" style="font-size:11px;color:var(--text3);margin-bottom:4px;">Frame F1</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">Duração/pausa neste frame (0 = sem pausa)</div>
+      <div id="framePauseLocalLabel" style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;">Frame F1</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px;">Duração/pausa neste frame (0 = sem pausa)</div>
       <div style="display:flex;align-items:center;gap:12px;">
         <input type="range" class="dur-slider" id="framePauseSlider" min="0" max="5" step="0.1" value="0" style="flex:1;">
-        <span id="framePauseVal" style="font-size:14px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;">0s</span>
+        <span id="framePauseVal" style="font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">0s</span>
       </div>
-      <div style="display:flex;gap:10px;margin-top:14px;">
-        <div class="chip" style="padding:11px 16px;font-size:13px;min-height:42px;justify-content:center;margin-left:auto;" onclick="resetFramePause()">Reset</div>
+      <div style="display:flex;gap:10px;margin-top:18px;">
+        <div class="chip" style="padding:13px 20px;font-size:14px;min-height:48px;justify-content:center;margin-left:auto;" onclick="resetFramePause()">Reset</div>
       </div>
     </div>
   </div>
@@ -1246,7 +1275,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b15x</span><br><span id="appVersionNameText">Duration panel UX unification and local frame panel redesign</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b15y</span><br><span id="appVersionNameText">Duration panel refinement and local frame menu integration</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1425,13 +1454,14 @@ body.cust-open #toolbar{
   <div class="panel-handle" onclick="closeAll()"></div>
   <div class="panel-title">Duração</div>
 
-  <!-- TOPO (apenas leitura): duração total + breakdown por categoria. -->
+  <!-- v8z4b15y — TOPO 100% leitura. Não há sliders nem botões editáveis aqui.
+       Mostra: duração total (soma final) + breakdown por categoria. -->
   <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;">
-    <span id="durNum" style="font-size:28px;font-weight:700;color:var(--accent);min-width:64px;flex-shrink:0;letter-spacing:-1px;">6s</span>
+    <span id="durNum" style="font-size:30px;font-weight:700;color:var(--accent);min-width:64px;flex-shrink:0;letter-spacing:-1px;">6s</span>
     <span style="font-size:11px;color:var(--text3);line-height:1.3;">Duração total · soma de segmentos + pausas + acabamento</span>
   </div>
-  <div id="durationSummaryTop" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;padding:12px;border-radius:10px;background:var(--surface2);">
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Duração total</span><span id="durSummaryTotal">0.0s</span></div>
+  <div id="durationSummaryTop" style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;padding:14px;border-radius:12px;background:var(--surface2);">
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);"><span>Duração total</span><span id="durSummaryTotal" style="font-weight:700;color:var(--accent);">0.0s</span></div>
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Segmentos</span><span id="durSummaryMove">0.0s</span></div>
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Pausas</span><span id="durSummaryPauses">0.0s</span></div>
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Acabamento</span><span id="durSummaryFinish">0.0s</span></div>
@@ -1441,92 +1471,103 @@ body.cust-open #toolbar{
   <button type="button" onclick="toggleDurationSection('segments')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:10px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
     <span>Segmentos</span><span id="durationSectionChevronSegments" style="font-size:28px;font-weight:800;color:var(--accent);line-height:1;">▾</span>
   </button>
-  <div id="segBreakdown" style="display:none;flex-direction:column;gap:8px;padding-top:12px;margin-bottom:14px;">
-    <!-- Slider global dos segmentos (afeta apenas a soma dos segmentos, proporcional). -->
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;">
-      <span style="font-size:12px;color:var(--text3);flex-shrink:0;min-width:52px;">Total</span>
+  <!-- v8z4b15y — ordem oficial:
+       1) Intervalo padrão  2) Tempo total dos intervalos (slider global)
+       3) Igualar intervalos  4) Sliders individuais.
+       Sem nested scroll: o painel #panelDuration é a única superfície que
+       rola verticalmente. -->
+  <div id="segBreakdown" style="display:none;flex-direction:column;gap:6px;padding-top:14px;margin-bottom:18px;">
+    <!-- (1) Intervalo padrão de novos frames. -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;">
+      <span style="font-size:13px;color:var(--text2);">Intervalo padrão</span>
+      <input id="newSegmentDurationInput" type="number" min="1" step="1" value="2" style="width:84px;padding:10px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:14px;font-weight:600;text-align:right;">
+    </div>
+    <!-- (2) Slider global: tempo total dos intervalos (apenas segmentos, redistribuição proporcional). -->
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--border2);">
+      <span style="font-size:12px;font-weight:700;color:var(--text2);min-width:64px;flex-shrink:0;">Total</span>
       <input type="range" class="dur-slider" id="durSlider" min="1" max="60" step="0.1" value="4" style="flex:1;">
-      <span id="durSegTotal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;">4.0s</span>
+      <span id="durSegTotal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">4.0s</span>
     </div>
-    <!-- Intervalo padrão de novos frames. -->
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border2);">
-      <span style="font-size:12px;color:var(--text3);">Intervalo padrão</span>
-      <input id="newSegmentDurationInput" type="number" min="1" step="1" value="2" style="width:80px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:13px;font-weight:600;text-align:right;">
-    </div>
-    <!-- Cabeçalho dos sliders individuais. -->
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 4px 0;border-top:1px solid var(--border2);">
+    <!-- (3) Igualar intervalos. -->
+    <button onclick="distributeSegEqual()"
+      style="margin:6px 0 4px 0;width:100%;padding:14px 0;border-radius:12px;border:1px solid var(--border2);
+             background:var(--surface2);font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;min-height:48px;">
+      Igualar intervalos
+    </button>
+    <!-- (4) Cabeçalho + sliders individuais por segmento. -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 4px 0;border-top:1px solid var(--border2);">
       <span style="font-size:12px;font-weight:600;color:var(--text3);">Tempo por segmento</span>
       <span id="segTotal" style="font-size:12px;font-weight:700;color:var(--accent);">= 6s total</span>
     </div>
     <div id="segRows" style="display:flex;flex-direction:column;gap:0;"></div>
-    <button onclick="distributeSegEqual()"
-      style="margin-top:8px;width:100%;padding:12px 0;border-radius:10px;border:1px solid var(--border2);
-             background:var(--surface2);font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;">
-      Igualar intervalos
-    </button>
   </div>
 
   <!-- SEÇÃO: Pausas por frame (controles globais e individuais). -->
   <button type="button" onclick="toggleDurationSection('pauses')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:10px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
     <span>Pausas por frame</span><span id="durationSectionChevronPauses" style="font-size:28px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
   </button>
-  <!-- v8z4b15x — estrutura idêntica à seção Segmentos (flex column + gap)
-       para que o slider global e os sliders por frame ocupem exatamente a
-       mesma largura útil dos sliders de "Tempo por segmento". -->
-  <div id="framePauseSection" style="display:none;flex-direction:column;gap:8px;padding-top:12px;margin-bottom:14px;">
-    <!-- Slider global de pausa: arrastar aplica a todos os frames imediatamente. -->
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;">
-      <span style="font-size:12px;font-weight:700;color:var(--text2);min-width:52px;flex-shrink:0;">Tudo</span>
+  <!-- v8z4b15y — estrutura idêntica à seção Segmentos para garantir a mesma
+       largura útil de track. NÃO usar overflow interno: a única rolagem
+       vertical é a do próprio #panelDuration. O slider "Tudo" funciona como
+       global real (estado misto quando frames divergem) e aplica imediatamente
+       a todos os frames quando arrastado — o botão "Aplicar a todos" foi
+       removido nesta versão. -->
+  <div id="framePauseSection" style="display:none;flex-direction:column;gap:6px;padding-top:14px;margin-bottom:18px;">
+    <!-- Slider GLOBAL "Tudo": arrastar aplica a todos imediatamente. Quando os
+         frames têm valores diferentes, entra em estado misto/cinza (.global-mixed). -->
+    <div id="framePauseGlobalRow" style="display:flex;align-items:center;gap:12px;padding:14px 0;">
+      <span id="framePauseGlobalLabel" style="font-size:12px;font-weight:700;color:var(--text2);min-width:64px;flex-shrink:0;">Tudo</span>
       <input type="range" class="dur-slider" id="framePauseGlobalSlider" min="0" max="5" step="0.1" value="0" style="flex:1;">
-      <span id="framePauseGlobalVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;">0.0s</span>
+      <span id="framePauseGlobalVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">0.0s</span>
     </div>
-    <!-- Botão Aplicar a todos: força o valor global em todos os frames (útil quando há divergência). -->
-    <button type="button" onclick="applyFramePauseGlobalToAll()"
-      style="width:100%;padding:12px 0;border-radius:10px;border:1px solid var(--border2);
-             background:var(--surface2);font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;">
-      Aplicar a todos
-    </button>
-    <!-- Cabeçalho dos sliders individuais (espelha "Tempo por segmento"). -->
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 4px 0;border-top:1px solid var(--border2);">
+    <!-- Cabeçalho + sliders individuais (mesma estrutura visual dos segmentos). -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 4px 0;border-top:1px solid var(--border2);">
       <span style="font-size:12px;font-weight:600;color:var(--text3);">Pausa por frame</span>
       <span id="framePauseRowsTotal" style="font-size:12px;font-weight:700;color:var(--accent);">= 0s pausa</span>
     </div>
-    <!-- Sliders individuais (mesma estrutura visual dos segmentos). -->
     <div id="framePauseRows" style="display:flex;flex-direction:column;gap:0;"></div>
+    <!-- Reset global das pausas (área clicável aumentada). -->
+    <button type="button" onclick="resetAllFramePauses()"
+      style="margin-top:8px;width:100%;padding:14px 0;border-radius:12px;border:1px solid var(--border2);
+             background:var(--surface2);font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;min-height:48px;">
+      Zerar pausas
+    </button>
   </div>
 
   <button type="button" onclick="toggleDurationSection('finish')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
     <span>Acabamento</span><span id="durationSectionChevronFinish" style="font-size:28px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
   </button>
-  <div id="finishSection" style="display:none;padding-top:12px;">
-    <div style="display:flex;gap:8px;margin-bottom:10px;">
+  <!-- v8z4b15y — padding-top maior (22px) para o slider/chips não ficarem
+       grudados ao título da seção. Sem nested scroll. -->
+  <div id="finishSection" style="display:none;padding-top:22px;margin-bottom:6px;">
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
       <div class="finish-chip active" data-finish="none" onclick="setFinishing('none')"
-        style="flex:1;padding:8px 4px;text-align:center;border-radius:10px;background:var(--surface2);border:1.5px solid var(--accent);cursor:pointer;font-size:12px;font-weight:600;color:var(--accent);">
+        style="flex:1;padding:12px 4px;text-align:center;border-radius:12px;background:var(--surface2);border:1.5px solid var(--accent);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);min-height:46px;display:flex;align-items:center;justify-content:center;">
         Nenhum
       </div>
       <div class="finish-chip" data-finish="loop" onclick="setFinishing('loop')"
-        style="flex:1;padding:8px 4px;text-align:center;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);">
+        style="flex:1;padding:12px 4px;text-align:center;border-radius:12px;background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);min-height:46px;display:flex;align-items:center;justify-content:center;">
         Loop
       </div>
       <div class="finish-chip" data-finish="pause" onclick="setFinishing('pause')"
-        style="flex:1;padding:8px 4px;text-align:center;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);">
+        style="flex:1;padding:12px 4px;text-align:center;border-radius:12px;background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);min-height:46px;display:flex;align-items:center;justify-content:center;">
         Pausa final
       </div>
     </div>
     <!-- Loop: tempo de retorno -->
     <div id="loopDurRow" style="display:none;flex-direction:column;gap:6px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span style="font-size:12px;color:var(--text3);flex-shrink:0;">Tempo de retorno</span>
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 0;">
+        <span style="font-size:12px;font-weight:700;color:var(--text2);flex-shrink:0;min-width:128px;">Tempo de retorno</span>
         <input type="range" class="dur-slider" id="loopDurSlider" min="0.1" max="10" step="0.1" value="1.0" style="flex:1;">
-        <span id="loopDurVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:32px;text-align:right;">1.0s</span>
+        <span id="loopDurVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">1.0s</span>
       </div>
     </div>
     <!-- Pouso suave ou Pausa final: duração -->
     <div id="finishDurRow" style="display:none;flex-direction:column;gap:6px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span style="font-size:12px;color:var(--text3);flex-shrink:0;" id="finishDurLabel">Duração</span>
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 0;">
+        <span style="font-size:12px;font-weight:700;color:var(--text2);flex-shrink:0;min-width:96px;" id="finishDurLabel">Duração</span>
         <input type="range" class="dur-slider" id="finishDurSlider" min="0.1" max="5" step="0.1" value="0.8" style="flex:1;">
-        <span id="finishDurVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:32px;text-align:right;">0.8s</span>
+        <span id="finishDurVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">0.8s</span>
       </div>
     </div>
   </div>
@@ -3509,8 +3550,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b15x';
-const APP_VERSION_NAME = 'Duration panel UX unification and local frame panel redesign';
+const APP_VERSION = 'v8z4b15y';
+const APP_VERSION_NAME = 'Duration panel refinement and local frame menu integration';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -6950,8 +6991,10 @@ function syncDurationSectionsUI() {
   const segCh = document.getElementById('durationSectionChevronSegments');
   const pauseCh = document.getElementById('durationSectionChevronPauses');
   const finishCh = document.getElementById('durationSectionChevronFinish');
+  // v8z4b15y — todas as seções usam flex (column) para que padding/gap
+  // resolvam consistentemente e os sliders ocupem a mesma largura útil.
   if (seg) seg.style.display = durationPanelSections.segments ? 'flex' : 'none';
-  if (pause) pause.style.display = durationPanelSections.pauses ? 'block' : 'none';
+  if (pause) pause.style.display = durationPanelSections.pauses ? 'flex' : 'none';
   if (finish) finish.style.display = durationPanelSections.finish ? 'block' : 'none';
   if (segCh) segCh.textContent = durationPanelSections.segments ? '▾' : '▸';
   if (pauseCh) pauseCh.textContent = durationPanelSections.pauses ? '▾' : '▸';
@@ -6975,15 +7018,16 @@ function buildFramePauseRow(i) {
   const row = document.createElement('div');
   row.dataset.framePauseRow = '';
   row.dataset.frameIndex = String(i);
-  // v8z4b15x — mesma estrutura visual das rows de segmento (segRows):
-  // label com min-width 52px → slider flex:1 → valor com min-width 48px.
-  // Sem isso, a label "F1"/"F10" usava 36px e a track começava antes,
-  // criando uma diferença visual de largura útil entre painéis.
-  row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 0;';
+  // v8z4b15y — alinhamento exato com a row "Total" de segmentos
+  // (label 64px / slider flex:1 / valor 52px / padding 14px). Sem wrapper
+  // extra: o slider é filho direto do row, e o row é filho direto da
+  // seção #framePauseSection (display:flex column). Mesma família visual
+  // dos sliders de "Tempo por segmento".
+  row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 0;';
   const lbl = document.createElement('span');
   lbl.dataset.frameLabel = '';
   lbl.textContent = 'F' + (i + 1);
-  lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:52px;flex-shrink:0;';
+  lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:64px;flex-shrink:0;';
   const slider = document.createElement('input');
   slider.type = 'range';
   slider.className = 'dur-slider';
@@ -6996,7 +7040,7 @@ function buildFramePauseRow(i) {
   const val = document.createElement('span');
   val.dataset.pauseValue = '';
   val.textContent = (framePauses[i]?.duration || 0).toFixed(1) + 's';
-  val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;';
+  val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;';
   row.append(lbl, slider, val);
   _bindFramePauseRowSlider(row, slider, val);
   return row;
@@ -7997,12 +8041,13 @@ function openSegBreakdown() {
   container.innerHTML = '';
   for (let i = 0; i < segs; i++) {
     const row = document.createElement('div');
-    // v8z4b15x — padding vertical 12px (era 10px) para alvo de toque
-    // mais confortável no iPhone, sem afetar densidade visual.
-    row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 0;';
+    // v8z4b15y — padding vertical 14px e label/valor com mesma largura mínima
+    // das rows de pausa (64px / 52px). Mantém a "família visual" entre as
+    // duas seções.
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 0;';
     const lbl = document.createElement('span');
     lbl.textContent = (i+1) + '-' + (i+2);
-    lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:52px;flex-shrink:0;';
+    lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:64px;flex-shrink:0;';
     const slider = document.createElement('input');
     slider.type = 'range';
     slider.className = 'dur-slider';
@@ -8011,7 +8056,7 @@ function openSegBreakdown() {
     slider.style.cssText = 'flex:1;';
     const val = document.createElement('span');
     val.textContent = (segDurations[i] || 1).toFixed(1) + 's';
-    val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;';
+    val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;';
     const idx = i;
     let segUndoCaptured = false;
     slider.addEventListener('touchstart', () => {
@@ -8839,10 +8884,17 @@ function refreshPauseControls() {
     });
   }
 
-  // Pausa global (dentro do painel Duração). Reflete framePauses[0] como
-  // ponto de referência; quando há divergência entre frames, marca com "*".
+  // v8z4b15y — Pausa "Tudo" como GLOBAL REAL com 3 estados:
+  //  (1) Todos iguais → slider/valor ativos refletindo o valor comum.
+  //  (2) Frames divergentes → row em estado misto (.global-mixed): track e
+  //      rótulo dessaturados, valor exibe "—". Mexer no slider sai do estado
+  //      misto e aplica o novo valor a todos.
+  //  (3) Usuário arrasta "Tudo" → todos os frames recebem esse valor (handler
+  //      em _bindGlobalFramePauseSliderOnce). Ao alterar um frame individual
+  //      depois, voltamos ao estado misto automaticamente.
   const globalSlider = document.getElementById('framePauseGlobalSlider');
   const globalVal = document.getElementById('framePauseGlobalVal');
+  const globalRow = document.getElementById('framePauseGlobalRow');
   let pausesSum = 0;
   for (let i = 0; i < frameCount; i++) pausesSum += (framePauses[i]?.duration || 0);
   if (globalSlider) {
@@ -8854,11 +8906,20 @@ function refreshPauseControls() {
         break;
       }
     }
-    const formatted = ref.toFixed(1);
-    if (parseFloat(globalSlider.value) !== parseFloat(formatted)) {
-      globalSlider.value = formatted;
+    if (globalRow) globalRow.classList.toggle('global-mixed', !allEqual);
+    if (allEqual) {
+      const formatted = ref.toFixed(1);
+      if (parseFloat(globalSlider.value) !== parseFloat(formatted)) {
+        globalSlider.value = formatted;
+      }
+      if (globalVal) globalVal.textContent = formatted + 's';
+    } else {
+      // Em estado misto, deixa o slider em zero como ponto de partida visual
+      // (não interrompe drag — só sobrescreve quando o usuário não está
+      // arrastando, ou seja, quando o slider não tem :active). Para evitar
+      // pular o thumb durante drag, apenas o valor textual mostra "—".
+      if (globalVal) globalVal.textContent = '—';
     }
-    if (globalVal) globalVal.textContent = formatted + 's' + (allEqual ? '' : '*');
   }
   // v8z4b15x — total das pausas individuais (espelha "= Xs total" dos segmentos).
   const pausesTotalEl = document.getElementById('framePauseRowsTotal');
@@ -8942,49 +9003,31 @@ function _bindLocalFramePauseSliderOnce() {
   slider.addEventListener('touchend', releaseUndo, { passive: true });
 }
 
-function applyFramePauseAll() {
-  ensureFramePauses();
-  pushUndo();
-  markProjectDirty('frame-pause-apply-all');
-  setTemplateManualIfNeeded();
-  const dur = clampFramePauseValue(framePauses[activeIdx]?.duration || 0);
-  for (let i = 0; i < frameCount; i++) framePauses[i] = { duration: dur };
-  if (durationPanelSections.pauses) renderFramePauseRows();
-  refreshPauseControls();
-  showStatus('Pausa aplicada a todos os frames');
-  if (isPreviewing) { stopPreview(); startPreview(); }
-}
+// v8z4b15y — applyFramePauseAll() removido: era handler residual sem callers
+// no código atual. A semântica "aplicar a todos" agora vive no próprio
+// arrasto do slider "Tudo" (_bindGlobalFramePauseSliderOnce → applyAll).
 
-// v8z4b15w — botão "Aplicar a todos" do painel Duração / seção Pausas.
-// Lê o valor visível do framePauseGlobalSlider e força esse valor em todos
-// os frames não-locked. Útil para unificar quando há divergência (ex.: quando
-// o label global mostra "0.7s*", indicando frames com valores diferentes).
-function applyFramePauseGlobalToAll() {
+// v8z4b15y — Zera todas as pausas (substitui o antigo "Aplicar a todos").
+// O botão "Aplicar a todos" foi removido porque o slider "Tudo" já aplica
+// imediatamente a todos os frames quando arrastado. Resta apenas a ação
+// de zerar globalmente as pausas.
+function resetAllFramePauses() {
   ensureFramePauses();
-  const globalSlider = document.getElementById('framePauseGlobalSlider');
-  if (!globalSlider) return;
-  const target = clampFramePauseValue(globalSlider.value);
-  let changed = false;
-  for (let i = 0; i < frameCount; i++) {
-    if (frameLocked[i]) continue;
-    const cur = framePauses[i]?.duration || 0;
-    if (Math.abs(cur - target) > 0.0001) { changed = true; break; }
-  }
-  if (!changed) {
-    showStatus('Pausa global já aplicada · ' + target.toFixed(1) + 's');
-    refreshPauseControls();
+  const hasAny = framePauses.some(p => (p?.duration || 0) > 0.0001);
+  if (!hasAny) {
+    showStatus('Nenhuma pausa para zerar');
     return;
   }
   pushUndo();
-  markProjectDirty('frame-pause-apply-global');
+  markProjectDirty('frame-pause-reset-all');
   setTemplateManualIfNeeded();
   for (let i = 0; i < frameCount; i++) {
     if (frameLocked[i]) continue;
-    framePauses[i] = { duration: target };
+    framePauses[i] = { duration: 0 };
   }
   refreshPauseControls();
   renderAll();
-  showStatus('Pausa global · ' + target.toFixed(1) + 's aplicada a todos');
+  showStatus('Pausas zeradas');
   if (isPreviewing) { stopPreview(); startPreview(); }
 }
 
