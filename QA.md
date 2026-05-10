@@ -137,6 +137,90 @@ Use depois de qualquer alteração, mesmo pequena.
 24. Reabrir JSON.
 25. Testar no iPhone/Safari via GitHub Pages com cache busting.
 
+## v8z4b15z — Frame menu hierarchy and duration panel fixes
+
+Foco: validar a paridade visual real dos sliders, a ausência de nested
+scroll, a faixa de frames sempre visível e a navegação estilo CapCut.
+
+### Versão
+
+1. Abrir o app.
+2. Abrir o menu de configurações (engrenagem).
+3. Confirmar: **Arco v8z4b15z — Frame menu hierarchy and duration panel
+   fixes**.
+
+### Painel Duração — sliders com mesma largura útil
+
+4. Abrir **Duração** na toolbar.
+5. Expandir **Segmentos** e **Pausas por frame**.
+6. Confirmar que o slider **Total** (segmentos), o slider **Tudo**
+   (pausas) e os sliders individuais (`1-2`, `2-3`, `F1`, `F2`...)
+   percorrem **a mesma largura útil**.
+7. Em iPhone, confirmar que o thumb das pausas vai do início ao fim da
+   faixa sem parecer "preso a um container estreito".
+8. Comparar a posição inicial do thumb no slider "Total" com a do
+   slider "Tudo" — devem começar exatamente no mesmo X.
+
+### Sem nested scroll
+
+9. Com Segmentos e Pausas expandidas, confirmar que **só** o painel
+   Duração rola verticalmente.
+10. Tentar fazer scroll dentro da lista de segmentos / lista de pausas
+    — não pode haver scroll local.
+11. Mesmo com 30 frames criados, confirmar uma única superfície de
+    rolagem.
+
+### Acabamento — espaçamento
+
+12. Expandir **Acabamento**.
+13. Confirmar respiro entre o título "Acabamento" e a linha de chips
+    Nenhum/Loop/Pausa final (`padding-top:28px`).
+14. Selecionar **Loop** e confirmar que o slider "Retorno" tem a mesma
+    largura útil dos sliders de Segmentos/Pausas.
+
+### "Tudo" como estado global real
+
+15. Mover o slider "Tudo" para 1.5s. Confirmar que F1, F2, F3...
+    recebem 1.5s.
+16. Mover só o slider F2 para 0.5s. Confirmar que o slider "Tudo"
+    fica cinza/dessaturado e o valor exibe "—".
+17. Mover "Tudo" novamente. Confirmar que **todos** os frames recebem
+    o novo valor e o estado misto sai.
+
+### Faixa de frames sempre visível
+
+18. Tocar em um frame na faixa para abrir o menu local.
+19. Confirmar que a faixa de frames continua **visível acima** do
+    menu local — não some, não é sobreposta, não é deslocada.
+20. Confirmar que a toolbar inferior sumiu (foi substituída pelo menu
+    local).
+21. Tocar em outro frame — confirmar troca de seleção sem fechar o
+    menu local.
+
+### Navegação CapCut
+
+22. Com o menu local aberto em compact-mode (só ícones), confirmar
+    que **não** há texto "Voltar" nem botão ✕.
+23. Tocar no ícone **Escala** — confirmar expansão dos controles e
+    aparição da seta de voltar grande à esquerda, sem texto.
+24. Tocar na seta — confirmar volta ao compact-mode preservando a aba
+    "Escala" como ativa.
+25. Tocar fora do menu (no stage) — confirmar fechamento total.
+26. Selecionar 2 frames. Confirmar que `#alignBar` aparece com seta
+    de voltar à esquerda (sem ✕). Tocar a seta — confirma saída da
+    multiseleção.
+
+### Preview e export — não-regressão
+
+27. Rodar Preview com pausas individuais distintas (F1=0.5s, F2=1s,
+    F3=1.5s).
+28. Confirmar que a duração total e as pausas tocam corretamente.
+29. Gerar MP4 e confirmar que não há trancos/kicks e que pausas estão
+    no MP4.
+30. Salvar projeto JSON e reabrir. Confirmar que durações e pausas
+    persistem.
+31. Repetir 27-30 no iPhone/Safari via GitHub Pages com cache busting.
+
 ## v8z4b15w — Duration panel UX unification and local frame panel redesign
 
 Foco: validar a reorganização do painel Duração e o redesign do painel

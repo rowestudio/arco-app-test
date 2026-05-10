@@ -67,6 +67,101 @@ Quando Fixar estiver ativo em algum frame, usar destaque vermelho, não azul.
 - Restauração da separação entre caminho geométrico (curva) e easing temporal (transição por segmento).
 - Mantida a compatibilidade com o patch v8z4b de inserção de frame dentro da curva.
 
+## v8z4b15z — Frame menu hierarchy and duration panel fixes
+
+Correção dos problemas estruturais remanescentes da v15y. Foco:
+sliders de pausa com a mesma largura útil dos sliders de segmento,
+remoção definitiva do nested scroll, hierarquia correta do menu local
+do frame (faixa de frames sempre visível) e padrão de navegação
+estilo CapCut.
+
+Todos os patches partem da v15y. **Não houve mudanças no motor**
+(`getStateAtT`, `drawAtT`, `setFramePause`, `ensureFramePauses`,
+`refreshPauseControls`, easing, splines, WebCodecs/export, templates,
+stage/aspect ratio, sincronização v15u+).
+
+### Sliders de pausa — largura útil real (problema estrutural)
+
+- A v15y já tinha rows com mesmo padding/labels, mas o thumb das pausas
+  ainda parecia preso por causa do `min-width:64px` na label e do
+  `min-width:52px` no valor — em iPhone, o thumb perdia ~30% da faixa
+  útil para esses dois polos.
+- v15z introduz a classe **`.dur-edit-row`** (CSS unificado) usada por
+  TODOS os sliders editáveis do painel Duração: Total dos segmentos,
+  sliders por segmento, "Tudo" das pausas, sliders por frame de pausa
+  e sliders de Acabamento. Estrutura: `display:flex; gap:12px;
+  width:100%`, label `min-width:44px`, slider `flex:1 1 0; min-width:0`,
+  valor `min-width:48px`. O thumb percorre a mesma largura útil em
+  todas as seções.
+- Removidos os `style.cssText` inline do `buildFramePauseRow` e do
+  `openSegBreakdown` — antes podiam divergir entre versões; agora há
+  uma única fonte de verdade na CSS (`.dur-edit-row`).
+- `#panelDuration #segBreakdown`, `#framePauseSection`, `#finishSection`,
+  `#segRows`, `#framePauseRows` são forçados a `width:100% !important;
+  max-width:100% !important; box-sizing:border-box` — nenhum container
+  intermediário consegue limitar a largura útil dos sliders.
+
+### Nested scroll — eliminação definitiva
+
+- Reforçado: `#panelDuration` é a única superfície que rola.
+  Subseções (`#segBreakdown`, `#framePauseSection`, `#finishSection`,
+  `#segRows`, `#framePauseRows`) agora têm `overflow:visible
+  !important; max-height:none !important` com seletor mais específico
+  (`#panelDuration #X`) para vencer qualquer regra antiga residual.
+
+### Acabamento — padding superior
+
+- `padding-top` aumentado de `22px` → `28px` ao abrir; `margin-bottom`
+  do bloco de chips de `14px` → `18px`. O slider de retorno/duração não
+  fica mais grudado ao título da seção.
+- Linhas de slider (`#loopDurRow`, `#finishDurRow`) migradas para
+  `.dur-edit-row` — mesma largura útil dos sliders de Segmentos/Pausas.
+
+### "Tudo" como estado global real
+
+- Estado já implementado em v15y (filtro grayscale + opacity:.55 +
+  textos `var(--text3)` quando frames divergem; arrastar aplica a todos
+  imediatamente). O seletor `.global-mixed` foi atualizado para casar
+  com as novas classes `.dur-edit-label` / `.dur-edit-value`.
+- Botão "Aplicar a todos" permanece removido — o slider "Tudo" é o
+  ponto único de aplicação global.
+
+### Menu local do frame — faixa de frames sempre visível
+
+- Problema na v15y: `#custBar` era `position:fixed; bottom:0` e
+  sobrepunha `#midBar` (faixa de frames) — o usuário perdia a
+  visualização dos frames ao tocar no contextual.
+- v15z: `#custBar` agora é **in-flow** (flex item de `.app`,
+  `flex-shrink:0`). DOM order já posiciona `#midBar` antes de
+  `#custBar`, então o painel ocupa apenas o slot da `#toolbar`
+  (escondida via `body.cust-open #toolbar { display:none }`). A faixa
+  de frames continua visível logo acima do menu local — sem deslocamento,
+  sem sobreposição, sem espaço fantasma.
+- Mantido `max-height:min(38dvh, 280px)` para limitar a altura do
+  contextual.
+
+### Navegação hierárquica estilo CapCut
+
+- `#custBarBack`: removido o texto "Voltar"; a chevron passou de
+  20×20 para **28×28**, sem moldura/fundo (apenas highlight sutil ao
+  toque). Posicionada à esquerda do conteúdo expandido. Comportamento
+  hierárquico:
+  - Toque no frame → abre `#custBar` em `compact-mode` (só ícones)
+  - Toque num ícone → expande os controles e revela a seta de voltar
+  - Toque na seta → recolhe ao `compact-mode` (preserva aba ativa)
+  - Toque fora (stage) → fecha `#custBar` por completo
+- `#alignBar` (multiseleção): removido o botão `✕`, substituído por
+  uma seta de voltar à esquerda (mesmo padrão visual). Limpa a
+  multiseleção (`clearMultiSelect()`) — antes era um chip com um X.
+
+### Direção futura (não implementado nesta versão)
+
+- Edição em grupo (multiseleção) compatível com edição individual e
+  global continua sendo a direção arquitetural — preservada para
+  Escala/Rotação/Posição.
+- Controles globais de Duração permanecem exclusivamente no painel
+  Duração; não retornam para o menu local.
+
 ## v8z4b15x — Duration panel UX unification and local frame panel redesign
 
 Refinamento sobre a v15w. Foco: equiparar visualmente os sliders de
