@@ -700,16 +700,23 @@ body.cust-open #toolbar{
   visibility:hidden !important;
   pointer-events:none !important;
 }
-#custBar > div:first-child{
+/* v8z4b15w — controles em cima, ícones embaixo. Antes a tabs row era
+   :first-child e o conteúdo era :last-child; trocamos para alvos por ID
+   para não depender da ordem. */
+#custBarTabs{
   background:var(--surface) !important;
-  border-bottom:.5px solid var(--border) !important;
+  border-top:.5px solid var(--border) !important;
 }
-#custBar > div:last-child{
+#custBarContent{
   background:var(--surface) !important;
   min-height:122px !important;
-  height:122px !important;
   overflow-y:auto !important;
   -webkit-overflow-scrolling:touch;
+}
+/* v8z4b15w — modo compacto (primeiro toque): só barra de ícones, sem
+   controles. Aplicado pelo JS via classe .compact-mode. */
+#custBar.compact-mode #custBarContent{
+  display:none !important;
 }
 #custBar .cust-tab{
   min-height:48px;
@@ -1057,9 +1064,72 @@ body.cust-open #toolbar{
     <button type="button" aria-label="Fechar seleção múltipla" class="chip" style="padding:10px;min-width:44px;min-height:44px;font-size:16px;color:var(--text2);display:flex;align-items:center;justify-content:center;" onclick="clearMultiSelect()">✕</button>
   </div>
 </div>
+<!--
+  v8z4b15w — Layout do menu local invertido: controles ficam EM CIMA e a barra
+  de ícones EMBAIXO. Comportamento "compact-first": ao primeiro toque no frame,
+  o painel abre só com a barra de ícones; o segundo toque (em qualquer ícone)
+  expande os controles acima. Tocar de novo no ícone ativo recolhe.
+
+  Painel local agora é exclusivamente local — o cadeado global foi removido
+  daqui (ajustes globais vivem no painel Duração).
+-->
 <div id="custBar" style="display:none;">
-  <!-- Abas -->
-  <div style="display:flex;align-items:center;background:var(--surface);">
+  <!-- Conteúdo das abas (TOPO) -->
+  <div id="custBarContent" style="padding:14px 16px;background:#1a1a1a;">
+    <!-- Aba Escala -->
+    <div id="custTabScale" class="cust-content">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <input type="range" class="dur-slider" id="scaleSlider" min="20" max="300" value="100" step="1" style="flex:1;">
+        <span id="scaleNum" style="font-size:13px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;">100%</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <div class="chip" style="padding:8px 14px;font-size:12px;" onclick="nudgeScale(-5)">−5%</div>
+        <div class="chip" style="padding:8px 14px;font-size:12px;" onclick="nudgeScale(5)">+5%</div>
+        <div class="chip" style="padding:8px 14px;font-size:12px;margin-left:auto;" onclick="resetScale()">Reset</div>
+      </div>
+    </div>
+    <!-- Aba Rotação -->
+    <div id="custTabRot" class="cust-content" style="display:none;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <input type="range" class="dur-slider" id="rotSlider" min="-720" max="720" value="0" step="1" style="flex:1;">
+        <span id="rotNum" style="font-size:13px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;">0°</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <div class="chip" style="padding:8px 14px;font-size:12px;" onclick="nudgeRotation(-5)">−5°</div>
+        <div class="chip" style="padding:8px 14px;font-size:12px;" onclick="nudgeRotation(5)">+5°</div>
+        <div class="chip" style="padding:8px 14px;font-size:12px;margin-left:auto;" onclick="nudgeRotation(0,true)">Reset</div>
+      </div>
+    </div>
+    <!-- Aba Posição -->
+    <div id="custTabPos" class="cust-content" style="display:none;">
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;gap:6px;align-items:center;">
+          <div onclick="nudgePos(-10,0)" style="cursor:pointer;padding:10px;color:rgba(200,200,200,0.8);"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <input type="number" id="posXInput" placeholder="X (pixels)" style="flex:1;background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:8px 10px;font-size:13px;font-weight:600;color:var(--accent);text-align:right;-webkit-appearance:none;" oninput="setPosFromInput()">
+          <div onclick="nudgePos(10,0)" style="cursor:pointer;padding:10px;color:rgba(200,200,200,0.8);"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <div onclick="nudgePos(0,-10)" style="cursor:pointer;padding:10px;color:rgba(200,200,200,0.8);"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <input type="number" id="posYInput" placeholder="Y (pixels)" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;font-size:13px;font-weight:600;color:var(--accent);text-align:right;-webkit-appearance:none;" oninput="setPosFromInput()">
+          <div onclick="nudgePos(0,10)" style="cursor:pointer;padding:10px;color:rgba(200,200,200,0.8);"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        </div>
+      </div>
+    </div>
+    <!-- Aba Duração/Pausa local -->
+    <div id="custTabFramepause" class="cust-content" style="display:none;">
+      <div id="framePauseLocalLabel" style="font-size:11px;color:var(--text3);margin-bottom:4px;">Frame F1</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">Duração/pausa neste frame (0 = sem pausa)</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <input type="range" class="dur-slider" id="framePauseSlider" min="0" max="5" step="0.1" value="0" style="flex:1;">
+        <span id="framePauseVal" style="font-size:14px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;">0s</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <div class="chip" style="padding:8px 14px;font-size:12px;margin-left:auto;" onclick="resetFramePause()">Reset</div>
+      </div>
+    </div>
+  </div>
+  <!-- Barra de ícones (EMBAIXO) -->
+  <div id="custBarTabs" style="display:flex;align-items:center;background:var(--surface);">
     <div class="cust-tab active-tab" data-tab="scale" onclick="switchCustTab('scale')">
       <svg viewBox="0 0 24 24" width="24" height="24" style="display:block;margin:0 auto;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-scaling"></use></svg>
     </div>
@@ -1069,67 +1139,13 @@ body.cust-open #toolbar{
     <div class="cust-tab" data-tab="pos" onclick="switchCustTab('pos')">
       <svg viewBox="0 0 24 24" width="24" height="24" style="display:block;margin:0 auto;" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-move"></use></svg>
     </div>
+    <!--
+      v8z4b15w — Ícone semântico de duração/tempo (relógio) substitui o
+      ícone de pause anterior. Controla duração local do frame, não apenas
+      pausa.
+    -->
     <div class="cust-tab" data-tab="framepause" onclick="switchCustTab('framepause')">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" style="display:block;margin:0 auto;" fill="none" stroke="rgba(160,160,160,0.7)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15V9"/><path d="M14 15V9"/><path d="M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586z"/></svg>
-    </div>
-    <!-- Cadeado global -->
-    <div id="custGlobalLock" onclick="toggleCustGlobalLock()" title="Aplicar a todos os frames"
-      style="margin:0 12px 0 4px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(160,160,160,0.7);flex-shrink:0;">
-      <svg id="custGlobalLockIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
-    </div>
-  </div>
-  <!-- Conteúdo das abas -->
-  <div style="padding:12px 16px;background:#1a1a1a;min-height:110px;">
-    <!-- Aba Escala -->
-    <div id="custTabScale" class="cust-content">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <input type="range" class="dur-slider" id="scaleSlider" min="20" max="300" value="100" step="1" style="flex:1;">
-        <span id="scaleNum" style="font-size:13px;font-weight:700;color:var(--accent);min-width:40px;text-align:right;">100%</span>
-      </div>
-      <div style="display:flex;gap:6px;margin-top:6px;">
-        <div class="chip" style="padding:5px 10px;font-size:11px;" onclick="nudgeScale(-5)">−5%</div>
-        <div class="chip" style="padding:5px 10px;font-size:11px;" onclick="nudgeScale(5)">+5%</div>
-        <div class="chip" style="padding:5px 10px;font-size:11px;margin-left:auto;" onclick="resetScale()">Reset</div>
-      </div>
-    </div>
-    <!-- Aba Rotação -->
-    <div id="custTabRot" class="cust-content" style="display:none;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <input type="range" class="dur-slider" id="rotSlider" min="-720" max="720" value="0" step="1" style="flex:1;">
-        <span id="rotNum" style="font-size:13px;font-weight:700;color:var(--accent);min-width:44px;text-align:right;">0°</span>
-      </div>
-      <div style="display:flex;gap:6px;margin-top:6px;">
-        <div class="chip" style="padding:5px 10px;font-size:11px;" onclick="nudgeRotation(-5)">−5°</div>
-        <div class="chip" style="padding:5px 10px;font-size:11px;" onclick="nudgeRotation(5)">+5°</div>
-        <div class="chip" style="padding:5px 10px;font-size:11px;margin-left:auto;" onclick="nudgeRotation(0,true)">Reset</div>
-      </div>
-    </div>
-    <!-- Aba Posição -->
-    <div id="custTabPos" class="cust-content" style="display:none;">
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div style="display:flex;gap:6px;align-items:center;">
-          <div onclick="nudgePos(-10,0)" style="cursor:pointer;padding:8px;color:rgba(200,200,200,0.8);"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-          <input type="number" id="posXInput" placeholder="X (pixels)" style="flex:1;background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:6px 8px;font-size:13px;font-weight:600;color:var(--accent);text-align:right;-webkit-appearance:none;" oninput="setPosFromInput()">
-          <div onclick="nudgePos(10,0)" style="cursor:pointer;padding:8px;color:rgba(200,200,200,0.8);"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <div onclick="nudgePos(0,-10)" style="cursor:pointer;padding:8px;color:rgba(200,200,200,0.8);"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-          <input type="number" id="posYInput" placeholder="Y (pixels)" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:13px;font-weight:600;color:var(--accent);text-align:right;-webkit-appearance:none;" oninput="setPosFromInput()">
-          <div onclick="nudgePos(0,10)" style="cursor:pointer;padding:8px;color:rgba(200,200,200,0.8);"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-        </div>
-      </div>
-    </div>
-    <!-- Aba Pausa por frame -->
-    <div id="custTabFramepause" class="cust-content" style="display:none;">
-      <div id="framePauseLocalLabel" style="font-size:11px;color:var(--text3);margin-bottom:4px;">Frame F1</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Pausa neste frame (0 = sem pausa)</div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <input type="range" class="dur-slider" id="framePauseSlider" min="0" max="5" step="0.1" value="0" style="flex:1;">
-        <span id="framePauseVal" style="font-size:14px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;">0s</span>
-      </div>
-      <div style="display:flex;gap:6px;margin-top:8px;">
-        <div class="chip" style="padding:5px 10px;font-size:11px;margin-left:auto;" onclick="resetFramePause()">Reset</div>
-      </div>
+      <svg viewBox="0 0 24 24" width="24" height="24" style="display:block;margin:0 auto;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     </div>
   </div>
 </div>
@@ -1183,7 +1199,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b15u</span><br><span id="appVersionNameText">Stabilize frame pause state sync on iPhone</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b15w</span><br><span id="appVersionNameText">Duration panel UX unification and local frame panel redesign</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1362,53 +1378,66 @@ body.cust-open #toolbar{
   <div class="panel-handle" onclick="closeAll()"></div>
   <div class="panel-title">Duração</div>
 
-  <!-- Linha: duração total final do vídeo (apenas leitura). -->
-  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;">
-    <span id="durNum" style="font-size:20px;font-weight:700;color:var(--accent);min-width:42px;flex-shrink:0;">6s</span>
-    <span style="font-size:11px;color:var(--text3);">Duração total · soma de segmentos + pausas + acabamento</span>
+  <!-- TOPO (apenas leitura): duração total + breakdown por categoria. -->
+  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;">
+    <span id="durNum" style="font-size:28px;font-weight:700;color:var(--accent);min-width:64px;flex-shrink:0;letter-spacing:-1px;">6s</span>
+    <span style="font-size:11px;color:var(--text3);line-height:1.3;">Duração total · soma de segmentos + pausas + acabamento</span>
   </div>
-  <!-- Linha: ajuste proporcional dos segmentos (não inclui pausas/acabamento). -->
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-    <span style="font-size:11px;color:var(--text3);flex-shrink:0;min-width:42px;">Segmentos</span>
-    <input type="range" class="dur-slider" id="durSlider" min="1" max="60" step="0.1" value="4" style="flex:1;">
-    <span id="durSegTotal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:42px;text-align:right;">4.0s</span>
-  </div>
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-    <span style="font-size:12px;color:var(--text3);">Intervalo padrão</span>
-    <input id="newSegmentDurationInput" type="number" min="1" step="1" value="2" style="width:72px;padding:6px 8px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:13px;font-weight:600;text-align:right;">
-  </div>
-  <div id="durationSummaryTop" style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;padding:10px;border-radius:10px;background:var(--surface2);">
+  <div id="durationSummaryTop" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;padding:12px;border-radius:10px;background:var(--surface2);">
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Duração total</span><span id="durSummaryTotal">0.0s</span></div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Percurso</span><span id="durSummaryMove">0.0s</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Segmentos</span><span id="durSummaryMove">0.0s</span></div>
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Pausas</span><span id="durSummaryPauses">0.0s</span></div>
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Acabamento</span><span id="durSummaryFinish">0.0s</span></div>
   </div>
 
-  <button type="button" onclick="toggleDurationSection('segments')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
-    <span>Intervalos entre frames</span><span id="durationSectionChevronSegments" style="font-size:28px;font-weight:800;color:var(--accent);line-height:1;">▾</span>
+  <!-- SEÇÃO: Segmentos (controles editáveis dos segmentos). -->
+  <button type="button" onclick="toggleDurationSection('segments')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:10px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
+    <span>Segmentos</span><span id="durationSectionChevronSegments" style="font-size:28px;font-weight:800;color:var(--accent);line-height:1;">▾</span>
   </button>
-  <div id="segBreakdown" style="display:none;flex-direction:column;gap:8px;padding-top:10px;margin-bottom:12px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+  <div id="segBreakdown" style="display:none;flex-direction:column;gap:8px;padding-top:12px;margin-bottom:14px;">
+    <!-- Slider global dos segmentos (afeta apenas a soma dos segmentos, proporcional). -->
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 0;">
+      <span style="font-size:12px;color:var(--text3);flex-shrink:0;min-width:60px;">Total segs</span>
+      <input type="range" class="dur-slider" id="durSlider" min="1" max="60" step="0.1" value="4" style="flex:1;">
+      <span id="durSegTotal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;">4.0s</span>
+    </div>
+    <!-- Intervalo padrão de novos frames. -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border2);">
+      <span style="font-size:12px;color:var(--text3);">Intervalo padrão</span>
+      <input id="newSegmentDurationInput" type="number" min="1" step="1" value="2" style="width:80px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:13px;font-weight:600;text-align:right;">
+    </div>
+    <!-- Cabeçalho dos sliders individuais. -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 4px 0;border-top:1px solid var(--border2);">
       <span style="font-size:12px;font-weight:600;color:var(--text3);">Tempo por segmento</span>
       <span id="segTotal" style="font-size:12px;font-weight:700;color:var(--accent);">= 6s total</span>
     </div>
     <div id="segRows" style="display:flex;flex-direction:column;gap:0;"></div>
     <button onclick="distributeSegEqual()"
-      style="margin-top:6px;width:100%;padding:8px 0;border-radius:10px;border:1px solid var(--border2);
-             background:var(--surface2);font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;">
+      style="margin-top:8px;width:100%;padding:12px 0;border-radius:10px;border:1px solid var(--border2);
+             background:var(--surface2);font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;">
       Igualar intervalos
     </button>
   </div>
 
-  <button type="button" onclick="toggleDurationSection('pauses')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
+  <!-- SEÇÃO: Pausas por frame (controles globais e individuais). -->
+  <button type="button" onclick="toggleDurationSection('pauses')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:10px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
     <span>Pausas por frame</span><span id="durationSectionChevronPauses" style="font-size:28px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
   </button>
-  <div id="framePauseSection" style="display:none;padding-top:10px;margin-bottom:10px;">
-    <div style="display:flex;align-items:center;gap:10px;padding:6px 0 10px 0;border-bottom:1px solid var(--border2);margin-bottom:6px;">
-      <span style="font-size:12px;font-weight:700;color:var(--text2);min-width:32px;flex-shrink:0;">Tudo</span>
+  <div id="framePauseSection" style="display:none;padding-top:12px;margin-bottom:12px;">
+    <!-- Slider global de pausa: arrastar aplica a todos os frames imediatamente. -->
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 0;">
+      <span style="font-size:12px;font-weight:700;color:var(--text2);min-width:60px;flex-shrink:0;">Tudo</span>
       <input type="range" class="dur-slider" id="framePauseGlobalSlider" min="0" max="5" step="0.1" value="0" style="flex:1;">
-      <span id="framePauseGlobalVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;">0.0s</span>
+      <span id="framePauseGlobalVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;">0.0s</span>
     </div>
+    <!-- Botão Aplicar a todos: força o valor global em todos os frames (útil quando há divergência). -->
+    <button type="button" onclick="applyFramePauseGlobalToAll()"
+      style="width:100%;margin:6px 0 4px 0;padding:12px 0;border-radius:10px;border:1px solid var(--border2);
+             background:var(--surface2);font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;">
+      Aplicar a todos
+    </button>
+    <div style="height:1px;background:var(--border2);margin:8px 0 4px 0;"></div>
+    <!-- Sliders individuais (linhas reusadas; mesma UX dos segmentos). -->
     <div id="framePauseRows" style="display:flex;flex-direction:column;"></div>
   </div>
 
@@ -3426,8 +3455,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b15v';
-const APP_VERSION_NAME = 'Restore native slider UX for frame pauses on iPhone';
+const APP_VERSION = 'v8z4b15w';
+const APP_VERSION_NAME = 'Duration panel UX unification and local frame panel redesign';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -6892,11 +6921,11 @@ function buildFramePauseRow(i) {
   const row = document.createElement('div');
   row.dataset.framePauseRow = '';
   row.dataset.frameIndex = String(i);
-  row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 0;';
+  row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 0;';
   const lbl = document.createElement('span');
   lbl.dataset.frameLabel = '';
   lbl.textContent = 'F' + (i + 1);
-  lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:32px;flex-shrink:0;';
+  lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:36px;flex-shrink:0;';
   const slider = document.createElement('input');
   slider.type = 'range';
   slider.className = 'dur-slider';
@@ -6909,7 +6938,7 @@ function buildFramePauseRow(i) {
   const val = document.createElement('span');
   val.dataset.pauseValue = '';
   val.textContent = (framePauses[i]?.duration || 0).toFixed(1) + 's';
-  val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;';
+  val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;';
   row.append(lbl, slider, val);
   _bindFramePauseRowSlider(row, slider, val);
   return row;
@@ -7910,7 +7939,7 @@ function openSegBreakdown() {
   container.innerHTML = '';
   for (let i = 0; i < segs; i++) {
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 0;';
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 0;';
     const lbl = document.createElement('span');
     lbl.textContent = (i+1) + '-' + (i+2);
     lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text2);min-width:52px;flex-shrink:0;';
@@ -7922,7 +7951,7 @@ function openSegBreakdown() {
     slider.style.cssText = 'flex:1;';
     const val = document.createElement('span');
     val.textContent = (segDurations[i] || 1).toFixed(1) + 's';
-    val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;';
+    val.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;';
     const idx = i;
     let segUndoCaptured = false;
     slider.addEventListener('touchstart', () => {
@@ -8571,11 +8600,18 @@ function updateTemplateBtn() {
   btn.style.pointerEvents = imgEl ? '' : 'none';
 }
 
+// v8z4b15w — Painel local abre em modo "compact-first": só a barra de
+// ícones embaixo, sem controles. O segundo toque (em qualquer ícone)
+// expande os controles acima. Tocar de novo no ícone ativo recolhe.
+// Aberturas subsequentes durante a mesma sessão preservam o estado
+// expandido — só a abertura inicial entra em compact-mode.
 function openCustBar() {
   const bar = document.getElementById('custBar');
   if (bar) {
+    const wasHidden = bar.style.display === 'none' || !bar.style.display;
     bar.style.display = 'flex';
     bar.style.flexDirection = 'column';
+    if (wasHidden) bar.classList.add('compact-mode');
   }
   document.body.classList.add('cust-open');
   syncCustomizePanel();
@@ -8584,7 +8620,10 @@ function openCustBar() {
 
 function closeCustBar() {
   const bar = document.getElementById('custBar');
-  if (bar) bar.style.display = 'none';
+  if (bar) {
+    bar.style.display = 'none';
+    bar.classList.remove('compact-mode');
+  }
   document.body.classList.remove('cust-open');
   resetCustGlobalLocks();
 }
@@ -8593,6 +8632,16 @@ function closeCustBar() {
 
 function switchCustTab(tab) {
   resetCustGlobalLocks();
+  const bar = document.getElementById('custBar');
+  const wasCompact = bar?.classList.contains('compact-mode');
+  const currentlyActive = document.querySelector('.cust-tab.active-tab')?.dataset?.tab;
+  // Toggle: se já está expandido nesta aba, recolhe. Se estava compacto,
+  // expande e troca para a aba pedida. Caso contrário, só troca de aba.
+  if (!wasCompact && currentlyActive === tab) {
+    bar?.classList.add('compact-mode');
+    return;
+  }
+  bar?.classList.remove('compact-mode');
   document.querySelectorAll('.cust-tab').forEach(t => {
     t.classList.toggle('active-tab', t.dataset.tab === tab);
   });
@@ -8601,12 +8650,6 @@ function switchCustTab(tab) {
   const content = document.getElementById(key);
   if (content) content.style.display = 'block';
   if (tab === 'framepause') syncFramePauseUI();
-  const el = document.getElementById('custGlobalLock');
-  const locked = custGlobalLock[tab] || false;
-  if (el) {
-    el.classList.toggle('global-on', !!locked);
-    el.style.color = locked ? '#ff9500' : 'rgba(160,160,160,0.7)';
-  }
 }
 
 function updateEasePills() {
@@ -8835,6 +8878,39 @@ function applyFramePauseAll() {
   if (durationPanelSections.pauses) renderFramePauseRows();
   refreshPauseControls();
   showStatus('Pausa aplicada a todos os frames');
+  if (isPreviewing) { stopPreview(); startPreview(); }
+}
+
+// v8z4b15w — botão "Aplicar a todos" do painel Duração / seção Pausas.
+// Lê o valor visível do framePauseGlobalSlider e força esse valor em todos
+// os frames não-locked. Útil para unificar quando há divergência (ex.: quando
+// o label global mostra "0.7s*", indicando frames com valores diferentes).
+function applyFramePauseGlobalToAll() {
+  ensureFramePauses();
+  const globalSlider = document.getElementById('framePauseGlobalSlider');
+  if (!globalSlider) return;
+  const target = clampFramePauseValue(globalSlider.value);
+  let changed = false;
+  for (let i = 0; i < frameCount; i++) {
+    if (frameLocked[i]) continue;
+    const cur = framePauses[i]?.duration || 0;
+    if (Math.abs(cur - target) > 0.0001) { changed = true; break; }
+  }
+  if (!changed) {
+    showStatus('Pausa global já aplicada · ' + target.toFixed(1) + 's');
+    refreshPauseControls();
+    return;
+  }
+  pushUndo();
+  markProjectDirty('frame-pause-apply-global');
+  setTemplateManualIfNeeded();
+  for (let i = 0; i < frameCount; i++) {
+    if (frameLocked[i]) continue;
+    framePauses[i] = { duration: target };
+  }
+  refreshPauseControls();
+  renderAll();
+  showStatus('Pausa global · ' + target.toFixed(1) + 's aplicada a todos');
   if (isPreviewing) { stopPreview(); startPreview(); }
 }
 

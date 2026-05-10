@@ -137,6 +137,83 @@ Use depois de qualquer alteração, mesmo pequena.
 24. Reabrir JSON.
 25. Testar no iPhone/Safari via GitHub Pages com cache busting.
 
+## v8z4b15w — Duration panel UX unification and local frame panel redesign
+
+Foco: validar a reorganização do painel Duração e o redesign do painel
+local sem regressões nos valores/sincronização.
+
+### Painel Duração — topo
+
+1. Abrir o app.
+2. Confirmar versão no menu: **Arco v8z4b15w — Duration panel UX
+   unification and local frame panel redesign**.
+3. Carregar imagem.
+4. Abrir o painel **Duração** (toolbar).
+5. Confirmar topo só com leitura: número grande de Duração total +
+   card com Duração total, Segmentos, Pausas, Acabamento.
+6. Confirmar que **não há slider nem input editável** acima do card.
+
+### Painel Duração — seção Segmentos
+
+7. Expandir a seção **Segmentos**.
+8. Mover o slider "Total segs" e confirmar:
+   - sliders individuais redistribuem proporcionalmente;
+   - card do topo atualiza Segmentos / Duração total;
+   - chip "Duração" da toolbar inferior atualiza.
+9. Alterar o input **Intervalo padrão**, criar novos frames e confirmar
+   que cada novo segmento usa esse valor.
+10. Mover sliders individuais e confirmar que o card do topo reflete
+    a nova soma de Segmentos.
+11. Apertar **Igualar intervalos** e confirmar redistribuição igual.
+
+### Painel Duração — seção Pausas por frame
+
+12. Expandir a seção **Pausas por frame**.
+13. Mover o slider **Tudo** (global) e confirmar:
+    - todos os sliders por frame movem juntos;
+    - labels (`F1`, `F2`, ...) atualizam em tempo real;
+    - card do topo atualiza Pausas / Duração total;
+    - chip "Duração" da toolbar atualiza.
+14. Mover só o slider de F2; confirmar que o label global mostra `*`
+    indicando divergência.
+15. Apertar **Aplicar a todos**; confirmar que o `*` some, todos os
+    frames recebem o valor global e o card do topo atualiza.
+16. No iPhone/Safari, scrollar a lista de pausas verticalmente e
+    confirmar que **o scroll funciona sem alterar valores**.
+17. Tocar rapidamente em um slider de pausa e confirmar que o valor muda
+    sem sequestrar o scroll.
+
+### Painel local do frame — controles em cima, ícones embaixo
+
+18. Tocar em um frame ativo para abrir o `custBar`.
+19. Confirmar **modo compacto inicial**: só a barra de ícones embaixo,
+    sem controles visíveis acima.
+20. Tocar no ícone de **escala**; confirmar que os controles abrem
+    **acima** dos ícones.
+21. Tocar no ícone de **rotação**; confirmar troca de aba sem fechar.
+22. Tocar no ícone de **posição**; idem.
+23. Tocar no novo ícone **relógio** (duração/pausa local); confirmar
+    que o slider atualiza para o valor do frame ativo.
+24. Tocar **de novo** no ícone ativo; confirmar que recolhe para modo
+    compacto.
+25. Confirmar que **não há mais o cadeado global** (globe-lock) na
+    barra de ícones.
+26. Mover o slider local de pausa; confirmar que o valor reflete no
+    painel Duração e no chip da toolbar.
+
+### Sincronização e arquitetura preservada
+
+27. Editar pausas via slider global, slider individual e slider local —
+    confirmar que todos chegam ao mesmo estado.
+28. Adicionar e remover frames; confirmar que `framePauses` mantém
+    tamanho correto e nada quebra.
+29. Salvar projeto JSON.
+30. Recarregar app, abrir projeto JSON.
+31. Confirmar que todas as pausas voltam corretamente.
+32. Rodar **Preview** — confirmar timing igual ao esperado.
+33. Exportar **MP4** — confirmar timing e ausência de trancos.
+34. Repetir cenário em iPhone/Safari via GitHub Pages com cache busting.
+
 ## v8z4b3 — Inserted frame pass-through easing
 
 1. Abrir app.
