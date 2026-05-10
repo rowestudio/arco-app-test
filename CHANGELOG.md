@@ -67,6 +67,91 @@ Quando Fixar estiver ativo em algum frame, usar destaque vermelho, não azul.
 - Restauração da separação entre caminho geométrico (curva) e easing temporal (transição por segmento).
 - Mantida a compatibilidade com o patch v8z4b de inserção de frame dentro da curva.
 
+## v8z4b15x — Duration panel UX unification and local frame panel redesign
+
+Refinamento sobre a v15w. Foco: equiparar visualmente os sliders de
+"Pausas por frame" aos sliders de "Tempo por segmento", aumentar área
+clicável dos botões auxiliares no painel local do frame, e reorganizar
+o menu local para que o painel de ajuste **substitua** a barra de
+ícones (em vez de empilhar) com uma seta de voltar dedicada.
+
+### Sliders de pausa — paridade visual com os sliders de segmento
+
+- `#framePauseSection` agora usa o mesmo container `flex-direction:column;
+  gap:8px;padding-top:12px;margin-bottom:14px;` do `#segBreakdown`. Antes
+  era um simples `padding-top:12px;margin-bottom:12px;`, sem o ritmo de
+  gap das rows de segmento.
+- Slider global de pausa: padding vertical da row passou de `8px 0` para
+  `10px 0` (idêntico às rows de segmento). Label "Tudo" ajustado para
+  `min-width:52px` (mesma largura da label dos segmentos individuais),
+  garantindo que a track comece exatamente na mesma posição horizontal.
+- Sliders por frame (`buildFramePauseRow`): label "F1..F10" passou de
+  `min-width:36px` para `min-width:52px`, alinhando o início da track
+  com os sliders de "Tempo por segmento" (`1-2`..`9-10`). Sem isso, a
+  track das pausas começava ~16px antes e dava a sensação de slider
+  menor / desalinhado.
+- Adicionado cabeçalho "Pausa por frame · = Xs pausa" no topo dos
+  sliders individuais, espelhando o cabeçalho "Tempo por segmento ·
+  = Xs total" da seção Segmentos. `refreshPauseControls()` atualiza
+  esse total junto com os demais.
+- Resultado: mesma largura útil, mesma escala, mesma proporção. A
+  diferença entre as duas seções é apenas semântica (intervalos vs
+  pausas), não visual.
+
+### Botões auxiliares / Reset — alvos de toque maiores
+
+- Chips `−5%`/`+5%`/`Reset` (Escala), `−5°`/`+5°`/`Reset` (Rotação) e
+  `Reset` (Duração local) passaram de `padding:8px 14px;font-size:12px`
+  para `padding:11px 16px;font-size:13px;min-height:42px` com
+  `justify-content:center`. Margin top da row de chips aumentado de
+  `10px` para `14px`. Gap entre chips aumentado de `8px` para `10px`.
+- Não parecem mais ícones decorativos perdidos; têm peso visual coerente
+  com os thumbs/sliders ao lado.
+
+### Painel local do frame — substituição em vez de empilhamento
+
+- Quando o painel está expandido (mostrando controles), `#custBarTabs`
+  é ocultado por CSS (`#custBar:not(.compact-mode) #custBarTabs{
+  display:none }`). Quando recolhido (compact-mode), `#custBarContent`
+  é ocultado. Os dois nunca aparecem ao mesmo tempo — o painel de
+  ajuste substitui a barra de ícones.
+- Adicionada seta de voltar `← Voltar` no topo do `#custBarContent`
+  (`<div id="custBarBack">`). Ao tocar, chama `collapseCustBar()` que
+  re-aplica `compact-mode`, voltando à barra de ícones com a aba ativa
+  preservada.
+- `switchCustTab()` simplificado: tocar em qualquer ícone agora SEMPRE
+  expande para o ajuste daquela função (antes, re-tocar no ícone ativo
+  recolhia, o que causava colapso acidental). O caminho oficial de
+  voltar é a seta — sem ambiguidade.
+- Stage-tap continua fechando o painel inteiro em qualquer modo
+  (compact ou expandido), preservando o comportamento existente.
+
+### Linguagem visual dos ícones — alinhada com a futura toolbar inferior
+
+- Cada `.cust-tab` agora tem `<svg>` em cima + `<span class="cust-tab-lbl">`
+  embaixo (`Escala`, `Rotação`, `Posição`, `Duração`). Layout vertical,
+  ícone branco (`rgba(235,235,235,0.95)`) + label branco abaixo,
+  `flex-direction:column;align-items:center;gap:4px;min-height:60px`.
+- Aba ativa: ícone e label em `var(--accent)` (mesmo padrão de cor já
+  existente, agora aplicado ao label também).
+- Mesma linguagem visual da toolbar inferior principal planejada
+  (faixa horizontal estilo mobile/TikTok, ícone + nome).
+
+### Arquitetura preservada (intacta desde v15u)
+
+- `setFramePause`, `ensureFramePauses`, `refreshPauseControls`,
+  `getStateAtT`, `drawAtT`, motor de animação, easing, curvas/splines,
+  WebCodecs/export, templates, stage/aspect ratio — sem alterações.
+- Sincronização centralizada da v15u intacta: toda escrita em
+  `framePauses[]` continua passando por `setFramePause`; todo refresh
+  visual por `refreshPauseControls`; todo redimensionamento por
+  `ensureFramePauses`.
+- Todas as mudanças desta versão são CSS/markup (largura de label,
+  padding, gap, container flex) + dois deltas mínimos em JS:
+  `collapseCustBar()` (nova função) e remoção do toggle-on-active em
+  `switchCustTab` (substituído pela seta de voltar). Nenhum handler
+  novo na cadeia de pausas.
+
 ## v8z4b15w — Duration panel UX unification and local frame panel redesign
 
 Refinamento estrutural sobre a base estável da v15u/v15v. Foco: UX,
