@@ -137,6 +137,124 @@ Use depois de qualquer alteração, mesmo pequena.
 24. Reabrir JSON.
 25. Testar no iPhone/Safari via GitHub Pages com cache busting.
 
+## v8z4b16b — Stabilize contextual menu and zero-second segments
+
+Foco: validar correções pontuais sobre a v8z4b16a — menu contextual
+sem Curvas/Adicionar e com altura idêntica à toolbar, thumbs cinzas
+quando o global está ativo, handle do painel Tempo fixo ao rolar, e
+suporte a trecho/intervalo de 0.0s sem quebrar preview/export.
+
+### Versão
+
+1. Abrir o app.
+2. Abrir o menu de configurações (engrenagem).
+3. Confirmar: **Arco v8z4b16b — Stabilize contextual menu and
+   zero-second segments**.
+
+### Menu contextual — altura idêntica à toolbar
+
+4. Sem tocar em nenhum frame, observar a altura do menu inferior
+   principal (toolbar).
+5. Tocar num frame para abrir o menu contextual em modo compacto.
+6. Confirmar que o topo da faixa contextual fica **na mesma posição**
+   do topo da toolbar — o stage não se mexe, encolhe ou desloca.
+7. Confirmar que a faixa de frames continua visível acima do menu
+   contextual.
+
+### Menu contextual — itens e ações rápidas
+
+8. Confirmar que os ícones presentes são, e somente:
+   - Pausa
+   - Rotação
+   - Escala
+   - Posição
+9. Confirmar que **não existe** o ícone Curvas.
+10. Confirmar que **não existe** o ícone Adicionar.
+11. Tocar fora do menu contextual (no stage). Confirmar que ele fecha
+    e a toolbar inferior volta ao normal.
+12. Tocar de novo no mesmo frame. Confirmar que o menu contextual
+    reabre.
+13. Tocar em outro frame. Confirmar que o app não fica preso no
+    submenu do frame anterior (a aba/conteúdo expandido fecha, ou ao
+    menos passa a refletir o novo frame).
+
+### Submenu local de pausa / ajustes do frame
+
+14. Abrir submenu Pausa local. Confirmar que mostra slider + valor +
+    Reset, sem texto "Frame F10 / Duração pausa neste frame".
+15. Confirmar que pausa local, rotação, escala e posição continuam
+    funcionando.
+16. Confirmar sincronização com painel Duração ao alterar a pausa.
+
+### Sliders — estado global "Tudo"
+
+17. Abrir painel Duração → Pausas por frame.
+18. Mover o slider **Tudo** para um valor diferente de zero.
+19. Confirmar que **todas** as faixas individuais ficaram cinzas,
+    incluindo o **thumb/bolinha** (não brancos).
+20. Mover um slider individual. Confirmar que ele "reativa"
+    visualmente (cyan/normal) e os demais voltam para o estado
+    cinza/subordinado correto conforme a sincronização real.
+21. Confirmar que o painel local (menu contextual → Pausa) e o
+    painel Duração continuam sincronizados após qualquer mudança.
+
+### Handle superior do painel
+
+22. Abrir painel Duração.
+23. Rolar verticalmente até o final.
+24. Confirmar que o tracinho/handle no topo permanece **fixo** no
+    topo do painel ao rolar, sem deslocar e sem desaparecer.
+25. Confirmar que não há um segundo scroll interno; a única rolagem
+    vertical é a do painel principal.
+
+### Trecho / intervalo mínimo 0.0s
+
+26. Painel Duração → Segmentos.
+27. Mover o slider de "Total" todo para a esquerda. Confirmar que
+    chega em **0.0s** sem barrar em 1s/0.5s/0.1s.
+28. Confirmar que todos os sliders individuais de segmento foram
+    para **0.0s** e os rótulos mostram corretamente "0.0s".
+29. Subir o "Total" novamente. Confirmar que os trechos são
+    redistribuídos igualmente (não houve proporção anterior válida).
+30. Mover apenas o segmento 1-2 para **0.0s**, deixando os demais
+    com valor positivo. Rodar Preview. Confirmar que entre F1 e F2 há
+    corte seco (pulo instantâneo) e os demais segmentos continuam
+    com movimento.
+31. Inverter: 1-2 em 2.0s, 2-3 em 0.0s. Preview deve mostrar
+    movimento no primeiro trecho e corte seco no segundo.
+32. Colocar vários trechos 0.0s seguidos. Confirmar que o preview não
+    trava nem pisca de forma anômala.
+33. Todos os trechos em 0.0s **com pausas por frame** ativas. Preview
+    deve rodar normalmente, somente pausando nos frames.
+34. Todos os trechos em 0.0s **sem pausas** e sem acabamento. Preview
+    deve permanecer em estado estático seguro, sem travar nem dar NaN.
+35. Definir "Intervalo padrão" como **0** e adicionar um novo frame.
+    Confirmar que o frame nasce com tempo padrão 0 sem erro.
+36. Em Sliders → Acabamento, confirmar que Retorno (loop) e Duração
+    (pausa final) **ainda têm mínimo 0.1s** (clamp não foi tocado).
+37. Exportar MP4 com pelo menos um trecho 0.0s. Confirmar que o
+    export conclui sem travar e o arquivo é reproduzível.
+38. Exportar MP4 com **todos** os trechos em 0.0s e sem pausas/loop.
+    Confirmar que o export gera ao menos um frame e não trava.
+
+### Não pode ter regredido
+
+39. Easing de segmento, curvas, blur, escala/rotação por frame:
+    inalterados.
+40. WebCodecs/export comum (com durações > 0): inalterado.
+41. Layout geral, cores, templates, textos fora do escopo: inalterados.
+
+### iPhone/Safari
+
+42. Repetir o checklist acima no iPhone/Safari via GitHub Pages com
+    cache busting.
+
+### Critério de aceite
+
+A versão v8z4b16b deve ficar estável o suficiente para, depois de
+teste manual completo, ser promovida do `arco-app-test` para o app
+principal.
+
 ## v8z4b16a — Mobile UI consolidation: contextual menu, sliders, duration panel
 
 Foco: validar a paridade de altura entre menu contextual e toolbar,

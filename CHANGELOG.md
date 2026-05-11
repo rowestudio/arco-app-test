@@ -67,6 +67,102 @@ Quando Fixar estiver ativo em algum frame, usar destaque vermelho, não azul.
 - Restauração da separação entre caminho geométrico (curva) e easing temporal (transição por segmento).
 - Mantida a compatibilidade com o patch v8z4b de inserção de frame dentro da curva.
 
+## v8z4b16b — Stabilize contextual menu and zero-second segments
+
+Patch de estabilização sobre a v8z4b16a, fechando apenas os pontos
+encontrados na revisão. **Não inclui** novo redesign do painel Tempo,
+nova timeline contínua, novo stage, novo sistema de handles, edição
+vetorial, nem reformulação de nomenclatura. Foco em correções
+cirúrgicas e um único ajuste funcional (tempo zero).
+
+### Menu contextual do frame
+
+- Removidos os ícones **Curvas** e **Adicionar** do menu contextual.
+  "Curvas" será futura edição vetorial/nódulos dos frames (não easing)
+  e fica fora desta versão; "Adicionar" frame pertence à faixa de
+  frames, não ao menu local de transformação.
+- Menu contextual agora ocupa **exatamente a mesma altura** do menu
+  inferior principal. `#custBar .cust-tab` passou de `min-height:56px`
+  para `46px` (= 4 + 38 + 4, igual ao `tb-item` mais alto da toolbar
+  com `flex:1` distribuindo os tabs). `align-items:stretch` no
+  `#custBarTabs`. O slot inferior continua sendo a mesma faixa: pura
+  troca de conteúdo, sem empurrar o stage nem cobrir a faixa de frames.
+
+### Sliders — estado global
+
+- Quando o estado "tudo sincronizado pelo global" está ativo, o
+  **thumb/bolinha** dos sliders individuais agora também fica cinza
+  (antes ficavam brancos porque o thumb tem `background:#fff` próprio
+  e `filter:grayscale(1)` não tem efeito sobre branco puro). Aplicado
+  via override `::-webkit-slider-thumb` e `::-moz-range-thumb` em
+  `#framePauseRows.global-synced` e `.dur-edit-row.partial-synced`.
+- Sincronização e largura útil já estavam corretas — não tocadas.
+
+### Handle superior do painel
+
+- `#panelDuration > .panel-handle` virou banner **sticky** no topo da
+  área de rolagem: `position:sticky; top:0`, fundo `var(--surface)`
+  cobrindo todo o conteúdo que desliza por baixo, bolinha visual via
+  `::before`. O painel mantém `overflow-y:auto`; não foi criado novo
+  scroll interno.
+
+### Trecho/intervalo mínimo 0.0s
+
+Ajuste funcional obrigatório para permitir corte seco entre frames.
+Não altera nomenclatura visual ainda.
+
+- Sliders/inputs aceitam `min=0`:
+  - `#durSlider` (total dos segmentos).
+  - `#newSegmentDurationInput` (intervalo padrão).
+  - `#easePanelSegSlider` (tempo individual de segmento via painel
+    de easing).
+- Clamps de duração de segmento auditados e abaixados a 0:
+  - `addFrame` usa `Math.max(0, Math.round(defaultNewSegmentDuration != null ? defaultNewSegmentDuration : 2))`.
+  - `insertFrameAfterActive` (split em dois meios) usa
+    `Math.max(0, ...)` em vez de `Math.max(0.1, ...)`.
+  - Redistribuição proporcional pelo `durSlider` usa `Math.max(0, ...)`.
+  - `defaultNewSegmentDuration` no load de projeto e estado interno
+    aceita 0.
+- Clamps de pausa, acabamento (Retorno/Duração), escala, rotação,
+  easing e blur **não foram tocados** (escopo restrito ao tempo entre
+  frames).
+- `getSegDuration` e `openSegBreakdown` trocam o teste falsy
+  (`segDurations[i] || fallback`) por `!= null`, preservando o valor
+  legítimo 0.
+- Redistribuição pelo total:
+  - Total → 0 leva todos os trechos para 0.
+  - Saindo de "tudo 0" para um total > 0, distribui igualmente entre
+    os trechos (não há proporção anterior válida).
+  - Total > 0 com valores diferentes preserva proporção atual.
+- Motor temporal — proteção mínima contra duração total real igual a
+  zero:
+  - `startPreview`, `togglePreviewPlayback` e `finishExport.loopAfter`
+    usam `Math.max(1, totalDurationFull() * 1000)` para o módulo do
+    elapsed, evitando `% 0 = NaN`, loop infinito ou preview congelado.
+  - Não altera valores do usuário; apenas garante que `t = elapsed/dur`
+    seja válido. Quando todos os trechos são 0 e não há pausas, o
+    preview mostra estado estático seguro (t=0).
+  - `getSegAndLocalTAtTime` e `applySegWeights` já tratavam segmentos
+    de duração zero como transição instantânea (localT=1); não
+    alterados.
+- Export MP4: `total = Math.max(1, Math.round(durationSec * fps))`
+  já existia. Quando a duração total real é 0, o export gera 1 frame
+  estático em vez de travar.
+
+### Não tocado nesta versão
+
+- Redesign do painel Tempo, timeline contínua, novo stage, novo
+  sistema de handles, edição vetorial, easing de rotação/escala,
+  WebCodecs (exceto guard mínimo já descrito), templates, cores
+  gerais, layout geral aprovado, textos e ícones fora do escopo
+  acima.
+
+### Versão
+
+- `appVersionText`: `v8z4b16b`.
+- `appVersionNameText`: `Stabilize contextual menu and zero-second segments`.
+- Constantes `APP_VERSION` / `APP_VERSION_NAME` atualizadas.
+
 ## v8z4b16a — Mobile UI consolidation: contextual menu, sliders, duration panel
 
 Consolidação estrutural de UX em iPhone/Safari sobre a v15z. **Nenhuma
