@@ -67,6 +67,99 @@ Quando Fixar estiver ativo em algum frame, usar destaque vermelho, não azul.
 - Restauração da separação entre caminho geométrico (curva) e easing temporal (transição por segmento).
 - Mantida a compatibilidade com o patch v8z4b de inserção de frame dentro da curva.
 
+## v8z4b16c — Stage stability, bottom slot and visual hierarchy
+
+Patch cirúrgico sobre a v8z4b16b. **Não toca** na lógica de tempo
+global, no cálculo de tempo total, no preview/export, nem na
+sincronização dos sliders já validados.
+
+### Estabilidade do stage no menu contextual
+
+- Slot inferior com altura EXPLÍCITA: `.toolbar` e `#custBar.compact-mode`
+  agora usam `height: calc(48px + max(env(safe-area-inset-bottom, 4px), 4px))`
+  e `box-sizing:border-box`. Antes, ambas eram dimensionadas pelo
+  conteúdo + padding e pequenas diferenças de arredondamento no iOS
+  Safari produziam um tranco vertical ao trocar a toolbar pelo menu
+  contextual. Agora a troca é visualmente neutra.
+- `openCustBar` adiciona `body.cust-open` ANTES de mostrar o
+  `#custBar`; `closeCustBar` mantém a simetria inversa. Elimina o
+  frame intermediário em que toolbar e custBar coexistiam.
+- `#custBar` perde o `box-shadow:0 -8px 28px rgba(0,0,0,.45)` (criava
+  faixa escura projetada sobre o stage, percebida como degradê
+  inferior). Superfície inferior fica sólida e contínua até a Home Bar.
+
+### Fechar menu contextual em qualquer área vazia do stage
+
+- Novo listener delegado em `.image-area` (`#imageArea`): `pointerdown`
+  com whitelist explícita das regiões interativas (`#custBar`,
+  `#midBar`, `#alignBar`, `.top-bar`, `.float-panel`, `.global-handle`,
+  `.ctrl-pt`). Tocar na imagem, no fundo preto da área de edição ou
+  no canvas vazio fecha o menu; tocar nos controles não fecha.
+- Listener no `#stage` permanece como caminho secundário (compat).
+
+### Barra inferior — visual compacto
+
+- `.toolbar` passou a `align-items:flex-end` com `padding:2px 4px
+  max(env(safe-area-inset-bottom, 4px), 4px)`; `.tb-item` agora alinha
+  conteúdo ao fim com `gap:2px`. Botões/textos descem visualmente,
+  absorvem a safe area, eliminam o espaço morto acima e dão aparência
+  de app mobile nativo.
+- `#custBar .cust-tab` segue o mesmo padrão para que toolbar e menu
+  contextual sejam visualmente idênticos em posicionamento.
+
+### Painel Duração — hierarquia tipográfica
+
+- Títulos principais (`.dur-section-header`): `font-size:17px;
+  font-weight:700; color:var(--text)`. Três blocos (Trechos,
+  Pausas por frame, Acabamento) ficam visualmente equivalentes.
+- Subtítulos descritivos (`.dur-sublabel`, `.dur-subitem-label`) e
+  labels internos de slider (`.dur-edit-row > .dur-edit-label`):
+  `font-size:11px; font-weight:600; color:var(--text3);
+  letter-spacing:1.4px; text-transform:uppercase`. Claramente
+  subordinados aos títulos principais.
+
+### Nomenclatura visível
+
+- "Segmentos" → "Trechos" (cabeçalho da seção).
+- "Tempo por segmento" → "Tempo por trecho" (subtítulo dos sliders
+  individuais).
+- "Segmentos" (linha do summary topo) → "Tempo dos trechos".
+- Texto do toast `'Próximo ajuste aplicado a todos os segmentos'` →
+  `'... a todos os trechos'`.
+- Variáveis internas (`segDurations`, `segEasings`, IDs como
+  `durSummaryMove`, `segTotal`, `segBreakdown`) NÃO renomeadas —
+  zero impacto na lógica de tempo, easing ou preview.
+
+### Caixa de seleção múltipla / alinhamento
+
+- `#alignBar` redesenhada para compartilhar a linguagem visual do
+  `#custBar`: fundo sólido, slot inferior com mesma altura, ícones
+  centralizados acima de labels curtas, `.ab-tab` espelhando
+  `.cust-tab`.
+- Duas camadas:
+  - **Primária:** Voltar (contador de seleção) · Alinhar · Distribuir · Escala.
+  - **Submenu Alinhar:** 6 alvos visuais — Esq, Centro H, Dir, Topo,
+    Centro V, Base. Apenas Centro H e Centro V têm lógica (já existia
+    como `cx`/`cy`); os 4 demais aparecem desabilitados (`.ab-tab-disabled`)
+    sem criar função nova. Voltar leva à camada primária.
+- A barra continua `position:fixed; bottom:0` — entra por cima sem
+  empurrar o stage, exatamente como antes.
+
+### Não tocado nesta versão
+
+- Lógica de tempo global, cálculo de tempo total, sincronização dos
+  sliders (subordinação cinza), handle sticky do painel Duração,
+  preview/export MP4, tempo mínimo 0.0s.
+- Nada de nova timeline, novo stage, novos handles, edição vetorial,
+  curvas estilo Illustrator, easing de rotação/escala, novo motor,
+  novo controle fino de tempo.
+
+### Versão
+
+- `appVersionText`: `v8z4b16c`.
+- `appVersionNameText`: `Stage stability, bottom slot and visual hierarchy`.
+- Constantes `APP_VERSION` / `APP_VERSION_NAME` atualizadas.
+
 ## v8z4b16b — Stabilize contextual menu and zero-second segments
 
 Patch de estabilização sobre a v8z4b16a, fechando apenas os pontos
