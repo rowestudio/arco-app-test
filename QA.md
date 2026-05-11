@@ -137,6 +137,143 @@ Use depois de qualquer alteração, mesmo pequena.
 24. Reabrir JSON.
 25. Testar no iPhone/Safari via GitHub Pages com cache busting.
 
+## v8z4b16c — Stage stability, bottom slot and visual hierarchy
+
+Foco: validar correções da revisão da v8z4b16b — tranco do stage,
+fechamento do menu contextual em qualquer área do stage, degradê
+inferior, hierarquia tipográfica do painel Duração, nomenclatura
+"Trechos" e redesign visual da caixa de seleção múltipla. Itens já
+validados na v8z4b16b (sincronização, handle sticky, tempo 0.0s,
+preview/export, sliders subordinados) NÃO devem ter regredido.
+
+### Versão
+
+1. Abrir o app no iPhone/Safari (GitHub Pages com cache busting).
+2. Abrir o menu de configurações (engrenagem).
+3. Confirmar: **Arco v8z4b16c — Stage stability, bottom slot and
+   visual hierarchy**.
+
+### Estabilidade do stage ao abrir o menu contextual
+
+4. Carregar uma imagem com pelo menos 2 frames.
+5. Observar a posição vertical da imagem/stage com a toolbar
+   inferior visível.
+6. Tocar em F1 (ou no frame ativo) para abrir o menu contextual em
+   modo compacto.
+7. Confirmar que a imagem/stage **não dá nenhum salto vertical** ao
+   abrir o menu. A faixa de frames também não se move.
+8. Fechar o menu (tocando no stage). Confirmar que ao voltar para a
+   toolbar normal o stage permanece imóvel.
+9. Abrir/fechar o menu várias vezes em sequência. Confirmar zero
+   reflow perceptível.
+
+### Fechar menu contextual em qualquer área vazia do stage
+
+10. Com menu contextual aberto, tocar **na imagem** dentro do stage:
+    deve fechar.
+11. Reabrir o menu. Tocar no **fundo preto** da área de edição
+    (.image-area) fora da imagem: deve fechar.
+12. Reabrir o menu. Tocar na **área vazia do canvas** (sobre o stage
+    mas sem imagem): deve fechar.
+13. Reabrir o menu. Tocar nos **botões/ícones do menu** (Pausa,
+    Rotação, Escala, Posição): **não** deve fechar.
+14. Tocar nos **sliders** do menu expandido: **não** deve fechar.
+15. Tocar nos **handles** do frame ativo ou nas bolinhas de Bézier:
+    **não** deve fechar.
+16. Tocar na **faixa de frames** (#midBar): **não** deve fechar.
+
+### Itens do menu contextual
+
+17. Confirmar que os ícones presentes são, e somente:
+    - Pausa
+    - Rotação
+    - Escala
+    - Posição
+18. Confirmar ausência de Curvas, Adicionar, easing e funções extras.
+
+### Barra inferior — degradê e safe area
+
+19. Observar a barra inferior (toolbar e menu contextual).
+20. Confirmar que **não existe degradê escuro** acima da barra
+    invadindo o stage.
+21. Confirmar que o fundo da barra é **sólido e contínuo até o fim
+    da tela** (até a Home Bar do iPhone).
+22. Confirmar que não há faixa morta/vazia abaixo dos botões/textos.
+23. Confirmar que os botões continuam **acima da Home Bar** com
+    folga mínima de toque.
+
+### Barra inferior — compactação visual
+
+24. Confirmar que botões e textos da toolbar começam **mais baixos**
+    do que antes (sobra superior reduzida).
+25. Confirmar que o menu contextual em modo compacto repete o mesmo
+    padrão visual (ícones e labels alinhados ao fim).
+26. Confirmar que a altura total da barra **não aumentou**.
+
+### Painel Duração — hierarquia tipográfica
+
+27. Abrir painel Duração.
+28. Confirmar que os três títulos principais — **Trechos**, **Pausas
+    por frame**, **Acabamento** — aparecem com mesmo corpo, peso e
+    cor (17px, bold, branco/cor principal). Visualmente equivalentes.
+29. Confirmar que os subtítulos internos (**INTERVALO PADRÃO**,
+    **TOTAL**, **TEMPO POR TRECHO**, **PAUSA POR FRAME**, **TUDO**,
+    **RETORNO**, **DURAÇÃO**) aparecem menores, em uppercase, com
+    letter-spacing discreto e cor cinza. Subordinados aos títulos.
+
+### Nomenclatura
+
+30. Confirmar que no painel Duração não aparece mais "Segmentos".
+31. Confirmar que aparece **Trechos** como cabeçalho da seção.
+32. Confirmar que aparece **Tempo por trecho** como subtítulo dos
+    sliders individuais.
+33. Confirmar que o resumo do topo mostra **Tempo dos trechos** em
+    vez de "Segmentos".
+
+### Caixa de seleção múltipla / alinhamento
+
+34. Selecionar 2 ou mais frames (toque longo).
+35. Confirmar que a caixa contextual aparece **por cima** sem
+    empurrar o stage.
+36. Confirmar layout primário: contador (número) · **Alinhar** ·
+    **Distribuir** · **Escala**.
+37. Confirmar que o visual usa o mesmo padrão do menu contextual de
+    frames (fundo sólido, mesmo slot inferior, ícones centralizados
+    acima de labels curtos, espaçamento limpo, sem amontoamento).
+38. Tocar em **Alinhar**. Confirmar que abre o submenu com 6 alvos
+    (Esq · Centro H · Dir · Topo · Centro V · Base) + botão Voltar.
+39. Confirmar que **Centro H** e **Centro V** funcionam (frames
+    alinhados horizontal/verticalmente como antes).
+40. Confirmar que **Esq, Dir, Topo, Base** aparecem desabilitados
+    visualmente (sem criar lógica nova nesta versão).
+41. Tocar em Voltar no submenu. Confirmar que volta à camada primária.
+42. Tocar no botão "Voltar" (chevron à esquerda) na camada primária.
+43. Confirmar que limpa a seleção múltipla e fecha a caixa.
+
+### Já validado na v8z4b16b — não pode ter regredido
+
+44. Sliders individuais subordinados ao global continuam **totalmente
+    cinzas** (track + thumb).
+45. Handle superior do painel Duração continua **fixo** ao rolar.
+46. Tempo mínimo de trecho funciona em **0.0s**.
+47. Sincronização painel Duração ↔ menu contextual continua válida.
+48. Scroll do painel Duração sem scroll interno indevido.
+49. Preview MP4 estável.
+50. Export MP4 estável.
+
+### Não pode ter regredido (geral)
+
+51. Lógica de tempo global, cálculo de tempo total, easing, curvas,
+    escala, rotação, posição: inalterados.
+52. Templates, cores, layout geral aprovado, ícones fora do escopo:
+    inalterados.
+
+### Critério de aceite
+
+A v8z4b16c deve fechar todos os pontos da revisão da v8z4b16b sem
+mexer no que já estava OK. Após teste manual completo, fica pronta
+para promoção ao app principal.
+
 ## v8z4b16b — Stabilize contextual menu and zero-second segments
 
 Foco: validar correções pontuais sobre a v8z4b16a — menu contextual

@@ -360,21 +360,23 @@ body.panel-open .stage.out-of-bounds::after{
 .ease-fp.ease-active svg{stroke:var(--accent);}
 
 /* BOTTOM TOOLBAR
-   v8z4b16a — A faixa de fundo invade visualmente a safe area inferior
-   (padding-bottom = env(safe-area-inset-bottom), background colore tudo
-   até a Home Bar). Os botões continuam acima da Home Bar pelo próprio
-   padding. Padding superior reduzido (8px → 4px) para compactar o slot
-   e devolver pixels ao stage. Estilo CapCut/Instagram/Lightroom. */
+   v8z4b16c — Slot inferior com altura EXPLÍCITA via --bottom-slot-h.
+   Toolbar e custBar compact-mode compartilham EXATAMENTE a mesma altura
+   computada, eliminando o tranco do stage ao abrir o menu contextual.
+   Conteúdo da toolbar é alinhado ao fim (flex-end) e o padding-top é
+   menor que o padding-bottom — botões/textos ficam mais baixos,
+   absorvendo a safe area de forma visualmente compacta. */
 .toolbar{
   flex-shrink:0;background:var(--surface);border-top:.5px solid var(--border);
-  padding:4px 4px env(safe-area-inset-bottom, 4px);
-  padding-bottom:max(env(safe-area-inset-bottom, 4px), 4px);
-  display:none;align-items:stretch;
+  padding:2px 4px max(env(safe-area-inset-bottom, 4px), 4px);
+  display:none;align-items:flex-end;
+  box-sizing:border-box;
+  height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px));
 }
 .toolbar.show{display:flex;}
 .tb-item{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;padding:4px 2px;cursor:pointer;border-radius:8px;min-width:0;
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+  gap:2px;padding:2px 2px 0;cursor:pointer;border-radius:8px;min-width:0;
   -webkit-user-select:none;user-select:none;
 }
 .tb-item:active{background:var(--surface2);}
@@ -714,20 +716,33 @@ body.panel-open .stage.out-of-bounds::after{
   padding-bottom:0 !important;
   max-height:min(38dvh, 280px) !important;
   overflow:hidden !important;
-  box-shadow:0 -8px 28px rgba(0,0,0,.45);
+  /* v8z4b16c — box-shadow removida. Antes criava faixa escura sobre o
+     stage acima da barra, dando aparência de degradê inferior. Toolbar
+     não tem shadow; igualar aqui para superfície sólida e contínua. */
+  box-shadow:none;
   z-index:1;
+}
+/* v8z4b16c — Altura ESPLÍCITA no modo compacto, idêntica à .toolbar.
+   Sem isso, mesmo com padding e min-height equivalentes, iOS Safari
+   pode arredondar diferenças sub-pixel e empurrar o stage por um frame
+   quando a toolbar troca pelo custBar. Travar a altura aqui elimina
+   qualquer deslocamento perceptível. */
+#custBar.compact-mode{
+  height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px)) !important;
+  max-height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px)) !important;
 }
 body.cust-open #toolbar{
   display:none !important;
 }
 #custBarTabs{
   background:var(--surface) !important;
-  /* v8z4b16a — Padding HERDADO da .toolbar para que o slot fique
-     EXATAMENTE com a mesma altura do menu inferior principal: top 4px,
-     laterais 4px, bottom = safe-area-inset (mínimo 4px). O custBar
-     substitui a toolbar visualmente — sem altura extra, sem wrapper. */
-  padding:4px 4px env(safe-area-inset-bottom, 4px) !important;
-  padding-bottom:max(env(safe-area-inset-bottom, 4px), 4px) !important;
+  /* v8z4b16c — Padding IDÊNTICO à .toolbar (top 2px, bottom = safe-area
+     min 4px), align-items:flex-end para baixar visualmente o conteúdo.
+     Garante mesma altura computada e mesma posição visual dos rótulos. */
+  padding:2px 4px max(env(safe-area-inset-bottom, 4px), 4px) !important;
+  align-items:flex-end !important;
+  box-sizing:border-box;
+  height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px));
 }
 #custBarContent{
   background:var(--surface) !important;
@@ -747,23 +762,53 @@ body.cust-open #toolbar{
 #custBar:not(.compact-mode) #custBarTabs{
   display:none !important;
 }
-/* v8z4b16b — cust-tabs com altura idêntica à .tb-item da toolbar
-   inferior. Toolbar tem padding 4px e seu item mais alto é o play (38px),
-   resultando em linha interna de 46px com align-items:stretch. Igualamos
-   aqui: flex:1 para distribuição, min-height:46px (= 4 + 38 + 4) para
-   que cada cust-tab tenha exatamente a mesma altura natural de tb-item.
-   O slot inteiro do custBar = padding (4 + safe) + 46px = idêntico à
-   toolbar. Pura troca de conteúdo, sem deslocar o stage. */
+/* v8z4b16c — cust-tabs alinhadas ao fim como os tb-items da toolbar,
+   compactando verticalmente: ícone e rótulo descem perto da safe area,
+   eliminando espaço morto acima e dando aparência de app nativo. */
 #custBar .cust-tab{
   flex:1;
-  min-height:46px;
   display:flex;
   flex-direction:column;
   align-items:center;
-  justify-content:center;
-  gap:4px;
+  justify-content:flex-end;
+  gap:2px;
+  padding:2px 2px 0;
   font-weight:600;
 }
+/* v8z4b16c — Barra de alinhamento (seleção múltipla) compartilha o
+   visual do menu contextual de frames. Mesma estrutura de ícone +
+   label, mesmo padding, mesmo tamanho, sem fundo flutuante. */
+#alignBar .ab-tab{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-end;
+  gap:2px;
+  padding:2px 2px 0;
+  background:transparent;
+  border:none;
+  cursor:pointer;
+  color:rgba(235,235,235,0.95);
+  -webkit-user-select:none;user-select:none;
+  font-weight:600;
+}
+#alignBar .ab-tab:active{background:var(--surface2);border-radius:8px;}
+#alignBar .ab-tab svg{
+  stroke:rgba(235,235,235,0.95);
+  color:rgba(235,235,235,0.95);
+}
+#alignBar .ab-tab .ab-lbl{
+  font-size:11px;
+  color:rgba(235,235,235,0.92);
+  letter-spacing:.1px;
+  line-height:1;
+}
+#alignBar .ab-tab-disabled{
+  opacity:.35;
+  cursor:not-allowed;
+}
+#alignBar .ab-tab-disabled:active{background:transparent;}
 #custBar .cust-tab svg{
   stroke:rgba(235,235,235,0.95) !important;
   color:rgba(235,235,235,0.95) !important;
@@ -870,10 +915,16 @@ body.cust-open #toolbar{
   box-sizing:border-box;
 }
 .dur-edit-row > .dur-edit-label{
-  font-size:12px;
-  font-weight:700;
-  color:var(--text2);
-  min-width:44px;
+  /* v8z4b16c — Labels internos dos sliders (Total, Tudo, Retorno,
+     Duração) tratados como subtítulos: menores, uppercase, com
+     letter-spacing discreto e cor cinza — não competem com os títulos
+     principais (Trechos, Pausas, Acabamento). */
+  font-size:11px;
+  font-weight:600;
+  color:var(--text3);
+  letter-spacing:1.4px;
+  text-transform:uppercase;
+  min-width:64px;
   flex-shrink:0;
 }
 .dur-edit-row > .dur-slider{
@@ -891,19 +942,17 @@ body.cust-open #toolbar{
 .dur-edit-row.is-bordered{
   border-top:1px solid var(--border2);
 }
-/* v8z4b16a — Painel Duração: cabeçalhos de bloco (Segmentos, Pausas,
-   Acabamento) são a ÚNICA fonte de linha divisória entre blocos
-   principais. Subitens dentro de um bloco compartilham a mesma faixa
-   contínua, sem traços horizontais entre si. Hierarquia visual:
-   - section header: 13px / 700 / text2 (chevron à direita, cyan)
-   - subitem-label: 13px / 500 / text2 (linha de controle)
-   - sublabel: 11px / 600 / text3 UPPERCASE (subtítulo descritivo)
-   - subitem-action: botão secundário (Igualar, Zerar) discreto */
+/* v8z4b16c — Hierarquia tipográfica revista. Os três títulos principais
+   (Trechos, Pausas por frame, Acabamento) ficam visualmente equivalentes
+   entre si, com corpo maior e peso forte. Subtítulos internos
+   (INTERVALO PADRÃO, TOTAL, TEMPO POR TRECHO, PAUSA POR FRAME, TUDO,
+   RETORNO) ficam claramente subordinados: menores, com letter-spacing
+   discreto, uppercase e cor cinza. */
 .dur-section-header{
   width:100%;display:flex;justify-content:space-between;align-items:center;
-  margin:6px 0 0;padding:12px 0 10px;
-  background:transparent;border:none;color:var(--text2);
-  font-size:13px;font-weight:700;cursor:pointer;
+  margin:6px 0 0;padding:14px 0 10px;
+  background:transparent;border:none;color:var(--text);
+  font-size:17px;font-weight:700;cursor:pointer;
   border-bottom:.5px solid var(--border);
 }
 .dur-section-chevron{
@@ -917,18 +966,20 @@ body.cust-open #toolbar{
   padding:10px 0;
 }
 .dur-subitem-label{
-  font-size:13px;font-weight:500;color:var(--text2);
+  font-size:11px;font-weight:600;color:var(--text3);
+  letter-spacing:1.4px;text-transform:uppercase;
 }
 .dur-sublabel-row{
   display:flex;justify-content:space-between;align-items:center;
-  padding:10px 0 4px 0;
+  padding:12px 0 4px 0;
 }
 .dur-sublabel{
-  font-size:10px;font-weight:600;color:var(--text3);
-  letter-spacing:.6px;text-transform:uppercase;
+  font-size:11px;font-weight:600;color:var(--text3);
+  letter-spacing:1.4px;text-transform:uppercase;
 }
 .dur-sublabel-value{
-  font-size:11px;font-weight:700;color:var(--text3);
+  font-size:11px;font-weight:600;color:var(--text3);
+  letter-spacing:.4px;
 }
 .dur-subitem-action{
   margin:8px 0 4px;width:100%;padding:11px 0;border-radius:10px;
@@ -1310,20 +1361,85 @@ body.cust-open #toolbar{
 </div>
 
 <!-- ALIGN BAR: aparece quando há seleção múltipla.
-     v8z4b15z — Padrão de navegação CapCut: seta "voltar" à esquerda
-     (sai da seleção múltipla), sem botão X. -->
-<div id="alignBar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--surface2);border-top:.5px solid var(--border);padding:8px 12px calc(8px + env(safe-area-inset-bottom));">
-  <div style="display:flex;align-items:center;gap:6px;">
-    <button type="button" aria-label="Voltar (sair da seleção)" onclick="clearMultiSelect()" style="padding:6px 10px 6px 4px;min-width:44px;min-height:44px;background:transparent;border:none;color:rgba(235,235,235,0.92);display:flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;">
-      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+     v8z4b16c — Caixa contextual de seleção múltipla redesenhada para
+     compartilhar a mesma linguagem visual do menu contextual de frames
+     (#custBar): fundo sólido, slot inferior consistente, ícones
+     centralizados, espaçamento limpo. Duas camadas:
+     (1) primária: Alinhar / Distribuir / Escala + botão Voltar e
+         contador de seleção;
+     (2) submenu Alinhar: 6 ícones de alinhamento (esq/centro-H/dir,
+         topo/centro-V/base). Apenas H (centro horizontal) e V (centro
+         vertical) têm lógica implementada; os demais ficam disponíveis
+         visualmente mas desabilitados, sem criar função nova nesta
+         versão.
+     A barra mantém position:fixed para entrar por cima sem empurrar o
+     stage, exatamente como antes. -->
+<div id="alignBar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--surface);border-top:.5px solid var(--border);box-sizing:border-box;height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px));padding:2px 4px max(env(safe-area-inset-bottom, 4px), 4px);">
+  <!-- Camada 1: primária -->
+  <div id="alignBarPrimary" style="display:flex;align-items:flex-end;height:100%;gap:2px;">
+    <button type="button" aria-label="Voltar (sair da seleção)" class="ab-tab" onclick="clearMultiSelect()" style="flex:0 0 56px;">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span class="ab-lbl" id="alignBarLabel">2</span>
     </button>
-    <span style="font-size:11px;color:var(--text3);flex-shrink:0;" id="alignBarLabel">2 selecionados</span>
-    <div style="display:flex;gap:6px;margin-left:auto;">
-      <div class="chip" style="padding:6px 10px;font-size:12px;" onclick="alignFrames('cx')">↔ H</div>
-      <div class="chip" style="padding:6px 10px;font-size:12px;" onclick="alignFrames('cy')">↕ V</div>
-      <div class="chip" style="padding:6px 10px;font-size:12px;" onclick="alignFrames('scale')">= Escala</div>
-      <div class="chip" style="padding:6px 10px;font-size:12px;" onclick="alignFrames('distribute')">⟺ Dist</div>
-    </div>
+    <button type="button" class="ab-tab" onclick="openAlignSubmenu()">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/>
+      </svg>
+      <span class="ab-lbl">Alinhar</span>
+    </button>
+    <button type="button" class="ab-tab" onclick="alignFrames('distribute')">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="6" x2="4" y2="18"/><line x1="12" y1="6" x2="12" y2="18"/><line x1="20" y1="6" x2="20" y2="18"/>
+      </svg>
+      <span class="ab-lbl">Distribuir</span>
+    </button>
+    <button type="button" class="ab-tab" onclick="alignFrames('scale')">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-scaling"></use></svg>
+      <span class="ab-lbl">Escala</span>
+    </button>
+  </div>
+  <!-- Camada 2: submenu Alinhar -->
+  <div id="alignBarSubmenu" style="display:none;align-items:flex-end;height:100%;gap:2px;">
+    <button type="button" aria-label="Voltar" class="ab-tab" onclick="closeAlignSubmenu()" style="flex:0 0 56px;">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span class="ab-lbl">Voltar</span>
+    </button>
+    <button type="button" class="ab-tab ab-tab-disabled" disabled aria-label="Alinhar à esquerda">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="4" x2="4" y2="20"/><rect x="7" y="7" width="10" height="3"/><rect x="7" y="14" width="14" height="3"/>
+      </svg>
+      <span class="ab-lbl">Esq</span>
+    </button>
+    <button type="button" class="ab-tab" onclick="alignFrames('cx');closeAlignSubmenu()" aria-label="Centro horizontal">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="4" x2="12" y2="20"/><rect x="7" y="7" width="10" height="3"/><rect x="5" y="14" width="14" height="3"/>
+      </svg>
+      <span class="ab-lbl">Centro H</span>
+    </button>
+    <button type="button" class="ab-tab ab-tab-disabled" disabled aria-label="Alinhar à direita">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="20" y1="4" x2="20" y2="20"/><rect x="10" y="7" width="7" height="3"/><rect x="3" y="14" width="14" height="3"/>
+      </svg>
+      <span class="ab-lbl">Dir</span>
+    </button>
+    <button type="button" class="ab-tab ab-tab-disabled" disabled aria-label="Alinhar ao topo">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="4" x2="20" y2="4"/><rect x="7" y="7" width="3" height="10"/><rect x="14" y="7" width="3" height="14"/>
+      </svg>
+      <span class="ab-lbl">Topo</span>
+    </button>
+    <button type="button" class="ab-tab" onclick="alignFrames('cy');closeAlignSubmenu()" aria-label="Centro vertical">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="12" x2="20" y2="12"/><rect x="7" y="7" width="3" height="10"/><rect x="14" y="5" width="3" height="14"/>
+      </svg>
+      <span class="ab-lbl">Centro V</span>
+    </button>
+    <button type="button" class="ab-tab ab-tab-disabled" disabled aria-label="Alinhar à base">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="20" x2="20" y2="20"/><rect x="7" y="10" width="3" height="7"/><rect x="14" y="3" width="3" height="14"/>
+      </svg>
+      <span class="ab-lbl">Base</span>
+    </button>
   </div>
 </div>
 <!--
@@ -1481,7 +1597,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b16b</span><br><span id="appVersionNameText">Stabilize contextual menu and zero-second segments</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b16c</span><br><span id="appVersionNameText">Stage stability, bottom slot and visual hierarchy</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1664,11 +1780,11 @@ body.cust-open #toolbar{
        Mostra: duração total (soma final) + breakdown por categoria. -->
   <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;">
     <span id="durNum" style="font-size:30px;font-weight:700;color:var(--accent);min-width:64px;flex-shrink:0;letter-spacing:-1px;">6s</span>
-    <span style="font-size:11px;color:var(--text3);line-height:1.3;">Duração total · soma de segmentos + pausas + acabamento</span>
+    <span style="font-size:11px;color:var(--text3);line-height:1.3;">Duração total · soma de trechos + pausas + acabamento</span>
   </div>
   <div id="durationSummaryTop" style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;padding:14px;border-radius:12px;background:var(--surface2);">
     <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);"><span>Duração total</span><span id="durSummaryTotal" style="font-weight:700;color:var(--accent);">0.0s</span></div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Segmentos</span><span id="durSummaryMove">0.0s</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Tempo dos trechos</span><span id="durSummaryMove">0.0s</span></div>
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Pausas</span><span id="durSummaryPauses">0.0s</span></div>
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Acabamento</span><span id="durSummaryFinish">0.0s</span></div>
   </div>
@@ -1679,7 +1795,7 @@ body.cust-open #toolbar{
        horizontais entre si. Subtítulos ("Tempo por segmento") em
        hierarquia visual menor (uppercase pequeno, var(--text3)). -->
   <button type="button" class="dur-section-header" onclick="toggleDurationSection('segments')">
-    <span>Segmentos</span><span id="durationSectionChevronSegments" class="dur-section-chevron">▾</span>
+    <span>Trechos</span><span id="durationSectionChevronSegments" class="dur-section-chevron">▾</span>
   </button>
   <div id="segBreakdown" class="dur-section-body" style="display:none;flex-direction:column;gap:2px;margin-bottom:6px;">
     <!-- (1) Intervalo padrão de novos frames. -->
@@ -1699,7 +1815,7 @@ body.cust-open #toolbar{
     </button>
     <!-- (4) Subtítulo + sliders individuais por segmento. -->
     <div class="dur-sublabel-row">
-      <span class="dur-sublabel">Tempo por segmento</span>
+      <span class="dur-sublabel">Tempo por trecho</span>
       <span id="segTotal" class="dur-sublabel-value">= 6s total</span>
     </div>
     <div id="segRows" style="display:flex;flex-direction:column;gap:0;"></div>
@@ -3746,8 +3862,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b16b';
-const APP_VERSION_NAME = 'Stabilize contextual menu and zero-second segments';
+const APP_VERSION = 'v8z4b16c';
+const APP_VERSION_NAME = 'Stage stability, bottom slot and visual hierarchy';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -5296,6 +5412,34 @@ stage.addEventListener('touchstart', e => {
     isPinching = true;
   }
 }, {passive:false});
+
+// v8z4b16c — Fechar custBar ao tocar em QUALQUER área vazia do stage
+// (fundo preto da .image-area, áreas sem frame). Antes, o close só
+// disparava no #stage (área da imagem). Agora a .image-area inteira é
+// alvo, com whitelist explícita das regiões interativas que NÃO devem
+// fechar o menu: o próprio custBar, os controles do menu, sliders,
+// handles, faixa de frames (#midBar), barra de alinhamento e botões
+// do topo.
+(function attachImageAreaCloseHandler(){
+  const imgArea = document.getElementById('imageArea');
+  if (!imgArea) return;
+  imgArea.addEventListener('pointerdown', (e) => {
+    const custBar = document.getElementById('custBar');
+    if (!custBar || custBar.style.display === 'none') return;
+    if (window._isoMode) return;
+    // Whitelist: tocar nestes elementos NÃO fecha o menu contextual.
+    if (e.target.closest('#custBar')) return;
+    if (e.target.closest('#midBar')) return;
+    if (e.target.closest('#alignBar')) return;
+    if (e.target.closest('.top-bar')) return;
+    if (e.target.closest('.float-panel')) return;
+    if (e.target.closest('.global-handle')) return;
+    if (e.target.closest('.ctrl-pt')) return;
+    // Tudo o mais dentro da image-area (imagem, fundo preto, canvas,
+    // áreas vazias) fecha o menu contextual.
+    closeCustBar();
+  }, true);
+})();
 
 document.addEventListener('pointerdown', (e) => {
   const bar = document.getElementById('alignBar');
@@ -6966,7 +7110,7 @@ function selectSegEase(ease, seg) {
   ensureSegEasings();
   if (segGlobalMode) {
     for (let i = 0; i < frameCount - 1; i++) segEasings[i] = ease;
-    showStatus('Próximo ajuste aplicado a todos os segmentos');
+    showStatus('Próximo ajuste aplicado a todos os trechos');
   } else {
     segEasings[seg] = ease;
   }
@@ -8794,14 +8938,38 @@ function updateAlignBar() {
   const count = selectedFrames.size;
   if (count >= 2) {
     bar.style.display = 'block';
-    if (lbl) lbl.textContent = count + ' selecionados';
+    // v8z4b16c — Label compacto (apenas número). Mantém leitura clara
+    // sem alongar a primeira "aba" Voltar — o ícone de chevron já
+    // indica que é o botão de voltar/sair da seleção.
+    if (lbl) lbl.textContent = String(count);
+    // Sempre que o conjunto muda, voltamos à camada primária para
+    // evitar deixar o usuário preso no submenu Alinhar com seleção
+    // alterada.
+    closeAlignSubmenu();
   } else {
     bar.style.display = 'none';
   }
 }
 
+// v8z4b16c — Alterna entre camada primária e submenu Alinhar.
+// O submenu ocupa o mesmo slot inferior (mesma altura), apenas troca
+// o conteúdo visível — não empurra o stage.
+function openAlignSubmenu() {
+  const p = document.getElementById('alignBarPrimary');
+  const s = document.getElementById('alignBarSubmenu');
+  if (p) p.style.display = 'none';
+  if (s) s.style.display = 'flex';
+}
+function closeAlignSubmenu() {
+  const p = document.getElementById('alignBarPrimary');
+  const s = document.getElementById('alignBarSubmenu');
+  if (s) s.style.display = 'none';
+  if (p) p.style.display = 'flex';
+}
+
 function clearMultiSelect() {
   selectedFrames.clear();
+  closeAlignSubmenu();
   updateFrameSelector();
   updateAlignBar();
 }
@@ -8950,19 +9118,26 @@ function updateTemplateBtn() {
 // Aberturas subsequentes durante a mesma sessão preservam o estado
 // expandido — só a abertura inicial entra em compact-mode.
 function openCustBar() {
+  // v8z4b16c — Ordem importa: aplicar `cust-open` ANTES de mostrar o
+  // custBar elimina o frame intermediário em que toolbar e custBar
+  // poderiam estar simultaneamente no fluxo. Como ambos têm a mesma
+  // altura computada (--bottom-slot-h), a troca é visualmente neutra.
   const bar = document.getElementById('custBar');
+  const wasHidden = !bar || bar.style.display === 'none' || !bar.style.display;
+  document.body.classList.add('cust-open');
   if (bar) {
-    const wasHidden = bar.style.display === 'none' || !bar.style.display;
+    if (wasHidden) bar.classList.add('compact-mode');
     bar.style.display = 'flex';
     bar.style.flexDirection = 'column';
-    if (wasHidden) bar.classList.add('compact-mode');
   }
-  document.body.classList.add('cust-open');
   syncCustomizePanel();
   initScaleSlider();
 }
 
 function closeCustBar() {
+  // v8z4b16c — Esconder custBar primeiro, depois remover `cust-open`
+  // para devolver a toolbar. Mantém simetria com openCustBar e evita
+  // qualquer reflow visível durante a troca.
   const bar = document.getElementById('custBar');
   if (bar) {
     bar.style.display = 'none';
