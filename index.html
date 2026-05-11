@@ -359,11 +359,16 @@ body.panel-open .stage.out-of-bounds::after{
 .ease-fp.ease-active{background:rgba(4,255,242,0.15);border-color:var(--accent);}
 .ease-fp.ease-active svg{stroke:var(--accent);}
 
-/* BOTTOM TOOLBAR */
+/* BOTTOM TOOLBAR
+   v8z4b16a — A faixa de fundo invade visualmente a safe area inferior
+   (padding-bottom = env(safe-area-inset-bottom), background colore tudo
+   até a Home Bar). Os botões continuam acima da Home Bar pelo próprio
+   padding. Padding superior reduzido (8px → 4px) para compactar o slot
+   e devolver pixels ao stage. Estilo CapCut/Instagram/Lightroom. */
 .toolbar{
   flex-shrink:0;background:var(--surface);border-top:.5px solid var(--border);
-  padding:8px 4px env(safe-area-inset-bottom, 8px);
-  padding-bottom:max(env(safe-area-inset-bottom, 8px), 8px);
+  padding:4px 4px env(safe-area-inset-bottom, 4px);
+  padding-bottom:max(env(safe-area-inset-bottom, 4px), 4px);
   display:none;align-items:stretch;
 }
 .toolbar.show{display:flex;}
@@ -717,14 +722,19 @@ body.cust-open #toolbar{
 }
 #custBarTabs{
   background:var(--surface) !important;
-  /* Sem border-top: a barra de ícones ocupa o slot da toolbar e a única
-     borda superior visível é a do próprio #custBar. */
-  padding:6px 4px env(safe-area-inset-bottom, 8px) !important;
-  padding-bottom:max(env(safe-area-inset-bottom, 8px), 8px) !important;
+  /* v8z4b16a — Padding HERDADO da .toolbar para que o slot fique
+     EXATAMENTE com a mesma altura do menu inferior principal: top 4px,
+     laterais 4px, bottom = safe-area-inset (mínimo 4px). O custBar
+     substitui a toolbar visualmente — sem altura extra, sem wrapper. */
+  padding:4px 4px env(safe-area-inset-bottom, 4px) !important;
+  padding-bottom:max(env(safe-area-inset-bottom, 4px), 4px) !important;
 }
 #custBarContent{
   background:var(--surface) !important;
-  min-height:122px !important;
+  /* v8z4b16a — Conteúdo expandido herda a mesma área inferior segura
+     que a toolbar (padding-bottom = safe-area), sem min-height extra
+     que aumente a altura visual do contextual em relação à toolbar. */
+  padding-bottom:max(env(safe-area-inset-bottom, 4px), 4px) !important;
   overflow-y:auto !important;
   -webkit-overflow-scrolling:touch;
 }
@@ -737,11 +747,13 @@ body.cust-open #toolbar{
 #custBar:not(.compact-mode) #custBarTabs{
   display:none !important;
 }
-/* v8z4b15y — cust-tabs alinhadas com a futura toolbar inferior principal:
-   ícone branco em cima, label branco embaixo, altura ~72px (mesma ergonomia
-   que .toolbar > .tb-item). */
+/* v8z4b15y — cust-tabs alinhadas com a toolbar inferior principal:
+   ícone branco em cima, label branco embaixo. v8z4b16a: min-height
+   reduzido para 56px (mesma altura natural de .toolbar > .tb-item +
+   padding 4px da .toolbar). O slot inteiro do custBar fica visualmente
+   igual à toolbar — pura troca de conteúdo, sem aumento de altura. */
 #custBar .cust-tab{
-  min-height:72px;
+  min-height:56px;
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -848,6 +860,52 @@ body.cust-open #toolbar{
 .dur-edit-row.is-bordered{
   border-top:1px solid var(--border2);
 }
+/* v8z4b16a — Painel Duração: cabeçalhos de bloco (Segmentos, Pausas,
+   Acabamento) são a ÚNICA fonte de linha divisória entre blocos
+   principais. Subitens dentro de um bloco compartilham a mesma faixa
+   contínua, sem traços horizontais entre si. Hierarquia visual:
+   - section header: 13px / 700 / text2 (chevron à direita, cyan)
+   - subitem-label: 13px / 500 / text2 (linha de controle)
+   - sublabel: 11px / 600 / text3 UPPERCASE (subtítulo descritivo)
+   - subitem-action: botão secundário (Igualar, Zerar) discreto */
+.dur-section-header{
+  width:100%;display:flex;justify-content:space-between;align-items:center;
+  margin:6px 0 0;padding:12px 0 10px;
+  background:transparent;border:none;color:var(--text2);
+  font-size:13px;font-weight:700;cursor:pointer;
+  border-bottom:.5px solid var(--border);
+}
+.dur-section-chevron{
+  font-size:24px;font-weight:700;color:var(--accent);line-height:1;
+}
+.dur-section-body{
+  padding-top:6px;
+}
+.dur-subitem{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0;
+}
+.dur-subitem-label{
+  font-size:13px;font-weight:500;color:var(--text2);
+}
+.dur-sublabel-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0 4px 0;
+}
+.dur-sublabel{
+  font-size:10px;font-weight:600;color:var(--text3);
+  letter-spacing:.6px;text-transform:uppercase;
+}
+.dur-sublabel-value{
+  font-size:11px;font-weight:700;color:var(--text3);
+}
+.dur-subitem-action{
+  margin:8px 0 4px;width:100%;padding:11px 0;border-radius:10px;
+  border:1px solid var(--border2);background:var(--surface2);
+  font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;
+  min-height:44px;
+}
+.dur-subitem-action:active{background:var(--surface3);}
 /* v8z4b15z — slider "Tudo" em estado misto: track e thumb dessaturados,
    indicando que os frames têm valores diferentes. Arrastar SAI do estado
    misto e aplica imediatamente a todos os frames. */
@@ -859,12 +917,53 @@ body.cust-open #toolbar{
 #framePauseGlobalRow.global-mixed .dur-edit-value{
   color:var(--text3) !important;
 }
+/* v8z4b16a — Estado "tudo sincronizado pelo global": individuais ficam
+   visualmente subordinados (cinza, menor contraste), indicando que a
+   edição efetiva acontece no slider "Tudo". Qualquer divergência (drag
+   num individual) sai automaticamente desse estado e re-acende o slider.
+   Base estrutural pronta para futura seleção parcial de grupos:
+   .global-synced fica em um container pai; alvos com .partial-synced
+   poderão receber a mesma dessaturação em escopo menor. */
+#framePauseRows.global-synced .dur-edit-row .dur-slider{
+  filter:grayscale(1);
+  opacity:.45;
+}
+#framePauseRows.global-synced .dur-edit-row .dur-edit-label,
+#framePauseRows.global-synced .dur-edit-row .dur-edit-value{
+  color:var(--text3) !important;
+}
+.dur-edit-row.partial-synced .dur-slider{
+  filter:grayscale(1);
+  opacity:.45;
+}
+.dur-edit-row.partial-synced .dur-edit-label,
+.dur-edit-row.partial-synced .dur-edit-value{
+  color:var(--text3) !important;
+}
 /* v8z4b15z — track ligeiramente mais grossa para conforto visual. */
 .dur-slider{
   height:6px;
 }
 .dur-slider::-webkit-slider-thumb{
   width:30px;height:30px;
+}
+/* v8z4b16a — Sliders herdam visual unificado:
+   - parte ativa (antes do thumb): cyan/turquesa do app (var(--accent))
+   - parte inativa: cinza escuro (var(--surface3))
+   accent-color é nativo no Safari iOS 15.4+ — fluxo principal alvo do
+   app — e tinge tanto o thumb quanto a faixa ativa. Aplica-se a TODOS
+   os sliders editáveis: pausas, segmentos, locais (custBar) e
+   acabamento (Retorno/Duração). Sem glow exagerado; o thumb branco
+   atual (.dur-slider::-webkit-slider-thumb) permanece como ponto de
+   contraste — accent-color só pinta a faixa ativa em iOS quando o
+   thumb é o padrão; para preservar o thumb branco usado hoje, usamos
+   um gradiente via CSS gerado por JS (setSliderFill) que pinta a
+   faixa ativa em cyan e a inativa em cinza escuro, sem glow. */
+.dur-slider{
+  background:linear-gradient(to right, var(--accent) 0%, var(--accent) var(--fill,0%), var(--surface3) var(--fill,0%), var(--surface3) 100%);
+}
+.dur-slider:disabled{
+  background:var(--surface3);
 }
 
 </style>
@@ -1080,8 +1179,12 @@ body.cust-open #toolbar{
 </svg>
 <div class="app">
 
-<!-- TOP BAR -->
-<div class="top-bar" id="topBar">
+<!-- TOP BAR
+     v8z4b16a — Marcada com data-role="top-bar". Reserva semântica para
+     o futuro slot de "Play fixo superior" (acessível sem fechar o menu
+     contextual). Nenhuma mudança de layout agora; apenas evita
+     dependências (CSS/JS) que impeçam o slot depois. -->
+<div class="top-bar" id="topBar" data-role="top-bar">
   <div class="top-btn" id="topBtnMapa" onclick="toggleMapa()" title="Modo Mapa">
     <svg viewBox="0 0 24 24"><use href="#i-mapa"></use></svg>
   </div>
@@ -1134,16 +1237,20 @@ body.cust-open #toolbar{
   </div>
 </div>
 
-<!-- MID BAR: lock | inverter | pills | − | + -->
-<div class="mid-bar show" id="midBar">
+<!-- MID BAR: lock | inverter | pills | − | +
+     v8z4b16a — Marcado com data-role="timeline-strip" como base
+     estrutural da futura "frame strip" contínua (swipe horizontal
+     com o frame ativo no centro). Os filhos atuais permanecem como
+     estão; nenhuma mudança comportamental. -->
+<div class="mid-bar show" id="midBar" data-role="timeline-strip">
   <div class="mid-play" id="btnLockFrame" onclick="toggleFrameLock()" title="Travar frame" style="padding:0 12px;border-right:.5px solid var(--border);">
     <svg style="width:26px;height:26px;display:block;" viewBox="0 0 24 24"><use href="#i-lock"></use></svg>
   </div>
   <div class="mid-play" id="btnInvert" onclick="invertFrames()" title="Inverter sentido" style="padding:0 12px;border-right:.5px solid var(--border);">
     <svg style="width:26px;height:26px;display:block;" viewBox="0 0 24 24"><use href="#i-invert"></use></svg>
   </div>
-  <!-- Pills -->
-  <div class="mid-pills" id="pillsRow" style="flex:1;overflow-x:auto;align-items:center;gap:6px;padding:0 8px;display:flex;"></div>
+  <!-- Pills — preparado como container do futuro frame-strip contínuo. -->
+  <div class="mid-pills" id="pillsRow" data-role="timeline-pills" style="flex:1;overflow-x:auto;align-items:center;gap:6px;padding:0 8px;display:flex;"></div>
   <!-- Adicionar e deletar — fixos à direita -->
   <div class="mid-play" onclick="deleteActiveFrame()" title="Remover frame selecionado" style="padding:0 10px;border-left:.5px solid var(--border);">
     <svg style="width:26px;height:26px;display:block;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1229,15 +1336,17 @@ body.cust-open #toolbar{
         </div>
       </div>
     </div>
-    <!-- Aba Duração/Pausa local — controla apenas a pausa do frame ativo. -->
+    <!-- Aba Pausa local — controla apenas a pausa do frame ativo.
+         v8z4b16a — Submenu compacto: slider + valor + reset. Sem
+         label "Frame Fn" nem texto explicativo (cabeçalho redundante
+         com o próprio toque no frame; o usuário sabe qual frame
+         editou). -->
     <div id="custTabFramepause" class="cust-content" style="display:none;">
-      <div id="framePauseLocalLabel" style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;">Frame F1</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:14px;">Duração/pausa neste frame (0 = sem pausa)</div>
       <div style="display:flex;align-items:center;gap:12px;">
         <input type="range" class="dur-slider" id="framePauseSlider" min="0" max="5" step="0.1" value="0" style="flex:1;">
         <span id="framePauseVal" style="font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">0s</span>
       </div>
-      <div style="display:flex;gap:10px;margin-top:18px;">
+      <div style="display:flex;gap:10px;margin-top:14px;">
         <div class="chip" style="padding:13px 20px;font-size:14px;min-height:48px;justify-content:center;margin-left:auto;" onclick="resetFramePause()">Reset</div>
       </div>
     </div>
@@ -1248,27 +1357,37 @@ body.cust-open #toolbar{
     nome branco abaixo). Mesma linguagem visual; aqui são ícones LOCAIS
     do frame.
   -->
+  <!--
+    v8z4b16a — Ordem oficial do menu contextual (estilo CapCut): Pausa,
+    Rotação, Escala, Posição, Curvas, Adicionar. "Curvas" e "Adicionar"
+    são ações rápidas: a primeira abre o painel de easing do segmento
+    seguinte (sem submenu interno); a segunda insere um frame logo após
+    o ativo. Ambas fecham o contextual ao agir.
+  -->
   <div id="custBarTabs" style="display:flex;align-items:center;background:var(--surface);">
-    <div class="cust-tab active-tab" data-tab="scale" onclick="switchCustTab('scale')">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-scaling"></use></svg>
-      <span class="cust-tab-lbl">Escala</span>
+    <div class="cust-tab" data-tab="framepause" onclick="switchCustTab('framepause')">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-pause"></use></svg>
+      <span class="cust-tab-lbl">Pausa</span>
     </div>
     <div class="cust-tab" data-tab="rot" onclick="switchCustTab('rot')">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-rotate-cw"></use></svg>
       <span class="cust-tab-lbl">Rotação</span>
     </div>
+    <div class="cust-tab active-tab" data-tab="scale" onclick="switchCustTab('scale')">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-scaling"></use></svg>
+      <span class="cust-tab-lbl">Escala</span>
+    </div>
     <div class="cust-tab" data-tab="pos" onclick="switchCustTab('pos')">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-move"></use></svg>
       <span class="cust-tab-lbl">Posição</span>
     </div>
-    <!--
-      v8z4b15w — Ícone semântico de duração/tempo (relógio) substitui o
-      ícone de pause anterior. Controla duração local do frame, não apenas
-      pausa.
-    -->
-    <div class="cust-tab" data-tab="framepause" onclick="switchCustTab('framepause')">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      <span class="cust-tab-lbl">Duração</span>
+    <div class="cust-tab" data-tab="curve" onclick="openCurveForActive()">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-ease-curve"></use></svg>
+      <span class="cust-tab-lbl">Curvas</span>
+    </div>
+    <div class="cust-tab" data-tab="add" onclick="addFrameFromContext()">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-circle-plus"></use></svg>
+      <span class="cust-tab-lbl">Adicionar</span>
     </div>
   </div>
 </div>
@@ -1322,7 +1441,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b15z</span><br><span id="appVersionNameText">Frame menu hierarchy and duration panel fixes</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b16a</span><br><span id="appVersionNameText">Mobile UI consolidation: contextual menu, sliders, duration panel</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1514,84 +1633,69 @@ body.cust-open #toolbar{
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Acabamento</span><span id="durSummaryFinish">0.0s</span></div>
   </div>
 
-  <!-- SEÇÃO: Segmentos (controles editáveis dos segmentos). -->
-  <button type="button" onclick="toggleDurationSection('segments')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:10px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
-    <span>Segmentos</span><span id="durationSectionChevronSegments" style="font-size:28px;font-weight:800;color:var(--accent);line-height:1;">▾</span>
+  <!-- v8z4b16a — SEÇÃO: Segmentos. Linha divisória APENAS no cabeçalho
+       principal de bloco; subitens (intervalo padrão, total, igualar,
+       tempo por segmento) compartilham o mesmo bloco sem traços
+       horizontais entre si. Subtítulos ("Tempo por segmento") em
+       hierarquia visual menor (uppercase pequeno, var(--text3)). -->
+  <button type="button" class="dur-section-header" onclick="toggleDurationSection('segments')">
+    <span>Segmentos</span><span id="durationSectionChevronSegments" class="dur-section-chevron">▾</span>
   </button>
-  <!-- v8z4b15z — ordem oficial:
-       1) Intervalo padrão  2) Tempo total dos intervalos (slider global)
-       3) Igualar intervalos  4) Sliders individuais.
-       Sem nested scroll: #panelDuration é a única superfície que rola.
-       Linhas com slider usam .dur-edit-row (idêntica entre Segmentos e
-       Pausas, garantindo mesma largura útil de track). -->
-  <div id="segBreakdown" style="display:none;flex-direction:column;gap:6px;padding-top:14px;margin-bottom:18px;">
+  <div id="segBreakdown" class="dur-section-body" style="display:none;flex-direction:column;gap:2px;margin-bottom:6px;">
     <!-- (1) Intervalo padrão de novos frames. -->
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;">
-      <span style="font-size:13px;color:var(--text2);">Intervalo padrão</span>
+    <div class="dur-subitem">
+      <span class="dur-subitem-label">Intervalo padrão</span>
       <input id="newSegmentDurationInput" type="number" min="1" step="1" value="2" style="width:84px;padding:10px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:14px;font-weight:600;text-align:right;">
     </div>
-    <!-- (2) Slider global: tempo total dos intervalos (apenas segmentos, redistribuição proporcional). -->
-    <div class="dur-edit-row is-bordered">
+    <!-- (2) Slider global: tempo total dos intervalos. -->
+    <div class="dur-edit-row">
       <span class="dur-edit-label">Total</span>
       <input type="range" class="dur-slider" id="durSlider" min="1" max="60" step="0.1" value="4">
       <span id="durSegTotal" class="dur-edit-value">4.0s</span>
     </div>
     <!-- (3) Igualar intervalos. -->
-    <button onclick="distributeSegEqual()"
-      style="margin:6px 0 4px 0;width:100%;padding:14px 0;border-radius:12px;border:1px solid var(--border2);
-             background:var(--surface2);font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;min-height:48px;">
+    <button onclick="distributeSegEqual()" class="dur-subitem-action">
       Igualar intervalos
     </button>
-    <!-- (4) Cabeçalho + sliders individuais por segmento. -->
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 4px 0;border-top:1px solid var(--border2);">
-      <span style="font-size:12px;font-weight:600;color:var(--text3);">Tempo por segmento</span>
-      <span id="segTotal" style="font-size:12px;font-weight:700;color:var(--accent);">= 6s total</span>
+    <!-- (4) Subtítulo + sliders individuais por segmento. -->
+    <div class="dur-sublabel-row">
+      <span class="dur-sublabel">Tempo por segmento</span>
+      <span id="segTotal" class="dur-sublabel-value">= 6s total</span>
     </div>
     <div id="segRows" style="display:flex;flex-direction:column;gap:0;"></div>
   </div>
 
-  <!-- SEÇÃO: Pausas por frame (controles globais e individuais). -->
-  <button type="button" onclick="toggleDurationSection('pauses')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:10px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
-    <span>Pausas por frame</span><span id="durationSectionChevronPauses" style="font-size:28px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
+  <!-- v8z4b16a — SEÇÃO: Pausas por frame. Mesma hierarquia visual de
+       Segmentos: header com border-bottom, subitens sem traços
+       internos, subtítulo "Pausa por frame" em hierarquia menor. -->
+  <button type="button" class="dur-section-header" onclick="toggleDurationSection('pauses')">
+    <span>Pausas por frame</span><span id="durationSectionChevronPauses" class="dur-section-chevron">▸</span>
   </button>
-  <!-- v8z4b15z — estrutura UNIFICADA com Segmentos via .dur-edit-row.
-       NENHUM wrapper intermediário entre #framePauseSection e o row do
-       slider — assim o thumb tem a mesma largura útil que os sliders de
-       Segmentos. Sem overflow interno: a única rolagem é a do próprio
-       #panelDuration. O slider "Tudo" é global real (estado misto quando
-       frames divergem, aplica a todos imediatamente ao arrastar). O
-       antigo botão "Aplicar a todos" foi removido. -->
-  <div id="framePauseSection" style="display:none;flex-direction:column;gap:6px;padding-top:14px;margin-bottom:18px;">
-    <!-- Slider GLOBAL "Tudo": arrastar aplica a todos imediatamente. Quando os
-         frames têm valores diferentes, entra em estado misto/cinza (.global-mixed). -->
+  <div id="framePauseSection" class="dur-section-body" style="display:none;flex-direction:column;gap:2px;margin-bottom:6px;">
+    <!-- Slider GLOBAL "Tudo". -->
     <div id="framePauseGlobalRow" class="dur-edit-row">
       <span id="framePauseGlobalLabel" class="dur-edit-label">Tudo</span>
       <input type="range" class="dur-slider" id="framePauseGlobalSlider" min="0" max="5" step="0.1" value="0">
       <span id="framePauseGlobalVal" class="dur-edit-value">0.0s</span>
     </div>
-    <!-- Cabeçalho + sliders individuais (mesma estrutura visual dos segmentos). -->
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 4px 0;border-top:1px solid var(--border2);">
-      <span style="font-size:12px;font-weight:600;color:var(--text3);">Pausa por frame</span>
-      <span id="framePauseRowsTotal" style="font-size:12px;font-weight:700;color:var(--accent);">= 0s pausa</span>
+    <!-- Subtítulo + sliders individuais. -->
+    <div class="dur-sublabel-row">
+      <span class="dur-sublabel">Pausa por frame</span>
+      <span id="framePauseRowsTotal" class="dur-sublabel-value">= 0s pausa</span>
     </div>
     <div id="framePauseRows" style="display:flex;flex-direction:column;gap:0;"></div>
-    <!-- Reset global das pausas (área clicável aumentada). -->
-    <button type="button" onclick="resetAllFramePauses()"
-      style="margin-top:8px;width:100%;padding:14px 0;border-radius:12px;border:1px solid var(--border2);
-             background:var(--surface2);font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;min-height:48px;">
+    <button type="button" onclick="resetAllFramePauses()" class="dur-subitem-action">
       Zerar pausas
     </button>
   </div>
 
-  <button type="button" onclick="toggleDurationSection('finish')" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin:8px 0;padding:8px 0;background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border2);">
-    <span>Acabamento</span><span id="durationSectionChevronFinish" style="font-size:28px;font-weight:800;color:var(--accent);line-height:1;">▸</span>
+  <button type="button" class="dur-section-header" onclick="toggleDurationSection('finish')">
+    <span>Acabamento</span><span id="durationSectionChevronFinish" class="dur-section-chevron">▸</span>
   </button>
-  <!-- v8z4b15z — padding-top 28px para que os chips/slider tenham respiro
-       extra ao abrir, em consistência visual com Segmentos e Pausas (que
-       já reservam espaço pelo padding-top:14px + linha "Tudo"/"Total").
-       Sem nested scroll. Linhas de slider usam .dur-edit-row para casar
-       com a largura útil de Segmentos/Pausas. -->
-  <div id="finishSection" style="display:none;padding-top:28px;margin-bottom:6px;">
+  <!-- v8z4b16a — Acabamento: mesma hierarquia visual de Segmentos /
+       Pausas (header com border-bottom, corpo sem traços internos).
+       padding-top reduzido pois o cabeçalho de bloco já reserva folga. -->
+  <div id="finishSection" class="dur-section-body" style="display:none;padding-top:10px;margin-bottom:6px;">
     <div style="display:flex;gap:8px;margin-bottom:18px;">
       <div class="finish-chip active" data-finish="none" onclick="setFinishing('none')"
         style="flex:1;padding:12px 4px;text-align:center;border-radius:12px;background:var(--surface2);border:1.5px solid var(--accent);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);min-height:46px;display:flex;align-items:center;justify-content:center;">
@@ -7217,6 +7321,17 @@ document.addEventListener('DOMContentLoaded', () => {
     loopSlider.addEventListener('touchstart', () => pushUndo(), {passive:true});
   }
 
+  // v8z4b16a — Faixa ativa do slider (cyan) acompanha o valor.
+  // Sem listener por slider: usa delegação no documento e pinta o
+  // --fill (var CSS) com a porcentagem atual. Roda também numa
+  // varredura inicial (após DOMContentLoaded) e sempre que algum
+  // refresh repinta valores (ver refreshSliderFills()).
+  document.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t && t.classList && t.classList.contains('dur-slider')) updateSliderFill(t);
+  }, true);
+  refreshSliderFills();
+
   // Esconder barra do Safari no iPhone (funciona no browser, não só no standalone)
   if (/iPhone|iPad/.test(navigator.userAgent)) {
     setTimeout(() => window.scrollTo(0, 1), 100);
@@ -7224,6 +7339,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Popup de restauração automática removido no patch v8z4b15s.
 });
+
+// v8z4b16a — helpers de fill cyan/cinza.
+function updateSliderFill(slider) {
+  if (!slider) return;
+  const min = parseFloat(slider.min) || 0;
+  const max = parseFloat(slider.max) || 100;
+  const val = parseFloat(slider.value);
+  const pct = (!isFinite(val) || max <= min) ? 0 : Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+  slider.style.setProperty('--fill', pct + '%');
+}
+function refreshSliderFills() {
+  document.querySelectorAll('.dur-slider').forEach(updateSliderFill);
+}
 
 
 // ═══════════════════════════════════════
@@ -8811,6 +8939,21 @@ function collapseCustBar() {
   bar.classList.add('compact-mode');
 }
 
+// v8z4b16a — Curvas (easing do segmento seguinte) e Adicionar frame são
+// ações rápidas do menu contextual: fecham o custBar e disparam o fluxo
+// existente. Curvas: usa o ease panel do segmento "next" — sem submenu
+// interno (evita duplicar UI de easing). Adicionar: insere frame após
+// o ativo via fluxo já validado de insertFrameAfterActive().
+function openCurveForActive() {
+  closeCustBar();
+  if (typeof openEaseForSeg === 'function') openEaseForSeg('next');
+  else if (typeof openPanel === 'function') openPanel('Ease');
+}
+function addFrameFromContext() {
+  if (typeof insertFrameAfterActive === 'function') insertFrameAfterActive();
+  closeCustBar();
+}
+
 function updateEasePills() {
   updateFrameSelector();
 }
@@ -8955,6 +9098,11 @@ function refreshPauseControls() {
       }
     }
     if (globalRow) globalRow.classList.toggle('global-mixed', !allEqual);
+    // v8z4b16a — Quando todos os frames têm o mesmo valor de pausa,
+    // marcamos os rows individuais como "sincronizados pelo global":
+    // ficam dessaturados, comunicando que a edição efetiva está no slider
+    // "Tudo". Mexer num individual sai automaticamente (allEqual=false).
+    if (rowsContainer) rowsContainer.classList.toggle('global-synced', allEqual);
     if (allEqual) {
       const formatted = ref.toFixed(1);
       if (parseFloat(globalSlider.value) !== parseFloat(formatted)) {
@@ -8996,6 +9144,8 @@ function refreshPauseControls() {
   // Totais (toolbar + painel Duração)
   syncDurationUI();
   updateDurationUI();
+  // v8z4b16a — repinta fill cyan/cinza dos sliders que foram atualizados.
+  if (typeof refreshSliderFills === 'function') refreshSliderFills();
 }
 
 // Aliases mantidos para callers existentes — agora todos roteiam para o mesmo refresh.

@@ -137,6 +137,104 @@ Use depois de qualquer alteração, mesmo pequena.
 24. Reabrir JSON.
 25. Testar no iPhone/Safari via GitHub Pages com cache busting.
 
+## v8z4b16a — Mobile UI consolidation: contextual menu, sliders, duration panel
+
+Foco: validar a paridade de altura entre menu contextual e toolbar,
+ordem nova das abas, sliders com faixa ativa cyan, painel Duração com
+hierarquia limpa, sliders individuais subordinados ao "Tudo", invasão
+visual da safe area e que nada da engine de animação foi tocado.
+
+### Versão
+
+1. Abrir o app.
+2. Abrir o menu de configurações (engrenagem).
+3. Confirmar: **Arco v8z4b16a — Mobile UI consolidation**.
+
+### Menu contextual — altura idêntica à toolbar
+
+4. Sem tocar em nenhum frame, conferir a altura da toolbar inferior.
+5. Tocar num frame para abrir o menu contextual em modo compacto.
+6. Confirmar que a faixa do menu contextual ocupa **exatamente** a
+   mesma altura total da toolbar (parece pura troca de conteúdo, sem
+   invasão extra do stage, sem wrapper extra).
+7. Expandir uma função (ex. Escala). Confirmar que a altura do bloco
+   expandido também respeita o safe-area-inset-bottom igual à toolbar.
+
+### Menu contextual — ordem e ações rápidas
+
+8. Em modo compacto, confirmar a ordem exata das abas:
+   **Pausa, Rotação, Escala, Posição, Curvas, Adicionar**.
+9. Tocar em **Curvas**: o menu contextual fecha e o painel de easing
+   do segmento seguinte abre.
+10. Reabrir o contextual num frame e tocar em **Adicionar**:
+    confirmar que um frame é inserido após o ativo e o contextual
+    fecha.
+11. Tocar na aba **Pausa**: confirmar que o submenu mostra **apenas**
+    slider + valor + Reset. Sem rótulo "Frame F1", sem texto
+    "Duração/pausa neste frame".
+12. Tocar fora (stage) durante o submenu: confirmar que tudo fecha e
+    a toolbar inferior reaparece (não exige múltiplos "voltar").
+13. Tocar em outro frame com o contextual aberto: confirmar que o
+    menu troca para aquele frame sem fechar.
+
+### Sliders — faixa ativa cyan
+
+14. Abrir o painel **Duração** na toolbar e expandir Segmentos e
+    Pausas por frame.
+15. Confirmar visualmente que **todos** os sliders (Total, Tudo,
+    individuais de segmento, individuais de pausa, Retorno do
+    Acabamento) têm:
+    - parte antes do thumb pintada de **cyan/turquesa**;
+    - parte depois do thumb em **cinza escuro**;
+    - sem glow exagerado.
+16. Arrastar qualquer slider e confirmar que a faixa cyan acompanha
+    em tempo real.
+17. Abrir o menu contextual num frame → aba Pausa: o slider local
+    também deve ter a mesma faixa cyan/cinza.
+
+### Painel Duração — hierarquia limpa
+
+18. Abrir o painel **Duração**.
+19. Confirmar que apenas os cabeçalhos **Segmentos / Pausas por
+    frame / Acabamento** têm linha divisória (border-bottom).
+20. Dentro de cada bloco expandido, confirmar que NÃO há linhas
+    horizontais entre os subitens — a leitura é contínua.
+21. Confirmar que os subtítulos "Tempo por segmento" e "Pausa por
+    frame" estão em tamanho menor (uppercase, cinza), claramente
+    subordinados aos cabeçalhos.
+
+### "Tudo" e individuais — sincronização visual
+
+22. Com Pausas expandidas, mover o slider **Tudo** para 1.0s.
+23. Confirmar que F1, F2, F3… recebem 1.0s.
+24. Confirmar que os sliders individuais ficam **dessaturados** e os
+    rótulos/valores em cinza claro (estado "sincronizado pelo
+    global").
+25. Mover o slider de F2 para 0.5s.
+26. Confirmar que F2 volta ao contraste cheio, "Tudo" entra em estado
+    misto/cinza, e os demais individuais voltam ao contraste cheio
+    também (pois saímos do sincronismo).
+27. Mover "Tudo" outra vez — todos voltam para o mesmo valor e os
+    individuais voltam ao estado subordinado.
+
+### Safe area inferior
+
+28. No iPhone, comparar a toolbar com a versão anterior: a faixa
+    preta acima da Home Bar deve estar visivelmente menor — o fundo
+    da toolbar pinta até a Home Bar, mas os botões continuam acima
+    dela.
+29. Confirmar que nada foi cortado pela Home Bar (todos os botões
+    permanecem clicáveis).
+
+### Nada quebrado no motor
+
+30. Rodar Preview — confirmar fluido, sem trancos.
+31. Exportar MP4 — confirmar arquivo gerado normalmente.
+32. Editar curva manualmente — confirmar que continua respondendo.
+33. Salvar projeto JSON e reabrir — confirmar que tudo é restaurado.
+34. Testar tudo no **iPhone/Safari** via GitHub Pages com cache
+    busting.
+
 ## v8z4b15z — Frame menu hierarchy and duration panel fixes
 
 Foco: validar a paridade visual real dos sliders, a ausência de nested

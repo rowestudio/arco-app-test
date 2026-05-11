@@ -67,6 +67,117 @@ Quando Fixar estiver ativo em algum frame, usar destaque vermelho, não azul.
 - Restauração da separação entre caminho geométrico (curva) e easing temporal (transição por segmento).
 - Mantida a compatibilidade com o patch v8z4b de inserção de frame dentro da curva.
 
+## v8z4b16a — Mobile UI consolidation: contextual menu, sliders, duration panel
+
+Consolidação estrutural de UX em iPhone/Safari sobre a v15z. **Nenhuma
+mudança no motor de animação, easing, curvas, render, preview, export,
+WebCodecs ou `getStateAtT`/`drawAtT`.** Foco total em interface,
+estados visuais, hierarquia e navegação.
+
+### Menu contextual de frame — paridade visual com a toolbar
+
+- `#custBarTabs` agora compartilha o MESMO padding da `.toolbar`
+  (4px topo / 4px lateral / safe-area-inset-bottom no mínimo 4px) e
+  `min-height` da cust-tab reduzido de 72px → 56px. Resultado: o menu
+  contextual no modo compacto ocupa exatamente a mesma altura total
+  do menu inferior principal — pura troca de conteúdo, sem aumento de
+  faixa, sem invasão extra do stage.
+- `#custBarContent` perdeu o `min-height:122px` (gerava altura extra
+  quando o conteúdo era pequeno). Agora dimensiona pelo conteúdo;
+  herda o mesmo `padding-bottom` de safe-area da toolbar.
+
+### Menu contextual — ordem oficial e novas ações rápidas
+
+- Ordem das abas atualizada para: **Pausa, Rotação, Escala, Posição,
+  Curvas, Adicionar** (estilo CapCut). "Pausa" substitui o antigo
+  rótulo "Duração" — controla a pausa local do frame, e o nome agora
+  corresponde diretamente ao que faz.
+- Novas ações rápidas:
+  - **Curvas** → fecha o custBar e abre o painel de easing do
+    segmento seguinte (`openEaseForSeg('next')`). Sem submenu interno
+    duplicado.
+  - **Adicionar** → insere frame após o ativo
+    (`insertFrameAfterActive()`) e fecha o custBar.
+- Submenu de Pausa simplificado: removidos o cabeçalho "Frame Fn" e o
+  texto "Duração/pausa neste frame (0 = sem pausa)". Restam só os
+  três elementos essenciais (slider + valor + reset). Margem do reset
+  reduzida de 18px → 14px.
+
+### Sliders — faixa ativa cyan + inativa cinza escuro
+
+- Todos os sliders editáveis (`.dur-slider`) — pausas globais,
+  pausas por frame, segmentos (Total + individuais), local do
+  custBar, acabamento (Retorno/Duração) — recebem um gradiente
+  dinâmico via CSS variable `--fill`:
+  - Faixa ativa: `var(--accent)` (cyan/turquesa do app).
+  - Faixa inativa: `var(--surface3)` (cinza escuro).
+- Atualização sem listener por slider: delegação `input` no
+  documento + helper `updateSliderFill()`. `refreshSliderFills()` é
+  chamado no `DOMContentLoaded` e ao final de `refreshPauseControls`
+  para mudanças programáticas. Sem glow.
+
+### Painel Duração — limpeza estrutural
+
+- Cabeçalhos de bloco (Segmentos, Pausas, Acabamento) padronizados via
+  `.dur-section-header` com `.dur-section-chevron` (chevron cyan
+  menor, 24px). Border-bottom de `.5px solid var(--border)` somente
+  no cabeçalho — a única linha divisória **entre blocos principais**.
+- Subitens dentro de cada bloco compartilham a mesma faixa contínua,
+  sem traços horizontais entre si. Subtítulos descritivos ("Tempo
+  por segmento", "Pausa por frame") rebaixados visualmente:
+  `.dur-sublabel` em 10px/600/uppercase/`text3`, com valor
+  acompanhante (`.dur-sublabel-value`) também em `text3`.
+- Botões secundários ("Igualar intervalos", "Zerar pausas")
+  unificados em `.dur-subitem-action` — visual discreto, mesma cor
+  de superfície.
+- Removidas as classes `is-bordered` redundantes entre subitens; a
+  hierarquia é agora puramente tipográfica.
+
+### Pausas globais — sliders individuais subordinados ao "Tudo"
+
+- Quando **todos** os frames têm o mesmo valor de pausa (estado
+  "tudo sincronizado pelo global"), o container `#framePauseRows`
+  recebe a classe `.global-synced` e os sliders individuais ficam
+  visualmente subordinados:
+  - `filter:grayscale(1); opacity:.45`
+  - rótulos/valores em `var(--text3)`
+- Qualquer mudança num individual quebra o `allEqual`, o slider
+  "Tudo" volta para o estado misto e os individuais voltam ao
+  contraste cheio — comunicando a divergência sem texto.
+- Base estrutural pronta para futura **seleção parcial de grupos**:
+  classe `.partial-synced` aplicável a um subconjunto de rows
+  (escopo menor), com a mesma dessaturação. Nenhuma seleção múltipla
+  implementada ainda — apenas a arquitetura visual/estado.
+
+### Safe area / toolbar inferior — invasão visual da Home Bar
+
+- Padding superior da `.toolbar` reduzido de 8px → 4px; mesmo no
+  custBar e no custBarTabs. Bottom continua sendo
+  `env(safe-area-inset-bottom)` (mínimo 4px), preservando os botões
+  acima da Home Bar. O fundo da toolbar agora colore TODA a área até
+  a Home Bar — sem faixa preta visível, estilo
+  CapCut/Instagram/Lightroom/TikTok.
+- Resultado prático: ~8px verticais devolvidos ao stage no iPhone.
+
+### Estrutura para futura timeline / play fixo superior
+
+- `#midBar` marcado com `data-role="timeline-strip"` e `#pillsRow`
+  com `data-role="timeline-pills"` — base semântica para a futura
+  frame-strip contínua (swipe horizontal, frame ativo no centro).
+- `#topBar` marcado com `data-role="top-bar"` — slot reservado para
+  o futuro play permanente. Nenhuma mudança de layout/comportamento;
+  apenas evita dependências (CSS/JS) que impeçam a evolução depois.
+
+### Áreas explicitamente NÃO tocadas
+
+- `getStateAtT`, `drawAtT`, `setFramePause`, `ensureFramePauses`,
+  `refreshPauseControls` (apenas adicionado 1 hook de
+  `refreshSliderFills` ao final).
+- WebCodecs/export pipeline, MediaRecorder fallback.
+- Easing, splines, curvas, templates, stage/aspect ratio.
+- Sincronização v15u+ do estado de pausas por frame.
+- Lógica de animação, preview, loops, finishing.
+
 ## v8z4b15z — Frame menu hierarchy and duration panel fixes
 
 Correção dos problemas estruturais remanescentes da v15y. Foco:
