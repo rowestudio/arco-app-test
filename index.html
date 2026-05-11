@@ -747,13 +747,16 @@ body.cust-open #toolbar{
 #custBar:not(.compact-mode) #custBarTabs{
   display:none !important;
 }
-/* v8z4b15y — cust-tabs alinhadas com a toolbar inferior principal:
-   ícone branco em cima, label branco embaixo. v8z4b16a: min-height
-   reduzido para 56px (mesma altura natural de .toolbar > .tb-item +
-   padding 4px da .toolbar). O slot inteiro do custBar fica visualmente
-   igual à toolbar — pura troca de conteúdo, sem aumento de altura. */
+/* v8z4b16b — cust-tabs com altura idêntica à .tb-item da toolbar
+   inferior. Toolbar tem padding 4px e seu item mais alto é o play (38px),
+   resultando em linha interna de 46px com align-items:stretch. Igualamos
+   aqui: flex:1 para distribuição, min-height:46px (= 4 + 38 + 4) para
+   que cada cust-tab tenha exatamente a mesma altura natural de tb-item.
+   O slot inteiro do custBar = padding (4 + safe) + 46px = idêntico à
+   toolbar. Pura troca de conteúdo, sem deslocar o stage. */
 #custBar .cust-tab{
-  min-height:56px;
+  flex:1;
+  min-height:46px;
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -803,12 +806,40 @@ body.cust-open #toolbar{
    NENHUMA subseção interna pode ter overflow próprio — isso evita nested
    scroll que sequestra o gesto no iPhone/Safari. Também forçamos
    height:auto e width:100% nas subseções para que nenhum container
-   intermediário consiga limitar a largura útil dos sliders. */
+   intermediário consiga limitar a largura útil dos sliders.
+   v8z4b16b — padding-top removido (era 8px da .float-panel base) para
+   que o handle sticky encoste no topo absoluto do painel. */
 #panelDuration{
   max-height:80dvh !important;
   overflow-y:auto !important;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
+  padding-top:0 !important;
+}
+/* v8z4b16b — Handle superior FIXO ao rolar. Antes, o tracinho rolava
+   junto com o conteúdo do painel; agora vira um "banner" sticky no topo
+   da área de rolagem, com fundo igual ao painel (cobre o conteúdo que
+   desliza por baixo) e a bolinha visual via ::before. Sem novo
+   container de scroll: a única rolagem continua sendo #panelDuration. */
+#panelDuration > .panel-handle{
+  position:sticky;
+  top:0;
+  z-index:5;
+  width:auto;
+  height:auto;
+  margin:0 -20px 12px;
+  padding:13px 0 8px;
+  background:var(--surface);
+  border-radius:20px 20px 0 0;
+}
+#panelDuration > .panel-handle::before{
+  content:'';
+  display:block;
+  width:36px;
+  height:5px;
+  border-radius:3px;
+  background:var(--surface3);
+  margin:0 auto;
 }
 #panelDuration #segBreakdown,
 #panelDuration #framePauseSection,
@@ -917,16 +948,26 @@ body.cust-open #toolbar{
 #framePauseGlobalRow.global-mixed .dur-edit-value{
   color:var(--text3) !important;
 }
-/* v8z4b16a — Estado "tudo sincronizado pelo global": individuais ficam
-   visualmente subordinados (cinza, menor contraste), indicando que a
-   edição efetiva acontece no slider "Tudo". Qualquer divergência (drag
+/* v8z4b16a/v8z4b16b — Estado "tudo sincronizado pelo global": individuais
+   ficam visualmente subordinados (cinza, menor contraste), indicando que
+   a edição efetiva acontece no slider "Tudo". Qualquer divergência (drag
    num individual) sai automaticamente desse estado e re-acende o slider.
+   v8z4b16b: thumb/bolinha também ficam cinza (antes ficavam brancos
+   porque o thumb tem background:#fff próprio, imune ao filter:grayscale).
    Base estrutural pronta para futura seleção parcial de grupos:
    .global-synced fica em um container pai; alvos com .partial-synced
    poderão receber a mesma dessaturação em escopo menor. */
 #framePauseRows.global-synced .dur-edit-row .dur-slider{
   filter:grayscale(1);
   opacity:.45;
+}
+#framePauseRows.global-synced .dur-edit-row .dur-slider::-webkit-slider-thumb{
+  background:var(--text3);
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
+}
+#framePauseRows.global-synced .dur-edit-row .dur-slider::-moz-range-thumb{
+  background:var(--text3);
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
 }
 #framePauseRows.global-synced .dur-edit-row .dur-edit-label,
 #framePauseRows.global-synced .dur-edit-row .dur-edit-value{
@@ -935,6 +976,14 @@ body.cust-open #toolbar{
 .dur-edit-row.partial-synced .dur-slider{
   filter:grayscale(1);
   opacity:.45;
+}
+.dur-edit-row.partial-synced .dur-slider::-webkit-slider-thumb{
+  background:var(--text3);
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
+}
+.dur-edit-row.partial-synced .dur-slider::-moz-range-thumb{
+  background:var(--text3);
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
 }
 .dur-edit-row.partial-synced .dur-edit-label,
 .dur-edit-row.partial-synced .dur-edit-value{
@@ -1358,13 +1407,12 @@ body.cust-open #toolbar{
     do frame.
   -->
   <!--
-    v8z4b16a — Ordem oficial do menu contextual (estilo CapCut): Pausa,
-    Rotação, Escala, Posição, Curvas, Adicionar. "Curvas" e "Adicionar"
-    são ações rápidas: a primeira abre o painel de easing do segmento
-    seguinte (sem submenu interno); a segunda insere um frame logo após
-    o ativo. Ambas fecham o contextual ao agir.
+    v8z4b16b — Menu contextual de transformação: Pausa, Rotação, Escala,
+    Posição. Curvas e Adicionar foram removidos nesta etapa — "Curvas"
+    será futura edição vetorial de nódulos (não easing); "Adicionar"
+    pertence à faixa de frames, não ao menu local de ajustes.
   -->
-  <div id="custBarTabs" style="display:flex;align-items:center;background:var(--surface);">
+  <div id="custBarTabs" style="display:flex;align-items:stretch;background:var(--surface);">
     <div class="cust-tab" data-tab="framepause" onclick="switchCustTab('framepause')">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-pause"></use></svg>
       <span class="cust-tab-lbl">Pausa</span>
@@ -1380,14 +1428,6 @@ body.cust-open #toolbar{
     <div class="cust-tab" data-tab="pos" onclick="switchCustTab('pos')">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-move"></use></svg>
       <span class="cust-tab-lbl">Posição</span>
-    </div>
-    <div class="cust-tab" data-tab="curve" onclick="openCurveForActive()">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-ease-curve"></use></svg>
-      <span class="cust-tab-lbl">Curvas</span>
-    </div>
-    <div class="cust-tab" data-tab="add" onclick="addFrameFromContext()">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-circle-plus"></use></svg>
-      <span class="cust-tab-lbl">Adicionar</span>
     </div>
   </div>
 </div>
@@ -1441,7 +1481,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b16a</span><br><span id="appVersionNameText">Mobile UI consolidation: contextual menu, sliders, duration panel</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b16b</span><br><span id="appVersionNameText">Stabilize contextual menu and zero-second segments</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1645,12 +1685,12 @@ body.cust-open #toolbar{
     <!-- (1) Intervalo padrão de novos frames. -->
     <div class="dur-subitem">
       <span class="dur-subitem-label">Intervalo padrão</span>
-      <input id="newSegmentDurationInput" type="number" min="1" step="1" value="2" style="width:84px;padding:10px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:14px;font-weight:600;text-align:right;">
+      <input id="newSegmentDurationInput" type="number" min="0" step="1" value="2" style="width:84px;padding:10px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:14px;font-weight:600;text-align:right;">
     </div>
     <!-- (2) Slider global: tempo total dos intervalos. -->
     <div class="dur-edit-row">
       <span class="dur-edit-label">Total</span>
-      <input type="range" class="dur-slider" id="durSlider" min="1" max="60" step="0.1" value="4">
+      <input type="range" class="dur-slider" id="durSlider" min="0" max="60" step="0.1" value="4">
       <span id="durSegTotal" class="dur-edit-value">4.0s</span>
     </div>
     <!-- (3) Igualar intervalos. -->
@@ -1744,7 +1784,7 @@ body.cust-open #toolbar{
   </div>
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
     <span style="font-size:11px;color:var(--text3);flex-shrink:0;">Duracao</span>
-    <input type="range" class="dur-slider" id="easePanelSegSlider" min="0.1" max="20" step="0.1" value="4" style="flex:1;">
+    <input type="range" class="dur-slider" id="easePanelSegSlider" min="0" max="20" step="0.1" value="4" style="flex:1;">
     <span id="easePanelSegVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;">4.0s</span>
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;" id="easeChipsGrid"></div>
@@ -3706,8 +3746,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b16a';
-const APP_VERSION_NAME = 'Mobile UI consolidation: contextual menu, sliders, duration panel';
+const APP_VERSION = 'v8z4b16b';
+const APP_VERSION_NAME = 'Stabilize contextual menu and zero-second segments';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -3878,7 +3918,7 @@ function restoreState(state) {
   activeIdx  = state.activeIdx;
   currentRatio = state.currentRatio;
   duration  = state.duration;
-  defaultNewSegmentDuration = Math.max(1, Math.round(state.defaultNewSegmentDuration ?? 2));
+  defaultNewSegmentDuration = Math.max(0, Math.round(state.defaultNewSegmentDuration ?? 2));
   easeAmount = state.easeAmount;
   easeMode   = state.easeMode;
   pauseDuration = state.pauseDuration ?? 0;
@@ -4527,7 +4567,9 @@ function addFrame() {
 
   // Garantir que todos os segmentos existentes estão inicializados
   ensureSegDurations();
-  segDurations[seg] = Math.max(1, Math.round(defaultNewSegmentDuration || 2));
+  // v8z4b16b — permitir tempo padrão 0 entre frames. Math.max(0, ...) +
+  // checagem != null evita que defaultNewSegmentDuration=0 caia no fallback 2.
+  segDurations[seg] = Math.max(0, Math.round(defaultNewSegmentDuration != null ? defaultNewSegmentDuration : 2));
 
   frameCount++;
 
@@ -4621,8 +4663,9 @@ function insertFrameAfterActive() {
 
   ensureSegDurations();
   const origDur = segDurations[a] != null ? segDurations[a] : duration;
-  const halfA = Math.max(0.1, parseFloat((origDur / 2).toFixed(1)));
-  const halfB = Math.max(0.1, parseFloat((origDur - halfA).toFixed(1)));
+  // v8z4b16b — divisão de segmento pode resultar em 0.0s (corte seco).
+  const halfA = Math.max(0, parseFloat((origDur / 2).toFixed(1)));
+  const halfB = Math.max(0, parseFloat((origDur - halfA).toFixed(1)));
   segDurations.splice(a, 1, halfA, halfB);
 
   const origEase = getSegEase(a);
@@ -5982,8 +6025,12 @@ function startPreview() {
 
   pausedElapsed = 0;
   animStart = null;
-  const dur = totalDurationFull() * 1000;
-  const totalPF = Math.round(totalDurationFull() * 25);
+  // v8z4b16b — fallback técnico mínimo (1ms) quando a duração real é 0.
+  // Evita modulo por zero / NaN / loop infinito sem alterar valores do
+  // usuário. Quando todos os trechos são 0, t fica preso em 0 e o preview
+  // mostra estado estático seguro.
+  const dur = Math.max(1, totalDurationFull() * 1000);
+  const totalPF = Math.max(1, Math.round(totalDurationFull() * 25));
   // Preview em metade da resolução — menos carga na GPU do iPhone
   const previewScale = PREVIEW_SCALE;
   dispCanvas.width  = Math.round(eW * previewScale);
@@ -6029,7 +6076,8 @@ function togglePreviewPlayback() {
     // PAUSAR — salvar elapsed atual para retomar
     if (animStart !== null) {
       const now = performance.now();
-      pausedElapsed = (now - animStart + pausedElapsed) % (totalDurationFull() * 1000);
+      // v8z4b16b — guard contra duração 0 (% 0 = NaN).
+      pausedElapsed = (now - animStart + pausedElapsed) % Math.max(1, totalDurationFull() * 1000);
     }
     cancelAnimationFrame(animFrame);
     animFrame = null;
@@ -6040,9 +6088,10 @@ function togglePreviewPlayback() {
     // RETOMAR — animStart será resetado no loop para compensar
     if (pb)  pb.style.display  = '';
     if (pb2) pb2.style.display = 'none';
-    const dur  = totalDurationFull() * 1000;
+    // v8z4b16b — guard contra duração 0 (% 0 = NaN).
+    const dur  = Math.max(1, totalDurationFull() * 1000);
     const [eW, eH] = exportDims[currentRatio];
-    const totalPF  = Math.round(totalDurationFull() * 25);
+    const totalPF  = Math.max(1, Math.round(totalDurationFull() * 25));
     const dispCanvas = document.getElementById('previewDisplayCanvas');
     const pCtxR = dispCanvas ? dispCanvas.getContext('2d') : null;
     if (pCtxR) {
@@ -6716,11 +6765,20 @@ durSlider.addEventListener('input', function () {
   // Garantir que segDurations tem valores antes de redistribuir
   ensureSegDurations();
   if (oldTotal > 0) {
+    // v8z4b16b — preserva proporção existente. Mínimo 0 (antes 0.1) para
+    // permitir trechos zerados durante a redistribuição.
     const ratio = newTotal / oldTotal;
     for (let i = 0; i < segDurations.length; i++) {
       if (segDurations[i] != null) {
-        segDurations[i] = Math.max(0.1, parseFloat((segDurations[i] * ratio).toFixed(1)));
+        segDurations[i] = Math.max(0, parseFloat((segDurations[i] * ratio).toFixed(1)));
       }
+    }
+  } else if (newTotal > 0 && segDurations.length > 0) {
+    // v8z4b16b — saindo de "todos os trechos em 0", não há proporção
+    // anterior válida: distribuímos o novo total igualmente.
+    const per = parseFloat((newTotal / segDurations.length).toFixed(1));
+    for (let i = 0; i < segDurations.length; i++) {
+      segDurations[i] = per;
     }
   }
   markProjectDirty('duration');
@@ -6732,7 +6790,9 @@ durSlider.addEventListener('input', function () {
 });
 if (newSegmentDurationInput) {
   newSegmentDurationInput.addEventListener('change', function () {
-    const next = Math.max(1, Math.round(parseFloat(this.value) || 2));
+    // v8z4b16b — intervalo padrão pode ser 0 (novo frame nasce com corte seco).
+    const raw = parseFloat(this.value);
+    const next = Math.max(0, Math.round(Number.isFinite(raw) ? raw : 2));
     this.value = next;
     defaultNewSegmentDuration = next;
   });
@@ -8206,7 +8266,8 @@ function getSegDuration(seg) {
   const segs = frameCount - 1;
   if (seg < 0 || seg >= segs) return 0;
   ensureSegDurations();
-  return segDurations[seg] || (duration / segs);
+  // v8z4b16b — `|| fallback` descartava o valor legítimo 0 (corte seco).
+  return segDurations[seg] != null ? segDurations[seg] : (segs > 0 ? duration / segs : 0);
 }
 
 function openSegBreakdown() {
@@ -8229,10 +8290,12 @@ function openSegBreakdown() {
     slider.type = 'range';
     slider.className = 'dur-slider';
     slider.min = '0'; slider.max = '15'; slider.step = '0.1';
-    slider.value = segDurations[i] || 1;
+    // v8z4b16b — preservar 0 (corte seco). Antes, `|| 1` caía para 1.
+    const curSegVal = segDurations[i] != null ? segDurations[i] : 1;
+    slider.value = curSegVal;
     const val = document.createElement('span');
     val.className = 'dur-edit-value';
-    val.textContent = (segDurations[i] || 1).toFixed(1) + 's';
+    val.textContent = curSegVal.toFixed(1) + 's';
     const idx = i;
     let segUndoCaptured = false;
     slider.addEventListener('touchstart', () => {
@@ -8503,7 +8566,7 @@ function applyFrameData(data) {
 
   currentRatio  = data.currentRatio || '9:16';
   duration      = data.duration || 6;
-  defaultNewSegmentDuration = Math.max(1, Math.round(data.defaultNewSegmentDuration ?? 2));
+  defaultNewSegmentDuration = Math.max(0, Math.round(data.defaultNewSegmentDuration ?? 2));
   easeAmount    = data.easeAmount ?? 0;
   easeMode      = data.easeMode || 'global';
   pauseDuration = data.pauseDuration || 0;
@@ -8939,20 +9002,9 @@ function collapseCustBar() {
   bar.classList.add('compact-mode');
 }
 
-// v8z4b16a — Curvas (easing do segmento seguinte) e Adicionar frame são
-// ações rápidas do menu contextual: fecham o custBar e disparam o fluxo
-// existente. Curvas: usa o ease panel do segmento "next" — sem submenu
-// interno (evita duplicar UI de easing). Adicionar: insere frame após
-// o ativo via fluxo já validado de insertFrameAfterActive().
-function openCurveForActive() {
-  closeCustBar();
-  if (typeof openEaseForSeg === 'function') openEaseForSeg('next');
-  else if (typeof openPanel === 'function') openPanel('Ease');
-}
-function addFrameFromContext() {
-  if (typeof insertFrameAfterActive === 'function') insertFrameAfterActive();
-  closeCustBar();
-}
+// v8z4b16b — Curvas e Adicionar foram removidos do menu contextual.
+// Curvas (futura edição vetorial) e Adicionar (faixa de frames) não
+// pertencem ao menu local de transformação do frame.
 
 function updateEasePills() {
   updateFrameSelector();
