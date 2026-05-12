@@ -2,6 +2,67 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b16d — Recuperação do Gerar MP4 (iPhone/Safari obrigatório)
+
+### A. Teste básico
+
+1. Carregar imagem.
+2. Criar 3 frames.
+3. Tocar Preview e confirmar que roda.
+4. Tocar **Salvar MP4**.
+5. Confirmar que o MP4 é gerado (overlay "Vídeo pronto!" aparece).
+6. Confirmar que a tela **não fica preta** durante geração — overlay
+   com spinner e progress está visível, animação volta após salvar.
+7. Confirmar que o botão **para de piscar vermelho** ao concluir.
+
+### B. Teste com tempos
+
+1. Alterar duração de um trecho.
+2. Inserir um trecho com 0.0s.
+3. Inserir pausas em alguns frames.
+4. Gerar MP4 — arquivo válido, sem loop infinito, sem travamento.
+
+### C. Teste após edição prolongada
+
+1. Mover frames, escalar, rotacionar.
+2. Abrir e fechar menu contextual.
+3. Abrir painel Duração e fechar.
+4. Gerar MP4 — sem tela preta após qualquer um desses passos.
+
+### D. Teste de recuperação de erro (forçado)
+
+1. Em DevTools, simular falha do encoder (ex.: throw em
+   `VideoEncoder.isConfigSupported` ou cortar `imgEl.src`).
+2. Tocar Salvar MP4.
+3. Confirmar que:
+   - app **sai** do estado de gravação automaticamente;
+   - `previewScreen` fecha — sem overlay preto persistente;
+   - botão volta a "Salvar MP4" sem classe `recording`;
+   - `showStatus` exibe mensagem clara;
+   - `console.error`/`console.warn` registra o erro com contexto;
+   - usuário pode tocar Salvar MP4 de novo (não fica preso em
+     `isRecording=true`).
+
+### E. Teste de pré-condição
+
+1. Antes da imagem carregar, tocar Salvar MP4 → status "Imagem ainda
+   não carregada", **sem** entrar em recording, **sem** previewScreen.
+2. Com duração total 0 (zerando todos os trechos) tocar Salvar MP4 →
+   status "Duração total inválida", sem entrar em recording.
+
+### Não regressões
+
+- Menu contextual sem tranco no stage.
+- Fechar menu contextual tocando no stage.
+- Apenas Pausa / Rotação / Escala / Posição no menu contextual.
+- Hierarquia visual do painel Duração/Tempo.
+- Nomenclatura Trechos.
+- Seleção múltipla / AlignBar.
+- Tempo mínimo 0.0s.
+- Scroll do painel Duração/Tempo.
+- Handle fixo do painel.
+- Motor de animação, easing, JSON, templates.
+
 ## Teste mínimo obrigatório
 
 1. Abrir o app.
