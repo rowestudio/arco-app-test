@@ -1597,7 +1597,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b16c</span><br><span id="appVersionNameText">Stage stability, bottom slot and visual hierarchy</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b16d</span><br><span id="appVersionNameText">Fix MP4 generation and defensive export cleanup</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3862,8 +3862,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b16c';
-const APP_VERSION_NAME = 'Stage stability, bottom slot and visual hierarchy';
+const APP_VERSION = 'v8z4b16d';
+const APP_VERSION_NAME = 'Fix MP4 generation and defensive export cleanup';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -6490,6 +6490,27 @@ function showReadyOverlay() {
 
 async function startRecord() {
   if (isRecording) return;
+  // v8z4b16d — Guards defensivos ANTES de ativar `isRecording`: se a
+  // imagem base ou as dimensões de export estiverem inválidas, sair
+  // sem entrar em estado de gravação (evita ficar preso piscando vermelho
+  // com a tela preta).
+  if (!imgEl || !imgNatW || !imgNatH || !imgEl.complete) {
+    console.warn('[startRecord] imagem base não carregada', { imgNatW, imgNatH, complete: imgEl && imgEl.complete });
+    showStatus('Imagem ainda não carregada. Tente novamente em instantes.');
+    return;
+  }
+  const dims0 = exportDims[currentRatio];
+  if (!dims0 || !(dims0[0] > 0) || !(dims0[1] > 0)) {
+    console.warn('[startRecord] dimensões de export inválidas', { currentRatio, dims0 });
+    showStatus('Proporção de export inválida.');
+    return;
+  }
+  const durationSec0 = totalDurationFull();
+  if (!Number.isFinite(durationSec0) || durationSec0 <= 0) {
+    console.warn('[startRecord] duração total inválida — abortando export', { durationSec0 });
+    showStatus('Duração total inválida — ajuste os trechos e tente novamente.');
+    return;
+  }
   isRecording = true;
   if (isPreviewing) stopPreview();
   document.body.classList.add('previewing');
@@ -6534,10 +6555,25 @@ async function startRecord() {
 
   const [W, H] = exportDims[currentRatio];
   const fps = 30;
-  const durationSec = totalDurationFull();
+  const durationSec = durationSec0;
   const total = Math.max(1, Math.round(durationSec * fps));
   const timelineFill = document.getElementById('previewTimelineFill');
 
+  // v8z4b16d — Sanidade do canvas de export antes de qualquer encode.
+  if (!(W > 0) || !(H > 0) || !Number.isFinite(W) || !Number.isFinite(H)) {
+    console.warn('[startRecord] recCanvas com dimensões inválidas', { W, H });
+    // cleanupFailedExport definido abaixo — usar reset manual mínimo aqui.
+    isRecording = false;
+    document.body.classList.remove('previewing');
+    btnGenerate.classList.remove('recording');
+    btnGenerate.disabled = false;
+    setGenerateLabel('Salvar MP4');
+    hideGenOverlay();
+    const ps0 = document.getElementById('previewScreen');
+    if (ps0) ps0.classList.remove('show');
+    showStatus('Erro ao preparar export.');
+    return;
+  }
   recCanvas.width = W;
   recCanvas.height = H;
   hardResetCanvas(rCtx, recCanvas, bgColor);
@@ -6551,8 +6587,20 @@ async function startRecord() {
   }
 
   function cleanupFailedExport(message) {
+    // v8z4b16d — Limpeza completa em falha do export: além de zerar
+    // flags e botões, FECHAR o previewScreen e a faixa preta sobreposta.
+    // Antes, em caso de erro silencioso o overlay preto permanecia
+    // visível com o canvas vazio (tela preta) e o usuário ficava sem
+    // saída visual clara. Agora o app volta ao estado de edição normal.
     isRecording = false;
     document.body.classList.remove('previewing');
+    if (animFrame) {
+      try { cancelAnimationFrame(animFrame); } catch(e) {}
+      animFrame = null;
+    }
+    animStart = null;
+    pausedElapsed = 0;
+    isPreviewing = false;
     hideGenOverlay();
     if (pb)  pb.style.display  = '';
     if (pb2) pb2.style.display = 'none';
@@ -6564,6 +6612,19 @@ async function startRecord() {
     const tf = document.getElementById('previewTimelineFill');
     if (tl) tl.classList.remove('show');
     if (tf) tf.style.width = '0%';
+    // Esconder previewScreen + limpar canvas para evitar tela preta.
+    const ps = document.getElementById('previewScreen');
+    if (ps) ps.classList.remove('show');
+    const dc = document.getElementById('previewDisplayCanvas');
+    if (dc) {
+      try {
+        const dctx = dc.getContext('2d');
+        if (dctx) dctx.clearRect(0, 0, dc.width || 1, dc.height || 1);
+      } catch(e) {}
+      dc.style.display = 'none';
+      dc.style.filter = 'none';
+    }
+    try { updatePlayButton(); } catch(e) {}
     showStatus(message || 'Erro ao gerar vídeo');
   }
 
@@ -6621,6 +6682,11 @@ async function startRecord() {
   async function exportWithMediaRecorderFallback() {
     console.warn('WebCodecs indisponível — usando MediaRecorder como fallback');
     setGenStatus('Gerando vídeo (fallback)');
+    // v8z4b16d — Guard: se MediaRecorder não existir (browser muito
+    // antigo), abortar com mensagem útil em vez de travar.
+    if (typeof MediaRecorder === 'undefined' || !recCanvas.captureStream) {
+      throw new Error('MediaRecorder/captureStream indisponíveis');
+    }
     const stream = recCanvas.captureStream(fps);
     const track  = stream.getVideoTracks()[0];
     const useManual = !!(track && track.requestFrame);
@@ -6632,22 +6698,30 @@ async function startRecord() {
     const stopped = new Promise(resolve => {
       rec.onstop = () => resolve();
     });
-    rec.start();
-    const frameDuration = 1000 / fps;
-    const startTime = performance.now();
-    for (let f = 0; f < total; f++) {
-      if (!isRecording) break;
-      const t = total > 1 ? f / (total - 1) : 0;
-      drawAtT(rCtx, t, W, H, total, f);
-      if (useManual) track.requestFrame();
-      if (f % 3 === 0 || f === total - 1) updateExportProgress(f + 1, 'Gerando vídeo (fallback)');
-      const target = startTime + (f + 1) * frameDuration;
-      await new Promise(r => setTimeout(r, Math.max(0, target - performance.now())));
+    try {
+      rec.start();
+      const frameDuration = 1000 / fps;
+      const startTime = performance.now();
+      for (let f = 0; f < total; f++) {
+        if (!isRecording) break;
+        const t = total > 1 ? f / (total - 1) : 0;
+        // v8z4b16d — reset por frame também no fallback (estava ausente),
+        // garante fundo bgColor consistente e descarta restos do frame
+        // anterior se algum drawImage falhar.
+        hardResetCanvas(rCtx, recCanvas, bgColor);
+        drawAtT(rCtx, t, W, H, total, f);
+        if (useManual) track.requestFrame();
+        if (f % 3 === 0 || f === total - 1) updateExportProgress(f + 1, 'Gerando vídeo (fallback)');
+        const target = startTime + (f + 1) * frameDuration;
+        await new Promise(r => setTimeout(r, Math.max(0, target - performance.now())));
+      }
+      await new Promise(r => setTimeout(r, frameDuration * 3));
+      try { rec.stop(); } catch(e) {}
+      await stopped;
+    } finally {
+      // Sempre liberar tracks, mesmo em erro/cancelamento.
+      try { stream.getTracks().forEach(t => t.stop()); } catch(e) {}
     }
-    await new Promise(r => setTimeout(r, frameDuration * 3));
-    rec.stop();
-    await stopped;
-    stream.getTracks().forEach(t => t.stop());
     finishExport(new Blob(chunks, { type: recMime }), recMime.includes('mp4') ? 'mp4' : 'webm');
   }
 
@@ -6768,6 +6842,15 @@ async function startRecord() {
   } catch (err) {
     console.error('Export WebCodecs falhou:', err);
     cleanupFailedExport('Erro ao gerar vídeo. Tente novamente.');
+  } finally {
+    // v8z4b16d — Garantia final: se algo escapou e isRecording ainda
+    // está true (encoder travado, promessa pendente), forçar reset
+    // para o usuário poder tentar novamente em vez de ficar preso
+    // com o botão piscando vermelho e a tela preta.
+    if (isRecording) {
+      console.warn('[startRecord] estado inconsistente ao final — forçando cleanup');
+      try { cleanupFailedExport('Export interrompido — tente novamente.'); } catch(e) {}
+    }
   }
 }
 

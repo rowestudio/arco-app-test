@@ -67,6 +67,90 @@ Quando Fixar estiver ativo em algum frame, usar destaque vermelho, não azul.
 - Restauração da separação entre caminho geométrico (curva) e easing temporal (transição por segmento).
 - Mantida a compatibilidade com o patch v8z4b de inserção de frame dentro da curva.
 
+## v8z4b16d — Fix MP4 generation and defensive export cleanup
+
+Patch cirúrgico sobre a v8z4b16c. **Foco único:** recuperar a geração
+de MP4, que estava entrando em estado de gravação (botão piscando
+vermelho) sem produzir arquivo e deixando o app preso em tela preta.
+**Não toca** em motor de animação, cálculo de tempo, sincronização de
+sliders, menus contextuais, painel Duração, AlignBar, ou qualquer
+item validado em v8z4b16c.
+
+### Causa raiz
+
+`cleanupFailedExport` em v8z4b16c (e versões anteriores) zerava o
+estado interno mas **não fechava** o `previewScreen` (overlay preto
+fixo, `z-index:90`) nem limpava o `previewDisplayCanvas` (que ficava
+display:block sem nada desenhado). Em qualquer falha do encoder o
+usuário ficava olhando um overlay totalmente preto, sem animação,
+até tocar Fechar manualmente — exatamente o sintoma "tela preta"
+relatado. Além disso, `startRecord` executa setup pesado **antes** do
+`try { }` interno: se qualquer um daqueles passos lançasse exceção,
+`isRecording` permanecia `true` e o botão Salvar MP4 ficava preso na
+classe `recording` (vermelho piscando), pois o próprio `handleGenerate`
+e `startRecord` retornam cedo quando `isRecording` é truthy.
+
+### Correções
+
+- **`cleanupFailedExport` agora restaura o app completamente:**
+  esconde `previewScreen.show`, cancela `animFrame`, zera
+  `isPreviewing`/`animStart`/`pausedElapsed`, limpa o
+  `previewDisplayCanvas` (clearRect + display:none + filter:none) e
+  chama `updatePlayButton()`. Em caso de erro o usuário volta direto
+  ao stage de edição em vez de ficar olhando um overlay preto.
+- **Guards de pré-condição em `startRecord` (antes de marcar
+  `isRecording = true`):**
+  - Imagem base carregada (`imgEl.complete`, `imgNatW`, `imgNatH`).
+  - Dimensões de export válidas (`exportDims[currentRatio]` > 0).
+  - Duração total finita e > 0 (`totalDurationFull()`).
+  Se qualquer guard falhar, mostra `showStatus` e retorna sem
+  entrar em estado de gravação — botão não pisca vermelho à toa.
+- **Sanidade do `recCanvas`:** abortar com cleanup mínimo se W/H
+  forem 0/NaN/Infinity em vez de tentar configurar o encoder.
+- **`try { } catch { } finally { }` em torno do encode WebCodecs:**
+  o `finally` garante que, mesmo se o `catch` falhar ou se algo
+  escapar (encoder travado, promessa pendente), `isRecording` é
+  forçado a `false` via `cleanupFailedExport`. Sem isso o app
+  permanecia preso no estado de gravação após qualquer erro raro.
+- **MediaRecorder fallback endurecido:**
+  - Guard de presença (`MediaRecorder` + `recCanvas.captureStream`).
+  - `try/finally` em volta da gravação: stream tracks são sempre
+    liberadas, mesmo se o loop quebrar.
+  - `hardResetCanvas(rCtx, recCanvas, bgColor)` por frame (antes só
+    existia no caminho WebCodecs) — garante fundo limpo e descarta
+    restos de frames anteriores se algum `drawImage` falhar.
+
+### Comportamento garantido
+
+- **Sucesso normal:** Gerar MP4 renderiza, finaliza e mostra
+  `readyOverlay` como antes — caminho feliz inalterado.
+- **Falha do encoder/codec:** previewScreen fecha, animFrame
+  cancelado, botão volta a "Salvar MP4" sem `recording`, `showStatus`
+  imprime mensagem útil, console registra erro com contexto.
+- **Falha de pré-condição (imagem não carregada, duração 0,
+  proporção inválida):** abortar antes de entrar em
+  recording — botão nem pisca vermelho.
+- **Erro raro escapou do catch:** `finally` aciona
+  `cleanupFailedExport`; usuário pode tentar novamente.
+
+### Não tocado nesta versão
+
+- Motor de animação, easing, cálculo de tempo, sincronização de
+  sliders, painel Duração, menu contextual, AlignBar, faixa
+  inferior, fechamento ao tocar no stage, hierarquia tipográfica,
+  nomenclatura Trechos.
+- Curvas/easing/JSON/templates/arquitetura geral.
+- Pendências visuais conhecidas (degradê inferior, altura da barra,
+  altura de subpainéis, faixa azul do slider TOTAL, sincronização
+  visual entre painel contextual de trecho e painel Duração)
+  continuam abertas — não entram neste patch por escopo.
+
+### Versão
+
+- `appVersionText`: `v8z4b16d`.
+- `appVersionNameText`: `Fix MP4 generation and defensive export cleanup`.
+- Constantes `APP_VERSION` / `APP_VERSION_NAME` atualizadas.
+
 ## v8z4b16c — Stage stability, bottom slot and visual hierarchy
 
 Patch cirúrgico sobre a v8z4b16b. **Não toca** na lógica de tempo
