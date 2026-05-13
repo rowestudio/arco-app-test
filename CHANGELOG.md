@@ -67,6 +67,148 @@ Quando Fixar estiver ativo em algum frame, usar destaque vermelho, não azul.
 - Restauração da separação entre caminho geométrico (curva) e easing temporal (transição por segmento).
 - Mantida a compatibilidade com o patch v8z4b de inserção de frame dentro da curva.
 
+## v8z4b16g — UX state cleanup, Voltar standardization, version housekeeping
+
+Patch cirúrgico sobre a v8z4b16f. **Foco único:** três correções de UX/estado
+visual e padronização de versionamento. **Não toca** em motor de animação,
+preview, exportação MP4, easing, curvas, duração, pausas, seleção múltipla,
+rotação ou escala funcional, layout geral, cores, textos, ícones ou fluxo
+além do que está explicitamente listado abaixo.
+
+### 1) Limpa destaque visual preso no menu de frames
+
+Antes: ao tocar em um ícone do menu contextual de frames (por exemplo
+Rotação), fechar o menu e abrir novamente, o último ícone usado continuava
+destacado/aceso em `compact-mode`. Bug puro de estado visual — sem lógica
+real de "modo ativo" por trás. A classe `.active-tab` aplicada em
+`switchCustTab()` ficava remanescente após `closeCustBar()` e mesmo após
+`collapseCustBar()`, e era reaplicada na próxima abertura porque o nó DOM
+preservava o estado.
+
+Correção:
+- `closeCustBar()` agora limpa `.active-tab` de todos os ícones em
+  `#custBarTabs`.
+- `collapseCustBar()` (botão Voltar do submenu) também limpa — quando o
+  menu volta a compact-mode nenhum submenu está aberto, então nenhum
+  ícone deve aparecer aceso.
+- O default `<div class="cust-tab active-tab" data-tab="scale">` perdeu o
+  `active-tab` para que a primeira abertura do menu também não acenda o
+  ícone Escala sem motivo.
+
+Lógicas reais de modo ativo (`custGlobalLock`, `frameLocked`,
+`finishMode`) não foram tocadas.
+
+### 2) Botão Voltar como coluna lateral à esquerda nos submenus contextuais
+
+Antes (v8z4b16f): o botão Voltar (`#custBarBack`) era um header inline no
+topo do submenu, ocupando ~22px de altura útil acima do slider/conteúdo.
+Em v8z4b16e tinha sido coluna lateral mas com `min-height:32px` que
+gerava faixa visual estranha.
+
+Correção:
+- `#custBarContent` virou `display:flex; flex-direction:row` com gap 6px.
+- `#custBarBack` virou coluna estreita (`width:24px`, `align-self:stretch`),
+  com SVG 18×18 centralizado vertical e horizontalmente.
+- O conteúdo do submenu (`.cust-content` visível) ocupa o restante via
+  `flex:1 1 0`.
+- Resultado: o painel recupera ~22px de altura útil que antes era
+  consumida pelo header, e a direção de interface aprovada (coluna
+  lateral à esquerda discreta e verticalizada) volta a vigorar.
+
+Comportamento do botão preservado: `collapseCustBar()` volta ao
+`compact-mode` (ícones), `closeCustBar()` continua sendo o stage-tap.
+
+Aplica-se aos submenus de Pausa, Rotação, Escala (transformação) e
+Posição — mesmo container `#custBarContent`.
+
+### 3) X do Preview trocado por Voltar
+
+O botão da esquerda no rodapé do `previewScreen` ainda usava `#i-close`
+(X) com label "Fechar". A linguagem aprovada agora é "Voltar" + chevron
+para a esquerda, igual a `#custBarBack` e ao Voltar primário do
+`#alignBar`.
+
+Correção:
+- SVG inline com `<polyline points="15 18 9 12 15 6"/>` (mesmo chevron
+  dos outros painéis).
+- Label `Voltar` substitui `Fechar`.
+- `onclick="stopPreview()"` intocado: o botão continua fechando o
+  Preview e devolvendo ao Stage.
+
+Layout geral do Preview, botões de Play/Pause, botão Salvar MP4,
+geração de vídeo e canvas: inalterados.
+
+### 4) Versão atual padronizada para v8z4b16g
+
+- `APP_VERSION` / `APP_VERSION_NAME` (constantes JS) → `v8z4b16g`.
+- `<span id="appVersionText">` em `.settings-version` → `v8z4b16g`.
+- Comentário/header no topo de `index.html` (linha 1–76) atualizado:
+  "Versão: v8z3q" virou "Versão: v8z4b16g"; bloco de changelog antigo
+  marcado como histórico (v8z3q deixou de carregar o "(atual)").
+- `<!-- Arco App — v8z3v ... -->` virou `<!-- Arco App — v8z4b16g ... -->`.
+- `pages-deploy-stamp.txt` atualizado.
+- Referências internas históricas (`// v8z4b16f — ...`, etc.) preservadas
+  porque descrevem MUDANÇAS da versão indicada e ajudam o QA a rastrear
+  por que cada bloco existe. Não há mais nenhuma referência a versão
+  antiga apresentada como "(atual)".
+
+### Arquivos alterados
+
+- `index.html`
+  - HTML: header de comentário do topo; comentário `<!-- Arco App — vX -->`;
+    `<div class="cust-tab" data-tab="scale">` (remoção do `active-tab`
+    default); `previewScreen` close-btn (SVG + label); `.settings-version`
+    span.
+  - CSS: bloco `#custBarBack` (passou de header inline para coluna lateral)
+    e `#custBarContent` (passou a `display:flex` row); nova regra
+    `#custBarContent > .cust-content { flex:1 1 0 }`.
+  - JS: `closeCustBar()` e `collapseCustBar()` ganharam limpeza de
+    `.active-tab`; `APP_VERSION` e `APP_VERSION_NAME` atualizados.
+- `pages-deploy-stamp.txt`: stamp v8z4b16g.
+- `CHANGELOG.md`: esta entrada.
+- `QA.md`: nova seção v8z4b16g.
+
+### Riscos
+
+- A coluna lateral usa `width:24px`. Em telas muito estreitas o chevron
+  pode parecer apertado; área de toque útil real é `padding:0 4px` +
+  24px = ~32px, mantendo conforto.
+- Limpar `.active-tab` em `collapseCustBar()` significa que, ao voltar
+  do submenu para o compact-mode, o ícone do último submenu não fica
+  marcado. Isso é o comportamento solicitado: sem destaque preso.
+- O padding-left de `#custBarContent` caiu de 14px para 2px para
+  acomodar a coluna; o conteúdo visual real continua começando a ~32px
+  da borda esquerda do painel (coluna do botão + gap).
+
+### Não tocado
+
+- WebCodecs / export pipeline / MP4: zero mudanças.
+- Motor de animação, easing, curvas, smoothing: zero mudanças.
+- Cálculo de tempo, sliders de duração/pausa/segmento: zero mudanças.
+- Seleção múltipla, alignBar, distribuição: zero mudanças (alignBar já
+  usava Voltar com chevron — não precisou de patch).
+- Templates, JSON, BgColor, Format, settings sheet: zero mudanças.
+
+### Testes obrigatórios (iPhone/Safari)
+
+1. App abre normalmente.
+2. Carregar imagem.
+3. Preview abre e fecha pelo novo botão "Voltar" (chevron). Mesmo
+   comportamento de antes.
+4. Reset (botão de reset do topbar) continua funcionando.
+5. Tocar num frame: menu contextual abre em compact-mode SEM ícone
+   aceso.
+6. Tocar em Rotação → submenu expande, ícone Rotação acende, botão
+   Voltar aparece como coluna estreita à esquerda do slider.
+7. Tocar no Voltar (coluna esquerda) → recolhe para compact-mode, NENHUM
+   ícone fica aceso.
+8. Tocar em Rotação → submenu, Tocar fora (no stage) → fecha. Reabrir
+   o menu → NENHUM ícone fica aceso (bug do v8z4b16f corrigido).
+9. Painéis de Pausa / Escala / Posição: mesmo layout, Voltar à esquerda.
+10. Configurações → "Arco v8z4b16g" visível na versão.
+11. Nenhuma referência interna na tela ou no CHANGELOG contradiz a
+    versão atual v8z4b16g.
+
 ## v8z4b16f — Solid bottom strip, compact context submenu, slider fill sync
 
 Patch cirúrgico sobre a v8z4b16e. **Foco único:** fechar os três problemas
