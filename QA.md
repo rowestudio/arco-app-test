@@ -2,6 +2,69 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b16f — Rodapé sólido, submenu compacto, faixa ciano sincronizada (iPhone/Safari obrigatório)
+
+### A. Rodapé sem degradê
+
+1. Carregar imagem.
+2. Observar a barra inferior em estado normal (toolbar, sem painel aberto).
+3. Confirmar: nenhum degradê / fade escuro subindo do rodapé.
+4. Confirmar: o fundo da barra é sólido até a base da tela.
+5. Confirmar: botões da toolbar continuam visíveis e seguros acima da
+   Home Bar (clearance ≥ ~14px sobre o indicador).
+6. Abrir e fechar o painel **Duração** uma vez; observar a transição —
+   ao fechar, NÃO sobra halo / sombra residual no rodapé.
+
+### B. Submenus contextuais compactos
+
+1. Tocar em um frame para abrir o menu contextual (compact-mode com
+   ícones).
+2. Tocar em **Pausa**:
+   - Submenu abre compacto (~110px sobre a safe-area).
+   - Chevron de voltar à esquerda no topo, em faixa estreita (~22px de
+     altura).
+   - Slider e chip Reset abaixo, sem espaço morto vertical exagerado.
+3. Tocar no chevron de voltar → volta ao compact-mode (ícones), sem
+   fechar o menu inteiro.
+4. Tocar em **Rotação** → mesmo padrão compacto.
+5. Tocar em **Escala** → mesmo padrão.
+6. Tocar em **Posição** → header compacto + dois pares de inputs X/Y.
+7. Tocar fora do menu (no stage) → fecha completamente. Sem tranco no
+   stage em nenhuma das transições acima.
+
+### C. Faixa ciano dos sliders
+
+1. Tocar em um frame; abrir o painel contextual de Trecho (Seg. X-Y) via
+   pill de easing.
+2. Mover o slider de duração para **0.0s**.
+3. Confirmar:
+   - Bolinha do slider está no início (esquerda).
+   - Faixa ciano também está no início — não fica preenchida até o meio.
+4. Mudar o valor para 2.0s, depois 4.0s, depois 8.0s.
+5. Confirmar que a faixa ciano acompanha a bolinha em cada valor.
+6. Abrir **Duração** (painel principal); olhar slider **TOTAL** de Trechos
+   e os individuais de "Tempo por trecho" — faixas devem refletir os
+   valores atuais (não stale).
+7. Voltar ao menu contextual, abrir **Pausa**, mexer no slider de pausa.
+   Faixa ciano acompanha a bolinha.
+
+### D. Regressão MP4 (NÃO pode ter quebrado)
+
+1. Carregar imagem; criar 3 frames com easings variados.
+2. Tocar **Preview** — confirma que roda.
+3. Tocar **Salvar MP4** — confirmar arquivo gerado, sem tela preta, sem
+   botão vermelho preso.
+4. Voltar à edição; mover um frame.
+5. Tocar **Salvar MP4** de novo — segunda geração também funciona.
+
+### E. Regressão visual
+
+1. Versão visível em Configurações deve mostrar `v8z4b16f`.
+2. Hierarquia tipográfica do painel Duração (Trechos / Pausas /
+   Acabamento) inalterada.
+3. Seleção múltipla / AlignBar inalterada.
+4. Tempo mínimo 0.0s segue aceito em trechos e pausas.
+
 ## v8z4b16d — Recuperação do Gerar MP4 (iPhone/Safari obrigatório)
 
 ### A. Teste básico
