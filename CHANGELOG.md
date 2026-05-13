@@ -67,6 +67,114 @@ Quando Fixar estiver ativo em algum frame, usar destaque vermelho, não azul.
 - Restauração da separação entre caminho geométrico (curva) e easing temporal (transição por segmento).
 - Mantida a compatibilidade com o patch v8z4b de inserção de frame dentro da curva.
 
+## v8z4b16f — Solid bottom strip, compact context submenu, slider fill sync
+
+Patch cirúrgico sobre a v8z4b16e. **Foco único:** fechar os três problemas
+visuais residuais que sobraram para promoção da linha v8z4b16 ao
+app principal. **Não toca** em motor de animação, preview, export MP4,
+cálculo de tempo, lógica de tempo global, Intervalo padrão, ranges de
+sliders, easing, curvas, JSON, templates ou seleção múltipla.
+
+### 1) Rodapé sólido — fim do degradê/faixa escura
+
+`.float-panel` carregava `box-shadow:0 -8px 40px rgba(0,0,0,.6)` no estado
+padrão (fechado). Com `transform:translateY(105%)` o painel some abaixo
+da viewport, mas a sombra (offset -8 + blur 40 = ~48px acima do topo do
+painel) ainda vazava 28–43px ABOVE the viewport bottom, criando o efeito
+de degradê escuro vindo de baixo para cima visível no rodapé. Vários
+`.float-panel` (Duration, Ease, Smooth, BgColor, Format, Template…)
+contribuíam simultaneamente.
+
+Correção: `box-shadow:none` no estado padrão; a sombra agora aparece
+apenas com a classe `.show` (painel aberto). Rodapé fica visualmente
+sólido até a base da tela, sem fade, sem faixa morta. Toolbar/custBar
+seguem com `background-image:none` e `box-shadow:none` como já estavam.
+
+### 2) Submenu contextual compacto + header com botão voltar
+
+`#custBarBack` tinha `min-height:32px` + `padding:2px 12px` e ficava em
+linha própria acima do slider, criando a "coluna vertical jogada à
+esquerda" e exagerando a altura total do submenu (~148px sobre a
+safe-area). Agora vira um header compacto:
+
+- `min-height:22px`, `padding:1px 8px 1px 2px`, `min-width:36px`.
+- SVG 20x20 (era 22x22), chevron alinhado ao conteúdo abaixo.
+- `#custBarContent` com `padding:2px 14px 4px` (era `4px 14px 8px`).
+- Chips do menu contextual com `padding:6px 14px` e `min-height:30px`
+  (eram `8px 16px` e `36px`). Gap entre slider e chips reduzido a 6px.
+
+O submenu fica próximo de ~110px sobre a safe-area (≈25% mais
+compacto) sem alterar valores, ranges ou comportamento dos controles.
+Mantida a navegação: toque no ícone expande, chevron recolhe ao
+compact mode, toque fora fecha.
+
+### 3) Faixa ciano do slider acompanha a bolinha
+
+`updateSliderFill()` já existia e era disparada via listener delegado em
+`input`. Quando o `value` era escrito de forma programática (abrir
+painel, sincronizar valores entre painéis, drag de handle global), o
+listener não rodava e a faixa ciano (CSS `--fill`) ficava com o valor
+antigo — bolinha em 0.0s mas faixa cheia até o meio.
+
+Correção: chama `updateSliderFill(slider)` imediatamente após cada
+escrita programática em `.dur-slider` que pintaria valor stale:
+- `initEasePanel` (slider Seg. X-Y do painel contextual de Trecho);
+- `syncCustomizePanel` (rotSlider e scaleSlider);
+- handle global de escala/rotação (drag no stage);
+- arrasto de rotação por gesto (rotSlider);
+- `initSmoothSlider`;
+- `refreshPauseControls` (framePauseSlider local).
+
+Adicionalmente, `openCustBar`, `switchCustTab` e `openPanel` chamam
+`refreshSliderFills()` ao final, repintando todos os `.dur-slider`
+visíveis após cada transição de painel/aba.
+
+`updateSliderFill` já trata min/max inválidos, value NaN, max==min e
+clampa entre 0..100; sem alteração na função.
+
+### Arquivos alterados
+
+- `index.html`
+  - Estilo `.float-panel` / `.float-panel.show` (rodapé sólido).
+  - Estilo `#custBarBack` + nova regra `#custBarContent .chip` e
+    `.cust-content > div + div` (submenu compacto).
+  - Inline `padding` de `#custBarContent` ajustado.
+  - JS: `initEasePanel`, `syncCustomizePanel`, drag handlers de
+    handle global e rotação, `initSmoothSlider`, `refreshPauseControls`,
+    `openCustBar`, `switchCustTab`, `openPanel`.
+  - `APP_VERSION`, `APP_VERSION_NAME` e texto visível em `settings-version`.
+- `pages-deploy-stamp.txt` atualizado.
+
+### Riscos
+
+- Sombra do painel flutuante agora só aparece com `.show`. Pode haver
+  um pop visual no início da transição de abertura (transition cobre
+  apenas `transform`). Aceitável — painel fechado fica sem leak; aberto
+  segue com a mesma sombra de elevação.
+- Submenu mais compacto pode parecer "apertado" em telas muito
+  pequenas. Mantidos paddings mínimos e altura de toque para chips.
+
+### Não tocado
+
+- WebCodecs/export pipeline / MP4: zero mudanças.
+- Motor de animação: zero mudanças.
+- Cálculo de tempo, sincronização numérica das pausas/trechos: mantida
+  como na v8z4b16e.
+- Seleção múltipla, alinhamento, distribuição: zero mudanças.
+- Templates, JSON, easing, curvas: zero mudanças.
+
+### Testes obrigatórios (iPhone/Safari)
+
+1. Rodapé: carregar imagem; confirmar barra inferior sólida até a base,
+   sem degradê; botões acima da Home Bar.
+2. Submenus de frame: tocar frame → Pausa/Rotação/Escala/Posição →
+   chevron voltar bem posicionado; sem tranco no stage.
+3. Sliders: abrir Seg. 1-2; valor 0.0s → bolinha e faixa ciano no
+   início; mover → faixa acompanha; abrir painel Duração e confirmar
+   slider TOTAL e individuais.
+4. MP4: tocar Preview; Gerar MP4; gerar de novo após pequena edição;
+   sem tela preta nem botão preso.
+
 ## v8z4b16d — Fix MP4 generation and defensive export cleanup
 
 Patch cirúrgico sobre a v8z4b16c. **Foco único:** recuperar a geração

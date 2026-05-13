@@ -642,26 +642,40 @@ body.panel-open .stage.out-of-bounds::after{
 .cust-tab.active-tab svg{stroke:var(--accent);stroke-width:2.5;}
 .cust-tab.active-tab .cust-tab-lbl{color:var(--accent);font-weight:600;}
 .cust-content{display:block;}
-/* v8z4b16e — Seta "voltar" estilo CapCut: chevron à esquerda, sem texto,
-   sem moldura/fundo. Compactada (área de toque preservada por padding
-   horizontal, sem reservar uma faixa vertical exagerada no subpainel).
-   Padrão de navegação: primeiro toque no frame abre compact mode (só
-   ícones); toque numa função expande controles e revela a seta voltar;
-   tocar a seta recolhe ao compact mode (não fecha); tocar fora fecha. */
+/* v8z4b16f — Seta "voltar" agora é uma faixa/header compacto do submenu.
+   Antes (v8z4b16e), o botão criava uma "coluna" vertical jogada à
+   esquerda com min-height:32px, gerando faixa visual estranha acima do
+   slider. Agora vira um header inline curto (altura ~22px), alinhado ao
+   conteúdo, ocupando só o espaço necessário do chevron. Área de toque
+   ampliada via padding horizontal preservado; não reserva faixa
+   vertical exagerada. Mantém comportamento (recolher para compact-mode,
+   não fechar). */
 #custBarBack{display:inline-flex;align-items:center;justify-content:flex-start;
-  padding:2px 12px 2px 0;margin:0 0 2px -4px;cursor:pointer;background:transparent;border:none;
+  padding:1px 8px 1px 2px;margin:0 0 2px -2px;cursor:pointer;background:transparent;border:none;
   -webkit-user-select:none;user-select:none;color:rgba(235,235,235,0.92);
-  min-height:32px;min-width:44px;border-radius:8px;}
+  min-height:22px;min-width:36px;border-radius:6px;}
 #custBarBack:active{background:rgba(255,255,255,0.05);opacity:.85;}
-#custBarBack svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;}
+#custBarBack svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;}
+/* v8z4b16f — Submenu contextual compacto. Reduz padding interno do
+   conteúdo, gap entre slider e chips, e altura mínima dos chips. Antes,
+   o submenu somava ~148px de altura visível (acima da safe-area); agora
+   fica próximo de ~110px, sem alterar valores, ranges ou comportamento
+   dos controles. */
+#custBarContent .chip{padding:6px 14px;min-height:30px;font-size:13px;}
+#custBarContent .cust-content > div + div{margin-top:6px !important;}
 
-/* FLOAT PANEL */
+/* FLOAT PANEL
+   v8z4b16f — box-shadow só ativo com .show. Com translateY(105%) o painel
+   fica fora da viewport, mas a sombra (-8 + 40px blur) ainda vazava ~28-43px
+   acima do rodapé visível, criando a aparência de degradê/fade na barra
+   inferior mesmo com painel fechado. Aplicando a sombra apenas com .show,
+   o rodapé fica completamente sólido. */
 .float-panel{position:fixed;bottom:0;left:0;right:0;background:var(--surface);
   border-radius:20px 20px 0 0;border-top:.5px solid var(--border);
   padding:8px 20px calc(24px + var(--safe-bottom));z-index:200;
-  box-shadow:0 -8px 40px rgba(0,0,0,.6);
+  box-shadow:none;
   transform:translateY(105%);transition:transform .3s cubic-bezier(.32,.72,0,1);}
-.float-panel.show{transform:translateY(0);}
+.float-panel.show{transform:translateY(0);box-shadow:0 -8px 40px rgba(0,0,0,.6);}
 .panel-handle{width:36px;height:5px;border-radius:3px;background:var(--surface3);margin:0 auto 18px;cursor:pointer;}
 .tpl-pill{display:flex;align-items:center;gap:7px;padding:10px 14px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2);font-size:13px;font-weight:600;color:#fff;cursor:pointer;-webkit-user-select:none;user-select:none;}
 .tpl-pill:active{background:var(--surface3);}
@@ -1455,7 +1469,7 @@ body.cust-open #toolbar{
 -->
 <div id="custBar" style="display:none;">
   <!-- Conteúdo das abas (TOPO) -->
-  <div id="custBarContent" style="padding:4px 14px 8px;background:#1a1a1a;">
+  <div id="custBarContent" style="padding:2px 14px 4px;background:#1a1a1a;">
     <!--
       v8z4b15z — Seta "voltar" estilo CapCut: chevron grande, sem texto,
       sem moldura. Volta ao modo compacto (preserva aba ativa). No modo
@@ -1597,7 +1611,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b16e</span><br><span id="appVersionNameText">Bottom bar polish, contextual subpanels and Duration sync</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b16f</span><br><span id="appVersionNameText">Solid bottom strip, compact context submenu, slider fill sync</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3862,8 +3876,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b16e';
-const APP_VERSION_NAME = 'Bottom bar polish, contextual subpanels and Duration sync';
+const APP_VERSION = 'v8z4b16f';
+const APP_VERSION_NAME = 'Solid bottom strip, compact context submenu, slider fill sync';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4499,7 +4513,7 @@ function ensureGlobalHandle() {
       const sn = document.getElementById('scaleNum');
       const ss = document.getElementById('scaleSlider');
       if (sn) sn.textContent = pct + '%';
-      if (ss) ss.value = pct;
+      if (ss) { ss.value = pct; if (typeof updateSliderFill === 'function') updateSliderFill(ss); }
     } else {
       // Acumular delta angular incrementalmente — sem normalizar, preserva voltas completas
       const prevAngle = handleDragState.lastAngle !== undefined ? handleDragState.lastAngle : initAngle;
@@ -4514,7 +4528,7 @@ function ensureGlobalHandle() {
       showAngleIndicator(fi, frameRotations[fi]);
       const rs = document.getElementById('rotSlider');
       const rn = document.getElementById('rotNum');
-      if (rs) rs.value = frameRotations[fi];
+      if (rs) { rs.value = frameRotations[fi]; if (typeof updateSliderFill === 'function') updateSliderFill(rs); }
       if (rn) rn.textContent = (frameRotations[fi] >= 0 ? '+' : '') + frameRotations[fi].toFixed(1) + '°';
     }
     clampFrame(fi);
@@ -5533,6 +5547,7 @@ function onMove(e) {
     frameRotations[fi] = Math.round(Math.max(-720, Math.min(720, newRot)) * 10) / 10;
     clampFrame(fi);
     rotSlider.value = frameRotations[fi];
+    if (typeof updateSliderFill === 'function') updateSliderFill(rotSlider);
     rotNum.textContent = (frameRotations[fi] >= 0 ? '+' : '') + frameRotations[fi].toFixed(1) + '°';
     showAngleIndicator(fi, frameRotations[fi]);
     renderAll();
@@ -7116,7 +7131,11 @@ function initEasePanel() {
   const segDur = getSegDuration(seg);
   const sl = document.getElementById('easePanelSegSlider');
   const sv = document.getElementById('easePanelSegVal');
-  if (sl) { sl.value = segDur; sl._seg = seg; }
+  if (sl) {
+    sl.value = segDur; sl._seg = seg;
+    // v8z4b16f — repinta faixa ciano após mudança programática do value.
+    if (typeof updateSliderFill === 'function') updateSliderFill(sl);
+  }
   if (sv) sv.textContent = segDur.toFixed(1) + 's';
   if (sl && !sl._inited) {
     sl._inited = true;
@@ -7810,6 +7829,10 @@ function openPanel(id) {
   const overlay = document.getElementById('overlayBg');
   if (overlay) overlay.classList.add('show');
   document.getElementById('panel' + id).classList.add('show');
+  // v8z4b16f — garante faixa ciano sincronizada com o valor recém-aplicado
+  // após abrir um painel flutuante. Cobre painel Ease (Seg. X-Y), Smooth,
+  // Duration e demais que contenham .dur-slider.
+  if (typeof refreshSliderFills === 'function') refreshSliderFills();
 }
 // ═══════════════════════════════════════
 // EASING POR SEGMENTO
@@ -8023,6 +8046,7 @@ function initSmoothSlider() {
   const nm = document.getElementById('smoothNum');
   if (!sl) return;
   sl.value = Math.round(smoothAmount * 100);
+  if (typeof updateSliderFill === 'function') updateSliderFill(sl);
   if (nm) nm.textContent = Math.round(smoothAmount * 100) + '%';
   sl.oninput = function() {
     smoothAmount = parseInt(this.value) / 100;
@@ -9012,7 +9036,7 @@ function syncCustomizePanel() {
   const rot = frameRotations[activeIdx] || 0;
   const rs = document.getElementById('rotSlider');
   const rn = document.getElementById('rotNum');
-  if (rs) rs.value = rot;
+  if (rs) { rs.value = rot; if (typeof updateSliderFill === 'function') updateSliderFill(rs); }
   if (rn) rn.textContent = (rot >= 0 ? '+' : '') + rot.toFixed(1) + '°';
 
   const f = frames[activeIdx];
@@ -9020,7 +9044,7 @@ function syncCustomizePanel() {
   const pct = Math.round(f ? (f.w / refW * 100) : 100);
   const ss = document.getElementById('scaleSlider');
   const sn = document.getElementById('scaleNum');
-  if (ss) ss.value = Math.max(20, Math.min(300, pct));
+  if (ss) { ss.value = Math.max(20, Math.min(300, pct)); if (typeof updateSliderFill === 'function') updateSliderFill(ss); }
   if (sn) sn.textContent = pct + '%';
 
   // Posição em pixels da imagem natural
@@ -9250,6 +9274,8 @@ function openCustBar() {
   }
   syncCustomizePanel();
   initScaleSlider();
+  // v8z4b16f — garante faixa ciano sincronizada ao abrir o menu contextual.
+  if (typeof refreshSliderFills === 'function') refreshSliderFills();
 }
 
 function closeCustBar() {
@@ -9284,6 +9310,11 @@ function switchCustTab(tab) {
   const content = document.getElementById(key);
   if (content) content.style.display = 'block';
   if (tab === 'framepause') syncFramePauseUI();
+  // v8z4b16f — após trocar a aba, repinta faixas ciano dos sliders agora
+  // visíveis (scale/rot/framepause). Sliders escondidos no momento do
+  // refresh continuam com --fill stale, mas serão repintados na próxima
+  // troca/atualização.
+  if (typeof refreshSliderFills === 'function') refreshSliderFills();
 }
 
 // v8z4b15x — Volta ao menu de ícones (compact-mode) preservando a aba
@@ -9479,6 +9510,8 @@ function refreshPauseControls() {
     const formatted = cur.toFixed(1);
     if (parseFloat(localSlider.value) !== parseFloat(formatted)) {
       localSlider.value = formatted;
+      // v8z4b16f — repinta faixa ciano após reescrita programática.
+      if (typeof updateSliderFill === 'function') updateSliderFill(localSlider);
     }
     const localVal = document.getElementById('framePauseVal');
     if (localVal) localVal.textContent = formatted + 's';
