@@ -2,6 +2,69 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b16g — UX state cleanup + Voltar padronizado (iPhone/Safari obrigatório)
+
+### A. Estado visual do menu de frames (bug do destaque preso)
+
+1. Carregar imagem.
+2. Tocar num frame → menu contextual abre em `compact-mode` (apenas
+   barra de ícones).
+3. Confirmar: **nenhum ícone aparece aceso/destacado** logo na primeira
+   abertura (antes, Escala aparecia destacado).
+4. Tocar em **Rotação** → submenu expande; o ícone Rotação agora acende
+   em ciano (estado legítimo de submenu aberto).
+5. Tocar no botão **Voltar** (coluna estreita à esquerda do submenu) →
+   recolhe para `compact-mode`.
+6. Confirmar: **nenhum ícone fica aceso após o Voltar**.
+7. Tocar fora do menu (em qualquer área vazia do stage) → menu inteiro
+   fecha.
+8. Reabrir o menu (tocar num frame) → confirmar: nenhum ícone fica aceso
+   apenas por ter sido o último usado. **(bug do v8z4b16f corrigido)**
+9. Repetir com **Pausa**, **Escala** e **Posição**.
+
+### B. Botão Voltar como coluna lateral
+
+1. Abrir submenu de Rotação.
+2. Confirmar layout: chevron estreito à esquerda + slider + chip de
+   reset à direita, todos na mesma linha visual.
+3. Confirmar: o submenu NÃO tem mais o header horizontal acima do
+   slider; recuperou ~22px de altura útil.
+4. Tocar no chevron → recolhe para `compact-mode` (mesmo comportamento
+   de antes).
+5. Repetir em Pausa, Escala, Posição.
+
+### C. Preview com Voltar (não mais X)
+
+1. Carregar imagem; criar 3 frames.
+2. Tocar **Preview** (play da toolbar).
+3. Confirmar no rodapé do Preview: o botão da esquerda agora é
+   `Voltar` + chevron para a esquerda (não mais `Fechar` + X).
+4. Tocar no Voltar → Preview fecha e volta ao Stage. Mesmo
+   comportamento de antes.
+5. Confirmar Play/Pause central e botão Salvar MP4 inalterados.
+
+### D. Regressões (NÃO podem ter quebrado)
+
+1. Abrir/fechar Preview com rotação aplicada → roda normal.
+2. Salvar MP4 → arquivo gerado, sem tela preta, sem botão vermelho
+   preso.
+3. Painéis flutuantes (Template, Formato, Duração, Easing, Suavidade,
+   Cor de fundo): seguem abrindo/fechando pelo handle do topo, sem
+   mudança de layout.
+4. Reset (botão circular no topbar) continua resetando tudo.
+5. Seleção múltipla / AlignBar: Voltar primário e submenu Alinhar
+   intactos.
+
+### E. Versão visível
+
+1. Topbar → Configurações → confirmar `Arco v8z4b16g`.
+2. Em `CHANGELOG.md`, a primeira entrada cronológica deve ser
+   v8z4b16g; v8z4b16f continua presente como histórico.
+3. Em `pages-deploy-stamp.txt`, stamp deve ser `v8z4b16g`.
+4. Buscar no `index.html` por "atual" — nenhuma referência a v8z3q,
+   v8z3v, v8z4b16e ou v8z4b16f deve aparecer marcada como versão
+   atual.
+
 ## v8z4b16f — Rodapé sólido, submenu compacto, faixa ciano sincronizada (iPhone/Safari obrigatório)
 
 ### A. Rodapé sem degradê

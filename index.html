@@ -1,10 +1,14 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z3q                                        ║
+║  Versão: v8z4b16g                                     ║
+║  (histórico abaixo é referência — CHANGELOG.md é a    ║
+║   fonte oficial; entradas marcadas "(atual)" antes    ║
+║   de v8z4b16g são versões anteriores, mantidas para   ║
+║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
-║  CHANGELOG                                           ║
-║  v8z3q (atual)                                      ║
+║  CHANGELOG (histórico)                               ║
+║  v8z3q                                               ║
 ║    fix: WebCodecs estável sem ImageBitmap[]          ║
 ║         encode frame-a-frame, menor uso de memória   ║
 ║         cleanup ao trocar imagem / evitar tela preta ║
@@ -74,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z3v — Stable minimal fixes -->
+<!-- Arco App — v8z4b16g — UX state cleanup + Voltar standardization -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -642,20 +646,32 @@ body.panel-open .stage.out-of-bounds::after{
 .cust-tab.active-tab svg{stroke:var(--accent);stroke-width:2.5;}
 .cust-tab.active-tab .cust-tab-lbl{color:var(--accent);font-weight:600;}
 .cust-content{display:block;}
-/* v8z4b16f — Seta "voltar" agora é uma faixa/header compacto do submenu.
-   Antes (v8z4b16e), o botão criava uma "coluna" vertical jogada à
-   esquerda com min-height:32px, gerando faixa visual estranha acima do
-   slider. Agora vira um header inline curto (altura ~22px), alinhado ao
-   conteúdo, ocupando só o espaço necessário do chevron. Área de toque
-   ampliada via padding horizontal preservado; não reserva faixa
-   vertical exagerada. Mantém comportamento (recolher para compact-mode,
-   não fechar). */
-#custBarBack{display:inline-flex;align-items:center;justify-content:flex-start;
-  padding:1px 8px 1px 2px;margin:0 0 2px -2px;cursor:pointer;background:transparent;border:none;
+/* v8z4b16g — Seta "voltar" como coluna lateral discreta à esquerda do
+   submenu contextual (frame/pausa/rotação/transformação). Direção
+   aprovada de interface: o Voltar não rouba altura útil do painel, fica
+   verticalizado num trilho estreito (~28px) e o conteúdo do submenu
+   ocupa o restante. Comportamento preservado (collapseCustBar — volta
+   ao compact-mode com os ícones; não fecha o menu inteiro). Em v8z4b16f
+   o botão era um header no topo (~22px) e ainda comia ~22px de altura;
+   agora a altura é zero para o conteúdo. */
+#custBarContent{
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:stretch !important;
+  gap:6px !important;
+  padding:2px 14px 4px 2px !important;
+}
+#custBarBack{
+  flex:0 0 auto;align-self:stretch;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 4px;margin:0;
+  cursor:pointer;background:transparent;border:none;
   -webkit-user-select:none;user-select:none;color:rgba(235,235,235,0.92);
-  min-height:22px;min-width:36px;border-radius:6px;}
+  min-height:0;min-width:24px;width:24px;border-radius:6px;
+}
 #custBarBack:active{background:rgba(255,255,255,0.05);opacity:.85;}
-#custBarBack svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;}
+#custBarBack svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;}
+#custBarContent > .cust-content{flex:1 1 0;min-width:0;}
 /* v8z4b16f — Submenu contextual compacto. Reduz padding interno do
    conteúdo, gap entre slider e chips, e altura mínima dos chips. Antes,
    o submenu somava ~148px de altura visível (acima da safe-area); agora
@@ -1551,7 +1567,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-rotate-cw"></use></svg>
       <span class="cust-tab-lbl">Rotação</span>
     </div>
-    <div class="cust-tab active-tab" data-tab="scale" onclick="switchCustTab('scale')">
+    <div class="cust-tab" data-tab="scale" onclick="switchCustTab('scale')">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-scaling"></use></svg>
       <span class="cust-tab-lbl">Escala</span>
     </div>
@@ -1611,7 +1627,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b16f</span><br><span id="appVersionNameText">Solid bottom strip, compact context submenu, slider fill sync</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b16g</span><br><span id="appVersionNameText">UX state cleanup, Voltar standardization, version housekeeping</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1640,8 +1656,12 @@ body.cust-open #toolbar{
   </div>
   <div class="preview-bottom">
     <div class="preview-btn close-btn" onclick="stopPreview()">
-      <svg><use href="#i-close"></use></svg>
-      <span>Fechar</span>
+      <!-- v8z4b16g — X substituído por chevron de Voltar para alinhar
+           com a linguagem aprovada dos demais painéis (custBar, alignBar).
+           Comportamento inalterado: stopPreview() fecha o Preview e
+           devolve o usuário ao Stage. -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>Voltar</span>
     </div>
     <div class="preview-btn" id="previewPlayBtn" onclick="togglePreviewPlayback()">
       <svg id="previewPlayIcon"><use href="#i-pause"></use></svg>
@@ -3876,8 +3896,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b16f';
-const APP_VERSION_NAME = 'Solid bottom strip, compact context submenu, slider fill sync';
+const APP_VERSION = 'v8z4b16g';
+const APP_VERSION_NAME = 'UX state cleanup, Voltar standardization, version housekeeping';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -9287,6 +9307,13 @@ function closeCustBar() {
     bar.style.display = 'none';
     bar.classList.remove('compact-mode');
   }
+  // v8z4b16g — limpa o destaque visual remanescente do último ícone
+  // contextual usado. Sem isso, ao reabrir o menu de frames em
+  // compact-mode o ícone do último submenu (Rotação, Pausa…) continuava
+  // aceso indevidamente — bug puro de estado visual, sem lógica real de
+  // "modo ativo" por trás.
+  document.querySelectorAll('#custBarTabs .cust-tab.active-tab')
+    .forEach(t => t.classList.remove('active-tab'));
   document.body.classList.remove('cust-open');
   resetCustGlobalLocks();
 }
@@ -9317,13 +9344,18 @@ function switchCustTab(tab) {
   if (typeof refreshSliderFills === 'function') refreshSliderFills();
 }
 
-// v8z4b15x — Volta ao menu de ícones (compact-mode) preservando a aba
-// ativa para reabrir do mesmo lugar. Stage-tap continua fechando o painel
-// inteiro; o "Voltar" só recolhe.
+// v8z4b15x — Volta ao menu de ícones (compact-mode). Stage-tap continua
+// fechando o painel inteiro; o "Voltar" só recolhe.
+// v8z4b16g — também limpa o destaque visual remanescente do último
+// ícone usado: em compact-mode nenhum submenu está aberto, então
+// nenhum ícone deve aparecer aceso. switchCustTab repõe a marcação
+// quando o usuário tocar em um ícone novamente.
 function collapseCustBar() {
   const bar = document.getElementById('custBar');
   if (!bar) return;
   bar.classList.add('compact-mode');
+  document.querySelectorAll('#custBarTabs .cust-tab.active-tab')
+    .forEach(t => t.classList.remove('active-tab'));
 }
 
 // v8z4b16b — Curvas e Adicionar foram removidos do menu contextual.
