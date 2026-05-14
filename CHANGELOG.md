@@ -1,5 +1,38 @@
 # Changelog
 
+## v8z4b16m — gap final slider/botões nos submenus de transformação
+
+Microajuste visual final sobre a v8z4b16l. **Foco único:** aumentar em
+5px o gap entre a linha do slider e a linha de botões (−5/+5/Reset) nos
+submenus de transformação (Escala, Rotação, Pausa, Posição) para que a
+bolinha do slider e os botões não fiquem encavalados em iPhone/Safari.
+**Não toca** em motor de animação, preview, exportação MP4, WebCodecs /
+MediaRecorder, cálculo de tempo, ranges dos sliders, valores exibidos,
+comportamento dos botões −5/+5/Reset, lógica de escala, rotação, pausa
+ou posição, menu de frames, posição da faixa de frames, botão Voltar,
+safe-area, textos, ícones, cores ou layout geral.
+
+### Alteração
+
+- `#custBarContent .cust-content > div + div`: `margin-top` sobe de
+  `10px` para `15px` (+5px). Esse é o único seletor CSS modificado.
+
+### Versionamento
+
+- Cabeçalho HTML, comentário de topo do `<body>`, `APP_VERSION`,
+  `APP_VERSION_NAME` e display em Configurações atualizados para
+  v8z4b16m. `pages-deploy-stamp.txt`, `CHANGELOG.md` e `QA.md`
+  atualizados.
+
+### Não alterado nesta rodada
+
+Motor de animação, WebCodecs / export MP4, preview/canvas, cálculo de
+tempo, lógica de pausas, lógica de trechos, ranges dos sliders, valores
+exibidos, comportamento dos botões −5%/+5%/Reset, easing, curvas, JSON,
+templates, seleção múltipla, alinhamento/distribuição, ícones (SVGs),
+textos de interface, paleta de cores, fluxo geral do app, botão Voltar,
+menu de frames (continua fixo), safe-area.
+
 ## v8z3u — stable candidate
 
 Base congelada para migração ao GitHub/Codex.
