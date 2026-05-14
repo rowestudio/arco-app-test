@@ -67,6 +67,75 @@ Quando Fixar estiver ativo em algum frame, usar destaque vermelho, não azul.
 - Restauração da separação entre caminho geométrico (curva) e easing temporal (transição por segmento).
 - Mantida a compatibilidade com o patch v8z4b de inserção de frame dentro da curva.
 
+## v8z4b16i — Safe-area regression fix, contextual submenu compaction
+
+Patch cirúrgico sobre v8z4b16h. **Foco único:** corrigir a regressão da
+camada de safe area que estava cobrindo controles do menu contextual e
+compactar a altura excessiva dos submenus locais de frame. **Não toca**
+em motor de animação, preview/canvas, exportação MP4, easing, curvas,
+duração funcional, pausas funcionais, rotação funcional, escala
+funcional, lógica de movimento, seleção múltipla, fluxo geral, cores
+gerais já aprovadas, ou no botão Voltar reforçado em v8z4b16h.
+
+### 1) Camada body::after de safe-area removida
+
+Antes (v8z4b16h): pseudo-elemento `body::after` fixo (`position:fixed`,
+`bottom:0`, `height:env(safe-area-inset-bottom)`, `z-index:0`,
+`pointer-events:none`) foi adicionado como "rede de segurança" para
+cobrir a faixa do home indicator com `var(--surface)`. Em iPhone/Safari,
+esse layer fixo coincidia visualmente com a área inferior do
+`#custBarContent` (que também tinha `padding-bottom = safe-area`),
+gerando uma faixa de cor alta dentro do painel que parecia cobrir
+slider e botões.
+
+Correção:
+- Bloco `body::after { ... }` removido do CSS.
+- A continuidade visual da safe-area é mantida pelo background
+  `var(--surface)` aplicado em `html, body` (já presente desde
+  v8z4b16h).
+- A toolbar (`.toolbar`), as tabs (`#custBarTabs`) e o conteúdo
+  (`#custBarContent`) já incluem padding-bottom calculado a partir de
+  `env(safe-area-inset-bottom)`, então a área da Home Bar segue coberta
+  pela própria barra inferior, sem layer extra.
+- Sem mudança em z-index, pointer-events ou empilhamento dos demais
+  elementos.
+
+### 2) Padding inferior do submenu compactado
+
+Antes (v8z4b16h): `#custBarContent` usava
+`padding-bottom: max(env(safe-area-inset-bottom, 4px), 4px) !important`
+(~34px no iPhone). Esse valor alinhava o "fundo seguro" com o que a
+toolbar reservava na compact-mode, mas no expanded-mode empurrava o
+slider/chips ~20px para cima do que era necessário, criando espaço morto
+visível abaixo dos controles.
+
+Correção:
+- `#custBarContent` agora usa o MESMO padrão de
+  `.toolbar` e `#custBarTabs`:
+  `padding-bottom: max(calc(env(safe-area-inset-bottom, 4px) - 20px), 6px) !important`.
+- Resultado: o slider e os chips Reset/-5/+5 descem perto da Home Bar,
+  com piso mínimo de 6px de folga (sem invadir touch da Home Bar).
+- Submenu deixa de ter espaço morto inferior; altura visual cai ~20px
+  no iPhone, mantendo o conforto de toque (chips continuam 30px,
+  botão Voltar continua 44×44).
+
+### 3) Versionamento
+
+- Cabeçalho HTML, comentário de topo do `<body>`, `APP_VERSION`,
+  `APP_VERSION_NAME` e display em Configurações atualizados para
+  v8z4b16i. Comentários internos que referenciam versões anteriores
+  como precedente foram preservados; novos comentários explicativos
+  das mudanças desta rodada são marcados v8z4b16i.
+
+### Não alterado nesta rodada
+
+Motor de animação, preview/canvas, exportação MP4, easing, curvas,
+duração funcional, pausas funcionais, rotação funcional, escala
+funcional, lógica de movimento, seleção múltipla, fluxo geral do app,
+cores gerais já aprovadas, botão Voltar reforçado (`#custBarBack`,
+`.ab-back-strong`, `.preview-btn.close-btn`) e demais melhorias
+visuais já validadas em v8z4b16g/v8z4b16h.
+
 ## v8z4b16h — iPhone/Safari UI: pre-image guards, safe-area parity, Voltar reinforce, contextual compacting
 
 Patch cirúrgico sobre v8z4b16g. **Foco único:** corrigir apenas o que foi
