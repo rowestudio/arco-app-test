@@ -1,10 +1,10 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b16h                                     ║
+║  Versão: v8z4b16i                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
-║   de v8z4b16h são versões anteriores, mantidas para   ║
+║   de v8z4b16i são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b16h — iPhone/Safari UI: pre-image guards, safe-area parity, Voltar reinforce, contextual compacting, position 2-col, pause icon -->
+<!-- Arco App — v8z4b16i — iPhone/Safari UI: corrige camada de safe area que cobria controles e compacta altura dos submenus locais de frame -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -100,14 +100,13 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{
   height:100%;
-  /* v8z4b16h — html/body assumem var(--surface) para que a faixa do
-     home indicator do iPhone/Safari (safe-area-inset-bottom) fique igual
-     à cor da toolbar. Antes, body usava var(--bg) (#000), e quando o
-     viewport real estendia além do .app/100dvh — ou quando a toolbar
-     não cobria 100% da safe-area por arredondamento de altura — o preto
-     do body vazava, criando faixa residual abaixo da toolbar. A área
-     ativa de imagem continua preta porque .image-area mantém o próprio
-     background sólido (#000). Sem degradê, sem sombra, sem mover botões. */
+  /* v8z4b16i — html/body com background var(--surface) cobre
+     naturalmente a safe-area inferior (Home Bar) com a mesma cor da
+     toolbar/custBar. A camada fixa body::after de v8z4b16h foi removida
+     porque criava sobreposição visual com os controles do menu
+     contextual; o background do body já garante continuidade abaixo das
+     barras inferiores. .image-area mantém background sólido (#000)
+     próprio, então a área ativa da imagem continua preta. */
   background:var(--surface);
   color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;
@@ -116,22 +115,6 @@ html,body{
   position:fixed;width:100%;
 }
 .app{display:flex;flex-direction:column;height:100dvh;}
-
-/* v8z4b16h — Camada fixa de segurança no rodapé exato do viewport,
-   cobrindo a safe-area inferior com var(--surface). Mesmo se 100dvh /
-   layout não cobrir a faixa do home indicator, esse pseudo-elemento
-   garante continuidade visual com a toolbar. Fica atrás dos botões
-   (z-index 0, pointer-events:none); toolbar/custBar/midBar/alignBar
-   continuam acima por empilhamento natural do flexbox em .app. */
-body::after{
-  content:'';
-  position:fixed;
-  left:0;right:0;bottom:0;
-  height:env(safe-area-inset-bottom,0px);
-  background:var(--surface);
-  z-index:0;
-  pointer-events:none;
-}
 
 /* IMAGE AREA — ocupa tudo do topo ao mid-bar */
 .image-area{
@@ -817,10 +800,13 @@ body.cust-open #toolbar{
 }
 #custBarContent{
   background:var(--surface) !important;
-  /* v8z4b16a — Conteúdo expandido herda a mesma área inferior segura
-     que a toolbar (padding-bottom = safe-area), sem min-height extra
-     que aumente a altura visual do contextual em relação à toolbar. */
-  padding-bottom:max(env(safe-area-inset-bottom, 4px), 4px) !important;
+  /* v8z4b16i — Padding inferior IDÊNTICO à .toolbar e #custBarTabs:
+     subtrai 20px da safe-area (piso 6px) para que o slider/chips
+     desçam perto da Home Bar, eliminando o espaço morto criado em
+     v8z4b16h (que aplicava a safe-area inteira como padding e empurrava
+     visualmente os controles ~20px acima do necessário). A safe-area
+     continua coberta pelo background var(--surface) do body. */
+  padding-bottom:max(calc(env(safe-area-inset-bottom, 4px) - 20px), 6px) !important;
   overflow-y:auto !important;
   -webkit-overflow-scrolling:touch;
 }
@@ -1710,7 +1696,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b16h</span><br><span id="appVersionNameText">iPhone/Safari UI: pre-image guards, safe-area parity, Voltar reinforce, contextual compacting</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b16i</span><br><span id="appVersionNameText">corrige safe area sobrepondo controles e compacta submenus locais</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3979,8 +3965,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b16h';
-const APP_VERSION_NAME = 'iPhone/Safari UI: pre-image guards, safe-area parity, Voltar reinforce, contextual compacting';
+const APP_VERSION = 'v8z4b16i';
+const APP_VERSION_NAME = 'corrige safe area sobrepondo controles e compacta submenus locais';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
