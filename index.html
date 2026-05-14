@@ -1,10 +1,10 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b16i                                     ║
+║  Versão: v8z4b16j                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
-║   de v8z4b16i são versões anteriores, mantidas para   ║
+║   de v8z4b16j são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b16i — iPhone/Safari UI: corrige camada de safe area que cobria controles e compacta altura dos submenus locais de frame -->
+<!-- Arco App — v8z4b16j — iPhone/Safari UI: faixa de frames fixa, sliders sem corte, escala livre além da imagem, ícone/texto mais respirados e controles inferiores levemente rebaixados -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -386,12 +386,16 @@ body.no-image #custBar{display:none !important;}
    para que botões/textos não fiquem "flutuando" muito acima do rodapé.
    Mantemos um piso mínimo (6px) para preservar a folga segura acima do
    indicador de Home. Toolbar e custBar compact-mode continuam compartilhando
-   a mesma altura computada — sem tranco ao abrir o menu contextual. */
+   a mesma altura computada — sem tranco ao abrir o menu contextual.
+   v8z4b16j — Subtração da safe area passa de -20 para -26 (linguagem
+   visual de Edits/Instagram/CapCut): ícones/textos descem ~6px e ficam
+   mais integrados à base da tela. Piso de 6px mantém folga segura acima
+   da Home Bar. */
 .toolbar{
   flex-shrink:0;background:var(--surface);border-top:.5px solid var(--border);
   background-image:none;
   box-shadow:none;
-  padding:0 4px max(calc(env(safe-area-inset-bottom, 4px) - 20px), 6px);
+  padding:0 4px max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px);
   display:none;align-items:flex-end;
   box-sizing:border-box;
   height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px));
@@ -683,6 +687,11 @@ body.no-image #custBar{display:none !important;}
   gap:6px !important;
   padding:2px 14px 4px 2px !important;
 }
+/* v8z4b16j — Wrapper interno (Voltar | conteúdo do submenu) deve respeitar
+   a área visível inteira do #custBar (fixado em compact-height): sem
+   margin/padding extras, e altura igual ao painel para que o conteúdo da
+   aba (.cust-content) possa centralizar slider/chips verticalmente sem
+   colidir com a faixa de frames acima. */
 #custBarBack{
   flex:0 0 auto;align-self:stretch;
   display:flex;align-items:center;justify-content:center;
@@ -698,9 +707,14 @@ body.no-image #custBar{display:none !important;}
    conteúdo, gap entre slider e chips, e altura mínima dos chips. Antes,
    o submenu somava ~148px de altura visível (acima da safe-area); agora
    fica próximo de ~110px, sem alterar valores, ranges ou comportamento
-   dos controles. */
-#custBarContent .chip{padding:6px 14px;min-height:30px;font-size:13px;}
-#custBarContent .cust-content > div + div{margin-top:6px !important;}
+   dos controles.
+   v8z4b16j — Chips mais compactos (min-height 26, padding 5×12) e gap
+   menor (4px) para que slider + chips + safe-area caibam dentro da
+   mesma altura do compact-mode (48px + safe). Isso permite forçar
+   #custBar a manter a altura constante — a faixa de frames não sobe
+   nem desce ao abrir Pausa/Rotação/Escala/Posição. */
+#custBarContent .chip{padding:5px 12px;min-height:26px;font-size:13px;}
+#custBarContent .cust-content > div + div{margin-top:4px !important;}
 
 /* FLOAT PANEL
    v8z4b16f — box-shadow só ativo com .show. Com translateY(105%) o painel
@@ -784,6 +798,17 @@ body.no-image #custBar{display:none !important;}
   height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px)) !important;
   max-height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px)) !important;
 }
+/* v8z4b16j — Expanded também na MESMA altura do compact (e da toolbar).
+   Em v8z4b16i o expandido tinha altura natural (~90-95px) — abrir o
+   submenu de transformação fazia a faixa de frames "subir" alguns pixels
+   no fluxo flex. Forçando height fixo idêntico ao compact, a faixa de
+   frames mantém posição exata em todos os estados (Pausa, Rotação,
+   Escala, Posição). O conteúdo do submenu (slider + chips) cabe nessa
+   altura com os paddings/sizes ajustados acima e abaixo. */
+#custBar:not(.compact-mode){
+  height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px)) !important;
+  max-height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px)) !important;
+}
 body.cust-open #toolbar{
   display:none !important;
 }
@@ -792,8 +817,11 @@ body.cust-open #toolbar{
   background-image:none !important;
   /* v8z4b16e — Padding IDÊNTICO à .toolbar: subtrai 20px da safe-area
      (piso 6px) para baixar visualmente ícones/labels, eliminando faixa
-     morta abaixo do menu sem comprometer a folga acima da Home Bar. */
-  padding:0 4px max(calc(env(safe-area-inset-bottom, 4px) - 20px), 6px) !important;
+     morta abaixo do menu sem comprometer a folga acima da Home Bar.
+     v8z4b16j — Subtração passa para -26 (igual à toolbar): ícones e
+     labels descem mais alguns pixels, ficando mais próximos da Home Bar
+     sem comprometer a folga mínima de 6px. */
+  padding:0 4px max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px) !important;
   align-items:flex-end !important;
   box-sizing:border-box;
   height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px));
@@ -805,8 +833,18 @@ body.cust-open #toolbar{
      desçam perto da Home Bar, eliminando o espaço morto criado em
      v8z4b16h (que aplicava a safe-area inteira como padding e empurrava
      visualmente os controles ~20px acima do necessário). A safe-area
-     continua coberta pelo background var(--surface) do body. */
-  padding-bottom:max(calc(env(safe-area-inset-bottom, 4px) - 20px), 6px) !important;
+     continua coberta pelo background var(--surface) do body.
+     v8z4b16j — padding-top:10 para reservar espaço VERTICAL ACIMA do
+     slider: o thumb/bolinha (30px) projeta-se para cima do track e era
+     cortado pelo limite superior do #custBar (faixa de frames cobria a
+     metade superior do thumb). Com 10px de padding-top o thumb cabe
+     INTEIRO dentro do painel. Subtração da safe-area passa de -20 para
+     -26 (igual à toolbar / #custBarTabs) para descer um pouco os
+     controles. NÃO usa shorthand `padding:` para preservar
+     padding-left/right (2px/14px) definidos no bloco anterior — assim
+     o trilho do botão Voltar mantém a posição exata aprovada. */
+  padding-top:10px !important;
+  padding-bottom:max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px) !important;
   overflow-y:auto !important;
   -webkit-overflow-scrolling:touch;
 }
@@ -821,14 +859,18 @@ body.cust-open #toolbar{
 }
 /* v8z4b16e — cust-tabs alinhadas ao fim como os tb-items da toolbar,
    compactando verticalmente: ícone e rótulo descem perto da Home Bar,
-   sem espaço morto acima/abaixo. */
+   sem espaço morto acima/abaixo.
+   v8z4b16j — gap entre ícone e nome aumenta de 1px para 5px (cinco vezes
+   maior) para dar respiro visual. Os ícones de Pausa/Rotação/Escala/
+   Posição não ficam mais colados aos rótulos. Tamanho do ícone, texto e
+   cor permanecem inalterados. */
 #custBar .cust-tab{
   flex:1;
   display:flex;
   flex-direction:column;
   align-items:center;
   justify-content:flex-end;
-  gap:1px;
+  gap:5px;
   padding:0 2px;
   font-weight:600;
 }
@@ -1696,7 +1738,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b16i</span><br><span id="appVersionNameText">corrige safe area sobrepondo controles e compacta submenus locais</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b16j</span><br><span id="appVersionNameText">faixa de frames fixa, sliders sem corte e escala livre além da imagem</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3965,8 +4007,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b16i';
-const APP_VERSION_NAME = 'corrige safe area sobrepondo controles e compacta submenus locais';
+const APP_VERSION = 'v8z4b16j';
+const APP_VERSION_NAME = 'faixa de frames fixa, sliders sem corte e escala livre além da imagem';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -8275,14 +8317,20 @@ function initScaleSlider() {
     const pct = parseInt(this.value);
     const ar  = ratioMap[currentRatio];
     const refW = baseFrameW > 0 ? baseFrameW : stageW * 0.55;
-    const newW = Math.max(40, Math.min(stageW * 0.98, refW * pct / 100));
+    // v8z4b16j — Remove clamp ao stageW*0.98 (cap visual da imagem):
+    // o slider de Escala agora permite extrapolar o limite da imagem,
+    // alinhando com o comportamento livre dos botões −5%/+5%. Quando
+    // "Conter na imagem" estiver ativo, clampFrame() abaixo ainda limita
+    // a expansão; no modo livre (default), o frame pode crescer além
+    // dos limites visuais da imagem.
+    const newW = Math.max(40, refW * pct / 100);
     const newH = newW / ar;
     const applyToFrame = (i) => {
       const fi = frames[i]; if (!fi) return;
       const cx = i === activeIdx ? (origCX !== null ? origCX : fi.x + fi.w/2) : fi.x + fi.w/2;
       const cy = i === activeIdx ? (origCY !== null ? origCY : fi.y + fi.h/2) : fi.y + fi.h/2;
       const thisPct = isCustLocked() && i !== activeIdx ? Math.round(fi.w / refW * 100) + (pct - Math.round(f.w / refW * 100)) : pct;
-      const tW = Math.max(40, Math.min(stageW * 0.98, refW * thisPct / 100));
+      const tW = Math.max(40, refW * thisPct / 100);
       const tH = tW / ar;
       frames[i] = { x: cx - tW/2, y: cy - tH/2, w: tW, h: tH };
       clampFrame(i);
