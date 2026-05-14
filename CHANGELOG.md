@@ -67,6 +67,97 @@ Quando Fixar estiver ativo em algum frame, usar destaque vermelho, não azul.
 - Restauração da separação entre caminho geométrico (curva) e easing temporal (transição por segmento).
 - Mantida a compatibilidade com o patch v8z4b de inserção de frame dentro da curva.
 
+## v8z4b16k — Vertical breathing room in transform submenus
+
+Microajuste visual sobre a v8z4b16j. **Foco único:** redistribuir o
+espaço vertical dentro dos submenus de transformação (Pausa, Rotação,
+Escala, Posição) para dar mais respiro entre a faixa de frames acima e
+o thumb do slider, e eliminar a sobra inferior visível dentro do
+painel — sem alterar a altura do `#custBar` (faixa de frames continua
+fixa em todos os estados). **Não toca** em motor, preview, export MP4,
+cálculo de tempo, ranges/valores dos sliders, comportamento dos botões
+−5%/+5%/Reset, curvas, easing, seleção múltipla, textos, ícones, cores
+ou estrutura geral.
+
+### 1) Mais respiro entre faixa de frames e thumb do slider
+
+Antes (v8z4b16j): `#custBarContent` reservava `padding-top:10px` acima
+do slider. Com a faixa de frames colada no topo do painel, a metade
+superior do thumb (30×30) ficava a ~10px da borda inferior do `#midBar`
+e visualmente parecia "encostada" / parcialmente pressionada.
+
+Correção:
+- `padding-top` sobe de 10px para 16px (+6px de respiro acima do
+  slider).
+- Espaço extra vem da compactação dos chips (item 2), sem aumentar a
+  altura do `#custBar`.
+- A faixa de frames mantém posição exata em todos os estados.
+
+### 2) Chips ainda mais enxutos para liberar espaço vertical
+
+Antes (v8z4b16j): chips com `min-height:26px` e `padding:5px 12px` na
+folha de estilo, mas os inline styles em cada chip
+(`padding:6px 14px;min-height:30px`) tinham especificidade maior e
+acabavam vencendo — chips renderizavam com 30px de altura.
+
+Correção:
+- `#custBarContent .chip` agora usa `!important` em `padding`,
+  `min-height` e `font-size`, vencendo o inline style: `4px 12px`,
+  `min-height:24px`, `font-size:13px`.
+- Reduz a altura ocupada pelos chips em ~6px, exatamente o espaço
+  redirecionado para o `padding-top` (item 1).
+- Toque continua confortável (alvo total > 30px contando padding do
+  painel, e o trilho dos chips fica em região segura acima da Home Bar).
+
+### 3) Centro vertical em `.cust-content` elimina sobra inferior
+
+Antes (v8z4b16j): `.cust-content` era `display:block`; o conteúdo
+(slider + chips) ficava ancorado no topo do painel. Quando o conteúdo
+era menor que a altura interna disponível, sobrava uma faixa vazia no
+fundo do painel (acima da safe-area) — o "sobra inferior" relatado.
+
+Correção:
+- `#custBarContent > .cust-content` passa a ser `display:flex` com
+  `flex-direction:column` e `justify-content:center`. Slider e chips
+  são centralizados verticalmente dentro do espaço útil.
+- Ganho duplo: a folga entre faixa de frames e thumb fica equilibrada
+  com a folga abaixo dos chips, e a sobra inferior é eliminada porque
+  o conteúdo aproveita o centro do painel em vez de empilhar do topo.
+
+### 4) `#custBarContent` ocupa toda a área visível do `#custBar`
+
+Antes (v8z4b16j): `#custBarContent` tinha altura natural (padding +
+conteúdo), enquanto `#custBar` ficava fixo em `48px + safe`. Se o
+conteúdo somasse menos que a altura do painel, o `#custBar` mostrava
+uma faixa vazia entre o final do `#custBarContent` e o seu próprio
+fundo (visualmente percebido como espaço morto inferior).
+
+Correção:
+- `#custBarContent` recebe `flex:1 1 auto` para ocupar toda a altura
+  do `#custBar`. A área útil passa a ser definida apenas pelos
+  paddings, e o `justify-content:center` do item 3 controla a
+  distribuição interna.
+- Compatível com o forçamento de altura em `#custBar:not(.compact-mode)`
+  introduzido em v8z4b16j: o painel continua exatamente com a mesma
+  altura do `compact-mode`, faixa de frames intocada.
+
+### 5) Versionamento
+
+- Cabeçalho HTML, comentário de topo do `<body>`, `APP_VERSION`,
+  `APP_VERSION_NAME` e display em Configurações atualizados para
+  v8z4b16k. Comentários de versões anteriores preservados como
+  contexto histórico; novas linhas marcadas v8z4b16k.
+
+### Não alterado nesta rodada
+
+Motor de animação, WebCodecs / export MP4, preview/canvas, cálculo de
+tempo, lógica de pausas, lógica de trechos, ranges dos sliders, valores
+exibidos, comportamento dos botões −5%/+5%/Reset, easing, curvas, JSON,
+templates, seleção múltipla, alinhamento/distribuição, ícones (SVGs),
+textos de interface, paleta de cores, fluxo geral do app, botão Voltar
+reforçado, menu de frames (continua fixo na mesma posição em todos os
+estados).
+
 ## v8z4b16j — Frame strip pinning, slider clipping fix, free Scale, footer breathing
 
 Patch cirúrgico sobre v8z4b16i. **Foco único:** estabilizar a estrutura

@@ -1,10 +1,10 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b16j                                     ║
+║  Versão: v8z4b16k                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
-║   de v8z4b16j são versões anteriores, mantidas para   ║
+║   de v8z4b16k são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b16j — iPhone/Safari UI: faixa de frames fixa, sliders sem corte, escala livre além da imagem, ícone/texto mais respirados e controles inferiores levemente rebaixados -->
+<!-- Arco App — v8z4b16k — iPhone/Safari UI: respiro vertical nos submenus de transformação (slider/thumb afastado da faixa de frames, sem sobra inferior dentro do painel); demais correções da v8z4b16j preservadas -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -702,7 +702,18 @@ body.no-image #custBar{display:none !important;}
 }
 #custBarBack:active{background:rgba(255,255,255,0.08);opacity:.85;}
 #custBarBack svg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;display:block;}
-#custBarContent > .cust-content{flex:1 1 0;min-width:0;}
+/* v8z4b16k — Centra verticalmente o conteúdo do submenu (slider + chips)
+   dentro do espaço útil de .cust-content. Em v8z4b16j o conteúdo
+   começava colado no topo do painel — o thumb do slider ficava a apenas
+   ~10px da faixa de frames e abaixo dos chips sobrava uma faixa cheia
+   (padding-bottom + safe-area cobertos por var(--surface)) que parecia
+   sobra inferior. Com flex column + justify-content:center, o respiro
+   acima do slider e abaixo dos chips fica equilibrado e o painel deixa
+   de ter "buraco" visível. */
+#custBarContent > .cust-content{
+  flex:1 1 0;min-width:0;
+  display:flex;flex-direction:column;justify-content:center;
+}
 /* v8z4b16f — Submenu contextual compacto. Reduz padding interno do
    conteúdo, gap entre slider e chips, e altura mínima dos chips. Antes,
    o submenu somava ~148px de altura visível (acima da safe-area); agora
@@ -712,8 +723,13 @@ body.no-image #custBar{display:none !important;}
    menor (4px) para que slider + chips + safe-area caibam dentro da
    mesma altura do compact-mode (48px + safe). Isso permite forçar
    #custBar a manter a altura constante — a faixa de frames não sobe
-   nem desce ao abrir Pausa/Rotação/Escala/Posição. */
-#custBarContent .chip{padding:5px 12px;min-height:26px;font-size:13px;}
+   nem desce ao abrir Pausa/Rotação/Escala/Posição.
+   v8z4b16k — Chips ficam ainda mais enxutos (min-height 24, padding
+   4×12) com !important para vencer os inline styles definidos no
+   HTML — libera espaço vertical para padding-top maior em
+   #custBarContent (slider afasta-se da faixa de frames) sem precisar
+   crescer o painel. */
+#custBarContent .chip{padding:4px 12px !important;min-height:24px !important;font-size:13px !important;}
 #custBarContent .cust-content > div + div{margin-top:4px !important;}
 
 /* FLOAT PANEL
@@ -842,11 +858,22 @@ body.cust-open #toolbar{
      -26 (igual à toolbar / #custBarTabs) para descer um pouco os
      controles. NÃO usa shorthand `padding:` para preservar
      padding-left/right (2px/14px) definidos no bloco anterior — assim
-     o trilho do botão Voltar mantém a posição exata aprovada. */
-  padding-top:10px !important;
+     o trilho do botão Voltar mantém a posição exata aprovada.
+     v8z4b16k — padding-top sobe de 10 para 16: dá mais respiro entre o
+     thumb do slider e a faixa de frames acima. O ganho de 6px vem da
+     compactação dos chips (24px) feita no bloco anterior. Padding-
+     bottom mantém -26 (sem mexer na folga da Home Bar).
+     Adicionalmente, `flex:1 1 auto` faz o #custBarContent ocupar a
+     altura visível inteira do #custBar (que está fixado em compact-
+     height). Sem isso, sobrava um vão entre o final do conteúdo e o
+     fundo do painel — exatamente o "sobra inferior" relatado. Agora a
+     área útil é definida só pelos paddings, e o centro vertical de
+     .cust-content equaciona a sobra entre topo e base. */
+  padding-top:16px !important;
   padding-bottom:max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px) !important;
   overflow-y:auto !important;
   -webkit-overflow-scrolling:touch;
+  flex:1 1 auto !important;
 }
 /* Modo compacto (primeiro toque): só barra de ícones, ocupando o mesmo
    slot da toolbar. Modo expandido: painel da função SUBSTITUI a barra de
@@ -1738,7 +1765,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b16j</span><br><span id="appVersionNameText">faixa de frames fixa, sliders sem corte e escala livre além da imagem</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b16k</span><br><span id="appVersionNameText">respiro vertical nos submenus de transformação</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4007,8 +4034,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b16j';
-const APP_VERSION_NAME = 'faixa de frames fixa, sliders sem corte e escala livre além da imagem';
+const APP_VERSION = 'v8z4b16k';
+const APP_VERSION_NAME = 'respiro vertical nos submenus de transformação';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
