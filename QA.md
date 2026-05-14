@@ -2,6 +2,47 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b16m — gap final slider/botões nos submenus de transformação (iPhone/Safari obrigatório)
+
+### A. Respiro entre slider e botões
+
+1. Carregar imagem; criar 3 frames.
+2. Tocar num frame → abrir submenu **Escala**.
+3. Confirmar: há respiro claro e visível entre a linha do slider e a
+   linha de botões (−5% / +5% / Reset). A bolinha do slider **não
+   encosta nem cavalga** nos botões.
+4. Repetir para **Rotação** e **Pausa**.
+5. Tocar no Voltar → recolhe para compact-mode. Repetir a abertura
+   para confirmar que o gap persiste.
+
+### B. Faixa de frames continua fixa
+
+1. Abrir Escala → confirmar que a faixa de frames **não se move**.
+2. Abrir Rotação → idem.
+3. Abrir Pausa → idem.
+4. Em nenhum estado a faixa de frames deve subir ou descer.
+
+### C. Nenhum controle invade a Home Bar
+
+1. Com submenu aberto, confirmar que a linha de botões (−5/+5/Reset)
+   fica acima do indicador de Home com folga visível.
+2. Confirmar que nada toca ou atravessa o Home Bar.
+
+### D. Preview e Gerar MP4 (não podem ter regredido)
+
+1. Carregar imagem; criar 3 frames; tocar **Preview** → roda normal.
+2. Tocar **Voltar** no Preview → volta ao Stage sem tela preta.
+3. Tocar **Salvar MP4** → arquivo gerado normalmente.
+4. Aplicar pequena edição → tocar **Salvar MP4** de novo → segundo
+   arquivo gerado sem botão preso.
+
+### E. Versão visível
+
+1. Topbar → Configurações → confirmar `Arco v8z4b16m`.
+2. Em `CHANGELOG.md`, primeira entrada é v8z4b16m.
+3. Em `pages-deploy-stamp.txt`, stamp é v8z4b16m.
+4. Buscar no `index.html` por "Versão:" — apenas v8z4b16m no cabeçalho.
+
 ## v8z4b16j — Faixa de frames fixa, sliders inteiros, escala livre (iPhone/Safari obrigatório)
 
 ### A. Faixa de frames fixa em todos os estados
