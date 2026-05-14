@@ -2,6 +2,83 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b16j — Faixa de frames fixa, sliders inteiros, escala livre (iPhone/Safari obrigatório)
+
+### A. Faixa de frames fixa em todos os estados
+
+1. Carregar imagem; criar 3 frames.
+2. Tocar num frame → menu contextual abre em compact-mode.
+3. Tocar em **Pausa** → submenu expande. Confirmar: a faixa de frames
+   NÃO sobe nem desce, permanece exatamente no mesmo lugar.
+4. Tocar no Voltar (coluna estreita) → recolhe. Faixa de frames continua
+   no mesmo lugar.
+5. Repetir para **Rotação**, **Escala** e **Posição**.
+6. Confirmar: em nenhum estado a faixa de frames se move.
+
+### B. Sliders dos submenus de transformação com thumb inteiro
+
+1. Abrir o submenu **Escala** → confirmar que a bolinha/thumb do slider
+   aparece INTEIRA acima do track, sem corte superior pelo limite da
+   faixa de frames.
+2. Abrir o submenu **Rotação** → mesmo teste, thumb inteiro visível.
+3. Abrir o submenu **Pausa** → mesmo teste, thumb inteiro visível.
+4. Abrir o submenu **Posição** → confirmar que as colunas X e Y (input
+   + setas) não estão cortadas e ficam visualmente acima da Home Bar.
+
+### C. Escala livre além da imagem
+
+1. Abrir o submenu **Escala**.
+2. Arrastar o slider até o máximo (300%) → o frame deve aumentar além
+   dos limites visuais da imagem/stage, SEM travar em ~98% do stage.
+3. Tocar **+5%** repetidamente → frame continua crescendo livremente.
+4. Tocar **−5%** → frame diminui normalmente, sem ficar abaixo do
+   mínimo prático (40px).
+5. Tocar **Reset** → frame volta à largura de referência (baseFrameW).
+6. Em `Configurações → Conter na imagem: Sim`, repetir o teste — agora
+   o frame respeita os limites (comportamento intencional, igual antes).
+
+### D. Espaçamento entre ícone e nome no menu contextual
+
+1. Tocar num frame para abrir o menu contextual em compact-mode.
+2. Observar Pausa, Rotação, Escala, Posição.
+3. Confirmar: o espaço vertical entre o ícone e o texto está
+   claramente maior (mais respirado) que na v8z4b16i.
+4. Confirmar: nenhum ícone, texto ou cor mudou — só o gap.
+
+### E. Bloco inferior mais baixo
+
+1. Observar a toolbar inferior em estado normal (sem submenu aberto).
+2. Confirmar: ícones/textos descem alguns pixels em relação à v8z4b16i,
+   ficando mais próximos da Home Bar.
+3. Confirmar: NENHUM elemento toca/atravessa o indicador da Home Bar
+   nem reintroduziu degradê/fade/sombra falsa de rodapé.
+4. Abrir Pausa/Rotação/Escala/Posição — slider/chips também descem
+   levemente, mantendo folga segura acima da Home Bar.
+
+### F. Segurança Preview / MP4 (não pode ter regredido)
+
+1. Carregar imagem; criar 3 frames; tocar **Preview** → roda normal.
+2. Tocar **Voltar** no Preview → volta ao Stage sem tela preta.
+3. Tocar **Salvar MP4** (Gerar) → arquivo gerado normalmente.
+4. Aplicar pequena edição (rotação ou pausa) → tocar **Salvar MP4** de
+   novo → segundo arquivo gerado sem botão preso.
+
+### G. Botão Voltar (NÃO alterado)
+
+1. Confirmar: o trilho lateral do `#custBarBack` continua com 44px de
+   largura, ícone 26×26 e stroke 2.6 — IGUAL à v8z4b16i.
+2. Confirmar: o `Voltar` do `alignBar` e o `Voltar` do Preview também
+   permanecem inalterados.
+
+### H. Versão visível
+
+1. Topbar → Configurações → confirmar `Arco v8z4b16j`.
+2. Em `CHANGELOG.md`, primeira entrada cronológica é v8z4b16j;
+   v8z4b16i permanece como histórico.
+3. Em `pages-deploy-stamp.txt`, stamp deve ser `v8z4b16j`.
+4. Buscar no `index.html` por "Versão:" — apenas v8z4b16j aparece como
+   versão atual no cabeçalho/comentário superior.
+
 ## v8z4b16g — UX state cleanup + Voltar padronizado (iPhone/Safari obrigatório)
 
 ### A. Estado visual do menu de frames (bug do destaque preso)

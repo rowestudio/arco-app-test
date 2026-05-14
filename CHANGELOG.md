@@ -67,6 +67,114 @@ Quando Fixar estiver ativo em algum frame, usar destaque vermelho, não azul.
 - Restauração da separação entre caminho geométrico (curva) e easing temporal (transição por segmento).
 - Mantida a compatibilidade com o patch v8z4b de inserção de frame dentro da curva.
 
+## v8z4b16j — Frame strip pinning, slider clipping fix, free Scale, footer breathing
+
+Patch cirúrgico sobre v8z4b16i. **Foco único:** estabilizar a estrutura
+inferior — faixa de frames travada na mesma posição visual em todos os
+estados, thumbs dos sliders dos submenus de transformação visíveis
+inteiros, slider de Escala livre para extrapolar a imagem, mais respiro
+entre ícone e nome no menu contextual e leve descida do bloco inferior
+para se aproximar mais da Home Bar. **Não toca** em motor de animação,
+WebCodecs/export MP4, preview, cálculo de tempo, lógica de pausas/
+trechos/tempo mínimo, easing, curvas, JSON, templates, seleção
+múltipla, alinhamento/distribuição, ícones em si, textos de interface,
+cores ou no fluxo geral do app. O botão Voltar reforçado em v8z4b16h
+permanece intocado.
+
+### 1) Faixa de frames (`#midBar`) com posição fixa em todos os estados
+
+Antes (v8z4b16i): `#custBar.compact-mode` tinha height = `48px + safe`
+(igual à toolbar) e `#custBar:not(.compact-mode)` ficava com height
+automática — abrindo Pausa/Rotação/Escala/Posição, o conteúdo do
+submenu (slider + chips + paddings) gerava cerca de +8–12px de altura,
+empurrando o `#midBar` para cima alguns pixels no fluxo flex.
+
+Correção:
+- `#custBar:not(.compact-mode)` recebe a MESMA altura forçada do
+  `compact-mode`: `calc(48px + max(env(safe-area-inset-bottom, 4px), 4px))`.
+- O submenu encaixa nessa altura fixa graças aos chips mais compactos
+  (`min-height:26px`, `padding:5px 12px`), gap menor entre slider/chips
+  (`margin-top:4px`) e `padding-top:10px` reservado para o thumb.
+- Resultado: a faixa de frames mantém posição exata ao abrir/fechar
+  Pausa, Rotação, Escala e Posição — sem subir, sem descer, sem
+  depender da altura do submenu.
+
+### 2) Sliders dos submenus de transformação com thumb inteiro
+
+Antes (v8z4b16i): `#custBarContent` tinha `padding:2px 14px 4px 2px`
+— apenas 2px de padding-top. O thumb do slider (30×30) projeta-se
+~15px acima do track; com 2px de folga, a metade superior do thumb
+ficava cortada pelo limite superior do `#custBar` (com `overflow:hidden`)
+e visualmente coberta pelo background sólido da faixa de frames acima.
+Afetava Escala, Rotação, Pausa local.
+
+Correção:
+- `padding-top:10px` em `#custBarContent` reserva o espaço vertical
+  necessário para o thumb caber INTEIRO dentro do painel.
+- O slider continua com track 6px e thumb 30px (sem mudança de range,
+  valor, cálculo ou comportamento).
+- A faixa de frames continua sólida acima — agora nenhum thumb se
+  projeta por baixo dela.
+
+### 3) Slider de Escala: livre para extrapolar a imagem
+
+Antes (v8z4b16i): `initScaleSlider` aplicava
+`Math.max(40, Math.min(stageW * 0.98, refW * pct / 100))` ao calcular
+`newW`/`tW`, travando o frame em 98% da largura do stage. O usuário não
+conseguia escalar o frame além dos limites visuais da imagem com o
+slider, mesmo com "Conter na imagem" desligado.
+
+Correção:
+- `Math.min(stageW * 0.98, …)` removido do cálculo do slider (apenas a
+  cota inferior `Math.max(40, …)` permanece).
+- `clampFrame()` continua sendo chamado e ainda respeita
+  `containFrames` quando ativo — modo livre não trava, modo contido
+  trava como antes.
+- Botões −5%/+5% e Reset preservam o comportamento (já eram livres no
+  modo padrão, agora apenas o slider se alinha).
+
+### 4) Mais respiro entre ícone e nome no menu contextual de frames
+
+Antes (v8z4b16i): `#custBar .cust-tab` usava `gap:1px` entre o SVG e o
+rótulo — ícones de Pausa/Rotação/Escala/Posição ficavam visualmente
+colados aos respectivos nomes.
+
+Correção:
+- `gap:5px` (cinco vezes maior) entre ícone e label nas abas de
+  transformação. Hierarquia visual preservada; nenhum tamanho/cor/texto
+  alterado.
+
+### 5) Bloco inferior um pouco mais baixo
+
+Antes (v8z4b16i): `.toolbar`, `#custBarTabs` e `#custBarContent`
+subtraíam 20px da safe-area no `padding-bottom`
+(`max(calc(env(safe-area-inset-bottom, 4px) - 20px), 6px)`).
+
+Correção:
+- Subtração passa para -26px nos três elementos, descendo os controles
+  ~6px no iPhone (referência visual: Edits/Instagram/CapCut). Piso de
+  6px preservado para manter a folga segura acima do indicador de Home.
+- Sem reintrodução de degradê, fade, sombra falsa de rodapé ou overlay
+  inferior. O background sólido var(--surface) do body continua
+  cobrindo a safe area por baixo das barras.
+
+### 6) Versionamento
+
+- Cabeçalho HTML, comentário de topo do `<body>`, `APP_VERSION`,
+  `APP_VERSION_NAME` e display em Configurações atualizados para
+  v8z4b16j. Comentários internos que descrevem versões anteriores
+  como contexto histórico foram preservados; novas linhas explicativas
+  desta rodada estão marcadas v8z4b16j.
+
+### Não alterado nesta rodada
+
+Motor de animação, WebCodecs / export MP4, preview/canvas, cálculo de
+tempo, lógica de pausas, lógica de trechos, tempo mínimo 0.0s, easing,
+curvas, JSON, templates, seleção múltipla, alinhamento/distribuição,
+ícones (SVGs), textos de interface, paleta de cores, fluxo geral do
+app, botão Voltar reforçado (`#custBarBack`, `.ab-back-strong`,
+`.preview-btn.close-btn`).
+
 ## v8z4b16i — Safe-area regression fix, contextual submenu compaction
 
 Patch cirúrgico sobre v8z4b16h. **Foco único:** corrigir a regressão da
