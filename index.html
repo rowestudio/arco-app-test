@@ -1,10 +1,10 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b16g                                     ║
+║  Versão: v8z4b16h                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
-║   de v8z4b16g são versões anteriores, mantidas para   ║
+║   de v8z4b16h são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b16g — UX state cleanup + Voltar standardization -->
+<!-- Arco App — v8z4b16h — iPhone/Safari UI: pre-image guards, safe-area parity, Voltar reinforce, contextual compacting, position 2-col, pause icon -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -99,13 +99,39 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{
-  height:100%;background:var(--bg);color:var(--text);
+  height:100%;
+  /* v8z4b16h — html/body assumem var(--surface) para que a faixa do
+     home indicator do iPhone/Safari (safe-area-inset-bottom) fique igual
+     à cor da toolbar. Antes, body usava var(--bg) (#000), e quando o
+     viewport real estendia além do .app/100dvh — ou quando a toolbar
+     não cobria 100% da safe-area por arredondamento de altura — o preto
+     do body vazava, criando faixa residual abaixo da toolbar. A área
+     ativa de imagem continua preta porque .image-area mantém o próprio
+     background sólido (#000). Sem degradê, sem sombra, sem mover botões. */
+  background:var(--surface);
+  color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;
   overflow:hidden;-webkit-font-smoothing:antialiased;
   /* prevent rubber-band scroll */
   position:fixed;width:100%;
 }
 .app{display:flex;flex-direction:column;height:100dvh;}
+
+/* v8z4b16h — Camada fixa de segurança no rodapé exato do viewport,
+   cobrindo a safe-area inferior com var(--surface). Mesmo se 100dvh /
+   layout não cobrir a faixa do home indicator, esse pseudo-elemento
+   garante continuidade visual com a toolbar. Fica atrás dos botões
+   (z-index 0, pointer-events:none); toolbar/custBar/midBar/alignBar
+   continuam acima por empilhamento natural do flexbox em .app. */
+body::after{
+  content:'';
+  position:fixed;
+  left:0;right:0;bottom:0;
+  height:env(safe-area-inset-bottom,0px);
+  background:var(--surface);
+  z-index:0;
+  pointer-events:none;
+}
 
 /* IMAGE AREA — ocupa tudo do topo ao mid-bar */
 .image-area{
@@ -297,6 +323,13 @@ body.panel-open .stage.out-of-bounds::after{
   display:none;align-items:stretch;height:64px;
 }
 .mid-bar.show{display:flex;}
+/* v8z4b16h — Antes da imagem carregar, esconde a faixa de frames inteira
+   (lock, inverter, pílulas, +/−) para que nenhum indicador "1" nem
+   controles dependentes de imagem apareçam. body.no-image é removida no
+   onload da imagem (loadImage) e ao restaurar projeto com imagem. */
+body.no-image .mid-bar{display:none !important;}
+body.no-image #toolbar{display:none !important;}
+body.no-image #custBar{display:none !important;}
 .mid-play{
   display:flex;align-items:center;justify-content:center;gap:8px;
   padding:0 14px;cursor:pointer;flex-shrink:0;
@@ -459,8 +492,12 @@ body.panel-open .stage.out-of-bounds::after{
 }
 .preview-btn svg{width:34px;height:34px;display:block;}
 .preview-btn span{font-size:11px;font-weight:500;color:rgba(255,255,255,.6);}
-.preview-btn.close-btn{color:rgba(255,255,255,.7);}
-.preview-btn.close-btn svg{width:42px;height:42px;}
+/* v8z4b16h — Voltar reforçado no Preview: branco puro e traço mais
+   espesso (via stroke-width inline no SVG). Mantém tamanho 42x42 e
+   alinhamento com os demais botões da preview-bottom. */
+.preview-btn.close-btn{color:#fff;}
+.preview-btn.close-btn svg{width:42px;height:42px;stroke-width:2.6;}
+.preview-btn.close-btn span{color:#fff;font-weight:700;}
 /* Download */
 .preview-download{
   display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;
@@ -649,11 +686,13 @@ body.panel-open .stage.out-of-bounds::after{
 /* v8z4b16g — Seta "voltar" como coluna lateral discreta à esquerda do
    submenu contextual (frame/pausa/rotação/transformação). Direção
    aprovada de interface: o Voltar não rouba altura útil do painel, fica
-   verticalizado num trilho estreito (~28px) e o conteúdo do submenu
-   ocupa o restante. Comportamento preservado (collapseCustBar — volta
-   ao compact-mode com os ícones; não fecha o menu inteiro). Em v8z4b16f
-   o botão era um header no topo (~22px) e ainda comia ~22px de altura;
-   agora a altura é zero para o conteúdo. */
+   verticalizado num trilho estreito e o conteúdo do submenu ocupa o
+   restante. Comportamento preservado (collapseCustBar — volta ao
+   compact-mode com os ícones; não fecha o menu inteiro).
+   v8z4b16h — Reforço visual do botão Voltar: trilho mais largo (44px,
+   alvo-toque recomendado iOS HIG), ícone maior (26x26) e traço mais
+   espesso (stroke-width:2.6). Contraste subido (cor branca quase pura)
+   para presença ~2x maior que v8z4b16g. Sem alterar a função. */
 #custBarContent{
   display:flex !important;
   flex-direction:row !important;
@@ -666,11 +705,11 @@ body.panel-open .stage.out-of-bounds::after{
   display:flex;align-items:center;justify-content:center;
   padding:0 4px;margin:0;
   cursor:pointer;background:transparent;border:none;
-  -webkit-user-select:none;user-select:none;color:rgba(235,235,235,0.92);
-  min-height:0;min-width:24px;width:24px;border-radius:6px;
+  -webkit-user-select:none;user-select:none;color:#fff;
+  min-height:44px;min-width:44px;width:44px;border-radius:8px;
 }
-#custBarBack:active{background:rgba(255,255,255,0.05);opacity:.85;}
-#custBarBack svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;}
+#custBarBack:active{background:rgba(255,255,255,0.08);opacity:.85;}
+#custBarBack svg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;display:block;}
 #custBarContent > .cust-content{flex:1 1 0;min-width:0;}
 /* v8z4b16f — Submenu contextual compacto. Reduz padding interno do
    conteúdo, gap entre slider e chips, e altura mínima dos chips. Antes,
@@ -841,6 +880,20 @@ body.cust-open #toolbar{
   cursor:not-allowed;
 }
 #alignBar .ab-tab-disabled:active{background:transparent;}
+/* v8z4b16h — Voltar reforçado em todos os submenus: cor branca quase
+   pura, alvo de toque garantido (mín. 44px de altura via padding), e
+   o svg interno já vem com width/height/stroke-width maiores no HTML. */
+#alignBar .ab-tab.ab-back-strong{
+  color:#fff;
+  min-height:44px;
+}
+#alignBar .ab-tab.ab-back-strong svg{
+  stroke:#fff;
+}
+#alignBar .ab-tab.ab-back-strong .ab-lbl{
+  color:#fff;
+  font-weight:700;
+}
 #custBar .cust-tab svg{
   stroke:rgba(235,235,235,0.95) !important;
   color:rgba(235,235,235,0.95) !important;
@@ -1101,7 +1154,7 @@ body.cust-open #toolbar{
 </style>
 </head>
 
-<body>
+<body class="no-image">
 <svg width="0" height="0" style="position:absolute;visibility:hidden;pointer-events:none" aria-hidden="true">
   <!-- Lucide — stroke-width:1.75, fill:none, viewBox 0 0 24 24 -->
   <symbol id="i-mapa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1218,6 +1271,15 @@ body.cust-open #toolbar{
   <symbol id="i-pause" viewBox="0 0 24 24">
     <rect x="6" y="4" width="4" height="16" fill="currentColor" rx="1"/>
     <rect x="14" y="4" width="4" height="16" fill="currentColor" rx="1"/>
+  </symbol>
+  <!-- v8z4b16h — Ícone de relógio (tempo/duração) usado no menu contextual
+       de Pausa para sinalizar duração da pausa do frame ativo, em vez do
+       glifo de "pause" tradicional, que sugeria mídia parada. Sem alterar
+       a lógica de pausa (continua chamando syncFramePauseUI / resetFramePause).
+       Lucide "clock": círculo + ponteiros 12 e 3. -->
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
   </symbol>
   <symbol id="i-reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
@@ -1409,8 +1471,9 @@ body.cust-open #toolbar{
 <div id="alignBar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--surface);background-image:none;box-shadow:none;border-top:.5px solid var(--border);box-sizing:border-box;height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px));padding:0 4px max(calc(env(safe-area-inset-bottom, 4px) - 20px), 6px);">
   <!-- Camada 1: primária -->
   <div id="alignBarPrimary" style="display:flex;align-items:flex-end;height:100%;gap:2px;">
-    <button type="button" aria-label="Voltar (sair da seleção)" class="ab-tab" onclick="clearMultiSelect()" style="flex:0 0 56px;">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    <!-- v8z4b16h — Voltar reforçado: 28x28, stroke-width:2.6, branco. -->
+    <button type="button" aria-label="Voltar (sair da seleção)" class="ab-tab ab-back-strong" onclick="clearMultiSelect()" style="flex:0 0 60px;">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       <span class="ab-lbl" id="alignBarLabel">2</span>
     </button>
     <button type="button" class="ab-tab" onclick="openAlignSubmenu()">
@@ -1432,8 +1495,9 @@ body.cust-open #toolbar{
   </div>
   <!-- Camada 2: submenu Alinhar -->
   <div id="alignBarSubmenu" style="display:none;align-items:flex-end;height:100%;gap:2px;">
-    <button type="button" aria-label="Voltar" class="ab-tab" onclick="closeAlignSubmenu()" style="flex:0 0 56px;">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    <!-- v8z4b16h — Voltar reforçado. -->
+    <button type="button" aria-label="Voltar" class="ab-tab ab-back-strong" onclick="closeAlignSubmenu()" style="flex:0 0 60px;">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       <span class="ab-lbl">Voltar</span>
     </button>
     <button type="button" class="ab-tab ab-tab-disabled" disabled aria-label="Alinhar à esquerda">
@@ -1495,15 +1559,17 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
     <!-- Aba Escala -->
+    <!-- v8z4b16h — Chips e gaps mais compactos (min-height 30, padding 6×14,
+         margin-top 6px) para eliminar espaço morto abaixo dos controles. -->
     <div id="custTabScale" class="cust-content">
       <div style="display:flex;align-items:center;gap:12px;">
         <input type="range" class="dur-slider" id="scaleSlider" min="20" max="300" value="100" step="1" style="flex:1;">
         <span id="scaleNum" style="font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">100%</span>
       </div>
-      <div style="display:flex;gap:8px;margin-top:10px;">
-        <div class="chip" style="padding:8px 16px;font-size:13px;min-height:36px;justify-content:center;" onclick="nudgeScale(-5)">−5%</div>
-        <div class="chip" style="padding:8px 16px;font-size:13px;min-height:36px;justify-content:center;" onclick="nudgeScale(5)">+5%</div>
-        <div class="chip" style="padding:8px 16px;font-size:13px;min-height:36px;justify-content:center;margin-left:auto;" onclick="resetScale()">Reset</div>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <div class="chip" style="padding:6px 14px;font-size:13px;min-height:30px;justify-content:center;" onclick="nudgeScale(-5)">−5%</div>
+        <div class="chip" style="padding:6px 14px;font-size:13px;min-height:30px;justify-content:center;" onclick="nudgeScale(5)">+5%</div>
+        <div class="chip" style="padding:6px 14px;font-size:13px;min-height:30px;justify-content:center;margin-left:auto;" onclick="resetScale()">Reset</div>
       </div>
     </div>
     <!-- Aba Rotação -->
@@ -1512,37 +1578,52 @@ body.cust-open #toolbar{
         <input type="range" class="dur-slider" id="rotSlider" min="-720" max="720" value="0" step="1" style="flex:1;">
         <span id="rotNum" style="font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">0°</span>
       </div>
-      <div style="display:flex;gap:8px;margin-top:10px;">
-        <div class="chip" style="padding:8px 16px;font-size:13px;min-height:36px;justify-content:center;" onclick="nudgeRotation(-5)">−5°</div>
-        <div class="chip" style="padding:8px 16px;font-size:13px;min-height:36px;justify-content:center;" onclick="nudgeRotation(5)">+5°</div>
-        <div class="chip" style="padding:8px 16px;font-size:13px;min-height:36px;justify-content:center;margin-left:auto;" onclick="nudgeRotation(0,true)">Reset</div>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <div class="chip" style="padding:6px 14px;font-size:13px;min-height:30px;justify-content:center;" onclick="nudgeRotation(-5)">−5°</div>
+        <div class="chip" style="padding:6px 14px;font-size:13px;min-height:30px;justify-content:center;" onclick="nudgeRotation(5)">+5°</div>
+        <div class="chip" style="padding:6px 14px;font-size:13px;min-height:30px;justify-content:center;margin-left:auto;" onclick="nudgeRotation(0,true)">Reset</div>
       </div>
     </div>
-    <!-- Aba Posição -->
+    <!-- Aba Posição
+         v8z4b16h — Reorganizado em DUAS COLUNAS (X | Y) lado a lado em
+         vez de duas linhas empilhadas. Cada coluna mantém seu próprio
+         conjunto de controles (− input +), compactando a altura do
+         submenu sem alterar a lógica de posição (nudgePos / setPosFromInput
+         continuam recebendo os mesmos parâmetros). Cabeçalhos discretos
+         "X" e "Y" ajudam a identificar o eixo de cada coluna. -->
     <div id="custTabPos" class="cust-content" style="display:none;">
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        <div style="display:flex;gap:6px;align-items:center;">
-          <div onclick="nudgePos(-10,0)" style="cursor:pointer;padding:6px;color:rgba(200,200,200,0.8);"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-          <input type="number" id="posXInput" placeholder="X (pixels)" style="flex:1;background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:6px 10px;font-size:13px;font-weight:600;color:var(--accent);text-align:right;-webkit-appearance:none;" oninput="setPosFromInput()">
-          <div onclick="nudgePos(10,0)" style="cursor:pointer;padding:6px;color:rgba(200,200,200,0.8);"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+      <div class="pos-cols" style="display:flex;gap:10px;align-items:stretch;">
+        <!-- Coluna X (horizontal) -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:3px;min-width:0;">
+          <span style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1.4px;text-transform:uppercase;text-align:center;line-height:1;">X</span>
+          <div style="display:flex;gap:4px;align-items:center;">
+            <div onclick="nudgePos(-10,0)" style="cursor:pointer;padding:6px;color:rgba(200,200,200,0.85);flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+            <input type="number" id="posXInput" placeholder="px" style="flex:1;min-width:0;background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:6px 8px;font-size:13px;font-weight:600;color:var(--accent);text-align:right;-webkit-appearance:none;" oninput="setPosFromInput()">
+            <div onclick="nudgePos(10,0)" style="cursor:pointer;padding:6px;color:rgba(200,200,200,0.85);flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          </div>
         </div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <div onclick="nudgePos(0,-10)" style="cursor:pointer;padding:6px;color:rgba(200,200,200,0.8);"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-          <input type="number" id="posYInput" placeholder="Y (pixels)" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:13px;font-weight:600;color:var(--accent);text-align:right;-webkit-appearance:none;" oninput="setPosFromInput()">
-          <div onclick="nudgePos(0,10)" style="cursor:pointer;padding:6px;color:rgba(200,200,200,0.8);"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <!-- Coluna Y (vertical) -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:3px;min-width:0;">
+          <span style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1.4px;text-transform:uppercase;text-align:center;line-height:1;">Y</span>
+          <div style="display:flex;gap:4px;align-items:center;">
+            <div onclick="nudgePos(0,-10)" style="cursor:pointer;padding:6px;color:rgba(200,200,200,0.85);flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+            <input type="number" id="posYInput" placeholder="px" style="flex:1;min-width:0;background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:6px 8px;font-size:13px;font-weight:600;color:var(--accent);text-align:right;-webkit-appearance:none;" oninput="setPosFromInput()">
+            <div onclick="nudgePos(0,10)" style="cursor:pointer;padding:6px;color:rgba(200,200,200,0.85);flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          </div>
         </div>
       </div>
     </div>
     <!-- Aba Pausa local — controla apenas a pausa do frame ativo.
          v8z4b16e — Submenu compacto: slider + valor + reset, altura
-         alinhada ao padrão visual de Escala/Rotação. -->
+         alinhada ao padrão visual de Escala/Rotação.
+         v8z4b16h — Mesma compactação (chips 30px, gap/margin 6px). -->
     <div id="custTabFramepause" class="cust-content" style="display:none;">
       <div style="display:flex;align-items:center;gap:12px;">
         <input type="range" class="dur-slider" id="framePauseSlider" min="0" max="5" step="0.1" value="0" style="flex:1;">
         <span id="framePauseVal" style="font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">0s</span>
       </div>
-      <div style="display:flex;gap:8px;margin-top:10px;">
-        <div class="chip" style="padding:8px 16px;font-size:13px;min-height:36px;justify-content:center;margin-left:auto;" onclick="resetFramePause()">Reset</div>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <div class="chip" style="padding:6px 14px;font-size:13px;min-height:30px;justify-content:center;margin-left:auto;" onclick="resetFramePause()">Reset</div>
       </div>
     </div>
   </div>
@@ -1559,8 +1640,10 @@ body.cust-open #toolbar{
     pertence à faixa de frames, não ao menu local de ajustes.
   -->
   <div id="custBarTabs" style="display:flex;align-items:stretch;background:var(--surface);">
+    <!-- v8z4b16h — Ícone trocado para relógio/duração (i-clock). Texto
+         "Pausa" preservado por já fazer parte da interface aprovada. -->
     <div class="cust-tab" data-tab="framepause" onclick="switchCustTab('framepause')">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-pause"></use></svg>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-clock"></use></svg>
       <span class="cust-tab-lbl">Pausa</span>
     </div>
     <div class="cust-tab" data-tab="rot" onclick="switchCustTab('rot')">
@@ -1627,7 +1710,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b16g</span><br><span id="appVersionNameText">UX state cleanup, Voltar standardization, version housekeeping</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b16h</span><br><span id="appVersionNameText">iPhone/Safari UI: pre-image guards, safe-area parity, Voltar reinforce, contextual compacting</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -3896,8 +3979,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b16g';
-const APP_VERSION_NAME = 'UX state cleanup, Voltar standardization, version housekeeping';
+const APP_VERSION = 'v8z4b16h';
+const APP_VERSION_NAME = 'iPhone/Safari UI: pre-image guards, safe-area parity, Voltar reinforce, contextual compacting';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -3908,6 +3991,15 @@ if (appVersionNameTextEl) appVersionNameTextEl.textContent = APP_VERSION_NAME;
 let imgNatW = 0, imgNatH = 0;
 // Stage display dimensions (always = image AR)
 let stageW = 0, stageH = 0;
+
+// v8z4b16h — Guard único: ações de frame só valem depois de carregar imagem.
+// Antes desse ponto, NENHUM handler de frame (add, remove, lock, select,
+// preview, export, abrir menu contextual) deve produzir efeito visível ou
+// alterar estado. Fonte de verdade: imgNatW > 0 (set após onload da imagem
+// base). Não cria flag duplicada para evitar inconsistências.
+function hasImageLoaded() {
+  return imgNatW > 0;
+}
 
 // Output format
 let currentRatio = '9:16';
@@ -4691,6 +4783,8 @@ function initDefaultFrames() {
 }
 // ═══════════════════════════════════════
 function addFrame() {
+  // v8z4b16h — guard: sem imagem, nenhuma ação de frame.
+  if (!hasImageLoaded()) return;
   if (frameCount >= MAX_FRAMES) { showStatus('Máximo de ' + MAX_FRAMES + ' frames'); return; }
   pushUndo();
   const i = frameCount;
@@ -4763,6 +4857,8 @@ function splitInsertedSegmentEase(origEase) {
 }
 
 function insertFrameAfterActive() {
+  // v8z4b16h — guard: sem imagem, botão "+" não cria frame nem reage.
+  if (!hasImageLoaded()) return;
   if (frameCount >= MAX_FRAMES) { showStatus('Máximo de ' + MAX_FRAMES + ' frames'); return; }
   if (activeIdx >= frameCount - 1) { addFrame(); return; }
   pushUndo();
@@ -4852,6 +4948,8 @@ function insertFrameAfterActive() {
 }
 
 function removeLastFrame() {
+  // v8z4b16h — guard: sem imagem, sem ação de frame.
+  if (!hasImageLoaded()) return;
   if (frameCount <= 2) { showStatus('Mínimo de 2 frames'); return; }
   const i = frameCount - 1;
   const fe = getFrameEl(i); if (fe) fe.remove();
@@ -6168,6 +6266,8 @@ function drawMirrorBg(ctx, W, H, sx, sy, cropW, cropH, rot, cover) {
 // PREVIEW
 // ═══════════════════════════════════════
 function togglePlay() {
+  // v8z4b16h — guard: sem imagem, Play não inicia preview.
+  if (!hasImageLoaded()) return;
   if (isRecording) return;
   isPreviewing ? stopPreview() : startPreview();
 }
@@ -7705,6 +7805,10 @@ function loadImage(file, onDoneCallback) {
         if (ph) ph.style.display = 'none';
         imgEl.style.display = 'block';
         bezierSvg.style.display = 'block';
+        // v8z4b16h — Libera a UI dependente de imagem (faixa de frames,
+        // toolbar, menu contextual). A partir daqui, frame strip e
+        // controles locais ficam disponíveis normalmente.
+        document.body.classList.remove('no-image');
         // top-bar sempre visível — sem necessidade de mostrar settingsBtn
 
         if (hasCallback) {
@@ -8079,6 +8183,8 @@ function initSmoothSlider() {
 }
 
 function toggleFrameLock() {
+  // v8z4b16h — guard: sem imagem, botão de travar/pinar não responde.
+  if (!hasImageLoaded() || frameCount === 0) return;
   frameLocked[activeIdx] = !frameLocked[activeIdx];
   const locked = !!frameLocked[activeIdx];
   const btn = document.getElementById('btnLockFrame');
@@ -8088,6 +8194,9 @@ function toggleFrameLock() {
 }
 
 function deleteActiveFrame() {
+  // v8z4b16h — guard: sem imagem, botão "−" não tenta deletar e não exibe
+  // "Mínimo de 2 frames". O mínimo só vale com projeto ativo.
+  if (!hasImageLoaded()) return;
   if (frameCount <= 2) { showStatus('Mínimo de 2 frames'); return; }
   pushUndo();
   closeAll();
@@ -8223,6 +8332,8 @@ let viewMode = 0;
 window._isoMode = false;
 
 function toggleMapa() {
+  // v8z4b16h — guard: sem imagem, modo Mapa/Isolamento não alterna.
+  if (!hasImageLoaded()) return;
   viewMode = (viewMode + 1) % 3;
   const btn = document.getElementById('topBtnMapa');
   if (btn) {
@@ -8454,6 +8565,8 @@ function applyTemplate(type) {
 }
 
 function invertFrames() {
+  // v8z4b16h — guard: sem imagem, inversão de sentido não responde.
+  if (!hasImageLoaded()) return;
   if (frameCount < 2) return;
   pushUndo();
   frames.splice(0, frameCount, ...frames.slice(0, frameCount).reverse());
@@ -9280,6 +9393,8 @@ function updateTemplateBtn() {
 // Aberturas subsequentes durante a mesma sessão preservam o estado
 // expandido — só a abertura inicial entra em compact-mode.
 function openCustBar() {
+  // v8z4b16h — guard: sem imagem, menu contextual de frame não abre.
+  if (!hasImageLoaded() || frameCount === 0) return;
   // v8z4b16c — Ordem importa: aplicar `cust-open` ANTES de mostrar o
   // custBar elimina o frame intermediário em que toolbar e custBar
   // poderiam estar simultaneamente no fluxo. Como ambos têm a mesma

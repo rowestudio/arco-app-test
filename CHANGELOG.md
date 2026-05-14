@@ -67,6 +67,130 @@ Quando Fixar estiver ativo em algum frame, usar destaque vermelho, não azul.
 - Restauração da separação entre caminho geométrico (curva) e easing temporal (transição por segmento).
 - Mantida a compatibilidade com o patch v8z4b de inserção de frame dentro da curva.
 
+## v8z4b16h — iPhone/Safari UI: pre-image guards, safe-area parity, Voltar reinforce, contextual compacting
+
+Patch cirúrgico sobre v8z4b16g. **Foco único:** corrigir apenas o que foi
+confirmado em teste no iPhone/Safari — guard de ações de frame antes da
+imagem, faixa preta residual da safe area inferior, presença visual do
+botão Voltar, compactação dos menus contextuais e ícone de Pausa/Tempo.
+**Não toca** em motor de animação, preview, exportação MP4, easing,
+curvas, duração funcional, pausas funcionais, rotação funcional, escala
+funcional, lógica de movimento, seleção múltipla, cores gerais ou layout
+fora dos pontos pedidos. Itens já OK na v8z4b16g preservados (Preview X→
+Voltar, active-tab cleanup, Voltar lateral do custBar).
+
+### 1) Bloquear ações de frame antes do carregamento da imagem
+
+Antes: o app permitia ações de edição mesmo sem imagem carregada — botão
+"+" tentava criar frame (com `frames[-1]` indefinido), botão "−" exibia
+"Mínimo de 2 frames", lock/pin respondia, Play tentava iniciar preview,
+e a faixa de frames podia exibir indicadores órfãos.
+
+Correção:
+- Helper único `hasImageLoaded()` (verdade = `imgNatW > 0`) consultado em
+  todos os handlers: `addFrame`, `insertFrameAfterActive`, `deleteActiveFrame`,
+  `removeLastFrame`, `toggleFrameLock`, `togglePlay`, `openCustBar`,
+  `toggleMapa`, `invertFrames`. `promptSaveProject` já tinha o guard.
+- Antes da imagem carregar, a faixa de frames (`#midBar`), a toolbar
+  inferior (`#toolbar`) e o menu contextual (`#custBar`) ficam ocultos
+  via CSS `body.no-image .mid-bar/#toolbar/#custBar{display:none}`. A
+  classe `no-image` é removida no `imgEl.onload` do `loadImage()`.
+
+Não altera o mínimo de 2 frames — só vale com projeto ativo (imagem
+carregada).
+
+### 2) Safe area inferior igualada à toolbar
+
+Antes: no iPhone/Safari sobrava faixa preta abaixo da toolbar, distinta
+da superfície do menu inferior. O `body` usava `var(--bg)` (#000), e
+quando `100dvh` não cobria a safe-area-inset-bottom inteira, esse preto
+vazava ao redor/abaixo da toolbar.
+
+Correção:
+- `html, body` agora usam `background: var(--surface)` em vez de
+  `var(--bg)`. A `.image-area` continua com fundo preto sólido (não há
+  vazamento visual no stage).
+- Camada extra de segurança: pseudo-elemento `body::after` fixo no
+  rodapé (`bottom:0`, `height: env(safe-area-inset-bottom, 0px)`,
+  `background: var(--surface)`, `z-index:0`, `pointer-events:none`) —
+  garante continuidade visual mesmo em cenários onde o flex não chega
+  exatamente ao pixel do home indicator.
+- Sem degradê, sem sombra, sem subir botões.
+
+### 3) Reforço visual do botão Voltar nos submenus
+
+Antes: o Voltar lateral do menu contextual de frames (`#custBarBack`)
+estava 18×18 / stroke-width:2 / `rgba(235,235,235,0.92)` — discreto
+demais, difícil de tocar no iPhone.
+
+Correção:
+- `#custBarBack`: ícone 26×26 (+44%), stroke-width 2.6 (+30%), cor
+  `#fff` (branco puro), área de toque mínima 44×44 (alvo iOS HIG).
+- `#alignBar` (seleção múltipla): mesmo tratamento via classe
+  `.ab-back-strong` — SVG 28×28 com stroke-width 2.6, label em peso 700.
+- Preview Voltar (`.preview-btn.close-btn`): cor `#fff`, stroke-width
+  2.6 no SVG, label em peso 700.
+
+Função preservada: continua chamando `collapseCustBar` / `clearMultiSelect`
+/ `closeAlignSubmenu` / `stopPreview` respectivamente.
+
+### 4) Menus contextuais de frame compactados
+
+Antes: os submenus de Rotação, Escala e Pausa usavam chips com
+`min-height:36px` inline, `padding:8px 16px` e `margin-top:10px` entre
+slider e chips, gerando espaço morto perceptível abaixo dos controles.
+
+Correção:
+- Chips dentro dos cust-content: `min-height:30px`, `padding:6px 14px`,
+  `gap:6px` e `margin-top:6px` (alinhado à regra global de v8z4b16f
+  `#custBarContent .chip`, removendo overrides inline conflitantes).
+- Padding-bottom seguro (safe-area) preservado para folga acima da Home
+  Bar.
+- Sem alteração em valores, ranges ou handlers — apenas dimensões
+  visuais.
+
+### 5) Menu Posição em duas colunas
+
+Antes: o submenu Posição mostrava X e Y em DUAS LINHAS empilhadas
+(altura ~80px sem motivo, já que cada eixo é uma linha pequena).
+
+Correção:
+- Reorganizado em DUAS COLUNAS lado a lado (X | Y), cada coluna com
+  rótulo discreto (uppercase 10px) e seu próprio trio `− input +`.
+- Sem rolagem interna, sem alteração em `nudgePos` / `setPosFromInput`.
+- A altura útil do submenu cai para uma única linha de controles.
+
+### 6) Ícone do menu Pausa trocado para relógio/duração
+
+Antes: a aba "Pausa" do menu contextual usava `#i-pause` (dois traços
+verticais — glifo de mídia parada), incoerente com o conceito de
+"duração da pausa do frame".
+
+Correção:
+- Novo símbolo SVG `#i-clock` (Lucide clock: círculo + ponteiros) no
+  sprite.
+- Aba "framepause" do `#custBarTabs` passa a referenciar `#i-clock`.
+- Texto "Pausa" preservado por já fazer parte da interface aprovada.
+- Nenhuma mudança em `framePauseSlider`, `setFramePause`,
+  `resetFramePause`, `syncFramePauseUI` ou no painel Duração.
+
+### 7) Versionamento
+
+- Cabeçalho HTML, comentário de topo do `<body>`, `APP_VERSION`,
+  `APP_VERSION_NAME` e display em Configurações atualizados para
+  v8z4b16h. Comentários internos que referenciam v8z4b16g como
+  precedente foram preservados; novos comentários explicativos das
+  mudanças desta rodada são marcados v8z4b16h.
+
+### Não alterado nesta rodada
+
+Motor de animação, Preview/canvas, exportação MP4, easing, curvas,
+duração funcional, pausas funcionais, rotação funcional, escala
+funcional, lógica de movimento, seleção múltipla, cores gerais, layout
+geral fora dos pontos pedidos, Preview X→Voltar (já feito em v8z4b16g),
+limpeza de `.active-tab` (já em v8z4b16g) e botão Voltar lateral do
+custBar (já em v8z4b16g — aqui só reforçado visualmente).
+
 ## v8z4b16g — UX state cleanup, Voltar standardization, version housekeeping
 
 Patch cirúrgico sobre a v8z4b16f. **Foco único:** três correções de UX/estado
