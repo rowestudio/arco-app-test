@@ -2,6 +2,63 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17b — channel easing controls
+
+### Teste A — Movimento separado
+
+1. Carregar imagem; criar 3 frames.
+2. Abrir painel de easing no segmento 1-2 → selecionar canal **Movimento** → aplicar "Saída".
+3. Canal Rotação e Escala devem continuar Linear.
+4. Preview OK; rotação e escala sem alteração de comportamento.
+5. Gerar MP4 → arquivo OK.
+
+### Teste B — Rotação separada
+
+1. F1 com rotação 0°, F2 com rotação 90° ou 180°.
+2. Canal **Rotação** → aplicar "Entrada/Saída".
+3. Canal Movimento = Linear; Escala = Linear.
+4. Preview: rotação suaviza; deslocamento espacial e zoom sem alteração.
+5. MP4 OK.
+
+### Teste C — Escala separada
+
+1. F1 escala normal; F2 mais aproximado (zoom in).
+2. Canal **Escala** → aplicar "Entrada/Saída".
+3. Canal Movimento = Linear; Rotação = Linear.
+4. Preview: zoom suaviza; percurso espacial e rotação sem alteração.
+5. MP4 OK.
+
+### Teste D — Combinação de canais
+
+1. Segmento 1-2: Movimento = Saída; Rotação = Entrada/Saída; Escala = Entrada.
+2. Confirmar que o painel reflete o canal correto ao trocar entre Movimento/Rotação/Escala.
+3. Preview OK; MP4 OK.
+
+### Teste E — Save/Load JSON com scaleEasings
+
+1. Criar projeto, configurar easing de escala diferente por segmento.
+2. Salvar como JSON.
+3. Reabrir o JSON.
+4. Confirmar que `scaleEasings` e `rotEasings` preservam os valores.
+5. Preview OK.
+
+### Teste F — Projeto antigo (sem rotEasings/scaleEasings)
+
+1. Abrir um JSON antigo sem os campos `rotEasings` e `scaleEasings`.
+2. Confirmar que o app não lança erro.
+3. Confirmar que ambos os arrays são preenchidos com `'linear'`.
+4. Preview OK; MP4 OK.
+
+### Teste G — Inserir/remover frame
+
+1. Criar 3 frames; configurar easings de escala e rotação.
+2. Inserir frame entre F1 e F2.
+3. Confirmar que `scaleEasings.length === frameCount−1`.
+4. Remover frame inserido; confirmar alinhamento dos arrays.
+5. Preview OK; MP4 OK.
+
+---
+
 ## v8z4b17a — rotation easing engine foundation
 
 ### Teste A — Projeto básico com rotação

@@ -1,5 +1,41 @@
 # Changelog
 
+## v8z4b17b — channel easing controls
+
+Seletor de canal no painel de easing existente: permite escolher entre
+**Movimento**, **Rotação** e **Escala** e ajustar o easing de cada canal
+independentemente para o segmento ativo. Adiciona `scaleEasings` (N−1 entradas)
+para controle de zoom/tamanho separado do movimento espacial. Compatibilidade
+total com projetos antigos (campos ausentes preenchidos com `'linear'`).
+
+### O que foi adicionado
+
+- **`scaleEasings`** — array por segmento para easing de escala (w/h),
+  paralelo a `segEasings` e `rotEasings`. Padrão: `'linear'`.
+- **`ensureScaleEasings()`** / **`getScaleEase(seg)`** / **`applyScaleEasingToT(t, ease)`**
+  — helpers de escala seguindo o mesmo padrão dos canais anteriores.
+- **`_activeEaseChannel`** — estado local do painel: `'movement'` | `'rotation'` | `'scale'`.
+- **`setEaseChannel(ch)`** — troca o canal ativo e atualiza os chips de easing.
+- **Seletor de canal no `segEasePanel`** — três botões (Movimento / Rotação / Escala)
+  no topo do mini-painel existente. Nenhum painel novo criado.
+- Labels de easing atualizados: Linear · Entrada/Saída · Entrada · Saída.
+
+### Motor de animação
+
+`getStateAtT` agora calcula três parâmetros `t` independentes:
+- `ttEased` (segEasings) → posição/trajetória
+- `ttScale` (scaleEasings) → interpolação w/h
+- `ttRot` (rotEasings) → interpolação angular
+
+### Compatibilidade
+
+- Projetos sem `scaleEasings` carregam normalmente; array preenchido com `'linear'`.
+- Projetos sem `rotEasings` continuam funcionando (comportamento v8z4b17a).
+- `buildProjectData` inclui ambos os campos; `applyFrameData` restaura com fallback.
+- Inserção/remoção de frames mantém arrays alinhados.
+
+---
+
 ## v8z4b17a — rotation easing engine foundation
 
 Fundação técnica de easing de rotação por segmento. **Foco único:** preparar
