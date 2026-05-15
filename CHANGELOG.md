@@ -1,5 +1,38 @@
 # Changelog
 
+## v8z4b17c — show channel easing in segment panel
+
+Expõe o seletor de canal (**Movimento / Rotação / Escala**) diretamente no painel
+real de edição de trecho (`#panelEase`), o mesmo painel que o usuário acessa no
+fluxo normal e que exibe o título **SEG. 1-2**, o slider de Duração e os cards
+Constante / Acelerar / Desacelerar / Suavizar.
+
+### O que foi alterado
+
+- **HTML `#panelEase`** — três botões `easePanelCh_movement / rotation / scale`
+  inseridos como uma linha compacta acima do grid de cards de easing.
+- **`initEasePanel()`** — agora lê o easing atual via `_getActiveChannelEase(seg)`
+  (respeitando o canal ativo) e chama `_syncEaseChannelUI()` para destacar o
+  botão de canal correto ao abrir ou atualizar o painel.
+- **`selectSegEase(ease, seg)`** — agora escreve em `segEasings`, `rotEasings`
+  ou `scaleEasings` dependendo de `_activeEaseChannel`; a verificação de
+  redundância também usa `_getActiveChannelEase`.
+- **`_syncEaseChannelUI()`** — passa a sincronizar também os botões
+  `easePanelCh_*` do `#panelEase`, além dos `easeCh_*` do `segEasePanel`.
+- **`setEasePanelChannel(ch)`** — nova função chamada pelos botões do `#panelEase`;
+  delega para `_syncEaseChannelUI()` + `initEasePanel()`.
+
+### O que não foi alterado
+
+Motor de preview, export MP4, WebCodecs, cálculo de duração, pausas, posição,
+curvas, stage, menus, safe area, play, seleção múltipla, `segEasePanel` original.
+
+### Compatibilidade
+
+Projetos antigos continuam abrindo normalmente; arrays ausentes recebem `'linear'`.
+
+---
+
 ## v8z4b17b — channel easing controls
 
 Seletor de canal no painel de easing existente: permite escolher entre

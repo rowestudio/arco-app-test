@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17a                                     ║
+║  Versão: v8z4b17c                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17b — channel easing controls: seletor de canal (Movimento/Rotação/Escala) no painel de easing; array scaleEasings por segmento; easing de escala independente do movimento; compatibilidade com projetos antigos (default linear) -->
+<!-- Arco App — v8z4b17c — show channel easing in segment panel: seletor Movimento/Rotação/Escala exposto diretamente no painel real de trecho (#panelEase); selectSegEase e initEasePanel canal-conscientes; sem painel novo -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1770,7 +1770,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17a</span><br><span id="appVersionNameText">rotation easing engine foundation</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17c</span><br><span id="appVersionNameText">show channel easing in segment panel</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -2079,6 +2079,15 @@ body.cust-open #toolbar{
     <span style="font-size:11px;color:var(--text3);flex-shrink:0;">Duracao</span>
     <input type="range" class="dur-slider" id="easePanelSegSlider" min="0" max="20" step="0.1" value="4" style="flex:1;">
     <span id="easePanelSegVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;">4.0s</span>
+  </div>
+  <!-- Seletor de canal — v8z4b17c -->
+  <div style="display:flex;gap:4px;margin-bottom:8px;">
+    <button id="easePanelCh_movement" onclick="setEasePanelChannel('movement')"
+      style="flex:1;padding:5px 2px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--accent);color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;">Movimento</button>
+    <button id="easePanelCh_rotation" onclick="setEasePanelChannel('rotation')"
+      style="flex:1;padding:5px 2px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:500;cursor:pointer;">Rotação</button>
+    <button id="easePanelCh_scale" onclick="setEasePanelChannel('scale')"
+      style="flex:1;padding:5px 2px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:500;cursor:pointer;">Escala</button>
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;" id="easeChipsGrid"></div>
 </div>
@@ -4039,8 +4048,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17b';
-const APP_VERSION_NAME = 'channel easing controls';
+const APP_VERSION = 'v8z4b17c';
+const APP_VERSION_NAME = 'show channel easing in segment panel';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -7357,9 +7366,10 @@ function initEasePanel() {
     });
   }
 
+  _syncEaseChannelUI();
   const grid = document.getElementById('easeChipsGrid');
   if (!grid) return;
-  const cur = getSegEase(seg);
+  const cur = _getActiveChannelEase(seg);
 
   const options = [
     { ease: 'linear',      label: 'Constante',   path: '<line x1="11.15" y1="34.76" x2="37.87" y2="8.05" stroke="currentColor" stroke-width="2" stroke-linecap="square"/>', vb: '0 0 48.38 48.38' },
@@ -7400,15 +7410,33 @@ function resetSegGlobalMode() {
 }
 
 function selectSegEase(ease, seg) {
-  if (getSegEase(seg) === ease && !segGlobalMode) return;
+  if (_getActiveChannelEase(seg) === ease && !segGlobalMode) return;
   markProjectDirty('segment-ease');
   pushUndo();
-  ensureSegEasings();
-  if (segGlobalMode) {
-    for (let i = 0; i < frameCount - 1; i++) segEasings[i] = ease;
-    showStatus('Próximo ajuste aplicado a todos os trechos');
+  if (_activeEaseChannel === 'rotation') {
+    ensureRotEasings();
+    if (segGlobalMode) {
+      for (let i = 0; i < frameCount - 1; i++) rotEasings[i] = ease;
+      showStatus('Próximo ajuste aplicado a todos os trechos');
+    } else {
+      rotEasings[seg] = ease;
+    }
+  } else if (_activeEaseChannel === 'scale') {
+    ensureScaleEasings();
+    if (segGlobalMode) {
+      for (let i = 0; i < frameCount - 1; i++) scaleEasings[i] = ease;
+      showStatus('Próximo ajuste aplicado a todos os trechos');
+    } else {
+      scaleEasings[seg] = ease;
+    }
   } else {
-    segEasings[seg] = ease;
+    ensureSegEasings();
+    if (segGlobalMode) {
+      for (let i = 0; i < frameCount - 1; i++) segEasings[i] = ease;
+      showStatus('Próximo ajuste aplicado a todos os trechos');
+    } else {
+      segEasings[seg] = ease;
+    }
   }
   _activeEaseSeg = seg;
   initEasePanel();
@@ -8196,12 +8224,13 @@ function _getActiveChannelEase(seg) {
 
 function _syncEaseChannelUI() {
   ['movement', 'rotation', 'scale'].forEach(ch => {
-    const btn = document.getElementById('easeCh_' + ch);
-    if (!btn) return;
     const on = ch === _activeEaseChannel;
-    btn.style.borderColor = on ? 'var(--accent)' : 'var(--border2)';
-    btn.style.color = on ? 'var(--accent)' : 'var(--text2)';
-    btn.style.fontWeight = on ? '700' : '500';
+    [document.getElementById('easeCh_' + ch), document.getElementById('easePanelCh_' + ch)].forEach(btn => {
+      if (!btn) return;
+      btn.style.borderColor = on ? 'var(--accent)' : 'var(--border2)';
+      btn.style.color = on ? 'var(--accent)' : 'var(--text2)';
+      btn.style.fontWeight = on ? '700' : '500';
+    });
   });
 }
 
@@ -8217,6 +8246,12 @@ function setEaseChannel(ch) {
       c.querySelector('span').style.color = active ? 'var(--accent)' : 'var(--text2)';
     });
   }
+}
+
+function setEasePanelChannel(ch) {
+  _activeEaseChannel = ch;
+  _syncEaseChannelUI();
+  initEasePanel();
 }
 
 function openSegEasePanel(seg, x, y) {
