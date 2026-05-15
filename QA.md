@@ -2,6 +2,56 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17a — rotation easing engine foundation
+
+### Teste A — Projeto básico com rotação
+
+1. Carregar imagem.
+2. Criar 3 frames.
+3. Aplicar rotações diferentes em F1, F2 e F3 (ex.: 0°, +180°, −90°).
+4. Abrir Preview → animação roda sem travamento, NaN ou rotação errada.
+5. Gerar MP4 → arquivo gerado sem erro.
+
+### Teste B — Inserir frame entre frames com rotação
+
+1. Criar dois frames com rotações diferentes (ex.: 0° e +360°).
+2. Inserir frame entre eles (botão +Frame ou long-press).
+3. Confirmar que o app não quebra e `rotEasings` tem tamanho = frameCount−1.
+4. Preview OK; MP4 OK.
+
+### Teste C — Remover frame intermediário
+
+1. Criar 4 frames com rotações distintas.
+2. Remover um frame intermediário.
+3. Confirmar que `rotEasings.length === frameCount−1` (verificar via console se necessário).
+4. Preview OK; MP4 OK.
+
+### Teste D — Save/Load JSON com rotEasings
+
+1. Criar projeto com rotações e salvar como JSON.
+2. Reabrir o JSON.
+3. Confirmar que frames, rotações e `rotEasings` estão presentes e válidos.
+4. Preview OK.
+
+### Teste E — Compatibilidade com projeto antigo (sem rotEasings)
+
+1. Abrir um JSON antigo que não contém o campo `rotEasings`.
+2. Confirmar que o app não lança erro e preenche `rotEasings` com `'linear'`.
+3. Preview OK; MP4 OK.
+
+### Teste F — Versão visível
+
+1. Topbar → Configurações → confirmar `Arco v8z4b17a`.
+2. Em `CHANGELOG.md`, primeira entrada é v8z4b17a.
+3. Em `pages-deploy-stamp.txt`, stamp é v8z4b17a.
+4. Buscar no `index.html` por "Versão:" — apenas v8z4b17a no cabeçalho.
+
+### Teste G — Regressão geral
+
+1. Posição, escala, curvas e easing de movimento continuam funcionando.
+2. Não há NaN, undefined ou travamento no console.
+3. Undo/redo funciona normalmente (rotEasings é preservado no undo).
+
 ## v8z4b16m — gap final slider/botões nos submenus de transformação (iPhone/Safari obrigatório)
 
 ### A. Respiro entre slider e botões
