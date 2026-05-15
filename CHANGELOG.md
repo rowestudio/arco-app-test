@@ -1,5 +1,72 @@
 # Changelog
 
+## v8z4b17a — rotation easing engine foundation
+
+Fundação técnica de easing de rotação por segmento. **Foco único:** preparar
+o motor de interpolação para que a rotação entre frames possa usar uma curva
+própria, independente do easing de movimento (`segEasings`). Sem alteração de
+layout, menus, UI de preview, export MP4, WebCodecs, posição, escala, curvas
+ou qualquer outro subsistema.
+
+### O que foi adicionado
+
+- **`rotEasings`** — novo array por segmento (N−1 entradas para N frames),
+  paralelo ao `segEasings`. Padrão: `'linear'` em todos os trechos, preservando
+  o comportamento visual de projetos antigos que não tenham o campo.
+- **`ensureRotEasings()`** — garante tamanho correto do array (mesma lógica
+  de `ensureSegEasings`).
+- **`getRotEase(seg)`** — lê o easing de rotação do segmento com fallback
+  `'linear'`.
+- **`applyRotEasingToT(t, ease)`** — aplica a curva ao parâmetro `t` local.
+  Valores aceitos: `'linear'`, `'ease-in'`, `'ease-out'`, `'ease-in-out'`
+  (mesmos nomes já usados em `segEasings`).
+
+### Onde a UI futura pode atuar
+
+Para expor controle de rotEasings na interface, basta atribuir:
+```js
+rotEasings[seg] = 'ease-in-out'; // ou 'ease-in' / 'ease-out' / 'linear'
+ensureRotEasings();
+```
+e chamar `stopPreview(); startPreview()` se o preview estiver ativo. Nenhuma
+mudança adicional no motor é necessária.
+
+### Interpolação
+
+`getStateAtT` agora calcula:
+- `tMove` (`ttEased`) = easing de movimento do segmento (segEasings) → usado em posição e escala
+- `tRot` (`ttRot`) = `applyRotEasingToT(tt, rotEasings[seg])` → usado apenas na rotação
+
+Por padrão `tRot = tt` (linear), o que equivale ao comportamento anterior para
+projetos com `segEasings = 'linear'`.
+
+### Gerenciamento de arrays
+
+- **insertFrameBetween**: dois novos trechos recebem `'linear'` em `rotEasings`.
+- **removeLastFrame / deleteFrame**: `normalizeProjectArrays()` e
+  `ensureRotEasings()` mantêm o array alinhado.
+- **Templates / reset completo**: `rotEasings.length = 0` junto com os demais arrays.
+- **Undo/redo**: `captureState` e `restoreState` incluem `rotEasings`.
+
+### Save / Load JSON
+
+- `buildProjectData()` salva `rotEasings` no JSON.
+- `applyFrameData()` carrega `rotEasings`; se o campo não existir (projeto
+  antigo), `ensureRotEasings()` preenche com `'linear'` — sem quebra.
+
+### Versionamento
+
+- Cabeçalho HTML, comentário de topo do `<body>`, `APP_VERSION`,
+  `APP_VERSION_NAME` e display em Configurações atualizados para v8z4b17a.
+  `pages-deploy-stamp.txt`, `CHANGELOG.md` e `QA.md` atualizados.
+
+### Não alterado nesta rodada
+
+Layout geral, menus inferiores, safe area, play, preview UI, menu de
+transformação, nova timeline, stage, curvas visuais, seleção múltipla, export
+MP4, WebCodecs, duração/tempo, pausas, escala, posição, textos, cores, ícones,
+easing de movimento (`segEasings`).
+
 ## v8z4b16m — gap final slider/botões nos submenus de transformação
 
 Microajuste visual final sobre a v8z4b16l. **Foco único:** aumentar em

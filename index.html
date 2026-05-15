@@ -1,10 +1,10 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b16m                                     ║
+║  Versão: v8z4b17a                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
-║   de v8z4b16m são versões anteriores, mantidas para   ║
+║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b16m — iPhone/Safari UI: microajuste final do gap entre slider e linha de botões nos submenus de transformação (margin-top 10→15px); demais correções da v8z4b16l preservadas -->
+<!-- Arco App — v8z4b17a — rotation easing engine foundation: array rotEasings por segmento, helper applyRotEasingToT, interpolação angular independente do easing de movimento; compatibilidade com projetos antigos (default linear) -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1770,7 +1770,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b16m</span><br><span id="appVersionNameText">gap final slider/botões nos submenus de transformação</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17a</span><br><span id="appVersionNameText">rotation easing engine foundation</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4039,8 +4039,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b16m';
-const APP_VERSION_NAME = 'gap final slider/botões nos submenus de transformação';
+const APP_VERSION = 'v8z4b17a';
+const APP_VERSION_NAME = 'rotation easing engine foundation';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4080,6 +4080,7 @@ let pendingProjectData = null; // projeto aguardando imagem ser carregada
 let easeAmount = 0;
 let easeMode = 'global';
 let segEasings = []; // easing por segmento
+let rotEasings = []; // easing de rotação por segmento — v8z4b17a
 let framePauses = []; // fonte única de verdade: framePauses[i] = { duration: number(s) }
 const durationPanelSections = { segments: false, pauses: false, finish: false };
 
@@ -4191,6 +4192,7 @@ function captureState() {
     loopEnabled,
     loopDuration,
     segEasings: [...segEasings],
+    rotEasings: [...rotEasings],
     framePauses: framePauses.map(p => ({...p})),
     finishMode,
     finishDuration,
@@ -4229,6 +4231,8 @@ function restoreState(state) {
   loopCtrlPt = state.loopCtrlPt ? {...state.loopCtrlPt} : null;
   segEasings.length = 0;
   (state.segEasings || []).forEach(v => segEasings.push(v));
+  rotEasings.length = 0;
+  (state.rotEasings || []).forEach(v => rotEasings.push(v));
   framePauses.length = 0;
   (state.framePauses || []).forEach(p => framePauses.push(p ? {...p} : {duration: 0}));
   finishMode = state.finishMode || 'none';
@@ -4977,6 +4981,8 @@ function insertFrameAfterActive() {
   const origEase = getSegEase(a);
   const [leftEase, rightEase] = splitInsertedSegmentEase(origEase);
   segEasings.splice(a, 1, leftEase, rightEase);
+  ensureRotEasings();
+  rotEasings.splice(a, 1, 'linear', 'linear');
 
   frameCount++;
   activeIdx = b;
@@ -6232,7 +6238,9 @@ function getStateAtT(t) {
   // Interpolação com easing por segmento
   const wStage = p1.w + (p2.w - p1.w) * ttEased;
   const hStage = p1.h + (p2.h - p1.h) * ttEased;
-  const rot = p1.rot + (p2.rot - p1.rot) * ttEased;
+  // Rotação usa easing próprio (rotEasings), independente do easing de movimento
+  const ttRot = applyRotEasingToT(tt, getRotEase(seg));
+  const rot = p1.rot + (p2.rot - p1.rot) * ttRot;
 
   return { cx: cxStage * scaleX, cy: cyStage * scaleY, sw: wStage * scaleX, sh: hStage * scaleY, rot };
 }
@@ -8029,10 +8037,36 @@ function ensureSegEasings() {
   segEasings.length = n;
 }
 
+// ─── Easing de rotação por segmento (v8z4b17a) ───────────────────────────
+function ensureRotEasings() {
+  const n = frameCount > 1 ? frameCount - 1 : 0;
+  while (rotEasings.length < n) rotEasings.push('linear');
+  rotEasings.length = n;
+}
+
+function getRotEase(seg) {
+  ensureRotEasings();
+  return rotEasings[seg] || 'linear';
+}
+
+// Valores: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out'
+// UI futura pode chamar: rotEasings[seg] = 'ease-in-out'; ensureRotEasings();
+function applyRotEasingToT(t, ease) {
+  switch (ease) {
+    case 'ease-in-out': return t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    case 'ease-in':     return t * t;
+    case 'ease-out':    return t * (2 - t);
+    default:            return t;
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────
+
 function normalizeProjectArrays() {
   const segs = Math.max(0, frameCount - 1);
   while (segEasings.length < segs) segEasings.push('linear');
   segEasings.length = segs;
+  while (rotEasings.length < segs) rotEasings.push('linear');
+  rotEasings.length = segs;
   if (Array.isArray(segDurations)) {
     while (segDurations.length < segs) segDurations.push(duration || 4);
     segDurations.length = segs;
@@ -8073,6 +8107,7 @@ function validateProjectState(context) {
 
   if (!Array.isArray(ctrlPts) || ctrlPts.length !== segs) pushIssue('ctrlPts.length incompatível', { expected: segs, got: ctrlPts?.length });
   if (!Array.isArray(segEasings) || segEasings.length !== segs) pushIssue('segEasings.length incompatível', { expected: segs, got: segEasings?.length });
+  if (!Array.isArray(rotEasings) || rotEasings.length !== segs) pushIssue('rotEasings.length incompatível', { expected: segs, got: rotEasings?.length });
   if (Array.isArray(segDurations) && segDurations.length !== segs) pushIssue('segDurations.length incompatível', { expected: segs, got: segDurations.length });
   if (Array.isArray(framePauses) && framePauses.length !== frameCount) pushIssue('framePauses.length incompatível', { expected: frameCount, got: framePauses.length });
   if (Array.isArray(frameRotations) && frameRotations.length !== frameCount) pushIssue('frameRotations.length incompatível', { expected: frameCount, got: frameRotations.length });
@@ -8460,7 +8495,7 @@ function applyTemplate(type) {
   }
   frames.length = 0; ctrlPts.length = 0; ctrlPtManual.length = 0;
   frameRotations.length = 0; frameLocked.length = 0; frameCount = 0;
-  segEasings.length = 0; segDurations.length = 0; segBlurSettings.length = 0; framePauses.length = 0;
+  segEasings.length = 0; rotEasings.length = 0; segDurations.length = 0; segBlurSettings.length = 0; framePauses.length = 0;
 
   // Usar dimensões reais da imagem no stage
   const stageEl  = document.getElementById('stage');
@@ -8559,7 +8594,7 @@ function applyTemplate(type) {
     }
     frames.length = 0; ctrlPts.length = 0; ctrlPtManual.length = 0;
     frameRotations.length = 0; frameLocked.length = 0; frameCount = 0;
-    segEasings.length = 0; segDurations.length = 0; segBlurSettings.length = 0; framePauses.length = 0;
+    segEasings.length = 0; rotEasings.length = 0; segDurations.length = 0; segBlurSettings.length = 0; framePauses.length = 0;
 
     for (let i = 0; i < nFrames; i++) {
       // F8 (i=7) fica exatamente sobre F1 (i=0)
@@ -8897,6 +8932,8 @@ function buildProjectData() {
     segBlurSettings: segBlurSettings.slice(0, frameCount - 1).map(s => ({...s})),
     // v8z4b15u: framePauses agora persistem em projetos salvos.
     framePauses: framePauses.slice(0, frameCount).map(p => ({ duration: Number(p?.duration) || 0 })),
+    // v8z4b17a: easing de rotação por segmento.
+    rotEasings: rotEasings.slice(0, frameCount - 1),
   };
 }
 
@@ -9107,6 +9144,10 @@ function applyFrameData(data) {
   framePauses.length = 0;
   (data.framePauses || []).forEach(p => framePauses.push(p ? { duration: Number(p.duration) || 0 } : { duration: 0 }));
   ensureFramePauses();
+  // v8z4b17a: restaura rotEasings; projetos antigos sem o campo recebem 'linear'.
+  rotEasings.length = 0;
+  (data.rotEasings || []).forEach(v => rotEasings.push(v));
+  ensureRotEasings();
 
   for (let i = 0; i < frameCount; i++) createFrameDOM(i);
   for (let i = 0; i < frameCount - 1; i++) createCtrlDOM(i);
