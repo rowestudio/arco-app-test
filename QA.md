@@ -2,6 +2,68 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17c — show channel easing in segment panel
+
+### Teste A — Botões de canal visíveis no painel real
+
+1. Carregar imagem; criar 2+ frames.
+2. Abrir o painel de easing pelo fluxo normal (tocar no segmento ou acessar via botão Ease).
+3. Confirmar que o título mostra **SEG. X-Y**.
+4. Confirmar que os três botões **Movimento / Rotação / Escala** estão visíveis acima dos cards.
+5. Confirmar que os cards Constante / Acelerar / Desacelerar / Suavizar continuam presentes.
+
+### Teste B — Canal Rotação via painel real
+
+1. F1 rotação 0°, F2 rotação 180°.
+2. Abrir painel de easing do trecho 1-2.
+3. Selecionar **Rotação** → aplicar **Suavizar**.
+4. Selecionar **Movimento** → verificar que mostra Constante (linear).
+5. Selecionar **Escala** → verificar que mostra Constante.
+6. Preview: rotação suaviza visivelmente; percurso e zoom sem alteração.
+7. MP4 OK.
+
+### Teste C — Canal Escala via painel real
+
+1. F1 escala normal, F2 zoom maior.
+2. Abrir painel de easing do trecho 1-2.
+3. Selecionar **Escala** → aplicar **Suavizar**.
+4. Selecionar **Movimento** → verificar Constante. Selecionar **Rotação** → verificar Constante.
+5. Preview: zoom suaviza; percurso e rotação sem alteração.
+6. MP4 OK.
+
+### Teste D — Troca de canal reflete easing salvo
+
+1. Segmento 1-2: Movimento = Acelerar, Rotação = Suavizar, Escala = Desacelerar.
+2. Ao clicar cada botão de canal, o card ativo deve mudar para o easing correto.
+3. Nenhum card errado deve aparecer destacado.
+
+### Teste E — Global mode
+
+1. Ativar modo global (ícone globo). Selecionar canal Rotação → aplicar Suavizar.
+2. Confirmar que todos os segmentos têm rotEasings = 'ease-in-out'.
+3. Desativar global. Alterar Escala de um único segmento.
+4. Confirmar que apenas aquele segmento mudou.
+
+### Teste F — Save / Load
+
+1. Configurar Movimento, Rotação e Escala diferentes por segmento.
+2. Salvar JSON. Reabrir.
+3. Abrir painel de trecho; trocar canais e verificar valores preservados.
+
+### Teste G — Projeto antigo (sem rotEasings/scaleEasings)
+
+1. Abrir JSON antigo sem esses campos.
+2. Abrir painel de trecho; trocar canais → todos mostram Constante (linear).
+3. Preview OK; MP4 OK.
+
+### Teste H — segEasePanel (mini-painel) ainda funciona
+
+1. Abrir segEasePanel via caminho anterior (se acessível).
+2. Confirmar que Movimento/Rotação/Escala ainda operam corretamente.
+3. Trocar canal no segEasePanel → painel real deve refletir ao reabrir.
+
+---
+
 ## v8z4b17b — channel easing controls
 
 ### Teste A — Movimento separado
