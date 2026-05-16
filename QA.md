@@ -2,6 +2,57 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17i — duration panel always expanded
+
+### Teste A — Abertura do painel
+
+1. Carregar o app.
+2. Carregar uma imagem.
+3. Abrir o painel Duração/Tempo.
+4. Confirmar que **Trechos** está aberto (sem chevron, sem seta).
+5. Confirmar que **Pausas por frame** está aberto (sem chevron, sem seta).
+6. Confirmar que **Acabamento** está aberto (sem chevron, sem seta).
+
+### Teste B — Sem recolhimento
+
+1. Tocar nos títulos **Trechos**, **Pausas por frame** e **Acabamento**.
+2. Confirmar que nenhuma seção recolhe.
+3. Confirmar que não há mudança visual de estado aberto/fechado.
+4. Confirmar que não há chevron ou seta visível nos títulos.
+
+### Teste C — Uso normal
+
+1. Alterar duração de um trecho (slider individual).
+2. Alterar pausa de um frame.
+3. Alterar opção de Acabamento (Nenhum / Loop / Pausa final).
+4. Ativar/desativar **Velocidade constante**.
+5. Tocar em **Igualar intervalos**.
+6. Confirmar que nenhuma seção recolhe sozinha.
+
+### Teste D — Scroll do painel
+
+1. Criar vários frames (5+).
+2. Abrir Duração/Tempo.
+3. Confirmar que o painel inteiro rola normalmente (scroll principal do painel).
+4. Confirmar que **não** voltou scroll interno ruim dentro da lista de pausas.
+
+### Teste E — Regressão geral
+
+1. Preview OK.
+2. Gerar MP4 OK (sem tela preta, sem travamento).
+3. Velocidade constante continua funcionando.
+4. Igualar intervalos continua desligando Velocidade constante.
+5. Ajuste individual de trecho continua saindo do modo Velocidade constante.
+6. Easing por canal continua funcionando.
+
+### Teste F — Versão
+
+1. Abrir app; ir em Configurações.
+2. Confirmar que a versão exibe **v8z4b17i**.
+3. Confirmar que o nome exibe **duration panel always expanded**.
+
+---
+
 ## v8z4b17h — duration sections stay expanded
 
 ### Teste A — Abertura inicial

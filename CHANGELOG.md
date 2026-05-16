@@ -1,5 +1,39 @@
 # Changelog
 
+## v8z4b17i — duration panel always expanded
+
+Ajuste de UX no painel Duração/Tempo: todas as seções (Trechos, Pausas por frame e Acabamento) ficam sempre abertas. O comportamento de recolher/expandir foi removido.
+
+### O que foi alterado
+
+- **`durationPanelSections`** — estado inicial de `finish` alterado de `false` para `true`; todos os valores agora são `true`.
+- **`toggleDurationSection()`** — função convertida em no-op; cliques nos títulos não alteram mais o estado das seções.
+- **`syncDurationSectionsUI()`** — simplificada para sempre exibir todas as seções (sem verificar booleanos); sempre chama `openSegBreakdown()`, `renderFramePauseRows()` e `syncDurationControlsFromState()`.
+- **HTML títulos das seções** — `<button onclick="toggleDurationSection(...)">` substituído por `<div>` sem handler, eliminando o comportamento interativo dos cabeçalhos.
+- **HTML `#finishSection`** — atributo inline `display:none` alterado para `display:block`; seção Acabamento já aparece visível antes do JS carregar.
+- **CSS `.dur-section-header`** — `cursor:pointer` alterado para `cursor:default`; título não sinaliza mais interatividade.
+- **CSS `.dur-section-chevron`** — `display:none`; chevrons/setas de accordion ocultados.
+- **Versão** — `APP_VERSION` atualizado para `v8z4b17i`.
+
+### Comportamento após esta versão
+
+| Situação | Resultado |
+|---|---|
+| Abrir painel Duração/Tempo | Trechos, Pausas por frame e Acabamento já aparecem abertos |
+| Tocar nos títulos das seções | Nenhuma alteração visual ou de estado |
+| Alterar qualquer valor do painel | Seções não recolhem |
+| Fechar e reabrir o painel | Todas as seções continuam abertas |
+
+### O que não foi alterado
+
+Motor de animação, preview, export MP4, WebCodecs, cálculo de velocidade constante, easing por canal, Aplicar aos 3, modo global, Igualar intervalos, lógica de pausas e trechos, loop, acabamento, stage, menus, scroll do painel, controles internos das seções.
+
+### Compatibilidade
+
+Retrocompatível com projetos v8z4b17h e anteriores.
+
+---
+
 ## v8z4b17h — duration sections stay expanded
 
 Ajuste de UX no painel Duração/Tempo: as seções Trechos e Pausas por frame abrem expandidas por padrão e permanecem abertas durante toda a sessão.

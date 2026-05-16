@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17h                                     ║
+║  Versão: v8z4b17i                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -1097,11 +1097,11 @@ body.cust-open #toolbar{
   width:100%;display:flex;justify-content:space-between;align-items:center;
   margin:6px 0 0;padding:14px 0 10px;
   background:transparent;border:none;color:var(--text);
-  font-size:17px;font-weight:700;cursor:pointer;
+  font-size:17px;font-weight:700;cursor:default;
   border-bottom:.5px solid var(--border);
 }
 .dur-section-chevron{
-  font-size:24px;font-weight:700;color:var(--accent);line-height:1;
+  display:none;
 }
 .dur-section-body{
   padding-top:6px;
@@ -1971,9 +1971,9 @@ body.cust-open #toolbar{
        tempo por segmento) compartilham o mesmo bloco sem traços
        horizontais entre si. Subtítulos ("Tempo por segmento") em
        hierarquia visual menor (uppercase pequeno, var(--text3)). -->
-  <button type="button" class="dur-section-header" onclick="toggleDurationSection('segments')">
+  <div class="dur-section-header">
     <span>Trechos</span><span id="durationSectionChevronSegments" class="dur-section-chevron">▾</span>
-  </button>
+  </div>
   <div id="segBreakdown" class="dur-section-body" style="display:flex;flex-direction:column;gap:2px;margin-bottom:6px;">
     <!-- (1) Intervalo padrão de novos frames. -->
     <div class="dur-subitem">
@@ -2012,9 +2012,9 @@ body.cust-open #toolbar{
   <!-- v8z4b16a — SEÇÃO: Pausas por frame. Mesma hierarquia visual de
        Segmentos: header com border-bottom, subitens sem traços
        internos, subtítulo "Pausa por frame" em hierarquia menor. -->
-  <button type="button" class="dur-section-header" onclick="toggleDurationSection('pauses')">
+  <div class="dur-section-header">
     <span>Pausas por frame</span><span id="durationSectionChevronPauses" class="dur-section-chevron">▾</span>
-  </button>
+  </div>
   <div id="framePauseSection" class="dur-section-body" style="display:flex;flex-direction:column;gap:2px;margin-bottom:6px;">
     <!-- Slider GLOBAL "Tudo". -->
     <div id="framePauseGlobalRow" class="dur-edit-row">
@@ -2033,13 +2033,13 @@ body.cust-open #toolbar{
     </button>
   </div>
 
-  <button type="button" class="dur-section-header" onclick="toggleDurationSection('finish')">
+  <div class="dur-section-header">
     <span>Acabamento</span><span id="durationSectionChevronFinish" class="dur-section-chevron">▸</span>
-  </button>
+  </div>
   <!-- v8z4b16a — Acabamento: mesma hierarquia visual de Segmentos /
        Pausas (header com border-bottom, corpo sem traços internos).
        padding-top reduzido pois o cabeçalho de bloco já reserva folga. -->
-  <div id="finishSection" class="dur-section-body" style="display:none;padding-top:10px;margin-bottom:6px;">
+  <div id="finishSection" class="dur-section-body" style="display:block;padding-top:10px;margin-bottom:6px;">
     <div style="display:flex;gap:8px;margin-bottom:18px;">
       <div class="finish-chip active" data-finish="none" onclick="setFinishing('none')"
         style="flex:1;padding:12px 4px;text-align:center;border-radius:12px;background:var(--surface2);border:1.5px solid var(--accent);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);min-height:46px;display:flex;align-items:center;justify-content:center;">
@@ -4064,8 +4064,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17h';
-const APP_VERSION_NAME = 'duration sections stay expanded';
+const APP_VERSION = 'v8z4b17i';
+const APP_VERSION_NAME = 'duration panel always expanded';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4108,7 +4108,7 @@ let segEasings = []; // easing por segmento
 let rotEasings = []; // easing de rotação por segmento — v8z4b17a
 let scaleEasings = []; // easing de escala por segmento — v8z4b17b
 let framePauses = []; // fonte única de verdade: framePauses[i] = { duration: number(s) }
-const durationPanelSections = { segments: true, pauses: true, finish: false };
+const durationPanelSections = { segments: true, pauses: true, finish: true };
 
 // Pause clamp constants — single source of truth (v8z4b15u)
 const FRAME_PAUSE_MIN = 0;
@@ -7752,30 +7752,20 @@ function toggleSegBreakdown() {
 }
 
 function toggleDurationSection(section) {
-  durationPanelSections[section] = !durationPanelSections[section];
-  syncDurationSectionsUI();
+  // v8z4b17i — seções sempre abertas; toggle desativado.
 }
 
 function syncDurationSectionsUI() {
+  // v8z4b17i — todas as seções são sempre visíveis.
   const seg = document.getElementById('segBreakdown');
   const pause = document.getElementById('framePauseSection');
   const finish = document.getElementById('finishSection');
-  const segCh = document.getElementById('durationSectionChevronSegments');
-  const pauseCh = document.getElementById('durationSectionChevronPauses');
-  const finishCh = document.getElementById('durationSectionChevronFinish');
-  // v8z4b15y — todas as seções usam flex (column) para que padding/gap
-  // resolvam consistentemente e os sliders ocupem a mesma largura útil.
-  if (seg) seg.style.display = durationPanelSections.segments ? 'flex' : 'none';
-  if (pause) pause.style.display = durationPanelSections.pauses ? 'flex' : 'none';
-  if (finish) finish.style.display = durationPanelSections.finish ? 'block' : 'none';
-  if (segCh) segCh.textContent = durationPanelSections.segments ? '▾' : '▸';
-  if (pauseCh) pauseCh.textContent = durationPanelSections.pauses ? '▾' : '▸';
-  if (finishCh) finishCh.textContent = durationPanelSections.finish ? '▾' : '▸';
-  if (durationPanelSections.segments) openSegBreakdown();
-  if (durationPanelSections.pauses) {
-    renderFramePauseRows();
-    syncDurationControlsFromState();
-  }
+  if (seg) seg.style.display = 'flex';
+  if (pause) pause.style.display = 'flex';
+  if (finish) finish.style.display = 'block';
+  openSegBreakdown();
+  renderFramePauseRows();
+  syncDurationControlsFromState();
 }
 
 // v8z4b15v: restaurada a UX do painel "Duração dos segmentos" para o painel
