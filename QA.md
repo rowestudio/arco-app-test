@@ -2,6 +2,87 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17f — constant speed timing by curve length
+
+### Teste 1 — Versão
+1. Abrir app; ir em Configurações.
+2. Confirmar que a versão exibida é **v8z4b17f**.
+
+### Teste 2 — Modo Manual (padrão)
+1. Criar 3 frames.
+2. Abrir painel Duração → seção Trechos.
+3. Confirmar que o botão **Manual** está ativo (accent) e **Velocidade constante** neutro.
+4. Alterar sliders individuais de trecho → confirmar que funcionam normalmente.
+5. Mover um frame → confirmar que tempos não mudam automaticamente.
+
+### Teste 3 — Ativar Velocidade constante
+1. Com 3 frames e trechos de tamanhos distintos, ativar **Velocidade constante**.
+2. Confirmar que o botão **Velocidade constante** fica ativo e a dica aparece.
+3. Confirmar que os sliders individuais ficam desabilitados (opacidade reduzida).
+4. Trecho mais longo deve receber mais tempo; trecho mais curto menos.
+
+### Teste 4 — Curva real vs. distância reta (Teste B da spec)
+1. Criar 2 trechos com distância reta parecida.
+2. Arrastar o ponto de controle de um trecho para criar uma curva muito grande.
+3. Ativar Velocidade constante.
+4. Confirmar que o trecho com curva maior recebeu mais tempo.
+
+### Teste 5 — Persistência geométrica (Teste C da spec)
+1. Com modo ativo, mover um frame.
+2. Confirmar que os tempos são recalculados automaticamente.
+3. Arrastar ponto de controle (curva) de um trecho.
+4. Confirmar que os tempos são recalculados automaticamente.
+5. Inserir ou remover um frame.
+6. Confirmar que os tempos são recalculados automaticamente.
+
+### Teste 6 — Desligar modo (Teste D da spec)
+1. Com modo ativo e tempos distribuídos, clicar **Manual**.
+2. Confirmar que botão Manual fica ativo e sliders individuais voltam habilitados.
+3. Mover um frame → confirmar que tempos NÃO mudam automaticamente.
+4. Confirmar que os tempos calculados permanecem congelados.
+
+### Teste 7 — Corte seco 0.0s (Teste E da spec)
+1. Definir um trecho manualmente em 0.0s.
+2. Ativar Velocidade constante.
+3. Confirmar que o trecho 0.0s continua 0.0s.
+4. Confirmar que o tempo é distribuído entre os demais trechos.
+
+### Teste 8 — Total via slider
+1. Modo Velocidade constante ativo.
+2. Alterar o slider **Total** da seção Trechos.
+3. Confirmar que os tempos individuais são redistribuídos proporcionalmente.
+
+### Teste 9 — Pausas não são afetadas
+1. Definir pausas por frame e acabamento.
+2. Ativar Velocidade constante.
+3. Confirmar que pausas por frame não mudam.
+4. Confirmar que acabamento/loop não muda.
+5. Confirmar que o resumo de duração total é coerente.
+
+### Teste 10 — Preview e MP4 (Teste F da spec)
+1. Ativar Velocidade constante; clicar Preview → deve funcionar.
+2. Gerar MP4 → sem tela preta, sem travamento.
+3. Fazer edição pequena; gerar MP4 novamente → ok.
+
+### Teste 11 — Persistência JSON
+1. Ativar Velocidade constante; salvar JSON.
+2. Reabrir JSON → modo e tempos devem ser restaurados.
+3. Confirmar que `segmentTimingMode: "constant-speed"` está no JSON.
+4. Abrir JSON antigo (sem `segmentTimingMode`) → deve abrir em Manual sem erros.
+
+### Teste 12 — Botão "Aplicar aos 3" não persiste
+1. Abrir painel de easing de um trecho.
+2. Confirmar que o botão **Aplicar aos 3** aparece com estilo neutro (borda e cor padrão).
+3. Clicar **Aplicar aos 3** → botão deve piscar accent brevemente (~700ms) e voltar ao neutro.
+4. Confirmar que o botão NÃO fica continuamente destacado.
+
+### Teste 13 — iPhone/Safari
+- Todos os testes acima devem passar no iPhone/Safari.
+- Sliders de modo devem responder ao toque sem jitter.
+- Redistribuição deve ser rápida e sem travamento.
+
+---
+
 ## v8z4b17e — apply all channels active state
 
 ### Teste A — Estado inicial do botão
