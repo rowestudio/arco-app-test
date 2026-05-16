@@ -1,5 +1,34 @@
 # Changelog
 
+## v8z4b17e — apply all channels active state
+
+Adiciona feedback visual ao botão **Aplicar aos 3** no painel de edição de trecho (`#panelEase`).
+
+### O que foi alterado
+
+- **HTML `#panelEase`** — adicionado `id="btnApplyAllChannels"` ao botão **Aplicar aos 3** (v8z4b17e).
+- **`syncApplyAllChannelsButtonState()`** — nova função que lê `segEasings[seg]`, `rotEasings[seg]` e `scaleEasings[seg]` do trecho ativo e destaca o botão (borda e texto em `var(--accent)`) quando os três valores são iguais; restaura estilo neutro caso contrário.
+- **`initEasePanel()`** — chama `syncApplyAllChannelsButtonState()` após `_syncEaseChannelUI()`, garantindo atualização automática ao abrir o painel, trocar de canal, aplicar easing individual, aplicar aos 3 e carregar projeto.
+- **Versão** — `APP_VERSION` atualizado para `v8z4b17e`.
+
+### Comportamento do botão
+
+- **Ativo** (borda + texto `var(--accent)`): quando `segEasings[seg] === rotEasings[seg] === scaleEasings[seg]`.
+- **Inativo** (estilo neutro): quando os três canais diferem.
+- O estado é recalculado automaticamente ao abrir outro segmento, trocar de canal, alterar um canal individualmente ou carregar JSON.
+
+### O que não foi alterado
+
+Motor de preview, export MP4, WebCodecs, cálculo de duração, pausas, curvas,
+posição, rotação, escala, stage, menus, safe area, `segEasePanel` original,
+modo global, comportamento funcional do botão Aplicar aos 3.
+
+### Compatibilidade
+
+Nenhuma alteração nos dados persistidos. Projetos antigos abrem normalmente.
+
+---
+
 ## v8z4b17d — apply easing to all channels
 
 Adiciona o botão **Aplicar aos 3** no painel real de edição de trecho (`#panelEase`),

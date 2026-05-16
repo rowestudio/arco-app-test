@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17d — apply easing to all channels: botão "Aplicar aos 3" no painel real de trecho (#panelEase); aplica o easing ativo aos três canais (Movimento/Rotação/Escala) do trecho atual; sem alterar modo global nem outros segmentos -->
+<!-- Arco App — v8z4b17e — apply all channels active state: feedback visual do botão "Aplicar aos 3" no painel real de trecho (#panelEase); botão fica ativo quando os três canais do trecho têm o mesmo easing -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -2091,7 +2091,7 @@ body.cust-open #toolbar{
   </div>
   <!-- Aplicar aos 3 canais do trecho atual — v8z4b17d -->
   <div style="margin-bottom:8px;">
-    <button onclick="applyEaseAllChannels()"
+    <button id="btnApplyAllChannels" onclick="applyEaseAllChannels()"
       style="width:100%;padding:5px 8px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:700;cursor:pointer;">Aplicar aos 3</button>
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;" id="easeChipsGrid"></div>
@@ -4053,8 +4053,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17d';
-const APP_VERSION_NAME = 'apply easing to all channels';
+const APP_VERSION = 'v8z4b17e';
+const APP_VERSION_NAME = 'apply all channels active state';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -7372,6 +7372,7 @@ function initEasePanel() {
   }
 
   _syncEaseChannelUI();
+  syncApplyAllChannelsButtonState();
   const grid = document.getElementById('easeChipsGrid');
   if (!grid) return;
   const cur = _getActiveChannelEase(seg);
@@ -7412,6 +7413,20 @@ function updateSegGlobalButton() {
 function resetSegGlobalMode() {
   segGlobalMode = false;
   updateSegGlobalButton();
+}
+
+// Sincroniza o estado visual do botão "Aplicar aos 3" — v8z4b17e
+// Ativo quando os três canais do trecho atual têm o mesmo easing.
+function syncApplyAllChannelsButtonState() {
+  const btn = document.getElementById('btnApplyAllChannels');
+  if (!btn) return;
+  const seg = (_activeEaseSeg >= 0 && _activeEaseSeg < frameCount - 1) ? _activeEaseSeg : Math.max(0, activeIdx);
+  const mv = getSegEase(seg);
+  const rt = getRotEase(seg);
+  const sc = getScaleEase(seg);
+  const allSame = (mv === rt && rt === sc);
+  btn.style.borderColor = allSame ? 'var(--accent)' : 'var(--border2)';
+  btn.style.color = allSame ? 'var(--accent)' : 'var(--text2)';
 }
 
 function selectSegEase(ease, seg) {

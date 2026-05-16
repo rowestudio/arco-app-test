@@ -2,6 +2,58 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17e — apply all channels active state
+
+### Teste A — Estado inicial do botão
+
+1. Carregar imagem; criar 2+ frames.
+2. Abrir painel de easing (SEG. 1-2).
+3. Confirmar que o botão **Aplicar aos 3** aparece com estilo neutro (borda e texto padrão) quando os canais têm easings diferentes.
+4. Se todos os canais já forem iguais (ex.: todos `linear`), confirmar que o botão aparece ativo (borda + texto em accent).
+
+### Teste B — Botão fica ativo após Aplicar aos 3
+
+1. Criar 3 frames. Abrir painel SEG. 1-2.
+2. Canal **Movimento** → clicar **Suavizar**.
+3. Clicar **Aplicar aos 3**.
+4. Confirmar que o botão **Aplicar aos 3** fica imediatamente destacado (borda + texto accent).
+5. Alternar para **Rotação** → botão deve continuar ativo.
+6. Alternar para **Escala** → botão deve continuar ativo.
+7. Voltar para **Movimento** → botão ainda ativo.
+
+### Teste C — Botão perde destaque ao alterar um canal individualmente
+
+1. Após o Teste B, com botão ativo.
+2. Canal **Rotação** → clicar **Acelerar** (diferente de Suavizar).
+3. Confirmar que o botão **Aplicar aos 3** perde o destaque imediatamente.
+
+### Teste D — Botão volta a ficar ativo ao igualar os canais novamente
+
+1. Após o Teste C, botão inativo.
+2. Clicar **Aplicar aos 3** com Acelerar.
+3. Confirmar que o botão volta a ficar ativo.
+
+### Teste E — Estado correto ao abrir outro segmento
+
+1. Aplicar **Suavizar aos 3** no SEG. 1-2 (botão ativo).
+2. Abrir painel do SEG. 2-3.
+3. Confirmar que o estado do botão reflete os canais do SEG. 2-3 (não do anterior).
+
+### Teste F — Salvar e reabrir JSON preserva o estado visual
+
+1. Aplicar **Suavizar aos 3** no SEG. 1-2.
+2. Salvar JSON.
+3. Recarregar página e importar o JSON.
+4. Abrir painel SEG. 1-2.
+5. Confirmar que o botão **Aplicar aos 3** aparece ativo.
+
+### Teste G — Preview e export OK
+
+1. Aplicar easing; clicar Preview → deve funcionar normalmente.
+2. Gerar MP4 → deve funcionar normalmente.
+
+---
+
 ## v8z4b17d — apply easing to all channels
 
 ### Teste A — Botão visível no painel real
