@@ -1,5 +1,34 @@
 # Changelog
 
+## v8z4b17h — duration sections stay expanded
+
+Ajuste de UX no painel Duração/Tempo: as seções Trechos e Pausas por frame abrem expandidas por padrão e permanecem abertas durante toda a sessão.
+
+### O que foi alterado
+
+- **`durationPanelSections`** — estado inicial de `segments` e `pauses` alterado de `false` para `true`; a seção Acabamento (`finish`) permanece fechada por padrão.
+- **HTML inicial** — `#segBreakdown` e `#framePauseSection` agora têm `display:flex` no atributo inline, e o chevron de Pausas por frame inicia com `▾`, evitando flash de conteúdo errado antes do JS carregar.
+- **Versão** — `APP_VERSION` atualizado para `v8z4b17h`.
+
+### Comportamento após esta versão
+
+| Situação | Resultado |
+|---|---|
+| Abrir painel Duração/Tempo | Trechos e Pausas por frame já aparecem expandidos |
+| Fechar e reabrir o painel | Trechos e Pausas por frame continuam expandidos |
+| Alterar qualquer valor do painel | Seções não recolhem automaticamente |
+| Seção Acabamento | Mantém comportamento anterior (fechada por padrão) |
+
+### O que não foi alterado
+
+Motor de animação, preview, export MP4, WebCodecs, cálculo de velocidade constante, easing por canal, Aplicar aos 3, modo global, Igualar intervalos, lógica de pausas e trechos, loop, acabamento, stage, menus, scroll do painel.
+
+### Compatibilidade
+
+Retrocompatível com projetos v8z4b17g e anteriores.
+
+---
+
 ## v8z4b17g — constant speed manual override state fix
 
 Corrige inconsistências de estado do modo **Velocidade constante** após ações manuais de tempo.
