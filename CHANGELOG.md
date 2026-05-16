@@ -1,5 +1,42 @@
 # Changelog
 
+## v8z4b17d — apply easing to all channels
+
+Adiciona o botão **Aplicar aos 3** no painel real de edição de trecho (`#panelEase`),
+permitindo aplicar em um clique o easing atualmente selecionado aos três canais
+(**Movimento / Rotação / Escala**) do trecho ativo.
+
+### O que foi alterado
+
+- **HTML `#panelEase`** — novo botão compacto `Aplicar aos 3` inserido entre o
+  seletor de canal e o grid de cards de easing (v8z4b17d).
+- **`applyEaseAllChannels()`** — nova função que lê o easing atual do canal ativo
+  via `_getActiveChannelEase(seg)` e o escreve em `segEasings[seg]`,
+  `rotEasings[seg]` e `scaleEasings[seg]`; chama `pushUndo()` antes de modificar
+  e `initEasePanel()` após para refletir o estado nos cards de cada canal.
+- **Versão** — `APP_VERSION` atualizado para `v8z4b17d`.
+
+### Comportamento do botão
+
+- Lê o easing do canal **atualmente ativo** no painel (Movimento, Rotação ou
+  Escala) para o segmento aberto.
+- Aplica esse easing **apenas ao trecho atual** — não altera outros segmentos.
+- Não interfere com o modo global (globo/cadeado), que continua funcionando como antes.
+- Após aplicar, alternar entre os canais mostra todos com o mesmo card ativo.
+
+### O que não foi alterado
+
+Motor de preview, export MP4, WebCodecs, cálculo de duração, pausas, curvas,
+posição, rotação, escala, stage, menus, safe area, seleção múltipla,
+`segEasePanel` original, modo global.
+
+### Compatibilidade
+
+Projetos antigos continuam abrindo normalmente. O botão apenas escreve nos arrays
+existentes (`segEasings`, `rotEasings`, `scaleEasings`).
+
+---
+
 ## v8z4b17c — show channel easing in segment panel
 
 Expõe o seletor de canal (**Movimento / Rotação / Escala**) diretamente no painel

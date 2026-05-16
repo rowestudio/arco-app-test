@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17c                                     ║
+║  Versão: v8z4b17d                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17c — show channel easing in segment panel: seletor Movimento/Rotação/Escala exposto diretamente no painel real de trecho (#panelEase); selectSegEase e initEasePanel canal-conscientes; sem painel novo -->
+<!-- Arco App — v8z4b17d — apply easing to all channels: botão "Aplicar aos 3" no painel real de trecho (#panelEase); aplica o easing ativo aos três canais (Movimento/Rotação/Escala) do trecho atual; sem alterar modo global nem outros segmentos -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1770,7 +1770,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17c</span><br><span id="appVersionNameText">show channel easing in segment panel</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17d</span><br><span id="appVersionNameText">apply easing to all channels</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -2081,13 +2081,18 @@ body.cust-open #toolbar{
     <span id="easePanelSegVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;">4.0s</span>
   </div>
   <!-- Seletor de canal — v8z4b17c -->
-  <div style="display:flex;gap:4px;margin-bottom:8px;">
+  <div style="display:flex;gap:4px;margin-bottom:6px;">
     <button id="easePanelCh_movement" onclick="setEasePanelChannel('movement')"
       style="flex:1;padding:5px 2px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--accent);color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;">Movimento</button>
     <button id="easePanelCh_rotation" onclick="setEasePanelChannel('rotation')"
       style="flex:1;padding:5px 2px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:500;cursor:pointer;">Rotação</button>
     <button id="easePanelCh_scale" onclick="setEasePanelChannel('scale')"
       style="flex:1;padding:5px 2px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:500;cursor:pointer;">Escala</button>
+  </div>
+  <!-- Aplicar aos 3 canais do trecho atual — v8z4b17d -->
+  <div style="margin-bottom:8px;">
+    <button onclick="applyEaseAllChannels()"
+      style="width:100%;padding:5px 8px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:700;cursor:pointer;">Aplicar aos 3</button>
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;" id="easeChipsGrid"></div>
 </div>
@@ -4048,8 +4053,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17c';
-const APP_VERSION_NAME = 'show channel easing in segment panel';
+const APP_VERSION = 'v8z4b17d';
+const APP_VERSION_NAME = 'apply easing to all channels';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -7442,6 +7447,25 @@ function selectSegEase(ease, seg) {
   initEasePanel();
   updateFrameSelector();
   if (isPreviewing) { stopPreview(); startPreview(); }
+}
+
+// Aplica o easing do canal ativo aos três canais do trecho atual — v8z4b17d
+function applyEaseAllChannels() {
+  const seg = (_activeEaseSeg >= 0 && _activeEaseSeg < frameCount - 1) ? _activeEaseSeg : Math.max(0, activeIdx);
+  const ease = _getActiveChannelEase(seg);
+  markProjectDirty('segment-ease');
+  pushUndo();
+  ensureSegEasings();
+  ensureRotEasings();
+  ensureScaleEasings();
+  segEasings[seg] = ease;
+  rotEasings[seg] = ease;
+  scaleEasings[seg] = ease;
+  _activeEaseSeg = seg;
+  initEasePanel();
+  updateFrameSelector();
+  if (isPreviewing) { stopPreview(); startPreview(); }
+  showStatus('Easing aplicado aos 3 canais — Seg. ' + (seg + 1) + '-' + (seg + 2));
 }
 
 function setSegEaseAll() {
