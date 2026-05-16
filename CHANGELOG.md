@@ -1,5 +1,54 @@
 # Changelog
 
+## v8z4b17f — constant speed timing by curve length
+
+Implementa modo persistente de distribuição de tempo por velocidade média constante, calculado pelo comprimento real da curva de cada trecho.
+
+### O que foi alterado
+
+- **Estado global** — adicionados `segmentTimingMode` (`'manual'` | `'constant-speed'`) e `constantSpeedTotalDuration`.
+- **HTML `#segBreakdown`** — novo seletor de modo **Manual / Velocidade constante** inserido na seção de Trechos, antes dos sliders individuais; botões em estilo chip; dica discreta "Distribui o tempo conforme o percurso curvo." visível apenas no modo ativo.
+- **`measureSegmentCurveLength(segIndex)`** — nova função que amostra 64 pontos ao longo da curva Bézier real do trecho (mesma geometria do motor) e retorna o comprimento em pixels do stage.
+- **`redistributeDurationsByCurveLength()`** — nova função que distribui `constantSpeedTotalDuration` proporcionalmente aos comprimentos curvos; trechos com `0.0s` permanecem zerados (cortes secos); sanitiza NaN/Infinity.
+- **`maybeRedistributeByCurveLength()`** — aciona redistribuição apenas quando o modo está ativo; chamada após eventos de geometria (mover frame, redimensionar, mover curva, inserir/remover frame, alterar total).
+- **`setSegmentTimingMode(mode)`** — define o modo, salva undo, inicia redistribuição ao ativar e sincroniza a UI.
+- **`syncTimingModeUI()`** — sincroniza botões de modo e desabilita/habilita sliders individuais conforme o modo ativo.
+- **`endDrag()`** — agora chama `maybeRedistributeByCurveLength()` ao final de qualquer drag de frame ou curva.
+- **`addFrame()`, `insertFrameAfterActive()`, `removeLastFrame()`** — chamam `maybeRedistributeByCurveLength()` ao finalizar.
+- **`durSlider` input handler** — em modo `constant-speed`, atualiza `constantSpeedTotalDuration` e redistribui em vez de escalar proporcionalmente.
+- **`openSegBreakdown()`** — chama `syncTimingModeUI()` ao montar as linhas, refletindo estado correto dos sliders.
+- **Sliders individuais de trecho** — `input` handler recusa alteração quando modo `constant-speed` está ativo; visualmente desabilitados (opacity 0.4).
+- **`buildProjectData()`** — persiste `segmentTimingMode` e `constantSpeedTotalDuration` no JSON.
+- **`applyFrameData()`** — restaura `segmentTimingMode` e `constantSpeedTotalDuration`; projetos antigos recebem `'manual'`.
+- **`captureState()` / `restoreState()`** — incluem `segmentTimingMode` e `constantSpeedTotalDuration` no undo/redo.
+- **`resetAll()`** — redefine `segmentTimingMode = 'manual'` e `constantSpeedTotalDuration = null`.
+- **`syncApplyAllChannelsButtonState()`** — corrigido para não manter o botão "Aplicar aos 3" ligado de forma persistente; sempre retorna ao estado neutro (v8z4b17f).
+- **`applyEaseAllChannels()`** — adicionado flash momentâneo (700ms) no botão "Aplicar aos 3" após ação, voltando ao estilo neutro.
+- **Versão** — `APP_VERSION` atualizado para `v8z4b17f`.
+
+### Comportamento do modo Manual
+
+- Preserva o comportamento anterior completo.
+- Sliders individuais editáveis.
+- App não recalcula tempos automaticamente.
+
+### Comportamento do modo Velocidade constante
+
+- O usuário define o total via slider **Total**; o app redistribui proporcionalmente ao comprimento curvo.
+- Trechos com `0.0s` (cortes secos) permanecem zerados e excluídos da distribuição.
+- Redistribuição automática a cada: mover frame, mover curva, inserir/remover frame, alterar total.
+- Ao desligar, os tempos calculados ficam congelados e o modo volta para Manual.
+
+### O que não foi alterado
+
+Motor de preview, export MP4, WebCodecs, curvas Catmull-Rom, pausas por frame, loop, acabamento, menus, safe area, stage, easing, blur, seleção múltipla.
+
+### Compatibilidade
+
+Projetos antigos (sem `segmentTimingMode`) abrem em modo **Manual** sem recalculo.
+
+---
+
 ## v8z4b17e — apply all channels active state
 
 Adiciona feedback visual ao botão **Aplicar aos 3** no painel de edição de trecho (`#panelEase`).

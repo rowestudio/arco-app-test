@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17d                                     ║
+║  Versão: v8z4b17f                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17e — apply all channels active state: feedback visual do botão "Aplicar aos 3" no painel real de trecho (#panelEase); botão fica ativo quando os três canais do trecho têm o mesmo easing -->
+<!-- Arco App — v8z4b17f — constant speed timing by curve length: modo persistente de distribuição de tempo por velocidade média constante, calculado pelo comprimento real da curva de cada trecho -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1770,7 +1770,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17d</span><br><span id="appVersionNameText">apply easing to all channels</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17f</span><br><span id="appVersionNameText">constant speed timing by curve length</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1990,6 +1990,17 @@ body.cust-open #toolbar{
     <button onclick="distributeSegEqual()" class="dur-subitem-action">
       Igualar intervalos
     </button>
+    <!-- (3b) Modo de distribuição de tempo — v8z4b17f -->
+    <div class="dur-sublabel-row" style="margin-top:8px;">
+      <span class="dur-sublabel">Modo</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:2px;" id="segTimingModeRow">
+      <button id="btnTimingManual" onclick="setSegmentTimingMode('manual')"
+        style="flex:1;padding:7px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--accent);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;line-height:1.2;">Manual</button>
+      <button id="btnTimingConstant" onclick="setSegmentTimingMode('constant-speed')"
+        style="flex:1;padding:7px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;line-height:1.2;">Velocidade constante</button>
+    </div>
+    <div id="segTimingHint" style="display:none;font-size:10px;color:var(--text3);padding:2px 0 4px 2px;">Distribui o tempo conforme o percurso curvo.</div>
     <!-- (4) Subtítulo + sliders individuais por segmento. -->
     <div class="dur-sublabel-row">
       <span class="dur-sublabel">Tempo por trecho</span>
@@ -4053,8 +4064,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17e';
-const APP_VERSION_NAME = 'apply all channels active state';
+const APP_VERSION = 'v8z4b17f';
+const APP_VERSION_NAME = 'constant speed timing by curve length';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4154,6 +4165,12 @@ const frameLocked = [];
 // Duração por segmento (null = usa duração global distribuída igual)
 const segDurations = []; // segDurations[i] = duração em segundos do segmento i→i+1
 
+// Modo de distribuição de tempo por segmento — v8z4b17f
+// 'manual': usuário controla cada trecho individualmente (padrão)
+// 'constant-speed': app distribui proporcionalmente ao comprimento curvo
+let segmentTimingMode = 'manual';
+let constantSpeedTotalDuration = null; // total desejado no modo constant-speed
+
 // Blur gaussiano por segmento
 const segBlurSettings = [];
 const DEFAULT_SEG_BLUR = Object.freeze({
@@ -4215,6 +4232,8 @@ function captureState() {
     loopCtrlPt: loopCtrlPt ? {...loopCtrlPt} : null,
     currentTemplate,
     templateLabel: document.getElementById('tbTemplate')?.textContent || 'Livre',
+    segmentTimingMode,
+    constantSpeedTotalDuration,
   };
 }
 
@@ -4256,8 +4275,11 @@ function restoreState(state) {
   finishMode = state.finishMode || 'none';
   finishDuration = state.finishDuration ?? 0.8;
   currentTemplate = state.currentTemplate || 'manual';
+  segmentTimingMode = state.segmentTimingMode || 'manual';
+  constantSpeedTotalDuration = state.constantSpeedTotalDuration ?? null;
   const tbTpl = document.getElementById('tbTemplate');
   if (tbTpl) tbTpl.textContent = state.templateLabel || 'Livre';
+  syncTimingModeUI();
 
   // Reconstruir DOM de frames e ctrl points
   document.querySelectorAll('.frame').forEach(el => el.remove());
@@ -4920,6 +4942,7 @@ function addFrame() {
   checkWatermarkWarning();
   normalizeProjectArrays();
   validateProjectState('after-add-frame');
+  maybeRedistributeByCurveLength(); // v8z4b17f
   showStatus('Frame F' + frameCount + ' adicionado · +' + segDurations[seg].toFixed(1) + 's');
 }
 
@@ -5030,6 +5053,7 @@ function insertFrameAfterActive() {
   checkWatermarkWarning();
   normalizeProjectArrays();
   validateProjectState('after-insert-frame');
+  maybeRedistributeByCurveLength(); // v8z4b17f
   showStatus('Frame inserido entre F' + (a+1) + ' e F' + (b+1));
 }
 
@@ -5060,6 +5084,7 @@ function removeLastFrame() {
   syncBlurUI();
   normalizeProjectArrays();
   validateProjectState('after-remove-frame');
+  maybeRedistributeByCurveLength(); // v8z4b17f
   showStatus('Frame F' + (frameCount + 1) + ' removido');
 }
 
@@ -5872,8 +5897,11 @@ function endDrag(e) {
   if (dragState?.type === 'move') {
     try { document.querySelector(`.drag-zone[data-fi="${dragState.fi}"]`)?.releasePointerCapture?.(e?.pointerId); } catch(err) {}
   }
+  const hadInteraction = dragState != null || ctrlDragSeg !== -1;
   dragState = null; ctrlDragSeg = -1; document.body.classList.remove('dragging');
   hideAngleIndicator();
+  // v8z4b17f — recalcular distribuição após mover frame ou curva
+  if (hadInteraction) maybeRedistributeByCurveLength();
 }
 
 // ═══════════════════════════════════════
@@ -7101,6 +7129,8 @@ function resetAll() {
   segDurations.length = 0;
   framePauses.length = 0;
   segBlurSettings.length = 0;
+  segmentTimingMode = 'manual'; // v8z4b17f
+  constantSpeedTotalDuration = null; // v8z4b17f
   undoStack.length = 0;
   redoStack.length = 0;
   // Resetar locks e rotações de todos os frames
@@ -7147,6 +7177,7 @@ function resetAll() {
     s.classList.toggle('active', s.dataset.color === '#000000');
   });
   syncDurationUI();
+  syncTimingModeUI(); // v8z4b17f
   applyTemplate('pan-lr');
   activeIdx = 0;
   normalizeProjectArrays();
@@ -7211,24 +7242,29 @@ durSlider.addEventListener('change', () => {
 
 durSlider.addEventListener('input', function () {
   const newTotal = parseFloat(this.value);
-  const oldTotal = totalDuration();
-  // Garantir que segDurations tem valores antes de redistribuir
   ensureSegDurations();
-  if (oldTotal > 0) {
+  if (segmentTimingMode === 'constant-speed') {
+    // v8z4b17f — modo velocidade constante: atualizar total e redistribuir
+    constantSpeedTotalDuration = newTotal;
+    redistributeDurationsByCurveLength();
+  } else {
+    const oldTotal = totalDuration();
     // v8z4b16b — preserva proporção existente. Mínimo 0 (antes 0.1) para
     // permitir trechos zerados durante a redistribuição.
-    const ratio = newTotal / oldTotal;
-    for (let i = 0; i < segDurations.length; i++) {
-      if (segDurations[i] != null) {
-        segDurations[i] = Math.max(0, parseFloat((segDurations[i] * ratio).toFixed(1)));
+    if (oldTotal > 0) {
+      const ratio = newTotal / oldTotal;
+      for (let i = 0; i < segDurations.length; i++) {
+        if (segDurations[i] != null) {
+          segDurations[i] = Math.max(0, parseFloat((segDurations[i] * ratio).toFixed(1)));
+        }
       }
-    }
-  } else if (newTotal > 0 && segDurations.length > 0) {
-    // v8z4b16b — saindo de "todos os trechos em 0", não há proporção
-    // anterior válida: distribuímos o novo total igualmente.
-    const per = parseFloat((newTotal / segDurations.length).toFixed(1));
-    for (let i = 0; i < segDurations.length; i++) {
-      segDurations[i] = per;
+    } else if (newTotal > 0 && segDurations.length > 0) {
+      // v8z4b16b — saindo de "todos os trechos em 0", não há proporção
+      // anterior válida: distribuímos o novo total igualmente.
+      const per = parseFloat((newTotal / segDurations.length).toFixed(1));
+      for (let i = 0; i < segDurations.length; i++) {
+        segDurations[i] = per;
+      }
     }
   }
   markProjectDirty('duration');
@@ -7415,18 +7451,14 @@ function resetSegGlobalMode() {
   updateSegGlobalButton();
 }
 
-// Sincroniza o estado visual do botão "Aplicar aos 3" — v8z4b17e
-// Ativo quando os três canais do trecho atual têm o mesmo easing.
+// Sincroniza o estado visual do botão "Aplicar aos 3" — v8z4b17f
+// Ação pontual — não indica estado persistente (não fica "ligado" continuamente).
 function syncApplyAllChannelsButtonState() {
   const btn = document.getElementById('btnApplyAllChannels');
   if (!btn) return;
-  const seg = (_activeEaseSeg >= 0 && _activeEaseSeg < frameCount - 1) ? _activeEaseSeg : Math.max(0, activeIdx);
-  const mv = getSegEase(seg);
-  const rt = getRotEase(seg);
-  const sc = getScaleEase(seg);
-  const allSame = (mv === rt && rt === sc);
-  btn.style.borderColor = allSame ? 'var(--accent)' : 'var(--border2)';
-  btn.style.color = allSame ? 'var(--accent)' : 'var(--text2)';
+  // v8z4b17f: botão sempre neutro; feedback momentâneo ocorre via applyEaseAllChannels()
+  btn.style.borderColor = 'var(--border2)';
+  btn.style.color = 'var(--text2)';
 }
 
 function selectSegEase(ease, seg) {
@@ -7481,6 +7513,16 @@ function applyEaseAllChannels() {
   updateFrameSelector();
   if (isPreviewing) { stopPreview(); startPreview(); }
   showStatus('Easing aplicado aos 3 canais — Seg. ' + (seg + 1) + '-' + (seg + 2));
+  // v8z4b17f — feedback momentâneo: pisca accent e volta ao neutro
+  const btn = document.getElementById('btnApplyAllChannels');
+  if (btn) {
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    setTimeout(() => {
+      btn.style.borderColor = 'var(--border2)';
+      btn.style.color = 'var(--text2)';
+    }, 700);
+  }
 }
 
 function setSegEaseAll() {
@@ -8907,6 +8949,155 @@ function getSegDuration(seg) {
   return segDurations[seg] != null ? segDurations[seg] : (segs > 0 ? duration / segs : 0);
 }
 
+// ─── Velocidade Constante — v8z4b17f ─────────────────────────────────────────
+
+// Mede o comprimento real da curva Bézier de um segmento em pixels do stage.
+// Usa a mesma geometria do motor (bezierPointAt do getStateAtT).
+function measureSegmentCurveLength(segIndex) {
+  if (frameCount < 2 || segIndex < 0 || segIndex >= frameCount - 1) return 0;
+  if (!stageW || !stageH) return 0;
+
+  const p1cx = frameCX(segIndex);
+  const p1cy = frameCY(segIndex);
+  const p2cx = frameCX(segIndex + 1);
+  const p2cy = frameCY(segIndex + 1);
+
+  const cp = ctrlPts[segIndex] || {
+    nx: (p1cx / stageW + p2cx / stageW) / 2,
+    ny: (p1cy / stageH + p2cy / stageH) / 2
+  };
+  const cpx = cp.nx * stageW;
+  const cpy = cp.ny * stageH;
+
+  // Quadratic Bézier: B(u) = (1-u)^2*P1 + 2*(1-u)*u*CP + u^2*P2
+  function bezPt(u) {
+    const inv = 1 - u;
+    return {
+      x: inv * inv * p1cx + 2 * inv * u * cpx + u * u * p2cx,
+      y: inv * inv * p1cy + 2 * inv * u * cpy + u * u * p2cy
+    };
+  }
+
+  const SAMPLES = 64;
+  let len = 0;
+  let prev = bezPt(0);
+  for (let i = 1; i <= SAMPLES; i++) {
+    const pt = bezPt(i / SAMPLES);
+    len += Math.hypot(pt.x - prev.x, pt.y - prev.y);
+    prev = pt;
+  }
+
+  // Fallback para casos degenerados (dois frames sobrepostos)
+  if (len < 1e-6) len = Math.hypot(p2cx - p1cx, p2cy - p1cy);
+  return len;
+}
+
+// Redistribui segDurations proporcionalmente ao comprimento curvo de cada trecho ativo.
+// Trechos com duração exatamente 0.0 permanecem em 0 (cortes secos).
+function redistributeDurationsByCurveLength() {
+  if (frameCount < 2) return;
+  ensureSegDurations();
+
+  const segs = frameCount - 1;
+  const total = (constantSpeedTotalDuration != null && Number.isFinite(constantSpeedTotalDuration))
+    ? constantSpeedTotalDuration
+    : totalDuration();
+
+  if (!Number.isFinite(total) || total < 0) return;
+
+  // Segmentos ativos: não-zerados
+  const activeSegs = [];
+  for (let i = 0; i < segs; i++) {
+    if (segDurations[i] !== 0) activeSegs.push(i);
+  }
+  if (activeSegs.length === 0) return;
+
+  const lengths = activeSegs.map(i => Math.max(0, measureSegmentCurveLength(i)));
+  const totalLen = lengths.reduce((s, l) => s + l, 0);
+
+  if (totalLen > 1e-6) {
+    activeSegs.forEach((segIdx, k) => {
+      const raw = total * lengths[k] / totalLen;
+      // Mínimo 0.1s para evitar colapso acidental; arredondamento em 0.1s
+      segDurations[segIdx] = Math.max(0.1, parseFloat(raw.toFixed(1)));
+    });
+  } else {
+    // Fallback: distribuição igual entre trechos ativos
+    const per = parseFloat((total / activeSegs.length).toFixed(1));
+    activeSegs.forEach(segIdx => { segDurations[segIdx] = Math.max(0.1, per); });
+  }
+
+  // Sanitização final: eliminar NaN/Infinity/negativo
+  for (let i = 0; i < segs; i++) {
+    if (!Number.isFinite(segDurations[i]) || segDurations[i] < 0) {
+      segDurations[i] = segDurations[i] === 0 ? 0 : Math.max(0.1, total / segs);
+    }
+  }
+}
+
+// Aciona redistribuição quando o modo velocidade constante está ativo.
+function maybeRedistributeByCurveLength() {
+  if (segmentTimingMode !== 'constant-speed') return;
+  if (frameCount < 2 || !stageW) return;
+  if (constantSpeedTotalDuration == null) {
+    constantSpeedTotalDuration = totalDuration();
+  }
+  redistributeDurationsByCurveLength();
+  syncDurationUI();
+  refreshBreakdownIfOpen();
+  if (isPreviewing) { stopPreview(); startPreview(); }
+}
+
+// Define o modo de distribuição de tempo e sincroniza a UI.
+function setSegmentTimingMode(mode) {
+  if (mode === segmentTimingMode) return;
+  pushUndo();
+  segmentTimingMode = mode;
+  if (mode === 'constant-speed') {
+    ensureSegDurations();
+    constantSpeedTotalDuration = totalDuration();
+    redistributeDurationsByCurveLength();
+    syncDurationUI();
+    refreshBreakdownIfOpen();
+    showStatus('Velocidade constante ativada');
+    if (isPreviewing) { stopPreview(); startPreview(); }
+  } else {
+    showStatus('Modo manual');
+  }
+  syncTimingModeUI();
+  markProjectDirty('timing-mode');
+}
+
+// Sincroniza a UI dos botões de modo e o estado dos sliders individuais.
+function syncTimingModeUI() {
+  const manual = document.getElementById('btnTimingManual');
+  const constant = document.getElementById('btnTimingConstant');
+  const hint = document.getElementById('segTimingHint');
+  const isConstant = segmentTimingMode === 'constant-speed';
+
+  if (manual) {
+    manual.style.borderColor = !isConstant ? 'var(--accent)' : 'var(--border2)';
+    manual.style.color = !isConstant ? 'var(--accent)' : 'var(--text2)';
+  }
+  if (constant) {
+    constant.style.borderColor = isConstant ? 'var(--accent)' : 'var(--border2)';
+    constant.style.color = isConstant ? 'var(--accent)' : 'var(--text2)';
+  }
+  if (hint) hint.style.display = isConstant ? 'block' : 'none';
+
+  // Desabilitar/habilitar sliders individuais de trecho
+  const container = document.getElementById('segRows');
+  if (container) {
+    container.querySelectorAll('input[type="range"]').forEach(sl => {
+      sl.disabled = isConstant;
+      sl.style.opacity = isConstant ? '0.4' : '';
+    });
+    container.querySelectorAll('.dur-edit-label, .dur-edit-value').forEach(el => {
+      el.style.opacity = isConstant ? '0.4' : '';
+    });
+  }
+}
+
 function openSegBreakdown() {
   const segs = frameCount - 1;
   if (segs < 1) return;
@@ -8942,6 +9133,7 @@ function openSegBreakdown() {
       if (!segUndoCaptured) { pushUndo(); segUndoCaptured = true; }
     });
     slider.addEventListener('input', () => {
+      if (segmentTimingMode === 'constant-speed') return; // v8z4b17f — modo guarda
       segDurations[idx] = parseFloat(slider.value);
       val.textContent = segDurations[idx].toFixed(1) + 's';
       updateSegTotal();
@@ -8954,6 +9146,7 @@ function openSegBreakdown() {
   }
   updateSegTotal();
   document.getElementById('segBreakdown').style.display = 'flex';
+  syncTimingModeUI(); // v8z4b17f — atualizar estado visual do modo
 }
 
 function closeSegBreakdown() {
@@ -9088,6 +9281,9 @@ function buildProjectData() {
     rotEasings: rotEasings.slice(0, frameCount - 1),
     // v8z4b17b: easing de escala por segmento.
     scaleEasings: scaleEasings.slice(0, frameCount - 1),
+    // v8z4b17f: modo de distribuição de tempo por velocidade constante.
+    segmentTimingMode,
+    constantSpeedTotalDuration,
   };
 }
 
@@ -9306,6 +9502,10 @@ function applyFrameData(data) {
   scaleEasings.length = 0;
   (data.scaleEasings || []).forEach(v => scaleEasings.push(v));
   ensureScaleEasings();
+  // v8z4b17f: restaura modo de distribuição de tempo; projetos antigos recebem 'manual'.
+  segmentTimingMode = data.segmentTimingMode || 'manual';
+  constantSpeedTotalDuration = data.constantSpeedTotalDuration ?? null;
+  syncTimingModeUI();
 
   for (let i = 0; i < frameCount; i++) createFrameDOM(i);
   for (let i = 0; i < frameCount - 1; i++) createCtrlDOM(i);
