@@ -1,5 +1,37 @@
 # Changelog
 
+## v8z4b17g — constant speed manual override state fix
+
+Corrige inconsistências de estado do modo **Velocidade constante** após ações manuais de tempo.
+
+### O que foi alterado
+
+- **`distributeSegEqual()`** — ao clicar em "Igualar intervalos", o app agora muda para `segmentTimingMode = 'manual'` e limpa `constantSpeedTotalDuration`; botão Velocidade constante desliga imediatamente.
+- **Ease panel (`easePanelSegSlider`) — handler `input`** — ao editar a duração individual de um trecho pelo painel contextual enquanto Velocidade constante está ativa, o modo muda automaticamente para Manual, os tempos ficam congelados e não há redistribuição.
+- **Loop** — confirmado que `redistributeDurationsByCurveLength()` opera apenas sobre `segDurations[0..segs-1]`; `loopDuration` permanece separado e inalterado.
+- **Versão** — `APP_VERSION` atualizado para `v8z4b17g`.
+
+### Regras de estado após esta versão
+
+| Ação | Resultado |
+|---|---|
+| Ativar Velocidade constante | redistribui trechos por percurso curvo |
+| Alterar tempo total (slider Total) | redistribui proporcionalmente (modo permanece ativo) |
+| Mover frame / curva / inserir / remover frame | redistribui (modo permanece ativo) |
+| "Igualar intervalos" | distribui igualmente, **muda para Manual** |
+| Editar trecho individual (ease panel) | congela tempos, **muda para Manual** |
+| Desligar Velocidade constante | tempos congelados, modo Manual |
+
+### O que não foi alterado
+
+Motor de preview, export MP4, WebCodecs, durSlider total, sliders de `#segRows` desabilitados em constant-speed, easing de movimento/rotação/escala, blur, pausas, loop, acabamento, stage, menus.
+
+### Compatibilidade
+
+Retrocompatível com projetos v8z4b17f e anteriores.
+
+---
+
 ## v8z4b17f — constant speed timing by curve length
 
 Implementa modo persistente de distribuição de tempo por velocidade média constante, calculado pelo comprimento real da curva de cada trecho.
