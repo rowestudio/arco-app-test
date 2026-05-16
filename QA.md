@@ -2,6 +2,69 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17d — apply easing to all channels
+
+### Teste A — Botão visível no painel real
+
+1. Carregar imagem; criar 2+ frames.
+2. Abrir o painel de easing pelo fluxo normal (tocar no segmento ou botão Ease).
+3. Confirmar que o título mostra **SEG. X-Y**.
+4. Confirmar que os três botões **Movimento / Rotação / Escala** estão visíveis.
+5. Confirmar que o botão **Aplicar aos 3** está visível abaixo do seletor de canal.
+6. Confirmar que os cards Constante / Acelerar / Desacelerar / Suavizar continuam presentes.
+
+### Teste B — Aplicar Suavizar aos 3 canais
+
+1. Criar 3 frames. Abrir painel do trecho 1-2.
+2. Selecionar **Movimento** → clicar **Suavizar**.
+3. Clicar **Aplicar aos 3**.
+4. Alternar para **Rotação** → card **Suavizar** deve aparecer ativo.
+5. Alternar para **Escala** → card **Suavizar** deve aparecer ativo.
+6. Alternar para **Movimento** → card **Suavizar** ainda ativo.
+
+### Teste C — Aplicar Acelerar aos 3 canais
+
+1. Sem mudar de segmento, clicar **Acelerar**.
+2. Clicar **Aplicar aos 3**.
+3. Verificar que os três canais mostram **Acelerar** ativo ao alternar.
+
+### Teste D — Outros segmentos não afetados
+
+1. Aplicar **Suavizar aos 3** no trecho 1-2.
+2. Abrir painel do trecho 2-3.
+3. Confirmar que Movimento, Rotação e Escala do trecho 2-3 mostram **Constante** (linear).
+
+### Teste E — Modo global continua funcionando
+
+1. Ativar modo global (ícone globo).
+2. Selecionar canal **Rotação** → aplicar **Suavizar**.
+3. Confirmar que todos os segmentos têm rotEasings = 'ease-in-out'.
+4. Desativar global. Clicar **Aplicar aos 3** num trecho.
+5. Confirmar que apenas o trecho atual foi alterado.
+
+### Teste F — Save / Load preserva os 3 canais
+
+1. Trecho 1-2: aplicar **Suavizar aos 3** via botão.
+2. Trecho 2-3: deixar **Constante**.
+3. Salvar JSON. Reabrir.
+4. Verificar que trecho 1-2 mostra Suavizar nos três canais.
+5. Verificar que trecho 2-3 mostra Constante nos três canais.
+
+### Teste G — Preview e MP4
+
+1. Configurar conforme Teste B.
+2. Preview: animação OK, sem travamento.
+3. Gerar MP4 → arquivo OK.
+
+### Teste H — Projeto antigo (sem rotEasings/scaleEasings)
+
+1. Abrir JSON antigo sem esses campos.
+2. Abrir painel de trecho; verificar que botão **Aplicar aos 3** aparece.
+3. Clicar **Aplicar aos 3** → sem erro, três canais recebem o easing ativo.
+4. Preview OK; MP4 OK.
+
+---
+
 ## v8z4b17c — show channel easing in segment panel
 
 ### Teste A — Botões de canal visíveis no painel real
