@@ -2,6 +2,56 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17g — constant speed manual override state fix
+
+### Teste A — Igualar intervalos sai do modo Velocidade constante
+
+1. Criar 3+ frames com trechos de comprimentos distintos.
+2. Ativar **Velocidade constante** → confirmar redistribuição por percurso.
+3. Clicar **Igualar intervalos**.
+4. Confirmar que os intervalos ficam iguais.
+5. Confirmar que o botão **Velocidade constante** desliga (volta ao estilo neutro).
+6. Confirmar que o botão **Manual** fica ativo (accent).
+7. Mover um frame → confirmar que os tempos **não** são redistribuídos automaticamente.
+
+### Teste B — Edição individual no ease panel sai do modo Velocidade constante
+
+1. Ativar **Velocidade constante**.
+2. Abrir o painel contextual de um trecho (ícone de easing de um segmento).
+3. Alterar o slider de duração do trecho.
+4. Confirmar que o valor do trecho muda.
+5. Confirmar que **Velocidade constante** desliga.
+6. Confirmar que **Manual** fica ativo.
+7. Mover um frame → confirmar que os tempos ficam congelados.
+
+### Teste C — Tempo total mantém Velocidade constante ativa
+
+1. Ativar **Velocidade constante**.
+2. Alterar o slider **Total** da seção Trechos.
+3. Confirmar que **Velocidade constante** permanece ativa.
+4. Confirmar que os trechos redistribuem proporcionalmente ao percurso curvo.
+
+### Teste D — Loop não é alterado pela redistribuição
+
+1. Ativar loop; definir duração de loop (ex.: 2.0s).
+2. Ativar **Velocidade constante**.
+3. Confirmar que a duração do loop não é alterada.
+4. Confirmar que apenas os trechos normais (F1→F2, F2→F3…) são redistribuídos.
+5. Alterar slider Total → loop continua inalterado.
+
+### Teste E — Preview e MP4
+
+1. Preview com Velocidade constante ativa → OK.
+2. Gerar MP4 → sem tela preta, sem travamento.
+3. Fazer pequena edição; gerar MP4 novamente → OK.
+
+### Teste F — Versão
+
+1. Abrir app; ir em Configurações.
+2. Confirmar que a versão exibida é **v8z4b17g**.
+
+---
+
 ## v8z4b17f — constant speed timing by curve length
 
 ### Teste 1 — Versão

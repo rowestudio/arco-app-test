@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17f                                     ║
+║  Versão: v8z4b17g                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17f — constant speed timing by curve length: modo persistente de distribuição de tempo por velocidade média constante, calculado pelo comprimento real da curva de cada trecho -->
+<!-- Arco App — v8z4b17g — constant speed manual override state fix: "Igualar intervalos" e edição individual de trecho saem do modo Velocidade constante; loop preservado separado -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1770,7 +1770,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17f</span><br><span id="appVersionNameText">constant speed timing by curve length</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17g</span><br><span id="appVersionNameText">constant speed manual override state fix</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4064,8 +4064,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17f';
-const APP_VERSION_NAME = 'constant speed timing by curve length';
+const APP_VERSION = 'v8z4b17g';
+const APP_VERSION_NAME = 'constant speed manual override state fix';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -7395,6 +7395,13 @@ function initEasePanel() {
       const s = this._seg != null ? this._seg : seg;
       ensureSegDurations();
       const nextVal = parseFloat(this.value);
+      // v8z4b17g — edição individual no painel contextual sai do modo constant-speed
+      if (segmentTimingMode === 'constant-speed') {
+        segmentTimingMode = 'manual';
+        constantSpeedTotalDuration = null;
+        syncTimingModeUI();
+        markProjectDirty('timing-mode');
+      }
       if (segGlobalMode) {
         for (let i = 0; i < frameCount - 1; i++) segDurations[i] = nextVal;
       } else {
@@ -9171,7 +9178,13 @@ function distributeSegEqual() {
   const perSeg = parseFloat((currentTotal / segs).toFixed(1));
   segDurations.length = 0;
   for (let i = 0; i < segs; i++) segDurations[i] = perSeg;
-  openSegBreakdown(); // rebuild rows com segs corretos
+  // v8z4b17g — ação manual; sair do modo constant-speed
+  if (segmentTimingMode !== 'manual') {
+    segmentTimingMode = 'manual';
+    constantSpeedTotalDuration = null;
+    markProjectDirty('timing-mode');
+  }
+  openSegBreakdown(); // rebuild rows + syncTimingModeUI interno
   showStatus('Distribuído igualmente — total ' + currentTotal.toFixed(1) + 's');
 }
 function syncDurationUI() {
