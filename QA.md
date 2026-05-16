@@ -2,6 +2,55 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17h — duration sections stay expanded
+
+### Teste A — Abertura inicial
+
+1. Carregar o app.
+2. Carregar uma imagem.
+3. Abrir o painel Duração/Tempo.
+4. Confirmar que **Trechos** já aparece aberto (chevron ▾).
+5. Confirmar que **Pausas por frame** já aparece aberto (chevron ▾).
+
+### Teste B — Reabrir painel
+
+1. Fechar o painel Duração/Tempo.
+2. Abrir novamente.
+3. Confirmar que **Trechos** e **Pausas por frame** continuam abertos.
+
+### Teste C — Alterar valores não recolhe seções
+
+1. Alterar duração de um trecho (slider individual).
+2. Alterar pausa de um frame.
+3. Ativar/desativar **Velocidade constante**.
+4. Tocar em **Igualar intervalos**.
+5. Confirmar que **Trechos** e **Pausas por frame** não recolhem sozinhos.
+
+### Teste D — Scroll do painel
+
+1. Criar vários frames (5+).
+2. Abrir Duração/Tempo.
+3. Confirmar que o painel inteiro rola normalmente (scroll principal do painel).
+4. Confirmar que **não** voltou scroll interno ruim dentro da lista de pausas.
+
+### Teste E — Regressão geral
+
+1. Preview OK.
+2. Gerar MP4 OK (sem tela preta, sem travamento).
+3. Velocidade constante continua funcionando.
+4. Igualar intervalos continua desligando Velocidade constante.
+5. Ajuste individual de trecho continua saindo do modo Velocidade constante.
+6. Easing por canal continua funcionando.
+7. Seção **Acabamento** mantém comportamento anterior (fechada por padrão, abre ao clicar).
+
+### Teste F — Versão
+
+1. Abrir app; ir em Configurações.
+2. Confirmar que a versão exibe **v8z4b17h**.
+3. Confirmar que o nome exibe **duration sections stay expanded**.
+
+---
+
 ## v8z4b17g — constant speed manual override state fix
 
 ### Teste A — Igualar intervalos sai do modo Velocidade constante
