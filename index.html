@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17o                                     ║
+║  Versão: v8z4b17p                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17o — loop as closing segment and final pause mirror: trecho N→1 com easing próprio, pausa final espelha framePauses[último frame] -->
+<!-- Arco App — v8z4b17p — finish timeline sync fixes: pausa final segue último frame, velocidade constante redistribui ao ligar/desligar loop, pausa final desliga ao zerar -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1795,7 +1795,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17o</span><br><span id="appVersionNameText">loop as closing segment and final pause mirror</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17p</span><br><span id="appVersionNameText">finish timeline sync fixes</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4117,8 +4117,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17o';
-const APP_VERSION_NAME = 'loop as closing segment and final pause mirror';
+const APP_VERSION = 'v8z4b17p';
+const APP_VERSION_NAME = 'finish timeline sync fixes';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4993,7 +4993,14 @@ function addFrame() {
 
   // Garantir pausa válida para o novo frame e manter arrays sincronizados
   ensureFramePauses();
-  framePauses[i] = { duration: 0 };
+  // v8z4b17p — Bug A: quando Pausa final ativa, mover valor para o novo último frame
+  if (finishMode === 'pause' && i > 0) {
+    const oldLastPause = framePauses[i - 1]?.duration || 0;
+    framePauses[i - 1] = { duration: 0 };
+    framePauses[i] = { duration: oldLastPause };
+  } else {
+    framePauses[i] = { duration: 0 };
+  }
   frameRotations[i] = frameRotations[frameCount - 2] || 0;
   frameLocked[i] = false;
   activeIdx = i;
@@ -5132,6 +5139,8 @@ function removeLastFrame() {
   if (!hasImageLoaded()) return;
   if (frameCount <= 2) { showStatus('Mínimo de 2 frames'); return; }
   const i = frameCount - 1;
+  // v8z4b17p — Bug A: preservar pausa final antes de remover o último frame
+  const savedFinalPause = (finishMode === 'pause') ? (framePauses[i]?.duration || 0) : null;
   const fe = getFrameEl(i); if (fe) fe.remove();
   const ce = getCtrlEl(i - 1); if (ce) ce.remove();
   frames.splice(i, 1);
@@ -5144,6 +5153,10 @@ function removeLastFrame() {
   frameCount--;
   if (activeIdx >= frameCount) activeIdx = frameCount - 1;
   ensureFramePauses();
+  // v8z4b17p — Bug A: transferir pausa final para o novo último frame
+  if (savedFinalPause !== null && frameCount >= 1) {
+    framePauses[frameCount - 1] = { duration: savedFinalPause };
+  }
   ensureSegBlurSettings();
   syncDurationUI();
   if (durationPanelSections.pauses) renderFramePauseRows();
@@ -7838,6 +7851,30 @@ function syncFinishingUIFromState() {
   }
 }
 
+// v8z4b17p — Bug A: transfere a pausa final para o novo último frame.
+// Chamado após qualquer operação que mude qual frame é o "último".
+function syncFinalPauseToLastFrame(oldLastIdx, newLastIdx) {
+  if (finishMode !== 'pause') return;
+  if (oldLastIdx < 0 || newLastIdx < 0 || oldLastIdx === newLastIdx) return;
+  ensureFramePauses();
+  const pauseVal = framePauses[oldLastIdx]?.duration || 0;
+  framePauses[oldLastIdx] = { duration: 0 };
+  framePauses[newLastIdx] = { duration: pauseVal };
+}
+
+// v8z4b17p — Bug C: sincroniza finishMode com a realidade de framePauses[lastIdx].
+// Se a pausa do último frame for 0, desliga Pausa final.
+function syncFinishControlsFromTimeline() {
+  if (finishMode !== 'pause') return;
+  if (frameCount < 1) return;
+  const lastPause = framePauses[frameCount - 1]?.duration || 0;
+  if (lastPause === 0) {
+    finishMode = 'none';
+    syncFinishingUIFromState();
+    syncDurationUI();
+  }
+}
+
 function setFinishing(mode) {
   if (finishMode === mode) return;
   pushUndo();
@@ -7867,6 +7904,7 @@ function setFinishing(mode) {
   }
 
   syncDurationUI();
+  maybeRedistributeByCurveLength(); // v8z4b17p — Bug B: redistribuir ao mudar modo de loop
   updateToolbarLabels();
   refreshBreakdownIfOpen();
   if (isPreviewing) { stopPreview(); startPreview(); }
@@ -7897,6 +7935,7 @@ function initFinishSlider() {
         if (sl2 && parseFloat(sl2.value) !== clamped) sl2.value = clamped.toFixed(1);
       }
       syncDurationUI();
+      syncFinishControlsFromTimeline(); // v8z4b17p — Bug C: desligar se chegou a 0
       if (isPreviewing) { stopPreview(); startPreview(); }
     } else {
       finishDuration = parseFloat(this.value);
@@ -7934,6 +7973,7 @@ function toggleLoop() {
     loopCtrlPt = null;
   }
   syncDurationUI();
+  maybeRedistributeByCurveLength(); // v8z4b17p — Bug B: redistribuir ao ligar/desligar loop
   renderAll();
   refreshBreakdownIfOpen();
   if (isPreviewing) { stopPreview(); startPreview(); }
@@ -8058,6 +8098,7 @@ function _bindGlobalFramePauseSliderOnce() {
     if (changed) markProjectDirty('frame-pause-global');
     if (valEl) valEl.textContent = v.toFixed(1) + 's';
     refreshPauseControls();
+    syncFinishControlsFromTimeline(); // v8z4b17p — Bug C: desligar Pausa final se zerado
     if ((opts && opts.render) && changed) {
       renderAll();
       if (isPreviewing) { stopPreview(); startPreview(); }
@@ -8768,6 +8809,11 @@ function deleteActiveFrame() {
   frameRotations.splice(i, 1);
   frameLocked.splice(i, 1);
 
+  // v8z4b17p — Bug A: salvar pausa final antes do splice (se está deletando o último frame)
+  const _wasLastFrame = (i === frameCount - 1);
+  const _savedFinalPause = (_wasLastFrame && finishMode === 'pause') ? (framePauses[i]?.duration || 0) : null;
+  framePauses.splice(i, 1); // v8z4b17p: framePauses não estava sendo removido em deleteActiveFrame
+
   // Ctrl pts: remover segmento anterior (i-1) e atual (i)
   // Após delete, o novo segmento i-1 vai de frame i-1 para frame i (antigo i+1)
   if (i > 0 && i < frameCount - 1) {
@@ -8787,6 +8833,15 @@ function deleteActiveFrame() {
   frameCount--;
   activeIdx = Math.max(0, Math.min(i, frameCount - 1));
 
+  // v8z4b17p — Bug A: transferir pausa final para o novo último frame
+  if (_savedFinalPause !== null && frameCount >= 1) {
+    ensureFramePauses();
+    framePauses[frameCount - 1] = { duration: _savedFinalPause };
+  }
+
+  ensureFramePauses();
+  normalizeProjectArrays();
+
   // Recriar DOM completo com índices corretos
   for (let j = 0; j < frameCount; j++) {
     createFrameDOM(j);
@@ -8805,8 +8860,10 @@ function deleteActiveFrame() {
 
   renderAll();
   syncDurationUI();
+  if (durationPanelSections.pauses) renderFramePauseRows();
   updateFrameSelector();
   refreshBreakdownIfOpen();
+  maybeRedistributeByCurveLength(); // v8z4b17p — Bug B: redistribuir se constant-speed
   showStatus('Frame deletado');
 }
 
@@ -10559,6 +10616,8 @@ function setFramePause(frameIndex, duration, options) {
     markProjectDirty('frame-pause');
   }
   refreshPauseControls();
+  // v8z4b17p — Bug C: se frame editado é o último, sincronizar finishMode
+  if (idx === frameCount - 1) syncFinishControlsFromTimeline();
   if (opts.render !== false) {
     renderAll();
     if (isPreviewing && Math.abs(prev - value) > 0.0001) { stopPreview(); startPreview(); }
@@ -10747,6 +10806,7 @@ function resetAllFramePauses() {
     framePauses[i] = { duration: 0 };
   }
   refreshPauseControls();
+  syncFinishControlsFromTimeline(); // v8z4b17p — Bug C: desligar Pausa final se chegou a 0
   renderAll();
   showStatus('Pausas zeradas');
   if (isPreviewing) { stopPreview(); startPreview(); }

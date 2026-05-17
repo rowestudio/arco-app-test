@@ -2,6 +2,134 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17p — finish timeline sync fixes
+
+### Teste A — adicionar frame com Pausa final ativa
+
+1. Criar F1, F2, F3.
+2. Ativar Pausa final com 2.0s.
+3. Confirmar que F3 tem pausa 2.0s.
+4. Adicionar F4.
+5. Confirmar que F3 volta para 0.0s.
+6. Confirmar que F4 recebe 2.0s.
+7. Confirmar que Pausa final continua ativa.
+8. Confirmar que o tempo total não duplicou.
+
+### Teste B — adicionar vários frames com Pausa final ativa
+
+1. Com F4 como último e Pausa final 2.0s, adicionar F5.
+2. Confirmar que F4 volta para 0.0s.
+3. Confirmar que F5 recebe 2.0s.
+4. Confirmar que não há pausas finais acumuladas em frames antigos.
+
+### Teste C — remover último frame com Pausa final ativa
+
+1. Criar F1, F2, F3, F4.
+2. Ativar Pausa final com 2.0s em F4.
+3. Remover F4.
+4. Confirmar que F3 passa a ter pausa 2.0s.
+5. Confirmar que Pausa final continua ativa.
+6. Confirmar que o tempo total está correto.
+
+### Teste D — pausa intermediária preservada
+
+1. Criar F1, F2, F3.
+2. Colocar pausa manual em F2 de 1.0s.
+3. Ativar Pausa final em F3 com 2.0s.
+4. Adicionar F4.
+5. Confirmar que F2 continua com 1.0s.
+6. Confirmar que F3 fica 0.0s.
+7. Confirmar que F4 recebe 2.0s.
+
+### Teste E — Pausa final desligada (sem transferência automática)
+
+1. Desligar Pausa final.
+2. Adicionar frames.
+3. Confirmar que o app não move pausas automaticamente.
+4. Pausas por frame devem continuar manuais.
+
+### Teste F — Velocidade constante + ligar Loop
+
+1. Criar 4 frames com percursos diferentes.
+2. Ativar Velocidade constante.
+3. Confirmar que os trechos normais redistribuem.
+4. Ligar Loop.
+5. Confirmar que aparece trecho 4–1.
+6. Confirmar que 4–1 entra redistribuído imediatamente.
+7. Confirmar que o tempo total aumenta corretamente.
+8. Preview OK.
+
+### Teste G — Velocidade constante + desligar Loop
+
+1. Com Velocidade constante e Loop ligados, desligar Loop.
+2. Confirmar que 4–1 sai da conta.
+3. Confirmar que os trechos normais redistribuem novamente.
+4. Confirmar que o tempo total reduz corretamente.
+5. Preview OK.
+
+### Teste H — zerar todas as pausas
+
+1. Ativar Pausa final com valor > 0.
+2. Ir ao painel Duração/Tempo.
+3. Zerar todas as pausas.
+4. Confirmar que Pausa final desliga.
+5. Confirmar que framePauses[lastFrameIndex] = 0.
+6. Confirmar que Loop volta a ficar disponível.
+7. Confirmar que tempo total atualiza.
+
+### Teste I — zerar pausa do último frame
+
+1. Ativar Pausa final com 2.0s.
+2. Zerar apenas a pausa do último frame.
+3. Confirmar que Pausa final desliga.
+4. Confirmar que pausas intermediárias não mudam.
+5. Confirmar que o total atualiza.
+
+### Teste J — slider de Pausa final para 0
+
+1. Ativar Pausa final com 2.0s.
+2. No controle de Pausa final, arrastar para 0.
+3. Confirmar que Pausa final desliga.
+4. Confirmar que o último frame fica com pausa 0.
+5. Confirmar que Loop volta a ficar disponível.
+
+### Teste K — Loop como trecho real continua OK
+
+1. Ligar Loop.
+2. Confirmar que aparece trecho N–1 em Trechos.
+3. Confirmar que aparece na faixa/painel de frames.
+4. Selecionar N–1.
+5. Confirmar que abre painel real de trecho/easing.
+6. Editar duração/easing.
+7. Preview OK.
+8. MP4 OK.
+
+### Teste L — JSON
+
+1. Criar projeto com Pausa final ativa.
+2. Adicionar frame e confirmar que a pausa migrou.
+3. Salvar JSON.
+4. Reabrir JSON.
+5. Confirmar que a pausa está no último frame atual.
+6. Criar projeto com Loop + Velocidade constante.
+7. Salvar e reabrir.
+8. Confirmar que Loop e distribuição continuam coerentes.
+
+### Teste M — regressão geral
+
+1. Painel Duração/Tempo continua sempre aberto.
+2. Painel de trecho/easing mantém hierarquia da v8z4b17n.
+3. Movimento Inteligente continua funcionando.
+4. Velocidade constante continua funcionando.
+5. Loop como trecho real continua funcionando.
+6. Preview OK.
+7. Gerar MP4 OK.
+8. Fazer pequena edição.
+9. Gerar MP4 novamente OK.
+10. Sem tela preta.
+11. Sem botão preso.
+12. Sem NaN/Infinity no console.
+
 ## v8z4b17o — loop as closing segment and final pause mirror
 
 ### Teste A — loop cria trecho de fechamento
