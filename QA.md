@@ -2,6 +2,111 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17j — smart movement easing experiment
+
+### Teste A — modo padrão
+
+1. Abrir o app.
+2. Carregar uma imagem.
+3. Criar 3 frames.
+4. Abrir o painel contextual de easing de um trecho.
+5. Confirmar que `Movimento` está em `Manual` (padrão).
+6. Rodar Preview.
+7. Confirmar que o resultado é compatível com a v8z4b17i (sem regressão visual).
+
+### Teste B — ativar Inteligente
+
+1. Com 3 frames em distâncias bem diferentes (ex.: F1 pequeno, F2 médio, F3 grande), abrir o painel de easing.
+2. Selecionar canal `Movimento`.
+3. Clicar em `Inteligente`.
+4. Confirmar que os chips `Constante/Acelerar/Desacelerar/Suavizar` ficam subordinados (opacidade reduzida, sem clique).
+5. Confirmar que aparece o aviso `Movimento em modo Inteligente…`.
+6. Rodar Preview.
+7. Confirmar que a passagem pelo frame intermediário fica mais contínua/suave do que em Manual `Constante` (sem tranco súbito).
+
+### Teste C — trecho lento → trecho rápido
+
+1. Criar F1, F2, F3.
+2. Definir trecho `1-2` curto/lento e trecho `2-3` longo/rápido (durações ou distâncias bem diferentes).
+3. Ativar `Movimento › Inteligente`.
+4. Rodar Preview.
+5. Confirmar que a aceleração começa **antes** de F2 e continua **depois** de F2 (sem step seco no frame).
+
+### Teste D — pausa no frame
+
+1. Criar F1, F2, F3.
+2. No painel Duração/Tempo, colocar uma pausa > 0s em F2.
+3. Ativar `Movimento › Inteligente`.
+4. Rodar Preview.
+5. Confirmar que o movimento **desacelera** até F2, fica parado durante a pausa e **sai do zero** ao continuar.
+6. Não pode passar batido pela pausa.
+
+### Teste E — trecho 0.0s (corte seco)
+
+1. Criar F1, F2, F3.
+2. No painel Duração/Tempo, colocar o trecho `1-2` em `0.0s`.
+3. Ativar `Movimento › Inteligente`.
+4. Rodar Preview.
+5. Confirmar que o trecho `1-2` continua como corte seco (sem easing).
+6. Confirmar console: nenhum `NaN`, `Infinity` ou erro; preview não trava.
+
+### Teste F — Velocidade constante + Inteligente
+
+1. Ativar `Velocidade constante` no painel Duração/Tempo.
+2. Confirmar que os tempos foram redistribuídos pelo comprimento curvo.
+3. Abrir o painel de easing e ativar `Movimento › Inteligente`.
+4. Confirmar que os tempos **não mudam** (Velocidade constante manda no tempo).
+5. Rodar Preview.
+6. Confirmar que o movimento fica contínuo (com Velocidade constante já entregando trechos com vAvg igual, a Hermite degenera para linear — comportamento esperado).
+
+### Teste G — Rotação e Escala preservadas
+
+1. Criar 3 frames com rotações e escalas distintas.
+2. No painel de easing, no canal `Rotação`, escolher `Acelerar`.
+3. No canal `Escala`, escolher `Desacelerar`.
+4. Voltar ao canal `Movimento` e ativar `Inteligente`.
+5. Rodar Preview.
+6. Confirmar que a rotação está acelerando e a escala desacelerando — Inteligente afeta **apenas** o movimento.
+
+### Teste H — JSON (salvar/recarregar)
+
+1. Ativar `Movimento › Inteligente`.
+2. Salvar projeto como JSON.
+3. Abrir o JSON em editor de texto e confirmar a presença do campo `"movementEasingMode": "smart"`.
+4. Recarregar o JSON no app.
+5. Confirmar que o botão `Inteligente` volta marcado e a UI dos chips subordinados.
+6. Preview OK.
+
+### Teste I — projeto antigo (compatibilidade)
+
+1. Carregar um JSON salvo na v8z4b17i (ou anterior), sem o campo `movementEasingMode`.
+2. Confirmar que abre com `Manual` (padrão) — comportamento idêntico ao da v8z4b17i.
+3. Preview OK.
+
+### Teste J — undo / redo
+
+1. Ativar `Movimento › Inteligente`.
+2. Pressionar Desfazer (`Ctrl+Z` / botão de undo).
+3. Confirmar que volta para `Manual`.
+4. Pressionar Refazer.
+5. Confirmar que volta para `Inteligente`.
+
+### Teste K — MP4
+
+1. Com `Movimento › Inteligente` ativo, Preview OK.
+2. Gerar MP4.
+3. Fazer uma pequena edição (mover um frame).
+4. Gerar MP4 novamente.
+5. Confirmar: sem tela preta, sem botão preso, sem erro no console.
+
+### Teste L — Versão
+
+1. Abrir Configurações.
+2. Confirmar que a versão exibe `v8z4b17j`.
+3. Confirmar que o nome exibe `smart movement easing experiment`.
+
+---
+
 ## v8z4b17i — duration panel always expanded
 
 ### Teste A — Abertura do painel
