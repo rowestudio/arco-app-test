@@ -1,5 +1,41 @@
 # Changelog
 
+## v8z4b17j — smart movement easing experiment
+
+Versão **experimental** que adiciona um modo opcional de **Easing Inteligente** apenas para o canal **Movimento**. O comportamento padrão continua sendo `Manual`; nada muda visualmente em projetos antigos.
+
+### Conceito
+
+`Easing Inteligente` é um modo automático de continuidade de velocidade entre trechos vizinhos. Em cada frame intermediário, a velocidade média do trecho anterior é casada com a velocidade média do trecho seguinte, criando uma transição suave (Hermite cúbica) em vez do "tranco" que aparece quando dois trechos têm velocidades médias muito diferentes.
+
+- Pausa no frame  → velocidade no frame é `0` (desacelera até parar; sai do zero).
+- Trecho `0.0s`   → corte seco (não tenta aplicar smart; sem NaN/Infinity).
+- Primeiro/último frame → fallback com a velocidade média do próprio trecho.
+- Rotação e Escala continuam usando seus próprios `rotEasings` / `scaleEasings` — Inteligente atua **somente** sobre Movimento.
+
+### O que foi alterado
+
+- **Novo estado `movementEasingMode`** — `'manual' | 'smart'`, default `'manual'`. Persiste em JSON (`buildProjectData` / `loadProjectFromJson`), entra no `captureState` / `restoreState` (undo/redo) e no `resetAll`.
+- **Novo cálculo `computeSmartMovementProgress(seg, tt)`** — Hermite cúbica com `p0=0`, `p1=curveLen`, `m0=vStart`, `m1=vEnd`, `Δ=dur`; reaproveita `measureSegmentCurveLength()` do modo Velocidade constante. Velocidades de extremidade limitadas a `3·vAvg` para manter monotonicidade.
+- **`getStateAtT()`** — quando `movementEasingMode === 'smart'`, `ttEased` vem de `computeSmartMovementProgress` em vez de `applySegEasingToT`. Toda a cadeia seguinte (`mapProgressToBezierU` → `bezierPointAt`) é a mesma; rotação e escala usam seus easings próprios como antes.
+- **UI mínima no painel `panelEase`** — uma linha compacta `Movimento [ Manual ] [ Inteligente ]` logo abaixo do seletor de canal. Quando `Inteligente` está ativo e o canal selecionado é Movimento, os chips `Constante/Acelerar/Desacelerar/Suavizar` ficam subordinados (`opacity 0.4`, `pointer-events:none`) e aparece um aviso `Movimento em modo Inteligente: continuidade automática…`.
+- **Sincronização** — `setMovementEasingMode`, `syncMovementEasingModeUI`, integrações em `setEaseChannel`, `setEasePanelChannel`, `initEasePanel` e nas restaurações de `restoreState`, `resetAll`, `loadProjectFromJson`.
+- **Versão** — `APP_VERSION` → `v8z4b17j`, `APP_VERSION_NAME` → `smart movement easing experiment`; cabeçalho HTML, comentário de versão do arquivo e `Configurações` atualizados.
+
+### O que não foi alterado
+
+Sistema vetorial de curvas, edição visual das curvas, handles, stage, timeline, redesign do painel Duração/Tempo, indicadores visuais de easing, menu inferior, safe area, play, seleção múltipla, rotação inteligente, escala inteligente, cores, ícones, layout geral. Rotação e Escala continuam respeitando `rotEasings` / `scaleEasings` independentemente do modo de Movimento. `segEasings` continuam salvos no JSON — apenas são ignorados durante o cálculo espacial enquanto `smart` estiver ativo.
+
+### Interação com Velocidade constante
+
+`Velocidade constante` continua distribuindo `segDurations` por comprimento curvo **antes** do cálculo de Movimento. O `Easing Inteligente` lê essas durações já distribuídas para calcular `vAvg`. Quando ambos estão ativos, as velocidades médias dos trechos tendem a se igualar, o que faz a Hermite degenerar para linear — exatamente o comportamento esperado (Velocidade constante já entrega a transição contínua).
+
+### Compatibilidade
+
+Retrocompatível com projetos `v8z4b17i` e anteriores. Projetos antigos que não contêm `movementEasingMode` no JSON são carregados como `'manual'` — comportamento idêntico ao da v8z4b17i. Nenhuma promoção automática para `main` está prevista nesta versão experimental.
+
+---
+
 ## v8z4b17i — duration panel always expanded
 
 Ajuste de UX no painel Duração/Tempo: todas as seções (Trechos, Pausas por frame e Acabamento) ficam sempre abertas. O comportamento de recolher/expandir foi removido.

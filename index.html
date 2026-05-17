@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17i                                     ║
+║  Versão: v8z4b17j                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17g — constant speed manual override state fix: "Igualar intervalos" e edição individual de trecho saem do modo Velocidade constante; loop preservado separado -->
+<!-- Arco App — v8z4b17j — smart movement easing experiment: modo Inteligente opcional de continuidade de velocidade no canal Movimento -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1770,7 +1770,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17g</span><br><span id="appVersionNameText">constant speed manual override state fix</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17j</span><br><span id="appVersionNameText">smart movement easing experiment</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -2100,12 +2100,22 @@ body.cust-open #toolbar{
     <button id="easePanelCh_scale" onclick="setEasePanelChannel('scale')"
       style="flex:1;padding:5px 2px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:500;cursor:pointer;">Escala</button>
   </div>
+  <!-- Modo de easing do canal Movimento — v8z4b17j (experimental) -->
+  <div id="movEasingModeRow" style="display:flex;gap:4px;align-items:center;margin-bottom:6px;">
+    <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;margin-right:4px;">Movimento</span>
+    <button id="movEaseMode_manual" onclick="setMovementEasingMode('manual')"
+      style="flex:1;padding:5px 2px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--accent);color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;">Manual</button>
+    <button id="movEaseMode_smart" onclick="setMovementEasingMode('smart')"
+      style="flex:1;padding:5px 2px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:500;cursor:pointer;">Inteligente</button>
+  </div>
   <!-- Aplicar aos 3 canais do trecho atual — v8z4b17d -->
   <div style="margin-bottom:8px;">
     <button id="btnApplyAllChannels" onclick="applyEaseAllChannels()"
       style="width:100%;padding:5px 8px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:700;cursor:pointer;">Aplicar aos 3</button>
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;" id="easeChipsGrid"></div>
+  <!-- Aviso quando Movimento está em modo Inteligente — v8z4b17j -->
+  <div id="movSmartHint" style="display:none;font-size:10px;color:var(--text3);margin-top:6px;line-height:1.3;">Movimento em modo Inteligente: continuidade automática entre trechos vizinhos. Os chips acima ficam inativos para Movimento — Rotação e Escala continuam usando seus easings próprios.</div>
 </div>
 
 <!-- PANEL: Suavidade de curva -->
@@ -4064,8 +4074,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17i';
-const APP_VERSION_NAME = 'duration panel always expanded';
+const APP_VERSION = 'v8z4b17j';
+const APP_VERSION_NAME = 'smart movement easing experiment';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4171,6 +4181,11 @@ const segDurations = []; // segDurations[i] = duração em segundos do segmento 
 let segmentTimingMode = 'manual';
 let constantSpeedTotalDuration = null; // total desejado no modo constant-speed
 
+// Modo de easing do canal Movimento — v8z4b17j (experimental)
+// 'manual': usa segEasings por trecho (padrão).
+// 'smart' : continuidade de velocidade entre trechos vizinhos via Hermite.
+let movementEasingMode = 'manual';
+
 // Blur gaussiano por segmento
 const segBlurSettings = [];
 const DEFAULT_SEG_BLUR = Object.freeze({
@@ -4234,6 +4249,7 @@ function captureState() {
     templateLabel: document.getElementById('tbTemplate')?.textContent || 'Livre',
     segmentTimingMode,
     constantSpeedTotalDuration,
+    movementEasingMode,
   };
 }
 
@@ -4277,9 +4293,11 @@ function restoreState(state) {
   currentTemplate = state.currentTemplate || 'manual';
   segmentTimingMode = state.segmentTimingMode || 'manual';
   constantSpeedTotalDuration = state.constantSpeedTotalDuration ?? null;
+  movementEasingMode = (state.movementEasingMode === 'smart') ? 'smart' : 'manual';
   const tbTpl = document.getElementById('tbTemplate');
   if (tbTpl) tbTpl.textContent = state.templateLabel || 'Livre';
   syncTimingModeUI();
+  syncMovementEasingModeUI();
 
   // Reconstruir DOM de frames e ctrl points
   document.querySelectorAll('.frame').forEach(el => el.remove());
@@ -6242,8 +6260,15 @@ function getStateAtT(t) {
   const crY = catmullRom(p0.cy, p1.cy, p2.cy, p3.cy, tt);
 
   // Easing de movimento aplicado ao t local (segEasings → posição/trajetória)
-  const segEase = getSegEase(seg);
-  const ttEased = applySegEasingToT(tt, segEase);
+  // v8z4b17j: modo Inteligente substitui o easing manual de Movimento por
+  // uma curva Hermite que dá continuidade de velocidade entre trechos.
+  let ttEased;
+  if (movementEasingMode === 'smart') {
+    ttEased = computeSmartMovementProgress(seg, tt);
+  } else {
+    const segEase = getSegEase(seg);
+    ttEased = applySegEasingToT(tt, segEase);
+  }
 
   // v8z4b2: mapear progresso temporal (ttEased) para comprimento de arco
   // da curva, evitando que a posição da bolinha altere a sensação de easing.
@@ -7131,6 +7156,7 @@ function resetAll() {
   segBlurSettings.length = 0;
   segmentTimingMode = 'manual'; // v8z4b17f
   constantSpeedTotalDuration = null; // v8z4b17f
+  movementEasingMode = 'manual'; // v8z4b17j
   undoStack.length = 0;
   redoStack.length = 0;
   // Resetar locks e rotações de todos os frames
@@ -7178,6 +7204,7 @@ function resetAll() {
   });
   syncDurationUI();
   syncTimingModeUI(); // v8z4b17f
+  syncMovementEasingModeUI(); // v8z4b17j
   applyTemplate('pan-lr');
   activeIdx = 0;
   normalizeProjectArrays();
@@ -7416,6 +7443,7 @@ function initEasePanel() {
 
   _syncEaseChannelUI();
   syncApplyAllChannelsButtonState();
+  syncMovementEasingModeUI();
   const grid = document.getElementById('easeChipsGrid');
   if (!grid) return;
   const cur = _getActiveChannelEase(seg);
@@ -8324,12 +8352,68 @@ function setEaseChannel(ch) {
       c.querySelector('span').style.color = active ? 'var(--accent)' : 'var(--text2)';
     });
   }
+  syncMovementEasingModeUI();
+}
+
+// ─── Easing Inteligente de Movimento — UI (v8z4b17j) ─────────────────────────
+// Define o modo do canal Movimento e sincroniza UI + preview.
+function setMovementEasingMode(mode) {
+  const next = (mode === 'smart') ? 'smart' : 'manual';
+  if (next === movementEasingMode) return;
+  pushUndo();
+  movementEasingMode = next;
+  syncMovementEasingModeUI();
+  markProjectDirty('movement-easing-mode');
+  showStatus(next === 'smart' ? 'Movimento: Inteligente' : 'Movimento: Manual');
+  if (isPreviewing) { stopPreview(); startPreview(); }
+}
+
+// Atualiza visualmente os botões Manual/Inteligente e subordina os chips de
+// Movimento quando smart está ativo. Não afeta Rotação/Escala.
+function syncMovementEasingModeUI() {
+  const isSmart = movementEasingMode === 'smart';
+
+  // Sincroniza os dois botões (panelEase). Caso futuramente o segEasePanel
+  // ganhe os mesmos botões, basta nomeá-los seguindo o mesmo padrão.
+  const btnManual = document.getElementById('movEaseMode_manual');
+  const btnSmart  = document.getElementById('movEaseMode_smart');
+  if (btnManual) {
+    btnManual.style.borderColor = !isSmart ? 'var(--accent)' : 'var(--border2)';
+    btnManual.style.color       = !isSmart ? 'var(--accent)' : 'var(--text2)';
+    btnManual.style.fontWeight  = !isSmart ? '700' : '500';
+  }
+  if (btnSmart) {
+    btnSmart.style.borderColor  = isSmart ? 'var(--accent)' : 'var(--border2)';
+    btnSmart.style.color        = isSmart ? 'var(--accent)' : 'var(--text2)';
+    btnSmart.style.fontWeight   = isSmart ? '700' : '500';
+  }
+
+  // Subordina visualmente os chips Constante/Acelerar/Desacelerar/Suavizar
+  // SOMENTE quando o canal ativo é Movimento E o modo é Inteligente.
+  const isMovementChannel = _activeEaseChannel === 'movement';
+  const subordinate = isMovementChannel && isSmart;
+  const grid = document.getElementById('easeChipsGrid');
+  if (grid) {
+    grid.style.opacity = subordinate ? '0.4' : '';
+    grid.style.pointerEvents = subordinate ? 'none' : '';
+  }
+  // Mesma subordinação no mini-painel segEasePanel.
+  const segOptions = document.getElementById('segEaseOptions');
+  if (segOptions) {
+    segOptions.style.opacity = subordinate ? '0.4' : '';
+    segOptions.style.pointerEvents = subordinate ? 'none' : '';
+  }
+
+  // Hint só aparece quando estamos no canal Movimento em modo Inteligente.
+  const hint = document.getElementById('movSmartHint');
+  if (hint) hint.style.display = subordinate ? 'block' : 'none';
 }
 
 function setEasePanelChannel(ch) {
   _activeEaseChannel = ch;
   _syncEaseChannelUI();
   initEasePanel();
+  syncMovementEasingModeUI();
 }
 
 function openSegEasePanel(seg, x, y) {
@@ -8339,6 +8423,7 @@ function openSegEasePanel(seg, x, y) {
   const title = document.getElementById('segEasePanelTitle');
   if (title) title.textContent = `Segmento ${seg + 1} - ${seg + 2}`;
   _syncEaseChannelUI();
+  syncMovementEasingModeUI();
   const cur = _getActiveChannelEase(seg);
   document.querySelectorAll('.seg-ease-chip').forEach(c => {
     const active = c.dataset.ease === cur;
@@ -9045,6 +9130,103 @@ function maybeRedistributeByCurveLength() {
   if (isPreviewing) { stopPreview(); startPreview(); }
 }
 
+// ─── Easing Inteligente de Movimento (experimental) — v8z4b17j ──────────────
+//
+// Substitui o easing manual de Movimento por uma interpolação Hermite cúbica
+// que casa a velocidade média do trecho anterior com a do trecho seguinte
+// em cada frame intermediário. O objetivo é remover o "tranco" que aparece
+// quando dois trechos vizinhos têm velocidades médias muito diferentes.
+//
+// Regras-chave:
+//  • velocidade média de um trecho = comprimentoCurvoReal / duraçãoDoTrecho
+//  • pausa no frame  → velocidade no frame = 0 (desacelera até parar; sai do zero)
+//  • trecho 0.0s     → corte seco (não aplica smart; retorna t cru)
+//  • primeiro frame  → vStart = vAvg do próprio trecho (fallback seguro)
+//  • último frame    → vEnd   = vAvg do próprio trecho (fallback seguro)
+//
+// Resultado é uma posição em arco (0..1) que substitui o ttEased do canal
+// Movimento dentro de getStateAtT. Não altera rotação, escala, durações,
+// pausas, geometria das curvas, nem os pontos de destino.
+
+function _smartSegmentVAvg(segIdx) {
+  if (segIdx < 0 || segIdx >= frameCount - 1) return null;
+  const dur = segDurations[segIdx];
+  if (!Number.isFinite(dur) || dur <= 0) return null; // corte seco
+  const len = measureSegmentCurveLength(segIdx);
+  if (!Number.isFinite(len) || len <= 1e-6) return null;
+  return len / dur;
+}
+
+function _smartFramePauseAt(frameIdx) {
+  if (frameIdx < 0 || frameIdx >= frameCount) return 0;
+  const fp = framePauses[frameIdx];
+  return (fp && Number.isFinite(fp.duration)) ? Math.max(0, fp.duration) : 0;
+}
+
+// Velocidade no frame `frameIdx` para fins de continuidade entre trechos.
+// vAvg passada serve de fallback (avg do trecho corrente) quando não há
+// vizinho válido.
+function _smartFrameVelocity(frameIdx, segIdxOwner, vAvgOwner) {
+  // Pausa no frame: continuidade exige velocidade zero.
+  if (_smartFramePauseAt(frameIdx) > 0) return 0;
+
+  // Frame intermediário: média entre vAvg do trecho anterior e do trecho seguinte.
+  const prevSeg = frameIdx - 1;
+  const nextSeg = frameIdx;
+  const vPrev = (prevSeg >= 0) ? _smartSegmentVAvg(prevSeg) : null;
+  const vNext = (nextSeg < frameCount - 1) ? _smartSegmentVAvg(nextSeg) : null;
+
+  if (vPrev != null && vNext != null) return 0.5 * (vPrev + vNext);
+  if (vPrev != null) return vPrev;             // último frame
+  if (vNext != null) return vNext;             // primeiro frame
+  return Number.isFinite(vAvgOwner) ? vAvgOwner : 0; // fallback duro
+}
+
+// Recebe seg (índice do trecho) e tt em [0,1] (tempo local dentro do trecho)
+// e devolve o progresso de arco-comprimento em [0,1].
+// Em caso de erro ou trecho 0.0s, devolve `tt` (fallback linear seguro).
+function computeSmartMovementProgress(seg, tt) {
+  const segs = frameCount - 1;
+  if (seg < 0 || seg >= segs) return tt;
+
+  const dur = segDurations[seg];
+  // Trecho 0.0s: corte seco — não aplicar smart.
+  if (!Number.isFinite(dur) || dur <= 0) return tt;
+
+  const curveLen = measureSegmentCurveLength(seg);
+  if (!Number.isFinite(curveLen) || curveLen <= 1e-6) return tt;
+
+  const vAvg = curveLen / dur;
+  if (!Number.isFinite(vAvg) || vAvg <= 0) return tt;
+
+  // Velocidades nas extremidades do trecho.
+  let vStart = _smartFrameVelocity(seg,     seg, vAvg);
+  let vEnd   = _smartFrameVelocity(seg + 1, seg, vAvg);
+
+  // Saneamento e clamp para monotonicidade Hermite (vlim = 3*vAvg).
+  if (!Number.isFinite(vStart) || vStart < 0) vStart = 0;
+  if (!Number.isFinite(vEnd)   || vEnd   < 0) vEnd   = 0;
+  const vMax = 3 * vAvg;
+  if (vStart > vMax) vStart = vMax;
+  if (vEnd   > vMax) vEnd   = vMax;
+
+  // Hermite cúbico em τ ∈ [0,1] com p0=0, p1=curveLen, m0=vStart, m1=vEnd,
+  // tempo Δ = dur. Garante p(0)=0, p(1)=curveLen, p'(0)=vStart, p'(1)=vEnd.
+  const tau  = Math.max(0, Math.min(1, tt));
+  const tau2 = tau * tau;
+  const tau3 = tau2 * tau;
+  const h10  = tau3 - 2 * tau2 + tau;
+  const h01  = -2 * tau3 + 3 * tau2;
+  const h11  = tau3 - tau2;
+  const p = h10 * vStart * dur + h01 * curveLen + h11 * vEnd * dur;
+
+  let progress = p / curveLen;
+  if (!Number.isFinite(progress)) return tt; // fallback duro
+  if (progress < 0) progress = 0;
+  if (progress > 1) progress = 1;
+  return progress;
+}
+
 // Define o modo de distribuição de tempo e sincroniza a UI.
 function setSegmentTimingMode(mode) {
   if (mode === segmentTimingMode) return;
@@ -9287,6 +9469,8 @@ function buildProjectData() {
     // v8z4b17f: modo de distribuição de tempo por velocidade constante.
     segmentTimingMode,
     constantSpeedTotalDuration,
+    // v8z4b17j: modo de easing do canal Movimento (experimental).
+    movementEasingMode,
   };
 }
 
@@ -9509,6 +9693,9 @@ function applyFrameData(data) {
   segmentTimingMode = data.segmentTimingMode || 'manual';
   constantSpeedTotalDuration = data.constantSpeedTotalDuration ?? null;
   syncTimingModeUI();
+  // v8z4b17j: restaura modo de easing do canal Movimento; projetos antigos recebem 'manual'.
+  movementEasingMode = (data.movementEasingMode === 'smart') ? 'smart' : 'manual';
+  syncMovementEasingModeUI();
 
   for (let i = 0; i < frameCount; i++) createFrameDOM(i);
   for (let i = 0; i < frameCount - 1; i++) createCtrlDOM(i);
