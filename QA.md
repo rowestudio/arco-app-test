@@ -2,6 +2,84 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17l — channel tabs and smart movement toggle
+
+### Teste A — abas reais
+
+1. Abrir app.
+2. Carregar imagem.
+3. Criar frames.
+4. Abrir painel de easing.
+5. Confirmar que Movimento/Rotação/Escala aparecem como abas em uma barra segmentada (não pills soltos).
+6. Confirmar que a aba ativa fica com cor accent e fundo destacado.
+7. Confirmar que abas inativas são discretas (texto cinza).
+
+### Teste B — aba Movimento com Inteligente ligado
+
+1. Abrir aba Movimento.
+2. Confirmar toggle único "Movimento Inteligente" (switch iOS-style) — não dois botões.
+3. Confirmar que vem ligado em projeto novo.
+4. Confirmar que o ícone Global aparece após o toggle (não no cabeçalho).
+5. Confirmar que o ícone Global aparece em laranja/implícito (travado).
+6. Confirmar que Constante/Acelerar/Desacelerar/Suavizar ficam apagados/inativos.
+7. Confirmar que "Aplicar aos 3" está oculto.
+8. Preview OK.
+
+### Teste C — aba Movimento com Inteligente desligado
+
+1. Desligar toggle Movimento Inteligente.
+2. Confirmar que os cards de easing voltam ao estado normal.
+3. Confirmar que ícone Global fica clicável/disponível.
+4. Ativar Global, aplicar Acelerar — confirmar que afeta todos os trechos de Movimento.
+5. Desativar Global, aplicar Suavizar — confirmar que afeta só o trecho atual.
+6. Confirmar que "Aplicar aos 3" reapareceu.
+7. Preview OK.
+
+### Teste D — aba Rotação
+
+1. Abrir aba Rotação.
+2. Confirmar que ícone Global contextual aparece na linha da aba.
+3. Confirmar que não aparece toggle Movimento Inteligente.
+4. Confirmar que cards de easing estão normais (não subordinados).
+5. Aplicar easing local de Rotação.
+6. Ativar Global e aplicar easing global de Rotação.
+7. Confirmar que Movimento e Escala não são afetados.
+8. Preview OK.
+
+### Teste E — aba Escala
+
+1. Abrir aba Escala.
+2. Confirmar que ícone Global contextual aparece na linha da aba.
+3. Confirmar que não aparece toggle Movimento Inteligente.
+4. Confirmar que cards de easing estão normais.
+5. Aplicar easing local de Escala.
+6. Ativar Global e aplicar easing global de Escala.
+7. Confirmar que Movimento e Rotação não são afetados.
+8. Preview OK.
+
+### Teste F — Aplicar aos 3
+
+1. Com Inteligente ligado: confirmar que "Aplicar aos 3" está oculto.
+2. Com Inteligente desligado: confirmar que "Aplicar aos 3" reapareceu.
+3. Confirmar que é ação pontual (não toggle persistente).
+
+### Teste G — JSON/projetos
+
+1. Criar projeto novo → Inteligente ligado por padrão.
+2. Salvar JSON e reabrir → Inteligente continua ligado.
+3. Carregar JSON antigo sem `movementEasingMode` → abre em Manual.
+4. Preview OK em ambos os casos.
+
+### Teste H — regressão geral
+
+1. Velocidade constante funciona.
+2. Painel Duração/Tempo continua sempre aberto.
+3. Movimento Inteligente funciona (continuidade entre trechos no preview).
+4. Rotação e Escala usam easings próprios corretamente.
+5. Preview OK.
+6. Gerar MP4 OK.
+7. Editar projeto → gerar MP4 novamente OK.
+
 ## v8z4b17k — clean smart movement panel
 
 ### Teste A — novo projeto (Movimento Inteligente como padrão)

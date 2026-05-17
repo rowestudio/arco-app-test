@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17k                                     ║
+║  Versão: v8z4b17l                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17k — clean smart movement panel: painel de easing reorganizado, Movimento Inteligente como padrão para projetos novos -->
+<!-- Arco App — v8z4b17l — channel tabs and smart movement toggle: abas reais de canal, toggle único de Movimento Inteligente, ícone Global contextual por aba -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -983,15 +983,33 @@ body.cust-open #toolbar{
 }
 #custGlobalLock.global-on,
 #easeGlobeLock.global-on,
+#easeGlobeRot.global-on,
+#easeGlobeScale.global-on,
 #segEasePanel .global-on{
   color:#ff9500 !important;
   opacity:1 !important;
 }
 #custGlobalLock.global-on svg,
 #easeGlobeLock.global-on svg,
+#easeGlobeRot.global-on svg,
+#easeGlobeScale.global-on svg,
 #segEasePanel .global-on svg{
   stroke:#ff9500 !important;
 }
+/* v8z4b17l — barra de abas de canal (Movimento / Rotação / Escala) */
+.ease-tabs-bar{display:flex;background:var(--surface2);border-radius:10px;padding:3px;margin-bottom:10px;gap:2px;}
+.ease-tab{flex:1;padding:7px 4px;border-radius:7px;background:transparent;border:none;color:var(--text3);font-size:11px;font-weight:500;cursor:pointer;-webkit-user-select:none;user-select:none;transition:background .15s,color .15s;}
+.ease-tab.ease-tab-active{background:var(--surface);color:var(--accent);font-weight:700;}
+/* v8z4b17l — toggle switch Movimento Inteligente */
+.smart-toggle{position:relative;display:inline-flex;align-items:center;cursor:pointer;flex-shrink:0;}
+.smart-toggle input{position:absolute;opacity:0;width:0;height:0;}
+.smart-toggle-track{width:36px;height:20px;background:var(--surface3);border-radius:10px;position:relative;transition:background .2s;display:block;}
+.smart-toggle-track::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--text3);transition:transform .2s,background .2s;}
+.smart-toggle input:checked+.smart-toggle-track{background:var(--accent);}
+.smart-toggle input:checked+.smart-toggle-track::after{transform:translateX(16px);background:#000;}
+/* v8z4b17l — globe implícito quando Movimento Inteligente ON */
+.global-implicit{color:#ff9500 !important;opacity:0.5 !important;pointer-events:none !important;}
+.global-implicit svg{stroke:#ff9500 !important;}
 /* v8z4b15z — única superfície que rola verticalmente é #panelDuration.
    NENHUMA subseção interna pode ter overflow próprio — isso evita nested
    scroll que sequestra o gesto no iPhone/Safari. Também forçamos
@@ -1770,7 +1788,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17k</span><br><span id="appVersionNameText">clean smart movement panel</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17l</span><br><span id="appVersionNameText">channel tabs and smart movement toggle</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -2076,42 +2094,51 @@ body.cust-open #toolbar{
 <canvas id="recCanvas" style="display:none;"></canvas>
 
 
-<!-- PANEL: Easing por segmento — v8z4b17k: hierarquia visual limpa -->
+<!-- PANEL: Easing por segmento — v8z4b17l: abas reais + toggle Inteligente -->
 <div class="float-panel" id="panelEase">
   <div class="panel-handle" onclick="closeAll()"></div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-    <div class="panel-title" id="panelEaseTitle" style="margin:0;">Easing</div>
+  <div style="display:flex;align-items:center;margin-bottom:10px;">
+    <div class="panel-title" id="panelEaseTitle" style="margin:0;flex:1;">Easing</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+    <span style="font-size:11px;color:var(--text3);flex-shrink:0;">Duração</span>
+    <input type="range" class="dur-slider" id="easePanelSegSlider" min="0" max="20" step="0.1" value="4" style="flex:1;">
+    <span id="easePanelSegVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;">4.0s</span>
+  </div>
+  <!-- Barra de abas reais — v8z4b17l -->
+  <div class="ease-tabs-bar">
+    <button id="easePanelCh_movement" class="ease-tab ease-tab-active" onclick="setEasePanelChannel('movement')">Movimento</button>
+    <button id="easePanelCh_rotation" class="ease-tab" onclick="setEasePanelChannel('rotation')">Rotação</button>
+    <button id="easePanelCh_scale" class="ease-tab" onclick="setEasePanelChannel('scale')">Escala</button>
+  </div>
+  <!-- Linha de ações — aba Movimento: toggle Inteligente + Global — v8z4b17l -->
+  <div id="movChannelActions" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+    <label class="smart-toggle" title="Movimento Inteligente">
+      <input type="checkbox" id="movSmartToggle" onchange="setMovementEasingModeFromToggle(this.checked)" checked>
+      <span class="smart-toggle-track"></span>
+    </label>
+    <span style="font-size:11px;color:var(--text3);flex:1;cursor:pointer;" onclick="document.getElementById('movSmartToggle').click();">Movimento Inteligente</span>
     <div id="easeGlobeLock" onclick="setSegEaseAll()" title="Aplicar a todos"
       style="opacity:0.6;cursor:pointer;color:var(--text3);padding:4px;">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-    <span style="font-size:11px;color:var(--text3);flex-shrink:0;">Duracao</span>
-    <input type="range" class="dur-slider" id="easePanelSegSlider" min="0" max="20" step="0.1" value="4" style="flex:1;">
-    <span id="easePanelSegVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;">4.0s</span>
+  <!-- Linha de ações — aba Rotação: apenas Global — v8z4b17l -->
+  <div id="rotChannelActions" style="display:none;align-items:center;justify-content:flex-end;margin-bottom:8px;">
+    <div id="easeGlobeRot" onclick="setSegEaseAll()" title="Aplicar a todos"
+      style="opacity:0.6;cursor:pointer;color:var(--text3);padding:4px;">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
+    </div>
   </div>
-  <!-- Seletor de canal — v8z4b17c / abas discretas v8z4b17k -->
-  <div style="display:flex;gap:4px;margin-bottom:8px;">
-    <button id="easePanelCh_movement" onclick="setEasePanelChannel('movement')"
-      style="flex:1;padding:5px 4px;border-radius:7px;background:transparent;border:1.5px solid var(--accent);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;">Movimento</button>
-    <button id="easePanelCh_rotation" onclick="setEasePanelChannel('rotation')"
-      style="flex:1;padding:5px 4px;border-radius:7px;background:transparent;border:1.5px solid var(--border2);color:var(--text3);font-size:11px;font-weight:400;cursor:pointer;">Rotação</button>
-    <button id="easePanelCh_scale" onclick="setEasePanelChannel('scale')"
-      style="flex:1;padding:5px 4px;border-radius:7px;background:transparent;border:1.5px solid var(--border2);color:var(--text3);font-size:11px;font-weight:400;cursor:pointer;">Escala</button>
-  </div>
-  <!-- Modo Inteligente do canal Movimento — v8z4b17k (só aparece quando Movimento está selecionado) -->
-  <div id="movEasingModeRow" style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-    <span style="font-size:11px;color:var(--text3);flex:1;">Movimento Inteligente</span>
-    <button id="movEaseMode_manual" onclick="setMovementEasingMode('manual')"
-      style="padding:4px 10px;border-radius:6px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:500;cursor:pointer;">Manual</button>
-    <button id="movEaseMode_smart" onclick="setMovementEasingMode('smart')"
-      style="padding:4px 10px;border-radius:6px;background:var(--surface2);border:1.5px solid var(--accent);color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;">Inteligente</button>
+  <!-- Linha de ações — aba Escala: apenas Global — v8z4b17l -->
+  <div id="scaleChannelActions" style="display:none;align-items:center;justify-content:flex-end;margin-bottom:8px;">
+    <div id="easeGlobeScale" onclick="setSegEaseAll()" title="Aplicar a todos"
+      style="opacity:0.6;cursor:pointer;color:var(--text3);padding:4px;">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
+    </div>
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;" id="easeChipsGrid"></div>
-  <!-- Dica discreta quando Movimento Inteligente está ativo — v8z4b17k -->
-  <div id="movSmartHint" style="display:none;font-size:10px;color:var(--text3);margin-top:5px;line-height:1.3;">Continuidade automática entre trechos.</div>
-  <!-- Aplicar aos 3 canais — v8z4b17d / oculto em modo Inteligente v8z4b17k -->
+  <!-- Aplicar aos 3 canais — ação pontual / oculto em modo Inteligente v8z4b17l -->
   <div id="applyAllChannelsWrap" style="margin-top:8px;">
     <button id="btnApplyAllChannels" onclick="applyEaseAllChannels()"
       style="width:100%;padding:5px 8px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:700;cursor:pointer;">Aplicar aos 3</button>
@@ -4074,8 +4101,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17k';
-const APP_VERSION_NAME = 'clean smart movement panel';
+const APP_VERSION = 'v8z4b17l';
+const APP_VERSION_NAME = 'channel tabs and smart movement toggle';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -7471,14 +7498,45 @@ function initEasePanel() {
 let segGlobalMode = false;
 
 function updateSegGlobalButton() {
-  const btn = document.getElementById('easeGlobeLock');
-  if (btn) {
-    btn.classList.toggle('global-on', !!segGlobalMode);
-    btn.style.color = segGlobalMode ? '#ff9500' : 'var(--text3)';
-    btn.style.opacity = segGlobalMode ? '1' : '0.6';
+  const on = !!segGlobalMode;
+  const isSmart = movementEasingMode === 'smart';
+  const isMovement = _activeEaseChannel === 'movement';
+
+  // Globe do canal Movimento: implícito/travado quando Inteligente ON
+  const globeMov = document.getElementById('easeGlobeLock');
+  if (globeMov) {
+    if (isSmart && isMovement) {
+      globeMov.classList.add('global-implicit');
+      globeMov.classList.remove('global-on');
+    } else {
+      globeMov.classList.remove('global-implicit');
+      globeMov.classList.toggle('global-on', on);
+      globeMov.style.color = on ? '#ff9500' : 'var(--text3)';
+      globeMov.style.opacity = on ? '1' : '0.6';
+    }
   }
+
+  // Globe do canal Rotação
+  const globeRot = document.getElementById('easeGlobeRot');
+  if (globeRot) {
+    globeRot.classList.remove('global-implicit');
+    globeRot.classList.toggle('global-on', on);
+    globeRot.style.color = on ? '#ff9500' : 'var(--text3)';
+    globeRot.style.opacity = on ? '1' : '0.6';
+  }
+
+  // Globe do canal Escala
+  const globeScale = document.getElementById('easeGlobeScale');
+  if (globeScale) {
+    globeScale.classList.remove('global-implicit');
+    globeScale.classList.toggle('global-on', on);
+    globeScale.style.color = on ? '#ff9500' : 'var(--text3)';
+    globeScale.style.opacity = on ? '1' : '0.6';
+  }
+
+  // Mini-painel contextual de segmento
   const mini = document.getElementById('segEaseGlobalLockMini');
-  if (mini) mini.classList.toggle('global-on', !!segGlobalMode);
+  if (mini) mini.classList.toggle('global-on', on);
 }
 
 function resetSegGlobalMode() {
@@ -8331,21 +8389,24 @@ function _getActiveChannelEase(seg) {
 function _syncEaseChannelUI() {
   ['movement', 'rotation', 'scale'].forEach(ch => {
     const on = ch === _activeEaseChannel;
-    // mini-painel: estilo pílula normal
+    // mini-painel contextual: estilo pílula
     const btnSeg = document.getElementById('easeCh_' + ch);
     if (btnSeg) {
       btnSeg.style.borderColor = on ? 'var(--accent)' : 'var(--border2)';
       btnSeg.style.color       = on ? 'var(--accent)' : 'var(--text2)';
       btnSeg.style.fontWeight  = on ? '700' : '500';
     }
-    // painel principal: abas discretas com fundo transparente
+    // painel principal: abas reais — v8z4b17l
     const btnPane = document.getElementById('easePanelCh_' + ch);
-    if (btnPane) {
-      btnPane.style.borderColor = on ? 'var(--accent)' : 'var(--border2)';
-      btnPane.style.color       = on ? 'var(--accent)' : 'var(--text3)';
-      btnPane.style.fontWeight  = on ? '700' : '400';
-    }
+    if (btnPane) btnPane.classList.toggle('ease-tab-active', on);
   });
+  // Mostrar/ocultar linha de ações contextual da aba ativa — v8z4b17l
+  const movAct = document.getElementById('movChannelActions');
+  const rotAct = document.getElementById('rotChannelActions');
+  const scaleAct = document.getElementById('scaleChannelActions');
+  if (movAct)   movAct.style.display   = _activeEaseChannel === 'movement' ? 'flex' : 'none';
+  if (rotAct)   rotAct.style.display   = _activeEaseChannel === 'rotation' ? 'flex' : 'none';
+  if (scaleAct) scaleAct.style.display = _activeEaseChannel === 'scale'    ? 'flex' : 'none';
 }
 
 function setEaseChannel(ch) {
@@ -8376,69 +8437,51 @@ function setMovementEasingMode(mode) {
   if (isPreviewing) { stopPreview(); startPreview(); }
 }
 
-// Sincroniza toda a UI de Movimento Inteligente — v8z4b17k.
-// Controla visibilidade da linha de modo, estado dos botões, chips subordinados,
-// "Aplicar aos 3" e dica curta. Não afeta Rotação/Escala.
+// Sincroniza toda a UI de Movimento Inteligente — v8z4b17l.
+// Toggle único, ícone Global contextual por aba, chips subordinados, "Aplicar aos 3".
+// Não afeta Rotação/Escala.
 function syncMovementEasingModeUI() {
   const isSmart = movementEasingMode === 'smart';
   const isMovementChannel = _activeEaseChannel === 'movement';
   const subordinate = isMovementChannel && isSmart;
 
-  // Linha de modo só aparece quando o canal Movimento está selecionado
-  const modeRow = document.getElementById('movEasingModeRow');
-  if (modeRow) modeRow.style.display = isMovementChannel ? 'flex' : 'none';
+  // Toggle principal (painel Ease) — v8z4b17l
+  const toggle = document.getElementById('movSmartToggle');
+  if (toggle) toggle.checked = isSmart;
+
+  // Toggle mini-painel segEasePanel — v8z4b17l
+  const segToggle = document.getElementById('segMovSmartToggle');
+  if (segToggle) segToggle.checked = isSmart;
+
+  // Linha de toggle no segEasePanel só aparece quando Movimento ativo
   const segModeRow = document.getElementById('segMovEasingModeRow');
   if (segModeRow) segModeRow.style.display = isMovementChannel ? 'flex' : 'none';
 
-  // Botões Manual/Inteligente — painel principal
-  const btnManual = document.getElementById('movEaseMode_manual');
-  const btnSmart  = document.getElementById('movEaseMode_smart');
-  if (btnManual) {
-    btnManual.style.borderColor = !isSmart ? 'var(--accent)' : 'var(--border2)';
-    btnManual.style.color       = !isSmart ? 'var(--accent)' : 'var(--text2)';
-    btnManual.style.fontWeight  = !isSmart ? '700' : '500';
-  }
-  if (btnSmart) {
-    btnSmart.style.borderColor  = isSmart ? 'var(--accent)' : 'var(--border2)';
-    btnSmart.style.color        = isSmart ? 'var(--accent)' : 'var(--text2)';
-    btnSmart.style.fontWeight   = isSmart ? '700' : '500';
-  }
-
-  // Botões Manual/Inteligente — mini-painel segEasePanel
-  const segBtnManual = document.getElementById('segMovEaseMode_manual');
-  const segBtnSmart  = document.getElementById('segMovEaseMode_smart');
-  if (segBtnManual) {
-    segBtnManual.style.borderColor = !isSmart ? 'var(--accent)' : 'var(--border2)';
-    segBtnManual.style.color       = !isSmart ? 'var(--accent)' : 'var(--text2)';
-    segBtnManual.style.fontWeight  = !isSmart ? '700' : '500';
-  }
-  if (segBtnSmart) {
-    segBtnSmart.style.borderColor  = isSmart ? 'var(--accent)' : 'var(--border2)';
-    segBtnSmart.style.color        = isSmart ? 'var(--accent)' : 'var(--text2)';
-    segBtnSmart.style.fontWeight   = isSmart ? '700' : '500';
-  }
+  // Globe icons — estado contextual via updateSegGlobalButton
+  updateSegGlobalButton();
 
   // Subordina chips de easing manual SOMENTE quando Movimento + Inteligente
   const grid = document.getElementById('easeChipsGrid');
   if (grid) {
-    grid.style.opacity = subordinate ? '0.4' : '';
+    grid.style.opacity      = subordinate ? '0.4' : '';
     grid.style.pointerEvents = subordinate ? 'none' : '';
   }
   const segOptions = document.getElementById('segEaseOptions');
   if (segOptions) {
-    segOptions.style.opacity = subordinate ? '0.4' : '';
+    segOptions.style.opacity      = subordinate ? '0.4' : '';
     segOptions.style.pointerEvents = subordinate ? 'none' : '';
   }
 
-  // "Aplicar aos 3" oculto quando Inteligente (Movimento não usa easing manual)
+  // "Aplicar aos 3" oculto quando Inteligente — ação pontual, não modo persistente
   const applyWrap = document.getElementById('applyAllChannelsWrap');
   if (applyWrap) applyWrap.style.display = isSmart ? 'none' : '';
   const segApplyWrap = document.getElementById('segApplyAllWrap');
   if (segApplyWrap) segApplyWrap.style.display = isSmart ? 'none' : '';
+}
 
-  // Dica curta quando Movimento + Inteligente
-  const hint = document.getElementById('movSmartHint');
-  if (hint) hint.style.display = subordinate ? 'block' : 'none';
+// Toggle handler — converte checked → modo — v8z4b17l
+function setMovementEasingModeFromToggle(checked) {
+  setMovementEasingMode(checked ? 'smart' : 'manual');
 }
 
 function setEasePanelChannel(ch) {
@@ -10578,13 +10621,13 @@ syncRatioUI();
     <button id="easeCh_scale" onclick="setEaseChannel('scale')"
       style="flex:1;padding:5px 2px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:500;cursor:pointer;">Escala</button>
   </div>
-  <!-- Modo Inteligente do canal Movimento — v8z4b17k (só aparece quando Movimento selecionado) -->
-  <div id="segMovEasingModeRow" style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-    <span style="font-size:10px;color:var(--text3);flex:1;">Movimento Inteligente</span>
-    <button id="segMovEaseMode_manual" onclick="setMovementEasingMode('manual')"
-      style="padding:3px 8px;border-radius:6px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:500;cursor:pointer;">Manual</button>
-    <button id="segMovEaseMode_smart" onclick="setMovementEasingMode('smart')"
-      style="padding:3px 8px;border-radius:6px;background:var(--surface2);border:1.5px solid var(--accent);color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;">Inteligente</button>
+  <!-- Modo Inteligente do canal Movimento — v8z4b17l: toggle único -->
+  <div id="segMovEasingModeRow" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+    <label class="smart-toggle" title="Movimento Inteligente" style="transform:scale(0.9);transform-origin:left center;">
+      <input type="checkbox" id="segMovSmartToggle" onchange="setMovementEasingModeFromToggle(this.checked)">
+      <span class="smart-toggle-track"></span>
+    </label>
+    <span style="font-size:10px;color:var(--text3);flex:1;cursor:pointer;" onclick="document.getElementById('segMovSmartToggle').click();">Movimento Inteligente</span>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="segEaseOptions">
     <div class="seg-ease-chip" data-ease="linear" onclick="setSegEase('linear')"
