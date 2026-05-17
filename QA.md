@@ -2,6 +2,80 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17k — clean smart movement panel
+
+### Teste A — novo projeto (Movimento Inteligente como padrão)
+
+1. Abrir o app.
+2. Carregar uma imagem.
+3. Criar frames.
+4. Abrir o painel de easing (botão na barra).
+5. Confirmar que o canal **Movimento** está selecionado e **Inteligente** está ativo (destaque accent).
+6. Confirmar que os chips Constante/Acelerar/Desacelerar/Suavizar aparecem subordinados (opacidade reduzida).
+7. Confirmar que **Aplicar aos 3** está oculto.
+8. Preview OK.
+
+### Teste B — linha de modo aparece só para Movimento
+
+1. Com Movimento selecionado, confirmar que a linha "Movimento Inteligente [Manual] [Inteligente]" está visível.
+2. Clicar em **Rotação** — confirmar que a linha de modo some.
+3. Clicar em **Escala** — confirmar que a linha de modo some.
+4. Clicar em **Movimento** — confirmar que a linha de modo reaparece.
+5. Repetir no mini-painel contextual de segmento.
+
+### Teste C — Movimento Manual
+
+1. Com canal Movimento selecionado, clicar em **Manual**.
+2. Confirmar que os chips voltam à aparência normal (sem subordinação).
+3. Confirmar que **Aplicar aos 3** reaparece.
+4. Escolher **Suavizar** ou **Acelerar**.
+5. Preview OK — easing manual de Movimento funciona.
+
+### Teste D — Rotação e Escala não afetadas pelo modo Inteligente
+
+1. Com Movimento Inteligente ativo, clicar em **Rotação**.
+2. Confirmar que os chips de easing ficam normais (sem subordinação).
+3. Aplicar Acelerar em Rotação. Preview OK.
+4. Clicar em **Escala**.
+5. Confirmar que os chips ficam normais.
+6. Aplicar Desacelerar em Escala. Preview OK.
+
+### Teste E — "Aplicar aos 3" em modo Manual
+
+1. Com Movimento em Manual, abrir painel de easing.
+2. Confirmar que **Aplicar aos 3** está visível.
+3. Escolher Suavizar em Movimento.
+4. Clicar em Aplicar aos 3.
+5. Confirmar feedback visual momentâneo (borda accent, depois volta ao neutro).
+6. Confirmar que Rotação e Escala do trecho também ficaram Suavizar.
+
+### Teste F — projeto antigo (sem movementEasingMode)
+
+1. Carregar um JSON antigo sem o campo `movementEasingMode`.
+2. Confirmar que abre em **Movimento Manual**.
+3. Confirmar que o resultado visual/animação não muda em relação à v8z4b17j.
+4. Preview OK.
+
+### Teste G — JSON novo com Inteligente
+
+1. Criar projeto novo (Inteligente ativo por padrão).
+2. Salvar JSON.
+3. Reabrir JSON.
+4. Confirmar que **Movimento Inteligente** continua ativo.
+5. Preview OK.
+
+### Teste H — regressão geral
+
+1. Velocidade constante continua funcionando.
+2. Painel Duração/Tempo continua sempre aberto (seções não recolhem).
+3. Preview OK.
+4. Gerar MP4 OK.
+5. Fazer pequena edição de frame.
+6. Gerar MP4 novamente OK.
+7. Undo/Redo: mudar de Inteligente para Manual e voltar — confirmar que undo/redo funciona.
+
+---
+
 ## v8z4b17j — smart movement easing experiment
 
 ### Teste A — modo padrão

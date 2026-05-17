@@ -1,5 +1,35 @@
 # Changelog
 
+## v8z4b17k — clean smart movement panel
+
+Reorganização visual do painel de easing para reduzir o excesso de pílulas e comunicar com clareza que **Movimento Inteligente** é um modo do canal Movimento — não um controle independente.
+
+### O que foi alterado
+
+- **Padrão para projetos novos** — `movementEasingMode` agora inicia como `'smart'` em `resetAll()`. Projetos antigos sem `movementEasingMode` no JSON continuam carregando em `'manual'` (retrocompatível).
+- **Linha de modo condicional** — `movEasingModeRow` (e `segMovEasingModeRow` no mini-painel) só aparecem quando o canal **Movimento** está selecionado. Para Rotação e Escala, a linha some — sem pílulas extras.
+- **Abas de canal mais discretas** (`panelEase`) — botões Movimento/Rotação/Escala agora usam `background:transparent` e `color:var(--text3)` quando inativos, reduzindo o peso visual. O mini-painel (`segEasePanel`) mantém o estilo pílula original.
+- **Rótulo limpo** — "Movimento Inteligente" como texto corrido + dois botões compactos `Manual` / `Inteligente`, sem o rótulo em caixa-alta anterior.
+- **"Aplicar aos 3" oculto em modo Inteligente** — `applyAllChannelsWrap` e `segApplyAllWrap` ficam com `display:none` quando `movementEasingMode === 'smart'`. Voltam ao normal em modo Manual.
+- **Dica curta** — texto reduzido para "Continuidade automática entre trechos." (era uma frase longa explicando canais).
+- **Modo Inteligente no mini-painel** — `segEasePanel` ganhou a linha `segMovEasingModeRow` com botões `segMovEaseMode_manual` / `segMovEaseMode_smart`, sincronizados pelos mesmos handlers existentes.
+- **`_syncEaseChannelUI`** — diferencia o estilo inativo entre mini-painel (`var(--text2)`, weight 500) e painel principal (`var(--text3)`, weight 400).
+- **`syncMovementEasingModeUI`** — expandida para controlar: visibilidade das linhas de modo, botões de ambos os painéis, chips, wrappers de "Aplicar aos 3" e dica.
+- **Versão** — `APP_VERSION` → `v8z4b17k`, `APP_VERSION_NAME` → `clean smart movement panel`.
+
+### O que não foi alterado
+
+Motor do Movimento Inteligente, cálculo Hermite, Velocidade constante, easing de Rotação, easing de Escala, Preview, export MP4, WebCodecs, loop, pausas, duração, stage, curvas, sistema vetorial, seleção múltipla, menu inferior, safe area, timeline, indicadores visuais de easing.
+
+### Compatibilidade
+
+- Projetos antigos sem `movementEasingMode` → carregam como `'manual'` (sem mudança visual).
+- Projetos salvos com `movementEasingMode: 'smart'` → carregam corretamente em Inteligente.
+- Projetos salvos com `movementEasingMode: 'manual'` → carregam corretamente em Manual.
+- Novos projetos (reset/imagem nova) → iniciam em Inteligente.
+
+---
+
 ## v8z4b17j — smart movement easing experiment
 
 Versão **experimental** que adiciona um modo opcional de **Easing Inteligente** apenas para o canal **Movimento**. O comportamento padrão continua sendo `Manual`; nada muda visualmente em projetos antigos.
