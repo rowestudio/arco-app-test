@@ -1,5 +1,35 @@
 # Changelog
 
+## v8z4b17l — channel tabs and smart movement toggle
+
+Reorganização visual do painel de easing para transformar Movimento/Rotação/Escala em abas reais, substituir o par de botões Manual/Inteligente por um único toggle switch e tornar o ícone Global contextual à aba ativa.
+
+### O que foi alterado
+
+- **Abas reais de canal** (`panelEase`) — Movimento/Rotação/Escala agora usam `.ease-tabs-bar` + `.ease-tab` em vez de botões com borda pill. Aba ativa recebe `.ease-tab-active` com cor accent e fundo destacado.
+- **Toggle único Movimento Inteligente** — Removidos os botões `Manual` / `Inteligente`. Substituídos por um switch iOS-style (`<label class="smart-toggle">`). Label clicável ao lado do toggle. Mesmo padrão no mini-painel `segEasePanel`.
+- **Ícone Global contextual por aba** — Removido do cabeçalho do painel. Cada aba tem sua própria instância: `easeGlobeLock` (Movimento), `easeGlobeRot` (Rotação), `easeGlobeScale` (Escala). Mostrado na linha de ações da aba ativa.
+- **Global implícito quando Inteligente ON** — No canal Movimento com Inteligente ativo, o globe recebe `.global-implicit` (laranja, opacidade reduzida, sem pointer-events), indicando que o modo já é global por natureza.
+- **Linhas de ações por aba** — `movChannelActions` (toggle + globe), `rotChannelActions` (apenas globe), `scaleChannelActions` (apenas globe). Exibição controlada por `_syncEaseChannelUI()`.
+- **`updateSegGlobalButton()`** — Atualizada para sincronizar os três globes (`easeGlobeLock`, `easeGlobeRot`, `easeGlobeScale`) e aplicar `.global-implicit` ao globe de Movimento quando adequado.
+- **`_syncEaseChannelUI()`** — Usa `.ease-tab-active` class em vez de inline styles para o painel principal. Mostra/oculta linhas de ações das abas.
+- **`syncMovementEasingModeUI()`** — Reescrita: sincroniza toggle checkbox (principal e mini-painel), chama `updateSegGlobalButton()`, subordina chips, controla "Aplicar aos 3". Remove lógica de botão duplo.
+- **`setMovementEasingModeFromToggle(checked)`** — Nova função wrapper para o handler `onchange` do toggle.
+- **Dica curta removida** — `movSmartHint` removido do HTML (informação inline não era necessária após a melhora visual).
+- **CSS** — `.ease-tabs-bar`, `.ease-tab`, `.ease-tab-active`, `.smart-toggle`, `.smart-toggle-track`, `.global-implicit` adicionados.
+- **Versão** — `APP_VERSION` → `v8z4b17l`, `APP_VERSION_NAME` → `channel tabs and smart movement toggle`.
+
+### O que não foi alterado
+
+Motor do Movimento Inteligente, cálculo Hermite, Velocidade constante, easing de Rotação, easing de Escala, Preview, export MP4, WebCodecs, loop, pausas, duração, stage, curvas, sistema vetorial, seleção múltipla, menu inferior, safe area, timeline, indicadores visuais de easing, JSON (estrutura de dados inalterada).
+
+### Compatibilidade
+
+- Projetos antigos sem `movementEasingMode` → carregam como `'manual'` (sem mudança visual).
+- Projetos salvos com `movementEasingMode: 'smart'` → carregam corretamente em Inteligente.
+- Projetos salvos com `movementEasingMode: 'manual'` → carregam corretamente em Manual.
+- Novos projetos (reset/imagem nova) → iniciam em Inteligente.
+
 ## v8z4b17k — clean smart movement panel
 
 Reorganização visual do painel de easing para reduzir o excesso de pílulas e comunicar com clareza que **Movimento Inteligente** é um modo do canal Movimento — não um controle independente.
