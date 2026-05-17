@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17m                                     ║
+║  Versão: v8z4b17n                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17m — real channel tabs and velocity naming: faixa de abas com hierarquia visual real, aba "Velocidade" substitui "Movimento", "Movimento" vira nome de seção -->
+<!-- Arco App — v8z4b17n — duration movement hierarchy and connected tabs: título do segmento centralizado, Duração e Movimento com mesmo valor gráfico, abas reais com continuidade visual ao conteúdo ativo -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -996,11 +996,17 @@ body.cust-open #toolbar{
 #segEasePanel .global-on svg{
   stroke:#ff9500 !important;
 }
-/* v8z4b17m — barra de abas reais de canal (Velocidade / Rotação / Escala) */
-/* hierarquia: painel(#1c1c1e) < strip(#2c2c2e) < aba-ativa(#3a3a3c) */
-.ease-tabs-bar{display:flex;background:var(--surface2);border-radius:10px;padding:3px;margin-bottom:10px;gap:2px;}
-.ease-tab{flex:1;padding:8px 4px;border-radius:8px;background:transparent;border:none;color:rgba(174,174,178,0.75);font-size:11px;font-weight:500;cursor:pointer;-webkit-user-select:none;user-select:none;transition:background .18s,color .18s;text-align:center;}
+/* v8z4b17n — bloco Movimento: abas reais conectadas ao conteúdo ativo */
+/* hierarquia: painel(#1c1c1e) < abas-inativas(#2c2c2e) < aba-ativa+conteúdo(#3a3a3c) */
+.ease-channel-block{background:var(--surface);border-radius:12px;overflow:hidden;}
+.ease-tabs-bar{display:flex;background:var(--surface);padding:0;margin-bottom:0;gap:2px;}
+.ease-tab{flex:1;padding:9px 4px;border-radius:8px 8px 0 0;background:var(--surface2);border:none;color:rgba(174,174,178,0.65);font-size:11px;font-weight:500;cursor:pointer;-webkit-user-select:none;user-select:none;transition:background .18s,color .18s;text-align:center;}
 .ease-tab.ease-tab-active{background:#3a3a3c;color:#fff;font-weight:700;}
+.ease-tab-content{background:#3a3a3c;padding:10px 10px 10px;border-radius:0 0 12px 12px;}
+/* v8z4b17n — label de seção compartilhado: Duração e Movimento */
+.ease-section-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;}
+/* v8z4b17n — bloco Duração igual ao bloco Movimento */
+.ease-dur-block{background:#3a3a3c;border-radius:12px;padding:10px 10px 10px;}
 /* v8z4b17l — toggle switch Movimento Inteligente */
 .smart-toggle{position:relative;display:inline-flex;align-items:center;cursor:pointer;flex-shrink:0;}
 .smart-toggle input{position:absolute;opacity:0;width:0;height:0;}
@@ -1789,7 +1795,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17m</span><br><span id="appVersionNameText">real channel tabs and velocity naming</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17n</span><br><span id="appVersionNameText">duration movement hierarchy and connected tabs</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -2095,55 +2101,63 @@ body.cust-open #toolbar{
 <canvas id="recCanvas" style="display:none;"></canvas>
 
 
-<!-- PANEL: Easing por segmento — v8z4b17m: abas reais + nomenclatura Velocidade -->
+<!-- PANEL: Easing por segmento — v8z4b17n: hierarquia visual Duração/Movimento + abas conectadas -->
 <div class="float-panel" id="panelEase">
   <div class="panel-handle" onclick="closeAll()"></div>
-  <div style="display:flex;align-items:center;margin-bottom:10px;">
-    <div class="panel-title" id="panelEaseTitle" style="margin:0;flex:1;">Easing</div>
-  </div>
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-    <span style="font-size:11px;color:var(--text3);flex-shrink:0;">Duração</span>
+  <!-- Título do segmento centralizado — v8z4b17n -->
+  <div class="panel-title" id="panelEaseTitle" style="text-align:center;margin-bottom:14px;">Easing</div>
+
+  <!-- Bloco DURAÇÃO — mesmo valor gráfico que MOVIMENTO — v8z4b17n -->
+  <div class="ease-section-label">Duração</div>
+  <div class="ease-dur-block" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
     <input type="range" class="dur-slider" id="easePanelSegSlider" min="0" max="20" step="0.1" value="4" style="flex:1;">
-    <span id="easePanelSegVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;">4.0s</span>
+    <span id="easePanelSegVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;flex-shrink:0;">4.0s</span>
   </div>
-  <!-- Seção Movimento: label + barra de abas reais — v8z4b17m -->
-  <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">Movimento</div>
-  <div class="ease-tabs-bar">
-    <button id="easePanelCh_movement" class="ease-tab ease-tab-active" onclick="setEasePanelChannel('movement')">Velocidade</button>
-    <button id="easePanelCh_rotation" class="ease-tab" onclick="setEasePanelChannel('rotation')">Rotação</button>
-    <button id="easePanelCh_scale" class="ease-tab" onclick="setEasePanelChannel('scale')">Escala</button>
-  </div>
-  <!-- Linha de ações — aba Velocidade: toggle Inteligente + Global — v8z4b17m -->
-  <div id="movChannelActions" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-    <label class="smart-toggle" title="Movimento Inteligente">
-      <input type="checkbox" id="movSmartToggle" onchange="setMovementEasingModeFromToggle(this.checked)" checked>
-      <span class="smart-toggle-track"></span>
-    </label>
-    <span style="font-size:11px;color:var(--text3);flex:1;cursor:pointer;" onclick="document.getElementById('movSmartToggle').click();">Movimento Inteligente</span>
-    <div id="easeGlobeLock" onclick="setSegEaseAll()" title="Aplicar a todos"
-      style="opacity:0.6;cursor:pointer;color:var(--text3);padding:4px;">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
+
+  <!-- Bloco MOVIMENTO: seção label + abas conectadas + conteúdo — v8z4b17n -->
+  <div class="ease-section-label">Movimento</div>
+  <div class="ease-channel-block">
+    <!-- Faixa de abas reais — v8z4b17n -->
+    <div class="ease-tabs-bar">
+      <button id="easePanelCh_movement" class="ease-tab ease-tab-active" onclick="setEasePanelChannel('movement')">Velocidade</button>
+      <button id="easePanelCh_rotation" class="ease-tab" onclick="setEasePanelChannel('rotation')">Rotação</button>
+      <button id="easePanelCh_scale" class="ease-tab" onclick="setEasePanelChannel('scale')">Escala</button>
     </div>
-  </div>
-  <!-- Linha de ações — aba Rotação: apenas Global — v8z4b17m -->
-  <div id="rotChannelActions" style="display:none;align-items:center;justify-content:flex-end;margin-bottom:8px;">
-    <div id="easeGlobeRot" onclick="setSegEaseAll()" title="Aplicar a todos"
-      style="opacity:0.6;cursor:pointer;color:var(--text3);padding:4px;">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
+    <!-- Conteúdo conectado à aba ativa — v8z4b17n -->
+    <div class="ease-tab-content">
+      <!-- Linha de ações — aba Velocidade: toggle Inteligente + Global — v8z4b17n -->
+      <div id="movChannelActions" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <label class="smart-toggle" title="Movimento Inteligente">
+          <input type="checkbox" id="movSmartToggle" onchange="setMovementEasingModeFromToggle(this.checked)" checked>
+          <span class="smart-toggle-track"></span>
+        </label>
+        <span style="font-size:11px;color:var(--text3);flex:1;cursor:pointer;" onclick="document.getElementById('movSmartToggle').click();">Movimento Inteligente</span>
+        <div id="easeGlobeLock" onclick="setSegEaseAll()" title="Aplicar a todos"
+          style="opacity:0.6;cursor:pointer;color:var(--text3);padding:4px;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
+        </div>
+      </div>
+      <!-- Linha de ações — aba Rotação: apenas Global — v8z4b17n -->
+      <div id="rotChannelActions" style="display:none;align-items:center;justify-content:flex-end;margin-bottom:8px;">
+        <div id="easeGlobeRot" onclick="setSegEaseAll()" title="Aplicar a todos"
+          style="opacity:0.6;cursor:pointer;color:var(--text3);padding:4px;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
+        </div>
+      </div>
+      <!-- Linha de ações — aba Escala: apenas Global — v8z4b17n -->
+      <div id="scaleChannelActions" style="display:none;align-items:center;justify-content:flex-end;margin-bottom:8px;">
+        <div id="easeGlobeScale" onclick="setSegEaseAll()" title="Aplicar a todos"
+          style="opacity:0.6;cursor:pointer;color:var(--text3);padding:4px;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;" id="easeChipsGrid"></div>
+      <!-- Aplicar aos 3 canais — ação pontual / oculto em modo Inteligente v8z4b17n -->
+      <div id="applyAllChannelsWrap" style="margin-top:8px;">
+        <button id="btnApplyAllChannels" onclick="applyEaseAllChannels()"
+          style="width:100%;padding:5px 8px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:700;cursor:pointer;">Aplicar aos 3</button>
+      </div>
     </div>
-  </div>
-  <!-- Linha de ações — aba Escala: apenas Global — v8z4b17m -->
-  <div id="scaleChannelActions" style="display:none;align-items:center;justify-content:flex-end;margin-bottom:8px;">
-    <div id="easeGlobeScale" onclick="setSegEaseAll()" title="Aplicar a todos"
-      style="opacity:0.6;cursor:pointer;color:var(--text3);padding:4px;">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
-    </div>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;" id="easeChipsGrid"></div>
-  <!-- Aplicar aos 3 canais — ação pontual / oculto em modo Inteligente v8z4b17m -->
-  <div id="applyAllChannelsWrap" style="margin-top:8px;">
-    <button id="btnApplyAllChannels" onclick="applyEaseAllChannels()"
-      style="width:100%;padding:5px 8px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:700;cursor:pointer;">Aplicar aos 3</button>
   </div>
 </div>
 
@@ -4103,8 +4117,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17m';
-const APP_VERSION_NAME = 'real channel tabs and velocity naming';
+const APP_VERSION = 'v8z4b17n';
+const APP_VERSION_NAME = 'duration movement hierarchy and connected tabs';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
