@@ -2,6 +2,103 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17o — loop as closing segment and final pause mirror
+
+### Teste A — loop cria trecho de fechamento
+
+1. Criar projeto com 4 frames.
+2. Ativar Loop no Acabamento.
+3. Confirmar que aparece trecho `4–1` na lista de Trechos (painel Duração/Tempo).
+4. Confirmar que aparece ease pill de loop na faixa de frames após F4.
+5. Confirmar que o ease pill é selecionável (abre painel real de trecho/easing com título `Seg. 4–1 · Loop`).
+6. Confirmar que o tempo total aumenta pelo valor do trecho 4–1.
+
+### Teste B — editar trecho de loop
+
+1. Selecionar o trecho 4–1 pela faixa ou pela lista de Trechos.
+2. Alterar duração no slider.
+3. Confirmar que o total atualiza.
+4. Alterar easing de Velocidade (ex: Acelerar).
+5. Alterar easing de Rotação.
+6. Alterar easing de Escala.
+7. Rodar Preview — confirmar que o loop usa esses ajustes.
+
+### Teste C — loop desligado
+
+1. Desligar Loop.
+2. Confirmar que o trecho 4–1 desaparece da lista de Trechos.
+3. Confirmar que o ease pill de loop desaparece da faixa.
+4. Confirmar que o total não inclui o tempo de loop.
+5. Preview não deve fazer movimento de retorno.
+
+### Teste D — Pausa final sem pausa prévia
+
+1. Garantir que o último frame está com pausa 0.0s.
+2. Tocar em Pausa final no Acabamento.
+3. Confirmar que o app adiciona pausa de 1.0s ao último frame.
+4. Confirmar que o slider de Pausa final mostra 1.0s.
+5. Confirmar que a lista de Pausas por frame mostra 1.0s no último frame.
+6. Confirmar que Loop fica desligado.
+
+### Teste E — Pausa final com pausa já existente
+
+1. Definir pausa do último frame como 2.0s na lista de Pausas por frame.
+2. Ir ao Acabamento e tocar em Pausa final.
+3. Confirmar que não soma novo tempo (permanece 2.0s).
+4. Confirmar que o slider abre mostrando 2.0s.
+5. Alterar para 3.0s.
+6. Confirmar que a pausa do último frame na lista também vira 3.0s.
+7. Confirmar que não existe tempo paralelo de pausa final.
+
+### Teste F — editar último frame reflete em Pausa final
+
+1. Com Pausa final ativa, editar a pausa do último frame pela lista de Pausas por frame.
+2. Confirmar que o slider de Pausa final reflete o novo valor.
+3. Confirmar que o total atualiza corretamente.
+
+### Teste G — Loop versus Pausa final
+
+1. Ativar Loop. Confirmar que Pausa final fica desativada (chip não ativo).
+2. Desligar Loop. Ativar Pausa final.
+3. Confirmar que Loop fica desligado.
+4. Confirmar que não existem os dois modos ativos ao mesmo tempo.
+
+### Teste H — Velocidade constante com loop
+
+1. Criar trechos de tamanhos diferentes. Ativar Loop.
+2. Ativar Velocidade constante.
+3. Confirmar que o trecho N–1 entra na redistribuição proporcional.
+4. Confirmar que o tempo total é coerente.
+5. Preview OK.
+
+### Teste I — Movimento Inteligente com loop
+
+1. Ativar Movimento Inteligente. Ativar Loop.
+2. Confirmar que o trecho N–1 recebe continuidade de velocidade.
+3. Colocar pausa no último frame — confirmar que o movimento para antes de sair para o loop.
+4. Preview OK.
+
+### Teste J — adicionar/remover frames com loop ativo
+
+1. Criar 4 frames com Loop ligado. Confirmar trecho `4–1`.
+2. Adicionar F5. Confirmar que o trecho final vira `5–1`.
+3. Remover F5. Confirmar que volta para `4–1`.
+4. Preview OK.
+
+### Teste K — JSON
+
+1. Criar projeto com Loop ligado e trecho N–1 ajustado. Salvar JSON.
+2. Reabrir JSON. Confirmar que Loop, duração do trecho N–1 e easings foram preservados.
+3. Criar projeto com Pausa final ligada. Salvar JSON.
+4. Reabrir JSON. Confirmar que Pausa final reflete a pausa do último frame.
+
+### Teste L — regressão geral
+
+1. Painel Duração/Tempo continua sempre aberto.
+2. Painel de trecho/easing continua com hierarquia da v8z4b17n.
+3. Preview OK. Gerar MP4 OK.
+4. Sem tela preta. Sem botão preso. Sem NaN/Infinity no console.
+
 ## v8z4b17n — duration movement hierarchy and connected tabs
 
 ### Teste A — título do segmento

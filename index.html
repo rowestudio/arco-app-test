@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17n                                     ║
+║  Versão: v8z4b17o                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17n — duration movement hierarchy and connected tabs: título do segmento centralizado, Duração e Movimento com mesmo valor gráfico, abas reais com continuidade visual ao conteúdo ativo -->
+<!-- Arco App — v8z4b17o — loop as closing segment and final pause mirror: trecho N→1 com easing próprio, pausa final espelha framePauses[último frame] -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1795,7 +1795,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17n</span><br><span id="appVersionNameText">duration movement hierarchy and connected tabs</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17o</span><br><span id="appVersionNameText">loop as closing segment and final pause mirror</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4117,8 +4117,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17n';
-const APP_VERSION_NAME = 'duration movement hierarchy and connected tabs';
+const APP_VERSION = 'v8z4b17o';
+const APP_VERSION_NAME = 'loop as closing segment and final pause mirror';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4154,6 +4154,9 @@ let finishMode   = 'none'; // 'none' | 'loop' | 'pause'
 let finishDuration = 0.8;
 let loopDuration = 1.0; // duração separada do segmento de retorno (loop)
 let loopCtrlPt   = null; // {nx, ny, t, perpX, perpY}
+let loopSegEasing = 'linear';       // easing de Velocidade do trecho N→1
+let loopSegRotEasing = 'linear';    // easing de Rotação do trecho N→1
+let loopSegScaleEasing = 'linear';  // easing de Escala do trecho N→1
 let pendingProjectData = null; // projeto aguardando imagem ser carregada
 let easeAmount = 0;
 let easeMode = 'global';
@@ -4288,6 +4291,9 @@ function captureState() {
     finishMode,
     finishDuration,
     loopCtrlPt: loopCtrlPt ? {...loopCtrlPt} : null,
+    loopSegEasing,
+    loopSegRotEasing,
+    loopSegScaleEasing,
     currentTemplate,
     templateLabel: document.getElementById('tbTemplate')?.textContent || 'Livre',
     segmentTimingMode,
@@ -4323,6 +4329,9 @@ function restoreState(state) {
   loopEnabled = !!state.loopEnabled;
   loopDuration = state.loopDuration ?? 1.0;
   loopCtrlPt = state.loopCtrlPt ? {...state.loopCtrlPt} : null;
+  loopSegEasing = state.loopSegEasing || 'linear';
+  loopSegRotEasing = state.loopSegRotEasing || 'linear';
+  loopSegScaleEasing = state.loopSegScaleEasing || 'linear';
   segEasings.length = 0;
   (state.segEasings || []).forEach(v => segEasings.push(v));
   rotEasings.length = 0;
@@ -5359,7 +5368,9 @@ function getEaseIcon(ease) {
 }
 
 function makeEasePillEl(seg, which) {
-  const ease = (segEasings[seg] != null) ? segEasings[seg] : 'linear';
+  const ease = (loopEnabled && frameCount >= 2 && seg === frameCount - 1)
+    ? (loopSegEasing || 'linear')
+    : ((segEasings[seg] != null) ? segEasings[seg] : 'linear');
   const isActive = ease !== 'linear';
   const el = document.createElement('div');
   el.className = 'ease-fp' + (isActive ? ' ease-active' : '');
@@ -5426,6 +5437,10 @@ function updateFrameSelector() {
     if (i === activeIdx && i < frameCount - 1) {
       pr.appendChild(makeEasePillEl(i, 'next'));
     }
+  }
+  // Trecho de fechamento N→1 — v8z4b17o
+  if (loopEnabled && frameCount >= 2) {
+    pr.appendChild(makeEasePillEl(frameCount - 1, 'loop'));
   }
 }
 
@@ -6049,11 +6064,6 @@ function getSegAndLocalTAtTime(t) {
     accum = fpEnd;
   }
 
-  // Finish mode pause
-  if (finishMode === 'pause' && !loopEnabled) {
-    return { seg: normalSegs - 1, localT: 1, isPause: true, isLoopSeg: false };
-  }
-
   if (loopEnabled) {
     return { seg: normalSegs, localT: loopDuration > 0 ? clamp01((tAbs - accum) / loopDuration) : 1, isPause: false, isLoopSeg: true };
   }
@@ -6186,7 +6196,7 @@ function getStateAtT(t) {
   // segmentos + loop + pausas globais + pausas por frame + pausa final.
   // Antes, este cálculo ignorava framePauses; após inserir pausa, o export podia
   // entrar cedo demais na zona de acabamento em alguns estados.
-  const finishExtra = (!loopEnabled && (finishMode === 'pause' || finishMode === 'soft')) ? finishDuration : 0;
+  const finishExtra = (!loopEnabled && finishMode === 'soft') ? finishDuration : 0;
   const fullDur = totalDurationFull();
 
   // Converter t global → tempo absoluto
@@ -7194,6 +7204,9 @@ function resetAll() {
   pauseDuration = 0;
   loopEnabled = false;
   loopCtrlPt = null;
+  loopSegEasing = 'linear';
+  loopSegRotEasing = 'linear';
+  loopSegScaleEasing = 'linear';
   segDurations.length = 0;
   framePauses.length = 0;
   segBlurSettings.length = 0;
@@ -7436,17 +7449,29 @@ function makeEaseChips(containerId, seg, onSelect) {
 
 function initEasePanel() {
   ensureSegEasings();
-  const seg = (_activeEaseSeg >= 0 && _activeEaseSeg < frameCount - 1) ? _activeEaseSeg : Math.max(0, activeIdx);
-  _activeEaseSeg = seg; // garantir sincronizado
+  const normalSegs = frameCount - 1;
+  const isLoopSeg = loopEnabled && frameCount >= 2 && _activeEaseSeg === normalSegs;
+  const seg = (isLoopSeg || (_activeEaseSeg >= 0 && _activeEaseSeg < normalSegs))
+    ? _activeEaseSeg
+    : Math.max(0, Math.min(normalSegs - 1, activeIdx));
+  _activeEaseSeg = seg;
   const title = document.getElementById('panelEaseTitle');
-  if (title) title.textContent = 'Seg. ' + (seg + 1) + '-' + (seg + 2);
+  if (title) {
+    if (isLoopSeg) {
+      title.textContent = 'Seg. ' + frameCount + '–1 \xb7 Loop';
+    } else {
+      title.textContent = 'Seg. ' + (seg + 1) + '-' + (seg + 2);
+    }
+  }
 
   // Duração do segmento
-  const segDur = getSegDuration(seg);
+  const segDur = isLoopSeg ? loopDuration : getSegDuration(seg);
   const sl = document.getElementById('easePanelSegSlider');
   const sv = document.getElementById('easePanelSegVal');
   if (sl) {
-    sl.value = segDur; sl._seg = seg;
+    sl.value = segDur;
+    sl._seg = seg;
+    sl._isLoopSeg = isLoopSeg;
     // v8z4b16f — repinta faixa ciano após mudança programática do value.
     if (typeof updateSliderFill === 'function') updateSliderFill(sl);
   }
@@ -7463,8 +7488,23 @@ function initEasePanel() {
     sl.addEventListener('change', () => { easeSegUndoCaptured = false; });
     sl.addEventListener('input', function() {
       const s = this._seg != null ? this._seg : seg;
+      const isLoop = !!this._isLoopSeg;
       ensureSegDurations();
       const nextVal = parseFloat(this.value);
+      if (isLoop) {
+        if (!Number.isFinite(nextVal) || nextVal < 0.1) return;
+        loopDuration = nextVal;
+        const acabSlider = document.getElementById('loopDurSlider');
+        const acabVal = document.getElementById('loopDurVal');
+        if (acabSlider) acabSlider.value = loopDuration;
+        if (acabVal) acabVal.textContent = loopDuration.toFixed(1) + 's';
+        const v = document.getElementById('easePanelSegVal');
+        if (v) v.textContent = loopDuration.toFixed(1) + 's';
+        syncDurationUI();
+        markProjectDirty('loop-duration');
+        if (isPreviewing) { stopPreview(); startPreview(); }
+        return;
+      }
       // v8z4b17g — edição individual no painel contextual sai do modo constant-speed
       if (segmentTimingMode === 'constant-speed') {
         segmentTimingMode = 'manual';
@@ -7571,6 +7611,7 @@ function syncApplyAllChannelsButtonState() {
 }
 
 function selectSegEase(ease, seg) {
+  const isLoopSeg = loopEnabled && frameCount >= 2 && seg === frameCount - 1;
   if (_getActiveChannelEase(seg) === ease && !segGlobalMode) return;
   markProjectDirty('segment-ease');
   pushUndo();
@@ -7578,7 +7619,10 @@ function selectSegEase(ease, seg) {
     ensureRotEasings();
     if (segGlobalMode) {
       for (let i = 0; i < frameCount - 1; i++) rotEasings[i] = ease;
+      if (loopEnabled) loopSegRotEasing = ease;
       showStatus('Próximo ajuste aplicado a todos os trechos');
+    } else if (isLoopSeg) {
+      loopSegRotEasing = ease;
     } else {
       rotEasings[seg] = ease;
     }
@@ -7586,7 +7630,10 @@ function selectSegEase(ease, seg) {
     ensureScaleEasings();
     if (segGlobalMode) {
       for (let i = 0; i < frameCount - 1; i++) scaleEasings[i] = ease;
+      if (loopEnabled) loopSegScaleEasing = ease;
       showStatus('Próximo ajuste aplicado a todos os trechos');
+    } else if (isLoopSeg) {
+      loopSegScaleEasing = ease;
     } else {
       scaleEasings[seg] = ease;
     }
@@ -7594,7 +7641,10 @@ function selectSegEase(ease, seg) {
     ensureSegEasings();
     if (segGlobalMode) {
       for (let i = 0; i < frameCount - 1; i++) segEasings[i] = ease;
+      if (loopEnabled) loopSegEasing = ease;
       showStatus('Próximo ajuste aplicado a todos os trechos');
+    } else if (isLoopSeg) {
+      loopSegEasing = ease;
     } else {
       segEasings[seg] = ease;
     }
@@ -7607,21 +7657,30 @@ function selectSegEase(ease, seg) {
 
 // Aplica o easing do canal ativo aos três canais do trecho atual — v8z4b17d
 function applyEaseAllChannels() {
-  const seg = (_activeEaseSeg >= 0 && _activeEaseSeg < frameCount - 1) ? _activeEaseSeg : Math.max(0, activeIdx);
+  const normalSegs = frameCount - 1;
+  const isLoopSeg = loopEnabled && frameCount >= 2 && _activeEaseSeg === normalSegs;
+  const seg = (isLoopSeg || (_activeEaseSeg >= 0 && _activeEaseSeg < normalSegs)) ? _activeEaseSeg : Math.max(0, Math.min(normalSegs - 1, activeIdx - 1));
   const ease = _getActiveChannelEase(seg);
   markProjectDirty('segment-ease');
   pushUndo();
   ensureSegEasings();
   ensureRotEasings();
   ensureScaleEasings();
-  segEasings[seg] = ease;
-  rotEasings[seg] = ease;
-  scaleEasings[seg] = ease;
+  if (isLoopSeg) {
+    loopSegEasing = ease;
+    loopSegRotEasing = ease;
+    loopSegScaleEasing = ease;
+  } else {
+    segEasings[seg] = ease;
+    rotEasings[seg] = ease;
+    scaleEasings[seg] = ease;
+  }
   _activeEaseSeg = seg;
   initEasePanel();
   updateFrameSelector();
   if (isPreviewing) { stopPreview(); startPreview(); }
-  showStatus('Easing aplicado aos 3 canais — Seg. ' + (seg + 1) + '-' + (seg + 2));
+  const title = isLoopSeg ? (frameCount + '–1 · Loop') : ((seg + 1) + '-' + (seg + 2));
+  showStatus('Easing aplicado aos 3 canais — Seg. ' + title);
   // v8z4b17f — feedback momentâneo: pisca accent e volta ao neutro
   const btn = document.getElementById('btnApplyAllChannels');
   if (btn) {
@@ -7769,7 +7828,10 @@ function syncFinishingUIFromState() {
   } else if (finishMode === 'pause') {
     if (loopRow) loopRow.style.display = 'none';
     if (finishRow) finishRow.style.display = 'flex';
-    if (finishLbl) finishLbl.textContent = 'Duracao da pausa';
+    if (finishLbl) finishLbl.textContent = 'Pausa final';
+    const lastPause = (frameCount >= 1 && framePauses[frameCount - 1]) ? (framePauses[frameCount - 1].duration || 0) : 0;
+    if (finishSlider && parseFloat(finishSlider.value) !== parseFloat(lastPause.toFixed(1))) finishSlider.value = lastPause.toFixed(1);
+    if (finishVal) finishVal.textContent = lastPause.toFixed(1) + 's';
   } else {
     if (loopRow) loopRow.style.display = 'none';
     if (finishRow) finishRow.style.display = 'none';
@@ -7791,6 +7853,17 @@ function setFinishing(mode) {
         t: 0.5, perpX: 0, perpY: 0
       };
     }
+  } else if (mode === 'pause') {
+    loopEnabled = false;
+    if (frameCount >= 1) {
+      const lastIdx = frameCount - 1;
+      if ((framePauses[lastIdx]?.duration || 0) === 0) {
+        ensureFramePauses();
+        framePauses[lastIdx] = { duration: 1.0 };
+      }
+    }
+  } else {
+    loopEnabled = false;
   }
 
   syncDurationUI();
@@ -7810,10 +7883,27 @@ function initFinishSlider() {
   sl.addEventListener('mousedown', () => { if (!finishUndoCaptured) { pushUndo(); finishUndoCaptured = true; } });
   sl.addEventListener('change', () => { finishUndoCaptured = false; });
   sl.addEventListener('input', function() {
-    finishDuration = parseFloat(this.value);
-    if (val) val.textContent = finishDuration.toFixed(1) + 's';
-    syncDurationUI();
-    if (isPreviewing) { stopPreview(); startPreview(); }
+    if (finishMode === 'pause' && frameCount >= 1) {
+      const lastIdx = frameCount - 1;
+      const clamped = clampFramePauseValue(parseFloat(this.value));
+      ensureFramePauses();
+      framePauses[lastIdx] = { duration: clamped };
+      if (val) val.textContent = clamped.toFixed(1) + 's';
+      const pauseRow = document.querySelector(`[data-frame-pause-row][data-frame-index="${lastIdx}"]`);
+      if (pauseRow) {
+        const pv = pauseRow.querySelector('[data-pause-value]');
+        if (pv) pv.textContent = clamped.toFixed(1) + 's';
+        const sl2 = pauseRow.querySelector('[data-pause-slider]');
+        if (sl2 && parseFloat(sl2.value) !== clamped) sl2.value = clamped.toFixed(1);
+      }
+      syncDurationUI();
+      if (isPreviewing) { stopPreview(); startPreview(); }
+    } else {
+      finishDuration = parseFloat(this.value);
+      if (val) val.textContent = finishDuration.toFixed(1) + 's';
+      syncDurationUI();
+      if (isPreviewing) { stopPreview(); startPreview(); }
+    }
   });
 }
 
@@ -8260,6 +8350,7 @@ function ensureRotEasings() {
 }
 
 function getRotEase(seg) {
+  if (loopEnabled && frameCount >= 2 && seg === frameCount - 1) return loopSegRotEasing || 'linear';
   ensureRotEasings();
   return rotEasings[seg] || 'linear';
 }
@@ -8282,6 +8373,7 @@ function ensureScaleEasings() {
 }
 
 function getScaleEase(seg) {
+  if (loopEnabled && frameCount >= 2 && seg === frameCount - 1) return loopSegScaleEasing || 'linear';
   ensureScaleEasings();
   return scaleEasings[seg] || 'linear';
 }
@@ -8383,6 +8475,7 @@ function validateProjectState(context) {
 }
 
 function getSegEase(seg) {
+  if (loopEnabled && frameCount >= 2 && seg === frameCount - 1) return loopSegEasing || 'linear';
   ensureSegEasings();
   return segEasings[seg] || 'linear';
 }
@@ -9105,7 +9198,7 @@ function getDurationParts() {
   }
   let finish = 0;
   if (finishMode === 'loop') finish = loopDuration;
-  else if (finishMode === 'pause') finish = finishDuration;
+  // finishMode === 'pause': pausa já contabilizada em framePauses[lastFrame]
   return { moveDur, internalPauses, finish, total: moveDur + internalPauses + finish };
 }
 
@@ -9165,6 +9258,39 @@ function measureSegmentCurveLength(segIndex) {
   return len;
 }
 
+// Mede o comprimento real da curva do trecho de fechamento N→1 — v8z4b17o
+function measureLoopCurveLength() {
+  if (!loopEnabled || frameCount < 2 || !stageW || !stageH) return 0;
+  const lastIdx = frameCount - 1;
+  const p1cx = frameCX(lastIdx);
+  const p1cy = frameCY(lastIdx);
+  const p2cx = frameCX(0);
+  const p2cy = frameCY(0);
+  const cp = loopCtrlPt || {
+    nx: (p1cx / stageW + p2cx / stageW) / 2,
+    ny: (p1cy / stageH + p2cy / stageH) / 2
+  };
+  const cpx = cp.nx * stageW;
+  const cpy = cp.ny * stageH;
+  function bezPt(u) {
+    const inv = 1 - u;
+    return {
+      x: inv * inv * p1cx + 2 * inv * u * cpx + u * u * p2cx,
+      y: inv * inv * p1cy + 2 * inv * u * cpy + u * u * p2cy
+    };
+  }
+  const SAMPLES = 64;
+  let len = 0;
+  let prev = bezPt(0);
+  for (let i = 1; i <= SAMPLES; i++) {
+    const pt = bezPt(i / SAMPLES);
+    len += Math.hypot(pt.x - prev.x, pt.y - prev.y);
+    prev = pt;
+  }
+  if (len < 1e-6) len = Math.hypot(p2cx - p1cx, p2cy - p1cy);
+  return len;
+}
+
 // Redistribui segDurations proporcionalmente ao comprimento curvo de cada trecho ativo.
 // Trechos com duração exatamente 0.0 permanecem em 0 (cortes secos).
 function redistributeDurationsByCurveLength() {
@@ -9178,26 +9304,38 @@ function redistributeDurationsByCurveLength() {
 
   if (!Number.isFinite(total) || total < 0) return;
 
-  // Segmentos ativos: não-zerados
+  // Segmentos normais ativos: não-zerados
   const activeSegs = [];
   for (let i = 0; i < segs; i++) {
     if (segDurations[i] !== 0) activeSegs.push(i);
   }
-  if (activeSegs.length === 0) return;
 
-  const lengths = activeSegs.map(i => Math.max(0, measureSegmentCurveLength(i)));
-  const totalLen = lengths.reduce((s, l) => s + l, 0);
+  // v8z4b17o: incluir trecho de fechamento N→1 quando Loop ativo
+  const hasLoopSeg = loopEnabled && loopDuration > 0;
+  if (activeSegs.length === 0 && !hasLoopSeg) return;
+
+  const normalLengths = activeSegs.map(i => Math.max(0, measureSegmentCurveLength(i)));
+  const loopLen = hasLoopSeg ? Math.max(0, measureLoopCurveLength()) : 0;
+  const totalLen = normalLengths.reduce((s, l) => s + l, 0) + loopLen;
+
+  // Total redistribuível inclui duração do trecho de loop se ativo
+  const totalTime = total + (hasLoopSeg ? loopDuration : 0);
 
   if (totalLen > 1e-6) {
     activeSegs.forEach((segIdx, k) => {
-      const raw = total * lengths[k] / totalLen;
-      // Mínimo 0.1s para evitar colapso acidental; arredondamento em 0.1s
+      const raw = totalTime * normalLengths[k] / totalLen;
       segDurations[segIdx] = Math.max(0.1, parseFloat(raw.toFixed(1)));
     });
+    if (hasLoopSeg) {
+      const rawLoop = totalTime * loopLen / totalLen;
+      loopDuration = Math.max(0.1, parseFloat(rawLoop.toFixed(1)));
+    }
   } else {
-    // Fallback: distribuição igual entre trechos ativos
-    const per = parseFloat((total / activeSegs.length).toFixed(1));
+    const allCount = activeSegs.length + (hasLoopSeg ? 1 : 0);
+    if (allCount === 0) return;
+    const per = parseFloat((totalTime / allCount).toFixed(1));
     activeSegs.forEach(segIdx => { segDurations[segIdx] = Math.max(0.1, per); });
+    if (hasLoopSeg) loopDuration = Math.max(0.1, per);
   }
 
   // Sanitização final: eliminar NaN/Infinity/negativo
@@ -9206,6 +9344,7 @@ function redistributeDurationsByCurveLength() {
       segDurations[i] = segDurations[i] === 0 ? 0 : Math.max(0.1, total / segs);
     }
   }
+  if (hasLoopSeg && (!Number.isFinite(loopDuration) || loopDuration < 0.1)) loopDuration = 1.0;
 }
 
 // Aciona redistribuição quando o modo velocidade constante está ativo.
@@ -9257,20 +9396,35 @@ function _smartFramePauseAt(frameIdx) {
 // Velocidade no frame `frameIdx` para fins de continuidade entre trechos.
 // vAvg passada serve de fallback (avg do trecho corrente) quando não há
 // vizinho válido.
+// v8z4b17o: considera trecho de fechamento N→1 quando Loop ativo.
 function _smartFrameVelocity(frameIdx, segIdxOwner, vAvgOwner) {
   // Pausa no frame: continuidade exige velocidade zero.
   if (_smartFramePauseAt(frameIdx) > 0) return 0;
 
-  // Frame intermediário: média entre vAvg do trecho anterior e do trecho seguinte.
+  const normalSegs = frameCount - 1;
   const prevSeg = frameIdx - 1;
   const nextSeg = frameIdx;
-  const vPrev = (prevSeg >= 0) ? _smartSegmentVAvg(prevSeg) : null;
-  const vNext = (nextSeg < frameCount - 1) ? _smartSegmentVAvg(nextSeg) : null;
+
+  // Velocidade média do trecho de fechamento N→1
+  const vLoop = (loopEnabled && Number.isFinite(loopDuration) && loopDuration > 0) ? (() => {
+    const len = measureLoopCurveLength();
+    return (Number.isFinite(len) && len > 1e-6) ? len / loopDuration : null;
+  })() : null;
+
+  // Para o primeiro frame (0): trecho "anterior" é o trecho de loop N→1 se ativo
+  const vPrev = (prevSeg >= 0)
+    ? _smartSegmentVAvg(prevSeg)
+    : (loopEnabled ? vLoop : null);
+
+  // Para o último frame (normalSegs): trecho "seguinte" é o trecho de loop N→1 se ativo
+  const vNext = (nextSeg < normalSegs)
+    ? _smartSegmentVAvg(nextSeg)
+    : (loopEnabled ? vLoop : null);
 
   if (vPrev != null && vNext != null) return 0.5 * (vPrev + vNext);
-  if (vPrev != null) return vPrev;             // último frame
-  if (vNext != null) return vNext;             // primeiro frame
-  return Number.isFinite(vAvgOwner) ? vAvgOwner : 0; // fallback duro
+  if (vPrev != null) return vPrev;
+  if (vNext != null) return vNext;
+  return Number.isFinite(vAvgOwner) ? vAvgOwner : 0;
 }
 
 // Recebe seg (índice do trecho) e tt em [0,1] (tempo local dentro do trecho)
@@ -9278,6 +9432,33 @@ function _smartFrameVelocity(frameIdx, segIdxOwner, vAvgOwner) {
 // Em caso de erro ou trecho 0.0s, devolve `tt` (fallback linear seguro).
 function computeSmartMovementProgress(seg, tt) {
   const segs = frameCount - 1;
+
+  // v8z4b17o: trecho de fechamento N→1
+  if (loopEnabled && seg === segs) {
+    const dur = loopDuration;
+    if (!Number.isFinite(dur) || dur <= 0) return tt;
+    const curveLen = measureLoopCurveLength();
+    if (!Number.isFinite(curveLen) || curveLen <= 1e-6) return tt;
+    const vAvg = curveLen / dur;
+    if (!Number.isFinite(vAvg) || vAvg <= 0) return tt;
+    let vStart = _smartFrameVelocity(segs, seg, vAvg); // saindo do último frame
+    let vEnd   = _smartFrameVelocity(0,    seg, vAvg); // chegando no primeiro frame
+    if (!Number.isFinite(vStart) || vStart < 0) vStart = 0;
+    if (!Number.isFinite(vEnd)   || vEnd   < 0) vEnd   = 0;
+    const vMax = 3 * vAvg;
+    if (vStart > vMax) vStart = vMax;
+    if (vEnd   > vMax) vEnd   = vMax;
+    const tau = Math.max(0, Math.min(1, tt));
+    const tau2 = tau * tau, tau3 = tau2 * tau;
+    const h10 = tau3 - 2 * tau2 + tau;
+    const h01 = -2 * tau3 + 3 * tau2;
+    const h11 = tau3 - tau2;
+    const p = h10 * vStart * dur + h01 * curveLen + h11 * vEnd * dur;
+    const progress = p / curveLen;
+    if (!Number.isFinite(progress)) return tt;
+    return Math.max(0, Math.min(1, progress));
+  }
+
   if (seg < 0 || seg >= segs) return tt;
 
   const dur = segDurations[seg];
@@ -9414,6 +9595,47 @@ function openSegBreakdown() {
     row.appendChild(val);
     container.appendChild(row);
   }
+  // v8z4b17o: trecho de fechamento N→1 quando Loop ativo
+  if (loopEnabled && frameCount >= 2) {
+    const loopRow = document.createElement('div');
+    loopRow.className = 'dur-edit-row';
+    loopRow.id = 'segRowLoop';
+    const loopLbl = document.createElement('span');
+    loopLbl.className = 'dur-edit-label';
+    loopLbl.textContent = frameCount + '–1';
+    const loopSl = document.createElement('input');
+    loopSl.type = 'range';
+    loopSl.className = 'dur-slider';
+    loopSl.min = '0.1'; loopSl.max = '15'; loopSl.step = '0.1';
+    loopSl.value = loopDuration;
+    const loopVal2 = document.createElement('span');
+    loopVal2.className = 'dur-edit-value';
+    loopVal2.textContent = loopDuration.toFixed(1) + 's';
+    let loopRowUndoCaptured = false;
+    loopSl.addEventListener('touchstart', () => {
+      if (!loopRowUndoCaptured) { pushUndo(); loopRowUndoCaptured = true; }
+    }, { passive: true });
+    loopSl.addEventListener('mousedown', () => {
+      if (!loopRowUndoCaptured) { pushUndo(); loopRowUndoCaptured = true; }
+    });
+    loopSl.addEventListener('input', () => {
+      loopDuration = parseFloat(loopSl.value);
+      loopVal2.textContent = loopDuration.toFixed(1) + 's';
+      const acabSlider = document.getElementById('loopDurSlider');
+      const acabVal = document.getElementById('loopDurVal');
+      if (acabSlider) acabSlider.value = loopDuration;
+      if (acabVal) acabVal.textContent = loopDuration.toFixed(1) + 's';
+      updateSegTotal();
+      markProjectDirty('loop-duration');
+      if (isPreviewing) { stopPreview(); startPreview(); }
+    });
+    loopSl.addEventListener('change', () => { loopRowUndoCaptured = false; });
+    loopRow.appendChild(loopLbl);
+    loopRow.appendChild(loopSl);
+    loopRow.appendChild(loopVal2);
+    container.appendChild(loopRow);
+  }
+
   updateSegTotal();
   document.getElementById('segBreakdown').style.display = 'flex';
   syncTimingModeUI(); // v8z4b17f — atualizar estado visual do modo
@@ -9515,6 +9737,14 @@ function syncSegRowsFromState() {
     }
     if (val) val.textContent = formatted + 's';
   }
+  // v8z4b17o: linha do trecho de fechamento N→1
+  const loopSegRow = document.getElementById('segRowLoop');
+  if (loopSegRow && loopEnabled) {
+    const loopSl2 = loopSegRow.querySelector('input[type="range"]');
+    const loopVal3 = loopSegRow.querySelector('.dur-edit-value');
+    if (loopSl2 && parseFloat(loopSl2.value) !== parseFloat(loopDuration.toFixed(1))) loopSl2.value = loopDuration;
+    if (loopVal3) loopVal3.textContent = loopDuration.toFixed(1) + 's';
+  }
 }
 
 function syncRatioUI() {
@@ -9562,6 +9792,14 @@ function buildProjectData() {
     constantSpeedTotalDuration,
     // v8z4b17j: modo de easing do canal Movimento (experimental).
     movementEasingMode,
+    // v8z4b17o: finishMode, finishDuration e loopCtrlPt persistidos explicitamente.
+    finishMode,
+    finishDuration,
+    loopCtrlPt: loopCtrlPt ? {...loopCtrlPt} : null,
+    // v8z4b17o: easing do trecho de fechamento N→1.
+    loopSegEasing,
+    loopSegRotEasing,
+    loopSegScaleEasing,
   };
 }
 
@@ -9722,6 +9960,12 @@ function applyFrameData(data) {
   pauseDuration = data.pauseDuration || 0;
   loopEnabled   = data.loopEnabled || false;
   loopDuration  = data.loopDuration ?? 1.0;
+  loopCtrlPt    = data.loopCtrlPt ? {...data.loopCtrlPt} : null;
+  finishMode    = data.finishMode || 'none';
+  finishDuration = data.finishDuration ?? 0.8;
+  loopSegEasing = data.loopSegEasing || 'linear';
+  loopSegRotEasing = data.loopSegRotEasing || 'linear';
+  loopSegScaleEasing = data.loopSegScaleEasing || 'linear';
   frameCount    = data.frameCount || 2;
   activeIdx     = data.activeIdx || 0;
 
@@ -9772,6 +10016,13 @@ function applyFrameData(data) {
   framePauses.length = 0;
   (data.framePauses || []).forEach(p => framePauses.push(p ? { duration: Number(p.duration) || 0 } : { duration: 0 }));
   ensureFramePauses();
+  // v8z4b17o: migrar finishDuration antigo para framePauses[lastFrame] quando finishMode==='pause'.
+  if (finishMode === 'pause' && finishDuration > 0) {
+    const lastIdx = frameCount - 1;
+    if (lastIdx >= 0 && (framePauses[lastIdx]?.duration || 0) === 0) {
+      framePauses[lastIdx] = { duration: clampFramePauseValue(finishDuration) };
+    }
+  }
   // v8z4b17a: restaura rotEasings; projetos antigos sem o campo recebem 'linear'.
   rotEasings.length = 0;
   (data.rotEasings || []).forEach(v => rotEasings.push(v));
@@ -10284,7 +10535,8 @@ function updateDurationUI() {
     } else if (finishMode === 'pause') {
       finishModeRow.style.display = 'flex';
       finishModeLabel.textContent = 'Pausa final';
-      finishModeValue.textContent = finishDuration.toFixed(1) + 's';
+      const lastPauseDur = (frameCount >= 1 && framePauses[frameCount - 1]) ? (framePauses[frameCount - 1].duration || 0) : 0;
+      finishModeValue.textContent = lastPauseDur.toFixed(1) + 's';
     } else {
       finishModeRow.style.display = 'none';
     }

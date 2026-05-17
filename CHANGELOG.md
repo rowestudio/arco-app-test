@@ -1,5 +1,38 @@
 # Changelog
 
+## v8z4b17o — loop as closing segment and final pause mirror
+
+Reestruturação da lógica de Acabamento: Loop passa a representar o trecho real de fechamento N→1 na timeline, com duração, easing e curva próprios. Pausa final passa a espelhar diretamente `framePauses[últimoFrame]`, eliminando o tempo paralelo artificial.
+
+### O que foi alterado
+
+- **Loop = trecho de fechamento N→1** — Quando Loop ativo, o trecho `N→1` (último frame → primeiro frame) entra na timeline com duração própria (`loopDuration`). Antes era apenas um ajuste separado sem presença real na lista de trechos.
+- **Trecho N→1 aparece na lista de Trechos** — `openSegBreakdown()` adiciona linha `N–1` com slider editável quando Loop ativo. Sincroniza bidirecionalmente com o slider do Acabamento.
+- **Easing próprio do trecho N→1** — Novos estados `loopSegEasing`, `loopSegRotEasing`, `loopSegScaleEasing`. `getSegEase()/getRotEase()/getScaleEase()` retornam os valores corretos para `seg === frameCount - 1` quando Loop ativo. `selectSegEase()` e `applyEaseAllChannels()` escrevem nesses estados.
+- **Pausa final = espelho de `framePauses[lastFrame]`** — `getDurationParts()` não soma mais `finishDuration` separadamente quando `finishMode === 'pause'`. A pausa já está contabilizada em `internalPauses` via `framePauses`. `setFinishing('pause')` adiciona 1.0s ao último frame se ainda estava em 0.
+- **`initFinishSlider()`** — Quando `finishMode === 'pause'`, o slider escreve em `framePauses[lastIdx]` diretamente, não em `finishDuration`. Também atualiza a linha correspondente nas Pausas por frame.
+- **`syncFinishingUIFromState()`** — Quando `finishMode === 'pause'`, lê `framePauses[frameCount-1].duration` como valor do slider (não mais `finishDuration`). Guard de parseFloat previne interrupção de drag.
+- **`getSegAndLocalTAtTime()`** — Removida a zona especial de `finishMode === 'pause'` após o último frame: a pausa já é tratada normalmente por `framePauses[normalSegs]`.
+- **`getStateAtT()`** — `finishExtra` não inclui mais `finishMode === 'pause'` (sem zona de acabamento separada para pausa final).
+- **Ease pill na faixa de frames** — `updateFrameSelector()` adiciona ease pill para o trecho N→1 após o último frame quando Loop ativo.
+- **Movimento Inteligente com loop** — `_smartFrameVelocity()` considera o trecho de fechamento como vizinho do primeiro e do último frame. `computeSmartMovementProgress()` tem branch dedicado para `seg === frameCount - 1` quando Loop ativo.
+- **Velocidade constante com loop** — `redistributeDurationsByCurveLength()` inclui comprimento do trecho N→1 na redistribuição e escala `loopDuration` proporcionalmente.
+- **`measureLoopCurveLength()`** — Nova função que mede o comprimento curvo real do trecho N→1 usando a mesma geometria Bézier do motor.
+- **`buildProjectData()`** — Passa a salvar explicitamente `finishMode`, `finishDuration`, `loopCtrlPt`, `loopSegEasing`, `loopSegRotEasing`, `loopSegScaleEasing`.
+- **`applyFrameData()`** — Restaura `finishMode`, `finishDuration`, `loopCtrlPt`, `loopSegEasing*`. Migração de JSON antigo: se `finishMode === 'pause'` e `finishDuration > 0` e último frame com pausa 0, migra para `framePauses[lastFrame]`.
+- **`updateDurationUI()`** — Pausa final exibe `framePauses[frameCount-1].duration` em vez de `finishDuration`.
+- **undo/redo** — `captureState()/restoreState()` incluem `loopSegEasing*`.
+- **`resetAll()`** — Reseta `loopSegEasing*` para `'linear'`.
+- **Versão** — `APP_VERSION` → `v8z4b17o`, `APP_VERSION_NAME` → `loop as closing segment and final pause mirror`.
+
+### O que não foi alterado
+
+Design system geral, visual dos cards de easing, hierarquia visual resolvida na v8z4b17n, sistema vetorial de curvas, stage, safe area, menu inferior geral, nova timeline, seleção múltipla, WebCodecs/export MP4 (sem breaking changes).
+
+### Compatibilidade
+
+JSON antigo com `finishMode: 'pause'` e `finishDuration > 0` é migrado automaticamente para `framePauses[lastFrame]` sem duplicação. Projetos sem loop ou pausa final carregam sem alteração.
+
 ## v8z4b17n — duration movement hierarchy and connected tabs
 
 Correção da hierarquia visual do painel real de trecho/easing: título do segmento centralizado, Duração e Movimento com mesmo valor gráfico de seção, abas Velocidade/Rotação/Escala com continuidade visual ao conteúdo ativo.
