@@ -2,6 +2,55 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17m — real channel tabs and velocity naming
+
+### Teste A — nomenclatura
+
+1. Abrir painel de easing (tocar em trecho).
+2. Confirmar que "Movimento" aparece como nome de seção (label pequeno, uppercase, acima da barra de abas).
+3. Confirmar que as abas são: **Velocidade** / Rotação / Escala (não "Movimento").
+
+### Teste B — aparência das abas
+
+1. Confirmar que a faixa das abas tem cor própria (`#2c2c2e`), visivelmente diferente do fundo do painel (`#1c1c1e`).
+2. Confirmar que não parece linha de botões/pills.
+3. Confirmar que a aba ativa tem fundo `#3a3a3c` (mais claro que a faixa) e texto branco.
+4. Confirmar que aba inativa é discreta (texto acinzentado, sem fundo).
+5. Confirmar que há hierarquia visual clara: painel → faixa → aba ativa.
+
+### Teste C — aba Velocidade
+
+1. Abrir aba Velocidade.
+2. Confirmar presença de: Movimento Inteligente [toggle] + Global [ícone].
+3. Confirmar ordem: Movimento Inteligente → Global.
+4. Ligar Movimento Inteligente: cards Constante/Acelerar/Desacelerar/Suavizar ficam apagados/inativos.
+5. Desligar Movimento Inteligente: cards voltam ao normal.
+6. Preview OK.
+
+### Teste D — aba Rotação
+
+1. Abrir aba Rotação.
+2. Confirmar que a navegação funciona (aba ativa muda para Rotação).
+3. Confirmar que os cards ficam normais (não subordinados ao Movimento Inteligente).
+4. Confirmar presença do Global contextual.
+5. Preview OK.
+
+### Teste E — aba Escala
+
+1. Abrir aba Escala.
+2. Confirmar que a navegação funciona.
+3. Confirmar que os cards ficam normais.
+4. Confirmar presença do Global contextual.
+5. Preview OK.
+
+### Teste F — regressão
+
+1. Movimento Inteligente continua funcionando.
+2. Velocidade constante continua funcionando.
+3. Painel Duração/Tempo continua sempre aberto.
+4. Preview OK.
+5. MP4 OK.
+
 ## v8z4b17l — channel tabs and smart movement toggle
 
 ### Teste A — abas reais

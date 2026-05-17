@@ -1,5 +1,28 @@
 # Changelog
 
+## v8z4b17m — real channel tabs and velocity naming
+
+Correção da hierarquia visual do painel de trecho/easing e renomeação do canal de movimento.
+
+### O que foi alterado
+
+- **Renomeação de canal** — A aba `Movimento` dentro da barra de canais passa a se chamar `Velocidade`. O título `Movimento` é mantido como nome da seção acima da barra.
+- **Hierarquia visual da barra de abas** — A aba ativa agora usa `background:#3a3a3c` (mais claro que a faixa `--surface2` = #2c2c2e), criando hierarquia legível: painel(#1c1c1e) → faixa(#2c2c2e) → aba-ativa(#3a3a3c). Antes, a aba ativa usava `var(--surface)` = #1c1c1e, idêntico ao fundo do painel.
+- **Cor da aba ativa** — Texto branco (`#fff`) em vez de `var(--accent)`, com fundo sólido destacado. Aba inativa mantém texto em `rgba(174,174,178,0.75)` (discreto, mas legível).
+- **Abas inativas mais discretas** — `color:rgba(174,174,178,0.75)` com `font-weight:500`, sem fundo.
+- **Label de seção "Movimento"** — Adicionado acima da faixa de abas, em `font-size:10px`, uppercase, `color:var(--text3)`. Dá contexto sem poluir.
+- **Mini-painel `segEasePanel`** — Botão do canal `movement` também renomeado para `Velocidade`.
+- **CSS** — `.ease-tab` recebe `text-align:center` e `transition` ajustado para `.18s`. `.ease-tab-active` atualizado.
+- **Versão** — `APP_VERSION` → `v8z4b17m`, `APP_VERSION_NAME` → `real channel tabs and velocity naming`.
+
+### O que não foi alterado
+
+Motor do Movimento Inteligente, cálculo Hermite, Velocidade constante, easing de Rotação, easing de Escala, toggle Movimento Inteligente, ícone Global contextual, cards Constante/Acelerar/Desacelerar/Suavizar, Preview, export MP4, WebCodecs, loop, pausas, duração, stage, curvas, sistema vetorial, seleção múltipla, menu inferior, safe area, timeline, JSON.
+
+### Compatibilidade
+
+Nenhuma mudança de estrutura de dados. Todos os projetos existentes carregam sem alteração.
+
 ## v8z4b17l — channel tabs and smart movement toggle
 
 Reorganização visual do painel de easing para transformar Movimento/Rotação/Escala em abas reais, substituir o par de botões Manual/Inteligente por um único toggle switch e tornar o ícone Global contextual à aba ativa.
