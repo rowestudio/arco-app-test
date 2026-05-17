@@ -1,5 +1,26 @@
 # Changelog
 
+## v8z4b17n — duration movement hierarchy and connected tabs
+
+Correção da hierarquia visual do painel real de trecho/easing: título do segmento centralizado, Duração e Movimento com mesmo valor gráfico de seção, abas Velocidade/Rotação/Escala com continuidade visual ao conteúdo ativo.
+
+### O que foi alterado
+
+- **Título do segmento centralizado** — `SEG. 2–3` (elemento `panelEaseTitle`) passa a ser centralizado horizontalmente no painel, marcando hierarquia superior ao conteúdo editável abaixo.
+- **DURAÇÃO como seção equivalente a MOVIMENTO** — Antes, `Duração` aparecia como pequeno label ao lado do slider. Agora, usa o mesmo estilo de label de seção (`ease-section-label`) e o slider fica dentro de um bloco `ease-dur-block` com `background:#3a3a3c` e `border-radius:12px`, idêntico visualmente ao conteúdo ativo do bloco Movimento.
+- **Abas reais com continuidade** — `.ease-tab` recebe `border-radius:8px 8px 0 0` (topo arredondado, base reta). `.ease-tab-content` usa `background:#3a3a3c` e `border-radius:0 0 12px 12px`. O container `.ease-channel-block` tem `overflow:hidden` e `border-radius:12px`, garantindo que aba ativa e conteúdo formem bloco contínuo visualmente.
+- **Abas inativas recuadas** — Fundo `var(--surface2)` (#2c2c2e), discretamente mais escuro que a aba ativa/conteúdo (#3a3a3c). Tab bar usa o fundo do painel (`var(--surface)`) como separador natural entre abas.
+- **Novos estilos CSS** — `.ease-section-label`, `.ease-dur-block`, `.ease-channel-block`, `.ease-tab-content` adicionados. Anteriores `.ease-tabs-bar` e `.ease-tab` ajustados.
+- **Versão** — `APP_VERSION` → `v8z4b17n`, `APP_VERSION_NAME` → `duration movement hierarchy and connected tabs`.
+
+### O que não foi alterado
+
+Motor do Movimento Inteligente, cálculo Hermite, Velocidade constante, easing de Velocidade/Movimento, easing de Rotação, easing de Escala, cards Constante/Acelerar/Desacelerar/Suavizar, toggle Movimento Inteligente, ícone Global contextual, Preview, export MP4, WebCodecs, loop, pausas, duração funcional, stage, curvas, sistema vetorial, seleção múltipla, menu inferior, safe area, timeline, JSON.
+
+### Compatibilidade
+
+Nenhuma mudança de estrutura de dados. Todos os projetos existentes carregam sem alteração.
+
 ## v8z4b17m — real channel tabs and velocity naming
 
 Correção da hierarquia visual do painel de trecho/easing e renomeação do canal de movimento.

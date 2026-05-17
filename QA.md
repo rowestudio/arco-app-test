@@ -2,6 +2,50 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17n — duration movement hierarchy and connected tabs
+
+### Teste A — título do segmento
+
+1. Abrir painel real de trecho/easing (tocar em trecho).
+2. Confirmar que `SEG. 2–3` (ou número do segmento) está centralizado horizontalmente.
+3. Confirmar que o título parece hierarquia principal do painel.
+
+### Teste B — Duração e Movimento equivalentes
+
+1. Confirmar que `DURAÇÃO` e `MOVIMENTO` usam o mesmo estilo de label de seção (uppercase, mesmo tamanho, mesma cor).
+2. Confirmar que o slider de duração está dentro de um bloco com fundo cinza (#3a3a3c), igual ao conteúdo ativo das abas.
+3. Confirmar que Duração não parece label solto ao lado do slider.
+
+### Teste C — abas reais
+
+1. Confirmar que Velocidade / Rotação / Escala não parecem pills nem botões isolados.
+2. Confirmar que abas inativas têm fundo `#2c2c2e` (recuado, mas visível).
+3. Confirmar que aba ativa muda inteira de cor para `#3a3a3c`.
+4. Confirmar que a aba ativa se conecta visualmente ao conteúdo abaixo (sem linha divisória perceptível).
+
+### Teste D — continuidade visual
+
+1. Selecionar aba **Velocidade** → confirmar que aba e conteúdo abaixo formam bloco contínuo.
+2. Selecionar aba **Rotação** → confirmar a mesma continuidade.
+3. Selecionar aba **Escala** → confirmar a mesma continuidade.
+
+### Teste E — Movimento Inteligente
+
+1. Na aba Velocidade, confirmar presença de: Movimento Inteligente [toggle] + Global [ícone].
+2. Confirmar ordem: Movimento Inteligente primeiro, Global depois.
+3. Ligar Movimento Inteligente: cards Constante/Acelerar/Desacelerar/Suavizar ficam apagados/inativos.
+4. Desligar Movimento Inteligente: cards voltam ao normal.
+
+### Teste F — regressão funcional
+
+1. Velocidade constante continua funcionando.
+2. Movimento Inteligente continua funcionando.
+3. Rotação continua funcionando.
+4. Escala continua funcionando.
+5. Preview OK.
+6. MP4 OK.
+7. Painel Duração/Tempo continua sempre aberto.
+
 ## v8z4b17m — real channel tabs and velocity naming
 
 ### Teste A — nomenclatura
