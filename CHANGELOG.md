@@ -1,5 +1,24 @@
 # Changelog
 
+## v8z4b17p — finish timeline sync fixes
+
+Correção de três bugs de sincronização da lógica de Acabamento introduzida na v8z4b17o.
+
+### O que foi alterado
+
+- **Bug A — Pausa final acompanha o último frame real** — `addFrame()` agora migra o valor da pausa do antigo último frame para o novo último frame quando `finishMode === 'pause'`. `removeLastFrame()` captura a pausa do frame removido e a aplica ao novo último frame restante. Pausas intermediárias configuradas manualmente não são alteradas.
+- **Bug B — Velocidade constante redistribui ao ligar/desligar Loop** — `setFinishing()` e `toggleLoop()` agora chamam `maybeRedistributeByCurveLength()` após a mudança de estado do loop. O trecho N→1 entra ou sai da redistribuição imediatamente, sem exigir nova interação do usuário.
+- **Bug C — Pausa final desliga quando pausa do último frame é 0** — Nova função `syncFinishControlsFromTimeline()` chamada no início de `syncFinishingUIFromState()`. Lê `framePauses[lastFrame]` e reverte `finishMode` de `'pause'` para `'none'` quando o valor é 0, evitando estado visual contraditório.
+- **Versão** — `APP_VERSION` → `v8z4b17p`, `APP_VERSION_NAME` → `finish timeline sync fixes`.
+
+### O que não foi alterado
+
+Conceito da v8z4b17o, Loop como trecho real N→1, painel visual de trecho/easing da v8z4b17n, design system, cards de easing, Movimento Inteligente, export MP4/WebCodecs, Preview, stage, curvas, sistema vetorial, menu inferior, safe area, nova timeline, seleção múltipla.
+
+### Compatibilidade
+
+Nenhuma mudança de schema JSON. Projetos salvos na v8z4b17o continuam abrindo sem alteração.
+
 ## v8z4b17o — loop as closing segment and final pause mirror
 
 Reestruturação da lógica de Acabamento: Loop passa a representar o trecho real de fechamento N→1 na timeline, com duração, easing e curva próprios. Pausa final passa a espelhar diretamente `framePauses[últimoFrame]`, eliminando o tempo paralelo artificial.
