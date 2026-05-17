@@ -1,5 +1,30 @@
 # Changelog
 
+## v8z4b17p — finish timeline sync fixes
+
+Correção de três bugs de sincronização na lógica de Acabamento introduzida na v8z4b17o.
+
+### Bugs corrigidos
+
+- **Bug A — Pausa final segue o último frame atual** — Quando Pausa final está ativa e o usuário adiciona/remove frames, o valor da pausa é transferido automaticamente para o novo último frame. Ao adicionar um frame ao final, o antigo último fica com 0s e o novo último recebe o valor. Ao remover o último frame, o penúltimo herda o valor. `insertFrameAfterActive()` já mantinha o índice correto para inserções no meio. `deleteActiveFrame()` agora também faz o splice correto de `framePauses` (que estava ausente) e transfere a pausa quando o último frame é deletado.
+
+- **Bug B — Velocidade constante redistribui ao ligar/desligar Loop** — `toggleLoop()` e `setFinishing()` passam a chamar `maybeRedistributeByCurveLength()` imediatamente após atualizar o estado. Quando Loop é ligado, o trecho N→1 entra na redistribuição proporcional por comprimento curvo. Quando desligado, os trechos normais são redistribuídos sem o N→1.
+
+- **Bug C — Pausa final desliga quando pausa do último frame vira 0.0s** — Nova função `syncFinishControlsFromTimeline()` verifica `framePauses[lastIdx].duration`; se for 0 com `finishMode === 'pause'`, muda `finishMode` para `'none'` e atualiza a UI. Chamada em: slider de Pausa final (ao arrastar para 0), `setFramePause()` quando o frame editado é o último, `resetAllFramePauses()`, e slider global de pausas.
+
+### Novas funções auxiliares
+
+- `syncFinalPauseToLastFrame(oldLastIdx, newLastIdx)` — transfere a pausa final entre índices quando o último frame muda.
+- `syncFinishControlsFromTimeline()` — sincroniza `finishMode` com a realidade de `framePauses[lastIdx]`.
+
+### O que não foi alterado
+
+Conceito da v8z4b17o, Loop como trecho real N→1, painel visual de trecho/easing da v8z4b17n, design system geral, cards de easing, Movimento Inteligente (salvo sincronização com loop já existente), export MP4/WebCodecs, Preview, stage, curvas, sistema vetorial, menu inferior, safe area, nova timeline, seleção múltipla.
+
+### Compatibilidade
+
+Projetos salvos na v8z4b17o continuam abrindo normalmente. A pausa final salva reflete `framePauses[lastFrame]`. Ao carregar, `syncFinishControlsFromTimeline()` garante que o estado visual seja coerente com a timeline real.
+
 ## v8z4b17o — loop as closing segment and final pause mirror
 
 Reestruturação da lógica de Acabamento: Loop passa a representar o trecho real de fechamento N→1 na timeline, com duração, easing e curva próprios. Pausa final passa a espelhar diretamente `framePauses[últimoFrame]`, eliminando o tempo paralelo artificial.
