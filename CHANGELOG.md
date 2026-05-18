@@ -1,5 +1,41 @@
 # Changelog
 
+## v8z4b17q — smart rotation and scale easing
+
+Estende o Easing Inteligente já validado para Movimento aos canais Rotação e Escala, com continuidade de velocidade angular/escala entre trechos via Hermite cúbico. Cada canal tem seu próprio modo (`manual` | `smart`) e seu próprio toggle, totalmente independentes entre si.
+
+### O que foi adicionado
+
+- **Estados globais por canal** — `rotationEasingMode` e `scaleEasingMode` (`'manual'` | `'smart'`). Movimento continua em `movementEasingMode`. Projetos novos iniciam todos os três em `'smart'`; projetos salvos respeitam o valor armazenado. JSON antigo sem os campos abre como `'manual'` para preservar comportamento legado.
+- **Toggles únicos por aba** — Painel real `panelEase`: aba Rotação ganha toggle `Rotação Inteligente`; aba Escala ganha toggle `Escala Inteligente`. Mesmo padrão de toggle liga/desliga já usado por `Movimento Inteligente` — sem botões duplicados Manual/Inteligente. Mini-painel `segEasePanel` repete o padrão (linhas `segRotEasingModeRow` e `segScaleEasingModeRow`).
+- **Motor de continuidade Hermite escalar** — Novas funções `computeSmartRotationT(seg, tt)` e `computeSmartScaleT(seg, tt)`. Para cada trecho calcula `vAvg = delta / duração` (signed). Cada frame intermediário recebe `vStart`/`vEnd` derivados dos vizinhos (com média entre eles, com pausa zerando, e com mudança de sinal entre vizinhos zerando a tangente para evitar overshoot/chicote). Saída: `ttEased ∈ [0,1]` que substitui o `ttRot`/`ttScale` lineares.
+- **Auxiliares compartilhados** — `_smartSegmentRotDelta`, `_smartSegmentScaleDelta`, `_smartSegmentDuration`, `_smartSegmentRotVAvg`, `_smartSegmentScaleVAvg`, `_smartFrameScalarVelocity`, `_smartScalarHermiteT`. Núcleo Hermite com clamp Fritsch–Carlson (`α,β ∈ [0,3]`, `α²+β² ≤ 9`) para manter monotonicidade e prevenir overshoot.
+- **Integração com Loop N→1** — Quando Loop ativo, o trecho de fechamento N→1 participa da suavização tanto para Rotação quanto para Escala (mesmo padrão já usado por Movimento). Quando Loop desligado, N→1 é ignorado pelos cálculos inteligentes.
+- **Integração com `getStateAtT`** — Em modo `'smart'`, `ttScale` e `ttRot` são produzidos pelas novas funções; em modo `'manual'`, continuam vindo de `applyScaleEasingToT`/`applyRotEasingToT`. Valores nos extremos de cada trecho são preservados exatamente. Modos são independentes entre canais.
+- **UI contextual** — Quando o canal ativo está em `'smart'`, os cards manuais (Constante/Acelerar/Desacelerar/Suavizar) ficam visíveis porém apagados/inativos, o Globe daquele canal aparece implícito/travado (laranja, sem clique), e o botão "Aplicar aos 3" some. Ao desligar, tudo volta a funcionar normalmente, preservando os easings manuais salvos por trecho.
+- **`captureState`/`restoreState`** — `rotationEasingMode` e `scaleEasingMode` participam do undo/redo.
+- **`buildProjectData`/`applyFrameData`** — Persistência em JSON com fallback `'manual'` para projetos antigos.
+- **`resetAll`** — Reseta também os dois novos modos para `'smart'` (padrão de projeto novo).
+- **`syncRotationEasingModeUI`/`syncScaleEasingModeUI`** — UI sincronizada nos pontos onde a UI de Movimento já era sincronizada (`setEasePanelChannel`, `setEaseChannel`, `openSegEasePanel`, `initEasePanel`).
+- **`updateSegGlobalButton`** — Refatorado para tratar Globe implícito/travado por canal: cada Globe vira implícito quando o canal correspondente está em `'smart'` E é o canal ativo no painel. Sem cruzamento entre canais.
+
+### Regras de continuidade
+
+- **Pausa manda mais que smart.** Frame com pausa > 0 → velocidade angular/escala = 0 naquele frame. O trecho anterior desacelera até zero; o seguinte sai do zero.
+- **Trecho 0.0s = corte seco.** Sem aplicação smart; fallback linear seguro. Nada de NaN/Infinity.
+- **Mudança de sentido = tangente zero.** Quando `sign(vPrev) !== sign(vNext)` e ambos não-zero, a velocidade no frame é zerada (anti-overshoot/chicote). Vale para Rotação (inverter sentido) e Escala (zoom in seguido de zoom out).
+- **Monotonicidade.** Clamp Fritsch–Carlson nas tangentes (`α,β ∈ [0,3]`, `α²+β² ≤ 9`) limita a ultrapassagem para escala/rotação dentro da janela definida pelos frames.
+- **Delta ≈ 0.** Sem variação no trecho → fallback linear (cálculo seria degenerado).
+- **Compatibilidade com Velocidade constante.** Velocidade constante define durações; smart usa essas durações; ordem preservada.
+
+### O que não foi alterado
+
+Design system geral, hierarquia visual da v8z4b17n, painel Duração/Tempo, Loop como trecho real N→1 da v8z4b17o, Pausa final espelho do último frame da v8z4b17p, Velocidade constante, motor de cálculo espacial e Movimento Inteligente (salvo compatibilidade natural com os novos canais), WebCodecs/export MP4, stage, curvas, sistema vetorial, nova timeline, seleção múltipla, safe area, menu inferior, cores, cards de easing, estrutura geral dos painéis.
+
+### Compatibilidade
+
+JSON sem `rotationEasingMode`/`scaleEasingMode` carrega em `'manual'` (preserva o easing manual salvo). JSON com os campos respeita os valores. Projetos novos iniciam em `'smart'` para os três canais.
+
 ## v8z4b17p — finish timeline sync fixes
 
 Correção de três bugs de sincronização na lógica de Acabamento introduzida na v8z4b17o.
