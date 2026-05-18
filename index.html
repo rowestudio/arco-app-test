@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17y                                     ║
+║  Versão: v8z4b17z                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17y — fix editor zoom toolbar and overlay isolation: ícone de mãozinha, controles em linha, status/toast fora do zoom, release automático do pan mode -->
+<!-- Arco App — v8z4b17z — fixed-size editor controls during zoom: escala inversa nos affordances, bordas, handle ciano, ctrl-pts e curvas Bézier compensados pelo editorZoomScale -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -150,7 +150,7 @@ body.panel-open .stage.out-of-bounds::after{
 }
 #imgEl{display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;}
 
-/* Editor Zoom Control — v8z4b17y */
+/* Editor Zoom Control — v8z4b17z */
 #editorZoomCtrl{
   position:absolute;top:8px;right:8px;z-index:50;
   pointer-events:none;
@@ -252,10 +252,11 @@ body.recording #editorZoomCtrl{display:none;}
   font-size:12px;font-weight:700;color:rgba(255,255,255,.9);
   background:rgba(0,0,0,.35);border-radius:6px;padding:2px 7px;
   pointer-events:none;letter-spacing:.3px;
+  transform-origin:top left;transform:scale(var(--ez-inv,1));
 }
 .frame-center{
   position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;
-  background:#fff;transform:translate(-50%,-50%);opacity:0;
+  background:#fff;transform:translate(-50%,-50%) scale(var(--ez-inv,1));opacity:0;
 }
 .drag-zone{position:absolute;inset:12px;cursor:grab;touch-action:none;}
 .drag-zone:active{cursor:grabbing;}
@@ -268,7 +269,7 @@ body.recording #editorZoomCtrl{display:none;}
   position:absolute;background:rgba(0,0,0,.75);color:#fff;
   font-size:13px;font-weight:700;padding:4px 10px;border-radius:20px;
   pointer-events:none;z-index:70;white-space:nowrap;
-  transform:translate(-50%,-140%);display:none;
+  transform:translate(-50%,-140%) scale(var(--ez-inv,1));display:none;
   border:1px solid rgba(255,255,255,.15);
 }
 .angle-indicator.show{display:block;}
@@ -289,7 +290,7 @@ body.recording #editorZoomCtrl{display:none;}
 /* Control point — círculo ciano r=5 */
 .ctrl-pt{position:absolute;width:14px;height:14px;border-radius:50%;
   background:#04fff2;border:none;box-shadow:none;
-  cursor:grab;transform:translate(-50%,-50%);touch-action:none;z-index:75;}
+  cursor:grab;transform:translate(-50%,-50%) scale(var(--ez-inv,1));touch-action:none;z-index:75;}
 .ctrl-pt::before{content:"";position:absolute;left:50%;top:50%;
   width:42px;height:42px;transform:translate(-50%,-50%);
   background:transparent;border-radius:50%;}
@@ -1851,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17y</span><br><span id="appVersionNameText">fix editor zoom toolbar and overlay isolation</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17z</span><br><span id="appVersionNameText">fixed-size editor controls during zoom</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4188,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17y';
-const APP_VERSION_NAME = 'fix editor zoom toolbar and overlay isolation';
+const APP_VERSION = 'v8z4b17z';
+const APP_VERSION_NAME = 'fixed-size editor controls during zoom';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -5392,7 +5393,8 @@ function renderAll() {
     else if (isNextAdj)  col = FRAME_COLORS.nextAdj;
     else                 col = FRAME_COLORS.distant;
 
-    const borderW  = isActive ? '3.5px' : '2px';
+    const invZ = 1 / editorZoomScale;
+    const borderW  = isActive ? (3.5 * invZ) + 'px' : (2 * invZ) + 'px';
     const op = isActive ? 1.0 : isAdjacent ? 0.80 : 0.55;
     el.style.zIndex  = isActive ? '30' : isAdjacent ? '25' : '20';
     // Modo isolamento: outros frames invisíveis e não interativos
@@ -5441,6 +5443,7 @@ function renderAll() {
     const hp = getHandlePosForFrame(activeIdx);
     globalHandleEl.style.left = hp.x + 'px';
     globalHandleEl.style.top  = hp.y + 'px';
+    globalHandleEl.style.transform = `scale(${1 / editorZoomScale})`;
     globalHandleEl.classList.add('show');
     globalHandleEl.classList.toggle('centered', !!hp.centered);
     stage.appendChild(globalHandleEl);
@@ -5647,6 +5650,9 @@ function drawBezier() {
   if (activeIdx > 0) activeSegs.add(activeIdx - 1);
   if (activeIdx < frameCount - 1) activeSegs.add(activeIdx);
 
+  // Escala inversa — mantém espessura visual constante independente do zoom de edição
+  const invZ = 1 / editorZoomScale;
+
   let svg = '';
   const BLUE   = '#00d4ff';
   const ORANGE = '#f5a623';
@@ -5667,9 +5673,9 @@ function drawBezier() {
     const pathD = `M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}`;
 
     if (active) {
-      svg += `<path d="${pathD}" stroke="${segColor}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+      svg += `<path d="${pathD}" stroke="${segColor}" stroke-width="${3 * invZ}" fill="none" stroke-linecap="round"/>`;
     } else {
-      svg += `<path d="${pathD}" stroke="${WHITE}" stroke-width="2" stroke-dasharray="5,4" opacity="0.75" fill="none" stroke-linecap="round"/>`;
+      svg += `<path d="${pathD}" stroke="${WHITE}" stroke-width="${2 * invZ}" stroke-dasharray="${5 * invZ},${4 * invZ}" opacity="0.75" fill="none" stroke-linecap="round"/>`;
     }
   }
 
@@ -5678,7 +5684,7 @@ function drawBezier() {
     const dist = Math.abs(i - activeIdx);
     if (dist > 1) continue;
     const op = dist === 0 ? 1 : 0.7;
-    svg += `<circle cx="${frameCX(i)}" cy="${frameCY(i)}" r="5" fill="#fff" opacity="${op}" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>`;
+    svg += `<circle cx="${frameCX(i)}" cy="${frameCY(i)}" r="${5 * invZ}" fill="#fff" opacity="${op}" stroke="rgba(0,0,0,0.3)" stroke-width="${invZ}"/>`;
   }
 
   // Linha tracejada removida — não agrega informação
@@ -5690,7 +5696,7 @@ function drawBezier() {
     const cpx = loopCtrlPt.nx * stageW, cpy = loopCtrlPt.ny * stageH;
     const showLoop = activeIdx === 0 || activeIdx === frameCount - 1;
     const lineOp   = showLoop ? 0.9 : 0.22;
-    const lineW    = showLoop ? 2.5 : 1.0;
+    const lineW    = (showLoop ? 2.5 : 1.0) * invZ;
     svg += `<path d="M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}" stroke="rgba(180,100,255,${lineOp})" stroke-width="${lineW}" fill="none" stroke-linecap="round" />`;
   }
 
@@ -5752,7 +5758,7 @@ function updateCtrlPts() {
 }
 
 // ═══════════════════════════════════════
-// EDITOR ZOOM — v8z4b17y
+// EDITOR ZOOM — v8z4b17z
 // ═══════════════════════════════════════
 
 const ZOOM_LEVELS = [1, 1.25, 1.5, 1.75, 2, 2.5, 3];
@@ -5784,6 +5790,10 @@ function applyEditorZoom() {
     stage.style.transformOrigin = '0 0';
     stage.style.transform = `translate(${editorPanX}px,${editorPanY}px) scale(${editorZoomScale})`;
   }
+  // Escala inversa para affordances — compensa o scale do stage
+  const inv = 1 / editorZoomScale;
+  stage.style.setProperty('--ez-inv', inv);
+  if (globalHandleEl) globalHandleEl.style.transform = `scale(${inv})`;
   // Atualizar controle flutuante
   const ctrl   = document.getElementById('editorZoomCtrl');
   const label  = document.getElementById('ezLabel');

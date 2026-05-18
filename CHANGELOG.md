@@ -1,5 +1,30 @@
 # Changelog
 
+## v8z4b17z — fixed-size editor controls during zoom
+
+Corrige o tamanho visual dos controles de edição durante o Zoom de edição. Bordas dos frames, labels, pontos de controle Bézier, handle ciano de escala/rotação e curvas agora mantêm tamanho visual constante independente do nível de zoom.
+
+### O que foi corrigido
+
+- **Bordas dos frames** — `borderWidth` dividido por `editorZoomScale` em `renderAll()`. Em 200% a borda continua visualmente 2–3.5 px como em 100%.
+- **Labels/números dos frames** — `transform: scale(var(--ez-inv,1))` com `transform-origin: top left`. O label não cresce junto com o zoom.
+- **Handle ciano de escala/rotação** — `transform: scale(1/editorZoomScale)` aplicado inline via `applyEditorZoom()` e `renderAll()`. Tamanho visual constante em qualquer nível.
+- **Pontos de controle Bézier (ctrl-pt)** — CSS atualizado para `transform: translate(-50%,-50%) scale(var(--ez-inv,1))`. Visual 14 px, área de toque 42 px, em todos os níveis de zoom.
+- **Curvas Bézier** — `stroke-width` e raio das bolinhas centrais divididos por `editorZoomScale` em `drawBezier()`. Linha ativa, linha inativa tracejada e curva de loop mantêm espessura proporcional.
+- **Indicador de ângulo** — `transform: translate(-50%,-140%) scale(var(--ez-inv,1))`. Bolinha de ângulo não cresce durante rotação com zoom ativo.
+- **CSS variable `--ez-inv`** — definida no elemento `#stage` e atualizada em `applyEditorZoom()`. Todas as regras de affordance usam `var(--ez-inv,1)` como fator compensador.
+
+### O que não foi alterado
+
+- Motor de Preview e export MP4/WebCodecs.
+- Dados do projeto (frames, curvas, rotações, escalas, durações, easings, loop, pausa, JSON).
+- Coordenadas reais dos frames e pontos de controle.
+- `screenToStageCoord()` e conversão de coordenadas.
+- Pan mode, zoom levels, clamp de pan.
+- Pinch zoom (não implementado).
+
+---
+
 ## v8z4b17y — fix editor zoom toolbar and overlay isolation
 
 Corrige a UX do Zoom de edição introduzido em v8z4b17x sem alterar motor, Preview, MP4 ou dados reais do projeto.

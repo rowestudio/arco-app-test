@@ -2,6 +2,67 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17z — fixed-size editor controls during zoom
+
+### Teste A — tamanho dos controles
+1. Carregar imagem.
+2. Ver tamanho dos controles em 100%.
+3. Aumentar para 125%.
+4. Confirmar que bordas, pontos e handle ciano continuam visualmente do mesmo tamanho.
+5. Repetir em 150%, 175% e 200%.
+
+### Teste B — handle ciano
+1. Ativar 200%.
+2. Confirmar que o handle ciano não fica gigante.
+3. Confirmar que o ícone dentro dele não fica gigante.
+4. Usar o handle (arrastar).
+5. Confirmar que escala/rotação continuam funcionando.
+
+### Teste C — bordas dos frames
+1. Ativar 200%.
+2. Confirmar que a borda do frame não engrossa proporcionalmente.
+3. Confirmar que labels/números não crescem demais.
+4. Confirmar que o frame continua legível.
+
+### Teste D — curvas
+1. Ativar 200%.
+2. Confirmar que a curva não fica grossa demais.
+3. Confirmar que tracejado e linha ativa continuam proporcionais.
+4. Mover ponto de curva.
+5. Confirmar que acompanha o dedo corretamente.
+
+### Teste E — pan e edição
+1. Ativar zoom > 100%.
+2. Ativar mãozinha.
+3. Fazer pan.
+4. Desativar mãozinha.
+5. Mover frame.
+6. Mover ponto de curva.
+7. Confirmar que tudo funciona.
+
+### Teste F — Preview/MP4
+1. Ativar zoom 200%.
+2. Fazer pan.
+3. Rodar Preview.
+4. Confirmar que Preview está normal.
+5. Gerar MP4.
+6. Confirmar que MP4 está normal.
+
+### Teste G — regressão geral
+1. Movimento Inteligente OK.
+2. Rotação Inteligente OK.
+3. Escala Inteligente OK.
+4. Velocidade constante OK.
+5. Loop como trecho real OK.
+6. Pausa final OK.
+7. Resetar curva OK.
+8. Load de projeto antigo/misto OK.
+9. Sem tela preta.
+10. Sem botão preso.
+11. Sem NaN/Infinity no console.
+
+---
+
 ## v8z4b17y — fix editor zoom toolbar and overlay isolation
 
 ### Teste A — ícone correto
