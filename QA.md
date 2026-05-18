@@ -2,6 +2,50 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17y — fix editor zoom toolbar and overlay isolation
+
+### Teste A — ícone correto
+1. Carregar imagem.
+2. Ver controle de zoom no Stage.
+3. Confirmar que o botão Mover visão usa ícone de **mãozinha** (não ícone de 4 setas).
+
+### Teste B — controles em linha
+1. Confirmar que os controles aparecem em uma **única linha horizontal**: `[ − ] [ 125% ] [ + ] [ 🖐 ]`.
+2. Confirmar que nenhum botão quebra para uma linha abaixo.
+3. Confirmar que continuam sobre o Stage, no canto superior direito.
+
+### Teste C — avisos não dão zoom
+1. Ativar zoom 150% ou 200%.
+2. Gerar algum aviso/status/toast (ex: carregar imagem inválida, acionar ação que mostra toast).
+3. Confirmar que o aviso aparece em **tamanho normal** (não ampliado).
+4. Confirmar que o aviso não acompanha o scale do Stage.
+5. Confirmar que o aviso continua legível e posicionado corretamente.
+
+### Teste D — zoom só no conteúdo editável
+1. Ativar zoom 150%.
+2. Confirmar que imagem, frames, curvas e pontos ampliam.
+3. Confirmar que botões de zoom, status, menus e painéis **não ampliam**.
+
+### Teste E — release automático da mãozinha ao abrir menu
+1. Ativar zoom > 100%.
+2. Ativar botão mãozinha (editorPanMode = true).
+3. Abrir painel inferior (ex: Duração, Easing, Formato).
+4. Confirmar que **editorPanMode desliga** (mãozinha perde estado azul).
+5. Confirmar que o zoom e pan **permanecem preservados**.
+6. Fechar painel.
+7. Confirmar que o Stage não está mais em modo Mover visão.
+8. Repetir com Configurações (botão de engrenagem).
+
+### Teste F — regressão
+1. Mover frame com zoom ativo e mãozinha desligada. Confirmar comportamento correto.
+2. Mover ponto de curva com zoom ativo. Confirmar sem deslocamento.
+3. Ativar mãozinha e fazer pan. Confirmar que frame/ponto não movem durante pan.
+4. Preview OK.
+5. MP4 OK.
+6. Sem NaN/Infinity no console.
+
+---
+
 ## v8z4b17x — fractional editor zoom and pan mode
 
 ### Teste A — posição do controle
