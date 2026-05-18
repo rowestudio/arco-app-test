@@ -1,5 +1,27 @@
 # Changelog
 
+## v8z4b17y — fix editor zoom toolbar and overlay isolation
+
+Corrige a UX do Zoom de edição introduzido em v8z4b17x sem alterar motor, Preview, MP4 ou dados reais do projeto.
+
+### O que foi corrigido
+
+- **Ícone de mãozinha** — substituído o ícone genérico de mover/deslocar (4 setas) pelo ícone de mão (pan hand), correto para a função de mover a visão.
+- **Controles em linha** — botão Mover visão movido para dentro da `ezc-row`, formando uma única linha horizontal: `[ − ] [ 125% ] [ + ] [ 🖐 ]`. Eliminada a quebra de linha anterior.
+- **Status/toast fora do zoom** — `#statusBar` movido para fora do `#stage` (agora filho direto de `#imageArea`), garantindo que avisos, toasts e mensagens de status nunca sejam ampliados pelo `transform: scale()` do zoom de edição.
+- **Release automático do pan mode** — `editorPanMode` é desligado automaticamente ao abrir qualquer painel inferior (`openPanel()`) ou ao abrir Configurações (`toggleSettingsSheet()`). O zoom e o pan permanecam preservados; apenas o modo mover é desativado.
+
+### O que não foi alterado
+
+- Motor de Preview e export MP4/WebCodecs.
+- Dados do projeto (frames, curvas, rotações, escalas, durações, easings, loop, pausa, JSON).
+- Lógica de pan (`clampEditorPan`, `editorPanX`, `editorPanY`).
+- Níveis de zoom (ZOOM_LEVELS).
+- `screenToStageCoord()` e conversão de coordenadas.
+- Pinch zoom (não implementado neste patch).
+
+---
+
 ## v8z4b17x — fractional editor zoom and pan mode
 
 Refatora o controle de Zoom de edição do Stage: substitui o botão cíclico inferior por um **controle flutuante** no canto superior direito do Stage, adiciona níveis fracionados (100% → 300% em passos progressivos) e um botão **Mover visão** para navegação da área ampliada sem interferir em frames ou curvas.

@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17x                                     ║
+║  Versão: v8z4b17y                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17x — fractional editor zoom and pan mode: controle flutuante sobre o stage com níveis 100%–300%, botão Mover visão e conversão correta de coordenadas -->
+<!-- Arco App — v8z4b17y — fix editor zoom toolbar and overlay isolation: ícone de mãozinha, controles em linha, status/toast fora do zoom, release automático do pan mode -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -150,10 +150,9 @@ body.panel-open .stage.out-of-bounds::after{
 }
 #imgEl{display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;}
 
-/* Editor Zoom Control — v8z4b17x */
+/* Editor Zoom Control — v8z4b17y */
 #editorZoomCtrl{
   position:absolute;top:8px;right:8px;z-index:50;
-  display:flex;flex-direction:column;align-items:flex-end;gap:5px;
   pointer-events:none;
 }
 body.no-image #editorZoomCtrl,
@@ -181,18 +180,8 @@ body.recording #editorZoomCtrl{display:none;}
   cursor:pointer;-webkit-user-select:none;user-select:none;touch-action:manipulation;
 }
 #editorZoomCtrl.zoom-active .ezc-label{color:#63c8ff;}
-#editorZoomCtrl .ezc-pan-btn{
-  pointer-events:auto;
-  background:rgba(28,28,30,.85);border:1px solid rgba(255,255,255,.18);
-  border-radius:8px;color:rgba(255,255,255,.75);
-  font-size:11px;font-weight:600;
-  padding:5px 9px;cursor:pointer;
-  -webkit-user-select:none;user-select:none;touch-action:manipulation;
-  display:flex;align-items:center;gap:4px;
-}
-#editorZoomCtrl .ezc-pan-btn.active{
-  background:rgba(99,200,255,.22);border-color:rgba(99,200,255,.5);color:#63c8ff;
-}
+#editorZoomCtrl .ezc-pan-btn{color:rgba(255,255,255,.75);}
+#editorZoomCtrl .ezc-pan-btn.active{background:rgba(99,200,255,.22);color:#63c8ff;}
 #editorZoomCtrl .ezc-pan-btn svg{flex-shrink:0;}
 
 
@@ -1536,13 +1525,14 @@ body.cust-open #toolbar{
     <svg id="stageDimSvg" style="display:none;position:absolute;inset:0;width:100%;height:100%;"></svg>
     <svg id="bezierSvg" style="display:none;position:absolute;inset:0;overflow:visible;pointer-events:none;width:100%;height:100%;z-index:3;"></svg>
     <canvas id="previewCanvas"></canvas>
-    <div class="status-bar" id="statusBar"></div>
     <div class="progress-wrap" id="progressWrap"><div class="progress-fill" id="progressFill"></div></div>
     <div class="preview-timeline" id="previewTimeline">
       <div class="preview-timeline-fill" id="previewTimelineFill"></div>
     </div>
   </div>
-  <!-- Editor Zoom Control flutuante — v8z4b17x -->
+  <!-- Status toast fora do stage — não afetado pelo zoom de edição (v8z4b17y) -->
+  <div class="status-bar" id="statusBar"></div>
+  <!-- Editor Zoom Control flutuante — v8z4b17y -->
   <div id="editorZoomCtrl">
     <div class="ezc-row">
       <button class="ezc-btn" id="ezBtnMinus" title="Reduzir zoom"
@@ -1553,16 +1543,15 @@ body.cust-open #toolbar{
       <div class="ezc-sep"></div>
       <button class="ezc-btn" id="ezBtnPlus" title="Aumentar zoom"
         ontouchstart="event.stopPropagation()" onclick="zoomEditorIn();event.stopPropagation()">+</button>
+      <div class="ezc-sep" id="ezSepPan" style="display:none"></div>
+      <button class="ezc-btn ezc-pan-btn" id="ezBtnPan" style="display:none" title="Mover visão"
+        ontouchstart="event.stopPropagation()" onclick="toggleEditorPanMode();event.stopPropagation()">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 11V8a2 2 0 0 0-4 0m4 3a2 2 0 1 1 4 0v5a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8v-5a2 2 0 1 1 4 0"/>
+          <path d="M14 11V5a2 2 0 0 0-4 0v6"/>
+        </svg>
+      </button>
     </div>
-    <button class="ezc-pan-btn" id="ezBtnPan" style="display:none" title="Mover visão"
-      ontouchstart="event.stopPropagation()" onclick="toggleEditorPanMode();event.stopPropagation()">
-      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/>
-        <polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/>
-        <line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>
-      </svg>
-      Mover
-    </button>
   </div>
   <div class="upload-prompt" id="uploadPrompt">
     <div style="display:flex;gap:32px;align-items:center;justify-content:center;margin-bottom:12px;">
@@ -1862,7 +1851,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17x</span><br><span id="appVersionNameText">fractional editor zoom and pan mode</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17y</span><br><span id="appVersionNameText">fix editor zoom toolbar and overlay isolation</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4199,8 +4188,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17x';
-const APP_VERSION_NAME = 'fractional editor zoom and pan mode';
+const APP_VERSION = 'v8z4b17y';
+const APP_VERSION_NAME = 'fix editor zoom toolbar and overlay isolation';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4533,7 +4522,7 @@ let pinchStartAngle = 0;
 let pinchStartRot   = 0;
 let pinchJustEnded  = false;
 
-// Editor Zoom — v8z4b17x (não afeta animação, export, JSON)
+// Editor Zoom — v8z4b17y (não afeta animação, export, JSON)
 let editorZoomScale = 1;  // visual/editorial, não salvo no JSON
 let editorPanX = 0;
 let editorPanY = 0;
@@ -5763,7 +5752,7 @@ function updateCtrlPts() {
 }
 
 // ═══════════════════════════════════════
-// EDITOR ZOOM — v8z4b17x
+// EDITOR ZOOM — v8z4b17y
 // ═══════════════════════════════════════
 
 const ZOOM_LEVELS = [1, 1.25, 1.5, 1.75, 2, 2.5, 3];
@@ -5804,6 +5793,8 @@ function applyEditorZoom() {
   const active = editorZoomScale > 1;
   if (ctrl)   ctrl.classList.toggle('zoom-active', active);
   if (label)  label.textContent = Math.round(editorZoomScale * 100) + '%';
+  const sepPan = document.getElementById('ezSepPan');
+  if (sepPan) sepPan.style.display = active ? '' : 'none';
   if (panBtn) {
     panBtn.style.display = active ? '' : 'none';
     panBtn.classList.toggle('active', editorPanMode);
@@ -7537,7 +7528,7 @@ function resetAll() {
   syncMovementEasingModeUI(); // v8z4b17j
   syncRotationEasingModeUI(); // v8z4b17q
   syncScaleEasingModeUI(); // v8z4b17q
-  resetEditorZoom(); // v8z4b17x
+  resetEditorZoom(); // v8z4b17y
   applyTemplate('pan-lr');
   activeIdx = 0;
   normalizeProjectArrays();
@@ -8517,7 +8508,7 @@ function loadImage(file, onDoneCallback) {
         // controles locais ficam disponíveis normalmente.
         document.body.classList.remove('no-image');
         // top-bar sempre visível — sem necessidade de mostrar settingsBtn
-        resetEditorZoom(); // v8z4b17x — nova imagem reseta zoom de edição
+        resetEditorZoom(); // v8z4b17y — nova imagem reseta zoom de edição
 
         if (hasCallback) {
           layoutStage();
@@ -8619,6 +8610,7 @@ function showStatus(msg) {
 // PANELS
 // ═══════════════════════════════════════
 function openPanel(id) {
+  if (editorPanMode) { editorPanMode = false; applyEditorZoom(); }
   closeAll();
   if (id === 'Customize') {
     syncCustomizePanel();
@@ -10844,6 +10836,7 @@ function toggleSettingsSheet() {
     sheet.classList.remove('show');
     overlay.classList.remove('show', 'light');
   } else {
+    if (editorPanMode) { editorPanMode = false; applyEditorZoom(); }
     sheet.classList.add('show');
     overlay.classList.add('show', 'light');
   }
