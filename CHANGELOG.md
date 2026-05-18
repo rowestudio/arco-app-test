@@ -1,5 +1,38 @@
 # Changelog
 
+## v8z4b18c — curve access helpers without behavior change
+
+Refatoração interna: adiciona camada de helpers para acesso uniforme às curvas por trecho. Nenhuma mudança de comportamento visual, motor, Preview ou MP4.
+
+### O que foi adicionado
+
+- **`getActiveSegmentCount()`** — retorna a quantidade de trechos editáveis ativos (sem loop: `frames.length - 1`; com loop: `frames.length`). Trata `frameCount < 2` sem erro.
+- **`isLoopSegment(segIndex)`** — retorna `true` quando `segIndex` representa o trecho de retorno N→1 com loop ativo.
+- **`getSegmentEndpoints(segIndex)`** — retorna `{ from, to }` com os índices dos frames do trecho. Retorna `null` para índice inválido.
+- **`getSegmentCurve(segIndex)`** — lê o ponto de controle do trecho: usa `ctrlPts[segIndex]` para trechos normais e `loopCtrlPt` para o loop. Não altera dados.
+- **`setSegmentCurve(segIndex, curve, options)`** — grava curva no lugar correto: `ctrlPts[segIndex]` ou `loopCtrlPt`. Aceita `options.markManual` para marcar `ctrlPtManual[segIndex]` em trechos normais.
+- **`isSegmentCurveManual(segIndex)`** — retorna se a curva do trecho é manual (`ctrlPtManual[segIndex]`). Para loop, retorna `false` (sem flag manual separada no schema atual).
+- **`setSegmentCurveManual(segIndex, value)`** — marca/desmarca `ctrlPtManual[segIndex]`. Para loop, preserva comportamento atual (no-op).
+- **`resetSegmentCurve(segIndex)`** — reseta curva do trecho para o ponto médio dos frames. Usa os helpers acima internamente.
+
+### O que foi substituído (pontos seguros)
+
+- `startCtrlDrag`: `ctrlPtManual[seg] = true` → `setSegmentCurveManual(seg, true)`.
+- `updateCtrlPts`: `ctrlPts[seg]` → `getSegmentCurve(seg)` para leitura da posição do ponto de controle.
+- Drag de ponto de controle (`onPointerMove`): writes diretos em `ctrlPts[ctrlDragSeg]` e `loopCtrlPt` → `setSegmentCurve(...)`.
+- `resetSelectedSegmentCurve`: lógica de reset inline → `resetSegmentCurve(...)`.
+
+### O que não foi alterado
+
+- Schema do JSON salvo (`ctrlPts`, `ctrlPtManual`, `loopCtrlPt`).
+- Motor de animação, Preview e export MP4/WebCodecs.
+- Renderização visual das curvas e pontos de controle.
+- Edição manual de curva, Resetar curva, Loop como trecho real.
+- Pausa final, Velocidade constante, Movimento/Rotação/Escala inteligentes.
+- Undo/redo, seleção de frames/trechos, zoom contextual.
+
+---
+
 ## v8z4b18b — tune contextual zoom trigger
 
 Ajusta o gatilho do zoom contextual de edição: em vez de um limiar fixo em px, o critério agora é proporcional à área visível do Stage (30%).
