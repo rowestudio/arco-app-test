@@ -2,6 +2,138 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17q — smart rotation and scale easing
+
+### Teste A — estados padrão
+
+1. Abrir projeto novo.
+2. Abrir painel de trecho/easing.
+3. Confirmar que Movimento Inteligente continua funcionando.
+4. Abrir aba Rotação.
+5. Confirmar que existe toggle `Rotação Inteligente`.
+6. Abrir aba Escala.
+7. Confirmar que existe toggle `Escala Inteligente`.
+8. Confirmar que não existem botões duplicados Manual/Inteligente.
+
+### Teste B — Rotação Inteligente
+
+1. Criar 3 ou 4 frames.
+2. Aplicar rotações diferentes entre frames.
+3. Ativar Rotação Inteligente.
+4. Confirmar que os cards manuais de Rotação ficam apagados/inativos.
+5. Rodar Preview.
+6. Confirmar que a rotação ficou mais suave entre trechos, sem tranco.
+7. Desligar Rotação Inteligente.
+8. Confirmar que os cards voltam a funcionar.
+9. Aplicar easing manual de Rotação.
+10. Preview OK.
+
+### Teste C — Escala Inteligente
+
+1. Criar 3 ou 4 frames com escalas diferentes.
+2. Ativar Escala Inteligente.
+3. Confirmar que os cards manuais de Escala ficam apagados/inativos.
+4. Rodar Preview.
+5. Confirmar que o zoom fica mais suave entre trechos.
+6. Desligar Escala Inteligente.
+7. Confirmar que os cards voltam a funcionar.
+8. Aplicar easing manual de Escala.
+9. Preview OK.
+
+### Teste D — canais independentes
+
+1. Deixar Movimento Inteligente ligado.
+2. Deixar Rotação Inteligente desligada.
+3. Deixar Escala Inteligente ligada.
+4. Confirmar que cada canal respeita seu próprio modo.
+5. Confirmar que desligar um canal não desliga os outros.
+
+### Teste E — pausas
+
+1. Criar F1, F2, F3.
+2. Aplicar rotação e escala diferentes.
+3. Colocar pausa em F2.
+4. Ativar Rotação Inteligente e Escala Inteligente.
+5. Confirmar que a rotação desacelera até F2, para, e sai depois.
+6. Confirmar que a escala desacelera até F2, para, e sai depois.
+7. Preview OK.
+
+### Teste F — mudança de direção
+
+1. Criar escala com zoom in seguido de zoom out.
+2. Ativar Escala Inteligente.
+3. Confirmar que não há overshoot exagerado.
+4. Criar rotação em um sentido e depois no sentido oposto.
+5. Ativar Rotação Inteligente.
+6. Confirmar que não há efeito chicote exagerado.
+
+### Teste G — trechos 0.0s
+
+1. Definir um trecho com duração 0.0s.
+2. Ativar Rotação Inteligente.
+3. Ativar Escala Inteligente.
+4. Confirmar que o trecho 0.0s continua corte seco.
+5. Confirmar que não há erro, NaN ou Infinity.
+6. Preview OK.
+
+### Teste H — loop
+
+1. Criar 4 frames.
+2. Ativar Loop.
+3. Confirmar que aparece trecho 4–1.
+4. Aplicar rotação e escala diferentes entre F4 e F1.
+5. Ativar Rotação Inteligente.
+6. Ativar Escala Inteligente.
+7. Confirmar que o trecho 4–1 participa da suavização.
+8. Preview OK.
+9. MP4 OK.
+
+### Teste I — Velocidade constante + inteligentes
+
+1. Criar 4 frames com distâncias diferentes, rotações e escalas diferentes.
+2. Ativar Velocidade constante.
+3. Ativar Movimento Inteligente.
+4. Ativar Rotação Inteligente.
+5. Ativar Escala Inteligente.
+6. Confirmar que os tempos redistribuem corretamente.
+7. Confirmar que movimento, rotação e escala ficam suaves.
+8. Preview OK.
+9. MP4 OK.
+
+### Teste J — JSON
+
+1. Criar projeto com Rotação Inteligente ligada.
+2. Criar projeto com Escala Inteligente ligada.
+3. Salvar JSON.
+4. Reabrir JSON.
+5. Confirmar que os modos foram preservados.
+6. Carregar JSON antigo sem `rotationEasingMode`/`scaleEasingMode`.
+7. Confirmar que abre em `manual` para esses canais.
+8. Preview OK.
+
+### Teste K — undo/redo
+
+1. Ligar Rotação Inteligente.
+2. Desligar Rotação Inteligente.
+3. Usar undo/redo.
+4. Confirmar que o estado volta corretamente.
+5. Repetir com Escala Inteligente.
+
+### Teste L — regressão geral
+
+1. Painel Duração/Tempo continua sempre aberto.
+2. Loop como trecho real continua funcionando.
+3. Pausa final continua seguindo o último frame.
+4. Velocidade constante continua redistribuindo com loop.
+5. Movimento Inteligente continua funcionando.
+6. Preview OK.
+7. Gerar MP4 OK.
+8. Fazer pequena edição.
+9. Gerar MP4 novamente OK.
+10. Sem tela preta.
+11. Sem botão preso.
+12. Sem NaN/Infinity no console.
+
 ## v8z4b17p — finish timeline sync fixes
 
 ### Teste A — adicionar frame com Pausa final ativa

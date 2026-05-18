@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17p                                     ║
+║  Versão: v8z4b17q                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17p — finish timeline sync fixes: pausa final segue último frame, velocidade constante redistribui ao ligar/desligar loop, pausa final desliga ao zerar -->
+<!-- Arco App — v8z4b17q — smart rotation and scale easing: continuidade de velocidade angular e de escala entre trechos via Hermite, com clamps anti-overshoot, pausas e loop -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1795,7 +1795,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17p</span><br><span id="appVersionNameText">finish timeline sync fixes</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17q</span><br><span id="appVersionNameText">smart rotation and scale easing</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -2137,15 +2137,25 @@ body.cust-open #toolbar{
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
         </div>
       </div>
-      <!-- Linha de ações — aba Rotação: apenas Global — v8z4b17n -->
-      <div id="rotChannelActions" style="display:none;align-items:center;justify-content:flex-end;margin-bottom:8px;">
+      <!-- Linha de ações — aba Rotação: toggle Inteligente + Global — v8z4b17q -->
+      <div id="rotChannelActions" style="display:none;align-items:center;gap:8px;margin-bottom:8px;">
+        <label class="smart-toggle" title="Rotação Inteligente">
+          <input type="checkbox" id="rotSmartToggle" onchange="setRotationEasingModeFromToggle(this.checked)">
+          <span class="smart-toggle-track"></span>
+        </label>
+        <span style="font-size:11px;color:var(--text3);flex:1;cursor:pointer;" onclick="document.getElementById('rotSmartToggle').click();">Rotação Inteligente</span>
         <div id="easeGlobeRot" onclick="setSegEaseAll()" title="Aplicar a todos"
           style="opacity:0.6;cursor:pointer;color:var(--text3);padding:4px;">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
         </div>
       </div>
-      <!-- Linha de ações — aba Escala: apenas Global — v8z4b17n -->
-      <div id="scaleChannelActions" style="display:none;align-items:center;justify-content:flex-end;margin-bottom:8px;">
+      <!-- Linha de ações — aba Escala: toggle Inteligente + Global — v8z4b17q -->
+      <div id="scaleChannelActions" style="display:none;align-items:center;gap:8px;margin-bottom:8px;">
+        <label class="smart-toggle" title="Escala Inteligente">
+          <input type="checkbox" id="scaleSmartToggle" onchange="setScaleEasingModeFromToggle(this.checked)">
+          <span class="smart-toggle-track"></span>
+        </label>
+        <span style="font-size:11px;color:var(--text3);flex:1;cursor:pointer;" onclick="document.getElementById('scaleSmartToggle').click();">Escala Inteligente</span>
         <div id="easeGlobeScale" onclick="setSegEaseAll()" title="Aplicar a todos"
           style="opacity:0.6;cursor:pointer;color:var(--text3);padding:4px;">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
@@ -4117,8 +4127,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17p';
-const APP_VERSION_NAME = 'finish timeline sync fixes';
+const APP_VERSION = 'v8z4b17q';
+const APP_VERSION_NAME = 'smart rotation and scale easing';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4232,6 +4242,13 @@ let constantSpeedTotalDuration = null; // total desejado no modo constant-speed
 // 'smart' : continuidade de velocidade entre trechos vizinhos via Hermite.
 let movementEasingMode = 'manual';
 
+// Modo de easing dos canais Rotação e Escala — v8z4b17q
+// 'manual': usa rotEasings/scaleEasings por trecho (padrão de compat).
+// 'smart' : continuidade de velocidade angular/escala entre trechos via Hermite.
+// Carregamento de projetos antigos sem esses campos cai em 'manual'.
+let rotationEasingMode = 'manual';
+let scaleEasingMode = 'manual';
+
 // Blur gaussiano por segmento
 const segBlurSettings = [];
 const DEFAULT_SEG_BLUR = Object.freeze({
@@ -4299,6 +4316,8 @@ function captureState() {
     segmentTimingMode,
     constantSpeedTotalDuration,
     movementEasingMode,
+    rotationEasingMode,
+    scaleEasingMode,
   };
 }
 
@@ -4346,10 +4365,15 @@ function restoreState(state) {
   segmentTimingMode = state.segmentTimingMode || 'manual';
   constantSpeedTotalDuration = state.constantSpeedTotalDuration ?? null;
   movementEasingMode = (state.movementEasingMode === 'smart') ? 'smart' : 'manual';
+  // v8z4b17q — rotação e escala inteligentes participam do undo/redo.
+  rotationEasingMode = (state.rotationEasingMode === 'smart') ? 'smart' : 'manual';
+  scaleEasingMode    = (state.scaleEasingMode    === 'smart') ? 'smart' : 'manual';
   const tbTpl = document.getElementById('tbTemplate');
   if (tbTpl) tbTpl.textContent = state.templateLabel || 'Livre';
   syncTimingModeUI();
   syncMovementEasingModeUI();
+  syncRotationEasingModeUI();
+  syncScaleEasingModeUI();
 
   // Reconstruir DOM de frames e ctrl points
   document.querySelectorAll('.frame').forEach(el => el.remove());
@@ -6373,12 +6397,24 @@ function getStateAtT(t) {
   const cxStage = bz.x;
   const cyStage = bz.y;
 
-  // Escala usa easing próprio (scaleEasings), independente do easing de movimento
-  const ttScale = applyScaleEasingToT(tt, getScaleEase(seg));
+  // Escala usa easing próprio (scaleEasings), independente do easing de movimento.
+  // v8z4b17q: em modo 'smart', substitui pelo ttEased Hermite com continuidade.
+  let ttScale;
+  if (scaleEasingMode === 'smart') {
+    ttScale = computeSmartScaleT(seg, tt);
+  } else {
+    ttScale = applyScaleEasingToT(tt, getScaleEase(seg));
+  }
   const wStage = p1.w + (p2.w - p1.w) * ttScale;
   const hStage = p1.h + (p2.h - p1.h) * ttScale;
-  // Rotação usa easing próprio (rotEasings), independente do easing de movimento
-  const ttRot = applyRotEasingToT(tt, getRotEase(seg));
+  // Rotação usa easing próprio (rotEasings), independente do easing de movimento.
+  // v8z4b17q: em modo 'smart', substitui pelo ttEased Hermite com continuidade.
+  let ttRot;
+  if (rotationEasingMode === 'smart') {
+    ttRot = computeSmartRotationT(seg, tt);
+  } else {
+    ttRot = applyRotEasingToT(tt, getRotEase(seg));
+  }
   const rot = p1.rot + (p2.rot - p1.rot) * ttRot;
 
   return { cx: cxStage * scaleX, cy: cyStage * scaleY, sw: wStage * scaleX, sh: hStage * scaleY, rot };
@@ -7226,6 +7262,8 @@ function resetAll() {
   segmentTimingMode = 'manual'; // v8z4b17f
   constantSpeedTotalDuration = null; // v8z4b17f
   movementEasingMode = 'smart'; // v8z4b17k: padrão para projetos novos
+  rotationEasingMode = 'smart'; // v8z4b17q: padrão para projetos novos
+  scaleEasingMode    = 'smart'; // v8z4b17q: padrão para projetos novos
   undoStack.length = 0;
   redoStack.length = 0;
   // Resetar locks e rotações de todos os frames
@@ -7274,6 +7312,8 @@ function resetAll() {
   syncDurationUI();
   syncTimingModeUI(); // v8z4b17f
   syncMovementEasingModeUI(); // v8z4b17j
+  syncRotationEasingModeUI(); // v8z4b17q
+  syncScaleEasingModeUI(); // v8z4b17q
   applyTemplate('pan-lr');
   activeIdx = 0;
   normalizeProjectArrays();
@@ -7540,6 +7580,9 @@ function initEasePanel() {
   _syncEaseChannelUI();
   syncApplyAllChannelsButtonState();
   syncMovementEasingModeUI();
+  // v8z4b17q — também sincroniza Rotação/Escala Inteligente.
+  syncRotationEasingModeUI();
+  syncScaleEasingModeUI();
   const grid = document.getElementById('easeChipsGrid');
   if (!grid) return;
   const cur = _getActiveChannelEase(seg);
@@ -7568,40 +7611,29 @@ let segGlobalMode = false;
 
 function updateSegGlobalButton() {
   const on = !!segGlobalMode;
-  const isSmart = movementEasingMode === 'smart';
-  const isMovement = _activeEaseChannel === 'movement';
+  // v8z4b17q — cada Globe vira "implícito/travado" quando o canal correspondente
+  // está em modo Inteligente E é o canal ativo no painel (Global é contextual
+  // por aba; nunca cruza canais).
+  const movImplicit   = (movementEasingMode === 'smart') && (_activeEaseChannel === 'movement');
+  const rotImplicit   = (rotationEasingMode === 'smart') && (_activeEaseChannel === 'rotation');
+  const scaleImplicit = (scaleEasingMode    === 'smart') && (_activeEaseChannel === 'scale');
 
-  // Globe do canal Movimento: implícito/travado quando Inteligente ON
-  const globeMov = document.getElementById('easeGlobeLock');
-  if (globeMov) {
-    if (isSmart && isMovement) {
-      globeMov.classList.add('global-implicit');
-      globeMov.classList.remove('global-on');
+  function paintGlobe(el, implicit) {
+    if (!el) return;
+    if (implicit) {
+      el.classList.add('global-implicit');
+      el.classList.remove('global-on');
     } else {
-      globeMov.classList.remove('global-implicit');
-      globeMov.classList.toggle('global-on', on);
-      globeMov.style.color = on ? '#ff9500' : 'var(--text3)';
-      globeMov.style.opacity = on ? '1' : '0.6';
+      el.classList.remove('global-implicit');
+      el.classList.toggle('global-on', on);
+      el.style.color = on ? '#ff9500' : 'var(--text3)';
+      el.style.opacity = on ? '1' : '0.6';
     }
   }
 
-  // Globe do canal Rotação
-  const globeRot = document.getElementById('easeGlobeRot');
-  if (globeRot) {
-    globeRot.classList.remove('global-implicit');
-    globeRot.classList.toggle('global-on', on);
-    globeRot.style.color = on ? '#ff9500' : 'var(--text3)';
-    globeRot.style.opacity = on ? '1' : '0.6';
-  }
-
-  // Globe do canal Escala
-  const globeScale = document.getElementById('easeGlobeScale');
-  if (globeScale) {
-    globeScale.classList.remove('global-implicit');
-    globeScale.classList.toggle('global-on', on);
-    globeScale.style.color = on ? '#ff9500' : 'var(--text3)';
-    globeScale.style.opacity = on ? '1' : '0.6';
-  }
+  paintGlobe(document.getElementById('easeGlobeLock'),  movImplicit);
+  paintGlobe(document.getElementById('easeGlobeRot'),   rotImplicit);
+  paintGlobe(document.getElementById('easeGlobeScale'), scaleImplicit);
 
   // Mini-painel contextual de segmento
   const mini = document.getElementById('segEaseGlobalLockMini');
@@ -8572,9 +8604,25 @@ function setEaseChannel(ch) {
     });
   }
   syncMovementEasingModeUI();
+  syncRotationEasingModeUI();
+  syncScaleEasingModeUI();
 }
 
-// ─── Easing Inteligente de Movimento — UI (v8z4b17j) ─────────────────────────
+// ─── Easing Inteligente de Movimento / Rotação / Escala — UI ────────────────
+// (v8z4b17j: Movimento; v8z4b17q: Rotação e Escala)
+// Cada canal tem seu próprio modo ('manual' | 'smart') e seu próprio toggle.
+// Os canais são independentes: ligar/desligar um não afeta os outros.
+
+function _channelEasingMode(channel) {
+  if (channel === 'rotation') return rotationEasingMode;
+  if (channel === 'scale')    return scaleEasingMode;
+  return movementEasingMode;
+}
+
+function _activeChannelIsSmart() {
+  return _channelEasingMode(_activeEaseChannel) === 'smart';
+}
+
 // Define o modo do canal Movimento e sincroniza UI + preview.
 function setMovementEasingMode(mode) {
   const next = (mode === 'smart') ? 'smart' : 'manual';
@@ -8587,51 +8635,119 @@ function setMovementEasingMode(mode) {
   if (isPreviewing) { stopPreview(); startPreview(); }
 }
 
-// Sincroniza toda a UI de Movimento Inteligente — v8z4b17l.
-// Toggle único, ícone Global contextual por aba, chips subordinados, "Aplicar aos 3".
-// Não afeta Rotação/Escala.
+// v8z4b17q — Rotação Inteligente.
+function setRotationEasingMode(mode) {
+  const next = (mode === 'smart') ? 'smart' : 'manual';
+  if (next === rotationEasingMode) return;
+  pushUndo();
+  rotationEasingMode = next;
+  syncRotationEasingModeUI();
+  markProjectDirty('rotation-easing-mode');
+  showStatus(next === 'smart' ? 'Rotação: Inteligente' : 'Rotação: Manual');
+  if (isPreviewing) { stopPreview(); startPreview(); }
+}
+
+// v8z4b17q — Escala Inteligente.
+function setScaleEasingMode(mode) {
+  const next = (mode === 'smart') ? 'smart' : 'manual';
+  if (next === scaleEasingMode) return;
+  pushUndo();
+  scaleEasingMode = next;
+  syncScaleEasingModeUI();
+  markProjectDirty('scale-easing-mode');
+  showStatus(next === 'smart' ? 'Escala: Inteligente' : 'Escala: Manual');
+  if (isPreviewing) { stopPreview(); startPreview(); }
+}
+
+// Sincroniza a parte da UI específica do canal Movimento (toggle e linha no
+// mini-painel). Subordinação de chips/"Aplicar aos 3"/Globe é feita por
+// _syncChannelSmartSubordination (compartilhado entre os três canais).
 function syncMovementEasingModeUI() {
   const isSmart = movementEasingMode === 'smart';
   const isMovementChannel = _activeEaseChannel === 'movement';
-  const subordinate = isMovementChannel && isSmart;
 
-  // Toggle principal (painel Ease) — v8z4b17l
   const toggle = document.getElementById('movSmartToggle');
   if (toggle) toggle.checked = isSmart;
 
-  // Toggle mini-painel segEasePanel — v8z4b17l
   const segToggle = document.getElementById('segMovSmartToggle');
   if (segToggle) segToggle.checked = isSmart;
 
-  // Linha de toggle no segEasePanel só aparece quando Movimento ativo
+  // Linha de toggle no segEasePanel só aparece quando Movimento ativo.
   const segModeRow = document.getElementById('segMovEasingModeRow');
   if (segModeRow) segModeRow.style.display = isMovementChannel ? 'flex' : 'none';
 
-  // Globe icons — estado contextual via updateSegGlobalButton
-  updateSegGlobalButton();
+  _syncChannelSmartSubordination();
+}
 
-  // Subordina chips de easing manual SOMENTE quando Movimento + Inteligente
+// v8z4b17q — versão para Rotação.
+function syncRotationEasingModeUI() {
+  const isSmart = rotationEasingMode === 'smart';
+  const isRotChannel = _activeEaseChannel === 'rotation';
+
+  const toggle = document.getElementById('rotSmartToggle');
+  if (toggle) toggle.checked = isSmart;
+
+  const segToggle = document.getElementById('segRotSmartToggle');
+  if (segToggle) segToggle.checked = isSmart;
+
+  const segModeRow = document.getElementById('segRotEasingModeRow');
+  if (segModeRow) segModeRow.style.display = isRotChannel ? 'flex' : 'none';
+
+  _syncChannelSmartSubordination();
+}
+
+// v8z4b17q — versão para Escala.
+function syncScaleEasingModeUI() {
+  const isSmart = scaleEasingMode === 'smart';
+  const isScaleChannel = _activeEaseChannel === 'scale';
+
+  const toggle = document.getElementById('scaleSmartToggle');
+  if (toggle) toggle.checked = isSmart;
+
+  const segToggle = document.getElementById('segScaleSmartToggle');
+  if (segToggle) segToggle.checked = isSmart;
+
+  const segModeRow = document.getElementById('segScaleEasingModeRow');
+  if (segModeRow) segModeRow.style.display = isScaleChannel ? 'flex' : 'none';
+
+  _syncChannelSmartSubordination();
+}
+
+// Subordina chips manuais + esconde "Aplicar aos 3" quando o canal ativo está
+// em modo Inteligente. Cada canal é independente: o subordinate reflete só o
+// modo do canal corrente. v8z4b17q.
+function _syncChannelSmartSubordination() {
+  const subordinate = _activeChannelIsSmart();
+
   const grid = document.getElementById('easeChipsGrid');
   if (grid) {
-    grid.style.opacity      = subordinate ? '0.4' : '';
+    grid.style.opacity       = subordinate ? '0.4' : '';
     grid.style.pointerEvents = subordinate ? 'none' : '';
   }
   const segOptions = document.getElementById('segEaseOptions');
   if (segOptions) {
-    segOptions.style.opacity      = subordinate ? '0.4' : '';
+    segOptions.style.opacity       = subordinate ? '0.4' : '';
     segOptions.style.pointerEvents = subordinate ? 'none' : '';
   }
 
-  // "Aplicar aos 3" oculto quando Inteligente — ação pontual, não modo persistente
   const applyWrap = document.getElementById('applyAllChannelsWrap');
-  if (applyWrap) applyWrap.style.display = isSmart ? 'none' : '';
+  if (applyWrap) applyWrap.style.display = subordinate ? 'none' : '';
   const segApplyWrap = document.getElementById('segApplyAllWrap');
-  if (segApplyWrap) segApplyWrap.style.display = isSmart ? 'none' : '';
+  if (segApplyWrap) segApplyWrap.style.display = subordinate ? 'none' : '';
+
+  // Globe icons — estado contextual por canal.
+  updateSegGlobalButton();
 }
 
-// Toggle handler — converte checked → modo — v8z4b17l
+// Toggle handlers — convertem checked → modo. v8z4b17l (Movimento), v8z4b17q (Rotação/Escala).
 function setMovementEasingModeFromToggle(checked) {
   setMovementEasingMode(checked ? 'smart' : 'manual');
+}
+function setRotationEasingModeFromToggle(checked) {
+  setRotationEasingMode(checked ? 'smart' : 'manual');
+}
+function setScaleEasingModeFromToggle(checked) {
+  setScaleEasingMode(checked ? 'smart' : 'manual');
 }
 
 function setEasePanelChannel(ch) {
@@ -8639,6 +8755,8 @@ function setEasePanelChannel(ch) {
   _syncEaseChannelUI();
   initEasePanel();
   syncMovementEasingModeUI();
+  syncRotationEasingModeUI();
+  syncScaleEasingModeUI();
 }
 
 function openSegEasePanel(seg, x, y) {
@@ -8649,6 +8767,8 @@ function openSegEasePanel(seg, x, y) {
   if (title) title.textContent = `Segmento ${seg + 1} - ${seg + 2}`;
   _syncEaseChannelUI();
   syncMovementEasingModeUI();
+  syncRotationEasingModeUI();
+  syncScaleEasingModeUI();
   const cur = _getActiveChannelEase(seg);
   document.querySelectorAll('.seg-ease-chip').forEach(c => {
     const active = c.dataset.ease === cur;
@@ -9556,6 +9676,194 @@ function computeSmartMovementProgress(seg, tt) {
   return progress;
 }
 
+// ─── Easing Inteligente de Rotação e Escala — v8z4b17q ───────────────────────
+//
+// Mesma ideia do Movimento Inteligente, mas aplicada aos valores escalares de
+// rotação (graus) e escala (largura do frame em px do stage). Para cada trecho
+// ativo calcula-se velocidade média (delta / duração) e em cada frame
+// intermediário casa-se a velocidade vinda do trecho anterior com a do trecho
+// seguinte usando Hermite cúbico. Resultado: continuidade visual sem trancos.
+//
+// Regras-chave:
+//  • pausa no frame  → velocidade no frame = 0 (desacelera; sai do zero)
+//  • trecho 0.0s     → corte seco (fallback linear, sem smart)
+//  • mudança de sinal entre vizinhos → tangente zero (anti-overshoot/chicote)
+//  • clamp Fritsch–Carlson (α,β ∈ [0,3], α²+β² ≤ 9) → mantém monotonicidade
+//  • loop ativo → trecho de fechamento N→1 participa da continuidade
+//  • delta ≈ 0  → fallback linear (não há variação para suavizar)
+//
+// O resultado é um ttEased ∈ [0,1] que substitui o ttRot/ttScale lineares,
+// preservando exatamente os valores nos extremos de cada trecho.
+
+// Δ rotação (graus) do trecho. Usa exatamente a mesma lógica linear já
+// validada pelo motor (frameRotations[seg+1] - frameRotations[seg]), inclusive
+// para o trecho de fechamento N→1 quando Loop ativo.
+function _smartSegmentRotDelta(segIdx) {
+  const normalSegs = frameCount - 1;
+  if (loopEnabled && segIdx === normalSegs) {
+    return (frameRotations[0] || 0) - (frameRotations[normalSegs] || 0);
+  }
+  if (segIdx < 0 || segIdx >= normalSegs) return 0;
+  return (frameRotations[segIdx + 1] || 0) - (frameRotations[segIdx] || 0);
+}
+
+// Δ escala (largura do frame em px do stage). p1.w + (p2.w-p1.w)*ttScale é a
+// fórmula já usada em getStateAtT; tomar a delta em w fornece a velocidade de
+// escala correta no mesmo espaço linear que o motor já interpola.
+function _smartSegmentScaleDelta(segIdx) {
+  const normalSegs = frameCount - 1;
+  if (loopEnabled && segIdx === normalSegs) {
+    const f1 = frames[normalSegs], f2 = frames[0];
+    if (!f1 || !f2) return 0;
+    return (f2.w || 0) - (f1.w || 0);
+  }
+  if (segIdx < 0 || segIdx >= normalSegs) return 0;
+  const f1 = frames[segIdx], f2 = frames[segIdx + 1];
+  if (!f1 || !f2) return 0;
+  return (f2.w || 0) - (f1.w || 0);
+}
+
+function _smartSegmentDuration(segIdx) {
+  const normalSegs = frameCount - 1;
+  if (loopEnabled && segIdx === normalSegs) {
+    return Number.isFinite(loopDuration) && loopDuration > 0 ? loopDuration : null;
+  }
+  if (segIdx < 0 || segIdx >= normalSegs) return null;
+  const d = segDurations[segIdx];
+  return (Number.isFinite(d) && d > 0) ? d : null;
+}
+
+// Velocidade média (signed) de rotação para um trecho. Retorna null para
+// trechos inexistentes ou de duração 0 (corte seco).
+function _smartSegmentRotVAvg(segIdx) {
+  const dur = _smartSegmentDuration(segIdx);
+  if (dur == null) return null;
+  const delta = _smartSegmentRotDelta(segIdx);
+  if (!Number.isFinite(delta)) return null;
+  return delta / dur;
+}
+
+// Velocidade média (signed) de escala (px/s) para um trecho.
+function _smartSegmentScaleVAvg(segIdx) {
+  const dur = _smartSegmentDuration(segIdx);
+  if (dur == null) return null;
+  const delta = _smartSegmentScaleDelta(segIdx);
+  if (!Number.isFinite(delta)) return null;
+  return delta / dur;
+}
+
+// Constrói a velocidade no frame `frameIdx` a partir dos vizinhos. `getVAvg`
+// é a função de média (rot ou escala) e `vAvgOwner` é fallback. Pausa zera.
+// Mudança de sinal entre vPrev e vNext → 0 (anti-overshoot/chicote).
+function _smartFrameScalarVelocity(frameIdx, segIdxOwner, vAvgOwner, getVAvg) {
+  if (_smartFramePauseAt(frameIdx) > 0) return 0;
+  const normalSegs = frameCount - 1;
+  const prevSeg = frameIdx - 1;
+  const nextSeg = frameIdx;
+
+  const vLoop = (loopEnabled && Number.isFinite(loopDuration) && loopDuration > 0)
+    ? getVAvg(normalSegs) : null;
+
+  const vPrev = (prevSeg >= 0) ? getVAvg(prevSeg) : (loopEnabled ? vLoop : null);
+  const vNext = (nextSeg < normalSegs) ? getVAvg(nextSeg) : (loopEnabled ? vLoop : null);
+
+  if (vPrev != null && vNext != null) {
+    // Mudança de sinal entre trechos: zerar para evitar overshoot/chicote.
+    if (vPrev !== 0 && vNext !== 0 && Math.sign(vPrev) !== Math.sign(vNext)) return 0;
+    return 0.5 * (vPrev + vNext);
+  }
+  if (vPrev != null) return vPrev;
+  if (vNext != null) return vNext;
+  return Number.isFinite(vAvgOwner) ? vAvgOwner : 0;
+}
+
+// Núcleo Hermite cúbico para um trecho escalar. Recebe delta (p2-p1), dur,
+// vStart e vEnd (signed) e devolve ttEased ∈ [0,1] tal que
+//   valor(ttEased) = p1 + delta * ttEased
+// Mantém os valores p1 e p2 exatamente nos extremos do trecho.
+function _smartScalarHermiteT(tt, dur, delta, vStart, vEnd) {
+  if (!Number.isFinite(delta) || Math.abs(delta) < 1e-9) return tt; // sem variação
+  if (!Number.isFinite(dur) || dur <= 0) return tt;
+  const vAvg = delta / dur;
+  if (!Number.isFinite(vAvg) || vAvg === 0) return tt;
+
+  // Saneamento.
+  let s = Number.isFinite(vStart) ? vStart : 0;
+  let e = Number.isFinite(vEnd)   ? vEnd   : 0;
+
+  // Razão (signed) sobre vAvg — Fritsch-Carlson para monotonicidade.
+  let alpha = s / vAvg;
+  let beta  = e / vAvg;
+  if (!Number.isFinite(alpha)) alpha = 0;
+  if (!Number.isFinite(beta))  beta  = 0;
+  // Sentido oposto ao da curva → tangente zero (não permite "voltar").
+  if (alpha < 0) alpha = 0;
+  if (beta  < 0) beta  = 0;
+  // Limite superior por canal.
+  if (alpha > 3) alpha = 3;
+  if (beta  > 3) beta  = 3;
+  // Limite global Fritsch-Carlson.
+  const mag = alpha * alpha + beta * beta;
+  if (mag > 9) {
+    const k = 3 / Math.sqrt(mag);
+    alpha *= k;
+    beta  *= k;
+  }
+  s = alpha * vAvg;
+  e = beta  * vAvg;
+
+  const tau  = Math.max(0, Math.min(1, tt));
+  const tau2 = tau * tau;
+  const tau3 = tau2 * tau;
+  const h10  = tau3 - 2 * tau2 + tau;
+  const h01  = -2 * tau3 + 3 * tau2;
+  const h11  = tau3 - tau2;
+  // p(τ) = h00*0 + h10*Δt*m0 + h01*delta + h11*Δt*m1
+  const p = h10 * s * dur + h01 * delta + h11 * e * dur;
+
+  let progress = p / delta;
+  if (!Number.isFinite(progress)) return tt;
+  if (progress < 0) progress = 0;
+  if (progress > 1) progress = 1;
+  return progress;
+}
+
+// ttEased para o trecho `seg` (substitui o ttRot linear/manual).
+function computeSmartRotationT(seg, tt) {
+  const segs = frameCount - 1;
+  const isLoop = loopEnabled && seg === segs;
+  if (!isLoop && (seg < 0 || seg >= segs)) return tt;
+  const dur = _smartSegmentDuration(seg);
+  if (dur == null) return tt; // corte seco
+  const delta = _smartSegmentRotDelta(seg);
+  if (!Number.isFinite(delta) || Math.abs(delta) < 1e-9) return tt;
+
+  const startFrameIdx = isLoop ? segs : seg;
+  const endFrameIdx   = isLoop ? 0    : (seg + 1);
+  const vAvg = delta / dur;
+  const vStart = _smartFrameScalarVelocity(startFrameIdx, seg, vAvg, _smartSegmentRotVAvg);
+  const vEnd   = _smartFrameScalarVelocity(endFrameIdx,   seg, vAvg, _smartSegmentRotVAvg);
+  return _smartScalarHermiteT(tt, dur, delta, vStart, vEnd);
+}
+
+// ttEased para o trecho `seg` (substitui o ttScale linear/manual).
+function computeSmartScaleT(seg, tt) {
+  const segs = frameCount - 1;
+  const isLoop = loopEnabled && seg === segs;
+  if (!isLoop && (seg < 0 || seg >= segs)) return tt;
+  const dur = _smartSegmentDuration(seg);
+  if (dur == null) return tt; // corte seco
+  const delta = _smartSegmentScaleDelta(seg);
+  if (!Number.isFinite(delta) || Math.abs(delta) < 1e-9) return tt;
+
+  const startFrameIdx = isLoop ? segs : seg;
+  const endFrameIdx   = isLoop ? 0    : (seg + 1);
+  const vAvg = delta / dur;
+  const vStart = _smartFrameScalarVelocity(startFrameIdx, seg, vAvg, _smartSegmentScaleVAvg);
+  const vEnd   = _smartFrameScalarVelocity(endFrameIdx,   seg, vAvg, _smartSegmentScaleVAvg);
+  return _smartScalarHermiteT(tt, dur, delta, vStart, vEnd);
+}
+
 // Define o modo de distribuição de tempo e sincroniza a UI.
 function setSegmentTimingMode(mode) {
   if (mode === segmentTimingMode) return;
@@ -9849,6 +10157,9 @@ function buildProjectData() {
     constantSpeedTotalDuration,
     // v8z4b17j: modo de easing do canal Movimento (experimental).
     movementEasingMode,
+    // v8z4b17q: modos de easing inteligente dos canais Rotação e Escala.
+    rotationEasingMode,
+    scaleEasingMode,
     // v8z4b17o: finishMode, finishDuration e loopCtrlPt persistidos explicitamente.
     finishMode,
     finishDuration,
@@ -10095,6 +10406,12 @@ function applyFrameData(data) {
   // v8z4b17j: restaura modo de easing do canal Movimento; projetos antigos recebem 'manual'.
   movementEasingMode = (data.movementEasingMode === 'smart') ? 'smart' : 'manual';
   syncMovementEasingModeUI();
+  // v8z4b17q: restaura modos de Rotação Inteligente e Escala Inteligente.
+  // Projetos antigos sem os campos: 'manual' (preserva o easing manual salvo).
+  rotationEasingMode = (data.rotationEasingMode === 'smart') ? 'smart' : 'manual';
+  scaleEasingMode    = (data.scaleEasingMode    === 'smart') ? 'smart' : 'manual';
+  syncRotationEasingModeUI();
+  syncScaleEasingModeUI();
 
   for (let i = 0; i < frameCount; i++) createFrameDOM(i);
   for (let i = 0; i < frameCount - 1; i++) createCtrlDOM(i);
@@ -10956,6 +11273,22 @@ syncRatioUI();
       <span class="smart-toggle-track"></span>
     </label>
     <span style="font-size:10px;color:var(--text3);flex:1;cursor:pointer;" onclick="document.getElementById('segMovSmartToggle').click();">Movimento Inteligente</span>
+  </div>
+  <!-- Modo Inteligente do canal Rotação — v8z4b17q: toggle único -->
+  <div id="segRotEasingModeRow" style="display:none;align-items:center;gap:8px;margin-bottom:8px;">
+    <label class="smart-toggle" title="Rotação Inteligente" style="transform:scale(0.9);transform-origin:left center;">
+      <input type="checkbox" id="segRotSmartToggle" onchange="setRotationEasingModeFromToggle(this.checked)">
+      <span class="smart-toggle-track"></span>
+    </label>
+    <span style="font-size:10px;color:var(--text3);flex:1;cursor:pointer;" onclick="document.getElementById('segRotSmartToggle').click();">Rotação Inteligente</span>
+  </div>
+  <!-- Modo Inteligente do canal Escala — v8z4b17q: toggle único -->
+  <div id="segScaleEasingModeRow" style="display:none;align-items:center;gap:8px;margin-bottom:8px;">
+    <label class="smart-toggle" title="Escala Inteligente" style="transform:scale(0.9);transform-origin:left center;">
+      <input type="checkbox" id="segScaleSmartToggle" onchange="setScaleEasingModeFromToggle(this.checked)">
+      <span class="smart-toggle-track"></span>
+    </label>
+    <span style="font-size:10px;color:var(--text3);flex:1;cursor:pointer;" onclick="document.getElementById('segScaleSmartToggle').click();">Escala Inteligente</span>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="segEaseOptions">
     <div class="seg-ease-chip" data-ease="linear" onclick="setSegEase('linear')"
