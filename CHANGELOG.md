@@ -1,5 +1,32 @@
 # Changelog
 
+## v8z4b17r — fix project load segment list normalization
+
+Corrige bug crítico no carregamento de projetos em que a seção Trechos do painel Duração/Tempo ficava sempre vazia após carregar qualquer projeto salvo.
+
+### Root cause
+
+Em `applyFrameData()`, o fim da função chamava `closeSegBreakdown()`, que escondia `#segBreakdown` sem reconstruir as linhas de trecho. Antes disso, `syncDurationUI()` → `syncSegRowsFromState()` tentava atualizar as linhas, mas `#segRows` estava vazio porque `openSegBreakdown()` nunca havia sido chamado após o load.
+
+### O que foi corrigido
+
+- **`applyFrameData`** — Removida a chamada `closeSegBreakdown()` do fim do fluxo de load. Substituída por `syncDurationSectionsUI()`, que chama `openSegBreakdown()` (reconstrói as linhas de trecho com o `frameCount` real), `renderFramePauseRows()` (reconstrói as linhas de pausa) e `syncDurationControlsFromState()`.
+- **`segEasings` após load** — Adicionada limpeza e renormalização de `segEasings` durante o load. O array não é persistido em projetos salvos e poderia herdar valores de um projeto anterior com frameCount diferente.
+- **`ensureSegDurations` após load** — Chamada explícita após restaurar `segDurations` do JSON, garantindo que valores ausentes ou NaN recebam defaults seguros antes de qualquer render.
+
+### Regra garantida
+
+Com N frames carregados:
+- Sem loop: N−1 trechos visíveis na seção Trechos.
+- Com loop: N trechos visíveis (inclui trecho N→1).
+- Pausas por frame: F1 até FN visíveis.
+
+### O que não foi alterado
+
+Motor de Movimento Inteligente, Rotação Inteligente, Escala Inteligente, Velocidade constante, Loop como trecho real N→1, Pausa final, painel visual de trecho/easing, design system, cards de easing, Preview, export MP4/WebCodecs, stage, curvas, sistema vetorial, menu inferior, safe area, nova timeline.
+
+---
+
 ## v8z4b17q — smart rotation and scale easing
 
 Estende o Easing Inteligente já validado para Movimento aos canais Rotação e Escala, com continuidade de velocidade angular/escala entre trechos via Hermite cúbico. Cada canal tem seu próprio modo (`manual` | `smart`) e seu próprio toggle, totalmente independentes entre si.
