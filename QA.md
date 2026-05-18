@@ -2,6 +2,66 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17s — legacy project migration cleanup
+
+### Teste A — arquivo antigo/misto (arco_projeto- pausas_img.json)
+1. Carregar o arquivo `arco_projeto- pausas_img.json`.
+2. Confirmar que os 8 frames carregam corretamente.
+3. Abrir painel Duração/Tempo → Pausas. Confirmar que framePauses aparecem todos 0.
+4. Confirmar que não há pausa por frame invisível (Preview não pausa entre frames).
+5. Confirmar que Pausa final está desligada (finishMode ≠ 'pause').
+6. Confirmar que Loop está ligado (finishMode = 'loop' → trecho 8→1 visível).
+7. Confirmar que o trecho 8–1 aparece como trecho real de loop na lista de Trechos.
+8. Confirmar que finishDuration 0.8 não aparece como pausa final.
+9. Preview: movimento fluido sem pausas ou easing invisível.
+
+### Teste B — easeMode/easeAmount não comandam invisivelmente
+1. No mesmo arquivo (easeMode: "global", easeAmount: 1, movementEasingMode: "manual").
+2. Confirmar que o painel mostra Modo Manual para Movimento.
+3. Preview: sem easing invisível (movimento deve ser linear/constante, não ease-in-out).
+4. Confirmar que a UI mostra o mesmo modo que o motor usa.
+5. Se não houver segEasings salvos, comportamento deve ser linear/constante.
+
+### Teste C — salvar/reabrir
+1. Carregar o arquivo antigo/misto.
+2. Salvar novamente como JSON.
+3. Reabrir o JSON novo.
+4. Confirmar que não volta a aparecer easing invisível.
+5. Confirmar que não aparece pausa invisível.
+6. Confirmar que loop continua coerente (8–1 visível).
+
+### Teste D — JSON antigo sem movementEasingMode
+1. Carregar um JSON antigo que tenha easeMode/easeAmount mas não tenha movementEasingMode.
+2. Confirmar que o app define movementEasingMode = 'manual' automaticamente.
+3. Confirmar que easeAmount não cria easing invisível.
+4. Confirmar que a UI mostra o modo correto.
+
+### Teste E — JSON com easeMode 'pause' e framePauses zerados
+1. Carregar JSON com easeMode: "pause" e framePauses presentes (todos zero).
+2. Confirmar que pauseDuration é neutralizado.
+3. Confirmar que não há pausa inter-segmento invisível no Preview.
+
+### Teste F — finishMode versus loopEnabled
+1. Carregar arquivo com finishMode: "loop" e loopEnabled: true. Confirmar que loop ativo.
+2. Se disponível: carregar arquivo com finishMode: "pause" e loopEnabled: true.
+3. Confirmar que finishMode: "pause" manda e loop fica desligado.
+4. Confirmar que loopEnabled legacy não sobrescreve finishMode atual.
+
+### Teste G — regressão de projetos novos
+1. Criar projeto novo. Confirmar modos atuais funcionam.
+2. Confirmar Movimento Inteligente, Rotação Inteligente e Escala Inteligente OK.
+3. Confirmar Loop como trecho N→1 OK.
+4. Confirmar Pausa final espelhando o último frame OK.
+5. Preview OK. MP4 OK.
+
+### Teste H — regressão geral
+1. Carregar projeto com 6 frames. Confirmar Trechos corretos.
+2. Carregar projeto com 30 frames. Confirmar Trechos corretos.
+3. Ativar Velocidade constante. Ativar Loop. Confirmar redistribuição.
+4. Preview OK. Gerar MP4 OK. Sem NaN/Infinity no console.
+
+---
+
 ## v8z4b17r — fix project load segment list normalization
 
 ### Teste A — projeto com 2 frames

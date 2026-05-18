@@ -4127,8 +4127,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17r';
-const APP_VERSION_NAME = 'fix project load segment list normalization';
+const APP_VERSION = 'v8z4b17s';
+const APP_VERSION_NAME = 'legacy project migration cleanup';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -10312,7 +10312,95 @@ function applyProjectData(data) {
   applyFrameData(data);
 }
 
+// ─── Legacy Project Migration — v8z4b17s ──────────────────────────────────────
+// Runs at the start of applyFrameData to neutralize legacy fields that could
+// influence the engine invisibly alongside the current schema fields.
+// Fields easeMode/easeAmount/pauseDuration/loopEnabled/loopDuration may exist in
+// old JSON but must not drive Preview, MP4, pauses, easing, loop or total
+// duration after migration. Only the current schema fields command the motor.
+function migrateLegacyProjectData(raw) {
+  const d = Object.assign({}, raw); // shallow copy — only scalar fields mutated
+
+  // ── 1. Movement easing ───────────────────────────────────────────────────────
+  // If movementEasingMode is present, it is the authority over easeMode/easeAmount.
+  // easeAmount feeds applyEaseAtEnds() unconditionally in getStateAtT; a non-zero
+  // value creates invisible ease-in-out that the UI does not reflect.
+  if (d.movementEasingMode !== undefined && d.movementEasingMode !== null) {
+    // Current schema present: neutralize legacy easing fields.
+    d.easeAmount = 0;
+    if (d.easeMode !== 'pause') d.easeMode = 'global';
+  } else {
+    // Old project without movementEasingMode: migrate to manual with zero easeAmount.
+    d.movementEasingMode = 'manual';
+    d.easeAmount = 0;
+    if (d.easeMode !== 'pause') d.easeMode = 'global';
+  }
+
+  // ── 2. Frame pauses ──────────────────────────────────────────────────────────
+  // framePauses is the current source of truth for per-frame pauses.
+  // pauseDuration feeds getDurationParts() and getSegAndLocalTAtTime() when
+  // easeMode === 'pause', creating invisible inter-segment pauses.
+  const hasFramePauses = Array.isArray(d.framePauses) && d.framePauses.length > 0;
+  if (hasFramePauses) {
+    // Modern schema present: neutralize legacy pause fields.
+    d.pauseDuration = 0;
+    if (d.easeMode === 'pause') d.easeMode = 'global';
+  } else {
+    // No framePauses: create zeros. Migrating easeMode:'pause'/pauseDuration to
+    // per-frame is lossy (unknown target frame), so we zero it out instead.
+    const fc = d.frameCount || 2;
+    d.framePauses = [];
+    for (let i = 0; i < fc; i++) d.framePauses.push({ duration: 0 });
+    if (d.easeMode === 'pause') d.easeMode = 'global';
+    d.pauseDuration = 0;
+  }
+
+  // ── 3. Loop / finishMode ─────────────────────────────────────────────────────
+  // finishMode is the current authority. loopEnabled must stay in sync with it.
+  // If only legacy loopEnabled exists (no finishMode), migrate it to finishMode.
+  const hasFinishMode = d.finishMode !== undefined &&
+                        d.finishMode !== null &&
+                        d.finishMode !== '';
+  if (hasFinishMode) {
+    // finishMode present: it commands; align loopEnabled to match.
+    if (d.finishMode === 'loop') {
+      d.loopEnabled = true;
+      if (!d.loopDuration || d.loopDuration <= 0) d.loopDuration = 1.0;
+    } else {
+      d.loopEnabled = false;
+    }
+  } else {
+    // No finishMode: migrate from legacy loopEnabled.
+    if (d.loopEnabled) {
+      d.finishMode = 'loop';
+      if (!d.loopDuration || d.loopDuration <= 0) d.loopDuration = 1.0;
+    } else {
+      d.finishMode = 'none';
+      d.loopEnabled = false;
+    }
+  }
+
+  if (window._arcoDebug) {
+    const changed = (raw.easeAmount !== d.easeAmount) ||
+                    (raw.easeMode !== d.easeMode) ||
+                    (raw.pauseDuration !== d.pauseDuration) ||
+                    (raw.loopEnabled !== d.loopEnabled) ||
+                    (raw.finishMode !== d.finishMode);
+    if (changed) console.info('[Arco] migrateLegacyProjectData applied', {
+      easeMode: (raw.easeMode || 'missing') + ' → ' + d.easeMode,
+      easeAmount: raw.easeAmount + ' → ' + d.easeAmount,
+      movementEasingMode: (raw.movementEasingMode || 'missing') + ' → ' + d.movementEasingMode,
+      pauseDuration: raw.pauseDuration + ' → ' + d.pauseDuration,
+      loopEnabled: raw.loopEnabled + ' → ' + d.loopEnabled,
+      finishMode: (raw.finishMode || 'missing') + ' → ' + d.finishMode
+    });
+  }
+
+  return d;
+}
+
 function applyFrameData(data) {
+  data = migrateLegacyProjectData(data);
   // Não dispara pushUndo — carregar projeto não deve sujar a pilha de undo
   undoStack.length = 0;
   redoStack.length = 0;
