@@ -1,5 +1,32 @@
 # Changelog
 
+## v8z4b18a — contextual editor zoom visibility
+
+Torna a barra de zoom do editor contextual: oculta quando não necessária no modo normal e sempre visível no modo Curvas (painel Easing).
+
+### O que foi adicionado / alterado
+
+- **Visibilidade contextual da barra de zoom** — a barra `#editorZoomCtrl` agora aparece apenas quando faz sentido, evitando poluição visual.
+- **Constante `EDITOR_ZOOM_AUTO_SHOW_MIN_PX = 160`** — limiar em px abaixo do qual o frame ativo é considerado "pequeno demais" e dispara a exibição automática do zoom.
+- **Helper `shouldShowEditorZoom()`** — avalia três condições: modo Curvas ativo, zoom acima de 100%, ou frame ativo menor que 160 px em algum eixo.
+- **Helper `syncEditorZoomCtrlVisibility()`** — aplica a visibilidade no elemento `#editorZoomCtrl` via `style.display`.
+- **Modo Curvas** — identificado como painel Easing aberto (`panelEase.classList.contains('show')`). Quando Easing está aberto, zoom fica sempre visível independente do tamanho do frame.
+- **Hooks de sincronização** — `syncEditorZoomCtrlVisibility()` chamado em `applyEditorZoom()`, `renderAll()`, `openPanel()` e `closeAll()` para manter o estado correto em qualquer mudança de contexto.
+- **Estado inicial oculto** — `#editorZoomCtrl` começa com `display:none` inline; a barra só aparece quando `shouldShowEditorZoom()` retorna true.
+
+### O que não foi alterado
+
+- Motor de animação, Preview e export MP4/WebCodecs.
+- Dados do projeto (frames, curvas, rotações, escalas, durações, easings, loop, pausa, JSON).
+- Coordenadas reais dos frames e pontos de controle.
+- `screenToStageCoord()` e conversão de coordenadas.
+- Pan mode, níveis de zoom, clamp de pan.
+- Pinch zoom (não implementado).
+- Controles de edição com tamanho fixo de tela (--ez-inv).
+- Posição da barra (flutuante no canto superior direito do Stage).
+
+---
+
 ## v8z4b17z — fixed-size editor controls during zoom
 
 Corrige o tamanho visual dos controles de edição durante o Zoom de edição. Bordas dos frames, labels, pontos de controle Bézier, handle ciano de escala/rotação e curvas agora mantêm tamanho visual constante independente do nível de zoom.
