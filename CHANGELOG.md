@@ -1,5 +1,52 @@
 # Changelog
 
+## v8z4b17s — legacy project migration cleanup
+
+Saneamento e migração de JSON antigo/misto: impede que campos legacy como `easeMode`, `easeAmount`, `pauseDuration`, `loopEnabled`, `loopDuration` e `finishDuration` continuem influenciando o motor de forma invisível após o load de qualquer projeto.
+
+### Root cause
+
+Em `applyFrameData`, campos legacy eram lidos diretamente para o estado do app sem verificar se campos do schema atual já estavam presentes no JSON. O principal caso problemático: `easeAmount: 1` em um JSON com `movementEasingMode: "manual"` fazia `applyEaseAtEnds()` criar suavização ease-in-out invisível em todos os trechos, pois essa função é chamada incondicionalmente em `getStateAtT`. A UI mostrava "Manual/Linear" mas o motor aplicava easing.
+
+### O que foi adicionado
+
+- **`migrateLegacyProjectData(raw)`** — nova função central executada no início de `applyFrameData`. Retorna cópia do objeto de dados com campos legacy neutralizados/migrados antes de qualquer atribuição ao estado do app. Garante que depois do load apenas o schema atual comanda o motor.
+
+### Regras implementadas
+
+**Easing legacy:**
+- Se `movementEasingMode` existe no JSON: `easeAmount` é zerado; `easeMode` é revertido para `'global'`. Sem suavização invisível vinda de `easeAmount`.
+- Se `movementEasingMode` não existe (projeto muito antigo): define `movementEasingMode = 'manual'` e `easeAmount = 0`. Sem estado legado paralelo.
+
+**Pausas legacy:**
+- Se `framePauses` existe e tem entradas: `pauseDuration` é zerado; `easeMode = 'pause'` é neutralizado. `framePauses` é a fonte de verdade.
+- Se `framePauses` não existe: cria array de zeros; neutraliza `pauseDuration` e `easeMode = 'pause'`. Migração de `pauseDuration` para frame específico seria lossy — preferimos zeros seguros.
+
+**Loop / finishMode:**
+- Se `finishMode` existe: é a autoridade. `loopEnabled` é alinhado a ele (`'loop'` → `true`, outros → `false`). `finishDuration` não cria pausa final quando `finishMode = 'loop'`.
+- Se `finishMode` não existe: migrado de `loopEnabled` legacy: `true` → `finishMode = 'loop'`; `false` → `finishMode = 'none'`.
+
+### Caso testado: `arco_projeto- pausas_img.json`
+
+JSON com `easeMode: "global"`, `easeAmount: 1`, `movementEasingMode: "manual"`, `framePauses` zerados, `finishMode: "loop"`, `loopEnabled: true`, `loopDuration: 1`.
+
+Comportamento esperado após patch:
+- `easeAmount` zerado → sem suavização invisível.
+- `framePauses` zerados respeitados → sem pausas por frame.
+- `finishMode: "loop"` manda → `loopEnabled = true`, trecho 8→1 ativo.
+- `finishDuration: 0.8` não vira pausa final.
+- Preview sem easing ou pausa invisível.
+
+### Diagnóstico opcional
+
+`window._arcoDebug = true` no console ativa log `[Arco] migrateLegacyProjectData applied` mostrando os campos que foram alterados. Silencioso em produção.
+
+### O que não foi alterado
+
+Motor de Movimento Inteligente, Rotação Inteligente, Escala Inteligente, Velocidade constante, Loop como trecho real N→1, Pausa final como espelho do último frame, painel visual de trecho/easing, design system, cards de easing, Preview/export MP4/WebCodecs, stage, curvas, sistema vetorial, safe area, nova timeline, defaults dos modos inteligentes. Este patch é exclusivamente saneamento de JSON antigo.
+
+---
+
 ## v8z4b17r — fix project load segment list normalization
 
 Corrige bug crítico no carregamento de projetos em que a seção Trechos do painel Duração/Tempo ficava sempre vazia após carregar qualquer projeto salvo.
