@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17r                                     ║
+║  Versão: v8z4b17u                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17r — fix project load segment list normalization: sincroniza Trechos/Pausas após carregar projeto -->
+<!-- Arco App — v8z4b17u — reset selected segment curve: botão Resetar curva no painel de easing do trecho selecionado -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1795,7 +1795,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17r</span><br><span id="appVersionNameText">fix project load segment list normalization</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17u</span><br><span id="appVersionNameText">reset selected segment curve</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -2166,6 +2166,11 @@ body.cust-open #toolbar{
       <div id="applyAllChannelsWrap" style="margin-top:8px;">
         <button id="btnApplyAllChannels" onclick="applyEaseAllChannels()"
           style="width:100%;padding:5px 8px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:10px;font-weight:700;cursor:pointer;">Aplicar aos 3</button>
+      </div>
+      <!-- Resetar curva do trecho selecionado — v8z4b17u -->
+      <div style="margin-top:6px;">
+        <button id="btnResetSegCurve" onclick="resetSelectedSegmentCurve()"
+          style="width:100%;padding:5px 8px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text3);font-size:10px;font-weight:700;cursor:pointer;">Resetar curva</button>
       </div>
     </div>
   </div>
@@ -4127,8 +4132,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17t';
-const APP_VERSION_NAME = 'smart easing defaults for new projects';
+const APP_VERSION = 'v8z4b17u';
+const APP_VERSION_NAME = 'reset selected segment curve';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -7745,6 +7750,44 @@ function setSegEaseAll() {
   segGlobalMode = !segGlobalMode;
   updateSegGlobalButton();
   showStatus(segGlobalMode ? 'Global ligado para o próximo ajuste' : 'Global desligado');
+}
+
+// v8z4b17u — Resetar curva apenas do trecho atualmente selecionado no painel.
+// Não altera easing, duração, rotação, escala, frames nem outros trechos.
+function resetSelectedSegmentCurve() {
+  const normalSegs = frameCount - 1;
+  if (frameCount < 2) return;
+
+  const isLoopSeg = loopEnabled && frameCount >= 2 && _activeEaseSeg === normalSegs;
+  const seg = _activeEaseSeg;
+
+  if (!isLoopSeg && (seg < 0 || seg >= normalSegs)) return;
+  if (isLoopSeg && !loopEnabled) return;
+
+  pushUndo();
+  markProjectDirty('reset-curve');
+
+  if (isLoopSeg) {
+    loopCtrlPt = {
+      nx: (frameCX(frameCount - 1) / stageW + frameCX(0) / stageW) / 2,
+      ny: (frameCY(frameCount - 1) / stageH + frameCY(0) / stageH) / 2,
+      t: 0.5, perpX: 0, perpY: 0
+    };
+  } else {
+    if (!ctrlPts[seg]) ctrlPts[seg] = {};
+    ctrlPts[seg].nx = (frameCX(seg) / stageW + frameCX(seg + 1) / stageW) / 2;
+    ctrlPts[seg].ny = (frameCY(seg) / stageH + frameCY(seg + 1) / stageH) / 2;
+    ctrlPts[seg].t = 0.5;
+    ctrlPts[seg].perpX = 0;
+    ctrlPts[seg].perpY = 0;
+    ctrlPtManual[seg] = false;
+  }
+
+  renderAll();
+  const label = isLoopSeg
+    ? (frameCount + '–1 \xb7 Loop')
+    : ((seg + 1) + '–' + (seg + 2));
+  showStatus('Curva do Seg. ' + label + ' resetada');
 }
 
 function initEaseSlider() {

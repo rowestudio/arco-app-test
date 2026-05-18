@@ -1,5 +1,32 @@
 # Changelog
 
+## v8z4b17u — reset selected segment curve
+
+Adiciona botão **Resetar curva** no painel de easing do trecho selecionado. A ação restaura o ponto de controle do trecho ativo para a posição padrão (midpoint automático entre os dois frames), sem alterar nenhum outro parâmetro.
+
+### O que foi adicionado
+
+- **Botão "Resetar curva"** no `panelEase`, abaixo do botão "Aplicar aos 3". Visível sempre que o painel de trecho/easing está aberto.
+- **`resetSelectedSegmentCurve()`** — nova função JavaScript que:
+  - Atua apenas no trecho selecionado em `_activeEaseSeg`.
+  - Para trecho normal (seg 0 … N-2): define `ctrlPts[seg]` para o midpoint entre os dois frames e `ctrlPtManual[seg] = false`.
+  - Para trecho de loop (seg N-1, quando Loop ligado): redefine `loopCtrlPt` para o midpoint entre o último e o primeiro frame.
+  - Registra undo antes de alterar estado (compatível com undo/redo existente).
+  - Marca projeto como sujo (`markProjectDirty`).
+  - Chama `renderAll()` para atualizar visualmente o caminho imediatamente.
+  - Exibe mensagem de status com o identificador do trecho.
+  - Guards: retorna sem efeito se `frameCount < 2`, se não houver trecho válido selecionado, ou se o trecho de loop for solicitado com Loop desligado.
+
+### O que não foi alterado
+
+- Motor de Movimento Inteligente, Rotação Inteligente, Escala Inteligente.
+- Velocidade constante, Loop como trecho real N→1, Pausa final.
+- Sistema de load/migração legacy, Preview, export MP4/WebCodecs.
+- Stage, frames, rotação, escala, duração, pausas, easing.
+- Design system, nova timeline, novo sistema vetorial, seleção múltipla, safe area, menu inferior geral.
+
+---
+
 ## v8z4b17t — smart easing defaults for new projects
 
 Projetos novos e resets agora iniciam com `movementEasingMode = "smart"`, `rotationEasingMode = "smart"` e `scaleEasingMode = "smart"`. Projetos salvos respeitam exatamente os valores do JSON. Projetos antigos sem esses campos continuam abrindo em manual/manual/manual para preservar o resultado visual original.
