@@ -4127,8 +4127,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17s';
-const APP_VERSION_NAME = 'legacy project migration cleanup';
+const APP_VERSION = 'v8z4b17t';
+const APP_VERSION_NAME = 'smart easing defaults for new projects';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4238,16 +4238,19 @@ let segmentTimingMode = 'manual';
 let constantSpeedTotalDuration = null; // total desejado no modo constant-speed
 
 // Modo de easing do canal Movimento — v8z4b17j (experimental)
-// 'manual': usa segEasings por trecho (padrão).
+// 'manual': usa segEasings por trecho.
 // 'smart' : continuidade de velocidade entre trechos vizinhos via Hermite.
-let movementEasingMode = 'manual';
+// v8z4b17t: padrão 'smart' para projetos novos; projetos antigos sem esse campo
+// recebem 'manual' em applyFrameData para preservar resultado visual original.
+let movementEasingMode = 'smart';
 
 // Modo de easing dos canais Rotação e Escala — v8z4b17q
-// 'manual': usa rotEasings/scaleEasings por trecho (padrão de compat).
+// 'manual': usa rotEasings/scaleEasings por trecho.
 // 'smart' : continuidade de velocidade angular/escala entre trechos via Hermite.
-// Carregamento de projetos antigos sem esses campos cai em 'manual'.
-let rotationEasingMode = 'manual';
-let scaleEasingMode = 'manual';
+// v8z4b17t: padrão 'smart' para projetos novos; projetos antigos sem esses campos
+// recebem 'manual' em applyFrameData para preservar compatibilidade.
+let rotationEasingMode = 'smart';
+let scaleEasingMode = 'smart';
 
 // Blur gaussiano por segmento
 const segBlurSettings = [];
@@ -8281,6 +8284,13 @@ function loadImage(file, onDoneCallback) {
           btnGenerate.classList.remove('done', 'recording');
           setGenerateLabel('Salvar MP4');
           btnGenerate.disabled = false;
+          // v8z4b17t: novo projeto parte com modos inteligentes ligados.
+          movementEasingMode = 'smart';
+          rotationEasingMode = 'smart';
+          scaleEasingMode    = 'smart';
+          syncMovementEasingModeUI();
+          syncRotationEasingModeUI();
+          syncScaleEasingModeUI();
           initDefaultFrames();
           requestAnimationFrame(() => { applyTemplate('pan-lr'); });
           updateToolbarLabels();

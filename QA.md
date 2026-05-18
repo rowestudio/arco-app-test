@@ -2,6 +2,68 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17t — smart easing defaults for new projects
+
+### Teste A — projeto novo
+1. Abrir app limpo (nova aba).
+2. Carregar imagem.
+3. Criar frames.
+4. Abrir painel de trecho/easing.
+5. Confirmar que Velocidade/Movimento Inteligente está ligado.
+6. Confirmar que Rotação Inteligente está ligada.
+7. Confirmar que Escala Inteligente está ligada.
+8. Preview OK.
+
+### Teste B — reset
+1. Desligar Movimento Inteligente, Rotação Inteligente, Escala Inteligente.
+2. Fazer Reset (botão reset na toolbar).
+3. Abrir painel de trecho/easing.
+4. Confirmar que os três modos voltaram ligados.
+
+### Teste C — salvar projeto novo com modos smart
+1. Criar projeto novo (app limpo + imagem).
+2. Confirmar que os três modos inteligentes estão ligados.
+3. Salvar JSON.
+4. Reabrir JSON.
+5. Confirmar que os três modos continuam ligados.
+6. Preview OK.
+
+### Teste D — projeto salvo com modos manual
+1. Criar projeto novo.
+2. Desligar Rotação Inteligente e Escala Inteligente.
+3. Salvar JSON.
+4. Reabrir JSON.
+5. Confirmar que Rotação e Escala continuam manuais.
+6. Confirmar que Movimento Inteligente continua ligado.
+7. Preview OK.
+
+### Teste E — projeto antigo sem campos novos
+1. Carregar JSON antigo sem `movementEasingMode`/`rotationEasingMode`/`scaleEasingMode`.
+2. Confirmar que abre em manual/manual/manual.
+3. Confirmar que não herda easeMode/easeAmount invisível.
+4. Preview OK.
+
+### Teste F — projeto antigo/misto da v8z4b17s
+1. Carregar `arco_projeto- pausas_img.json`.
+2. Confirmar que continua sem pausa invisível.
+3. Confirmar que continua sem easing invisível.
+4. Confirmar que os modos respeitam os campos do JSON.
+5. Preview OK.
+
+### Teste G — regressão geral
+1. Loop como trecho real continua funcionando.
+2. Pausa final continua seguindo o último frame.
+3. Velocidade constante continua redistribuindo com loop.
+4. Movimento Inteligente continua funcionando.
+5. Rotação Inteligente continua funcionando.
+6. Escala Inteligente continua funcionando.
+7. Painel Duração/Tempo mostra Trechos corretamente após load.
+8. Preview OK.
+9. Gerar MP4 OK.
+10. Sem tela preta, sem botão preso, sem NaN/Infinity no console.
+
+---
+
 ## v8z4b17s — legacy project migration cleanup
 
 ### Teste A — arquivo antigo/misto (arco_projeto- pausas_img.json)

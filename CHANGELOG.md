@@ -1,5 +1,31 @@
 # Changelog
 
+## v8z4b17t — smart easing defaults for new projects
+
+Projetos novos e resets agora iniciam com `movementEasingMode = "smart"`, `rotationEasingMode = "smart"` e `scaleEasingMode = "smart"`. Projetos salvos respeitam exatamente os valores do JSON. Projetos antigos sem esses campos continuam abrindo em manual/manual/manual para preservar o resultado visual original.
+
+### O que foi alterado
+
+- **Declarações iniciais das variáveis** (`movementEasingMode`, `rotationEasingMode`, `scaleEasingMode`) alteradas de `'manual'` para `'smart'`. Garante que a sessão começa com modos inteligentes ativos antes de qualquer imagem ser carregada.
+- **`loadImage` — branch de projeto novo** (`isFirstLoad || frameCount === 0`): adicionada atribuição explícita dos três modos para `'smart'` + chamadas às funções de sincronização de UI (`syncMovementEasingModeUI`, `syncRotationEasingModeUI`, `syncScaleEasingModeUI`). Garante que trocar de imagem em sessão ativa que reinicialize o projeto também restaura os modos inteligentes.
+- **`resetAll()`**: já definia os três modos como `'smart'` desde v8z4b17k/v8z4b17q — sem alteração.
+
+### O que não foi alterado
+
+- `applyFrameData` / `migrateLegacyProjectData` — lógica de load de projetos salvos e antigos intacta da v8z4b17s.
+- Motor de Movimento Inteligente, Rotação Inteligente, Escala Inteligente, Velocidade constante, Loop como trecho real N→1, Pausa final, painel visual de trecho/easing, design system, cards de easing, Preview/export MP4/WebCodecs, stage, curvas, sistema vetorial, safe area, nova timeline.
+
+### Regras de default
+
+| Situação | movementEasingMode | rotationEasingMode | scaleEasingMode |
+|---|---|---|---|
+| Projeto novo / primeiro load | smart | smart | smart |
+| Reset (`resetAll`) | smart | smart | smart |
+| Projeto salvo com campos novos | respeita JSON | respeita JSON | respeita JSON |
+| Projeto antigo sem campos novos | manual | manual | manual |
+
+---
+
 ## v8z4b17s — legacy project migration cleanup
 
 Saneamento e migração de JSON antigo/misto: impede que campos legacy como `easeMode`, `easeAmount`, `pauseDuration`, `loopEnabled`, `loopDuration` e `finishDuration` continuem influenciando o motor de forma invisível após o load de qualquer projeto.
