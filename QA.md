@@ -2,6 +2,60 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18a — contextual editor zoom visibility
+
+### Teste A — modo normal, frame grande
+1. Carregar imagem.
+2. Selecionar frame grande (>160 px em ambos os eixos no stage).
+3. Confirmar que a barra de zoom NÃO aparece.
+4. Confirmar que a tela ficou mais limpa.
+
+### Teste B — modo normal, frame pequeno
+1. Reduzir bastante o frame ativo (abaixo de 160 px em algum eixo).
+2. Confirmar que a barra de zoom aparece automaticamente.
+3. Confirmar que ela aparece sem quebrar layout.
+
+### Teste C — zoom já ativado (>100%)
+1. Fazer aparecer a barra (frame pequeno ou modo Curvas).
+2. Aumentar zoom para 125% ou mais.
+3. Confirmar que a barra continua visível.
+4. Redimensionar o frame para grande — enquanto zoom >100%, barra segue visível.
+
+### Teste D — voltar ao normal
+1. Reduzir zoom até 100%.
+2. Deixar o frame ativo grande o suficiente (>160 px).
+3. Confirmar que a barra desaparece.
+
+### Teste E — modo Curvas (painel Easing)
+1. Com 2+ frames, clicar em uma ease-pill para abrir o painel Easing.
+2. Confirmar que a barra de zoom aparece.
+3. Confirmar que continua aparecendo mesmo com frame grande.
+4. Confirmar que mãozinha continua disponível (se zoom >100%).
+5. Fechar o painel Easing (arrastar para baixo ou tocar fora).
+6. Confirmar que a barra some (se frame grande e zoom =100%).
+
+### Teste F — mãozinha
+1. Ativar zoom (frame pequeno ou abrindo Easing).
+2. Ativar mãozinha.
+3. Fazer pan.
+4. Abrir menu inferior (ex: Template).
+5. Confirmar que mãozinha desliga.
+6. Confirmar que zoom/pan não quebram.
+
+### Teste G — regressão
+1. Mover frame.
+2. Mover ponto de curva.
+3. Usar handle ciano.
+4. Preview OK.
+5. MP4 OK.
+6. Loop OK.
+7. Pausa final OK.
+8. Velocidade constante OK.
+9. Movimento Inteligente OK.
+10. Sem NaN/Infinity no console.
+
+---
+
 ## v8z4b17z — fixed-size editor controls during zoom
 
 ### Teste A — tamanho dos controles
