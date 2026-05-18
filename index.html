@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18b                                     ║
+║  Versão: v8z4b18c                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18b — tune contextual zoom trigger: gatilho do zoom contextual ajustado para critério proporcional à área visível do Stage (30%), em vez de limiar fixo em px -->
+<!-- Arco App — v8z4b18c — curve access helpers: camada interna de acesso às curvas por trecho; sem alteração de comportamento visual, motor, Preview ou MP4 -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -150,7 +150,7 @@ body.panel-open .stage.out-of-bounds::after{
 }
 #imgEl{display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;}
 
-/* Editor Zoom Control — v8z4b18b */
+/* Editor Zoom Control — v8z4b18b (estilos não alterados em v8z4b18c) */
 #editorZoomCtrl{
   position:absolute;top:8px;right:8px;z-index:50;
   pointer-events:none;
@@ -1533,7 +1533,7 @@ body.cust-open #toolbar{
   </div>
   <!-- Status toast fora do stage — não afetado pelo zoom de edição (v8z4b17y) -->
   <div class="status-bar" id="statusBar"></div>
-  <!-- Editor Zoom Control flutuante — v8z4b18b: gatilho proporcional ao Stage -->
+  <!-- Editor Zoom Control flutuante — v8z4b18b (não alterado em v8z4b18c) -->
   <div id="editorZoomCtrl" style="display:none;">
     <div class="ezc-row">
       <button class="ezc-btn" id="ezBtnMinus" title="Reduzir zoom"
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18b</span><br><span id="appVersionNameText">tune contextual zoom trigger</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18c</span><br><span id="appVersionNameText">curve access helpers</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18b';
-const APP_VERSION_NAME = 'tune contextual zoom trigger';
+const APP_VERSION = 'v8z4b18c';
+const APP_VERSION_NAME = 'curve access helpers';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4277,6 +4277,95 @@ const frameRotations = [];
 // perp = offset perpendicular em px do stage
 const ctrlPts = [];
 const ctrlPtManual = [];
+
+// ─── Curve Access Helpers — v8z4b18c ──────────────────────────────────────────
+// Camada preparatória para acesso uniforme às curvas por trecho.
+// Schema atual preservado: ctrlPts / ctrlPtManual / loopCtrlPt.
+// No futuro, esta camada poderá migrar para um objeto de curva por trecho.
+// Esta versão não muda comportamento.
+
+function getActiveSegmentCount() {
+  if (frameCount < 2) return 0;
+  return loopEnabled ? frameCount : frameCount - 1;
+}
+
+function isLoopSegment(segIndex) {
+  if (!loopEnabled || frameCount < 2) return false;
+  return segIndex === frameCount - 1;
+}
+
+function getSegmentEndpoints(segIndex) {
+  if (typeof segIndex !== 'number' || segIndex < 0) return null;
+  const total = getActiveSegmentCount();
+  if (segIndex >= total) return null;
+  if (isLoopSegment(segIndex)) return { from: frameCount - 1, to: 0 };
+  return { from: segIndex, to: segIndex + 1 };
+}
+
+function getSegmentCurve(segIndex) {
+  if (typeof segIndex !== 'number' || segIndex < 0) return null;
+  if (frameCount < 2) return null;
+  if (isLoopSegment(segIndex)) return loopCtrlPt || null;
+  if (segIndex >= frameCount - 1) return null;
+  return ctrlPts[segIndex] || null;
+}
+
+function setSegmentCurve(segIndex, curve, options) {
+  if (typeof segIndex !== 'number' || segIndex < 0 || !curve) return;
+  if (frameCount < 2) return;
+  const markManual = !!(options && options.markManual);
+  if (isLoopSegment(segIndex)) {
+    if (loopCtrlPt) Object.assign(loopCtrlPt, curve);
+    // loopCtrlPt não tem flag "manual" separada — preservar comportamento atual
+  } else {
+    if (segIndex >= frameCount - 1) return;
+    if (!ctrlPts[segIndex]) return;
+    Object.assign(ctrlPts[segIndex], curve);
+    if (markManual) ctrlPtManual[segIndex] = true;
+  }
+}
+
+function isSegmentCurveManual(segIndex) {
+  if (typeof segIndex !== 'number' || segIndex < 0) return false;
+  if (isLoopSegment(segIndex)) {
+    // loopCtrlPt não possui flag "manual" separada; sem distinção no schema atual
+    return false;
+  }
+  if (segIndex >= frameCount - 1) return false;
+  return !!ctrlPtManual[segIndex];
+}
+
+function setSegmentCurveManual(segIndex, value) {
+  if (typeof segIndex !== 'number' || segIndex < 0) return;
+  if (isLoopSegment(segIndex)) {
+    // loopCtrlPt não possui flag "manual" separada — preservar comportamento atual
+    return;
+  }
+  if (segIndex >= frameCount - 1) return;
+  ctrlPtManual[segIndex] = !!value;
+}
+
+function resetSegmentCurve(segIndex) {
+  if (frameCount < 2) return;
+  if (typeof segIndex !== 'number' || segIndex < 0) return;
+  if (segIndex >= getActiveSegmentCount()) return;
+  if (isLoopSegment(segIndex)) {
+    loopCtrlPt = {
+      nx: (frameCX(frameCount - 1) / stageW + frameCX(0) / stageW) / 2,
+      ny: (frameCY(frameCount - 1) / stageH + frameCY(0) / stageH) / 2,
+      t: 0.5, perpX: 0, perpY: 0
+    };
+  } else {
+    if (!ctrlPts[segIndex]) ctrlPts[segIndex] = {};
+    ctrlPts[segIndex].nx = (frameCX(segIndex) / stageW + frameCX(segIndex + 1) / stageW) / 2;
+    ctrlPts[segIndex].ny = (frameCY(segIndex) / stageH + frameCY(segIndex + 1) / stageH) / 2;
+    ctrlPts[segIndex].t = 0.5;
+    ctrlPts[segIndex].perpX = 0;
+    ctrlPts[segIndex].perpY = 0;
+    setSegmentCurveManual(segIndex, false);
+  }
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 // Features
 // Cores dos 3 níveis de frame
@@ -5724,7 +5813,7 @@ function updateCtrlPts() {
     if (seg >= frameCount - 1) { el.style.display = 'none'; continue; }
     const isActive = (seg === activeIdx || seg === activeIdx - 1);
     el.style.display = isActive ? 'block' : 'none';
-    const cp = ctrlPts[seg];
+    const cp = getSegmentCurve(seg);
     if (!cp) continue;
     el.style.left = (cp.nx * stageW) + 'px';
     el.style.top  = (cp.ny * stageH) + 'px';
@@ -5961,7 +6050,7 @@ function startCtrlDrag(seg) {
   pushUndo();
   ctrlDragSeg = seg;
   // Marcar como manual — não reposiciona mais automaticamente
-  if (typeof seg === 'number' && seg >= 0) ctrlPtManual[seg] = true;
+  if (typeof seg === 'number' && seg >= 0) setSegmentCurveManual(seg, true);
 }
 
 // Prevent scroll on stage but allow sliders in panels
@@ -6097,15 +6186,12 @@ function onMove(e) {
     const ny = sc.y / stageH;
 
     if (ctrlDragSeg === 'loop') {
-      if (loopCtrlPt) { loopCtrlPt.nx = nx; loopCtrlPt.ny = ny; }
+      setSegmentCurve(frameCount - 1, { nx, ny });
     } else {
-      ctrlPts[ctrlDragSeg].nx = nx;
-      ctrlPts[ctrlDragSeg].ny = ny;
+      setSegmentCurve(ctrlDragSeg, { nx, ny });
       if (ctrlDragSeg < frameCount - 1) {
         const tp = computeTPerpForSeg(ctrlDragSeg, nx, ny);
-        ctrlPts[ctrlDragSeg].t     = tp.t;
-        ctrlPts[ctrlDragSeg].perpX = tp.perpX;
-        ctrlPts[ctrlDragSeg].perpY = tp.perpY;
+        setSegmentCurve(ctrlDragSeg, { t: tp.t, perpX: tp.perpX, perpY: tp.perpY });
       }
     }
     drawBezier(); updateCtrlPts();
@@ -8013,21 +8099,7 @@ function resetSelectedSegmentCurve() {
   pushUndo();
   markProjectDirty('reset-curve');
 
-  if (isLoopSeg) {
-    loopCtrlPt = {
-      nx: (frameCX(frameCount - 1) / stageW + frameCX(0) / stageW) / 2,
-      ny: (frameCY(frameCount - 1) / stageH + frameCY(0) / stageH) / 2,
-      t: 0.5, perpX: 0, perpY: 0
-    };
-  } else {
-    if (!ctrlPts[seg]) ctrlPts[seg] = {};
-    ctrlPts[seg].nx = (frameCX(seg) / stageW + frameCX(seg + 1) / stageW) / 2;
-    ctrlPts[seg].ny = (frameCY(seg) / stageH + frameCY(seg + 1) / stageH) / 2;
-    ctrlPts[seg].t = 0.5;
-    ctrlPts[seg].perpX = 0;
-    ctrlPts[seg].perpY = 0;
-    ctrlPtManual[seg] = false;
-  }
+  resetSegmentCurve(isLoopSeg ? normalSegs : seg);
 
   renderAll();
   const label = isLoopSeg
