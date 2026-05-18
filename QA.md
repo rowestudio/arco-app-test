@@ -2,6 +2,39 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18b — tune contextual zoom trigger
+
+### Teste A — frame médio (não deve mostrar zoom)
+1. Carregar imagem.
+2. Selecionar frame com tamanho confortável (acima de 30% do Stage em ambos os eixos).
+3. Confirmar que a barra de zoom NÃO aparece.
+
+### Teste B — frame pequeno (deve mostrar zoom)
+1. Reduzir frame até ficar menor que ~30% do Stage em algum eixo.
+2. Confirmar que a barra de zoom aparece automaticamente.
+3. Confirmar que aparece sem quebrar layout.
+
+### Teste C — zoom ativo (barra permanece visível)
+1. Fazer a barra aparecer (frame pequeno).
+2. Aumentar zoom para 125% ou mais.
+3. Confirmar que a barra continua visível.
+4. Aumentar o frame até ultrapassar 30% do Stage — enquanto editorZoomScale > 1, barra segue visível.
+
+### Teste D — voltar para 100%
+1. Reduzir zoom até 100%.
+2. Selecionar frame grande/médio (>30% do Stage).
+3. Confirmar que a barra desaparece.
+
+### Teste E — regressão
+1. Mover frame.
+2. Mover ponto de curva.
+3. Usar mãozinha.
+4. Preview OK.
+5. MP4 OK.
+6. Sem NaN/Infinity no console.
+
+---
+
 ## v8z4b18a — contextual editor zoom visibility
 
 ### Teste A — modo normal, frame grande
