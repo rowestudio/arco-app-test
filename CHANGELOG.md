@@ -1,5 +1,39 @@
 # Changelog
 
+## v8z4b17w — fixed editor zoom levels
+
+Adiciona zoom de edição fixo no Stage com níveis **1× / 2× / 4×**, sem pinch zoom livre. O zoom é apenas uma lupa de visualização: não altera a animação, os frames, o export nem o JSON do projeto.
+
+### O que foi adicionado
+
+- **Botão `#editorZoomBtn`** no canto inferior direito do imageArea, visível apenas com imagem carregada e fora do Preview. Toque cíclico: 1× → 2× → 4× → 1×. Realce visual (tint azul) quando zoom > 1×.
+- **Estado interno**: `editorZoomScale` (1 | 2 | 4), `editorPanX`, `editorPanY`. Nunca salvos no JSON do projeto.
+- **`applyEditorZoom()`** — aplica `transform: translate(panX, panY) scale(scale)` com `transform-origin: 0 0` no `#stage`. Em 1× remove o transform completamente.
+- **`cycleEditorZoom()`** — avança entre os níveis e centraliza automaticamente o zoom no centro do stage.
+- **`resetEditorZoom()`** — retorna tudo para 1×/0/0. Chamada ao carregar nova imagem e ao `resetAll()`.
+- **`clampEditorPan()`** — limita o pan para que o usuário possa alcançar qualquer borda do stage sem perder o conteúdo da tela.
+- **`screenToStageCoord(clientX, clientY)`** — helper central que converte coordenadas de tela para coordenadas do stage considerando zoom e pan. Usado por todos os handlers de arraste.
+- **Pan por arraste** em área vazia do stage quando zoom > 1 (pointerdown no stage, sem frame/ctrl-pt/handle). `panDragState` integrado ao sistema global `onMove`/`endDrag`.
+
+### Coordenadas corrigidas
+
+Todos os handlers de interação foram atualizados para usar `screenToStageCoord()` ou a divisão equivalente por `editorZoomScale`:
+- `startMove`: cálculo de `grabDX/grabDY` agora em coords do stage.
+- `onMove` (ctrl point drag): nx/ny calculados via `screenToStageCoord`.
+- `onMove` (rotate): centro do frame convertido para coords de tela com `* editorZoomScale`.
+- `onMove` (move): `lx/ly` via `screenToStageCoord`.
+- `globalHandleEl.pointermove`: `px/py` e `prevDist` em coords do stage.
+
+### O que não foi alterado
+
+- Motor de Preview e export MP4/WebCodecs — ignoram completamente editorZoomScale.
+- Dados do projeto (frames, curvas, rotações, escalas, durações, easings, loop, pausa).
+- JSON de save/load — zoom não é serializado.
+- Layout geral dos menus inferiores, midBar, toolbar, panels.
+- Pinch zoom não implementado.
+
+---
+
 ## v8z4b17u — reset selected segment curve
 
 Adiciona botão **Resetar curva** no painel de easing do trecho selecionado. A ação restaura o ponto de controle do trecho ativo para a posição padrão (midpoint automático entre os dois frames), sem alterar nenhum outro parâmetro.

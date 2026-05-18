@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17u                                     ║
+║  Versão: v8z4b17w                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17u — reset selected segment curve: botão Resetar curva no painel de easing do trecho selecionado -->
+<!-- Arco App — v8z4b17w — fixed editor zoom levels: zoom de edição 1x/2x/4x com pan e conversão correta de coordenadas -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -149,6 +149,22 @@ body.panel-open .stage.out-of-bounds::after{
   to  {border-color:rgba(255,60,60,.25);}
 }
 #imgEl{display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;}
+
+/* Editor Zoom Control — v8z4b17w */
+#editorZoomBtn{
+  position:absolute;bottom:10px;right:10px;z-index:50;
+  background:rgba(28,28,30,.85);border:1px solid rgba(255,255,255,.18);
+  color:rgba(255,255,255,.9);font-size:12px;font-weight:700;
+  border-radius:10px;padding:5px 10px;cursor:pointer;
+  -webkit-user-select:none;user-select:none;touch-action:manipulation;
+  letter-spacing:.02em;
+}
+body.no-image #editorZoomBtn,
+body.previewing #editorZoomBtn,
+body.recording #editorZoomBtn{display:none;}
+#editorZoomBtn.active-zoom{
+  background:rgba(99,200,255,.22);border-color:rgba(99,200,255,.5);color:#63c8ff;
+}
 
 
 /* TOP BAR */
@@ -1497,6 +1513,7 @@ body.cust-open #toolbar{
       <div class="preview-timeline-fill" id="previewTimelineFill"></div>
     </div>
   </div>
+  <button id="editorZoomBtn" onclick="cycleEditorZoom()" title="Zoom de edição">1×</button>
   <div class="upload-prompt" id="uploadPrompt">
     <div style="display:flex;gap:32px;align-items:center;justify-content:center;margin-bottom:12px;">
       <label style="display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;-webkit-user-select:none;user-select:none;">
@@ -1795,7 +1812,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17u</span><br><span id="appVersionNameText">reset selected segment curve</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17w</span><br><span id="appVersionNameText">fixed editor zoom levels</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4132,8 +4149,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17u';
-const APP_VERSION_NAME = 'reset selected segment curve';
+const APP_VERSION = 'v8z4b17w';
+const APP_VERSION_NAME = 'fixed editor zoom levels';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4466,6 +4483,12 @@ let pinchStartAngle = 0;
 let pinchStartRot   = 0;
 let pinchJustEnded  = false;
 
+// Editor Zoom — v8z4b17w (não afeta animação, export, JSON)
+let editorZoomScale = 1; // 1 | 2 | 4
+let editorPanX = 0;
+let editorPanY = 0;
+let panDragState = null; // { startClientX, startClientY, startPanX, startPanY, pointerId }
+
 let isProMode     = false;
 let proModalShown = false; // aviso de marca d'água mostrado nesta sessão
 
@@ -4796,8 +4819,9 @@ function ensureGlobalHandle() {
     if (!handleDragState) return;
     e.preventDefault();
     const sr = stage.getBoundingClientRect();
-    const px = e.clientX - sr.left;
-    const py = e.clientY - sr.top;
+    // Converter para coords do stage (considera zoom/pan)
+    const px = (e.clientX - sr.left) / editorZoomScale;
+    const py = (e.clientY - sr.top)  / editorZoomScale;
     const { fi, cx, cy, initDist, initAngle, startW, startRot } = handleDragState;
     const dx = px - cx, dy = py - cy;
     const dist = Math.max(1, Math.hypot(dx, dy));
@@ -4808,7 +4832,7 @@ function ensureGlobalHandle() {
       const totalMove = Math.hypot(e.clientX - handleDragState.startX, e.clientY - handleDragState.startY);
       if (totalMove > 8) {
         // Comparar mudança de distância vs mudança de ângulo
-        const prevDist = Math.hypot(handleDragState.startX - sr.left - cx, handleDragState.startY - sr.top - cy);
+        const prevDist = Math.hypot((handleDragState.startX - sr.left) / editorZoomScale - cx, (handleDragState.startY - sr.top) / editorZoomScale - cy);
         const distDelta = Math.abs(dist - prevDist);
         const angleDelta = Math.abs(currentAngle - initAngle) * prevDist; // arc length
         // Se a mudança de distância domina → escala; se ângulo domina → rotação
@@ -5686,6 +5710,67 @@ function updateCtrlPts() {
 }
 
 // ═══════════════════════════════════════
+// EDITOR ZOOM — v8z4b17w
+// ═══════════════════════════════════════
+
+// Converte coordenadas de tela para coordenadas do stage (considerando zoom/pan).
+// Toda interação de toque/mouse que referencie o stage DEVE usar esta função.
+function screenToStageCoord(clientX, clientY) {
+  const sr = stage.getBoundingClientRect();
+  return {
+    x: (clientX - sr.left) / editorZoomScale,
+    y: (clientY - sr.top)  / editorZoomScale
+  };
+}
+
+function clampEditorPan() {
+  if (editorZoomScale <= 1) { editorPanX = 0; editorPanY = 0; return; }
+  const ox = stageW * (editorZoomScale - 1);
+  const oy = stageH * (editorZoomScale - 1);
+  editorPanX = Math.max(-ox, Math.min(0, editorPanX));
+  editorPanY = Math.max(-oy, Math.min(0, editorPanY));
+}
+
+function applyEditorZoom() {
+  if (editorZoomScale === 1) {
+    stage.style.transform = '';
+    stage.style.transformOrigin = '';
+  } else {
+    stage.style.transformOrigin = '0 0';
+    stage.style.transform = `translate(${editorPanX}px,${editorPanY}px) scale(${editorZoomScale})`;
+  }
+  const btn = document.getElementById('editorZoomBtn');
+  if (btn) {
+    btn.textContent = editorZoomScale + '×';
+    btn.classList.toggle('active-zoom', editorZoomScale > 1);
+  }
+}
+
+function resetEditorZoom() {
+  editorZoomScale = 1;
+  editorPanX = 0;
+  editorPanY = 0;
+  applyEditorZoom();
+}
+
+function cycleEditorZoom() {
+  if (!hasImageLoaded() || isPreviewing) return;
+  const levels = [1, 2, 4];
+  const idx = levels.indexOf(editorZoomScale);
+  editorZoomScale = levels[(idx + 1) % levels.length];
+  if (editorZoomScale === 1) {
+    editorPanX = 0;
+    editorPanY = 0;
+  } else {
+    // Centralizar o zoom no centro do stage
+    editorPanX = -(stageW * (editorZoomScale - 1)) / 2;
+    editorPanY = -(stageH * (editorZoomScale - 1)) / 2;
+    clampEditorPan();
+  }
+  applyEditorZoom();
+}
+
+// ═══════════════════════════════════════
 // DRAG HANDLERS
 // ═══════════════════════════════════════
 function getPos(e) {
@@ -5714,14 +5799,12 @@ function startMove(e) {
   activeIdx = fi; renderAll();
   if (frameLocked[fi]) return;
   const pos = getPos(e);
-  const sr = stage.getBoundingClientRect();
-  const lx = pos.x - sr.left;
-  const ly = pos.y - sr.top;
+  const sc = screenToStageCoord(pos.x, pos.y);
   dragState = {
     type:'move', fi,
     ox:frames[fi].x, oy:frames[fi].y, sx:pos.x, sy:pos.y,
-    grabDX: lx - frames[fi].x,
-    grabDY: ly - frames[fi].y,
+    grabDX: sc.x - frames[fi].x,
+    grabDY: sc.y - frames[fi].y,
     undoCaptured: false
   };
 }
@@ -5829,6 +5912,24 @@ stage.addEventListener('touchend', e => {
   }
 });
 
+// Pan de edição — iniciar ao tocar em área vazia do stage com zoom > 1
+stage.addEventListener('pointerdown', (e) => {
+  if (isPreviewing || editorZoomScale <= 1) return;
+  // Ignorar se hit em elemento interativo (frame, ctrl-pt, handle, zoom btn)
+  if (e.target.closest('.drag-zone, .rot-handle, .ctrl-pt, .global-handle, #editorZoomBtn')) return;
+  // Frame element (inclui resize handles) — stopPropagation já resolve, mas garantir
+  if (e.target.closest('.frame-el')) return;
+  e.preventDefault();
+  stage.setPointerCapture(e.pointerId);
+  panDragState = {
+    startClientX: e.clientX,
+    startClientY: e.clientY,
+    startPanX: editorPanX,
+    startPanY: editorPanY,
+    pointerId: e.pointerId
+  };
+});
+
 // Remover duplo toque — substituído por pill tap
 
 window.addEventListener('mousemove', onMove);
@@ -5848,16 +5949,26 @@ function onMove(e) {
     document.body.classList.remove('dragging');
     return;
   }
-  if (dragState || ctrlDragSeg !== -1) {
+  if (dragState || ctrlDragSeg !== -1 || panDragState) {
     e.preventDefault();
   }
   const pos = getPos(e);
 
+  // Pan de edição — mover viewport quando zoom > 1
+  if (panDragState) {
+    e.preventDefault();
+    editorPanX = panDragState.startPanX + (pos.x - panDragState.startClientX);
+    editorPanY = panDragState.startPanY + (pos.y - panDragState.startClientY);
+    clampEditorPan();
+    applyEditorZoom();
+    return;
+  }
+
   // Ctrl point drag — número ou 'loop'
   if (ctrlDragSeg !== -1) {
-    const sr = stage.getBoundingClientRect();
-    const nx = (pos.x - sr.left) / stageW;
-    const ny = (pos.y - sr.top)  / stageH;
+    const sc = screenToStageCoord(pos.x, pos.y);
+    const nx = sc.x / stageW;
+    const ny = sc.y / stageH;
 
     if (ctrlDragSeg === 'loop') {
       if (loopCtrlPt) { loopCtrlPt.nx = nx; loopCtrlPt.ny = ny; }
@@ -5879,8 +5990,9 @@ function onMove(e) {
   const fi = dragState.fi;
   if (dragState.type === 'rotate') {
     const sr = stage.getBoundingClientRect();
-    const cx = sr.left + frames[fi].x + frames[fi].w / 2;
-    const cy = sr.top + frames[fi].y + frames[fi].h / 2;
+    // Centro do frame em coords de tela (considera zoom/pan)
+    const cx = sr.left + (frames[fi].x + frames[fi].w / 2) * editorZoomScale;
+    const cy = sr.top  + (frames[fi].y + frames[fi].h / 2) * editorZoomScale;
     const currentAngle = Math.atan2(pos.y - cy, pos.x - cx);
     const prevAngle = dragState.lastAngle !== undefined ? dragState.lastAngle : currentAngle;
     let delta = currentAngle - prevAngle;
@@ -5903,17 +6015,16 @@ function onMove(e) {
     renderAll();
     return;
   }
-  const dx = pos.x - dragState.sx;
-  const dy = pos.y - dragState.sy;
+  // Deltas em coords do stage (divide por zoom para escala correta)
+  const dx = (pos.x - dragState.sx) / editorZoomScale;
+  const dy = (pos.y - dragState.sy) / editorZoomScale;
   const ar = ratioMap[currentRatio];
 
   if (dragState.type === 'move') {
-    // Usa coordenadas locais do stage para o ponto realmente clicado
-    const sr = stage.getBoundingClientRect();
-    const lx = pos.x - sr.left;
-    const ly = pos.y - sr.top;
-    const newX = lx - dragState.grabDX;
-    const newY = ly - dragState.grabDY;
+    // Usa coordenadas do stage corretas pelo zoom de edição
+    const sc = screenToStageCoord(pos.x, pos.y);
+    const newX = sc.x - dragState.grabDX;
+    const newY = sc.y - dragState.grabDY;
     if (!dragState.undoCaptured &&
         (Math.abs(newX - frames[fi].x) > 0.001 || Math.abs(newY - frames[fi].y) > 0.001)) {
       pushUndo();
@@ -6015,6 +6126,12 @@ function syncCtrlPtsForFrame(fi) {
 function endDrag(e) {
   // Evita duplo disparo: pointer + mouse no mesmo gesto
   if (window.PointerEvent && e && (e.type === 'mouseup' || e.type === 'touchend')) return;
+  // Encerrar pan de edição
+  if (panDragState) {
+    try { stage.releasePointerCapture?.(panDragState.pointerId); } catch(err) {}
+    panDragState = null;
+    return;
+  }
   if (dragState?.type === 'move') {
     try { document.querySelector(`.drag-zone[data-fi="${dragState.fi}"]`)?.releasePointerCapture?.(e?.pointerId); } catch(err) {}
   }
@@ -7322,6 +7439,7 @@ function resetAll() {
   syncMovementEasingModeUI(); // v8z4b17j
   syncRotationEasingModeUI(); // v8z4b17q
   syncScaleEasingModeUI(); // v8z4b17q
+  resetEditorZoom(); // v8z4b17w
   applyTemplate('pan-lr');
   activeIdx = 0;
   normalizeProjectArrays();
@@ -8301,6 +8419,7 @@ function loadImage(file, onDoneCallback) {
         // controles locais ficam disponíveis normalmente.
         document.body.classList.remove('no-image');
         // top-bar sempre visível — sem necessidade de mostrar settingsBtn
+        resetEditorZoom(); // v8z4b17w — nova imagem reseta zoom de edição
 
         if (hasCallback) {
           layoutStage();
@@ -9187,14 +9306,9 @@ function applyTemplate(type) {
   frameRotations.length = 0; frameLocked.length = 0; frameCount = 0;
   segEasings.length = 0; rotEasings.length = 0; scaleEasings.length = 0; segDurations.length = 0; segBlurSettings.length = 0; framePauses.length = 0;
 
-  // Usar dimensões reais da imagem no stage
-  const stageEl  = document.getElementById('stage');
-  const stageRect = stageEl.getBoundingClientRect();
-  const imgRect   = imgEl.getBoundingClientRect();
-  const ox = imgRect.left - stageRect.left;
-  const oy = imgRect.top  - stageRect.top;
-  const iw = imgRect.width;
-  const ih = imgRect.height;
+  // Usar dimensões do stage em coords reais (independente do zoom de edição)
+  const ox = 0, oy = 0;
+  const iw = stageW, ih = stageH;
 
   const ar = ratioMap[currentRatio];
   let f0, f1, lbl;
