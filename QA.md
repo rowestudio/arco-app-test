@@ -2,6 +2,83 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17u — reset selected segment curve
+
+### Teste A — reset em trecho normal
+1. Criar 3 frames.
+2. Selecionar trecho 1–2 (abrir painel Easing via pill do segmento).
+3. Alterar manualmente a curva 1–2 (arrastar ponto de controle).
+4. Tocar em **Resetar curva**.
+5. Confirmar que a curva 1–2 voltou à posição padrão (midpoint).
+6. Confirmar que a curva 2–3 não foi alterada.
+7. Preview OK.
+
+### Teste B — reset em outro trecho
+1. Alterar manualmente as curvas 1–2 e 2–3.
+2. Selecionar trecho 2–3.
+3. Tocar em **Resetar curva**.
+4. Confirmar que 2–3 voltou ao padrão.
+5. Confirmar que 1–2 permanece manual.
+6. Preview OK.
+
+### Teste C — reset com loop ligado
+1. Criar 4 frames.
+2. Ligar Loop.
+3. Confirmar que aparece trecho 4–1 no seletor.
+4. Alterar manualmente a curva 4–1.
+5. Selecionar trecho 4–1 no painel Easing.
+6. Tocar em **Resetar curva**.
+7. Confirmar que a curva 4–1 voltou ao padrão.
+8. Confirmar que Loop permanece ligado.
+9. Confirmar que duração e easing do loop não mudaram.
+10. Preview OK.
+
+### Teste D — não alterar outros parâmetros
+1. Em um trecho, configurar duração específica.
+2. Configurar easing manual ou modo inteligente.
+3. Configurar rotação e escala nos frames.
+4. Alterar curva manualmente.
+5. Tocar em **Resetar curva**.
+6. Confirmar que duração não mudou.
+7. Confirmar que easing não mudou.
+8. Confirmar que rotação não mudou.
+9. Confirmar que escala não mudou.
+10. Preview OK.
+
+### Teste E — salvar/reabrir
+1. Alterar uma curva manualmente.
+2. Tocar em **Resetar curva**.
+3. Salvar JSON.
+4. Reabrir JSON.
+5. Confirmar que a curva continua no padrão (não manual).
+6. Preview OK.
+
+### Teste F — undo/redo
+1. Alterar curva manualmente.
+2. Tocar em **Resetar curva**.
+3. Usar undo.
+4. Confirmar que a curva manual anterior voltou.
+5. Usar redo.
+6. Confirmar que o reset foi reaplicado.
+7. Preview OK.
+
+### Teste G — regressão geral
+1. Movimento Inteligente continua funcionando.
+2. Rotação Inteligente continua funcionando.
+3. Escala Inteligente continua funcionando.
+4. Velocidade constante continua funcionando.
+5. Loop como trecho real continua funcionando.
+6. Pausa final continua seguindo o último frame.
+7. Load de projeto antigo/misto continua OK.
+8. Trechos aparecem corretamente após load.
+9. Preview OK.
+10. Gerar MP4 OK.
+11. Sem tela preta.
+12. Sem botão preso.
+13. Sem NaN/Infinity no console.
+
+---
+
 ## v8z4b17t — smart easing defaults for new projects
 
 ### Teste A — projeto novo
