@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17q                                     ║
+║  Versão: v8z4b17r                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17q — smart rotation and scale easing: continuidade de velocidade angular e de escala entre trechos via Hermite, com clamps anti-overshoot, pausas e loop -->
+<!-- Arco App — v8z4b17r — fix project load segment list normalization: sincroniza Trechos/Pausas após carregar projeto -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1795,7 +1795,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17q</span><br><span id="appVersionNameText">smart rotation and scale easing</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17r</span><br><span id="appVersionNameText">fix project load segment list normalization</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4127,8 +4127,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17q';
-const APP_VERSION_NAME = 'smart rotation and scale easing';
+const APP_VERSION = 'v8z4b17r';
+const APP_VERSION_NAME = 'fix project load segment list normalization';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -10377,6 +10377,7 @@ function applyFrameData(data) {
   (data.ctrlPtManual || []).forEach(v => ctrlPtManual.push(v));
   segDurations.length = 0;
   (data.segDurations || []).forEach(v => segDurations.push(v));
+  ensureSegDurations(); // v8z4b17r — preencher valores ausentes com defaults
   segBlurSettings.length = 0;
   (data.segBlurSettings || []).forEach(v => segBlurSettings.push(v ? {...v} : cloneDefaultSegBlur()));
   ensureSegBlurSettings();
@@ -10416,12 +10417,20 @@ function applyFrameData(data) {
   for (let i = 0; i < frameCount; i++) createFrameDOM(i);
   for (let i = 0; i < frameCount - 1; i++) createCtrlDOM(i);
 
+  // v8z4b17r: segEasings não são persistidos no projeto; resetar para o
+  // frameCount carregado evita herdar easings de um projeto anterior.
+  segEasings.length = 0;
+  ensureSegEasings();
+
   const durSlider = document.getElementById('durSlider');
   if (durSlider) durSlider.value = duration;
   const newSegInput = document.getElementById('newSegmentDurationInput');
   if (newSegInput) newSegInput.value = defaultNewSegmentDuration;
   syncDurationUI();
-  if (durationPanelSections.pauses) renderFramePauseRows();
+  // v8z4b17r: reconstruir Trechos e Pausas após load.
+  // Antes, closeSegBreakdown() escondia #segBreakdown sem reconstruir as
+  // linhas, deixando a seção vazia após carregar qualquer projeto.
+  syncDurationSectionsUI();
   if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]')) syncFramePauseUI();
   refreshPauseControls();
   renderAll();
@@ -10431,7 +10440,6 @@ function applyFrameData(data) {
   const tbTpl = document.getElementById('tbTemplate');
   if (tbTpl) tbTpl.textContent = 'Livre';
   updateUndoRedoUI();
-  closeSegBreakdown();
   if (imgNatW) {
     showStatus('Projeto carregado!');
     checkWatermarkWarning();

@@ -2,6 +2,77 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17r — fix project load segment list normalization
+
+### Teste A — projeto com 2 frames
+1. Carregar projeto salvo com 2 frames.
+2. Abrir painel Duração/Tempo.
+3. Confirmar que Trechos mostra 1 trecho: 1–2.
+4. Preview OK.
+
+### Teste B — projeto com 6 frames
+1. Carregar projeto salvo com 6 frames.
+2. Abrir painel Duração/Tempo.
+3. Confirmar que Trechos mostra 5 trechos: 1–2, 2–3, 3–4, 4–5, 5–6.
+4. Confirmar que Pausas por frame mostra F1 até F6.
+5. Preview OK.
+
+### Teste C — projeto com 6 frames e loop
+1. Carregar projeto salvo com 6 frames e loop ligado.
+2. Confirmar que Trechos mostra 6 trechos: 1–2, 2–3, 3–4, 4–5, 5–6, 6–1.
+3. Confirmar que 6–1 aparece também na faixa de frames.
+4. Selecionar 6–1. Confirmar que abre painel real de trecho/easing.
+5. Preview OK.
+
+### Teste D — projeto com 30 frames
+1. Carregar projeto salvo com 30 frames.
+2. Abrir painel Duração/Tempo.
+3. Confirmar que Trechos mostra 29 trechos sem loop.
+4. Confirmar que Pausas por frame mostra F1 até F30.
+5. Confirmar que o painel rola normalmente.
+6. Preview OK.
+
+### Teste E — projeto com 30 frames e loop
+1. Carregar projeto salvo com 30 frames e loop ligado.
+2. Confirmar que Trechos mostra 30 trechos.
+3. Confirmar que o último é 30–1 e é selecionável/editável.
+4. Preview OK. MP4 OK.
+
+### Teste F — reset continua correto
+1. Resetar o app.
+2. Confirmar que o estado inicial mostra o número correto de frames padrão.
+3. Confirmar que Trechos mostra a quantidade correta.
+4. Não quebrar o comportamento que já funcionava após reset.
+
+### Teste G — Velocidade constante após load
+1. Carregar projeto com vários frames.
+2. Ativar Velocidade constante.
+3. Confirmar que todos os trechos visíveis entram na redistribuição.
+4. Se loop estiver ligado, confirmar que N→1 entra também.
+5. Preview OK.
+
+### Teste H — modos inteligentes após load
+1. Carregar projeto com Movimento Inteligente, Rotação Inteligente e Escala Inteligente.
+2. Confirmar que os modos aparecem corretos nas abas.
+3. Confirmar que Preview respeita os modos.
+4. Sem NaN/Infinity.
+
+### Teste I — Pausa final após load
+1. Carregar projeto com Pausa final.
+2. Confirmar que a pausa está no último frame real.
+3. Adicionar frame. Confirmar que a pausa final migra para o novo último frame.
+4. Preview OK.
+
+### Teste J — regressão geral
+1. Painel Duração/Tempo continua sempre aberto.
+2. Loop como trecho real continua funcionando.
+3. Pausa final continua seguindo o último frame.
+4. Movimento Inteligente, Rotação Inteligente, Escala Inteligente: Preview OK.
+5. Gerar MP4 OK. Sem tela preta. Sem botão preso.
+6. Sem NaN/Infinity no console.
+
+---
+
 ## v8z4b17q — smart rotation and scale easing
 
 ### Teste A — estados padrão
