@@ -25,6 +25,13 @@ Fechar uma versão estável mínima antes de mudanças maiores.
 - Amaciamento automático de escala entre segmentos.
 - Avaliar como mostrar esses controles sem sobrecarregar a UI.
 
+## Futuro — Zoom assistido por frame ativo
+
+- Ao selecionar frame muito pequeno, o app pode aproximar automaticamente a região do frame.
+- Ao tocar fora ou selecionar outro frame, pode retornar ao zoom 100%.
+- Deve respeitar zoom manual do usuário (não sobrescrever se ele já ajustou).
+- Quando existir Modo Curvas, o zoom poderá ficar sempre disponível nesse modo.
+
 ## v9 — Interface final
 
 - Nova interface completa.

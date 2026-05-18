@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18a                                     ║
+║  Versão: v8z4b18b                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18a — contextual editor zoom visibility: barra de zoom contextual que aparece apenas quando necessário no modo normal (frame pequeno <160px ou zoom >100%) e sempre no modo Curvas (painel Easing aberto) -->
+<!-- Arco App — v8z4b18b — tune contextual zoom trigger: gatilho do zoom contextual ajustado para critério proporcional à área visível do Stage (30%), em vez de limiar fixo em px -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -150,7 +150,7 @@ body.panel-open .stage.out-of-bounds::after{
 }
 #imgEl{display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;}
 
-/* Editor Zoom Control — v8z4b18a */
+/* Editor Zoom Control — v8z4b18b */
 #editorZoomCtrl{
   position:absolute;top:8px;right:8px;z-index:50;
   pointer-events:none;
@@ -1533,7 +1533,7 @@ body.cust-open #toolbar{
   </div>
   <!-- Status toast fora do stage — não afetado pelo zoom de edição (v8z4b17y) -->
   <div class="status-bar" id="statusBar"></div>
-  <!-- Editor Zoom Control flutuante — v8z4b18a: visibilidade contextual -->
+  <!-- Editor Zoom Control flutuante — v8z4b18b: gatilho proporcional ao Stage -->
   <div id="editorZoomCtrl" style="display:none;">
     <div class="ezc-row">
       <button class="ezc-btn" id="ezBtnMinus" title="Reduzir zoom"
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18a</span><br><span id="appVersionNameText">contextual editor zoom visibility</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18b</span><br><span id="appVersionNameText">tune contextual zoom trigger</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18a';
-const APP_VERSION_NAME = 'contextual editor zoom visibility';
+const APP_VERSION = 'v8z4b18b';
+const APP_VERSION_NAME = 'tune contextual zoom trigger';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -5435,7 +5435,7 @@ function renderAll() {
   updateCtrlPts();
   updateFrameSelector();
   autosave();
-  syncEditorZoomCtrlVisibility(); // v8z4b18a
+  syncEditorZoomCtrlVisibility(); // v8z4b18b
 
   // Alça global de escala+rotação
   ensureGlobalHandle();
@@ -5759,30 +5759,31 @@ function updateCtrlPts() {
 }
 
 // ═══════════════════════════════════════
-// EDITOR ZOOM — v8z4b18a
+// EDITOR ZOOM — v8z4b18b
 // ═══════════════════════════════════════
 
 const ZOOM_LEVELS = [1, 1.25, 1.5, 1.75, 2, 2.5, 3];
 
-// Limiar (px) abaixo do qual o frame ativo é considerado pequeno demais — v8z4b18a
-const EDITOR_ZOOM_AUTO_SHOW_MIN_PX = 160;
+// Proporção do Stage abaixo da qual o frame ativo é considerado pequeno demais — v8z4b18b
+// Substitui o limiar fixo de 160 px por critério relativo à área visível do Stage.
+const EDITOR_ZOOM_AUTO_SHOW_RATIO = 0.30;
 
-// Retorna true quando a barra de zoom deve ficar visível — v8z4b18a
-// Condições: modo Curvas (painel Easing aberto), zoom >100% ou frame pequeno.
+// Retorna true quando a barra de zoom deve ficar visível — v8z4b18b
+// Condições: zoom >100% (mantém barra visível enquanto zoom ativo)
+//            ou frame ativo menor que 30% da dimensão visível do Stage.
+// Nota: quando existir Modo Curvas futuro, o zoom poderá ficar sempre disponível nesse modo.
 function shouldShowEditorZoom() {
   if (!hasImageLoaded()) return false;
-  // Modo Curvas: painel Easing aberto → sempre mostrar zoom
-  const panelEase = document.getElementById('panelEase');
-  if (panelEase && panelEase.classList.contains('show')) return true;
-  // Zoom acima de 100% → sempre mostrar
+  // Zoom acima de 100% → sempre mostrar (mantém barra enquanto zoom está ativo)
   if (editorZoomScale > 1) return true;
-  // Frame ativo visualmente pequeno → mostrar para permitir zoom fino
+  // Frame ativo visualmente pequeno em relação ao Stage → mostrar
   const f = frames[activeIdx];
   if (!f) return false;
-  return f.w < EDITOR_ZOOM_AUTO_SHOW_MIN_PX || f.h < EDITOR_ZOOM_AUTO_SHOW_MIN_PX;
+  return f.w < stageW * EDITOR_ZOOM_AUTO_SHOW_RATIO ||
+         f.h < stageH * EDITOR_ZOOM_AUTO_SHOW_RATIO;
 }
 
-// Sincroniza a visibilidade do controle flutuante de zoom — v8z4b18a
+// Sincroniza a visibilidade do controle flutuante de zoom — v8z4b18b
 function syncEditorZoomCtrlVisibility() {
   const ctrl = document.getElementById('editorZoomCtrl');
   if (!ctrl) return;
@@ -5839,7 +5840,7 @@ function applyEditorZoom() {
   if (plusBtn)  plusBtn.disabled  = (editorZoomScale >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]);
   // Cursor do stage: mão quando pan mode ativo
   stage.style.cursor = (active && editorPanMode) ? 'grab' : '';
-  // Visibilidade contextual — v8z4b18a
+  // Visibilidade contextual — v8z4b18b
   syncEditorZoomCtrlVisibility();
 }
 
@@ -8702,7 +8703,7 @@ function openPanel(id) {
   // após abrir um painel flutuante. Cobre painel Ease (Seg. X-Y), Smooth,
   // Duration e demais que contenham .dur-slider.
   if (typeof refreshSliderFills === 'function') refreshSliderFills();
-  syncEditorZoomCtrlVisibility(); // v8z4b18a — painel Easing é modo Curvas
+  syncEditorZoomCtrlVisibility(); // v8z4b18b
 }
 // ═══════════════════════════════════════
 // EASING POR SEGMENTO
@@ -9140,7 +9141,7 @@ function closeAll() {
   document.querySelectorAll('.float-panel').forEach(p => p.classList.remove('show'));
   const sheet = document.getElementById('settingsSheet');
   if (sheet) sheet.classList.remove('show');
-  syncEditorZoomCtrlVisibility(); // v8z4b18a
+  syncEditorZoomCtrlVisibility(); // v8z4b18b
 }
 
 // Handles fecham via onclick="closeAll()" — sem drag

@@ -1,5 +1,25 @@
 # Changelog
 
+## v8z4b18b — tune contextual zoom trigger
+
+Ajusta o gatilho do zoom contextual de edição: em vez de um limiar fixo em px, o critério agora é proporcional à área visível do Stage (30%).
+
+### O que foi alterado
+
+- **`EDITOR_ZOOM_AUTO_SHOW_RATIO = 0.30`** — substitui `EDITOR_ZOOM_AUTO_SHOW_MIN_PX`. A barra de zoom aparece no modo normal quando `f.w < stageW * 0.30` ou `f.h < stageH * 0.30`.
+- **`shouldShowEditorZoom()`** — critério atualizado para comparação proporcional ao Stage. Condição de zoom >100% mantida inalterada (barra permanece visível enquanto editorZoomScale > 1).
+- **Remoção da regra de Modo Curvas** — a condição baseada em `panelEase.classList.contains('show')` foi removida pois Modo Curvas não existe ainda. Registrado em comentário para implementação futura.
+
+### O que não foi alterado
+
+- Motor de animação, Preview e export MP4/WebCodecs.
+- Dados do projeto (frames, curvas, rotações, escalas, durações, easings, loop, pausa, JSON).
+- Coordenadas reais dos frames e pontos de controle.
+- Modo Mapa, pinch zoom, sistema vetorial, pontos-guia.
+- Níveis de zoom, clamp de pan, pan mode.
+
+---
+
 ## v8z4b18a — contextual editor zoom visibility
 
 Torna a barra de zoom do editor contextual: oculta quando não necessária no modo normal e sempre visível no modo Curvas (painel Easing).
