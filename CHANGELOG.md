@@ -1,5 +1,34 @@
 # Changelog
 
+## v8z4b17x — fractional editor zoom and pan mode
+
+Refatora o controle de Zoom de edição do Stage: substitui o botão cíclico inferior por um **controle flutuante** no canto superior direito do Stage, adiciona níveis fracionados (100% → 300% em passos progressivos) e um botão **Mover visão** para navegação da área ampliada sem interferir em frames ou curvas.
+
+### O que foi adicionado / alterado
+
+- **Controle flutuante `#editorZoomCtrl`** — posicionado `top: 8px; right: 8px` dentro do `image-area`, sobre o Stage. Visível apenas com imagem carregada, fora do Preview e fora do export. Composto por três elementos em linha: botão `[−]`, indicador de zoom clicável (`100%`), botão `[+]`, mais botão **Mover** abaixo (oculto quando zoom = 100%).
+- **Níveis fracionados**: `[1, 1.25, 1.5, 1.75, 2, 2.5, 3]` (100% a 300%). Substituem o ciclo brusco 1× → 2× → 4×.
+- **Botão `[−]`** — reduz ao nível anterior; desabilitado em 100%.
+- **Botão `[+]`** — aumenta ao próximo nível; desabilitado em 300%.
+- **Indicador de zoom** — exibe o percentual atual (ex: `125%`); toque volta para 100%.
+- **Estado `editorPanMode`** — `false` por padrão. Quando `true`, arrastar no Stage move a viewport em vez de editar frames/curvas.
+- **Botão Mover** — aparece só quando zoom > 100%; torna-se ativo (tint azul) ao ativar pan mode; toque alterna o modo.
+- **Cursor visual**: `grab` quando pan mode ativo e zoom > 1, `grabbing` durante o arraste.
+- **Guards de pan mode em todos os handlers de edição**: `startMove`, `startRotate`, `startResize`, `startCtrlDrag`, `globalHandleEl.pointerdown`, frame-element `pointerdown` e ctrl-pt `pointerdown` retornam cedo (sem `stopPropagation`) quando `editorPanMode = true`, permitindo que o evento chegue ao listener de pan do stage.
+- **Whitelist atualizada**: `#editorZoomCtrl` adicionado ao `imageAreaCloseHandler` (toque no controle não fecha o menu contextual).
+
+### O que não foi alterado
+
+- Motor de Preview e export MP4/WebCodecs — ignoram completamente `editorZoomScale`.
+- Dados do projeto (frames, curvas, rotações, escalas, durações, easings, loop, pausa).
+- JSON de save/load — zoom não é serializado.
+- `screenToStageCoord()` — lógica de conversão mantida intacta (BoundingClientRect já reflete transform).
+- `clampEditorPan()` — mantido com os mesmos limites.
+- Layout geral dos menus inferiores, midBar, toolbar, panels.
+- Pinch zoom não implementado.
+
+---
+
 ## v8z4b17w — fixed editor zoom levels
 
 Adiciona zoom de edição fixo no Stage com níveis **1× / 2× / 4×**, sem pinch zoom livre. O zoom é apenas uma lupa de visualização: não altera a animação, os frames, o export nem o JSON do projeto.

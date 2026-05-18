@@ -2,6 +2,92 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17x — fractional editor zoom and pan mode
+
+### Teste A — posição do controle
+1. Carregar imagem.
+2. Confirmar que o controle `[-] [100%] [+]` aparece no canto **superior direito** do Stage (não na parte inferior).
+3. Confirmar que não desloca os menus inferiores.
+4. Confirmar que desaparece durante Preview.
+5. Confirmar que reaparece após sair do Preview.
+6. Confirmar que não aparece antes de carregar imagem.
+
+### Teste B — zoom fracionado
+1. Tocar em `[+]`. Confirmar 100% → 125%.
+2. Tocar novamente. Confirmar 125% → 150%.
+3. Continuar: 175%, 200%, 250%, 300%.
+4. Em 300%, `[+]` fica desabilitado.
+5. Tocar em `[−]`. Confirmar 300% → 250%.
+6. Continuar reduzindo. Confirmar passos progressivos.
+7. Em 100%, `[−]` fica desabilitado.
+8. Confirmar que 2× não é mais o primeiro salto de 100%.
+
+### Teste C — mover visão
+1. Ativar zoom 125% ou maior.
+2. Confirmar que o botão **Mover** aparece abaixo do controle de zoom.
+3. Tocar em **Mover**. Confirmar que o botão fica azul (ativo).
+4. Arrastar no Stage. Confirmar que a viewport se move.
+5. Confirmar que nenhum frame se move.
+6. Confirmar que nenhum ponto de curva se move.
+7. Tocar em **Mover** novamente. Confirmar que desativa.
+8. Arrastar no Stage. Confirmar que frames voltam a ser arrastáveis.
+
+### Teste D — edição com zoom
+1. Zoom em 125%.
+2. Mover frame. Confirmar que acompanha corretamente o dedo.
+3. Zoom em 150%.
+4. Arrastar ponto de curva. Confirmar posição correta.
+5. Zoom em 200%.
+6. Repetir mover frame e ponto de curva. Confirmar sem deslocamento.
+
+### Teste E — duplo toque
+1. Dar duplo toque nos botões `[−]`, `[+]` e no indicador `100%`.
+2. Confirmar que não troca frame nem aciona ação não esperada.
+3. Ativar Mover visão.
+4. Dar duplo toque no Stage.
+5. Confirmar que não aciona troca/seleção de frame.
+6. Desativar Mover visão.
+7. Confirmar que o comportamento normal de duplo toque (se houver) volta.
+
+### Teste F — indicador toca → resetar
+1. Ativar zoom 150%, fazer pan.
+2. Tocar no indicador de zoom (`150%`).
+3. Confirmar que volta para 100% e pan é zerado.
+
+### Teste G — botão Mover oculto em 100%
+1. Em 100%, confirmar que o botão Mover não aparece.
+2. Ativar 125%. Confirmar que aparece.
+3. Reduzir para 100% via `[−]`. Confirmar que o botão desaparece.
+4. Confirmar que `editorPanMode` foi desativado automaticamente.
+
+### Teste H — Preview e MP4
+1. Ativar zoom 200%. Fazer pan.
+2. Rodar Preview. Confirmar que o Preview está correto e não ampliado.
+3. Gerar MP4. Confirmar que o MP4 está correto.
+4. Voltar do Preview. Confirmar que o controle de zoom ainda mostra 200%.
+
+### Teste I — reset de zoom
+1. Ativar 250%. Fazer pan.
+2. Carregar nova imagem. Confirmar que zoom volta para 100% e pan para 0,0.
+3. Ativar 175%.
+4. Tocar em Reset (ícone no topo). Confirmar que zoom volta para 100%.
+
+### Teste J — regressão geral
+1. Movimento Inteligente continua funcionando.
+2. Rotação Inteligente continua funcionando.
+3. Escala Inteligente continua funcionando.
+4. Velocidade constante continua funcionando.
+5. Loop como trecho real continua funcionando.
+6. Pausa final continua seguindo o último frame.
+7. Load de projeto antigo/misto continua OK.
+8. Trechos aparecem corretamente após load.
+9. Resetar curva continua funcionando.
+10. Sem tela preta.
+11. Sem botão preso.
+12. Sem NaN/Infinity no console.
+
+---
+
 ## v8z4b17w — fixed editor zoom levels
 
 ### Teste A — comportamento em 1×

@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b17w                                     ║
+║  Versão: v8z4b17x                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b17w — fixed editor zoom levels: zoom de edição 1x/2x/4x com pan e conversão correta de coordenadas -->
+<!-- Arco App — v8z4b17x — fractional editor zoom and pan mode: controle flutuante sobre o stage com níveis 100%–300%, botão Mover visão e conversão correta de coordenadas -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -150,21 +150,50 @@ body.panel-open .stage.out-of-bounds::after{
 }
 #imgEl{display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;}
 
-/* Editor Zoom Control — v8z4b17w */
-#editorZoomBtn{
-  position:absolute;bottom:10px;right:10px;z-index:50;
-  background:rgba(28,28,30,.85);border:1px solid rgba(255,255,255,.18);
-  color:rgba(255,255,255,.9);font-size:12px;font-weight:700;
-  border-radius:10px;padding:5px 10px;cursor:pointer;
-  -webkit-user-select:none;user-select:none;touch-action:manipulation;
-  letter-spacing:.02em;
+/* Editor Zoom Control — v8z4b17x */
+#editorZoomCtrl{
+  position:absolute;top:8px;right:8px;z-index:50;
+  display:flex;flex-direction:column;align-items:flex-end;gap:5px;
+  pointer-events:none;
 }
-body.no-image #editorZoomBtn,
-body.previewing #editorZoomBtn,
-body.recording #editorZoomBtn{display:none;}
-#editorZoomBtn.active-zoom{
+body.no-image #editorZoomCtrl,
+body.previewing #editorZoomCtrl,
+body.recording #editorZoomCtrl{display:none;}
+#editorZoomCtrl .ezc-row{
+  display:flex;align-items:center;pointer-events:auto;
+  background:rgba(28,28,30,.85);border:1px solid rgba(255,255,255,.18);
+  border-radius:10px;overflow:hidden;
+}
+#editorZoomCtrl.zoom-active .ezc-row{border-color:rgba(99,200,255,.45);}
+#editorZoomCtrl .ezc-btn{
+  background:none;border:none;
+  color:rgba(255,255,255,.9);font-size:16px;font-weight:400;line-height:1;
+  width:32px;height:32px;cursor:pointer;
+  -webkit-user-select:none;user-select:none;touch-action:manipulation;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+#editorZoomCtrl .ezc-btn:active{background:rgba(255,255,255,.12);}
+#editorZoomCtrl .ezc-btn:disabled{color:rgba(255,255,255,.25);cursor:default;}
+#editorZoomCtrl .ezc-sep{width:1px;height:18px;background:rgba(255,255,255,.15);flex-shrink:0;}
+#editorZoomCtrl .ezc-label{
+  font-size:12px;font-weight:700;color:rgba(255,255,255,.9);
+  min-width:40px;text-align:center;padding:0 2px;
+  cursor:pointer;-webkit-user-select:none;user-select:none;touch-action:manipulation;
+}
+#editorZoomCtrl.zoom-active .ezc-label{color:#63c8ff;}
+#editorZoomCtrl .ezc-pan-btn{
+  pointer-events:auto;
+  background:rgba(28,28,30,.85);border:1px solid rgba(255,255,255,.18);
+  border-radius:8px;color:rgba(255,255,255,.75);
+  font-size:11px;font-weight:600;
+  padding:5px 9px;cursor:pointer;
+  -webkit-user-select:none;user-select:none;touch-action:manipulation;
+  display:flex;align-items:center;gap:4px;
+}
+#editorZoomCtrl .ezc-pan-btn.active{
   background:rgba(99,200,255,.22);border-color:rgba(99,200,255,.5);color:#63c8ff;
 }
+#editorZoomCtrl .ezc-pan-btn svg{flex-shrink:0;}
 
 
 /* TOP BAR */
@@ -1513,7 +1542,28 @@ body.cust-open #toolbar{
       <div class="preview-timeline-fill" id="previewTimelineFill"></div>
     </div>
   </div>
-  <button id="editorZoomBtn" onclick="cycleEditorZoom()" title="Zoom de edição">1×</button>
+  <!-- Editor Zoom Control flutuante — v8z4b17x -->
+  <div id="editorZoomCtrl">
+    <div class="ezc-row">
+      <button class="ezc-btn" id="ezBtnMinus" title="Reduzir zoom"
+        ontouchstart="event.stopPropagation()" onclick="zoomEditorOut();event.stopPropagation()">−</button>
+      <div class="ezc-sep"></div>
+      <span class="ezc-label" id="ezLabel" title="Voltar para 100%"
+        ontouchstart="event.stopPropagation()" onclick="resetEditorZoom();event.stopPropagation()">100%</span>
+      <div class="ezc-sep"></div>
+      <button class="ezc-btn" id="ezBtnPlus" title="Aumentar zoom"
+        ontouchstart="event.stopPropagation()" onclick="zoomEditorIn();event.stopPropagation()">+</button>
+    </div>
+    <button class="ezc-pan-btn" id="ezBtnPan" style="display:none" title="Mover visão"
+      ontouchstart="event.stopPropagation()" onclick="toggleEditorPanMode();event.stopPropagation()">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/>
+        <polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/>
+        <line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>
+      </svg>
+      Mover
+    </button>
+  </div>
   <div class="upload-prompt" id="uploadPrompt">
     <div style="display:flex;gap:32px;align-items:center;justify-content:center;margin-bottom:12px;">
       <label style="display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;-webkit-user-select:none;user-select:none;">
@@ -1812,7 +1862,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b17w</span><br><span id="appVersionNameText">fixed editor zoom levels</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b17x</span><br><span id="appVersionNameText">fractional editor zoom and pan mode</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4149,8 +4199,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b17w';
-const APP_VERSION_NAME = 'fixed editor zoom levels';
+const APP_VERSION = 'v8z4b17x';
+const APP_VERSION_NAME = 'fractional editor zoom and pan mode';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4483,11 +4533,12 @@ let pinchStartAngle = 0;
 let pinchStartRot   = 0;
 let pinchJustEnded  = false;
 
-// Editor Zoom — v8z4b17w (não afeta animação, export, JSON)
-let editorZoomScale = 1; // 1 | 2 | 4
+// Editor Zoom — v8z4b17x (não afeta animação, export, JSON)
+let editorZoomScale = 1;  // visual/editorial, não salvo no JSON
 let editorPanX = 0;
 let editorPanY = 0;
-let panDragState = null; // { startClientX, startClientY, startPanX, startPanY, pointerId }
+let editorPanMode = false; // true = mover viewport em vez de editar
+let panDragState = null;   // { startClientX, startClientY, startPanX, startPanY, pointerId }
 
 let isProMode     = false;
 let proModalShown = false; // aviso de marca d'água mostrado nesta sessão
@@ -4794,6 +4845,7 @@ function ensureGlobalHandle() {
 
   globalHandleEl.addEventListener('pointerdown', e => {
     if (isPreviewing || !imgNatW || frameLocked[activeIdx]) return;
+    if (editorPanMode) return; // pan mode: não usar handle
     e.preventDefault();
     e.stopPropagation();
     globalHandleEl.setPointerCapture(e.pointerId);
@@ -4944,6 +4996,7 @@ function createFrameDOM(i) {
     h.addEventListener('pointerdown', startResize);
   });
   el.addEventListener('pointerdown', ev => {
+    if (editorPanMode) return; // pan mode: não selecionar/editar, propagar ao stage
     const fi = parseInt(el.id.split('_')[1]);
     // Frame travado: pode ser selecionado mas não arrastado
     if (fi !== activeIdx) {
@@ -4963,7 +5016,7 @@ function createCtrlDOM(seg) {
   el.className = 'ctrl-pt';
   el.style.display = 'none';
   stage.appendChild(el);
-  el.addEventListener('pointerdown', e => { e.stopPropagation(); startCtrlDrag(seg); });
+  el.addEventListener('pointerdown', e => { if (!editorPanMode) e.stopPropagation(); startCtrlDrag(seg); });
 }
 
 // ═══════════════════════════════════════
@@ -5698,7 +5751,7 @@ function updateCtrlPts() {
       loopEl.style.background = 'rgba(180,100,255,1)';
       loopEl.style.boxShadow  = '0 2px 8px rgba(0,0,0,.4),0 0 0 5px rgba(180,100,255,.2)';
       stage.appendChild(loopEl);
-      loopEl.addEventListener('pointerdown', e => { e.stopPropagation(); ctrlDragSeg = 'loop'; });
+      loopEl.addEventListener('pointerdown', e => { if (!editorPanMode) { e.stopPropagation(); ctrlDragSeg = 'loop'; } });
     }
     loopEl.style.display = 'block';
     loopEl.style.left    = (loopCtrlPt.nx * stageW) + 'px';
@@ -5710,11 +5763,14 @@ function updateCtrlPts() {
 }
 
 // ═══════════════════════════════════════
-// EDITOR ZOOM — v8z4b17w
+// EDITOR ZOOM — v8z4b17x
 // ═══════════════════════════════════════
 
+const ZOOM_LEVELS = [1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+
 // Converte coordenadas de tela para coordenadas do stage (considerando zoom/pan).
-// Toda interação de toque/mouse que referencie o stage DEVE usar esta função.
+// getBoundingClientRect() já reflete a transformação CSS, então sr.left/top
+// incluem panX/panY, e dividir por editorZoomScale converte para coords reais.
 function screenToStageCoord(clientX, clientY) {
   const sr = stage.getBoundingClientRect();
   return {
@@ -5732,41 +5788,77 @@ function clampEditorPan() {
 }
 
 function applyEditorZoom() {
-  if (editorZoomScale === 1) {
+  if (editorZoomScale <= 1) {
     stage.style.transform = '';
     stage.style.transformOrigin = '';
   } else {
     stage.style.transformOrigin = '0 0';
     stage.style.transform = `translate(${editorPanX}px,${editorPanY}px) scale(${editorZoomScale})`;
   }
-  const btn = document.getElementById('editorZoomBtn');
-  if (btn) {
-    btn.textContent = editorZoomScale + '×';
-    btn.classList.toggle('active-zoom', editorZoomScale > 1);
+  // Atualizar controle flutuante
+  const ctrl   = document.getElementById('editorZoomCtrl');
+  const label  = document.getElementById('ezLabel');
+  const panBtn = document.getElementById('ezBtnPan');
+  const minusBtn = document.getElementById('ezBtnMinus');
+  const plusBtn  = document.getElementById('ezBtnPlus');
+  const active = editorZoomScale > 1;
+  if (ctrl)   ctrl.classList.toggle('zoom-active', active);
+  if (label)  label.textContent = Math.round(editorZoomScale * 100) + '%';
+  if (panBtn) {
+    panBtn.style.display = active ? '' : 'none';
+    panBtn.classList.toggle('active', editorPanMode);
   }
+  if (minusBtn) minusBtn.disabled = (editorZoomScale <= ZOOM_LEVELS[0]);
+  if (plusBtn)  plusBtn.disabled  = (editorZoomScale >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]);
+  // Cursor do stage: mão quando pan mode ativo
+  stage.style.cursor = (active && editorPanMode) ? 'grab' : '';
 }
 
 function resetEditorZoom() {
   editorZoomScale = 1;
   editorPanX = 0;
   editorPanY = 0;
+  editorPanMode = false;
+  panDragState = null;
   applyEditorZoom();
 }
 
-function cycleEditorZoom() {
+function zoomEditorIn() {
   if (!hasImageLoaded() || isPreviewing) return;
-  const levels = [1, 2, 4];
-  const idx = levels.indexOf(editorZoomScale);
-  editorZoomScale = levels[(idx + 1) % levels.length];
-  if (editorZoomScale === 1) {
+  const idx = ZOOM_LEVELS.indexOf(editorZoomScale);
+  if (idx >= ZOOM_LEVELS.length - 1) return;
+  // Se não está em nível exato (por algum motivo), sobe para próximo acima
+  const nextIdx = idx >= 0 ? idx + 1 : ZOOM_LEVELS.findIndex(l => l > editorZoomScale);
+  if (nextIdx < 0 || nextIdx >= ZOOM_LEVELS.length) return;
+  _setEditorZoom(ZOOM_LEVELS[nextIdx]);
+}
+
+function zoomEditorOut() {
+  if (!hasImageLoaded() || isPreviewing) return;
+  const idx = ZOOM_LEVELS.indexOf(editorZoomScale);
+  if (idx <= 0) { resetEditorZoom(); return; }
+  _setEditorZoom(ZOOM_LEVELS[idx - 1]);
+}
+
+function _setEditorZoom(newScale) {
+  editorZoomScale = newScale;
+  if (editorZoomScale <= 1) {
+    editorZoomScale = 1;
     editorPanX = 0;
     editorPanY = 0;
+    editorPanMode = false;
   } else {
-    // Centralizar o zoom no centro do stage
+    // Centralizar a vista no centro do stage
     editorPanX = -(stageW * (editorZoomScale - 1)) / 2;
     editorPanY = -(stageH * (editorZoomScale - 1)) / 2;
     clampEditorPan();
   }
+  applyEditorZoom();
+}
+
+function toggleEditorPanMode() {
+  if (editorZoomScale <= 1) return;
+  editorPanMode = !editorPanMode;
   applyEditorZoom();
 }
 
@@ -5780,6 +5872,7 @@ function getPos(e) {
 
 function startRotate(e) {
   if (isPreviewing) return;
+  if (editorPanMode) return; // pan mode: não editar, deixar propagar para pan
   e.preventDefault();
   e.stopPropagation();
   const fi = parseInt(e.currentTarget.dataset.fi);
@@ -5791,6 +5884,7 @@ function startRotate(e) {
 function startMove(e) {
   document.body.classList.add('dragging');
   if (isPreviewing) return;
+  if (editorPanMode) return; // pan mode: não mover frame, deixar propagar para pan
   if (pinchJustEnded) return; // ignorar touch após pinch
   const fi = parseInt(e.currentTarget.dataset.fi);
   if (frameLocked[fi]) return; // frame travado: ignorar completamente
@@ -5818,6 +5912,7 @@ function setTemplateManualIfNeeded() {
 
 function startResize(e) {
   if (isPreviewing) return;
+  if (editorPanMode) return; // pan mode: não redimensionar
   e.preventDefault(); e.stopPropagation();
   const fi  = parseInt(e.currentTarget.dataset.fi);
   const dir = e.currentTarget.dataset.dir;
@@ -5832,6 +5927,7 @@ function startResize(e) {
 function startCtrlDrag(seg) {
   document.body.classList.add('dragging');
   if (isPreviewing) return;
+  if (editorPanMode) return; // pan mode: não mover ponto de curva
   pushUndo();
   ctrlDragSeg = seg;
   // Marcar como manual — não reposiciona mais automaticamente
@@ -5882,6 +5978,7 @@ stage.addEventListener('touchstart', e => {
     if (e.target.closest('.float-panel')) return;
     if (e.target.closest('.global-handle')) return;
     if (e.target.closest('.ctrl-pt')) return;
+    if (e.target.closest('#editorZoomCtrl')) return;
     // Tudo o mais dentro da image-area (imagem, fundo preto, canvas,
     // áreas vazias) fecha o menu contextual.
     closeCustBar();
@@ -5912,13 +6009,11 @@ stage.addEventListener('touchend', e => {
   }
 });
 
-// Pan de edição — iniciar ao tocar em área vazia do stage com zoom > 1
+// Pan de edição — ativo apenas quando editorPanMode está ligado e zoom > 1
 stage.addEventListener('pointerdown', (e) => {
-  if (isPreviewing || editorZoomScale <= 1) return;
-  // Ignorar se hit em elemento interativo (frame, ctrl-pt, handle, zoom btn)
-  if (e.target.closest('.drag-zone, .rot-handle, .ctrl-pt, .global-handle, #editorZoomBtn')) return;
-  // Frame element (inclui resize handles) — stopPropagation já resolve, mas garantir
-  if (e.target.closest('.frame-el')) return;
+  if (isPreviewing || editorZoomScale <= 1 || !editorPanMode) return;
+  // Ignorar controles do zoom flutuante (já têm stopPropagation)
+  if (e.target.closest('#editorZoomCtrl')) return;
   e.preventDefault();
   stage.setPointerCapture(e.pointerId);
   panDragState = {
@@ -5954,13 +6049,14 @@ function onMove(e) {
   }
   const pos = getPos(e);
 
-  // Pan de edição — mover viewport quando zoom > 1
+  // Pan de edição — mover viewport quando pan mode ativo
   if (panDragState) {
     e.preventDefault();
-    editorPanX = panDragState.startPanX + (pos.x - panDragState.startClientX);
-    editorPanY = panDragState.startPanY + (pos.y - panDragState.startClientY);
+    editorPanX = panDragState.startPanX + (e.clientX - panDragState.startClientX);
+    editorPanY = panDragState.startPanY + (e.clientY - panDragState.startClientY);
     clampEditorPan();
     applyEditorZoom();
+    stage.style.cursor = 'grabbing';
     return;
   }
 
@@ -6130,6 +6226,8 @@ function endDrag(e) {
   if (panDragState) {
     try { stage.releasePointerCapture?.(panDragState.pointerId); } catch(err) {}
     panDragState = null;
+    // Restaurar cursor para grab (pan mode ainda ativo)
+    if (editorPanMode && editorZoomScale > 1) stage.style.cursor = 'grab';
     return;
   }
   if (dragState?.type === 'move') {
@@ -7439,7 +7537,7 @@ function resetAll() {
   syncMovementEasingModeUI(); // v8z4b17j
   syncRotationEasingModeUI(); // v8z4b17q
   syncScaleEasingModeUI(); // v8z4b17q
-  resetEditorZoom(); // v8z4b17w
+  resetEditorZoom(); // v8z4b17x
   applyTemplate('pan-lr');
   activeIdx = 0;
   normalizeProjectArrays();
@@ -8419,7 +8517,7 @@ function loadImage(file, onDoneCallback) {
         // controles locais ficam disponíveis normalmente.
         document.body.classList.remove('no-image');
         // top-bar sempre visível — sem necessidade de mostrar settingsBtn
-        resetEditorZoom(); // v8z4b17w — nova imagem reseta zoom de edição
+        resetEditorZoom(); // v8z4b17x — nova imagem reseta zoom de edição
 
         if (hasCallback) {
           layoutStage();
