@@ -2,6 +2,79 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b17w — fixed editor zoom levels
+
+### Teste A — comportamento em 1×
+1. Abrir app.
+2. Carregar imagem.
+3. Confirmar que o Stage aparece igual ao comportamento anterior (sem zoom).
+4. Mover frame. Confirmar que frame acompanha o dedo.
+5. Arrastar ponto de controle de curva. Confirmar posição correta.
+6. Preview OK.
+7. MP4 OK.
+
+### Teste B — zoom 2×
+1. Tocar no botão "1×" (canto inferior direito do stage). Confirmar que muda para "2×".
+2. Confirmar que imagem, frames, curvas e pontos ampliam juntos.
+3. Arrastar em área vazia para pan. Confirmar que apenas a visualização se move.
+4. Mover um frame em 2×. Confirmar que o frame acompanha o dedo sem deslocamento.
+5. Arrastar ponto de controle de curva em 2×. Confirmar posição correta.
+6. Preview OK.
+
+### Teste C — zoom 4×
+1. Tocar no botão "2×". Confirmar que muda para "4×".
+2. Fazer pan até uma região específica da imagem.
+3. Selecionar e mover frame nessa região. Confirmar sem deslocamento entre dedo e frame.
+4. Arrastar ponto de controle. Confirmar sem deslocamento.
+5. Tocar no botão "4×". Confirmar retorno para "1×".
+6. Confirmar que o Stage recentraliza (sem transform residual).
+
+### Teste D — não alterar dados reais
+1. Criar projeto com frames e curvas configuradas.
+2. Ativar 4× e fazer pan.
+3. Salvar JSON.
+4. Reabrir JSON.
+5. Confirmar que o zoom não foi salvo (app abre em 1×).
+6. Confirmar que frames/curvas estão iguais ao salvo.
+7. Preview OK.
+
+### Teste E — Preview e MP4 ignoram zoom
+1. Ativar 4× e pan para canto.
+2. Rodar Preview. Confirmar que o Preview não aparece ampliado ou deslocado.
+3. Gerar MP4. Confirmar que o MP4 está correto (sem zoom de edição).
+4. Voltar do Preview. Confirmar que o app continua estável.
+
+### Teste F — interações em zoom
+1. Em 2× e 4×, testar:
+   - Mover frame.
+   - Selecionar frame diferente.
+   - Usar handle de escala/rotação (global handle).
+   - Mover ponto de controle de curva.
+   - Selecionar trecho via pill do midBar.
+   - Abrir painel de easing.
+   - Resetar curva.
+2. Confirmar que tudo usa coordenadas corretas.
+
+### Teste G — reset de zoom
+1. Ativar 2× ou 4×.
+2. Carregar nova imagem. Confirmar que zoom volta para 1×.
+3. Ativar 4× novamente.
+4. Tocar em Reset (ícone de reset no topo). Confirmar que zoom volta para 1×.
+
+### Teste H — regressão geral
+1. Movimento Inteligente continua funcionando.
+2. Rotação Inteligente continua funcionando.
+3. Escala Inteligente continua funcionando.
+4. Velocidade constante continua funcionando.
+5. Loop como trecho real continua funcionando.
+6. Pausa final continua seguindo o último frame.
+7. Load de projeto antigo/misto continua OK.
+8. Preview OK.
+9. Gerar MP4 OK.
+10. Sem tela preta, sem botão preso, sem NaN/Infinity no console.
+
+---
+
 ## v8z4b17u — reset selected segment curve
 
 ### Teste A — reset em trecho normal
