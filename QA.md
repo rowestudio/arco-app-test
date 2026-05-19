@@ -2,6 +2,77 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18k — separate curve puller from path points
+
+### Teste A — sem mudança visual
+1. Abrir app.
+2. Carregar imagem.
+3. Criar 3 frames.
+4. Confirmar que o Stage permanece visualmente igual à v8z4b18j.
+5. Confirmar que o ponto atual da curva continua igual (ciano, mesmo tamanho).
+6. Preview OK.
+
+### Teste B — curva normal
+1. Selecionar trecho 1–2.
+2. Arrastar o ponto atual da curva.
+3. Confirmar que só 1–2 muda.
+4. Selecionar 2–3.
+5. Arrastar o ponto atual da curva.
+6. Confirmar que só 2–3 muda.
+7. Preview OK.
+
+### Teste C — loop
+1. Criar 3 frames.
+2. Ligar Loop.
+3. Confirmar que curva 3–1 aparece imediatamente.
+4. Editar o ponto atual da curva 3–1.
+5. Confirmar que só 3–1 muda.
+6. Resetar curva 3–1.
+7. Confirmar que só 3–1 reseta.
+8. Preview OK.
+
+### Teste D — salvar/carregar
+1. Criar projeto com curva manual em 1–2.
+2. Criar curva manual no loop 3–1.
+3. Salvar JSON.
+4. Reabrir JSON.
+5. Confirmar que curvas continuam iguais.
+6. Confirmar que o JSON não ganhou `pathPoints`, `trajectoryPoints`, `handles`, `anchors`, `curvePuller` ou `curvesV2`.
+7. Preview OK.
+
+### Teste E — velocidade constante
+1. Criar 4 frames.
+2. Ligar Loop.
+3. Ligar Velocidade constante.
+4. Confirmar que todos os segmentos entram no cálculo.
+5. Alterar manualmente duração de um trecho.
+6. Confirmar que Velocidade constante desliga.
+7. Preview OK.
+
+### Teste F — zoom contextual
+1. Confirmar que zoom contextual continua funcionando.
+2. Confirmar que mover frame com zoom funciona.
+3. Confirmar que mover o ponto atual da curva com zoom funciona.
+4. Confirmar que mãozinha/pan continua funcionando.
+
+### Teste G — regressão geral
+1. Movimento Inteligente OK.
+2. Rotação Inteligente OK.
+3. Escala Inteligente OK.
+4. Velocidade constante OK.
+5. Loop como trecho real OK.
+6. Pausa final OK.
+7. Resetar curva OK.
+8. Load de projeto antigo/misto OK.
+9. Trechos aparecem corretamente após load.
+10. Preview OK.
+11. Gerar MP4 OK.
+12. Sem tela preta.
+13. Sem botão preso.
+14. Sem NaN/Infinity no console.
+
+---
+
 ## v8z4b18j — editable trajectory adjustment point
 
 ### Teste A — sem mudança visual

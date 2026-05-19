@@ -1,5 +1,35 @@
 # Changelog
 
+## v8z4b18k — separate curve puller from path points
+
+Patch conceitual/arquitetural: reclassifica internamente o ponto atual de controle da curva como `curvePuller` (puxador legado), separando-o conceitualmente dos futuros pontos de trajetória reais. Adiciona helper `getSegmentAnchors()` e documenta o modelo futuro de pathPoints e handles. Nenhuma mudança de comportamento visual, motor, Preview, MP4, JSON ou UI.
+
+### O que foi alterado
+
+- **`getSegmentTrajectoryPoints()`** — o ponto de controle quadrático agora retornado com `kind:'curvePuller'` (era `kind:'adjustment'`). Semântica corrigida: curvePuller é um puxador auxiliar/legado, não um pathPoint real. Comportamento visual idêntico.
+- **`setSegmentTrajectoryPoint()`** — o guard agora aceita `kind:'curvePuller'` (era `kind:'adjustment'`). Comentários atualizados para refletir a terminologia correta.
+- **Drag do ponto de curva no Stage** — o descritor `_adjDesc` atualizado para `kind:'curvePuller'`. Comportamento funcional idêntico ao da v8z4b18j.
+- **`getSegmentAnchors(segIndex)`** — novo helper que retorna as âncoras reais do segmento (`frameAnchor` start e end). Nesta versão só existem frameAnchors; pathPoints persistentes não existem ainda.
+- **Bloco de documentação interna** — comentários técnicos adicionados documentando:
+  - Terminologia: `curvePuller`, `frameAnchor`, `pathPoint` (futuro), `handle` (futuro).
+  - Formato futuro de `pathPoint` (não persistido, não renderizado).
+  - Regras de handles futuros (não criados nesta versão).
+  - Regra de compatibilidade: projetos antigos continuam com curvePuller sem conversão automática.
+  - Ferramenta futura de caneta (decisão documentada).
+
+### O que NÃO foi alterado
+
+- Comportamento do Preview, export MP4/WebCodecs.
+- Motor de animação, `totalDuration()`, `totalDurationFull()`.
+- Schema do JSON (nenhum campo novo: sem `pathPoints`, `trajectoryPoints`, `handles`, `anchors`, `curvePuller`, `curvesV2`).
+- Visual do ponto atual da curva (ciano, mesmo tamanho e posição).
+- Velocidade constante, Loop como trecho real, Pausa final.
+- Movimento/Rotação/Escala Inteligente, zoom contextual, Undo/redo.
+- `resetSegmentCurve()`, `getSegmentCurve()`, `setSegmentCurve()` — preservados como estão.
+- UI geral (design, cores, layout, Stage, painel inferior).
+
+---
+
 ## v8z4b18j — editable trajectory adjustment point
 
 Refatoração interna: consolida o ponto de controle da curva como ponto de ajuste editável da trajetória, roteando a edição pelo drag do Stage via `setSegmentTrajectoryPoint()`. Nenhuma mudança de comportamento visual, motor, Preview, MP4, JSON ou UI.
