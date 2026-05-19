@@ -1,5 +1,30 @@
 # Changelog
 
+## v8z4b18h — refresh loop curve on toggle
+
+Corrige o refresh visual da curva do loop (trecho N→1) no Stage ao ligar ou desligar Loop. A curva agora aparece e desaparece imediatamente, sem precisar de toque posterior no Stage.
+
+### O que foi corrigido
+
+- **`setFinishing(mode)`** — adicionada chamada a `renderAll()` logo após `maybeRedistributeByCurveLength()`. Sem essa chamada, `drawBezier()` nunca era invocado após a troca de modo de acabamento, causando o atraso visual.
+- **Ligar Loop** — a curva N→1 (roxa) aparece imediatamente no Stage assim que o chip "Loop" é selecionado.
+- **Desligar Loop** — a curva N→1 desaparece imediatamente do Stage ao selecionar "Nenhum" ou "Pausa final".
+- **Ponto de controle do loop** — `updateCtrlPts()` (chamado dentro de `renderAll()`) garante que o ponto roxo seja exibido ou ocultado imediatamente junto com a curva.
+- **Sem curva fantasma** — a flag `loopEnabled` já controlava corretamente a renderização em `drawBezier()` e `updateCtrlPts()`; o único problema era a ausência de `renderAll()`.
+
+### O que NÃO foi alterado
+
+- Motor de Preview, export MP4/WebCodecs.
+- `drawBezier()`, `updateCtrlPts()`, `renderAll()` — lógica interna preservada.
+- Schema do JSON (nenhum campo novo).
+- Velocidade constante, Pausa final, Igualar intervalos.
+- Movimento/Rotação/Escala Inteligente, zoom contextual, Undo/redo.
+- Curvas, resetar curva, edição manual de curva, handles, pontos de trajetória.
+- UI geral (design, cores, layout).
+- `toggleLoop()` — função mantida sem alteração (não é chamada pela UI atual).
+
+---
+
 ## v8z4b18g — internal segment path object
 
 Refatoração interna: adiciona camada de trajetória por segmento via `getSegmentPath()`, `setSegmentPath()` e `getAllSegmentPaths()`. Nenhuma mudança de comportamento visual, motor, Preview, MP4, JSON ou UI.

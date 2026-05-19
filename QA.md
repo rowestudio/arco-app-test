@@ -2,6 +2,44 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18h — refresh loop curve on toggle
+
+### Teste A — ligar Loop
+1. Carregar imagem. Criar 3 frames.
+2. Confirmar que Loop está desligado (chip "Nenhum" ativo).
+3. Clicar no chip "Loop" no painel Duração → Acabamento.
+4. Sem tocar no Stage, confirmar que a curva roxa 3–1 aparece imediatamente.
+5. Confirmar que o ponto de controle roxo aparece se F1 ou F3 estiver selecionado.
+
+### Teste B — desligar Loop
+1. Com Loop ligado e curva 3–1 visível, clicar no chip "Nenhum".
+2. Confirmar que a curva 3–1 desaparece imediatamente do Stage.
+3. Confirmar que o ponto de controle roxo desaparece (sem fantasma).
+
+### Teste C — editar curva do loop
+1. Ligar Loop. Selecionar F1 ou F3.
+2. Arrastar o ponto de controle roxo (curva 3–1).
+3. Confirmar que a curva 3–1 responde normalmente.
+4. Usar Resetar curva no trecho 3–1.
+5. Confirmar que apenas 3–1 reseta; demais trechos inalterados.
+
+### Teste D — duração e velocidade constante
+1. Ligar Loop. Confirmar que trecho 3–1 aparece no painel "Tempo por trecho".
+2. Ligar Velocidade constante. Confirmar que 3–1 entra no cálculo.
+3. Alterar manualmente a duração do trecho 3–1.
+4. Confirmar que Velocidade constante desliga.
+
+### Teste E — regressão geral
+1. Preview OK após ligar/desligar Loop.
+2. Exportar MP4 OK.
+3. Zoom contextual OK.
+4. Salvar JSON com Loop ativo e reabrir. Confirmar que curva 3–1 carrega correta.
+5. Sem NaN/Infinity no console.
+6. Sem tela preta.
+7. Sem botão preso.
+
+---
+
 ## v8z4b18g — internal segment path object
 
 ### Teste A — sem mudança visual
