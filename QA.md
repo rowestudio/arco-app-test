@@ -2,6 +2,64 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18m — visual curve puller distinction
+
+### Teste A — aparência do curvePuller
+1. Abrir app.
+2. Carregar imagem.
+3. Criar 3 frames.
+4. Selecionar trecho 1–2.
+5. Confirmar que o curvePuller aparece como losango (não círculo).
+6. Confirmar que o losango é ciano/azul e visualmente distinto de um frame anchor.
+7. Selecionar trecho 2–3.
+8. Confirmar que o curvePuller desse trecho também é losango.
+
+### Teste B — edição normal
+1. Selecionar trecho 1–2.
+2. Arrastar o curvePuller.
+3. Confirmar que só 1–2 muda.
+4. Selecionar trecho 2–3.
+5. Arrastar o curvePuller.
+6. Confirmar que só 2–3 muda.
+7. Preview OK.
+
+### Teste C — loop
+1. Criar 3 frames.
+2. Ligar Loop.
+3. Confirmar que curvePuller 3–1 aparece como losango roxo.
+4. Arrastar o curvePuller de 3–1.
+5. Confirmar que só 3–1 muda.
+6. Resetar curva 3–1.
+7. Confirmar que só 3–1 reseta.
+8. Preview OK.
+
+### Teste D — zoom contextual
+1. Ativar zoom contextual.
+2. Confirmar que o curvePuller mantém tamanho visual adequado (não cresce proporcionalmente).
+3. Arrastar o curvePuller com zoom.
+4. Confirmar que acompanha corretamente o dedo/cursor.
+
+### Teste E — salvar/carregar
+1. Criar curvas manuais.
+2. Salvar JSON.
+3. Reabrir JSON.
+4. Confirmar que curvas continuam iguais.
+5. Confirmar que o JSON não ganhou `pathPoints`, `trajectoryPoints`, `handles`, `anchors`, `curvePuller`, `curvesV2` ou `vectorPath`.
+
+### Teste F — regressão geral
+1. Movimento Inteligente OK.
+2. Rotação Inteligente OK.
+3. Escala Inteligente OK.
+4. Velocidade constante OK.
+5. Loop como trecho real OK.
+6. Pausa final OK.
+7. Resetar curva OK.
+8. Preview OK.
+9. Gerar MP4 OK.
+10. Sem NaN/Infinity no console.
+
+---
+
 ## v8z4b18l — unified segment path evaluator
 
 ### Teste A — sem mudança visual
