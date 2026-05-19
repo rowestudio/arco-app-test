@@ -1,5 +1,43 @@
 # Changelog
 
+## v8z4b18i — internal trajectory points model
+
+Refatoração interna: adiciona camada de pontos de trajetória por segmento via `getSegmentTrajectoryPoints()`, `setSegmentTrajectoryPoint()` e `getAllTrajectoryPoints()`. Nenhuma mudança de comportamento visual, motor, Preview, MP4, JSON ou UI.
+
+### O que foi adicionado
+
+- **`getSegmentTrajectoryPoints(segIndex)`** — retorna lista normalizada de pontos representando a trajetória atual do segmento: ponto inicial (`kind:"frame"`, `role:"start"`), ponto de ajuste (`kind:"adjustment"`, `role:"control"`, `source:"quadraticCtrl"`) e ponto final (`kind:"frame"`, `role:"end"`). Todos com coordenadas normalizadas (`x`, `y`) relativas ao Stage. Retorna `[]` para índice inválido, `frameCount < 2`, segmento inexistente, `stageW/stageH <= 0`, frames ausentes ou `ctrl` com valores inválidos.
+- **`setSegmentTrajectoryPoint(segIndex, pointDescriptor, nextPoint)`** — atualiza o ponto de controle quadrático do segmento a partir de um ponto de trajetória do tipo `adjustment/control/quadraticCtrl`. Marca a curva como manual. Ignora silenciosamente tentativas de editar pontos `kind:"frame"` (esses continuam sendo editados pelas ferramentas de frame). Validações defensivas para `pointDescriptor` incompleto, `nextPoint` inválido, NaN/Infinity.
+- **`getAllTrajectoryPoints()`** — retorna lista de pontos de trajetória de todos os segmentos ativos: `[{ segmentIndex, segmentLabel, points: [...] }]`. Disponível para uso futuro sem alterar UI.
+
+### Integração com helpers existentes
+
+- `getSegmentTrajectoryPoints()` usa `getSegmentByIndex()`, `getSegmentPath()`, `frameCX()`, `frameCY()`, `stageW`, `stageH` internamente.
+- `setSegmentTrajectoryPoint()` usa `setSegmentCurve()` e `setSegmentCurveManual()` — preserva comportamento atual de edição de curva.
+- `getAllTrajectoryPoints()` usa `getAllSegmentPaths()` e `getSegmentTrajectoryPoints()`.
+- Nenhum helper existente foi alterado.
+
+### Suporte a Loop
+
+- Segmento N→1 (loop): `getSegmentTrajectoryPoints()` retorna start = frame N, adjustment = `loopCtrlPt`, end = frame 1.
+- `setSegmentTrajectoryPoint()` atualiza `loopCtrlPt` via `setSegmentCurve()` — comportamento preservado (sem flag manual separada no loop, igual a versões anteriores).
+
+### Preparação para o futuro editor vetorial de trajetória
+
+Nesta versão cada segmento tem apenas três pontos (start frame, adjustment control, end frame). No futuro esta camada poderá aceitar múltiplos pontos de trajetória, handles de tangência, desenho livre e conversão ponto ↔ frame.
+
+### O que NÃO foi alterado
+
+- Comportamento do Preview, export MP4/WebCodecs.
+- Motor de animação, `totalDuration()`, `totalDurationFull()`.
+- Schema do JSON (nenhum campo novo: sem `trajectoryPoints`, `guidePoints`, `handles`, `paths`, `curvesV2`).
+- Velocidade constante, Loop como trecho real, Pausa final, Igualar intervalos.
+- Movimento/Rotação/Escala Inteligente, zoom contextual, Undo/redo.
+- Curvas, resetar curva, edição manual de curva.
+- UI geral (design, cores, layout, Stage, painel inferior).
+
+---
+
 ## v8z4b18h — refresh loop curve on toggle
 
 Corrige o refresh visual da curva do loop (trecho N→1) no Stage ao ligar ou desligar Loop. A curva agora aparece e desaparece imediatamente, sem precisar de toque posterior no Stage.
