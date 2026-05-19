@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18j                                     ║
+║  Versão: v8z4b18k                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18j — editable trajectory adjustment point: ponto de ajuste editável roteado via setSegmentTrajectoryPoint, sem alterar visual, motor, Preview, MP4, JSON ou UI -->
+<!-- Arco App — v8z4b18k — separate curve puller from path points: curvePuller reclassificado como puxador legado (não path point real), getSegmentAnchors() adicionado, modelo futuro documentado; sem alterar visual, motor, Preview, MP4, JSON ou UI -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18j</span><br><span id="appVersionNameText">editable trajectory adjustment point</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18k</span><br><span id="appVersionNameText">separate curve puller from path points</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18j';
-const APP_VERSION_NAME = 'editable trajectory adjustment point';
+const APP_VERSION = 'v8z4b18k';
+const APP_VERSION_NAME = 'separate curve puller from path points';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4463,11 +4463,19 @@ function getAllSegmentPaths() {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-// ─── Trajectory Points Model — v8z4b18i / editável v8z4b18j ─────────────────
+// ─── Trajectory Points Model — v8z4b18i / curvePuller v8z4b18k ──────────────
 // getSegmentTrajectoryPoints() representa a trajetória atual como pontos internos.
-// Nesta versão, o ponto de ajuste é derivado do ponto de controle quadrático atual.
-// No futuro, esta camada poderá aceitar múltiplos pontos de trajetória, handles,
-// desenho livre e conversão ponto ↔ frame.
+// O ponto de controle quadrático atual é classificado como curvePuller (puxador legado).
+//
+// Terminologia interna:
+//   curvePuller — puxador/controle auxiliar legado da curva quadrática atual.
+//                 Não é frameAnchor, não é pathPoint, não é handle.
+//                 Deforma o segmento sem ser um ponto real da trajetória.
+//   frameAnchor — âncora real da timeline (frame com tempo, escala, rotação, pausa).
+//   pathPoint   — ponto real de passagem, sem tempo próprio. (futuro — não implementado)
+//   handle      — tangência/suavidade de frameAnchor ou pathPoint. (futuro — não implementado)
+//
+// Compatibilidade: projetos antigos continuam usando curvePuller sem conversão automática.
 // Esta versão não altera comportamento nem schema.
 
 function getSegmentTrajectoryPoints(segIndex) {
@@ -4508,7 +4516,8 @@ function getSegmentTrajectoryPoints(segIndex) {
       y: startY
     },
     {
-      kind: 'adjustment',
+      // curvePuller: puxador auxiliar legado — não é pathPoint real
+      kind: 'curvePuller',
       role: 'control',
       pointIndex: 0,
       x: cx,
@@ -4534,8 +4543,9 @@ function setSegmentTrajectoryPoint(segIndex, pointDescriptor, nextPoint) {
   // Frames são editados pelas ferramentas de frame — não alterar por este helper
   if (pointDescriptor.kind === 'frame') return;
 
-  // Nesta versão: apenas kind:'adjustment', role:'control', source:'quadraticCtrl'
-  if (pointDescriptor.kind !== 'adjustment' ||
+  // Nesta versão: apenas kind:'curvePuller', role:'control', source:'quadraticCtrl'
+  // curvePuller é o puxador auxiliar legado — não é pathPoint real nem frameAnchor.
+  if (pointDescriptor.kind !== 'curvePuller' ||
       pointDescriptor.role !== 'control' ||
       pointDescriptor.source !== 'quadraticCtrl') return;
 
@@ -4547,8 +4557,8 @@ function setSegmentTrajectoryPoint(segIndex, pointDescriptor, nextPoint) {
   if (typeof nx !== 'number' || !isFinite(nx) ||
       typeof ny !== 'number' || !isFinite(ny)) return;
 
-  // v8z4b18j: ponto visual atual tratado como adjustment/control — nesta versão um por segmento.
-  // No futuro, a camada poderá aceitar múltiplos pontos de trajetória.
+  // v8z4b18k: curvePuller — puxador auxiliar legado da curva quadrática.
+  // Um por segmento nesta versão. Não é pathPoint real.
   // Esta versão não altera visual nem schema.
   setSegmentCurve(segIndex, { nx, ny });
 
@@ -4577,6 +4587,76 @@ function getAllTrajectoryPoints() {
     }
     return acc;
   }, []);
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Segment Anchors — v8z4b18k ──────────────────────────────────────────────
+// getSegmentAnchors() retorna as âncoras reais do segmento (frameAnchors).
+// Nesta versão há apenas frameAnchors — sem pathPoints persistentes.
+//
+// Modelo futuro do segmento:
+//   frameAnchor → pathPoints opcionais → frameAnchor
+//
+// Formato futuro de pathPoint (não implementado — apenas documentado):
+// {
+//   kind: "pathPoint",
+//   id: string,
+//   x: number,
+//   y: number,
+//   pointType: "corner" | "smooth" | "auto",
+//   handleIn: null | { x, y },
+//   handleOut: null | { x, y }
+// }
+//
+// Handles (não implementados — apenas documentados):
+// - Pertencem a frameAnchors ou pathPoints.
+// - Controlam tangência/continuidade entre segmentos.
+// - Não são pontos de passagem.
+// - Podem ser: zerados, automáticos, suaves ou quebrados.
+// - Edição futura: transformar ponto suave em canto e vice-versa.
+//
+// Compatibilidade com projetos antigos:
+// - curvePuller continua acessível; não converter automaticamente para pathPoint.
+// - Ao entrar no futuro modo vetorial, a migração será feita de forma controlada.
+//
+// Esta versão não altera comportamento nem schema.
+
+function getSegmentAnchors(segIndex) {
+  if (typeof segIndex !== 'number' || !isFinite(segIndex) || segIndex < 0) return [];
+  if (frameCount < 2) return [];
+  const seg = getSegmentByIndex(segIndex);
+  if (!seg) return [];
+  if (stageW <= 0 || stageH <= 0) return [];
+
+  const fromIdx = seg.from;
+  const toIdx   = seg.to;
+
+  if (!frames[fromIdx] || !frames[toIdx]) return [];
+
+  const startX = frameCX(fromIdx) / stageW;
+  const startY = frameCY(fromIdx) / stageH;
+  const endX   = frameCX(toIdx)   / stageW;
+  const endY   = frameCY(toIdx)   / stageH;
+
+  if (!isFinite(startX) || !isFinite(startY) ||
+      !isFinite(endX)   || !isFinite(endY)) return [];
+
+  return [
+    {
+      kind: 'frameAnchor',
+      role: 'start',
+      frameIndex: fromIdx,
+      x: startX,
+      y: startY
+    },
+    {
+      kind: 'frameAnchor',
+      role: 'end',
+      frameIndex: toIdx,
+      x: endX,
+      y: endY
+    }
+  ];
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -6398,8 +6478,8 @@ function onMove(e) {
     const nx = sc.x / stageW;
     const ny = sc.y / stageH;
 
-    // v8z4b18j: ponto de ajuste/control editado via camada interna de trajetória
-    const _adjDesc = { kind: 'adjustment', role: 'control', source: 'quadraticCtrl' };
+    // v8z4b18k: curvePuller — puxador auxiliar legado editado via camada interna
+    const _adjDesc = { kind: 'curvePuller', role: 'control', source: 'quadraticCtrl' };
     const _segIdx = ctrlDragSeg === 'loop' ? frameCount - 1 : ctrlDragSeg;
     setSegmentTrajectoryPoint(_segIdx, _adjDesc, { x: nx, y: ny });
     drawBezier(); updateCtrlPts();

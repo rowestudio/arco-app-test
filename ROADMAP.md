@@ -59,6 +59,19 @@ Esse modo pode incorporar o futuro Modo Curvas, sendo tratados como um único mo
 - Conversão frame ↔ ponto-guia.
 - Handles de tangência local (bezier handles).
 
+## Futuro — Ferramenta de caneta / criação de trajetória vetorial
+
+Decisão de produto registrada em v8z4b18k. Não implementado ainda.
+
+- Modo criar frames: clicar cria frame; clicar e arrastar cria frame com tangência.
+- Modo criar pontos de passagem (pathPoints): clicar cria ponto; clicar e arrastar cria handle.
+- Modo desenho livre: o app interpreta o traçado e sugere pontos e/ou frames.
+- Ao deletar frame: oferecer opção de converter em ponto de passagem.
+- Conversão ponto de passagem ↔ frame: em ambas as direções.
+- Edição de handles: transformar ponto suave em canto e vice-versa.
+- Desenho livre poderá gerar pontos e/ou frames após confirmação e escolha do tempo total.
+- curvePuller (legado) coexiste com pathPoints; migração somente ao entrar no modo vetorial.
+
 ## v9 — Interface final
 
 - Nova interface completa.
