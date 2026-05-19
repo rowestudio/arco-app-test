@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18k                                     ║
+║  Versão: v8z4b18l                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18k — separate curve puller from path points: curvePuller reclassificado como puxador legado (não path point real), getSegmentAnchors() adicionado, modelo futuro documentado; sem alterar visual, motor, Preview, MP4, JSON ou UI -->
+<!-- Arco App — v8z4b18l — unified segment path evaluator: evaluateSegmentPath(), sampleSegmentPath() e measureSegmentPathLength() adicionados como base para futuros path points, handles e Modo Mapa/Curvas; sem alterar visual, motor, Preview, MP4, JSON ou UI -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18k</span><br><span id="appVersionNameText">separate curve puller from path points</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18l</span><br><span id="appVersionNameText">unified segment path evaluator</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18k';
-const APP_VERSION_NAME = 'separate curve puller from path points';
+const APP_VERSION = 'v8z4b18l';
+const APP_VERSION_NAME = 'unified segment path evaluator';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4657,6 +4657,106 @@ function getSegmentAnchors(segIndex) {
       y: endY
     }
   ];
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Unified Segment Path Evaluator — v8z4b18l ────────────────────────────────
+//
+// evaluateSegmentPath() é a futura entrada única para calcular posição no caminho.
+// Hoje avalia curva quadrática com curvePuller legado.
+// No futuro poderá avaliar trajetórias com path points, handles e desenho livre.
+// O objetivo é evitar que Preview, MP4, Velocidade constante e Modo Mapa/Curvas
+// calculem caminhos de formas diferentes.
+//
+// Esta versão não altera comportamento nem schema.
+
+// Avalia a posição na curva quadrática do segmento em t ∈ [0,1].
+// Retorna {x, y} em pixels do stage, ou null para segmento inválido.
+// t fora de [0,1] é clampado; t NaN é tratado como 0.
+function evaluateSegmentPath(segIndex, t) {
+  if (typeof t !== 'number' || !isFinite(t)) t = 0;
+  t = Math.max(0, Math.min(1, t));
+
+  if (typeof segIndex !== 'number' || !isFinite(segIndex) || segIndex < 0) return null;
+  if (frameCount < 2) return null;
+  if (!stageW || !stageH) return null;
+
+  const seg = getSegmentByIndex(segIndex);
+  if (!seg) return null;
+
+  const fromIdx = seg.from;
+  const toIdx   = seg.to;
+  if (!frames[fromIdx] || !frames[toIdx]) return null;
+
+  const p1x = frameCX(fromIdx);
+  const p1y = frameCY(fromIdx);
+  const p2x = frameCX(toIdx);
+  const p2y = frameCY(toIdx);
+  if (!isFinite(p1x) || !isFinite(p1y) || !isFinite(p2x) || !isFinite(p2y)) return null;
+
+  // curvePuller / legacyCurveControl: ponto de controle quadrático atual
+  let cp = seg.isLoop ? (loopCtrlPt || null) : (ctrlPts[segIndex] || null);
+  let cpx, cpy;
+  if (cp && typeof cp.nx === 'number' && isFinite(cp.nx) &&
+            typeof cp.ny === 'number' && isFinite(cp.ny)) {
+    cpx = cp.nx * stageW;
+    cpy = cp.ny * stageH;
+  } else {
+    cpx = (p1x + p2x) / 2;
+    cpy = (p1y + p2y) / 2;
+  }
+
+  // Curva quadrática de Bézier: B(t) = (1-t)²·P1 + 2·(1-t)·t·CP + t²·P2
+  const inv = 1 - t;
+  const x = inv * inv * p1x + 2 * inv * t * cpx + t * t * p2x;
+  const y = inv * inv * p1y + 2 * inv * t * cpy + t * t * p2y;
+  if (!isFinite(x) || !isFinite(y)) return null;
+  return { x, y };
+}
+
+// Retorna steps+1 pontos amostrados uniformemente ao longo da trajetória.
+// Inclui t=0 e t=1. Retorna [] para segmento inválido.
+// steps mínimo seguro: 8. steps padrão: 64.
+function sampleSegmentPath(segIndex, steps) {
+  if (typeof steps !== 'number' || !isFinite(steps) || steps < 8) steps = 64;
+  steps = Math.max(8, Math.round(steps));
+  if (frameCount < 2) return [];
+  if (!getSegmentByIndex(segIndex)) return [];
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const pt = evaluateSegmentPath(segIndex, i / steps);
+    if (!pt) return [];
+    pts.push(pt);
+  }
+  return pts;
+}
+
+// Mede o comprimento aproximado da trajetória do segmento em pixels do stage.
+// Funciona para segmentos normais e para o segmento de loop.
+// Migração futura: measureSegmentCurveLength / measureLoopCurveLength
+// poderão ser substituídas por esta função quando seguro.
+function measureSegmentPathLength(segIndex, steps) {
+  if (typeof steps !== 'number' || !isFinite(steps) || steps < 8) steps = 64;
+  const pts = sampleSegmentPath(segIndex, steps);
+  if (pts.length < 2) {
+    const seg = getSegmentByIndex(segIndex);
+    if (!seg || !frames[seg.from] || !frames[seg.to]) return 0;
+    const d = Math.hypot(frameCX(seg.to) - frameCX(seg.from), frameCY(seg.to) - frameCY(seg.from));
+    return isFinite(d) ? Math.max(0, d) : 0;
+  }
+  let len = 0;
+  for (let i = 1; i < pts.length; i++) {
+    len += Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y);
+  }
+  if (!isFinite(len)) return 0;
+  if (len < 1e-6) {
+    const seg = getSegmentByIndex(segIndex);
+    if (seg && frames[seg.from] && frames[seg.to]) {
+      const d = Math.hypot(frameCX(seg.to) - frameCX(seg.from), frameCY(seg.to) - frameCY(seg.from));
+      return isFinite(d) ? Math.max(0, d) : 0;
+    }
+  }
+  return Math.max(0, len);
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -10080,6 +10180,8 @@ function getSegDuration(seg) {
 
 // Mede o comprimento real da curva Bézier de um segmento em pixels do stage.
 // Usa a mesma geometria do motor (bezierPointAt do getStateAtT).
+// Migração futura: equivalente a measureSegmentPathLength(segIndex) —
+// substituir quando seguro, mantendo comportamento idêntico.
 function measureSegmentCurveLength(segIndex) {
   if (frameCount < 2 || segIndex < 0 || segIndex >= frameCount - 1) return 0;
   if (!stageW || !stageH) return 0;
@@ -10120,6 +10222,8 @@ function measureSegmentCurveLength(segIndex) {
 }
 
 // Mede o comprimento real da curva do trecho de fechamento N→1 — v8z4b17o
+// Migração futura: equivalente a measureSegmentPathLength(loopSegIndex) —
+// substituir quando seguro, mantendo comportamento idêntico.
 function measureLoopCurveLength() {
   if (!loopEnabled || frameCount < 2 || !stageW || !stageH) return 0;
   const lastIdx = frameCount - 1;
