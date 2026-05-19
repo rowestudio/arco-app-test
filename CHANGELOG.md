@@ -1,5 +1,30 @@
 # Changelog
 
+## v8z4b18l — unified segment path evaluator
+
+Patch estrutural/interno: cria avaliador único de trajetória por segmento, centralizando como o app calcula pontos ao longo da curva. Adiciona `evaluateSegmentPath()`, `sampleSegmentPath()` e `measureSegmentPathLength()` como base para futuros path points, handles e Modo Mapa/Curvas. Nenhuma mudança de comportamento visual, motor, Preview, MP4, JSON ou UI.
+
+### O que foi adicionado
+
+- **`evaluateSegmentPath(segIndex, t)`** — avaliador único de trajetória: retorna `{x, y}` em pixels do stage para o segmento no parâmetro `t ∈ [0,1]`. Avalia a curva quadrática atual com curvePuller legado. Trata segmentos normais e de loop. Valida: `segIndex` inválido, `frameCount < 2`, `stageW/stageH` ausente, `frames` ausentes, `ctrl` ausente (fallback ponto médio), `t` NaN/Infinity/fora de `[0,1]`. Retorna `null` para segmento inválido.
+- **`sampleSegmentPath(segIndex, steps)`** — retorna `steps+1` pontos amostrados ao longo da trajetória (inclui `t=0` e `t=1`). Usa `evaluateSegmentPath()`. `steps` mínimo seguro: 8; padrão: 64. Retorna `[]` para segmento inválido.
+- **`measureSegmentPathLength(segIndex, steps)`** — mede o comprimento aproximado da trajetória em pixels do stage. Usa `sampleSegmentPath()`. Funciona para segmentos normais e de loop (unified). Fallback para distância linear em casos degenerados.
+- **Comentários de migração futura** — `measureSegmentCurveLength()` e `measureLoopCurveLength()` anotadas como candidatas à migração para `measureSegmentPathLength()` quando seguro.
+
+### O que NÃO foi alterado
+
+- Comportamento do Preview, export MP4/WebCodecs.
+- Motor de animação (`getStateAtT`, `drawAtT`), `totalDuration()`, `totalDurationFull()`.
+- Schema do JSON (nenhum campo novo: sem `pathPoints`, `trajectoryPoints`, `handles`, `anchors`, `curvePuller`, `curvesV2`, `vectorPath`, `sampledPath`).
+- Visual do ponto atual da curva (curvePuller/legacyCurveControl).
+- `measureSegmentCurveLength()`, `measureLoopCurveLength()` — preservadas e em uso.
+- Velocidade constante, Loop como trecho real, Pausa final.
+- Movimento/Rotação/Escala Inteligente, zoom contextual, Undo/redo.
+- `resetSegmentCurve()`, `getSegmentCurve()`, `setSegmentCurve()` — preservados.
+- UI geral (design, cores, layout, Stage, painel inferior).
+
+---
+
 ## v8z4b18k — separate curve puller from path points
 
 Patch conceitual/arquitetural: reclassifica internamente o ponto atual de controle da curva como `curvePuller` (puxador legado), separando-o conceitualmente dos futuros pontos de trajetória reais. Adiciona helper `getSegmentAnchors()` e documenta o modelo futuro de pathPoints e handles. Nenhuma mudança de comportamento visual, motor, Preview, MP4, JSON ou UI.
