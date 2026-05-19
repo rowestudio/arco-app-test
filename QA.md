@@ -2,6 +2,84 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18g — internal segment path object
+
+### Teste A — sem mudança visual
+1. Abrir app.
+2. Carregar imagem.
+3. Criar 3 frames.
+4. Confirmar que o Stage permanece visualmente igual à v8z4b18f.
+5. Confirmar que curvas aparecem igual.
+6. Preview OK.
+
+### Teste B — curva normal
+1. Selecionar trecho 1–2.
+2. Arrastar ponto de curva.
+3. Confirmar que só 1–2 muda.
+4. Selecionar 2–3.
+5. Arrastar ponto de curva.
+6. Confirmar que só 2–3 muda.
+7. Preview OK.
+
+### Teste C — reset de curva normal
+1. Alterar curva 1–2.
+2. Usar Resetar curva.
+3. Confirmar que apenas 1–2 volta ao padrão.
+4. Confirmar que 2–3 não muda.
+5. Preview OK.
+
+### Teste D — loop
+1. Criar 3 frames.
+2. Ligar Loop.
+3. Selecionar trecho 3–1.
+4. Alterar curva do loop.
+5. Confirmar que apenas a curva 3–1 muda.
+6. Usar Resetar curva no loop.
+7. Confirmar que apenas 3–1 reseta.
+8. Preview OK.
+
+### Teste E — salvar/carregar
+1. Criar projeto com curva manual 1–2.
+2. Criar curva manual no loop 3–1.
+3. Salvar JSON.
+4. Reabrir JSON.
+5. Confirmar que curvas continuam iguais.
+6. Confirmar que o JSON não ganhou schema novo de paths/guides/handles.
+7. Preview OK.
+
+### Teste F — velocidade constante
+1. Criar 4 frames.
+2. Ligar Loop.
+3. Ligar Velocidade constante.
+4. Confirmar que todos os segmentos entram no cálculo.
+5. Alterar manualmente um trecho.
+6. Confirmar que Velocidade constante desliga.
+7. Preview OK.
+
+### Teste G — zoom contextual
+1. Confirmar que zoom contextual continua funcionando.
+2. Confirmar que mover frame com zoom funciona.
+3. Confirmar que mover ponto de curva com zoom funciona.
+4. Confirmar que mãozinha/pan continua funcionando.
+
+### Teste H — regressão geral
+1. Movimento Inteligente OK.
+2. Rotação Inteligente OK.
+3. Escala Inteligente OK.
+4. Velocidade constante OK.
+5. Loop como trecho real OK.
+6. Pausa final OK.
+7. Resetar curva OK.
+8. Load de projeto antigo/misto OK.
+9. Trechos aparecem corretamente após load.
+10. Preview OK.
+11. Gerar MP4 OK.
+12. Sem tela preta.
+13. Sem botão preso.
+14. Sem NaN/Infinity no console.
+
+---
+
 ## v8z4b18f — central active segments helper
 
 ### Teste A — sem loop
