@@ -2,6 +2,83 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18e — manual segment duration disables constant speed
+
+### Teste A — trecho normal desliga Velocidade constante
+1. Criar 3 frames.
+2. Ligar Velocidade constante.
+3. Abrir painel Duração → Trechos.
+4. Arrastar o slider do trecho 1-2.
+5. Confirmar que o valor do trecho muda.
+6. Confirmar que Velocidade constante desliga (botão Manual fica ativo).
+7. Confirmar que os outros trechos mantêm seus valores.
+
+### Teste B — trecho de loop desliga Velocidade constante
+1. Criar 3 frames.
+2. Ligar Loop (chip "Loop" em Acabamento).
+3. Ligar Velocidade constante.
+4. Abrir painel Duração → Trechos.
+5. Arrastar o slider do trecho 3-1.
+6. Confirmar que o valor muda.
+7. Confirmar que Velocidade constante desliga.
+8. Confirmar que Manual fica ativo.
+9. Confirmar que o total atualiza corretamente.
+
+### Teste C — Igualar intervalos desliga Velocidade constante
+1. Criar 3 frames.
+2. Ligar Velocidade constante.
+3. Tocar em "Igualar intervalos".
+4. Confirmar que os trechos recebem o mesmo valor.
+5. Confirmar que Velocidade constante desliga.
+6. Confirmar que Manual fica ativo.
+
+### Teste D — slider Total preserva Velocidade constante
+1. Criar 3 frames.
+2. Ligar Velocidade constante.
+3. Arrastar o slider Total dos trechos.
+4. Confirmar que Velocidade constante permanece ligada.
+5. Confirmar que os trechos são redistribuídos proporcionalmente ao comprimento de curva.
+6. Com Loop ligado: confirmar que N→1 entra na redistribuição.
+
+### Teste E — ativar Loop preserva Velocidade constante
+1. Criar 3 frames.
+2. Ligar Velocidade constante.
+3. Ativar Loop.
+4. Confirmar que o trecho 3-1 entra na distribuição.
+5. Confirmar que Velocidade constante permanece ligada.
+6. Desativar Loop.
+7. Confirmar que redistribuição remove 3-1 e mantém Velocidade constante.
+
+### Teste F — slider Retorno (loopDurSlider) desliga Velocidade constante
+1. Criar 3 frames.
+2. Ligar Loop.
+3. Ligar Velocidade constante.
+4. Arrastar o slider "Retorno" na seção Acabamento (fora do breakdown).
+5. Confirmar que Velocidade constante desliga.
+6. Confirmar que Manual fica ativo.
+
+### Teste G — painel ease contextual, trecho loop
+1. Criar 3 frames.
+2. Ligar Loop.
+3. Ligar Velocidade constante.
+4. Abrir painel de easing do trecho 3-1.
+5. Alterar a duração pelo slider do painel.
+6. Confirmar que Velocidade constante desliga.
+
+### Teste H — regressão geral
+1. Preview OK.
+2. MP4 OK.
+3. Movimento Inteligente OK.
+4. Rotação Inteligente OK.
+5. Escala Inteligente OK.
+6. Resetar curva OK.
+7. Zoom contextual OK.
+8. Salvar/reabrir JSON OK (modo salvo corretamente).
+9. Sem NaN/Infinity no console.
+10. Sem botão preso.
+
+---
+
 ## v8z4b18d — include loop in segment duration totals
 
 ### Teste A — 3 frames com loop: contagem e total

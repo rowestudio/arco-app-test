@@ -1,5 +1,30 @@
 # Changelog
 
+## v8z4b18e — manual segment duration disables constant speed
+
+Corrige a relação entre Velocidade constante e ajustes manuais de duração por trecho: qualquer edição manual num slider de trecho (incluindo o loop N→1) desliga Velocidade constante imediatamente.
+
+### O que foi corrigido
+
+- **`disableConstantSpeedBecauseManualSegmentEdit()`** — novo helper central que desliga Velocidade constante, limpa `constantSpeedTotalDuration`, sincroniza a UI e exibe status "Velocidade constante desativada".
+- **Sliders de trecho no breakdown** — em vez de bloquear a interação quando Velocidade constante está ativa, a edição é agora permitida e aciona o helper.
+- **Slider do trecho de loop N→1 no breakdown** — mesmo comportamento; ajuste manual desliga Velocidade constante.
+- **Slider "Retorno" (loopDurSlider) na seção Acabamento** — slider nunca estava na lista de sliders desabilitados; agora chama o helper quando Velocidade constante está ativa.
+- **Painel ease contextual, trecho loop** — ajuste de duração do loop no painel de easing também desliga Velocidade constante.
+- **Painel ease contextual, trecho normal** — código inline substituído pelo helper (comportamento preservado).
+- **`distributeSegEqual()` (Igualar intervalos)** — código inline substituído pelo helper (comportamento preservado; mensagem de status própria mantida).
+- **`syncTimingModeUI()`** — removido `sl.disabled = isConstant`; sliders permanecem interativos em modo Velocidade constante; opacidade reduzida mantida como hint visual.
+
+### O que NÃO foi alterado
+
+- Slider Total dos trechos (`durSlider`) — manter Velocidade constante ligada ao alterar total é o comportamento correto e permanece intacto.
+- Ativar/desativar Loop com Velocidade constante — continua redistribuindo sem desligar o modo.
+- Motor de animação, Preview, export MP4/WebCodecs.
+- Curvas, helpers de curva, resetar curva, zoom contextual, Movimento/Rotação/Escala Inteligente, UI geral, pontos-guia, handles.
+- Schema JSON (nenhum campo novo; estado do modo gravado como antes).
+
+---
+
 ## v8z4b18d — include loop in segment duration totals
 
 Corrige o painel Duração para que o trecho N→1 (loop) entre corretamente na contagem de trechos, no total de tempo dos trechos e nas distribuições/ajustes.

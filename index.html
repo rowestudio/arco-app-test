@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18d                                     ║
+║  Versão: v8z4b18e                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18d — include loop in segment duration totals: trecho N→1 entra na contagem/total dos trechos e distribuições do painel Duração -->
+<!-- Arco App — v8z4b18e — manual segment duration disables constant speed: ajuste manual de trecho (incluindo N→1) desliga Velocidade constante imediatamente -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18d</span><br><span id="appVersionNameText">include loop in segment duration totals</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18e</span><br><span id="appVersionNameText">manual segment duration disables constant speed</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18d';
-const APP_VERSION_NAME = 'include loop in segment duration totals';
+const APP_VERSION = 'v8z4b18e';
+const APP_VERSION_NAME = 'manual segment duration disables constant speed';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -7907,6 +7907,9 @@ function initEasePanel() {
       const nextVal = parseFloat(this.value);
       if (isLoop) {
         if (!Number.isFinite(nextVal) || nextVal < 0.1) return;
+        if (segmentTimingMode === 'constant-speed') {
+          disableConstantSpeedBecauseManualSegmentEdit(); // v8z4b18e
+        }
         loopDuration = nextVal;
         const acabSlider = document.getElementById('loopDurSlider');
         const acabVal = document.getElementById('loopDurVal');
@@ -7919,12 +7922,8 @@ function initEasePanel() {
         if (isPreviewing) { stopPreview(); startPreview(); }
         return;
       }
-      // v8z4b17g — edição individual no painel contextual sai do modo constant-speed
       if (segmentTimingMode === 'constant-speed') {
-        segmentTimingMode = 'manual';
-        constantSpeedTotalDuration = null;
-        syncTimingModeUI();
-        markProjectDirty('timing-mode');
+        disableConstantSpeedBecauseManualSegmentEdit(); // v8z4b18e
       }
       if (segGlobalMode) {
         for (let i = 0; i < frameCount - 1; i++) segDurations[i] = nextVal;
@@ -8566,6 +8565,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const loopSlider = document.getElementById('loopDurSlider');
   if (loopSlider) {
     loopSlider.addEventListener('input', function() {
+      if (segmentTimingMode === 'constant-speed') {
+        disableConstantSpeedBecauseManualSegmentEdit(); // v8z4b18e
+      }
       markProjectDirty('loop-duration');
       loopDuration = parseFloat(this.value);
       const val = document.getElementById('loopDurVal');
@@ -10257,6 +10259,18 @@ function computeSmartScaleT(seg, tt) {
   return _smartScalarHermiteT(tt, dur, delta, vStart, vEnd);
 }
 
+// v8z4b18e — Desliga Velocidade constante quando o usuário ajusta manualmente
+// a duração de qualquer trecho (normal ou loop N→1). Não deve ser chamado
+// pelo slider Total nem por ativar/desativar Loop.
+function disableConstantSpeedBecauseManualSegmentEdit() {
+  if (segmentTimingMode !== 'constant-speed') return;
+  segmentTimingMode = 'manual';
+  constantSpeedTotalDuration = null;
+  syncTimingModeUI();
+  markProjectDirty('timing-mode');
+  showStatus('Velocidade constante desativada');
+}
+
 // Define o modo de distribuição de tempo e sincroniza a UI.
 function setSegmentTimingMode(mode) {
   if (mode === segmentTimingMode) return;
@@ -10294,11 +10308,12 @@ function syncTimingModeUI() {
   }
   if (hint) hint.style.display = isConstant ? 'block' : 'none';
 
-  // Desabilitar/habilitar sliders individuais de trecho
+  // v8z4b18e: sliders permanecem habilitados; arrastar qualquer um desliga
+  // Velocidade constante via disableConstantSpeedBecauseManualSegmentEdit().
+  // Opacidade reduzida apenas como hint visual de que o modo está ativo.
   const container = document.getElementById('segRows');
   if (container) {
     container.querySelectorAll('input[type="range"]').forEach(sl => {
-      sl.disabled = isConstant;
       sl.style.opacity = isConstant ? '0.4' : '';
     });
     container.querySelectorAll('.dur-edit-label, .dur-edit-value').forEach(el => {
@@ -10342,7 +10357,9 @@ function openSegBreakdown() {
       if (!segUndoCaptured) { pushUndo(); segUndoCaptured = true; }
     });
     slider.addEventListener('input', () => {
-      if (segmentTimingMode === 'constant-speed') return; // v8z4b17f — modo guarda
+      if (segmentTimingMode === 'constant-speed') {
+        disableConstantSpeedBecauseManualSegmentEdit(); // v8z4b18e
+      }
       segDurations[idx] = parseFloat(slider.value);
       val.textContent = segDurations[idx].toFixed(1) + 's';
       updateSegTotal();
@@ -10377,6 +10394,9 @@ function openSegBreakdown() {
       if (!loopRowUndoCaptured) { pushUndo(); loopRowUndoCaptured = true; }
     });
     loopSl.addEventListener('input', () => {
+      if (segmentTimingMode === 'constant-speed') {
+        disableConstantSpeedBecauseManualSegmentEdit(); // v8z4b18e
+      }
       loopDuration = parseFloat(loopSl.value);
       loopVal2.textContent = loopDuration.toFixed(1) + 's';
       const acabSlider = document.getElementById('loopDurSlider');
@@ -10431,11 +10451,8 @@ function distributeSegEqual() {
     if (loopDurSliderEl) loopDurSliderEl.value = loopDuration;
     if (loopDurValEl) loopDurValEl.textContent = loopDuration.toFixed(1) + 's';
   }
-  // v8z4b17g — ação manual; sair do modo constant-speed
   if (segmentTimingMode !== 'manual') {
-    segmentTimingMode = 'manual';
-    constantSpeedTotalDuration = null;
-    markProjectDirty('timing-mode');
+    disableConstantSpeedBecauseManualSegmentEdit(); // v8z4b18e
   }
   openSegBreakdown(); // rebuild rows + syncTimingModeUI interno
   showStatus('Distribuído igualmente — total ' + currentTotal.toFixed(1) + 's');
