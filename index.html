@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18c                                     ║
+║  Versão: v8z4b18d                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18c — curve access helpers: camada interna de acesso às curvas por trecho; sem alteração de comportamento visual, motor, Preview ou MP4 -->
+<!-- Arco App — v8z4b18d — include loop in segment duration totals: trecho N→1 entra na contagem/total dos trechos e distribuições do painel Duração -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18c</span><br><span id="appVersionNameText">curve access helpers</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18d</span><br><span id="appVersionNameText">include loop in segment duration totals</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18c';
-const APP_VERSION_NAME = 'curve access helpers';
+const APP_VERSION = 'v8z4b18d';
+const APP_VERSION_NAME = 'include loop in segment duration totals';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -7719,27 +7719,48 @@ durSlider.addEventListener('change', () => {
 durSlider.addEventListener('input', function () {
   const newTotal = parseFloat(this.value);
   ensureSegDurations();
+  // v8z4b18d: hasLoop e loopExtra para incluir N→1 na redistribuição
+  const hasLoop = loopEnabled && frameCount >= 2;
+  const loopExtra = hasLoop ? (loopDuration || 0) : 0;
   if (segmentTimingMode === 'constant-speed') {
     // v8z4b17f — modo velocidade constante: atualizar total e redistribuir
-    constantSpeedTotalDuration = newTotal;
+    // constantSpeedTotalDuration conta apenas segmentos normais; redistribuir subtrai loop
+    constantSpeedTotalDuration = Math.max(0, newTotal - loopExtra);
     redistributeDurationsByCurveLength();
   } else {
-    const oldTotal = totalDuration();
-    // v8z4b16b — preserva proporção existente. Mínimo 0 (antes 0.1) para
-    // permitir trechos zerados durante a redistribuição.
+    // v8z4b18d: oldTotal inclui loopDuration para escala proporcional correta
+    const oldTotal = totalDuration() + loopExtra;
     if (oldTotal > 0) {
       const ratio = newTotal / oldTotal;
+      // v8z4b16b — preserva proporção existente; mínimo 0 para trechos zerados
       for (let i = 0; i < segDurations.length; i++) {
         if (segDurations[i] != null) {
           segDurations[i] = Math.max(0, parseFloat((segDurations[i] * ratio).toFixed(1)));
         }
       }
-    } else if (newTotal > 0 && segDurations.length > 0) {
-      // v8z4b16b — saindo de "todos os trechos em 0", não há proporção
-      // anterior válida: distribuímos o novo total igualmente.
-      const per = parseFloat((newTotal / segDurations.length).toFixed(1));
-      for (let i = 0; i < segDurations.length; i++) {
-        segDurations[i] = per;
+      // v8z4b18d: redistribuir loopDuration proporcionalmente
+      if (hasLoop) {
+        loopDuration = Math.max(0.1, parseFloat((loopExtra * ratio).toFixed(1)));
+        const loopDurSliderEl = document.getElementById('loopDurSlider');
+        const loopDurValEl = document.getElementById('loopDurVal');
+        if (loopDurSliderEl) loopDurSliderEl.value = loopDuration;
+        if (loopDurValEl) loopDurValEl.textContent = loopDuration.toFixed(1) + 's';
+      }
+    } else if (newTotal > 0) {
+      // v8z4b16b/v8z4b18d — saindo de "todos em 0": distribuir igualmente por todos os trechos ativos
+      const activeCount = getActiveSegmentCount();
+      if (activeCount > 0) {
+        const per = parseFloat((newTotal / activeCount).toFixed(1));
+        for (let i = 0; i < segDurations.length; i++) {
+          segDurations[i] = per;
+        }
+        if (hasLoop) {
+          loopDuration = Math.max(0.1, per);
+          const loopDurSliderEl = document.getElementById('loopDurSlider');
+          const loopDurValEl = document.getElementById('loopDurVal');
+          if (loopDurSliderEl) loopDurSliderEl.value = loopDuration;
+          if (loopDurValEl) loopDurValEl.textContent = loopDuration.toFixed(1) + 's';
+        }
       }
     }
   }
@@ -9733,7 +9754,9 @@ function totalDuration() {
 }
 
 function getDurationParts() {
-  const moveDur = totalDuration();
+  // v8z4b18d: trecho N→1 é parte do percurso quando loop ativo — inclui em moveDur
+  const loopExtra = (loopEnabled && frameCount >= 2) ? (loopDuration || 0) : 0;
+  const moveDur = totalDuration() + loopExtra;
   let internalPauses = 0;
   if (easeMode === 'pause' && pauseDuration > 0) {
     const segs = frameCount - 1;
@@ -9743,9 +9766,9 @@ function getDurationParts() {
     const d = framePauses[i]?.duration || 0;
     if (d > 0) internalPauses += d;
   }
-  let finish = 0;
-  if (finishMode === 'loop') finish = loopDuration;
+  // v8z4b18d: loopDuration já contado em moveDur — não duplicar em finish
   // finishMode === 'pause': pausa já contabilizada em framePauses[lastFrame]
+  const finish = 0;
   return { moveDur, internalPauses, finish, total: moveDur + internalPauses + finish };
 }
 
@@ -10393,11 +10416,21 @@ function updateSegTotal() {
 function distributeSegEqual() {
   pushUndo();
   const segs = frameCount - 1;
-  // Usa o total atual (seja global ou soma dos segmentos) — não reseta para duration
-  const currentTotal = totalDuration();
-  const perSeg = parseFloat((currentTotal / segs).toFixed(1));
+  if (segs < 1) return;
+  // v8z4b18d: total inclui loopDuration quando loop ativo; distribuir entre todos os trechos ativos
+  const hasLoop = loopEnabled && frameCount >= 2;
+  const currentTotal = totalDuration() + (hasLoop ? (loopDuration || 0) : 0);
+  const activeCount = getActiveSegmentCount();
+  const perSeg = parseFloat((currentTotal / activeCount).toFixed(1));
   segDurations.length = 0;
   for (let i = 0; i < segs; i++) segDurations[i] = perSeg;
+  if (hasLoop) {
+    loopDuration = Math.max(0.1, perSeg);
+    const loopDurSliderEl = document.getElementById('loopDurSlider');
+    const loopDurValEl = document.getElementById('loopDurVal');
+    if (loopDurSliderEl) loopDurSliderEl.value = loopDuration;
+    if (loopDurValEl) loopDurValEl.textContent = loopDuration.toFixed(1) + 's';
+  }
   // v8z4b17g — ação manual; sair do modo constant-speed
   if (segmentTimingMode !== 'manual') {
     segmentTimingMode = 'manual';
@@ -10408,13 +10441,11 @@ function distributeSegEqual() {
   showStatus('Distribuído igualmente — total ' + currentTotal.toFixed(1) + 's');
 }
 function syncDurationUI() {
-  const moveTotal = totalDuration();
   const parts = getDurationParts();
+  const moveTotal = parts.moveDur; // v8z4b18d: inclui loopDuration quando loop ativo
   const total = parts.total;
   syncFinishingUIFromState();
-  // v8z4b15v: durSlider controla apenas os SEGMENTOS (proporcionalmente).
-  // Antes, o thumb refletia o total final (segmentos + pausas + acabamento)
-  // mas o input handler operava só sobre segDurations — divergência visual.
+  // v8z4b18d: durSlider reflete total de TODOS os trechos ativos (inclui loop)
   const durSlider = document.getElementById('durSlider');
   if (durSlider) {
     const next = Math.min(60, moveTotal).toFixed(1);

@@ -2,6 +2,62 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18d — include loop in segment duration totals
+
+### Teste A — 3 frames com loop: contagem e total
+1. Criar 3 frames.
+2. Ligar Loop (chip "Loop" em Acabamento).
+3. Abrir painel Duração → seção Trechos.
+4. Confirmar que aparecem: 1-2, 2-3, 3-1.
+5. Confirmar que "Tempo dos trechos" no resumo inclui os 3 valores somados.
+6. Confirmar que o trecho 3-1 NÃO aparece em Acabamento como componente separado.
+7. Confirmar que "Acabamento" mostra 0.0s.
+
+### Teste B — Igualar intervalos
+1. Com 3 frames e Loop ligado.
+2. Tocar em "Igualar intervalos".
+3. Confirmar que 1-2, 2-3 e 3-1 recebem o mesmo valor.
+4. Confirmar que "Tempo dos trechos" = soma dos 3.
+
+### Teste C — slider Total
+1. Com 3 frames e Loop ligado.
+2. Arrastar slider Total.
+3. Confirmar que os 3 trechos são redistribuídos proporcionalmente.
+4. Confirmar que o loop não fica parado em valor fixo.
+
+### Teste D — ajuste manual do loop
+1. Alterar manualmente o slider do trecho 3-1.
+2. Confirmar que "Tempo dos trechos" atualiza imediatamente.
+3. Confirmar que "Duração total" atualiza corretamente.
+
+### Teste E — loop desligado
+1. Desligar Loop (chip "Nenhum").
+2. Confirmar que 3-1 desaparece da lista de trechos.
+3. Confirmar que "Tempo dos trechos" conta apenas 1-2 e 2-3.
+4. Confirmar que Acabamento/Pausa final continua funcionando.
+
+### Teste F — velocidade constante com loop
+1. Ligar Loop.
+2. Ligar "Velocidade constante".
+3. Confirmar que o trecho N→1 entra na redistribuição.
+4. Desligar Loop.
+5. Confirmar que o cálculo remove N→1 sem erro.
+
+### Teste G — regressão geral
+1. Preview OK.
+2. MP4 OK.
+3. Movimento Inteligente OK.
+4. Rotação Inteligente OK.
+5. Escala Inteligente OK.
+6. Resetar curva OK.
+7. Zoom contextual OK.
+8. Load de projeto antigo OK.
+9. Salvar/reabrir JSON OK.
+10. Sem NaN/Infinity no console.
+11. Sem tela preta.
+
+---
+
 ## v8z4b18c — curve access helpers without behavior change
 
 ### Teste A — sem mudança visual

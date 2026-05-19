@@ -1,5 +1,25 @@
 # Changelog
 
+## v8z4b18d — include loop in segment duration totals
+
+Corrige o painel Duração para que o trecho N→1 (loop) entre corretamente na contagem de trechos, no total de tempo dos trechos e nas distribuições/ajustes.
+
+### O que foi corrigido
+
+- **`getDurationParts()`** — `loopDuration` agora entra em `moveDur` (Tempo dos trechos) quando loop ativo, e não mais em `finish` (Acabamento). Total permanece idêntico.
+- **`syncDurationUI()`** — `moveTotal` passa a usar `parts.moveDur` (inclui loop) em vez de `totalDuration()` (só segmentos normais).
+- **slider Total dos trechos** — redistribui `loopDuration` proporcionalmente junto com `segDurations[]` ao arrastar; em modo Velocidade constante, subtrai loop antes de definir `constantSpeedTotalDuration` para evitar dupla contagem.
+- **`distributeSegEqual()` (Igualar intervalos)** — distribui tempo igualmente entre todos os trechos ativos (N-1 normais + loop), incluindo atualização do slider de loop.
+
+### O que não foi alterado
+
+- Motor de animação, Preview, export MP4/WebCodecs.
+- `totalDuration()` — permanece como soma dos segmentos normais (usado pelo motor).
+- `totalDurationFull()` — total final é preservado (motor unaffected).
+- Curves, helpers de curva, resetar curva, zoom contextual, Movimento/Rotação/Escala Inteligente, UI geral, design system.
+
+---
+
 ## v8z4b18c — curve access helpers without behavior change
 
 Refatoração interna: adiciona camada de helpers para acesso uniforme às curvas por trecho. Nenhuma mudança de comportamento visual, motor, Preview ou MP4.
