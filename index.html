@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18h                                     ║
+║  Versão: v8z4b18i                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18h — refresh loop curve on toggle: renderAll() em setFinishing() corrige curva N→1 sem toque no Stage -->
+<!-- Arco App — v8z4b18i — internal trajectory points model: getSegmentTrajectoryPoints/setSegmentTrajectoryPoint/getAllTrajectoryPoints internos, sem alterar visual, motor, Preview, MP4, JSON ou UI -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18h</span><br><span id="appVersionNameText">refresh loop curve on toggle</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18i</span><br><span id="appVersionNameText">internal trajectory points model</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18h';
-const APP_VERSION_NAME = 'refresh loop curve on toggle';
+const APP_VERSION = 'v8z4b18i';
+const APP_VERSION_NAME = 'internal trajectory points model';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4458,6 +4458,111 @@ function getAllSegmentPaths() {
   return getActiveSegments().reduce((acc, seg) => {
     const p = getSegmentPath(seg.index);
     if (p) acc.push(p);
+    return acc;
+  }, []);
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Trajectory Points Model — v8z4b18i ──────────────────────────────────────
+// getSegmentTrajectoryPoints() representa a trajetória atual como pontos internos.
+// Nesta versão, o ponto de ajuste é derivado do ponto de controle quadrático atual.
+// No futuro, esta camada poderá aceitar múltiplos pontos de trajetória, handles,
+// desenho livre e conversão ponto ↔ frame.
+// Esta versão não altera comportamento nem schema.
+
+function getSegmentTrajectoryPoints(segIndex) {
+  if (typeof segIndex !== 'number' || !isFinite(segIndex) || segIndex < 0) return [];
+  if (frameCount < 2) return [];
+  const seg = getSegmentByIndex(segIndex);
+  if (!seg) return [];
+  if (stageW <= 0 || stageH <= 0) return [];
+
+  const fromIdx = seg.from;
+  const toIdx   = seg.to;
+
+  if (!frames[fromIdx] || !frames[toIdx]) return [];
+
+  const startX = frameCX(fromIdx) / stageW;
+  const startY = frameCY(fromIdx) / stageH;
+  const endX   = frameCX(toIdx)   / stageW;
+  const endY   = frameCY(toIdx)   / stageH;
+
+  if (!isFinite(startX) || !isFinite(startY) ||
+      !isFinite(endX)   || !isFinite(endY)) return [];
+
+  const path = getSegmentPath(segIndex);
+  if (!path || !path.ctrl) return [];
+
+  const cx = path.ctrl.x;
+  const cy = path.ctrl.y;
+
+  if (typeof cx !== 'number' || !isFinite(cx) ||
+      typeof cy !== 'number' || !isFinite(cy)) return [];
+
+  return [
+    {
+      kind: 'frame',
+      role: 'start',
+      frameIndex: fromIdx,
+      x: startX,
+      y: startY
+    },
+    {
+      kind: 'adjustment',
+      role: 'control',
+      pointIndex: 0,
+      x: cx,
+      y: cy,
+      source: 'quadraticCtrl'
+    },
+    {
+      kind: 'frame',
+      role: 'end',
+      frameIndex: toIdx,
+      x: endX,
+      y: endY
+    }
+  ];
+}
+
+function setSegmentTrajectoryPoint(segIndex, pointDescriptor, nextPoint) {
+  if (typeof segIndex !== 'number' || !isFinite(segIndex) || segIndex < 0) return;
+  if (frameCount < 2) return;
+  if (!pointDescriptor || typeof pointDescriptor !== 'object') return;
+  if (!getSegmentByIndex(segIndex)) return;
+
+  // Frames são editados pelas ferramentas de frame — não alterar por este helper
+  if (pointDescriptor.kind === 'frame') return;
+
+  // Nesta versão: apenas kind:'adjustment', role:'control', source:'quadraticCtrl'
+  if (pointDescriptor.kind !== 'adjustment' ||
+      pointDescriptor.role !== 'control' ||
+      pointDescriptor.source !== 'quadraticCtrl') return;
+
+  if (!nextPoint || typeof nextPoint !== 'object') return;
+
+  const nx = nextPoint.x;
+  const ny = nextPoint.y;
+
+  if (typeof nx !== 'number' || !isFinite(nx) ||
+      typeof ny !== 'number' || !isFinite(ny)) return;
+
+  setSegmentCurve(segIndex, { nx, ny });
+  setSegmentCurveManual(segIndex, true);
+}
+
+function getAllTrajectoryPoints() {
+  if (frameCount < 2) return [];
+  return getAllSegmentPaths().reduce((acc, path) => {
+    if (!path) return acc;
+    const points = getSegmentTrajectoryPoints(path.segmentIndex);
+    if (points.length > 0) {
+      acc.push({
+        segmentIndex: path.segmentIndex,
+        segmentLabel: path.label,
+        points
+      });
+    }
     return acc;
   }, []);
 }
