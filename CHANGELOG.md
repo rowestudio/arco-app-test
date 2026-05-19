@@ -1,5 +1,27 @@
 # Changelog
 
+## v8z4b18j — editable trajectory adjustment point
+
+Refatoração interna: consolida o ponto de controle da curva como ponto de ajuste editável da trajetória, roteando a edição pelo drag do Stage via `setSegmentTrajectoryPoint()`. Nenhuma mudança de comportamento visual, motor, Preview, MP4, JSON ou UI.
+
+### O que foi alterado
+
+- **`setSegmentTrajectoryPoint(segIndex, pointDescriptor, nextPoint)`** — estendido para também atualizar `t/perpX/perpY` em segmentos normais (não loop), via `computeTPerpForSeg()`. Comportamento visual preservado. Para o segmento de loop, apenas `nx/ny` são atualizados (igual ao comportamento anterior). Comentário técnico adicionado documentando que nesta versão há um único ponto de ajuste por segmento.
+- **Drag do ponto de curva no Stage** — o handler `pointermove` agora roteia a edição via `setSegmentTrajectoryPoint()` em vez de chamar `setSegmentCurve()` diretamente. A lógica de `computeTPerpForSeg` foi movida para dentro de `setSegmentTrajectoryPoint`. Comportamento visual idêntico ao da v8z4b18i.
+- **Loop** — drag do ponto de curva 3–1 continua atualizando apenas `loopCtrlPt` via `setSegmentCurve()`, sem afetar outros segmentos.
+
+### O que NÃO foi alterado
+
+- Comportamento do Preview, export MP4/WebCodecs.
+- Motor de animação, `totalDuration()`, `totalDurationFull()`.
+- Schema do JSON (nenhum campo novo).
+- Velocidade constante, Loop como trecho real, Pausa final.
+- Movimento/Rotação/Escala Inteligente, zoom contextual, Undo/redo.
+- `resetSegmentCurve()` — preservado como está (reset requer manual=false, incompatível com setSegmentTrajectoryPoint).
+- UI geral (design, cores, layout, Stage, painel inferior).
+
+---
+
 ## v8z4b18i — internal trajectory points model
 
 Refatoração interna: adiciona camada de pontos de trajetória por segmento via `getSegmentTrajectoryPoints()`, `setSegmentTrajectoryPoint()` e `getAllTrajectoryPoints()`. Nenhuma mudança de comportamento visual, motor, Preview, MP4, JSON ou UI.

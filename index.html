@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18i                                     ║
+║  Versão: v8z4b18j                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18i — internal trajectory points model: getSegmentTrajectoryPoints/setSegmentTrajectoryPoint/getAllTrajectoryPoints internos, sem alterar visual, motor, Preview, MP4, JSON ou UI -->
+<!-- Arco App — v8z4b18j — editable trajectory adjustment point: ponto de ajuste editável roteado via setSegmentTrajectoryPoint, sem alterar visual, motor, Preview, MP4, JSON ou UI -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18i</span><br><span id="appVersionNameText">internal trajectory points model</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18j</span><br><span id="appVersionNameText">editable trajectory adjustment point</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18i';
-const APP_VERSION_NAME = 'internal trajectory points model';
+const APP_VERSION = 'v8z4b18j';
+const APP_VERSION_NAME = 'editable trajectory adjustment point';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4463,7 +4463,7 @@ function getAllSegmentPaths() {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-// ─── Trajectory Points Model — v8z4b18i ──────────────────────────────────────
+// ─── Trajectory Points Model — v8z4b18i / editável v8z4b18j ─────────────────
 // getSegmentTrajectoryPoints() representa a trajetória atual como pontos internos.
 // Nesta versão, o ponto de ajuste é derivado do ponto de controle quadrático atual.
 // No futuro, esta camada poderá aceitar múltiplos pontos de trajetória, handles,
@@ -4547,7 +4547,19 @@ function setSegmentTrajectoryPoint(segIndex, pointDescriptor, nextPoint) {
   if (typeof nx !== 'number' || !isFinite(nx) ||
       typeof ny !== 'number' || !isFinite(ny)) return;
 
+  // v8z4b18j: ponto visual atual tratado como adjustment/control — nesta versão um por segmento.
+  // No futuro, a camada poderá aceitar múltiplos pontos de trajetória.
+  // Esta versão não altera visual nem schema.
   setSegmentCurve(segIndex, { nx, ny });
+
+  // Para segmentos normais (não loop): atualizar também t/perpX/perpY
+  if (!isLoopSegment(segIndex)) {
+    const tp = computeTPerpForSeg(segIndex, nx, ny);
+    if (tp && typeof tp.t === 'number' && isFinite(tp.t)) {
+      setSegmentCurve(segIndex, { t: tp.t, perpX: tp.perpX, perpY: tp.perpY });
+    }
+  }
+
   setSegmentCurveManual(segIndex, true);
 }
 
@@ -6386,15 +6398,10 @@ function onMove(e) {
     const nx = sc.x / stageW;
     const ny = sc.y / stageH;
 
-    if (ctrlDragSeg === 'loop') {
-      setSegmentCurve(frameCount - 1, { nx, ny });
-    } else {
-      setSegmentCurve(ctrlDragSeg, { nx, ny });
-      if (ctrlDragSeg < frameCount - 1) {
-        const tp = computeTPerpForSeg(ctrlDragSeg, nx, ny);
-        setSegmentCurve(ctrlDragSeg, { t: tp.t, perpX: tp.perpX, perpY: tp.perpY });
-      }
-    }
+    // v8z4b18j: ponto de ajuste/control editado via camada interna de trajetória
+    const _adjDesc = { kind: 'adjustment', role: 'control', source: 'quadraticCtrl' };
+    const _segIdx = ctrlDragSeg === 'loop' ? frameCount - 1 : ctrlDragSeg;
+    setSegmentTrajectoryPoint(_segIdx, _adjDesc, { x: nx, y: ny });
     drawBezier(); updateCtrlPts();
     return;
   }
