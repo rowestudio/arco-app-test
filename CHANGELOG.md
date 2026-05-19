@@ -1,5 +1,31 @@
 # Changelog
 
+## v8z4b18m — visual curve puller distinction
+
+Patch visual: diferencia o curvePuller (puxador legado da curva) dos demais pontos da timeline, trocando seu formato de círculo para losango. Mantém área de toque, compensação de zoom, cores e comportamento exatamente iguais à v8z4b18l. Nenhuma mudança de comportamento, motor, Preview, MP4, JSON ou schema.
+
+### O que foi alterado
+
+- **`.ctrl-pt` (CSS)** — shape alterado de círculo (`border-radius:50%`) para losango (`rotate(45deg)`, `border-radius:0`, 10×10 px). O losango é visualmente equivalente ao círculo anterior (diagonal ≈ 14 px) mas claramente distinto de um ponto de passagem. Área de toque (`::before` 44×44 px, `border-radius:50%`) preservada.
+- **Comentário CSS** — atualizado de "círculo ciano r=5" para "losango ciano (curvePuller)".
+
+### O que NÃO foi alterado
+
+- Comportamento do Preview, export MP4/WebCodecs.
+- Motor de animação (`getStateAtT`, `drawAtT`), `totalDuration()`, `totalDurationFull()`.
+- Schema do JSON (nenhum campo novo: sem `pathPoints`, `trajectoryPoints`, `handles`, `anchors`, `curvePuller`, `curvesV2`, `vectorPath`, `sampledPath`).
+- Lógica de cores do curvePuller (azul para segmento anterior, laranja para segmento ativo, roxo para loop).
+- Área de toque (hit area) — mantida igual ou ligeiramente maior.
+- Compensação de zoom contextual (`scale(var(--ez-inv,1))`).
+- Comportamento de arrastar o curvePuller.
+- `resetSegmentCurve()`, `getSegmentCurve()`, `setSegmentCurve()` — preservados.
+- Velocidade constante, Loop como trecho real, Pausa final.
+- Movimento/Rotação/Escala Inteligente, zoom contextual, Undo/redo.
+- `evaluateSegmentPath()`, `sampleSegmentPath()`, `measureSegmentPathLength()` — preservados.
+- UI geral (design, cores, layout, Stage, painel inferior).
+
+---
+
 ## v8z4b18l — unified segment path evaluator
 
 Patch estrutural/interno: cria avaliador único de trajetória por segmento, centralizando como o app calcula pontos ao longo da curva. Adiciona `evaluateSegmentPath()`, `sampleSegmentPath()` e `measureSegmentPathLength()` como base para futuros path points, handles e Modo Mapa/Curvas. Nenhuma mudança de comportamento visual, motor, Preview, MP4, JSON ou UI.
