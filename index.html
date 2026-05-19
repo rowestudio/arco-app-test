@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18e                                     ║
+║  Versão: v8z4b18f                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18e — manual segment duration disables constant speed: ajuste manual de trecho (incluindo N→1) desliga Velocidade constante imediatamente -->
+<!-- Arco App — v8z4b18f — central active segments helper: getActiveSegments() como fonte única de trechos ativos -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18e</span><br><span id="appVersionNameText">manual segment duration disables constant speed</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18f</span><br><span id="appVersionNameText">central active segments helper</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18e';
-const APP_VERSION_NAME = 'manual segment duration disables constant speed';
+const APP_VERSION = 'v8z4b18f';
+const APP_VERSION_NAME = 'central active segments helper';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4278,28 +4278,67 @@ const frameRotations = [];
 const ctrlPts = [];
 const ctrlPtManual = [];
 
-// ─── Curve Access Helpers — v8z4b18c ──────────────────────────────────────────
+// ─── Active Segments Helper — v8z4b18f ────────────────────────────────────────
+// getActiveSegments() é a fonte única para trechos ativos do projeto.
+// No futuro, cada segmento poderá ter um objeto de trajetória próprio (pontos
+// de controle, handles de tangência). O editor vetorial de trajetória poderá
+// adicionar pontos e handles sobre esses segmentos. Este patch não implementa.
+
+function getActiveSegments() {
+  if (frameCount < 2) return [];
+  const normalSegs = frameCount - 1;
+  const segments = [];
+  for (let i = 0; i < normalSegs; i++) {
+    segments.push({
+      index: i,
+      from: i,
+      to: i + 1,
+      isLoop: false,
+      label: (i + 1) + '–' + (i + 2)
+    });
+  }
+  if (loopEnabled) {
+    segments.push({
+      index: normalSegs,
+      from: normalSegs,
+      to: 0,
+      isLoop: true,
+      label: frameCount + '–1'
+    });
+  }
+  return segments;
+}
+
+function getActiveSegmentCount() {
+  return getActiveSegments().length;
+}
+
+function getSegmentByIndex(segIndex) {
+  if (typeof segIndex !== 'number' || !isFinite(segIndex) || segIndex < 0) return null;
+  const segs = getActiveSegments();
+  if (segIndex >= segs.length) return null;
+  return segs[segIndex];
+}
+
+function getSegmentLabel(segIndex) {
+  const seg = getSegmentByIndex(segIndex);
+  return seg ? seg.label : '';
+}
+
+// ─── Curve Access Helpers — v8z4b18c (atualizado v8z4b18f) ───────────────────
 // Camada preparatória para acesso uniforme às curvas por trecho.
 // Schema atual preservado: ctrlPts / ctrlPtManual / loopCtrlPt.
 // No futuro, esta camada poderá migrar para um objeto de curva por trecho.
 // Esta versão não muda comportamento.
 
-function getActiveSegmentCount() {
-  if (frameCount < 2) return 0;
-  return loopEnabled ? frameCount : frameCount - 1;
-}
-
 function isLoopSegment(segIndex) {
-  if (!loopEnabled || frameCount < 2) return false;
-  return segIndex === frameCount - 1;
+  const seg = getSegmentByIndex(segIndex);
+  return seg ? seg.isLoop : false;
 }
 
 function getSegmentEndpoints(segIndex) {
-  if (typeof segIndex !== 'number' || segIndex < 0) return null;
-  const total = getActiveSegmentCount();
-  if (segIndex >= total) return null;
-  if (isLoopSegment(segIndex)) return { from: frameCount - 1, to: 0 };
-  return { from: segIndex, to: segIndex + 1 };
+  const seg = getSegmentByIndex(segIndex);
+  return seg ? { from: seg.from, to: seg.to } : null;
 }
 
 function getSegmentCurve(segIndex) {
@@ -10323,96 +10362,79 @@ function syncTimingModeUI() {
 }
 
 function openSegBreakdown() {
-  const segs = frameCount - 1;
-  if (segs < 1) return;
+  // v8z4b18f — usa getActiveSegments() como fonte única de trechos
+  const segments = getActiveSegments();
+  if (segments.length === 0) return;
   ensureSegDurations();
 
   const container = document.getElementById('segRows');
   container.innerHTML = '';
-  for (let i = 0; i < segs; i++) {
+  segments.forEach(seg => {
     const row = document.createElement('div');
     // v8z4b15z — usa .dur-edit-row (mesma classe das rows de Pausa por
     // frame), garantindo idêntica largura útil do thumb entre as duas
     // seções.
     row.className = 'dur-edit-row';
+    if (seg.isLoop) row.id = 'segRowLoop';
     const lbl = document.createElement('span');
     lbl.className = 'dur-edit-label';
-    lbl.textContent = (i+1) + '-' + (i+2);
+    lbl.textContent = seg.label;
     const slider = document.createElement('input');
     slider.type = 'range';
     slider.className = 'dur-slider';
-    slider.min = '0'; slider.max = '15'; slider.step = '0.1';
-    // v8z4b16b — preservar 0 (corte seco). Antes, `|| 1` caía para 1.
-    const curSegVal = segDurations[i] != null ? segDurations[i] : 1;
-    slider.value = curSegVal;
+    slider.max = '15'; slider.step = '0.1';
+    let curVal;
+    if (seg.isLoop) {
+      slider.min = '0.1';
+      curVal = loopDuration;
+    } else {
+      slider.min = '0';
+      // v8z4b16b — preservar 0 (corte seco). Antes, `|| 1` caía para 1.
+      curVal = segDurations[seg.from] != null ? segDurations[seg.from] : 1;
+    }
+    slider.value = curVal;
     const val = document.createElement('span');
     val.className = 'dur-edit-value';
-    val.textContent = curSegVal.toFixed(1) + 's';
-    const idx = i;
-    let segUndoCaptured = false;
+    val.textContent = curVal.toFixed(1) + 's';
+    let undoCaptured = false;
     slider.addEventListener('touchstart', () => {
-      if (!segUndoCaptured) { pushUndo(); segUndoCaptured = true; }
-    }, {passive:true});
+      if (!undoCaptured) { pushUndo(); undoCaptured = true; }
+    }, {passive: true});
     slider.addEventListener('mousedown', () => {
-      if (!segUndoCaptured) { pushUndo(); segUndoCaptured = true; }
+      if (!undoCaptured) { pushUndo(); undoCaptured = true; }
     });
-    slider.addEventListener('input', () => {
-      if (segmentTimingMode === 'constant-speed') {
-        disableConstantSpeedBecauseManualSegmentEdit(); // v8z4b18e
-      }
-      segDurations[idx] = parseFloat(slider.value);
-      val.textContent = segDurations[idx].toFixed(1) + 's';
-      updateSegTotal();
-    });
-    slider.addEventListener('change', () => { segUndoCaptured = false; });
+    if (seg.isLoop) {
+      slider.addEventListener('input', () => {
+        if (segmentTimingMode === 'constant-speed') {
+          disableConstantSpeedBecauseManualSegmentEdit(); // v8z4b18e
+        }
+        loopDuration = parseFloat(slider.value);
+        val.textContent = loopDuration.toFixed(1) + 's';
+        const acabSlider = document.getElementById('loopDurSlider');
+        const acabVal = document.getElementById('loopDurVal');
+        if (acabSlider) acabSlider.value = loopDuration;
+        if (acabVal) acabVal.textContent = loopDuration.toFixed(1) + 's';
+        updateSegTotal();
+        markProjectDirty('loop-duration');
+        if (isPreviewing) { stopPreview(); startPreview(); }
+      });
+    } else {
+      const idx = seg.from;
+      slider.addEventListener('input', () => {
+        if (segmentTimingMode === 'constant-speed') {
+          disableConstantSpeedBecauseManualSegmentEdit(); // v8z4b18e
+        }
+        segDurations[idx] = parseFloat(slider.value);
+        val.textContent = segDurations[idx].toFixed(1) + 's';
+        updateSegTotal();
+      });
+    }
+    slider.addEventListener('change', () => { undoCaptured = false; });
     row.appendChild(lbl);
     row.appendChild(slider);
     row.appendChild(val);
     container.appendChild(row);
-  }
-  // v8z4b17o: trecho de fechamento N→1 quando Loop ativo
-  if (loopEnabled && frameCount >= 2) {
-    const loopRow = document.createElement('div');
-    loopRow.className = 'dur-edit-row';
-    loopRow.id = 'segRowLoop';
-    const loopLbl = document.createElement('span');
-    loopLbl.className = 'dur-edit-label';
-    loopLbl.textContent = frameCount + '–1';
-    const loopSl = document.createElement('input');
-    loopSl.type = 'range';
-    loopSl.className = 'dur-slider';
-    loopSl.min = '0.1'; loopSl.max = '15'; loopSl.step = '0.1';
-    loopSl.value = loopDuration;
-    const loopVal2 = document.createElement('span');
-    loopVal2.className = 'dur-edit-value';
-    loopVal2.textContent = loopDuration.toFixed(1) + 's';
-    let loopRowUndoCaptured = false;
-    loopSl.addEventListener('touchstart', () => {
-      if (!loopRowUndoCaptured) { pushUndo(); loopRowUndoCaptured = true; }
-    }, { passive: true });
-    loopSl.addEventListener('mousedown', () => {
-      if (!loopRowUndoCaptured) { pushUndo(); loopRowUndoCaptured = true; }
-    });
-    loopSl.addEventListener('input', () => {
-      if (segmentTimingMode === 'constant-speed') {
-        disableConstantSpeedBecauseManualSegmentEdit(); // v8z4b18e
-      }
-      loopDuration = parseFloat(loopSl.value);
-      loopVal2.textContent = loopDuration.toFixed(1) + 's';
-      const acabSlider = document.getElementById('loopDurSlider');
-      const acabVal = document.getElementById('loopDurVal');
-      if (acabSlider) acabSlider.value = loopDuration;
-      if (acabVal) acabVal.textContent = loopDuration.toFixed(1) + 's';
-      updateSegTotal();
-      markProjectDirty('loop-duration');
-      if (isPreviewing) { stopPreview(); startPreview(); }
-    });
-    loopSl.addEventListener('change', () => { loopRowUndoCaptured = false; });
-    loopRow.appendChild(loopLbl);
-    loopRow.appendChild(loopSl);
-    loopRow.appendChild(loopVal2);
-    container.appendChild(loopRow);
-  }
+  });
 
   updateSegTotal();
   document.getElementById('segBreakdown').style.display = 'flex';

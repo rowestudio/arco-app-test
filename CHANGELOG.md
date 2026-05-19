@@ -1,5 +1,38 @@
 # Changelog
 
+## v8z4b18f — central active segments helper
+
+Refatoração interna: adiciona `getActiveSegments()` como fonte única para trechos ativos do projeto. Nenhuma mudança de comportamento visual, motor, Preview ou MP4.
+
+### O que foi adicionado
+
+- **`getActiveSegments()`** — retorna array com todos os trechos ativos: `{ index, from, to, isLoop, label }`. Sem loop com 3 frames retorna 2 itens (1–2, 2–3); com loop retorna 3 itens (1–2, 2–3, 3–1). Retorna `[]` para `frameCount < 2` sem gerar erro.
+- **`getSegmentByIndex(segIndex)`** — retorna o segmento pelo índice ou `null` para índice inválido (negativo, NaN, Infinity, fora do range).
+- **`getSegmentLabel(segIndex)`** — retorna o label do trecho como `"1–2"`, `"2–3"`, `"3–1"`. Retorna `''` para índice inválido.
+
+### O que foi atualizado
+
+- **`getActiveSegmentCount()`** — agora delega para `getActiveSegments().length`.
+- **`isLoopSegment(segIndex)`** — agora usa `getSegmentByIndex()` internamente.
+- **`getSegmentEndpoints(segIndex)`** — agora usa `getSegmentByIndex()` internamente.
+- **`openSegBreakdown()`** — usa `getActiveSegments()` para iterar sobre os trechos e gerar as linhas de "Tempo por trecho", incluindo labels e lógica do loop.
+
+### Preparação para o futuro editor vetorial de trajetória
+
+`getActiveSegments()` está documentada como ponto de extensão: no futuro, cada segmento poderá ter um objeto de trajetória próprio com pontos e handles. Este patch não implementa esses recursos.
+
+### O que NÃO foi alterado
+
+- Comportamento do Preview, export MP4/WebCodecs.
+- Motor de animação, `totalDuration()`, `totalDurationFull()`.
+- Schema do JSON (nenhum campo novo).
+- Velocidade constante, Loop como trecho real, Pausa final, Igualar intervalos.
+- Movimento/Rotação/Escala Inteligente, zoom contextual, Undo/redo.
+- Curvas, resetar curva, edição manual de curva.
+- UI geral (design, cores, layout).
+
+---
+
 ## v8z4b18e — manual segment duration disables constant speed
 
 Corrige a relação entre Velocidade constante e ajustes manuais de duração por trecho: qualquer edição manual num slider de trecho (incluindo o loop N→1) desliga Velocidade constante imediatamente.

@@ -2,6 +2,76 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18f — central active segments helper
+
+### Teste A — sem loop
+1. Criar 3 frames.
+2. Desligar Loop.
+3. Abrir painel Duração → Trechos.
+4. Confirmar que aparecem apenas: 1–2, 2–3.
+5. Confirmar que Tempo dos trechos soma apenas esses dois.
+6. Preview OK.
+
+### Teste B — com loop
+1. Criar 3 frames.
+2. Ligar Loop.
+3. Abrir painel Duração → Trechos.
+4. Confirmar que aparecem: 1–2, 2–3, 3–1.
+5. Confirmar que Tempo dos trechos soma os 3 trechos.
+6. Preview OK.
+
+### Teste C — Igualar intervalos com loop
+1. Criar 3 frames, Loop ligado.
+2. Tocar em "Igualar intervalos".
+3. Confirmar que 1–2, 2–3 e 3–1 ficam com o mesmo tempo.
+4. Confirmar que Velocidade constante desliga se estava ativa.
+5. Preview OK.
+
+### Teste D — Velocidade constante com loop
+1. Criar 4 frames, Loop ligado.
+2. Ligar Velocidade constante.
+3. Confirmar que todos os segmentos ativos entram no cálculo (incluindo 4–1).
+4. Alterar manualmente o slider 4–1 no breakdown.
+5. Confirmar que Velocidade constante desliga.
+6. Preview OK.
+
+### Teste E — curvas por trecho
+1. Criar 3 frames.
+2. Alterar curva 1–2. Confirmar que só 1–2 muda.
+3. Alterar curva 2–3. Confirmar que só 2–3 muda.
+4. Ligar Loop. Alterar curva 3–1. Confirmar que só o loop muda.
+5. Resetar curva do loop. Confirmar que só o loop reseta.
+6. Preview OK.
+
+### Teste F — adicionar/remover frames
+1. Criar 4 frames, Loop ligado.
+2. Remover um frame. Confirmar que a lista de trechos atualiza sem erro.
+3. Adicionar frame. Confirmar que a lista atualiza sem erro.
+4. Sem NaN/Infinity no console.
+
+### Teste G — salvar/carregar
+1. Criar projeto com loop, curvas e tempos ajustados.
+2. Salvar JSON.
+3. Reabrir JSON.
+4. Confirmar que trechos, loop, curvas e durações estão corretos.
+5. Preview OK.
+
+### Teste H — regressão geral
+1. Movimento Inteligente OK.
+2. Rotação Inteligente OK.
+3. Escala Inteligente OK.
+4. Velocidade constante OK (inclui loop).
+5. Loop como trecho real OK.
+6. Pausa final OK.
+7. Resetar curva OK.
+8. Zoom contextual OK.
+9. Load de projeto antigo/misto OK.
+10. Preview OK.
+11. Gerar MP4 OK.
+12. Sem tela preta, sem botão preso, sem NaN/Infinity no console.
+
+---
+
 ## v8z4b18e — manual segment duration disables constant speed
 
 ### Teste A — trecho normal desliga Velocidade constante
