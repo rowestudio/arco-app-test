@@ -1,5 +1,36 @@
 # Changelog
 
+## v8z4b18g — internal segment path object
+
+Refatoração interna: adiciona camada de trajetória por segmento via `getSegmentPath()`, `setSegmentPath()` e `getAllSegmentPaths()`. Nenhuma mudança de comportamento visual, motor, Preview, MP4, JSON ou UI.
+
+### O que foi adicionado
+
+- **`getSegmentPath(segIndex)`** — retorna objeto normalizado representando a trajetória do segmento: `{ segmentIndex, from, to, isLoop, label, type, ctrl, manual, guides, handles }`. Mapeia para `ctrlPts`/`loopCtrlPt` e `ctrlPtManual` atuais. Retorna `null` para índice inválido, `frameCount < 2`, segmento inexistente, `ctrl` ausente ou com valores inválidos (NaN/Infinity).
+- **`setSegmentPath(segIndex, path, options)`** — grava de volta apenas dados compatíveis com o sistema atual: `ctrl.x/y` → `ctrlPts[segIndex]` ou `loopCtrlPt`; `manual` → `ctrlPtManual[segIndex]` (loop sem flag separada — comportamento preservado); `guides`/`handles` ignorados nesta versão.
+- **`getAllSegmentPaths()`** — retorna `getActiveSegments().map(seg => getSegmentPath(seg.index))` com filtragem defensiva de nulos. Preparatório para Modo Mapa/Curvas e editor vetorial de trajetória.
+
+### Integração com helpers existentes
+
+- Os novos helpers usam internamente `getSegmentCurve()`, `setSegmentCurve()`, `isSegmentCurveManual()` e `setSegmentCurveManual()` da camada v8z4b18c/v8z4b18f.
+- Nenhum helper existente foi alterado.
+
+### Preparação para o futuro editor vetorial de trajetória
+
+`guides` e `handles` existem apenas como arrays vazios internos. Não salvos no JSON, não usados no motor. No futuro poderão conter pontos de trajetória e handles de tangência para o editor vetorial.
+
+### O que NÃO foi alterado
+
+- Comportamento do Preview, export MP4/WebCodecs.
+- Motor de animação, `totalDuration()`, `totalDurationFull()`.
+- Schema do JSON (nenhum campo novo).
+- Velocidade constante, Loop como trecho real, Pausa final, Igualar intervalos.
+- Movimento/Rotação/Escala Inteligente, zoom contextual, Undo/redo.
+- Curvas, resetar curva, edição manual de curva.
+- UI geral (design, cores, layout).
+
+---
+
 ## v8z4b18f — central active segments helper
 
 Refatoração interna: adiciona `getActiveSegments()` como fonte única para trechos ativos do projeto. Nenhuma mudança de comportamento visual, motor, Preview ou MP4.

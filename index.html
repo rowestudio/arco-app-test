@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18f                                     ║
+║  Versão: v8z4b18g                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18f — central active segments helper: getActiveSegments() como fonte única de trechos ativos -->
+<!-- Arco App — v8z4b18g — internal segment path object: getSegmentPath/setSegmentPath/getAllSegmentPaths como camada interna de trajetória por segmento -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18f</span><br><span id="appVersionNameText">central active segments helper</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18g</span><br><span id="appVersionNameText">internal segment path object</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18f';
-const APP_VERSION_NAME = 'central active segments helper';
+const APP_VERSION = 'v8z4b18g';
+const APP_VERSION_NAME = 'internal segment path object';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4325,7 +4325,7 @@ function getSegmentLabel(segIndex) {
   return seg ? seg.label : '';
 }
 
-// ─── Curve Access Helpers — v8z4b18c (atualizado v8z4b18f) ───────────────────
+// ─── Curve Access Helpers — v8z4b18c (atualizado v8z4b18g) ───────────────────
 // Camada preparatória para acesso uniforme às curvas por trecho.
 // Schema atual preservado: ctrlPts / ctrlPtManual / loopCtrlPt.
 // No futuro, esta camada poderá migrar para um objeto de curva por trecho.
@@ -4403,6 +4403,63 @@ function resetSegmentCurve(segIndex) {
     ctrlPts[segIndex].perpY = 0;
     setSegmentCurveManual(segIndex, false);
   }
+}
+// ─── Segment Path Helpers — v8z4b18g ─────────────────────────────────────────
+// getSegmentPath() normaliza a trajetória atual de cada segmento.
+// Por enquanto mapeia para ctrlPts / ctrlPtManual / loopCtrlPt.
+// No futuro pode evoluir para pontos de trajetória, handles e Modo Mapa/Curvas.
+// Esta versão não altera comportamento nem schema.
+
+function getSegmentPath(segIndex) {
+  if (typeof segIndex !== 'number' || !isFinite(segIndex) || segIndex < 0) return null;
+  if (frameCount < 2) return null;
+  const seg = getSegmentByIndex(segIndex);
+  if (!seg) return null;
+  const curve = getSegmentCurve(segIndex);
+  if (!curve) return null;
+  if (typeof curve.nx !== 'number' || !isFinite(curve.nx) ||
+      typeof curve.ny !== 'number' || !isFinite(curve.ny)) return null;
+  return {
+    segmentIndex: segIndex,
+    from: seg.from,
+    to: seg.to,
+    isLoop: seg.isLoop,
+    label: seg.label,
+    type: 'quadratic',
+    ctrl: { x: curve.nx, y: curve.ny },
+    manual: isSegmentCurveManual(segIndex),
+    guides: [],
+    handles: []
+  };
+}
+
+function setSegmentPath(segIndex, path, options) {
+  if (typeof segIndex !== 'number' || !isFinite(segIndex) || segIndex < 0) return;
+  if (frameCount < 2) return;
+  if (!path || typeof path !== 'object') return;
+  if (!getSegmentByIndex(segIndex)) return;
+  // ctrl: atualizar ponto de controle com validação
+  if (path.ctrl && typeof path.ctrl === 'object') {
+    const cx = path.ctrl.x, cy = path.ctrl.y;
+    if (typeof cx === 'number' && isFinite(cx) &&
+        typeof cy === 'number' && isFinite(cy)) {
+      setSegmentCurve(segIndex, { nx: cx, ny: cy });
+    }
+  }
+  // manual: atualizar estado manual (loopCtrlPt não tem flag separada — comportamento preservado)
+  if (typeof path.manual === 'boolean') {
+    setSegmentCurveManual(segIndex, path.manual);
+  }
+  // guides / handles: ignorar nesta versão
+}
+
+function getAllSegmentPaths() {
+  if (frameCount < 2) return [];
+  return getActiveSegments().reduce((acc, seg) => {
+    const p = getSegmentPath(seg.index);
+    if (p) acc.push(p);
+    return acc;
+  }, []);
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
