@@ -2,6 +2,52 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18s — rename app to Arc Motion and fix project version metadata
+
+### Teste A — nome visível do app
+1. Abrir app.
+2. Verificar `<title>` da aba do browser: confirmar `Arc Motion`.
+3. Abrir Configurações.
+4. Confirmar que a versão exibe `Arc Motion v8z4b18s`.
+5. Confirmar que "Weigand Studio", "Arco Motion" e "Ken Burns" não aparecem em nenhum texto visível ao usuário.
+
+### Teste B — marca d'água
+1. Carregar imagem.
+2. Criar movimento simples com 2 frames.
+3. Gerar Preview ou MP4 no modo em que a marca d'água aparece.
+4. Confirmar que a marca d'água mostra `Arc Motion`.
+5. Confirmar que posição, tamanho, opacidade e alinhamento continuam iguais.
+
+### Teste C — version salvo no JSON
+1. Criar projeto novo.
+2. Salvar JSON.
+3. Abrir o JSON num editor de texto.
+4. Confirmar que `"version"` é `"v8z4b18s"` (não mais `"v8y3"`).
+
+### Teste D — framePauses preservado
+1. Criar projeto com 4 frames.
+2. Definir pausas diferentes (ex: F1=0s, F2=1.2s, F3=0.5s, F4=2.0s).
+3. Salvar JSON.
+4. Confirmar que `framePauses` existe com 4 entradas corretas.
+5. Recarregar app e abrir o JSON — confirmar que pausas voltam corretamente.
+
+### Teste E — projeto antigo
+1. Carregar projeto antigo com `"version": "v8y3"`.
+2. Confirmar que abre normalmente sem erro.
+3. Confirmar que `framePauses` ausente resulta em pausas zeradas.
+
+### Teste F — regressão geral
+1. Preview OK.
+2. MP4 OK.
+3. Curva normal OK.
+4. Velocidade constante OK.
+5. Movimento Inteligente OK.
+6. Rotação Inteligente OK.
+7. Escala Inteligente OK.
+8. Zoom contextual OK.
+9. Sem NaN/Infinity no console.
+10. Sem tela preta.
+
 ## v8z4b18r — fix frame pause persistence and stale load state
 
 ### Teste 0 — versão visível

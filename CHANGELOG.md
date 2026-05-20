@@ -1,5 +1,13 @@
 # Changelog
 
+## v8z4b18s — rename app to Arc Motion and fix project version metadata
+
+- Nome visível do app atualizado para **Arc Motion** em todos os textos visíveis ao usuário: `<title>`, `apple-mobile-web-app-title`, cabeçalho de Configurações, marca d'água do Preview/MP4 e `navigator.share`.
+- Marca d'água centralizada na constante `WATERMARK_TEXT = 'Arc Motion'`; mesma posição, tamanho, opacidade e alinhamento.
+- Corrigido `version` no JSON salvo/exportado: era hardcoded `'v8y3'`, agora usa `APP_VERSION` dinamicamente (`v8z4b18s`).
+- Projetos antigos com `version: 'v8y3'` continuam abrindo normalmente (nenhuma alteração de schema ou migração).
+- `framePauses` continua sendo salvo e carregado corretamente (sem alteração na lógica de persistência).
+
 ## v8z4b18r — fix frame pause persistence and stale load state
 
 Patch de correção crítica de persistência de pausas por frame: resolve dois bugs independentes que faziam pausas configuradas no painel Duração desaparecerem ao reabrir projetos após recarregar o app.
