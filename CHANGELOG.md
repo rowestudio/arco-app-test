@@ -1,5 +1,28 @@
 # Changelog
 
+## v8z4b18o — fix project load and pause preservation
+
+Patch de correção de regressão: corrige falha crítica no restore do autosave (`restoreAutosave` chamava `restoreState` com formato de projeto JSON — que tem `framesNorm` — mas `restoreState` esperava formato de estado undo/redo — que tem `frames` —, causando TypeError silencioso que impedia toda restauração); adiciona null-check defensivo em `renderAll` para `frames[i]`; corrige guard de `frameCount` vs frames efetivamente carregados; adiciona log de diagnóstico no catch dos loaders. Nenhuma mudança de visual, motor, schema JSON ou UI.
+
+### O que foi corrigido
+
+- **`restoreAutosave()`** — substituído `restoreState(data)` por `applyFrameData(data)`. `buildProjectData()` (usado pelo autosave) salva `framesNorm` (coords normalizadas), mas `restoreState()` esperava `frames` (coords absolutas). O acesso a `state.frames.forEach` lançava `TypeError: Cannot read properties of undefined`, deixando o app sem estado após o restore — projeto não carregava, pausas não eram restauradas. `applyFrameData()` trata corretamente `framesNorm`, `framePauses`, migração legada e sincronização de UI.
+- **`renderAll()`** — adicionado null-check para `frames[i]` antes de acessar `.x`, `.y`, `.w`, `.h`. Impede crash se `frames.length < frameCount` por qualquer razão (arquivo corrompido, mismatch pós-load).
+- **`applyFrameData()`** — adicionado guard após carregar frames: se `frames.length < frameCount`, `frameCount` é ajustado para `frames.length` (com log de aviso no console), prevenindo acessos fora dos limites em todas as funções downstream.
+- **`loadProjectFromFile()` / `loadProjectFromJson()`** — adicionado `console.error('[Arco] Erro ao carregar projeto:', err)` no catch, para que falhas de load sejam visíveis no console sem expor UI complexa.
+
+### O que NÃO foi alterado
+
+- Comportamento do Preview, export MP4/WebCodecs.
+- Motor de animação (`getStateAtT`, `drawAtT`), `totalDuration()`, `totalDurationFull()`.
+- Schema do JSON — nenhum campo novo: sem `mode`, `pathPoints`, `vectorAnchors`, `handles`, `frameAnchors`, `curvePuller`, `vectorPath`, `curvesV2`. JSON salvo em v8z4b18o é idêntico ao de v8z4b18m/n.
+- Scaffold vetorial (`getSegmentPathMode`, `getSegmentVectorModel`) — preservado da v8z4b18n, sem alterações.
+- `migrateLegacyProjectData()` — comportamento de migração e preservação de pausas inalterado.
+- Visual do Stage, curvePuller, zoom contextual, Undo/redo.
+- UI geral (design, cores, layout, painel inferior).
+
+---
+
 ## v8z4b18n — vector path mode scaffold
 
 Patch estrutural/interno: cria base para o futuro modo vetorial de trajetória por segmento, separando claramente o modo atual (`legacyQuadratic`) do futuro modo `vectorAnchors`. Adiciona `getSegmentPathMode()` e `getSegmentVectorModel()`. Atualiza `evaluateSegmentPath()` com switch interno seguro. Nenhuma mudança de visual, motor, Preview, MP4, JSON ou UI.

@@ -2,6 +2,72 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18o — fix project load and pause preservation
+
+### Teste A — projeto que não carregava (autosave)
+1. Criar projeto com 3 frames e pausas configuradas.
+2. Aguardar autosave (1.5s após a última ação).
+3. Recarregar a página.
+4. Clicar "Continuar de onde parou?".
+5. Confirmar que os frames aparecem corretamente.
+6. Confirmar que as pausas configuradas estão restauradas.
+7. Preview OK.
+
+### Teste B — projeto com pausas (arquivo)
+1. Criar projeto com pausas por frame.
+2. Salvar JSON.
+3. Reabrir o JSON.
+4. Confirmar que as pausas aparecem no painel.
+5. Preview OK — a animação respeita as pausas.
+6. Gerar MP4 e confirmar que o MP4 respeita as pausas.
+
+### Teste C — projeto sem pausas
+1. Criar projeto sem pausas.
+2. Salvar e reabrir.
+3. Confirmar que o app não inventa pausas (pauses = 0s).
+4. Preview OK.
+
+### Teste D — pausa final / último frame
+1. Criar projeto com pausa no último frame.
+2. Salvar JSON.
+3. Reabrir.
+4. Confirmar que a pausa final continua coerente com o último frame.
+5. Preview OK.
+
+### Teste E — loop
+1. Criar projeto com 3 frames e Loop ligado.
+2. Ajustar pausas e curvas.
+3. Salvar.
+4. Reabrir.
+5. Confirmar que loop, pausas, curvas e durações permanecem corretos.
+6. Preview OK.
+
+### Teste F — compatibilidade com projetos antigos
+1. Carregar projeto salvo antes da v8z4b18n (ex. arquivos v8m, v8r).
+2. Confirmar que carrega sem travar.
+3. Confirmar que frames aparecem.
+4. Confirmar que curvas aparecem.
+5. Salvar novamente e confirmar que o JSON não ganhou campos vetoriais novos.
+6. Preview OK.
+
+### Teste G — regressão geral
+1. Curva normal OK.
+2. Curva de loop OK.
+3. Resetar curva OK.
+4. Velocidade constante OK.
+5. Ajuste manual de trecho desliga Velocidade constante.
+6. Zoom contextual OK.
+7. Movimento Inteligente OK.
+8. Rotação Inteligente OK.
+9. Escala Inteligente OK.
+10. Preview OK.
+11. MP4 OK.
+12. Sem NaN/Infinity no console.
+13. Sem tela preta.
+14. Sem botão preso.
+
+---
+
 ## v8z4b18n — vector path mode scaffold
 
 ### Teste A — sem mudança visual
