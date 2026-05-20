@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18n                                     ║
+║  Versão: v8z4b18o                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18n — vector path mode scaffold: getSegmentPathMode + getSegmentVectorModel + switch interno em evaluateSegmentPath; base interna para legacyQuadratic vs vectorAnchors futuro; sem alterar visual, motor, Preview, MP4, JSON ou UI -->
+<!-- Arco App — v8z4b18o — fix project load and pause preservation: corrige restoreAutosave usando applyFrameData (era restoreState com formato errado), null-check em renderAll para frames[i], guard de frameCount vs frames carregados, log de erro no load; sem alterar visual, motor, schema JSON ou UI -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18n</span><br><span id="appVersionNameText">vector path mode scaffold</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18o</span><br><span id="appVersionNameText">fix project load and pause preservation</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18n';
-const APP_VERSION_NAME = 'vector path mode scaffold';
+const APP_VERSION = 'v8z4b18o';
+const APP_VERSION_NAME = 'fix project load and pause preservation';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -5949,10 +5949,11 @@ function restoreAutosave() {
     stageEl.style.backgroundPosition = 'center';
     stageEl.style.backgroundRepeat = 'no-repeat';
     computeImageRect();
-    restoreState(data);
-    renderAll();
-    updateFrameSelector();
-    syncDurationUI();
+    // v8z4b18o — Bug crítico: autosave usa buildProjectData() que salva framesNorm
+    // (não frames). restoreState() esperava frames em coords absolutas e crashava
+    // com TypeError, deixando o app sem estado. applyFrameData() lida corretamente
+    // com framesNorm, framePauses, migração legada e sincronização de UI.
+    applyFrameData(data);
   };
   img.src = imgDataUrl;
   if (window._restorePromptEl) window._restorePromptEl.remove();
@@ -5977,6 +5978,8 @@ function renderAll() {
     if (i >= frameCount) { el.style.display = 'none'; continue; }
 
     const f = frames[i];
+    // v8z4b18o — Defensivo: frames[i] pode ser undefined se frameCount > frames.length.
+    if (!f) { el.style.display = 'none'; continue; }
     el.style.left   = f.x + 'px';
     el.style.top    = f.y + 'px';
     el.style.width  = f.w + 'px';
@@ -11175,7 +11178,9 @@ function loadProjectFromJson() {
     closeAll();
     applyProjectData(data);
   } catch(err) {
-    showStatus('JSON invalido');
+    // v8z4b18o — log diagnóstico
+    console.error('[Arco] Erro ao carregar JSON:', err);
+    showStatus('JSON inválido');
   }
 }
 
@@ -11192,6 +11197,8 @@ function loadProjectFromFile(e) {
       const data = JSON.parse(evt.target.result);
       applyProjectData(data);
     } catch(err) {
+      // v8z4b18o — log diagnóstico para facilitar debugging sem expor UI complexa
+      console.error('[Arco] Erro ao carregar projeto:', err);
       showStatus('Erro ao carregar projeto');
     }
     e.target.value = '';
@@ -11368,6 +11375,13 @@ function applyFrameData(data) {
     });
   } else if (data.frames) {
     data.frames.forEach(f => frames.push({...f}));
+  }
+  // v8z4b18o — Defensivo: se o JSON tinha frameCount inconsistente com framesNorm/frames,
+  // ajustar frameCount para evitar acesso fora dos limites em renderAll e demais funções.
+  if (frames.length > 0 && frames.length < frameCount) {
+    console.warn('[Arco] applyFrameData: frameCount=' + frameCount + ' mas só ' + frames.length + ' frames carregados; ajustando para ' + frames.length);
+    frameCount = frames.length;
+    if (activeIdx >= frameCount) activeIdx = Math.max(0, frameCount - 1);
   }
 
   frameRotations.length = 0;
