@@ -1,5 +1,34 @@
 # Changelog
 
+## v8z4b18n — vector path mode scaffold
+
+Patch estrutural/interno: cria base para o futuro modo vetorial de trajetória por segmento, separando claramente o modo atual (`legacyQuadratic`) do futuro modo `vectorAnchors`. Adiciona `getSegmentPathMode()` e `getSegmentVectorModel()`. Atualiza `evaluateSegmentPath()` com switch interno seguro. Nenhuma mudança de visual, motor, Preview, MP4, JSON ou UI.
+
+### O que foi adicionado
+
+- **`getSegmentPathMode(segIndex)`** — retorna o modo de trajetória do segmento. Nesta versão, sempre `"legacyQuadratic"`. Preparado para retornar `"vectorAnchors"` no futuro sem alterar código externo.
+- **`getSegmentVectorModel(segIndex)`** — retorna modelo vetorial normalizado do segmento: `segmentIndex`, `label`, `from`, `to`, `isLoop`, `mode`, `frameAnchors` (start/end), `curvePuller` (com `kind`, `source`, `x`, `y`, `manual`), `pathPoints: []` e `handles: []`. Funciona para segmentos normais e para o segmento de loop (usa `loopCtrlPt` quando aplicável).
+- **Bloco de documentação `vectorAnchors`** — estrutura conceitual futura documentada em comentário: `pathPoints` com `kind`, `id`, `x`, `y`, `pointType`, `handleIn`, `handleOut`; `handles`; TODOs para avaliador cúbico, UI e schema JSON.
+
+### O que foi alterado
+
+- **`evaluateSegmentPath(segIndex, t)`** — header atualizado para `v8z4b18l / mode switch v8z4b18n`. Adicionado `const mode = getSegmentPathMode(segIndex)` e branch `vectorAnchors` com TODO e fallback seguro para `legacyQuadratic`. Resultado matemático idêntico à v8z4b18m.
+- **Cabeçalho, `APP_VERSION`, `APP_VERSION_NAME`** — atualizados para `v8z4b18n` / `vector path mode scaffold`.
+
+### O que NÃO foi alterado
+
+- Comportamento do Preview, export MP4/WebCodecs.
+- Motor de animação (`getStateAtT`, `drawAtT`), `totalDuration()`, `totalDurationFull()`.
+- Schema do JSON (nenhum campo novo: sem `mode`, `pathPoints`, `vectorAnchors`, `handles`, `frameAnchors`, `curvePuller`, `vectorPath`, `curvesV2`).
+- Visual do curvePuller (losango ciano/azul/laranja/roxo conforme v8z4b18m).
+- `sampleSegmentPath()`, `measureSegmentPathLength()` — continuam usando `evaluateSegmentPath()` sem alteração.
+- `resetSegmentCurve()` — continua resetando o curvePuller no modo `legacyQuadratic`.
+- Velocidade constante, Loop como trecho real, Pausa final.
+- Movimento/Rotação/Escala Inteligente, zoom contextual, Undo/redo.
+- UI geral (design, cores, layout, Stage, painel inferior).
+
+---
+
 ## v8z4b18m — visual curve puller distinction
 
 Patch visual: diferencia o curvePuller (puxador legado da curva) dos demais pontos da timeline, trocando seu formato de círculo para losango. Mantém área de toque, compensação de zoom, cores e comportamento exatamente iguais à v8z4b18l. Nenhuma mudança de comportamento, motor, Preview, MP4, JSON ou schema.
