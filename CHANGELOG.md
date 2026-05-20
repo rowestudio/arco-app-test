@@ -1,5 +1,40 @@
 # Changelog
 
+## v8z4b18p — consolidate import fixes after duplicate 18o merges
+
+Patch de consolidação e rastreabilidade: corrige a situação de dois PRs distintos mergeados com o mesmo rótulo `v8z4b18o`, garantindo histórico, CHANGELOG e QA consistentes. Nenhum avanço funcional. Consolida todos os fixes de importação da v8z4b18o em uma versão unificada com número correto.
+
+### O que foi consolidado
+
+- **Robustez para `imageBase64` ausente/inválido/placeholder** — `isValidImageBase64()` rejeita `null`/`undefined`, não-string, string vazia, strings com `<<` (placeholder), strings sem prefixo `data:image/`. Projetos com imagem placeholder carregam normalmente sem a imagem (fluxo "selecione a imagem para continuar").
+- **`applyProjectData()`** — usa `isValidImageBase64()` em vez de truthy bruto; `img.onerror` como safety net; `console.warn` informativo quando placeholder detectado.
+- **`restoreAutosave()`** — usa `applyFrameData(data)` em vez de `restoreState(data)`, corrigindo TypeError silencioso que impedia restauração de estado e pausas.
+- **`renderAll()`** — null-check em `frames[i]` antes de acessar `.x/.y/.w/.h`.
+- **`applyFrameData()`** — guard de `frameCount` vs `frames.length` após load.
+- **`loadProjectFromFile()` / `loadProjectFromJson()`** — `console.error` no catch para diagnóstico.
+- **Preservação de pausas** — `framePauses` restaurado corretamente via `applyFrameData`.
+
+### O que NÃO foi alterado
+
+- Comportamento do Preview, export MP4/WebCodecs.
+- Motor de animação (`getStateAtT`, `drawAtT`), `totalDuration()`, `totalDurationFull()`.
+- Schema do JSON — nenhum campo novo: sem `mode`, `pathPoints`, `vectorAnchors`, `handles`, `frameAnchors`, `curvePuller`, `vectorPath`, `curvesV2`.
+- Scaffold vetorial (`getSegmentPathMode`, `getSegmentVectorModel`) — preservado da v8z4b18n, sem alterações.
+- `migrateLegacyProjectData()` — comportamento de migração e preservação de pausas inalterado.
+- Visual do Stage, curvePuller, zoom contextual, Undo/redo.
+- UI geral (design, cores, layout, painel inferior).
+- Modo Curvas, pontos de passagem, handles — não implementados nesta versão.
+
+### Histórico desta consolidação
+
+Dois PRs foram mergeados com o rótulo `v8z4b18o`:
+- PR #106 (`fix-project-load-pauses`): corrigiu `restoreAutosave`, `renderAll`, `applyFrameData`, logs de load.
+- PR #107 (`fix-project-import`): adicionou `isValidImageBase64`, `img.onerror` em `applyProjectData`.
+
+A versão `v8z4b18p` registra formalmente a combinação dos dois patches como versão única, sem reverter nenhum merge.
+
+---
+
 ## v8z4b18o — robust project import and pause preservation
 
 Patch de robustez no importador de projetos: corrige falha silenciosa que travava o load de projetos com `imageBase64` ausente, inválido ou placeholder (ex.: `"<<mesma imageBase64 do original>>"`). Adiciona `isValidImageBase64()` para validar o campo antes de tentar decodificar; adiciona `img.onerror` como safety net para falhas de decodificação tardias; ambos os casos caem no fluxo existente de "projeto sem imagem" (pede ao usuário que selecione a imagem). Corrige também regressão crítica no restore do autosave e adiciona null-checks defensivos. Nenhuma mudança de visual, motor, schema JSON ou UI.
