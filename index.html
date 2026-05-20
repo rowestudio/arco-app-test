@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18p                                     ║
+║  Versão: v8z4b18q                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18p — consolidate import fixes after duplicate 18o merges: versão de consolidação e rastreabilidade; consolida fixes de importação da v8z4b18o (isValidImageBase64, img.onerror, restoreAutosave→applyFrameData, null-check renderAll, guard frameCount); sem avanço funcional; sem alterar visual, motor, schema JSON ou UI -->
+<!-- Arco App — v8z4b18q — normalize imported frame pauses: normalizeImportedFramePauses() centraliza importação de pausas (formatos atuais e legados); migrateLegacyProjectData simplificado; framePauses restaurados após frameCount ajustado; sem avanço funcional; sem alterar visual, motor, schema JSON ou UI -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18p</span><br><span id="appVersionNameText">consolidate import fixes after duplicate 18o merges</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18q</span><br><span id="appVersionNameText">normalize imported frame pauses</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18p';
-const APP_VERSION_NAME = 'consolidate import fixes after duplicate 18o merges';
+const APP_VERSION = 'v8z4b18q';
+const APP_VERSION_NAME = 'normalize imported frame pauses';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -11278,23 +11278,13 @@ function migrateLegacyProjectData(raw) {
   }
 
   // ── 2. Frame pauses ──────────────────────────────────────────────────────────
-  // framePauses is the current source of truth for per-frame pauses.
-  // pauseDuration feeds getDurationParts() and getSegAndLocalTAtTime() when
-  // easeMode === 'pause', creating invisible inter-segment pauses.
-  const hasFramePauses = Array.isArray(d.framePauses) && d.framePauses.length > 0;
-  if (hasFramePauses) {
-    // Modern schema present: neutralize legacy pause fields.
-    d.pauseDuration = 0;
-    if (d.easeMode === 'pause') d.easeMode = 'global';
-  } else {
-    // No framePauses: create zeros. Migrating easeMode:'pause'/pauseDuration to
-    // per-frame is lossy (unknown target frame), so we zero it out instead.
-    const fc = d.frameCount || 2;
-    d.framePauses = [];
-    for (let i = 0; i < fc; i++) d.framePauses.push({ duration: 0 });
-    if (d.easeMode === 'pause') d.easeMode = 'global';
-    d.pauseDuration = 0;
-  }
+  // framePauses[] é a fonte única de verdade para pausas por frame.
+  // pauseDuration (legado) alimenta o motor quando easeMode==='pause', criando
+  // pausas inter-segmento invisíveis; neutralizamos ambos aqui.
+  // A construção do array normalizado fica em normalizeImportedFramePauses(),
+  // chamado após frames e frameCount estarem prontos em applyFrameData().
+  d.pauseDuration = 0;
+  if (d.easeMode === 'pause') d.easeMode = 'global';
 
   // ── 3. Loop / finishMode ─────────────────────────────────────────────────────
   // finishMode is the current authority. loopEnabled must stay in sync with it.
@@ -11338,6 +11328,64 @@ function migrateLegacyProjectData(raw) {
   }
 
   return d;
+}
+
+// ─── v8z4b18q — Normalizador de pausas na importação ─────────────────────────
+// Detecta formatos de pausa atuais e legados; retorna array {duration} com
+// exatamente frameCount entradas; usa 0 apenas quando não há pausa salva.
+//
+// Casos tratados:
+//   1. framePauses[] válido (formato atual) — preserva os valores.
+//   2. Sem framePauses — inicia com zeros.
+//   3. finishMode='pause' + finishDuration legado → mapeado para último frame.
+//   4. easeMode='pause'/pauseDuration legado — não mapeado por frame
+//      (target desconhecido); migrateLegacyProjectData já zerou pauseDuration.
+function normalizeImportedFramePauses(projectData, frameCount) {
+  const fc = Math.max(1, frameCount);
+  const result = [];
+
+  // ── Caso 1: array de pausas por frame ────────────────────────────────────────
+  // Formato atual:  [{duration: number}, ...]
+  // Formato legado: [number, ...]  (suporte defensivo)
+  const rawPauses = projectData.framePauses;
+  if (Array.isArray(rawPauses) && rawPauses.length > 0) {
+    for (let i = 0; i < fc; i++) {
+      const entry = rawPauses[i];
+      let d = 0;
+      if (entry !== null && entry !== undefined) {
+        if (typeof entry === 'number') {
+          d = entry; // formato legado: número direto
+        } else if (typeof entry === 'object' && 'duration' in entry) {
+          const parsed = parseFloat(entry.duration);
+          d = Number.isFinite(parsed) ? parsed : 0;
+        }
+      }
+      result.push({ duration: clampFramePauseValue(Math.max(0, d)) });
+    }
+    if (window._arcoDebug) {
+      const nonzero = result.filter(p => p.duration > 0).length;
+      if (nonzero > 0) console.info('[Arco] normalizeImportedFramePauses: caso 1 — ' + nonzero + ' pausa(s) preservada(s)');
+    }
+    return result;
+  }
+
+  // ── Caso 2: sem array de pausas por frame — zeros ────────────────────────────
+  for (let i = 0; i < fc; i++) result.push({ duration: 0 });
+
+  // ── Caso 3: legado finishMode='pause' + finishDuration → último frame ────────
+  // Projetos salvos antes de framePauses existirem, com finishMode='pause'.
+  const fm = projectData.finishMode;
+  const fd = parseFloat(projectData.finishDuration);
+  if (fm === 'pause' && Number.isFinite(fd) && fd > 0) {
+    result[fc - 1] = { duration: clampFramePauseValue(fd) };
+    if (window._arcoDebug) console.info('[Arco] normalizeImportedFramePauses: caso 3 — finishDuration=' + fd + ' → frame ' + (fc - 1));
+  }
+
+  // ── Caso 4: easeMode='pause'/pauseDuration ────────────────────────────────────
+  // Pausa global antiga: target por frame desconhecido → não converte.
+  // migrateLegacyProjectData já zerou pauseDuration; zeros são corretos aqui.
+
+  return result;
 }
 
 function applyFrameData(data) {
@@ -11417,17 +11465,13 @@ function applyFrameData(data) {
   segBlurSettings.length = 0;
   (data.segBlurSettings || []).forEach(v => segBlurSettings.push(v ? {...v} : cloneDefaultSegBlur()));
   ensureSegBlurSettings();
-  // v8z4b15u: restaura framePauses do projeto salvo (antes era descartado).
+  // v8z4b18q: normaliza pausas importadas (formatos atuais e legados).
+  // normalizeImportedFramePauses() é chamado após frameCount estar ajustado,
+  // garantindo que o array resultante tenha exatamente frameCount entradas.
+  // Inclui migração de finishMode='pause'/finishDuration (caso legado).
   framePauses.length = 0;
-  (data.framePauses || []).forEach(p => framePauses.push(p ? { duration: Number(p.duration) || 0 } : { duration: 0 }));
-  ensureFramePauses();
-  // v8z4b17o: migrar finishDuration antigo para framePauses[lastFrame] quando finishMode==='pause'.
-  if (finishMode === 'pause' && finishDuration > 0) {
-    const lastIdx = frameCount - 1;
-    if (lastIdx >= 0 && (framePauses[lastIdx]?.duration || 0) === 0) {
-      framePauses[lastIdx] = { duration: clampFramePauseValue(finishDuration) };
-    }
-  }
+  normalizeImportedFramePauses(data, frameCount).forEach(p => framePauses.push(p));
+  ensureFramePauses(); // validação final: intervalo e alinhamento ao frameCount
   // v8z4b17a: restaura rotEasings; projetos antigos sem o campo recebem 'linear'.
   rotEasings.length = 0;
   (data.rotEasings || []).forEach(v => rotEasings.push(v));

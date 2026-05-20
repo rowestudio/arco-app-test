@@ -1,5 +1,38 @@
 # Changelog
 
+## v8z4b18q — normalize imported frame pauses
+
+Patch de correção de importação de pausas por frame: garante que projetos salvos com pausas por frame as tenham corretamente restauradas ao carregar, e que projetos sem pausas fiquem zerados sem inventar valores.
+
+### O que foi corrigido
+
+- **`normalizeImportedFramePauses(projectData, frameCount)`** — novo helper centralizado para importação de pausas. Detecta formatos atuais (`framePauses[]`) e legados (`finishMode='pause'`/`finishDuration`); nunca sobrescreve pausas carregadas com defaults após o load.
+- **`migrateLegacyProjectData`** — seção de framePauses simplificada: não cria mais array de zeros (responsabilidade movida para `normalizeImportedFramePauses`). Continua neutralizando `pauseDuration` e `easeMode='pause'`.
+- **`applyFrameData`** — chamada ao normalizador posicionada após o ajuste defensivo de `frameCount` (v8z4b18o), garantindo que o array de pausas tenha exatamente o número correto de entradas.
+- **Migração legada finishMode='pause'** — integrada ao normalizador; `finishDuration` é mapeado para o último frame apenas quando `finishMode='pause'` está explicitamente presente no JSON.
+
+### Casos cobertos
+
+| Projeto | Comportamento |
+|---------|---------------|
+| Sem pausas (`framePauses` ausente ou `[]`) | Zeros, sem inventar valores |
+| Com pausas por frame (`framePauses: [{duration:2.5},…]`) | Preserva todos os valores |
+| Legado `finishMode='pause'` + `finishDuration` sem `framePauses` | Último frame recebe `finishDuration` |
+| Legado `easeMode='pause'` + `pauseDuration` | Zeros (target por frame desconhecido) |
+| Loop ligado + pausas | Loop e pausas preservados independentemente |
+
+### O que NÃO foi alterado
+
+- Visual do Stage, curvePuller, zoom contextual.
+- Motor de animação (`getStateAtT`, `drawAtT`), `totalDuration()`, `totalDurationFull()`.
+- Schema do JSON — nenhum campo novo: sem `mode`, `pathPoints`, `vectorAnchors`, `handles`, `frameAnchors`, `curvePuller`, `vectorPath`, `curvesV2`.
+- Scaffold vetorial — preservado da v8z4b18n.
+- UI geral (design, cores, layout, painel inferior).
+- Modo Curvas, pontos de passagem, handles — não implementados.
+- Preview, MP4 (exceto que agora respeitam pausas corretamente carregadas).
+
+---
+
 ## v8z4b18p — consolidate import fixes after duplicate 18o merges
 
 Patch de consolidação e rastreabilidade: corrige a situação de dois PRs distintos mergeados com o mesmo rótulo `v8z4b18o`, garantindo histórico, CHANGELOG e QA consistentes. Nenhum avanço funcional. Consolida todos os fixes de importação da v8z4b18o em uma versão unificada com número correto.
