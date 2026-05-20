@@ -2,6 +2,68 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18q — normalize imported frame pauses
+
+### Teste 0 — versão visível
+
+1. Abrir Configurações.
+2. Confirmar que a versão exibe `v8z4b18q`.
+3. Confirmar que o nome exibe `normalize imported frame pauses`.
+
+### Teste A — projeto sem pausas
+
+1. Carregar projeto sem pausas (ex.: `arco_mona1_img_suave_lite.json`).
+2. Confirmar que todas as pausas no painel Duração ficam `0.0s`.
+3. Confirmar que o app não inventa pausas.
+4. Preview OK — sem paradas indevidas.
+
+### Teste B — projeto com pausas por frame
+
+1. Criar projeto com 3 frames; configurar pausa F1 = 1.5s, F2 = 0s, F3 = 2.0s.
+2. Salvar JSON.
+3. Recarregar o app e carregar o JSON salvo.
+4. Confirmar que painel Duração mostra F1 = 1.5s, F2 = 0.0s, F3 = 2.0s.
+5. Rodar Preview — animação deve parar 1.5s no F1 e 2.0s no F3.
+6. Gerar MP4 — confirmar que MP4 respeita as pausas.
+
+### Teste C — pausa final / finishMode='pause' legado
+
+1. Criar projeto com `finishMode='pause'`, `finishDuration=2.0`, sem `framePauses` no JSON (editar manualmente).
+2. Carregar o projeto.
+3. Confirmar que o último frame mostra 2.0s de pausa.
+4. Preview respeita a pausa final.
+
+### Teste D — loop + pausas
+
+1. Carregar projeto com loop ligado e pausas por frame configuradas.
+2. Confirmar que loop continua funcionando.
+3. Confirmar que pausas continuam preservadas.
+4. Preview OK — loop e pausas respeitados.
+
+### Teste E — painel Duração aberto ao carregar
+
+1. Abrir painel Duração (aba Pausas visível).
+2. Carregar projeto com pausas.
+3. Confirmar que o painel não trava e mostra os valores corretos.
+4. Fechar painel normalmente.
+
+### Teste F — regressão geral
+
+1. Curva normal OK.
+2. Curva de loop OK.
+3. Resetar curva OK.
+4. Velocidade constante OK.
+5. Zoom contextual OK.
+6. Movimento Inteligente OK.
+7. Rotação Inteligente OK.
+8. Escala Inteligente OK.
+9. Preview OK.
+10. MP4 OK.
+11. Sem NaN/Infinity no console.
+12. Sem botão preso.
+
+---
+
 ## v8z4b18p — consolidate import fixes after duplicate 18o merges
 
 Versão de consolidação — mesmos critérios da v8z4b18o aplicam-se integralmente. Nenhum comportamento novo; validar rastreabilidade de versão.
