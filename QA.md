@@ -2,6 +2,74 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18u — curve segment access foundation
+
+### Teste A — curva normal
+1. Abrir app.
+2. Carregar imagem.
+3. Criar pelo menos 4 frames.
+4. Ajustar a curva entre F1→F2 (arrastar puxador de curva).
+5. Ajustar a curva entre F2→F3.
+6. Confirmar que as curvas aparecem corretamente (mesmas cores, posições e tamanhos da v8z4b18t).
+7. Rodar Preview.
+8. Confirmar que o movimento segue as curvas corretamente.
+
+### Teste B — reset de curva
+1. Ajustar uma curva manualmente.
+2. Usar reset da curva (se disponível via UI).
+3. Confirmar que o trecho volta ao padrão (puxador centralizado).
+4. Confirmar que outros trechos não são afetados.
+
+### Teste C — loop
+1. Criar projeto com 4 frames.
+2. Ativar loop.
+3. Confirmar que a bolinha de curva de loop aparece (roxa).
+4. Ajustar curva de loop arrastando a bolinha.
+5. Rodar Preview; confirmar que o loop funciona.
+6. Gerar MP4; confirmar que o loop funciona no vídeo.
+
+### Teste D — velocidade constante
+1. Criar projeto com curvas visíveis.
+2. Ativar Velocidade constante.
+3. Confirmar que o movimento continua fluido.
+4. Ajustar um trecho manualmente.
+5. Confirmar comportamento igual à v8z4b18t.
+
+### Teste E — save/load
+1. Criar projeto com curvas manuais.
+2. Salvar JSON.
+3. Recarregar app.
+4. Abrir o JSON.
+5. Confirmar que curvas manuais voltam corretamente.
+6. Confirmar que `framePauses` continuam preservadas.
+7. Confirmar que `version` no JSON é `v8z4b18u`.
+
+### Teste F — projeto antigo
+1. Abrir projeto antigo (com `ctrlPts` e versão anterior).
+2. Confirmar que abre normalmente.
+3. Confirmar que curvas aparecem.
+4. Confirmar que Preview funciona.
+5. Confirmar que MP4 funciona.
+
+### Teste G — regressão geral
+1. Preview OK.
+2. MP4 OK.
+3. Pausas por frame OK.
+4. `framePauses` OK.
+5. Curva normal OK.
+6. Curva de loop OK.
+7. Resetar curva OK.
+8. Velocidade constante OK.
+9. Movimento Inteligente OK.
+10. Rotação Inteligente OK.
+11. Escala Inteligente OK.
+12. Zoom contextual OK.
+13. Marca d'água continua **Arco Motion App**.
+14. "Salvar projeto" continua desabilitado no estado inicial vazio.
+15. Sem NaN/Infinity no console.
+16. Sem tela preta.
+17. Sem botão preso.
+
 ## v8z4b18t — fix watermark brand and disable empty project save
 
 ### Teste A — estado inicial vazio

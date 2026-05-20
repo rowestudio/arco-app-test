@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b18t                                     ║
+║  Versão: v8z4b18u                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b18t — fix watermark brand and disable empty project save: marca d'água corrigida para Arco Motion App; Salvar projeto desabilitado no estado inicial vazio; sem avanço funcional; sem alterar visual, motor, schema vetorial ou UI -->
+<!-- Arco Motion App — v8z4b18u — curve segment access foundation: camada interna de helpers para acesso a curvas por trecho; getNormalSegmentCount, getLoopSegmentIndex, getSegmentCurvePoint, setSegmentCurvePoint adicionados; leituras de drawBezier/updateCtrlPts/evaluateSegmentPath/getSegmentVectorModel migradas para helpers; sem alteração visual, motor, UI ou JSON schema -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1855,7 +1855,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b18t</span><br><span id="appVersionNameText">fix watermark brand and disable empty project save</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b18u</span><br><span id="appVersionNameText">curve segment access foundation</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4192,8 +4192,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18t';
-const APP_VERSION_NAME = 'fix watermark brand and disable empty project save';
+const APP_VERSION = 'v8z4b18u';
+const APP_VERSION_NAME = 'curve segment access foundation';
 const WATERMARK_TEXT = 'Arco Motion App';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4294,6 +4294,14 @@ const frameRotations = [];
 // ctrlPts[seg] = {nx, ny, t, perp} — nx/ny em coords normalizadas,
 // t = posição ao longo do segmento (0=p0, 1=p1),
 // perp = offset perpendicular em px do stage
+//
+// legacyCurvePuller: ctrlPts[] representa o "puxador de curva legado" (legacy curve puller).
+// — Não é um frame (frameAnchor).
+// — Não é um ponto de passagem (pathPoint).
+// — Não é um handle vetorial (tangent handle).
+// — É um puxador auxiliar que deforma a curva quadrática, compatível com projetos antigos.
+// — No futuro poderá ser derivado de handles/tangentes ou coexistir como ferramenta de ajuste rápido.
+// — loopCtrlPt é o equivalente para o trecho de loop (N→1); mesmo conceito de puxador legado.
 const ctrlPts = [];
 const ctrlPtManual = [];
 
@@ -4344,7 +4352,7 @@ function getSegmentLabel(segIndex) {
   return seg ? seg.label : '';
 }
 
-// ─── Curve Access Helpers — v8z4b18c (atualizado v8z4b18g) ───────────────────
+// ─── Curve Access Helpers — v8z4b18c (atualizado v8z4b18u) ───────────────────
 // Camada preparatória para acesso uniforme às curvas por trecho.
 // Schema atual preservado: ctrlPts / ctrlPtManual / loopCtrlPt.
 // No futuro, esta camada poderá migrar para um objeto de curva por trecho.
@@ -4402,6 +4410,44 @@ function setSegmentCurveManual(segIndex, value) {
   if (segIndex >= frameCount - 1) return;
   ctrlPtManual[segIndex] = !!value;
 }
+
+// ─── Extended Curve Segment Helpers — v8z4b18u ────────────────────────────────
+// getNormalSegmentCount / getLoopSegmentIndex / getSegmentCurvePoint / setSegmentCurvePoint
+// Completam a camada de abstração de acesso a curvas por trecho.
+// Não alteram comportamento, visual, motor, UI ou JSON schema.
+
+// Retorna o número de trechos normais (F1→F2, F2→F3, etc.).
+// Independe de loopEnabled.
+function getNormalSegmentCount() {
+  return frameCount < 2 ? 0 : frameCount - 1;
+}
+
+// Retorna o índice do segmento de loop (N→1) quando loop está ativo, ou -1.
+// Uso: getSegmentCurve(getLoopSegmentIndex()) para acessar loopCtrlPt via helper.
+function getLoopSegmentIndex() {
+  if (!loopEnabled || frameCount < 2) return -1;
+  return frameCount - 1;
+}
+
+// Retorna o ponto de controle do segmento como {x, y} normalizados (0–1),
+// ou null se o segmento não tiver curva definida.
+// Atalho sobre getSegmentCurve(): expõe apenas as coordenadas, sem t/perpX/perpY.
+function getSegmentCurvePoint(segIndex) {
+  const curve = getSegmentCurve(segIndex);
+  if (!curve || typeof curve.nx !== 'number' || !isFinite(curve.nx) ||
+               typeof curve.ny !== 'number' || !isFinite(curve.ny)) return null;
+  return { x: curve.nx, y: curve.ny };
+}
+
+// Define o ponto de controle do segmento a partir de {x, y} normalizados (0–1).
+// Atalho sobre setSegmentCurve(): aceita apenas coordenadas, sem t/perpX/perpY.
+// options.markManual = true marca o trecho como ajustado manualmente.
+function setSegmentCurvePoint(segIndex, point, options) {
+  if (!point || typeof point.x !== 'number' || !isFinite(point.x) ||
+               typeof point.y !== 'number' || !isFinite(point.y)) return;
+  setSegmentCurve(segIndex, { nx: point.x, ny: point.y }, options);
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 function resetSegmentCurve(segIndex) {
   if (frameCount < 2) return;
@@ -4730,8 +4776,8 @@ function getSegmentVectorModel(segIndex) {
   const mode = getSegmentPathMode(segIndex);
 
   // curvePuller: ponto de controle quadrático legado.
-  // Loop usa loopCtrlPt; segmentos normais usam ctrlPts[segIndex].
-  const cpRaw = seg.isLoop ? (loopCtrlPt || null) : (ctrlPts[segIndex] || null);
+  // Acessado via getSegmentCurve() / isSegmentCurveManual() — v8z4b18u.
+  const cpRaw = getSegmentCurve(segIndex);
   let curvePuller = null;
   if (cpRaw && typeof cpRaw.nx === 'number' && isFinite(cpRaw.nx) &&
                typeof cpRaw.ny === 'number' && isFinite(cpRaw.ny)) {
@@ -4740,7 +4786,7 @@ function getSegmentVectorModel(segIndex) {
       source: 'legacyQuadratic',
       x: cpRaw.nx,
       y: cpRaw.ny,
-      manual: seg.isLoop ? false : !!ctrlPtManual[segIndex]
+      manual: isSegmentCurveManual(segIndex)
     };
   }
 
@@ -4834,8 +4880,8 @@ function evaluateSegmentPath(segIndex, t) {
   const p2y = frameCY(toIdx);
   if (!isFinite(p1x) || !isFinite(p1y) || !isFinite(p2x) || !isFinite(p2y)) return null;
 
-  // curvePuller / legacyCurveControl: ponto de controle quadrático atual
-  let cp = seg.isLoop ? (loopCtrlPt || null) : (ctrlPts[segIndex] || null);
+  // curvePuller / legacyCurveControl: ponto de controle quadrático atual — v8z4b18u: via helper
+  let cp = getSegmentCurve(segIndex);
   let cpx, cpy;
   if (cp && typeof cp.nx === 'number' && isFinite(cp.nx) &&
             typeof cp.ny === 'number' && isFinite(cp.ny)) {
@@ -5274,7 +5320,7 @@ window.addEventListener('resize', () => {
 // ═══════════════════════════════════════
 function frameCX(i) { return frames[i].x + frames[i].w / 2; }
 function getCtrlPtPos(seg) {
-  const cp = ctrlPts[seg];
+  const cp = getSegmentCurve(seg); // v8z4b18u: via helper
   if (cp) return { x: cp.nx * stageW, y: cp.ny * stageH };
   const p0x = frameCX(seg), p0y = frameCY(seg);
   const p1x = frameCX((seg + 1) % frameCount), p1y = frameCY((seg + 1) % frameCount);
@@ -6287,7 +6333,7 @@ function drawBezier() {
   for (let seg = 0; seg < frameCount - 1; seg++) {
     const p0x = frameCX(seg),   p0y = frameCY(seg);
     const p1x = frameCX(seg+1), p1y = frameCY(seg+1);
-    const cp  = ctrlPts[seg];
+    const cp  = getSegmentCurve(seg); // v8z4b18u: via helper
     if (!cp) continue;
     const cpx = cp.nx * stageW, cpy = cp.ny * stageH;
     const active = activeSegs.has(seg);
@@ -6315,11 +6361,12 @@ function drawBezier() {
 
   // Linha tracejada removida — não agrega informação
 
-  // Curva de loop
-  if (loopEnabled && loopCtrlPt && frameCount >= 2) {
+  // Curva de loop — v8z4b18u: acesso via getSegmentCurve(getLoopSegmentIndex())
+  const _loopCp = getSegmentCurve(getLoopSegmentIndex());
+  if (loopEnabled && _loopCp && frameCount >= 2) {
     const p0x = frameCX(frameCount-1), p0y = frameCY(frameCount-1);
     const p1x = frameCX(0),            p1y = frameCY(0);
-    const cpx = loopCtrlPt.nx * stageW, cpy = loopCtrlPt.ny * stageH;
+    const cpx = _loopCp.nx * stageW, cpy = _loopCp.ny * stageH;
     const showLoop = activeIdx === 0 || activeIdx === frameCount - 1;
     const lineOp   = showLoop ? 0.9 : 0.22;
     const lineW    = (showLoop ? 2.5 : 1.0) * invZ;
@@ -6361,8 +6408,10 @@ function updateCtrlPts() {
   }
 
   // Bolinha de loop — visível quando loop ativo e F1 ou último frame selecionado
+  // v8z4b18u: acesso ao loopCtrlPt via getSegmentCurve(getLoopSegmentIndex())
   let loopEl = document.getElementById('cpt_loop');
-  const showLoop = loopEnabled && loopCtrlPt && frameCount >= 2 &&
+  const _loopCurve = getSegmentCurve(getLoopSegmentIndex());
+  const showLoop = loopEnabled && _loopCurve && frameCount >= 2 &&
                    (activeIdx === 0 || activeIdx === frameCount - 1);
   if (showLoop) {
     if (!loopEl) {
@@ -6375,8 +6424,8 @@ function updateCtrlPts() {
       loopEl.addEventListener('pointerdown', e => { if (!editorPanMode) { e.stopPropagation(); ctrlDragSeg = 'loop'; } });
     }
     loopEl.style.display = 'block';
-    loopEl.style.left    = (loopCtrlPt.nx * stageW) + 'px';
-    loopEl.style.top     = (loopCtrlPt.ny * stageH) + 'px';
+    loopEl.style.left    = (_loopCurve.nx * stageW) + 'px';
+    loopEl.style.top     = (_loopCurve.ny * stageH) + 'px';
     stage.appendChild(loopEl);
   } else if (loopEl) {
     loopEl.style.display = 'none';
@@ -10334,7 +10383,9 @@ function measureSegmentCurveLength(segIndex) {
   const p2cx = frameCX(segIndex + 1);
   const p2cy = frameCY(segIndex + 1);
 
-  const cp = ctrlPts[segIndex] || {
+  // v8z4b18u: via helper; fallback para midpoint se curva não definida
+  const _cpRaw = getSegmentCurve(segIndex);
+  const cp = _cpRaw || {
     nx: (p1cx / stageW + p2cx / stageW) / 2,
     ny: (p1cy / stageH + p2cy / stageH) / 2
   };

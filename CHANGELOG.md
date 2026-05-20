@@ -1,5 +1,52 @@
 # Changelog
 
+## v8z4b18u — curve segment access foundation
+
+Inicia a fundação técnica do novo sistema de curvas. Camada interna de helpers para
+acessar, ler e atualizar curvas por trecho sem espalhar lógica condicional pelo código.
+Preserva totalmente o sistema visual e de dados existente (`ctrlPts`, `ctrlPtManual`, `loopCtrlPt`).
+
+### Novos helpers
+
+- `getNormalSegmentCount()` — retorna o número de trechos normais (F1→F2, F2→F3, etc.) independente de `loopEnabled`.
+- `getLoopSegmentIndex()` — retorna o índice do segmento de loop (N→1) quando loop está ativo, ou `-1`.
+- `getSegmentCurvePoint(segIndex)` — retorna `{x, y}` normalizados do puxador de curva do trecho, ou `null`.
+- `setSegmentCurvePoint(segIndex, point, options)` — define `{x, y}` normalizados do puxador de curva. Atalho sobre `setSegmentCurve()`.
+
+### Helpers existentes ampliados
+
+- Seção "Curve Access Helpers" atualizada para v8z4b18u com documentação do conceito de `legacyCurvePuller`.
+- Comentário técnico adicionado à declaração de `ctrlPts[]` e `loopCtrlPt` explicando que são puxadores auxiliares legados:
+  - não são frames (frameAnchor);
+  - não são pontos de passagem (pathPoint);
+  - não são handles vetoriais;
+  - são compatíveis com projetos antigos;
+  - futuramente poderão coexistir com handles/tangentes.
+
+### Substituições seguras de acesso direto
+
+Funções de leitura/desenho migradas para usar os helpers, sem alterar comportamento:
+
+- `evaluateSegmentPath()` — substituído `seg.isLoop ? loopCtrlPt : ctrlPts[segIndex]` por `getSegmentCurve(segIndex)`.
+- `getSegmentVectorModel()` — substituído acesso direto a `loopCtrlPt`/`ctrlPts[segIndex]` e `ctrlPtManual[]` por `getSegmentCurve()` / `isSegmentCurveManual()`.
+- `drawBezier()` — substituído `ctrlPts[seg]` por `getSegmentCurve(seg)`; loop usa `getSegmentCurve(getLoopSegmentIndex())`.
+- `updateCtrlPts()` — loop usa `getSegmentCurve(getLoopSegmentIndex())` para posição e visibilidade da bolinha.
+- `getCtrlPtPos()` — substituído `ctrlPts[seg]` por `getSegmentCurve(seg)`.
+
+### Acesso direto preservado (risco alto)
+
+Mantido acesso direto em: `syncCtrlPtsForFrame()`, `buildProjectData()`, `applyFrameData()`,
+`applyState()`, `addFrame()`, operações de splice em `ctrlPts[]`, e `getStateAtT()` (motor de animação).
+Esses pontos serão migrados em versões futuras de forma controlada.
+
+### Sem alteração de
+
+- Visual (curvas, puxadores, cores, tamanhos, posições).
+- UI (layout, textos, ícones, menus).
+- Motor de animação (Preview, MP4, easing, pausas, velocidade constante, loop).
+- JSON schema (nenhum campo novo; projetos antigos abrem normalmente).
+- `framePauses`, `segDurations`, Movimento/Rotação/Escala Inteligente, zoom contextual.
+
 ## v8z4b18t — fix watermark brand and disable empty project save
 
 - Marca d'água corrigida para **Arco Motion App** em Preview e exportação MP4 (era `Arc Motion`).
