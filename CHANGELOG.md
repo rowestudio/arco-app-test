@@ -1,5 +1,17 @@
 # Changelog
 
+## v8z4b18t — fix watermark brand and disable empty project save
+
+- Marca d'água corrigida para **Arco Motion App** em Preview e exportação MP4 (era `Arc Motion`).
+- Constante `WATERMARK_TEXT` atualizada para `'Arco Motion App'`; posição, tamanho, opacidade e alinhamento inalterados.
+- Nome visível do produto atualizado para **Arco Motion App** em: `<title>`, `apple-mobile-web-app-title`, cabeçalho de Configurações e `navigator.share`.
+- Adicionada função `canSaveProject()`: retorna `true` apenas quando há imagem carregada e frames válidos (`imgNatW > 0 && frameCount > 0`).
+- Adicionada função `updateSaveProjectState()`: sincroniza visual disabled/ativo nos botões "Salvar projeto" (toolbar e settings) com base em `canSaveProject()`.
+- "Salvar projeto" aparece cinza/desabilitado no estado inicial vazio; fica ativo após carregar imagem ou abrir projeto válido; volta a desabilitado após Reset.
+- `promptSaveProject()` retorna imediatamente quando `canSaveProject()` é false (sem gerar JSON vazio nem abrir modal).
+- Versão do JSON salvo: `v8z4b18t` via `APP_VERSION`.
+- `framePauses` continua sendo salvo e carregado corretamente (sem alteração na lógica de persistência).
+
 ## v8z4b18s — rename app to Arc Motion and fix project version metadata
 
 - Nome visível do app atualizado para **Arc Motion** em todos os textos visíveis ao usuário: `<title>`, `apple-mobile-web-app-title`, cabeçalho de Configurações, marca d'água do Preview/MP4 e `navigator.share`.
