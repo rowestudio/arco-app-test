@@ -2,9 +2,41 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
-## v8z4b18o — fix project load and pause preservation
+## v8z4b18o — robust project import and pause preservation
 
-### Teste A — projeto que não carregava (autosave)
+### Teste A — arquivo com imageBase64 placeholder (arco_mona1_img_suave_lite.json)
+1. Carregar `samples/arco_mona1_img_suave_lite.json` (version: v8r, imageBase64: `<<mesma imageBase64 do original>>`).
+2. O app NÃO deve travar nem exibir "Carregando projeto com imagem…" indefinidamente.
+3. O app deve exibir "Projeto carregado — selecione a imagem para continuar".
+4. Os dados do projeto devem estar preservados em `pendingProjectData`.
+5. Selecionar uma imagem compatível (qualquer foto 9:16 ou 16:9).
+6. Os 8 frames devem aparecer no Stage.
+7. Os 7 trechos devem manter: 0.9, 1.0, 1.0, 1.0, 1.0, 1.2, 1.6.
+8. As curvas devem carregar (ctrlPts/ctrlPtManual restaurados).
+9. Preview deve funcionar normalmente após a imagem ser selecionada.
+10. No console: `[Arco] imageBase64 inválido ou placeholder — ignorando imagem embutida` (sem erros).
+
+### Teste B — projeto com imagem válida (regressão)
+1. Carregar projeto normal com imageBase64 válido (ex.: `samples/arco_mona1_img.json`).
+2. Confirmar que abre exatamente como antes.
+3. Frames, durações, curvas e pausas corretos.
+4. Preview OK.
+
+### Teste C — projeto com pausas
+1. Criar (ou carregar) projeto com pausas por frame.
+2. Salvar JSON.
+3. Reabrir o JSON.
+4. Confirmar que as pausas aparecem no painel Pausas.
+5. Rodar Preview — confirmar que as pausas são respeitadas.
+6. Gerar MP4 — confirmar que o MP4 respeita as pausas.
+
+### Teste D — projeto sem pausas
+1. Criar projeto sem pausas.
+2. Salvar e reabrir.
+3. Confirmar que o app não inventa pausas (todas = 0s).
+4. Preview OK.
+
+### Teste E — autosave restore (regressão v8z4b18o)
 1. Criar projeto com 3 frames e pausas configuradas.
 2. Aguardar autosave (1.5s após a última ação).
 3. Recarregar a página.
@@ -13,37 +45,8 @@ Use depois de qualquer alteração, mesmo pequena.
 6. Confirmar que as pausas configuradas estão restauradas.
 7. Preview OK.
 
-### Teste B — projeto com pausas (arquivo)
-1. Criar projeto com pausas por frame.
-2. Salvar JSON.
-3. Reabrir o JSON.
-4. Confirmar que as pausas aparecem no painel.
-5. Preview OK — a animação respeita as pausas.
-6. Gerar MP4 e confirmar que o MP4 respeita as pausas.
-
-### Teste C — projeto sem pausas
-1. Criar projeto sem pausas.
-2. Salvar e reabrir.
-3. Confirmar que o app não inventa pausas (pauses = 0s).
-4. Preview OK.
-
-### Teste D — pausa final / último frame
-1. Criar projeto com pausa no último frame.
-2. Salvar JSON.
-3. Reabrir.
-4. Confirmar que a pausa final continua coerente com o último frame.
-5. Preview OK.
-
-### Teste E — loop
-1. Criar projeto com 3 frames e Loop ligado.
-2. Ajustar pausas e curvas.
-3. Salvar.
-4. Reabrir.
-5. Confirmar que loop, pausas, curvas e durações permanecem corretos.
-6. Preview OK.
-
 ### Teste F — compatibilidade com projetos antigos
-1. Carregar projeto salvo antes da v8z4b18n (ex. arquivos v8m, v8r).
+1. Carregar projeto salvo antes da v8z4b18n (ex. arquivos v8m, v8r com imageBase64 válido).
 2. Confirmar que carrega sem travar.
 3. Confirmar que frames aparecem.
 4. Confirmar que curvas aparecem.
