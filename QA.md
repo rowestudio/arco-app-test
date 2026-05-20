@@ -2,6 +2,66 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18v — update watermark to arcomotion.app
+
+### Teste A — Preview com nova marca d'água
+1. Abrir app.
+2. Carregar imagem.
+3. Criar movimento simples (mínimo 4 frames).
+4. Abrir Preview.
+5. Confirmar que a marca d'água aparece como: `arcomotion.app`
+6. Confirmar que **não** aparece: Weigand Studio, Arco Motion App, Arco Motion, Arc Motion, Ken Burns App, www.arcomotion.app.
+
+### Teste B — MP4 com nova marca d'água
+1. Gerar MP4.
+2. Abrir o vídeo exportado.
+3. Confirmar que a marca d'água aparece como: `arcomotion.app`
+4. Confirmar que posição, tamanho, cor, opacidade e alinhamento continuam iguais.
+5. Confirmar que o vídeo não ficou preto.
+6. Confirmar que não houve falha de exportação.
+
+### Teste C — JSON preservado
+1. Criar projeto com 5 ou 6 frames.
+2. Definir pausas diferentes.
+3. Criar curvas manuais.
+4. Ligar loop.
+5. Salvar JSON.
+6. Confirmar `"version": "v8z4b18v"`.
+7. Confirmar que `framePauses` está presente e correto.
+8. Confirmar que `ctrlPts` está presente.
+9. Confirmar que `loopCtrlPt` está presente.
+10. Confirmar ausência de campos vetoriais novos (`vectorAnchors`, `pathPoints`, `handles`, etc.).
+
+### Teste D — reabrir projeto salvo
+1. Recarregar app.
+2. Abrir o JSON salvo.
+3. Confirmar que imagem abre.
+4. Confirmar que pausas voltam.
+5. Confirmar que curvas voltam.
+6. Confirmar que loop volta.
+7. Rodar Preview.
+8. Gerar MP4.
+
+### Teste E — regressão rápida
+1. Preview OK.
+2. MP4 OK.
+3. Pausas OK.
+4. `framePauses` OK.
+5. Curva normal OK.
+6. Curva de loop OK.
+7. Resetar curva OK.
+8. Velocidade constante OK.
+9. Movimento Inteligente OK.
+10. Rotação Inteligente OK.
+11. Escala Inteligente OK.
+12. Zoom contextual OK.
+13. Salvar projeto continua desabilitado no estado inicial vazio.
+14. Sem NaN/Infinity no console.
+15. Sem tela preta.
+16. Sem botão preso.
+
+---
+
 ## v8z4b18u — curve segment access foundation
 
 ### Teste A — curva normal
