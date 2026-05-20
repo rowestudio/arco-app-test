@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18m                                     ║
+║  Versão: v8z4b18n                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18m — visual curve puller distinction: curvePuller visual alterado de círculo para losango; área de toque e comportamento preservados; sem alterar motor, Preview, MP4, JSON ou UI -->
+<!-- Arco App — v8z4b18n — vector path mode scaffold: getSegmentPathMode + getSegmentVectorModel + switch interno em evaluateSegmentPath; base interna para legacyQuadratic vs vectorAnchors futuro; sem alterar visual, motor, Preview, MP4, JSON ou UI -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18m</span><br><span id="appVersionNameText">visual curve puller distinction</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18n</span><br><span id="appVersionNameText">vector path mode scaffold</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18m';
-const APP_VERSION_NAME = 'visual curve puller distinction';
+const APP_VERSION = 'v8z4b18n';
+const APP_VERSION_NAME = 'vector path mode scaffold';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -4660,17 +4660,130 @@ function getSegmentAnchors(segIndex) {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-// ─── Unified Segment Path Evaluator — v8z4b18l ────────────────────────────────
+// ─── Vector Path Mode Scaffold — v8z4b18n ────────────────────────────────────
 //
-// evaluateSegmentPath() é a futura entrada única para calcular posição no caminho.
-// Hoje avalia curva quadrática com curvePuller legado.
-// No futuro poderá avaliar trajetórias com path points, handles e desenho livre.
-// O objetivo é evitar que Preview, MP4, Velocidade constante e Modo Mapa/Curvas
-// calculem caminhos de formas diferentes.
+// Separa internamente o modo atual (legacyQuadratic) do futuro modo vetorial
+// (vectorAnchors), sem alterar visual, motor, Preview, MP4, JSON ou UI.
+//
+// legacyQuadratic — sistema atual: usa curvePuller (puxador auxiliar legado da
+//                   curva quadrática). Preserva todos os projetos existentes.
+// vectorAnchors   — sistema futuro: usará frameAnchors, pathPoints e handles.
+//                   Não ativado nesta versão.
+//
+// curvePuller não é pathPoint: é controle auxiliar/legado para deformar a curva.
+// frameAnchor é o ponto real da timeline (com tempo, escala, rotação, pausa).
+// pathPoint será ponto de passagem futuro, sem tempo próprio.
+// handle será tangência associada a frameAnchor ou pathPoint.
+//
+// Esta versão prepara a separação conceitual, sem alterar comportamento nem JSON.
+
+// Retorna o modo de trajetória do segmento.
+// Nesta versão, todos os segmentos retornam "legacyQuadratic".
+// O futuro modo "vectorAnchors" não é ativado aqui.
+function getSegmentPathMode(segIndex) {
+  // TODO (vectorAnchors): quando implementado, consultar estado por segmento.
+  return 'legacyQuadratic';
+}
+
+// Retorna o modelo vetorial normalizado do segmento.
+// Concentra frameAnchors, curvePuller, pathPoints e handles em um objeto conceitual.
+// pathPoints e handles estão vazios nesta versão — não são renderizados.
+// Funciona para segmentos normais e para o segmento de loop.
+// Não altera comportamento, não salva no JSON.
+function getSegmentVectorModel(segIndex) {
+  if (typeof segIndex !== 'number' || !isFinite(segIndex) || segIndex < 0) return null;
+  if (frameCount < 2) return null;
+  const seg = getSegmentByIndex(segIndex);
+  if (!seg) return null;
+  if (stageW <= 0 || stageH <= 0) return null;
+
+  const fromIdx = seg.from;
+  const toIdx   = seg.to;
+  if (!frames[fromIdx] || !frames[toIdx]) return null;
+
+  const startX = frameCX(fromIdx) / stageW;
+  const startY = frameCY(fromIdx) / stageH;
+  const endX   = frameCX(toIdx)   / stageW;
+  const endY   = frameCY(toIdx)   / stageH;
+  if (!isFinite(startX) || !isFinite(startY) ||
+      !isFinite(endX)   || !isFinite(endY)) return null;
+
+  const mode = getSegmentPathMode(segIndex);
+
+  // curvePuller: ponto de controle quadrático legado.
+  // Loop usa loopCtrlPt; segmentos normais usam ctrlPts[segIndex].
+  const cpRaw = seg.isLoop ? (loopCtrlPt || null) : (ctrlPts[segIndex] || null);
+  let curvePuller = null;
+  if (cpRaw && typeof cpRaw.nx === 'number' && isFinite(cpRaw.nx) &&
+               typeof cpRaw.ny === 'number' && isFinite(cpRaw.ny)) {
+    curvePuller = {
+      kind: 'curvePuller',
+      source: 'legacyQuadratic',
+      x: cpRaw.nx,
+      y: cpRaw.ny,
+      manual: seg.isLoop ? false : !!ctrlPtManual[segIndex]
+    };
+  }
+
+  return {
+    segmentIndex: segIndex,
+    label: seg.label,
+    from: fromIdx,
+    to: toIdx,
+    isLoop: seg.isLoop,
+    mode,
+    frameAnchors: [
+      { kind: 'frameAnchor', role: 'start', frameIndex: fromIdx, x: startX, y: startY },
+      { kind: 'frameAnchor', role: 'end',   frameIndex: toIdx,   x: endX,   y: endY   }
+    ],
+    curvePuller,
+    pathPoints: [], // futuro vectorAnchors: pontos de passagem sem tempo próprio
+    handles: []     // futuro vectorAnchors: tangências de frameAnchors e pathPoints
+  };
+}
+
+// ─── Futuro modo vectorAnchors (não ativado nesta versão) ─────────────────────
+//
+// Quando mode === "vectorAnchors", o segmento usará frameAnchors, pathPoints
+// e handles em vez do curvePuller legado. Estrutura conceitual futura:
+//
+// {
+//   mode: "vectorAnchors",
+//   frameAnchors: [...],
+//   pathPoints: [
+//     {
+//       kind: "pathPoint",
+//       id: string,
+//       x: number,
+//       y: number,
+//       pointType: "corner" | "smooth" | "auto",
+//       handleIn:  null | { x: number, y: number },
+//       handleOut: null | { x: number, y: number }
+//     }
+//   ],
+//   handles: [
+//     { kind: "handle", ownerId: string, type: "in" | "out", x: number, y: number }
+//   ]
+// }
+//
+// TODO (vectorAnchors): avaliador Bézier cúbico com pathPoints e handles.
+// TODO (vectorAnchors): UI de criação/remoção de pathPoints no Stage.
+// TODO (vectorAnchors): schema JSON versionado para persistir pathPoints.
+// TODO (vectorAnchors): migração controlada de legacyQuadratic → vectorAnchors.
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Unified Segment Path Evaluator — v8z4b18l / mode switch v8z4b18n ─────────
+//
+// evaluateSegmentPath() é a entrada única para calcular posição no caminho.
+// Usa getSegmentPathMode() para selecionar o avaliador correto por segmento.
+// Hoje todos os segmentos usam 'legacyQuadratic'.
+//
+// legacyQuadratic — curva quadrática atual com curvePuller.
+// vectorAnchors   — futuro; não ativado nesta versão.
 //
 // Esta versão não altera comportamento nem schema.
 
-// Avalia a posição na curva quadrática do segmento em t ∈ [0,1].
+// Avalia a posição na trajetória do segmento em t ∈ [0,1].
 // Retorna {x, y} em pixels do stage, ou null para segmento inválido.
 // t fora de [0,1] é clampado; t NaN é tratado como 0.
 function evaluateSegmentPath(segIndex, t) {
@@ -4684,6 +4797,14 @@ function evaluateSegmentPath(segIndex, t) {
   const seg = getSegmentByIndex(segIndex);
   if (!seg) return null;
 
+  const mode = getSegmentPathMode(segIndex);
+
+  if (mode === 'vectorAnchors') {
+    // TODO (vectorAnchors): avaliar Bézier cúbico com pathPoints e handles.
+    // Fallback seguro para legacyQuadratic até o modo ser implementado.
+  }
+
+  // mode === 'legacyQuadratic': usa frame inicial, curvePuller e frame final.
   const fromIdx = seg.from;
   const toIdx   = seg.to;
   if (!frames[fromIdx] || !frames[toIdx]) return null;
