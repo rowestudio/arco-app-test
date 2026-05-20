@@ -2,6 +2,64 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18t — fix watermark brand and disable empty project save
+
+### Teste A — estado inicial vazio
+1. Abrir app limpo.
+2. Confirmar que "Salvar projeto" na toolbar aparece cinza/desabilitado.
+3. Abrir Configurações; confirmar que "Salvar projeto" aparece cinza/desabilitado.
+4. Tocar/clicar em "Salvar projeto".
+5. Confirmar que nada acontece (sem modal, sem JSON gerado).
+6. Confirmar que "Carregar projeto" continua disponível.
+7. Confirmar que "Carregar imagem" continua disponível.
+
+### Teste B — ativar salvar após carregar imagem
+1. Carregar uma imagem.
+2. Confirmar que "Salvar projeto" ficou ativo (toolbar e Configurações).
+3. Salvar projeto.
+4. Confirmar que o JSON é gerado normalmente com `version: "v8z4b18t"`.
+
+### Teste C — ativar salvar após abrir projeto
+1. Abrir app limpo.
+2. Carregar projeto JSON válido.
+3. Confirmar que "Salvar projeto" ficou ativo.
+4. Salvar novamente; confirmar JSON gerado normalmente.
+
+### Teste D — reset geral
+1. Carregar imagem ou projeto.
+2. Confirmar que "Salvar projeto" está ativo.
+3. Usar Reset geral.
+4. Abrir Configurações.
+5. Confirmar que "Salvar projeto" voltou a ficar cinza/desabilitado.
+
+### Teste E — marca d'água Preview
+1. Carregar imagem; criar movimento com 4+ frames.
+2. Abrir Preview.
+3. Confirmar que a marca d'água mostra **Arco Motion App**.
+4. Confirmar ausência de "Arc Motion", "Weigand Studio", "Ken Burns".
+
+### Teste F — marca d'água MP4
+1. Gerar MP4.
+2. Confirmar que a marca d'água no vídeo mostra **Arco Motion App**.
+3. Confirmar posição, tamanho, opacidade e alinhamento inalterados.
+4. Confirmar que o vídeo não ficou preto.
+
+### Teste G — version no JSON
+1. Criar projeto; salvar JSON.
+2. Confirmar `"version": "v8z4b18t"` no arquivo.
+
+### Teste H — regressão rápida
+1. Preview OK.
+2. MP4 OK.
+3. Pausas por frame OK.
+4. Curva normal OK.
+5. Loop OK.
+6. Velocidade constante OK.
+7. Zoom contextual OK.
+8. Movimento/Rotação/Escala Inteligentes OK.
+9. Sem NaN/Infinity no console.
+10. Sem tela preta.
+
 ## v8z4b18s — rename app to Arc Motion and fix project version metadata
 
 ### Teste A — nome visível do app
