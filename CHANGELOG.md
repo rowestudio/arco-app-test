@@ -1,5 +1,24 @@
 # Changelog
 
+## v8z4b18v — update watermark to arcomotion.app
+
+Patch de texto: atualiza exclusivamente a marca d'água do Preview e exportação MP4.
+
+### Alteração
+
+- `WATERMARK_TEXT` atualizado de `'Arco Motion App'` para `'arcomotion.app'`.
+- Centralizado na constante `WATERMARK_TEXT`; nenhuma string duplicada.
+- Posição, fonte, tamanho, cor, opacidade, sombra e alinhamento da marca d'água permanecem idênticos.
+- Preview e MP4/exportação usam o mesmo `WATERMARK_TEXT`; consistência garantida.
+- Nome do produto (Arco Motion App) mantido em títulos, menus e metadados — somente a marca d'água foi alterada.
+
+### Sem alteração
+
+Motor, UI, layout, JSON schema, `framePauses`, `ctrlPts`, `loopCtrlPt`, loop, velocidade constante,
+Movimento/Rotação/Escala Inteligente, zoom contextual, salvar desabilitado no estado vazio.
+
+---
+
 ## v8z4b18u — curve segment access foundation
 
 Inicia a fundação técnica do novo sistema de curvas. Camada interna de helpers para
