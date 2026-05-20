@@ -2,6 +2,132 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18r — fix frame pause persistence and stale load state
+
+### Teste 0 — versão visível
+
+1. Abrir Configurações.
+2. Confirmar que a versão exibe `v8z4b18r`.
+3. Confirmar que o nome exibe `fix frame pause persistence and stale load state`.
+
+### Teste A — salvar pausas no JSON (regressão crítica Bug 1)
+
+1. Criar projeto com 4 frames.
+2. Abrir painel Duração → Pausas por frame.
+3. Configurar: F1 = 0s, F2 = 1.2s, F3 = 0.5s, F4 = 2.0s.
+4. Salvar JSON (com imagem).
+5. Abrir o JSON num editor de texto.
+6. Confirmar que `framePauses` existe com 4 entradas.
+7. Confirmar que os valores batem: `[{duration:0},{duration:1.2},{duration:0.5},{duration:2}]`.
+8. Confirmar que não existe `"framePauses": []` vazio.
+
+### Teste B — reabrir na mesma sessão (sem recarregar)
+
+1. Sem recarregar o app, carregar o JSON salvo no Teste A.
+2. Abrir painel Duração → Pausas por frame.
+3. Confirmar: F1 = 0.0s, F2 = 1.2s, F3 = 0.5s, F4 = 2.0s.
+4. Rodar Preview — pausas respeitadas.
+
+### Teste C — reabrir após recarregar app (regressão crítica Bug 2)
+
+1. Recarregar completamente o app (F5 ou fechar/abrir).
+2. Carregar o mesmo JSON do Teste A.
+3. Abrir painel Duração → Pausas por frame.
+4. Confirmar: F1 = 0.0s, F2 = 1.2s, F3 = 0.5s, F4 = 2.0s.
+5. Rodar Preview — pausas respeitadas.
+6. Gerar MP4 — MP4 respeita as pausas.
+
+### Teste D — não herdar pausas antigas (isolamento de sessão)
+
+1. Carregar um projeto COM pausas configuradas.
+2. Confirmar que pausas aparecem corretamente.
+3. Sem recarregar o app, carregar um projeto SEM `framePauses` (arquivo antigo).
+4. Confirmar que as pausas ficam ZERADAS — não herdou pausas do projeto anterior.
+5. Confirmar especificamente que o painel mostra 0.0s para todos os frames.
+
+### Teste E — arquivo sem framePauses (arco_img_5236_img.json ou similar)
+
+1. Carregar arquivo antigo sem campo `framePauses`.
+2. Confirmar que o app carrega normalmente.
+3. Confirmar que todas as pausas ficam 0.0s.
+4. Confirmar que o app não inventa pausas.
+5. Preview OK — sem paradas indevidas.
+
+### Teste F — salvar sem abrir painel Duração
+
+1. Criar projeto novo (carregar imagem, template pan-lr).
+2. NÃO abrir o painel Duração.
+3. Salvar JSON imediatamente.
+4. Abrir o JSON num editor de texto.
+5. Confirmar que `framePauses` existe com `length = frameCount` (ex.: 2 entradas para 2 frames).
+6. Confirmar que não é `[]` vazio.
+
+### Teste G — pausa final / último frame
+
+1. Criar projeto com 3 frames.
+2. No painel Duração → Acabamento, selecionar "Pausa final".
+3. Ajustar slider para 1.5s.
+4. Confirmar que F3 mostra 1.5s em Pausas por frame.
+5. Salvar JSON.
+6. Recarregar app.
+7. Carregar JSON.
+8. Confirmar que F3 mostra 1.5s.
+9. Preview OK — pausa final respeitada.
+
+### Teste H — loop + pausas
+
+1. Criar 4 frames.
+2. Ligar Loop.
+3. Configurar pausas diferentes em frames.
+4. Salvar JSON.
+5. Recarregar app.
+6. Carregar JSON.
+7. Confirmar que loop permanece correto.
+8. Confirmar que pausas permanecem corretas.
+9. Preview OK.
+10. MP4 OK.
+
+### Teste I — painel Duração aberto ao salvar/carregar
+
+1. Abrir painel Duração com aba Pausas visível.
+2. Alterar pausas.
+3. Salvar projeto com painel aberto.
+4. Recarregar app.
+5. Reabrir projeto.
+6. Confirmar que pausas foram salvas.
+7. Confirmar que painel não travou.
+8. Confirmar que botão Voltar/fechar funciona.
+
+### Teste J — console de diagnóstico
+
+1. Abrir console do navegador (F12).
+2. Criar projeto com pausas não-zero.
+3. Salvar projeto.
+4. Confirmar log: `[Arco] doSaveDirect: frameCount=N, framePauses.length=N, pausas>0=M` onde M > 0.
+5. Carregar o projeto.
+6. Confirmar log: `[Arco] normalizeImportedFramePauses: caso 1 — N entr. salvas, N frames, M pausa(s) não-zero restaurada(s)`.
+7. Carregar arquivo sem `framePauses`.
+8. Confirmar log: `[Arco] normalizeImportedFramePauses: caso 2 — sem framePauses no JSON`.
+
+### Teste K — regressão geral
+
+1. Curva normal OK.
+2. Curva de loop OK.
+3. Resetar curva OK.
+4. Velocidade constante OK.
+5. Ajuste manual de trecho desliga Velocidade constante.
+6. Zoom contextual OK.
+7. Movimento Inteligente OK.
+8. Rotação Inteligente OK.
+9. Escala Inteligente OK.
+10. Preview OK.
+11. MP4 OK.
+12. Sem NaN/Infinity no console.
+13. Sem tela preta.
+14. Sem botão preso.
+
+---
+
 ## v8z4b18q — normalize imported frame pauses
 
 ### Teste 0 — versão visível

@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Ken Burns App — Weigand Studio                      ║
-║  Versão: v8z4b18q                                     ║
+║  Versão: v8z4b18r                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18q — normalize imported frame pauses: normalizeImportedFramePauses() centraliza importação de pausas (formatos atuais e legados); migrateLegacyProjectData simplificado; framePauses restaurados após frameCount ajustado; sem avanço funcional; sem alterar visual, motor, schema JSON ou UI -->
+<!-- Arco App — v8z4b18r — fix frame pause persistence and stale load state: ensureFramePauses() chamado em buildProjectData() antes de serializar; framePauses limpo imediatamente em applyProjectData() para evitar falso positivo de sessão; normalizeImportedFramePauses() preserva zeros explícitos de framePauses[] válido; sem avanço funcional; sem alterar visual, motor, schema vetorial ou UI -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18q</span><br><span id="appVersionNameText">normalize imported frame pauses</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18r</span><br><span id="appVersionNameText">fix frame pause persistence and stale load state</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4189,8 +4189,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18q';
-const APP_VERSION_NAME = 'normalize imported frame pauses';
+const APP_VERSION = 'v8z4b18r';
+const APP_VERSION_NAME = 'fix frame pause persistence and stale load state';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -11042,6 +11042,10 @@ function syncRatioUI() {
 // SALVAR / CARREGAR PROJETO
 // ═══════════════════════════════════════
 function buildProjectData() {
+  // v8z4b18r: garantir que framePauses tem exatamente frameCount entradas antes de
+  // serializar. Sem isso, applyTemplate() (que zera o array) seguido de save antes
+  // de qualquer re-render do painel produzia "framePauses: []" no JSON.
+  ensureFramePauses();
   const framesNorm = frames.slice(0, frameCount).map(f => ({
     nx: f.x / stageW, ny: f.y / stageH,
     nw: f.w / stageW, nh: f.h / stageH
@@ -11064,7 +11068,8 @@ function buildProjectData() {
     ctrlPtManual: ctrlPtManual.slice(0, frameCount - 1),
     segDurations: segDurations.slice(0, frameCount - 1),
     segBlurSettings: segBlurSettings.slice(0, frameCount - 1).map(s => ({...s})),
-    // v8z4b15u: framePauses agora persistem em projetos salvos.
+    // v8z4b18r: framePauses serializado após ensureFramePauses() no topo da função,
+    // garantindo array com exatamente frameCount entradas. Number()||0 preserva 0.
     framePauses: framePauses.slice(0, frameCount).map(p => ({ duration: Number(p?.duration) || 0 })),
     // v8z4b17a: easing de rotação por segmento.
     rotEasings: rotEasings.slice(0, frameCount - 1),
@@ -11120,6 +11125,11 @@ function confirmSaveModal(includeImage) {
 
 function doSaveDirect(includeImage, nome) {
   const data = buildProjectData();
+  // v8z4b18r: log de diagnóstico — verifica pausas no momento do save.
+  const nonzeroPauses = (data.framePauses || []).filter(p => (p?.duration || 0) > 0).length;
+  console.info('[Arco] doSaveDirect: frameCount=' + data.frameCount +
+    ', framePauses.length=' + (data.framePauses ? data.framePauses.length : 'N/A') +
+    ', pausas>0=' + nonzeroPauses);
   if (includeImage && imgNatW) {
     const cvs = document.createElement('canvas');
     const maxDim = 2560;
@@ -11217,6 +11227,13 @@ function isValidImageBase64(val) {
 }
 
 function applyProjectData(data) {
+  // v8z4b18r: limpar framePauses imediatamente ao iniciar qualquer carga de projeto,
+  // inclusive no caminho assíncrono com imagem embutida. Sem isso, as pausas do
+  // projeto anterior ficavam visíveis na UI enquanto a imagem era decodificada,
+  // criando falso positivo de "pausas restauradas" mesmo quando o arquivo carregado
+  // não continha pausas válidas. applyFrameData() restaurará os valores corretos
+  // do JSON após a imagem estar pronta.
+  framePauses.length = 0;
   if (data.hasImage && isValidImageBase64(data.imageBase64)) {
     const img = new Image();
     img.onload = () => {
@@ -11330,23 +11347,29 @@ function migrateLegacyProjectData(raw) {
   return d;
 }
 
-// ─── v8z4b18q — Normalizador de pausas na importação ─────────────────────────
+// ─── v8z4b18r — Normalizador de pausas na importação ─────────────────────────
 // Detecta formatos de pausa atuais e legados; retorna array {duration} com
 // exatamente frameCount entradas; usa 0 apenas quando não há pausa salva.
 //
 // Casos tratados:
-//   1. framePauses[] válido (formato atual) — preserva os valores.
-//   2. Sem framePauses — inicia com zeros.
-//   3. finishMode='pause' + finishDuration legado → mapeado para último frame.
+//   1. framePauses[] presente com entradas (mesmo que todos zeros) — preserva.
+//      Formato atual:  [{duration: number}, ...]
+//      Formato legado: [number, ...]  (suporte defensivo)
+//   2. framePauses ausente OU [] vazio OU null — inicializa com zeros;
+//      aplica Caso 3 se elegível.
+//   3. finishMode='pause' + finishDuration legado → mapeado para último frame
+//      (somente quando Caso 2 se aplica — arquivo pré-framePauses).
 //   4. easeMode='pause'/pauseDuration legado — não mapeado por frame
 //      (target desconhecido); migrateLegacyProjectData já zerou pauseDuration.
+//
+// IMPORTANTE: array presente mas vazio [] cai no Caso 2 (zeros), enquanto
+// array com entradas — mesmo que todas {duration:0} — usa Caso 1. Isso garante
+// que projetos novos sem pausas configuradas nunca herdam pausas de Caso 3.
 function normalizeImportedFramePauses(projectData, frameCount) {
   const fc = Math.max(1, frameCount);
   const result = [];
 
-  // ── Caso 1: array de pausas por frame ────────────────────────────────────────
-  // Formato atual:  [{duration: number}, ...]
-  // Formato legado: [number, ...]  (suporte defensivo)
+  // ── Caso 1: array de pausas por frame com entradas ───────────────────────────
   const rawPauses = projectData.framePauses;
   if (Array.isArray(rawPauses) && rawPauses.length > 0) {
     for (let i = 0; i < fc; i++) {
@@ -11362,15 +11385,16 @@ function normalizeImportedFramePauses(projectData, frameCount) {
       }
       result.push({ duration: clampFramePauseValue(Math.max(0, d)) });
     }
-    if (window._arcoDebug) {
-      const nonzero = result.filter(p => p.duration > 0).length;
-      if (nonzero > 0) console.info('[Arco] normalizeImportedFramePauses: caso 1 — ' + nonzero + ' pausa(s) preservada(s)');
-    }
+    const nonzero = result.filter(p => p.duration > 0).length;
+    console.info('[Arco] normalizeImportedFramePauses: caso 1 — ' + rawPauses.length +
+      ' entr. salvas, ' + fc + ' frames, ' + nonzero + ' pausa(s) não-zero restaurada(s)');
     return result;
   }
 
-  // ── Caso 2: sem array de pausas por frame — zeros ────────────────────────────
+  // ── Caso 2: framePauses ausente, null ou [] vazio — zeros ────────────────────
   for (let i = 0; i < fc; i++) result.push({ duration: 0 });
+  console.info('[Arco] normalizeImportedFramePauses: caso 2 — sem framePauses no JSON (' +
+    (Array.isArray(rawPauses) ? '[] vazio' : String(rawPauses)) + '), zeros aplicados');
 
   // ── Caso 3: legado finishMode='pause' + finishDuration → último frame ────────
   // Projetos salvos antes de framePauses existirem, com finishMode='pause'.
@@ -11378,7 +11402,7 @@ function normalizeImportedFramePauses(projectData, frameCount) {
   const fd = parseFloat(projectData.finishDuration);
   if (fm === 'pause' && Number.isFinite(fd) && fd > 0) {
     result[fc - 1] = { duration: clampFramePauseValue(fd) };
-    if (window._arcoDebug) console.info('[Arco] normalizeImportedFramePauses: caso 3 — finishDuration=' + fd + ' → frame ' + (fc - 1));
+    console.info('[Arco] normalizeImportedFramePauses: caso 3 — finishDuration=' + fd + ' → frame ' + (fc - 1));
   }
 
   // ── Caso 4: easeMode='pause'/pauseDuration ────────────────────────────────────
@@ -11465,10 +11489,11 @@ function applyFrameData(data) {
   segBlurSettings.length = 0;
   (data.segBlurSettings || []).forEach(v => segBlurSettings.push(v ? {...v} : cloneDefaultSegBlur()));
   ensureSegBlurSettings();
-  // v8z4b18q: normaliza pausas importadas (formatos atuais e legados).
-  // normalizeImportedFramePauses() é chamado após frameCount estar ajustado,
-  // garantindo que o array resultante tenha exatamente frameCount entradas.
-  // Inclui migração de finishMode='pause'/finishDuration (caso legado).
+  // v8z4b18r: restaurar framePauses do JSON após frameCount estar ajustado.
+  // framePauses.length=0 isola estado de qualquer projeto anterior (complementa
+  // o clear antecipado em applyProjectData, cobrindo caminhos síncronos).
+  // normalizeImportedFramePauses() centraliza todos os formatos de pausa.
+  // ensureFramePauses() faz validação final de intervalo e alinhamento.
   framePauses.length = 0;
   normalizeImportedFramePauses(data, frameCount).forEach(p => framePauses.push(p));
   ensureFramePauses(); // validação final: intervalo e alinhamento ao frameCount

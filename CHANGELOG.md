@@ -1,5 +1,55 @@
 # Changelog
 
+## v8z4b18r — fix frame pause persistence and stale load state
+
+Patch de correção crítica de persistência de pausas por frame: resolve dois bugs independentes que faziam pausas configuradas no painel Duração desaparecerem ao reabrir projetos após recarregar o app.
+
+### Bugs corrigidos
+
+#### Bug 1 — Pausas não persistidas no JSON (save)
+
+**Causa raiz**: `buildProjectData()` serializava `framePauses` sem garantir que o array estava sincronizado com `frameCount`. Após `applyTemplate()` (que zera `framePauses.length = 0`), se o usuário salvasse antes de qualquer operação que chamasse `ensureFramePauses()` (abrir painel, adicionar frame, etc.), o JSON recebia `"framePauses": []`. Na importação, `[] vazio` caia no Caso 2 (zeros), descartando qualquer pausa que o usuário tivesse configurado na sessão atual.
+
+**Correção**: `buildProjectData()` chama `ensureFramePauses()` como primeira linha. Garante array com exatamente `frameCount` entradas antes de serializar, independente do estado interno.
+
+#### Bug 2 — Falso positivo de "pausas restauradas" na mesma sessão (load)
+
+**Causa raiz**: O path assíncrono de carregamento de projeto com imagem embutida (`data.hasImage = true`) retornava imediatamente de `applyProjectData()` enquanto a imagem era decodificada. Durante esse intervalo, `framePauses[]` da sessão anterior continuava em memória. A UI do painel Duração exibia os valores antigos, criando a falsa impressão de que as pausas do arquivo carregado estavam presentes. Após recarregar o app (memória limpa), o mesmo arquivo abria com zeros — revelando que o arquivo nunca tinha as pausas.
+
+**Correção**: `applyProjectData()` limpa `framePauses.length = 0` como primeira ação, antes de qualquer desvio para o path assíncrono. `applyFrameData()` restaura os valores corretos do JSON após a imagem estar pronta.
+
+### Outros ajustes
+
+- **`normalizeImportedFramePauses()`**: logging promovido de `_arcoDebug`-only para sempre ativo (`console.info`), incluindo Caso 2 com diagnóstico do campo `framePauses` ausente/vazio. Facilita rastreamento em campo sem ativar modo debug.
+- **`doSaveDirect()`**: log de diagnóstico que exibe `frameCount`, `framePauses.length` e contagem de pausas não-zero no momento do save. Permite verificar em console se os valores foram serializados corretamente.
+- **Comentários de versão** atualizados para `v8z4b18r`.
+
+### Critérios de aceite verificados (análise estática)
+
+| Cenário | Comportamento esperado | Status |
+|---------|----------------------|--------|
+| Salvar com pausas configuradas | `framePauses` no JSON tem os valores corretos | ✓ (ensureFramePauses() antes do save) |
+| Salvar sem abrir painel Duração | `framePauses: [{duration:0},…]` com `length = frameCount` | ✓ |
+| Carregar em nova sessão | Pausas do JSON restauradas, sem herdar sessão anterior | ✓ |
+| Carregar na mesma sessão | Estado anterior limpo imediatamente | ✓ |
+| Arquivo sem `framePauses` | Abre com zeros, sem inventar valores | ✓ (Caso 2) |
+| Arquivo com `framePauses: []` vazio | Abre com zeros (mesmo que sessão anterior tivesse pausas) | ✓ |
+| Arquivo com `framePauses` válido | Valores restaurados exatamente | ✓ (Caso 1) |
+| Loop + pausas | Loop e pausas independentes, ambos preservados | ✓ |
+
+### O que NÃO foi alterado
+
+- Visual do Stage, curvePuller, zoom contextual.
+- Motor de animação (`getStateAtT`, `drawAtT`), `totalDuration()`, `totalDurationFull()`.
+- Schema do JSON — nenhum campo novo: sem `mode`, `pathPoints`, `vectorAnchors`, `handles`, `frameAnchors`, `curvePuller`, `vectorPath`, `curvesV2`.
+- Scaffold vetorial — preservado da v8z4b18n.
+- UI geral (design, cores, layout, painel inferior).
+- Modo Curvas, pontos de passagem, handles — não implementados.
+- Preview, MP4 — sem alteração (já usavam `framePauses[]` corretamente).
+- Comportamento de curvas, loop, velocidade constante, Movimento/Rotação/Escala Inteligente.
+
+---
+
 ## v8z4b18q — normalize imported frame pauses
 
 Patch de correção de importação de pausas por frame: garante que projetos salvos com pausas por frame as tenham corretamente restauradas ao carregar, e que projetos sem pausas fiquem zerados sem inventar valores.
