@@ -1,15 +1,25 @@
 # Changelog
 
-## v8z4b18o — fix project load and pause preservation
+## v8z4b18o — robust project import and pause preservation
 
-Patch de correção de regressão: corrige falha crítica no restore do autosave (`restoreAutosave` chamava `restoreState` com formato de projeto JSON — que tem `framesNorm` — mas `restoreState` esperava formato de estado undo/redo — que tem `frames` —, causando TypeError silencioso que impedia toda restauração); adiciona null-check defensivo em `renderAll` para `frames[i]`; corrige guard de `frameCount` vs frames efetivamente carregados; adiciona log de diagnóstico no catch dos loaders. Nenhuma mudança de visual, motor, schema JSON ou UI.
+Patch de robustez no importador de projetos: corrige falha silenciosa que travava o load de projetos com `imageBase64` ausente, inválido ou placeholder (ex.: `"<<mesma imageBase64 do original>>"`). Adiciona `isValidImageBase64()` para validar o campo antes de tentar decodificar; adiciona `img.onerror` como safety net para falhas de decodificação tardias; ambos os casos caem no fluxo existente de "projeto sem imagem" (pede ao usuário que selecione a imagem). Corrige também regressão crítica no restore do autosave e adiciona null-checks defensivos. Nenhuma mudança de visual, motor, schema JSON ou UI.
 
 ### O que foi corrigido
 
-- **`restoreAutosave()`** — substituído `restoreState(data)` por `applyFrameData(data)`. `buildProjectData()` (usado pelo autosave) salva `framesNorm` (coords normalizadas), mas `restoreState()` esperava `frames` (coords absolutas). O acesso a `state.frames.forEach` lançava `TypeError: Cannot read properties of undefined`, deixando o app sem estado após o restore — projeto não carregava, pausas não eram restauradas. `applyFrameData()` trata corretamente `framesNorm`, `framePauses`, migração legada e sincronização de UI.
-- **`renderAll()`** — adicionado null-check para `frames[i]` antes de acessar `.x`, `.y`, `.w`, `.h`. Impede crash se `frames.length < frameCount` por qualquer razão (arquivo corrompido, mismatch pós-load).
+- **`isValidImageBase64(val)`** *(nova função)* — valida `imageBase64` antes de qualquer tentativa de decodificação. Rejeita: `null`/`undefined`, não-string, string vazia, strings contendo `<<` (placeholder), strings que não começam com `data:image/`. Projetos que falhavam silenciosamente por ter imagem placeholder agora são carregados normalmente sem a imagem.
+- **`applyProjectData()`** — condição de entrada alterada de `data.imageBase64` (truthy bruto) para `isValidImageBase64(data.imageBase64)`. Adicionado `img.onerror` como safety net: se a imagem falhar ao decodificar mesmo passando na validação, o projeto é carregado sem imagem em vez de travar. Adicionado `console.warn` informativo quando imageBase64 inválido/placeholder é detectado.
+- **`restoreAutosave()`** — substituído `restoreState(data)` por `applyFrameData(data)`. `buildProjectData()` (usado pelo autosave) salva `framesNorm` (coords normalizadas), mas `restoreState()` esperava `frames` (coords absolutas). O acesso a `state.frames.forEach` lançava `TypeError` silencioso, deixando o app sem estado após "Continuar de onde parou?" — projeto não carregava e pausas não eram restauradas.
+- **`renderAll()`** — adicionado null-check para `frames[i]` antes de acessar `.x`, `.y`, `.w`, `.h`. Impede crash se `frames.length < frameCount` por qualquer razão.
 - **`applyFrameData()`** — adicionado guard após carregar frames: se `frames.length < frameCount`, `frameCount` é ajustado para `frames.length` (com log de aviso no console), prevenindo acessos fora dos limites em todas as funções downstream.
-- **`loadProjectFromFile()` / `loadProjectFromJson()`** — adicionado `console.error('[Arco] Erro ao carregar projeto:', err)` no catch, para que falhas de load sejam visíveis no console sem expor UI complexa.
+- **`loadProjectFromFile()` / `loadProjectFromJson()`** — adicionado `console.error` no catch para facilitar diagnóstico sem expor UI complexa.
+
+### Comportamento ao importar projeto com imagem inválida
+
+1. `isValidImageBase64()` detecta placeholder/inválido antes de qualquer I/O.
+2. `console.warn` informa no console.
+3. Fluxo cai em `if (!imgNatW)` — `pendingProjectData = data` e mensagem "Projeto carregado — selecione a imagem para continuar".
+4. Todos os dados válidos (frames, durações, pausas, curvas, loop) são preservados em `pendingProjectData`.
+5. Após o usuário selecionar uma imagem compatível, `applyFrameData(pendingProjectData)` restaura tudo.
 
 ### O que NÃO foi alterado
 

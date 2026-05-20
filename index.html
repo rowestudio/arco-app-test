@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco App — v8z4b18o — fix project load and pause preservation: corrige restoreAutosave usando applyFrameData (era restoreState com formato errado), null-check em renderAll para frames[i], guard de frameCount vs frames carregados, log de erro no load; sem alterar visual, motor, schema JSON ou UI -->
+<!-- Arco App — v8z4b18o — robust project import and pause preservation: valida imageBase64 antes de usar (placeholder/inválido → projeto carrega sem imagem), img.onerror safety net, corrige restoreAutosave usando applyFrameData, null-check em renderAll, guard de frameCount; sem alterar visual, motor, schema JSON ou UI -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1852,7 +1852,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco <span id="appVersionText">v8z4b18o</span><br><span id="appVersionNameText">fix project load and pause preservation</span></div>
+  <div class="settings-version">Arco <span id="appVersionText">v8z4b18o</span><br><span id="appVersionNameText">robust project import and pause preservation</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4190,7 +4190,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
 const APP_VERSION = 'v8z4b18o';
-const APP_VERSION_NAME = 'fix project load and pause preservation';
+const APP_VERSION_NAME = 'robust project import and pause preservation';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -11206,8 +11206,18 @@ function loadProjectFromFile(e) {
   reader.readAsText(file);
 }
 
+// v8z4b18o — Valida imageBase64 antes de tentar decodificar.
+// Rejeita: ausente, não-string, vazio, placeholder com "<<", sem prefixo data:image/.
+function isValidImageBase64(val) {
+  if (!val || typeof val !== 'string') return false;
+  if (val.trim() === '') return false;
+  if (val.includes('<<')) return false;
+  if (!val.startsWith('data:image/')) return false;
+  return true;
+}
+
 function applyProjectData(data) {
-  if (data.hasImage && data.imageBase64) {
+  if (data.hasImage && isValidImageBase64(data.imageBase64)) {
     const img = new Image();
     img.onload = () => {
       const cvs = document.createElement('canvas');
@@ -11218,9 +11228,18 @@ function applyProjectData(data) {
         loadImage(file, () => applyFrameData(data));
       }, 'image/jpeg', 0.92);
     };
+    // v8z4b18o — Safety net: se a imagem falhar mesmo passando na validação,
+    // carrega o projeto sem imagem em vez de travar.
+    img.onerror = () => {
+      console.warn('[Arco] Falha ao decodificar imageBase64 — carregando projeto sem imagem');
+      applyProjectData({ ...data, hasImage: false, imageBase64: null });
+    };
     img.src = data.imageBase64;
     showStatus('Carregando projeto com imagem…');
     return;
+  }
+  if (data.hasImage && data.imageBase64 && !isValidImageBase64(data.imageBase64)) {
+    console.warn('[Arco] imageBase64 inválido ou placeholder — ignorando imagem embutida');
   }
   if (!imgNatW) {
     pendingProjectData = data;
