@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b18v                                     ║
+║  Versão: v8z4b18w                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b18v — update watermark to arcomotion.app: texto da marca d'água atualizado para arcomotion.app; sem alteração visual, motor, UI ou JSON schema -->
+<!-- Arco Motion App — v8z4b18w — fix project save filename preview and suffix: nome-base limpo no modal; prévia dos nomes finais antes de salvar; normalização de sufixos redundantes (_img/_file/.json); sanitização de caracteres problemáticos; sem alteração de motor, UI estrutural ou JSON schema -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1855,7 +1855,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b18v</span><br><span id="appVersionNameText">update watermark to arcomotion.app</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b18w</span><br><span id="appVersionNameText">fix project save filename preview and suffix</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -1919,7 +1919,11 @@ body.cust-open #toolbar{
       style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border2);
              background:var(--surface2);color:var(--text1);font-size:16px;outline:none;-webkit-appearance:none;"
       onclick="this.select()">
-    <p style="font-size:11px;color:var(--text3);margin:8px 0 16px;">Com imagem: abre direto. Sem imagem: precisa recarregar a foto.</p>
+    <div id="saveModalPreview" style="font-size:11px;color:var(--text3);margin:6px 0 6px;line-height:1.65;">
+      Com imagem: <span id="savePreviewImg" style="color:var(--text2);font-weight:600;"></span><br>
+      Sem imagem: <span id="savePreviewFile" style="color:var(--text2);font-weight:600;"></span>
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin:0 0 16px;">Com imagem: abre direto. Sem imagem: precisa recarregar a foto.</p>
     <div style="display:flex;gap:8px;margin-top:4px;flex-direction:column;">
       <button id="saveModalWithImg" onclick="confirmSaveModal(true)"
         style="width:100%;padding:13px;border-radius:12px;border:none;background:var(--accent);
@@ -4192,8 +4196,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18v';
-const APP_VERSION_NAME = 'update watermark to arcomotion.app';
+const APP_VERSION = 'v8z4b18w';
+const APP_VERSION_NAME = 'fix project save filename preview and suffix';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11174,7 +11178,21 @@ function openSaveModal(includeImage) {
   const title = document.getElementById('saveModalTitle');
   if (!modal) { doSaveDirect(includeImage, 'arquivo'); return; }
   title.textContent = includeImage ? 'Salvar projeto com imagem' : 'Salvar projeto';
-  input.value = 'arquivo';
+  // v8z4b18w: usar nome-base limpo como sugestão
+  const imgBase = window._imageBaseName || 'projeto';
+  const cleanBase = imgBase.replace(/^(img|image|photo|foto|pic|dscf?|dcim|screenshot|captura)[_\-]?/i, '') || imgBase;
+  const suggestedBase = _lastProjectFileName || ('arco_' + cleanBase);
+  input.value = suggestedBase;
+  // Inicializar prévia — v8z4b18w
+  function updateSavePreview() {
+    const base = normalizeBaseName(input.value.trim() || suggestedBase);
+    const pImg  = document.getElementById('savePreviewImg');
+    const pFile = document.getElementById('savePreviewFile');
+    if (pImg)  pImg.textContent  = base + '_img.json';
+    if (pFile) pFile.textContent = base + '_file.json';
+  }
+  input.oninput = updateSavePreview;
+  updateSavePreview();
   modal.style.display = 'flex';
   setTimeout(() => { input.focus(); input.select(); }, 100);
   closeAll();
@@ -11186,11 +11204,13 @@ function closeSaveModal() {
 }
 
 function confirmSaveModal(includeImage) {
+  // v8z4b18w: normalizar nome-base e aplicar sufixo correto
   const input = document.getElementById('saveModalInput');
-  const nome = (input ? input.value : 'arco_projeto').trim().replace(/[^a-zA-Z0-9_\-]/g, '_') || 'arco_projeto';
-  _lastProjectFileName = nome;
+  const raw = input ? input.value : '';
+  const base = normalizeBaseName(raw);
+  _lastProjectFileName = base;
   closeSaveModal();
-  doSaveDirect(includeImage, nome);
+  doSaveDirect(includeImage, base + (includeImage ? '_img' : '_file'));
 }
 
 function doSaveDirect(includeImage, nome) {
@@ -11215,32 +11235,80 @@ function doSaveDirect(includeImage, nome) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = nome + '.json';
+  // v8z4b18w: remover .json redundante antes de adicionar para evitar dupla extensão
+  const safeName = nome.replace(/\.json$/i, '');
+  a.download = safeName + '.json';
   a.click();
   URL.revokeObjectURL(url);
-  showStatus('Salvo: ' + nome + '.json' + (includeImage ? ' (com imagem)' : ''));
+  showStatus('Salvo: ' + safeName + '.json' + (includeImage ? ' (com imagem)' : ''));
 }
 
 function doSave(includeImage) { openSaveModal(includeImage); }
 let _lastProjectFileName = '';
 
+// ─── v8z4b18w: normalizeBaseName ────────────────────────────────────────────
+// Limpa um nome de arquivo digitado pelo usuário, removendo:
+//   - extensão .json
+//   - sufixos _img / _file (para evitar arco_5163_img_img.json)
+//   - caracteres problemáticos para filename: / \ : * ? " < > |
+//   - underscores extras nas bordas
+// Retorna o nome-base limpo ou 'arco_projeto' como fallback.
+function normalizeBaseName(name) {
+  if (!name) return 'arco_projeto';
+  // Remover extensão .json
+  name = name.replace(/\.json$/i, '');
+  // Remover sufixos _img ou _file no final (com separador _ ou -)
+  name = name.replace(/[_\-](img|file)$/i, '');
+  // Substituir caracteres problemáticos para filename
+  name = name.replace(/[\/\\:*?"<>|]/g, '_');
+  // Remover espaços no início/fim, depois underscores extras nas bordas
+  name = name.trim().replace(/^_+|_+$/g, '');
+  // Colapsar múltiplos underscores consecutivos
+  name = name.replace(/_+/g, '_');
+  return name || 'arco_projeto';
+}
+
 function promptSaveProject() {
   if (!canSaveProject()) return;
-  // Mostrar modal de escolha: com ou sem imagem
+  // Construir nome-base sugerido limpo (sem prefixo genérico de câmera tipo "img_")
   const imgBase = window._imageBaseName || 'projeto';
-  const suggested = _lastProjectFileName || ('arco_' + imgBase);
-  // Modal inline simples
+  // Remover prefixos genéricos de câmera/captura para evitar arco_img_5163
+  const cleanBase = imgBase.replace(/^(img|image|photo|foto|pic|dscf?|dcim|screenshot|captura)[_\-]?/i, '') || imgBase;
+  const suggestedBase = _lastProjectFileName || ('arco_' + cleanBase);
+
   const modal = document.getElementById('saveModal');
   const input = document.getElementById('saveModalInput');
   const title = document.getElementById('saveModalTitle');
   if (!modal) { doSaveWithChoice(); return; }
   title.textContent = 'Salvar projeto';
-  input.value = suggested;
-  // Botões do modal: Salvar / Salvar com imagem
-  const btnOk = modal.querySelector('#saveModalOk');
+  input.value = suggestedBase;
+
+  // Atualizar prévia dos nomes finais — v8z4b18w
+  function updateSavePreview() {
+    const base = normalizeBaseName(input.value.trim() || suggestedBase);
+    const pImg  = document.getElementById('savePreviewImg');
+    const pFile = document.getElementById('savePreviewFile');
+    if (pImg)  pImg.textContent  = base + '_img.json';
+    if (pFile) pFile.textContent = base + '_file.json';
+  }
+  input.oninput = updateSavePreview;
+  updateSavePreview();
+
+  // Botões do modal com nome normalizado — v8z4b18w
+  const btnOk  = modal.querySelector('#saveModalOk');
   const btnImg = modal.querySelector('#saveModalWithImg');
-  if (btnOk)  btnOk.onclick  = () => { const n = input.value.trim()||suggested; closeSaveModal(); _lastProjectFileName = n; doSaveDirect(false, n + '_file'); };
-  if (btnImg) btnImg.onclick = () => { const n = input.value.trim()||suggested; closeSaveModal(); _lastProjectFileName = n; doSaveDirect(true,  n + '_img');  };
+  if (btnOk)  btnOk.onclick  = () => {
+    const base = normalizeBaseName(input.value.trim() || suggestedBase);
+    closeSaveModal();
+    _lastProjectFileName = base;
+    doSaveDirect(false, base + '_file');
+  };
+  if (btnImg) btnImg.onclick = () => {
+    const base = normalizeBaseName(input.value.trim() || suggestedBase);
+    closeSaveModal();
+    _lastProjectFileName = base;
+    doSaveDirect(true, base + '_img');
+  };
   modal.style.display = 'flex';
   closeAll();
   setTimeout(() => { input.focus(); input.select(); }, 100);

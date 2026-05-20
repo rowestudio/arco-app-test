@@ -1,5 +1,70 @@
 # Changelog
 
+## v8z4b18w — fix project save filename preview and suffix
+
+Patch de UX no modal "Salvar projeto": corrige o fluxo de nome do arquivo, exibe
+prévia dos nomes finais antes de salvar e elimina duplicação de sufixos.
+
+### Alterações
+
+**Nome-base sugerido limpo**
+- A sugestão inicial do campo de nome não inclui mais prefixos genéricos de câmera
+  (`img_`, `IMG_`, `photo_`, etc.), evitando nomes redundantes como `arco_img_5163`.
+- Padrão novo: `arco_5163` (campo); arquivo final: `arco_5163_img.json` ou `arco_5163_file.json`.
+- Lógica: strip de `^(img|image|photo|foto|pic|dscf?|dcim|screenshot|captura)[_\-]?`
+  do `_imageBaseName` antes de construir o `suggestedBase`.
+
+**Prévia do nome final antes de salvar**
+- Adicionado bloco `#saveModalPreview` ao modal com dois spans:
+  `#savePreviewImg` e `#savePreviewFile`.
+- A prévia é atualizada em tempo real conforme o usuário edita o campo.
+- Exemplo exibido:
+  - `Com imagem: arco_5163_img.json`
+  - `Sem imagem: arco_5163_file.json`
+
+**Função `normalizeBaseName(name)` — v8z4b18w**
+- Nova função pública que limpa o nome digitado antes de montar o filename final:
+  1. Remove extensão `.json` no final.
+  2. Remove sufixo `_img` ou `_file` (com separador `_` ou `-`) para evitar duplicação.
+  3. Substitui caracteres problemáticos para filename (`/ \ : * ? " < > |`) por `_`.
+  4. Trim de espaços e underscores nas bordas.
+  5. Colapsa múltiplos `__` consecutivos em `_`.
+  6. Fallback para `arco_projeto` se o resultado ficar vazio.
+
+**`promptSaveProject` atualizado**
+- Usa `normalizeBaseName` no momento do clique (lê o valor atual do input).
+- Armazena o nome-base normalizado (sem `_img`/`_file`) em `_lastProjectFileName`.
+- Botão "Salvar com imagem": `base + '_img'` → `doSaveDirect(true, …)`.
+- Botão "Salvar sem imagem": `base + '_file'` → `doSaveDirect(false, …)`.
+- Prévia atualizada via `input.oninput`.
+
+**`openSaveModal` atualizado**
+- Usa o mesmo `cleanBase` para sugestão e inicializa a prévia.
+
+**`confirmSaveModal` atualizado**
+- Usa `normalizeBaseName` + aplica sufixo correto (`_img` ou `_file`) conforme `includeImage`.
+
+**`doSaveDirect` — guard contra dupla extensão**
+- Remove `.json` do `nome` antes de adicionar `.json` (safeguard contra edge cases).
+
+### Exemplos de comportamento
+
+| Usuário digita | Salvar com imagem | Salvar sem imagem |
+|---|---|---|
+| `arco_5163` | `arco_5163_img.json` | `arco_5163_file.json` |
+| `teste_img` | `teste_img.json` | `teste_file.json` |
+| `teste_file` | `teste_img.json` | `teste_file.json` |
+| `teste.json` | `teste_img.json` | `teste_file.json` |
+| `teste/projeto:18w?` | `teste_projeto_18w__img.json` | `teste_projeto_18w__file.json` |
+
+### Sem alteração
+
+Motor, Preview, MP4, marca d'água, `framePauses`, `ctrlPts`, `loopCtrlPt`, velocidade constante,
+Movimento/Rotação/Escala Inteligente, zoom contextual, layout geral, UI estrutural,
+JSON schema, fluxo de abrir projeto, salvar desabilitado no estado inicial vazio.
+
+---
+
 ## v8z4b18v — update watermark to arcomotion.app
 
 Patch de texto: atualiza exclusivamente a marca d'água do Preview e exportação MP4.
