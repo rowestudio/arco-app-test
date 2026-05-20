@@ -2,6 +2,83 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18w — fix project save filename preview and suffix
+
+### Teste A — sugestão inicial limpa
+1. Abrir app.
+2. Carregar imagem com nome como `img_5163.jpg`.
+3. Abrir "Salvar projeto".
+4. Confirmar que o campo de nome **NÃO** exibe `arco_img_5163`.
+5. Confirmar que o campo exibe nome-base limpo, ex: `arco_5163`.
+
+### Teste B — prévia do nome final visível antes de salvar
+1. No modal "Salvar projeto", verificar o bloco de prévia abaixo do campo.
+2. Confirmar que mostra algo como:
+   - `Com imagem: arco_5163_img.json`
+   - `Sem imagem: arco_5163_file.json`
+3. Editar o nome no campo e confirmar que a prévia atualiza em tempo real.
+4. Confirmar que o usuário consegue prever o nome final antes de tocar no botão.
+
+### Teste C — salvar com imagem
+1. Campo-base: `arco_5163`
+2. Tocar em "Salvar com imagem".
+3. Confirmar que o arquivo final se chama `arco_5163_img.json`.
+4. Confirmar que **não** saiu `arco_img_5163_img.json`.
+5. Abrir JSON.
+6. Confirmar que existe `imageBase64`.
+7. Confirmar que `"version": "v8z4b18w"`.
+
+### Teste D — salvar sem imagem
+1. Campo-base: `arco_5163`
+2. Tocar em "Salvar sem imagem".
+3. Confirmar que o arquivo final se chama `arco_5163_file.json`.
+4. Confirmar que **não** saiu `arco_img_5163_file.json`.
+5. Abrir JSON.
+6. Confirmar que **não** existe `imageBase64`.
+7. Confirmar que o arquivo é pequeno.
+8. Confirmar que `"version": "v8z4b18w"`.
+
+### Teste E — evitar duplicação de sufixo
+1. Digitar `teste_img` no campo → salvar com imagem → confirmar `teste_img.json` (não `teste_img_img.json`).
+2. Digitar `teste_file` no campo → salvar sem imagem → confirmar `teste_file.json` (não `teste_file_file.json`).
+3. Digitar `teste.json` no campo → salvar com imagem → confirmar `teste_img.json` (não `teste.json_img.json`).
+4. Confirmar que todos os arquivos terminam corretamente com `.json`.
+
+### Teste F — caracteres problemáticos
+1. Digitar `teste / projeto : 18w ?` no campo.
+2. Salvar com imagem.
+3. Confirmar que o nome é sanitizado (caracteres `/ : ?` viram `_`).
+4. Confirmar que o arquivo salva normalmente.
+5. Confirmar que termina com `.json`.
+
+### Teste G — conteúdo preservado
+1. Criar projeto com imagem, 5 ou 6 frames, pausas, curvas manuais e loop ligado.
+2. Salvar com imagem.
+3. Abrir JSON.
+4. Confirmar: `"version": "v8z4b18w"`, `imageBase64` presente, `framePauses` presente, `ctrlPts` presente, `ctrlPtManual` presente, `loopCtrlPt` presente, `segDurations` presente.
+5. Confirmar ausência de campos vetoriais novos (`vectorAnchors`, `pathPoints`, `handles`, etc.).
+
+### Teste H — reabrir projeto salvo
+1. Recarregar app.
+2. Abrir o JSON salvo com imagem.
+3. Confirmar que imagem abre.
+4. Confirmar que pausas voltam.
+5. Confirmar que curvas voltam.
+6. Confirmar que loop volta.
+7. Preview OK. MP4 OK.
+
+### Teste I — regressão rápida
+1. Salvar projeto continua desabilitado no estado inicial vazio.
+2. Salvar projeto ativa após carregar imagem.
+3. Abrir projeto OK.
+4. Preview OK. MP4 OK.
+5. Marca d'água continua `arcomotion.app`.
+6. Curva normal OK. Curva de loop OK.
+7. Velocidade constante OK. Zoom contextual OK.
+8. Sem NaN/Infinity no console. Sem tela preta. Sem botão preso.
+
+---
+
 ## v8z4b18v — update watermark to arcomotion.app
 
 ### Teste A — Preview com nova marca d'água
