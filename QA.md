@@ -2,6 +2,69 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18p — consolidate import fixes after duplicate 18o merges
+
+Versão de consolidação — mesmos critérios da v8z4b18o aplicam-se integralmente. Nenhum comportamento novo; validar rastreabilidade de versão.
+
+### Teste 0 — versão visível
+
+1. Abrir Configurações.
+2. Confirmar que a versão exibe `v8z4b18p`.
+3. Confirmar que o nome exibe `consolidate import fixes after duplicate 18o merges`.
+4. Confirmar ausência de qualquer menção a duas versões 18o contraditórias na UI.
+
+### Teste A — arquivo com imageBase64 placeholder
+
+(Idêntico à v8z4b18o — validar que o fix continua funcionando.)
+
+1. Carregar projeto com `imageBase64: "<<mesma imageBase64 do original>>"`.
+2. O app NÃO deve travar.
+3. O app deve exibir "Projeto carregado — selecione a imagem para continuar".
+4. Selecionar imagem compatível — frames, durações, pausas e curvas restaurados.
+5. Preview OK.
+6. Console: warn de placeholder, sem erros.
+
+### Teste B — projeto com imagem válida (regressão)
+
+1. Carregar projeto normal com `imageBase64` válido.
+2. Confirmar que abre exatamente como antes.
+3. Frames, durações, curvas e pausas corretos.
+4. Preview OK.
+
+### Teste C — preservação de pausas
+
+1. Criar (ou carregar) projeto com pausas por frame.
+2. Salvar JSON.
+3. Reabrir o JSON.
+4. Confirmar que as pausas aparecem no painel Pausas.
+5. Rodar Preview — pausas respeitadas.
+6. Gerar MP4 — MP4 respeita as pausas.
+
+### Teste D — autosave restore
+
+1. Criar projeto com 3 frames e pausas configuradas.
+2. Aguardar autosave (1.5s após a última ação).
+3. Recarregar a página.
+4. Clicar "Continuar de onde parou?".
+5. Confirmar que os frames aparecem corretamente.
+6. Confirmar que as pausas configuradas estão restauradas.
+7. Preview OK.
+
+### Teste E — regressão geral
+
+1. Curva normal OK.
+2. Curva de loop OK.
+3. Resetar curva OK.
+4. Velocidade constante OK.
+5. Ajuste manual de trecho desliga Velocidade constante.
+6. Zoom contextual OK.
+7. Preview OK.
+8. MP4 OK.
+9. Sem NaN/Infinity no console.
+10. Sem tela preta.
+
+---
+
 ## v8z4b18o — robust project import and pause preservation
 
 ### Teste A — arquivo com imageBase64 placeholder (arco_mona1_img_suave_lite.json)
