@@ -2,6 +2,112 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19d — route segment path through runtime curve model
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19d` na UI (Settings).
+3. Confirmar que nome da versão exibe `route segment path through runtime curve model`.
+
+### Teste B — curvas normais (segmentos normais F1→F2, F2→F3)
+1. Carregar imagem no iPhone/Safari.
+2. Criar projeto com pelo menos 4 frames.
+3. Puxar curva normal F1→F2.
+4. Confirmar que a bolinha da curva aparece na posição correta (igual à v8z4b19c).
+5. Confirmar que a curva desenhada aparece igual à v8z4b19c.
+6. Puxar curva normal F2→F3.
+7. Confirmar que a segunda bolinha e curva aparecem corretamente.
+
+### Teste C — curva de loop (segmento N→1)
+1. Ativar loop.
+2. Selecionar F1 ou último frame para exibir a bolinha roxa da curva de loop.
+3. Confirmar que a bolinha roxa aparece.
+4. Arrastar a bolinha da curva de loop.
+5. Confirmar que a curva de loop se move igual à v8z4b19c.
+6. Confirmar que o trecho de loop vai do último frame ao primeiro frame.
+
+### Teste D — undo/redo das curvas
+1. Puxar curva normal.
+2. Tocar em Undo.
+3. Confirmar que a curva normal volta à posição anterior.
+4. Tocar em Redo.
+5. Confirmar que a curva normal volta à posição editada.
+6. Puxar curva de loop.
+7. Tocar em Undo.
+8. Confirmar que a curva de loop volta à posição anterior ao drag.
+9. Tocar em Redo.
+10. Confirmar que a curva de loop volta à posição editada.
+
+### Teste E — mover frame com curvas puxadas
+1. Com curvas normais já puxadas, mover um frame.
+2. Confirmar que as curvas não pulsam nem resetam indevidamente.
+3. Tocar em Undo.
+4. Confirmar comportamento correto.
+5. Puxar curva de loop, depois mover um frame.
+6. Confirmar que a curva de loop não pula.
+
+### Teste F — modo velocidade constante com loop ativo
+1. Ativar modo de velocidade constante, se disponível.
+2. Ativar loop.
+3. Puxar curva de loop.
+4. Confirmar que a distribuição de tempo não fica estranha.
+5. Puxar curvas normais e confirmar que segDurations são redistribuídos corretamente.
+
+### Teste G — Preview com curvas
+1. Rodar Preview.
+2. Confirmar que Preview respeita curvas normais.
+3. Confirmar que Preview respeita curva de loop.
+4. Confirmar que o Preview não fica preto e não trava.
+
+### Teste H — MP4
+1. Gerar MP4, se possível.
+2. Confirmar que MP4 reflete as curvas puxadas (normais e loop).
+3. Confirmar que o vídeo não fica preto.
+
+### Teste I — save com imagem
+1. Salvar projeto com imagem.
+2. Confirmar que filename termina em `_img.json`.
+3. Abrir o JSON e confirmar:
+   - `version` = `v8z4b19d`;
+   - `imageBase64` existe;
+   - `ctrlPts` preservado;
+   - `ctrlPtManual` preservado;
+   - `loopCtrlPt` preservado;
+   - `framePauses` preservado;
+   - `segDurations` preservado;
+   - nenhum campo novo criado.
+
+### Teste J — save sem imagem
+1. Salvar projeto sem imagem.
+2. Confirmar que filename termina em `_file.json`.
+3. Confirmar que `version` = `v8z4b19d`.
+4. Confirmar que `imageBase64` não existe.
+5. Confirmar que `ctrlPts`, `ctrlPtManual`, `loopCtrlPt` estão preservados.
+
+### Teste K — compatibilidade com JSON de v8z4b19c
+1. Abrir um JSON salvo na v8z4b19c.
+2. Confirmar que o projeto abre corretamente.
+3. Confirmar que curvas e loop são exibidos corretamente.
+4. Confirmar que nenhum campo novo foi criado ao re-salvar.
+
+### Teste L — ausência de campos indevidos no JSON
+1. Salvar o projeto e inspecionar o JSON.
+2. Confirmar que NENHUM destes campos está presente:
+   - `curvesV2`
+   - `vectorPath`
+   - `handles`
+   - `pathPoints`
+   - `runtimeCurveModel`
+3. Confirmar que o JSON é idêntico ao formato da v8z4b19c.
+
+### Teste M — ausência de erros de console
+1. Abrir DevTools (Console).
+2. Realizar todos os testes acima.
+3. Confirmar que não há erro de console, NaN ou Infinity.
+4. Confirmar que PR ficou aberto e não foi mergeado.
+
+---
+
 ## v8z4b19c — introduce runtime vector curve model
 
 ### Teste A — abertura e versão

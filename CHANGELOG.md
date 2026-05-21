@@ -1,5 +1,89 @@
 # Changelog
 
+## v8z4b19d — route segment path through runtime curve model
+
+Implementação interna controlada: `evaluateSegmentPath()` agora usa o modelo
+runtime de curva (introduzido na v8z4b19c) como caminho preferencial de avaliação.
+O cálculo legado é preservado como fallback automático de segurança.
+Sem alterar comportamento visual, Preview, MP4, save/load, JSON ou UI.
+
+### Objetivo
+
+Ativar o modelo runtime de curva como caminho real do motor de trajetória,
+garantindo que `evaluateSegmentPath()` passe por
+`buildRuntimeCurveModel → validateRuntimeCurveModel → evaluateRuntimeCurveModel`,
+mantendo resultado matemático e visual idêntico à v8z4b19c.
+
+### Funções alteradas/criadas em index.html
+
+| Função | Descrição |
+|---|---|
+| `evaluateLegacySegmentPath(segIndex, t)` | Corpo legado extraído de `evaluateSegmentPath`. Fallback interno de segurança. Não chamar diretamente no fluxo normal. |
+| `evaluateSegmentPath(segIndex, t)` | Reimplementada como wrapper seguro: tenta runtime model; em qualquer falha, recai em `evaluateLegacySegmentPath`. |
+| `compareRuntimePathWithLegacy(segIndex, t)` | Helper interno de comparação/paridade. Retorna `{ runtime, legacy, match, delta }`. Uso apenas em desenvolvimento/teste — não chamado no fluxo normal. |
+
+### Lógica de evaluateSegmentPath (v8z4b19d)
+
+```
+1. buildRuntimeCurveModel(segIndex)
+   → null?  → fallback para evaluateLegacySegmentPath
+2. validateRuntimeCurveModel(model)
+   → false? → fallback para evaluateLegacySegmentPath
+3. evaluateRuntimeCurveModel(model, t)
+   → null / NaN / Infinity? → fallback para evaluateLegacySegmentPath
+4. retorna {x, y} em pixels do stage
+```
+
+### Regras de fallback
+
+- `buildRuntimeCurveModel()` retorna `null` → usa legado.
+- `validateRuntimeCurveModel()` retorna `false` → usa legado.
+- `evaluateRuntimeCurveModel()` retorna `null`, `NaN` ou `Infinity` → usa legado.
+- Qualquer exceção inesperada no bloco try/catch → usa legado.
+- Preview e MP4 não quebram em nenhum cenário de falha do runtime model.
+
+### Paridade matemática
+
+O resultado de `evaluateSegmentPath(segIndex, t)` é numericamente idêntico ao
+da v8z4b19c. Ambos os caminhos (runtime e legado) implementam a mesma fórmula
+de Bézier quadrática com os mesmos dados de entrada. `compareRuntimePathWithLegacy`
+confirma `match: true` com `delta < 0.001 px` para qualquer entrada válida.
+
+### Schema JSON persistido — sem alteração
+
+- `ctrlPts`, `ctrlPtManual` e `loopCtrlPt` continuam sendo o schema persistido.
+- O modelo runtime não aparece no JSON.
+- Nenhum campo novo criado (`curvesV2`, `vectorPath`, `handles`, `pathPoints`,
+  `runtimeCurveModel` — nenhum destes existe).
+- Arquivos existentes abrem normalmente. Arquivos novos salvam no mesmo formato.
+
+### O que NÃO foi alterado
+
+- Nenhuma alteração em UI, layout, cor, ícones, textos visíveis, bolinhas.
+- Nenhuma alteração em drag de curvas, `loopCtrlPt`, `ctrlPts`.
+- Nenhuma alteração em `sampleSegmentPath()`, `measureSegmentPathLength()` ou
+  qualquer outra função de trajetória existente.
+- Nenhuma alteração em undo/redo, Preview, MP4, save/load.
+- Nenhuma alteração em JSON schema.
+- Nenhum campo novo no JSON.
+- Nenhum pathPoint real criado. Nenhum handle real criado. Nenhuma caneta criada.
+
+### Nota de roadmap (sem implementação)
+
+Registrado apenas como ideia futura: "Movimento inteligente pode continuar como
+configuração global, mas futuramente pode haver exceções/parcialidade por trecho
+ou por passagem de frame. Não implementar enquanto o conceito ainda não estiver
+fechado."
+
+### Arquivos alterados
+
+- `index.html` — funções refatoradas/criadas + atualização de versão.
+- `CHANGELOG.md` — esta entrada.
+- `QA.md` — checklist atualizado para v8z4b19d.
+- `pages-deploy-stamp.txt` — stamp de redeploy.
+
+---
+
 ## v8z4b19c — introduce runtime vector curve model
 
 Implementação interna controlada do modelo runtime de curva vetorial.
