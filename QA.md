@@ -2,6 +2,119 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19g — add runtime path point diagnostics
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19g` na UI (Settings).
+3. Confirmar que nome da versão exibe `add runtime path point diagnostics`.
+
+### Teste B — curvas normais (segmentos normais F1→F2, F2→F3)
+1. Carregar imagem no iPhone/Safari.
+2. Criar projeto com pelo menos 4 frames.
+3. Puxar curva normal F1→F2.
+4. Confirmar que a bolinha da curva aparece na posição correta (igual à v8z4b19f).
+5. Confirmar que a curva desenhada aparece igual à v8z4b19f.
+6. Puxar curva normal F2→F3.
+7. Confirmar que a segunda bolinha e curva aparecem corretamente.
+
+### Teste C — curva de loop (segmento N→1)
+1. Ativar loop.
+2. Selecionar F1 ou último frame para exibir a bolinha roxa da curva de loop.
+3. Confirmar que a bolinha roxa aparece.
+4. Arrastar a bolinha da curva de loop.
+5. Confirmar que a curva de loop se move igual à v8z4b19f.
+6. Confirmar que o trecho de loop vai do último frame ao primeiro frame.
+
+### Teste D — undo/redo das curvas
+1. Puxar curva normal.
+2. Tocar em Undo.
+3. Confirmar que a curva normal volta à posição anterior.
+4. Tocar em Redo.
+5. Confirmar que a curva normal volta à posição editada.
+6. Puxar curva de loop.
+7. Tocar em Undo.
+8. Confirmar que a curva de loop volta à posição anterior ao drag.
+9. Tocar em Redo.
+10. Confirmar que a curva de loop volta à posição editada.
+
+### Teste E — mover frame com curvas puxadas
+1. Com curvas normais já puxadas, mover um frame.
+2. Confirmar que as curvas não pulsam nem resetam indevidamente.
+3. Tocar em Undo.
+4. Confirmar comportamento correto.
+5. Puxar curva de loop, depois mover um frame.
+6. Confirmar que a curva de loop não pula.
+
+### Teste F — modo velocidade constante com loop ativo
+1. Ativar modo de velocidade constante, se disponível.
+2. Arrastar frame com velocidade constante.
+3. Confirmar que a trajetória usa curvas normais corretamente.
+4. Ativar loop e confirmar velocidade constante com loop.
+
+### Teste G — Preview e MP4
+1. Rodar Preview.
+2. Confirmar que Preview respeita curvas normais (igual à v8z4b19f).
+3. Confirmar que Preview respeita curva de loop (igual à v8z4b19f).
+4. Confirmar que Preview não fica preto e não trava.
+5. Gerar MP4, se possível.
+6. Confirmar que MP4 respeita curvas normais.
+7. Confirmar que MP4 respeita curva de loop.
+
+### Teste H — save/load e compatibilidade JSON
+1. Salvar projeto com imagem:
+   - filename termina em `_img.json`.
+   - `version` salva como `v8z4b19g`.
+   - `imageBase64` existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+2. Salvar projeto sem imagem:
+   - filename termina em `_file.json`.
+   - `version` salva como `v8z4b19g`.
+   - `imageBase64` não existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado.
+3. Confirmar que nenhum destes campos apareceu no JSON salvo:
+   - `curvesV2`
+   - `vectorPath`
+   - `handles`
+   - `pathPoints`
+   - `runtimeCurveModel`
+   - `capabilities`
+4. Abrir JSON salvo na v8z4b19f e confirmar compatibilidade total.
+
+### Teste I — ausência de erros de console
+1. Abrir console do browser.
+2. Realizar fluxo completo (criar frames, puxar curvas, Preview, save/load).
+3. Confirmar que não há erro de console, NaN ou Infinity.
+
+### Teste J — diagnóstico do pathPoint derivado (verificação interna)
+1. No console do browser, executar:
+   ```js
+   const model = buildRuntimeCurveModel(0);
+   validateDerivedRuntimePathPoint(model);
+   ```
+2. Confirmar que o retorno é `{ ok: true, reason: 'ok', deltaPx: <~0>, pathPoint: {...}, evaluatedPoint: {...} }`.
+3. Confirmar que `deltaPx` é praticamente zero (< 0.001).
+4. Confirmar que `pathPoint.derived === true` e `pathPoint.editable === false`.
+5. Executar `diagnoseRuntimeCurveSegment(0)` e confirmar:
+   - `validation.ok === true`
+   - `validation.reason === 'ok'`
+6. Executar `diagnoseRuntimeCurveModel()` com projeto de 4 frames (3 segmentos):
+   - `ok === true`
+   - `total === 3` (ou 4 com loop ativo)
+   - `passed === total`
+   - `failed === 0`
+7. Confirmar que `compareRuntimePathWithLegacy(0, 0.5).derivedPathPointCheck.diagOk === true`.
+8. Confirmar que nenhum helper alterou estado (re-executar `buildRuntimeCurveModel(0)` e confirmar que o resultado é idêntico).
+9. Confirmar que os helpers de diagnóstico não imprimem nada no console automaticamente.
+10. Confirmar que `validateDerivedRuntimePathPoint` retorna `{ ok: false, reason: 'invalid-model', ... }` para `null`.
+11. Confirmar que o pathPoint derivado NÃO aparece visualmente na UI.
+
 ## v8z4b19f — introduce derived runtime path point
 
 ### Teste A — abertura e versão

@@ -1,5 +1,78 @@
 # Changelog
 
+## v8z4b19g — add runtime path point diagnostics
+
+Diagnóstico interno passivo e controlado do runtime curve model.
+Adiciona helpers para validar que o `pathPoint` derivado criado na v8z4b19f é
+matematicamente coerente com `evaluateRuntimeCurveModel(model, 0.5)`.
+O diagnóstico converte unidades corretamente (normalizado → pixels) antes de
+comparar. Tolerância: 0.001 px (mesma de `compareRuntimePathWithLegacy`).
+`compareRuntimePathWithLegacy` atualizado para reutilizar
+`validateDerivedRuntimePathPoint`. Sem alterar UI, JSON, Preview, MP4,
+save/load ou comportamento visual.
+
+### Objetivo
+
+Validar que o `pathPoint` derivado em `t=0.5` (introduzido na v8z4b19f)
+é numericamente idêntico à posição avaliada por `evaluateRuntimeCurveModel(model, 0.5)`,
+garantindo coerência matemática entre o modelo runtime e o ponto amostrado.
+
+### Helpers adicionados
+
+| Função | Descrição |
+|---|---|
+| `validateDerivedRuntimePathPoint(model)` | Valida se o `pathPoint` derivado em `t=0.5` é matematicamente coerente com `evaluateRuntimeCurveModel(model, 0.5)`. Converte pathPoint de normalizado para pixels antes de comparar. Tolerância: 0.001 px. Retorna `{ ok, reason, deltaPx, pathPoint, evaluatedPoint }`. |
+| `diagnoseRuntimeCurveSegment(segIndex)` | Constrói o modelo runtime de um segmento e executa `validateDerivedRuntimePathPoint`. Retorna `{ segIndex, model, validation }`. |
+| `diagnoseRuntimeCurveModel()` | Executa `diagnoseRuntimeCurveSegment` para todos os segmentos ativos. Retorna `{ ok, total, passed, failed, segments }`. |
+
+### Funções alteradas em index.html
+
+| Função | Descrição |
+|---|---|
+| `compareRuntimePathWithLegacy(segIndex, t)` | Atualizado para reutilizar `validateDerivedRuntimePathPoint(model)` ao verificar `derivedPathPointCheck`. O objeto retornado passa a incluir `diagOk` e `diagReason` para consistência com os novos helpers. |
+
+### Retorno de validateDerivedRuntimePathPoint
+
+```js
+// Sucesso:
+{ ok: true, reason: 'ok', deltaPx: 0, pathPoint, evaluatedPoint }
+
+// Problema:
+{ ok: false, reason: 'missing-pathpoint' | 'invalid-pathpoint' | 'delta-too-large' | 'invalid-model',
+  deltaPx, pathPoint, evaluatedPoint }
+```
+
+### Critério matemático
+
+- `pathPoint.x/y` estão em coordenadas normalizadas (0–1).
+- `evaluateRuntimeCurveModel(model, t)` retorna pixels do stage.
+- Conversão explícita antes de comparar: `pathPx = pp.x * stageW`, `pathPy = pp.y * stageH`.
+- Delta euclidiano em pixels: `deltaPx = sqrt(dx² + dy²)`.
+- Tolerância: 0.001 px — diferença esperada: zero (aritmética idêntica).
+- Nunca mistura normalizado com pixels sem conversão explícita.
+
+### Comportamento passivo (diagnóstico)
+
+- Não altera `model`, `pathPoints`, `anchors`, `controls` nem nenhum array persistido.
+- Não corrige `pathPoints` automaticamente.
+- Não recalcula `ctrlPts`.
+- Não altera a curva.
+- Não imprime nada no console automaticamente.
+- Não bloqueia Preview/MP4.
+- Não chamado durante animação, Preview ou exportação.
+
+### Confirmações
+
+- `evaluateSegmentPath(segIndex, t)` → resultado idêntico à v8z4b19f.
+- O `pathPoint` derivado não é ponto de controle (não substitui `curvePuller`).
+- O `pathPoint` derivado não altera a trajetória.
+- O `pathPoint` derivado não é renderizado.
+- O `pathPoint` derivado não é editável (`editable: false`).
+- O `pathPoint` derivado não persiste no JSON (`derived: true`).
+- Nenhum campo novo aparece no JSON salvo.
+- UI, Preview, MP4, save/load e comportamento visual sem alteração.
+- Schema persistido (`ctrlPts`, `ctrlPtManual`, `loopCtrlPt`) sem alteração.
+
 ## v8z4b19f — introduce derived runtime path point
 
 Implementação interna controlada: o modelo runtime de curva

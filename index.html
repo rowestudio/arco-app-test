@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19f                                     ║
+║  Versão: v8z4b19g                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19f — introduce derived runtime path point: buildRuntimeCurveModel() passa a preencher pathPoints com um pathPoint derivado em t=0.5, calculado pela fórmula quadrática de Bézier normalizada (evaluateLegacyQuadraticNormalized); validateRuntimeCurveModel() atualizado para validar pathPoints derivados (kind, t, x/y, editable, derived); evaluateRuntimeCurveModel() continua ignorando pathPoints enquanto mode==='legacyQuadratic'; o pathPoint derivado é amostra real da trajetória mas não altera curva, não é renderizado, não é editável, não persiste no JSON; UI, Preview, MP4, save/load e comportamento visual sem alteração -->
+<!-- Arco Motion App — v8z4b19g — add runtime path point diagnostics: validateDerivedRuntimePathPoint(model) valida se o pathPoint derivado em t=0.5 é matematicamente coerente com evaluateRuntimeCurveModel(model,0.5), convertendo unidades normalizadas para pixels antes de comparar; diagnoseRuntimeCurveSegment(segIndex) encapsula o diagnóstico de um segmento; diagnoseRuntimeCurveModel() diagnostica todos os segmentos ativos; compareRuntimePathWithLegacy atualizado para reutilizar validateDerivedRuntimePathPoint; diagnóstico é passivo, não altera estado, não é chamado durante animação/Preview/MP4; UI, JSON, Preview, MP4, save/load e comportamento visual sem alteração -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1855,7 +1855,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19f</span><br><span id="appVersionNameText">introduce derived runtime path point</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19g</span><br><span id="appVersionNameText">add runtime path point diagnostics</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4196,8 +4196,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19f';
-const APP_VERSION_NAME = 'introduce derived runtime path point';
+const APP_VERSION = 'v8z4b19g';
+const APP_VERSION_NAME = 'add runtime path point diagnostics';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5470,7 +5470,7 @@ function evaluateSegmentPath(segIndex, t) {
   }
 }
 
-// Helper interno de comparação/paridade — v8z4b19d / derivedPathPoint check v8z4b19f.
+// Helper interno de comparação/paridade — v8z4b19d / derivedPathPoint check v8z4b19f / reutiliza validateDerivedRuntimePathPoint v8z4b19g.
 // Compara o resultado do modelo runtime com o cálculo legado para o mesmo
 // (segIndex, t). Retorna { runtime, legacy, match, delta, derivedPathPointCheck } para uso em
 // desenvolvimento/teste interno.
@@ -5479,6 +5479,8 @@ function evaluateSegmentPath(segIndex, t) {
 // v8z4b19f: quando t === 0.5, inclui também derivedPathPointCheck que verifica
 // se pathPoints[0] (o ponto derivado) bate com evaluateRuntimeCurveModel(model, 0.5)
 // convertido para coordenadas normalizadas. Confirma paridade matemática.
+// v8z4b19g: derivedPathPointCheck reutiliza validateDerivedRuntimePathPoint(model)
+// para consistência com os helpers de diagnóstico.
 function compareRuntimePathWithLegacy(segIndex, t) {
   let model = null;
   const runtime = (() => {
@@ -5495,29 +5497,217 @@ function compareRuntimePathWithLegacy(segIndex, t) {
   // Tolerância de 0.001 px — diferença esperada: zero (mesma aritmética).
   const match = dx < 0.001 && dy < 0.001;
 
-  // v8z4b19f: verificação adicional do pathPoint derivado em t=0.5.
-  // Quando t === 0.5, confirma que pathPoints[0].x/y (normalizados) batem com
-  // a posição normalizada de evaluateRuntimeCurveModel(model, 0.5).
-  // Tolerância: 0.000001 (aritmética idêntica em espaço normalizado).
+  // v8z4b19f / v8z4b19g: verificação adicional do pathPoint derivado em t=0.5.
+  // v8z4b19g: reutiliza validateDerivedRuntimePathPoint(model) para consistência
+  // com os helpers de diagnóstico (diagnoseRuntimeCurveSegment / diagnoseRuntimeCurveModel).
   let derivedPathPointCheck = null;
-  if (t === 0.5 && model && Array.isArray(model.pathPoints) && model.pathPoints.length > 0) {
+  if (t === 0.5 && model) {
     try {
-      const pp = model.pathPoints[0];
-      if (pp && pp.derived === true && isFinite(pp.x) && isFinite(pp.y) &&
-          stageW > 0 && stageH > 0) {
-        // Converter o resultado pixels do avaliador para normalizados para comparar.
-        const runtimeNx = runtime.x / stageW;
-        const runtimeNy = runtime.y / stageH;
-        const dpx = Math.abs(pp.x - runtimeNx);
-        const dpy = Math.abs(pp.y - runtimeNy);
-        const ppMatch = dpx < 0.000001 && dpy < 0.000001;
-        derivedPathPointCheck = { ppNorm: { x: pp.x, y: pp.y }, runtimeNorm: { x: runtimeNx, y: runtimeNy }, match: ppMatch, delta: { dx: dpx, dy: dpy } };
+      const diag = validateDerivedRuntimePathPoint(model);
+      if (diag) {
+        // Adaptar retorno de validateDerivedRuntimePathPoint para o formato legado
+        // esperado por chamadores de compareRuntimePathWithLegacy.
+        const pp = diag.pathPoint;
+        const evPx = diag.evaluatedPoint;
+        if (pp && evPx && stageW > 0 && stageH > 0) {
+          // pathPoint está em normalizado; evaluatedPoint em pixels — converter avaliado para normalizado.
+          const runtimeNx = evPx.x / stageW;
+          const runtimeNy = evPx.y / stageH;
+          const dpx = Math.abs(pp.x - runtimeNx);
+          const dpy = Math.abs(pp.y - runtimeNy);
+          const ppMatch = dpx < 0.000001 && dpy < 0.000001;
+          derivedPathPointCheck = {
+            ppNorm:      { x: pp.x,      y: pp.y      },
+            runtimeNorm: { x: runtimeNx, y: runtimeNy },
+            match:       ppMatch,
+            delta:       { dx: dpx, dy: dpy },
+            diagOk:      diag.ok,
+            diagReason:  diag.reason
+          };
+        }
       }
     } catch (_e) { derivedPathPointCheck = null; }
   }
 
   return { runtime, legacy, match, delta: { dx, dy }, derivedPathPointCheck };
 }
+
+// ─── Diagnóstico interno do pathPoint derivado — v8z4b19g ─────────────────────
+//
+// validateDerivedRuntimePathPoint(model)
+//
+// Helper de diagnóstico passivo: valida se o pathPoint derivado em t=0.5
+// dentro de model.pathPoints é matematicamente coerente com a posição
+// calculada por evaluateRuntimeCurveModel(model, 0.5).
+//
+// Critério matemático:
+//   - pathPoint.x / .y estão em coordenadas normalizadas (0–1).
+//   - evaluateRuntimeCurveModel(model, 0.5) retorna pixels do stage.
+//   - A comparação converte pathPoint.x/y para pixels antes de comparar:
+//       pathPx = pp.x * stageW,  pathPy = pp.y * stageH.
+//   - Tolerância: 0.001 px (mesma usada em compareRuntimePathWithLegacy).
+//   - Nunca mistura normalizado com pixels sem conversão explícita.
+//
+// Retorno em caso de sucesso:
+//   { ok: true, reason: 'ok', deltaPx: 0, pathPoint, evaluatedPoint }
+//
+// Retorno em caso de problema:
+//   { ok: false, reason: 'invalid-model'|'missing-pathpoint'|'invalid-pathpoint'|'delta-too-large',
+//     deltaPx, pathPoint, evaluatedPoint }
+//
+// Razões possíveis:
+//   'invalid-model'    — modelo nulo, inválido ou stageW/H ausentes.
+//   'missing-pathpoint'— model.pathPoints está vazio ou sem pathPoint derivado.
+//   'invalid-pathpoint'— pathPoint derivado tem x/y não finitos ou estrutura mal-formada.
+//   'delta-too-large'  — pathPoint convertido para pixels difere de evaluateRuntimeCurveModel
+//                        por mais de 0.001 px.
+//   'ok'               — pathPoint é coerente com a curva (delta dentro da tolerância).
+//
+// Comportamento passivo:
+//   - Não altera model, pathPoints, anchors, controls nem nenhum array persistido.
+//   - Não corrige pathPoints automaticamente.
+//   - Não recalcula ctrlPts.
+//   - Não altera a curva.
+//   - Não imprime nada no console.
+//   - Não bloqueia Preview/MP4.
+//   - Não deve ser chamado durante animação, preview ou exportação.
+//
+// v8z4b19g — helper novo; não existia nas versões anteriores.
+function validateDerivedRuntimePathPoint(model) {
+  // Guard: modelo deve ser válido e stage presente.
+  if (!model || !validateRuntimeCurveModel(model)) {
+    return { ok: false, reason: 'invalid-model', deltaPx: null, pathPoint: null, evaluatedPoint: null };
+  }
+  if (!stageW || !stageH || stageW <= 0 || stageH <= 0) {
+    return { ok: false, reason: 'invalid-model', deltaPx: null, pathPoint: null, evaluatedPoint: null };
+  }
+
+  // Localizar o pathPoint derivado em t=0.5.
+  const pp = Array.isArray(model.pathPoints)
+    ? model.pathPoints.find(p => p && p.derived === true && p.kind === 'pathPoint')
+    : undefined;
+
+  if (!pp) {
+    return { ok: false, reason: 'missing-pathpoint', deltaPx: null, pathPoint: null, evaluatedPoint: null };
+  }
+
+  // Validar estrutura mínima do pathPoint derivado.
+  if (typeof pp.x !== 'number' || !isFinite(pp.x) ||
+      typeof pp.y !== 'number' || !isFinite(pp.y)) {
+    return { ok: false, reason: 'invalid-pathpoint', deltaPx: null, pathPoint: pp, evaluatedPoint: null };
+  }
+
+  // Avaliar posição em pixels via runtime model no mesmo t.
+  const evaluatedPoint = evaluateRuntimeCurveModel(model, typeof pp.t === 'number' ? pp.t : 0.5);
+  if (!evaluatedPoint || !isFinite(evaluatedPoint.x) || !isFinite(evaluatedPoint.y)) {
+    return { ok: false, reason: 'invalid-pathpoint', deltaPx: null, pathPoint: pp, evaluatedPoint: null };
+  }
+
+  // Converter pathPoint de normalizado (0–1) para pixels do stage.
+  // pathPoint.x/y: normalizado — anchors e controls usam a mesma convenção.
+  // evaluatedPoint.x/y: pixels — retorno de evaluateRuntimeCurveModel.
+  const pathPx = pp.x * stageW;
+  const pathPy = pp.y * stageH;
+
+  // Calcular delta em pixels (distância euclidiana).
+  const dx = Math.abs(pathPx - evaluatedPoint.x);
+  const dy = Math.abs(pathPy - evaluatedPoint.y);
+  const deltaPx = Math.sqrt(dx * dx + dy * dy);
+
+  // Tolerância: 0.001 px — mesma de compareRuntimePathWithLegacy.
+  // Diferença esperada: zero (aritmética idêntica em espaço normalizado × stageW/H).
+  const TOL_PX = 0.001;
+  if (deltaPx > TOL_PX) {
+    return { ok: false, reason: 'delta-too-large', deltaPx, pathPoint: pp, evaluatedPoint };
+  }
+
+  return { ok: true, reason: 'ok', deltaPx, pathPoint: pp, evaluatedPoint };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Diagnóstico de segmento — v8z4b19g ──────────────────────────────────────
+//
+// diagnoseRuntimeCurveSegment(segIndex)
+//
+// Helper de diagnóstico passivo para um único segmento. Constrói o modelo
+// runtime do segmento e executa validateDerivedRuntimePathPoint para confirmar
+// coerência matemática do pathPoint derivado.
+//
+// Retorna um objeto estruturado com:
+//   { segIndex, model, validation }
+//   onde validation é o retorno de validateDerivedRuntimePathPoint(model),
+//   ou { ok: false, reason: 'invalid-model', ... } se buildRuntimeCurveModel falhar.
+//
+// Uso: ferramenta de desenvolvimento interno — não chamar durante animação,
+// Preview ou exportação. Não altera estado, não imprime no console.
+//
+// v8z4b19g — helper novo.
+function diagnoseRuntimeCurveSegment(segIndex) {
+  let model = null;
+  try {
+    model = buildRuntimeCurveModel(segIndex);
+  } catch (_e) { model = null; }
+
+  if (!model) {
+    return {
+      segIndex,
+      model: null,
+      validation: { ok: false, reason: 'invalid-model', deltaPx: null, pathPoint: null, evaluatedPoint: null }
+    };
+  }
+
+  const validation = validateDerivedRuntimePathPoint(model);
+  return { segIndex, model, validation };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Diagnóstico de todos os segmentos ativos — v8z4b19g ─────────────────────
+//
+// diagnoseRuntimeCurveModel()
+//
+// Helper de diagnóstico passivo: executa diagnoseRuntimeCurveSegment para
+// cada segmento ativo do projeto e agrega os resultados.
+//
+// Retorna um objeto estruturado com:
+//   {
+//     ok:       boolean,  // true somente se TODOS os segmentos passaram
+//     total:    number,   // número de segmentos diagnosticados
+//     passed:   number,   // segmentos com validation.ok === true
+//     failed:   number,   // segmentos com validation.ok === false
+//     segments: [...]     // array de retornos de diagnoseRuntimeCurveSegment
+//   }
+//
+// Retorna { ok: false, total: 0, passed: 0, failed: 0, segments: [] }
+// se não há segmentos ativos ou se frameCount < 2.
+//
+// Comportamento passivo:
+//   - Não altera estado.
+//   - Não imprime no console.
+//   - Não deve ser chamado durante animação, Preview ou exportação.
+//
+// v8z4b19g — helper novo.
+function diagnoseRuntimeCurveModel() {
+  if (frameCount < 2) {
+    return { ok: false, total: 0, passed: 0, failed: 0, segments: [] };
+  }
+  const activeSegs = getActiveSegments();
+  if (!activeSegs || activeSegs.length === 0) {
+    return { ok: false, total: 0, passed: 0, failed: 0, segments: [] };
+  }
+
+  const segments = activeSegs.map(seg => diagnoseRuntimeCurveSegment(seg.index));
+  const passed   = segments.filter(s => s.validation && s.validation.ok).length;
+  const failed   = segments.length - passed;
+
+  return {
+    ok:       failed === 0,
+    total:    segments.length,
+    passed,
+    failed,
+    segments
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 // Retorna steps+1 pontos amostrados uniformemente ao longo da trajetória.
 // Inclui t=0 e t=1. Retorna [] para segmento inválido.
