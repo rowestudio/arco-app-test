@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b18z                                     ║
+║  Versão: v8z4b19a                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b18z — fix loop curve undo: startCtrlDrag('loop') em vez de ctrlDragSeg = 'loop' direto no pointerdown do loopEl; pushUndo() agora é chamado antes de iniciar drag da curva de loop; sem alterar motor, visual, schema JSON ou comportamento -->
+<!-- Arco Motion App — v8z4b19a — standardize curve puller usage in curve rendering: substituir getSegmentCurve() por getSegmentCurvePuller() nas funções que lidam explicitamente com o puxador legado da curva (getSegmentPath, getSegmentVectorModel, evaluateSegmentPath, getCtrlPtPos, drawBezier, updateCtrlPts, measureSegmentCurveLength); sem alterar motor, visual, schema JSON, UI ou comportamento -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1855,7 +1855,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b18z</span><br><span id="appVersionNameText">fix loop curve undo</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19a</span><br><span id="appVersionNameText">standardize curve puller usage in curve rendering</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4196,8 +4196,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18z';
-const APP_VERSION_NAME = 'fix loop curve undo';
+const APP_VERSION = 'v8z4b19a';
+const APP_VERSION_NAME = 'standardize curve puller usage in curve rendering';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4581,7 +4581,7 @@ function getSegmentPath(segIndex) {
   if (frameCount < 2) return null;
   const seg = getSegmentByIndex(segIndex);
   if (!seg) return null;
-  const curve = getSegmentCurve(segIndex);
+  const curve = getSegmentCurvePuller(segIndex); // v8z4b19a: via curvePuller helper
   if (!curve) return null;
   if (typeof curve.nx !== 'number' || !isFinite(curve.nx) ||
       typeof curve.ny !== 'number' || !isFinite(curve.ny)) return null;
@@ -4877,8 +4877,8 @@ function getSegmentVectorModel(segIndex) {
   const mode = getSegmentPathMode(segIndex);
 
   // curvePuller: ponto de controle quadrático legado.
-  // Acessado via getSegmentCurve() / isSegmentCurveManual() — v8z4b18u.
-  const cpRaw = getSegmentCurve(segIndex);
+  // v8z4b19a: via curvePuller helper (getSegmentCurvePuller).
+  const cpRaw = getSegmentCurvePuller(segIndex);
   let curvePuller = null;
   if (cpRaw && typeof cpRaw.nx === 'number' && isFinite(cpRaw.nx) &&
                typeof cpRaw.ny === 'number' && isFinite(cpRaw.ny)) {
@@ -4981,8 +4981,8 @@ function evaluateSegmentPath(segIndex, t) {
   const p2y = frameCY(toIdx);
   if (!isFinite(p1x) || !isFinite(p1y) || !isFinite(p2x) || !isFinite(p2y)) return null;
 
-  // curvePuller / legacyCurveControl: ponto de controle quadrático atual — v8z4b18u: via helper
-  let cp = getSegmentCurve(segIndex);
+  // curvePuller / legacyCurveControl: ponto de controle quadrático atual — v8z4b19a: via curvePuller helper
+  let cp = getSegmentCurvePuller(segIndex);
   let cpx, cpy;
   if (cp && typeof cp.nx === 'number' && isFinite(cp.nx) &&
             typeof cp.ny === 'number' && isFinite(cp.ny)) {
@@ -5421,7 +5421,7 @@ window.addEventListener('resize', () => {
 // ═══════════════════════════════════════
 function frameCX(i) { return frames[i].x + frames[i].w / 2; }
 function getCtrlPtPos(seg) {
-  const cp = getSegmentCurve(seg); // v8z4b18u: via helper
+  const cp = getSegmentCurvePuller(seg); // v8z4b19a: via curvePuller helper
   if (cp) return { x: cp.nx * stageW, y: cp.ny * stageH };
   const p0x = frameCX(seg), p0y = frameCY(seg);
   const p1x = frameCX((seg + 1) % frameCount), p1y = frameCY((seg + 1) % frameCount);
@@ -6434,7 +6434,7 @@ function drawBezier() {
   for (let seg = 0; seg < frameCount - 1; seg++) {
     const p0x = frameCX(seg),   p0y = frameCY(seg);
     const p1x = frameCX(seg+1), p1y = frameCY(seg+1);
-    const cp  = getSegmentCurve(seg); // v8z4b18u: via helper
+    const cp  = getSegmentCurvePuller(seg); // v8z4b19a: via curvePuller helper
     if (!cp) continue;
     const cpx = cp.nx * stageW, cpy = cp.ny * stageH;
     const active = activeSegs.has(seg);
@@ -6462,8 +6462,8 @@ function drawBezier() {
 
   // Linha tracejada removida — não agrega informação
 
-  // Curva de loop — v8z4b18u: acesso via getSegmentCurve(getLoopSegmentIndex())
-  const _loopCp = getSegmentCurve(getLoopSegmentIndex());
+  // Curva de loop — v8z4b19a: via curvePuller helper (getSegmentCurvePuller)
+  const _loopCp = getSegmentCurvePuller(getLoopSegmentIndex());
   if (loopEnabled && _loopCp && frameCount >= 2) {
     const p0x = frameCX(frameCount-1), p0y = frameCY(frameCount-1);
     const p1x = frameCX(0),            p1y = frameCY(0);
@@ -6497,7 +6497,7 @@ function updateCtrlPts() {
     if (seg >= frameCount - 1) { el.style.display = 'none'; continue; }
     const isActive = (seg === activeIdx || seg === activeIdx - 1);
     el.style.display = isActive ? 'block' : 'none';
-    const cp = getSegmentCurve(seg);
+    const cp = getSegmentCurvePuller(seg); // v8z4b19a: via curvePuller helper
     if (!cp) continue;
     el.style.left = (cp.nx * stageW) + 'px';
     el.style.top  = (cp.ny * stageH) + 'px';
@@ -6509,9 +6509,9 @@ function updateCtrlPts() {
   }
 
   // Bolinha de loop — visível quando loop ativo e F1 ou último frame selecionado
-  // v8z4b18u: acesso ao loopCtrlPt via getSegmentCurve(getLoopSegmentIndex())
+  // v8z4b19a: via curvePuller helper (getSegmentCurvePuller)
   let loopEl = document.getElementById('cpt_loop');
-  const _loopCurve = getSegmentCurve(getLoopSegmentIndex());
+  const _loopCurve = getSegmentCurvePuller(getLoopSegmentIndex());
   const showLoop = loopEnabled && _loopCurve && frameCount >= 2 &&
                    (activeIdx === 0 || activeIdx === frameCount - 1);
   if (showLoop) {
@@ -10480,8 +10480,8 @@ function measureSegmentCurveLength(segIndex) {
   const p2cx = frameCX(segIndex + 1);
   const p2cy = frameCY(segIndex + 1);
 
-  // v8z4b18u: via helper; fallback para midpoint se curva não definida
-  const _cpRaw = getSegmentCurve(segIndex);
+  // v8z4b19a: via curvePuller helper; fallback para midpoint se curva não definida
+  const _cpRaw = getSegmentCurvePuller(segIndex);
   const cp = _cpRaw || {
     nx: (p1cx / stageW + p2cx / stageW) / 2,
     ny: (p1cy / stageH + p2cy / stageH) / 2

@@ -1,5 +1,53 @@
 # Changelog
 
+## v8z4b19a — standardize curve puller usage in curve rendering
+
+Patch de padronização interna controlada: substituir chamadas genéricas a
+`getSegmentCurve()` por `getSegmentCurvePuller()` nas funções onde o valor
+representa claramente o puxador legado da curva (legacy curve puller).
+
+### Objetivo
+
+Continuar a consolidação iniciada em v8z4b18x–v8z4b18y: usar os helpers
+semânticos de curvePuller onde o contexto é explicitamente o puxador
+quadrático legado. Não é nova função, não é ajuste visual, não é mudança
+de comportamento.
+
+### Funções alteradas em index.html
+
+| Função | Linha | Alteração |
+|---|---|---|
+| `getSegmentPath` | ~4584 | `getSegmentCurve` → `getSegmentCurvePuller` |
+| `getSegmentVectorModel` | ~4881 | `getSegmentCurve` → `getSegmentCurvePuller` |
+| `evaluateSegmentPath` | ~4985 | `getSegmentCurve` → `getSegmentCurvePuller` |
+| `getCtrlPtPos` | ~5424 | `getSegmentCurve` → `getSegmentCurvePuller` |
+| `drawBezier` (normal) | ~6437 | `getSegmentCurve` → `getSegmentCurvePuller` |
+| `drawBezier` (loop) | ~6466 | `getSegmentCurve` → `getSegmentCurvePuller` |
+| `updateCtrlPts` (normal) | ~6500 | `getSegmentCurve` → `getSegmentCurvePuller` |
+| `updateCtrlPts` (loop) | ~6514 | `getSegmentCurve` → `getSegmentCurvePuller` |
+| `measureSegmentCurveLength` | ~10484 | `getSegmentCurve` → `getSegmentCurvePuller` |
+
+### O que NÃO foi alterado
+
+- `getSegmentCurve()` e `setSegmentCurve()` continuam existindo como primitivos.
+- `getSegmentCurvePuller()` internamente chama `getSegmentCurve()` — sem mudança de lógica.
+- Chamadas em wrappers de nível inferior (`getSegmentCurvePoint`, interno de `getSegmentCurvePuller`) mantidas como estão.
+- Nenhuma alteração em UI, layout, cor, ícones, visual de curva.
+- Nenhuma alteração em drag de curvas, bolinha visual, loopCtrlPt.
+- Nenhuma alteração em undo/redo, Preview, MP4, save/load.
+- Nenhuma alteração em JSON schema (ctrlPts, ctrlPtManual, loopCtrlPt).
+- Nenhuma alteração em matemática de Bézier, cálculo de t/perp.
+- Nenhum campo novo criado.
+
+### Arquivos alterados
+
+- `index.html` — substituições + atualização de versão/comentários.
+- `CHANGELOG.md` — esta entrada.
+- `QA.md` — checklist atualizado para v8z4b19a.
+- `pages-deploy-stamp.txt` — stamp de redeploy.
+
+---
+
 ## v8z4b18z — fix loop curve undo
 
 Patch mínimo de correção de bug: editar a curva de loop não entrava no histórico de undo.

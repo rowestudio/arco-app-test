@@ -2,6 +2,89 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19a — standardize curve puller usage in curve rendering
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19a` na UI (Settings).
+3. Confirmar que nome da versão exibe `standardize curve puller usage in curve rendering`.
+
+### Teste B — curvas normais (getCtrlPtPos, drawBezier, updateCtrlPts)
+1. Carregar imagem no iPhone/Safari.
+2. Criar projeto com 4 frames.
+3. Puxar curva normal F1→F2.
+4. Confirmar que a bolinha da curva aparece na posição correta (igual à v8z4b18z).
+5. Confirmar que a curva desenhada aparece igual à v8z4b18z.
+6. Puxar curva normal F2→F3.
+7. Confirmar que a segunda bolinha e curva aparecem corretamente.
+
+### Teste C — curva de loop (drawBezier loop, updateCtrlPts loop)
+1. Ativar loop.
+2. Selecionar F1 ou último frame para exibir a bolinha roxa da curva de loop.
+3. Confirmar que a bolinha roxa aparece.
+4. Arrastar a bolinha da curva de loop.
+5. Confirmar que a curva de loop se move corretamente.
+
+### Teste D — undo/redo das curvas
+1. Puxar curva normal.
+2. Tocar em Undo.
+3. Confirmar que a curva normal volta à posição anterior.
+4. Tocar em Redo.
+5. Confirmar que a curva normal volta à posição editada.
+6. Puxar curva de loop.
+7. Tocar em Undo.
+8. Confirmar que a curva de loop volta à posição anterior ao drag.
+9. Tocar em Redo.
+10. Confirmar que a curva de loop volta à posição editada.
+
+### Teste E — mover frame com curvas puxadas
+1. Com curvas normais já puxadas, mover um frame.
+2. Confirmar que as curvas não pulsam nem resetam indevidamente.
+3. Tocar em Undo.
+4. Confirmar comportamento correto.
+
+### Teste F — Preview com curvas
+1. Rodar Preview.
+2. Confirmar que Preview respeita curvas normais (evaluateSegmentPath/getSegmentPath).
+3. Confirmar que Preview respeita curva de loop.
+4. Confirmar que o Preview não quebra.
+
+### Teste G — MP4
+1. Gerar MP4, se possível.
+2. Confirmar que MP4 reflete as curvas puxadas.
+
+### Teste H — save com imagem
+1. Salvar projeto com imagem.
+2. Confirmar que filename termina em `_img.json`.
+3. Abrir o JSON e confirmar:
+   - `version` = `v8z4b19a`;
+   - `imageBase64` existe;
+   - `ctrlPts` preservado;
+   - `ctrlPtManual` preservado;
+   - `loopCtrlPt` preservado;
+   - `framePauses` preservado;
+   - `segDurations` preservado;
+   - nenhum campo novo criado.
+
+### Teste I — save sem imagem
+1. Salvar projeto sem imagem.
+2. Confirmar que filename termina em `_file.json`.
+3. Confirmar que `version` = `v8z4b19a`.
+4. Confirmar que `imageBase64` não existe.
+5. Confirmar que `ctrlPts`, `ctrlPtManual`, `loopCtrlPt` estão preservados.
+
+### Teste J — compatibilidade com JSON de v8z4b18z
+1. Abrir um JSON salvo na v8z4b18z.
+2. Confirmar que o projeto abre corretamente.
+3. Confirmar que curvas e loop são exibidos corretamente.
+4. Confirmar que nenhum campo novo foi criado ao re-salvar.
+
+### Teste K — ausência de erros
+1. Confirmar que não há erro de console, NaN ou Infinity.
+2. Confirmar que o PR ficou aberto e não foi mergeado.
+
+---
+
 ## v8z4b18z — fix loop curve undo
 
 ### Teste A — abertura e versão
