@@ -1,5 +1,63 @@
 # Changelog
 
+## v8z4b18x — clarify legacy curve puller architecture
+
+Patch preparatório e conceitual: consolida o ponto de controle atual da curva
+como **legacy curve puller**, reforça nomenclatura técnica interna sem alterar
+motor, visual, schema JSON, comportamento ou UI.
+
+### Alterações
+
+**Declaração do legacy curve puller (ctrlPts / loopCtrlPt)**
+- Bloco de comentário expandido junto à declaração de `ctrlPts[]` e `ctrlPtManual[]`.
+- Deixa explícito que `ctrlPts[seg]` é o **puxador de curva legado** (legacy curve puller)
+  do trecho `seg` — não é frame, não é ponto de passagem, não é handle vetorial.
+- `loopCtrlPt` também é documentado como legacy curve puller do trecho de loop (N→1).
+- Referencia os novos helpers nomeados de curvePuller para facilitar o entendimento.
+
+**Novos helpers — Legacy Curve Puller Helpers (v8z4b18x)**
+
+Adicionados logo após a seção "Extended Curve Segment Helpers":
+
+| Helper | Equivale a | Descrição |
+|---|---|---|
+| `getSegmentCurvePuller(seg)` | `getSegmentCurve(seg)` | Lê o puxador legado do trecho |
+| `setSegmentCurvePuller(seg, puller, opts)` | `setSegmentCurve(seg, puller, opts)` | Escreve o puxador legado |
+| `isSegmentCurvePullerManual(seg)` | `isSegmentCurveManual(seg)` | Lê flag de ajuste manual |
+| `setSegmentCurvePullerManual(seg, bool)` | `setSegmentCurveManual(seg, bool)` | Escreve flag de ajuste manual |
+
+Esses helpers chamam internamente os primitivos da v8z4b18u. Não substituem em
+massa as chamadas existentes — são fornecidos para código novo onde o contexto
+de "puxador legado" deve ser explícito.
+
+**`resetSegmentCurve` — comentário técnico**
+- Comentário expandido deixando claro que a função reseta o legacy curve puller
+  (ctrlPts[seg] para trechos normais, loopCtrlPt para o loop) para o ponto médio.
+
+**Comentários em Curve Access Helpers e Extended Curve Segment Helpers**
+- Seção "Curve Access Helpers" atualizada para referenciar v8z4b18x e os novos helpers.
+- Seção "Extended Curve Segment Helpers" atualizada para referenciar v8z4b18x.
+- `getLoopSegmentIndex`: comentário reforça que `loopCtrlPt` é legacy curve puller.
+
+### Notas técnicas para evolução futura
+
+- `ctrlPts[seg]` é o puxador quadrático legado — deve continuar salvo/carregado
+  no JSON para compatibilidade com projetos antigos.
+- `ctrlPtManual[seg]` continua como flag de ajuste manual — sem alteração.
+- `loopCtrlPt` continua como legacy curve puller do loop — não migrado nem convertido.
+- Futuramente, o novo sistema vetorial poderá derivar o puxador de handles/tangentes
+  ou mantê-lo como ferramenta rápida de edição ("modo curvePuller").
+- Nenhum campo novo no JSON (sem curvesV2, vectorPath, handles, pathPoints, etc.).
+
+### Sem alteração
+
+Motor, Preview, MP4, marca d'água, `framePauses`, `ctrlPts` (schema), `loopCtrlPt`
+(schema), `ctrlPtManual`, velocidade constante, Movimento/Rotação/Escala Inteligente,
+zoom contextual, layout, UI, cores, ícones, comportamento visual do Stage,
+arrastar puxador de curva, reset de curva, loop, save/load, filename, schema JSON.
+
+---
+
 ## v8z4b18w — fix project save filename preview and suffix
 
 Patch de UX no modal "Salvar projeto": corrige o fluxo de nome do arquivo, exibe

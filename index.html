@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b18w                                     ║
+║  Versão: v8z4b18x                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b18w — fix project save filename preview and suffix: nome-base limpo no modal; prévia dos nomes finais antes de salvar; normalização de sufixos redundantes (_img/_file/.json); sanitização de caracteres problemáticos; sem alteração de motor, UI estrutural ou JSON schema -->
+<!-- Arco Motion App — v8z4b18x — clarify legacy curve puller architecture: consolida ctrlPts/loopCtrlPt como "legacy curve puller"; adiciona helpers getSegmentCurvePuller/setSegmentCurvePuller/isSegmentCurvePullerManual/setSegmentCurvePullerManual; reforça comentários técnicos sem alterar motor, visual, schema JSON ou comportamento -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1855,7 +1855,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b18w</span><br><span id="appVersionNameText">fix project save filename preview and suffix</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b18x</span><br><span id="appVersionNameText">clarify legacy curve puller architecture</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4196,8 +4196,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18w';
-const APP_VERSION_NAME = 'fix project save filename preview and suffix';
+const APP_VERSION = 'v8z4b18x';
+const APP_VERSION_NAME = 'clarify legacy curve puller architecture';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4299,13 +4299,36 @@ const frameRotations = [];
 // t = posição ao longo do segmento (0=p0, 1=p1),
 // perp = offset perpendicular em px do stage
 //
-// legacyCurvePuller: ctrlPts[] representa o "puxador de curva legado" (legacy curve puller).
-// — Não é um frame (frameAnchor).
-// — Não é um ponto de passagem (pathPoint).
-// — Não é um handle vetorial (tangent handle).
-// — É um puxador auxiliar que deforma a curva quadrática, compatível com projetos antigos.
-// — No futuro poderá ser derivado de handles/tangentes ou coexistir como ferramenta de ajuste rápido.
-// — loopCtrlPt é o equivalente para o trecho de loop (N→1); mesmo conceito de puxador legado.
+// ─── LEGACY CURVE PULLER — v8z4b18x ──────────────────────────────────────────
+// ctrlPts[seg] é o "puxador de curva legado" (legacy curve puller) do trecho seg.
+//
+// O que ctrlPts[seg] NÃO é:
+//   — Não é um frame (frameAnchor): não tem tempo, escala, rotação, pausa.
+//   — Não é um ponto de passagem (pathPoint): não faz parte do caminho vetorial real.
+//   — Não é um handle vetorial (tangent handle): não controla tangência de Bézier cúbico.
+//   — Não é uma âncora (anchor): não é ponto inicial nem final do segmento.
+//
+// O que ctrlPts[seg] É:
+//   — É o puxador quadrático legado daquele trecho.
+//   — É um controle auxiliar que deforma a curva quadrática de Bézier entre dois frames.
+//   — Deve continuar salvo/carregado para compatibilidade com projetos antigos.
+//   — Futuramente, o novo sistema vetorial poderá derivar esse puxador de handles
+//     ou mantê-lo como ferramenta rápida de edição (modo "curvePuller").
+//
+// ctrlPtManual[seg]: flag que indica se o puxador foi ajustado manualmente
+//   pelo usuário. false = posição automática (ponto médio). true = posição manual.
+//
+// loopCtrlPt: equivalente de ctrlPts para o trecho de loop (N→1).
+//   Mesmo conceito de puxador de curva legado. Não possui flag "manual" separada
+//   no schema atual.
+//
+// Acesso via helpers (preferir sobre acesso direto):
+//   getSegmentCurvePuller(seg)                       — lê o puxador
+//   setSegmentCurvePuller(seg, puller, opts)          — escreve o puxador
+//   isSegmentCurvePullerManual(seg)                  — lê flag manual
+//   setSegmentCurvePullerManual(seg, bool)           — escreve flag manual
+// (Esses helpers chamam internamente getSegmentCurve/setSegmentCurve/etc.)
+// ─────────────────────────────────────────────────────────────────────────────
 const ctrlPts = [];
 const ctrlPtManual = [];
 
@@ -4356,10 +4379,14 @@ function getSegmentLabel(segIndex) {
   return seg ? seg.label : '';
 }
 
-// ─── Curve Access Helpers — v8z4b18c (atualizado v8z4b18u) ───────────────────
+// ─── Curve Access Helpers — v8z4b18c (atualizado v8z4b18u / v8z4b18x) ────────
 // Camada preparatória para acesso uniforme às curvas por trecho.
 // Schema atual preservado: ctrlPts / ctrlPtManual / loopCtrlPt.
 // No futuro, esta camada poderá migrar para um objeto de curva por trecho.
+//
+// v8z4b18x: getSegmentCurve/setSegmentCurve/isSegmentCurveManual/setSegmentCurveManual
+// são os primitivos internos. Prefira os helpers nomeados de "curvePuller"
+// (getSegmentCurvePuller etc.) onde o contexto exigir nomenclatura explícita.
 // Esta versão não muda comportamento.
 
 function isLoopSegment(segIndex) {
@@ -4415,9 +4442,11 @@ function setSegmentCurveManual(segIndex, value) {
   ctrlPtManual[segIndex] = !!value;
 }
 
-// ─── Extended Curve Segment Helpers — v8z4b18u ────────────────────────────────
+// ─── Extended Curve Segment Helpers — v8z4b18u (atualizado v8z4b18x) ──────────
 // getNormalSegmentCount / getLoopSegmentIndex / getSegmentCurvePoint / setSegmentCurvePoint
 // Completam a camada de abstração de acesso a curvas por trecho.
+// v8z4b18x: helpers de curvePuller (getSegmentCurvePuller etc.) foram adicionados
+// na seção "Legacy Curve Puller Helpers" logo abaixo de setSegmentCurvePoint.
 // Não alteram comportamento, visual, motor, UI ou JSON schema.
 
 // Retorna o número de trechos normais (F1→F2, F2→F3, etc.).
@@ -4428,6 +4457,8 @@ function getNormalSegmentCount() {
 
 // Retorna o índice do segmento de loop (N→1) quando loop está ativo, ou -1.
 // Uso: getSegmentCurve(getLoopSegmentIndex()) para acessar loopCtrlPt via helper.
+// v8z4b18x: loopCtrlPt é o legacy curve puller do trecho de loop — mesmo conceito
+// de curvePuller dos trechos normais, sem flag "manual" separada no schema atual.
 function getLoopSegmentIndex() {
   if (!loopEnabled || frameCount < 2) return -1;
   return frameCount - 1;
@@ -4453,24 +4484,90 @@ function setSegmentCurvePoint(segIndex, point, options) {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
+// ─── Legacy Curve Puller Helpers — v8z4b18x ───────────────────────────────────
+// Atalhos nomeados explicitamente como "curvePuller" para deixar claro o papel
+// conceitual do ponto de controle quadrático legado (ctrlPts / loopCtrlPt).
+//
+// Esses helpers NÃO alteram comportamento, motor, visual, schema JSON ou UI.
+// Chamam internamente os primitivos getSegmentCurve / setSegmentCurve /
+// isSegmentCurveManual / setSegmentCurveManual da v8z4b18u.
+//
+// Nomenclatura:
+//   curvePuller = puxador de curva = legacy curve puller = controle quadrático legado
+//   ctrlPts[seg]  → puxador do trecho normal seg
+//   loopCtrlPt    → puxador do trecho de loop (acessado via getLoopSegmentIndex())
+//
+// Quando usar:
+//   Prefira esses helpers em código novo onde o contexto de "puxador legado" é
+//   relevante e precisa ser explícito. Chamadas antigas via getSegmentCurve()
+//   continuam válidas — não substitua em massa.
+//
+// Importante:
+//   curvePuller NÃO é ponto de passagem (pathPoint).
+//   curvePuller NÃO é handle vetorial (tangent handle).
+//   curvePuller NÃO é frame (frameAnchor).
+//   curvePuller DEVE continuar salvo/carregado (ctrlPts / loopCtrlPt no JSON).
+//   Loop usa loopCtrlPt — também é um legacy curve puller do trecho N→1.
+
+// Retorna o puxador de curva legado do segmento como objeto completo
+// {nx, ny, t, perpX, perpY}, ou null se não definido.
+// Equivale a getSegmentCurve(segIndex).
+function getSegmentCurvePuller(segIndex) {
+  return getSegmentCurve(segIndex);
+}
+
+// Define o puxador de curva legado do segmento a partir de um objeto parcial
+// com quaisquer dos campos {nx, ny, t, perpX, perpY}.
+// options.markManual = true marca o trecho como ajustado manualmente.
+// Equivale a setSegmentCurve(segIndex, puller, options).
+function setSegmentCurvePuller(segIndex, puller, options) {
+  setSegmentCurve(segIndex, puller, options);
+}
+
+// Retorna true se o puxador desse trecho foi ajustado manualmente pelo usuário.
+// false = posição automática (ponto médio); true = posição manual.
+// loopCtrlPt não possui flag manual separada — retorna false para o segmento de loop.
+// Equivale a isSegmentCurveManual(segIndex).
+function isSegmentCurvePullerManual(segIndex) {
+  return isSegmentCurveManual(segIndex);
+}
+
+// Define o estado de ajuste manual do puxador do segmento.
+// true = usuário ajustou manualmente; false = posição automática.
+// loopCtrlPt não possui flag manual separada — no-op para o segmento de loop.
+// Equivale a setSegmentCurveManual(segIndex, manual).
+function setSegmentCurvePullerManual(segIndex, manual) {
+  setSegmentCurveManual(segIndex, manual);
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Reseta o puxador de curva legado (legacy curve puller) do segmento para a
+// posição padrão (ponto médio entre os dois frames do trecho).
+// Para segmentos normais: reseta ctrlPts[segIndex] e marca ctrlPtManual como false.
+// Para o segmento de loop: reseta loopCtrlPt (também um legacy curve puller).
+// Não altera outros trechos. Não afeta frames, pausas, motor ou schema JSON.
 function resetSegmentCurve(segIndex) {
   if (frameCount < 2) return;
   if (typeof segIndex !== 'number' || segIndex < 0) return;
   if (segIndex >= getActiveSegmentCount()) return;
   if (isLoopSegment(segIndex)) {
+    // loopCtrlPt é o legacy curve puller do trecho N→1 (loop).
+    // Resetar para o ponto médio normalizado entre o último e o primeiro frame.
     loopCtrlPt = {
       nx: (frameCX(frameCount - 1) / stageW + frameCX(0) / stageW) / 2,
       ny: (frameCY(frameCount - 1) / stageH + frameCY(0) / stageH) / 2,
       t: 0.5, perpX: 0, perpY: 0
     };
   } else {
+    // ctrlPts[segIndex] é o legacy curve puller do trecho normal segIndex.
+    // Resetar para o ponto médio normalizado entre frames[segIndex] e frames[segIndex+1].
     if (!ctrlPts[segIndex]) ctrlPts[segIndex] = {};
     ctrlPts[segIndex].nx = (frameCX(segIndex) / stageW + frameCX(segIndex + 1) / stageW) / 2;
     ctrlPts[segIndex].ny = (frameCY(segIndex) / stageH + frameCY(segIndex + 1) / stageH) / 2;
     ctrlPts[segIndex].t = 0.5;
     ctrlPts[segIndex].perpX = 0;
     ctrlPts[segIndex].perpY = 0;
-    setSegmentCurveManual(segIndex, false);
+    setSegmentCurveManual(segIndex, false); // volta a posição automática
   }
 }
 // ─── Segment Path Helpers — v8z4b18g ─────────────────────────────────────────
