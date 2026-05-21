@@ -66,13 +66,14 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19e)
+### Estado atual (v8z4b19f)
 
-- `pathPoints: []` — contrato runtime vazio; campo presente mas sem conteúdo.
+- `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
 - `capabilities: { supportsPathPoints: false, supportsHandles: false }` — modo ativo: `legacyQuadratic`.
-- `evaluateSegmentPath()` continua com resultado idêntico à v8z4b19d.
+- `evaluateSegmentPath()` continua com resultado idêntico à v8z4b19e.
 - Nenhum campo novo persiste no JSON.
+- O `pathPoint` derivado NÃO tem UI, NÃO é editável e NÃO altera a trajetória.
 
 ### Próximos passos (futuros, não imediatos)
 
