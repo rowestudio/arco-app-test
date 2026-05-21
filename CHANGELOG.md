@@ -1,5 +1,69 @@
 # Changelog
 
+## v8z4b19f — introduce derived runtime path point
+
+Implementação interna controlada: o modelo runtime de curva
+(`buildRuntimeCurveModel`) passa a preencher `pathPoints` com um `pathPoint`
+derivado em `t=0.5`, calculado pela mesma fórmula quadrática de Bézier do motor,
+em coordenadas normalizadas (0–1). O ponto é uma amostra real da trajetória atual
+— não é ponto de controle, não substitui `ctrlPts`, não é editável, não é
+renderizado e não persiste no JSON. `validateRuntimeCurveModel` atualizado para
+validar a estrutura dos `pathPoints` derivados.
+`evaluateRuntimeCurveModel` continua ignorando `pathPoints` enquanto
+`mode === 'legacyQuadratic'`. Resultado de `evaluateSegmentPath()` idêntico à
+v8z4b19e. Sem alterar comportamento visual, Preview, MP4, save/load, JSON ou UI.
+
+### Objetivo
+
+Introduzir o primeiro `pathPoint` derivado dentro do runtime curve model,
+calculado a partir da curva quadrática legada atual, sem alterar nenhum
+comportamento ativo. Prepara o futuro `pathPoint` editável real sem impacto
+na trajetória, UI ou persistência.
+
+### Helper adicionado
+
+| Função | Descrição |
+|---|---|
+| `evaluateLegacyQuadraticNormalized(start, control, end, t)` | Calcula posição normalizada (0–1) sobre a curva quadrática de Bézier legada. Mesma fórmula de `evaluateRuntimeCurveModel`, aplicada em espaço normalizado. Usada por `buildRuntimeCurveModel()` para calcular o `pathPoint` derivado em `t=0.5`. |
+
+### Funções alteradas em index.html
+
+| Função | Descrição |
+|---|---|
+| `buildRuntimeCurveModel(segIndex)` | `pathPoints` agora contém um `pathPoint` derivado em `t=0.5`, calculado por `evaluateLegacyQuadraticNormalized`. O ponto tem `kind: 'pathPoint'`, `role: 'derivedMidpoint'`, `source: 'legacyQuadratic'`, `editable: false`, `derived: true`. |
+| `validateRuntimeCurveModel(model)` | Atualizado para validar `pathPoints` derivados: cada entry com `derived: true` deve ter `kind: 'pathPoint'`, `t` numérico, `x/y` finitos, `editable === false`. |
+| `evaluateRuntimeCurveModel(model, t)` | Comentário explícito: `pathPoints` derivados ignorados enquanto `mode === 'legacyQuadratic'`. Resultado idêntico à v8z4b19e. |
+| `compareRuntimePathWithLegacy(segIndex, t)` | Quando `t === 0.5`, inclui `derivedPathPointCheck` verificando que `pathPoints[0]` (normalizados) bate com `evaluateRuntimeCurveModel(model, 0.5)` normalizado. |
+
+### Estrutura do pathPoint derivado (em buildRuntimeCurveModel)
+
+```js
+// Em buildRuntimeCurveModel():
+pathPoints: [{
+  kind:     'pathPoint',       // tipo — diferente de 'curvePuller' e 'frameAnchor'
+  role:     'derivedMidpoint', // ponto médio derivado da curva atual
+  source:   'legacyQuadratic', // derivado da curva quadrática legada
+  t:        0.5,               // parâmetro da curva onde foi amostrado
+  x:        <number>,          // normalizado (0–1): pixelX / stageW
+  y:        <number>,          // normalizado (0–1): pixelY / stageH
+  editable: false,             // não editável nesta versão
+  derived:  true               // calculado automaticamente; não vem do JSON
+}]
+```
+
+### Confirmações
+
+- `evaluateSegmentPath(segIndex, t)` → resultado idêntico à v8z4b19e.
+- O `pathPoint` derivado é uma amostra real da trajetória em `t=0.5`.
+- O `pathPoint` derivado não é ponto de controle (não substitui `curvePuller`).
+- O `pathPoint` derivado não altera a trajetória.
+- O `pathPoint` derivado não é renderizado.
+- O `pathPoint` derivado não é editável (`editable: false`).
+- O `pathPoint` derivado não persiste no JSON (`derived: true`).
+- Nenhum campo novo aparece no JSON salvo.
+- UI, Preview, MP4, save/load e comportamento visual sem alteração.
+- Schema persistido (`ctrlPts`, `ctrlPtManual`, `loopCtrlPt`) sem alteração.
+
 ## v8z4b19e — prepare runtime path point model
 
 Implementação interna controlada: o modelo runtime de curva

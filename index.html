@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19e                                     ║
+║  Versão: v8z4b19f                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19e — prepare runtime path point model: buildRuntimeCurveModel() ampliado com metadados internos de preparação futura (pathPoints:[], handles:[], capabilities); validateRuntimeCurveModel() e evaluateRuntimeCurveModel() atualizados para aceitar e ignorar esses campos enquanto mode==='legacyQuadratic'; pathPoints/handles são apenas contrato runtime vazio — não persistem no JSON, não alteram curva, não alteram UI, Preview, MP4, save/load ou comportamento visual -->
+<!-- Arco Motion App — v8z4b19f — introduce derived runtime path point: buildRuntimeCurveModel() passa a preencher pathPoints com um pathPoint derivado em t=0.5, calculado pela fórmula quadrática de Bézier normalizada (evaluateLegacyQuadraticNormalized); validateRuntimeCurveModel() atualizado para validar pathPoints derivados (kind, t, x/y, editable, derived); evaluateRuntimeCurveModel() continua ignorando pathPoints enquanto mode==='legacyQuadratic'; o pathPoint derivado é amostra real da trajetória mas não altera curva, não é renderizado, não é editável, não persiste no JSON; UI, Preview, MP4, save/load e comportamento visual sem alteração -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1855,7 +1855,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19e</span><br><span id="appVersionNameText">prepare runtime path point model</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19f</span><br><span id="appVersionNameText">introduce derived runtime path point</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4196,8 +4196,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19e';
-const APP_VERSION_NAME = 'prepare runtime path point model';
+const APP_VERSION = 'v8z4b19f';
+const APP_VERSION_NAME = 'introduce derived runtime path point';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4923,7 +4923,44 @@ function getSegmentVectorModel(segIndex) {
   };
 }
 
-// ─── Runtime Curve Model — v8z4b19c / primary path v8z4b19d / pathPoint contract v8z4b19e ─
+// ─── Helper: Bézier quadrática normalizada — v8z4b19f ────────────────────────
+//
+// evaluateLegacyQuadraticNormalized(start, control, end, t)
+//
+// Calcula a posição normalizada (0–1) sobre a curva quadrática de Bézier
+// legada, usando os mesmos três pontos que o motor atual usa.
+//
+// Parâmetros (todos em coordenadas normalizadas 0–1):
+//   start   — { x, y } — ponto inicial (frameAnchor from).
+//   control — { x, y } — ponto de controle (curvePuller normalizado).
+//   end     — { x, y } — ponto final (frameAnchor to).
+//   t       — número em [0, 1] — posição na curva.
+//
+// Retorna { x, y } em coordenadas normalizadas (0–1), ou null se inválido.
+//
+// Fórmula: B(t) = (1-t)²·P1 + 2·(1-t)·t·CP + t²·P2
+//   (mesma fórmula de evaluateRuntimeCurveModel e evaluateLegacySegmentPath,
+//    mas aplicada diretamente em espaço normalizado sem conversão para pixels)
+//
+// Uso: utilizado em buildRuntimeCurveModel() para calcular o pathPoint
+// derivado em t=0.5 — uma amostra real da trajetória normalizada.
+// Não é chamado no fluxo de avaliação de posição de produção (evaluateSegmentPath).
+function evaluateLegacyQuadraticNormalized(start, control, end, t) {
+  if (!start || !control || !end) return null;
+  if (typeof t !== 'number' || !isFinite(t)) return null;
+  if (!isFinite(start.x)   || !isFinite(start.y))   return null;
+  if (!isFinite(control.x) || !isFinite(control.y)) return null;
+  if (!isFinite(end.x)     || !isFinite(end.y))     return null;
+  t = Math.max(0, Math.min(1, t));
+  const inv = 1 - t;
+  const x = inv * inv * start.x + 2 * inv * t * control.x + t * t * end.x;
+  const y = inv * inv * start.y + 2 * inv * t * control.y + t * t * end.y;
+  if (!isFinite(x) || !isFinite(y)) return null;
+  return { x, y };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Runtime Curve Model — v8z4b19c / primary path v8z4b19d / pathPoint contract v8z4b19e / derived pathPoint v8z4b19f ─
 //
 // buildRuntimeCurveModel(segIndex): constrói o modelo runtime de curva do
 // segmento. Representa exatamente a curva atual (legacyQuadratic) como um
@@ -4946,6 +4983,14 @@ function getSegmentVectorModel(segIndex) {
 //   pathPoint     — FUTURO: ponto real de passagem intermediário.
 //                   Diferente do curvePuller: a curva passa exatamente por ele.
 //                   Na v8z4b19e: apenas contrato runtime vazio (pathPoints: []).
+//                   Na v8z4b19f: pathPoints contém UM pathPoint derivado em
+//                   t=0.5 — amostra real da trajetória atual, calculada pela
+//                   mesma fórmula quadrática do motor. Ele NÃO é ponto de
+//                   controle (curvePuller); NÃO substitui ctrlPts; NÃO é
+//                   editável; NÃO é renderizado; NÃO persiste no JSON;
+//                   NÃO altera a trajetória. Prepara o futuro pathPoint real
+//                   editável. A trajetória continua sendo calculada pelo
+//                   legacy curve puller.
 //                   Não existe no JSON; não renderizado; não editável.
 //
 //   handle/tangent — FUTURO: controle vetorial de tangência associado a um pathPoint.
@@ -4975,10 +5020,13 @@ function getSegmentVectorModel(segIndex) {
 //   anchors:        array de frameAnchors — pontos reais de câmera da timeline.
 //   controls:       array de pontos de controle do modo atual.
 //                   legacyQuadratic: um único curvePuller quadrático.
-//   pathPoints:     [] — contrato runtime vazio (v8z4b19e).
-//                   Futuro: pontos reais de passagem intermediária.
-//                   Ignorados enquanto mode === 'legacyQuadratic'.
-//                   NÃO persistidos no JSON.
+//   pathPoints:     Um pathPoint derivado em t=0.5 (v8z4b19f).
+//                   O ponto é calculado por evaluateLegacyQuadraticNormalized()
+//                   em coordenadas normalizadas (0–1), igual aos anchors/controls.
+//                   É uma amostra real da trajetória atual — não é curvePuller.
+//                   editable: false, derived: true.
+//                   Ignorado pela avaliação enquanto mode === 'legacyQuadratic'.
+//                   NÃO persistido no JSON.
 //   handles:        [] — contrato runtime vazio (v8z4b19e).
 //                   Futuro: controles vetoriais de tangência.
 //                   Ignorados enquanto mode === 'legacyQuadratic'.
@@ -5003,14 +5051,23 @@ function getSegmentVectorModel(segIndex) {
 //   Se curvePuller não estiver definido, controls[0].x/y = ponto médio
 //   normalizado entre start e end — idêntico ao fallback de evaluateSegmentPath.
 //
-// ── O que NÃO é feito aqui (v8z4b19e) ───────────────────────────────────────
-//   - Não cria pathPoints reais nem handles reais.
-//   - Não renderiza pathPoints nem handles.
-//   - Não edita pathPoints nem handles.
+// ── O que é feito aqui (v8z4b19f) ────────────────────────────────────────────
+//   - Cria UM pathPoint derivado em t=0.5 dentro de pathPoints.
+//   - O ponto é calculado pela mesma fórmula da curva quadrática atual.
+//   - O ponto é amostra real da trajetória (a curva passa por ele em t=0.5).
+//   - editable: false — não editável pelo usuário.
+//   - derived: true  — calculado automaticamente, não vem do schema persistido.
+//   - source: 'legacyQuadratic' — derivado da curva quadrática atual.
+//
+// ── O que NÃO é feito aqui (v8z4b19f) ───────────────────────────────────────
+//   - Não cria pathPoint editável nem handle real.
+//   - Não renderiza o pathPoint derivado.
+//   - pathPoint derivado não substitui o curvePuller (ctrlPts / loopCtrlPt).
+//   - pathPoint derivado não altera a trajetória.
 //   - Não persiste pathPoints, handles ou capabilities no JSON.
 //   - Não cria novo modo de curva ativo.
 //   - Não altera UI, JSON, Preview, MP4, save/load.
-//   - Não altera evaluateSegmentPath() — comportamento visual idêntico.
+//   - Não altera evaluateSegmentPath() — comportamento visual idêntico à v8z4b19e.
 //
 // Retorna null para segmento inválido, frameCount < 2 ou stage inválido.
 function buildRuntimeCurveModel(segIndex) {
@@ -5078,11 +5135,59 @@ function buildRuntimeCurveModel(segIndex) {
     // legacyQuadratic: um único curvePuller (ponto de controle quadrático legado).
     // curvePuller = atrai a curva mas NÃO é ponto de passagem real.
     controls,
-    // pathPoints: contrato runtime vazio — v8z4b19e.
-    // Futuro: pontos reais de passagem intermediária (a curva passa exatamente por eles).
-    // Enquanto mode === 'legacyQuadratic', este array é sempre [] e completamente ignorado.
+    // pathPoints: pathPoint derivado em t=0.5 — v8z4b19f.
+    //
+    // Um pathPoint derivado é uma AMOSTRA REAL da trajetória atual, calculada pela
+    // mesma fórmula quadrática de Bézier do motor (B(t) = (1-t)²·P1 + 2·(1-t)·t·CP + t²·P2)
+    // em coordenadas normalizadas (0–1), usando os mesmos anchors e controls acima.
+    //
+    // O que este ponto É:
+    //   - Uma amostra real da trajetória no parâmetro t=0.5.
+    //   - A curva legacyQuadratic passa exatamente por este ponto em t=0.5.
+    //   - Preparação controlada para futuro pathPoint editável real.
+    //
+    // O que este ponto NÃO é:
+    //   - Não é ponto de controle (curvePuller / ctrlPts / loopCtrlPt).
+    //   - Não substitui ctrlPts nem loopCtrlPt no schema persistido.
+    //   - Não é editável (editable: false).
+    //   - Não é renderizado na UI.
+    //   - Não altera a trajetória (a curva continua sendo calculada pelo legacy curve puller).
+    //   - Não persiste no JSON.
+    //
+    // Unidade: coordenadas normalizadas (0–1), igual a anchors e controls.
+    //   x = pixelX / stageW, y = pixelY / stageH.
+    //
+    // Avaliação: ignorado por evaluateRuntimeCurveModel() enquanto mode === 'legacyQuadratic'.
+    // A trajetória continua sendo calculada pelos anchors + curvePuller.
+    //
     // NUNCA persiste no JSON — apenas runtime.
-    pathPoints: [],
+    pathPoints: (() => {
+      // Calcular o ponto derivado em t=0.5 usando a mesma fórmula quadrática.
+      // Entrada: start/control/end em coordenadas normalizadas (0–1) — já calculados acima.
+      const startNorm   = { x: startX, y: startY };
+      const controlNorm = { x: controls[0].x, y: controls[0].y };
+      const endNorm     = { x: endX, y: endY };
+      const midPt = evaluateLegacyQuadraticNormalized(startNorm, controlNorm, endNorm, 0.5);
+      if (!midPt) return [];
+      // pathPoint derivado: amostra real da trajetória em t=0.5.
+      // kind: 'pathPoint'         — tipo de ponto (diferente de 'curvePuller' e 'frameAnchor').
+      // role: 'derivedMidpoint'   — papel semântico: ponto médio derivado da curva atual.
+      // source: 'legacyQuadratic' — origem: curva quadrática legada atual.
+      // t: 0.5                    — parâmetro da curva onde o ponto foi amostrado.
+      // x/y: normalizados (0–1)   — mesma unidade de anchors e controls.
+      // editable: false           — não editável pelo usuário nesta versão.
+      // derived: true             — calculado automaticamente; não vem do schema persistido.
+      return [{
+        kind:     'pathPoint',
+        role:     'derivedMidpoint',
+        source:   'legacyQuadratic',
+        t:        0.5,
+        x:        midPt.x,   // normalizado (0–1): pixelX / stageW
+        y:        midPt.y,   // normalizado (0–1): pixelY / stageH
+        editable: false,
+        derived:  true
+      }];
+    })(),
     // handles: contrato runtime vazio — v8z4b19e.
     // Futuro: controles vetoriais de tangência associados a pathPoints.
     // Enquanto mode === 'legacyQuadratic', este array é sempre [] e completamente ignorado.
@@ -5122,11 +5227,23 @@ function validateRuntimeCurveModel(model) {
       !isFinite(end.x)   || !isFinite(end.y)) return false;
   const ctrl = model.controls[0];
   if (!ctrl || !isFinite(ctrl.x) || !isFinite(ctrl.y)) return false;
-  // v8z4b19e: pathPoints e handles são campos opcionais de contrato runtime.
-  // Se presentes, devem ser arrays (possivelmente vazios). Não afetam a validade
-  // do modelo enquanto mode === 'legacyQuadratic'.
-  if (model.pathPoints !== undefined && !Array.isArray(model.pathPoints)) return false;
-  if (model.handles    !== undefined && !Array.isArray(model.handles))    return false;
+  // v8z4b19f: pathPoints pode conter pathPoints derivados (derived: true).
+  // Validação: deve ser array; cada pathPoint derivado deve ter estrutura bem-formada.
+  if (model.pathPoints !== undefined) {
+    if (!Array.isArray(model.pathPoints)) return false;
+    for (const pp of model.pathPoints) {
+      if (!pp) return false;
+      // Valida apenas pathPoints derivados (derived: true).
+      // Futuros pathPoints editáveis podem ter validação diferente.
+      if (pp.derived !== true) continue;
+      if (pp.kind !== 'pathPoint') return false;
+      if (typeof pp.t !== 'number' || !isFinite(pp.t)) return false;
+      if (typeof pp.x !== 'number' || !isFinite(pp.x)) return false;
+      if (typeof pp.y !== 'number' || !isFinite(pp.y)) return false;
+      if (pp.editable !== false) return false;
+    }
+  }
+  if (model.handles !== undefined && !Array.isArray(model.handles)) return false;
   return true;
 }
 
@@ -5139,9 +5256,13 @@ function validateRuntimeCurveModel(model) {
 //   - Convertidos para pixels aqui: pixelX = normalX * stageW.
 //   - O retorno {x, y} é em pixels do stage.
 //
-// v8z4b19e — pathPoints e handles:
-//   Enquanto mode === 'legacyQuadratic', pathPoints e handles são arrays
-//   vazios de contrato runtime. São completamente ignorados na avaliação.
+// v8z4b19f — pathPoints derivados:
+//   pathPoints pode conter um pathPoint derivado em t=0.5 (v8z4b19f).
+//   O ponto derivado (derived: true, editable: false) é uma amostra real
+//   da trajetória atual — mas é completamente IGNORADO por este avaliador
+//   enquanto mode === 'legacyQuadratic'.
+//   Motivo: a trajetória continua sendo calculada pelos anchors + curvePuller
+//   (controls[0]). O pathPoint derivado não altera o resultado.
 //   Apenas anchors[start/end] e controls[0] (curvePuller) são usados.
 //   Quando futuramente mode === 'vectorAnchors' for implementado, este
 //   avaliador deverá ramificar para lógica Bézier cúbica com pathPoints.
@@ -5154,8 +5275,9 @@ function evaluateRuntimeCurveModel(model, t) {
   if (!stageW || !stageH || stageW <= 0 || stageH <= 0) return null;
   if (typeof t !== 'number' || !isFinite(t)) t = 0;
   t = Math.max(0, Math.min(1, t));
-  // v8z4b19e: pathPoints e handles ignorados enquanto mode === 'legacyQuadratic'.
+  // v8z4b19f: pathPoints derivados (derived: true) ignorados enquanto mode === 'legacyQuadratic'.
   // A avaliação usa exclusivamente anchors[start/end] + controls[0] (curvePuller).
+  // O pathPoint derivado em t=0.5 existe no modelo mas não participa do cálculo aqui.
 
   const start = model.anchors.find(a => a.role === 'start');
   const end   = model.anchors.find(a => a.role === 'end');
@@ -5184,10 +5306,11 @@ function evaluateRuntimeCurveModel(model, t) {
 
 // ─── Futuro modo vectorAnchors (não ativado nesta versão) ─────────────────────
 //
-// v8z4b19e: o contrato runtime já inclui pathPoints: [] e handles: [] como
-// campos vazios, documentando a forma que esses campos terão no futuro.
+// v8z4b19f: pathPoints agora contém um pathPoint derivado em t=0.5 —
+// amostra real da trajetória atual calculada pela fórmula quadrática.
+// O pathPoint derivado é ignorado pela avaliação enquanto mode === 'legacyQuadratic'.
 // O modelo atual continua em mode === 'legacyQuadratic' com comportamento
-// visual e matemático idêntico à v8z4b19d.
+// visual e matemático idêntico à v8z4b19e.
 //
 // Quando mode === "vectorAnchors" for implementado (versão futura),
 // o segmento usará frameAnchors, pathPoints e handles em vez do curvePuller
@@ -5220,15 +5343,16 @@ function evaluateRuntimeCurveModel(model, t) {
 // TODO (vectorAnchors): migração controlada de legacyQuadratic → vectorAnchors.
 // ──────────────────────────────────────────────────────────────────────────────
 
-// ─── Unified Segment Path Evaluator — v8z4b18l / mode switch v8z4b18n / runtime v8z4b19d / pathPoint contract v8z4b19e ──
+// ─── Unified Segment Path Evaluator — v8z4b18l / mode switch v8z4b18n / runtime v8z4b19d / pathPoint contract v8z4b19e / derived pathPoint v8z4b19f ──
 //
 // evaluateSegmentPath() é a entrada pública/real do motor para calcular posição
 // no caminho de um segmento. A partir da v8z4b19d, usa o modelo runtime de curva
 // (buildRuntimeCurveModel + validateRuntimeCurveModel + evaluateRuntimeCurveModel)
 // como caminho preferencial, com fallback automático para o cálculo legado.
-// v8z4b19e: o modelo runtime agora inclui pathPoints:[], handles:[], capabilities —
-// campos de contrato vazio ignorados enquanto mode === 'legacyQuadratic'.
-// O resultado de evaluateSegmentPath() continua idêntico ao da v8z4b19d.
+// v8z4b19f: o modelo runtime agora inclui um pathPoint derivado em t=0.5 dentro
+// de pathPoints — amostra real da trajetória, calculada pela mesma fórmula quadrática.
+// O pathPoint derivado é ignorado por evaluateRuntimeCurveModel() enquanto
+// mode === 'legacyQuadratic'. O resultado de evaluateSegmentPath() continua idêntico à v8z4b19e.
 //
 // Caminhos de avaliação:
 //   [preferencial] runtime model  → buildRuntimeCurveModel → validateRuntimeCurveModel
@@ -5346,26 +5470,53 @@ function evaluateSegmentPath(segIndex, t) {
   }
 }
 
-// Helper interno de comparação/paridade — v8z4b19d.
+// Helper interno de comparação/paridade — v8z4b19d / derivedPathPoint check v8z4b19f.
 // Compara o resultado do modelo runtime com o cálculo legado para o mesmo
-// (segIndex, t). Retorna { runtime, legacy, match, delta } para uso em
+// (segIndex, t). Retorna { runtime, legacy, match, delta, derivedPathPointCheck } para uso em
 // desenvolvimento/teste interno.
 // Não chamado no fluxo normal de produção — apenas para verificação/debug.
+//
+// v8z4b19f: quando t === 0.5, inclui também derivedPathPointCheck que verifica
+// se pathPoints[0] (o ponto derivado) bate com evaluateRuntimeCurveModel(model, 0.5)
+// convertido para coordenadas normalizadas. Confirma paridade matemática.
 function compareRuntimePathWithLegacy(segIndex, t) {
+  let model = null;
   const runtime = (() => {
     try {
-      const model = buildRuntimeCurveModel(segIndex);
+      model = buildRuntimeCurveModel(segIndex);
       if (!model || !validateRuntimeCurveModel(model)) return null;
       return evaluateRuntimeCurveModel(model, t);
     } catch (_e) { return null; }
   })();
   const legacy = evaluateLegacySegmentPath(segIndex, t);
-  if (!runtime || !legacy) return { runtime, legacy, match: false, delta: null };
+  if (!runtime || !legacy) return { runtime, legacy, match: false, delta: null, derivedPathPointCheck: null };
   const dx = Math.abs(runtime.x - legacy.x);
   const dy = Math.abs(runtime.y - legacy.y);
   // Tolerância de 0.001 px — diferença esperada: zero (mesma aritmética).
   const match = dx < 0.001 && dy < 0.001;
-  return { runtime, legacy, match, delta: { dx, dy } };
+
+  // v8z4b19f: verificação adicional do pathPoint derivado em t=0.5.
+  // Quando t === 0.5, confirma que pathPoints[0].x/y (normalizados) batem com
+  // a posição normalizada de evaluateRuntimeCurveModel(model, 0.5).
+  // Tolerância: 0.000001 (aritmética idêntica em espaço normalizado).
+  let derivedPathPointCheck = null;
+  if (t === 0.5 && model && Array.isArray(model.pathPoints) && model.pathPoints.length > 0) {
+    try {
+      const pp = model.pathPoints[0];
+      if (pp && pp.derived === true && isFinite(pp.x) && isFinite(pp.y) &&
+          stageW > 0 && stageH > 0) {
+        // Converter o resultado pixels do avaliador para normalizados para comparar.
+        const runtimeNx = runtime.x / stageW;
+        const runtimeNy = runtime.y / stageH;
+        const dpx = Math.abs(pp.x - runtimeNx);
+        const dpy = Math.abs(pp.y - runtimeNy);
+        const ppMatch = dpx < 0.000001 && dpy < 0.000001;
+        derivedPathPointCheck = { ppNorm: { x: pp.x, y: pp.y }, runtimeNorm: { x: runtimeNx, y: runtimeNy }, match: ppMatch, delta: { dx: dpx, dy: dpy } };
+      }
+    } catch (_e) { derivedPathPointCheck = null; }
+  }
+
+  return { runtime, legacy, match, delta: { dx, dy }, derivedPathPointCheck };
 }
 
 // Retorna steps+1 pontos amostrados uniformemente ao longo da trajetória.
