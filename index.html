@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19a                                     ║
+║  Versão: v8z4b19b                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19a — standardize curve puller usage in curve rendering: substituir getSegmentCurve() por getSegmentCurvePuller() nas funções que lidam explicitamente com o puxador legado da curva (getSegmentPath, getSegmentVectorModel, evaluateSegmentPath, getCtrlPtPos, drawBezier, updateCtrlPts, measureSegmentCurveLength); sem alterar motor, visual, schema JSON, UI ou comportamento -->
+<!-- Arco Motion App — v8z4b19b — audit loop curve path consistency: auditar e consolidar coerência interna entre segmentos normais e segmento de loop nas funções de trajetória (evaluateSegmentPath, sampleSegmentPath, measureSegmentPathLength, measureSegmentCurveLength, measureLoopCurveLength, getLoopSegmentIndex, redistributeDurationsByCurveLength); adicionar comentários de contrato e guards defensivos; sem alterar motor, visual, schema JSON, UI ou comportamento -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1855,7 +1855,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19a</span><br><span id="appVersionNameText">standardize curve puller usage in curve rendering</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19b</span><br><span id="appVersionNameText">audit loop curve path consistency</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4196,8 +4196,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19a';
-const APP_VERSION_NAME = 'standardize curve puller usage in curve rendering';
+const APP_VERSION = 'v8z4b19b';
+const APP_VERSION_NAME = 'audit loop curve path consistency';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4337,6 +4337,13 @@ const ctrlPtManual = [];
 // No futuro, cada segmento poderá ter um objeto de trajetória próprio (pontos
 // de controle, handles de tangência). O editor vetorial de trajetória poderá
 // adicionar pontos e handles sobre esses segmentos. Este patch não implementa.
+//
+// v8z4b19b — contrato auditado:
+//   Segmentos normais: { index: i, from: i, to: i+1, isLoop: false } para i em [0, frameCount-2].
+//   Segmento de loop (quando loopEnabled):
+//     { index: frameCount-1, from: frameCount-1, to: 0, isLoop: true }.
+//   getLoopSegmentIndex() retorna frameCount-1 = índice desse segmento na lista.
+//   getSegmentCurvePuller(frameCount-1) → isLoopSegment → loopCtrlPt. Correto.
 
 function getActiveSegments() {
   if (frameCount < 2) return [];
@@ -4459,6 +4466,14 @@ function getNormalSegmentCount() {
 // Uso: getSegmentCurve(getLoopSegmentIndex()) para acessar loopCtrlPt via helper.
 // v8z4b18x: loopCtrlPt é o legacy curve puller do trecho de loop — mesmo conceito
 // de curvePuller dos trechos normais, sem flag "manual" separada no schema atual.
+//
+// v8z4b19b — contrato auditado:
+//   - Retorna frameCount - 1 SOMENTE quando loopEnabled === true && frameCount >= 2.
+//   - Retorna -1 em qualquer outro caso (loop desativado ou projeto sem segmentos).
+//   - getSegmentByIndex(getLoopSegmentIndex()) retorna o objeto de segmento de loop
+//     cujos campos são { from: frameCount-1, to: 0, isLoop: true }.
+//   - getSegmentCurvePuller(getLoopSegmentIndex()) acessa loopCtrlPt corretamente
+//     via isLoopSegment() → retorna loopCtrlPt ou null.
 function getLoopSegmentIndex() {
   if (!loopEnabled || frameCount < 2) return -1;
   return frameCount - 1;
@@ -4952,6 +4967,19 @@ function getSegmentVectorModel(segIndex) {
 // Avalia a posição na trajetória do segmento em t ∈ [0,1].
 // Retorna {x, y} em pixels do stage, ou null para segmento inválido.
 // t fora de [0,1] é clampado; t NaN é tratado como 0.
+//
+// v8z4b19b — contrato auditado:
+//   Segmentos normais (isLoop: false):
+//     fromIdx = seg.from (= segIndex), toIdx = seg.to (= segIndex + 1).
+//     P1 = frame[segIndex], P2 = frame[segIndex+1].
+//     CP = getSegmentCurvePuller(segIndex) → ctrlPts[segIndex] ou midpoint.
+//   Segmento de loop (isLoop: true, segIndex = frameCount - 1):
+//     fromIdx = seg.from (= frameCount - 1, último frame),
+//     toIdx   = seg.to   (= 0, primeiro frame).
+//     P1 = frame[frameCount-1], P2 = frame[0].
+//     CP = getSegmentCurvePuller(loopSegIndex) → loopCtrlPt ou midpoint.
+//   Ambos usam a mesma fórmula de Bézier quadrática. A distinção de
+//   frames e curvePuller é delegada a getSegmentByIndex + getSegmentCurvePuller.
 function evaluateSegmentPath(segIndex, t) {
   if (typeof t !== 'number' || !isFinite(t)) t = 0;
   t = Math.max(0, Math.min(1, t));
@@ -5004,6 +5032,11 @@ function evaluateSegmentPath(segIndex, t) {
 // Retorna steps+1 pontos amostrados uniformemente ao longo da trajetória.
 // Inclui t=0 e t=1. Retorna [] para segmento inválido.
 // steps mínimo seguro: 8. steps padrão: 64.
+//
+// v8z4b19b — contrato auditado:
+//   Delega inteiramente a evaluateSegmentPath(). Funciona para segmentos
+//   normais e para o segmento de loop sem distinção extra — evaluateSegmentPath
+//   já lida corretamente com ambos via getSegmentByIndex + getSegmentCurvePuller.
 function sampleSegmentPath(segIndex, steps) {
   if (typeof steps !== 'number' || !isFinite(steps) || steps < 8) steps = 64;
   steps = Math.max(8, Math.round(steps));
@@ -5022,6 +5055,15 @@ function sampleSegmentPath(segIndex, steps) {
 // Funciona para segmentos normais e para o segmento de loop.
 // Migração futura: measureSegmentCurveLength / measureLoopCurveLength
 // poderão ser substituídas por esta função quando seguro.
+//
+// v8z4b19b — coerência auditada:
+//   measureSegmentPathLength(getLoopSegmentIndex()) e measureLoopCurveLength()
+//   medem o mesmo trecho (frameCount-1 → 0) com o mesmo ponto de controle
+//   (loopCtrlPt via getSegmentCurvePuller) e o mesmo número de amostras (64).
+//   Os resultados são numericamente equivalentes.
+//   redistributeDurationsByCurveLength() usa as funções legadas
+//   (measureSegmentCurveLength / measureLoopCurveLength) intencionalmente —
+//   a migração para measureSegmentPathLength ocorrerá quando seguro.
 function measureSegmentPathLength(segIndex, steps) {
   if (typeof steps !== 'number' || !isFinite(steps) || steps < 8) steps = 64;
   const pts = sampleSegmentPath(segIndex, steps);
@@ -10471,7 +10513,17 @@ function getSegDuration(seg) {
 // Usa a mesma geometria do motor (bezierPointAt do getStateAtT).
 // Migração futura: equivalente a measureSegmentPathLength(segIndex) —
 // substituir quando seguro, mantendo comportamento idêntico.
+//
+// v8z4b19b — contrato auditado:
+//   Esta função cobre APENAS segmentos normais (0 ≤ segIndex < frameCount - 1).
+//   O guard `segIndex >= frameCount - 1` EXCLUI intencionalmente o segmento de
+//   loop (que tem índice frameCount - 1). Para o trecho de loop, use
+//   measureLoopCurveLength().
+//   redistributeDurationsByCurveLength() respeita esse contrato: itera de 0 a
+//   segs-1 para segmentos normais e chama measureLoopCurveLength() separadamente.
 function measureSegmentCurveLength(segIndex) {
+  // v8z4b19b: guard defensivo contra segIndex inválido (NaN, Infinity, não-número)
+  if (typeof segIndex !== 'number' || !isFinite(segIndex)) return 0;
   if (frameCount < 2 || segIndex < 0 || segIndex >= frameCount - 1) return 0;
   if (!stageW || !stageH) return 0;
 
@@ -10515,6 +10567,15 @@ function measureSegmentCurveLength(segIndex) {
 // Mede o comprimento real da curva do trecho de fechamento N→1 — v8z4b17o
 // Migração futura: equivalente a measureSegmentPathLength(loopSegIndex) —
 // substituir quando seguro, mantendo comportamento idêntico.
+//
+// v8z4b19b — contrato auditado:
+//   Mede o trecho último frame → primeiro frame (frameCount-1 → 0).
+//   Usa getSegmentCurvePuller(getLoopSegmentIndex()) → loopCtrlPt.
+//   Coerente com measureSegmentPathLength(getLoopSegmentIndex()): ambos
+//   usam P1 = frame[frameCount-1], P2 = frame[0], CP = loopCtrlPt, 64 amostras.
+//   redistributeDurationsByCurveLength() chama esta função separadamente do
+//   loop de segmentos normais, garantindo que o loop nunca passe por
+//   measureSegmentCurveLength (que retorna 0 para segIndex = frameCount-1).
 function measureLoopCurveLength() {
   if (!loopEnabled || frameCount < 2 || !stageW || !stageH) return 0;
   const lastIdx = frameCount - 1;
@@ -10550,6 +10611,14 @@ function measureLoopCurveLength() {
 
 // Redistribui segDurations proporcionalmente ao comprimento curvo de cada trecho ativo.
 // Trechos com duração exatamente 0.0 permanecem em 0 (cortes secos).
+//
+// v8z4b19b — contrato auditado (constant-speed + loop):
+//   Segmentos normais (0 ≤ i < frameCount - 1): medidos por measureSegmentCurveLength(i).
+//   Segmento de loop  (frameCount - 1 → 0, quando ativo): medido por measureLoopCurveLength().
+//   measureSegmentCurveLength retorna 0 para segIndex = frameCount - 1 (loop),
+//   portanto o loop nunca entra no loop de segmentos normais. Correto por design.
+//   O comprimento do loop entra na soma total (totalLen) e na redistribuição de
+//   loopDuration separadamente dos segDurations dos trechos normais.
 function redistributeDurationsByCurveLength() {
   if (frameCount < 2) return;
   ensureSegDurations();
