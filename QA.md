@@ -2,6 +2,79 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18x — clarify legacy curve puller architecture
+
+### Teste A — curva normal
+1. Abrir app.
+2. Carregar imagem.
+3. Criar 4 frames.
+4. Puxar curva entre F1→F2.
+5. Puxar curva entre F2→F3.
+6. Confirmar que o comportamento é igual ao da v8z4b18w.
+7. Rodar Preview.
+8. Confirmar que o movimento segue a curva.
+
+### Teste B — reset de curva
+1. Ajustar uma curva manualmente.
+2. Usar reset de curva.
+3. Confirmar que o trecho correto é resetado para o ponto médio.
+4. Confirmar que outros trechos não mudam indevidamente.
+
+### Teste C — loop
+1. Criar projeto com 4 frames.
+2. Ativar loop.
+3. Confirmar que a curva de loop aparece.
+4. Ajustar curva de loop, se disponível.
+5. Preview OK.
+6. MP4 OK.
+
+### Teste D — save/load
+1. Criar projeto com curvas manuais.
+2. Salvar com imagem.
+3. Confirmar filename `_img.json`.
+4. Abrir JSON.
+5. Confirmar `"version": "v8z4b18x"`.
+6. Confirmar `ctrlPts` salvo.
+7. Confirmar `ctrlPtManual` salvo.
+8. Confirmar `loopCtrlPt` salvo quando loop estiver ligado.
+9. Confirmar `framePauses` salvo.
+10. Confirmar que **não** há schema vetorial novo (`curvesV2`, `vectorPath`, `handles`, `pathPoints`).
+
+### Teste E — reabrir projeto
+1. Recarregar app.
+2. Abrir JSON salvo pela v8z4b18x.
+3. Confirmar imagem.
+4. Confirmar frames.
+5. Confirmar curvas.
+6. Confirmar pausas.
+7. Preview OK.
+8. MP4 OK.
+
+### Teste F — projeto antigo
+1. Abrir projeto salvo por versão anterior (com `ctrlPts` no JSON).
+2. Confirmar que abre normalmente.
+3. Confirmar que curvas aparecem corretamente.
+4. Confirmar que Preview funciona.
+5. Confirmar que MP4 funciona.
+
+### Teste G — regressão rápida
+1. Salvar projeto desabilitado no estado inicial vazio — botão desabilitado.
+2. Salvar com imagem gera `_img.json`.
+3. Salvar sem imagem gera `_file.json`.
+4. Marca d'água continua `arcomotion.app`.
+5. Pausas OK.
+6. Velocidade constante OK.
+7. Movimento Inteligente OK.
+8. Rotação Inteligente OK.
+9. Escala Inteligente OK.
+10. Zoom contextual OK.
+11. Sem NaN/Infinity no console.
+12. Sem tela preta.
+13. Sem botão preso.
+14. Configurações: versão exibe `v8z4b18x` e `clarify legacy curve puller architecture`.
+
+---
+
 ## v8z4b18w — fix project save filename preview and suffix
 
 ### Teste A — sugestão inicial limpa
