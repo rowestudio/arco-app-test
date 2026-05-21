@@ -61,15 +61,32 @@ Esse modo pode incorporar o futuro Modo Curvas, sendo tratados como um único mo
 
 ## Futuro — Evolução do modelo runtime de curva (v8z4b19c+)
 
-O `buildRuntimeCurveModel` introduzido na v8z4b19c prepara a base para:
+O `buildRuntimeCurveModel` introduzido na v8z4b19c e ampliado na v8z4b19e já
+inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
+O modelo está preparado para receber implementação real futura sem quebrar
+compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
+
+### Estado atual (v8z4b19e)
+
+- `pathPoints: []` — contrato runtime vazio; campo presente mas sem conteúdo.
+- `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
+- `capabilities: { supportsPathPoints: false, supportsHandles: false }` — modo ativo: `legacyQuadratic`.
+- `evaluateSegmentPath()` continua com resultado idêntico à v8z4b19d.
+- Nenhum campo novo persiste no JSON.
+
+### Próximos passos (futuros, não imediatos)
 
 - Adicionar `pathPoints` reais como pontos de passagem sem tempo próprio.
 - Adicionar `handles` de tangência para controle Bézier cúbico.
 - Implementar `mode = 'vectorAnchors'` com avaliador Bézier cúbico.
-- Migrar `evaluateSegmentPath()` para usar o modelo runtime quando seguro.
 - Schema JSON versionado para persistir `pathPoints` e `handles`.
+- Migração controlada de `legacyQuadratic` → `vectorAnchors`.
 
-Nenhum desses itens está ativo na v8z4b19c.
+### Nota sobre movimento inteligente
+
+Movimento inteligente pode continuar como configuração global, mas futuramente
+pode haver exceções ou parcialidade por trecho ou por passagem de frame.
+Não implementar enquanto o conceito ainda não estiver fechado.
 
 ## Futuro — Ferramenta de caneta / criação de trajetória vetorial
 

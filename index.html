@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19d                                     ║
+║  Versão: v8z4b19e                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19d — route segment path through runtime curve model: evaluateSegmentPath() agora usa buildRuntimeCurveModel+validateRuntimeCurveModel+evaluateRuntimeCurveModel como caminho preferencial; cálculo legado extraído como evaluateLegacySegmentPath() e usado como fallback de segurança; resultado matemático e visual idêntico à v8z4b19c; sem alterar motor, visual, schema JSON, UI, Preview, MP4, save/load ou comportamento -->
+<!-- Arco Motion App — v8z4b19e — prepare runtime path point model: buildRuntimeCurveModel() ampliado com metadados internos de preparação futura (pathPoints:[], handles:[], capabilities); validateRuntimeCurveModel() e evaluateRuntimeCurveModel() atualizados para aceitar e ignorar esses campos enquanto mode==='legacyQuadratic'; pathPoints/handles são apenas contrato runtime vazio — não persistem no JSON, não alteram curva, não alteram UI, Preview, MP4, save/load ou comportamento visual -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1855,7 +1855,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19d</span><br><span id="appVersionNameText">route segment path through runtime curve model</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19e</span><br><span id="appVersionNameText">prepare runtime path point model</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4196,8 +4196,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19d';
-const APP_VERSION_NAME = 'route segment path through runtime curve model';
+const APP_VERSION = 'v8z4b19e';
+const APP_VERSION_NAME = 'prepare runtime path point model';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4923,18 +4923,47 @@ function getSegmentVectorModel(segIndex) {
   };
 }
 
-// ─── Runtime Curve Model — v8z4b19c / used as primary path v8z4b19d ─────────
+// ─── Runtime Curve Model — v8z4b19c / primary path v8z4b19d / pathPoint contract v8z4b19e ─
 //
 // buildRuntimeCurveModel(segIndex): constrói o modelo runtime de curva do
 // segmento. Representa exatamente a curva atual (legacyQuadratic) como um
 // objeto tipado e auto-descritivo. Não persiste no JSON — é apenas runtime.
 //
-// Contrato de unidades:
+// ── Glossário de conceitos ────────────────────────────────────────────────────
+//
+//   frameAnchor   — ponto REAL de câmera ligado a um frame da timeline.
+//                   Representa a posição real do objeto naquele frame.
+//                   É o ponto de início ou fim de cada segmento.
+//                   Origem: frames[frameIndex] → frameCX / frameCY.
+//                   Sempre presente; nunca editado aqui como ponto de curva.
+//
+//   curvePuller   — controle legado QUADRÁTICO atual.
+//                   Ponto de controle único de Bézier quadrática,
+//                   não é ponto de passagem real — apenas atrai a curva.
+//                   Origem: ctrlPts[segIndex] / loopCtrlPt (schema persistido).
+//                   Modo ativo: 'legacyQuadratic'.
+//
+//   pathPoint     — FUTURO: ponto real de passagem intermediário.
+//                   Diferente do curvePuller: a curva passa exatamente por ele.
+//                   Na v8z4b19e: apenas contrato runtime vazio (pathPoints: []).
+//                   Não existe no JSON; não renderizado; não editável.
+//
+//   handle/tangent — FUTURO: controle vetorial de tangência associado a um pathPoint.
+//                   Define direção e magnitude da curva no ponto de passagem.
+//                   Na v8z4b19e: apenas contrato runtime vazio (handles: []).
+//                   Não existe no JSON; não renderizado; não editável.
+//
+//   capabilities  — metadados internos indicando quais funcionalidades o
+//                   modelo atual suporta. Na v8z4b19e:
+//                   { supportsPathPoints: false, supportsHandles: false }
+//                   Valor informativo — não altera avaliação.
+//
+// ── Contrato de unidades ──────────────────────────────────────────────────────
 //   anchors[*].x / .y e controls[*].x / .y são NORMALIZADOS (0–1).
 //   Convenção: x = pixelX / stageW, y = pixelY / stageH.
 //   evaluateRuntimeCurveModel() converte de volta para pixels do stage.
 //
-// Contrato de campos:
+// ── Contrato de campos (v8z4b19e) ────────────────────────────────────────────
 //   version:        1  (para evolução controlada futura).
 //   mode:           'legacyQuadratic'  (único modo ativo nesta versão).
 //   segmentIndex:   índice do segmento em getActiveSegments().
@@ -4943,31 +4972,45 @@ function getSegmentVectorModel(segIndex) {
 //                   = frameCount-1 para loop).
 //   toFrameIndex:   índice do frame de destino (= segIndex+1 para normais;
 //                   = 0 para loop).
-//   anchors:        array de frameAnchors — pontos reais de timeline.
+//   anchors:        array de frameAnchors — pontos reais de câmera da timeline.
 //   controls:       array de pontos de controle do modo atual.
 //                   legacyQuadratic: um único curvePuller quadrático.
+//   pathPoints:     [] — contrato runtime vazio (v8z4b19e).
+//                   Futuro: pontos reais de passagem intermediária.
+//                   Ignorados enquanto mode === 'legacyQuadratic'.
+//                   NÃO persistidos no JSON.
+//   handles:        [] — contrato runtime vazio (v8z4b19e).
+//                   Futuro: controles vetoriais de tangência.
+//                   Ignorados enquanto mode === 'legacyQuadratic'.
+//                   NÃO persistidos no JSON.
+//   capabilities:   { supportsPathPoints: false, supportsHandles: false }
+//                   Metadados informativos do modo atual.
+//                   NÃO persistidos no JSON.
 //
-// Segmentos normais:
+// ── Segmentos normais ─────────────────────────────────────────────────────────
 //   fromFrameIndex = segIndex, toFrameIndex = segIndex + 1.
 //   controls[0].source = 'ctrlPts'.
 //   controls[0].x/y   = ctrlPts[segIndex].nx/ny (normalizados).
 //
-// Segmento de loop:
+// ── Segmento de loop ──────────────────────────────────────────────────────────
 //   segmentIndex    = getLoopSegmentIndex() = frameCount - 1.
 //   fromFrameIndex  = frameCount - 1.
 //   toFrameIndex    = 0.
 //   controls[0].source = 'loopCtrlPt'.
 //   controls[0].x/y   = loopCtrlPt.nx/ny (normalizados).
 //
-// Fallback de ponto de controle:
+// ── Fallback de ponto de controle ────────────────────────────────────────────
 //   Se curvePuller não estiver definido, controls[0].x/y = ponto médio
 //   normalizado entre start e end — idêntico ao fallback de evaluateSegmentPath.
 //
-// O que NÃO é feito aqui:
+// ── O que NÃO é feito aqui (v8z4b19e) ───────────────────────────────────────
 //   - Não cria pathPoints reais nem handles reais.
-//   - Não cria novo modo de curva.
+//   - Não renderiza pathPoints nem handles.
+//   - Não edita pathPoints nem handles.
+//   - Não persiste pathPoints, handles ou capabilities no JSON.
+//   - Não cria novo modo de curva ativo.
 //   - Não altera UI, JSON, Preview, MP4, save/load.
-//   - Não altera evaluateSegmentPath() — coexiste em paralelo.
+//   - Não altera evaluateSegmentPath() — comportamento visual idêntico.
 //
 // Retorna null para segmento inválido, frameCount < 2 ou stage inválido.
 function buildRuntimeCurveModel(segIndex) {
@@ -5026,20 +5069,45 @@ function buildRuntimeCurveModel(segIndex) {
     fromFrameIndex: fromIdx,
     toFrameIndex:   toIdx,
     // anchors: frameAnchors em coordenadas normalizadas (0–1).
+    // frameAnchor = ponto REAL de câmera ligado a um frame da timeline.
     anchors: [
       { kind: 'frameAnchor', role: 'start', frameIndex: fromIdx, x: startX, y: startY },
       { kind: 'frameAnchor', role: 'end',   frameIndex: toIdx,   x: endX,   y: endY   }
     ],
     // controls: pontos de controle do modo atual em coordenadas normalizadas (0–1).
     // legacyQuadratic: um único curvePuller (ponto de controle quadrático legado).
-    // Futuro: poderá conter handles Bézier cúbico para mode = 'vectorAnchors'.
-    controls
+    // curvePuller = atrai a curva mas NÃO é ponto de passagem real.
+    controls,
+    // pathPoints: contrato runtime vazio — v8z4b19e.
+    // Futuro: pontos reais de passagem intermediária (a curva passa exatamente por eles).
+    // Enquanto mode === 'legacyQuadratic', este array é sempre [] e completamente ignorado.
+    // NUNCA persiste no JSON — apenas runtime.
+    pathPoints: [],
+    // handles: contrato runtime vazio — v8z4b19e.
+    // Futuro: controles vetoriais de tangência associados a pathPoints.
+    // Enquanto mode === 'legacyQuadratic', este array é sempre [] e completamente ignorado.
+    // NUNCA persiste no JSON — apenas runtime.
+    handles: [],
+    // capabilities: metadados informativos do modo atual — v8z4b19e.
+    // Indicam quais funcionalidades este modelo suporta ativamente.
+    // supportsPathPoints: false → pathPoints são apenas contrato vazio nesta versão.
+    // supportsHandles: false   → handles são apenas contrato vazio nesta versão.
+    // NUNCA persiste no JSON — apenas runtime.
+    capabilities: {
+      supportsPathPoints: false,
+      supportsHandles:    false
+    }
   };
 }
 
 // Valida que o modelo runtime é bem-formado e utilizável.
 // Retorna true se o modelo é válido para avaliação; false caso contrário.
 // Uso: guard defensivo antes de avaliar o modelo em contextos críticos.
+//
+// v8z4b19e: aceita os novos campos opcionais pathPoints, handles e capabilities
+// introduzidos nesta versão. Esses campos são apenas contrato runtime —
+// sua presença (ou ausência) não afeta a validade do modelo legacyQuadratic.
+// O modo 'legacyQuadratic' continua sendo o único modo suportado ativamente.
 function validateRuntimeCurveModel(model) {
   if (!model || model.version !== 1) return false;
   if (model.mode !== 'legacyQuadratic') return false; // único modo suportado nesta versão
@@ -5054,6 +5122,11 @@ function validateRuntimeCurveModel(model) {
       !isFinite(end.x)   || !isFinite(end.y)) return false;
   const ctrl = model.controls[0];
   if (!ctrl || !isFinite(ctrl.x) || !isFinite(ctrl.y)) return false;
+  // v8z4b19e: pathPoints e handles são campos opcionais de contrato runtime.
+  // Se presentes, devem ser arrays (possivelmente vazios). Não afetam a validade
+  // do modelo enquanto mode === 'legacyQuadratic'.
+  if (model.pathPoints !== undefined && !Array.isArray(model.pathPoints)) return false;
+  if (model.handles    !== undefined && !Array.isArray(model.handles))    return false;
   return true;
 }
 
@@ -5066,15 +5139,23 @@ function validateRuntimeCurveModel(model) {
 //   - Convertidos para pixels aqui: pixelX = normalX * stageW.
 //   - O retorno {x, y} é em pixels do stage.
 //
+// v8z4b19e — pathPoints e handles:
+//   Enquanto mode === 'legacyQuadratic', pathPoints e handles são arrays
+//   vazios de contrato runtime. São completamente ignorados na avaliação.
+//   Apenas anchors[start/end] e controls[0] (curvePuller) são usados.
+//   Quando futuramente mode === 'vectorAnchors' for implementado, este
+//   avaliador deverá ramificar para lógica Bézier cúbica com pathPoints.
+//
 // Nota de paridade matemática:
 //   Os resultados são numericamente idênticos aos de evaluateSegmentPath()
-//   para os mesmos dados de entrada. evaluateSegmentPath() NÃO foi alterada
-//   para chamar esta função — coexistência paralela por segurança.
+//   para os mesmos dados de entrada. O comportamento visual é idêntico à v8z4b19d.
 function evaluateRuntimeCurveModel(model, t) {
   if (!validateRuntimeCurveModel(model)) return null;
   if (!stageW || !stageH || stageW <= 0 || stageH <= 0) return null;
   if (typeof t !== 'number' || !isFinite(t)) t = 0;
   t = Math.max(0, Math.min(1, t));
+  // v8z4b19e: pathPoints e handles ignorados enquanto mode === 'legacyQuadratic'.
+  // A avaliação usa exclusivamente anchors[start/end] + controls[0] (curvePuller).
 
   const start = model.anchors.find(a => a.role === 'start');
   const end   = model.anchors.find(a => a.role === 'end');
@@ -5103,18 +5184,25 @@ function evaluateRuntimeCurveModel(model, t) {
 
 // ─── Futuro modo vectorAnchors (não ativado nesta versão) ─────────────────────
 //
-// Quando mode === "vectorAnchors", o segmento usará frameAnchors, pathPoints
-// e handles em vez do curvePuller legado. Estrutura conceitual futura:
+// v8z4b19e: o contrato runtime já inclui pathPoints: [] e handles: [] como
+// campos vazios, documentando a forma que esses campos terão no futuro.
+// O modelo atual continua em mode === 'legacyQuadratic' com comportamento
+// visual e matemático idêntico à v8z4b19d.
+//
+// Quando mode === "vectorAnchors" for implementado (versão futura),
+// o segmento usará frameAnchors, pathPoints e handles em vez do curvePuller
+// legado. Estrutura conceitual futura (referência):
 //
 // {
 //   mode: "vectorAnchors",
-//   frameAnchors: [...],
+//   anchors:    [ { kind: "frameAnchor", role: "start"|"end", frameIndex, x, y } ],
+//   controls:   [],  // curvePuller não usado em vectorAnchors
 //   pathPoints: [
 //     {
 //       kind: "pathPoint",
 //       id: string,
-//       x: number,
-//       y: number,
+//       x: number,          // normalizado (0–1)
+//       y: number,          // normalizado (0–1)
 //       pointType: "corner" | "smooth" | "auto",
 //       handleIn:  null | { x: number, y: number },
 //       handleOut: null | { x: number, y: number }
@@ -5122,7 +5210,8 @@ function evaluateRuntimeCurveModel(model, t) {
 //   ],
 //   handles: [
 //     { kind: "handle", ownerId: string, type: "in" | "out", x: number, y: number }
-//   ]
+//   ],
+//   capabilities: { supportsPathPoints: true, supportsHandles: true }
 // }
 //
 // TODO (vectorAnchors): avaliador Bézier cúbico com pathPoints e handles.
@@ -5131,12 +5220,15 @@ function evaluateRuntimeCurveModel(model, t) {
 // TODO (vectorAnchors): migração controlada de legacyQuadratic → vectorAnchors.
 // ──────────────────────────────────────────────────────────────────────────────
 
-// ─── Unified Segment Path Evaluator — v8z4b18l / mode switch v8z4b18n / runtime v8z4b19d ──
+// ─── Unified Segment Path Evaluator — v8z4b18l / mode switch v8z4b18n / runtime v8z4b19d / pathPoint contract v8z4b19e ──
 //
 // evaluateSegmentPath() é a entrada pública/real do motor para calcular posição
 // no caminho de um segmento. A partir da v8z4b19d, usa o modelo runtime de curva
 // (buildRuntimeCurveModel + validateRuntimeCurveModel + evaluateRuntimeCurveModel)
 // como caminho preferencial, com fallback automático para o cálculo legado.
+// v8z4b19e: o modelo runtime agora inclui pathPoints:[], handles:[], capabilities —
+// campos de contrato vazio ignorados enquanto mode === 'legacyQuadratic'.
+// O resultado de evaluateSegmentPath() continua idêntico ao da v8z4b19d.
 //
 // Caminhos de avaliação:
 //   [preferencial] runtime model  → buildRuntimeCurveModel → validateRuntimeCurveModel
