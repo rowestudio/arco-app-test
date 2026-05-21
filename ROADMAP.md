@@ -66,14 +66,17 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19f)
+### Estado atual (v8z4b19g)
 
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
 - `capabilities: { supportsPathPoints: false, supportsHandles: false }` — modo ativo: `legacyQuadratic`.
-- `evaluateSegmentPath()` continua com resultado idêntico à v8z4b19e.
+- `evaluateSegmentPath()` continua com resultado idêntico à v8z4b19f.
 - Nenhum campo novo persiste no JSON.
 - O `pathPoint` derivado NÃO tem UI, NÃO é editável e NÃO altera a trajetória.
+- `validateDerivedRuntimePathPoint(model)` — diagnóstico passivo: confirma coerência matemática entre `pathPoint` derivado e `evaluateRuntimeCurveModel(model, 0.5)`, com conversão explícita de unidades (normalizado → pixels). Introduzido na v8z4b19g.
+- `diagnoseRuntimeCurveSegment(segIndex)` — encapsula diagnóstico por segmento. Introduzido na v8z4b19g.
+- `diagnoseRuntimeCurveModel()` — agrega diagnóstico de todos os segmentos ativos. Introduzido na v8z4b19g.
 
 ### Próximos passos (futuros, não imediatos)
 
