@@ -2,6 +2,71 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18z — fix loop curve undo
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b18z` na UI (Settings).
+3. Confirmar que nome da versão exibe `fix loop curve undo`.
+
+### Teste B — undo/redo da curva de loop (núcleo da correção)
+1. Carregar imagem no iPhone/Safari.
+2. Criar projeto com pelo menos 4 frames.
+3. Ativar loop.
+4. Selecionar F1 ou o último frame para mostrar a bolinha roxa da curva de loop.
+5. Arrastar a bolinha da curva de loop para uma nova posição.
+6. Tocar em Undo.
+7. Confirmar que a curva de loop volta para a posição anterior ao drag.
+8. Tocar em Redo.
+9. Confirmar que a curva de loop volta para a posição editada.
+
+### Teste C — curvas normais não afetadas
+1. Arrastar uma curva normal (não loop) entre dois frames.
+2. Tocar em Undo.
+3. Confirmar que a curva normal volta à posição anterior.
+4. Tocar em Redo.
+5. Confirmar que a curva normal volta à posição editada.
+
+### Teste D — histórico misto (loop + normal + frame)
+1. Mover frame.
+2. Arrastar curva de loop.
+3. Arrastar curva normal.
+4. Tocar em Undo três vezes.
+5. Confirmar que cada operação desfaz na ordem correta.
+6. Tocar em Redo três vezes.
+7. Confirmar que cada operação refaz na ordem correta.
+
+### Teste E — Preview com curva de loop
+1. Com curva de loop ajustada, rodar Preview.
+2. Confirmar que a curva de loop é respeitada na animação.
+3. Confirmar que o Preview não quebra.
+
+### Teste F — save com imagem
+1. Salvar projeto com imagem.
+2. Confirmar que filename termina em `_img.json`.
+3. Abrir o JSON e confirmar:
+   - `version` = `v8z4b18z`;
+   - `imageBase64` existe;
+   - `loopCtrlPt` preservado;
+   - `ctrlPts` preservado;
+   - `ctrlPtManual` preservado;
+   - `framePauses` preservado;
+   - `segDurations` preservado;
+   - nenhum campo novo criado.
+
+### Teste G — save sem imagem
+1. Salvar projeto sem imagem.
+2. Confirmar que filename termina em `_file.json`.
+3. Confirmar que `version` = `v8z4b18z`.
+4. Confirmar que `imageBase64` não existe.
+5. Confirmar que `loopCtrlPt` preservado.
+
+### Teste H — PR aberto e não mergeado
+1. Confirmar que o PR está aberto.
+2. Confirmar que não foi mergeado automaticamente.
+
+---
+
 ## v8z4b18y — centralize legacy curve puller access
 
 ### Teste A — abertura e versão

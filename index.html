@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b18y                                     ║
+║  Versão: v8z4b18z                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b18y — centralize legacy curve puller access: substitui acessos diretos a ctrlPts/ctrlPtManual/loopCtrlPt por getSegmentCurvePuller/isSegmentCurvePullerManual/setSegmentCurvePuller em funções de renderização, sincronização e medição de curva; sem alterar motor, visual, schema JSON ou comportamento -->
+<!-- Arco Motion App — v8z4b18z — fix loop curve undo: startCtrlDrag('loop') em vez de ctrlDragSeg = 'loop' direto no pointerdown do loopEl; pushUndo() agora é chamado antes de iniciar drag da curva de loop; sem alterar motor, visual, schema JSON ou comportamento -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1855,7 +1855,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b18x</span><br><span id="appVersionNameText">clarify legacy curve puller architecture</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b18z</span><br><span id="appVersionNameText">fix loop curve undo</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4196,8 +4196,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18y';
-const APP_VERSION_NAME = 'centralize legacy curve puller access';
+const APP_VERSION = 'v8z4b18z';
+const APP_VERSION_NAME = 'fix loop curve undo';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -6522,7 +6522,7 @@ function updateCtrlPts() {
       loopEl.style.background = 'rgba(180,100,255,1)';
       loopEl.style.boxShadow  = '0 2px 8px rgba(0,0,0,.4),0 0 0 5px rgba(180,100,255,.2)';
       stage.appendChild(loopEl);
-      loopEl.addEventListener('pointerdown', e => { if (!editorPanMode) { e.stopPropagation(); ctrlDragSeg = 'loop'; } });
+      loopEl.addEventListener('pointerdown', e => { if (!editorPanMode) { e.stopPropagation(); startCtrlDrag('loop'); } });
     }
     loopEl.style.display = 'block';
     loopEl.style.left    = (_loopCurve.nx * stageW) + 'px';

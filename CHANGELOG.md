@@ -1,5 +1,55 @@
 # Changelog
 
+## v8z4b18z — fix loop curve undo
+
+Patch mínimo de correção de bug: editar a curva de loop não entrava no histórico de undo.
+
+### Problema
+
+No handler `pointerdown` do elemento `cpt_loop` (bolinha da curva de loop), o drag era
+iniciado atribuindo diretamente `ctrlDragSeg = 'loop'`, ignorando `startCtrlDrag('loop')`.
+A função `startCtrlDrag` é responsável por chamar `pushUndo()` antes de iniciar qualquer
+drag de curva. Como `startCtrlDrag` não era chamada para o loop, o estado pré-drag não era
+salvo no histórico, tornando o undo ineficaz para a curva de loop.
+
+O sistema de undo já suportava `loopCtrlPt`: `captureState()` salva e `restoreState()`
+restaura `loopCtrlPt` corretamente. A causa era exclusivamente a chamada direta.
+
+### Correção em index.html
+
+**`cpt_loop` — handler `pointerdown` (linha 6525 antes da correção)**
+
+```js
+// ANTES
+loopEl.addEventListener('pointerdown', e => { if (!editorPanMode) { e.stopPropagation(); ctrlDragSeg = 'loop'; } });
+
+// DEPOIS
+loopEl.addEventListener('pointerdown', e => { if (!editorPanMode) { e.stopPropagation(); startCtrlDrag('loop'); } });
+```
+
+`startCtrlDrag('loop')` executa:
+1. `document.body.classList.add('dragging')` — consistência com curvas normais.
+2. `pushUndo()` — salva o estado antes do drag (correção do bug).
+3. `ctrlDragSeg = 'loop'` — mesmo comportamento de antes para o restante do drag.
+4. A guarda `if (typeof seg === 'number' && seg >= 0)` em `setSegmentCurveManual` não
+   é ativada para `'loop'` — comportamento existente preservado.
+
+### Arquivos alterados
+
+- `index.html` — correção do handler + atualização de versão/changelog/comentários.
+- `CHANGELOG.md` — esta entrada.
+- `QA.md` — checklist atualizado para v8z4b18z.
+- `pages-deploy-stamp.txt` — stamp de redeploy.
+
+### Restrições respeitadas
+
+Sem alteração de UI, layout, cor, texto visível, ícones, visual de curva, Preview, MP4,
+save/load, JSON schema, curvesV2, vectorPath, handles, pathPoints, framePauses,
+segDurations, filename, refatoração ampla. Patch restrito ao handler `pointerdown` do
+`loopEl` e à atualização de versão.
+
+---
+
 ## v8z4b18y — centralize legacy curve puller access
 
 Patch de centralização gradual do acesso ao puxador de curva legado. Usa os helpers
