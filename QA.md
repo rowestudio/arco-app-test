@@ -2,6 +2,100 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19h — derive split runtime curve spans
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19h` na UI (Settings).
+3. Confirmar que nome da versão exibe `derive split runtime curve spans`.
+
+### Teste B — curvas normais (segmentos normais F1→F2, F2→F3)
+1. Carregar imagem no iPhone/Safari.
+2. Criar projeto com pelo menos 4 frames.
+3. Puxar curva normal F1→F2.
+4. Confirmar que a bolinha da curva aparece na posição correta (igual à v8z4b19g).
+5. Confirmar que a curva desenhada aparece igual à v8z4b19g.
+6. Puxar curva normal F2→F3.
+7. Confirmar que a segunda bolinha e curva aparecem corretamente.
+
+### Teste C — curva de loop (segmento N→1)
+1. Ativar loop.
+2. Selecionar F1 ou último frame para exibir a bolinha roxa da curva de loop.
+3. Confirmar que a bolinha roxa aparece.
+4. Arrastar a bolinha da curva de loop.
+5. Confirmar que a curva de loop se move igual à v8z4b19g.
+6. Confirmar que o trecho de loop vai do último frame ao primeiro frame.
+
+### Teste D — undo/redo das curvas
+1. Puxar curva normal.
+2. Confirmar Undo da curva normal.
+3. Confirmar Redo da curva normal.
+4. Com loop ativo, puxar curva de loop.
+5. Confirmar Undo da curva de loop.
+6. Confirmar Redo da curva de loop.
+
+### Teste E — Preview
+1. Rodar Preview.
+2. Confirmar que Preview respeita curvas normais.
+3. Confirmar que Preview respeita curva de loop.
+4. Confirmar que Preview parece idêntico à v8z4b19g.
+
+### Teste F — velocidade constante
+1. Usar velocidade constante com curvas normais.
+2. Confirmar que Preview com velocidade constante parece idêntico à v8z4b19g.
+3. Ativar loop.
+4. Confirmar que Preview com velocidade constante e loop parece idêntico à v8z4b19g.
+
+### Teste G — mover frame após puxar curvas
+1. Puxar curvas normais F1→F2 e F2→F3.
+2. Mover F2 na tela.
+3. Confirmar que as curvas não pulam.
+4. Confirmar que as bolinhas de curva seguem os frames.
+
+### Teste H — salvar projeto (com imagem)
+1. Salvar projeto com imagem.
+2. Confirmar que o filename termina em `_img.json`.
+3. Abrir o JSON salvo e confirmar:
+   - `version` = `v8z4b19h`.
+   - `imageBase64` existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+4. Confirmar que NENHUM destes campos apareceu no JSON:
+   - `curvesV2`, `vectorPath`, `handles`, `pathPoints`,
+     `runtimeCurveModel`, `capabilities`, `spans`.
+
+### Teste I — salvar projeto (sem imagem)
+1. Salvar projeto sem imagem.
+2. Confirmar que o filename termina em `_file.json`.
+3. Abrir o JSON salvo e confirmar:
+   - `version` = `v8z4b19h`.
+   - `imageBase64` não existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado.
+
+### Teste J — compatibilidade com JSON de versões anteriores
+1. Abrir JSON salvo em v8z4b19g.
+2. Confirmar que o projeto abre normalmente.
+3. Confirmar que as curvas aparecem corretamente.
+4. Confirmar que Preview funciona.
+
+### Teste K — sem erros de console
+1. Abrir app em modo de desenvolvimento.
+2. Executar todos os testes acima.
+3. Confirmar que não há erros de console, NaN ou Infinity relacionados a curvas.
+
+### Critério central
+- `evaluateSegmentPath(segIndex, t)` → resultado idêntico à v8z4b19g.
+- Spans derivados existem apenas no modelo runtime (não no JSON).
+- Spans não são editáveis, não são renderizados.
+- UI, JSON, Preview, MP4, save/load e comportamento visual sem alteração.
+
+---
+
 ## v8z4b19g — add runtime path point diagnostics
 
 ### Teste A — abertura e versão

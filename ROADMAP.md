@@ -66,17 +66,26 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19g)
+### Estado atual (v8z4b19h)
 
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
 - `capabilities: { supportsPathPoints: false, supportsHandles: false }` — modo ativo: `legacyQuadratic`.
-- `evaluateSegmentPath()` continua com resultado idêntico à v8z4b19f.
+- `spans[]` — dois `quadraticSpan` derivados representando a curva legada dividida em dois sub-spans por De Casteljau em `t=0.5`. Apenas runtime: não persistidos, não renderizados, não editáveis. Introduzidos na v8z4b19h.
+  - `spans[0]` (`derivedFirstHalf`): P0 → M com controle A = lerp(P0,C,0.5).
+  - `spans[1]` (`derivedSecondHalf`): M → P1 com controle B = lerp(C,P1,0.5).
+  - M coincide com `pathPoints[0]` (derivedMidpoint).
+  - Propriedade: `span1(s) = B_orig(s/2)` e `span2(s) = B_orig(0.5+s/2)`.
+- `evaluateSegmentPath()` continua com resultado idêntico à v8z4b19g.
 - Nenhum campo novo persiste no JSON.
 - O `pathPoint` derivado NÃO tem UI, NÃO é editável e NÃO altera a trajetória.
+- Os spans derivados NÃO têm UI, NÃO são editáveis, NÃO alteram a trajetória.
 - `validateDerivedRuntimePathPoint(model)` — diagnóstico passivo: confirma coerência matemática entre `pathPoint` derivado e `evaluateRuntimeCurveModel(model, 0.5)`, com conversão explícita de unidades (normalizado → pixels). Introduzido na v8z4b19g.
 - `diagnoseRuntimeCurveSegment(segIndex)` — encapsula diagnóstico por segmento. Introduzido na v8z4b19g.
 - `diagnoseRuntimeCurveModel()` — agrega diagnóstico de todos os segmentos ativos. Introduzido na v8z4b19g.
+- `lerpPointNormalized(a, b, t)` — lerp normalizado para divisão De Casteljau. Introduzido na v8z4b19h.
+- `splitLegacyQuadraticAtMidpoint(start, control, end)` — divisão De Casteljau em t=0.5. Introduzido na v8z4b19h.
+- `validateDerivedRuntimeSpans(model)` — diagnóstico passivo dos spans derivados: verifica midpoint match e reconstituição por amostragem. Introduzido na v8z4b19h.
 
 ### Próximos passos (futuros, não imediatos)
 

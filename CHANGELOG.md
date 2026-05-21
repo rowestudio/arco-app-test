@@ -1,5 +1,107 @@
 # Changelog
 
+## v8z4b19h — derive split runtime curve spans
+
+Implementação interna controlada do runtime curve model.
+Adiciona, dentro do modelo runtime, uma estrutura de dois `quadraticSpan` derivados
+que representam a curva quadrática legada dividida em dois sub-spans via divisão
+De Casteljau em `t=0.5`. Os spans são apenas runtime — não persistidos, não
+renderizados, não editáveis, não usados como avaliador principal. O resultado de
+`evaluateSegmentPath()` é idêntico à v8z4b19g. Sem alterar UI, JSON, Preview,
+MP4, save/load ou comportamento visual.
+
+### Objetivo
+
+Criar uma representação derivada da curva legada dividida em dois spans
+quadráticos que passam pelo `pathPoint` derivado em `t=0.5`, preservando
+matematicamente a trajetória atual. Prepara o futuro modo baseado em
+`pathPoints` reais.
+
+### Helpers adicionados
+
+| Função | Descrição |
+|---|---|
+| `lerpPointNormalized(a, b, t)` | Interpolação linear entre dois pontos normalizados (0–1). Usado pela divisão De Casteljau. Retorna `{ x, y }` normalizado ou `null` se inválido. |
+| `splitLegacyQuadraticAtMidpoint(start, control, end)` | Divide a curva quadrática de Bézier legada em `t=0.5` via De Casteljau. Retorna `{ firstHalfControl: A, midpoint: M, secondHalfControl: B }` em coordenadas normalizadas. |
+| `validateDerivedRuntimeSpans(model)` | Diagnóstico passivo: valida que os spans derivados reconstituem matematicamente a curva legada. Verifica midpoint match, estrutura dos spans e reconstituição por amostragem em 9 pontos. Retorna `{ ok, reason, midpointMatch, spanCount, sampleChecks }`. |
+
+### Funções alteradas em index.html
+
+| Função | Alteração |
+|---|---|
+| `buildRuntimeCurveModel(segIndex)` | `spans[]` adicionado ao retorno: dois `quadraticSpan` derivados (`derivedFirstHalf` e `derivedSecondHalf`) calculados via `splitLegacyQuadraticAtMidpoint`. Todos em coordenadas normalizadas (0–1). `editable: false`, `derived: true`. |
+| `validateRuntimeCurveModel(model)` | Aceita e valida `spans[]` opcional. Cada span derivado (`derived: true`) deve ter `kind: 'quadraticSpan'`, `editable: false`, `start/control/end` com `x/y` finitos. |
+| `compareRuntimePathWithLegacy(segIndex, t)` | Retorno inclui `spansDiag` via `validateDerivedRuntimeSpans(model)`. |
+
+### Estrutura dos spans derivados (em buildRuntimeCurveModel)
+
+Algoritmo De Casteljau em t=0.5:
+```
+P0 = frameAnchor inicial (normalizado)
+C  = curvePuller legado  (normalizado)
+P1 = frameAnchor final   (normalizado)
+A  = lerp(P0, C,  0.5)   → controle do primeiro span
+B  = lerp(C,  P1, 0.5)   → controle do segundo span
+M  = lerp(A,  B,  0.5)   → ponto de divisão = pathPoints[0] (derivedMidpoint)
+```
+
+```js
+// Em buildRuntimeCurveModel():
+spans: [
+  {
+    kind:     'quadraticSpan',
+    role:     'derivedFirstHalf',
+    source:   'legacyQuadraticSplit',
+    tRange:   [0, 0.5],
+    start:   { kind: 'frameAnchor',   role: 'start',            x: P0.x, y: P0.y },
+    control: { kind: 'derivedHandle', role: 'firstHalfControl', x: A.x,  y: A.y,  editable: false, derived: true },
+    end:     { kind: 'pathPoint',     role: 'derivedMidpoint',  x: M.x,  y: M.y  },
+    editable: false, derived: true
+  },
+  {
+    kind:     'quadraticSpan',
+    role:     'derivedSecondHalf',
+    source:   'legacyQuadraticSplit',
+    tRange:   [0.5, 1],
+    start:   { kind: 'pathPoint',     role: 'derivedMidpoint',   x: M.x,  y: M.y  },
+    control: { kind: 'derivedHandle', role: 'secondHalfControl', x: B.x,  y: B.y,  editable: false, derived: true },
+    end:     { kind: 'frameAnchor',   role: 'end',               x: P1.x, y: P1.y },
+    editable: false, derived: true
+  }
+]
+```
+
+### Propriedade matemática garantida
+
+- `span1(s) = B_original(s/2)` para `s ∈ [0, 1]` (mapeia global `t ∈ [0, 0.5]`).
+- `span2(s) = B_original(0.5 + s/2)` para `s ∈ [0, 1]` (mapeia global `t ∈ [0.5, 1]`).
+- `M === pathPoints[0].x/y` (ponto de divisão = midpoint derivado).
+
+### Unidade
+
+Todos os pontos de `spans[]` (`start`, `control`, `end`) são coordenadas normalizadas
+`(0–1)`, igual a `anchors` e `controls`. Convenção: `x = pixelX / stageW`, `y = pixelY / stageH`.
+Nenhuma mistura com pixels sem conversão explícita.
+
+### Comportamento passivo
+
+- Spans não são usados como avaliador principal (`evaluateSegmentPath` continua com `curvePuller`).
+- Spans não são renderizados na UI.
+- Spans não são editáveis (`editable: false`).
+- Spans não persistem no JSON (`derived: true`).
+- `validateDerivedRuntimeSpans` não deve ser chamado durante animação, Preview ou exportação.
+
+### Confirmações
+
+- `evaluateSegmentPath(segIndex, t)` → resultado idêntico à v8z4b19g.
+- `pathPoints[0]` (derivedMidpoint) e `spans[0].end` / `spans[1].start` coincidem matematicamente.
+- Os dois spans reconstituem a curva legada completa dentro da tolerância `0.000001` normalizado.
+- Nenhum campo novo aparece no JSON salvo.
+- UI, Preview, MP4, save/load e comportamento visual sem alteração.
+- Schema persistido (`ctrlPts`, `ctrlPtManual`, `loopCtrlPt`) sem alteração.
+
+---
+
 ## v8z4b19g — add runtime path point diagnostics
 
 Diagnóstico interno passivo e controlado do runtime curve model.

@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19g                                     ║
+║  Versão: v8z4b19h                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19g — add runtime path point diagnostics: validateDerivedRuntimePathPoint(model) valida se o pathPoint derivado em t=0.5 é matematicamente coerente com evaluateRuntimeCurveModel(model,0.5), convertendo unidades normalizadas para pixels antes de comparar; diagnoseRuntimeCurveSegment(segIndex) encapsula o diagnóstico de um segmento; diagnoseRuntimeCurveModel() diagnostica todos os segmentos ativos; compareRuntimePathWithLegacy atualizado para reutilizar validateDerivedRuntimePathPoint; diagnóstico é passivo, não altera estado, não é chamado durante animação/Preview/MP4; UI, JSON, Preview, MP4, save/load e comportamento visual sem alteração -->
+<!-- Arco Motion App — v8z4b19h — derive split runtime curve spans: lerpPointNormalized(a,b,t) e splitLegacyQuadraticAtMidpoint(start,control,end) adicionados como helpers de divisão De Casteljau; buildRuntimeCurveModel agora produz spans[] com dois quadraticSpans derivados (derivedFirstHalf e derivedSecondHalf) usando P0→M e M→P1 com controles A e B calculados por De Casteljau em t=0.5; validateRuntimeCurveModel aceita e valida spans derivados; validateDerivedRuntimeSpans(model) diagnostica passivamente se os spans reconstituem a curva legada dentro da tolerância; compareRuntimePathWithLegacy atualizado para incluir spansDiag; spans são apenas runtime — não persistidos, não renderizados, não editáveis; evaluateSegmentPath idêntico à v8z4b19g; UI, JSON, Preview, MP4, save/load e comportamento visual sem alteração -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1855,7 +1855,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19g</span><br><span id="appVersionNameText">add runtime path point diagnostics</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19h</span><br><span id="appVersionNameText">derive split runtime curve spans</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4196,8 +4196,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19g';
-const APP_VERSION_NAME = 'add runtime path point diagnostics';
+const APP_VERSION = 'v8z4b19h';
+const APP_VERSION_NAME = 'derive split runtime curve spans';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4923,6 +4923,74 @@ function getSegmentVectorModel(segIndex) {
   };
 }
 
+// ─── Helper: Lerp normalizado — v8z4b19h ─────────────────────────────────────
+//
+// lerpPointNormalized(a, b, t)
+//
+// Interpolação linear entre dois pontos normalizados (0–1).
+// Usada pela divisão De Casteljau em splitLegacyQuadraticAtMidpoint.
+//
+// Parâmetros (em coordenadas normalizadas 0–1):
+//   a — { x, y } — ponto inicial.
+//   b — { x, y } — ponto final.
+//   t — número em [0, 1] — posição na interpolação.
+//
+// Retorna { x, y } em coordenadas normalizadas, ou null se inválido.
+// Unidade: normalizado (0–1) — mesma de anchors/controls/pathPoints.
+//
+// v8z4b19h — helper novo.
+function lerpPointNormalized(a, b, t) {
+  if (!a || !b) return null;
+  if (typeof t !== 'number' || !isFinite(t)) return null;
+  if (!isFinite(a.x) || !isFinite(a.y)) return null;
+  if (!isFinite(b.x) || !isFinite(b.y)) return null;
+  const x = a.x + (b.x - a.x) * t;
+  const y = a.y + (b.y - a.y) * t;
+  if (!isFinite(x) || !isFinite(y)) return null;
+  return { x, y };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: Divisão De Casteljau em t=0.5 — v8z4b19h ────────────────────────
+//
+// splitLegacyQuadraticAtMidpoint(start, control, end)
+//
+// Divide a curva quadrática de Bézier legada em t=0.5 usando o algoritmo
+// De Casteljau. Produz os pontos de controle dos dois sub-spans resultantes.
+//
+// Parâmetros (todos em coordenadas normalizadas 0–1):
+//   start   — { x, y } — P0: ponto inicial (frameAnchor from).
+//   control — { x, y } — C:  ponto de controle (curvePuller normalizado).
+//   end     — { x, y } — P1: ponto final (frameAnchor to).
+//
+// Algoritmo De Casteljau em t=0.5:
+//   A = lerp(P0, C,  0.5)  — controle do primeiro sub-span
+//   B = lerp(C,  P1, 0.5)  — controle do segundo sub-span
+//   M = lerp(A,  B,  0.5)  — ponto de divisão (= pathPoints[0] derivadoMidpoint)
+//
+// Retorna { firstHalfControl: A, midpoint: M, secondHalfControl: B }
+// todos em coordenadas normalizadas (0–1), ou null se inválido.
+//
+// M deve coincidir matematicamente com pathPoints[0] (o derivedMidpoint em t=0.5).
+// A é o ponto de controle do span P0→M.
+// B é o ponto de controle do span M→P1.
+//
+// Propriedade garantida: avaliando o span1(P0,A,M) em t=s e o span2(M,B,P1)
+// em t=s reconstituem a curva original: span1(s) = B_orig(s/2),
+// span2(s) = B_orig(0.5 + s/2).
+//
+// v8z4b19h — helper novo.
+function splitLegacyQuadraticAtMidpoint(start, control, end) {
+  if (!start || !control || !end) return null;
+  const A = lerpPointNormalized(start,   control, 0.5);
+  const B = lerpPointNormalized(control, end,     0.5);
+  if (!A || !B) return null;
+  const M = lerpPointNormalized(A, B, 0.5);
+  if (!M) return null;
+  return { firstHalfControl: A, midpoint: M, secondHalfControl: B };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 // ─── Helper: Bézier quadrática normalizada — v8z4b19f ────────────────────────
 //
 // evaluateLegacyQuadraticNormalized(start, control, end, t)
@@ -4960,7 +5028,7 @@ function evaluateLegacyQuadraticNormalized(start, control, end, t) {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-// ─── Runtime Curve Model — v8z4b19c / primary path v8z4b19d / pathPoint contract v8z4b19e / derived pathPoint v8z4b19f ─
+// ─── Runtime Curve Model — v8z4b19c / primary path v8z4b19d / pathPoint contract v8z4b19e / derived pathPoint v8z4b19f / derived spans v8z4b19h ─
 //
 // buildRuntimeCurveModel(segIndex): constrói o modelo runtime de curva do
 // segmento. Representa exatamente a curva atual (legacyQuadratic) como um
@@ -4998,6 +5066,16 @@ function evaluateLegacyQuadraticNormalized(start, control, end, t) {
 //                   Na v8z4b19e: apenas contrato runtime vazio (handles: []).
 //                   Não existe no JSON; não renderizado; não editável.
 //
+//   spans         — INTERNAL v8z4b19h: representação derivada da curva legada
+//                   dividida em dois sub-spans quadráticos por divisão
+//                   De Casteljau em t=0.5. Cada span é um 'quadraticSpan'
+//                   com start/control/end em coordenadas normalizadas (0–1).
+//                   span1: P0→M (controle A), span2: M→P1 (controle B).
+//                   editable: false, derived: true — apenas runtime.
+//                   Não altera a trajetória; não é renderizado; não persiste
+//                   no JSON; não é editável. Prepara o futuro modo baseado
+//                   em pathPoints reais.
+//
 //   capabilities  — metadados internos indicando quais funcionalidades o
 //                   modelo atual suporta. Na v8z4b19e:
 //                   { supportsPathPoints: false, supportsHandles: false }
@@ -5031,6 +5109,15 @@ function evaluateLegacyQuadraticNormalized(start, control, end, t) {
 //                   Futuro: controles vetoriais de tangência.
 //                   Ignorados enquanto mode === 'legacyQuadratic'.
 //                   NÃO persistidos no JSON.
+//   spans:          Dois quadraticSpans derivados — v8z4b19h.
+//                   Representam a curva legada dividida em dois sub-spans
+//                   quadráticos via De Casteljau em t=0.5:
+//                     spans[0]: role 'derivedFirstHalf'  — P0→M com controle A.
+//                     spans[1]: role 'derivedSecondHalf' — M→P1 com controle B.
+//                   Todos em coordenadas normalizadas (0–1), igual a anchors.
+//                   editable: false, derived: true — apenas runtime.
+//                   NÃO persistidos no JSON; NÃO renderizados; NÃO editáveis.
+//                   NÃO usados como avaliador principal nesta versão.
 //   capabilities:   { supportsPathPoints: false, supportsHandles: false }
 //                   Metadados informativos do modo atual.
 //                   NÃO persistidos no JSON.
@@ -5059,15 +5146,29 @@ function evaluateLegacyQuadraticNormalized(start, control, end, t) {
 //   - derived: true  — calculado automaticamente, não vem do schema persistido.
 //   - source: 'legacyQuadratic' — derivado da curva quadrática atual.
 //
-// ── O que NÃO é feito aqui (v8z4b19f) ───────────────────────────────────────
+// ── O que é feito aqui (v8z4b19h) ────────────────────────────────────────────
+//   - Cria dois spans quadráticos derivados via De Casteljau em t=0.5:
+//       A = lerp(P0, C, 0.5)  — controle do primeiro span.
+//       B = lerp(C, P1, 0.5)  — controle do segundo span.
+//       M = lerp(A, B, 0.5)   — ponto de divisão (= pathPoints[0] derivedMidpoint).
+//     span1: { start: P0, control: A, end: M }  — derivedFirstHalf, tRange [0, 0.5].
+//     span2: { start: M, control: B, end: P1 }  — derivedSecondHalf, tRange [0.5, 1].
+//   - Todos em coordenadas normalizadas (0–1) — mesma unidade de anchors.
+//   - editable: false, derived: true — apenas runtime.
+//   - Garante: M === pathPoints[0].x/y (ponto de divisão = midpoint derivado).
+//   - Garante: span1(s) = B_orig(s/2) e span2(s) = B_orig(0.5+s/2).
+//   - Não usa spans como avaliador principal nesta versão.
+//   - Não altera evaluateSegmentPath() — resultado idêntico à v8z4b19g.
+//
+// ── O que NÃO é feito aqui (v8z4b19f / v8z4b19h) ───────────────────────────
 //   - Não cria pathPoint editável nem handle real.
-//   - Não renderiza o pathPoint derivado.
+//   - Não renderiza o pathPoint derivado nem os spans.
 //   - pathPoint derivado não substitui o curvePuller (ctrlPts / loopCtrlPt).
-//   - pathPoint derivado não altera a trajetória.
-//   - Não persiste pathPoints, handles ou capabilities no JSON.
+//   - pathPoint derivado e spans não alteram a trajetória.
+//   - Não persiste pathPoints, handles, spans ou capabilities no JSON.
 //   - Não cria novo modo de curva ativo.
 //   - Não altera UI, JSON, Preview, MP4, save/load.
-//   - Não altera evaluateSegmentPath() — comportamento visual idêntico à v8z4b19e.
+//   - Não altera evaluateSegmentPath() — comportamento visual idêntico à v8z4b19g.
 //
 // Retorna null para segmento inválido, frameCount < 2 ou stage inválido.
 function buildRuntimeCurveModel(segIndex) {
@@ -5193,6 +5294,80 @@ function buildRuntimeCurveModel(segIndex) {
     // Enquanto mode === 'legacyQuadratic', este array é sempre [] e completamente ignorado.
     // NUNCA persiste no JSON — apenas runtime.
     handles: [],
+    // spans: dois quadraticSpans derivados — v8z4b19h.
+    //
+    // Representam a curva legada (curvePuller) dividida em dois sub-spans
+    // quadráticos pela divisão De Casteljau em t=0.5.
+    //
+    // Algoritmo:
+    //   P0 = frameAnchor inicial (startX, startY) — normalizado (0–1).
+    //   C  = curvePuller legado (controls[0].x/y)  — normalizado (0–1).
+    //   P1 = frameAnchor final  (endX, endY)        — normalizado (0–1).
+    //   A  = lerp(P0, C,  0.5) — controle do primeiro span.
+    //   B  = lerp(C,  P1, 0.5) — controle do segundo span.
+    //   M  = lerp(A,  B,  0.5) — ponto de divisão = pathPoints[0] (derivedMidpoint).
+    //
+    // span1 (derivedFirstHalf):  P0 → M com controle A, tRange [0, 0.5].
+    // span2 (derivedSecondHalf): M  → P1 com controle B, tRange [0.5, 1].
+    //
+    // Unidade: coordenadas normalizadas (0–1) — mesma de anchors e controls.
+    //   x = pixelX / stageW, y = pixelY / stageH.
+    //
+    // O que estas estruturas SÃO:
+    //   - Representação da curva legada dividida em dois sub-spans.
+    //   - Derivadas automaticamente da curva quadrática atual.
+    //   - Preparam o futuro modo baseado em pathPoints reais.
+    //
+    // O que estas estruturas NÃO são:
+    //   - Não são usadas como avaliador principal (evaluateSegmentPath continua com curvePuller).
+    //   - Não são persistidas no JSON.
+    //   - Não são renderizadas na UI.
+    //   - Não são editáveis (editable: false).
+    //   - Não alteram a trajetória nesta versão.
+    //
+    // NUNCA persiste no JSON — apenas runtime.
+    spans: (() => {
+      // Pontos de entrada em coordenadas normalizadas (0–1) — já calculados acima.
+      const P0 = { x: startX,          y: startY          };  // frameAnchor from
+      const C  = { x: controls[0].x,   y: controls[0].y   };  // curvePuller (normalizado)
+      const P1 = { x: endX,            y: endY            };  // frameAnchor to
+      // Divisão De Casteljau em t=0.5.
+      const split = splitLegacyQuadraticAtMidpoint(P0, C, P1);
+      if (!split) return [];
+      const { firstHalfControl: A, midpoint: M, secondHalfControl: B } = split;
+      // Verificar que M coincide com pathPoints[0] — ambos derivados da mesma fórmula.
+      // (M = lerp(lerp(P0,C,0.5), lerp(C,P1,0.5), 0.5) = B_quad(P0,C,P1,0.5))
+      return [
+        // span1: primeiro half — P0 → M com controle A.
+        // Avaliando span1 em localT ∈ [0,1]: B_span1(s) = B_original(s/2).
+        {
+          kind:     'quadraticSpan',
+          role:     'derivedFirstHalf',
+          source:   'legacyQuadraticSplit',
+          tRange:   [0, 0.5],
+          // Unidade de start/control/end: normalizado (0–1).
+          start:   { kind: 'frameAnchor',   role: 'start',              x: P0.x, y: P0.y },
+          control: { kind: 'derivedHandle', role: 'firstHalfControl',   x: A.x,  y: A.y,  editable: false, derived: true },
+          end:     { kind: 'pathPoint',     role: 'derivedMidpoint',    x: M.x,  y: M.y  },
+          editable: false,
+          derived:  true
+        },
+        // span2: segundo half — M → P1 com controle B.
+        // Avaliando span2 em localT ∈ [0,1]: B_span2(s) = B_original(0.5 + s/2).
+        {
+          kind:     'quadraticSpan',
+          role:     'derivedSecondHalf',
+          source:   'legacyQuadraticSplit',
+          tRange:   [0.5, 1],
+          // Unidade de start/control/end: normalizado (0–1).
+          start:   { kind: 'pathPoint',     role: 'derivedMidpoint',    x: M.x,  y: M.y  },
+          control: { kind: 'derivedHandle', role: 'secondHalfControl',  x: B.x,  y: B.y,  editable: false, derived: true },
+          end:     { kind: 'frameAnchor',   role: 'end',                x: P1.x, y: P1.y },
+          editable: false,
+          derived:  true
+        }
+      ];
+    })(),
     // capabilities: metadados informativos do modo atual — v8z4b19e.
     // Indicam quais funcionalidades este modelo suporta ativamente.
     // supportsPathPoints: false → pathPoints são apenas contrato vazio nesta versão.
@@ -5213,6 +5388,11 @@ function buildRuntimeCurveModel(segIndex) {
 // introduzidos nesta versão. Esses campos são apenas contrato runtime —
 // sua presença (ou ausência) não afeta a validade do modelo legacyQuadratic.
 // O modo 'legacyQuadratic' continua sendo o único modo suportado ativamente.
+//
+// v8z4b19h: aceita o campo spans[] opcional.
+// Cada span derivado (derived: true) deve ter:
+//   kind: 'quadraticSpan', editable: false,
+//   start/control/end com x/y numéricos finitos.
 function validateRuntimeCurveModel(model) {
   if (!model || model.version !== 1) return false;
   if (model.mode !== 'legacyQuadratic') return false; // único modo suportado nesta versão
@@ -5244,6 +5424,24 @@ function validateRuntimeCurveModel(model) {
     }
   }
   if (model.handles !== undefined && !Array.isArray(model.handles)) return false;
+  // v8z4b19h: spans[] — quadraticSpans derivados.
+  // Validação: deve ser array; cada span derivado deve ter estrutura bem-formada.
+  if (model.spans !== undefined) {
+    if (!Array.isArray(model.spans)) return false;
+    for (const sp of model.spans) {
+      if (!sp) return false;
+      // Valida apenas spans derivados (derived: true).
+      if (sp.derived !== true) continue;
+      if (sp.kind !== 'quadraticSpan') return false;
+      if (sp.editable !== false) return false;
+      // Validar start, control e end: cada um deve ter x/y numéricos finitos.
+      for (const pt of [sp.start, sp.control, sp.end]) {
+        if (!pt) return false;
+        if (typeof pt.x !== 'number' || !isFinite(pt.x)) return false;
+        if (typeof pt.y !== 'number' || !isFinite(pt.y)) return false;
+      }
+    }
+  }
   return true;
 }
 
@@ -5312,6 +5510,12 @@ function evaluateRuntimeCurveModel(model, t) {
 // O modelo atual continua em mode === 'legacyQuadratic' com comportamento
 // visual e matemático idêntico à v8z4b19e.
 //
+// v8z4b19h: spans[] agora contém dois quadraticSpans derivados (derivedFirstHalf e
+// derivedSecondHalf) representando a curva legada dividida em t=0.5 via De Casteljau.
+// Os spans são apenas runtime: não usados como avaliador, não renderizados, não
+// persistidos no JSON. Preparam o futuro modo baseado em pathPoints reais.
+// O resultado de evaluateSegmentPath() continua idêntico à v8z4b19g.
+//
 // Quando mode === "vectorAnchors" for implementado (versão futura),
 // o segmento usará frameAnchors, pathPoints e handles em vez do curvePuller
 // legado. Estrutura conceitual futura (referência):
@@ -5343,7 +5547,7 @@ function evaluateRuntimeCurveModel(model, t) {
 // TODO (vectorAnchors): migração controlada de legacyQuadratic → vectorAnchors.
 // ──────────────────────────────────────────────────────────────────────────────
 
-// ─── Unified Segment Path Evaluator — v8z4b18l / mode switch v8z4b18n / runtime v8z4b19d / pathPoint contract v8z4b19e / derived pathPoint v8z4b19f ──
+// ─── Unified Segment Path Evaluator — v8z4b18l / mode switch v8z4b18n / runtime v8z4b19d / pathPoint contract v8z4b19e / derived pathPoint v8z4b19f / derived spans v8z4b19h ──
 //
 // evaluateSegmentPath() é a entrada pública/real do motor para calcular posição
 // no caminho de um segmento. A partir da v8z4b19d, usa o modelo runtime de curva
@@ -5353,6 +5557,10 @@ function evaluateRuntimeCurveModel(model, t) {
 // de pathPoints — amostra real da trajetória, calculada pela mesma fórmula quadrática.
 // O pathPoint derivado é ignorado por evaluateRuntimeCurveModel() enquanto
 // mode === 'legacyQuadratic'. O resultado de evaluateSegmentPath() continua idêntico à v8z4b19e.
+// v8z4b19h: o modelo runtime agora inclui spans[] com dois quadraticSpans derivados
+// (derivedFirstHalf e derivedSecondHalf) calculados por De Casteljau em t=0.5.
+// Os spans são apenas runtime — não usados como avaliador principal, não renderizados,
+// não persistidos. O resultado de evaluateSegmentPath() continua idêntico à v8z4b19g.
 //
 // Caminhos de avaliação:
 //   [preferencial] runtime model  → buildRuntimeCurveModel → validateRuntimeCurveModel
@@ -5470,9 +5678,9 @@ function evaluateSegmentPath(segIndex, t) {
   }
 }
 
-// Helper interno de comparação/paridade — v8z4b19d / derivedPathPoint check v8z4b19f / reutiliza validateDerivedRuntimePathPoint v8z4b19g.
+// Helper interno de comparação/paridade — v8z4b19d / derivedPathPoint check v8z4b19f / reutiliza validateDerivedRuntimePathPoint v8z4b19g / spansDiag v8z4b19h.
 // Compara o resultado do modelo runtime com o cálculo legado para o mesmo
-// (segIndex, t). Retorna { runtime, legacy, match, delta, derivedPathPointCheck } para uso em
+// (segIndex, t). Retorna { runtime, legacy, match, delta, derivedPathPointCheck, spansDiag } para uso em
 // desenvolvimento/teste interno.
 // Não chamado no fluxo normal de produção — apenas para verificação/debug.
 //
@@ -5481,6 +5689,8 @@ function evaluateSegmentPath(segIndex, t) {
 // convertido para coordenadas normalizadas. Confirma paridade matemática.
 // v8z4b19g: derivedPathPointCheck reutiliza validateDerivedRuntimePathPoint(model)
 // para consistência com os helpers de diagnóstico.
+// v8z4b19h: inclui spansDiag via validateDerivedRuntimeSpans(model) para confirmar
+// que os spans derivados reconstituem a curva legada dentro da tolerância.
 function compareRuntimePathWithLegacy(segIndex, t) {
   let model = null;
   const runtime = (() => {
@@ -5491,7 +5701,7 @@ function compareRuntimePathWithLegacy(segIndex, t) {
     } catch (_e) { return null; }
   })();
   const legacy = evaluateLegacySegmentPath(segIndex, t);
-  if (!runtime || !legacy) return { runtime, legacy, match: false, delta: null, derivedPathPointCheck: null };
+  if (!runtime || !legacy) return { runtime, legacy, match: false, delta: null, derivedPathPointCheck: null, spansDiag: null };
   const dx = Math.abs(runtime.x - legacy.x);
   const dy = Math.abs(runtime.y - legacy.y);
   // Tolerância de 0.001 px — diferença esperada: zero (mesma aritmética).
@@ -5529,7 +5739,16 @@ function compareRuntimePathWithLegacy(segIndex, t) {
     } catch (_e) { derivedPathPointCheck = null; }
   }
 
-  return { runtime, legacy, match, delta: { dx, dy }, derivedPathPointCheck };
+  // v8z4b19h: diagnóstico adicional dos spans derivados.
+  // validateDerivedRuntimeSpans confirma que os spans reconstituem a curva legada.
+  let spansDiag = null;
+  if (model) {
+    try {
+      spansDiag = validateDerivedRuntimeSpans(model);
+    } catch (_e) { spansDiag = null; }
+  }
+
+  return { runtime, legacy, match, delta: { dx, dy }, derivedPathPointCheck, spansDiag };
 }
 
 // ─── Diagnóstico interno do pathPoint derivado — v8z4b19g ─────────────────────
@@ -5706,6 +5925,146 @@ function diagnoseRuntimeCurveModel() {
     failed,
     segments
   };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Diagnóstico dos spans derivados — v8z4b19h ───────────────────────────────
+//
+// validateDerivedRuntimeSpans(model)
+//
+// Helper de diagnóstico passivo: valida que os spans derivados em model.spans
+// reconstituem matematicamente a curva quadrática legada original.
+//
+// Critérios verificados:
+//   1. spans[] existe e tem exatamente 2 elementos.
+//   2. span1 (derivedFirstHalf): end.x/y === pathPoints[0].x/y (derivedMidpoint).
+//   3. span2 (derivedSecondHalf): start.x/y === pathPoints[0].x/y (derivedMidpoint).
+//   4. Amostragem de reconstituição em N pontos:
+//      - Para t ∈ [0, 0.5]: span1(localT=2t) deve coincidir com B_orig(t).
+//      - Para t ∈ [0.5, 1]: span2(localT=2t-1) deve coincidir com B_orig(t).
+//      - Comparação em coordenadas normalizadas (0–1). Tolerância: 0.000001.
+//
+// Unidade: coordenadas normalizadas (0–1) — todos os pontos em spans[] usam a
+// mesma convenção de anchors e controls (x = pixelX / stageW).
+// A comparação é feita em espaço normalizado — sem conversão para pixels.
+//
+// Retorno em caso de sucesso:
+//   { ok: true, reason: 'ok', midpointMatch: true, spanCount: 2, sampleChecks: N }
+//
+// Retorno em caso de problema:
+//   { ok: false, reason: 'invalid-model'|'no-spans'|'wrong-span-count'|
+//     'invalid-span-structure'|'midpoint-mismatch'|'reconstruction-mismatch',
+//     detail: string }
+//
+// Comportamento passivo:
+//   - Não altera model, spans, pathPoints, anchors, controls nem nenhum array persistido.
+//   - Não imprime no console.
+//   - Não deve ser chamado durante animação, Preview ou exportação.
+//
+// v8z4b19h — helper novo.
+function validateDerivedRuntimeSpans(model) {
+  const FAIL = (reason, detail) => ({ ok: false, reason, detail: detail || '', midpointMatch: false, spanCount: 0, sampleChecks: 0 });
+
+  if (!model || !validateRuntimeCurveModel(model)) {
+    return FAIL('invalid-model');
+  }
+
+  // Verificar que spans[] existe e tem 2 elementos.
+  if (!Array.isArray(model.spans) || model.spans.length === 0) {
+    return FAIL('no-spans');
+  }
+  if (model.spans.length !== 2) {
+    return FAIL('wrong-span-count', `expected 2, got ${model.spans.length}`);
+  }
+
+  const span1 = model.spans[0];
+  const span2 = model.spans[1];
+
+  // Verificar estrutura básica de cada span.
+  for (const [span, label] of [[span1, 'span1'], [span2, 'span2']]) {
+    if (!span || span.kind !== 'quadraticSpan' || span.derived !== true || span.editable !== false) {
+      return FAIL('invalid-span-structure', `${label}: kind/derived/editable inválido`);
+    }
+    for (const pt of [span.start, span.control, span.end]) {
+      if (!pt || !isFinite(pt.x) || !isFinite(pt.y)) {
+        return FAIL('invalid-span-structure', `${label}: ponto com x/y inválido`);
+      }
+    }
+  }
+
+  // Verificar que M (ponto de divisão) coincide entre span1.end e span2.start.
+  // Tolerância: 0.000001 em espaço normalizado (aritmética idêntica).
+  const TOL_NORM = 0.000001;
+  const midX1 = span1.end.x;
+  const midY1 = span1.end.y;
+  const midX2 = span2.start.x;
+  const midY2 = span2.start.y;
+  const midpointMatch = Math.abs(midX1 - midX2) < TOL_NORM && Math.abs(midY1 - midY2) < TOL_NORM;
+  if (!midpointMatch) {
+    return FAIL('midpoint-mismatch',
+      `span1.end(${midX1.toFixed(6)},${midY1.toFixed(6)}) ≠ span2.start(${midX2.toFixed(6)},${midY2.toFixed(6)})`);
+  }
+
+  // Verificar que M coincide com pathPoints[0] (derivedMidpoint), se presente.
+  if (Array.isArray(model.pathPoints) && model.pathPoints.length > 0) {
+    const pp = model.pathPoints.find(p => p && p.derived === true && p.kind === 'pathPoint');
+    if (pp && isFinite(pp.x) && isFinite(pp.y)) {
+      if (Math.abs(midX1 - pp.x) >= TOL_NORM || Math.abs(midY1 - pp.y) >= TOL_NORM) {
+        return FAIL('midpoint-mismatch',
+          `span1.end ≠ pathPoints[0]: span(${midX1.toFixed(6)},${midY1.toFixed(6)}) pp(${pp.x.toFixed(6)},${pp.y.toFixed(6)})`);
+      }
+    }
+  }
+
+  // Verificar reconstituição por amostragem.
+  // Usa evaluateLegacyQuadraticNormalized (espaço normalizado) para obter posição original.
+  // Compara com span avaliado diretamente (quadrática de Bézier in-line).
+  const start   = model.anchors.find(a => a.role === 'start');
+  const end     = model.anchors.find(a => a.role === 'end');
+  const control = model.controls[0];
+  if (!start || !end || !control) {
+    return FAIL('invalid-model', 'anchors/controls ausentes para reconstituição');
+  }
+
+  const SAMPLE_COUNT = 9; // 0, 0.125, 0.25, ..., 1 — inclui t=0, 0.5, 1
+  let sampleChecks = 0;
+  for (let i = 0; i <= SAMPLE_COUNT; i++) {
+    const globalT = i / SAMPLE_COUNT;
+
+    // Posição esperada pela curva original (espaço normalizado).
+    const expected = evaluateLegacyQuadraticNormalized(
+      { x: start.x,   y: start.y   },
+      { x: control.x, y: control.y },
+      { x: end.x,     y: end.y     },
+      globalT
+    );
+    if (!expected) continue;
+
+    // Posição do span correspondente (espaço normalizado, in-line Bézier quadrática).
+    let sp, localT;
+    if (globalT <= 0.5) {
+      sp     = span1;
+      localT = globalT / 0.5;              // mapear [0, 0.5] → [0, 1]
+    } else {
+      sp     = span2;
+      localT = (globalT - 0.5) / 0.5;     // mapear [0.5, 1] → [0, 1]
+    }
+    const inv = 1 - localT;
+    const sx = inv * inv * sp.start.x + 2 * inv * localT * sp.control.x + localT * localT * sp.end.x;
+    const sy = inv * inv * sp.start.y + 2 * inv * localT * sp.control.y + localT * localT * sp.end.y;
+
+    if (!isFinite(sx) || !isFinite(sy)) {
+      return FAIL('reconstruction-mismatch', `t=${globalT.toFixed(4)}: span retornou NaN/Inf`);
+    }
+
+    if (Math.abs(sx - expected.x) >= TOL_NORM || Math.abs(sy - expected.y) >= TOL_NORM) {
+      return FAIL('reconstruction-mismatch',
+        `t=${globalT.toFixed(4)}: span(${sx.toFixed(6)},${sy.toFixed(6)}) ≠ orig(${expected.x.toFixed(6)},${expected.y.toFixed(6)})`);
+    }
+    sampleChecks++;
+  }
+
+  return { ok: true, reason: 'ok', midpointMatch: true, spanCount: 2, sampleChecks };
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
