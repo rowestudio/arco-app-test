@@ -1,5 +1,78 @@
 # Changelog
 
+## v8z4b19b — audit loop curve path consistency
+
+Auditoria técnica interna: revisar, comentar e consolidar a coerência entre o
+tratamento do segmento de loop e o tratamento dos segmentos normais nas funções
+de trajetória. Nenhuma alteração de comportamento, motor, visual, UI ou JSON.
+
+### Objetivo
+
+Confirmar e documentar em código o contrato interno entre segmentos normais e
+segmento de loop no sistema de curvas legadas, garantindo:
+1. Segmentos normais usam `from = i, to = i+1`.
+2. Segmento de loop usa `from = frameCount-1, to = 0`.
+3. `getLoopSegmentIndex()` retorna `frameCount - 1` somente quando `loopEnabled`.
+4. `getSegmentCurvePuller(getLoopSegmentIndex())` acessa `loopCtrlPt` corretamente.
+5. `measureLoopCurveLength()` e `measureSegmentPathLength(getLoopSegmentIndex())` são coerentes.
+6. O modo constant-speed usa o comprimento correto para cada tipo de segmento.
+7. Preview e MP4 continuam lendo o mesmo caminho de câmera.
+8. JSON continua igual.
+
+### Funções revisadas em index.html (apenas comentários e guards)
+
+| Função | Tipo de alteração |
+|---|---|
+| `getActiveSegments` | Comentário de contrato adicionado |
+| `getLoopSegmentIndex` | Comentário de contrato expandido |
+| `evaluateSegmentPath` | Comentário de contrato adicionado (normal vs loop) |
+| `sampleSegmentPath` | Comentário de contrato adicionado |
+| `measureSegmentPathLength` | Comentário de coerência com `measureLoopCurveLength` |
+| `measureSegmentCurveLength` | Guard defensivo + comentário de exclusão do loop |
+| `measureLoopCurveLength` | Comentário de contrato e coerência |
+| `redistributeDurationsByCurveLength` | Comentário de contrato constant-speed + loop |
+
+### Guard defensivo adicionado
+
+`measureSegmentCurveLength(segIndex)`: adicionado `typeof segIndex !== 'number' || !isFinite(segIndex)`
+antes do guard existente `segIndex < 0 || segIndex >= frameCount - 1`. Protege contra
+chamada com `NaN` ou `Infinity` sem alterar comportamento para valores válidos.
+
+### Confirmação de coerência auditada
+
+- `measureSegmentPathLength(getLoopSegmentIndex())` e `measureLoopCurveLength()` medem
+  identicamente: P1 = frame[frameCount-1], P2 = frame[0], CP = loopCtrlPt, 64 amostras.
+- `redistributeDurationsByCurveLength()` chama `measureSegmentCurveLength(i)` apenas para
+  segmentos normais (i < frameCount-1) e `measureLoopCurveLength()` para o loop.
+  `measureSegmentCurveLength` retorna 0 para `segIndex >= frameCount-1` (guard correto).
+- Preview e MP4 usam `evaluateSegmentPath()` como entrada única — cobre loop e normais.
+
+### O que NÃO foi alterado
+
+- Nenhuma alteração em UI, layout, cor, ícones, textos visíveis.
+- Nenhuma alteração em matemática de Bézier.
+- Nenhuma alteração em drag de curvas, bolinhas visuais, `loopCtrlPt`.
+- Nenhuma alteração em undo/redo, Preview, MP4, save/load.
+- Nenhuma alteração em JSON schema (`ctrlPts`, `ctrlPtManual`, `loopCtrlPt`).
+- Nenhum campo novo criado.
+- Nenhuma função nova de comportamento criada.
+
+### Nota de roadmap (sem implementação)
+
+Registrado apenas para referência futura: "Modo de ajuste global de transformação
+deve voltar na fase de interface. Ele deve permitir aplicar escala, deslocamento
+e rotação a todos os frames do projeto, diferente de ajuste local e diferente de
+seleção múltipla."
+
+### Arquivos alterados
+
+- `index.html` — comentários de contrato + guard defensivo + atualização de versão.
+- `CHANGELOG.md` — esta entrada.
+- `QA.md` — checklist atualizado para v8z4b19b.
+- `pages-deploy-stamp.txt` — stamp de redeploy.
+
+---
+
 ## v8z4b19a — standardize curve puller usage in curve rendering
 
 Patch de padronização interna controlada: substituir chamadas genéricas a

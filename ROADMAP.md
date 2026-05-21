@@ -72,6 +72,15 @@ Decisão de produto registrada em v8z4b18k. Não implementado ainda.
 - Desenho livre poderá gerar pontos e/ou frames após confirmação e escolha do tempo total.
 - curvePuller (legado) coexiste com pathPoints; migração somente ao entrar no modo vetorial.
 
+## Futuro — Modo de ajuste global de transformação
+
+Registrado em v8z4b19b. Não implementado ainda.
+
+- Permitir aplicar escala, deslocamento e rotação a todos os frames do projeto de uma vez.
+- Diferente de ajuste local de frame individual.
+- Diferente de seleção múltipla de frames.
+- Deve retornar na fase de interface, após estabilização do motor atual.
+
 ## v9 — Interface final
 
 - Nova interface completa.
