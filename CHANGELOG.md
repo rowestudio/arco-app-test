@@ -1,5 +1,105 @@
 # Changelog
 
+## v8z4b19c — introduce runtime vector curve model
+
+Implementação interna controlada do modelo runtime de curva vetorial.
+Sem alterar comportamento visual, Preview, MP4, save/load, JSON ou UI.
+
+### Objetivo
+
+Introduzir uma camada runtime que represente cada segmento como um modelo
+vetorial tipado e auto-descritivo (`buildRuntimeCurveModel`), preparado para
+evolução futura sem quebrar projetos existentes.
+
+### Funções criadas em index.html
+
+| Função | Descrição |
+|---|---|
+| `buildRuntimeCurveModel(segIndex)` | Constrói o modelo runtime de curva do segmento. Retorna objeto com `version`, `mode`, `anchors`, `controls`. |
+| `validateRuntimeCurveModel(model)` | Valida que o modelo runtime é bem-formado. Retorna `true`/`false`. |
+| `evaluateRuntimeCurveModel(model, t)` | Avalia a posição na trajetória do modelo em t ∈ [0,1]. Retorna `{x, y}` em pixels do stage. |
+
+### Estrutura do modelo runtime
+
+```
+{
+  version: 1,
+  mode: 'legacyQuadratic',
+  segmentIndex,
+  isLoop,
+  fromFrameIndex,
+  toFrameIndex,
+  anchors: [
+    { kind: 'frameAnchor', role: 'start', frameIndex, x, y },  // normalizado (0–1)
+    { kind: 'frameAnchor', role: 'end',   frameIndex, x, y }   // normalizado (0–1)
+  ],
+  controls: [
+    {
+      kind:   'curvePuller',
+      role:   'quadraticControl',
+      source: 'ctrlPts' | 'loopCtrlPt',  // origem no schema JSON persistido
+      x,      // normalizado (0–1)
+      y,      // normalizado (0–1)
+      manual  // boolean
+    }
+  ]
+}
+```
+
+### Contrato de unidades
+
+- `anchors[*].x / .y` e `controls[*].x / .y` são **normalizados (0–1)**.
+- Convenção: `x = pixelX / stageW`, `y = pixelY / stageH`.
+- `evaluateRuntimeCurveModel()` converte de volta para pixels do stage ao avaliar.
+- Retorno de `evaluateRuntimeCurveModel()` é `{x, y}` em **pixels**, idêntico a `evaluateSegmentPath()`.
+
+### Contrato de segmentos
+
+**Segmentos normais:**
+- `fromFrameIndex = segIndex`, `toFrameIndex = segIndex + 1`.
+- `controls[0].source = 'ctrlPts'`.
+- `controls[0].x/y = ctrlPts[segIndex].nx/ny` (normalizados).
+
+**Segmento de loop:**
+- `segmentIndex = getLoopSegmentIndex() = frameCount - 1`.
+- `fromFrameIndex = frameCount - 1`, `toFrameIndex = 0`.
+- `controls[0].source = 'loopCtrlPt'`.
+- `controls[0].x/y = loopCtrlPt.nx/ny` (normalizados).
+
+### Paridade matemática
+
+O resultado de `evaluateRuntimeCurveModel(buildRuntimeCurveModel(segIndex), t)` é
+numericamente idêntico ao de `evaluateSegmentPath(segIndex, t)` para os mesmos dados
+de entrada. `evaluateSegmentPath()` **não foi alterada** — coexistência paralela por segurança.
+
+### Modelo é runtime apenas
+
+- Não persistido no JSON.
+- Nenhum campo novo no JSON (`curvesV2`, `vectorPath`, `handles`, `pathPoints`,
+  `runtimeCurveModel` — nenhum destes existe).
+- `ctrlPts`, `ctrlPtManual` e `loopCtrlPt` continuam sendo o schema persistido.
+- Arquivos existentes abrem normalmente. Arquivos novos salvam no mesmo formato.
+
+### O que NÃO foi alterado
+
+- Nenhuma alteração em UI, layout, cor, ícones, textos visíveis, bolinhas.
+- Nenhuma alteração em drag de curvas, `loopCtrlPt`, `ctrlPts`.
+- Nenhuma alteração em `evaluateSegmentPath()`, `sampleSegmentPath()` ou qualquer
+  função de trajetória existente.
+- Nenhuma alteração em undo/redo, Preview, MP4, save/load.
+- Nenhuma alteração em JSON schema.
+- Nenhum campo novo no JSON.
+- Nenhum pathPoint real criado. Nenhum handle real criado. Nenhuma caneta criada.
+
+### Arquivos alterados
+
+- `index.html` — funções runtime criadas + atualização de versão.
+- `CHANGELOG.md` — esta entrada.
+- `QA.md` — checklist atualizado para v8z4b19c.
+- `pages-deploy-stamp.txt` — stamp de redeploy.
+
+---
+
 ## v8z4b19b — audit loop curve path consistency
 
 Auditoria técnica interna: revisar, comentar e consolidar a coerência entre o

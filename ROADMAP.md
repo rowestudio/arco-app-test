@@ -59,6 +59,18 @@ Esse modo pode incorporar o futuro Modo Curvas, sendo tratados como um único mo
 - Conversão frame ↔ ponto-guia.
 - Handles de tangência local (bezier handles).
 
+## Futuro — Evolução do modelo runtime de curva (v8z4b19c+)
+
+O `buildRuntimeCurveModel` introduzido na v8z4b19c prepara a base para:
+
+- Adicionar `pathPoints` reais como pontos de passagem sem tempo próprio.
+- Adicionar `handles` de tangência para controle Bézier cúbico.
+- Implementar `mode = 'vectorAnchors'` com avaliador Bézier cúbico.
+- Migrar `evaluateSegmentPath()` para usar o modelo runtime quando seguro.
+- Schema JSON versionado para persistir `pathPoints` e `handles`.
+
+Nenhum desses itens está ativo na v8z4b19c.
+
 ## Futuro — Ferramenta de caneta / criação de trajetória vetorial
 
 Decisão de produto registrada em v8z4b18k. Não implementado ainda.

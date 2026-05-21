@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19b                                     ║
+║  Versão: v8z4b19c                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19b — audit loop curve path consistency: auditar e consolidar coerência interna entre segmentos normais e segmento de loop nas funções de trajetória (evaluateSegmentPath, sampleSegmentPath, measureSegmentPathLength, measureSegmentCurveLength, measureLoopCurveLength, getLoopSegmentIndex, redistributeDurationsByCurveLength); adicionar comentários de contrato e guards defensivos; sem alterar motor, visual, schema JSON, UI ou comportamento -->
+<!-- Arco Motion App — v8z4b19c — introduce runtime vector curve model: criar buildRuntimeCurveModel(segIndex), validateRuntimeCurveModel(model) e evaluateRuntimeCurveModel(model, t) como camada interna runtime que representa cada segmento como modelo vetorial tipado; modelo usa coordenadas normalizadas (0–1); não persiste no JSON; evaluateSegmentPath() não alterada; sem alterar motor, visual, schema JSON, UI, Preview, MP4, save/load ou comportamento -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1855,7 +1855,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19b</span><br><span id="appVersionNameText">audit loop curve path consistency</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19c</span><br><span id="appVersionNameText">introduce runtime vector curve model</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4196,8 +4196,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19b';
-const APP_VERSION_NAME = 'audit loop curve path consistency';
+const APP_VERSION = 'v8z4b19c';
+const APP_VERSION_NAME = 'introduce runtime vector curve model';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4922,6 +4922,184 @@ function getSegmentVectorModel(segIndex) {
     handles: []     // futuro vectorAnchors: tangências de frameAnchors e pathPoints
   };
 }
+
+// ─── Runtime Curve Model — v8z4b19c ──────────────────────────────────────────
+//
+// buildRuntimeCurveModel(segIndex): constrói o modelo runtime de curva do
+// segmento. Representa exatamente a curva atual (legacyQuadratic) como um
+// objeto tipado e auto-descritivo. Não persiste no JSON — é apenas runtime.
+//
+// Contrato de unidades:
+//   anchors[*].x / .y e controls[*].x / .y são NORMALIZADOS (0–1).
+//   Convenção: x = pixelX / stageW, y = pixelY / stageH.
+//   evaluateRuntimeCurveModel() converte de volta para pixels do stage.
+//
+// Contrato de campos:
+//   version:        1  (para evolução controlada futura).
+//   mode:           'legacyQuadratic'  (único modo ativo nesta versão).
+//   segmentIndex:   índice do segmento em getActiveSegments().
+//   isLoop:         true somente para o segmento N→1 com loop ativo.
+//   fromFrameIndex: índice do frame de origem (= segIndex para normais;
+//                   = frameCount-1 para loop).
+//   toFrameIndex:   índice do frame de destino (= segIndex+1 para normais;
+//                   = 0 para loop).
+//   anchors:        array de frameAnchors — pontos reais de timeline.
+//   controls:       array de pontos de controle do modo atual.
+//                   legacyQuadratic: um único curvePuller quadrático.
+//
+// Segmentos normais:
+//   fromFrameIndex = segIndex, toFrameIndex = segIndex + 1.
+//   controls[0].source = 'ctrlPts'.
+//   controls[0].x/y   = ctrlPts[segIndex].nx/ny (normalizados).
+//
+// Segmento de loop:
+//   segmentIndex    = getLoopSegmentIndex() = frameCount - 1.
+//   fromFrameIndex  = frameCount - 1.
+//   toFrameIndex    = 0.
+//   controls[0].source = 'loopCtrlPt'.
+//   controls[0].x/y   = loopCtrlPt.nx/ny (normalizados).
+//
+// Fallback de ponto de controle:
+//   Se curvePuller não estiver definido, controls[0].x/y = ponto médio
+//   normalizado entre start e end — idêntico ao fallback de evaluateSegmentPath.
+//
+// O que NÃO é feito aqui:
+//   - Não cria pathPoints reais nem handles reais.
+//   - Não cria novo modo de curva.
+//   - Não altera UI, JSON, Preview, MP4, save/load.
+//   - Não altera evaluateSegmentPath() — coexiste em paralelo.
+//
+// Retorna null para segmento inválido, frameCount < 2 ou stage inválido.
+function buildRuntimeCurveModel(segIndex) {
+  if (typeof segIndex !== 'number' || !isFinite(segIndex) || segIndex < 0) return null;
+  if (frameCount < 2) return null;
+  const seg = getSegmentByIndex(segIndex);
+  if (!seg) return null;
+  if (stageW <= 0 || stageH <= 0) return null;
+
+  const fromIdx = seg.from;
+  const toIdx   = seg.to;
+  if (!frames[fromIdx] || !frames[toIdx]) return null;
+
+  // Coordenadas normalizadas (0–1): x = pixelX / stageW, y = pixelY / stageH.
+  const startX = frameCX(fromIdx) / stageW;
+  const startY = frameCY(fromIdx) / stageH;
+  const endX   = frameCX(toIdx)   / stageW;
+  const endY   = frameCY(toIdx)   / stageH;
+  if (!isFinite(startX) || !isFinite(startY) ||
+      !isFinite(endX)   || !isFinite(endY)) return null;
+
+  // source indica qual campo do schema JSON persistido originou este controle.
+  const ctrlSource = seg.isLoop ? 'loopCtrlPt' : 'ctrlPts';
+
+  // Ponto de controle quadrático legado — via curvePuller helper (v8z4b19a).
+  // cpRaw.nx / cpRaw.ny já estão normalizados (0–1) — usar diretamente.
+  const cpRaw = getSegmentCurvePuller(segIndex);
+  let controls;
+  if (cpRaw && typeof cpRaw.nx === 'number' && isFinite(cpRaw.nx) &&
+               typeof cpRaw.ny === 'number' && isFinite(cpRaw.ny)) {
+    controls = [{
+      kind:   'curvePuller',
+      role:   'quadraticControl',
+      source: ctrlSource,   // 'ctrlPts' | 'loopCtrlPt' — origem no schema persistido
+      x:      cpRaw.nx,     // normalizado (0–1)
+      y:      cpRaw.ny,     // normalizado (0–1)
+      manual: isSegmentCurveManual(segIndex)
+    }];
+  } else {
+    // Fallback: ponto médio normalizado — idêntico ao fallback de evaluateSegmentPath.
+    controls = [{
+      kind:   'curvePuller',
+      role:   'quadraticControl',
+      source: ctrlSource,
+      x:      (startX + endX) / 2,  // normalizado (0–1)
+      y:      (startY + endY) / 2,  // normalizado (0–1)
+      manual: false
+    }];
+  }
+
+  return {
+    version:        1,
+    mode:           'legacyQuadratic',
+    segmentIndex:   segIndex,
+    isLoop:         seg.isLoop,
+    fromFrameIndex: fromIdx,
+    toFrameIndex:   toIdx,
+    // anchors: frameAnchors em coordenadas normalizadas (0–1).
+    anchors: [
+      { kind: 'frameAnchor', role: 'start', frameIndex: fromIdx, x: startX, y: startY },
+      { kind: 'frameAnchor', role: 'end',   frameIndex: toIdx,   x: endX,   y: endY   }
+    ],
+    // controls: pontos de controle do modo atual em coordenadas normalizadas (0–1).
+    // legacyQuadratic: um único curvePuller (ponto de controle quadrático legado).
+    // Futuro: poderá conter handles Bézier cúbico para mode = 'vectorAnchors'.
+    controls
+  };
+}
+
+// Valida que o modelo runtime é bem-formado e utilizável.
+// Retorna true se o modelo é válido para avaliação; false caso contrário.
+// Uso: guard defensivo antes de avaliar o modelo em contextos críticos.
+function validateRuntimeCurveModel(model) {
+  if (!model || model.version !== 1) return false;
+  if (model.mode !== 'legacyQuadratic') return false; // único modo suportado nesta versão
+  if (typeof model.segmentIndex !== 'number' || !isFinite(model.segmentIndex)) return false;
+  if (typeof model.fromFrameIndex !== 'number' || typeof model.toFrameIndex !== 'number') return false;
+  if (!Array.isArray(model.anchors) || model.anchors.length < 2) return false;
+  if (!Array.isArray(model.controls) || model.controls.length < 1) return false;
+  const start = model.anchors.find(a => a.role === 'start');
+  const end   = model.anchors.find(a => a.role === 'end');
+  if (!start || !end) return false;
+  if (!isFinite(start.x) || !isFinite(start.y) ||
+      !isFinite(end.x)   || !isFinite(end.y)) return false;
+  const ctrl = model.controls[0];
+  if (!ctrl || !isFinite(ctrl.x) || !isFinite(ctrl.y)) return false;
+  return true;
+}
+
+// Avalia a posição na trajetória do modelo runtime em t ∈ [0,1].
+// Retorna {x, y} em PIXELS do stage — compatível com evaluateSegmentPath().
+// Retorna null para modelo inválido ou stage inválido.
+//
+// Contrato de unidades:
+//   - anchors[*].x / .y e controls[*].x / .y são normalizados (0–1).
+//   - Convertidos para pixels aqui: pixelX = normalX * stageW.
+//   - O retorno {x, y} é em pixels do stage.
+//
+// Nota de paridade matemática:
+//   Os resultados são numericamente idênticos aos de evaluateSegmentPath()
+//   para os mesmos dados de entrada. evaluateSegmentPath() NÃO foi alterada
+//   para chamar esta função — coexistência paralela por segurança.
+function evaluateRuntimeCurveModel(model, t) {
+  if (!validateRuntimeCurveModel(model)) return null;
+  if (!stageW || !stageH || stageW <= 0 || stageH <= 0) return null;
+  if (typeof t !== 'number' || !isFinite(t)) t = 0;
+  t = Math.max(0, Math.min(1, t));
+
+  const start = model.anchors.find(a => a.role === 'start');
+  const end   = model.anchors.find(a => a.role === 'end');
+  const ctrl  = model.controls[0];
+
+  // Converter de coordenadas normalizadas (0–1) para pixels do stage.
+  const p1x = start.x * stageW;
+  const p1y = start.y * stageH;
+  const p2x = end.x   * stageW;
+  const p2y = end.y   * stageH;
+  const cpx = ctrl.x  * stageW;
+  const cpy = ctrl.y  * stageH;
+
+  if (!isFinite(p1x) || !isFinite(p1y) ||
+      !isFinite(p2x) || !isFinite(p2y) ||
+      !isFinite(cpx) || !isFinite(cpy)) return null;
+
+  // Curva quadrática de Bézier: B(t) = (1-t)²·P1 + 2·(1-t)·t·CP + t²·P2
+  const inv = 1 - t;
+  const x = inv * inv * p1x + 2 * inv * t * cpx + t * t * p2x;
+  const y = inv * inv * p1y + 2 * inv * t * cpy + t * t * p2y;
+  if (!isFinite(x) || !isFinite(y)) return null;
+  return { x, y };
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 // ─── Futuro modo vectorAnchors (não ativado nesta versão) ─────────────────────
 //
