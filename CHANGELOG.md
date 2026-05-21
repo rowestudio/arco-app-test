@@ -1,5 +1,49 @@
 # Changelog
 
+## v8z4b18y — centralize legacy curve puller access
+
+Patch de centralização gradual do acesso ao puxador de curva legado. Usa os helpers
+introduzidos na v8z4b18x (`getSegmentCurvePuller`, `isSegmentCurvePullerManual`,
+`setSegmentCurvePuller`) em funções internas claramente relacionadas a leitura e
+escrita de curva. Sem alterar motor, visual, schema JSON, UI, save/load ou comportamento.
+
+### Alterações em index.html
+
+**`insertFrameAfterActive()` — leitura do puxador de curva do segmento ativo**
+- `const cpSrc = ctrlPts[a]` → `getSegmentCurvePuller(a)`.
+- Contexto: cálculo do ponto médio na curva quadrática para posicionar o frame inserido.
+- Substituição segura: leitura direta sem efeitos colaterais.
+
+**`syncCtrlPtsForFrame()` — sincronização do puxador após mover frame**
+- `if (!ctrlPts[seg]) continue` → `const cp = getSegmentCurvePuller(seg); if (!cp) continue`.
+- `if (!ctrlPtManual[seg])` → `if (!isSegmentCurvePullerManual(seg))`.
+- Escrita de `ctrlPts[seg].nx/ny/t/perpX/perpY` → `setSegmentCurvePuller(seg, {...})`.
+- Leitura de `ctrlPts[seg]` para recomputar t/perpX/perpY → via variável `cp` retornada pelo helper.
+- Substituição segura: `setSegmentCurvePuller` usa `Object.assign(ctrlPts[seg], ...)` internamente,
+  comportamento idêntico. `cp` referencia o mesmo objeto que `ctrlPts[seg]`.
+
+**`getStateAtT()` — leitura do puxador no motor de animação**
+- `let cp; if (loopEnabled && seg === frameCount - 1) { cp = loopCtrlPt || … } else { cp = ctrlPts[seg] || … }`
+  substituído por:
+  `const cp = getSegmentCurvePuller(seg) || { midpoint via % frameCount }`.
+- O helper já encapsula a lógica loop vs normal: retorna `loopCtrlPt` para o trecho de loop,
+  `ctrlPts[seg]` para trechos normais.
+- Fallback usa `% frameCount` — matematicamente idêntico às expressões originais para todos os casos.
+
+**`measureLoopCurveLength()` — leitura do puxador do trecho de loop**
+- `const cp = loopCtrlPt || {midpoint}` → `getSegmentCurvePuller(getLoopSegmentIndex()) || {midpoint}`.
+- Substituição segura: função só executa quando `loopEnabled && frameCount >= 2`,
+  então `getLoopSegmentIndex()` retorna `frameCount - 1` (válido).
+
+### Sem alteração
+
+Motor, Preview, MP4, save/load, schema JSON (`ctrlPts`, `ctrlPtManual`, `loopCtrlPt`,
+`framePauses`, `segDurations`), UI, layout, cores, ícones, comportamento visual da curva,
+arrastar puxador, reset de curva, loop, filename, compatibilidade com projetos antigos.
+Nenhum campo novo no JSON.
+
+---
+
 ## v8z4b18x — clarify legacy curve puller architecture
 
 Patch preparatório e conceitual: consolida o ponto de controle atual da curva
