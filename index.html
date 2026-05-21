@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19c                                     ║
+║  Versão: v8z4b19d                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19c — introduce runtime vector curve model: criar buildRuntimeCurveModel(segIndex), validateRuntimeCurveModel(model) e evaluateRuntimeCurveModel(model, t) como camada interna runtime que representa cada segmento como modelo vetorial tipado; modelo usa coordenadas normalizadas (0–1); não persiste no JSON; evaluateSegmentPath() não alterada; sem alterar motor, visual, schema JSON, UI, Preview, MP4, save/load ou comportamento -->
+<!-- Arco Motion App — v8z4b19d — route segment path through runtime curve model: evaluateSegmentPath() agora usa buildRuntimeCurveModel+validateRuntimeCurveModel+evaluateRuntimeCurveModel como caminho preferencial; cálculo legado extraído como evaluateLegacySegmentPath() e usado como fallback de segurança; resultado matemático e visual idêntico à v8z4b19c; sem alterar motor, visual, schema JSON, UI, Preview, MP4, save/load ou comportamento -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1855,7 +1855,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19c</span><br><span id="appVersionNameText">introduce runtime vector curve model</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19d</span><br><span id="appVersionNameText">route segment path through runtime curve model</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4196,8 +4196,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19c';
-const APP_VERSION_NAME = 'introduce runtime vector curve model';
+const APP_VERSION = 'v8z4b19d';
+const APP_VERSION_NAME = 'route segment path through runtime curve model';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4923,7 +4923,7 @@ function getSegmentVectorModel(segIndex) {
   };
 }
 
-// ─── Runtime Curve Model — v8z4b19c ──────────────────────────────────────────
+// ─── Runtime Curve Model — v8z4b19c / used as primary path v8z4b19d ─────────
 //
 // buildRuntimeCurveModel(segIndex): constrói o modelo runtime de curva do
 // segmento. Representa exatamente a curva atual (legacyQuadratic) como um
@@ -5131,34 +5131,38 @@ function evaluateRuntimeCurveModel(model, t) {
 // TODO (vectorAnchors): migração controlada de legacyQuadratic → vectorAnchors.
 // ──────────────────────────────────────────────────────────────────────────────
 
-// ─── Unified Segment Path Evaluator — v8z4b18l / mode switch v8z4b18n ─────────
+// ─── Unified Segment Path Evaluator — v8z4b18l / mode switch v8z4b18n / runtime v8z4b19d ──
 //
-// evaluateSegmentPath() é a entrada única para calcular posição no caminho.
-// Usa getSegmentPathMode() para selecionar o avaliador correto por segmento.
-// Hoje todos os segmentos usam 'legacyQuadratic'.
+// evaluateSegmentPath() é a entrada pública/real do motor para calcular posição
+// no caminho de um segmento. A partir da v8z4b19d, usa o modelo runtime de curva
+// (buildRuntimeCurveModel + validateRuntimeCurveModel + evaluateRuntimeCurveModel)
+// como caminho preferencial, com fallback automático para o cálculo legado.
+//
+// Caminhos de avaliação:
+//   [preferencial] runtime model  → buildRuntimeCurveModel → validateRuntimeCurveModel
+//                                   → evaluateRuntimeCurveModel → {x,y}
+//   [fallback]     legado          → evaluateLegacySegmentPath → {x,y}
+//
+// O fallback é acionado automaticamente quando:
+//   - buildRuntimeCurveModel retorna null/undefined (segmento inválido, stageW/H ausente, etc.)
+//   - validateRuntimeCurveModel falha (modelo mal-formado)
+//   - evaluateRuntimeCurveModel retorna null, NaN ou Infinity
+//   - qualquer exceção inesperada no caminho runtime
+//
+// Resultado matemático idêntico à v8z4b19c: ambos os caminhos implementam a mesma
+// fórmula de Bézier quadrática com os mesmos dados de entrada.
 //
 // legacyQuadratic — curva quadrática atual com curvePuller.
 // vectorAnchors   — futuro; não ativado nesta versão.
 //
-// Esta versão não altera comportamento nem schema.
+// Schema JSON persistido NÃO alterado: ctrlPts / ctrlPtManual / loopCtrlPt.
+// O modelo runtime não aparece no JSON — é apenas runtime.
 
-// Avalia a posição na trajetória do segmento em t ∈ [0,1].
+// Cálculo legado extraído da implementação anterior de evaluateSegmentPath (v8z4b19c).
+// Preservado como fallback interno de segurança — v8z4b19d.
 // Retorna {x, y} em pixels do stage, ou null para segmento inválido.
-// t fora de [0,1] é clampado; t NaN é tratado como 0.
-//
-// v8z4b19b — contrato auditado:
-//   Segmentos normais (isLoop: false):
-//     fromIdx = seg.from (= segIndex), toIdx = seg.to (= segIndex + 1).
-//     P1 = frame[segIndex], P2 = frame[segIndex+1].
-//     CP = getSegmentCurvePuller(segIndex) → ctrlPts[segIndex] ou midpoint.
-//   Segmento de loop (isLoop: true, segIndex = frameCount - 1):
-//     fromIdx = seg.from (= frameCount - 1, último frame),
-//     toIdx   = seg.to   (= 0, primeiro frame).
-//     P1 = frame[frameCount-1], P2 = frame[0].
-//     CP = getSegmentCurvePuller(loopSegIndex) → loopCtrlPt ou midpoint.
-//   Ambos usam a mesma fórmula de Bézier quadrática. A distinção de
-//   frames e curvePuller é delegada a getSegmentByIndex + getSegmentCurvePuller.
-function evaluateSegmentPath(segIndex, t) {
+// Não chamar diretamente no fluxo normal; usar evaluateSegmentPath().
+function evaluateLegacySegmentPath(segIndex, t) {
   if (typeof t !== 'number' || !isFinite(t)) t = 0;
   t = Math.max(0, Math.min(1, t));
 
@@ -5188,7 +5192,7 @@ function evaluateSegmentPath(segIndex, t) {
   if (!isFinite(p1x) || !isFinite(p1y) || !isFinite(p2x) || !isFinite(p2y)) return null;
 
   // curvePuller / legacyCurveControl: ponto de controle quadrático atual — v8z4b19a: via curvePuller helper
-  let cp = getSegmentCurvePuller(segIndex);
+  const cp = getSegmentCurvePuller(segIndex);
   let cpx, cpy;
   if (cp && typeof cp.nx === 'number' && isFinite(cp.nx) &&
             typeof cp.ny === 'number' && isFinite(cp.ny)) {
@@ -5205,6 +5209,71 @@ function evaluateSegmentPath(segIndex, t) {
   const y = inv * inv * p1y + 2 * inv * t * cpy + t * t * p2y;
   if (!isFinite(x) || !isFinite(y)) return null;
   return { x, y };
+}
+
+// Avalia a posição na trajetória do segmento em t ∈ [0,1].
+// Retorna {x, y} em pixels do stage, ou null para segmento inválido.
+// t fora de [0,1] é clampado; t NaN é tratado como 0.
+//
+// v8z4b19d — entrada pública/real do motor; usa runtime model como caminho preferencial:
+//   1. buildRuntimeCurveModel(segIndex) → constrói o modelo runtime normalizado.
+//   2. validateRuntimeCurveModel(model) → verifica integridade do modelo.
+//   3. evaluateRuntimeCurveModel(model, t) → calcula {x, y} em pixels.
+//   Se qualquer etapa falhar, recai em evaluateLegacySegmentPath(segIndex, t).
+//
+// v8z4b19b — contrato auditado (mantido):
+//   Segmentos normais (isLoop: false):
+//     fromIdx = seg.from (= segIndex), toIdx = seg.to (= segIndex + 1).
+//     P1 = frame[segIndex], P2 = frame[segIndex+1].
+//     CP = getSegmentCurvePuller(segIndex) → ctrlPts[segIndex] ou midpoint.
+//   Segmento de loop (isLoop: true, segIndex = frameCount - 1):
+//     fromIdx = seg.from (= frameCount - 1, último frame),
+//     toIdx   = seg.to   (= 0, primeiro frame).
+//     P1 = frame[frameCount-1], P2 = frame[0].
+//     CP = getSegmentCurvePuller(loopSegIndex) → loopCtrlPt ou midpoint.
+//   Ambos usam a mesma fórmula de Bézier quadrática. A distinção de
+//   frames e curvePuller é delegada a getSegmentByIndex + getSegmentCurvePuller.
+function evaluateSegmentPath(segIndex, t) {
+  // v8z4b19d — caminho preferencial: runtime curve model.
+  // O modelo runtime encapsula os mesmos dados do legado (anchors + controls
+  // normalizados), mas de forma tipada e auto-descritiva.
+  // O schema persistido (ctrlPts / ctrlPtManual / loopCtrlPt) NÃO é alterado.
+  try {
+    const model = buildRuntimeCurveModel(segIndex);
+    if (!model) return evaluateLegacySegmentPath(segIndex, t);
+    if (!validateRuntimeCurveModel(model)) return evaluateLegacySegmentPath(segIndex, t);
+    const result = evaluateRuntimeCurveModel(model, t);
+    if (!result || !isFinite(result.x) || !isFinite(result.y)) {
+      return evaluateLegacySegmentPath(segIndex, t);
+    }
+    return result;
+  } catch (_e) {
+    // Fallback de segurança: qualquer exceção inesperada no caminho runtime
+    // não deve quebrar Preview/MP4 nem interromper o fluxo normal.
+    return evaluateLegacySegmentPath(segIndex, t);
+  }
+}
+
+// Helper interno de comparação/paridade — v8z4b19d.
+// Compara o resultado do modelo runtime com o cálculo legado para o mesmo
+// (segIndex, t). Retorna { runtime, legacy, match, delta } para uso em
+// desenvolvimento/teste interno.
+// Não chamado no fluxo normal de produção — apenas para verificação/debug.
+function compareRuntimePathWithLegacy(segIndex, t) {
+  const runtime = (() => {
+    try {
+      const model = buildRuntimeCurveModel(segIndex);
+      if (!model || !validateRuntimeCurveModel(model)) return null;
+      return evaluateRuntimeCurveModel(model, t);
+    } catch (_e) { return null; }
+  })();
+  const legacy = evaluateLegacySegmentPath(segIndex, t);
+  if (!runtime || !legacy) return { runtime, legacy, match: false, delta: null };
+  const dx = Math.abs(runtime.x - legacy.x);
+  const dy = Math.abs(runtime.y - legacy.y);
+  // Tolerância de 0.001 px — diferença esperada: zero (mesma aritmética).
+  const match = dx < 0.001 && dy < 0.001;
+  return { runtime, legacy, match, delta: { dx, dy } };
 }
 
 // Retorna steps+1 pontos amostrados uniformemente ao longo da trajetória.
