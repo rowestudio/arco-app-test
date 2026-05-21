@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b18x                                     ║
+║  Versão: v8z4b18y                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -78,7 +78,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b18x — clarify legacy curve puller architecture: consolida ctrlPts/loopCtrlPt como "legacy curve puller"; adiciona helpers getSegmentCurvePuller/setSegmentCurvePuller/isSegmentCurvePullerManual/setSegmentCurvePullerManual; reforça comentários técnicos sem alterar motor, visual, schema JSON ou comportamento -->
+<!-- Arco Motion App — v8z4b18y — centralize legacy curve puller access: substitui acessos diretos a ctrlPts/ctrlPtManual/loopCtrlPt por getSegmentCurvePuller/isSegmentCurvePullerManual/setSegmentCurvePuller em funções de renderização, sincronização e medição de curva; sem alterar motor, visual, schema JSON ou comportamento -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -4196,8 +4196,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b18x';
-const APP_VERSION_NAME = 'clarify legacy curve puller architecture';
+const APP_VERSION = 'v8z4b18y';
+const APP_VERSION_NAME = 'centralize legacy curve puller access';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5918,7 +5918,7 @@ function insertFrameAfterActive() {
   const fa = frames[a], fb = frames[b];
   const p0x = fa.x + fa.w / 2, p0y = fa.y + fa.h / 2;
   const p2x = fb.x + fb.w / 2, p2y = fb.y + fb.h / 2;
-  const cpSrc = ctrlPts[a];
+  const cpSrc = getSegmentCurvePuller(a); // v8z4b18y: via curvePuller helper
   const hasValidCp = cpSrc && Number.isFinite(cpSrc.nx) && Number.isFinite(cpSrc.ny);
   const cp = hasValidCp ? cpSrc : {
     nx: (p0x / stageW + p2x / stageW) / 2,
@@ -6991,27 +6991,29 @@ function computeNxNyFromTPerp(seg, t, perpX, perpY) {
 }
 
 // Sincroniza ctrl pts dos segmentos conectados ao frame fi
+// v8z4b18y: acesso via curvePuller helpers (getSegmentCurvePuller /
+//   isSegmentCurvePullerManual / setSegmentCurvePuller) em vez de direto.
 function syncCtrlPtsForFrame(fi) {
   const segs = [fi - 1, fi];
   for (const seg of segs) {
     if (seg < 0 || seg >= frameCount - 1) continue;
-    if (!ctrlPts[seg]) continue;
-    if (!ctrlPtManual[seg]) {
-      ctrlPts[seg].nx = (frameCX(seg) / stageW + frameCX(seg + 1) / stageW) / 2;
-      ctrlPts[seg].ny = (frameCY(seg) / stageH + frameCY(seg + 1) / stageH) / 2;
-      ctrlPts[seg].t = 0.5; ctrlPts[seg].perpX = 0; ctrlPts[seg].perpY = 0;
+    const cp = getSegmentCurvePuller(seg); // v8z4b18y
+    if (!cp) continue;
+    if (!isSegmentCurvePullerManual(seg)) { // v8z4b18y
+      setSegmentCurvePuller(seg, { // v8z4b18y
+        nx: (frameCX(seg) / stageW + frameCX(seg + 1) / stageW) / 2,
+        ny: (frameCY(seg) / stageH + frameCY(seg + 1) / stageH) / 2,
+        t: 0.5, perpX: 0, perpY: 0
+      });
     } else {
-      let { t, perpX, perpY } = ctrlPts[seg];
+      let { t, perpX, perpY } = cp; // v8z4b18y: leitura via cp (= getSegmentCurvePuller)
       if (!Number.isFinite(t) || !Number.isFinite(perpX) || !Number.isFinite(perpY)) {
-        const tp = computeTPerpForSeg(seg, ctrlPts[seg].nx, ctrlPts[seg].ny);
+        const tp = computeTPerpForSeg(seg, cp.nx, cp.ny); // v8z4b18y
         t = tp.t; perpX = tp.perpX; perpY = tp.perpY;
-        ctrlPts[seg].t = t;
-        ctrlPts[seg].perpX = perpX;
-        ctrlPts[seg].perpY = perpY;
+        setSegmentCurvePuller(seg, { t, perpX, perpY }); // v8z4b18y
       }
       const pos = computeNxNyFromTPerp(seg, t, perpX, perpY);
-      ctrlPts[seg].nx = pos.nx;
-      ctrlPts[seg].ny = pos.ny;
+      setSegmentCurvePuller(seg, { nx: pos.nx, ny: pos.ny }); // v8z4b18y
     }
   }
 }
@@ -7340,18 +7342,12 @@ function getStateAtT(t) {
     p3 = { cx: 2*p2.cx - p1.cx, cy: 2*p2.cy - p1.cy, w: p2.w, h: p2.h, rot: p2.rot };
   }
 
-  let cp;
-  if (loopEnabled && seg === frameCount - 1) {
-    cp = loopCtrlPt || {
-      nx: (frameCX(frameCount - 1) / stageW + frameCX(0) / stageW) / 2,
-      ny: (frameCY(frameCount - 1) / stageH + frameCY(0) / stageH) / 2
-    };
-  } else {
-    cp = ctrlPts[seg] || {
-      nx: (frameCX(seg) / stageW + frameCX(seg+1) / stageW) / 2,
-      ny: (frameCY(seg) / stageH + frameCY(seg+1) / stageH) / 2
-    };
-  }
+  // v8z4b18y: acesso via curvePuller helper — lida com trechos normais e loop
+  // getSegmentCurvePuller retorna loopCtrlPt para seg de loop, ctrlPts[seg] para normal.
+  const cp = getSegmentCurvePuller(seg) || {
+    nx: (frameCX(seg % frameCount) / stageW + frameCX((seg + 1) % frameCount) / stageW) / 2,
+    ny: (frameCY(seg % frameCount) / stageH + frameCY((seg + 1) % frameCount) / stageH) / 2
+  };
   const cpx = cp.nx * stageW, cpy = cp.ny * stageH;
 
   // Blend Catmull-Rom with Bézier control point influence
@@ -10526,7 +10522,8 @@ function measureLoopCurveLength() {
   const p1cy = frameCY(lastIdx);
   const p2cx = frameCX(0);
   const p2cy = frameCY(0);
-  const cp = loopCtrlPt || {
+  // v8z4b18y: acesso via curvePuller helper (getLoopSegmentIndex → getSegmentCurvePuller)
+  const cp = getSegmentCurvePuller(getLoopSegmentIndex()) || {
     nx: (p1cx / stageW + p2cx / stageW) / 2,
     ny: (p1cy / stageH + p2cy / stageH) / 2
   };

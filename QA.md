@@ -2,6 +2,87 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b18y — centralize legacy curve puller access
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b18y` na UI.
+3. Carregar imagem no iPhone/Safari.
+
+### Teste B — curva normal
+1. Criar projeto com 4 frames.
+2. Mover frames.
+3. Escalar frames.
+4. Rotacionar frames.
+5. Puxar curva entre F1→F2.
+6. Puxar curva entre F2→F3.
+7. Confirmar que visual e comportamento da curva são idênticos à v8z4b18x.
+
+### Teste C — reset de curva
+1. Ajustar uma curva manualmente.
+2. Usar reset de curva em um trecho.
+3. Confirmar que só aquele trecho muda.
+4. Confirmar que outros trechos não mudam indevidamente.
+
+### Teste D — loop e puxador de loop
+1. Ativar loop.
+2. Confirmar que a curva de loop aparece.
+3. Ajustar curva de loop (loopCtrlPt).
+4. Rodar Preview.
+5. Confirmar que Preview respeita curvas normais e de loop.
+6. Exportar MP4.
+
+### Teste E — inserção de frame entre F1 e F2
+1. Com curva ajustada em F1→F2, inserir frame entre eles.
+2. Confirmar que os dois novos trechos têm curvas razoáveis.
+3. Confirmar que não há erro de console, NaN ou Infinity.
+
+### Teste F — mover frame (syncCtrlPtsForFrame)
+1. Arrastar frame que tem curva automática em ambos os lados.
+2. Confirmar que as bolinha do puxador seguem o frame corretamente.
+3. Arrastar frame com curva manual em um lado.
+4. Confirmar que o trecho manual mantém posição relativa; o automático se atualiza.
+
+### Teste G — save/load
+1. Criar projeto com curvas manuais e loop ativo.
+2. Salvar com imagem:
+   - filename termina em `_img.json`.
+   - `"version": "v8z4b18y"` no JSON.
+   - `imageBase64` existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+3. Salvar sem imagem:
+   - filename termina em `_file.json`.
+   - `"version": "v8z4b18y"`.
+   - `imageBase64` não existe.
+   - `ctrlPts`, `ctrlPtManual`, `loopCtrlPt` preservados.
+4. Confirmar que nenhum campo novo foi criado (`curvesV2`, `vectorPath`, `handles`, `pathPoints` ausentes).
+
+### Teste H — compatibilidade com versões anteriores
+1. Abrir JSON salvo em v8z4b18w ou v8z4b18x.
+2. Confirmar que abre normalmente.
+3. Confirmar que curvas aparecem corretamente.
+4. Confirmar que Preview funciona.
+5. Confirmar que MP4 funciona.
+
+### Teste I — regressão rápida
+1. Confirmar que não há erro de console, NaN ou Infinity.
+2. Marca d'água continua `arcomotion.app`.
+3. Pausas OK.
+4. Velocidade constante OK.
+5. Movimento Inteligente OK.
+6. Rotação Inteligente OK.
+7. Escala Inteligente OK.
+
+### Teste J — entrega
+1. Confirmar que o PR ficou aberto e não foi mergeado.
+2. Confirmar que não há auto-merge ativo.
+
+---
+
 ## v8z4b18x — clarify legacy curve puller architecture
 
 ### Teste A — curva normal
