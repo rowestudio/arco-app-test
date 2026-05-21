@@ -1,5 +1,67 @@
 # Changelog
 
+## v8z4b19e — prepare runtime path point model
+
+Implementação interna controlada: o modelo runtime de curva
+(`buildRuntimeCurveModel`) é ampliado com metadados de preparação futura —
+`pathPoints: []`, `handles: []` e `capabilities` — documentando o contrato
+interno para futuras evoluções sem alterar qualquer comportamento ativo.
+`validateRuntimeCurveModel` e `evaluateRuntimeCurveModel` atualizados para
+aceitar e ignorar os novos campos enquanto `mode === 'legacyQuadratic'`.
+Sem alterar comportamento visual, Preview, MP4, save/load, JSON ou UI.
+Resultado de `evaluateSegmentPath()` numericamente idêntico à v8z4b19d.
+
+### Objetivo
+
+Ampliar o contrato interno do runtime curve model para documentar e preparar
+a presença futura de `pathPoints` e `handles`, mantendo o modelo atual em
+modo `legacyQuadratic` sem qualquer alteração de comportamento.
+
+### Glossário interno introduzido
+
+| Conceito | Descrição |
+|---|---|
+| `frameAnchor` | Ponto REAL de câmera ligado a um frame da timeline. Início ou fim de cada segmento. Origem: `frames[frameIndex]`. |
+| `curvePuller` | Controle legado QUADRÁTICO atual. Atrai a curva mas não é ponto de passagem real. Origem: `ctrlPts` / `loopCtrlPt`. |
+| `pathPoint` | FUTURO: ponto real de passagem intermediária. A curva passa exatamente por ele. Na v8z4b19e: apenas `[]` vazio. |
+| `handle/tangent` | FUTURO: controle vetorial de tangência associado a um `pathPoint`. Na v8z4b19e: apenas `[]` vazio. |
+| `capabilities` | Metadados informativos do modo atual. Na v8z4b19e: `{ supportsPathPoints: false, supportsHandles: false }`. |
+
+### Funções alteradas em index.html
+
+| Função | Descrição |
+|---|---|
+| `buildRuntimeCurveModel(segIndex)` | Ampliada com `pathPoints: []`, `handles: []` e `capabilities`. Documentação de glossário adicionada. |
+| `validateRuntimeCurveModel(model)` | Atualizada para aceitar `pathPoints` e `handles` como campos opcionais de array (presença ou ausência não afeta validade). |
+| `evaluateRuntimeCurveModel(model, t)` | Comentário explícito: `pathPoints`/`handles` ignorados enquanto `mode === 'legacyQuadratic'`. Resultado idêntico à v8z4b19d. |
+
+### Campos adicionados ao objeto runtime (NÃO ao JSON)
+
+```js
+// Em buildRuntimeCurveModel():
+{
+  // ... campos existentes ...
+  pathPoints: [],       // contrato runtime vazio — nunca persiste no JSON
+  handles:    [],       // contrato runtime vazio — nunca persiste no JSON
+  capabilities: {
+    supportsPathPoints: false,
+    supportsHandles:    false
+  }
+}
+```
+
+### Confirmações
+
+- `evaluateSegmentPath(segIndex, t)` → resultado idêntico à v8z4b19d.
+- `pathPoints` e `handles` são apenas contrato runtime vazio — ignorados em avaliação.
+- `capabilities` é apenas metadado informativo — não altera avaliação.
+- Nenhum campo novo aparece no JSON salvo.
+- UI, Preview, MP4, save/load e comportamento visual sem alteração.
+- Schema persistido (`ctrlPts`, `ctrlPtManual`, `loopCtrlPt`) sem alteração.
+- Arquivos salvos em v8z4b19d continuam abrindo normalmente.
+
+---
+
 ## v8z4b19d — route segment path through runtime curve model
 
 Implementação interna controlada: `evaluateSegmentPath()` agora usa o modelo
