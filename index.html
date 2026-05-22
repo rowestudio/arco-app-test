@@ -1,13 +1,25 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19l                                     ║
+║  Versão: v8z4b19m                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19m                                            ║
+║    feat: derive curve puller from runtime            ║
+║         path point                                   ║
+║         deriveLegacyCurvePullerFromMidpoint()       ║
+║         inversão matemática: midpoint → curvePuller  ║
+║         deriveLegacyCurvePullerFromRuntimePathPoint()║
+║         wrapper usando anchors do runtime model      ║
+║         compareDerivedPullerWithRuntimeControl()    ║
+║         diagnóstico passivo: puller derivado vs      ║
+║         controls[0]; delta norm + pixels             ║
+║         compareRuntimePathWithLegacy() inclui       ║
+║         pullerDiag — paridade puller × controls[0]  ║
 ║  v8z4b19l                                            ║
 ║    feat: route runtime curve model through           ║
 ║         derived spans                                ║
@@ -122,7 +134,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19l — route runtime curve model through derived spans: evaluateRuntimeLegacyQuadratic() extrai lógica legacyQuadratic anterior; isValidRuntimePoint() valida {x,y} finitos; evaluateRuntimeCurveModel() tenta spans primeiro via evaluateRuntimeCurveSpans(), validando com isValidRuntimePoint(), recaindo em evaluateRuntimeLegacyQuadratic() se necessário; compareRuntimePathWithLegacy() inclui pathUsed ('spans'|'legacyFallback'); resultado matemático idêntico à v8z4b19k; UI, JSON, Preview, MP4/export, save/load inalterados -->
+<!-- Arco Motion App — v8z4b19m — derive curve puller from runtime path point: deriveLegacyCurvePullerFromMidpoint() inverte Bézier quadrática (C = 2·M − 0.5·P0 − 0.5·P1) para derivar curvePuller de midpoint normalizado; deriveLegacyCurvePullerFromRuntimePathPoint() wrapper usando anchors do runtime model; compareDerivedPullerWithRuntimeControl() diagnóstico passivo (delta norm + pixels) entre puller derivado e controls[0]; compareRuntimePathWithLegacy() inclui pullerDiag; resultado visual e matemático idêntico à v8z4b19l; UI, JSON, Preview, MP4/export, save/load inalterados; nada editável, nada renderizado, nada salvo -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1899,7 +1911,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19l</span><br><span id="appVersionNameText">route runtime curve model through derived spans</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19m</span><br><span id="appVersionNameText">derive curve puller from runtime path point</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4240,8 +4252,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19l';
-const APP_VERSION_NAME = 'route runtime curve model through derived spans';
+const APP_VERSION = 'v8z4b19m';
+const APP_VERSION_NAME = 'derive curve puller from runtime path point';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5073,7 +5085,7 @@ function evaluateLegacyQuadraticNormalized(start, control, end, t) {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-// ─── Runtime Curve Model — v8z4b19c / primary path v8z4b19d / pathPoint contract v8z4b19e / derived pathPoint v8z4b19f / derived spans v8z4b19h / spans routing v8z4b19l ─
+// ─── Runtime Curve Model — v8z4b19c / primary path v8z4b19d / pathPoint contract v8z4b19e / derived pathPoint v8z4b19f / derived spans v8z4b19h / spans routing v8z4b19l / curve puller from pathPoint v8z4b19m ─
 //
 // buildRuntimeCurveModel(segIndex): constrói o modelo runtime de curva do
 // segmento. Representa exatamente a curva atual (legacyQuadratic) como um
@@ -5104,6 +5116,14 @@ function evaluateLegacyQuadraticNormalized(start, control, end, t) {
 //                   NÃO altera a trajetória. Prepara o futuro pathPoint real
 //                   editável. A trajetória continua sendo calculada pelo
 //                   legacy curve puller.
+//                   Na v8z4b19m: pathPoints[0] (derivedMidpoint) é a base
+//                   do caminho inverso: pathPoint → curvePuller. Os helpers
+//                   deriveLegacyCurvePullerFromMidpoint() e
+//                   deriveLegacyCurvePullerFromRuntimePathPoint() calculam
+//                   o curvePuller equivalente (C = 2·M − 0.5·P0 − 0.5·P1),
+//                   preparando futura edição de pathPoint sem quebrar o schema.
+//                   Nesta versão nada é editável, nada é salvo, nada é
+//                   renderizado. O comportamento visual é idêntico à v8z4b19l.
 //                   Não existe no JSON; não renderizado; não editável.
 //
 //   handle/tangent — FUTURO: controle vetorial de tangência associado a um pathPoint.
@@ -5807,7 +5827,7 @@ function evaluateSegmentPath(segIndex, t) {
 // Helper interno de comparação/paridade — v8z4b19d / derivedPathPoint check v8z4b19f / reutiliza validateDerivedRuntimePathPoint v8z4b19g / spansDiag v8z4b19h / pathUsed v8z4b19l.
 // Compara o resultado do modelo runtime com o cálculo legado para o mesmo
 // (segIndex, t). Retorna { runtime, legacy, match, delta, derivedPathPointCheck,
-// spansDiag, spanPoint, spanDelta, spanMatch, pathUsed } para uso em
+// spansDiag, spanPoint, spanDelta, spanMatch, pathUsed, pullerDiag } para uso em
 // desenvolvimento/teste interno.
 // Não chamado no fluxo normal de produção — apenas para verificação/debug.
 //
@@ -5822,6 +5842,9 @@ function evaluateSegmentPath(segIndex, t) {
 //   'spans'          — evaluateRuntimeCurveSpans() retornou ponto válido.
 //   'legacyFallback' — spans inválidos/ausentes; usado evaluateRuntimeLegacyQuadratic().
 //   null             — modelo inválido ou avaliação falhou.
+// v8z4b19m: inclui pullerDiag — retorno de compareDerivedPullerWithRuntimeControl(model).
+//   Confirma paridade entre curvePuller derivado do pathPoint[0] e controls[0].
+//   Diagnóstico passivo — não altera estado, não corrige nada.
 function compareRuntimePathWithLegacy(segIndex, t) {
   let model = null;
   // v8z4b19l: determinar qual caminho foi usado por evaluateRuntimeCurveModel.
@@ -5918,8 +5941,19 @@ function compareRuntimePathWithLegacy(segIndex, t) {
     } catch (_e) { spanPoint = null; spanDelta = null; spanMatch = false; }
   }
 
+  // v8z4b19m: diagnóstico do curvePuller derivado vs controls[0].
+  // compareDerivedPullerWithRuntimeControl() é passivo — não altera estado.
+  // Confirma paridade: derivedPuller calculado do pathPoint[0] deve coincidir
+  // exatamente com controls[0] (por construção da mesma fórmula quadrática).
+  let pullerDiag = null;
+  if (model) {
+    try {
+      pullerDiag = compareDerivedPullerWithRuntimeControl(model);
+    } catch (_e) { pullerDiag = null; }
+  }
+
   // v8z4b19l: pathUsed indica qual caminho foi tomado pela avaliação runtime.
-  return { runtime, legacy, match, delta: { dx, dy }, derivedPathPointCheck, spansDiag, spanPoint, spanDelta, spanMatch, pathUsed };
+  return { runtime, legacy, match, delta: { dx, dy }, derivedPathPointCheck, spansDiag, spanPoint, spanDelta, spanMatch, pathUsed, pullerDiag };
 }
 
 // ─── Diagnóstico interno do pathPoint derivado — v8z4b19g ─────────────────────
@@ -6096,6 +6130,212 @@ function diagnoseRuntimeCurveModel() {
     failed,
     segments
   };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: Derivar curvePuller legado a partir de midpoint — v8z4b19m ──────
+//
+// deriveLegacyCurvePullerFromMidpoint(start, midpoint, end)
+//
+// Dado um ponto médio M (amostra real da curva em t=0.5), calcula o ponto
+// de controle quadrático C (curvePuller) equivalente a partir da matemática
+// inversa da Bézier quadrática.
+//
+// Matemática:
+//   Para uma Bézier quadrática com P0=start, C=control, P1=end:
+//     B(0.5) = 0.25·P0 + 0.5·C + 0.25·P1 = M
+//   Isolando C:
+//     C = (M − 0.25·P0 − 0.25·P1) / 0.5
+//     C = 2·M − 0.5·P0 − 0.5·P1
+//
+// Contrato de unidades:
+//   - start, midpoint, end: { x, y } em coordenadas normalizadas (0–1).
+//   - Mesma convenção de anchors, controls, pathPoints e spans.
+//   - O retorno também está em normalizado (0–1).
+//
+// Retorno:
+//   { x, y, source: 'runtimePathPoint', t: 0.5 }
+//   ou null se qualquer entrada for inválida.
+//
+// Comportamento passivo:
+//   - Não altera nenhum estado, array, curvePuller ou pathPoint.
+//   - Não salva no JSON, não renderiza, não afeta Preview nem MP4.
+//   - pathPoint derivado atual (model.pathPoints[0]) é amostra real da curva —
+//     não é curvePuller; o helper faz o caminho inverso: midpoint → curvePuller.
+//   - Nesta versão: helper diagnóstico/preparação — nada é editável,
+//     nada é salvo, nada é renderizado.
+//
+// v8z4b19m — helper novo.
+function deriveLegacyCurvePullerFromMidpoint(start, midpoint, end) {
+  // Validar entradas: todos devem ser objetos com x/y finitos.
+  if (!start   || !isFinite(start.x)    || !isFinite(start.y))    return null;
+  if (!midpoint|| !isFinite(midpoint.x) || !isFinite(midpoint.y)) return null;
+  if (!end     || !isFinite(end.x)      || !isFinite(end.y))      return null;
+
+  // Fórmula inversa: C = 2·M − 0.5·P0 − 0.5·P1
+  const cx = 2 * midpoint.x - 0.5 * start.x - 0.5 * end.x;
+  const cy = 2 * midpoint.y - 0.5 * start.y - 0.5 * end.y;
+
+  if (!isFinite(cx) || !isFinite(cy)) return null;
+
+  return { x: cx, y: cy, source: 'runtimePathPoint', t: 0.5 };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: Derivar curvePuller a partir de pathPoint runtime — v8z4b19m ────
+//
+// deriveLegacyCurvePullerFromRuntimePathPoint(model, pathPoint)
+//
+// Wrapper de conveniência: extrai anchors start/end do modelo runtime e
+// chama deriveLegacyCurvePullerFromMidpoint(start, pathPoint, end).
+//
+// Permite derivar o curvePuller equivalente diretamente de um pathPoint
+// derivado (pathPoints[0] do modelo runtime) sem expor os anchors ao chamador.
+//
+// Contexto:
+//   - model.pathPoints[0] é um pathPoint derivado em t=0.5 — amostra real
+//     da curva calculada pela fórmula quadrática (v8z4b19f).
+//   - Este helper faz o caminho inverso: a partir desse midpoint, calcula
+//     o curvePuller quadrático equivalente.
+//   - O resultado deve ser matematicamente idêntico a controls[0] (curvePuller
+//     atual) — verificável via compareDerivedPullerWithRuntimeControl().
+//   - Prepara o futuro pathPoint editável: quando um pathPoint for editado
+//     pelo usuário, este helper permitirá converter de volta para curvePuller
+//     compatível com o schema ctrlPts / loopCtrlPt.
+//   - Nesta versão nada é editável, nada é salvo, nada é renderizado.
+//
+// Parâmetros:
+//   model     — modelo runtime (retorno de buildRuntimeCurveModel).
+//   pathPoint — { x, y } em normalizado (0–1) — amostra real da curva em t=0.5.
+//               Tipicamente model.pathPoints[0] (derivedMidpoint, derived: true).
+//
+// Retorno:
+//   { x, y, source: 'runtimePathPoint', t: 0.5 }
+//   ou null se modelo/pathPoint inválidos ou anchors ausentes.
+//
+// Comportamento passivo:
+//   - Não altera model, pathPoints, anchors, controls nem estado global.
+//   - Não salva, não renderiza, não afeta Preview nem MP4.
+//   - Nesta versão: helper diagnóstico/preparação.
+//
+// v8z4b19m — helper novo.
+function deriveLegacyCurvePullerFromRuntimePathPoint(model, pathPoint) {
+  if (!model || !validateRuntimeCurveModel(model)) return null;
+  if (!pathPoint || !isFinite(pathPoint.x) || !isFinite(pathPoint.y)) return null;
+
+  const start = model.anchors.find(a => a.role === 'start');
+  const end   = model.anchors.find(a => a.role === 'end');
+  if (!start || !end) return null;
+
+  return deriveLegacyCurvePullerFromMidpoint(
+    { x: start.x,    y: start.y    },
+    { x: pathPoint.x, y: pathPoint.y },
+    { x: end.x,      y: end.y      }
+  );
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Diagnóstico: curvePuller derivado vs controls[0] — v8z4b19m ─────────────
+//
+// compareDerivedPullerWithRuntimeControl(model)
+//
+// Helper de diagnóstico passivo: calcula o curvePuller derivado a partir do
+// pathPoint em t=0.5 (model.pathPoints[0]) e compara com controls[0]
+// (curvePuller atual) do modelo runtime.
+//
+// Algoritmo:
+//   1. Localizar pathPoints[0] (derivedMidpoint, derived: true).
+//   2. Calcular curvePuller derivado via deriveLegacyCurvePullerFromRuntimePathPoint.
+//   3. Comparar com controls[0] (curvePuller real atual do segmento).
+//   4. Calcular delta normalizado (0–1) e delta em pixels (se stageW/H disponíveis).
+//   5. Retornar resultado estruturado — sem alterar estado.
+//
+// Objetivo:
+//   Confirmar paridade matemática: como pathPoints[0] é calculado pela mesma
+//   Bézier quadrática que usa controls[0], a inversão deve retornar exatamente
+//   controls[0]. Qualquer delta > 0 indica inconsistência interna.
+//
+// Retorno em caso de sucesso:
+//   {
+//     ok:             boolean,  // true se distNorm < 0.000001
+//     derivedPuller:  { x, y, source, t },   // curvePuller calculado do midpoint
+//     currentControl: { x, y, ... },          // controls[0] atual
+//     deltaNorm:      { dx, dy, distNorm },   // delta em espaço normalizado (0–1)
+//     deltaPx:        { dx, dy, distPx }      // delta em pixels (null se stage inválido)
+//   }
+//
+// Retorno em caso de problema:
+//   { ok: false, reason: string, derivedPuller: null, currentControl: null,
+//     deltaNorm: null, deltaPx: null }
+//
+// Razões possíveis:
+//   'invalid-model'     — modelo nulo ou inválido.
+//   'missing-pathpoint' — pathPoints[0] não encontrado ou inválido.
+//   'missing-control'   — controls[0] ausente ou com x/y não finitos.
+//   'derivation-failed' — deriveLegacyCurvePullerFromMidpoint retornou null.
+//
+// Comportamento passivo:
+//   - Não altera model, pathPoints, anchors, controls nem nenhum array persistido.
+//   - Não corrige nada automaticamente.
+//   - Não recalcula ctrlPts.
+//   - Não imprime no console.
+//   - Não deve ser chamado durante animação, Preview ou exportação.
+//   - Nesta versão: helper diagnóstico/preparação — nada é editável,
+//     nada é salvo no JSON, nada é renderizado.
+//
+// v8z4b19m — helper novo.
+function compareDerivedPullerWithRuntimeControl(model) {
+  const FAIL = (reason) => ({
+    ok: false, reason,
+    derivedPuller: null, currentControl: null,
+    deltaNorm: null, deltaPx: null
+  });
+
+  if (!model || !validateRuntimeCurveModel(model)) {
+    return FAIL('invalid-model');
+  }
+
+  // Localizar pathPoint derivado em t=0.5 (derivedMidpoint).
+  const pp = Array.isArray(model.pathPoints)
+    ? model.pathPoints.find(p => p && p.derived === true && p.kind === 'pathPoint')
+    : undefined;
+  if (!pp || !isFinite(pp.x) || !isFinite(pp.y)) {
+    return FAIL('missing-pathpoint');
+  }
+
+  // Verificar controls[0] (curvePuller atual).
+  const ctrl = model.controls && model.controls[0];
+  if (!ctrl || !isFinite(ctrl.x) || !isFinite(ctrl.y)) {
+    return FAIL('missing-control');
+  }
+
+  // Calcular curvePuller derivado do midpoint via inversão da Bézier.
+  const derivedPuller = deriveLegacyCurvePullerFromRuntimePathPoint(model, pp);
+  if (!derivedPuller) {
+    return FAIL('derivation-failed');
+  }
+
+  // Delta em coordenadas normalizadas (0–1).
+  const dxNorm   = Math.abs(derivedPuller.x - ctrl.x);
+  const dyNorm   = Math.abs(derivedPuller.y - ctrl.y);
+  const distNorm = Math.sqrt(dxNorm * dxNorm + dyNorm * dyNorm);
+  const deltaNorm = { dx: dxNorm, dy: dyNorm, distNorm };
+
+  // Delta em pixels, se stageW/H disponíveis.
+  let deltaPx = null;
+  if (stageW > 0 && stageH > 0) {
+    const dxPx  = Math.abs(derivedPuller.x * stageW - ctrl.x * stageW);
+    const dyPx  = Math.abs(derivedPuller.y * stageH - ctrl.y * stageH);
+    const distPx = Math.sqrt(dxPx * dxPx + dyPx * dyPx);
+    deltaPx = { dx: dxPx, dy: dyPx, distPx };
+  }
+
+  // Tolerância: 0.000001 normalizado — por construção deve ser zero
+  // (pathPoints[0] deriva da mesma fórmula que controls[0]).
+  const TOL_NORM = 0.000001;
+  const ok = distNorm < TOL_NORM;
+
+  return { ok, derivedPuller, currentControl: ctrl, deltaNorm, deltaPx };
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
