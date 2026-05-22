@@ -2,6 +2,91 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19m — derive curve puller from runtime path point
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19m` na UI (Settings).
+3. Confirmar que nome da versão exibe `derive curve puller from runtime path point`.
+
+### Teste B — curvas e loop (regressão)
+1. Carregar imagem no iPhone/Safari.
+2. Criar projeto com pelo menos 4 frames.
+3. Puxar curva normal F1→F2.
+4. Puxar curva normal F2→F3.
+5. Ativar loop via chip Loop no painel Duração.
+6. Confirmar que curva de loop aparece **imediatamente** no Stage, sem precisar tocar no Stage.
+7. Puxar curva de loop.
+8. Confirmar que a curva normal aparece igual à v8z4b19l.
+9. Confirmar que a curva de loop aparece igual à v8z4b19l.
+
+### Teste C — Undo/Redo (regressão)
+1. Confirmar Undo/Redo da curva normal.
+2. Confirmar Undo/Redo da curva de loop.
+
+### Teste D — mover frames (regressão)
+1. Mover frame depois de puxar curvas.
+2. Confirmar que as curvas não pulam ou se comportam de forma inesperada.
+
+### Teste E — velocidade constante (regressão)
+1. Usar velocidade constante com curvas normais.
+2. Usar velocidade constante com loop ativo.
+3. Confirmar comportamento igual à v8z4b19l.
+
+### Teste F — Preview (regressão)
+1. Rodar Preview.
+2. Confirmar que Preview respeita curvas normais.
+3. Confirmar que Preview respeita curva de loop.
+
+### Teste G — MP4/export (regressão)
+1. Gerar MP4 normalmente.
+2. Confirmar que MP4 respeita curvas normais e loop.
+3. Testar correção de MP4 da v8z4b19i:
+   - Iniciar geração de MP4.
+   - Tocar Voltar antes de terminar.
+   - Confirmar que Stage não trava.
+   - Confirmar que play/pause não fica preso.
+
+### Teste H — save/load (regressão)
+1. Salvar projeto com imagem:
+   - filename termina em `_img.json`.
+   - `version` salva como `v8z4b19m`.
+   - `imageBase64` existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+2. Salvar projeto sem imagem:
+   - filename termina em `_file.json`.
+   - `version` salva como `v8z4b19m`.
+   - `imageBase64` não existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado.
+3. Abrir JSON salvo em v8z4b19l e confirmar compatibilidade.
+
+### Teste I — campos proibidos no JSON
+Confirmar que nenhum destes campos apareceu no JSON salvo:
+- `curvesV2`
+- `vectorPath`
+- `handles`
+- `pathPoints`
+- `runtimeCurveModel`
+- `capabilities`
+- `spans`
+- `generatedMp4`
+- `exportBlob`
+
+### Teste J — console limpo
+1. Confirmar que não há erro de console.
+2. Confirmar que não há NaN ou Infinity nos logs.
+
+### Teste K — PR
+1. Confirmar que o PR ficou aberto e não foi mergeado.
+
+---
+
 ## v8z4b19l — route runtime curve model through derived spans
 
 ### Teste A — abertura e versão

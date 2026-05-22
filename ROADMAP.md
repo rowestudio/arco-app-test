@@ -66,7 +66,7 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19l)
+### Estado atual (v8z4b19m)
 
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
@@ -76,11 +76,11 @@ compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
   - `spans[1]` (`derivedSecondHalf`): M → P1 com controle B = lerp(C,P1,0.5).
   - M coincide com `pathPoints[0]` (derivedMidpoint).
   - Propriedade: `span1(s) = B_orig(s/2)` e `span2(s) = B_orig(0.5+s/2)`.
-- `evaluateSegmentPath()` continua com resultado matematicamente idêntico à v8z4b19k.
+- `evaluateSegmentPath()` continua com resultado matematicamente idêntico à v8z4b19l.
 - Nenhum campo novo persiste no JSON.
 - O `pathPoint` derivado NÃO tem UI, NÃO é editável e NÃO altera a trajetória.
 - Os spans derivados NÃO têm UI, NÃO são editáveis, NÃO alteram a trajetória.
-- `evaluateRuntimeCurveModel()` agora usa `spans` como caminho preferencial (v8z4b19l), com fallback para `evaluateRuntimeLegacyQuadratic()`. Resultado matemático idêntico.
+- `evaluateRuntimeCurveModel()` usa `spans` como caminho preferencial (v8z4b19l), com fallback para `evaluateRuntimeLegacyQuadratic()`. Resultado matemático idêntico.
 - `isValidRuntimePoint(pt)` — valida x/y finitos. Introduzido na v8z4b19l.
 - `evaluateRuntimeLegacyQuadratic(model, t)` — lógica legacyQuadratic anterior, extraída como fallback explícito. Introduzido na v8z4b19l.
 - `validateDerivedRuntimePathPoint(model)` — diagnóstico passivo: confirma coerência matemática entre `pathPoint` derivado e `evaluateRuntimeCurveModel(model, 0.5)`, com conversão explícita de unidades (normalizado → pixels). Introduzido na v8z4b19g.
@@ -89,9 +89,15 @@ compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 - `lerpPointNormalized(a, b, t)` — lerp normalizado para divisão De Casteljau. Introduzido na v8z4b19h.
 - `splitLegacyQuadraticAtMidpoint(start, control, end)` — divisão De Casteljau em t=0.5. Introduzido na v8z4b19h.
 - `validateDerivedRuntimeSpans(model)` — diagnóstico passivo dos spans derivados: verifica midpoint match e reconstituição por amostragem. Introduzido na v8z4b19h.
+- `deriveLegacyCurvePullerFromMidpoint(start, midpoint, end)` — inversão da Bézier quadrática: C = 2·M − 0.5·P0 − 0.5·P1. Entrada/saída em normalizado (0–1). Introduzido na v8z4b19m.
+- `deriveLegacyCurvePullerFromRuntimePathPoint(model, pathPoint)` — wrapper: extrai anchors do runtime model e deriva curvePuller equivalente do pathPoint runtime. Introduzido na v8z4b19m.
+- `compareDerivedPullerWithRuntimeControl(model)` — diagnóstico passivo: compara curvePuller derivado do pathPoints[0] com controls[0]; retorna delta normalizado e delta em pixels. Por construção, delta deve ser zero. Introduzido na v8z4b19m.
 
 ### Próximos passos (futuros, não imediatos)
 
+- Permitir que um `pathPoint` derivado em `t=0.5` seja arrastável pelo usuário.
+  - Usar `deriveLegacyCurvePullerFromMidpoint()` para converter posição editada em curvePuller compatível com o schema `ctrlPts` / `loopCtrlPt`.
+  - Nenhuma mudança no schema JSON necessária: compatibilidade backward garantida.
 - Adicionar `pathPoints` reais como pontos de passagem sem tempo próprio.
 - Adicionar `handles` de tangência para controle Bézier cúbico.
 - Implementar `mode = 'vectorAnchors'` com avaliador Bézier cúbico.

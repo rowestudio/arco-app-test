@@ -1,5 +1,88 @@
 # Changelog
 
+## v8z4b19m — derive curve puller from runtime path point
+
+Implementação interna controlada do runtime curve model.
+Sem alteração de UI, layout, JSON, curvas, Preview matemático, MP4/export ou save/load.
+
+### Objetivo
+
+Adicionar helpers internos para derivar um legacy curvePuller a partir do pathPoint
+runtime derivado em t=0.5, preparando o futuro ponto de passagem editável sem alterar
+comportamento atual.
+
+### Contexto
+
+- v8z4b19f introduziu pathPoint derivado em runtime em t=0.5.
+- v8z4b19h adicionou spans derivados via De Casteljau.
+- v8z4b19j adicionou `evaluateRuntimeCurveSpans(model, t)`.
+- v8z4b19l fez `evaluateRuntimeCurveModel()` tentar spans derivados primeiro,
+  com fallback para `legacyQuadratic`.
+- v8z4b19m prepara o caminho inverso: pathPoint em t=0.5 → curvePuller legado equivalente.
+
+### Matemática
+
+Para uma Bézier quadrática com P0=start, C=control, P1=end:
+
+```
+B(0.5) = 0.25·P0 + 0.5·C + 0.25·P1 = M
+```
+
+Isolando C (curvePuller):
+
+```
+C = 2·M − 0.5·P0 − 0.5·P1
+```
+
+Todos os pontos em coordenadas normalizadas (0–1) — mesma unidade de anchors,
+controls, pathPoints e spans.
+
+### Helpers criados
+
+| Helper | Descrição |
+|---|---|
+| `deriveLegacyCurvePullerFromMidpoint(start, midpoint, end)` | Inversão da Bézier quadrática: dado um midpoint M (amostra real da curva em t=0.5), calcula o curvePuller C equivalente (C = 2·M − 0.5·P0 − 0.5·P1). Entrada/saída em normalizado (0–1). Retorna `{ x, y, source: 'runtimePathPoint', t: 0.5 }`. |
+| `deriveLegacyCurvePullerFromRuntimePathPoint(model, pathPoint)` | Wrapper de conveniência: extrai anchors start/end do runtime model e chama `deriveLegacyCurvePullerFromMidpoint`. Permite derivar o curvePuller diretamente de model.pathPoints[0] sem expor os anchors ao chamador. |
+| `compareDerivedPullerWithRuntimeControl(model)` | Diagnóstico passivo: calcula curvePuller derivado do pathPoints[0], compara com controls[0] (curvePuller atual), retorna delta normalizado e delta em pixels. Por construção matemática, o delta deve ser zero. Não altera estado, não corrige nada. |
+
+### Helpers atualizados
+
+| Helper | Descrição |
+|---|---|
+| `compareRuntimePathWithLegacy(segIndex, t)` | Agora inclui `pullerDiag` no retorno — retorno de `compareDerivedPullerWithRuntimeControl(model)`. Confirma paridade entre curvePuller derivado e controls[0]. Fluxo normal inalterado. |
+
+### Fluxo de derivação (v8z4b19m)
+
+```
+pathPoint em t=0.5 (model.pathPoints[0], derivedMidpoint)
+  ↓ deriveLegacyCurvePullerFromRuntimePathPoint(model, pathPoint)
+  ↓ deriveLegacyCurvePullerFromMidpoint(start, midpoint, end)
+  ↓ C = 2·M − 0.5·P0 − 0.5·P1
+curvePuller derivado { x, y, source: 'runtimePathPoint', t: 0.5 }
+  ↓ compareDerivedPullerWithRuntimeControl(model)
+delta vs controls[0] → deve ser zero por construção
+```
+
+### Invariantes mantidos
+
+- Resultado visual e matemático do app idêntico à v8z4b19l.
+- Curva normal preservada igual à v8z4b19l.
+- Curva de loop preservada igual à v8z4b19l.
+- Preview e MP4 percorrem o mesmo caminho da v8z4b19l.
+- JSON schema inalterado — nenhum campo novo aparece no JSON salvo.
+  - `ctrlPts`, `ctrlPtManual`, `loopCtrlPt`: schema persistido, inalterado.
+  - `pathPoints`, `handles`, `spans`, `capabilities`: apenas runtime — não aparecem no JSON.
+- Undo/Redo da curva normal e da curva de loop continuam funcionando.
+- Fallback legado (`evaluateRuntimeLegacyQuadratic`) permanece ativo.
+- Correções de MP4/export da v8z4b19i preservadas.
+- `evaluateSegmentPath()`, `buildRuntimeCurveModel()`, `validateRuntimeCurveModel()`,
+  `evaluateRuntimeCurveModel()` inalterados.
+- Nenhum helper novo renderiza, salva, modifica ou substitui estado real.
+- pathPoint não é editável, não é renderizado, não é arrastável.
+- curvePuller real (controls[0], ctrlPts) não é alterado.
+
+---
+
 ## v8z4b19l — route runtime curve model through derived spans
 
 Implementação interna controlada do runtime curve model.
