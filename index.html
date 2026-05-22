@@ -1,13 +1,23 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19n                                     ║
+║  Versão: v8z4b19o                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19o                                            ║
+║    fix: clear generated MP4 when leaving preview     ║
+║         resetPreviewUiState() chama                  ║
+║         clearGeneratedMp4('preview-exit-normal')     ║
+║         MP4 pronto é limpo ao sair do Preview        ║
+║         re-entrada exige nova geração de MP4         ║
+║         sair durante export continua cancelando      ║
+║         com segurança (lógica v8z4b19i intacta)      ║
+║         faixa preta superior (v8z4b19n) intacta      ║
+║         Stage, curvas, JSON, Preview inalterados     ║
 ║  v8z4b19n                                            ║
 ║    fix: add top safe preview band                    ║
 ║         padding-top em preview-canvas-wrap usa       ║
@@ -1924,7 +1934,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19n</span><br><span id="appVersionNameText">add top safe preview band</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19o</span><br><span id="appVersionNameText">clear generated MP4 when leaving preview</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4265,8 +4275,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19n';
-const APP_VERSION_NAME = 'add top safe preview band';
+const APP_VERSION = 'v8z4b19o';
+const APP_VERSION_NAME = 'clear generated MP4 when leaving preview';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -9503,12 +9513,18 @@ function cancelMp4ExportAndResetState(reason) {
   try { updatePlayButton(); } catch(e) {}
 }
 
-// v8z4b19i — resetPreviewUiState(): garante que o Preview não deixe play/pause
-// preso e que o retorno ao Stage não fique bloqueado.
-// Chamado por stopPreview() quando NÃO há export em andamento (saída normal).
-// NÃO altera dados do projeto.
+// v8z4b19o — resetPreviewUiState(): garante que o Preview não deixe play/pause
+// preso, que o retorno ao Stage não fique bloqueado, e que o MP4 pronto seja
+// limpo ao sair do Preview (saída normal, sem export em andamento).
+// Chamado por stopPreview() quando NÃO há export em andamento.
+// clearGeneratedMp4 revoga ObjectURL, limpa blob e restaura botão Salvar MP4.
+// NÃO altera frames, curvas, JSON, Preview matemático ou motor de MP4.
 function resetPreviewUiState() {
   resetPreviewPlaybackState();
+  // v8z4b19o — limpar MP4 gerado ao sair do Preview normalmente.
+  // O MP4 pertence apenas à sessão atual do Preview; ao voltar ao Stage,
+  // o usuário deve gerar um novo MP4 na próxima entrada no Preview.
+  clearGeneratedMp4('preview-exit-normal');
 }
 
 function markProjectDirty(reason) {

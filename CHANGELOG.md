@@ -1,5 +1,75 @@
 # Changelog
 
+## v8z4b19o — clear generated MP4 when leaving preview
+
+Ajuste de UX / ciclo de vida do MP4 gerado no Preview.
+Stage, curvas, JSON, Preview matemático, motor de MP4/export e save/load inalterados.
+
+### Problema
+
+Após gerar um MP4 no Preview, o botão de download continuava disponível mesmo
+após o usuário voltar ao Stage e re-entrar no Preview. O MP4 de uma sessão
+anterior ficava "pendente", o que era conceitualmente confuso: o usuário podia
+baixar um MP4 de uma sessão anterior sem ter gerado um novo.
+
+### Solução
+
+O MP4 gerado agora pertence exclusivamente à sessão atual do Preview.
+
+**Regra principal:** ao sair do Preview e voltar ao Stage, o MP4 pronto é
+limpo automaticamente. Na próxima entrada no Preview, o botão retorna ao
+estado "Salvar MP4" (gerar novo).
+
+**Implementação:**
+
+`resetPreviewUiState()` — chamada por `stopPreview()` na saída normal (sem
+export em andamento) — agora inclui uma chamada a
+`clearGeneratedMp4('preview-exit-normal')`.
+
+`clearGeneratedMp4(reason)` já existia (criado na v8z4b19i) e:
+- revoga o ObjectURL anterior com `URL.revokeObjectURL()`
+- limpa `generatedUrl`, `window._lastVideoBlob`, `window._lastVideoExt`
+- esconde `readyOverlay`
+- remove classes `done`/`recording` do `btnGenerate`
+- restaura label para "Salvar MP4"
+- não altera frames, curvas, JSON, Preview matemático nem motor de MP4
+
+O fluxo de cancelamento de export em andamento (`cancelMp4ExportAndResetState`,
+da v8z4b19i) permanece intacto e não foi alterado.
+
+### Fluxo após a correção
+
+1. Usuário entra no Preview.
+2. Usuário gera MP4 → botão muda para estado "done"/download.
+3. Usuário baixa MP4. Ainda no Preview, pode baixar novamente.
+4. Usuário toca em **Voltar** → `stopPreview()` → `resetPreviewUiState()`
+   → `clearGeneratedMp4('preview-exit-normal')`: MP4 limpo, ObjectURL revogado.
+5. Usuário re-entra no Preview → botão está em estado "Salvar MP4" (gerar novo).
+6. Se sair durante export ativo → `cancelMp4ExportAndResetState()` (v8z4b19i)
+   cancela com segurança; Stage não trava.
+
+### Arquivos alterados
+
+- `index.html`: `resetPreviewUiState()` + versionamento
+- `CHANGELOG.md`: esta entrada
+- `QA.md`: checklist da versão
+- `pages-deploy-stamp.txt`: stamp de deploy
+
+### Restrições respeitadas
+
+- Stage não alterado.
+- Curvas não alteradas (`buildRuntimeCurveModel`, `evaluateRuntimeCurveModel`,
+  `evaluateRuntimeCurveSpans`, `pathPoints`, `spans`, `curvePuller` intactos).
+- JSON não alterado (nenhum campo novo criado).
+- Preview matemático não alterado.
+- Motor de MP4/export não alterado (WebCodecs/muxer/MediaRecorder intactos).
+- Faixa preta superior do Preview (v8z4b19n) intacta.
+- Lógica de cancelamento de export da v8z4b19i intacta.
+- Undo/Redo não alterado.
+- Save/load não alterado.
+
+---
+
 ## v8z4b19n — add top safe preview band
 
 Ajuste visual/UX no Preview para iPhone com Dynamic Island.

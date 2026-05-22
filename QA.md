@@ -2,6 +2,95 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19o — clear generated MP4 when leaving preview
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19o` na UI (Settings).
+3. Confirmar que nome da versão exibe `clear generated MP4 when leaving preview`.
+
+### Teste B — faixa preta superior (regressão v8z4b19n)
+1. Carregar imagem no iPhone/Safari.
+2. Entrar no Preview.
+3. Confirmar que a faixa preta superior continua presente.
+4. Confirmar que o canvas não invade a Dynamic Island.
+
+### Teste C — ciclo de vida do MP4 (feature nova)
+1. Carregar imagem e criar pelo menos 2 frames.
+2. Entrar no Preview.
+3. Gerar MP4 normalmente.
+4. Confirmar que botão muda para estado de download/Baixar MP4.
+5. Baixar MP4.
+6. Confirmar que o botão continua disponível para baixar novamente enquanto no Preview.
+7. Tocar em **Voltar** para retornar ao Stage.
+8. Confirmar que o Stage está editável e desbloqueado.
+9. Confirmar que play/pause do Stage não fica preso.
+10. Entrar novamente no Preview.
+11. **Confirmar que o MP4 anterior NÃO aparece como pronto para baixar.**
+12. **Confirmar que o botão voltou ao estado "Salvar MP4" (gerar novo).**
+13. Gerar MP4 novamente.
+14. Confirmar que a nova geração funciona normalmente.
+15. Confirmar que MP4 gerado respeita curvas normais e curva de loop.
+
+### Teste D — cancelamento de export durante saída (regressão v8z4b19i)
+1. Entrar no Preview.
+2. Iniciar geração de MP4.
+3. Tocar em **Voltar** antes de terminar a exportação.
+4. Confirmar que a exportação é cancelada com segurança.
+5. Confirmar que o Stage não trava.
+6. Confirmar que play/pause do Stage não fica preso.
+7. Confirmar que não aparece MP4 parcial pronto para baixar.
+8. Entrar no Preview novamente e gerar MP4.
+9. Confirmar que a nova geração funciona normalmente.
+
+### Teste E — curvas e loop (regressão)
+1. Criar projeto com pelo menos 4 frames.
+2. Puxar curva normal F1→F2.
+3. Ativar loop via chip Loop no painel Duração.
+4. Confirmar que curva de loop aparece imediatamente no Stage.
+5. Confirmar que Preview respeita curvas normais.
+6. Confirmar que Preview respeita curva de loop.
+
+### Teste F — Stage (regressão)
+1. Confirmar que Stage continua igual após a alteração.
+2. Confirmar que toolbar inferior do Stage continua igual.
+3. Confirmar que painéis e menus continuam iguais.
+
+### Teste G — save/load (regressão)
+1. Salvar projeto com imagem:
+   - filename termina em `_img.json`.
+   - `version` salva como `v8z4b19o`.
+   - `imageBase64` existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado quando loop ativo.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+2. Salvar projeto sem imagem:
+   - filename termina em `_file.json`.
+   - `version` salva como `v8z4b19o`.
+   - `imageBase64` não existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado quando loop ativo.
+3. Abrir JSON salvo em v8z4b19n e confirmar compatibilidade.
+4. Confirmar que nenhum destes campos aparece no JSON:
+   - `curvesV2`
+   - `vectorPath`
+   - `handles`
+   - `pathPoints`
+   - `runtimeCurveModel`
+   - `capabilities`
+   - `spans`
+   - `generatedMp4`
+   - `exportBlob`
+
+### Teste H — console (regressão)
+1. Confirmar que não há erro de console, NaN ou Infinity.
+2. Confirmar que o PR ficou aberto e não foi mergeado.
+
+---
+
 ## v8z4b19n — add top safe preview band
 
 ### Teste A — abertura e versão
