@@ -1,5 +1,164 @@
 # Changelog
 
+## v8z4b19s — clear MP4 after save and prepare guarded real curve patch applier
+
+Duas mudanças independentes: (A) correção de UX no estado do botão Salvar MP4 após
+salvamento no dispositivo; (B) aplicador real guardado de legacy curve patch, sem
+conexão com nenhum fluxo público.
+
+### BLOCO A — Correção do botão Salvar MP4 após salvamento
+
+#### Problema
+
+Na v8z4b19r, depois de tocar em **Salvar MP4** para salvar no dispositivo, o botão
+permanecia em estado `done` (pronto para salvar o mesmo MP4 novamente). O status
+exibia "Salvo! Toque novamente para baixar de novo.", sugerindo reutilização do
+mesmo arquivo.
+
+#### Comportamento corrigido
+
+1. Usuário entra no Preview.
+2. Usuário gera MP4.
+3. Botão fica pronto para salvar.
+4. Usuário toca em **Salvar MP4**.
+5. O salvamento/download inicia normalmente.
+6. O botão volta imediatamente ao estado padrão (label "Salvar MP4", sem `done`).
+7. Para salvar novamente, o usuário deve gerar um novo MP4.
+8. Sair do Preview continua limpando MP4 como na v8z4b19o.
+9. Cancelar export durante geração continua funcionando como na v8z4b19i.
+
+#### Implementação
+
+Adicionada função interna `consumeMp4AfterSave(capturedUrl)` dentro de
+`handleGenerate()`:
+- Chamada imediatamente após disparar download/share.
+- Nulifica `generatedUrl` → impede re-tap de reusar o mesmo MP4.
+- Remove classe `done` do botão e restaura label "Salvar MP4".
+- Esconde `readyOverlay`.
+- Revoga `ObjectURL` apenas após `setTimeout(1000ms)` para segurança no iOS/Safari:
+  não revogar no mesmo stack do clique pode causar perda do arquivo no iOS.
+
+Casos cobertos:
+- Download direto via `<a>` (fallback não-share).
+- Share via `navigator.share` bem-sucedido.
+- Fallback de download após `navigator.share` falhar (não-`AbortError`).
+- `AbortError` (usuário cancelou dialog de share) → estado `done` mantido para nova
+  tentativa sem re-exportar.
+
+Nenhum caso de `clearGeneratedMp4` existente foi removido:
+- Saída normal do Preview: `clearGeneratedMp4('preview-exit-normal')` intacta.
+- Cancelamento de export: `cancelMp4ExportAndResetState` intacta.
+- `markProjectDirty`: `clearGeneratedMp4` intacta.
+- Início de novo export: `clearGeneratedMp4('new-export-start')` intacta.
+
+### BLOCO B — Aplicador real guardado de legacy curve patch
+
+#### Objetivo
+
+Preparar um aplicador real de patch candidato ao estado real de curvas, com guardas
+fortes, mas deixar esse aplicador completamente desconectado de qualquer fluxo.
+
+A v8z4b19r permite:
+```
+patch candidate validado → aplicação em draft/cópia → estado real intocado
+```
+
+A v8z4b19s prepara:
+```
+patch candidate validado
+  → applyLegacyCurvePatchCandidateToRealState()
+  → função guardada/interna
+  → ainda não chamada por nenhum fluxo real
+```
+
+#### Helpers adicionados
+
+##### `validateRealCurvePatchApplicationOptions(options)`
+
+Valida e normaliza opções para `applyLegacyCurvePatchCandidateToRealState`.
+- `allowRealMutation` só é `true` se explicitamente `=== true`.
+- `pushUndo`, `markDirty`, `render` idem.
+- `reason` defaults para `'internal-prepared-applier'`.
+- Detecta inconsistências (ex: `pushUndo: true` sem `allowRealMutation: true`).
+- NÃO altera nenhum estado.
+
+##### `applyLegacyCurvePatchCandidateToRealState(patch, options)`
+
+Aplicador real guardado. Comportamento por padrão (guarda principal):
+- `options.allowRealMutation !== true` → retorna `{ ok: false, reason: 'real-mutation-disabled', appliedToRealState: false }` imediatamente.
+- Não altera `ctrlPts`, `ctrlPtManual` nem `loopCtrlPt`.
+- Não chama `pushUndo`, `markProjectDirty` nem `renderAll`.
+
+Quando `allowRealMutation === true` (NÃO ativo nesta versão):
+- Valida patch com `validateLegacyCurvePatchCandidate()`.
+- Para `field === 'ctrlPts'`: aplica `patch.value` em `ctrlPts[index]`; marca
+  `ctrlPtManual[index] = true`.
+- Para `field === 'loopCtrlPt'`: aplica `patch.value` em `loopCtrlPt`.
+- Chama `pushUndo`/`markProjectDirty`/`renderAll` apenas se `options` permitir.
+- Retorna diagnóstico completo.
+
+Restrições absolutas na v8z4b19s:
+- Não conectado a UI, Stage, Preview, gesto, botão nem save/load.
+- Não chamado por nenhum fluxo público.
+- Nenhum JSON novo criado.
+
+##### `dryRunApplyLegacyCurvePatchCandidate(patch)`
+
+Dry-run explícito:
+1. Valida patch.
+2. Gera draft via `createLegacyCurvePatchApplicationDraft()`.
+3. Valida draft via `validateLegacyCurvePatchApplicationDraft()`.
+4. Compara before/after via `compareLegacyCurvePatchDraftWithCurrentState()`.
+5. Confirma `appliedToRealState: false`.
+6. Não altera nenhum estado real.
+
+##### `compareRealCurveStateSnapshot(before, after)`
+
+Diagnóstico passivo para confirmar se o estado real foi alterado entre dois
+snapshots gerados por `cloneLegacyCurveStateForPatch()`.
+- Compara `ctrlPts` índice a índice (delta `dNx`, `dNy`).
+- Compara `loopCtrlPt`.
+- Retorna `{ ok, unchanged, deltas }`.
+- Não altera nenhum estado.
+
+### O que NÃO foi feito
+
+- `pathPoint` não é editável pelo usuário.
+- `applyLegacyCurvePatchCandidateToRealState` não é chamado por nenhum fluxo.
+- `allowRealMutation: true` não é usado em nenhum fluxo.
+- `ctrlPts`, `ctrlPtManual`, `loopCtrlPt` reais intocáveis.
+- `pushUndo` não é chamado pelos novos helpers.
+- `renderAll` não é chamado pelos novos helpers.
+- `markProjectDirty` não é chamado pelos novos helpers.
+- Nenhum resultado é salvo no JSON.
+- UI, Stage, curvas visuais, Preview, MP4/export core, save/load — inalterados.
+- Schema JSON — inalterado. Nenhum campo novo.
+
+### Arquivos alterados
+
+- `index.html`: correção de `handleGenerate()` + 4 helpers novos + versionamento
+- `CHANGELOG.md`: esta entrada
+- `QA.md`: checklist da versão
+- `ROADMAP.md`: estado atual atualizado
+- `pages-deploy-stamp.txt`: stamp de deploy
+
+### Restrições respeitadas
+
+- Stage não alterado.
+- Curvas não alteradas visualmente.
+- `ctrlPts`, `ctrlPtManual`, `loopCtrlPt` reais intocáveis.
+- JSON não alterado (nenhum campo novo criado).
+- Preview matemático não alterado.
+- Motor de MP4/export core não alterado.
+- Faixa preta superior do Preview (v8z4b19n) intacta.
+- Lógica de cancelamento de export da v8z4b19i intacta.
+- Limpeza de MP4 ao sair do Preview da v8z4b19o intacta.
+- Undo/Redo não alterado.
+- Save/load não alterado.
+- ObjectURL não revogado antes do download começar (iOS/Safari seguro).
+
+---
+
 ## v8z4b19r — prepare guarded legacy curve patch applier
 
 Implementação interna controlada de helpers para preparar a aplicação segura de

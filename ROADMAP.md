@@ -66,7 +66,7 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19r)
+### Estado atual (v8z4b19s)
 
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
@@ -108,14 +108,22 @@ compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 - `createLegacyCurvePatchApplicationDraft(patch)` — função de alto nível: valida patch → clona estado antes e depois → aplica patch no clone `after` → retorna `{ ok, patchValid, before, after, appliedField, appliedIndex, appliedToDraft: true, appliedToRealState: false }`; estado real intocável. Introduzido na v8z4b19r.
 - `validateLegacyCurvePatchApplicationDraft(result)` — verifica integridade do draft: `result.ok`, `before`/`after` existem, `appliedToDraft === true`, `appliedToRealState === false`, estado real não foi mutado, arrays com tamanhos coerentes; retorna `{ ok, reason, checks }`. Introduzido na v8z4b19r.
 - `compareLegacyCurvePatchDraftWithCurrentState(result)` — diagnóstico passivo: compara `before`/`after` do draft; indica índice alterado e delta (`dNx`, `dNy`, `distNorm`); confirma que estado real permanece igual; não altera nada. Introduzido na v8z4b19r.
-- **Draft applier de patch legado preparado (v8z4b19r):** existe um aplicador guardado/interno capaz de produzir uma cópia/draft do estado de curvas com o patch aplicado, sem mutar o estado real. Sem UI, sem aplicação real, sem persistência nova. A futura versão poderá conectar isso com aplicação real, undo/redo e renderAll. Tempos/proporções continuam apenas no roadmap futuro. Criação de frame seguindo curva de loop registrada como roadmap futuro (ver abaixo).
+- **Draft applier de patch legado preparado (v8z4b19r):** existe um aplicador guardado/interno capaz de produzir uma cópia/draft do estado de curvas com o patch aplicado, sem mutar o estado real. Sem UI, sem aplicação real, sem persistência nova.
+- `validateRealCurvePatchApplicationOptions(options)` — valida e normaliza opções para `applyLegacyCurvePatchCandidateToRealState`; garante que `allowRealMutation` só é `true` se explicitamente definido; todos os defaults são seguros (false); não altera estado. Introduzido na v8z4b19s.
+- `applyLegacyCurvePatchCandidateToRealState(patch, options)` — **aplicador real guardado**: por padrão retorna `{ ok: false, reason: 'real-mutation-disabled' }` sem alterar nada; quando `allowRealMutation: true` (não usado nesta versão), aplica patch em `ctrlPts[index]` ou `loopCtrlPt` e opcionalmente chama `pushUndo`/`markProjectDirty`/`renderAll`; não conectado a UI/Stage/Preview/gesto/save/load nesta versão. Introduzido na v8z4b19s.
+- `dryRunApplyLegacyCurvePatchCandidate(patch)` — dry-run explícito: valida patch, gera draft, valida draft, compara before/after; confirma `appliedToRealState: false`; não altera estado real. Introduzido na v8z4b19s.
+- `compareRealCurveStateSnapshot(before, after)` — diagnóstico passivo de dois snapshots de `cloneLegacyCurveStateForPatch()`; compara `ctrlPts` e `loopCtrlPt`; retorna `{ ok, unchanged, deltas }`; não altera estado. Introduzido na v8z4b19s.
+- **Aplicador real guardado preparado (v8z4b19s):** `applyLegacyCurvePatchCandidateToRealState` existe como helper interno guardado, com guarda forte (`allowRealMutation: false` por padrão), sem conexão com nenhum fluxo público. Tempos/proporções continuam apenas no roadmap futuro. Velocidade composta continua apenas no roadmap futuro. Criação de frame seguindo curva de loop registrada como roadmap futuro (ver abaixo).
 
 ### Próximos passos (futuros, não imediatos)
 
-- Conectar o draft applier da v8z4b19r a uma aplicação real:
-  - Implementar `applyLegacyCurvePatchToRealState(patch)` que usa `createLegacyCurvePatchApplicationDraft()`,
-    valida o resultado com `validateLegacyCurvePatchApplicationDraft()` e só então
-    aplica `after.ctrlPts[index]` em `ctrlPts[index]`, chama `pushUndo`, `markProjectDirty`
+- Conectar `applyLegacyCurvePatchCandidateToRealState` a um fluxo real:
+  - Chamar com `options = { allowRealMutation: true, pushUndo: true, markDirty: true, render: true }`.
+  - Conectar ao gesto de edição de pathPoint quando a UI estiver pronta.
+- Conectar o draft applier da v8z4b19r a uma aplicação real (alternativa direta):
+  - Usar `createLegacyCurvePatchApplicationDraft()`,
+    validar com `validateLegacyCurvePatchApplicationDraft()` e só então
+    aplicar `after.ctrlPts[index]` em `ctrlPts[index]`, chamar `pushUndo`, `markProjectDirty`
     e `renderAll`.
 - Conectar o pipeline completo da v8z4b19q a uma UI real de edição de pathPoint.
   - O patch candidato já indica `ctrlPts[segIndex]` ou `loopCtrlPt` e o valor exato.

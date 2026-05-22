@@ -1,13 +1,28 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19r                                     ║
+║  Versão: v8z4b19s                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19s                                            ║
+║    fix: clear MP4 after save and prepare guarded     ║
+║         real curve patch applier                     ║
+║         consumeMp4AfterSave() — reseta visual do     ║
+║         botão e nulifica generatedUrl após save;     ║
+║         revogação de ObjectURL diferida (setTimeout) ║
+║         para segurança no iOS/Safari                 ║
+║         applyLegacyCurvePatchCandidateToRealState()  ║
+║         — aplicador real guardado; desabilitado por  ║
+║         padrão (allowRealMutation !== true);         ║
+║         não chamado por nenhum fluxo público         ║
+║         validateRealCurvePatchApplicationOptions()   ║
+║         dryRunApplyLegacyCurvePatchCandidate()       ║
+║         compareRealCurveStateSnapshot()              ║
+║         não conectado a UI/Stage/Preview/save/load   ║
 ║  v8z4b19r                                            ║
 ║    feat: prepare guarded legacy curve patch applier  ║
 ║         cloneLegacyCurveStateForPatch() —            ║
@@ -202,7 +217,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19r — prepare guarded legacy curve patch applier: cloneLegacyCurveStateForPatch(), applyLegacyCurvePatchCandidateToDraft(), createLegacyCurvePatchApplicationDraft(), validateLegacyCurvePatchApplicationDraft(), compareLegacyCurvePatchDraftWithCurrentState() adicionados como helpers internos guardados; patch candidato pode ser aplicado apenas em draft/cópia do estado legado; nada aplicado no estado real; não chama pushUndo/markProjectDirty/renderAll; UI, Stage, curvas, Preview matemático, MP4/export, save/load inalterados -->
+<!-- Arco Motion App — v8z4b19s — clear MP4 after save and prepare guarded real curve patch applier: consumeMp4AfterSave() reseta botão e nulifica generatedUrl imediatamente após save/share, revoga ObjectURL via setTimeout(1000) para iOS/Safari; applyLegacyCurvePatchCandidateToRealState(patch,options) guardado com allowRealMutation:false por padrão — não conectado a UI/Stage/Preview/gesto/save/load, não chamado nesta versão; validateRealCurvePatchApplicationOptions(), dryRunApplyLegacyCurvePatchCandidate(), compareRealCurveStateSnapshot() adicionados; não chama pushUndo/markProjectDirty/renderAll; UI, Stage, curvas, Preview matemático, MP4/export, save/load inalterados -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1984,7 +1999,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19r</span><br><span id="appVersionNameText">prepare guarded legacy curve patch applier</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19s</span><br><span id="appVersionNameText">clear MP4 after save and prepare guarded real curve patch applier</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4325,8 +4340,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19r';
-const APP_VERSION_NAME = 'prepare guarded legacy curve patch applier';
+const APP_VERSION = 'v8z4b19s';
+const APP_VERSION_NAME = 'clear MP4 after save and prepare guarded real curve patch applier';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -8237,6 +8252,356 @@ function compareLegacyCurvePatchDraftWithCurrentState(result) {
     realStateUnchanged: realUnchanged
   };
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// v8z4b19s — APLICADOR REAL GUARDADO DE LEGACY CURVE PATCH (BLOCO B)
+// ──────────────────────────────────────────────────────────────────────────────
+// Helpers criados nesta versão:
+//   1. validateRealCurvePatchApplicationOptions(options)
+//   2. applyLegacyCurvePatchCandidateToRealState(patch, options)  ← GUARDADO
+//   3. dryRunApplyLegacyCurvePatchCandidate(patch)
+//   4. compareRealCurveStateSnapshot(before, after)
+//
+// IMPORTANTE — restrições absolutas desta versão:
+//   • applyLegacyCurvePatchCandidateToRealState NÃO é chamado por UI.
+//   • applyLegacyCurvePatchCandidateToRealState NÃO é chamado por Stage.
+//   • applyLegacyCurvePatchCandidateToRealState NÃO é chamado por Preview.
+//   • applyLegacyCurvePatchCandidateToRealState NÃO é chamado por save/load.
+//   • allowRealMutation: true NÃO é usado em nenhum fluxo nesta versão.
+//   • Nenhum helper chama pushUndo, markProjectDirty ou renderAll.
+//   • ctrlPts, ctrlPtManual, loopCtrlPt — intocáveis por este bloco.
+//   • JSON — nenhum campo novo persiste.
+//   • Futura versão poderá conectar ao gesto de edição com undo/redo.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ──────────────────────────────────────────────────────────────────────────────
+// validateRealCurvePatchApplicationOptions(options)
+//
+// v8z4b19s — valida e normaliza opções para applyLegacyCurvePatchCandidateToRealState.
+// Garante que:
+//   - real mutation só acontece com allowRealMutation === true explicitamente;
+//   - pushUndo/markDirty/render só podem ser true se explicitamente true;
+//   - reason existe e é string não-vazia;
+//   - defaults são seguros (tudo false).
+// NÃO altera nenhum estado. Apenas valida e normaliza.
+function validateRealCurvePatchApplicationOptions(options) {
+  var opts = options || {};
+  var normalized = {
+    allowRealMutation: opts.allowRealMutation === true,
+    pushUndo:          opts.pushUndo === true,
+    markDirty:         opts.markDirty === true,
+    render:            opts.render === true,
+    reason:            (typeof opts.reason === 'string' && opts.reason.length > 0)
+                         ? opts.reason
+                         : 'internal-prepared-applier'
+  };
+
+  var issues = [];
+  if (!normalized.allowRealMutation && (normalized.pushUndo || normalized.markDirty || normalized.render)) {
+    issues.push('pushUndo/markDirty/render sem allowRealMutation nao tem efeito');
+  }
+
+  return {
+    ok:         true,
+    normalized: normalized,
+    issues:     issues
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// applyLegacyCurvePatchCandidateToRealState(patch, options)
+//
+// v8z4b19s — aplicador real guardado para legacy curve patch candidate.
+//
+// GUARDADO: não conectado a UI, Stage, Preview, gesto, botão ou save/load.
+// Não chamado automaticamente nesta versão. Sem efeito no estado real por padrão.
+//
+// Por padrão (options.allowRealMutation !== true):
+//   - NÃO aplica nada no estado real.
+//   - NÃO chama pushUndo, markProjectDirty ou renderAll.
+//   - Retorna { ok: false, reason: 'real-mutation-disabled', appliedToRealState: false }.
+//
+// Quando options.allowRealMutation === true (NÃO ativo nesta versão):
+//   - Valida patch com validateLegacyCurvePatchCandidate().
+//   - Valida field/index.
+//   - Para field 'ctrlPts': aplica patch.value em ctrlPts[index];
+//     marca ctrlPtManual[index] = true.
+//   - Para field 'loopCtrlPt': aplica patch.value em loopCtrlPt.
+//   - Opcionalmente chama pushUndo/markProjectDirty/renderAll
+//     apenas se options explicitamente permitir.
+//   - Retorna diagnóstico completo.
+//
+// Restrições absolutas nesta versão (v8z4b19s):
+//   - allowRealMutation: true NÃO é usado em nenhum fluxo público.
+//   - pushUndo, markProjectDirty, renderAll NÃO são chamados por este helper.
+//   - UI, Stage, curvas, Preview matemático, MP4/export, save/load — inalterados.
+//   - Nenhum campo novo persiste no JSON.
+//
+// Futura versão poderá conectar este helper a UI/gesto/undo/redo
+// passando options = { allowRealMutation: true, pushUndo: true, markDirty: true, render: true }.
+function applyLegacyCurvePatchCandidateToRealState(patch, options) {
+  var optResult = validateRealCurvePatchApplicationOptions(options);
+  var opts = optResult.normalized;
+
+  // GUARDA PRINCIPAL: por padrão, real mutation está desabilitado.
+  // Nesta versão (v8z4b19s), nenhum fluxo chama com allowRealMutation: true.
+  if (!opts.allowRealMutation) {
+    return {
+      ok:                 false,
+      reason:             'real-mutation-disabled',
+      appliedToRealState: false,
+      appliedField:       null,
+      appliedIndex:       null,
+      optionsUsed:        opts
+    };
+  }
+
+  // --- Código abaixo preparado mas NÃO ativo nesta versão ---
+  // Nenhum fluxo chama applyLegacyCurvePatchCandidateToRealState
+  // com allowRealMutation: true na v8z4b19s.
+  // Futura versão poderá conectar isso a UI, gesto e undo/redo.
+
+  // Validar patch
+  var patchValid = validateLegacyCurvePatchCandidate(patch);
+  if (!patchValid.ok) {
+    return {
+      ok:                 false,
+      reason:             'invalid-patch: ' + patchValid.reason,
+      appliedToRealState: false,
+      appliedField:       null,
+      appliedIndex:       null,
+      patchValid:         patchValid,
+      optionsUsed:        opts
+    };
+  }
+
+  var field = patch.field;
+  var index = (typeof patch.index === 'number') ? patch.index : null;
+  var value = patch.value;
+
+  if (field === 'ctrlPts') {
+    if (typeof index !== 'number' || index < 0 || index >= ctrlPts.length) {
+      return {
+        ok:                 false,
+        reason:             'invalid-index-for-ctrlPts',
+        appliedToRealState: false,
+        appliedField:       field,
+        appliedIndex:       index,
+        optionsUsed:        opts
+      };
+    }
+    // Aplicar patch.value em ctrlPts[index] — deep copy campo a campo
+    ctrlPts[index] = {
+      nx:    typeof value.nx    === 'number' ? value.nx    : ctrlPts[index].nx,
+      ny:    typeof value.ny    === 'number' ? value.ny    : ctrlPts[index].ny,
+      t:     typeof value.t     === 'number' ? value.t     : ctrlPts[index].t,
+      perpX: typeof value.perpX === 'number' ? value.perpX : ctrlPts[index].perpX,
+      perpY: typeof value.perpY === 'number' ? value.perpY : ctrlPts[index].perpY
+    };
+    ctrlPtManual[index] = true;
+  } else if (field === 'loopCtrlPt') {
+    if (!value) {
+      return {
+        ok:                 false,
+        reason:             'invalid-value-for-loopCtrlPt',
+        appliedToRealState: false,
+        appliedField:       field,
+        appliedIndex:       null,
+        optionsUsed:        opts
+      };
+    }
+    // Aplicar patch.value em loopCtrlPt — deep copy campo a campo
+    loopCtrlPt = {
+      nx:    typeof value.nx    === 'number' ? value.nx    : (loopCtrlPt ? loopCtrlPt.nx    : 0),
+      ny:    typeof value.ny    === 'number' ? value.ny    : (loopCtrlPt ? loopCtrlPt.ny    : 0),
+      t:     typeof value.t     === 'number' ? value.t     : (loopCtrlPt ? loopCtrlPt.t     : 0.5),
+      perpX: typeof value.perpX === 'number' ? value.perpX : (loopCtrlPt ? loopCtrlPt.perpX : 0),
+      perpY: typeof value.perpY === 'number' ? value.perpY : (loopCtrlPt ? loopCtrlPt.perpY : 0)
+    };
+  } else {
+    return {
+      ok:                 false,
+      reason:             'unknown-field: ' + field,
+      appliedToRealState: false,
+      appliedField:       field,
+      appliedIndex:       index,
+      optionsUsed:        opts
+    };
+  }
+
+  // Ações opcionais — apenas se options explicitamente permitir
+  if (opts.pushUndo) {
+    try { pushUndo(); } catch(e) { console.warn('[applyLegacyCurvePatchCandidateToRealState] pushUndo falhou', e); }
+  }
+  if (opts.markDirty) {
+    try { markProjectDirty('applyLegacyCurvePatchCandidateToRealState'); } catch(e) {}
+  }
+  if (opts.render) {
+    try { renderAll(); } catch(e) { console.warn('[applyLegacyCurvePatchCandidateToRealState] renderAll falhou', e); }
+  }
+
+  return {
+    ok:                 true,
+    reason:             'ok',
+    appliedToRealState: true,
+    appliedField:       field,
+    appliedIndex:       index,
+    patchValid:         patchValid,
+    optionsUsed:        opts
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// dryRunApplyLegacyCurvePatchCandidate(patch)
+//
+// v8z4b19s — dry-run explícito de aplicação de patch.
+// Valida patch, gera draft via createLegacyCurvePatchApplicationDraft(),
+// retorna comparação before/after, confirma que estado real permaneceu igual.
+// NÃO altera ctrlPts, ctrlPtManual, loopCtrlPt nem qualquer estado global.
+// NÃO chama pushUndo, markProjectDirty ou renderAll.
+function dryRunApplyLegacyCurvePatchCandidate(patch) {
+  var FAIL = function(reason) {
+    return {
+      ok:                 false,
+      reason:             reason,
+      draftResult:        null,
+      draftValid:         null,
+      comparison:         null,
+      realStateUnchanged: false,
+      appliedToRealState: false
+    };
+  };
+
+  // 1. Usar createLegacyCurvePatchApplicationDraft — valida e aplica em draft
+  var draftResult = null;
+  try {
+    draftResult = createLegacyCurvePatchApplicationDraft(patch);
+  } catch(e) {
+    return FAIL('draft-threw: ' + (e && e.message ? e.message : String(e)));
+  }
+
+  if (!draftResult || draftResult.ok !== true) {
+    return FAIL('draft-failed: ' + (draftResult ? draftResult.reason : 'null'));
+  }
+
+  // 2. Validar o draft
+  var draftValid = null;
+  try {
+    draftValid = validateLegacyCurvePatchApplicationDraft(draftResult);
+  } catch(e) {
+    return FAIL('draft-validation-threw: ' + (e && e.message ? e.message : String(e)));
+  }
+
+  // 3. Comparar before/after e confirmar estado real
+  var comparison = null;
+  try {
+    comparison = compareLegacyCurvePatchDraftWithCurrentState(draftResult);
+  } catch(e) {
+    return FAIL('comparison-threw: ' + (e && e.message ? e.message : String(e)));
+  }
+
+  return {
+    ok:                 true,
+    reason:             'ok',
+    draftResult:        draftResult,
+    draftValid:         draftValid,
+    comparison:         comparison,
+    realStateUnchanged: comparison ? comparison.realStateUnchanged : false,
+    appliedToRealState: false // garantia absoluta — nada aplicado no real
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// compareRealCurveStateSnapshot(before, after)
+//
+// v8z4b19s — diagnóstico passivo de estado real de curvas.
+// Compara dois snapshots (retornados por cloneLegacyCurveStateForPatch)
+// para confirmar se o estado real foi alterado ou não entre duas observações.
+// NÃO altera nenhum estado. Apenas lê e compara.
+//
+// Uso típico:
+//   var snap1 = cloneLegacyCurveStateForPatch();
+//   /* operação suspeita */
+//   var snap2 = cloneLegacyCurveStateForPatch();
+//   var report = compareRealCurveStateSnapshot(snap1, snap2);
+//   // report.unchanged === true → estado real intocado
+function compareRealCurveStateSnapshot(before, after) {
+  var FAIL = function(reason) {
+    return {
+      ok:        false,
+      reason:    reason,
+      unchanged: false,
+      deltas:    null
+    };
+  };
+
+  if (!before || !after) return FAIL('missing-snapshot');
+  if (!Array.isArray(before.ctrlPts) || !Array.isArray(after.ctrlPts)) return FAIL('ctrlPts-not-array');
+
+  if (before.ctrlPts.length !== after.ctrlPts.length) {
+    return {
+      ok:        true,
+      reason:    'ctrlPts-length-changed',
+      unchanged: false,
+      deltas: {
+        ctrlPtsLengthBefore: before.ctrlPts.length,
+        ctrlPtsLengthAfter:  after.ctrlPts.length,
+        ctrlPts:             [],
+        loopCtrlPt:          null,
+        loopChanged:         false
+      }
+    };
+  }
+
+  var ctrlPtDeltas = [];
+  var anyDelta = false;
+
+  for (var i = 0; i < before.ctrlPts.length; i++) {
+    var b = before.ctrlPts[i];
+    var a = after.ctrlPts[i];
+    if (!b && !a) {
+      ctrlPtDeltas.push({ index: i, changed: false, dNx: 0, dNy: 0 });
+      continue;
+    }
+    if (!b || !a) {
+      ctrlPtDeltas.push({ index: i, changed: true, reason: 'one-null', dNx: null, dNy: null });
+      anyDelta = true;
+      continue;
+    }
+    var dNx = (a.nx || 0) - (b.nx || 0);
+    var dNy = (a.ny || 0) - (b.ny || 0);
+    var changed = (dNx !== 0 || dNy !== 0);
+    ctrlPtDeltas.push({ index: i, changed: changed, dNx: dNx, dNy: dNy });
+    if (changed) anyDelta = true;
+  }
+
+  var loopChanged = false;
+  var loopDelta = null;
+  if (!before.loopCtrlPt && !after.loopCtrlPt) {
+    loopChanged = false;
+  } else if (!before.loopCtrlPt || !after.loopCtrlPt) {
+    loopChanged = true;
+    loopDelta = { reason: 'one-null', dNx: null, dNy: null };
+  } else {
+    var dLNx = (after.loopCtrlPt.nx || 0) - (before.loopCtrlPt.nx || 0);
+    var dLNy = (after.loopCtrlPt.ny || 0) - (before.loopCtrlPt.ny || 0);
+    loopChanged = (dLNx !== 0 || dLNy !== 0);
+    loopDelta = { dNx: dLNx, dNy: dLNy };
+  }
+
+  if (loopChanged) anyDelta = true;
+
+  return {
+    ok:        true,
+    reason:    anyDelta ? 'state-changed' : 'state-unchanged',
+    unchanged: !anyDelta,
+    deltas: {
+      ctrlPts:    ctrlPtDeltas,
+      loopCtrlPt: loopDelta,
+      loopChanged: loopChanged
+    }
+  };
+}
 // ──────────────────────────────────────────────────────────────────────────────
 
 // Retorna steps+1 pontos amostrados uniformemente ao longo da trajetória.
@@ -11165,30 +11530,60 @@ function handleGenerate() {
     const ext  = window._lastVideoExt || 'mp4';
     const filename = 'kenburns_weigand.' + ext;
 
+    // v8z4b19s — consumeMp4AfterSave: chamada imediatamente após disparar
+    // download ou share com sucesso.
+    // 1. Nulifica generatedUrl → impede novo tap de reusar o mesmo MP4.
+    // 2. Reseta visual do botão (remove 'done', restaura label padrão).
+    // 3. Revoga ObjectURL somente após atraso seguro: iOS/Safari precisa de
+    //    tempo para completar o download/salvamento antes da revogação do blob.
+    //    NÃO revogar no mesmo stack do clique — pode cancelar o download.
+    const consumeMp4AfterSave = (capturedUrl) => {
+      generatedUrl = null;
+      window._lastVideoBlob = null;
+      window._lastVideoExt = null;
+      if (btnGenerate) {
+        btnGenerate.classList.remove('done');
+        btnGenerate.disabled = false;
+      }
+      setGenerateLabel('Salvar MP4');
+      const readyEl = document.getElementById('readyOverlay');
+      if (readyEl) readyEl.classList.remove('show');
+      // Revogar ObjectURL após atraso seguro para iOS/Safari
+      setTimeout(() => {
+        if (capturedUrl) { try { URL.revokeObjectURL(capturedUrl); } catch(e) {} }
+      }, 1000);
+    };
+
     if (blob && navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: blob.type })] })) {
+      const urlAtShare = generatedUrl; // capturar antes da Promise assíncrona
       const file = new File([blob], filename, { type: blob.type });
       navigator.share({ files: [file], title: 'Arco Motion App' })
         .then(() => {
-          // v8z4b19i — não revogar aqui: manter URL/blob vivos para re-download
-          // sem alteração no projeto. clearGeneratedMp4 é chamada em
-          // markProjectDirty (edição) ou em startRecord (novo export).
           showStatus('Compartilhado!');
+          // v8z4b19s — limpar estado após share bem-sucedido; botão volta ao padrão.
+          consumeMp4AfterSave(urlAtShare);
         })
         .catch(err => {
           if (err.name !== 'AbortError') {
+            // Fallback: share falhou ou indisponível — baixar diretamente
             const a = document.createElement('a');
-            a.href = generatedUrl; a.download = filename; a.click();
+            a.href = urlAtShare; a.download = filename; a.click();
+            showStatus('Salvo!');
+            // v8z4b19s — limpar estado após download de fallback.
+            consumeMp4AfterSave(urlAtShare);
           }
+          // AbortError: usuário cancelou dialog de share — manter estado 'done'
+          // para nova tentativa sem precisar re-exportar.
         });
     } else {
+      const urlToSave = generatedUrl; // capturar antes de consumir
       const a = document.createElement('a');
-      a.href = generatedUrl; a.download = filename; a.click();
-      // v8z4b19i — não revogar nem limpar generatedUrl após download.
-      // Manter URL/blob vivos: re-download funciona sem re-exportar,
-      // e o iOS tem tempo de completar o download antes de qualquer
-      // revogação. clearGeneratedMp4 é chamada em markProjectDirty
-      // (quando o projeto muda) ou em startRecord (novo export).
-      showStatus('Salvo! Toque novamente para baixar de novo.');
+      a.href = urlToSave; a.download = filename; a.click();
+      showStatus('Salvo!');
+      // v8z4b19s — marcar MP4 como consumido e agendar revogação segura.
+      // Botão volta ao estado padrão imediatamente; para salvar novamente
+      // o usuário deve gerar um novo MP4.
+      consumeMp4AfterSave(urlToSave);
     }
     return;
   }
