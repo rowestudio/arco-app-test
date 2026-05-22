@@ -1,5 +1,57 @@
 # Changelog
 
+## v8z4b19l — route runtime curve model through derived spans
+
+Implementação interna controlada do runtime curve model.
+Sem alteração de UI, layout, JSON, curvas, Preview matemático, MP4/export ou save/load.
+
+### Objetivo
+
+Fazer `evaluateRuntimeCurveModel(model, t)` usar os spans derivados como caminho
+preferencial quando o modelo estiver em `mode: 'legacyQuadratic'` e os spans forem
+válidos, mantendo fallback seguro para o cálculo legacyQuadratic anterior por
+anchors + curvePuller.
+
+### Helpers criados / atualizados
+
+| Helper | Descrição |
+|---|---|
+| `isValidRuntimePoint(pt)` | Helper de validação: retorna `true` se `pt` é objeto não-nulo com `x` e `y` numéricos finitos. Usado para validar o retorno de `evaluateRuntimeCurveSpans` antes de aceitar o resultado. |
+| `evaluateRuntimeLegacyQuadratic(model, t)` | Contém exatamente a lógica anterior de `evaluateRuntimeCurveModel` para `mode === 'legacyQuadratic'`: avalia pelos anchors (start/end) + controls[0] (curvePuller) do modelo runtime. Extraído como helper separado para ser o fallback de segurança. |
+| `evaluateRuntimeCurveModel(model, t)` | Atualizado: tenta `evaluateRuntimeCurveSpans(model, t)` primeiro (validando com `isValidRuntimePoint`), recai em `evaluateRuntimeLegacyQuadratic(model, t)` se spans forem inválidos ou resultado não finito. |
+| `compareRuntimePathWithLegacy(segIndex, t)` | Atualizado: inclui `pathUsed` no retorno — `'spans'` se o caminho preferencial foi usado, `'legacyFallback'` se o fallback foi tomado, `null` se falhou. |
+| `evaluateRuntimeCurveSpans(model, t)` | Comentário atualizado: agora documentado como caminho preferencial de `evaluateRuntimeCurveModel()`. Lógica inalterada. |
+
+### Fluxo de evaluateRuntimeCurveModel (v8z4b19l)
+
+```
+evaluateRuntimeCurveModel(model, t):
+  1. Validar model (validateRuntimeCurveModel).
+  2. Se mode === 'legacyQuadratic' e spans válidos (Array, length 2):
+     2.1. Tentar evaluateRuntimeCurveSpans(model, t).
+          isValidRuntimePoint(resultado)? → retornar resultado. [caminho: 'spans']
+  3. Fallback: evaluateRuntimeLegacyQuadratic(model, t). [caminho: 'legacyFallback']
+```
+
+### Invariantes mantidos
+
+- Resultado matemático idêntico à v8z4b19k — mesma Bézier quadrática, mesmos dados.
+- A rota via spans foi validada em v8z4b19j (delta ≤ 0.001 px vs legado em 7 amostras).
+- Curva normal preservada igual à v8z4b19k.
+- Curva de loop preservada igual à v8z4b19k.
+- Preview e MP4 percorrem o mesmo caminho da v8z4b19k.
+- JSON schema inalterado — nenhum campo novo aparece no JSON salvo.
+  - `ctrlPts`, `ctrlPtManual`, `loopCtrlPt`: schema persistido, inalterado.
+  - `pathPoints`, `handles`, `spans`, `capabilities`: apenas runtime — não aparecem no JSON.
+- Undo/Redo da curva normal e da curva de loop continuam funcionando.
+- Fallback legado (`evaluateRuntimeLegacyQuadratic`) permanece ativo.
+- Correções de MP4/export da v8z4b19i preservadas.
+- `evaluateSegmentPath()`, `buildRuntimeCurveModel()`, `validateRuntimeCurveModel()` inalterados.
+- spans: NÃO editáveis, NÃO renderizados, NÃO persistidos no JSON.
+- pathPoints: NÃO editáveis, NÃO renderizados, NÃO persistidos no JSON.
+
+---
+
 ## v8z4b19k — render loop curve immediately on toggle
 
 Bug fix visual: a curva de loop agora aparece imediatamente no Stage ao ativar/desativar loop, sem necessidade de tocar no Stage.
