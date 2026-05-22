@@ -9,7 +9,14 @@
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
 ║  v8z4b19i                                            ║
-║    fix: stale MP4 export state                       ║
+║    fix: preview exit during mp4 export               ║
+║         cancelMp4ExportAndResetState() cancela       ║
+║         pipeline ao sair do Preview durante export   ║
+║         exportCancelledFlag previne finishExport()   ║
+║         resetPreviewUiState() para saída normal      ║
+║         Stage volta editável imediatamente           ║
+║         play/pause não fica preso após cancelamento  ║
+║         stale MP4 export state (v8z4b19i-a):         ║
 ║         ObjectURL não revocado após download —       ║
 ║         re-download funciona sem re-exportar         ║
 ║         markProjectDirty cobre drag de ctrl-pt       ║
@@ -85,7 +92,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19h — derive split runtime curve spans: lerpPointNormalized(a,b,t) e splitLegacyQuadraticAtMidpoint(start,control,end) adicionados como helpers de divisão De Casteljau; buildRuntimeCurveModel agora produz spans[] com dois quadraticSpans derivados (derivedFirstHalf e derivedSecondHalf) usando P0→M e M→P1 com controles A e B calculados por De Casteljau em t=0.5; validateRuntimeCurveModel aceita e valida spans derivados; validateDerivedRuntimeSpans(model) diagnostica passivamente se os spans reconstituem a curva legada dentro da tolerância; compareRuntimePathWithLegacy atualizado para incluir spansDiag; spans são apenas runtime — não persistidos, não renderizados, não editáveis; evaluateSegmentPath idêntico à v8z4b19g; UI, JSON, Preview, MP4, save/load e comportamento visual sem alteração -->
+<!-- Arco Motion App — v8z4b19i — fix preview exit during mp4 export: cancelMp4ExportAndResetState(reason) cancela pipeline de export ao sair do Preview; exportCancelledFlag previne finishExport() de reativar isPreviewing após cancelamento; resetPreviewUiState() consolida saída normal do Preview; stopPreview() detecta isRecording e rota para helper correto; Stage volta editável imediatamente sem overlay invisível; play/pause restaurado a estado neutro; MP4 parcial não fica como blob disponível; nova exportação após cancelamento funciona normalmente; UI, JSON, curvas, Preview matemático e motor de MP4 sem alteração estrutural -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1862,7 +1869,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19i</span><br><span id="appVersionNameText">fix stale MP4 export state</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19i</span><br><span id="appVersionNameText">fix preview exit during mp4 export</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4204,7 +4211,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
 const APP_VERSION = 'v8z4b19i';
-const APP_VERSION_NAME = 'fix stale MP4 export state';
+const APP_VERSION_NAME = 'fix preview exit during mp4 export';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4289,6 +4296,7 @@ function teardownFramePauseLocalSlider() {}
 
 // State
 let isPreviewing = false, isRecording = false;
+let exportCancelledFlag = false; // v8z4b19i — sinaliza cancelamento de export pelo usuário
 let animFrame = null, animStart = null;
 let activeIdx = 0;
 let frameCount = 0;
@@ -8687,10 +8695,15 @@ function startPreview() {
 }
 
 function stopPreview() {
-  // v8z4b19i — delegar toda a limpeza de estado para resetPreviewPlaybackState().
-  // Isso garante que isPreviewing, animFrame, animStart, pausedElapsed, botões,
-  // canvas e previewScreen sejam todos restaurados de forma consistente.
-  resetPreviewPlaybackState();
+  // v8z4b19i — Se houver export de MP4 em andamento, cancelar com segurança
+  // antes de fechar o Preview. Sem isso, o export continua em background e
+  // finishExport() pode reativar isPreviewing causando estado híbrido fantasma
+  // (Stage com play preso, overlay invisível bloqueando toque, isRecording stale).
+  if (isRecording) {
+    cancelMp4ExportAndResetState('preview-exit-during-export');
+  } else {
+    resetPreviewUiState();
+  }
 }
 
 function togglePreviewPlayback() {
@@ -8818,6 +8831,56 @@ function resetPreviewPlaybackState() {
   if (pb2) pb2.style.display = 'none';
 }
 
+// v8z4b19i — cancelMp4ExportAndResetState(reason): cancela export de MP4 em
+// progresso e reseta todo o estado de Preview+Export para estado neutro.
+// Chamado por stopPreview() quando isRecording === true, ou seja, quando o
+// usuário sai do Preview enquanto o MP4 ainda está sendo gerado.
+// Ações:
+//   • sinaliza cancelamento via isRecording=false (loop de encode verifica isso)
+//   • sinaliza via exportCancelledFlag=true (previne finishExport() de completar)
+//   • revoga qualquer ObjectURL/blob parcial — export cancelado não deve ficar
+//     disponível como se estivesse pronto
+//   • chama resetPreviewPlaybackState() para limpar UI de playback
+//   • restaura botão de export e esconde overlay de progresso
+// NÃO altera frames, curvas, JSON, Preview matemático ou motor de MP4.
+function cancelMp4ExportAndResetState(reason) {
+  if (!isRecording) return; // nada a cancelar — guard
+  console.log('[cancelMp4ExportAndResetState]', reason || '');
+  // 1. Sinalizar cancelamento: loop de encode checa isRecording a cada frame.
+  isRecording = false;
+  // 2. Sinalizar a finishExport() que não deve completar mesmo se o encoder
+  //    já processou frames na fila antes de verificar isRecording.
+  exportCancelledFlag = true;
+  // 3. Revogar blob/URL parcial — export cancelado não deve ficar disponível.
+  if (generatedUrl) {
+    try { URL.revokeObjectURL(generatedUrl); } catch(e) {}
+    generatedUrl = null;
+  }
+  window._lastVideoBlob = null;
+  window._lastVideoExt  = null;
+  // 4. Limpar estado de playback e UI do Preview.
+  resetPreviewPlaybackState();
+  // 5. Resetar botão de export (estava em modo 'recording').
+  const bgBtn = document.getElementById('btnGenerate');
+  if (bgBtn) {
+    bgBtn.classList.remove('recording', 'done');
+    bgBtn.disabled = false;
+  }
+  setGenerateLabel('Salvar MP4');
+  // 6. Esconder overlay de progresso de geração.
+  try { hideGenOverlay(); } catch(e) {}
+  // 7. Restaurar ícone Play/Pause no Stage.
+  try { updatePlayButton(); } catch(e) {}
+}
+
+// v8z4b19i — resetPreviewUiState(): garante que o Preview não deixe play/pause
+// preso e que o retorno ao Stage não fique bloqueado.
+// Chamado por stopPreview() quando NÃO há export em andamento (saída normal).
+// NÃO altera dados do projeto.
+function resetPreviewUiState() {
+  resetPreviewPlaybackState();
+}
+
 function markProjectDirty(reason) {
   // Qualquer mudança de movimento/imagem invalida o MP4 já gerado.
   // Sem isso, o botão pode tentar baixar/compartilhar um blob antigo
@@ -8887,6 +8950,9 @@ function resetPreviewAndExportStateForImageChange() {
     animFrame = null;
   }
   isPreviewing = false;
+  // v8z4b19i — Se export estava em progresso, sinalizar cancelamento para que
+  // finishExport() não complete um vídeo gerado a partir de um projeto já alterado.
+  if (isRecording) exportCancelledFlag = true;
   isRecording = false;
   document.body.classList.remove('previewing');
   const ps = document.getElementById('previewScreen');
@@ -9034,8 +9100,19 @@ async function startRecord() {
     showStatus('Duração total inválida — ajuste os trechos e tente novamente.');
     return;
   }
+  // v8z4b19i — Parar Preview (animação de playback) ANTES de setar isRecording=true.
+  // Ordem crítica: se stopPreview() for chamado após isRecording=true, o novo
+  // stopPreview() detectaria isRecording e chamaria cancelMp4ExportAndResetState(),
+  // cancelando o export que acabamos de iniciar. Parar o playback primeiro, então
+  // iniciar o estado de gravação.
+  if (isPreviewing) {
+    // Aqui isRecording ainda é false: stopPreview() chama resetPreviewUiState().
+    stopPreview();
+  }
   isRecording = true;
-  if (isPreviewing) stopPreview();
+  // Resetar flag de cancelamento: novo export começa sem estado residual
+  // de um cancelamento anterior pelo usuário.
+  exportCancelledFlag = false;
   document.body.classList.add('previewing');
 
   // v8z4b19i — Invalidar qualquer vídeo anterior antes de gerar outro.
@@ -9148,6 +9225,13 @@ async function startRecord() {
   }
 
   function finishExport(blob, ext) {
+    // v8z4b19i — guard: se o export foi cancelado pelo usuário (sair do Preview),
+    // não completar finishExport mesmo que o encoder tenha terminado de processar
+    // a fila de frames. O estado já foi limpo por cancelMp4ExportAndResetState().
+    if (exportCancelledFlag) {
+      console.log('[finishExport] export cancelado — abortando finalização');
+      return;
+    }
     if (generatedUrl) {
       try { URL.revokeObjectURL(generatedUrl); } catch(e) {}
     }
@@ -9240,6 +9324,13 @@ async function startRecord() {
     } finally {
       // Sempre liberar tracks, mesmo em erro/cancelamento.
       try { stream.getTracks().forEach(t => t.stop()); } catch(e) {}
+    }
+    // v8z4b19i — guard: se cancelado pelo usuário, não completar o export.
+    // finishExport() também tem seu próprio guard, mas checar aqui evita
+    // criar o Blob desnecessariamente.
+    if (exportCancelledFlag) {
+      console.log('[exportWithMediaRecorderFallback] export cancelado — descartando blob');
+      return;
     }
     finishExport(new Blob(chunks, { type: recMime }), recMime.includes('mp4') ? 'mp4' : 'webm');
   }
@@ -9354,6 +9445,16 @@ async function startRecord() {
     }
 
     if (encError) throw encError;
+    // v8z4b19i — guard: se o usuário saiu do Preview durante export,
+    // não finalizar o MP4. O encoder pode ter processado todos os frames
+    // já na fila antes de verificar isRecording; mesmo assim não queremos
+    // disponibilizar um vídeo de export cancelado. O estado já foi limpo
+    // por cancelMp4ExportAndResetState() via stopPreview().
+    if (exportCancelledFlag) {
+      console.log('[startRecord/WebCodecs] export cancelado — descartando muxer');
+      try { encoder.close(); } catch(e) {}
+      return;
+    }
     await encoder.flush();
     try { encoder.close(); } catch(e) {}
     muxer.finalize();

@@ -2,40 +2,47 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
-## v8z4b19i — fix stale MP4 export state
+## v8z4b19i — fix preview exit during mp4 export
 
 ### Teste A — abertura e versão
 1. Abrir app.
 2. Confirmar que exibe `v8z4b19i` na UI (Settings).
-3. Confirmar que nome da versão exibe `fix stale MP4 export state`.
+3. Confirmar que nome da versão exibe `fix preview exit during mp4 export`.
 
-### Teste B — ciclo de vida do MP4 (foco desta versão)
+### Teste B — cancelamento de export ao sair do Preview (foco desta versão)
 1. Carregar imagem no iPhone/Safari.
 2. Criar projeto com 4 frames.
-3. Rodar Preview.
-4. Gerar MP4 (Salvar MP4).
-5. Baixar MP4 — confirmar que o arquivo salva.
-6. Sem alterar o projeto, tocar novamente em "Salvar MP4":
-   - Confirmar que o MP4 é baixado/compartilhado novamente (não inicia novo export).
-   - Confirmar que o botão ainda mostra o tamanho em MB (estado "done" mantido).
-7. Voltar para Stage (Voltar) — confirmar que o Stage está totalmente editável.
+3. Entrar no Preview.
+4. Iniciar geração de MP4 (Salvar MP4).
+5. Antes do fim da geração, tocar em Voltar.
+6. Confirmar que a exportação é cancelada com segurança:
+   - overlay de progresso desaparece imediatamente;
+   - botão Salvar MP4 volta ao estado neutro (não mostra MB, não está em "recording").
+7. Confirmar que o Stage volta imediatamente editável.
 8. Confirmar que o botão Play/Pause do Stage mostra ícone de Play (não preso em Pause).
-9. Voltar ao Preview — confirmar que o MP4 ainda está disponível (botão mostra MB).
-10. Voltar ao Stage.
-11. Mover um frame.
-12. Confirmar que o MP4 anterior foi invalidado: botão volta para "Salvar MP4".
-13. Voltar ao Preview — confirmar que não aparece MP4 antigo (botão não mostra MB).
-14. Gerar novo MP4 — confirmar que funciona normalmente.
-15. Baixar novo MP4 — confirmar que baixa.
-16. Voltar para Stage — confirmar interação normal.
-17. Repetir passos 11–16 com:
-    - Alteração de curva normal (arrastar ctrl-pt).
-    - Alteração de curva de loop.
-    - Alteração de duração ou pausa.
-18. Confirmar que Preview continua funcionando normalmente.
-19. Confirmar que MP4 respeita curvas normais e loop.
+9. Confirmar que não há overlay invisível bloqueando toque no Stage.
+10. Confirmar que é possível tocar em frame, menu e Stage imediatamente.
+11. Voltar ao Preview — confirmar que o preview abre normalmente (sem estado residual).
+12. Confirmar que o botão mostra "Salvar MP4" (export cancelado não fica disponível).
+13. Gerar MP4 novamente (Salvar MP4).
+14. Deixar concluir normalmente.
+15. Confirmar que o MP4 fica disponível para download (botão mostra MB).
+16. Baixar MP4 — confirmar que o arquivo salva.
+17. Voltar ao Stage e confirmar interação normal.
+18. Voltar ao Preview — confirmar que o MP4 ainda está disponível (botão mostra MB).
+19. Alterar o projeto (mover frame).
+20. Confirmar que o export anterior foi invalidado: botão volta para "Salvar MP4".
+21. Confirmar que Preview continua funcionando normalmente.
+22. Confirmar que MP4 respeita curvas normais e loop.
 
-### Teste C — JSON salvo
+### Teste C — saída normal do Preview sem export em andamento
+1. Entrar no Preview sem iniciar export.
+2. Tocar em Voltar.
+3. Confirmar que o Stage volta imediatamente editável.
+4. Confirmar que play/pause está correto no Stage.
+5. Confirmar que não há regressão de comportamento normal.
+
+### Teste D — JSON salvo
 1. Salvar JSON com imagem e sem imagem:
    - `version` salva como `v8z4b19i`.
    - `imageBase64` apenas no `_img.json`.
@@ -48,7 +55,7 @@ Use depois de qualquer alteração, mesmo pequena.
    - `curvesV2`, `vectorPath`, `handles`, `pathPoints`, `runtimeCurveModel`,
      `capabilities`, `spans`, `generatedMp4`, `exportBlob`.
 
-### Teste D — console limpo
+### Teste E — console limpo
 1. Confirmar que não há erro de console, NaN ou Infinity.
 2. Confirmar que o PR ficou aberto e não foi mergeado.
 
