@@ -2,6 +2,72 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19j — evaluate derived runtime curve spans
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19j` na UI (Settings).
+3. Confirmar que nome da versão exibe `evaluate derived runtime curve spans`.
+
+### Teste B — curvas normais e loop (regressão)
+1. Carregar imagem no iPhone/Safari.
+2. Criar projeto com pelo menos 4 frames.
+3. Puxar curva normal F1→F2.
+4. Puxar curva normal F2→F3.
+5. Ativar loop.
+6. Selecionar F1 ou último frame.
+7. Puxar curva de loop.
+8. Confirmar que a curva normal aparece igual à v8z4b19i.
+9. Confirmar que a curva de loop aparece igual à v8z4b19i.
+10. Confirmar Undo/Redo da curva normal.
+11. Confirmar Undo/Redo da curva de loop.
+12. Mover frame depois de puxar curvas e confirmar que as curvas não pulam.
+
+### Teste C — velocidade constante (regressão)
+1. Usar velocidade constante com curvas normais.
+2. Usar velocidade constante com loop ativo.
+3. Confirmar que o comportamento é idêntico à v8z4b19i.
+
+### Teste D — Preview e MP4 (regressão)
+1. Rodar Preview.
+2. Confirmar que Preview respeita curvas normais.
+3. Confirmar que Preview respeita curva de loop.
+4. Gerar MP4 normalmente.
+5. Confirmar que MP4 respeita curvas normais e loop.
+6. Testar correção de MP4 (v8z4b19i):
+   - Iniciar geração de MP4.
+   - Tocar Voltar antes de terminar.
+   - Confirmar que Stage não trava.
+   - Confirmar que play/pause não fica preso.
+
+### Teste E — JSON salvo
+1. Salvar projeto com imagem:
+   - `filename` termina em `_img.json`.
+   - `version` salva como `v8z4b19j`.
+   - `imageBase64` existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+2. Salvar projeto sem imagem:
+   - `filename` termina em `_file.json`.
+   - `version` salva como `v8z4b19j`.
+   - `imageBase64` não existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado.
+3. Abrir JSON salvo em v8z4b19i e confirmar compatibilidade.
+4. Confirmar que NENHUM campo novo apareceu no JSON:
+   - `curvesV2`, `vectorPath`, `handles`, `pathPoints`, `runtimeCurveModel`,
+     `capabilities`, `spans`, `generatedMp4`, `exportBlob`.
+
+### Teste F — console limpo
+1. Confirmar que não há erro de console, NaN ou Infinity.
+2. Confirmar que o PR ficou aberto e não foi mergeado.
+
+---
+
 ## v8z4b19i — fix preview exit during mp4 export
 
 ### Teste A — abertura e versão

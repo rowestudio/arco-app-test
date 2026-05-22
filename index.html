@@ -1,13 +1,25 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19i                                     ║
+║  Versão: v8z4b19j                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19j                                            ║
+║    feat: evaluate derived runtime curve spans        ║
+║         evaluateQuadraticSpanNormalized() —          ║
+║         helper para avaliar span em espaço norm.     ║
+║         evaluateRuntimeCurveSpans() — avaliador      ║
+║         paralelo via spans derivados (v8z4b19h)      ║
+║         compareRuntimeSpansWithLegacy() — diagnós.   ║
+║         passivo spans vs runtime vs legacy           ║
+║         validateDerivedRuntimeSpans usa helper       ║
+║         compareRuntimePathWithLegacy inclui          ║
+║         spanPoint, spanDelta, spanMatch              ║
+║         comportamento visual idêntico à v8z4b19i     ║
 ║  v8z4b19i                                            ║
 ║    fix: preview exit during mp4 export               ║
 ║         cancelMp4ExportAndResetState() cancela       ║
@@ -92,7 +104,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19i — fix preview exit during mp4 export: cancelMp4ExportAndResetState(reason) cancela pipeline de export ao sair do Preview; exportCancelledFlag previne finishExport() de reativar isPreviewing após cancelamento; resetPreviewUiState() consolida saída normal do Preview; stopPreview() detecta isRecording e rota para helper correto; Stage volta editável imediatamente sem overlay invisível; play/pause restaurado a estado neutro; MP4 parcial não fica como blob disponível; nova exportação após cancelamento funciona normalmente; UI, JSON, curvas, Preview matemático e motor de MP4 sem alteração estrutural -->
+<!-- Arco Motion App — v8z4b19j — evaluate derived runtime curve spans: evaluateQuadraticSpanNormalized() avalia quadraticSpan em espaço normalizado; evaluateRuntimeCurveSpans() avaliador paralelo via spans derivados (v8z4b19h); compareRuntimeSpansWithLegacy() diagnóstico passivo spans vs runtime vs legacy; validateDerivedRuntimeSpans atualizado para usar evaluateQuadraticSpanNormalized; compareRuntimePathWithLegacy inclui spanPoint/spanDelta/spanMatch; comportamento visual, JSON, Preview e MP4 idênticos à v8z4b19i -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1869,7 +1881,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19i</span><br><span id="appVersionNameText">fix preview exit during mp4 export</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19j</span><br><span id="appVersionNameText">evaluate derived runtime curve spans</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4210,8 +4222,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19i';
-const APP_VERSION_NAME = 'fix preview exit during mp4 export';
+const APP_VERSION = 'v8z4b19j';
+const APP_VERSION_NAME = 'evaluate derived runtime curve spans';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5763,7 +5775,25 @@ function compareRuntimePathWithLegacy(segIndex, t) {
     } catch (_e) { spansDiag = null; }
   }
 
-  return { runtime, legacy, match, delta: { dx, dy }, derivedPathPointCheck, spansDiag };
+  // v8z4b19j: avaliação via spans derivados — avaliador paralelo.
+  // evaluateRuntimeCurveSpans avalia a curva pelos quadraticSpans derivados (v8z4b19h).
+  let spanPoint   = null;
+  let spanDelta   = null;
+  let spanMatch   = false;
+  if (model) {
+    try {
+      spanPoint = evaluateRuntimeCurveSpans(model, t);
+      if (spanPoint && legacy) {
+        const dsx = Math.abs(spanPoint.x - legacy.x);
+        const dsy = Math.abs(spanPoint.y - legacy.y);
+        const spanDeltaPx = Math.sqrt(dsx * dsx + dsy * dsy);
+        spanMatch = spanDeltaPx <= 0.001;
+        spanDelta = { dx: dsx, dy: dsy, deltaPx: spanDeltaPx };
+      }
+    } catch (_e) { spanPoint = null; spanDelta = null; spanMatch = false; }
+  }
+
+  return { runtime, legacy, match, delta: { dx, dy }, derivedPathPointCheck, spansDiag, spanPoint, spanDelta, spanMatch };
 }
 
 // ─── Diagnóstico interno do pathPoint derivado — v8z4b19g ─────────────────────
@@ -5943,6 +5973,40 @@ function diagnoseRuntimeCurveModel() {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
+// ─── Helper: Bézier quadrática de span normalizado — v8z4b19j ────────────────
+//
+// evaluateQuadraticSpanNormalized(span, localT)
+//
+// Avalia um quadraticSpan (coordenadas normalizadas 0–1) em localT ∈ [0,1].
+// Retorna { x, y } em coordenadas normalizadas (0–1), ou null se inválido.
+//
+// Parâmetros:
+//   span   — { start: {x,y}, control: {x,y}, end: {x,y} } em normalizado (0–1).
+//   localT — número em [0, 1] — posição local dentro do span.
+//
+// Fórmula: B(localT) = (1-localT)²·start + 2·(1-localT)·localT·control + localT²·end
+//
+// Unidades: todos os pontos em espaço normalizado (0–1) — não converte para pixels.
+// Comportamento passivo: não altera span, model nem nenhum estado persistido.
+//
+// v8z4b19j — helper novo.
+function evaluateQuadraticSpanNormalized(span, localT) {
+  if (!span) return null;
+  const { start, control, end } = span;
+  if (!start || !control || !end) return null;
+  if (!isFinite(start.x)   || !isFinite(start.y))   return null;
+  if (!isFinite(control.x) || !isFinite(control.y)) return null;
+  if (!isFinite(end.x)     || !isFinite(end.y))     return null;
+  if (typeof localT !== 'number' || !isFinite(localT)) return null;
+  localT = Math.max(0, Math.min(1, localT));
+  const inv = 1 - localT;
+  const x = inv * inv * start.x + 2 * inv * localT * control.x + localT * localT * end.x;
+  const y = inv * inv * start.y + 2 * inv * localT * control.y + localT * localT * end.y;
+  if (!isFinite(x) || !isFinite(y)) return null;
+  return { x, y };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 // ─── Diagnóstico dos spans derivados — v8z4b19h ───────────────────────────────
 //
 // validateDerivedRuntimeSpans(model)
@@ -6033,7 +6097,7 @@ function validateDerivedRuntimeSpans(model) {
 
   // Verificar reconstituição por amostragem.
   // Usa evaluateLegacyQuadraticNormalized (espaço normalizado) para obter posição original.
-  // Compara com span avaliado diretamente (quadrática de Bézier in-line).
+  // Compara com span avaliado via evaluateQuadraticSpanNormalized (v8z4b19j).
   const start   = model.anchors.find(a => a.role === 'start');
   const end     = model.anchors.find(a => a.role === 'end');
   const control = model.controls[0];
@@ -6055,22 +6119,22 @@ function validateDerivedRuntimeSpans(model) {
     );
     if (!expected) continue;
 
-    // Posição do span correspondente (espaço normalizado, in-line Bézier quadrática).
+    // Posição do span correspondente via evaluateQuadraticSpanNormalized — v8z4b19j.
     let sp, localT;
     if (globalT <= 0.5) {
       sp     = span1;
-      localT = globalT / 0.5;              // mapear [0, 0.5] → [0, 1]
+      localT = globalT / 0.5;          // mapear [0, 0.5] → [0, 1]
     } else {
       sp     = span2;
-      localT = (globalT - 0.5) / 0.5;     // mapear [0.5, 1] → [0, 1]
+      localT = (globalT - 0.5) / 0.5; // mapear [0.5, 1] → [0, 1]
     }
-    const inv = 1 - localT;
-    const sx = inv * inv * sp.start.x + 2 * inv * localT * sp.control.x + localT * localT * sp.end.x;
-    const sy = inv * inv * sp.start.y + 2 * inv * localT * sp.control.y + localT * localT * sp.end.y;
+    const spanPt = evaluateQuadraticSpanNormalized(sp, localT);
 
-    if (!isFinite(sx) || !isFinite(sy)) {
+    if (!spanPt) {
       return FAIL('reconstruction-mismatch', `t=${globalT.toFixed(4)}: span retornou NaN/Inf`);
     }
+    const sx = spanPt.x;
+    const sy = spanPt.y;
 
     if (Math.abs(sx - expected.x) >= TOL_NORM || Math.abs(sy - expected.y) >= TOL_NORM) {
       return FAIL('reconstruction-mismatch',
@@ -6080,6 +6144,190 @@ function validateDerivedRuntimeSpans(model) {
   }
 
   return { ok: true, reason: 'ok', midpointMatch: true, spanCount: 2, sampleChecks };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Avaliador dos spans derivados — v8z4b19j ─────────────────────────────────
+//
+// evaluateRuntimeCurveSpans(model, t)
+//
+// Avalia a curva runtime pelos dois quadraticSpans derivados (v8z4b19h) em vez
+// dos anchors + curvePuller usados por evaluateRuntimeCurveModel.
+// Retorna {x, y} em PIXELS do stage — mesmo formato de evaluateRuntimeCurveModel.
+// Retorna null para modelo inválido, spans ausentes ou stage inválido.
+//
+// Algoritmo:
+//   1. Recebe model e t global do segmento, em [0, 1].
+//   2. Se t <= 0.5, escolhe o primeiro span (derivedFirstHalf).
+//   3. Se t > 0.5, escolhe o segundo span (derivedSecondHalf).
+//   4. Converte t global para t local do span:
+//        primeiro span:  localT = t / 0.5         → mapeia [0, 0.5] → [0, 1]
+//        segundo span:   localT = (t - 0.5) / 0.5 → mapeia [0.5, 1] → [0, 1]
+//   5. Avalia Bézier quadrática do span via evaluateQuadraticSpanNormalized.
+//   6. Converte resultado de normalizado (0–1) para pixels: x *= stageW, y *= stageH.
+//   7. Retorna { x, y } em pixels do stage.
+//
+// Contrato de unidades:
+//   - spans[*].start/control/end estão em coordenadas normalizadas (0–1).
+//   - A conversão para pixels ocorre somente no retorno: px = norm * stageDim.
+//   - Normalizado e pixels nunca são misturados sem conversão explícita.
+//
+// Resultado esperado:
+//   Numericamente equivalente a evaluateRuntimeCurveModel(model, t) dentro de
+//   tolerância de 0.001 px (garantido por validateDerivedRuntimeSpans).
+//
+// Uso: avaliador paralelo e diagnóstico — NÃO substitui evaluateSegmentPath()
+// nem evaluateRuntimeCurveModel() nesta versão. Não chamado durante Preview/MP4.
+// Enquanto mode === 'legacyQuadratic', evaluateSegmentPath() continua usando
+// anchors + curvePuller como caminho preferencial.
+//
+// v8z4b19j — helper novo.
+function evaluateRuntimeCurveSpans(model, t) {
+  if (!model || !validateRuntimeCurveModel(model)) return null;
+  if (!stageW || !stageH || stageW <= 0 || stageH <= 0) return null;
+  if (!Array.isArray(model.spans) || model.spans.length !== 2) return null;
+
+  if (typeof t !== 'number' || !isFinite(t)) t = 0;
+  t = Math.max(0, Math.min(1, t));
+
+  // Selecionar span e calcular t local.
+  let span, localT;
+  if (t <= 0.5) {
+    span   = model.spans[0]; // derivedFirstHalf
+    localT = t / 0.5;        // mapear [0, 0.5] → [0, 1]
+  } else {
+    span   = model.spans[1]; // derivedSecondHalf
+    localT = (t - 0.5) / 0.5; // mapear [0.5, 1] → [0, 1]
+  }
+
+  if (!span || span.kind !== 'quadraticSpan') return null;
+
+  // Avaliar em espaço normalizado via helper.
+  const normPt = evaluateQuadraticSpanNormalized(span, localT);
+  if (!normPt) return null;
+
+  // Converter normalizado → pixels do stage.
+  const x = normPt.x * stageW;
+  const y = normPt.y * stageH;
+  if (!isFinite(x) || !isFinite(y)) return null;
+  return { x, y };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Diagnóstico de paridade: spans vs legacy/runtime — v8z4b19j ───────────────
+//
+// compareRuntimeSpansWithLegacy(segIndex, sampleCount)
+//
+// Diagnóstico passivo: compara evaluateRuntimeCurveSpans() com
+// evaluateRuntimeCurveModel() (runtime) e evaluateLegacySegmentPath() (legado)
+// em múltiplos pontos do segmento.
+//
+// Pontos amostrados (7 amostras fixas):
+//   t = 0, 0.125, 0.25, 0.5, 0.75, 0.875, 1
+//
+// Tolerância aceitável por amostra:
+//   spanDeltaRuntimePx <= 0.001 px  (spans vs runtime)
+//   spanDeltaLegacyPx  <= 0.001 px  (spans vs legado)
+//
+// Retorno:
+//   {
+//     ok:          boolean,      // true somente se TODAS as amostras passaram
+//     segIndex:    number,
+//     sampleCount: number,       // total de amostras avaliadas
+//     passed:      number,       // amostras dentro da tolerância (ok === true)
+//     failed:      number,       // amostras fora da tolerância ou inválidas
+//     samples: [
+//       {
+//         t:                  number,
+//         spanPoint:          {x, y} | null,  // pixels — evaluateRuntimeCurveSpans
+//         runtimePoint:       {x, y} | null,  // pixels — evaluateRuntimeCurveModel
+//         legacyPoint:        {x, y} | null,  // pixels — evaluateLegacySegmentPath
+//         spanDeltaRuntimePx: number | null,  // distância euclidiana span vs runtime
+//         spanDeltaLegacyPx:  number | null,  // distância euclidiana span vs legado
+//         spanMatchRuntime:   boolean,         // delta <= 0.001 px (span vs runtime)
+//         spanMatchLegacy:    boolean,         // delta <= 0.001 px (span vs legado)
+//         ok:                 boolean          // ambos os deltas dentro da tolerância
+//       }
+//     ]
+//   }
+//
+// Comportamento passivo:
+//   - Não altera estado, curvas, spans, pathPoints nem arrays persistidos.
+//   - Não imprime no console.
+//   - Não deve ser chamado durante animação, Preview ou exportação.
+//
+// v8z4b19j — helper novo.
+function compareRuntimeSpansWithLegacy(segIndex) {
+  const SAMPLE_TS = [0, 0.125, 0.25, 0.5, 0.75, 0.875, 1];
+  const TOL_PX    = 0.001;
+  const emptyResult = { ok: false, segIndex, sampleCount: 0, passed: 0, failed: 0, samples: [] };
+
+  let model = null;
+  try {
+    model = buildRuntimeCurveModel(segIndex);
+  } catch (_e) { model = null; }
+
+  if (!model || !validateRuntimeCurveModel(model)) return emptyResult;
+  if (!Array.isArray(model.spans) || model.spans.length !== 2) return emptyResult;
+
+  const samples = [];
+  let passed = 0;
+  let failed = 0;
+
+  for (const t of SAMPLE_TS) {
+    let spanPoint    = null;
+    let runtimePoint = null;
+    let legacyPoint  = null;
+
+    try { spanPoint    = evaluateRuntimeCurveSpans(model, t); }    catch (_e) { spanPoint    = null; }
+    try { runtimePoint = evaluateRuntimeCurveModel(model, t); }    catch (_e) { runtimePoint = null; }
+    try { legacyPoint  = evaluateLegacySegmentPath(segIndex, t); } catch (_e) { legacyPoint  = null; }
+
+    let spanDeltaRuntimePx = null;
+    let spanDeltaLegacyPx  = null;
+    let spanMatchRuntime   = false;
+    let spanMatchLegacy    = false;
+
+    if (spanPoint && runtimePoint) {
+      const dx = Math.abs(spanPoint.x - runtimePoint.x);
+      const dy = Math.abs(spanPoint.y - runtimePoint.y);
+      spanDeltaRuntimePx = Math.sqrt(dx * dx + dy * dy);
+      spanMatchRuntime   = spanDeltaRuntimePx <= TOL_PX;
+    }
+
+    if (spanPoint && legacyPoint) {
+      const dx = Math.abs(spanPoint.x - legacyPoint.x);
+      const dy = Math.abs(spanPoint.y - legacyPoint.y);
+      spanDeltaLegacyPx = Math.sqrt(dx * dx + dy * dy);
+      spanMatchLegacy   = spanDeltaLegacyPx <= TOL_PX;
+    }
+
+    const ok = !!(spanPoint && runtimePoint && legacyPoint && spanMatchRuntime && spanMatchLegacy);
+
+    if (ok) passed++;
+    else    failed++;
+
+    samples.push({
+      t,
+      spanPoint,
+      runtimePoint,
+      legacyPoint,
+      spanDeltaRuntimePx,
+      spanDeltaLegacyPx,
+      spanMatchRuntime,
+      spanMatchLegacy,
+      ok
+    });
+  }
+
+  return {
+    ok:          failed === 0 && passed > 0,
+    segIndex,
+    sampleCount: samples.length,
+    passed,
+    failed,
+    samples
+  };
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
