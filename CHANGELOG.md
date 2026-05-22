@@ -1,5 +1,43 @@
 # Changelog
 
+## v8z4b19k — render loop curve immediately on toggle
+
+Bug fix visual: a curva de loop agora aparece imediatamente no Stage ao ativar/desativar loop, sem necessidade de tocar no Stage.
+Sem alteração de UI, layout, JSON, curva normal, Preview matemático, MP4/export, save/load ou sistema de spans.
+
+### Problema corrigido
+
+Na v8z4b19j, ao ativar o loop via chip "Loop" no painel Duração, a curva de loop não aparecia imediatamente no Stage. Ela só aparecia depois que o usuário tocava/clicava no Stage — provavelmente porque um evento de toque posterior disparava um render/repaint do compositing layer do Stage.
+
+**Causa raiz:** Em iOS/Safari, quando o painel flutuante está aberto (overlay fixo com z-index:40 cobre o Stage), atualizações de SVG feitas sincronicamente dentro de handlers de toque/click podem não ser composited imediatamente. O GPU compositor do Safari pode manter uma textura cached do Stage e só invalidá-la quando o overlay é removido (ao tocar no Stage para fechar o painel).
+
+### Solução implementada
+
+#### `refreshStageAfterLoopToggle()` — helper novo
+
+Concentra `drawBezier()` + `updateCtrlPts()` em uma função nomeada, chamada via `requestAnimationFrame()` após o toggle de loop. O `requestAnimationFrame` força a execução no contexto do próximo frame de animação, garantindo que o Safari/iOS invalide o compositing layer do Stage e pinte a curva de loop sem aguardar interação do usuário.
+
+**Não substitui `renderAll()`** — apenas complementa o repaint das curvas/handles no próximo frame visual. O `renderAll()` continua sendo chamado sincronicamente para atualizar posições de frames, handle global e autosave.
+
+#### `setFinishing()` — atualizado
+
+- Adicionado `markProjectDirty('loop-toggle')`: ativar/desativar loop altera o caminho de animação e deve invalidar o MP4 gerado.
+- Adicionado `requestAnimationFrame(() => refreshStageAfterLoopToggle())` após `renderAll()`.
+
+### Invariantes mantidos
+
+- Curva normal preservada igual à v8z4b19j.
+- Curva de loop preservada igual à v8z4b19j (apenas aparece imediatamente).
+- Preview e MP4 percorrem o mesmo caminho da v8z4b19j.
+- JSON schema inalterado — nenhum campo novo aparece no JSON salvo.
+- Undo/Redo da curva normal e da curva de loop continuam funcionando.
+- Fallback legado permanece ativo.
+- Correções de MP4/export da v8z4b19i preservadas.
+- `evaluateSegmentPath()`, `evaluateRuntimeCurveModel()`, `evaluateRuntimeCurveSpans()`, `buildRuntimeCurveModel()` inalterados.
+- `ctrlPts`, `ctrlPtManual`, `loopCtrlPt` continuam sendo o schema persistido.
+
+---
+
 ## v8z4b19j — evaluate derived runtime curve spans
 
 Implementação interna controlada do runtime curve model.
