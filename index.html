@@ -1,13 +1,29 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19o                                     ║
+║  Versão: v8z4b19p                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19p                                            ║
+║    feat: simulate runtime path point edit pipeline   ║
+║         simulateRuntimePathPointEdit() — simula      ║
+║         edição de pathPoint em t=0.5; retorna        ║
+║         derivedCurvePuller + previewModel (clone)    ║
+║         createRuntimeCurveModelWithCandidatePuller() ║
+║         clone runtime-only do model substituindo     ║
+║         controls[0]; recalcula pathPoints/spans      ║
+║         compareSimulatedPathPointEdit() —            ║
+║         diagnóstico: amostra curva original vs       ║
+║         simulada em múltiplos t; retorna deltas      ║
+║         cloneRuntimeCurveModelLight() — clone leve   ║
+║         do runtime model; sem estado global          ║
+║         nada aplicado em ctrlPts/loopCtrlPt          ║
+║         nada salvo no JSON; nada renderizado         ║
+║         UI, Preview, MP4/export, save/load intactos  ║
 ║  v8z4b19o                                            ║
 ║    fix: clear generated MP4 when leaving preview     ║
 ║         resetPreviewUiState() chama                  ║
@@ -152,7 +168,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19n — add top safe preview band: padding-top em .preview-canvas-wrap usa calc(env(safe-area-inset-top,0px)+18px) para criar faixa preta superior no Preview, evitando sobreposição com Dynamic Island no iPhone; canvas continua centralizado na área restante; Stage, curvas, JSON, Preview matemático, MP4/export, save/load inalterados -->
+<!-- Arco Motion App — v8z4b19p — simulate runtime path point edit pipeline: simulateRuntimePathPointEdit(), createRuntimeCurveModelWithCandidatePuller(), compareSimulatedPathPointEdit(), cloneRuntimeCurveModelLight() adicionados como helpers diagnóstico/preparação internos; pathPoint ainda não editável; nada aplicado em ctrlPts/loopCtrlPt; nada salvo no JSON; nada renderizado; UI, Stage, curvas, Preview matemático, MP4/export, save/load inalterados -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1934,7 +1950,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19o</span><br><span id="appVersionNameText">clear generated MP4 when leaving preview</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19p</span><br><span id="appVersionNameText">simulate runtime path point edit pipeline</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4275,8 +4291,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19o';
-const APP_VERSION_NAME = 'clear generated MP4 when leaving preview';
+const APP_VERSION = 'v8z4b19p';
+const APP_VERSION_NAME = 'simulate runtime path point edit pipeline';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -6719,6 +6735,514 @@ function compareRuntimeSpansWithLegacy(segIndex) {
     passed,
     failed,
     samples
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: Clone leve do runtime model — v8z4b19p ──────────────────────────
+//
+// cloneRuntimeCurveModelLight(model)
+//
+// Retorna uma cópia estrutural independente do modelo runtime de curva.
+// Todos os campos são copiados por valor (deep copy de objetos simples).
+// O modelo original não é alterado.
+//
+// Objetivo:
+//   Preparar base para simulação de edição de pathPoint em runtime sem
+//   contaminar o modelo original nem o estado global do app.
+//
+// Contrato:
+//   - Entrada: model validado por validateRuntimeCurveModel.
+//   - Saída: novo objeto com os mesmos campos; arrays e objetos são cópias independentes.
+//   - Nenhum campo do modelo original é mutado.
+//   - Nenhum estado global é alterado.
+//   - Não persiste no JSON; não renderizado; não editável.
+//
+// Campos copiados:
+//   version, mode, segmentIndex, isLoop, fromFrameIndex, toFrameIndex,
+//   anchors[], controls[], pathPoints[], handles[], spans[], capabilities.
+//
+// Comportamento passivo:
+//   - Não altera model, pathPoints, anchors, controls, ctrlPts, loopCtrlPt.
+//   - Não salva, não renderiza, não afeta Preview nem MP4.
+//   - Nesta versão: helper interno de simulação — sem UI, sem persistência.
+//
+// v8z4b19p — helper novo.
+function cloneRuntimeCurveModelLight(model) {
+  if (!model || !validateRuntimeCurveModel(model)) return null;
+
+  // Deep-copy anchors (array de plain objects).
+  const anchors = model.anchors.map(function(a) { return Object.assign({}, a); });
+
+  // Deep-copy controls (array de plain objects).
+  const controls = model.controls.map(function(c) { return Object.assign({}, c); });
+
+  // Deep-copy pathPoints (array de plain objects).
+  const pathPoints = Array.isArray(model.pathPoints)
+    ? model.pathPoints.map(function(pp) { return Object.assign({}, pp); })
+    : [];
+
+  // handles é sempre [] nesta versão.
+  const handles = [];
+
+  // Deep-copy spans (cada span tem sub-objetos start/control/end).
+  const spans = Array.isArray(model.spans)
+    ? model.spans.map(function(sp) {
+        return {
+          kind:     sp.kind,
+          role:     sp.role,
+          source:   sp.source,
+          tRange:   sp.tRange ? [sp.tRange[0], sp.tRange[1]] : undefined,
+          start:    Object.assign({}, sp.start),
+          control:  Object.assign({}, sp.control),
+          end:      Object.assign({}, sp.end),
+          editable: sp.editable,
+          derived:  sp.derived
+        };
+      })
+    : [];
+
+  // Deep-copy capabilities (plain object).
+  const capabilities = model.capabilities
+    ? Object.assign({}, model.capabilities)
+    : { supportsPathPoints: false, supportsHandles: false };
+
+  return {
+    version:        model.version,
+    mode:           model.mode,
+    segmentIndex:   model.segmentIndex,
+    isLoop:         model.isLoop,
+    fromFrameIndex: model.fromFrameIndex,
+    toFrameIndex:   model.toFrameIndex,
+    anchors:        anchors,
+    controls:       controls,
+    pathPoints:     pathPoints,
+    handles:        handles,
+    spans:          spans,
+    capabilities:   capabilities
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: Clone runtime com curvePuller candidato — v8z4b19p ──────────────
+//
+// createRuntimeCurveModelWithCandidatePuller(model, candidatePuller)
+//
+// Retorna uma cópia runtime do modelo com controls[0] substituído pelo
+// candidatePuller proposto. O pathPoint derivado (pathPoints[0]) e os spans
+// derivados (spans[]) são recalculados internamente dentro da cópia para
+// refletir o novo curvePuller candidato.
+//
+// Objetivo:
+//   Construir um modelo runtime hipotético para avaliação diagnóstica de como
+//   a curva se comportaria se o curvePuller fosse trocado pelo candidato —
+//   sem alterar o estado real do app.
+//
+// Contrato:
+//   - model: runtime model atual (retorno de buildRuntimeCurveModel).
+//   - candidatePuller: { x, y } em coordenadas normalizadas (0–1).
+//   - Retorno: novo modelo runtime com controls[0] = candidatePuller e
+//     pathPoints/spans recalculados para o novo controle.
+//   - O model original NÃO é alterado.
+//   - ctrlPts, loopCtrlPt e nenhum array persistido são alterados.
+//   - O campo candidate: true em controls[0] do retorno marca como hipotético.
+//   - Não persiste no JSON; não renderizado; não editável.
+//
+// Recálculo interno (runtime-only):
+//   - pathPoints[0] (derivedMidpoint): recalculado com novo controle via
+//     evaluateLegacyQuadraticNormalized(start, candidatePuller, end, 0.5).
+//   - spans[]: recalculados via splitLegacyQuadraticAtMidpoint com novo controle.
+//
+// Comportamento passivo:
+//   - Não altera model, pathPoints, anchors, controls reais, ctrlPts, loopCtrlPt.
+//   - Não salva, não renderiza, não afeta Preview nem MP4.
+//   - Nesta versão: helper interno de simulação — sem UI, sem persistência.
+//
+// v8z4b19p — helper novo.
+function createRuntimeCurveModelWithCandidatePuller(model, candidatePuller) {
+  if (!model || !validateRuntimeCurveModel(model)) return null;
+  if (!candidatePuller ||
+      typeof candidatePuller.x !== 'number' || !isFinite(candidatePuller.x) ||
+      typeof candidatePuller.y !== 'number' || !isFinite(candidatePuller.y)) return null;
+
+  // Clone base do model (cópia independente do original).
+  const cloned = cloneRuntimeCurveModelLight(model);
+  if (!cloned) return null;
+
+  // Substituir controls[0] com candidatePuller.
+  // Preservar kind/role/source/manual do original; marcar como candidate.
+  var origCtrl = cloned.controls[0];
+  cloned.controls[0] = {
+    kind:      origCtrl.kind   || 'curvePuller',
+    role:      origCtrl.role   || 'quadraticControl',
+    source:    origCtrl.source || 'ctrlPts',
+    x:         candidatePuller.x,
+    y:         candidatePuller.y,
+    manual:    origCtrl.manual || false,
+    candidate: true   // marca como candidato hipotético — não persistido
+  };
+
+  // Recalcular pathPoints e spans internamente com o novo controle.
+  var start = cloned.anchors.find(function(a) { return a.role === 'start'; });
+  var end   = cloned.anchors.find(function(a) { return a.role === 'end';   });
+
+  if (start && end &&
+      isFinite(start.x) && isFinite(start.y) &&
+      isFinite(end.x)   && isFinite(end.y)) {
+
+    // Recalcular pathPoints[0] (derivedMidpoint) com novo controle.
+    var newMidPt = evaluateLegacyQuadraticNormalized(
+      { x: start.x,              y: start.y              },
+      { x: candidatePuller.x,    y: candidatePuller.y    },
+      { x: end.x,                y: end.y                },
+      0.5
+    );
+    if (newMidPt && isFinite(newMidPt.x) && isFinite(newMidPt.y)) {
+      cloned.pathPoints = [{
+        kind:     'pathPoint',
+        role:     'derivedMidpoint',
+        source:   'legacyQuadratic',
+        t:        0.5,
+        x:        newMidPt.x,
+        y:        newMidPt.y,
+        editable: false,
+        derived:  true
+      }];
+    } else {
+      cloned.pathPoints = [];
+    }
+
+    // Recalcular spans com novo controle via De Casteljau.
+    var P0    = { x: start.x,           y: start.y           };
+    var C_new = { x: candidatePuller.x, y: candidatePuller.y };
+    var P1    = { x: end.x,             y: end.y             };
+    var split = splitLegacyQuadraticAtMidpoint(P0, C_new, P1);
+    if (split) {
+      var A = split.firstHalfControl;
+      var M = split.midpoint;
+      var B = split.secondHalfControl;
+      cloned.spans = [
+        {
+          kind:     'quadraticSpan',
+          role:     'derivedFirstHalf',
+          source:   'legacyQuadraticSplit',
+          tRange:   [0, 0.5],
+          start:   { kind: 'frameAnchor',   role: 'start',             x: P0.x, y: P0.y },
+          control: { kind: 'derivedHandle', role: 'firstHalfControl',  x: A.x,  y: A.y,  editable: false, derived: true },
+          end:     { kind: 'pathPoint',     role: 'derivedMidpoint',   x: M.x,  y: M.y  },
+          editable: false,
+          derived:  true
+        },
+        {
+          kind:     'quadraticSpan',
+          role:     'derivedSecondHalf',
+          source:   'legacyQuadraticSplit',
+          tRange:   [0.5, 1],
+          start:   { kind: 'pathPoint',     role: 'derivedMidpoint',   x: M.x,  y: M.y  },
+          control: { kind: 'derivedHandle', role: 'secondHalfControl', x: B.x,  y: B.y,  editable: false, derived: true },
+          end:     { kind: 'frameAnchor',   role: 'end',               x: P1.x, y: P1.y },
+          editable: false,
+          derived:  true
+        }
+      ];
+    } else {
+      cloned.spans = [];
+    }
+  }
+
+  return cloned;
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Simulação de edição de pathPoint runtime — v8z4b19p ─────────────────────
+//
+// simulateRuntimePathPointEdit(model, pathPoint, nextPoint)
+//
+// Simula o que aconteceria se o pathPoint em t=0.5 fosse movido para nextPoint.
+// Calcula o curvePuller candidato via inversão da Bézier quadrática e constrói
+// um modelo runtime hipotético com esse candidato — sem alterar nada no estado real.
+//
+// IMPORTANTE: Este helper é APENAS DIAGNÓSTICO nesta versão.
+//   - pathPoint NÃO é editável pelo usuário.
+//   - Nenhum resultado é aplicado em ctrlPts / loopCtrlPt.
+//   - Nenhum resultado é salvo no JSON.
+//   - Nenhum resultado é renderizado.
+//   - O model original NÃO é alterado.
+//   - Prepara o futuro fluxo: pathPoint movido → curvePuller candidato →
+//     schema legado atualizável — sem UI e sem persistência nesta versão.
+//
+// Parâmetros:
+//   model     — modelo runtime atual (retorno de buildRuntimeCurveModel).
+//   pathPoint — pathPoint runtime existente com { x, y } em normalizado (0–1).
+//               Tipicamente model.pathPoints[0] (derivedMidpoint, derived: true).
+//   nextPoint — novo ponto normalizado proposto { x, y } em normalizado (0–1).
+//               Simula a posição futura editada do pathPoint.
+//
+// Matemática (Bézier quadrática inversa):
+//   P0 = anchor start (frame inicial)
+//   C  = curvePuller
+//   P1 = anchor end   (frame final)
+//   M  = pathPoint em t=0.5
+//
+//   Dado novo M (nextPoint):
+//     C_novo = 2·M − 0.5·P0 − 0.5·P1
+//
+//   Unidades: coordenadas normalizadas (0–1), mesma de anchors/controls/pathPoints/spans.
+//
+// Retorno em caso de sucesso:
+//   {
+//     ok:                  true,
+//     reason:              'ok',
+//     originalPathPoint:   { x, y },           // pathPoint original em normalizado
+//     proposedPathPoint:   { x, y },           // nextPoint em normalizado
+//     derivedCurvePuller:  { x, y, source, t },// curvePuller calculado do nextPoint
+//     originalCurvePuller: { x, y, source, manual }, // controls[0] do model original
+//     deltaFromOriginal:   { dxNorm, dyNorm, distNorm, dxPx, dyPx, distPx },
+//     previewModel:        <runtime model clone com candidatePuller>
+//   }
+//
+// Retorno em caso de problema:
+//   { ok: false, reason: string, ... campos null }
+//
+// Razões possíveis:
+//   'invalid-model'         — modelo nulo ou inválido.
+//   'invalid-pathpoint'     — pathPoint com x/y não finitos.
+//   'invalid-nextpoint'     — nextPoint com x/y não finitos.
+//   'missing-anchors'       — anchors start/end ausentes no model.
+//   'missing-original-puller' — controls[0] ausente ou inválido.
+//   'derivation-failed'     — deriveLegacyCurvePullerFromMidpoint retornou null.
+//
+// Comportamento passivo:
+//   - Não altera model, pathPoints, anchors, controls, ctrlPts, loopCtrlPt.
+//   - Não salva, não renderiza, não afeta Preview nem MP4.
+//   - Nesta versão: helper diagnóstico/preparação — sem UI, sem persistência.
+//
+// v8z4b19p — helper novo.
+function simulateRuntimePathPointEdit(model, pathPoint, nextPoint) {
+  var FAIL = function(reason) {
+    return {
+      ok: false, reason: reason,
+      originalPathPoint:   null,
+      proposedPathPoint:   null,
+      derivedCurvePuller:  null,
+      originalCurvePuller: null,
+      deltaFromOriginal:   null,
+      previewModel:        null
+    };
+  };
+
+  if (!model || !validateRuntimeCurveModel(model)) return FAIL('invalid-model');
+  if (!pathPoint ||
+      typeof pathPoint.x !== 'number' || !isFinite(pathPoint.x) ||
+      typeof pathPoint.y !== 'number' || !isFinite(pathPoint.y)) return FAIL('invalid-pathpoint');
+  if (!nextPoint ||
+      typeof nextPoint.x !== 'number' || !isFinite(nextPoint.x) ||
+      typeof nextPoint.y !== 'number' || !isFinite(nextPoint.y)) return FAIL('invalid-nextpoint');
+
+  // Obter anchors do model.
+  var startAnchor = model.anchors.find(function(a) { return a.role === 'start'; });
+  var endAnchor   = model.anchors.find(function(a) { return a.role === 'end';   });
+  if (!startAnchor || !endAnchor) return FAIL('missing-anchors');
+
+  // Obter curvePuller original.
+  var originalCurvePuller = model.controls && model.controls[0];
+  if (!originalCurvePuller ||
+      !isFinite(originalCurvePuller.x) || !isFinite(originalCurvePuller.y)) {
+    return FAIL('missing-original-puller');
+  }
+
+  // Derivar novo curvePuller a partir do nextPoint proposto.
+  // Fórmula: C = 2·M − 0.5·P0 − 0.5·P1 (inversão da Bézier quadrática em t=0.5).
+  var derivedCurvePuller = deriveLegacyCurvePullerFromMidpoint(
+    { x: startAnchor.x, y: startAnchor.y },
+    { x: nextPoint.x,   y: nextPoint.y   },
+    { x: endAnchor.x,   y: endAnchor.y   }
+  );
+  if (!derivedCurvePuller) return FAIL('derivation-failed');
+
+  // Calcular delta entre curvePuller derivado e original.
+  var dxNorm   = derivedCurvePuller.x - originalCurvePuller.x;
+  var dyNorm   = derivedCurvePuller.y - originalCurvePuller.y;
+  var distNorm = Math.sqrt(dxNorm * dxNorm + dyNorm * dyNorm);
+  var deltaFromOriginal = { dxNorm: dxNorm, dyNorm: dyNorm, distNorm: distNorm,
+                            dxPx: null, dyPx: null, distPx: null };
+  if (stageW > 0 && stageH > 0) {
+    var dxPx  = dxNorm * stageW;
+    var dyPx  = dyNorm * stageH;
+    var distPx = Math.sqrt(dxPx * dxPx + dyPx * dyPx);
+    deltaFromOriginal.dxPx   = dxPx;
+    deltaFromOriginal.dyPx   = dyPx;
+    deltaFromOriginal.distPx = distPx;
+  }
+
+  // Construir previewModel (cópia runtime com candidatePuller — não persiste, não renderiza).
+  var previewModel = createRuntimeCurveModelWithCandidatePuller(model, derivedCurvePuller);
+
+  return {
+    ok:                  true,
+    reason:              'ok',
+    originalPathPoint:   { x: pathPoint.x, y: pathPoint.y },
+    proposedPathPoint:   { x: nextPoint.x,  y: nextPoint.y  },
+    derivedCurvePuller:  derivedCurvePuller,
+    originalCurvePuller: {
+      x:      originalCurvePuller.x,
+      y:      originalCurvePuller.y,
+      source: originalCurvePuller.source,
+      manual: originalCurvePuller.manual
+    },
+    deltaFromOriginal:   deltaFromOriginal,
+    previewModel:        previewModel
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Diagnóstico: comparação de edição simulada de pathPoint — v8z4b19p ───────
+//
+// compareSimulatedPathPointEdit(model, proposedPathPoint)
+//
+// Helper de diagnóstico passivo: simula a edição do pathPoint em t=0.5 para
+// proposedPathPoint e avalia a diferença entre a curva original e a curva
+// simulada em múltiplos pontos de amostragem.
+//
+// Algoritmo:
+//   1. Localizar pathPoints[0] (derivedMidpoint) do model atual como referência.
+//   2. Chamar simulateRuntimePathPointEdit(model, origPathPoint, proposedPathPoint).
+//   3. Amostrar curva original via evaluateRuntimeCurveModel(model, t).
+//   4. Amostrar curva simulada via evaluateRuntimeLegacyQuadratic(previewModel, t).
+//   5. Calcular deltas (em pixels e em normalizado) para cada amostra.
+//   6. Retornar resultado estruturado.
+//
+// Pontos amostrados (9 amostras fixas):
+//   t = 0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1
+//
+// Comportamento passivo:
+//   - Não altera model, pathPoints, anchors, controls, ctrlPts, loopCtrlPt.
+//   - Não salva, não renderiza, não afeta Preview nem MP4.
+//   - Nesta versão: helper diagnóstico/preparação — sem UI, sem persistência.
+//   - pathPoint NÃO é editável. Este helper apenas mede o efeito hipotético.
+//
+// Retorno em caso de sucesso:
+//   {
+//     ok:          boolean,      // true se todas as amostras avaliadas com sucesso
+//     reason:      string,       // 'ok' ou descrição do problema
+//     simulation:  object,       // retorno de simulateRuntimePathPointEdit
+//     samples: [
+//       {
+//         t:              number,
+//         originalPoint:  { x, y } | null,  // pixels — curva original
+//         simulatedPoint: { x, y } | null,  // pixels — curva simulada
+//         deltaXPx:       number | null,
+//         deltaYPx:       number | null,
+//         deltaPx:        number | null,
+//         deltaXNorm:     number | null,
+//         deltaYNorm:     number | null,
+//         deltaNorm:      number | null,
+//         ok:             boolean
+//       }
+//     ],
+//     sampleCount: number,
+//     passed:      number,
+//     failed:      number
+//   }
+//
+// Retorno em caso de problema:
+//   { ok: false, reason: string, simulation: null, samples: [], sampleCount: 0,
+//     passed: 0, failed: 0 }
+//
+// v8z4b19p — helper novo.
+function compareSimulatedPathPointEdit(model, proposedPathPoint) {
+  var FAIL = function(reason, simulation) {
+    return { ok: false, reason: reason, simulation: simulation || null,
+             samples: [], sampleCount: 0, passed: 0, failed: 0 };
+  };
+
+  if (!model || !validateRuntimeCurveModel(model)) return FAIL('invalid-model');
+  if (!proposedPathPoint ||
+      typeof proposedPathPoint.x !== 'number' || !isFinite(proposedPathPoint.x) ||
+      typeof proposedPathPoint.y !== 'number' || !isFinite(proposedPathPoint.y)) {
+    return FAIL('invalid-proposed-pathpoint');
+  }
+
+  // Localizar pathPoint derivado atual como referência de origem.
+  var origPathPoint = null;
+  if (Array.isArray(model.pathPoints)) {
+    origPathPoint = model.pathPoints.find(function(p) {
+      return p && p.derived === true && p.kind === 'pathPoint';
+    }) || null;
+  }
+  // Se não houver pathPoint derivado, usar proposedPathPoint como âncora de referência.
+  var refPathPoint = origPathPoint || proposedPathPoint;
+
+  // Executar simulação.
+  var simulation = simulateRuntimePathPointEdit(model, refPathPoint, proposedPathPoint);
+  if (!simulation || !simulation.ok) {
+    return FAIL(simulation ? simulation.reason : 'simulation-failed', simulation);
+  }
+
+  var previewModel = simulation.previewModel;
+
+  // Amostrar curvas em múltiplos t.
+  var SAMPLE_TS = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1];
+  var samples = [];
+  var passed  = 0;
+  var failed  = 0;
+
+  for (var i = 0; i < SAMPLE_TS.length; i++) {
+    var t = SAMPLE_TS[i];
+    var originalPoint  = null;
+    var simulatedPoint = null;
+    var deltaXPx   = null, deltaYPx   = null, deltaPx   = null;
+    var deltaXNorm = null, deltaYNorm = null, deltaNorm = null;
+    var sampleOk   = false;
+
+    try { originalPoint  = evaluateRuntimeCurveModel(model, t); }
+    catch (_e) { originalPoint = null; }
+
+    try {
+      simulatedPoint = previewModel
+        ? evaluateRuntimeLegacyQuadratic(previewModel, t)
+        : null;
+    } catch (_e) { simulatedPoint = null; }
+
+    if (originalPoint && simulatedPoint &&
+        isValidRuntimePoint(originalPoint) && isValidRuntimePoint(simulatedPoint)) {
+      deltaXPx = simulatedPoint.x - originalPoint.x;
+      deltaYPx = simulatedPoint.y - originalPoint.y;
+      deltaPx  = Math.sqrt(deltaXPx * deltaXPx + deltaYPx * deltaYPx);
+      if (stageW > 0 && stageH > 0) {
+        deltaXNorm = deltaXPx / stageW;
+        deltaYNorm = deltaYPx / stageH;
+        deltaNorm  = Math.sqrt(deltaXNorm * deltaXNorm + deltaYNorm * deltaYNorm);
+      }
+      sampleOk = true;
+      passed++;
+    } else {
+      failed++;
+    }
+
+    samples.push({
+      t:              t,
+      originalPoint:  originalPoint,
+      simulatedPoint: simulatedPoint,
+      deltaXPx:       deltaXPx,
+      deltaYPx:       deltaYPx,
+      deltaPx:        deltaPx,
+      deltaXNorm:     deltaXNorm,
+      deltaYNorm:     deltaYNorm,
+      deltaNorm:      deltaNorm,
+      ok:             sampleOk
+    });
+  }
+
+  var allOk = failed === 0 && passed > 0;
+  return {
+    ok:          allOk,
+    reason:      allOk ? 'ok' : 'evaluation-incomplete',
+    simulation:  simulation,
+    samples:     samples,
+    sampleCount: samples.length,
+    passed:      passed,
+    failed:      failed
   };
 }
 // ──────────────────────────────────────────────────────────────────────────────

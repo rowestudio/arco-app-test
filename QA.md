@@ -2,6 +2,95 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19p — simulate runtime path point edit pipeline
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19p` na UI (Settings).
+3. Confirmar que nome da versão exibe `simulate runtime path point edit pipeline`.
+
+### Teste B — faixa preta superior (regressão v8z4b19n)
+1. Carregar imagem no iPhone/Safari.
+2. Entrar no Preview.
+3. Confirmar que a faixa preta superior continua presente.
+4. Confirmar que o canvas não invade a Dynamic Island.
+
+### Teste C — curvas normais (regressão)
+1. Criar projeto com pelo menos 4 frames.
+2. Puxar curva normal F1→F2.
+3. Puxar curva normal F2→F3.
+4. Confirmar que a curva normal aparece igual à v8z4b19o.
+5. Confirmar Undo/Redo da curva normal.
+6. Mover frame depois de puxar curvas e confirmar que as curvas não pulam.
+
+### Teste D — loop e curva de loop (regressão)
+1. Ativar loop via chip Loop no painel Duração.
+2. Confirmar que curva de loop aparece imediatamente no Stage, sem tocar no Stage.
+3. Puxar curva de loop.
+4. Confirmar que a curva de loop aparece igual à v8z4b19o.
+5. Confirmar Undo/Redo da curva de loop.
+
+### Teste E — Preview (regressão)
+1. Rodar Preview.
+2. Confirmar que a faixa preta superior do Preview continua presente.
+3. Confirmar que Preview respeita curvas normais.
+4. Confirmar que Preview respeita curva de loop.
+
+### Teste F — velocidade constante (regressão)
+1. Usar velocidade constante com curvas normais.
+2. Usar velocidade constante com loop ativo.
+
+### Teste G — MP4/export (regressão)
+1. Gerar MP4 normalmente.
+2. Confirmar que MP4 respeita curvas normais e loop.
+3. Confirmar que, ao sair do Preview, o MP4 gerado é limpo (regressão v8z4b19o):
+   - Entrar no Preview.
+   - Gerar MP4.
+   - Voltar ao Stage.
+   - Re-entrar no Preview.
+   - **Confirmar que botão voltou ao estado "Salvar MP4" (gerar novo).**
+4. Testar correção de MP4 (regressão v8z4b19i):
+   - Iniciar geração de MP4.
+   - Tocar Voltar antes de terminar.
+   - Confirmar que Stage não trava.
+   - Confirmar que play/pause não fica preso.
+
+### Teste H — save/load (regressão)
+1. Salvar projeto com imagem:
+   - filename termina em `_img.json`.
+   - `version` salva como `v8z4b19p`.
+   - `imageBase64` existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado quando loop ativo.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+2. Salvar projeto sem imagem:
+   - filename termina em `_file.json`.
+   - `version` salva como `v8z4b19p`.
+   - `imageBase64` não existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado quando loop ativo.
+3. Abrir JSON salvo em v8z4b19o e confirmar compatibilidade.
+4. Confirmar que nenhum destes campos apareceu no JSON:
+   - `curvesV2`
+   - `vectorPath`
+   - `handles`
+   - `pathPoints`
+   - `runtimeCurveModel`
+   - `capabilities`
+   - `spans`
+   - `generatedMp4`
+   - `exportBlob`
+5. Confirmar que `segDurations` não mudou de schema.
+
+### Teste I — console (regressão)
+1. Confirmar que não há erro de console, NaN ou Infinity.
+2. Confirmar que o PR ficou aberto e não foi mergeado.
+
+---
+
 ## v8z4b19o — clear generated MP4 when leaving preview
 
 ### Teste A — abertura e versão

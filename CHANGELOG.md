@@ -1,5 +1,132 @@
 # Changelog
 
+## v8z4b19p — simulate runtime path point edit pipeline
+
+Implementação interna controlada do pipeline de edição simulada de pathPoint runtime.
+Sem alteração visual, sem alteração de UI, sem alteração de JSON, sem alteração de Preview, MP4/export ou save/load.
+
+### Objetivo
+
+Preparar o futuro fluxo:
+
+```
+pathPoint movido
+  → deriveLegacyCurvePullerFromMidpoint()
+  → novo curvePuller candidato
+  → curva equivalente atualizável no schema legado ctrlPts / loopCtrlPt
+```
+
+Nesta versão, o fluxo é apenas simulado e diagnóstico. Nada é aplicado no estado
+real, nada é salvo no JSON, nada é renderizado.
+
+### Helpers adicionados
+
+#### `cloneRuntimeCurveModelLight(model)`
+
+Clone leve do modelo runtime de curva. Retorna uma cópia estrutural independente
+com todos os campos copiados por valor (deep copy de objetos simples). O modelo
+original não é alterado. Base interna para as demais simulações desta versão.
+
+#### `createRuntimeCurveModelWithCandidatePuller(model, candidatePuller)`
+
+Retorna uma cópia runtime do modelo com `controls[0]` substituído pelo
+`candidatePuller` proposto. O `pathPoint` derivado (`pathPoints[0]`) e os spans
+derivados (`spans[]`) são recalculados internamente dentro da cópia para refletir
+o novo curvePuller candidato. O campo `candidate: true` em `controls[0]` do
+retorno marca o controle como hipotético.
+
+- Não altera `model` original.
+- Não altera `ctrlPts`, `loopCtrlPt` nem nenhum array persistido.
+- Não persiste no JSON; não renderizado; não editável.
+
+#### `simulateRuntimePathPointEdit(model, pathPoint, nextPoint)`
+
+Simula o que aconteceria se o `pathPoint` em `t=0.5` fosse movido para `nextPoint`.
+
+Parâmetros:
+- `model`: runtime curve model atual.
+- `pathPoint`: pathPoint runtime existente (`model.pathPoints[0]`).
+- `nextPoint`: novo ponto normalizado proposto, simulando posição futura editada.
+
+Retorno:
+```json
+{
+  "ok": true,
+  "reason": "ok",
+  "originalPathPoint": { "x": ..., "y": ... },
+  "proposedPathPoint": { "x": ..., "y": ... },
+  "derivedCurvePuller": { "x": ..., "y": ..., "source": "runtimePathPoint", "t": 0.5 },
+  "originalCurvePuller": { "x": ..., "y": ..., "source": "ctrlPts", "manual": false },
+  "deltaFromOriginal": { "dxNorm": ..., "dyNorm": ..., "distNorm": ..., "dxPx": ..., "dyPx": ..., "distPx": ... },
+  "previewModel": "<runtime model clone com candidatePuller — não persiste, não renderiza>"
+}
+```
+
+Matemática (inversão da Bézier quadrática):
+```
+C_novo = 2·M − 0.5·P0 − 0.5·P1
+```
+Onde M = `nextPoint`, P0 = anchor start, P1 = anchor end.
+Unidades: coordenadas normalizadas (0–1).
+
+#### `compareSimulatedPathPointEdit(model, proposedPathPoint)`
+
+Diagnóstico passivo: simula a edição do pathPoint e avalia a diferença entre a
+curva original e a curva simulada em 9 amostras uniformes (`t = 0, 0.125, ..., 1`).
+
+Retorna deltas em pixels e em normalizado por amostra. Útil para desenvolvimento
+e validação da matemática do pipeline futuro.
+
+### Matemática
+
+Para Bézier quadrática:
+- P0 = frame inicial (anchor start, normalizado)
+- C = curvePuller (normalizado)
+- P1 = frame final (anchor end, normalizado)
+- M = pathPoint em t=0.5
+
+Dado novo M:
+```
+C = 2·M − 0.5·P0 − 0.5·P1
+```
+
+Unidades: coordenadas normalizadas 0–1, mesma de anchors, controls, pathPoints e spans.
+
+### O que NÃO foi feito
+
+- pathPoint não é editável pelo usuário.
+- Nenhum resultado aplicado em `ctrlPts`.
+- Nenhum resultado aplicado em `loopCtrlPt`.
+- Nenhum resultado salvo no JSON.
+- Nenhum resultado renderizado.
+- UI, Stage, curvas visuais, Preview, MP4/export, save/load — inalterados.
+- Schema JSON — inalterado. Nenhum campo novo.
+
+### Arquivos alterados
+
+- `index.html`: 4 helpers novos + versionamento
+- `CHANGELOG.md`: esta entrada
+- `QA.md`: checklist da versão
+- `ROADMAP.md`: estado atual atualizado
+- `pages-deploy-stamp.txt`: stamp de deploy
+
+### Restrições respeitadas
+
+- Stage não alterado.
+- Curvas não alteradas visualmente.
+- `buildRuntimeCurveModel`, `evaluateRuntimeCurveModel`, `evaluateRuntimeCurveSpans`,
+  `pathPoints`, `spans`, `curvePuller` reais intactos.
+- JSON não alterado (nenhum campo novo criado).
+- Preview matemático não alterado.
+- Motor de MP4/export não alterado.
+- Faixa preta superior do Preview (v8z4b19n) intacta.
+- Lógica de cancelamento de export da v8z4b19i intacta.
+- Limpeza de MP4 ao sair do Preview da v8z4b19o intacta.
+- Undo/Redo não alterado.
+- Save/load não alterado.
+
+---
+
 ## v8z4b19o — clear generated MP4 when leaving preview
 
 Ajuste de UX / ciclo de vida do MP4 gerado no Preview.

@@ -66,7 +66,7 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19m)
+### Estado atual (v8z4b19p)
 
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
@@ -92,10 +92,18 @@ compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 - `deriveLegacyCurvePullerFromMidpoint(start, midpoint, end)` — inversão da Bézier quadrática: C = 2·M − 0.5·P0 − 0.5·P1. Entrada/saída em normalizado (0–1). Introduzido na v8z4b19m.
 - `deriveLegacyCurvePullerFromRuntimePathPoint(model, pathPoint)` — wrapper: extrai anchors do runtime model e deriva curvePuller equivalente do pathPoint runtime. Introduzido na v8z4b19m.
 - `compareDerivedPullerWithRuntimeControl(model)` — diagnóstico passivo: compara curvePuller derivado do pathPoints[0] com controls[0]; retorna delta normalizado e delta em pixels. Por construção, delta deve ser zero. Introduzido na v8z4b19m.
+- `cloneRuntimeCurveModelLight(model)` — clone leve e independente do runtime model; todos os campos copiados por valor; base para simulação de edição. Introduzido na v8z4b19p.
+- `createRuntimeCurveModelWithCandidatePuller(model, candidatePuller)` — cópia runtime com controls[0] substituído pelo candidatePuller; pathPoints e spans recalculados internamente; o campo `candidate: true` marca o controle como hipotético; não altera model original, ctrlPts nem loopCtrlPt. Introduzido na v8z4b19p.
+- `simulateRuntimePathPointEdit(model, pathPoint, nextPoint)` — simula o efeito de mover pathPoint para nextPoint: deriva curvePuller candidato via `C = 2·M − 0.5·P0 − 0.5·P1`, constrói previewModel (cópia runtime com candidato), calcula delta entre curvePullers original e candidato. Sem UI, sem persistência, sem renderização. Introduzido na v8z4b19p.
+- `compareSimulatedPathPointEdit(model, proposedPathPoint)` — diagnóstico passivo: simula edição e amostra curva original vs simulada em 9 pontos; retorna deltas em pixels e normalizado por amostra; sem UI, sem persistência, sem renderização. Introduzido na v8z4b19p.
+- **Pipeline runtime de edição simulada preparado (v8z4b19p):** o fluxo `pathPoint movido → deriveLegacyCurvePullerFromMidpoint() → curvePuller candidato → previewModel` está implementado e validável em runtime. Sem UI e sem persistência nesta versão. O schema persistido continua sendo `ctrlPts / ctrlPtManual / loopCtrlPt`.
 
 ### Próximos passos (futuros, não imediatos)
 
-- Permitir que um `pathPoint` derivado em `t=0.5` seja arrastável pelo usuário.
+- Conectar o pipeline de simulação da v8z4b19p a uma UI real de edição de pathPoint.
+  - Permitir que o `pathPoint` derivado em `t=0.5` seja arrastável pelo usuário.
+  - Usar `simulateRuntimePathPointEdit()` para preview em tempo real durante drag.
+  - Ao confirmar drag: aplicar `derivedCurvePuller` em `ctrlPts` / `loopCtrlPt`.
   - Usar `deriveLegacyCurvePullerFromMidpoint()` para converter posição editada em curvePuller compatível com o schema `ctrlPts` / `loopCtrlPt`.
   - Nenhuma mudança no schema JSON necessária: compatibilidade backward garantida.
 - Adicionar `pathPoints` reais como pontos de passagem sem tempo próprio.
