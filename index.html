@@ -1,13 +1,20 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19h                                     ║
+║  Versão: v8z4b19i                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19i                                            ║
+║    fix: stale MP4 export state                       ║
+║         ObjectURL não revocado após download —       ║
+║         re-download funciona sem re-exportar         ║
+║         markProjectDirty cobre drag de ctrl-pt       ║
+║         (curva normal e loop): ctrlDragDidMove        ║
+║         só invalida se o ponto realmente moveu       ║
 ║  v8z3q                                               ║
 ║    fix: WebCodecs estável sem ImageBitmap[]          ║
 ║         encode frame-a-frame, menor uso de memória   ║
@@ -1855,7 +1862,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19h</span><br><span id="appVersionNameText">derive split runtime curve spans</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19i</span><br><span id="appVersionNameText">fix stale MP4 export state</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4196,8 +4203,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19h';
-const APP_VERSION_NAME = 'derive split runtime curve spans';
+const APP_VERSION = 'v8z4b19i';
+const APP_VERSION_NAME = 'fix stale MP4 export state';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -6368,6 +6375,7 @@ function updateUndoRedoUI() {
 // Drag state
 let dragState    = null;
 let ctrlDragSeg  = -1;
+let ctrlDragDidMove = false; // v8z4b19i: true se o ctrl-pt foi realmente movido no drag atual
 let isPinching      = false;
 let pinchStartAngle = 0;
 let pinchStartRot   = 0;
@@ -7816,6 +7824,7 @@ function startCtrlDrag(seg) {
   if (editorPanMode) return; // pan mode: não mover ponto de curva
   pushUndo();
   ctrlDragSeg = seg;
+  ctrlDragDidMove = false; // v8z4b19i: resetar flag de movimento para este drag
   // Marcar como manual — não reposiciona mais automaticamente
   if (typeof seg === 'number' && seg >= 0) setSegmentCurveManual(seg, true);
 }
@@ -7956,6 +7965,7 @@ function onMove(e) {
     const _adjDesc = { kind: 'curvePuller', role: 'control', source: 'quadraticCtrl' };
     const _segIdx = ctrlDragSeg === 'loop' ? frameCount - 1 : ctrlDragSeg;
     setSegmentTrajectoryPoint(_segIdx, _adjDesc, { x: nx, y: ny });
+    ctrlDragDidMove = true; // v8z4b19i: ponto de curva foi realmente movido
     drawBezier(); updateCtrlPts();
     return;
   }
@@ -8113,9 +8123,14 @@ function endDrag(e) {
   if (dragState?.type === 'move') {
     try { document.querySelector(`.drag-zone[data-fi="${dragState.fi}"]`)?.releasePointerCapture?.(e?.pointerId); } catch(err) {}
   }
-  const hadInteraction = dragState != null || ctrlDragSeg !== -1;
-  dragState = null; ctrlDragSeg = -1; document.body.classList.remove('dragging');
+  const hadCtrlDrag = ctrlDragSeg !== -1;
+  const ctrlMoved  = ctrlDragDidMove;
+  const hadInteraction = dragState != null || hadCtrlDrag;
+  dragState = null; ctrlDragSeg = -1; ctrlDragDidMove = false;
+  document.body.classList.remove('dragging');
   hideAngleIndicator();
+  // v8z4b19i — invalidar MP4 se um ponto de curva foi movido (curva normal ou loop)
+  if (ctrlMoved) markProjectDirty('curve');
   // v8z4b17f — recalcular distribuição após mover frame ou curva
   if (hadInteraction) maybeRedistributeByCurveLength();
 }
@@ -8672,18 +8687,10 @@ function startPreview() {
 }
 
 function stopPreview() {
-  isPreviewing = false;
-  updatePlayButton();
-  document.body.classList.remove('previewing');
-  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
-  animStart = null;
-  pausedElapsed = 0;
-  // Limpar CSS filter do canvas de preview
-  const dispCanvas = document.getElementById('previewDisplayCanvas');
-  if (dispCanvas) { dispCanvas.style.filter = 'none'; dispCanvas.style.display = 'none'; }
-  document.getElementById('previewScreen').classList.remove('show');
-  document.getElementById('previewTimeline').classList.remove('show');
-  document.getElementById('previewTimelineFill').style.width = '0%';
+  // v8z4b19i — delegar toda a limpeza de estado para resetPreviewPlaybackState().
+  // Isso garante que isPreviewing, animFrame, animStart, pausedElapsed, botões,
+  // canvas e previewScreen sejam todos restaurados de forma consistente.
+  resetPreviewPlaybackState();
 }
 
 function togglePreviewPlayback() {
@@ -8768,12 +8775,55 @@ function resetGeneratedVideoState() {
   setGenerateLabel('Salvar MP4');
 }
 
+// v8z4b19i — clearGeneratedMp4(reason): alias semântico de resetGeneratedVideoState.
+// Revoga ObjectURL, limpa blob, esconde readyOverlay, restaura botão Salvar MP4.
+// NÃO altera frames, curvas, JSON, Preview matemático ou encoder.
+function clearGeneratedMp4(reason) {
+  // reason é usado apenas para logging/debug, não altera comportamento.
+  resetGeneratedVideoState();
+}
+
+// v8z4b19i — resetPreviewPlaybackState(): limpa completamente o estado de
+// playback do Preview ao retornar ao Stage. Chamada pelo stopPreview().
+// NÃO limpa MP4 gerado (só markProjectDirty/clearGeneratedMp4 fazem isso).
+function resetPreviewPlaybackState() {
+  isPreviewing = false;
+  if (animFrame) {
+    try { cancelAnimationFrame(animFrame); } catch(e) {}
+    animFrame = null;
+  }
+  animStart = null;
+  pausedElapsed = 0;
+  document.body.classList.remove('previewing');
+  // Restaurar ícone/botão Play no Stage
+  try { updatePlayButton(); } catch(e) {}
+  // Esconder canvas de preview
+  const dispCanvas = document.getElementById('previewDisplayCanvas');
+  if (dispCanvas) {
+    dispCanvas.style.filter = 'none';
+    dispCanvas.style.display = 'none';
+  }
+  // Remover overlay do previewScreen
+  const ps = document.getElementById('previewScreen');
+  if (ps) ps.classList.remove('show');
+  const tl = document.getElementById('previewTimeline');
+  const tf = document.getElementById('previewTimelineFill');
+  if (tl) tl.classList.remove('show');
+  if (tf) tf.style.width = '0%';
+  // Restaurar botões do Preview ao estado neutro (pause visível, play oculto)
+  // para que na próxima entrada em Preview os botões estejam corretos.
+  const pb  = document.getElementById('previewPlayBtn');
+  const pb2 = document.getElementById('previewPlayBtn2');
+  if (pb)  pb.style.display  = '';
+  if (pb2) pb2.style.display = 'none';
+}
+
 function markProjectDirty(reason) {
   // Qualquer mudança de movimento/imagem invalida o MP4 já gerado.
   // Sem isso, o botão pode tentar baixar/compartilhar um blob antigo
   // ou manter overlays/canvas de uma geração anterior.
   if (isRecording) return;
-  resetGeneratedVideoState();
+  clearGeneratedMp4(reason);
 }
 
 function hardResetCanvas(ctx, canvas, fillColor) {
@@ -8891,11 +8941,9 @@ function handleGenerate() {
       const file = new File([blob], filename, { type: blob.type });
       navigator.share({ files: [file], title: 'Arco Motion App' })
         .then(() => {
-          URL.revokeObjectURL(generatedUrl);
-          generatedUrl = null;
-          window._lastVideoBlob = null;
-          btnGenerate.classList.remove('done');
-          setGenerateLabel('Salvar MP4');
+          // v8z4b19i — não revogar aqui: manter URL/blob vivos para re-download
+          // sem alteração no projeto. clearGeneratedMp4 é chamada em
+          // markProjectDirty (edição) ou em startRecord (novo export).
           showStatus('Compartilhado!');
         })
         .catch(err => {
@@ -8907,12 +8955,12 @@ function handleGenerate() {
     } else {
       const a = document.createElement('a');
       a.href = generatedUrl; a.download = filename; a.click();
-      URL.revokeObjectURL(generatedUrl);
-      generatedUrl = null;
-      window._lastVideoBlob = null;
-      btnGenerate.classList.remove('done');
-      setGenerateLabel('Salvar MP4');
-      showStatus('Salvo!');
+      // v8z4b19i — não revogar nem limpar generatedUrl após download.
+      // Manter URL/blob vivos: re-download funciona sem re-exportar,
+      // e o iOS tem tempo de completar o download antes de qualquer
+      // revogação. clearGeneratedMp4 é chamada em markProjectDirty
+      // (quando o projeto muda) ou em startRecord (novo export).
+      showStatus('Salvo! Toque novamente para baixar de novo.');
     }
     return;
   }
@@ -8990,13 +9038,9 @@ async function startRecord() {
   if (isPreviewing) stopPreview();
   document.body.classList.add('previewing');
 
-  // Invalidar qualquer vídeo anterior antes de gerar outro
-  if (generatedUrl) {
-    try { URL.revokeObjectURL(generatedUrl); } catch(e) {}
-  }
-  generatedUrl = null;
-  window._lastVideoBlob = null;
-  window._lastVideoExt = null;
+  // v8z4b19i — Invalidar qualquer vídeo anterior antes de gerar outro.
+  // Usar clearGeneratedMp4 para revogar ObjectURL, limpar blob e resetar UI.
+  clearGeneratedMp4('new-export-start');
 
   // Setup do canvas de preview (mantido visível mas coberto pelo overlay)
   const [eW, eH] = exportDims[currentRatio];

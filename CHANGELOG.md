@@ -1,5 +1,56 @@
 # Changelog
 
+## v8z4b19i — fix stale MP4 export state
+
+Correção funcional do ciclo de vida do export de MP4. Sem alteração de UI, JSON,
+curvas, Preview matemático, encoder ou save/load.
+
+### Problema corrigido
+
+Em v8z4b19h, após gerar e baixar um MP4, o ObjectURL era revogado imediatamente.
+Isso causava:
+- segunda tentativa de download falha silenciosamente (URL já revogada);
+- no iOS Safari, o download original podia ser corrompido por revogação prematura;
+- arrastar um ponto de curva (ctrl-pt) não invalidava o MP4 gerado, deixando um
+  MP4 antigo disponível mesmo após alteração de trajetória.
+
+### Correção
+
+**1. ObjectURL não é mais revogado após download ou share**
+
+O URL/blob gerado permanece vivo até que o projeto seja alterado
+(`markProjectDirty`) ou um novo export seja iniciado (`startRecord`).
+Isso permite re-download sem re-exportar quando o projeto não mudou.
+
+**2. `markProjectDirty('curve')` agora cobre drag de ctrl-pt**
+
+Adicionado flag `ctrlDragDidMove` para detectar movimentos reais do ponto de
+curva (normal e loop). Ao soltar após mover, `markProjectDirty('curve')` é
+chamado, invalidando o MP4 anterior.
+
+### Helpers criados / consolidados
+
+| Helper | Descrição |
+|---|---|
+| `clearGeneratedMp4(reason)` | Revoga ObjectURL, limpa blob, esconde readyOverlay, restaura botão Salvar MP4. NÃO altera Preview, curvas, JSON. |
+| `resetPreviewPlaybackState()` | Para rAF, limpa isPreviewing/animFrame/animStart, restaura ícone Play, esconde previewScreen/canvas/timeline. NÃO limpa MP4. |
+
+**`stopPreview()` agora delega para `resetPreviewPlaybackState()`** — limpeza
+consistente ao voltar ao Stage.
+
+**`startRecord()` agora usa `clearGeneratedMp4('new-export-start')`** em vez de
+código inline de revogação, garantindo que o estado anterior seja sempre limpo
+antes de nova geração.
+
+### Invariantes mantidos
+
+- JSON schema inalterado (nenhum campo novo)
+- Curvas, Preview matemático e encoder MP4 inalterados
+- UI inalterada (exceto mensagem de status após download)
+- save/load inalterado
+
+---
+
 ## v8z4b19h — derive split runtime curve spans
 
 Implementação interna controlada do runtime curve model.
