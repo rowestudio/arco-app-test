@@ -1,5 +1,42 @@
 # Changelog
 
+## v8z4b19n — add top safe preview band
+
+Ajuste visual/UX no Preview para iPhone com Dynamic Island.
+Stage, curvas, JSON, Preview matemático, MP4/export e save/load inalterados.
+
+### Problema
+
+No iPhone, o canvas do Preview ficava visualmente colado no topo, podendo
+invadir a região da Dynamic Island / barra superior do sistema.
+
+### Solução
+
+Adicionado `padding-top: calc(env(safe-area-inset-top, 0px) + 18px)` em
+`.preview-canvas-wrap`. O fundo preto de `.preview-screen` preenche
+naturalmente a faixa superior, criando o respiro visual necessário.
+O canvas continua centralizado (flex `align-items:center;justify-content:center`)
+dentro do espaço restante.
+
+### Arquivos alterados
+
+- `index.html`: CSS `.preview-canvas-wrap` + versionamento
+- `CHANGELOG.md`: esta entrada
+- `QA.md`: checklist da versão
+- `pages-deploy-stamp.txt`: stamp de deploy
+
+### Restrições respeitadas
+
+- Stage não alterado.
+- Curvas não alteradas.
+- JSON não alterado.
+- Preview matemático não alterado.
+- MP4/export não alterado.
+- Botão Salvar MP4 não alterado.
+- Painel inferior do Preview não alterado.
+
+---
+
 ## v8z4b19m — derive curve puller from runtime path point
 
 Implementação interna controlada do runtime curve model.

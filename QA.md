@@ -2,6 +2,90 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19n — add top safe preview band
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19n` na UI (Settings).
+3. Confirmar que nome da versão exibe `add top safe preview band`.
+
+### Teste B — faixa preta superior no Preview (feature nova)
+1. Carregar imagem no iPhone/Safari.
+2. Entrar no Preview.
+3. Confirmar que existe uma faixa preta visível no topo do Preview.
+4. Confirmar que o canvas/mídia fica visualmente mais baixo (não colado no topo).
+5. Confirmar que a imagem não invade a região da Dynamic Island / barra superior.
+6. Confirmar que imagem vertical não fica cortada no topo.
+7. Confirmar que imagem horizontal continua bem centralizada.
+8. Confirmar que o enquadramento geral continua bom.
+
+### Teste C — painel inferior e controles do Preview (regressão)
+1. Confirmar que o painel inferior do Preview continua igual.
+2. Confirmar que Play/Pause continua funcionando.
+3. Confirmar que Voltar continua funcionando.
+4. Confirmar que Gerar/Salvar MP4 continua funcionando.
+
+### Teste D — curvas e loop (regressão)
+1. Criar projeto com pelo menos 4 frames.
+2. Puxar curva normal F1→F2.
+3. Ativar loop via chip Loop no painel Duração.
+4. Confirmar que curva de loop aparece imediatamente no Stage.
+5. Confirmar que Preview respeita curvas normais.
+6. Confirmar que Preview respeita curva de loop.
+
+### Teste E — Stage (regressão)
+1. Confirmar que Stage continua igual após a alteração.
+2. Confirmar que toolbar inferior do Stage continua igual.
+3. Confirmar que painéis e menus continuam iguais.
+
+### Teste F — MP4/export (regressão)
+1. Gerar MP4 normalmente.
+2. Confirmar que MP4 respeita curvas normais e loop.
+3. Iniciar geração de MP4 e tocar Voltar antes de terminar.
+4. Confirmar que Stage não trava.
+5. Confirmar que play/pause não fica preso.
+6. Confirmar que o comportamento do botão Salvar MP4/Baixar MP4 não foi alterado.
+
+### Teste G — save/load (regressão)
+1. Salvar projeto com imagem:
+   - filename termina em `_img.json`.
+   - `version` salva como `v8z4b19n`.
+   - `imageBase64` existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado quando loop ativo.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+2. Salvar projeto sem imagem:
+   - filename termina em `_file.json`.
+   - `version` salva como `v8z4b19n`.
+   - `imageBase64` não existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado quando loop ativo.
+3. Abrir JSON salvo em v8z4b19m e confirmar compatibilidade.
+
+### Teste H — campos proibidos no JSON
+Confirmar que nenhum destes campos apareceu no JSON salvo:
+- `curvesV2`
+- `vectorPath`
+- `handles`
+- `pathPoints`
+- `runtimeCurveModel`
+- `capabilities`
+- `spans`
+- `generatedMp4`
+- `exportBlob`
+
+### Teste I — console limpo
+1. Confirmar que não há erro de console.
+2. Confirmar que não há NaN ou Infinity nos logs.
+
+### Teste J — PR
+1. Confirmar que o PR ficou aberto e não foi mergeado.
+
+---
+
 ## v8z4b19m — derive curve puller from runtime path point
 
 ### Teste A — abertura e versão
