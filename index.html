@@ -1,13 +1,31 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19p                                     ║
+║  Versão: v8z4b19q                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19q                                            ║
+║    feat: prepare legacy curve patch from             ║
+║         simulated path point edit                    ║
+║         runtimeCurvePullerToLegacyCtrlPt() —        ║
+║         converte curvePuller runtime → shape legado  ║
+║         createLegacyCurvePatchFromSimulated...() —   ║
+║         monta patch candidato (ctrlPts/loopCtrlPt)   ║
+║         validateLegacyCurvePatchCandidate() —        ║
+║         valida estrutura e campos do patch           ║
+║         createSimulatedPathPointEditPatch() —        ║
+║         helper de alto nível: simula + patch + val.  ║
+║         compareLegacyPatchCandidateWith...() —       ║
+║         diagnóstico: patch vs controle atual         ║
+║         patch é apenas objeto diagnóstico            ║
+║         applied === false sempre nesta versão        ║
+║         não aplica em ctrlPts/loopCtrlPt             ║
+║         não chama pushUndo/renderAll/dirty           ║
+║         UI, Preview, MP4/export, save/load intactos  ║
 ║  v8z4b19p                                            ║
 ║    feat: simulate runtime path point edit pipeline   ║
 ║         simulateRuntimePathPointEdit() — simula      ║
@@ -1950,7 +1968,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19p</span><br><span id="appVersionNameText">simulate runtime path point edit pipeline</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19q</span><br><span id="appVersionNameText">prepare legacy curve patch from simulated path point edit</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4291,8 +4309,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19p';
-const APP_VERSION_NAME = 'simulate runtime path point edit pipeline';
+const APP_VERSION = 'v8z4b19q';
+const APP_VERSION_NAME = 'prepare legacy curve patch from simulated path point edit';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7149,7 +7167,7 @@ function simulateRuntimePathPointEdit(model, pathPoint, nextPoint) {
 //   { ok: false, reason: string, simulation: null, samples: [], sampleCount: 0,
 //     passed: 0, failed: 0 }
 //
-// v8z4b19p — helper novo.
+// v8z4b19p — helper novo (diagnóstico passivo — sem UI, sem persistência).
 function compareSimulatedPathPointEdit(model, proposedPathPoint) {
   var FAIL = function(reason, simulation) {
     return { ok: false, reason: reason, simulation: simulation || null,
@@ -7243,6 +7261,481 @@ function compareSimulatedPathPointEdit(model, proposedPathPoint) {
     sampleCount: samples.length,
     passed:      passed,
     failed:      failed
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: Converter curvePuller runtime em formato legacy ctrlPt — v8z4b19q ─
+//
+// runtimeCurvePullerToLegacyCtrlPt(candidatePuller, fallbackCtrlPt)
+//
+// Converte um curvePuller runtime (com { x, y } normalizados 0–1) para o formato
+// legacy de ctrlPt persistido ({ nx, ny, t, perpX, perpY }).
+//
+// Objetivo:
+//   Adaptar o candidatePuller derivado de uma edição simulada de pathPoint para
+//   o shape exato usado em ctrlPts[segIndex] e loopCtrlPt no schema atual.
+//   Prepara o dado para um patch candidato que futuramente poderia ser aplicado
+//   em ctrlPts[segIndex] ou loopCtrlPt — sem alterar estado real nesta versão.
+//
+// Parâmetros:
+//   candidatePuller  — { x, y } normalizados (0–1); retorno de
+//                      deriveLegacyCurvePullerFromMidpoint ou similar.
+//   fallbackCtrlPt   — ctrlPt persistido atual (ctrlPts[segIndex] ou loopCtrlPt);
+//                      fornece t / perpX / perpY que não fazem parte do runtime model.
+//
+// Comportamento:
+//   - nx / ny vêm de candidatePuller.x / .y.
+//   - t, perpX, perpY vêm de fallbackCtrlPt quando disponíveis e finitos.
+//   - Se fallbackCtrlPt for nulo/inválido, usa defaults seguros:
+//       t = 0.5, perpX = 0, perpY = 0.
+//
+// IMPORTANTE:
+//   Nesta versão apenas prepara o objeto — não aplica em ctrlPts nem loopCtrlPt.
+//   Não chama pushUndo, renderAll, markProjectDirty nem invalida MP4.
+//
+// Unidades:
+//   nx/ny — normalizados (0–1), mesma convenção de ctrlPts[segIndex].nx/ny.
+//   t/perpX/perpY — preservados do schema atual sem modificação.
+//
+// v8z4b19q — helper novo.
+function runtimeCurvePullerToLegacyCtrlPt(candidatePuller, fallbackCtrlPt) {
+  if (!candidatePuller ||
+      typeof candidatePuller.x !== 'number' || !isFinite(candidatePuller.x) ||
+      typeof candidatePuller.y !== 'number' || !isFinite(candidatePuller.y)) return null;
+
+  var fb    = fallbackCtrlPt || {};
+  var t     = (typeof fb.t     === 'number' && isFinite(fb.t))     ? fb.t     : 0.5;
+  var perpX = (typeof fb.perpX === 'number' && isFinite(fb.perpX)) ? fb.perpX : 0;
+  var perpY = (typeof fb.perpY === 'number' && isFinite(fb.perpY)) ? fb.perpY : 0;
+
+  return {
+    nx:    candidatePuller.x,
+    ny:    candidatePuller.y,
+    t:     t,
+    perpX: perpX,
+    perpY: perpY
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: Montar patch legado candidato a partir de edição simulada — v8z4b19q ─
+//
+// createLegacyCurvePatchFromSimulatedPathPointEdit(target, simulation)
+//
+// Constrói um objeto de patch candidato indicando qual campo do schema atual
+// (ctrlPts[segIndex] ou loopCtrlPt) seria alterado por uma edição simulada de
+// pathPoint — sem aplicar nada no estado real.
+//
+// Parâmetros:
+//   target     — { type: 'segment' | 'loop', segIndex?: number }
+//                Para 'segment': segIndex é obrigatório e deve ser inteiro >= 0.
+//                Para 'loop': segIndex é ignorado.
+//   simulation — retorno de simulateRuntimePathPointEdit() com ok === true.
+//
+// Saída para type === 'segment':
+//   {
+//     ok:              true,
+//     reason:          'ok',
+//     target:          { type: 'segment', segIndex: <number> },
+//     field:           'ctrlPts',
+//     index:           <segIndex>,
+//     value:           { nx, ny, t, perpX, perpY },
+//     source:          'simulatedRuntimePathPointEdit',
+//     appliesToSchema: 'legacyCurvePuller',
+//     applied:         false
+//   }
+//
+// Saída para type === 'loop':
+//   {
+//     ok:              true,
+//     reason:          'ok',
+//     target:          { type: 'loop' },
+//     field:           'loopCtrlPt',
+//     index:           null,
+//     value:           { nx, ny, t, perpX, perpY },
+//     source:          'simulatedRuntimePathPointEdit',
+//     appliesToSchema: 'legacyLoopCurvePuller',
+//     applied:         false
+//   }
+//
+// Saída em erro:
+//   { ok: false, reason: <string>, target: null, field: null, index: null,
+//     value: null, source: 'simulatedRuntimePathPointEdit',
+//     appliesToSchema: null, applied: false }
+//
+// Razões de erro:
+//   'invalid-target'         — target nulo ou type inválido.
+//   'invalid-simulation'     — simulation nula ou ok !== true.
+//   'missing-derived-puller' — derivedCurvePuller ausente ou inválido.
+//   'missing-segIndex'       — segIndex ausente/inválido para target 'segment'.
+//   'conversion-failed'      — runtimeCurvePullerToLegacyCtrlPt retornou null.
+//
+// IMPORTANTE:
+//   - O patch é apenas um objeto retornado. applied === false sempre nesta versão.
+//   - Não aplica em ctrlPts. Não aplica em loopCtrlPt.
+//   - Não chama pushUndo, renderAll nem markProjectDirty.
+//   - Não invalida MP4, não salva no JSON, não renderiza.
+//   - O schema persistido (ctrlPts, ctrlPtManual, loopCtrlPt) não é alterado.
+//
+// v8z4b19q — helper novo.
+function createLegacyCurvePatchFromSimulatedPathPointEdit(target, simulation) {
+  var FAIL = function(reason) {
+    return {
+      ok:              false,
+      reason:          reason,
+      target:          null,
+      field:           null,
+      index:           null,
+      value:           null,
+      source:          'simulatedRuntimePathPointEdit',
+      appliesToSchema: null,
+      applied:         false
+    };
+  };
+
+  if (!target || (target.type !== 'segment' && target.type !== 'loop')) {
+    return FAIL('invalid-target');
+  }
+  if (!simulation || simulation.ok !== true) {
+    return FAIL('invalid-simulation');
+  }
+  if (!simulation.derivedCurvePuller ||
+      typeof simulation.derivedCurvePuller.x !== 'number' ||
+      !isFinite(simulation.derivedCurvePuller.x) ||
+      typeof simulation.derivedCurvePuller.y !== 'number' ||
+      !isFinite(simulation.derivedCurvePuller.y)) {
+    return FAIL('missing-derived-puller');
+  }
+
+  var derivedPuller = simulation.derivedCurvePuller;
+
+  if (target.type === 'segment') {
+    var segIndex = target.segIndex;
+    if (typeof segIndex !== 'number' || !isFinite(segIndex) ||
+        segIndex < 0 || Math.floor(segIndex) !== segIndex) {
+      return FAIL('missing-segIndex');
+    }
+    // Obter fallbackCtrlPt do schema persistido (preservar t/perpX/perpY atuais).
+    var fallbackCtrlPt = (ctrlPts && ctrlPts[segIndex]) ? ctrlPts[segIndex] : null;
+    var value = runtimeCurvePullerToLegacyCtrlPt(derivedPuller, fallbackCtrlPt);
+    if (!value) return FAIL('conversion-failed');
+
+    return {
+      ok:              true,
+      reason:          'ok',
+      target:          { type: 'segment', segIndex: segIndex },
+      field:           'ctrlPts',
+      index:           segIndex,
+      value:           value,
+      source:          'simulatedRuntimePathPointEdit',
+      appliesToSchema: 'legacyCurvePuller',
+      applied:         false
+    };
+  }
+
+  // target.type === 'loop'
+  // fallbackCtrlPt = loopCtrlPt atual (para preservar t/perpX/perpY).
+  var fallbackLoop  = loopCtrlPt || null;
+  var loopValue = runtimeCurvePullerToLegacyCtrlPt(derivedPuller, fallbackLoop);
+  if (!loopValue) return FAIL('conversion-failed');
+
+  return {
+    ok:              true,
+    reason:          'ok',
+    target:          { type: 'loop' },
+    field:           'loopCtrlPt',
+    index:           null,
+    value:           loopValue,
+    source:          'simulatedRuntimePathPointEdit',
+    appliesToSchema: 'legacyLoopCurvePuller',
+    applied:         false
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: Validar patch legado candidato — v8z4b19q ───────────────────────
+//
+// validateLegacyCurvePatchCandidate(patch)
+//
+// Verifica se um patch candidato produzido por
+// createLegacyCurvePatchFromSimulatedPathPointEdit é bem-formado e seguro para
+// uso diagnóstico futuro.
+//
+// Critérios de validação:
+//   1. patch existe (não nulo/undefined).
+//   2. ok === true.
+//   3. target é objeto com type válido ('segment' ou 'loop').
+//   4. field é 'ctrlPts' ou 'loopCtrlPt'.
+//   5. value tem nx/ny numéricos finitos.
+//   6. value.t é numérico finito.
+//   7. value.perpX e value.perpY são numéricos finitos.
+//   8. applied === false.
+//
+// Retorno:
+//   {
+//     ok:     boolean,
+//     reason: 'ok' | <descrição do problema>,
+//     checks: {
+//       patchExists:     boolean,
+//       okTrue:          boolean,
+//       targetValid:     boolean,
+//       fieldValid:      boolean,
+//       valueNxNyFinite: boolean,
+//       valueTFinite:    boolean,
+//       valuePerpFinite: boolean,
+//       appliedFalse:    boolean
+//     }
+//   }
+//
+// Comportamento passivo:
+//   - Não altera patch, ctrlPts, loopCtrlPt nem estado real.
+//   - Não salva, não renderiza, não afeta Preview nem MP4.
+//   - Nesta versão: validação diagnóstica — sem UI, sem persistência.
+//
+// v8z4b19q — helper novo.
+function validateLegacyCurvePatchCandidate(patch) {
+  var checks = {
+    patchExists:     false,
+    okTrue:          false,
+    targetValid:     false,
+    fieldValid:      false,
+    valueNxNyFinite: false,
+    valueTFinite:    false,
+    valuePerpFinite: false,
+    appliedFalse:    false
+  };
+
+  if (!patch) {
+    return { ok: false, reason: 'patch-null', checks: checks };
+  }
+  checks.patchExists = true;
+
+  if (patch.ok !== true) {
+    return { ok: false, reason: 'patch-ok-not-true', checks: checks };
+  }
+  checks.okTrue = true;
+
+  if (!patch.target ||
+      (patch.target.type !== 'segment' && patch.target.type !== 'loop')) {
+    return { ok: false, reason: 'invalid-target-type', checks: checks };
+  }
+  checks.targetValid = true;
+
+  if (patch.field !== 'ctrlPts' && patch.field !== 'loopCtrlPt') {
+    return { ok: false, reason: 'invalid-field', checks: checks };
+  }
+  checks.fieldValid = true;
+
+  var v = patch.value;
+  if (!v ||
+      typeof v.nx !== 'number' || !isFinite(v.nx) ||
+      typeof v.ny !== 'number' || !isFinite(v.ny)) {
+    return { ok: false, reason: 'value-nx-ny-not-finite', checks: checks };
+  }
+  checks.valueNxNyFinite = true;
+
+  if (typeof v.t !== 'number' || !isFinite(v.t)) {
+    return { ok: false, reason: 'value-t-not-finite', checks: checks };
+  }
+  checks.valueTFinite = true;
+
+  if (typeof v.perpX !== 'number' || !isFinite(v.perpX) ||
+      typeof v.perpY !== 'number' || !isFinite(v.perpY)) {
+    return { ok: false, reason: 'value-perp-not-finite', checks: checks };
+  }
+  checks.valuePerpFinite = true;
+
+  if (patch.applied !== false) {
+    return { ok: false, reason: 'applied-not-false', checks: checks };
+  }
+  checks.appliedFalse = true;
+
+  return { ok: true, reason: 'ok', checks: checks };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper de alto nível: gerar patch a partir de edição simulada — v8z4b19q ─
+//
+// createSimulatedPathPointEditPatch(model, target, pathPoint, nextPoint)
+//
+// Função de alto nível para desenvolvimento e diagnóstico do pipeline completo:
+//   1. Chama simulateRuntimePathPointEdit(model, pathPoint, nextPoint).
+//   2. Se simulação ok, chama createLegacyCurvePatchFromSimulatedPathPointEdit.
+//   3. Valida o patch com validateLegacyCurvePatchCandidate.
+//   4. Retorna resultado estruturado com simulation, patch e patchValid.
+//
+// Parâmetros:
+//   model     — runtime curve model atual (retorno de buildRuntimeCurveModel).
+//   target    — { type: 'segment' | 'loop', segIndex?: number }
+//   pathPoint — pathPoint runtime existente { x, y } em normalizado (0–1).
+//   nextPoint — novo ponto proposto { x, y } em normalizado (0–1).
+//
+// Retorno:
+//   {
+//     ok:         boolean,
+//     reason:     string,
+//     simulation: <retorno de simulateRuntimePathPointEdit ou null>,
+//     patch:      <retorno de createLegacyCurvePatchFromSimulatedPathPointEdit ou null>,
+//     patchValid: <retorno de validateLegacyCurvePatchCandidate ou null>
+//   }
+//
+// IMPORTANTE:
+//   - O patch é apenas um objeto diagnóstico. applied === false sempre.
+//   - Não aplica em ctrlPts / loopCtrlPt.
+//   - Não chama pushUndo, renderAll, markProjectDirty.
+//   - Não invalida MP4, não salva no JSON, não renderiza.
+//   - O schema persistido (ctrlPts, ctrlPtManual, loopCtrlPt) não é alterado.
+//   - Uso exclusivamente interno — sem UI, sem persistência nesta versão.
+//
+// v8z4b19q — helper novo.
+function createSimulatedPathPointEditPatch(model, target, pathPoint, nextPoint) {
+  var FAIL = function(reason, simulation) {
+    return {
+      ok:         false,
+      reason:     reason,
+      simulation: simulation || null,
+      patch:      null,
+      patchValid: null
+    };
+  };
+
+  // 1. Executar simulação.
+  var simulation = simulateRuntimePathPointEdit(model, pathPoint, nextPoint);
+  if (!simulation || !simulation.ok) {
+    return FAIL(simulation ? simulation.reason : 'simulation-failed', simulation);
+  }
+
+  // 2. Montar patch candidato a partir da simulação.
+  var patch = createLegacyCurvePatchFromSimulatedPathPointEdit(target, simulation);
+  if (!patch || !patch.ok) {
+    return FAIL(patch ? patch.reason : 'patch-creation-failed', simulation);
+  }
+
+  // 3. Validar o patch.
+  var patchValid = validateLegacyCurvePatchCandidate(patch);
+
+  return {
+    ok:         patchValid.ok,
+    reason:     patchValid.reason,
+    simulation: simulation,
+    patch:      patch,
+    patchValid: patchValid
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Diagnóstico passivo: comparar patch candidato com controle atual — v8z4b19q ─
+//
+// compareLegacyPatchCandidateWithCurrentControl(model, patch)
+//
+// Compara o valor do patch candidato (patch.value) com o controle atual do
+// schema persistido (ctrlPts[segIndex] ou loopCtrlPt), calculando o delta
+// entre os dois em coordenadas normalizadas e em pixels.
+//
+// Objetivo:
+//   Fornecer visibilidade diagnóstica de quanto o patch candidato diverge do
+//   controle persistido atualmente — sem alterar nada no estado real.
+//
+// Parâmetros:
+//   model — runtime curve model atual (usado apenas para validação estrutural).
+//   patch — patch candidato com ok === true (retorno de
+//           createLegacyCurvePatchFromSimulatedPathPointEdit).
+//
+// Retorno em sucesso:
+//   {
+//     ok:             true,
+//     reason:         'ok',
+//     currentControl: { nx, ny },   // controle atual do schema persistido
+//     patchValue:     { nx, ny },   // valor proposto pelo patch
+//     deltaNxNy: {
+//       dNx:      number,            // patch.value.nx − currentControl.nx
+//       dNy:      number,            // patch.value.ny − currentControl.ny
+//       distNorm: number,            // distância euclidiana em normalizado
+//       dxPx:     number | null,     // dNx * stageW (em pixels)
+//       dyPx:     number | null,     // dNy * stageH (em pixels)
+//       distPx:   number | null      // distância euclidiana em pixels
+//     }
+//   }
+//
+// Retorno em caso de problema:
+//   { ok: false, reason: string, currentControl: null, patchValue: null,
+//     deltaNxNy: null }
+//
+// Razões de erro:
+//   'invalid-patch'       — patch nulo ou ok !== true.
+//   'invalid-model'       — model nulo ou inválido.
+//   'no-current-control'  — controle atual não encontrado no schema persistido.
+//
+// Comportamento passivo:
+//   - Não altera model, patch, ctrlPts, loopCtrlPt nem estado real.
+//   - Não salva, não renderiza, não afeta Preview nem MP4.
+//   - Nesta versão: diagnóstico apenas — sem UI, sem persistência.
+//
+// v8z4b19q — helper novo.
+function compareLegacyPatchCandidateWithCurrentControl(model, patch) {
+  var FAIL = function(reason) {
+    return {
+      ok:             false,
+      reason:         reason,
+      currentControl: null,
+      patchValue:     null,
+      deltaNxNy:      null
+    };
+  };
+
+  if (!patch || patch.ok !== true) return FAIL('invalid-patch');
+  if (!model || !validateRuntimeCurveModel(model)) return FAIL('invalid-model');
+
+  // Obter controle atual do schema persistido.
+  var currentCtrl = null;
+  if (patch.field === 'ctrlPts') {
+    var si = patch.index;
+    if (typeof si === 'number' && isFinite(si) &&
+        ctrlPts && ctrlPts[si] &&
+        typeof ctrlPts[si].nx === 'number' && isFinite(ctrlPts[si].nx) &&
+        typeof ctrlPts[si].ny === 'number' && isFinite(ctrlPts[si].ny)) {
+      currentCtrl = { nx: ctrlPts[si].nx, ny: ctrlPts[si].ny };
+    }
+  } else if (patch.field === 'loopCtrlPt') {
+    if (loopCtrlPt &&
+        typeof loopCtrlPt.nx === 'number' && isFinite(loopCtrlPt.nx) &&
+        typeof loopCtrlPt.ny === 'number' && isFinite(loopCtrlPt.ny)) {
+      currentCtrl = { nx: loopCtrlPt.nx, ny: loopCtrlPt.ny };
+    }
+  }
+
+  if (!currentCtrl) return FAIL('no-current-control');
+
+  var pv = patch.value;
+  if (!pv || typeof pv.nx !== 'number' || !isFinite(pv.nx) ||
+             typeof pv.ny !== 'number' || !isFinite(pv.ny)) {
+    return FAIL('invalid-patch');
+  }
+
+  var dNx      = pv.nx - currentCtrl.nx;
+  var dNy      = pv.ny - currentCtrl.ny;
+  var distNorm = Math.sqrt(dNx * dNx + dNy * dNy);
+  var dxPx = null, dyPx = null, distPx = null;
+  if (stageW > 0 && stageH > 0) {
+    dxPx   = dNx * stageW;
+    dyPx   = dNy * stageH;
+    distPx = Math.sqrt(dxPx * dxPx + dyPx * dyPx);
+  }
+
+  return {
+    ok:             true,
+    reason:         'ok',
+    currentControl: currentCtrl,
+    patchValue:     { nx: pv.nx, ny: pv.ny },
+    deltaNxNy: {
+      dNx:      dNx,
+      dNy:      dNy,
+      distNorm: distNorm,
+      dxPx:     dxPx,
+      dyPx:     dyPx,
+      distPx:   distPx
+    }
   };
 }
 // ──────────────────────────────────────────────────────────────────────────────

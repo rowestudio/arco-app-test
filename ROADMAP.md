@@ -66,7 +66,7 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19p)
+### Estado atual (v8z4b19q)
 
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
@@ -97,9 +97,19 @@ compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 - `simulateRuntimePathPointEdit(model, pathPoint, nextPoint)` — simula o efeito de mover pathPoint para nextPoint: deriva curvePuller candidato via `C = 2·M − 0.5·P0 − 0.5·P1`, constrói previewModel (cópia runtime com candidato), calcula delta entre curvePullers original e candidato. Sem UI, sem persistência, sem renderização. Introduzido na v8z4b19p.
 - `compareSimulatedPathPointEdit(model, proposedPathPoint)` — diagnóstico passivo: simula edição e amostra curva original vs simulada em 9 pontos; retorna deltas em pixels e normalizado por amostra; sem UI, sem persistência, sem renderização. Introduzido na v8z4b19p.
 - **Pipeline runtime de edição simulada preparado (v8z4b19p):** o fluxo `pathPoint movido → deriveLegacyCurvePullerFromMidpoint() → curvePuller candidato → previewModel` está implementado e validável em runtime. Sem UI e sem persistência nesta versão. O schema persistido continua sendo `ctrlPts / ctrlPtManual / loopCtrlPt`.
+- `runtimeCurvePullerToLegacyCtrlPt(candidatePuller, fallbackCtrlPt)` — converte curvePuller runtime `{ x, y }` para shape legado `{ nx, ny, t, perpX, perpY }`; preserva `t/perpX/perpY` do ctrlPt atual; apenas prepara objeto, não aplica. Introduzido na v8z4b19q.
+- `createLegacyCurvePatchFromSimulatedPathPointEdit(target, simulation)` — constrói patch candidato indicando `ctrlPts[segIndex]` ou `loopCtrlPt` que seria alterado; `applied: false` sempre; não altera estado real. Introduzido na v8z4b19q.
+- `validateLegacyCurvePatchCandidate(patch)` — valida estrutura e campos do patch candidato; retorna `{ ok, reason, checks }`; não altera estado. Introduzido na v8z4b19q.
+- `createSimulatedPathPointEditPatch(model, target, pathPoint, nextPoint)` — função de alto nível: simula edição → monta patch → valida; retorna `{ ok, reason, simulation, patch, patchValid }`; não aplica nada. Introduzido na v8z4b19q.
+- `compareLegacyPatchCandidateWithCurrentControl(model, patch)` — diagnóstico passivo: compara `patch.value` com controle atual do schema persistido; retorna delta em normalizado e pixels; não altera estado. Introduzido na v8z4b19q.
+- **Pipeline de patch legado candidato preparado (v8z4b19q):** o fluxo completo `pathPoint movido → simulateRuntimePathPointEdit() → curvePuller candidato → legacy curve patch candidate` está implementado. O patch identifica exatamente `ctrlPts[segIndex]` ou `loopCtrlPt` e o valor candidato em formato `{ nx, ny, t, perpX, perpY }`. Sem UI, sem aplicação real e sem persistência nesta versão. O schema persistido continua sendo `ctrlPts / ctrlPtManual / loopCtrlPt`.
 
 ### Próximos passos (futuros, não imediatos)
 
+- Conectar o pipeline completo da v8z4b19q a uma UI real de edição de pathPoint.
+  - O patch candidato já indica `ctrlPts[segIndex]` ou `loopCtrlPt` e o valor exato.
+  - Próximo passo: implementar `applyLegacyCurvePatchCandidate(patch)` que aplica
+    o patch no estado real, chamando `pushUndo`, `markProjectDirty` e `renderAll`.
 - Conectar o pipeline de simulação da v8z4b19p a uma UI real de edição de pathPoint.
   - Permitir que o `pathPoint` derivado em `t=0.5` seja arrastável pelo usuário.
   - Usar `simulateRuntimePathPointEdit()` para preview em tempo real durante drag.
