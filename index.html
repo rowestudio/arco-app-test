@@ -1,13 +1,21 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19m                                     ║
+║  Versão: v8z4b19n                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19n                                            ║
+║    fix: add top safe preview band                    ║
+║         padding-top em preview-canvas-wrap usa       ║
+║         env(safe-area-inset-top) + 18px              ║
+║         faixa preta superior no Preview para         ║
+║         evitar sobreposição com Dynamic Island       ║
+║         canvas centralizado na área restante         ║
+║         Stage, curvas, JSON, MP4 inalterados         ║
 ║  v8z4b19m                                            ║
 ║    feat: derive curve puller from runtime            ║
 ║         path point                                   ║
@@ -134,7 +142,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19m — derive curve puller from runtime path point: deriveLegacyCurvePullerFromMidpoint() inverte Bézier quadrática (C = 2·M − 0.5·P0 − 0.5·P1) para derivar curvePuller de midpoint normalizado; deriveLegacyCurvePullerFromRuntimePathPoint() wrapper usando anchors do runtime model; compareDerivedPullerWithRuntimeControl() diagnóstico passivo (delta norm + pixels) entre puller derivado e controls[0]; compareRuntimePathWithLegacy() inclui pullerDiag; resultado visual e matemático idêntico à v8z4b19l; UI, JSON, Preview, MP4/export, save/load inalterados; nada editável, nada renderizado, nada salvo -->
+<!-- Arco Motion App — v8z4b19n — add top safe preview band: padding-top em .preview-canvas-wrap usa calc(env(safe-area-inset-top,0px)+18px) para criar faixa preta superior no Preview, evitando sobreposição com Dynamic Island no iPhone; canvas continua centralizado na área restante; Stage, curvas, JSON, Preview matemático, MP4/export, save/load inalterados -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -553,9 +561,14 @@ body.no-image #custBar{display:none !important;}
   display:none;flex-direction:column;
 }
 .preview-screen.show{display:flex;}
+/* v8z4b19n — faixa preta superior no Preview:
+   padding-top empurra o canvas para baixo da Dynamic Island no iPhone.
+   O fundo preto de .preview-screen preenche a faixa naturalmente.
+   Valor: env(safe-area-inset-top,0px) + 18px de respiro visual extra. */
 .preview-canvas-wrap{
   flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
   position:relative;overflow:hidden;
+  padding-top:calc(env(safe-area-inset-top,0px) + 18px);
 }
 .preview-canvas-wrap canvas{
   max-width:100%;max-height:100%;
@@ -1911,7 +1924,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19m</span><br><span id="appVersionNameText">derive curve puller from runtime path point</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19n</span><br><span id="appVersionNameText">add top safe preview band</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4252,8 +4265,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19m';
-const APP_VERSION_NAME = 'derive curve puller from runtime path point';
+const APP_VERSION = 'v8z4b19n';
+const APP_VERSION_NAME = 'add top safe preview band';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
