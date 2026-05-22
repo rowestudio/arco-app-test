@@ -1,53 +1,84 @@
 # Changelog
 
-## v8z4b19i — fix stale MP4 export state
+## v8z4b19i — fix preview exit during mp4 export
 
-Correção funcional do ciclo de vida do export de MP4. Sem alteração de UI, JSON,
-curvas, Preview matemático, encoder ou save/load.
+Correção funcional do ciclo de vida de exportação de MP4 ao sair do Preview.
+Sem alteração de UI, JSON, curvas, Preview matemático, encoder ou save/load.
 
 ### Problema corrigido
 
-Em v8z4b19h, após gerar e baixar um MP4, o ObjectURL era revogado imediatamente.
-Isso causava:
-- segunda tentativa de download falha silenciosamente (URL já revogada);
-- no iOS Safari, o download original podia ser corrompido por revogação prematura;
-- arrastar um ponto de curva (ctrl-pt) não invalidava o MP4 gerado, deixando um
-  MP4 antigo disponível mesmo após alteração de trajetória.
+Em v8z4b19h (e v8z4b19i-a), se o usuário iniciava a geração de MP4 no Preview
+e tocava em Voltar antes da exportação terminar:
+
+- o export continuava em background (`isRecording = true` não era limpo);
+- `finishExport()` era chamado ao final, reativando `isPreviewing = true` mesmo
+  com o Preview fechado;
+- um RAF loop (`loopAfter`) era iniciado sobre uma tela oculta;
+- o Stage mostrava ícone de pause indevidamente;
+- o Stage ficava travado ou sem responder a toques;
+- havia estado híbrido Preview/Stage impossível de resolver sem reload.
 
 ### Correção
 
-**1. ObjectURL não é mais revogado após download ou share**
+**1. `stopPreview()` detecta export em andamento e roteia para helper correto**
 
-O URL/blob gerado permanece vivo até que o projeto seja alterado
-(`markProjectDirty`) ou um novo export seja iniciado (`startRecord`).
-Isso permite re-download sem re-exportar quando o projeto não mudou.
+- Se `isRecording === true`: chama `cancelMp4ExportAndResetState('preview-exit-during-export')`.
+- Se `isRecording === false`: chama `resetPreviewUiState()` (saída normal).
 
-**2. `markProjectDirty('curve')` agora cobre drag de ctrl-pt**
+**2. `cancelMp4ExportAndResetState(reason)` — novo helper**
 
-Adicionado flag `ctrlDragDidMove` para detectar movimentos reais do ponto de
-curva (normal e loop). Ao soltar após mover, `markProjectDirty('curve')` é
-chamado, invalidando o MP4 anterior.
+- Define `isRecording = false` → loop de encode quebra na próxima iteração.
+- Define `exportCancelledFlag = true` → previne `finishExport()` de completar.
+- Revoga ObjectURL/blob parcial → export cancelado não fica disponível.
+- Chama `resetPreviewPlaybackState()` → limpa UI de playback.
+- Restaura botão Salvar MP4 e esconde overlay de progresso.
+
+**3. `exportCancelledFlag` — nova flag de estado**
+
+Guards em três pontos do pipeline de export:
+- `finishExport()`: retorna cedo se `exportCancelledFlag === true`.
+- WebCodecs path: verifica antes de `encoder.flush()` / `muxer.finalize()`.
+- MediaRecorder fallback: verifica antes de criar Blob e chamar `finishExport()`.
+
+**4. Ordenação em `startRecord()`**
+
+`stopPreview()` é chamado ANTES de `isRecording = true` para que o preview
+de playback seja parado via `resetPreviewUiState()` (não via cancelamento).
+`exportCancelledFlag = false` é resetado logo após `isRecording = true`.
+
+**5. `resetPreviewAndExportStateForImageChange()` atualizado**
+
+Ao forçar `isRecording = false` diretamente (troca de imagem), também define
+`exportCancelledFlag = true` para que `finishExport()` não complete um vídeo
+gerado a partir de um projeto já alterado.
+
+**6. `resetPreviewUiState()` — novo helper**
+
+Consolida a saída normal do Preview delegando para `resetPreviewPlaybackState()`.
+Facilita extensão futura sem duplicar lógica.
 
 ### Helpers criados / consolidados
 
 | Helper | Descrição |
 |---|---|
+| `cancelMp4ExportAndResetState(reason)` | Cancela export em progresso, sinaliza cancelamento, limpa estado completo de Preview+Export. |
+| `resetPreviewUiState()` | Saída normal do Preview sem export em andamento. Delega para `resetPreviewPlaybackState()`. |
 | `clearGeneratedMp4(reason)` | Revoga ObjectURL, limpa blob, esconde readyOverlay, restaura botão Salvar MP4. NÃO altera Preview, curvas, JSON. |
 | `resetPreviewPlaybackState()` | Para rAF, limpa isPreviewing/animFrame/animStart, restaura ícone Play, esconde previewScreen/canvas/timeline. NÃO limpa MP4. |
-
-**`stopPreview()` agora delega para `resetPreviewPlaybackState()`** — limpeza
-consistente ao voltar ao Stage.
-
-**`startRecord()` agora usa `clearGeneratedMp4('new-export-start')`** em vez de
-código inline de revogação, garantindo que o estado anterior seja sempre limpo
-antes de nova geração.
 
 ### Invariantes mantidos
 
 - JSON schema inalterado (nenhum campo novo)
-- Curvas, Preview matemático e encoder MP4 inalterados
-- UI inalterada (exceto mensagem de status após download)
+- Curvas, Preview matemático e encoder MP4 inalterados estruturalmente
+- Motor de MP4 (WebCodecs + muxer) inalterado além do controle de cancel/reset
+- UI inalterada (exceto restauração do estado correto de play/pause)
 - save/load inalterado
+
+### Nota sobre v8z4b19i anterior (fix stale MP4 export state)
+
+Esta versão consolida e inclui as correções de v8z4b19i-a:
+- ObjectURL não revogado após download (re-download sem re-exportar)
+- `markProjectDirty` cobre drag de ctrl-pt (curva normal e loop)
 
 ---
 
