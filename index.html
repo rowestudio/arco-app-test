@@ -1,13 +1,29 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19q                                     ║
+║  Versão: v8z4b19r                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19r                                            ║
+║    feat: prepare guarded legacy curve patch applier  ║
+║         cloneLegacyCurveStateForPatch() —            ║
+║         deep copy de ctrlPts/ctrlPtManual/           ║
+║         loopCtrlPt/loopEnabled; sem ref. mutável     ║
+║         applyLegacyCurvePatchCandidateToDraft() —    ║
+║         aplica patch em draftState, nunca no real    ║
+║         createLegacyCurvePatchApplicationDraft() —   ║
+║         high-level: valida→clona→aplica→retorna      ║
+║         validateLegacyCurvePatchApplicationDraft() — ║
+║         verifica integridade do resultado do draft   ║
+║         compareLegacyCurvePatchDraftWithCurrentState ║
+║         diagnóstico passivo: before/after/real       ║
+║         nenhum patch aplicado no estado real         ║
+║         não chama pushUndo/renderAll/dirty           ║
+║         UI, Preview, MP4/export, save/load intactos  ║
 ║  v8z4b19q                                            ║
 ║    feat: prepare legacy curve patch from             ║
 ║         simulated path point edit                    ║
@@ -186,7 +202,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19p — simulate runtime path point edit pipeline: simulateRuntimePathPointEdit(), createRuntimeCurveModelWithCandidatePuller(), compareSimulatedPathPointEdit(), cloneRuntimeCurveModelLight() adicionados como helpers diagnóstico/preparação internos; pathPoint ainda não editável; nada aplicado em ctrlPts/loopCtrlPt; nada salvo no JSON; nada renderizado; UI, Stage, curvas, Preview matemático, MP4/export, save/load inalterados -->
+<!-- Arco Motion App — v8z4b19r — prepare guarded legacy curve patch applier: cloneLegacyCurveStateForPatch(), applyLegacyCurvePatchCandidateToDraft(), createLegacyCurvePatchApplicationDraft(), validateLegacyCurvePatchApplicationDraft(), compareLegacyCurvePatchDraftWithCurrentState() adicionados como helpers internos guardados; patch candidato pode ser aplicado apenas em draft/cópia do estado legado; nada aplicado no estado real; não chama pushUndo/markProjectDirty/renderAll; UI, Stage, curvas, Preview matemático, MP4/export, save/load inalterados -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1968,7 +1984,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19q</span><br><span id="appVersionNameText">prepare legacy curve patch from simulated path point edit</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19r</span><br><span id="appVersionNameText">prepare guarded legacy curve patch applier</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4309,8 +4325,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19q';
-const APP_VERSION_NAME = 'prepare legacy curve patch from simulated path point edit';
+const APP_VERSION = 'v8z4b19r';
+const APP_VERSION_NAME = 'prepare guarded legacy curve patch applier';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7736,6 +7752,489 @@ function compareLegacyPatchCandidateWithCurrentControl(model, patch) {
       dyPx:     dyPx,
       distPx:   distPx
     }
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: Clonar estado legado de curva para patch draft — v8z4b19r ────────
+//
+// cloneLegacyCurveStateForPatch()
+//
+// Retorna uma cópia leve e independente dos campos legados de curva:
+//   {
+//     ctrlPts:      [...],   — deep copy; sem ref. mutável ao array real
+//     ctrlPtManual: [...],   — deep copy; sem ref. mutável ao array real
+//     loopCtrlPt:   {...} | null,  — cópia de objeto simples ou null
+//     loopEnabled:  boolean
+//   }
+//
+// Regras:
+//   - Deep copy de objetos simples (não usa structuredClone nem JSON.parse por
+//     compatibilidade com Safari antigo; copia campo a campo).
+//   - Não mantém referência mutável aos arrays reais.
+//   - Não altera nenhuma variável global.
+//   - Retorna estrutura válida mesmo se ctrlPts estiver vazio ou loopCtrlPt
+//     for null.
+//
+// Uso esperado:
+//   Servir de base para applyLegacyCurvePatchCandidateToDraft(), de forma que
+//   o patch nunca toque no estado real (ctrlPts, ctrlPtManual, loopCtrlPt).
+//
+// Nota: pathPoint ainda não é editável. O patch candidato não é aplicado no
+//   estado real por nenhum helper desta versão. Este helper apenas prepara um
+//   container independente para simulação segura.
+//
+// v8z4b19r — helper novo.
+function cloneLegacyCurveStateForPatch() {
+  // Copiar ctrlPts: array de objetos { nx, ny, t, perpX, perpY }.
+  var clonedCtrlPts = [];
+  if (Array.isArray(ctrlPts)) {
+    for (var i = 0; i < ctrlPts.length; i++) {
+      var src = ctrlPts[i];
+      if (src && typeof src === 'object') {
+        clonedCtrlPts.push({
+          nx:    typeof src.nx    === 'number' ? src.nx    : 0,
+          ny:    typeof src.ny    === 'number' ? src.ny    : 0,
+          t:     typeof src.t     === 'number' ? src.t     : 0.5,
+          perpX: typeof src.perpX === 'number' ? src.perpX : 0,
+          perpY: typeof src.perpY === 'number' ? src.perpY : 0
+        });
+      } else {
+        clonedCtrlPts.push(null);
+      }
+    }
+  }
+
+  // Copiar ctrlPtManual: array de booleans.
+  var clonedCtrlPtManual = [];
+  if (Array.isArray(ctrlPtManual)) {
+    for (var j = 0; j < ctrlPtManual.length; j++) {
+      clonedCtrlPtManual.push(!!ctrlPtManual[j]);
+    }
+  }
+
+  // Copiar loopCtrlPt: objeto { nx, ny, t, perpX, perpY } ou null.
+  var clonedLoopCtrlPt = null;
+  if (loopCtrlPt && typeof loopCtrlPt === 'object') {
+    clonedLoopCtrlPt = {
+      nx:    typeof loopCtrlPt.nx    === 'number' ? loopCtrlPt.nx    : 0,
+      ny:    typeof loopCtrlPt.ny    === 'number' ? loopCtrlPt.ny    : 0,
+      t:     typeof loopCtrlPt.t     === 'number' ? loopCtrlPt.t     : 0.5,
+      perpX: typeof loopCtrlPt.perpX === 'number' ? loopCtrlPt.perpX : 0,
+      perpY: typeof loopCtrlPt.perpY === 'number' ? loopCtrlPt.perpY : 0
+    };
+  }
+
+  return {
+    ctrlPts:      clonedCtrlPts,
+    ctrlPtManual: clonedCtrlPtManual,
+    loopCtrlPt:   clonedLoopCtrlPt,
+    loopEnabled:  !!loopEnabled
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: Aplicar patch candidato em draft (nunca no estado real) — v8z4b19r ─
+//
+// applyLegacyCurvePatchCandidateToDraft(draftState, patch)
+//
+// Aplica um patch candidato validado em uma cópia/draft do estado legado,
+// NUNCA diretamente nos arrays/objetos reais (ctrlPts, ctrlPtManual, loopCtrlPt).
+//
+// Parâmetros:
+//   draftState — retorno de cloneLegacyCurveStateForPatch().
+//   patch      — retorno bem-formado de createLegacyCurvePatchFromSimulatedPathPointEdit()
+//                validado por validateLegacyCurvePatchCandidate() com ok === true.
+//
+// Comportamento:
+//   Se patch.field === 'ctrlPts':
+//     - Valida index (deve existir e estar dentro de draftState.ctrlPts).
+//     - Substitui draftState.ctrlPts[index] por cópia de patch.value.
+//     - Marca draftState.ctrlPtManual[index] = true (coerente com edição manual).
+//   Se patch.field === 'loopCtrlPt':
+//     - Substitui draftState.loopCtrlPt por cópia de patch.value.
+//
+// Retorno:
+//   {
+//     ok:                true | false,
+//     reason:            'ok' | string de erro,
+//     draftState:        <draftState modificado> | null,
+//     appliedField:      'ctrlPts' | 'loopCtrlPt' | null,
+//     appliedIndex:      number | null,
+//     appliedToDraft:    true,
+//     appliedToRealState: false
+//   }
+//
+// Garantias absolutas:
+//   - ctrlPts real NÃO é alterado.
+//   - ctrlPtManual real NÃO é alterado.
+//   - loopCtrlPt real NÃO é alterado.
+//   - pushUndo NÃO é chamado.
+//   - markProjectDirty NÃO é chamado.
+//   - renderAll NÃO é chamado.
+//
+// Nota: pathPoint ainda não é editável. Este helper apenas produz um draft
+//   interno seguro. A futura versão poderá conectar isso com aplicação real,
+//   undo/redo e renderAll.
+//
+// v8z4b19r — helper novo.
+function applyLegacyCurvePatchCandidateToDraft(draftState, patch) {
+  var FAIL = function(reason) {
+    return {
+      ok:                 false,
+      reason:             reason,
+      draftState:         null,
+      appliedField:       null,
+      appliedIndex:       null,
+      appliedToDraft:     true,
+      appliedToRealState: false
+    };
+  };
+
+  // Validar draftState.
+  if (!draftState || typeof draftState !== 'object') return FAIL('invalid-draft-state');
+  if (!Array.isArray(draftState.ctrlPts))      return FAIL('draft-missing-ctrlPts');
+  if (!Array.isArray(draftState.ctrlPtManual)) return FAIL('draft-missing-ctrlPtManual');
+
+  // Validar patch básico.
+  if (!patch || patch.ok !== true) return FAIL('invalid-patch');
+  var field = patch.field;
+  if (field !== 'ctrlPts' && field !== 'loopCtrlPt') return FAIL('unknown-patch-field');
+
+  // Validar patch.value.
+  var pv = patch.value;
+  if (!pv || typeof pv !== 'object') return FAIL('invalid-patch-value');
+  if (typeof pv.nx !== 'number' || !isFinite(pv.nx)) return FAIL('patch-value-nx-invalid');
+  if (typeof pv.ny !== 'number' || !isFinite(pv.ny)) return FAIL('patch-value-ny-invalid');
+  if (typeof pv.t  !== 'number' || !isFinite(pv.t))  return FAIL('patch-value-t-invalid');
+
+  var appliedIndex = null;
+
+  if (field === 'ctrlPts') {
+    var idx = patch.index;
+    if (typeof idx !== 'number' || !isFinite(idx) || idx < 0) return FAIL('invalid-patch-index');
+    idx = Math.floor(idx);
+    if (idx >= draftState.ctrlPts.length) return FAIL('patch-index-out-of-bounds');
+
+    // Substituir entrada no draft (cópia do value, nunca referência).
+    draftState.ctrlPts[idx] = {
+      nx:    pv.nx,
+      ny:    pv.ny,
+      t:     typeof pv.t     === 'number' ? pv.t     : 0.5,
+      perpX: typeof pv.perpX === 'number' ? pv.perpX : 0,
+      perpY: typeof pv.perpY === 'number' ? pv.perpY : 0
+    };
+
+    // Marcar como edição manual no draft (coerente com edição de curva pelo usuário).
+    // ctrlPtManual real permanece inalterado.
+    if (idx < draftState.ctrlPtManual.length) {
+      draftState.ctrlPtManual[idx] = true;
+    }
+
+    appliedIndex = idx;
+
+  } else if (field === 'loopCtrlPt') {
+    // Substituir loopCtrlPt no draft (cópia do value).
+    draftState.loopCtrlPt = {
+      nx:    pv.nx,
+      ny:    pv.ny,
+      t:     typeof pv.t     === 'number' ? pv.t     : 0.5,
+      perpX: typeof pv.perpX === 'number' ? pv.perpX : 0,
+      perpY: typeof pv.perpY === 'number' ? pv.perpY : 0
+    };
+    // appliedIndex permanece null para loopCtrlPt.
+  }
+
+  return {
+    ok:                 true,
+    reason:             'ok',
+    draftState:         draftState,
+    appliedField:       field,
+    appliedIndex:       appliedIndex,
+    appliedToDraft:     true,
+    appliedToRealState: false
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper de alto nível: criar draft de aplicação de patch — v8z4b19r ───────
+//
+// createLegacyCurvePatchApplicationDraft(patch)
+//
+// Função de alto nível que:
+//   1. Valida o patch com validateLegacyCurvePatchCandidate().
+//   2. Clona o estado legado atual com cloneLegacyCurveStateForPatch().
+//   3. Aplica o patch na cópia com applyLegacyCurvePatchCandidateToDraft().
+//   4. Retorna draft aplicado + diagnóstico.
+//
+// Retorno:
+//   {
+//     ok:                 true | false,
+//     reason:             'ok' | string de erro,
+//     patchValid:         <retorno de validateLegacyCurvePatchCandidate ou null>,
+//     before:             <snapshot do estado legado antes do patch>,
+//     after:              <draftState com patch aplicado>,
+//     appliedField:       'ctrlPts' | 'loopCtrlPt' | null,
+//     appliedIndex:       number | null,
+//     appliedToDraft:     true,
+//     appliedToRealState: false
+//   }
+//
+// Garantias absolutas:
+//   - Estado real (ctrlPts, ctrlPtManual, loopCtrlPt) nunca é alterado.
+//   - pushUndo, markProjectDirty, renderAll nunca são chamados.
+//
+// Nota: Esta versão apenas prepara um draft interno seguro. A futura versão
+//   poderá conectar com aplicação real, undo/redo e render.
+//
+// v8z4b19r — helper novo.
+function createLegacyCurvePatchApplicationDraft(patch) {
+  var FAIL = function(reason, patchValid) {
+    return {
+      ok:                 false,
+      reason:             reason,
+      patchValid:         patchValid || null,
+      before:             null,
+      after:              null,
+      appliedField:       null,
+      appliedIndex:       null,
+      appliedToDraft:     true,
+      appliedToRealState: false
+    };
+  };
+
+  // 1. Validar patch.
+  var patchValid = validateLegacyCurvePatchCandidate(patch);
+  if (!patchValid || patchValid.ok !== true) {
+    return FAIL('patch-invalid', patchValid);
+  }
+
+  // 2. Clonar estado legado atual (snapshot "before").
+  var before = cloneLegacyCurveStateForPatch();
+
+  // 3. Clonar novamente para o draft que será modificado (snapshot "after" base).
+  var after = cloneLegacyCurveStateForPatch();
+
+  // 4. Aplicar patch no draft.
+  var applyResult = applyLegacyCurvePatchCandidateToDraft(after, patch);
+  if (!applyResult || applyResult.ok !== true) {
+    return FAIL(applyResult ? applyResult.reason : 'apply-failed', patchValid);
+  }
+
+  return {
+    ok:                 true,
+    reason:             'ok',
+    patchValid:         patchValid,
+    before:             before,
+    after:              applyResult.draftState,
+    appliedField:       applyResult.appliedField,
+    appliedIndex:       applyResult.appliedIndex,
+    appliedToDraft:     true,
+    appliedToRealState: false
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: Validar integridade do draft de aplicação — v8z4b19r ─────────────
+//
+// validateLegacyCurvePatchApplicationDraft(result)
+//
+// Verifica que o resultado de createLegacyCurvePatchApplicationDraft() é
+// íntegro e que o estado real não foi alterado.
+//
+// Critérios verificados:
+//   1. result.ok === true.
+//   2. result.before existe e tem ctrlPts/ctrlPtManual arrays.
+//   3. result.after existe e tem ctrlPts/ctrlPtManual arrays.
+//   4. result.appliedToDraft === true.
+//   5. result.appliedToRealState === false.
+//   6. ctrlPts real continua igual ao snapshot before (campo a campo).
+//   7. loopCtrlPt real continua igual ao snapshot before.
+//   8. Arrays têm tamanhos coerentes (before.ctrlPts.length === after.ctrlPts.length).
+//
+// Retorno:
+//   {
+//     ok:     true | false,
+//     reason: 'ok' | string descrevendo falha,
+//     checks: { [nome]: true | false }
+//   }
+//
+// Não altera nenhum estado.
+//
+// v8z4b19r — helper novo.
+function validateLegacyCurvePatchApplicationDraft(result) {
+  var checks = {
+    resultOk:              false,
+    beforeExists:          false,
+    afterExists:           false,
+    appliedToDraft:        false,
+    appliedToRealState:    false,
+    realCtrlPtsUnchanged:  false,
+    realLoopCtrlPtUnchanged: false,
+    arrayLengthsCoherent:  false
+  };
+
+  var FAIL = function(reason) {
+    return { ok: false, reason: reason, checks: checks };
+  };
+
+  if (!result || typeof result !== 'object') return FAIL('result-null-or-invalid');
+
+  checks.resultOk           = (result.ok === true);
+  checks.beforeExists       = !!(result.before && Array.isArray(result.before.ctrlPts) && Array.isArray(result.before.ctrlPtManual));
+  checks.afterExists        = !!(result.after  && Array.isArray(result.after.ctrlPts)  && Array.isArray(result.after.ctrlPtManual));
+  checks.appliedToDraft     = (result.appliedToDraft     === true);
+  checks.appliedToRealState = (result.appliedToRealState === false);
+
+  if (!checks.resultOk)           return FAIL('result-ok-not-true');
+  if (!checks.beforeExists)       return FAIL('before-missing-or-invalid');
+  if (!checks.afterExists)        return FAIL('after-missing-or-invalid');
+  if (!checks.appliedToDraft)     return FAIL('applied-to-draft-not-true');
+  if (!checks.appliedToRealState) return FAIL('applied-to-real-state-not-false');
+
+  // Verificar que ctrlPts real permanece igual ao snapshot "before".
+  var before = result.before;
+  var realMatch = true;
+  if (!Array.isArray(ctrlPts) || ctrlPts.length !== before.ctrlPts.length) {
+    realMatch = false;
+  } else {
+    for (var i = 0; i < ctrlPts.length; i++) {
+      var real = ctrlPts[i];
+      var snap = before.ctrlPts[i];
+      if (!real || !snap) { realMatch = false; break; }
+      if (real.nx !== snap.nx || real.ny !== snap.ny) { realMatch = false; break; }
+    }
+  }
+  checks.realCtrlPtsUnchanged = realMatch;
+  if (!checks.realCtrlPtsUnchanged) return FAIL('real-ctrlPts-was-mutated');
+
+  // Verificar que loopCtrlPt real permanece igual ao snapshot "before".
+  var loopMatch = true;
+  if (before.loopCtrlPt === null) {
+    loopMatch = (loopCtrlPt === null || loopCtrlPt === undefined);
+  } else {
+    if (!loopCtrlPt) {
+      loopMatch = false;
+    } else {
+      loopMatch = (loopCtrlPt.nx === before.loopCtrlPt.nx &&
+                   loopCtrlPt.ny === before.loopCtrlPt.ny);
+    }
+  }
+  checks.realLoopCtrlPtUnchanged = loopMatch;
+  if (!checks.realLoopCtrlPtUnchanged) return FAIL('real-loopCtrlPt-was-mutated');
+
+  // Verificar coerência de tamanhos.
+  checks.arrayLengthsCoherent = (
+    result.before.ctrlPts.length === result.after.ctrlPts.length &&
+    result.before.ctrlPtManual.length === result.after.ctrlPtManual.length
+  );
+  if (!checks.arrayLengthsCoherent) return FAIL('array-lengths-incoherent');
+
+  return { ok: true, reason: 'ok', checks: checks };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Diagnóstico passivo: comparar draft com estado atual — v8z4b19r ──────────
+//
+// compareLegacyCurvePatchDraftWithCurrentState(result)
+//
+// Compara before/after do draft e confirma que o estado real permanece igual.
+// Retorna informações sobre qual índice foi alterado no draft e qual delta foi
+// introduzido, sem alterar nenhum estado.
+//
+// Parâmetro:
+//   result — retorno de createLegacyCurvePatchApplicationDraft() com ok === true.
+//
+// Retorno:
+//   {
+//     ok:             true | false,
+//     reason:         'ok' | string de erro,
+//     appliedField:   'ctrlPts' | 'loopCtrlPt' | null,
+//     appliedIndex:   number | null,
+//     deltaInDraft: {
+//       dNx:      number,
+//       dNy:      number,
+//       distNorm: number
+//     } | null,
+//     realStateUnchanged: true | false
+//   }
+//
+// Não altera nenhum estado.
+//
+// v8z4b19r — helper novo.
+function compareLegacyCurvePatchDraftWithCurrentState(result) {
+  var FAIL = function(reason) {
+    return {
+      ok:                 false,
+      reason:             reason,
+      appliedField:       null,
+      appliedIndex:       null,
+      deltaInDraft:       null,
+      realStateUnchanged: false
+    };
+  };
+
+  if (!result || result.ok !== true) return FAIL('invalid-result');
+
+  var before = result.before;
+  var after  = result.after;
+  if (!before || !after) return FAIL('before-or-after-missing');
+
+  var field = result.appliedField;
+  var idx   = result.appliedIndex;
+
+  var beforeVal = null;
+  var afterVal  = null;
+
+  if (field === 'ctrlPts') {
+    if (typeof idx !== 'number' || idx < 0) return FAIL('invalid-applied-index');
+    if (idx >= before.ctrlPts.length || idx >= after.ctrlPts.length) return FAIL('index-out-of-range');
+    beforeVal = before.ctrlPts[idx];
+    afterVal  = after.ctrlPts[idx];
+  } else if (field === 'loopCtrlPt') {
+    beforeVal = before.loopCtrlPt;
+    afterVal  = after.loopCtrlPt;
+  } else {
+    return FAIL('unknown-field');
+  }
+
+  if (!beforeVal || !afterVal) return FAIL('value-missing');
+
+  var dNx      = afterVal.nx - beforeVal.nx;
+  var dNy      = afterVal.ny - beforeVal.ny;
+  var distNorm = Math.sqrt(dNx * dNx + dNy * dNy);
+
+  // Confirmar que estado real não foi alterado.
+  var realUnchanged = true;
+  if (field === 'ctrlPts') {
+    if (!Array.isArray(ctrlPts) || !ctrlPts[idx]) {
+      realUnchanged = false;
+    } else {
+      realUnchanged = (ctrlPts[idx].nx === before.ctrlPts[idx].nx &&
+                       ctrlPts[idx].ny === before.ctrlPts[idx].ny);
+    }
+  } else if (field === 'loopCtrlPt') {
+    if (!loopCtrlPt && before.loopCtrlPt === null) {
+      realUnchanged = true;
+    } else if (loopCtrlPt && before.loopCtrlPt) {
+      realUnchanged = (loopCtrlPt.nx === before.loopCtrlPt.nx &&
+                       loopCtrlPt.ny === before.loopCtrlPt.ny);
+    } else {
+      realUnchanged = false;
+    }
+  }
+
+  return {
+    ok:                 true,
+    reason:             'ok',
+    appliedField:       field,
+    appliedIndex:       idx,
+    deltaInDraft: {
+      dNx:      dNx,
+      dNy:      dNy,
+      distNorm: distNorm
+    },
+    realStateUnchanged: realUnchanged
   };
 }
 // ──────────────────────────────────────────────────────────────────────────────

@@ -66,7 +66,7 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19q)
+### Estado atual (v8z4b19r)
 
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
@@ -103,13 +103,24 @@ compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 - `createSimulatedPathPointEditPatch(model, target, pathPoint, nextPoint)` — função de alto nível: simula edição → monta patch → valida; retorna `{ ok, reason, simulation, patch, patchValid }`; não aplica nada. Introduzido na v8z4b19q.
 - `compareLegacyPatchCandidateWithCurrentControl(model, patch)` — diagnóstico passivo: compara `patch.value` com controle atual do schema persistido; retorna delta em normalizado e pixels; não altera estado. Introduzido na v8z4b19q.
 - **Pipeline de patch legado candidato preparado (v8z4b19q):** o fluxo completo `pathPoint movido → simulateRuntimePathPointEdit() → curvePuller candidato → legacy curve patch candidate` está implementado. O patch identifica exatamente `ctrlPts[segIndex]` ou `loopCtrlPt` e o valor candidato em formato `{ nx, ny, t, perpX, perpY }`. Sem UI, sem aplicação real e sem persistência nesta versão. O schema persistido continua sendo `ctrlPts / ctrlPtManual / loopCtrlPt`.
+- `cloneLegacyCurveStateForPatch()` — cópia leve e independente dos campos legados de curva (`ctrlPts`, `ctrlPtManual`, `loopCtrlPt`, `loopEnabled`); deep copy campo a campo; sem ref. mutável; sem alteração de estado global. Introduzido na v8z4b19r.
+- `applyLegacyCurvePatchCandidateToDraft(draftState, patch)` — aplica patch validado em `draftState` (clone); substitui `ctrlPts[index]` ou `loopCtrlPt` no draft; marca `ctrlPtManual[index] = true` no draft; não altera estado real; não chama `pushUndo`/`markProjectDirty`/`renderAll`. Introduzido na v8z4b19r.
+- `createLegacyCurvePatchApplicationDraft(patch)` — função de alto nível: valida patch → clona estado antes e depois → aplica patch no clone `after` → retorna `{ ok, patchValid, before, after, appliedField, appliedIndex, appliedToDraft: true, appliedToRealState: false }`; estado real intocável. Introduzido na v8z4b19r.
+- `validateLegacyCurvePatchApplicationDraft(result)` — verifica integridade do draft: `result.ok`, `before`/`after` existem, `appliedToDraft === true`, `appliedToRealState === false`, estado real não foi mutado, arrays com tamanhos coerentes; retorna `{ ok, reason, checks }`. Introduzido na v8z4b19r.
+- `compareLegacyCurvePatchDraftWithCurrentState(result)` — diagnóstico passivo: compara `before`/`after` do draft; indica índice alterado e delta (`dNx`, `dNy`, `distNorm`); confirma que estado real permanece igual; não altera nada. Introduzido na v8z4b19r.
+- **Draft applier de patch legado preparado (v8z4b19r):** existe um aplicador guardado/interno capaz de produzir uma cópia/draft do estado de curvas com o patch aplicado, sem mutar o estado real. Sem UI, sem aplicação real, sem persistência nova. A futura versão poderá conectar isso com aplicação real, undo/redo e renderAll. Tempos/proporções continuam apenas no roadmap futuro. Criação de frame seguindo curva de loop registrada como roadmap futuro (ver abaixo).
 
 ### Próximos passos (futuros, não imediatos)
 
+- Conectar o draft applier da v8z4b19r a uma aplicação real:
+  - Implementar `applyLegacyCurvePatchToRealState(patch)` que usa `createLegacyCurvePatchApplicationDraft()`,
+    valida o resultado com `validateLegacyCurvePatchApplicationDraft()` e só então
+    aplica `after.ctrlPts[index]` em `ctrlPts[index]`, chama `pushUndo`, `markProjectDirty`
+    e `renderAll`.
 - Conectar o pipeline completo da v8z4b19q a uma UI real de edição de pathPoint.
   - O patch candidato já indica `ctrlPts[segIndex]` ou `loopCtrlPt` e o valor exato.
-  - Próximo passo: implementar `applyLegacyCurvePatchCandidate(patch)` que aplica
-    o patch no estado real, chamando `pushUndo`, `markProjectDirty` e `renderAll`.
+  - Com o draft applier pronto (v8z4b19r), o próximo passo é ligar o draft applier
+    à aplicação real chamando `pushUndo`, `markProjectDirty` e `renderAll`.
 - Conectar o pipeline de simulação da v8z4b19p a uma UI real de edição de pathPoint.
   - Permitir que o `pathPoint` derivado em `t=0.5` seja arrastável pelo usuário.
   - Usar `simulateRuntimePathPointEdit()` para preview em tempo real durante drag.
@@ -140,6 +151,18 @@ Decisão de produto registrada em v8z4b18k. Não implementado ainda.
 - Edição de handles: transformar ponto suave em canto e vice-versa.
 - Desenho livre poderá gerar pontos e/ou frames após confirmação e escolha do tempo total.
 - curvePuller (legado) coexiste com pathPoints; migração somente ao entrar no modo vetorial.
+
+## Futuro — Criação de frame seguindo curva de loop
+
+Registrado em v8z4b19r. Não implementado ainda.
+
+- Ao ativar loop, oferecer opção de criar novo frame posicionado automaticamente
+  sobre a curva de loop, em um ponto de passagem calculado pela trajetória ativa.
+- O novo frame deve seguir a curvatura do segmento de loop (avaliado via
+  `evaluateSegmentPath` no segmento de loop).
+- Sem alteração de schema: o novo frame seria um frame comum, inserido no array
+  de frames; a curva de loop seria automaticamente recalculada/ajustada.
+- Não implementar enquanto o modelo de edição de pathPoint não estiver finalizado.
 
 ## Futuro — Modo de ajuste global de transformação
 

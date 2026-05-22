@@ -1,5 +1,166 @@
 # Changelog
 
+## v8z4b19r — prepare guarded legacy curve patch applier
+
+Implementação interna controlada de helpers para preparar a aplicação segura de
+um legacy curve patch candidate em um draft/cópia do estado legado, sem aplicar
+nada automaticamente no estado real do app.
+Sem alteração visual, sem alteração de UI, sem alteração de JSON, sem alteração
+de Preview, MP4/export ou save/load.
+
+### Objetivo
+
+Preparar a ponte futura:
+
+```
+patch candidate validado
+  → cloneLegacyCurveStateForPatch()           (snapshot "before")
+  → applyLegacyCurvePatchCandidateToDraft()   (draft modificado)
+  → futura aplicação real em ctrlPts[segIndex] ou loopCtrlPt
+  → futura integração com pushUndo, markProjectDirty e renderAll
+```
+
+Nesta versão, o fluxo para no "draft aplicado". Nada é aplicado no estado real,
+nada é salvo no JSON, nada é renderizado, nenhuma função de undo/redo é chamada.
+
+### Helpers adicionados
+
+#### `cloneLegacyCurveStateForPatch()`
+
+Retorna uma cópia leve e independente dos campos legados de curva relevantes:
+
+```json
+{
+  "ctrlPts":      [...],
+  "ctrlPtManual": [...],
+  "loopCtrlPt":   { "nx": ..., "ny": ..., "t": ..., "perpX": ..., "perpY": ... } | null,
+  "loopEnabled":  true | false
+}
+```
+
+Regras:
+- Deep copy de objetos simples (campo a campo, sem `structuredClone`/`JSON.parse`).
+- Sem referência mutável aos arrays reais.
+- Não altera nenhuma variável global.
+
+#### `applyLegacyCurvePatchCandidateToDraft(draftState, patch)`
+
+Aplica um patch candidato validado em um `draftState` gerado por
+`cloneLegacyCurveStateForPatch()`, **nunca** no estado real.
+
+Comportamento:
+- Se `patch.field === 'ctrlPts'`: valida `index`, substitui `draftState.ctrlPts[index]`
+  por cópia de `patch.value`, marca `draftState.ctrlPtManual[index] = true`.
+- Se `patch.field === 'loopCtrlPt'`: substitui `draftState.loopCtrlPt` por cópia de
+  `patch.value`.
+
+Retorno:
+```json
+{
+  "ok": true,
+  "reason": "ok",
+  "draftState": { ... },
+  "appliedField": "ctrlPts" | "loopCtrlPt",
+  "appliedIndex": 0 | null,
+  "appliedToDraft": true,
+  "appliedToRealState": false
+}
+```
+
+Garantias absolutas:
+- `ctrlPts` real **não** é alterado.
+- `ctrlPtManual` real **não** é alterado.
+- `loopCtrlPt` real **não** é alterado.
+- `pushUndo` **não** é chamado.
+- `markProjectDirty` **não** é chamado.
+- `renderAll` **não** é chamado.
+
+#### `createLegacyCurvePatchApplicationDraft(patch)`
+
+Função de alto nível:
+1. Valida patch com `validateLegacyCurvePatchCandidate()`.
+2. Clona estado legado (`before` e `after` — clones independentes).
+3. Aplica patch no clone `after` via `applyLegacyCurvePatchCandidateToDraft()`.
+4. Retorna draft aplicado + diagnóstico.
+
+Retorno:
+```json
+{
+  "ok": true,
+  "reason": "ok",
+  "patchValid": { ... },
+  "before": { "ctrlPts": [...], "ctrlPtManual": [...], "loopCtrlPt": ..., "loopEnabled": ... },
+  "after":  { "ctrlPts": [...], "ctrlPtManual": [...], "loopCtrlPt": ..., "loopEnabled": ... },
+  "appliedField": "ctrlPts" | "loopCtrlPt",
+  "appliedIndex": 0 | null,
+  "appliedToDraft": true,
+  "appliedToRealState": false
+}
+```
+
+#### `validateLegacyCurvePatchApplicationDraft(result)`
+
+Verifica integridade do resultado de `createLegacyCurvePatchApplicationDraft()`.
+
+Critérios:
+1. `result.ok === true`.
+2. `before` e `after` existem com arrays válidos.
+3. `appliedToDraft === true`.
+4. `appliedToRealState === false`.
+5. `ctrlPts` real não foi alterado (comparação com snapshot `before`).
+6. `loopCtrlPt` real não foi alterado (comparação com snapshot `before`).
+7. Arrays têm tamanhos coerentes (`before.ctrlPts.length === after.ctrlPts.length`).
+
+Retorno: `{ ok, reason, checks }`.
+
+#### `compareLegacyCurvePatchDraftWithCurrentState(result)` *(diagnóstico passivo)*
+
+Compara `before`/`after` do draft e confirma que o estado real permanece igual.
+Retorna:
+- índice alterado no draft;
+- delta (`dNx`, `dNy`, `distNorm`) entre valor anterior e valor pós-patch;
+- confirmação de que o estado real não foi alterado.
+
+Não altera nenhum estado.
+
+### O que NÃO foi feito
+
+- `pathPoint` não é editável pelo usuário.
+- O patch candidato não é aplicado em `ctrlPts` real.
+- O patch candidato não é aplicado em `loopCtrlPt` real.
+- `pushUndo` não é chamado.
+- `renderAll` não é chamado.
+- `markProjectDirty` não é chamado.
+- MP4 não é invalidado.
+- Nenhum resultado é salvo no JSON.
+- Nenhum resultado é renderizado.
+- UI, Stage, curvas visuais, Preview, MP4/export, save/load — inalterados.
+- Schema JSON — inalterado. Nenhum campo novo.
+
+### Arquivos alterados
+
+- `index.html`: 5 helpers novos + versionamento
+- `CHANGELOG.md`: esta entrada
+- `QA.md`: checklist da versão
+- `ROADMAP.md`: estado atual atualizado
+- `pages-deploy-stamp.txt`: stamp de deploy
+
+### Restrições respeitadas
+
+- Stage não alterado.
+- Curvas não alteradas visualmente.
+- `ctrlPts`, `ctrlPtManual`, `loopCtrlPt` reais intocáveis.
+- JSON não alterado (nenhum campo novo criado).
+- Preview matemático não alterado.
+- Motor de MP4/export não alterado.
+- Faixa preta superior do Preview (v8z4b19n) intacta.
+- Lógica de cancelamento de export da v8z4b19i intacta.
+- Limpeza de MP4 ao sair do Preview da v8z4b19o intacta.
+- Undo/Redo não alterado.
+- Save/load não alterado.
+
+---
+
 ## v8z4b19q — prepare legacy curve patch from simulated path point edit
 
 Implementação interna controlada de helpers para transformar uma edição simulada
