@@ -2,6 +2,58 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19i — fix stale MP4 export state
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19i` na UI (Settings).
+3. Confirmar que nome da versão exibe `fix stale MP4 export state`.
+
+### Teste B — ciclo de vida do MP4 (foco desta versão)
+1. Carregar imagem no iPhone/Safari.
+2. Criar projeto com 4 frames.
+3. Rodar Preview.
+4. Gerar MP4 (Salvar MP4).
+5. Baixar MP4 — confirmar que o arquivo salva.
+6. Sem alterar o projeto, tocar novamente em "Salvar MP4":
+   - Confirmar que o MP4 é baixado/compartilhado novamente (não inicia novo export).
+   - Confirmar que o botão ainda mostra o tamanho em MB (estado "done" mantido).
+7. Voltar para Stage (Voltar) — confirmar que o Stage está totalmente editável.
+8. Confirmar que o botão Play/Pause do Stage mostra ícone de Play (não preso em Pause).
+9. Voltar ao Preview — confirmar que o MP4 ainda está disponível (botão mostra MB).
+10. Voltar ao Stage.
+11. Mover um frame.
+12. Confirmar que o MP4 anterior foi invalidado: botão volta para "Salvar MP4".
+13. Voltar ao Preview — confirmar que não aparece MP4 antigo (botão não mostra MB).
+14. Gerar novo MP4 — confirmar que funciona normalmente.
+15. Baixar novo MP4 — confirmar que baixa.
+16. Voltar para Stage — confirmar interação normal.
+17. Repetir passos 11–16 com:
+    - Alteração de curva normal (arrastar ctrl-pt).
+    - Alteração de curva de loop.
+    - Alteração de duração ou pausa.
+18. Confirmar que Preview continua funcionando normalmente.
+19. Confirmar que MP4 respeita curvas normais e loop.
+
+### Teste C — JSON salvo
+1. Salvar JSON com imagem e sem imagem:
+   - `version` salva como `v8z4b19i`.
+   - `imageBase64` apenas no `_img.json`.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+2. Confirmar que NENHUM campo novo apareceu no JSON:
+   - `curvesV2`, `vectorPath`, `handles`, `pathPoints`, `runtimeCurveModel`,
+     `capabilities`, `spans`, `generatedMp4`, `exportBlob`.
+
+### Teste D — console limpo
+1. Confirmar que não há erro de console, NaN ou Infinity.
+2. Confirmar que o PR ficou aberto e não foi mergeado.
+
+---
+
 ## v8z4b19h — derive split runtime curve spans
 
 ### Teste A — abertura e versão
