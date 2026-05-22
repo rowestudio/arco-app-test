@@ -1,5 +1,50 @@
 # Changelog
 
+## v8z4b19j — evaluate derived runtime curve spans
+
+Implementação interna controlada do runtime curve model.
+Sem alteração de UI, JSON, curvas, Preview matemático, MP4/export ou save/load.
+
+### Objetivo
+
+Adicionar um avaliador interno para os spans derivados criados na v8z4b19h,
+permitindo avaliar a curva runtime a partir dos dois `quadraticSpan` derivados
+(derivedFirstHalf e derivedSecondHalf), preservando matematicamente a trajetória atual.
+
+### Helpers criados / atualizados
+
+| Helper | Descrição |
+|---|---|
+| `evaluateQuadraticSpanNormalized(span, localT)` | Avalia um `quadraticSpan` em espaço normalizado (0–1) em `localT ∈ [0,1]`. Retorna `{x, y}` normalizado. Helper baixo nível, sem conversão para pixels. |
+| `evaluateRuntimeCurveSpans(model, t)` | Avaliador paralelo: avalia a curva pelos dois `quadraticSpan` derivados (v8z4b19h). Seleciona span por `t <= 0.5` / `t > 0.5`, converte `t` global para local, delega para `evaluateQuadraticSpanNormalized`, converte normalizado → pixels. Retorna `{x, y}` em pixels. NÃO substitui `evaluateSegmentPath()` nesta versão. |
+| `compareRuntimeSpansWithLegacy(segIndex)` | Diagnóstico passivo: compara `evaluateRuntimeCurveSpans` vs `evaluateRuntimeCurveModel` (runtime) vs `evaluateLegacySegmentPath` (legado) em 7 amostras fixas (t = 0, 0.125, 0.25, 0.5, 0.75, 0.875, 1). Retorna objeto estruturado com `ok`, `passed`, `failed` e `samples[]`. |
+| `validateDerivedRuntimeSpans(model)` | Atualizado: substituiu Bézier inline por `evaluateQuadraticSpanNormalized`. Lógica e resultado idênticos à v8z4b19h. |
+| `compareRuntimePathWithLegacy(segIndex, t)` | Atualizado: inclui `spanPoint`, `spanDelta`, `spanMatch` no retorno (avaliação via spans). |
+
+### Algoritmo de evaluateRuntimeCurveSpans
+
+1. Recebe `model` e `t` global do segmento, entre 0 e 1.
+2. Se `t <= 0.5`, escolhe o primeiro span (`derivedFirstHalf`).
+3. Se `t > 0.5`, escolhe o segundo span (`derivedSecondHalf`).
+4. Converte `t` global para `t` local do span:
+   - Primeiro span: `localT = t / 0.5`
+   - Segundo span: `localT = (t - 0.5) / 0.5`
+5. Avalia Bézier quadrática via `evaluateQuadraticSpanNormalized`.
+6. Converte de normalizado (0–1) para pixels: `x = norm.x * stageW`.
+7. Retorna `{ x, y }` em pixels do stage.
+
+### Invariantes mantidos
+
+- `evaluateSegmentPath()` continua usando `anchors + curvePuller` (legacyQuadratic) como caminho preferencial.
+- Os spans são apenas runtime: não renderizados, não editáveis, não persistidos no JSON.
+- JSON schema inalterado — nenhum campo novo aparece no JSON salvo.
+- Comportamento visual e matemático idêntico à v8z4b19i.
+- Preview, MP4/export, Undo/Redo, save/load e UI inalterados.
+- Fallback legado permanece ativo.
+- Correções de MP4/export da v8z4b19i preservadas.
+
+---
+
 ## v8z4b19i — fix preview exit during mp4 export
 
 Correção funcional do ciclo de vida de exportação de MP4 ao sair do Preview.
