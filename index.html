@@ -1,13 +1,23 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19k                                     ║
+║  Versão: v8z4b19l                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19l                                            ║
+║    feat: route runtime curve model through           ║
+║         derived spans                                ║
+║         evaluateRuntimeLegacyQuadratic() — helper   ║
+║         com lógica legacyQuadratic anterior          ║
+║         isValidRuntimePoint() — helper de validação ║
+║         evaluateRuntimeCurveModel() agora tenta     ║
+║         spans primeiro; fallback para legacyQuadr.  ║
+║         compareRuntimePathWithLegacy() inclui       ║
+║         pathUsed: 'spans' | 'legacyFallback'        ║
 ║  v8z4b19k                                            ║
 ║    fix: render loop curve immediately on toggle      ║
 ║         refreshStageAfterLoopToggle() — helper que   ║
@@ -112,7 +122,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19k — render loop curve immediately on toggle: refreshStageAfterLoopToggle() concentra drawBezier()+updateCtrlPts(); setFinishing() chama renderAll() + requestAnimationFrame(refreshStageAfterLoopToggle) + markProjectDirty('loop-toggle'); curva de loop aparece imediatamente ao ativar/desativar sem necessidade de tocar no Stage; Preview, MP4, JSON, curva normal e fallback legado inalterados -->
+<!-- Arco Motion App — v8z4b19l — route runtime curve model through derived spans: evaluateRuntimeLegacyQuadratic() extrai lógica legacyQuadratic anterior; isValidRuntimePoint() valida {x,y} finitos; evaluateRuntimeCurveModel() tenta spans primeiro via evaluateRuntimeCurveSpans(), validando com isValidRuntimePoint(), recaindo em evaluateRuntimeLegacyQuadratic() se necessário; compareRuntimePathWithLegacy() inclui pathUsed ('spans'|'legacyFallback'); resultado matemático idêntico à v8z4b19k; UI, JSON, Preview, MP4/export, save/load inalterados -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1889,7 +1899,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19k</span><br><span id="appVersionNameText">render loop curve immediately on toggle</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19l</span><br><span id="appVersionNameText">route runtime curve model through derived spans</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4230,8 +4240,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19k';
-const APP_VERSION_NAME = 'render loop curve immediately on toggle';
+const APP_VERSION = 'v8z4b19l';
+const APP_VERSION_NAME = 'route runtime curve model through derived spans';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5063,7 +5073,7 @@ function evaluateLegacyQuadraticNormalized(start, control, end, t) {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-// ─── Runtime Curve Model — v8z4b19c / primary path v8z4b19d / pathPoint contract v8z4b19e / derived pathPoint v8z4b19f / derived spans v8z4b19h ─
+// ─── Runtime Curve Model — v8z4b19c / primary path v8z4b19d / pathPoint contract v8z4b19e / derived pathPoint v8z4b19f / derived spans v8z4b19h / spans routing v8z4b19l ─
 //
 // buildRuntimeCurveModel(segIndex): constrói o modelo runtime de curva do
 // segmento. Representa exatamente a curva atual (legacyQuadratic) como um
@@ -5152,7 +5162,10 @@ function evaluateLegacyQuadraticNormalized(start, control, end, t) {
 //                   Todos em coordenadas normalizadas (0–1), igual a anchors.
 //                   editable: false, derived: true — apenas runtime.
 //                   NÃO persistidos no JSON; NÃO renderizados; NÃO editáveis.
-//                   NÃO usados como avaliador principal nesta versão.
+//                   v8z4b19l: AGORA são o caminho preferencial de avaliação em
+//                   evaluateRuntimeCurveModel() — ver evaluateRuntimeCurveSpans().
+//                   Fallback para evaluateRuntimeLegacyQuadratic() se spans
+//                   inválidos ou resultado não finito.
 //   capabilities:   { supportsPathPoints: false, supportsHandles: false }
 //                   Metadados informativos do modo atual.
 //                   NÃO persistidos no JSON.
@@ -5480,37 +5493,52 @@ function validateRuntimeCurveModel(model) {
   return true;
 }
 
-// Avalia a posição na trajetória do modelo runtime em t ∈ [0,1].
-// Retorna {x, y} em PIXELS do stage — compatível com evaluateSegmentPath().
-// Retorna null para modelo inválido ou stage inválido.
+// ─── Helper: isValidRuntimePoint — v8z4b19l ───────────────────────────────────
+//
+// isValidRuntimePoint(pt)
+//
+// Valida se um ponto retornado por um avaliador runtime tem x e y finitos.
+// Retorna true se pt é objeto não-nulo com x/y numéricos finitos; false caso contrário.
+// Usado para validar o retorno de evaluateRuntimeCurveSpans antes de aceitar o resultado.
+//
+// v8z4b19l — helper novo.
+function isValidRuntimePoint(pt) {
+  return !!(pt &&
+            typeof pt.x === 'number' && isFinite(pt.x) &&
+            typeof pt.y === 'number' && isFinite(pt.y));
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: evaluateRuntimeLegacyQuadratic — v8z4b19l ────────────────────────
+//
+// evaluateRuntimeLegacyQuadratic(model, t)
+//
+// Contém exatamente a lógica anterior de evaluateRuntimeCurveModel para
+// mode === 'legacyQuadratic': avalia a curva diretamente pelos anchors
+// (start/end) e controls[0] (curvePuller) do modelo runtime.
+//
+// Extraído como helper separado na v8z4b19l para permitir que
+// evaluateRuntimeCurveModel() use spans como caminho preferencial
+// e recaia aqui apenas como fallback de segurança.
 //
 // Contrato de unidades:
 //   - anchors[*].x / .y e controls[*].x / .y são normalizados (0–1).
 //   - Convertidos para pixels aqui: pixelX = normalX * stageW.
 //   - O retorno {x, y} é em pixels do stage.
 //
-// v8z4b19f — pathPoints derivados:
-//   pathPoints pode conter um pathPoint derivado em t=0.5 (v8z4b19f).
-//   O ponto derivado (derived: true, editable: false) é uma amostra real
-//   da trajetória atual — mas é completamente IGNORADO por este avaliador
-//   enquanto mode === 'legacyQuadratic'.
-//   Motivo: a trajetória continua sendo calculada pelos anchors + curvePuller
-//   (controls[0]). O pathPoint derivado não altera o resultado.
-//   Apenas anchors[start/end] e controls[0] (curvePuller) são usados.
-//   Quando futuramente mode === 'vectorAnchors' for implementado, este
-//   avaliador deverá ramificar para lógica Bézier cúbica com pathPoints.
+// Notas:
+//   - Não chamar diretamente no fluxo normal; usar evaluateRuntimeCurveModel().
+//   - Lógica idêntica à evaluateRuntimeCurveModel() da v8z4b19k.
+//   - pathPoints derivados (derived: true) ignorados — avaliação usa exclusivamente
+//     anchors[start/end] + controls[0] (curvePuller).
+//   - Schema persistido (ctrlPts / ctrlPtManual / loopCtrlPt) não alterado.
 //
-// Nota de paridade matemática:
-//   Os resultados são numericamente idênticos aos de evaluateSegmentPath()
-//   para os mesmos dados de entrada. O comportamento visual é idêntico à v8z4b19d.
-function evaluateRuntimeCurveModel(model, t) {
+// v8z4b19l — helper novo (extraído de evaluateRuntimeCurveModel).
+function evaluateRuntimeLegacyQuadratic(model, t) {
   if (!validateRuntimeCurveModel(model)) return null;
   if (!stageW || !stageH || stageW <= 0 || stageH <= 0) return null;
   if (typeof t !== 'number' || !isFinite(t)) t = 0;
   t = Math.max(0, Math.min(1, t));
-  // v8z4b19f: pathPoints derivados (derived: true) ignorados enquanto mode === 'legacyQuadratic'.
-  // A avaliação usa exclusivamente anchors[start/end] + controls[0] (curvePuller).
-  // O pathPoint derivado em t=0.5 existe no modelo mas não participa do cálculo aqui.
 
   const start = model.anchors.find(a => a.role === 'start');
   const end   = model.anchors.find(a => a.role === 'end');
@@ -5537,6 +5565,65 @@ function evaluateRuntimeCurveModel(model, t) {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
+// Avalia a posição na trajetória do modelo runtime em t ∈ [0,1].
+// Retorna {x, y} em PIXELS do stage — compatível com evaluateSegmentPath().
+// Retorna null para modelo inválido ou stage inválido.
+//
+// Contrato de unidades:
+//   - anchors[*].x / .y e controls[*].x / .y são normalizados (0–1).
+//   - Convertidos para pixels aqui: pixelX = normalX * stageW.
+//   - O retorno {x, y} é em pixels do stage.
+//
+// v8z4b19l — roteamento via spans derivados:
+//   Quando mode === 'legacyQuadratic' e model.spans existir com dois spans válidos,
+//   tenta primeiro evaluateRuntimeCurveSpans(model, t) e valida o retorno com
+//   isValidRuntimePoint(). Se o resultado for válido, retorna-o diretamente.
+//   Se spans forem inválidos, ausentes ou retornarem ponto não-finito, recai em
+//   evaluateRuntimeLegacyQuadratic(model, t) como fallback de segurança.
+//
+//   Fluxo para mode === 'legacyQuadratic':
+//     1. spans válidos? → evaluateRuntimeCurveSpans(model, t)
+//        isValidRuntimePoint(resultado)? → retornar resultado.
+//     2. fallback:       evaluateRuntimeLegacyQuadratic(model, t)
+//
+//   O resultado matemático é idêntico à v8z4b19k — ambos os caminhos implementam
+//   a mesma Bézier quadrática. A rota via spans foi validada em v8z4b19j
+//   (delta ≤ 0.001 px vs legado em 7 amostras).
+//
+// v8z4b19f — pathPoints derivados:
+//   pathPoints pode conter um pathPoint derivado em t=0.5 (v8z4b19f).
+//   O ponto derivado (derived: true, editable: false) é uma amostra real
+//   da trajetória atual — mas NÃO é editável, NÃO é renderizado,
+//   NÃO persiste no JSON e NÃO altera o resultado da avaliação.
+//
+// Schema persistido NÃO alterado: ctrlPts / ctrlPtManual / loopCtrlPt.
+// pathPoints, handles, spans, capabilities: apenas runtime — não aparecem no JSON.
+function evaluateRuntimeCurveModel(model, t) {
+  if (!validateRuntimeCurveModel(model)) return null;
+  if (!stageW || !stageH || stageW <= 0 || stageH <= 0) return null;
+  if (typeof t !== 'number' || !isFinite(t)) t = 0;
+  t = Math.max(0, Math.min(1, t));
+
+  // v8z4b19l: para mode === 'legacyQuadratic', tentar spans derivados primeiro.
+  // Os spans foram derivados por De Casteljau (v8z4b19h) e validados como
+  // numericamente equivalentes ao cálculo legacyQuadratic (v8z4b19j).
+  // Spans são apenas runtime: não editáveis, não renderizados, não persistidos.
+  if (model.mode === 'legacyQuadratic' &&
+      Array.isArray(model.spans) && model.spans.length === 2) {
+    try {
+      const spanPt = evaluateRuntimeCurveSpans(model, t);
+      if (isValidRuntimePoint(spanPt)) return spanPt;
+    } catch (_e) {
+      // spans falharam — continuar para fallback legacyQuadratic.
+    }
+  }
+
+  // Fallback: cálculo direto por anchors + curvePuller (lógica anterior).
+  // Preservado como caminho de segurança — sempre presente.
+  return evaluateRuntimeLegacyQuadratic(model, t);
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 // ─── Futuro modo vectorAnchors (não ativado nesta versão) ─────────────────────
 //
 // v8z4b19f: pathPoints agora contém um pathPoint derivado em t=0.5 —
@@ -5547,9 +5634,9 @@ function evaluateRuntimeCurveModel(model, t) {
 //
 // v8z4b19h: spans[] agora contém dois quadraticSpans derivados (derivedFirstHalf e
 // derivedSecondHalf) representando a curva legada dividida em t=0.5 via De Casteljau.
-// Os spans são apenas runtime: não usados como avaliador, não renderizados, não
-// persistidos no JSON. Preparam o futuro modo baseado em pathPoints reais.
-// O resultado de evaluateSegmentPath() continua idêntico à v8z4b19g.
+// Os spans são apenas runtime: não renderizados, não persistidos no JSON, não editáveis.
+// v8z4b19l: evaluateRuntimeCurveModel() agora usa spans como caminho preferencial.
+// O resultado de evaluateSegmentPath() continua matematicamente idêntico à v8z4b19k.
 //
 // Quando mode === "vectorAnchors" for implementado (versão futura),
 // o segmento usará frameAnchors, pathPoints e handles em vez do curvePuller
@@ -5582,7 +5669,7 @@ function evaluateRuntimeCurveModel(model, t) {
 // TODO (vectorAnchors): migração controlada de legacyQuadratic → vectorAnchors.
 // ──────────────────────────────────────────────────────────────────────────────
 
-// ─── Unified Segment Path Evaluator — v8z4b18l / mode switch v8z4b18n / runtime v8z4b19d / pathPoint contract v8z4b19e / derived pathPoint v8z4b19f / derived spans v8z4b19h ──
+// ─── Unified Segment Path Evaluator — v8z4b18l / mode switch v8z4b18n / runtime v8z4b19d / pathPoint contract v8z4b19e / derived pathPoint v8z4b19f / derived spans v8z4b19h / spans routing v8z4b19l ──
 //
 // evaluateSegmentPath() é a entrada pública/real do motor para calcular posição
 // no caminho de um segmento. A partir da v8z4b19d, usa o modelo runtime de curva
@@ -5590,25 +5677,28 @@ function evaluateRuntimeCurveModel(model, t) {
 // como caminho preferencial, com fallback automático para o cálculo legado.
 // v8z4b19f: o modelo runtime agora inclui um pathPoint derivado em t=0.5 dentro
 // de pathPoints — amostra real da trajetória, calculada pela mesma fórmula quadrática.
-// O pathPoint derivado é ignorado por evaluateRuntimeCurveModel() enquanto
-// mode === 'legacyQuadratic'. O resultado de evaluateSegmentPath() continua idêntico à v8z4b19e.
+// O pathPoint derivado NÃO é editável, NÃO é renderizado, NÃO persiste no JSON.
 // v8z4b19h: o modelo runtime agora inclui spans[] com dois quadraticSpans derivados
 // (derivedFirstHalf e derivedSecondHalf) calculados por De Casteljau em t=0.5.
-// Os spans são apenas runtime — não usados como avaliador principal, não renderizados,
-// não persistidos. O resultado de evaluateSegmentPath() continua idêntico à v8z4b19g.
+// Os spans são apenas runtime — não renderizados, não persistidos, não editáveis.
+// v8z4b19l: evaluateRuntimeCurveModel() agora usa spans derivados como caminho
+// preferencial (via evaluateRuntimeCurveSpans), com fallback para
+// evaluateRuntimeLegacyQuadratic() se spans forem inválidos ou resultado não finito.
+// O resultado de evaluateSegmentPath() continua matematicamente idêntico à v8z4b19k.
 //
 // Caminhos de avaliação:
 //   [preferencial] runtime model  → buildRuntimeCurveModel → validateRuntimeCurveModel
-//                                   → evaluateRuntimeCurveModel → {x,y}
-//   [fallback]     legado          → evaluateLegacySegmentPath → {x,y}
+//                                   → evaluateRuntimeCurveModel (tenta spans primeiro,
+//                                     fallback para legacyQuadratic) → {x,y}
+//   [fallback ext.] legado         → evaluateLegacySegmentPath → {x,y}
 //
-// O fallback é acionado automaticamente quando:
+// O fallback externo (evaluateLegacySegmentPath) é acionado automaticamente quando:
 //   - buildRuntimeCurveModel retorna null/undefined (segmento inválido, stageW/H ausente, etc.)
 //   - validateRuntimeCurveModel falha (modelo mal-formado)
 //   - evaluateRuntimeCurveModel retorna null, NaN ou Infinity
 //   - qualquer exceção inesperada no caminho runtime
 //
-// Resultado matemático idêntico à v8z4b19c: ambos os caminhos implementam a mesma
+// Resultado matemático idêntico à v8z4b19k: todos os caminhos implementam a mesma
 // fórmula de Bézier quadrática com os mesmos dados de entrada.
 //
 // legacyQuadratic — curva quadrática atual com curvePuller.
@@ -5616,6 +5706,7 @@ function evaluateRuntimeCurveModel(model, t) {
 //
 // Schema JSON persistido NÃO alterado: ctrlPts / ctrlPtManual / loopCtrlPt.
 // O modelo runtime não aparece no JSON — é apenas runtime.
+// pathPoints, handles, spans, capabilities: apenas runtime — não aparecem no JSON.
 
 // Cálculo legado extraído da implementação anterior de evaluateSegmentPath (v8z4b19c).
 // Preservado como fallback interno de segurança — v8z4b19d.
@@ -5713,9 +5804,10 @@ function evaluateSegmentPath(segIndex, t) {
   }
 }
 
-// Helper interno de comparação/paridade — v8z4b19d / derivedPathPoint check v8z4b19f / reutiliza validateDerivedRuntimePathPoint v8z4b19g / spansDiag v8z4b19h.
+// Helper interno de comparação/paridade — v8z4b19d / derivedPathPoint check v8z4b19f / reutiliza validateDerivedRuntimePathPoint v8z4b19g / spansDiag v8z4b19h / pathUsed v8z4b19l.
 // Compara o resultado do modelo runtime com o cálculo legado para o mesmo
-// (segIndex, t). Retorna { runtime, legacy, match, delta, derivedPathPointCheck, spansDiag } para uso em
+// (segIndex, t). Retorna { runtime, legacy, match, delta, derivedPathPointCheck,
+// spansDiag, spanPoint, spanDelta, spanMatch, pathUsed } para uso em
 // desenvolvimento/teste interno.
 // Não chamado no fluxo normal de produção — apenas para verificação/debug.
 //
@@ -5726,17 +5818,42 @@ function evaluateSegmentPath(segIndex, t) {
 // para consistência com os helpers de diagnóstico.
 // v8z4b19h: inclui spansDiag via validateDerivedRuntimeSpans(model) para confirmar
 // que os spans derivados reconstituem a curva legada dentro da tolerância.
+// v8z4b19l: inclui pathUsed — indica qual caminho foi usado pela avaliação runtime:
+//   'spans'          — evaluateRuntimeCurveSpans() retornou ponto válido.
+//   'legacyFallback' — spans inválidos/ausentes; usado evaluateRuntimeLegacyQuadratic().
+//   null             — modelo inválido ou avaliação falhou.
 function compareRuntimePathWithLegacy(segIndex, t) {
   let model = null;
+  // v8z4b19l: determinar qual caminho foi usado por evaluateRuntimeCurveModel.
+  // Para isso, replicamos a lógica de roteamento aqui (sem chamar evaluateRuntimeCurveModel
+  // diretamente) para inspecionar qual branch foi tomado.
+  let pathUsed = null;
   const runtime = (() => {
     try {
       model = buildRuntimeCurveModel(segIndex);
       if (!model || !validateRuntimeCurveModel(model)) return null;
-      return evaluateRuntimeCurveModel(model, t);
+      // v8z4b19l: verificar se spans serão usados (replicar lógica de evaluateRuntimeCurveModel).
+      if (model.mode === 'legacyQuadratic' &&
+          Array.isArray(model.spans) && model.spans.length === 2) {
+        try {
+          const spanPt = evaluateRuntimeCurveSpans(model, t);
+          if (isValidRuntimePoint(spanPt)) {
+            pathUsed = 'spans';
+            return spanPt;
+          }
+        } catch (_e) { /* continuar para fallback */ }
+      }
+      // Fallback legacyQuadratic.
+      const legacyPt = evaluateRuntimeLegacyQuadratic(model, t);
+      if (isValidRuntimePoint(legacyPt)) {
+        pathUsed = 'legacyFallback';
+        return legacyPt;
+      }
+      return null;
     } catch (_e) { return null; }
   })();
   const legacy = evaluateLegacySegmentPath(segIndex, t);
-  if (!runtime || !legacy) return { runtime, legacy, match: false, delta: null, derivedPathPointCheck: null, spansDiag: null };
+  if (!runtime || !legacy) return { runtime, legacy, match: false, delta: null, derivedPathPointCheck: null, spansDiag: null, spanPoint: null, spanDelta: null, spanMatch: false, pathUsed };
   const dx = Math.abs(runtime.x - legacy.x);
   const dy = Math.abs(runtime.y - legacy.y);
   // Tolerância de 0.001 px — diferença esperada: zero (mesma aritmética).
@@ -5801,7 +5918,8 @@ function compareRuntimePathWithLegacy(segIndex, t) {
     } catch (_e) { spanPoint = null; spanDelta = null; spanMatch = false; }
   }
 
-  return { runtime, legacy, match, delta: { dx, dy }, derivedPathPointCheck, spansDiag, spanPoint, spanDelta, spanMatch };
+  // v8z4b19l: pathUsed indica qual caminho foi tomado pela avaliação runtime.
+  return { runtime, legacy, match, delta: { dx, dy }, derivedPathPointCheck, spansDiag, spanPoint, spanDelta, spanMatch, pathUsed };
 }
 
 // ─── Diagnóstico interno do pathPoint derivado — v8z4b19g ─────────────────────
@@ -6155,12 +6273,11 @@ function validateDerivedRuntimeSpans(model) {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-// ─── Avaliador dos spans derivados — v8z4b19j ─────────────────────────────────
+// ─── Avaliador dos spans derivados — v8z4b19j / preferred path v8z4b19l ────────
 //
 // evaluateRuntimeCurveSpans(model, t)
 //
-// Avalia a curva runtime pelos dois quadraticSpans derivados (v8z4b19h) em vez
-// dos anchors + curvePuller usados por evaluateRuntimeCurveModel.
+// Avalia a curva runtime pelos dois quadraticSpans derivados (v8z4b19h).
 // Retorna {x, y} em PIXELS do stage — mesmo formato de evaluateRuntimeCurveModel.
 // Retorna null para modelo inválido, spans ausentes ou stage inválido.
 //
@@ -6184,12 +6301,16 @@ function validateDerivedRuntimeSpans(model) {
 //   Numericamente equivalente a evaluateRuntimeCurveModel(model, t) dentro de
 //   tolerância de 0.001 px (garantido por validateDerivedRuntimeSpans).
 //
-// Uso: avaliador paralelo e diagnóstico — NÃO substitui evaluateSegmentPath()
-// nem evaluateRuntimeCurveModel() nesta versão. Não chamado durante Preview/MP4.
-// Enquanto mode === 'legacyQuadratic', evaluateSegmentPath() continua usando
-// anchors + curvePuller como caminho preferencial.
+// v8z4b19l: este helper agora é o CAMINHO PREFERENCIAL de evaluateRuntimeCurveModel()
+// para mode === 'legacyQuadratic'. evaluateRuntimeCurveModel() tenta este helper
+// primeiro (validando via isValidRuntimePoint) e usa evaluateRuntimeLegacyQuadratic()
+// como fallback de segurança.
+//
+// Spans são apenas runtime: NÃO editáveis, NÃO renderizados, NÃO persistidos no JSON.
+// Schema persistido NÃO alterado: ctrlPts / ctrlPtManual / loopCtrlPt.
 //
 // v8z4b19j — helper novo.
+// v8z4b19l — promovido a caminho preferencial de evaluateRuntimeCurveModel().
 function evaluateRuntimeCurveSpans(model, t) {
   if (!model || !validateRuntimeCurveModel(model)) return null;
   if (!stageW || !stageH || stageW <= 0 || stageH <= 0) return null;
