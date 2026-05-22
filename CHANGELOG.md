@@ -1,5 +1,162 @@
 # Changelog
 
+## v8z4b19q — prepare legacy curve patch from simulated path point edit
+
+Implementação interna controlada de helpers para transformar uma edição simulada
+de pathPoint em um patch legado candidato.
+Sem alteração visual, sem alteração de UI, sem alteração de JSON, sem alteração de
+Preview, MP4/export ou save/load.
+
+### Objetivo
+
+Preparar o futuro fluxo:
+
+```
+pathPoint movido
+  → simulateRuntimePathPointEdit()
+  → candidate curvePuller
+  → legacy curve patch candidate
+  → futura aplicação em ctrlPts[segIndex] ou loopCtrlPt
+  → futura integração com undo/redo
+```
+
+Nesta versão, o fluxo para no "legacy curve patch candidate". O patch é apenas
+um objeto diagnóstico retornado. Nada é aplicado no estado real, nada é salvo no
+JSON, nada é renderizado.
+
+### Helpers adicionados
+
+#### `runtimeCurvePullerToLegacyCtrlPt(candidatePuller, fallbackCtrlPt)`
+
+Converte um curvePuller runtime (`{ x, y }` normalizados 0–1) para o shape legado
+de ctrlPt persistido (`{ nx, ny, t, perpX, perpY }`).
+
+- `nx` / `ny` vêm de `candidatePuller.x` / `.y`.
+- `t`, `perpX`, `perpY` preservados de `fallbackCtrlPt` (ctrlPt atual do schema).
+- Se `fallbackCtrlPt` for nulo/inválido, usa defaults seguros: `t = 0.5`, `perpX = perpY = 0`.
+- Apenas prepara o objeto — não aplica em `ctrlPts` nem `loopCtrlPt`.
+
+#### `createLegacyCurvePatchFromSimulatedPathPointEdit(target, simulation)`
+
+Constrói o objeto de patch candidato indicando qual campo do schema atual seria
+alterado pela edição simulada de pathPoint.
+
+Parâmetros:
+- `target`: `{ type: 'segment' | 'loop', segIndex?: number }`
+- `simulation`: retorno de `simulateRuntimePathPointEdit()` com `ok === true`
+
+Retorno para `'segment'`:
+```json
+{
+  "ok": true,
+  "reason": "ok",
+  "target": { "type": "segment", "segIndex": 0 },
+  "field": "ctrlPts",
+  "index": 0,
+  "value": { "nx": ..., "ny": ..., "t": ..., "perpX": ..., "perpY": ... },
+  "source": "simulatedRuntimePathPointEdit",
+  "appliesToSchema": "legacyCurvePuller",
+  "applied": false
+}
+```
+
+Retorno para `'loop'`:
+```json
+{
+  "ok": true,
+  "reason": "ok",
+  "target": { "type": "loop" },
+  "field": "loopCtrlPt",
+  "index": null,
+  "value": { "nx": ..., "ny": ..., "t": ..., "perpX": ..., "perpY": ... },
+  "source": "simulatedRuntimePathPointEdit",
+  "appliesToSchema": "legacyLoopCurvePuller",
+  "applied": false
+}
+```
+
+`applied: false` sempre — o patch não é aplicado nesta versão.
+
+#### `validateLegacyCurvePatchCandidate(patch)`
+
+Verifica se o patch candidato é bem-formado e seguro para uso diagnóstico.
+
+Critérios:
+1. `patch` existe.
+2. `ok === true`.
+3. `target.type` é `'segment'` ou `'loop'`.
+4. `field` é `'ctrlPts'` ou `'loopCtrlPt'`.
+5. `value.nx` / `value.ny` numéricos finitos.
+6. `value.t` numérico finito.
+7. `value.perpX` / `value.perpY` numéricos finitos.
+8. `applied === false`.
+
+Retorna `{ ok, reason, checks }` com `checks` detalhando cada critério.
+
+#### `createSimulatedPathPointEditPatch(model, target, pathPoint, nextPoint)`
+
+Função de alto nível para desenvolvimento:
+1. Chama `simulateRuntimePathPointEdit(model, pathPoint, nextPoint)`.
+2. Se simulação ok, chama `createLegacyCurvePatchFromSimulatedPathPointEdit(target, simulation)`.
+3. Valida o patch com `validateLegacyCurvePatchCandidate(patch)`.
+4. Retorna `{ ok, reason, simulation, patch, patchValid }`.
+
+#### `compareLegacyPatchCandidateWithCurrentControl(model, patch)` *(diagnóstico passivo)*
+
+Compara `patch.value` com o controle atual do schema persistido
+(`ctrlPts[segIndex]` ou `loopCtrlPt`). Retorna delta em normalizado e em pixels.
+Não altera estado.
+
+### Matemática
+
+Continua usando a inversão já aprovada:
+```
+C = 2·M − 0.5·P0 − 0.5·P1
+```
+
+Conversão para legacy ctrlPt:
+- `nx = C.x`, `ny = C.y` (normalizados 0–1, mesma convenção de `ctrlPts[segIndex].nx/ny`).
+- `t`, `perpX`, `perpY` preservados do ctrlPt anterior.
+
+### O que NÃO foi feito
+
+- `pathPoint` não é editável pelo usuário.
+- O patch candidato não é aplicado em `ctrlPts`.
+- O patch candidato não é aplicado em `loopCtrlPt`.
+- `pushUndo` não é chamado.
+- `renderAll` não é chamado.
+- `markProjectDirty` não é chamado.
+- MP4 não é invalidado.
+- Nenhum resultado é salvo no JSON.
+- Nenhum resultado é renderizado.
+- UI, Stage, curvas visuais, Preview, MP4/export, save/load — inalterados.
+- Schema JSON — inalterado. Nenhum campo novo.
+
+### Arquivos alterados
+
+- `index.html`: 5 helpers novos + versionamento
+- `CHANGELOG.md`: esta entrada
+- `QA.md`: checklist da versão
+- `ROADMAP.md`: estado atual atualizado
+- `pages-deploy-stamp.txt`: stamp de deploy
+
+### Restrições respeitadas
+
+- Stage não alterado.
+- Curvas não alteradas visualmente.
+- `buildRuntimeCurveModel`, `evaluateRuntimeCurveModel`, `evaluateRuntimeCurveSpans`,
+  `pathPoints`, `spans`, `curvePuller` reais intactos.
+- JSON não alterado (nenhum campo novo criado).
+- Preview matemático não alterado.
+- Motor de MP4/export não alterado.
+- Faixa preta superior do Preview (v8z4b19n) intacta.
+- Lógica de cancelamento de export da v8z4b19i intacta.
+- Limpeza de MP4 ao sair do Preview da v8z4b19o intacta.
+- Undo/Redo não alterado.
+- Save/load não alterado.
+
+---
+
 ## v8z4b19p — simulate runtime path point edit pipeline
 
 Implementação interna controlada do pipeline de edição simulada de pathPoint runtime.
