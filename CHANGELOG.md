@@ -1,5 +1,87 @@
 # Changelog
 
+## v8z4b20b — prototype active frame in-out handles
+
+Primeiro protótipo visual/funcional dos dois handles no frame intermediário ativo.
+Substitui o handle único simétrico (`frame-tangent-dot`, v8z4b19z) por dois handles
+distintos: **handle de entrada (IN)** e **handle de saída (OUT)**, ambos losangos âmbar.
+
+### BLOCO A — Dois handles no frame intermediário ativo
+
+**Decisão de produto:** o frame intermediário ativo agora mostra dois handles separados:
+- **IN handle** (`.frame-in-handle`): controla o trecho anterior (fi-1 → fi), derivado de `ctrlPts[fi-1]`.
+  Losango âmbar mais suave, no lado de entrada do frame.
+- **OUT handle** (`.frame-out-handle`): controla o trecho seguinte (fi → fi+1), derivado de `ctrlPts[fi]`.
+  Losango âmbar mais vivo (z-index 78), no lado de saída do frame.
+
+**Visibilidade:**
+- Aparece apenas quando: imagem carregada, `frameCount >= 3`, frame intermediário ativo
+  (`activeIdx > 0` e `activeIdx < frameCount - 1`), não está em Preview, não está em `_isoMode`.
+- F1 e último frame: sem handles IN/OUT.
+- Loop: sem handles IN/OUT (loop ctrl-pt preservado).
+
+### BLOCO B — Modo suave/linkado por padrão
+
+**Comportamento seguro:** arrastar qualquer handle atualiza **os dois ctrlPts** em 180°
+(colineares), preservando passagem contínua pelo frame ativo.
+
+- Arrastar OUT handle: `ctrlPts[fi] ← P + dir*strengthOut`, `ctrlPts[fi-1] ← P - dir*strengthIn`
+- Arrastar IN handle: `ctrlPts[fi-1] ← P + dir*strengthIn`, `ctrlPts[fi] ← P - dir*strengthOut`
+- Modo Angular/Livre: **não implementado nesta versão** (roadmap futuro).
+
+### BLOCO C — Geometria derivada dos ctrlPts reais
+
+- Novo helper `getActiveFrameInOutHandleGeometry(fi)`: retorna `{Px, Py, inHx, inHy, outHx, outHy}`.
+- Posição dos handles derivada dos ctrlPts reais, não de padrão automático.
+- Se ctrlPts forem automáticos (não manuais), usa fallback pela corda `P[fi-1] → P[fi+1]`.
+- Não sobrescreve ctrlPts apenas por renderizar.
+
+### BLOCO D — Braços de haste no bezierSvg
+
+- Dois braços (linhas) desenhados no `bezierSvg` para IN e OUT:
+  - Braço IN: `stroke="rgba(255,210,0,0.55)"`, tracejado.
+  - Braço OUT: `stroke="rgba(255,210,0,0.78)"`, sólido.
+- Substituem o único braço tracejado do handle anterior.
+
+### BLOCO E — Força por distância (v8z4b19z preservado)
+
+- `dLen` controla intensidade: perto = suave, longe = curva mais oblíqua.
+- Clamp: `MAX(10, MIN(lenSegment * 0.65, dLen))`.
+- Lado oposto usa comprimento proporcional do seu trecho para estabilidade.
+
+### BLOCO F — Bugfix mover frame (v8z4b19z preservado)
+
+- `applyFrameHandleEdit()` armazena `t/perpX/perpY` consistentes após setar `nx/ny`.
+- `syncCtrlPtsForFrame()` preserva ajustes manuais ao mover o frame ativo.
+- Teste: ajustar handle → mover frame → curva não reseta.
+
+### BLOCO G — Undo/Redo
+
+- Um drag de handle gera uma única entrada de undo (lazy capture no primeiro pixel).
+- Tocar sem mover não cria undo.
+- Undo desfaz os dois ctrlPts juntos (modo linkado).
+- Redo refaz os dois juntos.
+- `markProjectDirty('frame-inout-handle')` ao término do drag.
+
+### BLOCO H — Compatibilidade
+
+- Handle legado `frame_tangent_dot` ocultado (display:'none') em `updateCtrlPts`.
+- CSS e funções legadas preservadas (`startFrameTangentDrag`, `applyFrameTangentEdit` → delega para `applyFrameHandleEdit('out', ...)`).
+- `frameTangentDragState` preservado como legado (não iniciado na UI normal).
+- Loop ctrl-pt sem alteração.
+- Midpoint continua oculto.
+- ctrl-pt legado continua oculto.
+
+### JSON schema
+
+- Sem campos novos.
+- `version` salvo como `v8z4b20b`.
+- `ctrlPts`, `ctrlPtManual`, `loopCtrlPt`, `framesNorm`, `frameRotations`,
+  `segDurations`, `framePauses` — todos preservados.
+- Arquivos da v8z4b20a continuam abrindo normalmente.
+
+---
+
 ## v8z4b20a — demote midpoint UI and document anchor handle model
 
 Correção de direção conceitual: o midpoint automático não deve ser ferramenta

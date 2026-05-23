@@ -2,6 +2,125 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b20b — prototype active frame in-out handles
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b20b` na UI (Settings).
+3. Confirmar que nome da versão exibe `prototype active frame in-out handles`.
+
+### Teste B — dois handles no frame intermediário ativo
+1. Carregar imagem.
+2. Criar projeto com pelo menos 4 frames.
+3. Selecionar F2 ou F3 (frame intermediário).
+4. Confirmar que aparecem **dois** handles losango âmbar:
+   - Handle de **entrada (IN)**: um dos lados, mais suave.
+   - Handle de **saída (OUT)**: lado oposto, mais vivo (z-index maior).
+5. Confirmar que F1 **não** mostra esses handles.
+6. Confirmar que o último frame **não** mostra esses handles.
+7. Confirmar que o midpoint automático **NÃO** aparece.
+8. Confirmar que o puxador/losango legado (ctrl-pt) **não** aparece como controle principal.
+9. Confirmar que os dois handles **não** parecem novos frames.
+
+### Teste C — braços de haste visíveis
+1. Com frame intermediário ativo, confirmar que há duas hastes (linhas):
+   - Braço IN: âmbar mais suave, tracejado, do centro do frame ao IN handle.
+   - Braço OUT: âmbar mais vivo, sólido, do centro do frame ao OUT handle.
+2. Confirmar que as linhas partem do centro do frame ativo.
+
+### Teste D — arrastar handle de saída (OUT)
+1. Com frame intermediário ativo, arrastar o OUT handle.
+2. Confirmar que a curva do **trecho seguinte** muda em tempo real.
+3. Confirmar que, em modo suave/linkado, o **trecho anterior** também se ajusta coerentemente.
+4. Confirmar que os dois handles ficam visualmente alinhados (colineares) em modo suave.
+
+### Teste E — arrastar handle de entrada (IN)
+1. Com frame intermediário ativo, arrastar o IN handle.
+2. Confirmar que a curva do **trecho anterior** muda em tempo real.
+3. Confirmar que, em modo suave/linkado, o **trecho seguinte** também se ajusta.
+4. Confirmar que os dois handles ficam visualmente alinhados.
+
+### Teste F — força por distância
+1. Arrastar qualquer handle para perto do centro do frame.
+2. Confirmar que a curva tem suavidade leve (pouco desvio).
+3. Arrastar o handle para mais longe do centro.
+4. Confirmar que a curva fica mais oblíqua/pronunciada.
+5. Confirmar que a curva não explode nem sai da tela.
+
+### Teste G — Undo/Redo
+1. Ajustar um handle.
+2. Confirmar que **Undo** reverte a alteração nos dois trechos.
+3. Confirmar que **Redo** refaz a alteração nos dois trechos.
+4. Confirmar que tocar sem mover não cria undo.
+5. Confirmar que não há undo duplicado.
+
+### Teste H — tangente preservada ao mover frame (não regrediu)
+1. Selecionar frame intermediário (F2 de pelo menos 4 frames).
+2. Arrastar qualquer handle para ajustar a curva.
+3. **Sem desfazer**, arrastar o próprio frame para nova posição.
+4. Confirmar que a curva **NÃO reseta** para ângulo reto/padrão automático.
+
+### Teste I — seleção de outro frame
+1. Confirmar que selecionar outro frame (F1 ou último) oculta os dois handles.
+2. Confirmar que selecionar um frame intermediário diferente reposiciona os handles.
+
+### Teste J — loop não quebrou
+1. Ativar loop.
+2. Confirmar que a curva de loop aparece imediatamente.
+3. Confirmar que o loop ctrl-pt (bolinha roxa) permanece visível e arrastável.
+4. Confirmar que os handles IN/OUT **não** aparecem no loop.
+5. Confirmar que midpoint do loop não aparece.
+
+### Teste K — Preview e MP4
+1. Rodar Preview.
+2. Confirmar que Preview respeita as curvas ajustadas pelos handles.
+3. Confirmar que os handles **não** aparecem no Preview (sem imagem de handle).
+4. Gerar MP4.
+5. Confirmar que MP4 respeita as curvas.
+6. Confirmar que Salvar MP4 não fica preso em estado done/pronto.
+7. Confirmar que ao sair do Preview o MP4 gerado é limpo.
+8. Iniciar geração de MP4 e tocar Voltar antes de terminar — Stage não deve travar.
+
+### Teste L — drag de frames não bloqueado pelos handles
+1. Confirmar que dragging de frames continua funcionando.
+2. Confirmar que os handles não interceptam drag de frames indevidamente.
+
+### Teste M — JSON schema
+1. Salvar projeto com imagem:
+   - `filename` termina em `_img.json`.
+   - `version` salvo como `v8z4b20b`.
+   - `imageBase64` existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado quando loop ativo.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+2. Salvar projeto sem imagem:
+   - `filename` termina em `_file.json`.
+   - `version` salvo como `v8z4b20b`.
+   - `imageBase64` não existe.
+3. Abrir JSON salvo em v8z4b20a e confirmar compatibilidade.
+4. Confirmar que **nenhum** campo proibido apareceu no JSON:
+   `curvesV2`, `vectorPath`, `handles`, `frameHandles`, `frameTangents`,
+   `inHandles`, `outHandles`, `anchorHandles`, `pathPoints`, `midpoints`,
+   `runtimeCurveModel`, `capabilities`, `spans`, `generatedMp4`, `exportBlob`,
+   `legacyCurvePatch`, `patchCandidate`, `patchApplicationDraft`,
+   `realCurvePatchApplication`, `selfTest`.
+
+### Teste N — erros de console
+1. Confirmar que não há erro de console, NaN ou Infinity visíveis.
+
+### Teste O — ROADMAP atualizado
+1. Confirmar que ROADMAP registrou:
+   - v8z4b20b como protótipo de dois handles IN/OUT.
+   - Modo Angular/Livre como futuro.
+   - Menu contextual (Illustrator-style) como futuro.
+   - Pen/Patch Tool como futuro.
+   - Desenho livre com dedo como futuro.
+   - Ponto auxiliar/frame falso como futuro.
+
+---
+
 ## v8z4b20a — demote midpoint UI and document anchor handle model
 
 ### Teste A — abertura e versão
