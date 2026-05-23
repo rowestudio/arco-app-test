@@ -1,5 +1,119 @@
 # Changelog
 
+## v8z4b20c — fix endpoint loop handles and segment-local editing
+
+Correção funcional dos handles de frame revelados como problemáticos na v8z4b20b.
+
+### Problema corrigido
+
+A v8z4b20b criou dois handles IN/OUT para frames intermediários, mas revelou:
+1. F1 e último frame não tinham handles, mesmo com trecho conectado.
+2. Com loop ativo, F1 e último frame precisavam de handles para o trecho de loop.
+3. Arrastar um handle resetava/sobrescrevia a curva ajustada pelo frame vizinho (modo linkado).
+
+### BLOCO A — Nova regra de exibição: handles por trecho conectado
+
+Substituída a regra limitada `activeIdx > 0 && activeIdx < frameCount - 1`
+por uma regra baseada em conexões reais do frame ativo.
+
+**Handle IN aparece se:**
+- existe trecho anterior normal: `fi > 0`
+- OU existe trecho de loop entrando no F1: `loopEnabled && fi === 0 && frameCount >= 2`
+
+**Handle OUT aparece se:**
+- existe trecho seguinte normal: `fi < frameCount - 1`
+- OU existe trecho de loop saindo do último frame: `loopEnabled && fi === frameCount - 1 && frameCount >= 2`
+
+**Exemplos:**
+| Config | F1 | F2 | F3 | F4 |
+|---|---|---|---|---|
+| 4 frames, sem loop | OUT | IN+OUT | IN+OUT | IN |
+| 4 frames, com loop | IN(loop)+OUT | IN+OUT | IN+OUT | IN+OUT(loop) |
+| 2 frames, sem loop | OUT | IN | — | — |
+| 2 frames, com loop | IN(loop)+OUT | IN+OUT(loop) | — | — |
+
+### BLOCO B — Segment-local editing (substitui modo suave/linkado)
+
+**Problema do modo linkado (v8z4b20b):** arrastar um handle atualizava dois ctrlPts vizinhos
+ao mesmo tempo, fazendo o ajuste de um frame interferir no do frame vizinho.
+
+**Novo comportamento:**
+- **Handle IN** edita apenas `ctrlPts[fi - 1]` (trecho `F(fi-1) → F(fi)`).
+- **Handle OUT** edita apenas `ctrlPts[fi]` (trecho `F(fi) → F(fi+1)`).
+- Handle IN de F1 com loop edita apenas `loopCtrlPt`.
+- Handle OUT do último frame com loop edita apenas `loopCtrlPt`.
+
+**Importante (schema legado):**
+O handle OUT de F4 e o handle IN de F5 representam o mesmo trecho F4→F5 no schema legado.
+Editar um atualiza esse trecho; quando selecionar o outro frame, o handle correspondente reflete
+a posição atual do mesmo ctrlPt. Isso é esperado e correto.
+
+**O que foi desativado:** link automático que atualizava dois trechos vizinhos por drag.
+- Modo Suavizar/Angular real ficará para etapa futura.
+- Suavizar futuramente será ação/contexto explícito.
+
+### BLOCO C — Novos helpers de target por conexão
+
+- `getFrameConnectedHandleTargets(fi)` → `{ inTarget, outTarget }`: retorna os targets
+  de segmento conectados aos handles IN e OUT do frame fi.
+- `getFrameHandleGeometryForTarget(fi, role, target)` → `{ hx, hy }`: calcula posição
+  visual do handle a partir do ctrlPt real do target.
+- `getFrameHandleGeometry(fi)` → `{ Px, Py, inHx, inHy, outHx, outHy, inTarget, outTarget }`:
+  geometria completa para qualquer frame ativo.
+
+### BLOCO D — applyFrameConnectedHandleEdit
+
+- Nova função `applyFrameConnectedHandleEdit(fi, role, target, hx, hy)`.
+- Edita apenas o target indicado.
+- Armazena `t/perpX/perpY` para preservar curva ao mover frame (v8z4b19z preservado).
+- Não altera `ctrlPtManual` de outros segmentos.
+- Não altera `loopCtrlPt` quando target não for loop.
+
+### BLOCO E — Modo suave/linkado desativado
+
+- Desativado em v8z4b20c: `applyFrameHandleEdit` (modo linkado) não é mais chamado na UI.
+- Modo Suavizar/Angular real fica para etapa futura.
+- `applyFrameHandleEdit` preservada internamente como legado.
+
+### BLOCO F — Handles de loop
+
+- F1 com loop: IN handle associado ao `loopCtrlPt`.
+- Último frame com loop: OUT handle associado ao `loopCtrlPt`.
+- Loop ctrl-pt (`cpt_loop`) fica oculto (opacity:0, pointer-events:none) quando
+  handles de loop estão disponíveis — evita sobreposição visual.
+- Arrastar IN de F1 (target loop) edita `loopCtrlPt`.
+- Arrastar OUT do último frame (target loop) edita `loopCtrlPt`.
+
+### BLOCO G — Visual
+
+- Handles de loop: cor roxa (`rgba(180,100,255,1)`) para diferenciar de handles normais.
+- Braços de haste no `bezierSvg`: roxo para loop, âmbar para normais.
+- Endpoints com um único handle: apenas esse handle é exibido.
+- Midpoint continua oculto; ctrl-pt legado continua oculto.
+
+### BLOCO H — Undo/Redo
+
+- Um drag de handle gera uma única entrada de undo (lazy capture no primeiro pixel).
+- Tocar sem mover não cria undo.
+- Undo desfaz apenas o trecho editado (segment-local).
+- Redo refaz apenas o trecho editado.
+- Loop: Undo/Redo restaura apenas `loopCtrlPt`.
+
+### BLOCO I — Bugfix mover frame (v8z4b19z preservado)
+
+- `applyFrameConnectedHandleEdit` armazena `t/perpX/perpY` após setar `nx/ny`.
+- `syncCtrlPtsForFrame` preserva ajustes manuais ao mover frame ativo.
+
+### JSON schema
+
+- Sem campos novos.
+- `version` salvo como `v8z4b20c`.
+- `ctrlPts`, `ctrlPtManual`, `loopCtrlPt`, `framesNorm`, `frameRotations`,
+  `segDurations`, `framePauses` — todos preservados.
+- Arquivos da v8z4b20b continuam abrindo normalmente.
+
+---
+
 ## v8z4b20b — prototype active frame in-out handles
 
 Primeiro protótipo visual/funcional dos dois handles no frame intermediário ativo.

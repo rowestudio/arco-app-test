@@ -1,13 +1,19 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b20b                                     ║
+║  Versão: v8z4b20c                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b20c                                            ║
+║    fix: endpoint loop handles and segment-local      ║
+║         editing — handles em F1, último frame e      ║
+║         loop; edição local por trecho conectado;     ║
+║         sem interferência entre frames vizinhos;     ║
+║         midpoint oculto; JSON inalterado             ║
 ║  v8z4b20b                                            ║
 ║    feat: prototype active frame in-out handles       ║
 ║         substitui handle único simétrico por dois    ║
@@ -303,7 +309,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b20b — prototype active frame in-out handles: BLOCO A — substitui handle único (frame-tangent-dot) por dois handles no frame intermediário ativo: frame-in-handle (entrada) e frame-out-handle (saída); BLOCO B — modo suave/linkado por padrão (dragging qualquer handle atualiza ambos os ctrlPts em 180°); BLOCO C — força por distância preservada; BLOCO D — bugfix mover frame preservado (t/perpX/perpY); BLOCO E — geometria derivada de ctrlPts reais via getActiveFrameInOutHandleGeometry(); BLOCO F — braços de haste no bezierSvg; BLOCO G — midpoint continua oculto; BLOCO H — JSON/schema inalterado; sem campo novo -->
+<!-- Arco Motion App — v8z4b20c — fix endpoint loop handles and segment-local editing: BLOCO A — exibição de handles baseada em trechos conectados (não apenas intermediários); handles em F1, último frame e loop; BLOCO B — segment-local editing: cada handle edita apenas o trecho conectado; sem modo linkado automático; BLOCO C — helpers getFrameConnectedHandleTargets / getFrameHandleGeometryForTarget / getFrameHandleGeometry; BLOCO D — applyFrameConnectedHandleEdit substitui applyFrameHandleEdit; BLOCO E — modo suave/linkado desativado nesta versão; BLOCO F — handles de loop via loopCtrlPt em F1 e último frame; BLOCO G — visual: cor roxa para handles de loop; midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo por trecho conectado; BLOCO I — bugfix mover frame preservado; JSON/schema inalterado; sem campo novo -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -2135,7 +2141,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b20b</span><br><span id="appVersionNameText">prototype active frame in-out handles</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b20c</span><br><span id="appVersionNameText">fix endpoint loop handles and segment-local editing</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4476,8 +4482,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b20b';
-const APP_VERSION_NAME = 'prototype active frame in-out handles';
+const APP_VERSION = 'v8z4b20c';
+const APP_VERSION_NAME = 'fix endpoint loop handles and segment-local editing';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10951,7 +10957,134 @@ function getFrameTangentGeometry(fi) {
   };
 }
 
+// ─── v8z4b20c: helpers de target por conexão ─────────────────────────────────
+//
+// getFrameConnectedHandleTargets(fi): retorna os targets (trechos) conectados
+// aos handles IN e OUT do frame fi.
+// Substitui a regra limitada "activeIdx > 0 && activeIdx < frameCount - 1"
+// por uma regra baseada em conexões reais do frame.
+//
+// inTarget: trecho que CHEGA ao frame fi (entrada).
+// outTarget: trecho que SAI do frame fi (saída).
+//
+// Cada target é: { type:'segment', segIndex } | { type:'loop' } | null.
+//
+// Casos:
+//   F1 sem loop:  inTarget=null,             outTarget={type:'segment',segIndex:0}
+//   F1 com loop:  inTarget={type:'loop'},    outTarget={type:'segment',segIndex:0}
+//   Fi (interm.): inTarget={type:'segment',segIndex:fi-1}, outTarget={type:'segment',segIndex:fi}
+//   último s/loop: inTarget={type:'segment',segIndex:fi-1}, outTarget=null
+//   último c/loop: inTarget={type:'segment',segIndex:fi-1}, outTarget={type:'loop'}
+function getFrameConnectedHandleTargets(fi) {
+  let inTarget  = null;
+  let outTarget = null;
+
+  // Handle IN: trecho que chega ao frame fi
+  if (fi > 0) {
+    inTarget = { type: 'segment', segIndex: fi - 1 };
+  } else if (loopEnabled && frameCount >= 2) {
+    // F1 com loop: IN vem do trecho loop (último frame → F1)
+    inTarget = { type: 'loop' };
+  }
+
+  // Handle OUT: trecho que sai do frame fi
+  if (fi < frameCount - 1) {
+    outTarget = { type: 'segment', segIndex: fi };
+  } else if (loopEnabled && frameCount >= 2) {
+    // Último frame com loop: OUT vai para o trecho loop (último frame → F1)
+    outTarget = { type: 'loop' };
+  }
+
+  return { inTarget, outTarget };
+}
+
+// Calcula posição visual do handle para um target específico.
+// fi: frame ativo (de onde parte o braço visual)
+// role: 'in' | 'out'
+// target: { type:'segment', segIndex } | { type:'loop' }
+// Retorna { hx, hy } em pixels do stage, ou null se inválido.
+function getFrameHandleGeometryForTarget(fi, role, target) {
+  if (!target) return null;
+  const Px = frameCX(fi), Py = frameCY(fi);
+  const DEFAULT_ARM = 48;
+
+  let cp = null;
+  let fallbackDx = 0, fallbackDy = 0;
+
+  if (target.type === 'segment') {
+    const segIdx = target.segIndex;
+    if (segIdx < 0 || segIdx >= frameCount - 1) return null;
+    cp = getSegmentCurvePuller(segIdx);
+    if (role === 'in') {
+      // Fallback: direção para o frame anterior
+      const prevFi = fi - 1 >= 0 ? fi - 1 : 0;
+      fallbackDx = frameCX(prevFi) - Px;
+      fallbackDy = frameCY(prevFi) - Py;
+    } else {
+      // Fallback: direção para o próximo frame
+      const nextFi = fi + 1 < frameCount ? fi + 1 : fi;
+      fallbackDx = frameCX(nextFi) - Px;
+      fallbackDy = frameCY(nextFi) - Py;
+    }
+  } else if (target.type === 'loop') {
+    const loopIdx = getLoopSegmentIndex();
+    if (loopIdx < 0) return null;
+    cp = getSegmentCurvePuller(loopIdx);
+    if (fi === 0) {
+      // F1 IN de loop: fallback para direção do último frame
+      fallbackDx = frameCX(frameCount - 1) - Px;
+      fallbackDy = frameCY(frameCount - 1) - Py;
+    } else {
+      // Último frame OUT de loop: fallback para direção de F1
+      fallbackDx = frameCX(0) - Px;
+      fallbackDy = frameCY(0) - Py;
+    }
+  } else {
+    return null;
+  }
+
+  if (cp) {
+    const hx = cp.nx * stageW;
+    const hy = cp.ny * stageH;
+    const dist = Math.sqrt((hx - Px) ** 2 + (hy - Py) ** 2);
+    if (isFinite(dist) && dist >= 8) return { hx, hy };
+  }
+
+  // Fallback: direção proporcional ao longo da corda do trecho
+  const flen = Math.sqrt(fallbackDx * fallbackDx + fallbackDy * fallbackDy) || 1;
+  return {
+    hx: Px + (fallbackDx / flen) * DEFAULT_ARM,
+    hy: Py + (fallbackDy / flen) * DEFAULT_ARM
+  };
+}
+
+// v8z4b20c: Geometria completa dos handles IN e OUT para qualquer frame ativo.
+// Substitui getActiveFrameInOutHandleGeometry — suporta F1, intermediários,
+// último frame e loop.
+// Retorna { Px, Py, inHx, inHy, outHx, outHy, inTarget, outTarget } ou null.
+function getFrameHandleGeometry(fi) {
+  const { inTarget, outTarget } = getFrameConnectedHandleTargets(fi);
+  const hasAny = inTarget || outTarget;
+  if (!hasAny) return null;
+
+  const Px = frameCX(fi), Py = frameCY(fi);
+  const inGeo  = inTarget  ? getFrameHandleGeometryForTarget(fi, 'in',  inTarget)  : null;
+  const outGeo = outTarget ? getFrameHandleGeometryForTarget(fi, 'out', outTarget) : null;
+
+  return {
+    Px, Py,
+    inHx:  inGeo  ? inGeo.hx  : null,
+    inHy:  inGeo  ? inGeo.hy  : null,
+    outHx: outGeo ? outGeo.hx : null,
+    outHy: outGeo ? outGeo.hy : null,
+    inTarget,
+    outTarget
+  };
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ─── v8z4b20b: Geometria dos dois handles IN/OUT do frame intermediário ativo ─
+// LEGADO — mantido para compatibilidade interna; use getFrameHandleGeometry() em v8z4b20c.
 //
 // Retorna posições de pixel dos handles de entrada (IN) e saída (OUT)
 // derivadas dos ctrlPts reais, não de um padrão automático que sobrescreve
@@ -11093,19 +11226,28 @@ function drawBezier() {
     svg += `<path d="M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}" stroke="rgba(180,100,255,${lineOp})" stroke-width="${lineW}" fill="none" stroke-linecap="round" />`;
   }
 
-  // v8z4b20b: Frame IN/OUT handle arms — hastes de haste do centro do frame até cada handle
-  // Substituem o braço único do frame-tangent-dot (v8z4b19z).
-  const _canHandles = !window._isoMode && frameCount >= 3 &&
-                      activeIdx > 0 && activeIdx < frameCount - 1 &&
-                      !!imgEl.src && !isPreviewing;
+  // v8z4b20c: Frame IN/OUT handle arms — hastes de haste do centro do frame até cada handle
+  // v8z4b20c: suporta F1, intermediários, último frame e loop (não apenas intermediários).
+  const _hTargets = getFrameConnectedHandleTargets(activeIdx);
+  const _canHandles = !window._isoMode && frameCount >= 2 &&
+                      !!imgEl.src && !isPreviewing &&
+                      (_hTargets.inTarget || _hTargets.outTarget);
   if (_canHandles) {
-    const _hGeo = getActiveFrameInOutHandleGeometry(activeIdx);
+    const _hGeo = getFrameHandleGeometry(activeIdx);
     if (_hGeo) {
       const _invZ = 1 / editorZoomScale;
-      // Braço IN (âmbar suave, tracejado)
-      svg += `<line x1="${_hGeo.Px}" y1="${_hGeo.Py}" x2="${_hGeo.inHx}" y2="${_hGeo.inHy}" stroke="rgba(255,210,0,0.55)" stroke-width="${1.5 * _invZ}" stroke-dasharray="${3*_invZ},${2*_invZ}" opacity="0.85"/>`;
-      // Braço OUT (âmbar mais vivo, sólido)
-      svg += `<line x1="${_hGeo.Px}" y1="${_hGeo.Py}" x2="${_hGeo.outHx}" y2="${_hGeo.outHy}" stroke="rgba(255,210,0,0.78)" stroke-width="${1.5 * _invZ}" opacity="0.90"/>`;
+      // Braço IN — âmbar (normal) ou roxo (loop), tracejado
+      if (_hGeo.inHx !== null && _hGeo.inHy !== null) {
+        const _inIsLoop = _hGeo.inTarget && _hGeo.inTarget.type === 'loop';
+        const _inColor  = _inIsLoop ? 'rgba(180,100,255,0.65)' : 'rgba(255,210,0,0.55)';
+        svg += `<line x1="${_hGeo.Px}" y1="${_hGeo.Py}" x2="${_hGeo.inHx}" y2="${_hGeo.inHy}" stroke="${_inColor}" stroke-width="${1.5 * _invZ}" stroke-dasharray="${3*_invZ},${2*_invZ}" opacity="0.85"/>`;
+      }
+      // Braço OUT — âmbar (normal) ou roxo (loop), sólido
+      if (_hGeo.outHx !== null && _hGeo.outHy !== null) {
+        const _outIsLoop = _hGeo.outTarget && _hGeo.outTarget.type === 'loop';
+        const _outColor  = _outIsLoop ? 'rgba(180,100,255,0.85)' : 'rgba(255,210,0,0.78)';
+        svg += `<line x1="${_hGeo.Px}" y1="${_hGeo.Py}" x2="${_hGeo.outHx}" y2="${_hGeo.outHy}" stroke="${_outColor}" stroke-width="${1.5 * _invZ}" opacity="0.90"/>`;
+      }
     }
   }
 
@@ -11212,19 +11354,20 @@ function updateCtrlPts() {
     // Nenhuma mudança aqui — loopEl permanece interativo.
   }
 
-  // ── v8z4b20b: Frame IN/OUT handles — dois losangos âmbar no frame intermediário ativo ──
-  // Substituem o handle único frame-tangent-dot (v8z4b19z).
-  // IN handle: posição de ctrlPts[fi-1] (trecho anterior) — lado de entrada.
-  // OUT handle: posição de ctrlPts[fi] (trecho seguinte) — lado de saída.
-  // Modo suave/linkado por padrão: arrastar um atualiza ambos em 180°.
+  // ── v8z4b20c: Frame IN/OUT handles — dois losangos âmbar por frame com segmento conectado ──
+  // v8z4b20c: suporta F1, intermediários, último frame e loop (segment-local editing).
+  // IN handle: posição do ctrlPt do trecho de entrada — lado de entrada.
+  // OUT handle: posição do ctrlPt do trecho de saída — lado de saída.
+  // Cada handle edita apenas o trecho diretamente conectado a ele.
 
   // Ocultar o handle legado (frame_tangent_dot) — substituído pelos dois handles
   const _legacyTangentEl = document.getElementById('frame_tangent_dot');
   if (_legacyTangentEl) _legacyTangentEl.style.display = 'none';
 
-  const canShowHandles = !window._isoMode && frameCount >= 3 &&
-                         activeIdx > 0 && activeIdx < frameCount - 1 &&
-                         !!imgEl.src && !isPreviewing;
+  const _hTargets20c = getFrameConnectedHandleTargets(activeIdx);
+  const canShowHandles = !window._isoMode && frameCount >= 2 &&
+                         !!imgEl.src && !isPreviewing &&
+                         (_hTargets20c.inTarget || _hTargets20c.outTarget);
 
   // Helper local: cria ou reaproveita elemento de handle
   function _ensureHandleEl(id, cls) {
@@ -11242,37 +11385,73 @@ function updateCtrlPts() {
   let outHandleEl = document.getElementById('frame_out_handle');
 
   if (canShowHandles) {
-    const _hGeo = getActiveFrameInOutHandleGeometry(activeIdx);
+    const _hGeo = getFrameHandleGeometry(activeIdx);
     if (_hGeo) {
-      // IN handle
-      inHandleEl = _ensureHandleEl('frame_in_handle', 'frame-in-handle');
-      if (!inHandleEl._arcoListenerAttached) {
-        inHandleEl.addEventListener('pointerdown', e => {
-          if (editorPanMode || isPreviewing) return;
-          e.stopPropagation();
-          startFrameHandleDrag('in');
-        });
-        inHandleEl._arcoListenerAttached = true;
+      // IN handle — mostrar apenas se existe trecho de entrada
+      if (_hGeo.inHx !== null && _hGeo.inHy !== null) {
+        inHandleEl = _ensureHandleEl('frame_in_handle', 'frame-in-handle');
+        if (!inHandleEl._arcoListenerAttached) {
+          inHandleEl.addEventListener('pointerdown', e => {
+            if (editorPanMode || isPreviewing) return;
+            e.stopPropagation();
+            startFrameHandleDrag('in');
+          });
+          inHandleEl._arcoListenerAttached = true;
+        }
+        // v8z4b20c: cor do handle de loop é roxa para diferenciar
+        if (_hGeo.inTarget && _hGeo.inTarget.type === 'loop') {
+          inHandleEl.style.background = 'rgba(180,100,255,1)';
+          inHandleEl.style.boxShadow  = '0 2px 8px rgba(0,0,0,.4),0 0 0 5px rgba(180,100,255,.25)';
+        } else {
+          inHandleEl.style.background = '';
+          inHandleEl.style.boxShadow  = '';
+        }
+        inHandleEl.style.display = 'block';
+        inHandleEl.style.left    = _hGeo.inHx + 'px';
+        inHandleEl.style.top     = _hGeo.inHy + 'px';
+        stage.appendChild(inHandleEl); // keep on top
+      } else {
+        if (inHandleEl) inHandleEl.style.display = 'none';
       }
-      inHandleEl.style.display = 'block';
-      inHandleEl.style.left    = _hGeo.inHx + 'px';
-      inHandleEl.style.top     = _hGeo.inHy + 'px';
-      stage.appendChild(inHandleEl); // keep on top
 
-      // OUT handle
-      outHandleEl = _ensureHandleEl('frame_out_handle', 'frame-out-handle');
-      if (!outHandleEl._arcoListenerAttached) {
-        outHandleEl.addEventListener('pointerdown', e => {
-          if (editorPanMode || isPreviewing) return;
-          e.stopPropagation();
-          startFrameHandleDrag('out');
-        });
-        outHandleEl._arcoListenerAttached = true;
+      // OUT handle — mostrar apenas se existe trecho de saída
+      if (_hGeo.outHx !== null && _hGeo.outHy !== null) {
+        outHandleEl = _ensureHandleEl('frame_out_handle', 'frame-out-handle');
+        if (!outHandleEl._arcoListenerAttached) {
+          outHandleEl.addEventListener('pointerdown', e => {
+            if (editorPanMode || isPreviewing) return;
+            e.stopPropagation();
+            startFrameHandleDrag('out');
+          });
+          outHandleEl._arcoListenerAttached = true;
+        }
+        // v8z4b20c: cor do handle de loop é roxa para diferenciar
+        if (_hGeo.outTarget && _hGeo.outTarget.type === 'loop') {
+          outHandleEl.style.background = 'rgba(180,100,255,1)';
+          outHandleEl.style.boxShadow  = '0 2px 8px rgba(0,0,0,.4),0 0 0 5px rgba(180,100,255,.25)';
+        } else {
+          outHandleEl.style.background = '';
+          outHandleEl.style.boxShadow  = '';
+        }
+        outHandleEl.style.display = 'block';
+        outHandleEl.style.left    = _hGeo.outHx + 'px';
+        outHandleEl.style.top     = _hGeo.outHy + 'px';
+        stage.appendChild(outHandleEl); // keep on top
+      } else {
+        if (outHandleEl) outHandleEl.style.display = 'none';
       }
-      outHandleEl.style.display = 'block';
-      outHandleEl.style.left    = _hGeo.outHx + 'px';
-      outHandleEl.style.top     = _hGeo.outHy + 'px';
-      stage.appendChild(outHandleEl); // keep on top
+
+      // v8z4b20c: ocultar loop ctrl-pt quando handles de loop estão disponíveis.
+      // Evita sobreposição visual entre cpt_loop e os novos handles IN/OUT de loop.
+      const _hasLoopHandle = (_hGeo.inTarget && _hGeo.inTarget.type === 'loop') ||
+                             (_hGeo.outTarget && _hGeo.outTarget.type === 'loop');
+      if (_hasLoopHandle && loopEl && loopEl.style.display === 'block') {
+        loopEl.style.opacity       = '0';
+        loopEl.style.pointerEvents = 'none';
+      } else if (loopEl && loopEl.style.display === 'block') {
+        loopEl.style.opacity       = '';
+        loopEl.style.pointerEvents = '';
+      }
     } else {
       if (inHandleEl)  inHandleEl.style.display  = 'none';
       if (outHandleEl) outHandleEl.style.display = 'none';
@@ -11280,6 +11459,11 @@ function updateCtrlPts() {
   } else {
     if (inHandleEl)  inHandleEl.style.display  = 'none';
     if (outHandleEl) outHandleEl.style.display = 'none';
+    // v8z4b20c: restaurar loop ctrl-pt quando handles de loop não estão ativos
+    if (loopEl && loopEl.style.display === 'block') {
+      loopEl.style.opacity       = '';
+      loopEl.style.pointerEvents = '';
+    }
   }
   // ──────────────────────────────────────────────────────────────────────────
 }
@@ -11440,6 +11624,85 @@ function applyFrameHandleEdit(which, hx, hy) {
 
   return true;
 }
+
+// ─── v8z4b20c: applyFrameConnectedHandleEdit — segment-local editing ─────────
+//
+// Aplica edição de handle para APENAS o trecho diretamente conectado (target).
+// Substitui o modo suave/linkado da v8z4b20b que atualizava dois trechos.
+//
+// fi:    frame ativo
+// role:  'in' | 'out'
+// target: { type:'segment', segIndex } | { type:'loop' } | null
+// hx, hy: posição do handle arrastado em pixels do stage.
+//
+// Regras:
+// - role 'in', target segment → edita ctrlPts[segIndex]
+// - role 'out', target segment → edita ctrlPts[segIndex]
+// - qualquer role, target loop → edita loopCtrlPt
+// - Não altera outros trechos.
+// - Não altera loopCtrlPt quando target não for loop.
+// - Não altera segmento normal quando target for loop.
+// - Armazena t/perpX/perpY para preservar curva ao mover frame (v8z4b19z).
+function applyFrameConnectedHandleEdit(fi, role, target, hx, hy) {
+  if (!target) return false;
+  const Px = frameCX(fi), Py = frameCY(fi);
+
+  const dx = hx - Px, dy = hy - Py;
+  const dLen = Math.sqrt(dx * dx + dy * dy);
+  if (!isFinite(dLen) || dLen < 2) return false; // degenerate
+
+  const dirX = dx / dLen, dirY = dy / dLen;
+  const MIN_HANDLE_DIST = 10;
+
+  if (target.type === 'segment') {
+    const segIdx = target.segIndex;
+    if (segIdx < 0 || segIdx >= frameCount - 1) return false;
+
+    // Comprimento do segmento alvo para clamping
+    const p0x = frameCX(segIdx), p0y = frameCY(segIdx);
+    const p1x = frameCX(segIdx + 1), p1y = frameCY(segIdx + 1);
+    const segLen = Math.sqrt((p1x - p0x) ** 2 + (p1y - p0y) ** 2) || 1;
+    const strength = Math.max(MIN_HANDLE_DIST, Math.min(segLen * 0.65, dLen));
+
+    const cpNx = (Px + dirX * strength) / stageW;
+    const cpNy = (Py + dirY * strength) / stageH;
+    if (!isFinite(cpNx) || !isFinite(cpNy)) return false;
+
+    // Aplicar apenas no target — não alterar outros trechos
+    setSegmentCurvePuller(segIdx, { nx: cpNx, ny: cpNy });
+    ctrlPtManual[segIdx] = true;
+
+    // Armazenar t/perpX/perpY — bugfix mover frame (v8z4b19z preservado)
+    const tp = computeTPerpForSeg(segIdx, cpNx, cpNy);
+    if (isFinite(tp.t) && isFinite(tp.perpX) && isFinite(tp.perpY)) {
+      setSegmentCurvePuller(segIdx, { t: tp.t, perpX: tp.perpX, perpY: tp.perpY });
+    }
+
+    return true;
+
+  } else if (target.type === 'loop') {
+    const loopIdx = getLoopSegmentIndex();
+    if (loopIdx < 0) return false;
+
+    // Comprimento do trecho de loop (último frame → F1)
+    const p0x = frameCX(frameCount - 1), p0y = frameCY(frameCount - 1);
+    const p1x = frameCX(0), p1y = frameCY(0);
+    const loopLen = Math.sqrt((p1x - p0x) ** 2 + (p1y - p0y) ** 2) || 1;
+    const strength = Math.max(MIN_HANDLE_DIST, Math.min(loopLen * 0.65, dLen));
+
+    const cpNx = (Px + dirX * strength) / stageW;
+    const cpNy = (Py + dirY * strength) / stageH;
+    if (!isFinite(cpNx) || !isFinite(cpNy)) return false;
+
+    // Editar apenas loopCtrlPt — não alterar trechos normais
+    setSegmentCurvePuller(loopIdx, { nx: cpNx, ny: cpNy });
+
+    return true;
+  }
+
+  return false;
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ─── v8z4b19y: Frame tangent handle drag helpers (LEGADO — mantido como fallback) ──
 // v8z4b20b: substituído por startFrameHandleDrag / applyFrameHandleEdit.
@@ -11843,19 +12106,22 @@ function onMove(e) {
     return;
   }
 
-  // Frame IN/OUT handle drag — v8z4b20b
+  // Frame IN/OUT handle drag — v8z4b20c: segment-local editing
   if (frameHandleDragState) {
     const sc = screenToStageCoord(pos.x, pos.y);
     if (!frameHandleDragState.undoCaptured) {
       const fi = activeIdx;
-      if (fi <= 0 || fi >= frameCount - 1) { frameHandleDragState = null; return; }
+      // v8z4b20c: não rejeitar endpoints — handles agora aparecem em qualquer frame com segmento conectado
       const Px = frameCX(fi), Py = frameCY(fi);
       const dist = Math.sqrt((sc.x - Px) ** 2 + (sc.y - Py) ** 2);
       if (dist < 2) return; // limiar lazy undo — não criar undo por toque sem movimento real
       pushUndo(); // capturar estado ANTES de qualquer mudança
       frameHandleDragState.undoCaptured = true;
     }
-    const applied = applyFrameHandleEdit(frameHandleDragState.which, sc.x, sc.y);
+    // v8z4b20c: obter target do handle arrastado e editar apenas esse trecho
+    const _dragTargets = getFrameConnectedHandleTargets(activeIdx);
+    const _dragTarget  = frameHandleDragState.which === 'in' ? _dragTargets.inTarget : _dragTargets.outTarget;
+    const applied = applyFrameConnectedHandleEdit(activeIdx, frameHandleDragState.which, _dragTarget, sc.x, sc.y);
     if (applied) {
       frameHandleDragState.didMove = true;
       drawBezier(); updateCtrlPts();

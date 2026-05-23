@@ -1,6 +1,17 @@
 # Roadmap
 
-## Objetivo imediato — v8z4b20b (concluído)
+## Objetivo imediato — v8z4b20c (concluído)
+
+- ✅ Corrigir exibição de handles para endpoints e loop (F1, último frame, com/sem loop).
+- ✅ Handles baseados em trechos conectados, não apenas em frame intermediário.
+- ✅ Segment-local editing: cada handle edita apenas o trecho conectado.
+- ✅ Desativar atualização automática dos dois trechos vizinhos por drag.
+- ✅ Handles de loop em F1 (IN) e último frame (OUT) via `loopCtrlPt`.
+- ✅ Helpers `getFrameConnectedHandleTargets`, `getFrameHandleGeometry`, `applyFrameConnectedHandleEdit`.
+- ✅ Midpoint oculto; ctrl-pt legado oculto; JSON schema inalterado.
+- ✅ Bugfix mover frame preservado (v8z4b19z).
+
+## Objetivo anterior — v8z4b20b (concluído)
 
 - ✅ Substituir handle único simétrico por dois handles: IN handle (entrada) e OUT handle (saída).
 - ✅ Modo suave/linkado por padrão (os dois ctrlPts atualizados em 180° ao arrastar qualquer handle).
@@ -82,24 +93,36 @@ o que não é desejado para a interface final.
 - "Reta" neutraliza handles sem necessariamente remover o frame.
 - "Suavizar" e "Angular" alteram apenas o modo do handle, sem mover âncora.
 
-### Estado atual (v8z4b20b)
+### Estado atual (v8z4b20c)
 
-- **Frame IN/OUT handles (v8z4b20b):** dois handles visíveis por frame intermediário ativo:
-  - **IN handle** (`.frame-in-handle`): losango âmbar suave, controla `ctrlPts[fi-1]`.
-  - **OUT handle** (`.frame-out-handle`): losango âmbar mais vivo, controla `ctrlPts[fi]`.
-  - Modo suave/linkado por padrão (os dois colineares, passagem contínua).
+- **Frame IN/OUT handles (v8z4b20c):** handles visíveis para qualquer frame com trecho conectado:
+  - **IN handle** (`.frame-in-handle`): controla o trecho de entrada; âmbar (normal) ou roxo (loop).
+  - **OUT handle** (`.frame-out-handle`): controla o trecho de saída; âmbar (normal) ou roxo (loop).
+  - **Segment-local editing:** cada handle edita apenas o trecho diretamente conectado.
   - Modo Angular/Livre: **ainda não implementado** — roadmap futuro.
+  - Suavização automática de dois trechos (modo linkado): **desativada nesta versão**.
+- **Handles de loop (v8z4b20c):** F1 com loop mostra IN handle (→ `loopCtrlPt`);
+  último frame com loop mostra OUT handle (→ `loopCtrlPt`).
+- **Loop ctrl-pt (`cpt_loop`):** oculto quando handles de loop estão disponíveis.
 - **Frame tangent handle (v8z4b19z):** ocultado; substituído pelos dois handles IN/OUT.
 - **Midpoint pathPoint:** demovido da UI principal (v8z4b20a); mantido internamente.
-- **ctrl-pt/losango legado:** não exibido como controle principal.
-- **Loop ctrl-pt:** mantido visível e interativo (sem handles IN/OUT para loop).
+- **ctrl-pt/losango legado:** não exibido como controle principal para segmentos normais.
+
+### Limitações do schema legado (v8z4b20c)
+
+No schema atual, cada trecho normal possui apenas um `ctrlPt`:
+- `ctrlPts[segIndex]` controla todo o trecho.
+- O handle OUT de F4 e o handle IN de F5 são dois acessos ao mesmo `ctrlPts[segIndex]` do trecho F4→F5.
+- Eles **não** têm independência persistente nesta versão.
+- Ao editar um, o outro refletirá a mesma posição ao selecionar o frame vizinho — comportamento esperado.
+- Independência real de handles (tangentes de entrada e saída separadas) exige modelo futuro `curvesV2` ou cúbico.
 
 ### Próximos passos de handles (futuro, não imediato)
 
 - **Modo Angular/Livre real:** handles independentes; menu contextual Suavizar/Angular/Reta/Remover.
 - **Menu contextual** estilo Illustrator para iPad: ações por toque longo no frame ativo.
 - Implementar ação "Reta" (neutralizar handles).
-- Handles em F1 e último frame quando loop ativo.
+- **Suavizar automático entre frames (modo linkado):** ação explícita futura — desativado em v8z4b20c para evitar interferência entre frames.
 - Reset local da curva do frame ativo.
 - Reset global de curvas.
 - Handles independentes persistidos no JSON (novo schema, nova versão maior).
