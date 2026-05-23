@@ -1,5 +1,58 @@
 # Changelog
 
+## v8z4b19z — preserve frame tangent edits when moving frames
+
+Corrige o bug principal onde mover um frame após ajustar o handle/tangente resetava a curva
+para uma posição automática/reta/ortogonal. Diferencia visualmente o handle de frame do
+midpoint pathPoint. Faz a distância do handle ao centro do frame controlar a intensidade
+da tangente.
+
+### BLOCO A — Corrigir reset da tangente ao mover frame
+
+**Bug corrigido:** após ajustar o handle de tangente, mover o frame resetava ctrlPts para
+a posição padrão (midpoint automático).
+
+**Causa:** `applyFrameTangentEdit()` setava apenas `{nx, ny}` nos ctrlPts, deixando
+`{t, perpX, perpY}` com valores stale do estado anterior. Quando `syncCtrlPtsForFrame()`
+rodava no próximo drag de frame, encontrava `t`/`perpX`/`perpY` finitos mas stale,
+usava-os para reposicionar o ctrl pt, e resetava a tangente.
+
+**Correção:** após setar `nx`/`ny`, `applyFrameTangentEdit()` agora chama
+`computeTPerpForSeg()` para derivar `t`/`perpX`/`perpY` consistentes com a nova posição,
+garantindo que `syncCtrlPtsForFrame()` preserve a tangente manual ao mover frames.
+
+### BLOCO B — Diferenciar visualmente handle de frame do midpoint pathPoint
+
+- Handle de frame (`#frame_tangent_dot`) trocado de **círculo** para **losango/diamante**:
+  - `border-radius: 2px` (era `50%`) + `rotate(45deg)` no transform CSS.
+  - Cor âmbar/dourada mantida; haste tracejada âmbar mantida.
+  - midpoint pathPoint continua círculo branco com borda colorida.
+
+### BLOCO C — Distância do handle controla força da tangente
+
+- `applyFrameTangentEdit()` usa `dLen` (distância P→H) como `strength` dos ctrlPts:
+  - `strengthPrev = clamp(dLen, 10, lenPrev * 0.65)` — trecho anterior.
+  - `strengthNext = clamp(dLen, 10, lenNext * 0.65)` — trecho seguinte.
+  - Perto do frame = suavidade leve; longe = curva mais oblíqua, sem explodir.
+  - Antes: força era fixada em `0.4 * comprimento_do_trecho` independente do drag.
+
+### Nova função `getFrameTangentGeometry(fi)`
+
+- Substitui `getFrameTangentDir(fi)` — retorna posição absoluta `{hx, hy, dirX, dirY, dist}`.
+- Deriva do estado real dos ctrlPts (não sobrescreve curvas).
+- Se `ctrlPtManual[fi-1]` e/ou `ctrlPtManual[fi]`: usa vetores `P−Cprev` e `Cnext−P`.
+- Fallback: corda `Pprev→Pnext` com `dist = 48px`.
+- Usada em `drawBezier()` e `updateCtrlPts()`.
+
+### Implementação
+
+- `getFrameTangentGeometry(fi)` — nova função; substitui `getFrameTangentDir()`.
+- `applyFrameTangentEdit(hx, hy)` — atualizado: dLen como strength + armazena t/perpX/perpY.
+- `drawBezier()` — usa `getFrameTangentGeometry()`.
+- `updateCtrlPts()` — usa `getFrameTangentGeometry()`.
+- CSS `.frame-tangent-dot` — `border-radius:2px` + `rotate(45deg)`.
+- JSON schema inalterado: sem campos novos.
+
 ## v8z4b19y — add active frame tangent handle prototype
 
 Adiciona um **handle de tangente âmbar** no frame ativo intermediário para ajuste
