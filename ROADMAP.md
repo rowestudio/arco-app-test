@@ -66,7 +66,7 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19v)
+### Estado atual (v8z4b19w)
 
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
@@ -123,15 +123,22 @@ compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 - `applyExistingCurveEditViaPatch(target, nextCtrlPt, options)` — roteia edição de curva existente pelo aplicador guardado: cria patch → valida → aplica com `allowRealMutation: true`; pushUndo/markDirty/render gerenciados externamente pelo chamador. Introduzido na v8z4b19u.
 - **Edição de curva existente agora passa pelo aplicador guardado (v8z4b19u):** `setSegmentTrajectoryPoint()` usa `applyExistingCurveEditViaPatch()` em vez de `setSegmentCurve()` direto; curvas normais e curva de loop incluídas; comportamento visual idêntico à v8z4b19t; Undo/Redo/markDirty/render preservados; JSON schema inalterado; nenhum campo novo.
 - **Midpoint pathPoint editável implementado (v8z4b19v):** `pathPoints[0]` (em `t=0.5`) agora é visível como círculo branco arrastável sobre curvas ativas; drag usa `simulateRuntimePathPointEdit()` → `createLegacyCurvePatchFromSimulatedPathPointEdit()` → `validateLegacyCurvePatchCandidate()` → `applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true })`; loop também suportado; curvePuller legado preservado; JSON schema inalterado; nenhum campo novo.
+- **Midpoint pathPoint elevado a controle principal (v8z4b19w):** z-index elevado para 76 (supera ctrl-pt em 75); `ctrl-pt`/losango recebe `pointer-events: none` + `opacity: 0.38` quando midpoint pathPoint está ativo no segmento — fica visível mas não intercepta gestos; loop corrigido da mesma forma (`loopEl` vira secundário quando `midpt_loop` está visível); `.mid-pathpt` adicionado ao whitelist do `attachImageAreaCloseHandler()`; pipeline guardado preservado; JSON schema inalterado; nenhum campo novo.
 - **Reset global de curvas registrado como roadmap futuro:** não implementado; avaliar integração com o pipeline guardado quando a UI estiver pronta.
 - **Bug de `_file.json` sem `imageBase64`** mantido apenas no ROADMAP (fase UI/carregamento futura). Tempos/proporções mantidos no roadmap futuro. Velocidade composta mantida no roadmap futuro. Criação de frame seguindo curva de loop mantida no roadmap futuro.
 
 ### Próximos passos (futuros, não imediatos)
 
+- **Handles/tangentes estilo Illustrator em frameAnchors e pathPoints:** controles de tangência; requer `mode = 'vectorAnchors'` e avaliador Bézier cúbico.
+- **Handles nos frames:** suporte a tangentes diretamente associadas a frameAnchors.
+- **Handles nos pathPoints:** suporte a tangentes diretamente associadas a pathPoints.
 - **Múltiplos pathPoints por trecho:** adicionar pontos de passagem além do midpoint em t=0.5 (ex: t=0.25, t=0.75); requer modelo de edição mais completo.
-- **Handles/tangentes estilo Illustrator:** controles de tangência em frameAnchors e pathPoints; requer `mode = 'vectorAnchors'` e avaliador Bézier cúbico.
 - **Modo caneta / criação de trajetória vetorial:** clicar cria frame; clicar e arrastar cria handle; modo desenho livre.
 - **Reset global de curvas:** resetar todos os `ctrlPts` + `loopCtrlPt` para posição padrão; conectar ao pipeline guardado; preservar Undo/Redo.
+- **Bug `_file.json` sem `imageBase64`:** arquivos salvos sem imagem não têm `imageBase64`; ao reabrir, app deve tratar ausência sem erro ou campo fantasma.
+- **Preservação de proporções internas dos tempos:** ao alterar duração total, preservar proporções relativas dos `segDurations`; requer UI de confirmação.
+- **Velocidade composta:** combinação de easing + velocidade relativa por segmento; requer modelo de controle por trecho.
+- **Criação de frame seguindo curva de loop:** inserir novo frame ao longo da trajetória do loop; posição inicial derivada da curva, não do centro do stage.
 - Adicionar `pathPoints` reais como pontos de passagem sem tempo próprio.
 - Adicionar `handles` de tangência para controle Bézier cúbico.
 - Implementar `mode = 'vectorAnchors'` com avaliador Bézier cúbico.
