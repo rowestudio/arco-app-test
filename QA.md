@@ -2,6 +2,110 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19u — route existing curve edits through guarded patch applier
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19u` na UI (Settings).
+3. Confirmar que nome da versão exibe `route existing curve edits through guarded patch applier`.
+
+### Teste B — faixa preta superior (regressão v8z4b19n)
+1. Carregar imagem no iPhone/Safari.
+2. Entrar no Preview.
+3. Confirmar que a faixa preta superior continua presente.
+4. Confirmar que o canvas não invade a Dynamic Island.
+
+### Teste C — curvas normais (edição via novo pipeline)
+1. Criar projeto com pelo menos 4 frames.
+2. Puxar curva normal F1→F2.
+3. Confirmar que curva muda visualmente igual à v8z4b19t.
+4. Puxar curva normal F2→F3.
+5. Confirmar que curva muda visualmente igual à v8z4b19t.
+6. Confirmar Undo da curva normal (curva volta ao estado anterior).
+7. Confirmar Redo da curva normal (curva avança ao estado seguinte).
+8. Mover frame depois de puxar curvas e confirmar que as curvas não pulam.
+
+### Teste D — loop e curva de loop (edição via novo pipeline)
+1. Ativar loop via chip Loop no painel Duração.
+2. Confirmar que curva de loop aparece imediatamente no Stage, sem tocar no Stage.
+3. Puxar curva de loop.
+4. Confirmar que curva de loop muda visualmente igual à v8z4b19t.
+5. Confirmar Undo da curva de loop.
+6. Confirmar Redo da curva de loop.
+
+### Teste E — Preview (regressão)
+1. Rodar Preview.
+2. Confirmar que a faixa preta superior do Preview continua presente.
+3. Confirmar que Preview respeita curvas normais.
+4. Confirmar que Preview respeita curva de loop.
+
+### Teste F — MP4/export e botão Salvar MP4 (regressão v8z4b19s)
+1. Gerar MP4 normalmente.
+2. Confirmar que MP4 respeita curvas normais e loop.
+3. Entrar no Preview e gerar MP4.
+4. Tocar em **Salvar MP4**.
+5. Confirmar que o salvamento/download inicia normalmente.
+6. Confirmar que o botão **não** fica preso em estado done/pronto/ativo.
+7. Confirmar que, ao sair do Preview, o MP4 gerado é limpo (regressão v8z4b19o).
+8. Iniciar geração de MP4 e tocar Voltar antes de terminar.
+9. Confirmar que Stage não trava.
+10. Confirmar que play/pause não fica preso.
+
+### Teste G — save/load (regressão)
+1. Salvar projeto com imagem:
+   - filename termina em `_img.json`.
+   - `version` salva como `v8z4b19u`.
+   - `imageBase64` existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado quando loop ativo.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+2. Salvar projeto sem imagem:
+   - filename termina em `_file.json`.
+   - `version` salva como `v8z4b19u`.
+   - `imageBase64` não existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado quando loop ativo.
+3. Abrir JSON salvo em v8z4b19t com imagem e confirmar compatibilidade.
+4. Confirmar que nenhum destes campos apareceu no JSON:
+   - `curvesV2`
+   - `vectorPath`
+   - `handles`
+   - `pathPoints`
+   - `runtimeCurveModel`
+   - `capabilities`
+   - `spans`
+   - `generatedMp4`
+   - `exportBlob`
+   - `legacyCurvePatch`
+   - `patchCandidate`
+   - `patchApplicationDraft`
+   - `realCurvePatchApplication`
+   - `selfTest`
+5. Confirmar que `segDurations` não mudou de schema.
+
+### Teste H — pipeline guardado (novo v8z4b19u)
+1. Com projeto de pelo menos 2 frames, puxar uma curva normal.
+2. Confirmar que a curva visual muda como antes.
+3. Confirmar que `ctrlPts[segIndex]` foi atualizado com os valores corretos.
+4. Confirmar que `ctrlPtManual[segIndex] === true` após puxar.
+5. Ativar loop, puxar curva de loop.
+6. Confirmar que `loopCtrlPt` foi atualizado com os valores corretos.
+7. Confirmar que self-test da v8z4b19t continua disponível:
+   ```js
+   window.__arcoInternalDiag.curvePatchSelfTest.suite()
+   ```
+8. Confirmar que self-test ainda retorna `appliedToRealState: false` (harness guardado).
+9. Confirmar que self-test não afeta curvas após ser rodado.
+
+### Teste I — console (regressão)
+1. Confirmar que não há erro de console, NaN ou Infinity.
+2. Confirmar que o PR ficou aberto e não foi mergeado.
+
+---
+
 ## v8z4b19t — add internal curve patch self-test harness
 
 ### Teste A — abertura e versão
