@@ -1,5 +1,89 @@
 # Changelog
 
+## v8z4b19v — enable midpoint path point editing
+
+Primeira implementação visível e interativa do pathPoint real: um ponto de passagem
+em t=0.5 sobre a curva ativa, arrastável pelo usuário, convertido internamente para
+curvePuller legado via pipeline guardado aprovado.
+
+### Objetivo
+
+Exibir e permitir arrastar um **midpoint pathPoint** (círculo branco com borda
+colorida) sobre cada segmento de curva ativo. Ao arrastar, o app:
+
+1. Chama `simulateRuntimePathPointEdit(model, pathPoint, nextPoint)` para derivar
+   o novo curvePuller via inversão matemática da Bézier quadrática.
+2. Cria patch candidato com `createLegacyCurvePatchFromSimulatedPathPointEdit()`.
+3. Valida com `validateLegacyCurvePatchCandidate()`.
+4. Aplica com `applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true })`.
+
+O JSON continua salvando apenas `ctrlPts` / `ctrlPtManual` / `loopCtrlPt`.
+Nenhum campo novo. Schema inalterado.
+
+### Matemática
+
+Para Bézier quadrática em t=0.5:
+
+```
+C = 2·M − 0.5·P0 − 0.5·P1
+```
+
+onde `P0` = frame inicial, `P1` = frame final, `M` = midpoint proposto, `C` = curvePuller derivado.
+
+Implementada em `deriveLegacyCurvePullerFromMidpoint()` (v8z4b19m, intacto).
+
+### Visual
+
+- Círculo branco (`.mid-pathpt`) de 8×8 px, borda colorida.
+- Cor: azul (`#00d4ff`) para segmento anterior ao frame ativo; laranja (`#f5a623`)
+  para segmento posterior; roxo para loop.
+- Aparece apenas sobre segmentos ativos (mesma visibilidade do curvePuller).
+- `z-index: 74` (abaixo do curvePuller, z-index 75).
+
+### Funções novas
+
+#### `getMidpointEl(seg)`
+
+Retorna o elemento DOM do midpoint pathPoint para o segmento `seg` (número ou `'loop'`).
+
+#### `startMidpointDrag(seg, segType)`
+
+Inicia o drag de midpoint pathPoint. Chama `pushUndo()`, inicializa `midpointDragState`.
+
+#### `applyMidpointPathPointEdit(seg, segType, nx, ny)`
+
+Pipeline completo: `buildRuntimeCurveModel` → `simulateRuntimePathPointEdit` →
+`createLegacyCurvePatchFromSimulatedPathPointEdit` → `validateLegacyCurvePatchCandidate` →
+`applyLegacyCurvePatchCandidateToRealState`. Retorna `true` se aplicado.
+
+### Interação
+
+- `pointerdown` no midpoint → `pushUndo()` + `midpointDragState = { seg, segType, didMove: false }`.
+- `pointermove` → `applyMidpointPathPointEdit()` + `drawBezier()` + `updateCtrlPts()`.
+- `pointerup` → limpa `midpointDragState`; se `didMove`, chama `markProjectDirty('midpoint-pathpoint')`.
+
+### Undo/Redo
+
+- Uma entrada de undo por arrasto (pushUndo no início do drag).
+- Não duplica undo com o fluxo do curvePuller existente.
+
+### Loop
+
+Loop é suportado: midpoint pathPoint do loop é exibido quando loop ativo e F1 ou
+último frame selecionado. Arrasto usa o mesmo pipeline via `target: { type: 'loop' }`.
+
+### Preservação
+
+- JSON schema inalterado. Nenhum campo novo.
+- curvePuller legado continua disponível e funcional.
+- Undo/Redo de curvas preservado.
+- Preview e MP4 respeitam a curva resultante.
+- Salvar MP4 não regrediu.
+- Faixa preta superior do Preview intacta.
+- Self-test harness da v8z4b19t intacto.
+
+---
+
 ## v8z4b19u — route existing curve edits through guarded patch applier
 
 Ativação controlada do novo pipeline interno de curvas para a edição de curvas já

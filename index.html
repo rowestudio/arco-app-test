@@ -1,13 +1,21 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19u                                     ║
+║  Versão: v8z4b19v                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19v                                            ║
+║    feat: enable midpoint path point editing          ║
+║         midpoint pathPoint em t=0.5 exibido sobre   ║
+║         curva ativa; arrastável; converte para       ║
+║         curvePuller via simulate→patch→validate→     ║
+║         apply; Undo/Redo/dirty preservados           ║
+║         JSON schema inalterado; sem campo novo       ║
+║         loop também suportado                        ║
 ║  v8z4b19u                                            ║
 ║    feat: route existing curve edits through          ║
 ║         guarded patch applier                        ║
@@ -242,7 +250,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19u — route existing curve edits through guarded patch applier: createLegacyCurvePatchFromCurrentCurveEdit() + applyExistingCurveEditViaPatch() — setSegmentTrajectoryPoint() agora roteia edição de ctrlPts/loopCtrlPt pelo aplicador guardado applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true }) em vez de chamar setSegmentCurve() diretamente; comportamento visual idêntico à v8z4b19t; Undo/Redo/markProjectDirty/render preservados; JSON schema inalterado; sem campo novo; curva de loop incluída no novo pipeline; self-test harness da v8z4b19t intacto -->
+<!-- Arco Motion App — v8z4b19v — enable midpoint path point editing: midpoint pathPoint em t=0.5 exibido sobre curva ativa como círculo branco arrastável; arrasto usa simulateRuntimePathPointEdit() → createLegacyCurvePatchFromSimulatedPathPointEdit() → validateLegacyCurvePatchCandidate() → applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true }); Undo/Redo/markProjectDirty/render preservados; JSON schema inalterado; sem campo novo; loop também suportado; curvePuller legado preservado -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -462,6 +470,15 @@ body.recording #editorZoomCtrl{display:none;}
   width:44px;height:44px;transform:translate(-50%,-50%);
   background:transparent;border-radius:50%;}
 .ctrl-pt:active{cursor:grabbing;}
+
+/* Midpoint pathPoint — círculo branco com borda colorida (v8z4b19v) */
+.mid-pathpt{position:absolute;width:8px;height:8px;border-radius:50%;
+  background:rgba(255,255,255,0.92);border:2px solid #00d4ff;box-shadow:none;
+  cursor:grab;transform:translate(-50%,-50%) scale(var(--ez-inv,1));touch-action:none;z-index:74;}
+.mid-pathpt::before{content:"";position:absolute;left:50%;top:50%;
+  width:44px;height:44px;transform:translate(-50%,-50%);
+  background:transparent;border-radius:50%;}
+.mid-pathpt:active{cursor:grabbing;}
 
 /* Preview canvas */
 #previewCanvas{position:absolute;inset:0;display:none;pointer-events:none;}
@@ -2024,7 +2041,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19u</span><br><span id="appVersionNameText">route existing curve edits through guarded patch applier</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19v</span><br><span id="appVersionNameText">enable midpoint path point editing</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4365,8 +4382,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19u';
-const APP_VERSION_NAME = 'route existing curve edits through guarded patch applier';
+const APP_VERSION = 'v8z4b19v';
+const APP_VERSION_NAME = 'enable midpoint path point editing';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -9562,6 +9579,7 @@ function restoreState(state) {
   // Reconstruir DOM de frames e ctrl points
   document.querySelectorAll('.frame').forEach(el => el.remove());
   document.querySelectorAll('.ctrl-pt').forEach(el => el.remove());
+  document.querySelectorAll('.mid-pathpt').forEach(el => el.remove()); // v8z4b19v
   for (let i = 0; i < frameCount; i++) createFrameDOM(i);
   for (let i = 0; i < frameCount - 1; i++) createCtrlDOM(i);
 
@@ -9638,6 +9656,7 @@ function updateUndoRedoUI() {
 let dragState    = null;
 let ctrlDragSeg  = -1;
 let ctrlDragDidMove = false; // v8z4b19i: true se o ctrl-pt foi realmente movido no drag atual
+let midpointDragState = null; // v8z4b19v: { seg, segType, didMove } — drag de midpoint pathPoint
 let isPinching      = false;
 let pinchStartAngle = 0;
 let pinchStartRot   = 0;
@@ -10138,6 +10157,7 @@ function initDefaultFrames() {
     const fe = getFrameEl(i); if (fe) fe.remove();
     const ce = getCtrlEl(i);  if (ce) ce.remove();
   }
+  document.querySelectorAll('.mid-pathpt').forEach(el => el.remove()); // v8z4b19v
   frames.length = 0;
   ctrlPts.length = 0;
   ctrlPtManual.length = 0;
@@ -10839,6 +10859,8 @@ function updateCtrlPts() {
     }
     const loopEl = document.getElementById('cpt_loop');
     if (loopEl) loopEl.style.display = 'none';
+    // v8z4b19v: também ocultar midpoint pathPoints em isoMode
+    document.querySelectorAll('.mid-pathpt').forEach(el => { el.style.display = 'none'; });
     return;
   }
 
@@ -10882,7 +10904,145 @@ function updateCtrlPts() {
   } else if (loopEl) {
     loopEl.style.display = 'none';
   }
+
+  // ── v8z4b19v: Midpoint pathPoint markers ─────────────────────────────────
+  // Para cada segmento normal ativo, exibe o midpoint pathPoint (t=0.5).
+  for (let seg = 0; seg < MAX_FRAMES; seg++) {
+    const mEl = getMidpointEl(seg);
+    if (seg >= frameCount - 1) {
+      if (mEl) mEl.style.display = 'none';
+      continue;
+    }
+    const isActive = (seg === activeIdx || seg === activeIdx - 1);
+    if (!isActive) {
+      if (mEl) mEl.style.display = 'none';
+      continue;
+    }
+    // Calcular posição t=0.5 via pathPoints[0] do modelo runtime
+    const model = buildRuntimeCurveModel(seg);
+    const midPt  = model && model.pathPoints && model.pathPoints[0];
+    if (!midPt || !isFinite(midPt.x) || !isFinite(midPt.y)) {
+      if (mEl) mEl.style.display = 'none';
+      continue;
+    }
+    const midX = midPt.x * stageW;
+    const midY = midPt.y * stageH;
+    // Criar elemento se ainda não existe
+    let el = mEl;
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'midpt_' + seg;
+      el.className = 'mid-pathpt';
+      stage.appendChild(el);
+      const _seg = seg;
+      el.addEventListener('pointerdown', e => {
+        if (editorPanMode) return;
+        e.stopPropagation();
+        startMidpointDrag(_seg, 'normal');
+      });
+    }
+    el.style.display = 'block';
+    el.style.left    = midX + 'px';
+    el.style.top     = midY + 'px';
+    // Cor da borda combina com o segmento (azul=anterior, laranja=posterior)
+    const isPrevseg = (seg === activeIdx - 1);
+    el.style.borderColor = isPrevseg ? '#00d4ff' : '#f5a623';
+  }
+
+  // Midpoint pathPoint do loop
+  let loopMidEl = getMidpointEl('loop');
+  const showLoopMid = loopEnabled && frameCount >= 2 &&
+                      (activeIdx === 0 || activeIdx === frameCount - 1);
+  if (showLoopMid) {
+    const loopSegIdx = getLoopSegmentIndex();
+    const loopModel  = loopSegIdx >= 0 ? buildRuntimeCurveModel(loopSegIdx) : null;
+    const loopMidPt  = loopModel && loopModel.pathPoints && loopModel.pathPoints[0];
+    if (loopMidPt && isFinite(loopMidPt.x) && isFinite(loopMidPt.y)) {
+      const midX = loopMidPt.x * stageW;
+      const midY = loopMidPt.y * stageH;
+      if (!loopMidEl) {
+        loopMidEl = document.createElement('div');
+        loopMidEl.id = 'midpt_loop';
+        loopMidEl.className = 'mid-pathpt';
+        loopMidEl.style.borderColor = 'rgba(180,100,255,1)';
+        stage.appendChild(loopMidEl);
+        loopMidEl.addEventListener('pointerdown', e => {
+          if (editorPanMode) return;
+          e.stopPropagation();
+          startMidpointDrag('loop', 'loop');
+        });
+      }
+      loopMidEl.style.display = 'block';
+      loopMidEl.style.left    = midX + 'px';
+      loopMidEl.style.top     = midY + 'px';
+    } else {
+      if (loopMidEl) loopMidEl.style.display = 'none';
+    }
+  } else if (loopMidEl) {
+    loopMidEl.style.display = 'none';
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 }
+
+// ─── v8z4b19v: Midpoint pathPoint helpers ────────────────────────────────────
+
+// Retorna o elemento DOM do midpoint pathPoint para um segmento.
+// seg: número do segmento (normal) ou 'loop'.
+function getMidpointEl(seg) {
+  return document.getElementById('midpt_' + (seg === 'loop' ? 'loop' : seg));
+}
+
+// Inicia o drag de midpoint pathPoint.
+// seg: índice do segmento normal, ou 'loop'.
+// segType: 'normal' | 'loop'.
+function startMidpointDrag(seg, segType) {
+  if (isPreviewing) return;
+  document.body.classList.add('dragging');
+  pushUndo();
+  midpointDragState = { seg: seg, segType: segType, didMove: false };
+  // Marcar segmento como manual para evitar reposicionamento automático
+  if (segType === 'normal' && typeof seg === 'number' && seg >= 0) {
+    setSegmentCurveManual(seg, true);
+  }
+}
+
+// Aplica edição de midpoint pathPoint via pipeline guardado.
+// seg:     índice do segmento (normal) ou 'loop'.
+// segType: 'normal' | 'loop'.
+// nx, ny:  posição proposta do midpoint em coordenadas normalizadas (0–1).
+// Retorna true se a edição foi aplicada com sucesso.
+function applyMidpointPathPointEdit(seg, segType, nx, ny) {
+  const segIndex = (segType === 'loop') ? getLoopSegmentIndex() : seg;
+  if (segIndex < 0) return false;
+
+  const model = buildRuntimeCurveModel(segIndex);
+  if (!model) return false;
+
+  const pathPoint = model.pathPoints && model.pathPoints[0];
+  if (!pathPoint) return false;
+
+  // Simular edição: pathPoint proposto = { x: nx, y: ny }
+  const simulation = simulateRuntimePathPointEdit(model, pathPoint, { x: nx, y: ny });
+  if (!simulation || !simulation.ok) return false;
+
+  const target = (segType === 'loop')
+    ? { type: 'loop' }
+    : { type: 'segment', segIndex: seg };
+
+  const patch = createLegacyCurvePatchFromSimulatedPathPointEdit(target, simulation);
+  const patchValid = validateLegacyCurvePatchCandidate(patch);
+  if (!patchValid.ok) return false;
+
+  const result = applyLegacyCurvePatchCandidateToRealState(patch, {
+    allowRealMutation: true,
+    pushUndo:          false, // undo já foi feito em startMidpointDrag
+    markDirty:         false, // dirty feito em endDrag
+    render:            false  // render feito pelo chamador
+  });
+
+  return result.ok === true;
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ═══════════════════════════════════════
 // EDITOR ZOOM — v8z4b18b
@@ -11201,7 +11361,7 @@ function onMove(e) {
     document.body.classList.remove('dragging');
     return;
   }
-  if (dragState || ctrlDragSeg !== -1 || panDragState) {
+  if (dragState || ctrlDragSeg !== -1 || panDragState || midpointDragState) {
     e.preventDefault();
   }
   const pos = getPos(e);
@@ -11229,6 +11389,21 @@ function onMove(e) {
     setSegmentTrajectoryPoint(_segIdx, _adjDesc, { x: nx, y: ny });
     ctrlDragDidMove = true; // v8z4b19i: ponto de curva foi realmente movido
     drawBezier(); updateCtrlPts();
+    return;
+  }
+
+  // Midpoint pathPoint drag — v8z4b19v
+  if (midpointDragState) {
+    const sc = screenToStageCoord(pos.x, pos.y);
+    const nx = sc.x / stageW;
+    const ny = sc.y / stageH;
+    const applied = applyMidpointPathPointEdit(
+      midpointDragState.seg, midpointDragState.segType, nx, ny
+    );
+    if (applied) {
+      midpointDragState.didMove = true;
+      drawBezier(); updateCtrlPts();
+    }
     return;
   }
 
@@ -11385,14 +11560,20 @@ function endDrag(e) {
   if (dragState?.type === 'move') {
     try { document.querySelector(`.drag-zone[data-fi="${dragState.fi}"]`)?.releasePointerCapture?.(e?.pointerId); } catch(err) {}
   }
-  const hadCtrlDrag = ctrlDragSeg !== -1;
-  const ctrlMoved  = ctrlDragDidMove;
-  const hadInteraction = dragState != null || hadCtrlDrag;
+  const hadCtrlDrag     = ctrlDragSeg !== -1;
+  const ctrlMoved       = ctrlDragDidMove;
+  // v8z4b19v: midpoint pathPoint drag
+  const hadMidpointDrag = midpointDragState !== null;
+  const midpointMoved   = midpointDragState && midpointDragState.didMove;
+  const hadInteraction  = dragState != null || hadCtrlDrag || hadMidpointDrag;
   dragState = null; ctrlDragSeg = -1; ctrlDragDidMove = false;
+  midpointDragState = null; // v8z4b19v
   document.body.classList.remove('dragging');
   hideAngleIndicator();
   // v8z4b19i — invalidar MP4 se um ponto de curva foi movido (curva normal ou loop)
   if (ctrlMoved) markProjectDirty('curve');
+  // v8z4b19v — invalidar MP4 se midpoint pathPoint foi movido
+  if (midpointMoved) markProjectDirty('midpoint-pathpoint');
   // v8z4b17f — recalcular distribuição após mover frame ou curva
   if (hadInteraction) maybeRedistributeByCurveLength();
 }
@@ -16216,6 +16397,7 @@ function applyFrameData(data) {
   updateUndoRedoUI();
   document.querySelectorAll('.frame').forEach(el => el.remove());
   document.querySelectorAll('.ctrl-pt').forEach(el => el.remove());
+  document.querySelectorAll('.mid-pathpt').forEach(el => el.remove()); // v8z4b19v
 
   currentRatio  = data.currentRatio || '9:16';
   duration      = data.duration || 6;

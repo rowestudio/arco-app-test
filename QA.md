@@ -2,6 +2,100 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19v — enable midpoint path point editing
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19v` na UI (Settings).
+3. Confirmar que nome da versão exibe `enable midpoint path point editing`.
+
+### Teste B — midpoint pathPoint: exibição
+1. Carregar imagem no iPhone/Safari.
+2. Criar projeto com pelo menos 4 frames.
+3. Selecionar frame F2 (ativo).
+4. Confirmar que aparecem dois midpoint pathPoints: um no segmento F1→F2 (azul) e um no segmento F2→F3 (laranja).
+5. Confirmar que os midpoint pathPoints estão sobre as curvas correspondentes.
+6. Selecionar F1: confirmar que midpoint do segmento F1→F2 (laranja) está visível.
+7. Selecionar frame intermediário sem curvas: confirmar que midpoints aparecem apenas nos segmentos adjacentes ao frame ativo.
+
+### Teste C — midpoint pathPoint: edição de segmento normal
+1. Selecionar trecho/frame ativo (ex: F2).
+2. Arrastar o midpoint pathPoint do segmento F1→F2.
+3. Confirmar que a curva atualiza em tempo real durante o arrasto.
+4. Confirmar que a curva passa pelo ponto onde o midpoint foi solto.
+5. Confirmar Undo da edição (curva volta ao estado anterior).
+6. Confirmar Redo da edição (curva volta ao estado editado).
+7. Confirmar que não há undo duplicado.
+8. Arrastar frame depois de editar midpoint pathPoint.
+9. Confirmar que a curva não pula nem reseta sozinha.
+
+### Teste D — midpoint pathPoint: não conflita com curvePuller
+1. Editar curva normal pelo fluxo antigo (arrastando o curvePuller — losango colorido).
+2. Confirmar que curva normal continua funcionando pelo fluxo antigo.
+3. Editar pelo midpoint pathPoint no mesmo segmento.
+4. Confirmar que ambas as edições funcionam independentemente.
+5. Confirmar Undo/Redo de ambas.
+
+### Teste E — midpoint pathPoint: loop
+1. Ativar loop via chip Loop no painel Duração.
+2. Confirmar que curva de loop aparece imediatamente no Stage.
+3. Confirmar que midpoint pathPoint do loop (roxo) aparece quando F1 ou último frame está ativo.
+4. Arrastar midpoint pathPoint do loop.
+5. Confirmar que a curva de loop atualiza em tempo real.
+6. Confirmar Undo/Redo do loop.
+7. Confirmar que Preview respeita a curva de loop editada.
+
+### Teste F — faixa preta superior (regressão v8z4b19n)
+1. Carregar imagem no iPhone/Safari.
+2. Entrar no Preview.
+3. Confirmar que a faixa preta superior continua presente.
+4. Confirmar que o canvas não invade a Dynamic Island.
+
+### Teste G — Preview (regressão)
+1. Rodar Preview.
+2. Confirmar que Preview respeita a curva editada pelo midpoint pathPoint.
+3. Confirmar que Preview respeita curvas normais e loop.
+4. Confirmar que a faixa preta superior do Preview continua presente.
+
+### Teste H — MP4/export e botão Salvar MP4 (regressão v8z4b19s)
+1. Editar midpoint pathPoint de um segmento.
+2. Gerar MP4.
+3. Confirmar que MP4 respeita a curva editada pelo midpoint pathPoint.
+4. Tocar em **Salvar MP4**.
+5. Confirmar que o salvamento/download inicia normalmente.
+6. Confirmar que o botão **não** fica preso em estado done/pronto/ativo.
+7. Confirmar que, ao sair do Preview, o MP4 gerado é limpo (regressão v8z4b19o).
+8. Iniciar geração de MP4 e tocar Voltar antes de terminar.
+9. Confirmar que Stage não trava.
+
+### Teste I — save/load (regressão)
+1. Editar midpoint pathPoint.
+2. Salvar projeto com imagem:
+   - filename termina em `_img.json`.
+   - `version` salva como `v8z4b19v`.
+   - `imageBase64` existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado (true no segmento editado).
+   - `loopCtrlPt` preservado quando loop ativo.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+3. Salvar projeto sem imagem:
+   - filename termina em `_file.json`.
+   - `version` salva como `v8z4b19v`.
+   - `imageBase64` não existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+4. Abrir JSON salvo em v8z4b19u com imagem e confirmar compatibilidade total.
+5. Confirmar que nenhum destes campos apareceu no JSON:
+   - `curvesV2`, `vectorPath`, `handles`, `pathPoints`
+   - `runtimeCurveModel`, `capabilities`, `spans`
+   - `generatedMp4`, `exportBlob`
+   - `legacyCurvePatch`, `patchCandidate`, `patchApplicationDraft`, `realCurvePatchApplication`
+   - `selfTest`, `midpointDragState`
+6. Confirmar que não há erro de console, NaN ou Infinity.
+
+---
+
 ## v8z4b19u — route existing curve edits through guarded patch applier
 
 ### Teste A — abertura e versão

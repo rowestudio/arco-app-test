@@ -66,7 +66,7 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19u)
+### Estado atual (v8z4b19v)
 
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
@@ -122,18 +122,16 @@ compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 - `createLegacyCurvePatchFromCurrentCurveEdit(target, nextCtrlPt)` — monta patch candidato compatível com `validateLegacyCurvePatchCandidate()` a partir de `{ nx, ny, t, perpX, perpY }` já calculados durante edição de curva; `applied: false` sempre; não altera estado. Introduzido na v8z4b19u.
 - `applyExistingCurveEditViaPatch(target, nextCtrlPt, options)` — roteia edição de curva existente pelo aplicador guardado: cria patch → valida → aplica com `allowRealMutation: true`; pushUndo/markDirty/render gerenciados externamente pelo chamador. Introduzido na v8z4b19u.
 - **Edição de curva existente agora passa pelo aplicador guardado (v8z4b19u):** `setSegmentTrajectoryPoint()` usa `applyExistingCurveEditViaPatch()` em vez de `setSegmentCurve()` direto; curvas normais e curva de loop incluídas; comportamento visual idêntico à v8z4b19t; Undo/Redo/markDirty/render preservados; JSON schema inalterado; nenhum campo novo.
-- **Reset global de curvas registrado como roadmap futuro:** não implementado nesta versão; avaliar integração com o pipeline guardado quando a UI estiver pronta.
+- **Midpoint pathPoint editável implementado (v8z4b19v):** `pathPoints[0]` (em `t=0.5`) agora é visível como círculo branco arrastável sobre curvas ativas; drag usa `simulateRuntimePathPointEdit()` → `createLegacyCurvePatchFromSimulatedPathPointEdit()` → `validateLegacyCurvePatchCandidate()` → `applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true })`; loop também suportado; curvePuller legado preservado; JSON schema inalterado; nenhum campo novo.
+- **Reset global de curvas registrado como roadmap futuro:** não implementado; avaliar integração com o pipeline guardado quando a UI estiver pronta.
 - **Bug de `_file.json` sem `imageBase64`** mantido apenas no ROADMAP (fase UI/carregamento futura). Tempos/proporções mantidos no roadmap futuro. Velocidade composta mantida no roadmap futuro. Criação de frame seguindo curva de loop mantida no roadmap futuro.
 
 ### Próximos passos (futuros, não imediatos)
 
-- Conectar o pipeline de simulação da v8z4b19p a uma UI real de edição de pathPoint.
-  - Permitir que o `pathPoint` derivado em `t=0.5` seja arrastável pelo usuário.
-  - Usar `simulateRuntimePathPointEdit()` para preview em tempo real durante drag.
-  - Ao confirmar drag: aplicar `derivedCurvePuller` em `ctrlPts` / `loopCtrlPt` via `applyExistingCurveEditViaPatch()`.
-  - Usar `deriveLegacyCurvePullerFromMidpoint()` para converter posição editada em curvePuller compatível com o schema `ctrlPts` / `loopCtrlPt`.
-  - Nenhuma mudança no schema JSON necessária: compatibilidade backward garantida.
-- Implementar reset global de curvas: resetar todos os `ctrlPts` + `loopCtrlPt` para posição padrão; conectar ao pipeline guardado; preservar Undo/Redo.
+- **Múltiplos pathPoints por trecho:** adicionar pontos de passagem além do midpoint em t=0.5 (ex: t=0.25, t=0.75); requer modelo de edição mais completo.
+- **Handles/tangentes estilo Illustrator:** controles de tangência em frameAnchors e pathPoints; requer `mode = 'vectorAnchors'` e avaliador Bézier cúbico.
+- **Modo caneta / criação de trajetória vetorial:** clicar cria frame; clicar e arrastar cria handle; modo desenho livre.
+- **Reset global de curvas:** resetar todos os `ctrlPts` + `loopCtrlPt` para posição padrão; conectar ao pipeline guardado; preservar Undo/Redo.
 - Adicionar `pathPoints` reais como pontos de passagem sem tempo próprio.
 - Adicionar `handles` de tangência para controle Bézier cúbico.
 - Implementar `mode = 'vectorAnchors'` com avaliador Bézier cúbico.
