@@ -66,8 +66,10 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19w)
+### Estado atual (v8z4b19x)
 
+- **Legacy curvePuller/losango oculto como controle principal (v8z4b19x):** `ctrl-pt`/losango completamente oculto (`opacity:0 + pointer-events:none`) quando midpoint pathPoint está disponível; antes ficava translúcido (`opacity:0.38`) parecendo segundo controle; agora só o midpoint pathPoint é visível como controle de curva; fallback preservado: se midpoint indisponível, ctrl-pt recupera visibilidade e interatividade; loop: mesma lógica aplicada a `loopEl` quando `midpt_loop` ativo.
+- **Midpoint pathPoint é o controle principal de edição de curva (v8z4b19w):** arrastável, z-index 76, pipeline guardado completo.
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
 - `capabilities: { supportsPathPoints: false, supportsHandles: false }` — modo ativo: `legacyQuadratic`.

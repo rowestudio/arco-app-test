@@ -1,13 +1,27 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19w                                     ║
+║  Versão: v8z4b19x                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19x                                            ║
+║    feat: hide legacy curve puller when midpoint      ║
+║         path point is active                         ║
+║         ctrl-pt/losango legado agora completamente   ║
+║         oculto (opacity:0 + pointer-events:none)     ║
+║         quando midpoint pathPoint está disponível;   ║
+║         antes ficava translúcido (0.38) parecendo    ║
+║         segundo controle; JS updateCtrlPts() corr.  ║
+║         para usar opacity:0 em vez de 0.38; CSS      ║
+║         .mid-pathpt~.ctrl-pt já define opacity:0     ║
+║         (v8z4b19x); fallback: se midpoint não        ║
+║         disponível, ctrl-pt recupera visibilidade;   ║
+║         loop: loopEl também oculto quando midpt_loop ║
+║         ativo; JSON/Preview/MP4/Undo inalterados     ║
 ║  v8z4b19w                                            ║
 ║    feat: make midpoint path point primary curve      ║
 ║         control                                      ║
@@ -265,7 +279,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19w — make midpoint path point primary curve control: midpoint pathPoint elevado a controle principal (z-index 76 > ctrl-pt 75); ctrl-pt/losango recebe pointer-events:none + opacity reduzida quando midpoint pathPoint do segmento está ativo; drag parte do pathPoint, não do losango; curva passa pelo ponto arrastado; pipeline guardado preservado: simulateRuntimePathPointEdit() → createLegacyCurvePatchFromSimulatedPathPointEdit() → validateLegacyCurvePatchCandidate() → applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true }); loop também corrigido; Undo/Redo/markProjectDirty/render preservados; JSON schema inalterado; sem campo novo -->
+<!-- Arco Motion App — v8z4b19x — hide legacy curve puller when midpoint path point is active: ctrl-pt/losango legado completamente oculto (opacity:0 + pointer-events:none) quando midpoint pathPoint está disponível como controle principal; antes translúcido (0.38) parecía segundo controle confuso; JS updateCtrlPts() corrigido para usar opacity:0; CSS .mid-pathpt~.ctrl-pt também define opacity:0; fallback: se midpoint indisponível, ctrl-pt recupera visibilidade e interatividade; loop: loopEl também oculto quando midpt_loop ativo; midpoint pathPoint continua usando pipeline guardado completo: simulateRuntimePathPointEdit() → createLegacyCurvePatchFromSimulatedPathPointEdit() → validateLegacyCurvePatchCandidate() → applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true }); Undo/Redo/markProjectDirty/render preservados; JSON schema inalterado; sem campo novo -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -2064,7 +2078,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19w</span><br><span id="appVersionNameText">make midpoint path point primary curve control</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19x</span><br><span id="appVersionNameText">hide legacy curve puller when midpoint path point is active</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -11008,30 +11022,33 @@ function updateCtrlPts() {
   }
   // ─────────────────────────────────────────────────────────────────────────
 
-  // ── v8z4b19w: Sync secundário — ctrl-pts ficam sem pointer-events quando  ──
-  // o midpoint pathPoint do segmento está ativo. Este passo roda APÓS todos os
-  // midpoints terem sido atualizados nesta mesma chamada, garantindo estado
-  // consistente sem lag entre os dois conjuntos de elementos.
+  // ── v8z4b19x: Sync secundário — ctrl-pts ficam OCULTOS quando o midpoint  ──
+  // pathPoint do segmento está ativo. Este passo roda APÓS todos os midpoints
+  // terem sido atualizados nesta mesma chamada, garantindo estado consistente
+  // sem lag entre os dois conjuntos de elementos.
   //
-  // Decisão: Alternativa B/C híbrida — losango permanece VISÍVEL (diagnóstico)
-  // mas perde interatividade (pointer-events:none) e fica com opacidade reduzida
-  // (0.38) enquanto o midpoint pathPoint é o controle principal.
+  // Decisão v8z4b19x: ctrl-pt/losango legado fica COMPLETAMENTE OCULTO
+  // (opacity: 0, pointer-events: none) quando midpoint pathPoint está ativo —
+  // o losango translúcido anterior (0.38) ainda parecía um segundo controle,
+  // confundindo a leitura da interface. O midpoint pathPoint é o único controle
+  // principal visível. O CSS .mid-pathpt ~ .ctrl-pt já define opacity:0, mas o
+  // inline style aqui garante o mesmo via JS para consistência e fallback.
   // Se o midpoint pathPoint não estiver disponível (falha de modelo, curva
-  // degenerada), o ctrl-pt recupera interatividade normal — fallback seguro.
+  // degenerada), o ctrl-pt recupera interatividade e visibilidade normal.
   for (let seg = 0; seg < MAX_FRAMES - 1; seg++) {
     const el = getCtrlEl(seg);
     if (!el || el.style.display !== 'block') continue;
     const mEl = getMidpointEl(seg);
     const midpointActive = mEl && mEl.style.display === 'block';
     el.style.pointerEvents = midpointActive ? 'none' : '';
-    el.style.opacity       = midpointActive ? '0.38' : '';
+    el.style.opacity       = midpointActive ? '0' : '';
   }
-  // loopEl — mesmo tratamento: secundário quando midpoint pathPoint do loop ativo.
+  // loopEl — mesmo tratamento: oculto quando midpoint pathPoint do loop ativo.
   if (loopEl && loopEl.style.display === 'block') {
     const _loopMidEl = getMidpointEl('loop');
     const loopMidActive = _loopMidEl && _loopMidEl.style.display === 'block';
     loopEl.style.pointerEvents = loopMidActive ? 'none' : '';
-    loopEl.style.opacity       = loopMidActive ? '0.38' : '';
+    loopEl.style.opacity       = loopMidActive ? '0' : '';
   }
 }
 
