@@ -66,7 +66,7 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19s)
+### Estado atual (v8z4b19t)
 
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
@@ -114,6 +114,11 @@ compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 - `dryRunApplyLegacyCurvePatchCandidate(patch)` — dry-run explícito: valida patch, gera draft, valida draft, compara before/after; confirma `appliedToRealState: false`; não altera estado real. Introduzido na v8z4b19s.
 - `compareRealCurveStateSnapshot(before, after)` — diagnóstico passivo de dois snapshots de `cloneLegacyCurveStateForPatch()`; compara `ctrlPts` e `loopCtrlPt`; retorna `{ ok, unchanged, deltas }`; não altera estado. Introduzido na v8z4b19s.
 - **Aplicador real guardado preparado (v8z4b19s):** `applyLegacyCurvePatchCandidateToRealState` existe como helper interno guardado, com guarda forte (`allowRealMutation: false` por padrão), sem conexão com nenhum fluxo público. Tempos/proporções continuam apenas no roadmap futuro. Velocidade composta continua apenas no roadmap futuro. Criação de frame seguindo curva de loop registrada como roadmap futuro (ver abaixo).
+- `runInternalCurvePatchSelfTestForModel(model, options)` — harness interno principal: valida o pipeline completo de patch de curva (simulação → patch → validação → dry-run → apply com guarda → snapshot antes/depois) sem mutação real; `allowRealMutation: false` sempre; confirma `guardOk`, `realStateUnchanged`, `appliedToRealState: false`; não conectado a UI/Stage/Preview/gesto/save/load; não chama pushUndo/markProjectDirty/renderAll. Introduzido na v8z4b19t.
+- `runInternalCurvePatchSelfTestForSegment(segIndex, proposedOffset)` — harness para segmento normal: constrói runtime model via `buildRuntimeCurveModel()` e delega a `runInternalCurvePatchSelfTestForModel()`; não altera estado. Introduzido na v8z4b19t.
+- `runInternalCurvePatchSelfTestForLoop(proposedOffset)` — harness para curva de loop: roda self-test no loop se ativo; retorna `{ ok: false, reason: 'loop-disabled' }` se loop inativo; não altera estado. Introduzido na v8z4b19t.
+- `runInternalCurvePatchSelfTestSuite()` — suite completa: roda self-test em segmento normal + loop (se ativo); retorna resumo com `segmentResult`, `loopResult`, `summary`; **não roda automaticamente** em nenhum fluxo público. Introduzido na v8z4b19t.
+- **Self-test interno do pipeline de patch preparado (v8z4b19t):** o harness `runInternalCurvePatchSelfTestSuite()` valida o pipeline completo `pathPoint → simulação → patch candidato → dry-run → apply guardado` sem mutação real. Disponível em `window.__arcoInternalDiag.curvePatchSelfTest` apenas para diagnóstico de desenvolvimento. Bug de projeto sem imagem (`_file.json` sem `imageBase64`) mantido apenas no ROADMAP (fase UI/carregamento futura). Tempos/proporções mantidos no roadmap futuro. Velocidade composta mantida no roadmap futuro. Criação de frame seguindo curva de loop mantida no roadmap futuro.
 
 ### Próximos passos (futuros, não imediatos)
 
