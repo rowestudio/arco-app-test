@@ -2,6 +2,93 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b20d — fix handle sync after frame move and visible segment handles
+
+### Teste A — versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b20d` na UI (Settings).
+3. Confirmar que nome da versão exibe `fix handle sync after frame move and visible segment handles`.
+
+### Teste B — handle acompanha frame ao mover (bug principal)
+1. Carregar imagem.
+2. Criar projeto com 4 ou mais frames.
+3. Selecionar um frame intermediário (ex: F2).
+4. Arrastar o OUT handle para ajustar a curva.
+5. Mover o frame F2.
+6. **Confirmar que o handle acompanha o frame visualmente.**
+7. **Confirmar que a haste do handle parte do centro atual do frame.**
+8. **Confirmar que a curva NÃO reseta para padrão automático.**
+9. Selecionar outro frame e voltar para F2.
+10. **Confirmar que os handles continuam coerentes.**
+
+### Teste C — handles em endpoints, sem loop
+1. Criar projeto com 2 frames, sem loop.
+2. Selecionar F1 → confirmar que aparece **OUT** interativo.
+3. Confirmar que IN de F2 aparece como **ghost** (âmbar com menor opacidade, não interativo).
+4. Selecionar F2 → confirmar que aparece **IN** interativo.
+5. Confirmar que OUT de F1 aparece como **ghost** (não interativo).
+
+### Teste D — handle de loop acompanha frame ao mover
+1. Criar projeto com 2+ frames. Ativar loop.
+2. Selecionar F1 → confirmar handle IN do loop (roxo).
+3. Arrastar o handle IN do loop.
+4. Mover F1.
+5. **Confirmar que o handle de loop acompanha F1 visualmente.**
+6. **Confirmar que loopCtrlPt não reseta.**
+7. Repetir para o último frame com handle OUT do loop.
+8. Mover o último frame após ajustar handle de loop.
+9. **Confirmar que handle acompanha o último frame.**
+
+### Teste E — edição local por trecho (regressão)
+1. Criar projeto com 3+ frames.
+2. Selecionar F2 → ajustar IN handle (edita trecho F1→F2).
+3. **Confirmar que o trecho F2→F3 não foi alterado.**
+4. Selecionar F2 → ajustar OUT handle (edita trecho F2→F3).
+5. **Confirmar que o trecho F1→F2 não foi alterado.**
+
+### Teste F — segBlurSettings normalizado
+1. Criar projeto com 6 frames.
+2. Salvar como _img.json.
+3. Abrir o JSON no editor de texto.
+4. **Confirmar que `segBlurSettings` tem exatamente 5 entradas (frameCount - 1 = 5).**
+5. Deletar o frame F4 (via botão −).
+6. Salvar novamente.
+7. **Confirmar que `segBlurSettings` tem 4 entradas.**
+
+### Teste G — Undo/Redo por handle
+1. Ajustar handle de um trecho.
+2. Fazer Undo → **confirmar que curva voltou ao estado anterior.**
+3. Fazer Redo → **confirmar que curva reaplicada.**
+4. Tocar sem mover o handle → **confirmar que não cria undo extra.**
+
+### Teste H — midpoint e ctrl-pt legado
+1. Em qualquer projeto:
+2. **Confirmar que midpoint automático NÃO aparece na UI.**
+3. **Confirmar que ctrl-pt/losango legado NÃO aparece para segmentos normais.**
+
+### Teste I — Preview e MP4
+1. Rodar Preview → **confirmar que segue as curvas ajustadas.**
+2. Gerar MP4 → **confirmar que segue as curvas.**
+3. Salvar MP4 → **confirmar que botão não trava.**
+4. Voltar antes de terminar MP4 → **confirmar que stage não trava.**
+
+### Teste J — JSON legado sem campos novos
+1. Salvar projeto com imagem (_img.json).
+2. **Confirmar que versão é `v8z4b20d`.**
+3. **Confirmar ausência de campos proibidos:**
+   - curvesV2, vectorPath, handles, frameHandles, frameTangents
+   - inHandles, outHandles, anchorHandles, pathPoints, midpoints
+   - runtimeCurveModel, spans, capabilities, generatedMp4, exportBlob
+   - selfTest, legacyCurvePatch
+4. Abrir JSON da v8z4b20c → **confirmar compatibilidade.**
+
+### Teste K — drag de frames normal
+1. **Confirmar que drag de frames continua funcionando.**
+2. **Confirmar que frame travado não move.**
+3. **Confirmar que selecionar outro frame esconde handles corretamente.**
+
+---
+
 ## v8z4b20c — fix endpoint loop handles and segment-local editing
 
 ### Teste A — versão

@@ -1,6 +1,26 @@
 # Roadmap
 
-## Objetivo imediato — v8z4b20c (concluído)
+## Objetivo imediato — v8z4b20d (concluído)
+
+- ✅ Corrigir sincronização visual dos handles ao mover frame (handle não fica mais parado).
+- ✅ Estender `syncCtrlPtsForFrame` para processar `loopCtrlPt` via `t/perpX/perpY` quando F1 ou último frame é movido.
+- ✅ Armazenar `t/perpX/perpY` em `loopCtrlPt` ao editar handle de loop via `applyFrameConnectedHandleEdit`.
+- ✅ Reduzir threshold de 8px para 2px em `getFrameHandleGeometryForTarget` para ctrl pts manuais.
+- ✅ Criar `ensureSegmentArraysIntegrity()` — normaliza todos os arrays por trecho.
+- ✅ Corrigir `deleteActiveFrame`: fazer splice em `segBlurSettings` + chamar `ensureSegmentArraysIntegrity()`.
+- ✅ Chamar `ensureSegmentArraysIntegrity()` em `buildProjectData` e `applyFrameData`.
+- ✅ Ghost handles não-interativos (28% opacidade) para o lado complementar do trecho ativo.
+- ✅ Edição local por trecho (segment-local editing da v8z4b20c) preservada.
+- ✅ Midpoint oculto; ctrl-pt legado oculto; JSON schema inalterado.
+
+### Limitações conhecidas desta versão (v8z4b20d)
+
+- **Ghost handles e independência de handles:** os ghost handles mostram o outro lado do trecho, mas IN de um frame e OUT do vizinho ainda representam o **mesmo** `ctrlPt` legado. Não são handles independentes reais — não há curvesV2 nem schema novo.
+- **Ghost handles de loop:** não implementados nesta versão para evitar complexidade extra.
+- **Modo Angular/Suavizar:** ainda não implementado.
+- **Handles independentes por trecho real:** requer curvesV2/cúbico (futuro).
+
+## Objetivo anterior — v8z4b20c (concluído)
 
 - ✅ Corrigir exibição de handles para endpoints e loop (F1, último frame, com/sem loop).
 - ✅ Handles baseados em trechos conectados, não apenas em frame intermediário.
@@ -93,39 +113,44 @@ o que não é desejado para a interface final.
 - "Reta" neutraliza handles sem necessariamente remover o frame.
 - "Suavizar" e "Angular" alteram apenas o modo do handle, sem mover âncora.
 
-### Estado atual (v8z4b20c)
+### Estado atual (v8z4b20d)
 
-- **Frame IN/OUT handles (v8z4b20c):** handles visíveis para qualquer frame com trecho conectado:
+- **Frame IN/OUT handles (v8z4b20c/d):** handles visíveis para qualquer frame com trecho conectado:
   - **IN handle** (`.frame-in-handle`): controla o trecho de entrada; âmbar (normal) ou roxo (loop).
   - **OUT handle** (`.frame-out-handle`): controla o trecho de saída; âmbar (normal) ou roxo (loop).
+  - **Ghost handles (v8z4b20d):** lado complementar do trecho ativo mostrado com 28% de opacidade, `pointer-events: none`. Não interativos, apenas indicação visual.
   - **Segment-local editing:** cada handle edita apenas o trecho diretamente conectado.
   - Modo Angular/Livre: **ainda não implementado** — roadmap futuro.
-  - Suavização automática de dois trechos (modo linkado): **desativada nesta versão**.
-- **Handles de loop (v8z4b20c):** F1 com loop mostra IN handle (→ `loopCtrlPt`);
+  - Suavização automática de dois trechos (modo linkado): **desativada** — roadmap futuro.
+- **Handles de loop (v8z4b20c/d):** F1 com loop mostra IN handle (→ `loopCtrlPt`);
   último frame com loop mostra OUT handle (→ `loopCtrlPt`).
+  - **Handle de loop acompanha frame (v8z4b20d):** ao mover F1 ou último frame, `loopCtrlPt` é recalculado via `t/perpX/perpY`. Ghost de loop: não implementado nesta versão.
 - **Loop ctrl-pt (`cpt_loop`):** oculto quando handles de loop estão disponíveis.
 - **Frame tangent handle (v8z4b19z):** ocultado; substituído pelos dois handles IN/OUT.
 - **Midpoint pathPoint:** demovido da UI principal (v8z4b20a); mantido internamente.
 - **ctrl-pt/losango legado:** não exibido como controle principal para segmentos normais.
+- **ensureSegmentArraysIntegrity() (v8z4b20d):** normaliza todos os arrays por trecho (ctrlPts, ctrlPtManual, segBlurSettings, segDurations, rotEasings, scaleEasings) para exatamente frameCount-1 entradas.
 
-### Limitações do schema legado (v8z4b20c)
+### Limitações do schema legado (v8z4b20c/d)
 
 No schema atual, cada trecho normal possui apenas um `ctrlPt`:
 - `ctrlPts[segIndex]` controla todo o trecho.
 - O handle OUT de F4 e o handle IN de F5 são dois acessos ao mesmo `ctrlPts[segIndex]` do trecho F4→F5.
-- Eles **não** têm independência persistente nesta versão.
+- Os ghost handles mostram o outro lado do trecho, mas **não são handles independentes**.
 - Ao editar um, o outro refletirá a mesma posição ao selecionar o frame vizinho — comportamento esperado.
 - Independência real de handles (tangentes de entrada e saída separadas) exige modelo futuro `curvesV2` ou cúbico.
 
 ### Próximos passos de handles (futuro, não imediato)
 
-- **Modo Angular/Livre real:** handles independentes; menu contextual Suavizar/Angular/Reta/Remover.
+- **v8z4b20d (concluído):** sincronização de handles ao mover frame; ghost handles complementares; normalização de arrays por trecho (`ensureSegmentArraysIntegrity`).
+- **Modo Angular/Livre real:** handles independentes por trecho; menu contextual Suavizar/Angular/Reta/Remover.
 - **Menu contextual** estilo Illustrator para iPad: ações por toque longo no frame ativo.
 - Implementar ação "Reta" (neutralizar handles).
 - **Suavizar automático entre frames (modo linkado):** ação explícita futura — desativado em v8z4b20c para evitar interferência entre frames.
+- **Ghost handles de loop:** visualização complementar do trecho de loop ao selecionar F1 ou último frame — não implementado em v8z4b20d, registrado para versão futura.
 - Reset local da curva do frame ativo.
 - Reset global de curvas.
-- Handles independentes persistidos no JSON (novo schema, nova versão maior).
+- Handles independentes persistidos no JSON (novo schema `curvesV2`, nova versão maior).
 - **Ponto auxiliar / frame falso:** criar ponto no meio de um trecho sem duplicar frame real.
 - **Pen / Patch Tool:** construção vetorial do caminho.
 - **Desenho livre com dedo:** traço livre → frames com handles suaves.
