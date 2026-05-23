@@ -2,6 +2,119 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b21a — implement real cubic in-out handles
+
+### Teste A — versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b21a` na UI (Settings).
+3. Confirmar que nome da versão exibe `implement real cubic in-out handles`.
+
+### Teste B — curvesV2 criado automaticamente
+1. Carregar imagem.
+2. Criar projeto com 3 frames.
+3. Abrir console do browser.
+4. **Confirmar log `[Arco v8z4b21a] convertLegacyCtrlPtsToCurvesV2: 2 segmentos convertidos`** (ou similar).
+5. Confirmar que `curvesV2.mode === 'cubic'`.
+6. Confirmar que `curvesV2.frameHandles.in` e `curvesV2.frameHandles.out` são arrays com `frameCount` entradas.
+
+### Teste C — dois handles independentes por trecho
+1. Criar projeto com 3 frames (F1→F2→F3).
+2. Selecionar F2.
+3. **Confirmar que aparecem dois handles distintos:** OUT (saída de F2→F3) e IN (entrada de F1→F2).
+4. Arrastar o OUT handle de F2 para uma posição livre.
+5. **Confirmar que apenas o trecho F2→F3 é alterado.**
+6. **Confirmar que o trecho F1→F2 não foi alterado.**
+7. Arrastar o IN handle de F2 para outra posição.
+8. **Confirmar que apenas o trecho F1→F2 é alterado.**
+9. **Confirmar que o trecho F2→F3 não foi alterado.**
+
+### Teste D — Bézier cúbica real no canvas
+1. Criar projeto com 2 frames.
+2. Ajustar o OUT handle de F1 e o IN handle de F2 em posições independentes.
+3. Verificar no SVG do canvas (DevTools) que o path contém `C` (não `Q`).
+4. **Confirmar que a curva muda conforme ambos os handles são ajustados.**
+
+### Teste E — Preview usa cubic
+1. Criar projeto com 2 frames.
+2. Ajustar ambos os handles do único trecho em posições distintas.
+3. Clicar em Preview.
+4. **Confirmar que a animação segue a curva cúbica real** (não a quadrática legacy).
+5. Confirmar que o movimento visual é suave e consistente com os handles configurados.
+
+### Teste F — JSON salva curvesV2
+1. Criar projeto com 2 frames, ajustar handles manualmente.
+2. Salvar JSON (Export > Save JSON ou equivalente).
+3. Abrir o JSON em um editor de texto.
+4. **Confirmar que `curvesV2` existe no JSON salvo.**
+5. **Confirmar estrutura:** `{ version: 1, mode: "cubic", frameHandles: { in: [...], out: [...] } }`.
+6. Confirmar que os vetores `dx`/`dy` refletem as posições ajustadas.
+
+### Teste G — compatibilidade com arquivos antigos (sem curvesV2)
+1. Abrir um JSON antigo (v8z4b20d ou anterior) que não contenha campo `curvesV2`.
+2. **Confirmar que o projeto carrega sem erro.**
+3. **Confirmar log `[Arco v8z4b21a] convertLegacyCtrlPtsToCurvesV2:`** no console.
+4. Confirmar que a animação visual está preservada (não reseta para padrão).
+5. Confirmar que os handles aparecem nos segmentos.
+
+### Teste H — handles acompanham frame ao mover (regressão v8z4b20d)
+1. Criar projeto com 4 frames.
+2. Ajustar o OUT handle de F2 manualmente.
+3. Mover o frame F2.
+4. **Confirmar que o handle acompanha F2 visualmente** (haste parte do centro do frame).
+5. **Confirmar que a curva NÃO reseta.**
+6. Selecionar outro frame e voltar para F2.
+7. **Confirmar que os handles estão coerentes.**
+
+### Teste I — inserir frame no meio preserva curva (De Casteljau)
+1. Criar projeto com 2 frames, ajustar handles do único trecho.
+2. Anotar visualmente a forma da curva.
+3. Inserir um frame no meio (botão "Insert Frame After").
+4. **Confirmar que a forma visual da curva está preservada** (dois trechos formam a mesma curva original).
+5. Confirmar que os novos handles do frame inserido fazem sentido geometricamente.
+
+### Teste J — deletar frame remove handles correspondentes
+1. Criar projeto com 4 frames.
+2. Ajustar handles de todos os trechos.
+3. Deletar F2 (frame intermediário).
+4. **Confirmar que `curvesV2.frameHandles.in` e `.out` têm comprimento correto** (frameCount entradas).
+5. Confirmar que os handles restantes estão coerentes.
+
+### Teste K — templates resetam curvesV2 corretamente
+1. Abrir o app, aplicar um template qualquer (ex: pan-lr, rotation, circle).
+2. Ajustar alguns handles manualmente.
+3. Aplicar outro template.
+4. **Confirmar que os handles do template novo estão corretos** (não há contaminação do template anterior).
+5. Confirmar no console que `convertLegacyCtrlPtsToCurvesV2` foi chamado após o template.
+
+### Teste L — Undo/Redo preserva curvesV2
+1. Criar projeto com 2 frames.
+2. Ajustar o OUT handle de F1.
+3. Pressionar Ctrl+Z (Undo).
+4. **Confirmar que o handle voltou à posição anterior.**
+5. Pressionar Ctrl+Y (Redo).
+6. **Confirmar que o handle voltou à posição ajustada.**
+
+### Teste M — modo livre/Angular por padrão (sem Smooth)
+1. Criar projeto com 3 frames.
+2. Selecionar F2.
+3. Arrastar o OUT handle independentemente.
+4. **Confirmar que o IN handle NÃO se move em espelho** (modo Angular/livre, não Smooth).
+5. Arrastar o IN handle independentemente.
+6. **Confirmar que o OUT handle NÃO se move em espelho.**
+
+### Teste N — handles em endpoints
+1. Criar projeto com 2 frames (F1, F2), sem loop.
+2. Selecionar F1 → **confirmar que aparece apenas OUT handle interativo**.
+3. Selecionar F2 → **confirmar que aparece apenas IN handle interativo**.
+4. Confirmar que não há handle fantasma desnecessário nos endpoints.
+
+### Teste O — regressão: MP4 export usa cubic
+1. Criar projeto com 2 frames, handles ajustados em posições assimétricas.
+2. Exportar como MP4 (ou usar função de renderização interna).
+3. **Confirmar que a animação do MP4 corresponde visualmente ao Preview** (mesma curva cúbica).
+
+---
+
 ## v8z4b20d — fix handle sync after frame move and visible segment handles
 
 ### Teste A — versão
