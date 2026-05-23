@@ -2,6 +2,45 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19y — add active frame tangent handle prototype
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19y` na UI (Settings).
+3. Confirmar que nome da versão exibe `add active frame tangent handle prototype`.
+
+### Teste B — handle de tangente aparece
+1. Carregar imagem.
+2. Criar projeto com pelo menos 3 frames.
+3. Selecionar frame intermediário (F2 em 3-frame, por exemplo).
+4. Confirmar que aparece um **círculo âmbar/dourado** deslocado do centro do frame ativo.
+5. Confirmar que existe uma **linha tracejada âmbar** conectando o centro do frame ao círculo.
+6. Selecionar F1 ou último frame — confirmar que o handle **não aparece** (só em frames intermediários).
+
+### Teste C — drag do handle ajusta curvas
+1. Com frame intermediário ativo (F2 de 3), arrastar o círculo âmbar.
+2. Confirmar que as curvas do segmento anterior e posterior ao frame se atualizam em tempo real.
+3. Confirmar que a passagem pelo frame ativo fica suave (C1-ish).
+4. Confirmar que o handle se move para onde o usuário arrastou.
+
+### Teste D — undo lazy (sem toque sem movimento)
+1. Tocar no handle âmbar sem arrastar.
+2. Soltar imediatamente.
+3. Confirmar que **não há nova entrada de undo** (Ctrl+Z / botão de undo não deve reverter nada novo).
+4. Arrastar o handle alguns pixels.
+5. Confirmar que Ctrl+Z reverte o arrasto.
+
+### Teste E — whitelist do custBar
+1. Abrir menu contextual (custBar).
+2. Tocar no handle âmbar enquanto o custBar estiver aberto.
+3. Confirmar que o custBar **não fecha** ao tocar no handle.
+
+### Teste F — isoMode e preview
+1. Entrar em isoMode ou preview.
+2. Confirmar que o handle âmbar **não aparece**.
+
+---
+
 ## v8z4b19x — hide legacy curve puller when midpoint path point is active
 
 ### Teste A — abertura e versão

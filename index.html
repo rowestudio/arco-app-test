@@ -1,18 +1,18 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19x                                     ║
+║  Versão: v8z4b19y                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
-║  v8z4b19x                                            ║
-║    feat: hide legacy curve puller when midpoint      ║
-║         path point is active                         ║
-║         ctrl-pt/losango legado agora completamente   ║
-║         oculto (opacity:0 + pointer-events:none)     ║
+║  v8z4b19y                                            ║
+║    feat: add active frame tangent handle prototype    ║
+║         handle âmbar aparece no frame ativo          ║
+║         intermediário; drag ajusta ctrlPts dos        ║
+║         dois segmentos vizinhos (C1-ish smooth)       ║
 ║         quando midpoint pathPoint está disponível;   ║
 ║         antes ficava translúcido (0.38) parecendo    ║
 ║         segundo controle; JS updateCtrlPts() corr.  ║
@@ -279,7 +279,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19x — hide legacy curve puller when midpoint path point is active: ctrl-pt/losango legado completamente oculto (opacity:0 + pointer-events:none) quando midpoint pathPoint está disponível como controle principal; antes translúcido (0.38) parecía segundo controle confuso; JS updateCtrlPts() corrigido para usar opacity:0; CSS .mid-pathpt~.ctrl-pt também define opacity:0; fallback: se midpoint indisponível, ctrl-pt recupera visibilidade e interatividade; loop: loopEl também oculto quando midpt_loop ativo; midpoint pathPoint continua usando pipeline guardado completo: simulateRuntimePathPointEdit() → createLegacyCurvePatchFromSimulatedPathPointEdit() → validateLegacyCurvePatchCandidate() → applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true }); Undo/Redo/markProjectDirty/render preservados; JSON schema inalterado; sem campo novo -->
+<!-- Arco Motion App — v8z4b19y — add active frame tangent handle prototype: handle âmbar (círculo dourado) aparece no frame ativo intermediário (frameCount>=3, activeIdx>0 e <frameCount-1, sem isoMode, sem preview); conectado ao centro do frame por linha tracejada âmbar (braço de tangente); drag ajusta ctrlPts dos dois segmentos vizinhos simultaneamente para passagem suave C1-ish; undo lazy (só captura se houver movimento real >=2px); frameTangentDragState = {didMove, undoCaptured}; CSS .frame-tangent-dot; getFrameTangentDir() calcula direção da tangente; applyFrameTangentEdit() aplica edição; onMove() e endDrag() integrados; markProjectDirty('frame-tangent') se moveu; JSON schema inalterado; sem campo novo -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -509,6 +509,16 @@ body.recording #editorZoomCtrl{display:none;}
   width:44px;height:44px;transform:translate(-50%,-50%);
   background:transparent;border-radius:50%;}
 .mid-pathpt:active{cursor:grabbing;}
+
+/* Frame tangent handle dot — v8z4b19y */
+.frame-tangent-dot{position:absolute;width:12px;height:12px;border-radius:50%;
+  background:rgba(255,210,0,0.92);border:2px solid rgba(255,255,255,0.85);
+  box-shadow:0 0 0 3px rgba(255,210,0,.18);
+  cursor:grab;transform:translate(-50%,-50%) scale(var(--ez-inv,1));touch-action:none;z-index:77;}
+.frame-tangent-dot::before{content:"";position:absolute;left:50%;top:50%;
+  width:44px;height:44px;transform:translate(-50%,-50%);
+  background:transparent;border-radius:50%;}
+.frame-tangent-dot:active{cursor:grabbing;}
 
 /* v8z4b19x: hide legacy ctrl-pt when mid-pathpt is active control */
 .mid-pathpt ~ .ctrl-pt,
@@ -2078,7 +2088,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19x</span><br><span id="appVersionNameText">hide legacy curve puller when midpoint path point is active</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19y</span><br><span id="appVersionNameText">add active frame tangent handle prototype</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4419,8 +4429,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19x';
-const APP_VERSION_NAME = 'hide legacy curve puller when midpoint path point is active';
+const APP_VERSION = 'v8z4b19y';
+const APP_VERSION_NAME = 'add active frame tangent handle prototype';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -9694,6 +9704,7 @@ let dragState    = null;
 let ctrlDragSeg  = -1;
 let ctrlDragDidMove = false; // v8z4b19i: true se o ctrl-pt foi realmente movido no drag atual
 let midpointDragState = null; // v8z4b19v: { seg, segType, didMove } — drag de midpoint pathPoint
+let frameTangentDragState = null; // v8z4b19y: { didMove, undoCaptured } — drag de frame tangent handle
 let isPinching      = false;
 let pinchStartAngle = 0;
 let pinchStartRot   = 0;
@@ -10808,6 +10819,30 @@ function isFrameOutside(i) {
 // ═══════════════════════════════════════
 // BEZIER DRAW
 // ═══════════════════════════════════════
+
+// v8z4b19y — Calcula direção da tangente no frame intermediário fi.
+// Retorna vetor unitário {x, y} em pixels do stage.
+// Se o segmento seguinte já foi ajustado manualmente, deriva da direção do curvePuller.
+// Caso contrário, usa direção da corda Pprev→Pnext.
+function getFrameTangentDir(fi) {
+  if (fi <= 0 || fi >= frameCount - 1) return { x: 1, y: 0 };
+  const Px = frameCX(fi), Py = frameCY(fi);
+  // Prefer direction from manually-placed next segment ctrl point
+  const cpNext = getSegmentCurvePuller(fi);
+  if (cpNext && isSegmentCurvePullerManual(fi)) {
+    const dx = cpNext.nx * stageW - Px;
+    const dy = cpNext.ny * stageH - Py;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len > 1) return { x: dx / len, y: dy / len };
+  }
+  // Default: chord direction through the frame (Pprev to Pnext)
+  const dx = frameCX(fi + 1) - frameCX(fi - 1);
+  const dy = frameCY(fi + 1) - frameCY(fi - 1);
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len > 1) return { x: dx / len, y: dy / len };
+  return { x: 1, y: 0 };
+}
+
 function crInterp(seg, t) {
   // Catmull-Rom para uso no drawBezier (coordenadas de stage)
   const pts = [];
@@ -10880,6 +10915,20 @@ function drawBezier() {
     const lineOp   = showLoop ? 0.9 : 0.22;
     const lineW    = (showLoop ? 2.5 : 1.0) * invZ;
     svg += `<path d="M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}" stroke="rgba(180,100,255,${lineOp})" stroke-width="${lineW}" fill="none" stroke-linecap="round" />`;
+  }
+
+  // v8z4b19y: Frame tangent handle arm — linha da tangente do frame ativo
+  const _canTangent = !window._isoMode && frameCount >= 3 &&
+                      activeIdx > 0 && activeIdx < frameCount - 1 && imgEl.src;
+  if (_canTangent) {
+    const _tPx = frameCX(activeIdx);
+    const _tPy = frameCY(activeIdx);
+    const _tDir = getFrameTangentDir(activeIdx);
+    const TANGENT_ARM = 48;
+    const _thx = _tPx + _tDir.x * TANGENT_ARM;
+    const _thy = _tPy + _tDir.y * TANGENT_ARM;
+    const _invZ = 1 / editorZoomScale;
+    svg += `<line x1="${_tPx}" y1="${_tPy}" x2="${_thx}" y2="${_thy}" stroke="rgba(255,210,0,0.7)" stroke-width="${1.5 * _invZ}" stroke-dasharray="${3*_invZ},${2*_invZ}" opacity="0.85"/>`;
   }
 
   bezierSvg.innerHTML = svg;
@@ -11050,6 +11099,38 @@ function updateCtrlPts() {
     loopEl.style.pointerEvents = loopMidActive ? 'none' : '';
     loopEl.style.opacity       = loopMidActive ? '0' : '';
   }
+
+  // ── v8z4b19y: Frame tangent handle dot ───────────────────────────────────
+  const TANGENT_ARM_DOM = 48;
+  const canShowTangent = !window._isoMode && frameCount >= 3 &&
+                         activeIdx > 0 && activeIdx < frameCount - 1 &&
+                         !!imgEl.src && !isPreviewing;
+  let tangentDotEl = document.getElementById('frame_tangent_dot');
+  if (canShowTangent) {
+    const tPx = frameCX(activeIdx);
+    const tPy = frameCY(activeIdx);
+    const tDir = getFrameTangentDir(activeIdx);
+    const tHx = tPx + tDir.x * TANGENT_ARM_DOM;
+    const tHy = tPy + tDir.y * TANGENT_ARM_DOM;
+    if (!tangentDotEl) {
+      tangentDotEl = document.createElement('div');
+      tangentDotEl.id = 'frame_tangent_dot';
+      tangentDotEl.className = 'frame-tangent-dot';
+      stage.appendChild(tangentDotEl);
+      tangentDotEl.addEventListener('pointerdown', e => {
+        if (editorPanMode || isPreviewing) return;
+        e.stopPropagation();
+        startFrameTangentDrag();
+      });
+    }
+    tangentDotEl.style.display = 'block';
+    tangentDotEl.style.left = tHx + 'px';
+    tangentDotEl.style.top  = tHy + 'px';
+    stage.appendChild(tangentDotEl); // keep on top
+  } else {
+    if (tangentDotEl) tangentDotEl.style.display = 'none';
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 }
 
 // ─── v8z4b19v: Midpoint pathPoint helpers ────────────────────────────────────
@@ -11109,6 +11190,62 @@ function applyMidpointPathPointEdit(seg, segType, nx, ny) {
   });
 
   return result.ok === true;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── v8z4b19y: Frame tangent handle drag helpers ─────────────────────────────
+
+// Inicia drag do frame tangent handle.
+// Não chama pushUndo aqui — undo capturado lazily no primeiro pixel de movimento.
+function startFrameTangentDrag() {
+  if (isPreviewing) return;
+  document.body.classList.add('dragging');
+  frameTangentDragState = { didMove: false, undoCaptured: false };
+}
+
+// Aplica edição do frame tangent handle.
+// hx, hy: posição do handle em pixels do stage (onde o usuário arrastou).
+// Atualiza ctrlPts dos dois trechos vizinhos ao frame ativo.
+function applyFrameTangentEdit(hx, hy) {
+  const fi = activeIdx;
+  if (fi <= 0 || fi >= frameCount - 1) return false;
+  const Px = frameCX(fi), Py = frameCY(fi);
+  const dx = hx - Px, dy = hy - Py;
+  const dLen = Math.sqrt(dx * dx + dy * dy);
+  if (!isFinite(dLen) || dLen < 2) return false; // degenerate — sem movimento real
+
+  const dirX = dx / dLen, dirY = dy / dLen;
+
+  // Trecho anterior: seg = fi - 1 (frames[fi-1] → frames[fi])
+  const prevFi = fi - 1;
+  const prevPx = frameCX(prevFi), prevPy = frameCY(prevFi);
+  const lenPrev = Math.sqrt((Px - prevPx) ** 2 + (Py - prevPy) ** 2);
+  const kPrev = Math.max(10, 0.4 * lenPrev);
+  const cpPrevX = Px - dirX * kPrev;
+  const cpPrevY = Py - dirY * kPrev;
+  const cpPrevNx = cpPrevX / stageW;
+  const cpPrevNy = cpPrevY / stageH;
+
+  // Trecho seguinte: seg = fi (frames[fi] → frames[fi+1])
+  const nextFi = fi + 1;
+  const nextPx = frameCX(nextFi), nextPy = frameCY(nextFi);
+  const lenNext = Math.sqrt((nextPx - Px) ** 2 + (nextPy - Py) ** 2);
+  const kNext = Math.max(10, 0.4 * lenNext);
+  const cpNextX = Px + dirX * kNext;
+  const cpNextY = Py + dirY * kNext;
+  const cpNextNx = cpNextX / stageW;
+  const cpNextNy = cpNextY / stageH;
+
+  // Validar NaN/Infinity
+  if (!isFinite(cpPrevNx) || !isFinite(cpPrevNy) || !isFinite(cpNextNx) || !isFinite(cpNextNy)) return false;
+
+  // Aplicar — dois trechos simultâneos
+  setSegmentCurvePuller(prevFi, { nx: cpPrevNx, ny: cpPrevNy });
+  ctrlPtManual[prevFi] = true;
+  setSegmentCurvePuller(fi, { nx: cpNextNx, ny: cpNextNy });
+  ctrlPtManual[fi] = true;
+
+  return true;
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -11364,6 +11501,7 @@ stage.addEventListener('touchstart', e => {
     if (e.target.closest('.global-handle')) return;
     if (e.target.closest('.ctrl-pt')) return;
     if (e.target.closest('.mid-pathpt')) return; // v8z4b19w: midpoint pathPoint não fecha custBar
+    if (e.target.closest('.frame-tangent-dot')) return; // v8z4b19y: tangent handle não fecha custBar
     if (e.target.closest('#editorZoomCtrl')) return;
     // Tudo o mais dentro da image-area (imagem, fundo preto, canvas,
     // áreas vazias) fecha o menu contextual.
@@ -11430,7 +11568,7 @@ function onMove(e) {
     document.body.classList.remove('dragging');
     return;
   }
-  if (dragState || ctrlDragSeg !== -1 || panDragState || midpointDragState) {
+  if (dragState || ctrlDragSeg !== -1 || panDragState || midpointDragState || frameTangentDragState) {
     e.preventDefault();
   }
   const pos = getPos(e);
@@ -11471,6 +11609,26 @@ function onMove(e) {
     );
     if (applied) {
       midpointDragState.didMove = true;
+      drawBezier(); updateCtrlPts();
+    }
+    return;
+  }
+
+  // Frame tangent handle drag — v8z4b19y
+  if (frameTangentDragState) {
+    const sc = screenToStageCoord(pos.x, pos.y);
+    if (!frameTangentDragState.undoCaptured) {
+      const fi = activeIdx;
+      if (fi <= 0 || fi >= frameCount - 1) { frameTangentDragState = null; return; }
+      const Px = frameCX(fi), Py = frameCY(fi);
+      const dist = Math.sqrt((sc.x - Px) ** 2 + (sc.y - Py) ** 2);
+      if (dist < 2) return; // Not enough movement yet — lazy undo threshold
+      pushUndo(); // Capture state BEFORE any changes
+      frameTangentDragState.undoCaptured = true;
+    }
+    const applied = applyFrameTangentEdit(sc.x, sc.y);
+    if (applied) {
+      frameTangentDragState.didMove = true;
       drawBezier(); updateCtrlPts();
     }
     return;
@@ -11634,15 +11792,21 @@ function endDrag(e) {
   // v8z4b19v: midpoint pathPoint drag
   const hadMidpointDrag = midpointDragState !== null;
   const midpointMoved   = midpointDragState && midpointDragState.didMove;
-  const hadInteraction  = dragState != null || hadCtrlDrag || hadMidpointDrag;
+  // v8z4b19y: frame tangent handle drag
+  const hadTangentDrag  = frameTangentDragState !== null;
+  const tangentMoved    = frameTangentDragState && frameTangentDragState.didMove;
+  const hadInteraction  = dragState != null || hadCtrlDrag || hadMidpointDrag || hadTangentDrag;
   dragState = null; ctrlDragSeg = -1; ctrlDragDidMove = false;
   midpointDragState = null; // v8z4b19v
+  frameTangentDragState = null; // v8z4b19y
   document.body.classList.remove('dragging');
   hideAngleIndicator();
   // v8z4b19i — invalidar MP4 se um ponto de curva foi movido (curva normal ou loop)
   if (ctrlMoved) markProjectDirty('curve');
   // v8z4b19v — invalidar MP4 se midpoint pathPoint foi movido
   if (midpointMoved) markProjectDirty('midpoint-pathpoint');
+  // v8z4b19y — invalidar MP4 se frame tangent handle foi movido
+  if (tangentMoved) markProjectDirty('frame-tangent');
   // v8z4b17f — recalcular distribuição após mover frame ou curva
   if (hadInteraction) maybeRedistributeByCurveLength();
 }

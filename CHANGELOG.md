@@ -1,5 +1,32 @@
 # Changelog
 
+## v8z4b19y — add active frame tangent handle prototype
+
+Adiciona um **handle de tangente âmbar** no frame ativo intermediário para ajuste
+suave de passagem (C1-ish) nas curvas de transição.
+
+### Funcionalidade
+
+- **Círculo dourado** (`.frame-tangent-dot`) aparece no frame ativo quando:
+  - Imagem carregada, `frameCount >= 3`, `activeIdx > 0` e `< frameCount - 1`,
+    não em isoMode, não em preview.
+- **Linha tracejada âmbar** conecta o centro do frame ao handle (braço de tangente,
+  48 px de comprimento visual).
+- **Drag ajusta os dois segmentos adjacentes** simultâneamente: `ctrlPts[fi-1]` e
+  `ctrlPts[fi]` são atualizados para produzir passagem suave C1-ish no frame ativo.
+- **Undo lazy**: undo só é capturado se o usuário realmente arrastar ≥ 2 px —
+  um toque sem movimento não cria entrada de undo.
+- **JSON schema inalterado**: sem campos novos; usa `ctrlPts`/`ctrlPtManual` existentes.
+
+### Implementação
+
+- `getFrameTangentDir(fi)` — calcula direção da tangente (chord ou ctrl manual).
+- `startFrameTangentDrag()` — inicia drag sem capturar undo.
+- `applyFrameTangentEdit(hx, hy)` — aplica edição nos dois segmentos adjacentes.
+- `frameTangentDragState` — estado de drag `{ didMove, undoCaptured }`.
+- `onMove()` e `endDrag()` integrados; `markProjectDirty('frame-tangent')` se moveu.
+- Whitelist da imageArea atualizada para incluir `.frame-tangent-dot`.
+
 ## v8z4b19x — hide legacy curve puller when midpoint path point is active
 
 Oculta completamente o **curvePuller/losango legado** quando o **midpoint pathPoint**
