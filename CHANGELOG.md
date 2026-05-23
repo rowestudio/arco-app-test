@@ -1,5 +1,140 @@
 # Changelog
 
+## v8z4b19u — route existing curve edits through guarded patch applier
+
+Ativação controlada do novo pipeline interno de curvas para a edição de curvas já
+existente. Não é redesenho de UI, não é novo modo de curvas, não é criação de
+pathPoint visível, não é alteração de JSON, não é alteração de Preview/MP4.
+
+### Objetivo
+
+Fazer a edição de curva já existente (curva normal e curva de loop) passar pelo
+aplicador guardado de patch legado `applyLegacyCurvePatchCandidateToRealState()`,
+em vez de alterar `ctrlPts`/`loopCtrlPt` diretamente via `setSegmentCurve()`.
+
+A mudança é arquitetural: a mutação real da curva passa pelo novo pipeline. O
+comportamento visual, Undo/Redo, markProjectDirty, renderização e o formato JSON
+permanecem idênticos à v8z4b19t.
+
+### Helpers adicionados
+
+#### `createLegacyCurvePatchFromCurrentCurveEdit(target, nextCtrlPt)`
+
+Monta um patch candidato compatível com `validateLegacyCurvePatchCandidate()` e
+`applyLegacyCurvePatchCandidateToRealState()` a partir dos valores já calculados
+durante a edição de curva normal ou de loop.
+
+**Parâmetros:**
+- `target`: `{ type: 'segment', segIndex: number }` ou `{ type: 'loop' }`
+- `nextCtrlPt`: `{ nx, ny, t, perpX, perpY }` — todos numéricos finitos
+
+**Retorno (sucesso):**
+```json
+{
+  "ok": true,
+  "reason": "ok",
+  "target": { "type": "segment", "segIndex": 0 },
+  "field": "ctrlPts",
+  "index": 0,
+  "value": { "nx": ..., "ny": ..., "t": ..., "perpX": ..., "perpY": ... },
+  "source": "existingCurveEdit",
+  "appliesToSchema": "legacyCurvePuller",
+  "applied": false
+}
+```
+
+Para loop: `field: 'loopCtrlPt'`, `index: null`, `appliesToSchema: 'legacyLoopCurvePuller'`.
+
+O patch é compatível com `validateLegacyCurvePatchCandidate()`.  
+`applied === false` sempre (o candidato é aplicado pelo helper seguinte).
+
+#### `applyExistingCurveEditViaPatch(target, nextCtrlPt, options)`
+
+Roteia a edição de curva existente pelo aplicador guardado:
+
+1. Cria patch com `createLegacyCurvePatchFromCurrentCurveEdit()`.
+2. Valida com `validateLegacyCurvePatchCandidate()`.
+3. Aplica com `applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true, ... })`.
+4. Retorna diagnóstico estruturado.
+
+**Opções:**
+- `pushUndo`: `false` (Undo gerenciado por `startCtrlDrag`)
+- `markDirty`: `false` (dirty gerenciado por `endDrag`)
+- `render`: `false` (render gerenciado por `onMove`)
+
+### Integração na edição de curva
+
+`setSegmentTrajectoryPoint()` foi modificado para chamar
+`applyExistingCurveEditViaPatch()` em vez de `setSegmentCurve()` diretamente.
+
+**Para segmentos normais:**
+- Calcula `nx`, `ny` da posição do ponteiro.
+- Calcula `t`, `perpX`, `perpY` via `computeTPerpForSeg()`.
+- Monta `nextCtrlPt = { nx, ny, t, perpX, perpY }`.
+- Chama `applyExistingCurveEditViaPatch({ type: 'segment', segIndex }, nextCtrlPt, ...)`.
+- `applyLegacyCurvePatchCandidateToRealState` aplica em `ctrlPts[segIndex]` e
+  marca `ctrlPtManual[segIndex] = true`.
+
+**Para segmento de loop:**
+- Calcula `nx`, `ny` da posição do ponteiro.
+- Preserva `t`, `perpX`, `perpY` existentes de `loopCtrlPt`.
+- Monta `nextCtrlPt = { nx, ny, t, perpX, perpY }`.
+- Chama `applyExistingCurveEditViaPatch({ type: 'loop' }, nextCtrlPt, ...)`.
+- `applyLegacyCurvePatchCandidateToRealState` aplica em `loopCtrlPt`.
+
+### Preservação do comportamento existente
+
+| Aspecto | Comportamento |
+|---------|--------------|
+| Visual | Idêntico à v8z4b19t |
+| Undo/Redo | `pushUndo()` em `startCtrlDrag` — sem duplicação |
+| markProjectDirty | `markProjectDirty('curve')` em `endDrag` — inalterado |
+| invalidar MP4 | `markProjectDirty('curve')` em `endDrag` — inalterado |
+| render | `drawBezier(); updateCtrlPts()` em `onMove` — inalterado |
+| Curva de loop | Incluída no novo pipeline |
+| Self-test v8z4b19t | Intacto — não removido, não auto-executado |
+| JSON schema | Inalterado — nenhum campo novo |
+
+### O que NÃO foi feito
+
+- `pathPoint` visível não foi criado.
+- `handles` não foram criados.
+- UI não foi alterada.
+- JSON schema não foi alterado (nenhum campo novo).
+- Preview matemático não alterado.
+- Motor de MP4/export core não alterado.
+- Reset global de curvas registrado apenas no ROADMAP (futuro).
+- Bug de `_file.json` sem `imageBase64` mantido apenas no ROADMAP.
+- Tempos/proporções mantidos no roadmap futuro.
+- Velocidade composta mantida no roadmap futuro.
+- Criação de frame seguindo curva de loop mantida no roadmap futuro.
+
+### Arquivos alterados
+
+- `index.html`: 2 novos helpers + `setSegmentTrajectoryPoint` modificado + versionamento
+- `CHANGELOG.md`: esta entrada
+- `QA.md`: checklist da versão
+- `ROADMAP.md`: estado atual atualizado
+- `pages-deploy-stamp.txt`: stamp de deploy
+
+### Restrições respeitadas
+
+- `ctrlPts`, `ctrlPtManual`, `loopCtrlPt` continuam sendo o schema persistido atual.
+- Arquivos antigos continuam abrindo normalmente.
+- Arquivos novos salvam no mesmo formato.
+- Nenhum campo novo aparece no JSON.
+- Curva aparece igual à v8z4b19t.
+- Preview e MP4 percorrem o mesmo caminho da v8z4b19t.
+- Curva de loop continua funcionando e aparecendo imediatamente ao ativar loop.
+- Undo/Redo da curva normal e da curva de loop continuam funcionando.
+- Fallback legado permanece.
+- Correções de MP4/export continuam funcionando.
+- Botão Salvar MP4 não regredido.
+- Faixa preta superior do Preview continua funcionando.
+- Limpeza de MP4 ao sair do Preview continua funcionando.
+
+---
+
 ## v8z4b19t — add internal curve patch self-test harness
 
 Implementação interna controlada de um harness/diagnóstico para testar o pipeline

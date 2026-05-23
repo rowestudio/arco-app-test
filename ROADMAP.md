@@ -66,7 +66,7 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19t)
+### Estado atual (v8z4b19u)
 
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
@@ -118,28 +118,22 @@ compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 - `runInternalCurvePatchSelfTestForSegment(segIndex, proposedOffset)` — harness para segmento normal: constrói runtime model via `buildRuntimeCurveModel()` e delega a `runInternalCurvePatchSelfTestForModel()`; não altera estado. Introduzido na v8z4b19t.
 - `runInternalCurvePatchSelfTestForLoop(proposedOffset)` — harness para curva de loop: roda self-test no loop se ativo; retorna `{ ok: false, reason: 'loop-disabled' }` se loop inativo; não altera estado. Introduzido na v8z4b19t.
 - `runInternalCurvePatchSelfTestSuite()` — suite completa: roda self-test em segmento normal + loop (se ativo); retorna resumo com `segmentResult`, `loopResult`, `summary`; **não roda automaticamente** em nenhum fluxo público. Introduzido na v8z4b19t.
-- **Self-test interno do pipeline de patch preparado (v8z4b19t):** o harness `runInternalCurvePatchSelfTestSuite()` valida o pipeline completo `pathPoint → simulação → patch candidato → dry-run → apply guardado` sem mutação real. Disponível em `window.__arcoInternalDiag.curvePatchSelfTest` apenas para diagnóstico de desenvolvimento. Bug de projeto sem imagem (`_file.json` sem `imageBase64`) mantido apenas no ROADMAP (fase UI/carregamento futura). Tempos/proporções mantidos no roadmap futuro. Velocidade composta mantida no roadmap futuro. Criação de frame seguindo curva de loop mantida no roadmap futuro.
+- **Self-test interno do pipeline de patch preparado (v8z4b19t):** o harness `runInternalCurvePatchSelfTestSuite()` valida o pipeline completo `pathPoint → simulação → patch candidato → dry-run → apply guardado` sem mutação real. Disponível em `window.__arcoInternalDiag.curvePatchSelfTest` apenas para diagnóstico de desenvolvimento.
+- `createLegacyCurvePatchFromCurrentCurveEdit(target, nextCtrlPt)` — monta patch candidato compatível com `validateLegacyCurvePatchCandidate()` a partir de `{ nx, ny, t, perpX, perpY }` já calculados durante edição de curva; `applied: false` sempre; não altera estado. Introduzido na v8z4b19u.
+- `applyExistingCurveEditViaPatch(target, nextCtrlPt, options)` — roteia edição de curva existente pelo aplicador guardado: cria patch → valida → aplica com `allowRealMutation: true`; pushUndo/markDirty/render gerenciados externamente pelo chamador. Introduzido na v8z4b19u.
+- **Edição de curva existente agora passa pelo aplicador guardado (v8z4b19u):** `setSegmentTrajectoryPoint()` usa `applyExistingCurveEditViaPatch()` em vez de `setSegmentCurve()` direto; curvas normais e curva de loop incluídas; comportamento visual idêntico à v8z4b19t; Undo/Redo/markDirty/render preservados; JSON schema inalterado; nenhum campo novo.
+- **Reset global de curvas registrado como roadmap futuro:** não implementado nesta versão; avaliar integração com o pipeline guardado quando a UI estiver pronta.
+- **Bug de `_file.json` sem `imageBase64`** mantido apenas no ROADMAP (fase UI/carregamento futura). Tempos/proporções mantidos no roadmap futuro. Velocidade composta mantida no roadmap futuro. Criação de frame seguindo curva de loop mantida no roadmap futuro.
 
 ### Próximos passos (futuros, não imediatos)
 
-- Conectar `applyLegacyCurvePatchCandidateToRealState` a um fluxo real:
-  - Chamar com `options = { allowRealMutation: true, pushUndo: true, markDirty: true, render: true }`.
-  - Conectar ao gesto de edição de pathPoint quando a UI estiver pronta.
-- Conectar o draft applier da v8z4b19r a uma aplicação real (alternativa direta):
-  - Usar `createLegacyCurvePatchApplicationDraft()`,
-    validar com `validateLegacyCurvePatchApplicationDraft()` e só então
-    aplicar `after.ctrlPts[index]` em `ctrlPts[index]`, chamar `pushUndo`, `markProjectDirty`
-    e `renderAll`.
-- Conectar o pipeline completo da v8z4b19q a uma UI real de edição de pathPoint.
-  - O patch candidato já indica `ctrlPts[segIndex]` ou `loopCtrlPt` e o valor exato.
-  - Com o draft applier pronto (v8z4b19r), o próximo passo é ligar o draft applier
-    à aplicação real chamando `pushUndo`, `markProjectDirty` e `renderAll`.
 - Conectar o pipeline de simulação da v8z4b19p a uma UI real de edição de pathPoint.
   - Permitir que o `pathPoint` derivado em `t=0.5` seja arrastável pelo usuário.
   - Usar `simulateRuntimePathPointEdit()` para preview em tempo real durante drag.
-  - Ao confirmar drag: aplicar `derivedCurvePuller` em `ctrlPts` / `loopCtrlPt`.
+  - Ao confirmar drag: aplicar `derivedCurvePuller` em `ctrlPts` / `loopCtrlPt` via `applyExistingCurveEditViaPatch()`.
   - Usar `deriveLegacyCurvePullerFromMidpoint()` para converter posição editada em curvePuller compatível com o schema `ctrlPts` / `loopCtrlPt`.
   - Nenhuma mudança no schema JSON necessária: compatibilidade backward garantida.
+- Implementar reset global de curvas: resetar todos os `ctrlPts` + `loopCtrlPt` para posição padrão; conectar ao pipeline guardado; preservar Undo/Redo.
 - Adicionar `pathPoints` reais como pontos de passagem sem tempo próprio.
 - Adicionar `handles` de tangência para controle Bézier cúbico.
 - Implementar `mode = 'vectorAnchors'` com avaliador Bézier cúbico.

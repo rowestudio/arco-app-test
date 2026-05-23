@@ -1,13 +1,25 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19t                                     ║
+║  Versão: v8z4b19u                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19u                                            ║
+║    feat: route existing curve edits through          ║
+║         guarded patch applier                        ║
+║         createLegacyCurvePatchFromCurrentCurveEdit() ║
+║         applyExistingCurveEditViaPatch()             ║
+║         setSegmentTrajectoryPoint() agora usa        ║
+║         applyExistingCurveEditViaPatch() em vez de   ║
+║         setSegmentCurve() direto; mutação de         ║
+║         ctrlPts/loopCtrlPt passa pelo pipeline       ║
+║         guardado; comportamento visual idêntico      ║
+║         Undo/Redo/markDirty/render preservados       ║
+║         JSON schema inalterado; sem campo novo       ║
 ║  v8z4b19t                                            ║
 ║    feat: add internal curve patch self-test harness  ║
 ║         runInternalCurvePatchSelfTestForModel()      ║
@@ -230,7 +242,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19t — add internal curve patch self-test harness: runInternalCurvePatchSelfTestForModel/Segment/Loop/Suite() — harness interno que valida o pipeline completo de patch de curva (simulateRuntimePathPointEdit → createLegacyCurvePatchFromSimulatedPathPointEdit → validateLegacyCurvePatchCandidate → dryRunApplyLegacyCurvePatchCandidate → applyLegacyCurvePatchCandidateToRealState com allowRealMutation:false) sem mutação real; guarda confirmada (real-mutation-disabled); estado real intocável; exposto em window.__arcoInternalDiag.curvePatchSelfTest — não corre automaticamente; não conectado a UI/Stage/Preview/gesto/botão/save/load; não chama pushUndo/markProjectDirty/renderAll; UI, Stage, curvas, Preview matemático, MP4/export, save/load inalterados -->
+<!-- Arco Motion App — v8z4b19u — route existing curve edits through guarded patch applier: createLegacyCurvePatchFromCurrentCurveEdit() + applyExistingCurveEditViaPatch() — setSegmentTrajectoryPoint() agora roteia edição de ctrlPts/loopCtrlPt pelo aplicador guardado applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true }) em vez de chamar setSegmentCurve() diretamente; comportamento visual idêntico à v8z4b19t; Undo/Redo/markProjectDirty/render preservados; JSON schema inalterado; sem campo novo; curva de loop incluída no novo pipeline; self-test harness da v8z4b19t intacto -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -2012,7 +2024,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19t</span><br><span id="appVersionNameText">add internal curve patch self-test harness</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19u</span><br><span id="appVersionNameText">route existing curve edits through guarded patch applier</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4353,8 +4365,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19t';
-const APP_VERSION_NAME = 'add internal curve patch self-test harness';
+const APP_VERSION = 'v8z4b19u';
+const APP_VERSION_NAME = 'route existing curve edits through guarded patch applier';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4896,20 +4908,38 @@ function setSegmentTrajectoryPoint(segIndex, pointDescriptor, nextPoint) {
   if (typeof nx !== 'number' || !isFinite(nx) ||
       typeof ny !== 'number' || !isFinite(ny)) return;
 
-  // v8z4b18k: curvePuller — puxador auxiliar legado da curva quadrática.
-  // Um por segmento nesta versão. Não é pathPoint real.
-  // Esta versão não altera visual nem schema.
-  setSegmentCurve(segIndex, { nx, ny });
+  // v8z4b19u: curvePuller — puxador auxiliar legado editado via pipeline guardado.
+  // A mutação real de ctrlPts/loopCtrlPt agora passa por
+  // applyExistingCurveEditViaPatch() → applyLegacyCurvePatchCandidateToRealState().
+  // Comportamento visual idêntico à v8z4b19t.
+  // pushUndo/markDirty/render: gerenciados pelo chamador (startCtrlDrag/endDrag/onMove).
+  var isLoop = isLoopSegment(segIndex);
+  var _target = isLoop
+    ? { type: 'loop' }
+    : { type: 'segment', segIndex: segIndex };
 
-  // Para segmentos normais (não loop): atualizar também t/perpX/perpY
-  if (!isLoopSegment(segIndex)) {
-    const tp = computeTPerpForSeg(segIndex, nx, ny);
-    if (tp && typeof tp.t === 'number' && isFinite(tp.t)) {
-      setSegmentCurve(segIndex, { t: tp.t, perpX: tp.perpX, perpY: tp.perpY });
-    }
+  var _nextCtrlPt;
+  if (!isLoop) {
+    // Para segmentos normais: calcular t/perpX/perpY a partir de nx/ny
+    var _tp = computeTPerpForSeg(segIndex, nx, ny);
+    var _t     = (_tp && typeof _tp.t     === 'number' && isFinite(_tp.t))     ? _tp.t     : 0.5;
+    var _perpX = (_tp && typeof _tp.perpX === 'number' && isFinite(_tp.perpX)) ? _tp.perpX : 0;
+    var _perpY = (_tp && typeof _tp.perpY === 'number' && isFinite(_tp.perpY)) ? _tp.perpY : 0;
+    _nextCtrlPt = { nx: nx, ny: ny, t: _t, perpX: _perpX, perpY: _perpY };
+  } else {
+    // Para segmento de loop: preservar t/perpX/perpY existentes de loopCtrlPt
+    var _existingLoop = loopCtrlPt || {};
+    _nextCtrlPt = {
+      nx: nx,
+      ny: ny,
+      t:     (typeof _existingLoop.t     === 'number' && isFinite(_existingLoop.t))     ? _existingLoop.t     : 0.5,
+      perpX: (typeof _existingLoop.perpX === 'number' && isFinite(_existingLoop.perpX)) ? _existingLoop.perpX : 0,
+      perpY: (typeof _existingLoop.perpY === 'number' && isFinite(_existingLoop.perpY)) ? _existingLoop.perpY : 0
+    };
   }
 
-  setSegmentCurveManual(segIndex, true);
+  // Aplicar via pipeline guardado — sem pushUndo/markDirty/render (gerenciados pelo chamador)
+  applyExistingCurveEditViaPatch(_target, _nextCtrlPt, { pushUndo: false, markDirty: false, render: false });
 }
 
 function getAllTrajectoryPoints() {
@@ -8325,16 +8355,15 @@ function validateRealCurvePatchApplicationOptions(options) {
 // applyLegacyCurvePatchCandidateToRealState(patch, options)
 //
 // v8z4b19s — aplicador real guardado para legacy curve patch candidate.
-//
-// GUARDADO: não conectado a UI, Stage, Preview, gesto, botão ou save/load.
-// Não chamado automaticamente nesta versão. Sem efeito no estado real por padrão.
+// v8z4b19u — CONECTADO: chamado por applyExistingCurveEditViaPatch() com
+//             allowRealMutation: true durante edição de curva normal e de loop.
 //
 // Por padrão (options.allowRealMutation !== true):
 //   - NÃO aplica nada no estado real.
 //   - NÃO chama pushUndo, markProjectDirty ou renderAll.
 //   - Retorna { ok: false, reason: 'real-mutation-disabled', appliedToRealState: false }.
 //
-// Quando options.allowRealMutation === true (NÃO ativo nesta versão):
+// Quando options.allowRealMutation === true:
 //   - Valida patch com validateLegacyCurvePatchCandidate().
 //   - Valida field/index.
 //   - Para field 'ctrlPts': aplica patch.value em ctrlPts[index];
@@ -8344,14 +8373,11 @@ function validateRealCurvePatchApplicationOptions(options) {
 //     apenas se options explicitamente permitir.
 //   - Retorna diagnóstico completo.
 //
-// Restrições absolutas nesta versão (v8z4b19s):
-//   - allowRealMutation: true NÃO é usado em nenhum fluxo público.
-//   - pushUndo, markProjectDirty, renderAll NÃO são chamados por este helper.
-//   - UI, Stage, curvas, Preview matemático, MP4/export, save/load — inalterados.
-//   - Nenhum campo novo persiste no JSON.
-//
-// Futura versão poderá conectar este helper a UI/gesto/undo/redo
-// passando options = { allowRealMutation: true, pushUndo: true, markDirty: true, render: true }.
+// v8z4b19u — uso em edição real (via applyExistingCurveEditViaPatch):
+//   - allowRealMutation: true; pushUndo: false (feito em startCtrlDrag);
+//   - markDirty: false (feito em endDrag); render: false (feito em onMove);
+//   - reason: 'existing-curve-edit'.
+//   - Nenhum campo novo persiste no JSON. Schema inalterado.
 function applyLegacyCurvePatchCandidateToRealState(patch, options) {
   var optResult = validateRealCurvePatchApplicationOptions(options);
   var opts = optResult.normalized;
@@ -8369,10 +8395,8 @@ function applyLegacyCurvePatchCandidateToRealState(patch, options) {
     };
   }
 
-  // --- Código abaixo preparado mas NÃO ativo nesta versão ---
-  // Nenhum fluxo chama applyLegacyCurvePatchCandidateToRealState
-  // com allowRealMutation: true na v8z4b19s.
-  // Futura versão poderá conectar isso a UI, gesto e undo/redo.
+  // v8z4b19u: este bloco agora é chamado com allowRealMutation: true
+  // por applyExistingCurveEditViaPatch() durante edição real de curvas.
 
   // Validar patch
   var patchValid = validateLegacyCurvePatchCandidate(patch);
@@ -8613,6 +8637,213 @@ function compareRealCurveStateSnapshot(before, after) {
       loopCtrlPt: loopDelta,
       loopChanged: loopChanged
     }
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════════════
+// v8z4b19u — HELPERS DE EDIÇÃO REAL VIA PIPELINE GUARDADO
+// ──────────────────────────────────────────────────────────────────────────────
+// Dois helpers que fazem a edição de curva existente passar pelo aplicador
+// guardado em vez de alterar ctrlPts/loopCtrlPt diretamente.
+//
+// Helpers criados nesta versão:
+//   1. createLegacyCurvePatchFromCurrentCurveEdit(target, nextCtrlPt)
+//   2. applyExistingCurveEditViaPatch(target, nextCtrlPt, options)
+//
+// Fluxo:
+//   setSegmentTrajectoryPoint()
+//   → applyExistingCurveEditViaPatch()
+//   → createLegacyCurvePatchFromCurrentCurveEdit()   (monta patch)
+//   → validateLegacyCurvePatchCandidate()            (valida)
+//   → applyLegacyCurvePatchCandidateToRealState()    (aplica com allowRealMutation:true)
+//
+// Comportamento visual e funcional idêntico à v8z4b19t.
+// pushUndo/markDirty/render gerenciados pelo chamador (startCtrlDrag/endDrag/onMove).
+// JSON schema inalterado. Nenhum campo novo persistido.
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: Criar patch legado a partir da edição de curva existente — v8z4b19u ─
+//
+// createLegacyCurvePatchFromCurrentCurveEdit(target, nextCtrlPt)
+//
+// Monta um patch candidato compatível com validateLegacyCurvePatchCandidate()
+// e applyLegacyCurvePatchCandidateToRealState() a partir dos valores já
+// calculados durante a edição de curva normal ou de loop.
+//
+// Parâmetros:
+//   target     — { type: 'segment', segIndex: number } ou { type: 'loop' }
+//   nextCtrlPt — { nx, ny, t, perpX, perpY } — todos numéricos finitos
+//
+// Retorno (sucesso):
+//   {
+//     ok:              true,
+//     reason:          'ok',
+//     target:          target,
+//     field:           'ctrlPts' | 'loopCtrlPt',
+//     index:           segIndex | null,
+//     value:           { nx, ny, t, perpX, perpY },
+//     source:          'existingCurveEdit',
+//     appliesToSchema: 'legacyCurvePuller' | 'legacyLoopCurvePuller',
+//     applied:         false
+//   }
+//
+// Retorno (erro):
+//   { ok: false, reason: string, ..., applied: false }
+//
+// IMPORTANTE:
+//   - applied === false sempre (o patch é apenas candidato).
+//   - Não aplica em ctrlPts/loopCtrlPt diretamente.
+//   - Não chama pushUndo, markProjectDirty, renderAll.
+//   - Não invalida MP4, não salva no JSON, não renderiza.
+//
+// v8z4b19u — helper novo.
+function createLegacyCurvePatchFromCurrentCurveEdit(target, nextCtrlPt) {
+  var FAIL = function(reason) {
+    return {
+      ok:              false,
+      reason:          reason,
+      target:          null,
+      field:           null,
+      index:           null,
+      value:           null,
+      source:          'existingCurveEdit',
+      appliesToSchema: null,
+      applied:         false
+    };
+  };
+
+  if (!target || (target.type !== 'segment' && target.type !== 'loop')) {
+    return FAIL('invalid-target');
+  }
+
+  if (!nextCtrlPt ||
+      typeof nextCtrlPt.nx    !== 'number' || !isFinite(nextCtrlPt.nx)    ||
+      typeof nextCtrlPt.ny    !== 'number' || !isFinite(nextCtrlPt.ny)    ||
+      typeof nextCtrlPt.t     !== 'number' || !isFinite(nextCtrlPt.t)     ||
+      typeof nextCtrlPt.perpX !== 'number' || !isFinite(nextCtrlPt.perpX) ||
+      typeof nextCtrlPt.perpY !== 'number' || !isFinite(nextCtrlPt.perpY)) {
+    return FAIL('invalid-nextCtrlPt');
+  }
+
+  var value = {
+    nx:    nextCtrlPt.nx,
+    ny:    nextCtrlPt.ny,
+    t:     nextCtrlPt.t,
+    perpX: nextCtrlPt.perpX,
+    perpY: nextCtrlPt.perpY
+  };
+
+  if (target.type === 'segment') {
+    var segIndex = target.segIndex;
+    if (typeof segIndex !== 'number' || !isFinite(segIndex) ||
+        segIndex < 0 || Math.floor(segIndex) !== segIndex) {
+      return FAIL('missing-segIndex');
+    }
+    return {
+      ok:              true,
+      reason:          'ok',
+      target:          { type: 'segment', segIndex: segIndex },
+      field:           'ctrlPts',
+      index:           segIndex,
+      value:           value,
+      source:          'existingCurveEdit',
+      appliesToSchema: 'legacyCurvePuller',
+      applied:         false
+    };
+  }
+
+  // target.type === 'loop'
+  return {
+    ok:              true,
+    reason:          'ok',
+    target:          { type: 'loop' },
+    field:           'loopCtrlPt',
+    index:           null,
+    value:           value,
+    source:          'existingCurveEdit',
+    appliesToSchema: 'legacyLoopCurvePuller',
+    applied:         false
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Helper: Aplicar edição de curva existente via pipeline guardado — v8z4b19u ─
+//
+// applyExistingCurveEditViaPatch(target, nextCtrlPt, options)
+//
+// Roteia a edição de curva normal ou de loop pelo aplicador guardado:
+//   1. Cria patch com createLegacyCurvePatchFromCurrentCurveEdit().
+//   2. Valida com validateLegacyCurvePatchCandidate().
+//   3. Aplica com applyLegacyCurvePatchCandidateToRealState(patch, {
+//        allowRealMutation: true,
+//        pushUndo:          options.pushUndo  === true,
+//        markDirty:         options.markDirty === true,
+//        render:            options.render    === true,
+//        reason:            'existing-curve-edit'
+//      }).
+//   4. Retorna diagnóstico estruturado.
+//
+// Parâmetros:
+//   target     — { type: 'segment', segIndex: number } ou { type: 'loop' }
+//   nextCtrlPt — { nx, ny, t, perpX, perpY }
+//   options    — { pushUndo, markDirty, render } (opcionais, default false)
+//
+// Retorno:
+//   {
+//     ok:          boolean,
+//     reason:      string,
+//     patch:       patch candidato ou null,
+//     patchValid:  resultado de validateLegacyCurvePatchCandidate ou null,
+//     applyResult: resultado de applyLegacyCurvePatchCandidateToRealState ou null
+//   }
+//
+// IMPORTANTE:
+//   - pushUndo/markDirty/render devem ser false neste helper quando gerenciados
+//     externamente (startCtrlDrag / endDrag / onMove).
+//   - Não invalida MP4 diretamente (gerenciado por endDrag via markProjectDirty).
+//   - JSON schema inalterado. Nenhum campo novo persistido.
+//
+// v8z4b19u — helper novo.
+function applyExistingCurveEditViaPatch(target, nextCtrlPt, options) {
+  var opts = options || {};
+
+  var patch = createLegacyCurvePatchFromCurrentCurveEdit(target, nextCtrlPt);
+  if (!patch.ok) {
+    return {
+      ok:          false,
+      reason:      'patch-creation-failed: ' + patch.reason,
+      patch:       patch,
+      patchValid:  null,
+      applyResult: null
+    };
+  }
+
+  var patchValid = validateLegacyCurvePatchCandidate(patch);
+  if (!patchValid.ok) {
+    return {
+      ok:          false,
+      reason:      'patch-validation-failed: ' + patchValid.reason,
+      patch:       patch,
+      patchValid:  patchValid,
+      applyResult: null
+    };
+  }
+
+  var applyResult = applyLegacyCurvePatchCandidateToRealState(patch, {
+    allowRealMutation: true,
+    pushUndo:          opts.pushUndo  === true,
+    markDirty:         opts.markDirty === true,
+    render:            opts.render    === true,
+    reason:            'existing-curve-edit'
+  });
+
+  return {
+    ok:          applyResult.ok,
+    reason:      applyResult.reason,
+    patch:       patch,
+    patchValid:  patchValid,
+    applyResult: applyResult
   };
 }
 // ──────────────────────────────────────────────────────────────────────────────
