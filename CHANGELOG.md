@@ -1,5 +1,61 @@
 # Changelog
 
+## v8z4b21a — implement real cubic in-out handles
+
+Mudança arquitetural controlada do modelo de curvas. Base obrigatória: v8z4b20d.
+
+### curvesV2 — novo modelo cúbico
+
+Introduz `curvesV2` como fonte de verdade para curvas Bézier cúbicas com handles in/out independentes por frame.
+
+**Estrutura:**
+```json
+{
+  "version": 1,
+  "mode": "cubic",
+  "frameHandles": {
+    "out": [{"dx": 40, "dy": 0, "manual": true}, ...],
+    "in":  [null, {"dx": -40, "dy": 0, "manual": false}, ...]
+  }
+}
+```
+- `out[i]`: vetor relativo do centro do frame i até C1 do trecho i→i+1.
+- `in[i]`:  vetor relativo do centro do frame i até C2 do trecho (i-1)→i.
+- Vetores relativos: handles acompanham o frame ao mover (não precisam de resync).
+
+### Handles independentes
+
+- Arrastar OUT de F(i) altera apenas `curvesV2.frameHandles.out[i]`.
+- Arrastar IN de F(i) altera apenas `curvesV2.frameHandles.in[i]`.
+- Nenhum dos dois afeta o handle oposto do mesmo trecho.
+- Não usa mais o ctrlPt legado como se fossem dois handles.
+
+### Bézier cúbica real
+
+- `drawBezier()`: usa `M P0 C C1 C2 P3` (SVG C) em vez de `Q`.
+- `getStateAtT()`: `bezierPointAt()` usa `evalCubicBezierPt()` quando curvesV2 ativo.
+- `evaluateSegmentPath()`: caminho preferencial usa cúbica antes do runtime legado.
+- Preview e MP4 seguem a mesma curva desenhada.
+
+### Compatibilidade com arquivos antigos
+
+- `applyFrameData()`: se JSON não tem `curvesV2`, chama `convertLegacyCtrlPtsToCurvesV2()`.
+- Conversão: quadrática Q → cúbica via C1 = P0 + 2/3*(Q-P0), C2 = P3 + 2/3*(Q-P3).
+- Arquivos antigos abrem sem perda de curva visual.
+
+### JSON
+
+- `buildProjectData()` salva `curvesV2` no JSON.
+- `version: "v8z4b21a"` persistido.
+- Campos `ctrlPts`/`ctrlPtManual`/`loopCtrlPt` mantidos para fallback.
+
+### Undo/Redo
+
+- `captureState()` / `restoreState()` incluem `curvesV2` via `cloneCurvesV2()`.
+- Handles são restaurados corretamente no Undo.
+
+---
+
 ## v8z4b20d — fix handle sync after frame move and visible segment handles
 
 Correção de estabilização sobre a v8z4b20c. Base obrigatória: v8z4b20c.

@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b20d                                     ║
+║  Versão: v8z4b21a                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b21a                                            ║
+║    feat: implement real cubic in-out handles —       ║
+║         curvesV2 com handles in/out independentes;  ║
 ║  v8z4b20d                                            ║
 ║    fix: handle sync after frame move and visible     ║
 ║         segment handles — sincroniza handles ao      ║
@@ -317,7 +320,8 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b20d — fix handle sync after frame move and visible segment handles: BLOCO A — sincroniza handles visualmente ao mover frame; loopCtrlPt recalculado via t/perpX/perpY quando F1 ou último frame é movido; BLOCO B — applyFrameConnectedHandleEdit armazena t/perp para loop; syncCtrlPtsForFrame estendido para trecho de loop; BLOCO C — threshold de 8px reduzido para 2px em getFrameHandleGeometryForTarget (handles manuais ficam estáveis); BLOCO D — ghost handles do lado complementar do trecho ativo (não-interativo); BLOCO E — ensureSegmentArraysIntegrity() normaliza ctrlPts, ctrlPtManual, segBlurSettings, rotEasings, scaleEasings, segDurations; deleteActiveFrame corrigido para segBlurSettings; buildProjectData chama ensure antes de salvar; BLOCO F — loop corrigido; BLOCO G — midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo preservado; BLOCO I — JSON/schema inalterado; sem campo novo -->
+<!-- Arco Motion App — v8z4b21a — implement real cubic in-out handles: curvesV2 com handles in/out independentes por frame; Bézier cúbica C(P0,C1,C2,P3); avaliação e Preview/MP4 usam cubic; JSON salva curvesV2; compatibilidade com arquivos antigos via conversão ctrlPts→curvesV2. -->
+<!-- v8z4b20d — fix handle sync after frame move and visible segment handles: BLOCO A — sincroniza handles visualmente ao mover frame; loopCtrlPt recalculado via t/perpX/perpY quando F1 ou último frame é movido; BLOCO B — applyFrameConnectedHandleEdit armazena t/perp para loop; syncCtrlPtsForFrame estendido para trecho de loop; BLOCO C — threshold de 8px reduzido para 2px em getFrameHandleGeometryForTarget (handles manuais ficam estáveis); BLOCO D — ghost handles do lado complementar do trecho ativo (não-interativo); BLOCO E — ensureSegmentArraysIntegrity() normaliza ctrlPts, ctrlPtManual, segBlurSettings, rotEasings, scaleEasings, segDurations; deleteActiveFrame corrigido para segBlurSettings; buildProjectData chama ensure antes de salvar; BLOCO F — loop corrigido; BLOCO G — midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo preservado; BLOCO I — JSON/schema inalterado; sem campo novo -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -2149,7 +2153,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b20d</span><br><span id="appVersionNameText">fix handle sync after frame move and visible segment handles</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b21a</span><br><span id="appVersionNameText">implement real cubic in-out handles</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4490,8 +4494,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b20d';
-const APP_VERSION_NAME = 'fix handle sync after frame move and visible segment handles';
+const APP_VERSION = 'v8z4b21a';
+const APP_VERSION_NAME = 'implement real cubic in-out handles';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4625,6 +4629,13 @@ const frameRotations = [];
 // (Esses helpers chamam internamente getSegmentCurve/setSegmentCurve/etc.)
 // ─────────────────────────────────────────────────────────────────────────────
 const ctrlPts = [];
+// v8z4b21a: curvesV2 — modelo cúbico com handles in/out independentes por frame.
+// frameHandles.out[i]: vetor do centro do frame i até C1 do trecho i→i+1.
+// frameHandles.in[i]:  vetor do centro do frame i até C2 do trecho (i-1)→i.
+// Formato de handle: {dx, dy, manual} — relativo ao centro do frame.
+// out[i] → C1 do trecho i→i+1 (saída do frame i)
+// in[i]  → C2 do trecho (i-1)→i (entrada do frame i)
+let curvesV2 = null;
 const ctrlPtManual = [];
 
 // ─── Active Segments Helper — v8z4b18f ────────────────────────────────────────
@@ -6060,6 +6071,18 @@ function evaluateLegacySegmentPath(segIndex, t) {
 //   Ambos usam a mesma fórmula de Bézier quadrática. A distinção de
 //   frames e curvePuller é delegada a getSegmentByIndex + getSegmentCurvePuller.
 function evaluateSegmentPath(segIndex, t) {
+  // v8z4b21a: se curvesV2 ativo, usar avaliador cúbico como caminho preferencial.
+  if (isCurvesV2Active()) {
+    const cp2 = getCurvesV2CubicCP(segIndex);
+    if (cp2) {
+      const pt = evalCubicBezierPt(
+        Math.max(0, Math.min(1, t)),
+        cp2.P0x, cp2.P0y, cp2.C1x, cp2.C1y, cp2.C2x, cp2.C2y, cp2.P3x, cp2.P3y
+      );
+      if (isFinite(pt.x) && isFinite(pt.y)) return pt;
+    }
+  }
+
   // v8z4b19d — caminho preferencial: runtime curve model.
   // O modelo runtime encapsula os mesmos dados do legado (anchors + controls
   // normalizados), mas de forma tipada e auto-descritiva.
@@ -9630,6 +9653,129 @@ function ensureSegmentArraysIntegrity() {
     while (scaleEasings.length < expected) scaleEasings.push('linear');
     if (scaleEasings.length > expected) scaleEasings.length = expected;
   }
+
+  // v8z4b21a: normalizar arrays curvesV2 ao frameCount atual (in/out têm frameCount = expected+1 entradas).
+  if (isCurvesV2Active()) {
+    const { in: inArr, out: outArr } = curvesV2.frameHandles;
+    const cv2len = expected + 1; // frameCount
+    while (outArr.length < cv2len) outArr.push(null);
+    if (outArr.length > cv2len) outArr.length = cv2len;
+    while (inArr.length  < cv2len)  inArr.push(null);
+    if (inArr.length  > cv2len)  inArr.length  = cv2len;
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CURVES V2 — v8z4b21a: modelo cúbico com handles in/out independentes por frame
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Retorna true se curvesV2 está ativo e válido.
+function isCurvesV2Active() {
+  return !!(curvesV2 &&
+            curvesV2.mode === 'cubic' &&
+            curvesV2.frameHandles &&
+            Array.isArray(curvesV2.frameHandles.out) &&
+            Array.isArray(curvesV2.frameHandles.in));
+}
+
+// Avalia Bézier cúbica no parâmetro u ∈ [0,1].
+// P0, C1, C2, P3 em pixels do stage (ou qualquer unidade consistente).
+function evalCubicBezierPt(u, P0x, P0y, C1x, C1y, C2x, C2y, P3x, P3y) {
+  const mt = 1 - u;
+  return {
+    x: mt*mt*mt*P0x + 3*mt*mt*u*C1x + 3*mt*u*u*C2x + u*u*u*P3x,
+    y: mt*mt*mt*P0y + 3*mt*mt*u*C1y + 3*mt*u*u*C2y + u*u*u*P3y
+  };
+}
+
+// Retorna pontos de controle cúbicos {P0x,P0y,C1x,C1y,C2x,C2y,P3x,P3y} para o segmento seg.
+// Para trecho normal seg: P0=center(seg), C1=P0+out[seg], C2=P3+in[seg+1], P3=center(seg+1).
+// Para loop (seg=getLoopSegmentIndex()): P0=center(N-1), P3=center(0), C1=P0+out[N-1], C2=P3+in[0].
+// Retorna null se inválido ou curvesV2 inativo.
+function getCurvesV2CubicCP(seg) {
+  if (!isCurvesV2Active()) return null;
+  if (!stageW || !stageH || stageW <= 0 || stageH <= 0) return null;
+  const loopSeg = getLoopSegmentIndex(); // -1 se não há loop
+  let fi0, fi1;
+  if (seg >= 0 && seg < frameCount - 1) {
+    fi0 = seg; fi1 = seg + 1;
+  } else if (loopSeg >= 0 && seg === loopSeg) {
+    fi0 = frameCount - 1; fi1 = 0;
+  } else {
+    return null;
+  }
+  const P0x = frameCX(fi0), P0y = frameCY(fi0);
+  const P3x = frameCX(fi1), P3y = frameCY(fi1);
+  const outH = curvesV2.frameHandles.out[fi0] || null;
+  const inH  = curvesV2.frameHandles.in[fi1]  || null;
+  // Default: 1/3 do comprimento da corda na direção do segmento
+  const defDxOut = (P3x - P0x) / 3, defDyOut = (P3y - P0y) / 3;
+  const defDxIn  = (P0x - P3x) / 3, defDyIn  = (P0y - P3y) / 3;
+  const C1x = P0x + (outH ? outH.dx : defDxOut);
+  const C1y = P0y + (outH ? outH.dy : defDyOut);
+  const C2x = P3x + (inH  ? inH.dx  : defDxIn);
+  const C2y = P3y + (inH  ? inH.dy  : defDyIn);
+  return { P0x, P0y, C1x, C1y, C2x, C2y, P3x, P3y };
+}
+
+// Converte ctrlPts legados (quadráticos) para curvesV2 (cúbicos).
+// Chamado ao abrir projeto antigo sem curvesV2.
+// Conversão: C1 = P0 + (2/3)*(Q-P0), C2 = P3 + (2/3)*(Q-P3)
+function convertLegacyCtrlPtsToCurvesV2() {
+  const fc = frameCount;
+  if (fc < 2 || !stageW || !stageH) return;
+  const outArr = new Array(fc).fill(null);
+  const inArr  = new Array(fc).fill(null);
+  for (let seg = 0; seg < fc - 1; seg++) {
+    const cp = ctrlPts[seg];
+    const P0x = frameCX(seg),   P0y = frameCY(seg);
+    const P3x = frameCX(seg+1), P3y = frameCY(seg+1);
+    let Qx, Qy;
+    if (cp && Number.isFinite(cp.nx) && Number.isFinite(cp.ny)) {
+      Qx = cp.nx * stageW; Qy = cp.ny * stageH;
+    } else {
+      Qx = (P0x + P3x) / 2; Qy = (P0y + P3y) / 2;
+    }
+    const C1x = P0x + (2/3) * (Qx - P0x);
+    const C1y = P0y + (2/3) * (Qy - P0y);
+    const C2x = P3x + (2/3) * (Qx - P3x);
+    const C2y = P3y + (2/3) * (Qy - P3y);
+    const manual = !!(ctrlPtManual && ctrlPtManual[seg]);
+    outArr[seg]    = { dx: C1x - P0x, dy: C1y - P0y, manual };
+    inArr[seg + 1] = { dx: C2x - P3x, dy: C2y - P3y, manual };
+  }
+  curvesV2 = { version: 1, mode: 'cubic', frameHandles: { in: inArr, out: outArr } };
+  console.info('[Arco v8z4b21a] convertLegacyCtrlPtsToCurvesV2: ' + (fc-1) + ' segmentos convertidos');
+}
+
+// Garante que curvesV2 existe e tem arrays com exatamente frameCount entradas.
+// Cria/converte se não existir. Ajusta tamanho se desalinhado.
+function ensureCurvesV2() {
+  const fc = frameCount;
+  if (fc < 2) return;
+  if (!isCurvesV2Active()) {
+    convertLegacyCtrlPtsToCurvesV2();
+    return;
+  }
+  const { in: inArr, out: outArr } = curvesV2.frameHandles;
+  while (outArr.length < fc) outArr.push(null);
+  if (outArr.length > fc) outArr.length = fc;
+  while (inArr.length  < fc)  inArr.push(null);
+  if (inArr.length  > fc)  inArr.length  = fc;
+}
+
+// Deep-clone de curvesV2 para Undo/Redo.
+function cloneCurvesV2(cv2) {
+  if (!cv2) return null;
+  return {
+    version: cv2.version,
+    mode: cv2.mode,
+    frameHandles: {
+      in:  cv2.frameHandles.in.map(h  => h  ? { dx: h.dx,  dy: h.dy,  manual: h.manual  } : null),
+      out: cv2.frameHandles.out.map(h => h ? { dx: h.dx, dy: h.dy, manual: h.manual } : null)
+    }
+  };
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -9676,6 +9822,8 @@ function captureState() {
     movementEasingMode,
     rotationEasingMode,
     scaleEasingMode,
+    // v8z4b21a: curvesV2 — modelo cúbico com handles in/out independentes.
+    curvesV2: cloneCurvesV2(curvesV2),
   };
 }
 
@@ -9706,6 +9854,9 @@ function restoreState(state) {
   loopEnabled = !!state.loopEnabled;
   loopDuration = state.loopDuration ?? 1.0;
   loopCtrlPt = state.loopCtrlPt ? {...state.loopCtrlPt} : null;
+  // v8z4b21a: restaurar curvesV2 do estado Undo/Redo.
+  curvesV2 = cloneCurvesV2(state.curvesV2 || null);
+  if (!isCurvesV2Active() && frameCount >= 2) ensureCurvesV2();
   loopSegEasing = state.loopSegEasing || 'linear';
   loopSegRotEasing = state.loopSegRotEasing || 'linear';
   loopSegScaleEasing = state.loopSegScaleEasing || 'linear';
@@ -10382,6 +10533,22 @@ function addFrame() {
   };
   ctrlPtManual[seg] = false;
 
+  // v8z4b21a: adicionar handles curvesV2 para o novo segmento.
+  // frameCount ainda não foi incrementado — o novo frame está em frames[seg] = frames[frameCount-1].
+  if (isCurvesV2Active()) {
+    const P0x = frameCX(seg), P0y = frameCY(seg);
+    const P3x = frameCX(seg + 1), P3y = frameCY(seg + 1);
+    const defDxOut = (P3x - P0x) / 3, defDyOut = (P3y - P0y) / 3;
+    const defDxIn  = (P0x - P3x) / 3, defDyIn  = (P0y - P3y) / 3;
+    while (curvesV2.frameHandles.out.length <= seg + 1) curvesV2.frameHandles.out.push(null);
+    while (curvesV2.frameHandles.in.length  <= seg + 1) curvesV2.frameHandles.in.push(null);
+    if (!curvesV2.frameHandles.out[seg]) {
+      curvesV2.frameHandles.out[seg] = { dx: defDxOut, dy: defDyOut, manual: false };
+    }
+    curvesV2.frameHandles.in[seg + 1]  = { dx: defDxIn, dy: defDyIn, manual: false };
+    curvesV2.frameHandles.out[seg + 1] = null; // novo último frame não tem saída ainda
+  }
+
   // Garantir que todos os segmentos existentes estão inicializados
   ensureSegDurations();
   // v8z4b16b — permitir tempo padrão 0 entre frames. Math.max(0, ...) +
@@ -10488,6 +10655,39 @@ function insertFrameAfterActive() {
   );
   ctrlPtManual.splice(a, 1, true, true);
 
+  // v8z4b21a: subdivisão De Casteljau dos handles curvesV2 ao inserir frame.
+  if (isCurvesV2Active()) {
+    // Obter C1 e C2 do segmento original antes do splice
+    const cp2orig = getCurvesV2CubicCP(a);
+    if (cp2orig) {
+      const { P0x, P0y, C1x, C1y, C2x, C2y, P3x, P3y } = cp2orig;
+      // De Casteljau em t=0.5
+      const M01x = (P0x + C1x) / 2, M01y = (P0y + C1y) / 2;
+      const M12x = (C1x + C2x) / 2, M12y = (C1y + C2y) / 2;
+      const M23x = (C2x + P3x) / 2, M23y = (C2y + P3y) / 2;
+      const M012x = (M01x + M12x) / 2, M012y = (M01y + M12y) / 2;
+      const M123x = (M12x + M23x) / 2, M123y = (M12y + M23y) / 2;
+      const Mx = (M012x + M123x) / 2, My = (M012y + M123y) / 2;
+      const outArr = curvesV2.frameHandles.out;
+      const inArr  = curvesV2.frameHandles.in;
+      // out[a] = C1_left - P0 = M01 - P0
+      outArr[a] = { dx: M01x - P0x, dy: M01y - P0y, manual: true };
+      // Inserir handles para o novo frame b (a+1 após o splice de frames)
+      // out[b] = C1_right - Mx = M123 - Mx
+      // in[b] = C2_left - Mx = M012 - Mx
+      outArr.splice(a + 1, 0, { dx: M123x - Mx, dy: M123y - My, manual: true });
+      inArr.splice(a + 1, 0, { dx: M012x - Mx, dy: M012y - My, manual: true });
+      // Corrigir in do frame do lado direito (agora em a+2)
+      if (inArr.length > a + 2) {
+        inArr[a + 2] = { dx: M23x - P3x, dy: M23y - P3y, manual: true };
+      }
+    } else {
+      // Fallback: inserir null handles para o novo frame
+      curvesV2.frameHandles.out.splice(a + 1, 0, null);
+      curvesV2.frameHandles.in.splice(a + 1, 0, null);
+    }
+  }
+
   ensureSegDurations();
   const origDur = segDurations[a] != null ? segDurations[a] : duration;
   // v8z4b16b — divisão de segmento pode resultar em 0.0s (corte seco).
@@ -10549,6 +10749,15 @@ function removeLastFrame() {
   if (segBlurSettings.length >= i) segBlurSettings.splice(i - 1, 1);
   // v8z4b15u: framePauses ficava órfão após remover frame; alinhamos aqui.
   if (framePauses.length > i) framePauses.splice(i, 1);
+  // v8z4b21a: remover handles curvesV2 do último frame.
+  if (isCurvesV2Active()) {
+    curvesV2.frameHandles.in.splice(i, 1);
+    curvesV2.frameHandles.out.splice(i, 1);
+    // Garantir que out[i-1] é null (não há mais segmento saindo do novo último frame)
+    if (curvesV2.frameHandles.out.length > i - 1) {
+      curvesV2.frameHandles.out[i - 1] = null;
+    }
+  }
   frameCount--;
   if (activeIdx >= frameCount) activeIdx = frameCount - 1;
   ensureFramePauses();
@@ -11066,6 +11275,54 @@ function getFrameHandleGeometryForTarget(fi, role, target) {
   const Px = frameCX(fi), Py = frameCY(fi);
   const DEFAULT_ARM = 48;
 
+  // v8z4b21a: curvesV2 fast-path — usar handles reais independentes se disponíveis.
+  if (isCurvesV2Active()) {
+    if (target.type === 'segment') {
+      const segIdx = target.segIndex;
+      if (segIdx < 0 || segIdx >= frameCount - 1) return null;
+      let handle, fallbackDx2, fallbackDy2;
+      if (role === 'in') {
+        // fi é o end frame do segment segIdx → in[fi]
+        handle = curvesV2.frameHandles.in[fi] || null;
+        const prevFi = Math.max(0, fi - 1);
+        fallbackDx2 = frameCX(prevFi) - Px;
+        fallbackDy2 = frameCY(prevFi) - Py;
+      } else {
+        // fi é o start frame do segment segIdx → out[fi]
+        handle = curvesV2.frameHandles.out[fi] || null;
+        const nextFi = Math.min(frameCount - 1, fi + 1);
+        fallbackDx2 = frameCX(nextFi) - Px;
+        fallbackDy2 = frameCY(nextFi) - Py;
+      }
+      if (handle && isFinite(handle.dx) && isFinite(handle.dy)) {
+        return { hx: Px + handle.dx, hy: Py + handle.dy };
+      }
+      const flen2 = Math.sqrt(fallbackDx2 * fallbackDx2 + fallbackDy2 * fallbackDy2) || 1;
+      return { hx: Px + (fallbackDx2 / flen2) * DEFAULT_ARM, hy: Py + (fallbackDy2 / flen2) * DEFAULT_ARM };
+    } else if (target.type === 'loop') {
+      const loopSeg = getLoopSegmentIndex();
+      if (loopSeg < 0) return null;
+      let handle, fallbackDx2, fallbackDy2;
+      if (fi === frameCount - 1) {
+        // OUT do último frame para loop
+        handle = curvesV2.frameHandles.out[fi] || null;
+        fallbackDx2 = frameCX(0) - Px; fallbackDy2 = frameCY(0) - Py;
+      } else if (fi === 0) {
+        // IN do F1 para loop
+        handle = curvesV2.frameHandles.in[0] || null;
+        fallbackDx2 = frameCX(frameCount - 1) - Px; fallbackDy2 = frameCY(frameCount - 1) - Py;
+      } else {
+        return null;
+      }
+      if (handle && isFinite(handle.dx) && isFinite(handle.dy)) {
+        return { hx: Px + handle.dx, hy: Py + handle.dy };
+      }
+      const flen2 = Math.sqrt(fallbackDx2 * fallbackDx2 + fallbackDy2 * fallbackDy2) || 1;
+      return { hx: Px + (fallbackDx2 / flen2) * DEFAULT_ARM, hy: Py + (fallbackDy2 / flen2) * DEFAULT_ARM };
+    }
+    return null;
+  }
+
   let cp = null;
   let fallbackDx = 0, fallbackDy = 0;
 
@@ -11262,7 +11519,18 @@ function drawBezier() {
     const segColor = seg === activeIdx - 1 ? BLUE : seg === activeIdx ? ORANGE : WHITE;
 
     // Bézier puro — suavidade desativada
-    const pathD = `M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}`;
+    // v8z4b21a: usar cubic C quando curvesV2 ativo, quadrática Q caso contrário.
+    let pathD;
+    if (isCurvesV2Active()) {
+      const cp2 = getCurvesV2CubicCP(seg);
+      if (cp2) {
+        pathD = `M ${cp2.P0x} ${cp2.P0y} C ${cp2.C1x} ${cp2.C1y} ${cp2.C2x} ${cp2.C2y} ${cp2.P3x} ${cp2.P3y}`;
+      } else {
+        pathD = `M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}`;
+      }
+    } else {
+      pathD = `M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}`;
+    }
 
     if (active) {
       svg += `<path d="${pathD}" stroke="${segColor}" stroke-width="${3 * invZ}" fill="none" stroke-linecap="round"/>`;
@@ -11290,7 +11558,20 @@ function drawBezier() {
     const showLoop = activeIdx === 0 || activeIdx === frameCount - 1;
     const lineOp   = showLoop ? 0.9 : 0.22;
     const lineW    = (showLoop ? 2.5 : 1.0) * invZ;
-    svg += `<path d="M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}" stroke="rgba(180,100,255,${lineOp})" stroke-width="${lineW}" fill="none" stroke-linecap="round" />`;
+    // v8z4b21a: usar cubic C para loop quando curvesV2 ativo.
+    let loopPathD;
+    if (isCurvesV2Active()) {
+      const _loopSeg2 = getLoopSegmentIndex();
+      const _cp2Loop = _loopSeg2 >= 0 ? getCurvesV2CubicCP(_loopSeg2) : null;
+      if (_cp2Loop) {
+        loopPathD = `M ${_cp2Loop.P0x} ${_cp2Loop.P0y} C ${_cp2Loop.C1x} ${_cp2Loop.C1y} ${_cp2Loop.C2x} ${_cp2Loop.C2y} ${_cp2Loop.P3x} ${_cp2Loop.P3y}`;
+      } else {
+        loopPathD = `M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}`;
+      }
+    } else {
+      loopPathD = `M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}`;
+    }
+    svg += `<path d="${loopPathD}" stroke="rgba(180,100,255,${lineOp})" stroke-width="${lineW}" fill="none" stroke-linecap="round" />`;
   }
 
   // v8z4b20c: Frame IN/OUT handle arms — hastes de haste do centro do frame até cada handle
@@ -11813,6 +12094,80 @@ function applyFrameHandleEdit(which, hx, hy) {
 function applyFrameConnectedHandleEdit(fi, role, target, hx, hy) {
   if (!target) return false;
   const Px = frameCX(fi), Py = frameCY(fi);
+
+  // v8z4b21a: curvesV2 — atualizar handle real independente.
+  if (isCurvesV2Active()) {
+    const dx2 = hx - Px, dy2 = hy - Py;
+    if (!isFinite(dx2) || !isFinite(dy2)) return false;
+    if (target.type === 'segment') {
+      const segIdx = target.segIndex;
+      if (segIdx < 0 || segIdx >= frameCount - 1) return false;
+      if (role === 'in') {
+        if (fi <= 0 || segIdx !== fi - 1) return false;
+        if (!curvesV2.frameHandles.in[fi]) curvesV2.frameHandles.in[fi] = { dx: 0, dy: 0, manual: false };
+        curvesV2.frameHandles.in[fi].dx = dx2;
+        curvesV2.frameHandles.in[fi].dy = dy2;
+        curvesV2.frameHandles.in[fi].manual = true;
+      } else {
+        if (fi >= frameCount - 1 || segIdx !== fi) return false;
+        if (!curvesV2.frameHandles.out[fi]) curvesV2.frameHandles.out[fi] = { dx: 0, dy: 0, manual: false };
+        curvesV2.frameHandles.out[fi].dx = dx2;
+        curvesV2.frameHandles.out[fi].dy = dy2;
+        curvesV2.frameHandles.out[fi].manual = true;
+      }
+      // Sync legacy ctrlPts for fallback compatibility
+      const segForLegacy = (role === 'in') ? fi - 1 : fi;
+      if (segForLegacy >= 0 && segForLegacy < frameCount - 1) {
+        const cp2 = getCurvesV2CubicCP(segForLegacy);
+        if (cp2 && stageW > 0 && stageH > 0) {
+          const legNx = (cp2.C1x + cp2.C2x) / 2 / stageW;
+          const legNy = (cp2.C1y + cp2.C2y) / 2 / stageH;
+          if (isFinite(legNx) && isFinite(legNy)) {
+            if (!ctrlPts[segForLegacy]) ctrlPts[segForLegacy] = { nx: 0.5, ny: 0.5, t: 0.5, perpX: 0, perpY: 0 };
+            ctrlPts[segForLegacy].nx = legNx;
+            ctrlPts[segForLegacy].ny = legNy;
+            ctrlPtManual[segForLegacy] = true;
+            const tp = computeTPerpForSeg(segForLegacy, legNx, legNy);
+            if (isFinite(tp.t)) {
+              ctrlPts[segForLegacy].t = tp.t;
+              ctrlPts[segForLegacy].perpX = tp.perpX;
+              ctrlPts[segForLegacy].perpY = tp.perpY;
+            }
+          }
+        }
+      }
+      return true;
+    } else if (target.type === 'loop') {
+      const loopSeg = getLoopSegmentIndex();
+      if (loopSeg < 0) return false;
+      if (fi === frameCount - 1) {
+        if (!curvesV2.frameHandles.out[fi]) curvesV2.frameHandles.out[fi] = { dx: 0, dy: 0, manual: false };
+        curvesV2.frameHandles.out[fi].dx = dx2;
+        curvesV2.frameHandles.out[fi].dy = dy2;
+        curvesV2.frameHandles.out[fi].manual = true;
+      } else if (fi === 0) {
+        if (!curvesV2.frameHandles.in[0]) curvesV2.frameHandles.in[0] = { dx: 0, dy: 0, manual: false };
+        curvesV2.frameHandles.in[0].dx = dx2;
+        curvesV2.frameHandles.in[0].dy = dy2;
+        curvesV2.frameHandles.in[0].manual = true;
+      } else {
+        return false;
+      }
+      // Sync loopCtrlPt legacy
+      if (loopCtrlPt) {
+        const cp2 = getCurvesV2CubicCP(loopSeg);
+        if (cp2 && stageW > 0 && stageH > 0) {
+          const legNx = (cp2.C1x + cp2.C2x) / 2 / stageW;
+          const legNy = (cp2.C1y + cp2.C2y) / 2 / stageH;
+          if (isFinite(legNx) && isFinite(legNy)) {
+            loopCtrlPt.nx = legNx; loopCtrlPt.ny = legNy;
+          }
+        }
+      }
+      return true;
+    }
+    return false;
+  }
 
   const dx = hx - Px, dy = hy - Py;
   const dLen = Math.sqrt(dx * dx + dy * dy);
@@ -12874,7 +13229,14 @@ function getStateAtT(t) {
 
   // v8z4b2: mapear progresso temporal (ttEased) para comprimento de arco
   // da curva, evitando que a posição da bolinha altere a sensação de easing.
+  // v8z4b21a: usar cúbica quando curvesV2 ativo, quadrática legacy caso contrário.
   function bezierPointAt(u) {
+    if (isCurvesV2Active()) {
+      const cp2v = getCurvesV2CubicCP(seg);
+      if (cp2v) {
+        return evalCubicBezierPt(u, cp2v.P0x, cp2v.P0y, cp2v.C1x, cp2v.C1y, cp2v.C2x, cp2v.C2y, cp2v.P3x, cp2v.P3y);
+      }
+    }
     const inv = 1 - u;
     return {
       x: inv*inv*p1.cx + 2*inv*u*cpx + u*u*p2.cx,
@@ -15708,6 +16070,13 @@ function deleteActiveFrame() {
     if (segBlurSettings.length > i - 1) segBlurSettings.splice(i - 1, 1);
   }
 
+  // v8z4b21a: remover handles curvesV2 correspondentes ao frame deletado.
+  if (isCurvesV2Active()) {
+    curvesV2.frameHandles.in.splice(i, 1);
+    curvesV2.frameHandles.out.splice(i, 1);
+    // ensureCurvesV2 será chamado via ensureSegmentArraysIntegrity abaixo
+  }
+
   frameCount--;
   activeIdx = Math.max(0, Math.min(i, frameCount - 1));
 
@@ -15892,6 +16261,7 @@ function applyTemplate(type) {
   frames.length = 0; ctrlPts.length = 0; ctrlPtManual.length = 0;
   frameRotations.length = 0; frameLocked.length = 0; frameCount = 0;
   segEasings.length = 0; rotEasings.length = 0; scaleEasings.length = 0; segDurations.length = 0; segBlurSettings.length = 0; framePauses.length = 0;
+  curvesV2 = null; // v8z4b21a: resetar curvesV2 ao aplicar template
 
   // Usar dimensões do stage em coords reais (independente do zoom de edição)
   const ox = 0, oy = 0;
@@ -15966,6 +16336,9 @@ function applyTemplate(type) {
     ensureSegDurations();
     syncDurationUI();
     refreshBreakdownIfOpen();
+    // v8z4b21a: converter ctrlPts do template 'rotation' para curvesV2
+    curvesV2 = null;
+    if (stageW > 0 && frameCount >= 2) convertLegacyCtrlPtsToCurvesV2();
     renderAll();
     finalizeTemplateApply();
     return;
@@ -15986,6 +16359,7 @@ function applyTemplate(type) {
     frames.length = 0; ctrlPts.length = 0; ctrlPtManual.length = 0;
     frameRotations.length = 0; frameLocked.length = 0; frameCount = 0;
     segEasings.length = 0; rotEasings.length = 0; scaleEasings.length = 0; segDurations.length = 0; segBlurSettings.length = 0; framePauses.length = 0;
+    curvesV2 = null; // v8z4b21a: resetar curvesV2 ao aplicar template 'circle'
 
     for (let i = 0; i < nFrames; i++) {
       // F8 (i=7) fica exatamente sobre F1 (i=0)
@@ -16025,6 +16399,8 @@ function applyTemplate(type) {
     ensureSegDurations();
     syncDurationUI();
     refreshBreakdownIfOpen();
+    // v8z4b21a: converter ctrlPts do template 'circle' para curvesV2
+    if (stageW > 0 && frameCount >= 2) convertLegacyCtrlPtsToCurvesV2();
     renderAll();
     finalizeTemplateApply();
     return;
@@ -16052,6 +16428,8 @@ function applyTemplate(type) {
   ensureSegDurations();
   syncDurationUI();
   refreshBreakdownIfOpen();
+  // v8z4b21a: converter ctrlPts dos templates pan/zoom para curvesV2
+  if (stageW > 0 && frameCount >= 2) convertLegacyCtrlPtsToCurvesV2();
   renderAll();
   finalizeTemplateApply();
 }
@@ -16972,6 +17350,8 @@ function buildProjectData() {
     loopSegEasing,
     loopSegRotEasing,
     loopSegScaleEasing,
+    // v8z4b21a: curvesV2 — modelo cúbico com handles in/out independentes.
+    curvesV2: isCurvesV2Active() ? cloneCurvesV2(curvesV2) : null,
   };
 }
 
@@ -17429,6 +17809,22 @@ function applyFrameData(data) {
   (data.ctrlPts || []).forEach(p => ctrlPts.push(p ? {...p} : null));
   ctrlPtManual.length = 0;
   (data.ctrlPtManual || []).forEach(v => ctrlPtManual.push(v));
+  // v8z4b21a: restaurar curvesV2 ou preparar para converter de ctrlPts legado.
+  curvesV2 = null;
+  if (data.curvesV2 && data.curvesV2.mode === 'cubic' &&
+      data.curvesV2.frameHandles &&
+      Array.isArray(data.curvesV2.frameHandles.in) &&
+      Array.isArray(data.curvesV2.frameHandles.out)) {
+    curvesV2 = {
+      version: data.curvesV2.version || 1,
+      mode: 'cubic',
+      frameHandles: {
+        in:  data.curvesV2.frameHandles.in.map(h  => h  ? { dx: Number(h.dx)  || 0, dy: Number(h.dy)  || 0, manual: !!h.manual  } : null),
+        out: data.curvesV2.frameHandles.out.map(h => h ? { dx: Number(h.dx) || 0, dy: Number(h.dy) || 0, manual: !!h.manual } : null)
+      }
+    };
+    console.info('[Arco v8z4b21a] curvesV2 restaurado do JSON');
+  }
   segDurations.length = 0;
   (data.segDurations || []).forEach(v => segDurations.push(v));
   ensureSegDurations(); // v8z4b17r — preencher valores ausentes com defaults
@@ -17471,6 +17867,14 @@ function applyFrameData(data) {
   // v8z4b20d: normalizar todos os arrays por trecho após carregar (corrige projetos
   // salvos com arrays desalinhados, como segBlurSettings curto).
   ensureSegmentArraysIntegrity();
+
+  // v8z4b21a: garantir curvesV2 após carregar e alinhar stage.
+  // Se não havia curvesV2 no JSON, converter de ctrlPts legado agora que stageW é válido.
+  if (!isCurvesV2Active() && frameCount >= 2 && stageW > 0) {
+    convertLegacyCtrlPtsToCurvesV2();
+  } else if (isCurvesV2Active()) {
+    ensureCurvesV2();
+  }
 
   // v8z4b17r: segEasings não são persistidos no projeto; resetar para o
   // frameCount carregado evita herdar easings de um projeto anterior.

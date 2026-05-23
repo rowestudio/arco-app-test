@@ -1,6 +1,32 @@
 # Roadmap
 
-## Objetivo imediato — v8z4b20d (concluído)
+## Objetivo imediato — v8z4b21a (concluído)
+
+- ✅ Criar schema `curvesV2` com `{ version: 1, mode: 'cubic', frameHandles: { in: [...], out: [...] } }`.
+- ✅ Converter ctrlPts legados (quadráticos) para curvesV2 via C1=P0+2/3*(Q-P0), C2=P3+2/3*(Q-P3).
+- ✅ curvesV2 é a fonte de verdade; ctrlPts mantido apenas como fallback.
+- ✅ `drawBezier` usa SVG `M P0 C C1 C2 P3` (cúbico) em vez de `Q` (quadrático).
+- ✅ Preview e MP4 usam Bézier cúbica real B(t) = (1-t)³P0 + 3(1-t)²t·C1 + 3(1-t)t²·C2 + t³P3.
+- ✅ Dois handles independentes por trecho: OUT[i] = saída do frame i, IN[i] = entrada do frame i.
+- ✅ Arrastar OUT[i] altera apenas `frameHandles.out[i]`; arrastar IN[i] altera apenas `frameHandles.in[i]`.
+- ✅ Handles em modo livre/Angular por padrão (sem Smooth, sem menu contextual).
+- ✅ Midpoint oculto; ctrl-pt legado oculto.
+- ✅ JSON salva curvesV2; versão atualizada para v8z4b21a.
+- ✅ Abrir arquivos antigos sem curvesV2 → auto-converter de ctrlPts; projetos antigos não quebram.
+- ✅ Inserir frame usa subdivisão De Casteljau para preservar forma visual da curva.
+- ✅ Deletar/remover frame sincroniza arrays in/out corretamente.
+- ✅ Templates resetam curvesV2 corretamente ao aplicar novo template.
+- ✅ Undo/Redo preserva curvesV2 (via cloneCurvesV2 em captureState/restoreState).
+- ✅ Vetores relativos `{dx, dy}` por frame → handles acompanham frame automaticamente ao mover.
+
+### Limitações conhecidas desta versão (v8z4b21a)
+
+- **Smooth/Angular toggle:** não implementado nesta versão (escopo restrito a modo livre).
+- **Pen Tool:** fora do escopo desta versão.
+- **Menu contextual de handles:** não implementado.
+- **Ghost handles de loop:** não atualizado para curvesV2 (loopCtrlPt permanece legado).
+
+## Objetivo anterior — v8z4b20d (concluído)
 
 - ✅ Corrigir sincronização visual dos handles ao mover frame (handle não fica mais parado).
 - ✅ Estender `syncCtrlPtsForFrame` para processar `loopCtrlPt` via `t/perpX/perpY` quando F1 ou último frame é movido.
