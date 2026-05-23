@@ -2,6 +2,84 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b21b — fix smart movement timing for cubic curves
+
+### Teste A — versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b21b` na UI (Settings).
+3. Confirmar que nome exibe `fix smart movement timing for cubic curves`.
+
+### Teste B — arquivo de regressão (arquivo salvo em v8z4b21a)
+1. Abrir um arquivo JSON salvo em v8z4b21a com:
+   - `curvesV2` presente
+   - `segmentTimingMode: manual`
+   - `constantSpeedTotalDuration: null`
+   - `movementEasingMode: smart`
+   - `framePauses` zerados em todos os frames
+   - `loopEnabled: true`
+2. Clicar em Preview.
+3. **Confirmar que não há falsa parada ou ease indevido.**
+4. **Confirmar que a câmera não freia quase até parar antes de chegar ao próximo frame** (sem framePause).
+5. Confirmar que o movimento é suave ao longo dos trechos com curvesV2.
+
+### Teste C — Movimento inteligente ligado/desligado sem regressão
+1. Com o arquivo acima, desligar Movimento inteligente.
+2. Confirmar que o movimento continua sem erro.
+3. Religar Movimento inteligente.
+4. **Confirmar que ainda não há falsa parada.**
+
+### Teste D — Velocidade constante não regrediu
+1. Com o mesmo arquivo, ativar Velocidade constante.
+2. Confirmar que o Preview funciona normalmente.
+3. Desativar Velocidade constante (modo manual).
+4. Confirmar que o Preview volta ao comportamento esperado.
+
+### Teste E — handles independentes (regressão v8z4b21a)
+1. Criar projeto com 3 frames.
+2. Selecionar F2; arrastar OUT handle.
+3. **Confirmar que apenas F2→F3 é alterado.**
+4. Arrastar IN handle de F2.
+5. **Confirmar que apenas F1→F2 é alterado.**
+6. **Confirmar que mover OUT não move IN.**
+7. **Confirmar que mover IN não move OUT.**
+
+### Teste F — Preview e MP4 coerentes
+1. Criar projeto com 2+ frames, curvesV2 ativo, smart movement.
+2. Rodar Preview; observar trajetória.
+3. Exportar MP4.
+4. **Confirmar que MP4 segue a mesma trajetória do Preview.**
+5. **Confirmar que não há parada falsa no MP4.**
+
+### Teste G — loop
+1. Com `loopEnabled: true` e `framePauses` zerados.
+2. Rodar Preview no modo loop.
+3. **Confirmar que o trecho de fechamento N→1 não tem falsa parada.**
+4. **Confirmar que a transição de volta ao frame inicial é suave.**
+
+### Teste H — JSON salva v8z4b21b e curvesV2
+1. Criar projeto, ajustar handles, salvar JSON.
+2. Abrir o JSON.
+3. **Confirmar `"version": "v8z4b21b"`.**
+4. **Confirmar `curvesV2` presente e handles preservados.**
+
+### Teste I — compatibilidade com arquivos antigos
+1. Abrir JSON antigo (sem curvesV2).
+2. **Confirmar que abre sem erro.**
+3. Confirmar conversão automática para curvesV2.
+4. Confirmar que midpoint não aparece como ponto de edição.
+5. Confirmar que ctrl-pt legado não aparece como UI.
+
+### Teste J — sem erros de console
+1. Executar os testes acima.
+2. **Confirmar que não há NaN, Infinity ou erros no console.**
+
+### Teste K — ROADMAP registrado sem implementação
+1. Abrir ROADMAP.md.
+2. Confirmar que **Direct Curve Drag** e **Assisted Frame Insertion** estão listados como futuros.
+3. **Confirmar que não foram implementados na v8z4b21b.**
+
+---
+
 ## v8z4b21a — implement real cubic in-out handles
 
 ### Teste A — versão

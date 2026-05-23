@@ -1,6 +1,45 @@
 # Roadmap
 
-## Objetivo imediato — v8z4b21a (concluído)
+## Objetivo imediato — v8z4b21b (concluído)
+
+Correção do Movimento inteligente aplicado a curvesV2/Bézier cúbica. Base: v8z4b21a.
+
+- ✅ `measureSegmentCurveLength` usa Bézier cúbica real (curvesV2) para medir arco quando curvesV2 ativo.
+- ✅ `measureLoopCurveLength` usa Bézier cúbica real (curvesV2) para medir arco do trecho de loop quando curvesV2 ativo.
+- ✅ Fallback quadrático preservado para projetos sem curvesV2.
+- ✅ Falsa parada/ease indevido do Movimento inteligente em curvesV2 eliminado.
+- ✅ Velocidade constante continua funcionando.
+- ✅ Preview e MP4 usam o mesmo cálculo corrigido.
+- ✅ Handles OUT/IN independentes da v8z4b21a preservados sem alteração.
+- ✅ JSON continua salvando curvesV2; versão salva → v8z4b21b.
+
+### Próximas ideias registradas (não implementadas nesta versão)
+
+#### Direct Curve Drag
+
+- Usuário puxa a própria curva do trecho (o arco visível no Stage), não um handle separado.
+- App ajusta automaticamente o handle OUT do frame inicial **e** o handle IN do frame final do trecho.
+- Comportamento inspirado no Illustrator: puxar a curva manipula os dois handles do trecho.
+- **Não cria midpoint permanente.**
+- **Não volta ao ctrlPt legado como UI.**
+- Implementação requer:
+  - Detectar toque sobre o arco da curva cúbica.
+  - Calcular o ponto mais próximo na curva (inverse lookup por comprimento de arco).
+  - Ajustar OUT e IN do trecho proporcionalmente ao deslocamento do arrasto.
+- **Não implementar agora.** Registrado para decisão futura de produto.
+
+#### Assisted Frame Insertion
+
+- Ao adicionar novo frame, mostrar um **frame fantasma** no Stage antes de confirmar.
+- Usuário posiciona o frame fantasma exatamente onde quer, via drag.
+- Só depois de posicionar, confirmar a criação do frame.
+- Objetivo: evitar distorção de curvas quando o frame nasce em uma posição e depois é movido.
+- Com posição final conhecida antes da criação, os handles podem ser calculados diretamente.
+- **Não implementar agora.** Registrado para decisão futura de UX/produto.
+
+---
+
+## Objetivo anterior — v8z4b21a (concluído)
 
 - ✅ Criar schema `curvesV2` com `{ version: 1, mode: 'cubic', frameHandles: { in: [...], out: [...] } }`.
 - ✅ Converter ctrlPts legados (quadráticos) para curvesV2 via C1=P0+2/3*(Q-P0), C2=P3+2/3*(Q-P3).
