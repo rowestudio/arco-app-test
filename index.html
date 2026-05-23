@@ -1,13 +1,19 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b21a                                     ║
+║  Versão: v8z4b21b                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b21b                                            ║
+║    fix: smart movement timing for cubic curves —     ║
+║         measureSegmentCurveLength e                 ║
+║         measureLoopCurveLength usam Bézier cúbica   ║
+║         quando curvesV2 ativo; elimina falsa parada  ║
+║         do Movimento inteligente em curvesV2;        ║
 ║  v8z4b21a                                            ║
 ║    feat: implement real cubic in-out handles —       ║
 ║         curvesV2 com handles in/out independentes;  ║
@@ -320,6 +326,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b21b — fix smart movement timing for cubic curves: measureSegmentCurveLength e measureLoopCurveLength usam Bézier cúbica real (curvesV2) quando ativo; elimina falsa parada/ease indevido do Movimento inteligente em curvesV2 com segmentTimingMode manual; vAvg e Hermite calibrados com comprimento cúbico correto. -->
 <!-- Arco Motion App — v8z4b21a — implement real cubic in-out handles: curvesV2 com handles in/out independentes por frame; Bézier cúbica C(P0,C1,C2,P3); avaliação e Preview/MP4 usam cubic; JSON salva curvesV2; compatibilidade com arquivos antigos via conversão ctrlPts→curvesV2. -->
 <!-- v8z4b20d — fix handle sync after frame move and visible segment handles: BLOCO A — sincroniza handles visualmente ao mover frame; loopCtrlPt recalculado via t/perpX/perpY quando F1 ou último frame é movido; BLOCO B — applyFrameConnectedHandleEdit armazena t/perp para loop; syncCtrlPtsForFrame estendido para trecho de loop; BLOCO C — threshold de 8px reduzido para 2px em getFrameHandleGeometryForTarget (handles manuais ficam estáveis); BLOCO D — ghost handles do lado complementar do trecho ativo (não-interativo); BLOCO E — ensureSegmentArraysIntegrity() normaliza ctrlPts, ctrlPtManual, segBlurSettings, rotEasings, scaleEasings, segDurations; deleteActiveFrame corrigido para segBlurSettings; buildProjectData chama ensure antes de salvar; BLOCO F — loop corrigido; BLOCO G — midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo preservado; BLOCO I — JSON/schema inalterado; sem campo novo -->
 <!DOCTYPE html>
@@ -2153,7 +2160,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b21a</span><br><span id="appVersionNameText">implement real cubic in-out handles</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b21b</span><br><span id="appVersionNameText">fix smart movement timing for cubic curves</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4494,8 +4501,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b21a';
-const APP_VERSION_NAME = 'implement real cubic in-out handles';
+const APP_VERSION = 'v8z4b21b';
+const APP_VERSION_NAME = 'fix smart movement timing for cubic curves';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -16551,21 +16558,35 @@ function measureSegmentCurveLength(segIndex) {
   const p2cx = frameCX(segIndex + 1);
   const p2cy = frameCY(segIndex + 1);
 
-  // v8z4b19a: via curvePuller helper; fallback para midpoint se curva não definida
-  const _cpRaw = getSegmentCurvePuller(segIndex);
-  const cp = _cpRaw || {
-    nx: (p1cx / stageW + p2cx / stageW) / 2,
-    ny: (p1cy / stageH + p2cy / stageH) / 2
-  };
-  const cpx = cp.nx * stageW;
-  const cpy = cp.ny * stageH;
+  // v8z4b21b: se curvesV2 ativo, medir comprimento da cúbica real para que
+  // computeSmartMovementProgress use vAvg correto (sem falsa parada).
+  let bezPt;
+  if (isCurvesV2Active()) {
+    const cp2 = getCurvesV2CubicCP(segIndex);
+    if (cp2) {
+      bezPt = function(u) {
+        return evalCubicBezierPt(u, cp2.P0x, cp2.P0y, cp2.C1x, cp2.C1y, cp2.C2x, cp2.C2y, cp2.P3x, cp2.P3y);
+      };
+    }
+  }
 
-  // Quadratic Bézier: B(u) = (1-u)^2*P1 + 2*(1-u)*u*CP + u^2*P2
-  function bezPt(u) {
-    const inv = 1 - u;
-    return {
-      x: inv * inv * p1cx + 2 * inv * u * cpx + u * u * p2cx,
-      y: inv * inv * p1cy + 2 * inv * u * cpy + u * u * p2cy
+  if (!bezPt) {
+    // Fallback legado: Quadratic Bézier usando curvePuller (ctrlPts).
+    // v8z4b19a: via curvePuller helper; fallback para midpoint se curva não definida
+    const _cpRaw = getSegmentCurvePuller(segIndex);
+    const cp = _cpRaw || {
+      nx: (p1cx / stageW + p2cx / stageW) / 2,
+      ny: (p1cy / stageH + p2cy / stageH) / 2
+    };
+    const cpx = cp.nx * stageW;
+    const cpy = cp.ny * stageH;
+    // Quadratic Bézier: B(u) = (1-u)^2*P1 + 2*(1-u)*u*CP + u^2*P2
+    bezPt = function(u) {
+      const inv = 1 - u;
+      return {
+        x: inv * inv * p1cx + 2 * inv * u * cpx + u * u * p2cx,
+        y: inv * inv * p1cy + 2 * inv * u * cpy + u * u * p2cy
+      };
     };
   }
 
@@ -16602,20 +16623,40 @@ function measureLoopCurveLength() {
   const p1cy = frameCY(lastIdx);
   const p2cx = frameCX(0);
   const p2cy = frameCY(0);
-  // v8z4b18y: acesso via curvePuller helper (getLoopSegmentIndex → getSegmentCurvePuller)
-  const cp = getSegmentCurvePuller(getLoopSegmentIndex()) || {
-    nx: (p1cx / stageW + p2cx / stageW) / 2,
-    ny: (p1cy / stageH + p2cy / stageH) / 2
-  };
-  const cpx = cp.nx * stageW;
-  const cpy = cp.ny * stageH;
-  function bezPt(u) {
-    const inv = 1 - u;
-    return {
-      x: inv * inv * p1cx + 2 * inv * u * cpx + u * u * p2cx,
-      y: inv * inv * p1cy + 2 * inv * u * cpy + u * u * p2cy
+
+  // v8z4b21b: se curvesV2 ativo, medir comprimento da cúbica real (trecho de loop)
+  // para que computeSmartMovementProgress use vAvg correto também no loop.
+  let bezPt;
+  if (isCurvesV2Active()) {
+    const loopSeg = getLoopSegmentIndex();
+    if (loopSeg >= 0) {
+      const cp2 = getCurvesV2CubicCP(loopSeg);
+      if (cp2) {
+        bezPt = function(u) {
+          return evalCubicBezierPt(u, cp2.P0x, cp2.P0y, cp2.C1x, cp2.C1y, cp2.C2x, cp2.C2y, cp2.P3x, cp2.P3y);
+        };
+      }
+    }
+  }
+
+  if (!bezPt) {
+    // Fallback legado: Quadratic Bézier usando loopCtrlPt.
+    // v8z4b18y: acesso via curvePuller helper (getLoopSegmentIndex → getSegmentCurvePuller)
+    const cp = getSegmentCurvePuller(getLoopSegmentIndex()) || {
+      nx: (p1cx / stageW + p2cx / stageW) / 2,
+      ny: (p1cy / stageH + p2cy / stageH) / 2
+    };
+    const cpx = cp.nx * stageW;
+    const cpy = cp.ny * stageH;
+    bezPt = function(u) {
+      const inv = 1 - u;
+      return {
+        x: inv * inv * p1cx + 2 * inv * u * cpx + u * u * p2cx,
+        y: inv * inv * p1cy + 2 * inv * u * cpy + u * u * p2cy
+      };
     };
   }
+
   const SAMPLES = 64;
   let len = 0;
   let prev = bezPt(0);

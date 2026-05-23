@@ -1,5 +1,42 @@
 # Changelog
 
+## v8z4b21b — fix smart movement timing for cubic curves
+
+Correção funcional do Movimento inteligente aplicado a curvesV2/Bézier cúbica. Base obrigatória: v8z4b21a.
+
+### Diagnóstico
+
+Em v8z4b21a, com `movementEasingMode: smart` e `segmentTimingMode: manual`, o usuário observava uma falsa parada/ease indevido ao longo de trechos com curvesV2. Desativar o Movimento inteligente ou ativar Velocidade constante eliminava o problema.
+
+**Causa raiz:** `measureSegmentCurveLength` e `measureLoopCurveLength` usavam Bézier **quadrática** (ctrlPts legados) para medir o comprimento do arco, mesmo quando `curvesV2` (Bézier cúbica real) estava ativo. Isso gerava `vAvg` incorreto no Hermite do smart movement, criando perfis de velocidade errôneos — em particular, desaceleração artificial próxima a frames quando a cúbica tem comprimento diferente da quadrática.
+
+### Correção
+
+- **`measureSegmentCurveLength`**: quando `isCurvesV2Active()`, usa `getCurvesV2CubicCP(segIndex)` + `evalCubicBezierPt()` para medir o comprimento da curva cúbica real. Fallback para quadrática legada se curvesV2 inativo ou inválido.
+- **`measureLoopCurveLength`**: idem para o trecho de fechamento N→1, usando `getCurvesV2CubicCP(getLoopSegmentIndex())`.
+
+Ambas as funções alimentam diretamente `_smartSegmentVAvg`, `_smartFrameVelocity` e `computeSmartMovementProgress` — assegurando que o Hermite cúbico do Movimento inteligente usa velocidades calibradas com o comprimento real da curva cúbica.
+
+### Comportamento após a correção
+
+- Movimento inteligente com curvesV2 não cria falsa parada quando `framePauses` são zeros.
+- A câmera pode suavizar a velocidade entre trechos, mas não freia artificialmente.
+- Velocidade constante continua funcionando (redistribui durações proporcionalmente ao comprimento cúbico — que já era correto via `mapProgressToBezierU`).
+- Preview e MP4 usam o mesmo cálculo corrigido (via `getStateAtT`).
+- Loop: `measureLoopCurveLength` corrigido elimina a falsa parada no trecho de fechamento.
+- Handles OUT/IN independentes da v8z4b21a não foram alterados.
+- Compatibilidade com arquivos antigos (sem curvesV2) preservada: fallback quadrático mantido.
+
+### Arquivos alterados
+
+- `index.html`: correção em `measureSegmentCurveLength` e `measureLoopCurveLength`; versão → v8z4b21b.
+- `CHANGELOG.md`: este registro.
+- `QA.md`: critérios de QA atualizados.
+- `ROADMAP.md`: próximas ideias registradas (sem implementação).
+- `pages-deploy-stamp.txt`: atualizado.
+
+---
+
 ## v8z4b21a — implement real cubic in-out handles
 
 Mudança arquitetural controlada do modelo de curvas. Base obrigatória: v8z4b20d.
