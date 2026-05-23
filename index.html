@@ -1,13 +1,25 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19z                                     ║
+║  Versão: v8z4b20a                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b20a                                            ║
+║    fix: demote midpoint UI and document anchor       ║
+║         handle model                                 ║
+║         midpoint pathPoint ocultado da UI principal; ║
+║         permanece como recurso interno/fallback;     ║
+║         ctrl-pt/losango legado também não reexibido  ║
+║         como controle principal; frame tangent       ║
+║         handle (v8z4b19z) continua como foco atual;  ║
+║         loop ctrl-pt mantido interativo; ROADMAP     ║
+║         registra modelo âncoras/handles, Angular/    ║
+║         Suavizar/Reta/Remover, Pen Tool, desenho     ║
+║         livre; JSON/Preview/MP4/Undo inalterados     ║
 ║  v8z4b19z                                            ║
 ║    fix: preserve frame tangent edits when moving     ║
 ║         frames; handle losango/diamante (diferencia  ║
@@ -281,7 +293,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19z — preserve frame tangent edits when moving frames: BLOCO A — applyFrameTangentEdit() armazena t/perpX/perpY após nx/ny para que syncCtrlPtsForFrame() preserve tangente ao mover frame (não reseta para padrão automático); BLOCO B — handle de frame trocado de círculo para losango/diamante âmbar (diferencia do midpoint pathPoint círculo); BLOCO C — distância P→H controla força da tangente (dLen como strength, clampado); getFrameTangentGeometry() substitui getFrameTangentDir() — deriva posição absoluta do handle a partir dos ctrlPts reais; JSON schema inalterado; sem campo novo -->
+<!-- Arco Motion App — v8z4b20a — demote midpoint UI and document anchor handle model: BLOCO A — mid-pathpt sempre oculto (display:none) na UI principal; pointer-events:none garantidos; ctrl-pt/losango legado também não reexibido como controle principal; loop ctrl-pt mantido interativo (sem frame handle no loop); BLOCO B — frame tangent handle (v8z4b19z) permanece foco atual; BLOCO C — código de midpoint preservado internamente (buildRuntimeCurveModel, simulateRuntimePathPointEdit, createLegacyCurvePatch*, etc.); BLOCO D — ROADMAP atualizado com modelo âncoras/handles, Angular/Suavizar/Reta/Remover, Pen Tool, desenho livre com dedo, ponto auxiliar; JSON schema inalterado; sem campo novo -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -503,10 +515,12 @@ body.recording #editorZoomCtrl{display:none;}
 .ctrl-pt:active{cursor:grabbing;}
 
 /* Midpoint pathPoint — círculo branco com borda colorida (v8z4b19v/w) */
-/* v8z4b19w: z-index elevado para 76 (> ctrl-pt 75) — controle principal */
+/* v8z4b20a: demovido da UI principal — display:none + pointer-events:none por padrão. */
+/* Permanece como recurso interno/fallback no código; não renderizado como controle normal. */
 .mid-pathpt{position:absolute;width:10px;height:10px;border-radius:50%;
   background:rgba(255,255,255,0.95);border:2.5px solid #00d4ff;box-shadow:0 0 0 2px rgba(0,212,255,.18);
-  cursor:grab;transform:translate(-50%,-50%) scale(var(--ez-inv,1));touch-action:none;z-index:76;}
+  cursor:grab;transform:translate(-50%,-50%) scale(var(--ez-inv,1));touch-action:none;z-index:76;
+  pointer-events:none;}
 .mid-pathpt::before{content:"";position:absolute;left:50%;top:50%;
   width:44px;height:44px;transform:translate(-50%,-50%);
   background:transparent;border-radius:50%;}
@@ -2090,7 +2104,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19z</span><br><span id="appVersionNameText">preserve frame tangent edits when moving frames</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b20a</span><br><span id="appVersionNameText">demote midpoint UI and document anchor handle model</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4431,8 +4445,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19z';
-const APP_VERSION_NAME = 'preserve frame tangent edits when moving frames';
+const APP_VERSION = 'v8z4b20a';
+const APP_VERSION_NAME = 'demote midpoint UI and document anchor handle model';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11054,111 +11068,44 @@ function updateCtrlPts() {
     loopEl.style.display = 'none';
   }
 
-  // ── v8z4b19v: Midpoint pathPoint markers ─────────────────────────────────
-  // Para cada segmento normal ativo, exibe o midpoint pathPoint (t=0.5).
+  // ── v8z4b20a: Midpoint pathPoint markers — INTERNAL/FALLBACK ONLY ───────────
+  // v8z4b19v/w: midpoint pathPoint era exibido como controle principal da curva.
+  // v8z4b20a: midpoint DEMOVIDO da UI principal — sempre oculto (display:'none').
+  // Permanece como recurso interno/legado/fallback no código; não renderizado
+  // como controle normal de edição. Elementos podem existir no DOM para
+  // compatibilidade, mas nunca com display:'block'. Frame tangent handle
+  // (frame-tangent-dot, v8z4b19z) é o foco atual de edição de curva.
   for (let seg = 0; seg < MAX_FRAMES; seg++) {
     const mEl = getMidpointEl(seg);
-    if (seg >= frameCount - 1) {
-      if (mEl) mEl.style.display = 'none';
-      continue;
-    }
-    const isActive = (seg === activeIdx || seg === activeIdx - 1);
-    if (!isActive) {
-      if (mEl) mEl.style.display = 'none';
-      continue;
-    }
-    // Calcular posição t=0.5 via pathPoints[0] do modelo runtime
-    const model = buildRuntimeCurveModel(seg);
-    const midPt  = model && model.pathPoints && model.pathPoints[0];
-    if (!midPt || !isFinite(midPt.x) || !isFinite(midPt.y)) {
-      if (mEl) mEl.style.display = 'none';
-      continue;
-    }
-    const midX = midPt.x * stageW;
-    const midY = midPt.y * stageH;
-    // Criar elemento se ainda não existe
-    let el = mEl;
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'midpt_' + seg;
-      el.className = 'mid-pathpt';
-      stage.appendChild(el);
-      const _seg = seg;
-      el.addEventListener('pointerdown', e => {
-        if (editorPanMode) return;
-        e.stopPropagation();
-        startMidpointDrag(_seg, 'normal');
-      });
-    }
-    el.style.display = 'block';
-    el.style.left    = midX + 'px';
-    el.style.top     = midY + 'px';
-    // Cor da borda combina com o segmento (azul=anterior, laranja=posterior)
-    const isPrevseg = (seg === activeIdx - 1);
-    el.style.borderColor = isPrevseg ? '#00d4ff' : '#f5a623';
+    if (mEl) mEl.style.display = 'none'; // v8z4b20a: sempre oculto
+    // Não criar elementos novos de midpoint — não são renderizados como UI.
   }
 
-  // Midpoint pathPoint do loop
+  // Midpoint pathPoint do loop — também oculto (v8z4b20a).
+  // Loop ctrl-pt (cpt_loop) permanece visível e interativo (sem handle alternativo).
   let loopMidEl = getMidpointEl('loop');
-  const showLoopMid = loopEnabled && frameCount >= 2 &&
-                      (activeIdx === 0 || activeIdx === frameCount - 1);
-  if (showLoopMid) {
-    const loopSegIdx = getLoopSegmentIndex();
-    const loopModel  = loopSegIdx >= 0 ? buildRuntimeCurveModel(loopSegIdx) : null;
-    const loopMidPt  = loopModel && loopModel.pathPoints && loopModel.pathPoints[0];
-    if (loopMidPt && isFinite(loopMidPt.x) && isFinite(loopMidPt.y)) {
-      const midX = loopMidPt.x * stageW;
-      const midY = loopMidPt.y * stageH;
-      if (!loopMidEl) {
-        loopMidEl = document.createElement('div');
-        loopMidEl.id = 'midpt_loop';
-        loopMidEl.className = 'mid-pathpt';
-        loopMidEl.style.borderColor = 'rgba(180,100,255,1)';
-        stage.appendChild(loopMidEl);
-        loopMidEl.addEventListener('pointerdown', e => {
-          if (editorPanMode) return;
-          e.stopPropagation();
-          startMidpointDrag('loop', 'loop');
-        });
-      }
-      loopMidEl.style.display = 'block';
-      loopMidEl.style.left    = midX + 'px';
-      loopMidEl.style.top     = midY + 'px';
-    } else {
-      if (loopMidEl) loopMidEl.style.display = 'none';
-    }
-  } else if (loopMidEl) {
-    loopMidEl.style.display = 'none';
-  }
+  if (loopMidEl) loopMidEl.style.display = 'none'; // v8z4b20a: sempre oculto
   // ─────────────────────────────────────────────────────────────────────────
 
-  // ── v8z4b19x: Sync secundário — ctrl-pts ficam OCULTOS quando o midpoint  ──
-  // pathPoint do segmento está ativo. Este passo roda APÓS todos os midpoints
-  // terem sido atualizados nesta mesma chamada, garantindo estado consistente
-  // sem lag entre os dois conjuntos de elementos.
-  //
-  // Decisão v8z4b19x: ctrl-pt/losango legado fica COMPLETAMENTE OCULTO
-  // (opacity: 0, pointer-events: none) quando midpoint pathPoint está ativo —
-  // o losango translúcido anterior (0.38) ainda parecía um segundo controle,
-  // confundindo a leitura da interface. O midpoint pathPoint é o único controle
-  // principal visível. O CSS .mid-pathpt ~ .ctrl-pt já define opacity:0, mas o
-  // inline style aqui garante o mesmo via JS para consistência e fallback.
-  // Se o midpoint pathPoint não estiver disponível (falha de modelo, curva
-  // degenerada), o ctrl-pt recupera interatividade e visibilidade normal.
+  // ── v8z4b20a: ctrl-pt/losango legado — não é controle principal ──────────
+  // v8z4b19x: ctrl-pt ficava oculto apenas quando midpoint estava ativo.
+  // v8z4b20a: midpoint ocultado da UI, portanto ctrl-pt ficaria visível se não
+  // tratado aqui. Decisão: ctrl-pt/losango legado também NÃO é controle principal
+  // para segmentos normais — sempre oculto (opacity:0, pointer-events:none).
+  // Frame tangent handle é o foco atual. Fallback futuro pode reativar ctrl-pt
+  // por decisão explícita de produto.
   for (let seg = 0; seg < MAX_FRAMES - 1; seg++) {
     const el = getCtrlEl(seg);
     if (!el || el.style.display !== 'block') continue;
-    const mEl = getMidpointEl(seg);
-    const midpointActive = mEl && mEl.style.display === 'block';
-    el.style.pointerEvents = midpointActive ? 'none' : '';
-    el.style.opacity       = midpointActive ? '0' : '';
+    el.style.pointerEvents = 'none'; // v8z4b20a: sempre não-interativo
+    el.style.opacity       = '0';    // v8z4b20a: sempre invisível
   }
-  // loopEl — mesmo tratamento: oculto quando midpoint pathPoint do loop ativo.
+  // loopEl — mantém visível e interativo: não há frame handle no loop
+  // (frame tangent handle só aparece em frames intermediários, não em F1/último).
+  // Comportamento de loop ctrl-pt é preservado para edição da curva de loop.
   if (loopEl && loopEl.style.display === 'block') {
-    const _loopMidEl = getMidpointEl('loop');
-    const loopMidActive = _loopMidEl && _loopMidEl.style.display === 'block';
-    loopEl.style.pointerEvents = loopMidActive ? 'none' : '';
-    loopEl.style.opacity       = loopMidActive ? '0' : '';
+    // v8z4b20a: loop ctrl-pt mantém pointerEvents e opacity normais (não alterados).
+    // Nenhuma mudança aqui — loopEl permanece interativo.
   }
 
   // ── v8z4b19z: Frame tangent handle dot — losango/diamante âmbar ──────────

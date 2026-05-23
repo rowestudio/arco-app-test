@@ -1,5 +1,66 @@
 # Changelog
 
+## v8z4b20a — demote midpoint UI and document anchor handle model
+
+Correção de direção conceitual: o midpoint automático não deve ser ferramenta
+principal da interface, pois compete com os handles de frame. Esta versão oculta
+o midpoint pathPoint da UI principal e documenta o modelo futuro de âncoras e handles.
+
+### BLOCO A — Ocultar midpoint da UI principal
+
+**Decisão de produto:** o midpoint automático cria dois sistemas concorrentes
+(midpoint do trecho + handles do frame). Esta versão demove o midpoint da UI normal.
+
+**Implementação:**
+- `updateCtrlPts()`: midpoint pathPoints (`.mid-pathpt`) nunca recebem `display:'block'`.
+  Elementos DOM existentes recebem `display:'none'` sempre; novos elementos não são criados.
+- Midpoint do loop (`midpt_loop`): mesma lógica — sempre oculto.
+- CSS `.mid-pathpt`: adicionado `pointer-events:none` para garantir que elementos
+  residuais no DOM não interceptem toque mesmo se `display` for alterado.
+
+**Preservado internamente:**
+- `buildRuntimeCurveModel()`, `simulateRuntimePathPointEdit()`,
+  `createLegacyCurvePatchFromSimulatedPathPointEdit()`, `validateLegacyCurvePatchCandidate()`,
+  `applyLegacyCurvePatchCandidateToRealState()`, self-test interno (v8z4b19t):
+  todo o código de midpoint permanece para compatibilidade, diagnóstico e fallback.
+
+### BLOCO B — ctrl-pt/losango legado não reexibido
+
+**Problema:** com midpoint oculto, o sync anterior (v8z4b19x) que só escondia
+`ctrl-pt` quando midpoint estava ativo deixaria o ctrl-pt visível novamente.
+
+**Correção:** `updateCtrlPts()` agora sempre aplica `opacity:'0'` e
+`pointer-events:'none'` nos ctrl-pts de segmentos normais, independente do midpoint.
+
+**Loop ctrl-pt preservado:** o `cpt_loop` (bolinha de edição da curva de loop)
+permanece visível e interativo — não há frame tangent handle disponível para
+o segmento de loop (handle só aparece em frames intermediários, não F1/último).
+
+### BLOCO C — Frame tangent handle permanece foco atual
+
+- Handle de frame intermediário da v8z4b19z mantido sem alteração.
+- Visual losango/diamante âmbar preservado.
+- Distância controlando força da tangente preservado.
+- Preservação ao mover frame preservada.
+- Undo/Redo/dirty preservados.
+- JSON schema inalterado.
+
+### BLOCO D — ROADMAP atualizado
+
+- Modelo futuro de âncoras e handles documentado.
+- Angular/Suavizar/Reta/Remover registrados como estados futuros.
+- Pen/Patch Tool registrado como ferramenta futura.
+- Desenho livre com dedo registrado como ferramenta futura.
+- Ponto auxiliar/frame falso registrado como alternativa ao midpoint automático.
+- Midpoint explicitamente classificado como legado/fallback, não UI principal.
+
+### JSON schema
+
+- Sem campos novos.
+- `version` salvo como `v8z4b20a`.
+- `ctrlPts`, `ctrlPtManual`, `loopCtrlPt`, `framesNorm`, `frameRotations`,
+  `segDurations`, `framePauses` — todos preservados.
+
 ## v8z4b19z — preserve frame tangent edits when moving frames
 
 Corrige o bug principal onde mover um frame após ajustar o handle/tangente resetava a curva

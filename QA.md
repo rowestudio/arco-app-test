@@ -2,6 +2,90 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b20a — demote midpoint UI and document anchor handle model
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b20a` na UI (Settings).
+3. Confirmar que nome da versão exibe `demote midpoint UI and document anchor handle model`.
+
+### Teste B — handle de frame visível, midpoint não aparece
+1. Carregar imagem.
+2. Criar projeto com pelo menos 4 frames.
+3. Selecionar F2 ou F3 (frame intermediário).
+4. Confirmar que o **handle de frame** (losango/diamante âmbar) aparece.
+5. Confirmar que o **midpoint pathPoint** (círculo branco/colorido) **NÃO aparece** por padrão.
+6. Confirmar que o **puxador/losango legado** (ctrl-pt) também não aparece como controle principal.
+
+### Teste C — drag do handle de frame funciona
+1. Com frame intermediário ativo, arrastar o losango âmbar.
+2. Confirmar que os dois trechos vizinhos mudam em tempo real.
+3. Confirmar que distância do handle continua alterando força/intensidade da tangente.
+4. Confirmar que Undo reverte a alteração.
+5. Confirmar que Redo refaz a alteração.
+6. Confirmar que tocar sem mover não cria undo.
+
+### Teste D — tangente preservada ao mover frame (não regrediu)
+1. Selecionar frame intermediário (F2 de pelo menos 4 frames).
+2. Arrastar o losango âmbar para ajustar a tangente.
+3. **Sem desfazer**, arrastar o próprio frame para nova posição.
+4. Confirmar que a curva/tangente **NÃO reseta** para ângulo reto/padrão automático.
+
+### Teste E — midpoint oculto não bloqueia toque
+1. Confirmar que tocar na área onde o midpoint estaria não bloqueia drag de frames.
+2. Confirmar que drag de frames continua funcionando normalmente.
+3. Confirmar que selecionar outro frame atualiza/esconde handle corretamente.
+
+### Teste F — loop funciona, midpoint oculto não quebra loop
+1. Ativar loop.
+2. Confirmar que a curva de loop aparece imediatamente.
+3. Confirmar que o loop ctrl-pt (bolinha roxa) permanece visível e arrastável.
+4. Confirmar que o midpoint do loop NÃO aparece.
+5. Confirmar que a curva de loop continua funcionando normalmente.
+
+### Teste G — Preview e MP4
+1. Rodar Preview.
+2. Confirmar que Preview respeita as curvas ajustadas pelo handle.
+3. Gerar MP4.
+4. Confirmar que MP4 respeita as curvas.
+5. Confirmar que Salvar MP4 não fica preso em estado done/pronto.
+6. Confirmar que ao sair do Preview o MP4 gerado é limpo.
+7. Iniciar geração de MP4 e tocar Voltar antes de terminar — Stage não deve travar.
+
+### Teste H — JSON schema
+1. Salvar projeto com imagem:
+   - `filename` termina em `_img.json`.
+   - `version` salvo como `v8z4b20a`.
+   - `imageBase64` existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado quando loop ativo.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+2. Salvar projeto sem imagem:
+   - `filename` termina em `_file.json`.
+   - `version` salvo como `v8z4b20a`.
+   - `imageBase64` não existe.
+3. Abrir JSON salvo em v8z4b19z e confirmar compatibilidade.
+4. Confirmar que nenhum campo proibido apareceu no JSON:
+   `curvesV2`, `vectorPath`, `handles`, `frameHandles`, `frameTangents`,
+   `inHandles`, `outHandles`, `anchorHandles`, `pathPoints`, `midpoints`,
+   `runtimeCurveModel`, `capabilities`, `spans`, `generatedMp4`, `exportBlob`,
+   `legacyCurvePatch`, `patchCandidate`, `patchApplicationDraft`,
+   `realCurvePatchApplication`, `selfTest`.
+
+### Teste I — erros de console
+1. Confirmar que não há erro de console, NaN ou Infinity visíveis.
+
+### Teste J — ROADMAP
+1. Confirmar que ROADMAP registrou:
+   - Modelo âncoras/handles com handles de entrada e saída.
+   - Estados Angular/Suavizar/Reta/Remover.
+   - Pen/Patch Tool.
+   - Desenho livre com dedo.
+   - Ponto auxiliar/frame falso como alternativa ao midpoint automático.
+   - Midpoint classificado como legado/fallback, não UI principal.
+
 ## v8z4b19z — preserve frame tangent edits when moving frames
 
 ### Teste A — abertura e versão

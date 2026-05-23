@@ -1,12 +1,130 @@
 # Roadmap
 
-## Objetivo imediato — v8z4b19z (concluído)
+## Objetivo imediato — v8z4b20a (concluído)
+
+- ✅ Ocultar midpoint automático da UI principal.
+- ✅ Manter midpoint apenas como recurso interno/legado/fallback.
+- ✅ Manter handle de frame da v8z4b19z como ferramenta visível principal de curva.
+- ✅ Registrar no ROADMAP o modelo futuro de âncoras e handles.
+- ✅ JSON schema inalterado.
+
+## Objetivo anterior — v8z4b19z (concluído)
 
 - ✅ Corrigir reset da tangente/curva ao mover frames.
 - ✅ Diferenciar visualmente handle de frame (losango) do midpoint pathPoint (círculo).
 - ✅ Distância do handle controla força da tangente.
 - ✅ `getFrameTangentGeometry()` substitui `getFrameTangentDir()`.
 - ✅ JSON schema inalterado.
+
+## Decisão de produto consolidada — v8z4b20a
+
+O midpoint automático NÃO é ferramenta principal da interface.
+Ele cria dois sistemas concorrentes (midpoint do trecho + handles do frame),
+o que não é desejado para a interface final.
+
+**O sistema final será baseado em:**
+- Frames como âncoras principais de câmera.
+- Handles de entrada e saída nos frames.
+- Estados Angular / Suavizar / Reta / Remover.
+- Pontos auxiliares criados explicitamente pelo usuário quando necessário.
+- Ferramenta futura Pen/Patch para trajetórias vetoriais.
+- Ferramenta futura de desenho livre com dedo.
+
+**"Puxar a curva" no futuro:**
+- É uma metáfora para ajustar handles — não midpoint persistente e concorrente.
+- Midpoint automático pode existir como legado/fallback interno, mas não como controle normal.
+
+## Modelo futuro de curva — âncoras e handles
+
+### Arquitetura geral
+
+- **Frames são âncoras principais de câmera** (anchor points).
+- Cada frame poderá ter **handle de entrada** e **handle de saída**.
+- Os handles controlam a tangência da curva de Bézier que passa pelo frame.
+
+### Modos de handle
+
+**1. Suavizar / Arredondar (modo padrão):**
+- Handles de entrada e saída vinculados em 180° (colineares).
+- Passagem contínua e suave pelo frame (C1 continuity).
+- Mover um handle realinha automaticamente o oposto.
+- Comportamento similar ao Illustrator "smooth anchor".
+
+**2. Angular / Livre:**
+- Handles de entrada e saída independentes.
+- Permite ângulo reto, agudo, obtuso ou quebra narrativa entre segmentos.
+- Mover um handle não altera o oposto.
+- Comportamento similar ao Illustrator "corner anchor".
+
+### Ações contextuais futuras (inspiradas no Illustrator para iPad)
+
+| Ação | Efeito |
+|---|---|
+| **Suavizar / Arredondar** | Transforma o frame em âncora suave; alinha handles em 180°. |
+| **Angular** | Transforma o frame em âncora angular; handles independentes. |
+| **Reta** | Neutraliza handles do frame; segmentos vizinhos ficam retos. |
+| **Remover** | Remove o ponto; une os trechos (só para pontos auxiliares). |
+
+**Regras:**
+- Para **frame real**, "Remover" é ação estrutural de frame (excluir frame) — tratar com cuidado.
+- Para **ponto auxiliar**, "Remover" remove o ponto do caminho e une os trechos.
+- "Reta" neutraliza handles sem necessariamente remover o frame.
+- "Suavizar" e "Angular" alteram apenas o modo do handle, sem mover âncora.
+
+### Estado atual (v8z4b20a)
+
+- **Frame tangent handle (v8z4b19z):** handle único por frame intermediário (simétrico).
+  Representa aproximação de ambos os handles (entrada e saída) vinculados.
+  É o passo imediato antes dos handles separados de entrada/saída.
+- **Midpoint pathPoint:** demovido da UI principal (v8z4b20a); mantido internamente.
+- **ctrl-pt/losango legado:** não exibido como controle principal.
+- **Loop ctrl-pt:** mantido visível e interativo (não há handle alternativo para loop).
+
+### Próximos passos de handles (futuro, não imediato)
+
+- Separar handle de entrada e handle de saída por frame.
+- Implementar modo Suavizar/Angular como alternância real (UI).
+- Implementar ação "Reta" (neutralizar handles).
+- Handles em F1 e último frame quando loop ativo.
+- Reset local da tangente do frame ativo.
+
+## Pontos auxiliares / frame falso
+
+Se o usuário precisar controlar o meio de um trecho:
+- Deve criar um **ponto auxiliar** (ou "frame de passagem") explicitamente.
+- Esse ponto auxiliar será editável e poderá ter handles próprios.
+- Não deve ser midpoint automático permanente.
+- "Remover" em ponto auxiliar une os segmentos sem excluir frames adjacentes.
+- **Não implementado nesta versão** — requer UI de criação e ferramenta de inserção.
+
+## Ferramentas futuras de construção de movimento
+
+### 1. Pen / Patch Tool
+
+Inspirado no Illustrator Pen Tool, adaptado para iPhone/Safari.
+
+- Usuário toca/clica para criar ponto/frame (âncora).
+- Usuário toca/clica e **arrasta** para criar frame com handles (tangente).
+- Cada ponto nasce como frame por padrão (âncora com tempo) até o usuário indicar o contrário.
+- Frame criado pode ser promovido a ponto de passagem sem tempo próprio (auxiliar).
+- Comportamento de handle ao criar: arrastar define direção e comprimento da tangente de saída.
+- Handle de entrada no ponto seguinte é o oposto do de saída (modo suave por padrão).
+
+### 2. Desenho livre com dedo
+
+- Usuário **desenha livremente** o movimento de câmera no Stage com o dedo.
+- App **interpreta o traço** automaticamente.
+- App **cria pontos/frames editáveis** ao longo do traço.
+- Usuário **refina** depois com handles, Angular/Suavizar, Reta/Remover.
+- Pós-processamento: simplificação do traço (redução de pontos redundantes).
+- Resultado: frames editáveis com handles suaves derivados da curvatura do traço.
+
+**Fluxo:**
+1. Usuário ativa modo de desenho livre.
+2. Usuário desenha o caminho desejado da câmera.
+3. App exibe prévia dos frames gerados.
+4. Usuário confirma ou descarta.
+5. Frames gerados entram no editor normal (handles, Undo/Redo, etc.).
 
 ## Próximo passo
 
@@ -72,11 +190,12 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19y)
+### Estado atual (v8z4b20a)
 
-- **Frame tangent handle (v8z4b19y):** handle âmbar/dourado (`.frame-tangent-dot`) no frame ativo intermediário; conectado por linha tracejada âmbar (braço de tangente, 48 px); drag ajusta `ctrlPts[fi-1]` e `ctrlPts[fi]` simultâneamente para passagem suave C1-ish; undo lazy (só captura se ≥ 2 px de movimento); JSON schema inalterado.
-- **Legacy curvePuller/losango oculto como controle principal (v8z4b19x):** `ctrl-pt`/losango completamente oculto (`opacity:0 + pointer-events:none`) quando midpoint pathPoint está disponível; antes ficava translúcido (`opacity:0.38`) parecendo segundo controle; agora só o midpoint pathPoint é visível como controle de curva; fallback preservado: se midpoint indisponível, ctrl-pt recupera visibilidade e interatividade; loop: mesma lógica aplicada a `loopEl` quando `midpt_loop` ativo.
-- **Midpoint pathPoint é o controle principal de edição de curva (v8z4b19w):** arrastável, z-index 76, pipeline guardado completo.
+- **Frame tangent handle (v8z4b19z, foco atual):** handle losango/diamante âmbar (`.frame-tangent-dot`) no frame ativo intermediário; conectado por linha tracejada âmbar (braço de tangente); drag ajusta `ctrlPts[fi-1]` e `ctrlPts[fi]` simultâneamente para passagem suave C1-ish; distância do handle controla força da tangente; tangente preservada ao mover frame (`getFrameTangentGeometry()` + `applyFrameTangentEdit()` com t/perpX/perpY); undo lazy; JSON schema inalterado.
+- **Midpoint pathPoint — DEMOVIDO da UI principal (v8z4b20a):** midpoint pathPoint permanece apenas como recurso interno/legado/fallback; nunca renderizado como controle normal; `display:'none'` sempre; `pointer-events:none`; código de pipeline guardado preservado (`buildRuntimeCurveModel`, `simulateRuntimePathPointEdit`, etc.).
+- **ctrl-pt/losango legado — não reexibido como controle principal (v8z4b20a):** sempre com `opacity:0 + pointer-events:none` em segmentos normais; loop ctrl-pt mantido interativo (sem handle alternativo para loop).
+- **Legacy curvePuller/losango (v8z4b19x):** histórico — foi oculto quando midpoint estava ativo; agora (v8z4b20a) também midpoint foi ocultado, e ctrl-pt nunca reaparece como primário.
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
 - `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
 - `capabilities: { supportsPathPoints: false, supportsHandles: false }` — modo ativo: `legacyQuadratic`.
