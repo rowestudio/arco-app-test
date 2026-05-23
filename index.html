@@ -1,27 +1,29 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19y                                     ║
+║  Versão: v8z4b19z                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19z                                            ║
+║    fix: preserve frame tangent edits when moving     ║
+║         frames; handle losango/diamante (diferencia  ║
+║         do midpoint pathPoint círculo); distância    ║
+║         do handle controla força da tangente;        ║
+║         getFrameTangentGeometry() deriva posição     ║
+║         do handle dos ctrlPts reais; applyFrame-     ║
+║         TangentEdit() armazena t/perpX/perpY após    ║
+║         setar nx/ny — evita reset ao mover frame;    ║
+║         JSON/Preview/MP4/Undo inalterados            ║
 ║  v8z4b19y                                            ║
-║    feat: add active frame tangent handle prototype    ║
+║    feat: add active frame tangent handle prototype   ║
 ║         handle âmbar aparece no frame ativo          ║
-║         intermediário; drag ajusta ctrlPts dos        ║
-║         dois segmentos vizinhos (C1-ish smooth)       ║
-║         quando midpoint pathPoint está disponível;   ║
-║         antes ficava translúcido (0.38) parecendo    ║
-║         segundo controle; JS updateCtrlPts() corr.  ║
-║         para usar opacity:0 em vez de 0.38; CSS      ║
-║         .mid-pathpt~.ctrl-pt já define opacity:0     ║
-║         (v8z4b19x); fallback: se midpoint não        ║
-║         disponível, ctrl-pt recupera visibilidade;   ║
-║         loop: loopEl também oculto quando midpt_loop ║
-║         ativo; JSON/Preview/MP4/Undo inalterados     ║
+║         intermediário; drag ajusta ctrlPts dos       ║
+║         dois segmentos vizinhos (C1-ish smooth);     ║
+║         JSON/Preview/MP4/Undo inalterados            ║
 ║  v8z4b19w                                            ║
 ║    feat: make midpoint path point primary curve      ║
 ║         control                                      ║
@@ -279,7 +281,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19y — add active frame tangent handle prototype: handle âmbar (círculo dourado) aparece no frame ativo intermediário (frameCount>=3, activeIdx>0 e <frameCount-1, sem isoMode, sem preview); conectado ao centro do frame por linha tracejada âmbar (braço de tangente); drag ajusta ctrlPts dos dois segmentos vizinhos simultaneamente para passagem suave C1-ish; undo lazy (só captura se houver movimento real >=2px); frameTangentDragState = {didMove, undoCaptured}; CSS .frame-tangent-dot; getFrameTangentDir() calcula direção da tangente; applyFrameTangentEdit() aplica edição; onMove() e endDrag() integrados; markProjectDirty('frame-tangent') se moveu; JSON schema inalterado; sem campo novo -->
+<!-- Arco Motion App — v8z4b19z — preserve frame tangent edits when moving frames: BLOCO A — applyFrameTangentEdit() armazena t/perpX/perpY após nx/ny para que syncCtrlPtsForFrame() preserve tangente ao mover frame (não reseta para padrão automático); BLOCO B — handle de frame trocado de círculo para losango/diamante âmbar (diferencia do midpoint pathPoint círculo); BLOCO C — distância P→H controla força da tangente (dLen como strength, clampado); getFrameTangentGeometry() substitui getFrameTangentDir() — deriva posição absoluta do handle a partir dos ctrlPts reais; JSON schema inalterado; sem campo novo -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -510,11 +512,11 @@ body.recording #editorZoomCtrl{display:none;}
   background:transparent;border-radius:50%;}
 .mid-pathpt:active{cursor:grabbing;}
 
-/* Frame tangent handle dot — v8z4b19y */
-.frame-tangent-dot{position:absolute;width:12px;height:12px;border-radius:50%;
+/* Frame tangent handle dot — v8z4b19z: losango/diamante âmbar (diferencia do midpoint pathPoint círculo) */
+.frame-tangent-dot{position:absolute;width:11px;height:11px;border-radius:2px;
   background:rgba(255,210,0,0.92);border:2px solid rgba(255,255,255,0.85);
   box-shadow:0 0 0 3px rgba(255,210,0,.18);
-  cursor:grab;transform:translate(-50%,-50%) scale(var(--ez-inv,1));touch-action:none;z-index:77;}
+  cursor:grab;transform:translate(-50%,-50%) rotate(45deg) scale(var(--ez-inv,1));touch-action:none;z-index:77;}
 .frame-tangent-dot::before{content:"";position:absolute;left:50%;top:50%;
   width:44px;height:44px;transform:translate(-50%,-50%);
   background:transparent;border-radius:50%;}
@@ -2088,7 +2090,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19y</span><br><span id="appVersionNameText">add active frame tangent handle prototype</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19z</span><br><span id="appVersionNameText">preserve frame tangent edits when moving frames</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4429,8 +4431,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19y';
-const APP_VERSION_NAME = 'add active frame tangent handle prototype';
+const APP_VERSION = 'v8z4b19z';
+const APP_VERSION_NAME = 'preserve frame tangent edits when moving frames';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10820,27 +10822,87 @@ function isFrameOutside(i) {
 // BEZIER DRAW
 // ═══════════════════════════════════════
 
-// v8z4b19y — Calcula direção da tangente no frame intermediário fi.
-// Retorna vetor unitário {x, y} em pixels do stage.
-// Se o segmento seguinte já foi ajustado manualmente, deriva da direção do curvePuller.
-// Caso contrário, usa direção da corda Pprev→Pnext.
-function getFrameTangentDir(fi) {
-  if (fi <= 0 || fi >= frameCount - 1) return { x: 1, y: 0 };
+// v8z4b19z — Calcula geometria completa do handle de tangente no frame intermediário fi.
+// Retorna { hx, hy, dirX, dirY, dist } — posição do handle em pixels do stage.
+// Deriva do estado real dos ctrlPts (não sobrescreve as curvas).
+//
+// Para frame intermediário fi:
+//   P = centro do frame ativo;
+//   Cprev = ctrlPts[fi-1] (segmento fi-1 → fi);
+//   Cnext = ctrlPts[fi]   (segmento fi → fi+1).
+//
+// Se ctrlPtManual[fi-1] e/ou ctrlPtManual[fi] estiverem true:
+//   dIn  = normalize(P − Cprev)  — direção de entrada;
+//   dOut = normalize(Cnext − P)  — direção de saída;
+//   dir  = normalize(média de dIn e dOut disponíveis);
+//   dist = comprimento P→Cnext (ou P−Cprev se apenas prev for manual).
+// Fallback: corda Pprev→Pnext com dist padrão 48px.
+//
+// v8z4b19z: substituiu getFrameTangentDir() — retorna posição absoluta do handle
+// em vez de apenas direção; distância reflete força real da tangente (BLOCO C).
+function getFrameTangentGeometry(fi) {
+  if (fi <= 0 || fi >= frameCount - 1) return null;
   const Px = frameCX(fi), Py = frameCY(fi);
-  // Prefer direction from manually-placed next segment ctrl point
-  const cpNext = getSegmentCurvePuller(fi);
-  if (cpNext && isSegmentCurvePullerManual(fi)) {
-    const dx = cpNext.nx * stageW - Px;
-    const dy = cpNext.ny * stageH - Py;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    if (len > 1) return { x: dx / len, y: dy / len };
+
+  const cpPrev    = getSegmentCurvePuller(fi - 1);
+  const cpNext    = getSegmentCurvePuller(fi);
+  const manualPrev = isSegmentCurvePullerManual(fi - 1);
+  const manualNext = isSegmentCurvePullerManual(fi);
+
+  let dirX = 0, dirY = 0, dirCount = 0;
+  const DEFAULT_ARM = 48;
+  let dist = DEFAULT_ARM;
+
+  // Saída: vetor P → Cnext (segmento fi → fi+1)
+  if (cpNext && manualNext) {
+    const cpNx = cpNext.nx * stageW, cpNy = cpNext.ny * stageH;
+    const dOutX = cpNx - Px, dOutY = cpNy - Py;
+    const dOutLen = Math.sqrt(dOutX * dOutX + dOutY * dOutY);
+    if (dOutLen > 1) {
+      dirX += dOutX / dOutLen;
+      dirY += dOutY / dOutLen;
+      dirCount++;
+      dist = dOutLen; // distância real = força da tangente de saída
+    }
   }
-  // Default: chord direction through the frame (Pprev to Pnext)
-  const dx = frameCX(fi + 1) - frameCX(fi - 1);
-  const dy = frameCY(fi + 1) - frameCY(fi - 1);
-  const len = Math.sqrt(dx * dx + dy * dy);
-  if (len > 1) return { x: dx / len, y: dy / len };
-  return { x: 1, y: 0 };
+
+  // Entrada: vetor Cprev → P (segmento fi-1 → fi)
+  if (cpPrev && manualPrev) {
+    const cpPx = cpPrev.nx * stageW, cpPy = cpPrev.ny * stageH;
+    const dInX = Px - cpPx, dInY = Py - cpPy;
+    const dInLen = Math.sqrt(dInX * dInX + dInY * dInY);
+    if (dInLen > 1) {
+      dirX += dInX / dInLen;
+      dirY += dInY / dInLen;
+      dirCount++;
+      if (dirCount === 1) dist = dInLen; // só prev: usar comprimento de entrada
+    }
+  }
+
+  // Normalizar direção combinada
+  if (dirCount > 0) {
+    const dlen = Math.sqrt(dirX * dirX + dirY * dirY);
+    if (dlen > 0.01) { dirX /= dlen; dirY /= dlen; }
+    else dirCount = 0; // degenerado: cair no fallback
+  }
+
+  // Fallback: corda Pprev → Pnext
+  if (dirCount === 0) {
+    const fdx = frameCX(fi + 1) - frameCX(fi - 1);
+    const fdy = frameCY(fi + 1) - frameCY(fi - 1);
+    const flen = Math.sqrt(fdx * fdx + fdy * fdy);
+    if (flen > 1) { dirX = fdx / flen; dirY = fdy / flen; }
+    else           { dirX = 1;          dirY = 0; }
+    dist = DEFAULT_ARM;
+  }
+
+  dist = Math.max(20, Math.min(120, dist));
+
+  return {
+    hx:   Px + dirX * dist,
+    hy:   Py + dirY * dist,
+    dirX, dirY, dist
+  };
 }
 
 function crInterp(seg, t) {
@@ -10917,18 +10979,17 @@ function drawBezier() {
     svg += `<path d="M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}" stroke="rgba(180,100,255,${lineOp})" stroke-width="${lineW}" fill="none" stroke-linecap="round" />`;
   }
 
-  // v8z4b19y: Frame tangent handle arm — linha da tangente do frame ativo
+  // v8z4b19z: Frame tangent handle arm — posição derivada do estado real dos ctrlPts
   const _canTangent = !window._isoMode && frameCount >= 3 &&
                       activeIdx > 0 && activeIdx < frameCount - 1 && imgEl.src;
   if (_canTangent) {
-    const _tPx = frameCX(activeIdx);
-    const _tPy = frameCY(activeIdx);
-    const _tDir = getFrameTangentDir(activeIdx);
-    const TANGENT_ARM = 48;
-    const _thx = _tPx + _tDir.x * TANGENT_ARM;
-    const _thy = _tPy + _tDir.y * TANGENT_ARM;
-    const _invZ = 1 / editorZoomScale;
-    svg += `<line x1="${_tPx}" y1="${_tPy}" x2="${_thx}" y2="${_thy}" stroke="rgba(255,210,0,0.7)" stroke-width="${1.5 * _invZ}" stroke-dasharray="${3*_invZ},${2*_invZ}" opacity="0.85"/>`;
+    const _tGeo = getFrameTangentGeometry(activeIdx);
+    if (_tGeo) {
+      const _tPx = frameCX(activeIdx);
+      const _tPy = frameCY(activeIdx);
+      const _invZ = 1 / editorZoomScale;
+      svg += `<line x1="${_tPx}" y1="${_tPy}" x2="${_tGeo.hx}" y2="${_tGeo.hy}" stroke="rgba(255,210,0,0.7)" stroke-width="${1.5 * _invZ}" stroke-dasharray="${3*_invZ},${2*_invZ}" opacity="0.85"/>`;
+    }
   }
 
   bezierSvg.innerHTML = svg;
@@ -11100,33 +11161,33 @@ function updateCtrlPts() {
     loopEl.style.opacity       = loopMidActive ? '0' : '';
   }
 
-  // ── v8z4b19y: Frame tangent handle dot ───────────────────────────────────
-  const TANGENT_ARM_DOM = 48;
+  // ── v8z4b19z: Frame tangent handle dot — losango/diamante âmbar ──────────
+  // Posição derivada de getFrameTangentGeometry() — estado real dos ctrlPts.
   const canShowTangent = !window._isoMode && frameCount >= 3 &&
                          activeIdx > 0 && activeIdx < frameCount - 1 &&
                          !!imgEl.src && !isPreviewing;
   let tangentDotEl = document.getElementById('frame_tangent_dot');
   if (canShowTangent) {
-    const tPx = frameCX(activeIdx);
-    const tPy = frameCY(activeIdx);
-    const tDir = getFrameTangentDir(activeIdx);
-    const tHx = tPx + tDir.x * TANGENT_ARM_DOM;
-    const tHy = tPy + tDir.y * TANGENT_ARM_DOM;
-    if (!tangentDotEl) {
-      tangentDotEl = document.createElement('div');
-      tangentDotEl.id = 'frame_tangent_dot';
-      tangentDotEl.className = 'frame-tangent-dot';
-      stage.appendChild(tangentDotEl);
-      tangentDotEl.addEventListener('pointerdown', e => {
-        if (editorPanMode || isPreviewing) return;
-        e.stopPropagation();
-        startFrameTangentDrag();
-      });
+    const _tGeo = getFrameTangentGeometry(activeIdx);
+    if (_tGeo) {
+      if (!tangentDotEl) {
+        tangentDotEl = document.createElement('div');
+        tangentDotEl.id = 'frame_tangent_dot';
+        tangentDotEl.className = 'frame-tangent-dot';
+        stage.appendChild(tangentDotEl);
+        tangentDotEl.addEventListener('pointerdown', e => {
+          if (editorPanMode || isPreviewing) return;
+          e.stopPropagation();
+          startFrameTangentDrag();
+        });
+      }
+      tangentDotEl.style.display = 'block';
+      tangentDotEl.style.left = _tGeo.hx + 'px';
+      tangentDotEl.style.top  = _tGeo.hy + 'px';
+      stage.appendChild(tangentDotEl); // keep on top
+    } else {
+      if (tangentDotEl) tangentDotEl.style.display = 'none';
     }
-    tangentDotEl.style.display = 'block';
-    tangentDotEl.style.left = tHx + 'px';
-    tangentDotEl.style.top  = tHy + 'px';
-    stage.appendChild(tangentDotEl); // keep on top
   } else {
     if (tangentDotEl) tangentDotEl.style.display = 'none';
   }
@@ -11203,9 +11264,16 @@ function startFrameTangentDrag() {
   frameTangentDragState = { didMove: false, undoCaptured: false };
 }
 
-// Aplica edição do frame tangent handle.
+// v8z4b19z — Aplica edição do frame tangent handle.
 // hx, hy: posição do handle em pixels do stage (onde o usuário arrastou).
 // Atualiza ctrlPts dos dois trechos vizinhos ao frame ativo.
+//
+// BLOCO C: distância P→H controla força/intensidade da tangente.
+//   perto  = suavidade leve; longe = curva mais oblíqua (sem explodir).
+//
+// BLOCO A: após aplicar nx/ny, armazena t/perpX/perpY consistentes.
+//   Isso garante que syncCtrlPtsForFrame() preserve a tangente manual
+//   ao mover frames — evita reset para posição automática/reta.
 function applyFrameTangentEdit(hx, hy) {
   const fi = activeIdx;
   if (fi <= 0 || fi >= frameCount - 1) return false;
@@ -11220,9 +11288,13 @@ function applyFrameTangentEdit(hx, hy) {
   const prevFi = fi - 1;
   const prevPx = frameCX(prevFi), prevPy = frameCY(prevFi);
   const lenPrev = Math.sqrt((Px - prevPx) ** 2 + (Py - prevPy) ** 2);
-  const kPrev = Math.max(10, 0.4 * lenPrev);
-  const cpPrevX = Px - dirX * kPrev;
-  const cpPrevY = Py - dirY * kPrev;
+
+  // BLOCO C: dLen como força — clampado entre MIN e 0.65 * comprimento do trecho
+  const MIN_HANDLE_DIST = 10;
+  const strengthPrev = Math.max(MIN_HANDLE_DIST, Math.min(lenPrev * 0.65, dLen));
+
+  const cpPrevX  = Px - dirX * strengthPrev;
+  const cpPrevY  = Py - dirY * strengthPrev;
   const cpPrevNx = cpPrevX / stageW;
   const cpPrevNy = cpPrevY / stageH;
 
@@ -11230,20 +11302,34 @@ function applyFrameTangentEdit(hx, hy) {
   const nextFi = fi + 1;
   const nextPx = frameCX(nextFi), nextPy = frameCY(nextFi);
   const lenNext = Math.sqrt((nextPx - Px) ** 2 + (nextPy - Py) ** 2);
-  const kNext = Math.max(10, 0.4 * lenNext);
-  const cpNextX = Px + dirX * kNext;
-  const cpNextY = Py + dirY * kNext;
+
+  const strengthNext = Math.max(MIN_HANDLE_DIST, Math.min(lenNext * 0.65, dLen));
+
+  const cpNextX  = Px + dirX * strengthNext;
+  const cpNextY  = Py + dirY * strengthNext;
   const cpNextNx = cpNextX / stageW;
   const cpNextNy = cpNextY / stageH;
 
-  // Validar NaN/Infinity
+  // Validar NaN/Infinity — abortar silenciosamente se geometria inválida
   if (!isFinite(cpPrevNx) || !isFinite(cpPrevNy) || !isFinite(cpNextNx) || !isFinite(cpNextNy)) return false;
 
-  // Aplicar — dois trechos simultâneos
+  // Aplicar nx/ny — dois trechos simultâneos
   setSegmentCurvePuller(prevFi, { nx: cpPrevNx, ny: cpPrevNy });
   ctrlPtManual[prevFi] = true;
   setSegmentCurvePuller(fi, { nx: cpNextNx, ny: cpNextNy });
   ctrlPtManual[fi] = true;
+
+  // BLOCO A: armazenar t/perpX/perpY consistentes com nova posição nx/ny.
+  // syncCtrlPtsForFrame() usa esses valores ao mover frame — sem eles ficaria
+  // com valores stale do estado anterior e resetaria a tangente para padrão.
+  const tpPrev = computeTPerpForSeg(prevFi, cpPrevNx, cpPrevNy);
+  if (isFinite(tpPrev.t) && isFinite(tpPrev.perpX) && isFinite(tpPrev.perpY)) {
+    setSegmentCurvePuller(prevFi, { t: tpPrev.t, perpX: tpPrev.perpX, perpY: tpPrev.perpY });
+  }
+  const tpNext = computeTPerpForSeg(fi, cpNextNx, cpNextNy);
+  if (isFinite(tpNext.t) && isFinite(tpNext.perpX) && isFinite(tpNext.perpY)) {
+    setSegmentCurvePuller(fi, { t: tpNext.t, perpX: tpNext.perpX, perpY: tpNext.perpY });
+  }
 
   return true;
 }

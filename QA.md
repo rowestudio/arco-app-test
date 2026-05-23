@@ -2,6 +2,73 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19z — preserve frame tangent edits when moving frames
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19z` na UI (Settings).
+3. Confirmar que nome da versão exibe `preserve frame tangent edits when moving frames`.
+
+### Teste B — handle de frame é losango/diamante
+1. Carregar imagem.
+2. Criar projeto com pelo menos 3 frames.
+3. Selecionar frame intermediário (F2 em 3-frame).
+4. Confirmar que aparece um **losango/diamante âmbar** deslocado do centro do frame ativo.
+5. Confirmar que **não** é um círculo igual ao midpoint pathPoint.
+6. Confirmar que existe uma linha tracejada âmbar conectando o centro do frame ao losango.
+
+### Teste C — distância do handle controla força da tangente
+1. Com frame intermediário ativo, arrastar o losango âmbar para perto do centro do frame.
+2. Confirmar que a curva tem suavidade leve (pouco desvio).
+3. Arrastar o losango para mais longe do centro.
+4. Confirmar que a curva fica mais oblíqua/pronunciada.
+5. Confirmar que a curva não explode nem sai da tela.
+
+### Teste D — tangente preservada ao mover frame (bug principal)
+1. Selecionar frame intermediário (F2 de pelo menos 4 frames).
+2. Arrastar o losango âmbar para ajustar a tangente — curva deve mudar.
+3. **Sem desfazer**, arrastar o próprio frame para uma nova posição.
+4. Confirmar que a curva/tangente **NÃO reseta** para ângulo reto/padrão automático.
+5. Confirmar que `ctrlPtManual` dos segmentos vizinhos foi preservado.
+6. Confirmar que a passagem pelo frame ainda reflete o ajuste manual.
+
+### Teste E — undo/redo cobre dois ctrlPts
+1. Arrastar o losango âmbar.
+2. Confirmar que Ctrl+Z / botão Undo reverte a alteração dos dois segmentos vizinhos.
+3. Confirmar que Ctrl+Y / botão Redo refaz a alteração dos dois segmentos.
+4. Confirmar que não há undo duplicado (um undo por arrasto).
+5. Tocar no losango sem mover — confirmar que não cria undo.
+
+### Teste F — midpoint pathPoint não afetado
+1. Confirmar que o midpoint pathPoint (círculo branco/colorido) continua visível.
+2. Confirmar que arrastar o midpoint pathPoint continua funcionando.
+3. Confirmar que o losango âmbar não bloqueia acesso ao midpoint.
+
+### Teste G — antigo puxador legado continua oculto
+1. Com midpoint pathPoint ativo no segmento, confirmar que o losango legado está oculto.
+2. Confirmar que não há segundo controle legado visível.
+
+### Teste H — loop não regrediu
+1. Ativar loop.
+2. Confirmar que a curva de loop continua aparecendo.
+3. Confirmar que o handle de frame não quebra o loop.
+4. Confirmar que midpoint pathPoint do loop continua editável.
+
+### Teste I — Preview e MP4
+1. Rodar Preview.
+2. Confirmar que Preview respeita as curvas ajustadas pelo handle.
+3. Gerar MP4.
+4. Confirmar que MP4 respeita as curvas ajustadas pelo handle.
+5. Confirmar que Salvar MP4 não fica preso em estado done/pronto.
+
+### Teste J — JSON schema
+1. Salvar projeto.
+2. Abrir JSON e confirmar:
+   - `version: "v8z4b19z"`
+   - `ctrlPts` preservado
+   - `ctrlPtManual` preservado
+   - Nenhum dos campos proibidos: `handles`, `frameHandles`, `frameTangents`, `pathPoints`, `curvesV2`, `vectorPath`, etc.
+
 ## v8z4b19y — add active frame tangent handle prototype
 
 ### Teste A — abertura e versão

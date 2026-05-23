@@ -1,8 +1,14 @@
 # Roadmap
 
-## Objetivo imediato
+## Objetivo imediato — v8z4b19z (concluído)
 
-Fechar uma versão estável mínima antes de mudanças maiores.
+- ✅ Corrigir reset da tangente/curva ao mover frames.
+- ✅ Diferenciar visualmente handle de frame (losango) do midpoint pathPoint (círculo).
+- ✅ Distância do handle controla força da tangente.
+- ✅ `getFrameTangentGeometry()` substitui `getFrameTangentDir()`.
+- ✅ JSON schema inalterado.
+
+## Próximo passo
 
 ## v8z3v — Estabilização mínima
 
