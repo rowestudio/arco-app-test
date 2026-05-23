@@ -1,5 +1,63 @@
 # Changelog
 
+## v8z4b19x — hide legacy curve puller when midpoint path point is active
+
+Oculta completamente o **curvePuller/losango legado** quando o **midpoint pathPoint**
+está disponível como controle principal da curva.
+
+### Objetivo
+
+Na v8z4b19w, o curvePuller/losango ficava translúcido (`opacity: 0.38`) quando o
+midpoint pathPoint estava ativo. Embora sem interatividade (`pointer-events: none`),
+o elemento ainda aparecia visualmente parecendo um segundo controle, o que podia
+confundir a leitura da interface: o usuário poderia pensar que havia dois controles
+simultâneos para a mesma curva.
+
+Esta versão oculta completamente o losango quando o midpoint pathPoint está disponível.
+O midpoint pathPoint continua sendo o único controle principal visível.
+
+### Mudanças
+
+1. **`updateCtrlPts()` — ctrl-pt/losango completamente oculto quando midpoint ativo:**
+   - `opacity: '0'` (era `'0.38'`) — losango fica invisível quando midpoint pathPoint
+     está ativo no segmento.
+   - `pointer-events: 'none'` — mantido; losango não intercepta toque/ponteiro.
+   - Fallback preservado: se o midpoint pathPoint NÃO estiver disponível para o
+     segmento (curva degenerada, falha de modelo), o ctrl-pt volta à visibilidade e
+     interatividade normais.
+
+2. **CSS `.mid-pathpt ~ .ctrl-pt` adicionado (v8z4b19x):**
+   - `opacity: 0; pointer-events: none` — declaração CSS que complementa o inline
+     style do JS; CSS aplicado como camada base, JS confirma via inline style.
+
+3. **Loop — mesmo tratamento:**
+   - `loopEl` recebe `opacity: '0'` (era `'0.38'`) quando `midpt_loop` está visível.
+   - Fallback idêntico ao segmento normal.
+
+4. **Comentários técnicos atualizados** em `updateCtrlPts()` e no cabeçalho do
+   arquivo para refletir a nova decisão.
+
+### Pipeline preservado
+
+O arrasto do midpoint pathPoint continua usando o pipeline guardado aprovado:
+1. `buildRuntimeCurveModel(segIndex)` — modelo runtime do segmento.
+2. `simulateRuntimePathPointEdit(model, pathPoint, nextPoint)` — deriva curvePuller
+   candidato: `C = 2·M − 0.5·P0 − 0.5·P1`.
+3. `createLegacyCurvePatchFromSimulatedPathPointEdit(target, simulation)` — patch.
+4. `validateLegacyCurvePatchCandidate(patch)` — validação.
+5. `applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true })` —
+   aplicação real guardada.
+
+### Sem regressões
+
+- JSON schema inalterado — nenhum campo novo.
+- Preview e MP4 inalterados.
+- Undo/Redo preservados.
+- Salvar MP4 não regrediu.
+- Compatibilidade total com projetos salvos em versões anteriores.
+
+---
+
 ## v8z4b19w — make midpoint path point primary curve control
 
 Inversão da hierarquia de edição de curva: o **midpoint pathPoint** (círculo sobre
