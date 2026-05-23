@@ -1,6 +1,17 @@
 # Roadmap
 
-## Objetivo imediato — v8z4b20a (concluído)
+## Objetivo imediato — v8z4b20b (concluído)
+
+- ✅ Substituir handle único simétrico por dois handles: IN handle (entrada) e OUT handle (saída).
+- ✅ Modo suave/linkado por padrão (os dois ctrlPts atualizados em 180° ao arrastar qualquer handle).
+- ✅ Geometria derivada dos ctrlPts reais via `getActiveFrameInOutHandleGeometry()`.
+- ✅ Força por distância preservada (v8z4b19z).
+- ✅ Bugfix mover frame preservado (v8z4b19z).
+- ✅ JSON schema inalterado.
+- ✅ Handles não aparecem em F1, último frame, loop, Preview, isoMode.
+- ✅ Midpoint continua oculto; ctrl-pt legado continua oculto.
+
+## Objetivo anterior — v8z4b20a (concluído)
 
 - ✅ Ocultar midpoint automático da UI principal.
 - ✅ Manter midpoint apenas como recurso interno/legado/fallback.
@@ -71,22 +82,33 @@ o que não é desejado para a interface final.
 - "Reta" neutraliza handles sem necessariamente remover o frame.
 - "Suavizar" e "Angular" alteram apenas o modo do handle, sem mover âncora.
 
-### Estado atual (v8z4b20a)
+### Estado atual (v8z4b20b)
 
-- **Frame tangent handle (v8z4b19z):** handle único por frame intermediário (simétrico).
-  Representa aproximação de ambos os handles (entrada e saída) vinculados.
-  É o passo imediato antes dos handles separados de entrada/saída.
+- **Frame IN/OUT handles (v8z4b20b):** dois handles visíveis por frame intermediário ativo:
+  - **IN handle** (`.frame-in-handle`): losango âmbar suave, controla `ctrlPts[fi-1]`.
+  - **OUT handle** (`.frame-out-handle`): losango âmbar mais vivo, controla `ctrlPts[fi]`.
+  - Modo suave/linkado por padrão (os dois colineares, passagem contínua).
+  - Modo Angular/Livre: **ainda não implementado** — roadmap futuro.
+- **Frame tangent handle (v8z4b19z):** ocultado; substituído pelos dois handles IN/OUT.
 - **Midpoint pathPoint:** demovido da UI principal (v8z4b20a); mantido internamente.
 - **ctrl-pt/losango legado:** não exibido como controle principal.
-- **Loop ctrl-pt:** mantido visível e interativo (não há handle alternativo para loop).
+- **Loop ctrl-pt:** mantido visível e interativo (sem handles IN/OUT para loop).
 
 ### Próximos passos de handles (futuro, não imediato)
 
-- Separar handle de entrada e handle de saída por frame.
-- Implementar modo Suavizar/Angular como alternância real (UI).
+- **Modo Angular/Livre real:** handles independentes; menu contextual Suavizar/Angular/Reta/Remover.
+- **Menu contextual** estilo Illustrator para iPad: ações por toque longo no frame ativo.
 - Implementar ação "Reta" (neutralizar handles).
 - Handles em F1 e último frame quando loop ativo.
-- Reset local da tangente do frame ativo.
+- Reset local da curva do frame ativo.
+- Reset global de curvas.
+- Handles independentes persistidos no JSON (novo schema, nova versão maior).
+- **Ponto auxiliar / frame falso:** criar ponto no meio de um trecho sem duplicar frame real.
+- **Pen / Patch Tool:** construção vetorial do caminho.
+- **Desenho livre com dedo:** traço livre → frames com handles suaves.
+- Bug: _file.json sem imageBase64 para fase de UI/carregamento.
+- Velocidade composta (ease de velocidade além de ease de curva).
+- Preservação de proporções internas de tempos.
 
 ## Pontos auxiliares / frame falso
 

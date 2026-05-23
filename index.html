@@ -1,13 +1,23 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b20a                                     ║
+║  Versão: v8z4b20b                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b20b                                            ║
+║    feat: prototype active frame in-out handles       ║
+║         substitui handle único simétrico por dois    ║
+║         handles no frame intermediário ativo:        ║
+║         handle de entrada (IN) e handle de saída     ║
+║         (OUT); modo suave/linkado por padrão; braço  ║
+║         de haste para cada handle derivado dos       ║
+║         ctrlPts reais; força por distância           ║
+║         preservada; bugfix mover frame preservado;   ║
+║         midpoint continua oculto; JSON inalterado    ║
 ║  v8z4b20a                                            ║
 ║    fix: demote midpoint UI and document anchor       ║
 ║         handle model                                 ║
@@ -293,7 +303,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b20a — demote midpoint UI and document anchor handle model: BLOCO A — mid-pathpt sempre oculto (display:none) na UI principal; pointer-events:none garantidos; ctrl-pt/losango legado também não reexibido como controle principal; loop ctrl-pt mantido interativo (sem frame handle no loop); BLOCO B — frame tangent handle (v8z4b19z) permanece foco atual; BLOCO C — código de midpoint preservado internamente (buildRuntimeCurveModel, simulateRuntimePathPointEdit, createLegacyCurvePatch*, etc.); BLOCO D — ROADMAP atualizado com modelo âncoras/handles, Angular/Suavizar/Reta/Remover, Pen Tool, desenho livre com dedo, ponto auxiliar; JSON schema inalterado; sem campo novo -->
+<!-- Arco Motion App — v8z4b20b — prototype active frame in-out handles: BLOCO A — substitui handle único (frame-tangent-dot) por dois handles no frame intermediário ativo: frame-in-handle (entrada) e frame-out-handle (saída); BLOCO B — modo suave/linkado por padrão (dragging qualquer handle atualiza ambos os ctrlPts em 180°); BLOCO C — força por distância preservada; BLOCO D — bugfix mover frame preservado (t/perpX/perpY); BLOCO E — geometria derivada de ctrlPts reais via getActiveFrameInOutHandleGeometry(); BLOCO F — braços de haste no bezierSvg; BLOCO G — midpoint continua oculto; BLOCO H — JSON/schema inalterado; sem campo novo -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -526,7 +536,8 @@ body.recording #editorZoomCtrl{display:none;}
   background:transparent;border-radius:50%;}
 .mid-pathpt:active{cursor:grabbing;}
 
-/* Frame tangent handle dot — v8z4b19z: losango/diamante âmbar (diferencia do midpoint pathPoint círculo) */
+/* Frame tangent handle dot — v8z4b19z: losango/diamante âmbar (legado — substituído em v8z4b20b pelos dois handles IN/OUT) */
+/* Mantido no CSS para compatibilidade; elemento ocultado em updateCtrlPts v8z4b20b. */
 .frame-tangent-dot{position:absolute;width:11px;height:11px;border-radius:2px;
   background:rgba(255,210,0,0.92);border:2px solid rgba(255,255,255,0.85);
   box-shadow:0 0 0 3px rgba(255,210,0,.18);
@@ -535,6 +546,26 @@ body.recording #editorZoomCtrl{display:none;}
   width:44px;height:44px;transform:translate(-50%,-50%);
   background:transparent;border-radius:50%;}
 .frame-tangent-dot:active{cursor:grabbing;}
+
+/* v8z4b20b: Frame IN handle — losango âmbar entrada (suave, lado de trás do frame ativo) */
+.frame-in-handle{position:absolute;width:11px;height:11px;border-radius:2px;
+  background:rgba(255,210,0,0.78);border:2px solid rgba(255,255,255,0.75);
+  box-shadow:0 0 0 3px rgba(255,210,0,.15);
+  cursor:grab;transform:translate(-50%,-50%) rotate(45deg) scale(var(--ez-inv,1));touch-action:none;z-index:77;}
+.frame-in-handle::before{content:"";position:absolute;left:50%;top:50%;
+  width:48px;height:48px;transform:translate(-50%,-50%);
+  background:transparent;border-radius:50%;}
+.frame-in-handle:active{cursor:grabbing;}
+
+/* v8z4b20b: Frame OUT handle — losango âmbar saída (mais vivo, lado de frente do frame ativo) */
+.frame-out-handle{position:absolute;width:11px;height:11px;border-radius:2px;
+  background:rgba(255,210,0,0.95);border:2px solid rgba(255,255,255,0.90);
+  box-shadow:0 0 0 3px rgba(255,210,0,.22),0 0 6px 1px rgba(255,210,0,.12);
+  cursor:grab;transform:translate(-50%,-50%) rotate(45deg) scale(var(--ez-inv,1));touch-action:none;z-index:78;}
+.frame-out-handle::before{content:"";position:absolute;left:50%;top:50%;
+  width:48px;height:48px;transform:translate(-50%,-50%);
+  background:transparent;border-radius:50%;}
+.frame-out-handle:active{cursor:grabbing;}
 
 /* v8z4b19x: hide legacy ctrl-pt when mid-pathpt is active control */
 .mid-pathpt ~ .ctrl-pt,
@@ -2104,7 +2135,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b20a</span><br><span id="appVersionNameText">demote midpoint UI and document anchor handle model</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b20b</span><br><span id="appVersionNameText">prototype active frame in-out handles</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4445,8 +4476,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b20a';
-const APP_VERSION_NAME = 'demote midpoint UI and document anchor handle model';
+const APP_VERSION = 'v8z4b20b';
+const APP_VERSION_NAME = 'prototype active frame in-out handles';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -9720,7 +9751,8 @@ let dragState    = null;
 let ctrlDragSeg  = -1;
 let ctrlDragDidMove = false; // v8z4b19i: true se o ctrl-pt foi realmente movido no drag atual
 let midpointDragState = null; // v8z4b19v: { seg, segType, didMove } — drag de midpoint pathPoint
-let frameTangentDragState = null; // v8z4b19y: { didMove, undoCaptured } — drag de frame tangent handle
+let frameTangentDragState = null; // v8z4b19y: legado — substituído em v8z4b20b por frameHandleDragState
+let frameHandleDragState  = null; // v8z4b20b: { which:'in'|'out', didMove, undoCaptured } — drag de in/out handle
 let isPinching      = false;
 let pinchStartAngle = 0;
 let pinchStartRot   = 0;
@@ -10919,6 +10951,74 @@ function getFrameTangentGeometry(fi) {
   };
 }
 
+// ─── v8z4b20b: Geometria dos dois handles IN/OUT do frame intermediário ativo ─
+//
+// Retorna posições de pixel dos handles de entrada (IN) e saída (OUT)
+// derivadas dos ctrlPts reais, não de um padrão automático que sobrescreve
+// ajustes manuais do usuário.
+//
+// IN  handle → visualiza ctrlPts[fi-1]: ponto de controle do trecho anterior
+//              (fi-1 → fi). Em modo suave está atrás de P (lado incoming).
+// OUT handle → visualiza ctrlPts[fi]:   ponto de controle do trecho seguinte
+//              (fi → fi+1). Em modo suave está à frente de P (lado outgoing).
+//
+// Retorna null se fi não for frame intermediário válido.
+function getActiveFrameInOutHandleGeometry(fi) {
+  if (fi <= 0 || fi >= frameCount - 1) return null;
+  const Px = frameCX(fi), Py = frameCY(fi);
+
+  const cpPrev = getSegmentCurvePuller(fi - 1); // trecho anterior: fi-1 → fi
+  const cpNext = getSegmentCurvePuller(fi);      // trecho seguinte: fi → fi+1
+  const DEFAULT_ARM = 48;
+
+  // OUT handle: usa ctrlPts[fi] (ponto de controle do trecho de saída)
+  let outHx, outHy;
+  if (cpNext) {
+    outHx = cpNext.nx * stageW;
+    outHy = cpNext.ny * stageH;
+    const od = Math.sqrt((outHx - Px) ** 2 + (outHy - Py) ** 2);
+    if (!isFinite(od) || od < 8) {
+      // Fallback: corda fi → fi+1
+      const fdx = frameCX(fi + 1) - Px, fdy = frameCY(fi + 1) - Py;
+      const flen = Math.sqrt(fdx * fdx + fdy * fdy) || 1;
+      outHx = Px + (fdx / flen) * DEFAULT_ARM;
+      outHy = Py + (fdy / flen) * DEFAULT_ARM;
+    }
+  } else {
+    const fdx = frameCX(fi + 1) - frameCX(fi - 1);
+    const fdy = frameCY(fi + 1) - frameCY(fi - 1);
+    const flen = Math.sqrt(fdx * fdx + fdy * fdy) || 1;
+    outHx = Px + (fdx / flen) * DEFAULT_ARM;
+    outHy = Py + (fdy / flen) * DEFAULT_ARM;
+  }
+
+  // IN handle: usa ctrlPts[fi-1] (ponto de controle do trecho de entrada)
+  // Em modo suave está no lado oposto ao OUT handle (atrás de P).
+  let inHx, inHy;
+  if (cpPrev) {
+    inHx = cpPrev.nx * stageW;
+    inHy = cpPrev.ny * stageH;
+    const id = Math.sqrt((inHx - Px) ** 2 + (inHy - Py) ** 2);
+    if (!isFinite(id) || id < 8) {
+      // Fallback: corda fi-1 → fi (backward)
+      const fdx = frameCX(fi - 1) - Px, fdy = frameCY(fi - 1) - Py;
+      const flen = Math.sqrt(fdx * fdx + fdy * fdy) || 1;
+      inHx = Px + (fdx / flen) * DEFAULT_ARM;
+      inHy = Py + (fdy / flen) * DEFAULT_ARM;
+    }
+  } else {
+    // Fallback sem cpPrev: direção oposta à saída
+    const fdx = frameCX(fi - 1) - frameCX(fi + 1);
+    const fdy = frameCY(fi - 1) - frameCY(fi + 1);
+    const flen = Math.sqrt(fdx * fdx + fdy * fdy) || 1;
+    inHx = Px + (fdx / flen) * DEFAULT_ARM;
+    inHy = Py + (fdy / flen) * DEFAULT_ARM;
+  }
+
+  return { Px, Py, inHx, inHy, outHx, outHy };
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function crInterp(seg, t) {
   // Catmull-Rom para uso no drawBezier (coordenadas de stage)
   const pts = [];
@@ -10993,16 +11093,19 @@ function drawBezier() {
     svg += `<path d="M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}" stroke="rgba(180,100,255,${lineOp})" stroke-width="${lineW}" fill="none" stroke-linecap="round" />`;
   }
 
-  // v8z4b19z: Frame tangent handle arm — posição derivada do estado real dos ctrlPts
-  const _canTangent = !window._isoMode && frameCount >= 3 &&
-                      activeIdx > 0 && activeIdx < frameCount - 1 && imgEl.src;
-  if (_canTangent) {
-    const _tGeo = getFrameTangentGeometry(activeIdx);
-    if (_tGeo) {
-      const _tPx = frameCX(activeIdx);
-      const _tPy = frameCY(activeIdx);
+  // v8z4b20b: Frame IN/OUT handle arms — hastes de haste do centro do frame até cada handle
+  // Substituem o braço único do frame-tangent-dot (v8z4b19z).
+  const _canHandles = !window._isoMode && frameCount >= 3 &&
+                      activeIdx > 0 && activeIdx < frameCount - 1 &&
+                      !!imgEl.src && !isPreviewing;
+  if (_canHandles) {
+    const _hGeo = getActiveFrameInOutHandleGeometry(activeIdx);
+    if (_hGeo) {
       const _invZ = 1 / editorZoomScale;
-      svg += `<line x1="${_tPx}" y1="${_tPy}" x2="${_tGeo.hx}" y2="${_tGeo.hy}" stroke="rgba(255,210,0,0.7)" stroke-width="${1.5 * _invZ}" stroke-dasharray="${3*_invZ},${2*_invZ}" opacity="0.85"/>`;
+      // Braço IN (âmbar suave, tracejado)
+      svg += `<line x1="${_hGeo.Px}" y1="${_hGeo.Py}" x2="${_hGeo.inHx}" y2="${_hGeo.inHy}" stroke="rgba(255,210,0,0.55)" stroke-width="${1.5 * _invZ}" stroke-dasharray="${3*_invZ},${2*_invZ}" opacity="0.85"/>`;
+      // Braço OUT (âmbar mais vivo, sólido)
+      svg += `<line x1="${_hGeo.Px}" y1="${_hGeo.Py}" x2="${_hGeo.outHx}" y2="${_hGeo.outHy}" stroke="rgba(255,210,0,0.78)" stroke-width="${1.5 * _invZ}" opacity="0.90"/>`;
     }
   }
 
@@ -11073,8 +11176,9 @@ function updateCtrlPts() {
   // v8z4b20a: midpoint DEMOVIDO da UI principal — sempre oculto (display:'none').
   // Permanece como recurso interno/legado/fallback no código; não renderizado
   // como controle normal de edição. Elementos podem existir no DOM para
-  // compatibilidade, mas nunca com display:'block'. Frame tangent handle
-  // (frame-tangent-dot, v8z4b19z) é o foco atual de edição de curva.
+  // compatibilidade, mas nunca com display:'block'.
+  // v8z4b20b: frame IN/OUT handles (frame-in-handle, frame-out-handle) são o
+  // foco atual de edição de curva — dois handles em vez do único frame-tangent-dot.
   for (let seg = 0; seg < MAX_FRAMES; seg++) {
     const mEl = getMidpointEl(seg);
     if (mEl) mEl.style.display = 'none'; // v8z4b20a: sempre oculto
@@ -11108,37 +11212,76 @@ function updateCtrlPts() {
     // Nenhuma mudança aqui — loopEl permanece interativo.
   }
 
-  // ── v8z4b19z: Frame tangent handle dot — losango/diamante âmbar ──────────
-  // Posição derivada de getFrameTangentGeometry() — estado real dos ctrlPts.
-  const canShowTangent = !window._isoMode && frameCount >= 3 &&
+  // ── v8z4b20b: Frame IN/OUT handles — dois losangos âmbar no frame intermediário ativo ──
+  // Substituem o handle único frame-tangent-dot (v8z4b19z).
+  // IN handle: posição de ctrlPts[fi-1] (trecho anterior) — lado de entrada.
+  // OUT handle: posição de ctrlPts[fi] (trecho seguinte) — lado de saída.
+  // Modo suave/linkado por padrão: arrastar um atualiza ambos em 180°.
+
+  // Ocultar o handle legado (frame_tangent_dot) — substituído pelos dois handles
+  const _legacyTangentEl = document.getElementById('frame_tangent_dot');
+  if (_legacyTangentEl) _legacyTangentEl.style.display = 'none';
+
+  const canShowHandles = !window._isoMode && frameCount >= 3 &&
                          activeIdx > 0 && activeIdx < frameCount - 1 &&
                          !!imgEl.src && !isPreviewing;
-  let tangentDotEl = document.getElementById('frame_tangent_dot');
-  if (canShowTangent) {
-    const _tGeo = getFrameTangentGeometry(activeIdx);
-    if (_tGeo) {
-      if (!tangentDotEl) {
-        tangentDotEl = document.createElement('div');
-        tangentDotEl.id = 'frame_tangent_dot';
-        tangentDotEl.className = 'frame-tangent-dot';
-        stage.appendChild(tangentDotEl);
-        tangentDotEl.addEventListener('pointerdown', e => {
+
+  // Helper local: cria ou reaproveita elemento de handle
+  function _ensureHandleEl(id, cls) {
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('div');
+      el.id  = id;
+      el.className = cls;
+      stage.appendChild(el);
+    }
+    return el;
+  }
+
+  let inHandleEl  = document.getElementById('frame_in_handle');
+  let outHandleEl = document.getElementById('frame_out_handle');
+
+  if (canShowHandles) {
+    const _hGeo = getActiveFrameInOutHandleGeometry(activeIdx);
+    if (_hGeo) {
+      // IN handle
+      inHandleEl = _ensureHandleEl('frame_in_handle', 'frame-in-handle');
+      if (!inHandleEl._arcoListenerAttached) {
+        inHandleEl.addEventListener('pointerdown', e => {
           if (editorPanMode || isPreviewing) return;
           e.stopPropagation();
-          startFrameTangentDrag();
+          startFrameHandleDrag('in');
         });
+        inHandleEl._arcoListenerAttached = true;
       }
-      tangentDotEl.style.display = 'block';
-      tangentDotEl.style.left = _tGeo.hx + 'px';
-      tangentDotEl.style.top  = _tGeo.hy + 'px';
-      stage.appendChild(tangentDotEl); // keep on top
+      inHandleEl.style.display = 'block';
+      inHandleEl.style.left    = _hGeo.inHx + 'px';
+      inHandleEl.style.top     = _hGeo.inHy + 'px';
+      stage.appendChild(inHandleEl); // keep on top
+
+      // OUT handle
+      outHandleEl = _ensureHandleEl('frame_out_handle', 'frame-out-handle');
+      if (!outHandleEl._arcoListenerAttached) {
+        outHandleEl.addEventListener('pointerdown', e => {
+          if (editorPanMode || isPreviewing) return;
+          e.stopPropagation();
+          startFrameHandleDrag('out');
+        });
+        outHandleEl._arcoListenerAttached = true;
+      }
+      outHandleEl.style.display = 'block';
+      outHandleEl.style.left    = _hGeo.outHx + 'px';
+      outHandleEl.style.top     = _hGeo.outHy + 'px';
+      stage.appendChild(outHandleEl); // keep on top
     } else {
-      if (tangentDotEl) tangentDotEl.style.display = 'none';
+      if (inHandleEl)  inHandleEl.style.display  = 'none';
+      if (outHandleEl) outHandleEl.style.display = 'none';
     }
   } else {
-    if (tangentDotEl) tangentDotEl.style.display = 'none';
+    if (inHandleEl)  inHandleEl.style.display  = 'none';
+    if (outHandleEl) outHandleEl.style.display = 'none';
   }
-  // ─────────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────────
 }
 
 // ─── v8z4b19v: Midpoint pathPoint helpers ────────────────────────────────────
@@ -11201,74 +11344,91 @@ function applyMidpointPathPointEdit(seg, segType, nx, ny) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ─── v8z4b19y: Frame tangent handle drag helpers ─────────────────────────────
+// ─── v8z4b20b: Frame IN/OUT handle drag helpers ──────────────────────────────
+//
+// Substitui o handle único simétrico (v8z4b19y/z) por dois handles:
+//   IN  handle: controla trecho anterior (fi-1 → fi) — ctrlPts[fi-1]
+//   OUT handle: controla trecho seguinte (fi → fi+1) — ctrlPts[fi]
+//
+// Modo suave/linkado por padrão: arrastar qualquer handle atualiza os dois
+// ctrlPts em 180° (colinesares), preservando passagem contínua pelo frame.
+//
+// Força por distância (v8z4b19z) preservada: dLen controla intensidade.
+// Bugfix mover frame (v8z4b19z) preservado: t/perpX/perpY armazenados.
 
-// Inicia drag do frame tangent handle.
-// Não chama pushUndo aqui — undo capturado lazily no primeiro pixel de movimento.
-function startFrameTangentDrag() {
+// Inicia drag de um handle IN ou OUT.
+// which: 'in' | 'out'
+// Undo capturado lazily no primeiro pixel de movimento.
+function startFrameHandleDrag(which) {
   if (isPreviewing) return;
   document.body.classList.add('dragging');
-  frameTangentDragState = { didMove: false, undoCaptured: false };
+  frameHandleDragState = { which, didMove: false, undoCaptured: false };
 }
 
-// v8z4b19z — Aplica edição do frame tangent handle.
-// hx, hy: posição do handle em pixels do stage (onde o usuário arrastou).
-// Atualiza ctrlPts dos dois trechos vizinhos ao frame ativo.
+// Aplica edição de handle IN ou OUT.
+// which: 'in' | 'out'
+// hx, hy: posição do handle arrastado em pixels do stage.
 //
-// BLOCO C: distância P→H controla força/intensidade da tangente.
-//   perto  = suavidade leve; longe = curva mais oblíqua (sem explodir).
+// Modo suave/linkado:
+//   OUT arrastado: ctrlPts[fi]    ← P + dir*strengthNext  (para frente)
+//                  ctrlPts[fi-1]  ← P - dir*strengthPrev  (para trás, 180°)
+//   IN  arrastado: ctrlPts[fi-1]  ← P + dir*strengthPrev  (para trás — dir aponta de P ao handle IN)
+//                  ctrlPts[fi]    ← P - dir*strengthNext   (para frente, 180°)
 //
-// BLOCO A: após aplicar nx/ny, armazena t/perpX/perpY consistentes.
-//   Isso garante que syncCtrlPtsForFrame() preserve a tangente manual
-//   ao mover frames — evita reset para posição automática/reta.
-function applyFrameTangentEdit(hx, hy) {
+// Força clampada entre MIN_HANDLE_DIST e 65% do comprimento do trecho.
+// Valida NaN/Infinity — aborta silenciosamente se geometria inválida.
+function applyFrameHandleEdit(which, hx, hy) {
   const fi = activeIdx;
   if (fi <= 0 || fi >= frameCount - 1) return false;
   const Px = frameCX(fi), Py = frameCY(fi);
+
   const dx = hx - Px, dy = hy - Py;
   const dLen = Math.sqrt(dx * dx + dy * dy);
   if (!isFinite(dLen) || dLen < 2) return false; // degenerate — sem movimento real
 
   const dirX = dx / dLen, dirY = dy / dLen;
 
-  // Trecho anterior: seg = fi - 1 (frames[fi-1] → frames[fi])
-  const prevFi = fi - 1;
-  const prevPx = frameCX(prevFi), prevPy = frameCY(prevFi);
-  const lenPrev = Math.sqrt((Px - prevPx) ** 2 + (Py - prevPy) ** 2);
+  const prevFi = fi - 1, nextFi = fi + 1;
+  const lenPrev = Math.sqrt((Px - frameCX(prevFi)) ** 2 + (Py - frameCY(prevFi)) ** 2);
+  const lenNext = Math.sqrt((frameCX(nextFi) - Px) ** 2 + (frameCY(nextFi) - Py) ** 2);
 
-  // BLOCO C: dLen como força — clampado entre MIN e 0.65 * comprimento do trecho
+  // Força por distância — clampada (v8z4b19z preservado)
   const MIN_HANDLE_DIST = 10;
   const strengthPrev = Math.max(MIN_HANDLE_DIST, Math.min(lenPrev * 0.65, dLen));
-
-  const cpPrevX  = Px - dirX * strengthPrev;
-  const cpPrevY  = Py - dirY * strengthPrev;
-  const cpPrevNx = cpPrevX / stageW;
-  const cpPrevNy = cpPrevY / stageH;
-
-  // Trecho seguinte: seg = fi (frames[fi] → frames[fi+1])
-  const nextFi = fi + 1;
-  const nextPx = frameCX(nextFi), nextPy = frameCY(nextFi);
-  const lenNext = Math.sqrt((nextPx - Px) ** 2 + (nextPy - Py) ** 2);
-
   const strengthNext = Math.max(MIN_HANDLE_DIST, Math.min(lenNext * 0.65, dLen));
 
-  const cpNextX  = Px + dirX * strengthNext;
-  const cpNextY  = Py + dirY * strengthNext;
-  const cpNextNx = cpNextX / stageW;
-  const cpNextNy = cpNextY / stageH;
+  let cpPrevNx, cpPrevNy, cpNextNx, cpNextNy;
 
-  // Validar NaN/Infinity — abortar silenciosamente se geometria inválida
+  if (which === 'out') {
+    // OUT arrastado: dir aponta de P para frente (saída)
+    // ctrlPts[fi]    = P + dir * strengthNext  (na direção do handle)
+    // ctrlPts[fi-1]  = P - dir * strengthPrev  (180° oposto — modo linkado)
+    cpNextNx = (Px + dirX * strengthNext) / stageW;
+    cpNextNy = (Py + dirY * strengthNext) / stageH;
+    cpPrevNx = (Px - dirX * strengthPrev) / stageW;
+    cpPrevNy = (Py - dirY * strengthPrev) / stageH;
+  } else {
+    // IN arrastado: dir aponta de P para trás (entrada)
+    // ctrlPts[fi-1]  = P + dir * strengthPrev  (na direção do handle IN)
+    // ctrlPts[fi]    = P - dir * strengthNext   (180° oposto — modo linkado)
+    cpPrevNx = (Px + dirX * strengthPrev) / stageW;
+    cpPrevNy = (Py + dirY * strengthPrev) / stageH;
+    cpNextNx = (Px - dirX * strengthNext) / stageW;
+    cpNextNy = (Py - dirY * strengthNext) / stageH;
+  }
+
+  // Validar NaN/Infinity — abortar silenciosamente
   if (!isFinite(cpPrevNx) || !isFinite(cpPrevNy) || !isFinite(cpNextNx) || !isFinite(cpNextNy)) return false;
 
-  // Aplicar nx/ny — dois trechos simultâneos
+  // Aplicar nx/ny — dois trechos simultâneos (modo linkado)
   setSegmentCurvePuller(prevFi, { nx: cpPrevNx, ny: cpPrevNy });
   ctrlPtManual[prevFi] = true;
   setSegmentCurvePuller(fi, { nx: cpNextNx, ny: cpNextNy });
   ctrlPtManual[fi] = true;
 
-  // BLOCO A: armazenar t/perpX/perpY consistentes com nova posição nx/ny.
-  // syncCtrlPtsForFrame() usa esses valores ao mover frame — sem eles ficaria
-  // com valores stale do estado anterior e resetaria a tangente para padrão.
+  // Armazenar t/perpX/perpY consistentes — bugfix mover frame (v8z4b19z preservado)
+  // syncCtrlPtsForFrame() usa esses valores ao mover o frame ativo;
+  // sem eles os ajustes manuais seriam resetados.
   const tpPrev = computeTPerpForSeg(prevFi, cpPrevNx, cpPrevNy);
   if (isFinite(tpPrev.t) && isFinite(tpPrev.perpX) && isFinite(tpPrev.perpY)) {
     setSegmentCurvePuller(prevFi, { t: tpPrev.t, perpX: tpPrev.perpX, perpY: tpPrev.perpY });
@@ -11279,6 +11439,20 @@ function applyFrameTangentEdit(hx, hy) {
   }
 
   return true;
+}
+
+// ─── v8z4b19y: Frame tangent handle drag helpers (LEGADO — mantido como fallback) ──
+// v8z4b20b: substituído por startFrameHandleDrag / applyFrameHandleEdit.
+// Funções preservadas para compatibilidade interna; não chamadas na v8z4b20b.
+function startFrameTangentDrag() {
+  if (isPreviewing) return;
+  document.body.classList.add('dragging');
+  frameTangentDragState = { didMove: false, undoCaptured: false };
+}
+
+function applyFrameTangentEdit(hx, hy) {
+  // Legado: delega para applyFrameHandleEdit('out', hx, hy) com comportamento idêntico.
+  return applyFrameHandleEdit('out', hx, hy);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -11534,7 +11708,9 @@ stage.addEventListener('touchstart', e => {
     if (e.target.closest('.global-handle')) return;
     if (e.target.closest('.ctrl-pt')) return;
     if (e.target.closest('.mid-pathpt')) return; // v8z4b19w: midpoint pathPoint não fecha custBar
-    if (e.target.closest('.frame-tangent-dot')) return; // v8z4b19y: tangent handle não fecha custBar
+    if (e.target.closest('.frame-tangent-dot')) return; // v8z4b19y: tangent handle legado não fecha custBar
+    if (e.target.closest('.frame-in-handle'))   return; // v8z4b20b: IN handle não fecha custBar
+    if (e.target.closest('.frame-out-handle'))  return; // v8z4b20b: OUT handle não fecha custBar
     if (e.target.closest('#editorZoomCtrl')) return;
     // Tudo o mais dentro da image-area (imagem, fundo preto, canvas,
     // áreas vazias) fecha o menu contextual.
@@ -11601,7 +11777,7 @@ function onMove(e) {
     document.body.classList.remove('dragging');
     return;
   }
-  if (dragState || ctrlDragSeg !== -1 || panDragState || midpointDragState || frameTangentDragState) {
+  if (dragState || ctrlDragSeg !== -1 || panDragState || midpointDragState || frameTangentDragState || frameHandleDragState) {
     e.preventDefault();
   }
   const pos = getPos(e);
@@ -11647,7 +11823,7 @@ function onMove(e) {
     return;
   }
 
-  // Frame tangent handle drag — v8z4b19y
+  // Frame tangent handle drag — v8z4b19y (LEGADO — frameTangentDragState não é mais iniciado em v8z4b20b)
   if (frameTangentDragState) {
     const sc = screenToStageCoord(pos.x, pos.y);
     if (!frameTangentDragState.undoCaptured) {
@@ -11655,13 +11831,33 @@ function onMove(e) {
       if (fi <= 0 || fi >= frameCount - 1) { frameTangentDragState = null; return; }
       const Px = frameCX(fi), Py = frameCY(fi);
       const dist = Math.sqrt((sc.x - Px) ** 2 + (sc.y - Py) ** 2);
-      if (dist < 2) return; // Not enough movement yet — lazy undo threshold
-      pushUndo(); // Capture state BEFORE any changes
+      if (dist < 2) return;
+      pushUndo();
       frameTangentDragState.undoCaptured = true;
     }
     const applied = applyFrameTangentEdit(sc.x, sc.y);
     if (applied) {
       frameTangentDragState.didMove = true;
+      drawBezier(); updateCtrlPts();
+    }
+    return;
+  }
+
+  // Frame IN/OUT handle drag — v8z4b20b
+  if (frameHandleDragState) {
+    const sc = screenToStageCoord(pos.x, pos.y);
+    if (!frameHandleDragState.undoCaptured) {
+      const fi = activeIdx;
+      if (fi <= 0 || fi >= frameCount - 1) { frameHandleDragState = null; return; }
+      const Px = frameCX(fi), Py = frameCY(fi);
+      const dist = Math.sqrt((sc.x - Px) ** 2 + (sc.y - Py) ** 2);
+      if (dist < 2) return; // limiar lazy undo — não criar undo por toque sem movimento real
+      pushUndo(); // capturar estado ANTES de qualquer mudança
+      frameHandleDragState.undoCaptured = true;
+    }
+    const applied = applyFrameHandleEdit(frameHandleDragState.which, sc.x, sc.y);
+    if (applied) {
+      frameHandleDragState.didMove = true;
       drawBezier(); updateCtrlPts();
     }
     return;
@@ -11825,21 +12021,27 @@ function endDrag(e) {
   // v8z4b19v: midpoint pathPoint drag
   const hadMidpointDrag = midpointDragState !== null;
   const midpointMoved   = midpointDragState && midpointDragState.didMove;
-  // v8z4b19y: frame tangent handle drag
+  // v8z4b19y: frame tangent handle drag (legado)
   const hadTangentDrag  = frameTangentDragState !== null;
   const tangentMoved    = frameTangentDragState && frameTangentDragState.didMove;
-  const hadInteraction  = dragState != null || hadCtrlDrag || hadMidpointDrag || hadTangentDrag;
+  // v8z4b20b: frame IN/OUT handle drag
+  const hadHandleDrag   = frameHandleDragState !== null;
+  const handleMoved     = frameHandleDragState && frameHandleDragState.didMove;
+  const hadInteraction  = dragState != null || hadCtrlDrag || hadMidpointDrag || hadTangentDrag || hadHandleDrag;
   dragState = null; ctrlDragSeg = -1; ctrlDragDidMove = false;
-  midpointDragState = null; // v8z4b19v
-  frameTangentDragState = null; // v8z4b19y
+  midpointDragState     = null; // v8z4b19v
+  frameTangentDragState = null; // v8z4b19y (legado)
+  frameHandleDragState  = null; // v8z4b20b
   document.body.classList.remove('dragging');
   hideAngleIndicator();
   // v8z4b19i — invalidar MP4 se um ponto de curva foi movido (curva normal ou loop)
   if (ctrlMoved) markProjectDirty('curve');
   // v8z4b19v — invalidar MP4 se midpoint pathPoint foi movido
   if (midpointMoved) markProjectDirty('midpoint-pathpoint');
-  // v8z4b19y — invalidar MP4 se frame tangent handle foi movido
+  // v8z4b19y (legado) — invalidar MP4 se frame tangent handle foi movido
   if (tangentMoved) markProjectDirty('frame-tangent');
+  // v8z4b20b — invalidar MP4 se frame IN/OUT handle foi movido
+  if (handleMoved) markProjectDirty('frame-inout-handle');
   // v8z4b17f — recalcular distribuição após mover frame ou curva
   if (hadInteraction) maybeRedistributeByCurveLength();
 }
