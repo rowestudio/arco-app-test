@@ -2,6 +2,86 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b20c — fix endpoint loop handles and segment-local editing
+
+### Teste A — versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b20c` na UI (Settings).
+3. Confirmar que nome da versão exibe `fix endpoint loop handles and segment-local editing`.
+
+### Teste B — handles em endpoints (sem loop)
+1. Carregar imagem.
+2. Criar projeto com 2 frames, sem loop.
+3. Selecionar F1 → confirmar que aparece **OUT** handle.
+4. Selecionar F2 → confirmar que aparece **IN** handle.
+5. Criar projeto com 4 frames, sem loop.
+6. Confirmar: F1=OUT; F2=IN+OUT; F3=IN+OUT; F4=IN.
+7. Confirmar que midpoint **não** aparece.
+8. Confirmar que ctrl-pt legado **não** aparece.
+
+### Teste C — handles com loop
+1. Ativar loop com 2 frames.
+2. Confirmar: F1=IN(loop)+OUT; F2=IN+OUT(loop).
+3. Criar projeto com 4 frames e ativar loop.
+4. Confirmar: F1=IN(loop)+OUT; F2=IN+OUT; F3=IN+OUT; F4=IN+OUT(loop).
+5. Confirmar que handles de loop têm cor diferente (roxa).
+6. Confirmar que loop ctrl-pt legado fica oculto quando handles de loop são exibidos.
+
+### Teste D — segment-local editing
+1. Projeto com 5 frames, sem loop.
+2. Selecionar F3 e ajustar IN handle (trecho F2→F3).
+3. Confirmar que apenas o trecho F2→F3 muda.
+4. Confirmar que trecho F3→F4 **não** muda automaticamente.
+5. Selecionar F4 e ajustar IN handle (trecho F3→F4).
+6. Confirmar que apenas o trecho F3→F4 muda.
+7. Confirmar que trecho F2→F3 **não** foi resetado.
+
+### Teste E — OUT de F4 e IN de F5 são o mesmo trecho
+1. Projeto com 5 frames.
+2. Selecionar F4, arrastar OUT handle (trecho F4→F5).
+3. Selecionar F5, verificar que IN handle reflete a mesma posição do ctrlPt F4→F5.
+4. Arrastar IN de F5 (mesmo trecho F4→F5).
+5. Confirmar que trecho F3→F4 **não** mudou.
+6. Confirmar que trecho F5→F6 (se existir) **não** mudou.
+
+### Teste F — Handles de loop
+1. Projeto com pelo menos 2 frames, loop ativo.
+2. Selecionar F1, arrastar IN handle (loop).
+3. Confirmar que `loopCtrlPt` muda.
+4. Selecionar último frame, verificar que OUT handle de loop reflete mesmo `loopCtrlPt`.
+5. Arrastar OUT do último frame (loop).
+6. Confirmar que trechos normais não foram alterados.
+7. Undo → confirmar que `loopCtrlPt` voltou ao estado anterior.
+8. Redo → confirmar que `loopCtrlPt` foi refeito.
+
+### Teste G — Undo/Redo
+1. Ajustar qualquer handle.
+2. Confirmar Undo reverte apenas aquele trecho.
+3. Confirmar Redo refaz apenas aquele trecho.
+4. Confirmar tocar sem mover não cria undo.
+5. Confirmar não há undo duplicado.
+
+### Teste H — bugfix mover frame preservado
+1. Selecionar F1 (2 frames mínimo).
+2. Arrastar OUT handle para ajustar curva.
+3. Mover F1 para nova posição.
+4. Confirmar que curva não resetou para padrão automático.
+
+### Teste I — Preview, MP4, Salvar
+1. Rodar Preview — confirmar que respeita as curvas ajustadas.
+2. Gerar MP4 — confirmar que respeita as curvas.
+3. Salvar MP4 — confirmar que botão não fica preso.
+4. Salvar projeto → confirmar version=v8z4b20c, sem campos novos no JSON.
+5. Abrir projeto salvo em v8z4b20b → confirmar compatibilidade.
+
+### Teste J — Campos proibidos no JSON
+Confirmar que **nenhum** destes campos aparece no JSON salvo:
+`curvesV2`, `vectorPath`, `handles`, `frameHandles`, `frameTangents`,
+`inHandles`, `outHandles`, `anchorHandles`, `pathPoints`, `midpoints`,
+`runtimeCurveModel`, `capabilities`, `spans`, `generatedMp4`, `exportBlob`.
+
+---
+
 ## v8z4b20b — prototype active frame in-out handles
 
 ### Teste A — abertura e versão
