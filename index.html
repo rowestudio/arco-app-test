@@ -1,13 +1,28 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19v                                     ║
+║  Versão: v8z4b19w                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19w                                            ║
+║    feat: make midpoint path point primary curve      ║
+║         control                                      ║
+║         midpoint pathPoint vira controle principal:  ║
+║         z-index elevado (76 > 75 do losango);        ║
+║         ctrl-pt/losango perde pointer-events quando  ║
+║         midpoint pathPoint está ativo no segmento;   ║
+║         ctrl-pt fica visível mas com opacity reduzida ║
+║         (secundário/diagnóstico); midpoint pathPoint  ║
+║         continua usando pipeline completo guardado:  ║
+║         simulateRuntimePathPointEdit→patch→validate→ ║
+║         applyLegacyCurvePatchCandidateToRealState;   ║
+║         Undo/Redo/dirty preservados; JSON inalterado ║
+║         loop: midpoint pathPoint do loop também      ║
+║         recebe prioridade; loopEl também secundário  ║
 ║  v8z4b19v                                            ║
 ║    feat: enable midpoint path point editing          ║
 ║         midpoint pathPoint em t=0.5 exibido sobre   ║
@@ -250,7 +265,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19v — enable midpoint path point editing: midpoint pathPoint em t=0.5 exibido sobre curva ativa como círculo branco arrastável; arrasto usa simulateRuntimePathPointEdit() → createLegacyCurvePatchFromSimulatedPathPointEdit() → validateLegacyCurvePatchCandidate() → applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true }); Undo/Redo/markProjectDirty/render preservados; JSON schema inalterado; sem campo novo; loop também suportado; curvePuller legado preservado -->
+<!-- Arco Motion App — v8z4b19w — make midpoint path point primary curve control: midpoint pathPoint elevado a controle principal (z-index 76 > ctrl-pt 75); ctrl-pt/losango recebe pointer-events:none + opacity reduzida quando midpoint pathPoint do segmento está ativo; drag parte do pathPoint, não do losango; curva passa pelo ponto arrastado; pipeline guardado preservado: simulateRuntimePathPointEdit() → createLegacyCurvePatchFromSimulatedPathPointEdit() → validateLegacyCurvePatchCandidate() → applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true }); loop também corrigido; Undo/Redo/markProjectDirty/render preservados; JSON schema inalterado; sem campo novo -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -471,10 +486,11 @@ body.recording #editorZoomCtrl{display:none;}
   background:transparent;border-radius:50%;}
 .ctrl-pt:active{cursor:grabbing;}
 
-/* Midpoint pathPoint — círculo branco com borda colorida (v8z4b19v) */
-.mid-pathpt{position:absolute;width:8px;height:8px;border-radius:50%;
-  background:rgba(255,255,255,0.92);border:2px solid #00d4ff;box-shadow:none;
-  cursor:grab;transform:translate(-50%,-50%) scale(var(--ez-inv,1));touch-action:none;z-index:74;}
+/* Midpoint pathPoint — círculo branco com borda colorida (v8z4b19v/w) */
+/* v8z4b19w: z-index elevado para 76 (> ctrl-pt 75) — controle principal */
+.mid-pathpt{position:absolute;width:10px;height:10px;border-radius:50%;
+  background:rgba(255,255,255,0.95);border:2.5px solid #00d4ff;box-shadow:0 0 0 2px rgba(0,212,255,.18);
+  cursor:grab;transform:translate(-50%,-50%) scale(var(--ez-inv,1));touch-action:none;z-index:76;}
 .mid-pathpt::before{content:"";position:absolute;left:50%;top:50%;
   width:44px;height:44px;transform:translate(-50%,-50%);
   background:transparent;border-radius:50%;}
@@ -2041,7 +2057,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19v</span><br><span id="appVersionNameText">enable midpoint path point editing</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19w</span><br><span id="appVersionNameText">make midpoint path point primary curve control</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4382,8 +4398,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19v';
-const APP_VERSION_NAME = 'enable midpoint path point editing';
+const APP_VERSION = 'v8z4b19w';
+const APP_VERSION_NAME = 'make midpoint path point primary curve control';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10879,6 +10895,8 @@ function updateCtrlPts() {
     const color = isPrevseg ? '#00d4ff' : '#f5a623';
     el.style.background = color;
     el.style.boxShadow  = `0 0 0 3px ${isPrevseg ? 'rgba(0,212,255,.25)' : 'rgba(245,166,35,.25)'}`;
+    // v8z4b19w: pointer-events e opacity do ctrl-pt são sincronizados depois,
+    // no passo final (após os midpoints serem atualizados nesta mesma chamada).
   }
 
   // Bolinha de loop — visível quando loop ativo e F1 ou último frame selecionado
@@ -10982,6 +11000,32 @@ function updateCtrlPts() {
     loopMidEl.style.display = 'none';
   }
   // ─────────────────────────────────────────────────────────────────────────
+
+  // ── v8z4b19w: Sync secundário — ctrl-pts ficam sem pointer-events quando  ──
+  // o midpoint pathPoint do segmento está ativo. Este passo roda APÓS todos os
+  // midpoints terem sido atualizados nesta mesma chamada, garantindo estado
+  // consistente sem lag entre os dois conjuntos de elementos.
+  //
+  // Decisão: Alternativa B/C híbrida — losango permanece VISÍVEL (diagnóstico)
+  // mas perde interatividade (pointer-events:none) e fica com opacidade reduzida
+  // (0.38) enquanto o midpoint pathPoint é o controle principal.
+  // Se o midpoint pathPoint não estiver disponível (falha de modelo, curva
+  // degenerada), o ctrl-pt recupera interatividade normal — fallback seguro.
+  for (let seg = 0; seg < MAX_FRAMES - 1; seg++) {
+    const el = getCtrlEl(seg);
+    if (!el || el.style.display !== 'block') continue;
+    const mEl = getMidpointEl(seg);
+    const midpointActive = mEl && mEl.style.display === 'block';
+    el.style.pointerEvents = midpointActive ? 'none' : '';
+    el.style.opacity       = midpointActive ? '0.38' : '';
+  }
+  // loopEl — mesmo tratamento: secundário quando midpoint pathPoint do loop ativo.
+  if (loopEl && loopEl.style.display === 'block') {
+    const _loopMidEl = getMidpointEl('loop');
+    const loopMidActive = _loopMidEl && _loopMidEl.style.display === 'block';
+    loopEl.style.pointerEvents = loopMidActive ? 'none' : '';
+    loopEl.style.opacity       = loopMidActive ? '0.38' : '';
+  }
 }
 
 // ─── v8z4b19v: Midpoint pathPoint helpers ────────────────────────────────────
@@ -11295,6 +11339,7 @@ stage.addEventListener('touchstart', e => {
     if (e.target.closest('.float-panel')) return;
     if (e.target.closest('.global-handle')) return;
     if (e.target.closest('.ctrl-pt')) return;
+    if (e.target.closest('.mid-pathpt')) return; // v8z4b19w: midpoint pathPoint não fecha custBar
     if (e.target.closest('#editorZoomCtrl')) return;
     // Tudo o mais dentro da image-area (imagem, fundo preto, canvas,
     // áreas vazias) fecha o menu contextual.

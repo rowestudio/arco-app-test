@@ -2,6 +2,84 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19w — make midpoint path point primary curve control
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19w` na UI (Settings).
+3. Confirmar que nome da versão exibe `make midpoint path point primary curve control`.
+
+### Teste B — midpoint pathPoint como controle principal
+1. Carregar imagem no iPhone/Safari.
+2. Criar projeto com pelo menos 4 frames.
+3. Selecionar frame F2 (ativo).
+4. Confirmar que o midpoint pathPoint (círculo branco/colorido) está visível sobre a curva ativa.
+5. Confirmar que o losango/curvePuller está visível mas com opacidade reduzida (~40%).
+6. Tentar arrastar tocando diretamente no ponto branco sobre a curva.
+7. Confirmar que o arrasto parte do midpoint pathPoint (não do losango).
+8. Confirmar que a curva passa pelo ponto arrastado em tempo real.
+9. Confirmar que o losango não é o controle que recebe o gesto.
+10. Confirmar que o losango acompanha a conversão interna (se visível).
+11. Soltar e confirmar que a curva permanece na posição editada.
+
+### Teste C — Undo/Redo do midpoint pathPoint
+1. Arrastar midpoint pathPoint.
+2. Confirmar Undo (curva volta ao estado anterior).
+3. Confirmar Redo (curva volta ao estado editado).
+4. Confirmar que não há undo duplicado (um undo por arrasto).
+5. Tocar no midpoint pathPoint sem mover — confirmar que não cria undo.
+
+### Teste D — drag de frames após edição
+1. Após editar midpoint pathPoint, arrastar frame.
+2. Confirmar que a curva não pula nem reseta sozinha.
+3. Confirmar que drag de frames continua funcionando normalmente.
+
+### Teste E — fallback do losango
+1. Se o midpoint pathPoint não puder ser calculado para um segmento (ex: curva degenerada):
+   - Confirmar que o losango recupera interatividade (pointer-events normal, opacity normal).
+   - Confirmar que não há quebra ou tela travada.
+
+### Teste F — loop
+1. Ativar loop com pelo menos 2 frames.
+2. Selecionar F1 ou último frame.
+3. Confirmar que curva de loop aparece imediatamente.
+4. Confirmar que midpoint pathPoint do loop está visível sobre a curva de loop.
+5. Confirmar que loopEl (losango roxo) está com opacidade reduzida.
+6. Arrastar midpoint pathPoint do loop.
+7. Confirmar que a curva de loop passa pelo ponto arrastado.
+8. Confirmar Undo/Redo do loop.
+
+### Teste G — Preview e MP4
+1. Rodar Preview.
+2. Confirmar que faixa preta superior do Preview continua presente.
+3. Confirmar que Preview respeita a curva editada pelo midpoint pathPoint.
+4. Gerar MP4.
+5. Confirmar que MP4 respeita a curva editada.
+6. Tocar em Salvar MP4.
+7. Confirmar que botão não fica preso.
+8. Ao sair do Preview, confirmar que MP4 gerado é limpo.
+9. Iniciar geração de MP4 e tocar Voltar antes de terminar — confirmar que Stage não trava.
+
+### Teste H — persistência JSON
+1. Salvar projeto com imagem:
+   - filename termina em `_img.json`; version = `v8z4b19w`; imageBase64 existe;
+   - ctrlPts preservado; ctrlPtManual preservado; loopCtrlPt preservado (se loop ativo);
+   - framePauses preservado; segDurations preservado.
+2. Salvar projeto sem imagem:
+   - filename termina em `_file.json`; version = `v8z4b19w`; imageBase64 não existe;
+   - ctrlPts preservado; ctrlPtManual preservado.
+3. Abrir JSON salvo em v8z4b19v — confirmar compatibilidade.
+4. Confirmar que estes campos NÃO aparecem no JSON:
+   - curvesV2, vectorPath, handles, pathPoints, runtimeCurveModel, capabilities, spans,
+     generatedMp4, exportBlob, legacyCurvePatch, patchCandidate, patchApplicationDraft,
+     realCurvePatchApplication, selfTest.
+
+### Teste I — console
+1. Confirmar que não há erro de console, NaN ou Infinity durante edição de midpoint.
+2. Confirmar que não há erro ao abrir projeto v8z4b19v anterior.
+
+---
+
 ## v8z4b19v — enable midpoint path point editing
 
 ### Teste A — abertura e versão

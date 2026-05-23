@@ -1,5 +1,76 @@
 # Changelog
 
+## v8z4b19w — make midpoint path point primary curve control
+
+Inversão da hierarquia de edição de curva: o **midpoint pathPoint** (círculo sobre
+a curva em t=0.5) passa a ser o controle principal e o **curvePuller/losango** vira
+controle secundário/diagnóstico.
+
+### Objetivo
+
+Na v8z4b19v, embora o midpoint pathPoint estivesse visível e tecnicamente arrastável,
+o curvePuller/losango (z-index 75) interceptava os gestos antes do midpoint pathPoint
+(z-index 74). O arrasto parecia concentrado no losango, com o ponto na curva apenas
+acompanhando. Esta versão inverte essa hierarquia.
+
+### Mudanças
+
+1. **z-index do `.mid-pathpt` elevado de 74 para 76** — supera o `.ctrl-pt` (75);
+   o midpoint pathPoint recebe gestos antes do losango.
+
+2. **Tamanho visual do `.mid-pathpt` aumentado de 8×8 px para 10×10 px** com borda
+   2.5 px — mais visível e fácil de alvejar no iPhone.
+
+3. **`updateCtrlPts()` — ctrl-pt/losango vira secundário quando midpoint pathPoint
+   está ativo no segmento:**
+   - `pointerEvents: 'none'` — losango não intercepta mais toque/ponteiro.
+   - `opacity: 0.38` — losango permanece visível para diagnóstico mas fica visualmente
+     de fundo.
+   - Quando o midpoint pathPoint NÃO está disponível para o segmento, o ctrl-pt volta
+     ao comportamento interativo normal (fallback seguro).
+
+4. **Loop corrigido da mesma forma:** `loopEl` (ctrl-pt do loop) recebe
+   `pointerEvents: 'none'` e `opacity: 0.38` quando o midpoint pathPoint do loop
+   (`loopMidEl`) está visível. A lógica é aplicada após toda a seção de midpoints,
+   garantindo estado consistente.
+
+5. **`.mid-pathpt` adicionado ao whitelist do `attachImageAreaCloseHandler()`** —
+   tocar no midpoint pathPoint não fecha mais o custBar inadvertidamente.
+
+### Pipeline preservado
+
+O arrasto do midpoint pathPoint continua usando o pipeline guardado aprovado:
+1. `buildRuntimeCurveModel(segIndex)` — modelo runtime do segmento.
+2. `simulateRuntimePathPointEdit(model, pathPoint, nextPoint)` — deriva curvePuller
+   candidato: `C = 2·M − 0.5·P0 − 0.5·P1`.
+3. `createLegacyCurvePatchFromSimulatedPathPointEdit(target, simulation)` — patch
+   candidato.
+4. `validateLegacyCurvePatchCandidate(patch)` — validação da estrutura.
+5. `applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true })` —
+   aplicação real guardada.
+
+### Decisão sobre o losango (alternativas A/B/C)
+
+**Alternativa adotada: B/C híbrido** — losango permanece visível mas não interativo:
+- Visível com opacidade 0.38 (diagnóstico, confirma posição do curvePuller legado).
+- Sem pointer-events (não intercepta gestos).
+- Recupera interatividade se midpoint pathPoint não estiver disponível (fallback).
+- Motivo: ocultar completamente (A) teria risco maior de confundir o usuário sobre
+  o estado da curva. Manter visível mas secundário é a opção mais segura e informativa.
+
+### JSON e schema
+
+- **Nenhum campo novo** no JSON salvo.
+- `ctrlPts`, `ctrlPtManual`, `loopCtrlPt` continuam sendo o único formato persistido.
+- Arquivos v8z4b19v e anteriores continuam abrindo normalmente.
+
+### Undo/Redo
+
+Preservado sem mudança. Um único undo por arrasto de midpoint pathPoint (feito em
+`startMidpointDrag()`). Tocar sem mover não cria undo.
+
+---
+
 ## v8z4b19v — enable midpoint path point editing
 
 Primeira implementação visível e interativa do pathPoint real: um ponto de passagem
