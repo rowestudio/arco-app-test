@@ -1,6 +1,50 @@
 # Roadmap
 
-## Objetivo imediato — v8z4b21b (concluído)
+## Objetivo imediato — v8z4b21c (concluído)
+
+Correção do Movimento inteligente com loop e do Reset Curves para curvesV2. Base: v8z4b21b.
+
+- ✅ `_smartFrameVelocity` aceita parâmetro `suppressLoop` para isolar trecho de loop do easing normal.
+- ✅ `computeSmartMovementProgress` passa `suppressLoop=true` para trechos normais — loop curto não contamina easing.
+- ✅ Falsa parada/ease indevido causado por `loopDuration` curto em trechos normais eliminado.
+- ✅ Caso mínimo confirmado: 2 frames / 4s / loop 1s / smart movement / framePauses zero → sem parada falsa.
+- ✅ `resetSegmentCurve` reseta `curvesV2.frameHandles.out` e `.in` com handles 1/3 da corda.
+- ✅ Reset Curves exibe curva padrão no Stage imediatamente após o reset.
+- ✅ Undo/Redo do Reset Curves preserva/restaura handles curvesV2 (via `captureState`/`restoreState` existentes).
+- ✅ Segmento de loop em si mantém continuidade com trechos normais (usa `suppressLoop=false`).
+- ✅ Velocidade constante continua funcionando.
+- ✅ Handles OUT/IN independentes da v8z4b21a preservados sem alteração.
+- ✅ Preview e MP4 usam o mesmo cálculo corrigido (via `getStateAtT`).
+- ✅ JSON continua salvando curvesV2; versão salva → v8z4b21c.
+- ✅ Direct Curve Drag e Assisted Frame Insertion registrados como futuros, sem implementação.
+
+### Próximas ideias registradas (não implementadas nesta versão)
+
+#### Direct Curve Drag
+
+- Usuário puxa a própria curva do trecho (o arco visível no Stage), não um handle separado.
+- App ajusta automaticamente o handle OUT do frame inicial **e** o handle IN do frame final do trecho.
+- Comportamento inspirado no Illustrator: puxar a curva manipula os dois handles do trecho.
+- **Não cria midpoint permanente.**
+- **Não volta ao ctrlPt legado como UI.**
+- Implementação requer:
+  - Detectar toque sobre o arco da curva cúbica.
+  - Calcular o ponto mais próximo na curva (inverse lookup por comprimento de arco).
+  - Ajustar OUT e IN do trecho proporcionalmente ao deslocamento do arrasto.
+- **Não implementar agora.** Registrado para decisão futura de produto.
+
+#### Assisted Frame Insertion
+
+- Ao adicionar novo frame, mostrar um **frame fantasma** no Stage antes de confirmar.
+- Usuário posiciona o frame fantasma exatamente onde quer, via drag.
+- Só depois de posicionar, confirmar a criação do frame.
+- Objetivo: evitar distorção de curvas quando o frame nasce em uma posição e depois é movido.
+- Com posição final conhecida antes da criação, os handles podem ser calculados diretamente.
+- **Não implementar agora.** Registrado para decisão futura de UX/produto.
+
+---
+
+## Objetivo anterior — v8z4b21b (concluído)
 
 Correção do Movimento inteligente aplicado a curvesV2/Bézier cúbica. Base: v8z4b21a.
 

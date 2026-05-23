@@ -1,13 +1,19 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b21b                                     ║
+║  Versão: v8z4b21c                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b21c                                            ║
+║    fix: smart loop false stop and reset curves v2 —  ║
+║         impede loop curto de contaminar easing de    ║
+║         trecho normal; corrige Reset Curves para     ║
+║         curvesV2; sem falsa parada quando framePauses ║
+║         são zero;                                    ║
 ║  v8z4b21b                                            ║
 ║    fix: smart movement timing for cubic curves —     ║
 ║         measureSegmentCurveLength e                 ║
@@ -326,7 +332,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b21b — fix smart movement timing for cubic curves: measureSegmentCurveLength e measureLoopCurveLength usam Bézier cúbica real (curvesV2) quando ativo; elimina falsa parada/ease indevido do Movimento inteligente em curvesV2 com segmentTimingMode manual; vAvg e Hermite calibrados com comprimento cúbico correto. -->
+<!-- Arco Motion App — v8z4b21c — fix smart loop false stop and reset curves v2: suppressLoop impede loopDuration de contaminar easing dos trechos normais; Reset Curves corrigido para curvesV2 (reseta frameHandles.in/out com handles 1/3 da corda); sem falsa parada quando framePauses são zero; segmentTimingMode manual preservado. -->
 <!-- Arco Motion App — v8z4b21a — implement real cubic in-out handles: curvesV2 com handles in/out independentes por frame; Bézier cúbica C(P0,C1,C2,P3); avaliação e Preview/MP4 usam cubic; JSON salva curvesV2; compatibilidade com arquivos antigos via conversão ctrlPts→curvesV2. -->
 <!-- v8z4b20d — fix handle sync after frame move and visible segment handles: BLOCO A — sincroniza handles visualmente ao mover frame; loopCtrlPt recalculado via t/perpX/perpY quando F1 ou último frame é movido; BLOCO B — applyFrameConnectedHandleEdit armazena t/perp para loop; syncCtrlPtsForFrame estendido para trecho de loop; BLOCO C — threshold de 8px reduzido para 2px em getFrameHandleGeometryForTarget (handles manuais ficam estáveis); BLOCO D — ghost handles do lado complementar do trecho ativo (não-interativo); BLOCO E — ensureSegmentArraysIntegrity() normaliza ctrlPts, ctrlPtManual, segBlurSettings, rotEasings, scaleEasings, segDurations; deleteActiveFrame corrigido para segBlurSettings; buildProjectData chama ensure antes de salvar; BLOCO F — loop corrigido; BLOCO G — midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo preservado; BLOCO I — JSON/schema inalterado; sem campo novo -->
 <!DOCTYPE html>
@@ -2160,7 +2166,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b21b</span><br><span id="appVersionNameText">fix smart movement timing for cubic curves</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b21c</span><br><span id="appVersionNameText">fix smart loop false stop and reset curves v2</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4501,8 +4507,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b21b';
-const APP_VERSION_NAME = 'fix smart movement timing for cubic curves';
+const APP_VERSION = 'v8z4b21c';
+const APP_VERSION_NAME = 'fix smart loop false stop and reset curves v2';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4873,6 +4879,9 @@ function setSegmentCurvePullerManual(segIndex, manual) {
 // posição padrão (ponto médio entre os dois frames do trecho).
 // Para segmentos normais: reseta ctrlPts[segIndex] e marca ctrlPtManual como false.
 // Para o segmento de loop: reseta loopCtrlPt (também um legacy curve puller).
+// v8z4b21c: quando curvesV2 ativo, reseta também os handles curvesV2.frameHandles
+// do trecho correspondente para a posição padrão (1/3 da corda), que é a fonte
+// de verdade da curva. Sem isso, o Stage mostrava a curva antiga após o reset.
 // Não altera outros trechos. Não afeta frames, pausas, motor ou schema JSON.
 function resetSegmentCurve(segIndex) {
   if (frameCount < 2) return;
@@ -4886,6 +4895,17 @@ function resetSegmentCurve(segIndex) {
       ny: (frameCY(frameCount - 1) / stageH + frameCY(0) / stageH) / 2,
       t: 0.5, perpX: 0, perpY: 0
     };
+    // v8z4b21c: curvesV2 é a fonte de verdade — resetar handles do trecho de loop.
+    // out[N-1] aponta de frame(N-1) para frame(0) com 1/3 da corda;
+    // in[0]    aponta de frame(0)   para frame(N-1) com 1/3 da corda.
+    if (isCurvesV2Active() && stageW > 0 && stageH > 0) {
+      const fi0 = frameCount - 1;
+      const P0x = frameCX(fi0), P0y = frameCY(fi0);
+      const P3x = frameCX(0),   P3y = frameCY(0);
+      const { in: inArr, out: outArr } = curvesV2.frameHandles;
+      if (outArr.length > fi0) outArr[fi0] = { dx: (P3x - P0x) / 3, dy: (P3y - P0y) / 3, manual: false };
+      if (inArr.length  > 0)   inArr[0]    = { dx: (P0x - P3x) / 3, dy: (P0y - P3y) / 3, manual: false };
+    }
   } else {
     // ctrlPts[segIndex] é o legacy curve puller do trecho normal segIndex.
     // Resetar para o ponto médio normalizado entre frames[segIndex] e frames[segIndex+1].
@@ -4896,6 +4916,16 @@ function resetSegmentCurve(segIndex) {
     ctrlPts[segIndex].perpX = 0;
     ctrlPts[segIndex].perpY = 0;
     setSegmentCurveManual(segIndex, false); // volta a posição automática
+    // v8z4b21c: curvesV2 é a fonte de verdade — resetar handles do trecho normal.
+    // out[segIndex]     aponta de frame(segIndex)   para frame(segIndex+1) com 1/3 da corda;
+    // in[segIndex+1]    aponta de frame(segIndex+1) para frame(segIndex)   com 1/3 da corda.
+    if (isCurvesV2Active() && stageW > 0 && stageH > 0) {
+      const P0x = frameCX(segIndex),     P0y = frameCY(segIndex);
+      const P3x = frameCX(segIndex + 1), P3y = frameCY(segIndex + 1);
+      const { in: inArr, out: outArr } = curvesV2.frameHandles;
+      if (outArr.length > segIndex)     outArr[segIndex]     = { dx: (P3x - P0x) / 3, dy: (P3y - P0y) / 3, manual: false };
+      if (inArr.length  > segIndex + 1) inArr[segIndex + 1]  = { dx: (P0x - P3x) / 3, dy: (P0y - P3y) / 3, manual: false };
+    }
   }
 }
 // ─── Segment Path Helpers — v8z4b18g ─────────────────────────────────────────
@@ -16783,7 +16813,12 @@ function _smartFramePauseAt(frameIdx) {
 // vAvg passada serve de fallback (avg do trecho corrente) quando não há
 // vizinho válido.
 // v8z4b17o: considera trecho de fechamento N→1 quando Loop ativo.
-function _smartFrameVelocity(frameIdx, segIdxOwner, vAvgOwner) {
+// v8z4b21c: suppressLoop — quando true, o trecho de fechamento N→1 (loop) não
+// contamina o cálculo de velocidade de continuidade dos trechos normais.
+// Isso impede que um loop curto crie falsa desaceleração/parada nos frames
+// de fronteira (primeiro e último frame) dos segmentos normais.
+// Para o trecho de loop em si (seg === segs), suppressLoop deve ser false.
+function _smartFrameVelocity(frameIdx, segIdxOwner, vAvgOwner, suppressLoop) {
   // Pausa no frame: continuidade exige velocidade zero.
   if (_smartFramePauseAt(frameIdx) > 0) return 0;
 
@@ -16791,21 +16826,25 @@ function _smartFrameVelocity(frameIdx, segIdxOwner, vAvgOwner) {
   const prevSeg = frameIdx - 1;
   const nextSeg = frameIdx;
 
-  // Velocidade média do trecho de fechamento N→1
-  const vLoop = (loopEnabled && Number.isFinite(loopDuration) && loopDuration > 0) ? (() => {
+  // Velocidade média do trecho de fechamento N→1.
+  // v8z4b21c: quando suppressLoop=true, vLoop não participa do cálculo dos
+  // trechos normais — evita contaminação do Hermite pelo loop curto.
+  const vLoop = (!suppressLoop && loopEnabled && Number.isFinite(loopDuration) && loopDuration > 0) ? (() => {
     const len = measureLoopCurveLength();
     return (Number.isFinite(len) && len > 1e-6) ? len / loopDuration : null;
   })() : null;
 
   // Para o primeiro frame (0): trecho "anterior" é o trecho de loop N→1 se ativo
+  // v8z4b21c: suppressLoop=true → vPrev=null para frame 0 (endpoint, sem vizinho loop).
   const vPrev = (prevSeg >= 0)
     ? _smartSegmentVAvg(prevSeg)
-    : (loopEnabled ? vLoop : null);
+    : (!suppressLoop && loopEnabled ? vLoop : null);
 
   // Para o último frame (normalSegs): trecho "seguinte" é o trecho de loop N→1 se ativo
+  // v8z4b21c: suppressLoop=true → vNext=null para frame normalSegs (endpoint, sem vizinho loop).
   const vNext = (nextSeg < normalSegs)
     ? _smartSegmentVAvg(nextSeg)
-    : (loopEnabled ? vLoop : null);
+    : (!suppressLoop && loopEnabled ? vLoop : null);
 
   if (vPrev != null && vNext != null) return 0.5 * (vPrev + vNext);
   if (vPrev != null) return vPrev;
@@ -16858,8 +16897,13 @@ function computeSmartMovementProgress(seg, tt) {
   if (!Number.isFinite(vAvg) || vAvg <= 0) return tt;
 
   // Velocidades nas extremidades do trecho.
-  let vStart = _smartFrameVelocity(seg,     seg, vAvg);
-  let vEnd   = _smartFrameVelocity(seg + 1, seg, vAvg);
+  // v8z4b21c: suppressLoop=true — o trecho de loop não contamina o easing dos
+  // trechos normais. Sem isso, um loop curto inflava as velocidades nos frames
+  // de fronteira e, com o clamp a 3*vAvg, a derivada Hermite colapsava para
+  // zero no meio da curva (falsa parada). O trecho de loop usa suppressLoop=false
+  // (ver ramo acima) para manter continuidade própria.
+  let vStart = _smartFrameVelocity(seg,     seg, vAvg, true);
+  let vEnd   = _smartFrameVelocity(seg + 1, seg, vAvg, true);
 
   // Saneamento e clamp para monotonicidade Hermite (vlim = 3*vAvg).
   if (!Number.isFinite(vStart) || vStart < 0) vStart = 0;

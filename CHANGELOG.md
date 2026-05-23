@@ -1,5 +1,66 @@
 # Changelog
 
+## v8z4b21c — fix smart loop false stop and reset curves v2
+
+Correção funcional do Movimento inteligente com loop e do Reset Curves para curvesV2. Base obrigatória: v8z4b21b.
+
+### Diagnóstico
+
+Em v8z4b21b, com `movementEasingMode: smart`, `segmentTimingMode: manual`, `loopEnabled: true` e `loopDuration` curto (ex: 1s para trecho normal de 4s), o usuário observava uma falsa parada/ease no meio da curva normal.
+
+**Causa raiz (Bug 1 — falsa parada):** O cálculo de continuidade do Hermite em `_smartFrameVelocity` incluía a velocidade do trecho de loop (`vLoop = loopLength / loopDuration`) na mistura das velocidades dos frames de fronteira (frame 0 e frame N). Com um loop curto, `vLoop` é muito maior que `vAvg` do trecho normal. O clamp a `3*vAvg` limitava as velocidades de fronteira ao máximo, e com `vStart = vEnd = 3*vAvg`, a derivada Hermite colapsa para zero em `τ = 0.5` — criando uma parada falsa exatamente no meio da curva.
+
+**Prova matemática:** Com `vStart = vEnd = v = 3*curveLen/dur` (clamp máximo):
+```
+p(τ) = curveLen * (4τ³ - 6τ² + 3τ)
+p'(τ) = curveLen * (12τ² - 12τ + 3) = 3*curveLen*(2τ-1)²
+p'(0.5) = 0  ← falsa parada
+```
+
+**Causa raiz (Bug 2 — Reset Curves):** `resetSegmentCurve` resetava apenas os `ctrlPts` legados e `loopCtrlPt`, mas não tocava `curvesV2.frameHandles`. Como curvesV2 é a fonte de verdade da curva, o Stage continuava exibindo a curva antiga após o reset.
+
+### Correção
+
+**Bug 1 — suppressLoop:**
+- Adicionado parâmetro `suppressLoop` a `_smartFrameVelocity`.
+- Quando `suppressLoop=true`, `vLoop` não entra na mistura das velocidades de fronteira dos trechos normais.
+- `computeSmartMovementProgress` passa `suppressLoop=true` ao calcular `vStart` e `vEnd` para trechos normais.
+- O trecho de loop em si usa `suppressLoop=false` (omitido) — mantém continuidade com os trechos normais.
+- Resultado: com `loopEnabled=true` e `loopDuration` curto, os frames de fronteira dos trechos normais usam apenas a velocidade do próprio trecho como referência → Hermite sem falsa parada.
+
+**Bug 2 — Reset Curves para curvesV2:**
+- `resetSegmentCurve` agora, quando `isCurvesV2Active()`, reseta também `curvesV2.frameHandles.out[fi0]` e `curvesV2.frameHandles.in[fi1]` para a posição padrão (1/3 da corda na direção do segmento).
+- Para trecho normal `i→i+1`: `out[i] = {dx: (P3x-P0x)/3, dy: (P3y-P0y)/3}`, `in[i+1] = {dx: (P0x-P3x)/3, dy: (P0y-P3y)/3}`.
+- Para trecho de loop `N-1→0`: `out[N-1]` e `in[0]` resetados proporcionalmente à corda do loop.
+- Os `ctrlPts` legados continuam sendo resetados (fallback preservado).
+
+### Comportamento após a correção
+
+- 2 frames, F1→F2 4s, loop 1s, smart movement, framePauses zero: **sem falsa parada no meio da curva**.
+- Loop curto não contamina o easing dos trechos normais.
+- Desativar Movimento inteligente continua funcionando.
+- Ativar Velocidade constante continua funcionando.
+- Reset Curves exibido no Stage mostra a curva resetada imediatamente.
+- Undo do Reset Curves restaura os handles anteriores (curvesV2 está no `captureState`).
+- Handles OUT/IN independentes da v8z4b21a não foram alterados.
+- `segmentTimingMode: manual` preservado — nenhuma redistribuição de duração ocorre.
+- Compatibilidade com arquivos antigos (sem curvesV2) preservada.
+
+### Caso mínimo de regressão (testado)
+
+- 2 frames; F1→F2 duração 4s; `loopEnabled: true`; `loopDuration: 1s`; `movementEasingMode: smart`; `segmentTimingMode: manual`; `constantSpeedTotalDuration: null`; `framePauses` zerados; curvesV2 ativo.
+- **Resultado: F1→F2 sem falsa parada. Loop rápido não contamina trecho normal.**
+
+### Arquivos alterados
+
+- `index.html`: `_smartFrameVelocity` (parâmetro `suppressLoop`), `computeSmartMovementProgress` (passa `suppressLoop=true` para trechos normais), `resetSegmentCurve` (reseta `curvesV2.frameHandles`); versão → v8z4b21c.
+- `CHANGELOG.md`: este registro.
+- `QA.md`: critérios de QA atualizados.
+- `ROADMAP.md`: próximas ideias registradas (sem implementação).
+- `pages-deploy-stamp.txt`: atualizado.
+
+---
+
 ## v8z4b21b — fix smart movement timing for cubic curves
 
 Correção funcional do Movimento inteligente aplicado a curvesV2/Bézier cúbica. Base obrigatória: v8z4b21a.

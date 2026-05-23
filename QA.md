@@ -2,6 +2,113 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b21c — fix smart loop false stop and reset curves v2
+
+### Teste A — versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b21c` na UI (Settings).
+3. Confirmar que nome exibe `fix smart loop false stop and reset curves v2`.
+
+### Teste B — caso mínimo: 2 frames / 4s / loop 1s / smart movement
+1. Criar projeto com 2 frames.
+2. Definir F1→F2 duração 4s.
+3. Ativar Loop.
+4. Definir `loopDuration = 1s`.
+5. Garantir `segmentTimingMode: manual`.
+6. Garantir `movementEasingMode: smart`.
+7. Garantir Velocidade constante desligada (`constantSpeedTotalDuration: null`).
+8. Garantir `framePauses` zeradas (nenhum frame com pausa).
+9. curvesV2 ativo (padrão para projetos novos).
+10. Rodar Preview.
+11. **Confirmar que NÃO há falsa parada ou ease abrupto no meio da curva F1→F2.**
+12. **Confirmar que o loop curto (1s) não contamina o trecho normal (4s).**
+13. Confirmar que o movimento F1→F2 é fluido do início ao fim.
+
+### Teste C — Movimento inteligente ligado/desligado sem regressão
+1. Com o cenário do Teste B, desligar Movimento inteligente.
+2. Confirmar que o movimento continua sem erro.
+3. Religar Movimento inteligente.
+4. **Confirmar que ainda não há falsa parada.**
+
+### Teste D — Velocidade constante não regrediu
+1. Com o cenário do Teste B, ativar Velocidade constante.
+2. Confirmar que o Preview funciona normalmente.
+3. Confirmar que `segDurations` foram redistribuídas proporcionalmente.
+4. Desativar Velocidade constante (modo manual).
+5. Confirmar que o Preview volta ao comportamento esperado.
+
+### Teste E — Reset Curves para curvesV2
+1. Criar projeto com 2 ou mais frames.
+2. Arrastar o handle OUT de um frame para posição não-padrão.
+3. Arrastar o handle IN de outro frame para posição não-padrão.
+4. **Confirmar que a curva no Stage está visivelmente diferente da padrão.**
+5. Abrir painel do trecho com handle modificado.
+6. Clicar **Resetar curva**.
+7. **Confirmar que a curva no Stage volta para a posição padrão (linha reta / 1/3 da corda).**
+8. **Confirmar que os handles voltam visivelmente para a posição padrão.**
+9. Confirmar que o trecho vizinho NÃO foi alterado.
+10. Confirmar que `framePauses` e `segDurations` estão preservados.
+11. **Confirmar que Undo (Ctrl+Z) restaura os handles anteriores ao reset.**
+12. **Confirmar que Redo (Ctrl+Shift+Z) reaplicar o reset.**
+
+### Teste F — Reset Curves no trecho de loop
+1. Com `loopEnabled: true` e projeto com 2+ frames.
+2. Modificar handles OUT do último frame e IN do primeiro frame.
+3. Selecionar o trecho de loop no painel.
+4. Clicar **Resetar curva**.
+5. **Confirmar que os handles do loop voltam para a posição padrão.**
+6. Confirmar que os trechos normais NÃO foram alterados.
+
+### Teste G — handles independentes (regressão v8z4b21a)
+1. Criar projeto com 3 frames.
+2. Selecionar F2; arrastar handle OUT.
+3. **Confirmar que apenas F2→F3 é alterado.**
+4. Arrastar handle IN de F2.
+5. **Confirmar que apenas F1→F2 é alterado.**
+6. **Confirmar que mover OUT não move IN.**
+7. **Confirmar que mover IN não move OUT.**
+
+### Teste H — Preview e MP4 coerentes
+1. Criar projeto com 2+ frames, curvesV2 ativo, smart movement.
+2. Rodar Preview; observar trajetória.
+3. Exportar MP4.
+4. **Confirmar que MP4 segue a mesma trajetória do Preview.**
+5. **Confirmar que não há parada falsa no MP4.**
+6. Após Reset Curves, rodar Preview novamente.
+7. **Confirmar que Preview reflete as curvas resetadas.**
+
+### Teste I — loop sem falsa parada (regressão v8z4b21b)
+1. Com `loopEnabled: true` e `framePauses` zerados.
+2. Rodar Preview no modo loop.
+3. **Confirmar que o trecho de fechamento N→1 não tem falsa parada.**
+4. **Confirmar que a transição de volta ao frame inicial é suave.**
+
+### Teste J — JSON salva v8z4b21c e curvesV2
+1. Criar projeto, ajustar handles, acionar Reset Curves, salvar JSON.
+2. Abrir o JSON.
+3. **Confirmar `"version": "v8z4b21c"`.**
+4. **Confirmar `curvesV2` presente e handles resetados salvos.**
+5. Confirmar `framePauses` preservados.
+6. Confirmar `segDurations` preservados.
+
+### Teste K — compatibilidade com arquivos antigos
+1. Abrir JSON antigo (sem curvesV2).
+2. **Confirmar que abre sem erro.**
+3. Confirmar conversão automática para curvesV2.
+4. Confirmar que midpoint não aparece como ponto de edição.
+5. Confirmar que ctrl-pt legado não aparece como UI.
+
+### Teste L — sem erros de console
+1. Executar os testes acima.
+2. **Confirmar que não há NaN, Infinity ou erros no console.**
+
+### Teste M — ROADMAP registrado sem implementação
+1. Abrir ROADMAP.md.
+2. Confirmar que **Direct Curve Drag** e **Assisted Frame Insertion** estão listados como futuros.
+3. **Confirmar que não foram implementados na v8z4b21c.**
+
+---
+
 ## v8z4b21b — fix smart movement timing for cubic curves
 
 ### Teste A — versão
