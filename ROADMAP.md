@@ -66,8 +66,9 @@ inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
 O modelo está preparado para receber implementação real futura sem quebrar
 compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
-### Estado atual (v8z4b19x)
+### Estado atual (v8z4b19y)
 
+- **Frame tangent handle (v8z4b19y):** handle âmbar/dourado (`.frame-tangent-dot`) no frame ativo intermediário; conectado por linha tracejada âmbar (braço de tangente, 48 px); drag ajusta `ctrlPts[fi-1]` e `ctrlPts[fi]` simultâneamente para passagem suave C1-ish; undo lazy (só captura se ≥ 2 px de movimento); JSON schema inalterado.
 - **Legacy curvePuller/losango oculto como controle principal (v8z4b19x):** `ctrl-pt`/losango completamente oculto (`opacity:0 + pointer-events:none`) quando midpoint pathPoint está disponível; antes ficava translúcido (`opacity:0.38`) parecendo segundo controle; agora só o midpoint pathPoint é visível como controle de curva; fallback preservado: se midpoint indisponível, ctrl-pt recupera visibilidade e interatividade; loop: mesma lógica aplicada a `loopEl` quando `midpt_loop` ativo.
 - **Midpoint pathPoint é o controle principal de edição de curva (v8z4b19w):** arrastável, z-index 76, pipeline guardado completo.
 - `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
@@ -131,6 +132,9 @@ compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
 
 ### Próximos passos (futuros, não imediatos)
 
+- **Handles independentes de entrada e saída no frame:** separar tangente de chegada e saída no frame ativo (atualmente simétrica); requer UI de alternância entre tangente simétrica e assimétrica.
+- **Handles em F1/último frame com loop:** estender o frame tangent handle para o primeiro e último frame quando loop está ativo; tangente de chegada/saída do segmento de loop.
+- **Reset local da curva do frame:** desfazer ajuste de tangente do frame ativo específico, restaurando curvePuller dos dois segmentos adjacentes para posição automática.
 - **Handles/tangentes estilo Illustrator em frameAnchors e pathPoints:** controles de tangência; requer `mode = 'vectorAnchors'` e avaliador Bézier cúbico.
 - **Handles nos frames:** suporte a tangentes diretamente associadas a frameAnchors.
 - **Handles nos pathPoints:** suporte a tangentes diretamente associadas a pathPoints.
