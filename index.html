@@ -1,13 +1,21 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b20c                                     ║
+║  Versão: v8z4b20d                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b20d                                            ║
+║    fix: handle sync after frame move and visible     ║
+║         segment handles — sincroniza handles ao      ║
+║         mover frame; loopCtrlPt resync via t/perp;  ║
+║         ghost handles do lado complementar do        ║
+║         trecho ativo; ensureSegmentArraysIntegrity   ║
+║         normaliza segBlurSettings/ctrlPts;           ║
+║         midpoint oculto; JSON inalterado             ║
 ║  v8z4b20c                                            ║
 ║    fix: endpoint loop handles and segment-local      ║
 ║         editing — handles em F1, último frame e      ║
@@ -309,7 +317,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b20c — fix endpoint loop handles and segment-local editing: BLOCO A — exibição de handles baseada em trechos conectados (não apenas intermediários); handles em F1, último frame e loop; BLOCO B — segment-local editing: cada handle edita apenas o trecho conectado; sem modo linkado automático; BLOCO C — helpers getFrameConnectedHandleTargets / getFrameHandleGeometryForTarget / getFrameHandleGeometry; BLOCO D — applyFrameConnectedHandleEdit substitui applyFrameHandleEdit; BLOCO E — modo suave/linkado desativado nesta versão; BLOCO F — handles de loop via loopCtrlPt em F1 e último frame; BLOCO G — visual: cor roxa para handles de loop; midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo por trecho conectado; BLOCO I — bugfix mover frame preservado; JSON/schema inalterado; sem campo novo -->
+<!-- Arco Motion App — v8z4b20d — fix handle sync after frame move and visible segment handles: BLOCO A — sincroniza handles visualmente ao mover frame; loopCtrlPt recalculado via t/perpX/perpY quando F1 ou último frame é movido; BLOCO B — applyFrameConnectedHandleEdit armazena t/perp para loop; syncCtrlPtsForFrame estendido para trecho de loop; BLOCO C — threshold de 8px reduzido para 2px em getFrameHandleGeometryForTarget (handles manuais ficam estáveis); BLOCO D — ghost handles do lado complementar do trecho ativo (não-interativo); BLOCO E — ensureSegmentArraysIntegrity() normaliza ctrlPts, ctrlPtManual, segBlurSettings, rotEasings, scaleEasings, segDurations; deleteActiveFrame corrigido para segBlurSettings; buildProjectData chama ensure antes de salvar; BLOCO F — loop corrigido; BLOCO G — midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo preservado; BLOCO I — JSON/schema inalterado; sem campo novo -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -2141,7 +2149,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b20c</span><br><span id="appVersionNameText">fix endpoint loop handles and segment-local editing</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b20d</span><br><span id="appVersionNameText">fix handle sync after frame move and visible segment handles</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4482,8 +4490,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b20c';
-const APP_VERSION_NAME = 'fix endpoint loop handles and segment-local editing';
+const APP_VERSION = 'v8z4b20d';
+const APP_VERSION_NAME = 'fix handle sync after frame move and visible segment handles';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -9576,6 +9584,55 @@ function ensureSegBlurSettings() {
   segBlurSettings.length = segs;
 }
 
+// ── v8z4b20d: ensureSegmentArraysIntegrity — normaliza TODOS os arrays por trecho ──
+// Garante que ctrlPts, ctrlPtManual, segBlurSettings, segDurations,
+// rotEasings, scaleEasings têm exatamente frameCount-1 entradas.
+// Preserva dados existentes; preenche entradas faltantes com defaults seguros.
+// Não altera valores existentes indevidamente. Não cria campo JSON novo.
+// Chamar: após addFrame, removeFrame/deleteActiveFrame, antes de salvar, após carregar.
+function ensureSegmentArraysIntegrity() {
+  const expected = Math.max(0, frameCount - 1);
+
+  // ctrlPts: preencher entradas faltantes com midpoint automático
+  while (ctrlPts.length < expected) {
+    const seg = ctrlPts.length;
+    ctrlPts.push(
+      (frameCount >= 2 && seg < frameCount - 1)
+        ? { nx: (frameCX(seg)/stageW + frameCX(seg+1)/stageW)/2,
+            ny: (frameCY(seg)/stageH + frameCY(seg+1)/stageH)/2,
+            t: 0.5, perpX: 0, perpY: 0 }
+        : { nx: 0.5, ny: 0.5, t: 0.5, perpX: 0, perpY: 0 }
+    );
+  }
+  if (ctrlPts.length > expected) ctrlPts.length = expected;
+
+  // ctrlPtManual: preencher com false
+  while (ctrlPtManual.length < expected) ctrlPtManual.push(false);
+  if (ctrlPtManual.length > expected) ctrlPtManual.length = expected;
+
+  // segBlurSettings: preencher com default; chamar ensureSegBlurSettings para validação
+  while (segBlurSettings.length < expected) segBlurSettings.push(cloneDefaultSegBlur());
+  if (segBlurSettings.length > expected) segBlurSettings.length = expected;
+  ensureSegBlurSettings(); // validação de campos individuais
+
+  // segDurations: preencher com defaultNewSegmentDuration ou 2
+  if (Array.isArray(segDurations)) {
+    while (segDurations.length < expected) segDurations.push(defaultNewSegmentDuration != null ? defaultNewSegmentDuration : 2);
+    if (segDurations.length > expected) segDurations.length = expected;
+  }
+
+  // rotEasings e scaleEasings: preencher com 'linear'
+  if (Array.isArray(rotEasings)) {
+    while (rotEasings.length < expected) rotEasings.push('linear');
+    if (rotEasings.length > expected) rotEasings.length = expected;
+  }
+  if (Array.isArray(scaleEasings)) {
+    while (scaleEasings.length < expected) scaleEasings.push('linear');
+    if (scaleEasings.length > expected) scaleEasings.length = expected;
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ═══════════════════════════════════════
 // UNDO / REDO
 // ═══════════════════════════════════════
@@ -10286,7 +10343,8 @@ function initDefaultFrames() {
   createCtrlDOM(0);
   ctrlPts[0] = {
     nx: (frameCX(0) / stageW + frameCX(1) / stageW) / 2,
-    ny: (frameCY(0) / stageH + frameCY(1) / stageH) / 2
+    ny: (frameCY(0) / stageH + frameCY(1) / stageH) / 2,
+    t: 0.5, perpX: 0, perpY: 0  // v8z4b20d: inicializar t/perp para syncCtrlPtsForFrame
   };
   ctrlPtManual[0] = false;
 
@@ -11047,7 +11105,16 @@ function getFrameHandleGeometryForTarget(fi, role, target) {
     const hx = cp.nx * stageW;
     const hy = cp.ny * stageH;
     const dist = Math.sqrt((hx - Px) ** 2 + (hy - Py) ** 2);
-    if (isFinite(dist) && dist >= 8) return { hx, hy };
+    // v8z4b20d: para ctrl pt manual, reduzir threshold para 2px (evita fallback
+    // que descarta a posição manual e a substitui pela direção da corda).
+    // Para ctrl pt automático, manter 8px como antes.
+    const isManual = (target.type === 'segment')
+      ? !!ctrlPtManual[target.segIndex]
+      : false; // loop não tem flag manual separada
+    const threshold = isManual ? 2 : 8;
+    if (isFinite(dist) && dist >= threshold) return { hx, hy };
+    // Ctrl pt existe mas está muito próximo do frame — se manual, mostrar mesmo assim
+    if (isManual && isFinite(hx) && isFinite(hy)) return { hx, hy };
   }
 
   // Fallback: direção proporcional ao longo da corda do trecho
@@ -11247,6 +11314,34 @@ function drawBezier() {
         const _outIsLoop = _hGeo.outTarget && _hGeo.outTarget.type === 'loop';
         const _outColor  = _outIsLoop ? 'rgba(180,100,255,0.85)' : 'rgba(255,210,0,0.78)';
         svg += `<line x1="${_hGeo.Px}" y1="${_hGeo.Py}" x2="${_hGeo.outHx}" y2="${_hGeo.outHy}" stroke="${_outColor}" stroke-width="${1.5 * _invZ}" opacity="0.90"/>`;
+      }
+
+      // v8z4b20d: BLOCO D — Ghost handles do lado complementar do trecho ativo.
+      // Mostra o outro extremo do trecho ativo com menor opacidade e sem interação.
+      // Não cria handles independentes reais — é apenas indicação visual do trecho.
+      // Não implementado para loop (evitar complexidade nesta versão).
+      const _invZ2 = _invZ;
+      // Ghost do lado IN complementar: se frame ativo tem OUT normal → mostrar ghost IN do frame seguinte
+      if (_hGeo.outTarget && _hGeo.outTarget.type === 'segment' && !isPreviewing) {
+        const _ghostFi = _hGeo.outTarget.segIndex + 1; // frame no outro extremo do trecho de saída
+        if (_ghostFi < frameCount) {
+          const _ghostGeo = getFrameHandleGeometryForTarget(_ghostFi, 'in', { type: 'segment', segIndex: _hGeo.outTarget.segIndex });
+          if (_ghostGeo) {
+            const _ghostPx = frameCX(_ghostFi), _ghostPy = frameCY(_ghostFi);
+            svg += `<line x1="${_ghostPx}" y1="${_ghostPy}" x2="${_ghostGeo.hx}" y2="${_ghostGeo.hy}" stroke="rgba(255,210,0,0.22)" stroke-width="${1.2 * _invZ2}" stroke-dasharray="${3*_invZ2},${3*_invZ2}" opacity="0.70"/>`;
+          }
+        }
+      }
+      // Ghost do lado OUT complementar: se frame ativo tem IN normal → mostrar ghost OUT do frame anterior
+      if (_hGeo.inTarget && _hGeo.inTarget.type === 'segment' && !isPreviewing) {
+        const _ghostFi2 = _hGeo.inTarget.segIndex; // frame no outro extremo do trecho de entrada
+        if (_ghostFi2 >= 0) {
+          const _ghostGeo2 = getFrameHandleGeometryForTarget(_ghostFi2, 'out', { type: 'segment', segIndex: _hGeo.inTarget.segIndex });
+          if (_ghostGeo2) {
+            const _ghostPx2 = frameCX(_ghostFi2), _ghostPy2 = frameCY(_ghostFi2);
+            svg += `<line x1="${_ghostPx2}" y1="${_ghostPy2}" x2="${_ghostGeo2.hx}" y2="${_ghostGeo2.hy}" stroke="rgba(255,210,0,0.22)" stroke-width="${1.2 * _invZ2}" stroke-dasharray="${3*_invZ2},${3*_invZ2}" opacity="0.70"/>`;
+          }
+        }
       }
     }
   }
@@ -11452,9 +11547,76 @@ function updateCtrlPts() {
         loopEl.style.opacity       = '';
         loopEl.style.pointerEvents = '';
       }
+
+      // v8z4b20d: BLOCO D — Ghost handle do lado complementar (não-interativo).
+      // Mostra o handle dot do frame no outro extremo do trecho ativo.
+      // pointer-events: none; opacidade reduzida; não editável.
+      // Não implementado para loop nesta versão para evitar complexidade.
+      let ghostInEl  = document.getElementById('frame_ghost_in');
+      let ghostOutEl = document.getElementById('frame_ghost_out');
+
+      let showGhostIn = false, showGhostOut = false;
+
+      // Ghost OUT complementar: outro extremo do trecho de entrada
+      if (_hGeo.inTarget && _hGeo.inTarget.type === 'segment') {
+        const _gFiOut = _hGeo.inTarget.segIndex; // frame anterior
+        if (_gFiOut >= 0) {
+          const _gGeo = getFrameHandleGeometryForTarget(_gFiOut, 'out', { type: 'segment', segIndex: _hGeo.inTarget.segIndex });
+          if (_gGeo && isFinite(_gGeo.hx) && isFinite(_gGeo.hy)) {
+            if (!ghostOutEl) {
+              ghostOutEl = document.createElement('div');
+              ghostOutEl.id = 'frame_ghost_out';
+              ghostOutEl.className = 'frame-out-handle';
+              ghostOutEl.style.pointerEvents = 'none';
+              ghostOutEl.style.opacity = '0.28';
+              ghostOutEl.style.background = 'rgba(255,210,0,0.7)';
+              ghostOutEl.style.boxShadow = 'none';
+              stage.appendChild(ghostOutEl);
+            }
+            ghostOutEl.style.display = 'block';
+            ghostOutEl.style.left = _gGeo.hx + 'px';
+            ghostOutEl.style.top  = _gGeo.hy + 'px';
+            stage.appendChild(ghostOutEl);
+            showGhostOut = true;
+          }
+        }
+      }
+      // Ghost IN complementar: outro extremo do trecho de saída
+      if (_hGeo.outTarget && _hGeo.outTarget.type === 'segment') {
+        const _gFiIn = _hGeo.outTarget.segIndex + 1; // frame seguinte
+        if (_gFiIn < frameCount) {
+          const _gGeo2 = getFrameHandleGeometryForTarget(_gFiIn, 'in', { type: 'segment', segIndex: _hGeo.outTarget.segIndex });
+          if (_gGeo2 && isFinite(_gGeo2.hx) && isFinite(_gGeo2.hy)) {
+            if (!ghostInEl) {
+              ghostInEl = document.createElement('div');
+              ghostInEl.id = 'frame_ghost_in';
+              ghostInEl.className = 'frame-in-handle';
+              ghostInEl.style.pointerEvents = 'none';
+              ghostInEl.style.opacity = '0.28';
+              ghostInEl.style.background = 'rgba(255,210,0,0.7)';
+              ghostInEl.style.boxShadow = 'none';
+              stage.appendChild(ghostInEl);
+            }
+            ghostInEl.style.display = 'block';
+            ghostInEl.style.left = _gGeo2.hx + 'px';
+            ghostInEl.style.top  = _gGeo2.hy + 'px';
+            stage.appendChild(ghostInEl);
+            showGhostIn = true;
+          }
+        }
+      }
+
+      if (!showGhostIn  && ghostInEl)  ghostInEl.style.display  = 'none';
+      if (!showGhostOut && ghostOutEl) ghostOutEl.style.display = 'none';
+
     } else {
       if (inHandleEl)  inHandleEl.style.display  = 'none';
       if (outHandleEl) outHandleEl.style.display = 'none';
+      // Ocultar ghosts quando handles principais estão ocultos
+      const _gi = document.getElementById('frame_ghost_in');
+      const _go = document.getElementById('frame_ghost_out');
+      if (_gi) _gi.style.display = 'none';
+      if (_go) _go.style.display = 'none';
     }
   } else {
     if (inHandleEl)  inHandleEl.style.display  = 'none';
@@ -11464,6 +11626,11 @@ function updateCtrlPts() {
       loopEl.style.opacity       = '';
       loopEl.style.pointerEvents = '';
     }
+    // v8z4b20d: ocultar ghosts
+    const _gi2 = document.getElementById('frame_ghost_in');
+    const _go2 = document.getElementById('frame_ghost_out');
+    if (_gi2) _gi2.style.display = 'none';
+    if (_go2) _go2.style.display = 'none';
   }
   // ──────────────────────────────────────────────────────────────────────────
 }
@@ -11696,6 +11863,23 @@ function applyFrameConnectedHandleEdit(fi, role, target, hx, hy) {
 
     // Editar apenas loopCtrlPt — não alterar trechos normais
     setSegmentCurvePuller(loopIdx, { nx: cpNx, ny: cpNy });
+
+    // v8z4b20d: armazenar t/perpX/perpY para o loop também — permite que
+    // syncCtrlPtsForFrame recalcule loopCtrlPt corretamente quando F1 ou o
+    // último frame é movido (sem isso o handle de loop ficava parado).
+    const loopDx = p1x - p0x, loopDy = p1y - p0y;
+    const loopLen2 = loopDx * loopDx + loopDy * loopDy;
+    if (loopLen2 >= 1 && loopCtrlPt) {
+      const px = cpNx * stageW, py = cpNy * stageH;
+      const t_loop = ((px - p0x) * loopDx + (py - p0y) * loopDy) / loopLen2;
+      const projX = p0x + t_loop * loopDx, projY = p0y + t_loop * loopDy;
+      const perpX_loop = px - projX, perpY_loop = py - projY;
+      if (isFinite(t_loop) && isFinite(perpX_loop) && isFinite(perpY_loop)) {
+        loopCtrlPt.t = t_loop;
+        loopCtrlPt.perpX = perpX_loop;
+        loopCtrlPt.perpY = perpY_loop;
+      }
+    }
 
     return true;
   }
@@ -12264,6 +12448,45 @@ function syncCtrlPtsForFrame(fi) {
       }
       const pos = computeNxNyFromTPerp(seg, t, perpX, perpY);
       setSegmentCurvePuller(seg, { nx: pos.nx, ny: pos.ny }); // v8z4b18y
+    }
+  }
+
+  // v8z4b20d: Sincronizar loopCtrlPt quando fi é F1 ou último frame.
+  // Sem esta etapa, o handle de loop ficava parado (nx/ny absolutos) enquanto
+  // F1 ou o último frame era movido — loopCtrlPt não possuía lógica de sync.
+  if (loopEnabled && loopCtrlPt && frameCount >= 2 &&
+      (fi === 0 || fi === frameCount - 1)) {
+    // Corda do loop: último frame → F1
+    const lp0x = frameCX(frameCount - 1), lp0y = frameCY(frameCount - 1);
+    const lp1x = frameCX(0),              lp1y = frameCY(0);
+    const lDx = lp1x - lp0x, lDy = lp1y - lp0y;
+    const lLen2 = lDx * lDx + lDy * lDy;
+
+    let { t: lt, perpX: lperpX, perpY: lperpY } = loopCtrlPt;
+
+    if (!Number.isFinite(lt) || !Number.isFinite(lperpX) || !Number.isFinite(lperpY)) {
+      // Recalcular t/perp a partir de nx/ny atual (antes do movimento)
+      if (lLen2 >= 1) {
+        const px = loopCtrlPt.nx * stageW, py = loopCtrlPt.ny * stageH;
+        lt = ((px - lp0x) * lDx + (py - lp0y) * lDy) / lLen2;
+        const projX = lp0x + lt * lDx, projY = lp0y + lt * lDy;
+        lperpX = px - projX;
+        lperpY = py - projY;
+      } else {
+        lt = 0.5; lperpX = 0; lperpY = 0;
+      }
+      loopCtrlPt.t = lt; loopCtrlPt.perpX = lperpX; loopCtrlPt.perpY = lperpY;
+    }
+
+    // Reconstruir nx/ny a partir de t/perp na nova geometria da corda
+    if (lLen2 >= 1) {
+      const ax = lp0x + lt * lDx, ay = lp0y + lt * lDy;
+      const newNx = (ax + lperpX) / stageW;
+      const newNy = (ay + lperpY) / stageH;
+      if (isFinite(newNx) && isFinite(newNy)) {
+        loopCtrlPt.nx = newNx;
+        loopCtrlPt.ny = newNy;
+      }
     }
   }
 }
@@ -15462,20 +15685,27 @@ function deleteActiveFrame() {
   const _savedFinalPause = (_wasLastFrame && finishMode === 'pause') ? (framePauses[i]?.duration || 0) : null;
   framePauses.splice(i, 1); // v8z4b17p: framePauses não estava sendo removido em deleteActiveFrame
 
-  // Ctrl pts: remover segmento anterior (i-1) e atual (i)
+  // Ctrl pts e segBlurSettings: remover segmento anterior (i-1) e atual (i)
   // Após delete, o novo segmento i-1 vai de frame i-1 para frame i (antigo i+1)
   if (i > 0 && i < frameCount - 1) {
     // Deletando frame do meio — mesclar criando novo ctrl pt no meio
     ctrlPts.splice(i - 1, 2);
     ctrlPtManual.splice(i - 1, 2);
+    // v8z4b20d: segBlurSettings: remover dois segmentos e inserir default mesclado
+    const blurA = segBlurSettings[i - 1] ? {...segBlurSettings[i - 1]} : cloneDefaultSegBlur();
+    segBlurSettings.splice(i - 1, 2, blurA); // manter o blur do segmento anterior
   } else if (i === 0) {
     // Deletando primeiro frame
     ctrlPts.splice(0, 1);
     ctrlPtManual.splice(0, 1);
+    // v8z4b20d: segBlurSettings: remover segmento 0
+    segBlurSettings.splice(0, 1);
   } else {
     // Deletando último frame
     ctrlPts.splice(i - 1, 1);
     ctrlPtManual.splice(i - 1, 1);
+    // v8z4b20d: segBlurSettings: remover segmento i-1
+    if (segBlurSettings.length > i - 1) segBlurSettings.splice(i - 1, 1);
   }
 
   frameCount--;
@@ -15488,6 +15718,7 @@ function deleteActiveFrame() {
   }
 
   ensureFramePauses();
+  ensureSegmentArraysIntegrity(); // v8z4b20d: normalizar todos os arrays por trecho
   normalizeProjectArrays();
 
   // Recriar DOM completo com índices corretos
@@ -16693,6 +16924,9 @@ function buildProjectData() {
   // serializar. Sem isso, applyTemplate() (que zera o array) seguido de save antes
   // de qualquer re-render do painel produzia "framePauses: []" no JSON.
   ensureFramePauses();
+  // v8z4b20d: garantir que todos os arrays por trecho têm exatamente frameCount-1
+  // entradas antes de serializar (corrige segBlurSettings curto como o bug reportado).
+  ensureSegmentArraysIntegrity();
   const framesNorm = frames.slice(0, frameCount).map(f => ({
     nx: f.x / stageW, ny: f.y / stageH,
     nw: f.w / stageW, nh: f.h / stageH
@@ -17233,6 +17467,10 @@ function applyFrameData(data) {
 
   for (let i = 0; i < frameCount; i++) createFrameDOM(i);
   for (let i = 0; i < frameCount - 1; i++) createCtrlDOM(i);
+
+  // v8z4b20d: normalizar todos os arrays por trecho após carregar (corrige projetos
+  // salvos com arrays desalinhados, como segBlurSettings curto).
+  ensureSegmentArraysIntegrity();
 
   // v8z4b17r: segEasings não são persistidos no projeto; resetar para o
   // frameCount carregado evita herdar easings de um projeto anterior.

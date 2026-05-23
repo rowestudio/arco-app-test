@@ -1,5 +1,80 @@
 # Changelog
 
+## v8z4b20d — fix handle sync after frame move and visible segment handles
+
+Correção de estabilização sobre a v8z4b20c. Base obrigatória: v8z4b20c.
+
+### Problema 1 — Handle fica parado ao mover frame
+
+**Sintoma:** Após ajustar um handle IN/OUT e mover o frame, o handle visual permanecia na posição anterior enquanto o frame se deslocava.
+
+**Causa raiz — handles de loop:** `syncCtrlPtsForFrame` não processava `loopCtrlPt`. Quando F1 ou o último frame era movido, `loopCtrlPt.nx/ny` não era recalculado, fazendo o handle de loop aparecer estático.
+
+**Causa raiz — handles manuais próximos:** `getFrameHandleGeometryForTarget` usava threshold de 8px; se o ctrl pt recomposto ficasse dentro de 8px do frame, o fallback de direção de corda era ativado, dando aparência de handle "pulando" para nova posição.
+
+**Correção A — syncCtrlPtsForFrame estendido:**
+Quando `fi === 0` ou `fi === frameCount - 1` e `loopEnabled`, o `loopCtrlPt` é recalculado usando `t/perpX/perpY` armazenados na corda do trecho de loop (último frame → F1). O handle de loop agora acompanha visualmente F1 e o último frame quando são movidos.
+
+**Correção B — applyFrameConnectedHandleEdit para loop:**
+Ao arrastar um handle de loop, `t/perpX/perpY` agora são calculados e armazenados em `loopCtrlPt`. Isso permite que `syncCtrlPtsForFrame` reconstrua corretamente `nx/ny` após movimento de frame.
+
+**Correção C — threshold reduzido:**
+O threshold de 8px em `getFrameHandleGeometryForTarget` foi reduzido para 2px para ctrl pts manuais. Adicionado fallback seguro que sempre exibe o ctrl pt manual mesmo quando dist < threshold.
+
+### Problema 2 — segBlurSettings desalinhado
+
+**Sintoma:** JSON salvo com `frameCount:6` mas `segBlurSettings` com apenas 4 entradas (precisava de 5 = frameCount - 1).
+
+**Causa raiz:** `deleteActiveFrame` não fazia splice em `segBlurSettings`. Após remover um frame, o array ficava maior que o necessário. `normalizeProjectArrays()` não tratava `segBlurSettings`.
+
+**Correção D — ensureSegmentArraysIntegrity():**
+Novo helper centralizado que normaliza todos os arrays por trecho para exatamente `frameCount - 1` entradas:
+- `ctrlPts` (preenche com midpoint automático)
+- `ctrlPtManual` (preenche com `false`)
+- `segBlurSettings` (preenche com default `{enabled:false, maxPx:4, fadeIn:0.18, fadeOut:0.22}`)
+- `segDurations` (preenche com `defaultNewSegmentDuration`)
+- `rotEasings` (preenche com `'linear'`)
+- `scaleEasings` (preenche com `'linear'`)
+
+Chamado em: `deleteActiveFrame`, `buildProjectData` (antes de salvar), `applyFrameData` (após carregar).
+
+**Correção E — deleteActiveFrame:**
+Agora faz splice correto em `segBlurSettings` (como já fazia para `ctrlPts`/`ctrlPtManual`), depois chama `ensureSegmentArraysIntegrity()`.
+
+### BLOCO D — Ghost handles do lado complementar (UX)
+
+Para melhorar a leitura visual do trecho ativo, o app agora exibe os dois lados do trecho de forma simultânea:
+
+- **Handles interativos** (âmbar sólido): os handles IN/OUT do frame selecionado — permanecem editáveis.
+- **Ghost handles** (âmbar com 28% de opacidade, sem interação): o handle do frame vizinho no outro extremo do mesmo trecho — apenas indicação visual, `pointer-events: none`.
+
+Exemplo (2 frames, sem loop):
+- F1 selecionado: OUT de F1 (interativo) + IN de F2 como ghost
+- F2 selecionado: IN de F2 (interativo) + OUT de F1 como ghost
+
+Não fingem independência — ambos representam o mesmo `ctrlPt` legado do trecho. Não implementado para loop nesta versão.
+
+### Preservações
+
+- Edição local por trecho (segment-local editing da v8z4b20c): preservada.
+- F1 mostra OUT; último frame mostra IN; loop em F1/último conforme esperado.
+- Midpoint automático oculto.
+- Ctrl-pt legado oculto em segmentos normais.
+- `loopCtrlPt` continua como schema salvo; sem campo novo.
+- Undo/Redo por trecho: preservado; não há undo duplicado.
+- Preview, MP4, Salvar MP4: sem regressão.
+- Arquivos da v8z4b20c abrem normalmente.
+
+### Arquivos alterados
+
+- `index.html`
+- `CHANGELOG.md`
+- `QA.md`
+- `ROADMAP.md`
+- `pages-deploy-stamp.txt`
+
+---
+
 ## v8z4b20c — fix endpoint loop handles and segment-local editing
 
 Correção funcional dos handles de frame revelados como problemáticos na v8z4b20b.
