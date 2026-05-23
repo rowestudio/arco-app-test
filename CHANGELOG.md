@@ -1,5 +1,144 @@
 # Changelog
 
+## v8z4b19t — add internal curve patch self-test harness
+
+Implementação interna controlada de um harness/diagnóstico para testar o pipeline
+completo de patch de curva sem UI, sem mutação real e sem alterar o comportamento
+do app. Não é mudança visual, não é mudança de UI, não é mudança de JSON, não é
+alteração de Preview/MP4/export, não é alteração de duração/tempos.
+
+### Objetivo
+
+Criar um conjunto de helpers de self-test interno que validam o pipeline:
+
+```
+runtime model
+→ pathPoint runtime
+→ proposedPathPoint simulado
+→ simulateRuntimePathPointEdit()
+→ createLegacyCurvePatchFromSimulatedPathPointEdit()
+→ validateLegacyCurvePatchCandidate()
+→ dryRunApplyLegacyCurvePatchCandidate()
+→ applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: false })
+→ confirmar que estado real permanece intacto
+```
+
+### Helpers adicionados
+
+#### `runInternalCurvePatchSelfTestForModel(model, options)`
+
+Harness principal. Recebe um runtime model e:
+1. Valida o model.
+2. Obtém `pathPoint` de `model.pathPoints[0]` (ou fallback via anchors).
+3. Cria `proposedPathPoint` deslocado levemente (`dx=0.02, dy=0.02` por padrão).
+4. Chama `simulateRuntimePathPointEdit()`.
+5. Chama `createLegacyCurvePatchFromSimulatedPathPointEdit()`.
+6. Valida patch com `validateLegacyCurvePatchCandidate()`.
+7. Roda `dryRunApplyLegacyCurvePatchCandidate()`.
+8. Chama `applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: false, reason: 'self-test-guard' })`.
+9. Confirma que a resposta é `real-mutation-disabled`.
+10. Tira snapshot antes e depois com `cloneLegacyCurveStateForPatch()`.
+11. Confirma via `compareRealCurveStateSnapshot()` que `ctrlPts`/`loopCtrlPt` reais não mudaram.
+12. Retorna diagnóstico estruturado.
+
+Opções suportadas:
+- `targetType: 'segment' | 'loop'` — default derivado de `model.isLoop`.
+- `segIndex: number` — default `model.segmentIndex`.
+- `proposedOffset: { dx, dy }` — default `{ dx: 0.02, dy: 0.02 }`.
+- `sampleCount: number` — reservado, não usado nesta versão.
+
+Saída típica (sucesso):
+```json
+{
+  "ok": true,
+  "reason": "ok",
+  "target": { "type": "segment", "segIndex": 0 },
+  "simulationOk": true,
+  "patchValid": true,
+  "dryRunOk": true,
+  "guardOk": true,
+  "realStateUnchanged": true,
+  "appliedToRealState": false
+}
+```
+
+#### `runInternalCurvePatchSelfTestForSegment(segIndex, proposedOffset)`
+
+Constrói runtime model do segmento informado via `buildRuntimeCurveModel()` e
+delega a `runInternalCurvePatchSelfTestForModel()` com `targetType: 'segment'`.
+Não altera estado.
+
+#### `runInternalCurvePatchSelfTestForLoop(proposedOffset)`
+
+Se loop estiver ativo e houver modelo de loop válido, roda self-test para loop.
+Se loop não estiver ativo, retorna `{ ok: false, reason: 'loop-disabled' }`.
+Não altera estado.
+
+#### `runInternalCurvePatchSelfTestSuite()`
+
+Suite completa:
+1. Seleciona primeiro segmento normal válido.
+2. Roda `runInternalCurvePatchSelfTestForSegment()`.
+3. Se loop ativo, roda `runInternalCurvePatchSelfTestForLoop()`.
+4. Retorna resumo estruturado com `segmentResult`, `loopResult`, `summary`.
+
+**NÃO roda automaticamente** em Preview, MP4 nem no carregamento do app.
+
+### Exposição para diagnóstico
+
+Os helpers ficam disponíveis em `window.__arcoInternalDiag.curvePatchSelfTest`:
+
+```js
+window.__arcoInternalDiag.curvePatchSelfTest.suite()
+window.__arcoInternalDiag.curvePatchSelfTest.forSegment(0)
+window.__arcoInternalDiag.curvePatchSelfTest.forLoop()
+window.__arcoInternalDiag.curvePatchSelfTest.forModel(model, options)
+```
+
+Exposição silenciosa: falha de exposição não afeta o app.
+
+### O que NÃO foi feito
+
+- `allowRealMutation: true` não é usado em nenhum fluxo.
+- `applyLegacyCurvePatchCandidateToRealState` chamado apenas com `allowRealMutation: false`.
+- `pushUndo` não é chamado pelos novos helpers.
+- `renderAll` não é chamado pelos novos helpers.
+- `markProjectDirty` não é chamado pelos novos helpers.
+- `pathPoint` não é editável pelo usuário.
+- Nenhum resultado é salvo no JSON.
+- Harness não corre automaticamente em nenhum fluxo público.
+- UI, Stage, curvas visuais, Preview matemático, MP4/export core, save/load — inalterados.
+- Schema JSON — inalterado. Nenhum campo novo.
+- Bug de `_file.json` sem `imageBase64` mantido apenas no ROADMAP (fase UI/carregamento futura).
+- Tempos/proporções mantidos no roadmap futuro.
+- Velocidade composta mantida no roadmap futuro.
+- Criação de frame seguindo curva de loop mantida no roadmap futuro.
+
+### Arquivos alterados
+
+- `index.html`: 4 helpers de self-test + bloco de diagnóstico + versionamento
+- `CHANGELOG.md`: esta entrada
+- `QA.md`: checklist da versão
+- `ROADMAP.md`: estado atual atualizado
+- `pages-deploy-stamp.txt`: stamp de deploy
+
+### Restrições respeitadas
+
+- Stage não alterado.
+- Curvas não alteradas visualmente.
+- `ctrlPts`, `ctrlPtManual`, `loopCtrlPt` reais intocáveis.
+- JSON não alterado (nenhum campo novo criado).
+- Preview matemático não alterado.
+- Motor de MP4/export core não alterado.
+- Faixa preta superior do Preview (v8z4b19n) intacta.
+- Lógica de cancelamento de export da v8z4b19i intacta.
+- Limpeza de MP4 ao sair do Preview da v8z4b19o intacta.
+- Correção do botão Salvar MP4 da v8z4b19s intacta.
+- Undo/Redo não alterado.
+- Save/load não alterado.
+
+---
+
 ## v8z4b19s — clear MP4 after save and prepare guarded real curve patch applier
 
 Duas mudanças independentes: (A) correção de UX no estado do botão Salvar MP4 após

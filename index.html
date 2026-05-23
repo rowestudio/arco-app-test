@@ -1,13 +1,26 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b19s                                     ║
+║  Versão: v8z4b19t                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b19t                                            ║
+║    feat: add internal curve patch self-test harness  ║
+║         runInternalCurvePatchSelfTestForModel()      ║
+║         runInternalCurvePatchSelfTestForSegment()    ║
+║         runInternalCurvePatchSelfTestForLoop()       ║
+║         runInternalCurvePatchSelfTestSuite()         ║
+║         harness valida pipeline completo sem         ║
+║         mutação real; guarda allowRealMutation:false ║
+║         confirmada; estado real intocável; sem UI    ║
+║         sem persistência, sem renderização           ║
+║         exposto em window.__arcoInternalDiag         ║
+║         não roda automaticamente em nenhum fluxo     ║
+║         UI, Preview, MP4/export, save/load intactos  ║
 ║  v8z4b19s                                            ║
 ║    fix: clear MP4 after save and prepare guarded     ║
 ║         real curve patch applier                     ║
@@ -217,7 +230,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b19s — clear MP4 after save and prepare guarded real curve patch applier: consumeMp4AfterSave() reseta botão e nulifica generatedUrl imediatamente após save/share, revoga ObjectURL via setTimeout(1000) para iOS/Safari; applyLegacyCurvePatchCandidateToRealState(patch,options) guardado com allowRealMutation:false por padrão — não conectado a UI/Stage/Preview/gesto/save/load, não chamado nesta versão; validateRealCurvePatchApplicationOptions(), dryRunApplyLegacyCurvePatchCandidate(), compareRealCurveStateSnapshot() adicionados; não chama pushUndo/markProjectDirty/renderAll; UI, Stage, curvas, Preview matemático, MP4/export, save/load inalterados -->
+<!-- Arco Motion App — v8z4b19t — add internal curve patch self-test harness: runInternalCurvePatchSelfTestForModel/Segment/Loop/Suite() — harness interno que valida o pipeline completo de patch de curva (simulateRuntimePathPointEdit → createLegacyCurvePatchFromSimulatedPathPointEdit → validateLegacyCurvePatchCandidate → dryRunApplyLegacyCurvePatchCandidate → applyLegacyCurvePatchCandidateToRealState com allowRealMutation:false) sem mutação real; guarda confirmada (real-mutation-disabled); estado real intocável; exposto em window.__arcoInternalDiag.curvePatchSelfTest — não corre automaticamente; não conectado a UI/Stage/Preview/gesto/botão/save/load; não chama pushUndo/markProjectDirty/renderAll; UI, Stage, curvas, Preview matemático, MP4/export, save/load inalterados -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1999,7 +2012,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19s</span><br><span id="appVersionNameText">clear MP4 after save and prepare guarded real curve patch applier</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b19t</span><br><span id="appVersionNameText">add internal curve patch self-test harness</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4340,8 +4353,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b19s';
-const APP_VERSION_NAME = 'clear MP4 after save and prepare guarded real curve patch applier';
+const APP_VERSION = 'v8z4b19t';
+const APP_VERSION_NAME = 'add internal curve patch self-test harness';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -8602,6 +8615,495 @@ function compareRealCurveStateSnapshot(before, after) {
     }
   };
 }
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════════════
+// v8z4b19t — HARNESS INTERNO DE SELF-TEST DO PIPELINE DE PATCH DE CURVA
+// ──────────────────────────────────────────────────────────────────────────────
+// Helpers criados nesta versão:
+//   1. runInternalCurvePatchSelfTestForModel(model, options)
+//   2. runInternalCurvePatchSelfTestForSegment(segIndex, proposedOffset)
+//   3. runInternalCurvePatchSelfTestForLoop(proposedOffset)
+//   4. runInternalCurvePatchSelfTestSuite()
+//
+// IMPORTANTE — restrições absolutas desta versão:
+//   • Harness é apenas diagnóstico interno — não corre em nenhum fluxo público.
+//   • Não chamado automaticamente em Preview, MP4, carregamento do app.
+//   • Não conectado a UI, Stage, gesto, botão, Preview ou save/load.
+//   • allowRealMutation: true NÃO é usado em nenhum fluxo nesta versão.
+//   • Nenhum helper chama pushUndo, markProjectDirty ou renderAll.
+//   • ctrlPts, ctrlPtManual, loopCtrlPt — intocáveis por este bloco.
+//   • JSON — nenhum campo novo persiste.
+//   • Prepara a futura ligação do pathPoint editável com o aplicador real.
+//   • Pode ficar disponível em window.__arcoInternalDiag apenas para diagnóstico.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ──────────────────────────────────────────────────────────────────────────────
+// runInternalCurvePatchSelfTestForModel(model, options)
+//
+// v8z4b19t — harness interno: valida o pipeline completo de patch de curva
+// usando o runtime model fornecido, sem aplicar nada no estado real.
+//
+// Pipeline validado internamente:
+//   runtime model
+//   → pathPoint runtime (model.pathPoints[0])
+//   → proposedPathPoint simulado (pathPoint deslocado levemente)
+//   → simulateRuntimePathPointEdit()
+//   → createLegacyCurvePatchFromSimulatedPathPointEdit()
+//   → validateLegacyCurvePatchCandidate()
+//   → dryRunApplyLegacyCurvePatchCandidate()
+//   → applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: false })
+//   → confirmar que estado real permanece intacto (compareRealCurveStateSnapshot)
+//
+// Parâmetros:
+//   model   — runtime curve model atual (retorno de buildRuntimeCurveModel).
+//   options — opcional:
+//     {
+//       targetType:     'segment' | 'loop',  // default: derivado do model.isLoop
+//       segIndex:       number,               // default: model.segmentIndex
+//       proposedOffset: { dx, dy },           // default: { dx: 0.02, dy: 0.02 }
+//       sampleCount:    number                // reservado, não usado ainda
+//     }
+//
+// Comportamento:
+//   - Não altera ctrlPts, ctrlPtManual, loopCtrlPt.
+//   - Não chama pushUndo, markProjectDirty, renderAll.
+//   - Não renderiza, não salva, não afeta UI nem JSON.
+//   - Retorna diagnóstico estruturado completo.
+//
+// Restrições absolutas:
+//   - allowRealMutation: true NÃO é chamado em nenhum fluxo desta versão.
+//   - Harness não corre automaticamente — apenas sob demanda de diagnóstico.
+function runInternalCurvePatchSelfTestForModel(model, options) {
+  var FAIL = function(reason, extra) {
+    return Object.assign({
+      ok:               false,
+      reason:           reason,
+      target:           null,
+      simulationOk:     false,
+      patchValid:       false,
+      dryRunOk:         false,
+      guardOk:          false,
+      realStateUnchanged: false,
+      appliedToRealState: false
+    }, extra || {});
+  };
+
+  // 1. Validar model
+  if (!model || !validateRuntimeCurveModel(model)) {
+    return FAIL('invalid-model');
+  }
+
+  // 2. Normalizar opções
+  var opts = options || {};
+  var targetType = opts.targetType || (model.isLoop ? 'loop' : 'segment');
+  var segIndex   = (typeof opts.segIndex === 'number' && isFinite(opts.segIndex))
+                     ? opts.segIndex
+                     : model.segmentIndex;
+  var offset     = opts.proposedOffset || {};
+  var dx = (typeof offset.dx === 'number' && isFinite(offset.dx)) ? offset.dx : 0.02;
+  var dy = (typeof offset.dy === 'number' && isFinite(offset.dy)) ? offset.dy : 0.02;
+
+  // 3. Obter pathPoint do model (preferencialmente model.pathPoints[0])
+  var pathPoint = null;
+  if (Array.isArray(model.pathPoints) && model.pathPoints.length > 0) {
+    var pp = model.pathPoints[0];
+    if (pp && typeof pp.x === 'number' && isFinite(pp.x) &&
+              typeof pp.y === 'number' && isFinite(pp.y)) {
+      pathPoint = { x: pp.x, y: pp.y };
+    }
+  }
+  if (!pathPoint) {
+    // Fallback: ponto médio calculado via anchors e controls
+    var startA = model.anchors.find(function(a) { return a.role === 'start'; });
+    var endA   = model.anchors.find(function(a) { return a.role === 'end';   });
+    var ctrl   = model.controls && model.controls[0];
+    if (startA && endA && ctrl) {
+      var t = 0.5;
+      var mt = 1 - t;
+      var midX = mt * mt * startA.x + 2 * mt * t * ctrl.x + t * t * endA.x;
+      var midY = mt * mt * startA.y + 2 * mt * t * ctrl.y + t * t * endA.y;
+      if (isFinite(midX) && isFinite(midY)) {
+        pathPoint = { x: midX, y: midY };
+      }
+    }
+  }
+  if (!pathPoint) {
+    return FAIL('no-pathpoint-available');
+  }
+
+  // 4. Criar proposedPathPoint deslocado levemente (apenas para teste interno)
+  var proposedPathPoint = {
+    x: pathPoint.x + dx,
+    y: pathPoint.y + dy
+  };
+
+  // 5. Construir target para patch
+  var target = (targetType === 'loop')
+    ? { type: 'loop' }
+    : { type: 'segment', segIndex: segIndex };
+
+  // 6. Snapshot do estado real antes
+  var snapBefore = null;
+  try {
+    snapBefore = cloneLegacyCurveStateForPatch();
+  } catch(e) {
+    return FAIL('snapshot-before-threw: ' + (e && e.message ? e.message : String(e)));
+  }
+
+  // 7. Simular edição de pathPoint
+  var simulation = null;
+  try {
+    simulation = simulateRuntimePathPointEdit(model, pathPoint, proposedPathPoint);
+  } catch(e) {
+    return FAIL('simulation-threw: ' + (e && e.message ? e.message : String(e)));
+  }
+  if (!simulation || simulation.ok !== true) {
+    return FAIL('simulation-failed: ' + (simulation ? simulation.reason : 'null'));
+  }
+
+  // 8. Criar patch legado candidato
+  var patch = null;
+  try {
+    patch = createLegacyCurvePatchFromSimulatedPathPointEdit(target, simulation);
+  } catch(e) {
+    return FAIL('patch-creation-threw: ' + (e && e.message ? e.message : String(e)));
+  }
+  if (!patch || patch.ok !== true) {
+    return FAIL('patch-creation-failed: ' + (patch ? patch.reason : 'null'), {
+      simulationOk: true
+    });
+  }
+
+  // 9. Validar patch candidato
+  var patchValidResult = null;
+  try {
+    patchValidResult = validateLegacyCurvePatchCandidate(patch);
+  } catch(e) {
+    return FAIL('patch-validation-threw: ' + (e && e.message ? e.message : String(e)), {
+      simulationOk: true
+    });
+  }
+  var patchValid = !!(patchValidResult && patchValidResult.ok);
+  if (!patchValid) {
+    return FAIL('patch-invalid: ' + (patchValidResult ? patchValidResult.reason : 'null'), {
+      simulationOk: true,
+      patchValid:   false
+    });
+  }
+
+  // 10. Dry-run do patch
+  var dryRunResult = null;
+  try {
+    dryRunResult = dryRunApplyLegacyCurvePatchCandidate(patch);
+  } catch(e) {
+    return FAIL('dryrun-threw: ' + (e && e.message ? e.message : String(e)), {
+      simulationOk: true,
+      patchValid:   true
+    });
+  }
+  var dryRunOk = !!(dryRunResult && dryRunResult.ok);
+
+  // 11. Chamar applyLegacyCurvePatchCandidateToRealState com allowRealMutation: false
+  //     (guarda — confirmar que retorna real-mutation-disabled)
+  var applyResult = null;
+  try {
+    applyResult = applyLegacyCurvePatchCandidateToRealState(patch, {
+      allowRealMutation: false,
+      reason: 'self-test-guard'
+    });
+  } catch(e) {
+    return FAIL('apply-threw: ' + (e && e.message ? e.message : String(e)), {
+      simulationOk: true,
+      patchValid:   true,
+      dryRunOk:     dryRunOk
+    });
+  }
+  // Confirmar que guarda está ativa: deve retornar real-mutation-disabled
+  var guardOk = !!(applyResult &&
+                   applyResult.ok === false &&
+                   applyResult.reason === 'real-mutation-disabled' &&
+                   applyResult.appliedToRealState === false);
+
+  // 12. Snapshot do estado real depois — confirmar que não mudou
+  var snapAfter = null;
+  try {
+    snapAfter = cloneLegacyCurveStateForPatch();
+  } catch(e) {
+    return FAIL('snapshot-after-threw: ' + (e && e.message ? e.message : String(e)), {
+      simulationOk: true,
+      patchValid:   true,
+      dryRunOk:     dryRunOk,
+      guardOk:      guardOk
+    });
+  }
+
+  var stateComparison = null;
+  var realStateUnchanged = false;
+  try {
+    stateComparison = compareRealCurveStateSnapshot(snapBefore, snapAfter);
+    realStateUnchanged = !!(stateComparison && stateComparison.unchanged);
+  } catch(e) {
+    realStateUnchanged = false;
+  }
+
+  var allOk = simulation.ok && patchValid && dryRunOk && guardOk && realStateUnchanged;
+
+  return {
+    ok:                 allOk,
+    reason:             allOk ? 'ok' : 'partial-failure',
+    target:             target,
+    simulationOk:       true,
+    patchValid:         patchValid,
+    dryRunOk:           dryRunOk,
+    guardOk:            guardOk,
+    realStateUnchanged: realStateUnchanged,
+    appliedToRealState: false,
+    // Diagnóstico auxiliar (para inspeção manual)
+    _diag: {
+      pathPoint:       pathPoint,
+      proposedOffset:  { dx: dx, dy: dy },
+      proposedPP:      proposedPathPoint,
+      simulationReason: simulation.reason,
+      patchField:      patch.field,
+      patchIndex:      patch.index,
+      dryRunReason:    dryRunResult ? dryRunResult.reason : null,
+      applyReason:     applyResult  ? applyResult.reason  : null,
+      stateComparison: stateComparison
+    }
+  };
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ──────────────────────────────────────────────────────────────────────────────
+// runInternalCurvePatchSelfTestForSegment(segIndex, proposedOffset)
+//
+// v8z4b19t — harness interno para um segmento normal específico.
+//
+// Constrói o runtime model do segmento informado via buildRuntimeCurveModel()
+// e delega a runInternalCurvePatchSelfTestForModel().
+//
+// Parâmetros:
+//   segIndex       — índice do segmento normal (deve ser segmento não-loop válido).
+//   proposedOffset — opcional: { dx, dy } deslocamento do pathPoint no teste.
+//                    Default: { dx: 0.02, dy: 0.02 }.
+//
+// Retorna diagnóstico estruturado de runInternalCurvePatchSelfTestForModel().
+// Não altera estado. Não chama pushUndo/markProjectDirty/renderAll.
+// Não conectado a UI, Stage, Preview, gesto, botão nem save/load.
+function runInternalCurvePatchSelfTestForSegment(segIndex, proposedOffset) {
+  var FAIL = function(reason) {
+    return {
+      ok:               false,
+      reason:           reason,
+      target:           null,
+      simulationOk:     false,
+      patchValid:       false,
+      dryRunOk:         false,
+      guardOk:          false,
+      realStateUnchanged: false,
+      appliedToRealState: false
+    };
+  };
+
+  if (typeof segIndex !== 'number' || !isFinite(segIndex) || segIndex < 0) {
+    return FAIL('invalid-segIndex');
+  }
+
+  var model = null;
+  try {
+    model = buildRuntimeCurveModel(segIndex);
+  } catch(e) {
+    return FAIL('build-model-threw: ' + (e && e.message ? e.message : String(e)));
+  }
+  if (!model) {
+    return FAIL('model-not-available');
+  }
+
+  return runInternalCurvePatchSelfTestForModel(model, {
+    targetType:     'segment',
+    segIndex:       segIndex,
+    proposedOffset: proposedOffset || null
+  });
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ──────────────────────────────────────────────────────────────────────────────
+// runInternalCurvePatchSelfTestForLoop(proposedOffset)
+//
+// v8z4b19t — harness interno para o segmento de loop.
+//
+// Se loop estiver ativo e houver modelo de loop válido, roda self-test para loop.
+// Se loop não estiver ativo, retorna { ok: false, reason: 'loop-disabled' }.
+//
+// Parâmetros:
+//   proposedOffset — opcional: { dx, dy } deslocamento do pathPoint no teste.
+//                    Default: { dx: 0.02, dy: 0.02 }.
+//
+// Retorna diagnóstico estruturado de runInternalCurvePatchSelfTestForModel().
+// Não altera estado. Não chama pushUndo/markProjectDirty/renderAll.
+// Não conectado a UI, Stage, Preview, gesto, botão nem save/load.
+function runInternalCurvePatchSelfTestForLoop(proposedOffset) {
+  var FAIL = function(reason) {
+    return {
+      ok:               false,
+      reason:           reason,
+      target:           null,
+      simulationOk:     false,
+      patchValid:       false,
+      dryRunOk:         false,
+      guardOk:          false,
+      realStateUnchanged: false,
+      appliedToRealState: false
+    };
+  };
+
+  // Verificar se loop está ativo
+  if (!loopEnabled || frameCount < 2) {
+    return FAIL('loop-disabled');
+  }
+
+  var loopSegIdx = getLoopSegmentIndex();
+  if (loopSegIdx < 0) {
+    return FAIL('loop-disabled');
+  }
+
+  var model = null;
+  try {
+    model = buildRuntimeCurveModel(loopSegIdx);
+  } catch(e) {
+    return FAIL('build-loop-model-threw: ' + (e && e.message ? e.message : String(e)));
+  }
+  if (!model) {
+    return FAIL('loop-model-not-available');
+  }
+  if (!model.isLoop) {
+    return FAIL('loop-model-isLoop-false');
+  }
+
+  return runInternalCurvePatchSelfTestForModel(model, {
+    targetType:     'loop',
+    proposedOffset: proposedOffset || null
+  });
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ──────────────────────────────────────────────────────────────────────────────
+// runInternalCurvePatchSelfTestSuite()
+//
+// v8z4b19t — harness completo: roda self-test em segmento normal + loop (se ativo).
+//
+// Comportamento:
+//   - Seleciona um segmento normal válido (o primeiro segmento não-loop disponível).
+//   - Roda runInternalCurvePatchSelfTestForSegment() para esse segmento.
+//   - Se loop ativo, roda runInternalCurvePatchSelfTestForLoop().
+//   - Retorna resumo estruturado.
+//
+// Restrições absolutas:
+//   - NÃO roda automaticamente em Preview, MP4 nem no carregamento do app.
+//   - NÃO conectado a nenhum fluxo público.
+//   - NÃO altera estado real de curvas.
+//   - NÃO chama pushUndo, markProjectDirty nem renderAll.
+//   - allowRealMutation: true NÃO é usado.
+//   - Disponível apenas como helper global de diagnóstico para desenvolvimento.
+function runInternalCurvePatchSelfTestSuite() {
+  var results = {
+    ok:            false,
+    reason:        'not-run',
+    segmentResult: null,
+    loopResult:    null,
+    summary:       {
+      segmentTested: false,
+      loopTested:    false,
+      allOk:         false
+    }
+  };
+
+  // 1. Encontrar primeiro segmento normal válido
+  var testedSegIndex = -1;
+  var segCount = (frameCount >= 2) ? (frameCount - 1) : 0;
+  for (var si = 0; si < segCount; si++) {
+    // Pular segmento de loop (getLoopSegmentIndex retorna o último)
+    if (loopEnabled && si === getLoopSegmentIndex()) continue;
+    var candidateModel = null;
+    try { candidateModel = buildRuntimeCurveModel(si); } catch(e) {}
+    if (candidateModel && validateRuntimeCurveModel(candidateModel)) {
+      testedSegIndex = si;
+      break;
+    }
+  }
+
+  if (testedSegIndex < 0) {
+    results.reason = 'no-valid-segment';
+    return results;
+  }
+
+  // 2. Rodar self-test para o segmento normal
+  var segResult = null;
+  try {
+    segResult = runInternalCurvePatchSelfTestForSegment(testedSegIndex);
+  } catch(e) {
+    segResult = {
+      ok:     false,
+      reason: 'suite-segment-threw: ' + (e && e.message ? e.message : String(e))
+    };
+  }
+  results.segmentResult = segResult;
+  results.summary.segmentTested = true;
+
+  // 3. Rodar self-test para loop (se ativo)
+  var loopResult = null;
+  if (loopEnabled && getLoopSegmentIndex() >= 0) {
+    try {
+      loopResult = runInternalCurvePatchSelfTestForLoop();
+    } catch(e) {
+      loopResult = {
+        ok:     false,
+        reason: 'suite-loop-threw: ' + (e && e.message ? e.message : String(e))
+      };
+    }
+    results.loopResult = loopResult;
+    results.summary.loopTested = true;
+  }
+
+  // 4. Determinar resultado geral
+  var segOk  = !!(segResult  && segResult.ok);
+  var loopOk = results.summary.loopTested ? !!(loopResult && loopResult.ok) : true;
+  var allOk  = segOk && loopOk;
+
+  results.ok     = allOk;
+  results.reason = allOk ? 'ok' : 'partial-failure';
+  results.summary.allOk = allOk;
+
+  return results;
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Expor helpers de self-test em namespace de diagnóstico (apenas desenvolvimento).
+// Não executa automaticamente — disponível apenas para inspeção manual.
+// Não polui o namespace global: agrupado em window.__arcoInternalDiag.
+// v8z4b19t: self-test harness guardado — não chamado por nenhum fluxo público.
+(function() {
+  try {
+    if (!window.__arcoInternalDiag) window.__arcoInternalDiag = {};
+    window.__arcoInternalDiag.curvePatchSelfTest = {
+      forModel:   function(model, options) {
+        return runInternalCurvePatchSelfTestForModel(model, options);
+      },
+      forSegment: function(segIndex, proposedOffset) {
+        return runInternalCurvePatchSelfTestForSegment(segIndex, proposedOffset);
+      },
+      forLoop:    function(proposedOffset) {
+        return runInternalCurvePatchSelfTestForLoop(proposedOffset);
+      },
+      suite:      function() {
+        return runInternalCurvePatchSelfTestSuite();
+      }
+    };
+  } catch(e) {
+    // Silencioso — falha de exposição não afeta o app
+  }
+})();
 // ──────────────────────────────────────────────────────────────────────────────
 
 // Retorna steps+1 pontos amostrados uniformemente ao longo da trajetória.

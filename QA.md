@@ -2,6 +2,121 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b19t — add internal curve patch self-test harness
+
+### Teste A — abertura e versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b19t` na UI (Settings).
+3. Confirmar que nome da versão exibe `add internal curve patch self-test harness`.
+
+### Teste B — faixa preta superior (regressão v8z4b19n)
+1. Carregar imagem no iPhone/Safari.
+2. Entrar no Preview.
+3. Confirmar que a faixa preta superior continua presente.
+4. Confirmar que o canvas não invade a Dynamic Island.
+
+### Teste C — curvas normais (regressão)
+1. Criar projeto com pelo menos 4 frames.
+2. Puxar curva normal F1→F2.
+3. Puxar curva normal F2→F3.
+4. Confirmar que curvas normais continuam iguais à v8z4b19s.
+5. Confirmar Undo/Redo da curva normal.
+6. Mover frame depois de puxar curvas e confirmar que as curvas não pulam.
+
+### Teste D — loop e curva de loop (regressão)
+1. Ativar loop via chip Loop no painel Duração.
+2. Confirmar que curva de loop aparece imediatamente no Stage, sem tocar no Stage.
+3. Puxar curva de loop.
+4. Confirmar que a curva de loop aparece igual à v8z4b19s.
+5. Confirmar Undo/Redo da curva de loop.
+
+### Teste E — Preview (regressão)
+1. Rodar Preview.
+2. Confirmar que a faixa preta superior do Preview continua presente.
+3. Confirmar que Preview respeita curvas normais.
+4. Confirmar que Preview respeita curva de loop.
+
+### Teste F — velocidade constante (regressão)
+1. Usar velocidade constante com curvas normais.
+2. Usar velocidade constante com loop ativo.
+
+### Teste G — MP4/export e botão Salvar MP4 (regressão v8z4b19s)
+1. Gerar MP4 normalmente.
+2. Confirmar que MP4 respeita curvas normais e loop.
+3. Entrar no Preview e gerar MP4.
+4. Tocar em **Salvar MP4**.
+5. Confirmar que o salvamento/download inicia normalmente.
+6. Confirmar que o botão **não** fica preso em estado done/pronto/ativo.
+7. Confirmar que o botão voltou ao estado padrão "Salvar MP4" (gerar novo).
+8. Confirmar que, ao sair do Preview, o MP4 gerado é limpo (regressão v8z4b19o).
+9. Iniciar geração de MP4 e tocar Voltar antes de terminar.
+10. Confirmar que Stage não trava.
+11. Confirmar que play/pause não fica preso.
+
+### Teste H — save/load (regressão)
+1. Salvar projeto com imagem:
+   - filename termina em `_img.json`.
+   - `version` salva como `v8z4b19t`.
+   - `imageBase64` existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado quando loop ativo.
+   - `framePauses` preservado.
+   - `segDurations` preservado.
+2. Salvar projeto sem imagem:
+   - filename termina em `_file.json`.
+   - `version` salva como `v8z4b19t`.
+   - `imageBase64` não existe.
+   - `ctrlPts` preservado.
+   - `ctrlPtManual` preservado.
+   - `loopCtrlPt` preservado quando loop ativo.
+3. Abrir JSON salvo em v8z4b19s com imagem e confirmar compatibilidade.
+4. Confirmar que o bug conhecido de `_file.json` sem `imageBase64` continua registrado no ROADMAP,
+   sem tentativa parcial de correção nesta versão.
+5. Confirmar que nenhum destes campos apareceu no JSON:
+   - `curvesV2`
+   - `vectorPath`
+   - `handles`
+   - `pathPoints`
+   - `runtimeCurveModel`
+   - `capabilities`
+   - `spans`
+   - `generatedMp4`
+   - `exportBlob`
+   - `legacyCurvePatch`
+   - `patchCandidate`
+   - `patchApplicationDraft`
+   - `realCurvePatchApplication`
+   - `selfTest`
+6. Confirmar que `segDurations` não mudou de schema.
+
+### Teste I — harness de self-test (novo v8z4b19t)
+1. Confirmar que o harness **não** roda automaticamente ao abrir o app.
+2. Confirmar que o harness **não** roda automaticamente ao entrar em Preview.
+3. Confirmar que o harness **não** roda automaticamente ao gerar MP4.
+4. Confirmar que `window.__arcoInternalDiag.curvePatchSelfTest` existe no console.
+5. Com projeto de pelo menos 2 frames carregado, executar no console:
+   ```js
+   window.__arcoInternalDiag.curvePatchSelfTest.forSegment(0)
+   ```
+6. Confirmar que o resultado contém `ok: true` ou erro razoável (ex: `model-not-available` se não houver imagem).
+7. Se resultado ok, confirmar:
+   - `simulationOk: true`
+   - `patchValid: true`
+   - `dryRunOk: true`
+   - `guardOk: true`
+   - `realStateUnchanged: true`
+   - `appliedToRealState: false`
+8. Após rodar o harness, confirmar que curvas no Stage **não mudaram**.
+9. Após rodar o harness, confirmar que Preview **não foi afetado**.
+10. Confirmar que `applyLegacyCurvePatchCandidateToRealState` **não** foi chamado com `allowRealMutation: true`.
+
+### Teste J — console (regressão)
+1. Confirmar que não há erro de console, NaN ou Infinity.
+2. Confirmar que o PR ficou aberto e não foi mergeado.
+
+---
+
 ## v8z4b19s — clear MP4 after save and prepare guarded real curve patch applier
 
 ### Teste A — abertura e versão
