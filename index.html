@@ -1,13 +1,21 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b23a                                     ║
+║  Versão: v8z4b23b                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b23b                                            ║
+║    fix: Reset Project de projeto novo limpa          ║
+║         overlays antigos antes de voltar ao F1       ║
+║         assistido;                                   ║
+║    fix: F1 assistido após reset redesenha            ║
+║         imediatamente o overlay correto;             ║
+║    fix: seleção/handles antigos não permanecem       ║
+║         visíveis após reset;                         ║
 ║  v8z4b23a                                            ║
 ║    feat: projetos novos começam com F1 em modo       ║
 ║         assistido;                                   ║
@@ -380,6 +388,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b23b — overlay cleanup: Reset Project de projeto novo limpa overlays antigos (dim overlay, bezier, handles) antes de voltar ao F1 assistido; F1 assistido após reset redesenha imediatamente o overlay correto; guard frameCount>0 em renderAll para evitar crash ao cancelar F1 assistido com frames vazio. -->
 <!-- Arco Motion App — v8z4b23a — single-frame: projetos novos começam com F1 em modo assistido; mínimo oficial passa a ser 1 frame; Preview/MP4 suportam 1 frame como vídeo estático; Reset Project de projeto novo volta ao F1 assistido; JSON com 1 frame é válido. -->
 <!-- Arco Motion App — v8z4b22e — insertion ux: Confirmar/Cancelar da inserção assistida ficam exclusivamente na barra inferior; removidos controles duplicados de confirmação/cancelamento dentro do ghost frame. -->
 <!-- Arco Motion App — v8z4b21a — implement real cubic in-out handles: curvesV2 com handles in/out independentes por frame; Bézier cúbica C(P0,C1,C2,P3); avaliação e Preview/MP4 usam cubic; JSON salva curvesV2; compatibilidade com arquivos antigos via conversão ctrlPts→curvesV2. -->
@@ -2287,7 +2296,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b23a</span><br><span id="appVersionNameText">single-frame: F1 assistido, mínimo 1 frame</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b23b</span><br><span id="appVersionNameText">overlay cleanup: Reset limpa overlays antes do F1 assistido</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4628,8 +4637,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b23a';
-const APP_VERSION_NAME = 'single-frame: F1 assistido, mínimo 1 frame, Preview/MP4 1 frame';
+const APP_VERSION = 'v8z4b23b';
+const APP_VERSION_NAME = 'overlay cleanup: Reset limpa overlays antes do F1 assistido';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10947,6 +10956,23 @@ function startFirstFrameAssistedInsertion() {
   undoStack.length = 0;
   redoStack.length = 0;
   updateUndoRedoUI();
+  // v8z4b23b: limpar overlays visuais antigos imediatamente após zerar estado —
+  // dim overlay (#stageDimSvg), bezier paths, handle de escala/rotação, borda
+  // out-of-bounds e indicador de ângulo devem ser apagados antes de recriar o ghost.
+  // Sem esta limpeza, o overlay escuro do último frame ativo permanece na tela
+  // até o usuário confirmar F1 assistido.
+  {
+    const _dimSvgEl = document.getElementById('stageDimSvg');
+    if (_dimSvgEl) { _dimSvgEl.style.display = 'none'; _dimSvgEl.innerHTML = ''; }
+    if (bezierSvg) { bezierSvg.innerHTML = ''; }
+    handleDragState = null;
+    hideAngleIndicator();
+    if (globalHandleEl) {
+      globalHandleEl.classList.remove('show');
+      globalHandleEl.classList.remove('ghost-transform');
+    }
+    stage.classList.remove('out-of-bounds');
+  }
   // Iniciar inserção assistida do F1
   _isFirstFrameInsertion = true;
   pendingFrameInsert = buildFirstFrameInsertion();
@@ -11792,8 +11818,10 @@ function renderAll() {
   updateDimOverlay();
 
   // Borda vermelha no stage só se o frame ATIVO ultrapassar os limites
+  // v8z4b23b: guard frameCount > 0 — isFrameOutside(i) lê frames[i] e crasharia com frames vazio
+  // (ex: cancelar F1 assistido após reset chama renderAll com frameCount=0).
   const anyPanelOpen = document.querySelector('.float-panel.show');
-  stage.classList.toggle('out-of-bounds', !!imgNatW && isFrameOutside(activeIdx) && !anyPanelOpen);
+  stage.classList.toggle('out-of-bounds', !!imgNatW && frameCount > 0 && isFrameOutside(activeIdx) && !anyPanelOpen);
 }
 
 // ═══════════════════════════════════════
