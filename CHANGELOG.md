@@ -1,5 +1,48 @@
 # Changelog
 
+## v8z4b21d — fix project reset baseline and smart loop continuity
+
+Correção funcional sobre v8z4b21c. Base obrigatória: v8z4b21c.
+
+### Diagnóstico
+
+**Bug 1 — Reset Project:** o reset reconstruía o template padrão (`pan-lr`) em vez de restaurar o projeto carregado no início da sessão. Ao abrir um JSON salvo, mexer no projeto e acionar Reset, frames/curvas/duração/loop voltavam ao template inicial.
+
+**Bug 2 — loop no Movimento inteligente:** v8z4b21c isolou corretamente o loop dos trechos normais com `suppressLoop=true`, mas o trecho de loop ainda precisava de smart movement local com clamp monotônico. O clamp individual em `3*vAvg` podia criar combinações de slopes altas demais e trancos/quase-holds.
+
+### Correção
+
+- Adicionado `projectResetBaseline`, um snapshot profundo do estado normalizado da sessão.
+- Ao carregar JSON com sucesso, `applyFrameData()` atualiza o baseline depois de normalizar arrays, migrar/converter curvesV2 e renderizar o Stage.
+- Ao criar projeto inicial a partir de imagem/template, o baseline passa a ser esse template inicial da sessão.
+- `resetAll()` agora restaura o baseline, cria uma única entrada de undo quando há diferença, e não limpa a pilha de undo.
+- Salvar JSON não altera o baseline.
+- Adicionado `_limitSmartHermiteSlopes()`: `m0 >= 0`, `m1 >= 0`, e se `m0 + m1 > 3`, ambos são escalados proporcionalmente.
+- Trechos normais continuam usando `suppressLoop=true`, preservando a correção da v8z4b21c.
+- O trecho de loop continua usando Movimento inteligente local (`suppressLoop=false`) e agora recebe o mesmo limiter monotônico.
+
+### Comportamento após a correção
+
+- Reset Project volta ao estado do projeto carregado, não ao template padrão.
+- Undo após Reset Project volta ao estado anterior ao reset; Redo reaplica o reset.
+- Loop curto não contamina o trecho normal F1→F2.
+- O loop participa do Movimento inteligente com continuidade local e sem tranco forte.
+- Reset Curves continua funcionando com curvesV2.
+- Handles OUT/IN independentes não foram alterados.
+- Preview e MP4 usam o mesmo cálculo corrigido via `getStateAtT`.
+- Velocidade constante continua usando os cálculos de comprimento existentes.
+- JSON salvo usa `version: v8z4b21d` e preserva `curvesV2`, `framePauses`, `segDurations` e `loopDuration`.
+
+### Arquivos alterados
+
+- `index.html`: baseline de Reset Project; undo/redo do reset; limiter monotônico do smart movement; versão → v8z4b21d.
+- `CHANGELOG.md`: este registro.
+- `QA.md`: checklist v8z4b21d.
+- `ROADMAP.md`: v8z4b21d concluído; Direct Curve Drag e Assisted Frame Insertion mantidos como futuros.
+- `pages-deploy-stamp.txt`: atualizado.
+
+---
+
 ## v8z4b21c — fix smart loop false stop and reset curves v2
 
 Correção funcional do Movimento inteligente com loop e do Reset Curves para curvesV2. Base obrigatória: v8z4b21b.

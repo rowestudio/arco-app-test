@@ -1,5 +1,43 @@
 # Roadmap
 
+## Objetivo imediato — v8z4b21d (concluído)
+
+Correção do Reset Project e continuidade do Movimento inteligente no loop. Base: v8z4b21c.
+
+- ✅ Reset Project restaura snapshot profundo do projeto carregado na sessão.
+- ✅ Projeto novo/template inicial captura baseline próprio após criação.
+- ✅ Salvar JSON não altera o baseline de reset.
+- ✅ Reset Project cria uma única entrada de undo quando há mudança.
+- ✅ Undo/Redo do Reset Project funciona sem resetar para template padrão.
+- ✅ Trechos normais mantêm `suppressLoop=true`, preservando a correção contra falsa parada.
+- ✅ Trecho de loop continua participando do Movimento inteligente localmente.
+- ✅ Smart movement usa limiter monotônico de slopes (`m0+m1 <= 3`) para evitar overshoot/quase-hold.
+- ✅ Reset Curves com curvesV2 preservado.
+- ✅ Handles OUT/IN independentes preservados sem alteração.
+- ✅ Preview e MP4 usam o mesmo cálculo corrigido.
+- ✅ JSON continua salvando curvesV2; versão salva → v8z4b21d.
+- ✅ Direct Curve Drag e Assisted Frame Insertion registrados como futuros, sem implementação.
+
+### Próximas ideias registradas (não implementadas nesta versão)
+
+#### Direct Curve Drag
+
+- Usuário puxa a própria curva do trecho.
+- App ajusta o handle OUT do frame inicial e o handle IN do frame final simultaneamente.
+- Não cria midpoint permanente.
+- Comportamento inspirado no Illustrator.
+- **Não implementar agora.** Registrado para decisão futura de produto.
+
+#### Assisted Frame Insertion
+
+- Ao adicionar frame, mostrar um frame fantasma no Stage antes de confirmar.
+- Usuário posiciona no Stage antes da criação definitiva.
+- Só depois calcular handles.
+- Objetivo: evitar distorção de handles após mover frame recém-criado.
+- **Não implementar agora.** Registrado para decisão futura de UX/produto.
+
+---
+
 ## Objetivo imediato — v8z4b21c (concluído)
 
 Correção do Movimento inteligente com loop e do Reset Curves para curvesV2. Base: v8z4b21b.

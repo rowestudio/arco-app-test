@@ -1,13 +1,19 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b21c                                     ║
+║  Versão: v8z4b21d                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b21d                                            ║
+║    fix: project reset baseline and smart loop        ║
+║         continuity — Reset Project restaura o        ║
+║         baseline carregado da sessão; loop usa       ║
+║         Movimento inteligente local com limiter      ║
+║         monotônico;                                  ║
 ║  v8z4b21c                                            ║
 ║    fix: smart loop false stop and reset curves v2 —  ║
 ║         impede loop curto de contaminar easing de    ║
@@ -332,7 +338,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b21c — fix smart loop false stop and reset curves v2: suppressLoop impede loopDuration de contaminar easing dos trechos normais; Reset Curves corrigido para curvesV2 (reseta frameHandles.in/out com handles 1/3 da corda); sem falsa parada quando framePauses são zero; segmentTimingMode manual preservado. -->
+<!-- Arco Motion App — v8z4b21d — fix project reset baseline and smart loop continuity: Reset Project restaura snapshot profundo do projeto carregado/template inicial da sessão, com undo/redo único; smart movement mantém suppressLoop nos trechos normais e aplica limiter monotônico local no loop para evitar trancos sem contaminar F1→F2. -->
 <!-- Arco Motion App — v8z4b21a — implement real cubic in-out handles: curvesV2 com handles in/out independentes por frame; Bézier cúbica C(P0,C1,C2,P3); avaliação e Preview/MP4 usam cubic; JSON salva curvesV2; compatibilidade com arquivos antigos via conversão ctrlPts→curvesV2. -->
 <!-- v8z4b20d — fix handle sync after frame move and visible segment handles: BLOCO A — sincroniza handles visualmente ao mover frame; loopCtrlPt recalculado via t/perpX/perpY quando F1 ou último frame é movido; BLOCO B — applyFrameConnectedHandleEdit armazena t/perp para loop; syncCtrlPtsForFrame estendido para trecho de loop; BLOCO C — threshold de 8px reduzido para 2px em getFrameHandleGeometryForTarget (handles manuais ficam estáveis); BLOCO D — ghost handles do lado complementar do trecho ativo (não-interativo); BLOCO E — ensureSegmentArraysIntegrity() normaliza ctrlPts, ctrlPtManual, segBlurSettings, rotEasings, scaleEasings, segDurations; deleteActiveFrame corrigido para segBlurSettings; buildProjectData chama ensure antes de salvar; BLOCO F — loop corrigido; BLOCO G — midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo preservado; BLOCO I — JSON/schema inalterado; sem campo novo -->
 <!DOCTYPE html>
@@ -2166,7 +2172,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b21c</span><br><span id="appVersionNameText">fix smart loop false stop and reset curves v2</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b21d</span><br><span id="appVersionNameText">fix project reset baseline and smart loop continuity</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4507,8 +4513,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b21c';
-const APP_VERSION_NAME = 'fix smart loop false stop and reset curves v2';
+const APP_VERSION = 'v8z4b21d';
+const APP_VERSION_NAME = 'fix project reset baseline and smart loop continuity';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4599,6 +4605,7 @@ let activeIdx = 0;
 let frameCount = 0;
 let selectedFrames = new Set(); // seleção múltipla
 let generatedUrl = null;
+let projectResetBaseline = null;
 
 // frames[i] = {x, y, w, h} in STAGE px
 // Frame AR is always ratioMap[currentRatio]
@@ -9824,8 +9831,22 @@ const undoStack = [];
 const redoStack = [];
 
 function captureState() {
+  const framesNorm = frames.slice(0, frameCount).map(f => ({
+    nx: f.x / (stageW || 1),
+    ny: f.y / (stageH || 1),
+    nw: f.w / (stageW || 1),
+    nh: f.h / (stageH || 1)
+  }));
+  const imageAR = imgNatW && imgNatH ? imgNatW / imgNatH : null;
+  const imageARLabel = imageAR
+    ? (imageAR > 1.7 ? '16:9 paisagem' : imageAR > 1.2 ? '4:3 paisagem' :
+       imageAR > 0.95 ? '1:1 quadrado' : imageAR > 0.7 ? '3:4 retrato' : '9:16 retrato')
+    : null;
   return {
     frames: frames.map(f => ({...f})),
+    framesNorm,
+    imageAR,
+    imageARLabel,
     frameRotations: [...frameRotations],
     ctrlPts: ctrlPts.map(p => p ? {...p} : null),
     ctrlPtManual: [...ctrlPtManual],
@@ -9837,6 +9858,7 @@ function captureState() {
     currentRatio,
     duration,
     defaultNewSegmentDuration,
+    baseFrameW,
     easeAmount,
     easeMode,
     pauseDuration,
@@ -9864,6 +9886,68 @@ function captureState() {
   };
 }
 
+function cloneProjectStateSnapshot(state) {
+  if (!state) return null;
+  return {
+    frames: (state.frames || []).map(f => ({...f})),
+    framesNorm: (state.framesNorm || []).map(f => ({...f})),
+    imageAR: state.imageAR ?? null,
+    imageARLabel: state.imageARLabel ?? null,
+    frameRotations: [...(state.frameRotations || [])],
+    ctrlPts: (state.ctrlPts || []).map(p => p ? {...p} : null),
+    ctrlPtManual: [...(state.ctrlPtManual || [])],
+    frameLocked: [...(state.frameLocked || [])],
+    segDurations: [...(state.segDurations || [])],
+    segBlurSettings: (state.segBlurSettings || []).map(s => s ? {...s} : cloneDefaultSegBlur()),
+    frameCount: state.frameCount,
+    activeIdx: state.activeIdx,
+    currentRatio: state.currentRatio,
+    duration: state.duration,
+    defaultNewSegmentDuration: state.defaultNewSegmentDuration,
+    baseFrameW: state.baseFrameW,
+    easeAmount: state.easeAmount,
+    easeMode: state.easeMode,
+    pauseDuration: state.pauseDuration,
+    loopEnabled: state.loopEnabled,
+    loopDuration: state.loopDuration,
+    segEasings: [...(state.segEasings || [])],
+    rotEasings: [...(state.rotEasings || [])],
+    scaleEasings: [...(state.scaleEasings || [])],
+    framePauses: (state.framePauses || []).map(p => p ? {...p} : { duration: 0 }),
+    finishMode: state.finishMode,
+    finishDuration: state.finishDuration,
+    loopCtrlPt: state.loopCtrlPt ? {...state.loopCtrlPt} : null,
+    loopSegEasing: state.loopSegEasing,
+    loopSegRotEasing: state.loopSegRotEasing,
+    loopSegScaleEasing: state.loopSegScaleEasing,
+    currentTemplate: state.currentTemplate,
+    templateLabel: state.templateLabel,
+    segmentTimingMode: state.segmentTimingMode,
+    constantSpeedTotalDuration: state.constantSpeedTotalDuration,
+    movementEasingMode: state.movementEasingMode,
+    rotationEasingMode: state.rotationEasingMode,
+    scaleEasingMode: state.scaleEasingMode,
+    curvesV2: cloneCurvesV2(state.curvesV2 || null),
+  };
+}
+
+function captureProjectResetBaseline(reason) {
+  if (!imgNatW || frameCount < 1) return;
+  ensureFramePauses();
+  ensureSegmentArraysIntegrity();
+  projectResetBaseline = cloneProjectStateSnapshot(captureState());
+  if (window._arcoDebug) console.info('[Arco v8z4b21d] project reset baseline updated:', reason || 'unknown');
+}
+
+function projectStateEquals(a, b) {
+  if (!a || !b) return false;
+  try {
+    return JSON.stringify(cloneProjectStateSnapshot(a)) === JSON.stringify(cloneProjectStateSnapshot(b));
+  } catch(e) {
+    return false;
+  }
+}
+
 function restoreState(state) {
   frames.length = 0;
   state.frames.forEach(f => frames.push({...f}));
@@ -9885,6 +9969,7 @@ function restoreState(state) {
   currentRatio = state.currentRatio;
   duration  = state.duration;
   defaultNewSegmentDuration = Math.max(0, Math.round(state.defaultNewSegmentDuration ?? 2));
+  baseFrameW = Number.isFinite(state.baseFrameW) ? state.baseFrameW : baseFrameW;
   easeAmount = state.easeAmount;
   easeMode   = state.easeMode;
   pauseDuration = state.pauseDuration ?? 0;
@@ -14310,82 +14395,19 @@ function resetAll() {
   isRecording = false;
   if (!imgNatW) return;
   resetGeneratedVideoState();
-  // Resetar duração, easing, loop, segmentos
-  duration = 4;
-  defaultNewSegmentDuration = 2;
-  finishMode = 'none';
-  finishDuration = 0.8;
-  loopDuration = 1.0;
-  easeAmount = 0;
-  easeMode = 'global';
-  smoothAmount = 0;
-  pauseDuration = 0;
-  loopEnabled = false;
-  loopCtrlPt = null;
-  loopSegEasing = 'linear';
-  loopSegRotEasing = 'linear';
-  loopSegScaleEasing = 'linear';
-  segDurations.length = 0;
-  framePauses.length = 0;
-  segBlurSettings.length = 0;
-  segmentTimingMode = 'manual'; // v8z4b17f
-  constantSpeedTotalDuration = null; // v8z4b17f
-  movementEasingMode = 'smart'; // v8z4b17k: padrão para projetos novos
-  rotationEasingMode = 'smart'; // v8z4b17q: padrão para projetos novos
-  scaleEasingMode    = 'smart'; // v8z4b17q: padrão para projetos novos
-  undoStack.length = 0;
-  redoStack.length = 0;
-  // Resetar locks e rotações de todos os frames
-  for (let i = 0; i < MAX_FRAMES; i++) {
-    frameLocked[i] = false;
-    frameRotations[i] = 0;
+  if (!projectResetBaseline) captureProjectResetBaseline('fallback-current');
+  if (!projectResetBaseline) return;
+
+  const prevState = captureState();
+  if (projectStateEquals(prevState, projectResetBaseline)) {
+    showStatus('Projeto já está no estado inicial');
+    return;
   }
-  updateUndoRedoUI();
-  closeSegBreakdown();
-  teardownFramePauseRows();
-  teardownFramePauseLocalSlider();
-  // Sync UI duração
-  const durSlider = document.getElementById('durSlider');
-  if (durSlider) durSlider.value = duration;
-  const durNum = document.getElementById('durNum');
-  if (durNum) durNum.textContent = duration + 's';
-  const newSegInput = document.getElementById('newSegmentDurationInput');
-  if (newSegInput) newSegInput.value = defaultNewSegmentDuration;
-  // Sync ease chips
-  document.querySelectorAll('.ease-chip').forEach(c => {
-    const isActive = c.dataset.ease === 'constante';
-    c.style.borderColor = isActive ? 'var(--accent)' : 'var(--border2)';
-    c.style.color = isActive ? 'var(--accent)' : 'var(--text2)';
-    c.classList.toggle('active', isActive);
-  });
-  // Sync loop toggle visual
-  const loopCard = document.getElementById('loopCard');
-  if (loopCard) loopCard.querySelector('.ios-toggle')?.classList.remove('active');
-  const loopDurRow = document.getElementById('loopDurRow');
-  if (loopDurRow) loopDurRow.style.display = 'none';
-  // Sync spline visual
-  const topBtnSpline = document.getElementById('topBtnSpline');
-  if (topBtnSpline) topBtnSpline.style.color = '';
-  // Sync smooth slider
-  const smoothSlider = document.getElementById('smoothSlider');
-  if (smoothSlider) smoothSlider.value = 0;
-  const smoothNum = document.getElementById('smoothNum');
-  if (smoothNum) smoothNum.textContent = '0%';
-  // Sync lock visual
-  const btnLock = document.getElementById('btnLockFrame');
-  if (btnLock) btnLock.style.color = '';
-  // Sync bgColor swatch
-  document.querySelectorAll('#bgSwatches .bg-swatch').forEach(s => {
-    s.classList.toggle('active', s.dataset.color === '#000000');
-  });
-  syncDurationUI();
-  syncTimingModeUI(); // v8z4b17f
-  syncMovementEasingModeUI(); // v8z4b17j
-  syncRotationEasingModeUI(); // v8z4b17q
-  syncScaleEasingModeUI(); // v8z4b17q
+
+  pushUndoSnapshot(cloneProjectStateSnapshot(prevState));
+  closeAll();
+  restoreState(cloneProjectStateSnapshot(projectResetBaseline));
   resetEditorZoom(); // v8z4b17y
-  applyTemplate('pan-lr');
-  activeIdx = 0;
   normalizeProjectArrays();
   validateProjectState('after-reset');
   syncCustomizePanel();
@@ -15429,7 +15451,13 @@ function loadImage(file, onDoneCallback) {
           syncRotationEasingModeUI();
           syncScaleEasingModeUI();
           initDefaultFrames();
-          requestAnimationFrame(() => { applyTemplate('pan-lr'); });
+          requestAnimationFrame(() => {
+            applyTemplate('pan-lr');
+            captureProjectResetBaseline('new-image-template');
+            undoStack.length = 0;
+            redoStack.length = 0;
+            updateUndoRedoUI();
+          });
           updateToolbarLabels();
           showStatus('Ajuste os frames · ▶ para preview');
         } else {
@@ -16852,6 +16880,19 @@ function _smartFrameVelocity(frameIdx, segIdxOwner, vAvgOwner, suppressLoop) {
   return Number.isFinite(vAvgOwner) ? vAvgOwner : 0;
 }
 
+function _limitSmartHermiteSlopes(vStart, vEnd, vAvg) {
+  if (!Number.isFinite(vAvg) || vAvg <= 0) return { m0: 1, m1: 1 };
+  let m0 = Number.isFinite(vStart) ? Math.max(0, vStart / vAvg) : 0;
+  let m1 = Number.isFinite(vEnd)   ? Math.max(0, vEnd   / vAvg) : 0;
+  const sum = m0 + m1;
+  if (sum > 3) {
+    const scale = 3 / sum;
+    m0 *= scale;
+    m1 *= scale;
+  }
+  return { m0, m1 };
+}
+
 // Recebe seg (índice do trecho) e tt em [0,1] (tempo local dentro do trecho)
 // e devolve o progresso de arco-comprimento em [0,1].
 // Em caso de erro ou trecho 0.0s, devolve `tt` (fallback linear seguro).
@@ -16868,17 +16909,13 @@ function computeSmartMovementProgress(seg, tt) {
     if (!Number.isFinite(vAvg) || vAvg <= 0) return tt;
     let vStart = _smartFrameVelocity(segs, seg, vAvg); // saindo do último frame
     let vEnd   = _smartFrameVelocity(0,    seg, vAvg); // chegando no primeiro frame
-    if (!Number.isFinite(vStart) || vStart < 0) vStart = 0;
-    if (!Number.isFinite(vEnd)   || vEnd   < 0) vEnd   = 0;
-    const vMax = 3 * vAvg;
-    if (vStart > vMax) vStart = vMax;
-    if (vEnd   > vMax) vEnd   = vMax;
+    const slopes = _limitSmartHermiteSlopes(vStart, vEnd, vAvg);
     const tau = Math.max(0, Math.min(1, tt));
     const tau2 = tau * tau, tau3 = tau2 * tau;
     const h10 = tau3 - 2 * tau2 + tau;
     const h01 = -2 * tau3 + 3 * tau2;
     const h11 = tau3 - tau2;
-    const p = h10 * vStart * dur + h01 * curveLen + h11 * vEnd * dur;
+    const p = (h10 * slopes.m0 + h01 + h11 * slopes.m1) * curveLen;
     const progress = p / curveLen;
     if (!Number.isFinite(progress)) return tt;
     return Math.max(0, Math.min(1, progress));
@@ -16905,22 +16942,20 @@ function computeSmartMovementProgress(seg, tt) {
   let vStart = _smartFrameVelocity(seg,     seg, vAvg, true);
   let vEnd   = _smartFrameVelocity(seg + 1, seg, vAvg, true);
 
-  // Saneamento e clamp para monotonicidade Hermite (vlim = 3*vAvg).
-  if (!Number.isFinite(vStart) || vStart < 0) vStart = 0;
-  if (!Number.isFinite(vEnd)   || vEnd   < 0) vEnd   = 0;
-  const vMax = 3 * vAvg;
-  if (vStart > vMax) vStart = vMax;
-  if (vEnd   > vMax) vEnd   = vMax;
+  // Saneamento e limiter monotônico: slopes normalizados m0/m1 >= 0 e
+  // m0+m1 <= 3. Isso evita overshoot e a falsa parada interna quando ambos
+  // os extremos chegam ao clamp máximo.
+  const slopes = _limitSmartHermiteSlopes(vStart, vEnd, vAvg);
 
-  // Hermite cúbico em τ ∈ [0,1] com p0=0, p1=curveLen, m0=vStart, m1=vEnd,
-  // tempo Δ = dur. Garante p(0)=0, p(1)=curveLen, p'(0)=vStart, p'(1)=vEnd.
+  // Hermite cúbico em τ ∈ [0,1] com p0=0, p1=curveLen e slopes normalizados
+  // m0/m1. Garante p(0)=0, p(1)=curveLen e progresso monotônico.
   const tau  = Math.max(0, Math.min(1, tt));
   const tau2 = tau * tau;
   const tau3 = tau2 * tau;
   const h10  = tau3 - 2 * tau2 + tau;
   const h01  = -2 * tau3 + 3 * tau2;
   const h11  = tau3 - tau2;
-  const p = h10 * vStart * dur + h01 * curveLen + h11 * vEnd * dur;
+  const p = (h10 * slopes.m0 + h01 + h11 * slopes.m1) * curveLen;
 
   let progress = p / curveLen;
   if (!Number.isFinite(progress)) return tt; // fallback duro
@@ -17983,6 +18018,7 @@ function applyFrameData(data) {
   // Projeto carregado = sem template ativo
   const tbTpl = document.getElementById('tbTemplate');
   if (tbTpl) tbTpl.textContent = 'Livre';
+  captureProjectResetBaseline('project-load');
   updateUndoRedoUI();
   if (imgNatW) {
     showStatus('Projeto carregado!');
