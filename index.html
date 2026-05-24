@@ -1,13 +1,18 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b22d                                     ║
+║  Versão: v8z4b22e                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b22e                                            ║
+║    ux: Confirmar/Cancelar da inserção assistida      ║
+║        ficam exclusivamente na barra inferior;       ║
+║    fix: removidos controles duplicados de            ║
+║         confirmação/cancelamento dentro do ghost;    ║
 ║  v8z4b22d                                            ║
 ║    fix: ghost de inserção em curva fora do viewport  ║
 ║         não é mais clampado para dentro do Stage     ║
@@ -366,7 +371,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b22d — ghost insertion viewport fix: ghost nasce no ponto real da curva mesmo fora do Stage visível; clamp removido de posição do ghost; barra fixa de inserção garante acesso a Confirmar/Cancelar mesmo com ghost fora da área; inserção preserva curva local via De Casteljau; Stage visível tratado como viewport (prepara zoom/pan futuro). -->
+<!-- Arco Motion App — v8z4b22e — insertion ux: Confirmar/Cancelar da inserção assistida ficam exclusivamente na barra inferior; removidos controles duplicados de confirmação/cancelamento dentro do ghost frame. -->
 <!-- Arco Motion App — v8z4b21a — implement real cubic in-out handles: curvesV2 com handles in/out independentes por frame; Bézier cúbica C(P0,C1,C2,P3); avaliação e Preview/MP4 usam cubic; JSON salva curvesV2; compatibilidade com arquivos antigos via conversão ctrlPts→curvesV2. -->
 <!-- v8z4b20d — fix handle sync after frame move and visible segment handles: BLOCO A — sincroniza handles visualmente ao mover frame; loopCtrlPt recalculado via t/perpX/perpY quando F1 ou último frame é movido; BLOCO B — applyFrameConnectedHandleEdit armazena t/perp para loop; syncCtrlPtsForFrame estendido para trecho de loop; BLOCO C — threshold de 8px reduzido para 2px em getFrameHandleGeometryForTarget (handles manuais ficam estáveis); BLOCO D — ghost handles do lado complementar do trecho ativo (não-interativo); BLOCO E — ensureSegmentArraysIntegrity() normaliza ctrlPts, ctrlPtManual, segBlurSettings, rotEasings, scaleEasings, segDurations; deleteActiveFrame corrigido para segBlurSettings; buildProjectData chama ensure antes de salvar; BLOCO F — loop corrigido; BLOCO G — midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo preservado; BLOCO I — JSON/schema inalterado; sem campo novo -->
 <!DOCTYPE html>
@@ -551,25 +556,13 @@ body.recording #editorZoomCtrl{display:none;}
   position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:50%;
   background:rgba(255,255,255,.9);transform:translate(-50%,-50%) scale(var(--ez-inv,1));
 }
-.ghost-frame .ghost-actions{
-  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(var(--ez-inv,1));
-  transform-origin:center center;display:flex;gap:10px;align-items:center;justify-content:center;
-  pointer-events:auto;white-space:nowrap;z-index:90;
-}
-.ghost-frame .ghost-action{
-  width:44px;height:44px;border-radius:22px;border:1px solid rgba(255,255,255,.22);
-  background:rgba(28,28,30,.92);color:#fff;font-size:18px;font-weight:800;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;
-  -webkit-user-select:none;user-select:none;touch-action:none;pointer-events:auto;
-  -webkit-tap-highlight-color:transparent;
-}
-.ghost-frame .ghost-action.ok{background:rgba(4,255,242,.92);color:#000;border-color:rgba(0,0,0,.18);}
-.ghost-frame .ghost-action.cancel{background:rgba(28,28,30,.92);color:rgba(255,255,255,.9);}
+/* v8z4b22e: .ghost-actions e .ghost-action removidos — confirmação/cancelamento
+   ficam exclusivamente na barra inferior (#insertionActionBar). */
 body.inserting-frame .frame,
 body.inserting-frame .ctrl-pt,
 body.inserting-frame .frame-in-handle,
 body.inserting-frame .frame-out-handle{pointer-events:none !important;}
-/* v8z4b22d — Barra fixa de inserção: sempre visível no viewport mesmo com ghost fora do Stage */
+/* v8z4b22e — Barra fixa de inserção: única origem de Confirmar/Cancelar na inserção assistida */
 #insertionActionBar{
   position:fixed;
   bottom:calc(env(safe-area-inset-bottom, 0px) + 76px);
@@ -1994,9 +1987,9 @@ body.cust-open #toolbar{
   </div>
 </div>
 
-<!-- v8z4b22d — Barra fixa de inserção assistida: sempre visível no viewport,
-     aparece somente durante isInsertingFrame; z-index acima de tudo para que
-     Confirmar/Cancelar fiquem acessíveis mesmo com ghost fora do Stage visível. -->
+<!-- v8z4b22e — Barra fixa de inserção assistida: única origem de Confirmar/Cancelar;
+     sempre visível no viewport (position:fixed); aparece somente durante isInsertingFrame;
+     z-index acima de tudo para que os controles fiquem acessíveis mesmo com ghost fora da área. -->
 <div id="insertionActionBar" role="toolbar" aria-label="Modo de inserção de frame">
   <button id="insertionCancelBtn" class="ins-bar-btn cancel" type="button"
     title="Cancelar inserção" aria-label="Cancelar">×</button>
@@ -2284,7 +2277,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b22d</span><br><span id="appVersionNameText">ghost insertion viewport fix</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b22e</span><br><span id="appVersionNameText">insertion ux: confirm/cancel na barra inferior</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4625,8 +4618,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b22d';
-const APP_VERSION_NAME = 'ghost insertion viewport fix';
+const APP_VERSION = 'v8z4b22e';
+const APP_VERSION_NAME = 'insertion ux: confirm/cancel na barra inferior';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10531,8 +10524,8 @@ function isGhostInteractionActive(mode) {
 
 function isGhostControlTarget(target) {
   return !!(target && target.closest &&
-    // v8z4b22d: inclui barra fixa de inserção (#insertionActionBar) como controle do ghost
-    target.closest('.ghost-frame, .global-handle.ghost-transform, .ghost-actions, .ghost-action, #insertionActionBar, .ins-bar-btn'));
+    // v8z4b22e: .ghost-actions/.ghost-action removidos — apenas barra inferior é controle de ação
+    target.closest('.ghost-frame, .global-handle.ghost-transform, #insertionActionBar, .ins-bar-btn'));
 }
 
 function getGhostHandlePos() {
@@ -11037,38 +11030,16 @@ function setDefaultCurvesV2LoopHandles() {
   };
 }
 
+// v8z4b22e: ghost não tem mais botões internos — Confirmar/Cancelar ficam
+// exclusivamente na barra inferior (#insertionActionBar).
 function createGhostFrameElement() {
   if (ghostFrameEl) ghostFrameEl.remove();
   ghostFrameEl = document.createElement('div');
   ghostFrameEl.className = 'ghost-frame';
   ghostFrameEl.innerHTML =
-    '<div class="ghost-num"></div><div class="ghost-center"></div>' +
-    '<div class="ghost-actions">' +
-    '<button class="ghost-action ok" type="button" title="Confirmar">✓</button>' +
-    '<button class="ghost-action cancel" type="button" title="Cancelar">×</button>' +
-    '</div>';
+    '<div class="ghost-num"></div><div class="ghost-center"></div>';
   stage.appendChild(ghostFrameEl);
   ghostFrameEl.addEventListener('pointerdown', startGhostFrameDrag);
-  const wireGhostAction = (selector, action) => {
-    const btn = ghostFrameEl.querySelector(selector);
-    if (!btn) return;
-    const run = e => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!isInsertingFrame || !ghostFrame) {
-        resetGhostInteraction();
-        return;
-      }
-      ghostInteraction.mode = 'action';
-      ghostInteraction.pointerId = e.pointerId ?? null;
-      action();
-    };
-    btn.addEventListener('pointerdown', run);
-    btn.addEventListener('touchstart', run, { passive: false });
-    btn.addEventListener('click', run);
-  };
-  wireGhostAction('.ghost-action.ok', confirmAssistedFrameInsertion);
-  wireGhostAction('.ghost-action.cancel', cancelAssistedFrameInsertion);
 }
 
 function renderGhostFrame() {
@@ -11083,7 +11054,7 @@ function renderGhostFrame() {
   updateGhostTransformHandle();
 }
 
-// v8z4b22d: clamp removido — ghost pode existir fora da área visível do Stage.
+// v8z4b22d/e: clamp removido — ghost pode existir fora da área visível do Stage.
 // O Stage visível é tratado como viewport de edição, não como limite absoluto do projeto.
 function updateGhostFramePosition(cx, cy) {
   if (!ghostFrame) return;
@@ -11103,7 +11074,7 @@ function updateGhostFrameTopLeft(x, y) {
 
 function startGhostFrameDrag(e) {
   if (!isInsertingFrame || !ghostFrame) return;
-  if (e.target.closest('.ghost-action')) return;
+  // v8z4b22e: .ghost-action removido do ghost — guarda desnecessária eliminada
   if (ghostInteraction.mode !== 'idle') return;
   e.preventDefault();
   e.stopPropagation();
@@ -11141,7 +11112,7 @@ function cancelAssistedFrameInsertion() {
   resetGhostInteraction();
   isInsertingFrame = false;
   document.body.classList.remove('inserting-frame');
-  // v8z4b22d: esconder barra fixa de inserção
+  // v8z4b22e: esconder barra fixa de inserção
   hideInsertionActionBar();
   if (globalHandleEl) {
     globalHandleEl.classList.remove('show');
@@ -11163,7 +11134,7 @@ function clearAssistedFrameInsertionTransientState() {
   resetGhostInteraction();
   isInsertingFrame = false;
   document.body.classList.remove('inserting-frame');
-  // v8z4b22d: esconder barra fixa de inserção
+  // v8z4b22e: esconder barra fixa de inserção
   hideInsertionActionBar();
   if (globalHandleEl) {
     globalHandleEl.classList.remove('show');
@@ -11171,7 +11142,7 @@ function clearAssistedFrameInsertionTransientState() {
   }
 }
 
-// v8z4b22d — Barra fixa de inserção: Confirmar/Cancelar sempre visíveis no viewport.
+// v8z4b22e — Barra fixa de inserção: única origem de Confirmar/Cancelar da inserção assistida.
 // A barra é position:fixed, portanto independente da posição do ghost no Stage.
 function showInsertionActionBar() {
   const bar = document.getElementById('insertionActionBar');
@@ -11263,7 +11234,7 @@ function buildPendingFrameInsertion() {
     rotation = frameRotations[a] || 0;
   }
 
-  // v8z4b22d: Stage visível é viewport, não limite absoluto do projeto.
+  // v8z4b22d/e: Stage visível é viewport, não limite absoluto do projeto.
   // Posição do ghost NÃO é clampada ao stageW/stageH — curva pode passar fora da área visível.
   // suggestedOnCurve permanece true quando calculado a partir da curva real.
 
@@ -11296,7 +11267,7 @@ function insertFrameAfterActive() {
   document.body.classList.add('inserting-frame');
   createGhostFrameElement();
   renderGhostFrame();
-  // v8z4b22d: mostrar barra fixa de inserção — acessível mesmo com ghost fora do viewport
+  // v8z4b22e: mostrar barra fixa de inserção — única origem de Confirmar/Cancelar
   showInsertionActionBar();
   showStatus('Posicione o novo frame');
 }
@@ -19484,7 +19455,7 @@ function nudgeRotation(delta, reset=false) {
 // Sincronizar UI de formato na inicialização
 syncRatioUI();
 
-// v8z4b22d — Inicializar barra fixa de inserção assistida
+// v8z4b22e — Inicializar barra fixa de inserção assistida (única origem de Confirmar/Cancelar)
 initInsertionActionBar();
 
 
