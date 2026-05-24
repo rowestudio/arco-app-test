@@ -1,13 +1,18 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b21d                                     ║
+║  Versão: v8z4b21e                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b21e                                            ║
+║    fix: restore local loop influence in smart        ║
+║         movement — loop volta a participar como      ║
+║         vizinho real de F1 e do último frame;        ║
+║         limiter monotônico impede falsa parada;      ║
 ║  v8z4b21d                                            ║
 ║    fix: project reset baseline and smart loop        ║
 ║         continuity — Reset Project restaura o        ║
@@ -338,7 +343,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b21d — fix project reset baseline and smart loop continuity: Reset Project restaura snapshot profundo do projeto carregado/template inicial da sessão, com undo/redo único; smart movement mantém suppressLoop nos trechos normais e aplica limiter monotônico local no loop para evitar trancos sem contaminar F1→F2. -->
+<!-- Arco Motion App — v8z4b21e — restore local loop influence in smart movement: Movimento inteligente usa vizinhos imediatos reais; loop participa como vizinho local de F1 e do último frame; limiter monotônico preserva continuidade e impede falsa parada interna. -->
 <!-- Arco Motion App — v8z4b21a — implement real cubic in-out handles: curvesV2 com handles in/out independentes por frame; Bézier cúbica C(P0,C1,C2,P3); avaliação e Preview/MP4 usam cubic; JSON salva curvesV2; compatibilidade com arquivos antigos via conversão ctrlPts→curvesV2. -->
 <!-- v8z4b20d — fix handle sync after frame move and visible segment handles: BLOCO A — sincroniza handles visualmente ao mover frame; loopCtrlPt recalculado via t/perpX/perpY quando F1 ou último frame é movido; BLOCO B — applyFrameConnectedHandleEdit armazena t/perp para loop; syncCtrlPtsForFrame estendido para trecho de loop; BLOCO C — threshold de 8px reduzido para 2px em getFrameHandleGeometryForTarget (handles manuais ficam estáveis); BLOCO D — ghost handles do lado complementar do trecho ativo (não-interativo); BLOCO E — ensureSegmentArraysIntegrity() normaliza ctrlPts, ctrlPtManual, segBlurSettings, rotEasings, scaleEasings, segDurations; deleteActiveFrame corrigido para segBlurSettings; buildProjectData chama ensure antes de salvar; BLOCO F — loop corrigido; BLOCO G — midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo preservado; BLOCO I — JSON/schema inalterado; sem campo novo -->
 <!DOCTYPE html>
@@ -2172,7 +2177,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b21d</span><br><span id="appVersionNameText">fix project reset baseline and smart loop continuity</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b21e</span><br><span id="appVersionNameText">restore local loop influence in smart movement</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4513,8 +4518,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b21d';
-const APP_VERSION_NAME = 'fix project reset baseline and smart loop continuity';
+const APP_VERSION = 'v8z4b21e';
+const APP_VERSION_NAME = 'restore local loop influence in smart movement';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -9936,7 +9941,7 @@ function captureProjectResetBaseline(reason) {
   ensureFramePauses();
   ensureSegmentArraysIntegrity();
   projectResetBaseline = cloneProjectStateSnapshot(captureState());
-  if (window._arcoDebug) console.info('[Arco v8z4b21d] project reset baseline updated:', reason || 'unknown');
+  if (window._arcoDebug) console.info('[Arco v8z4b21e] project reset baseline updated:', reason || 'unknown');
 }
 
 function projectStateEquals(a, b) {
@@ -16841,12 +16846,10 @@ function _smartFramePauseAt(frameIdx) {
 // vAvg passada serve de fallback (avg do trecho corrente) quando não há
 // vizinho válido.
 // v8z4b17o: considera trecho de fechamento N→1 quando Loop ativo.
-// v8z4b21c: suppressLoop — quando true, o trecho de fechamento N→1 (loop) não
-// contamina o cálculo de velocidade de continuidade dos trechos normais.
-// Isso impede que um loop curto crie falsa desaceleração/parada nos frames
-// de fronteira (primeiro e último frame) dos segmentos normais.
-// Para o trecho de loop em si (seg === segs), suppressLoop deve ser false.
-function _smartFrameVelocity(frameIdx, segIdxOwner, vAvgOwner, suppressLoop) {
+// v8z4b21e: o Movimento inteligente é local. Cada frame mistura apenas os
+// trechos que realmente encostam nele; com loop ativo, o loop é vizinho real
+// do primeiro e do último frame, mas nunca entra em frames internos.
+function _smartFrameVelocity(frameIdx, vAvgOwner) {
   // Pausa no frame: continuidade exige velocidade zero.
   if (_smartFramePauseAt(frameIdx) > 0) return 0;
 
@@ -16854,25 +16857,22 @@ function _smartFrameVelocity(frameIdx, segIdxOwner, vAvgOwner, suppressLoop) {
   const prevSeg = frameIdx - 1;
   const nextSeg = frameIdx;
 
-  // Velocidade média do trecho de fechamento N→1.
-  // v8z4b21c: quando suppressLoop=true, vLoop não participa do cálculo dos
-  // trechos normais — evita contaminação do Hermite pelo loop curto.
-  const vLoop = (!suppressLoop && loopEnabled && Number.isFinite(loopDuration) && loopDuration > 0) ? (() => {
+  // Velocidade média do trecho de fechamento N→1, usada só quando o loop é
+  // vizinho imediato do frame consultado.
+  const vLoop = (loopEnabled && Number.isFinite(loopDuration) && loopDuration > 0) ? (() => {
     const len = measureLoopCurveLength();
     return (Number.isFinite(len) && len > 1e-6) ? len / loopDuration : null;
   })() : null;
 
   // Para o primeiro frame (0): trecho "anterior" é o trecho de loop N→1 se ativo
-  // v8z4b21c: suppressLoop=true → vPrev=null para frame 0 (endpoint, sem vizinho loop).
   const vPrev = (prevSeg >= 0)
     ? _smartSegmentVAvg(prevSeg)
-    : (!suppressLoop && loopEnabled ? vLoop : null);
+    : (loopEnabled ? vLoop : null);
 
   // Para o último frame (normalSegs): trecho "seguinte" é o trecho de loop N→1 se ativo
-  // v8z4b21c: suppressLoop=true → vNext=null para frame normalSegs (endpoint, sem vizinho loop).
   const vNext = (nextSeg < normalSegs)
     ? _smartSegmentVAvg(nextSeg)
-    : (!suppressLoop && loopEnabled ? vLoop : null);
+    : (loopEnabled ? vLoop : null);
 
   if (vPrev != null && vNext != null) return 0.5 * (vPrev + vNext);
   if (vPrev != null) return vPrev;
@@ -16907,8 +16907,8 @@ function computeSmartMovementProgress(seg, tt) {
     if (!Number.isFinite(curveLen) || curveLen <= 1e-6) return tt;
     const vAvg = curveLen / dur;
     if (!Number.isFinite(vAvg) || vAvg <= 0) return tt;
-    let vStart = _smartFrameVelocity(segs, seg, vAvg); // saindo do último frame
-    let vEnd   = _smartFrameVelocity(0,    seg, vAvg); // chegando no primeiro frame
+    let vStart = _smartFrameVelocity(segs, vAvg); // saindo do último frame
+    let vEnd   = _smartFrameVelocity(0,    vAvg); // chegando no primeiro frame
     const slopes = _limitSmartHermiteSlopes(vStart, vEnd, vAvg);
     const tau = Math.max(0, Math.min(1, tt));
     const tau2 = tau * tau, tau3 = tau2 * tau;
@@ -16934,13 +16934,10 @@ function computeSmartMovementProgress(seg, tt) {
   if (!Number.isFinite(vAvg) || vAvg <= 0) return tt;
 
   // Velocidades nas extremidades do trecho.
-  // v8z4b21c: suppressLoop=true — o trecho de loop não contamina o easing dos
-  // trechos normais. Sem isso, um loop curto inflava as velocidades nos frames
-  // de fronteira e, com o clamp a 3*vAvg, a derivada Hermite colapsava para
-  // zero no meio da curva (falsa parada). O trecho de loop usa suppressLoop=false
-  // (ver ramo acima) para manter continuidade própria.
-  let vStart = _smartFrameVelocity(seg,     seg, vAvg, true);
-  let vEnd   = _smartFrameVelocity(seg + 1, seg, vAvg, true);
+  // v8z4b21e: usar vizinhos imediatos reais. O loop entra somente quando toca
+  // o frame avaliado (F1 ou último frame); trechos internos não o veem.
+  let vStart = _smartFrameVelocity(seg,     vAvg);
+  let vEnd   = _smartFrameVelocity(seg + 1, vAvg);
 
   // Saneamento e limiter monotônico: slopes normalizados m0/m1 >= 0 e
   // m0+m1 <= 3. Isso evita overshoot e a falsa parada interna quando ambos
