@@ -1,13 +1,18 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b22b                                     ║
+║  Versão: v8z4b22c                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b22c                                            ║
+║    fix: interação exclusiva do ghost frame; scale/   ║
+║         rotate não acionam movimento simultâneo;     ║
+║         centro atual pós-drag é preservado; Stage    ║
+║         ignora controles do ghost;                   ║
 ║  v8z4b22b                                            ║
 ║    fix/ux: OK/Cancelar do ghost funcionam dentro     ║
 ║         do frame fantasma; ghost permite posição,    ║
@@ -352,7 +357,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b22b — assisted frame insertion ghost UX fix: OK/Cancelar funcionam dentro do ghost; ghost permite posição, escala e rotação antes do OK; confirmação cria undo único e JSON ignora estado transitório; curvesV2/Preview/MP4 preservados. -->
+<!-- Arco Motion App — v8z4b22c — ghost frame exclusive interaction fix: handler de escala/rotação não aciona movimento simultâneo; scale/rotate usam centro atual após drag; Stage ignora eventos iniciados em controles do ghost. -->
 <!-- Arco Motion App — v8z4b21a — implement real cubic in-out handles: curvesV2 com handles in/out independentes por frame; Bézier cúbica C(P0,C1,C2,P3); avaliação e Preview/MP4 usam cubic; JSON salva curvesV2; compatibilidade com arquivos antigos via conversão ctrlPts→curvesV2. -->
 <!-- v8z4b20d — fix handle sync after frame move and visible segment handles: BLOCO A — sincroniza handles visualmente ao mover frame; loopCtrlPt recalculado via t/perpX/perpY quando F1 ou último frame é movido; BLOCO B — applyFrameConnectedHandleEdit armazena t/perp para loop; syncCtrlPtsForFrame estendido para trecho de loop; BLOCO C — threshold de 8px reduzido para 2px em getFrameHandleGeometryForTarget (handles manuais ficam estáveis); BLOCO D — ghost handles do lado complementar do trecho ativo (não-interativo); BLOCO E — ensureSegmentArraysIntegrity() normaliza ctrlPts, ctrlPtManual, segBlurSettings, rotEasings, scaleEasings, segDurations; deleteActiveFrame corrigido para segBlurSettings; buildProjectData chama ensure antes de salvar; BLOCO F — loop corrigido; BLOCO G — midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo preservado; BLOCO I — JSON/schema inalterado; sem campo novo -->
 <!DOCTYPE html>
@@ -2222,7 +2227,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b22b</span><br><span id="appVersionNameText">assisted frame insertion ghost UX fix</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b22c</span><br><span id="appVersionNameText">ghost frame exclusive interaction fix</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4563,8 +4568,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b22b';
-const APP_VERSION_NAME = 'assisted frame insertion ghost UX fix';
+const APP_VERSION = 'v8z4b22c';
+const APP_VERSION_NAME = 'ghost frame exclusive interaction fix';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4660,6 +4665,20 @@ let pendingFrameInsert = null;
 let ghostFrame = null;
 let ghostFrameEl = null;
 let ghostDragState = null;
+let ghostInteraction = {
+  mode: 'idle',
+  pointerId: null,
+  startPointerX: 0,
+  startPointerY: 0,
+  startGhostX: 0,
+  startGhostY: 0,
+  startScale: 1,
+  startRotation: 0,
+  startCenterX: 0,
+  startCenterY: 0,
+  startDistance: 0,
+  startAngle: 0
+};
 let generatedUrl = null;
 let projectResetBaseline = null;
 
@@ -10432,6 +10451,32 @@ function getGhostFrameCenter() {
   return { cx: ghostFrame.x + ghostFrame.w / 2, cy: ghostFrame.y + ghostFrame.h / 2 };
 }
 
+function resetGhostInteraction() {
+  ghostInteraction = {
+    mode: 'idle',
+    pointerId: null,
+    startPointerX: 0,
+    startPointerY: 0,
+    startGhostX: 0,
+    startGhostY: 0,
+    startScale: 1,
+    startRotation: 0,
+    startCenterX: 0,
+    startCenterY: 0,
+    startDistance: 0,
+    startAngle: 0
+  };
+}
+
+function isGhostInteractionActive(mode) {
+  return ghostInteraction && ghostInteraction.mode === mode;
+}
+
+function isGhostControlTarget(target) {
+  return !!(target && target.closest &&
+    target.closest('.ghost-frame, .global-handle.ghost-transform, .ghost-actions, .ghost-action'));
+}
+
 function getGhostHandlePos() {
   if (!ghostFrame) return { x: 0, y: 0, centered: false };
   const { cx, cy } = getGhostFrameCenter();
@@ -10492,22 +10537,39 @@ function ensureGlobalHandle() {
 
   globalHandleEl.addEventListener('pointerdown', e => {
     if (isInsertingFrame) {
-      if (!ghostFrame || isPreviewing || editorPanMode) return;
+      if (!ghostFrame || isPreviewing || editorPanMode || ghostInteraction.mode !== 'idle') return;
       e.preventDefault();
       e.stopPropagation();
       globalHandleEl.setPointerCapture?.(e.pointerId);
       const { cx, cy } = getGhostFrameCenter();
       const hp = getGhostHandlePos();
+      const startDistance = Math.max(1, Math.hypot(hp.x - cx, hp.y - cy));
+      const startAngle = Math.atan2(hp.y - cy, hp.x - cx);
+      ghostInteraction = {
+        mode: 'scale',
+        pointerId: e.pointerId,
+        startPointerX: e.clientX,
+        startPointerY: e.clientY,
+        startGhostX: ghostFrame.x,
+        startGhostY: ghostFrame.y,
+        startScale: ghostFrame.w,
+        startRotation: ghostFrame.rotation || 0,
+        startCenterX: cx,
+        startCenterY: cy,
+        startDistance,
+        startAngle
+      };
       handleDragState = {
         isGhost: true,
+        pointerId: e.pointerId,
         startX: e.clientX,
         startY: e.clientY,
         startW: ghostFrame.w,
         startH: ghostFrame.h,
         startRot: ghostFrame.rotation || 0,
         cx, cy,
-        initDist: Math.max(1, Math.hypot(hp.x - cx, hp.y - cy)),
-        initAngle: Math.atan2(hp.y - cy, hp.x - cx),
+        initDist: startDistance,
+        initAngle: startAngle,
         mode: null
       };
       return;
@@ -10537,7 +10599,9 @@ function ensureGlobalHandle() {
 
   globalHandleEl.addEventListener('pointermove', e => {
     if (!handleDragState) return;
+    if (handleDragState.pointerId != null && e.pointerId != null && e.pointerId !== handleDragState.pointerId) return;
     e.preventDefault();
+    e.stopPropagation();
     const sr = stage.getBoundingClientRect();
     // Converter para coords do stage (considera zoom/pan)
     const px = (e.clientX - sr.left) / editorZoomScale;
@@ -10557,6 +10621,7 @@ function ensureGlobalHandle() {
         const angleDelta = Math.abs(currentAngle - initAngle) * prevDist; // arc length
         // Se a mudança de distância domina → escala; se ângulo domina → rotação
         handleDragState.mode = distDelta >= angleDelta ? 'scale' : 'rotate';
+        if (handleDragState.isGhost) ghostInteraction.mode = handleDragState.mode;
       } else {
         return;
       }
@@ -10564,6 +10629,7 @@ function ensureGlobalHandle() {
 
     const ar = ratioMap[currentRatio];
     if (handleDragState.mode === 'scale') {
+      if (handleDragState.isGhost && !isGhostInteractionActive('scale')) return;
       const ratio = Math.max(0.12, Math.min(6, dist / initDist));
       const nw = Math.max(30, startW * ratio);
       const nh = nw / ar;
@@ -10586,6 +10652,7 @@ function ensureGlobalHandle() {
       if (sn) sn.textContent = pct + '%';
       if (ss) { ss.value = pct; if (typeof updateSliderFill === 'function') updateSliderFill(ss); }
     } else {
+      if (handleDragState.isGhost && !isGhostInteractionActive('rotate')) return;
       // Acumular delta angular incrementalmente — sem normalizar, preserva voltas completas
       const prevAngle = handleDragState.lastAngle !== undefined ? handleDragState.lastAngle : initAngle;
       let delta = currentAngle - prevAngle;
@@ -10615,10 +10682,12 @@ function ensureGlobalHandle() {
 
   const endHandle = e => {
     if (handleDragState) {
+      if (handleDragState.pointerId != null && e?.pointerId != null && e.pointerId !== handleDragState.pointerId) return;
       try { globalHandleEl.releasePointerCapture?.(e.pointerId); } catch(err) {}
       hideAngleIndicator();
       if (handleDragState.isGhost) {
         renderGhostFrame();
+        resetGhostInteraction();
       } else {
         // Sempre recalcular o melhor canto após soltar — sem memória
         handleCornerByFrame[handleDragState.fi] = 'br'; // reset para preferência padrão
@@ -10634,6 +10703,7 @@ function ensureGlobalHandle() {
   // Capturar ponteiro no stage para continuar drag mesmo saindo da alça
   stage.addEventListener('pointermove', e => {
     if (!handleDragState) return;
+    if (handleDragState.pointerId != null && e.pointerId != null && e.pointerId !== handleDragState.pointerId) return;
     globalHandleEl.dispatchEvent(new PointerEvent('pointermove', {
       clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId, bubbles: false
     }));
@@ -10927,6 +10997,12 @@ function createGhostFrameElement() {
     const run = e => {
       e.preventDefault();
       e.stopPropagation();
+      if (!isInsertingFrame || !ghostFrame) {
+        resetGhostInteraction();
+        return;
+      }
+      ghostInteraction.mode = 'action';
+      ghostInteraction.pointerId = e.pointerId ?? null;
       action();
     };
     btn.addEventListener('pointerdown', run);
@@ -10972,10 +11048,25 @@ function updateGhostFrameTopLeft(x, y) {
 function startGhostFrameDrag(e) {
   if (!isInsertingFrame || !ghostFrame) return;
   if (e.target.closest('.ghost-action')) return;
+  if (ghostInteraction.mode !== 'idle') return;
   e.preventDefault();
   e.stopPropagation();
   ghostFrameEl.setPointerCapture?.(e.pointerId);
   const sc = screenToStageCoord(e.clientX, e.clientY);
+  ghostInteraction = {
+    mode: 'drag',
+    pointerId: e.pointerId,
+    startPointerX: e.clientX,
+    startPointerY: e.clientY,
+    startGhostX: ghostFrame.x,
+    startGhostY: ghostFrame.y,
+    startScale: ghostFrame.w,
+    startRotation: ghostFrame.rotation || 0,
+    startCenterX: ghostFrame.x + ghostFrame.w / 2,
+    startCenterY: ghostFrame.y + ghostFrame.h / 2,
+    startDistance: 0,
+    startAngle: 0
+  };
   ghostDragState = {
     pointerId: e.pointerId,
     grabDX: sc.x - ghostFrame.x,
@@ -10991,6 +11082,7 @@ function cancelAssistedFrameInsertion() {
   pendingFrameInsert = null;
   insertFrameMode = null;
   ghostDragState = null;
+  resetGhostInteraction();
   isInsertingFrame = false;
   document.body.classList.remove('inserting-frame');
   if (globalHandleEl) {
@@ -11010,6 +11102,7 @@ function clearAssistedFrameInsertionTransientState() {
   pendingFrameInsert = null;
   insertFrameMode = null;
   ghostDragState = null;
+  resetGhostInteraction();
   isInsertingFrame = false;
   document.body.classList.remove('inserting-frame');
   if (globalHandleEl) {
@@ -13067,12 +13160,26 @@ stage.addEventListener('touchend', e => {
 // Pan de edição — ativo apenas quando editorPanMode está ligado e zoom > 1
 stage.addEventListener('pointerdown', (e) => {
   if (isInsertingFrame) {
-    if (e.target.closest('.ghost-action')) return;
+    if (ghostInteraction.mode !== 'idle' || isGhostControlTarget(e.target)) return;
     e.preventDefault();
     e.stopPropagation();
     const sc = screenToStageCoord(e.clientX, e.clientY);
     updateGhostFramePosition(sc.x, sc.y);
     stage.setPointerCapture?.(e.pointerId);
+    ghostInteraction = {
+      mode: 'drag',
+      pointerId: e.pointerId,
+      startPointerX: e.clientX,
+      startPointerY: e.clientY,
+      startGhostX: ghostFrame.x,
+      startGhostY: ghostFrame.y,
+      startScale: ghostFrame.w,
+      startRotation: ghostFrame.rotation || 0,
+      startCenterX: ghostFrame.x + ghostFrame.w / 2,
+      startCenterY: ghostFrame.y + ghostFrame.h / 2,
+      startDistance: 0,
+      startAngle: 0
+    };
     ghostDragState = { pointerId: e.pointerId };
     return;
   }
@@ -13109,12 +13216,13 @@ function onMove(e) {
     document.body.classList.remove('dragging');
     return;
   }
-  if (dragState || ctrlDragSeg !== -1 || panDragState || midpointDragState || frameTangentDragState || frameHandleDragState || ghostDragState) {
+  if (dragState || ctrlDragSeg !== -1 || panDragState || midpointDragState || frameTangentDragState || frameHandleDragState || ghostDragState || ghostInteraction.mode !== 'idle') {
     e.preventDefault();
   }
   const pos = getPos(e);
 
-  if (ghostDragState && isInsertingFrame) {
+  if (ghostDragState && isInsertingFrame && isGhostInteractionActive('drag')) {
+    if (ghostDragState.pointerId != null && e.pointerId != null && e.pointerId !== ghostDragState.pointerId) return;
     const sc = screenToStageCoord(pos.x, pos.y);
     if (Number.isFinite(ghostDragState.grabDX) && Number.isFinite(ghostDragState.grabDY)) {
       updateGhostFrameTopLeft(sc.x - ghostDragState.grabDX, sc.y - ghostDragState.grabDY);
@@ -13395,6 +13503,20 @@ function syncCtrlPtsForFrame(fi) {
 function endDrag(e) {
   // Evita duplo disparo: pointer + mouse no mesmo gesto
   if (window.PointerEvent && e && (e.type === 'mouseup' || e.type === 'touchend')) return;
+  if (isInsertingFrame && ghostInteraction.mode !== 'idle') {
+    if (ghostInteraction.pointerId != null && e?.pointerId != null && e.pointerId !== ghostInteraction.pointerId) return;
+    try { stage.releasePointerCapture?.(ghostInteraction.pointerId); } catch(err) {}
+    try { ghostFrameEl?.releasePointerCapture?.(ghostInteraction.pointerId); } catch(err) {}
+    try { globalHandleEl?.releasePointerCapture?.(ghostInteraction.pointerId); } catch(err) {}
+    if (ghostInteraction.mode === 'scale' || ghostInteraction.mode === 'rotate') {
+      handleDragState = null;
+      hideAngleIndicator();
+      renderGhostFrame();
+    }
+    ghostDragState = null;
+    resetGhostInteraction();
+    return;
+  }
   // Encerrar pan de edição
   if (panDragState) {
     try { stage.releasePointerCapture?.(panDragState.pointerId); } catch(err) {}

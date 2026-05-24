@@ -1,5 +1,14 @@
 # Changelog
 
+## v8z4b22c — ghost frame exclusive interaction fix
+
+- fix: interação exclusiva do ghost frame.
+- fix: handler de escala/rotação não aciona mais movimento simultâneo.
+- fix: scale/rotate do ghost usam centro atual após drag.
+- fix: Stage ignora eventos iniciados em controles do ghost.
+
+---
+
 ## v8z4b22b — assisted frame insertion ghost UX fix
 
 - fix: OK/Cancelar do ghost funcionando.
