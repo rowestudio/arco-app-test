@@ -1,5 +1,16 @@
 # Roadmap
 
+## Objetivo imediato — v8z4b22c (concluído)
+
+Correção restrita da exclusividade de interação do ghost frame.
+
+- ✅ Interação do ghost usa um único modo ativo por gesto.
+- ✅ Handler de escala/rotação não aciona movimento simultâneo.
+- ✅ Scale/rotate usam o centro atual do ghost após drag.
+- ✅ Stage ignora eventos iniciados em controles do ghost.
+
+---
+
 ## Objetivo imediato — v8z4b22b (concluído)
 
 Correção restrita da UX e funcionamento do modo assisted frame insertion.

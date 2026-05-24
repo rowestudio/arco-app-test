@@ -2,22 +2,22 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
-## v8z4b22b — assisted frame insertion ghost UX fix
+## v8z4b22c — ghost frame exclusive interaction fix
 
 Checklist obrigatório:
 
-1. Confirmar que exibe `v8z4b22b` na UI (Settings).
+1. Confirmar que exibe `v8z4b22c` na UI (Settings).
 2. Tocar `+` e confirmar que `frameCount`/pills não aumentam antes do OK.
 3. Confirmar que aparece ghost frame com rótulo futuro dentro do Stage.
-4. Confirmar que OK e Cancelar/X aparecem dentro do ghost, próximos ao centro.
-5. Confirmar que OK funciona e cria o frame definitivo.
-6. Confirmar que Cancelar funciona, remove o ghost e não altera frames/curvas/undo.
-7. Arrastar o ghost e confirmar que só o estado temporário muda.
-8. Usar a alça de transformação do ghost e confirmar ajuste de escala/rotação antes do OK.
-9. Confirmar que a inserção cria uma única ação de Undo.
-10. Exportar/salvar JSON durante modo ghost e confirmar que não há `isInsertingFrame`, `ghostFrame`, `pendingFrameInsert` ou `insertFrameMode`.
-11. Confirmar que Preview e MP4 continuam funcionando.
-12. Confirmar que Reset Project, Reset Curves curvesV2, handles OUT/IN independentes e Movimento inteligente com loop não regrediram.
+4. Mover o ghost primeiro e depois escalar; confirmar que não pula e não move junto.
+5. Mover o ghost primeiro e depois rotacionar; confirmar que não pula e não move junto.
+6. Escalar/rotacionar primeiro e mover depois; confirmar que o fluxo aprovado da 22B continua.
+7. Tocar no corpo do ghost e confirmar que apenas movimento acontece.
+8. Tocar no handler e confirmar que nunca centraliza o ghost na posição do dedo.
+9. Tocar OK e confirmar que cria o frame definitivo com uma única ação de Undo.
+10. Tocar Cancelar/X e confirmar que remove o ghost sem alterar frames/curvas/undo.
+11. Exportar/salvar JSON durante modo ghost e confirmar que não há `isInsertingFrame`, `ghostFrame`, `pendingFrameInsert` ou `insertFrameMode`.
+12. Confirmar que Preview, MP4, Reset Project, Reset Curves, handles OUT/IN independentes e Movimento inteligente com loop não regrediram.
 
 ---
 
