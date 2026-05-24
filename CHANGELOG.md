@@ -1,5 +1,14 @@
 # Changelog
 
+## v8z4b22b — assisted frame insertion ghost UX fix
+
+- fix: OK/Cancelar do ghost funcionando.
+- ux: ações OK/Cancelar passam para dentro do ghost.
+- feat/ux: ghost permite ajustar posição, escala e rotação antes de confirmar.
+- fix: confirmação gera um único Undo e não salva estado transitório no JSON.
+
+---
+
 ## v8z4b22a — assisted frame insertion
 
 Nova função de UX controlada sobre v8z4b21e. Base obrigatória: v8z4b21e.

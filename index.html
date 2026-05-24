@@ -1,13 +1,17 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b22a                                     ║
+║  Versão: v8z4b22b                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b22b                                            ║
+║    fix/ux: OK/Cancelar do ghost funcionam dentro     ║
+║         do frame fantasma; ghost permite posição,    ║
+║         escala e rotação antes de confirmar;         ║
 ║  v8z4b22a                                            ║
 ║    feat: assisted frame insertion — botão + entra    ║
 ║         em modo temporário com ghost frame; toque/   ║
@@ -348,7 +352,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b22a — assisted frame insertion: botão + entra em modo temporário com ghost frame translúcido; toque/drag posiciona; OK confirma criando undo único; Cancelar sai sem alterar projeto; curvesV2/Preview/MP4 preservados. -->
+<!-- Arco Motion App — v8z4b22b — assisted frame insertion ghost UX fix: OK/Cancelar funcionam dentro do ghost; ghost permite posição, escala e rotação antes do OK; confirmação cria undo único e JSON ignora estado transitório; curvesV2/Preview/MP4 preservados. -->
 <!-- Arco Motion App — v8z4b21a — implement real cubic in-out handles: curvesV2 com handles in/out independentes por frame; Bézier cúbica C(P0,C1,C2,P3); avaliação e Preview/MP4 usam cubic; JSON salva curvesV2; compatibilidade com arquivos antigos via conversão ctrlPts→curvesV2. -->
 <!-- v8z4b20d — fix handle sync after frame move and visible segment handles: BLOCO A — sincroniza handles visualmente ao mover frame; loopCtrlPt recalculado via t/perpX/perpY quando F1 ou último frame é movido; BLOCO B — applyFrameConnectedHandleEdit armazena t/perp para loop; syncCtrlPtsForFrame estendido para trecho de loop; BLOCO C — threshold de 8px reduzido para 2px em getFrameHandleGeometryForTarget (handles manuais ficam estáveis); BLOCO D — ghost handles do lado complementar do trecho ativo (não-interativo); BLOCO E — ensureSegmentArraysIntegrity() normaliza ctrlPts, ctrlPtManual, segBlurSettings, rotEasings, scaleEasings, segDurations; deleteActiveFrame corrigido para segBlurSettings; buildProjectData chama ensure antes de salvar; BLOCO F — loop corrigido; BLOCO G — midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo preservado; BLOCO I — JSON/schema inalterado; sem campo novo -->
 <!DOCTYPE html>
@@ -519,7 +523,7 @@ body.recording #editorZoomCtrl{display:none;}
 .ghost-frame{
   position:absolute;box-sizing:border-box;touch-action:none;overflow:visible;
   border:2px dashed rgba(255,255,255,.78);border-radius:10px;
-  background:rgba(255,255,255,.08);z-index:58;cursor:grab;
+  background:rgba(255,255,255,.08);z-index:86;cursor:grab;
   opacity:.78;box-shadow:0 0 0 1px rgba(0,0,0,.18);
 }
 .ghost-frame:active{cursor:grabbing;}
@@ -534,24 +538,23 @@ body.recording #editorZoomCtrl{display:none;}
   background:rgba(255,255,255,.9);transform:translate(-50%,-50%) scale(var(--ez-inv,1));
 }
 .ghost-frame .ghost-actions{
-  position:absolute;left:50%;bottom:-46px;transform:translateX(-50%) scale(var(--ez-inv,1));
-  transform-origin:top center;display:flex;gap:8px;align-items:center;justify-content:center;
-  pointer-events:auto;white-space:nowrap;
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(var(--ez-inv,1));
+  transform-origin:center center;display:flex;gap:10px;align-items:center;justify-content:center;
+  pointer-events:auto;white-space:nowrap;z-index:90;
 }
-.ghost-frame.actions-above .ghost-actions{bottom:auto;top:-46px;}
 .ghost-frame .ghost-action{
-  width:36px;height:36px;border-radius:18px;border:1px solid rgba(255,255,255,.22);
+  width:44px;height:44px;border-radius:22px;border:1px solid rgba(255,255,255,.22);
   background:rgba(28,28,30,.92);color:#fff;font-size:18px;font-weight:800;
   display:flex;align-items:center;justify-content:center;cursor:pointer;
-  -webkit-user-select:none;user-select:none;touch-action:manipulation;
+  -webkit-user-select:none;user-select:none;touch-action:none;pointer-events:auto;
+  -webkit-tap-highlight-color:transparent;
 }
 .ghost-frame .ghost-action.ok{background:rgba(4,255,242,.92);color:#000;border-color:rgba(0,0,0,.18);}
 .ghost-frame .ghost-action.cancel{background:rgba(28,28,30,.92);color:rgba(255,255,255,.9);}
 body.inserting-frame .frame,
 body.inserting-frame .ctrl-pt,
 body.inserting-frame .frame-in-handle,
-body.inserting-frame .frame-out-handle,
-body.inserting-frame .global-handle{pointer-events:none !important;}
+body.inserting-frame .frame-out-handle{pointer-events:none !important;}
 /* Overlay escuro fora do frame selecionado — SVG com recorte */
 #stageDimSvg{position:absolute;inset:0;pointer-events:none;z-index:3;display:none;}
 #stageDimSvg.show{display:block;}
@@ -591,6 +594,7 @@ body.inserting-frame .global-handle{pointer-events:none !important;}
   cursor:grab;touch-action:none;z-index:60;color:#000;
 }
 .global-handle.show{display:flex;}
+.global-handle.ghost-transform{z-index:88;pointer-events:auto;}
 .global-handle.centered{width:39px;height:39px;margin-left:-19px;margin-top:-19px;}
 .global-handle:active{cursor:grabbing;}
 .global-handle svg{width:20px;height:20px;display:block;pointer-events:none;}
@@ -2218,7 +2222,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b22a</span><br><span id="appVersionNameText">assisted frame insertion</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b22b</span><br><span id="appVersionNameText">assisted frame insertion ghost UX fix</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4559,8 +4563,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b22a';
-const APP_VERSION_NAME = 'assisted frame insertion';
+const APP_VERSION = 'v8z4b22b';
+const APP_VERSION_NAME = 'assisted frame insertion ghost UX fix';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10423,6 +10427,36 @@ function getHandlePosForFrame(i) {
   return { x: hp.x, y: hp.y, centered: false };
 }
 
+function getGhostFrameCenter() {
+  if (!ghostFrame) return { cx: 0, cy: 0 };
+  return { cx: ghostFrame.x + ghostFrame.w / 2, cy: ghostFrame.y + ghostFrame.h / 2 };
+}
+
+function getGhostHandlePos() {
+  if (!ghostFrame) return { x: 0, y: 0, centered: false };
+  const { cx, cy } = getGhostFrameCenter();
+  const rot = (ghostFrame.rotation || 0) * Math.PI / 180;
+  const hw = ghostFrame.w / 2, hh = ghostFrame.h / 2;
+  return {
+    x: cx + hw * Math.cos(rot) - hh * Math.sin(rot),
+    y: cy + hw * Math.sin(rot) + hh * Math.cos(rot),
+    centered: false
+  };
+}
+
+function updateGhostTransformHandle() {
+  ensureGlobalHandle();
+  if (!globalHandleEl || !isInsertingFrame || !ghostFrame || !imgNatW || isPreviewing) return;
+  const hp = getGhostHandlePos();
+  globalHandleEl.style.left = hp.x + 'px';
+  globalHandleEl.style.top  = hp.y + 'px';
+  globalHandleEl.style.transform = `scale(${1 / editorZoomScale})`;
+  globalHandleEl.classList.add('show');
+  globalHandleEl.classList.add('ghost-transform');
+  globalHandleEl.classList.remove('centered');
+  stage.appendChild(globalHandleEl);
+}
+
 function flipCornerHoriz(corner) {
   return corner.endsWith('r') ? corner.slice(0,-1)+'l' : corner.slice(0,-1)+'r';
 }
@@ -10457,7 +10491,27 @@ function ensureGlobalHandle() {
   stage.appendChild(globalHandleEl);
 
   globalHandleEl.addEventListener('pointerdown', e => {
-    if (isInsertingFrame) return;
+    if (isInsertingFrame) {
+      if (!ghostFrame || isPreviewing || editorPanMode) return;
+      e.preventDefault();
+      e.stopPropagation();
+      globalHandleEl.setPointerCapture?.(e.pointerId);
+      const { cx, cy } = getGhostFrameCenter();
+      const hp = getGhostHandlePos();
+      handleDragState = {
+        isGhost: true,
+        startX: e.clientX,
+        startY: e.clientY,
+        startW: ghostFrame.w,
+        startH: ghostFrame.h,
+        startRot: ghostFrame.rotation || 0,
+        cx, cy,
+        initDist: Math.max(1, Math.hypot(hp.x - cx, hp.y - cy)),
+        initAngle: Math.atan2(hp.y - cy, hp.x - cx),
+        mode: null
+      };
+      return;
+    }
     if (isPreviewing || !imgNatW || frameLocked[activeIdx]) return;
     if (editorPanMode) return; // pan mode: não usar handle
     e.preventDefault();
@@ -10513,6 +10567,15 @@ function ensureGlobalHandle() {
       const ratio = Math.max(0.12, Math.min(6, dist / initDist));
       const nw = Math.max(30, startW * ratio);
       const nh = nw / ar;
+      if (handleDragState.isGhost) {
+        ghostFrame.w = nw;
+        ghostFrame.h = nh;
+        ghostFrame.x = cx - nw / 2;
+        ghostFrame.y = cy - nh / 2;
+        pendingFrameInsert.ghostMoved = true;
+        renderGhostFrame();
+        return;
+      }
       frames[fi].w = nw; frames[fi].h = nh;
       frames[fi].x = cx - nw / 2; frames[fi].y = cy - nh / 2;
       // Atualizar scaleNum se custBar estiver aberto
@@ -10532,6 +10595,12 @@ function ensureGlobalHandle() {
       handleDragState.lastAngle = currentAngle;
       handleDragState.startRot = (handleDragState.startRot || 0) + delta * 180 / Math.PI;
       let deg = Math.max(-720, Math.min(720, handleDragState.startRot));
+      if (handleDragState.isGhost) {
+        ghostFrame.rotation = Math.round(deg * 10) / 10;
+        pendingFrameInsert.ghostMoved = true;
+        renderGhostFrame();
+        return;
+      }
       frameRotations[fi] = Math.round(deg * 10) / 10;
       showAngleIndicator(fi, frameRotations[fi]);
       const rs = document.getElementById('rotSlider');
@@ -10548,10 +10617,14 @@ function ensureGlobalHandle() {
     if (handleDragState) {
       try { globalHandleEl.releasePointerCapture?.(e.pointerId); } catch(err) {}
       hideAngleIndicator();
-      // Sempre recalcular o melhor canto após soltar — sem memória
-      handleCornerByFrame[handleDragState.fi] = 'br'; // reset para preferência padrão
-      updateHandleCornerForFrame(handleDragState.fi);
-      renderAll();
+      if (handleDragState.isGhost) {
+        renderGhostFrame();
+      } else {
+        // Sempre recalcular o melhor canto após soltar — sem memória
+        handleCornerByFrame[handleDragState.fi] = 'br'; // reset para preferência padrão
+        updateHandleCornerForFrame(handleDragState.fi);
+        renderAll();
+      }
     }
     handleDragState = null;
   };
@@ -10848,14 +10921,20 @@ function createGhostFrameElement() {
     '</div>';
   stage.appendChild(ghostFrameEl);
   ghostFrameEl.addEventListener('pointerdown', startGhostFrameDrag);
-  ghostFrameEl.querySelector('.ghost-action.ok')?.addEventListener('pointerdown', e => e.stopPropagation());
-  ghostFrameEl.querySelector('.ghost-action.cancel')?.addEventListener('pointerdown', e => e.stopPropagation());
-  ghostFrameEl.querySelector('.ghost-action.ok')?.addEventListener('click', e => {
-    e.preventDefault(); e.stopPropagation(); confirmAssistedFrameInsertion();
-  });
-  ghostFrameEl.querySelector('.ghost-action.cancel')?.addEventListener('click', e => {
-    e.preventDefault(); e.stopPropagation(); cancelAssistedFrameInsertion();
-  });
+  const wireGhostAction = (selector, action) => {
+    const btn = ghostFrameEl.querySelector(selector);
+    if (!btn) return;
+    const run = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      action();
+    };
+    btn.addEventListener('pointerdown', run);
+    btn.addEventListener('touchstart', run, { passive: false });
+    btn.addEventListener('click', run);
+  };
+  wireGhostAction('.ghost-action.ok', confirmAssistedFrameInsertion);
+  wireGhostAction('.ghost-action.cancel', cancelAssistedFrameInsertion);
 }
 
 function renderGhostFrame() {
@@ -10865,9 +10944,9 @@ function renderGhostFrame() {
   ghostFrameEl.style.width = ghostFrame.w + 'px';
   ghostFrameEl.style.height = ghostFrame.h + 'px';
   ghostFrameEl.style.transform = 'rotate(' + (ghostFrame.rotation || 0) + 'deg)';
-  ghostFrameEl.classList.toggle('actions-above', ghostFrame.y + ghostFrame.h + 52 > stageH);
   const num = ghostFrameEl.querySelector('.ghost-num');
   if (num) num.textContent = 'F' + (ghostFrame.labelIndex || (frameCount + 1));
+  updateGhostTransformHandle();
 }
 
 function updateGhostFramePosition(cx, cy) {
@@ -10880,6 +10959,16 @@ function updateGhostFramePosition(cx, cy) {
   renderGhostFrame();
 }
 
+function updateGhostFrameTopLeft(x, y) {
+  if (!ghostFrame) return;
+  x = Math.max(0, Math.min(stageW - ghostFrame.w, x));
+  y = Math.max(0, Math.min(stageH - ghostFrame.h, y));
+  ghostFrame.x = x;
+  ghostFrame.y = y;
+  pendingFrameInsert.ghostMoved = true;
+  renderGhostFrame();
+}
+
 function startGhostFrameDrag(e) {
   if (!isInsertingFrame || !ghostFrame) return;
   if (e.target.closest('.ghost-action')) return;
@@ -10887,8 +10976,11 @@ function startGhostFrameDrag(e) {
   e.stopPropagation();
   ghostFrameEl.setPointerCapture?.(e.pointerId);
   const sc = screenToStageCoord(e.clientX, e.clientY);
-  updateGhostFramePosition(sc.x, sc.y);
-  ghostDragState = { pointerId: e.pointerId };
+  ghostDragState = {
+    pointerId: e.pointerId,
+    grabDX: sc.x - ghostFrame.x,
+    grabDY: sc.y - ghostFrame.y
+  };
 }
 
 function cancelAssistedFrameInsertion() {
@@ -10901,6 +10993,10 @@ function cancelAssistedFrameInsertion() {
   ghostDragState = null;
   isInsertingFrame = false;
   document.body.classList.remove('inserting-frame');
+  if (globalHandleEl) {
+    globalHandleEl.classList.remove('show');
+    globalHandleEl.classList.remove('ghost-transform');
+  }
   if (wasActive) {
     showStatus('Inserção cancelada');
     renderAll();
@@ -10916,6 +11012,10 @@ function clearAssistedFrameInsertionTransientState() {
   ghostDragState = null;
   isInsertingFrame = false;
   document.body.classList.remove('inserting-frame');
+  if (globalHandleEl) {
+    globalHandleEl.classList.remove('show');
+    globalHandleEl.classList.remove('ghost-transform');
+  }
 }
 
 function buildPendingFrameInsertion() {
@@ -11369,10 +11469,12 @@ function renderAll() {
     globalHandleEl.style.top  = hp.y + 'px';
     globalHandleEl.style.transform = `scale(${1 / editorZoomScale})`;
     globalHandleEl.classList.add('show');
+    globalHandleEl.classList.remove('ghost-transform');
     globalHandleEl.classList.toggle('centered', !!hp.centered);
     stage.appendChild(globalHandleEl);
   } else if (globalHandleEl) {
     globalHandleEl.classList.remove('show');
+    globalHandleEl.classList.remove('ghost-transform');
   }
 
   // Scroll automático da pill ativa
@@ -13014,7 +13116,11 @@ function onMove(e) {
 
   if (ghostDragState && isInsertingFrame) {
     const sc = screenToStageCoord(pos.x, pos.y);
-    updateGhostFramePosition(sc.x, sc.y);
+    if (Number.isFinite(ghostDragState.grabDX) && Number.isFinite(ghostDragState.grabDY)) {
+      updateGhostFrameTopLeft(sc.x - ghostDragState.grabDX, sc.y - ghostDragState.grabDY);
+    } else {
+      updateGhostFramePosition(sc.x, sc.y);
+    }
     return;
   }
 
