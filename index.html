@@ -1,13 +1,22 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b22c                                     ║
+║  Versão: v8z4b22d                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b22d                                            ║
+║    fix: ghost de inserção em curva fora do viewport  ║
+║         não é mais clampado para dentro do Stage     ║
+║         visível; confirmação/cancelamento acessíveis ║
+║         via barra fixa mesmo com ghost fora da área; ║
+║         inserção entre frames preserva curva local   ║
+║         em vez de resetar o trecho; Stage visível    ║
+║         passa a ser tratado como viewport (prepara   ║
+║         futuro zoom/pan e Stage expandido);          ║
 ║  v8z4b22c                                            ║
 ║    fix: interação exclusiva do ghost frame; scale/   ║
 ║         rotate não acionam movimento simultâneo;     ║
@@ -357,7 +366,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b22c — ghost frame exclusive interaction fix: handler de escala/rotação não aciona movimento simultâneo; scale/rotate usam centro atual após drag; Stage ignora eventos iniciados em controles do ghost. -->
+<!-- Arco Motion App — v8z4b22d — ghost insertion viewport fix: ghost nasce no ponto real da curva mesmo fora do Stage visível; clamp removido de posição do ghost; barra fixa de inserção garante acesso a Confirmar/Cancelar mesmo com ghost fora da área; inserção preserva curva local via De Casteljau; Stage visível tratado como viewport (prepara zoom/pan futuro). -->
 <!-- Arco Motion App — v8z4b21a — implement real cubic in-out handles: curvesV2 com handles in/out independentes por frame; Bézier cúbica C(P0,C1,C2,P3); avaliação e Preview/MP4 usam cubic; JSON salva curvesV2; compatibilidade com arquivos antigos via conversão ctrlPts→curvesV2. -->
 <!-- v8z4b20d — fix handle sync after frame move and visible segment handles: BLOCO A — sincroniza handles visualmente ao mover frame; loopCtrlPt recalculado via t/perpX/perpY quando F1 ou último frame é movido; BLOCO B — applyFrameConnectedHandleEdit armazena t/perp para loop; syncCtrlPtsForFrame estendido para trecho de loop; BLOCO C — threshold de 8px reduzido para 2px em getFrameHandleGeometryForTarget (handles manuais ficam estáveis); BLOCO D — ghost handles do lado complementar do trecho ativo (não-interativo); BLOCO E — ensureSegmentArraysIntegrity() normaliza ctrlPts, ctrlPtManual, segBlurSettings, rotEasings, scaleEasings, segDurations; deleteActiveFrame corrigido para segBlurSettings; buildProjectData chama ensure antes de salvar; BLOCO F — loop corrigido; BLOCO G — midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo preservado; BLOCO I — JSON/schema inalterado; sem campo novo -->
 <!DOCTYPE html>
@@ -560,6 +569,43 @@ body.inserting-frame .frame,
 body.inserting-frame .ctrl-pt,
 body.inserting-frame .frame-in-handle,
 body.inserting-frame .frame-out-handle{pointer-events:none !important;}
+/* v8z4b22d — Barra fixa de inserção: sempre visível no viewport mesmo com ghost fora do Stage */
+#insertionActionBar{
+  position:fixed;
+  bottom:calc(env(safe-area-inset-bottom, 0px) + 76px);
+  left:50%;
+  transform:translateX(-50%);
+  display:none;
+  align-items:center;
+  gap:10px;
+  z-index:9200;
+  padding:8px 14px;
+  background:rgba(18,18,20,.88);
+  border-radius:28px;
+  border:1px solid rgba(255,255,255,.14);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  box-shadow:0 4px 24px rgba(0,0,0,.55);
+  pointer-events:auto;
+  white-space:nowrap;
+  user-select:none;-webkit-user-select:none;
+}
+#insertionActionBar.show{display:flex;}
+.ins-bar-label{
+  font-size:12px;font-weight:600;color:rgba(255,255,255,.62);
+  padding:0 4px;pointer-events:none;
+}
+.ins-bar-btn{
+  width:42px;height:42px;border-radius:21px;
+  border:1px solid rgba(255,255,255,.18);
+  font-size:19px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+  pointer-events:auto;
+}
+.ins-bar-btn.ok{background:rgba(4,255,242,.92);color:#000;border-color:rgba(0,0,0,.18);}
+.ins-bar-btn.cancel{background:rgba(48,48,52,.96);color:rgba(255,255,255,.9);}
 /* Overlay escuro fora do frame selecionado — SVG com recorte */
 #stageDimSvg{position:absolute;inset:0;pointer-events:none;z-index:3;display:none;}
 #stageDimSvg.show{display:block;}
@@ -1948,6 +1994,17 @@ body.cust-open #toolbar{
   </div>
 </div>
 
+<!-- v8z4b22d — Barra fixa de inserção assistida: sempre visível no viewport,
+     aparece somente durante isInsertingFrame; z-index acima de tudo para que
+     Confirmar/Cancelar fiquem acessíveis mesmo com ghost fora do Stage visível. -->
+<div id="insertionActionBar" role="toolbar" aria-label="Modo de inserção de frame">
+  <button id="insertionCancelBtn" class="ins-bar-btn cancel" type="button"
+    title="Cancelar inserção" aria-label="Cancelar">×</button>
+  <span class="ins-bar-label">Posicione o frame</span>
+  <button id="insertionConfirmBtn" class="ins-bar-btn ok" type="button"
+    title="Confirmar inserção" aria-label="Confirmar">✓</button>
+</div>
+
 <!-- MID BAR: lock | inverter | pills | − | +
      v8z4b16a — Marcado com data-role="timeline-strip" como base
      estrutural da futura "frame strip" contínua (swipe horizontal
@@ -2227,7 +2284,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b22c</span><br><span id="appVersionNameText">ghost frame exclusive interaction fix</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b22d</span><br><span id="appVersionNameText">ghost insertion viewport fix</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4568,8 +4625,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b22c';
-const APP_VERSION_NAME = 'ghost frame exclusive interaction fix';
+const APP_VERSION = 'v8z4b22d';
+const APP_VERSION_NAME = 'ghost insertion viewport fix';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10474,7 +10531,8 @@ function isGhostInteractionActive(mode) {
 
 function isGhostControlTarget(target) {
   return !!(target && target.closest &&
-    target.closest('.ghost-frame, .global-handle.ghost-transform, .ghost-actions, .ghost-action'));
+    // v8z4b22d: inclui barra fixa de inserção (#insertionActionBar) como controle do ghost
+    target.closest('.ghost-frame, .global-handle.ghost-transform, .ghost-actions, .ghost-action, #insertionActionBar, .ins-bar-btn'));
 }
 
 function getGhostHandlePos() {
@@ -11025,10 +11083,10 @@ function renderGhostFrame() {
   updateGhostTransformHandle();
 }
 
+// v8z4b22d: clamp removido — ghost pode existir fora da área visível do Stage.
+// O Stage visível é tratado como viewport de edição, não como limite absoluto do projeto.
 function updateGhostFramePosition(cx, cy) {
   if (!ghostFrame) return;
-  cx = Math.max(ghostFrame.w / 2, Math.min(stageW - ghostFrame.w / 2, cx));
-  cy = Math.max(ghostFrame.h / 2, Math.min(stageH - ghostFrame.h / 2, cy));
   ghostFrame.x = cx - ghostFrame.w / 2;
   ghostFrame.y = cy - ghostFrame.h / 2;
   pendingFrameInsert.ghostMoved = true;
@@ -11037,8 +11095,6 @@ function updateGhostFramePosition(cx, cy) {
 
 function updateGhostFrameTopLeft(x, y) {
   if (!ghostFrame) return;
-  x = Math.max(0, Math.min(stageW - ghostFrame.w, x));
-  y = Math.max(0, Math.min(stageH - ghostFrame.h, y));
   ghostFrame.x = x;
   ghostFrame.y = y;
   pendingFrameInsert.ghostMoved = true;
@@ -11085,6 +11141,8 @@ function cancelAssistedFrameInsertion() {
   resetGhostInteraction();
   isInsertingFrame = false;
   document.body.classList.remove('inserting-frame');
+  // v8z4b22d: esconder barra fixa de inserção
+  hideInsertionActionBar();
   if (globalHandleEl) {
     globalHandleEl.classList.remove('show');
     globalHandleEl.classList.remove('ghost-transform');
@@ -11105,10 +11163,49 @@ function clearAssistedFrameInsertionTransientState() {
   resetGhostInteraction();
   isInsertingFrame = false;
   document.body.classList.remove('inserting-frame');
+  // v8z4b22d: esconder barra fixa de inserção
+  hideInsertionActionBar();
   if (globalHandleEl) {
     globalHandleEl.classList.remove('show');
     globalHandleEl.classList.remove('ghost-transform');
   }
+}
+
+// v8z4b22d — Barra fixa de inserção: Confirmar/Cancelar sempre visíveis no viewport.
+// A barra é position:fixed, portanto independente da posição do ghost no Stage.
+function showInsertionActionBar() {
+  const bar = document.getElementById('insertionActionBar');
+  if (!bar) return;
+  bar.classList.add('show');
+}
+
+function hideInsertionActionBar() {
+  const bar = document.getElementById('insertionActionBar');
+  if (!bar) return;
+  bar.classList.remove('show');
+}
+
+function initInsertionActionBar() {
+  const confirmBtn = document.getElementById('insertionConfirmBtn');
+  const cancelBtn  = document.getElementById('insertionCancelBtn');
+  if (!confirmBtn || !cancelBtn) return;
+
+  const wire = (btn, action) => {
+    const handler = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isInsertingFrame) return;
+      action();
+    };
+    btn.addEventListener('pointerdown', handler);
+    btn.addEventListener('touchstart', handler, { passive: false });
+    btn.addEventListener('click', handler);
+    // Impedir que toque no botão da barra dispare drag ou reposicionamento
+    btn.addEventListener('pointermove', e => { e.stopPropagation(); });
+    btn.addEventListener('touchmove', e => { e.stopPropagation(); }, { passive: false });
+  };
+  wire(confirmBtn, confirmAssistedFrameInsertion);
+  wire(cancelBtn,  cancelAssistedFrameInsertion);
 }
 
 function buildPendingFrameInsertion() {
@@ -11166,12 +11263,9 @@ function buildPendingFrameInsertion() {
     rotation = frameRotations[a] || 0;
   }
 
-  const unclampedCx = cx, unclampedCy = cy;
-  cx = Math.max(w / 2, Math.min(stageW - w / 2, cx));
-  cy = Math.max(h / 2, Math.min(stageH - h / 2, cy));
-  if (Math.abs(cx - unclampedCx) > 0.001 || Math.abs(cy - unclampedCy) > 0.001) {
-    suggestedOnCurve = false;
-  }
+  // v8z4b22d: Stage visível é viewport, não limite absoluto do projeto.
+  // Posição do ghost NÃO é clampada ao stageW/stageH — curva pode passar fora da área visível.
+  // suggestedOnCurve permanece true quando calculado a partir da curva real.
 
   return {
     mode: isBetween ? 'between' : (isLoopAppend ? 'loop-append' : 'append'),
@@ -11202,6 +11296,8 @@ function insertFrameAfterActive() {
   document.body.classList.add('inserting-frame');
   createGhostFrameElement();
   renderGhostFrame();
+  // v8z4b22d: mostrar barra fixa de inserção — acessível mesmo com ghost fora do viewport
+  showInsertionActionBar();
   showStatus('Posicione o novo frame');
 }
 
@@ -19387,6 +19483,9 @@ function nudgeRotation(delta, reset=false) {
 
 // Sincronizar UI de formato na inicialização
 syncRatioUI();
+
+// v8z4b22d — Inicializar barra fixa de inserção assistida
+initInsertionActionBar();
 
 
 </script>
