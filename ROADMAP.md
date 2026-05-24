@@ -1,5 +1,43 @@
 # Roadmap
 
+## Objetivo imediato — v8z4b21e (concluído)
+
+Correção do Movimento inteligente com loop usando vizinhança local real. Base: v8z4b21d.
+
+- ✅ Loop volta a participar do Movimento inteligente como vizinho real de F1 e do último frame.
+- ✅ Trechos normais não usam mais `suppressLoop=true` como regra global.
+- ✅ F1→F2 considera o loop como vizinho anterior quando Loop está ativo.
+- ✅ Último trecho normal considera o loop como vizinho posterior quando Loop está ativo.
+- ✅ Trechos internos, como F2→F3 em projeto com 4 frames, não recebem interferência direta do loop.
+- ✅ Trecho de loop usa o trecho normal anterior ao último frame e F1→F2 como vizinhos.
+- ✅ Limiter monotônico de slopes (`m0+m1 <= 3`) permanece como proteção contra falsa parada, overshoot e quase-hold.
+- ✅ Reset Project preservado sem alteração funcional.
+- ✅ Reset Curves com curvesV2 preservado sem alteração funcional.
+- ✅ Handles OUT/IN independentes preservados sem alteração.
+- ✅ Preview e MP4 continuam usando cálculo compartilhado via `getStateAtT`.
+- ✅ JSON continua salvando curvesV2; versão salva → v8z4b21e.
+- ✅ Direct Curve Drag e Assisted Frame Insertion continuam futuros, sem implementação.
+
+### Próximas ideias registradas (não implementadas nesta versão)
+
+#### Direct Curve Drag
+
+- Usuário puxa a própria curva do trecho.
+- App ajusta o handle OUT do frame inicial e o handle IN do frame final simultaneamente.
+- Não cria midpoint permanente.
+- Comportamento inspirado no Illustrator.
+- **Não implementar agora.** Registrado para decisão futura de produto.
+
+#### Assisted Frame Insertion
+
+- Ao adicionar frame, mostrar um frame fantasma no Stage antes de confirmar.
+- Usuário posiciona no Stage antes da criação definitiva.
+- Só depois calcular handles.
+- Objetivo: evitar distorção de handles após mover frame recém-criado.
+- **Não implementar agora.** Registrado para decisão futura de UX/produto.
+
+---
+
 ## Objetivo imediato — v8z4b21d (concluído)
 
 Correção do Reset Project e continuidade do Movimento inteligente no loop. Base: v8z4b21c.

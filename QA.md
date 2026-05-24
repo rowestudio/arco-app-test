@@ -2,6 +2,63 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b21e — restore local loop influence in smart movement
+
+### Teste A — versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b21e` na UI (Settings).
+3. Confirmar que nome exibe `restore local loop influence in smart movement`.
+
+### Teste B — caso mínimo: 2 frames / 4s / loop 1s / smart movement
+1. Criar projeto com 2 frames.
+2. Definir F1→F2 duração 4s.
+3. Ativar Loop.
+4. Definir `loopDuration = 1s`.
+5. Garantir `segmentTimingMode: manual`.
+6. Garantir `movementEasingMode: smart`.
+7. Garantir Velocidade constante desligada (`constantSpeedTotalDuration: null`).
+8. Garantir `framePauses` zeradas.
+9. Garantir curvesV2 ativo.
+10. Rodar Preview.
+11. Confirmar que F1→F2 não tem falsa parada no meio da curva.
+12. Confirmar que o loop usa Movimento inteligente local e não fica com velocidade constante crua.
+13. Alterar `loopDuration` para valores maiores e menores.
+14. Confirmar que isso influencia localmente a transição, sem criar falsa parada.
+
+### Teste C — projeto com 4 frames e loop
+1. Criar projeto com F1→F2, F2→F3, F3→F4 e Loop F4→F1.
+2. Confirmar que F1→F2 considera o loop como vizinho anterior.
+3. Confirmar que F2→F3 não é afetado diretamente pelo loop.
+4. Confirmar que F3→F4 considera o loop como vizinho posterior.
+5. Confirmar que o loop considera F3→F4 e F1→F2 como vizinhos.
+
+### Teste D — regressões preservadas
+1. Confirmar Reset Project continua voltando ao projeto carregado.
+2. Confirmar Undo/Redo do Reset Project.
+3. Confirmar Reset Curves continua funcionando com curvesV2.
+4. Confirmar handles OUT/IN continuam independentes.
+5. Confirmar que mover OUT não move IN.
+6. Confirmar que mover IN não move OUT.
+7. Confirmar que Velocidade constante continua funcionando.
+8. Confirmar que midpoint e ctrl-pt legado não aparecem como UI.
+
+### Teste E — Preview, MP4, JSON e compatibilidade
+1. Rodar Preview e confirmar a trajetória corrigida.
+2. Gerar MP4 e confirmar que segue o Preview.
+3. Salvar JSON e confirmar `"version": "v8z4b21e"`.
+4. Confirmar `curvesV2` presente.
+5. Confirmar `framePauses`, `segDurations`, `loopDuration`, `segmentTimingMode` e `movementEasingMode` preservados.
+6. Abrir JSON antigo sem `curvesV2` e confirmar conversão automática.
+7. Confirmar sem NaN/Infinity e sem erro de console.
+8. Confirmar PR aberto e não mergeado.
+
+### Teste F — ROADMAP registrado sem implementação
+1. Abrir ROADMAP.md.
+2. Confirmar que Direct Curve Drag e Assisted Frame Insertion estão listados como futuros.
+3. Confirmar que não foram implementados na v8z4b21e.
+
+---
+
 ## v8z4b21d — fix project reset baseline and smart loop continuity
 
 ### Teste A — versão

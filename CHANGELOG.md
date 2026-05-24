@@ -1,5 +1,43 @@
 # Changelog
 
+## v8z4b21e — restore local loop influence in smart movement
+
+Correção funcional sobre v8z4b21d. Base obrigatória: v8z4b21d.
+
+### Diagnóstico
+
+A v8z4b21c/v8z4b21d evitou a falsa parada causada por loop curto usando `suppressLoop=true` nos trechos normais. Isso protegeu F1→F2, mas também removeu demais a continuidade local: o loop deixou de influenciar F1 e o último frame como vizinho real, deixando o Movimento inteligente mais achatado e o loop próximo de velocidade constante crua.
+
+O bug original não era a presença do loop como vizinho. O bug era permitir que slopes extremos produzissem derivada interna zero no Hermite.
+
+### Correção
+
+- `_smartFrameVelocity()` voltou a considerar apenas vizinhos imediatos reais.
+- Para F1, o trecho anterior é o loop último→F1 quando `loopEnabled=true`.
+- Para o último frame, o trecho posterior é o loop último→F1 quando `loopEnabled=true`.
+- Frames internos continuam usando somente os trechos normais adjacentes; o loop não entra em F2→F3, exceto em projetos pequenos onde o frame é fronteira real.
+- `computeSmartMovementProgress()` não passa mais `suppressLoop=true` nos trechos normais.
+- `_limitSmartHermiteSlopes()` continua aplicado após o cálculo local de velocidades: `m0 >= 0`, `m1 >= 0`, e `m0 + m1 <= 3`.
+
+### Comportamento esperado
+
+- F1→F2 usa loop como vizinho anterior e F2→F3 como vizinho posterior.
+- F2→F3 usa F1→F2 e F3→F4, sem interferência direta do loop.
+- F3→F4 usa F2→F3 e loop como vizinho posterior.
+- Loop F4→F1 usa F3→F4 como anterior e F1→F2 como posterior.
+- No caso mínimo 2 frames / F1→F2 4s / loop 1s / smart / manual / framePauses zeradas, F1→F2 não deve ter falsa parada no meio; o loop deve receber smart movement local perceptível.
+- Reset Project, Reset Curves, handles OUT/IN independentes, JSON curvesV2, Preview e MP4 permanecem no mesmo fluxo existente.
+
+### Arquivos alterados
+
+- `index.html`: restaura vizinhança local real do loop no Movimento inteligente; versão → v8z4b21e.
+- `CHANGELOG.md`: este registro.
+- `QA.md`: checklist v8z4b21e.
+- `ROADMAP.md`: v8z4b21e concluído; Direct Curve Drag e Assisted Frame Insertion continuam futuros.
+- `pages-deploy-stamp.txt`: atualizado.
+
+---
+
 ## v8z4b21d — fix project reset baseline and smart loop continuity
 
 Correção funcional sobre v8z4b21c. Base obrigatória: v8z4b21c.
