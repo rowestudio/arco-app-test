@@ -1,13 +1,22 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b22e                                     ║
+║  Versão: v8z4b23a                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b23a                                            ║
+║    feat: projetos novos começam com F1 em modo       ║
+║         assistido;                                   ║
+║    feat: mínimo oficial passa a ser 1 frame;         ║
+║    feat: Preview/MP4 suportam 1 frame como vídeo     ║
+║         estático;                                    ║
+║    fix: Reset Project de projeto novo volta ao F1    ║
+║         assistido;                                   ║
+║    fix: JSON com 1 frame passa a ser válido;         ║
 ║  v8z4b22e                                            ║
 ║    ux: Confirmar/Cancelar da inserção assistida      ║
 ║        ficam exclusivamente na barra inferior;       ║
@@ -371,6 +380,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b23a — single-frame: projetos novos começam com F1 em modo assistido; mínimo oficial passa a ser 1 frame; Preview/MP4 suportam 1 frame como vídeo estático; Reset Project de projeto novo volta ao F1 assistido; JSON com 1 frame é válido. -->
 <!-- Arco Motion App — v8z4b22e — insertion ux: Confirmar/Cancelar da inserção assistida ficam exclusivamente na barra inferior; removidos controles duplicados de confirmação/cancelamento dentro do ghost frame. -->
 <!-- Arco Motion App — v8z4b21a — implement real cubic in-out handles: curvesV2 com handles in/out independentes por frame; Bézier cúbica C(P0,C1,C2,P3); avaliação e Preview/MP4 usam cubic; JSON salva curvesV2; compatibilidade com arquivos antigos via conversão ctrlPts→curvesV2. -->
 <!-- v8z4b20d — fix handle sync after frame move and visible segment handles: BLOCO A — sincroniza handles visualmente ao mover frame; loopCtrlPt recalculado via t/perpX/perpY quando F1 ou último frame é movido; BLOCO B — applyFrameConnectedHandleEdit armazena t/perp para loop; syncCtrlPtsForFrame estendido para trecho de loop; BLOCO C — threshold de 8px reduzido para 2px em getFrameHandleGeometryForTarget (handles manuais ficam estáveis); BLOCO D — ghost handles do lado complementar do trecho ativo (não-interativo); BLOCO E — ensureSegmentArraysIntegrity() normaliza ctrlPts, ctrlPtManual, segBlurSettings, rotEasings, scaleEasings, segDurations; deleteActiveFrame corrigido para segBlurSettings; buildProjectData chama ensure antes de salvar; BLOCO F — loop corrigido; BLOCO G — midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo preservado; BLOCO I — JSON/schema inalterado; sem campo novo -->
@@ -2277,7 +2287,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b22e</span><br><span id="appVersionNameText">insertion ux: confirm/cancel na barra inferior</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b23a</span><br><span id="appVersionNameText">single-frame: F1 assistido, mínimo 1 frame</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4618,8 +4628,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b22e';
-const APP_VERSION_NAME = 'insertion ux: confirm/cancel na barra inferior';
+const APP_VERSION = 'v8z4b23a';
+const APP_VERSION_NAME = 'single-frame: F1 assistido, mínimo 1 frame, Preview/MP4 1 frame';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4715,6 +4725,9 @@ let pendingFrameInsert = null;
 let ghostFrame = null;
 let ghostFrameEl = null;
 let ghostDragState = null;
+// v8z4b23a — estado da inserção do primeiro frame assistido
+let _isFirstFrameInsertion = false; // true enquanto o ghost F1 inicial está ativo
+let _projectNewFromImage = false;   // true quando projeto nasceu de imagem nova (Reset → F1 assistido)
 let ghostInteraction = {
   mode: 'idle',
   pointerId: null,
@@ -10876,6 +10889,85 @@ function initDefaultFrames() {
   renderAll();
 }
 // ═══════════════════════════════════════
+// v8z4b23a — INSERÇÃO ASSISTIDA DO PRIMEIRO FRAME
+// ═══════════════════════════════════════
+
+// Constrói o pendingFrameInsert para o ghost do primeiro frame.
+// Não há frame anterior como referência: usa tamanho 55% do stage, centrado.
+function buildFirstFrameInsertion() {
+  const ar = ratioMap[currentRatio];
+  let w = stageW * 0.55, h = w / ar;
+  if (h > stageH * 0.88) { h = stageH * 0.88; w = h * ar; }
+  const cx = stageW / 2;
+  const cy = stageH / 2;
+  return {
+    mode: 'first-frame',
+    fromIndex: -1,
+    toIndex: null,
+    insertIndex: 0,
+    suggestedOnCurve: false,
+    ghostMoved: false,
+    frame: { x: cx - w / 2, y: cy - h / 2, w, h },
+    rotation: 0
+  };
+}
+
+// Inicia o modo de inserção assistida do F1: limpa estado, cria ghost centrado,
+// mostra barra inferior de confirmação. Chamado ao carregar imagem nova e
+// ao resetar projeto novo (Caso A).
+function startFirstFrameAssistedInsertion() {
+  if (isPreviewing) stopPreview();
+  closeAll();
+  // Limpar DOM de frames e ctrl pts anteriores
+  for (let i = 0; i < MAX_FRAMES; i++) {
+    const fe = getFrameEl(i); if (fe) fe.remove();
+    const ce = getCtrlEl(i);  if (ce) ce.remove();
+  }
+  document.querySelectorAll('.mid-pathpt').forEach(el => el.remove());
+  // Limpar estado do projeto
+  frames.length = 0;
+  ctrlPts.length = 0;
+  ctrlPtManual.length = 0;
+  frameRotations.length = 0;
+  framePauses.length = 0;
+  segDurations.length = 0;
+  segBlurSettings.length = 0;
+  segEasings.length = 0;
+  rotEasings.length = 0;
+  scaleEasings.length = 0;
+  curvesV2 = null;
+  frameCount = 0;
+  activeIdx = 0;
+  generatedUrl = null;
+  if (btnGenerate) {
+    btnGenerate.classList.remove('done', 'recording');
+    setGenerateLabel('Salvar MP4');
+    btnGenerate.disabled = false;
+  }
+  undoStack.length = 0;
+  redoStack.length = 0;
+  updateUndoRedoUI();
+  // Iniciar inserção assistida do F1
+  _isFirstFrameInsertion = true;
+  pendingFrameInsert = buildFirstFrameInsertion();
+  if (!pendingFrameInsert) return;
+  ghostFrame = {
+    ...pendingFrameInsert.frame,
+    rotation: pendingFrameInsert.rotation,
+    labelIndex: 1
+  };
+  insertFrameMode = pendingFrameInsert.mode;
+  isInsertingFrame = true;
+  document.body.classList.add('inserting-frame');
+  createGhostFrameElement();
+  renderGhostFrame();
+  // v8z4b22e/23a: barra inferior é única origem de Confirmar/Cancelar
+  showInsertionActionBar();
+  updateFrameSelector();
+  showStatus('Posicione o enquadramento inicial · F1');
+}
+
+// ═══════════════════════════════════════
 function addFrame() {
   // v8z4b16h — guard: sem imagem, nenhuma ação de frame.
   if (!hasImageLoaded()) return;
@@ -11103,6 +11195,7 @@ function startGhostFrameDrag(e) {
 
 function cancelAssistedFrameInsertion() {
   const wasActive = isInsertingFrame;
+  const wasFirstFrame = _isFirstFrameInsertion; // v8z4b23a
   if (ghostFrameEl) ghostFrameEl.remove();
   ghostFrameEl = null;
   ghostFrame = null;
@@ -11111,6 +11204,7 @@ function cancelAssistedFrameInsertion() {
   ghostDragState = null;
   resetGhostInteraction();
   isInsertingFrame = false;
+  _isFirstFrameInsertion = false; // v8z4b23a
   document.body.classList.remove('inserting-frame');
   // v8z4b22e: esconder barra fixa de inserção
   hideInsertionActionBar();
@@ -11119,8 +11213,16 @@ function cancelAssistedFrameInsertion() {
     globalHandleEl.classList.remove('ghost-transform');
   }
   if (wasActive) {
-    showStatus('Inserção cancelada');
-    renderAll();
+    if (wasFirstFrame) {
+      // v8z4b23a: cancelar F1 assistido → retornar ao estado de imagem sem frames.
+      // O usuário pode tocar + para recomeçar a criação do F1.
+      renderAll();
+      updateFrameSelector();
+      showStatus('Inserção cancelada · toque + para criar F1');
+    } else {
+      showStatus('Inserção cancelada');
+      renderAll();
+    }
   }
 }
 
@@ -11133,6 +11235,7 @@ function clearAssistedFrameInsertionTransientState() {
   ghostDragState = null;
   resetGhostInteraction();
   isInsertingFrame = false;
+  _isFirstFrameInsertion = false; // v8z4b23a
   document.body.classList.remove('inserting-frame');
   // v8z4b22e: esconder barra fixa de inserção
   hideInsertionActionBar();
@@ -11251,6 +11354,15 @@ function buildPendingFrameInsertion() {
 }
 
 function insertFrameAfterActive() {
+  if (isInsertingFrame) return; // já em modo de inserção
+  if (!imgNatW) return; // sem imagem
+  // v8z4b23a: imagem carregada mas ainda sem frames → iniciar F1 assistido
+  if (frameCount === 0) {
+    if (isPreviewing) stopPreview();
+    closeAll();
+    startFirstFrameAssistedInsertion();
+    return;
+  }
   if (!hasImageLoaded()) return;
   if (frameCount >= MAX_FRAMES) { showStatus('Máximo de ' + MAX_FRAMES + ' frames'); return; }
   if (isPreviewing) stopPreview();
@@ -11296,6 +11408,32 @@ function confirmAssistedFrameInsertion() {
   const pending = pendingFrameInsert;
   const newFrame = { x: ghostFrame.x, y: ghostFrame.y, w: ghostFrame.w, h: ghostFrame.h };
   const newRot = ghostFrame.rotation || 0;
+
+  // v8z4b23a — primeiro frame: criar F1 real e inicializar projeto com 1 frame.
+  if (pending.mode === 'first-frame') {
+    frames.length = 0;
+    frameRotations.length = 0;
+    frameLocked.length = 0;
+    framePauses.length = 0;
+    frames.push(newFrame);
+    frameRotations.push(newRot);
+    frameLocked.push(false);
+    framePauses.push({ duration: 0 });
+    frameCount = 1;
+    activeIdx = 0;
+    baseFrameW = newFrame.w;
+    curvesV2 = null; // 1 frame: curvesV2 não é necessário ainda
+    clearAssistedFrameInsertionTransientState();
+    _isFirstFrameInsertion = false;
+    applyLocalInsertFinalization('F1 definido · toque + para adicionar F2');
+    // Capturar baseline para Reset Project (Caso A) e limpar undo
+    captureProjectResetBaseline('first-frame-confirmed');
+    undoStack.length = 0;
+    redoStack.length = 0;
+    updateUndoRedoUI();
+    return;
+  }
+
   const beforeFrameCount = frameCount;
   const useCurveSplit = pending.mode === 'between' && pending.suggestedOnCurve && !pending.ghostMoved;
   const splitCp2 = useCurveSplit && isCurvesV2Active() ? getCurvesV2CubicCP(pending.fromIndex) : null;
@@ -11389,6 +11527,9 @@ function confirmAssistedFrameInsertion() {
     } else {
       curvesV2.frameHandles.out[frameCount - 1] = null;
     }
+  } else if (frameCount >= 2 && stageW > 0) {
+    // v8z4b23a: inicializar curvesV2 a partir de ctrlPts legado (ex: transição 1→2 frames)
+    convertLegacyCtrlPtsToCurvesV2();
   }
   if (pending.mode === 'loop-append') {
     loopCtrlPt = {
@@ -11407,7 +11548,8 @@ function removeLastFrame() {
   // v8z4b16h — guard: sem imagem, sem ação de frame.
   if (isInsertingFrame) return;
   if (!hasImageLoaded()) return;
-  if (frameCount <= 2) { showStatus('Mínimo de 2 frames'); return; }
+  // v8z4b23a: mínimo oficial é 1 frame
+  if (frameCount <= 1) { showStatus('Mínimo de 1 frame'); return; }
   const i = frameCount - 1;
   // v8z4b17p — Bug A: preservar pausa final antes de remover o último frame
   const savedFinalPause = (finishMode === 'pause') ? (framePauses[i]?.duration || 0) : null;
@@ -11460,6 +11602,8 @@ const AUTOSAVE_IMG_KEY = 'arco_autosave_img';
 
 function autosave() {
   if (!imgEl || !imgNatW) return;
+  // v8z4b23a: não autosalvar durante modo de inserção de F1 (estado transitório)
+  if (frameCount === 0) return;
   clearTimeout(_autosaveTimer);
   _autosaveTimer = setTimeout(() => {
     try {
@@ -13820,6 +13964,12 @@ function applySegWeights(t, segs) {
 function getStateAtT(t) {
   const scaleX = imgNatW / stageW;
   const scaleY = imgNatH / stageH;
+  // v8z4b23a: guard para 0 frames (modo F1 assistido) — retorna centro da imagem
+  if (frameCount < 1 || !frames[0]) {
+    const hw = imgNatW > 0 ? imgNatW / 2 : 0;
+    const hh = imgNatH > 0 ? imgNatH / 2 : 0;
+    return { cx: hw, cy: hh, sw: imgNatW || 1, sh: imgNatH || 1, rot: 0 };
+  }
   if (frameCount < 2) {
     const f = frames[0];
     return {
@@ -14128,7 +14278,8 @@ function togglePlay() {
 let pausedElapsed = 0;
 
 function startPreview() {
-  if (frameCount < 2 || !imgNatW) return;
+  // v8z4b23a: 1 frame é suficiente para preview (vídeo estático)
+  if (frameCount < 1 || !imgNatW) return;
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   normalizeProjectArrays();
   if (!validateProjectState('preview')) { showStatus('Estado inválido para Preview (veja console)'); return; }
@@ -14556,7 +14707,8 @@ function handleGenerate() {
     }
     return;
   }
-  if (frameCount < 2 || !imgNatW) { showStatus('Adicione pelo menos 2 frames'); return; }
+  // v8z4b23a: 1 frame é suficiente para exportar vídeo estático
+  if (frameCount < 1 || !imgNatW) { showStatus('Adicione pelo menos 1 frame'); return; }
   normalizeProjectArrays();
   if (!validateProjectState('export')) { showStatus('Estado inválido para Export (veja console)'); return; }
   startRecord();
@@ -15004,12 +15156,29 @@ async function startRecord() {
 // RESET
 // ═══════════════════════════════════════
 function resetAll() {
+  // v8z4b23a — Caso A: projeto novo (imagem sem JSON) → voltar ao F1 assistido.
+  // Verificar primeiro se já estamos no modo F1 assistido.
+  if (isInsertingFrame && _isFirstFrameInsertion) {
+    showStatus('Projeto já está no estado inicial');
+    return;
+  }
   validateProjectState('before-reset');
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   if (isPreviewing) stopPreview();
   isRecording = false;
   if (!imgNatW) return;
   resetGeneratedVideoState();
+
+  // v8z4b23a — Caso A: projeto nasceu de imagem nova → Reset volta ao F1 assistido.
+  if (_projectNewFromImage) {
+    closeAll();
+    resetEditorZoom();
+    startFirstFrameAssistedInsertion();
+    showStatus('Resetado');
+    return;
+  }
+
+  // Caso B: projeto carregado por JSON → restaurar baseline salvo.
   if (!projectResetBaseline) captureProjectResetBaseline('fallback-current');
   if (!projectResetBaseline) return;
 
@@ -16050,15 +16219,6 @@ function loadImage(file, onDoneCallback) {
         } else if (isFirstLoad || frameCount === 0) {
           layoutStage();
           setupPreviewCanvas();
-          for (let i = 0; i < MAX_FRAMES; i++) {
-            const fe = getFrameEl(i); if (fe) fe.remove();
-            const ce = getCtrlEl(i);  if (ce) ce.remove();
-          }
-          frames.length = 0; ctrlPts.length = 0; frameCount = 0;
-          generatedUrl = null;
-          btnGenerate.classList.remove('done', 'recording');
-          setGenerateLabel('Salvar MP4');
-          btnGenerate.disabled = false;
           // v8z4b17t: novo projeto parte com modos inteligentes ligados.
           movementEasingMode = 'smart';
           rotationEasingMode = 'smart';
@@ -16066,16 +16226,11 @@ function loadImage(file, onDoneCallback) {
           syncMovementEasingModeUI();
           syncRotationEasingModeUI();
           syncScaleEasingModeUI();
-          initDefaultFrames();
-          requestAnimationFrame(() => {
-            applyTemplate('pan-lr');
-            captureProjectResetBaseline('new-image-template');
-            undoStack.length = 0;
-            redoStack.length = 0;
-            updateUndoRedoUI();
-          });
+          // v8z4b23a: marcar projeto como novo (Reset → F1 assistido)
+          _projectNewFromImage = true;
           updateToolbarLabels();
-          showStatus('Ajuste os frames · ▶ para preview');
+          // v8z4b23a: iniciar com F1 em modo assistido em vez de template automático
+          startFirstFrameAssistedInsertion();
         } else {
           // Salvar coords normalizadas ANTES de layoutStage (stageW/H ainda são da imagem antiga)
           const savedNorm = frames.slice(0, frameCount).map(f => ({
@@ -16279,6 +16434,8 @@ function normalizeProjectArrays() {
 }
 
 function validateProjectState(context) {
+  // v8z4b23a: 0 frames é estado transitório válido (F1 assistido em progresso)
+  if (frameCount === 0) return true;
   const issues = [];
   const segs = Math.max(0, frameCount - 1);
   const isFiniteNum = (v) => Number.isFinite(v);
@@ -16287,7 +16444,8 @@ function validateProjectState(context) {
     console.warn('[validateProjectState][' + context + '] ' + label, data);
   };
 
-  if (!Number.isInteger(frameCount) || frameCount < 2) pushIssue('frameCount inválido', frameCount);
+  // v8z4b23a: mínimo oficial é 1 frame
+  if (!Number.isInteger(frameCount) || frameCount < 1) pushIssue('frameCount inválido', frameCount);
   if (segs !== frameCount - 1) pushIssue('segmentCount inconsistente', { frameCount, segmentCount: segs });
   if (!Array.isArray(frames) || frames.length < frameCount) pushIssue('frames ausente/incompleto', { frameCount, framesLength: frames?.length });
 
@@ -16705,11 +16863,11 @@ function toggleFrameLock() {
 }
 
 function deleteActiveFrame() {
-  // v8z4b16h — guard: sem imagem, botão "−" não tenta deletar e não exibe
-  // "Mínimo de 2 frames". O mínimo só vale com projeto ativo.
+  // v8z4b16h — guard: sem imagem, botão "−" não tenta deletar.
+  // v8z4b23a: mínimo oficial é 1 frame.
   if (isInsertingFrame) return;
   if (!hasImageLoaded()) return;
-  if (frameCount <= 2) { showStatus('Mínimo de 2 frames'); return; }
+  if (frameCount <= 1) { showStatus('Mínimo de 1 frame'); return; }
   pushUndo();
   closeAll();
   const i = activeIdx;
@@ -17195,7 +17353,14 @@ function getDurationParts() {
   // v8z4b18d: loopDuration já contado em moveDur — não duplicar em finish
   // finishMode === 'pause': pausa já contabilizada em framePauses[lastFrame]
   const finish = 0;
-  return { moveDur, internalPauses, finish, total: moveDur + internalPauses + finish };
+  const total = moveDur + internalPauses + finish;
+  // v8z4b23a: projeto com 1 frame — sem segmentos; duração vem da pausa do F1.
+  // Se a pausa for zero, usar o tempo padrão global como fallback seguro.
+  if (frameCount === 1 && total <= 0) {
+    const fallback = (duration > 0 && Number.isFinite(duration)) ? duration : 4;
+    return { moveDur: 0, internalPauses: fallback, finish: 0, total: fallback };
+  }
+  return { moveDur, internalPauses, finish, total };
 }
 
 // Duração total incluindo loop e pausas — usado nos loops de animação e gravação
@@ -18494,8 +18659,11 @@ function applyFrameData(data) {
   loopSegEasing = data.loopSegEasing || 'linear';
   loopSegRotEasing = data.loopSegRotEasing || 'linear';
   loopSegScaleEasing = data.loopSegScaleEasing || 'linear';
-  frameCount    = data.frameCount || 2;
+  // v8z4b23a: mínimo é 1; projetos com 1 frame são válidos
+  frameCount    = data.frameCount || 1;
   activeIdx     = data.activeIdx || 0;
+  // v8z4b23a: projeto carregado por JSON → Caso B (Reset restaura JSON, não F1 assistido)
+  _projectNewFromImage = false;
 
   syncRatioUI();
 
