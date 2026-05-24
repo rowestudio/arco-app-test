@@ -1,5 +1,15 @@
 # Changelog
 
+## v8z4b24b — stage gesture arbitration and viewport navigation
+
+- fix: zoom/pan com dois dedos não seleciona frames acidentalmente.
+- fix: handles, overlays e elementos tutoriais do Stage não são ativados ao iniciar gesto de dois dedos.
+- fix: adicionado bloqueio curto após navegação do Stage para evitar taps residuais.
+- fix: área interativa de zoom/pan passa a cobrir o viewport de edição, não apenas a imagem.
+- architecture note: imagem passa a ser tratada como conteúdo dentro do Stage, não como limite de navegação.
+
+---
+
 ## v8z4b22c — ghost frame exclusive interaction fix
 
 - fix: interação exclusiva do ghost frame.

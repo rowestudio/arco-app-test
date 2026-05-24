@@ -1,13 +1,25 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b24a                                     ║
+║  Versão: v8z4b24b                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b24b                                            ║
+║    fix: zoom/pan com dois dedos não seleciona        ║
+║         frames acidentalmente;                       ║
+║    fix: handles, overlays e elementos tutoriais do   ║
+║         Stage não são ativados ao iniciar gesto de   ║
+║         dois dedos;                                  ║
+║    fix: bloqueio curto após navegação do Stage evita ║
+║         taps residuais;                              ║
+║    fix: área interativa de zoom/pan cobre o viewport ║
+║         de edição, não apenas a imagem;              ║
+║    arch: imagem é conteúdo dentro do Stage, não      ║
+║         limite de navegação.                         ║
 ║  v8z4b24a                                            ║
 ║    feat: navegação visual do Stage com pinça para    ║
 ║         zoom (dois dedos → zoom in/out contínuo);    ║
@@ -396,6 +408,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b24b — stage gesture arbitration: zoom/pan com dois dedos não seleciona frames acidentalmente; handles, overlays e elementos tutoriais do Stage não são ativados ao iniciar gesto de dois dedos; bloqueio curto após navegação evita taps residuais; área interativa de zoom/pan cobre o viewport de edição, não apenas a imagem; imagem tratada como conteúdo dentro do Stage, não como limite de navegação. -->
 <!-- Arco Motion App — v8z4b24a — editor zoom/pan navigation: navegação visual do Stage com pinça para zoom; pan do Stage com dois dedos; coordenadas de edição passam a considerar editorView zoom/pan; Stage visível como viewport de edição, sem alterar dados reais do projeto; MIN_EDITOR_ZOOM=0.5, MAX_EDITOR_ZOOM=4; gesto de dois dedos impede edição simultânea; JSON não salva zoom/pan. -->
 <!-- Arco Motion App — v8z4b23b — overlay cleanup: Reset Project de projeto novo limpa overlays antigos (dim overlay, bezier, handles) antes de voltar ao F1 assistido; F1 assistido após reset redesenha imediatamente o overlay correto; guard frameCount>0 em renderAll para evitar crash ao cancelar F1 assistido com frames vazio. -->
 <!-- Arco Motion App — v8z4b23a — single-frame: projetos novos começam com F1 em modo assistido; mínimo oficial passa a ser 1 frame; Preview/MP4 suportam 1 frame como vídeo estático; Reset Project de projeto novo volta ao F1 assistido; JSON com 1 frame é válido. -->
@@ -2305,7 +2318,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b24a</span><br><span id="appVersionNameText">editor zoom/pan navigation: pinça para zoom, dois dedos para pan</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b24b</span><br><span id="appVersionNameText">stage gesture arbitration and viewport navigation</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4646,8 +4659,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b24a';
-const APP_VERSION_NAME = 'editor zoom/pan navigation: pinça para zoom, dois dedos para pan';
+const APP_VERSION = 'v8z4b24b';
+const APP_VERSION_NAME = 'stage gesture arbitration and viewport navigation';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10242,6 +10255,7 @@ function updateUndoRedoUI() {
 let dragState    = null;
 let ctrlDragSeg  = -1;
 let ctrlDragDidMove = false; // v8z4b19i: true se o ctrl-pt foi realmente movido no drag atual
+let ctrlDragUndoCaptured = false;
 let midpointDragState = null; // v8z4b19v: { seg, segType, didMove } — drag de midpoint pathPoint
 let frameTangentDragState = null; // v8z4b19y: legado — substituído em v8z4b20b por frameHandleDragState
 let frameHandleDragState  = null; // v8z4b20b: { which:'in'|'out', didMove, undoCaptured } — drag de in/out handle
@@ -10253,6 +10267,15 @@ let pinchJustEnded  = false;
 // Capturado em touchstart e limpo em touchend/touchcancel/resetEditorZoom.
 // Não salvo no JSON; não cria Undo.
 let twoFingerState  = null;  // { startDist, startMidX, startMidY, startZoom, startPanX, startPanY, stageNatLeft, stageNatTop }
+const STAGE_NAV_COOLDOWN_MS = 120;
+const STAGE_SINGLE_TOUCH_MOVE_THRESHOLD = 6;
+const gestureState = {
+  mode: 'idle', // idle | pendingSingleTouch | editing | stageNavigation
+  activePointers: new Map(),
+  pendingTarget: null,
+  pendingTimer: null,
+  navigationCooldownUntil: 0
+};
 
 // Editor Zoom — v8z4b17y (não afeta animação, export, JSON)
 let editorZoomScale = 1;  // visual/editorial, não salvo no JSON
@@ -10622,6 +10645,7 @@ function ensureGlobalHandle() {
   stage.appendChild(globalHandleEl);
 
   globalHandleEl.addEventListener('pointerdown', e => {
+    if (isStageNavigationActiveOrCoolingDown()) { e.preventDefault(); e.stopPropagation(); return; }
     if (isInsertingFrame) {
       if (!ghostFrame || isPreviewing || editorPanMode || ghostInteraction.mode !== 'idle') return;
       e.preventDefault();
@@ -10656,7 +10680,8 @@ function ensureGlobalHandle() {
         cx, cy,
         initDist: startDistance,
         initAngle: startAngle,
-        mode: null
+        mode: null,
+        undoCaptured: false
       };
       return;
     }
@@ -10665,7 +10690,7 @@ function ensureGlobalHandle() {
     e.preventDefault();
     e.stopPropagation();
     globalHandleEl.setPointerCapture(e.pointerId);
-    pushUndo();
+    gestureState.mode = 'pendingSingleTouch';
     const fi = activeIdx;
     const { cx, cy } = getFrameCenter(fi);
     const hp = getHandlePosForFrame(fi);
@@ -10679,7 +10704,8 @@ function ensureGlobalHandle() {
       cx, cy,
       initDist: Math.max(1, Math.hypot(hp.x - cx, hp.y - cy)),
       initAngle: Math.atan2(hp.y - cy, hp.x - cx),
-      mode: null // null=undecided, 'scale', 'rotate'
+      mode: null, // null=undecided, 'scale', 'rotate'
+      undoCaptured: false
     };
   });
 
@@ -10708,6 +10734,11 @@ function ensureGlobalHandle() {
         // Se a mudança de distância domina → escala; se ângulo domina → rotação
         handleDragState.mode = distDelta >= angleDelta ? 'scale' : 'rotate';
         if (handleDragState.isGhost) ghostInteraction.mode = handleDragState.mode;
+        if (!handleDragState.isGhost && !handleDragState.undoCaptured) {
+          pushUndo();
+          gestureState.mode = 'editing';
+          handleDragState.undoCaptured = true;
+        }
       } else {
         return;
       }
@@ -10782,6 +10813,7 @@ function ensureGlobalHandle() {
       }
     }
     handleDragState = null;
+    clearPendingStageGesture();
   };
   globalHandleEl.addEventListener('pointerup', endHandle);
   globalHandleEl.addEventListener('pointercancel', endHandle);
@@ -10841,14 +10873,19 @@ function createFrameDOM(i) {
   el.addEventListener('pointerdown', ev => {
     if (isInsertingFrame) { ev.preventDefault(); ev.stopPropagation(); return; }
     if (editorPanMode) return; // pan mode: não selecionar/editar, propagar ao stage
+    if (isStageNavigationActiveOrCoolingDown()) { ev.preventDefault(); ev.stopPropagation(); return; }
     const fi = parseInt(el.id.split('_')[1]);
-    // Frame travado: pode ser selecionado mas não arrastado
-    if (fi !== activeIdx) {
-      activeIdx = fi; renderAll(); ev.stopPropagation(); return;
-    }
-    if (frameLocked[fi]) { ev.stopPropagation(); return; }
     if (!ev.target.classList.contains('h')) {
-      activeIdx = fi; renderAll(); ev.stopPropagation();
+      ev.stopPropagation();
+      clearPendingStageGesture();
+      gestureState.mode = 'pendingSingleTouch';
+      gestureState.pendingTarget = { kind: 'frame-tap', fi, pointerId: ev.pointerId };
+      gestureState.pendingTimer = setTimeout(() => {
+        if (gestureState.mode === 'stageNavigation' || isStageNavigationCoolingDown()) return;
+        activeIdx = fi;
+        renderAll();
+        clearPendingStageGesture();
+      }, 110);
     }
   });
 }
@@ -10860,7 +10897,12 @@ function createCtrlDOM(seg) {
   el.className = 'ctrl-pt';
   el.style.display = 'none';
   stage.appendChild(el);
-  el.addEventListener('pointerdown', e => { if (isInsertingFrame) { e.preventDefault(); e.stopPropagation(); return; } if (!editorPanMode) e.stopPropagation(); startCtrlDrag(seg); });
+  el.addEventListener('pointerdown', e => {
+    if (isInsertingFrame) { e.preventDefault(); e.stopPropagation(); return; }
+    if (isStageNavigationActiveOrCoolingDown()) { e.preventDefault(); e.stopPropagation(); return; }
+    if (!editorPanMode) e.stopPropagation();
+    startCtrlDrag(seg);
+  });
 }
 
 // ═══════════════════════════════════════
@@ -11207,6 +11249,7 @@ function startGhostFrameDrag(e) {
   if (!isInsertingFrame || !ghostFrame) return;
   // v8z4b22e: .ghost-action removido do ghost — guarda desnecessária eliminada
   if (ghostInteraction.mode !== 'idle') return;
+  if (isStageNavigationActiveOrCoolingDown()) return;
   e.preventDefault();
   e.stopPropagation();
   ghostFrameEl.setPointerCapture?.(e.pointerId);
@@ -12539,7 +12582,10 @@ function updateCtrlPts() {
       loopEl.style.background = 'rgba(180,100,255,1)';
       loopEl.style.boxShadow  = '0 2px 8px rgba(0,0,0,.4),0 0 0 5px rgba(180,100,255,.2)';
       stage.appendChild(loopEl);
-      loopEl.addEventListener('pointerdown', e => { if (!editorPanMode) { e.stopPropagation(); startCtrlDrag('loop'); } });
+      loopEl.addEventListener('pointerdown', e => {
+        if (isStageNavigationActiveOrCoolingDown()) { e.preventDefault(); e.stopPropagation(); return; }
+        if (!editorPanMode) { e.stopPropagation(); startCtrlDrag('loop'); }
+      });
     }
     loopEl.style.display = 'block';
     loopEl.style.left    = (_loopCurve.nx * stageW) + 'px';
@@ -12628,7 +12674,7 @@ function updateCtrlPts() {
         inHandleEl = _ensureHandleEl('frame_in_handle', 'frame-in-handle');
         if (!inHandleEl._arcoListenerAttached) {
           inHandleEl.addEventListener('pointerdown', e => {
-            if (editorPanMode || isPreviewing) return;
+            if (editorPanMode || isPreviewing || isStageNavigationActiveOrCoolingDown()) return;
             e.stopPropagation();
             startFrameHandleDrag('in');
           });
@@ -12655,7 +12701,7 @@ function updateCtrlPts() {
         outHandleEl = _ensureHandleEl('frame_out_handle', 'frame-out-handle');
         if (!outHandleEl._arcoListenerAttached) {
           outHandleEl.addEventListener('pointerdown', e => {
-            if (editorPanMode || isPreviewing) return;
+            if (editorPanMode || isPreviewing || isStageNavigationActiveOrCoolingDown()) return;
             e.stopPropagation();
             startFrameHandleDrag('out');
           });
@@ -12789,7 +12835,9 @@ function getMidpointEl(seg) {
 // segType: 'normal' | 'loop'.
 function startMidpointDrag(seg, segType) {
   if (isPreviewing) return;
+  if (isStageNavigationActiveOrCoolingDown()) return;
   document.body.classList.add('dragging');
+  gestureState.mode = 'editing';
   pushUndo();
   midpointDragState = { seg: seg, segType: segType, didMove: false };
   // Marcar segmento como manual para evitar reposicionamento automático
@@ -12854,7 +12902,8 @@ function applyMidpointPathPointEdit(seg, segType, nx, ny) {
 function startFrameHandleDrag(which) {
   if (isInsertingFrame) return;
   if (isPreviewing) return;
-  document.body.classList.add('dragging');
+  if (isStageNavigationActiveOrCoolingDown()) return;
+  gestureState.mode = 'pendingSingleTouch';
   frameHandleDragState = { which, didMove: false, undoCaptured: false };
 }
 
@@ -13226,6 +13275,8 @@ function resetEditorZoom() {
   panDragState = null;
   twoFingerState = null;  // v8z4b24a: limpar gesto de pinça ativo
   isPinching = false;     // v8z4b24a: cancelar pinch em andamento
+  clearPendingStageGesture();
+  gestureState.mode = 'idle';
   applyEditorZoom();
 }
 
@@ -13268,6 +13319,103 @@ function toggleEditorPanMode() {
   applyEditorZoom();
 }
 
+function isStageNavigationCoolingDown() {
+  return performance.now() < gestureState.navigationCooldownUntil;
+}
+
+function isStageNavigationActiveOrCoolingDown() {
+  return gestureState.mode === 'stageNavigation' || isPinching || isStageNavigationCoolingDown();
+}
+
+function clearPendingStageGesture() {
+  if (gestureState.pendingTimer) {
+    clearTimeout(gestureState.pendingTimer);
+    gestureState.pendingTimer = null;
+  }
+  gestureState.pendingTarget = null;
+  if (gestureState.mode === 'pendingSingleTouch') gestureState.mode = 'idle';
+}
+
+function cancelStageEditingForNavigation() {
+  clearPendingStageGesture();
+  dragState = null;
+  ctrlDragSeg = -1;
+  ctrlDragDidMove = false;
+  ctrlDragUndoCaptured = false;
+  midpointDragState = null;
+  frameTangentDragState = null;
+  frameHandleDragState = null;
+  panDragState = null;
+  handleDragState = null;
+  ghostDragState = null;
+  if (isInsertingFrame && ghostInteraction.mode !== 'idle') resetGhostInteraction();
+  document.body.classList.remove('dragging');
+  hideAngleIndicator();
+}
+
+function isStageViewportNavigationTarget(target) {
+  if (!target) return true;
+  if (target.closest('#editorZoomCtrl')) return false;
+  if (target.closest('#insertionActionBar')) return false;
+  if (target.closest('.float-panel')) return false;
+  if (target.closest('.settings-sheet')) return false;
+  if (target.closest('.top-bar')) return false;
+  if (target.closest('#midBar')) return false;
+  if (target.closest('#toolbar')) return false;
+  if (target.closest('button,input,select,textarea,label')) return false;
+  return !!target.closest('#imageArea');
+}
+
+function startStageNavigationFromTouches(e) {
+  if (isPreviewing || !hasImageLoaded()) return;
+  if (!isStageViewportNavigationTarget(e.target)) return;
+  if (!e.touches || e.touches.length < 2) return;
+  const t1 = e.touches[0], t2 = e.touches[1];
+  const startDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+  if (startDist < 4) return;
+  e.preventDefault();
+  cancelStageEditingForNavigation();
+  gestureState.mode = 'stageNavigation';
+  isPinching = true;
+  const sr = stage.getBoundingClientRect();
+  twoFingerState = {
+    startDist,
+    startMidX:    (t1.clientX + t2.clientX) / 2,
+    startMidY:    (t1.clientY + t2.clientY) / 2,
+    startZoom:    editorZoomScale,
+    startPanX:    editorPanX,
+    startPanY:    editorPanY,
+    stageNatLeft: sr.left - editorPanX,
+    stageNatTop:  sr.top  - editorPanY,
+  };
+}
+
+function finishStageNavigation(setCooldown = true) {
+  if (isPinching || gestureState.mode === 'stageNavigation') {
+    isPinching = false;
+    twoFingerState = null;
+    gestureState.mode = 'idle';
+    clearPendingStageGesture();
+    if (setCooldown) {
+      gestureState.navigationCooldownUntil = performance.now() + STAGE_NAV_COOLDOWN_MS;
+      pinchJustEnded = true;
+      setTimeout(() => { pinchJustEnded = false; }, STAGE_NAV_COOLDOWN_MS);
+    }
+  }
+}
+
+function commitPendingStageTap() {
+  const pending = gestureState.pendingTarget;
+  if (!pending || gestureState.mode === 'stageNavigation' || isStageNavigationCoolingDown()) return false;
+  if (pending.kind === 'frame-tap' && pending.fi >= 0) {
+    activeIdx = pending.fi;
+    renderAll();
+    clearPendingStageGesture();
+    return true;
+  }
+  return false;
+}
+
 // ═══════════════════════════════════════
 // DRAG HANDLERS
 // ═══════════════════════════════════════
@@ -13280,33 +13428,37 @@ function startRotate(e) {
   if (isInsertingFrame) return;
   if (isPreviewing) return;
   if (editorPanMode) return; // pan mode: não editar, deixar propagar para pan
+  if (isStageNavigationActiveOrCoolingDown()) return;
   e.preventDefault();
   e.stopPropagation();
   const fi = parseInt(e.currentTarget.dataset.fi);
-  activeIdx = fi; renderAll();
   if (frameLocked[fi]) return; // frame bloqueado
+  activeIdx = fi; renderAll();
+  gestureState.mode = 'editing';
   dragState = { type:'rotate', fi };
 }
 
 function startMove(e) {
   if (isInsertingFrame) return;
-  document.body.classList.add('dragging');
   if (isPreviewing) return;
   if (editorPanMode) return; // pan mode: não mover frame, deixar propagar para pan
-  if (pinchJustEnded) return; // ignorar touch após pinch
+  if (isStageNavigationActiveOrCoolingDown()) return; // ignorar touch após navegação
   const fi = parseInt(e.currentTarget.dataset.fi);
   if (frameLocked[fi]) return; // frame travado: ignorar completamente
   e.preventDefault(); e.stopPropagation();
   e.currentTarget.setPointerCapture?.(e.pointerId);
-  activeIdx = fi; renderAll();
   if (frameLocked[fi]) return;
   const pos = getPos(e);
   const sc = screenToStageCoord(pos.x, pos.y);
+  gestureState.mode = 'pendingSingleTouch';
+  gestureState.pendingTarget = { kind: 'frame', fi, pointerId: e.pointerId, sx: pos.x, sy: pos.y };
   dragState = {
     type:'move', fi,
     ox:frames[fi].x, oy:frames[fi].y, sx:pos.x, sy:pos.y,
     grabDX: sc.x - frames[fi].x,
     grabDY: sc.y - frames[fi].y,
+    pendingSelect: fi !== activeIdx,
+    didMove: false,
     undoCaptured: false
   };
 }
@@ -13322,11 +13474,13 @@ function startResize(e) {
   if (isInsertingFrame) return;
   if (isPreviewing) return;
   if (editorPanMode) return; // pan mode: não redimensionar
+  if (isStageNavigationActiveOrCoolingDown()) return;
   e.preventDefault(); e.stopPropagation();
   const fi  = parseInt(e.currentTarget.dataset.fi);
   const dir = e.currentTarget.dataset.dir;
-  activeIdx = fi; renderAll();
   if (frameLocked[fi]) return;
+  activeIdx = fi; renderAll();
+  gestureState.mode = 'editing';
   const pos = getPos(e);
   // Todos os cantos fazem escala proporcional
   dragState = { type:'resize', fi, dir, sx:pos.x, sy:pos.y,
@@ -13335,18 +13489,20 @@ function startResize(e) {
 
 function startCtrlDrag(seg) {
   if (isInsertingFrame) return;
+  if (isStageNavigationActiveOrCoolingDown()) return;
   document.body.classList.add('dragging');
   if (isPreviewing) return;
   if (editorPanMode) return; // pan mode: não mover ponto de curva
-  pushUndo();
+  gestureState.mode = 'editing';
   ctrlDragSeg = seg;
   ctrlDragDidMove = false; // v8z4b19i: resetar flag de movimento para este drag
+  ctrlDragUndoCaptured = false;
   // Marcar como manual — não reposiciona mais automaticamente
   if (typeof seg === 'number' && seg >= 0) setSegmentCurveManual(seg, true);
 }
 
-// Prevent scroll on stage but allow sliders in panels
-stage.addEventListener('touchstart', e => {
+// Prevent scroll/native zoom on the Stage viewport but allow controls outside it.
+imageArea.addEventListener('touchstart', e => {
   // Fechar painéis ao tocar no stage
   const anyPanel = document.querySelector('.float-panel.show');
   if (anyPanel) { closeAll(); return; }
@@ -13356,33 +13512,12 @@ stage.addEventListener('touchstart', e => {
     closeCustBar();
     return;
   }
+  if (!isStageViewportNavigationTarget(e.target)) return;
   e.preventDefault();
   if (e.touches.length === 2 && !isPreviewing) {
-    // Dois dedos: cancelar qualquer drag/ghost em andamento (não misturar edição com navegação)
-    if (dragState) {
-      dragState = null;
-      document.body.classList.remove('dragging');
-    }
-    if (ghostDragState) {
-      ghostDragState = null;
-    }
-    isPinching = true;
-    // v8z4b24a — capturar estado inicial do gesto de dois dedos (pinça/pan)
-    const sr = stage.getBoundingClientRect();
-    const t1 = e.touches[0], t2 = e.touches[1];
-    const _initDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-    // Guard: ignorar se os dois toques estão no mesmo ponto (evita divisão por ~zero)
-    if (_initDist >= 4) twoFingerState = {
-      startDist:    _initDist,
-      startMidX:    (t1.clientX + t2.clientX) / 2,
-      startMidY:    (t1.clientY + t2.clientY) / 2,
-      startZoom:    editorZoomScale,
-      startPanX:    editorPanX,
-      startPanY:    editorPanY,
-      // posição natural do stage (sem transform CSS): sr.left - panX = naturalLeft
-      stageNatLeft: sr.left - editorPanX,
-      stageNatTop:  sr.top  - editorPanY,
-    };
+    startStageNavigationFromTouches(e);
+  } else {
+    gestureState.mode = 'pendingSingleTouch';
   }
 }, {passive:false});
 
@@ -13428,8 +13563,12 @@ document.addEventListener('pointerdown', (e) => {
   clearMultiSelect();
 }, true);
 
-stage.addEventListener('touchmove', e => {
+imageArea.addEventListener('touchmove', e => {
+  if (!isStageViewportNavigationTarget(e.target)) return;
   e.preventDefault();
+  if (e.touches.length >= 2 && !twoFingerState && !isPreviewing) {
+    startStageNavigationFromTouches(e);
+  }
   // v8z4b24a — gesto de dois dedos: zoom contínuo (pinça) + pan simultâneo
   if (e.touches.length === 2 && twoFingerState && !isPreviewing) {
     const t1 = e.touches[0], t2 = e.touches[1];
@@ -13461,34 +13600,27 @@ stage.addEventListener('touchmove', e => {
   }
 }, {passive:false});
 
-stage.addEventListener('touchend', e => {
+imageArea.addEventListener('touchend', e => {
   if (e.touches.length < 2) {
-    if (isPinching) {
-      isPinching = false;
-      twoFingerState = null;  // v8z4b24a: encerrar gesto de dois dedos
-      pinchJustEnded = true;
-      setTimeout(() => { pinchJustEnded = false; }, 300);
-    }
+    finishStageNavigation(true);
   }
 });
 
 // v8z4b24a — touchcancel: limpar estado do gesto de dois dedos sem pinchJustEnded
-stage.addEventListener('touchcancel', e => {
-  if (isPinching) {
-    isPinching = false;
-    twoFingerState = null;
-    // Não setar pinchJustEnded no cancel (o gesto foi interrompido pelo sistema)
-  }
+imageArea.addEventListener('touchcancel', e => {
+  finishStageNavigation(false);
+  clearPendingStageGesture();
 });
 
 // Pan de edição — ativo apenas quando editorPanMode está ligado e zoom > 1
-stage.addEventListener('pointerdown', (e) => {
+imageArea.addEventListener('pointerdown', (e) => {
+  if (!isStageViewportNavigationTarget(e.target)) return;
+  if (isStageNavigationActiveOrCoolingDown()) { e.preventDefault(); e.stopPropagation(); return; }
   if (isInsertingFrame) {
     if (ghostInteraction.mode !== 'idle' || isGhostControlTarget(e.target)) return;
     e.preventDefault();
     e.stopPropagation();
     const sc = screenToStageCoord(e.clientX, e.clientY);
-    updateGhostFramePosition(sc.x, sc.y);
     stage.setPointerCapture?.(e.pointerId);
     ghostInteraction = {
       mode: 'drag',
@@ -13504,7 +13636,14 @@ stage.addEventListener('pointerdown', (e) => {
       startDistance: 0,
       startAngle: 0
     };
-    ghostDragState = { pointerId: e.pointerId };
+    ghostDragState = {
+      pointerId: e.pointerId,
+      pendingPlace: true,
+      startStageX: sc.x,
+      startStageY: sc.y,
+      startPointerX: e.clientX,
+      startPointerY: e.clientY
+    };
     return;
   }
   if (isPreviewing || editorZoomScale <= 1 || !editorPanMode) return;
@@ -13534,10 +13673,13 @@ window.addEventListener('pointercancel', endDrag);
 function onMove(e) {
   // Evita duplo disparo: pointer + mouse no mesmo gesto
   if (window.PointerEvent && (e.type === 'mousemove' || e.type === 'touchmove')) return;
+  if (gestureState.mode === 'stageNavigation') {
+    e.preventDefault();
+    return;
+  }
   // Pinch acidental: dois dedos durante drag = cancela o drag
   if (dragState && e.touches && e.touches.length >= 2) {
-    dragState = null;
-    document.body.classList.remove('dragging');
+    cancelStageEditingForNavigation();
     return;
   }
   if (dragState || ctrlDragSeg !== -1 || panDragState || midpointDragState || frameTangentDragState || frameHandleDragState || ghostDragState || ghostInteraction.mode !== 'idle') {
@@ -13548,6 +13690,13 @@ function onMove(e) {
   if (ghostDragState && isInsertingFrame && isGhostInteractionActive('drag')) {
     if (ghostDragState.pointerId != null && e.pointerId != null && e.pointerId !== ghostDragState.pointerId) return;
     const sc = screenToStageCoord(pos.x, pos.y);
+    if (ghostDragState.pendingPlace) {
+      const movedEnough = Math.hypot(pos.x - ghostDragState.startPointerX, pos.y - ghostDragState.startPointerY) >= STAGE_SINGLE_TOUCH_MOVE_THRESHOLD;
+      if (!movedEnough) return;
+      ghostDragState.pendingPlace = false;
+      updateGhostFramePosition(sc.x, sc.y);
+      return;
+    }
     if (Number.isFinite(ghostDragState.grabDX) && Number.isFinite(ghostDragState.grabDY)) {
       updateGhostFrameTopLeft(sc.x - ghostDragState.grabDX, sc.y - ghostDragState.grabDY);
     } else {
@@ -13578,6 +13727,11 @@ function onMove(e) {
     const sc = screenToStageCoord(pos.x, pos.y);
     const nx = sc.x / stageW;
     const ny = sc.y / stageH;
+    if (!ctrlDragUndoCaptured) {
+      pushUndo();
+      ctrlDragUndoCaptured = true;
+      gestureState.mode = 'editing';
+    }
 
     // v8z4b18k: curvePuller — puxador auxiliar legado editado via camada interna
     const _adjDesc = { kind: 'curvePuller', role: 'control', source: 'quadraticCtrl' };
@@ -13634,6 +13788,8 @@ function onMove(e) {
       if (dist < 2) return; // limiar lazy undo — não criar undo por toque sem movimento real
       pushUndo(); // capturar estado ANTES de qualquer mudança
       frameHandleDragState.undoCaptured = true;
+      gestureState.mode = 'editing';
+      document.body.classList.add('dragging');
     }
     // v8z4b20c: obter target do handle arrastado e editar apenas esse trecho
     const _dragTargets = getFrameConnectedHandleTargets(activeIdx);
@@ -13685,6 +13841,19 @@ function onMove(e) {
     const sc = screenToStageCoord(pos.x, pos.y);
     const newX = sc.x - dragState.grabDX;
     const newY = sc.y - dragState.grabDY;
+    const movedEnough = Math.hypot(pos.x - dragState.sx, pos.y - dragState.sy) >= STAGE_SINGLE_TOUCH_MOVE_THRESHOLD;
+    if (dragState.pendingSelect && movedEnough) {
+      dragState.pendingSelect = false;
+      activeIdx = fi;
+      document.body.classList.add('dragging');
+      gestureState.mode = 'editing';
+      renderAll();
+    } else if (!dragState.pendingSelect) {
+      gestureState.mode = 'editing';
+      document.body.classList.add('dragging');
+    }
+    if (dragState.pendingSelect && !movedEnough) return;
+    dragState.didMove = true;
     if (!dragState.undoCaptured &&
         (Math.abs(newX - frames[fi].x) > 0.001 || Math.abs(newY - frames[fi].y) > 0.001)) {
       pushUndo();
@@ -13827,11 +13996,22 @@ function syncCtrlPtsForFrame(fi) {
 function endDrag(e) {
   // Evita duplo disparo: pointer + mouse no mesmo gesto
   if (window.PointerEvent && e && (e.type === 'mouseup' || e.type === 'touchend')) return;
+  if (gestureState.mode === 'stageNavigation' || isStageNavigationCoolingDown()) {
+    cancelStageEditingForNavigation();
+    return;
+  }
+  if (!dragState && !handleDragState && !ghostDragState && ctrlDragSeg === -1 &&
+      !midpointDragState && !frameTangentDragState && !frameHandleDragState) {
+    if (commitPendingStageTap()) return;
+  }
   if (isInsertingFrame && ghostInteraction.mode !== 'idle') {
     if (ghostInteraction.pointerId != null && e?.pointerId != null && e.pointerId !== ghostInteraction.pointerId) return;
     try { stage.releasePointerCapture?.(ghostInteraction.pointerId); } catch(err) {}
     try { ghostFrameEl?.releasePointerCapture?.(ghostInteraction.pointerId); } catch(err) {}
     try { globalHandleEl?.releasePointerCapture?.(ghostInteraction.pointerId); } catch(err) {}
+    if (ghostDragState && ghostDragState.pendingPlace && !isStageNavigationCoolingDown()) {
+      updateGhostFramePosition(ghostDragState.startStageX, ghostDragState.startStageY);
+    }
     if (ghostInteraction.mode === 'scale' || ghostInteraction.mode === 'rotate') {
       handleDragState = null;
       hideAngleIndicator();
@@ -13864,12 +14044,19 @@ function endDrag(e) {
   const hadHandleDrag   = frameHandleDragState !== null;
   const handleMoved     = frameHandleDragState && frameHandleDragState.didMove;
   const hadInteraction  = dragState != null || hadCtrlDrag || hadMidpointDrag || hadTangentDrag || hadHandleDrag;
-  dragState = null; ctrlDragSeg = -1; ctrlDragDidMove = false;
+  const pendingFrameTap = dragState && dragState.type === 'move' && dragState.pendingSelect && !dragState.didMove;
+  const pendingFrameFi = pendingFrameTap ? dragState.fi : -1;
+  dragState = null; ctrlDragSeg = -1; ctrlDragDidMove = false; ctrlDragUndoCaptured = false;
   midpointDragState     = null; // v8z4b19v
   frameTangentDragState = null; // v8z4b19y (legado)
   frameHandleDragState  = null; // v8z4b20b
+  clearPendingStageGesture();
   document.body.classList.remove('dragging');
   hideAngleIndicator();
+  if (pendingFrameTap && pendingFrameFi >= 0 && !isStageNavigationCoolingDown()) {
+    activeIdx = pendingFrameFi;
+    renderAll();
+  }
   // v8z4b19i — invalidar MP4 se um ponto de curva foi movido (curva normal ou loop)
   if (ctrlMoved) markProjectDirty('curve');
   // v8z4b19v — invalidar MP4 se midpoint pathPoint foi movido
