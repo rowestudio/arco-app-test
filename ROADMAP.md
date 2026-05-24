@@ -1,5 +1,48 @@
 # Roadmap
 
+## Objetivo imediato — v8z4b22a (concluído)
+
+Assisted Frame Insertion. Base: v8z4b21e.
+
+- ✅ Botão `+` entra em modo temporário de posicionamento assistido.
+- ✅ Frame definitivo não é criado no primeiro toque do `+`.
+- ✅ Ghost frame translúcido aparece no Stage com rótulo do futuro frame.
+- ✅ Toque e drag no Stage reposicionam o ghost.
+- ✅ OK confirma a inserção e cria uma única entrada de undo.
+- ✅ Cancelar remove o ghost sem alterar `frameCount`, curvesV2, durações ou undo.
+- ✅ Inserção entre frames divide localmente o trecho original.
+- ✅ De Casteljau preserva a cúbica quando o ghost sugerido é aceito sem mover.
+- ✅ Ghost movido livremente gera handles locais padrão de 1/3 da corda.
+- ✅ Inserção com loop ativo adiciona o novo frame antes do fechamento; loop passa a ser novo último→F1.
+- ✅ Preview, MP4/export, Movimento inteligente, Reset Project e Reset Curves preservados sem alteração funcional.
+- ✅ JSON salva `version: v8z4b22a` e não salva estado transitório do ghost/insertion.
+
+### Próximas ideias registradas (não implementadas nesta versão)
+
+#### Direct Curve Drag
+
+- Usuário poderá puxar a própria curva do trecho.
+- App ajustará OUT do frame inicial e IN do frame final simultaneamente.
+- Não cria midpoint permanente.
+- Comportamento inspirado no Illustrator.
+- **Não implementado na v8z4b22a.**
+
+#### Path/Insert Tool
+
+- Usuário ativa uma ferramenta de inserção/path.
+- Toques sucessivos no Stage criam vários frames em sequência.
+- Pode evoluir para desenho de path/frames.
+- **Não implementado na v8z4b22a.**
+
+#### Tela inicial com movimento livre
+
+- Avaliar começar com 1 frame.
+- Avaliar começar com 0 frames.
+- Avaliar escolha entre template e movimento livre.
+- **Não implementado na v8z4b22a.**
+
+---
+
 ## Objetivo imediato — v8z4b21e (concluído)
 
 Correção do Movimento inteligente com loop usando vizinhança local real. Base: v8z4b21d.

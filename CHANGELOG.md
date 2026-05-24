@@ -1,5 +1,45 @@
 # Changelog
 
+## v8z4b22a — assisted frame insertion
+
+Nova função de UX controlada sobre v8z4b21e. Base obrigatória: v8z4b21e.
+
+### Implementação
+
+- O botão `+` não cria mais frame definitivo imediatamente.
+- O app entra em modo temporário `isInsertingFrame` com `pendingFrameInsert`, `insertFrameMode` e `ghostFrame`.
+- O Stage mostra um ghost frame translúcido, com rótulo do futuro frame e controles pequenos OK/Cancelar.
+- Tocar ou arrastar no Stage reposiciona o ghost; mover o ghost não altera `frameCount`, arrays do projeto nem undo.
+- Cancelar remove o ghost e restaura a interação normal sem alterar o projeto.
+- Confirmar cria uma única entrada de undo e insere o frame definitivo na posição escolhida.
+
+### Curvas, loop e timing
+
+- Inserção entre frames divide o trecho original localmente.
+- Se o ghost sugerido em t=0.5 for aceito sem mover, curvesV2 usa subdivisão De Casteljau para preservar a cúbica.
+- Se o ghost for movido, os dois trechos locais recebem handles padrão de 1/3 da corda, com `manual:false`.
+- Inserção no último frame com loop ativo adiciona o novo frame como último antes do fechamento; o loop passa a ser novo último→F1.
+- Inserção depois do último sem loop usa `defaultNewSegmentDuration`.
+- Ao dividir trecho existente, `segDurations` é dividido metade/metade e o novo frame nasce com pause 0.
+- Rotação e tamanho são interpolados entre frames quando há próximo frame; ao inserir depois do último, são copiados do frame ativo.
+
+### Preservações
+
+- curvesV2 continua fonte de verdade; handles OUT/IN independentes preservados.
+- Preview, MP4/export, Movimento inteligente, Reset Project e Reset Curves não receberam alteração funcional.
+- Estado transitório (`isInsertingFrame`, `ghostFrame`, `pendingFrameInsert`, `insertFrameMode`) não é salvo no JSON.
+- Direct Curve Drag, Path/Insert Tool e começar com 1 frame/0 frames ficaram apenas no ROADMAP.
+
+### Arquivos alterados
+
+- `index.html`: modo assisted frame insertion, ghost frame, confirmação/cancelamento, inserção local e versionamento → v8z4b22a.
+- `CHANGELOG.md`: este registro.
+- `QA.md`: checklist v8z4b22a.
+- `ROADMAP.md`: v8z4b22a concluído e próximos itens mantidos como futuros.
+- `pages-deploy-stamp.txt`: atualizado.
+
+---
+
 ## v8z4b21e — restore local loop influence in smart movement
 
 Correção funcional sobre v8z4b21d. Base obrigatória: v8z4b21d.
