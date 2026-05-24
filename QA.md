@@ -2,6 +2,69 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b21d — fix project reset baseline and smart loop continuity
+
+### Teste A — versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b21d` na UI (Settings).
+3. Confirmar que nome exibe `fix project reset baseline and smart loop continuity`.
+
+### Teste B — Reset Project usa baseline carregado
+1. Abrir um projeto JSON salvo com vários frames, curvas, loop e `curvesV2`.
+2. Mexer em frames, handles e duração.
+3. Acionar Reset Project.
+4. Confirmar que volta exatamente ao projeto como estava ao abrir o JSON.
+5. Confirmar que não volta para o template padrão.
+6. Confirmar que frames, curvas, duração, loop, `framePauses`, `segDurations` e `loopDuration` foram restaurados do baseline.
+
+### Teste C — Undo/Redo do Reset Project
+1. Com um projeto carregado, alterar o estado.
+2. Acionar Reset Project.
+3. Confirmar que uma única entrada de undo foi criada.
+4. Acionar Undo e confirmar retorno ao estado anterior ao reset.
+5. Acionar Redo e confirmar reaplicação do reset.
+6. Acionar Reset Project novamente quando já está igual ao baseline e confirmar que não cria undo extra.
+
+### Teste D — caso mínimo: 2 frames / 4s / loop 1s / smart movement
+1. Criar projeto com 2 frames.
+2. Definir F1→F2 duração 4s.
+3. Ativar Loop.
+4. Definir `loopDuration = 1s`.
+5. Garantir `segmentTimingMode: manual`.
+6. Garantir `movementEasingMode: smart`.
+7. Garantir Velocidade constante desligada (`constantSpeedTotalDuration: null`).
+8. Garantir `framePauses` zeradas.
+9. Garantir curvesV2 ativo.
+10. Rodar Preview.
+11. Confirmar que F1→F2 não tem falsa parada no meio da curva.
+12. Confirmar que o loop não dá tranco forte de velocidade.
+13. Alterar `loopDuration` para valores maiores e menores.
+14. Confirmar que a mudança não contamina dramaticamente o trecho normal.
+15. Confirmar que Movimento inteligente ainda atua no loop de forma local.
+
+### Teste E — Reset Curves e handles independentes
+1. Confirmar que Reset Curves ainda funciona com curvesV2.
+2. Confirmar que handles OUT/IN continuam independentes.
+3. Confirmar que mover OUT não move IN.
+4. Confirmar que mover IN não move OUT.
+5. Confirmar que midpoint e ctrl-pt legado não aparecem como UI.
+
+### Teste F — Preview, MP4, JSON e compatibilidade
+1. Rodar Preview e confirmar a trajetória corrigida.
+2. Gerar MP4 e confirmar que segue o Preview.
+3. Salvar JSON e confirmar `"version": "v8z4b21d"`.
+4. Confirmar `curvesV2` presente.
+5. Confirmar `framePauses`, `segDurations` e `loopDuration` preservados.
+6. Abrir JSON antigo sem `curvesV2` e confirmar conversão automática.
+7. Confirmar sem NaN/Infinity e sem erro de console.
+
+### Teste G — ROADMAP registrado sem implementação
+1. Abrir ROADMAP.md.
+2. Confirmar que Direct Curve Drag e Assisted Frame Insertion estão listados como futuros.
+3. Confirmar que não foram implementados na v8z4b21d.
+
+---
+
 ## v8z4b21c — fix smart loop false stop and reset curves v2
 
 ### Teste A — versão
@@ -7455,4 +7518,3 @@ local sem regressões nos valores/sincronização.
 17. Salvar JSON.
 18. Reabrir JSON.
 19. Testar no iPhone/Safari via GitHub Pages com cache busting.
-
