@@ -1,13 +1,21 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b23b                                     ║
+║  Versão: v8z4b24a                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b24a                                            ║
+║    feat: navegação visual do Stage com pinça para    ║
+║         zoom (dois dedos → zoom in/out contínuo);    ║
+║    feat: pan do Stage com dois dedos;                ║
+║    fix/arch: coordenadas de edição consideram        ║
+║         editorView zoom/pan;                         ║
+║    arch: Stage visível como viewport de edição,      ║
+║         sem alterar dados reais do projeto;          ║
 ║  v8z4b23b                                            ║
 ║    fix: Reset Project de projeto novo limpa          ║
 ║         overlays antigos antes de voltar ao F1       ║
@@ -388,6 +396,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b24a — editor zoom/pan navigation: navegação visual do Stage com pinça para zoom; pan do Stage com dois dedos; coordenadas de edição passam a considerar editorView zoom/pan; Stage visível como viewport de edição, sem alterar dados reais do projeto; MIN_EDITOR_ZOOM=0.5, MAX_EDITOR_ZOOM=4; gesto de dois dedos impede edição simultânea; JSON não salva zoom/pan. -->
 <!-- Arco Motion App — v8z4b23b — overlay cleanup: Reset Project de projeto novo limpa overlays antigos (dim overlay, bezier, handles) antes de voltar ao F1 assistido; F1 assistido após reset redesenha imediatamente o overlay correto; guard frameCount>0 em renderAll para evitar crash ao cancelar F1 assistido com frames vazio. -->
 <!-- Arco Motion App — v8z4b23a — single-frame: projetos novos começam com F1 em modo assistido; mínimo oficial passa a ser 1 frame; Preview/MP4 suportam 1 frame como vídeo estático; Reset Project de projeto novo volta ao F1 assistido; JSON com 1 frame é válido. -->
 <!-- Arco Motion App — v8z4b22e — insertion ux: Confirmar/Cancelar da inserção assistida ficam exclusivamente na barra inferior; removidos controles duplicados de confirmação/cancelamento dentro do ghost frame. -->
@@ -2296,7 +2305,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b23b</span><br><span id="appVersionNameText">overlay cleanup: Reset limpa overlays antes do F1 assistido</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b24a</span><br><span id="appVersionNameText">editor zoom/pan navigation: pinça para zoom, dois dedos para pan</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4637,8 +4646,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b23b';
-const APP_VERSION_NAME = 'overlay cleanup: Reset limpa overlays antes do F1 assistido';
+const APP_VERSION = 'v8z4b24a';
+const APP_VERSION_NAME = 'editor zoom/pan navigation: pinça para zoom, dois dedos para pan';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10240,6 +10249,10 @@ let isPinching      = false;
 let pinchStartAngle = 0;
 let pinchStartRot   = 0;
 let pinchJustEnded  = false;
+// v8z4b24a — estado do gesto de dois dedos (pinça/pan no Stage de edição)
+// Capturado em touchstart e limpo em touchend/touchcancel/resetEditorZoom.
+// Não salvo no JSON; não cria Undo.
+let twoFingerState  = null;  // { startDist, startMidX, startMidY, startZoom, startPanX, startPanY, stageNatLeft, stageNatTop }
 
 // Editor Zoom — v8z4b17y (não afeta animação, export, JSON)
 let editorZoomScale = 1;  // visual/editorial, não salvo no JSON
@@ -13111,6 +13124,9 @@ function applyFrameTangentEdit(hx, hy) {
 // ═══════════════════════════════════════
 
 const ZOOM_LEVELS = [1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+// v8z4b24a — limites do zoom de edição (usado pelo gesto de pinça com dois dedos)
+const MIN_EDITOR_ZOOM = 0.5;
+const MAX_EDITOR_ZOOM = 4.0;
 
 // Proporção do Stage abaixo da qual o frame ativo é considerado pequeno demais — v8z4b18b
 // Substitui o limiar fixo de 160 px por critério relativo à área visível do Stage.
@@ -13122,8 +13138,10 @@ const EDITOR_ZOOM_AUTO_SHOW_RATIO = 0.30;
 // Nota: quando existir Modo Curvas futuro, o zoom poderá ficar sempre disponível nesse modo.
 function shouldShowEditorZoom() {
   if (!hasImageLoaded()) return false;
-  // Zoom acima de 100% → sempre mostrar (mantém barra enquanto zoom está ativo)
-  if (editorZoomScale > 1) return true;
+  // v8z4b24a — qualquer zoom ativo (inclusive zoom-out via pinça) → sempre mostrar
+  if (editorZoomScale !== 1) return true;
+  // Pan ativo com zoom=1 → mostrar (pode acontecer no fim de um gesto de pinça)
+  if (editorPanX !== 0 || editorPanY !== 0) return true;
   // Frame ativo visualmente pequeno em relação ao Stage → mostrar
   const f = frames[activeIdx];
   if (!f) return false;
@@ -13150,15 +13168,21 @@ function screenToStageCoord(clientX, clientY) {
 }
 
 function clampEditorPan() {
-  if (editorZoomScale <= 1) { editorPanX = 0; editorPanY = 0; return; }
-  const ox = stageW * (editorZoomScale - 1);
-  const oy = stageH * (editorZoomScale - 1);
-  editorPanX = Math.max(-ox, Math.min(0, editorPanX));
-  editorPanY = Math.max(-oy, Math.min(0, editorPanY));
+  // v8z4b24a — range generoso: permite navegar até conteúdo fora do viewport
+  // (frames/ghost colocados fora da área visível do Stage).
+  // extraX/extraY = 1× dimensão do Stage em cada direção como margem de acesso.
+  const extraX = stageW;
+  const extraY = stageH;
+  // Espaço adicional gerado pelo zoom (zoom>1 amplia conteúdo além do viewport)
+  const scaledOverX = stageW * Math.max(0, editorZoomScale - 1);
+  const scaledOverY = stageH * Math.max(0, editorZoomScale - 1);
+  editorPanX = Math.max(-(scaledOverX + extraX), Math.min(extraX, editorPanX));
+  editorPanY = Math.max(-(scaledOverY + extraY), Math.min(extraY, editorPanY));
 }
 
 function applyEditorZoom() {
-  if (editorZoomScale <= 1) {
+  // v8z4b24a — aplicar transform em qualquer zoom (inclusive < 1, via gesto de pinça)
+  if (editorZoomScale === 1 && editorPanX === 0 && editorPanY === 0) {
     stage.style.transform = '';
     stage.style.transformOrigin = '';
   } else {
@@ -13175,8 +13199,9 @@ function applyEditorZoom() {
   const panBtn = document.getElementById('ezBtnPan');
   const minusBtn = document.getElementById('ezBtnMinus');
   const plusBtn  = document.getElementById('ezBtnPlus');
-  const active = editorZoomScale > 1;
-  if (ctrl)   ctrl.classList.toggle('zoom-active', active);
+  // v8z4b24a — "active" quando qualquer zoom ativo (inclusive zoom-out via pinça)
+  const active = (editorZoomScale !== 1 || editorPanX !== 0 || editorPanY !== 0);
+  if (ctrl)   ctrl.classList.toggle('zoom-active', editorZoomScale !== 1);
   if (label)  label.textContent = Math.round(editorZoomScale * 100) + '%';
   const sepPan = document.getElementById('ezSepPan');
   if (sepPan) sepPan.style.display = active ? '' : 'none';
@@ -13184,8 +13209,9 @@ function applyEditorZoom() {
     panBtn.style.display = active ? '' : 'none';
     panBtn.classList.toggle('active', editorPanMode);
   }
-  if (minusBtn) minusBtn.disabled = (editorZoomScale <= ZOOM_LEVELS[0]);
-  if (plusBtn)  plusBtn.disabled  = (editorZoomScale >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]);
+  // v8z4b24a — usar MIN/MAX_EDITOR_ZOOM para disabled states
+  if (minusBtn) minusBtn.disabled = (editorZoomScale <= MIN_EDITOR_ZOOM);
+  if (plusBtn)  plusBtn.disabled  = (editorZoomScale >= MAX_EDITOR_ZOOM);
   // Cursor do stage: mão quando pan mode ativo
   stage.style.cursor = (active && editorPanMode) ? 'grab' : '';
   // Visibilidade contextual — v8z4b18b
@@ -13198,6 +13224,8 @@ function resetEditorZoom() {
   editorPanY = 0;
   editorPanMode = false;
   panDragState = null;
+  twoFingerState = null;  // v8z4b24a: limpar gesto de pinça ativo
+  isPinching = false;     // v8z4b24a: cancelar pinch em andamento
   applyEditorZoom();
 }
 
@@ -13330,12 +13358,31 @@ stage.addEventListener('touchstart', e => {
   }
   e.preventDefault();
   if (e.touches.length === 2 && !isPreviewing) {
-    // Dois dedos: cancelar qualquer drag em andamento
+    // Dois dedos: cancelar qualquer drag/ghost em andamento (não misturar edição com navegação)
     if (dragState) {
       dragState = null;
       document.body.classList.remove('dragging');
     }
+    if (ghostDragState) {
+      ghostDragState = null;
+    }
     isPinching = true;
+    // v8z4b24a — capturar estado inicial do gesto de dois dedos (pinça/pan)
+    const sr = stage.getBoundingClientRect();
+    const t1 = e.touches[0], t2 = e.touches[1];
+    const _initDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    // Guard: ignorar se os dois toques estão no mesmo ponto (evita divisão por ~zero)
+    if (_initDist >= 4) twoFingerState = {
+      startDist:    _initDist,
+      startMidX:    (t1.clientX + t2.clientX) / 2,
+      startMidY:    (t1.clientY + t2.clientY) / 2,
+      startZoom:    editorZoomScale,
+      startPanX:    editorPanX,
+      startPanY:    editorPanY,
+      // posição natural do stage (sem transform CSS): sr.left - panX = naturalLeft
+      stageNatLeft: sr.left - editorPanX,
+      stageNatTop:  sr.top  - editorPanY,
+    };
   }
 }, {passive:false});
 
@@ -13383,16 +13430,54 @@ document.addEventListener('pointerdown', (e) => {
 
 stage.addEventListener('touchmove', e => {
   e.preventDefault();
-  // Pinch reservado para zoom futuro — rotação removida
+  // v8z4b24a — gesto de dois dedos: zoom contínuo (pinça) + pan simultâneo
+  if (e.touches.length === 2 && twoFingerState && !isPreviewing) {
+    const t1 = e.touches[0], t2 = e.touches[1];
+    const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    const currentMidX = (t1.clientX + t2.clientX) / 2;
+    const currentMidY = (t1.clientY + t2.clientY) / 2;
+
+    const { startDist, startMidX, startMidY,
+            startZoom, startPanX, startPanY,
+            stageNatLeft, stageNatTop } = twoFingerState;
+
+    // Novo zoom: proporcional à variação de distância entre os dedos
+    let newZoom = startZoom * (currentDist / startDist);
+    newZoom = Math.max(MIN_EDITOR_ZOOM, Math.min(MAX_EDITOR_ZOOM, newZoom));
+
+    // Ponto âncora em coords do Stage (permanece fixo sob o midpoint inicial dos dedos)
+    // Formula: anchorX = (startMidX - stageNaturalLeft - startPanX) / startZoom
+    const anchorX = (startMidX - stageNatLeft - startPanX) / startZoom;
+    const anchorY = (startMidY - stageNatTop  - startPanY) / startZoom;
+
+    // Novo pan: o ponto âncora deve ficar sob o midpoint ATUAL dos dedos
+    // Formula: newPanX = currentMidX - stageNaturalLeft - anchorX * newZoom
+    editorZoomScale = newZoom;
+    editorPanX = currentMidX - stageNatLeft - anchorX * newZoom;
+    editorPanY = currentMidY - stageNatTop  - anchorY * newZoom;
+
+    clampEditorPan();
+    applyEditorZoom();
+  }
 }, {passive:false});
 
 stage.addEventListener('touchend', e => {
   if (e.touches.length < 2) {
     if (isPinching) {
       isPinching = false;
+      twoFingerState = null;  // v8z4b24a: encerrar gesto de dois dedos
       pinchJustEnded = true;
       setTimeout(() => { pinchJustEnded = false; }, 300);
     }
+  }
+});
+
+// v8z4b24a — touchcancel: limpar estado do gesto de dois dedos sem pinchJustEnded
+stage.addEventListener('touchcancel', e => {
+  if (isPinching) {
+    isPinching = false;
+    twoFingerState = null;
+    // Não setar pinchJustEnded no cancel (o gesto foi interrompido pelo sistema)
   }
 });
 
@@ -18665,6 +18750,8 @@ function normalizeImportedFramePauses(projectData, frameCount) {
 function applyFrameData(data) {
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   data = migrateLegacyProjectData(data);
+  // v8z4b24a — reset zoom/pan de edição ao carregar projeto (não é dado do projeto)
+  resetEditorZoom();
   // Não dispara pushUndo — carregar projeto não deve sujar a pilha de undo
   undoStack.length = 0;
   redoStack.length = 0;
