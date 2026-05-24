@@ -1,13 +1,18 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b21e                                     ║
+║  Versão: v8z4b22a                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b22a                                            ║
+║    feat: assisted frame insertion — botão + entra    ║
+║         em modo temporário com ghost frame; toque/   ║
+║         drag posiciona; OK confirma com undo único;  ║
+║         Cancelar sai sem alterar o projeto;          ║
 ║  v8z4b21e                                            ║
 ║    fix: restore local loop influence in smart        ║
 ║         movement — loop volta a participar como      ║
@@ -343,7 +348,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b21e — restore local loop influence in smart movement: Movimento inteligente usa vizinhos imediatos reais; loop participa como vizinho local de F1 e do último frame; limiter monotônico preserva continuidade e impede falsa parada interna. -->
+<!-- Arco Motion App — v8z4b22a — assisted frame insertion: botão + entra em modo temporário com ghost frame translúcido; toque/drag posiciona; OK confirma criando undo único; Cancelar sai sem alterar projeto; curvesV2/Preview/MP4 preservados. -->
 <!-- Arco Motion App — v8z4b21a — implement real cubic in-out handles: curvesV2 com handles in/out independentes por frame; Bézier cúbica C(P0,C1,C2,P3); avaliação e Preview/MP4 usam cubic; JSON salva curvesV2; compatibilidade com arquivos antigos via conversão ctrlPts→curvesV2. -->
 <!-- v8z4b20d — fix handle sync after frame move and visible segment handles: BLOCO A — sincroniza handles visualmente ao mover frame; loopCtrlPt recalculado via t/perpX/perpY quando F1 ou último frame é movido; BLOCO B — applyFrameConnectedHandleEdit armazena t/perp para loop; syncCtrlPtsForFrame estendido para trecho de loop; BLOCO C — threshold de 8px reduzido para 2px em getFrameHandleGeometryForTarget (handles manuais ficam estáveis); BLOCO D — ghost handles do lado complementar do trecho ativo (não-interativo); BLOCO E — ensureSegmentArraysIntegrity() normaliza ctrlPts, ctrlPtManual, segBlurSettings, rotEasings, scaleEasings, segDurations; deleteActiveFrame corrigido para segBlurSettings; buildProjectData chama ensure antes de salvar; BLOCO F — loop corrigido; BLOCO G — midpoint oculto; ctrl-pt legado oculto; BLOCO H — Undo/Redo preservado; BLOCO I — JSON/schema inalterado; sem campo novo -->
 <!DOCTYPE html>
@@ -511,6 +516,42 @@ body.recording #editorZoomCtrl{display:none;}
 .frame-visual{position:absolute;inset:0;transform-origin:center center;overflow:visible;}
 .frame-visual .frame-border,.frame-visual .frame-dim,.frame-visual .frame-num,.frame-visual .frame-center{pointer-events:none;}
 .frame-border{position:absolute;inset:0;border:2px solid #c6c6c6;box-sizing:border-box;pointer-events:none;border-radius:10px;filter:none;}
+.ghost-frame{
+  position:absolute;box-sizing:border-box;touch-action:none;overflow:visible;
+  border:2px dashed rgba(255,255,255,.78);border-radius:10px;
+  background:rgba(255,255,255,.08);z-index:58;cursor:grab;
+  opacity:.78;box-shadow:0 0 0 1px rgba(0,0,0,.18);
+}
+.ghost-frame:active{cursor:grabbing;}
+.ghost-frame .ghost-num{
+  position:absolute;top:6px;left:8px;font-size:12px;font-weight:800;
+  color:rgba(255,255,255,.96);background:rgba(0,0,0,.45);
+  border-radius:6px;padding:2px 7px;pointer-events:none;
+  transform-origin:top left;transform:scale(var(--ez-inv,1));
+}
+.ghost-frame .ghost-center{
+  position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:50%;
+  background:rgba(255,255,255,.9);transform:translate(-50%,-50%) scale(var(--ez-inv,1));
+}
+.ghost-frame .ghost-actions{
+  position:absolute;left:50%;bottom:-46px;transform:translateX(-50%) scale(var(--ez-inv,1));
+  transform-origin:top center;display:flex;gap:8px;align-items:center;justify-content:center;
+  pointer-events:auto;white-space:nowrap;
+}
+.ghost-frame.actions-above .ghost-actions{bottom:auto;top:-46px;}
+.ghost-frame .ghost-action{
+  width:36px;height:36px;border-radius:18px;border:1px solid rgba(255,255,255,.22);
+  background:rgba(28,28,30,.92);color:#fff;font-size:18px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  -webkit-user-select:none;user-select:none;touch-action:manipulation;
+}
+.ghost-frame .ghost-action.ok{background:rgba(4,255,242,.92);color:#000;border-color:rgba(0,0,0,.18);}
+.ghost-frame .ghost-action.cancel{background:rgba(28,28,30,.92);color:rgba(255,255,255,.9);}
+body.inserting-frame .frame,
+body.inserting-frame .ctrl-pt,
+body.inserting-frame .frame-in-handle,
+body.inserting-frame .frame-out-handle,
+body.inserting-frame .global-handle{pointer-events:none !important;}
 /* Overlay escuro fora do frame selecionado — SVG com recorte */
 #stageDimSvg{position:absolute;inset:0;pointer-events:none;z-index:3;display:none;}
 #stageDimSvg.show{display:block;}
@@ -2177,7 +2218,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b21e</span><br><span id="appVersionNameText">restore local loop influence in smart movement</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b22a</span><br><span id="appVersionNameText">assisted frame insertion</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4518,8 +4559,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b21e';
-const APP_VERSION_NAME = 'restore local loop influence in smart movement';
+const APP_VERSION = 'v8z4b22a';
+const APP_VERSION_NAME = 'assisted frame insertion';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4609,6 +4650,12 @@ let animFrame = null, animStart = null;
 let activeIdx = 0;
 let frameCount = 0;
 let selectedFrames = new Set(); // seleção múltipla
+let isInsertingFrame = false;
+let insertFrameMode = null;
+let pendingFrameInsert = null;
+let ghostFrame = null;
+let ghostFrameEl = null;
+let ghostDragState = null;
 let generatedUrl = null;
 let projectResetBaseline = null;
 
@@ -9941,7 +9988,7 @@ function captureProjectResetBaseline(reason) {
   ensureFramePauses();
   ensureSegmentArraysIntegrity();
   projectResetBaseline = cloneProjectStateSnapshot(captureState());
-  if (window._arcoDebug) console.info('[Arco v8z4b21e] project reset baseline updated:', reason || 'unknown');
+  if (window._arcoDebug) console.info('[Arco ' + APP_VERSION + '] project reset baseline updated:', reason || 'unknown');
 }
 
 function projectStateEquals(a, b) {
@@ -10410,6 +10457,7 @@ function ensureGlobalHandle() {
   stage.appendChild(globalHandleEl);
 
   globalHandleEl.addEventListener('pointerdown', e => {
+    if (isInsertingFrame) return;
     if (isPreviewing || !imgNatW || frameLocked[activeIdx]) return;
     if (editorPanMode) return; // pan mode: não usar handle
     e.preventDefault();
@@ -10562,6 +10610,7 @@ function createFrameDOM(i) {
     h.addEventListener('pointerdown', startResize);
   });
   el.addEventListener('pointerdown', ev => {
+    if (isInsertingFrame) { ev.preventDefault(); ev.stopPropagation(); return; }
     if (editorPanMode) return; // pan mode: não selecionar/editar, propagar ao stage
     const fi = parseInt(el.id.split('_')[1]);
     // Frame travado: pode ser selecionado mas não arrastado
@@ -10582,7 +10631,7 @@ function createCtrlDOM(seg) {
   el.className = 'ctrl-pt';
   el.style.display = 'none';
   stage.appendChild(el);
-  el.addEventListener('pointerdown', e => { if (!editorPanMode) e.stopPropagation(); startCtrlDrag(seg); });
+  el.addEventListener('pointerdown', e => { if (isInsertingFrame) { e.preventDefault(); e.stopPropagation(); return; } if (!editorPanMode) e.stopPropagation(); startCtrlDrag(seg); });
 }
 
 // ═══════════════════════════════════════
@@ -10731,121 +10780,244 @@ function splitInsertedSegmentEase(origEase) {
   }
 }
 
-function insertFrameAfterActive() {
-  // v8z4b16h — guard: sem imagem, botão "+" não cria frame nem reage.
-  if (!hasImageLoaded()) return;
-  if (frameCount >= MAX_FRAMES) { showStatus('Máximo de ' + MAX_FRAMES + ' frames'); return; }
-  if (activeIdx >= frameCount - 1) { addFrame(); return; }
-  pushUndo();
-
-  const a = activeIdx, b = activeIdx + 1;
-
-  const fa = frames[a], fb = frames[b];
-  const p0x = fa.x + fa.w / 2, p0y = fa.y + fa.h / 2;
-  const p2x = fb.x + fb.w / 2, p2y = fb.y + fb.h / 2;
-  const cpSrc = getSegmentCurvePuller(a); // v8z4b18y: via curvePuller helper
-  const hasValidCp = cpSrc && Number.isFinite(cpSrc.nx) && Number.isFinite(cpSrc.ny);
-  const cp = hasValidCp ? cpSrc : {
-    nx: (p0x / stageW + p2x / stageW) / 2,
-    ny: (p0y / stageH + p2y / stageH) / 2,
-    t: 0.5, perpX: 0, perpY: 0
-  };
-  const p1x = cp.nx * stageW, p1y = cp.ny * stageH;
-
-  const t = 0.5;
-  const p01x = p0x + (p1x - p0x) * t, p01y = p0y + (p1y - p0y) * t;
-  const p12x = p1x + (p2x - p1x) * t, p12y = p1y + (p2y - p1y) * t;
-  const pMidX = p01x + (p12x - p01x) * t, pMidY = p01y + (p12y - p01y) * t;
-
-  const newW = (fa.w + fb.w) / 2;
-  const newH = (fa.h + fb.h) / 2;
-  const newFrame = {
-    x: pMidX - newW / 2,
-    y: pMidY - newH / 2,
-    w: newW,
-    h: newH
-  };
-  const newRot = ((frameRotations[a] || 0) + (frameRotations[b] || 0)) / 2;
-
-  frames.splice(b, 0, newFrame);
-  frameRotations.splice(b, 0, newRot);
-  frameLocked.splice(b, 0, false);
-  framePauses.splice(b, 0, { duration: 0 });
-
-  const leftNx = p01x / stageW, leftNy = p01y / stageH;
-  const rightNx = p12x / stageW, rightNy = p12y / stageH;
-  const leftTP = computeTPerpForSeg(a, leftNx, leftNy);
-  const rightTP = computeTPerpForSeg(a + 1, rightNx, rightNy);
-  ctrlPts.splice(a, 1,
-    { nx: leftNx, ny: leftNy, t: leftTP.t, perpX: leftTP.perpX, perpY: leftTP.perpY },
-    { nx: rightNx, ny: rightNy, t: rightTP.t, perpX: rightTP.perpX, perpY: rightTP.perpY }
-  );
-  ctrlPtManual.splice(a, 1, true, true);
-
-  // v8z4b21a: subdivisão De Casteljau dos handles curvesV2 ao inserir frame.
-  if (isCurvesV2Active()) {
-    // Obter C1 e C2 do segmento original antes do splice
-    const cp2orig = getCurvesV2CubicCP(a);
-    if (cp2orig) {
-      const { P0x, P0y, C1x, C1y, C2x, C2y, P3x, P3y } = cp2orig;
-      // De Casteljau em t=0.5
-      const M01x = (P0x + C1x) / 2, M01y = (P0y + C1y) / 2;
-      const M12x = (C1x + C2x) / 2, M12y = (C1y + C2y) / 2;
-      const M23x = (C2x + P3x) / 2, M23y = (C2y + P3y) / 2;
-      const M012x = (M01x + M12x) / 2, M012y = (M01y + M12y) / 2;
-      const M123x = (M12x + M23x) / 2, M123y = (M12y + M23y) / 2;
-      const Mx = (M012x + M123x) / 2, My = (M012y + M123y) / 2;
-      const outArr = curvesV2.frameHandles.out;
-      const inArr  = curvesV2.frameHandles.in;
-      // out[a] = C1_left - P0 = M01 - P0
-      outArr[a] = { dx: M01x - P0x, dy: M01y - P0y, manual: true };
-      // Inserir handles para o novo frame b (a+1 após o splice de frames)
-      // out[b] = C1_right - Mx = M123 - Mx
-      // in[b] = C2_left - Mx = M012 - Mx
-      outArr.splice(a + 1, 0, { dx: M123x - Mx, dy: M123y - My, manual: true });
-      inArr.splice(a + 1, 0, { dx: M012x - Mx, dy: M012y - My, manual: true });
-      // Corrigir in do frame do lado direito (agora em a+2)
-      if (inArr.length > a + 2) {
-        inArr[a + 2] = { dx: M23x - P3x, dy: M23y - P3y, manual: true };
-      }
-    } else {
-      // Fallback: inserir null handles para o novo frame
-      curvesV2.frameHandles.out.splice(a + 1, 0, null);
-      curvesV2.frameHandles.in.splice(a + 1, 0, null);
-    }
-  }
-
-  ensureSegDurations();
-  const origDur = segDurations[a] != null ? segDurations[a] : duration;
-  // v8z4b16b — divisão de segmento pode resultar em 0.0s (corte seco).
-  const halfA = Math.max(0, parseFloat((origDur / 2).toFixed(1)));
-  const halfB = Math.max(0, parseFloat((origDur - halfA).toFixed(1)));
-  segDurations.splice(a, 1, halfA, halfB);
-
-  const origEase = getSegEase(a);
-  const [leftEase, rightEase] = splitInsertedSegmentEase(origEase);
-  segEasings.splice(a, 1, leftEase, rightEase);
-  ensureRotEasings();
-  rotEasings.splice(a, 1, 'linear', 'linear');
-  ensureScaleEasings();
-  scaleEasings.splice(a, 1, 'linear', 'linear');
-
-  frameCount++;
-  activeIdx = b;
-
-  // Recriar DOM completo
+function recreateFrameAndCtrlDOM() {
   for (let j = 0; j < MAX_FRAMES; j++) {
     const fe = getFrameEl(j); if (fe) fe.remove();
     const ce = getCtrlEl(j);  if (ce) ce.remove();
   }
-  for (let j = 0; j < frameCount; j++)     createFrameDOM(j);
+  document.querySelectorAll('.mid-pathpt').forEach(el => el.remove());
+  for (let j = 0; j < frameCount; j++) createFrameDOM(j);
   for (let j = 0; j < frameCount - 1; j++) createCtrlDOM(j);
+}
 
-  // Dividir blur do segmento original em dois
-  const origBlur = segBlurSettings[a] ? {...segBlurSettings[a]} : cloneDefaultSegBlur();
-  segBlurSettings.splice(a, 1, {...origBlur}, {...origBlur});
+function getDefaultInsertSegmentDuration() {
+  return Math.max(0, Math.round(defaultNewSegmentDuration != null ? defaultNewSegmentDuration : 2));
+}
+
+function setLegacyCtrlPtForSegment(seg, manual) {
+  if (seg < 0 || seg >= frameCount - 1 || !stageW || !stageH) return;
+  const nx = (frameCX(seg) / stageW + frameCX(seg + 1) / stageW) / 2;
+  const ny = (frameCY(seg) / stageH + frameCY(seg + 1) / stageH) / 2;
+  const tp = computeTPerpForSeg(seg, nx, ny);
+  ctrlPts[seg] = { nx, ny, t: tp.t, perpX: tp.perpX, perpY: tp.perpY };
+  ctrlPtManual[seg] = !!manual;
+}
+
+function setDefaultCurvesV2HandlesForSegment(seg) {
+  if (!isCurvesV2Active() || seg < 0 || seg >= frameCount - 1) return;
+  const p0x = frameCX(seg), p0y = frameCY(seg);
+  const p1x = frameCX(seg + 1), p1y = frameCY(seg + 1);
+  curvesV2.frameHandles.out[seg] = {
+    dx: (p1x - p0x) / 3,
+    dy: (p1y - p0y) / 3,
+    manual: false
+  };
+  curvesV2.frameHandles.in[seg + 1] = {
+    dx: (p0x - p1x) / 3,
+    dy: (p0y - p1y) / 3,
+    manual: false
+  };
+}
+
+function setDefaultCurvesV2LoopHandles() {
+  if (!isCurvesV2Active() || !loopEnabled || frameCount < 2) return;
+  const last = frameCount - 1;
+  const p0x = frameCX(last), p0y = frameCY(last);
+  const p1x = frameCX(0),    p1y = frameCY(0);
+  curvesV2.frameHandles.out[last] = {
+    dx: (p1x - p0x) / 3,
+    dy: (p1y - p0y) / 3,
+    manual: false
+  };
+  curvesV2.frameHandles.in[0] = {
+    dx: (p0x - p1x) / 3,
+    dy: (p0y - p1y) / 3,
+    manual: false
+  };
+}
+
+function createGhostFrameElement() {
+  if (ghostFrameEl) ghostFrameEl.remove();
+  ghostFrameEl = document.createElement('div');
+  ghostFrameEl.className = 'ghost-frame';
+  ghostFrameEl.innerHTML =
+    '<div class="ghost-num"></div><div class="ghost-center"></div>' +
+    '<div class="ghost-actions">' +
+    '<button class="ghost-action ok" type="button" title="Confirmar">✓</button>' +
+    '<button class="ghost-action cancel" type="button" title="Cancelar">×</button>' +
+    '</div>';
+  stage.appendChild(ghostFrameEl);
+  ghostFrameEl.addEventListener('pointerdown', startGhostFrameDrag);
+  ghostFrameEl.querySelector('.ghost-action.ok')?.addEventListener('pointerdown', e => e.stopPropagation());
+  ghostFrameEl.querySelector('.ghost-action.cancel')?.addEventListener('pointerdown', e => e.stopPropagation());
+  ghostFrameEl.querySelector('.ghost-action.ok')?.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation(); confirmAssistedFrameInsertion();
+  });
+  ghostFrameEl.querySelector('.ghost-action.cancel')?.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation(); cancelAssistedFrameInsertion();
+  });
+}
+
+function renderGhostFrame() {
+  if (!ghostFrame || !ghostFrameEl) return;
+  ghostFrameEl.style.left = ghostFrame.x + 'px';
+  ghostFrameEl.style.top = ghostFrame.y + 'px';
+  ghostFrameEl.style.width = ghostFrame.w + 'px';
+  ghostFrameEl.style.height = ghostFrame.h + 'px';
+  ghostFrameEl.style.transform = 'rotate(' + (ghostFrame.rotation || 0) + 'deg)';
+  ghostFrameEl.classList.toggle('actions-above', ghostFrame.y + ghostFrame.h + 52 > stageH);
+  const num = ghostFrameEl.querySelector('.ghost-num');
+  if (num) num.textContent = 'F' + (ghostFrame.labelIndex || (frameCount + 1));
+}
+
+function updateGhostFramePosition(cx, cy) {
+  if (!ghostFrame) return;
+  cx = Math.max(ghostFrame.w / 2, Math.min(stageW - ghostFrame.w / 2, cx));
+  cy = Math.max(ghostFrame.h / 2, Math.min(stageH - ghostFrame.h / 2, cy));
+  ghostFrame.x = cx - ghostFrame.w / 2;
+  ghostFrame.y = cy - ghostFrame.h / 2;
+  pendingFrameInsert.ghostMoved = true;
+  renderGhostFrame();
+}
+
+function startGhostFrameDrag(e) {
+  if (!isInsertingFrame || !ghostFrame) return;
+  if (e.target.closest('.ghost-action')) return;
+  e.preventDefault();
+  e.stopPropagation();
+  ghostFrameEl.setPointerCapture?.(e.pointerId);
+  const sc = screenToStageCoord(e.clientX, e.clientY);
+  updateGhostFramePosition(sc.x, sc.y);
+  ghostDragState = { pointerId: e.pointerId };
+}
+
+function cancelAssistedFrameInsertion() {
+  const wasActive = isInsertingFrame;
+  if (ghostFrameEl) ghostFrameEl.remove();
+  ghostFrameEl = null;
+  ghostFrame = null;
+  pendingFrameInsert = null;
+  insertFrameMode = null;
+  ghostDragState = null;
+  isInsertingFrame = false;
+  document.body.classList.remove('inserting-frame');
+  if (wasActive) {
+    showStatus('Inserção cancelada');
+    renderAll();
+  }
+}
+
+function clearAssistedFrameInsertionTransientState() {
+  if (ghostFrameEl) ghostFrameEl.remove();
+  ghostFrameEl = null;
+  ghostFrame = null;
+  pendingFrameInsert = null;
+  insertFrameMode = null;
+  ghostDragState = null;
+  isInsertingFrame = false;
+  document.body.classList.remove('inserting-frame');
+}
+
+function buildPendingFrameInsertion() {
+  const a = activeIdx;
+  const active = frames[a];
+  if (!active) return null;
+  const isBetween = a < frameCount - 1;
+  const isLoopAppend = !isBetween && loopEnabled && frameCount >= 2;
+  const b = isBetween ? a + 1 : (isLoopAppend ? 0 : null);
+  const target = b != null ? frames[b] : null;
+  let cx, cy, w, h, rotation;
+  let suggestedOnCurve = false;
+
+  if (isBetween || isLoopAppend) {
+    const seg = isBetween ? a : getLoopSegmentIndex();
+    if (isCurvesV2Active()) {
+      const cp2 = getCurvesV2CubicCP(seg);
+      if (cp2) {
+        const mid = evalCubicBezierPt(0.5, cp2.P0x, cp2.P0y, cp2.C1x, cp2.C1y, cp2.C2x, cp2.C2y, cp2.P3x, cp2.P3y);
+        cx = mid.x; cy = mid.y; suggestedOnCurve = true;
+      }
+    }
+    if (!suggestedOnCurve) {
+      const cp = getSegmentCurvePuller(seg);
+      if (cp && Number.isFinite(cp.nx) && Number.isFinite(cp.ny)) {
+        const p0x = frameCX(a), p0y = frameCY(a);
+        const p2x = frameCX(b), p2y = frameCY(b);
+        const p1x = cp.nx * stageW, p1y = cp.ny * stageH;
+        const p01x = (p0x + p1x) / 2, p01y = (p0y + p1y) / 2;
+        const p12x = (p1x + p2x) / 2, p12y = (p1y + p2y) / 2;
+        cx = (p01x + p12x) / 2; cy = (p01y + p12y) / 2;
+      } else {
+        cx = (frameCX(a) + frameCX(b)) / 2;
+        cy = (frameCY(a) + frameCY(b)) / 2;
+      }
+    }
+    w = (active.w + target.w) / 2;
+    h = (active.h + target.h) / 2;
+    rotation = ((frameRotations[a] || 0) + (frameRotations[b] || 0)) / 2;
+  } else {
+    const prev = frameCount >= 2 ? frames[frameCount - 2] : null;
+    let dx = stageW * 0.08, dy = stageH * 0.08;
+    if (prev) {
+      dx = frameCX(activeIdx) - frameCX(frameCount - 2);
+      dy = frameCY(activeIdx) - frameCY(frameCount - 2);
+      const len = Math.hypot(dx, dy);
+      if (len > 1) {
+        const step = Math.min(Math.max(stageW, stageH) * 0.12, len);
+        dx = dx / len * step; dy = dy / len * step;
+      }
+    }
+    cx = frameCX(a) + dx;
+    cy = frameCY(a) + dy;
+    w = active.w; h = active.h;
+    rotation = frameRotations[a] || 0;
+  }
+
+  const unclampedCx = cx, unclampedCy = cy;
+  cx = Math.max(w / 2, Math.min(stageW - w / 2, cx));
+  cy = Math.max(h / 2, Math.min(stageH - h / 2, cy));
+  if (Math.abs(cx - unclampedCx) > 0.001 || Math.abs(cy - unclampedCy) > 0.001) {
+    suggestedOnCurve = false;
+  }
+
+  return {
+    mode: isBetween ? 'between' : (isLoopAppend ? 'loop-append' : 'append'),
+    fromIndex: a,
+    toIndex: b,
+    insertIndex: isBetween ? a + 1 : frameCount,
+    suggestedOnCurve,
+    ghostMoved: false,
+    frame: { x: cx - w / 2, y: cy - h / 2, w, h },
+    rotation
+  };
+}
+
+function insertFrameAfterActive() {
+  if (!hasImageLoaded()) return;
+  if (frameCount >= MAX_FRAMES) { showStatus('Máximo de ' + MAX_FRAMES + ' frames'); return; }
+  if (isPreviewing) stopPreview();
+  closeAll();
+  pendingFrameInsert = buildPendingFrameInsertion();
+  if (!pendingFrameInsert) return;
+  ghostFrame = {
+    ...pendingFrameInsert.frame,
+    rotation: pendingFrameInsert.rotation,
+    labelIndex: pendingFrameInsert.insertIndex + 1
+  };
+  insertFrameMode = pendingFrameInsert.mode;
+  isInsertingFrame = true;
+  document.body.classList.add('inserting-frame');
+  createGhostFrameElement();
+  renderGhostFrame();
+  showStatus('Posicione o novo frame');
+}
+
+function applyLocalInsertFinalization(statusText) {
   ensureSegBlurSettings();
   ensureFramePauses();
+  ensureSegmentArraysIntegrity();
+  normalizeProjectArrays();
+  recreateFrameAndCtrlDOM();
   syncDurationUI();
   if (durationPanelSections.pauses) renderFramePauseRows();
   if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]')) syncFramePauseUI();
@@ -10854,14 +11026,126 @@ function insertFrameAfterActive() {
   updateToolbarLabels();
   refreshBreakdownIfOpen();
   checkWatermarkWarning();
-  normalizeProjectArrays();
-  validateProjectState('after-insert-frame');
-  maybeRedistributeByCurveLength(); // v8z4b17f
-  showStatus('Frame inserido entre F' + (a+1) + ' e F' + (b+1));
+  validateProjectState('after-assisted-frame-insert');
+  markProjectDirty('assisted-frame-insert');
+  showStatus(statusText);
+}
+
+function confirmAssistedFrameInsertion() {
+  if (!isInsertingFrame || !pendingFrameInsert || !ghostFrame) return;
+  const pending = pendingFrameInsert;
+  const newFrame = { x: ghostFrame.x, y: ghostFrame.y, w: ghostFrame.w, h: ghostFrame.h };
+  const newRot = ghostFrame.rotation || 0;
+  const beforeFrameCount = frameCount;
+  const useCurveSplit = pending.mode === 'between' && pending.suggestedOnCurve && !pending.ghostMoved;
+  const splitCp2 = useCurveSplit && isCurvesV2Active() ? getCurvesV2CubicCP(pending.fromIndex) : null;
+  pushUndo();
+
+  if (pending.mode === 'between') {
+    const a = pending.fromIndex;
+    const b = a + 1;
+    ensureSegDurations();
+    const origDur = segDurations[a] != null ? segDurations[a] : duration;
+    const origEase = getSegEase(a);
+    const origRotEase = rotEasings[a] || 'linear';
+    const origScaleEase = scaleEasings[a] || 'linear';
+    const origBlur = segBlurSettings[a] ? {...segBlurSettings[a]} : cloneDefaultSegBlur();
+
+    frames.splice(b, 0, newFrame);
+    frameRotations.splice(b, 0, newRot);
+    frameLocked.splice(b, 0, false);
+    framePauses.splice(b, 0, { duration: 0 });
+    frameCount++;
+
+    if (useCurveSplit && splitCp2) {
+      const { P0x, P0y, C1x, C1y, C2x, C2y, P3x, P3y } = splitCp2;
+      const M01x = (P0x + C1x) / 2, M01y = (P0y + C1y) / 2;
+      const M12x = (C1x + C2x) / 2, M12y = (C1y + C2y) / 2;
+      const M23x = (C2x + P3x) / 2, M23y = (C2y + P3y) / 2;
+      const M012x = (M01x + M12x) / 2, M012y = (M01y + M12y) / 2;
+      const M123x = (M12x + M23x) / 2, M123y = (M12y + M23y) / 2;
+      const Mx = (M012x + M123x) / 2, My = (M012y + M123y) / 2;
+      const leftNx = M012x / stageW, leftNy = M012y / stageH;
+      const rightNx = M123x / stageW, rightNy = M123y / stageH;
+      ctrlPts.splice(a, 1,
+        { nx: leftNx, ny: leftNy, ...computeTPerpForSeg(a, leftNx, leftNy) },
+        { nx: rightNx, ny: rightNy, ...computeTPerpForSeg(a + 1, rightNx, rightNy) }
+      );
+      ctrlPtManual.splice(a, 1, true, true);
+      const outArr = curvesV2.frameHandles.out;
+      const inArr = curvesV2.frameHandles.in;
+      outArr[a] = { dx: M01x - P0x, dy: M01y - P0y, manual: false };
+      outArr.splice(b, 0, { dx: M123x - Mx, dy: M123y - My, manual: false });
+      inArr.splice(b, 0, { dx: M012x - Mx, dy: M012y - My, manual: false });
+      inArr[b + 1] = { dx: M23x - P3x, dy: M23y - P3y, manual: false };
+    } else {
+      ctrlPts.splice(a, 1, null, null);
+      ctrlPtManual.splice(a, 1, false, false);
+      setLegacyCtrlPtForSegment(a, false);
+      setLegacyCtrlPtForSegment(a + 1, false);
+      if (isCurvesV2Active()) {
+        curvesV2.frameHandles.out.splice(b, 0, null);
+        curvesV2.frameHandles.in.splice(b, 0, null);
+        setDefaultCurvesV2HandlesForSegment(a);
+        setDefaultCurvesV2HandlesForSegment(a + 1);
+      }
+    }
+
+    const halfA = Math.max(0, parseFloat((origDur / 2).toFixed(1)));
+    const halfB = Math.max(0, parseFloat((origDur - halfA).toFixed(1)));
+    segDurations.splice(a, 1, halfA, halfB);
+    const [leftEase, rightEase] = splitInsertedSegmentEase(origEase);
+    segEasings.splice(a, 1, leftEase, rightEase);
+    rotEasings.splice(a, 1, origRotEase, origRotEase);
+    scaleEasings.splice(a, 1, origScaleEase, origScaleEase);
+    segBlurSettings.splice(a, 1, {...origBlur}, {...origBlur});
+    activeIdx = b;
+    clearAssistedFrameInsertionTransientState();
+    applyLocalInsertFinalization('Frame inserido entre F' + (a + 1) + ' e F' + (b + 1));
+    return;
+  }
+
+  const oldLast = beforeFrameCount - 1;
+  frames.push(newFrame);
+  frameRotations.push(newRot);
+  frameLocked.push(false);
+  framePauses.push({ duration: 0 });
+  frameCount++;
+  ctrlPts.push(null);
+  ctrlPtManual.push(false);
+  setLegacyCtrlPtForSegment(oldLast, false);
+  segDurations.push(getDefaultInsertSegmentDuration());
+  segEasings.push('linear');
+  rotEasings.push('linear');
+  scaleEasings.push('linear');
+  segBlurSettings.push(cloneDefaultSegBlur());
+
+  if (isCurvesV2Active()) {
+    curvesV2.frameHandles.out.push(null);
+    curvesV2.frameHandles.in.push(null);
+    setDefaultCurvesV2HandlesForSegment(oldLast);
+    if (pending.mode === 'loop-append') {
+      setDefaultCurvesV2LoopHandles();
+    } else {
+      curvesV2.frameHandles.out[frameCount - 1] = null;
+    }
+  }
+  if (pending.mode === 'loop-append') {
+    loopCtrlPt = {
+      nx: (frameCX(frameCount - 1) / stageW + frameCX(0) / stageW) / 2,
+      ny: (frameCY(frameCount - 1) / stageH + frameCY(0) / stageH) / 2,
+      t: 0.5, perpX: 0, perpY: 0
+    };
+  }
+
+  activeIdx = frameCount - 1;
+  clearAssistedFrameInsertionTransientState();
+  applyLocalInsertFinalization('Frame F' + frameCount + ' adicionado');
 }
 
 function removeLastFrame() {
   // v8z4b16h — guard: sem imagem, sem ação de frame.
+  if (isInsertingFrame) return;
   if (!hasImageLoaded()) return;
   if (frameCount <= 2) { showStatus('Mínimo de 2 frames'); return; }
   const i = frameCount - 1;
@@ -11160,6 +11444,7 @@ function updateFrameSelector() {
 
     let longPressTimer = null;
     pill.addEventListener('pointerdown', () => {
+      if (isInsertingFrame) return;
       longPressTimer = setTimeout(() => {
         if (selectedFrames.has(i)) selectedFrames.delete(i);
         else selectedFrames.add(i);
@@ -11170,6 +11455,7 @@ function updateFrameSelector() {
     pill.addEventListener('pointerup', () => clearTimeout(longPressTimer));
     pill.addEventListener('pointercancel', () => clearTimeout(longPressTimer));
     pill.addEventListener('click', () => {
+      if (isInsertingFrame) return;
       if (activeIdx === i) {
         lastPillTap = -1;
         openCustBar();
@@ -12119,6 +12405,7 @@ function applyMidpointPathPointEdit(seg, segType, nx, ny) {
 // which: 'in' | 'out'
 // Undo capturado lazily no primeiro pixel de movimento.
 function startFrameHandleDrag(which) {
+  if (isInsertingFrame) return;
   if (isPreviewing) return;
   document.body.classList.add('dragging');
   frameHandleDragState = { which, didMove: false, undoCaptured: false };
@@ -12528,6 +12815,7 @@ function getPos(e) {
 }
 
 function startRotate(e) {
+  if (isInsertingFrame) return;
   if (isPreviewing) return;
   if (editorPanMode) return; // pan mode: não editar, deixar propagar para pan
   e.preventDefault();
@@ -12539,6 +12827,7 @@ function startRotate(e) {
 }
 
 function startMove(e) {
+  if (isInsertingFrame) return;
   document.body.classList.add('dragging');
   if (isPreviewing) return;
   if (editorPanMode) return; // pan mode: não mover frame, deixar propagar para pan
@@ -12568,6 +12857,7 @@ function setTemplateManualIfNeeded() {
 }
 
 function startResize(e) {
+  if (isInsertingFrame) return;
   if (isPreviewing) return;
   if (editorPanMode) return; // pan mode: não redimensionar
   e.preventDefault(); e.stopPropagation();
@@ -12582,6 +12872,7 @@ function startResize(e) {
 }
 
 function startCtrlDrag(seg) {
+  if (isInsertingFrame) return;
   document.body.classList.add('dragging');
   if (isPreviewing) return;
   if (editorPanMode) return; // pan mode: não mover ponto de curva
@@ -12673,6 +12964,16 @@ stage.addEventListener('touchend', e => {
 
 // Pan de edição — ativo apenas quando editorPanMode está ligado e zoom > 1
 stage.addEventListener('pointerdown', (e) => {
+  if (isInsertingFrame) {
+    if (e.target.closest('.ghost-action')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const sc = screenToStageCoord(e.clientX, e.clientY);
+    updateGhostFramePosition(sc.x, sc.y);
+    stage.setPointerCapture?.(e.pointerId);
+    ghostDragState = { pointerId: e.pointerId };
+    return;
+  }
   if (isPreviewing || editorZoomScale <= 1 || !editorPanMode) return;
   // Ignorar controles do zoom flutuante (já têm stopPropagation)
   if (e.target.closest('#editorZoomCtrl')) return;
@@ -12706,10 +13007,16 @@ function onMove(e) {
     document.body.classList.remove('dragging');
     return;
   }
-  if (dragState || ctrlDragSeg !== -1 || panDragState || midpointDragState || frameTangentDragState || frameHandleDragState) {
+  if (dragState || ctrlDragSeg !== -1 || panDragState || midpointDragState || frameTangentDragState || frameHandleDragState || ghostDragState) {
     e.preventDefault();
   }
   const pos = getPos(e);
+
+  if (ghostDragState && isInsertingFrame) {
+    const sc = screenToStageCoord(pos.x, pos.y);
+    updateGhostFramePosition(sc.x, sc.y);
+    return;
+  }
 
   // Pan de edição — mover viewport quando pan mode ativo
   if (panDragState) {
@@ -12719,6 +13026,12 @@ function onMove(e) {
     clampEditorPan();
     applyEditorZoom();
     stage.style.cursor = 'grabbing';
+    return;
+  }
+  if (ghostDragState) {
+    try { stage.releasePointerCapture?.(ghostDragState.pointerId); } catch(err) {}
+    try { ghostFrameEl?.releasePointerCapture?.(ghostDragState.pointerId); } catch(err) {}
+    ghostDragState = null;
     return;
   }
 
@@ -13521,6 +13834,7 @@ let pausedElapsed = 0;
 
 function startPreview() {
   if (frameCount < 2 || !imgNatW) return;
+  if (isInsertingFrame) cancelAssistedFrameInsertion();
   normalizeProjectArrays();
   if (!validateProjectState('preview')) { showStatus('Estado inválido para Preview (veja console)'); return; }
   isPreviewing = true;
@@ -14396,6 +14710,7 @@ async function startRecord() {
 // ═══════════════════════════════════════
 function resetAll() {
   validateProjectState('before-reset');
+  if (isInsertingFrame) cancelAssistedFrameInsertion();
   if (isPreviewing) stopPreview();
   isRecording = false;
   if (!imgNatW) return;
@@ -15396,6 +15711,7 @@ function refreshSliderFills() {
 // ═══════════════════════════════════════
 function loadImage(file, onDoneCallback) {
   if (!file) return;
+  if (isInsertingFrame) cancelAssistedFrameInsertion();
   resetPreviewAndExportStateForImageChange();
   // Guardar nome da imagem para uso no nome do arquivo de projeto
   if (file.name) {
@@ -16083,6 +16399,7 @@ function initSmoothSlider() {
 
 function toggleFrameLock() {
   // v8z4b16h — guard: sem imagem, botão de travar/pinar não responde.
+  if (isInsertingFrame) return;
   if (!hasImageLoaded() || frameCount === 0) return;
   frameLocked[activeIdx] = !frameLocked[activeIdx];
   const locked = !!frameLocked[activeIdx];
@@ -16095,6 +16412,7 @@ function toggleFrameLock() {
 function deleteActiveFrame() {
   // v8z4b16h — guard: sem imagem, botão "−" não tenta deletar e não exibe
   // "Mínimo de 2 frames". O mínimo só vale com projeto ativo.
+  if (isInsertingFrame) return;
   if (!hasImageLoaded()) return;
   if (frameCount <= 2) { showStatus('Mínimo de 2 frames'); return; }
   pushUndo();
@@ -16293,6 +16611,7 @@ function applyViewMode() {
 
 function applyTemplate(type) {
   if (!imgEl) { showStatus('Carregue uma imagem primeiro'); return; }
+  if (isInsertingFrame) cancelAssistedFrameInsertion();
   const prevState = captureState();
   const finalizeTemplateApply = () => {
     const changed = JSON.stringify(captureState()) !== JSON.stringify(prevState);
@@ -16506,6 +16825,7 @@ function applyTemplate(type) {
 
 function invertFrames() {
   // v8z4b16h — guard: sem imagem, inversão de sentido não responde.
+  if (isInsertingFrame) return;
   if (!hasImageLoaded()) return;
   if (frameCount < 2) return;
   pushUndo();
@@ -17855,6 +18175,7 @@ function normalizeImportedFramePauses(projectData, frameCount) {
 }
 
 function applyFrameData(data) {
+  if (isInsertingFrame) cancelAssistedFrameInsertion();
   data = migrateLegacyProjectData(data);
   // Não dispara pushUndo — carregar projeto não deve sujar a pilha de undo
   undoStack.length = 0;

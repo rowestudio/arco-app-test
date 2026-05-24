@@ -2,6 +2,76 @@
 
 Use depois de qualquer alteração, mesmo pequena.
 
+## v8z4b22a — assisted frame insertion
+
+### Teste A — versão
+1. Abrir app.
+2. Confirmar que exibe `v8z4b22a` na UI (Settings).
+3. Confirmar que nome exibe `assisted frame insertion`.
+
+### Teste B — fluxo básico com 2 frames
+1. Carregar imagem no iPhone/Safari.
+2. Criar projeto com 2 frames.
+3. Selecionar F1.
+4. Tocar `+`.
+5. Confirmar que frame definitivo não é criado imediatamente e `frameCount` não muda.
+6. Confirmar que aparece ghost frame translúcido no Stage.
+7. Tocar no Stage e confirmar que o ghost muda de posição.
+8. Arrastar no Stage e confirmar que o ghost acompanha o toque.
+9. Tocar Cancelar.
+10. Confirmar que `frameCount` não mudou.
+11. Tocar `+` novamente, posicionar o ghost e tocar OK.
+12. Confirmar que o novo frame definitivo foi criado na posição escolhida.
+13. Confirmar Undo remove a inserção.
+14. Confirmar Redo restaura a inserção.
+
+### Teste C — inserção entre frames
+1. Criar projeto com 4 frames.
+2. Selecionar F2.
+3. Tocar `+`.
+4. Confirmar que o ghost aparece no trecho F2→F3.
+5. Confirmar OK sem mover e verificar que a inserção acontece entre F2 e F3.
+6. Confirmar que a duração do trecho original foi dividida de modo coerente.
+7. Confirmar que o novo frame nasce com pause 0.
+8. Confirmar que rotação e escala foram interpoladas.
+9. Confirmar que curvas/handles de trechos não adjacentes não mudaram.
+
+### Teste D — ghost movido e handles locais
+1. Selecionar um frame com próximo frame normal.
+2. Tocar `+`.
+3. Mover o ghost para posição livre.
+4. Confirmar.
+5. Confirmar que apenas os trechos locais ao novo frame foram recalculados.
+6. Confirmar que handles OUT/IN independentes continuam editáveis.
+7. Confirmar que midpoint e ctrl-pt legado não aparecem como UI.
+
+### Teste E — loop, Preview, MP4, resets e JSON
+1. Ativar loop.
+2. Selecionar o último frame.
+3. Tocar `+`.
+4. Confirmar que o ghost aparece em posição coerente no fechamento.
+5. Confirmar OK.
+6. Confirmar que loop continua funcionando.
+7. Rodar Preview.
+8. Gerar MP4.
+9. Testar Reset Project.
+10. Testar Reset Curves.
+11. Testar Movimento inteligente com loop.
+12. Salvar JSON e confirmar `"version": "v8z4b22a"`.
+13. Confirmar `curvesV2` presente.
+14. Confirmar que `isInsertingFrame`, `ghostFrame`, `pendingFrameInsert` e `insertFrameMode` não aparecem no JSON.
+15. Abrir JSON salvo e confirmar que o projeto abre corretamente.
+16. Confirmar sem NaN/Infinity e sem erro de console.
+17. Confirmar PR aberto e não mergeado.
+
+### Teste F — ROADMAP sem implementação indevida
+1. Confirmar que Direct Curve Drag está no ROADMAP como etapa futura.
+2. Confirmar que Path/Insert Tool está no ROADMAP como etapa futura.
+3. Confirmar que começar com 1 frame ou 0 frames está no ROADMAP como etapa futura.
+4. Confirmar que esses itens não foram implementados na v8z4b22a.
+
+---
+
 ## v8z4b21e — restore local loop influence in smart movement
 
 ### Teste A — versão
