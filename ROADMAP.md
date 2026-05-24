@@ -1,5 +1,16 @@
 # Roadmap
 
+## Objetivo imediato — v8z4b22b (concluído)
+
+Correção restrita da UX e funcionamento do modo assisted frame insertion.
+
+- ✅ OK/Cancelar do ghost funcionam.
+- ✅ OK/Cancelar ficam dentro do ghost, próximos ao centro.
+- ✅ Ghost permite ajustar posição, escala e rotação antes de confirmar.
+- ✅ Confirmação gera undo único e JSON não salva estado transitório.
+
+---
+
 ## Objetivo imediato — v8z4b22a (concluído)
 
 Assisted Frame Insertion. Base: v8z4b21e.
