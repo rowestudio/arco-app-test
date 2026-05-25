@@ -1,13 +1,21 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b24b                                     ║
+║  Versão: v8z4b24c                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b24c                                            ║
+║    fix: removidos rastros/linhas acumuladas na       ║
+║         renderização do Stage durante zoom/pan;      ║
+║    fix: camadas de overlay/curvas/handles são        ║
+║         limpas corretamente antes de redesenhar;     ║
+║    fix: transform visual do editorView passa a ser   ║
+║         aplicado de forma idempotente, sem acumular  ║
+║         artefatos.                                   ║
 ║  v8z4b24b                                            ║
 ║    fix: zoom/pan com dois dedos não seleciona        ║
 ║         frames acidentalmente;                       ║
@@ -408,6 +416,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b24c — stage render cleanup: removidos rastros/linhas acumuladas na renderização do Stage durante zoom/pan; camadas de overlay/curvas/handles são limpas corretamente antes de redesenhar; transform visual do editorView passa a ser aplicado de forma idempotente, sem acumular artefatos. -->
 <!-- Arco Motion App — v8z4b24b — stage gesture arbitration: zoom/pan com dois dedos não seleciona frames acidentalmente; handles, overlays e elementos tutoriais do Stage não são ativados ao iniciar gesto de dois dedos; bloqueio curto após navegação evita taps residuais; área interativa de zoom/pan cobre o viewport de edição, não apenas a imagem; imagem tratada como conteúdo dentro do Stage, não como limite de navegação. -->
 <!-- Arco Motion App — v8z4b24a — editor zoom/pan navigation: navegação visual do Stage com pinça para zoom; pan do Stage com dois dedos; coordenadas de edição passam a considerar editorView zoom/pan; Stage visível como viewport de edição, sem alterar dados reais do projeto; MIN_EDITOR_ZOOM=0.5, MAX_EDITOR_ZOOM=4; gesto de dois dedos impede edição simultânea; JSON não salva zoom/pan. -->
 <!-- Arco Motion App — v8z4b23b — overlay cleanup: Reset Project de projeto novo limpa overlays antigos (dim overlay, bezier, handles) antes de voltar ao F1 assistido; F1 assistido após reset redesenha imediatamente o overlay correto; guard frameCount>0 em renderAll para evitar crash ao cancelar F1 assistido com frames vazio. -->
@@ -463,6 +472,12 @@ html,body{
 /* Stage — margem de 8px para mostrar cor de fundo */
 .stage{position:relative;touch-action:none;flex-shrink:0;
   margin:0 8px; /* mostra cor de fundo nas laterais */
+}
+.stage-content{
+  position:absolute;left:0;top:0;width:100%;height:100%;
+  overflow:visible;transform-origin:0 0;will-change:transform;
+  -webkit-transform-origin:0 0;-webkit-backface-visibility:hidden;
+  backface-visibility:hidden;contain:layout style;
 }
 .stage::after{
   content:'';position:absolute;inset:0;pointer-events:none;
@@ -1976,14 +1991,16 @@ body.cust-open #toolbar{
 <!-- IMAGE AREA -->
 <div class="image-area" id="imageArea">
   <div class="stage" id="stage">
-    <img id="imgEl" style="display:none;" draggable="false">
-    <!-- Overlay escuro fora dos frames — SVG com recorte dinâmico -->
-    <svg id="stageDimSvg" style="display:none;position:absolute;inset:0;width:100%;height:100%;"></svg>
-    <svg id="bezierSvg" style="display:none;position:absolute;inset:0;overflow:visible;pointer-events:none;width:100%;height:100%;z-index:3;"></svg>
-    <canvas id="previewCanvas"></canvas>
-    <div class="progress-wrap" id="progressWrap"><div class="progress-fill" id="progressFill"></div></div>
-    <div class="preview-timeline" id="previewTimeline">
-      <div class="preview-timeline-fill" id="previewTimelineFill"></div>
+    <div class="stage-content" id="stageContent">
+      <img id="imgEl" style="display:none;" draggable="false">
+      <!-- Overlay escuro fora dos frames — SVG com recorte dinâmico -->
+      <svg id="stageDimSvg" style="display:none;position:absolute;inset:0;width:100%;height:100%;"></svg>
+      <svg id="bezierSvg" style="display:none;position:absolute;inset:0;overflow:visible;pointer-events:none;width:100%;height:100%;z-index:3;"></svg>
+      <canvas id="previewCanvas"></canvas>
+      <div class="progress-wrap" id="progressWrap"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="preview-timeline" id="previewTimeline">
+        <div class="preview-timeline-fill" id="previewTimelineFill"></div>
+      </div>
     </div>
   </div>
   <!-- Status toast fora do stage — não afetado pelo zoom de edição (v8z4b17y) -->
@@ -2318,7 +2335,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b24b</span><br><span id="appVersionNameText">stage gesture arbitration and viewport navigation</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b24c</span><br><span id="appVersionNameText">stage render cleanup for zoom pan</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4659,8 +4676,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b24b';
-const APP_VERSION_NAME = 'stage gesture arbitration and viewport navigation';
+const APP_VERSION = 'v8z4b24c';
+const APP_VERSION_NAME = 'stage render cleanup for zoom pan';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10301,6 +10318,7 @@ let containFrames = false;
 // ═══════════════════════════════════════
 const imgEl        = document.getElementById('imgEl');
 const stage        = document.getElementById('stage');
+const stageContent = document.getElementById('stageContent');
 const imageArea    = document.getElementById('imageArea');
 const uploadPrompt = document.getElementById('uploadPrompt');
 const midBar       = document.getElementById('midBar');
@@ -10327,6 +10345,14 @@ const btnGenerate  = document.getElementById('btnGenerate');
 const durSlider    = document.getElementById('durSlider');
 const durNum       = document.getElementById('durNum');
 const newSegmentDurationInput = document.getElementById('newSegmentDurationInput');
+
+function stageAppendChild(el) {
+  return stageContent.appendChild(el);
+}
+
+function stageInsertBefore(el, ref) {
+  return stageContent.insertBefore(el, ref && ref.parentNode === stageContent ? ref : null);
+}
 
 function updatePlayButton() {
   const use = document.querySelector('#playIcon use');
@@ -10370,6 +10396,8 @@ function layoutStage() {
   stageH = Math.floor(sH);
   stage.style.width  = stageW + 'px';
   stage.style.height = stageH + 'px';
+  stageContent.style.width  = stageW + 'px';
+  stageContent.style.height = stageH + 'px';
   imgEl.style.width  = stageW + 'px';
   imgEl.style.height = stageH + 'px';
   bezierSvg.setAttribute('viewBox', `0 0 ${stageW} ${stageH}`);
@@ -10608,7 +10636,7 @@ function updateGhostTransformHandle() {
   globalHandleEl.classList.add('show');
   globalHandleEl.classList.add('ghost-transform');
   globalHandleEl.classList.remove('centered');
-  stage.appendChild(globalHandleEl);
+  stageAppendChild(globalHandleEl);
 }
 
 function flipCornerHoriz(corner) {
@@ -10642,7 +10670,7 @@ function ensureGlobalHandle() {
   globalHandleEl.id = 'globalHandle';
   globalHandleEl.className = 'global-handle';
   globalHandleEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;display:block;"><path d="M20.34 17.52a10 10 0 1 0-2.82 2.82"/><circle cx="19" cy="19" r="2"/><path d="m13.41 13.41 4.18 4.18"/><circle cx="12" cy="12" r="2"/></svg>';
-  stage.appendChild(globalHandleEl);
+  stageAppendChild(globalHandleEl);
 
   globalHandleEl.addEventListener('pointerdown', e => {
     if (isStageNavigationActiveOrCoolingDown()) { e.preventDefault(); e.stopPropagation(); return; }
@@ -10714,7 +10742,7 @@ function ensureGlobalHandle() {
     if (handleDragState.pointerId != null && e.pointerId != null && e.pointerId !== handleDragState.pointerId) return;
     e.preventDefault();
     e.stopPropagation();
-    const sr = stage.getBoundingClientRect();
+    const sr = stageContent.getBoundingClientRect();
     // Converter para coords do stage (considera zoom/pan)
     const px = (e.clientX - sr.left) / editorZoomScale;
     const py = (e.clientY - sr.top)  / editorZoomScale;
@@ -10862,7 +10890,7 @@ function createFrameDOM(i) {
     </div>
     <div class="drag-zone" data-fi="${i}"></div>
   `;
-  stage.insertBefore(el, bezierSvg);
+  stageInsertBefore(el, bezierSvg);
 
   const dragZone = el.querySelector('.drag-zone');
   dragZone.addEventListener('pointerdown', startMove);
@@ -10896,7 +10924,7 @@ function createCtrlDOM(seg) {
   el.id = 'cpt_' + seg;
   el.className = 'ctrl-pt';
   el.style.display = 'none';
-  stage.appendChild(el);
+  stageAppendChild(el);
   el.addEventListener('pointerdown', e => {
     if (isInsertingFrame) { e.preventDefault(); e.stopPropagation(); return; }
     if (isStageNavigationActiveOrCoolingDown()) { e.preventDefault(); e.stopPropagation(); return; }
@@ -11211,7 +11239,7 @@ function createGhostFrameElement() {
   ghostFrameEl.className = 'ghost-frame';
   ghostFrameEl.innerHTML =
     '<div class="ghost-num"></div><div class="ghost-center"></div>';
-  stage.appendChild(ghostFrameEl);
+  stageAppendChild(ghostFrameEl);
   ghostFrameEl.addEventListener('pointerdown', startGhostFrameDrag);
 }
 
@@ -11769,6 +11797,7 @@ function dismissAutosave() {
 }
 
 function renderAll() {
+  removeDuplicateStageRenderNodes();
   // Sync pin button with active frame
   const lockBtn = document.getElementById('btnLockFrame');
   if (lockBtn && frameCount > 0) {
@@ -11832,12 +11861,12 @@ function renderAll() {
 
   // Move active frame element just before bezierSvg so ctrl points stay on top
   const activeEl = getFrameEl(activeIdx);
-  if (activeEl) stage.insertBefore(activeEl, bezierSvg);
+  if (activeEl) stageInsertBefore(activeEl, bezierSvg);
 
   // Always keep ctrl points after bezierSvg (on top of everything)
   for (let i = 0; i < MAX_FRAMES; i++) {
     const cp = getCtrlEl(i);
-    if (cp) stage.appendChild(cp);
+    if (cp) stageAppendChild(cp);
   }
 
   drawBezier();
@@ -11857,7 +11886,7 @@ function renderAll() {
     globalHandleEl.classList.add('show');
     globalHandleEl.classList.remove('ghost-transform');
     globalHandleEl.classList.toggle('centered', !!hp.centered);
-    stage.appendChild(globalHandleEl);
+    stageAppendChild(globalHandleEl);
   } else if (globalHandleEl) {
     globalHandleEl.classList.remove('show');
     globalHandleEl.classList.remove('ghost-transform');
@@ -12581,7 +12610,7 @@ function updateCtrlPts() {
       loopEl.className = 'ctrl-pt';
       loopEl.style.background = 'rgba(180,100,255,1)';
       loopEl.style.boxShadow  = '0 2px 8px rgba(0,0,0,.4),0 0 0 5px rgba(180,100,255,.2)';
-      stage.appendChild(loopEl);
+      stageAppendChild(loopEl);
       loopEl.addEventListener('pointerdown', e => {
         if (isStageNavigationActiveOrCoolingDown()) { e.preventDefault(); e.stopPropagation(); return; }
         if (!editorPanMode) { e.stopPropagation(); startCtrlDrag('loop'); }
@@ -12590,7 +12619,7 @@ function updateCtrlPts() {
     loopEl.style.display = 'block';
     loopEl.style.left    = (_loopCurve.nx * stageW) + 'px';
     loopEl.style.top     = (_loopCurve.ny * stageH) + 'px';
-    stage.appendChild(loopEl);
+    stageAppendChild(loopEl);
   } else if (loopEl) {
     loopEl.style.display = 'none';
   }
@@ -12658,7 +12687,7 @@ function updateCtrlPts() {
       el = document.createElement('div');
       el.id  = id;
       el.className = cls;
-      stage.appendChild(el);
+      stageAppendChild(el);
     }
     return el;
   }
@@ -12691,7 +12720,7 @@ function updateCtrlPts() {
         inHandleEl.style.display = 'block';
         inHandleEl.style.left    = _hGeo.inHx + 'px';
         inHandleEl.style.top     = _hGeo.inHy + 'px';
-        stage.appendChild(inHandleEl); // keep on top
+        stageAppendChild(inHandleEl); // keep on top
       } else {
         if (inHandleEl) inHandleEl.style.display = 'none';
       }
@@ -12718,7 +12747,7 @@ function updateCtrlPts() {
         outHandleEl.style.display = 'block';
         outHandleEl.style.left    = _hGeo.outHx + 'px';
         outHandleEl.style.top     = _hGeo.outHy + 'px';
-        stage.appendChild(outHandleEl); // keep on top
+        stageAppendChild(outHandleEl); // keep on top
       } else {
         if (outHandleEl) outHandleEl.style.display = 'none';
       }
@@ -12758,12 +12787,12 @@ function updateCtrlPts() {
               ghostOutEl.style.opacity = '0.28';
               ghostOutEl.style.background = 'rgba(255,210,0,0.7)';
               ghostOutEl.style.boxShadow = 'none';
-              stage.appendChild(ghostOutEl);
+              stageAppendChild(ghostOutEl);
             }
             ghostOutEl.style.display = 'block';
             ghostOutEl.style.left = _gGeo.hx + 'px';
             ghostOutEl.style.top  = _gGeo.hy + 'px';
-            stage.appendChild(ghostOutEl);
+            stageAppendChild(ghostOutEl);
             showGhostOut = true;
           }
         }
@@ -12782,12 +12811,12 @@ function updateCtrlPts() {
               ghostInEl.style.opacity = '0.28';
               ghostInEl.style.background = 'rgba(255,210,0,0.7)';
               ghostInEl.style.boxShadow = 'none';
-              stage.appendChild(ghostInEl);
+              stageAppendChild(ghostInEl);
             }
             ghostInEl.style.display = 'block';
             ghostInEl.style.left = _gGeo2.hx + 'px';
             ghostInEl.style.top  = _gGeo2.hy + 'px';
-            stage.appendChild(ghostInEl);
+            stageAppendChild(ghostInEl);
             showGhostIn = true;
           }
         }
@@ -13209,11 +13238,38 @@ function syncEditorZoomCtrlVisibility() {
 // getBoundingClientRect() já reflete a transformação CSS, então sr.left/top
 // incluem panX/panY, e dividir por editorZoomScale converte para coords reais.
 function screenToStageCoord(clientX, clientY) {
-  const sr = stage.getBoundingClientRect();
+  const sr = stageContent.getBoundingClientRect();
   return {
     x: (clientX - sr.left) / editorZoomScale,
     y: (clientY - sr.top)  / editorZoomScale
   };
+}
+
+function cleanupStageRenderLayersForEditorView() {
+  if (!bezierSvg) return;
+  // Safari/iPhone pode reter fragmentos compositados de SVG/DOM transformado.
+  // Reatribuir o conteúdo das camadas idempotentes força uma pintura limpa sem
+  // alterar dados do projeto, Preview, MP4 ou JSON.
+  if (bezierSvg.innerHTML) bezierSvg.innerHTML = bezierSvg.innerHTML;
+  const dimSvg = document.getElementById('stageDimSvg');
+  if (dimSvg && dimSvg.innerHTML) dimSvg.innerHTML = dimSvg.innerHTML;
+}
+
+function removeDuplicateStageRenderNodes() {
+  [
+    'globalHandle',
+    'cpt_loop',
+    'frame_in_handle',
+    'frame_out_handle',
+    'frame_ghost_in',
+    'frame_ghost_out',
+    'frame_tangent_dot'
+  ].forEach(id => {
+    const nodes = stageContent.querySelectorAll('#' + id);
+    nodes.forEach((node, idx) => {
+      if (idx < nodes.length - 1) node.remove();
+    });
+  });
 }
 
 function clampEditorPan() {
@@ -13231,12 +13287,18 @@ function clampEditorPan() {
 
 function applyEditorZoom() {
   // v8z4b24a — aplicar transform em qualquer zoom (inclusive < 1, via gesto de pinça)
+  let nextTransform = '';
   if (editorZoomScale === 1 && editorPanX === 0 && editorPanY === 0) {
-    stage.style.transform = '';
-    stage.style.transformOrigin = '';
+    stageContent.style.transform = '';
+    stageContent.style.webkitTransform = '';
+    stageContent.style.transformOrigin = '';
+    stageContent.style.webkitTransformOrigin = '';
   } else {
-    stage.style.transformOrigin = '0 0';
-    stage.style.transform = `translate(${editorPanX}px,${editorPanY}px) scale(${editorZoomScale})`;
+    nextTransform = `translate(${editorPanX}px,${editorPanY}px) scale(${editorZoomScale})`;
+    stageContent.style.transformOrigin = '0 0';
+    stageContent.style.webkitTransformOrigin = '0 0';
+    stageContent.style.transform = nextTransform;
+    stageContent.style.webkitTransform = nextTransform;
   }
   // Escala inversa para affordances — compensa o scale do stage
   const inv = 1 / editorZoomScale;
@@ -13265,6 +13327,7 @@ function applyEditorZoom() {
   stage.style.cursor = (active && editorPanMode) ? 'grab' : '';
   // Visibilidade contextual — v8z4b18b
   syncEditorZoomCtrlVisibility();
+  cleanupStageRenderLayersForEditorView();
 }
 
 function resetEditorZoom() {
@@ -13377,7 +13440,7 @@ function startStageNavigationFromTouches(e) {
   cancelStageEditingForNavigation();
   gestureState.mode = 'stageNavigation';
   isPinching = true;
-  const sr = stage.getBoundingClientRect();
+  const sr = stageContent.getBoundingClientRect();
   twoFingerState = {
     startDist,
     startMidX:    (t1.clientX + t2.clientX) / 2,
@@ -13805,7 +13868,7 @@ function onMove(e) {
   if (!dragState) return;
   const fi = dragState.fi;
   if (dragState.type === 'rotate') {
-    const sr = stage.getBoundingClientRect();
+    const sr = stageContent.getBoundingClientRect();
     // Centro do frame em coords de tela (considera zoom/pan)
     const cx = sr.left + (frames[fi].x + frames[fi].w / 2) * editorZoomScale;
     const cy = sr.top  + (frames[fi].y + frames[fi].h / 2) * editorZoomScale;
@@ -17113,7 +17176,7 @@ function showAngleIndicator(fi, deg) {
   if (!angleIndicatorEl) {
     angleIndicatorEl = document.createElement('div');
     angleIndicatorEl.className = 'angle-indicator';
-    stage.appendChild(angleIndicatorEl);
+    stageAppendChild(angleIndicatorEl);
   }
   const f = frames[fi];
   const cx = f.x + f.w / 2;
