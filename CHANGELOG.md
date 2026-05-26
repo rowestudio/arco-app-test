@@ -1,5 +1,13 @@
 # Changelog
 
+## v8z4b25b — point mode quick access
+
+- fix: menu de modos de ponto/frame fica acessível por controle provisório claro.
+- fix: modos Canto/Simétrico/Assimétrico/Desconectado podem ser testados no frame ativo.
+- architecture: modos continuam associados ao ponto/frame, não ao segmento.
+
+---
+
 ## v8z4b24b — stage gesture arbitration and viewport navigation
 
 - fix: zoom/pan com dois dedos não seleciona frames acidentalmente.
