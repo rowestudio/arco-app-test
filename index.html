@@ -1,14 +1,14 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b24c                                     ║
+║  Versão: v8z4b25a                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
-║  v8z4b24c                                            ║
+║  v8z4b25a                                            ║
 ║    fix: removidos rastros/linhas acumuladas na       ║
 ║         renderização do Stage durante zoom/pan;      ║
 ║    fix: camadas de overlay/curvas/handles são        ║
@@ -416,7 +416,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b24c — stage render cleanup: removidos rastros/linhas acumuladas na renderização do Stage durante zoom/pan; camadas de overlay/curvas/handles são limpas corretamente antes de redesenhar; transform visual do editorView passa a ser aplicado de forma idempotente, sem acumular artefatos. -->
+<!-- Arco Motion App — v8z4b25a — feat: menu contextual de modo de ponto/frame; feat: modos Canto, Simétrico, Assimétrico e Desconectado para pontos de passagem; feat: pointMode salvo/carregado no JSON; fix/architecture: modo de curva é propriedade do ponto/frame e não do segmento; fix: troca de modo altera apenas handles locais do ponto selecionado. -->
 <!-- Arco Motion App — v8z4b24b — stage gesture arbitration: zoom/pan com dois dedos não seleciona frames acidentalmente; handles, overlays e elementos tutoriais do Stage não são ativados ao iniciar gesto de dois dedos; bloqueio curto após navegação evita taps residuais; área interativa de zoom/pan cobre o viewport de edição, não apenas a imagem; imagem tratada como conteúdo dentro do Stage, não como limite de navegação. -->
 <!-- Arco Motion App — v8z4b24a — editor zoom/pan navigation: navegação visual do Stage com pinça para zoom; pan do Stage com dois dedos; coordenadas de edição passam a considerar editorView zoom/pan; Stage visível como viewport de edição, sem alterar dados reais do projeto; MIN_EDITOR_ZOOM=0.5, MAX_EDITOR_ZOOM=4; gesto de dois dedos impede edição simultânea; JSON não salva zoom/pan. -->
 <!-- Arco Motion App — v8z4b23b — overlay cleanup: Reset Project de projeto novo limpa overlays antigos (dim overlay, bezier, handles) antes de voltar ao F1 assistido; F1 assistido após reset redesenha imediatamente o overlay correto; guard frameCount>0 em renderAll para evitar crash ao cancelar F1 assistido com frames vazio. -->
@@ -587,6 +587,9 @@ body.recording #editorZoomCtrl{display:none;}
   cursor:default;
   -webkit-user-select:text;user-select:text;
 }
+#pointModeMenu{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 84px);transform:translateX(-50%);z-index:130;display:none;gap:8px;padding:8px;border-radius:16px;background:rgba(24,24,28,.92);border:1px solid var(--border2);backdrop-filter:blur(8px);}
+.point-mode-btn{width:44px;height:44px;border:1px solid var(--border2);border-radius:12px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;}
+.point-mode-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.12);}
 
 /* FRAME — borda e alças */
 .frame{position:absolute;box-sizing:border-box;touch-action:none;overflow:visible;}
@@ -2005,6 +2008,12 @@ body.cust-open #toolbar{
   </div>
   <!-- Status toast fora do stage — não afetado pelo zoom de edição (v8z4b17y) -->
   <div class="status-bar" id="statusBar"></div>
+  <div id="pointModeMenu" aria-label="Modo do ponto">
+    <button class="point-mode-btn" data-mode="corner" type="button" title="Canto">∟</button>
+    <button class="point-mode-btn" data-mode="symmetric" type="button" title="Simétrico">↔</button>
+    <button class="point-mode-btn" data-mode="asymmetric" type="button" title="Assimétrico">⇆</button>
+    <button class="point-mode-btn" data-mode="disconnected" type="button" title="Desconectado">⤫</button>
+  </div>
   <!-- Editor Zoom Control flutuante — v8z4b18b (não alterado em v8z4b18c) -->
   <div id="editorZoomCtrl" style="display:none;">
     <div class="ezc-row">
@@ -2335,7 +2344,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b24c</span><br><span id="appVersionNameText">stage render cleanup for zoom pan</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b25a</span><br><span id="appVersionNameText">point mode contextual menu</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4676,8 +4685,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b24c';
-const APP_VERSION_NAME = 'stage render cleanup for zoom pan';
+const APP_VERSION = 'v8z4b25a';
+const APP_VERSION_NAME = 'point mode contextual menu';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10021,7 +10030,8 @@ function captureState() {
     nx: f.x / (stageW || 1),
     ny: f.y / (stageH || 1),
     nw: f.w / (stageW || 1),
-    nh: f.h / (stageH || 1)
+    nh: f.h / (stageH || 1),
+    pointMode: f.pointMode || POINT_MODE_DEFAULT
   }));
   const imageAR = imgNatW && imgNatH ? imgNatW / imgNatH : null;
   const imageARLabel = imageAR
@@ -10029,7 +10039,7 @@ function captureState() {
        imageAR > 0.95 ? '1:1 quadrado' : imageAR > 0.7 ? '3:4 retrato' : '9:16 retrato')
     : null;
   return {
-    frames: frames.map(f => ({...f})),
+    frames: frames.map(f => ({...f, pointMode: f.pointMode || POINT_MODE_DEFAULT})),
     framesNorm,
     imageAR,
     imageARLabel,
@@ -10075,7 +10085,7 @@ function captureState() {
 function cloneProjectStateSnapshot(state) {
   if (!state) return null;
   return {
-    frames: (state.frames || []).map(f => ({...f})),
+    frames: (state.frames || []).map(f => ({...f, pointMode: f.pointMode || POINT_MODE_DEFAULT})),
     framesNorm: (state.framesNorm || []).map(f => ({...f})),
     imageAR: state.imageAR ?? null,
     imageARLabel: state.imageARLabel ?? null,
@@ -10276,6 +10286,8 @@ let ctrlDragUndoCaptured = false;
 let midpointDragState = null; // v8z4b19v: { seg, segType, didMove } — drag de midpoint pathPoint
 let frameTangentDragState = null; // v8z4b19y: legado — substituído em v8z4b20b por frameHandleDragState
 let frameHandleDragState  = null; // v8z4b20b: { which:'in'|'out', didMove, undoCaptured } — drag de in/out handle
+let pointModeMenuVisible = false;
+const POINT_MODE_DEFAULT = 'disconnected';
 let isPinching      = false;
 let pinchStartAngle = 0;
 let pinchStartRot   = 0;
@@ -10328,6 +10340,28 @@ const statusBar    = document.getElementById('statusBar');
 const progressWrap = document.getElementById('progressWrap');
 const progressFill = document.getElementById('progressFill');
 const bezierSvg    = document.getElementById('bezierSvg');
+const pointModeMenuEl = document.getElementById('pointModeMenu');
+
+function canOpenPointModeMenu() {
+  return !!(pointModeMenuEl && imgNatW && frameCount > 1 && activeIdx >= 0 && activeIdx < frameCount && !isPreviewing && !isRecording && !isInsertingFrame);
+}
+function syncPointModeMenuUI() {
+  if (!pointModeMenuEl) return;
+  const mode = getFramePointMode(activeIdx);
+  pointModeMenuEl.querySelectorAll('.point-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+}
+function openPointModeMenu() {
+  if (!canOpenPointModeMenu()) return;
+  pointModeMenuVisible = true;
+  pointModeMenuEl.style.display = 'flex';
+  syncPointModeMenuUI();
+}
+function closePointModeMenu() {
+  pointModeMenuVisible = false;
+  if (pointModeMenuEl) pointModeMenuEl.style.display = 'none';
+}
 
 // Toque na curva Bézier → abrir painel de easing do segmento
 // Easing via pills do mid-bar — toque na curva não abre mais painel
@@ -10362,6 +10396,29 @@ function updatePlayButton() {
   if (btnPlay) btnPlay.classList.toggle('playing', isPreviewing);
 }
 updatePlayButton();
+if (pointModeMenuEl) {
+  pointModeMenuEl.addEventListener('pointerdown', e => e.stopPropagation());
+  pointModeMenuEl.querySelectorAll('.point-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!canOpenPointModeMenu()) return;
+      const mode = btn.dataset.mode;
+      pushUndo();
+      if (applyPointModeForFrame(activeIdx, mode)) {
+        renderAll();
+      }
+      closePointModeMenu();
+    });
+  });
+}
+stage.addEventListener('dblclick', () => {
+  if (pointModeMenuVisible) closePointModeMenu();
+  else openPointModeMenu();
+});
+document.addEventListener('pointerdown', e => {
+  if (!pointModeMenuVisible) return;
+  if (e.target.closest && e.target.closest('#pointModeMenu')) return;
+  closePointModeMenu();
+});
 
 // Preview canvas must always match the export format AR
 function setupPreviewCanvas() {
@@ -12197,6 +12254,12 @@ function getFrameConnectedHandleTargets(fi) {
   return { inTarget, outTarget };
 }
 
+function getFramePointMode(fi) {
+  const f = frames[fi];
+  const mode = f && typeof f.pointMode === 'string' ? f.pointMode : POINT_MODE_DEFAULT;
+  return ['corner', 'symmetric', 'asymmetric', 'disconnected'].includes(mode) ? mode : POINT_MODE_DEFAULT;
+}
+
 // Calcula posição visual do handle para um target específico.
 // fi: frame ativo (de onde parte o braço visual)
 // role: 'in' | 'out'
@@ -12936,6 +12999,33 @@ function startFrameHandleDrag(which) {
   frameHandleDragState = { which, didMove: false, undoCaptured: false };
 }
 
+function applyPointModeForFrame(fi, mode) {
+  if (fi < 0 || fi >= frameCount || !['corner','symmetric','asymmetric','disconnected'].includes(mode)) return false;
+  ensureCurvesV2();
+  if (!isCurvesV2Active()) return false;
+  const f = frames[fi];
+  if (!f) return false;
+  f.pointMode = mode;
+  const inH = curvesV2.frameHandles.in[fi];
+  const outH = curvesV2.frameHandles.out[fi];
+  if (mode === 'corner') {
+    if (inH) { inH.dx = 0; inH.dy = 0; inH.manual = true; }
+    if (outH) { outH.dx = 0; outH.dy = 0; outH.manual = true; }
+  } else if (mode === 'symmetric' || mode === 'asymmetric') {
+    if (inH && outH) {
+      const inLen = Math.hypot(inH.dx, inH.dy) || 1;
+      const outLen = Math.hypot(outH.dx, outH.dy) || inLen;
+      const tx = outH.dx || -inH.dx || 1, ty = outH.dy || -inH.dy || 0;
+      const tLen = Math.hypot(tx, ty) || 1;
+      const useOutLen = mode === 'symmetric' ? inLen : outLen;
+      outH.dx = (tx / tLen) * useOutLen; outH.dy = (ty / tLen) * useOutLen;
+      inH.dx = -(tx / tLen) * inLen; inH.dy = -(ty / tLen) * inLen;
+      inH.manual = true; outH.manual = true;
+    }
+  }
+  return true;
+}
+
 // Aplica edição de handle IN ou OUT.
 // which: 'in' | 'out'
 // hx, hy: posição do handle arrastado em pixels do stage.
@@ -13041,18 +13131,37 @@ function applyFrameConnectedHandleEdit(fi, role, target, hx, hy) {
     if (target.type === 'segment') {
       const segIdx = target.segIndex;
       if (segIdx < 0 || segIdx >= frameCount - 1) return false;
+      const mode = getFramePointMode(fi);
       if (role === 'in') {
         if (fi <= 0 || segIdx !== fi - 1) return false;
         if (!curvesV2.frameHandles.in[fi]) curvesV2.frameHandles.in[fi] = { dx: 0, dy: 0, manual: false };
         curvesV2.frameHandles.in[fi].dx = dx2;
         curvesV2.frameHandles.in[fi].dy = dy2;
         curvesV2.frameHandles.in[fi].manual = true;
+        if (mode === 'symmetric' || mode === 'asymmetric') {
+          const out = curvesV2.frameHandles.out[fi] || { dx: 0, dy: 0, manual: false };
+          const outLen = Math.hypot(out.dx, out.dy) || Math.hypot(dx2, dy2) || 1;
+          const inLen = Math.hypot(dx2, dy2) || 1;
+          const targetLen = mode === 'symmetric' ? inLen : outLen;
+          curvesV2.frameHandles.out[fi] = { dx: -(dx2 / inLen) * targetLen, dy: -(dy2 / inLen) * targetLen, manual: true };
+        } else if (mode === 'corner') {
+          curvesV2.frameHandles.out[fi] = { dx: 0, dy: 0, manual: true };
+        }
       } else {
         if (fi >= frameCount - 1 || segIdx !== fi) return false;
         if (!curvesV2.frameHandles.out[fi]) curvesV2.frameHandles.out[fi] = { dx: 0, dy: 0, manual: false };
         curvesV2.frameHandles.out[fi].dx = dx2;
         curvesV2.frameHandles.out[fi].dy = dy2;
         curvesV2.frameHandles.out[fi].manual = true;
+        if (mode === 'symmetric' || mode === 'asymmetric') {
+          const inp = curvesV2.frameHandles.in[fi] || { dx: 0, dy: 0, manual: false };
+          const inLen = Math.hypot(inp.dx, inp.dy) || Math.hypot(dx2, dy2) || 1;
+          const outLen = Math.hypot(dx2, dy2) || 1;
+          const targetLen = mode === 'symmetric' ? outLen : inLen;
+          curvesV2.frameHandles.in[fi] = { dx: -(dx2 / outLen) * targetLen, dy: -(dy2 / outLen) * targetLen, manual: true };
+        } else if (mode === 'corner') {
+          curvesV2.frameHandles.in[fi] = { dx: 0, dy: 0, manual: true };
+        }
       }
       // Sync legacy ctrlPts for fallback compatibility
       const segForLegacy = (role === 'in') ? fi - 1 : fi;
@@ -18590,6 +18699,7 @@ function buildProjectData() {
     // v8z4b18r: framePauses serializado após ensureFramePauses() no topo da função,
     // garantindo array com exatamente frameCount entradas. Number()||0 preserva 0.
     framePauses: framePauses.slice(0, frameCount).map(p => ({ duration: Number(p?.duration) || 0 })),
+    pointModes: frames.slice(0, frameCount).map(f => f?.pointMode || POINT_MODE_DEFAULT),
     // v8z4b17a: easing de rotação por segmento.
     rotEasings: rotEasings.slice(0, frameCount - 1),
     // v8z4b17b: easing de escala por segmento.
@@ -19059,6 +19169,13 @@ function applyFrameData(data) {
   } else if (data.frames) {
     data.frames.forEach(f => frames.push({...f}));
   }
+  frames.forEach((f, i) => {
+    const fromNorm = data.framesNorm && data.framesNorm[i] && data.framesNorm[i].pointMode;
+    const fromList = Array.isArray(data.pointModes) ? data.pointModes[i] : null;
+    const fromFrame = f.pointMode;
+    const mode = fromNorm || fromFrame || fromList || POINT_MODE_DEFAULT;
+    f.pointMode = ['corner','symmetric','asymmetric','disconnected'].includes(mode) ? mode : POINT_MODE_DEFAULT;
+  });
   // v8z4b18o — Defensivo: se o JSON tinha frameCount inconsistente com framesNorm/frames,
   // ajustar frameCount para evitar acesso fora dos limites em renderAll e demais funções.
   if (frames.length > 0 && frames.length < frameCount) {
