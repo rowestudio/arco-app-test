@@ -1,14 +1,14 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b25a                                     ║
+║  Versão: v8z4b25b                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
-║  v8z4b25a                                            ║
+║  v8z4b25b                                            ║
 ║    fix: removidos rastros/linhas acumuladas na       ║
 ║         renderização do Stage durante zoom/pan;      ║
 ║    fix: camadas de overlay/curvas/handles são        ║
@@ -416,7 +416,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b25a — feat: menu contextual de modo de ponto/frame; feat: modos Canto, Simétrico, Assimétrico e Desconectado para pontos de passagem; feat: pointMode salvo/carregado no JSON; fix/architecture: modo de curva é propriedade do ponto/frame e não do segmento; fix: troca de modo altera apenas handles locais do ponto selecionado. -->
+<!-- Arco Motion App — v8z4b25b — fix: menu de modos de ponto/frame acessível por controle provisório claro no topo; fix: modos Canto/Simétrico/Assimétrico/Desconectado testáveis no frame ativo; architecture: modos continuam associados ao ponto/frame e não ao segmento. -->
 <!-- Arco Motion App — v8z4b24b — stage gesture arbitration: zoom/pan com dois dedos não seleciona frames acidentalmente; handles, overlays e elementos tutoriais do Stage não são ativados ao iniciar gesto de dois dedos; bloqueio curto após navegação evita taps residuais; área interativa de zoom/pan cobre o viewport de edição, não apenas a imagem; imagem tratada como conteúdo dentro do Stage, não como limite de navegação. -->
 <!-- Arco Motion App — v8z4b24a — editor zoom/pan navigation: navegação visual do Stage com pinça para zoom; pan do Stage com dois dedos; coordenadas de edição passam a considerar editorView zoom/pan; Stage visível como viewport de edição, sem alterar dados reais do projeto; MIN_EDITOR_ZOOM=0.5, MAX_EDITOR_ZOOM=4; gesto de dois dedos impede edição simultânea; JSON não salva zoom/pan. -->
 <!-- Arco Motion App — v8z4b23b — overlay cleanup: Reset Project de projeto novo limpa overlays antigos (dim overlay, bezier, handles) antes de voltar ao F1 assistido; F1 assistido após reset redesenha imediatamente o overlay correto; guard frameCount>0 em renderAll para evitar crash ao cancelar F1 assistido com frames vazio. -->
@@ -1976,6 +1976,9 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-mapa"></use></svg>
   </div>
   <div class="top-spacer"></div>
+  <div class="top-btn" id="topBtnPointMode" onclick="togglePointModeMenuFromButton()" title="Modo do ponto" style="display:none;opacity:0.35;pointer-events:none;">
+    <svg viewBox="0 0 24 24"><use href="#i-curve"></use></svg>
+  </div>
   <div class="top-btn" id="topBtnUndo" onclick="undo()" title="Desfazer" style="opacity:0.3;pointer-events:none;">
     <svg viewBox="0 0 24 24"><use href="#i-undo"></use></svg>
   </div>
@@ -2344,7 +2347,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b25a</span><br><span id="appVersionNameText">point mode contextual menu</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b25b</span><br><span id="appVersionNameText">point mode quick access</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4685,8 +4688,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b25a';
-const APP_VERSION_NAME = 'point mode contextual menu';
+const APP_VERSION = 'v8z4b25b';
+const APP_VERSION_NAME = 'point mode quick access';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10341,6 +10344,7 @@ const progressWrap = document.getElementById('progressWrap');
 const progressFill = document.getElementById('progressFill');
 const bezierSvg    = document.getElementById('bezierSvg');
 const pointModeMenuEl = document.getElementById('pointModeMenu');
+const topBtnPointMode = document.getElementById('topBtnPointMode');
 
 function canOpenPointModeMenu() {
   return !!(pointModeMenuEl && imgNatW && frameCount > 1 && activeIdx >= 0 && activeIdx < frameCount && !isPreviewing && !isRecording && !isInsertingFrame);
@@ -10357,10 +10361,25 @@ function openPointModeMenu() {
   pointModeMenuVisible = true;
   pointModeMenuEl.style.display = 'flex';
   syncPointModeMenuUI();
+  syncPointModeAccessButtonUI();
 }
 function closePointModeMenu() {
   pointModeMenuVisible = false;
   if (pointModeMenuEl) pointModeMenuEl.style.display = 'none';
+  syncPointModeAccessButtonUI();
+}
+function togglePointModeMenuFromButton() {
+  if (!canOpenPointModeMenu()) return;
+  if (pointModeMenuVisible) closePointModeMenu();
+  else openPointModeMenu();
+}
+function syncPointModeAccessButtonUI() {
+  if (!topBtnPointMode) return;
+  const canOpen = canOpenPointModeMenu();
+  topBtnPointMode.style.display = canOpen ? '' : 'none';
+  topBtnPointMode.style.opacity = canOpen ? '1' : '0.35';
+  topBtnPointMode.style.pointerEvents = canOpen ? 'auto' : 'none';
+  topBtnPointMode.classList.toggle('active', pointModeMenuVisible && canOpen);
 }
 
 // Toque na curva Bézier → abrir painel de easing do segmento
@@ -11931,6 +11950,7 @@ function renderAll() {
   updateFrameSelector();
   autosave();
   syncEditorZoomCtrlVisibility(); // v8z4b18b
+  syncPointModeAccessButtonUI();
 
   // Alça global de escala+rotação
   ensureGlobalHandle();
