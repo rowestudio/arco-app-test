@@ -1,5 +1,13 @@
 # Changelog
 
+## v8z4b25c — corner reopen symmetric handles fix
+
+- fix: reabrir ponto em modo Canto cria par de handles locais em vez de alternar apenas um lado.
+- fix: ponto reaberto a partir de Canto passa automaticamente para Simétrico.
+- fix: Undo/Redo preserva pointMode e handles locais ao fechar/reabrir ponto.
+
+---
+
 ## v8z4b25b — point mode quick access
 
 - fix: menu de modos de ponto/frame fica acessível por controle provisório claro.

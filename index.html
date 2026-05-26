@@ -1,13 +1,20 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b25b                                     ║
+║  Versão: v8z4b25c                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b25c                                            ║
+║    fix: reabrir ponto em modo Canto cria par de      ║
+║         handles locais em vez de alternar um lado;   ║
+║    fix: reabertura de Canto converte frame para      ║
+║         modo Simétrico automaticamente;              ║
+║    fix: Undo/Redo preserva pointMode e handles       ║
+║         locais ao fechar/reabrir ponto.              ║
 ║  v8z4b25b                                            ║
 ║    fix: removidos rastros/linhas acumuladas na       ║
 ║         renderização do Stage durante zoom/pan;      ║
@@ -416,7 +423,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b25b — fix: menu de modos de ponto/frame acessível por controle provisório claro no topo; fix: modos Canto/Simétrico/Assimétrico/Desconectado testáveis no frame ativo; architecture: modos continuam associados ao ponto/frame e não ao segmento. -->
+<!-- Arco Motion App — v8z4b25c — fix: reabrir ponto em modo Canto cria par de handles locais em vez de alternar apenas um lado; fix: ponto reaberto a partir de Canto passa automaticamente para Simétrico; fix: Undo/Redo preserva pointMode e handles locais ao fechar/reabrir ponto. -->
 <!-- Arco Motion App — v8z4b24b — stage gesture arbitration: zoom/pan com dois dedos não seleciona frames acidentalmente; handles, overlays e elementos tutoriais do Stage não são ativados ao iniciar gesto de dois dedos; bloqueio curto após navegação evita taps residuais; área interativa de zoom/pan cobre o viewport de edição, não apenas a imagem; imagem tratada como conteúdo dentro do Stage, não como limite de navegação. -->
 <!-- Arco Motion App — v8z4b24a — editor zoom/pan navigation: navegação visual do Stage com pinça para zoom; pan do Stage com dois dedos; coordenadas de edição passam a considerar editorView zoom/pan; Stage visível como viewport de edição, sem alterar dados reais do projeto; MIN_EDITOR_ZOOM=0.5, MAX_EDITOR_ZOOM=4; gesto de dois dedos impede edição simultânea; JSON não salva zoom/pan. -->
 <!-- Arco Motion App — v8z4b23b — overlay cleanup: Reset Project de projeto novo limpa overlays antigos (dim overlay, bezier, handles) antes de voltar ao F1 assistido; F1 assistido após reset redesenha imediatamente o overlay correto; guard frameCount>0 em renderAll para evitar crash ao cancelar F1 assistido com frames vazio. -->
@@ -2347,7 +2354,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b25b</span><br><span id="appVersionNameText">point mode quick access</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b25c</span><br><span id="appVersionNameText">corner reopen symmetric handles fix</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4688,8 +4695,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b25b';
-const APP_VERSION_NAME = 'point mode quick access';
+const APP_VERSION = 'v8z4b25c';
+const APP_VERSION_NAME = 'corner reopen symmetric handles fix';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -13165,7 +13172,8 @@ function applyFrameConnectedHandleEdit(fi, role, target, hx, hy) {
           const targetLen = mode === 'symmetric' ? inLen : outLen;
           curvesV2.frameHandles.out[fi] = { dx: -(dx2 / inLen) * targetLen, dy: -(dy2 / inLen) * targetLen, manual: true };
         } else if (mode === 'corner') {
-          curvesV2.frameHandles.out[fi] = { dx: 0, dy: 0, manual: true };
+          curvesV2.frameHandles.out[fi] = { dx: -dx2, dy: -dy2, manual: true };
+          frames[fi].pointMode = 'symmetric';
         }
       } else {
         if (fi >= frameCount - 1 || segIdx !== fi) return false;
@@ -13180,7 +13188,8 @@ function applyFrameConnectedHandleEdit(fi, role, target, hx, hy) {
           const targetLen = mode === 'symmetric' ? outLen : inLen;
           curvesV2.frameHandles.in[fi] = { dx: -(dx2 / outLen) * targetLen, dy: -(dy2 / outLen) * targetLen, manual: true };
         } else if (mode === 'corner') {
-          curvesV2.frameHandles.in[fi] = { dx: 0, dy: 0, manual: true };
+          curvesV2.frameHandles.in[fi] = { dx: -dx2, dy: -dy2, manual: true };
+          frames[fi].pointMode = 'symmetric';
         }
       }
       // Sync legacy ctrlPts for fallback compatibility
