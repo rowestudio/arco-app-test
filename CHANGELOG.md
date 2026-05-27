@@ -1,5 +1,14 @@
 # Changelog
 
+## v8z4b25d — loop-closed endpoint point modes fix
+
+- fix: F1 e último frame com Loop ativo passam a respeitar modos de ponto como curva fechada.
+- fix: Canto no fechamento do Loop reabre criando par de handles locais.
+- fix: Simétrico e Assimétrico passam a considerar o handle do segmento de Loop.
+- fix: Desconectado permanece como único modo com autonomia real entre os lados do ponto.
+
+---
+
 ## v8z4b25c — corner reopen symmetric handles fix
 
 - fix: reabrir ponto em modo Canto cria par de handles locais em vez de alternar apenas um lado.
