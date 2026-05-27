@@ -1,3 +1,8 @@
+## v8z4b25e — curve mode menu icon refresh
+
+- visual: substitui ícones dos modos de ponto/curva por novos SVGs fornecidos.
+- visual: melhora leitura dos modos Canto, Simétrico, Assimétrico e Desconectado no menu de curva.
+
 # Changelog
 
 ## v8z4b25d — loop-closed endpoint point modes fix
