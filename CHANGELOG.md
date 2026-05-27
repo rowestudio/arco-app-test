@@ -1,3 +1,11 @@
+## v8z4b25f — point mode icon SVG cleanup for iPhone readability
+
+- visual: remove textos internos dos SVGs dos modos de ponto.
+- visual: aumenta e normaliza leitura dos ícones Canto, Simétrico, Assimétrico e Desconectado.
+- visual: ajusta viewBox/renderização dos ícones para melhor leitura no iPhone/Safari.
+- `assets/icons/curve-modes/curve-corner.svg`, `curve-symmetric.svg`, `curve-asymmetric.svg`, `curve-disconnected.svg`: ícones vetoriais limpos, sem `<text>`, usando apenas símbolo gráfico com `stroke="currentColor"`.
+- `index.html`: `APP_VERSION`/`APP_VERSION_NAME`, texto visível de versão, comentário de topo e tamanho visual de `.point-mode-icon` atualizados.
+
 ## v8z4b25e — curve mode menu icon refresh
 
 - visual: substitui ícones dos modos de ponto/curva por novos SVGs fornecidos.
