@@ -1,3 +1,9 @@
+## v8z4b25h — pending assisted frame global UI guard
+
+- fix: bloqueia ações globais enquanto existe frame assistido pendente de confirmação.
+- fix: impede abertura de Duração, Curva, Transformação/Frame, Preview, MP4, JSON, Reset, Settings, seleção/troca/deleção/adição de frame até Confirmar ou Cancelar.
+- `index.html`: adiciona guarda central para estado de frame pendente/ghost e atualiza `APP_VERSION`/`APP_VERSION_NAME`, texto visível de versão e comentário de topo.
+
 ## v8z4b25g — curve mode icons light color and pius wording cleanup
 
 - visual: ajusta ícones do menu de curva para cor clara no tema escuro.
