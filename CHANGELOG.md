@@ -1,3 +1,10 @@
+## v8z4b25g — curve mode icons light color and pius wording cleanup
+
+- visual: ajusta ícones do menu de curva para cor clara no tema escuro.
+- visual: melhora leitura dos quatro modos de curva no iPhone/Safari.
+- fix: remove referência textual indevida a “Pius” no contexto do menu de curva.
+- `index.html`: `APP_VERSION`/`APP_VERSION_NAME`, texto visível de versão, comentário de topo e renderização dos ícones de modos de ponto/curva atualizados para usar `currentColor` via máscara vetorial.
+
 ## v8z4b25f — point mode icon SVG cleanup for iPhone readability
 
 - visual: remove textos internos dos SVGs dos modos de ponto.
