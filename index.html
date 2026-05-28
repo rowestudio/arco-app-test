@@ -1,13 +1,17 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b25g                                     ║
+║  Versão: v8z4b25h                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b25h                                            ║
+║    fix: bloqueio global durante inserção assistida   ║
+║         impede painéis/preview/export/settings/etc.  ║
+║         até Confirmar ou Cancelar o frame pendente.  ║
 ║  v8z4b25g                                            ║
 ║    fix: reabrir ponto em modo Canto cria par de      ║
 ║         handles locais em vez de alternar um lado;   ║
@@ -423,7 +427,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b25g — visual: remove textos internos dos SVGs dos modos de ponto; visual: aumenta e normaliza leitura dos ícones Canto, Simétrico, Assimétrico e Desconectado; visual: ajusta viewBox/renderização dos ícones para melhor leitura no iPhone/Safari. -->
+<!-- Arco Motion App — v8z4b25h — fix: bloqueio global durante inserção assistida impede painéis, Preview, MP4, JSON, Reset, Settings e troca/edição de frame até Confirmar ou Cancelar o frame pendente. -->
 <!-- Arco Motion App — v8z4b24b — stage gesture arbitration: zoom/pan com dois dedos não seleciona frames acidentalmente; handles, overlays e elementos tutoriais do Stage não são ativados ao iniciar gesto de dois dedos; bloqueio curto após navegação evita taps residuais; área interativa de zoom/pan cobre o viewport de edição, não apenas a imagem; imagem tratada como conteúdo dentro do Stage, não como limite de navegação. -->
 <!-- Arco Motion App — v8z4b24a — editor zoom/pan navigation: navegação visual do Stage com pinça para zoom; pan do Stage com dois dedos; coordenadas de edição passam a considerar editorView zoom/pan; Stage visível como viewport de edição, sem alterar dados reais do projeto; MIN_EDITOR_ZOOM=0.5, MAX_EDITOR_ZOOM=4; gesto de dois dedos impede edição simultânea; JSON não salva zoom/pan. -->
 <!-- Arco Motion App — v8z4b23b — overlay cleanup: Reset Project de projeto novo limpa overlays antigos (dim overlay, bezier, handles) antes de voltar ao F1 assistido; F1 assistido após reset redesenha imediatamente o overlay correto; guard frameCount>0 em renderAll para evitar crash ao cancelar F1 assistido com frames vazio. -->
@@ -2360,7 +2364,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b25g</span><br><span id="appVersionNameText">curve mode icons set to light color and removed improper pius wording</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b25h</span><br><span id="appVersionNameText">block global actions during pending assisted frame insertion</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4701,8 +4705,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b25g';
-const APP_VERSION_NAME = 'curve mode icons set to light color and removed improper pius wording';
+const APP_VERSION = 'v8z4b25h';
+const APP_VERSION_NAME = 'block global actions during pending assisted frame insertion';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4727,6 +4731,38 @@ function hasImageLoaded() {
 function canSaveProject() {
   return imgNatW > 0 && frameCount > 0;
 }
+
+function hasPendingAssistedFrame() {
+  return !!(isInsertingFrame || pendingFrameInsert || ghostFrame || ghostFrameEl || document.body.classList.contains('inserting-frame'));
+}
+
+function shouldBlockGlobalUIAction() {
+  if (!hasPendingAssistedFrame()) return false;
+  showStatus('Confirme ou cancele o frame atual.');
+  return true;
+}
+
+function isPendingFrameAllowedTarget(target) {
+  if (!target || !hasPendingAssistedFrame()) return true;
+  if (target.closest?.('#insertionActionBar')) return true;
+  if (ghostFrameEl && ghostFrameEl.contains(target)) return true;
+  if (globalHandleEl && globalHandleEl.contains(target) && globalHandleEl.classList.contains('ghost-transform')) return true;
+  const stageTarget = target.closest?.('#stage, #stageContent, #imageArea');
+  if (stageTarget && !target.closest?.('#toolbar, #midBar, #topBar, #settingsSheet, .float-panel, #pointModeMenu, #editorZoomCtrl, .frame, .ctrl-pt, .mid-pathpt, .frame-tangent-dot, .frame-in-handle, .frame-out-handle')) return true;
+  return false;
+}
+
+function guardPendingFrameGlobalEvent(e) {
+  if (!hasPendingAssistedFrame() || isPendingFrameAllowedTarget(e.target)) return;
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation?.();
+  showStatus('Confirme ou cancele o frame atual.');
+}
+
+document.addEventListener('pointerdown', guardPendingFrameGlobalEvent, true);
+document.addEventListener('touchstart', guardPendingFrameGlobalEvent, { capture: true, passive: false });
+document.addEventListener('click', guardPendingFrameGlobalEvent, true);
 
 function updateSaveProjectState() {
   const canSave = canSaveProject();
@@ -10274,6 +10310,7 @@ function pushUndoSnapshot(state) {
 }
 
 function undo() {
+  if (shouldBlockGlobalUIAction()) return;
   if (!undoStack.length) return;
   redoStack.push(captureState());
   restoreState(undoStack.pop());
@@ -10281,6 +10318,7 @@ function undo() {
 }
 
 function redo() {
+  if (shouldBlockGlobalUIAction()) return;
   if (!redoStack.length) return;
   undoStack.push(captureState());
   restoreState(redoStack.pop());
@@ -10382,6 +10420,7 @@ function closePointModeMenu() {
   syncPointModeAccessButtonUI();
 }
 function togglePointModeMenuFromButton() {
+  if (shouldBlockGlobalUIAction()) return;
   if (!canOpenPointModeMenu()) return;
   if (pointModeMenuVisible) closePointModeMenu();
   else openPointModeMenu();
@@ -11167,6 +11206,7 @@ function startFirstFrameAssistedInsertion() {
 
 // ═══════════════════════════════════════
 function addFrame() {
+  if (shouldBlockGlobalUIAction()) return;
   // v8z4b16h — guard: sem imagem, nenhuma ação de frame.
   if (!hasImageLoaded()) return;
   if (frameCount >= MAX_FRAMES) { showStatus('Máximo de ' + MAX_FRAMES + ' frames'); return; }
@@ -11553,6 +11593,7 @@ function buildPendingFrameInsertion() {
 }
 
 function insertFrameAfterActive() {
+  if (shouldBlockGlobalUIAction()) return;
   if (isInsertingFrame) return; // já em modo de inserção
   if (!imgNatW) return; // sem imagem
   // v8z4b23a: imagem carregada mas ainda sem frames → iniciar F1 assistido
@@ -11744,6 +11785,7 @@ function confirmAssistedFrameInsertion() {
 }
 
 function removeLastFrame() {
+  if (shouldBlockGlobalUIAction()) return;
   // v8z4b16h — guard: sem imagem, sem ação de frame.
   if (isInsertingFrame) return;
   if (!hasImageLoaded()) return;
@@ -14796,6 +14838,7 @@ function drawMirrorBg(ctx, W, H, sx, sy, cropW, cropH, rot, cover) {
 // PREVIEW
 // ═══════════════════════════════════════
 function togglePlay() {
+  if (shouldBlockGlobalUIAction()) return;
   // v8z4b16h — guard: sem imagem, Play não inicia preview.
   if (!hasImageLoaded()) return;
   if (isRecording) return;
@@ -14806,6 +14849,7 @@ function togglePlay() {
 let pausedElapsed = 0;
 
 function startPreview() {
+  if (shouldBlockGlobalUIAction()) return;
   // v8z4b23a: 1 frame é suficiente para preview (vídeo estático)
   if (frameCount < 1 || !imgNatW) return;
   if (isInsertingFrame) cancelAssistedFrameInsertion();
@@ -15171,6 +15215,7 @@ function sanitizeCtrlPtsAfterImageChange() {
 }
 
 function handleGenerate() {
+  if (shouldBlockGlobalUIAction()) return;
   if (isRecording) return;
   if (generatedUrl) {
     // Vídeo já gerado — compartilhar ou baixar usando blob guardado
@@ -15284,6 +15329,7 @@ function showReadyOverlay() {
 }
 
 async function startRecord() {
+  if (shouldBlockGlobalUIAction()) return;
   if (isRecording) return;
   // v8z4b16d — Guards defensivos ANTES de ativar `isRecording`: se a
   // imagem base ou as dimensões de export estiverem inválidas, sair
@@ -15684,6 +15730,7 @@ async function startRecord() {
 // RESET
 // ═══════════════════════════════════════
 function resetAll() {
+  if (shouldBlockGlobalUIAction()) return;
   // v8z4b23a — Caso A: projeto novo (imagem sem JSON) → voltar ao F1 assistido.
   // Verificar primeiro se já estamos no modo F1 assistido.
   if (isInsertingFrame && _isFirstFrameInsertion) {
@@ -16823,6 +16870,7 @@ function showStatus(msg) {
 // PANELS
 // ═══════════════════════════════════════
 function openPanel(id) {
+  if (shouldBlockGlobalUIAction()) return;
   if (editorPanMode) { editorPanMode = false; applyEditorZoom(); }
   closeAll();
   if (id === 'Customize') {
@@ -17307,6 +17355,7 @@ function setSegEase(ease) {
 }
 
 function closeAll() {
+  if (shouldBlockGlobalUIAction()) return;
   teardownFramePauseRows();
   teardownFramePauseLocalSlider();
   closeSegEasePanel();
@@ -17327,6 +17376,7 @@ function closeAll() {
 // SETTINGS
 // ═══════════════════════════════════════
 function toggleContainFrames() {
+  if (shouldBlockGlobalUIAction()) return;
   containFrames = !containFrames;
   const lbl = document.getElementById('containLbl');
   if (lbl) lbl.textContent = containFrames ? 'Sim' : 'Não';
@@ -17379,6 +17429,7 @@ function initSmoothSlider() {
 }
 
 function toggleFrameLock() {
+  if (shouldBlockGlobalUIAction()) return;
   // v8z4b16h — guard: sem imagem, botão de travar/pinar não responde.
   if (isInsertingFrame) return;
   if (!hasImageLoaded() || frameCount === 0) return;
@@ -17391,6 +17442,7 @@ function toggleFrameLock() {
 }
 
 function deleteActiveFrame() {
+  if (shouldBlockGlobalUIAction()) return;
   // v8z4b16h — guard: sem imagem, botão "−" não tenta deletar.
   // v8z4b23a: mínimo oficial é 1 frame.
   if (isInsertingFrame) return;
@@ -17567,6 +17619,7 @@ let viewMode = 0;
 window._isoMode = false;
 
 function toggleMapa() {
+  if (shouldBlockGlobalUIAction()) return;
   // v8z4b16h — guard: sem imagem, modo Mapa/Isolamento não alterna.
   if (!hasImageLoaded()) return;
   viewMode = (viewMode + 1) % 3;
@@ -17805,6 +17858,7 @@ function applyTemplate(type) {
 }
 
 function invertFrames() {
+  if (shouldBlockGlobalUIAction()) return;
   // v8z4b16h — guard: sem imagem, inversão de sentido não responde.
   if (isInsertingFrame) return;
   if (!hasImageLoaded()) return;
@@ -18784,6 +18838,7 @@ function buildProjectData() {
 let _pendingSaveIncludeImage = false;
 
 function openSaveModal(includeImage) {
+  if (shouldBlockGlobalUIAction()) return;
   if (!imgNatW) { showStatus('Carregue uma imagem primeiro'); return; }
   _pendingSaveIncludeImage = includeImage;
   const modal = document.getElementById('saveModal');
@@ -18817,6 +18872,7 @@ function closeSaveModal() {
 }
 
 function confirmSaveModal(includeImage) {
+  if (shouldBlockGlobalUIAction()) return;
   // v8z4b18w: normalizar nome-base e aplicar sufixo correto
   const input = document.getElementById('saveModalInput');
   const raw = input ? input.value : '';
@@ -18827,6 +18883,7 @@ function confirmSaveModal(includeImage) {
 }
 
 function doSaveDirect(includeImage, nome) {
+  if (shouldBlockGlobalUIAction()) return;
   const data = buildProjectData();
   // v8z4b18r: log de diagnóstico — verifica pausas no momento do save.
   const nonzeroPauses = (data.framePauses || []).filter(p => (p?.duration || 0) > 0).length;
@@ -18882,6 +18939,7 @@ function normalizeBaseName(name) {
 }
 
 function promptSaveProject() {
+  if (shouldBlockGlobalUIAction()) return;
   if (!canSaveProject()) return;
   // Construir nome-base sugerido limpo (sem prefixo genérico de câmera tipo "img_")
   const imgBase = window._imageBaseName || 'projeto';
@@ -18931,6 +18989,7 @@ function saveProject()         { openSaveModal(false); }
 function saveProjectComplete() { openSaveModal(true);  }
 
 function loadProjectFromJson() {
+  if (shouldBlockGlobalUIAction()) return;
   const ta = document.getElementById('jsonPasteInput');
   if (!ta || !ta.value.trim()) { showStatus('Cole o JSON primeiro'); return; }
   try {
@@ -18946,10 +19005,12 @@ function loadProjectFromJson() {
 }
 
 function loadProjectTrigger() {
+  if (shouldBlockGlobalUIAction()) return;
   document.getElementById('projectFileInput').click();
 }
 
 function loadProjectFromFile(e) {
+  if (shouldBlockGlobalUIAction()) { if (e?.target) e.target.value = ''; return; }
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -19382,6 +19443,7 @@ function activateProMode() {
 }
 
 function toggleSettingsSheet() {
+  if (shouldBlockGlobalUIAction()) return;
   const sheet = document.getElementById('settingsSheet');
   const overlay = document.getElementById('overlayBg');
   if (!sheet || !overlay) return;
@@ -19402,6 +19464,7 @@ function closeSettingsSheet() {
   if (overlay) overlay.classList.remove('show', 'light');
 }
 function triggerImageLoad() {
+  if (shouldBlockGlobalUIAction()) return;
   const fi = document.getElementById('fileInput2');
   if (fi) fi.click();
 }
@@ -19522,6 +19585,7 @@ function closeAlignSubmenu() {
 }
 
 function clearMultiSelect() {
+  if (shouldBlockGlobalUIAction()) return;
   selectedFrames.clear();
   closeAlignSubmenu();
   updateFrameSelector();
@@ -19529,6 +19593,7 @@ function clearMultiSelect() {
 }
 
 function alignFrames(mode) {
+  if (shouldBlockGlobalUIAction()) return;
   if (selectedFrames.size < 2) return;
   pushUndo();
   const sel = Array.from(selectedFrames);
@@ -19672,6 +19737,7 @@ function updateTemplateBtn() {
 // Aberturas subsequentes durante a mesma sessão preservam o estado
 // expandido — só a abertura inicial entra em compact-mode.
 function openCustBar() {
+  if (shouldBlockGlobalUIAction()) return;
   // v8z4b16h — guard: sem imagem, menu contextual de frame não abre.
   if (!hasImageLoaded() || frameCount === 0) return;
   // v8z4b16c — Ordem importa: aplicar `cust-open` ANTES de mostrar o
