@@ -12,8 +12,9 @@
 | Versão           | Foco principal                                              |
 |------------------|-------------------------------------------------------------|
 | v8z4b26a         | **Implementada:** seleção múltipla de frames + aplicar modo de curva em lote |
-| v8z4b26b         | Aplicação em lote/global de ajustes simples                 |
-| v8z4b26c         | Edição direta da curva puxando pela linha/segmento          |
+| v8z4b26b         | **Implementada:** remover Sel + mostrar seleção múltipla no Stage |
+| v8z4b26c         | Aplicação em lote/global de ajustes simples                 |
+| v8z4b26d         | Edição direta da curva puxando pela linha/segmento          |
 | v8z5-prototype   | Protótipo visual separado da nova interface                 |
 | v8z5a            | Primeira integração real da nova interface aprovada         |
 
@@ -31,7 +32,7 @@
 
 ## 2. Seleção múltipla de frames
 
-**Status v8z4b26a:** implementada para seleção temporária e aplicação em lote dos modos Canto, Simétrico, Assimétrico e Desconectado.
+**Status v8z4b26b:** implementada para seleção temporária sem botão `Sel`, com indicação nas pills e no Stage, e aplicação em lote dos modos Canto, Simétrico, Assimétrico e Desconectado.
 
 - Selecionar vários frames.
 - Destacar visualmente frames selecionados.

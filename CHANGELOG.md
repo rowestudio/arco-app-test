@@ -1,3 +1,14 @@
+## v8z4b26b — remover Sel e mostrar seleção múltipla no Stage
+
+- ux: remove o botão visual `Sel` da faixa inferior de frames sem criar botão substituto ou deixar espaço vazio.
+- ux: preserva ativação normal por toque na faixa de frames e permite alternar seleção múltipla pela própria interação nos frames: segundo toque no frame ativo ou long press como compatibilidade; com seleção iniciada, toques nos frames alternam entrada/saída do lote.
+- ux: mantém diferença visual entre frame ativo, frames selecionados, ativo + selecionado e frames não selecionados nas pills e no Stage.
+- preservado: aplicação em lote continua restrita aos modos Canto, Simétrico, Assimétrico e Desconectado, reaproveitando `applyPointModeForFrame()` e um único registro de Undo/Redo.
+- preservado: seleção múltipla segue estado temporário; JSON, Preview, MP4, zoom/pan do Stage, inserção assistida, Reset, escala, rotação, duração, pausa, easing e motor de animação não foram alterados.
+- `index.html`: versionamento atualizado para `v8z4b26b`; remoção do botão `btnMultiSelect`; seleção múltipla desacoplada do botão; marcação localizada de seleção no Stage/pills ajustada.
+- `docs/QA-v8z4b26b.md`: checklist específico da versão.
+- `QA.md` e `docs/ROADMAP.md`: documentação atualizada para v8z4b26b no repositório de teste.
+
 ## v8z4b26a — seleção múltipla de frames e modo de curva em lote
 
 - feat: adiciona modo explícito `Sel` na faixa de frames para seleção múltipla por toque, sem depender de long press.

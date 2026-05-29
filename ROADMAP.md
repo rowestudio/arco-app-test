@@ -124,8 +124,9 @@
 ## Sugestão de sequência futura após a consolidação
 
 - v8z4b26a: seleção múltipla de frames + aplicar modo de curva em lote.
-- v8z4b26b: aplicação em lote/global de ajustes simples.
-- v8z4b26c: edição direta da curva puxando pela linha/segmento.
+- v8z4b26b: remover Sel + mostrar seleção múltipla no Stage.
+- v8z4b26c: aplicação em lote/global de ajustes simples.
+- v8z4b26d: edição direta da curva puxando pela linha/segmento.
 - v8z5-prototype: protótipo visual separado da nova interface.
 - v8z5a: primeira integração real da nova interface aprovada.
 

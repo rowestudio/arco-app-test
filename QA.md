@@ -1,8 +1,8 @@
-# QA pendente — v8z4b26a seleção múltipla e modo de curva em lote
+# QA pendente — v8z4b26b remover Sel e mostrar seleção múltipla no Stage
 
-- Checklist detalhado criado em `docs/QA-v8z4b26a.md`.
-- Verificações estáticas executadas: versionamento `APP_VERSION`/`APP_VERSION_NAME`, texto visível de versão, ausência de `selectedFrames` no JSON salvo e sintaxe básica de `index.html`.
-- QA manual completo em iPhone/Safari, Preview e MP4 permanece como checklist operacional antes de promover a versão.
+- Checklist detalhado criado em `docs/QA-v8z4b26b.md`.
+- Verificações estáticas executadas: versionamento `APP_VERSION`/`APP_VERSION_NAME`, texto visível de versão, ausência do botão `Sel`/`btnMultiSelect`, ausência de `selectedFrames` no JSON salvo e sintaxe básica de `index.html`.
+- QA manual completo em iPhone/Safari, Preview, MP4, JSON, Loop e Undo/Redo permanece como checklist operacional antes de promover a versão.
 
 # QA confirmado — v8z4b25h checkpoint interno
 
