@@ -1,3 +1,11 @@
+## v8z4b26f — corrigir luz, moldura e caminhos na seleção múltipla
+
+- `index.html`: versionamento atualizado para `v8z4b26f`; seleção múltipla deixa de acionar foco ativo dominante, auto bring-to-front e overlay escuro do frame ativo.
+- `index.html`: `renderAll()` preserva molduras de frames desselecionados, remove resíduos visuais e reaplica luz apenas a frames presentes em `selectedFrames`.
+- `index.html`: `drawBezier()` mantém caminhos/curvas sólidos e legíveis durante seleção múltipla, sem alterar a geometria das curvas.
+- `docs/QA-v8z4b26f.md`: checklist específico da versão.
+- `QA.md` e `docs/ROADMAP.md`: ponteiro de QA/status atualizado para v8z4b26f no repositório de teste.
+
 ## v8z4b26e — limpar marcação residual ao desselecionar frames
 
 - fix: Stage e faixa de frames passam a reaplicar destaque de seleção múltipla somente quando `selectedFrames` contém 2+ frames.
