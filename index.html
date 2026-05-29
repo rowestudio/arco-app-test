@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b26c                                     ║
+║  Versão: v8z4b26d                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b26d                                            ║
+║    fix: seleção múltipla trata selecionados como     ║
+║         grupo sem hierarquia visual individual.      ║
 ║  v8z4b26c                                            ║
 ║    ux: seleção múltipla desenha frames selecionados  ║
 ║        como grupo superior e apaga não selecionados. ║
@@ -436,7 +439,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b26c — ux: seleção múltipla desenha selecionados como grupo em camada superior e apaga não selecionados no Stage; dados, Preview, Export e JSON inalterados. -->
+<!-- Arco Motion App — v8z4b26d — fix: seleção simples mantém auto-center/ativo; seleção múltipla trata selecionados como grupo sem hierarquia visual individual, sem promover ou centralizar o último tocado; dados, Preview, Export e JSON inalterados. -->
 <!-- Arco Motion App — v8z4b24b — stage gesture arbitration: zoom/pan com dois dedos não seleciona frames acidentalmente; handles, overlays e elementos tutoriais do Stage não são ativados ao iniciar gesto de dois dedos; bloqueio curto após navegação evita taps residuais; área interativa de zoom/pan cobre o viewport de edição, não apenas a imagem; imagem tratada como conteúdo dentro do Stage, não como limite de navegação. -->
 <!-- Arco Motion App — v8z4b24a — editor zoom/pan navigation: navegação visual do Stage com pinça para zoom; pan do Stage com dois dedos; coordenadas de edição passam a considerar editorView zoom/pan; Stage visível como viewport de edição, sem alterar dados reais do projeto; MIN_EDITOR_ZOOM=0.5, MAX_EDITOR_ZOOM=4; gesto de dois dedos impede edição simultânea; JSON não salva zoom/pan. -->
 <!-- Arco Motion App — v8z4b23b — overlay cleanup: Reset Project de projeto novo limpa overlays antigos (dim overlay, bezier, handles) antes de voltar ao F1 assistido; F1 assistido após reset redesenha imediatamente o overlay correto; guard frameCount>0 em renderAll para evitar crash ao cancelar F1 assistido com frames vazio. -->
@@ -625,7 +628,7 @@ body.recording #editorZoomCtrl{display:none;}
 .frame-visual .frame-border,.frame-visual .frame-dim,.frame-visual .frame-num,.frame-visual .frame-center{pointer-events:none;}
 .frame-border{position:absolute;inset:0;border:2px solid #c6c6c6;box-sizing:border-box;pointer-events:none;border-radius:10px;filter:none;}
 .frame.multi-selected .frame-border{box-shadow:0 0 0 2px #ff9500 inset;}
-.frame.active.multi-selected .frame-border{box-shadow:0 0 0 3px #ff9500 inset,0 0 0 1px rgba(255,255,255,.9);}
+.frame.active.multi-selected .frame-border{box-shadow:0 0 0 2px #ff9500 inset;}
 .ghost-frame{
   position:absolute;box-sizing:border-box;touch-action:none;overflow:visible;
   border:2px dashed rgba(255,255,255,.78);border-radius:10px;
@@ -2376,7 +2379,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b26c</span><br><span id="appVersionNameText">multi selection visual hierarchy</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b26d</span><br><span id="appVersionNameText">simple and multi selection separation</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4717,8 +4720,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b26c';
-const APP_VERSION_NAME = 'multi selection visual hierarchy';
+const APP_VERSION = 'v8z4b26d';
+const APP_VERSION_NAME = 'simple and multi selection separation';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11990,8 +11993,7 @@ function renderAll() {
 
     const invZ = 1 / editorZoomScale;
     const selectedStageFocus = multiSelectionActive && isSelected;
-    const activeSelectedFocus = selectedStageFocus && isActive;
-    const borderW = selectedStageFocus ? ((activeSelectedFocus ? 3.2 : 3) * invZ) + 'px'
+    const borderW = selectedStageFocus ? (3 * invZ) + 'px'
                   : showActiveStageFocus ? (3.5 * invZ) + 'px'
                   : (2 * invZ) + 'px';
     const op = selectedStageFocus ? 1.0
@@ -11999,7 +12001,7 @@ function renderAll() {
              : showActiveStageFocus ? 1.0
              : isAdjacent ? 0.80
              : 0.55;
-    el.style.zIndex = selectedStageFocus ? (activeSelectedFocus ? '32' : '31')
+    el.style.zIndex = selectedStageFocus ? '31'
                     : multiSelectionActive ? '18'
                     : showActiveStageFocus ? '30'
                     : isAdjacent ? '25'
@@ -12040,8 +12042,13 @@ function renderAll() {
   }
 
   // Multi-selection is a temporary Stage rendering layer only: keep project order intact,
-  // but draw all selected frames above non-selected frames while preserving their relative order.
+  // but draw non-selected frames first and all selected frames above them as one group.
   if (isMultiSelectionActive()) {
+    for (let i = 0; i < frameCount; i++) {
+      if (selectedFrames.has(i)) continue;
+      const unselectedEl = getFrameEl(i);
+      if (unselectedEl) stageInsertBefore(unselectedEl, bezierSvg);
+    }
     for (let i = 0; i < frameCount; i++) {
       if (!selectedFrames.has(i)) continue;
       const selectedEl = getFrameEl(i);
@@ -12068,7 +12075,7 @@ function renderAll() {
 
   // Alça global de escala+rotação
   ensureGlobalHandle();
-  if (globalHandleEl && imgNatW && frameCount > 0 && !isPreviewing) {
+  if (globalHandleEl && imgNatW && frameCount > 0 && !isPreviewing && !isMultiSelectionActive()) {
     updateHandleCornerForFrame(activeIdx);
     const hp = getHandlePosForFrame(activeIdx);
     globalHandleEl.style.left = hp.x + 'px';
@@ -12083,9 +12090,9 @@ function renderAll() {
     globalHandleEl.classList.remove('ghost-transform');
   }
 
-  // Scroll automático da pill ativa
+  // Scroll automático da pill ativa: preservado na seleção simples, bloqueado na múltipla.
   const pr = document.getElementById('pillsRow');
-  if (pr) {
+  if (pr && !isMultiSelectionActive()) {
     const activePill = pr.querySelectorAll('.fp')[activeIdx];
     if (activePill) activePill.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
   }
@@ -12140,17 +12147,19 @@ function updateFrameSelector() {
 
   // Sempre rebuild para garantir ease pills corretos
   pr.innerHTML = '';
+  const multiSelectionActive = isMultiSelectionActive();
   for (let i = 0; i < frameCount; i++) {
+    const showActivePillFocus = i === activeIdx && !multiSelectionActive;
     // Ease pill ANTES do frame ativo
-    if (i === activeIdx && i > 0) {
+    if (showActivePillFocus && i > 0) {
       pr.appendChild(makeEasePillEl(i - 1, 'prev'));
     }
 
     const pill = document.createElement('div');
-    pill.className = 'fp' + (i === activeIdx ? ' active' : '') + (selectedFrames.has(i) ? ' selected' : '');
+    pill.className = 'fp' + (showActivePillFocus ? ' active' : '') + (selectedFrames.has(i) ? ' selected' : '');
     pill.textContent = (i + 1);
     if (frameLocked[i]) pill.style.color = '#f5c518';
-    else if (selectedFrames.has(i) && i !== activeIdx) pill.style.color = 'var(--accent)';
+    else if (selectedFrames.has(i) && !showActivePillFocus) pill.style.color = 'var(--accent)';
     else pill.style.color = '';
 
     let longPressTimer = null;
@@ -12166,7 +12175,7 @@ function updateFrameSelector() {
       longPressTimer = setTimeout(() => {
         longPressFired = true;
         toggleFrameSelection(i, true);
-        setTimeout(() => pill.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'}), 50);
+        if (!isMultiSelectionActive()) setTimeout(() => pill.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'}), 50);
       }, 420);
     });
     pill.addEventListener('pointerup', clearPillLongPress);
@@ -12178,14 +12187,14 @@ function updateFrameSelector() {
       if (longPressFired) { longPressFired = false; return; }
       if (selectedFrames.size > 0) {
         toggleFrameSelection(i, true);
-        setTimeout(() => pill.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'}), 50);
+        if (!isMultiSelectionActive()) setTimeout(() => pill.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'}), 50);
         return;
       }
       const now = Date.now();
       if (activeIdx === i) {
         if (lastPillTap === i && now - lastPillSelectTapAt < 500) {
           toggleFrameSelection(i, true);
-          setTimeout(() => pill.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'}), 50);
+          if (!isMultiSelectionActive()) setTimeout(() => pill.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'}), 50);
         } else {
           lastPillTap = i;
           lastPillSelectTapAt = now;
@@ -12207,7 +12216,7 @@ function updateFrameSelector() {
     pr.appendChild(pill);
 
     // Ease pill DEPOIS do frame ativo
-    if (i === activeIdx && i < frameCount - 1) {
+    if (showActivePillFocus && i < frameCount - 1) {
       pr.appendChild(makeEasePillEl(i, 'next'));
     }
   }
@@ -19659,13 +19668,18 @@ function toggleFrameSelection(fi, makeActive) {
   if (shouldBlockGlobalUIAction()) return;
   if (fi < 0 || fi >= frameCount) return;
   frameMultiSelectMode = false;
-  if (selectedFrames.has(fi)) selectedFrames.delete(fi);
+  const wasSelected = selectedFrames.has(fi);
+  if (wasSelected) selectedFrames.delete(fi);
   else selectedFrames.add(fi);
   if (makeActive) {
     resetCustGlobalLocks();
     activeIdx = fi;
     lastPillTap = fi;
     closeCustBar();
+  }
+  if (wasSelected && selectedFrames.size === 1) {
+    activeIdx = Array.from(selectedFrames)[0];
+    lastPillTap = activeIdx;
   }
   renderAll();
   syncCustomizePanel();
