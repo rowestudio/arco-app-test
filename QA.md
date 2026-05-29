@@ -1,3 +1,9 @@
+# QA pendente — v8z4b26e limpar marcação residual ao desselecionar frames
+
+- Checklist detalhado criado em `docs/QA-v8z4b26e.md`.
+- Verificações estáticas executadas: base `v8z4b26d` confirmada antes das alterações; ausência do botão `Sel`/`btnMultiSelect`; seleção múltipla existente por `selectedFrames`; versionamento `APP_VERSION`/`APP_VERSION_NAME`/texto visível; `renderAll()` e `updateFrameSelector()` sincronizando destaque por `isFrameVisuallyMultiSelected()`/`clearFrameSelectionVisuals()`; ausência de persistência de `selectedFrames` no JSON; sintaxe básica de `index.html`.
+- QA manual completo em iPhone/Safari, desseleção com frames sobrepostos, aplicação em lote, Undo/Redo, Loop, Reset, JSON, Preview e MP4 permanece como checklist operacional antes de promover a versão.
+
 # QA pendente — v8z4b26d separar seleção simples e seleção múltipla
 
 - Checklist detalhado criado em `docs/QA-v8z4b26d.md`.
