@@ -15,6 +15,7 @@
 | v8z4b26b         | **Implementada:** remover Sel + mostrar seleção múltipla no Stage |
 | v8z4b26c         | **Implementada:** leitura visual forte da seleção múltipla no Stage |
 | v8z4b26d         | **Implementada:** separação visual entre seleção simples e seleção múltipla |
+| v8z4b26e         | **Implementada:** limpeza de marcação residual ao desselecionar frames |
 | v8z5-prototype   | Protótipo visual separado da nova interface                 |
 | v8z5a            | Primeira integração real da nova interface aprovada         |
 
@@ -32,7 +33,7 @@
 
 ## 2. Seleção múltipla de frames
 
-**Status v8z4b26d:** seleção simples preserva auto-center e foco ativo; seleção múltipla mantém selecionados como grupo sem hierarquia visual individual, sem promover ou centralizar o último frame tocado.
+**Status v8z4b26e:** seleção simples preserva auto-center e foco ativo; seleção múltipla mantém selecionados como grupo sem hierarquia visual individual e limpa marcação residual no Stage/faixa ao desselecionar frames.
 
 - Selecionar vários frames.
 - Destacar visualmente frames selecionados.

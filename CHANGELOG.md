@@ -1,3 +1,12 @@
+## v8z4b26e — limpar marcação residual ao desselecionar frames
+
+- fix: Stage e faixa de frames passam a reaplicar destaque de seleção múltipla somente quando `selectedFrames` contém 2+ frames.
+- fix: frames removidos da seleção deixam de manter `multi-selected`, `.fp.selected`, halo, box-shadow ou z-index de selecionado quando a seleção deixa de ser múltipla.
+- preservado: forma atual de seleção múltipla da v8z4b26d, aplicação em lote de Canto/Simétrico/Assimétrico/Desconectado, Undo/Redo, Preview, MP4 e JSON.
+- `index.html`: versionamento atualizado para `v8z4b26e`; novos helpers `isFrameVisuallyMultiSelected()` e `clearFrameSelectionVisuals()` usados por `renderAll()` e `updateFrameSelector()` para sincronizar Stage/faixa a partir do estado real.
+- `docs/QA-v8z4b26e.md`: checklist específico da versão.
+- `QA.md`, `ROADMAP.md` e `docs/ROADMAP.md`: documentação atualizada para v8z4b26e no repositório de teste.
+
 ## v8z4b26d — separar seleção simples e seleção múltipla
 
 - ux: separa o comportamento visual de seleção simples e seleção múltipla.

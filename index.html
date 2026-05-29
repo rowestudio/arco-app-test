@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b26d                                     ║
+║  Versão: v8z4b26e                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b26e                                            ║
+║    fix: seleção múltipla limpa marcação residual     ║
+║         ao desselecionar frames no Stage/faixa.      ║
 ║  v8z4b26d                                            ║
 ║    fix: seleção múltipla trata selecionados como     ║
 ║         grupo sem hierarquia visual individual.      ║
@@ -439,7 +442,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b26d — fix: seleção simples mantém auto-center/ativo; seleção múltipla trata selecionados como grupo sem hierarquia visual individual, sem promover ou centralizar o último tocado; dados, Preview, Export e JSON inalterados. -->
+<!-- Arco Motion App — v8z4b26e — fix: limpeza visual idempotente da seleção múltipla no Stage e na faixa; frames desselecionados não mantêm destaque residual; dados, Preview, Export e JSON inalterados. -->
 <!-- Arco Motion App — v8z4b24b — stage gesture arbitration: zoom/pan com dois dedos não seleciona frames acidentalmente; handles, overlays e elementos tutoriais do Stage não são ativados ao iniciar gesto de dois dedos; bloqueio curto após navegação evita taps residuais; área interativa de zoom/pan cobre o viewport de edição, não apenas a imagem; imagem tratada como conteúdo dentro do Stage, não como limite de navegação. -->
 <!-- Arco Motion App — v8z4b24a — editor zoom/pan navigation: navegação visual do Stage com pinça para zoom; pan do Stage com dois dedos; coordenadas de edição passam a considerar editorView zoom/pan; Stage visível como viewport de edição, sem alterar dados reais do projeto; MIN_EDITOR_ZOOM=0.5, MAX_EDITOR_ZOOM=4; gesto de dois dedos impede edição simultânea; JSON não salva zoom/pan. -->
 <!-- Arco Motion App — v8z4b23b — overlay cleanup: Reset Project de projeto novo limpa overlays antigos (dim overlay, bezier, handles) antes de voltar ao F1 assistido; F1 assistido após reset redesenha imediatamente o overlay correto; guard frameCount>0 em renderAll para evitar crash ao cancelar F1 assistido com frames vazio. -->
@@ -2379,7 +2382,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b26d</span><br><span id="appVersionNameText">simple and multi selection separation</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b26e</span><br><span id="appVersionNameText">v8z4b26e</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4720,8 +4723,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b26d';
-const APP_VERSION_NAME = 'simple and multi selection separation';
+const APP_VERSION = 'v8z4b26e';
+const APP_VERSION_NAME = 'v8z4b26e';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4847,6 +4850,24 @@ let frameMultiSelectMode = false; // legado v8z4b26a; v8z4b26b não usa botão/m
 
 function isMultiSelectionActive() {
   return selectedFrames.size >= 2;
+}
+
+function isFrameVisuallyMultiSelected(i) {
+  return isMultiSelectionActive() && selectedFrames.has(i);
+}
+
+function clearFrameSelectionVisuals(el) {
+  if (!el) return;
+  el.classList.remove('multi-selected');
+  const borderEl = el.querySelector('.frame-border');
+  if (borderEl) borderEl.style.boxShadow = 'none';
+  const numEl = el.querySelector('.frame-num');
+  if (numEl) {
+    numEl.style.color = '';
+    numEl.style.background = '';
+    numEl.style.fontWeight = '';
+    numEl.style.boxShadow = '';
+  }
 }
 let isInsertingFrame = false;
 let insertFrameMode = null;
@@ -11962,6 +11983,7 @@ function renderAll() {
   for (let i = 0; i < MAX_FRAMES; i++) {
     const el = getFrameEl(i);
     if (!el) continue;
+    clearFrameSelectionVisuals(el);
     if (i >= frameCount) { el.style.display = 'none'; continue; }
 
     const f = frames[i];
@@ -11978,8 +12000,8 @@ function renderAll() {
     const isPrevAdj  = i === activeIdx - 1;
     const isNextAdj  = i === activeIdx + 1;
     const isLocked   = !!frameLocked[i];
-    const isSelected = selectedFrames.has(i);
     const multiSelectionActive = isMultiSelectionActive();
+    const isSelected = isFrameVisuallyMultiSelected(i);
     const isAdjacent = !multiSelectionActive && (isPrevAdj || isNextAdj);
     const showActiveStageFocus = isActive && !multiSelectionActive;
     el.classList.toggle('active', showActiveStageFocus);
@@ -12030,7 +12052,7 @@ function renderAll() {
     borderEl.style.borderWidth = borderW;
     borderEl.style.boxShadow = selectedStageFocus
       ? `0 0 0 ${2 * invZ}px rgba(255,149,0,.95) inset, 0 0 ${10 * invZ}px rgba(255,149,0,.34)`
-      : isSelected ? '0 0 0 2px #ff9500 inset' : 'none';
+      : 'none';
     if (numEl) {
       numEl.style.color = selectedStageFocus ? '#ffffff' : '';
       numEl.style.background = selectedStageFocus ? 'rgba(0,0,0,.58)' : '';
@@ -12156,10 +12178,11 @@ function updateFrameSelector() {
     }
 
     const pill = document.createElement('div');
-    pill.className = 'fp' + (showActivePillFocus ? ' active' : '') + (selectedFrames.has(i) ? ' selected' : '');
+    const showSelectedPillFocus = isFrameVisuallyMultiSelected(i);
+    pill.className = 'fp' + (showActivePillFocus ? ' active' : '') + (showSelectedPillFocus ? ' selected' : '');
     pill.textContent = (i + 1);
     if (frameLocked[i]) pill.style.color = '#f5c518';
-    else if (selectedFrames.has(i) && !showActivePillFocus) pill.style.color = 'var(--accent)';
+    else if (showSelectedPillFocus && !showActivePillFocus) pill.style.color = 'var(--accent)';
     else pill.style.color = '';
 
     let longPressTimer = null;
