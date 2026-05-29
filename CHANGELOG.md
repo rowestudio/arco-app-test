@@ -1,3 +1,15 @@
+## v8z4b26d — separar seleção simples e seleção múltipla
+
+- ux: separa o comportamento visual de seleção simples e seleção múltipla.
+- ux: mantém o auto-center da faixa de frames na seleção simples.
+- ux: desativa hierarquia visual individual durante seleção múltipla.
+- fix: impede que o último frame tocado seja promovido sozinho quando há múltiplos selecionados.
+- fix: corrige resíduo visual ao desselecionar frames dentro de uma seleção múltipla.
+- preservado: Preview, Export, JSON, timeline e dados internos não foram alterados.
+- `index.html`: versionamento atualizado para `v8z4b26d`; `renderAll()` e seleção por pills ajustados para bloquear foco visual/auto-center individual durante seleção múltipla.
+- `docs/QA-v8z4b26d.md`: checklist específico da versão.
+- `QA.md` e `docs/ROADMAP.md`: documentação atualizada para v8z4b26d no repositório de teste.
+
 ## v8z4b26c — melhorar leitura visual da seleção múltipla no Stage
 
 - ux: durante seleção múltipla, todos os frames selecionados são desenhados como grupo em camada visual superior, preservando a ordem relativa entre eles.

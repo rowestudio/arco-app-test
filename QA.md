@@ -1,3 +1,9 @@
+# QA pendente — v8z4b26d separar seleção simples e seleção múltipla
+
+- Checklist detalhado criado em `docs/QA-v8z4b26d.md`.
+- Verificações estáticas executadas: base `v8z4b26c` confirmada antes das alterações; versionamento `APP_VERSION`/`APP_VERSION_NAME`, texto visível de versão, comentário/changelog do topo, bloqueio de auto-center em seleção múltipla, camada visual de selecionados como grupo sem destaque ativo dominante e sintaxe básica de `index.html`.
+- QA manual completo em iPhone/Safari, Alinhar, Distribuir, Escala, Undo/Redo, Preview, MP4 e JSON permanece como checklist operacional antes de promover a versão.
+
 # QA pendente — v8z4b26c leitura visual da seleção múltipla no Stage
 
 - Checklist detalhado criado em `docs/QA-v8z4b26c.md`.
