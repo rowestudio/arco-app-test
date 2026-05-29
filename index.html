@@ -1,16 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b26e                                     ║
+║  Versão: v8z4b26f                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
-║  v8z4b26e                                            ║
-║    fix: seleção múltipla limpa marcação residual     ║
-║         ao desselecionar frames no Stage/faixa.      ║
+║  v8z4b26f                                            ║
+║    fix: seleção múltipla separa luz, moldura e      ║
+║         caminhos sem foco ativo dominante.           ║
 ║  v8z4b26d                                            ║
 ║    fix: seleção múltipla trata selecionados como     ║
 ║         grupo sem hierarquia visual individual.      ║
@@ -442,7 +442,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b26e — fix: limpeza visual idempotente da seleção múltipla no Stage e na faixa; frames desselecionados não mantêm destaque residual; dados, Preview, Export e JSON inalterados. -->
+<!-- Arco Motion App — v8z4b26f — fix: seleção múltipla separa luz selecionada, moldura, foco ativo e caminhos; dim/active não interferem durante seleção múltipla; dados, Preview, Export e JSON inalterados. -->
 <!-- Arco Motion App — v8z4b24b — stage gesture arbitration: zoom/pan com dois dedos não seleciona frames acidentalmente; handles, overlays e elementos tutoriais do Stage não são ativados ao iniciar gesto de dois dedos; bloqueio curto após navegação evita taps residuais; área interativa de zoom/pan cobre o viewport de edição, não apenas a imagem; imagem tratada como conteúdo dentro do Stage, não como limite de navegação. -->
 <!-- Arco Motion App — v8z4b24a — editor zoom/pan navigation: navegação visual do Stage com pinça para zoom; pan do Stage com dois dedos; coordenadas de edição passam a considerar editorView zoom/pan; Stage visível como viewport de edição, sem alterar dados reais do projeto; MIN_EDITOR_ZOOM=0.5, MAX_EDITOR_ZOOM=4; gesto de dois dedos impede edição simultânea; JSON não salva zoom/pan. -->
 <!-- Arco Motion App — v8z4b23b — overlay cleanup: Reset Project de projeto novo limpa overlays antigos (dim overlay, bezier, handles) antes de voltar ao F1 assistido; F1 assistido após reset redesenha imediatamente o overlay correto; guard frameCount>0 em renderAll para evitar crash ao cancelar F1 assistido com frames vazio. -->
@@ -2382,7 +2382,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b26e</span><br><span id="appVersionNameText">v8z4b26e</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b26f</span><br><span id="appVersionNameText">v8z4b26f</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4723,8 +4723,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b26e';
-const APP_VERSION_NAME = 'v8z4b26e';
+const APP_VERSION = 'v8z4b26f';
+const APP_VERSION_NAME = 'v8z4b26f';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12019,12 +12019,11 @@ function renderAll() {
                   : showActiveStageFocus ? (3.5 * invZ) + 'px'
                   : (2 * invZ) + 'px';
     const op = selectedStageFocus ? 1.0
-             : multiSelectionActive ? 0.28
+             : multiSelectionActive ? 0.75
              : showActiveStageFocus ? 1.0
              : isAdjacent ? 0.80
              : 0.55;
-    el.style.zIndex = selectedStageFocus ? '31'
-                    : multiSelectionActive ? '18'
+    el.style.zIndex = multiSelectionActive ? '20'
                     : showActiveStageFocus ? '30'
                     : isAdjacent ? '25'
                     : '20';
@@ -12063,20 +12062,9 @@ function renderAll() {
     if (rh) rh.classList.remove('show');
   }
 
-  // Multi-selection is a temporary Stage rendering layer only: keep project order intact,
-  // but draw non-selected frames first and all selected frames above them as one group.
-  if (isMultiSelectionActive()) {
-    for (let i = 0; i < frameCount; i++) {
-      if (selectedFrames.has(i)) continue;
-      const unselectedEl = getFrameEl(i);
-      if (unselectedEl) stageInsertBefore(unselectedEl, bezierSvg);
-    }
-    for (let i = 0; i < frameCount; i++) {
-      if (!selectedFrames.has(i)) continue;
-      const selectedEl = getFrameEl(i);
-      if (selectedEl) stageInsertBefore(selectedEl, bezierSvg);
-    }
-  } else {
+  // Durante seleção múltipla, manter a ordem visual atual: a fonte de verdade é
+  // selectedFrames, sem trazer o último frame tocado ou o grupo selecionado para frente.
+  if (!isMultiSelectionActive()) {
     const activeEl = getFrameEl(activeIdx);
     if (activeEl) stageInsertBefore(activeEl, bezierSvg);
   }
@@ -12257,7 +12245,7 @@ function updateDimOverlay() {
   const svg = document.getElementById('stageDimSvg');
   if (!svg) return;
   // v8z3e: mostrar nas vistas Normal e Isolamento; esconder apenas no Mapa/preview/sem imagem.
-  if (!imgNatW || frameCount < 1 || viewMode === 2 || isPreviewing) { svg.style.display = 'none'; return; }
+  if (!imgNatW || frameCount < 1 || viewMode === 2 || isPreviewing || isMultiSelectionActive()) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
   svg.style.display = 'block';
 
   const W = stageW, H = stageH;
@@ -12721,6 +12709,8 @@ function drawBezier() {
 
     if (active) {
       svg += `<path d="${pathD}" stroke="${segColor}" stroke-width="${3 * invZ}" fill="none" stroke-linecap="round"/>`;
+    } else if (multiSelectionActive) {
+      svg += `<path d="${pathD}" stroke="${WHITE}" stroke-width="${2 * invZ}" opacity="0.9" fill="none" stroke-linecap="round"/>`;
     } else {
       svg += `<path d="${pathD}" stroke="${WHITE}" stroke-width="${2 * invZ}" stroke-dasharray="${5 * invZ},${4 * invZ}" opacity="0.75" fill="none" stroke-linecap="round"/>`;
     }
@@ -12743,9 +12733,9 @@ function drawBezier() {
     const p0x = frameCX(frameCount-1), p0y = frameCY(frameCount-1);
     const p1x = frameCX(0),            p1y = frameCY(0);
     const cpx = _loopCp.nx * stageW, cpy = _loopCp.ny * stageH;
-    const showLoop = !multiSelectionActive && (activeIdx === 0 || activeIdx === frameCount - 1);
-    const lineOp   = showLoop ? 0.9 : 0.22;
-    const lineW    = (showLoop ? 2.5 : 1.0) * invZ;
+    const showLoop = multiSelectionActive || (activeIdx === 0 || activeIdx === frameCount - 1);
+    const lineOp   = showLoop ? (multiSelectionActive ? 0.75 : 0.9) : 0.22;
+    const lineW    = (showLoop ? (multiSelectionActive ? 2.0 : 2.5) : 1.0) * invZ;
     // v8z4b21a: usar cubic C para loop quando curvesV2 ativo.
     let loopPathD;
     if (isCurvesV2Active()) {
@@ -19691,10 +19681,12 @@ function toggleFrameSelection(fi, makeActive) {
   if (shouldBlockGlobalUIAction()) return;
   if (fi < 0 || fi >= frameCount) return;
   frameMultiSelectMode = false;
+  const wasMultiSelectionActive = isMultiSelectionActive();
   const wasSelected = selectedFrames.has(fi);
   if (wasSelected) selectedFrames.delete(fi);
   else selectedFrames.add(fi);
-  if (makeActive) {
+  const isSelectingMultiple = wasMultiSelectionActive || selectedFrames.size >= 2;
+  if (makeActive && !isSelectingMultiple) {
     resetCustGlobalLocks();
     activeIdx = fi;
     lastPillTap = fi;
