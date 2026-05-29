@@ -1,3 +1,13 @@
+## v8z4b26a — seleção múltipla de frames e modo de curva em lote
+
+- feat: adiciona modo explícito `Sel` na faixa de frames para seleção múltipla por toque, sem depender de long press.
+- feat: aplica Canto, Simétrico, Assimétrico e Desconectado em lote quando há 2 ou mais frames selecionados.
+- fix: ação de modo de curva em lote usa um único registro de Undo/Redo e reaproveita `applyPointModeForFrame()`.
+- preservado: seleção múltipla não entra no JSON, Preview/MP4 ignoram seleção, inserção assistida continua bloqueando ações externas e zoom/pan do Stage não foi alterado.
+- `index.html`: versionamento atualizado para `v8z4b26a`; estado temporário `frameMultiSelectMode`; botão `Sel`; destaque localizado de frames selecionados; helper de aplicação em lote de modo de curva.
+- `docs/QA-v8z4b26a.md`: checklist específico da versão.
+- `docs/ROADMAP.md`: marca v8z4b26a como implementada.
+
 ## Checkpoint interno — v8z4b25h consolidada como base estável
 
 - docs/checkpoint: v8z4b25h aprovada funcionalmente como checkpoint interno estável; não é release comercial e não cria nova versão funcional.
