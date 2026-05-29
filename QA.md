@@ -1,8 +1,8 @@
-# QA pendente — v8z4b26c seleção múltipla sem destaque dominante
+# QA pendente — v8z4b26c leitura visual da seleção múltipla no Stage
 
 - Checklist detalhado criado em `docs/QA-v8z4b26c.md`.
-- Verificações estáticas executadas: versionamento `APP_VERSION`/`APP_VERSION_NAME`, texto visível de versão, ausência do botão `Sel`/`btnMultiSelect`, preservação da aplicação em lote via `applyPointModeToSelectionOrActive()` e sintaxe básica de `index.html`.
-- QA manual completo em iPhone/Safari, Stage com frames sobrepostos, modos Canto/Simétrico/Assimétrico/Desconectado, Undo/Redo, Loop, Preview, MP4 e JSON permanece como checklist operacional antes de promover a versão.
+- Verificações estáticas executadas: versionamento `APP_VERSION`/`APP_VERSION_NAME`, texto visível de versão, destaque em `renderAll()` para frames selecionados em camada visual superior, opacidade reduzida dos não selecionados e sintaxe básica de `index.html`.
+- QA manual completo em iPhone/Safari, Stage com frames próximos/sobrepostos, Alinhar, Distribuir, Escala, Undo/Redo, Preview, MP4 e JSON permanece como checklist operacional antes de promover a versão.
 
 # QA pendente — v8z4b26b remover Sel e mostrar seleção múltipla no Stage
 
