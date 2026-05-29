@@ -1,13 +1,17 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b26b                                     ║
+║  Versão: v8z4b26c                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b26c                                            ║
+║    fix/ux: seleção múltipla não traz último frame    ║
+║            para frente e preserva lote ao aplicar    ║
+║            modo de curva.                            ║
 ║  v8z4b26b                                            ║
 ║    ux: remove botão Sel e mostra seleção múltipla    ║
 ║        também no Stage.                              ║
@@ -433,7 +437,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b26b — ux: remove botão Sel, preserva seleção múltipla por interação na faixa de frames e mostra a seleção também no Stage. -->
+<!-- Arco Motion App — v8z4b26c — fix/ux: seleção múltipla não traz último frame para frente, suprime destaque dominante e preserva lote ao aplicar curva. -->
 <!-- Arco Motion App — v8z4b24b — stage gesture arbitration: zoom/pan com dois dedos não seleciona frames acidentalmente; handles, overlays e elementos tutoriais do Stage não são ativados ao iniciar gesto de dois dedos; bloqueio curto após navegação evita taps residuais; área interativa de zoom/pan cobre o viewport de edição, não apenas a imagem; imagem tratada como conteúdo dentro do Stage, não como limite de navegação. -->
 <!-- Arco Motion App — v8z4b24a — editor zoom/pan navigation: navegação visual do Stage com pinça para zoom; pan do Stage com dois dedos; coordenadas de edição passam a considerar editorView zoom/pan; Stage visível como viewport de edição, sem alterar dados reais do projeto; MIN_EDITOR_ZOOM=0.5, MAX_EDITOR_ZOOM=4; gesto de dois dedos impede edição simultânea; JSON não salva zoom/pan. -->
 <!-- Arco Motion App — v8z4b23b — overlay cleanup: Reset Project de projeto novo limpa overlays antigos (dim overlay, bezier, handles) antes de voltar ao F1 assistido; F1 assistido após reset redesenha imediatamente o overlay correto; guard frameCount>0 em renderAll para evitar crash ao cancelar F1 assistido com frames vazio. -->
@@ -2373,7 +2377,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b26b</span><br><span id="appVersionNameText">remove Sel and show multi selection on Stage</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b26c</span><br><span id="appVersionNameText">multi selection batch curve UX fix</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4714,8 +4718,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b26b';
-const APP_VERSION_NAME = 'remove Sel and show multi selection on Stage';
+const APP_VERSION = 'v8z4b26c';
+const APP_VERSION_NAME = 'multi selection batch curve UX fix';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4838,6 +4842,10 @@ let activeIdx = 0;
 let frameCount = 0;
 let selectedFrames = new Set(); // seleção múltipla
 let frameMultiSelectMode = false; // legado v8z4b26a; v8z4b26b não usa botão/modo visual
+
+function isMultiSelectionActive() {
+  return selectedFrames.size >= 2;
+}
 let isInsertingFrame = false;
 let insertFrameMode = null;
 let pendingFrameInsert = null;
@@ -11967,22 +11975,24 @@ function renderAll() {
     const isActive   = dist === 0;
     const isPrevAdj  = i === activeIdx - 1;
     const isNextAdj  = i === activeIdx + 1;
-    const isAdjacent = isPrevAdj || isNextAdj;
     const isLocked   = !!frameLocked[i];
     const isSelected = selectedFrames.has(i);
-    el.classList.toggle('active', isActive);
+    const multiSelectionActive = isMultiSelectionActive();
+    const isAdjacent = !multiSelectionActive && (isPrevAdj || isNextAdj);
+    const showActiveStageFocus = isActive && !multiSelectionActive;
+    el.classList.toggle('active', showActiveStageFocus);
     el.classList.toggle('multi-selected', isSelected);
 
     let col;
-    if (isActive)        col = FRAME_COLORS.active;
-    else if (isPrevAdj)  col = FRAME_COLORS.prevAdj;
-    else if (isNextAdj)  col = FRAME_COLORS.nextAdj;
-    else                 col = FRAME_COLORS.distant;
+    if (showActiveStageFocus) col = FRAME_COLORS.active;
+    else if (isAdjacent && isPrevAdj) col = FRAME_COLORS.prevAdj;
+    else if (isAdjacent && isNextAdj) col = FRAME_COLORS.nextAdj;
+    else                             col = FRAME_COLORS.distant;
 
     const invZ = 1 / editorZoomScale;
-    const borderW  = isActive ? (3.5 * invZ) + 'px' : (2 * invZ) + 'px';
-    const op = isActive ? 1.0 : isAdjacent ? 0.80 : 0.55;
-    el.style.zIndex  = isActive ? '30' : isAdjacent ? '25' : '20';
+    const borderW  = showActiveStageFocus ? (3.5 * invZ) + 'px' : (2 * invZ) + 'px';
+    const op = showActiveStageFocus ? 1.0 : isAdjacent ? 0.80 : 0.55;
+    el.style.zIndex = multiSelectionActive ? '20' : (showActiveStageFocus ? '30' : isAdjacent ? '25' : '20');
     // Modo isolamento: outros frames invisíveis e não interativos
     if (window._isoMode && !isActive) {
       el.style.opacity = '0';
@@ -12002,16 +12012,16 @@ function renderAll() {
       borderEl.style.borderColor = col.border;
     }
     borderEl.style.borderWidth = borderW;
-    borderEl.style.boxShadow = isSelected
-      ? (isActive ? '0 0 0 3px #ff9500 inset,0 0 0 1px rgba(255,255,255,.9)' : '0 0 0 2px #ff9500 inset')
-      : 'none';
+    borderEl.style.boxShadow = isSelected ? '0 0 0 2px #ff9500 inset' : 'none';
     const rh = el.querySelector('.rot-handle');
     if (rh) rh.classList.remove('show');
   }
 
-  // Move active frame element just before bezierSvg so ctrl points stay on top
-  const activeEl = getFrameEl(activeIdx);
-  if (activeEl) stageInsertBefore(activeEl, bezierSvg);
+  // Move active frame element only outside multi-selection; batch selection keeps visual order stable.
+  if (!isMultiSelectionActive()) {
+    const activeEl = getFrameEl(activeIdx);
+    if (activeEl) stageInsertBefore(activeEl, bezierSvg);
+  }
 
   // Always keep ctrl points after bezierSvg (on top of everything)
   for (let i = 0; i < MAX_FRAMES; i++) {
@@ -12608,9 +12618,12 @@ function drawBezier() {
   if (window._isoMode) { bezierSvg.innerHTML = ''; return; }
   if (frameCount < 2) { bezierSvg.innerHTML = ''; return; }
 
+  const multiSelectionActive = isMultiSelectionActive();
   const activeSegs = new Set();
-  if (activeIdx > 0) activeSegs.add(activeIdx - 1);
-  if (activeIdx < frameCount - 1) activeSegs.add(activeIdx);
+  if (!multiSelectionActive) {
+    if (activeIdx > 0) activeSegs.add(activeIdx - 1);
+    if (activeIdx < frameCount - 1) activeSegs.add(activeIdx);
+  }
 
   // Escala inversa — mantém espessura visual constante independente do zoom de edição
   const invZ = 1 / editorZoomScale;
@@ -12629,7 +12642,7 @@ function drawBezier() {
     const active = activeSegs.has(seg);
 
     // Cor: azul = segmento anterior ao ativo, laranja = posterior
-    const segColor = seg === activeIdx - 1 ? BLUE : seg === activeIdx ? ORANGE : WHITE;
+    const segColor = !multiSelectionActive && seg === activeIdx - 1 ? BLUE : !multiSelectionActive && seg === activeIdx ? ORANGE : WHITE;
 
     // Bézier puro — suavidade desativada
     // v8z4b21a: usar cubic C quando curvesV2 ativo, quadrática Q caso contrário.
@@ -12654,6 +12667,7 @@ function drawBezier() {
 
   // Bolinhas nos centros — branco, só dist <= 1
   for (let i = 0; i < frameCount; i++) {
+    if (multiSelectionActive) continue;
     const dist = Math.abs(i - activeIdx);
     if (dist > 1) continue;
     const op = dist === 0 ? 1 : 0.7;
@@ -12668,7 +12682,7 @@ function drawBezier() {
     const p0x = frameCX(frameCount-1), p0y = frameCY(frameCount-1);
     const p1x = frameCX(0),            p1y = frameCY(0);
     const cpx = _loopCp.nx * stageW, cpy = _loopCp.ny * stageH;
-    const showLoop = activeIdx === 0 || activeIdx === frameCount - 1;
+    const showLoop = !multiSelectionActive && (activeIdx === 0 || activeIdx === frameCount - 1);
     const lineOp   = showLoop ? 0.9 : 0.22;
     const lineW    = (showLoop ? 2.5 : 1.0) * invZ;
     // v8z4b21a: usar cubic C para loop quando curvesV2 ativo.
@@ -12744,7 +12758,8 @@ function drawBezier() {
 }
 
 function updateCtrlPts() {
-  if (globalHandleEl) globalHandleEl.style.display = '';
+  const multiSelectionActive = isMultiSelectionActive();
+  if (globalHandleEl) globalHandleEl.style.display = multiSelectionActive ? 'none' : '';
 
   // v8z3e: na vista de isolamento, esconder segmentos e pontos de curva.
   if (window._isoMode) {
@@ -12763,7 +12778,7 @@ function updateCtrlPts() {
     const el = getCtrlEl(seg);
     if (!el) continue;
     if (seg >= frameCount - 1) { el.style.display = 'none'; continue; }
-    const isActive = (seg === activeIdx || seg === activeIdx - 1);
+    const isActive = !multiSelectionActive && (seg === activeIdx || seg === activeIdx - 1);
     el.style.display = isActive ? 'block' : 'none';
     const cp = getSegmentCurvePuller(seg); // v8z4b19a: via curvePuller helper
     if (!cp) continue;
@@ -12782,7 +12797,7 @@ function updateCtrlPts() {
   // v8z4b19a: via curvePuller helper (getSegmentCurvePuller)
   let loopEl = document.getElementById('cpt_loop');
   const _loopCurve = getSegmentCurvePuller(getLoopSegmentIndex());
-  const showLoop = loopEnabled && _loopCurve && frameCount >= 2 &&
+  const showLoop = !multiSelectionActive && loopEnabled && _loopCurve && frameCount >= 2 &&
                    (activeIdx === 0 || activeIdx === frameCount - 1);
   if (showLoop) {
     if (!loopEl) {
@@ -12857,7 +12872,7 @@ function updateCtrlPts() {
   if (_legacyTangentEl) _legacyTangentEl.style.display = 'none';
 
   const _hTargets20c = getFrameConnectedHandleTargets(activeIdx);
-  const canShowHandles = !window._isoMode && frameCount >= 2 &&
+  const canShowHandles = !multiSelectionActive && !window._isoMode && frameCount >= 2 &&
                          !!imgEl.src && !isPreviewing &&
                          (_hTargets20c.inTarget || _hTargets20c.outTarget);
 
@@ -13877,6 +13892,7 @@ document.addEventListener('pointerdown', (e) => {
   if (!bar || bar.style.display === 'none') return;
   if (bar.contains(e.target)) return;
   if (e.target.closest('#pillsRow')) return;
+  if (e.target.closest('#pointModeMenu') || e.target.closest('#topBtnPointMode')) return;
   if (e.target.closest('#topBtnUndo') || e.target.closest('#topBtnRedo')) return;
   clearMultiSelect();
 }, true);
