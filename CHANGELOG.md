@@ -1,3 +1,11 @@
+## Checkpoint interno — v8z4b25h consolidada como base estável
+
+- docs/checkpoint: v8z4b25h aprovada funcionalmente como checkpoint interno estável; não é release comercial e não cria nova versão funcional.
+- docs/checkpoint: v8z4b25h substitui v8z4b25g como checkpoint atual porque inclui a correção do bloqueio de ações externas durante frame novo pendente/assistido.
+- docs/checkpoint: v8z4b25g permanece registrada como base aprovada anterior da sequência de modos de ponto/curva.
+- docs/checkpoint: manter v8z4b25h disponível como ponto de retorno caso próximas versões quebrem curva, loop, Preview, MP4, JSON, inserção assistida de frame ou gestos no iPhone/Safari.
+- Escopo desta consolidação: documentação/roadmap/QA; nenhum comportamento do app, número de versão, interface, motor, Preview, MP4, JSON, zoom/pan, Undo/Redo, Loop, seleção de frames ou modos de curva foi alterado.
+
 ## v8z4b25h — pending assisted frame global UI guard
 
 - fix: bloqueia ações globais enquanto existe frame assistido pendente de confirmação.

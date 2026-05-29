@@ -1,3 +1,136 @@
+# Roadmap técnico/produto — pós-checkpoint v8z4b25h
+
+## Checkpoint funcional preservado
+
+- v8z4b25h aprovada funcionalmente como checkpoint interno.
+- Não é release comercial.
+- v8z4b25g foi a base aprovada anterior.
+- v8z4b25h substitui v8z4b25g como checkpoint estável atual porque inclui a correção do bloqueio de ações externas durante frame novo pendente/assistido.
+- Deve servir como base segura antes das próximas evoluções de curva, seleção múltipla, aplicação em lote e nova interface.
+- Deve permanecer disponível como ponto de retorno caso próximas versões quebrem curva, loop, Preview, MP4, JSON, inserção assistida de frame ou gestos no iPhone/Safari.
+
+## Roadmap atualizado
+
+### 1. Curvas — edição direta pela linha
+
+- Permitir puxar a curva pela própria linha/segmento, em lógica parecida com Illustrator.
+- Criar área invisível de toque maior ao redor da curva para iPhone/Safari.
+- A linha visual pode continuar fina, mas a hit area precisa ser confortável para toque.
+- A edição deve afetar apenas o segmento correspondente, sem efeitos colaterais inesperados nos demais segmentos.
+- Definir regra clara para quando puxar a linha deve abrir handles em pontos que estejam em Canto.
+- Preservar Loop, Undo/Redo e gestos de zoom/pan com dois dedos.
+- Tratar como nova interação de curva, com risco médio/alto.
+- Implementar em versão separada, nunca junto com refatoração visual grande.
+
+### 2. Seleção múltipla de frames
+
+- Permitir selecionar vários frames.
+- Destacar visualmente frames selecionados.
+- Permitir aplicar o mesmo modo de ponto/curva aos frames selecionados:
+  - Canto;
+  - Simétrico;
+  - Assimétrico;
+  - Desconectado.
+- A ação em múltiplos frames deve entrar no Undo como uma única ação.
+- Diferenciar claramente frame ativo de frames selecionados.
+- Não quebrar seleção individual atual.
+- Não conflitar com zoom/pan de dois dedos no iPhone/Safari.
+- Esta função é base importante para a futura interface.
+
+### 3. Aplicação em lote / global de ajustes
+
+- Criar base para aplicar ajustes a todos os frames ou apenas aos frames selecionados.
+- Diferenciar claramente:
+  - Global = todos os frames;
+  - Selecionados = somente frames escolhidos.
+- Possíveis ajustes futuros:
+  - escala;
+  - posição;
+  - rotação;
+  - duração;
+  - pausa;
+  - modo de curva;
+  - suavidade/easing, quando a estrutura estiver madura.
+- Não implementar todos os controles de uma vez.
+- Começar por ações simples e seguras.
+- Registrar cada aplicação em lote como uma única ação de Undo.
+
+### 4. Exportação de imagem estática
+
+- Permitir exportar projeto com 1 frame como imagem/crop estático.
+- Respeitar formato, posição, escala e rotação do F1.
+- Projeto com 1 frame deve funcionar como ferramenta de crop/enquadramento.
+- Futuramente permitir exportar imagem do instante pausado no Preview.
+- A exportação deve usar renderização em resolução final, não simples print da tela.
+
+### 5. Preview / visualização
+
+- Mostrar sequência de frames durante o Preview, com destaque sincronizado ao play.
+- Permitir identificar trecho/frame atual durante a reprodução.
+- Estudar pause em um ponto específico e exportação daquele instante como imagem.
+- Estudar play de trecho isolado entre um frame e o próximo.
+
+### 6. Modo Trajeto
+
+- Criar modo visual no Stage em que o retângulo/câmera caminha pela imagem.
+- Usar o mesmo cálculo da animação, mas sem entrar no Preview final.
+- Servir como ferramenta de diagnóstico para movimento, curva, pausas, loop e sequência.
+- Não exportar vídeo nesse modo; é uma visualização de edição.
+
+### 7. Navegação de frames
+
+- Estudar faixa de frames deslizante.
+- Destacar frame central/ativo.
+- Melhorar uso com muitos frames.
+- Estudar modos de visualização:
+  - mostrar todos;
+  - mostrar próximos;
+  - mostrar selecionados.
+- Preparar essa lógica para a próxima interface.
+
+### 8. Movimento inteligente e easing
+
+- Estudar movimento inteligente por segmento/trecho.
+- Manter controles avançados de easing escondidos enquanto Movimento Inteligente estiver ligado.
+- Exibir controles manuais apenas quando Movimento Inteligente estiver desligado.
+- Estudar intensidade de easing como recurso futuro.
+- Evitar expor muitos sliders neste momento.
+
+### 9. Nova interface / UI v8z5
+
+- Criar protótipo visual separado antes de integrar ao app real.
+- Não redesenhar diretamente dentro da v8z4b25h.
+- Usar a v8z4b25h como base funcional preservada.
+- Revisar hierarquia dos menus inferiores.
+- Revisar ícones, peso de traço, espaçamentos e linguagem visual.
+- Organizar melhor:
+  - frames;
+  - curva;
+  - duração;
+  - preview;
+  - exportação;
+  - seleção múltipla;
+  - ações globais/em lote.
+- Manter foco obrigatório em iPhone/Safari.
+
+### 10. Múltiplas imagens / layers
+
+- Registrar como visão futura maior, não para implementação imediata.
+- Evitar implementar troca de imagem por frame na linha atual.
+- Direção preferencial futura: Stage expandido com múltiplas imagens/layers, em vez de simples troca de imagem por frame.
+- Reconhecer que isso pode virar módulo avançado ou outro produto mais focado em animação.
+- Não deixar essa frente contaminar a estabilização atual do app principal.
+
+## Sugestão de sequência futura após a consolidação
+
+- v8z4b26a: seleção múltipla de frames + aplicar modo de curva em lote.
+- v8z4b26b: aplicação em lote/global de ajustes simples.
+- v8z4b26c: edição direta da curva puxando pela linha/segmento.
+- v8z5-prototype: protótipo visual separado da nova interface.
+- v8z5a: primeira integração real da nova interface aprovada.
+
+---
+
 # Roadmap
 
 ## Objetivo imediato — v8z4b22c (concluído)

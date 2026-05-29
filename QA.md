@@ -1,3 +1,39 @@
+# QA confirmado — v8z4b25h checkpoint interno
+
+## Status da v8z4b25h
+
+- v8z4b25h aprovada funcionalmente como checkpoint interno.
+- Não é release comercial.
+- Deve servir como base segura antes das próximas evoluções de curva, seleção múltipla, aplicação em lote e nova interface.
+- A versão deve permanecer disponível como ponto de retorno caso próximas versões quebrem curva, loop, Preview, MP4, JSON, inserção assistida de frame ou gestos no iPhone/Safari.
+- v8z4b25g foi a base aprovada anterior; v8z4b25h é o checkpoint estável atual por incluir a correção do bloqueio durante frame pendente.
+
+## QA confirmado na v8z4b25h
+
+- Menu de curva acessível.
+- Ícones do menu de curva claros/legíveis.
+- Ausência de texto indevido nos ícones.
+- Modos Canto, Simétrico, Assimétrico e Desconectado funcionando.
+- Comportamento de Loop preservado/corrigido.
+- Undo/Redo sem regressão relatada.
+- Preview sem regressão relatada.
+- MP4 sem regressão relatada.
+- Zoom/pan sem regressão relatada.
+- Projeto com F1 assistido e mínimo de 1 frame continua como base da linha atual.
+- Durante frame novo pendente/assistido, ações externas ficam bloqueadas.
+- Painel de Duração não abre durante frame pendente.
+- Confirmar frame pendente libera a interface normalmente.
+- Cancelar frame pendente libera a interface normalmente.
+- JSON salvo com imagem embutida em v8z4b25h foi validado estruturalmente.
+
+## Pendência visual não bloqueante
+
+- Ícones do menu de curva ficaram com traço visualmente espesso demais.
+- Tratar como ajuste visual futuro dentro da revisão maior de interface.
+- Não abrir patch específico apenas para isso neste momento.
+
+---
+
 # QA Checklist
 
 Use depois de qualquer alteração, mesmo pequena.
