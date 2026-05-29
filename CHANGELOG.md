@@ -1,3 +1,14 @@
+## v8z4b26c — corrigir seleção múltipla sem destaque dominante nem desseleção ao aplicar curva
+
+- fix: durante seleção múltipla, o Stage deixa de promover o frame ativo/último tocado para frente e suprime o destaque dominante do frame ativo individual.
+- ux: frames selecionados no Stage usam destaque uniforme entre si; a edição individual volta a exibir o destaque normal ao sair da seleção múltipla.
+- fix: cliques no botão/menu de modo de ponto não limpam a seleção múltipla antes da aplicação, preservando a ação em lote para Canto, Simétrico, Assimétrico e Desconectado.
+- preservado: aplicação em lote continua usando `applyPointModeForFrame()` e um único `pushUndo()` para Undo/Redo do lote.
+- preservado: botão `Sel` continua removido; não foi criado botão equivalente nem alterados Preview, MP4, JSON, motor de animação, zoom/pan do Stage, gestos de dois dedos, Reset ou inserção assistida.
+- `index.html`: versionamento atualizado para `v8z4b26c`; adicionada condição `isMultiSelectionActive()` para Stage/handles/curvas e exceção para não limpar seleção ao abrir/aplicar modos de curva.
+- `docs/QA-v8z4b26c.md`: checklist específico da versão.
+- `QA.md` e `docs/ROADMAP.md`: documentação atualizada para v8z4b26c no repositório de teste.
+
 ## v8z4b26b — remover Sel e mostrar seleção múltipla no Stage
 
 - ux: remove o botão visual `Sel` da faixa inferior de frames sem criar botão substituto ou deixar espaço vazio.
