@@ -11,7 +11,7 @@
 
 | Versão           | Foco principal                                              |
 |------------------|-------------------------------------------------------------|
-| v8z4b26a         | Seleção múltipla de frames + aplicar modo de curva em lote |
+| v8z4b26a         | **Implementada:** seleção múltipla de frames + aplicar modo de curva em lote |
 | v8z4b26b         | Aplicação em lote/global de ajustes simples                 |
 | v8z4b26c         | Edição direta da curva puxando pela linha/segmento          |
 | v8z5-prototype   | Protótipo visual separado da nova interface                 |
@@ -30,6 +30,8 @@
 - Implementar em versão separada.
 
 ## 2. Seleção múltipla de frames
+
+**Status v8z4b26a:** implementada para seleção temporária e aplicação em lote dos modos Canto, Simétrico, Assimétrico e Desconectado.
 
 - Selecionar vários frames.
 - Destacar visualmente frames selecionados.

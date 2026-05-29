@@ -1,3 +1,9 @@
+# QA pendente — v8z4b26a seleção múltipla e modo de curva em lote
+
+- Checklist detalhado criado em `docs/QA-v8z4b26a.md`.
+- Verificações estáticas executadas: versionamento `APP_VERSION`/`APP_VERSION_NAME`, texto visível de versão, ausência de `selectedFrames` no JSON salvo e sintaxe básica de `index.html`.
+- QA manual completo em iPhone/Safari, Preview e MP4 permanece como checklist operacional antes de promover a versão.
+
 # QA confirmado — v8z4b25h checkpoint interno
 
 ## Status da v8z4b25h
