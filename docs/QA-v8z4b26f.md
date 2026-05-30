@@ -12,8 +12,8 @@ Correção visual/estado da seleção múltipla a partir da v8z4b26e. A fonte de
 
 - Base anterior `v8z4b26e` confirmada antes das alterações por busca em `index.html`, `CHANGELOG.md`, `QA.md` e `docs/QA-v8z4b26e.md`.
 - Ausência do botão `Sel`/`btnMultiSelect` mantida.
-- `selectedFrames` continua sendo a fonte de verdade da seleção múltipla.
-- `renderAll()` remove/reaplica classes visuais a partir de `selectedFrames`, sem destaque ativo dominante durante seleção múltipla.
+- `selectedFrames` continua sendo a fonte de verdade da seleção múltipla; qualquer seleção iniciada (`selectedFrames.size > 0`) já entra no estado visual de seleção para iluminar o primeiro frame pressionado.
+- `renderAll()` remove/reaplica classes visuais a partir de `selectedFrames`, sem destaque ativo dominante durante seleção múltipla, e a camada `.frame-dim` fornece a luz interna independente da moldura laranja.
 - `updateDimOverlay()` fica oculto durante seleção múltipla para não iluminar o último frame tocado nem apagar molduras/caminhos.
 - `drawBezier()` mantém caminhos sólidos e legíveis durante seleção múltipla, sem alterar geometria.
 - `toggleFrameSelection()` não altera `activeIdx` enquanto a interação estiver em seleção múltipla real.
