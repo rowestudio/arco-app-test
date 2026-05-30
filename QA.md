@@ -1,3 +1,9 @@
+# QA pendente — v8z4b26g remover laranja interno e corrigir overlay da seleção múltipla
+
+- Checklist detalhado criado em `docs/QA-v8z4b26g.md`.
+- Verificações estáticas executadas: base `v8z4b26f` confirmada antes das alterações; versionamento `APP_VERSION`/`APP_VERSION_NAME`/texto visível; ausência do botão `Sel`/`btnMultiSelect`; seleção múltipla existente por `selectedFrames`; `.frame.multi-selected .frame-dim` sem fill/tingimento laranja; `renderAll()` usando borda laranja e halo externo sem `inset`; `updateDimOverlay()` com overlay escuro externo e máscara SVG para recortes múltiplos rotacionados; `drawBezier()` sem alteração geométrica; sintaxe básica de `index.html`.
+- QA manual completo em iPhone/Safari, imagem clara, recortes rotacionados, aplicação em lote, Undo/Redo, Loop, Reset, JSON, Preview e MP4 permanece como checklist operacional antes de promover a versão.
+
 # QA pendente — v8z4b26f corrigir luz, moldura e caminhos na seleção múltipla
 
 - Checklist detalhado criado em `docs/QA-v8z4b26f.md`.
