@@ -1,3 +1,15 @@
+## v8z4b27c — simplificar Pausa em seleção múltipla
+
+- `index.html`: versionamento atualizado para `v8z4b27c`.
+- Correção de UX: painel Pausa da seleção múltipla passa a mostrar o contexto dos frames afetados (`F1, F2 selecionados` ou contagem quando a seleção é longa).
+- Remoção de redundâncias: removidos do painel o botão `Igualar ao ativo` e o texto/botão grande `Aplicar aos selecionados`.
+- Definir pausa: ação principal renomeada para `Definir pausa`, definindo o valor decimal do slider apenas nos frames selecionados editáveis, com seleção múltipla preservada e Undo único.
+- Reset/Zerar: `Zerar` permanece como ação secundária pequena, zerando apenas os frames selecionados com Undo único.
+- Adicionar pausa: não implementado nesta versão; fica registrado como próximo passo para fluxo separado, sem misturar com `Definir pausa`.
+- Fora do escopo: Subtrair, Igualar ao ativo, escala, rotação, posição, alinhamento/distribuição, overlay externo, curvas, Preview, MP4 e JSON estrutural.
+- `docs/QA-v8z4b27c.md`: checklist específico da versão.
+- `QA.md` e `docs/ROADMAP.md`: documentação atualizada para v8z4b27c no repositório de teste.
+
 ## v8z4b27b — corrigir Pausa em lote sem incrementos fixos
 
 - `index.html`: versionamento atualizado para `v8z4b27b`.

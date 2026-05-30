@@ -129,6 +129,8 @@
 - v8z4b26d: separação visual entre seleção simples e seleção múltipla.
 - v8z4b26e: limpeza de marcação residual ao desselecionar frames.
 - v8z4b27a: menu próprio de seleção múltipla com Pausa, Escala, Rotação e Posição.
+- v8z4b27b: Pausa em lote com slider decimal sem incrementos fixos.
+- v8z4b27c: Pausa em lote simplificada com indicação dos frames afetados e sem ações redundantes.
 - v8z5-prototype: protótipo visual separado da nova interface.
 - v8z5a: primeira integração real da nova interface aprovada.
 
