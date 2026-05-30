@@ -1,3 +1,14 @@
+## v8z4b27b — corrigir Pausa em lote sem incrementos fixos
+
+- `index.html`: versionamento atualizado para `v8z4b27b`.
+- Correção de UX: submenu Pausa da seleção múltipla deixa de oferecer atalhos rígidos `+0.5s`/`-0.5s`.
+- Pausa em lote: painel passa a usar slider decimal com os mesmos limites e passo do controle real de pausa (`FRAME_PAUSE_MIN`, `FRAME_PAUSE_MAX`, `FRAME_PAUSE_STEP`).
+- Aplicar aos selecionados: define a pausa escolhida apenas nos frames selecionados editáveis, preservando a seleção múltipla ativa e registrando um único Undo.
+- Zerar e Igualar ao ativo permanecem como ações secundárias de lote, também com Undo único.
+- Fora do escopo: Adicionar/Subtrair pausa em lote, lógica proporcional, escala, rotação, posição, alinhamento, distribuição, curvas, Preview, MP4 e JSON estrutural.
+- `docs/QA-v8z4b27b.md`: checklist específico da versão.
+- `QA.md` e `docs/ROADMAP.md`: documentação atualizada para v8z4b27b no repositório de teste.
+
 ## v8z4b27a — expandir menu de seleção múltipla com ações em lote
 
 - `index.html`: versionamento atualizado para `v8z4b27a`.

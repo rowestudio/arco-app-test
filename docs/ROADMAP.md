@@ -19,6 +19,7 @@
 | v8z4b26f         | **Implementada:** correção de luz, moldura e caminhos na seleção múltipla |
 | v8z4b26g         | **Implementada:** remover laranja interno e overlay externo da seleção múltipla |
 | v8z4b27a         | **Implementada:** menu de seleção múltipla com Pausa, Escala, Rotação e Posição |
+| v8z4b27b         | **Implementada:** Pausa em lote com slider decimal sem incrementos fixos |
 | v8z5-prototype   | Protótipo visual separado da nova interface                 |
 | v8z5a            | Primeira integração real da nova interface aprovada         |
 
@@ -36,7 +37,7 @@
 
 ## 2. Seleção múltipla de frames
 
-**Status v8z4b27a:** seleção simples preserva auto-center e foco ativo fora da seleção múltipla; seleção múltipla usa `selectedFrames` como fonte de verdade, mantém overlay escuro externo recortado nos selecionados e passa a oferecer ações em lote em menu próprio para Pausa, Escala, Rotação e Posição.
+**Status v8z4b27b:** seleção simples preserva auto-center e foco ativo fora da seleção múltipla; seleção múltipla usa `selectedFrames` como fonte de verdade, mantém overlay escuro externo recortado nos selecionados e oferece ações em lote em menu próprio. O grupo Pausa agora usa slider decimal para aplicar um valor escolhido aos selecionados, sem atalhos fixos de incremento.
 
 - Selecionar vários frames.
 - Destacar visualmente frames selecionados.

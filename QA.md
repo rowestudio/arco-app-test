@@ -1,3 +1,9 @@
+# QA pendente — v8z4b27b corrigir Pausa em lote sem incrementos fixos
+
+- Checklist detalhado criado em `docs/QA-v8z4b27b.md`.
+- Verificações estáticas executadas: base `v8z4b27a` confirmada antes das alterações; versionamento `APP_VERSION`/`APP_VERSION_NAME`/texto visível; submenu Pausa da seleção múltipla sem `+0.5s`/`-0.5s`; painel Pausa em lote usando `dur-slider` com `FRAME_PAUSE_MIN`/`FRAME_PAUSE_MAX`/`FRAME_PAUSE_STEP`; ação `Aplicar aos selecionados` alterando somente `selectedFrames` editáveis com `pushUndoSnapshot(before)` único; ações `Zerar` e `Igualar ao ativo` preservadas via `alignFrames()`; ausência do botão `Sel`/`btnMultiSelect`; seleção múltipla continua temporária e não entra no JSON; `drawBezier()`, `getStateAtT`, `drawAtT` e pipeline WebCodecs/export não foram alterados.
+- QA manual completo em iPhone/Safari, Preview, MP4, JSON, Reset, inserção assistida, Undo/Redo e painel Pausa permanece como checklist operacional antes de promover a versão.
+
 # QA pendente — v8z4b27a expandir menu de seleção múltipla
 
 - Checklist detalhado criado em `docs/QA-v8z4b27a.md`.
