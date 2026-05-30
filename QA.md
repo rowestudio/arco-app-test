@@ -1,7 +1,7 @@
 # QA pendente — v8z4b26f corrigir luz, moldura e caminhos na seleção múltipla
 
 - Checklist detalhado criado em `docs/QA-v8z4b26f.md`.
-- Verificações estáticas executadas: base `v8z4b26e` confirmada antes das alterações; versionamento `APP_VERSION`/`APP_VERSION_NAME`/texto visível; ausência do botão `Sel`/`btnMultiSelect`; seleção múltipla existente por `selectedFrames`; `renderAll()` suprimindo destaque ativo dominante e preservando molduras durante seleção múltipla; `toggleFrameSelection()` sem troca de `activeIdx` enquanto há seleção múltipla real; `updateDimOverlay()` oculto durante seleção múltipla; `drawBezier()` com caminhos sólidos/visíveis em seleção múltipla; sintaxe básica de `index.html`; `docs/ROADMAP.md` atualizado com status v8z4b26f.
+- Verificações estáticas executadas: base `v8z4b26e` confirmada antes das alterações; versionamento `APP_VERSION`/`APP_VERSION_NAME`/texto visível; ausência do botão `Sel`/`btnMultiSelect`; seleção múltipla existente por `selectedFrames`; seleção iniciada com `selectedFrames.size > 0` já ilumina o primeiro frame; `renderAll()` suprimindo destaque ativo dominante e preservando molduras durante seleção múltipla; `toggleFrameSelection()` sem troca de `activeIdx` enquanto há seleção múltipla real; `updateDimOverlay()` oculto durante seleção múltipla; `drawBezier()` com caminhos sólidos/visíveis em seleção múltipla; sintaxe básica de `index.html`; `docs/ROADMAP.md` atualizado com status v8z4b26f.
 
 # QA pendente — v8z4b26e limpar marcação residual ao desselecionar frames
 

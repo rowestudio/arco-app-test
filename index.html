@@ -631,6 +631,7 @@ body.recording #editorZoomCtrl{display:none;}
 .frame-visual .frame-border,.frame-visual .frame-dim,.frame-visual .frame-num,.frame-visual .frame-center{pointer-events:none;}
 .frame-border{position:absolute;inset:0;border:2px solid #c6c6c6;box-sizing:border-box;pointer-events:none;border-radius:10px;filter:none;}
 .frame.multi-selected .frame-border{box-shadow:0 0 0 2px #ff9500 inset;}
+.frame.multi-selected .frame-dim{background:rgba(255,149,0,.18) !important;box-shadow:inset 0 0 24px rgba(255,149,0,.28);border-radius:10px;}
 .frame.active.multi-selected .frame-border{box-shadow:0 0 0 2px #ff9500 inset;}
 .ghost-frame{
   position:absolute;box-sizing:border-box;touch-action:none;overflow:visible;
@@ -4849,7 +4850,7 @@ let selectedFrames = new Set(); // seleção múltipla
 let frameMultiSelectMode = false; // legado v8z4b26a; v8z4b26b não usa botão/modo visual
 
 function isMultiSelectionActive() {
-  return selectedFrames.size >= 2;
+  return selectedFrames.size > 0;
 }
 
 function isFrameVisuallyMultiSelected(i) {
@@ -4861,6 +4862,13 @@ function clearFrameSelectionVisuals(el) {
   el.classList.remove('multi-selected');
   const borderEl = el.querySelector('.frame-border');
   if (borderEl) borderEl.style.boxShadow = 'none';
+  const dimEl = el.querySelector('.frame-dim');
+  if (dimEl) {
+    dimEl.style.removeProperty('background');
+    dimEl.style.removeProperty('box-shadow');
+    dimEl.style.removeProperty('opacity');
+    dimEl.style.removeProperty('filter');
+  }
   const numEl = el.querySelector('.frame-num');
   if (numEl) {
     numEl.style.color = '';
@@ -19685,7 +19693,7 @@ function toggleFrameSelection(fi, makeActive) {
   const wasSelected = selectedFrames.has(fi);
   if (wasSelected) selectedFrames.delete(fi);
   else selectedFrames.add(fi);
-  const isSelectingMultiple = wasMultiSelectionActive || selectedFrames.size >= 2;
+  const isSelectingMultiple = wasMultiSelectionActive || selectedFrames.size > 0;
   if (makeActive && !isSelectingMultiple) {
     resetCustGlobalLocks();
     activeIdx = fi;
