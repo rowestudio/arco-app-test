@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b26f                                     ║
+║  Versão: v8z4b26g                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b26g                                            ║
+║    fix: seleção múltipla remove laranja interno e   ║
+║         usa overlay externo recortado.               ║
 ║  v8z4b26f                                            ║
 ║    fix: seleção múltipla separa luz, moldura e      ║
 ║         caminhos sem foco ativo dominante.           ║
@@ -442,6 +445,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b26g — fix: seleção múltipla remove preenchimento/tingimento laranja interno e usa overlay escuro externo com recortes rotacionados; caminho/curva, dados, Preview, Export e JSON inalterados. -->
 <!-- Arco Motion App — v8z4b26f — fix: seleção múltipla separa luz selecionada, moldura, foco ativo e caminhos; dim/active não interferem durante seleção múltipla; dados, Preview, Export e JSON inalterados. -->
 <!-- Arco Motion App — v8z4b24b — stage gesture arbitration: zoom/pan com dois dedos não seleciona frames acidentalmente; handles, overlays e elementos tutoriais do Stage não são ativados ao iniciar gesto de dois dedos; bloqueio curto após navegação evita taps residuais; área interativa de zoom/pan cobre o viewport de edição, não apenas a imagem; imagem tratada como conteúdo dentro do Stage, não como limite de navegação. -->
 <!-- Arco Motion App — v8z4b24a — editor zoom/pan navigation: navegação visual do Stage com pinça para zoom; pan do Stage com dois dedos; coordenadas de edição passam a considerar editorView zoom/pan; Stage visível como viewport de edição, sem alterar dados reais do projeto; MIN_EDITOR_ZOOM=0.5, MAX_EDITOR_ZOOM=4; gesto de dois dedos impede edição simultânea; JSON não salva zoom/pan. -->
@@ -630,9 +634,9 @@ body.recording #editorZoomCtrl{display:none;}
 .frame-visual{position:absolute;inset:0;transform-origin:center center;overflow:visible;}
 .frame-visual .frame-border,.frame-visual .frame-dim,.frame-visual .frame-num,.frame-visual .frame-center{pointer-events:none;}
 .frame-border{position:absolute;inset:0;border:2px solid #c6c6c6;box-sizing:border-box;pointer-events:none;border-radius:10px;filter:none;}
-.frame.multi-selected .frame-border{box-shadow:0 0 0 2px #ff9500 inset;}
-.frame.multi-selected .frame-dim{background:rgba(255,149,0,.18) !important;box-shadow:inset 0 0 24px rgba(255,149,0,.28);border-radius:10px;}
-.frame.active.multi-selected .frame-border{box-shadow:0 0 0 2px #ff9500 inset;}
+.frame.multi-selected .frame-border{box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.28);}
+.frame.multi-selected .frame-dim{background:transparent !important;box-shadow:none !important;border-radius:10px;}
+.frame.active.multi-selected .frame-border{box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.28);}
 .ghost-frame{
   position:absolute;box-sizing:border-box;touch-action:none;overflow:visible;
   border:2px dashed rgba(255,255,255,.78);border-radius:10px;
@@ -2383,7 +2387,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b26f</span><br><span id="appVersionNameText">v8z4b26f</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b26g</span><br><span id="appVersionNameText">v8z4b26g</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4724,8 +4728,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b26f';
-const APP_VERSION_NAME = 'v8z4b26f';
+const APP_VERSION = 'v8z4b26g';
+const APP_VERSION_NAME = 'v8z4b26g';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12058,7 +12062,7 @@ function renderAll() {
     }
     borderEl.style.borderWidth = borderW;
     borderEl.style.boxShadow = selectedStageFocus
-      ? `0 0 0 ${2 * invZ}px rgba(255,149,0,.95) inset, 0 0 ${10 * invZ}px rgba(255,149,0,.34)`
+      ? `0 0 ${12 * invZ}px rgba(0,0,0,.42), 0 0 ${10 * invZ}px rgba(255,149,0,.28)`
       : 'none';
     if (numEl) {
       numEl.style.color = selectedStageFocus ? '#ffffff' : '';
@@ -12253,10 +12257,37 @@ function updateDimOverlay() {
   const svg = document.getElementById('stageDimSvg');
   if (!svg) return;
   // v8z3e: mostrar nas vistas Normal e Isolamento; esconder apenas no Mapa/preview/sem imagem.
-  if (!imgNatW || frameCount < 1 || viewMode === 2 || isPreviewing || isMultiSelectionActive()) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
-  svg.style.display = 'block';
+  if (!imgNatW || frameCount < 1 || viewMode === 2 || isPreviewing) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
 
   const W = stageW, H = stageH;
+  if (!W || !H) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
+
+  const multiTargets = Array.from(selectedFrames)
+    .filter(i => i >= 0 && i < frameCount)
+    .sort((a, b) => a - b);
+
+  if (multiTargets.length > 0) {
+    const maskId = 'multiDimMask';
+    const holes = multiTargets.map(i => {
+      const corners = getRotatedFrameCorners(i);
+      const pts = corners.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+      return `<polygon points="${pts}" fill="black"/>`;
+    }).join('');
+    svg.style.display = 'block';
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.innerHTML = `
+      <defs>
+        <mask id="${maskId}" maskUnits="userSpaceOnUse">
+          <rect x="0" y="0" width="${W}" height="${H}" fill="white"/>
+          ${holes}
+        </mask>
+      </defs>
+      <rect x="0" y="0" width="${W}" height="${H}" fill="rgba(0,0,0,0.34)" mask="url(#${maskId})"/>`;
+    return;
+  }
+
+  svg.style.display = 'block';
+
   const f = frames[activeIdx];
   const { cx, cy } = getFrameCenter(activeIdx);
   const rot = (frameRotations[activeIdx] || 0);

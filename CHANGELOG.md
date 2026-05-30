@@ -1,3 +1,12 @@
+## v8z4b26g — remover laranja interno e corrigir overlay da seleção múltipla
+
+- `index.html`: versionamento atualizado para `v8z4b26g`; seleção múltipla deixa de aplicar qualquer fill/luz laranja interna em `.frame-dim`.
+- `index.html`: `renderAll()` mantém borda laranja dos frames selecionados, substitui o inset/tingimento por halo externo discreto e preserva a moldura normal dos não selecionados.
+- `index.html`: `updateDimOverlay()` passa a exibir overlay escuro externo durante seleção múltipla usando máscara SVG com recortes para todos os frames selecionados, reaproveitando `getRotatedFrameCorners()` para respeitar posição e rotação.
+- `index.html`: `drawBezier()` e geometria das curvas não foram alterados; a camada de caminho permanece acima/compatível com o overlay e abaixo das molduras.
+- `docs/QA-v8z4b26g.md`: checklist específico da versão.
+- `QA.md` e `docs/ROADMAP.md`: ponteiro de QA/status atualizado para v8z4b26g no repositório de teste.
+
 ## v8z4b26f — corrigir luz, moldura e caminhos na seleção múltipla
 
 - `index.html`: versionamento atualizado para `v8z4b26f`; seleção múltipla deixa de acionar foco ativo dominante, auto bring-to-front e overlay escuro do frame ativo.

@@ -17,6 +17,7 @@
 | v8z4b26d         | **Implementada:** separação visual entre seleção simples e seleção múltipla |
 | v8z4b26e         | **Implementada:** limpeza de marcação residual ao desselecionar frames |
 | v8z4b26f         | **Implementada:** correção de luz, moldura e caminhos na seleção múltipla |
+| v8z4b26g         | **Implementada:** remover laranja interno e overlay externo da seleção múltipla |
 | v8z5-prototype   | Protótipo visual separado da nova interface                 |
 | v8z5a            | Primeira integração real da nova interface aprovada         |
 
@@ -34,7 +35,7 @@
 
 ## 2. Seleção múltipla de frames
 
-**Status v8z4b26f:** seleção simples preserva auto-center e foco ativo fora da seleção múltipla; seleção múltipla usa `selectedFrames` como fonte de verdade, sem luz residual em frames desselecionados, sem foco ativo dominante e com caminhos/curvas visíveis.
+**Status v8z4b26g:** seleção simples preserva auto-center e foco ativo fora da seleção múltipla; seleção múltipla usa `selectedFrames` como fonte de verdade, sem laranja interno em frames selecionados, com overlay escuro externo recortado nos selecionados e com caminhos/curvas visíveis.
 
 - Selecionar vários frames.
 - Destacar visualmente frames selecionados.
