@@ -131,8 +131,16 @@
 - v8z4b27a: menu próprio de seleção múltipla com Pausa, Escala, Rotação e Posição.
 - v8z4b27b: Pausa em lote com slider decimal sem incrementos fixos.
 - v8z4b27c: Pausa em lote simplificada com indicação dos frames afetados e sem ações redundantes.
+- v8z4b27d: Pausa contextual direta, menu com 1 frame selecionado, Selecionar todos, Undo/Redo da cor de fundo e overlay normal menos escuro.
 - v8z5-prototype: protótipo visual separado da nova interface.
 - v8z5a: primeira integração real da nova interface aprovada.
+
+## Próximas funções registradas em v8z4b27d — não implementadas nesta versão
+
+- Transformação direta de grupo no Stage: mover, escalar e rotacionar vários frames como grupo, com possível moldura/handles de grupo em versão experimental e separação clara dos ajustes em lote por menu.
+- Adicionar pausa aos selecionados: painel/modo separado para somar valor à pausa atual de cada frame selecionado, preservando diferenças e registrando Undo único.
+- Undo/Redo de troca de imagem: avaliar memória no iPhone/Safari e guardar imagem anterior/nova sem estourar memória.
+- Velocidade constante perceptiva: estudar sensação de velocidade considerando posição, escala e rotação, inclusive deslocamento médio dos cantos em zoom/rotação fortes.
 
 ---
 

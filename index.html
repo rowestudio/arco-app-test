@@ -1,14 +1,14 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b27c                                     ║
+║  Versão: v8z4b27d                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
-║  v8z4b27c                                            ║
+║  v8z4b27d                                            ║
 ║    fix: Pausa em seleção múltipla simplificada;      ║
 ║         mostra frames e remove ações redundantes.    ║
 ║  v8z4b27b                                            ║
@@ -454,7 +454,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b27c — fix: Pausa em seleção múltipla simplificada com indicação dos frames afetados, botão Definir pausa, Reset/Zerar secundário e sem ações redundantes. -->
+<!-- Arco Motion App — v8z4b27d — fix: Pausa contextual direta com Undo consolidado, menu com 1 frame, Selecionar todos, Undo da cor de fundo e overlay ativo menos escuro. -->
 <!-- Arco Motion App — v8z4b27b — fix: Pausa em seleção múltipla troca incrementos fixos por slider decimal reaproveitando a lógica real de pausa. -->
 <!-- Arco Motion App — v8z4b26g — fix: seleção múltipla remove preenchimento/tingimento laranja interno e usa overlay escuro externo com recortes rotacionados; caminho/curva, dados, Preview, Export e JSON inalterados. -->
 <!-- Arco Motion App — v8z4b26f — fix: seleção múltipla separa luz selecionada, moldura, foco ativo e caminhos; dim/active não interferem durante seleção múltipla; dados, Preview, Export e JSON inalterados. -->
@@ -2232,6 +2232,10 @@ body.cust-open #toolbar{
       </svg>
       <span class="ab-lbl">Posição</span>
     </button>
+    <button type="button" class="ab-tab" onclick="selectAllFramesForContext()">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></svg>
+      <span class="ab-lbl">Selecionar todos</span>
+    </button>
   </div>
   <!-- Camada 2: submenu do grupo ativo -->
   <div id="alignBarSubmenu" style="display:none;align-items:flex-end;height:100%;gap:2px;overflow-x:auto;"></div>
@@ -2408,7 +2412,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b27c</span><br><span id="appVersionNameText">v8z4b27c</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b27d</span><br><span id="appVersionNameText">v8z4b27d</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -2827,11 +2831,11 @@ body.cust-open #toolbar{
     <span style="font-size:12px;color:var(--text3);flex-shrink:0;">Personalizar</span>
     <input type="color" id="bgHexInput" value="#000000"
       style="width:44px;height:36px;border:none;background:none;cursor:pointer;padding:0;border-radius:8px;overflow:hidden;flex-shrink:0;"
-      oninput="setBgColorHex(this.value)">
+      onpointerdown="beginBgColorEdit()" onfocus="beginBgColorEdit()" oninput="setBgColorHex(this.value)" onchange="commitBgColorEdit(this.value)">
     <input type="text" id="bgHexText" value="#000000" maxlength="7"
       style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;
              padding:8px 12px;font-size:14px;color:var(--text);font-family:monospace;"
-      oninput="onBgHexText(this.value)">
+      onfocus="beginBgColorEdit()" oninput="onBgHexText(this.value)" onchange="commitBgColorEdit(this.value)">
   </div>
   <p style="font-size:11px;color:var(--text3);margin-top:12px;">Aparece onde a imagem não cobre o frame.</p>
 </div>
@@ -4749,8 +4753,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b27c';
-const APP_VERSION_NAME = 'v8z4b27c';
+const APP_VERSION = 'v8z4b27d';
+const APP_VERSION_NAME = 'v8z4b27d';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4875,7 +4879,7 @@ let selectedFrames = new Set(); // seleção múltipla
 let frameMultiSelectMode = false; // legado v8z4b26a; v8z4b26b não usa botão/modo visual
 
 function isMultiSelectionActive() {
-  return selectedFrames.size > 0;
+  return selectedFrames.size > 1;
 }
 
 function isFrameVisuallyMultiSelected(i) {
@@ -10179,6 +10183,7 @@ function captureState() {
     activeIdx,
     currentRatio,
     duration,
+    bgColor,
     defaultNewSegmentDuration,
     baseFrameW,
     easeAmount,
@@ -10225,6 +10230,7 @@ function cloneProjectStateSnapshot(state) {
     activeIdx: state.activeIdx,
     currentRatio: state.currentRatio,
     duration: state.duration,
+    bgColor: state.bgColor || '#000000',
     defaultNewSegmentDuration: state.defaultNewSegmentDuration,
     baseFrameW: state.baseFrameW,
     easeAmount: state.easeAmount,
@@ -10290,6 +10296,9 @@ function restoreState(state) {
   activeIdx  = state.activeIdx;
   currentRatio = state.currentRatio;
   duration  = state.duration;
+  bgColor = state.bgColor || '#000000';
+  imageArea.style.background = bgColor;
+  syncBgColorUI();
   defaultNewSegmentDuration = Math.max(0, Math.round(state.defaultNewSegmentDuration ?? 2));
   baseFrameW = Number.isFinite(state.baseFrameW) ? state.baseFrameW : baseFrameW;
   easeAmount = state.easeAmount;
@@ -12287,7 +12296,7 @@ function updateDimOverlay() {
     .filter(i => i >= 0 && i < frameCount)
     .sort((a, b) => a - b);
 
-  if (multiTargets.length > 0) {
+  if (multiTargets.length > 1) {
     const maskId = 'multiDimMask';
     const holes = multiTargets.map(i => {
       const corners = getRotatedFrameCorners(i);
@@ -12326,7 +12335,7 @@ function updateDimOverlay() {
               transform="rotate(${rot.toFixed(2)},${cx.toFixed(1)},${cy.toFixed(1)})"/>
       </clipPath>
     </defs>
-    <rect x="0" y="0" width="${W}" height="${H}" fill="rgba(0,0,0,0.52)"/>
+    <rect x="0" y="0" width="${W}" height="${H}" fill="rgba(0,0,0,0.38)"/>
     <rect x="${(cx-hw).toFixed(1)}" y="${(cy-hh).toFixed(1)}"
           width="${f.w.toFixed(1)}" height="${f.h.toFixed(1)}"
           rx="${rx}" ry="${rx}"
@@ -12337,7 +12346,7 @@ function updateDimOverlay() {
   if (!CSS.supports('mix-blend-mode', 'destination-out')) {
     const corners = getRotatedFrameCorners(activeIdx);
     const pts = corners.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' L ');
-    svg.innerHTML = `<path d="M0,0 H${W} V${H} H0 Z M${pts} Z" fill="rgba(0,0,0,0.52)" fill-rule="evenodd"/>`;
+    svg.innerHTML = `<path d="M0,0 H${W} V${H} H0 Z M${pts} Z" fill="rgba(0,0,0,0.38)" fill-rule="evenodd"/>`;
   }
 }
 
@@ -15923,6 +15932,9 @@ function resetAll() {
   // v8z4b23a — Caso A: projeto nasceu de imagem nova → Reset volta ao F1 assistido.
   if (_projectNewFromImage) {
     closeAll();
+    bgColor = projectResetBaseline?.bgColor || '#000000';
+    imageArea.style.background = bgColor;
+    syncBgColorUI();
     resetEditorZoom();
     startFirstFrameAssistedInsertion();
     showStatus('Resetado');
@@ -17532,6 +17544,7 @@ function setSegEase(ease) {
 
 function closeAll() {
   if (shouldBlockGlobalUIAction()) return;
+  commitBatchPauseEditSession();
   teardownFramePauseRows();
   teardownFramePauseLocalSlider();
   closeSegEasePanel();
@@ -18971,7 +18984,7 @@ function buildProjectData() {
     : null;
   return {
     version: APP_VERSION,
-    currentRatio, duration, easeAmount, easeMode,
+    currentRatio, duration, bgColor, easeAmount, easeMode,
     pauseDuration, loopEnabled, frameCount, activeIdx,
     imageAR, imageARLabel, framesNorm,
     loopDuration,
@@ -19416,6 +19429,9 @@ function applyFrameData(data) {
 
   currentRatio  = data.currentRatio || '9:16';
   duration      = data.duration || 6;
+  bgColor       = data.bgColor || data.backgroundColor || '#000000';
+  imageArea.style.background = bgColor;
+  syncBgColorUI();
   defaultNewSegmentDuration = Math.max(0, Math.round(data.defaultNewSegmentDuration ?? 2));
   easeAmount    = data.easeAmount ?? 0;
   easeMode      = data.easeMode || 'global';
@@ -19649,33 +19665,62 @@ function triggerImageLoad() {
 // ═══════════════════════════════════════
 // BG COLOR
 // ═══════════════════════════════════════
-function setBgColor(hex, el) {
-  bgColor = hex;
-  document.querySelectorAll('#bgSwatches .bg-swatch').forEach(c => c.classList.remove('active'));
-  if (el) el.classList.add('active');
-  imageArea.style.background = hex;
+let bgColorEditSnapshot = null;
+function normalizeBgHex(hex) {
+  return /^#[0-9a-fA-F]{6}$/.test(hex || '') ? hex.toLowerCase() : null;
+}
+function syncBgColorUI() {
+  const hex = normalizeBgHex(bgColor) || '#000000';
+  document.querySelectorAll('#bgSwatches .bg-swatch').forEach(c => {
+    c.classList.toggle('active', (c.dataset.color || '').toLowerCase() === hex);
+  });
   const hi = document.getElementById('bgHexInput');
   const ht = document.getElementById('bgHexText');
   if (hi) hi.value = hex;
   if (ht) ht.value = hex;
+}
+function applyBgColorValue(hex, el) {
+  const next = normalizeBgHex(hex);
+  if (!next) return false;
+  bgColor = next;
+  if (imageArea) imageArea.style.background = next;
+  syncBgColorUI();
+  if (el) el.classList.add('active');
+  return true;
+}
+function beginBgColorEdit() {
+  if (shouldBlockGlobalUIAction()) return;
+  if (!bgColorEditSnapshot) bgColorEditSnapshot = captureState();
+}
+function commitBgColorEdit(hex) {
+  if (shouldBlockGlobalUIAction()) return;
+  const before = bgColorEditSnapshot || captureState();
+  bgColorEditSnapshot = null;
+  if (hex) applyBgColorValue(hex);
+  if (!projectStateEquals(before, captureState())) {
+    pushUndoSnapshot(before);
+    markProjectDirty('background-color');
+    if (isPreviewing) { stopPreview(); startPreview(); }
+    showStatus('Fundo: ' + bgColor);
+  }
+}
+function setBgColor(hex, el) {
+  if (shouldBlockGlobalUIAction()) return;
+  const before = captureState();
+  if (!applyBgColorValue(hex, el)) return;
+  if (!projectStateEquals(before, captureState())) {
+    pushUndoSnapshot(before);
+    markProjectDirty('background-color');
+    if (isPreviewing) { stopPreview(); startPreview(); }
+  }
   closeAll();
-  showStatus('Fundo: ' + hex);
+  showStatus('Fundo: ' + bgColor);
 }
 function setBgColorHex(hex) {
-  bgColor = hex;
-  imageArea.style.background = hex;
-  document.querySelectorAll('#bgSwatches .bg-swatch').forEach(c => c.classList.remove('active'));
-  const ht = document.getElementById('bgHexText');
-  if (ht) ht.value = hex;
+  if (applyBgColorValue(hex)) showStatus('Fundo: ' + bgColor);
 }
 function onBgHexText(val) {
-  if (/^#[0-9a-fA-F]{6}$/.test(val)) {
-    bgColor = val;
-    imageArea.style.background = val;
-    document.querySelectorAll('#bgSwatches .bg-swatch').forEach(c => c.classList.remove('active'));
-    const hi = document.getElementById('bgHexInput');
-    if (hi) hi.value = val;
-  }
+  applyBgColorValue(val);
 }
 
 // ═══════════════════════════════════════
@@ -19745,7 +19790,7 @@ function toggleFrameSelection(fi, makeActive) {
   const wasSelected = selectedFrames.has(fi);
   if (wasSelected) selectedFrames.delete(fi);
   else selectedFrames.add(fi);
-  const isSelectingMultiple = wasMultiSelectionActive || selectedFrames.size > 0;
+  const isSelectingMultiple = wasMultiSelectionActive || selectedFrames.size > 1;
   if (makeActive && !isSelectingMultiple) {
     resetCustGlobalLocks();
     activeIdx = fi;
@@ -19783,22 +19828,37 @@ function applyPointModeToSelectionOrActive(mode) {
   return changed;
 }
 
+let alignBarActiveGroup = null;
+let batchPauseEditSession = null;
+
+function getContextSelectionTargets(includeLocked) {
+  return Array.from(selectedFrames)
+    .filter(i => i >= 0 && i < frameCount && frames[i] && (includeLocked || !frameLocked[i]))
+    .sort((a, b) => a - b);
+}
+
+function getContextSelectionLabel() {
+  const targets = getContextSelectionTargets(true);
+  if (targets.length === 1) return 'F' + (targets[0] + 1) + ' selecionado';
+  if (targets.length === 2) return targets.map(i => 'F' + (i + 1)).join(', ') + ' selecionados';
+  return targets.length + ' frames selecionados';
+}
+
 function updateAlignBar() {
   const bar = document.getElementById('alignBar');
   const lbl = document.getElementById('alignBarLabel');
   if (!bar) return;
   const count = selectedFrames.size;
-  if (count >= 2) {
+  if (count >= 1) {
     bar.style.display = 'block';
-    // v8z4b16c — Label compacto (apenas número). Mantém leitura clara
-    // sem alongar a primeira "aba" Voltar — o ícone de chevron já
-    // indica que é o botão de voltar/sair da seleção.
-    if (lbl) lbl.textContent = String(count);
-    // Sempre que o conjunto muda, voltamos à camada primária para
-    // evitar deixar o usuário preso no submenu Alinhar com seleção
-    // alterada.
-    closeAlignSubmenu();
+    if (lbl) lbl.textContent = getContextSelectionLabel();
+    const s = document.getElementById('alignBarSubmenu');
+    if (s && s.style.display !== 'none' && alignBarActiveGroup) {
+      if (alignBarActiveGroup === 'pause') commitBatchPauseEditSession();
+      openAlignSubmenu(alignBarActiveGroup, true);
+    }
   } else {
+    commitBatchPauseEditSession();
     bar.style.display = 'none';
   }
 }
@@ -19806,25 +19866,19 @@ function updateAlignBar() {
 // v8z4b16c — Alterna entre camada primária e submenu Alinhar.
 // O submenu ocupa o mesmo slot inferior (mesma altura), apenas troca
 // o conteúdo visível — não empurra o stage.
-function alignBarButton(label, action, icon) {
-  return `<button type="button" class="ab-tab" onclick="${action}">
+function alignBarButton(label, action, icon, disabled) {
+  return `<button type="button" class="ab-tab${disabled ? ' ab-tab-disabled' : ''}" ${disabled ? 'disabled aria-disabled="true"' : `onclick="${action}"`}>
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${icon || '<circle cx="12" cy="12" r="4"/>'}</svg>
     <span class="ab-lbl">${label}</span>
   </button>`;
 }
 
-
 function getBatchPauseTargets() {
-  if (selectedFrames.size < 2) return [];
-  return Array.from(selectedFrames).filter(i => i >= 0 && i < frameCount && !frameLocked[i] && frames[i]);
+  return getContextSelectionTargets(false);
 }
 
 function getBatchPauseSelectionLabel() {
-  const targets = Array.from(selectedFrames)
-    .filter(i => i >= 0 && i < frameCount)
-    .sort((a, b) => a - b);
-  if (targets.length <= 3) return targets.map(i => 'F' + (i + 1)).join(', ') + ' selecionados';
-  return targets.length + ' frames selecionados';
+  return getContextSelectionLabel();
 }
 
 function getBatchPausePanelValue() {
@@ -19835,6 +19889,28 @@ function getBatchPausePanelValue() {
   const ref = framePauses[targets[0]]?.duration || 0;
   const allEqual = targets.every(i => Math.abs((framePauses[i]?.duration || 0) - ref) <= 0.0001);
   return clampFramePauseValue(allEqual ? ref : (framePauses[fallbackIdx]?.duration || 0));
+}
+
+function beginBatchPauseEditSession() {
+  ensureFramePauses();
+  const targets = getBatchPauseTargets();
+  batchPauseEditSession = {
+    targets,
+    before: captureState()
+  };
+}
+
+function commitBatchPauseEditSession() {
+  if (!batchPauseEditSession) return;
+  const before = batchPauseEditSession.before;
+  batchPauseEditSession = null;
+  if (!projectStateEquals(before, captureState())) {
+    pushUndoSnapshot(before);
+    markProjectDirty('context-pause-session');
+    setTemplateManualIfNeeded();
+    if (isPreviewing) { stopPreview(); startPreview(); }
+    showStatus('Pausa atualizada');
+  }
 }
 
 function syncBatchPauseControl() {
@@ -19856,10 +19932,11 @@ function applyBatchPauseFromControl() {
 function applyPauseValueToSelected(rawValue) {
   if (shouldBlockGlobalUIAction()) return;
   ensureFramePauses();
-  const editable = getBatchPauseTargets();
+  if (!batchPauseEditSession) beginBatchPauseEditSession();
+  const editable = (batchPauseEditSession?.targets || getBatchPauseTargets())
+    .filter(i => i >= 0 && i < frameCount && !frameLocked[i] && frames[i]);
   if (!editable.length) { showStatus('Frames travados'); return; }
   const value = clampFramePauseValue(rawValue);
-  const before = captureState();
   let changed = false;
   editable.forEach(i => {
     const prev = framePauses[i]?.duration || 0;
@@ -19868,23 +19945,33 @@ function applyPauseValueToSelected(rawValue) {
       changed = true;
     }
   });
-  if (!changed) { showStatus('Sem alteração'); return; }
-  pushUndoSnapshot(before);
-  markProjectDirty('multi-select-batch-pause-set');
-  setTemplateManualIfNeeded();
-  refreshPauseControls();
   syncBatchPauseControl();
+  if (!changed) return;
+  refreshPauseControls();
   syncFinishControlsFromTimeline();
   syncCustomizePanel();
   renderAll();
-  if (isPreviewing) { stopPreview(); startPreview(); }
-  showStatus('Pausa definida nos selecionados');
 }
 
-function openAlignSubmenu(group) {
+function selectAllFramesForContext() {
   if (shouldBlockGlobalUIAction()) return;
+  if (frameCount < 1) return;
+  if (batchPauseEditSession) commitBatchPauseEditSession();
+  for (let i = 0; i < frameCount; i++) selectedFrames.add(i);
+  updateFrameSelector();
+  renderAll();
+  updateAlignBar();
+  const s = document.getElementById('alignBarSubmenu');
+  if (s && s.style.display !== 'none' && alignBarActiveGroup) openAlignSubmenu(alignBarActiveGroup, true);
+  showStatus('Todos os frames selecionados');
+}
+
+function openAlignSubmenu(group, keepExisting) {
+  if (shouldBlockGlobalUIAction()) return;
+  if (alignBarActiveGroup === 'pause' && group !== 'pause') commitBatchPauseEditSession();
   const p = document.getElementById('alignBarPrimary');
   const s = document.getElementById('alignBarSubmenu');
+  alignBarActiveGroup = group;
   if (s) {
     const back = `<button type="button" aria-label="Voltar" class="ab-tab ab-back-strong" onclick="closeAlignSubmenu()" style="flex:0 0 60px;">
       <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -19902,6 +19989,7 @@ function openAlignSubmenu(group) {
     };
     let items = [];
     if (group === 'pause') {
+      if (!keepExisting || !batchPauseEditSession) beginBatchPauseEditSession();
       const value = getBatchPausePanelValue();
       const targetLabel = getBatchPauseSelectionLabel();
       items = [`<div class="ab-pause-panel">
@@ -19910,12 +19998,11 @@ function openAlignSubmenu(group) {
           <div class="ab-pause-context">${targetLabel}</div>
         </div>
         <div class="ab-pause-control">
-          <input type="range" class="dur-slider" id="batchPauseSlider" min="${FRAME_PAUSE_MIN}" max="${FRAME_PAUSE_MAX}" step="${FRAME_PAUSE_STEP}" value="${value.toFixed(1)}" oninput="syncBatchPauseControl()">
+          <input type="range" class="dur-slider" id="batchPauseSlider" min="${FRAME_PAUSE_MIN}" max="${FRAME_PAUSE_MAX}" step="${FRAME_PAUSE_STEP}" value="${value.toFixed(1)}" oninput="applyBatchPauseFromControl()">
           <span id="batchPauseVal" class="ab-pause-value">${value.toFixed(1)}s</span>
         </div>
         <div class="ab-pause-actions">
-          <div class="chip ab-pause-apply" onclick="applyBatchPauseFromControl()">Definir pausa</div>
-          <div class="chip" onclick="alignFrames('pause-zero')">Zerar</div>
+          <div class="chip" onclick="applyPauseValueToSelected(0)">Zerar</div>
         </div>
       </div>`];
     } else if (group === 'scale') {
@@ -19933,13 +20020,14 @@ function openAlignSubmenu(group) {
         alignBarButton('Zerar', "alignFrames('rot-zero')", reset)
       ];
     } else if (group === 'position') {
+      const distributeDisabled = getContextSelectionTargets(true).length < 3;
       items = [
         alignBarButton('Cima', "alignFrames('move-up')", arrows.up),
         alignBarButton('Baixo', "alignFrames('move-down')", arrows.down),
         alignBarButton('Esq', "alignFrames('move-left')", arrows.left),
         alignBarButton('Dir', "alignFrames('move-right')", arrows.right),
         alignBarButton('Alinhar', "openAlignSubmenu('align')", '<line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/>'),
-        alignBarButton('Distribuir', "openAlignSubmenu('distribute')", '<line x1="4" y1="6" x2="4" y2="18"/><line x1="12" y1="6" x2="12" y2="18"/><line x1="20" y1="6" x2="20" y2="18"/>')
+        alignBarButton('Distribuir', "openAlignSubmenu('distribute')", '<line x1="4" y1="6" x2="4" y2="18"/><line x1="12" y1="6" x2="12" y2="18"/><line x1="20" y1="6" x2="20" y2="18"/>', distributeDisabled)
       ];
     } else if (group === 'align') {
       items = [
@@ -19951,9 +20039,10 @@ function openAlignSubmenu(group) {
         alignBarButton('Base', "alignFrames('align-bottom')", '<line x1="4" y1="20" x2="20" y2="20"/><rect x="7" y="10" width="3" height="7"/><rect x="14" y="3" width="3" height="14"/>')
       ];
     } else if (group === 'distribute') {
+      const distributeDisabled = getContextSelectionTargets(true).length < 3;
       items = [
-        alignBarButton('Horizontal', "alignFrames('distribute-x')", '<line x1="4" y1="6" x2="4" y2="18"/><line x1="12" y1="6" x2="12" y2="18"/><line x1="20" y1="6" x2="20" y2="18"/>'),
-        alignBarButton('Vertical', "alignFrames('distribute-y')", '<line x1="6" y1="4" x2="18" y2="4"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="6" y1="20" x2="18" y2="20"/>')
+        alignBarButton('Horizontal', "alignFrames('distribute-x')", '<line x1="4" y1="6" x2="4" y2="18"/><line x1="12" y1="6" x2="12" y2="18"/><line x1="20" y1="6" x2="20" y2="18"/>', distributeDisabled),
+        alignBarButton('Vertical', "alignFrames('distribute-y')", '<line x1="6" y1="4" x2="18" y2="4"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="6" y1="20" x2="18" y2="20"/>', distributeDisabled)
       ];
     }
     s.innerHTML = back + items.join('');
@@ -19965,6 +20054,8 @@ function openAlignSubmenu(group) {
   if (group === 'pause') syncBatchPauseControl();
 }
 function closeAlignSubmenu() {
+  commitBatchPauseEditSession();
+  alignBarActiveGroup = null;
   const p = document.getElementById('alignBarPrimary');
   const s = document.getElementById('alignBarSubmenu');
   const bar = document.getElementById('alignBar');
@@ -19985,18 +20076,19 @@ function clearMultiSelect() {
 
 function alignFrames(mode) {
   if (shouldBlockGlobalUIAction()) return;
-  if (selectedFrames.size < 2) return;
-  const sel = Array.from(selectedFrames).filter(i => i >= 0 && i < frameCount);
-  if (sel.length < 2) return;
+  commitBatchPauseEditSession();
+  const sel = getContextSelectionTargets(true);
+  if (!sel.length) return;
   const editable = sel.filter(i => !frameLocked[i] && frames[i]);
   if (!editable.length) { showStatus('Frames travados'); return; }
   const before = captureState();
   const ar = ratioMap[currentRatio];
-  const ref = frames[activeIdx] || frames[sel[0]];
+  const refIdx = sel.includes(activeIdx) ? activeIdx : sel[0];
+  const ref = frames[refIdx] || frames[sel[0]];
   const refW = baseFrameW > 0 ? baseFrameW : stageW * 0.55;
   const refCX = ref.x + ref.w / 2;
   const refCY = ref.y + ref.h / 2;
-  const refRot = frameRotations[activeIdx] || 0;
+  const refRot = frameRotations[refIdx] || 0;
   const posStep = 10;
   let changed = false;
   const setFrameRect = (i, next) => {
