@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b27a                                     ║
+║  Versão: v8z4b27b                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b27b                                            ║
+║    fix: Pausa em seleção múltipla usa slider         ║
+║         decimal e aplica valor aos selecionados.     ║
 ║  v8z4b27a                                            ║
 ║    feat: menu de seleção múltipla ganha grupos       ║
 ║          Pausa, Escala, Rotação e Posição.           ║
@@ -448,7 +451,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b27a — feat: menu próprio de seleção múltipla expandido com Pausa, Escala, Rotação e Posição; ações em lote preservam seleção, overlay, Undo único, Preview, Export e JSON. -->
+<!-- Arco Motion App — v8z4b27b — fix: Pausa em seleção múltipla troca incrementos fixos por slider decimal reaproveitando a lógica real de pausa. -->
 <!-- Arco Motion App — v8z4b26g — fix: seleção múltipla remove preenchimento/tingimento laranja interno e usa overlay escuro externo com recortes rotacionados; caminho/curva, dados, Preview, Export e JSON inalterados. -->
 <!-- Arco Motion App — v8z4b26f — fix: seleção múltipla separa luz selecionada, moldura, foco ativo e caminhos; dim/active não interferem durante seleção múltipla; dados, Preview, Export e JSON inalterados. -->
 <!-- Arco Motion App — v8z4b24b — stage gesture arbitration: zoom/pan com dois dedos não seleciona frames acidentalmente; handles, overlays e elementos tutoriais do Stage não são ativados ao iniciar gesto de dois dedos; bloqueio curto após navegação evita taps residuais; área interativa de zoom/pan cobre o viewport de edição, não apenas a imagem; imagem tratada como conteúdo dentro do Stage, não como limite de navegação. -->
@@ -1506,6 +1509,48 @@ body.cust-open #toolbar{
   color:#fff;
   font-weight:700;
 }
+
+#alignBar.ab-pause-panel-open{
+  height:calc(136px + max(env(safe-area-inset-bottom, 4px), 4px)) !important;
+}
+#alignBar .ab-pause-panel{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:4px 2px 0;
+  min-width:0;
+}
+#alignBar .ab-pause-control{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+}
+#alignBar .ab-pause-value{
+  font-size:14px;
+  font-weight:700;
+  color:var(--accent);
+  min-width:46px;
+  text-align:right;
+}
+#alignBar .ab-pause-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+#alignBar .ab-pause-actions .chip{
+  flex:1 1 calc(50% - 3px);
+  margin:0;
+  min-height:30px;
+  padding:6px 8px;
+  justify-content:center;
+  font-size:12px;
+  white-space:nowrap;
+}
+#alignBar .ab-pause-actions .ab-pause-apply{
+  flex-basis:100%;
+}
 #custBar .cust-tab svg{
   stroke:rgba(235,235,235,0.95) !important;
   color:rgba(235,235,235,0.95) !important;
@@ -2347,7 +2392,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b27a</span><br><span id="appVersionNameText">v8z4b27a</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b27b</span><br><span id="appVersionNameText">v8z4b27b</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4688,8 +4733,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b27a';
-const APP_VERSION_NAME = 'v8z4b27a';
+const APP_VERSION = 'v8z4b27b';
+const APP_VERSION_NAME = 'v8z4b27b';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -19752,6 +19797,66 @@ function alignBarButton(label, action, icon) {
   </button>`;
 }
 
+
+function getBatchPauseTargets() {
+  if (selectedFrames.size < 2) return [];
+  return Array.from(selectedFrames).filter(i => i >= 0 && i < frameCount && !frameLocked[i] && frames[i]);
+}
+
+function getBatchPausePanelValue() {
+  ensureFramePauses();
+  const targets = getBatchPauseTargets();
+  const fallbackIdx = (activeIdx >= 0 && activeIdx < frameCount) ? activeIdx : targets[0];
+  if (!targets.length) return clampFramePauseValue(framePauses[fallbackIdx]?.duration || 0);
+  const ref = framePauses[targets[0]]?.duration || 0;
+  const allEqual = targets.every(i => Math.abs((framePauses[i]?.duration || 0) - ref) <= 0.0001);
+  return clampFramePauseValue(allEqual ? ref : (framePauses[fallbackIdx]?.duration || 0));
+}
+
+function syncBatchPauseControl() {
+  const slider = document.getElementById('batchPauseSlider');
+  if (!slider) return;
+  const value = clampFramePauseValue(slider.value);
+  if (parseFloat(slider.value) !== parseFloat(value.toFixed(1))) slider.value = value.toFixed(1);
+  const val = document.getElementById('batchPauseVal');
+  if (val) val.textContent = value.toFixed(1) + 's';
+  if (typeof updateSliderFill === 'function') updateSliderFill(slider);
+}
+
+function applyBatchPauseFromControl() {
+  const slider = document.getElementById('batchPauseSlider');
+  if (!slider) return;
+  applyPauseValueToSelected(slider.value);
+}
+
+function applyPauseValueToSelected(rawValue) {
+  if (shouldBlockGlobalUIAction()) return;
+  ensureFramePauses();
+  const editable = getBatchPauseTargets();
+  if (!editable.length) { showStatus('Frames travados'); return; }
+  const value = clampFramePauseValue(rawValue);
+  const before = captureState();
+  let changed = false;
+  editable.forEach(i => {
+    const prev = framePauses[i]?.duration || 0;
+    if (Math.abs(prev - value) > 0.0001) {
+      framePauses[i] = { duration: value };
+      changed = true;
+    }
+  });
+  if (!changed) { showStatus('Sem alteração'); return; }
+  pushUndoSnapshot(before);
+  markProjectDirty('multi-select-batch-pause-set');
+  setTemplateManualIfNeeded();
+  refreshPauseControls();
+  syncBatchPauseControl();
+  syncFinishControlsFromTimeline();
+  syncCustomizePanel();
+  renderAll();
+  if (isPreviewing) { stopPreview(); startPreview(); }
+  showStatus('Pausa aplicada aos selecionados');
+}
+
 function openAlignSubmenu(group) {
   if (shouldBlockGlobalUIAction()) return;
   const p = document.getElementById('alignBarPrimary');
@@ -19773,12 +19878,18 @@ function openAlignSubmenu(group) {
     };
     let items = [];
     if (group === 'pause') {
-      items = [
-        alignBarButton('+0.5s', "alignFrames('pause-plus')", plus),
-        alignBarButton('-0.5s', "alignFrames('pause-minus')", minus),
-        alignBarButton('Zerar', "alignFrames('pause-zero')", reset),
-        alignBarButton('Igualar', "alignFrames('pause-match')", equal)
-      ];
+      const value = getBatchPausePanelValue();
+      items = [`<div class="ab-pause-panel">
+        <div class="ab-pause-control">
+          <input type="range" class="dur-slider" id="batchPauseSlider" min="${FRAME_PAUSE_MIN}" max="${FRAME_PAUSE_MAX}" step="${FRAME_PAUSE_STEP}" value="${value.toFixed(1)}" oninput="syncBatchPauseControl()">
+          <span id="batchPauseVal" class="ab-pause-value">${value.toFixed(1)}s</span>
+        </div>
+        <div class="ab-pause-actions">
+          <div class="chip ab-pause-apply" onclick="applyBatchPauseFromControl()">Aplicar aos selecionados</div>
+          <div class="chip" onclick="alignFrames('pause-zero')">Zerar</div>
+          <div class="chip" onclick="alignFrames('pause-match')">Igualar ao ativo</div>
+        </div>
+      </div>`];
     } else if (group === 'scale') {
       items = [
         alignBarButton('+5%', "alignFrames('scale-plus')", plus),
@@ -19819,12 +19930,17 @@ function openAlignSubmenu(group) {
     }
     s.innerHTML = back + items.join('');
   }
+  const bar = document.getElementById('alignBar');
+  if (bar) bar.classList.toggle('ab-pause-panel-open', group === 'pause');
   if (p) p.style.display = 'none';
   if (s) s.style.display = 'flex';
+  if (group === 'pause') syncBatchPauseControl();
 }
 function closeAlignSubmenu() {
   const p = document.getElementById('alignBarPrimary');
   const s = document.getElementById('alignBarSubmenu');
+  const bar = document.getElementById('alignBar');
+  if (bar) bar.classList.remove('ab-pause-panel-open');
   if (s) s.style.display = 'none';
   if (p) p.style.display = 'flex';
 }
@@ -19892,11 +20008,7 @@ function alignFrames(mode) {
     setFrameRect(i, { x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh, pointMode: f.pointMode || POINT_MODE_DEFAULT });
   };
 
-  if (mode === 'pause-plus') {
-    editable.forEach(i => setPauseDirect(i, (framePauses[i]?.duration || 0) + 0.5));
-  } else if (mode === 'pause-minus') {
-    editable.forEach(i => setPauseDirect(i, (framePauses[i]?.duration || 0) - 0.5));
-  } else if (mode === 'pause-zero') {
+  if (mode === 'pause-zero') {
     editable.forEach(i => setPauseDirect(i, 0));
   } else if (mode === 'pause-match') {
     editable.forEach(i => setPauseDirect(i, refPause));
@@ -19968,6 +20080,7 @@ function alignFrames(mode) {
   markProjectDirty('multi-select-batch-' + mode);
   setTemplateManualIfNeeded();
   refreshPauseControls();
+  syncBatchPauseControl();
   syncFinishControlsFromTimeline();
   syncCustomizePanel();
   renderAll();
