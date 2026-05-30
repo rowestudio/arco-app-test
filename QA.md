@@ -1,3 +1,8 @@
+# QA pendente — v8z4b27e corrigir menu contextual, primeiro selecionado, Pausa e Undo de Conter
+
+- Checklist detalhado criado em `docs/QA-v8z4b27e.md`.
+- Verificações estáticas executadas: base `v8z4b27d` confirmada antes das alterações; versionamento `APP_VERSION`/`APP_VERSION_NAME`/texto visível atualizado para `v8z4b27e`; menu contextual principal sem `Voltar` e sem texto redundante do alvo; `Selecionar todos` reposicionado à esquerda; subpainéis preservando `Voltar` e texto do alvo; seleção contextual com 1 frame já destacada no Stage e na faixa; painel Pausa sem botão `Zerar`; `containFrames` integrado ao Undo/Redo de `Conter na imagem`; carregamento de JSON e Reset de projeto novo limpando estado interno de contenção; seleção continua temporária e não entra no JSON; `drawBezier()`, `getStateAtT`, `drawAtT` e pipeline WebCodecs/export estrutural não foram alterados.
+
 # QA pendente — v8z4b27d simplificar Pausa, menu com 1 frame, Undo da cor e overlay
 
 - Checklist detalhado criado em `docs/QA-v8z4b27d.md`.

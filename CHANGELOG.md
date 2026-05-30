@@ -1,3 +1,15 @@
+## v8z4b27e — corrigir menu contextual, primeiro selecionado, Pausa e Undo de Conter
+
+- `index.html`: versionamento atualizado para `v8z4b27e` em constantes, texto visível e comentário do topo.
+- Menu contextual principal: removidos o botão `Voltar` e o texto redundante do alvo; `Selecionar todos` foi reposicionado à esquerda e mantém o menu aberto após selecionar todos os frames.
+- Seleção contextual: `selectedFrames.size >= 1` passa a acionar o visual de selecionado no Stage e na faixa, fazendo o primeiro frame selecionado aparecer em laranja.
+- Painel Pausa: removido o botão `Zerar`, preservando título, texto do alvo, slider decimal e Undo consolidado ao fechar/sair do painel.
+- Conter na imagem: `containFrames` agora participa de `captureState()`/`restoreState()`, permitindo Undo/Redo restaurar também o estado interno de contenção; carregamento de JSON e Reset de projeto novo limpam o flag temporário.
+- Preservado da v8z4b27d: seleção como estado temporário de UI, overlay externo múltiplo, ausência do botão `Sel`, cor de fundo no Undo/JSON e slider direto de Pausa.
+- Fora do escopo preservado: não houve alterações em `getStateAtT`, `drawAtT`, WebCodecs/export estrutural, curvas, zoom/pan, inserção assistida, transformação direta de grupo ou JSON estrutural.
+- `docs/QA-v8z4b27e.md`: checklist específico da versão.
+- `QA.md` e `docs/ROADMAP.md`: documentação atualizada para v8z4b27e no repositório de teste.
+
 ## v8z4b27d — simplificar Pausa contextual, menu com 1 frame e Undo da cor
 
 - `index.html`: versionamento atualizado para `v8z4b27d` em constantes, texto visível e comentário do topo.

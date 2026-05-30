@@ -22,6 +22,7 @@
 | v8z4b27b         | **Implementada:** Pausa em lote com slider decimal sem incrementos fixos |
 | v8z4b27c         | **Implementada:** Pausa em lote simplificada com frames afetados e sem ações redundantes |
 | v8z4b27d         | **Implementada:** Pausa contextual direta, menu com 1 frame, Selecionar todos e Undo da cor |
+| v8z4b27e         | **Implementada:** menu contextual limpo, primeiro selecionado destacado, Pausa sem Zerar e Undo de Conter |
 | v8z5-prototype   | Protótipo visual separado da nova interface                 |
 | v8z5a            | Primeira integração real da nova interface aprovada         |
 
@@ -39,7 +40,7 @@
 
 ## 2. Seleção múltipla de frames
 
-**Status v8z4b27d:** seleção simples preserva auto-center e usa overlay normal menos pesado (`rgba(0,0,0,0.38)`); seleção múltipla usa `selectedFrames` como fonte de verdade, mantém overlay escuro externo recortado nos selecionados (`rgba(0,0,0,0.34)`) e oferece ações em menu contextual já a partir de 1 frame. O grupo Pausa usa slider decimal direto nos frames-alvo, mostra o alvo, remove `Definir pausa` e consolida Undo apenas ao fechar/sair do painel. O menu inclui `Selecionar todos`; seleção continua sendo estado temporário de UI e não entra no JSON.
+**Status v8z4b27e:** seleção simples preserva auto-center fora do contexto e usa overlay normal menos pesado (`rgba(0,0,0,0.38)`); seleção contextual usa `selectedFrames` como fonte de verdade já com 1 frame (`selectedFrames.size >= 1`), mantendo destaque laranja no Stage e na faixa. O menu principal inclui `Selecionar todos` à esquerda, sem `Voltar` e sem texto redundante do alvo; subpainéis mantêm `Voltar` e o alvo. O grupo Pausa usa slider decimal direto nos frames-alvo, mostra o alvo, remove `Definir pausa` e `Zerar`, e consolida Undo apenas ao fechar/sair do painel. Seleção continua sendo estado temporário de UI e não entra no JSON; `Conter na imagem` agora restaura também o flag interno no Undo/Redo.
 
 - Selecionar vários frames.
 - Destacar visualmente frames selecionados.
