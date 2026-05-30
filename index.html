@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b27b                                     ║
+║  Versão: v8z4b27c                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b27c                                            ║
+║    fix: Pausa em seleção múltipla simplificada;      ║
+║         mostra frames e remove ações redundantes.    ║
 ║  v8z4b27b                                            ║
 ║    fix: Pausa em seleção múltipla usa slider         ║
 ║         decimal e aplica valor aos selecionados.     ║
@@ -451,6 +454,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b27c — fix: Pausa em seleção múltipla simplificada com indicação dos frames afetados, botão Definir pausa, Reset/Zerar secundário e sem ações redundantes. -->
 <!-- Arco Motion App — v8z4b27b — fix: Pausa em seleção múltipla troca incrementos fixos por slider decimal reaproveitando a lógica real de pausa. -->
 <!-- Arco Motion App — v8z4b26g — fix: seleção múltipla remove preenchimento/tingimento laranja interno e usa overlay escuro externo com recortes rotacionados; caminho/curva, dados, Preview, Export e JSON inalterados. -->
 <!-- Arco Motion App — v8z4b26f — fix: seleção múltipla separa luz selecionada, moldura, foco ativo e caminhos; dim/active não interferem durante seleção múltipla; dados, Preview, Export e JSON inalterados. -->
@@ -1511,15 +1515,27 @@ body.cust-open #toolbar{
 }
 
 #alignBar.ab-pause-panel-open{
-  height:calc(136px + max(env(safe-area-inset-bottom, 4px), 4px)) !important;
+  height:calc(150px + max(env(safe-area-inset-bottom, 4px), 4px)) !important;
 }
 #alignBar .ab-pause-panel{
   flex:1;
   display:flex;
   flex-direction:column;
-  gap:8px;
+  gap:7px;
   padding:4px 2px 0;
   min-width:0;
+}
+#alignBar .ab-pause-title{
+  font-size:12px;
+  font-weight:700;
+  color:rgba(235,235,235,0.95);
+  line-height:1.1;
+}
+#alignBar .ab-pause-context{
+  font-size:11px;
+  font-weight:600;
+  color:var(--text3);
+  line-height:1.1;
 }
 #alignBar .ab-pause-control{
   display:flex;
@@ -1540,16 +1556,16 @@ body.cust-open #toolbar{
   gap:6px;
 }
 #alignBar .ab-pause-actions .chip{
-  flex:1 1 calc(50% - 3px);
+  flex:0 1 auto;
   margin:0;
   min-height:30px;
-  padding:6px 8px;
+  padding:6px 12px;
   justify-content:center;
   font-size:12px;
   white-space:nowrap;
 }
 #alignBar .ab-pause-actions .ab-pause-apply{
-  flex-basis:100%;
+  flex:1 1 auto;
 }
 #custBar .cust-tab svg{
   stroke:rgba(235,235,235,0.95) !important;
@@ -2392,7 +2408,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b27b</span><br><span id="appVersionNameText">v8z4b27b</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b27c</span><br><span id="appVersionNameText">v8z4b27c</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4733,8 +4749,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b27b';
-const APP_VERSION_NAME = 'v8z4b27b';
+const APP_VERSION = 'v8z4b27c';
+const APP_VERSION_NAME = 'v8z4b27c';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -19803,6 +19819,14 @@ function getBatchPauseTargets() {
   return Array.from(selectedFrames).filter(i => i >= 0 && i < frameCount && !frameLocked[i] && frames[i]);
 }
 
+function getBatchPauseSelectionLabel() {
+  const targets = Array.from(selectedFrames)
+    .filter(i => i >= 0 && i < frameCount)
+    .sort((a, b) => a - b);
+  if (targets.length <= 3) return targets.map(i => 'F' + (i + 1)).join(', ') + ' selecionados';
+  return targets.length + ' frames selecionados';
+}
+
 function getBatchPausePanelValue() {
   ensureFramePauses();
   const targets = getBatchPauseTargets();
@@ -19854,7 +19878,7 @@ function applyPauseValueToSelected(rawValue) {
   syncCustomizePanel();
   renderAll();
   if (isPreviewing) { stopPreview(); startPreview(); }
-  showStatus('Pausa aplicada aos selecionados');
+  showStatus('Pausa definida nos selecionados');
 }
 
 function openAlignSubmenu(group) {
@@ -19879,15 +19903,19 @@ function openAlignSubmenu(group) {
     let items = [];
     if (group === 'pause') {
       const value = getBatchPausePanelValue();
+      const targetLabel = getBatchPauseSelectionLabel();
       items = [`<div class="ab-pause-panel">
+        <div>
+          <div class="ab-pause-title">Pausa</div>
+          <div class="ab-pause-context">${targetLabel}</div>
+        </div>
         <div class="ab-pause-control">
           <input type="range" class="dur-slider" id="batchPauseSlider" min="${FRAME_PAUSE_MIN}" max="${FRAME_PAUSE_MAX}" step="${FRAME_PAUSE_STEP}" value="${value.toFixed(1)}" oninput="syncBatchPauseControl()">
           <span id="batchPauseVal" class="ab-pause-value">${value.toFixed(1)}s</span>
         </div>
         <div class="ab-pause-actions">
-          <div class="chip ab-pause-apply" onclick="applyBatchPauseFromControl()">Aplicar aos selecionados</div>
+          <div class="chip ab-pause-apply" onclick="applyBatchPauseFromControl()">Definir pausa</div>
           <div class="chip" onclick="alignFrames('pause-zero')">Zerar</div>
-          <div class="chip" onclick="alignFrames('pause-match')">Igualar ao ativo</div>
         </div>
       </div>`];
     } else if (group === 'scale') {
@@ -19968,7 +19996,6 @@ function alignFrames(mode) {
   const refW = baseFrameW > 0 ? baseFrameW : stageW * 0.55;
   const refCX = ref.x + ref.w / 2;
   const refCY = ref.y + ref.h / 2;
-  const refPause = framePauses[activeIdx]?.duration || 0;
   const refRot = frameRotations[activeIdx] || 0;
   const posStep = 10;
   let changed = false;
@@ -20010,8 +20037,6 @@ function alignFrames(mode) {
 
   if (mode === 'pause-zero') {
     editable.forEach(i => setPauseDirect(i, 0));
-  } else if (mode === 'pause-match') {
-    editable.forEach(i => setPauseDirect(i, refPause));
   } else if (mode === 'scale-plus') {
     editable.forEach(i => setScalePercent(i, frames[i].w / refW * 100 * 1.05));
   } else if (mode === 'scale-minus') {

@@ -1,3 +1,10 @@
+# QA pendente — v8z4b27c simplificar Pausa em seleção múltipla
+
+- Checklist detalhado criado em `docs/QA-v8z4b27c.md`.
+- Verificações estáticas executadas: base `v8z4b27b` confirmada antes das alterações; painel anterior localizado com `Aplicar aos selecionados` e `Igualar ao ativo`; versionamento `APP_VERSION`/`APP_VERSION_NAME`/texto visível; painel Pausa da seleção múltipla com título `Pausa`, contexto dos frames afetados, slider decimal e valor em segundos; ação principal `Definir pausa`; ação secundária `Zerar`; ausência de `Igualar ao ativo`, `Aplicar aos selecionados`, `+0.5s` e `-0.5s`; ausência do botão `Sel`/`btnMultiSelect`; seleção múltipla continua temporária e não entra no JSON; `drawBezier()`, `getStateAtT`, `drawAtT` e pipeline WebCodecs/export não foram alterados.
+- `Adicionar pausa` não foi implementado nesta versão para evitar misturar fluxos; permanece como próximo passo em painel/modo separado.
+- QA manual completo em iPhone/Safari, Preview, MP4, JSON, Reset, inserção assistida, Undo/Redo e painel Pausa permanece como checklist operacional antes de promover a versão.
+
 # QA pendente — v8z4b27b corrigir Pausa em lote sem incrementos fixos
 
 - Checklist detalhado criado em `docs/QA-v8z4b27b.md`.
