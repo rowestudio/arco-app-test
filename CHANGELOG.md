@@ -1,3 +1,16 @@
+## v8z4b27a — expandir menu de seleção múltipla com ações em lote
+
+- `index.html`: versionamento atualizado para `v8z4b27a`.
+- Nova função: menu próprio de seleção múltipla passa a ter 4 grupos principais: Pausa, Escala, Rotação e Posição.
+- Pausa: `+0.5s`, `-0.5s`, zerar e igualar ao frame ativo para os frames selecionados.
+- Escala: `+5%` relativo, `-5%` relativo, igualar ao frame ativo e reset para a escala base existente (`baseFrameW`).
+- Rotação: `+5°`, `-5°`, igualar ao frame ativo e zerar rotação.
+- Posição: movimento relativo em 4 direções, alinhamento por referência no frame ativo e distribuição horizontal/vertical em ordem de frames.
+- Undo/Redo: cada ação em lote registra um único snapshot antes da alteração; seleção múltipla, overlay e frames não selecionados são preservados.
+- Preservado: menu próprio de seleção múltipla, ausência do botão `Sel`, overlay externo múltiplo, caminho/curva, JSON sem persistir seleção, Preview/MP4 sem UI de seleção.
+- `docs/QA-v8z4b27a.md`: checklist específico da versão.
+- `QA.md` e `docs/ROADMAP.md`: documentação atualizada para v8z4b27a no repositório de teste.
+
 ## v8z4b26g — remover laranja interno e corrigir overlay da seleção múltipla
 
 - `index.html`: versionamento atualizado para `v8z4b26g`; seleção múltipla deixa de aplicar qualquer fill/luz laranja interna em `.frame-dim`.

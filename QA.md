@@ -1,3 +1,9 @@
+# QA pendente — v8z4b27a expandir menu de seleção múltipla
+
+- Checklist detalhado criado em `docs/QA-v8z4b27a.md`.
+- Verificações estáticas executadas: base remota `v8z4b26g` confirmada antes das alterações; versionamento `APP_VERSION`/`APP_VERSION_NAME`/texto visível; ausência do botão `Sel`/`btnMultiSelect`; menu próprio `#alignBar` preservado; grupos Pausa, Escala, Rotação e Posição presentes; ações em lote passam por `alignFrames()` com um único snapshot de Undo; seleção múltipla continua temporária e não entra no JSON; `drawBezier()`, `getStateAtT`, `drawAtT` e pipeline WebCodecs/export não foram alterados.
+- QA manual completo em iPhone/Safari, Preview, MP4, JSON, Reset, Loop, inserção assistida e todos os itens de Pausa/Escala/Rotação/Posição permanece como checklist operacional antes de promover a versão.
+
 # QA pendente — v8z4b26g remover laranja interno e corrigir overlay da seleção múltipla
 
 - Checklist detalhado criado em `docs/QA-v8z4b26g.md`.
