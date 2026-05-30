@@ -1,3 +1,9 @@
+# QA pendente — v8z4b27d simplificar Pausa, menu com 1 frame, Undo da cor e overlay
+
+- Checklist detalhado criado em `docs/QA-v8z4b27d.md`.
+- Verificações estáticas executadas: base `v8z4b27c` confirmada antes das alterações; versionamento `APP_VERSION`/`APP_VERSION_NAME`/texto visível atualizado para `v8z4b27d`; botão `Definir pausa` removido; slider de Pausa aplicando diretamente aos frames-alvo; Undo da Pausa consolidado em `commitBatchPauseEditSession()` ao fechar/sair; menu contextual habilitado com 1 frame selecionado; ação `Selecionar todos`; `bgColor` integrado ao Undo/Redo, Reset e JSON; overlay normal alterado para `rgba(0,0,0,0.38)` e overlay múltiplo preservado em `rgba(0,0,0,0.34)`; ausência do botão `Sel`/`btnMultiSelect`; seleção continua temporária e não entra no JSON; `drawBezier()`, `getStateAtT`, `drawAtT` e pipeline WebCodecs/export estrutural não foram alterados.
+- QA manual completo em iPhone/Safari, Preview, MP4, JSON, Reset, inserção assistida, Undo/Redo e painel Pausa permanece como checklist operacional antes de promover a versão.
+
 # QA pendente — v8z4b27c simplificar Pausa em seleção múltipla
 
 - Checklist detalhado criado em `docs/QA-v8z4b27c.md`.

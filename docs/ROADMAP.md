@@ -21,6 +21,7 @@
 | v8z4b27a         | **Implementada:** menu de seleção múltipla com Pausa, Escala, Rotação e Posição |
 | v8z4b27b         | **Implementada:** Pausa em lote com slider decimal sem incrementos fixos |
 | v8z4b27c         | **Implementada:** Pausa em lote simplificada com frames afetados e sem ações redundantes |
+| v8z4b27d         | **Implementada:** Pausa contextual direta, menu com 1 frame, Selecionar todos e Undo da cor |
 | v8z5-prototype   | Protótipo visual separado da nova interface                 |
 | v8z5a            | Primeira integração real da nova interface aprovada         |
 
@@ -38,7 +39,7 @@
 
 ## 2. Seleção múltipla de frames
 
-**Status v8z4b27c:** seleção simples preserva auto-center e foco ativo fora da seleção múltipla; seleção múltipla usa `selectedFrames` como fonte de verdade, mantém overlay escuro externo recortado nos selecionados e oferece ações em lote em menu próprio. O grupo Pausa usa slider decimal, mostra quais frames são afetados, define pausa nos selecionados por `Definir pausa` e remove `Igualar ao ativo`/`Aplicar aos selecionados`.
+**Status v8z4b27d:** seleção simples preserva auto-center e usa overlay normal menos pesado (`rgba(0,0,0,0.38)`); seleção múltipla usa `selectedFrames` como fonte de verdade, mantém overlay escuro externo recortado nos selecionados (`rgba(0,0,0,0.34)`) e oferece ações em menu contextual já a partir de 1 frame. O grupo Pausa usa slider decimal direto nos frames-alvo, mostra o alvo, remove `Definir pausa` e consolida Undo apenas ao fechar/sair do painel. O menu inclui `Selecionar todos`; seleção continua sendo estado temporário de UI e não entra no JSON.
 
 - Selecionar vários frames.
 - Destacar visualmente frames selecionados.
@@ -108,3 +109,34 @@
 - Ícones do menu de curva estão com traço visualmente espesso demais.
 - Não bloqueia nenhuma versão da sequência acima.
 - Será revisado dentro da iteração maior de interface (UI v8z5 ou similar).
+
+
+## Próximas funções registradas em v8z4b27d — não implementadas nesta versão
+
+### Transformação direta de grupo no Stage
+
+- Mover vários frames visualmente como grupo.
+- Escalar vários frames como grupo.
+- Rotacionar vários frames como grupo.
+- Avaliar moldura/handles de grupo em versão experimental.
+- Diferenciar transformação direta no Stage dos ajustes em lote por menu.
+
+### Adicionar pausa aos selecionados
+
+- Criar painel/modo separado de `Adicionar pausa`.
+- Usuário escolhe um valor e esse valor é somado à pausa atual de cada frame selecionado.
+- Preservar diferenças existentes entre frames.
+- Registrar Undo único ao aplicar/fechar.
+
+### Undo/Redo de troca de imagem
+
+- Permitir desfazer/refazer troca de imagem.
+- Avaliar uso de memória no iPhone/Safari antes de implementar.
+- Guardar imagem anterior/nova sem estourar memória.
+
+### Velocidade constante perceptiva
+
+- Estabilizar sensação de velocidade considerando posição, escala e rotação.
+- Não depender apenas da distância entre centros.
+- Estudar deslocamento médio dos cantos do frame/câmera.
+- Testar zoom forte, rotação forte e combinação de zoom + rotação + deslocamento.

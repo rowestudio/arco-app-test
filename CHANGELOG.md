@@ -1,3 +1,15 @@
+## v8z4b27d — simplificar Pausa contextual, menu com 1 frame e Undo da cor
+
+- `index.html`: versionamento atualizado para `v8z4b27d` em constantes, texto visível e comentário do topo.
+- Painel Pausa: removido o botão grande `Definir pausa`; o slider passa a aplicar diretamente o valor decimal aos frames-alvo da seleção aberta, mantendo apenas `Zerar` como ação secundária.
+- Undo da Pausa: edição do slider e do `Zerar` passa a ser consolidada em uma sessão única, registrada somente ao fechar/sair do painel quando houver diferença entre estado inicial e final.
+- Menu contextual: `#alignBar` passa a aparecer com 1 frame selecionado, mantém os grupos Pausa, Escala, Rotação e Posição e adiciona `Selecionar todos` sem persistir seleção no JSON.
+- Cor de fundo: `bgColor` passa a entrar em `captureState()`/`restoreState()`, no baseline de Reset e no JSON, com Undo/Redo para swatches e consolidação no fechamento/`change` dos campos de cor.
+- Overlay normal: alfa do overlay escuro do frame ativo reduzido de `rgba(0,0,0,0.52)` para `rgba(0,0,0,0.38)`; overlay múltiplo preservado em `rgba(0,0,0,0.34)`.
+- Fora do escopo preservado: não houve alterações em `getStateAtT`, `drawAtT`, WebCodecs/export estrutural, curvas, zoom/pan, inserção assistida ou JSON estrutural além de preservar a cor real existente.
+- `docs/QA-v8z4b27d.md`: checklist específico da versão.
+- `QA.md` e `docs/ROADMAP.md`: documentação atualizada para v8z4b27d e itens futuros registrados sem implementação.
+
 ## v8z4b27c — simplificar Pausa em seleção múltipla
 
 - `index.html`: versionamento atualizado para `v8z4b27c`.
