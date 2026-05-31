@@ -41,7 +41,7 @@
 
 ## 2. Seleção múltipla de frames
 
-**Status v8z4b27f:** seleção simples preserva auto-center fora do contexto e usa overlay normal menos pesado (`rgba(0,0,0,0.38)`); seleção contextual usa `selectedFrames` como fonte de verdade já com 1 frame (`selectedFrames.size >= 1`), mantendo destaque laranja no Stage e na faixa. O menu principal virou faixa horizontal rolável com `Selecionar todos`, `Pausa`, `Escala`, `Rotação`, `Mover`, `Alinhar` e `Distribuir`; subpainéis mantêm `Voltar` e o alvo. O grupo Pausa usa slider decimal direto nos frames-alvo, mostra o alvo, remove `Definir pausa` e `Zerar`, ressincroniza após Undo/Redo com painel aberto e consolida Undo apenas ao fechar/sair do painel. Seleção continua sendo estado temporário de UI e não entra no JSON; `Conter na imagem` permanece restaurado pelo Undo/Redo.
+**Status v8z4b27f:** seleção simples preserva auto-center fora do contexto e usa overlay normal menos pesado (`rgba(0,0,0,0.38)`); seleção contextual usa `selectedFrames` como fonte de verdade já com 1 frame (`selectedFrames.size >= 1`), mantendo destaque laranja no Stage e na faixa. O menu principal virou `Selecionar todos` fixo à esquerda + faixa horizontal rolável com `Pausa`, `Escala`, `Rotação`, `Mover`, `Alinhar` e `Distribuir`; subpainéis mantêm `Voltar` e o alvo. O grupo Pausa usa slider decimal direto nos frames-alvo, mostra o alvo, remove `Definir pausa` e `Zerar`, ressincroniza após Undo/Redo com painel aberto e consolida Undo apenas ao fechar/sair do painel. Seleção continua sendo estado temporário de UI e não entra no JSON; `Conter na imagem` permanece restaurado pelo Undo/Redo.
 
 - Selecionar vários frames.
 - Destacar visualmente frames selecionados.
