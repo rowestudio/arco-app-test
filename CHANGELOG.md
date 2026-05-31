@@ -3,8 +3,8 @@
 - `index.html`: versionamento atualizado para `v8z4b27f` em constantes, texto visível e comentário do topo.
 - Painel Pausa: layout vertical do submenu ajustado para seguir o padrão dos demais painéis, com slider, valor textual e Voltar visíveis, sem reintroduzir `Zerar`, `Definir pausa`, OK ou Cancelar.
 - Undo/Redo com painel aberto: sessão de Pausa aberta é cancelada antes da restauração de estado e o submenu ativo é ressincronizado depois do render, evitando valor antigo no slider/texto e evitando reaplicação ao fechar.
-- Ícones: `Pausa` no menu principal usa relógio/tempo, `Selecionar todos` usa `list-check`, e `Reset`/`Zerar` nos submenus de Escala/Rotação usa o símbolo oficial `i-reset`.
-- Menu principal de frames selecionados: reorganizado como faixa horizontal rolável, com áreas de toque confortáveis e proteção contra seleção/callout nativos em iPhone/Safari.
+- Ícones: `Pausa` no menu principal usa relógio/tempo, `Selecionar todos` usa `list-check`, `Alinhar`/`Distribuir` usam pictogramas de objetos/frames, e `Zerar` nos submenus de Escala/Rotação usa o símbolo oficial `i-reset`.
+- Menu principal de frames selecionados: reorganizado como `Selecionar todos` fixo à esquerda + ações em faixa horizontal rolável, com áreas de toque confortáveis e proteção contra seleção/callout nativos em iPhone/Safari.
 - `Posição` virou `Mover`; `Alinhar` e `Distribuir` foram expostos no menu principal rolável, com `Distribuir` desabilitado para menos de 3 frames.
 - Preservado da v8z4b27e: seleção múltipla como estado temporário de UI, destaque aprovado, ações em lote com Undo, Preview/MP4/JSON, curvas, zoom/pan e motor de animação sem alterações estruturais.
 - Fora do escopo: transformação direta de grupo no Stage, UI v8z5, botão OK/Cancelar, adicionar/subtrair pausa, Undo/Redo de troca de imagem, loop ping-pong e velocidade constante perceptiva.
