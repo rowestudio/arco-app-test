@@ -790,3 +790,13 @@ Registrado em v8z4b19b. Não implementado ainda.
 - Visualização temporal interativa.
 - Leitura visual de velocidade no trajeto.
 - Refinamentos de overlay, painéis e microinterações.
+
+### Registro v8z4b27f — itens futuros sem implementação
+
+- Play/Preview acessível com menu de seleção múltipla aberto; tratar como ajuste futuro de UX.
+- Transformação direta de grupo no Stage.
+- Edição global de frames.
+- Adicionar/Subtrair pausa aos selecionados.
+- Undo/Redo de troca de imagem.
+- Loop ida e volta/ping-pong.
+- Velocidade constante perceptiva considerando posição, escala e rotação.

@@ -23,6 +23,7 @@
 | v8z4b27c         | **Implementada:** Pausa em lote simplificada com frames afetados e sem ações redundantes |
 | v8z4b27d         | **Implementada:** Pausa contextual direta, menu com 1 frame, Selecionar todos e Undo da cor |
 | v8z4b27e         | **Implementada:** menu contextual limpo, primeiro selecionado destacado, Pausa sem Zerar e Undo de Conter |
+| v8z4b27f         | **Implementada:** painel Pausa, Undo com painel aberto, ícones e menu rolável de frames selecionados |
 | v8z5-prototype   | Protótipo visual separado da nova interface                 |
 | v8z5a            | Primeira integração real da nova interface aprovada         |
 
@@ -40,7 +41,7 @@
 
 ## 2. Seleção múltipla de frames
 
-**Status v8z4b27e:** seleção simples preserva auto-center fora do contexto e usa overlay normal menos pesado (`rgba(0,0,0,0.38)`); seleção contextual usa `selectedFrames` como fonte de verdade já com 1 frame (`selectedFrames.size >= 1`), mantendo destaque laranja no Stage e na faixa. O menu principal inclui `Selecionar todos` à esquerda, sem `Voltar` e sem texto redundante do alvo; subpainéis mantêm `Voltar` e o alvo. O grupo Pausa usa slider decimal direto nos frames-alvo, mostra o alvo, remove `Definir pausa` e `Zerar`, e consolida Undo apenas ao fechar/sair do painel. Seleção continua sendo estado temporário de UI e não entra no JSON; `Conter na imagem` agora restaura também o flag interno no Undo/Redo.
+**Status v8z4b27f:** seleção simples preserva auto-center fora do contexto e usa overlay normal menos pesado (`rgba(0,0,0,0.38)`); seleção contextual usa `selectedFrames` como fonte de verdade já com 1 frame (`selectedFrames.size >= 1`), mantendo destaque laranja no Stage e na faixa. O menu principal virou faixa horizontal rolável com `Selecionar todos`, `Pausa`, `Escala`, `Rotação`, `Mover`, `Alinhar` e `Distribuir`; subpainéis mantêm `Voltar` e o alvo. O grupo Pausa usa slider decimal direto nos frames-alvo, mostra o alvo, remove `Definir pausa` e `Zerar`, ressincroniza após Undo/Redo com painel aberto e consolida Undo apenas ao fechar/sair do painel. Seleção continua sendo estado temporário de UI e não entra no JSON; `Conter na imagem` permanece restaurado pelo Undo/Redo.
 
 - Selecionar vários frames.
 - Destacar visualmente frames selecionados.
@@ -141,3 +142,13 @@
 - Não depender apenas da distância entre centros.
 - Estudar deslocamento médio dos cantos do frame/câmera.
 - Testar zoom forte, rotação forte e combinação de zoom + rotação + deslocamento.
+
+## 8. Itens futuros registrados na v8z4b27f
+
+- Play/Preview acessível com menu de seleção múltipla aberto; tratar como ajuste futuro de UX.
+- Transformação direta de grupo no Stage.
+- Edição global de frames.
+- Adicionar/Subtrair pausa aos selecionados.
+- Undo/Redo de troca de imagem.
+- Loop ida e volta/ping-pong.
+- Velocidade constante perceptiva considerando posição, escala e rotação.
