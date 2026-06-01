@@ -1,3 +1,11 @@
+## v8z4b27g — corrigir padronização real dos menus multi-select
+
+- `index.html`: versionamento atualizado para `v8z4b27g` em constantes, texto visível e comentário do topo.
+- Menu de seleção múltipla: ordem espelhada do menu individual aprovado (`Pausa`, `Rotação`, `Escala`, `Mover`) antes de `Alinhar` e `Distribuir`, mantendo `Selecionar todos` fixo à esquerda e a faixa rolável horizontal.
+- Design system multi-select: `Selecionar todos` perde caixa/fundo/borda e passa a usar símbolo Lucide `list-check`; `Alinhar` usa `align-end-horizontal`; `Distribuir` usa símbolos de space-between; subações deixam de usar SVG inline improvisado quando há símbolo equivalente.
+- Painéis multi-select: Pausa, Rotação e Escala passam a ocupar o slot do submenu com estrutura de slider + valor + chips textuais, seguindo o padrão real do `custBarContent`; `Reset` e `Igualar` permanecem textuais.
+- Preservados: seleção temporária de UI fora do JSON/Undo de projeto, lógica de atuação somente nos frames selecionados, Preview, MP4, JSON, curvas, zoom/pan e motor de animação.
+
 ## v8z4b27f — ajustar painéis, ícones e menu rolável de frames selecionados
 
 - `index.html`: versionamento atualizado para `v8z4b27f` em constantes, texto visível e comentário do topo.

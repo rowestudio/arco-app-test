@@ -24,6 +24,7 @@
 | v8z4b27d         | **Implementada:** Pausa contextual direta, menu com 1 frame, Selecionar todos e Undo da cor |
 | v8z4b27e         | **Implementada:** menu contextual limpo, primeiro selecionado destacado, Pausa sem Zerar e Undo de Conter |
 | v8z4b27f         | **Implementada:** painel Pausa, Undo com painel aberto, ícones e menu rolável de frames selecionados |
+| v8z4b27g         | **Implementada:** padronização real dos menus multi-select pelo menu individual |
 | v8z5-prototype   | Protótipo visual separado da nova interface                 |
 | v8z5a            | Primeira integração real da nova interface aprovada         |
 
@@ -41,7 +42,7 @@
 
 ## 2. Seleção múltipla de frames
 
-**Status v8z4b27f:** seleção simples preserva auto-center fora do contexto e usa overlay normal menos pesado (`rgba(0,0,0,0.38)`); seleção contextual usa `selectedFrames` como fonte de verdade já com 1 frame (`selectedFrames.size >= 1`), mantendo destaque laranja no Stage e na faixa. O menu principal virou `Selecionar todos` fixo à esquerda + faixa horizontal rolável com `Pausa`, `Escala`, `Rotação`, `Mover`, `Alinhar` e `Distribuir`; subpainéis mantêm `Voltar` e o alvo. O grupo Pausa usa slider decimal direto nos frames-alvo, mostra o alvo, remove `Definir pausa` e `Zerar`, ressincroniza após Undo/Redo com painel aberto e consolida Undo apenas ao fechar/sair do painel. Seleção continua sendo estado temporário de UI e não entra no JSON; `Conter na imagem` permanece restaurado pelo Undo/Redo.
+**Status v8z4b27g:** seleção simples preserva auto-center fora do contexto e usa overlay normal menos pesado (`rgba(0,0,0,0.38)`); seleção contextual usa `selectedFrames` como fonte de verdade já com 1 frame (`selectedFrames.size >= 1`), mantendo destaque laranja no Stage e na faixa. O menu principal usa `Selecionar todos` fixo à esquerda + faixa horizontal rolável com ordem espelhada do menu individual (`Pausa`, `Rotação`, `Escala`, `Mover`) e extras `Alinhar`/`Distribuir`; subpainéis mantêm `Voltar` e o alvo. Os grupos Pausa, Rotação e Escala usam o padrão visual do `custBarContent` com slider, valor e chips textuais; `Selecionar todos` não tem caixa e Alinhar/Distribuir usam símbolos Lucide; Pausa ressincroniza após Undo/Redo com painel aberto e consolida Undo apenas ao fechar/sair do painel. Seleção continua sendo estado temporário de UI e não entra no JSON; `Conter na imagem` permanece restaurado pelo Undo/Redo.
 
 - Selecionar vários frames.
 - Destacar visualmente frames selecionados.
@@ -143,7 +144,7 @@
 - Estudar deslocamento médio dos cantos do frame/câmera.
 - Testar zoom forte, rotação forte e combinação de zoom + rotação + deslocamento.
 
-## 8. Itens futuros registrados na v8z4b27f
+## 8. Itens futuros registrados até a v8z4b27g
 
 - Play/Preview acessível com menu de seleção múltipla aberto; tratar como ajuste futuro de UX.
 - Transformação direta de grupo no Stage.
