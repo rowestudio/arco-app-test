@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b27h                                     ║
+║  Versão: v8z4b27i                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b27i                                            ║
+║    fix: referência multi-select, reset rotação       ║
+║         e faixa rolável sem corte.                   ║
 ║  v8z4b27h                                            ║
 ║    fix: sliders delta, ícones e bounds visuais       ║
 ║         dos painéis de seleção múltipla.             ║
@@ -460,6 +463,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b27i — fix: referência multi-select por ordem de seleção, reset de rotação individual sincronizado e faixa rolável sem corte. -->
 <!-- Arco Motion App — v8z4b27h — fix: sliders delta ao vivo, Selecionar todos fixo separado, ícones Lucide oficiais e alinhamento por bounds visuais no multi-select. -->
 <!-- Arco Motion App — v8z4b27g — fix: seleção múltipla reaproveita ordem e padrão visual reais do menu individual, remove caixa de Selecionar todos e usa símbolos Lucide no menu. -->
 <!-- Arco Motion App — v8z4b27f — fix: painel Pausa no padrão vertical, Undo/Redo ressincroniza painel aberto, ícones e menu rolável de frames selecionados. -->
@@ -1495,6 +1499,7 @@ body.cust-open #toolbar{
   font-weight:600;
 }
 #alignBarPrimary.ab-primary-strip{
+  --align-select-all-w:112px;
   display:flex;
   align-items:flex-end;
   height:100%;
@@ -1516,6 +1521,8 @@ body.cust-open #toolbar{
   scrollbar-width:none;
   -webkit-user-select:none;user-select:none;
   -webkit-touch-callout:none;
+  padding-left:6px;
+  box-sizing:border-box;
 }
 #alignBarActions::-webkit-scrollbar{display:none;}
 #alignBarActions .ab-tab{
@@ -1526,8 +1533,8 @@ body.cust-open #toolbar{
 #alignBarPrimary.ab-primary-strip .ab-select-all-fixed{
   position:relative;
   z-index:3;
-  flex:0 0 88px;
-  min-width:88px;
+  flex:0 0 var(--align-select-all-w);
+  min-width:var(--align-select-all-w);
   margin-right:4px;
   background:var(--surface);
   border:none;
@@ -2539,7 +2546,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b27h</span><br><span id="appVersionNameText">v8z4b27h</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b27i</span><br><span id="appVersionNameText">v8z4b27i</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4880,8 +4887,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b27h';
-const APP_VERSION_NAME = 'v8z4b27h';
+const APP_VERSION = 'v8z4b27i';
+const APP_VERSION_NAME = 'v8z4b27i';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12230,6 +12237,7 @@ function renderAll() {
       ? `0 0 ${12 * invZ}px rgba(0,0,0,.42), 0 0 ${10 * invZ}px rgba(255,149,0,.28)`
       : 'none';
     if (numEl) {
+      numEl.textContent = String(i + 1);
       numEl.style.color = selectedStageFocus ? '#ffffff' : '';
       numEl.style.background = selectedStageFocus ? 'rgba(0,0,0,.58)' : '';
       numEl.style.fontWeight = selectedStageFocus ? '800' : '';
@@ -19909,6 +19917,18 @@ function syncCustomizePanel() {
   if (lockBtn) lockBtn.style.color = frameLocked[activeIdx] ? 'var(--red)' : '';
 }
 
+function syncSingleRotationControl(renderStage) {
+  const rot = frameRotations[activeIdx] || 0;
+  const rs = document.getElementById('rotSlider');
+  const rn = document.getElementById('rotNum');
+  if (rs) {
+    rs.value = rot;
+    if (typeof updateSliderFill === 'function') updateSliderFill(rs);
+  }
+  if (rn) rn.textContent = (rot >= 0 ? '+' : '') + rot.toFixed(1) + '°';
+  if (renderStage) renderAll();
+}
+
 let custGlobalLock = { scale: false, rot: false, pos: false, framepause: false };
 
 function resetCustGlobalLocks() {
@@ -19986,8 +20006,12 @@ let batchTransformRenderRaf = 0;
 
 function getContextSelectionTargets(includeLocked) {
   return Array.from(selectedFrames)
-    .filter(i => i >= 0 && i < frameCount && frames[i] && (includeLocked || !frameLocked[i]))
-    .sort((a, b) => a - b);
+    .filter(i => i >= 0 && i < frameCount && frames[i] && (includeLocked || !frameLocked[i]));
+}
+
+function getContextReferenceFrameIndex(includeLocked) {
+  const targets = getContextSelectionTargets(includeLocked);
+  return targets.length ? targets[0] : ((activeIdx >= 0 && activeIdx < frameCount && frames[activeIdx]) ? activeIdx : 0);
 }
 
 function getContextSelectionLabel() {
@@ -20009,6 +20033,7 @@ function updateAlignBar() {
     const s = document.getElementById('alignBarSubmenu');
     if (s && s.style.display !== 'none' && alignBarActiveGroup) {
       if (alignBarActiveGroup === 'pause') commitBatchPauseEditSession();
+      if (alignBarActiveGroup === 'scale' || alignBarActiveGroup === 'rotation') commitBatchTransformEditSession();
       openAlignSubmenu(alignBarActiveGroup, true);
     }
   } else {
@@ -20066,7 +20091,17 @@ function getFrameScalePercent(i) {
 
 function beginBatchTransformEditSession(kind) {
   const targets = getContextSelectionTargets(false).filter(i => frames[i]);
-  batchTransformEditSession = { kind, targets, before: captureState(), scale: {}, rotation: {} };
+  const referenceIdx = getContextReferenceFrameIndex(true);
+  batchTransformEditSession = {
+    kind,
+    targets,
+    referenceIdx,
+    referenceScale: getFrameScalePercent(referenceIdx),
+    referenceRotation: frameRotations[referenceIdx] || 0,
+    before: captureState(),
+    scale: {},
+    rotation: {}
+  };
   targets.forEach(i => {
     batchTransformEditSession.scale[i] = getFrameScalePercent(i);
     batchTransformEditSession.rotation[i] = frameRotations[i] || 0;
@@ -20096,19 +20131,21 @@ function scheduleBatchTransformStageRender() {
   });
 }
 
-function updateBatchDeltaLabel(kind, delta) {
+function updateBatchDeltaLabel(kind, value) {
   const val = document.getElementById(kind === 'scale' ? 'batchScaleVal' : 'batchRotationVal');
   if (val) val.textContent = kind === 'scale'
-    ? (delta >= 0 ? '+' : '') + Math.round(delta) + '%'
-    : (delta >= 0 ? '+' : '') + delta.toFixed(1) + '°';
+    ? Math.round(value) + '%'
+    : (value >= 0 ? '+' : '') + value.toFixed(1) + '°';
   const slider = document.getElementById(kind === 'scale' ? 'batchScaleSlider' : 'batchRotationSlider');
   if (slider && typeof updateSliderFill === 'function') updateSliderFill(slider);
 }
 
-function applyBatchTransformDelta(kind, delta) {
+function applyBatchTransformDelta(kind, controlValue) {
   if (shouldBlockGlobalUIAction()) return;
   if (!batchTransformEditSession || batchTransformEditSession.kind !== kind) beginBatchTransformEditSession(kind);
   const session = batchTransformEditSession;
+  const refValue = kind === 'scale' ? session.referenceScale : session.referenceRotation;
+  const delta = (parseFloat(controlValue) || 0) - (parseFloat(refValue) || 0);
   const ar = ratioMap[currentRatio];
   const refW = baseFrameW > 0 ? baseFrameW : stageW * 0.55;
   session.targets.forEach(i => {
@@ -20118,14 +20155,14 @@ function applyBatchTransformDelta(kind, delta) {
       return;
     }
     const f = frames[i];
-    const nextPct = Math.max(1, (session.scale[i] || getFrameScalePercent(i)) + delta);
+    const nextPct = Math.max(20, Math.min(300, (session.scale[i] || getFrameScalePercent(i)) + delta));
     const nw = refW * nextPct / 100;
     const nh = nw / ar;
     const cx = f.x + f.w / 2;
     const cy = f.y + f.h / 2;
     frames[i] = { x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh, pointMode: f.pointMode || POINT_MODE_DEFAULT };
   });
-  updateBatchDeltaLabel(kind, delta);
+  updateBatchDeltaLabel(kind, refValue + delta);
   syncCustomizePanel();
   scheduleBatchTransformStageRender();
 }
@@ -20161,20 +20198,20 @@ function getSelectionVisualBounds(indices) {
 }
 
 function getBatchScalePanelValue() {
-  return 0;
+  return getFrameScalePercent(getContextReferenceFrameIndex(true));
 }
 
 function getBatchRotationPanelValue() {
-  return 0;
+  return frameRotations[getContextReferenceFrameIndex(true)] || 0;
 }
 
 function syncBatchScaleRotationControls() {
   const scaleSlider = document.getElementById('batchScaleSlider');
   if (scaleSlider) {
     const value = getBatchScalePanelValue();
-    scaleSlider.value = value;
+    scaleSlider.value = Math.round(value);
     const val = document.getElementById('batchScaleVal');
-    if (val) val.textContent = '+0%';
+    if (val) val.textContent = Math.round(value) + '%';
     if (typeof updateSliderFill === 'function') updateSliderFill(scaleSlider);
   }
   const rotSlider = document.getElementById('batchRotationSlider');
@@ -20182,7 +20219,7 @@ function syncBatchScaleRotationControls() {
     const value = getBatchRotationPanelValue();
     rotSlider.value = value;
     const val = document.getElementById('batchRotationVal');
-    if (val) val.textContent = '+0.0°';
+    if (val) val.textContent = (value >= 0 ? '+' : '') + value.toFixed(1) + '°';
     if (typeof updateSliderFill === 'function') updateSliderFill(rotSlider);
   }
 }
@@ -20212,11 +20249,9 @@ function getBatchPauseSelectionLabel() {
 function getBatchPausePanelValue() {
   ensureFramePauses();
   const targets = getBatchPauseTargets();
-  const fallbackIdx = (activeIdx >= 0 && activeIdx < frameCount) ? activeIdx : targets[0];
-  if (!targets.length) return clampFramePauseValue(framePauses[fallbackIdx]?.duration || 0);
-  const ref = framePauses[targets[0]]?.duration || 0;
-  const allEqual = targets.every(i => Math.abs((framePauses[i]?.duration || 0) - ref) <= 0.0001);
-  return clampFramePauseValue(allEqual ? ref : (framePauses[fallbackIdx]?.duration || 0));
+  const refIdx = getContextReferenceFrameIndex(true);
+  if (!targets.length) return clampFramePauseValue(framePauses[refIdx]?.duration || 0);
+  return clampFramePauseValue(framePauses[refIdx]?.duration || 0);
 }
 
 function beginBatchPauseEditSession() {
@@ -20286,7 +20321,10 @@ function selectAllFramesForContext() {
   if (frameCount < 1) return;
   if (batchPauseEditSession) commitBatchPauseEditSession();
   commitBatchTransformEditSession();
-  for (let i = 0; i < frameCount; i++) selectedFrames.add(i);
+  selectedFrames.clear();
+  const preferred = (activeIdx >= 0 && activeIdx < frameCount) ? activeIdx : 0;
+  selectedFrames.add(preferred);
+  for (let i = 0; i < frameCount; i++) if (i !== preferred) selectedFrames.add(i);
   updateFrameSelector();
   renderAll();
   updateAlignBar();
@@ -20298,7 +20336,7 @@ function selectAllFramesForContext() {
 function openAlignSubmenu(group, keepExisting) {
   if (shouldBlockGlobalUIAction()) return;
   if (alignBarActiveGroup === 'pause' && group !== 'pause') commitBatchPauseEditSession();
-  if (alignBarActiveGroup === 'scale' || alignBarActiveGroup === 'rotation') commitBatchTransformEditSession();
+  if ((alignBarActiveGroup === 'scale' || alignBarActiveGroup === 'rotation') && alignBarActiveGroup !== group) commitBatchTransformEditSession();
   const p = document.getElementById('alignBarPrimary');
   const s = document.getElementById('alignBarSubmenu');
   alignBarActiveGroup = group;
@@ -20325,8 +20363,8 @@ function openAlignSubmenu(group, keepExisting) {
       const value = getBatchScalePanelValue();
       items = [`<div class="ab-content">
         <div style="display:flex;align-items:center;gap:12px;">
-          <input type="range" class="dur-slider" id="batchScaleSlider" min="-100" max="100" step="1" value="0" style="flex:1;" oninput="previewBatchControlValue('scale')" onchange="applyBatchScaleFromControl()" onpointerup="applyBatchScaleFromControl()" onmouseup="applyBatchScaleFromControl()" ontouchend="applyBatchScaleFromControl()">
-          <span id="batchScaleVal" style="font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">+0%</span>
+          <input type="range" class="dur-slider" id="batchScaleSlider" min="20" max="300" step="1" value="${Math.round(value)}" style="flex:1;" oninput="previewBatchControlValue('scale')" onchange="applyBatchScaleFromControl()" onpointerup="applyBatchScaleFromControl()" onmouseup="applyBatchScaleFromControl()" ontouchend="applyBatchScaleFromControl()">
+          <span id="batchScaleVal" style="font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">${Math.round(value)}%</span>
         </div>
         <div style="display:flex;gap:6px;margin-top:6px;">
           ${alignBarChip('−5%', "alignFrames('scale-minus')", false)}
@@ -20339,8 +20377,8 @@ function openAlignSubmenu(group, keepExisting) {
       const value = getBatchRotationPanelValue();
       items = [`<div class="ab-content">
         <div style="display:flex;align-items:center;gap:12px;">
-          <input type="range" class="dur-slider" id="batchRotationSlider" min="-720" max="720" step="1" value="0" style="flex:1;" oninput="previewBatchControlValue('rotation')" onchange="applyBatchRotationFromControl()" onpointerup="applyBatchRotationFromControl()" onmouseup="applyBatchRotationFromControl()" ontouchend="applyBatchRotationFromControl()">
-          <span id="batchRotationVal" style="font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">+0.0°</span>
+          <input type="range" class="dur-slider" id="batchRotationSlider" min="-720" max="720" step="1" value="${value}" style="flex:1;" oninput="previewBatchControlValue('rotation')" onchange="applyBatchRotationFromControl()" onpointerup="applyBatchRotationFromControl()" onmouseup="applyBatchRotationFromControl()" ontouchend="applyBatchRotationFromControl()">
+          <span id="batchRotationVal" style="font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">${(value >= 0 ? '+' : '') + value.toFixed(1)}°</span>
         </div>
         <div style="display:flex;gap:6px;margin-top:6px;">
           ${alignBarChip('−5°', "alignFrames('rot-minus')", false)}
@@ -20415,7 +20453,7 @@ function alignFrames(mode) {
   if (!editable.length) { showStatus('Frames travados'); return; }
   const before = captureState();
   const ar = ratioMap[currentRatio];
-  const refIdx = sel.includes(activeIdx) ? activeIdx : sel[0];
+  const refIdx = getContextReferenceFrameIndex(true);
   const ref = frames[refIdx] || frames[sel[0]];
   const refW = baseFrameW > 0 ? baseFrameW : stageW * 0.55;
   const refCX = ref.x + ref.w / 2;
@@ -20659,6 +20697,7 @@ function openCustBar() {
     bar.style.flexDirection = 'column';
   }
   syncCustomizePanel();
+  syncSingleRotationControl(false);
   initScaleSlider();
   // v8z4b16f — garante faixa ciano sincronizada ao abrir o menu contextual.
   if (typeof refreshSliderFills === 'function') refreshSliderFills();
@@ -20703,6 +20742,7 @@ function switchCustTab(tab) {
   const content = document.getElementById(key);
   if (content) content.style.display = 'block';
   if (tab === 'framepause') syncFramePauseUI();
+  if (tab === 'rot') syncSingleRotationControl(false);
   // v8z4b16f — após trocar a aba, repinta faixas ciano dos sliders agora
   // visíveis (scale/rot/framepause). Sliders escondidos no momento do
   // refresh continuam com --fill stale, mas serão repintados na próxima
@@ -21118,12 +21158,8 @@ function nudgeRotation(delta, reset=false) {
   } else {
     applyToFrame(activeIdx);
   }
-  const rs = document.getElementById('rotSlider');
-  const rn = document.getElementById('rotNum');
-  if (rs) rs.value = frameRotations[activeIdx];
-  if (rn) rn.textContent = (frameRotations[activeIdx] >= 0 ? '+' : '') + frameRotations[activeIdx].toFixed(1) + '°';
   clampFrame(activeIdx);
-  renderAll();
+  syncSingleRotationControl(true);
 }
 
 // ═══════════════════════════════════════

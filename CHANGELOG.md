@@ -1,3 +1,12 @@
+## v8z4b27i — corrigir referência multi-select, reset de rotação e faixa rolável
+
+- `index.html`: versionamento atualizado para `v8z4b27i` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário do topo.
+- Menu multi-select: faixa rolável passa a reservar largura maior para `Selecionar todos`, evitando que a primeira ação (`Pausa`) nasça cortada sob a coluna fixa.
+- Painéis multi-select: Pausa, Escala e Rotação passam a usar o primeiro frame da seleção atual como referência; `Selecionar todos` insere o frame ativo como primeira referência; sliders mostram valor absoluto da referência e aplicam delta relativo aos demais frames.
+- Rotação individual: abertura/reabertura do painel e `Reset` ressincronizam slider, texto, fill ciano e Stage pela mesma rotina central de UI.
+- Badges de frames: renderização completa atualiza o número exibido em cada frame a cada `renderAll()`, evitando rótulos stale após inserção/renumeração.
+- Mantidos fora do escopo: motor, `getStateAtT`, `drawAtT`, Preview, MP4/WebCodecs, JSON, curvas, zoom/pan e ghost frame.
+
 ## v8z4b27h — corrigir sliders delta, ícones e alinhamento multi-select
 
 - `index.html`: versionamento atualizado para `v8z4b27h` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário do topo.

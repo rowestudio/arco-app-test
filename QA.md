@@ -1,3 +1,9 @@
+# QA pendente — v8z4b27i corrigir referência multi-select, reset de rotação e faixa rolável
+
+- Checklist detalhado criado em `docs/QA-v8z4b27i.md`.
+- Verificações estáticas executadas: base `v8z4b27h` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo; versionamento atualizado para `v8z4b27i`; faixa rolável do menu multi-select reserva largura para `Selecionar todos`; painéis Pausa/Escala/Rotação usam o primeiro frame da seleção atual como referência; `Selecionar todos` usa o frame ativo como referência inicial; sliders de Escala/Rotação mostram valor absoluto da referência e continuam aplicando delta relativo; Reset individual de Rotação ressincroniza slider/texto/fill/Stage; renderização atualiza badges numerados; `getStateAtT`, `drawAtT`, curvas, zoom/pan, JSON, Preview e pipeline MP4/WebCodecs não foram alterados.
+- QA manual completo em iPhone/Safari, Undo/Redo com painéis abertos, Preview, MP4, JSON, Reset, inserção assistida, Mover/Alinhar/Distribuir, Escala e Rotação permanece como checklist operacional antes de promover a versão.
+
 # QA pendente — v8z4b27h corrigir sliders delta, ícones e alinhamento multi-select
 
 - Checklist detalhado criado em `docs/QA-v8z4b27h.md`.
