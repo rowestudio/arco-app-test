@@ -1,3 +1,9 @@
+# QA pendente — v8z4b27h corrigir sliders delta, ícones e alinhamento multi-select
+
+- Checklist detalhado criado em `docs/QA-v8z4b27h.md`.
+- Verificações estáticas executadas: base `v8z4b27g` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário do topo; versionamento atualizado para `v8z4b27h`; sliders de Rotação/Escala multi-select convertidos para delta relativo ao snapshot inicial com render ao vivo e Undo consolidado; `Selecionar todos` separado da faixa rolável e scroll resetado; ícones de Distribuir/Mover/Alinhar migrados para símbolos Lucide via `<use>`; Alinhar/Distribuir usam bounds visuais transformados; `getStateAtT`, `drawAtT`, curvas, zoom/pan, JSON, Preview e pipeline MP4/WebCodecs não foram alterados.
+- QA manual completo em iPhone/Safari, Undo/Redo com painéis abertos, Preview, MP4, JSON, Reset, inserção assistida, Mover/Alinhar/Distribuir, Escala e Rotação permanece como checklist operacional antes de promover a versão.
+
 # QA pendente — v8z4b27g corrigir padronização real dos menus multi-select
 
 - Checklist detalhado criado em `docs/QA-v8z4b27g.md`.

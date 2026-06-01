@@ -1,3 +1,12 @@
+## v8z4b27h — corrigir sliders delta, ícones e alinhamento multi-select
+
+- `index.html`: versionamento atualizado para `v8z4b27h` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário do topo.
+- Rotação/Escala multi-select: sliders passam a representar delta relativo a um snapshot capturado ao abrir/arrastar o painel; `input` aplica o delta ao vivo no Stage com renderização via `requestAnimationFrame`; `change`/`pointerup`/fechamento consolidam um único Undo.
+- `Selecionar todos`: botão separado da faixa rolável em coluna fixa sem caixa/borda/radius, usando o fundo da barra como máscara; a faixa de ações reseta `scrollLeft = 0` ao fechar, sair ou reabrir.
+- Ícones: Distribuir troca para `align-horizontal-distribute-center`/`align-vertical-distribute-center`; Mover e Alinhar usam botões apenas com ícones Lucide via sprite interno.
+- Alinhar/Distribuir: ações usam bounds visuais transformados dos frames selecionados, considerando posição, tamanho, escala efetiva e rotação; Distribuir continua bloqueado com menos de 3 frames.
+- Mantidos fora do escopo: motor, `getStateAtT`, `drawAtT`, Preview, MP4/WebCodecs, JSON, curvas, zoom/pan e inserção assistida/ghost frame.
+
 ## v8z4b27g — corrigir padronização real dos menus multi-select
 
 - `index.html`: versionamento atualizado para `v8z4b27g` em constantes, texto visível e comentário do topo.
