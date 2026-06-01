@@ -1,3 +1,9 @@
+# QA pendente — v8z4b27g corrigir padronização real dos menus multi-select
+
+- Checklist detalhado criado em `docs/QA-v8z4b27g.md`.
+- Verificações estáticas executadas: base `v8z4b27f` confirmada antes das alterações; versionamento `APP_VERSION`/`APP_VERSION_NAME`/texto visível atualizado para `v8z4b27g`; menu individual `#custBarTabs` inspecionado na ordem `Pausa`, `Rotação`, `Escala`, `Posição`; menu multi-select ajustado para `Selecionar todos`, `Pausa`, `Rotação`, `Escala`, `Mover`, `Alinhar`, `Distribuir`; `Selecionar todos` continua fixo e sem caixa/fundo/borda; painéis Pausa/Rotação/Escala multi-select usam estrutura de slider + valor + chips textuais do padrão `#custBarContent`; Reset/Igualar são textuais; Alinhar usa símbolo Lucide `align-end-horizontal`; Distribuir usa símbolos Lucide de space-between; SVGs inline improvisados de alinhar/distribuir foram removidos dos menus; `getStateAtT`, `drawAtT`, curvas, zoom/pan e pipeline WebCodecs/export não foram alterados.
+- QA manual completo em iPhone/Safari, Undo/Redo com painéis abertos, Preview, MP4, JSON, Reset, inserção assistida, Mover/Alinhar/Distribuir, Escala e Rotação permanece como checklist operacional antes de promover a versão.
+
 # QA pendente — v8z4b27f ajustar painéis, ícones e menu rolável de frames selecionados
 
 - Checklist detalhado criado em `docs/QA-v8z4b27f.md`.
