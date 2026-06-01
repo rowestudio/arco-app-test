@@ -24,6 +24,8 @@
 
 ### 2. Seleção múltipla de frames
 
+**Status v8z4b27h:** Rotação/Escala multi-select aplicam deltas relativos com Stage ao vivo e Undo consolidado; Selecionar todos fica separado da faixa rolável com reset de scroll; Distribuir/Mover/Alinhar usam ícones Lucide via sprite; Alinhar/Distribuir usam bounds visuais transformados para frames rotacionados. Mantidos fora do escopo motor, Preview, MP4, JSON, curvas, zoom/pan e ghost frame.
+
 - Permitir selecionar vários frames.
 - Destacar visualmente frames selecionados.
 - Permitir aplicar o mesmo modo de ponto/curva aos frames selecionados:
