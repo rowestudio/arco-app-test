@@ -26,6 +26,7 @@
 | v8z4b27f         | **Implementada:** painel Pausa, Undo com painel aberto, ícones e menu rolável de frames selecionados |
 | v8z4b27g         | **Implementada:** padronização real dos menus multi-select pelo menu individual |
 | v8z4b27h         | **Implementada:** correções delta, ícones e bounds visuais do multi-select |
+| v8z4b27i         | **Implementada:** referência por seleção, reset de rotação e faixa rolável sem corte |
 | v8z5-prototype   | Protótipo visual separado da nova interface                 |
 | v8z5a            | Primeira integração real da nova interface aprovada         |
 
@@ -42,6 +43,8 @@
 - Implementar em versão separada.
 
 ## 2. Seleção múltipla de frames
+
+**Status v8z4b27i:** painéis Pausa/Escala/Rotação multi-select usam o primeiro frame da seleção atual como referência; Selecionar todos começa pelo frame ativo; sliders de Escala/Rotação exibem valor absoluto e aplicam delta relativo; Reset individual de Rotação ressincroniza slider/texto/fill/Stage; faixa rolável reserva a coluna fixa; badges são atualizados no render após renumeração. Mantidos fora do escopo motor, Preview, MP4, JSON, curvas, zoom/pan e ghost frame.
 
 **Status v8z4b27h:** Rotação/Escala multi-select aplicam deltas relativos com Stage ao vivo e Undo consolidado; Selecionar todos fica separado da faixa rolável com reset de scroll; Distribuir/Mover/Alinhar usam ícones Lucide via sprite; Alinhar/Distribuir usam bounds visuais transformados para frames rotacionados. Mantidos fora do escopo motor, Preview, MP4, JSON, curvas, zoom/pan e ghost frame.
 
