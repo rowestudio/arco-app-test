@@ -1,3 +1,9 @@
+# QA pendente — v8z4b28c corrigir pipeline HEIC e fonte de render
+
+- Checklist detalhado criado em `docs/QA-v8z4b28c.md`.
+- Verificações estáticas executadas: base `v8z4b28b` confirmada antes das alterações; versionamento `APP_VERSION`/`APP_VERSION_NAME`/texto visível/comentário do topo atualizado para `v8z4b28c`; fonte canônica `canonicalRenderImage` criada em `loadImage`; `imageBase64` marca origem `imageBase64`; `drawAtTDirect` e `drawMirrorBg` usam `getCanonicalRenderSource()`; `buildRenderDiagnostics` usa dimensões canônicas; `startRecord` valida fonte canônica; logs `[ImagePipeline]`, `[RenderFallback]` e `[ExportError]` adicionados; sintaxe JS extraída de `index.html` validada.
+- QA manual com `arco_5537 28b2_img.json`, HEIC direto, Preview, MP4, trecho F4→F5→F6, salvar/carregar e iPhone/Safari permanece obrigatório antes de promover, pois o arquivo real não está presente no repositório de teste.
+
 # QA pendente — v8z4b28b estabilizar render em zoom extremo
 
 - Checklist detalhado criado em `docs/QA-v8z4b28b.md`.

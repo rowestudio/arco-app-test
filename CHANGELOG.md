@@ -1,3 +1,12 @@
+## v8z4b28c — corrigir pipeline HEIC e fonte de render
+
+- `index.html`: versionamento atualizado para `v8z4b28c` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: adicionada fonte canônica de render (`canonicalRenderImage`) recriada ao carregar imagem direta ou `imageBase64`, preservando o elemento decodificado em orientação visual do browser sem reamostrar/downscale global.
+- `index.html`: Preview, Export/MP4, fallback direto e fundo espelhado passam a desenhar a partir da fonte canônica, mantendo o canvas final de vídeo fixo e sem usar thumbnail/canvas reduzido como fonte principal.
+- `index.html`: diagnóstico interno `debugImagePipeline(label)` registra fonte real, MIME, origem upload/JSON, dimensões naturais/canônicas, canvases de Preview/Export, DPR e fallback quando ativado via `window._arcoDebugImagePipeline`.
+- `index.html`: validação de export passa a exigir fonte canônica disponível, e erros por frame registram `[ExportError]` com frame, tempo, trecho, source rect, transform, fonte canônica e output.
+- `QA.md` e `docs/QA-v8z4b28c.md`: checklist de QA da versão criado/atualizado, incluindo pendência do caso real quando o arquivo `arco_5537 28b2_img.json` não está presente no repositório de teste.
+
 ## v8z4b28b — estabilizar render em zoom extremo
 
 - `index.html`: versionamento atualizado para `v8z4b28b` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
