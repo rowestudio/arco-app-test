@@ -1,3 +1,9 @@
+# QA pendente — v8z4b28b estabilizar render em zoom extremo
+
+- Checklist detalhado criado em `docs/QA-v8z4b28b.md`.
+- Verificações estáticas executadas: base `v8z4b28a` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo; versionamento atualizado para `v8z4b28b`; Export/MP4 mantém canvas final fixo sem DPR de tela; Preview limita backing store por orçamento de pixels; render valida estado/source rect/output/imagem antes de `drawImage`; zoom acima do limite seguro aciona fallback direto com log `[RenderFallback]`; falhas de geração limpam overlay/estado sem fechar o Preview sozinho.
+- QA manual completo em iPhone/Safari, imagem grande, zoom médio/extremo, Preview, MP4 e regressão geral permanece como checklist operacional antes de promover a versão.
+
 # QA pendente — v8z4b28a auditar resolução e qualidade de render
 
 - Checklist detalhado criado em `docs/QA-v8z4b28a.md`.

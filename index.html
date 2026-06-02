@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b28a                                     ║
+║  Versão: v8z4b28b                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b28b                                            ║
+║    fix: fallback seguro para zoom extremo no         ║
+║         Preview/MP4 sem perder nitidez segura.       ║
 ║  v8z4b28a                                            ║
 ║    fix: render Preview/MP4 usa fonte original        ║
 ║         e diagnóstico interno de resolução.          ║
@@ -466,7 +469,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b28a — fix: render Preview/MP4 preserva fonte original e adiciona diagnóstico interno de resolução. -->
+<!-- Arco Motion App — v8z4b28b — fix: fallback seguro para zoom extremo no Preview/MP4 preservando a fonte original. -->
 <!-- Arco Motion App — v8z4b27i — fix: referência multi-select por ordem de seleção, reset de rotação individual sincronizado e faixa rolável sem corte. -->
 <!-- Arco Motion App — v8z4b27h — fix: sliders delta ao vivo, Selecionar todos fixo separado, ícones Lucide oficiais e alinhamento por bounds visuais no multi-select. -->
 <!-- Arco Motion App — v8z4b27g — fix: seleção múltipla reaproveita ordem e padrão visual reais do menu individual, remove caixa de Selecionar todos e usa símbolos Lucide no menu. -->
@@ -2550,7 +2553,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b28a</span><br><span id="appVersionNameText">v8z4b28a</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b28b</span><br><span id="appVersionNameText">v8z4b28b</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4891,8 +4894,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b28a';
-const APP_VERSION_NAME = 'v8z4b28a';
+const APP_VERSION = 'v8z4b28b';
+const APP_VERSION_NAME = 'v8z4b28b';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10609,6 +10612,13 @@ let handleCornerByFrame = Array(MAX_FRAMES).fill('br');
 // v8z4b28a — Preview em resolução final do formato, ainda limitado a <= 1280px
 // pelo próprio exportDims para manter iPhone/Safari dentro de um backing store seguro.
 const PREVIEW_SCALE = 1;
+// v8z4b28b — limites defensivos para Preview/Export em zoom extremo.
+// Export/MP4 permanece em pixels finais fixos; estes limites só controlam
+// canvas/buffers internos e o ponto em que o render usa fallback direto.
+const MAX_INTERNAL_CANVAS_PIXELS = 16000000;
+const MAX_PREVIEW_DPR = 2;
+const MAX_EXPORT_SUPERSAMPLE = 1;
+const MAX_SAFE_SOURCE_ZOOM = 64;
 let bgColor       = '#000000';
 let containFrames = false;
 
@@ -10736,8 +10746,9 @@ function setupPreviewCanvas() {
   if (exportAR > aW / aH) { pW = aW; pH = pW / exportAR; }
   else                     { pH = aH; pW = pH * exportAR; }
   // v8z4b28a: backing store segue o formato final; CSS só escala visualmente.
-  previewCanvas.width  = eW;
-  previewCanvas.height = eH;
+  const previewScale = clampCanvasScaleForPixelLimit(eW, eH, Math.min(PREVIEW_SCALE, MAX_PREVIEW_DPR), MAX_INTERNAL_CANVAS_PIXELS);
+  previewCanvas.width  = Math.round(eW * previewScale);
+  previewCanvas.height = Math.round(eH * previewScale);
   applyCanvasRenderQuality(pCtx);
   previewCanvas.style.width  = Math.floor(pW) + 'px';
   previewCanvas.style.height = Math.floor(pH) + 'px';
@@ -14736,6 +14747,112 @@ function analyzeFrameResolutionQuality(frame, outputWidth, outputHeight, imageNa
   };
 }
 
+function isFiniteNum(v) { return Number.isFinite(Number(v)); }
+
+function canvasPixelCount(width, height) {
+  return Math.max(0, Math.round(Number(width) || 0)) * Math.max(0, Math.round(Number(height) || 0));
+}
+
+function clampCanvasScaleForPixelLimit(width, height, desiredScale, maxPixels) {
+  const safeW = Math.max(1, Number(width) || 1);
+  const safeH = Math.max(1, Number(height) || 1);
+  const safeDesired = Math.max(1, Number(desiredScale) || 1);
+  const basePixels = safeW * safeH;
+  const limit = Math.max(1, Number(maxPixels) || MAX_INTERNAL_CANVAS_PIXELS);
+  if (basePixels * safeDesired * safeDesired <= limit) return safeDesired;
+  return Math.max(1, Math.sqrt(limit / basePixels));
+}
+
+function buildRenderDiagnostics(t, W, H, frameIdx) {
+  const outputSize = { width: W, height: H };
+  const imageNaturalSize = { width: imgNatW, height: imgNatH };
+  const result = {
+    ok: false,
+    reason: '',
+    state: null,
+    sourceRect: null,
+    outputSize,
+    imageNaturalSize,
+    zoom: null,
+    qualityStatus: 'ACIMA_DO_LIMITE'
+  };
+  if (!imgEl || !imgNatW || !imgNatH || !imgEl.complete) {
+    result.reason = 'image-not-ready';
+    return result;
+  }
+  if (![t, W, H, imgNatW, imgNatH].every(isFiniteNum) || W <= 0 || H <= 0) {
+    result.reason = 'invalid-output-or-time';
+    return result;
+  }
+  let st;
+  try {
+    st = getStateAtT(t);
+  } catch (err) {
+    result.reason = 'state-error';
+    result.error = err?.message || String(err);
+    return result;
+  }
+  result.state = st;
+  if (!st || ![st.cx, st.cy, st.sw, st.sh, st.rot].every(isFiniteNum) || st.sw <= 0 || st.sh <= 0) {
+    result.reason = 'invalid-state';
+    return result;
+  }
+  const cover = rotationCoverScaleForRect(W, H, st.rot);
+  if (!isFiniteNum(cover) || cover <= 0) {
+    result.reason = 'invalid-cover';
+    return result;
+  }
+  const cropW = st.sw * cover;
+  const cropH = st.sh * cover;
+  const sx = st.cx - cropW / 2;
+  const sy = st.cy - cropH / 2;
+  const cSX = Math.max(0, sx);
+  const cSY = Math.max(0, sy);
+  const cW = Math.max(0, Math.min(sx + cropW, imgNatW) - cSX);
+  const cH = Math.max(0, Math.min(sy + cropH, imgNatH) - cSY);
+  result.cover = cover;
+  result.sourceRect = { sx, sy, cropW, cropH, cSX, cSY, cW, cH };
+  result.zoom = Math.max(W / Math.max(cW, 0.0001), H / Math.max(cH, 0.0001));
+  const q = analyzeFrameResolutionQuality(
+    { w: st.sw * Math.max(1, stageW) / Math.max(1, imgNatW), h: st.sh * Math.max(1, stageH) / Math.max(1, imgNatH) },
+    W,
+    H,
+    imgNatW,
+    imgNatH,
+    st.rot
+  );
+  result.qualityStatus = q.status;
+  result.quality = q;
+  if (![sx, sy, cropW, cropH, cSX, cSY, cW, cH, result.zoom].every(isFiniteNum)) {
+    result.reason = 'invalid-source-rect';
+    return result;
+  }
+  if (cropW <= 0 || cropH <= 0 || cW <= 0 || cH <= 0) {
+    result.reason = 'empty-source-rect';
+    return result;
+  }
+  if (result.zoom > MAX_SAFE_SOURCE_ZOOM) {
+    result.reason = 'source-zoom-above-safe-limit';
+    return result;
+  }
+  result.ok = true;
+  result.reason = 'ok';
+  return result;
+}
+
+function logRenderFallback(frameIndex, t, reason, diagnostics) {
+  console.warn('[RenderFallback]', {
+    frameIndex,
+    t,
+    reason,
+    qualityStatus: diagnostics?.qualityStatus,
+    sourceRect: diagnostics?.sourceRect,
+    outputSize: diagnostics?.outputSize,
+    imageNaturalSize: diagnostics?.imageNaturalSize,
+    zoom: diagnostics?.zoom
+  });
+}
+
 function analyzeProjectResolutionQuality(outputWidth, outputHeight) {
   const dims = (outputWidth && outputHeight) ? [outputWidth, outputHeight] : (exportDims[currentRatio] || [1080, 1080]);
   const rows = frames.slice(0, frameCount).map((frame, idx) => {
@@ -15145,13 +15262,42 @@ function getStateAtT(t) {
 
 function drawAtT(ctx, t, W, H, totalFrames, frameIdx) {
   applyCanvasRenderQuality(ctx);
-  const { cx, cy, sw, sh, rot } = getStateAtT(t);
-  const cover = rotationCoverScaleForRect(W, H, rot);
+  const diagnostics = buildRenderDiagnostics(t, W, H, frameIdx);
+  if (!diagnostics.ok) {
+    logRenderFallback(frameIdx, t, diagnostics.reason, diagnostics);
+  }
+  try {
+    return drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics);
+  } catch (err) {
+    logRenderFallback(frameIdx, t, 'direct-render-error', diagnostics);
+    console.error('[drawAtT] render falhou', err);
+    try {
+      hardResetCanvas(ctx, ctx?.canvas, bgColor);
+    } catch(e) {}
+    return false;
+  }
+}
+
+function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics) {
+  if (!ctx || !W || !H || !isFiniteNum(W) || !isFiniteNum(H)) return false;
+  applyCanvasRenderQuality(ctx);
+  const st = diagnostics?.state;
+  if (!st || ![st.cx, st.cy, st.sw, st.sh, st.rot].every(isFiniteNum) || st.sw <= 0 || st.sh <= 0) {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, W, H);
+    return false;
+  }
+  const { cx, cy, sw, sh, rot } = st;
+  const cover = diagnostics?.cover || rotationCoverScaleForRect(W, H, rot);
+  if (!isFiniteNum(cover) || cover <= 0) return false;
 
   const cropW = sw * cover;
   const cropH = sh * cover;
   const sx    = cx - cropW / 2;
   const sy    = cy - cropH / 2;
+
+  if (![cropW, cropH, sx, sy].every(isFiniteNum) || cropW <= 0 || cropH <= 0) return false;
 
   ctx.clearRect(0, 0, W, H);
 
@@ -15167,7 +15313,7 @@ function drawAtT(ctx, t, W, H, totalFrames, frameIdx) {
   const cW  = Math.max(0, Math.min(sx + cropW, imgNatW) - cSX);
   const cH  = Math.max(0, Math.min(sy + cropH, imgNatH) - cSY);
 
-  if (cW > 0 && cH > 0) {
+  if ([cSX, cSY, cW, cH].every(isFiniteNum) && cW > 0 && cH > 0) {
     ctx.save();
     ctx.translate(W / 2, H / 2);
     ctx.rotate(rot * Math.PI / 180);
@@ -15179,8 +15325,10 @@ function drawAtT(ctx, t, W, H, totalFrames, frameIdx) {
     const dyOff = (cSY - sy) / cropH * (H + os * 2);
     const dW    = cW / cropW * (W + os * 2);
     const dH    = cH / cropH * (H + os * 2);
-    ctx.drawImage(imgEl, cSX, cSY, cW, cH,
-      -W / 2 - os + dxOff, -H / 2 - os + dyOff, dW, dH);
+    if ([dxOff, dyOff, dW, dH].every(isFiniteNum) && dW > 0 && dH > 0) {
+      ctx.drawImage(imgEl, cSX, cSY, cW, cH,
+        -W / 2 - os + dxOff, -H / 2 - os + dyOff, dW, dH);
+    }
     ctx.filter = 'none';
     ctx.restore();
   }
@@ -15202,10 +15350,12 @@ function drawAtT(ctx, t, W, H, totalFrames, frameIdx) {
     ctx.fillText(txt, W - tw - W * 0.025, H - H * 0.025);
     ctx.restore();
   }
+  return true;
 }
 
 function drawMirrorBg(ctx, W, H, sx, sy, cropW, cropH, rot, cover) {
   applyCanvasRenderQuality(ctx);
+  if (![W, H, sx, sy, cropW, cropH, rot, cover].every(isFiniteNum) || cropW <= 0 || cropH <= 0 || cover <= 0) return;
   // Grade 3x3 de tiles espelhados no mesmo sistema de coordenadas da câmera
   ctx.save();
   ctx.translate(W / 2, H / 2);
@@ -15223,7 +15373,9 @@ function drawMirrorBg(ctx, W, H, sx, sy, cropW, cropH, rot, cover) {
       const cSY = Math.max(0, Math.min(sy, imgNatH - 1));
       const cW  = Math.max(1, Math.min(cropW, imgNatW - cSX));
       const cH  = Math.max(1, Math.min(cropH, imgNatH - cSY));
-      ctx.drawImage(imgEl, cSX, cSY, cW, cH, -W / 2, -H / 2, W, H);
+      if ([cSX, cSY, cW, cH].every(isFiniteNum) && cW > 0 && cH > 0) {
+        ctx.drawImage(imgEl, cSX, cSY, cW, cH, -W / 2, -H / 2, W, H);
+      }
       ctx.restore();
     }
   }
@@ -15281,7 +15433,8 @@ function startPreview() {
   const dur = Math.max(1, totalDurationFull() * 1000);
   const totalPF = Math.max(1, Math.round(totalDurationFull() * 25));
   // v8z4b28a: Preview usa resolução final segura do formato, sem canvas intermediário reduzido.
-  const previewScale = PREVIEW_SCALE;
+  // v8z4b28b: DPR/backing store limitado para nunca criar buffer interno gigante.
+  const previewScale = clampCanvasScaleForPixelLimit(eW, eH, Math.min(PREVIEW_SCALE, MAX_PREVIEW_DPR), MAX_INTERNAL_CANVAS_PIXELS);
   dispCanvas.width  = Math.round(eW * previewScale);
   dispCanvas.height = Math.round(eH * previewScale);
   const pW2 = Math.round(eW * previewScale);
@@ -15345,7 +15498,7 @@ function togglePreviewPlayback() {
     }
     if (!pCtxR) return;
     animStart = null;
-    const previewScale2 = PREVIEW_SCALE;
+    const previewScale2 = clampCanvasScaleForPixelLimit(eW, eH, Math.min(PREVIEW_SCALE, MAX_PREVIEW_DPR), MAX_INTERNAL_CANVAS_PIXELS);
     const pW2r = Math.round(eW * previewScale2);
     const pH2r = Math.round(eH * previewScale2);
     dispCanvas.width  = pW2r;
@@ -15827,20 +15980,17 @@ async function startRecord() {
   }
 
   function cleanupFailedExport(message) {
-    // v8z4b16d — Limpeza completa em falha do export: além de zerar
-    // flags e botões, FECHAR o previewScreen e a faixa preta sobreposta.
-    // Antes, em caso de erro silencioso o overlay preto permanecia
-    // visível com o canvas vazio (tela preta) e o usuário ficava sem
-    // saída visual clara. Agora o app volta ao estado de edição normal.
+    // v8z4b28b — falha de geração não deve fechar o Preview nem deixar tela preta.
+    // Resetar export/overlay e manter o usuário no Preview em estado controlado.
     isRecording = false;
-    document.body.classList.remove('previewing');
+    document.body.classList.add('previewing');
     if (animFrame) {
       try { cancelAnimationFrame(animFrame); } catch(e) {}
       animFrame = null;
     }
     animStart = null;
     pausedElapsed = 0;
-    isPreviewing = false;
+    isPreviewing = true;
     hideGenOverlay();
     if (pb)  pb.style.display  = '';
     if (pb2) pb2.style.display = 'none';
@@ -15850,19 +16000,26 @@ async function startRecord() {
     setGenerateLabel('Salvar MP4');
     const tl = document.getElementById('previewTimeline');
     const tf = document.getElementById('previewTimelineFill');
-    if (tl) tl.classList.remove('show');
+    if (tl) tl.classList.add('show');
     if (tf) tf.style.width = '0%';
-    // Esconder previewScreen + limpar canvas para evitar tela preta.
     const ps = document.getElementById('previewScreen');
-    if (ps) ps.classList.remove('show');
+    if (ps) ps.classList.add('show');
     const dc = document.getElementById('previewDisplayCanvas');
     if (dc) {
+      dc.style.display = 'block';
+      dc.style.filter = 'none';
       try {
         const dctx = dc.getContext('2d');
-        if (dctx) dctx.clearRect(0, 0, dc.width || 1, dc.height || 1);
-      } catch(e) {}
-      dc.style.display = 'none';
-      dc.style.filter = 'none';
+        if (dctx) {
+          applyCanvasRenderQuality(dctx);
+          const [safeW, safeH] = exportDims[currentRatio] || [W, H];
+          const safeScale = clampCanvasScaleForPixelLimit(safeW, safeH, Math.min(PREVIEW_SCALE, MAX_PREVIEW_DPR), MAX_INTERNAL_CANVAS_PIXELS);
+          dc.width = Math.round(safeW * safeScale);
+          dc.height = Math.round(safeH * safeScale);
+          hardResetCanvas(dctx, dc, bgColor);
+          drawAtT(dctx, 0, dc.width, dc.height, Math.max(1, total), 0);
+        }
+      } catch(e) { console.error('[cleanupFailedExport] preview restore falhou', e); }
     }
     try { updatePlayButton(); } catch(e) {}
     showStatus(message || 'Erro ao gerar vídeo');
@@ -15909,8 +16066,9 @@ async function startRecord() {
     if (pCtxAfter) {
       applyCanvasRenderQuality(pCtxAfter);
     }
-    const pWA = Math.round(eW2 * PREVIEW_SCALE);
-    const pHA = Math.round(eH2 * PREVIEW_SCALE);
+    const previewScaleAfter = clampCanvasScaleForPixelLimit(eW2, eH2, Math.min(PREVIEW_SCALE, MAX_PREVIEW_DPR), MAX_INTERNAL_CANVAS_PIXELS);
+    const pWA = Math.round(eW2 * previewScaleAfter);
+    const pHA = Math.round(eH2 * previewScaleAfter);
     if (dispCanvasAfter) { dispCanvasAfter.width = pWA; dispCanvasAfter.height = pHA; }
     function loopAfter(ts) {
       if (!isPreviewing) return;
@@ -15954,8 +16112,16 @@ async function startRecord() {
         // v8z4b16d — reset por frame também no fallback (estava ausente),
         // garante fundo bgColor consistente e descarta restos do frame
         // anterior se algum drawImage falhar.
-        hardResetCanvas(rCtx, recCanvas, bgColor);
-        drawAtT(rCtx, t, W, H, total, f);
+        try {
+          hardResetCanvas(rCtx, recCanvas, bgColor);
+          drawAtT(rCtx, t, W, H, total, f);
+        } catch (renderErr) {
+          const diagnostics = buildRenderDiagnostics(t, W, H, f);
+          logRenderFallback(f, t, 'mediarecorder-frame-render-error', diagnostics);
+          console.error('[exportWithMediaRecorderFallback] frame render falhou', renderErr);
+          hardResetCanvas(rCtx, recCanvas, bgColor);
+          drawAtTDirect(rCtx, t, W, H, total, f, diagnostics);
+        }
         if (useManual) track.requestFrame();
         if (f % 3 === 0 || f === total - 1) updateExportProgress(f + 1, 'Gerando vídeo (fallback)');
         const target = startTime + (f + 1) * frameDuration;
@@ -16035,20 +16201,32 @@ async function startRecord() {
     for (let f = 0; f < total; f++) {
       if (!isRecording || encError) break;
       const t = total > 1 ? f / (total - 1) : 0;
-      hardResetCanvas(rCtx, recCanvas, bgColor);
-      drawAtT(rCtx, t, W, H, total, f);
+      try {
+        hardResetCanvas(rCtx, recCanvas, bgColor);
+        drawAtT(rCtx, t, W, H, total, f);
+      } catch (renderErr) {
+        const diagnostics = buildRenderDiagnostics(t, W, H, f);
+        logRenderFallback(f, t, 'webcodecs-frame-render-error', diagnostics);
+        console.error('[startRecord/WebCodecs] frame render falhou', renderErr);
+        hardResetCanvas(rCtx, recCanvas, bgColor);
+        drawAtTDirect(rCtx, t, W, H, total, f, diagnostics);
+      }
       if (isExportFrameLikelyBlank(rCtx, recCanvas, bgColor)) {
         let st = null;
         try { st = getStateAtT(t); } catch(e) {}
+        const blankDiagnostics = buildRenderDiagnostics(t, W, H, f);
         console.warn('export-frame-blank', {
           frameIdx: f,
           t,
           stateAtT: st,
           frameCount,
           canvas: { width: recCanvas.width, height: recCanvas.height },
-          bgColor
+          bgColor,
+          renderDiagnostics: blankDiagnostics
         });
-        throw new Error('export-frame-blank');
+        if (blankDiagnostics.reason !== 'source-zoom-above-safe-limit') {
+          throw new Error('export-frame-blank');
+        }
       }
 
       const ts  = Math.round(f * 1000000 / fps);
