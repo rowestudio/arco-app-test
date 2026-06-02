@@ -1,13 +1,17 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b28b                                     ║
+║  Versão: v8z4b28c                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b28c                                            ║
+║    fix: pipeline HEIC usa fonte canônica consistente ║
+║         no Preview/MP4, com diagnóstico interno e    ║
+║         fallback seguro sem thumbnail/downscale.     ║
 ║  v8z4b28b                                            ║
 ║    fix: fallback seguro para zoom extremo no         ║
 ║         Preview/MP4 sem perder nitidez segura.       ║
@@ -469,7 +473,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b28b — fix: fallback seguro para zoom extremo no Preview/MP4 preservando a fonte original. -->
+<!-- Arco Motion App — v8z4b28c — fix: pipeline HEIC usa fonte canônica consistente no Preview/MP4, com diagnóstico interno e fallback seguro sem thumbnail/downscale. -->
 <!-- Arco Motion App — v8z4b27i — fix: referência multi-select por ordem de seleção, reset de rotação individual sincronizado e faixa rolável sem corte. -->
 <!-- Arco Motion App — v8z4b27h — fix: sliders delta ao vivo, Selecionar todos fixo separado, ícones Lucide oficiais e alinhamento por bounds visuais no multi-select. -->
 <!-- Arco Motion App — v8z4b27g — fix: seleção múltipla reaproveita ordem e padrão visual reais do menu individual, remove caixa de Selecionar todos e usa símbolos Lucide no menu. -->
@@ -2553,7 +2557,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b28b</span><br><span id="appVersionNameText">v8z4b28b</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b28c</span><br><span id="appVersionNameText">v8z4b28c</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4894,8 +4898,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b28b';
-const APP_VERSION_NAME = 'v8z4b28b';
+const APP_VERSION = 'v8z4b28c';
+const APP_VERSION_NAME = 'v8z4b28c';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4906,8 +4910,27 @@ if (appVersionNameTextEl) appVersionNameTextEl.textContent = APP_VERSION_NAME;
 // Image natural dimensions
 let imgNatW = 0, imgNatH = 0;
 // v8z4b28a — mantém a imagem original em data URL para JSON completo
-// sem reamostrar/downscale; Preview e MP4 continuam desenhando direto de imgEl.
+// sem reamostrar/downscale.
 let imageOriginalDataUrl = '';
+// v8z4b28c — fonte única de render para Preview/Export.
+// Stage pode exibir imgEl, mas drawAtT/drawMirrorBg nunca devem usar thumbnails
+// ou canvases reduzidos como fonte final. Por padrão a fonte canônica é o
+// HTMLImageElement já decodificado pelo browser, preservando orientação visual
+// entregue por Safari/Chrome para HEIC/JPEG sem reamostrar a imagem grande.
+let canonicalRenderImage = null;
+let canonicalRenderImageKind = '';
+let imagePipelineMeta = {
+  originalMime: '',
+  sourceKind: '',
+  sourceType: '',
+  isEmbeddedBase64: false,
+  isHeic: false,
+  normalizedWidth: 0,
+  normalizedHeight: 0,
+  usingCanonicalRaster: false,
+  fallbackUsed: false
+};
+const DEBUG_IMAGE_PIPELINE = false;
 // Stage display dimensions (always = image AR)
 let stageW = 0, stageH = 0;
 
@@ -10691,6 +10714,104 @@ function applyCanvasRenderQuality(ctx) {
   try { ctx.imageSmoothingQuality = 'high'; } catch(e) {}
 }
 
+function getImageSourceDimensions(source) {
+  if (!source) return { width: 0, height: 0 };
+  return {
+    width: Number(source.naturalWidth || source.videoWidth || source.width || 0) || 0,
+    height: Number(source.naturalHeight || source.videoHeight || source.height || 0) || 0
+  };
+}
+
+function getImageSourceType(source) {
+  if (!source) return 'none';
+  if (typeof HTMLImageElement !== 'undefined' && source instanceof HTMLImageElement) return 'HTMLImageElement';
+  if (typeof HTMLCanvasElement !== 'undefined' && source instanceof HTMLCanvasElement) return 'HTMLCanvasElement';
+  if (typeof ImageBitmap !== 'undefined' && source instanceof ImageBitmap) return 'ImageBitmap';
+  if (typeof OffscreenCanvas !== 'undefined' && source instanceof OffscreenCanvas) return 'OffscreenCanvas';
+  if (typeof Blob !== 'undefined' && source instanceof Blob) return 'Blob';
+  return source.constructor?.name || typeof source;
+}
+
+function getCanonicalRenderSource() {
+  return canonicalRenderImage || (imgEl && imgEl.complete ? imgEl : null);
+}
+
+function resetCanonicalRenderImage(reason) {
+  canonicalRenderImage = null;
+  canonicalRenderImageKind = '';
+  imagePipelineMeta = {
+    originalMime: '',
+    sourceKind: '',
+    sourceType: '',
+    isEmbeddedBase64: false,
+    isHeic: false,
+    normalizedWidth: 0,
+    normalizedHeight: 0,
+    usingCanonicalRaster: false,
+    fallbackUsed: false
+  };
+  debugImagePipeline(reason || 'canonical-reset', { fallbackUsed: false });
+}
+
+function setCanonicalRenderImage(source, meta = {}) {
+  const dims = getImageSourceDimensions(source);
+  if (!source || !(dims.width > 0) || !(dims.height > 0)) {
+    resetCanonicalRenderImage('canonical-invalid');
+    return false;
+  }
+  canonicalRenderImage = source;
+  canonicalRenderImageKind = getImageSourceType(source);
+  const mime = meta.originalMime || imagePipelineMeta.originalMime || '';
+  imagePipelineMeta = {
+    ...imagePipelineMeta,
+    ...meta,
+    originalMime: mime,
+    sourceType: canonicalRenderImageKind,
+    isEmbeddedBase64: !!meta.isEmbeddedBase64,
+    isHeic: /heic|heif/i.test(mime),
+    normalizedWidth: dims.width,
+    normalizedHeight: dims.height,
+    usingCanonicalRaster: true,
+    fallbackUsed: false
+  };
+  imgNatW = dims.width;
+  imgNatH = dims.height;
+  debugImagePipeline(meta.label || 'canonical-ready');
+  return true;
+}
+
+function formatImageSize(source) {
+  const d = getImageSourceDimensions(source);
+  return d.width && d.height ? `${d.width}x${d.height}` : '0x0';
+}
+
+function debugImagePipeline(label, extra = {}) {
+  if (!DEBUG_IMAGE_PIPELINE && !window._arcoDebugImagePipeline) return;
+  const renderSource = getCanonicalRenderSource();
+  const previewDisplayCanvas = document.getElementById('previewDisplayCanvas');
+  console.info('[ImagePipeline] ' + label, {
+    originalMime: imagePipelineMeta.originalMime || '',
+    sourceKind: imagePipelineMeta.sourceKind || '',
+    sourceType: imagePipelineMeta.sourceType || getImageSourceType(renderSource),
+    detectedFormat: imagePipelineMeta.isHeic ? 'HEIC/HEIF' : ((imagePipelineMeta.originalMime || '').split('/')[1] || ''),
+    fromImageBase64: !!imagePipelineMeta.isEmbeddedBase64,
+    imgNatural: formatImageSize(imgEl),
+    imageSource: formatImageSize(imgEl),
+    canonicalSource: formatImageSize(canonicalRenderImage),
+    renderSource: formatImageSize(renderSource),
+    previewCanvas: previewDisplayCanvas ? `${previewDisplayCanvas.width || 0}x${previewDisplayCanvas.height || 0}` : formatImageSize(previewCanvas),
+    exportCanvas: formatImageSize(recCanvas),
+    currentRatio,
+    imageAR: imgNatW && imgNatH ? Number((imgNatW / imgNatH).toFixed(6)) : null,
+    dpr: window.devicePixelRatio || 1,
+    previewDprLimit: MAX_PREVIEW_DPR,
+    usingCanonicalRaster: !!canonicalRenderImage,
+    normalizedSize: `${imagePipelineMeta.normalizedWidth || 0}x${imagePipelineMeta.normalizedHeight || 0}`,
+    fallbackUsed: !!imagePipelineMeta.fallbackUsed,
+    ...extra
+  });
+}
+
 applyCanvasRenderQuality(pCtx);
 applyCanvasRenderQuality(rCtx);
 const btnPlay      = document.getElementById('btnPlay');
@@ -14764,8 +14885,10 @@ function clampCanvasScaleForPixelLimit(width, height, desiredScale, maxPixels) {
 }
 
 function buildRenderDiagnostics(t, W, H, frameIdx) {
+  const renderSource = getCanonicalRenderSource();
+  const renderDims = getImageSourceDimensions(renderSource);
   const outputSize = { width: W, height: H };
-  const imageNaturalSize = { width: imgNatW, height: imgNatH };
+  const imageNaturalSize = { width: renderDims.width || imgNatW, height: renderDims.height || imgNatH };
   const result = {
     ok: false,
     reason: '',
@@ -14776,11 +14899,11 @@ function buildRenderDiagnostics(t, W, H, frameIdx) {
     zoom: null,
     qualityStatus: 'ACIMA_DO_LIMITE'
   };
-  if (!imgEl || !imgNatW || !imgNatH || !imgEl.complete) {
-    result.reason = 'image-not-ready';
+  if (!renderSource || !imageNaturalSize.width || !imageNaturalSize.height) {
+    result.reason = 'canonical-image-not-ready';
     return result;
   }
-  if (![t, W, H, imgNatW, imgNatH].every(isFiniteNum) || W <= 0 || H <= 0) {
+  if (![t, W, H, imageNaturalSize.width, imageNaturalSize.height].every(isFiniteNum) || W <= 0 || H <= 0) {
     result.reason = 'invalid-output-or-time';
     return result;
   }
@@ -14808,8 +14931,8 @@ function buildRenderDiagnostics(t, W, H, frameIdx) {
   const sy = st.cy - cropH / 2;
   const cSX = Math.max(0, sx);
   const cSY = Math.max(0, sy);
-  const cW = Math.max(0, Math.min(sx + cropW, imgNatW) - cSX);
-  const cH = Math.max(0, Math.min(sy + cropH, imgNatH) - cSY);
+  const cW = Math.max(0, Math.min(sx + cropW, imageNaturalSize.width) - cSX);
+  const cH = Math.max(0, Math.min(sy + cropH, imageNaturalSize.height) - cSY);
   result.cover = cover;
   result.sourceRect = { sx, sy, cropW, cropH, cSX, cSY, cW, cH };
   result.zoom = Math.max(W / Math.max(cW, 0.0001), H / Math.max(cH, 0.0001));
@@ -14817,8 +14940,8 @@ function buildRenderDiagnostics(t, W, H, frameIdx) {
     { w: st.sw * Math.max(1, stageW) / Math.max(1, imgNatW), h: st.sh * Math.max(1, stageH) / Math.max(1, imgNatH) },
     W,
     H,
-    imgNatW,
-    imgNatH,
+    imageNaturalSize.width,
+    imageNaturalSize.height,
     st.rot
   );
   result.qualityStatus = q.status;
@@ -14841,6 +14964,8 @@ function buildRenderDiagnostics(t, W, H, frameIdx) {
 }
 
 function logRenderFallback(frameIndex, t, reason, diagnostics) {
+  imagePipelineMeta.fallbackUsed = true;
+  debugImagePipeline('render-fallback', { frameIndex, t, reason });
   console.warn('[RenderFallback]', {
     frameIndex,
     t,
@@ -14849,7 +14974,27 @@ function logRenderFallback(frameIndex, t, reason, diagnostics) {
     sourceRect: diagnostics?.sourceRect,
     outputSize: diagnostics?.outputSize,
     imageNaturalSize: diagnostics?.imageNaturalSize,
+    canonicalSourceSize: getImageSourceDimensions(getCanonicalRenderSource()),
+    sourceType: getImageSourceType(getCanonicalRenderSource()),
     zoom: diagnostics?.zoom
+  });
+}
+
+function logExportError(frameNumber, t, outputWidth, outputHeight, error, diagnostics) {
+  let segmentInfo = null;
+  try { segmentInfo = getSegAndLocalTAtTime(t); } catch(e) {}
+  console.error('[ExportError]', {
+    frameNumber,
+    t,
+    segmentIndex: segmentInfo?.seg,
+    fromFrame: segmentInfo?.seg != null ? segmentInfo.seg + 1 : null,
+    toFrame: segmentInfo?.seg != null ? Math.min(frameCount, segmentInfo.seg + 2) : null,
+    sourceSize: getImageSourceDimensions(imgEl),
+    canonicalSourceSize: getImageSourceDimensions(getCanonicalRenderSource()),
+    outputSize: { width: outputWidth, height: outputHeight },
+    transform: diagnostics?.state || null,
+    sourceRect: diagnostics?.sourceRect || null,
+    error: error?.message || String(error)
   });
 }
 
@@ -15279,7 +15424,9 @@ function drawAtT(ctx, t, W, H, totalFrames, frameIdx) {
 }
 
 function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics) {
-  if (!ctx || !W || !H || !isFiniteNum(W) || !isFiniteNum(H)) return false;
+  const renderSource = getCanonicalRenderSource();
+  const renderDims = getImageSourceDimensions(renderSource);
+  if (!ctx || !W || !H || !isFiniteNum(W) || !isFiniteNum(H) || !renderSource || !(renderDims.width > 0) || !(renderDims.height > 0)) return false;
   applyCanvasRenderQuality(ctx);
   const st = diagnostics?.state;
   if (!st || ![st.cx, st.cy, st.sw, st.sh, st.rot].every(isFiniteNum) || st.sw <= 0 || st.sh <= 0) {
@@ -15301,8 +15448,8 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics) {
 
   ctx.clearRect(0, 0, W, H);
 
-  if (bgColor === 'mirror' && imgEl.complete && imgNatW > 0) {
-    drawMirrorBg(ctx, W, H, sx, sy, cropW, cropH, rot, cover);
+  if (bgColor === 'mirror' && renderSource && renderDims.width > 0) {
+    drawMirrorBg(ctx, W, H, sx, sy, cropW, cropH, rot, cover, renderSource);
   } else {
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, W, H);
@@ -15310,8 +15457,8 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics) {
 
   const cSX = Math.max(0, sx);
   const cSY = Math.max(0, sy);
-  const cW  = Math.max(0, Math.min(sx + cropW, imgNatW) - cSX);
-  const cH  = Math.max(0, Math.min(sy + cropH, imgNatH) - cSY);
+  const cW  = Math.max(0, Math.min(sx + cropW, renderDims.width) - cSX);
+  const cH  = Math.max(0, Math.min(sy + cropH, renderDims.height) - cSY);
 
   if ([cSX, cSY, cW, cH].every(isFiniteNum) && cW > 0 && cH > 0) {
     ctx.save();
@@ -15326,7 +15473,7 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics) {
     const dW    = cW / cropW * (W + os * 2);
     const dH    = cH / cropH * (H + os * 2);
     if ([dxOff, dyOff, dW, dH].every(isFiniteNum) && dW > 0 && dH > 0) {
-      ctx.drawImage(imgEl, cSX, cSY, cW, cH,
+      ctx.drawImage(renderSource, cSX, cSY, cW, cH,
         -W / 2 - os + dxOff, -H / 2 - os + dyOff, dW, dH);
     }
     ctx.filter = 'none';
@@ -15353,9 +15500,10 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics) {
   return true;
 }
 
-function drawMirrorBg(ctx, W, H, sx, sy, cropW, cropH, rot, cover) {
+function drawMirrorBg(ctx, W, H, sx, sy, cropW, cropH, rot, cover, renderSource = getCanonicalRenderSource()) {
   applyCanvasRenderQuality(ctx);
-  if (![W, H, sx, sy, cropW, cropH, rot, cover].every(isFiniteNum) || cropW <= 0 || cropH <= 0 || cover <= 0) return;
+  const renderDims = getImageSourceDimensions(renderSource);
+  if (!renderSource || !(renderDims.width > 0) || !(renderDims.height > 0) || ![W, H, sx, sy, cropW, cropH, rot, cover].every(isFiniteNum) || cropW <= 0 || cropH <= 0 || cover <= 0) return;
   // Grade 3x3 de tiles espelhados no mesmo sistema de coordenadas da câmera
   ctx.save();
   ctx.translate(W / 2, H / 2);
@@ -15369,12 +15517,12 @@ function drawMirrorBg(ctx, W, H, sx, sy, cropW, cropH, rot, cover) {
       if (Math.abs(tx) % 2 === 1) ctx.scale(-1, 1);
       if (Math.abs(ty) % 2 === 1) ctx.scale(1, -1);
       // Tile central usa o mesmo crop que a imagem principal
-      const cSX = Math.max(0, Math.min(sx, imgNatW - 1));
-      const cSY = Math.max(0, Math.min(sy, imgNatH - 1));
-      const cW  = Math.max(1, Math.min(cropW, imgNatW - cSX));
-      const cH  = Math.max(1, Math.min(cropH, imgNatH - cSY));
+      const cSX = Math.max(0, Math.min(sx, renderDims.width - 1));
+      const cSY = Math.max(0, Math.min(sy, renderDims.height - 1));
+      const cW  = Math.max(1, Math.min(cropW, renderDims.width - cSX));
+      const cH  = Math.max(1, Math.min(cropH, renderDims.height - cSY));
       if ([cSX, cSY, cW, cH].every(isFiniteNum) && cW > 0 && cH > 0) {
-        ctx.drawImage(imgEl, cSX, cSY, cW, cH, -W / 2, -H / 2, W, H);
+        ctx.drawImage(renderSource, cSX, cSY, cW, cH, -W / 2, -H / 2, W, H);
       }
       ctx.restore();
     }
@@ -15398,7 +15546,7 @@ let pausedElapsed = 0;
 function startPreview() {
   if (shouldBlockGlobalUIAction()) return;
   // v8z4b23a: 1 frame é suficiente para preview (vídeo estático)
-  if (frameCount < 1 || !imgNatW) return;
+  if (frameCount < 1 || !imgNatW || !getCanonicalRenderSource()) return;
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   normalizeProjectArrays();
   if (!validateProjectState('preview')) { showStatus('Estado inválido para Preview (veja console)'); return; }
@@ -15408,6 +15556,7 @@ function startPreview() {
   stage.classList.remove('out-of-bounds');
 
   const [eW, eH] = exportDims[currentRatio];
+  debugImagePipeline('preview-start');
   // Usar canvas fixo no previewCanvasWrap — evita flash ao mover DOM no Safari
   const dispCanvas = document.getElementById('previewDisplayCanvas');
   dispCanvas.width  = eW;
@@ -15881,8 +16030,10 @@ async function startRecord() {
   // imagem base ou as dimensões de export estiverem inválidas, sair
   // sem entrar em estado de gravação (evita ficar preso piscando vermelho
   // com a tela preta).
-  if (!imgEl || !imgNatW || !imgNatH || !imgEl.complete) {
-    console.warn('[startRecord] imagem base não carregada', { imgNatW, imgNatH, complete: imgEl && imgEl.complete });
+  const recordSource = getCanonicalRenderSource();
+  const recordSourceDims = getImageSourceDimensions(recordSource);
+  if (!imgEl || !imgNatW || !imgNatH || !imgEl.complete || !recordSource || !(recordSourceDims.width > 0) || !(recordSourceDims.height > 0)) {
+    console.warn('[startRecord] imagem base/canônica não carregada', { imgNatW, imgNatH, complete: imgEl && imgEl.complete, canonical: recordSourceDims });
     showStatus('Imagem ainda não carregada. Tente novamente em instantes.');
     return;
   }
@@ -15970,6 +16121,7 @@ async function startRecord() {
   recCanvas.width = W;
   recCanvas.height = H;
   hardResetCanvas(rCtx, recCanvas, bgColor);
+  debugImagePipeline('export-start', { outputSize: `${W}x${H}`, fps, totalFrames: total });
   showStatus(`Exportando ${currentRatio} · ${W}×${H}px`);
 
   function updateExportProgress(done, label) {
@@ -16118,6 +16270,7 @@ async function startRecord() {
         } catch (renderErr) {
           const diagnostics = buildRenderDiagnostics(t, W, H, f);
           logRenderFallback(f, t, 'mediarecorder-frame-render-error', diagnostics);
+          logExportError(f, t, W, H, renderErr, diagnostics);
           console.error('[exportWithMediaRecorderFallback] frame render falhou', renderErr);
           hardResetCanvas(rCtx, recCanvas, bgColor);
           drawAtTDirect(rCtx, t, W, H, total, f, diagnostics);
@@ -16207,6 +16360,7 @@ async function startRecord() {
       } catch (renderErr) {
         const diagnostics = buildRenderDiagnostics(t, W, H, f);
         logRenderFallback(f, t, 'webcodecs-frame-render-error', diagnostics);
+        logExportError(f, t, W, H, renderErr, diagnostics);
         console.error('[startRecord/WebCodecs] frame render falhou', renderErr);
         hardResetCanvas(rCtx, recCanvas, bgColor);
         drawAtTDirect(rCtx, t, W, H, total, f, diagnostics);
@@ -16225,6 +16379,7 @@ async function startRecord() {
           renderDiagnostics: blankDiagnostics
         });
         if (blankDiagnostics.reason !== 'source-zoom-above-safe-limit') {
+          logExportError(f, t, W, H, new Error('export-frame-blank'), blankDiagnostics);
           throw new Error('export-frame-blank');
         }
       }
@@ -16281,6 +16436,7 @@ async function startRecord() {
     muxer.finalize();
     finishExport(new Blob([muxer.target.buffer], { type: 'video/mp4' }), 'mp4');
   } catch (err) {
+    logExportError(null, null, W, H, err, null);
     console.error('Export WebCodecs falhou:', err);
     cleanupFailedExport('Erro ao gerar vídeo. Tente novamente.');
   } finally {
@@ -17327,6 +17483,10 @@ function loadImage(file, onDoneCallback) {
   if (!file) return;
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   resetPreviewAndExportStateForImageChange();
+  resetCanonicalRenderImage('image-change');
+  const originalMime = file.type || '';
+  const sourceKind = file._arcoSourceKind || 'upload-direct';
+  const isEmbeddedBase64 = sourceKind === 'imageBase64';
   // Guardar nome da imagem para uso no nome do arquivo de projeto
   if (file.name) {
     const base = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_\-]/g, '_').toLowerCase();
@@ -17337,11 +17497,35 @@ function loadImage(file, onDoneCallback) {
   const reader = new FileReader();
   reader.onload = e => {
     imageOriginalDataUrl = e.target.result || '';
+    imagePipelineMeta = {
+      ...imagePipelineMeta,
+      originalMime: originalMime || ((String(imageOriginalDataUrl).match(/^data:([^;]+)/) || [])[1] || ''),
+      sourceKind,
+      isEmbeddedBase64,
+      isHeic: /heic|heif/i.test(originalMime || imageOriginalDataUrl)
+    };
+    debugImagePipeline(isEmbeddedBase64 ? 'load-imagebase64-dataurl' : 'load-upload-dataurl');
     const tmp = new Image();
     tmp.onload = () => {
       imgNatW = tmp.naturalWidth;
       imgNatH = tmp.naturalHeight;
       imgEl.onload = () => {
+        const imgDims = getImageSourceDimensions(imgEl);
+        if (imgDims.width && imgDims.height && (imgDims.width !== imgNatW || imgDims.height !== imgNatH)) {
+          console.warn('[ImagePipeline] natural-size-discrepancy', {
+            tmpNatural: `${imgNatW}x${imgNatH}`,
+            imgElNatural: `${imgDims.width}x${imgDims.height}`,
+            currentRatio,
+            sourceKind,
+            originalMime: imagePipelineMeta.originalMime
+          });
+        }
+        setCanonicalRenderImage(tmp, {
+          label: isEmbeddedBase64 ? 'loaded-from-json' : 'loaded-from-upload',
+          originalMime: imagePipelineMeta.originalMime,
+          sourceKind,
+          isEmbeddedBase64
+        });
         uploadPrompt.style.display = 'none';
         const ph = document.getElementById('stagePlaceholder');
         if (ph) ph.style.display = 'none';
@@ -17633,8 +17817,12 @@ function validateProjectState(context) {
     });
   }
 
-  if (context === 'export' && (!imgEl || !imgNatW || !imgNatH || !imgEl.complete)) {
-    pushIssue('imagem base não carregada para export', { imgNatW, imgNatH, complete: imgEl?.complete });
+  if (context === 'export') {
+    const renderSource = getCanonicalRenderSource();
+    const renderDims = getImageSourceDimensions(renderSource);
+    if (!imgEl || !imgNatW || !imgNatH || !imgEl.complete || !renderSource || !(renderDims.width > 0) || !(renderDims.height > 0)) {
+      pushIssue('imagem base/canônica não carregada para export', { imgNatW, imgNatH, complete: imgEl?.complete, canonical: renderDims, sourceType: getImageSourceType(renderSource) });
+    }
   }
 
   [0, 0.5, 1].forEach((t) => {
@@ -19646,6 +19834,7 @@ function applyProjectData(data) {
   if (data.hasImage && isValidImageBase64(data.imageBase64)) {
     try {
       const file = dataUrlToFile(data.imageBase64, 'projeto');
+      file._arcoSourceKind = 'imageBase64';
       loadImage(file, () => applyFrameData(data));
       showStatus('Carregando projeto com imagem…');
       return;
