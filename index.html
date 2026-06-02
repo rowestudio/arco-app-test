@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b27i                                     ║
+║  Versão: v8z4b28a                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b28a                                            ║
+║    fix: render Preview/MP4 usa fonte original        ║
+║         e diagnóstico interno de resolução.          ║
 ║  v8z4b27i                                            ║
 ║    fix: referência multi-select, reset rotação       ║
 ║         e faixa rolável sem corte.                   ║
@@ -463,6 +466,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b28a — fix: render Preview/MP4 preserva fonte original e adiciona diagnóstico interno de resolução. -->
 <!-- Arco Motion App — v8z4b27i — fix: referência multi-select por ordem de seleção, reset de rotação individual sincronizado e faixa rolável sem corte. -->
 <!-- Arco Motion App — v8z4b27h — fix: sliders delta ao vivo, Selecionar todos fixo separado, ícones Lucide oficiais e alinhamento por bounds visuais no multi-select. -->
 <!-- Arco Motion App — v8z4b27g — fix: seleção múltipla reaproveita ordem e padrão visual reais do menu individual, remove caixa de Selecionar todos e usa símbolos Lucide no menu. -->
@@ -2546,7 +2550,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b27i</span><br><span id="appVersionNameText">v8z4b27i</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b28a</span><br><span id="appVersionNameText">v8z4b28a</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4887,8 +4891,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b27i';
-const APP_VERSION_NAME = 'v8z4b27i';
+const APP_VERSION = 'v8z4b28a';
+const APP_VERSION_NAME = 'v8z4b28a';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4898,6 +4902,9 @@ if (appVersionNameTextEl) appVersionNameTextEl.textContent = APP_VERSION_NAME;
 
 // Image natural dimensions
 let imgNatW = 0, imgNatH = 0;
+// v8z4b28a — mantém a imagem original em data URL para JSON completo
+// sem reamostrar/downscale; Preview e MP4 continuam desenhando direto de imgEl.
+let imageOriginalDataUrl = '';
 // Stage display dimensions (always = image AR)
 let stageW = 0, stageH = 0;
 
@@ -10599,8 +10606,9 @@ let globalHandleEl = null;
 let handleDragState = null;
 let handleCornerByFrame = Array(MAX_FRAMES).fill('br');
 
-// Preview scale — 0.5 = metade da resolução (mais leve), 1.0 = resolução total (diagnóstico)
-const PREVIEW_SCALE = 0.5;
+// v8z4b28a — Preview em resolução final do formato, ainda limitado a <= 1280px
+// pelo próprio exportDims para manter iPhone/Safari dentro de um backing store seguro.
+const PREVIEW_SCALE = 1;
 let bgColor       = '#000000';
 let containFrames = false;
 
@@ -10664,12 +10672,17 @@ function syncPointModeAccessButtonUI() {
 
 const previewCanvas= document.getElementById('previewCanvas');
 const pCtx         = previewCanvas.getContext('2d');
-pCtx.imageSmoothingEnabled = true;
-pCtx.imageSmoothingQuality = 'high';
 const recCanvas    = document.getElementById('recCanvas');
 const rCtx         = recCanvas.getContext('2d');
-rCtx.imageSmoothingEnabled = true;
-rCtx.imageSmoothingQuality = 'high';
+
+function applyCanvasRenderQuality(ctx) {
+  if (!ctx) return;
+  ctx.imageSmoothingEnabled = true;
+  try { ctx.imageSmoothingQuality = 'high'; } catch(e) {}
+}
+
+applyCanvasRenderQuality(pCtx);
+applyCanvasRenderQuality(rCtx);
 const btnPlay      = document.getElementById('btnPlay');
 const btnGenerate  = document.getElementById('btnGenerate');
 const durSlider    = document.getElementById('durSlider');
@@ -10722,8 +10735,10 @@ function setupPreviewCanvas() {
   let pW, pH;
   if (exportAR > aW / aH) { pW = aW; pH = pW / exportAR; }
   else                     { pH = aH; pW = pH * exportAR; }
+  // v8z4b28a: backing store segue o formato final; CSS só escala visualmente.
   previewCanvas.width  = eW;
   previewCanvas.height = eH;
+  applyCanvasRenderQuality(pCtx);
   previewCanvas.style.width  = Math.floor(pW) + 'px';
   previewCanvas.style.height = Math.floor(pH) + 'px';
 }
@@ -14689,6 +14704,57 @@ function frameToCrop(f) {
   return { sx, sy, sw: Math.max(1, sw), sh: Math.max(1, sh) };
 }
 
+function resolutionQualityStatus(ratio) {
+  if (ratio >= 1.20) return 'OK';
+  if (ratio >= 1.00) return 'LIMITE';
+  if (ratio >= 0.75) return 'BAIXA';
+  return 'ACIMA_DO_LIMITE';
+}
+
+function analyzeFrameResolutionQuality(frame, outputWidth, outputHeight, imageNaturalWidth, imageNaturalHeight, rotationDeg = 0) {
+  const safeOutW = Math.max(1, Number(outputWidth) || 1);
+  const safeOutH = Math.max(1, Number(outputHeight) || 1);
+  const safeImgW = Math.max(1, Number(imageNaturalWidth) || imgNatW || 1);
+  const safeImgH = Math.max(1, Number(imageNaturalHeight) || imgNatH || 1);
+  const safeStageW = Math.max(1, stageW || safeImgW);
+  const safeStageH = Math.max(1, stageH || safeImgH);
+  const f = frame || { x: 0, y: 0, w: safeStageW, h: safeStageH };
+  const sourceW = Math.max(1, Math.min(safeImgW, (Number(f.w) || safeStageW) * safeImgW / safeStageW));
+  const sourceH = Math.max(1, Math.min(safeImgH, (Number(f.h) || safeStageH) * safeImgH / safeStageH));
+  const cover = rotationCoverScaleForRect(safeOutW, safeOutH, Number(rotationDeg) || 0) || 1;
+  // Conservador em frames rotacionados: desconta o fator de cobertura usado para
+  // preencher o output sem bordas, pois a rotação consome margem de recorte.
+  const ratioW = (sourceW / safeOutW) / cover;
+  const ratioH = (sourceH / safeOutH) / cover;
+  const qualityRatio = Math.min(ratioW, ratioH);
+  return {
+    sourcePixelsApprox: { width: Math.round(sourceW), height: Math.round(sourceH) },
+    outputPixels: { width: safeOutW, height: safeOutH },
+    amplification: Number((1 / Math.max(qualityRatio, 0.0001)).toFixed(2)),
+    qualityRatio: Number(qualityRatio.toFixed(2)),
+    status: resolutionQualityStatus(qualityRatio)
+  };
+}
+
+function analyzeProjectResolutionQuality(outputWidth, outputHeight) {
+  const dims = (outputWidth && outputHeight) ? [outputWidth, outputHeight] : (exportDims[currentRatio] || [1080, 1080]);
+  const rows = frames.slice(0, frameCount).map((frame, idx) => {
+    const q = analyzeFrameResolutionQuality(frame, dims[0], dims[1], imgNatW, imgNatH, frameRotations[idx] || 0);
+    return {
+      Frame: `F${idx + 1}`,
+      SourcePixelsApprox: `${q.sourcePixelsApprox.width}x${q.sourcePixelsApprox.height}`,
+      OutputPixels: `${q.outputPixels.width}x${q.outputPixels.height}`,
+      Ratio: q.qualityRatio,
+      Status: q.status
+    };
+  });
+  console.table(rows);
+  return rows;
+}
+
+window.analyzeFrameResolutionQuality = analyzeFrameResolutionQuality;
+window.analyzeProjectResolutionQuality = analyzeProjectResolutionQuality;
+
 // ═══════════════════════════════════════
 // INTERPOLATION
 // ═══════════════════════════════════════
@@ -15078,6 +15144,7 @@ function getStateAtT(t) {
 
 
 function drawAtT(ctx, t, W, H, totalFrames, frameIdx) {
+  applyCanvasRenderQuality(ctx);
   const { cx, cy, sw, sh, rot } = getStateAtT(t);
   const cover = rotationCoverScaleForRect(W, H, rot);
 
@@ -15138,6 +15205,7 @@ function drawAtT(ctx, t, W, H, totalFrames, frameIdx) {
 }
 
 function drawMirrorBg(ctx, W, H, sx, sy, cropW, cropH, rot, cover) {
+  applyCanvasRenderQuality(ctx);
   // Grade 3x3 de tiles espelhados no mesmo sistema de coordenadas da câmera
   ctx.save();
   ctx.translate(W / 2, H / 2);
@@ -15194,8 +15262,7 @@ function startPreview() {
   dispCanvas.height = eH;
   dispCanvas.style.display = 'block';
   const pCtx = dispCanvas.getContext('2d');
-  pCtx.imageSmoothingEnabled = true;
-  pCtx.imageSmoothingQuality = 'high';
+  applyCanvasRenderQuality(pCtx);
 
   document.getElementById('previewScreen').classList.add('show');
   const pb  = document.getElementById('previewPlayBtn');
@@ -15213,7 +15280,7 @@ function startPreview() {
   // mostra estado estático seguro.
   const dur = Math.max(1, totalDurationFull() * 1000);
   const totalPF = Math.max(1, Math.round(totalDurationFull() * 25));
-  // Preview em metade da resolução — menos carga na GPU do iPhone
+  // v8z4b28a: Preview usa resolução final segura do formato, sem canvas intermediário reduzido.
   const previewScale = PREVIEW_SCALE;
   dispCanvas.width  = Math.round(eW * previewScale);
   dispCanvas.height = Math.round(eH * previewScale);
@@ -15274,8 +15341,7 @@ function togglePreviewPlayback() {
     const dispCanvas = document.getElementById('previewDisplayCanvas');
     const pCtxR = dispCanvas ? dispCanvas.getContext('2d') : null;
     if (pCtxR) {
-      pCtxR.imageSmoothingEnabled = true;
-      pCtxR.imageSmoothingQuality = 'high';
+      applyCanvasRenderQuality(pCtxR);
     }
     if (!pCtxR) return;
     animStart = null;
@@ -15708,8 +15774,7 @@ async function startRecord() {
   }
   const pCtxRec = dispCanvas ? dispCanvas.getContext('2d', { alpha: false }) : null;
   if (pCtxRec) {
-    pCtxRec.imageSmoothingEnabled = true;
-    try { pCtxRec.imageSmoothingQuality = 'high'; } catch(e) {}
+    applyCanvasRenderQuality(pCtxRec);
   }
   document.getElementById('previewScreen').classList.add('show');
   document.getElementById('previewTimeline').classList.add('show');
@@ -15831,7 +15896,7 @@ async function startRecord() {
     document.getElementById('previewTimelineFill').style.width = '0%';
     showReadyOverlay();
 
-    // Volta para playback do preview, mas em resolução leve de tela.
+    // Volta para playback do preview na mesma resolução final segura do formato.
     isPreviewing = true;
     pausedElapsed = 0;
     animStart = null;
@@ -15842,8 +15907,7 @@ async function startRecord() {
     if (dispCanvasAfter) { dispCanvasAfter.style.display = 'block'; }
     const pCtxAfter = dispCanvasAfter ? dispCanvasAfter.getContext('2d', { alpha: false }) : null;
     if (pCtxAfter) {
-      pCtxAfter.imageSmoothingEnabled = true;
-      try { pCtxAfter.imageSmoothingQuality = 'high'; } catch(e) {}
+      applyCanvasRenderQuality(pCtxAfter);
     }
     const pWA = Math.round(eW2 * PREVIEW_SCALE);
     const pHA = Math.round(eH2 * PREVIEW_SCALE);
@@ -17094,6 +17158,7 @@ function loadImage(file, onDoneCallback) {
   const hasCallback = typeof onDoneCallback === 'function';
   const reader = new FileReader();
   reader.onload = e => {
+    imageOriginalDataUrl = e.target.result || '';
     const tmp = new Image();
     tmp.onload = () => {
       imgNatW = tmp.naturalWidth;
@@ -19236,13 +19301,10 @@ function doSaveDirect(includeImage, nome) {
     ', framePauses.length=' + (data.framePauses ? data.framePauses.length : 'N/A') +
     ', pausas>0=' + nonzeroPauses);
   if (includeImage && imgNatW) {
-    const cvs = document.createElement('canvas');
-    const maxDim = 2560;
-    const sc = Math.min(1, maxDim / Math.max(imgNatW, imgNatH));
-    cvs.width  = Math.round(imgNatW * sc);
-    cvs.height = Math.round(imgNatH * sc);
-    cvs.getContext('2d').drawImage(imgEl, 0, 0, cvs.width, cvs.height);
-    data.imageBase64 = cvs.toDataURL('image/jpeg', 0.85);
+    // v8z4b28a: JSON completo preserva a fonte carregada em resolução original.
+    // Não gerar canvas intermediário reduzido aqui; Preview/MP4 futuros devem
+    // carregar novamente a mesma fonte máxima disponível na sessão salva.
+    data.imageBase64 = imageOriginalDataUrl || imgEl.src;
     data.hasImage = true;
   }
   const json = JSON.stringify(data, null, 2);
@@ -19383,6 +19445,18 @@ function isValidImageBase64(val) {
   return true;
 }
 
+function dataUrlToFile(dataUrl, fallbackName) {
+  const parts = String(dataUrl || '').split(',');
+  if (parts.length < 2) throw new Error('data-url-invalido');
+  const meta = parts[0] || '';
+  const mime = (meta.match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
+  const ext = (mime.split('/')[1] || 'jpg').replace(/[^a-z0-9]/gi, '') || 'jpg';
+  const bin = atob(parts.slice(1).join(','));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new File([bytes], `${fallbackName || 'projeto'}.${ext}`, { type: mime });
+}
+
 function applyProjectData(data) {
   // v8z4b18r: limpar framePauses imediatamente ao iniciar qualquer carga de projeto,
   // inclusive no caminho assíncrono com imagem embutida. Sem isso, as pausas do
@@ -19392,25 +19466,16 @@ function applyProjectData(data) {
   // do JSON após a imagem estar pronta.
   framePauses.length = 0;
   if (data.hasImage && isValidImageBase64(data.imageBase64)) {
-    const img = new Image();
-    img.onload = () => {
-      const cvs = document.createElement('canvas');
-      cvs.width = img.width; cvs.height = img.height;
-      cvs.getContext('2d').drawImage(img, 0, 0);
-      cvs.toBlob(blob => {
-        const file = new File([blob], 'projeto.jpg', { type: 'image/jpeg' });
-        loadImage(file, () => applyFrameData(data));
-      }, 'image/jpeg', 0.92);
-    };
-    // v8z4b18o — Safety net: se a imagem falhar mesmo passando na validação,
-    // carrega o projeto sem imagem em vez de travar.
-    img.onerror = () => {
-      console.warn('[Arco] Falha ao decodificar imageBase64 — carregando projeto sem imagem');
+    try {
+      const file = dataUrlToFile(data.imageBase64, 'projeto');
+      loadImage(file, () => applyFrameData(data));
+      showStatus('Carregando projeto com imagem…');
+      return;
+    } catch(err) {
+      console.warn('[Arco] Falha ao preparar imageBase64 original — carregando projeto sem imagem', err);
       applyProjectData({ ...data, hasImage: false, imageBase64: null });
-    };
-    img.src = data.imageBase64;
-    showStatus('Carregando projeto com imagem…');
-    return;
+      return;
+    }
   }
   if (data.hasImage && data.imageBase64 && !isValidImageBase64(data.imageBase64)) {
     console.warn('[Arco] imageBase64 inválido ou placeholder — ignorando imagem embutida');

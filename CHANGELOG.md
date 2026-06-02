@@ -1,3 +1,13 @@
+## v8z4b28a — auditar resolução e qualidade de render
+
+- `index.html`: versionamento atualizado para `v8z4b28a` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- Preview: escala interna volta a renderizar no tamanho final seguro de `exportDims`, mantendo `imageSmoothingEnabled` e `imageSmoothingQuality = "high"` nos contextos usados e evitando ampliar um canvas de meia resolução.
+- MP4/Export: canvas de export permanece no tamanho final real do vídeo, sem `devicePixelRatio`, com qualidade de smoothing reaplicada após resets de canvas e desenho direto da fonte `imgEl` original.
+- Imagem original/JSON: a sessão mantém o data URL original carregado; salvar/carregar projeto com imagem não reamostra por canvas intermediário nem reduz para 2560 px antes de render posterior.
+- Diagnóstico interno: adicionadas `analyzeFrameResolutionQuality(...)` e `window.analyzeProjectResolutionQuality(...)` para estimar pixels disponíveis por frame, razão de qualidade e status `OK`/`LIMITE`/`BAIXA`/`ACIMA_DO_LIMITE` via `console.table` somente quando chamado manualmente.
+- QA manual recomendado: usar imagem grande com textura fina, criar zoom leve/médio/forte, comparar Preview e MP4 e confirmar se a perda restante corresponde ao limite real do arquivo original.
+- Preservados fora do escopo: interface, ícones do submenu Alinhar, seleção múltipla, curvas/easing/timing, JSON estrutural, zoom/pan do Stage, ghost frame e fluxo de Preview/MP4.
+
 ## v8z4b27i — corrigir referência multi-select, reset de rotação e faixa rolável
 
 - `index.html`: versionamento atualizado para `v8z4b27i` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário do topo.

@@ -1,3 +1,9 @@
+# QA pendente — v8z4b28a auditar resolução e qualidade de render
+
+- Checklist detalhado criado em `docs/QA-v8z4b28a.md`.
+- Verificações estáticas executadas: base `v8z4b27i` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo; versionamento atualizado para `v8z4b28a`; Preview renderiza em resolução final segura do formato em vez de meia resolução; contextos de Preview/Export reaplicam `imageSmoothingEnabled` e `imageSmoothingQuality = "high"`; JSON completo preserva a imagem original carregada sem reamostragem por canvas; carga de JSON com imagem embutida recria `File` direto do data URL; diagnóstico interno por frame disponível por chamada manual sem alerta visual.
+- QA manual completo em iPhone/Safari, imagem grande com detalhes finos, zoom leve/médio/forte, Preview, MP4, análise interna de resolução, JSON com imagem e regressão geral permanece como checklist operacional antes de promover a versão.
+
 # QA pendente — v8z4b27i corrigir referência multi-select, reset de rotação e faixa rolável
 
 - Checklist detalhado criado em `docs/QA-v8z4b27i.md`.
