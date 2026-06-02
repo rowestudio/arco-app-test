@@ -1,3 +1,12 @@
+## v8z4b28b — estabilizar render em zoom extremo
+
+- `index.html`: versionamento atualizado para `v8z4b28b` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: adicionados limites internos de canvas/zoom e validação defensiva de source rect, transform, output e imagem antes do render.
+- `index.html`: Preview limita backing store por orçamento de pixels; Export/MP4 mantém canvas final fixo e desenha direto da imagem original.
+- `index.html`: fallback seguro para zoom extremo registra `[RenderFallback]` e evita canvas/buffer gigante proporcional ao zoom.
+- `index.html`: loop WebCodecs/MediaRecorder captura falha por frame e o cleanup de erro mantém o Preview aberto em estado controlado.
+- `QA.md` e `docs/QA-v8z4b28b.md`: checklist de QA da versão criado/atualizado.
+
 ## v8z4b28a — auditar resolução e qualidade de render
 
 - `index.html`: versionamento atualizado para `v8z4b28a` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
