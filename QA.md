@@ -1,3 +1,9 @@
+# QA pendente — v8z4b28f otimizar Preview com proxy e duração computada
+
+- Checklist detalhado criado em `docs/QA-v8z4b28f.md`.
+- Verificações estáticas executadas: base `v8z4b28e` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo; versionamento atualizado para `v8z4b28f`; `getComputedTimelineDuration()` centraliza a duração lógica usada por Preview e Export; Preview usa `previewRenderSource` cacheado com limite de 4096 px apenas quando a imagem é grande; Export/MP4 continua sem proxy e sem alteração de qualidade; loops de Preview usam timestamp atual do rAF, token anti-loop antigo e throttle leve; logs ficam sob `DEBUG_PREVIEW_PERF = false`.
+- QA manual completo com `arco_diagramacao_i_ah8_c10_img 28e.json`, proxy de imagem grande, duração computada, geração MP4, regressão geral e iPhone/Safari real permanece obrigatório antes de promover a versão.
+
 # QA pendente — v8z4b28e otimizar Preview sem alterar Export
 
 - Verificações estáticas executadas: base `v8z4b28d` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo; versionamento atualizado para `v8z4b28e`; `renderFrameSafely` reutiliza diagnostics em `drawAtT`; loops de Preview cacheiam `previewTimelineFill` e têm guard `isPreviewing`; payload de `[RenderState]` só é montado com `DEBUG_RENDER_EXPORT` ativo.

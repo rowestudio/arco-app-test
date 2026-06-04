@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b28e                                     ║
+║  Versão: v8z4b28f                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b28f                                            ║
+║    perf: Preview usa proxy local e duração computada ║
+║         sem alterar Export/MP4.                      ║
 ║  v8z4b28e                                            ║
 ║    perf: Preview evita diagnóstico duplicado, cacheia║
 ║         timeline e protege loops/debug por frame.    ║
@@ -479,7 +482,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b28e — perf: Preview evita diagnóstico duplicado, cacheia timeline e protege loops/debug por frame sem alterar Export/MP4. -->
+<!-- Arco Motion App — v8z4b28f — perf: Preview usa proxy local, duração computada, rAF time-based e throttle leve sem alterar Export/MP4. -->
 <!-- Arco Motion App — v8z4b28d — fix: motor universal Preview/MP4 valida frames, protege WebCodecs/VideoFrame e limpa export sem tela preta permanente. -->
 <!-- Arco Motion App — v8z4b27i — fix: referência multi-select por ordem de seleção, reset de rotação individual sincronizado e faixa rolável sem corte. -->
 <!-- Arco Motion App — v8z4b27h — fix: sliders delta ao vivo, Selecionar todos fixo separado, ícones Lucide oficiais e alinhamento por bounds visuais no multi-select. -->
@@ -2564,7 +2567,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b28e</span><br><span id="appVersionNameText">v8z4b28e</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b28f</span><br><span id="appVersionNameText">v8z4b28f</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4905,8 +4908,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b28e';
-const APP_VERSION_NAME = 'v8z4b28e';
+const APP_VERSION = 'v8z4b28f';
+const APP_VERSION_NAME = 'v8z4b28f';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4939,6 +4942,13 @@ let imagePipelineMeta = {
 };
 const DEBUG_IMAGE_PIPELINE = false;
 const DEBUG_RENDER_EXPORT = false;
+const DEBUG_PREVIEW_PERF = false;
+const PREVIEW_SOURCE_MAX_SIDE = 4096;
+const PREVIEW_TARGET_FRAME_MS = 32;
+let previewRenderSource = null;
+let previewRenderSourceKey = '';
+let previewLoopToken = 0;
+let previewPerfStats = null;
 // Stage display dimensions (always = image AR)
 let stageW = 0, stageH = 0;
 
@@ -10744,7 +10754,66 @@ function getCanonicalRenderSource() {
   return canonicalRenderImage || (imgEl && imgEl.complete ? imgEl : null);
 }
 
+function invalidatePreviewRenderSource(reason) {
+  previewRenderSource = null;
+  previewRenderSourceKey = '';
+  previewLoopToken++;
+  if (DEBUG_PREVIEW_PERF) console.info('[PreviewPerf] proxy invalidado', { reason: reason || 'unknown' });
+}
+
+function getPreviewRenderSource() {
+  const canonical = getCanonicalRenderSource();
+  const dims = getImageSourceDimensions(canonical);
+  if (!canonical || !(dims.width > 0) || !(dims.height > 0)) return canonical;
+  const key = [dims.width, dims.height, getImageSourceType(canonical), imageOriginalDataUrl.length || 0].join('|');
+  if (previewRenderSource && previewRenderSourceKey === key) return previewRenderSource;
+  const maxSide = Math.max(dims.width, dims.height);
+  if (maxSide <= PREVIEW_SOURCE_MAX_SIDE) {
+    previewRenderSource = canonical;
+    previewRenderSourceKey = key;
+    debugPreviewPerf('proxy-skip', { original: `${dims.width}x${dims.height}`, proxy: `${dims.width}x${dims.height}`, usingProxy: false });
+    return previewRenderSource;
+  }
+  try {
+    const scale = PREVIEW_SOURCE_MAX_SIDE / maxSide;
+    const pW = Math.max(1, Math.round(dims.width * scale));
+    const pH = Math.max(1, Math.round(dims.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = pW;
+    canvas.height = pH;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    applyCanvasRenderQuality(ctx);
+    ctx.drawImage(canonical, 0, 0, pW, pH);
+    previewRenderSource = canvas;
+    previewRenderSourceKey = key;
+    debugPreviewPerf('proxy-ready', { original: `${dims.width}x${dims.height}`, proxy: `${pW}x${pH}`, usingProxy: true });
+  } catch (err) {
+    previewRenderSource = canonical;
+    previewRenderSourceKey = key;
+    if (DEBUG_PREVIEW_PERF) console.warn('[PreviewPerf] falha ao criar proxy; usando fonte canônica', err);
+  }
+  return previewRenderSource;
+}
+
+function debugPreviewPerf(label, extra = {}) {
+  if (!DEBUG_PREVIEW_PERF) return;
+  const original = getImageSourceDimensions(getCanonicalRenderSource());
+  const proxy = getImageSourceDimensions(previewRenderSource);
+  const canvas = document.getElementById('previewDisplayCanvas');
+  console.info('[PreviewPerf] ' + label, {
+    original: `${original.width || 0}x${original.height || 0}`,
+    proxy: `${proxy.width || 0}x${proxy.height || 0}`,
+    canvas: canvas ? `${canvas.width || 0}x${canvas.height || 0}` : '0x0',
+    dpr: window.devicePixelRatio || 1,
+    computedDuration: getComputedTimelineDuration(),
+    savedDuration: duration,
+    durationDelta: Number((getComputedTimelineDuration() - duration).toFixed(3)),
+    ...extra
+  });
+}
+
 function resetCanonicalRenderImage(reason) {
+  invalidatePreviewRenderSource(reason || 'canonical-reset');
   canonicalRenderImage = null;
   canonicalRenderImageKind = '';
   imagePipelineMeta = {
@@ -10784,6 +10853,8 @@ function setCanonicalRenderImage(source, meta = {}) {
   };
   imgNatW = dims.width;
   imgNatH = dims.height;
+  invalidatePreviewRenderSource(meta.label || 'canonical-ready');
+  getPreviewRenderSource();
   debugImagePipeline(meta.label || 'canonical-ready');
   return true;
 }
@@ -15148,7 +15219,7 @@ function renderFrameSafely(ctx, canvas, t, W, H, totalFrames, frameIdx, options 
   hardResetCanvas(ctx, canvas, bgColor);
   let ok = false;
   try {
-    ok = drawAtT(ctx, t, W, H, totalFrames, frameIdx, diagnostics) === true;
+    ok = drawAtT(ctx, t, W, H, totalFrames, frameIdx, diagnostics, options.renderSource || null) === true;
   } catch (err) {
     logExportError(frameIdx, t, W, H, err, diagnostics);
     ok = false;
@@ -15570,14 +15641,14 @@ function getStateAtT(t) {
 }
 
 
-function drawAtT(ctx, t, W, H, totalFrames, frameIdx, existingDiagnostics) {
+function drawAtT(ctx, t, W, H, totalFrames, frameIdx, existingDiagnostics, renderSourceOverride = null) {
   applyCanvasRenderQuality(ctx);
   const diagnostics = existingDiagnostics || buildRenderDiagnostics(t, W, H, frameIdx);
   if (!diagnostics.ok) {
     logRenderFallback(frameIdx, t, diagnostics.reason, diagnostics);
   }
   try {
-    return drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics);
+    return drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics, renderSourceOverride);
   } catch (err) {
     logRenderFallback(frameIdx, t, 'direct-render-error', diagnostics);
     console.error('[drawAtT] render falhou', err);
@@ -15588,8 +15659,10 @@ function drawAtT(ctx, t, W, H, totalFrames, frameIdx, existingDiagnostics) {
   }
 }
 
-function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics) {
-  const renderSource = getCanonicalRenderSource();
+function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics, renderSourceOverride = null) {
+  const canonicalSource = getCanonicalRenderSource();
+  const canonicalDims = getImageSourceDimensions(canonicalSource);
+  const renderSource = renderSourceOverride || canonicalSource;
   const renderDims = getImageSourceDimensions(renderSource);
   if (!ctx || !W || !H || !isFiniteNum(W) || !isFiniteNum(H) || !renderSource || !(renderDims.width > 0) || !(renderDims.height > 0)) return false;
   applyCanvasRenderQuality(ctx);
@@ -15600,7 +15673,13 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics) {
     ctx.fillRect(0, 0, W, H);
     return false;
   }
-  const { cx, cy, sw, sh, rot } = st;
+  const sourceScaleX = canonicalDims.width > 0 ? renderDims.width / canonicalDims.width : 1;
+  const sourceScaleY = canonicalDims.height > 0 ? renderDims.height / canonicalDims.height : 1;
+  const { rot } = st;
+  const cx = st.cx * sourceScaleX;
+  const cy = st.cy * sourceScaleY;
+  const sw = st.sw * sourceScaleX;
+  const sh = st.sh * sourceScaleY;
   const cover = diagnostics?.cover || rotationCoverScaleForRect(W, H, rot);
   if (!isFiniteNum(cover) || cover <= 0) return false;
 
@@ -15747,8 +15826,12 @@ function startPreview() {
   // Evita modulo por zero / NaN / loop infinito sem alterar valores do
   // usuário. Quando todos os trechos são 0, t fica preso em 0 e o preview
   // mostra estado estático seguro.
-  const dur = Math.max(1, totalDurationFull() * 1000);
-  const totalPF = Math.max(1, Math.round(totalDurationFull() * 25));
+  const durationSec = getComputedTimelineDuration();
+  const dur = Math.max(1, durationSec * 1000);
+  const totalPF = Math.max(1, Math.round(durationSec * 25));
+  const previewSource = getPreviewRenderSource();
+  const token = ++previewLoopToken;
+  previewPerfStats = { renders: 0, skipped: 0, totalRenderMs: 0, lastRafDelta: 0 };
   // v8z4b28a: Preview usa resolução final segura do formato, sem canvas intermediário reduzido.
   // v8z4b28b: DPR/backing store limitado para nunca criar buffer interno gigante.
   const previewScale = clampCanvasScaleForPixelLimit(eW, eH, Math.min(PREVIEW_SCALE, MAX_PREVIEW_DPR), MAX_INTERNAL_CANVAS_PIXELS);
@@ -15759,18 +15842,38 @@ function startPreview() {
   const timelineFill = document.getElementById('previewTimelineFill');
 
   function loop(ts) {
-    if (!isPreviewing) return;
+    if (!isPreviewing || token !== previewLoopToken) return;
     if (!animStart) animStart = ts;
+    const rafDelta = previewPerfStats.lastTs ? ts - previewPerfStats.lastTs : PREVIEW_TARGET_FRAME_MS;
+    previewPerfStats.lastTs = ts;
+    if (previewPerfStats.lastRenderTs && ts - previewPerfStats.lastRenderTs < PREVIEW_TARGET_FRAME_MS) {
+      previewPerfStats.skipped++;
+      animFrame = requestAnimationFrame(loop);
+      return;
+    }
+    previewPerfStats.lastRenderTs = ts;
+    previewPerfStats.lastRafDelta = rafDelta;
     const elapsed = (ts - animStart + pausedElapsed) % dur;
     const t = elapsed / dur;
+    const renderStart = DEBUG_PREVIEW_PERF ? performance.now() : 0;
     // CSS filter no elemento canvas — compatível com Safari (alternativa a ctx.filter)
     const blurPx = getBlurAtT(t, pW2);
     dispCanvas.style.filter = blurPx > 0 ? `blur(${(blurPx * 0.5).toFixed(1)}px)` : 'none';
     try {
-      renderFrameSafely(pCtx, dispCanvas, t, pW2, pH2, totalPF, Math.round(t * (totalPF - 1)));
+      renderFrameSafely(pCtx, dispCanvas, t, pW2, pH2, totalPF, Math.round(t * (totalPF - 1)), { renderSource: previewSource });
     } catch (err) {
       logExportError(Math.round(t * (totalPF - 1)), t, pW2, pH2, err, buildRenderDiagnostics(t, pW2, pH2, Math.round(t * (totalPF - 1))));
       renderUniversalFallback(pCtx, dispCanvas, t, pW2, pH2, Math.round(t * (totalPF - 1)), 'preview-loop-error', null);
+    }
+    if (DEBUG_PREVIEW_PERF) {
+      previewPerfStats.renders++;
+      previewPerfStats.totalRenderMs += performance.now() - renderStart;
+      if (previewPerfStats.renders % 30 === 0) debugPreviewPerf('raf', {
+        avgRenderMs: Number((previewPerfStats.totalRenderMs / previewPerfStats.renders).toFixed(2)),
+        skipped: previewPerfStats.skipped,
+        rafDelta: Number(previewPerfStats.lastRafDelta.toFixed(2)),
+        usingProxy: previewSource !== getCanonicalRenderSource()
+      });
     }
     if (timelineFill) {
       timelineFill.style.width = (t * 100) + '%';
@@ -15802,8 +15905,9 @@ function togglePreviewPlayback() {
     if (animStart !== null) {
       const now = performance.now();
       // v8z4b16b — guard contra duração 0 (% 0 = NaN).
-      pausedElapsed = (now - animStart + pausedElapsed) % Math.max(1, totalDurationFull() * 1000);
+      pausedElapsed = (now - animStart + pausedElapsed) % Math.max(1, getComputedTimelineDuration() * 1000);
     }
+    previewLoopToken++;
     cancelAnimationFrame(animFrame);
     animFrame = null;
     animStart = null;
@@ -15814,9 +15918,10 @@ function togglePreviewPlayback() {
     if (pb)  pb.style.display  = '';
     if (pb2) pb2.style.display = 'none';
     // v8z4b16b — guard contra duração 0 (% 0 = NaN).
-    const dur  = Math.max(1, totalDurationFull() * 1000);
+    const durationSec = getComputedTimelineDuration();
+    const dur  = Math.max(1, durationSec * 1000);
     const [eW, eH] = exportDims[currentRatio];
-    const totalPF  = Math.max(1, Math.round(totalDurationFull() * 25));
+    const totalPF  = Math.max(1, Math.round(durationSec * 25));
     const dispCanvas = document.getElementById('previewDisplayCanvas');
     const pCtxR = dispCanvas ? dispCanvas.getContext('2d') : null;
     if (pCtxR) {
@@ -15830,15 +15935,28 @@ function togglePreviewPlayback() {
     dispCanvas.width  = pW2r;
     dispCanvas.height = pH2r;
     const timelineFill = document.getElementById('previewTimelineFill');
+    const previewSource = getPreviewRenderSource();
+    const token = ++previewLoopToken;
+    previewPerfStats = { renders: 0, skipped: 0, totalRenderMs: 0, lastRafDelta: 0 };
     function loop(ts) {
-      if (!isPreviewing) return;
+      if (!isPreviewing || token !== previewLoopToken) return;
       if (!animStart) animStart = ts;
+      const rafDelta = previewPerfStats.lastTs ? ts - previewPerfStats.lastTs : PREVIEW_TARGET_FRAME_MS;
+      previewPerfStats.lastTs = ts;
+      if (previewPerfStats.lastRenderTs && ts - previewPerfStats.lastRenderTs < PREVIEW_TARGET_FRAME_MS) {
+        previewPerfStats.skipped++;
+        animFrame = requestAnimationFrame(loop);
+        return;
+      }
+      previewPerfStats.lastRenderTs = ts;
+      previewPerfStats.lastRafDelta = rafDelta;
       const elapsed = (ts - animStart + pausedElapsed) % dur;
       const t = elapsed / dur;
+      const renderStart = DEBUG_PREVIEW_PERF ? performance.now() : 0;
       const blurPx = getBlurAtT(t, pW2r);
       dispCanvas.style.filter = blurPx > 0 ? `blur(${(blurPx * 0.5).toFixed(1)}px)` : 'none';
       try {
-        renderFrameSafely(pCtxR, dispCanvas, t, pW2r, pH2r, totalPF, Math.round(t * (totalPF - 1)));
+        renderFrameSafely(pCtxR, dispCanvas, t, pW2r, pH2r, totalPF, Math.round(t * (totalPF - 1)), { renderSource: previewSource });
       } catch (err) {
         logExportError(Math.round(t * (totalPF - 1)), t, pW2r, pH2r, err, buildRenderDiagnostics(t, pW2r, pH2r, Math.round(t * (totalPF - 1))));
         renderUniversalFallback(pCtxR, dispCanvas, t, pW2r, pH2r, Math.round(t * (totalPF - 1)), 'preview-resume-loop-error', null);
@@ -16253,7 +16371,7 @@ async function startRecord() {
     showStatus('Proporção de export inválida.');
     return;
   }
-  const durationSec0 = totalDurationFull();
+  const durationSec0 = getComputedTimelineDuration();
   if (!Number.isFinite(durationSec0) || durationSec0 <= 0) {
     console.warn('[startRecord] duração total inválida — abortando export', { durationSec0 });
     showStatus('Duração total inválida — ajuste os trechos e tente novamente.');
@@ -16425,7 +16543,7 @@ async function startRecord() {
     pausedElapsed = 0;
     animStart = null;
     const [eW2, eH2] = exportDims[currentRatio];
-    const dur2 = Math.max(1, durationSec * 1000);
+    const dur2 = Math.max(1, getComputedTimelineDuration() * 1000);
     const totalPF2 = Math.max(1, Math.round(durationSec * fps));
     const dispCanvasAfter = document.getElementById('previewDisplayCanvas');
     if (dispCanvasAfter) { dispCanvasAfter.style.display = 'block'; }
@@ -16437,12 +16555,14 @@ async function startRecord() {
     const pWA = Math.round(eW2 * previewScaleAfter);
     const pHA = Math.round(eH2 * previewScaleAfter);
     if (dispCanvasAfter) { dispCanvasAfter.width = pWA; dispCanvasAfter.height = pHA; }
+    const previewSourceAfter = getPreviewRenderSource();
+    const tokenAfter = ++previewLoopToken;
     function loopAfter(ts) {
-      if (!isPreviewing) return;
+      if (!isPreviewing || tokenAfter !== previewLoopToken) return;
       if (!animStart) animStart = ts;
       const elapsed = (ts - animStart + pausedElapsed) % dur2;
       const t2 = elapsed / dur2;
-      if (pCtxAfter) renderFrameSafely(pCtxAfter, dispCanvasAfter, t2, pWA, pHA, totalPF2, Math.round(t2 * (totalPF2 - 1)));
+      if (pCtxAfter) renderFrameSafely(pCtxAfter, dispCanvasAfter, t2, pWA, pHA, totalPF2, Math.round(t2 * (totalPF2 - 1)), { renderSource: previewSourceAfter });
       animFrame = requestAnimationFrame(loopAfter);
     }
     animFrame = requestAnimationFrame(loopAfter);
@@ -18928,6 +19048,12 @@ function getDurationParts() {
 // Duração total incluindo loop e pausas — usado nos loops de animação e gravação
 function totalDurationFull() {
   return getDurationParts().total;
+}
+
+function getComputedTimelineDuration() {
+  const total = totalDurationFull();
+  if (Number.isFinite(total) && total > 0) return total;
+  return (Number.isFinite(duration) && duration > 0) ? duration : 4;
 }
 
 function getSegDuration(seg) {
