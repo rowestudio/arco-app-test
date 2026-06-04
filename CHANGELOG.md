@@ -1,3 +1,13 @@
+## v8z4b28d — estabilizar motor universal de Preview/MP4
+
+- `index.html`: versionamento atualizado para `v8z4b28d` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: adicionada validação universal de estado/câmera por tempo via `getRenderStateAtTime`, com status de pausa, loop, trecho, escala, rotação e validade antes do render.
+- `index.html`: `buildRenderDiagnostics`, `drawAtT`, `drawAtTDirect` e o novo `renderFrameSafely` passam a validar canvas, fonte canônica, source rect, transform e frame em cada render, acionando fallback universal sem thumbnail/downscale quando o quadro é inválido ou preto.
+- `index.html`: Preview usa render seguro por frame e mantém canvas/controles ativos em caso de erro, evitando tela preta permanente e fechamento espontâneo.
+- `index.html`: Export/MP4 e fallback MediaRecorder só entregam frames renderizados e canvas válidos; criação de `VideoFrame`, timestamps, snapshot `ImageBitmap`, encode, fechamento e erros do encoder passam a ser tratados por frame.
+- `index.html`: adicionados `cleanupExportSession`, logs técnicos `[RenderState]`, `[RenderValidationError]`, `[ExportFrameError]`, `[EncoderError]` e `[ExportCleanup]` sob `DEBUG_RENDER_EXPORT`, preservando a nitidez/fonte canônica conquistada nas versões v8z4b28a/v8z4b28b/v8z4b28c.
+- `QA.md` e `docs/QA-v8z4b28d.md`: checklist de QA da versão criado/atualizado, com zoom extremo, pausa, loop, rotação, HEIC/JPG/PNG, JSON com imagem e erro controlado.
+
 ## v8z4b28c — corrigir pipeline HEIC e fonte de render
 
 - `index.html`: versionamento atualizado para `v8z4b28c` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.

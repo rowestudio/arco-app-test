@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b28c                                     ║
+║  Versão: v8z4b28d                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b28d                                            ║
+║    fix: motor universal Preview/MP4 valida frames,   ║
+║         protege encoder e limpa export sem tela preta║
 ║  v8z4b28c                                            ║
 ║    fix: pipeline HEIC usa fonte canônica consistente ║
 ║         no Preview/MP4, com diagnóstico interno e    ║
@@ -473,7 +476,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b28c — fix: pipeline HEIC usa fonte canônica consistente no Preview/MP4, com diagnóstico interno e fallback seguro sem thumbnail/downscale. -->
+<!-- Arco Motion App — v8z4b28d — fix: motor universal Preview/MP4 valida frames, protege WebCodecs/VideoFrame e limpa export sem tela preta permanente. -->
 <!-- Arco Motion App — v8z4b27i — fix: referência multi-select por ordem de seleção, reset de rotação individual sincronizado e faixa rolável sem corte. -->
 <!-- Arco Motion App — v8z4b27h — fix: sliders delta ao vivo, Selecionar todos fixo separado, ícones Lucide oficiais e alinhamento por bounds visuais no multi-select. -->
 <!-- Arco Motion App — v8z4b27g — fix: seleção múltipla reaproveita ordem e padrão visual reais do menu individual, remove caixa de Selecionar todos e usa símbolos Lucide no menu. -->
@@ -2557,7 +2560,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b28c</span><br><span id="appVersionNameText">v8z4b28c</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b28d</span><br><span id="appVersionNameText">v8z4b28d</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4898,8 +4901,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b28c';
-const APP_VERSION_NAME = 'v8z4b28c';
+const APP_VERSION = 'v8z4b28d';
+const APP_VERSION_NAME = 'v8z4b28d';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -4931,6 +4934,7 @@ let imagePipelineMeta = {
   fallbackUsed: false
 };
 const DEBUG_IMAGE_PIPELINE = false;
+const DEBUG_RENDER_EXPORT = false;
 // Stage display dimensions (always = image AR)
 let stageW = 0, stageH = 0;
 
@@ -14870,6 +14874,86 @@ function analyzeFrameResolutionQuality(frame, outputWidth, outputHeight, imageNa
 
 function isFiniteNum(v) { return Number.isFinite(Number(v)); }
 
+
+function debugRenderExport(tag, payload) {
+  if (!DEBUG_RENDER_EXPORT) return;
+  try { console.log(tag, payload); } catch(e) {}
+}
+
+function frameNumberLabel(idx) {
+  return Number.isFinite(Number(idx)) ? `F${Number(idx) + 1}` : null;
+}
+
+function getRenderStateAtTime(t) {
+  const state = {
+    ok: false,
+    reason: '',
+    globalTime: Number(t),
+    segmentIndex: 0,
+    fromFrame: frameNumberLabel(0),
+    toFrame: frameNumberLabel(frameCount > 1 ? 1 : 0),
+    localT: 0,
+    moving: false,
+    paused: false,
+    loop: false,
+    finish: false,
+    scale: null,
+    rotation: null,
+    camera: null,
+    easing: null
+  };
+  try {
+    if (!isFiniteNum(t)) throw new Error('invalid-global-time');
+    if (frameCount < 1 || !frames[0]) throw new Error('missing-from-frame');
+    const fullDur = totalDurationFull();
+    if (!isFiniteNum(fullDur) || fullDur < 0) throw new Error('invalid-total-duration');
+    let timing = { seg: 0, localT: 0, isPause: false, isLoopSeg: false };
+    if (frameCount > 1) timing = getSegAndLocalTAtTime(t);
+    const seg = Math.max(0, Math.min(Math.max(0, frameCount - 1), Number(timing.seg) || 0));
+    const localT = clamp01(Number(timing.localT) || 0);
+    state.segmentIndex = seg;
+    state.localT = localT;
+    state.paused = !!timing.isPause;
+    state.loop = !!timing.isLoopSeg;
+    state.finish = !loopEnabled && finishMode === 'soft' && fullDur > 0 && (Number(t) * fullDur) >= Math.max(0, fullDur - finishDuration);
+    state.moving = frameCount > 1 && !state.paused && !state.finish;
+    state.fromFrame = frameNumberLabel(Math.min(seg, frameCount - 1));
+    state.toFrame = frameNumberLabel(Math.min(seg + 1, frameCount - 1));
+    if (!frames[Math.min(seg, frameCount - 1)]) throw new Error('missing-from-frame');
+    if (state.moving && frameCount > 1 && !frames[Math.min(seg + 1, frameCount - 1)]) throw new Error('missing-to-frame');
+    if (!isFiniteNum(localT) || localT < 0 || localT > 1) throw new Error('invalid-local-t');
+    const camera = getStateAtT(t);
+    if (!camera || ![camera.cx, camera.cy, camera.sw, camera.sh, camera.rot].every(isFiniteNum)) throw new Error('invalid-camera-state');
+    if (camera.sw <= 0 || camera.sh <= 0) throw new Error('invalid-camera-scale');
+    state.camera = camera;
+    state.scale = { sw: camera.sw, sh: camera.sh };
+    state.rotation = camera.rot;
+    state.easing = {
+      movement: movementEasingMode === 'smart' ? 'smart' : getSegEase(seg),
+      scale: scaleEasingMode === 'smart' ? 'smart' : getScaleEase(seg),
+      rotation: rotationEasingMode === 'smart' ? 'smart' : getRotEase(seg)
+    };
+    state.ok = true;
+    state.reason = 'ok';
+  } catch (err) {
+    state.ok = false;
+    state.reason = err?.message || String(err);
+  }
+  debugRenderExport('[RenderState]', {
+    frameNumber: null,
+    globalTime: state.globalTime,
+    segmentIndex: state.segmentIndex,
+    fromFrame: state.fromFrame,
+    toFrame: state.toFrame,
+    paused: state.paused,
+    loop: state.loop,
+    localT: state.localT,
+    scale: state.scale,
+    rotation: state.rotation
+  });
+  return state;
+}
+
 function canvasPixelCount(width, height) {
   return Math.max(0, Math.round(Number(width) || 0)) * Math.max(0, Math.round(Number(height) || 0));
 }
@@ -14892,9 +14976,11 @@ function buildRenderDiagnostics(t, W, H, frameIdx) {
   const result = {
     ok: false,
     reason: '',
+    renderState: null,
     state: null,
     sourceRect: null,
     outputSize,
+    canvasSize: null,
     imageNaturalSize,
     zoom: null,
     qualityStatus: 'ACIMA_DO_LIMITE'
@@ -14907,14 +14993,13 @@ function buildRenderDiagnostics(t, W, H, frameIdx) {
     result.reason = 'invalid-output-or-time';
     return result;
   }
-  let st;
-  try {
-    st = getStateAtT(t);
-  } catch (err) {
-    result.reason = 'state-error';
-    result.error = err?.message || String(err);
+  const renderState = getRenderStateAtTime(t);
+  result.renderState = renderState;
+  if (!renderState.ok) {
+    result.reason = renderState.reason || 'state-error';
     return result;
   }
+  const st = renderState.camera;
   result.state = st;
   if (!st || ![st.cx, st.cy, st.sw, st.sh, st.rot].every(isFiniteNum) || st.sw <= 0 || st.sh <= 0) {
     result.reason = 'invalid-state';
@@ -14966,36 +15051,110 @@ function buildRenderDiagnostics(t, W, H, frameIdx) {
 function logRenderFallback(frameIndex, t, reason, diagnostics) {
   imagePipelineMeta.fallbackUsed = true;
   debugImagePipeline('render-fallback', { frameIndex, t, reason });
-  console.warn('[RenderFallback]', {
+  const payload = {
     frameIndex,
     t,
     reason,
-    qualityStatus: diagnostics?.qualityStatus,
+    state: diagnostics?.renderState || diagnostics?.state,
     sourceRect: diagnostics?.sourceRect,
     outputSize: diagnostics?.outputSize,
-    imageNaturalSize: diagnostics?.imageNaturalSize,
+    canvasSize: diagnostics?.canvasSize,
+    imageSize: diagnostics?.imageNaturalSize,
+    qualityStatus: diagnostics?.qualityStatus,
     canonicalSourceSize: getImageSourceDimensions(getCanonicalRenderSource()),
     sourceType: getImageSourceType(getCanonicalRenderSource()),
     zoom: diagnostics?.zoom
-  });
+  };
+  debugRenderExport('[RenderValidationError]', payload);
+  if (DEBUG_RENDER_EXPORT) console.warn('[RenderFallback]', payload);
 }
 
 function logExportError(frameNumber, t, outputWidth, outputHeight, error, diagnostics) {
-  let segmentInfo = null;
-  try { segmentInfo = getSegAndLocalTAtTime(t); } catch(e) {}
-  console.error('[ExportError]', {
+  let renderState = diagnostics?.renderState || null;
+  if (!renderState && isFiniteNum(t)) {
+    try { renderState = getRenderStateAtTime(t); } catch(e) {}
+  }
+  const payload = {
     frameNumber,
-    t,
-    segmentIndex: segmentInfo?.seg,
-    fromFrame: segmentInfo?.seg != null ? segmentInfo.seg + 1 : null,
-    toFrame: segmentInfo?.seg != null ? Math.min(frameCount, segmentInfo.seg + 2) : null,
+    timestamp: t,
+    segmentIndex: renderState?.segmentIndex,
+    fromFrame: renderState?.fromFrame,
+    toFrame: renderState?.toFrame,
+    paused: !!renderState?.paused,
     sourceSize: getImageSourceDimensions(imgEl),
     canonicalSourceSize: getImageSourceDimensions(getCanonicalRenderSource()),
     outputSize: { width: outputWidth, height: outputHeight },
-    transform: diagnostics?.state || null,
+    transform: diagnostics?.state || renderState?.camera || null,
     sourceRect: diagnostics?.sourceRect || null,
     error: error?.message || String(error)
-  });
+  };
+  console.error('[ExportFrameError]', payload);
+}
+
+function validateCanvasForEncode(canvas, W, H) {
+  if (!canvas) return { ok: false, reason: 'missing-canvas' };
+  if (![canvas.width, canvas.height, W, H].every(isFiniteNum)) return { ok: false, reason: 'invalid-canvas-size' };
+  if (canvas.width !== W || canvas.height !== H) return { ok: false, reason: 'canvas-size-mismatch' };
+  if (W <= 0 || H <= 0 || canvas.width <= 0 || canvas.height <= 0) return { ok: false, reason: 'zero-canvas-size' };
+  if (canvasPixelCount(canvas.width, canvas.height) > MAX_INTERNAL_CANVAS_PIXELS) return { ok: false, reason: 'canvas-too-large' };
+  return { ok: true, reason: 'ok' };
+}
+
+function renderUniversalFallback(ctx, canvas, t, W, H, frameIdx, reason, diagnostics) {
+  const renderSource = getCanonicalRenderSource();
+  const renderDims = getImageSourceDimensions(renderSource);
+  if (!ctx || !canvas || !renderSource || !(renderDims.width > 0) || !(renderDims.height > 0) || ![W, H].every(isFiniteNum) || W <= 0 || H <= 0) {
+    logRenderFallback(frameIdx, t, reason || 'fallback-unavailable', diagnostics);
+    return false;
+  }
+  try {
+    hardResetCanvas(ctx, canvas, bgColor);
+    applyCanvasRenderQuality(ctx);
+    const srcAspect = renderDims.width / renderDims.height;
+    const outAspect = W / H;
+    let sx = 0, sy = 0, sw = renderDims.width, sh = renderDims.height;
+    if (srcAspect > outAspect) {
+      sw = renderDims.height * outAspect;
+      sx = (renderDims.width - sw) / 2;
+    } else if (srcAspect < outAspect) {
+      sh = renderDims.width / outAspect;
+      sy = (renderDims.height - sh) / 2;
+    }
+    if (![sx, sy, sw, sh].every(isFiniteNum) || sw <= 0 || sh <= 0) return false;
+    ctx.drawImage(renderSource, sx, sy, sw, sh, 0, 0, W, H);
+    logRenderFallback(frameIdx, t, reason || 'universal-fallback', diagnostics);
+    return true;
+  } catch (err) {
+    logRenderFallback(frameIdx, t, 'universal-fallback-error', diagnostics);
+    console.error('[RenderValidationError]', { reason: err?.message || String(err), diagnostics });
+    return false;
+  }
+}
+
+function renderFrameSafely(ctx, canvas, t, W, H, totalFrames, frameIdx, options = {}) {
+  const diagnostics = buildRenderDiagnostics(t, W, H, frameIdx);
+  diagnostics.canvasSize = canvas ? { width: canvas.width, height: canvas.height } : null;
+  const canvasCheck = validateCanvasForEncode(canvas, W, H);
+  if (!canvasCheck.ok) {
+    diagnostics.reason = canvasCheck.reason;
+    return renderUniversalFallback(ctx, canvas, t, W, H, frameIdx, canvasCheck.reason, diagnostics);
+  }
+  hardResetCanvas(ctx, canvas, bgColor);
+  let ok = false;
+  try {
+    ok = drawAtT(ctx, t, W, H, totalFrames, frameIdx) === true;
+  } catch (err) {
+    logExportError(frameIdx, t, W, H, err, diagnostics);
+    ok = false;
+  }
+  if (!ok) {
+    ok = renderUniversalFallback(ctx, canvas, t, W, H, frameIdx, diagnostics.reason || 'render-returned-false', diagnostics);
+  }
+  if (ok && options.rejectBlank && isExportFrameLikelyBlank(ctx, canvas, bgColor)) {
+    ok = renderUniversalFallback(ctx, canvas, t, W, H, frameIdx, 'blank-frame-after-render', diagnostics);
+  }
+  if (!ok) logExportError(frameIdx, t, W, H, new Error(diagnostics.reason || 'render-frame-failed'), diagnostics);
+  return ok;
 }
 
 function analyzeProjectResolutionQuality(outputWidth, outputHeight) {
@@ -15462,22 +15621,25 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics) {
 
   if ([cSX, cSY, cW, cH].every(isFiniteNum) && cW > 0 && cH > 0) {
     ctx.save();
-    ctx.translate(W / 2, H / 2);
-    ctx.rotate(rot * Math.PI / 180);
-    ctx.scale(cover, cover);
-    const blurPx = getBlurAtT(t, W);
-    if (blurPx > 0) ctx.filter = `blur(${blurPx.toFixed(2)}px)`;
-    const os    = 1;
-    const dxOff = (cSX - sx) / cropW * (W + os * 2);
-    const dyOff = (cSY - sy) / cropH * (H + os * 2);
-    const dW    = cW / cropW * (W + os * 2);
-    const dH    = cH / cropH * (H + os * 2);
-    if ([dxOff, dyOff, dW, dH].every(isFiniteNum) && dW > 0 && dH > 0) {
-      ctx.drawImage(renderSource, cSX, cSY, cW, cH,
-        -W / 2 - os + dxOff, -H / 2 - os + dyOff, dW, dH);
+    try {
+      ctx.translate(W / 2, H / 2);
+      ctx.rotate(rot * Math.PI / 180);
+      ctx.scale(cover, cover);
+      const blurPx = getBlurAtT(t, W);
+      if (blurPx > 0) ctx.filter = `blur(${blurPx.toFixed(2)}px)`;
+      const os    = 1;
+      const dxOff = (cSX - sx) / cropW * (W + os * 2);
+      const dyOff = (cSY - sy) / cropH * (H + os * 2);
+      const dW    = cW / cropW * (W + os * 2);
+      const dH    = cH / cropH * (H + os * 2);
+      if ([dxOff, dyOff, dW, dH].every(isFiniteNum) && dW > 0 && dH > 0) {
+        ctx.drawImage(renderSource, cSX, cSY, cW, cH,
+          -W / 2 - os + dxOff, -H / 2 - os + dyOff, dW, dH);
+      }
+    } finally {
+      ctx.filter = 'none';
+      ctx.restore();
     }
-    ctx.filter = 'none';
-    ctx.restore();
   }
 
   // Marca d'água: free com 4+ frames, nunca no Pro
@@ -15596,7 +15758,12 @@ function startPreview() {
     // CSS filter no elemento canvas — compatível com Safari (alternativa a ctx.filter)
     const blurPx = getBlurAtT(t, pW2);
     dispCanvas.style.filter = blurPx > 0 ? `blur(${(blurPx * 0.5).toFixed(1)}px)` : 'none';
-    drawAtT(pCtx, t, pW2, pH2, totalPF, Math.round(t * (totalPF - 1)));
+    try {
+      renderFrameSafely(pCtx, dispCanvas, t, pW2, pH2, totalPF, Math.round(t * (totalPF - 1)));
+    } catch (err) {
+      logExportError(Math.round(t * (totalPF - 1)), t, pW2, pH2, err, buildRenderDiagnostics(t, pW2, pH2, Math.round(t * (totalPF - 1))));
+      renderUniversalFallback(pCtx, dispCanvas, t, pW2, pH2, Math.round(t * (totalPF - 1)), 'preview-loop-error', null);
+    }
     document.getElementById('previewTimelineFill').style.width = (t * 100) + '%';
     animFrame = requestAnimationFrame(loop);
   }
@@ -15658,7 +15825,12 @@ function togglePreviewPlayback() {
       const t = elapsed / dur;
       const blurPx = getBlurAtT(t, pW2r);
       dispCanvas.style.filter = blurPx > 0 ? `blur(${(blurPx * 0.5).toFixed(1)}px)` : 'none';
-      drawAtT(pCtxR, t, pW2r, pH2r, totalPF, Math.round(t * (totalPF - 1)));
+      try {
+        renderFrameSafely(pCtxR, dispCanvas, t, pW2r, pH2r, totalPF, Math.round(t * (totalPF - 1)));
+      } catch (err) {
+        logExportError(Math.round(t * (totalPF - 1)), t, pW2r, pH2r, err, buildRenderDiagnostics(t, pW2r, pH2r, Math.round(t * (totalPF - 1))));
+        renderUniversalFallback(pCtxR, dispCanvas, t, pW2r, pH2r, Math.round(t * (totalPF - 1)), 'preview-resume-loop-error', null);
+      }
       document.getElementById('previewTimelineFill').style.width = (t * 100) + '%';
       animFrame = requestAnimationFrame(loop);
     }
@@ -15702,6 +15874,29 @@ function resetGeneratedVideoState() {
 function clearGeneratedMp4(reason) {
   // reason é usado apenas para logging/debug, não altera comportamento.
   resetGeneratedVideoState();
+}
+
+
+function cleanupExportSession(reason, stats = {}) {
+  debugRenderExport('[ExportCleanup]', {
+    reason: reason || 'unknown',
+    encodedFrames: stats.encodedFrames ?? null,
+    expectedFrames: stats.expectedFrames ?? null
+  });
+  if (stats.logOnly) return;
+  if (stats.cancelAnimation !== false && animFrame) {
+    try { cancelAnimationFrame(animFrame); } catch(e) {}
+    animFrame = null;
+  }
+  if (stats.clearRecording !== false) isRecording = false;
+  animStart = null;
+  if (stats.resetProgress !== false) {
+    try { setGenProgress(0); } catch(e) {}
+    const tf = document.getElementById('previewTimelineFill');
+    if (tf && !stats.keepTimeline) tf.style.width = '0%';
+  }
+  try { hideGenOverlay(); } catch(e) {}
+  try { hardResetCanvas(rCtx, recCanvas, bgColor); } catch(e) {}
 }
 
 // v8z4b19i — resetPreviewPlaybackState(): limpa completamente o estado de
@@ -15753,6 +15948,7 @@ function resetPreviewPlaybackState() {
 // NÃO altera frames, curvas, JSON, Preview matemático ou motor de MP4.
 function cancelMp4ExportAndResetState(reason) {
   if (!isRecording) return; // nada a cancelar — guard
+  cleanupExportSession(reason || 'cancel', { logOnly: true });
   console.log('[cancelMp4ExportAndResetState]', reason || '');
   // 1. Sinalizar cancelamento: loop de encode checa isRecording a cada frame.
   isRecording = false;
@@ -16102,6 +16298,9 @@ async function startRecord() {
   const durationSec = durationSec0;
   const total = Math.max(1, Math.round(durationSec * fps));
   const timelineFill = document.getElementById('previewTimelineFill');
+  let exportEncodedFrames = 0;
+  let exportEncoder = null;
+  let exportEncoderClosed = false;
 
   // v8z4b16d — Sanidade do canvas de export antes de qualquer encode.
   if (!(W > 0) || !(H > 0) || !Number.isFinite(W) || !Number.isFinite(H)) {
@@ -16169,11 +16368,12 @@ async function startRecord() {
           dc.width = Math.round(safeW * safeScale);
           dc.height = Math.round(safeH * safeScale);
           hardResetCanvas(dctx, dc, bgColor);
-          drawAtT(dctx, 0, dc.width, dc.height, Math.max(1, total), 0);
+          renderFrameSafely(dctx, dc, 0, dc.width, dc.height, Math.max(1, total), 0);
         }
       } catch(e) { console.error('[cleanupFailedExport] preview restore falhou', e); }
     }
     try { updatePlayButton(); } catch(e) {}
+    cleanupExportSession('failed-export', { logOnly: true, encodedFrames: exportEncodedFrames, expectedFrames: total });
     showStatus(message || 'Erro ao gerar vídeo');
   }
 
@@ -16192,6 +16392,7 @@ async function startRecord() {
     window._lastVideoBlob = blob;
     window._lastVideoExt  = ext;
     const mb = (blob.size / 1024 / 1024).toFixed(1);
+    cleanupExportSession('success', { logOnly: true, encodedFrames: exportEncodedFrames, expectedFrames: total });
     isRecording = false;
     document.body.classList.remove('previewing');
     hideGenOverlay();
@@ -16227,7 +16428,7 @@ async function startRecord() {
       if (!animStart) animStart = ts;
       const elapsed = (ts - animStart + pausedElapsed) % dur2;
       const t2 = elapsed / dur2;
-      if (pCtxAfter) drawAtT(pCtxAfter, t2, pWA, pHA, totalPF2, Math.round(t2 * (totalPF2 - 1)));
+      if (pCtxAfter) renderFrameSafely(pCtxAfter, dispCanvasAfter, t2, pWA, pHA, totalPF2, Math.round(t2 * (totalPF2 - 1)));
       animFrame = requestAnimationFrame(loopAfter);
     }
     animFrame = requestAnimationFrame(loopAfter);
@@ -16261,20 +16462,10 @@ async function startRecord() {
       for (let f = 0; f < total; f++) {
         if (!isRecording) break;
         const t = total > 1 ? f / (total - 1) : 0;
-        // v8z4b16d — reset por frame também no fallback (estava ausente),
-        // garante fundo bgColor consistente e descarta restos do frame
-        // anterior se algum drawImage falhar.
-        try {
-          hardResetCanvas(rCtx, recCanvas, bgColor);
-          drawAtT(rCtx, t, W, H, total, f);
-        } catch (renderErr) {
-          const diagnostics = buildRenderDiagnostics(t, W, H, f);
-          logRenderFallback(f, t, 'mediarecorder-frame-render-error', diagnostics);
-          logExportError(f, t, W, H, renderErr, diagnostics);
-          console.error('[exportWithMediaRecorderFallback] frame render falhou', renderErr);
-          hardResetCanvas(rCtx, recCanvas, bgColor);
-          drawAtTDirect(rCtx, t, W, H, total, f, diagnostics);
-        }
+        // v8z4b28d — render seguro por frame: valida estado/canvas e usa
+        // fallback universal antes de entregar qualquer frame ao recorder.
+        const rendered = renderFrameSafely(rCtx, recCanvas, t, W, H, total, f, { rejectBlank: true });
+        if (!rendered) throw new Error('mediarecorder-frame-render-failed');
         if (useManual) track.requestFrame();
         if (f % 3 === 0 || f === total - 1) updateExportProgress(f + 1, 'Gerando vídeo (fallback)');
         const target = startTime + (f + 1) * frameDuration;
@@ -16337,9 +16528,13 @@ async function startRecord() {
     let encError = null;
     const encoder = new VideoEncoder({
       output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-      error: (e) => { encError = e; console.error('VideoEncoder:', e); }
+      error: (e) => {
+        encError = e;
+        console.error('[EncoderError]', { frameNumber: exportEncodedFrames, timestamp: null, error: e?.message || String(e) });
+      }
     });
 
+    exportEncoder = encoder;
     encoder.configure({
       codec: codecStr,
       width: W,
@@ -16354,58 +16549,49 @@ async function startRecord() {
     for (let f = 0; f < total; f++) {
       if (!isRecording || encError) break;
       const t = total > 1 ? f / (total - 1) : 0;
-      try {
-        hardResetCanvas(rCtx, recCanvas, bgColor);
-        drawAtT(rCtx, t, W, H, total, f);
-      } catch (renderErr) {
-        const diagnostics = buildRenderDiagnostics(t, W, H, f);
-        logRenderFallback(f, t, 'webcodecs-frame-render-error', diagnostics);
-        logExportError(f, t, W, H, renderErr, diagnostics);
-        console.error('[startRecord/WebCodecs] frame render falhou', renderErr);
-        hardResetCanvas(rCtx, recCanvas, bgColor);
-        drawAtTDirect(rCtx, t, W, H, total, f, diagnostics);
-      }
-      if (isExportFrameLikelyBlank(rCtx, recCanvas, bgColor)) {
-        let st = null;
-        try { st = getStateAtT(t); } catch(e) {}
-        const blankDiagnostics = buildRenderDiagnostics(t, W, H, f);
-        console.warn('export-frame-blank', {
-          frameIdx: f,
-          t,
-          stateAtT: st,
-          frameCount,
-          canvas: { width: recCanvas.width, height: recCanvas.height },
-          bgColor,
-          renderDiagnostics: blankDiagnostics
-        });
-        if (blankDiagnostics.reason !== 'source-zoom-above-safe-limit') {
-          logExportError(f, t, W, H, new Error('export-frame-blank'), blankDiagnostics);
-          throw new Error('export-frame-blank');
-        }
-      }
+      const rendered = renderFrameSafely(rCtx, recCanvas, t, W, H, total, f, { rejectBlank: true });
+      if (!rendered) throw new Error('webcodecs-frame-render-failed');
 
       const ts  = Math.round(f * 1000000 / fps);
       const nts = Math.round((f + 1) * 1000000 / fps);
-      let bitmap = null;
-      let source = recCanvas;
-      // Snapshot por frame: evita que o encoder leia um canvas já redesenhado
-      // em exports após troca de template/easing. Não mantém array de bitmaps.
-      if (typeof createImageBitmap === 'function') {
-        try {
-          bitmap = await createImageBitmap(recCanvas);
-          source = bitmap;
-        } catch(e) {
-          bitmap = null;
-          source = recCanvas;
-        }
+      if (![ts, nts].every(isFiniteNum) || nts <= ts) {
+        logExportError(f, t, W, H, new Error('invalid-frame-timestamp'), buildRenderDiagnostics(t, W, H, f));
+        throw new Error('invalid-frame-timestamp');
       }
-      const frame = new VideoFrame(source, {
-        timestamp: ts,
-        duration: Math.max(1, nts - ts)
-      });
-      encoder.encode(frame, { keyFrame: f % (fps * 2) === 0 });
-      frame.close();
-      if (bitmap && typeof bitmap.close === 'function') bitmap.close();
+      const canvasCheck = validateCanvasForEncode(recCanvas, W, H);
+      if (!canvasCheck.ok) {
+        logExportError(f, t, W, H, new Error(canvasCheck.reason), buildRenderDiagnostics(t, W, H, f));
+        throw new Error(canvasCheck.reason);
+      }
+      let bitmap = null;
+      let frame = null;
+      let source = recCanvas;
+      try {
+        // Snapshot por frame: evita que o encoder leia um canvas já redesenhado
+        // em exports após troca de template/easing. Não mantém array de bitmaps.
+        if (typeof createImageBitmap === 'function') {
+          try {
+            bitmap = await createImageBitmap(recCanvas);
+            source = bitmap;
+          } catch(e) {
+            bitmap = null;
+            source = recCanvas;
+          }
+        }
+        frame = new VideoFrame(source, {
+          timestamp: ts,
+          duration: Math.max(1, nts - ts)
+        });
+        encoder.encode(frame, { keyFrame: f % (fps * 2) === 0 });
+        exportEncodedFrames++;
+      } catch (encodeErr) {
+        console.error('[EncoderError]', { frameNumber: f, timestamp: ts, error: encodeErr?.message || String(encodeErr) });
+        logExportError(f, t, W, H, encodeErr, buildRenderDiagnostics(t, W, H, f));
+        throw encodeErr;
+      } finally {
+        if (frame) { try { frame.close(); } catch(e) {} }
+        if (bitmap && typeof bitmap.close === 'function') { try { bitmap.close(); } catch(e) {} }
+      }
 
       // Backpressure mais rígido: evita fila grande/memória alta no iPhone.
       if (encoder.encodeQueueSize > 2) {
@@ -16428,11 +16614,11 @@ async function startRecord() {
     // por cancelMp4ExportAndResetState() via stopPreview().
     if (exportCancelledFlag) {
       console.log('[startRecord/WebCodecs] export cancelado — descartando muxer');
-      try { encoder.close(); } catch(e) {}
+      try { encoder.close(); exportEncoderClosed = true; } catch(e) {}
       return;
     }
     await encoder.flush();
-    try { encoder.close(); } catch(e) {}
+    try { encoder.close(); exportEncoderClosed = true; } catch(e) {}
     muxer.finalize();
     finishExport(new Blob([muxer.target.buffer], { type: 'video/mp4' }), 'mp4');
   } catch (err) {
@@ -16440,6 +16626,10 @@ async function startRecord() {
     console.error('Export WebCodecs falhou:', err);
     cleanupFailedExport('Erro ao gerar vídeo. Tente novamente.');
   } finally {
+    if (exportEncoder && !exportEncoderClosed) {
+      try { exportEncoder.close(); exportEncoderClosed = true; } catch(e) {}
+    }
+    cleanupExportSession(isRecording ? 'finally-still-recording' : 'finally', { logOnly: true, encodedFrames: exportEncodedFrames, expectedFrames: total });
     // v8z4b16d — Garantia final: se algo escapou e isRecording ainda
     // está true (encoder travado, promessa pendente), forçar reset
     // para o usuário poder tentar novamente em vez de ficar preso
