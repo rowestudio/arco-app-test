@@ -1,3 +1,11 @@
+## v8z4b28e — otimizar Preview sem alterar Export
+
+- `index.html`: versionamento atualizado para `v8z4b28e` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: `renderFrameSafely` passa os diagnósticos já calculados para `drawAtT`, mantendo compatibilidade com chamadas sem diagnósticos e evitando segunda chamada normal a `buildRenderDiagnostics` por frame.
+- `index.html`: loops de Preview em `startPreview` e retomada de `togglePreviewPlayback` cacheiam `previewTimelineFill` fora do `requestAnimationFrame` e retornam imediatamente quando `isPreviewing` está desligado.
+- `index.html`: `getRenderStateAtTime` só monta o payload de `[RenderState]` quando `DEBUG_RENDER_EXPORT` está ativo.
+- Preservados fora do escopo: UI, qualidade visual, JSON, curvas/easing/timing, WebCodecs, VideoEncoder, VideoFrame, muxer, fallback universal e motor de Export/MP4 da v8z4b28d.
+
 ## v8z4b28d — estabilizar motor universal de Preview/MP4
 
 - `index.html`: versionamento atualizado para `v8z4b28d` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.

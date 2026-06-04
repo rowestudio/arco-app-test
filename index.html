@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b28d                                     ║
+║  Versão: v8z4b28e                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b28e                                            ║
+║    perf: Preview evita diagnóstico duplicado, cacheia║
+║         timeline e protege loops/debug por frame.    ║
 ║  v8z4b28d                                            ║
 ║    fix: motor universal Preview/MP4 valida frames,   ║
 ║         protege encoder e limpa export sem tela preta║
@@ -476,6 +479,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b28e — perf: Preview evita diagnóstico duplicado, cacheia timeline e protege loops/debug por frame sem alterar Export/MP4. -->
 <!-- Arco Motion App — v8z4b28d — fix: motor universal Preview/MP4 valida frames, protege WebCodecs/VideoFrame e limpa export sem tela preta permanente. -->
 <!-- Arco Motion App — v8z4b27i — fix: referência multi-select por ordem de seleção, reset de rotação individual sincronizado e faixa rolável sem corte. -->
 <!-- Arco Motion App — v8z4b27h — fix: sliders delta ao vivo, Selecionar todos fixo separado, ícones Lucide oficiais e alinhamento por bounds visuais no multi-select. -->
@@ -2560,7 +2564,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b28d</span><br><span id="appVersionNameText">v8z4b28d</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b28e</span><br><span id="appVersionNameText">v8z4b28e</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4901,8 +4905,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b28d';
-const APP_VERSION_NAME = 'v8z4b28d';
+const APP_VERSION = 'v8z4b28e';
+const APP_VERSION_NAME = 'v8z4b28e';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -14939,18 +14943,20 @@ function getRenderStateAtTime(t) {
     state.ok = false;
     state.reason = err?.message || String(err);
   }
-  debugRenderExport('[RenderState]', {
-    frameNumber: null,
-    globalTime: state.globalTime,
-    segmentIndex: state.segmentIndex,
-    fromFrame: state.fromFrame,
-    toFrame: state.toFrame,
-    paused: state.paused,
-    loop: state.loop,
-    localT: state.localT,
-    scale: state.scale,
-    rotation: state.rotation
-  });
+  if (DEBUG_RENDER_EXPORT) {
+    debugRenderExport('[RenderState]', {
+      frameNumber: null,
+      globalTime: state.globalTime,
+      segmentIndex: state.segmentIndex,
+      fromFrame: state.fromFrame,
+      toFrame: state.toFrame,
+      paused: state.paused,
+      loop: state.loop,
+      localT: state.localT,
+      scale: state.scale,
+      rotation: state.rotation
+    });
+  }
   return state;
 }
 
@@ -15142,7 +15148,7 @@ function renderFrameSafely(ctx, canvas, t, W, H, totalFrames, frameIdx, options 
   hardResetCanvas(ctx, canvas, bgColor);
   let ok = false;
   try {
-    ok = drawAtT(ctx, t, W, H, totalFrames, frameIdx) === true;
+    ok = drawAtT(ctx, t, W, H, totalFrames, frameIdx, diagnostics) === true;
   } catch (err) {
     logExportError(frameIdx, t, W, H, err, diagnostics);
     ok = false;
@@ -15564,9 +15570,9 @@ function getStateAtT(t) {
 }
 
 
-function drawAtT(ctx, t, W, H, totalFrames, frameIdx) {
+function drawAtT(ctx, t, W, H, totalFrames, frameIdx, existingDiagnostics) {
   applyCanvasRenderQuality(ctx);
-  const diagnostics = buildRenderDiagnostics(t, W, H, frameIdx);
+  const diagnostics = existingDiagnostics || buildRenderDiagnostics(t, W, H, frameIdx);
   if (!diagnostics.ok) {
     logRenderFallback(frameIdx, t, diagnostics.reason, diagnostics);
   }
@@ -15750,8 +15756,10 @@ function startPreview() {
   dispCanvas.height = Math.round(eH * previewScale);
   const pW2 = Math.round(eW * previewScale);
   const pH2 = Math.round(eH * previewScale);
+  const timelineFill = document.getElementById('previewTimelineFill');
 
   function loop(ts) {
+    if (!isPreviewing) return;
     if (!animStart) animStart = ts;
     const elapsed = (ts - animStart + pausedElapsed) % dur;
     const t = elapsed / dur;
@@ -15764,7 +15772,9 @@ function startPreview() {
       logExportError(Math.round(t * (totalPF - 1)), t, pW2, pH2, err, buildRenderDiagnostics(t, pW2, pH2, Math.round(t * (totalPF - 1))));
       renderUniversalFallback(pCtx, dispCanvas, t, pW2, pH2, Math.round(t * (totalPF - 1)), 'preview-loop-error', null);
     }
-    document.getElementById('previewTimelineFill').style.width = (t * 100) + '%';
+    if (timelineFill) {
+      timelineFill.style.width = (t * 100) + '%';
+    }
     animFrame = requestAnimationFrame(loop);
   }
   animFrame = requestAnimationFrame(loop);
@@ -15819,7 +15829,9 @@ function togglePreviewPlayback() {
     const pH2r = Math.round(eH * previewScale2);
     dispCanvas.width  = pW2r;
     dispCanvas.height = pH2r;
+    const timelineFill = document.getElementById('previewTimelineFill');
     function loop(ts) {
+      if (!isPreviewing) return;
       if (!animStart) animStart = ts;
       const elapsed = (ts - animStart + pausedElapsed) % dur;
       const t = elapsed / dur;
@@ -15831,7 +15843,9 @@ function togglePreviewPlayback() {
         logExportError(Math.round(t * (totalPF - 1)), t, pW2r, pH2r, err, buildRenderDiagnostics(t, pW2r, pH2r, Math.round(t * (totalPF - 1))));
         renderUniversalFallback(pCtxR, dispCanvas, t, pW2r, pH2r, Math.round(t * (totalPF - 1)), 'preview-resume-loop-error', null);
       }
-      document.getElementById('previewTimelineFill').style.width = (t * 100) + '%';
+      if (timelineFill) {
+        timelineFill.style.width = (t * 100) + '%';
+      }
       animFrame = requestAnimationFrame(loop);
     }
     animFrame = requestAnimationFrame(loop);
