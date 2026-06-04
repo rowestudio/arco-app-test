@@ -1,3 +1,13 @@
+## v8z4b28f — otimizar Preview com proxy e duração computada
+
+- `index.html`: versionamento atualizado para `v8z4b28f` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: adicionada fonte `previewRenderSource` cacheada apenas para Preview, com limite conservador de lado maior e fallback para `canonicalRenderImage` quando necessário.
+- `index.html`: `renderFrameSafely`/`drawAtT` aceitam fonte de render opcional para o Preview, mantendo Export/MP4 sem proxy e usando a fonte canônica/original.
+- `index.html`: criada `getComputedTimelineDuration()` e aplicada no Preview e no Export para evitar divergência entre `duration` salvo/stale e timeline calculada com segmentos, pausas e loop.
+- `index.html`: loops de Preview ficam time-based com token anti-rAF antigo, throttle leve de ~30 fps e logs técnicos sob `DEBUG_PREVIEW_PERF = false`.
+- Preservados fora do escopo: UI/UX, JSON salvo, imagem original, qualidade/resolução do MP4, WebCodecs, VideoEncoder, VideoFrame e muxer.
+- `QA.md` e `docs/QA-v8z4b28f.md`: checklist de QA criado/atualizado, incluindo arquivo grande `arco_diagramacao_i_ah8_c10_img 28e.json`, duração computada, proxy de Preview, MP4 e iPhone/Safari real.
+
 ## v8z4b28e — otimizar Preview sem alterar Export
 
 - `index.html`: versionamento atualizado para `v8z4b28e` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
