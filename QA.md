@@ -1,3 +1,8 @@
+# QA pendente — v8z4b28e otimizar Preview sem alterar Export
+
+- Verificações estáticas executadas: base `v8z4b28d` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo; versionamento atualizado para `v8z4b28e`; `renderFrameSafely` reutiliza diagnostics em `drawAtT`; loops de Preview cacheiam `previewTimelineFill` e têm guard `isPreviewing`; payload de `[RenderState]` só é montado com `DEBUG_RENDER_EXPORT` ativo.
+- QA manual obrigatório permanece pendente no repositório de teste: imagem grande/menor, Preview abre/fecha/reabre sem loop preso, redução perceptível de engasgo, geração MP4 repetida sem tela preta/travamento, JSON recarregado, zoom forte, rotação, pausa, loop, seleção múltipla, salvar/carregar JSON, troca de imagem, Reset Project, zoom/pan com dois dedos, inserção assistida e validação em iPhone/Safari real.
+
 # QA pendente — v8z4b28d estabilizar motor universal de Preview/MP4
 
 - Checklist detalhado criado em `docs/QA-v8z4b28d.md`.
