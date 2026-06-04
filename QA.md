@@ -1,3 +1,9 @@
+# QA pendente — v8z4b28d estabilizar motor universal de Preview/MP4
+
+- Checklist detalhado criado em `docs/QA-v8z4b28d.md`.
+- Verificações estáticas executadas: base `v8z4b28c` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo; versionamento atualizado para `v8z4b28d`; `getRenderStateAtTime` centraliza validação de estado/câmera por tempo; Preview, WebCodecs e MediaRecorder usam `renderFrameSafely`; `VideoFrame`/`ImageBitmap` são fechados por frame; timestamps/canvas são validados antes do encode; `cleanupExportSession` e logs técnicos foram adicionados sob `DEBUG_RENDER_EXPORT`.
+- QA manual completo em iPhone/Safari, zoom forte/extremo, pausa adicionada/removida, loop ligado/desligado, rotação positiva/negativa, HEIC/JPG/PNG, JSON leve/com imagem, arquivo real `arco_5537 28b2_img.json` se disponível, Preview abre/fecha e nova tentativa de MP4 sem reload permanece pendente antes de promover a versão.
+
 # QA pendente — v8z4b28c corrigir pipeline HEIC e fonte de render
 
 - Checklist detalhado criado em `docs/QA-v8z4b28c.md`.
