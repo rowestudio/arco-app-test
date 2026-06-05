@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29a                                     ║
+║  Versão: v8z4b29b                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29b                                            ║
+║    fix/ux: corrige hierarquia dos menus contextuais  ║
+║        sem alterar motor/Preview/MP4/JSON.           ║
 ║  v8z4b29a                                            ║
 ║    ux: reorganiza topo, Arquivos, faixa temporal e   ║
 ║        menus contextuais sem alterar motor/JSON.     ║
@@ -485,6 +488,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29b — fix/ux: corrige hierarquia dos menus contextuais; Curva fica no Stage, Fundo/Inverter/Formato ficam em Arquivos e menus inferiores ficam apenas Frame/Trecho sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29a — ux: reorganiza topo, Arquivos, faixa temporal e menus contextuais preservando funções existentes, motor Preview/Export e JSON. -->
 <!-- Arco Motion App — v8z4b28f — perf: Preview usa proxy local, duração computada, rAF time-based e throttle leve sem alterar Export/MP4. -->
 <!-- Arco Motion App — v8z4b28d — fix: motor universal Preview/MP4 valida frames, protege WebCodecs/VideoFrame e limpa export sem tela preta permanente. -->
@@ -1006,29 +1010,28 @@ body.no-image #stageFrameMenu{display:none !important;}
 .top-btn .top-label{font-size:10px;font-weight:700;line-height:1;margin-top:1px;}
 .top-btn.labeled{flex-direction:column;gap:1px;width:50px;}
 #stageFrameMenu{
-  position:fixed;left:10px;right:10px;bottom:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px) + 8px);
-  z-index:120;display:none;align-items:center;justify-content:center;gap:8px;
-  padding:8px;border-radius:16px;background:rgba(24,24,28,.94);border:1px solid var(--border2);
+  position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
+  z-index:120;display:none;align-items:center;justify-content:center;gap:14px;
+  padding:8px 12px;border-radius:16px;background:rgba(24,24,28,.94);border:1px solid var(--border2);
   backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);
+  max-width:calc(100% - 20px);
 }
 #stageFrameMenu.show{display:flex;}
 .stage-frame-action{
-  min-width:74px;min-height:44px;border:1px solid var(--border2);border-radius:12px;background:rgba(255,255,255,.04);
+  min-width:54px;min-height:44px;border:0;border-radius:0;background:transparent;
   color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
   font-size:11px;font-weight:700;cursor:pointer;-webkit-user-select:none;user-select:none;touch-action:manipulation;
 }
-.stage-frame-action:active{background:rgba(255,255,255,.12);}
+.stage-frame-action:active{background:rgba(255,255,255,.10);}
 .stage-frame-action svg{width:21px;height:21px;display:block;}
 #toolbar.contextual-toolbar{overflow-x:auto;align-items:stretch;gap:2px;}
 #toolbar.contextual-toolbar::-webkit-scrollbar{display:none;}
 #toolbar.contextual-toolbar .tb-item{flex:0 0 64px;min-height:44px;justify-content:center;}
 #toolbar.contextual-toolbar .ctx-only{display:none;}
-body.bottom-context-general #toolbar.contextual-toolbar .ctx-general,
 body.bottom-context-frame #toolbar.contextual-toolbar .ctx-frame,
 body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:flex;}
 body.bottom-context-frame #toolbar.contextual-toolbar .ctx-common,
-body.bottom-context-segment #toolbar.contextual-toolbar .ctx-common,
-body.bottom-context-general #toolbar.contextual-toolbar .ctx-common{display:flex;}
+body.bottom-context-segment #toolbar.contextual-toolbar .ctx-common{display:flex;}
 
 /* iPhone/Safari: evitar seleção nativa de texto em áreas interativas */
 #pillsRow, #pillsRow *,
@@ -2276,9 +2279,6 @@ body.cust-open #toolbar{
     <svg id="playIcon" viewBox="0 0 24 24"><use href="#i-play"></use></svg><span class="top-label" id="playLbl">Preview</span>
   </div>
   <div class="top-spacer"></div>
-  <div class="top-btn" id="topBtnPointMode" onclick="togglePointModeMenuFromButton()" title="Modo do ponto" style="display:none;opacity:0.35;pointer-events:none;">
-    <svg viewBox="0 0 24 24"><use href="#i-curve"></use></svg>
-  </div>
   <div class="top-btn" id="topBtnUndo" onclick="undo()" title="Desfazer" style="opacity:0.3;pointer-events:none;">
     <svg viewBox="0 0 24 24"><use href="#i-undo"></use></svg>
   </div>
@@ -2300,6 +2300,17 @@ body.cust-open #toolbar{
       <div class="preview-timeline" id="previewTimeline">
         <div class="preview-timeline-fill" id="previewTimelineFill"></div>
       </div>
+    </div>
+    <div id="stageFrameMenu" aria-label="Menu contextual de frame no Stage">
+      <button class="stage-frame-action" type="button" onclick="event.stopPropagation();hideStageFrameMenu();deleteActiveFrame()" title="Remover frame selecionado">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Deletar</span>
+      </button>
+      <button class="stage-frame-action" id="stageFrameLockBtn" type="button" onclick="event.stopPropagation();hideStageFrameMenu();toggleFrameLock()" title="Fixar/desfixar frame">
+        <svg viewBox="0 0 24 24"><use href="#i-lock"></use></svg><span>Fixar</span>
+      </button>
+      <button class="stage-frame-action" type="button" onclick="event.stopPropagation();hideStageFrameMenu();togglePointModeMenuFromButton()" title="Editar tipo de curva/ponto">
+        <svg viewBox="0 0 24 24"><use href="#i-curve"></use></svg><span>Curva</span>
+      </button>
     </div>
   </div>
   <!-- Status toast fora do stage — não afetado pelo zoom de edição (v8z4b17y) -->
@@ -2350,17 +2361,6 @@ body.cust-open #toolbar{
   </div>
 </div>
 
-<div id="stageFrameMenu" aria-label="Menu contextual de frame no Stage">
-  <button class="stage-frame-action" type="button" onclick="deleteActiveFrame()" title="Remover frame selecionado">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Deletar</span>
-  </button>
-  <button class="stage-frame-action" id="stageFrameLockBtn" type="button" onclick="toggleFrameLock()" title="Fixar/desfixar frame">
-    <svg viewBox="0 0 24 24"><use href="#i-lock"></use></svg><span>Fixar</span>
-  </button>
-  <button class="stage-frame-action" type="button" onclick="togglePointModeMenuFromButton()" title="Editar tipo de curva/ponto">
-    <svg viewBox="0 0 24 24"><use href="#i-curve"></use></svg><span>Curva</span>
-  </button>
-</div>
 
 <!-- v8z4b22e — Barra fixa de inserção assistida: única origem de Confirmar/Cancelar;
      sempre visível no viewport (position:fixed); aparece somente durante isInsertingFrame;
@@ -2578,15 +2578,6 @@ body.cust-open #toolbar{
   <div class="tb-item ctx-only ctx-segment" onclick="openSelectedSegmentMenu()">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-curve"></use></svg><span class="tb-lbl">Movimento</span>
   </div>
-  <div class="tb-item ctx-only ctx-common" onclick="openPanel('BgColor')">
-    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-bg"></use></svg><span class="tb-lbl">Fundo</span>
-  </div>
-  <div class="tb-item ctx-only ctx-common" onclick="invertFrames()">
-    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-invert"></use></svg><span class="tb-lbl">Inverter</span>
-  </div>
-  <div class="tb-item ctx-only ctx-common" onclick="openPanel('Format')">
-    <span class="tb-val" id="tbFormat">9:16</span><span class="tb-lbl">Formato</span>
-  </div>
 </div>
 
 <!-- SETTINGS SHEET -->
@@ -2602,7 +2593,13 @@ body.cust-open #toolbar{
   </label>
   <div class="settings-row-sep"></div>
   <div class="settings-row" onclick="openPanel('BgColor');closeSettingsSheet()">
-    <svg viewBox="0 0 24 24"><use href="#i-bg"></use></svg> Cor de fundo
+    <svg viewBox="0 0 24 24"><use href="#i-bg"></use></svg> Fundo
+  </div>
+  <div class="settings-row" onclick="invertFrames();closeSettingsSheet()">
+    <svg viewBox="0 0 24 24"><use href="#i-invert"></use></svg> Inverter
+  </div>
+  <div class="settings-row" onclick="openPanel('Format');closeSettingsSheet()">
+    <svg viewBox="0 0 24 24"><use href="#i-contain"></use></svg> Formato
   </div>
   <div class="settings-row" id="containItem" onclick="toggleContainFrames()">
     <svg viewBox="0 0 24 24"><use href="#i-contain"></use></svg> Conter na imagem: <span id="containLbl">Não</span>
@@ -2622,7 +2619,7 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29a</span><br><span id="appVersionNameText">v8z4b29a</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29b</span><br><span id="appVersionNameText">v8z4b29b</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4963,8 +4960,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29a';
-const APP_VERSION_NAME = 'v8z4b29a';
+const APP_VERSION = 'v8z4b29b';
+const APP_VERSION_NAME = 'v8z4b29b';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10736,12 +10733,12 @@ const bezierSvg    = document.getElementById('bezierSvg');
 const pointModeMenuEl = document.getElementById('pointModeMenu');
 const topBtnPointMode = document.getElementById('topBtnPointMode');
 
-let bottomContextMode = 'general';
+let bottomContextMode = 'frame';
 let selectedSegmentIndex = -1;
 function setBottomContext(mode) {
-  const next = (mode === 'frame' || mode === 'segment') ? mode : 'general';
+  const next = (mode === 'segment') ? 'segment' : 'frame';
   bottomContextMode = next;
-  document.body.classList.toggle('bottom-context-general', next === 'general');
+  document.body.classList.remove('bottom-context-general');
   document.body.classList.toggle('bottom-context-frame', next === 'frame');
   document.body.classList.toggle('bottom-context-segment', next === 'segment');
   if (next !== 'frame') hideStageFrameMenu();
@@ -10787,7 +10784,7 @@ function openSelectedSegmentMenu() {
   _easeForSegTarget = 'selected';
   openPanel('Ease');
 }
-setBottomContext('general');
+setBottomContext('frame');
 
 function canOpenPointModeMenu() {
   return !!(pointModeMenuEl && imgNatW && frameCount > 1 && activeIdx >= 0 && activeIdx < frameCount && !isPreviewing && !isRecording && !isInsertingFrame);
@@ -10819,11 +10816,10 @@ function togglePointModeMenuFromButton() {
 }
 function syncPointModeAccessButtonUI() {
   if (!topBtnPointMode) return;
-  const canOpen = canOpenPointModeMenu();
-  topBtnPointMode.style.display = canOpen ? '' : 'none';
-  topBtnPointMode.style.opacity = canOpen ? '1' : '0.35';
-  topBtnPointMode.style.pointerEvents = canOpen ? 'auto' : 'none';
-  topBtnPointMode.classList.toggle('active', pointModeMenuVisible && canOpen);
+  topBtnPointMode.style.display = 'none';
+  topBtnPointMode.style.opacity = '0.35';
+  topBtnPointMode.style.pointerEvents = 'none';
+  topBtnPointMode.classList.remove('active');
 }
 
 // Toque na curva Bézier → abrir painel de easing do segmento
@@ -12682,8 +12678,8 @@ function updateFrameSelector() {
   const multiSelectionActive = isMultiSelectionActive();
   for (let i = 0; i < frameCount; i++) {
     const showActivePillFocus = i === activeIdx && !multiSelectionActive;
-    // Ease pill ANTES do frame ativo
-    if (showActivePillFocus && i > 0) {
+    // Trechos intermediários sempre visíveis entre frames.
+    if (i > 0) {
       pr.appendChild(makeEasePillEl(i - 1, 'prev'));
     }
 
@@ -12749,10 +12745,6 @@ function updateFrameSelector() {
     });
     pr.appendChild(pill);
 
-    // Ease pill DEPOIS do frame ativo
-    if (showActivePillFocus && i < frameCount - 1) {
-      pr.appendChild(makeEasePillEl(i, 'next'));
-    }
   }
   // Trecho de fechamento N→1 — v8z4b17o
   if (loopEnabled && frameCount >= 2) {
