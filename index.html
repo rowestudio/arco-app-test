@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b28f                                     ║
+║  Versão: v8z4b29a                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29a                                            ║
+║    ux: reorganiza topo, Arquivos, faixa temporal e   ║
+║        menus contextuais sem alterar motor/JSON.     ║
 ║  v8z4b28f                                            ║
 ║    perf: Preview usa proxy local e duração computada ║
 ║         sem alterar Export/MP4.                      ║
@@ -482,6 +485,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29a — ux: reorganiza topo, Arquivos, faixa temporal e menus contextuais preservando funções existentes, motor Preview/Export e JSON. -->
 <!-- Arco Motion App — v8z4b28f — perf: Preview usa proxy local, duração computada, rAF time-based e throttle leve sem alterar Export/MP4. -->
 <!-- Arco Motion App — v8z4b28d — fix: motor universal Preview/MP4 valida frames, protege WebCodecs/VideoFrame e limpa export sem tela preta permanente. -->
 <!-- Arco Motion App — v8z4b27i — fix: referência multi-select por ordem de seleção, reset de rotação individual sincronizado e faixa rolável sem corte. -->
@@ -901,6 +905,7 @@ body.inserting-frame .frame-out-handle{pointer-events:none !important;}
 body.no-image .mid-bar{display:none !important;}
 body.no-image #toolbar{display:none !important;}
 body.no-image #custBar{display:none !important;}
+body.no-image #stageFrameMenu{display:none !important;}
 .mid-play{
   display:flex;align-items:center;justify-content:center;gap:8px;
   padding:0 14px;cursor:pointer;flex-shrink:0;
@@ -966,6 +971,7 @@ body.no-image #custBar{display:none !important;}
 }
 .ease-fp svg{width:18px;height:18px;stroke:rgba(200,200,220,0.9);}
 .ease-fp.ease-active{background:rgba(4,255,242,0.15);border-color:var(--accent);}
+.ease-fp.ease-selected{box-shadow:0 0 0 2px #ff9500 inset;border-color:#ff9500;}
 .ease-fp.ease-active svg{stroke:var(--accent);}
 
 /* BOTTOM TOOLBAR
@@ -996,6 +1002,33 @@ body.no-image #custBar{display:none !important;}
   -webkit-user-select:none;user-select:none;
 }
 .tb-item:active{background:var(--surface2);}
+
+.top-btn .top-label{font-size:10px;font-weight:700;line-height:1;margin-top:1px;}
+.top-btn.labeled{flex-direction:column;gap:1px;width:50px;}
+#stageFrameMenu{
+  position:fixed;left:10px;right:10px;bottom:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px) + 8px);
+  z-index:120;display:none;align-items:center;justify-content:center;gap:8px;
+  padding:8px;border-radius:16px;background:rgba(24,24,28,.94);border:1px solid var(--border2);
+  backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);
+}
+#stageFrameMenu.show{display:flex;}
+.stage-frame-action{
+  min-width:74px;min-height:44px;border:1px solid var(--border2);border-radius:12px;background:rgba(255,255,255,.04);
+  color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  font-size:11px;font-weight:700;cursor:pointer;-webkit-user-select:none;user-select:none;touch-action:manipulation;
+}
+.stage-frame-action:active{background:rgba(255,255,255,.12);}
+.stage-frame-action svg{width:21px;height:21px;display:block;}
+#toolbar.contextual-toolbar{overflow-x:auto;align-items:stretch;gap:2px;}
+#toolbar.contextual-toolbar::-webkit-scrollbar{display:none;}
+#toolbar.contextual-toolbar .tb-item{flex:0 0 64px;min-height:44px;justify-content:center;}
+#toolbar.contextual-toolbar .ctx-only{display:none;}
+body.bottom-context-general #toolbar.contextual-toolbar .ctx-general,
+body.bottom-context-frame #toolbar.contextual-toolbar .ctx-frame,
+body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:flex;}
+body.bottom-context-frame #toolbar.contextual-toolbar .ctx-common,
+body.bottom-context-segment #toolbar.contextual-toolbar .ctx-common,
+body.bottom-context-general #toolbar.contextual-toolbar .ctx-common{display:flex;}
 
 /* iPhone/Safari: evitar seleção nativa de texto em áreas interativas */
 #pillsRow, #pillsRow *,
@@ -2230,8 +2263,17 @@ body.cust-open #toolbar{
      contextual). Nenhuma mudança de layout agora; apenas evita
      dependências (CSS/JS) que impeçam o slot depois. -->
 <div class="top-bar" id="topBar" data-role="top-bar">
-  <div class="top-btn" id="topBtnMapa" onclick="toggleMapa()" title="Modo Mapa">
-    <svg viewBox="0 0 24 24"><use href="#i-mapa"></use></svg>
+  <div class="top-btn labeled" onclick="closeAll();closeCustBar();hideStageFrameMenu();" title="Voltar">
+    <svg viewBox="0 0 24 24"><use href="#i-close"></use></svg><span class="top-label">Voltar</span>
+  </div>
+  <div class="top-btn labeled" onclick="toggleSettingsSheet()" title="Arquivos">
+    <svg viewBox="0 0 24 24"><use href="#i-settings"></use></svg><span class="top-label">Arquivos</span>
+  </div>
+  <div class="top-btn labeled" id="topBtnMapa" onclick="toggleMapa()" title="Visualizar">
+    <svg viewBox="0 0 24 24"><use href="#i-mapa"></use></svg><span class="top-label">Visualizar</span>
+  </div>
+  <div class="top-btn labeled" id="topBtnPreview" onclick="togglePlay()" title="Preview">
+    <svg id="playIcon" viewBox="0 0 24 24"><use href="#i-play"></use></svg><span class="top-label" id="playLbl">Preview</span>
   </div>
   <div class="top-spacer"></div>
   <div class="top-btn" id="topBtnPointMode" onclick="togglePointModeMenuFromButton()" title="Modo do ponto" style="display:none;opacity:0.35;pointer-events:none;">
@@ -2242,13 +2284,6 @@ body.cust-open #toolbar{
   </div>
   <div class="top-btn" id="topBtnRedo" onclick="redo()" title="Refazer" style="opacity:0.3;pointer-events:none;">
     <svg viewBox="0 0 24 24"><use href="#i-redo"></use></svg>
-  </div>
-  <div class="top-btn" onclick="resetAll()" title="Resetar tudo">
-    <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg>
-  </div>
-  <div class="top-spacer"></div>
-  <div class="top-btn" onclick="toggleSettingsSheet()" title="Ajustes">
-    <svg viewBox="0 0 24 24"><use href="#i-settings"></use></svg>
   </div>
 </div>
 
@@ -2315,6 +2350,18 @@ body.cust-open #toolbar{
   </div>
 </div>
 
+<div id="stageFrameMenu" aria-label="Menu contextual de frame no Stage">
+  <button class="stage-frame-action" type="button" onclick="deleteActiveFrame()" title="Remover frame selecionado">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Deletar</span>
+  </button>
+  <button class="stage-frame-action" id="stageFrameLockBtn" type="button" onclick="toggleFrameLock()" title="Fixar/desfixar frame">
+    <svg viewBox="0 0 24 24"><use href="#i-lock"></use></svg><span>Fixar</span>
+  </button>
+  <button class="stage-frame-action" type="button" onclick="togglePointModeMenuFromButton()" title="Editar tipo de curva/ponto">
+    <svg viewBox="0 0 24 24"><use href="#i-curve"></use></svg><span>Curva</span>
+  </button>
+</div>
+
 <!-- v8z4b22e — Barra fixa de inserção assistida: única origem de Confirmar/Cancelar;
      sempre visível no viewport (position:fixed); aparece somente durante isInsertingFrame;
      z-index acima de tudo para que os controles fiquem acessíveis mesmo com ghost fora da área. -->
@@ -2332,21 +2379,11 @@ body.cust-open #toolbar{
      com o frame ativo no centro). Os filhos atuais permanecem como
      estão; nenhuma mudança comportamental. -->
 <div class="mid-bar show" id="midBar" data-role="timeline-strip">
-  <div class="mid-play" id="btnLockFrame" onclick="toggleFrameLock()" title="Travar frame" style="padding:0 12px;border-right:.5px solid var(--border);">
-    <svg style="width:26px;height:26px;display:block;" viewBox="0 0 24 24"><use href="#i-lock"></use></svg>
-  </div>
-  <div class="mid-play" id="btnInvert" onclick="invertFrames()" title="Inverter sentido" style="padding:0 12px;border-right:.5px solid var(--border);">
-    <svg style="width:26px;height:26px;display:block;" viewBox="0 0 24 24"><use href="#i-invert"></use></svg>
-  </div>
-  <!-- Pills — preparado como container do futuro frame-strip contínuo. -->
-  <div class="mid-pills" id="pillsRow" data-role="timeline-pills" style="flex:1;overflow-x:auto;align-items:center;gap:6px;padding:0 8px;display:flex;"></div>
-  <!-- Adicionar e deletar — fixos à direita -->
-  <div class="mid-play" onclick="deleteActiveFrame()" title="Remover frame selecionado" style="padding:0 10px;border-left:.5px solid var(--border);">
-    <svg style="width:26px;height:26px;display:block;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-  </div>
-  <div class="mid-play" onclick="insertFrameAfterActive()" title="Inserir frame após selecionado" style="padding:0 10px;">
+  <div class="mid-play" onclick="insertFrameAfterActive()" title="Inserir frame após selecionado" style="padding:0 12px;border-right:.5px solid var(--border);">
     <svg style="width:26px;height:26px;display:block;" viewBox="0 0 24 24"><use href="#i-circle-plus"></use></svg>
   </div>
+  <!-- Pills — faixa temporal de frames/trechos. -->
+  <div class="mid-pills" id="pillsRow" data-role="timeline-pills" style="flex:1;overflow-x:auto;align-items:center;gap:6px;padding:0 8px;display:flex;"></div>
 </div>
 
 <!-- ALIGN BAR: aparece quando há seleção múltipla.
@@ -2519,31 +2556,46 @@ body.cust-open #toolbar{
 </div>
 
 <!-- BOTTOM TOOLBAR -->
-<div class="toolbar show" id="toolbar">
-  <div class="tb-item" id="tbTemplateBtn" onclick="if(imgEl) openPanel('Template')">
-    <span class="tb-val" id="tbTemplate">Pan L→R</span>
-    <span class="tb-lbl">Template</span>
+<div class="toolbar show contextual-toolbar" id="toolbar">
+  <div class="tb-item ctx-only ctx-common" onclick="openPanel('Duration')">
+    <span class="tb-val" id="tbDuration">4s</span><span class="tb-lbl">Duração</span>
   </div>
-  <div class="tb-item" onclick="openPanel('Format')">
-    <span class="tb-val" id="tbFormat">9:16</span>
-    <span class="tb-lbl">Formato</span>
+  <div class="tb-item ctx-only ctx-frame" onclick="openCustBarTabFromBottom('framepause')">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-clock"></use></svg><span class="tb-lbl">Pausa</span>
   </div>
-  <div class="tb-item" onclick="openPanel('Duration')">
-    <span class="tb-val" id="tbDuration">4s</span>
-    <span class="tb-lbl">Duração</span>
+  <div class="tb-item ctx-only ctx-frame" onclick="openCustBarTabFromBottom('rot')">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-rotate-cw"></use></svg><span class="tb-lbl">Rotação</span>
   </div>
-  <div class="tb-item disabled" id="tbSaveBtn" onclick="promptSaveProject()" style="flex-shrink:0;">
-    <svg style="width:22px;height:22px;display:block;margin:0 auto 2px;" viewBox="0 0 24 24"><use href="#i-image-down"></use></svg>
-    <span class="tb-lbl">Salvar</span>
+  <div class="tb-item ctx-only ctx-frame" onclick="openCustBarTabFromBottom('scale')">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-scaling"></use></svg><span class="tb-lbl">Escala</span>
   </div>
-  <div class="tb-item" id="btnPlay" onclick="togglePlay()" style="flex-shrink:0;min-width:56px;max-width:64px;">
-    <svg id="playIcon" style="width:38px;height:38px;display:block;color:var(--text);" viewBox="0 0 24 24"><use href="#i-play"></use></svg>
+  <div class="tb-item ctx-only ctx-frame" onclick="openCustBarTabFromBottom('pos')">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-move"></use></svg><span class="tb-lbl">Mover</span>
+  </div>
+  <div class="tb-item ctx-only ctx-segment" onclick="openSelectedSegmentMenu()">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-clock"></use></svg><span class="tb-lbl">Tempo trecho</span>
+  </div>
+  <div class="tb-item ctx-only ctx-segment" onclick="openSelectedSegmentMenu()">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-curve"></use></svg><span class="tb-lbl">Movimento</span>
+  </div>
+  <div class="tb-item ctx-only ctx-common" onclick="openPanel('BgColor')">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-bg"></use></svg><span class="tb-lbl">Fundo</span>
+  </div>
+  <div class="tb-item ctx-only ctx-common" onclick="invertFrames()">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-invert"></use></svg><span class="tb-lbl">Inverter</span>
+  </div>
+  <div class="tb-item ctx-only ctx-common" onclick="openPanel('Format')">
+    <span class="tb-val" id="tbFormat">9:16</span><span class="tb-lbl">Formato</span>
   </div>
 </div>
 
 <!-- SETTINGS SHEET -->
-<div class="settings-sheet" id="settingsSheet">
+<div class="settings-sheet" id="settingsSheet" aria-label="Arquivos">
   <div class="settings-sheet-handle"></div>
+  <div class="settings-row" onclick="if(imgEl) openPanel('Template');closeSettingsSheet()">
+    <svg viewBox="0 0 24 24"><use href="#i-tpl-play"></use></svg> Templates
+  </div>
+  <div class="settings-row-sep"></div>
   <label class="settings-row" style="cursor:pointer;">
     <input type="file" id="fileInput2" accept="image/*" style="display:none;">
     <svg viewBox="0 0 24 24"><use href="#i-image-up"></use></svg> Carregar imagem
@@ -2563,11 +2615,14 @@ body.cust-open #toolbar{
     <svg viewBox="0 0 24 24"><use href="#i-file-up"></use></svg> Carregar projeto
   </div>
   <div class="settings-row-sep"></div>
+  <div class="settings-row danger" onclick="resetAll();closeSettingsSheet()">
+    <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Reset
+  </div>
   <div class="settings-row" onclick="window.location.reload()">
     <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
   </div>
   <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b28f</span><br><span id="appVersionNameText">v8z4b28f</span></div>
+  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29a</span><br><span id="appVersionNameText">v8z4b29a</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4908,8 +4963,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b28f';
-const APP_VERSION_NAME = 'v8z4b28f';
+const APP_VERSION = 'v8z4b29a';
+const APP_VERSION_NAME = 'v8z4b29a';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10681,6 +10736,59 @@ const bezierSvg    = document.getElementById('bezierSvg');
 const pointModeMenuEl = document.getElementById('pointModeMenu');
 const topBtnPointMode = document.getElementById('topBtnPointMode');
 
+let bottomContextMode = 'general';
+let selectedSegmentIndex = -1;
+function setBottomContext(mode) {
+  const next = (mode === 'frame' || mode === 'segment') ? mode : 'general';
+  bottomContextMode = next;
+  document.body.classList.toggle('bottom-context-general', next === 'general');
+  document.body.classList.toggle('bottom-context-frame', next === 'frame');
+  document.body.classList.toggle('bottom-context-segment', next === 'segment');
+  if (next !== 'frame') hideStageFrameMenu();
+  if (next !== 'segment') selectedSegmentIndex = -1;
+}
+function selectFrameContext(fi, opts = {}) {
+  if (typeof fi === 'number' && fi >= 0 && fi < frameCount) activeIdx = fi;
+  selectedSegmentIndex = -1;
+  setBottomContext('frame');
+  if (opts.showStageMenu) showStageFrameMenu();
+}
+function selectSegmentContext(seg) {
+  if (typeof seg !== 'number' || seg < 0 || seg >= getActiveSegmentCount()) return;
+  closeCustBar();
+  hideStageFrameMenu();
+  selectedSegmentIndex = seg;
+  _activeEaseSeg = seg;
+  setBottomContext('segment');
+  updateFrameSelector();
+}
+function showStageFrameMenu() {
+  const menu = document.getElementById('stageFrameMenu');
+  if (!menu || !hasImageLoaded() || frameCount === 0 || isPreviewing || isRecording || isInsertingFrame || isStageNavigationActiveOrCoolingDown()) return;
+  const lockLabel = document.querySelector('#stageFrameLockBtn span');
+  if (lockLabel) lockLabel.textContent = frameLocked[activeIdx] ? 'Desfixar' : 'Fixar';
+  menu.classList.add('show');
+}
+function hideStageFrameMenu() {
+  const menu = document.getElementById('stageFrameMenu');
+  if (menu) menu.classList.remove('show');
+}
+function openCustBarTabFromBottom(tab) {
+  if (shouldBlockGlobalUIAction()) return;
+  hideStageFrameMenu();
+  openCustBar();
+  switchCustTab(tab);
+}
+function openSelectedSegmentMenu() {
+  if (selectedSegmentIndex < 0) selectedSegmentIndex = Math.max(0, Math.min(getActiveSegmentCount() - 1, activeIdx));
+  if (selectedSegmentIndex < 0 || selectedSegmentIndex >= getActiveSegmentCount()) return;
+  hideStageFrameMenu();
+  _activeEaseSeg = selectedSegmentIndex;
+  _easeForSegTarget = 'selected';
+  openPanel('Ease');
+}
+setBottomContext('general');
+
 function canOpenPointModeMenu() {
   return !!(pointModeMenuEl && imgNatW && frameCount > 1 && activeIdx >= 0 && activeIdx < frameCount && !isPreviewing && !isRecording && !isInsertingFrame);
 }
@@ -10911,8 +11019,10 @@ function updatePlayButton() {
   const use = document.querySelector('#playIcon use');
   if (use) use.setAttribute('href', isPreviewing ? '#i-pause' : '#i-play');
   const lbl = document.getElementById('playLbl');
-  if (lbl) lbl.textContent = isPreviewing ? 'Pause' : 'Play';
+  if (lbl) lbl.textContent = isPreviewing ? 'Pause' : 'Preview';
   if (btnPlay) btnPlay.classList.toggle('playing', isPreviewing);
+  const topPreview = document.getElementById('topBtnPreview');
+  if (topPreview) topPreview.classList.toggle('playing', isPreviewing);
 }
 updatePlayButton();
 if (pointModeMenuEl) {
@@ -11491,7 +11601,7 @@ function createFrameDOM(i) {
       gestureState.pendingTarget = { kind: 'frame-tap', fi, pointerId: ev.pointerId };
       gestureState.pendingTimer = setTimeout(() => {
         if (gestureState.mode === 'stageNavigation' || isStageNavigationCoolingDown()) return;
-        activeIdx = fi;
+        selectFrameContext(fi, { showStageMenu: true });
         renderAll();
         clearPendingStageGesture();
       }, 110);
@@ -12047,6 +12157,7 @@ function buildPendingFrameInsertion() {
 }
 
 function insertFrameAfterActive() {
+  hideStageFrameMenu();
   if (shouldBlockGlobalUIAction()) return;
   if (isInsertingFrame) return; // já em modo de inserção
   if (!imgNatW) return; // sem imagem
@@ -12550,13 +12661,13 @@ function makeEasePillEl(seg, which) {
     : ((segEasings[seg] != null) ? segEasings[seg] : 'linear');
   const isActive = ease !== 'linear';
   const el = document.createElement('div');
-  el.className = 'ease-fp' + (isActive ? ' ease-active' : '');
+  el.className = 'ease-fp' + (isActive ? ' ease-active' : '') + (selectedSegmentIndex === seg ? ' ease-selected' : '');
   el.innerHTML = `<svg viewBox="0 0 48.38 48.38" width="18" height="18" fill="none">${getEaseIcon(ease)}</svg>`;
   el.addEventListener('click', (e) => {
     e.stopPropagation();
     _easeForSegTarget = which;
     _activeEaseSeg = seg;
-    openPanel('Ease');
+    selectSegmentContext(seg);
   });
   return el;
 }
@@ -12620,11 +12731,12 @@ function updateFrameSelector() {
         } else {
           lastPillTap = i;
           lastPillSelectTapAt = now;
-          openCustBar();
+          selectFrameContext(i);
+          showStageFrameMenu();
         }
       } else {
         resetCustGlobalLocks();
-        activeIdx = i;
+        selectFrameContext(i);
         lastPillTap = i;
         lastPillSelectTapAt = now;
         renderAll();
@@ -14242,6 +14354,7 @@ function getPos(e) {
 }
 
 function startRotate(e) {
+  hideStageFrameMenu();
   if (isInsertingFrame) return;
   if (isPreviewing) return;
   if (editorPanMode) return; // pan mode: não editar, deixar propagar para pan
@@ -14256,6 +14369,7 @@ function startRotate(e) {
 }
 
 function startMove(e) {
+  hideStageFrameMenu();
   if (isInsertingFrame) return;
   if (isPreviewing) return;
   if (editorPanMode) return; // pan mode: não mover frame, deixar propagar para pan
@@ -14293,6 +14407,7 @@ function setTemplateManualIfNeeded() {
 }
 
 function startResize(e) {
+  hideStageFrameMenu();
   if (isInsertingFrame) return;
   if (isPreviewing) return;
   if (editorPanMode) return; // pan mode: não redimensionar
@@ -14354,6 +14469,15 @@ imageArea.addEventListener('touchstart', e => {
   const imgArea = document.getElementById('imageArea');
   if (!imgArea) return;
   imgArea.addEventListener('pointerdown', (e) => {
+    const stageMenu = document.getElementById('stageFrameMenu');
+    if (stageMenu && stageMenu.classList.contains('show') &&
+        !e.target.closest('#stageFrameMenu') &&
+        !e.target.closest('.frame') &&
+        !e.target.closest('#midBar') &&
+        !e.target.closest('.top-bar') &&
+        !e.target.closest('#editorZoomCtrl')) {
+      hideStageFrameMenu();
+    }
     const custBar = document.getElementById('custBar');
     if (!custBar || custBar.style.display === 'none') return;
     if (window._isoMode) return;
@@ -15791,6 +15915,7 @@ function togglePlay() {
 let pausedElapsed = 0;
 
 function startPreview() {
+  hideStageFrameMenu();
   if (shouldBlockGlobalUIAction()) return;
   // v8z4b23a: 1 frame é suficiente para preview (vídeo estático)
   if (frameCount < 1 || !imgNatW || !getCanonicalRenderSource()) return;
@@ -18537,11 +18662,14 @@ function toggleFrameLock() {
   const locked = !!frameLocked[activeIdx];
   const btn = document.getElementById('btnLockFrame');
   if (btn) btn.style.color = locked ? 'var(--red)' : '';
+  const lockLabel = document.querySelector('#stageFrameLockBtn span');
+  if (lockLabel) lockLabel.textContent = locked ? 'Desfixar' : 'Fixar';
   renderAll();
   showStatus(locked ? 'Frame travado' : 'Frame liberado');
 }
 
 function deleteActiveFrame() {
+  hideStageFrameMenu();
   if (shouldBlockGlobalUIAction()) return;
   // v8z4b16h — guard: sem imagem, botão "−" não tenta deletar.
   // v8z4b23a: mínimo oficial é 1 frame.
