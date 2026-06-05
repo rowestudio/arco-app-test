@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29b corrigir hierarquia dos menus contextuais
+
+- Checklist detalhado criado em `docs/QA-v8z4b29b.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29a` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29b`; Curva removida da faixa superior; Fundo/Inverter/Formato movidos para Arquivos; menus inferiores reduzidos aos contextos Frame/Trecho; Frame definido como contexto padrão; menu contextual de frame posicionado no Stage em contêiner único; ações Deletar/Fixar/Curva escondem o menu antes de chamar as funções existentes; Tempo do trecho e Movimento continuam chamando o painel atual de trecho/easing; trechos intermediários permanecem visíveis na faixa de frames.
+- Não foram executados testes em iPhone/Safari real nem geração real de MP4 neste ambiente automatizado.
+
 # QA pendente — v8z4b29a reorganizar menus contextuais da interface
 
 - Checklist detalhado criado em `docs/QA-v8z4b29a.md`.

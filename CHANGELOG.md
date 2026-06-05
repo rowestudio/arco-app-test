@@ -1,3 +1,14 @@
+## v8z4b29b — corrigir hierarquia dos menus contextuais
+
+- `index.html`: versionamento atualizado para `v8z4b29b` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: Curva removida da faixa superior; topo permanece com Voltar, Arquivos, Visualizar, Preview, Undo e Redo.
+- `index.html`: menu contextual de frame movido para dentro do Stage, na parte inferior do Stage, em um único contêiner para Deletar, Fixar/Desfixar e Curva; os três botões chamam as funções existentes e escondem o menu antes da ação.
+- `index.html`: Fundo, Inverter e Formato removidos do menu inferior e movidos para Arquivos/faixa superior, mantendo as funções existentes.
+- `index.html`: menu inferior fica apenas com os contextos Frame e Trecho; Frame é o padrão quando nada está selecionado; Tempo do trecho e Movimento continuam chamando o mesmo painel atual de trecho/easing.
+- `index.html`: faixa de frames/trechos mantém os trechos intermediários visíveis e clicáveis no contexto Frame, com o botão `+` preservado à esquerda.
+- Preservados fora do escopo: motor, Preview, Export/MP4, WebCodecs, JSON estrutural, cálculos de duração/pausas/trecho, curvas/easing como motor, zoom/pan, seleção múltipla, inserção assistida e Undo/Redo.
+- `QA.md` e `docs/QA-v8z4b29b.md`: checklist/inventário da correção v8z4b29b documentado.
+
 ## v8z4b29a — reorganizar menus contextuais da interface
 
 - `index.html`: versionamento atualizado para `v8z4b29a` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
