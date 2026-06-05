@@ -1,3 +1,9 @@
+# QA pendente — v8z4b29c refinar topo, Arquivos e seleção frame/trecho
+
+- Checklist detalhado criado em `docs/QA-v8z4b29c.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29b` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29c`; topo sem labels visíveis; Preview em pill; painel Arquivos em grade por blocos com fechar visível; Duração com `clipboard-clock` sem valor; Formato com `proportions`; Deletar frame com `trash`; seleção visual frame/trecho exclusiva; motor, Preview, MP4 e JSON preservados.
+
 # QA pendente — v8z4b29b corrigir hierarquia dos menus contextuais
 
 - Checklist detalhado criado em `docs/QA-v8z4b29b.md`.
