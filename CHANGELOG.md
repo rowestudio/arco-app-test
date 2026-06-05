@@ -1,3 +1,15 @@
+## v8z4b29e — correções assistidas, zoom e caminhos da linha v29
+
+- `index.html`: versionamento atualizado para `v8z4b29e` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo, com base `v8z4b29d` confirmada antes das alterações.
+- `index.html`: modo F1 assistido mantém topo/Arquivos navegáveis e libera carregar imagem, carregar projeto, Templates, Reset e Recarregar, bloqueando apenas edição dependente de frame confirmado.
+- `index.html`: frame assistido remove fill azulado interno, usa dim externo recortado, borda tracejada mais forte/animada e confirmação ancorada/clampada dentro do Stage.
+- `index.html`: zoom/pan atualiza imediatamente bordas, curvas/trechos, handles, dim overlay e ghost no mesmo ciclo visual, sem alterar coordenadas reais, JSON, Preview, MP4 ou exportação.
+- `index.html`: números/labels visuais de frame deixam de compensar o zoom para acompanhar melhor o frame/stage, preservando controles tocáveis com compensação quando necessário.
+- `index.html`: seleção de trecho e seleção de frame mantêm caminho completo visível; trechos ativos ficam em azul/ciano e trechos não ativos em laranja contínuo/legível.
+- `index.html`: topbar recebe ajuste fino no bloco Visualização/Preview e no X, sem aumentar altura nem reorganizar a faixa superior.
+- `ROADMAP.md`: registrada direção futura da área inferior em quatro faixas sem implementação nesta versão.
+- `QA.md` e `docs/QA-v8z4b29e.md`: checklist/inventário da correção v8z4b29e documentado.
+
 ## v8z4b29d — correções visuais/UX da linha v29
 
 - `index.html`: versionamento atualizado para `v8z4b29d` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.

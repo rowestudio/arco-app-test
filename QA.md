@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29e correções visuais/UX da linha v29
+
+- Checklist detalhado criado em `docs/QA-v8z4b29e.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29d` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29e`; topo/Arquivos liberados durante F1 assistido; ghost sem fill azulado e com dim externo; borda assistida animada; confirmação ancorada no Stage; zoom/pan atualiza overlays imediatamente; labels de frame acompanham o frame; trechos ativos em ciano e inativos em laranja contínuo; ajuste fino de topbar; roadmap inferior registrado; motor, Preview, MP4/export e JSON preservados.
+- Não foram executados testes em iPhone/Safari real nem geração real de MP4 neste ambiente automatizado.
+
 # QA pendente — v8z4b29d correções visuais/UX da linha v29
 
 - Checklist detalhado criado em `docs/QA-v8z4b29d.md`.

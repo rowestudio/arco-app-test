@@ -1,3 +1,11 @@
+## Roadmap registrado em v8z4b29e — área inferior
+
+- Avaliar futuramente uma estrutura inferior em quatro faixas: tempo, frames/trechos, informação/ações do item ativo e ferramentas contextuais.
+- Avaliar se a faixa contextual inferior atual deve ser reduzida ou eliminada em versões futuras.
+- Para Trecho, avaliar se `Movimento` deve permanecer como ação principal.
+- Manter a possibilidade de menu contextual no Stage para Frame.
+- Não implementado em v8z4b29e: nenhuma nova faixa de tempo, nenhuma nova faixa de informações, nenhuma eliminação da faixa contextual inferior e nenhuma mudança estrutural da timeline.
+
 # Roadmap técnico/produto — pós-checkpoint v8z4b25h
 
 ## Checkpoint funcional preservado
