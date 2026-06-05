@@ -1,3 +1,9 @@
+## Roadmap registrado em v8z4b29f — área inferior
+
+- Avaliar futuramente uma estrutura inferior em quatro faixas: tempo, frames/trechos, informação/ações do item ativo e ferramentas contextuais.
+- Avaliar se a faixa contextual inferior atual deve ser reduzida ou eliminada em versões futuras.
+- Nesta versão, não foi implementada faixa de tempo, nova faixa de informações, eliminação da faixa contextual inferior, redesenho da timeline ou arquitetura nova.
+
 ## Roadmap registrado em v8z4b29e — área inferior
 
 - Avaliar futuramente uma estrutura inferior em quatro faixas: tempo, frames/trechos, informação/ações do item ativo e ferramentas contextuais.
