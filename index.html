@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29e                                     ║
+║  Versão: v8z4b29f                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29f                                            ║
+║    fix/ux: ajusta Menu/Arquivos, frame assistido,     ║
+║        topbar, zoom e caminhos sem motor/Preview.     ║
 ║  v8z4b29e                                            ║
 ║    fix/ux: libera Arquivos no F1 assistido, limpa     ║
 ║        ghost, atualiza overlays no zoom e caminhos.   ║
@@ -497,6 +500,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29f — fix/ux: ajusta Menu/Arquivos, frame assistido, topbar, zoom e caminhos/trechos sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29e — fix/ux: libera navegação/Arquivos no F1 assistido, remove fill azulado do ghost, ancora confirmação no Stage, atualiza overlays no zoom e mantém caminhos legíveis sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29d — fix/ux: corrige grade de Arquivos, ícones, seleção visual frame/trecho, trecho ativo, frame assistido e menus inferiores sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29c — fix/ux: refina topo sem textos, Preview em pill, Arquivos em grade por blocos e exclusividade visual frame/trecho sem alterar motor/Preview/MP4/JSON. -->
@@ -648,47 +652,55 @@ body.recording #editorZoomCtrl{display:none;}
 .top-btn:active{background:rgba(255,255,255,.1);}
 .top-btn.active{color:#fff;}
 .top-btn svg{width:26px;height:26px;display:block;}
-.top-btn:first-child svg{stroke-width:2.35;}
-.top-gap-after{margin-right:12px;}
-#topBtnMapa{margin-left:8px;}
-#topBtnPreview{width:50px;border-radius:12px;background:var(--accent);color:#001014;box-shadow:0 0 0 1px rgba(255,255,255,.12) inset;}
+.top-btn:first-child svg{stroke-width:2.8;}
+.top-gap-after{margin-right:8px;}
+#topBtnMapa{margin-left:14px;}
+#topBtnPreview{width:48px;border-radius:9px;background:var(--accent);color:#001014;box-shadow:0 0 0 1px rgba(255,255,255,.12) inset;}
 #topBtnPreview:active{background:#36defd;}
 #topBtnPreview.playing{background:var(--surface3);color:#fff;}
 .top-spacer{flex:1;}
 
 /* SETTINGS SHEET */
 .settings-sheet{
-  position:fixed;bottom:0;left:0;right:0;
-  background:var(--surface);border-radius:20px 20px 0 0;
-  border-top:.5px solid var(--border);
-  padding:10px 14px calc(14px + var(--safe-bottom));
-  z-index:300;box-sizing:border-box;max-height:min(76vh, 620px);
+  position:fixed;bottom:10px;left:12px;right:12px;
+  background:#151518;border-radius:24px;
+  border:.5px solid rgba(255,255,255,.12);
+  padding:14px 14px calc(14px + var(--safe-bottom));
+  z-index:300;box-sizing:border-box;max-height:min(82vh, 620px);
   overflow:hidden;display:flex;flex-direction:column;
-  transform:translateY(105%);transition:transform .3s cubic-bezier(.32,.72,0,1);
+  transform:translateY(calc(105% + 12px));transition:transform .3s cubic-bezier(.32,.72,0,1);
+  box-shadow:0 24px 70px rgba(0,0,0,.72);
 }
 .settings-sheet.show{transform:translateY(0);}
-.settings-sheet-head{position:sticky;top:0;z-index:2;background:var(--surface);display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;}
-.settings-sheet-handle{width:36px;height:5px;border-radius:3px;background:var(--surface3);margin:0 auto;}
-.settings-close{width:36px;height:36px;border:0;border-radius:999px;background:var(--surface2);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;}
-.settings-close svg{width:20px;height:20px;display:block;}
+.settings-sheet-head{position:sticky;top:0;z-index:2;background:#151518;display:grid;grid-template-columns:36px 1fr 36px;align-items:center;padding-bottom:12px;}
+.settings-sheet-title{text-align:center;font-size:13px;font-weight:800;letter-spacing:.12em;color:#fff;}
+.settings-close{width:36px;height:36px;border:0;border-radius:999px;background:transparent;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;}
+.settings-close svg{width:22px;height:22px;display:block;stroke-width:2.5;}
 .settings-blocks{overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;}
-.settings-block{padding:10px 0;border-top:.5px solid var(--border);}
-.settings-block:first-child{border-top:0;padding-top:0;}
-.settings-block-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin:0 4px 8px;}
 .settings-grid{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:8px;}
-.settings-grid.settings-grid--2{grid-template-columns:repeat(2, minmax(0, 1fr));}
+.settings-divider{height:.5px;background:rgba(255,255,255,.18);margin:12px 2px;}
 .settings-row{
   min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
-  padding:8px 6px;border-radius:14px;background:var(--surface2);cursor:pointer;text-align:center;
-  font-size:12px;line-height:1.15;font-weight:600;color:#fff;box-sizing:border-box;
+  padding:8px 5px;border-radius:16px;background:#242428;cursor:pointer;text-align:center;
+  font-size:12px;line-height:1.15;font-weight:650;color:#fff;box-sizing:border-box;
   -webkit-user-select:none;user-select:none;touch-action:manipulation;
 }
-.settings-row:active{background:var(--surface3);}
-.settings-row svg{width:24px;height:24px;flex-shrink:0;color:#fff;display:block;}
-.settings-row.danger{color:var(--red);}
-.settings-row.danger svg{color:var(--red);}
+.settings-row:active{background:#303036;}
+.settings-row svg{width:25px;height:25px;flex-shrink:0;color:#fff;display:block;}
+.settings-row.danger{color:#fff;}
+.settings-row.danger svg{color:#fff;}
 .settings-row.disabled{color:var(--text2,#888);cursor:default;opacity:.45;pointer-events:none;}
 .settings-row.disabled svg{color:var(--text2,#888);}
+.settings-json-card{
+  margin-top:12px;min-height:96px;border-radius:18px;background:#242428;
+  display:grid;grid-template-columns:1fr auto;grid-template-rows:1fr auto;gap:4px 14px;
+  align-items:center;padding:16px 16px;cursor:pointer;color:#fff;touch-action:manipulation;
+}
+.settings-json-card:active{background:#303036;}
+.settings-json-title{font-size:13px;font-weight:800;line-height:1.2;}
+.settings-json-desc{font-size:11px;font-weight:500;line-height:1.25;color:rgba(255,255,255,.62);margin-top:4px;}
+.settings-json-card svg{grid-column:2;grid-row:1 / span 2;width:42px;height:42px;color:#fff;}
+.settings-json-label{grid-column:1;grid-row:2;font-size:12px;font-weight:750;color:#fff;}
 .tb-item.disabled{opacity:.35;cursor:default;pointer-events:none;}
 .settings-version{
   padding:8px 4px 0;
@@ -721,7 +733,7 @@ body.recording #editorZoomCtrl{display:none;}
 .ghost-frame{
   position:absolute;box-sizing:border-box;touch-action:none;overflow:visible;
   border-radius:10px;background:transparent;z-index:86;cursor:grab;
-  opacity:.98;box-shadow:0 0 0 1px rgba(0,0,0,.32),0 0 18px rgba(4,255,242,.18);
+  opacity:.98;box-shadow:0 0 0 1px rgba(0,0,0,.32);
 }
 .ghost-frame::after{
   content:"";position:absolute;inset:0;border-radius:10px;pointer-events:none;
@@ -734,59 +746,54 @@ body.recording #editorZoomCtrl{display:none;}
 }
 @keyframes ghostDashMove{to{background-position:18px 0,-18px 100%,0 -18px,100% 18px;}}
 .ghost-frame:active{cursor:grabbing;}
-.ghost-frame .ghost-num{
-  position:absolute;top:6px;left:8px;font-size:12px;font-weight:800;
-  color:rgba(255,255,255,.96);background:rgba(0,0,0,.45);
-  border-radius:6px;padding:2px 7px;pointer-events:none;
-  transform-origin:top left;
+.ghost-corner{
+  position:absolute;width:12px;height:12px;border-radius:999px;background:#fff;
+  box-shadow:0 0 0 1px rgba(0,0,0,.28);pointer-events:none;
 }
-.ghost-frame .ghost-center{
-  position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:50%;
-  background:rgba(255,255,255,.9);transform:translate(-50%,-50%);
-}
-/* v8z4b22e: .ghost-actions e .ghost-action removidos — confirmação/cancelamento
-   ficam exclusivamente na barra inferior (#insertionActionBar). */
+.ghost-corner.tl{left:-6px;top:-6px;}
+.ghost-corner.tr{right:-6px;top:-6px;}
+.ghost-corner.br{right:-6px;bottom:-6px;}
+.ghost-corner.bl{left:-6px;bottom:-6px;}
+/* v8z4b29f: frame assistido sem texto interno; confirmação/cancelamento são círculos visuais. */
 body.inserting-frame .frame,
 body.inserting-frame .ctrl-pt,
 body.inserting-frame .frame-in-handle,
 body.inserting-frame .frame-out-handle{pointer-events:none !important;}
-/* v8z4b29e — Confirmação assistida dentro do Stage, clampada ao frame/viewport */
+/* v8z4b29f — Confirmação assistida: círculos dentro do frame; fallback no rodapé do Stage. */
 #insertionActionBar{
   position:absolute;
   left:50%;top:8px;
-  transform:translate(-50%,0) scale(var(--ez-inv,1));
-  transform-origin:top center;
+  transform:translate(-50%,0) rotate(var(--ghost-rot,0deg)) scale(var(--ez-inv,1));
+  transform-origin:center center;
   display:none;
   align-items:center;
-  gap:10px;
+  gap:12px;
   z-index:92;
-  padding:8px 14px;
-  background:rgba(18,18,20,.88);
-  border-radius:28px;
-  border:1px solid rgba(255,255,255,.14);
-  backdrop-filter:blur(16px);
-  -webkit-backdrop-filter:blur(16px);
-  box-shadow:0 4px 24px rgba(0,0,0,.55);
+  padding:0;
+  background:transparent;
+  border:0;
+  box-shadow:none;
   pointer-events:auto;
   white-space:nowrap;
   user-select:none;-webkit-user-select:none;
 }
 #insertionActionBar.show{display:flex;}
-.ins-bar-label{
-  font-size:12px;font-weight:600;color:rgba(255,255,255,.62);
-  padding:0 4px;pointer-events:none;
-}
+#insertionActionBar.fallback{transform:translate(-50%,0) scale(var(--ez-inv,1));}
+.ins-bar-label{display:none !important;}
 .ins-bar-btn{
-  width:42px;height:42px;border-radius:21px;
-  border:1px solid rgba(255,255,255,.18);
-  font-size:19px;font-weight:800;
+  width:46px;height:46px;border-radius:999px;
+  border:0;
+  font-size:0;
   display:flex;align-items:center;justify-content:center;
   cursor:pointer;touch-action:none;
   -webkit-tap-highlight-color:transparent;
   pointer-events:auto;
+  box-shadow:0 3px 14px rgba(0,0,0,.42);
+  color:#000;
 }
-.ins-bar-btn.ok{background:rgba(4,255,242,.92);color:#000;border-color:rgba(0,0,0,.18);}
-.ins-bar-btn.cancel{background:rgba(48,48,52,.96);color:rgba(255,255,255,.9);}
+.ins-bar-btn svg{width:22px;height:22px;display:block;stroke-width:3;}
+.ins-bar-btn.ok{background:#04d8ff;color:#000;}
+.ins-bar-btn.cancel{background:#ff9500;color:#000;}
 /* Overlay escuro fora do frame selecionado — SVG com recorte */
 #stageDimSvg{position:absolute;inset:0;pointer-events:none;z-index:3;display:none;}
 #stageDimSvg.show{display:block;}
@@ -2275,6 +2282,19 @@ body.cust-open #toolbar{
     <path d="m17 22 3-3"/>
     <circle cx="9" cy="9" r="2"/>
   </symbol>
+  <symbol id="i-folder-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 17.5 7.6 10a2 2 0 0 1 2-1.6H21a1 1 0 0 1 1 1.2l-1.7 8.1a3 3 0 0 1-3 2.4H5a3 3 0 0 1-3-3V6a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2"/>
+  </symbol>
+  <symbol id="i-reload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 12a9 9 0 0 1 15.1-6.6"/><path d="M18 2v5h-5"/>
+    <path d="M21 12a9 9 0 0 1-15.1 6.6"/><path d="M6 22v-5h5"/>
+  </symbol>
+  <symbol id="i-json-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <path d="M14 2v6h6"/>
+    <path d="M9 13c-1 .5-1.5 1.2-1.5 2s.5 1.5 1.5 2"/>
+    <path d="M15 13c1 .5 1.5 1.2 1.5 2s-.5 1.5-1.5 2"/>
+  </symbol>
   <symbol id="i-stop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <rect x="4" y="4" width="16" height="16" rx="2"/>
   </symbol>
@@ -2420,15 +2440,15 @@ body.cust-open #toolbar{
 </div>
 
 
-<!-- v8z4b22e — Barra fixa de inserção assistida: única origem de Confirmar/Cancelar;
-     sempre visível no viewport (position:fixed); aparece somente durante isInsertingFrame;
-     z-index acima de tudo para que os controles fiquem acessíveis mesmo com ghost fora da área. -->
+<!-- v8z4b29f — Botões circulares do frame assistido: X laranja e check ciano, sem texto. -->
 <div id="insertionActionBar" role="toolbar" aria-label="Modo de inserção de frame">
-  <button id="insertionCancelBtn" class="ins-bar-btn cancel" type="button"
-    title="Cancelar inserção" aria-label="Cancelar">×</button>
-  <span class="ins-bar-label">Posicione o frame</span>
-  <button id="insertionConfirmBtn" class="ins-bar-btn ok" type="button"
-    title="Confirmar inserção" aria-label="Confirmar">✓</button>
+  <button id="insertionCancelBtn" class="ins-bar-btn cancel" type="button" title="Cancelar inserção" aria-label="Cancelar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#i-close"></use></svg>
+  </button>
+  <span class="ins-bar-label" aria-hidden="true"></span>
+  <button id="insertionConfirmBtn" class="ins-bar-btn ok" type="button" title="Confirmar inserção" aria-label="Confirmar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+  </button>
 </div>
 
 <!-- MID BAR: lock | inverter | pills | − | +
@@ -2641,65 +2661,55 @@ body.cust-open #toolbar{
 <!-- SETTINGS SHEET -->
 <div class="settings-sheet" id="settingsSheet" aria-label="Arquivos">
   <div class="settings-sheet-head">
-    <div style="width:36px;"></div>
-    <div class="settings-sheet-handle"></div>
-    <button class="settings-close" type="button" onclick="closeSettingsSheet()" title="Fechar Arquivos" aria-label="Fechar Arquivos">
-      <svg viewBox="0 0 24 24"><use href="#i-close"></use></svg>
+    <div></div>
+    <div class="settings-sheet-title">MENU</div>
+    <button class="settings-close" type="button" onclick="closeSettingsSheet()" title="Fechar Menu" aria-label="Fechar Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
     </button>
   </div>
   <div class="settings-blocks">
-    <section class="settings-block" aria-label="Criação e base">
-      <div class="settings-block-title">Criação</div>
-      <div class="settings-grid settings-grid--2">
-        <div class="settings-row" onclick="if(imgEl) openPanel('Template');closeSettingsSheet()">
-          <svg viewBox="0 0 24 24"><use href="#i-tpl-play"></use></svg><span>Templates</span>
-        </div>
-        <label class="settings-row" style="cursor:pointer;">
-          <input type="file" id="fileInput2" accept="image/*" style="display:none;">
-          <svg viewBox="0 0 24 24"><use href="#i-image-up"></use></svg><span>Carregar imagem</span>
-        </label>
+    <div class="settings-grid" aria-label="Menu principal de arquivos">
+      <label class="settings-row" style="cursor:pointer;">
+        <input type="file" id="fileInput2" accept="image/*" style="display:none;">
+        <svg viewBox="0 0 24 24"><use href="#i-image"></use></svg><span>Imagem</span>
+      </label>
+      <div class="settings-row" onclick="openPanel('Format');closeSettingsSheet()">
+        <svg viewBox="0 0 24 24"><use href="#i-proportions"></use></svg><span>Formato</span>
       </div>
-    </section>
-    <section class="settings-block" aria-label="Projeto e arquivos">
-      <div class="settings-block-title">Projeto</div>
-      <div class="settings-grid">
-        <div class="settings-row disabled" id="settingsSaveRow" aria-disabled="true" onclick="promptSaveProject();closeSettingsSheet()">
-          <svg viewBox="0 0 24 24"><use href="#i-image-down"></use></svg><span>Salvar projeto</span>
-        </div>
-        <div class="settings-row" onclick="loadProjectTrigger();closeSettingsSheet()">
-          <svg viewBox="0 0 24 24"><use href="#i-file-up"></use></svg><span>Carregar projeto</span>
-        </div>
+      <div class="settings-row" onclick="if(imgEl) openPanel('Template');closeSettingsSheet()">
+        <svg viewBox="0 0 24 24"><use href="#i-tpl-play"></use></svg><span>Templates</span>
       </div>
-    </section>
-    <section class="settings-block" aria-label="Aparência do projeto">
-      <div class="settings-block-title">Aparência</div>
-      <div class="settings-grid">
-        <div class="settings-row" onclick="openPanel('BgColor');closeSettingsSheet()">
-          <svg viewBox="0 0 24 24"><use href="#i-bg"></use></svg><span>Fundo</span>
-        </div>
-        <div class="settings-row" onclick="invertFrames();closeSettingsSheet()">
-          <svg viewBox="0 0 24 24"><use href="#i-invert"></use></svg><span>Inverter</span>
-        </div>
-        <div class="settings-row" onclick="openPanel('Format');closeSettingsSheet()">
-          <svg viewBox="0 0 24 24"><use href="#i-proportions"></use></svg><span>Formato</span>
-        </div>
-        <div class="settings-row" id="containItem" onclick="toggleContainFrames()">
-          <svg viewBox="0 0 24 24"><use href="#i-contain"></use></svg><span>Conter: <span id="containLbl">Não</span></span>
-        </div>
+      <div class="settings-row" onclick="openPanel('BgColor');closeSettingsSheet()">
+        <svg viewBox="0 0 24 24"><use href="#i-bg"></use></svg><span>Fundo</span>
       </div>
-    </section>
-    <section class="settings-block" aria-label="Manutenção">
-      <div class="settings-block-title">Manutenção</div>
-      <div class="settings-grid">
-        <div class="settings-row danger" onclick="resetAll();closeSettingsSheet()">
-          <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg><span>Reset</span>
-        </div>
-        <div class="settings-row" onclick="window.location.reload()">
-          <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg><span>Recarregar app</span>
-        </div>
+      <div class="settings-row" id="containItem" onclick="toggleContainFrames()">
+        <svg viewBox="0 0 24 24"><use href="#i-contain"></use></svg><span>Não limitar</span>
       </div>
-    </section>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29e</span><br><span id="appVersionNameText">v8z4b29e</span></div>
+      <div class="settings-row danger" onclick="resetAll();closeSettingsSheet()">
+        <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg><span>Reset</span>
+      </div>
+    </div>
+    <div class="settings-divider"></div>
+    <div class="settings-grid" aria-label="Arquivos de projeto">
+      <div class="settings-row disabled" id="settingsSaveRow" aria-disabled="true" onclick="promptSaveProject();closeSettingsSheet()">
+        <svg viewBox="0 0 24 24"><use href="#i-download"></use></svg><span>Salvar</span>
+      </div>
+      <div class="settings-row" onclick="loadProjectTrigger();closeSettingsSheet()">
+        <svg viewBox="0 0 24 24"><use href="#i-folder-open"></use></svg><span>Abrir</span>
+      </div>
+      <div class="settings-row" onclick="window.location.reload()">
+        <svg viewBox="0 0 24 24"><use href="#i-reload"></use></svg><span>Recarregar</span>
+      </div>
+    </div>
+    <div class="settings-json-card" onclick="promptSaveProject();closeSettingsSheet()" role="button" aria-label="Salvar projeto JSON">
+      <div>
+        <div class="settings-json-title">Projeto em arquivo JSON</div>
+        <div class="settings-json-desc">Salve ou compartilhe os dados do projeto atual.</div>
+      </div>
+      <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
+      <div class="settings-json-label">Json</div>
+    </div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29f</span><br><span id="appVersionNameText">v8z4b29f</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5041,8 +5051,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29e';
-const APP_VERSION_NAME = 'v8z4b29e';
+const APP_VERSION = 'v8z4b29f';
+const APP_VERSION_NAME = 'v8z4b29f';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11375,22 +11385,36 @@ function updateInsertionActionBarPosition() {
   if (bar.parentNode !== stageContent) stageAppendChild(bar);
   const inv = 1 / editorZoomScale;
   bar.style.setProperty('--ez-inv', inv);
-  const corners = getGhostFrameCorners();
-  const minX = Math.min(...corners.map(p => p.x));
-  const maxX = Math.max(...corners.map(p => p.x));
-  const maxY = Math.max(...corners.map(p => p.y));
-  const minY = Math.min(...corners.map(p => p.y));
-  const barW = (bar.offsetWidth || 220) * inv;
-  const barH = (bar.offsetHeight || 58) * inv;
-  const gap = 10;
-  let x = (minX + maxX) / 2;
-  let y = maxY + gap;
-  if (y + barH > stageH - 8) y = minY - barH - gap;
-  x = Math.max(8 + barW / 2, Math.min(stageW - 8 - barW / 2, x));
-  y = Math.max(8, Math.min(stageH - 8 - barH, y));
+  bar.style.setProperty('--ghost-rot', (ghostFrame.rotation || 0) + 'deg');
+
+  const btnSize = 46;
+  const gap = 12;
+  const safeMargin = 14;
+  const internalMargin = 18;
+  const actionW = (btnSize * 2) + gap;
+  const actionH = btnSize;
+  const hysteresis = bar.classList.contains('fallback') ? 10 : 0;
+  const fitsInside = ghostFrame.w >= actionW + internalMargin * 2 + hysteresis &&
+    ghostFrame.h >= actionH + internalMargin * 2.5 + hysteresis;
+
+  let x = ghostFrame.x + ghostFrame.w / 2;
+  let y;
+  if (fitsInside) {
+    bar.classList.remove('fallback');
+    y = ghostFrame.y + ghostFrame.h - internalMargin - actionH / 2;
+    bar.style.transform = `translate(-50%,-50%) rotate(${ghostFrame.rotation || 0}deg) scale(${inv})`;
+  } else {
+    bar.classList.add('fallback');
+    y = stageH - safeMargin - actionH / 2;
+    bar.style.transform = `translate(-50%,-50%) scale(${inv})`;
+  }
+
+  const visualW = actionW * inv;
+  const visualH = actionH * inv;
+  x = Math.max(safeMargin + visualW / 2, Math.min(stageW - safeMargin - visualW / 2, x));
+  y = Math.max(safeMargin + visualH / 2, Math.min(stageH - safeMargin - visualH / 2, y));
   bar.style.left = x + 'px';
   bar.style.top = y + 'px';
-  bar.style.transform = `translate(-50%,0) scale(${inv})`;
 }
 
 function updateGhostDimOverlay() {
@@ -11902,7 +11926,7 @@ function startFirstFrameAssistedInsertion() {
   document.body.classList.add('inserting-frame');
   createGhostFrameElement();
   renderGhostFrame();
-  // v8z4b29e: confirmação fica dentro do Stage e acompanha o ghost.
+  // v8z4b29f: confirmação fica dentro do frame quando couber e usa fallback no Stage.
   showInsertionActionBar();
   updateFrameSelector();
   showStatus('Posicione o enquadramento inicial · F1');
@@ -12064,14 +12088,13 @@ function setDefaultCurvesV2LoopHandles() {
   };
 }
 
-// v8z4b22e: ghost não tem mais botões internos — Confirmar/Cancelar ficam
-// exclusivamente na barra inferior (#insertionActionBar).
+// v8z4b29f: ghost sem texto; Confirmar/Cancelar são círculos ancorados ao frame assistido.
 function createGhostFrameElement() {
   if (ghostFrameEl) ghostFrameEl.remove();
   ghostFrameEl = document.createElement('div');
   ghostFrameEl.className = 'ghost-frame';
   ghostFrameEl.innerHTML =
-    '<div class="ghost-num"></div><div class="ghost-center"></div>';
+    '<span class="ghost-corner tl"></span><span class="ghost-corner tr"></span><span class="ghost-corner br"></span><span class="ghost-corner bl"></span>';
   stageAppendChild(ghostFrameEl);
   ghostFrameEl.addEventListener('pointerdown', startGhostFrameDrag);
 }
@@ -12083,8 +12106,6 @@ function renderGhostFrame() {
   ghostFrameEl.style.width = ghostFrame.w + 'px';
   ghostFrameEl.style.height = ghostFrame.h + 'px';
   ghostFrameEl.style.transform = 'rotate(' + (ghostFrame.rotation || 0) + 'deg)';
-  const num = ghostFrameEl.querySelector('.ghost-num');
-  if (num) num.textContent = 'F' + (ghostFrame.labelIndex || (frameCount + 1));
   updateGhostTransformHandle();
   updateInsertionActionBarPosition();
   updateGhostDimOverlay();
@@ -12190,8 +12211,7 @@ function clearAssistedFrameInsertionTransientState() {
   }
 }
 
-// v8z4b29e — Confirmação assistida ancorada no Stage: única origem de Confirmar/Cancelar.
-// A posição acompanha o ghost e é clampada para não cobrir a faixa de frames.
+// v8z4b29f — Confirmação assistida ancorada ao ghost; fallback no rodapé do Stage.
 function showInsertionActionBar() {
   const bar = document.getElementById('insertionActionBar');
   if (!bar) return;
@@ -12688,9 +12708,9 @@ function renderAll() {
     const op = selectedStageFocus ? 1.0
              : multiSelectionActive ? 0.75
              : showActiveStageFocus ? 1.0
-             : bottomContextMode === 'segment' ? 0.72
+             : bottomContextMode === 'segment' ? (showActiveStageFocus ? 1.0 : 0.88)
              : isAdjacent ? 0.80
-             : 0.55;
+             : 0.62;
     el.style.zIndex = multiSelectionActive ? '20'
                     : showActiveStageFocus ? '30'
                     : isAdjacent ? '25'
@@ -13426,7 +13446,7 @@ function drawBezier() {
     const dist = Math.abs(i - activeIdx);
     if (dist > 1) continue;
     const op = dist === 0 ? 1 : 0.7;
-    svg += `<circle cx="${frameCX(i)}" cy="${frameCY(i)}" r="${5 * invZ}" fill="#fff" opacity="${op}" stroke="rgba(0,0,0,0.3)" stroke-width="${invZ}"/>`;
+    svg += `<circle cx="${frameCX(i)}" cy="${frameCY(i)}" r="${5 * invZ}" fill="${dist === 0 ? BLUE : INACTIVE}" opacity="${op}" stroke="rgba(0,0,0,0.3)" stroke-width="${invZ}"/>`;
   }
 
   // Linha tracejada removida — não agrega informação
@@ -18262,7 +18282,8 @@ function showStatus(msg) {
 // PANELS
 // ═══════════════════════════════════════
 function openPanel(id) {
-  if (id !== 'Template' && shouldBlockGlobalUIAction()) return;
+  const pendingAllowedPanels = new Set(['Template', 'BgColor', 'Format']);
+  if (!pendingAllowedPanels.has(id) && shouldBlockGlobalUIAction()) return;
   if (editorPanMode) { editorPanMode = false; applyEditorZoom(); }
   closeAll();
   if (id === 'Customize') {
@@ -18777,7 +18798,6 @@ function syncContainFramesUI() {
 }
 
 function toggleContainFrames() {
-  if (shouldBlockGlobalUIAction()) return;
   const before = captureState();
   containFrames = !containFrames;
   syncContainFramesUI();
@@ -20254,7 +20274,6 @@ function buildProjectData() {
 let _pendingSaveIncludeImage = false;
 
 function openSaveModal(includeImage) {
-  if (shouldBlockGlobalUIAction()) return;
   if (!imgNatW) { showStatus('Carregue uma imagem primeiro'); return; }
   _pendingSaveIncludeImage = includeImage;
   const modal = document.getElementById('saveModal');
@@ -20288,7 +20307,6 @@ function closeSaveModal() {
 }
 
 function confirmSaveModal(includeImage) {
-  if (shouldBlockGlobalUIAction()) return;
   // v8z4b18w: normalizar nome-base e aplicar sufixo correto
   const input = document.getElementById('saveModalInput');
   const raw = input ? input.value : '';
@@ -20299,7 +20317,6 @@ function confirmSaveModal(includeImage) {
 }
 
 function doSaveDirect(includeImage, nome) {
-  if (shouldBlockGlobalUIAction()) return;
   const data = buildProjectData();
   // v8z4b18r: log de diagnóstico — verifica pausas no momento do save.
   const nonzeroPauses = (data.framePauses || []).filter(p => (p?.duration || 0) > 0).length;
@@ -20352,7 +20369,6 @@ function normalizeBaseName(name) {
 }
 
 function promptSaveProject() {
-  if (shouldBlockGlobalUIAction()) return;
   if (!canSaveProject()) return;
   // Construir nome-base sugerido limpo (sem prefixo genérico de câmera tipo "img_")
   const imgBase = window._imageBaseName || 'projeto';

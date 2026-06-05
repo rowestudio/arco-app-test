@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29f menu, frame assistido e estados visuais da linha v29
+
+- Checklist detalhado criado em `docs/QA-v8z4b29f.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29e` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29f`; Menu/Arquivos em 3 colunas na ordem solicitada com divisor e bloco JSON; ícones obrigatórios revisados; frame assistido sem texto/fill interno com borda tracejada, cantos brancos e dim externo; botões X/check circulares com rotação sem escala e fallback; F1 assistido mantém navegação/arquivos acessíveis; zoom/pan atualiza overlays imediatamente; seleção de frame/trecho mantém caminhos ciano/laranja; topbar refinada; roadmap inferior registrado; motor, Preview, MP4/export e JSON preservados.
+- Não foram executados testes em iPhone/Safari real nem geração real de MP4 neste ambiente automatizado.
+
 # QA pendente — v8z4b29e correções visuais/UX da linha v29
 
 - Checklist detalhado criado em `docs/QA-v8z4b29e.md`.

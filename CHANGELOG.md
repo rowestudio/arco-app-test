@@ -1,3 +1,16 @@
+## v8z4b29f — menu, frame assistido e estados visuais da linha v29
+
+- `index.html`: base `v8z4b29e` confirmada antes das alterações e versionamento atualizado para `v8z4b29f` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: painel Menu/Arquivos reorganizado em 3 colunas na ordem obrigatória: Imagem, Formato, Templates; Fundo, Não limitar, Reset; divisor; Salvar, Abrir, Recarregar; bloco JSON inferior separado com documento `{}`.
+- `index.html`: ícones do Menu/Arquivos ajustados para foto/imagem, `proportions`, template/layout, paleta, contain livre, `timer-reset`/reset, download/salvar, pasta aberta, recarregar e documento JSON.
+- `index.html`: frame assistido fica sem texto/pill/fill interno, com borda branca tracejada animada, quatro cantos circulares brancos, dim externo e botões circulares X laranja/check ciano.
+- `index.html`: botões do frame assistido acompanham rotação sem escalar visualmente, mantêm toque confortável e usam fallback com histerese simples no rodapé do Stage quando não cabem no frame.
+- `index.html`: Menu/Arquivos, imagem, projeto, Templates, Fundo/Formato/Não limitar/Reset/Recarregar permanecem acessíveis durante F1 assistido, preservando bloqueios de edição dependente de frame confirmado.
+- `index.html`: zoom/pan continua forçando atualização visual imediata dos overlays, e seleção de frame/trecho mantém caminhos completos em ciano/laranja legíveis.
+- `index.html`: topbar ajustada para deslocar Visualização/Preview levemente à direita, Preview mais retangular e X mais evidente sem aumentar altura.
+- `ROADMAP.md`: roadmap inferior re-registrado para v8z4b29f sem implementar nova arquitetura/faixas.
+- `QA.md` e `docs/QA-v8z4b29f.md`: checklist/inventário da correção v8z4b29f documentado.
+
 ## v8z4b29e — correções assistidas, zoom e caminhos da linha v29
 
 - `index.html`: versionamento atualizado para `v8z4b29e` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo, com base `v8z4b29d` confirmada antes das alterações.
