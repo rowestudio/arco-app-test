@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29b                                     ║
+║  Versão: v8z4b29c                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29c                                            ║
+║    fix/ux: refina topo, Arquivos e seleção visual    ║
+║        frame/trecho sem alterar motor/Preview/JSON.  ║
 ║  v8z4b29b                                            ║
 ║    fix/ux: corrige hierarquia dos menus contextuais  ║
 ║        sem alterar motor/Preview/MP4/JSON.           ║
@@ -488,6 +491,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29c — fix/ux: refina topo sem textos, Preview em pill, Arquivos em grade por blocos e exclusividade visual frame/trecho sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29b — fix/ux: corrige hierarquia dos menus contextuais; Curva fica no Stage, Fundo/Inverter/Formato ficam em Arquivos e menus inferiores ficam apenas Frame/Trecho sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29a — ux: reorganiza topo, Arquivos, faixa temporal e menus contextuais preservando funções existentes, motor Preview/Export e JSON. -->
 <!-- Arco Motion App — v8z4b28f — perf: Preview usa proxy local, duração computada, rAF time-based e throttle leve sem alterar Export/MP4. -->
@@ -625,17 +629,21 @@ body.recording #editorZoomCtrl{display:none;}
   flex-shrink:0;background:#000;
   padding-top:env(safe-area-inset-top, 0px);
   height:calc(52px + env(safe-area-inset-top, 0px));
-  display:flex;align-items:flex-end;padding-left:4px;padding-right:4px;padding-bottom:4px;
+  display:flex;align-items:flex-end;gap:4px;padding-left:6px;padding-right:6px;padding-bottom:4px;
   border-bottom:.5px solid rgba(255,255,255,.1);z-index:50;
 }
 .top-btn{
   width:44px;height:44px;display:flex;align-items:center;justify-content:center;
   cursor:pointer;border-radius:10px;color:rgba(255,255,255,.75);
-  -webkit-user-select:none;user-select:none;flex-shrink:0;
+  -webkit-user-select:none;user-select:none;flex-shrink:0;touch-action:manipulation;
 }
 .top-btn:active{background:rgba(255,255,255,.1);}
 .top-btn.active{color:#fff;}
 .top-btn svg{width:26px;height:26px;display:block;}
+.top-gap-after{margin-right:12px;}
+#topBtnPreview{width:52px;border-radius:999px;background:var(--accent);color:#001014;box-shadow:0 0 0 1px rgba(255,255,255,.12) inset;}
+#topBtnPreview:active{background:#36defd;}
+#topBtnPreview.playing{background:var(--surface3);color:#fff;}
 .top-spacer{flex:1;}
 
 /* SETTINGS SHEET */
@@ -643,28 +651,36 @@ body.recording #editorZoomCtrl{display:none;}
   position:fixed;bottom:0;left:0;right:0;
   background:var(--surface);border-radius:20px 20px 0 0;
   border-top:.5px solid var(--border);
-  padding:12px 0 calc(20px + var(--safe-bottom));
-  z-index:300;
+  padding:10px 14px calc(14px + var(--safe-bottom));
+  z-index:300;box-sizing:border-box;max-height:min(76vh, 620px);
+  overflow:hidden;display:flex;flex-direction:column;
   transform:translateY(105%);transition:transform .3s cubic-bezier(.32,.72,0,1);
 }
 .settings-sheet.show{transform:translateY(0);}
-.settings-sheet-handle{width:36px;height:5px;border-radius:3px;background:var(--surface3);margin:0 auto 14px;}
+.settings-sheet-head{position:sticky;top:0;z-index:2;background:var(--surface);display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;}
+.settings-sheet-handle{width:36px;height:5px;border-radius:3px;background:var(--surface3);margin:0 auto;}
+.settings-close{width:36px;height:36px;border:0;border-radius:999px;background:var(--surface2);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;}
+.settings-close svg{width:20px;height:20px;display:block;}
+.settings-blocks{overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;}
+.settings-block{padding:10px 0;border-top:.5px solid var(--border);}
+.settings-block:first-child{border-top:0;padding-top:0;}
+.settings-block-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin:0 4px 8px;}
+.settings-grid{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:8px;}
 .settings-row{
-  display:flex;align-items:center;gap:18px;
-  padding:18px 24px;cursor:pointer;
-  font-size:16px;font-weight:500;color:#fff;
-  -webkit-user-select:none;user-select:none;
+  min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  padding:8px 6px;border-radius:14px;background:var(--surface2);cursor:pointer;text-align:center;
+  font-size:12px;line-height:1.15;font-weight:600;color:#fff;box-sizing:border-box;
+  -webkit-user-select:none;user-select:none;touch-action:manipulation;
 }
-.settings-row:active{background:var(--surface2);}
+.settings-row:active{background:var(--surface3);}
 .settings-row svg{width:24px;height:24px;flex-shrink:0;color:#fff;display:block;}
 .settings-row.danger{color:var(--red);}
 .settings-row.danger svg{color:var(--red);}
 .settings-row.disabled{color:var(--text2,#888);cursor:default;opacity:.45;pointer-events:none;}
 .settings-row.disabled svg{color:var(--text2,#888);}
 .tb-item.disabled{opacity:.35;cursor:default;pointer-events:none;}
-.settings-row-sep{height:.5px;background:var(--border);margin:4px 0;}
 .settings-version{
-  padding:10px 24px 2px;
+  padding:8px 4px 0;
   font-size:12px;
   line-height:1.35;
   color:var(--text3);
@@ -1007,8 +1023,8 @@ body.no-image #stageFrameMenu{display:none !important;}
 }
 .tb-item:active{background:var(--surface2);}
 
-.top-btn .top-label{font-size:10px;font-weight:700;line-height:1;margin-top:1px;}
-.top-btn.labeled{flex-direction:column;gap:1px;width:50px;}
+.top-btn .top-label{display:none;}
+.top-btn.labeled{flex-direction:row;gap:0;width:44px;}
 #stageFrameMenu{
   position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
   z-index:120;display:none;align-items:center;justify-content:center;gap:14px;
@@ -2168,6 +2184,26 @@ body.cust-open #toolbar{
     <circle cx="12" cy="12" r="10"/>
     <polyline points="12 6 12 12 16 14"/>
   </symbol>
+  <symbol id="i-clipboard-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M16 14v2.2l1.5.9"/>
+    <path d="M16 4h2a2 2 0 0 1 2 2v7.25"/>
+    <path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7.25"/>
+    <rect x="8" y="2" width="8" height="4" rx="1"/>
+    <circle cx="16" cy="16" r="6"/>
+  </symbol>
+  <symbol id="i-proportions" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="4" width="20" height="16" rx="2"/>
+    <path d="M12 9v11"/>
+    <path d="M2 9h13"/>
+    <path d="M12 4v5"/>
+  </symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 6h18"/>
+    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+    <path d="M10 11v6"/>
+    <path d="M14 11v6"/>
+  </symbol>
   <symbol id="i-reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
     <path d="M3 3v5h5"/>
@@ -2266,23 +2302,23 @@ body.cust-open #toolbar{
      contextual). Nenhuma mudança de layout agora; apenas evita
      dependências (CSS/JS) que impeçam o slot depois. -->
 <div class="top-bar" id="topBar" data-role="top-bar">
-  <div class="top-btn labeled" onclick="closeAll();closeCustBar();hideStageFrameMenu();" title="Voltar">
+  <div class="top-btn labeled top-gap-after" onclick="closeAll();closeCustBar();hideStageFrameMenu();" title="Voltar" aria-label="Voltar">
     <svg viewBox="0 0 24 24"><use href="#i-close"></use></svg><span class="top-label">Voltar</span>
   </div>
-  <div class="top-btn labeled" onclick="toggleSettingsSheet()" title="Arquivos">
+  <div class="top-btn labeled top-gap-after" onclick="toggleSettingsSheet()" title="Arquivos" aria-label="Arquivos">
     <svg viewBox="0 0 24 24"><use href="#i-settings"></use></svg><span class="top-label">Arquivos</span>
   </div>
-  <div class="top-btn labeled" id="topBtnMapa" onclick="toggleMapa()" title="Visualizar">
+  <div class="top-btn labeled" id="topBtnMapa" onclick="toggleMapa()" title="Visualizar" aria-label="Visualizar">
     <svg viewBox="0 0 24 24"><use href="#i-mapa"></use></svg><span class="top-label">Visualizar</span>
   </div>
-  <div class="top-btn labeled" id="topBtnPreview" onclick="togglePlay()" title="Preview">
+  <div class="top-btn labeled" id="topBtnPreview" onclick="togglePlay()" title="Preview" aria-label="Preview">
     <svg id="playIcon" viewBox="0 0 24 24"><use href="#i-play"></use></svg><span class="top-label" id="playLbl">Preview</span>
   </div>
   <div class="top-spacer"></div>
-  <div class="top-btn" id="topBtnUndo" onclick="undo()" title="Desfazer" style="opacity:0.3;pointer-events:none;">
+  <div class="top-btn" id="topBtnUndo" onclick="undo()" title="Desfazer" aria-label="Desfazer" style="opacity:0.3;pointer-events:none;">
     <svg viewBox="0 0 24 24"><use href="#i-undo"></use></svg>
   </div>
-  <div class="top-btn" id="topBtnRedo" onclick="redo()" title="Refazer" style="opacity:0.3;pointer-events:none;">
+  <div class="top-btn" id="topBtnRedo" onclick="redo()" title="Refazer" aria-label="Refazer" style="opacity:0.3;pointer-events:none;">
     <svg viewBox="0 0 24 24"><use href="#i-redo"></use></svg>
   </div>
 </div>
@@ -2303,7 +2339,7 @@ body.cust-open #toolbar{
     </div>
     <div id="stageFrameMenu" aria-label="Menu contextual de frame no Stage">
       <button class="stage-frame-action" type="button" onclick="event.stopPropagation();hideStageFrameMenu();deleteActiveFrame()" title="Remover frame selecionado">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Deletar</span>
+        <svg viewBox="0 0 24 24"><use href="#i-trash"></use></svg><span>Deletar</span>
       </button>
       <button class="stage-frame-action" id="stageFrameLockBtn" type="button" onclick="event.stopPropagation();hideStageFrameMenu();toggleFrameLock()" title="Fixar/desfixar frame">
         <svg viewBox="0 0 24 24"><use href="#i-lock"></use></svg><span>Fixar</span>
@@ -2558,7 +2594,7 @@ body.cust-open #toolbar{
 <!-- BOTTOM TOOLBAR -->
 <div class="toolbar show contextual-toolbar" id="toolbar">
   <div class="tb-item ctx-only ctx-common" onclick="openPanel('Duration')">
-    <span class="tb-val" id="tbDuration">4s</span><span class="tb-lbl">Duração</span>
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-clipboard-clock"></use></svg><span class="tb-lbl">Duração</span>
   </div>
   <div class="tb-item ctx-only ctx-frame" onclick="openCustBarTabFromBottom('framepause')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-clock"></use></svg><span class="tb-lbl">Pausa</span>
@@ -2582,44 +2618,67 @@ body.cust-open #toolbar{
 
 <!-- SETTINGS SHEET -->
 <div class="settings-sheet" id="settingsSheet" aria-label="Arquivos">
-  <div class="settings-sheet-handle"></div>
-  <div class="settings-row" onclick="if(imgEl) openPanel('Template');closeSettingsSheet()">
-    <svg viewBox="0 0 24 24"><use href="#i-tpl-play"></use></svg> Templates
+  <div class="settings-sheet-head">
+    <div style="width:36px;"></div>
+    <div class="settings-sheet-handle"></div>
+    <button class="settings-close" type="button" onclick="closeSettingsSheet()" title="Fechar Arquivos" aria-label="Fechar Arquivos">
+      <svg viewBox="0 0 24 24"><use href="#i-close"></use></svg>
+    </button>
   </div>
-  <div class="settings-row-sep"></div>
-  <label class="settings-row" style="cursor:pointer;">
-    <input type="file" id="fileInput2" accept="image/*" style="display:none;">
-    <svg viewBox="0 0 24 24"><use href="#i-image-up"></use></svg> Carregar imagem
-  </label>
-  <div class="settings-row-sep"></div>
-  <div class="settings-row" onclick="openPanel('BgColor');closeSettingsSheet()">
-    <svg viewBox="0 0 24 24"><use href="#i-bg"></use></svg> Fundo
+  <div class="settings-blocks">
+    <section class="settings-block" aria-label="Criação e base">
+      <div class="settings-block-title">Criação</div>
+      <div class="settings-grid">
+        <div class="settings-row" onclick="if(imgEl) openPanel('Template');closeSettingsSheet()">
+          <svg viewBox="0 0 24 24"><use href="#i-tpl-play"></use></svg><span>Templates</span>
+        </div>
+        <label class="settings-row" style="cursor:pointer;">
+          <input type="file" id="fileInput2" accept="image/*" style="display:none;">
+          <svg viewBox="0 0 24 24"><use href="#i-image-up"></use></svg><span>Carregar imagem</span>
+        </label>
+      </div>
+    </section>
+    <section class="settings-block" aria-label="Projeto e arquivos">
+      <div class="settings-block-title">Projeto</div>
+      <div class="settings-grid">
+        <div class="settings-row disabled" id="settingsSaveRow" aria-disabled="true" onclick="promptSaveProject();closeSettingsSheet()">
+          <svg viewBox="0 0 24 24"><use href="#i-image-down"></use></svg><span>Salvar projeto</span>
+        </div>
+        <div class="settings-row" onclick="loadProjectTrigger();closeSettingsSheet()">
+          <svg viewBox="0 0 24 24"><use href="#i-file-up"></use></svg><span>Carregar projeto</span>
+        </div>
+      </div>
+    </section>
+    <section class="settings-block" aria-label="Aparência do projeto">
+      <div class="settings-block-title">Aparência</div>
+      <div class="settings-grid">
+        <div class="settings-row" onclick="openPanel('BgColor');closeSettingsSheet()">
+          <svg viewBox="0 0 24 24"><use href="#i-bg"></use></svg><span>Fundo</span>
+        </div>
+        <div class="settings-row" onclick="invertFrames();closeSettingsSheet()">
+          <svg viewBox="0 0 24 24"><use href="#i-invert"></use></svg><span>Inverter</span>
+        </div>
+        <div class="settings-row" onclick="openPanel('Format');closeSettingsSheet()">
+          <svg viewBox="0 0 24 24"><use href="#i-proportions"></use></svg><span>Formato</span>
+        </div>
+        <div class="settings-row" id="containItem" onclick="toggleContainFrames()">
+          <svg viewBox="0 0 24 24"><use href="#i-contain"></use></svg><span>Conter: <span id="containLbl">Não</span></span>
+        </div>
+      </div>
+    </section>
+    <section class="settings-block" aria-label="Manutenção">
+      <div class="settings-block-title">Manutenção</div>
+      <div class="settings-grid">
+        <div class="settings-row danger" onclick="resetAll();closeSettingsSheet()">
+          <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg><span>Reset</span>
+        </div>
+        <div class="settings-row" onclick="window.location.reload()">
+          <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg><span>Recarregar app</span>
+        </div>
+      </div>
+    </section>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29c</span><br><span id="appVersionNameText">v8z4b29c</span></div>
   </div>
-  <div class="settings-row" onclick="invertFrames();closeSettingsSheet()">
-    <svg viewBox="0 0 24 24"><use href="#i-invert"></use></svg> Inverter
-  </div>
-  <div class="settings-row" onclick="openPanel('Format');closeSettingsSheet()">
-    <svg viewBox="0 0 24 24"><use href="#i-contain"></use></svg> Formato
-  </div>
-  <div class="settings-row" id="containItem" onclick="toggleContainFrames()">
-    <svg viewBox="0 0 24 24"><use href="#i-contain"></use></svg> Conter na imagem: <span id="containLbl">Não</span>
-  </div>
-  <div class="settings-row-sep"></div>
-  <div class="settings-row disabled" id="settingsSaveRow" aria-disabled="true" onclick="promptSaveProject();closeSettingsSheet()">
-    <svg viewBox="0 0 24 24"><use href="#i-image-down"></use></svg> Salvar projeto
-  </div>
-  <div class="settings-row" onclick="loadProjectTrigger();closeSettingsSheet()">
-    <svg viewBox="0 0 24 24"><use href="#i-file-up"></use></svg> Carregar projeto
-  </div>
-  <div class="settings-row-sep"></div>
-  <div class="settings-row danger" onclick="resetAll();closeSettingsSheet()">
-    <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Reset
-  </div>
-  <div class="settings-row" onclick="window.location.reload()">
-    <svg viewBox="0 0 24 24"><use href="#i-reset"></use></svg> Recarregar app
-  </div>
-  <div class="settings-row-sep"></div>
-  <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29b</span><br><span id="appVersionNameText">v8z4b29b</span></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 
@@ -4960,8 +5019,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29b';
-const APP_VERSION_NAME = 'v8z4b29b';
+const APP_VERSION = 'v8z4b29c';
+const APP_VERSION_NAME = 'v8z4b29c';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10754,6 +10813,7 @@ function selectSegmentContext(seg) {
   if (typeof seg !== 'number' || seg < 0 || seg >= getActiveSegmentCount()) return;
   closeCustBar();
   hideStageFrameMenu();
+  selectedFrames.clear();
   selectedSegmentIndex = seg;
   _activeEaseSeg = seg;
   setBottomContext('segment');
@@ -12519,8 +12579,8 @@ function renderAll() {
     const isLocked   = !!frameLocked[i];
     const multiSelectionActive = isMultiSelectionActive();
     const isSelected = isFrameVisuallyMultiSelected(i);
-    const isAdjacent = !multiSelectionActive && (isPrevAdj || isNextAdj);
-    const showActiveStageFocus = isActive && !multiSelectionActive;
+    const isAdjacent = !multiSelectionActive && bottomContextMode !== 'segment' && (isPrevAdj || isNextAdj);
+    const showActiveStageFocus = isActive && !multiSelectionActive && bottomContextMode !== 'segment';
     el.classList.toggle('active', showActiveStageFocus);
     el.classList.toggle('multi-selected', isSelected);
 
@@ -12677,7 +12737,7 @@ function updateFrameSelector() {
   pr.innerHTML = '';
   const multiSelectionActive = isMultiSelectionActive();
   for (let i = 0; i < frameCount; i++) {
-    const showActivePillFocus = i === activeIdx && !multiSelectionActive;
+    const showActivePillFocus = i === activeIdx && !multiSelectionActive && bottomContextMode !== 'segment';
     // Trechos intermediários sempre visíveis entre frames.
     if (i > 0) {
       pr.appendChild(makeEasePillEl(i - 1, 'prev'));
@@ -12728,6 +12788,7 @@ function updateFrameSelector() {
           lastPillTap = i;
           lastPillSelectTapAt = now;
           selectFrameContext(i);
+          renderAll();
           showStageFrameMenu();
         }
       } else {
@@ -12760,7 +12821,7 @@ function updateDimOverlay() {
   const svg = document.getElementById('stageDimSvg');
   if (!svg) return;
   // v8z3e: mostrar nas vistas Normal e Isolamento; esconder apenas no Mapa/preview/sem imagem.
-  if (!imgNatW || frameCount < 1 || viewMode === 2 || isPreviewing) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
+  if (!imgNatW || frameCount < 1 || viewMode === 2 || isPreviewing || bottomContextMode === 'segment') { svg.style.display = 'none'; svg.innerHTML = ''; return; }
 
   const W = stageW, H = stageH;
   if (!W || !H) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
@@ -13212,8 +13273,12 @@ function drawBezier() {
   const multiSelectionActive = isMultiSelectionActive();
   const activeSegs = new Set();
   if (!multiSelectionActive) {
-    if (activeIdx > 0) activeSegs.add(activeIdx - 1);
-    if (activeIdx < frameCount - 1) activeSegs.add(activeIdx);
+    if (bottomContextMode === 'segment' && selectedSegmentIndex >= 0) {
+      activeSegs.add(selectedSegmentIndex);
+    } else {
+      if (activeIdx > 0) activeSegs.add(activeIdx - 1);
+      if (activeIdx < frameCount - 1) activeSegs.add(activeIdx);
+    }
   }
 
   // Escala inversa — mantém espessura visual constante independente do zoom de edição
@@ -13233,7 +13298,7 @@ function drawBezier() {
     const active = activeSegs.has(seg);
 
     // Cor: azul = segmento anterior ao ativo, laranja = posterior
-    const segColor = !multiSelectionActive && seg === activeIdx - 1 ? BLUE : !multiSelectionActive && seg === activeIdx ? ORANGE : WHITE;
+    const segColor = (bottomContextMode === 'segment' && selectedSegmentIndex === seg) ? ORANGE : (!multiSelectionActive && seg === activeIdx - 1 ? BLUE : !multiSelectionActive && seg === activeIdx ? ORANGE : WHITE);
 
     // Bézier puro — suavidade desativada
     // v8z4b21a: usar cubic C quando curvesV2 ativo, quadrática Q caso contrário.
@@ -14329,7 +14394,7 @@ function commitPendingStageTap() {
   const pending = gestureState.pendingTarget;
   if (!pending || gestureState.mode === 'stageNavigation' || isStageNavigationCoolingDown()) return false;
   if (pending.kind === 'frame-tap' && pending.fi >= 0) {
-    activeIdx = pending.fi;
+    selectFrameContext(pending.fi);
     renderAll();
     clearPendingStageGesture();
     return true;
@@ -14355,7 +14420,7 @@ function startRotate(e) {
   e.stopPropagation();
   const fi = parseInt(e.currentTarget.dataset.fi);
   if (frameLocked[fi]) return; // frame bloqueado
-  activeIdx = fi; renderAll();
+  selectFrameContext(fi); renderAll();
   gestureState.mode = 'editing';
   dragState = { type:'rotate', fi };
 }
@@ -14408,7 +14473,7 @@ function startResize(e) {
   const fi  = parseInt(e.currentTarget.dataset.fi);
   const dir = e.currentTarget.dataset.dir;
   if (frameLocked[fi]) return;
-  activeIdx = fi; renderAll();
+  selectFrameContext(fi); renderAll();
   gestureState.mode = 'editing';
   const pos = getPos(e);
   // Todos os cantos fazem escala proporcional
@@ -14783,7 +14848,7 @@ function onMove(e) {
     const movedEnough = Math.hypot(pos.x - dragState.sx, pos.y - dragState.sy) >= STAGE_SINGLE_TOUCH_MOVE_THRESHOLD;
     if (dragState.pendingSelect && movedEnough) {
       dragState.pendingSelect = false;
-      activeIdx = fi;
+      selectFrameContext(fi);
       document.body.classList.add('dragging');
       gestureState.mode = 'editing';
       renderAll();
@@ -20846,7 +20911,7 @@ function toggleFrameSelection(fi, makeActive) {
   const isSelectingMultiple = wasMultiSelectionActive || selectedFrames.size > 1;
   if (makeActive && !isSelectingMultiple) {
     resetCustGlobalLocks();
-    activeIdx = fi;
+    selectFrameContext(fi);
     lastPillTap = fi;
     closeCustBar();
   }

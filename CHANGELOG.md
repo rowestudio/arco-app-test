@@ -1,3 +1,12 @@
+## v8z4b29c — refinar topo, Arquivos e seleção frame/trecho
+
+- `index.html`: versionamento atualizado para `v8z4b29c` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: faixa superior mantém Voltar, Arquivos, Visualizar, Preview, Undo e Redo somente com ícones visíveis; Preview ganhou pill destacada e espaçamentos foram adicionados após Voltar e Arquivos.
+- `index.html`: painel Arquivos reorganizado em grade compacta por blocos de criação, projeto, aparência e manutenção, com botão de fechar visível e altura máxima segura.
+- `index.html`: Duração usa `clipboard-clock` sem estado/valor no botão, Formato usa `proportions` e Deletar frame usa `trash` no menu contextual do Stage.
+- `index.html`: seleção visual de frame/trecho ficou exclusiva, limpando destaque conflitante e escondendo o menu contextual de frame ao selecionar trecho.
+- `QA.md` e `docs/QA-v8z4b29c.md`: checklist/inventário da correção v8z4b29c documentado.
+
 ## v8z4b29b — corrigir hierarquia dos menus contextuais
 
 - `index.html`: versionamento atualizado para `v8z4b29b` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
