@@ -1,3 +1,15 @@
+## v8z4b29a — reorganizar menus contextuais da interface
+
+- `index.html`: versionamento atualizado para `v8z4b29a` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: topo reorganizado para Voltar, Arquivos, Visualizar, Preview, Undo e Redo, preservando as chamadas existentes de Visualizar/Preview/Undo/Redo.
+- `index.html`: botão Arquivos abre o painel existente de projeto, com acessos preservados para Templates, Imagem, Fundo, Conter, Salvar, Abrir/Carregar projeto, Reset e Recarregar.
+- `index.html`: botão `+` fica fixo à esquerda da faixa de frames/trechos e continua chamando a inserção assistida existente.
+- `index.html`: toolbar inferior passa a ser contextual para geral/frame/trecho, mantendo Duração sempre disponível, Pausa/Rotação/Escala/Mover no contexto Frame e Tempo do trecho/Movimento no contexto Trecho.
+- `index.html`: menu contextual de frame no Stage criado para Deletar, Fixar/Desfixar e Editar Curva/Ponto, chamando as funções existentes.
+- `index.html`: clique direto no trecho agora seleciona o trecho e muda o contexto inferior; Tempo do trecho e Movimento abrem o painel atual de trecho/easing.
+- Motor de Preview/Export/MP4, JSON, cálculos de tempo, curvas, easing, zoom/pan, seleção múltipla e inserção assistida não foram alterados funcionalmente.
+- `QA.md` e `docs/QA-v8z4b29a.md`: checklist/inventário da transição v8z4b29a documentado.
+
 ## v8z4b28f — otimizar Preview com proxy e duração computada
 
 - `index.html`: versionamento atualizado para `v8z4b28f` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.

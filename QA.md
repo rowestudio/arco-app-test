@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29a reorganizar menus contextuais da interface
+
+- Checklist detalhado criado em `docs/QA-v8z4b29a.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b28f` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29a`; topo reorganizado para Voltar/Arquivos/Visualizar/Preview/Undo/Redo; painel Arquivos preserva funções de projeto; botão `+` fica à esquerda da faixa temporal; menu inferior contextual passa por Geral/Frame/Trecho; menu contextual de frame no Stage preserva Deletar/Fixar/Curva; clique direto em trecho seleciona sem abrir automaticamente o painel legado; Tempo do trecho e Movimento chamam o painel atual de trecho/easing.
+- Não foram executados testes em iPhone/Safari real nem geração real de MP4 neste ambiente automatizado.
+
 # QA pendente — v8z4b28f otimizar Preview com proxy e duração computada
 
 - Checklist detalhado criado em `docs/QA-v8z4b28f.md`.
