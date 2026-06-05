@@ -1,3 +1,9 @@
+# QA pendente — v8z4b29d correções visuais/UX da linha v29
+
+- Checklist detalhado criado em `docs/QA-v8z4b29d.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29c` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29d`; Criação em 2 colunas; ícones Templates/Formato/Reset ajustados; seleção visual Frame/Trecho exclusiva reforçada; trecho ativo ciano; frame assistido mais evidente; menus inferiores padronizados; label visual `Tempo`; motor, Preview, MP4 e JSON preservados.
+
 # QA pendente — v8z4b29c refinar topo, Arquivos e seleção frame/trecho
 
 - Checklist detalhado criado em `docs/QA-v8z4b29c.md`.

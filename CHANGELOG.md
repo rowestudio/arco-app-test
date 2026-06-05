@@ -1,3 +1,13 @@
+## v8z4b29d — correções visuais/UX da linha v29
+
+- `index.html`: versionamento atualizado para `v8z4b29d` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: painel Arquivos ajustado para grade de 2 colunas no bloco Criação, preservando blocos com 3 colunas quando têm itens reais.
+- `index.html`: ícones do painel Arquivos atualizados para Templates (`layout-panel-top`), Formato (`proportions`) e Reset (`timer-reset`), mantendo labels/funções/cores.
+- `index.html`: seleção visual Frame/Trecho reforçada para limpar destaque de trecho ao voltar ao frame e destacar o trecho ativo em ciano no Stage/faixa.
+- `index.html`: frame assistido inicial ganhou preenchimento translúcido, borda pontilhada mais forte e pulsação leve, removidos automaticamente com o fim do modo ghost.
+- `index.html`: menus inferiores de Frame/Trecho padronizados com ícones menores, distribuição estável e label visual `Tempo` para evitar encavalar.
+- `QA.md` e `docs/QA-v8z4b29d.md`: checklist/inventário da correção v8z4b29d documentado.
+
 ## v8z4b29c — refinar topo, Arquivos e seleção frame/trecho
 
 - `index.html`: versionamento atualizado para `v8z4b29c` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
