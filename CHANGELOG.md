@@ -1,3 +1,13 @@
+## v8z4b29H — base inferior em 2 colunas e 4 faixas
+
+- `index.html`: base `v8z4b29G` confirmada antes das alterações e versionamento atualizado para `v8z4b29H` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: área inferior reorganizada estruturalmente em 2 colunas e 4 faixas no mesmo slot inferior, com Coluna 1 estreita/global e Coluna 2 flexível para tempos, frames/trechos, estado ativo e ícones contextuais.
+- `index.html`: botão `+ frame` passa a usar pill com `var(--accent)` e troca no mesmo slot para selecionar todos durante seleção múltipla, sem criar botão extra na faixa de seleção.
+- `index.html`: Linha 1 passa a renderizar tempos parciais informativos de pausas e trechos usando os valores existentes, sem edição direta nem alteração de cálculo.
+- `index.html`: confirmação do frame assistido usa o azul/ciano oficial `var(--accent)`; cancelamento permanece laranja.
+- `index.html`: flutuação do frame assistido passa a ser oval/discreta sem rotação e sem escala, mantendo pausa ao toque/drag e retorno suave existente.
+- `QA.md` e `docs/QA-v8z4b29H.md`: checklist/inventário da v8z4b29H documentado.
+
 ## v8z4b29g — ícones pendentes e frame assistido flutuante
 
 - `index.html`: base `v8z4b29f` confirmada antes das alterações e versionamento atualizado para `v8z4b29g` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
