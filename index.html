@@ -1,16 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29f                                     ║
+║  Versão: v8z4b29g                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
-║  v8z4b29f                                            ║
-║    fix/ux: ajusta Menu/Arquivos, frame assistido,     ║
-║        topbar, zoom e caminhos sem motor/Preview.     ║
+║  v8z4b29g                                            ║
+║    fix/ux: corrige ícones, ghost flutuante e botões   ║
+║        fixos no Stage sem motor/Preview/MP4/JSON.     ║
 ║  v8z4b29e                                            ║
 ║    fix/ux: libera Arquivos no F1 assistido, limpa     ║
 ║        ghost, atualiza overlays no zoom e caminhos.   ║
@@ -500,7 +500,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b29f — fix/ux: ajusta Menu/Arquivos, frame assistido, topbar, zoom e caminhos/trechos sem alterar motor/Preview/MP4/JSON. -->
+<!-- Arco Motion App — v8z4b29g — fix/ux: corrige ícones pendentes, frame assistido flutuante sem handles e botões fixos no Stage sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29e — fix/ux: libera navegação/Arquivos no F1 assistido, remove fill azulado do ghost, ancora confirmação no Stage, atualiza overlays no zoom e mantém caminhos legíveis sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29d — fix/ux: corrige grade de Arquivos, ícones, seleção visual frame/trecho, trecho ativo, frame assistido e menus inferiores sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29c — fix/ux: refina topo sem textos, Preview em pill, Arquivos em grade por blocos e exclusividade visual frame/trecho sem alterar motor/Preview/MP4/JSON. -->
@@ -735,7 +735,12 @@ body.recording #editorZoomCtrl{display:none;}
   border-radius:10px;background:transparent;z-index:86;cursor:grab;
   opacity:.98;box-shadow:0 0 0 1px rgba(0,0,0,.32);
 }
-.ghost-frame::after{
+.ghost-frame-float{
+  position:absolute;inset:0;border-radius:10px;pointer-events:none;
+  transform-origin:center center;animation:ghostFloatIdle 4.8s ease-in-out infinite;
+}
+.ghost-frame.paused .ghost-frame-float{animation-play-state:paused;transform:none;}
+.ghost-frame-float::after{
   content:"";position:absolute;inset:0;border-radius:10px;pointer-events:none;
   background:
     linear-gradient(90deg,rgba(255,255,255,.98) 50%,transparent 0) top left/18px 4px repeat-x,
@@ -744,26 +749,24 @@ body.recording #editorZoomCtrl{display:none;}
     linear-gradient(0deg,rgba(255,255,255,.98) 50%,transparent 0) top right/4px 18px repeat-y;
   animation:ghostDashMove .9s linear infinite;
 }
+.ghost-frame.paused .ghost-frame-float::after{animation-play-state:paused;}
 @keyframes ghostDashMove{to{background-position:18px 0,-18px 100%,0 -18px,100% 18px;}}
-.ghost-frame:active{cursor:grabbing;}
-.ghost-corner{
-  position:absolute;width:12px;height:12px;border-radius:999px;background:#fff;
-  box-shadow:0 0 0 1px rgba(0,0,0,.28);pointer-events:none;
+@keyframes ghostFloatIdle{
+  0%,100%{transform:translate3d(0,0,0) rotate(0deg);}
+  35%{transform:translate3d(0,-4px,0) rotate(.8deg);}
+  70%{transform:translate3d(0,3px,0) rotate(-.7deg);}
 }
-.ghost-corner.tl{left:-6px;top:-6px;}
-.ghost-corner.tr{right:-6px;top:-6px;}
-.ghost-corner.br{right:-6px;bottom:-6px;}
-.ghost-corner.bl{left:-6px;bottom:-6px;}
-/* v8z4b29f: frame assistido sem texto interno; confirmação/cancelamento são círculos visuais. */
+.ghost-frame:active{cursor:grabbing;}
+/* v8z4b29g: frame assistido sem texto/handles; confirmação/cancelamento são HUD fixo do Stage. */
 body.inserting-frame .frame,
 body.inserting-frame .ctrl-pt,
 body.inserting-frame .frame-in-handle,
 body.inserting-frame .frame-out-handle{pointer-events:none !important;}
-/* v8z4b29f — Confirmação assistida: círculos dentro do frame; fallback no rodapé do Stage. */
+/* v8z4b29g — Confirmação assistida: círculos fixos no HUD do Stage. */
 #insertionActionBar{
   position:absolute;
-  left:50%;top:8px;
-  transform:translate(-50%,0) rotate(var(--ghost-rot,0deg)) scale(var(--ez-inv,1));
+  left:50%;bottom:18px;
+  transform:translateX(-50%);
   transform-origin:center center;
   display:none;
   align-items:center;
@@ -778,7 +781,6 @@ body.inserting-frame .frame-out-handle{pointer-events:none !important;}
   user-select:none;-webkit-user-select:none;
 }
 #insertionActionBar.show{display:flex;}
-#insertionActionBar.fallback{transform:translate(-50%,0) scale(var(--ez-inv,1));}
 .ins-bar-label{display:none !important;}
 .ins-bar-btn{
   width:46px;height:46px;border-radius:999px;
@@ -2273,8 +2275,11 @@ body.cust-open #toolbar{
     <line x1="6" y1="6" x2="18" y2="18"/>
   </symbol>
   <symbol id="i-contain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2"/>
-    <rect x="8" y="8" width="8" height="8" rx="1"/>
+    <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+    <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+    <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+    <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+    <rect width="10" height="8" x="7" y="8" rx="1"/>
   </symbol>
   <symbol id="i-image-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L9 18"/>
@@ -2324,8 +2329,9 @@ body.cust-open #toolbar{
     <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
   </symbol>
   <symbol id="i-tpl-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2"/>
-    <path d="M3 9h18"/>
+    <rect width="18" height="7" x="3" y="3" rx="1"/>
+    <rect width="9" height="7" x="3" y="14" rx="1"/>
+    <rect width="5" height="7" x="16" y="14" rx="1"/>
   </symbol>
   <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <polyline points="9 14 4 9 9 4"/>
@@ -2440,7 +2446,7 @@ body.cust-open #toolbar{
 </div>
 
 
-<!-- v8z4b29f — Botões circulares do frame assistido: X laranja e check ciano, sem texto. -->
+<!-- v8z4b29g — Botões circulares do frame assistido: X laranja e check ciano, sem texto. -->
 <div id="insertionActionBar" role="toolbar" aria-label="Modo de inserção de frame">
   <button id="insertionCancelBtn" class="ins-bar-btn cancel" type="button" title="Cancelar inserção" aria-label="Cancelar">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#i-close"></use></svg>
@@ -2709,7 +2715,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29f</span><br><span id="appVersionNameText">v8z4b29f</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29g</span><br><span id="appVersionNameText">v8z4b29g</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5051,8 +5057,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29f';
-const APP_VERSION_NAME = 'v8z4b29f';
+const APP_VERSION = 'v8z4b29g';
+const APP_VERSION_NAME = 'v8z4b29g';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5240,6 +5246,7 @@ let pendingFrameInsert = null;
 let ghostFrame = null;
 let ghostFrameEl = null;
 let ghostDragState = null;
+let ghostFloatResumeTimer = null;
 // v8z4b23a — estado da inserção do primeiro frame assistido
 let _isFirstFrameInsertion = false; // true enquanto o ghost F1 inicial está ativo
 let _projectNewFromImage = false;   // true quando projeto nasceu de imagem nova (Reset → F1 assistido)
@@ -11381,40 +11388,8 @@ function getGhostFrameCorners() {
 
 function updateInsertionActionBarPosition() {
   const bar = document.getElementById('insertionActionBar');
-  if (!bar || !ghostFrame || !stageW || !stageH) return;
-  if (bar.parentNode !== stageContent) stageAppendChild(bar);
-  const inv = 1 / editorZoomScale;
-  bar.style.setProperty('--ez-inv', inv);
-  bar.style.setProperty('--ghost-rot', (ghostFrame.rotation || 0) + 'deg');
-
-  const btnSize = 46;
-  const gap = 12;
-  const safeMargin = 14;
-  const internalMargin = 18;
-  const actionW = (btnSize * 2) + gap;
-  const actionH = btnSize;
-  const hysteresis = bar.classList.contains('fallback') ? 10 : 0;
-  const fitsInside = ghostFrame.w >= actionW + internalMargin * 2 + hysteresis &&
-    ghostFrame.h >= actionH + internalMargin * 2.5 + hysteresis;
-
-  let x = ghostFrame.x + ghostFrame.w / 2;
-  let y;
-  if (fitsInside) {
-    bar.classList.remove('fallback');
-    y = ghostFrame.y + ghostFrame.h - internalMargin - actionH / 2;
-    bar.style.transform = `translate(-50%,-50%) rotate(${ghostFrame.rotation || 0}deg) scale(${inv})`;
-  } else {
-    bar.classList.add('fallback');
-    y = stageH - safeMargin - actionH / 2;
-    bar.style.transform = `translate(-50%,-50%) scale(${inv})`;
-  }
-
-  const visualW = actionW * inv;
-  const visualH = actionH * inv;
-  x = Math.max(safeMargin + visualW / 2, Math.min(stageW - safeMargin - visualW / 2, x));
-  y = Math.max(safeMargin + visualH / 2, Math.min(stageH - safeMargin - visualH / 2, y));
-  bar.style.left = x + 'px';
-  bar.style.top = y + 'px';
+  if (!bar || !stage) return;
+  if (bar.parentNode !== stage) stage.appendChild(bar);
 }
 
 function updateGhostDimOverlay() {
@@ -11457,6 +11432,33 @@ function resetGhostInteraction() {
 function isGhostInteractionActive(mode) {
   return ghostInteraction && ghostInteraction.mode === mode;
 }
+function pauseGhostFloat(resumeDelay = 0) {
+  if (ghostFloatResumeTimer) {
+    clearTimeout(ghostFloatResumeTimer);
+    ghostFloatResumeTimer = null;
+  }
+  if (ghostFrameEl) ghostFrameEl.classList.add('paused');
+  if (resumeDelay > 0) {
+    ghostFloatResumeTimer = setTimeout(() => {
+      ghostFloatResumeTimer = null;
+      if (isInsertingFrame && ghostFrameEl && ghostInteraction.mode === 'idle' && !ghostDragState && !handleDragState) {
+        ghostFrameEl.classList.remove('paused');
+      }
+    }, resumeDelay);
+  }
+}
+
+function resumeGhostFloatSoon() {
+  pauseGhostFloat(950);
+}
+
+function clearGhostFloatTimer() {
+  if (ghostFloatResumeTimer) {
+    clearTimeout(ghostFloatResumeTimer);
+    ghostFloatResumeTimer = null;
+  }
+}
+
 
 function isGhostControlTarget(target) {
   return !!(target && target.closest &&
@@ -11528,6 +11530,7 @@ function ensureGlobalHandle() {
       if (!ghostFrame || isPreviewing || editorPanMode || ghostInteraction.mode !== 'idle') return;
       e.preventDefault();
       e.stopPropagation();
+      pauseGhostFloat();
       globalHandleEl.setPointerCapture?.(e.pointerId);
       const { cx, cy } = getGhostFrameCenter();
       const hp = getGhostHandlePos();
@@ -11683,6 +11686,7 @@ function ensureGlobalHandle() {
       if (handleDragState.isGhost) {
         renderGhostFrame();
         resetGhostInteraction();
+        resumeGhostFloatSoon();
       } else {
         // Sempre recalcular o melhor canto após soltar — sem memória
         handleCornerByFrame[handleDragState.fi] = 'br'; // reset para preferência padrão
@@ -11926,7 +11930,7 @@ function startFirstFrameAssistedInsertion() {
   document.body.classList.add('inserting-frame');
   createGhostFrameElement();
   renderGhostFrame();
-  // v8z4b29f: confirmação fica dentro do frame quando couber e usa fallback no Stage.
+  // v8z4b29g: confirmação fica fixa no HUD do Stage, fora do frame/foto.
   showInsertionActionBar();
   updateFrameSelector();
   showStatus('Posicione o enquadramento inicial · F1');
@@ -12088,15 +12092,16 @@ function setDefaultCurvesV2LoopHandles() {
   };
 }
 
-// v8z4b29f: ghost sem texto; Confirmar/Cancelar são círculos ancorados ao frame assistido.
+// v8z4b29g: ghost sem texto/handles; Confirmar/Cancelar são círculos fixos no HUD do Stage.
 function createGhostFrameElement() {
   if (ghostFrameEl) ghostFrameEl.remove();
+  clearGhostFloatTimer();
   ghostFrameEl = document.createElement('div');
   ghostFrameEl.className = 'ghost-frame';
-  ghostFrameEl.innerHTML =
-    '<span class="ghost-corner tl"></span><span class="ghost-corner tr"></span><span class="ghost-corner br"></span><span class="ghost-corner bl"></span>';
+  ghostFrameEl.innerHTML = '<span class="ghost-frame-float" aria-hidden="true"></span>';
   stageAppendChild(ghostFrameEl);
   ghostFrameEl.addEventListener('pointerdown', startGhostFrameDrag);
+  ghostFrameEl.addEventListener('touchstart', () => pauseGhostFloat(), { passive: true });
 }
 
 function renderGhostFrame() {
@@ -12136,6 +12141,7 @@ function startGhostFrameDrag(e) {
   if (isStageNavigationActiveOrCoolingDown()) return;
   e.preventDefault();
   e.stopPropagation();
+  pauseGhostFloat();
   ghostFrameEl.setPointerCapture?.(e.pointerId);
   const sc = screenToStageCoord(e.clientX, e.clientY);
   ghostInteraction = {
@@ -12162,6 +12168,7 @@ function startGhostFrameDrag(e) {
 function cancelAssistedFrameInsertion() {
   const wasActive = isInsertingFrame;
   const wasFirstFrame = _isFirstFrameInsertion; // v8z4b23a
+  clearGhostFloatTimer();
   if (ghostFrameEl) ghostFrameEl.remove();
   ghostFrameEl = null;
   ghostFrame = null;
@@ -12193,6 +12200,7 @@ function cancelAssistedFrameInsertion() {
 }
 
 function clearAssistedFrameInsertionTransientState() {
+  clearGhostFloatTimer();
   if (ghostFrameEl) ghostFrameEl.remove();
   ghostFrameEl = null;
   ghostFrame = null;
@@ -12211,11 +12219,11 @@ function clearAssistedFrameInsertionTransientState() {
   }
 }
 
-// v8z4b29f — Confirmação assistida ancorada ao ghost; fallback no rodapé do Stage.
+// v8z4b29g — Confirmação assistida fixa no HUD do Stage, fora do layer com pan/zoom.
 function showInsertionActionBar() {
   const bar = document.getElementById('insertionActionBar');
   if (!bar) return;
-  if (bar.parentNode !== stageContent) stageAppendChild(bar);
+  if (bar.parentNode !== stage) stage.appendChild(bar);
   bar.classList.add('show');
   updateInsertionActionBarPosition();
 }
@@ -14771,6 +14779,7 @@ imageArea.addEventListener('pointerdown', (e) => {
     if (ghostInteraction.mode !== 'idle' || isGhostControlTarget(e.target)) return;
     e.preventDefault();
     e.stopPropagation();
+    pauseGhostFloat();
     const sc = screenToStageCoord(e.clientX, e.clientY);
     stage.setPointerCapture?.(e.pointerId);
     ghostInteraction = {
@@ -15170,6 +15179,7 @@ function endDrag(e) {
     }
     ghostDragState = null;
     resetGhostInteraction();
+    resumeGhostFloatSoon();
     return;
   }
   // Encerrar pan de edição

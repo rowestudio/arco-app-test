@@ -1,3 +1,12 @@
+## v8z4b29g — ícones pendentes e frame assistido flutuante
+
+- `index.html`: base `v8z4b29f` confirmada antes das alterações e versionamento atualizado para `v8z4b29g` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: Menu/Arquivos mantém layout da v29f e corrige apenas ícones pendentes: Formato com Lucide `proportions`, Templates com silhueta `layout-template` e Não limitar/Conter na imagem com Lucide `fullscreen`.
+- `index.html`: frame assistido remove os círculos brancos de canto ainda não funcionais, mantém borda branca tracejada/cantos arredondados/dim externo/interior limpo e ganha flutuação visual sutil que pausa ao toque/drag/handle e retorna após atraso curto.
+- `index.html`: botões Confirmar/Cancelar do frame assistido passam a ser HUD fixo do Stage, centralizado no rodapé visível, fora da camada transformada por pan/zoom e sem acompanhar foto/frame/rotação.
+- `ROADMAP.md`: registrada a próxima frente pós-v8z4b29g para revisão de motor: velocidade constante, escala, rotação e movimento inteligente, sem implementação nesta versão.
+- `QA.md` e `docs/QA-v8z4b29g.md`: checklist/inventário da correção v8z4b29g documentado.
+
 ## v8z4b29f — menu, frame assistido e estados visuais da linha v29
 
 - `index.html`: base `v8z4b29e` confirmada antes das alterações e versionamento atualizado para `v8z4b29f` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
