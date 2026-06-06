@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29H base inferior em 2 colunas e 4 faixas
+
+- Checklist detalhado criado em `docs/QA-v8z4b29H.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29G` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29H`; área inferior estruturada em 2 colunas e 4 faixas no slot existente; Coluna 1 estreita/global; Coluna 2 principal; tempos parciais informativos sem edição direta; `+ frame` em pill `var(--accent)` com troca contextual por selecionar todos na seleção múltipla; duração geral preserva painel atual; ícones contextuais mantidos; confirmação assistida usa `var(--accent)`; flutuação assistida oval sem rotação/escala; motor, Preview, MP4/export, JSON, curvas/easing e cálculos reais preservados.
+- Não foram executados testes em iPhone/Safari real nem geração real de MP4 neste ambiente automatizado.
+
 # QA pendente — v8z4b29g ícones e frame assistido da linha v29
 
 - Checklist detalhado criado em `docs/QA-v8z4b29g.md`.
