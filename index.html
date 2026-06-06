@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29H                                     ║
+║  Versão: v8z4b29I                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29I                                            ║
+║    fix/ux: estrutura inferior sem sobreposição,       ║
+║        labels contextuais e timeline alinhada.        ║
 ║  v8z4b29H                                            ║
 ║    ux: base inferior em 2 colunas/4 faixas, azul      ║
 ║        oficial e flutuação oval sem motor/export.    ║
@@ -503,6 +506,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29I — fix/ux: corrige estrutura inferior em grade real 2x4, labels contextuais, seleção múltipla sem overlay e timeline alinhada sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29H — ux: cria base inferior em duas colunas e quatro faixas, corrige azul oficial e flutuação oval do frame assistido sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29G — fix/ux: corrige ícones pendentes, frame assistido flutuante sem handles e botões fixos no Stage sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29e — fix/ux: libera navegação/Arquivos no F1 assistido, remove fill azulado do ghost, ancora confirmação no Stage, atualiza overlays no zoom e mantém caminhos legíveis sem alterar motor/Preview/MP4/JSON. -->
@@ -762,12 +766,12 @@ body.recording #editorZoomCtrl{display:none;}
   75%{transform:translate3d(2px,3px,0);}
 }
 .ghost-frame:active{cursor:grabbing;}
-/* v8z4b29H: frame assistido sem texto/handles; confirmação/cancelamento são HUD fixo do Stage. */
+/* v8z4b29I: frame assistido preservado sem texto/handles; confirmação/cancelamento são HUD fixo do Stage. */
 body.inserting-frame .frame,
 body.inserting-frame .ctrl-pt,
 body.inserting-frame .frame-in-handle,
 body.inserting-frame .frame-out-handle{pointer-events:none !important;}
-/* v8z4b29H — Confirmação assistida: círculos fixos no HUD do Stage. */
+/* v8z4b29I — Confirmação assistida preservada: círculos fixos no HUD do Stage. */
 #insertionActionBar{
   position:absolute;
   left:50%;bottom:18px;
@@ -1101,55 +1105,82 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .tb-val{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;}
 .tb-lbl{font-size:11px;color:var(--text3);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;}
 
-/* v8z4b29H — Base inferior: 2 colunas x 4 faixas sem aumentar a altura total (midBar + toolbar). */
+/* v8z4b29I — Base inferior real: 2 colunas x 4 linhas, sem overlay/scroll vertical interno. */
 .mid-bar.timeline-grid{
-  --lower-row-h:28px;
-  --lower-left-w:54px;
+  --lower-left-w:50px;
+  --lower-row-1:18px;
+  --lower-row-2:36px;
+  --lower-row-3:18px;
+  --lower-row-4:40px;
   height:calc(112px + max(env(safe-area-inset-bottom, 4px), 4px));
   display:none;
   grid-template-columns:var(--lower-left-w) minmax(0,1fr);
-  grid-template-rows:repeat(4,minmax(0,1fr));
+  grid-template-rows:var(--lower-row-1) var(--lower-row-2) var(--lower-row-3) var(--lower-row-4);
   align-items:stretch;
   background:var(--surface);
   border-top:.5px solid var(--border);
   padding:0 4px max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px);
   box-sizing:border-box;
+  overflow:hidden;
 }
 .mid-bar.timeline-grid.show{display:grid;}
-.lower-cell{min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;}
+.lower-cell{min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .lower-left{border-right:.5px solid rgba(255,255,255,.08);padding:0 2px;}
-.lower-main{justify-content:flex-start;padding:0 6px;overflow:hidden;}
+.lower-main{justify-content:flex-start;padding:0 5px;overflow:hidden;}
 .lower-total-time,.lower-frame-count{font-size:11px;font-weight:800;color:var(--text2);line-height:1;white-space:nowrap;}
-.lower-global-duration{width:38px;height:26px;border:0;background:transparent;color:var(--text2);display:flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;}
+.lower-global-duration{width:38px;height:32px;border:0;background:transparent;color:var(--text2);display:flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;}
 .lower-global-duration:active{background:var(--surface2);}
 .lower-global-duration svg{width:22px;height:22px;display:block;}
-.lower-add-pill{width:38px;height:26px;border:0;border-radius:999px;background:var(--accent);color:#001014;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 0 1px rgba(255,255,255,.12) inset;}
+.lower-add-pill{width:42px;height:32px;border:0;border-radius:999px;background:var(--accent);color:#001014;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 0 1px rgba(255,255,255,.16) inset,0 0 12px rgba(4,255,242,.16);}
 .lower-add-pill:active{filter:brightness(.92);}
-.lower-add-pill svg{width:20px;height:20px;display:block;}
+.lower-add-pill svg{width:23px;height:23px;display:block;}
 .lower-add-pill .select-all-icon{display:none;}
-body.has-multi-selection .lower-add-pill .add-icon{display:none;}
-body.has-multi-selection .lower-add-pill .select-all-icon{display:block;}
-.lower-times{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;width:100%;padding:0 6px;}
+.lower-times{display:flex;align-items:center;gap:6px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;width:100%;height:100%;padding:0 8px;box-sizing:border-box;}
 .lower-times::-webkit-scrollbar{display:none;}
-.lower-time-chip{flex:0 0 auto;min-width:32px;text-align:center;font-size:10px;font-weight:750;color:var(--text3);line-height:1;border-radius:999px;padding:3px 6px;background:rgba(255,255,255,.05);}
-.lower-time-chip.segment{color:var(--accent);background:rgba(4,255,242,.08);}
-.mid-bar.timeline-grid .mid-pills{width:100%;height:100%;justify-content:center;padding:0 8px !important;}
-.lower-active-state{width:100%;display:flex;align-items:center;gap:8px;overflow:hidden;}
-.lower-active-label{font-size:12px;font-weight:800;color:var(--text2);white-space:nowrap;}
-.lower-active-sub{font-size:10px;font-weight:650;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.mid-bar.timeline-grid .toolbar{
-  display:flex;
-  width:100%;height:100%;padding:0;
-  border-top:0;background:transparent;align-items:stretch;
-}
+.lower-time-chip{flex:0 0 auto;text-align:center;font-size:9px;font-weight:750;color:var(--text3);line-height:1;border-radius:999px;padding:2px 0;background:transparent;}
+.lower-time-chip.pause{width:32px;}
+.lower-time-chip.segment{width:42px;color:var(--accent);}
+.lower-timeline-slot{position:relative;}
+.lower-timeline-slot::before,.lower-timeline-slot::after{content:"";position:absolute;left:50%;transform:translateX(-50%);z-index:2;pointer-events:none;border-left:5px solid transparent;border-right:5px solid transparent;}
+.lower-timeline-slot::before{top:1px;border-top:7px solid #ff9500;}
+.lower-timeline-slot::after{bottom:1px;border-bottom:7px solid #ff9500;}
+.mid-bar.timeline-grid .mid-pills{width:100%;height:100%;justify-content:flex-start;padding:0 8px !important;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.mid-bar.timeline-grid .mid-pills::-webkit-scrollbar{display:none;}
+.mid-bar.timeline-grid .fp{flex:0 0 32px;width:32px;min-width:32px;height:30px;border-radius:9px;padding:0;font-size:13px;justify-content:center;}
+.mid-bar.timeline-grid .ease-fp{position:relative;flex:0 0 42px;width:42px;min-width:42px;height:30px;border:0;border-radius:0;background:transparent;overflow:visible;}
+.mid-bar.timeline-grid .ease-fp::before{content:"";position:absolute;left:4px;right:4px;top:50%;height:4px;border-radius:999px;background:rgba(255,149,0,.82);transform:translateY(-50%);}
+.mid-bar.timeline-grid .ease-fp::after{content:"";position:absolute;left:2px;right:2px;top:50%;height:20px;transform:translateY(-50%);}
+.mid-bar.timeline-grid .ease-fp .seg-dot{position:absolute;top:50%;width:8px;height:8px;border-radius:50%;background:#ff9500;transform:translateY(-50%);z-index:1;}
+.mid-bar.timeline-grid .ease-fp .seg-dot.start{left:0;}
+.mid-bar.timeline-grid .ease-fp .seg-dot.end{right:0;}
+.mid-bar.timeline-grid .ease-fp svg{display:none;}
+.mid-bar.timeline-grid .ease-fp.ease-selected::before{background:var(--accent);box-shadow:0 0 0 2px rgba(4,255,242,.18);}
+.mid-bar.timeline-grid .ease-fp.ease-selected .seg-dot{background:var(--accent);}
+.lower-active-state{width:100%;display:flex;align-items:center;gap:6px;overflow:hidden;}
+.lower-active-label{font-size:12px;font-weight:800;color:var(--text2);white-space:nowrap;flex:0 0 auto;}
+.lower-active-sub{font-size:10px;font-weight:650;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;}
+.lower-selection-actions{display:none;margin-left:auto;align-items:center;gap:4px;flex:0 0 auto;}
+body.has-multi-selection .lower-selection-actions{display:flex;}
+.lower-selection-action{height:18px;border:0;border-radius:999px;background:rgba(4,255,242,.10);color:var(--accent);display:flex;align-items:center;gap:3px;padding:0 7px;font-size:9px;font-weight:800;cursor:pointer;}
+.lower-selection-action svg{width:12px;height:12px;display:block;}
+.mid-bar.timeline-grid .toolbar{display:flex;width:100%;height:100%;padding:0;border-top:0;background:transparent;align-items:stretch;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}
 .mid-bar.timeline-grid .toolbar.show{display:flex;}
+.mid-bar.timeline-grid .toolbar::-webkit-scrollbar{display:none;}
 .mid-bar.timeline-grid .toolbar.contextual-toolbar{gap:2px;padding-left:0;padding-right:0;}
-.mid-bar.timeline-grid .toolbar.contextual-toolbar .tb-item{min-height:28px;gap:0;}
-.mid-bar.timeline-grid .tb-icon{width:22px;height:22px;}
-.mid-bar.timeline-grid .tb-lbl{display:none;}
-#alignBarPrimary.ab-primary-strip{--align-select-all-w:0px;}
-#alignBarPrimary.ab-primary-strip .ab-select-all-fixed{display:none;}
-#alignBarActions{padding-left:0;}
+.mid-bar.timeline-grid .toolbar.contextual-toolbar .tb-item{flex:0 0 58px;min-width:58px;min-height:38px;justify-content:center;gap:1px;padding:0 1px;}
+.mid-bar.timeline-grid .tb-icon{width:21px;height:21px;}
+.mid-bar.timeline-grid .tb-lbl{display:block;font-size:10px;line-height:1;color:var(--text3);}
+.mid-bar.timeline-grid #alignBar{position:static !important;left:auto !important;right:auto !important;bottom:auto !important;z-index:auto !important;width:100%;height:100% !important;padding:0 !important;border-top:0 !important;box-shadow:none !important;background:transparent !important;overflow:hidden;}
+.mid-bar.timeline-grid #alignBarPrimary.ab-primary-strip{height:100%;--align-select-all-w:0px;}
+.mid-bar.timeline-grid #alignBarPrimary.ab-primary-strip .ab-select-all-fixed{display:none;}
+.mid-bar.timeline-grid #alignBarActions{padding-left:0;height:100%;overflow-x:auto;overflow-y:hidden;}
+.mid-bar.timeline-grid #alignBarActions .ab-tab{flex:0 0 58px;min-width:58px;min-height:38px;gap:1px;padding:0 1px;}
+.mid-bar.timeline-grid #alignBar .ab-tab svg{width:21px;height:21px;}
+.mid-bar.timeline-grid #alignBar .ab-tab .ab-lbl{display:block;font-size:10px;line-height:1;}
+.mid-bar.timeline-grid #alignBar .ab-icon-only .ab-lbl{display:block;}
+.mid-bar.timeline-grid #alignBarSubmenu{height:100% !important;overflow-x:auto !important;overflow-y:hidden !important;padding:0 !important;align-items:stretch;}
+body.has-multi-selection .mid-bar.timeline-grid #toolbar{display:none;}
+body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !important;}
 
 /* SETTINGS DROPDOWN */
 .settings-btn{
@@ -2499,7 +2530,7 @@ body.cust-open #toolbar{
 </div>
 
 
-<!-- v8z4b29H — Botões circulares do frame assistido: X laranja e check ciano, sem texto. -->
+<!-- v8z4b29I — Botões circulares do frame assistido preservados: X laranja e check ciano, sem texto. -->
 <div id="insertionActionBar" role="toolbar" aria-label="Modo de inserção de frame">
   <button id="insertionCancelBtn" class="ins-bar-btn cancel" type="button" title="Cancelar inserção" aria-label="Cancelar">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#i-close"></use></svg>
@@ -2513,8 +2544,8 @@ body.cust-open #toolbar{
 <!-- MID BAR: lock | inverter | pills | − | +
      v8z4b16a — Marcado com data-role="timeline-strip" como base
      estrutural da futura "frame strip" contínua (swipe horizontal
-     com o frame ativo no centro). v8z4b29H usa este mesmo slot para
-     a base inferior em 2 colunas e 4 faixas, sem alterar motor. -->
+     com o frame ativo no centro). v8z4b29I usa este mesmo slot para
+     a base inferior em 2 colunas e 4 linhas, sem overlay, sem alterar motor. -->
 <div class="mid-bar show timeline-grid" id="midBar" data-role="timeline-strip" aria-label="Linha inferior em duas colunas e quatro faixas">
   <div class="lower-cell lower-left lower-total-time" id="lowerTotalTime">0s</div>
   <div class="lower-cell lower-main"><div class="lower-times" id="lowerPartialTimes" aria-label="Tempos parciais informativos"></div></div>
@@ -2526,10 +2557,10 @@ body.cust-open #toolbar{
     </button>
   </div>
   <!-- Pills — faixa temporal de frames/trechos. -->
-  <div class="lower-cell lower-main"><div class="mid-pills" id="pillsRow" data-role="timeline-pills" style="flex:1;overflow-x:auto;align-items:center;gap:6px;padding:0 8px;display:flex;"></div></div>
+  <div class="lower-cell lower-main lower-timeline-slot"><div class="mid-pills" id="pillsRow" data-role="timeline-pills" style="flex:1;overflow-x:auto;align-items:center;gap:6px;padding:0 8px;display:flex;"></div></div>
 
   <div class="lower-cell lower-left lower-frame-count" id="lowerFrameCount">0F</div>
-  <div class="lower-cell lower-main"><div class="lower-active-state"><span class="lower-active-label" id="lowerActiveLabel">F1</span><span class="lower-active-sub" id="lowerActiveSub">Frame ativo</span></div></div>
+  <div class="lower-cell lower-main"><div class="lower-active-state"><span class="lower-active-label" id="lowerActiveLabel">F1</span><span class="lower-active-sub" id="lowerActiveSub">Frame ativo</span><span class="lower-selection-actions" id="lowerSelectionActions"><button type="button" class="lower-selection-action" onclick="selectAllFramesForContext()" title="Selecionar todos" aria-label="Selecionar todos"><svg viewBox="0 0 24 24"><use href="#i-list-check"></use></svg><span>Todos</span></button></span></div></div>
 
   <div class="lower-cell lower-left">
     <button class="lower-global-duration" type="button" onclick="openPanel('Duration')" title="Duração geral" aria-label="Duração geral">
@@ -2561,18 +2592,7 @@ body.cust-open #toolbar{
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-move"></use></svg><span class="tb-lbl">Movimento</span>
   </div>
 </div>
-  </div>
-</div>
-
-<!-- ALIGN BAR: aparece quando há seleção múltipla.
-     v8z4b16c — Caixa contextual de seleção múltipla redesenhada para
-     compartilhar a mesma linguagem visual do menu contextual de frames
-     (#custBar): fundo sólido, slot inferior consistente, ícones
-     centralizados, espaçamento limpo. Duas camadas:
-     (1) primária rolável: Selecionar todos / Pausa / Rotação / Escala / Mover / Alinhar / Distribuir;
-     (2) submenu contextual do grupo ativo, preenchido por JS.
-     A barra mantém position:fixed para entrar por cima sem empurrar o
-     stage, exatamente como antes. -->
+<!-- ALIGN BAR: seleção múltipla ocupa o slot da Linha 4 / Coluna 2, sem overlay sobre Duração. -->
 <div id="alignBar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--surface);background-image:none;box-shadow:none;border-top:.5px solid var(--border);box-sizing:border-box;height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px));padding:0 4px max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px);">
   <!-- Camada 1: primária -->
   <div id="alignBarPrimary" class="ab-primary-strip">
@@ -2610,6 +2630,9 @@ body.cust-open #toolbar{
   <!-- Camada 2: submenu do grupo ativo -->
   <div id="alignBarSubmenu" style="display:none;align-items:stretch;height:100%;gap:6px;overflow-x:auto;padding:2px 14px 4px 2px;box-sizing:border-box;"></div>
 </div>
+  </div>
+</div>
+
 <!--
   v8z4b15w — Layout do menu local invertido: controles ficam EM CIMA e a barra
   de ícones EMBAIXO. Comportamento "compact-first": ao primeiro toque no frame,
@@ -2785,7 +2808,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29H</span><br><span id="appVersionNameText">v8z4b29H</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29I</span><br><span id="appVersionNameText">v8z4b29I</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5127,8 +5150,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29H';
-const APP_VERSION_NAME = 'v8z4b29H';
+const APP_VERSION = 'v8z4b29I';
+const APP_VERSION_NAME = 'v8z4b29I';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10954,8 +10977,7 @@ function openSelectedSegmentMenu() {
   openPanel('Ease');
 }
 function handleLowerAddOrSelectAll() {
-  if (isMultiSelectionActive()) selectAllFramesForContext();
-  else insertFrameAfterActive();
+  insertFrameAfterActive();
 }
 function formatLowerTimeValue(v) {
   const n = Number(v);
@@ -10972,15 +10994,14 @@ function updateLowerTimelineMeta() {
   const addBtn = document.getElementById('lowerAddOrSelectAllBtn');
   if (totalEl) totalEl.textContent = formatLowerTimeValue(getComputedTimelineDuration());
   if (countEl) countEl.textContent = Math.max(0, frameCount) + 'F';
-  if (activeEl) activeEl.textContent = bottomContextMode === 'segment' && selectedSegmentIndex >= 0 ? ('T' + (selectedSegmentIndex + 1)) : ('F' + (Math.max(0, activeIdx) + 1));
+  if (activeEl) activeEl.textContent = bottomContextMode === 'segment' && selectedSegmentIndex >= 0 ? ('Trecho ' + (selectedSegmentIndex + 1) + '–' + (selectedSegmentIndex + 2)) : ('Frame ' + (Math.max(0, activeIdx) + 1));
   if (subEl) {
     if (isMultiSelectionActive()) subEl.textContent = getContextSelectionLabel();
     else if (bottomContextMode === 'segment' && selectedSegmentIndex >= 0) subEl.textContent = 'Trecho ativo';
     else subEl.textContent = 'Frame ativo';
   }
   if (addBtn) {
-    const selecting = isMultiSelectionActive();
-    addBtn.title = selecting ? 'Selecionar todos os frames' : 'Adicionar frame';
+    addBtn.title = 'Adicionar frame';
     addBtn.setAttribute('aria-label', addBtn.title);
   }
   if (timesEl) {
@@ -10999,6 +11020,22 @@ function updateLowerTimelineMeta() {
     }
   }
 }
+let lowerTimelineScrollSyncing = false;
+function syncLowerTimelineScroll(source, target) {
+  if (!source || !target || lowerTimelineScrollSyncing) return;
+  lowerTimelineScrollSyncing = true;
+  target.scrollLeft = source.scrollLeft;
+  requestAnimationFrame(() => { lowerTimelineScrollSyncing = false; });
+}
+function bindLowerTimelineScrollSync() {
+  const timesEl = document.getElementById('lowerPartialTimes');
+  const pillsEl = document.getElementById('pillsRow');
+  if (!timesEl || !pillsEl || timesEl._lowerSyncBound) return;
+  timesEl._lowerSyncBound = true;
+  timesEl.addEventListener('scroll', () => syncLowerTimelineScroll(timesEl, pillsEl), { passive: true });
+  pillsEl.addEventListener('scroll', () => syncLowerTimelineScroll(pillsEl, timesEl), { passive: true });
+}
+bindLowerTimelineScrollSync();
 setBottomContext('frame');
 
 function canOpenPointModeMenu() {
@@ -12046,7 +12083,7 @@ function startFirstFrameAssistedInsertion() {
   document.body.classList.add('inserting-frame');
   createGhostFrameElement();
   renderGhostFrame();
-  // v8z4b29H: confirmação fica fixa no HUD do Stage, fora do frame/foto.
+  // v8z4b29I: confirmação preservada fixa no HUD do Stage, fora do frame/foto.
   showInsertionActionBar();
   updateFrameSelector();
   showStatus('Posicione o enquadramento inicial · F1');
@@ -12208,7 +12245,7 @@ function setDefaultCurvesV2LoopHandles() {
   };
 }
 
-// v8z4b29H: ghost sem texto/handles; Confirmar/Cancelar são círculos fixos no HUD do Stage.
+// v8z4b29I: ghost preservado sem texto/handles; Confirmar/Cancelar são círculos fixos no HUD do Stage.
 function createGhostFrameElement() {
   if (ghostFrameEl) ghostFrameEl.remove();
   clearGhostFloatTimer();
@@ -12335,7 +12372,7 @@ function clearAssistedFrameInsertionTransientState() {
   }
 }
 
-// v8z4b29H — Confirmação assistida fixa no HUD do Stage, fora do layer com pan/zoom.
+// v8z4b29I — Confirmação assistida preservada fixa no HUD do Stage, fora do layer com pan/zoom.
 function showInsertionActionBar() {
   const bar = document.getElementById('insertionActionBar');
   if (!bar) return;
@@ -12953,7 +12990,7 @@ function makeEasePillEl(seg, which) {
   const isActive = ease !== 'linear';
   const el = document.createElement('div');
   el.className = 'ease-fp' + (isActive ? ' ease-active' : '') + (selectedSegmentIndex === seg ? ' ease-selected' : '');
-  el.innerHTML = `<svg viewBox="0 0 48.38 48.38" width="18" height="18" fill="none">${getEaseIcon(ease)}</svg>`;
+  el.innerHTML = `<span class="seg-dot start"></span><span class="seg-dot end"></span><svg viewBox="0 0 48.38 48.38" width="18" height="18" fill="none">${getEaseIcon(ease)}</svg>`;
   el.addEventListener('click', (e) => {
     e.stopPropagation();
     _easeForSegTarget = which;

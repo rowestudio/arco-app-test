@@ -1,3 +1,9 @@
+# QA pendente — v8z4b29I estrutura inferior alinhada sem sobreposição
+
+- Checklist detalhado criado em `docs/QA-v8z4b29I.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29H` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29I`; área inferior mantida no mesmo slot/altura com 2 colunas e 4 linhas alinhadas; Coluna 1 estreita/global; Coluna 2 principal; sem overflow vertical interno; Duração geral fixa; `+ frame` sempre em pill `var(--accent)`; seleção múltipla integrada à grade; labels contextuais restaurados; tempos parciais sincronizados horizontalmente com frames/trechos; Preview, MP4/export, JSON, cálculos reais, curvas/easing e renderização preservados.
+
 # QA pendente — v8z4b29H base inferior em 2 colunas e 4 faixas
 
 - Checklist detalhado criado em `docs/QA-v8z4b29H.md`.

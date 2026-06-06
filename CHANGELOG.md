@@ -1,3 +1,14 @@
+## v8z4b29I — estrutura inferior alinhada sem sobreposição
+
+- `index.html`: base `v8z4b29H` confirmada antes das alterações e versionamento atualizado para `v8z4b29I` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: área inferior mantém o mesmo slot/altura e passa a usar grade real de 2 colunas por 4 linhas, com Coluna 1 estreita/global e Coluna 2 flexível, `overflow` vertical bloqueado e Duração geral fixa na Linha 4.
+- `index.html`: botão `+ frame` fica sempre no slot global da Linha 2, mais forte, em pill `var(--accent)`, sem troca por seleção múltipla.
+- `index.html`: tempos parciais da Linha 1 e faixa de frames/trechos da Linha 2 têm larguras compatíveis e sincronização horizontal de scroll, sem edição direta de pausa/duração.
+- `index.html`: frames aparecem como blocos numerados; trechos aparecem como conexões com bolinhas nas extremidades, hit area horizontal preservada e marcadores centrais laranja adicionados à faixa.
+- `index.html`: seleção múltipla deixa de ser overlay sobre a base inferior; suas ações ocupam a Linha 3 / Coluna 2 e a Linha 4 / Coluna 2, sem cobrir a Coluna 1 nem a Duração geral.
+- `index.html`: labels dos ícones contextuais inferiores voltam a aparecer abaixo dos ícones, com scroll horizontal permitido apenas na Linha 4 / Coluna 2.
+- `QA.md` e `docs/QA-v8z4b29I.md`: checklist/inventário da v8z4b29I documentado.
+
 ## v8z4b29H — base inferior em 2 colunas e 4 faixas
 
 - `index.html`: base `v8z4b29G` confirmada antes das alterações e versionamento atualizado para `v8z4b29H` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
