@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29J área inferior proporcional e pausa distinta
+
+- Checklist detalhado criado em `docs/QA-v8z4b29J.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29I` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29J`; área inferior preserva 2 colunas e 4 linhas; Coluna 1 ampliada; espaço morto inferior removido por padding inferior zerado; botão `+` maior em `var(--accent)`; controle global com label `Tempo`; tempos parciais e timeline sincronizados por `scrollLeft` imediato; frames mais fortes que trechos; bolinhas de conexão e foco central preservadas; frame ativo recentraliza fora de seleção múltipla; ícone de Pausa substituído por `i-frame-pause`; motor, Preview, MP4/export, JSON, curvas/easing e cálculos reais preservados.
+- Não foram executados testes em iPhone/Safari real nem geração real de MP4 neste ambiente automatizado.
+
 # QA pendente — v8z4b29I estrutura inferior alinhada sem sobreposição
 
 - Checklist detalhado criado em `docs/QA-v8z4b29I.md`.
