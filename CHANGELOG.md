@@ -1,3 +1,13 @@
+## v8z4b29K — base inferior compacta e submenus na Linha 4
+
+- `index.html`: base `v8z4b29J` confirmada antes das alterações e versionamento atualizado para `v8z4b29K` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: submenus locais de Pausa, Rotação, Escala e Mover passam a ocupar o slot contextual da Linha 4 / Coluna 2, substituindo os ícones sem criar novo bloco vertical nem empurrar timeline, Coluna 1 ou Stage.
+- `index.html`: Coluna 1 recebe padding compacto, botão `+ frame` volta a ser circular real em `var(--accent)` e tipografia da área inferior fica mais consistente.
+- `index.html`: timeline reduz gaps, conecta visualmente frames e trechos, engrossa bordas dos frames, deixa trechos mais discretos e usa `var(--accent)` para frame ativo/selecionado.
+- `index.html`: espaço morto inferior dos menus contextuais é reduzido ao encaixar painéis no mesmo slot da Linha 4, preservando apenas a safe area da grade inferior.
+- `index.html`: Linha 3 remove o subtítulo redundante `Frame ativo` e mostra seleção ativa/múltipla de forma compacta.
+- `QA.md` e `docs/QA-v8z4b29K.md`: checklist/inventário da v8z4b29K documentado.
+
 ## v8z4b29J — área inferior proporcional e pausa distinta
 
 - `index.html`: base `v8z4b29I` confirmada antes das alterações e versionamento atualizado para `v8z4b29J` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
