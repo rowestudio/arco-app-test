@@ -1,3 +1,13 @@
+## v8z4b29J — área inferior proporcional e pausa distinta
+
+- `index.html`: base `v8z4b29I` confirmada antes das alterações e versionamento atualizado para `v8z4b29J` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: área inferior mantém 2 colunas e 4 linhas, amplia a Coluna 1, remove padding inferior morto e redistribui a altura útil para tempo total, botão `+`, total de frames e controle global `Tempo`.
+- `index.html`: Linha 1 e Linha 2 passam a usar larguras equivalentes para pausas/frames e trechos/conexões, com sincronização imediata de `scrollLeft` para evitar atraso visual entre tempos e timeline.
+- `index.html`: frames ganham blocos maiores e trechos viram conexões menores com bolinhas, mantendo hit area invisível sem deixar o trecho mais importante que o frame.
+- `index.html`: frame ativo clicado/adicionado é recentralizado na faixa, com bloqueio de recentralização durante seleção múltipla.
+- `index.html`: ícone de Pausa de frame trocado para `i-frame-pause` (círculo com barras), separado dos ícones de Tempo/Duração, com label `Pausa` preservado.
+- `QA.md` e `docs/QA-v8z4b29J.md`: checklist/inventário da v8z4b29J documentado.
+
 ## v8z4b29I — estrutura inferior alinhada sem sobreposição
 
 - `index.html`: base `v8z4b29H` confirmada antes das alterações e versionamento atualizado para `v8z4b29I` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
