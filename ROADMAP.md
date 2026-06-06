@@ -1,3 +1,12 @@
+## Roadmap registrado em v8z4b29g — próxima frente de motor
+
+- Após estabilizar a interface v8z4b29g, revisar o motor de movimento em etapa separada, sem implementação nesta versão.
+- Avaliar velocidade constante: percepção de velocidade uniforme, relação entre curvas, distância percorrida e duração.
+- Estudar escala como variável de movimento: influência temporal de variações fortes de zoom e suavização de acelerações visuais estranhas.
+- Estudar rotação como variável de movimento: evitar trancos, avaliar easing próprio ou integração ao movimento inteligente.
+- Revisar movimento inteligente em conjunto com posição, escala, rotação, curva, duração e pausas.
+- Não implementado em v8z4b29g: nenhuma alteração de motor, Preview, MP4/export, curva, timing, escala, rotação ou JSON.
+
 ## Roadmap registrado em v8z4b29f — área inferior
 
 - Avaliar futuramente uma estrutura inferior em quatro faixas: tempo, frames/trechos, informação/ações do item ativo e ferramentas contextuais.

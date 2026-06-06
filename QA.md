@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29g ícones e frame assistido da linha v29
+
+- Checklist detalhado criado em `docs/QA-v8z4b29g.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29f` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29g`; ícones pendentes corrigidos para Formato/`proportions`, Templates/`layout-template` e Não limitar-Conter/`fullscreen`; frame assistido sem círculos brancos de canto, sem texto/pill/fill interno, com borda branca tracejada, cantos arredondados, dim externo e flutuação visual sutil; flutuação pausa em toque/drag/handle e retorna após atraso curto; botões X/check permanecem círculos sem texto e ficam fixos no HUD do Stage, fora do layer de pan/zoom; roadmap pós-v8z4b29g registrado; motor, Preview, MP4/export e JSON preservados.
+- Não foram executados testes em iPhone/Safari real nem geração real de MP4 neste ambiente automatizado.
+
 # QA pendente — v8z4b29f menu, frame assistido e estados visuais da linha v29
 
 - Checklist detalhado criado em `docs/QA-v8z4b29f.md`.
