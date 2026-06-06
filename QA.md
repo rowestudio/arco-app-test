@@ -1,3 +1,9 @@
+# QA pendente — v8z4b29K base inferior compacta e submenus na Linha 4
+
+- Checklist detalhado criado em `docs/QA-v8z4b29K.md`.
+- Verificações estáticas executadas: base `v8z4b29J` confirmada antes das alterações; versionamento atualizado para `v8z4b29K`; área inferior preserva 2 colunas e 4 linhas; `#custBar` é reencaixado em `#lowerContextSlot` para substituir a Linha 4 / Coluna 2 sem empurrar a timeline; Coluna 1 ganhou padding compacto; botão `+ frame` ficou circular em `var(--accent)`; frames têm borda mais espessa e ativo/selecionado em ciano; trechos ficam conectados e discretos; texto `Frame ativo` removido da Linha 3; motor, Preview, MP4/export, JSON, curvas/easing e cálculos reais preservados.
+- QA manual completo em iPhone/Safari, abertura dos submenus de frame/trecho, zona inferior, tocabilidade dos trechos, Preview, MP4/export, JSON, Undo/Redo e regressão geral permanece obrigatório antes de promover a versão.
+
 # QA pendente — v8z4b29J área inferior proporcional e pausa distinta
 
 - Checklist detalhado criado em `docs/QA-v8z4b29J.md`.
