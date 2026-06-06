@@ -1,3 +1,14 @@
+## v8z4b29m — correção crítica inferior, scroll e menus contextuais
+
+- `index.html`: base `v8z4b29L` confirmada antes das alterações e versionamento atualizado para `v8z4b29m` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: seleção de trecho deixa de aplicar foco visual azul/ciano nos frames do Stage; o trecho selecionado permanece indicado apenas na timeline e no contexto inferior.
+- `index.html`: rolagem horizontal da timeline passa a ser comandada pela faixa de frames com inércia nativa, sem feedback de scroll da faixa de tempos, e com sincronização imediata de `scrollLeft` para manter tempos/trechos/frames alinhados.
+- `index.html`: frame selecionado mantém centralização suave fora de seleção múltipla, com larguras compactas e compatíveis entre tempos, trechos e frames.
+- `index.html`: ação `Selecionar todos` fica explícita, secundária em cinza claro, com texto antes do ícone e sem cor de destaque normal.
+- `index.html`: painéis flutuantes de Duração e Movimento recebem tick/check de confirmação/fechamento sem alterar motor, Preview, MP4/export, JSON, curvas/easing ou cálculo de câmera.
+- `index.html`: área inferior reduz ainda mais o espaço morto da safe area, ganha respiro entre linhas, bolinhas laranjas se afastam dos frames e a hierarquia de textos passa a diferenciar pausa (cinza), trecho (branco), frame (cinza) e quantidade de frames (mais escura).
+- `QA.md` e `docs/QA-v8z4b29m.md`: checklist/inventário da v8z4b29m documentado.
+
 ## v8z4b29L — refinamento inferior, timeline e centralização suave
 
 - `index.html`: base `v8z4b29K` confirmada antes das alterações e versionamento atualizado para `v8z4b29L` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.

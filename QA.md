@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29m correção crítica inferior, scroll e menus
+
+- Checklist detalhado criado em `docs/QA-v8z4b29m.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29L` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29m`; seleção de trecho sem moldura azul/ciano no Stage; rolagem horizontal comandada pela faixa de frames com sincronização direta da faixa de tempos; centralização suave preservada fora de seleção múltipla; `Selecionar todos` explícito, secundário e aditivo; Duração e Movimento com tick/check; safe area inferior reduzida, linhas com mais respiro, bolinhas laranjas sem sobrepor frames e hierarquia de textos ajustada; motor, Preview, MP4/export, JSON, curvas/easing, câmera, Stage e zoom/pan preservados.
+- Não foram executados testes em iPhone/Safari real nem geração real de MP4 neste ambiente automatizado.
+
 # QA pendente — v8z4b29L refinamento visual da base inferior
 
 - Checklist detalhado criado em `docs/QA-v8z4b29L.md`.
