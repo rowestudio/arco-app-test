@@ -1,3 +1,12 @@
+## v8z4b29L — refinamento inferior, timeline e centralização suave
+
+- `index.html`: base `v8z4b29K` confirmada antes das alterações e versionamento atualizado para `v8z4b29L` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: grade inferior mantém 2 colunas x 4 linhas, remove duplicação de safe area, reduz padding inferior real e redistribui a altura recuperada como respiro entre as linhas.
+- `index.html`: Linha 3 fica mais discreta em tom secundário, sem subtítulo redundante, mantendo identificação compacta de frame, trecho ou seleção múltipla.
+- `index.html`: frames da timeline ficam menos largos e trechos ficam mais estreitos/conectados, com larguras sincronizadas entre Linha 1 de tempos e Linha 2 de frames.
+- `index.html`: centralização do frame selecionado passa a usar `scrollTo(..., behavior: 'smooth')` nas faixas de tempos e frames, preservando bloqueio durante seleção múltipla.
+- `QA.md` e `docs/QA-v8z4b29L.md`: checklist/inventário da v8z4b29L documentado.
+
 ## v8z4b29K — base inferior compacta e submenus na Linha 4
 
 - `index.html`: base `v8z4b29J` confirmada antes das alterações e versionamento atualizado para `v8z4b29K` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.

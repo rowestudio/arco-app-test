@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29K                                     ║
+║  Versão: v8z4b29L                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29L                                            ║
+║    fix/ux: reduz padding inferior, suaviza centro e ║
+║        refina timeline/Linha 3 sem mexer no motor.   ║
 ║  v8z4b29K                                            ║
 ║    fix/ux: submenus na Linha 4, timeline conectada, ║
 ║        frame ativo ciano e base inferior compacta.   ║
@@ -512,6 +515,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29L — fix/ux: reduz padding inferior real, dá respiro às 4 linhas, suaviza centralização e refina timeline/Linha 3 sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29K — fix/ux: encaixa submenus na Linha 4, reduz espaço morto inferior, conecta frames/trechos e usa frame ativo ciano sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29H — ux: cria base inferior em duas colunas e quatro faixas, corrige azul oficial e flutuação oval do frame assistido sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29G — fix/ux: corrige ícones pendentes, frame assistido flutuante sem handles e botões fixos no Stage sem alterar motor/Preview/MP4/JSON. -->
@@ -772,12 +776,12 @@ body.recording #editorZoomCtrl{display:none;}
   75%{transform:translate3d(2px,3px,0);}
 }
 .ghost-frame:active{cursor:grabbing;}
-/* v8z4b29K: frame assistido preservado sem texto/handles; confirmação/cancelamento são HUD fixo do Stage. */
+/* v8z4b29L: frame assistido preservado sem texto/handles; confirmação/cancelamento são HUD fixo do Stage. */
 body.inserting-frame .frame,
 body.inserting-frame .ctrl-pt,
 body.inserting-frame .frame-in-handle,
 body.inserting-frame .frame-out-handle{pointer-events:none !important;}
-/* v8z4b29K — Confirmação assistida preservada: círculos fixos no HUD do Stage. */
+/* v8z4b29L — Confirmação assistida preservada: círculos fixos no HUD do Stage. */
 #insertionActionBar{
   position:absolute;
   left:50%;bottom:18px;
@@ -1111,21 +1115,23 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .tb-val{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;}
 .tb-lbl{font-size:11px;color:var(--text3);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;}
 
-/* v8z4b29K — Base inferior proporcional à referência: 2 colunas x 4 linhas, submenus no slot da Linha 4, sem overlay/scroll vertical interno. */
+/* v8z4b29L — Base inferior refinada: safe-area sem duplicação, 2 colunas x 4 linhas, submenus no slot da Linha 4. */
 .mid-bar.timeline-grid{
   --lower-left-w:68px;
   --lower-row-1:20px;
-  --lower-row-2:54px;
-  --lower-row-3:23px;
-  --lower-row-4:47px;
-  height:calc(144px + max(env(safe-area-inset-bottom, 0px), 0px));
+  --lower-row-2:50px;
+  --lower-row-3:24px;
+  --lower-row-4:42px;
+  --lower-safe-bottom:max(calc(env(safe-area-inset-bottom, 0px) - 22px), 0px);
+  height:calc(144px + var(--lower-safe-bottom));
   display:none;
   grid-template-columns:var(--lower-left-w) minmax(0,1fr);
   grid-template-rows:var(--lower-row-1) var(--lower-row-2) var(--lower-row-3) var(--lower-row-4);
+  row-gap:2px;
   align-items:stretch;
   background:var(--surface);
   border-top:.5px solid var(--border);
-  padding:3px 0 max(env(safe-area-inset-bottom, 0px), 0px);
+  padding:2px 0 var(--lower-safe-bottom);
   box-sizing:border-box;
   overflow:hidden;
 }
@@ -1143,32 +1149,32 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .lower-add-pill:active{filter:brightness(.92);}
 .lower-add-pill svg{width:31px;height:31px;display:block;}
 .lower-add-pill .select-all-icon{display:none;}
-.lower-times{display:flex;align-items:center;gap:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;width:100%;height:100%;padding:0 calc(50% - 28px);box-sizing:border-box;scroll-behavior:auto;}
+.lower-times{display:flex;align-items:center;gap:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;width:100%;height:100%;padding:0 calc(50% - 24px);box-sizing:border-box;scroll-behavior:smooth;}
 .lower-times::-webkit-scrollbar{display:none;}
 .lower-time-chip{flex:0 0 auto;text-align:center;font-size:12px;font-weight:650;color:var(--text3);line-height:1;border-radius:999px;padding:2px 0;background:transparent;}
-.lower-time-chip.pause{width:56px;}
-.lower-time-chip.segment{width:28px;color:rgba(235,235,245,.68);}
+.lower-time-chip.pause{width:48px;}
+.lower-time-chip.segment{width:24px;color:rgba(235,235,245,.62);}
 .lower-timeline-slot{position:relative;}
 .lower-timeline-slot::before,.lower-timeline-slot::after{content:"";position:absolute;left:50%;transform:translateX(-50%);z-index:2;pointer-events:none;width:6px;height:6px;border:0;border-radius:50%;background:rgba(255,176,0,.82);}
 .lower-timeline-slot::before{top:3px;}
 .lower-timeline-slot::after{bottom:3px;}
-.mid-bar.timeline-grid .mid-pills{width:100%;height:100%;justify-content:flex-start;padding:0 calc(50% - 28px) !important;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-behavior:auto;gap:0 !important;}
+.mid-bar.timeline-grid .mid-pills{width:100%;height:100%;justify-content:flex-start;padding:0 calc(50% - 24px) !important;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;gap:0 !important;}
 .mid-bar.timeline-grid .mid-pills::-webkit-scrollbar{display:none;}
-.mid-bar.timeline-grid .fp{flex:0 0 56px;width:56px;min-width:56px;height:46px;border-radius:15px;padding:0;font-size:18px;justify-content:center;border-width:3px;background:rgba(44,44,46,.72);color:rgba(235,235,245,.86);}
+.mid-bar.timeline-grid .fp{flex:0 0 48px;width:48px;min-width:48px;height:44px;border-radius:14px;padding:0;font-size:17px;justify-content:center;border-width:3px;background:rgba(44,44,46,.72);color:rgba(235,235,245,.84);}
 .mid-bar.timeline-grid .fp.active{background:rgba(4,255,242,.14);color:var(--text);border-color:var(--accent);box-shadow:0 0 0 1px rgba(4,255,242,.55) inset;}
 .mid-bar.timeline-grid .fp.selected{border-color:var(--accent);box-shadow:0 0 0 1px rgba(4,255,242,.45) inset;background:rgba(4,255,242,.10);color:var(--text);}
-.mid-bar.timeline-grid .ease-fp{position:relative;flex:0 0 28px;width:28px;min-width:28px;height:46px;border:0;border-radius:0;background:transparent;overflow:visible;margin:0 -1px;}
-.mid-bar.timeline-grid .ease-fp::before{content:"";position:absolute;left:-2px;right:-2px;top:50%;height:3px;border-radius:999px;background:rgba(210,210,210,.42);transform:translateY(-50%);}
+.mid-bar.timeline-grid .ease-fp{position:relative;flex:0 0 24px;width:24px;min-width:24px;height:44px;border:0;border-radius:0;background:transparent;overflow:visible;margin:0 -1px;}
+.mid-bar.timeline-grid .ease-fp::before{content:"";position:absolute;left:-3px;right:-3px;top:50%;height:3px;border-radius:999px;background:rgba(210,210,210,.42);transform:translateY(-50%);}
 .mid-bar.timeline-grid .ease-fp::after{content:"";position:absolute;left:-9px;right:-9px;top:50%;height:32px;transform:translateY(-50%);}
 .mid-bar.timeline-grid .ease-fp .seg-dot{position:absolute;top:50%;width:8px;height:8px;border-radius:50%;background:rgba(210,210,210,.62);transform:translateY(-50%);z-index:1;}
-.mid-bar.timeline-grid .ease-fp .seg-dot.start{left:-5px;}
-.mid-bar.timeline-grid .ease-fp .seg-dot.end{right:-5px;}
+.mid-bar.timeline-grid .ease-fp .seg-dot.start{left:-6px;}
+.mid-bar.timeline-grid .ease-fp .seg-dot.end{right:-6px;}
 .mid-bar.timeline-grid .ease-fp svg{display:none;}
 .mid-bar.timeline-grid .ease-fp.ease-selected::before{background:var(--accent);box-shadow:0 0 0 2px rgba(4,255,242,.18);}
 .mid-bar.timeline-grid .ease-fp.ease-selected .seg-dot{background:var(--accent);}
-.lower-active-state{width:100%;height:100%;display:flex;align-items:center;gap:10px;overflow:hidden;}
-.lower-active-label{font-size:13px;font-weight:760;color:var(--text2);white-space:nowrap;flex:0 0 auto;}
-.lower-active-sub{font-size:12px;font-weight:650;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;}
+.lower-active-state{width:100%;height:100%;display:flex;align-items:center;gap:8px;overflow:hidden;color:var(--text3);}
+.lower-active-label{font-size:12px;font-weight:700;color:rgba(235,235,245,.66);white-space:nowrap;flex:0 0 auto;}
+.lower-active-sub{font-size:12px;font-weight:600;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;}
 .lower-selection-actions{display:none;margin-left:auto;align-items:center;gap:4px;flex:0 0 auto;}
 body.has-multi-selection .lower-selection-actions{display:flex;}
 .lower-selection-action{height:18px;border:0;border-radius:999px;background:rgba(4,255,242,.10);color:var(--accent);display:flex;align-items:center;gap:3px;padding:0 7px;font-size:9px;font-weight:800;cursor:pointer;}
@@ -1177,14 +1183,14 @@ body.has-multi-selection .lower-selection-actions{display:flex;}
 .mid-bar.timeline-grid .toolbar.show{display:flex;}
 .mid-bar.timeline-grid .toolbar::-webkit-scrollbar{display:none;}
 .mid-bar.timeline-grid .toolbar.contextual-toolbar{gap:2px;padding-left:0;padding-right:0;}
-.mid-bar.timeline-grid .toolbar.contextual-toolbar .tb-item{flex:0 0 68px;min-width:68px;min-height:44px;justify-content:center;gap:3px;padding:0 1px;}
+.mid-bar.timeline-grid .toolbar.contextual-toolbar .tb-item{flex:0 0 68px;min-width:68px;min-height:38px;justify-content:center;gap:3px;padding:0 1px;}
 .mid-bar.timeline-grid .tb-icon{width:24px;height:24px;color:rgba(235,235,245,.78);}
 .mid-bar.timeline-grid .tb-lbl{display:block;font-size:11px;line-height:1;color:var(--text3);font-weight:650;}
 .mid-bar.timeline-grid #alignBar{position:static !important;left:auto !important;right:auto !important;bottom:auto !important;z-index:auto !important;width:100%;height:100% !important;padding:0 !important;border-top:0 !important;box-shadow:none !important;background:transparent !important;overflow:hidden;}
 .mid-bar.timeline-grid #alignBarPrimary.ab-primary-strip{height:100%;--align-select-all-w:0px;}
 .mid-bar.timeline-grid #alignBarPrimary.ab-primary-strip .ab-select-all-fixed{display:none;}
 .mid-bar.timeline-grid #alignBarActions{padding-left:0;height:100%;overflow-x:auto;overflow-y:hidden;}
-.mid-bar.timeline-grid #alignBarActions .ab-tab{flex:0 0 68px;min-width:68px;min-height:44px;gap:3px;padding:0 1px;}
+.mid-bar.timeline-grid #alignBarActions .ab-tab{flex:0 0 68px;min-width:68px;min-height:38px;gap:3px;padding:0 1px;}
 .mid-bar.timeline-grid #alignBar .ab-tab svg{width:24px;height:24px;}
 .mid-bar.timeline-grid #alignBar .ab-tab .ab-lbl{display:block;font-size:11px;line-height:1;}
 .mid-bar.timeline-grid #alignBar .ab-icon-only .ab-lbl{display:block;}
@@ -1196,7 +1202,7 @@ body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !im
 .mid-bar.timeline-grid #custBar.compact-mode{height:100% !important;max-height:100% !important;}
 .mid-bar.timeline-grid #custBar:not(.compact-mode){height:100% !important;max-height:100% !important;}
 .mid-bar.timeline-grid #custBarTabs{height:100% !important;padding:0 !important;align-items:stretch !important;background:transparent !important;}
-.mid-bar.timeline-grid #custBar .cust-tab{justify-content:center;gap:3px;padding:0 1px;min-height:44px;}
+.mid-bar.timeline-grid #custBar .cust-tab{justify-content:center;gap:3px;padding:0 1px;min-height:38px;}
 .mid-bar.timeline-grid #custBar .cust-tab svg{width:24px;height:24px;color:rgba(235,235,245,.78) !important;stroke:rgba(235,235,245,.78) !important;}
 .mid-bar.timeline-grid #custBar .cust-tab .cust-tab-lbl{font-size:11px;font-weight:650;color:var(--text3);}
 .mid-bar.timeline-grid #custBarContent{height:100%;padding:2px 6px 2px 0 !important;gap:4px !important;overflow:hidden !important;background:transparent !important;align-items:center !important;}
@@ -2321,7 +2327,7 @@ body.cust-open #toolbar{
     <path d="M9.5 8.2v7.6"/>
     <path d="M14.5 8.2v7.6"/>
   </symbol>
-  <!-- v8z4b29K — i-frame-pause separa visualmente Pausa de frame do relógio
+  <!-- v8z4b29L — i-frame-pause separa visualmente Pausa de frame do relógio
        usado por Tempo/Duração, preservando a lógica de pausa existente. -->
   <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="12" r="10"/>
@@ -2560,7 +2566,7 @@ body.cust-open #toolbar{
 </div>
 
 
-<!-- v8z4b29K — Botões circulares do frame assistido preservados: X laranja e check ciano, sem texto. -->
+<!-- v8z4b29L — Botões circulares do frame assistido preservados: X laranja e check ciano, sem texto. -->
 <div id="insertionActionBar" role="toolbar" aria-label="Modo de inserção de frame">
   <button id="insertionCancelBtn" class="ins-bar-btn cancel" type="button" title="Cancelar inserção" aria-label="Cancelar">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#i-close"></use></svg>
@@ -2574,7 +2580,7 @@ body.cust-open #toolbar{
 <!-- MID BAR: lock | inverter | pills | − | +
      v8z4b16a — Marcado com data-role="timeline-strip" como base
      estrutural da futura "frame strip" contínua (swipe horizontal
-     com o frame ativo no centro). v8z4b29K usa este mesmo slot para
+     com o frame ativo no centro). v8z4b29L usa este mesmo slot para
      a base inferior em 2 colunas e 4 linhas, sem overlay, sem alterar motor. -->
 <div class="mid-bar show timeline-grid" id="midBar" data-role="timeline-strip" aria-label="Linha inferior em duas colunas e quatro faixas">
   <div class="lower-cell lower-left lower-total-time" id="lowerTotalTime">0s</div>
@@ -2765,7 +2771,7 @@ body.cust-open #toolbar{
     pertence à faixa de frames, não ao menu local de ajustes.
   -->
   <div id="custBarTabs" style="display:flex;align-items:stretch;background:var(--surface);">
-    <!-- v8z4b29K — Pausa usa ícone próprio com círculo e barras, distinto de Tempo. -->
+    <!-- v8z4b29L — Pausa usa ícone próprio com círculo e barras, distinto de Tempo. -->
     <div class="cust-tab" data-tab="framepause" onclick="switchCustTab('framepause')">
       <svg viewBox="0 0 24 24" width="22" height="22"><use href="#i-frame-pause"></use></svg>
       <span class="cust-tab-lbl">Pausa</span>
@@ -2837,7 +2843,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29K</span><br><span id="appVersionNameText">v8z4b29K</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29L</span><br><span id="appVersionNameText">v8z4b29L</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5179,8 +5185,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29K';
-const APP_VERSION_NAME = 'v8z4b29K';
+const APP_VERSION = 'v8z4b29L';
+const APP_VERSION_NAME = 'v8z4b29L';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11062,17 +11068,23 @@ function syncLowerTimelineScroll(source, target) {
   target.scrollLeft = source.scrollLeft;
   lowerTimelineScrollSyncing = false;
 }
-function centerLowerTimelineOnFrame(fi) {
+function setLowerTimelineScroll(el, left, smooth) {
+  if (!el) return;
+  if (smooth && typeof el.scrollTo === 'function') el.scrollTo({ left, behavior: 'smooth' });
+  else el.scrollLeft = left;
+}
+function centerLowerTimelineOnFrame(fi, smooth = true) {
   if (isMultiSelectionActive()) return;
   const pillsEl = document.getElementById('pillsRow');
   const timesEl = document.getElementById('lowerPartialTimes');
   const pill = pillsEl ? pillsEl.querySelector('[data-frame-index="' + fi + '"]') : null;
   if (!pillsEl || !timesEl || !pill) return;
-  const nextScroll = Math.max(0, pill.offsetLeft + pill.offsetWidth / 2 - pillsEl.clientWidth / 2);
+  const maxScroll = Math.max(0, pillsEl.scrollWidth - pillsEl.clientWidth);
+  const nextScroll = Math.min(maxScroll, Math.max(0, pill.offsetLeft + pill.offsetWidth / 2 - pillsEl.clientWidth / 2));
   lowerTimelineScrollSyncing = true;
-  pillsEl.scrollLeft = nextScroll;
-  timesEl.scrollLeft = nextScroll;
-  lowerTimelineScrollSyncing = false;
+  setLowerTimelineScroll(pillsEl, nextScroll, smooth);
+  setLowerTimelineScroll(timesEl, nextScroll, smooth);
+  requestAnimationFrame(() => { lowerTimelineScrollSyncing = false; });
 }
 function requestLowerTimelineCenter(fi) {
   if (isMultiSelectionActive()) return;
@@ -12139,7 +12151,7 @@ function startFirstFrameAssistedInsertion() {
   document.body.classList.add('inserting-frame');
   createGhostFrameElement();
   renderGhostFrame();
-  // v8z4b29K: confirmação preservada fixa no HUD do Stage, fora do frame/foto.
+  // v8z4b29L: confirmação preservada fixa no HUD do Stage, fora do frame/foto.
   showInsertionActionBar();
   updateFrameSelector();
   showStatus('Posicione o enquadramento inicial · F1');
@@ -12302,7 +12314,7 @@ function setDefaultCurvesV2LoopHandles() {
   };
 }
 
-// v8z4b29K: ghost preservado sem texto/handles; Confirmar/Cancelar são círculos fixos no HUD do Stage.
+// v8z4b29L: ghost preservado sem texto/handles; Confirmar/Cancelar são círculos fixos no HUD do Stage.
 function createGhostFrameElement() {
   if (ghostFrameEl) ghostFrameEl.remove();
   clearGhostFloatTimer();
@@ -12429,7 +12441,7 @@ function clearAssistedFrameInsertionTransientState() {
   }
 }
 
-// v8z4b29K — Confirmação assistida preservada fixa no HUD do Stage, fora do layer com pan/zoom.
+// v8z4b29L — Confirmação assistida preservada fixa no HUD do Stage, fora do layer com pan/zoom.
 function showInsertionActionBar() {
   const bar = document.getElementById('insertionActionBar');
   if (!bar) return;

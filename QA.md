@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29L refinamento visual da base inferior
+
+- Checklist detalhado criado em `docs/QA-v8z4b29L.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29K` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29L`; safe area inferior da grade reduzida sem duplicação; respiro entre as 4 linhas ajustado sem aumentar o painel; Linha 3 em tom secundário e sem `Frame ativo`; blocos de frame reduzidos; trechos conectados e larguras sincronizadas com a faixa de tempos; centralização suave por `scrollTo` bloqueada em seleção múltipla; motor, Preview, MP4/export, JSON, Undo/Redo e cálculos de movimento preservados.
+- Não foram executados testes em iPhone/Safari real nem geração real de MP4 neste ambiente automatizado.
+
 # QA pendente — v8z4b29K base inferior compacta e submenus na Linha 4
 
 - Checklist detalhado criado em `docs/QA-v8z4b29K.md`.
