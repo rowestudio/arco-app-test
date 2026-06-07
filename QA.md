@@ -1,3 +1,9 @@
+# QA pendente — v8z4b29R sincronização Stage/timeline, seleção múltipla e menus de frame
+
+- Checklist detalhado criado em `docs/QA-v8z4b29R.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29Q` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29R`; foco central da timeline separado da seleção simples; scroll manual atualiza alfa/destaque do Stage pelo frame central; centralização programática termina no frame selecionado sem focar intermediários; seleção múltipla e `Selecionar todos` preservam o conjunto sem hierarquia; submenus multi-select abrem em camada superior sobre Linha 3/Linha 4; blocos da timeline escalam número/padding/raio com borda controlada; Formato usa `proportions`; Preview, MP4/export, JSON e curvas preservados.
+
 # QA pendente — v8z4b29Q correção limpa de ícones, timeline e menus inferiores
 
 - Checklist detalhado criado em `docs/QA-v8z4b29Q.md`.
