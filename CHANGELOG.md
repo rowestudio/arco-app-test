@@ -1,3 +1,11 @@
+## v8z4b29Z — exclusão mútua custBar e multi-seleção
+
+- `index.html`: base `v8z4b29W` confirmada e versionamento atualizado para `v8z4b29Z` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: ao entrar em seleção múltipla por `toggleFrameSelection()` ou `selectAllFramesForContext()`, `#custBar` é fechado e `cust-open`/`cust-expanded` são removidos sem limpar `selectedFrames`, sem alterar `activeIdx` e sem centralizar frame individual.
+- `index.html`: `openCustBar()`, `openCustBarTabFromBottom()` e `switchCustTab()` não reabrem customização durante multi-seleção; `openAlignSubmenu()` fecha `#custBar` antes do submenu de seleção múltipla.
+- `index.html`: CSS defensivo impede `#custBar` e reposicionamento de `cust-expanded` enquanto `has-multi-selection` estiver ativo, preservando a geometria da Linha 4 / Coluna 2.
+- `QA.md` e `docs/QA-v8z4b29Z.md`: checklist/inventário da v8z4b29Z documentado.
+
 ## v8z4b29W — estabilidade da Linha 4 e marcadores centrais
 
 - `index.html`: base `v8z4b29V` confirmada e versionamento atualizado para `v8z4b29W` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
