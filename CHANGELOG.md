@@ -1,3 +1,10 @@
+## v8z4b29V — ajuste residual inferior
+
+- `index.html`: base `v8z4b29U` confirmada e versionamento atualizado para `v8z4b29V` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: submenus inferiores de Pausa, Rotação, Escala e Mover passam a usar um respiro visual comum acima da home indicator sem recontar `env(safe-area-inset-bottom)`.
+- `index.html`: `Selecionar todos` na Linha 3 sai do fluxo vertical da célula contextual, preservando a altura da Linha 3 e a posição da Linha 4 em seleção simples e múltipla.
+- `QA.md` e `docs/QA-v8z4b29V.md`: checklist/inventário da v8z4b29V documentado.
+
 ## v8z4b29U — arquitetura dos submenus inferiores
 
 - `index.html`: base `v8z4b29T` confirmada antes das alterações e versionamento atualizado para `v8z4b29U` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.

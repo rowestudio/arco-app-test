@@ -1,13 +1,17 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29U                                     ║
+║  Versão: v8z4b29V                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29V                                            ║
+║    fix/ux: ajuste residual de safe-area dos          ║
+║        submenus e estabilidade da Linha 4 com        ║
+║        Selecionar todos.                             ║
 ║  v8z4b29U                                            ║
 ║    fix/ux: corrige arquitetura dos submenus          ║
 ║        inferiores para substituir a área contextual  ║
@@ -541,6 +545,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29V — fix/ux: ajuste residual de safe-area dos submenus e estabilidade da Linha 4 com Selecionar todos. -->
 <!-- Arco Motion App — v8z4b29U — fix/ux: corrige arquitetura dos submenus inferiores para substituir a área contextual sem duplicação, vazamento da Linha 3 ou safe-area duplicada. -->
 <!-- Arco Motion App — v8z4b29T — fix/ux: adicionado snap-to-center da timeline após scroll manual sem alterar seleção, alfa, motor, Preview, MP4 ou JSON. -->
 <!-- Arco Motion App — v8z4b29S — fix: separa seleção de frame e foco visual da timeline para alfa/spotlight do Stage sem alterar motor/Preview/MP4/JSON. -->
@@ -1158,6 +1163,7 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
   --lower-row-3:36px;
   --lower-row-4:46px;
   --lower-safe-bottom:max(calc(env(safe-area-inset-bottom, 0px) - 34px), 0px);
+  --lower-home-breath:6px;
   height:calc(170px + var(--lower-safe-bottom));
   display:none;
   grid-template-columns:var(--lower-left-w) minmax(0,1fr);
@@ -1210,12 +1216,13 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .mid-bar.timeline-grid .ease-fp.ease-selected{box-shadow:none;border-color:transparent;}
 .mid-bar.timeline-grid .ease-fp.ease-selected::before{background:var(--accent);box-shadow:none;}
 .mid-bar.timeline-grid .ease-fp.ease-selected .seg-dot{border-color:var(--accent);background:var(--menu-bg);}
-.lower-active-state{width:100%;height:100%;display:flex;align-items:center;gap:8px;overflow:hidden;color:#b2b2b2;}
+.lower-active-state{position:relative;width:100%;height:100%;min-height:0;max-height:var(--lower-row-3);display:flex;align-items:center;gap:8px;overflow:hidden;color:#b2b2b2;}
 .lower-active-label{font-size:12px;font-weight:600;color:#b2b2b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;}
 .lower-active-sub{display:none;}
 .lower-selection-actions{display:none;margin-left:auto;align-items:center;gap:4px;flex:0 0 auto;}
-body.has-multi-selection .lower-selection-actions{display:flex;}
-.lower-selection-action{height:28px;border:0;border-radius:0;background:transparent;color:#b2b2b2;display:flex;align-items:center;gap:7px;padding:0 10px 0 2px;font-size:10px;font-weight:600;cursor:pointer;}
+body.has-multi-selection .lower-selection-actions{display:flex;position:absolute;right:0;top:50%;transform:translateY(-50%);}
+body.has-multi-selection .lower-active-label{padding-right:124px;}
+.lower-selection-action{height:28px;max-height:28px;line-height:1;border:0;border-radius:0;background:transparent;color:#b2b2b2;display:flex;align-items:center;gap:7px;padding:0 10px 0 2px;font-size:10px;font-weight:600;cursor:pointer;}
 .lower-selection-action:active{background:transparent;}
 .lower-selection-action svg{width:21px;height:21px;display:block;order:2;color:#fff;stroke:#fff;}
 .lower-selection-action span{order:1;color:#b2b2b2;}
@@ -1238,13 +1245,13 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{j
 .mid-bar.timeline-grid #alignBarSubmenu{height:100% !important;overflow-x:auto !important;overflow-y:hidden !important;padding:0 !important;align-items:stretch;}
 body.align-submenu-open #lowerContextSlot{overflow:visible;z-index:8;}
 .mid-bar.timeline-grid #alignBar.align-submenu-open{position:relative !important;overflow:visible !important;z-index:10 !important;}
-.mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu{position:absolute;left:calc(-1 * (var(--lower-left-w) + 5px));right:0;bottom:0;height:calc(var(--lower-row-3) + var(--lower-row-4) + 4px) !important;min-height:calc(var(--lower-row-3) + var(--lower-row-4) + 4px);z-index:12;background:var(--menu-bg);border-top:.5px solid rgba(178,178,178,.32);box-shadow:0 -8px 18px rgba(0,0,0,.22);overflow-x:auto !important;overflow-y:visible !important;padding:4px 8px 4px 6px !important;box-sizing:border-box;pointer-events:auto;}
+.mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu{position:absolute;left:calc(-1 * (var(--lower-left-w) + 5px));right:0;bottom:var(--lower-home-breath);height:calc(var(--lower-row-3) + var(--lower-row-4) + 4px - var(--lower-home-breath)) !important;min-height:calc(var(--lower-row-3) + var(--lower-row-4) + 4px - var(--lower-home-breath));z-index:12;background:var(--menu-bg);border-top:.5px solid rgba(178,178,178,.32);box-shadow:0 -8px 18px rgba(0,0,0,.22);overflow-x:auto !important;overflow-y:visible !important;padding:4px 8px 4px 6px !important;box-sizing:border-box;pointer-events:auto;}
 .mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu .ab-content{justify-content:center;}
 body.has-multi-selection .mid-bar.timeline-grid #toolbar{display:none;}
 body.cust-open .mid-bar.timeline-grid #toolbar,
 body.cust-open .mid-bar.timeline-grid #alignBar{display:none !important;}
 body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !important;}
-body.cust-expanded #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;padding:0 6px 2px;z-index:14;background:var(--menu-bg);overflow:visible;}
+body.cust-expanded #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;padding:0 6px var(--lower-home-breath);z-index:14;background:var(--menu-bg);overflow:visible;}
 body.cust-expanded .mid-bar.timeline-grid #custBar{height:100% !important;max-height:100% !important;background:var(--menu-bg) !important;pointer-events:auto;}
 body.cust-expanded .mid-bar.timeline-grid #custBarContent{padding-left:6px !important;}
 body.cust-expanded #lowerFrameCount,
@@ -2918,7 +2925,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29U</span><br><span id="appVersionNameText">v8z4b29U</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29V</span><br><span id="appVersionNameText">v8z4b29V</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5262,8 +5269,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29U';
-const APP_VERSION_NAME = 'v8z4b29U';
+const APP_VERSION = 'v8z4b29V';
+const APP_VERSION_NAME = 'v8z4b29V';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
