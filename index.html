@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29R                                     ║
+║  Versão: v8z4b29S                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29S                                            ║
+║    fix/ux: estabiliza foco central, seleção laranja, ║
+║        snap, Formato e área inferior.                ║
 ║  v8z4b29R                                            ║
 ║    fix/ux: sincroniza Stage/timeline, multi-select   ║
 ║        e menus contextuais de frame.                 ║
@@ -530,6 +533,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29S — fix/ux: estabiliza foco central da timeline, destaque laranja selecionado, snap, Formato e área inferior sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29R — fix/ux: sincroniza Stage/timeline, corrige multi-select, Selecionar todos e camadas dos menus de frame sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29Q — fix/ux: limpa ícones, menus inferiores, timeline, foco central, curvas locais e JSON sem alterar Preview/MP4/schema. -->
 <!-- Arco Motion App — v8z4b29O — fix/ux: padroniza menus, safe area, curvas, timeline, foco central e seleção múltipla sem alterar motor/Preview/MP4/JSON. -->
@@ -766,6 +770,7 @@ body.recording #editorZoomCtrl{display:none;}
 .frame-visual .frame-border,.frame-visual .frame-dim,.frame-visual .frame-num,.frame-visual .frame-center{pointer-events:none;}
 .frame-border{position:absolute;inset:0;border:2px solid #c6c6c6;box-sizing:border-box;pointer-events:none;border-radius:10px;filter:none;}
 .frame.multi-selected .frame-border{box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.28);}
+.frame.selected .frame-border{box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.28);}
 .frame.multi-selected .frame-dim{background:transparent !important;box-shadow:none !important;border-radius:10px;}
 .frame.active.multi-selected .frame-border{box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.28);}
 .ghost-frame{
@@ -1196,14 +1201,14 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .mid-bar.timeline-grid .ease-fp.ease-selected{box-shadow:none;border-color:transparent;}
 .mid-bar.timeline-grid .ease-fp.ease-selected::before{background:var(--accent);box-shadow:none;}
 .mid-bar.timeline-grid .ease-fp.ease-selected .seg-dot{border-color:var(--accent);background:var(--menu-bg);}
-.lower-active-state{width:100%;height:100%;display:flex;align-items:center;gap:8px;overflow:hidden;color:#b2b2b2;}
-.lower-active-label{font-size:12px;font-weight:600;color:#b2b2b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;}
+.lower-active-state{width:100%;height:100%;min-height:0;display:flex;align-items:center;gap:6px;overflow:hidden;color:#b2b2b2;}
+.lower-active-label{font-size:12px;font-weight:600;color:#b2b2b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;line-height:1;}
 .lower-active-sub{display:none;}
 .lower-selection-actions{display:none;margin-left:auto;align-items:center;gap:4px;flex:0 0 auto;}
 body.has-multi-selection .lower-selection-actions{display:flex;}
-.lower-selection-action{height:28px;border:0;border-radius:0;background:transparent;color:#b2b2b2;display:flex;align-items:center;gap:7px;padding:0 10px 0 2px;font-size:10px;font-weight:600;cursor:pointer;}
+.lower-selection-action{height:24px;max-height:24px;border:0;border-radius:0;background:transparent;color:#b2b2b2;display:flex;align-items:center;gap:5px;padding:0 8px 0 2px;font-size:10px;font-weight:600;line-height:1;cursor:pointer;overflow:hidden;}
 .lower-selection-action:active{background:transparent;}
-.lower-selection-action svg{width:21px;height:21px;display:block;order:2;color:#fff;stroke:#fff;}
+.lower-selection-action svg{width:18px;height:18px;display:block;order:2;color:#fff;stroke:#fff;flex:0 0 18px;}
 .lower-selection-action span{order:1;color:#b2b2b2;}
 .mid-bar.timeline-grid .toolbar{display:flex;width:100%;height:100%;padding:0;border-top:0;background:transparent;align-items:stretch;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}
 .mid-bar.timeline-grid .toolbar.show{display:flex;}
@@ -1224,26 +1229,27 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{j
 .mid-bar.timeline-grid #alignBarSubmenu{height:100% !important;overflow-x:auto !important;overflow-y:hidden !important;padding:0 !important;align-items:stretch;}
 body.align-submenu-open #lowerContextSlot{overflow:visible;z-index:8;}
 .mid-bar.timeline-grid #alignBar.align-submenu-open{position:relative !important;overflow:visible !important;z-index:10 !important;}
-.mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu{position:absolute;left:calc(-1 * (var(--lower-left-w) + 5px));right:0;bottom:0;height:calc(var(--lower-row-3) + var(--lower-row-4) + 4px) !important;min-height:calc(var(--lower-row-3) + var(--lower-row-4) + 4px);z-index:12;background:var(--menu-bg);border-top:.5px solid rgba(178,178,178,.32);box-shadow:0 -8px 18px rgba(0,0,0,.22);overflow-x:auto !important;overflow-y:visible !important;padding:4px 8px 4px 6px !important;box-sizing:border-box;pointer-events:auto;}
+.mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu{position:absolute;left:calc(-1 * (var(--lower-left-w) + 5px));right:0;bottom:0;height:calc(var(--lower-row-3) + var(--lower-row-4) + 4px) !important;min-height:calc(var(--lower-row-3) + var(--lower-row-4) + 4px);z-index:12;background:#3c3c3b;border-top:.5px solid rgba(178,178,178,.32);box-shadow:0 -8px 18px rgba(0,0,0,.22);overflow-x:auto !important;overflow-y:visible !important;padding:4px 8px 4px 6px !important;box-sizing:border-box;pointer-events:auto;}
 .mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu .ab-content{justify-content:center;}
 body.has-multi-selection .mid-bar.timeline-grid #toolbar{display:none;}
 body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !important;}
-body.cust-expanded #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;padding:0 6px 2px;z-index:4;background:var(--menu-bg);overflow:visible;}
+body.cust-expanded #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;padding:0 6px 2px;position:relative;z-index:20;background:#3c3c3b;overflow:hidden;}
+body.cust-expanded .lower-frame-count,body.cust-expanded .lower-active-state{visibility:hidden;}
 body.cust-expanded .mid-bar.timeline-grid #custBar{height:100% !important;max-height:100% !important;}
 body.cust-expanded .mid-bar.timeline-grid #custBarContent{padding-left:6px !important;}
 body.cust-expanded .lower-active-state{visibility:hidden;}
 
-.mid-bar.timeline-grid #custBar{width:100%;height:100% !important;max-height:100% !important;min-height:0 !important;border-top:0 !important;background:transparent !important;box-shadow:none !important;overflow:visible !important;z-index:auto;flex-shrink:1 !important;}
+.mid-bar.timeline-grid #custBar{width:100%;height:100% !important;max-height:100% !important;min-height:0 !important;border-top:0 !important;background:#3c3c3b !important;box-shadow:none !important;overflow:hidden !important;z-index:auto;flex-shrink:1 !important;}
 .mid-bar.timeline-grid #custBar.compact-mode{height:100% !important;max-height:100% !important;}
 .mid-bar.timeline-grid #custBar:not(.compact-mode){height:100% !important;max-height:100% !important;}
 .mid-bar.timeline-grid #custBarTabs{height:100% !important;padding:0 !important;align-items:stretch !important;background:transparent !important;}
 .mid-bar.timeline-grid #custBar .cust-tab{justify-content:center;gap:3px;padding:0 1px;min-height:38px;}
 .mid-bar.timeline-grid #custBar .cust-tab svg{width:24px;height:24px;color:#fff !important;stroke:#fff !important;}
 .mid-bar.timeline-grid #custBar .cust-tab .cust-tab-lbl{font-size:11px;font-weight:600;color:#b2b2b2;}
-.mid-bar.timeline-grid #custBarContent{height:100%;padding:2px 8px 2px 0 !important;gap:8px !important;overflow:visible !important;background:transparent !important;align-items:center !important;}
+.mid-bar.timeline-grid #custBarContent{height:100%;padding:4px 8px 4px 0 !important;gap:8px !important;overflow:hidden !important;background:#3c3c3b !important;align-items:center !important;}
 .mid-bar.timeline-grid #custBarBack{width:34px;min-width:34px;min-height:40px;padding:0 2px;color:var(--text2);}
 .mid-bar.timeline-grid #custBarBack svg{width:22px;height:22px;}
-.mid-bar.timeline-grid #custBarContent > .cust-content{justify-content:center;overflow:visible;}
+.mid-bar.timeline-grid #custBarContent > .cust-content{justify-content:center;overflow:hidden;}
 .mid-bar.timeline-grid #custBarContent .cust-content > div{min-height:0;}
 .mid-bar.timeline-grid #custBarContent .cust-content > div + div{margin-top:8px !important;}
 .mid-bar.timeline-grid #custBarContent .chip{padding:4px 10px !important;min-height:24px !important;font-size:12px !important;line-height:1 !important;}
@@ -2897,7 +2903,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29R</span><br><span id="appVersionNameText">v8z4b29R</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29S</span><br><span id="appVersionNameText">v8z4b29S</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5241,8 +5247,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29R';
-const APP_VERSION_NAME = 'v8z4b29R';
+const APP_VERSION = 'v8z4b29S';
+const APP_VERSION_NAME = 'v8z4b29S';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11119,6 +11125,23 @@ function updateLowerTimelineCenterFrameFromScroll() {
   timelineFocalFrameId = bestIndex;
   applyStageTimelineFocusVisuals();
 }
+function snapLowerTimelineToNearestCenter() {
+  const pillsEl = document.getElementById('pillsRow');
+  if (!pillsEl || isMultiSelectionActive() || bottomContextMode === 'segment') return;
+  if (Date.now() < lowerTimelineProgrammaticScrollUntil) return;
+  updateLowerTimelineCenterFrameFromScroll();
+  const focusIdx = getTimelineStageFocusIndex();
+  if (focusIdx >= 0 && focusIdx < frameCount) centerLowerTimelineOnFrame(focusIdx, true);
+}
+let lowerTimelineSnapTimer = 0;
+function scheduleLowerTimelineSnap() {
+  if (Date.now() < lowerTimelineProgrammaticScrollUntil) return;
+  if (lowerTimelineSnapTimer) clearTimeout(lowerTimelineSnapTimer);
+  lowerTimelineSnapTimer = setTimeout(() => {
+    lowerTimelineSnapTimer = 0;
+    snapLowerTimelineToNearestCenter();
+  }, 140);
+}
 function applyTimelinePillFocusClasses() {
   const pillsEl = document.getElementById('pillsRow');
   if (!pillsEl) return;
@@ -11144,14 +11167,17 @@ function applyStageTimelineFocusVisuals() {
     const el = getFrameEl(i);
     if (!el) continue;
     const isFocus = i === focusIdx;
+    const isSelected = i === activeIdx;
     const isAdjacent = i === focusIdx - 1 || i === focusIdx + 1;
     const borderEl = el.querySelector('.frame-border');
     el.classList.toggle('active', isFocus);
-    el.style.opacity = isFocus ? '1' : (isAdjacent ? '0.80' : '0.62');
-    el.style.zIndex = isFocus ? '30' : (isAdjacent ? '25' : '20');
+    el.classList.toggle('selected', isSelected);
+    el.style.opacity = isFocus || isSelected ? '1' : (isAdjacent ? '0.80' : '0.62');
+    el.style.zIndex = isFocus ? '30' : (isSelected ? '28' : (isAdjacent ? '25' : '20'));
     if (borderEl && !frameLocked[i]) {
-      borderEl.style.borderColor = isFocus ? FRAME_COLORS.active.border : (isAdjacent ? (i < focusIdx ? FRAME_COLORS.prevAdj.border : FRAME_COLORS.nextAdj.border) : FRAME_COLORS.distant.border);
-      borderEl.style.borderWidth = (isFocus ? 3.5 * invZ : 2 * invZ) + 'px';
+      borderEl.style.borderColor = isSelected ? '#ff9500' : (isFocus ? FRAME_COLORS.active.border : (isAdjacent ? (i < focusIdx ? FRAME_COLORS.prevAdj.border : FRAME_COLORS.nextAdj.border) : FRAME_COLORS.distant.border));
+      borderEl.style.borderWidth = (isFocus || isSelected ? 3.5 * invZ : 2 * invZ) + 'px';
+      borderEl.style.boxShadow = isSelected ? `0 0 ${12 * invZ}px rgba(0,0,0,.42), 0 0 ${10 * invZ}px rgba(255,149,0,.28)` : 'none';
     }
   }
   drawBezier();
@@ -11282,7 +11308,10 @@ function bindLowerTimelineScrollSync() {
   const pillsEl = document.getElementById('pillsRow');
   if (!timesEl || !pillsEl || timesEl._lowerSyncBound) return;
   timesEl._lowerSyncBound = true;
-  pillsEl.addEventListener('scroll', () => syncLowerTimelineScroll(pillsEl, timesEl), { passive: true });
+  pillsEl.addEventListener('scroll', () => { syncLowerTimelineScroll(pillsEl, timesEl); scheduleLowerTimelineSnap(); }, { passive: true });
+  pillsEl.addEventListener('pointerup', snapLowerTimelineToNearestCenter, { passive: true });
+  pillsEl.addEventListener('touchend', snapLowerTimelineToNearestCenter, { passive: true });
+  pillsEl.addEventListener('touchcancel', snapLowerTimelineToNearestCenter, { passive: true });
 }
 bindLowerTimelineScrollSync();
 setBottomContext('frame');
@@ -13101,6 +13130,7 @@ function renderAll() {
     const isLocked   = !!frameLocked[i];
     const multiSelectionActive = isMultiSelectionActive();
     const isSelected = isFrameVisuallyMultiSelected(i);
+    const isSingleSelected = !multiSelectionActive && bottomContextMode !== 'segment' && i === activeIdx;
     const isAdjacent = !multiSelectionActive && bottomContextMode !== 'segment' && (isPrevAdj || isNextAdj);
     const showActiveStageFocus = isActive && !multiSelectionActive && bottomContextMode !== 'segment';
     el.classList.toggle('active', showActiveStageFocus);
@@ -13113,7 +13143,8 @@ function renderAll() {
     else                             col = FRAME_COLORS.distant;
 
     const invZ = 1 / editorZoomScale;
-    const selectedStageFocus = multiSelectionActive && isSelected;
+    const selectedStageFocus = (multiSelectionActive && isSelected) || isSingleSelected;
+    el.classList.toggle('selected', selectedStageFocus);
     const borderW = selectedStageFocus ? (3 * invZ) + 'px'
                   : showActiveStageFocus ? (3.5 * invZ) + 'px'
                   : (2 * invZ) + 'px';
@@ -13125,6 +13156,7 @@ function renderAll() {
              : 0.62;
     el.style.zIndex = multiSelectionActive ? '20'
                     : showActiveStageFocus ? '30'
+                    : selectedStageFocus ? '28'
                     : isAdjacent ? '25'
                     : '20';
     // Modo isolamento: outros frames invisíveis e não interativos

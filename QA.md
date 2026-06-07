@@ -1,3 +1,9 @@
+# QA pendente — v8z4b29S foco central, snap e estabilidade inferior
+
+- Checklist detalhado criado em `docs/QA-v8z4b29S.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29R` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29S`; seleção (`activeIdx`) separada do foco central (`timelineFocalFrameId`); Stage mantém laranja no frame selecionado e alfa no frame central; timeline agenda snap-to-center ao fim do scroll; Formato usa `proportions`; submenus de frame cobrem Linhas 3/4 com fundo `#3c3c3b`; `Selecionar todos` não altera altura da Linha 4; motor, Preview, MP4/export e JSON preservados.
+
 # QA pendente — v8z4b29R sincronização Stage/timeline, seleção múltipla e menus de frame
 
 - Checklist detalhado criado em `docs/QA-v8z4b29R.md`.
