@@ -1,3 +1,10 @@
+## v8z4b29AB — estabilidade real da Linha 3/4 em seleção múltipla
+
+- `index.html`: base `v8z4b29W` confirmada antes das alterações e versionamento atualizado para `v8z4b29AB` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: Linha 3 / Coluna 2 passa a reservar largura fixa suficiente para `Selecionar todos`, mantendo o controle em uma linha, com texto antes do ícone e sem reduzir fonte como solução principal.
+- `index.html`: `#lowerContextSlot`, `#toolbar` e `#alignBar` preservam o mesmo retângulo-base da Linha 4 / Coluna 2; seleção múltipla alterna visibilidade/conteúdo sem mudar origem, largura, padding, margin ou gap da Linha 4.
+- `QA.md` e `docs/QA-v8z4b29AB.md`: checklist/inventário da v8z4b29AB documentado.
+
 ## v8z4b29W — estabilidade da Linha 4 e marcadores centrais
 
 - `index.html`: base `v8z4b29V` confirmada e versionamento atualizado para `v8z4b29W` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.

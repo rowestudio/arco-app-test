@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29AB estabilidade real da Linha 3/4 em seleção múltipla
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AB.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29W` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29AB`; Linha 3 / Coluna 2 reserva largura fixa para `Selecionar todos`; o controle usa `inline-flex`, `white-space: nowrap`, texto antes do ícone, `min-width: max-content` e label sem corte; `#lowerContextSlot`, `#toolbar` e `#alignBar` mantêm o mesmo retângulo-base da Linha 4 / Coluna 2 sem deslocamento em seleção múltipla.
+- Não foram executados testes em iPhone/Safari real nem geração real de MP4 neste ambiente automatizado.
+
 # QA pendente — v8z4b29W estabilidade da Linha 4 e marcadores centrais
 
 - Checklist detalhado criado em `docs/QA-v8z4b29W.md`.

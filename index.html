@@ -1,13 +1,17 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29W                                     ║
+║  Versão: v8z4b29AB                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29AB                                           ║
+║    fix/ux: estabiliza Linha 3/4 da Coluna 2 em       ║
+║        seleção múltipla e impede quebra em           ║
+║        Selecionar todos.                             ║
 ║  v8z4b29W                                            ║
 ║    fix/ux: corrige estabilidade da Linha 4 em        ║
 ║        seleção múltipla e alinha marcadores          ║
@@ -1166,6 +1170,7 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
   --lower-row-2:56px;
   --lower-row-3:36px;
   --lower-row-4:46px;
+  --lower-select-all-w:154px;
   --lower-safe-bottom:max(calc(env(safe-area-inset-bottom, 0px) - 34px), 0px);
   --lower-home-breath:6px;
   height:calc(170px + var(--lower-safe-bottom));
@@ -1221,14 +1226,15 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .mid-bar.timeline-grid .ease-fp.ease-selected::before{background:var(--accent);box-shadow:none;}
 .mid-bar.timeline-grid .ease-fp.ease-selected .seg-dot{border-color:var(--accent);background:var(--menu-bg);}
 .lower-active-state{position:relative;width:100%;height:100%;min-height:0;max-height:var(--lower-row-3);display:flex;align-items:center;gap:8px;overflow:hidden;color:#b2b2b2;box-sizing:border-box;}
-.lower-active-label{font-size:12px;font-weight:600;color:#b2b2b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;padding-right:124px;}
+.lower-active-label{font-size:12px;font-weight:600;color:#b2b2b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;padding-right:var(--lower-select-all-w);}
 .lower-active-sub{display:none;}
-.lower-selection-actions{display:flex;visibility:hidden;pointer-events:none;position:absolute;right:0;top:0;bottom:0;width:124px;margin-left:0;align-items:center;justify-content:flex-end;gap:4px;flex:0 0 auto;}
+.lower-selection-actions{display:flex;visibility:hidden;pointer-events:none;position:absolute;right:0;top:0;bottom:0;width:var(--lower-select-all-w);min-width:var(--lower-select-all-w);margin-left:0;align-items:center;justify-content:flex-end;gap:4px;flex:0 0 var(--lower-select-all-w);overflow:visible;}
 body.has-multi-selection .lower-selection-actions{visibility:visible;pointer-events:auto;}
-.lower-selection-action{height:28px;max-height:28px;line-height:1;border:0;border-radius:0;background:transparent;color:#b2b2b2;display:flex;align-items:center;gap:7px;padding:0 10px 0 2px;font-size:10px;font-weight:600;cursor:pointer;}
+.lower-selection-action{height:28px;max-height:28px;line-height:1;border:0;border-radius:0;background:transparent;color:#b2b2b2;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 10px 0 2px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;flex:0 0 auto;min-width:max-content;max-width:none;}
 .lower-selection-action:active{background:transparent;}
-.lower-selection-action svg{width:21px;height:21px;display:block;order:2;color:#fff;stroke:#fff;}
-.lower-selection-action span{order:1;color:#b2b2b2;}
+.lower-selection-action svg{width:21px;height:21px;display:block;order:2;flex:0 0 auto;color:#fff;stroke:#fff;}
+.lower-selection-action span{order:1;color:#b2b2b2;white-space:nowrap;overflow:visible;text-overflow:clip;}
+.mid-bar.timeline-grid #lowerContextSlot{width:100%;height:100%;align-items:stretch;justify-content:flex-start;box-sizing:border-box;}
 .mid-bar.timeline-grid .toolbar{display:flex;width:100%;height:100%;padding:0;border-top:0;background:transparent;align-items:stretch;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}
 .mid-bar.timeline-grid .toolbar.show{display:flex;}
 .mid-bar.timeline-grid .toolbar::-webkit-scrollbar{display:none;}
@@ -1796,7 +1802,7 @@ body.cust-open #toolbar{
   font-weight:600;
 }
 #alignBarPrimary.ab-primary-strip{
-  --align-select-all-w:112px;
+  --align-select-all-w:154px;
   display:flex;
   align-items:flex-end;
   height:100%;
@@ -1830,12 +1836,20 @@ body.cust-open #toolbar{
 #alignBarPrimary.ab-primary-strip .ab-select-all-fixed{
   position:relative;
   z-index:3;
-  flex:0 0 var(--align-select-all-w);
-  min-width:var(--align-select-all-w);
+  flex:0 0 auto;
+  min-width:max-content;
+  max-width:none;
   margin-right:4px;
   background:transparent;
   border:none;
   border-radius:0;
+  display:inline-flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  white-space:nowrap;
+  line-height:1;
 }
 #alignBarPrimary.ab-primary-strip .ab-select-all-fixed svg{
   stroke:#fff;
@@ -1844,8 +1858,11 @@ body.cust-open #toolbar{
 #alignBarPrimary.ab-primary-strip .ab-select-all-fixed .ab-lbl{
   color:#b2b2b2;
   order:1;
+  white-space:nowrap;
+  overflow:visible;
+  text-overflow:clip;
 }
-#alignBarPrimary.ab-primary-strip .ab-select-all-fixed svg{order:2;width:24px;height:24px;}
+#alignBarPrimary.ab-primary-strip .ab-select-all-fixed svg{order:2;width:24px;height:24px;flex:0 0 auto;}
 #alignBar .ab-icon-only{
   flex:0 0 56px;
   min-width:56px;
@@ -2928,7 +2945,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29W</span><br><span id="appVersionNameText">v8z4b29W</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AB</span><br><span id="appVersionNameText">v8z4b29AB</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5272,8 +5289,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29W';
-const APP_VERSION_NAME = 'v8z4b29W';
+const APP_VERSION = 'v8z4b29AB';
+const APP_VERSION_NAME = 'v8z4b29AB';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
