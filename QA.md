@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29Q curvas (ícones/menus), espaçamentos e edição local
+
+- Checklist detalhado criado em `docs/QA-v8z4b29Q.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29P` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas e via Playwright (iPhone 390×844, `deviceScaleFactor` 2-4) executadas: versionamento atualizado para `v8z4b29Q`; menu de trecho (`Tempo`/`Movimento`) sem reticência por sub-pixel; ícones de `easeChipsGrid` com traço Lucide (`1.6`/`round`) e sem pills individuais; `#pointModeMenu` ocupa o lugar/visual do menu contextual de frame com rótulos por ícone; botão `Tempo` da Coluna 1 usa `#i-clock` igual ao menu de trecho; **edição local de curva** — handles "ghost" do frame anterior/seguinte tornam-se interativos preservando seleção do Stage, isolando a edição ao trecho conectado, com Undo/Redo, modos de ponto, casos de borda (primeiro/último frame, loop) e desambiguação de sobreposição (`pickClosestFrameHandle`) verificados; motor, Preview, MP4/export e JSON preservados.
+- Não foram executados testes em iPhone/Safari real nem geração real de MP4 neste ambiente automatizado.
+
 # QA pendente — v8z4b29P consolidação UX, timeline e foco central
 
 - Checklist detalhado criado em `docs/QA-v8z4b29P.md`.
