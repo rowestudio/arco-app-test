@@ -1,3 +1,13 @@
+# QA pendente — v8z4b29AA geometria da Linha 4 / Coluna 2
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AA.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29W` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo, evitando reaproveitar versões rejeitadas X/Y/Z.
+- Elementos auditados estaticamente antes do ajuste: `#midBar.timeline-grid`, `#lowerContextSlot`, `#toolbar`, `#alignBar`, `#alignBarPrimary`, `#alignBarSubmenu`, `#lowerSelectionActions`, `.lower-selection-actions`, `.lower-active-state`, `body.has-multi-selection`, `body.align-submenu-open`, `body.cust-open` e `body.cust-expanded`.
+- Diferença encontrada entre os menus da Linha 4 / Coluna 2: `#toolbar` usava itens de 68px com `min-height:42px`, `justify-content:center` e `gap:4px`, enquanto `#alignBarActions .ab-tab` usava `min-height:38px`, herdava alinhamento ao fim e mantinha estrutura concorrente quando havia estado `cust-*`; isso fazia a faixa de seleção múltipla não ocupar o mesmo retângulo visual do menu simples.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29AA`; `#toolbar`, `#alignBar`, `#alignBarPrimary`, `#alignBarSubmenu` e `#custBar` normalizados ao slot; Linha 3 pré-alocada para 41px sem `display:none` em `Selecionar todos`; estados `cust-open`/`cust-expanded` não ocultam nem movem `#alignBar` quando `has-multi-selection` está ativo; snap-to-center, Alpha/spotlight, Formato, Preview, MP4/export, JSON, curvas e motor não foram alterados.
+- QA manual obrigatório pendente: iPhone/Safari; comparar seleção simples e múltipla com `getBoundingClientRect()` para `#lowerContextSlot`, `#toolbar`, `#alignBar`, `#alignBarPrimary` e célula Tempo; clicar em `Selecionar todos`; sair da seleção múltipla; confirmar que Coluna 2 / Linha 4 não desce nem desloca para esquerda; confirmar snap-to-center, Alpha e ícone Formato.
+- Não foram executados testes em iPhone/Safari real, Preview real, MP4/export real nem JSON manual neste ambiente automatizado.
+
 # QA pendente — v8z4b29W estabilidade da Linha 4 e marcadores centrais
 
 - Checklist detalhado criado em `docs/QA-v8z4b29W.md`.
