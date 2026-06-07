@@ -1,11 +1,3 @@
-# QA pendente — v8z4b29Y estabilidade da Linha 4 da Coluna 2
-
-- Checklist detalhado criado em `docs/QA-v8z4b29Y.md`.
-- Base obrigatória confirmada antes das alterações: `v8z4b29W` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo, preservando snap-to-center, Alpha/spotlight e ícone Formato corrigidos.
-- Verificações estáticas executadas: versionamento atualizado para `v8z4b29Y`; `#alignBar` dentro de `#midBar.timeline-grid` neutraliza a herança `position:fixed` inline e ocupa somente a Linha 4 / Coluna 2; `#alignBarPrimary` e `#alignBarSubmenu` alternam no mesmo slot sem `left` negativo ou cálculo manual de `bottom`; `#lowerSelectionActions`/`Selecionar todos` continua absoluto na Linha 3 e fora do fluxo vertical; `#custBar` é ocultado durante submenu de alinhamento para evitar coexistência visual destrutiva.
-- QA manual obrigatório pendente: iPhone/Safari; seleção simples; seleção múltipla; clicar em `Selecionar todos`; sair da seleção múltipla; abrir e fechar menus contextuais; confirmar que não voltou menu duplicado; confirmar que não aparece ícone escondido por baixo; confirmar que Linha 4 da Coluna 2 não desce; confirmar snap-to-center, Alpha/spotlight e ícone Formato.
-- Não foram executados testes em iPhone/Safari real, Preview real, MP4/export real nem JSON manual neste ambiente automatizado.
-
 # QA pendente — v8z4b29W estabilidade da Linha 4 e marcadores centrais
 
 - Checklist detalhado criado em `docs/QA-v8z4b29W.md`.

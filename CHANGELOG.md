@@ -1,10 +1,3 @@
-## v8z4b29Y — estabilidade da Linha 4 da Coluna 2
-
-- `index.html`: base `v8z4b29W` confirmada e versionamento atualizado para `v8z4b29Y` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
-- `index.html`: `#alignBar` deixa de herdar geometria fixa antiga dentro de `#midBar.timeline-grid` e passa a ocupar somente a Linha 4 / Coluna 2 com altura estável.
-- `index.html`: `#alignBarPrimary` e `#alignBarSubmenu` ficam mutuamente exclusivos no mesmo slot da Linha 4, sem `left` negativo, `bottom` manual ou expansão que empurre a Linha 4; `Selecionar todos` permanece na Linha 3 fora do fluxo.
-- `QA.md` e `docs/QA-v8z4b29Y.md`: checklist/inventário da v8z4b29Y documentado.
-
 ## v8z4b29W — estabilidade da Linha 4 e marcadores centrais
 
 - `index.html`: base `v8z4b29V` confirmada e versionamento atualizado para `v8z4b29W` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
