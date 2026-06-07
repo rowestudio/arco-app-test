@@ -1,3 +1,11 @@
+# QA pendente — v8z4b29V ajuste residual inferior
+
+- Checklist detalhado criado em `docs/QA-v8z4b29V.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29U` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo, mantendo ícone Formato corrigido, Alpha/spotlight aprovado, snap-to-center da timeline e `#custBar` integrado ao `#lowerContextSlot`.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29V`; `--lower-safe-bottom` preserva a safe-area única; `--lower-home-breath` adiciona apenas respiro visual; submenus simples e de seleção múltipla recuam do rodapé sem subir o topo; `Selecionar todos` fica fora do fluxo vertical da Linha 3 para não deslocar a Linha 4; Alpha/spotlight, `timelineFocalFrameId`, `activeIdx`, snap-to-center, Formato, Preview, MP4/export, JSON, curvas e motor preservados.
+- QA manual obrigatório pendente: iPhone/Safari; seleção simples; seleção múltipla; abrir Pausa; abrir Rotação; abrir Escala; abrir Mover; ativar/desativar seleção múltipla; clicar em `Selecionar todos`; confirmar Linha 4 estável; confirmar submenus fora da zona morta/home indicator; confirmar sem menu duplicado; confirmar `8 frames`/`16 frames` sem vazamento; confirmar Alpha e snap funcionando.
+- Não foram executados testes em iPhone/Safari real, Preview real, MP4/export real nem JSON manual neste ambiente automatizado.
+
 # QA pendente — v8z4b29U arquitetura dos submenus inferiores
 
 - Checklist detalhado criado em `docs/QA-v8z4b29U.md`.
