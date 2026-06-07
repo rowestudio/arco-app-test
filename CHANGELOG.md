@@ -1,13 +1,3 @@
-## v8z4b29S — foco central, snap e estabilidade inferior
-
-- `index.html`: base `v8z4b29R` confirmada antes das alterações e versionamento atualizado para `v8z4b29S` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
-- `index.html`: foco/alfa do Stage passa a acompanhar somente `timelineFocalFrameId`/frame central da timeline durante scroll manual, enquanto `activeIdx` mantém seleção/edição e destaque laranja independente no Stage e na timeline.
-- `index.html`: faixa de frames agenda snap-to-center ao encerrar scroll/toque, recentraliza o frame mais próximo e atualiza o foco da timeline sem promover frames intermediários para seleção.
-- `index.html`: submenus locais de Pausa, Rotação, Escala e Mover usam camada sólida `#3c3c3b` nas Linhas 3/4, ocultando vazamentos como “16 frames” e preservando a posição da Linha 4.
-- `index.html`: ação “Selecionar todos” mantém texto antes do ícone, reduz altura/padding do bloco da Linha 3 e evita empurrar a Linha 4.
-- `index.html`: auditoria confirma o botão “Formato” apontando para o símbolo único `#i-proportions`, com caminhos Lucide `proportions`, sem grid/layout/crop alternativo.
-- `QA.md` e `docs/QA-v8z4b29S.md`: checklist/inventário da v8z4b29S documentado.
-
 ## v8z4b29R — sincronização Stage/timeline, seleção múltipla e menus de frame
 
 - `index.html`: base `v8z4b29Q` confirmada antes das alterações e versionamento atualizado para `v8z4b29R` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
