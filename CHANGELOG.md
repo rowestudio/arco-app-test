@@ -1,13 +1,3 @@
-## v8z4b29Q — curvas (ícones/menus), espaçamentos e edição local de pontos
-
-- `index.html`: base `v8z4b29P` confirmada antes das alterações e versionamento atualizado para `v8z4b29Q` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
-- `index.html`: menu de trecho (`Tempo`/`Movimento`) corrige proporção herdada da grade de 4 itens — cada ícone passa a ocupar 1/4 da faixa (mesmo ritmo de Pausa/Rotação/Escala/Mover) e o padding lateral herdado é removido, eliminando a reticência sub-pixel em "Movimento".
-- `index.html`: ícones do menu de ajuste de curvas (`easeChipsGrid` — Constante/Acelerar/Desacelerar/Suavizar) trocam o traço `stroke-width:2`/`linecap:square` por `1.6`/`round` (padrão Lucide do app), removem as "pílulas" individuais (fundo/borda por ícone) e adotam destaque sutil em `var(--accent)` no item ativo.
-- `index.html`: menu "Curva" (`#pointModeMenu`, modos Canto/Simétrico/Assimétrico/Desconectado) passa a ocupar a mesma posição/visual do menu contextual de frame que o originou — cápsula inferior centralizada com o mesmo `--menu-bg`, raio, blur e sombra — e ganha rótulos de texto sob cada ícone.
-- `index.html`: botão `Tempo` (Coluna 1) troca o ícone combinado `clipboard-clock` pelo glifo simples `#i-clock`, já usado no menu de trecho, alinhando peso visual, traço e espaçamento ao sistema de ícones da Linha 4/Coluna 2.
-- `index.html`: **nova função autorizada — edição local de curva expandida**: ao selecionar um frame no Stage, os "ghost handles" dos dois frames diretamente conectados (ex.: F3 selecionado → handle de saída de F2 e handle de entrada de F4) deixam de ser apenas indicadores passivos e tornam-se editáveis, mantendo a seleção do Stage no frame ativo, isolando a edição ao trecho diretamente conectado (`applyFrameConnectedHandleEdit`), preservando modos de ponto (Canto/Simétrico/Assimétrico/Desconectado), Undo/Redo e o motor/Preview/MP4/JSON intactos. Quando alças se sobrepõem visualmente (dois pontos de controle do mesmo trecho podem ficar próximos), uma checagem de proximidade (`pickClosestFrameHandle`) garante que o toque inicie o arrasto da alça realmente mais perto do dedo/cursor, e não da que recebeu o evento por z-index. Caso de loop mantido fora do escopo, como já documentado nos ghost handles existentes.
-- `QA.md` e `docs/QA-v8z4b29Q.md`: checklist/inventário da v8z4b29Q documentado.
-
 ## v8z4b29P — consolidação UX, timeline e foco central
 
 - `index.html`: base `v8z4b29O` confirmada antes das alterações e versionamento atualizado para `v8z4b29P` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
