@@ -1,3 +1,10 @@
+## v8z4b29AC — auditoria estrutural da área inferior
+
+- `index.html`: base `v8z4b29AB` auditada contra `v8z4b29W`; a tentativa de largura da AB foi mantida apenas onde preserva uma linha para `Selecionar todos`, mas a causa real encontrada foi `body.cust-expanded #lowerContextSlot` mudando `grid-column`/`grid-row` e os submenus de `#alignBarSubmenu` usando `bottom: var(--lower-home-breath)`, criando camada calculada pelo slot errado e espaço morto inferior.
+- `index.html`: Linha 3 / Coluna 2 (`#lowerRow3Col2`) e Linha 4 / Coluna 2 (`#lowerContextSlot`) agora têm classes/IDs de slot fixo, com altura e linha de grid explícitas; `Selecionar todos` continua absoluto dentro da Linha 3, em uma linha, com texto antes do ícone e sem participar da altura da Linha 4.
+- `index.html`: submenus de `#alignBar` e `#custBar` expandidos passam a ser camadas absolutas ancoradas no rodapé real da Linha 4 (`bottom: 0`), cobrindo Linhas 3/4 quando necessário, sem recontar safe-area nem alterar o fluxo do grid.
+- `QA.md` e `docs/QA-v8z4b29AC.md`: checklist/inventário da v8z4b29AC documentado.
+
 ## v8z4b29AB — estabilidade real da Linha 3/4 em seleção múltipla
 
 - `index.html`: base `v8z4b29W` confirmada antes das alterações e versionamento atualizado para `v8z4b29AB` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
