@@ -1,3 +1,11 @@
+# QA pendente — v8z4b29U arquitetura dos submenus inferiores
+
+- Checklist detalhado criado em `docs/QA-v8z4b29U.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29T` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo, mantendo snap-to-center da timeline, Alpha/spotlight aprovado e ícone Formato corrigido.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29U`; `#custBar` agora está estruturalmente dentro de `#lowerContextSlot`; remoção do reencaixe runtime de `#custBar`; estados `cust-open`/`cust-expanded` ocultam `#toolbar`/`#alignBar` concorrentes; submenus simples cobrem Linhas 3–4 com fundo sólido; `#lowerFrameCount`, `.lower-active-state` e `.lower-selection-actions` são ocultados em `cust-expanded` e `align-submenu-open`; safe-area do submenu passa a depender da grade inferior sem nova barra externa; Alpha/spotlight, `timelineFocalFrameId`, `activeIdx`, snap-to-center, Formato, Preview, MP4/export, JSON, curvas, motor e upload preservados.
+- QA manual obrigatório pendente: desktop; iPhone/Safari; seleção simples; seleção múltipla; Pausa; Rotação; Escala; Mover; abrir/fechar submenu várias vezes; alternar entre submenus; timeline com poucos frames; timeline com 16 frames; confirmar Alpha seguindo frame central; confirmar snap-to-center; confirmar Formato com ícone correto; confirmar Preview/export não alterados.
+- Não foram executados testes em iPhone/Safari real, Preview real, MP4/export real nem JSON manual neste ambiente automatizado.
+
 # QA pendente — v8z4b29T snap-to-center da timeline inferior
 
 - Checklist detalhado criado em `docs/QA-v8z4b29T.md`.

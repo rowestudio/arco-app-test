@@ -1,13 +1,18 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29T                                     ║
+║  Versão: v8z4b29U                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29U                                            ║
+║    fix/ux: corrige arquitetura dos submenus          ║
+║        inferiores para substituir a área contextual  ║
+║        sem duplicação, vazamento da Linha 3 ou       ║
+║        safe-area duplicada.                          ║
 ║  v8z4b29T                                            ║
 ║    fix/ux: adicionado snap-to-center da timeline     ║
 ║        após scroll manual.                           ║
@@ -536,6 +541,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29U — fix/ux: corrige arquitetura dos submenus inferiores para substituir a área contextual sem duplicação, vazamento da Linha 3 ou safe-area duplicada. -->
 <!-- Arco Motion App — v8z4b29T — fix/ux: adicionado snap-to-center da timeline após scroll manual sem alterar seleção, alfa, motor, Preview, MP4 ou JSON. -->
 <!-- Arco Motion App — v8z4b29S — fix: separa seleção de frame e foco visual da timeline para alfa/spotlight do Stage sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29R — fix/ux: sincroniza Stage/timeline, corrige multi-select, Selecionar todos e camadas dos menus de frame sem alterar motor/Preview/MP4/JSON. -->
@@ -1235,11 +1241,18 @@ body.align-submenu-open #lowerContextSlot{overflow:visible;z-index:8;}
 .mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu{position:absolute;left:calc(-1 * (var(--lower-left-w) + 5px));right:0;bottom:0;height:calc(var(--lower-row-3) + var(--lower-row-4) + 4px) !important;min-height:calc(var(--lower-row-3) + var(--lower-row-4) + 4px);z-index:12;background:var(--menu-bg);border-top:.5px solid rgba(178,178,178,.32);box-shadow:0 -8px 18px rgba(0,0,0,.22);overflow-x:auto !important;overflow-y:visible !important;padding:4px 8px 4px 6px !important;box-sizing:border-box;pointer-events:auto;}
 .mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu .ab-content{justify-content:center;}
 body.has-multi-selection .mid-bar.timeline-grid #toolbar{display:none;}
+body.cust-open .mid-bar.timeline-grid #toolbar,
+body.cust-open .mid-bar.timeline-grid #alignBar{display:none !important;}
 body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !important;}
-body.cust-expanded #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;padding:0 6px 2px;z-index:4;background:var(--menu-bg);overflow:visible;}
-body.cust-expanded .mid-bar.timeline-grid #custBar{height:100% !important;max-height:100% !important;}
+body.cust-expanded #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;padding:0 6px 2px;z-index:14;background:var(--menu-bg);overflow:visible;}
+body.cust-expanded .mid-bar.timeline-grid #custBar{height:100% !important;max-height:100% !important;background:var(--menu-bg) !important;pointer-events:auto;}
 body.cust-expanded .mid-bar.timeline-grid #custBarContent{padding-left:6px !important;}
-body.cust-expanded .lower-active-state{visibility:hidden;}
+body.cust-expanded #lowerFrameCount,
+body.cust-expanded .lower-active-state,
+body.cust-expanded .lower-selection-actions,
+body.align-submenu-open #lowerFrameCount,
+body.align-submenu-open .lower-active-state,
+body.align-submenu-open .lower-selection-actions{visibility:hidden;}
 
 .mid-bar.timeline-grid #custBar{width:100%;height:100% !important;max-height:100% !important;min-height:0 !important;border-top:0 !important;background:transparent !important;box-shadow:none !important;overflow:visible !important;z-index:auto;flex-shrink:1 !important;}
 .mid-bar.timeline-grid #custBar.compact-mode{height:100% !important;max-height:100% !important;}
@@ -2727,9 +2740,6 @@ body.cust-open #toolbar{
   <!-- Camada 2: submenu do grupo ativo -->
   <div id="alignBarSubmenu" style="display:none;align-items:stretch;height:100%;gap:6px;overflow-x:auto;padding:2px 14px 4px 2px;box-sizing:border-box;"></div>
 </div>
-  </div>
-</div>
-
 <!--
   v8z4b15w — Layout do menu local invertido: controles ficam EM CIMA e a barra
   de ícones EMBAIXO. Comportamento "compact-first": ao primeiro toque no frame,
@@ -2852,6 +2862,10 @@ body.cust-open #toolbar{
   </div>
 </div>
 
+  </div>
+</div>
+
+
 
 <!-- SETTINGS SHEET -->
 <div class="settings-sheet" id="settingsSheet" aria-label="Arquivos">
@@ -2904,7 +2918,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29T</span><br><span id="appVersionNameText">v8z4b29T</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29U</span><br><span id="appVersionNameText">v8z4b29U</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5248,20 +5262,14 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29T';
-const APP_VERSION_NAME = 'v8z4b29T';
+const APP_VERSION = 'v8z4b29U';
+const APP_VERSION_NAME = 'v8z4b29U';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
 if (appVersionTextEl) appVersionTextEl.textContent = APP_VERSION;
 if (appVersionNameTextEl) appVersionNameTextEl.textContent = APP_VERSION_NAME;
-
-const lowerContextSlotEl = document.getElementById('lowerContextSlot');
-const localCustBarEl = document.getElementById('custBar');
-if (lowerContextSlotEl && localCustBarEl && localCustBarEl.parentElement !== lowerContextSlotEl) {
-  lowerContextSlotEl.appendChild(localCustBarEl);
-}
 
 // Image natural dimensions
 let imgNatW = 0, imgNatH = 0;
