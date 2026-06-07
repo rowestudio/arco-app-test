@@ -1,17 +1,13 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29X                                     ║
+║  Versão: v8z4b29W                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
-║  v8z4b29X                                            ║
-║    fix/ux: unifica eixo geométrico da timeline       ║
-║        para alinhar marcadores centrais ao           ║
-║        snap-to-center.                               ║
 ║  v8z4b29W                                            ║
 ║    fix/ux: corrige estabilidade da Linha 4 em        ║
 ║        seleção múltipla e alinha marcadores          ║
@@ -553,7 +549,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b29X — fix/ux: unifica eixo geométrico da timeline para alinhar marcadores centrais ao snap-to-center. -->
+<!-- Arco Motion App — v8z4b29W — fix/ux: corrige estabilidade da Linha 4 em seleção múltipla e alinha marcadores centrais da timeline ao eixo do snap. -->
 <!-- Arco Motion App — v8z4b29U — fix/ux: corrige arquitetura dos submenus inferiores para substituir a área contextual sem duplicação, vazamento da Linha 3 ou safe-area duplicada. -->
 <!-- Arco Motion App — v8z4b29T — fix/ux: adicionado snap-to-center da timeline após scroll manual sem alterar seleção, alfa, motor, Preview, MP4 ou JSON. -->
 <!-- Arco Motion App — v8z4b29S — fix: separa seleção de frame e foco visual da timeline para alfa/spotlight do Stage sem alterar motor/Preview/MP4/JSON. -->
@@ -2932,7 +2928,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29X</span><br><span id="appVersionNameText">v8z4b29X</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29W</span><br><span id="appVersionNameText">v8z4b29W</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5276,8 +5272,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29X';
-const APP_VERSION_NAME = 'v8z4b29X';
+const APP_VERSION = 'v8z4b29W';
+const APP_VERSION_NAME = 'v8z4b29W';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11061,7 +11057,6 @@ function setBottomContext(mode) {
   document.body.classList.toggle('bottom-context-segment', next === 'segment');
   if (next !== 'frame') hideStageFrameMenu();
   if (next !== 'segment') selectedSegmentIndex = -1;
-  requestAnimationFrame(syncLowerTimelineCenterMarkers);
 }
 function selectFrameContext(fi, opts = {}) {
   if (typeof fi === 'number' && fi >= 0 && fi < frameCount) {
@@ -11133,41 +11128,24 @@ function getTimelineStageFocusIndex() {
   if (lowerTimelineCenterFrameIndex >= 0 && lowerTimelineCenterFrameIndex < frameCount) return lowerTimelineCenterFrameIndex;
   return activeIdx;
 }
-function getLowerTimelineGeometry(markerEl = document.querySelector('.lower-timeline-slot')) {
-  const pillsEl = document.getElementById('pillsRow');
-  if (!pillsEl) return null;
-  const clientWidth = pillsEl.clientWidth;
-  const scrollLeft = pillsEl.scrollLeft;
-  const geometry = {
-    pillsEl,
-    viewportCenterInScrollCoords: scrollLeft + clientWidth / 2,
-    viewportCenterInVisualCoords: clientWidth / 2,
-    clientWidth,
-    scrollLeft
-  };
-  if (markerEl) {
-    const markerRect = markerEl.getBoundingClientRect();
-    const pillsRect = pillsEl.getBoundingClientRect();
-    if (markerRect.width && pillsRect.width && clientWidth) {
-      geometry.viewportCenterInVisualCoords = pillsRect.left - markerRect.left + clientWidth / 2;
-    }
-  }
-  return geometry;
-}
 function syncLowerTimelineCenterMarkers() {
   const slotEl = document.querySelector('.lower-timeline-slot');
-  const geometry = getLowerTimelineGeometry(slotEl);
-  if (!slotEl || !geometry || !geometry.clientWidth) return;
-  slotEl.style.setProperty('--lower-timeline-center-x', geometry.viewportCenterInVisualCoords + 'px');
+  const pillsEl = document.getElementById('pillsRow');
+  if (!slotEl || !pillsEl) return;
+  const slotRect = slotEl.getBoundingClientRect();
+  const pillsRect = pillsEl.getBoundingClientRect();
+  if (!slotRect.width || !pillsRect.width) return;
+  slotEl.style.setProperty('--lower-timeline-center-x', (pillsRect.left - slotRect.left + pillsRect.width / 2) + 'px');
 }
 function getLowerTimelineNearestFrameIndex() {
-  const geometry = getLowerTimelineGeometry();
-  if (!geometry) return -1;
+  const pillsEl = document.getElementById('pillsRow');
+  if (!pillsEl) return -1;
+  const centerX = pillsEl.scrollLeft + pillsEl.clientWidth / 2;
   let bestIndex = -1;
   let bestDist = Infinity;
-  geometry.pillsEl.querySelectorAll('[data-frame-index]').forEach(el => {
+  pillsEl.querySelectorAll('[data-frame-index]').forEach(el => {
     const idx = Number(el.dataset.frameIndex);
-    const dist = Math.abs((el.offsetLeft + el.offsetWidth / 2) - geometry.viewportCenterInScrollCoords);
+    const dist = Math.abs((el.offsetLeft + el.offsetWidth / 2) - centerX);
     if (Number.isFinite(idx) && dist < bestDist) { bestDist = dist; bestIndex = idx; }
   });
   return bestIndex;
@@ -11315,13 +11293,12 @@ function finishLowerTimelineProgrammaticCenter(fi, scrollLeft, pillsEl, timesEl)
 }
 function centerLowerTimelineOnFrame(fi, smooth = true) {
   if (isMultiSelectionActive()) return;
-  const geometry = getLowerTimelineGeometry();
-  const pillsEl = geometry ? geometry.pillsEl : null;
+  const pillsEl = document.getElementById('pillsRow');
   const timesEl = document.getElementById('lowerPartialTimes');
   const pill = pillsEl ? pillsEl.querySelector('[data-frame-index="' + fi + '"]') : null;
-  if (!geometry || !pillsEl || !timesEl || !pill) return;
-  const maxScroll = Math.max(0, pillsEl.scrollWidth - geometry.clientWidth);
-  const nextScroll = Math.min(maxScroll, Math.max(0, pill.offsetLeft + pill.offsetWidth / 2 - geometry.clientWidth / 2));
+  if (!pillsEl || !timesEl || !pill) return;
+  const maxScroll = Math.max(0, pillsEl.scrollWidth - pillsEl.clientWidth);
+  const nextScroll = Math.min(maxScroll, Math.max(0, pill.offsetLeft + pill.offsetWidth / 2 - pillsEl.clientWidth / 2));
   if (lowerTimelineSnapTimer) clearTimeout(lowerTimelineSnapTimer);
   lowerTimelineSnapTimer = 0;
   isLowerTimelineProgrammaticCentering = true;
@@ -11382,7 +11359,6 @@ function bindLowerTimelineScrollSync() {
     window._lowerTimelineCenterMarkersBound = true;
     window.addEventListener('resize', syncLowerTimelineCenterMarkers, { passive: true });
     window.addEventListener('orientationchange', syncLowerTimelineCenterMarkers, { passive: true });
-    if (window.visualViewport) window.visualViewport.addEventListener('resize', syncLowerTimelineCenterMarkers, { passive: true });
   }
 }
 bindLowerTimelineScrollSync();
