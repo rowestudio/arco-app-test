@@ -1,3 +1,11 @@
+## v8z4b29AA — geometria da Linha 4 / Coluna 2 em seleção múltipla
+
+- `index.html`: base `v8z4b29W` confirmada e versionamento atualizado para `v8z4b29AA` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: `#lowerContextSlot > #toolbar`, `#lowerContextSlot > #alignBar` e `#alignBarPrimary` agora compartilham largura, altura, margem, padding e alinhamento dentro do mesmo slot da Linha 4 / Coluna 2.
+- `index.html`: Linha 3 passa de 36px para 41px usando o espaço já existente do grid inferior, mantendo a Linha 4 inteira alinhada entre Coluna 1 e Coluna 2 e sem alterar a altura total da área inferior.
+- `index.html`: estados `cust-open`/`cust-expanded` deixam de disputar visualmente o slot quando `body.has-multi-selection` está ativo, preservando `#alignBar` como único conteúdo contextual da Coluna 2 / Linha 4 em seleção múltipla.
+- `QA.md` e `docs/QA-v8z4b29AA.md`: checklist/inventário da v8z4b29AA documentado.
+
 ## v8z4b29W — estabilidade da Linha 4 e marcadores centrais
 
 - `index.html`: base `v8z4b29V` confirmada e versionamento atualizado para `v8z4b29W` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
