@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29N UX inferior, timeline e seleção múltipla
+
+- Checklist detalhado criado em `docs/QA-v8z4b29N.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29m` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29N`; área inferior padronizada com fundo `#3c3c3b`, bordas/trechos/textos secundários `#b2b2b2`; botões com ícone + texto usando ícone branco e label cinza; frames da timeline mais estreitos; trechos conectados com círculos maiores; pontos laranja fora do bloco dos frames; tempos parciais sem `s`; Linha 3 com mais respiro e seleção listada entre parênteses; `Selecionar todos` sem pill e com evento isolado para preservar a seleção múltipla; curvas acima do overlay escuro; destaque visual do frame central no Stage e trechos adjacentes; motor, Preview, MP4/export, JSON, gestos de edição temporal e menu completo de Tempo/Duração preservados.
+- Não foram executados testes em iPhone/Safari real nem geração real de MP4 neste ambiente automatizado.
+
 # QA pendente — v8z4b29m correção crítica inferior, scroll e menus
 
 - Checklist detalhado criado em `docs/QA-v8z4b29m.md`.

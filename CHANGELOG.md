@@ -1,3 +1,12 @@
+## v8z4b29N — UX inferior, timeline e seleção múltipla
+
+- `index.html`: base `v8z4b29m` confirmada antes das alterações e versionamento atualizado para `v8z4b29N` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: área inferior, Coluna 1/2, frames, trechos e textos secundários padronizados em `#3c3c3b`/`#b2b2b2`, com ícones brancos em botões com ícone + texto.
+- `index.html`: timeline recebe frames mais estreitos, bordas cinza, trechos conectados com círculos maiores, pontos laranja fora do bloco dos frames e tempos parciais sem `s`.
+- `index.html`: Linha 3 ganha respiro, `Selecionar todos` perde pill/fundo, mantém seleção múltipla ativa por evento isolado e lista frames apenas entre parênteses.
+- `index.html`: curvas do Stage ficam acima do overlay escuro e o frame visualmente centralizado na timeline passa a destacar no Stage com seus trechos adjacentes sem alterar o motor.
+- `QA.md` e `docs/QA-v8z4b29N.md`: checklist/inventário da v8z4b29N documentado.
+
 ## v8z4b29m — correção crítica inferior, scroll e menus contextuais
 
 - `index.html`: base `v8z4b29L` confirmada antes das alterações e versionamento atualizado para `v8z4b29m` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
