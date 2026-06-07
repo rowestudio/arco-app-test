@@ -1,3 +1,14 @@
+## v8z4b29P — consolidação UX, timeline e foco central
+
+- `index.html`: base `v8z4b29O` confirmada antes das alterações e versionamento atualizado para `v8z4b29P` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: fundo geral, Stage vazio, menus, painéis e overlays reforçados em `#3c3c3b`, com ícones brancos e textos `#b2b2b2` nos botões com ícone + label.
+- `index.html`: ícone de Ajustes/Arquivos redefinido para Lucide `clapperboard` e Formato preservado em Lucide `proportions`.
+- `index.html`: timeline compactada com frames menos ovalados/menos largos, borda mais presente, trechos mais conectados e tempos parciais discretos sem sufixo `s`.
+- `index.html`: foco do Stage passa a acompanhar o frame central no scroll manual, enquanto a centralização programática bloqueia destaque intermediário até o fim da rolagem suave.
+- `index.html`: área inferior ganha Coluna 1 com mais respiro, `+ frame` mais marcante, safe-area inferior reduzida, `Tempo` alinhado aos ícones contextuais e painéis de ajuste podendo ocupar linhas 3/4 e as duas colunas quando expandidos.
+- `index.html`: `Selecionar todos` mantém seleção múltipla ativa, preserva a seleção de todos os frames e mantém ordem texto → ícone sem pill.
+- `QA.md` e `docs/QA-v8z4b29P.md`: checklist/inventário da v8z4b29P documentado.
+
 ## v8z4b29O — menus, safe area, curvas e seleção múltipla
 
 - `index.html`: base `v8z4b29N` confirmada antes das alterações e versionamento atualizado para `v8z4b29O` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
