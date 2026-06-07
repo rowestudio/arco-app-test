@@ -1,13 +1,17 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29V                                     ║
+║  Versão: v8z4b29W                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29W                                            ║
+║    fix/ux: corrige estabilidade da Linha 4 em        ║
+║        seleção múltipla e alinha marcadores          ║
+║        centrais da timeline ao eixo do snap.         ║
 ║  v8z4b29V                                            ║
 ║    fix/ux: ajuste residual de safe-area dos          ║
 ║        submenus e estabilidade da Linha 4 com        ║
@@ -545,7 +549,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b29V — fix/ux: ajuste residual de safe-area dos submenus e estabilidade da Linha 4 com Selecionar todos. -->
+<!-- Arco Motion App — v8z4b29W — fix/ux: corrige estabilidade da Linha 4 em seleção múltipla e alinha marcadores centrais da timeline ao eixo do snap. -->
 <!-- Arco Motion App — v8z4b29U — fix/ux: corrige arquitetura dos submenus inferiores para substituir a área contextual sem duplicação, vazamento da Linha 3 ou safe-area duplicada. -->
 <!-- Arco Motion App — v8z4b29T — fix/ux: adicionado snap-to-center da timeline após scroll manual sem alterar seleção, alfa, motor, Preview, MP4 ou JSON. -->
 <!-- Arco Motion App — v8z4b29S — fix: separa seleção de frame e foco visual da timeline para alfa/spotlight do Stage sem alterar motor/Preview/MP4/JSON. -->
@@ -1196,8 +1200,8 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .lower-time-chip.pause{width:34px;color:#b2b2b2;}
 .lower-time-chip.segment{width:22px;color:#b2b2b2;font-weight:500;}
 .lower-time-chip.active{color:var(--accent);font-weight:500;}
-.lower-timeline-slot{position:relative;overflow:visible;}
-.lower-timeline-slot::before,.lower-timeline-slot::after{content:"";position:absolute;left:50%;transform:translateX(-50%);z-index:2;pointer-events:none;width:6px;height:6px;border:0;border-radius:50%;background:rgba(255,176,0,.82);}
+.lower-timeline-slot{position:relative;overflow:visible;--lower-timeline-center-x:50%;}
+.lower-timeline-slot::before,.lower-timeline-slot::after{content:"";position:absolute;left:var(--lower-timeline-center-x);transform:translateX(-50%);z-index:2;pointer-events:none;width:6px;height:6px;border:0;border-radius:50%;background:rgba(255,176,0,.82);}
 .lower-timeline-slot::before{top:-4px;}
 .lower-timeline-slot::after{display:block;bottom:-4px;}
 .mid-bar.timeline-grid .mid-pills{width:100%;height:100%;justify-content:flex-start;padding:6px calc(50% - 17px) 6px !important;overflow-x:auto;overflow-y:visible;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-behavior:auto;touch-action:pan-x;overscroll-behavior-x:contain;gap:0 !important;}
@@ -1216,12 +1220,11 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .mid-bar.timeline-grid .ease-fp.ease-selected{box-shadow:none;border-color:transparent;}
 .mid-bar.timeline-grid .ease-fp.ease-selected::before{background:var(--accent);box-shadow:none;}
 .mid-bar.timeline-grid .ease-fp.ease-selected .seg-dot{border-color:var(--accent);background:var(--menu-bg);}
-.lower-active-state{position:relative;width:100%;height:100%;min-height:0;max-height:var(--lower-row-3);display:flex;align-items:center;gap:8px;overflow:hidden;color:#b2b2b2;}
-.lower-active-label{font-size:12px;font-weight:600;color:#b2b2b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;}
+.lower-active-state{position:relative;width:100%;height:100%;min-height:0;max-height:var(--lower-row-3);display:flex;align-items:center;gap:8px;overflow:hidden;color:#b2b2b2;box-sizing:border-box;}
+.lower-active-label{font-size:12px;font-weight:600;color:#b2b2b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;padding-right:124px;}
 .lower-active-sub{display:none;}
-.lower-selection-actions{display:none;margin-left:auto;align-items:center;gap:4px;flex:0 0 auto;}
-body.has-multi-selection .lower-selection-actions{display:flex;position:absolute;right:0;top:50%;transform:translateY(-50%);}
-body.has-multi-selection .lower-active-label{padding-right:124px;}
+.lower-selection-actions{display:flex;visibility:hidden;pointer-events:none;position:absolute;right:0;top:0;bottom:0;width:124px;margin-left:0;align-items:center;justify-content:flex-end;gap:4px;flex:0 0 auto;}
+body.has-multi-selection .lower-selection-actions{visibility:visible;pointer-events:auto;}
 .lower-selection-action{height:28px;max-height:28px;line-height:1;border:0;border-radius:0;background:transparent;color:#b2b2b2;display:flex;align-items:center;gap:7px;padding:0 10px 0 2px;font-size:10px;font-weight:600;cursor:pointer;}
 .lower-selection-action:active{background:transparent;}
 .lower-selection-action svg{width:21px;height:21px;display:block;order:2;color:#fff;stroke:#fff;}
@@ -2925,7 +2928,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29V</span><br><span id="appVersionNameText">v8z4b29V</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29W</span><br><span id="appVersionNameText">v8z4b29W</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5269,8 +5272,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29V';
-const APP_VERSION_NAME = 'v8z4b29V';
+const APP_VERSION = 'v8z4b29W';
+const APP_VERSION_NAME = 'v8z4b29W';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11125,6 +11128,15 @@ function getTimelineStageFocusIndex() {
   if (lowerTimelineCenterFrameIndex >= 0 && lowerTimelineCenterFrameIndex < frameCount) return lowerTimelineCenterFrameIndex;
   return activeIdx;
 }
+function syncLowerTimelineCenterMarkers() {
+  const slotEl = document.querySelector('.lower-timeline-slot');
+  const pillsEl = document.getElementById('pillsRow');
+  if (!slotEl || !pillsEl) return;
+  const slotRect = slotEl.getBoundingClientRect();
+  const pillsRect = pillsEl.getBoundingClientRect();
+  if (!slotRect.width || !pillsRect.width) return;
+  slotEl.style.setProperty('--lower-timeline-center-x', (pillsRect.left - slotRect.left + pillsRect.width / 2) + 'px');
+}
 function getLowerTimelineNearestFrameIndex() {
   const pillsEl = document.getElementById('pillsRow');
   if (!pillsEl) return -1;
@@ -11230,6 +11242,7 @@ function updateLowerTimelineMeta() {
     addBtn.title = 'Adicionar frame';
     addBtn.setAttribute('aria-label', addBtn.title);
   }
+  syncLowerTimelineCenterMarkers();
   if (timesEl) {
     timesEl.innerHTML = '';
     for (let i = 0; i < frameCount; i++) {
@@ -11341,6 +11354,12 @@ function bindLowerTimelineScrollSync() {
   pillsEl.addEventListener('scroll', () => syncLowerTimelineScroll(pillsEl, timesEl), { passive: true });
   pillsEl.addEventListener('touchend', scheduleLowerTimelineSnapToCenter, { passive: true });
   pillsEl.addEventListener('pointerup', scheduleLowerTimelineSnapToCenter, { passive: true });
+  syncLowerTimelineCenterMarkers();
+  if (!window._lowerTimelineCenterMarkersBound) {
+    window._lowerTimelineCenterMarkersBound = true;
+    window.addEventListener('resize', syncLowerTimelineCenterMarkers, { passive: true });
+    window.addEventListener('orientationchange', syncLowerTimelineCenterMarkers, { passive: true });
+  }
 }
 bindLowerTimelineScrollSync();
 setBottomContext('frame');
@@ -13392,6 +13411,7 @@ function updateFrameSelector() {
     pr.appendChild(makeEasePillEl(frameCount - 1, 'loop'));
   }
   updateLowerTimelineMeta();
+  syncLowerTimelineCenterMarkers();
 }
 
 // ═══════════════════════════════════════
