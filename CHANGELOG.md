@@ -1,3 +1,12 @@
+## v8z4b29S — separação entre seleção e foco visual da timeline
+
+- `index.html`: base `v8z4b29R` confirmada antes das alterações e versionamento atualizado para `v8z4b29S` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: `selectFrameContext()` mantém `activeIdx` como seleção/edição, mas deixa de sobrescrever `timelineFocalFrameId` e `lowerTimelineCenterFrameIndex` durante seleção simples.
+- `index.html`: centralização programática da timeline continua sendo o caminho explícito para atualizar foco visual, e o scroll manual segue atualizando `timelineFocalFrameId`/`lowerTimelineCenterFrameIndex` sem alterar `activeIdx`.
+- `index.html`: fallback de `updateDimOverlay()` usa o frame focal calculado por `getTimelineStageFocusIndex()`, evitando que o alfa/spotlight volte para o frame selecionado em navegadores sem `mix-blend-mode`.
+- `index.html`: destaque de seleção, menus inferiores, `#custBar`, `#alignBar`, `#lowerContextSlot`, CSS inferior, escala visual da timeline, snap-to-center, ícone Formato, Preview, MP4/export, JSON, motor de animação, curvas e seleção múltipla funcional foram preservados.
+- `QA.md` e `docs/QA-v8z4b29S.md`: checklist/inventário da v8z4b29S documentado.
+
 ## v8z4b29R — sincronização Stage/timeline, seleção múltipla e menus de frame
 
 - `index.html`: base `v8z4b29Q` confirmada antes das alterações e versionamento atualizado para `v8z4b29R` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.

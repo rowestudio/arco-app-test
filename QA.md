@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29S separação seleção/foco visual da timeline
+
+- Checklist detalhado criado em `docs/QA-v8z4b29S.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29R` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29S`; `selectFrameContext()` não contamina `timelineFocalFrameId`/`lowerTimelineCenterFrameIndex` por padrão; centralização programática e scroll manual continuam como fontes explícitas do foco visual; `getTimelineStageFocusIndex()` preserva prioridade `timelineFocalFrameId` → `lowerTimelineCenterFrameIndex` → `activeIdx` em seleção simples; fallback de `updateDimOverlay()` usa `focusIdx`; menus inferiores, CSS inferior, Formato, Preview, MP4/export, JSON, motor, curvas e seleção múltipla funcional preservados.
+- Não foram executados testes em iPhone/Safari real, Preview real, MP4/export real nem JSON manual neste ambiente automatizado.
+
 # QA pendente — v8z4b29R sincronização Stage/timeline, seleção múltipla e menus de frame
 
 - Checklist detalhado criado em `docs/QA-v8z4b29R.md`.

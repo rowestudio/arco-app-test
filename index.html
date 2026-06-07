@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29R                                     ║
+║  Versão: v8z4b29S                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29S                                            ║
+║    fix: separa seleção e foco visual da timeline     ║
+║        para o alfa/spotlight do Stage.               ║
 ║  v8z4b29R                                            ║
 ║    fix/ux: sincroniza Stage/timeline, multi-select   ║
 ║        e menus contextuais de frame.                 ║
@@ -530,6 +533,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29S — fix: separa seleção de frame e foco visual da timeline para alfa/spotlight do Stage sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29R — fix/ux: sincroniza Stage/timeline, corrige multi-select, Selecionar todos e camadas dos menus de frame sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29Q — fix/ux: limpa ícones, menus inferiores, timeline, foco central, curvas locais e JSON sem alterar Preview/MP4/schema. -->
 <!-- Arco Motion App — v8z4b29O — fix/ux: padroniza menus, safe area, curvas, timeline, foco central e seleção múltipla sem alterar motor/Preview/MP4/JSON. -->
@@ -2896,7 +2900,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29R</span><br><span id="appVersionNameText">v8z4b29R</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29S</span><br><span id="appVersionNameText">v8z4b29S</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5240,8 +5244,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29R';
-const APP_VERSION_NAME = 'v8z4b29R';
+const APP_VERSION = 'v8z4b29S';
+const APP_VERSION_NAME = 'v8z4b29S';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11035,13 +11039,11 @@ function setBottomContext(mode) {
 function selectFrameContext(fi, opts = {}) {
   if (typeof fi === 'number' && fi >= 0 && fi < frameCount) {
     activeIdx = fi;
-    lowerTimelineCenterFrameIndex = fi;
-    timelineFocalFrameId = fi;
   }
   selectedSegmentIndex = -1;
   setBottomContext('frame');
   if (opts.showStageMenu) showStageFrameMenu();
-  if (opts.centerTimeline) requestLowerTimelineCenter(activeIdx);
+  if (opts.centerTimeline || opts.updateTimelineFocus === true) requestLowerTimelineCenter(activeIdx);
 }
 function selectSegmentContext(seg) {
   if (typeof seg !== 'number' || seg < 0 || seg >= getActiveSegmentCount()) return;
@@ -11228,8 +11230,6 @@ function finishLowerTimelineProgrammaticCenter(fi, scrollLeft, pillsEl, timesEl)
 }
 function centerLowerTimelineOnFrame(fi, smooth = true) {
   if (isMultiSelectionActive()) return;
-  lowerTimelineCenterFrameIndex = fi;
-  timelineFocalFrameId = fi;
   const pillsEl = document.getElementById('pillsRow');
   const timesEl = document.getElementById('lowerPartialTimes');
   const pill = pillsEl ? pillsEl.querySelector('[data-frame-index="' + fi + '"]') : null;
@@ -13403,7 +13403,7 @@ function updateDimOverlay() {
           style="mix-blend-mode:destination-out;"/>
   `;
   if (!CSS.supports('mix-blend-mode', 'destination-out')) {
-    const corners = getRotatedFrameCorners(activeIdx);
+    const corners = getRotatedFrameCorners(focusIdx);
     const pts = corners.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' L ');
     svg.innerHTML = `<path d="M0,0 H${W} V${H} H0 Z M${pts} Z" fill="rgba(0,0,0,0.38)" fill-rule="evenodd"/>`;
   }
