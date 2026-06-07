@@ -1,17 +1,13 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29Z                                     ║
+║  Versão: v8z4b29W                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
-║  v8z4b29Z                                            ║
-║    fix/ux: corrige exclusão mútua entre custBar      ║
-║        e multi-seleção, estabilizando Linha 4 da     ║
-║        Coluna 2.                                     ║
 ║  v8z4b29W                                            ║
 ║    fix/ux: corrige estabilidade da Linha 4 em        ║
 ║        seleção múltipla e alinha marcadores          ║
@@ -553,7 +549,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b29Z — fix/ux: corrige exclusão mútua entre custBar e multi-seleção, estabilizando Linha 4 da Coluna 2. -->
+<!-- Arco Motion App — v8z4b29W — fix/ux: corrige estabilidade da Linha 4 em seleção múltipla e alinha marcadores centrais da timeline ao eixo do snap. -->
 <!-- Arco Motion App — v8z4b29U — fix/ux: corrige arquitetura dos submenus inferiores para substituir a área contextual sem duplicação, vazamento da Linha 3 ou safe-area duplicada. -->
 <!-- Arco Motion App — v8z4b29T — fix/ux: adicionado snap-to-center da timeline após scroll manual sem alterar seleção, alfa, motor, Preview, MP4 ou JSON. -->
 <!-- Arco Motion App — v8z4b29S — fix: separa seleção de frame e foco visual da timeline para alfa/spotlight do Stage sem alterar motor/Preview/MP4/JSON. -->
@@ -1257,8 +1253,6 @@ body.align-submenu-open #lowerContextSlot{overflow:visible;z-index:8;}
 body.has-multi-selection .mid-bar.timeline-grid #toolbar{display:none;}
 body.cust-open .mid-bar.timeline-grid #toolbar,
 body.cust-open .mid-bar.timeline-grid #alignBar{display:none !important;}
-body.has-multi-selection .mid-bar.timeline-grid #custBar{display:none !important;}
-body.has-multi-selection.cust-expanded #lowerContextSlot{grid-column:auto !important;grid-row:auto !important;padding:0 5px !important;z-index:auto !important;background:var(--menu-bg) !important;overflow:hidden !important;}
 body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !important;}
 body.cust-expanded #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;padding:0 6px var(--lower-home-breath);z-index:14;background:var(--menu-bg);overflow:visible;}
 body.cust-expanded .mid-bar.timeline-grid #custBar{height:100% !important;max-height:100% !important;background:var(--menu-bg) !important;pointer-events:auto;}
@@ -2934,7 +2928,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29Z</span><br><span id="appVersionNameText">v8z4b29Z</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29W</span><br><span id="appVersionNameText">v8z4b29W</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5278,8 +5272,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29Z';
-const APP_VERSION_NAME = 'v8z4b29Z';
+const APP_VERSION = 'v8z4b29W';
+const APP_VERSION_NAME = 'v8z4b29W';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11098,7 +11092,6 @@ function hideStageFrameMenu() {
 }
 function openCustBarTabFromBottom(tab) {
   if (shouldBlockGlobalUIAction()) return;
-  if (isMultiSelectionActive()) return;
   hideStageFrameMenu();
   openCustBar();
   switchCustTab(tab);
@@ -15210,14 +15203,8 @@ imageArea.addEventListener('touchstart', e => {
     if (window._isoMode) return;
     // Whitelist: tocar nestes elementos NÃO fecha o menu contextual.
     if (e.target.closest('#custBar')) return;
-    if (e.target.closest('#alignBar') || e.target.closest('.lower-selection-action') || e.target.closest('.ab-select-all-fixed')) {
-      closeCustBar();
-      return;
-    }
-    if (e.target.closest('#midBar')) {
-      if (isMultiSelectionActive()) closeCustBar();
-      return;
-    }
+    if (e.target.closest('#midBar')) return;
+    if (e.target.closest('#alignBar')) return;
     if (e.target.closest('.top-bar')) return;
     if (e.target.closest('.float-panel')) return;
     if (e.target.closest('.global-handle')) return;
@@ -21573,11 +21560,6 @@ function syncFrameMultiSelectModeUI() {
   // v8z4b26b: o botão visual Sel foi removido; seleção é indicada nas pills e no Stage.
 }
 
-function enterMultiSelectionContext() {
-  closeCustBar();
-  document.body.classList.add('has-multi-selection');
-}
-
 function toggleFrameSelection(fi, makeActive) {
   if (shouldBlockGlobalUIAction()) return;
   if (fi < 0 || fi >= frameCount) return;
@@ -21586,7 +21568,6 @@ function toggleFrameSelection(fi, makeActive) {
   if (wasSelected) selectedFrames.delete(fi);
   else selectedFrames.add(fi);
   frameMultiSelectMode = selectedFrames.size > 0;
-  if (selectedFrames.size > 0 || frameMultiSelectMode) enterMultiSelectionContext();
   const isSelectingMultiple = wasMultiSelectionActive || selectedFrames.size > 1;
   if (makeActive && !isSelectingMultiple && selectedFrames.size === 0) {
     resetCustGlobalLocks();
@@ -21947,12 +21928,10 @@ function selectAllFramesForContext(ev) {
   if (frameCount < 1) return;
   if (batchPauseEditSession) commitBatchPauseEditSession();
   commitBatchTransformEditSession();
-  closeCustBar();
   frameMultiSelectMode = true;
   const preferred = (activeIdx >= 0 && activeIdx < frameCount) ? activeIdx : 0;
   selectedFrames.add(preferred);
   for (let i = 0; i < frameCount; i++) selectedFrames.add(i);
-  enterMultiSelectionContext();
   updateFrameSelector();
   renderAll();
   updateAlignBar();
@@ -21963,7 +21942,6 @@ function selectAllFramesForContext(ev) {
 
 function openAlignSubmenu(group, keepExisting) {
   if (shouldBlockGlobalUIAction()) return;
-  closeCustBar();
   if (alignBarActiveGroup === 'pause' && group !== 'pause') commitBatchPauseEditSession();
   if ((alignBarActiveGroup === 'scale' || alignBarActiveGroup === 'rotation') && alignBarActiveGroup !== group) commitBatchTransformEditSession();
   const p = document.getElementById('alignBarPrimary');
@@ -22315,7 +22293,6 @@ function updateTemplateBtn() {
 // expandido — só a abertura inicial entra em compact-mode.
 function openCustBar() {
   if (shouldBlockGlobalUIAction()) return;
-  if (isMultiSelectionActive()) return;
   // v8z4b16h — guard: sem imagem, menu contextual de frame não abre.
   if (!hasImageLoaded() || frameCount === 0) return;
   // v8z4b16c — Ordem importa: aplicar `cust-open` ANTES de mostrar o
@@ -22361,7 +22338,6 @@ function closeCustBar() {
 // Fechar custBar no stage tap já está no touchstart handler
 
 function switchCustTab(tab) {
-  if (isMultiSelectionActive()) return;
   resetCustGlobalLocks();
   const bar = document.getElementById('custBar');
   // v8z4b15x — Tocar em qualquer ícone (incluindo o ativo) sai do modo
