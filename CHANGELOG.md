@@ -1,3 +1,10 @@
+## v8z4b29W — estabilidade da Linha 4 e marcadores centrais
+
+- `index.html`: base `v8z4b29V` confirmada e versionamento atualizado para `v8z4b29W` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: `#lowerSelectionActions` passa a ocupar uma área fixa reservada na Linha 3 / Coluna 2, alternando visibilidade sem alterar a altura da linha nem empurrar `#lowerContextSlot`/`#alignBar` na Linha 4.
+- `index.html`: marcadores centrais de `.lower-timeline-slot` passam a ser alinhados ao centro real de `#pillsRow`, preservando o snap funcional e apenas sincronizando o eixo visual usado pelas bolinhas.
+- `QA.md` e `docs/QA-v8z4b29W.md`: checklist/inventário da v8z4b29W documentado.
+
 ## v8z4b29V — ajuste residual inferior
 
 - `index.html`: base `v8z4b29U` confirmada e versionamento atualizado para `v8z4b29V` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.

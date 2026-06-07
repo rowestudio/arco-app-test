@@ -1,3 +1,11 @@
+# QA pendente — v8z4b29W estabilidade da Linha 4 e marcadores centrais
+
+- Checklist detalhado criado em `docs/QA-v8z4b29W.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29V` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo, mantendo ícone Formato corrigido, Alpha/spotlight aprovado, snap-to-center da timeline e `#custBar` integrado ao `#lowerContextSlot`.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29W`; `#lowerSelectionActions` agora usa área reservada fixa na Linha 3 / Coluna 2 e alterna apenas `visibility`; `.lower-active-label` mantém reserva horizontal estável; `#alignBar` e `#lowerContextSlot` continuam ocupando a Linha 4; marcadores centrais de `.lower-timeline-slot` usam o centro geométrico real de `#pillsRow`, alinhando bolinhas ao eixo do snap sem alterar `activeIdx`, seleção, Alpha/spotlight, Preview, MP4/export, JSON, curvas ou motor.
+- QA manual obrigatório pendente: iPhone/Safari; seleção múltipla; clicar em `Selecionar todos`; confirmar Linha 4 da Coluna 2 estável; confirmar Pausa/Rotação/Escala/Mover na mesma altura; scroll lento; scroll rápido com momentum; snap-to-center; alinhamento das bolinhas; Alpha seguindo frame central; seleção independente do foco; poucos frames, 8 frames e 16 frames.
+- Não foram executados testes em iPhone/Safari real, Preview real, MP4/export real nem JSON manual neste ambiente automatizado.
+
 # QA pendente — v8z4b29V ajuste residual inferior
 
 - Checklist detalhado criado em `docs/QA-v8z4b29V.md`.
