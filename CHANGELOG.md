@@ -1,9 +1,3 @@
-## v8z4b29X — Linha 3 pré-alocada e Linha 4 mais baixa
-
-- `index.html`: base `v8z4b29W` confirmada e versionamento atualizado para `v8z4b29X` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
-- `index.html`: Linha 3 da área inferior passa a ter altura fixa maior desde o estado normal para comportar `Selecionar todos` sem recalcular a geometria ao entrar em seleção múltipla.
-- `index.html`: Linha 4 inteira desce por redistribuição vertical fixa, reduzindo o respiro inferior/home indicator sem duplicar safe-area e mantendo Coluna 1, Coluna 2, Tempo e ações contextuais no mesmo Y entre estados.
-
 ## v8z4b29W — estabilidade da Linha 4 e marcadores centrais
 
 - `index.html`: base `v8z4b29V` confirmada e versionamento atualizado para `v8z4b29W` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
