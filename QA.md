@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29Q correção limpa de ícones, timeline e menus inferiores
+
+- Checklist detalhado criado em `docs/QA-v8z4b29Q.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29P` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29Q`; Formato em `proportions`; Arquivos/Ajustes em `clapperboard`; slots inferiores estáveis entre seleção simples/múltipla; painéis de ajuste usando Linhas 3/4 sem restos visuais; timeline com respiro para marcadores centrais e frames proporcionais; `timelineFocalFrameId` aplicado ao foco/alfa durante scroll manual; `Selecionar todos` aditivo dentro de multi-select; menu de trecho centralizado; curvas locais com ícones mais leves e handles vizinhos editáveis; bloco JSON com borda; Preview, MP4/export e JSON schema preservados.
+- Não foram executados testes em iPhone/Safari real, Preview real, MP4/export real nem JSON manual neste ambiente automatizado.
+
 # QA pendente — v8z4b29P consolidação UX, timeline e foco central
 
 - Checklist detalhado criado em `docs/QA-v8z4b29P.md`.

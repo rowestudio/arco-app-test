@@ -1,3 +1,15 @@
+## v8z4b29Q — correção limpa de ícones, timeline e menus inferiores
+
+- `index.html`: base `v8z4b29P` confirmada antes das alterações e versionamento atualizado para `v8z4b29Q` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: Formato usa Lucide `proportions` e o botão superior de Arquivos/Ajustes usa Lucide `clapperboard` explícito, preservando label, função, cor, stroke e alinhamento.
+- `index.html`: linha inferior e seleção múltipla preservam slots estáveis; `Selecionar todos` mantém multi-select ativo, preserva seleção existente e completa todos os frames.
+- `index.html`: painéis deslizantes de Pausa/Rotação/Escala/Mover substituem o contexto inferior, usam Linhas 3/4 e reduzem clipping/sobra de safe-area.
+- `index.html`: timeline ganha respiro para marcadores centrais e frames com escala proporcional de número, borda, padding e raio.
+- `index.html`: foco/alfa do Stage usa `timelineFocalFrameId` no scroll manual, sem piscar durante centralização programática.
+- `index.html`: menu de curvas fica no lugar do menu contextual do Stage, com ícones maiores/leves e handles locais editáveis nos frames conectados ao frame focal.
+- `index.html`: bloco “Projeto em arquivo JSON” recebe borda sutil sem alterar fluxo de salvar/abrir.
+- `QA.md` e `docs/QA-v8z4b29Q.md`: checklist/inventário da v8z4b29Q documentado.
+
 ## v8z4b29P — consolidação UX, timeline e foco central
 
 - `index.html`: base `v8z4b29O` confirmada antes das alterações e versionamento atualizado para `v8z4b29P` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
