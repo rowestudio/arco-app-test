@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29Q                                     ║
+║  Versão: v8z4b29R                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29R                                            ║
+║    fix/ux: sincroniza Stage/timeline, multi-select   ║
+║        e menus contextuais de frame.                 ║
 ║  v8z4b29Q                                            ║
 ║    fix/ux: consolida layout, foco central,           ║
 ║        timeline, menus e selecionar todos.           ║
@@ -527,6 +530,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29R — fix/ux: sincroniza Stage/timeline, corrige multi-select, Selecionar todos e camadas dos menus de frame sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29Q — fix/ux: limpa ícones, menus inferiores, timeline, foco central, curvas locais e JSON sem alterar Preview/MP4/schema. -->
 <!-- Arco Motion App — v8z4b29O — fix/ux: padroniza menus, safe area, curvas, timeline, foco central e seleção múltipla sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29N — fix/ux: padroniza base inferior, timeline, seleção múltipla e destaque central do Stage sem alterar motor/Preview/MP4/JSON. -->
@@ -1178,9 +1182,10 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .lower-timeline-slot::after{display:block;bottom:-4px;}
 .mid-bar.timeline-grid .mid-pills{width:100%;height:100%;justify-content:flex-start;padding:6px calc(50% - 17px) 6px !important;overflow-x:auto;overflow-y:visible;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-behavior:auto;touch-action:pan-x;overscroll-behavior-x:contain;gap:0 !important;}
 .mid-bar.timeline-grid .mid-pills::-webkit-scrollbar{display:none;}
-.mid-bar.timeline-grid .fp{--fp-w:34px;--fp-h:44px;flex:0 0 var(--fp-w);width:var(--fp-w);min-width:var(--fp-w);height:var(--fp-h);border-radius:calc(var(--fp-w) * .26);padding:0 calc(var(--fp-w) * .06);font-size:calc(var(--fp-w) * .34);line-height:1;font-weight:650;justify-content:center;border:calc(var(--fp-w) * .055) solid #b2b2b2;background:var(--menu-bg);color:rgba(235,235,245,.84);box-sizing:border-box;}
-.mid-bar.timeline-grid .fp.active{background:var(--menu-bg);color:var(--text);border-color:var(--accent);box-shadow:0 0 0 1px rgba(4,255,242,.55) inset;}
-.mid-bar.timeline-grid .fp.selected{border-color:var(--accent);box-shadow:0 0 0 1px rgba(4,255,242,.45) inset;background:var(--menu-bg);color:var(--accent);}
+.mid-bar.timeline-grid .fp{--fp-w:34px;--fp-h:44px;flex:0 0 var(--fp-w);width:var(--fp-w);min-width:var(--fp-w);height:var(--fp-h);border-radius:calc(var(--fp-w) * .26);padding:0 calc(var(--fp-w) * .08);font-size:calc(var(--fp-w) * .34);line-height:1;font-weight:650;justify-content:center;border:clamp(1.5px, calc(var(--fp-w) * .055), 2.2px) solid #b2b2b2;background:var(--menu-bg);color:rgba(235,235,245,.84);box-sizing:border-box;}
+.mid-bar.timeline-grid .fp.active{background:var(--menu-bg);color:var(--text);border-color:var(--accent);box-shadow:0 0 0 1px rgba(4,255,242,.55) inset,0 0 10px rgba(4,255,242,.18);}
+.mid-bar.timeline-grid .fp.selected{border-color:#ff9500;box-shadow:0 0 0 1px rgba(255,149,0,.42) inset;background:var(--menu-bg);color:#ff9500;}
+.mid-bar.timeline-grid .fp.active.selected{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 1px rgba(4,255,242,.55) inset,0 0 10px rgba(4,255,242,.18);}
 .mid-bar.timeline-grid .ease-fp{position:relative;flex:0 0 22px;width:22px;min-width:22px;height:44px;border:0;border-radius:0;background:transparent;overflow:visible;margin:0;}
 .mid-bar.timeline-grid .ease-fp::before{content:"";position:absolute;left:-5px;right:-5px;top:50%;height:3px;border-radius:999px;background:#b2b2b2;transform:translateY(-50%);}
 .mid-bar.timeline-grid .ease-fp::after{content:"";position:absolute;left:-7px;right:-7px;top:50%;height:34px;transform:translateY(-50%);}
@@ -1217,6 +1222,10 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{j
 .mid-bar.timeline-grid #alignBar .ab-tab .ab-lbl{display:block;font-size:11px;line-height:1;color:#b2b2b2;}
 .mid-bar.timeline-grid #alignBar .ab-icon-only .ab-lbl{display:block;}
 .mid-bar.timeline-grid #alignBarSubmenu{height:100% !important;overflow-x:auto !important;overflow-y:hidden !important;padding:0 !important;align-items:stretch;}
+body.align-submenu-open #lowerContextSlot{overflow:visible;z-index:8;}
+.mid-bar.timeline-grid #alignBar.align-submenu-open{position:relative !important;overflow:visible !important;z-index:10 !important;}
+.mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu{position:absolute;left:calc(-1 * (var(--lower-left-w) + 5px));right:0;bottom:0;height:calc(var(--lower-row-3) + var(--lower-row-4) + 4px) !important;min-height:calc(var(--lower-row-3) + var(--lower-row-4) + 4px);z-index:12;background:var(--menu-bg);border-top:.5px solid rgba(178,178,178,.32);box-shadow:0 -8px 18px rgba(0,0,0,.22);overflow-x:auto !important;overflow-y:visible !important;padding:4px 8px 4px 6px !important;box-sizing:border-box;pointer-events:auto;}
+.mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu .ab-content{justify-content:center;}
 body.has-multi-selection .mid-bar.timeline-grid #toolbar{display:none;}
 body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !important;}
 body.cust-expanded #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;padding:0 6px 2px;z-index:4;background:var(--menu-bg);overflow:visible;}
@@ -2641,7 +2650,7 @@ body.cust-open #toolbar{
   <div class="lower-cell lower-main lower-timeline-slot"><div class="mid-pills" id="pillsRow" data-role="timeline-pills" style="flex:1;overflow-x:auto;align-items:center;gap:7px;padding:0 8px;display:flex;"></div></div>
 
   <div class="lower-cell lower-left lower-frame-count" id="lowerFrameCount">0F</div>
-  <div class="lower-cell lower-main"><div class="lower-active-state"><span class="lower-active-label" id="lowerActiveLabel">F1</span><span class="lower-active-sub" id="lowerActiveSub"></span><span class="lower-selection-actions" id="lowerSelectionActions"><button type="button" class="lower-selection-action" onclick="selectAllFramesForContext(event)" title="Selecionar todos" aria-label="Selecionar todos"><span>Selecionar todos</span><svg viewBox="0 0 24 24"><use href="#i-list-check"></use></svg></button></span></div></div>
+  <div class="lower-cell lower-main"><div class="lower-active-state"><span class="lower-active-label" id="lowerActiveLabel">F1</span><span class="lower-active-sub" id="lowerActiveSub"></span><span class="lower-selection-actions" id="lowerSelectionActions"><button type="button" class="lower-selection-action" onpointerdown="event.stopPropagation();" onclick="selectAllFramesForContext(event)" title="Selecionar todos" aria-label="Selecionar todos"><span>Selecionar todos</span><svg viewBox="0 0 24 24"><use href="#i-list-check"></use></svg></button></span></div></div>
 
   <div class="lower-cell lower-left">
     <button class="lower-global-duration" type="button" onclick="openPanel('Duration')" title="Duração geral" aria-label="Duração geral">
@@ -2677,7 +2686,7 @@ body.cust-open #toolbar{
 <div id="alignBar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--menu-bg);background-image:none;box-shadow:none;border-top:.5px solid var(--border);box-sizing:border-box;height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px));padding:0 4px max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px);">
   <!-- Camada 1: primária -->
   <div id="alignBarPrimary" class="ab-primary-strip">
-    <button type="button" class="ab-tab ab-select-all-fixed" onclick="selectAllFramesForContext(event)">
+    <button type="button" class="ab-tab ab-select-all-fixed" onpointerdown="event.stopPropagation();" onclick="selectAllFramesForContext(event)">
       <span class="ab-lbl">Selecionar todos</span>
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-list-check"></use></svg>
     </button>
@@ -2888,7 +2897,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29Q</span><br><span id="appVersionNameText">v8z4b29Q</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29R</span><br><span id="appVersionNameText">v8z4b29R</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5232,8 +5241,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29Q';
-const APP_VERSION_NAME = 'v8z4b29Q';
+const APP_VERSION = 'v8z4b29R';
+const APP_VERSION_NAME = 'v8z4b29R';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11025,10 +11034,15 @@ function setBottomContext(mode) {
   if (next !== 'segment') selectedSegmentIndex = -1;
 }
 function selectFrameContext(fi, opts = {}) {
-  if (typeof fi === 'number' && fi >= 0 && fi < frameCount) { activeIdx = fi; lowerTimelineCenterFrameIndex = fi; }
+  if (typeof fi === 'number' && fi >= 0 && fi < frameCount) {
+    activeIdx = fi;
+    lowerTimelineCenterFrameIndex = fi;
+    timelineFocalFrameId = fi;
+  }
   selectedSegmentIndex = -1;
   setBottomContext('frame');
   if (opts.showStageMenu) showStageFrameMenu();
+  if (opts.centerTimeline) requestLowerTimelineCenter(activeIdx);
 }
 function selectSegmentContext(seg) {
   if (typeof seg !== 'number' || seg < 0 || seg >= getActiveSegmentCount()) return;
@@ -11081,6 +11095,7 @@ let timelineFocalFrameId = -1;
 let lowerTimelineCenterRaf = 0;
 let lowerTimelineProgrammaticScrollUntil = 0;
 let lowerTimelineProgrammaticScrollTimer = 0;
+let lowerTimelineScrollAnimFrame = 0;
 function getTimelineStageFocusIndex() {
   if (isMultiSelectionActive() || bottomContextMode === 'segment') return activeIdx;
   if (timelineFocalFrameId >= 0 && timelineFocalFrameId < frameCount) return timelineFocalFrameId;
@@ -11104,8 +11119,25 @@ function updateLowerTimelineCenterFrameFromScroll() {
   timelineFocalFrameId = bestIndex;
   applyStageTimelineFocusVisuals();
 }
+function applyTimelinePillFocusClasses() {
+  const pillsEl = document.getElementById('pillsRow');
+  if (!pillsEl) return;
+  const focusIdx = getTimelineStageFocusIndex();
+  const multiSelectionActive = isMultiSelectionActive();
+  pillsEl.querySelectorAll('[data-frame-index]').forEach(el => {
+    const idx = Number(el.dataset.frameIndex);
+    const isFocus = idx === focusIdx && !multiSelectionActive && bottomContextMode !== 'segment';
+    const isSelected = idx === activeIdx && !multiSelectionActive && bottomContextMode !== 'segment';
+    const isMulti = isFrameVisuallyMultiSelected(idx);
+    el.classList.toggle('active', isFocus);
+    el.classList.toggle('selected', isMulti || (isSelected && !isFocus));
+    if (frameLocked[idx]) el.style.color = '#f5c518';
+    else if (isMulti || (isSelected && !isFocus)) el.style.color = '#ff9500';
+    else el.style.color = '';
+  });
+}
 function applyStageTimelineFocusVisuals() {
-  if (isMultiSelectionActive() || bottomContextMode === 'segment') return;
+  if (isMultiSelectionActive() || bottomContextMode === 'segment') { applyTimelinePillFocusClasses(); return; }
   const focusIdx = getTimelineStageFocusIndex();
   const invZ = 1 / editorZoomScale;
   for (let i = 0; i < frameCount; i++) {
@@ -11125,6 +11157,7 @@ function applyStageTimelineFocusVisuals() {
   drawBezier();
   updateDimOverlay();
   updateLowerTimelineMeta();
+  applyTimelinePillFocusClasses();
 }
 function scheduleLowerTimelineCenterFrameUpdate() {
   if (lowerTimelineCenterRaf) return;
@@ -11180,10 +11213,19 @@ function syncLowerTimelineScroll(source, target) {
   requestAnimationFrame(() => { lowerTimelineScrollSyncing = false; });
   if (Date.now() >= lowerTimelineProgrammaticScrollUntil) scheduleLowerTimelineCenterFrameUpdate();
 }
-function setLowerTimelineScroll(el, left, smooth) {
+function setLowerTimelineScroll(el, left) {
   if (!el) return;
-  if (smooth && typeof el.scrollTo === 'function') el.scrollTo({ left, behavior: 'smooth' });
-  else el.scrollLeft = left;
+  el.scrollLeft = left;
+}
+function finishLowerTimelineProgrammaticCenter(fi, scrollLeft, pillsEl, timesEl) {
+  if (lowerTimelineProgrammaticScrollTimer) clearTimeout(lowerTimelineProgrammaticScrollTimer);
+  lowerTimelineProgrammaticScrollUntil = 0;
+  lowerTimelineProgrammaticScrollTimer = 0;
+  lowerTimelineCenterFrameIndex = fi;
+  timelineFocalFrameId = fi;
+  setLowerTimelineScroll(pillsEl, scrollLeft);
+  setLowerTimelineScroll(timesEl, scrollLeft);
+  applyStageTimelineFocusVisuals();
 }
 function centerLowerTimelineOnFrame(fi, smooth = true) {
   if (isMultiSelectionActive()) return;
@@ -11195,19 +11237,36 @@ function centerLowerTimelineOnFrame(fi, smooth = true) {
   if (!pillsEl || !timesEl || !pill) return;
   const maxScroll = Math.max(0, pillsEl.scrollWidth - pillsEl.clientWidth);
   const nextScroll = Math.min(maxScroll, Math.max(0, pill.offsetLeft + pill.offsetWidth / 2 - pillsEl.clientWidth / 2));
-  if (smooth) {
-    lowerTimelineProgrammaticScrollUntil = Date.now() + 520;
-    if (lowerTimelineProgrammaticScrollTimer) clearTimeout(lowerTimelineProgrammaticScrollTimer);
-    lowerTimelineProgrammaticScrollTimer = setTimeout(() => {
-      lowerTimelineProgrammaticScrollUntil = 0;
-      lowerTimelineProgrammaticScrollTimer = 0;
-      lowerTimelineCenterFrameIndex = fi;
-      timelineFocalFrameId = fi;
-      applyStageTimelineFocusVisuals();
-    }, 540);
+  if (lowerTimelineScrollAnimFrame) cancelAnimationFrame(lowerTimelineScrollAnimFrame);
+  if (!smooth) {
+    finishLowerTimelineProgrammaticCenter(fi, nextScroll, pillsEl, timesEl);
+    return;
   }
-  setLowerTimelineScroll(pillsEl, nextScroll, smooth);
-  setLowerTimelineScroll(timesEl, nextScroll, smooth);
+  const start = pillsEl.scrollLeft;
+  const delta = nextScroll - start;
+  const duration = 360;
+  const startedAt = performance.now();
+  lowerTimelineProgrammaticScrollUntil = Date.now() + duration + 80;
+  const step = (now) => {
+    const t = Math.min(1, Math.max(0, (now - startedAt) / duration));
+    const eased = 1 - Math.pow(1 - t, 3);
+    const cur = start + delta * eased;
+    setLowerTimelineScroll(pillsEl, cur);
+    setLowerTimelineScroll(timesEl, cur);
+    if (t < 1) {
+      lowerTimelineScrollAnimFrame = requestAnimationFrame(step);
+    } else {
+      lowerTimelineScrollAnimFrame = 0;
+      finishLowerTimelineProgrammaticCenter(fi, nextScroll, pillsEl, timesEl);
+    }
+  };
+  if (lowerTimelineProgrammaticScrollTimer) clearTimeout(lowerTimelineProgrammaticScrollTimer);
+  lowerTimelineProgrammaticScrollTimer = setTimeout(() => {
+    if (lowerTimelineScrollAnimFrame) cancelAnimationFrame(lowerTimelineScrollAnimFrame);
+    lowerTimelineScrollAnimFrame = 0;
+    finishLowerTimelineProgrammaticCenter(fi, nextScroll, pillsEl, timesEl);
+  }, duration + 120);
+  lowerTimelineScrollAnimFrame = requestAnimationFrame(step);
 }
 function requestLowerTimelineCenter(fi) {
   if (isMultiSelectionActive()) return;
@@ -12113,7 +12172,7 @@ function createFrameDOM(i) {
       gestureState.pendingTarget = { kind: 'frame-tap', fi, pointerId: ev.pointerId };
       gestureState.pendingTimer = setTimeout(() => {
         if (gestureState.mode === 'stageNavigation' || isStageNavigationCoolingDown()) return;
-        selectFrameContext(fi, { showStageMenu: true });
+        selectFrameContext(fi, { showStageMenu: true, centerTimeline: true });
         renderAll();
         clearPendingStageGesture();
       }, 110);
@@ -13197,19 +13256,20 @@ function updateFrameSelector() {
   pr.innerHTML = '';
   const multiSelectionActive = isMultiSelectionActive();
   for (let i = 0; i < frameCount; i++) {
-    const showActivePillFocus = i === activeIdx && !multiSelectionActive && bottomContextMode !== 'segment';
+    const timelineFocusIdx = getTimelineStageFocusIndex();
+    const showActivePillFocus = i === timelineFocusIdx && !multiSelectionActive && bottomContextMode !== 'segment';
     // Trechos intermediários sempre visíveis entre frames.
     if (i > 0) {
       pr.appendChild(makeEasePillEl(i - 1, 'prev'));
     }
 
     const pill = document.createElement('div');
-    const showSelectedPillFocus = isFrameVisuallyMultiSelected(i);
+    const showSelectedPillFocus = isFrameVisuallyMultiSelected(i) || (i === activeIdx && !multiSelectionActive && !showActivePillFocus && bottomContextMode !== 'segment');
     pill.className = 'fp' + (showActivePillFocus ? ' active' : '') + (showSelectedPillFocus ? ' selected' : '');
     pill.textContent = (i + 1);
     pill.dataset.frameIndex = String(i);
     if (frameLocked[i]) pill.style.color = '#f5c518';
-    else if (showSelectedPillFocus && !showActivePillFocus) pill.style.color = 'var(--accent)';
+    else if (showSelectedPillFocus && !showActivePillFocus) pill.style.color = '#ff9500';
     else pill.style.color = '';
 
     let longPressTimer = null;
@@ -14915,7 +14975,7 @@ function commitPendingStageTap() {
   const pending = gestureState.pendingTarget;
   if (!pending || gestureState.mode === 'stageNavigation' || isStageNavigationCoolingDown()) return false;
   if (pending.kind === 'frame-tap' && pending.fi >= 0) {
-    selectFrameContext(pending.fi);
+    selectFrameContext(pending.fi, { centerTimeline: true });
     renderAll();
     clearPendingStageGesture();
     return true;
@@ -15086,6 +15146,7 @@ document.addEventListener('pointerdown', (e) => {
   const bar = document.getElementById('alignBar');
   if (!bar || bar.style.display === 'none') return;
   if (bar.contains(e.target)) return;
+  if (e.target.closest('#midBar')) return;
   if (e.target.closest('#pillsRow')) return;
   if (e.target.closest('#pointModeMenu') || e.target.closest('#topBtnPointMode')) return;
   if (e.target.closest('#topBtnUndo') || e.target.closest('#topBtnRedo')) return;
@@ -15586,7 +15647,7 @@ function endDrag(e) {
   document.body.classList.remove('dragging');
   hideAngleIndicator();
   if (pendingFrameTap && pendingFrameFi >= 0 && !isStageNavigationCoolingDown()) {
-    selectFrameContext(pendingFrameFi);
+    selectFrameContext(pendingFrameFi, { centerTimeline: true });
     renderAll();
   }
   // v8z4b19i — invalidar MP4 se um ponto de curva foi movido (curva normal ou loop)
@@ -21424,21 +21485,17 @@ function syncFrameMultiSelectModeUI() {
 function toggleFrameSelection(fi, makeActive) {
   if (shouldBlockGlobalUIAction()) return;
   if (fi < 0 || fi >= frameCount) return;
-  frameMultiSelectMode = false;
   const wasMultiSelectionActive = isMultiSelectionActive();
   const wasSelected = selectedFrames.has(fi);
   if (wasSelected) selectedFrames.delete(fi);
   else selectedFrames.add(fi);
+  frameMultiSelectMode = selectedFrames.size > 0;
   const isSelectingMultiple = wasMultiSelectionActive || selectedFrames.size > 1;
-  if (makeActive && !isSelectingMultiple) {
+  if (makeActive && !isSelectingMultiple && selectedFrames.size === 0) {
     resetCustGlobalLocks();
-    selectFrameContext(fi);
+    selectFrameContext(fi, { centerTimeline: true });
     lastPillTap = fi;
     closeCustBar();
-  }
-  if (wasSelected && selectedFrames.size === 1) {
-    activeIdx = Array.from(selectedFrames)[0];
-    lastPillTap = activeIdx;
   }
   renderAll();
   syncCustomizePanel();
@@ -21884,6 +21941,9 @@ function openAlignSubmenu(group, keepExisting) {
     }
     s.innerHTML = back + items.join('');
   }
+  const bar = document.getElementById('alignBar');
+  if (bar) bar.classList.add('align-submenu-open');
+  document.body.classList.add('align-submenu-open');
   if (p) p.style.display = 'none';
   if (s) s.style.display = 'flex';
   if (group === 'pause') syncBatchPauseControl();
@@ -21899,7 +21959,8 @@ function closeAlignSubmenu() {
   const p = document.getElementById('alignBarPrimary');
   const s = document.getElementById('alignBarSubmenu');
   const bar = document.getElementById('alignBar');
-  if (bar) bar.classList.remove('ab-pause-panel-open');
+  if (bar) bar.classList.remove('ab-pause-panel-open', 'align-submenu-open');
+  document.body.classList.remove('align-submenu-open');
   if (s) s.style.display = 'none';
   if (p) p.style.display = 'flex';
   resetAlignBarActionsScroll();

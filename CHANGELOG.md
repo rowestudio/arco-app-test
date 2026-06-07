@@ -1,3 +1,14 @@
+## v8z4b29R — sincronização Stage/timeline, seleção múltipla e menus de frame
+
+- `index.html`: base `v8z4b29Q` confirmada antes das alterações e versionamento atualizado para `v8z4b29R` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: separação prática entre frame selecionado (`activeIdx`/seleção simples), foco central da timeline (`timelineFocalFrameId`/`lowerTimelineCenterFrameIndex`) e conjunto de seleção múltipla (`selectedFrames`), com foco/alfa do Stage comandado pelo frame central durante scroll manual.
+- `index.html`: centralização programática da timeline trocada para animação controlada que ignora frames intermediários e finaliza exatamente no frame selecionado.
+- `index.html`: seleção múltipla mantém conjunto sem promover frame principal, preserva o modo ao tocar/desmarcar frames e corrige `Selecionar todos` com isolamento de evento e seleção aditiva de todos os frames.
+- `index.html`: submenus de Pausa, Rotação, Escala, Mover e afins em seleção múltipla passam a abrir em camada superior sobre Linha 3/Linha 4/Coluna 1 sem participar da altura da Linha 3.
+- `index.html`: blocos de frame da timeline escalam número, padding e raio pelo tamanho do bloco, mantendo borda com `clamp()` para legibilidade; frame focal central recebe destaque próprio na timeline.
+- `index.html`: Formato permanece usando o ícone Lucide `proportions`; Preview, exportação MP4, JSON, curvas e motor de animação não foram alterados.
+- `QA.md` e `docs/QA-v8z4b29R.md`: checklist/inventário da v8z4b29R documentado.
+
 ## v8z4b29Q — correção limpa de ícones, timeline e menus inferiores
 
 - `index.html`: base `v8z4b29P` confirmada antes das alterações e versionamento atualizado para `v8z4b29Q` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
