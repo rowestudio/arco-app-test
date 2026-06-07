@@ -1,3 +1,13 @@
+## v8z4b29O — menus, safe area, curvas e seleção múltipla
+
+- `index.html`: base `v8z4b29N` confirmada antes das alterações e versionamento atualizado para `v8z4b29O` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: menus, top bar, painéis, safe area inferior e submenus passam a compartilhar `--menu-bg: #3c3c3b`, com ícones brancos e labels `#b2b2b2` nos menus afetados.
+- `index.html`: menu contextual do Stage e menu de curvas usam cápsulas principais; o menu de curvas substitui o menu contextual no Stage e remove pills individuais dos ícones.
+- `index.html`: timeline ganha respiro vertical, restaura os dois marcadores centrais e preserva tempos parciais discretos sem alterar lógica de scroll/seleção.
+- `index.html`: frame central da timeline atualiza foco visual no Stage e o overlay escuro usa o frame focal em vez de depender apenas do clique direto.
+- `index.html`: `Selecionar todos` mantém seleção múltipla ativa, isola o evento de toque e exibe texto antes do ícone.
+- `QA.md` e `docs/QA-v8z4b29O.md`: checklist/inventário da v8z4b29O documentado.
+
 ## v8z4b29N — UX inferior, timeline e seleção múltipla
 
 - `index.html`: base `v8z4b29m` confirmada antes das alterações e versionamento atualizado para `v8z4b29N` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.

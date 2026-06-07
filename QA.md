@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29O menus, timeline e seleção múltipla
+
+- Checklist detalhado criado em `docs/QA-v8z4b29O.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29N` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29O`; menus/top bar/safe area inferior usam `#3c3c3b`; ícones e labels dos menus afetados foram padronizados; menu contextual do Stage e menu de curvas usam cápsula principal; menu de curvas remove pills individuais; timeline ganhou respiro e dois marcadores centrais; foco central da timeline aciona overlay do Stage; `Selecionar todos` mantém multi-select ativo com texto antes do ícone; motor, Preview, MP4/export, JSON e undo/redo preservados.
+- Não foram executados testes em iPhone/Safari real, Preview real, MP4/export real nem JSON manual neste ambiente automatizado.
+
 # QA pendente — v8z4b29N UX inferior, timeline e seleção múltipla
 
 - Checklist detalhado criado em `docs/QA-v8z4b29N.md`.

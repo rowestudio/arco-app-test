@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29N                                     ║
+║  Versão: v8z4b29O                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29O                                            ║
+║    fix/ux: padroniza menus, safe area, curvas,       ║
+║        timeline, foco central e multi-select.        ║
 ║  v8z4b29N                                            ║
 ║    fix/ux: padroniza base inferior, timeline,        ║
 ║        seleção múltipla e destaque central sem motor.║
@@ -521,6 +524,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29O — fix/ux: padroniza menus, safe area, curvas, timeline, foco central e seleção múltipla sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29N — fix/ux: padroniza base inferior, timeline, seleção múltipla e destaque central do Stage sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29m — fix/ux: corrige seleção discreta de trecho, scroll horizontal sincronizado, centralização, seleção múltipla e menus inferiores sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29L — fix/ux: reduz padding inferior real, dá respiro às 4 linhas, suaviza centralização e refina timeline/Linha 3 sem alterar motor/Preview/MP4/JSON. -->
@@ -562,7 +566,7 @@
 <title>Arco Motion App</title>
 <style>
 :root {
-  --bg:#000; --surface:#1c1c1e; --surface2:#2c2c2e; --surface3:#48484a;
+  --bg:#000; --menu-bg:#3c3c3b; --surface:#1c1c1e; --surface2:#2c2c2e; --surface3:#48484a;
   --border:#38383a; --border2:#545456;
   --text:#fff; --text2:#ebebf5; --text3:#aeaeb2;
   --accent:#04fff2; --red:#ff375f; --yellow:#ffd60a; --green:#30d158;
@@ -578,7 +582,7 @@ html,body{
      contextual; o background do body já garante continuidade abaixo das
      barras inferiores. .image-area mantém background sólido (#000)
      próprio, então a área ativa da imagem continua preta. */
-  background:var(--surface);
+  background:var(--menu-bg);
   color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;
   overflow:hidden;-webkit-font-smoothing:antialiased;
@@ -664,7 +668,7 @@ body.recording #editorZoomCtrl{display:none;}
 
 /* TOP BAR */
 .top-bar{
-  flex-shrink:0;background:#000;
+  flex-shrink:0;background:var(--menu-bg);
   padding-top:env(safe-area-inset-top, 0px);
   height:calc(52px + env(safe-area-inset-top, 0px));
   display:flex;align-items:flex-end;gap:4px;padding-left:6px;padding-right:6px;padding-bottom:4px;
@@ -689,7 +693,7 @@ body.recording #editorZoomCtrl{display:none;}
 /* SETTINGS SHEET */
 .settings-sheet{
   position:fixed;bottom:10px;left:12px;right:12px;
-  background:#151518;border-radius:24px;
+  background:var(--menu-bg);border-radius:24px;
   border:.5px solid rgba(255,255,255,.12);
   padding:14px 14px calc(14px + var(--safe-bottom));
   z-index:300;box-sizing:border-box;max-height:min(82vh, 620px);
@@ -698,7 +702,7 @@ body.recording #editorZoomCtrl{display:none;}
   box-shadow:0 24px 70px rgba(0,0,0,.72);
 }
 .settings-sheet.show{transform:translateY(0);}
-.settings-sheet-head{position:sticky;top:0;z-index:2;background:#151518;display:grid;grid-template-columns:36px 1fr 36px;align-items:center;padding-bottom:12px;}
+.settings-sheet-head{position:sticky;top:0;z-index:2;background:var(--menu-bg);display:grid;grid-template-columns:36px 1fr 36px;align-items:center;padding-bottom:12px;}
 .settings-sheet-title{text-align:center;font-size:13px;font-weight:800;letter-spacing:.12em;color:#fff;}
 .settings-close{width:36px;height:36px;border:0;border-radius:999px;background:transparent;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;}
 .settings-close svg{width:22px;height:22px;display:block;stroke-width:2.5;}
@@ -707,26 +711,26 @@ body.recording #editorZoomCtrl{display:none;}
 .settings-divider{height:.5px;background:rgba(255,255,255,.18);margin:12px 2px;}
 .settings-row{
   min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
-  padding:8px 5px;border-radius:16px;background:#242428;cursor:pointer;text-align:center;
-  font-size:12px;line-height:1.15;font-weight:650;color:#fff;box-sizing:border-box;
+  padding:8px 5px;border-radius:16px;background:rgba(255,255,255,.06);cursor:pointer;text-align:center;
+  font-size:12px;line-height:1.15;font-weight:650;color:#b2b2b2;box-sizing:border-box;
   -webkit-user-select:none;user-select:none;touch-action:manipulation;
 }
 .settings-row:active{background:#303036;}
-.settings-row svg{width:25px;height:25px;flex-shrink:0;color:#fff;display:block;}
+.settings-row svg{width:25px;height:25px;flex-shrink:0;color:#fff;stroke:#fff;display:block;}
 .settings-row.danger{color:#fff;}
 .settings-row.danger svg{color:#fff;}
 .settings-row.disabled{color:var(--text2,#888);cursor:default;opacity:.45;pointer-events:none;}
 .settings-row.disabled svg{color:var(--text2,#888);}
 .settings-json-card{
-  margin-top:12px;min-height:96px;border-radius:18px;background:#242428;
+  margin-top:12px;min-height:96px;border-radius:18px;background:rgba(255,255,255,.06);
   display:grid;grid-template-columns:1fr auto;grid-template-rows:1fr auto;gap:4px 14px;
-  align-items:center;padding:16px 16px;cursor:pointer;color:#fff;touch-action:manipulation;
+  align-items:center;padding:16px 16px;cursor:pointer;color:#b2b2b2;touch-action:manipulation;
 }
 .settings-json-card:active{background:#303036;}
 .settings-json-title{font-size:13px;font-weight:800;line-height:1.2;}
 .settings-json-desc{font-size:11px;font-weight:500;line-height:1.25;color:rgba(255,255,255,.62);margin-top:4px;}
-.settings-json-card svg{grid-column:2;grid-row:1 / span 2;width:42px;height:42px;color:#fff;}
-.settings-json-label{grid-column:1;grid-row:2;font-size:12px;font-weight:750;color:#fff;}
+.settings-json-card svg{grid-column:2;grid-row:1 / span 2;width:42px;height:42px;color:#fff;stroke:#fff;}
+.settings-json-label{grid-column:1;grid-row:2;font-size:12px;font-weight:750;color:#b2b2b2;}
 .tb-item.disabled{opacity:.35;cursor:default;pointer-events:none;}
 .settings-version{
   padding:8px 4px 0;
@@ -736,10 +740,10 @@ body.recording #editorZoomCtrl{display:none;}
   cursor:default;
   -webkit-user-select:text;user-select:text;
 }
-#pointModeMenu{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 84px);transform:translateX(-50%);z-index:130;display:none;gap:8px;padding:8px;border-radius:16px;background:rgba(24,24,28,.92);border:1px solid var(--border2);backdrop-filter:blur(8px);}
-.point-mode-btn{width:44px;height:44px;border:1px solid var(--border2);border-radius:12px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;}
-.point-mode-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.12);}
-.point-mode-icon{width:36px;height:36px;display:block;pointer-events:none;color:currentColor;}
+#pointModeMenu{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:130;display:none;gap:12px;padding:8px 14px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:calc(100% - 20px);}
+.point-mode-btn{width:40px;height:40px;border:0;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:0;}
+.point-mode-btn.active{border-color:transparent;color:var(--accent);background:transparent;}
+.point-mode-icon{width:30px;height:30px;display:block;pointer-events:none;color:currentColor;}
 .point-mode-icon--mask{background-color:currentColor;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain;}
 .point-mode-icon--corner{-webkit-mask-image:url("assets/icons/curve-modes/curve-corner.svg");mask-image:url("assets/icons/curve-modes/curve-corner.svg");}
 .point-mode-icon--symmetric{-webkit-mask-image:url("assets/icons/curve-modes/curve-symmetric.svg");mask-image:url("assets/icons/curve-modes/curve-symmetric.svg");}
@@ -1063,7 +1067,7 @@ body.no-image #stageFrameMenu{display:none !important;}
    mais integrados à base da tela. Piso de 6px mantém folga segura acima
    da Home Bar. */
 .toolbar{
-  flex-shrink:0;background:var(--surface);border-top:.5px solid var(--border);
+  flex-shrink:0;background:var(--menu-bg);border-top:.5px solid var(--border);
   background-image:none;
   box-shadow:none;
   padding:0 4px max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px);
@@ -1084,7 +1088,7 @@ body.no-image #stageFrameMenu{display:none !important;}
 #stageFrameMenu{
   position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
   z-index:120;display:none;align-items:center;justify-content:center;gap:14px;
-  padding:8px 12px;border-radius:16px;background:rgba(24,24,28,.94);border:1px solid var(--border2);
+  padding:8px 14px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);
   backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);
   max-width:calc(100% - 20px);
 }
@@ -1092,10 +1096,11 @@ body.no-image #stageFrameMenu{display:none !important;}
 .stage-frame-action{
   min-width:54px;min-height:44px;border:0;border-radius:0;background:transparent;
   color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-  font-size:11px;font-weight:700;cursor:pointer;-webkit-user-select:none;user-select:none;touch-action:manipulation;
+  font-size:11px;font-weight:600;cursor:pointer;-webkit-user-select:none;user-select:none;touch-action:manipulation;
 }
-.stage-frame-action:active{background:rgba(255,255,255,.10);}
-.stage-frame-action svg{width:21px;height:21px;display:block;}
+.stage-frame-action:active{background:rgba(255,255,255,.08);}
+.stage-frame-action svg{width:24px;height:24px;display:block;color:#fff;stroke:#fff;}
+.stage-frame-action span{color:#b2b2b2;}
 #toolbar.contextual-toolbar{overflow-x:hidden;align-items:stretch;gap:4px;padding-left:6px;padding-right:6px;}
 #toolbar.contextual-toolbar::-webkit-scrollbar{display:none;}
 #toolbar.contextual-toolbar .tb-item{flex:1 1 0;min-width:0;min-height:44px;justify-content:center;gap:3px;padding:0 2px;}
@@ -1123,21 +1128,21 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .tb-val{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;}
 .tb-lbl{font-size:11px;color:var(--text3);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;}
 
-/* v8z4b29N — Base inferior: paleta unificada, timeline compacta, seleção múltipla estável e destaque central visual. */
+/* v8z4b29O — Menus/safe-area #3c3c3b, timeline respirada, curvas sem pills e foco central visual. */
 .mid-bar.timeline-grid{
   --lower-left-w:68px;
   --lower-row-1:21px;
-  --lower-row-2:48px;
-  --lower-row-3:28px;
+  --lower-row-2:52px;
+  --lower-row-3:32px;
   --lower-row-4:39px;
   --lower-safe-bottom:max(calc(env(safe-area-inset-bottom, 0px) - 28px), 0px);
-  height:calc(148px + var(--lower-safe-bottom));
+  height:calc(158px + var(--lower-safe-bottom));
   display:none;
   grid-template-columns:var(--lower-left-w) minmax(0,1fr);
   grid-template-rows:var(--lower-row-1) var(--lower-row-2) var(--lower-row-3) var(--lower-row-4);
   row-gap:3px;
   align-items:stretch;
-  background:#3c3c3b;
+  background:var(--menu-bg);
   border-top:.5px solid rgba(178,178,178,.45);
   padding:2px 0 var(--lower-safe-bottom);
   box-sizing:border-box;
@@ -1145,8 +1150,8 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 }
 .mid-bar.timeline-grid.show{display:grid;}
 .lower-cell{min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;}
-.lower-left{background:#3c3c3b;border-right:.5px solid rgba(178,178,178,.32);padding:2px 6px;}
-.lower-main{justify-content:flex-start;padding:0 5px;overflow:hidden;background:#3c3c3b;}
+.lower-left{background:var(--menu-bg);border-right:.5px solid rgba(178,178,178,.32);padding:2px 6px;}
+.lower-main{justify-content:flex-start;padding:0 5px;overflow:hidden;background:var(--menu-bg);}
 .lower-total-time,.lower-frame-count{font-size:14px;font-weight:700;color:#b2b2b2;line-height:1;white-space:nowrap;letter-spacing:-.01em;}
 .lower-frame-count{font-size:11px;color:rgba(178,178,178,.72);font-weight:600;}
 .lower-global-duration{width:100%;height:100%;border:0;background:transparent;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:0;cursor:pointer;}
@@ -1165,23 +1170,23 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .lower-time-chip.active{color:var(--accent);font-weight:600;}
 .lower-timeline-slot{position:relative;}
 .lower-timeline-slot::before,.lower-timeline-slot::after{content:"";position:absolute;left:50%;transform:translateX(-50%);z-index:2;pointer-events:none;width:5px;height:5px;border:0;border-radius:50%;background:rgba(255,176,0,.82);}
-.lower-timeline-slot::before{top:0;}
-.lower-timeline-slot::after{display:none;}
-.mid-bar.timeline-grid .mid-pills{width:100%;height:100%;justify-content:flex-start;padding:0 calc(50% - 19px) !important;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-behavior:auto;touch-action:pan-x;overscroll-behavior-x:contain;gap:0 !important;}
+.lower-timeline-slot::before{top:2px;}
+.lower-timeline-slot::after{display:block;bottom:2px;}
+.mid-bar.timeline-grid .mid-pills{width:100%;height:100%;justify-content:flex-start;padding:4px calc(50% - 19px) 2px !important;overflow-x:auto;overflow-y:visible;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-behavior:auto;touch-action:pan-x;overscroll-behavior-x:contain;gap:0 !important;}
 .mid-bar.timeline-grid .mid-pills::-webkit-scrollbar{display:none;}
-.mid-bar.timeline-grid .fp{flex:0 0 38px;width:38px;min-width:38px;height:42px;border-radius:13px;padding:0;font-size:15px;justify-content:center;border:2px solid #b2b2b2;background:#3c3c3b;color:rgba(235,235,245,.84);}
-.mid-bar.timeline-grid .fp.active{background:#3c3c3b;color:var(--text);border-color:var(--accent);box-shadow:0 0 0 1px rgba(4,255,242,.55) inset;}
-.mid-bar.timeline-grid .fp.selected{border-color:var(--accent);box-shadow:0 0 0 1px rgba(4,255,242,.45) inset;background:#3c3c3b;color:var(--accent);}
-.mid-bar.timeline-grid .ease-fp{position:relative;flex:0 0 26px;width:26px;min-width:26px;height:42px;border:0;border-radius:0;background:transparent;overflow:visible;margin:0;}
+.mid-bar.timeline-grid .fp{flex:0 0 38px;width:38px;min-width:38px;height:44px;border-radius:13px;padding:0;font-size:15px;justify-content:center;border:2px solid #b2b2b2;background:var(--menu-bg);color:rgba(235,235,245,.84);}
+.mid-bar.timeline-grid .fp.active{background:var(--menu-bg);color:var(--text);border-color:var(--accent);box-shadow:0 0 0 1px rgba(4,255,242,.55) inset;}
+.mid-bar.timeline-grid .fp.selected{border-color:var(--accent);box-shadow:0 0 0 1px rgba(4,255,242,.45) inset;background:var(--menu-bg);color:var(--accent);}
+.mid-bar.timeline-grid .ease-fp{position:relative;flex:0 0 26px;width:26px;min-width:26px;height:44px;border:0;border-radius:0;background:transparent;overflow:visible;margin:0;}
 .mid-bar.timeline-grid .ease-fp::before{content:"";position:absolute;left:-3px;right:-3px;top:50%;height:3px;border-radius:999px;background:#b2b2b2;transform:translateY(-50%);}
 .mid-bar.timeline-grid .ease-fp::after{content:"";position:absolute;left:-9px;right:-9px;top:50%;height:34px;transform:translateY(-50%);}
-.mid-bar.timeline-grid .ease-fp .seg-dot{position:absolute;top:50%;width:12px;height:12px;border:2px solid #b2b2b2;border-radius:50%;background:#3c3c3b;transform:translateY(-50%);z-index:1;}
+.mid-bar.timeline-grid .ease-fp .seg-dot{position:absolute;top:50%;width:12px;height:12px;border:2px solid #b2b2b2;border-radius:50%;background:var(--menu-bg);transform:translateY(-50%);z-index:1;}
 .mid-bar.timeline-grid .ease-fp .seg-dot.start{left:-8px;}
 .mid-bar.timeline-grid .ease-fp .seg-dot.end{right:-8px;}
 .mid-bar.timeline-grid .ease-fp svg{display:none;}
 .mid-bar.timeline-grid .ease-fp.ease-selected{box-shadow:none;border-color:transparent;}
 .mid-bar.timeline-grid .ease-fp.ease-selected::before{background:var(--accent);box-shadow:none;}
-.mid-bar.timeline-grid .ease-fp.ease-selected .seg-dot{border-color:var(--accent);background:#3c3c3b;}
+.mid-bar.timeline-grid .ease-fp.ease-selected .seg-dot{border-color:var(--accent);background:var(--menu-bg);}
 .lower-active-state{width:100%;height:100%;display:flex;align-items:center;gap:8px;overflow:hidden;color:#b2b2b2;}
 .lower-active-label{font-size:12px;font-weight:600;color:#b2b2b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;}
 .lower-active-sub{display:none;}
@@ -1189,8 +1194,8 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 body.has-multi-selection .lower-selection-actions{display:flex;}
 .lower-selection-action{height:24px;border:0;border-radius:0;background:transparent;color:#b2b2b2;display:flex;align-items:center;gap:5px;padding:0 2px;font-size:10px;font-weight:600;cursor:pointer;}
 .lower-selection-action:active{background:transparent;}
-.lower-selection-action svg{width:19px;height:19px;display:block;order:1;color:#fff;stroke:#fff;}
-.lower-selection-action span{order:2;color:#b2b2b2;}
+.lower-selection-action svg{width:21px;height:21px;display:block;order:2;color:#fff;stroke:#fff;}
+.lower-selection-action span{order:1;color:#b2b2b2;}
 .mid-bar.timeline-grid .toolbar{display:flex;width:100%;height:100%;padding:0;border-top:0;background:transparent;align-items:stretch;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}
 .mid-bar.timeline-grid .toolbar.show{display:flex;}
 .mid-bar.timeline-grid .toolbar::-webkit-scrollbar{display:none;}
@@ -1236,7 +1241,7 @@ body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !im
 }
 .settings-btn svg{width:20px;height:20px;display:block;}
 .settings-menu{
-  position:fixed;top:56px;right:12px;background:var(--surface);
+  position:fixed;top:56px;right:12px;background:var(--menu-bg);
   border:1px solid var(--border2);border-radius:14px;
   padding:6px 0;z-index:60;display:none;
   box-shadow:0 8px 32px rgba(0,0,0,.5);min-width:180px;
@@ -1548,7 +1553,7 @@ body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !im
    acima do rodapé visível, criando a aparência de degradê/fade na barra
    inferior mesmo com painel fechado. Aplicando a sombra apenas com .show,
    o rodapé fica completamente sólido. */
-.float-panel{position:fixed;bottom:0;left:0;right:0;background:var(--surface);
+.float-panel{position:fixed;bottom:0;left:0;right:0;background:var(--menu-bg);
   border-radius:20px 20px 0 0;border-top:.5px solid var(--border);
   padding:8px 20px calc(24px + var(--safe-bottom));z-index:200;
   box-shadow:none;
@@ -1610,7 +1615,7 @@ body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !im
    o midBar continua visível logo acima do custBar. */
 #custBar{
   flex-shrink:0 !important;
-  background:var(--surface) !important;
+  background:var(--menu-bg) !important;
   background-image:none !important;
   border-top:.5px solid var(--border) !important;
   padding-bottom:0 !important;
@@ -1642,7 +1647,7 @@ body.cust-open #toolbar{
   display:none !important;
 }
 #custBarTabs{
-  background:var(--surface) !important;
+  background:var(--menu-bg) !important;
   background-image:none !important;
   /* v8z4b16e — Padding IDÊNTICO à .toolbar: subtrai 20px da safe-area
      (piso 6px) para baixar visualmente ícones/labels, eliminando faixa
@@ -1656,7 +1661,7 @@ body.cust-open #toolbar{
   height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px));
 }
 #custBarContent{
-  background:var(--surface) !important;
+  background:var(--menu-bg) !important;
   /* v8z4b16i — Padding inferior IDÊNTICO à .toolbar e #custBarTabs:
      subtrai 20px da safe-area (piso 6px) para que o slider/chips
      desçam perto da Home Bar, eliminando o espaço morto criado em
@@ -1781,7 +1786,9 @@ body.cust-open #toolbar{
 }
 #alignBarPrimary.ab-primary-strip .ab-select-all-fixed .ab-lbl{
   color:#b2b2b2;
+  order:1;
 }
+#alignBarPrimary.ab-primary-strip .ab-select-all-fixed svg{order:2;width:24px;height:24px;}
 #alignBar .ab-icon-only{
   flex:0 0 56px;
   min-width:56px;
@@ -1902,7 +1909,7 @@ body.cust-open #toolbar{
   color:var(--accent);
 }
 #custGlobalLock{
-  background:var(--surface) !important;
+  background:var(--menu-bg) !important;
   border:none !important;
   border-radius:10px;
   width:44px;
@@ -2583,7 +2590,7 @@ body.cust-open #toolbar{
 </div>
 
 
-<!-- v8z4b29N — Botões circulares do frame assistido preservados: X laranja e check ciano, sem texto. -->
+<!-- v8z4b29O — Botões circulares do frame assistido preservados: X laranja e check ciano, sem texto. -->
 <div id="insertionActionBar" role="toolbar" aria-label="Modo de inserção de frame">
   <button id="insertionCancelBtn" class="ins-bar-btn cancel" type="button" title="Cancelar inserção" aria-label="Cancelar">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#i-close"></use></svg>
@@ -2597,7 +2604,7 @@ body.cust-open #toolbar{
 <!-- MID BAR: lock | inverter | pills | − | +
      v8z4b16a — Marcado com data-role="timeline-strip" como base
      estrutural da futura "frame strip" contínua (swipe horizontal
-     com o frame ativo no centro). v8z4b29N usa este mesmo slot para
+     com o frame ativo no centro). v8z4b29O usa este mesmo slot para
      a base inferior em 2 colunas e 4 linhas, sem overlay, sem alterar motor. -->
 <div class="mid-bar show timeline-grid" id="midBar" data-role="timeline-strip" aria-label="Linha inferior em duas colunas e quatro faixas">
   <div class="lower-cell lower-left lower-total-time" id="lowerTotalTime">0s</div>
@@ -2646,12 +2653,12 @@ body.cust-open #toolbar{
   </div>
 </div>
 <!-- ALIGN BAR: seleção múltipla ocupa o slot da Linha 4 / Coluna 2, sem overlay sobre Duração. -->
-<div id="alignBar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--surface);background-image:none;box-shadow:none;border-top:.5px solid var(--border);box-sizing:border-box;height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px));padding:0 4px max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px);">
+<div id="alignBar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--menu-bg);background-image:none;box-shadow:none;border-top:.5px solid var(--border);box-sizing:border-box;height:calc(48px + max(env(safe-area-inset-bottom, 4px), 4px));padding:0 4px max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px);">
   <!-- Camada 1: primária -->
   <div id="alignBarPrimary" class="ab-primary-strip">
     <button type="button" class="ab-tab ab-select-all-fixed" onclick="selectAllFramesForContext(event)">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-list-check"></use></svg>
       <span class="ab-lbl">Selecionar todos</span>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-list-check"></use></svg>
     </button>
     <div id="alignBarActions">
     <button type="button" class="ab-tab" onclick="openAlignSubmenu('pause')">
@@ -2697,7 +2704,7 @@ body.cust-open #toolbar{
 -->
 <div id="custBar" style="display:none;">
   <!-- Conteúdo das abas (TOPO) -->
-  <div id="custBarContent" style="padding:2px 14px 4px;background:#1a1a1a;">
+  <div id="custBarContent" style="padding:2px 14px 4px;background:var(--menu-bg);">
     <!--
       v8z4b15z — Seta "voltar" estilo CapCut: chevron grande, sem texto,
       sem moldura. Volta ao modo compacto (preserva aba ativa). No modo
@@ -2787,7 +2794,7 @@ body.cust-open #toolbar{
     será futura edição vetorial de nódulos (não easing); "Adicionar"
     pertence à faixa de frames, não ao menu local de ajustes.
   -->
-  <div id="custBarTabs" style="display:flex;align-items:stretch;background:var(--surface);">
+  <div id="custBarTabs" style="display:flex;align-items:stretch;background:var(--menu-bg);">
     <!-- v8z4b29L — Pausa usa ícone próprio com círculo e barras, distinto de Tempo. -->
     <div class="cust-tab" data-tab="framepause" onclick="switchCustTab('framepause')">
       <svg viewBox="0 0 24 24" width="22" height="22"><use href="#i-frame-pause"></use></svg>
@@ -2860,7 +2867,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29N</span><br><span id="appVersionNameText">v8z4b29N</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29O</span><br><span id="appVersionNameText">v8z4b29O</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -3092,9 +3099,9 @@ body.cust-open #toolbar{
     </div>
     <div style="display:flex;gap:8px;margin-bottom:2px;" id="segTimingModeRow">
       <button id="btnTimingManual" onclick="setSegmentTimingMode('manual')"
-        style="flex:1;padding:7px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--accent);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;line-height:1.2;">Manual</button>
+        style="flex:1;padding:7px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--accent);color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;line-height:1.2;">Manual</button>
       <button id="btnTimingConstant" onclick="setSegmentTimingMode('constant-speed')"
-        style="flex:1;padding:7px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;line-height:1.2;">Velocidade constante</button>
+        style="flex:1;padding:7px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;line-height:1.2;">Velocidade constante</button>
     </div>
     <div id="segTimingHint" style="display:none;font-size:10px;color:var(--text3);padding:2px 0 4px 2px;">Distribui o tempo conforme o percurso curvo.</div>
     <!-- (4) Subtítulo + sliders individuais por segmento. -->
@@ -5204,8 +5211,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29N';
-const APP_VERSION_NAME = 'v8z4b29N';
+const APP_VERSION = 'v8z4b29O';
+const APP_VERSION_NAME = 'v8z4b29O';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -10983,6 +10990,7 @@ const progressFill = document.getElementById('progressFill');
 const bezierSvg    = document.getElementById('bezierSvg');
 const pointModeMenuEl = document.getElementById('pointModeMenu');
 const topBtnPointMode = document.getElementById('topBtnPointMode');
+if (pointModeMenuEl && stage && pointModeMenuEl.parentElement !== stage) stage.appendChild(pointModeMenuEl);
 
 let bottomContextMode = 'frame';
 let selectedSegmentIndex = -1;
@@ -11013,6 +11021,7 @@ function selectSegmentContext(seg) {
   renderAll();
 }
 function showStageFrameMenu() {
+  closePointModeMenu();
   const menu = document.getElementById('stageFrameMenu');
   if (!menu || !hasImageLoaded() || frameCount === 0 || isPreviewing || isRecording || isInsertingFrame || isStageNavigationActiveOrCoolingDown()) return;
   const lockLabel = document.querySelector('#stageFrameLockBtn span');
@@ -11087,6 +11096,7 @@ function applyStageTimelineFocusVisuals() {
     }
   }
   drawBezier();
+  updateDimOverlay();
   updateLowerTimelineMeta();
 }
 function scheduleLowerTimelineCenterFrameUpdate() {
@@ -11189,6 +11199,7 @@ function syncPointModeMenuUI() {
 }
 function openPointModeMenu() {
   if (!canOpenPointModeMenu()) return;
+  hideStageFrameMenu();
   pointModeMenuVisible = true;
   pointModeMenuEl.style.display = 'flex';
   syncPointModeMenuUI();
@@ -13055,8 +13066,8 @@ function renderAll() {
   // Durante seleção múltipla, manter a ordem visual atual: a fonte de verdade é
   // selectedFrames, sem trazer o último frame tocado ou o grupo selecionado para frente.
   if (!isMultiSelectionActive()) {
-    const activeEl = getFrameEl(activeIdx);
-    if (activeEl) stageInsertBefore(activeEl, bezierSvg);
+    const focusEl = getFrameEl(getTimelineStageFocusIndex());
+    if (focusEl) stageInsertBefore(focusEl, bezierSvg);
   }
 
   // Always keep ctrl points after bezierSvg (on top of everything)
@@ -13264,14 +13275,16 @@ function updateDimOverlay() {
 
   svg.style.display = 'block';
 
-  const f = frames[activeIdx];
-  const { cx, cy } = getFrameCenter(activeIdx);
-  const rot = (frameRotations[activeIdx] || 0);
+  const focusIdx = getTimelineStageFocusIndex();
+  const f = frames[focusIdx];
+  if (!f) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
+  const { cx, cy } = getFrameCenter(focusIdx);
+  const rot = (frameRotations[focusIdx] || 0);
   const hw = f.w / 2, hh = f.h / 2;
   const rx = 10;
 
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  const uid = 'dimClip' + activeIdx;
+  const uid = 'dimClip' + focusIdx;
   svg.innerHTML = `
     <defs>
       <clipPath id="${uid}" clipPathUnits="userSpaceOnUse">
@@ -21409,8 +21422,8 @@ function getContextSelectionLabel() {
   if (!targets.length) return '';
   const maxVisible = 4;
   const names = targets.slice(0, maxVisible).map(i => 'F' + (i + 1));
-  if (targets.length > maxVisible) names.push('F' + (targets[targets.length - 1] + 1) + '…');
-  return '(' + names.join(', ') + ')';
+  const suffix = targets.length > maxVisible ? '…' : '';
+  return '(' + names.join(', ') + suffix + ')';
 }
 
 function updateAlignBar() {
@@ -21710,7 +21723,7 @@ function applyPauseValueToSelected(rawValue) {
 }
 
 function selectAllFramesForContext(ev) {
-  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); if (ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
   if (shouldBlockGlobalUIAction()) return;
   if (frameCount < 1) return;
   if (batchPauseEditSession) commitBatchPauseEditSession();
