@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29S                                     ║
+║  Versão: v8z4b29T                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29T                                            ║
+║    fix/ux: adicionado snap-to-center da timeline     ║
+║        após scroll manual.                           ║
 ║  v8z4b29S                                            ║
 ║    fix: separa seleção e foco visual da timeline     ║
 ║        para o alfa/spotlight do Stage.               ║
@@ -533,6 +536,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29T — fix/ux: adicionado snap-to-center da timeline após scroll manual sem alterar seleção, alfa, motor, Preview, MP4 ou JSON. -->
 <!-- Arco Motion App — v8z4b29S — fix: separa seleção de frame e foco visual da timeline para alfa/spotlight do Stage sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29R — fix/ux: sincroniza Stage/timeline, corrige multi-select, Selecionar todos e camadas dos menus de frame sem alterar motor/Preview/MP4/JSON. -->
 <!-- Arco Motion App — v8z4b29Q — fix/ux: limpa ícones, menus inferiores, timeline, foco central, curvas locais e JSON sem alterar Preview/MP4/schema. -->
@@ -2900,7 +2904,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29S</span><br><span id="appVersionNameText">v8z4b29S</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29T</span><br><span id="appVersionNameText">v8z4b29T</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5244,8 +5248,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29S';
-const APP_VERSION_NAME = 'v8z4b29S';
+const APP_VERSION = 'v8z4b29T';
+const APP_VERSION_NAME = 'v8z4b29T';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11097,16 +11101,18 @@ let lowerTimelineCenterRaf = 0;
 let lowerTimelineProgrammaticScrollUntil = 0;
 let lowerTimelineProgrammaticScrollTimer = 0;
 let lowerTimelineScrollAnimFrame = 0;
+let lowerTimelineSnapTimer = 0;
+let isLowerTimelineProgrammaticCentering = false;
+const LOWER_TIMELINE_SNAP_DELAY_MS = 160;
 function getTimelineStageFocusIndex() {
   if (isMultiSelectionActive() || bottomContextMode === 'segment') return activeIdx;
   if (timelineFocalFrameId >= 0 && timelineFocalFrameId < frameCount) return timelineFocalFrameId;
   if (lowerTimelineCenterFrameIndex >= 0 && lowerTimelineCenterFrameIndex < frameCount) return lowerTimelineCenterFrameIndex;
   return activeIdx;
 }
-function updateLowerTimelineCenterFrameFromScroll() {
+function getLowerTimelineNearestFrameIndex() {
   const pillsEl = document.getElementById('pillsRow');
-  if (!pillsEl || isMultiSelectionActive() || bottomContextMode === 'segment') return;
-  if (Date.now() < lowerTimelineProgrammaticScrollUntil) return;
+  if (!pillsEl) return -1;
   const centerX = pillsEl.scrollLeft + pillsEl.clientWidth / 2;
   let bestIndex = -1;
   let bestDist = Infinity;
@@ -11115,6 +11121,12 @@ function updateLowerTimelineCenterFrameFromScroll() {
     const dist = Math.abs((el.offsetLeft + el.offsetWidth / 2) - centerX);
     if (Number.isFinite(idx) && dist < bestDist) { bestDist = dist; bestIndex = idx; }
   });
+  return bestIndex;
+}
+function updateLowerTimelineCenterFrameFromScroll() {
+  if (isMultiSelectionActive() || bottomContextMode === 'segment') return;
+  if (Date.now() < lowerTimelineProgrammaticScrollUntil) return;
+  const bestIndex = getLowerTimelineNearestFrameIndex();
   if (bestIndex < 0 || bestIndex === lowerTimelineCenterFrameIndex) return;
   lowerTimelineCenterFrameIndex = bestIndex;
   timelineFocalFrameId = bestIndex;
@@ -11167,6 +11179,23 @@ function scheduleLowerTimelineCenterFrameUpdate() {
     updateLowerTimelineCenterFrameFromScroll();
   });
 }
+function scheduleLowerTimelineSnapToCenter() {
+  const pillsEl = document.getElementById('pillsRow');
+  if (!pillsEl || isMultiSelectionActive() || bottomContextMode === 'segment') return;
+  if (isLowerTimelineProgrammaticCentering || Date.now() < lowerTimelineProgrammaticScrollUntil) return;
+  if (lowerTimelineSnapTimer) clearTimeout(lowerTimelineSnapTimer);
+  const lastScrollLeft = pillsEl.scrollLeft;
+  lowerTimelineSnapTimer = setTimeout(() => {
+    lowerTimelineSnapTimer = 0;
+    if (isLowerTimelineProgrammaticCentering || Date.now() < lowerTimelineProgrammaticScrollUntil) return;
+    if (Math.abs(pillsEl.scrollLeft - lastScrollLeft) > 0.5) {
+      scheduleLowerTimelineSnapToCenter();
+      return;
+    }
+    const nearest = getLowerTimelineNearestFrameIndex();
+    if (nearest >= 0) centerLowerTimelineOnFrame(nearest, true);
+  }, LOWER_TIMELINE_SNAP_DELAY_MS);
+}
 function updateLowerTimelineMeta() {
   document.body.classList.toggle('has-multi-selection', isMultiSelectionActive());
   const totalEl = document.getElementById('lowerTotalTime');
@@ -11212,7 +11241,10 @@ function syncLowerTimelineScroll(source, target) {
   const maxTargetScroll = Math.max(0, target.scrollWidth - target.clientWidth);
   target.scrollLeft = Math.min(maxTargetScroll, Math.max(0, source.scrollLeft));
   requestAnimationFrame(() => { lowerTimelineScrollSyncing = false; });
-  if (Date.now() >= lowerTimelineProgrammaticScrollUntil) scheduleLowerTimelineCenterFrameUpdate();
+  if (Date.now() >= lowerTimelineProgrammaticScrollUntil) {
+    scheduleLowerTimelineCenterFrameUpdate();
+    scheduleLowerTimelineSnapToCenter();
+  }
 }
 function setLowerTimelineScroll(el, left) {
   if (!el) return;
@@ -11220,8 +11252,11 @@ function setLowerTimelineScroll(el, left) {
 }
 function finishLowerTimelineProgrammaticCenter(fi, scrollLeft, pillsEl, timesEl) {
   if (lowerTimelineProgrammaticScrollTimer) clearTimeout(lowerTimelineProgrammaticScrollTimer);
+  if (lowerTimelineSnapTimer) clearTimeout(lowerTimelineSnapTimer);
   lowerTimelineProgrammaticScrollUntil = 0;
   lowerTimelineProgrammaticScrollTimer = 0;
+  lowerTimelineSnapTimer = 0;
+  isLowerTimelineProgrammaticCentering = false;
   lowerTimelineCenterFrameIndex = fi;
   timelineFocalFrameId = fi;
   setLowerTimelineScroll(pillsEl, scrollLeft);
@@ -11236,6 +11271,9 @@ function centerLowerTimelineOnFrame(fi, smooth = true) {
   if (!pillsEl || !timesEl || !pill) return;
   const maxScroll = Math.max(0, pillsEl.scrollWidth - pillsEl.clientWidth);
   const nextScroll = Math.min(maxScroll, Math.max(0, pill.offsetLeft + pill.offsetWidth / 2 - pillsEl.clientWidth / 2));
+  if (lowerTimelineSnapTimer) clearTimeout(lowerTimelineSnapTimer);
+  lowerTimelineSnapTimer = 0;
+  isLowerTimelineProgrammaticCentering = true;
   if (lowerTimelineScrollAnimFrame) cancelAnimationFrame(lowerTimelineScrollAnimFrame);
   if (!smooth) {
     finishLowerTimelineProgrammaticCenter(fi, nextScroll, pillsEl, timesEl);
@@ -11243,6 +11281,10 @@ function centerLowerTimelineOnFrame(fi, smooth = true) {
   }
   const start = pillsEl.scrollLeft;
   const delta = nextScroll - start;
+  if (Math.abs(delta) < 0.5) {
+    finishLowerTimelineProgrammaticCenter(fi, nextScroll, pillsEl, timesEl);
+    return;
+  }
   const duration = 360;
   const startedAt = performance.now();
   lowerTimelineProgrammaticScrollUntil = Date.now() + duration + 80;
@@ -11282,6 +11324,8 @@ function bindLowerTimelineScrollSync() {
   if (!timesEl || !pillsEl || timesEl._lowerSyncBound) return;
   timesEl._lowerSyncBound = true;
   pillsEl.addEventListener('scroll', () => syncLowerTimelineScroll(pillsEl, timesEl), { passive: true });
+  pillsEl.addEventListener('touchend', scheduleLowerTimelineSnapToCenter, { passive: true });
+  pillsEl.addEventListener('pointerup', scheduleLowerTimelineSnapToCenter, { passive: true });
 }
 bindLowerTimelineScrollSync();
 setBottomContext('frame');
