@@ -1,3 +1,10 @@
+## v8z4b29U — arquitetura dos submenus inferiores
+
+- `index.html`: base `v8z4b29T` confirmada antes das alterações e versionamento atualizado para `v8z4b29U` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: `#custBar` foi movido estruturalmente para dentro de `#lowerContextSlot`, compartilhando a mesma arquitetura de substituição contextual de `#toolbar` e `#alignBar` em vez de funcionar como barra extra abaixo de `#midBar.timeline-grid`.
+- `index.html`: estados `cust-open`, `cust-expanded` e `align-submenu-open` agora ocultam menus concorrentes e a Linha 3 (`#lowerFrameCount`, `.lower-active-state`, `.lower-selection-actions`) para evitar duplicação, vazamento de texto e safe-area duplicada nos submenus inferiores.
+- `QA.md` e `docs/QA-v8z4b29U.md`: checklist/inventário da v8z4b29U documentado.
+
 ## v8z4b29T — snap-to-center da timeline inferior
 
 - `index.html`: base `v8z4b29S` confirmada antes das alterações e versionamento atualizado para `v8z4b29T` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
