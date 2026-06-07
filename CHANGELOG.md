@@ -1,9 +1,3 @@
-## v8z4b29X — eixo geométrico da timeline central
-
-- `index.html`: base `v8z4b29W` confirmada e versionamento atualizado para `v8z4b29X` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
-- `index.html`: `getLowerTimelineGeometry()` centraliza a referência geométrica em `#pillsRow` para snap, centralização programática e marcadores centrais.
-- `index.html`: unifica eixo geométrico da timeline para alinhar marcadores centrais ao snap-to-center, mantendo seleção, foco, Alpha e menus inferiores inalterados.
-
 ## v8z4b29W — estabilidade da Linha 4 e marcadores centrais
 
 - `index.html`: base `v8z4b29V` confirmada e versionamento atualizado para `v8z4b29W` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
