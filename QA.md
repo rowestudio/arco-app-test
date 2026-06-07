@@ -1,3 +1,11 @@
+# QA pendente — v8z4b29Z exclusão mútua custBar e multi-seleção
+
+- Checklist detalhado criado em `docs/QA-v8z4b29Z.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29W` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo, preservando snap-to-center, Alpha/spotlight e ícone Formato corrigido.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29Z`; `toggleFrameSelection()` e `selectAllFramesForContext()` fecham `#custBar` ao entrar em multi-seleção; entradas de `#custBar` são bloqueadas durante multi-seleção; `openAlignSubmenu()` remove customização antes de abrir submenu; CSS defensivo impede `#custBar`/`cust-expanded` em `has-multi-selection`; não foram alterados snap, Alpha, Preview, MP4/export, JSON, curvas nem motor.
+- QA manual obrigatório pendente: iPhone/Safari; seleção simples; abrir Pausa, Rotação, Escala e Mover; entrar em seleção múltipla com menu simples aberto; clicar em `Selecionar todos`; abrir submenu de seleção múltipla; sair da seleção múltipla; confirmar que `#custBar` não reaparece sozinho; confirmar Linha 4 da Coluna 2 estável, Coluna 1 estável, snap-to-center, Alpha e ícone Formato.
+- Não foram executados testes em iPhone/Safari real neste ambiente automatizado.
+
 # QA pendente — v8z4b29W estabilidade da Linha 4 e marcadores centrais
 
 - Checklist detalhado criado em `docs/QA-v8z4b29W.md`.
