@@ -1,3 +1,11 @@
+# QA pendente — v8z4b29T snap-to-center da timeline inferior
+
+- Checklist detalhado criado em `docs/QA-v8z4b29T.md`.
+- Base inicial encontrada antes das alterações: `v8z4b29S` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo, mantendo a correção funcional de Alpha/spotlight já aplicada.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29T`; adicionado helper puro `getLowerTimelineNearestFrameIndex()`; `updateLowerTimelineCenterFrameFromScroll()` continua atualizando apenas foco visual/focal sem alterar `activeIdx`; scroll manual da timeline inferior agenda snap debounceado após cessar scroll/momentum; centralização programática bloqueia snaps concorrentes e finaliza com `timelineFocalFrameId` no frame encaixado; seleção, menus inferiores, Alpha/spotlight aprovado, Formato, Preview, MP4/export, JSON, curvas e motor preservados.
+- QA manual obrigatório pendente: desktop; iPhone/Safari; scroll lento; scroll rápido com momentum; seleção de frame pelo Stage; seleção pela timeline; projetos com 3 frames e 16 frames; confirmar Alpha seguindo frame central; confirmar que `activeIdx`/seleção não muda apenas por scroll; confirmar que menus inferiores não foram alterados.
+- Não foram executados testes em iPhone/Safari real, Preview real, MP4/export real nem JSON manual neste ambiente automatizado.
+
 # QA pendente — v8z4b29S separação seleção/foco visual da timeline
 
 - Checklist detalhado criado em `docs/QA-v8z4b29S.md`.

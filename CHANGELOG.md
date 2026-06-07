@@ -1,3 +1,12 @@
+## v8z4b29T — snap-to-center da timeline inferior
+
+- `index.html`: base `v8z4b29S` confirmada antes das alterações e versionamento atualizado para `v8z4b29T` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: adicionado `getLowerTimelineNearestFrameIndex()` para centralizar em um único helper o cálculo do frame mais próximo do centro visual de `#pillsRow`.
+- `index.html`: `updateLowerTimelineCenterFrameFromScroll()` passa a reutilizar o helper e continua atualizando apenas `lowerTimelineCenterFrameIndex`, `timelineFocalFrameId` e visuais de foco, sem alterar `activeIdx`.
+- `index.html`: adicionado snap pós-scroll com debounce e checagem de `scrollLeft` estável para respeitar momentum do iPhone/Safari antes de chamar `centerLowerTimelineOnFrame(nearest, true)`.
+- `index.html`: centralização programática passa a bloquear timers concorrentes e finalizar com `timelineFocalFrameId` no frame encaixado, preservando seleção, menus inferiores, Alpha/spotlight aprovado, Formato, Preview, MP4/export, JSON, curvas e motor.
+- `QA.md` e `docs/QA-v8z4b29T.md`: checklist/inventário da v8z4b29T documentado.
+
 ## v8z4b29S — separação entre seleção e foco visual da timeline
 
 - `index.html`: base `v8z4b29R` confirmada antes das alterações e versionamento atualizado para `v8z4b29S` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
