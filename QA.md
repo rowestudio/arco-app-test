@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29P consolidação UX, timeline e foco central
+
+- Checklist detalhado criado em `docs/QA-v8z4b29P.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29O` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29P`; fundo padrão `#3c3c3b`; ícones/textos padronizados; Ajustes/Arquivos em `clapperboard`; Formato em `proportions`; timeline mais compacta com destaque ciano; scroll manual com foco/alfa no frame central; centralização programática sem flicker intermediário; `Selecionar todos` preserva multi-select; painéis de ajuste ocupam mais área quando expandidos; curvas acima do alfa; motor, Preview, MP4/export e JSON preservados.
+- Não foram executados testes em iPhone/Safari real nem geração real de MP4 neste ambiente automatizado.
+
 # QA pendente — v8z4b29O menus, timeline e seleção múltipla
 
 - Checklist detalhado criado em `docs/QA-v8z4b29O.md`.
