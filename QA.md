@@ -1,12 +1,3 @@
-# QA pendente — v8z4b29AC auditoria estrutural da área inferior
-
-- Checklist detalhado criado em `docs/QA-v8z4b29AC.md`.
-- Base auditada antes das alterações: `v8z4b29AB`, comparada com a base funcional `v8z4b29W` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo.
-- Causa do deslocamento registrada pela auditoria estrutural: `body.cust-expanded #lowerContextSlot` reatribuía o slot da Linha 4 para `grid-column: 1 / 3` e `grid-row: 3 / 5`, enquanto `#alignBarSubmenu` ancorava em `bottom: var(--lower-home-breath)`; isso fazia Pausa/Rotação/Escala/Mover dependerem do container/slot errado e deixava espaço morto abaixo do submenu.
-- Verificações estáticas executadas: versionamento atualizado para `v8z4b29AC`; Linha 3 / Coluna 2 (`#lowerRow3Col2`) e Linha 4 / Coluna 2 (`#lowerContextSlot`) têm slots explícitos; `#toolbar`, `#alignBar` e `#custBar` não dependem do fluxo de `Selecionar todos`; submenus expandidos ancoram em `bottom: 0`, sem safe-area duplicada; não houve alteração em snap-to-center, Alpha/spotlight, Preview/export/JSON/curvas/motor.
-- QA manual obrigatório pendente: iPhone/Safari; estado normal; seleção múltipla; clicar em `Selecionar todos`; abrir Pausa, Rotação, Escala e Mover em seleção múltipla; confirmar Linha 4 / Coluna 2 sem queda e sem deslocamento lateral; confirmar submenu sem espaço morto exagerado abaixo e sem corte no topo; confirmar snap-to-center, Alpha/spotlight e Preview/export/JSON/curvas/motor preservados.
-- Não foram executados testes em iPhone/Safari real, Preview real, MP4/export real nem JSON manual neste ambiente automatizado.
-
 # QA pendente — v8z4b29AB estabilidade real da Linha 3/4 em seleção múltipla
 
 - Checklist detalhado criado em `docs/QA-v8z4b29AB.md`.
