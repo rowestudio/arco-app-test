@@ -1,3 +1,12 @@
+## v8z4b29AF — estabilidade da Linha 4 / Coluna 2 em seleção múltipla
+
+- `index.html`: base preservada a partir da `v8z4b29AE`; registrado que a `v8z4b29AE` não foi aprovada visualmente para este problema, pois não alterou o deslocamento aparente da Linha 4 / Coluna 2 ao entrar em seleção múltipla. A microcorreção da `v8z4b29AD` em `#alignBarSubmenu` permanece intacta.
+- `index.html`: versionamento atualizado para `v8z4b29AF` em comentário/changelog do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- `index.html`: medição com `getBoundingClientRect()` mostrou que `#lowerContextSlot` (Linha 4 / Coluna 2) já mantinha o mesmo retângulo nos dois estados, mas o conteúdo visível (ícones/labels de Pausa, Rotação, Escala, Mover) aparecia ~4px mais baixo dentro de `#alignBar` do que dentro de `#toolbar`, porque `#alignBarPrimary`/`#alignBarActions` usavam `align-items:flex-end` e `.ab-tab` usava `justify-content:flex-end` (alinhamento herdado do antigo `#alignBar` flutuante), enquanto `#toolbar .tb-item` centraliza o conteúdo verticalmente.
+- `index.html`: dentro de `.mid-bar.timeline-grid`, `#alignBarPrimary.ab-primary-strip` e `#alignBarActions` passam a usar `align-items:stretch` e `#alignBarActions .ab-tab` passa a usar `justify-content:center`, reproduzindo a centralização vertical de `#toolbar .tb-item` e eliminando o deslocamento visual de ~4px da Linha 4 / Coluna 2 ao entrar em seleção múltipla — sem alterar altura, padding, gap, margin, `grid-row` ou posição de `#lowerContextSlot`/`#alignBar`.
+- `index.html`: `Selecionar todos` continua isolado em área pré-alocada (`--lower-select-all-w`) na Linha 3 / Coluna 2, sem participar do fluxo vertical da Linha 4; `#alignBarSubmenu`, `#custBar`, `#custBarContent`, Pausa/Rotação/Escala/Mover, safe-area, snap-to-center, Alpha/spotlight, `timelineFocalFrameId`, Preview/export/MP4/JSON/curvas/motor preservados sem alteração.
+- `QA.md` e `docs/QA-v8z4b29AF.md`: medições de `getBoundingClientRect()` (Estado A vs. Estado B), checklist de aceite e ciclo de regressão (3x) documentados.
+
 ## v8z4b29AE — camada inferior unificada de submenus
 
 - `index.html`: base preservada a partir da `v8z4b29AD`; a microcorreção de `#alignBarSubmenu` continua no fluxo de seleção múltipla, agora usando a mesma variável estrutural de altura da área inferior contextual.
