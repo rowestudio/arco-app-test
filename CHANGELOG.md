@@ -1,3 +1,11 @@
+## v8z4b29AJ — escala interna real dos frames da timeline
+
+- `index.html`: versionamento atualizado para `v8z4b29AJ` em comentário/changelog do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- `index.html`: `.mid-bar.timeline-grid .fp` agora usa `--timeline-frame-scale` real para largura, altura, número, fonte, padding horizontal, padding vertical, raio e line-height dos frames da timeline; a borda permanece fixa em `1.5px` para preservar a espessura aprovada.
+- `index.html`: adicionadas `syncLowerTimelineFrameScale()` e `scheduleLowerTimelineFrameScale()` para calcular a escala em runtime a partir da largura disponível de `#pillsRow`, quantidade de frames e trechos visíveis, reduzindo perceptivelmente o interior dos frames quando a timeline fica densa.
+- Preservados: menus deslizantes da `v8z4b29AF`, pontos laranja centralizados da `v8z4b29AH`, snap-to-center, Alpha/spotlight, seleção múltipla, curvas, Preview/export, JSON e motor.
+- `QA.md` e `docs/QA-v8z4b29AJ.md`: checklist obrigatório documenta validação visual em iPhone/Safari, comparação com `v8z4b29AI` e regressões preservadas.
+
 ## v8z4b29AI — ajustes do pill de curvas e frames da timeline
 
 - `index.html`: versionamento atualizado para `v8z4b29AI` em comentário/changelog do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
