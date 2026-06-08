@@ -1,3 +1,16 @@
+# QA pendente — v8z4b29AK limpeza seletiva dos frames da timeline/menu inferior
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AK.md`.
+- Contexto registrado: a `v8z4b29AJ` já foi revertida manualmente pelo usuário; esta versão não tenta reverter a AJ inteira novamente.
+- Correção estática executada: a parte indevida da `v8z4b29AI` sobre “responsive/proportional timeline frames” foi removida de `.mid-bar.timeline-grid .fp`, restaurando o padrão fixo anterior dos blocos `.fp` da timeline/menu inferior.
+- Escopo corrigido e pendente: o pedido correto de escala proporcional era sobre frames desenhados no Stage (`.frame`, `.frame-visual`, `.frame-border`, `.frame-num`), mas essa implementação continua pendente e não foi feita na `v8z4b29AK`.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29AK`; não há variáveis `--timeline-frame-*` ou `--fp-scale` aplicadas aos `.fp`; não há funções/estado/chamadas `lowerTimelineFrameScale`, `syncLowerTimelineFrameScale()` ou `scheduleLowerTimelineFrameScale()`; listeners de `resize`/`orientationchange` seguem chamando `syncLowerTimelineCenterMarkers()`.
+- Preservados sem alteração: menus deslizantes da `v8z4b29AF`, pontos laranja centralizados da `v8z4b29AH`, snap-to-center, `timelineFocalFrameId`, scroll da timeline, Alpha/spotlight, Preview/export/MP4, JSON, curvas existentes, `applyCurrentCurveModeToAllFrames()` e motor.
+- QA manual obrigatório pendente: abrir o app; confirmar versão visível `v8z4b29AK`; comparar a timeline/menu inferior com o visual anterior à parte errada da `v8z4b29AI`; confirmar pontos laranja centralizados; confirmar menus deslizantes; confirmar pill de curvas e ação global; confirmar que nenhum frame do Stage foi alterado nesta versão.
+- Não foram executados testes em iPhone/Safari real, Preview/export real, MP4 real, JSON manual nem QA visual manual neste ambiente automatizado.
+
+> Nota histórica: a seção antiga da `v8z4b29AI` abaixo foi superada pela `v8z4b29AK` na parte que afirmava proporcionalidade dos frames da timeline/menu inferior; essa proporcionalidade em `.fp` foi removida e não deve ser tratada como comportamento aprovado.
+
 # QA pendente — v8z4b29AI pill de curvas e frames proporcionais da timeline
 
 - Checklist detalhado criado em `docs/QA-v8z4b29AI.md`.
