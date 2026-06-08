@@ -1,3 +1,11 @@
+## v8z4b29AK — limpeza seletiva dos frames da timeline/menu inferior
+
+- `index.html`: versionamento atualizado para `v8z4b29AK` em comentário/changelog do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- `index.html`: removidas da regra `.mid-bar.timeline-grid .fp` as variáveis proporcionais indevidas criadas na `v8z4b29AI` para os frames da timeline/menu inferior (`--timeline-frame-*` e lógica equivalente), restaurando largura, altura, raio, padding, fonte e borda pelo padrão fixo anterior com `--fp-w:34px` e `--fp-h:44px`.
+- `index.html`: verificado que não há resíduos da `v8z4b29AJ` para escala JS da timeline (`lowerTimelineFrameScale`, `syncLowerTimelineFrameScale()` ou `scheduleLowerTimelineFrameScale()`), e os listeners de `resize`/`orientationchange` continuam apontando diretamente para `syncLowerTimelineCenterMarkers()`.
+- `CHANGELOG.md`, `QA.md` e `docs/QA-v8z4b29AK.md`: registrado que a `v8z4b29AJ` já foi revertida manualmente; a parte indevida da `v8z4b29AI` sobre timeline/menu inferior foi removida; a escala proporcional correta dos frames do Stage (`.frame`, `.frame-visual`, `.frame-border`, `.frame-num`) permanece pendente e fora do escopo desta versão.
+- Preservados sem alteração: menus deslizantes da `v8z4b29AF`, pontos laranja centralizados da `v8z4b29AH`, snap-to-center, `timelineFocalFrameId`, scroll da timeline, Alpha/spotlight, Preview/export/MP4, JSON, curvas existentes e motor.
+
 ## v8z4b29AI — ajustes do pill de curvas e frames da timeline
 
 - `index.html`: versionamento atualizado para `v8z4b29AI` em comentário/changelog do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
