@@ -1,3 +1,13 @@
+# QA pendente — v8z4b29AL escala interna dos frames do Stage
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AL.md`.
+- Base obrigatória confirmada como `v8z4b29AK`, validada para remoção/limpeza das alterações indevidas dos frames da timeline/menu inferior.
+- Diagnóstico antes da alteração: `.frame` define o contêiner absoluto do Stage e agora só recebe a variável visual; `.frame-visual` continua com `transform-origin:center center` e rotação aplicada sem mudança; `.frame-border` tinha `border-radius:10px` fixo e borda aprovada controlada em JS; `.frame-num` tinha `top:6px`, `left:8px`, `font-size:12px`, `padding:2px 7px` e `border-radius:6px` fixos.
+- Diagnóstico do tamanho do Stage: `renderAll()` representa cada frame por `frames[i] = {x,y,w,h}` aplicado diretamente a `style.left`, `style.top`, `style.width` e `style.height`; a rotação continua em `.frame-visual`; a escala visual da UI interna agora usa `offsetWidth/offsetHeight` do próprio `.frame`, com fallback para `frame.w/frame.h`, sem ler timeline/menu inferior.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29AL`; `--stage-frame-ui-scale` afeta apenas `.frame-border`/`.frame-num`; não houve alteração em `.fp`, `.mid-bar.timeline-grid .fp`, `#pillsRow` ou `.mid-pills`; dados `frames[]`, rotação, curvas, Preview/export e JSON não foram alterados.
+- QA manual obrigatório pendente: iPhone/Safari; abrir app; confirmar versão visível `v8z4b29AL`; carregar projeto com frames grandes, médios e pequenos; confirmar escala proporcional do número/label/radius no Stage; confirmar borda com espessura aprovada; confirmar posição, escala, rotação, handles, gestos, curvas, menus deslizantes, pontos laranja, timeline/menu inferior, Preview e JSON/export sem regressão.
+- Não foram executados testes em iPhone/Safari real, Preview/export real, MP4 real, JSON manual nem comparação visual real com `v8z4b29AK` neste ambiente automatizado.
+
 # QA pendente — v8z4b29AK limpeza seletiva dos frames da timeline/menu inferior
 
 - Checklist detalhado criado em `docs/QA-v8z4b29AK.md`.
