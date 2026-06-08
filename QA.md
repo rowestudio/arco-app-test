@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29AM menu de curvas Global armado e bissetriz
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AM.md`.
+- Base confirmada: `v8z4b29AL` presente antes da alteração; preservadas v8z4b29AF, v8z4b29AH, v8z4b29AK e v8z4b29AL.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29AM`; menu de curvas mantém ícones sem texto e mais legíveis; Global fica neutro por padrão, separado por divisor e funciona como modo armado; modos locais/globais não fecham o menu; reconstrução suave por bissetriz altera somente handles `curvesV2` com clamp proporcional.
+- QA manual obrigatório pendente: validar Global armado/cancelamento, Undo/Redo em um passo para aplicação global e reconstrução suave, Preview, JSON e ausência de alteração visual na timeline/menu inferior.
+
 # QA pendente — v8z4b29AL escala interna dos frames do Stage
 
 - Checklist detalhado criado em `docs/QA-v8z4b29AL.md`.
