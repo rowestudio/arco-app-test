@@ -1,3 +1,11 @@
+## v8z4b29AG — alinhamento dos pontos centrais da timeline
+
+- `index.html`: base obrigatória preservada a partir da `v8z4b29AF`, mantendo intacta a correção aprovada dos menus deslizantes da seleção de frames e sem alterar Linha 3 / Linha 4 / Coluna 2.
+- `index.html`: versionamento atualizado para `v8z4b29AG` em comentário/changelog do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- `index.html`: `syncLowerTimelineCenterMarkers()` passa a calcular `--lower-timeline-center-x` com o mesmo eixo horizontal funcional de `#pillsRow` usado pelo snap (`pillsEl.clientWidth / 2`), em vez de usar a largura visual do retângulo do container; `.lower-timeline-slot::before` e `.lower-timeline-slot::after` continuam usando a variável e `translateX(-50%)`.
+- Preservados sem alteração: snap-to-center, `timelineFocalFrameId`, Alpha/spotlight, Preview/export/MP4, JSON, curvas, motor, seleção múltipla, menus deslizantes, `#alignBarSubmenu`, `#custBar`, `#custBarContent` e arquitetura da Linha 3 / Linha 4 / Coluna 2.
+- `QA.md` e `docs/QA-v8z4b29AG.md`: medição obrigatória com `getBoundingClientRect()` e checklist visual/manual documentados.
+
 ## v8z4b29AF — estabilidade da Linha 4 / Coluna 2 em seleção múltipla
 
 - `index.html`: base preservada a partir da `v8z4b29AE`; registrado que a `v8z4b29AE` não foi aprovada visualmente para este problema, pois não alterou o deslocamento aparente da Linha 4 / Coluna 2 ao entrar em seleção múltipla. A microcorreção da `v8z4b29AD` em `#alignBarSubmenu` permanece intacta.
