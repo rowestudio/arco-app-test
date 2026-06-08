@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29AN Modo Tangente e Global armado no pill de curvas
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AN.md`.
+- Base atualizada para `v8z4b29AN`, partindo da base mais recente do app (`v8z4b29AM`) e preservando `v8z4b29AL`, `v8z4b29AF`, `v8z4b29AH` e `v8z4b29AK`.
+- Verificações estáticas executadas: versionamento atualizado; todos os botões do menu de curvas permanecem dentro do mesmo pill; Tangente usa o SVG Lucide `tangent`; Global é armado/cancelável com feedback curto; aplicação local/global não fecha o menu; Tangente altera somente handles `curvesV2` e `pointMode`.
+- QA manual obrigatório pendente: validar iPhone/Safari, Global armado/cancelamento, Undo/Redo em um passo, Tangente local/global, Preview/export/MP4 real, JSON e ausência de regressão visual na timeline/menu inferior.
+
 # QA pendente — v8z4b29AM menu de curvas Global armado e bissetriz
 
 - Checklist detalhado criado em `docs/QA-v8z4b29AM.md`.

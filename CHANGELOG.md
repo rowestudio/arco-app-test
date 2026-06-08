@@ -1,3 +1,12 @@
+# v8z4b29AN
+- ux: reorganiza o menu de curvas com todos os ícones dentro do mesmo pill.
+- ux: aumenta os ícones de curva e suaviza a espessura do traço.
+- ux: implementa Global como modo armado com feedback “Clique em um modo”.
+- feat: renomeia a suavização automática para Modo Tangente, usando ícone Lucide “tangent”.
+- feat: Modo Tangente recalcula handles pela tangente local derivada dos frames vizinhos para normalizar curvas após edição rápida.
+- ux: Tangente é local por padrão e só aplica a todos quando Global está armado.
+- preserva timeline/menu inferior, menus deslizantes da v8z4b29AF, pontos laranja da v8z4b29AH, snap, Alpha, Preview/export, JSON e motor.
+
 ## v8z4b29AM
 - ux: aumenta e refina os ícones do menu de curvas.
 - ux: separa a ação Global dos modos de curva e implementa Global como modo armado.
