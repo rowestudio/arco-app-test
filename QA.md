@@ -1,3 +1,11 @@
+# QA pendente — v8z4b29AD ancoragem do submenu de seleção múltipla
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AD.md`.
+- Base obrigatória confirmada antes das alterações: `v8z4b29AB` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app e comentário/changelog do topo; registrado que `v8z4b29AB` não foi aprovada funcionalmente para o bug visual dos submenus de seleção múltipla.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29AD`; `.mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu` agora usa `bottom:0`, altura/min-height `calc(var(--lower-row-3) + var(--lower-row-4) - 8px)`, `overflow-y:visible` e padding `8px 8px 6px 6px`; `#custBar` permanece irrelevante para esse fluxo; snap, Alpha/spotlight, Preview/export, JSON, curvas e motor preservados.
+- QA manual obrigatório pendente: iPhone/Safari ou viewport equivalente; seleção múltipla; abrir Rotação/Pausa/Escala/Mover; medir `#lowerContextSlot`, `#alignBarSubmenu` e `#pillsRow`; confirmar submenu ancorado ao rodapé real, sem espaço morto embaixo, sem invasão dos frames/pills, Linha 4 / Coluna 2 estável, `Selecionar todos` em uma linha, snap-to-center, Alpha/spotlight e Preview/export/JSON/curvas sem regressão.
+- Não foram executados testes em iPhone/Safari real, Preview real, MP4/export real, JSON manual nem curvas manuais neste ambiente automatizado.
+
 # QA pendente — v8z4b29AB estabilidade real da Linha 3/4 em seleção múltipla
 
 - Checklist detalhado criado em `docs/QA-v8z4b29AB.md`.

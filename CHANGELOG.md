@@ -1,3 +1,11 @@
+## v8z4b29AD — ancoragem do submenu de seleção múltipla
+
+- `index.html`: base encontrada antes das alterações em `v8z4b29AB`; registrado que a v8z4b29AB não foi aprovada funcionalmente para o bug visual dos submenus de seleção múltipla.
+- `index.html`: versionamento atualizado para `v8z4b29AD` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- `index.html`: a regra `.mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu` passa a ancorar o submenu em `bottom:0`, reduzindo a altura para `calc(var(--lower-row-3) + var(--lower-row-4) - 8px)` e ajustando o padding interno sem recorrer a `#custBar`/`cust-expanded`.
+- `index.html`: preservados snap, Alpha/spotlight, Preview/export, JSON, curvas e motor.
+- `QA.md` e `docs/QA-v8z4b29AD.md`: checklist/inventário da v8z4b29AD documentado.
+
 ## v8z4b29AB — estabilidade real da Linha 3/4 em seleção múltipla
 
 - `index.html`: base `v8z4b29W` confirmada antes das alterações e versionamento atualizado para `v8z4b29AB` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
