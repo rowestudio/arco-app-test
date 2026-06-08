@@ -1,15 +1,15 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29AQ                                    ║
+║  Versão: v8z4b29AR                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
-║  v8z4b29AQ                                           ║
-║    fix/flow: roteamento Home/Novo/Abrir/Cancelar.   ║
+║  v8z4b29AR                                           ║
+║    fix/flow/state: Novo Projeto Home + sync UI.     ║
 ║  v8z4b29AE                                           ║
 ║    fix/ux: reduz offset interno do número dos        ║
 ║        frames pequenos no Stage.                     ║
@@ -597,7 +597,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b29AQ — fix/flow: corrige roteamento Home/Novo projeto/Abrir projeto/Cancelar, separa intenção de arquivo JSON versus imagem e preserva a base validada v8z4b29AE. -->
+<!-- Arco Motion App — v8z4b29AR — fix/flow/state/template: corrige Novo Projeto da Home, sincroniza Stage/timeline/contador/frame ativo após criação e corrige template círculo, preservando a base v8z4b29AQ. -->
 <!-- Arco Motion App — v8z4b29AN — ux/feat: reorganiza o pill de curvas, adiciona Modo Tangente local com Global armado e preserva timeline/menu inferior, Preview/export, JSON, menus deslizantes e pontos laranja. -->
 <!-- Arco Motion App — v8z4b29AL — fix/ux: escala elementos internos dos frames do Stage conforme tamanho renderizado, preservando borda, geometria, timeline/menu inferior, v8z4b29AF, v8z4b29AH e v8z4b29AK. -->
 <!-- Arco Motion App — v8z4b29AF — fix/ux: estabiliza a Linha 4 / Coluna 2 do menu inferior ao entrar em seleção múltipla, isolando "Selecionar todos" (Linha 3 / Coluna 2) do alinhamento vertical de #alignBar. -->
@@ -2300,7 +2300,7 @@ body.cust-open #toolbar{
   background:var(--surface3);
 }
 
-/* Home provisória e fluxo guiado de Novo Projeto — v8z4b29AQ */
+/* Home provisória e fluxo guiado de Novo Projeto — v8z4b29AR */
 .home-screen{position:fixed;inset:0;z-index:260;background:var(--menu-bg);display:none;flex-direction:column;padding:max(18px,env(safe-area-inset-top)) 18px max(18px,env(safe-area-inset-bottom));overflow:auto;-webkit-overflow-scrolling:touch;}
 body.home-visible .home-screen{display:flex;}
 body.home-visible .app{visibility:hidden;pointer-events:none;}
@@ -2354,7 +2354,7 @@ body.home-visible .app{visibility:hidden;pointer-events:none;}
         <svg viewBox="0 0 24 24"><use href="#i-settings"></use></svg>
       </button>
       <div class="home-menu" id="homeMenu">
-        <div class="home-menu-item" aria-label="Versão atual"><span>Versão</span><strong id="homeVersionText">v8z4b29AQ</strong></div>
+        <div class="home-menu-item" aria-label="Versão atual"><span>Versão</span><strong id="homeVersionText">v8z4b29AR</strong></div>
         <button class="home-menu-item" type="button" onclick="window.location.reload()"><span>Recarregar aplicativo</span><span>↻</span></button>
         <div class="home-menu-note">Estrutura preparada para Site da empresa, Tutoriais, Ajuda, Comunidade, Sobre, Termos/licença e Contato.</div>
       </div>
@@ -2366,7 +2366,7 @@ body.home-visible .app{visibility:hidden;pointer-events:none;}
       <p class="home-subtitle">Página inicial provisória para criar um projeto guiado ou abrir um projeto JSON salvo.</p>
     </div>
     <div class="home-actions">
-      <button class="home-action primary" type="button" onclick="beginNewProjectFromHome()">
+      <button class="home-action primary" type="button" id="homeNewProjectBtn">
         <svg viewBox="0 0 24 24"><use href="#i-file-plus-2"></use></svg>
         <span>Novo projeto<small>Escolha formato, template e imagem.</small></span>
       </button>
@@ -3101,7 +3101,7 @@ body.home-visible .app{visibility:hidden;pointer-events:none;}
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AQ</span><br><span id="appVersionNameText">v8z4b29AQ</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AR</span><br><span id="appVersionNameText">v8z4b29AR</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json,application/json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5471,8 +5471,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29AQ';
-const APP_VERSION_NAME = 'v8z4b29AQ';
+const APP_VERSION = 'v8z4b29AR';
+const APP_VERSION_NAME = 'v8z4b29AR';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5592,7 +5592,7 @@ let loopSegEasing = 'linear';       // easing de Velocidade do trecho N→1
 let loopSegRotEasing = 'linear';    // easing de Rotação do trecho N→1
 let loopSegScaleEasing = 'linear';  // easing de Escala do trecho N→1
 let pendingProjectData = null; // projeto aguardando imagem ser carregada
-let pendingNewProject = null; // v8z4b29AQ — estado temporário do Novo Projeto guiado
+let pendingNewProject = null; // v8z4b29AR — estado temporário do Novo Projeto guiado
 let easeAmount = 0;
 let easeMode = 'global';
 let segEasings = []; // easing por segmento
@@ -18898,7 +18898,7 @@ function refreshSliderFills() {
 
 
 // ═══════════════════════════════════════
-// HOME / NOVO PROJETO — v8z4b29AQ
+// HOME / NOVO PROJETO — v8z4b29AR
 // ═══════════════════════════════════════
 const NEW_PROJECT_FORMATS = [
   { ratio: '9:16', w: 14, h: 24 },
@@ -18934,7 +18934,7 @@ function toggleHomeMenu() {
   if (menu) menu.classList.toggle('open');
 }
 
-let activeFileIntent = null; // v8z4b29AQ — separa JSON de projeto da imagem do Novo Projeto
+let activeFileIntent = null; // v8z4b29AR — separa JSON de projeto da imagem do Novo Projeto
 
 function openProjectFromHome() {
   const menu = document.getElementById('homeMenu');
@@ -18954,6 +18954,11 @@ function loadProjectFromHome() {
 
 function beginNewProjectFromHome() {
   openNewProjectFlow('home');
+}
+
+const homeNewProjectBtnEl = document.getElementById('homeNewProjectBtn');
+if (homeNewProjectBtnEl) {
+  homeNewProjectBtnEl.addEventListener('click', beginNewProjectFromHome);
 }
 
 function requestNewProjectFromEditor() {
@@ -18992,9 +18997,17 @@ function selectPendingNewProjectFormat(ratio) {
   refreshNewProjectChoiceUI();
 }
 
+function normalizeNewProjectTemplateId(template) {
+  const raw = String(template || 'none').trim().toLowerCase();
+  const normalized = raw.normalize ? raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : raw;
+  if (['circle', 'circulo', 'circular'].includes(normalized)) return 'circle';
+  if (['none', 'manual', 'livre', 'sem-template', 'sem template'].includes(normalized)) return 'none';
+  return normalized;
+}
+
 function selectPendingNewProjectTemplate(template) {
   if (!pendingNewProject) return;
-  pendingNewProject.template = template || 'none';
+  pendingNewProject.template = normalizeNewProjectTemplateId(template);
   refreshNewProjectChoiceUI();
 }
 
@@ -19093,13 +19106,17 @@ function clearCurrentProjectForNewProject() {
   pendingProjectData = null;
   projectResetBaseline = null;
   _lastProjectFileName = '';
-  clearFrameMultiSelectState();
   closeAll();
   closeCustBar();
   hideStageFrameMenu();
+  closePointModeMenu();
   document.querySelectorAll('.frame').forEach(el => el.remove());
   document.querySelectorAll('.ctrl-pt').forEach(el => el.remove());
   document.querySelectorAll('.mid-pathpt').forEach(el => el.remove());
+  const pillsEl = document.getElementById('pillsRow');
+  if (pillsEl) { pillsEl.innerHTML = ''; pillsEl.scrollLeft = 0; }
+  const timesEl = document.getElementById('lowerPartialTimes');
+  if (timesEl) { timesEl.innerHTML = ''; timesEl.scrollLeft = 0; }
   frames.length = 0;
   ctrlPts.length = 0;
   ctrlPtManual.length = 0;
@@ -19113,20 +19130,65 @@ function clearCurrentProjectForNewProject() {
   scaleEasings.length = 0;
   curvesV2 = null;
   loopCtrlPt = null;
+  currentTemplate = 'manual';
   frameCount = 0;
   activeIdx = 0;
+  selectedSegmentIndex = -1;
+  _activeEaseSeg = 0;
+  lowerTimelineCenterFrameIndex = 0;
+  timelineFocalFrameId = 0;
+  lowerTimelinePendingCenterIndex = -1;
   selectedFrames.clear();
   frameMultiSelectMode = false;
+  setBottomContext('frame');
+  resetCustGlobalLocks();
+  clearFrameMultiSelectState();
   undoStack.length = 0;
   redoStack.length = 0;
   updateUndoRedoUI();
   resetGeneratedVideoState();
   resetEditorZoom();
+  updateLowerTimelineMeta();
+}
+
+function syncNewProjectUiAfterCommit(reason) {
+  normalizeProjectArrays();
+  ensureFramePauses();
+  ensureSegmentArraysIntegrity();
+  activeIdx = frameCount > 0 ? 0 : 0;
+  selectedSegmentIndex = -1;
+  _activeEaseSeg = 0;
+  selectedFrames.clear();
+  frameMultiSelectMode = false;
+  lowerTimelineCenterFrameIndex = activeIdx;
+  timelineFocalFrameId = activeIdx;
+  lowerTimelinePendingCenterIndex = -1;
+  setBottomContext('frame');
+  closeAll();
+  closeCustBar();
+  hideStageFrameMenu();
+  closePointModeMenu();
+  updateUndoRedoUI();
+  syncDurationUI();
+  updateToolbarLabels();
+  renderAll();
+  updateFrameSelector();
+  centerLowerTimelineOnFrame(activeIdx, false);
+  applyStageTimelineFocusVisuals();
+  updateLowerTimelineMeta();
+  captureProjectResetBaseline(reason || 'new-project');
+  requestAnimationFrame(() => {
+    renderAll();
+    updateFrameSelector();
+    centerLowerTimelineOnFrame(activeIdx, false);
+    applyStageTimelineFocusVisuals();
+    updateLowerTimelineMeta();
+  });
 }
 
 function commitNewProjectWithImage(file) {
   if (!pendingNewProject || !file) return;
-  const config = { ...pendingNewProject, imageFile: file };
+  const config = { ...pendingNewProject, template: normalizeNewProjectTemplateId(pendingNewProject.template), imageFile: file };
   const modal = document.getElementById('newProjectModal');
   if (modal) modal.classList.remove('open');
   clearCurrentProjectForNewProject();
@@ -19137,7 +19199,7 @@ function commitNewProjectWithImage(file) {
     if (config.template && config.template !== 'none') {
       _projectNewFromImage = false;
       applyTemplate(config.template);
-      captureProjectResetBaseline('new-project-template');
+      syncNewProjectUiAfterCommit('new-project-template');
     } else {
       currentTemplate = 'manual';
       const tbTpl = document.getElementById('tbTemplate');
@@ -19150,6 +19212,7 @@ function commitNewProjectWithImage(file) {
       syncScaleEasingModeUI();
       _projectNewFromImage = true;
       updateToolbarLabels();
+      syncNewProjectUiAfterCommit('new-project-manual');
       startFirstFrameAssistedInsertion();
     }
     undoStack.length = 0;
@@ -20122,6 +20185,7 @@ function applyViewMode() {
 }
 
 function applyTemplate(type) {
+  type = normalizeNewProjectTemplateId(type);
   if (!imgEl) { showStatus('Carregue uma imagem primeiro'); return; }
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   const prevState = captureState();
@@ -20294,7 +20358,7 @@ function applyTemplate(type) {
     }
 
     activeIdx = 0;
-    document.getElementById('tbTemplate').textContent = 'Circulo';
+    document.getElementById('tbTemplate').textContent = 'Círculo';
     duration = 8;
     segDurations.length = 0;
     ensureSegDurations();

@@ -7,6 +7,17 @@
 - Substitui v8z4b25g como checkpoint estável atual.
 - Serve como base segura para todas as evoluções listadas abaixo.
 
+
+## v8z4b29AR — Roadmap futuro do Novo Projeto
+
+- Futuramente, a criação de Novo Projeto não deve ficar presa a uma única ordem fixa.
+- Entradas desejadas:
+  1. começar pela imagem/Fotos/iPhone → formato → template ou Sem template;
+  2. começar pelo template → imagem → formato, se necessário;
+  3. começar pelo formato → template ou Sem template → imagem, mantendo o fluxo atual.
+- Regra de arquitetura futura: todas as entradas devem alimentar o mesmo construtor interno, por exemplo `pendingNewProject = { format, template, imageFile, entryMode }` ou estrutura equivalente.
+- Fora do escopo desta versão: picker especial do Fotos além do input atual, biblioteca completa de templates, múltiplos modos visuais de entrada, multi-imagem, comunidade e conta/perfil.
+
 ## Sequência provável de versões
 
 | Versão           | Foco principal                                              |
