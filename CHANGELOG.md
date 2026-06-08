@@ -1,3 +1,12 @@
+# v8z4b29AT
+- fix/flow: corrige de forma robusta o botão Novo Projeto da Home usando botão real e binding direto ao elemento renderizado.
+- fix/new-project: corrige commit após escolha de imagem para fechar a tela de Novo Projeto e abrir o editor automaticamente.
+- fix/state: impede Novo Projeto de terminar com 0 frames e aplica fallback F1 assistido se template falhar.
+- fix/render: força sincronização imediata de Stage, timeline, contador e frame ativo após criar Novo Projeto.
+- fix/template: corrige aplicação/renderização inicial do template Círculo.
+- fix/ui: reutiliza na Home o mesmo ícone de recarregar aplicativo usado na parte interna.
+- preserva Abrir Projeto, Fechar Projeto, escala proporcional dos frames no Stage, timeline/menu inferior, curvas, Tangente/Global, Preview/export, JSON e motor.
+
 # v8z4b29AS
 - fix/flow: corrige acionamento do botão Novo Projeto da Home usando ação explícita/data-action e reaproveitando o fluxo funcional do menu interno.
 - fix/state: impede que Novo Projeto abra editor com 0 frames.
