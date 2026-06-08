@@ -1,3 +1,11 @@
+# v8z4b29AQ
+- fix/flow: corrige botão Novo projeto da Home, que não acionava o fluxo de criação.
+- fix/flow: corrige Abrir projeto da Home para carregar JSON direto no editor, sem passar pela tela de Novo Projeto.
+- fix/flow: separa intenção de arquivo entre abrir projeto JSON e escolher imagem para Novo Projeto.
+- ux: ativa o X/Cancelar da tela de Novo Projeto como cancelar/fechar fluxo, preservando Home ou editor anterior.
+- ux: prepara aviso de fechamento/sair do projeto orientando salvar antes de sair.
+- preserva escala proporcional dos frames no Stage da v8z4b29AE, timeline/menu inferior, curvas, Tangente/Global, Preview/export, JSON e motor.
+
 # v8z4b29AP
 - feat: adiciona Página Inicial provisória com Novo projeto e Abrir projeto.
 - feat: adiciona fluxo guiado de Novo Projeto com escolha de formato, template ou Sem template e imagem antes de entrar no editor.
