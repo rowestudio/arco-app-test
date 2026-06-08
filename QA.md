@@ -1,3 +1,12 @@
+# QA — v8z4b29AH alinhamento dos pontos ao frame/pill focal real
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AH.md`.
+- Base inicial confirmada como `v8z4b29AG`, tratada como não aprovada visualmente para os pontos laranja, preservando a `v8z4b29AF` aprovada para menus deslizantes da seleção de frames.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29AH`; `syncLowerTimelineCenterMarkers()` mede `.lower-timeline-slot` e o pill focal real via `getBoundingClientRect()`; a variável `--lower-timeline-center-x` recebe o centro renderizado do pill focal relativo ao slot; o centro de `#pillsRow` permanece apenas como fallback.
+- Verificações estáticas executadas: a sincronização dos pontos é chamada quando a timeline renderiza, quando classes de foco/seleção dos pills são aplicadas, durante scroll manual e em `resize`/`orientationchange`; snap-to-center, menus da `v8z4b29AF`, seleção múltipla, Linha 3/Linha 4/Coluna 2, Alpha, Preview/export, JSON, curvas e motor não foram alterados.
+- QA manual obrigatório pendente: desktop; iPhone/Safari; Frame 1; Frame intermediário; Frame 5; último frame acessível; scroll lento; scroll rápido com momentum; seleção por pill; seleção por Stage; confirmar snap; confirmar menus deslizantes da seleção de frames como na `v8z4b29AF`.
+- Não foram executados testes em iPhone/Safari real, Preview/export real, MP4 real, JSON manual nem medição visual real neste ambiente automatizado.
+
 # QA pendente — v8z4b29AG alinhamento dos pontos centrais da timeline
 
 - Checklist detalhado criado em `docs/QA-v8z4b29AG.md`.

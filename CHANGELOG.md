@@ -1,3 +1,10 @@
+## v8z4b29AH — alinhamento dos pontos ao pill focal real
+
+- `index.html`: versionamento atualizado para `v8z4b29AH` em comentário/changelog do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- `index.html`: `syncLowerTimelineCenterMarkers()` passa a localizar o frame/pill focal real em `#pillsRow` (`.fp.timeline-focal`, `.fp.active`, `.fp.selected` ou `timelineFocalFrameId`) e calcula `--lower-timeline-center-x` pelo `getBoundingClientRect()` do pill focal em relação a `.lower-timeline-slot`; o centro funcional de `#pillsRow` fica apenas como fallback.
+- `index.html`: a sincronização dos pontos também roda após atualização das classes do pill focal e durante scroll manual da faixa, preservando snap, menus, seleção múltipla, Linha 3/Linha 4/Coluna 2, Alpha, Preview/export, JSON, curvas e motor.
+- `QA.md` e `docs/QA-v8z4b29AH.md`: checklist de validação documenta Frame 1, frame intermediário, Frame 5, último frame acessível, snap e menus da `v8z4b29AF`.
+
 ## v8z4b29AG — alinhamento dos pontos centrais da timeline
 
 - `index.html`: base obrigatória preservada a partir da `v8z4b29AF`, mantendo intacta a correção aprovada dos menus deslizantes da seleção de frames e sem alterar Linha 3 / Linha 4 / Coluna 2.
