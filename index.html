@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29AR                                    ║
+║  Versão: v8z4b29AS                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29AS                                           ║
+║    fix/flow/state: Novo Projeto Home robusto e      ║
+║        commit/template sincronizados.               ║
 ║  v8z4b29AR                                           ║
 ║    fix/flow/state: Novo Projeto Home + sync UI.     ║
 ║  v8z4b29AE                                           ║
@@ -597,7 +600,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b29AR — fix/flow/state/template: corrige Novo Projeto da Home, sincroniza Stage/timeline/contador/frame ativo após criação e corrige template círculo, preservando a base v8z4b29AQ. -->
+<!-- Arco Motion App — v8z4b29AS — fix/flow/state/template: corrige Novo Projeto da Home, sincroniza Stage/timeline/contador/frame ativo após criação e corrige template círculo, preservando a base v8z4b29AR. -->
 <!-- Arco Motion App — v8z4b29AN — ux/feat: reorganiza o pill de curvas, adiciona Modo Tangente local com Global armado e preserva timeline/menu inferior, Preview/export, JSON, menus deslizantes e pontos laranja. -->
 <!-- Arco Motion App — v8z4b29AL — fix/ux: escala elementos internos dos frames do Stage conforme tamanho renderizado, preservando borda, geometria, timeline/menu inferior, v8z4b29AF, v8z4b29AH e v8z4b29AK. -->
 <!-- Arco Motion App — v8z4b29AF — fix/ux: estabiliza a Linha 4 / Coluna 2 do menu inferior ao entrar em seleção múltipla, isolando "Selecionar todos" (Linha 3 / Coluna 2) do alinhamento vertical de #alignBar. -->
@@ -2300,7 +2303,7 @@ body.cust-open #toolbar{
   background:var(--surface3);
 }
 
-/* Home provisória e fluxo guiado de Novo Projeto — v8z4b29AR */
+/* Home provisória e fluxo guiado de Novo Projeto — v8z4b29AS */
 .home-screen{position:fixed;inset:0;z-index:260;background:var(--menu-bg);display:none;flex-direction:column;padding:max(18px,env(safe-area-inset-top)) 18px max(18px,env(safe-area-inset-bottom));overflow:auto;-webkit-overflow-scrolling:touch;}
 body.home-visible .home-screen{display:flex;}
 body.home-visible .app{visibility:hidden;pointer-events:none;}
@@ -2318,8 +2321,8 @@ body.home-visible .app{visibility:hidden;pointer-events:none;}
 .home-title{font-size:34px;line-height:1.05;font-weight:800;letter-spacing:-.04em;}
 .home-subtitle{font-size:15px;line-height:1.45;color:var(--text3);}
 .home-actions{display:grid;grid-template-columns:1fr;gap:12px;margin-top:6px;}
-.home-action{border:1px solid var(--border2);border-radius:18px;background:rgba(255,255,255,.045);color:var(--text);padding:16px;text-align:left;display:flex;align-items:center;gap:14px;font-size:17px;font-weight:800;}
-.home-action.primary{border-color:rgba(4,255,242,.55);}
+.home-action{border:1px solid var(--border2);border-radius:18px;background:rgba(255,255,255,.045);color:var(--text);padding:16px;text-align:left;display:flex;align-items:center;gap:14px;font-size:17px;font-weight:800;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.home-action.primary:focus-visible,.home-action.primary:active{border-color:rgba(4,255,242,.55);}
 .home-action svg{width:28px;height:28px;color:var(--accent);flex:0 0 auto;}
 .home-action small{display:block;font-size:12px;font-weight:500;color:var(--text3);margin-top:3px;}
 .home-future{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px;}
@@ -2354,7 +2357,7 @@ body.home-visible .app{visibility:hidden;pointer-events:none;}
         <svg viewBox="0 0 24 24"><use href="#i-settings"></use></svg>
       </button>
       <div class="home-menu" id="homeMenu">
-        <div class="home-menu-item" aria-label="Versão atual"><span>Versão</span><strong id="homeVersionText">v8z4b29AR</strong></div>
+        <div class="home-menu-item" aria-label="Versão atual"><span>Versão</span><strong id="homeVersionText">v8z4b29AS</strong></div>
         <button class="home-menu-item" type="button" onclick="window.location.reload()"><span>Recarregar aplicativo</span><span>↻</span></button>
         <div class="home-menu-note">Estrutura preparada para Site da empresa, Tutoriais, Ajuda, Comunidade, Sobre, Termos/licença e Contato.</div>
       </div>
@@ -2366,11 +2369,11 @@ body.home-visible .app{visibility:hidden;pointer-events:none;}
       <p class="home-subtitle">Página inicial provisória para criar um projeto guiado ou abrir um projeto JSON salvo.</p>
     </div>
     <div class="home-actions">
-      <button class="home-action primary" type="button" id="homeNewProjectBtn">
+      <button class="home-action primary" type="button" id="homeNewProjectBtn" data-home-action="new-project">
         <svg viewBox="0 0 24 24"><use href="#i-file-plus-2"></use></svg>
         <span>Novo projeto<small>Escolha formato, template e imagem.</small></span>
       </button>
-      <button class="home-action" type="button" onclick="loadProjectFromHome()">
+      <button class="home-action" type="button" data-home-action="open-project">
         <svg viewBox="0 0 24 24"><use href="#i-folder-open"></use></svg>
         <span>Abrir projeto<small>Carregue um JSON/projeto salvo.</small></span>
       </button>
@@ -3101,7 +3104,7 @@ body.home-visible .app{visibility:hidden;pointer-events:none;}
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AR</span><br><span id="appVersionNameText">v8z4b29AR</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AS</span><br><span id="appVersionNameText">v8z4b29AS</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json,application/json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5471,8 +5474,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29AR';
-const APP_VERSION_NAME = 'v8z4b29AR';
+const APP_VERSION = 'v8z4b29AS';
+const APP_VERSION_NAME = 'v8z4b29AS';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5592,7 +5595,7 @@ let loopSegEasing = 'linear';       // easing de Velocidade do trecho N→1
 let loopSegRotEasing = 'linear';    // easing de Rotação do trecho N→1
 let loopSegScaleEasing = 'linear';  // easing de Escala do trecho N→1
 let pendingProjectData = null; // projeto aguardando imagem ser carregada
-let pendingNewProject = null; // v8z4b29AR — estado temporário do Novo Projeto guiado
+let pendingNewProject = null; // v8z4b29AS — estado temporário do Novo Projeto guiado
 let easeAmount = 0;
 let easeMode = 'global';
 let segEasings = []; // easing por segmento
@@ -18898,7 +18901,7 @@ function refreshSliderFills() {
 
 
 // ═══════════════════════════════════════
-// HOME / NOVO PROJETO — v8z4b29AR
+// HOME / NOVO PROJETO — v8z4b29AS
 // ═══════════════════════════════════════
 const NEW_PROJECT_FORMATS = [
   { ratio: '9:16', w: 14, h: 24 },
@@ -18934,7 +18937,7 @@ function toggleHomeMenu() {
   if (menu) menu.classList.toggle('open');
 }
 
-let activeFileIntent = null; // v8z4b29AR — separa JSON de projeto da imagem do Novo Projeto
+let activeFileIntent = null; // v8z4b29AS — separa JSON de projeto da imagem do Novo Projeto
 
 function openProjectFromHome() {
   const menu = document.getElementById('homeMenu');
@@ -18953,18 +18956,23 @@ function loadProjectFromHome() {
 }
 
 function beginNewProjectFromHome() {
-  openNewProjectFlow('home');
+  openNewProjectFlow({ origin: 'home' });
 }
 
-const homeNewProjectBtnEl = document.getElementById('homeNewProjectBtn');
-if (homeNewProjectBtnEl) {
-  homeNewProjectBtnEl.addEventListener('click', beginNewProjectFromHome);
-}
+document.addEventListener('click', event => {
+  const action = event.target.closest?.('[data-home-action]');
+  if (!action) return;
+  const homeScreen = document.getElementById('homeScreen');
+  if (homeScreen && !homeScreen.contains(action)) return;
+  event.preventDefault();
+  if (action.dataset.homeAction === 'new-project') beginNewProjectFromHome();
+  if (action.dataset.homeAction === 'open-project') openProjectFromHome();
+});
 
 function requestNewProjectFromEditor() {
   const ok = window.confirm('Novo projeto?\n\nO projeto atual será fechado. Alterações não salvas podem ser perdidas.\n\nContinuar?');
   if (!ok) return;
-  openNewProjectFlow('editor');
+  openNewProjectFlow({ origin: 'editor' });
 }
 
 function renderNewProjectChoices() {
@@ -19000,7 +19008,7 @@ function selectPendingNewProjectFormat(ratio) {
 function normalizeNewProjectTemplateId(template) {
   const raw = String(template || 'none').trim().toLowerCase();
   const normalized = raw.normalize ? raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : raw;
-  if (['circle', 'circulo', 'circular'].includes(normalized)) return 'circle';
+  if (['circle', 'circulo', 'circular', 'orbit', 'radial'].includes(normalized)) return 'circle';
   if (['none', 'manual', 'livre', 'sem-template', 'sem template'].includes(normalized)) return 'none';
   return normalized;
 }
@@ -19011,11 +19019,13 @@ function selectPendingNewProjectTemplate(template) {
   refreshNewProjectChoiceUI();
 }
 
-function openNewProjectFlow(origin) {
+function openNewProjectFlow(options) {
+  const origin = typeof options === 'object' ? options?.origin : options;
   pendingNewProject = {
     format: currentRatio || '9:16',
     template: 'none',
     imageFile: null,
+    entryMode: 'format',
     origin: origin === 'editor' ? 'editor' : 'home'
   };
   renderNewProjectChoices();
@@ -19186,24 +19196,71 @@ function syncNewProjectUiAfterCommit(reason) {
   });
 }
 
-function commitNewProjectWithImage(file) {
+function createFallbackAssistedFirstFrame() {
+  const pending = buildFirstFrameInsertion();
+  if (!pending?.frame) return false;
+  for (let i = 0; i < MAX_FRAMES; i++) {
+    const fe = getFrameEl(i); if (fe) fe.remove();
+    const ce = getCtrlEl(i);  if (ce) ce.remove();
+  }
+  document.querySelectorAll('.mid-pathpt').forEach(el => el.remove());
+  frames.length = 0;
+  ctrlPts.length = 0;
+  ctrlPtManual.length = 0;
+  frameRotations.length = 0;
+  frameLocked.length = 0;
+  framePauses.length = 0;
+  segDurations.length = 0;
+  segBlurSettings.length = 0;
+  segEasings.length = 0;
+  rotEasings.length = 0;
+  scaleEasings.length = 0;
+  curvesV2 = null;
+  frames[0] = { ...pending.frame };
+  frameRotations[0] = pending.rotation || 0;
+  frameLocked[0] = false;
+  framePauses[0] = { duration: 0 };
+  baseFrameW = frames[0].w;
+  frameCount = 1;
+  activeIdx = 0;
+  createFrameDOM(0);
+  clampFrame(0);
+  currentTemplate = 'manual';
+  const tbTpl = document.getElementById('tbTemplate');
+  if (tbTpl) tbTpl.textContent = 'Livre';
+  return true;
+}
+
+function ensureNewProjectHasFrames() {
+  const hasValidFrames = frameCount > 0 && Array.from({ length: frameCount }, (_, i) => frames[i]).every(f => (
+    f && Number.isFinite(f.x) && Number.isFinite(f.y) && Number.isFinite(f.w) && Number.isFinite(f.h) && f.w > 0 && f.h > 0
+  ));
+  if (hasValidFrames) return true;
+  console.warn('Template returned 0 frames; fallback to assisted F1.');
+  return createFallbackAssistedFirstFrame();
+}
+
+function commitPendingNewProject(file) {
   if (!pendingNewProject || !file) return;
-  const config = { ...pendingNewProject, template: normalizeNewProjectTemplateId(pendingNewProject.template), imageFile: file };
-  const modal = document.getElementById('newProjectModal');
-  if (modal) modal.classList.remove('open');
-  clearCurrentProjectForNewProject();
-  currentRatio = config.format || '9:16';
-  syncRatioUI();
-  hideAppHome();
+  const allowedTemplates = NEW_PROJECT_TEMPLATES.map(t => t.id);
+  const requestedTemplate = normalizeNewProjectTemplateId(pendingNewProject.template);
+  const config = {
+    ...pendingNewProject,
+    format: ratioMap[pendingNewProject.format] ? pendingNewProject.format : '9:16',
+    template: allowedTemplates.includes(requestedTemplate) ? requestedTemplate : 'none',
+    imageFile: file
+  };
   loadImage(file, () => {
+    const modal = document.getElementById('newProjectModal');
+    clearCurrentProjectForNewProject();
+    currentRatio = config.format;
+    syncRatioUI();
+    layoutStage();
+    setupPreviewCanvas();
     if (config.template && config.template !== 'none') {
       _projectNewFromImage = false;
       applyTemplate(config.template);
-      syncNewProjectUiAfterCommit('new-project-template');
     } else {
-      currentTemplate = 'manual';
-      const tbTpl = document.getElementById('tbTemplate');
-      if (tbTpl) tbTpl.textContent = 'Livre';
       movementEasingMode = 'smart';
       rotationEasingMode = 'smart';
       scaleEasingMode = 'smart';
@@ -19211,16 +19268,25 @@ function commitNewProjectWithImage(file) {
       syncRotationEasingModeUI();
       syncScaleEasingModeUI();
       _projectNewFromImage = true;
-      updateToolbarLabels();
-      syncNewProjectUiAfterCommit('new-project-manual');
-      startFirstFrameAssistedInsertion();
+      createFallbackAssistedFirstFrame();
     }
+    if (!ensureNewProjectHasFrames()) { showStatus('Erro ao criar F1 inicial'); return; }
+    activeIdx = 0;
+    lowerTimelineCenterFrameIndex = 0;
+    timelineFocalFrameId = 0;
+    if (modal) modal.classList.remove('open');
+    hideAppHome();
+    syncNewProjectUiAfterCommit(config.template && config.template !== 'none' ? 'new-project-template' : 'new-project-manual');
     undoStack.length = 0;
     redoStack.length = 0;
     updateUndoRedoUI();
     pendingNewProject = null;
     showStatus('Novo projeto criado');
   });
+}
+
+function commitNewProjectWithImage(file) {
+  commitPendingNewProject(file);
 }
 
 const newProjectImageInputEl = document.getElementById('newProjectImageInput');

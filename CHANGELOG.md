@@ -1,3 +1,12 @@
+# v8z4b29AS
+- fix/flow: corrige acionamento do botão Novo Projeto da Home usando ação explícita/data-action e reaproveitando o fluxo funcional do menu interno.
+- fix/state: impede que Novo Projeto abra editor com 0 frames.
+- fix/state: garante ordem correta imagem carregada → template aplicado → frames validados → render completo.
+- fix/template: corrige aplicação do template circular e sua renderização imediata no Stage/timeline.
+- fix/ui: elimina estado visual preso do card Novo Projeto da Home, se presente.
+- docs: registra roadmap futuro para criação iniciada por imagem/Fotos, por template ou por formato usando o mesmo construtor interno de projeto.
+- preserva Carregar Projeto, Fechar Projeto, escala proporcional dos frames no Stage, timeline/menu inferior, curvas, Tangente/Global, Preview/export, JSON e motor.
+
 # v8z4b29AR
 - fix/flow: corrige botão Novo Projeto da Home, que ainda não acionava o fluxo de criação.
 - fix/state: força sincronização completa de Stage, timeline, contador e frame ativo após criar Novo Projeto.
