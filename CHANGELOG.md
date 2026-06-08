@@ -1,3 +1,11 @@
+## v8z4b29AI — ajustes do pill de curvas e frames da timeline
+
+- `index.html`: versionamento atualizado para `v8z4b29AI` em comentário/changelog do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- `assets/icons/curve-modes/*.svg`: espessura dos ícones do pill/menu de curvas reduzida para alinhar ao padrão visual leve dos demais ícones do app, mantendo desenho, tamanho, cor, posição e comportamento.
+- `index.html`: adicionado ícone global sem texto dentro do mesmo `#pointModeMenu`; `applyCurrentCurveModeToAllFrames()` lê o modo de curva do frame/ponto ativo e aplica esse modo aos frames editáveis usando `applyPointModeForFrame()`, sem copiar coordenadas absolutas de handles, sem mover frames e com undo/redo em uma única ação.
+- `index.html`: `.mid-bar.timeline-grid .fp` passa a usar variáveis proporcionais para largura/altura, fonte, padding e raio dos frames da timeline, preservando a borda, os estados ativo/selecionado, snap, pontos laranja da `v8z4b29AH` e menus deslizantes da `v8z4b29AF`.
+- `QA.md` e `docs/QA-v8z4b29AI.md`: checklist de validação documenta pill de curvas, ação global, undo/redo, proporcionalidade da timeline e regressões obrigatórias.
+
 ## v8z4b29AH — alinhamento dos pontos ao pill focal real
 
 - `index.html`: versionamento atualizado para `v8z4b29AH` em comentário/changelog do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.

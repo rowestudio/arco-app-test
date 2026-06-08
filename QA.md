@@ -1,3 +1,11 @@
+# QA pendente — v8z4b29AI pill de curvas e frames proporcionais da timeline
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AI.md`.
+- Base obrigatória confirmada como `v8z4b29AH`, aprovada para centralização dos pontos laranja, preservando a `v8z4b29AF` aprovada para menus deslizantes da seleção de frames.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29AI`; ícones do pill de curvas suavizados; novo ícone global sem texto adicionado ao mesmo pill; `applyCurrentCurveModeToAllFrames()` aplica o modo de curva ativo a todos os frames editáveis via lógica existente de modo por frame e com uma única entrada de undo; frames da timeline usam variáveis proporcionais para número, padding e raio.
+- QA manual obrigatório pendente: iPhone/Safari ou viewport equivalente; abrir pill de curvas; validar stroke dos ícones; aplicar modo global; testar Undo/Redo; confirmar que posição, escala, rotação, duração e pausa dos frames não mudam; confirmar timeline proporcional; confirmar pontos laranja da `v8z4b29AH`, menus deslizantes da `v8z4b29AF`, snap-to-center, Alpha/spotlight, Preview básico e JSON/export preservados.
+- Não foram executados testes em iPhone/Safari real, Preview real, export real nem JSON manual neste ambiente automatizado.
+
 # QA — v8z4b29AH alinhamento dos pontos ao frame/pill focal real
 
 - Checklist detalhado criado em `docs/QA-v8z4b29AH.md`.
