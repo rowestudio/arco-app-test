@@ -1,3 +1,12 @@
+# v8z4b29AP
+- feat: adiciona Página Inicial provisória com Novo projeto e Abrir projeto.
+- feat: adiciona fluxo guiado de Novo Projeto com escolha de formato, template ou Sem template e imagem antes de entrar no editor.
+- feat: adiciona menu utilitário da Home com versão atual e Recarregar aplicativo.
+- ux: Novo Projeto passa a usar estado temporário e só substitui o projeto atual após a imagem ser escolhida com sucesso.
+- fix/flow: diferencia Novo Projeto de Reset Project, preservando comportamento de reset para projetos carregados por JSON.
+- docs: registra preparação futura para Home completa, templates, tutoriais, comunidade e multi-imagem/stage expandido sem implementar essas funções agora.
+- preserva escala proporcional dos frames no Stage da v8z4b29AE, timeline/menu inferior, curvas, handles, Preview/export, JSON e motor.
+
 # v8z4b29AE
 - fix/ux: reduz o offset interno do número dos frames no Stage quando os frames são pequenos.
 - fix/ux: preserva a escala proporcional da v8z4b29AD, mas aproxima o label do número do canto do frame.
