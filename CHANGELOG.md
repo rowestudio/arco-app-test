@@ -1,3 +1,8 @@
+# v8z4b29AE
+- fix/ux: reduz o offset interno do número dos frames no Stage quando os frames são pequenos.
+- fix/ux: preserva a escala proporcional da v8z4b29AD, mas aproxima o label do número do canto do frame.
+- preserva timeline/menu inferior, curvas, handles, Preview/export, JSON e motor.
+
 # v8z4b29AO
 - fix/ux: audita e restaura, quando necessário, a escala proporcional dos elementos internos dos frames no Stage introduzida na v8z4b29AL.
 - fix/ux: garante que `--stage-frame-ui-scale` e `updateStageFrameUIScale()` continuem ativos em `renderAll()` e também no caminho de atualização visual do Stage `refreshEditorViewVisualOverlays()`.
