@@ -1,13 +1,18 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29AK                                    ║
+║  Versão: v8z4b29AL                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29AL                                           ║
+║    fix/ux: escala elementos internos dos frames      ║
+║        do Stage conforme tamanho renderizado.        ║
+║    fix/ux: preserva espessura da borda e geometria   ║
+║        dos frames; timeline/menu inferior intactos.  ║
 ║  v8z4b29AK                                           ║
 ║    revert/ux: remove escala indevida dos .fp da      ║
 ║        timeline/menu inferior da v8z4b29AI.          ║
@@ -581,7 +586,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b29AK — revert/ux: remove da v8z4b29AI as alterações indevidas dos frames .fp da timeline/menu inferior; preserva curvas existentes, v8z4b29AF e v8z4b29AH. -->
+<!-- Arco Motion App — v8z4b29AL — fix/ux: escala elementos internos dos frames do Stage conforme tamanho renderizado, preservando borda, geometria, timeline/menu inferior, v8z4b29AF, v8z4b29AH e v8z4b29AK. -->
 <!-- Arco Motion App — v8z4b29AF — fix/ux: estabiliza a Linha 4 / Coluna 2 do menu inferior ao entrar em seleção múltipla, isolando "Selecionar todos" (Linha 3 / Coluna 2) do alinhamento vertical de #alignBar. -->
 <!-- Arco Motion App — v8z4b29AE — fix/ux: corrige camada inferior de submenus em frame simples e seleção múltipla; estabiliza Linha 3/4/Coluna 2 com Selecionar todos. -->
 <!-- Arco Motion App — v8z4b29AD — fix/ux: corrige ancoragem e altura do #alignBarSubmenu em seleção múltipla. -->
@@ -819,12 +824,12 @@ body.recording #editorZoomCtrl{display:none;}
 .point-mode-icon--disconnected{-webkit-mask-image:url("assets/icons/curve-modes/curve-disconnected.svg");mask-image:url("assets/icons/curve-modes/curve-disconnected.svg");}
 
 /* FRAME — borda e alças */
-.frame{position:absolute;box-sizing:border-box;touch-action:none;overflow:visible;}
+.frame{position:absolute;box-sizing:border-box;touch-action:none;overflow:visible;--stage-frame-ui-scale:1;}
 /* Stage — overflow visible para não cortar bolinha de Bézier */
 #stage { overflow: visible !important; }
 .frame-visual{position:absolute;inset:0;transform-origin:center center;overflow:visible;}
 .frame-visual .frame-border,.frame-visual .frame-dim,.frame-visual .frame-num,.frame-visual .frame-center{pointer-events:none;}
-.frame-border{position:absolute;inset:0;border:2px solid #c6c6c6;box-sizing:border-box;pointer-events:none;border-radius:10px;filter:none;}
+.frame-border{position:absolute;inset:0;border:2px solid #c6c6c6;box-sizing:border-box;pointer-events:none;border-radius:calc(10px * var(--stage-frame-ui-scale, 1));filter:none;}
 .frame.multi-selected .frame-border{box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.28);}
 .frame.multi-selected .frame-dim{background:transparent !important;box-shadow:none !important;border-radius:10px;}
 .frame.active.multi-selected .frame-border{box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.28);}
@@ -902,9 +907,9 @@ body.inserting-frame .frame-out-handle{pointer-events:none !important;}
 .frame-dim{position:absolute;inset:0;background:transparent !important;pointer-events:none;}
 .frame-top-mark{display:none;}
 .frame-num{
-  position:absolute;top:6px;left:8px;
-  font-size:12px;font-weight:700;color:rgba(255,255,255,.9);
-  background:rgba(0,0,0,.35);border-radius:6px;padding:2px 7px;
+  position:absolute;top:calc(6px * var(--stage-frame-ui-scale, 1));left:calc(8px * var(--stage-frame-ui-scale, 1));
+  font-size:calc(12px * var(--stage-frame-ui-scale, 1));font-weight:700;color:rgba(255,255,255,.9);
+  background:rgba(0,0,0,.35);border-radius:calc(6px * var(--stage-frame-ui-scale, 1));padding:calc(2px * var(--stage-frame-ui-scale, 1)) calc(7px * var(--stage-frame-ui-scale, 1));
   pointer-events:none;letter-spacing:.3px;
   transform-origin:top left;
 }
@@ -2986,7 +2991,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AK</span><br><span id="appVersionNameText">v8z4b29AK</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AL</span><br><span id="appVersionNameText">v8z4b29AL</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5330,8 +5335,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29AK';
-const APP_VERSION_NAME = 'v8z4b29AK';
+const APP_VERSION = 'v8z4b29AL';
+const APP_VERSION_NAME = 'v8z4b29AL';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12276,6 +12281,16 @@ function ensureGlobalHandle() {
 function getFrameEl(i) { return document.getElementById('frm_' + i); }
 function getCtrlEl(i)  { return document.getElementById('cpt_' + i); }
 
+function updateStageFrameUIScale(el, frame) {
+  if (!el || !frame) return;
+  const rectW = el.offsetWidth || frame.w || 0;
+  const rectH = el.offsetHeight || frame.h || 0;
+  const minSide = Math.min(rectW, rectH);
+  const reference = 180;
+  const scale = Math.max(0.58, Math.min(1, minSide / reference));
+  el.style.setProperty('--stage-frame-ui-scale', scale.toFixed(3));
+}
+
 function createFrameDOM(i) {
   if (getFrameEl(i)) return;
   const el = document.createElement('div');
@@ -13245,6 +13260,7 @@ function renderAll() {
     el.style.width  = f.w + 'px';
     el.style.height = f.h + 'px';
     el.style.display = 'block';
+    updateStageFrameUIScale(el, f);
 
     const stageFocusIdx = getTimelineStageFocusIndex();
     const dist = Math.abs(i - stageFocusIdx);

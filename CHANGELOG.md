@@ -1,3 +1,11 @@
+## v8z4b29AL — escala proporcional dos elementos internos dos frames do Stage
+
+- `index.html`: versionamento atualizado para `v8z4b29AL` em comentário/changelog do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- `index.html`: `.frame` passa a expor `--stage-frame-ui-scale`, calculada por `updateStageFrameUIScale()` a partir do menor lado renderizado do próprio frame no Stage, com referência `180px` e limite seguro `0.58–1`.
+- `index.html`: `.frame-border` usa a escala apenas no `border-radius`; a espessura da borda continua definida pela lógica aprovada de foco/seleção e não foi reduzida.
+- `index.html`: `.frame-num` usa a escala proporcional em `font-size`, `padding`, `border-radius` e offsets `top/left`, mantendo o posicionamento conceitual no canto superior esquerdo.
+- Preservados sem alteração: `.fp`, `.mid-bar.timeline-grid .fp`, `#pillsRow`, `.mid-pills`, timeline/menu inferior, menus deslizantes da `v8z4b29AF`, pontos laranja centralizados da `v8z4b29AH`, reversão/limpeza da `v8z4b29AK`, snap, Alpha, Preview/export, JSON, curvas e motor.
+
 ## v8z4b29AK — limpeza seletiva dos frames da timeline/menu inferior
 
 - `index.html`: versionamento atualizado para `v8z4b29AK` em comentário/changelog do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
