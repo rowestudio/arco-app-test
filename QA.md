@@ -1,3 +1,12 @@
+# QA pendente — v8z4b29AG alinhamento dos pontos centrais da timeline
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AG.md`.
+- Base obrigatória preservada: `v8z4b29AF`, aprovada para os menus deslizantes da seleção de frames; a correção da Linha 3 / Linha 4 / Coluna 2 permanece fora do escopo desta mudança.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29AG`; `.lower-timeline-slot::before` e `.lower-timeline-slot::after` continuam usando `left: var(--lower-timeline-center-x)` e `transform: translateX(-50%)`; `syncLowerTimelineCenterMarkers()` agora deriva a variável do eixo funcional de `#pillsRow` (`pillsRect.left - slotRect.left + pillsEl.clientWidth / 2`), preservando o snap aprovado e sem alterar scroll, seleção múltipla, menus, motor, Preview/export, JSON ou curvas.
+- Medição obrigatória em browser/iPhone ainda pendente neste ambiente: executar o snippet `getBoundingClientRect()` do documento da versão para registrar `pillsCenter`, `slotCenter`, `activeCenter` e o centro visual dos pontos; critério de aceite = diferença entre pontos e `activeCenter` de 0 a 1px após o snap.
+- QA manual obrigatório pendente: Frame 1, frame intermediário e último frame acessível; rolagem manual com snap; confirmar pontos alinhados ao centro do frame/pill focal, snap-to-center funcionando, Alpha/spotlight seguindo frame focal, menus deslizantes preservados como na `v8z4b29AF`, e Linha 3 / Linha 4 / Coluna 2 sem regressão.
+- Não foram executados testes em iPhone/Safari real, Preview real, MP4/export real, JSON manual nem curvas manuais neste ambiente automatizado.
+
 # QA — v8z4b29AF estabilidade da Linha 4 / Coluna 2 em seleção múltipla
 
 - Checklist detalhado criado em `docs/QA-v8z4b29AF.md`.
