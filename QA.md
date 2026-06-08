@@ -1,3 +1,12 @@
+# QA pendente — v8z4b29AJ escala interna real dos frames da timeline
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AJ.md`.
+- Base obrigatória preservada: `v8z4b29AI`; a correção visual aprovada dos pontos laranja da timeline da `v8z4b29AH` e os menus deslizantes da seleção de frames da `v8z4b29AF` permanecem fora do escopo e preservados.
+- Objetivo único: corrigir de forma perceptível a escala interna dos frames `.fp` da timeline inferior quando a faixa fica densa, sem alterar motor, Preview/export, JSON, curvas, Stage, eixo de snap, cálculo de `timelineFocalFrameId`, menus inferiores ou centralização dos pontos laranja.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29AJ`; `.mid-bar.timeline-grid .fp` usa `--timeline-frame-scale` para largura/altura e para número/fonte, padding horizontal, padding vertical, raio e line-height; `border:1.5px` permanece fixo; `syncLowerTimelineFrameScale()` calcula a escala em runtime com base na largura real disponível de `#pillsRow`, quantidade de frames e trechos/ease pills visíveis.
+- QA manual obrigatório pendente em iPhone/Safari real: confirmar versão visível `v8z4b29AJ`; carregar projeto com 8+ frames; comparar com `v8z4b29AI`; confirmar que número, padding e radius ficam visivelmente menores/proporcionais nos frames menores; confirmar borda com espessura aprovada; rolar a timeline; confirmar pontos laranja centralizados no frame focal, snap-to-center, Alpha/spotlight, menus deslizantes da `v8z4b29AF`, curvas e Preview básico sem regressão.
+- Não foram executados testes em iPhone/Safari real, comparação visual por print, Preview real, MP4/export real, JSON manual nem curvas manuais neste ambiente automatizado.
+
 # QA pendente — v8z4b29AI pill de curvas e frames proporcionais da timeline
 
 - Checklist detalhado criado em `docs/QA-v8z4b29AI.md`.
