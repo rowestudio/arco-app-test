@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29AL                                    ║
+║  Versão: v8z4b29AM                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29AM                                           ║
+║    ux/feat: refina menu de curvas, Global armado     ║
+║        e reconstrução suave por bissetriz.           ║
 ║  v8z4b29AL                                           ║
 ║    fix/ux: escala elementos internos dos frames      ║
 ║        do Stage conforme tamanho renderizado.        ║
@@ -586,6 +589,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29AM — ux/feat: refina menu de curvas, separa Global como modo armado e adiciona reconstrução suave por bissetriz, preservando timeline/menu inferior, Preview/export, JSON, menus deslizantes e pontos laranja. -->
 <!-- Arco Motion App — v8z4b29AL — fix/ux: escala elementos internos dos frames do Stage conforme tamanho renderizado, preservando borda, geometria, timeline/menu inferior, v8z4b29AF, v8z4b29AH e v8z4b29AK. -->
 <!-- Arco Motion App — v8z4b29AF — fix/ux: estabiliza a Linha 4 / Coluna 2 do menu inferior ao entrar em seleção múltipla, isolando "Selecionar todos" (Linha 3 / Coluna 2) do alinhamento vertical de #alignBar. -->
 <!-- Arco Motion App — v8z4b29AE — fix/ux: corrige camada inferior de submenus em frame simples e seleção múltipla; estabiliza Linha 3/4/Coluna 2 com Selecionar todos. -->
@@ -811,12 +815,16 @@ body.recording #editorZoomCtrl{display:none;}
   cursor:default;
   -webkit-user-select:text;user-select:text;
 }
-#pointModeMenu{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:130;display:none;gap:14px;padding:8px 16px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:calc(100% - 20px);}
-.point-mode-btn{width:42px;height:40px;border:0;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:0;}
+#pointModeMenu{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:130;display:none;gap:10px;padding:8px 16px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:calc(100% - 20px);align-items:center;}
+.point-mode-btn{width:44px;height:40px;border:0;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:0;}
 .point-mode-btn.active{border-color:transparent;color:var(--accent);background:transparent;}
-.point-mode-icon{width:34px;height:34px;display:block;pointer-events:none;color:currentColor;}
-.point-mode-btn[data-action="apply-all"]{color:var(--accent);}
-.point-mode-icon--global{width:26px;height:26px;stroke-width:1.5;}
+.point-mode-icon{width:37px;height:37px;display:block;pointer-events:none;color:currentColor;}
+.point-mode-btn[data-action="apply-all"]{color:#b2b2b2;}
+.point-mode-btn[data-action="apply-all"].armed{color:var(--accent);}
+.point-mode-btn[data-action="rebuild-smooth"]{color:#fff;}
+.point-mode-icon--global{width:28px;height:28px;stroke-width:1.5;}
+.point-mode-icon--smooth{width:29px;height:29px;stroke-width:1.45;}
+.point-mode-divider{width:1px;height:26px;background:rgba(178,178,178,.34);flex:0 0 1px;margin:0 2px;}
 .point-mode-icon--mask{background-color:currentColor;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain;}
 .point-mode-icon--corner{-webkit-mask-image:url("assets/icons/curve-modes/curve-corner.svg");mask-image:url("assets/icons/curve-modes/curve-corner.svg");}
 .point-mode-icon--symmetric{-webkit-mask-image:url("assets/icons/curve-modes/curve-symmetric.svg");mask-image:url("assets/icons/curve-modes/curve-symmetric.svg");}
@@ -2670,7 +2678,10 @@ body.cust-open #toolbar{
     <button class="point-mode-btn" data-mode="symmetric" type="button" title="Simétrico"><span class="point-mode-icon point-mode-icon--mask point-mode-icon--symmetric" aria-hidden="true"></span></button>
     <button class="point-mode-btn" data-mode="asymmetric" type="button" title="Assimétrico"><span class="point-mode-icon point-mode-icon--mask point-mode-icon--asymmetric" aria-hidden="true"></span></button>
     <button class="point-mode-btn" data-mode="disconnected" type="button" title="Desconectado"><span class="point-mode-icon point-mode-icon--mask point-mode-icon--disconnected" aria-hidden="true"></span></button>
-    <button class="point-mode-btn" data-action="apply-all" type="button" title="Aplicar modo de curva a todos"><svg class="point-mode-icon point-mode-icon--global" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-globe-2"></use></svg></button>
+    <span class="point-mode-divider" aria-hidden="true"></span>
+    <button class="point-mode-btn" data-action="rebuild-smooth" type="button" title="Recriar curva suave"><svg class="point-mode-icon point-mode-icon--smooth" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ease-curve"></use></svg></button>
+    <span class="point-mode-divider" aria-hidden="true"></span>
+    <button class="point-mode-btn" data-action="apply-all" type="button" title="Armar Global"><svg class="point-mode-icon point-mode-icon--global" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-globe-2"></use></svg></button>
   </div>
   <!-- Editor Zoom Control flutuante — v8z4b18b (não alterado em v8z4b18c) -->
   <div id="editorZoomCtrl" style="display:none;">
@@ -2991,7 +3002,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AL</span><br><span id="appVersionNameText">v8z4b29AL</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AM</span><br><span id="appVersionNameText">v8z4b29AM</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5335,8 +5346,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29AL';
-const APP_VERSION_NAME = 'v8z4b29AL';
+const APP_VERSION = 'v8z4b29AM';
+const APP_VERSION_NAME = 'v8z4b29AM';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11045,6 +11056,7 @@ let midpointDragState = null; // v8z4b19v: { seg, segType, didMove } — drag de
 let frameTangentDragState = null; // v8z4b19y: legado — substituído em v8z4b20b por frameHandleDragState
 let frameHandleDragState  = null; // v8z4b20b: { which:'in'|'out', didMove, undoCaptured } — drag de in/out handle
 let pointModeMenuVisible = false;
+let pointModeGlobalArmed = false;
 const POINT_MODE_DEFAULT = 'disconnected';
 let isPinching      = false;
 let pinchStartAngle = 0;
@@ -11448,7 +11460,12 @@ function syncPointModeMenuUI() {
   const mode = getFramePointMode(activeIdx);
   pointModeMenuEl.querySelectorAll('.point-mode-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.mode === mode);
+    btn.classList.toggle('armed', btn.dataset.action === 'apply-all' && pointModeGlobalArmed);
   });
+}
+function setPointModeGlobalArmed(armed) {
+  pointModeGlobalArmed = !!armed;
+  syncPointModeMenuUI();
 }
 function openPointModeMenu() {
   if (!canOpenPointModeMenu()) return;
@@ -11460,8 +11477,10 @@ function openPointModeMenu() {
 }
 function closePointModeMenu() {
   pointModeMenuVisible = false;
+  pointModeGlobalArmed = false;
   if (pointModeMenuEl) pointModeMenuEl.style.display = 'none';
   syncPointModeAccessButtonUI();
+  syncPointModeMenuUI();
 }
 function togglePointModeMenuFromButton() {
   if (shouldBlockGlobalUIAction()) return;
@@ -11682,13 +11701,22 @@ if (pointModeMenuEl) {
     btn.addEventListener('click', () => {
       if (!canOpenPointModeMenu()) return;
       if (btn.dataset.action === 'apply-all') {
-        applyCurrentCurveModeToAllFrames();
-        closePointModeMenu();
+        setPointModeGlobalArmed(!pointModeGlobalArmed);
+        return;
+      }
+      if (btn.dataset.action === 'rebuild-smooth') {
+        rebuildSmoothCurvesByAngleBisector();
+        setPointModeGlobalArmed(false);
         return;
       }
       const mode = btn.dataset.mode;
-      applyPointModeToSelectionOrActive(mode);
-      closePointModeMenu();
+      if (pointModeGlobalArmed) {
+        applyCurveModeToAllFrames(mode);
+        setPointModeGlobalArmed(false);
+      } else {
+        applyPointModeToSelectionOrActive(mode);
+        syncPointModeMenuUI();
+      }
     });
   });
 }
@@ -21697,9 +21725,8 @@ function applyPointModeToSelectionOrActive(mode) {
   return changed;
 }
 
-function applyCurrentCurveModeToAllFrames() {
+function applyCurveModeToAllFrames(mode) {
   if (shouldBlockGlobalUIAction()) return false;
-  const mode = getFramePointMode(activeIdx);
   if (!['corner','symmetric','asymmetric','disconnected'].includes(mode)) return false;
   const targets = frames
     .map((f, i) => (f && i >= 0 && i < frameCount && !frameLocked[i]) ? i : -1)
@@ -21716,6 +21743,73 @@ function applyCurrentCurveModeToAllFrames() {
     syncPointModeMenuUI();
   }
   return changed;
+}
+
+function applyCurrentCurveModeToAllFrames() {
+  return applyCurveModeToAllFrames(getFramePointMode(activeIdx));
+}
+
+function clampCurveHandleLength(len, neighborDist) {
+  const safeDist = Number.isFinite(neighborDist) ? Math.max(0, neighborDist) : 0;
+  const maxLen = Math.max(18, safeDist * 0.45);
+  return Math.min(Math.max(0, len), maxLen);
+}
+
+function getSmoothBisectorTangent(fi) {
+  const px = frameCX(fi), py = frameCY(fi);
+  let tx = 0, ty = 0;
+  if (fi > 0) {
+    const vx = px - frameCX(fi - 1);
+    const vy = py - frameCY(fi - 1);
+    const vl = Math.hypot(vx, vy);
+    if (vl > 0.0001) { tx += vx / vl; ty += vy / vl; }
+  }
+  if (fi < frameCount - 1) {
+    const vx = frameCX(fi + 1) - px;
+    const vy = frameCY(fi + 1) - py;
+    const vl = Math.hypot(vx, vy);
+    if (vl > 0.0001) { tx += vx / vl; ty += vy / vl; }
+  }
+  let tl = Math.hypot(tx, ty);
+  if (tl <= 0.0001 && fi < frameCount - 1) {
+    tx = frameCX(fi + 1) - px; ty = frameCY(fi + 1) - py; tl = Math.hypot(tx, ty);
+  }
+  if (tl <= 0.0001 && fi > 0) {
+    tx = px - frameCX(fi - 1); ty = py - frameCY(fi - 1); tl = Math.hypot(tx, ty);
+  }
+  if (tl <= 0.0001) return { x: 1, y: 0 };
+  return { x: tx / tl, y: ty / tl };
+}
+
+function rebuildSmoothCurvesByAngleBisector() {
+  if (shouldBlockGlobalUIAction()) return false;
+  if (frameCount < 2) return false;
+  pushUndo();
+  ensureCurvesV2();
+  if (!isCurvesV2Active()) return false;
+  const inArr = curvesV2.frameHandles.in;
+  const outArr = curvesV2.frameHandles.out;
+  for (let i = 0; i < frameCount; i++) {
+    const tangent = getSmoothBisectorTangent(i);
+    const prevDist = i > 0 ? Math.hypot(frameCX(i) - frameCX(i - 1), frameCY(i) - frameCY(i - 1)) : 0;
+    const nextDist = i < frameCount - 1 ? Math.hypot(frameCX(i + 1) - frameCX(i), frameCY(i + 1) - frameCY(i)) : 0;
+    if (i > 0) {
+      const inLen = clampCurveHandleLength(prevDist * 0.32, prevDist);
+      inArr[i] = { dx: -tangent.x * inLen, dy: -tangent.y * inLen, manual: true };
+    } else {
+      inArr[i] = null;
+    }
+    if (i < frameCount - 1) {
+      const outLen = clampCurveHandleLength(nextDist * 0.32, nextDist);
+      outArr[i] = { dx: tangent.x * outLen, dy: tangent.y * outLen, manual: true };
+    } else {
+      outArr[i] = null;
+    }
+  }
+  markProjectDirty('curve-bisector-rebuild');
+  renderAll();
+  syncPointModeMenuUI();
+  return true;
 }
 
 let alignBarActiveGroup = null;

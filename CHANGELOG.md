@@ -1,3 +1,9 @@
+## v8z4b29AM
+- ux: aumenta e refina os ícones do menu de curvas.
+- ux: separa a ação Global dos modos de curva e implementa Global como modo armado.
+- feat: adiciona reconstrução suave das curvas baseada na bissetriz do ângulo entre frames.
+- preserva timeline/menu inferior, menus deslizantes da v8z4b29AF, pontos laranja da v8z4b29AH, Preview/export, JSON e motor.
+
 ## v8z4b29AL — escala proporcional dos elementos internos dos frames do Stage
 
 - `index.html`: versionamento atualizado para `v8z4b29AL` em comentário/changelog do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
