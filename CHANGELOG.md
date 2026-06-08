@@ -1,3 +1,12 @@
+## v8z4b29AE — camada inferior unificada de submenus
+
+- `index.html`: base preservada a partir da `v8z4b29AD`; a microcorreção de `#alignBarSubmenu` continua no fluxo de seleção múltipla, agora usando a mesma variável estrutural de altura da área inferior contextual.
+- `index.html`: versionamento atualizado para `v8z4b29AE` em comentário/changelog do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- `index.html`: adicionadas `--lower-context-gap` e `--lower-context-panel-h` para que o painel contextual inferior seja calculado como um sistema único de Linha 3 + gap + Linha 4, sem depender de correção residual `- 8px`.
+- `index.html`: `#alignBarSubmenu` continua ancorado em `bottom:0`, com `overflow-y:visible`, e passa a usar `height/min-height:var(--lower-context-panel-h)`; `#custBarContent`, elemento real do submenu de frame simples, usa a mesma área real de `#lowerContextSlot` expandido, sem padding inferior extra em `#lowerContextSlot`.
+- `index.html`: Linha 3 / Coluna 2 mantém `Selecionar todos` em área reservada absoluta (`--lower-select-all-w`) e Linha 4 / Coluna 2 não passa pelo fluxo desse botão; snap, Alpha/spotlight, Preview/export, JSON, curvas e motor preservados.
+- `QA.md` e `docs/QA-v8z4b29AE.md`: auditoria, critérios de medição e checklist da v8z4b29AE documentados.
+
 ## v8z4b29AD — ancoragem do submenu de seleção múltipla
 
 - `index.html`: base encontrada antes das alterações em `v8z4b29AB`; registrado que a v8z4b29AB não foi aprovada funcionalmente para o bug visual dos submenus de seleção múltipla.

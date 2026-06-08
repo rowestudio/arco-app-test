@@ -1,3 +1,12 @@
+# QA pendente — v8z4b29AE camada inferior unificada de submenus
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AE.md`.
+- Base obrigatória preservada: `v8z4b29AD` como microcorreção parcial de `#alignBarSubmenu` em seleção múltipla; a `v8z4b29AD` não foi tratada como solução completa para frame simples nem para a área inferior como sistema único.
+- Verificações estáticas executadas: versionamento atualizado para `v8z4b29AE`; `--lower-context-gap` e `--lower-context-panel-h` definem a altura comum de Linha 3 + gap + Linha 4; `#alignBarSubmenu` permanece ancorado em `bottom:0`, com `overflow-y:visible`, e troca a altura residual `calc(... - 8px)` por `var(--lower-context-panel-h)`; frame simples usa o elemento real `#custBarContent` dentro do `#lowerContextSlot` expandido, removendo o padding inferior extra do slot; `Selecionar todos` segue reservado na Linha 3 / Coluna 2 sem participar do fluxo da Linha 4.
+- Auditoria estática obrigatória: elemento real do submenu em frame simples = `#custBarContent`; elemento real do submenu em seleção múltipla = `#alignBarSubmenu`; safe-area única fica em `.mid-bar.timeline-grid` (`--lower-safe-bottom` + padding do grid); Linha 3 não participa do fluxo da Linha 4 porque a grade separa as linhas e `Selecionar todos` é absoluto dentro de `.lower-active-state`; `Selecionar todos` não altera a geometria da Linha 4 / Coluna 2.
+- Medição obrigatória pós-correção em browser/iPhone ainda pendente neste ambiente: usar `getBoundingClientRect()` para registrar `#lowerContextSlot`, submenu real, `#pillsRow`, distância `submenu.top - pills.bottom` e distância `lowerContextSlot.bottom - submenu.bottom` para Pausa, Rotação, Escala e Mover, em frame simples e seleção múltipla.
+- QA manual obrigatório pendente: frame simples e seleção múltipla; abrir Pausa/Rotação/Escala/Mover; confirmar que o submenu não sobe demais, não deixa espaço morto exagerado embaixo, não invade frames/pills e não corta thumb; confirmar Linha 4 / Coluna 1 e Coluna 2 alinhadas; confirmar `Selecionar todos` em uma linha; confirmar snap-to-center, Alpha/spotlight, Preview/export, JSON, curvas e motor sem regressão.
+
 # QA pendente — v8z4b29AD ancoragem do submenu de seleção múltipla
 
 - Checklist detalhado criado em `docs/QA-v8z4b29AD.md`.

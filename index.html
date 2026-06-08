@@ -1,13 +1,18 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29AD                                    ║
+║  Versão: v8z4b29AE                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29AE                                           ║
+║    fix/ux: corrige camada inferior de submenus       ║
+║        em frame simples e seleção múltipla.          ║
+║    fix/ux: estabiliza Linha 3/4/Coluna 2 com         ║
+║        Selecionar todos.                             ║
 ║  v8z4b29AD                                           ║
 ║    fix/ux: corrige ancoragem e altura do             ║
 ║        #alignBarSubmenu em seleção múltipla.         ║
@@ -556,6 +561,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29AE — fix/ux: corrige camada inferior de submenus em frame simples e seleção múltipla; estabiliza Linha 3/4/Coluna 2 com Selecionar todos. -->
 <!-- Arco Motion App — v8z4b29AD — fix/ux: corrige ancoragem e altura do #alignBarSubmenu em seleção múltipla. -->
 <!-- Arco Motion App — v8z4b29U — fix/ux: corrige arquitetura dos submenus inferiores para substituir a área contextual sem duplicação, vazamento da Linha 3 ou safe-area duplicada. -->
 <!-- Arco Motion App — v8z4b29T — fix/ux: adicionado snap-to-center da timeline após scroll manual sem alterar seleção, alfa, motor, Preview, MP4 ou JSON. -->
@@ -1173,14 +1179,15 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
   --lower-row-2:56px;
   --lower-row-3:36px;
   --lower-row-4:46px;
+  --lower-context-gap:2px;
+  --lower-context-panel-h:calc(var(--lower-row-3) + var(--lower-row-4) + var(--lower-context-gap));
   --lower-select-all-w:154px;
   --lower-safe-bottom:max(calc(env(safe-area-inset-bottom, 0px) - 34px), 0px);
-  --lower-home-breath:6px;
   height:calc(170px + var(--lower-safe-bottom));
   display:none;
   grid-template-columns:var(--lower-left-w) minmax(0,1fr);
   grid-template-rows:var(--lower-row-1) var(--lower-row-2) var(--lower-row-3) var(--lower-row-4);
-  row-gap:2px;
+  row-gap:var(--lower-context-gap);
   align-items:stretch;
   background:var(--menu-bg);
   border-top:.5px solid rgba(178,178,178,.45);
@@ -1257,15 +1264,15 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{j
 .mid-bar.timeline-grid #alignBarSubmenu{height:100% !important;overflow-x:auto !important;overflow-y:hidden !important;padding:0 !important;align-items:stretch;}
 body.align-submenu-open #lowerContextSlot{overflow:visible;z-index:8;}
 .mid-bar.timeline-grid #alignBar.align-submenu-open{position:relative !important;overflow:visible !important;z-index:10 !important;}
-.mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu{position:absolute;left:calc(-1 * (var(--lower-left-w) + 5px));right:0;bottom:0;height:calc(var(--lower-row-3) + var(--lower-row-4) - 8px) !important;min-height:calc(var(--lower-row-3) + var(--lower-row-4) - 8px);z-index:12;background:var(--menu-bg);border-top:.5px solid rgba(178,178,178,.32);box-shadow:0 -8px 18px rgba(0,0,0,.22);overflow-x:auto !important;overflow-y:visible !important;padding:8px 8px 6px 6px !important;box-sizing:border-box;pointer-events:auto;}
+.mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu{position:absolute;left:calc(-1 * (var(--lower-left-w) + 5px));right:0;bottom:0;height:var(--lower-context-panel-h) !important;min-height:var(--lower-context-panel-h);z-index:12;background:var(--menu-bg);border-top:.5px solid rgba(178,178,178,.32);box-shadow:0 -8px 18px rgba(0,0,0,.22);overflow-x:auto !important;overflow-y:visible !important;padding:8px 8px 6px 6px !important;box-sizing:border-box;pointer-events:auto;}
 .mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu .ab-content{justify-content:center;}
 body.has-multi-selection .mid-bar.timeline-grid #toolbar{display:none;}
 body.cust-open .mid-bar.timeline-grid #toolbar,
 body.cust-open .mid-bar.timeline-grid #alignBar{display:none !important;}
 body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !important;}
-body.cust-expanded #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;padding:0 6px var(--lower-home-breath);z-index:14;background:var(--menu-bg);overflow:visible;}
+body.cust-expanded #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;padding:0;z-index:14;background:var(--menu-bg);overflow:visible;}
 body.cust-expanded .mid-bar.timeline-grid #custBar{height:100% !important;max-height:100% !important;background:var(--menu-bg) !important;pointer-events:auto;}
-body.cust-expanded .mid-bar.timeline-grid #custBarContent{padding-left:6px !important;}
+body.cust-expanded .mid-bar.timeline-grid #custBarContent{height:100%;min-height:100%;padding:8px 8px 6px 6px !important;box-sizing:border-box;overflow-x:auto !important;overflow-y:visible !important;}
 body.cust-expanded #lowerFrameCount,
 body.cust-expanded .lower-active-state,
 body.cust-expanded .lower-selection-actions,
@@ -2948,7 +2955,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AD</span><br><span id="appVersionNameText">v8z4b29AD</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AE</span><br><span id="appVersionNameText">v8z4b29AE</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5292,8 +5299,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29AD';
-const APP_VERSION_NAME = 'v8z4b29AD';
+const APP_VERSION = 'v8z4b29AE';
+const APP_VERSION_NAME = 'v8z4b29AE';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
