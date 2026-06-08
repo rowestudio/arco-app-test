@@ -1,3 +1,11 @@
+# QA pendente — v8z4b29AE offset interno do número dos frames no Stage
+
+- Base funcional tratada conforme solicitação como `v8z4b29AD`; versionamento visível atualizado para `v8z4b29AE` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
+- Verificações estáticas executadas: `.frame-num` mantém o canto superior esquerdo, o `font-size`, o `padding` e o `border-radius` existentes, mas passa a comprimir apenas `top`/`left` com `--stage-frame-num-offset-scale: .65` sobre `--stage-frame-ui-scale`.
+- Preservados sem alteração: tamanho real, posição, rotação e escala real dos frames; espessura da borda; curvas; handles; timeline/menu inferior; `.fp`; `#pillsRow`; `.mid-pills`; Preview/export; JSON; motor.
+- QA manual obrigatório pendente: abrir em desktop e iPhone/Safari, criar/usar frames pequenos no Stage, confirmar que o número continua legível no canto superior esquerdo e mais próximo da borda sem parecer apertado demais em frames médios/grandes.
+- Não foram executados testes em iPhone/Safari real, Preview/export real, JSON manual nem medição visual real neste ambiente automatizado.
+
 # QA pendente — v8z4b29AO auditoria da escala interna dos frames do Stage
 
 - Checklist detalhado criado em `docs/QA-v8z4b29AO.md`.
