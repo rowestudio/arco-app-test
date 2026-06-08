@@ -1,15 +1,15 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29AP                                    ║
+║  Versão: v8z4b29AQ                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
-║  v8z4b29AP                                           ║
-║    feat/ux: Home provisória e Novo Projeto guiado.   ║
+║  v8z4b29AQ                                           ║
+║    fix/flow: roteamento Home/Novo/Abrir/Cancelar.   ║
 ║  v8z4b29AE                                           ║
 ║    fix/ux: reduz offset interno do número dos        ║
 ║        frames pequenos no Stage.                     ║
@@ -597,7 +597,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b29AP — feat/ux: adiciona Home provisória com Novo projeto guiado, Abrir projeto e menu utilitário; diferencia Novo Projeto de Reset e preserva a base validada v8z4b29AE. -->
+<!-- Arco Motion App — v8z4b29AQ — fix/flow: corrige roteamento Home/Novo projeto/Abrir projeto/Cancelar, separa intenção de arquivo JSON versus imagem e preserva a base validada v8z4b29AE. -->
 <!-- Arco Motion App — v8z4b29AN — ux/feat: reorganiza o pill de curvas, adiciona Modo Tangente local com Global armado e preserva timeline/menu inferior, Preview/export, JSON, menus deslizantes e pontos laranja. -->
 <!-- Arco Motion App — v8z4b29AL — fix/ux: escala elementos internos dos frames do Stage conforme tamanho renderizado, preservando borda, geometria, timeline/menu inferior, v8z4b29AF, v8z4b29AH e v8z4b29AK. -->
 <!-- Arco Motion App — v8z4b29AF — fix/ux: estabiliza a Linha 4 / Coluna 2 do menu inferior ao entrar em seleção múltipla, isolando "Selecionar todos" (Linha 3 / Coluna 2) do alinhamento vertical de #alignBar. -->
@@ -2300,7 +2300,7 @@ body.cust-open #toolbar{
   background:var(--surface3);
 }
 
-/* Home provisória e fluxo guiado de Novo Projeto — v8z4b29AP */
+/* Home provisória e fluxo guiado de Novo Projeto — v8z4b29AQ */
 .home-screen{position:fixed;inset:0;z-index:260;background:var(--menu-bg);display:none;flex-direction:column;padding:max(18px,env(safe-area-inset-top)) 18px max(18px,env(safe-area-inset-bottom));overflow:auto;-webkit-overflow-scrolling:touch;}
 body.home-visible .home-screen{display:flex;}
 body.home-visible .app{visibility:hidden;pointer-events:none;}
@@ -2354,7 +2354,7 @@ body.home-visible .app{visibility:hidden;pointer-events:none;}
         <svg viewBox="0 0 24 24"><use href="#i-settings"></use></svg>
       </button>
       <div class="home-menu" id="homeMenu">
-        <div class="home-menu-item" aria-label="Versão atual"><span>Versão</span><strong id="homeVersionText">v8z4b29AP</strong></div>
+        <div class="home-menu-item" aria-label="Versão atual"><span>Versão</span><strong id="homeVersionText">v8z4b29AQ</strong></div>
         <button class="home-menu-item" type="button" onclick="window.location.reload()"><span>Recarregar aplicativo</span><span>↻</span></button>
         <div class="home-menu-note">Estrutura preparada para Site da empresa, Tutoriais, Ajuda, Comunidade, Sobre, Termos/licença e Contato.</div>
       </div>
@@ -2721,7 +2721,7 @@ body.home-visible .app{visibility:hidden;pointer-events:none;}
      contextual). Nenhuma mudança de layout agora; apenas evita
      dependências (CSS/JS) que impeçam o slot depois. -->
 <div class="top-bar" id="topBar" data-role="top-bar">
-  <div class="top-btn labeled top-gap-after" onclick="closeAll();closeCustBar();hideStageFrameMenu();" title="Voltar" aria-label="Voltar">
+  <div class="top-btn labeled top-gap-after" onclick="requestCloseProjectFromEditor()" title="Voltar" aria-label="Voltar">
     <svg viewBox="0 0 24 24"><use href="#i-close"></use></svg><span class="top-label">Voltar</span>
   </div>
   <div class="top-btn labeled top-gap-after" onclick="toggleSettingsSheet()" title="Arquivos" aria-label="Arquivos">
@@ -2807,7 +2807,7 @@ body.home-visible .app{visibility:hidden;pointer-events:none;}
         <svg viewBox="0 0 24 24" style="width:48px;height:48px;display:block;color:var(--text2);" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-up"></use></svg>
         <span style="font-size:13px;font-weight:600;color:var(--text2);">Imagem</span>
       </label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;-webkit-user-select:none;user-select:none;" onclick="loadProjectTrigger();event.preventDefault();">
+      <label style="display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;-webkit-user-select:none;user-select:none;" onclick="loadProjectTrigger('openProjectJson');event.preventDefault();">
         <svg viewBox="0 0 24 24" style="width:48px;height:48px;display:block;color:var(--accent);" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-file-up"></use></svg>
         <span style="font-size:13px;font-weight:600;color:var(--accent);">Projeto</span>
       </label>
@@ -3086,7 +3086,7 @@ body.home-visible .app{visibility:hidden;pointer-events:none;}
       <div class="settings-row disabled" id="settingsSaveRow" aria-disabled="true" onclick="promptSaveProject();closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-download"></use></svg><span>Salvar</span>
       </div>
-      <div class="settings-row" onclick="loadProjectTrigger();closeSettingsSheet()">
+      <div class="settings-row" onclick="openProjectFromEditor();closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-folder-open"></use></svg><span>Abrir</span>
       </div>
       <div class="settings-row" onclick="window.location.reload()">
@@ -3101,10 +3101,10 @@ body.home-visible .app{visibility:hidden;pointer-events:none;}
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AP</span><br><span id="appVersionNameText">v8z4b29AP</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AQ</span><br><span id="appVersionNameText">v8z4b29AQ</span></div>
   </div>
 </div>
-<input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
+<input type="file" id="projectFileInput" accept=".json,application/json" style="display:none;" onchange="loadProjectFromFile(event)">
 <input type="file" id="newProjectImageInput" accept="image/*" style="display:none;">
 <div class="new-project-modal" id="newProjectModal" aria-label="Novo projeto">
   <div class="new-project-sheet" role="dialog" aria-modal="true" aria-labelledby="newProjectTitle">
@@ -5471,8 +5471,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29AP';
-const APP_VERSION_NAME = 'v8z4b29AP';
+const APP_VERSION = 'v8z4b29AQ';
+const APP_VERSION_NAME = 'v8z4b29AQ';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5592,7 +5592,7 @@ let loopSegEasing = 'linear';       // easing de Velocidade do trecho N→1
 let loopSegRotEasing = 'linear';    // easing de Rotação do trecho N→1
 let loopSegScaleEasing = 'linear';  // easing de Escala do trecho N→1
 let pendingProjectData = null; // projeto aguardando imagem ser carregada
-let pendingNewProject = null; // v8z4b29AP — estado temporário do Novo Projeto guiado
+let pendingNewProject = null; // v8z4b29AQ — estado temporário do Novo Projeto guiado
 let easeAmount = 0;
 let easeMode = 'global';
 let segEasings = []; // easing por segmento
@@ -18898,7 +18898,7 @@ function refreshSliderFills() {
 
 
 // ═══════════════════════════════════════
-// HOME / NOVO PROJETO — v8z4b29AP
+// HOME / NOVO PROJETO — v8z4b29AQ
 // ═══════════════════════════════════════
 const NEW_PROJECT_FORMATS = [
   { ratio: '9:16', w: 14, h: 24 },
@@ -18934,11 +18934,22 @@ function toggleHomeMenu() {
   if (menu) menu.classList.toggle('open');
 }
 
-function loadProjectFromHome() {
+let activeFileIntent = null; // v8z4b29AQ — separa JSON de projeto da imagem do Novo Projeto
+
+function openProjectFromHome() {
   const menu = document.getElementById('homeMenu');
   if (menu) menu.classList.remove('open');
   window._projectOpenOrigin = 'home';
-  loadProjectTrigger();
+  loadProjectTrigger('openProjectJson');
+}
+
+function openProjectFromEditor() {
+  window._projectOpenOrigin = 'editor';
+  loadProjectTrigger('openProjectJson');
+}
+
+function loadProjectFromHome() {
+  openProjectFromHome();
 }
 
 function beginNewProjectFromHome() {
@@ -19000,17 +19011,66 @@ function openNewProjectFlow(origin) {
 }
 
 function cancelNewProjectFlow() {
+  const origin = pendingNewProject?.origin || 'home';
   pendingNewProject = null;
+  activeFileIntent = null;
   const modal = document.getElementById('newProjectModal');
   if (modal) modal.classList.remove('open');
+  if (origin === 'home' && !imgNatW) showAppHome();
 }
 
 function chooseNewProjectImage() {
   if (!pendingNewProject) return;
   const input = document.getElementById('newProjectImageInput');
   if (!input) return;
+  activeFileIntent = 'newProjectImage';
   input.value = '';
   input.click();
+}
+
+function closeProjectToHome() {
+  pendingNewProject = null;
+  activeFileIntent = null;
+  const modal = document.getElementById('newProjectModal');
+  if (modal) modal.classList.remove('open');
+  clearCurrentProjectForNewProject();
+  imgNatW = 0;
+  imgNatH = 0;
+  pendingProjectData = null;
+  projectResetBaseline = null;
+  _projectNewFromImage = false;
+  imageOriginalDataUrl = '';
+  if (imgEl) {
+    imgEl.removeAttribute('src');
+    imgEl.style.display = 'none';
+  }
+  if (stage) {
+    stage.style.backgroundImage = '';
+    stage.style.backgroundSize = '';
+    stage.style.backgroundPosition = '';
+    stage.style.backgroundRepeat = '';
+  }
+  if (uploadPrompt) uploadPrompt.style.display = 'flex';
+  const ph = document.getElementById('stagePlaceholder');
+  if (ph) ph.style.display = 'none';
+  if (bezierSvg) bezierSvg.style.display = 'none';
+  document.body.classList.add('no-image');
+  showAppHome();
+  updateToolbarLabels();
+}
+
+function requestCloseProjectFromEditor() {
+  closeAll();
+  closeCustBar();
+  hideStageFrameMenu();
+  if (!imgNatW) {
+    showAppHome();
+    return;
+  }
+  const ok = window.confirm('Fechar projeto?\n\nSalve o projeto antes de sair para não perder alterações.\n\nSair sem salvar?');
+  if (!ok) return;
+  closeProjectToHome();
+  showStatus('Projeto fechado');
 }
 
 function validateNewProjectImage(file, onValid) {
@@ -19105,7 +19165,13 @@ if (newProjectImageInputEl) {
   newProjectImageInputEl.addEventListener('change', e => {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
-    if (!file) return;
+    if (!file) { activeFileIntent = null; return; }
+    if (activeFileIntent !== 'newProjectImage') {
+      console.warn('[Arco] Imagem de Novo Projeto ignorada: intenção ativa não é imagem', activeFileIntent);
+      activeFileIntent = null;
+      return;
+    }
+    activeFileIntent = null;
     validateNewProjectImage(file, commitNewProjectWithImage);
   });
 }
@@ -21415,24 +21481,54 @@ function loadProjectFromJson() {
   }
 }
 
-function loadProjectTrigger() {
-  document.getElementById('projectFileInput').click();
+function loadProjectTrigger(intent) {
+  activeFileIntent = intent || 'openProjectJson';
+  const input = document.getElementById('projectFileInput');
+  if (input) {
+    input.value = '';
+    input.click();
+  }
 }
 
 function loadProjectFromFile(e) {
   const file = e.target.files[0];
-  if (!file) return;
+  const origin = window._projectOpenOrigin || 'editor';
+  if (!file) {
+    activeFileIntent = null;
+    window._projectOpenOrigin = null;
+    return;
+  }
+  if (activeFileIntent !== 'openProjectJson') {
+    console.warn('[Arco] Arquivo de projeto ignorado: intenção ativa não é JSON', activeFileIntent);
+    e.target.value = '';
+    activeFileIntent = null;
+    window._projectOpenOrigin = null;
+    return;
+  }
   const reader = new FileReader();
   reader.onload = evt => {
     try {
       const data = JSON.parse(evt.target.result);
+      const modal = document.getElementById('newProjectModal');
+      if (modal) modal.classList.remove('open');
+      pendingNewProject = null;
       applyProjectData(data);
       hideAppHome();
     } catch(err) {
       // v8z4b18o — log diagnóstico para facilitar debugging sem expor UI complexa
       console.error('[Arco] Erro ao carregar projeto:', err);
       showStatus('Erro ao carregar projeto');
+      if (origin === 'home') showAppHome();
     }
+    activeFileIntent = null;
+    window._projectOpenOrigin = null;
+    e.target.value = '';
+  };
+  reader.onerror = () => {
+    console.error('[Arco] Erro ao ler arquivo de projeto');
+    showStatus('Erro ao carregar projeto');
+    if (origin === 'home') showAppHome();
+    activeFileIntent = null;
     window._projectOpenOrigin = null;
     e.target.value = '';
   };
