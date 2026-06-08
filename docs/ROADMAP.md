@@ -8,6 +8,17 @@
 - Serve como base segura para todas as evoluções listadas abaixo.
 
 
+
+## v8z4b29AS — Roadmap futuro do Novo Projeto
+
+- Futuramente, o fluxo de Novo Projeto deve aceitar portas de entrada por imagem/Fotos, por template ou por formato.
+- Entradas desejadas:
+  1. começar pela imagem/Fotos → formato → template ou Sem template;
+  2. começar pelo template → imagem → confirmar/ajustar formato;
+  3. começar pelo formato → template ou Sem template → imagem, mantendo o fluxo atual.
+- Regra de arquitetura futura: todas as entradas devem alimentar o mesmo construtor interno, por exemplo `pendingNewProject = { format, template, imageFile, entryMode }` ou estrutura equivalente.
+- Fora do escopo desta versão: picker especial do Fotos além do input atual, biblioteca completa de templates, templates remotos, conta/perfil, comunidade, multi-imagem e canvas expandido.
+
 ## v8z4b29AR — Roadmap futuro do Novo Projeto
 
 - Futuramente, a criação de Novo Projeto não deve ficar presa a uma única ordem fixa.
