@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29AG                                    ║
+║  Versão: v8z4b29AH                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29AH                                           ║
+║    fix/ux: alinha pontos centrais da timeline ao     ║
+║        centro real do frame/pill focal visível.      ║
 ║  v8z4b29AG                                           ║
 ║    fix/ux: alinha pontos centrais da timeline ao     ║
 ║        eixo real do #pillsRow/snap.                  ║
@@ -569,7 +572,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b29AG — fix/ux: alinha os pontos laranja de centro da timeline ao eixo real do #pillsRow sem alterar snap, menus inferiores ou motor. -->
+<!-- Arco Motion App — v8z4b29AH — fix/ux: alinha os pontos laranja de centro da timeline ao centro real do frame/pill focal visível sem alterar snap, menus inferiores ou motor. -->
 <!-- Arco Motion App — v8z4b29AF — fix/ux: estabiliza a Linha 4 / Coluna 2 do menu inferior ao entrar em seleção múltipla, isolando "Selecionar todos" (Linha 3 / Coluna 2) do alinhamento vertical de #alignBar. -->
 <!-- Arco Motion App — v8z4b29AE — fix/ux: corrige camada inferior de submenus em frame simples e seleção múltipla; estabiliza Linha 3/4/Coluna 2 com Selecionar todos. -->
 <!-- Arco Motion App — v8z4b29AD — fix/ux: corrige ancoragem e altura do #alignBarSubmenu em seleção múltipla. -->
@@ -2965,7 +2968,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AG</span><br><span id="appVersionNameText">v8z4b29AG</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AH</span><br><span id="appVersionNameText">v8z4b29AH</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5309,8 +5312,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29AG';
-const APP_VERSION_NAME = 'v8z4b29AG';
+const APP_VERSION = 'v8z4b29AH';
+const APP_VERSION_NAME = 'v8z4b29AH';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11167,11 +11170,22 @@ function getTimelineStageFocusIndex() {
 }
 function syncLowerTimelineCenterMarkers() {
   const slotEl = document.querySelector('.lower-timeline-slot');
-  const pillsEl = document.getElementById('pillsRow');
+  const pillsEl = document.querySelector('#pillsRow');
   if (!slotEl || !pillsEl) return;
   const slotRect = slotEl.getBoundingClientRect();
   const pillsRect = pillsEl.getBoundingClientRect();
   if (!slotRect.width || !pillsRect.width) return;
+  const focalEl = pillsEl.querySelector('.fp.timeline-focal')
+    || pillsEl.querySelector('.fp.active')
+    || pillsEl.querySelector('.fp.selected')
+    || (timelineFocalFrameId >= 0 ? pillsEl.querySelector('.fp[data-frame-index="' + timelineFocalFrameId + '"]') : null);
+  if (focalEl) {
+    const focalRect = focalEl.getBoundingClientRect();
+    if (focalRect.width) {
+      slotEl.style.setProperty('--lower-timeline-center-x', (focalRect.left + focalRect.width / 2 - slotRect.left) + 'px');
+      return;
+    }
+  }
   slotEl.style.setProperty('--lower-timeline-center-x', (pillsRect.left - slotRect.left + pillsEl.clientWidth / 2) + 'px');
 }
 function getLowerTimelineNearestFrameIndex() {
@@ -11212,6 +11226,7 @@ function applyTimelinePillFocusClasses() {
     else if (isMulti || (isSelected && !isFocus)) el.style.color = '#ff9500';
     else el.style.color = '';
   });
+  syncLowerTimelineCenterMarkers();
 }
 function applyStageTimelineFocusVisuals() {
   if (isMultiSelectionActive() || bottomContextMode === 'segment') { applyTimelinePillFocusClasses(); return; }
@@ -11306,6 +11321,7 @@ function syncLowerTimelineScroll(source, target) {
   const maxTargetScroll = Math.max(0, target.scrollWidth - target.clientWidth);
   target.scrollLeft = Math.min(maxTargetScroll, Math.max(0, source.scrollLeft));
   requestAnimationFrame(() => { lowerTimelineScrollSyncing = false; });
+  syncLowerTimelineCenterMarkers();
   if (Date.now() >= lowerTimelineProgrammaticScrollUntil) {
     scheduleLowerTimelineCenterFrameUpdate();
     scheduleLowerTimelineSnapToCenter();
