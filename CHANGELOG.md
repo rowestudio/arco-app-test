@@ -1,3 +1,8 @@
+# v8z4b29AO
+- fix/ux: audita e restaura, quando necessário, a escala proporcional dos elementos internos dos frames no Stage introduzida na v8z4b29AL.
+- fix/ux: garante que `--stage-frame-ui-scale` e `updateStageFrameUIScale()` continuem ativos em `renderAll()` e também no caminho de atualização visual do Stage `refreshEditorViewVisualOverlays()`.
+- preserva menu de curvas da v8z4b29AN, Tangente, Global, timeline/menu inferior, pontos laranja, snap-to-center, Preview/export, JSON e motor.
+
 # v8z4b29AN
 - ux: reorganiza o menu de curvas com todos os ícones dentro do mesmo pill.
 - ux: aumenta os ícones de curva e suaviza a espessura do traço.

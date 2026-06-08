@@ -1,3 +1,10 @@
+# QA pendente — v8z4b29AO auditoria da escala interna dos frames do Stage
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AO.md`.
+- Base confirmada: `v8z4b29AN`, preservando `v8z4b29AF`, `v8z4b29AH`, `v8z4b29AK`, `v8z4b29AL`, `v8z4b29AM` e `v8z4b29AN`.
+- Auditoria estática: `--stage-frame-ui-scale`, `updateStageFrameUIScale()`, CSS proporcional de `.frame-border`/`.frame-num` e chamada em `renderAll()` continuam presentes; a escala também foi reativada no caminho `refreshEditorViewVisualOverlays()` para manter o repaint visual do Stage sincronizado.
+- QA manual obrigatório pendente: validar visualmente em iPhone/Safari que frames pequenos mostram número, padding e radius menores, borda fixa, sem alteração de geometria; confirmar timeline/menu inferior, menu de curvas da AN, Tangente, Global, Preview/export e JSON sem regressão.
+
 # QA pendente — v8z4b29AN Modo Tangente e Global armado no pill de curvas
 
 - Checklist detalhado criado em `docs/QA-v8z4b29AN.md`.
