@@ -1,6 +1,6 @@
-# QA pendente — v8z4b29AX corner handles + HUD visor
+# QA pendente — v8z4b29AY refinamento visual handles/abas + HUD discreta
 
-> Base preservada: v8z4b29AW aprovada (F1 ativo por imagem + confirmação assistida no Stage).
+> Base preservada: v8z4b29AX (4 handles/abas + HUD visor + mira central implementados).
 
 ## Escopo
 

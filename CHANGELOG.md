@@ -1,3 +1,12 @@
+# v8z4b29AY
+
+- fix/ui: refina visual dos 4 handles/abas do frame ativo para seguir o mockup de visor/câmera.
+- fix/ui: reduz tamanho visual das abas (36px → 24px), mantendo área de toque 44px adequada no iPhone.
+- fix/ui: reposiciona abas para fora da borda do frame (offset externo de 12px), com respiro visual.
+- fix/ui: suaviza a leitura superior de pausa, rotação e escala (faixa cinza translúcida, sem pill preto pesado).
+- fix/ui: ajusta mira central (30px, mais visível) e preserva número do frame sem sobreposição.
+- preserva a lógica funcional da v8z4b29AX sem alterar motor, timeline, curvas, Preview/export ou JSON.
+
 # v8z4b29AX
 
 - feat/ui: substitui o handle azul/ciano do frame ativo no Stage por 4 círculos/abas ativos nos cantos (TL, TR, BL, BR).
