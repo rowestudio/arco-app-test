@@ -1,3 +1,10 @@
+# v8z4b29BA
+
+- fix/ui: aumenta o espaçamento entre pausa, rotação e escala no topo do frame ativo (HUD visor — flex com gap, mais arejado e legível no iPhone).
+- fix/ui: reduz aproximadamente 10% o tamanho visual das 4 abas circulares do frame ativo (24px → 22px), preservando exatamente a posição de seus centros e mantendo a área de toque de 44px.
+- preserva a correção da v8z4b29AZ que impede novos frames de nascerem fora do Stage.
+- preserva: timeline/menu inferior, curvas, Preview/export, JSON, motor de animação.
+
 # v8z4b29AZ
 
 - fix/stage: ajusta automaticamente a posição inicial de frames novos para impedir que nasçam fora da área útil do Stage (clamp com margem de 12px em todas as bordas).
