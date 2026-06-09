@@ -1,16 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29AX                                    ║
+║  Versão: v8z4b29AY                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
-║  v8z4b29AX                                           ║
-║    feat/ui: 4 círculos/abas nos cantos do frame ativo ║
-║    feat/ui: HUD visor (pausa/rot/escala) + mira cen. ║
+║  v8z4b29AY                                           ║
+║    fix/ui: refina visual dos 4 handles/abas — menor  ║
+║    fix/ui: abas fora da borda, HUD faixa discreta    ║
 ║  v8z4b29AW                                           ║
 ║    ux: consolida início por imagem já com F1 ativo.  ║
 ║    fix/ui: ancora confirmação assistida no Stage UI. ║
@@ -607,7 +607,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b29AX — feat/ui: 4 círculos/abas nos cantos do frame ativo substituem o handle azul/ciano; HUD visor (pausa/rot/escala) e mira central; preserva base v8z4b29AW. -->
+<!-- Arco Motion App — v8z4b29AY — fix/ui: refina visual dos 4 handles/abas (menores, fora da borda, HUD discreta, mira ajustada); preserva lógica funcional da v8z4b29AX. -->
 <!-- Arco Motion App — v8z4b29AW — ux: consolida início por imagem com Frame 1 criado, numerado e ativo; fix/ui: move confirmação assistida para overlay do Stage, preservando base v8z4b29AV e menus v8z4b29AU. -->
 <!-- Arco Motion App — v8z4b29AV — feat/flow: adiciona Novo arquivo simples no menu interno com confirmação, imagem validada e estado limpo com F1 sem herdar JSON/frames/curvas, preservando base v8z4b29AU sem Home/Novo Projeto guiado. -->
 <!-- Arco Motion App — v8z4b29AU — fix/ui: reposiciona menus contextuais de frame e curva para overlay de UI do Stage, acima do menu inferior, sem acompanhar imagem/conteúdo transformado e preservando base v8z4b29AE pós-revert #262 sem Home/Novo Projeto guiado. -->
@@ -977,43 +977,43 @@ body.inserting-frame .frame-out-handle{pointer-events:none !important;}
 /* v8z4b29AX — bolinha antiga invisível em modo normal (mantida apenas para ghost-frame) */
 .global-handle:not(.ghost-transform){opacity:0 !important;pointer-events:none !important;}
 
-/* v8z4b29AX — 4 círculos/abas nos cantos do frame ativo */
+/* v8z4b29AY — 4 círculos/abas nos cantos do frame ativo: visual 24px, toque 44px */
 .corner-handle{
-  position:absolute;left:0;top:0;width:36px;height:36px;
-  margin-left:-18px;margin-top:-18px;border-radius:50%;
+  position:absolute;left:0;top:0;width:24px;height:24px;
+  margin-left:-12px;margin-top:-12px;border-radius:50%;
   background:#fff;
-  box-shadow:0 2px 12px rgba(0,0,0,.48),0 0 0 1.5px rgba(255,255,255,.35);
+  box-shadow:0 1px 5px rgba(0,0,0,.28);
   display:none;cursor:grab;touch-action:none;z-index:65;
   transform:scale(var(--ez-inv,1));transform-origin:center center;
 }
 .corner-handle.show{display:block;}
-.corner-handle:active{cursor:grabbing;background:rgba(255,255,255,.9);}
-/* Área de toque expandida — mínimo 44px para iPhone/Safari */
+.corner-handle:active{cursor:grabbing;background:rgba(255,255,255,.88);}
+/* Área de toque expandida — mínimo 44px para iPhone/Safari (visual separado do hit area) */
 .corner-handle::before{content:'';position:absolute;left:50%;top:50%;
-  width:52px;height:52px;transform:translate(-50%,-50%);
+  width:44px;height:44px;transform:translate(-50%,-50%);
   background:transparent;border-radius:50%;}
 
-/* v8z4b29AX — HUD visor/câmera no topo do frame ativo */
+/* v8z4b29AY — HUD visor/câmera: faixa discreta cinza translúcida acima do frame */
 #frameHud{
   position:absolute;left:0;top:0;
-  background:rgba(0,0,0,.72);color:#fff;
-  font-size:12px;font-weight:600;
-  padding:4px 10px;border-radius:20px;
+  background:rgba(60,60,60,.52);color:#fff;
+  font-size:11px;font-weight:500;
+  padding:3px 12px;border-radius:10px;
   white-space:nowrap;pointer-events:none;z-index:68;
-  display:none;letter-spacing:.2px;
-  transform:translate(-50%,calc(-100% - 10px)) scale(var(--ez-inv,1));
+  display:none;letter-spacing:.5px;
+  transform:translate(-50%,calc(-100% - 14px)) scale(var(--ez-inv,1));
   transform-origin:50% 100%;
 }
 #frameHud.show{display:block;}
 
-/* v8z4b29AX — mira central no frame ativo */
+/* v8z4b29AY — mira central fina e discreta no frame ativo */
 .frame-crosshair{
   position:absolute;left:50%;top:50%;
-  width:20px;height:20px;pointer-events:none;
+  width:30px;height:30px;pointer-events:none;
   transform:translate(-50%,-50%);display:none;
 }
 .frame-crosshair::before,.frame-crosshair::after{
-  content:'';position:absolute;background:rgba(255,255,255,.55);
+  content:'';position:absolute;background:rgba(255,255,255,.48);
 }
 .frame-crosshair::before{left:50%;top:0;width:1px;height:100%;transform:translateX(-50%);}
 .frame-crosshair::after{top:50%;left:0;height:1px;width:100%;transform:translateY(-50%);}
@@ -3085,7 +3085,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AX</span><br><span id="appVersionNameText">v8z4b29AX</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AY</span><br><span id="appVersionNameText">v8z4b29AY</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5446,8 +5446,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29AX';
-const APP_VERSION_NAME = 'v8z4b29AX';
+const APP_VERSION = 'v8z4b29AY';
+const APP_VERSION_NAME = 'v8z4b29AY';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12413,7 +12413,7 @@ function ensureGlobalHandle() {
 }
 
 // ═══════════════════════════════════════
-// v8z4b29AX — CORNER HANDLES + HUD
+// v8z4b29AY — CORNER HANDLES + HUD (refinamento visual da AX)
 // ═══════════════════════════════════════
 
 function ensureCornerHandles() {
@@ -12485,8 +12485,8 @@ function updateFrameHud(fi) {
   const rot   = frameRotations[fi] || 0;
   const refW  = baseFrameW > 0 ? baseFrameW : (stageW * 0.55 || 1);
   const scPct = Math.round(f.w / refW * 100);
-  const rotStr = (rot >= 0 ? '+' : '') + rot.toFixed(1) + '°';
-  frameHudEl.textContent = pause.toFixed(1) + 's   ' + rotStr + '   ' + scPct + '%';
+  const rotStr = rot.toFixed(1) + '°';
+  frameHudEl.textContent = pause.toFixed(1) + 's     ' + rotStr + '     ' + scPct + '%';
   // Topo central do frame rotacionado (coord stageContent)
   const { cx, cy } = getFrameCenter(fi);
   const rr  = rot * Math.PI / 180;
@@ -13594,17 +13594,21 @@ function renderAll() {
     globalHandleEl.classList.remove('ghost-transform');
   }
 
-  // v8z4b29AX — corner handles + HUD
+  // v8z4b29AY — corner handles + HUD (círculos fora da borda do frame)
   ensureCornerHandles();
   ensureFrameHud();
   const _showCorners = !!(imgNatW && frameCount > 0 && !isPreviewing && !isMultiSelectionActive() && !isInsertingFrame);
   if (cornerHandleEls) {
     const _ckeys = ['tl','tr','bl','br'];
+    const _CORNER_OUT = 12; // px para fora da borda — visual externo, sem cobrir a moldura
+    const _fc = _showCorners ? getFrameCenter(activeIdx) : null;
     cornerHandleEls.forEach((cel, idx) => {
-      if (_showCorners) {
+      if (_showCorners && _fc) {
         const hp = getRawHandlePosForFrame(activeIdx, _ckeys[idx]);
-        cel.style.left = hp.x + 'px';
-        cel.style.top  = hp.y + 'px';
+        const _dx = hp.x - _fc.cx, _dy = hp.y - _fc.cy;
+        const _dist = Math.hypot(_dx, _dy) || 1;
+        cel.style.left = (hp.x + (_dx / _dist) * _CORNER_OUT) + 'px';
+        cel.style.top  = (hp.y + (_dy / _dist) * _CORNER_OUT) + 'px';
         cel.classList.add('show');
         stageAppendChild(cel);
       } else {
