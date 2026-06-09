@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29AU                                    ║
+║  Versão: v8z4b29AV                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29AV                                           ║
+║    feat/flow: adiciona Novo arquivo simples no menu  ║
+║        interno; troca só após imagem carregar.       ║
 ║  v8z4b29AU                                           ║
 ║    fix/ui: ancora menus contextuais de frame e       ║
 ║        curva na UI do Stage, acima do menu inferior. ║
@@ -598,6 +601,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29AV — feat/flow: adiciona Novo arquivo simples no menu interno com confirmação, imagem validada e estado limpo com F1 sem herdar JSON/frames/curvas, preservando base v8z4b29AU sem Home/Novo Projeto guiado. -->
 <!-- Arco Motion App — v8z4b29AU — fix/ui: reposiciona menus contextuais de frame e curva para overlay de UI do Stage, acima do menu inferior, sem acompanhar imagem/conteúdo transformado e preservando base v8z4b29AE pós-revert #262 sem Home/Novo Projeto guiado. -->
 <!-- Arco Motion App — v8z4b29AE — fix/ux: reduz o offset interno do número dos frames no Stage quando os frames são pequenos, preservando escala proporcional, borda, geometria, timeline/menu inferior, Preview/export, JSON e motor. -->
 <!-- Arco Motion App — v8z4b29AN — ux/feat: reorganiza o pill de curvas, adiciona Modo Tangente local com Global armado e preserva timeline/menu inferior, Preview/export, JSON, menus deslizantes e pontos laranja. -->
@@ -2547,6 +2551,12 @@ body.cust-open #toolbar{
     <path d="M12 12v6"/>
     <path d="m15 15-3-3-3 3"/>
   </symbol>
+  <symbol id="i-file-plus-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/>
+    <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+    <path d="M3 15h6"/>
+    <path d="M6 12v6"/>
+  </symbol>
   <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
     <polyline points="7 10 12 15 17 10"/>
@@ -2984,6 +2994,9 @@ body.cust-open #toolbar{
         <input type="file" id="fileInput2" accept="image/*" style="display:none;">
         <svg viewBox="0 0 24 24"><use href="#i-image"></use></svg><span>Imagem</span>
       </label>
+      <div class="settings-row" onclick="showNewFileConfirm();closeSettingsSheet()">
+        <svg viewBox="0 0 24 24"><use href="#i-file-plus-2"></use></svg><span>Novo arquivo</span>
+      </div>
       <div class="settings-row" onclick="openPanel('Format');closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-proportions"></use></svg><span>Formato</span>
       </div>
@@ -3020,10 +3033,11 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AU</span><br><span id="appVersionNameText">v8z4b29AU</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AV</span><br><span id="appVersionNameText">v8z4b29AV</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
+<input type="file" id="newFileImageInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
 
 <!-- PREVIEW SCREEN -->
 <div class="preview-screen" id="previewScreen">
@@ -3104,6 +3118,22 @@ body.cust-open #toolbar{
       <button onclick="closeSaveModal()"
         style="width:100%;padding:10px;border-radius:12px;border:none;background:transparent;
                font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Novo arquivo -->
+<div id="newFileModal" style="display:none;position:fixed;inset:0;z-index:205;align-items:center;justify-content:center;background:rgba(0,0,0,.6);">
+  <div style="background:var(--surface);border-radius:18px;padding:24px 20px;width:calc(100% - 48px);max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.4);">
+    <div style="font-size:16px;font-weight:700;color:var(--text1);margin-bottom:8px;">Novo arquivo?</div>
+    <p style="font-size:13px;color:var(--text3);line-height:1.45;margin:0 0 18px;">Salve o projeto atual antes de continuar. O projeto atual será fechado ao criar um novo arquivo.</p>
+    <div style="display:flex;gap:8px;margin-top:4px;flex-direction:column;">
+      <button onclick="confirmNewFileChooseImage()" style="width:100%;padding:13px;border-radius:12px;border:none;background:var(--accent);font-size:14px;font-weight:700;color:#000;cursor:pointer;">
+        Escolher imagem
+      </button>
+      <button onclick="closeNewFileConfirm()" style="width:100%;padding:10px;border-radius:12px;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;">
         Cancelar
       </button>
     </div>
@@ -5364,8 +5394,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29AU';
-const APP_VERSION_NAME = 'v8z4b29AU';
+const APP_VERSION = 'v8z4b29AV';
+const APP_VERSION_NAME = 'v8z4b29AV';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5483,6 +5513,7 @@ let loopSegEasing = 'linear';       // easing de Velocidade do trecho N→1
 let loopSegRotEasing = 'linear';    // easing de Rotação do trecho N→1
 let loopSegScaleEasing = 'linear';  // easing de Escala do trecho N→1
 let pendingProjectData = null; // projeto aguardando imagem ser carregada
+let activeFileIntent = null; // 'newFileImage' isola Novo arquivo dos fluxos de JSON/imagem existentes
 let easeAmount = 0;
 let easeMode = 'global';
 let segEasings = []; // easing por segmento
@@ -17792,7 +17823,16 @@ function resetAll() {
     containFrames = false;
     syncContainFramesUI();
     resetEditorZoom();
-    startFirstFrameAssistedInsertion();
+    if (projectResetBaseline && projectResetBaseline.frameCount >= 1) {
+      restoreState(cloneProjectStateSnapshot(projectResetBaseline));
+      normalizeProjectArrays();
+      renderAll();
+      updateFrameSelector();
+      requestLowerTimelineCenter(activeIdx);
+      updateToolbarLabels();
+    } else {
+      startFirstFrameAssistedInsertion();
+    }
     showStatus('Resetado');
     return;
   }
@@ -18790,6 +18830,188 @@ function refreshSliderFills() {
 
 
 // ═══════════════════════════════════════
+// NOVO ARQUIVO
+// ═══════════════════════════════════════
+function showNewFileConfirm() {
+  const modal = document.getElementById('newFileModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeNewFileConfirm() {
+  const modal = document.getElementById('newFileModal');
+  if (modal) modal.style.display = 'none';
+  if (activeFileIntent === 'newFileImage') activeFileIntent = null;
+}
+
+function confirmNewFileChooseImage() {
+  const modal = document.getElementById('newFileModal');
+  if (modal) modal.style.display = 'none';
+  activeFileIntent = 'newFileImage';
+  const input = document.getElementById('newFileImageInput');
+  if (!input) return;
+  input.value = '';
+  input.click();
+}
+
+function isSupportedNewFileImage(file) {
+  if (!file) return false;
+  const type = (file.type || '').toLowerCase();
+  const name = (file.name || '').toLowerCase();
+  const extOk = /\.(jpe?g|png|webp)$/.test(name);
+  const typeOk = /^(image\/jpeg|image\/png|image\/webp)$/.test(type);
+  return typeOk || (!type && extOk);
+}
+
+function showNewFileImageError() {
+  showStatus('Não foi possível abrir esta imagem. Use JPG, PNG ou WebP.');
+}
+
+function clearCurrentProjectForNewFile() {
+  if (isInsertingFrame) cancelAssistedFrameInsertion();
+  clearFrameMultiSelectState();
+  closeAll();
+  document.querySelectorAll('.frame').forEach(el => el.remove());
+  document.querySelectorAll('.ctrl-pt').forEach(el => el.remove());
+  document.querySelectorAll('.mid-pathpt').forEach(el => el.remove());
+  frames.length = 0;
+  frameRotations.length = 0;
+  frameLocked.length = 0;
+  framePauses.length = 0;
+  ctrlPts.length = 0;
+  ctrlPtManual.length = 0;
+  segDurations.length = 0;
+  segBlurSettings.length = 0;
+  segEasings.length = 0;
+  rotEasings.length = 0;
+  scaleEasings.length = 0;
+  loopEnabled = false;
+  loopDuration = 1.0;
+  loopCtrlPt = null;
+  loopSegEasing = 'linear';
+  loopSegRotEasing = 'linear';
+  loopSegScaleEasing = 'linear';
+  pauseDuration = 0;
+  finishMode = 'none';
+  finishDuration = 0.8;
+  curvesV2 = null;
+  frameCount = 0;
+  activeIdx = 0;
+  timelineFocalFrameId = -1;
+  selectedSegmentIndex = -1;
+  projectResetBaseline = null;
+  undoStack.length = 0;
+  redoStack.length = 0;
+  updateUndoRedoUI();
+  resetGeneratedVideoState();
+  const dimSvgEl = document.getElementById('stageDimSvg');
+  if (dimSvgEl) { dimSvgEl.style.display = 'none'; dimSvgEl.innerHTML = ''; }
+  if (bezierSvg) bezierSvg.innerHTML = '';
+  handleDragState = null;
+  hideAngleIndicator();
+  if (globalHandleEl) {
+    globalHandleEl.classList.remove('show');
+    globalHandleEl.classList.remove('ghost-transform');
+  }
+  stage.classList.remove('out-of-bounds');
+}
+
+function createInitialFrameForNewFile() {
+  const ratio = ratioMap[currentRatio] ? currentRatio : '9:16';
+  currentRatio = ratio;
+  syncRatioUI();
+  const pending = buildFirstFrameInsertion();
+  const initial = pending ? pending.frame : { x: stageW * 0.225, y: stageH * 0.225, w: stageW * 0.55, h: stageH * 0.55 / ratioMap[currentRatio] };
+  frames.push({ ...initial, pointMode: POINT_MODE_DEFAULT });
+  frameRotations.push(0);
+  frameLocked.push(false);
+  framePauses.push({ duration: 0 });
+  frameCount = 1;
+  activeIdx = 0;
+  baseFrameW = initial.w;
+  createFrameDOM(0);
+  normalizeProjectArrays();
+}
+
+function finishNewFileImageLoad(file, dataUrl, tmp) {
+  imgEl.onload = () => {
+    resetPreviewAndExportStateForImageChange();
+    resetCanonicalRenderImage('new-file-image');
+    imageOriginalDataUrl = dataUrl || '';
+    imagePipelineMeta = {
+      ...imagePipelineMeta,
+      originalMime: file.type || ((String(dataUrl).match(/^data:([^;]+)/) || [])[1] || ''),
+      sourceKind: 'newFileImage',
+      isEmbeddedBase64: false,
+      isHeic: false
+    };
+    debugImagePipeline('new-file-image-dataurl');
+    imgNatW = tmp.naturalWidth;
+    imgNatH = tmp.naturalHeight;
+    setCanonicalRenderImage(tmp, {
+      label: 'new-file-image',
+      originalMime: imagePipelineMeta.originalMime,
+      sourceKind: 'newFileImage',
+      isEmbeddedBase64: false
+    });
+    if (file.name) {
+      window._imageBaseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_\-]/g, '_').toLowerCase();
+    }
+    const upload = document.getElementById('uploadPrompt');
+    if (upload) upload.style.display = 'none';
+    const ph = document.getElementById('stagePlaceholder');
+    if (ph) ph.style.display = 'none';
+    imgEl.style.display = 'block';
+    bezierSvg.style.display = 'block';
+    document.body.classList.remove('no-image');
+    clearCurrentProjectForNewFile();
+    layoutStage();
+    setupPreviewCanvas();
+    movementEasingMode = 'smart';
+    rotationEasingMode = 'smart';
+    scaleEasingMode = 'smart';
+    syncMovementEasingModeUI();
+    syncRotationEasingModeUI();
+    syncScaleEasingModeUI();
+    _projectNewFromImage = true;
+    createInitialFrameForNewFile();
+    renderAll();
+    updateFrameSelector();
+    requestLowerTimelineCenter(activeIdx);
+    updateToolbarLabels();
+    captureProjectResetBaseline('new-file-image-loaded');
+    validateProjectState('after-new-file');
+    showStatus('Novo arquivo criado · F1 assistido');
+    requestAnimationFrame(() => {
+      renderAll();
+      updateFrameSelector();
+      requestLowerTimelineCenter(activeIdx);
+      updateToolbarLabels();
+    });
+  };
+  imgEl.onerror = () => showNewFileImageError();
+  imgEl.src = dataUrl;
+}
+
+function loadNewFileImage(file) {
+  activeFileIntent = null;
+  if (!file) return;
+  if (!isSupportedNewFileImage(file)) {
+    showNewFileImageError();
+    return;
+  }
+  const reader = new FileReader();
+  reader.onerror = () => showNewFileImageError();
+  reader.onload = e => {
+    const dataUrl = e.target.result || '';
+    const tmp = new Image();
+    tmp.onload = () => finishNewFileImageLoad(file, dataUrl, tmp);
+    tmp.onerror = () => showNewFileImageError();
+    tmp.src = dataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ═══════════════════════════════════════
 // LOAD IMAGE
 // ═══════════════════════════════════════
 function loadImage(file, onDoneCallback) {
@@ -18927,6 +19149,7 @@ function loadImage(file, onDoneCallback) {
 
 document.getElementById('fileInput').addEventListener('change',  e => loadImage(e.target.files[0]));
 document.getElementById('fileInput2').addEventListener('change', e => loadImage(e.target.files[0]));
+document.getElementById('newFileImageInput').addEventListener('change', e => loadNewFileImage(e.target.files[0]));
 
 // ═══════════════════════════════════════
 // STATUS TOAST

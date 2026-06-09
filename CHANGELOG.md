@@ -1,3 +1,10 @@
+# v8z4b29AV
+
+- feat/flow: adiciona Novo arquivo simples no menu interno do editor.
+- ux: Novo arquivo pede confirmação e só substitui o projeto atual após a nova imagem carregar com sucesso.
+- fix/state: Novo arquivo cria estado limpo com F1 assistido, sem herdar frames, curvas, timeline ou vínculo com JSON anterior.
+- preserva base v8z4b29AU, sem reintroduzir Home/Novo Projeto guiado.
+
 # v8z4b29AU
 - fix/ui: reposiciona menus contextuais de frame e curva para a camada de UI do Stage, impedindo que acompanhem a imagem/conteúdo transformado.
 - fix/ux: mantém menus contextuais acima do menu inferior, sem cobrir a timeline e referenciados ao Stage/viewport.
