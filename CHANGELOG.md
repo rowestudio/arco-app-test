@@ -1,3 +1,15 @@
+# v8z4b29BC
+
+- fix(ui): aproxima a faixa superior (frameHud) do frame ativo da moldura do frame, reduzindo a distância vertical e o espaçamento da faixa flutuante.
+- fix(ui): melhora o alinhamento horizontal da faixa superior com os pontos/abas superiores do frame ativo.
+- fix(ui): reduz o padding interno da faixa superior (3px 16px → 2px 10px), preservando o espaçamento entre pausa, rotação e escala da v8z4b29BA.
+- fix(ui): diminui o tamanho visual das 4 abas/pontos circulares do frame ativo (22px → 18px), preservando exatamente a posição de seus centros e a área de toque de 44px.
+- fix(ui): torna a cruz central do frame ativo escalável com o tamanho do frame, usando o mesmo clamp de escala (0.58–1) já aplicado às abas.
+- fix(menu): reorganiza o menu superior/overlay de ajustes em grade de 4 colunas.
+- fix(menu): renomeia "Novo arquivo" para "Novo Projeto" no menu superior, preservando a função existente.
+- fix(menu): move "Novo Projeto" para a linha final de arquivos (Salvar, Novo Projeto, Abrir, Recarregar).
+- preserve: motor, timeline/menu inferior, Preview/export/MP4, JSON, curvas/Bézier, clamp de criação de frames, Novo Projeto guiado/Home, lógica dos handles/abas.
+
 # v8z4b29BB
 
 - fix(ui): remove o aspecto de pill arredondado do fundo do texto superior do frame ativo no Stage.
