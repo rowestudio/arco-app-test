@@ -1,3 +1,11 @@
+# v8z4b29AX
+
+- feat/ui: substitui o handle azul/ciano do frame ativo no Stage por 4 círculos/abas ativos nos cantos (TL, TR, BL, BR).
+- feat/ui: os 4 círculos reaproveitam a mesma lógica e motor de transformação do handle anterior (escala + rotação), sem criar novo motor.
+- feat/ui: adiciona leitura superior de pausa, rotação e escala no frame ativo (HUD visor/câmera) — somente informativa, sem painel ou menu.
+- feat/ui: adiciona mira central discreta no frame ativo, reforçando a metáfora de visor/câmera.
+- preserva base funcional v8z4b29AW, sem alterar timeline, motor, curvas, Preview/export, JSON ou fluxo principal.
+
 # v8z4b29AW
 
 - ux: consolida a regra de iniciar projetos por imagem já com Frame 1 criado, numerado e ativo.
