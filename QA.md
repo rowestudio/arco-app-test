@@ -1,4 +1,45 @@
-# QA pendente — v8z4b29AY refinamento visual handles/abas + HUD discreta
+# QA pendente — v8z4b29AZ posicionamento ghost + UI 4 abas consistente
+
+> Base preservada: v8z4b29AY (4 handles/abas + HUD visor + mira central refinados).
+
+## Escopo v8z4b29AZ
+
+- Corrigir posição de nascimento de frames novos/ghost para impedir que nasçam fora da área útil do Stage.
+- Aplicar a nova UI de 4 abas/círculos também ao frame novo, ghost e inserção assistida (sem bolinha ciano).
+- Preservar: timeline/menu inferior, curvas, Preview/export, JSON, motor de animação.
+
+## Diagnóstico e implementação
+
+1. Problema — posição inicial: `buildPendingFrameInsertion()` não clampava a posição inicial do ghost ao Stage.
+2. Solução — posição inicial: função `clampNewFrameRectToStage(frame, margin)` aplicada no nascimento de frames novos (margem 12px). Arrasto posterior não é clampado.
+3. Problema — UI ghost: `updateGhostTransformHandle()` mostrava `globalHandle.ghost-transform` (bolinha ciano) e escondia as 4 abas.
+4. Solução — UI ghost: `updateGhostTransformHandle()` reescrita para posicionar `cornerHandleEls` nos 4 cantos do ghost frame, ocultando o globalHandle.
+5. Funcionalidade ghost: `ensureCornerHandles()` pointerdown passa a iniciar `ghostInteraction` de scale/rotate quando `isInsertingFrame`, via `getGhostRawHandlePos()`. Pointermove/pointerup despacham para `globalHandleEl` (lógica preservada).
+6. Risco: `renderAll()` podia ocultar os corner handles durante inserção. Corrigido com guarda `else if (!isInsertingFrame)` e chamada a `updateGhostTransformHandle()` quando `isInsertingFrame && ghostFrame`.
+
+## QA manual pendente v8z4b29AZ
+
+1. Versão visível mostra `v8z4b29AZ`.
+2. Criar frame perto da borda direita: frame nasce inteiro dentro do Stage, deslocado para a esquerda.
+3. Criar frame perto da borda esquerda: frame nasce inteiro dentro do Stage, deslocado para a direita.
+4. Criar frame perto do topo: frame nasce inteiro, deslocado para baixo.
+5. Criar frame perto da base: frame nasce inteiro, deslocado para cima.
+6. Nenhum frame novo nasce cortado ou parcialmente fora do Stage.
+7. Frame ghost/novo exibe 4 abas/círculos brancos nos cantos (não bolinha ciano).
+8. Arrastar ghost por uma aba mostra scale/rotate corretamente.
+9. Arrastar o corpo do ghost move normalmente.
+10. Confirmar inserção cria frame com as 4 abas nos cantos imediatamente.
+11. Cancelar inserção remove ghost sem deixar resíduos.
+12. Botões Confirmar/Cancelar permanecem ancorados ao Stage.
+13. Frames já existentes não são reposicionados ao criar novo frame.
+14. Timeline/menu inferior não muda.
+15. Preview/export/MP4 continuam funcionando.
+16. JSON abre/salva normalmente.
+17. Funciona no iPhone/Safari.
+
+---
+
+# QA anterior — v8z4b29AY refinamento visual handles/abas + HUD discreta
 
 > Base preservada: v8z4b29AX (4 handles/abas + HUD visor + mira central implementados).
 

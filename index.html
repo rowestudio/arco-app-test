@@ -1,13 +1,17 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29AY                                    ║
+║  Versão: v8z4b29AZ                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29AZ                                           ║
+║    fix/stage: clamp posição inicial de frame novo    ║
+║    fix/ui: 4 abas/círculos no ghost/frame novo       ║
+║    fix/ui: remove bolinha ciano no frame novo        ║
 ║  v8z4b29AY                                           ║
 ║    fix/ui: refina visual dos 4 handles/abas — menor  ║
 ║    fix/ui: abas fora da borda, HUD faixa discreta    ║
@@ -5446,8 +5450,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29AY';
-const APP_VERSION_NAME = 'v8z4b29AY';
+const APP_VERSION = 'v8z4b29AZ';
+const APP_VERSION_NAME = 'v8z4b29AZ';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11956,6 +11960,16 @@ function clampFrame(i) {
   f.y = cy - f.h / 2;
 }
 
+// v8z4b29AZ: impede que frames novos nasçam fora da área útil do Stage.
+// Aplica-se APENAS à posição de nascimento/criação — arrasto pode ir além.
+function clampNewFrameRectToStage(frame, margin) {
+  const mg = (margin !== undefined) ? margin : 12;
+  if (!stageW || !stageH || !frame) return frame;
+  frame.x = Math.max(mg, Math.min(stageW - frame.w - mg, frame.x));
+  frame.y = Math.max(mg, Math.min(stageH - frame.h - mg, frame.y));
+  return frame;
+}
+
 // ═══════════════════════════════════════
 // GEOMETRIA DE FRAME ROTACIONADO
 // ═══════════════════════════════════════
@@ -12049,6 +12063,21 @@ function getRawHandlePosForFrame(i, corner) {
   return {
     x: cx + lx*Math.cos(rot) - ly*Math.sin(rot),
     y: cy + lx*Math.sin(rot) + ly*Math.cos(rot)
+  };
+}
+
+// v8z4b29AZ: equivalente a getRawHandlePosForFrame mas para o ghost frame.
+function getGhostRawHandlePos(corner) {
+  if (!ghostFrame) return { x: 0, y: 0 };
+  const cx = ghostFrame.x + ghostFrame.w / 2;
+  const cy = ghostFrame.y + ghostFrame.h / 2;
+  const hw = ghostFrame.w / 2, hh = ghostFrame.h / 2;
+  const rot = (ghostFrame.rotation || 0) * Math.PI / 180;
+  const map = { tr: [hw, -hh], tl: [-hw, -hh], br: [hw, hh], bl: [-hw, hh] };
+  const pair = map[corner] || map.br;
+  return {
+    x: cx + pair[0] * Math.cos(rot) - pair[1] * Math.sin(rot),
+    y: cy + pair[0] * Math.sin(rot) + pair[1] * Math.cos(rot)
   };
 }
 
@@ -12174,19 +12203,30 @@ function getGhostHandlePos() {
 }
 
 function updateGhostTransformHandle() {
-  ensureGlobalHandle();
-  if (!globalHandleEl || !isInsertingFrame || !ghostFrame || !imgNatW || isPreviewing) return;
-  const hp = getGhostHandlePos();
-  globalHandleEl.style.left = hp.x + 'px';
-  globalHandleEl.style.top  = hp.y + 'px';
-  globalHandleEl.style.transform = `scale(${1 / editorZoomScale})`;
-  globalHandleEl.classList.add('show');
-  globalHandleEl.classList.add('ghost-transform');
-  globalHandleEl.classList.remove('centered');
-  stageAppendChild(globalHandleEl);
-  // v8z4b29AX: esconder cantos e HUD durante inserção assistida
-  if (cornerHandleEls) cornerHandleEls.forEach(el => el.classList.remove('show'));
+  // v8z4b29AZ: bolinha ciano NUNCA aparece no ghost — substituída pelas 4 abas/círculos.
+  // globalHandle fica oculto; pointer events do ghost são encaminhados via corner handles.
+  if (globalHandleEl) {
+    globalHandleEl.classList.remove('show');
+    globalHandleEl.classList.remove('ghost-transform');
+  }
   if (frameHudEl) frameHudEl.classList.remove('show');
+  if (!isInsertingFrame || !ghostFrame || !imgNatW || isPreviewing) return;
+  // Posicionar as 4 abas nos cantos do ghost frame (mesma UI do frame ativo)
+  ensureCornerHandles();
+  if (!cornerHandleEls) return;
+  const _ckeys = ['tl', 'tr', 'bl', 'br'];
+  const _CORNER_OUT = 12;
+  const _gcx = ghostFrame.x + ghostFrame.w / 2;
+  const _gcy = ghostFrame.y + ghostFrame.h / 2;
+  cornerHandleEls.forEach((cel, idx) => {
+    const hp = getGhostRawHandlePos(_ckeys[idx]);
+    const _dx = hp.x - _gcx, _dy = hp.y - _gcy;
+    const _dist = Math.hypot(_dx, _dy) || 1;
+    cel.style.left = (hp.x + (_dx / _dist) * _CORNER_OUT) + 'px';
+    cel.style.top  = (hp.y + (_dy / _dist) * _CORNER_OUT) + 'px';
+    cel.classList.add('show');
+    stageAppendChild(cel);
+  });
 }
 
 function flipCornerHoriz(corner) {
@@ -12427,6 +12467,35 @@ function ensureCornerHandles() {
 
     el.addEventListener('pointerdown', e => {
       if (isStageNavigationActiveOrCoolingDown()) { e.preventDefault(); e.stopPropagation(); return; }
+      // v8z4b29AZ — modo ghost: corner handles iniciam ghost scale/rotate
+      if (isInsertingFrame && ghostFrame && !isPreviewing && !editorPanMode && ghostInteraction.mode === 'idle') {
+        e.preventDefault(); e.stopPropagation();
+        el.setPointerCapture(e.pointerId);
+        pauseGhostFloat();
+        const _gcx = ghostFrame.x + ghostFrame.w / 2;
+        const _gcy = ghostFrame.y + ghostFrame.h / 2;
+        const hp = getGhostRawHandlePos(ck);
+        const _startDist = Math.max(1, Math.hypot(hp.x - _gcx, hp.y - _gcy));
+        const _startAngle = Math.atan2(hp.y - _gcy, hp.x - _gcx);
+        ghostInteraction = {
+          mode: 'scale', pointerId: e.pointerId,
+          startPointerX: e.clientX, startPointerY: e.clientY,
+          startGhostX: ghostFrame.x, startGhostY: ghostFrame.y,
+          startScale: ghostFrame.w, startRotation: ghostFrame.rotation || 0,
+          startCenterX: _gcx, startCenterY: _gcy,
+          startDistance: _startDist, startAngle: _startAngle
+        };
+        handleDragState = {
+          isGhost: true, pointerId: e.pointerId,
+          startX: e.clientX, startY: e.clientY,
+          startW: ghostFrame.w, startH: ghostFrame.h,
+          startRot: ghostFrame.rotation || 0,
+          cx: _gcx, cy: _gcy,
+          initDist: _startDist, initAngle: _startAngle,
+          mode: null, undoCaptured: false
+        };
+        return;
+      }
       if (isInsertingFrame || isPreviewing || !imgNatW || !frameCount || frameLocked[activeIdx] || editorPanMode) return;
       e.preventDefault(); e.stopPropagation();
       el.setPointerCapture(e.pointerId);
@@ -12645,6 +12714,8 @@ function buildFirstFrameInsertion() {
   if (h > stageH * 0.88) { h = stageH * 0.88; w = h * ar; }
   const cx = stageW / 2;
   const cy = stageH / 2;
+  // v8z4b29AZ: clampar posição inicial (centrado normalmente está ok, mas garante segurança)
+  const _initFrame = clampNewFrameRectToStage({ x: cx - w / 2, y: cy - h / 2, w, h }, 12);
   return {
     mode: 'first-frame',
     fromIndex: -1,
@@ -12652,7 +12723,7 @@ function buildFirstFrameInsertion() {
     insertIndex: 0,
     suggestedOnCurve: false,
     ghostMoved: false,
-    frame: { x: cx - w / 2, y: cy - h / 2, w, h },
+    frame: _initFrame,
     rotation: 0
   };
 }
@@ -13108,9 +13179,9 @@ function buildPendingFrameInsertion() {
     rotation = frameRotations[a] || 0;
   }
 
-  // v8z4b22d/e: Stage visível é viewport, não limite absoluto do projeto.
-  // Posição do ghost NÃO é clampada ao stageW/stageH — curva pode passar fora da área visível.
-  // suggestedOnCurve permanece true quando calculado a partir da curva real.
+  // v8z4b29AZ: clampar posição inicial do ghost para que nasça dentro do Stage.
+  // O arrasto posterior pode ir além da área visível (comportamento preservado).
+  const _initFrame = clampNewFrameRectToStage({ x: cx - w / 2, y: cy - h / 2, w, h }, 12);
 
   return {
     mode: isBetween ? 'between' : (isLoopAppend ? 'loop-append' : 'append'),
@@ -13119,7 +13190,7 @@ function buildPendingFrameInsertion() {
     insertIndex: isBetween ? a + 1 : frameCount,
     suggestedOnCurve,
     ghostMoved: false,
-    frame: { x: cx - w / 2, y: cy - h / 2, w, h },
+    frame: _initFrame,
     rotation
   };
 }
@@ -13595,6 +13666,7 @@ function renderAll() {
   }
 
   // v8z4b29AY — corner handles + HUD (círculos fora da borda do frame)
+  // v8z4b29AZ — durante inserção ghost, abas são gerenciadas por updateGhostTransformHandle
   ensureCornerHandles();
   ensureFrameHud();
   const _showCorners = !!(imgNatW && frameCount > 0 && !isPreviewing && !isMultiSelectionActive() && !isInsertingFrame);
@@ -13611,10 +13683,15 @@ function renderAll() {
         cel.style.top  = (hp.y + (_dy / _dist) * _CORNER_OUT) + 'px';
         cel.classList.add('show');
         stageAppendChild(cel);
-      } else {
+      } else if (!isInsertingFrame) {
+        // Durante inserção ghost, as abas são controladas por updateGhostTransformHandle
         cel.classList.remove('show');
       }
     });
+  }
+  // v8z4b29AZ: durante inserção, garantir que as abas do ghost estejam posicionadas
+  if (isInsertingFrame && ghostFrame) {
+    updateGhostTransformHandle();
   }
   if (frameHudEl) {
     if (_showCorners) updateFrameHud(activeIdx);
