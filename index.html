@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29AE                                    ║
+║  Versão: v8z4b29AU                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29AU                                           ║
+║    fix/ui: ancora menus contextuais de frame e       ║
+║        curva na UI do Stage, acima do menu inferior. ║
 ║  v8z4b29AE                                           ║
 ║    fix/ux: reduz offset interno do número dos        ║
 ║        frames pequenos no Stage.                     ║
@@ -595,6 +598,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29AU — fix/ui: reposiciona menus contextuais de frame e curva para overlay de UI do Stage, acima do menu inferior, sem acompanhar imagem/conteúdo transformado e preservando base v8z4b29AE pós-revert #262 sem Home/Novo Projeto guiado. -->
 <!-- Arco Motion App — v8z4b29AE — fix/ux: reduz o offset interno do número dos frames no Stage quando os frames são pequenos, preservando escala proporcional, borda, geometria, timeline/menu inferior, Preview/export, JSON e motor. -->
 <!-- Arco Motion App — v8z4b29AN — ux/feat: reorganiza o pill de curvas, adiciona Modo Tangente local com Global armado e preserva timeline/menu inferior, Preview/export, JSON, menus deslizantes e pontos laranja. -->
 <!-- Arco Motion App — v8z4b29AL — fix/ux: escala elementos internos dos frames do Stage conforme tamanho renderizado, preservando borda, geometria, timeline/menu inferior, v8z4b29AF, v8z4b29AH e v8z4b29AK. -->
@@ -822,7 +826,8 @@ body.recording #editorZoomCtrl{display:none;}
   cursor:default;
   -webkit-user-select:text;user-select:text;
 }
-#pointModeMenu{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:130;display:none;gap:5px;padding:8px 10px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:calc(100% - 20px);align-items:center;}
+#stageContextOverlay{position:absolute;inset:0;pointer-events:none;z-index:130;}
+#pointModeMenu{position:absolute;left:50%;bottom:calc(10px + var(--safe-bottom));transform:translateX(-50%);z-index:130;display:none;gap:5px;padding:8px 10px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:calc(100% - 20px);align-items:center;pointer-events:auto;}
 .point-mode-btn{width:40px;height:40px;border:0;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:0;}
 .point-mode-btn.active{border-color:transparent;color:var(--accent);background:transparent;}
 .point-mode-icon{width:39px;height:39px;display:block;pointer-events:none;color:currentColor;}
@@ -1173,8 +1178,8 @@ body.no-image #stageFrameMenu{display:none !important;}
 .top-btn .top-label{display:none;}
 .top-btn.labeled{flex-direction:row;gap:0;width:44px;}
 #stageFrameMenu{
-  position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
-  z-index:120;display:none;align-items:center;justify-content:center;gap:14px;
+  position:absolute;left:50%;bottom:calc(10px + var(--safe-bottom));transform:translateX(-50%);
+  z-index:120;display:none;align-items:center;justify-content:center;gap:14px;pointer-events:auto;
   padding:8px 14px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);
   backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);
   max-width:calc(100% - 20px);
@@ -2671,6 +2676,8 @@ body.cust-open #toolbar{
         <div class="preview-timeline-fill" id="previewTimelineFill"></div>
       </div>
     </div>
+  </div>
+  <div id="stageContextOverlay" aria-hidden="false">
     <div id="stageFrameMenu" aria-label="Menu contextual de frame no Stage">
       <button class="stage-frame-action" type="button" onclick="event.stopPropagation();hideStageFrameMenu();deleteActiveFrame()" title="Remover frame selecionado">
         <svg viewBox="0 0 24 24"><use href="#i-trash"></use></svg><span>Deletar</span>
@@ -2682,10 +2689,7 @@ body.cust-open #toolbar{
         <svg viewBox="0 0 24 24"><use href="#i-curve"></use></svg><span>Curva</span>
       </button>
     </div>
-  </div>
-  <!-- Status toast fora do stage — não afetado pelo zoom de edição (v8z4b17y) -->
-  <div class="status-bar" id="statusBar"></div>
-  <div id="pointModeMenu" aria-label="Modo do ponto">
+    <div id="pointModeMenu" aria-label="Modo do ponto">
     <button class="point-mode-btn" data-mode="corner" type="button" title="Canto"><span class="point-mode-icon point-mode-icon--mask point-mode-icon--corner" aria-hidden="true"></span></button>
     <button class="point-mode-btn" data-mode="symmetric" type="button" title="Simétrico"><span class="point-mode-icon point-mode-icon--mask point-mode-icon--symmetric" aria-hidden="true"></span></button>
     <button class="point-mode-btn" data-mode="asymmetric" type="button" title="Assimétrico"><span class="point-mode-icon point-mode-icon--mask point-mode-icon--asymmetric" aria-hidden="true"></span></button>
@@ -2693,7 +2697,10 @@ body.cust-open #toolbar{
     <button class="point-mode-btn" data-mode="tangent" type="button" title="Tangente"><svg class="point-mode-icon point-mode-icon--tangent" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-tangent"></use></svg></button>
     <span class="point-mode-divider" aria-hidden="true"></span>
     <button class="point-mode-btn" data-action="apply-all" type="button" title="Armar Global"><svg class="point-mode-icon point-mode-icon--global" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-globe-2"></use></svg></button>
+    </div>
   </div>
+  <!-- Status toast fora do stage — não afetado pelo zoom de edição (v8z4b17y) -->
+  <div class="status-bar" id="statusBar"></div>
   <!-- Editor Zoom Control flutuante — v8z4b18b (não alterado em v8z4b18c) -->
   <div id="editorZoomCtrl" style="display:none;">
     <div class="ezc-row">
@@ -3013,7 +3020,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AE</span><br><span id="appVersionNameText">v8z4b29AE</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AU</span><br><span id="appVersionNameText">v8z4b29AU</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5357,8 +5364,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29AE';
-const APP_VERSION_NAME = 'v8z4b29AE';
+const APP_VERSION = 'v8z4b29AU';
+const APP_VERSION_NAME = 'v8z4b29AU';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5430,7 +5437,7 @@ function isPendingFrameAllowedTarget(target) {
   if (ghostFrameEl && ghostFrameEl.contains(target)) return true;
   if (globalHandleEl && globalHandleEl.contains(target) && globalHandleEl.classList.contains('ghost-transform')) return true;
   const stageTarget = target.closest?.('#stage, #stageContent, #imageArea');
-  if (stageTarget && !target.closest?.('#toolbar, #midBar, #topBar, #settingsSheet, .float-panel, #pointModeMenu, #editorZoomCtrl, .frame, .ctrl-pt, .mid-pathpt, .frame-tangent-dot, .frame-in-handle, .frame-out-handle')) return true;
+  if (stageTarget && !target.closest?.('#toolbar, #midBar, #topBar, #settingsSheet, .float-panel, #stageFrameMenu, #pointModeMenu, #editorZoomCtrl, .frame, .ctrl-pt, .mid-pathpt, .frame-tangent-dot, .frame-in-handle, .frame-out-handle')) return true;
   return false;
 }
 
@@ -11131,7 +11138,10 @@ const progressFill = document.getElementById('progressFill');
 const bezierSvg    = document.getElementById('bezierSvg');
 const pointModeMenuEl = document.getElementById('pointModeMenu');
 const topBtnPointMode = document.getElementById('topBtnPointMode');
-if (pointModeMenuEl && stage && pointModeMenuEl.parentElement !== stage) stage.appendChild(pointModeMenuEl);
+const stageContextOverlay = document.getElementById('stageContextOverlay');
+const stageFrameMenuEl = document.getElementById('stageFrameMenu');
+if (stageContextOverlay && stageFrameMenuEl && stageFrameMenuEl.parentElement !== stageContextOverlay) stageContextOverlay.appendChild(stageFrameMenuEl);
+if (stageContextOverlay && pointModeMenuEl && pointModeMenuEl.parentElement !== stageContextOverlay) stageContextOverlay.appendChild(pointModeMenuEl);
 
 let bottomContextMode = 'frame';
 let selectedSegmentIndex = -1;

@@ -1,3 +1,13 @@
+# QA pendente — v8z4b29AU menus contextuais ancorados ao Stage
+
+- Checklist detalhado criado em `docs/QA-v8z4b29AU.md`.
+- Base obrigatória preservada: `v8z4b29AE` pós-revert da PR #262, sem reintroduzir Home ou Novo Projeto guiado.
+- Diagnóstico estático: `#stageFrameMenu` estava no DOM do `#stage`, que tem dimensões/posição da imagem renderizada; `#pointModeMenu` era anexado via JS ao `#stage`. Ambos passaram para `#stageContextOverlay`, camada absoluta de `#imageArea`, fora de `#stageContent` transformado e fora do `#stage` dimensionado pela imagem.
+- Verificações estáticas executadas: `#stageContextOverlay` usa `position:absolute; inset:0; pointer-events:none`; `#stageFrameMenu` e `#pointModeMenu` mantêm `position:absolute` com `left:50%`, `transform:translateX(-50%)`, `pointer-events:auto` e `bottom:calc(10px + var(--safe-bottom))`, ficando ancorados ao viewport de edição acima do menu inferior.
+- Preservados sem alteração: fluxo de abertura/carregamento, Home/Novo Projeto guiado ausentes, JSON, Preview/export/MP4, motor, posição/escala/rotação reais dos frames, curvas/handles, modos de curva, timeline/menu inferior, pontos laranja, snap-to-center e Alpha/spotlight.
+- QA manual obrigatório pendente: validar em desktop e iPhone/Safari que selecionar frame mostra Deletar/Fixar/Curva acima do menu inferior; mover/zoomar/panar/trocar/centralizar imagem não desloca os menus; abrir o menu de curva mantém o pill ancorado ao Stage; timeline/menu inferior não é coberta e JSON/Preview/export continuam funcionando.
+- Não foram executados testes em iPhone/Safari real, Preview/export real, abertura/salvamento JSON manual nem medição visual real neste ambiente automatizado.
+
 # QA pendente — v8z4b29AE offset interno do número dos frames no Stage
 
 - Base funcional tratada conforme solicitação como `v8z4b29AD`; versionamento visível atualizado para `v8z4b29AE` em `APP_VERSION`, `APP_VERSION_NAME`, texto visível e comentário/changelog do topo.
