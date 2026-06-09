@@ -1,3 +1,11 @@
+# v8z4b29AZ
+
+- fix/stage: ajusta automaticamente a posição inicial de frames novos para impedir que nasçam fora da área útil do Stage (clamp com margem de 12px em todas as bordas).
+- fix/ui: aplica a nova interface de 4 abas/círculos também ao frame novo, ghost e inserção assistida — mesmo visual do frame ativo.
+- fix/ui: remove retorno visual da bolinha/handle azul-ciano no fluxo de criação de frame; globalHandle ciano não aparece mais em modo ghost.
+- feat: corner handles em modo ghost iniciam ghost scale/rotate (mesma lógica do globalHandle), mantendo funcionalidade e adicionando consistência visual.
+- preserva timeline/menu inferior, curvas, Preview/export, JSON e motor sem alterações.
+
 # v8z4b29AY
 
 - fix/ui: refina visual dos 4 handles/abas do frame ativo para seguir o mockup de visor/câmera.
