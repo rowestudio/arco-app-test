@@ -1,3 +1,9 @@
+# v8z4b29AW
+
+- ux: consolida a regra de iniciar projetos por imagem já com Frame 1 criado, numerado e ativo.
+- fix/ui: reposiciona a UI de confirmação da inserção assistida para a camada de overlay do Stage, impedindo que acompanhe a imagem.
+- preserva base funcional v8z4b29AV e menus contextuais ancorados ao Stage da v8z4b29AU.
+
 # v8z4b29AV
 
 - feat/flow: adiciona Novo arquivo simples no menu interno do editor.
