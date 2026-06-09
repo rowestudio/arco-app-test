@@ -1,4 +1,6 @@
-# QA pendente — v8z4b29AW F1 ativo e confirmação assistida no Stage
+# QA pendente — v8z4b29AX corner handles + HUD visor
+
+> Base preservada: v8z4b29AW aprovada (F1 ativo por imagem + confirmação assistida no Stage).
 
 ## Escopo
 

@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29AW                                    ║
+║  Versão: v8z4b29AX                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29AX                                           ║
+║    feat/ui: 4 círculos/abas nos cantos do frame ativo ║
+║    feat/ui: HUD visor (pausa/rot/escala) + mira cen. ║
 ║  v8z4b29AW                                           ║
 ║    ux: consolida início por imagem já com F1 ativo.  ║
 ║    fix/ui: ancora confirmação assistida no Stage UI. ║
@@ -604,6 +607,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29AX — feat/ui: 4 círculos/abas nos cantos do frame ativo substituem o handle azul/ciano; HUD visor (pausa/rot/escala) e mira central; preserva base v8z4b29AW. -->
 <!-- Arco Motion App — v8z4b29AW — ux: consolida início por imagem com Frame 1 criado, numerado e ativo; fix/ui: move confirmação assistida para overlay do Stage, preservando base v8z4b29AV e menus v8z4b29AU. -->
 <!-- Arco Motion App — v8z4b29AV — feat/flow: adiciona Novo arquivo simples no menu interno com confirmação, imagem validada e estado limpo com F1 sem herdar JSON/frames/curvas, preservando base v8z4b29AU sem Home/Novo Projeto guiado. -->
 <!-- Arco Motion App — v8z4b29AU — fix/ui: reposiciona menus contextuais de frame e curva para overlay de UI do Stage, acima do menu inferior, sem acompanhar imagem/conteúdo transformado e preservando base v8z4b29AE pós-revert #262 sem Home/Novo Projeto guiado. -->
@@ -970,6 +974,50 @@ body.inserting-frame .frame-out-handle{pointer-events:none !important;}
 .global-handle.centered{width:39px;height:39px;margin-left:-19px;margin-top:-19px;}
 .global-handle:active{cursor:grabbing;}
 .global-handle svg{width:20px;height:20px;display:block;pointer-events:none;}
+/* v8z4b29AX — bolinha antiga invisível em modo normal (mantida apenas para ghost-frame) */
+.global-handle:not(.ghost-transform){opacity:0 !important;pointer-events:none !important;}
+
+/* v8z4b29AX — 4 círculos/abas nos cantos do frame ativo */
+.corner-handle{
+  position:absolute;left:0;top:0;width:36px;height:36px;
+  margin-left:-18px;margin-top:-18px;border-radius:50%;
+  background:#fff;
+  box-shadow:0 2px 12px rgba(0,0,0,.48),0 0 0 1.5px rgba(255,255,255,.35);
+  display:none;cursor:grab;touch-action:none;z-index:65;
+  transform:scale(var(--ez-inv,1));transform-origin:center center;
+}
+.corner-handle.show{display:block;}
+.corner-handle:active{cursor:grabbing;background:rgba(255,255,255,.9);}
+/* Área de toque expandida — mínimo 44px para iPhone/Safari */
+.corner-handle::before{content:'';position:absolute;left:50%;top:50%;
+  width:52px;height:52px;transform:translate(-50%,-50%);
+  background:transparent;border-radius:50%;}
+
+/* v8z4b29AX — HUD visor/câmera no topo do frame ativo */
+#frameHud{
+  position:absolute;left:0;top:0;
+  background:rgba(0,0,0,.72);color:#fff;
+  font-size:12px;font-weight:600;
+  padding:4px 10px;border-radius:20px;
+  white-space:nowrap;pointer-events:none;z-index:68;
+  display:none;letter-spacing:.2px;
+  transform:translate(-50%,calc(-100% - 10px)) scale(var(--ez-inv,1));
+  transform-origin:50% 100%;
+}
+#frameHud.show{display:block;}
+
+/* v8z4b29AX — mira central no frame ativo */
+.frame-crosshair{
+  position:absolute;left:50%;top:50%;
+  width:20px;height:20px;pointer-events:none;
+  transform:translate(-50%,-50%);display:none;
+}
+.frame-crosshair::before,.frame-crosshair::after{
+  content:'';position:absolute;background:rgba(255,255,255,.55);
+}
+.frame-crosshair::before{left:50%;top:0;width:1px;height:100%;transform:translateX(-50%);}
+.frame-crosshair::after{top:50%;left:0;height:1px;width:100%;transform:translateY(-50%);}
+.frame.active .frame-crosshair{display:block;}
 
 /* Bezier SVG */
 #bezierSvg{position:absolute;inset:0;pointer-events:none;overflow:visible;z-index:8;}
@@ -3037,7 +3085,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AW</span><br><span id="appVersionNameText">v8z4b29AW</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AX</span><br><span id="appVersionNameText">v8z4b29AX</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5398,8 +5446,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29AW';
-const APP_VERSION_NAME = 'v8z4b29AW';
+const APP_VERSION = 'v8z4b29AX';
+const APP_VERSION_NAME = 'v8z4b29AX';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11142,6 +11190,8 @@ let proModalShown = false; // aviso de marca d'água mostrado nesta sessão
 let globalHandleEl = null;
 let handleDragState = null;
 let handleCornerByFrame = Array(MAX_FRAMES).fill('br');
+let cornerHandleEls = null; // v8z4b29AX: 4 círculos nos cantos do frame ativo
+let frameHudEl = null;      // v8z4b29AX: HUD visor/câmera
 
 // v8z4b28a — Preview em resolução final do formato, ainda limitado a <= 1280px
 // pelo próprio exportDims para manter iPhone/Safari dentro de um backing store seguro.
@@ -12134,6 +12184,9 @@ function updateGhostTransformHandle() {
   globalHandleEl.classList.add('ghost-transform');
   globalHandleEl.classList.remove('centered');
   stageAppendChild(globalHandleEl);
+  // v8z4b29AX: esconder cantos e HUD durante inserção assistida
+  if (cornerHandleEls) cornerHandleEls.forEach(el => el.classList.remove('show'));
+  if (frameHudEl) frameHudEl.classList.remove('show');
 }
 
 function flipCornerHoriz(corner) {
@@ -12360,6 +12413,91 @@ function ensureGlobalHandle() {
 }
 
 // ═══════════════════════════════════════
+// v8z4b29AX — CORNER HANDLES + HUD
+// ═══════════════════════════════════════
+
+function ensureCornerHandles() {
+  if (cornerHandleEls || !stage) return;
+  const ckeys = ['tl','tr','bl','br'];
+  cornerHandleEls = ckeys.map(ck => {
+    const el = document.createElement('div');
+    el.className = 'corner-handle';
+    el.dataset.corner = ck;
+    stageAppendChild(el);
+
+    el.addEventListener('pointerdown', e => {
+      if (isStageNavigationActiveOrCoolingDown()) { e.preventDefault(); e.stopPropagation(); return; }
+      if (isInsertingFrame || isPreviewing || !imgNatW || !frameCount || frameLocked[activeIdx] || editorPanMode) return;
+      e.preventDefault(); e.stopPropagation();
+      el.setPointerCapture(e.pointerId);
+      gestureState.mode = 'pendingSingleTouch';
+      const fi = activeIdx;
+      const { cx, cy } = getFrameCenter(fi);
+      const hp = getRawHandlePosForFrame(fi, ck);
+      handleDragState = {
+        fi,
+        startX: e.clientX, startY: e.clientY,
+        startW: frames[fi].w, startH: frames[fi].h,
+        startRot: frameRotations[fi] || 0,
+        cx, cy,
+        initDist: Math.max(1, Math.hypot(hp.x - cx, hp.y - cy)),
+        initAngle: Math.atan2(hp.y - cy, hp.x - cx),
+        mode: null, undoCaptured: false
+      };
+    });
+
+    el.addEventListener('pointermove', e => {
+      if (!handleDragState) return;
+      e.preventDefault(); e.stopPropagation();
+      // Repassa à lógica de move do globalHandleEl (mesma lógica de escala/rotação)
+      if (globalHandleEl) globalHandleEl.dispatchEvent(new PointerEvent('pointermove', {
+        clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId, bubbles: false
+      }));
+    });
+
+    const endCorner = e => {
+      if (!handleDragState) return;
+      e.stopPropagation();
+      try { el.releasePointerCapture(e.pointerId); } catch(_) {}
+      // Repassa ao endHandle do globalHandleEl para limpar estado
+      if (globalHandleEl) globalHandleEl.dispatchEvent(new PointerEvent('pointerup', {
+        clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId, bubbles: false
+      }));
+    };
+    el.addEventListener('pointerup', endCorner);
+    el.addEventListener('pointercancel', endCorner);
+
+    return el;
+  });
+}
+
+function ensureFrameHud() {
+  if (frameHudEl || !stage) return;
+  frameHudEl = document.createElement('div');
+  frameHudEl.id = 'frameHud';
+  stageAppendChild(frameHudEl);
+}
+
+function updateFrameHud(fi) {
+  if (!frameHudEl || !frames[fi]) return;
+  const f     = frames[fi];
+  const pause = framePauses[fi] ? (framePauses[fi].duration || 0) : 0;
+  const rot   = frameRotations[fi] || 0;
+  const refW  = baseFrameW > 0 ? baseFrameW : (stageW * 0.55 || 1);
+  const scPct = Math.round(f.w / refW * 100);
+  const rotStr = (rot >= 0 ? '+' : '') + rot.toFixed(1) + '°';
+  frameHudEl.textContent = pause.toFixed(1) + 's   ' + rotStr + '   ' + scPct + '%';
+  // Topo central do frame rotacionado (coord stageContent)
+  const { cx, cy } = getFrameCenter(fi);
+  const rr  = rot * Math.PI / 180;
+  const hh  = f.h / 2;
+  frameHudEl.style.left = (cx + hh * Math.sin(rr)) + 'px';
+  frameHudEl.style.top  = (cy - hh * Math.cos(rr)) + 'px';
+  frameHudEl.classList.add('show');
+  stageAppendChild(frameHudEl);
+}
+
+// ═══════════════════════════════════════
 // FRAME DOM
 // ═══════════════════════════════════════
 function getFrameEl(i) { return document.getElementById('frm_' + i); }
@@ -12387,6 +12525,7 @@ function createFrameDOM(i) {
       <div class="frame-num">${i+1}</div>
       <div class="frame-top-mark"></div>
       <div class="frame-center"></div>
+      <div class="frame-crosshair"></div>
       <div class="rot-handle" data-fi="${i}"></div>
       <div class="h tl" data-fi="${i}" data-dir="tl"></div>
       <div class="h tr" data-fi="${i}" data-dir="tr"></div>
@@ -13455,6 +13594,29 @@ function renderAll() {
     globalHandleEl.classList.remove('ghost-transform');
   }
 
+  // v8z4b29AX — corner handles + HUD
+  ensureCornerHandles();
+  ensureFrameHud();
+  const _showCorners = !!(imgNatW && frameCount > 0 && !isPreviewing && !isMultiSelectionActive() && !isInsertingFrame);
+  if (cornerHandleEls) {
+    const _ckeys = ['tl','tr','bl','br'];
+    cornerHandleEls.forEach((cel, idx) => {
+      if (_showCorners) {
+        const hp = getRawHandlePosForFrame(activeIdx, _ckeys[idx]);
+        cel.style.left = hp.x + 'px';
+        cel.style.top  = hp.y + 'px';
+        cel.classList.add('show');
+        stageAppendChild(cel);
+      } else {
+        cel.classList.remove('show');
+      }
+    });
+  }
+  if (frameHudEl) {
+    if (_showCorners) updateFrameHud(activeIdx);
+    else frameHudEl.classList.remove('show');
+  }
+
   // Scroll automático da pill ativa: preservado na seleção simples, bloqueado na múltipla.
   if (!isMultiSelectionActive() && (lowerTimelineCenterFrameIndex < 0 || lowerTimelineCenterFrameIndex >= frameCount)) centerLowerTimelineOnFrame(activeIdx, false);
 
@@ -14205,6 +14367,9 @@ function drawBezier() {
 function updateCtrlPts() {
   const multiSelectionActive = isMultiSelectionActive();
   if (globalHandleEl) globalHandleEl.style.display = multiSelectionActive ? 'none' : '';
+  // v8z4b29AX: esconder corners e HUD durante seleção múltipla
+  if (cornerHandleEls && multiSelectionActive) cornerHandleEls.forEach(el => el.classList.remove('show'));
+  if (frameHudEl && multiSelectionActive) frameHudEl.classList.remove('show');
 
   // v8z3e: na vista de isolamento, esconder segmentos e pontos de curva.
   if (window._isoMode) {
