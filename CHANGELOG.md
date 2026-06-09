@@ -1,3 +1,9 @@
+# v8z4b29BB
+
+- fix(ui): remove o aspecto de pill arredondado do fundo do texto superior do frame ativo no Stage.
+- fix(ui): remove o pill separado de ângulo, mantendo a leitura do ângulo apenas no topo do frame.
+- preserve: abas circulares, Stage, timeline, curvas, preview/export, JSON e motor.
+
 # v8z4b29BA
 
 - fix/ui: aumenta o espaçamento entre pausa, rotação e escala no topo do frame ativo (HUD visor — flex com gap, mais arejado e legível no iPhone).
