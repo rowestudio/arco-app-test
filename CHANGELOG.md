@@ -1,3 +1,8 @@
+# v8z4b29AU
+- fix/ui: reposiciona menus contextuais de frame e curva para a camada de UI do Stage, impedindo que acompanhem a imagem/conteúdo transformado.
+- fix/ux: mantém menus contextuais acima do menu inferior, sem cobrir a timeline e referenciados ao Stage/viewport.
+- preserva base v8z4b29AE pós-revert #262, sem reintroduzir Home/Novo Projeto guiado.
+
 # v8z4b29AE
 - fix/ux: reduz o offset interno do número dos frames no Stage quando os frames são pequenos.
 - fix/ux: preserva a escala proporcional da v8z4b29AD, mas aproxima o label do número do canto do frame.
