@@ -1,13 +1,16 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29AV                                    ║
+║  Versão: v8z4b29AW                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29AW                                           ║
+║    ux: consolida início por imagem já com F1 ativo.  ║
+║    fix/ui: ancora confirmação assistida no Stage UI. ║
 ║  v8z4b29AV                                           ║
 ║    feat/flow: adiciona Novo arquivo simples no menu  ║
 ║        interno; troca só após imagem carregar.       ║
@@ -601,6 +604,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29AW — ux: consolida início por imagem com Frame 1 criado, numerado e ativo; fix/ui: move confirmação assistida para overlay do Stage, preservando base v8z4b29AV e menus v8z4b29AU. -->
 <!-- Arco Motion App — v8z4b29AV — feat/flow: adiciona Novo arquivo simples no menu interno com confirmação, imagem validada e estado limpo com F1 sem herdar JSON/frames/curvas, preservando base v8z4b29AU sem Home/Novo Projeto guiado. -->
 <!-- Arco Motion App — v8z4b29AU — fix/ui: reposiciona menus contextuais de frame e curva para overlay de UI do Stage, acima do menu inferior, sem acompanhar imagem/conteúdo transformado e preservando base v8z4b29AE pós-revert #262 sem Home/Novo Projeto guiado. -->
 <!-- Arco Motion App — v8z4b29AE — fix/ux: reduz o offset interno do número dos frames no Stage quando os frames são pequenos, preservando escala proporcional, borda, geometria, timeline/menu inferior, Preview/export, JSON e motor. -->
@@ -892,13 +896,13 @@ body.inserting-frame .frame-out-handle{pointer-events:none !important;}
 /* v8z4b29L — Confirmação assistida preservada: círculos fixos no HUD do Stage. */
 #insertionActionBar{
   position:absolute;
-  left:50%;bottom:18px;
+  left:50%;bottom:calc(10px + var(--safe-bottom));
   transform:translateX(-50%);
   transform-origin:center center;
   display:none;
   align-items:center;
   gap:12px;
-  z-index:92;
+  z-index:131;
   padding:0;
   background:transparent;
   border:0;
@@ -2752,7 +2756,7 @@ body.cust-open #toolbar{
 </div>
 
 
-<!-- v8z4b29Q — Botões circulares do frame assistido preservados: X laranja e check ciano, sem texto. -->
+<!-- v8z4b29AW — Botões da inserção assistida vivem no overlay do Stage, não no layer/imagem. -->
 <div id="insertionActionBar" role="toolbar" aria-label="Modo de inserção de frame">
   <button id="insertionCancelBtn" class="ins-bar-btn cancel" type="button" title="Cancelar inserção" aria-label="Cancelar">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#i-close"></use></svg>
@@ -3033,7 +3037,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AV</span><br><span id="appVersionNameText">v8z4b29AV</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AW</span><br><span id="appVersionNameText">v8z4b29AW</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5394,8 +5398,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29AV';
-const APP_VERSION_NAME = 'v8z4b29AV';
+const APP_VERSION = 'v8z4b29AW';
+const APP_VERSION_NAME = 'v8z4b29AW';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12028,8 +12032,9 @@ function getGhostFrameCorners() {
 
 function updateInsertionActionBarPosition() {
   const bar = document.getElementById('insertionActionBar');
-  if (!bar || !stage) return;
-  if (bar.parentNode !== stage) stage.appendChild(bar);
+  const overlay = document.getElementById('stageContextOverlay');
+  if (!bar || !overlay) return;
+  if (bar.parentNode !== overlay) overlay.appendChild(bar);
 }
 
 function updateGhostDimOverlay() {
@@ -12873,8 +12878,9 @@ function clearAssistedFrameInsertionTransientState() {
 // v8z4b29L — Confirmação assistida preservada fixa no HUD do Stage, fora do layer com pan/zoom.
 function showInsertionActionBar() {
   const bar = document.getElementById('insertionActionBar');
-  if (!bar) return;
-  if (bar.parentNode !== stage) stage.appendChild(bar);
+  const overlay = document.getElementById('stageContextOverlay');
+  if (!bar || !overlay) return;
+  if (bar.parentNode !== overlay) overlay.appendChild(bar);
   bar.classList.add('show');
   updateInsertionActionBarPosition();
 }
@@ -17831,7 +17837,12 @@ function resetAll() {
       requestLowerTimelineCenter(activeIdx);
       updateToolbarLabels();
     } else {
-      startFirstFrameAssistedInsertion();
+      createInitialFrameForNewImageProject();
+      renderAll();
+      updateFrameSelector();
+      requestLowerTimelineCenter(activeIdx);
+      updateToolbarLabels();
+      captureProjectResetBaseline('reset-new-image-f1');
     }
     showStatus('Resetado');
     return;
@@ -18915,7 +18926,19 @@ function clearCurrentProjectForNewFile() {
   stage.classList.remove('out-of-bounds');
 }
 
-function createInitialFrameForNewFile() {
+function createInitialFrameForNewImageProject() {
+  frames.length = 0;
+  frameRotations.length = 0;
+  frameLocked.length = 0;
+  framePauses.length = 0;
+  ctrlPts.length = 0;
+  ctrlPtManual.length = 0;
+  segDurations.length = 0;
+  segBlurSettings.length = 0;
+  segEasings.length = 0;
+  rotEasings.length = 0;
+  scaleEasings.length = 0;
+  curvesV2 = null;
   const ratio = ratioMap[currentRatio] ? currentRatio : '9:16';
   currentRatio = ratio;
   syncRatioUI();
@@ -18973,14 +18996,14 @@ function finishNewFileImageLoad(file, dataUrl, tmp) {
     syncRotationEasingModeUI();
     syncScaleEasingModeUI();
     _projectNewFromImage = true;
-    createInitialFrameForNewFile();
+    createInitialFrameForNewImageProject();
     renderAll();
     updateFrameSelector();
     requestLowerTimelineCenter(activeIdx);
     updateToolbarLabels();
     captureProjectResetBaseline('new-file-image-loaded');
     validateProjectState('after-new-file');
-    showStatus('Novo arquivo criado · F1 assistido');
+    showStatus('Novo arquivo criado · Frame 1 ativo');
     requestAnimationFrame(() => {
       renderAll();
       updateFrameSelector();
@@ -19099,8 +19122,15 @@ function loadImage(file, onDoneCallback) {
           // v8z4b23a: marcar projeto como novo (Reset → F1 assistido)
           _projectNewFromImage = true;
           updateToolbarLabels();
-          // v8z4b23a: iniciar com F1 em modo assistido em vez de template automático
-          startFirstFrameAssistedInsertion();
+          // v8z4b29AW: iniciar projeto por imagem já com F1 real, numerado e ativo.
+          createInitialFrameForNewImageProject();
+          renderAll();
+          updateFrameSelector();
+          requestLowerTimelineCenter(activeIdx);
+          updateToolbarLabels();
+          captureProjectResetBaseline('image-loaded-f1-active');
+          validateProjectState('after-image-load-f1-active');
+          showStatus('Imagem carregada · Frame 1 ativo');
         } else {
           // Salvar coords normalizadas ANTES de layoutStage (stageW/H ainda são da imagem antiga)
           const savedNorm = frames.slice(0, frameCount).map(f => ({
