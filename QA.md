@@ -1,3 +1,44 @@
+# QA pendente — v8z4b29BC ajustes finos do frame ativo + menu superior
+
+> Base preservada: v8z4b29BB (remoção do pill do frameHud).
+
+## Escopo v8z4b29BC
+
+- Aproximar e realinhar a faixa superior (frameHud) do frame ativo em relação à moldura e às abas superiores.
+- Reduzir o padding interno da faixa superior, preservando o espaçamento entre pausa/rotação/escala.
+- Diminuir o tamanho visual das 4 abas/pontos circulares do frame ativo, preservando o centro e a área de toque.
+- Tornar a cruz central do frame ativo escalável com o tamanho do frame (clamp suave).
+- Reorganizar o menu superior em 4 colunas.
+- Renomear "Novo arquivo" para "Novo Projeto" e mover para a linha final de arquivos (Salvar, Novo Projeto, Abrir, Recarregar).
+- Preservar: motor, timeline/menu inferior, Preview/export/MP4, JSON, curvas/Bézier, clamp de criação de frames, Novo Projeto guiado/Home, lógica dos handles/abas.
+
+## QA manual pendente v8z4b29BC
+
+1. Versão visível mostra `v8z4b29BC`.
+2. A faixa superior (frameHud) do frame ativo está visivelmente mais próxima da borda superior da moldura.
+3. A faixa superior está melhor alinhada horizontalmente com os 2 pontos/abas superiores.
+4. O padding da faixa superior está mais enxuto, mas pausa/rotação/escala continuam legíveis e com espaçamento claro entre si.
+5. As 4 abas/pontos circulares estão visivelmente menores.
+6. O centro de cada aba/ponto permanece exatamente na mesma posição de antes (sem deslocamento).
+7. A área de toque das abas continua confortável no iPhone (mínimo 44px).
+8. A cruz central aumenta/diminui ao escalar o frame (aumentar e diminuir o frame ativo via abas).
+9. A cruz permanece centralizada e não interativa.
+10. O menu superior (overlay de ajustes/arquivos) exibe os itens em 4 colunas.
+11. O item "Novo arquivo" não existe mais; em seu lugar há "Novo Projeto".
+12. "Novo Projeto" aparece na última linha de arquivos, na 2ª posição, logo após "Salvar".
+13. A ordem da última linha de arquivos é: Salvar, Novo Projeto, Abrir, Recarregar.
+14. Tocar em "Novo Projeto" abre o fluxo já existente de criação de novo projeto a partir de imagem, sem duplicidade.
+15. Rotação do frame continua funcionando normalmente.
+16. Escala do frame continua funcionando normalmente.
+17. Arrastar aba inicia scale/rotate corretamente.
+18. Arrastar o corpo do frame move normalmente.
+19. Timeline/menu inferior não muda.
+20. Preview/export/MP4 continuam funcionando.
+21. JSON abre/salva normalmente.
+22. Funciona no iPhone/Safari.
+
+---
+
 # QA pendente — v8z4b29BB microcorreção visual frame ativo
 
 > Base preservada: v8z4b29BA (espaçamento HUD + redução visual das abas circulares).
