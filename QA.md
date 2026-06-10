@@ -1,3 +1,18 @@
+# QA pendente — v8z4b29BE bugfix: sincronização final do Novo Projeto com template
+
+> Base: v8z4b29BD (não aprovada — fluxo Novo Projeto: Formato → Template → Imagem → Criar).
+
+## Escopo v8z4b29BE
+
+- Corrige `applyTemplate()` (Pan, Zoom in/out, Pan ↓, Rotação, Círculo): referência a um elemento `#tbTemplate` inexistente lançava `TypeError` e interrompia a função antes de `renderAll()`/`finalizeTemplateApply()`.
+- Resultado da correção: Novo Projeto com qualquer template nasce com frames, contador, timeline, Stage, frame ativo e curvas sincronizados imediatamente — sem precisar adicionar outro frame.
+- Reset Project após Novo Projeto com template volta corretamente ao estado inicial desse novo projeto.
+- Não altera fluxo visual do painel Novo Projeto, ordem Formato → Template → Imagem, layout aprovado, motor, Preview/export, JSON ou curvas.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BE.md`.
+
+---
+
 # QA pendente — v8z4b29BD Novo Projeto: Formato → Template → Imagem → Criar
 
 > Base preservada: v8z4b29BC (ajustes finos do frame ativo + menu superior, "Novo Projeto" simples imagem→criar).

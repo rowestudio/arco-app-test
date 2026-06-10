@@ -1,3 +1,12 @@
+# v8z4b29BE
+
+- fix(flow): corrige a sincronização final do Novo Projeto criado com qualquer template.
+- fix(template): frames de Pan, Círculo e demais templates aparecem imediatamente no Stage e na timeline.
+- fix(state): elimina o estado dividido entre frames internos do template e frames oficiais do projeto.
+- fix(ui): impede "0 frames" após criação com template válido.
+- fix(reset): Reset Project passa a restaurar corretamente o novo projeto criado com template.
+- preserve: mantém fluxo Formato → Template → Imagem e preserva Stage, timeline visual, curvas, Preview/export, JSON e motor.
+
 # v8z4b29BD
 
 - feat(flow): evolui Novo Projeto para fluxo interno Formato → Template → Imagem → Criar.
