@@ -1,13 +1,26 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BH                                    ║
+║  Versão: v8z4b29BI                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BI                                           ║
+║    fix(flow): remove a etapa intermediária "Imagem"  ║
+║              do fluxo Novo Projeto                    ║
+║    fix(flow): move "Escolher imagem" direto para o   ║
+║              fluxo Novo Projeto após Formato e        ║
+║              Template                                 ║
+║    fix(ux): bloqueia toda a interface durante        ║
+║              criação/inserção de frame                ║
+║    fix(ux): mostra "Confirme ou cancele o frame      ║
+║              atual." em controles bloqueados          ║
+║    preserve: mantém launcher independente, editor/    ║
+║              Stage, templates, timeline, Preview/     ║
+║              export, JSON e motor                     ║
 ║  v8z4b29BH                                           ║
 ║    fix(flow): remove duplicidade de Fototeca/Tirar   ║
 ║              Foto/Escolher Arquivo na etapa Imagem    ║
@@ -719,6 +732,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29BI — fix(flow): remove a etapa intermediária "Imagem" do fluxo Novo Projeto; fix(flow): move "Escolher imagem" diretamente para o fluxo Novo Projeto após Formato e Template; fix(ux): bloqueia toda a interface durante criação/inserção de frame; fix(ux): mostra "Confirme ou cancele o frame atual." ao tocar em controles bloqueados; preserve: mantém launcher independente, editor/Stage, templates, timeline, Preview/export, JSON e motor (base v8z4b29BH). -->
 <!-- Arco Motion App — v8z4b29BH — fix(flow): remove duplicidade de Fototeca/Tirar Foto/Escolher Arquivo na etapa Imagem do Novo Projeto, substituindo por botão único "Escolher imagem" que abre o seletor nativo; feat(launcher): adiciona ação discreta de Recarregar App na página inicial; fix(editor): botão X do Stage passa a fechar o projeto e voltar ao launcher, com aviso de possível perda se houver projeto aberto; preserve: mantém separação launcher/newProject/editor, Stage, timeline, templates, Preview/export, JSON e motor sem alterações funcionais (base v8z4b29BG). -->
 <!-- Arco Motion App — v8z4b29BE — fix(flow): corrige sincronização final do Novo Projeto criado com qualquer template (frames, contador, timeline, Stage, frame ativo e curvas nascem completos imediatamente, sem precisar adicionar outro frame); fix(reset): Reset Project restaura corretamente o novo projeto criado com template; preserva fluxo Formato → Template → Imagem, Stage, timeline visual, curvas, Preview/export, JSON e motor da v8z4b29BD. -->
 <!-- Arco Motion App — v8z4b29BD — feat(flow): evolui Novo Projeto para fluxo interno Formato → Template → Imagem → Criar; novo projeto só substitui o atual após a imagem carregar e não herda frames/curvas/pausas/duração/JSON anterior; preserva Stage, timeline, curvas, Preview/export, JSON e motor da v8z4b29BC. -->
@@ -1238,31 +1252,6 @@ body.inserting-frame .frame-out-handle{pointer-events:none !important;}
 .start-launcher-btn--ghost{
   background:transparent;color:var(--text3);border:none;
   font-size:13px;font-weight:500;padding:10px;margin-top:2px;
-}
-
-/* v8z4b29BG — Etapa Imagem do fluxo Novo Projeto (Fototeca/Tirar Foto/Escolher Arquivo) */
-.np-image-step{
-  position:absolute;inset:0;display:none;flex-direction:column;
-  align-items:center;justify-content:center;z-index:6;
-  background:var(--bg);
-}
-.np-image-step-card{
-  display:flex;flex-direction:column;width:100%;max-width:280px;
-  padding:0 24px;box-sizing:border-box;gap:12px;
-}
-.np-image-step-title{
-  font-size:18px;font-weight:800;color:var(--text1);
-  text-align:center;margin-bottom:14px;letter-spacing:-.2px;
-}
-.np-image-step-btn{
-  width:100%;padding:14px;border-radius:12px;border:none;
-  font-size:15px;font-weight:700;cursor:pointer;-webkit-appearance:none;
-  background:var(--surface2);color:var(--text1);border:1px solid var(--border2);
-}
-.np-image-step-btn--primary{background:var(--accent);color:#000;border:none;}
-.np-image-step-back{
-  width:100%;padding:10px;border-radius:12px;border:none;background:transparent;
-  font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;margin-top:4px;
 }
 
 /* v8z4b29BG — Estado explícito de tela: launcher / newProject / editor.
@@ -2994,18 +2983,6 @@ body.cust-open #toolbar{
       <button type="button" class="start-launcher-btn start-launcher-btn--ghost" onclick="launcherReloadApp()">Recarregar</button>
     </div>
   </div>
-  <!-- v8z4b29BH — Etapa Imagem do fluxo Novo Projeto: roda fora do Stage,
-       permanece visível mesmo enquanto o seletor nativo de imagem está
-       aberto, evitando exposição do Stage/projeto anterior. Mostra apenas
-       uma ação genérica; o menu nativo do iOS/Safari resolve
-       Fototeca/Tirar Foto/Escolher Arquivo, evitando duplicidade. -->
-  <div class="np-image-step flow-screen" id="newProjectImageStep" style="display:none;">
-    <div class="np-image-step-card">
-      <div class="np-image-step-title">Imagem</div>
-      <button type="button" class="np-image-step-btn np-image-step-btn--primary" onclick="newProjectPickImage()">Escolher imagem</button>
-      <button type="button" class="np-image-step-back" onclick="backFromNewProjectImageStep()">Voltar</button>
-    </div>
-  </div>
   <div id="stagePlaceholder" style="display:none;position:absolute;inset:0;background:rgba(120,120,130,0.18);border-radius:4px;pointer-events:none;align-items:center;justify-content:center;">
     <span style="font-size:13px;color:var(--text3);font-weight:500;">Carregue a imagem para continuar</span>
   </div>
@@ -3293,7 +3270,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BH</span><br><span id="appVersionNameText">v8z4b29BH</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BI</span><br><span id="appVersionNameText">v8z4b29BI</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -3452,8 +3429,8 @@ body.cust-open #toolbar{
     </div>
 
     <div style="display:flex;gap:8px;flex-direction:column;">
-      <button onclick="confirmNewProjectChooseImage()" style="width:100%;padding:13px;border-radius:12px;border:none;background:var(--accent);font-size:14px;font-weight:700;color:#000;cursor:pointer;">
-        Escolher imagem e criar
+      <button onclick="newProjectPickImage()" style="width:100%;padding:13px;border-radius:12px;border:none;background:var(--accent);font-size:14px;font-weight:700;color:#000;cursor:pointer;">
+        Escolher imagem
       </button>
       <button onclick="closeNewProjectPanel()" style="width:100%;padding:10px;border-radius:12px;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;">
         Cancelar
@@ -5750,8 +5727,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BH';
-const APP_VERSION_NAME = 'v8z4b29BH';
+const APP_VERSION = 'v8z4b29BI';
+const APP_VERSION_NAME = 'v8z4b29BI';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5821,7 +5798,6 @@ function setAppMode(mode) {
 function hideAllFlowScreens() {
   if (startLauncher) startLauncher.style.display = 'none';
   if (uploadPrompt) uploadPrompt.style.display = 'none';
-  hideNewProjectImageStep();
 }
 
 function showStartLauncher() {
@@ -5888,7 +5864,7 @@ function shouldBlockGlobalUIAction() {
 
 function isPendingFrameAllowedTarget(target) {
   if (!target || !hasPendingAssistedFrame()) return true;
-  if (target.closest?.('#insertionActionBar, #topBar, #settingsSheet')) return true;
+  if (target.closest?.('#insertionActionBar')) return true;
   if (ghostFrameEl && ghostFrameEl.contains(target)) return true;
   if (globalHandleEl && globalHandleEl.contains(target) && globalHandleEl.classList.contains('ghost-transform')) return true;
   const stageTarget = target.closest?.('#stage, #stageContent, #imageArea');
@@ -19521,6 +19497,7 @@ function confirmProjectWarnContinue() {
 // BOTÃO X/FECHAR DO STAGE — volta ao launcher (v8z4b29BH)
 // ═══════════════════════════════════════
 function requestCloseStageToLauncher() {
+  if (shouldBlockGlobalUIAction()) return;
   if (hasOpenProjectToProtect()) {
     openStageCloseWarnModal();
   } else {
@@ -19604,35 +19581,11 @@ function selectNewProjectTemplate(chip) {
   chip.classList.add('active');
 }
 
-// v8z4b29BG — Tarefa 4: a etapa Imagem do Novo Projeto roda fora do Stage,
-// como tela própria do fluxo, mostrando apenas o botão "Escolher imagem"
-// (v8z4b29BH). Permanece visível mesmo enquanto o seletor nativo está
-// aberto, então cancelar o seletor nunca expõe o Stage.
-function confirmNewProjectChooseImage() {
-  const modal = document.getElementById('newProjectModal');
-  if (modal) modal.style.display = 'none';
-  showNewProjectImageStep();
-}
-
-function showNewProjectImageStep() {
-  hideAllFlowScreens();
-  const step = document.getElementById('newProjectImageStep');
-  if (step) step.style.display = 'flex';
-}
-
-function hideNewProjectImageStep() {
-  const step = document.getElementById('newProjectImageStep');
-  if (step) step.style.display = 'none';
-}
-
-function backFromNewProjectImageStep() {
-  hideNewProjectImageStep();
-  openNewProjectPanel();
-}
-
-// v8z4b29BH — botão único "Escolher imagem": abre o seletor nativo sem
-// "capture", deixando o iOS/Safari oferecer Fototeca/Tirar Foto/Escolher
-// Arquivo no próprio menu nativo (sem duplicar opções na tela do app).
+// v8z4b29BI — botão "Escolher imagem" vive direto no fluxo Novo Projeto
+// (após Formato e Template), sem etapa/página intermediária "Imagem".
+// Abre o seletor nativo sem "capture", deixando o iOS/Safari oferecer
+// Fototeca/Tirar Foto/Escolher Arquivo no próprio menu nativo. O painel
+// Novo Projeto permanece visível até a imagem carregar com sucesso.
 function newProjectPickImage() {
   activeFileIntent = 'newProjectImage';
   const input = document.getElementById('newProjectImageInput');
@@ -19759,8 +19712,11 @@ function finishNewProjectImageLoad(file, dataUrl, tmp) {
     if (file.name) {
       window._imageBaseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_\-]/g, '_').toLowerCase();
     }
-    // v8z4b29BG — imagem válida carregada: sai do fluxo Novo Projeto e
-    // entra no editor/Stage antes de montar o novo projeto (Tarefa 8).
+    // v8z4b29BI — imagem válida carregada: fecha o painel Novo Projeto, sai
+    // do fluxo Novo Projeto e entra no editor/Stage antes de montar o novo
+    // projeto (Tarefa 8).
+    const npModal = document.getElementById('newProjectModal');
+    if (npModal) npModal.style.display = 'none';
     enterEditorMode();
     _newProjectOrigin = null;
     const ph = document.getElementById('stagePlaceholder');
@@ -19984,8 +19940,7 @@ function showStatus(msg) {
 // PANELS
 // ═══════════════════════════════════════
 function openPanel(id) {
-  const pendingAllowedPanels = new Set(['Template', 'BgColor', 'Format']);
-  if (!pendingAllowedPanels.has(id) && shouldBlockGlobalUIAction()) return;
+  if (shouldBlockGlobalUIAction()) return;
   if (editorPanMode) { editorPanMode = false; applyEditorZoom(); }
   closeAll();
   if (id === 'Customize') {
@@ -22139,6 +22094,7 @@ function loadProjectFromJson() {
 }
 
 function loadProjectTrigger() {
+  if (shouldBlockGlobalUIAction()) return;
   document.getElementById('projectFileInput').click();
 }
 
@@ -22596,6 +22552,7 @@ function activateProMode() {
 }
 
 function toggleSettingsSheet() {
+  if (shouldBlockGlobalUIAction()) return;
   const sheet = document.getElementById('settingsSheet');
   const overlay = document.getElementById('overlayBg');
   if (!sheet || !overlay) return;

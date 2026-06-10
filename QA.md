@@ -1,3 +1,20 @@
+# QA pendente — v8z4b29BI: remove etapa "Imagem" do Novo Projeto e bloqueia UI durante criação de frame
+
+> Base: v8z4b29BH (não aprovada — duas pendências de fluxo/UX: etapa "Imagem" extra no Novo Projeto, e menus abrindo durante a criação/inserção de frame).
+
+## Escopo v8z4b29BI
+
+- Remove a etapa/página intermediária "Imagem" do fluxo Novo Projeto. O botão "Escolher imagem" passa a aparecer diretamente no painel Novo Projeto, depois de Formato e Template; tocar nele abre o seletor nativo do iOS/Safari sem trocar de tela.
+- Ao escolher uma imagem válida, o painel Novo Projeto fecha, o projeto é criado (formato, template/Sem template → F1, frames, Stage, timeline, contador) e o editor/Stage abre.
+- Durante criação/inserção de frame (estado "Confirme ou cancele o frame atual."), bloqueia toda a interface: menu superior, Arquivos/settings, painéis de Formato/Template/Imagem, Novo Projeto, Abrir Projeto, Salvar, Recarregar, Reset, Preview/Play, timeline, menu inferior e painéis de Tempo/Pausa/Rotação/Escala/Mover. Permite apenas Confirmar ou Cancelar o frame.
+- Tocar em qualquer controle bloqueado mostra a mensagem "Confirme ou cancele o frame atual." sem abrir painel ou navegar.
+- Confirmar ou cancelar o frame libera novamente toda a interface.
+- Preserva launcher independente, separação launcher/Novo Projeto/editor, Stage, timeline, templates, Preview/export, JSON e motor.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BI.md`.
+
+---
+
 # QA pendente — v8z4b29BH: ajustes de UX sobre launcher/Novo Projeto/editor
 
 > Base: v8z4b29BG (aprovada — separou launcher, Novo Projeto e editor/Stage em estados explícitos; fluxo Novo Projeto funcionou).

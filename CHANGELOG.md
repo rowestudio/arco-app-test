@@ -1,3 +1,11 @@
+# v8z4b29BI
+
+- fix(flow): remove a etapa intermediária "Imagem" do fluxo Novo Projeto.
+- fix(flow): move "Escolher imagem" diretamente para o fluxo Novo Projeto após Formato e Template.
+- fix(ux): bloqueia toda a interface durante criação/inserção de frame.
+- fix(ux): mostra "Confirme ou cancele o frame atual." ao tocar em controles bloqueados.
+- preserve: mantém launcher independente, editor/Stage, templates, timeline, Preview/export, JSON e motor.
+
 # v8z4b29BH
 
 - fix(flow): remove duplicidade de Fototeca/Tirar Foto/Escolher Arquivo na etapa Imagem do Novo Projeto.
