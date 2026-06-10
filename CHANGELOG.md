@@ -1,3 +1,12 @@
+# v8z4b29BG
+
+- fix(flow): separa launcher, fluxo de Novo Projeto e editor/Stage em estados distintos.
+- feat(flow): recarregar o app volta sempre para página inicial independente.
+- fix(flow): Stage só é exibido após criar ou abrir projeto funcional.
+- fix(flow): Novo Projeto roda fora do Stage e não mostra projeto anterior durante escolha de imagem.
+- fix(state): impede Stage vazio, timeline com 0 frames e perda do fluxo ao tocar no Stage durante criação.
+- preserve: mantém editor, Stage, timeline, templates, Preview/export, JSON e motor sem alterações funcionais.
+
 # v8z4b29BF
 
 - feat(flow): substitui a entrada inicial antiga por launcher simples Novo Projeto / Abrir Projeto.

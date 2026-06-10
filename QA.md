@@ -1,3 +1,19 @@
+# QA pendente — v8z4b29BG: separa launcher, Novo Projeto e editor/Stage em estados explícitos
+
+> Base: v8z4b29BF (não aprovada — entrada inicial e fluxo de Novo Projeto continuavam presos ao Stage).
+
+## Escopo v8z4b29BG
+
+- Introduz estado explícito de tela (`launcher` / `newProject` / `editor`); Stage/timeline/toolbar só existem em modo `editor`.
+- Recarregar o app sempre volta ao launcher; nunca restaura Stage, projeto, imagem ou frames anteriores.
+- Etapa final de imagem do Novo Projeto vira tela própria do fluxo (Fototeca/Tirar Foto/Escolher Arquivo), visível mesmo com o seletor nativo aberto — cancelar nunca expõe o Stage.
+- Cancelar o Novo Projeto nunca deixa o app em Stage vazio: volta ao launcher (origem launcher) ou restaura o editor intacto (origem editor, projeto ainda válido).
+- Preserva editor, Stage, timeline, templates, Preview/export, JSON e motor.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BG.md`.
+
+---
+
 # QA pendente — v8z4b29BF: launcher simples Novo Projeto / Abrir Projeto
 
 > Base: v8z4b29BE (não aprovada — fluxo Novo Projeto: Formato → Template → Imagem → Criar).
