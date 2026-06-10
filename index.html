@@ -1,13 +1,31 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BD                                    ║
+║  Versão: v8z4b29BE                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BE                                           ║
+║    fix(flow): corrige sincronização final do Novo    ║
+║              Projeto criado com qualquer template     ║
+║    fix(template): frames de Pan, Círculo e demais    ║
+║              templates aparecem imediatamente no      ║
+║              Stage e na timeline                      ║
+║    fix(state): elimina estado dividido entre frames  ║
+║              internos do template e frames oficiais   ║
+║              do projeto                               ║
+║    fix(ui): impede "0 frames" após criação com        ║
+║              template válido                          ║
+║    fix(reset): Reset Project passa a restaurar        ║
+║              corretamente o novo projeto criado com   ║
+║              template                                 ║
+║    preserve: mantém fluxo Formato → Template →        ║
+║              Imagem e preserva Stage, timeline        ║
+║              visual, curvas, Preview/export, JSON e   ║
+║              motor                                    ║
 ║  v8z4b29BD                                           ║
 ║    feat(flow): evolui Novo Projeto para fluxo        ║
 ║              interno Formato → Template → Imagem →   ║
@@ -652,6 +670,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29BE — fix(flow): corrige sincronização final do Novo Projeto criado com qualquer template (frames, contador, timeline, Stage, frame ativo e curvas nascem completos imediatamente, sem precisar adicionar outro frame); fix(reset): Reset Project restaura corretamente o novo projeto criado com template; preserva fluxo Formato → Template → Imagem, Stage, timeline visual, curvas, Preview/export, JSON e motor da v8z4b29BD. -->
 <!-- Arco Motion App — v8z4b29BD — feat(flow): evolui Novo Projeto para fluxo interno Formato → Template → Imagem → Criar; novo projeto só substitui o atual após a imagem carregar e não herda frames/curvas/pausas/duração/JSON anterior; preserva Stage, timeline, curvas, Preview/export, JSON e motor da v8z4b29BC. -->
 <!-- Arco Motion App — v8z4b29AY — fix/ui: refina visual dos 4 handles/abas (menores, fora da borda, HUD discreta, mira ajustada); preserva lógica funcional da v8z4b29AX. -->
 <!-- Arco Motion App — v8z4b29AW — ux: consolida início por imagem com Frame 1 criado, numerado e ativo; fix/ui: move confirmação assistida para overlay do Stage, preservando base v8z4b29AV e menus v8z4b29AU. -->
@@ -3135,7 +3154,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BD</span><br><span id="appVersionNameText">v8z4b29BD</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BE</span><br><span id="appVersionNameText">v8z4b29BE</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5558,8 +5577,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BD';
-const APP_VERSION_NAME = 'v8z4b29BD';
+const APP_VERSION = 'v8z4b29BE';
+const APP_VERSION_NAME = 'v8z4b29BE';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -20476,7 +20495,8 @@ function applyTemplate(type) {
     ctrlPts[0] = { nx: frameCX(0)/stageW, ny: frameCY(0)/stageH, t:0.5, perpX:0, perpY:0 };
     ctrlPtManual[0] = false;
     activeIdx = 0;
-    document.getElementById('tbTemplate').textContent = lbl;
+    const tbTplRotation = document.getElementById('tbTemplate');
+    if (tbTplRotation) tbTplRotation.textContent = lbl;
     duration = 6;
     // Loop ativado por padrão no template de rotação
     loopEnabled = true;
@@ -20546,7 +20566,8 @@ function applyTemplate(type) {
     }
 
     activeIdx = 0;
-    document.getElementById('tbTemplate').textContent = 'Circulo';
+    const tbTplCircle = document.getElementById('tbTemplate');
+    if (tbTplCircle) tbTplCircle.textContent = 'Circulo';
     duration = 8;
     segDurations.length = 0;
     ensureSegDurations();
@@ -20574,7 +20595,8 @@ function applyTemplate(type) {
   };
   ctrlPtManual[0] = false;
   activeIdx = 0;
-  document.getElementById('tbTemplate').textContent = lbl;
+  const tbTplGeneric = document.getElementById('tbTemplate');
+  if (tbTplGeneric) tbTplGeneric.textContent = lbl;
   // Duração: pan-lr (template inicial) = 4s, outros templates = 6s
   duration = (type === 'pan-lr') ? 4 : 6;
   segDurations.length = 0;
