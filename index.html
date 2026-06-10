@@ -1,13 +1,29 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BC                                    ║
+║  Versão: v8z4b29BD                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BD                                           ║
+║    feat(flow): evolui Novo Projeto para fluxo        ║
+║              interno Formato → Template → Imagem →   ║
+║              Criar                                    ║
+║    feat(flow): Novo Projeto só substitui o projeto   ║
+║              atual após a nova imagem carregar com   ║
+║              sucesso                                  ║
+║    fix(state): novo projeto não herda frames,        ║
+║              curvas, pausas, duração ou vínculo com  ║
+║              JSON anterior                            ║
+║    feat(template): aplica template escolhido no      ║
+║              nascimento do projeto, ou cria F1 ativo ║
+║              quando "Sem template"                    ║
+║    preserve: mantém app sem Home/página inicial e    ║
+║              preserva Stage, timeline, curvas,        ║
+║              Preview/export, JSON e motor             ║
 ║  v8z4b29BC                                           ║
 ║    fix(ui): aproxima a faixa superior do frame ativo ║
 ║             da moldura e melhora alinhamento com     ║
@@ -636,6 +652,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29BD — feat(flow): evolui Novo Projeto para fluxo interno Formato → Template → Imagem → Criar; novo projeto só substitui o atual após a imagem carregar e não herda frames/curvas/pausas/duração/JSON anterior; preserva Stage, timeline, curvas, Preview/export, JSON e motor da v8z4b29BC. -->
 <!-- Arco Motion App — v8z4b29AY — fix/ui: refina visual dos 4 handles/abas (menores, fora da borda, HUD discreta, mira ajustada); preserva lógica funcional da v8z4b29AX. -->
 <!-- Arco Motion App — v8z4b29AW — ux: consolida início por imagem com Frame 1 criado, numerado e ativo; fix/ui: move confirmação assistida para overlay do Stage, preservando base v8z4b29AV e menus v8z4b29AU. -->
 <!-- Arco Motion App — v8z4b29AV — feat/flow: adiciona Novo arquivo simples no menu interno com confirmação, imagem validada e estado limpo com F1 sem herdar JSON/frames/curvas, preservando base v8z4b29AU sem Home/Novo Projeto guiado. -->
@@ -1771,6 +1788,7 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
 .panel-handle{width:36px;height:5px;border-radius:3px;background:var(--surface3);margin:0 auto 18px;cursor:pointer;}
 .tpl-pill{display:flex;align-items:center;gap:7px;padding:10px 14px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2);font-size:13px;font-weight:600;color:#fff;cursor:pointer;-webkit-user-select:none;user-select:none;}
 .tpl-pill:active{background:var(--surface3);}
+.tpl-pill.active{border-color:var(--accent);color:var(--accent);background:rgba(4,255,242,.06);}
 .panel-handle:active{cursor:grabbing;}
 .panel-close-check{position:absolute;top:10px;right:14px;width:36px;height:36px;border:0;border-radius:50%;background:rgba(255,255,255,.08);color:rgba(235,235,245,.92);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6;}
 .panel-close-check:active{background:rgba(255,255,255,.14);}
@@ -3099,7 +3117,7 @@ body.cust-open #toolbar{
       <div class="settings-row disabled" id="settingsSaveRow" aria-disabled="true" onclick="promptSaveProject();closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-download"></use></svg><span>Salvar</span>
       </div>
-      <div class="settings-row" onclick="showNewFileConfirm();closeSettingsSheet()">
+      <div class="settings-row" onclick="openNewProjectPanel();closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-file-plus-2"></use></svg><span>Novo Projeto</span>
       </div>
       <div class="settings-row" onclick="loadProjectTrigger();closeSettingsSheet()">
@@ -3117,11 +3135,11 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29AY</span><br><span id="appVersionNameText">v8z4b29AY</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BD</span><br><span id="appVersionNameText">v8z4b29BD</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
-<input type="file" id="newFileImageInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
+<input type="file" id="newProjectImageInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
 
 <!-- PREVIEW SCREEN -->
 <div class="preview-screen" id="previewScreen">
@@ -3208,16 +3226,78 @@ body.cust-open #toolbar{
   </div>
 </div>
 
-<!-- MODAL: Novo arquivo -->
-<div id="newFileModal" style="display:none;position:fixed;inset:0;z-index:205;align-items:center;justify-content:center;background:rgba(0,0,0,.6);">
-  <div style="background:var(--surface);border-radius:18px;padding:24px 20px;width:calc(100% - 48px);max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.4);">
-    <div style="font-size:16px;font-weight:700;color:var(--text1);margin-bottom:8px;">Novo arquivo?</div>
-    <p style="font-size:13px;color:var(--text3);line-height:1.45;margin:0 0 18px;">Salve o projeto atual antes de continuar. O projeto atual será fechado ao criar um novo arquivo.</p>
-    <div style="display:flex;gap:8px;margin-top:4px;flex-direction:column;">
-      <button onclick="confirmNewFileChooseImage()" style="width:100%;padding:13px;border-radius:12px;border:none;background:var(--accent);font-size:14px;font-weight:700;color:#000;cursor:pointer;">
-        Escolher imagem
+<!-- MODAL: Novo Projeto -->
+<div id="newProjectModal" style="display:none;position:fixed;inset:0;z-index:205;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.6);">
+  <div style="background:var(--surface);border-radius:22px 22px 0 0;padding:18px 20px calc(18px + env(safe-area-inset-bottom));width:100%;max-width:480px;max-height:88vh;overflow-y:auto;box-sizing:border-box;box-shadow:0 -4px 32px rgba(0,0,0,.4);">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 16px;"></div>
+    <div style="font-size:18px;font-weight:800;color:var(--text1);margin-bottom:14px;">Novo Projeto</div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Formato</div>
+    <div id="npFormatChips" style="display:flex;flex-direction:column;gap:4px;margin-bottom:18px;">
+      <div class="fmt-row" data-ratio="9:16" onclick="selectNewProjectFormat(this)">
+        <div class="fmt-thumb-wrap"><div style="width:14px;height:24px;border-radius:3px;border:1.5px solid currentColor;"></div></div>
+        <span class="fmt-ratio">9:16</span>
+        <span class="fmt-networks">Stories · Reels · TikTok</span>
+      </div>
+      <div class="fmt-row" data-ratio="3:4" onclick="selectNewProjectFormat(this)">
+        <div class="fmt-thumb-wrap"><div style="width:18px;height:24px;border-radius:3px;border:1.5px solid currentColor;"></div></div>
+        <span class="fmt-ratio">3:4</span>
+        <span class="fmt-networks">Instagram Feed retrato</span>
+      </div>
+      <div class="fmt-row" data-ratio="1:1" onclick="selectNewProjectFormat(this)">
+        <div class="fmt-thumb-wrap"><div style="width:24px;height:24px;border-radius:3px;border:1.5px solid currentColor;"></div></div>
+        <span class="fmt-ratio">1:1</span>
+        <span class="fmt-networks">Instagram · LinkedIn</span>
+      </div>
+      <div class="fmt-row" data-ratio="4:3" onclick="selectNewProjectFormat(this)">
+        <div class="fmt-thumb-wrap"><div style="width:24px;height:18px;border-radius:3px;border:1.5px solid currentColor;"></div></div>
+        <span class="fmt-ratio">4:3</span>
+        <span class="fmt-networks">LinkedIn · apresentação</span>
+      </div>
+      <div class="fmt-row" data-ratio="16:9" onclick="selectNewProjectFormat(this)">
+        <div class="fmt-thumb-wrap"><div style="width:24px;height:14px;border-radius:3px;border:1.5px solid currentColor;"></div></div>
+        <span class="fmt-ratio">16:9</span>
+        <span class="fmt-networks">YouTube · widescreen</span>
+      </div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Template</div>
+    <div id="npTemplateChips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;">
+      <div data-tpl="none" class="tpl-pill" onclick="selectNewProjectTemplate(this)">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5 5l14 14"/></svg>
+        Sem template
+      </div>
+      <div data-tpl="pan-lr" class="tpl-pill" onclick="selectNewProjectTemplate(this)">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12h6"/><polyline points="13 9 16 12 13 15"/></svg>
+        Pan L→R
+      </div>
+      <div data-tpl="zoom-in" class="tpl-pill" onclick="selectNewProjectTemplate(this)">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="12" y1="9" x2="12" y2="15"/></svg>
+        Zoom in
+      </div>
+      <div data-tpl="zoom-out" class="tpl-pill" onclick="selectNewProjectTemplate(this)">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
+        Zoom out
+      </div>
+      <div data-tpl="pan-tb" class="tpl-pill" onclick="selectNewProjectTemplate(this)">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 9v6"/><polyline points="9 13 12 16 15 13"/></svg>
+        Pan ↓
+      </div>
+      <div data-tpl="rotation" class="tpl-pill" onclick="selectNewProjectTemplate(this)">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Rotação
+      </div>
+      <div data-tpl="circle" class="tpl-pill" onclick="selectNewProjectTemplate(this)">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
+        Círculo
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-direction:column;">
+      <button onclick="confirmNewProjectChooseImage()" style="width:100%;padding:13px;border-radius:12px;border:none;background:var(--accent);font-size:14px;font-weight:700;color:#000;cursor:pointer;">
+        Escolher imagem e criar
       </button>
-      <button onclick="closeNewFileConfirm()" style="width:100%;padding:10px;border-radius:12px;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;">
+      <button onclick="closeNewProjectPanel()" style="width:100%;padding:10px;border-radius:12px;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;">
         Cancelar
       </button>
     </div>
@@ -5478,8 +5558,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BC';
-const APP_VERSION_NAME = 'v8z4b29BC';
+const APP_VERSION = 'v8z4b29BD';
+const APP_VERSION_NAME = 'v8z4b29BD';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5597,7 +5677,7 @@ let loopSegEasing = 'linear';       // easing de Velocidade do trecho N→1
 let loopSegRotEasing = 'linear';    // easing de Rotação do trecho N→1
 let loopSegScaleEasing = 'linear';  // easing de Escala do trecho N→1
 let pendingProjectData = null; // projeto aguardando imagem ser carregada
-let activeFileIntent = null; // 'newFileImage' isola Novo arquivo dos fluxos de JSON/imagem existentes
+let activeFileIntent = null; // 'newProjectImage' isola Novo Projeto dos fluxos de JSON/imagem existentes
 let easeAmount = 0;
 let easeMode = 'global';
 let segEasings = []; // easing por segmento
@@ -19115,30 +19195,53 @@ function refreshSliderFills() {
 
 
 // ═══════════════════════════════════════
-// NOVO ARQUIVO
+// NOVO PROJETO — painel Formato → Template → Imagem → Criar
 // ═══════════════════════════════════════
-function showNewFileConfirm() {
-  const modal = document.getElementById('newFileModal');
+let npSelectedFormat = '9:16';
+let npSelectedTemplate = 'none';
+
+function openNewProjectPanel() {
+  npSelectedFormat = ratioMap[currentRatio] ? currentRatio : '9:16';
+  npSelectedTemplate = 'none';
+  document.querySelectorAll('#npFormatChips .fmt-row').forEach(c => {
+    c.classList.toggle('active', c.dataset.ratio === npSelectedFormat);
+  });
+  document.querySelectorAll('#npTemplateChips .tpl-pill').forEach(c => {
+    c.classList.toggle('active', c.dataset.tpl === npSelectedTemplate);
+  });
+  const modal = document.getElementById('newProjectModal');
   if (modal) modal.style.display = 'flex';
 }
 
-function closeNewFileConfirm() {
-  const modal = document.getElementById('newFileModal');
+function closeNewProjectPanel() {
+  const modal = document.getElementById('newProjectModal');
   if (modal) modal.style.display = 'none';
-  if (activeFileIntent === 'newFileImage') activeFileIntent = null;
+  if (activeFileIntent === 'newProjectImage') activeFileIntent = null;
 }
 
-function confirmNewFileChooseImage() {
-  const modal = document.getElementById('newFileModal');
+function selectNewProjectFormat(chip) {
+  npSelectedFormat = chip.dataset.ratio;
+  document.querySelectorAll('#npFormatChips .fmt-row').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+}
+
+function selectNewProjectTemplate(chip) {
+  npSelectedTemplate = chip.dataset.tpl;
+  document.querySelectorAll('#npTemplateChips .tpl-pill').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+}
+
+function confirmNewProjectChooseImage() {
+  const modal = document.getElementById('newProjectModal');
   if (modal) modal.style.display = 'none';
-  activeFileIntent = 'newFileImage';
-  const input = document.getElementById('newFileImageInput');
+  activeFileIntent = 'newProjectImage';
+  const input = document.getElementById('newProjectImageInput');
   if (!input) return;
   input.value = '';
   input.click();
 }
 
-function isSupportedNewFileImage(file) {
+function isSupportedNewProjectImage(file) {
   if (!file) return false;
   const type = (file.type || '').toLowerCase();
   const name = (file.name || '').toLowerCase();
@@ -19147,7 +19250,7 @@ function isSupportedNewFileImage(file) {
   return typeOk || (!type && extOk);
 }
 
-function showNewFileImageError() {
+function showNewProjectImageError() {
   showStatus('Não foi possível abrir esta imagem. Use JPG, PNG ou WebP.');
 }
 
@@ -19229,25 +19332,27 @@ function createInitialFrameForNewImageProject() {
   normalizeProjectArrays();
 }
 
-function finishNewFileImageLoad(file, dataUrl, tmp) {
+function finishNewProjectImageLoad(file, dataUrl, tmp) {
+  const chosenFormat = npSelectedFormat;
+  const chosenTemplate = npSelectedTemplate;
   imgEl.onload = () => {
     resetPreviewAndExportStateForImageChange();
-    resetCanonicalRenderImage('new-file-image');
+    resetCanonicalRenderImage('new-project-image');
     imageOriginalDataUrl = dataUrl || '';
     imagePipelineMeta = {
       ...imagePipelineMeta,
       originalMime: file.type || ((String(dataUrl).match(/^data:([^;]+)/) || [])[1] || ''),
-      sourceKind: 'newFileImage',
+      sourceKind: 'newProjectImage',
       isEmbeddedBase64: false,
       isHeic: false
     };
-    debugImagePipeline('new-file-image-dataurl');
+    debugImagePipeline('new-project-image-dataurl');
     imgNatW = tmp.naturalWidth;
     imgNatH = tmp.naturalHeight;
     setCanonicalRenderImage(tmp, {
-      label: 'new-file-image',
+      label: 'new-project-image',
       originalMime: imagePipelineMeta.originalMime,
-      sourceKind: 'newFileImage',
+      sourceKind: 'newProjectImage',
       isEmbeddedBase64: false
     });
     if (file.name) {
@@ -19270,14 +19375,21 @@ function finishNewFileImageLoad(file, dataUrl, tmp) {
     syncRotationEasingModeUI();
     syncScaleEasingModeUI();
     _projectNewFromImage = true;
+    currentRatio = ratioMap[chosenFormat] ? chosenFormat : currentRatio;
     createInitialFrameForNewImageProject();
+    if (chosenTemplate && chosenTemplate !== 'none') {
+      applyTemplate(chosenTemplate);
+      undoStack.length = 0;
+      redoStack.length = 0;
+      updateUndoRedoUI();
+    }
     renderAll();
     updateFrameSelector();
     requestLowerTimelineCenter(activeIdx);
     updateToolbarLabels();
-    captureProjectResetBaseline('new-file-image-loaded');
-    validateProjectState('after-new-file');
-    showStatus('Novo arquivo criado · Frame 1 ativo');
+    captureProjectResetBaseline('new-project-loaded');
+    validateProjectState('after-new-project');
+    showStatus(chosenTemplate && chosenTemplate !== 'none' ? 'Novo projeto criado · template aplicado' : 'Novo projeto criado · Frame 1 ativo');
     requestAnimationFrame(() => {
       renderAll();
       updateFrameSelector();
@@ -19285,24 +19397,24 @@ function finishNewFileImageLoad(file, dataUrl, tmp) {
       updateToolbarLabels();
     });
   };
-  imgEl.onerror = () => showNewFileImageError();
+  imgEl.onerror = () => showNewProjectImageError();
   imgEl.src = dataUrl;
 }
 
-function loadNewFileImage(file) {
+function loadNewProjectImage(file) {
   activeFileIntent = null;
   if (!file) return;
-  if (!isSupportedNewFileImage(file)) {
-    showNewFileImageError();
+  if (!isSupportedNewProjectImage(file)) {
+    showNewProjectImageError();
     return;
   }
   const reader = new FileReader();
-  reader.onerror = () => showNewFileImageError();
+  reader.onerror = () => showNewProjectImageError();
   reader.onload = e => {
     const dataUrl = e.target.result || '';
     const tmp = new Image();
-    tmp.onload = () => finishNewFileImageLoad(file, dataUrl, tmp);
-    tmp.onerror = () => showNewFileImageError();
+    tmp.onload = () => finishNewProjectImageLoad(file, dataUrl, tmp);
+    tmp.onerror = () => showNewProjectImageError();
     tmp.src = dataUrl;
   };
   reader.readAsDataURL(file);
@@ -19453,7 +19565,7 @@ function loadImage(file, onDoneCallback) {
 
 document.getElementById('fileInput').addEventListener('change',  e => loadImage(e.target.files[0]));
 document.getElementById('fileInput2').addEventListener('change', e => loadImage(e.target.files[0]));
-document.getElementById('newFileImageInput').addEventListener('change', e => loadNewFileImage(e.target.files[0]));
+document.getElementById('newProjectImageInput').addEventListener('change', e => loadNewProjectImage(e.target.files[0]));
 
 // ═══════════════════════════════════════
 // STATUS TOAST

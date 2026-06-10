@@ -1,3 +1,11 @@
+# v8z4b29BD
+
+- feat(flow): evolui Novo Projeto para fluxo interno Formato → Template → Imagem → Criar.
+- feat(flow): Novo Projeto só substitui o projeto atual após a nova imagem carregar com sucesso.
+- fix(state): novo projeto não herda frames, curvas, pausas, duração ou vínculo com JSON anterior.
+- feat(template): aplica template escolhido no nascimento do projeto, ou cria F1 ativo quando "Sem template".
+- preserve: mantém app sem Home/página inicial e preserva Stage, timeline, curvas, Preview/export, JSON e motor.
+
 # v8z4b29BC
 
 - fix(ui): aproxima a faixa superior (frameHud) do frame ativo da moldura do frame, reduzindo a distância vertical e o espaçamento da faixa flutuante.
