@@ -1,3 +1,19 @@
+# QA pendente — v8z4b29BF: launcher simples Novo Projeto / Abrir Projeto
+
+> Base: v8z4b29BE (não aprovada — fluxo Novo Projeto: Formato → Template → Imagem → Criar).
+
+## Escopo v8z4b29BF
+
+- Substitui a tela inicial antiga "Imagem / Projeto" (entrada principal sem projeto carregado) por uma entrada simples com duas opções: "Novo Projeto" e "Abrir Projeto".
+- "Novo Projeto" na entrada inicial abre o fluxo já existente Formato → Template → Imagem → Criar.
+- "Abrir Projeto" na entrada inicial abre o seletor de JSON/projeto salvo, preservando o fluxo atual de abrir JSON.
+- No editor, o menu superior mantém "Novo Projeto" e "Abrir"; ao tocar em qualquer um deles com um projeto aberto, exibe aviso de possível perda (Cancelar/Continuar) antes de prosseguir.
+- Não cria Home completa, comunidade, recentes, perfil, conta, galeria, dashboard ou onboarding novo.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BF.md`.
+
+---
+
 # QA pendente — v8z4b29BE bugfix: sincronização final do Novo Projeto com template
 
 > Base: v8z4b29BD (não aprovada — fluxo Novo Projeto: Formato → Template → Imagem → Criar).
