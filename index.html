@@ -1,13 +1,31 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BF                                    ║
+║  Versão: v8z4b29BG                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BG                                           ║
+║    fix(flow): separa launcher, fluxo de Novo Projeto ║
+║              e editor/Stage em estados explícitos     ║
+║              (launcher / newProject / editor)         ║
+║    feat(flow): recarregar o app volta sempre para a  ║
+║              página inicial independente              ║
+║    fix(flow): Stage só é exibido após criar ou abrir ║
+║              projeto funcional                        ║
+║    fix(flow): Novo Projeto roda fora do Stage e não  ║
+║              mostra projeto anterior durante a        ║
+║              escolha de imagem (etapa própria com     ║
+║              Fototeca/Tirar Foto/Escolher Arquivo)    ║
+║    fix(state): impede Stage vazio, timeline com 0    ║
+║              frames e perda do fluxo ao tocar no      ║
+║              Stage durante a criação                  ║
+║    preserve: mantém editor, Stage, timeline,         ║
+║              templates, Preview/export, JSON e motor  ║
+║              sem alterações funcionais                ║
 ║  v8z4b29BF                                           ║
 ║    feat(flow): substitui a entrada inicial antiga    ║
 ║              por launcher simples Novo Projeto /      ║
@@ -687,7 +705,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b29BF — feat(flow): substitui a tela inicial antiga Imagem/Projeto por launcher simples Novo Projeto / Abrir Projeto; Novo Projeto chama o fluxo Formato → Template → Imagem → Criar; Abrir Projeto chama o seletor de JSON salvo; feat(safety): aviso de possível perda ao iniciar Novo Projeto/Abrir a partir de projeto aberto no editor; preserva Stage, timeline, curvas, Preview/export, JSON e motor da v8z4b29BE. -->
+<!-- Arco Motion App — v8z4b29BG — fix(flow): separa launcher, fluxo de Novo Projeto e editor/Stage em estados distintos (launcher/newProject/editor); feat(flow): recarregar o app volta sempre para a página inicial independente; fix(flow): Stage só é exibido após criar ou abrir projeto funcional; fix(flow): Novo Projeto roda fora do Stage e não mostra projeto anterior durante a escolha de imagem (etapa própria Fototeca/Tirar Foto/Escolher Arquivo); fix(state): impede Stage vazio, timeline com 0 frames e perda do fluxo ao tocar no Stage durante a criação; preserve: mantém editor, Stage, timeline, templates, Preview/export, JSON e motor sem alterações funcionais (base v8z4b29BF). -->
 <!-- Arco Motion App — v8z4b29BE — fix(flow): corrige sincronização final do Novo Projeto criado com qualquer template (frames, contador, timeline, Stage, frame ativo e curvas nascem completos imediatamente, sem precisar adicionar outro frame); fix(reset): Reset Project restaura corretamente o novo projeto criado com template; preserva fluxo Formato → Template → Imagem, Stage, timeline visual, curvas, Preview/export, JSON e motor da v8z4b29BD. -->
 <!-- Arco Motion App — v8z4b29BD — feat(flow): evolui Novo Projeto para fluxo interno Formato → Template → Imagem → Criar; novo projeto só substitui o atual após a imagem carregar e não herda frames/curvas/pausas/duração/JSON anterior; preserva Stage, timeline, curvas, Preview/export, JSON e motor da v8z4b29BC. -->
 <!-- Arco Motion App — v8z4b29AY — fix/ui: refina visual dos 4 handles/abas (menores, fora da borda, HUD discreta, mira ajustada); preserva lógica funcional da v8z4b29AX. -->
@@ -1203,6 +1221,53 @@ body.inserting-frame .frame-out-handle{pointer-events:none !important;}
 }
 .start-launcher-btn--primary{background:var(--accent);color:#000;}
 .start-launcher-btn--secondary{background:var(--surface2);color:var(--text1);border:1px solid var(--border2);}
+
+/* v8z4b29BG — Etapa Imagem do fluxo Novo Projeto (Fototeca/Tirar Foto/Escolher Arquivo) */
+.np-image-step{
+  position:absolute;inset:0;display:none;flex-direction:column;
+  align-items:center;justify-content:center;z-index:6;
+  background:var(--bg);
+}
+.np-image-step-card{
+  display:flex;flex-direction:column;width:100%;max-width:280px;
+  padding:0 24px;box-sizing:border-box;gap:12px;
+}
+.np-image-step-title{
+  font-size:18px;font-weight:800;color:var(--text1);
+  text-align:center;margin-bottom:14px;letter-spacing:-.2px;
+}
+.np-image-step-btn{
+  width:100%;padding:14px;border-radius:12px;border:none;
+  font-size:15px;font-weight:700;cursor:pointer;-webkit-appearance:none;
+  background:var(--surface2);color:var(--text1);border:1px solid var(--border2);
+}
+.np-image-step-btn--primary{background:var(--accent);color:#000;border:none;}
+.np-image-step-back{
+  width:100%;padding:10px;border-radius:12px;border:none;background:transparent;
+  font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;margin-top:4px;
+}
+
+/* v8z4b29BG — Estado explícito de tela: launcher / newProject / editor.
+   Em launcher e newProject, o Stage/timeline/toolbar ficam totalmente
+   ocultos (não apenas cobertos), evitando "Stage vazio" ou "projeto
+   anterior" atrás do fluxo. Apenas as telas marcadas .flow-screen
+   permanecem visíveis nesses modos. */
+body.mode-launcher #imageArea > *:not(.flow-screen),
+body.mode-newproject #imageArea > *:not(.flow-screen){
+  display:none !important;
+}
+body.mode-launcher .top-bar,
+body.mode-newproject .top-bar,
+body.mode-launcher .mid-bar,
+body.mode-newproject .mid-bar,
+body.mode-launcher #toolbar,
+body.mode-newproject #toolbar,
+body.mode-launcher #custBar,
+body.mode-newproject #custBar,
+body.mode-launcher #stageFrameMenu,
+body.mode-newproject #stageFrameMenu{
+  display:none !important;
+}
 
 /* Status toast */
 .status-bar{
@@ -2892,7 +2957,7 @@ body.cust-open #toolbar{
       </button>
     </div>
   </div>
-  <div class="upload-prompt" id="uploadPrompt" style="display:none;">
+  <div class="upload-prompt flow-screen" id="uploadPrompt" style="display:none;">
     <div style="display:flex;gap:32px;align-items:center;justify-content:center;margin-bottom:12px;">
       <label style="display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;-webkit-user-select:none;user-select:none;">
         <input type="file" id="fileInput" accept="image/*" style="display:none;">
@@ -2903,11 +2968,23 @@ body.cust-open #toolbar{
     <p style="margin-top:4px;"><strong>Imagem</strong> para continuar este projeto</p>
   </div>
   <!-- v8z4b29BF — Entrada inicial simples: substitui a antiga tela Imagem/Projeto -->
-  <div class="start-launcher" id="startLauncher" style="display:none;">
+  <div class="start-launcher flow-screen" id="startLauncher" style="display:none;">
     <div class="start-launcher-card">
       <div class="start-launcher-title">Arco Motion App</div>
       <button type="button" class="start-launcher-btn start-launcher-btn--primary" onclick="launcherStartNewProject()">Novo Projeto</button>
       <button type="button" class="start-launcher-btn start-launcher-btn--secondary" onclick="launcherOpenProject()">Abrir Projeto</button>
+    </div>
+  </div>
+  <!-- v8z4b29BG — Etapa Imagem do fluxo Novo Projeto: roda fora do Stage,
+       permanece visível mesmo enquanto o seletor nativo de imagem está
+       aberto, evitando exposição do Stage/projeto anterior. -->
+  <div class="np-image-step flow-screen" id="newProjectImageStep" style="display:none;">
+    <div class="np-image-step-card">
+      <div class="np-image-step-title">Imagem</div>
+      <button type="button" class="np-image-step-btn np-image-step-btn--primary" onclick="newProjectPickImage('library')">Fototeca</button>
+      <button type="button" class="np-image-step-btn" onclick="newProjectPickImage('camera')">Tirar Foto</button>
+      <button type="button" class="np-image-step-btn" onclick="newProjectPickImage('file')">Escolher Arquivo</button>
+      <button type="button" class="np-image-step-back" onclick="backFromNewProjectImageStep()">Voltar</button>
     </div>
   </div>
   <div id="stagePlaceholder" style="display:none;position:absolute;inset:0;background:rgba(120,120,130,0.18);border-radius:4px;pointer-events:none;align-items:center;justify-content:center;">
@@ -3197,7 +3274,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BF</span><br><span id="appVersionNameText">v8z4b29BF</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BG</span><br><span id="appVersionNameText">v8z4b29BG</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5637,8 +5714,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BF';
-const APP_VERSION_NAME = 'v8z4b29BF';
+const APP_VERSION = 'v8z4b29BG';
+const APP_VERSION_NAME = 'v8z4b29BG';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5690,33 +5767,61 @@ function hasImageLoaded() {
   return imgNatW > 0;
 }
 
-// v8z4b29BF — Entrada inicial simples (Novo Projeto / Abrir Projeto).
-// Substitui a antiga tela "Imagem / Projeto" como ponto de entrada do app
-// sem descartar o fluxo legado de "Imagem para continuar projeto pendente".
-function showStartLauncher() {
-  if (startLauncher) startLauncher.style.display = 'flex';
+// v8z4b29BG — Estado explícito de tela: launcher / newProject / editor.
+// O Stage/timeline/toolbar só existem visualmente em modo editor. Em
+// launcher e newProject, todo o conteúdo de #imageArea é ocultado via CSS
+// exceto as telas marcadas .flow-screen (launcher, etapa Imagem do Novo
+// Projeto, prompt de imagem pendente). Isso elimina "Stage vazio" ou
+// "projeto anterior atrás" durante o fluxo de Novo Projeto/Abrir Projeto.
+let appMode = 'launcher'; // 'launcher' | 'newProject' | 'editor'
+let _newProjectOrigin = null; // 'launcher' | 'editor'
+
+function setAppMode(mode) {
+  appMode = mode;
+  document.body.classList.remove('mode-launcher', 'mode-newproject', 'mode-editor');
+  document.body.classList.add('mode-' + mode.toLowerCase());
+}
+
+function hideAllFlowScreens() {
+  if (startLauncher) startLauncher.style.display = 'none';
   if (uploadPrompt) uploadPrompt.style.display = 'none';
+  hideNewProjectImageStep();
+}
+
+function showStartLauncher() {
+  hideAllFlowScreens();
+  if (startLauncher) startLauncher.style.display = 'flex';
 }
 
 function hideStartLauncher() {
   if (startLauncher) startLauncher.style.display = 'none';
 }
 
-function updateEntryScreen() {
-  if (hasImageLoaded()) {
-    hideStartLauncher();
-    if (uploadPrompt) uploadPrompt.style.display = 'none';
-    return;
+// Entra no editor: oculta todas as telas de fluxo e revela Stage/timeline/toolbar.
+function enterEditorMode() {
+  hideAllFlowScreens();
+  setAppMode('editor');
+}
+
+// Cancelamento do fluxo Novo Projeto: nunca deixa o app em Stage vazio.
+// - iniciado do launcher → volta ao launcher.
+// - iniciado do editor (após "Continuar") → restaura o editor intacto se o
+//   projeto anterior continua válido; caso contrário volta ao launcher.
+function exitNewProjectFlow() {
+  hideAllFlowScreens();
+  if (_newProjectOrigin === 'editor' && hasOpenProjectToProtect()) {
+    setAppMode('editor');
+  } else {
+    setAppMode('launcher');
+    showStartLauncher();
   }
-  if (pendingProjectData) {
-    hideStartLauncher();
-    if (uploadPrompt) uploadPrompt.style.display = 'flex';
-    return;
-  }
-  showStartLauncher();
+  _newProjectOrigin = null;
 }
 
 function launcherStartNewProject() {
+  _newProjectOrigin = 'launcher';
+  setAppMode('newProject');
+  hideAllFlowScreens();
   openNewProjectPanel();
 }
 
@@ -19258,7 +19363,10 @@ function renderFramePauseRows() {
 
 // Listener do slider de duração do loop
 document.addEventListener('DOMContentLoaded', () => {
-  updateEntryScreen();
+  // v8z4b29BG — reload = launcher. Nunca restaura Stage, projeto anterior,
+  // imagem ou frames automaticamente.
+  setAppMode('launcher');
+  showStartLauncher();
   const loopSlider = document.getElementById('loopDurSlider');
   if (loopSlider) {
     loopSlider.addEventListener('input', function() {
@@ -19322,6 +19430,9 @@ function requestNewProjectFlow() {
   if (hasOpenProjectToProtect()) {
     openProjectWarnModal('newProject');
   } else {
+    _newProjectOrigin = 'editor';
+    setAppMode('newProject');
+    hideAllFlowScreens();
     openNewProjectPanel();
   }
 }
@@ -19351,8 +19462,16 @@ function closeProjectWarnModal() {
 function confirmProjectWarnContinue() {
   const action = _projectWarnAction;
   closeProjectWarnModal();
-  if (action === 'newProject') openNewProjectPanel();
-  else if (action === 'openProject') loadProjectTrigger();
+  if (action === 'newProject') {
+    // Tarefa 7 — "Continuar": sai visualmente do editor e entra no fluxo
+    // newProject independente, ocultando Stage/timeline/toolbar.
+    _newProjectOrigin = 'editor';
+    setAppMode('newProject');
+    hideAllFlowScreens();
+    openNewProjectPanel();
+  } else if (action === 'openProject') {
+    loadProjectTrigger();
+  }
 }
 
 // ═══════════════════════════════════════
@@ -19378,6 +19497,8 @@ function closeNewProjectPanel() {
   const modal = document.getElementById('newProjectModal');
   if (modal) modal.style.display = 'none';
   if (activeFileIntent === 'newProjectImage') activeFileIntent = null;
+  // Tarefa 10 — cancelar Novo Projeto nunca deixa o app em Stage vazio.
+  exitNewProjectFlow();
 }
 
 function selectNewProjectFormat(chip) {
@@ -19392,13 +19513,42 @@ function selectNewProjectTemplate(chip) {
   chip.classList.add('active');
 }
 
+// v8z4b29BG — Tarefa 4: a etapa Imagem do Novo Projeto roda fora do Stage,
+// como tela própria do fluxo, mostrando apenas Fototeca/Tirar Foto/Escolher
+// Arquivo. Permanece visível mesmo enquanto o seletor nativo está aberto,
+// então cancelar o seletor nunca expõe o Stage.
 function confirmNewProjectChooseImage() {
   const modal = document.getElementById('newProjectModal');
   if (modal) modal.style.display = 'none';
+  showNewProjectImageStep();
+}
+
+function showNewProjectImageStep() {
+  hideAllFlowScreens();
+  const step = document.getElementById('newProjectImageStep');
+  if (step) step.style.display = 'flex';
+}
+
+function hideNewProjectImageStep() {
+  const step = document.getElementById('newProjectImageStep');
+  if (step) step.style.display = 'none';
+}
+
+function backFromNewProjectImageStep() {
+  hideNewProjectImageStep();
+  openNewProjectPanel();
+}
+
+function newProjectPickImage(source) {
   activeFileIntent = 'newProjectImage';
   const input = document.getElementById('newProjectImageInput');
   if (!input) return;
   input.value = '';
+  if (source === 'camera') {
+    input.setAttribute('capture', 'environment');
+  } else {
+    input.removeAttribute('capture');
+  }
   input.click();
 }
 
@@ -19519,7 +19669,10 @@ function finishNewProjectImageLoad(file, dataUrl, tmp) {
     if (file.name) {
       window._imageBaseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_\-]/g, '_').toLowerCase();
     }
-    updateEntryScreen();
+    // v8z4b29BG — imagem válida carregada: sai do fluxo Novo Projeto e
+    // entra no editor/Stage antes de montar o novo projeto (Tarefa 8).
+    enterEditorMode();
+    _newProjectOrigin = null;
     const ph = document.getElementById('stagePlaceholder');
     if (ph) ph.style.display = 'none';
     imgEl.style.display = 'block';
@@ -19630,7 +19783,6 @@ function loadImage(file, onDoneCallback) {
           sourceKind,
           isEmbeddedBase64
         });
-        updateEntryScreen();
         const ph = document.getElementById('stagePlaceholder');
         if (ph) ph.style.display = 'none';
         imgEl.style.display = 'block';
@@ -21970,7 +22122,13 @@ function applyProjectData(data) {
     syncRatioUI();
     const ph = document.getElementById('stagePlaceholder');
     if (ph) ph.style.display = 'flex';
-    updateEntryScreen();
+    // v8z4b29BG — JSON sem imagem embutida: continua fora do Stage até a
+    // imagem ser escolhida (Tarefa 5/6). Mantém o editor intacto se a
+    // chamada veio de "Abrir" no menu do editor com projeto já aberto.
+    _newProjectOrigin = (appMode === 'editor') ? 'editor' : 'launcher';
+    setAppMode('newProject');
+    hideAllFlowScreens();
+    if (uploadPrompt) uploadPrompt.style.display = 'flex';
     showStatus('Projeto carregado — selecione a imagem para continuar');
     return;
   }
@@ -22303,6 +22461,9 @@ function applyFrameData(data) {
   captureProjectResetBaseline('project-load');
   updateUndoRedoUI();
   if (imgNatW) {
+    // v8z4b29BG — JSON aberto com sucesso e imagem pronta: entra no editor/Stage.
+    enterEditorMode();
+    _newProjectOrigin = null;
     showStatus('Projeto carregado!');
     checkWatermarkWarning();
   }
