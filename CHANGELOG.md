@@ -1,3 +1,12 @@
+# v8z4b29BF
+
+- feat(flow): substitui a entrada inicial antiga por launcher simples Novo Projeto / Abrir Projeto.
+- feat(flow): Novo Projeto chama o fluxo Formato → Template → Imagem → Criar.
+- feat(flow): Abrir Projeto chama seletor de JSON/projeto salvo.
+- feat(safety): adiciona aviso de possível perda ao iniciar Novo Projeto a partir de projeto aberto.
+- fix(flow): impede reuso da tela antiga Imagem/Projeto dentro do fluxo Novo Projeto.
+- preserve: não cria Home completa e preserva Stage, timeline, curvas, Preview/export, JSON e motor.
+
 # v8z4b29BE
 
 - fix(flow): corrige a sincronização final do Novo Projeto criado com qualquer template.

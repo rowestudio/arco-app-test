@@ -1,13 +1,30 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BE                                    ║
+║  Versão: v8z4b29BF                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BF                                           ║
+║    feat(flow): substitui a entrada inicial antiga    ║
+║              por launcher simples Novo Projeto /      ║
+║              Abrir Projeto                            ║
+║    feat(flow): Novo Projeto chama o fluxo Formato →  ║
+║              Template → Imagem → Criar                ║
+║    feat(flow): Abrir Projeto chama seletor de        ║
+║              JSON/projeto salvo                       ║
+║    feat(safety): adiciona aviso de possível perda    ║
+║              ao iniciar Novo Projeto/Abrir a partir   ║
+║              de projeto aberto                        ║
+║    fix(flow): impede reuso da tela antiga             ║
+║              Imagem/Projeto dentro do fluxo Novo      ║
+║              Projeto                                  ║
+║    preserve: não cria Home completa e preserva        ║
+║              Stage, timeline, curvas, Preview/        ║
+║              export, JSON e motor                     ║
 ║  v8z4b29BE                                           ║
 ║    fix(flow): corrige sincronização final do Novo    ║
 ║              Projeto criado com qualquer template     ║
@@ -670,6 +687,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29BF — feat(flow): substitui a tela inicial antiga Imagem/Projeto por launcher simples Novo Projeto / Abrir Projeto; Novo Projeto chama o fluxo Formato → Template → Imagem → Criar; Abrir Projeto chama o seletor de JSON salvo; feat(safety): aviso de possível perda ao iniciar Novo Projeto/Abrir a partir de projeto aberto no editor; preserva Stage, timeline, curvas, Preview/export, JSON e motor da v8z4b29BE. -->
 <!-- Arco Motion App — v8z4b29BE — fix(flow): corrige sincronização final do Novo Projeto criado com qualquer template (frames, contador, timeline, Stage, frame ativo e curvas nascem completos imediatamente, sem precisar adicionar outro frame); fix(reset): Reset Project restaura corretamente o novo projeto criado com template; preserva fluxo Formato → Template → Imagem, Stage, timeline visual, curvas, Preview/export, JSON e motor da v8z4b29BD. -->
 <!-- Arco Motion App — v8z4b29BD — feat(flow): evolui Novo Projeto para fluxo interno Formato → Template → Imagem → Criar; novo projeto só substitui o atual após a imagem carregar e não herda frames/curvas/pausas/duração/JSON anterior; preserva Stage, timeline, curvas, Preview/export, JSON e motor da v8z4b29BC. -->
 <!-- Arco Motion App — v8z4b29AY — fix/ui: refina visual dos 4 handles/abas (menores, fora da borda, HUD discreta, mira ajustada); preserva lógica funcional da v8z4b29AX. -->
@@ -1164,6 +1182,27 @@ body.inserting-frame .frame-out-handle{pointer-events:none !important;}
 .up-circle svg{width:33px;height:33px;display:block;}
 .upload-prompt p{font-size:15px;color:var(--text3);text-align:center;line-height:1.5;}
 .upload-prompt p strong{color:var(--text2);}
+
+/* v8z4b29BF — Entrada inicial simples (Novo Projeto / Abrir Projeto) */
+.start-launcher{
+  position:absolute;inset:0;display:none;flex-direction:column;
+  align-items:center;justify-content:center;z-index:6;
+  background:var(--bg);
+}
+.start-launcher-card{
+  display:flex;flex-direction:column;width:100%;max-width:280px;
+  padding:0 24px;box-sizing:border-box;gap:12px;
+}
+.start-launcher-title{
+  font-size:18px;font-weight:800;color:var(--text1);
+  text-align:center;margin-bottom:14px;letter-spacing:-.2px;
+}
+.start-launcher-btn{
+  width:100%;padding:14px;border-radius:12px;border:none;
+  font-size:15px;font-weight:700;cursor:pointer;-webkit-appearance:none;
+}
+.start-launcher-btn--primary{background:var(--accent);color:#000;}
+.start-launcher-btn--secondary{background:var(--surface2);color:var(--text1);border:1px solid var(--border2);}
 
 /* Status toast */
 .status-bar{
@@ -2853,19 +2892,23 @@ body.cust-open #toolbar{
       </button>
     </div>
   </div>
-  <div class="upload-prompt" id="uploadPrompt">
+  <div class="upload-prompt" id="uploadPrompt" style="display:none;">
     <div style="display:flex;gap:32px;align-items:center;justify-content:center;margin-bottom:12px;">
       <label style="display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;-webkit-user-select:none;user-select:none;">
         <input type="file" id="fileInput" accept="image/*" style="display:none;">
         <svg viewBox="0 0 24 24" style="width:48px;height:48px;display:block;color:var(--text2);" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-up"></use></svg>
         <span style="font-size:13px;font-weight:600;color:var(--text2);">Imagem</span>
       </label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;-webkit-user-select:none;user-select:none;" onclick="loadProjectTrigger();event.preventDefault();">
-        <svg viewBox="0 0 24 24" style="width:48px;height:48px;display:block;color:var(--accent);" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-file-up"></use></svg>
-        <span style="font-size:13px;font-weight:600;color:var(--accent);">Projeto</span>
-      </label>
     </div>
-    <p style="margin-top:4px;"><strong>Imagem</strong> para começar do zero<br><span style="color:var(--accent);">Projeto</span> para abrir um salvo</p>
+    <p style="margin-top:4px;"><strong>Imagem</strong> para continuar este projeto</p>
+  </div>
+  <!-- v8z4b29BF — Entrada inicial simples: substitui a antiga tela Imagem/Projeto -->
+  <div class="start-launcher" id="startLauncher" style="display:none;">
+    <div class="start-launcher-card">
+      <div class="start-launcher-title">Arco Motion App</div>
+      <button type="button" class="start-launcher-btn start-launcher-btn--primary" onclick="launcherStartNewProject()">Novo Projeto</button>
+      <button type="button" class="start-launcher-btn start-launcher-btn--secondary" onclick="launcherOpenProject()">Abrir Projeto</button>
+    </div>
   </div>
   <div id="stagePlaceholder" style="display:none;position:absolute;inset:0;background:rgba(120,120,130,0.18);border-radius:4px;pointer-events:none;align-items:center;justify-content:center;">
     <span style="font-size:13px;color:var(--text3);font-weight:500;">Carregue a imagem para continuar</span>
@@ -3136,10 +3179,10 @@ body.cust-open #toolbar{
       <div class="settings-row disabled" id="settingsSaveRow" aria-disabled="true" onclick="promptSaveProject();closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-download"></use></svg><span>Salvar</span>
       </div>
-      <div class="settings-row" onclick="openNewProjectPanel();closeSettingsSheet()">
+      <div class="settings-row" onclick="requestNewProjectFlow();closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-file-plus-2"></use></svg><span>Novo Projeto</span>
       </div>
-      <div class="settings-row" onclick="loadProjectTrigger();closeSettingsSheet()">
+      <div class="settings-row" onclick="requestOpenProjectFlow();closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-folder-open"></use></svg><span>Abrir</span>
       </div>
       <div class="settings-row" onclick="window.location.reload()">
@@ -3154,7 +3197,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BE</span><br><span id="appVersionNameText">v8z4b29BE</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BF</span><br><span id="appVersionNameText">v8z4b29BF</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -3317,6 +3360,23 @@ body.cust-open #toolbar{
         Escolher imagem e criar
       </button>
       <button onclick="closeNewProjectPanel()" style="width:100%;padding:10px;border-radius:12px;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Aviso de possível perda — Novo Projeto / Abrir a partir do editor -->
+<div id="projectWarnModal" style="display:none;position:fixed;inset:0;z-index:206;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.6);">
+  <div style="background:var(--surface);border-radius:22px 22px 0 0;padding:18px 20px calc(18px + env(safe-area-inset-bottom));width:100%;max-width:480px;box-sizing:border-box;box-shadow:0 -4px 32px rgba(0,0,0,.4);">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 16px;"></div>
+    <div style="font-size:18px;font-weight:800;color:var(--text1);margin-bottom:10px;" id="projectWarnTitle">Novo Projeto</div>
+    <div style="font-size:14px;color:var(--text2);line-height:1.5;margin-bottom:18px;">O projeto atual pode ser perdido se não foi salvo.</div>
+    <div style="display:flex;gap:8px;flex-direction:column;">
+      <button onclick="confirmProjectWarnContinue()" style="width:100%;padding:13px;border-radius:12px;border:none;background:var(--accent);font-size:14px;font-weight:700;color:#000;cursor:pointer;">
+        Continuar
+      </button>
+      <button onclick="closeProjectWarnModal()" style="width:100%;padding:10px;border-radius:12px;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;">
         Cancelar
       </button>
     </div>
@@ -5577,8 +5637,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BE';
-const APP_VERSION_NAME = 'v8z4b29BE';
+const APP_VERSION = 'v8z4b29BF';
+const APP_VERSION_NAME = 'v8z4b29BF';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5628,6 +5688,40 @@ let stageW = 0, stageH = 0;
 // base). Não cria flag duplicada para evitar inconsistências.
 function hasImageLoaded() {
   return imgNatW > 0;
+}
+
+// v8z4b29BF — Entrada inicial simples (Novo Projeto / Abrir Projeto).
+// Substitui a antiga tela "Imagem / Projeto" como ponto de entrada do app
+// sem descartar o fluxo legado de "Imagem para continuar projeto pendente".
+function showStartLauncher() {
+  if (startLauncher) startLauncher.style.display = 'flex';
+  if (uploadPrompt) uploadPrompt.style.display = 'none';
+}
+
+function hideStartLauncher() {
+  if (startLauncher) startLauncher.style.display = 'none';
+}
+
+function updateEntryScreen() {
+  if (hasImageLoaded()) {
+    hideStartLauncher();
+    if (uploadPrompt) uploadPrompt.style.display = 'none';
+    return;
+  }
+  if (pendingProjectData) {
+    hideStartLauncher();
+    if (uploadPrompt) uploadPrompt.style.display = 'flex';
+    return;
+  }
+  showStartLauncher();
+}
+
+function launcherStartNewProject() {
+  openNewProjectPanel();
+}
+
+function launcherOpenProject() {
+  loadProjectTrigger();
 }
 
 function canSaveProject() {
@@ -11345,6 +11439,7 @@ const stage        = document.getElementById('stage');
 const stageContent = document.getElementById('stageContent');
 const imageArea    = document.getElementById('imageArea');
 const uploadPrompt = document.getElementById('uploadPrompt');
+const startLauncher = document.getElementById('startLauncher');
 const midBar       = document.getElementById('midBar');
 const toolbar      = document.getElementById('toolbar');
 // pillsRow acessado via getElementById quando necessário
@@ -19163,6 +19258,7 @@ function renderFramePauseRows() {
 
 // Listener do slider de duração do loop
 document.addEventListener('DOMContentLoaded', () => {
+  updateEntryScreen();
   const loopSlider = document.getElementById('loopDurSlider');
   if (loopSlider) {
     loopSlider.addEventListener('input', function() {
@@ -19212,6 +19308,52 @@ function refreshSliderFills() {
   document.querySelectorAll('.dur-slider').forEach(updateSliderFill);
 }
 
+
+// ═══════════════════════════════════════
+// AVISO DE POSSÍVEL PERDA — Novo Projeto / Abrir a partir do editor
+// ═══════════════════════════════════════
+let _projectWarnAction = null; // 'newProject' | 'openProject'
+
+function hasOpenProjectToProtect() {
+  return hasImageLoaded() || frameCount > 0;
+}
+
+function requestNewProjectFlow() {
+  if (hasOpenProjectToProtect()) {
+    openProjectWarnModal('newProject');
+  } else {
+    openNewProjectPanel();
+  }
+}
+
+function requestOpenProjectFlow() {
+  if (hasOpenProjectToProtect()) {
+    openProjectWarnModal('openProject');
+  } else {
+    loadProjectTrigger();
+  }
+}
+
+function openProjectWarnModal(action) {
+  _projectWarnAction = action;
+  const titleEl = document.getElementById('projectWarnTitle');
+  if (titleEl) titleEl.textContent = action === 'openProject' ? 'Abrir Projeto' : 'Novo Projeto';
+  const modal = document.getElementById('projectWarnModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeProjectWarnModal() {
+  _projectWarnAction = null;
+  const modal = document.getElementById('projectWarnModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function confirmProjectWarnContinue() {
+  const action = _projectWarnAction;
+  closeProjectWarnModal();
+  if (action === 'newProject') openNewProjectPanel();
+  else if (action === 'openProject') loadProjectTrigger();
+}
 
 // ═══════════════════════════════════════
 // NOVO PROJETO — painel Formato → Template → Imagem → Criar
@@ -19377,8 +19519,7 @@ function finishNewProjectImageLoad(file, dataUrl, tmp) {
     if (file.name) {
       window._imageBaseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_\-]/g, '_').toLowerCase();
     }
-    const upload = document.getElementById('uploadPrompt');
-    if (upload) upload.style.display = 'none';
+    updateEntryScreen();
     const ph = document.getElementById('stagePlaceholder');
     if (ph) ph.style.display = 'none';
     imgEl.style.display = 'block';
@@ -19489,7 +19630,7 @@ function loadImage(file, onDoneCallback) {
           sourceKind,
           isEmbeddedBase64
         });
-        uploadPrompt.style.display = 'none';
+        updateEntryScreen();
         const ph = document.getElementById('stagePlaceholder');
         if (ph) ph.style.display = 'none';
         imgEl.style.display = 'block';
@@ -21770,7 +21911,7 @@ function loadProjectFromFile(e) {
     } catch(err) {
       // v8z4b18o — log diagnóstico para facilitar debugging sem expor UI complexa
       console.error('[Arco] Erro ao carregar projeto:', err);
-      showStatus('Erro ao carregar projeto');
+      showStatus('Não foi possível abrir este projeto.');
     }
     e.target.value = '';
   };
@@ -21829,6 +21970,7 @@ function applyProjectData(data) {
     syncRatioUI();
     const ph = document.getElementById('stagePlaceholder');
     if (ph) ph.style.display = 'flex';
+    updateEntryScreen();
     showStatus('Projeto carregado — selecione a imagem para continuar');
     return;
   }
