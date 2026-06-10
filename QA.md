@@ -1,3 +1,18 @@
+# QA pendente — v8z4b29BH: ajustes de UX sobre launcher/Novo Projeto/editor
+
+> Base: v8z4b29BG (aprovada — separou launcher, Novo Projeto e editor/Stage em estados explícitos; fluxo Novo Projeto funcionou).
+
+## Escopo v8z4b29BH
+
+- Etapa Imagem do Novo Projeto mostra apenas o botão "Escolher imagem", removendo a duplicidade com o menu nativo de Fototeca/Tirar Foto/Escolher Arquivo do iOS/Safari.
+- Launcher ganha ação discreta "Recarregar" abaixo de "Abrir Projeto", que recarrega o app e mantém o usuário no launcher.
+- Botão X/fechar do Stage fecha o projeto atual e volta ao launcher; mostra aviso "Fechar projeto" (Cancelar/Fechar) quando há projeto aberto.
+- Preserva separação launcher → Novo Projeto → editor, Stage, timeline, templates, Preview/export, JSON e motor.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BH.md`.
+
+---
+
 # QA pendente — v8z4b29BG: separa launcher, Novo Projeto e editor/Stage em estados explícitos
 
 > Base: v8z4b29BF (não aprovada — entrada inicial e fluxo de Novo Projeto continuavam presos ao Stage).

@@ -1,13 +1,27 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BG                                    ║
+║  Versão: v8z4b29BH                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BH                                           ║
+║    fix(flow): remove duplicidade de Fototeca/Tirar   ║
+║              Foto/Escolher Arquivo na etapa Imagem    ║
+║              do Novo Projeto (botão único "Escolher   ║
+║              imagem" + menu nativo)                   ║
+║    feat(launcher): adiciona ação discreta de         ║
+║              Recarregar App na página inicial         ║
+║    fix(editor): botão X do Stage fecha o projeto e   ║
+║              volta ao launcher, com aviso de          ║
+║              possível perda                           ║
+║    preserve: mantém separação launcher → Novo        ║
+║              Projeto → editor e preserva Stage,       ║
+║              timeline, templates, Preview/export,     ║
+║              JSON e motor                             ║
 ║  v8z4b29BG                                           ║
 ║    fix(flow): separa launcher, fluxo de Novo Projeto ║
 ║              e editor/Stage em estados explícitos     ║
@@ -705,7 +719,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b29BG — fix(flow): separa launcher, fluxo de Novo Projeto e editor/Stage em estados distintos (launcher/newProject/editor); feat(flow): recarregar o app volta sempre para a página inicial independente; fix(flow): Stage só é exibido após criar ou abrir projeto funcional; fix(flow): Novo Projeto roda fora do Stage e não mostra projeto anterior durante a escolha de imagem (etapa própria Fototeca/Tirar Foto/Escolher Arquivo); fix(state): impede Stage vazio, timeline com 0 frames e perda do fluxo ao tocar no Stage durante a criação; preserve: mantém editor, Stage, timeline, templates, Preview/export, JSON e motor sem alterações funcionais (base v8z4b29BF). -->
+<!-- Arco Motion App — v8z4b29BH — fix(flow): remove duplicidade de Fototeca/Tirar Foto/Escolher Arquivo na etapa Imagem do Novo Projeto, substituindo por botão único "Escolher imagem" que abre o seletor nativo; feat(launcher): adiciona ação discreta de Recarregar App na página inicial; fix(editor): botão X do Stage passa a fechar o projeto e voltar ao launcher, com aviso de possível perda se houver projeto aberto; preserve: mantém separação launcher/newProject/editor, Stage, timeline, templates, Preview/export, JSON e motor sem alterações funcionais (base v8z4b29BG). -->
 <!-- Arco Motion App — v8z4b29BE — fix(flow): corrige sincronização final do Novo Projeto criado com qualquer template (frames, contador, timeline, Stage, frame ativo e curvas nascem completos imediatamente, sem precisar adicionar outro frame); fix(reset): Reset Project restaura corretamente o novo projeto criado com template; preserva fluxo Formato → Template → Imagem, Stage, timeline visual, curvas, Preview/export, JSON e motor da v8z4b29BD. -->
 <!-- Arco Motion App — v8z4b29BD — feat(flow): evolui Novo Projeto para fluxo interno Formato → Template → Imagem → Criar; novo projeto só substitui o atual após a imagem carregar e não herda frames/curvas/pausas/duração/JSON anterior; preserva Stage, timeline, curvas, Preview/export, JSON e motor da v8z4b29BC. -->
 <!-- Arco Motion App — v8z4b29AY — fix/ui: refina visual dos 4 handles/abas (menores, fora da borda, HUD discreta, mira ajustada); preserva lógica funcional da v8z4b29AX. -->
@@ -1221,6 +1235,10 @@ body.inserting-frame .frame-out-handle{pointer-events:none !important;}
 }
 .start-launcher-btn--primary{background:var(--accent);color:#000;}
 .start-launcher-btn--secondary{background:var(--surface2);color:var(--text1);border:1px solid var(--border2);}
+.start-launcher-btn--ghost{
+  background:transparent;color:var(--text3);border:none;
+  font-size:13px;font-weight:500;padding:10px;margin-top:2px;
+}
 
 /* v8z4b29BG — Etapa Imagem do fluxo Novo Projeto (Fototeca/Tirar Foto/Escolher Arquivo) */
 .np-image-step{
@@ -2876,7 +2894,7 @@ body.cust-open #toolbar{
      contextual). Nenhuma mudança de layout agora; apenas evita
      dependências (CSS/JS) que impeçam o slot depois. -->
 <div class="top-bar" id="topBar" data-role="top-bar">
-  <div class="top-btn labeled top-gap-after" onclick="closeAll();closeCustBar();hideStageFrameMenu();" title="Voltar" aria-label="Voltar">
+  <div class="top-btn labeled top-gap-after" onclick="requestCloseStageToLauncher()" title="Fechar projeto" aria-label="Fechar projeto">
     <svg viewBox="0 0 24 24"><use href="#i-close"></use></svg><span class="top-label">Voltar</span>
   </div>
   <div class="top-btn labeled top-gap-after" onclick="toggleSettingsSheet()" title="Arquivos" aria-label="Arquivos">
@@ -2973,17 +2991,18 @@ body.cust-open #toolbar{
       <div class="start-launcher-title">Arco Motion App</div>
       <button type="button" class="start-launcher-btn start-launcher-btn--primary" onclick="launcherStartNewProject()">Novo Projeto</button>
       <button type="button" class="start-launcher-btn start-launcher-btn--secondary" onclick="launcherOpenProject()">Abrir Projeto</button>
+      <button type="button" class="start-launcher-btn start-launcher-btn--ghost" onclick="launcherReloadApp()">Recarregar</button>
     </div>
   </div>
-  <!-- v8z4b29BG — Etapa Imagem do fluxo Novo Projeto: roda fora do Stage,
+  <!-- v8z4b29BH — Etapa Imagem do fluxo Novo Projeto: roda fora do Stage,
        permanece visível mesmo enquanto o seletor nativo de imagem está
-       aberto, evitando exposição do Stage/projeto anterior. -->
+       aberto, evitando exposição do Stage/projeto anterior. Mostra apenas
+       uma ação genérica; o menu nativo do iOS/Safari resolve
+       Fototeca/Tirar Foto/Escolher Arquivo, evitando duplicidade. -->
   <div class="np-image-step flow-screen" id="newProjectImageStep" style="display:none;">
     <div class="np-image-step-card">
       <div class="np-image-step-title">Imagem</div>
-      <button type="button" class="np-image-step-btn np-image-step-btn--primary" onclick="newProjectPickImage('library')">Fototeca</button>
-      <button type="button" class="np-image-step-btn" onclick="newProjectPickImage('camera')">Tirar Foto</button>
-      <button type="button" class="np-image-step-btn" onclick="newProjectPickImage('file')">Escolher Arquivo</button>
+      <button type="button" class="np-image-step-btn np-image-step-btn--primary" onclick="newProjectPickImage()">Escolher imagem</button>
       <button type="button" class="np-image-step-back" onclick="backFromNewProjectImageStep()">Voltar</button>
     </div>
   </div>
@@ -3274,7 +3293,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BG</span><br><span id="appVersionNameText">v8z4b29BG</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BH</span><br><span id="appVersionNameText">v8z4b29BH</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -3454,6 +3473,23 @@ body.cust-open #toolbar{
         Continuar
       </button>
       <button onclick="closeProjectWarnModal()" style="width:100%;padding:10px;border-radius:12px;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Aviso de possível perda — botão X/fechar do Stage volta ao launcher (v8z4b29BH) -->
+<div id="stageCloseWarnModal" style="display:none;position:fixed;inset:0;z-index:206;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.6);">
+  <div style="background:var(--surface);border-radius:22px 22px 0 0;padding:18px 20px calc(18px + env(safe-area-inset-bottom));width:100%;max-width:480px;box-sizing:border-box;box-shadow:0 -4px 32px rgba(0,0,0,.4);">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 16px;"></div>
+    <div style="font-size:18px;font-weight:800;color:var(--text1);margin-bottom:10px;">Fechar projeto</div>
+    <div style="font-size:14px;color:var(--text2);line-height:1.5;margin-bottom:18px;">O projeto atual pode ser perdido se não foi salvo.</div>
+    <div style="display:flex;gap:8px;flex-direction:column;">
+      <button onclick="confirmStageCloseToLauncher()" style="width:100%;padding:13px;border-radius:12px;border:none;background:var(--accent);font-size:14px;font-weight:700;color:#000;cursor:pointer;">
+        Fechar
+      </button>
+      <button onclick="closeStageCloseWarnModal()" style="width:100%;padding:10px;border-radius:12px;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;">
         Cancelar
       </button>
     </div>
@@ -5714,8 +5750,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BG';
-const APP_VERSION_NAME = 'v8z4b29BG';
+const APP_VERSION = 'v8z4b29BH';
+const APP_VERSION_NAME = 'v8z4b29BH';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -5827,6 +5863,13 @@ function launcherStartNewProject() {
 
 function launcherOpenProject() {
   loadProjectTrigger();
+}
+
+// v8z4b29BH — Recarregar a partir do launcher: reload seguro da página.
+// Não abre Stage, não cria projeto e não tenta restaurar projeto anterior;
+// ao recarregar, o app sempre volta para o launcher (DOMContentLoaded).
+function launcherReloadApp() {
+  location.reload();
 }
 
 function canSaveProject() {
@@ -19475,6 +19518,54 @@ function confirmProjectWarnContinue() {
 }
 
 // ═══════════════════════════════════════
+// BOTÃO X/FECHAR DO STAGE — volta ao launcher (v8z4b29BH)
+// ═══════════════════════════════════════
+function requestCloseStageToLauncher() {
+  if (hasOpenProjectToProtect()) {
+    openStageCloseWarnModal();
+  } else {
+    closeProjectAndReturnToLauncher();
+  }
+}
+
+function openStageCloseWarnModal() {
+  const modal = document.getElementById('stageCloseWarnModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeStageCloseWarnModal() {
+  const modal = document.getElementById('stageCloseWarnModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function confirmStageCloseToLauncher() {
+  closeStageCloseWarnModal();
+  closeProjectAndReturnToLauncher();
+}
+
+// Fecha o projeto atual, limpa o estado do editor e volta ao launcher
+// independente. Garante que Stage/timeline/toolbar não fiquem visíveis
+// sem projeto (sem Stage vazio, sem "0 frames", sem timeline órfã).
+function closeProjectAndReturnToLauncher() {
+  closeAll();
+  closeCustBar();
+  hideStageFrameMenu();
+  clearCurrentProjectForNewFile();
+  imgEl.removeAttribute('src');
+  imgEl.style.display = 'none';
+  bezierSvg.style.display = 'none';
+  imgNatW = 0;
+  imgNatH = 0;
+  document.body.classList.add('no-image');
+  const ph = document.getElementById('stagePlaceholder');
+  if (ph) ph.style.display = 'none';
+  _projectNewFromImage = false;
+  hideAllFlowScreens();
+  setAppMode('launcher');
+  showStartLauncher();
+}
+
+// ═══════════════════════════════════════
 // NOVO PROJETO — painel Formato → Template → Imagem → Criar
 // ═══════════════════════════════════════
 let npSelectedFormat = '9:16';
@@ -19514,9 +19605,9 @@ function selectNewProjectTemplate(chip) {
 }
 
 // v8z4b29BG — Tarefa 4: a etapa Imagem do Novo Projeto roda fora do Stage,
-// como tela própria do fluxo, mostrando apenas Fototeca/Tirar Foto/Escolher
-// Arquivo. Permanece visível mesmo enquanto o seletor nativo está aberto,
-// então cancelar o seletor nunca expõe o Stage.
+// como tela própria do fluxo, mostrando apenas o botão "Escolher imagem"
+// (v8z4b29BH). Permanece visível mesmo enquanto o seletor nativo está
+// aberto, então cancelar o seletor nunca expõe o Stage.
 function confirmNewProjectChooseImage() {
   const modal = document.getElementById('newProjectModal');
   if (modal) modal.style.display = 'none';
@@ -19539,16 +19630,15 @@ function backFromNewProjectImageStep() {
   openNewProjectPanel();
 }
 
-function newProjectPickImage(source) {
+// v8z4b29BH — botão único "Escolher imagem": abre o seletor nativo sem
+// "capture", deixando o iOS/Safari oferecer Fototeca/Tirar Foto/Escolher
+// Arquivo no próprio menu nativo (sem duplicar opções na tela do app).
+function newProjectPickImage() {
   activeFileIntent = 'newProjectImage';
   const input = document.getElementById('newProjectImageInput');
   if (!input) return;
   input.value = '';
-  if (source === 'camera') {
-    input.setAttribute('capture', 'environment');
-  } else {
-    input.removeAttribute('capture');
-  }
+  input.removeAttribute('capture');
   input.click();
 }
 

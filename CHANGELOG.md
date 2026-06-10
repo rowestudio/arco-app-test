@@ -1,3 +1,10 @@
+# v8z4b29BH
+
+- fix(flow): remove duplicidade de Fototeca/Tirar Foto/Escolher Arquivo na etapa Imagem do Novo Projeto.
+- feat(launcher): adiciona ação discreta de Recarregar App na página inicial.
+- fix(editor): botão X do Stage passa a fechar o projeto e voltar ao launcher com aviso de possível perda.
+- preserve: mantém separação launcher → Novo Projeto → editor e preserva Stage, timeline, templates, Preview/export, JSON e motor.
+
 # v8z4b29BG
 
 - fix(flow): separa launcher, fluxo de Novo Projeto e editor/Stage em estados distintos.
