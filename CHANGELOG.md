@@ -1,3 +1,13 @@
+# v8z4b29BJ
+
+- fix(ui): reposiciona aviso de confirmação/cancelamento de frame para longe do topo e do pill de zoom.
+- fix(ui): fecha painel de Duração/Tempo ao acionar qualquer item do menu superior.
+- fix(ui): alinha à esquerda os ícones contextuais de trecho na 4ª linha do menu inferior.
+- tweak(timeline): aumenta levemente a largura visual de frames e trechos na faixa.
+- feat(icon): troca ícone de Arquivos do topo para rolo de filme.
+- feat(icon): troca ícone de Tempo/Duração na faixa inferior para cadeira de diretor.
+- preserve: mantém launcher, Stage, timeline, templates, Preview/export, JSON e motor sem regressões.
+
 # v8z4b29BI
 
 - fix(flow): remove a etapa intermediária "Imagem" do fluxo Novo Projeto.
