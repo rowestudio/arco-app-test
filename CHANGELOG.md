@@ -1,3 +1,11 @@
+# v8z4b29BR
+
+- fix(ui): reduz a área fixa do painel Edição de Tempo para handle, título e botão check — resumo de duração, Velocidade Constante, abas Tempo/Preferências e o restante do conteúdo passam a rolar junto, ganhando mais espaço útil para a lista de frames/trechos.
+- fix(ui): separa os painéis contextuais de trecho — o botão **Tempo** abre um painel focado apenas em identificação do trecho (ex.: SEG. 2–3) e duração; o botão **Movimento** abre o painel com Velocidade / Rotação / Escala, Movimento Inteligente, curvas e Tremor.
+- fix(ui): recupera o Tremor Global do projeto no painel Movimento do trecho (controles espelhados que leem/escrevem o mesmo estado `projectShake`), mantendo também o controle local Global / Desligado / Personalizado e o bloco já existente em Preferências.
+- fix(ui): refina o design system de abas (`.ds-tab-bar` / `.ds-tab`) — aba ativa com linha grossa ciano, abas inativas com linha fina discreta, sem novo fundo/pill.
+- preserve: mantém Stage, timeline, Tremor (Global e por trecho), Preview/export, JSON e motor sem alterações funcionais.
+
 # v8z4b29BQ
 
 - fix(ui): fixa cabeçalho, resumo, Velocidade Constante e abas no painel Edição de Tempo — apenas a lista de frames/trechos abaixo das abas rola.
