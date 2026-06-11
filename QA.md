@@ -1,3 +1,20 @@
+# QA pendente — v8z4b29BL: sincronização do frame ativo (Stage/timeline/label/controles)
+
+> Base: v8z4b29BK (aprovada — ícones Iconoir cinema-old e director-chair). Esta versão corrige a divergência visual entre o frame ativo no Stage, o frame destacado na faixa/timeline, o label inferior e os controles de edição.
+
+## Escopo v8z4b29BL
+
+- Unifica a fonte de verdade do frame ativo: `getTimelineStageFocusIndex()` passa a refletir sempre `activeIdx`, eliminando o estado paralelo de "foco" da timeline que podia divergir do frame ativo oficial.
+- Ao tocar em um frame na faixa/timeline, ele vira o frame ativo oficial e o Stage, o label inferior e os controles passam a refletir esse mesmo frame imediatamente.
+- Ao tocar/selecionar um frame no Stage (incluindo abas de rotação/escala/handles), o mesmo frame passa a ser destacado na timeline e no label inferior.
+- Ao centralizar um frame na timeline por scroll/scrub, esse frame também passa a ser o frame ativo oficial (Stage, label e controles seguem).
+- Remove o destaque "fantasma" (pill laranja "selecionado" simultâneo ao pill "ativo" ciano) ao trocar de frame ativo.
+- Preserva seleção múltipla, edição de trecho (label "Trecho X–Y" e botões contextuais), Preview, ícones Iconoir (cinema-old, director-chair), Stage, timeline, Preview/export, JSON e motor.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BL.md`.
+
+---
+
 # QA pendente — v8z4b29BK: ícones Iconoir cinema-old e director-chair
 
 > Base: v8z4b29BJ (aprovada — ajustes finos de UI/UX e ícones de Arquivos/Tempo já trocados, mas com formas próprias). Esta versão substitui apenas esses dois ícones pelos ícones individuais do Iconoir, sem regressões.
