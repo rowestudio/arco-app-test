@@ -1,3 +1,21 @@
+# QA pendente — v8z4b29BO: Tremor Global do projeto + Frequência + modo por trecho
+
+> Base: v8z4b29BN (aprovada — efeito experimental de Tremor/handheld por trecho). Esta versão evolui apenas a camada procedural de Tremor criada na BN, sem refatorar o motor: separa Intensidade (amplitude) de Frequência (velocidade/quantidade de tremidas), adiciona um Tremor Global no nível do projeto e permite que cada trecho use Global, fique Desligado ou tenha configuração Personalizada. Preview e MP4 continuam determinísticos.
+
+## Escopo v8z4b29BO
+
+- Adiciona `projectShake = { enabled:false, intensity:0.4, frequency:1.0 }` (Tremor Global do projeto). Por padrão desligado; projetos antigos sem o campo abrem com Global desligado (mesmo visual de antes).
+- Evolui `segTremorSettings[i]` para `{ mode:'global'|'off'|'custom', intensity, frequency }`. Migração segura do JSON da v8z4b29BN (`{enabled,intensity}`): `enabled:true` → `custom`; `enabled` false/ausente → `global` (Global desligado por padrão preserva o visual). Novos trechos nascem em `global`.
+- Adiciona Frequência (0.5–8.0) ao motor: a frequência multiplica a velocidade angular das senoides do ruído (sem `Math.random`), mantendo movimento suave/orgânico e 100% determinístico — Preview = MP4, repetir Preview não muda o efeito. Intensidade continua controlando a amplitude (≤2% do quadro / ≤0,5° de rotação no máximo).
+- `resolveSegTremor(cfg)` é a fonte única de verdade: combina o modo do trecho com o Global e devolve `{active,intensity,frequency}`. O motor (`applySegTremorLayer`) e a UI usam o mesmo resolvedor.
+- UI no painel de Edição/Movimento (`panelEase`), seção "Tremor": (1) toggle "Tremor Global" + sliders Intensidade e Frequência (Lenta ←→ Rápida); (2) por trecho, chips de modo Global/Desligado/Personalizado; no modo Global mostra nota de herança e oculta sliders locais; no modo Personalizado mostra Intensidade e Frequência próprias; Desligado não treme.
+- Persistência: `projectShake` e `segTremorSettings` (com `mode/intensity/frequency`) salvos/lidos no JSON, incluídos em undo/redo e resets de novo projeto. JSON antigo e JSON da BN abrem sem erro.
+- Não redesenha página inicial, Edição, templates nem o fluxo Novo Projeto; mantém nome "Edição", ícone director-chair, demais ícones, Stage, timeline, curvas, Preview e export. Sem zoom automático global novo.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BO.md`.
+
+---
+
 # QA pendente — v8z4b29BN: efeito experimental de Tremor (câmera na mão) por trecho
 
 > Base: v8z4b29BM (aprovada — logo no launcher, apple-touch-icon e "Tempo" → "Edição"). Esta versão adiciona uma função experimental de motor: um efeito opcional de tremida/manual por TRECHO, aplicado como camada procedural sobre o movimento já calculado, sem criar frames e sem alterar frames/curvas/timeline. Escopo pequeno, isolado e reversível (desligar o Tremor reproduz exatamente o comportamento anterior).

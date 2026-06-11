@@ -1,3 +1,11 @@
+# v8z4b29BO
+
+- feat(motion): adiciona Tremor Global do projeto.
+- feat(motion): adiciona controle de Frequência ao Tremor/Handheld.
+- feat(motion): permite trechos herdarem Global, desligarem ou usarem Tremor personalizado.
+- feat(json): salva e reabre configuração global e por trecho de Tremor.
+- preserve: mantém frames, curvas, timeline, launcher, ícones, Preview/export, JSON antigo e motor principal sem regressão.
+
 # v8z4b29BN
 
 - feat(motion): adiciona efeito experimental de Tremor por trecho.

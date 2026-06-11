@@ -1,13 +1,23 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BN                                    ║
+║  Versão: v8z4b29BO                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BO                                           ║
+║    feat(motion): Tremor Global do projeto            ║
+║    feat(motion): controle de Frequência do Tremor    ║
+║    feat(motion): trecho usa Global/Desligado/        ║
+║              Personalizado (override por trecho)     ║
+║    feat(json): salva/reabre Tremor global e por      ║
+║              trecho; migra JSON da v8z4b29BN          ║
+║    preserve: mantém frames, curvas, timeline,        ║
+║              launcher, ícones, Preview/export, JSON  ║
+║              antigo e motor principal                ║
 ║  v8z4b29BN                                           ║
 ║    feat(motion): Tremor (câmera na mão) por trecho   ║
 ║              como camada sobre o movimento           ║
@@ -3342,7 +3352,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BN</span><br><span id="appVersionNameText">v8z4b29BN</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BO</span><br><span id="appVersionNameText">v8z4b29BO</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -3842,20 +3852,55 @@ body.cust-open #toolbar{
     </div>
   </div>
 
-  <!-- Tremor / câmera na mão por trecho — experimental v8z4b29BN -->
+  <!-- Tremor / câmera na mão — v8z4b29BN (por trecho) · v8z4b29BO (Global + Frequência) -->
   <div class="ease-section-label" style="margin-top:14px;">Tremor</div>
+
+  <!-- Tremor Global do projeto -->
   <div class="ease-channel-block" style="padding:10px;">
     <div style="display:flex;align-items:center;gap:8px;">
-      <label class="smart-toggle" title="Tremor / câmera na mão">
-        <input type="checkbox" id="tremorToggle" onchange="toggleSegTremor(this.checked)">
+      <label class="smart-toggle" title="Tremor Global do projeto">
+        <input type="checkbox" id="tremorGlobalToggle" onchange="toggleProjectShake(this.checked)">
         <span class="smart-toggle-track"></span>
       </label>
-      <span style="font-size:11px;color:var(--text3);flex:1;cursor:pointer;" onclick="document.getElementById('tremorToggle').click();">Tremida (câmera na mão)</span>
+      <span style="font-size:11px;color:var(--text3);flex:1;cursor:pointer;" onclick="document.getElementById('tremorGlobalToggle').click();">Tremor Global (projeto inteiro)</span>
     </div>
-    <div id="tremorZone" style="display:none;align-items:center;gap:8px;margin-top:10px;">
-      <span style="font-size:11px;color:var(--text3);flex-shrink:0;">Intensidade</span>
-      <input type="range" class="dur-slider" id="tremorIntensitySlider" min="0" max="100" step="1" value="40" style="flex:1;">
-      <span id="tremorIntensityVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:40px;text-align:right;flex-shrink:0;">40%</span>
+    <div id="tremorGlobalZone" style="display:none;flex-direction:column;gap:10px;margin-top:10px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:var(--text3);flex-shrink:0;min-width:64px;">Intensidade</span>
+        <input type="range" class="dur-slider" id="tremorGlobalIntensitySlider" min="0" max="100" step="1" value="40" style="flex:1;">
+        <span id="tremorGlobalIntensityVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:40px;text-align:right;flex-shrink:0;">40%</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:var(--text3);flex-shrink:0;min-width:64px;">Frequência</span>
+        <input type="range" class="dur-slider" id="tremorGlobalFreqSlider" min="0" max="100" step="1" value="7" style="flex:1;">
+        <span id="tremorGlobalFreqVal" style="font-size:11px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;flex-shrink:0;">Lenta</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tremor do trecho selecionado -->
+  <div class="ease-channel-block" style="padding:10px;margin-top:8px;">
+    <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Tremor deste trecho</div>
+    <div id="tremorModeChips" style="display:flex;gap:6px;">
+      <div class="tremor-mode-chip" data-tremor-mode="global" onclick="setSegTremorMode('global')"
+        style="flex:1;padding:7px 4px;border-radius:9px;background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;text-align:center;font-size:10px;font-weight:700;color:var(--text2);">Global</div>
+      <div class="tremor-mode-chip" data-tremor-mode="off" onclick="setSegTremorMode('off')"
+        style="flex:1;padding:7px 4px;border-radius:9px;background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;text-align:center;font-size:10px;font-weight:700;color:var(--text2);">Desligado</div>
+      <div class="tremor-mode-chip" data-tremor-mode="custom" onclick="setSegTremorMode('custom')"
+        style="flex:1;padding:7px 4px;border-radius:9px;background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;text-align:center;font-size:10px;font-weight:700;color:var(--text2);">Personalizado</div>
+    </div>
+    <div id="tremorGlobalHint" style="display:none;font-size:10px;color:var(--text3);margin-top:8px;line-height:1.4;">Herdando o <b>Tremor Global</b> do projeto.</div>
+    <div id="tremorZone" style="display:none;flex-direction:column;gap:10px;margin-top:10px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:var(--text3);flex-shrink:0;min-width:64px;">Intensidade</span>
+        <input type="range" class="dur-slider" id="tremorIntensitySlider" min="0" max="100" step="1" value="40" style="flex:1;">
+        <span id="tremorIntensityVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:40px;text-align:right;flex-shrink:0;">40%</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:var(--text3);flex-shrink:0;min-width:64px;">Frequência</span>
+        <input type="range" class="dur-slider" id="tremorFreqSlider" min="0" max="100" step="1" value="7" style="flex:1;">
+        <span id="tremorFreqVal" style="font-size:11px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;flex-shrink:0;">Lenta</span>
+      </div>
     </div>
   </div>
 </div>
@@ -5816,8 +5861,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BN';
-const APP_VERSION_NAME = 'v8z4b29BN';
+const APP_VERSION = 'v8z4b29BO';
+const APP_VERSION_NAME = 'v8z4b29BO';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11148,32 +11193,108 @@ function ensureSegBlurSettings() {
 }
 
 // ═══════════════════════════════════════
-// TREMOR / HANDHELD POR TRECHO — v8z4b29BN (experimental)
+// TREMOR / HANDHELD — v8z4b29BN (por trecho) · v8z4b29BO (Global + Frequência)
 // Camada procedural opcional aplicada SOBRE o movimento já calculado do trecho.
 // Não cria frames, não altera frames/curvas/timeline; só perturba o resultado
 // final de getStateAtT (X/Y + rotação leve) de forma determinística.
-// Modelo paralelo por trecho, espelhando segBlurSettings.
+//
+// v8z4b29BO separa dois eixos do efeito:
+//   • Intensidade = amplitude do deslocamento/rotação (0..1, UI 0..100%).
+//   • Frequência  = velocidade/quantidade de tremidas por segundo (0.5..8.0).
+//
+// Modelo em dois níveis:
+//   • projectShake  → configuração GLOBAL do projeto (liga/desliga + intensidade
+//                     + frequência), aplicada a todo trecho em modo "global".
+//   • segTremorSettings[i] → por trecho, com modo "global" | "off" | "custom".
+//
+// Limites internos de amplitude evitam revelar bordas; frequência altera apenas
+// o tempo da oscilação (sem random por frame), mantendo Preview/MP4 idênticos.
 // ═══════════════════════════════════════
+
+// Faixa de frequência exposta ao usuário (escala "Lenta ←→ Rápida").
+const TREMOR_FREQ_MIN = 0.5;
+const TREMOR_FREQ_MAX = 8.0;
+function clampTremorIntensity(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0.4;
+}
+function clampTremorFrequency(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(TREMOR_FREQ_MIN, Math.min(TREMOR_FREQ_MAX, n)) : 1.0;
+}
+
+// ── Tremor Global do projeto (v8z4b29BO) ──
+// Por padrão vem DESLIGADO; intensidade/frequência moderadas para que, ao ligar,
+// o efeito já apareça sem precisar mexer nos sliders. Projetos antigos sem o
+// campo abrem com Global desligado (mesmo visual de antes).
+let projectShake = cloneDefaultProjectShake();
+function cloneDefaultProjectShake() {
+  return { enabled: false, intensity: 0.4, frequency: 1.0 };
+}
+function ensureProjectShake() {
+  if (!projectShake || typeof projectShake !== 'object') {
+    projectShake = cloneDefaultProjectShake();
+    return;
+  }
+  projectShake = {
+    enabled: !!projectShake.enabled,
+    intensity: clampTremorIntensity(projectShake.intensity),
+    frequency: clampTremorFrequency(projectShake.frequency)
+  };
+}
+
+// ── Tremor por trecho (v8z4b29BN evoluído na v8z4b29BO) ──
 const segTremorSettings = [];
 function cloneDefaultSegTremor() {
-  // intensity: 0..1 (UI mostra 0..100%). Começa desligado e moderado.
-  return { enabled: false, intensity: 0.4 };
+  // Novos trechos herdam o Global por padrão. Valores próprios moderados ficam
+  // prontos caso o usuário troque para "Personalizado".
+  return { mode: 'global', intensity: 0.4, frequency: 1.0 };
+}
+// Normaliza/migra UMA entrada de trecho, preservando JSON antigo da v8z4b29BN.
+// Migração segura do formato BN ({enabled, intensity}):
+//   • enabled === true  → "custom" (mantém a tremida que já existia no trecho);
+//   • enabled false/ausente → "global" (Global vem desligado, então o visual
+//     anterior — sem tremor naquele trecho — é preservado ao abrir).
+function migrateSegTremorEntry(s) {
+  if (!s || typeof s !== 'object') return cloneDefaultSegTremor();
+  let mode = s.mode;
+  if (mode !== 'global' && mode !== 'off' && mode !== 'custom') {
+    mode = (s.enabled === true) ? 'custom' : 'global';
+  }
+  return {
+    mode,
+    intensity: clampTremorIntensity(s.intensity),
+    frequency: clampTremorFrequency(s.frequency)
+  };
 }
 function ensureSegTremorSettings() {
   const segs = frameCount - 1;
   if (segs < 1) { segTremorSettings.length = 0; return; }
   for (let i = 0; i < segs; i++) {
-    if (!segTremorSettings[i]) {
-      segTremorSettings[i] = cloneDefaultSegTremor();
-    } else {
-      const it = Number(segTremorSettings[i].intensity);
-      segTremorSettings[i] = {
-        enabled: !!segTremorSettings[i].enabled,
-        intensity: Number.isFinite(it) ? Math.max(0, Math.min(1, it)) : 0.4
-      };
-    }
+    segTremorSettings[i] = segTremorSettings[i]
+      ? migrateSegTremorEntry(segTremorSettings[i])
+      : cloneDefaultSegTremor();
   }
   segTremorSettings.length = segs;
+}
+
+// Resolve a configuração efetiva de Tremor para um trecho, combinando o modo do
+// trecho com o Tremor Global. Retorna { active, intensity, frequency }.
+// Fonte única de verdade, usada pelo motor e pela UI.
+function resolveSegTremor(cfg) {
+  const def = { active: false, intensity: 0, frequency: 1.0 };
+  if (!cfg) return def;
+  const mode = (cfg.mode === 'off' || cfg.mode === 'custom') ? cfg.mode : 'global';
+  if (mode === 'off') return def;
+  if (mode === 'custom') {
+    const it = clampTremorIntensity(cfg.intensity);
+    return { active: it > 0, intensity: it, frequency: clampTremorFrequency(cfg.frequency) };
+  }
+  // mode === 'global'
+  ensureProjectShake();
+  if (!projectShake.enabled) return def;
+  const it = clampTremorIntensity(projectShake.intensity);
+  return { active: it > 0, intensity: it, frequency: clampTremorFrequency(projectShake.frequency) };
 }
 
 // ── v8z4b20d: ensureSegmentArraysIntegrity — normaliza TODOS os arrays por trecho ──
@@ -11385,6 +11506,7 @@ function captureState() {
     segDurations: [...segDurations],
     segBlurSettings: segBlurSettings.map(s => ({...s})),
     segTremorSettings: segTremorSettings.map(s => ({...s})),
+    projectShake: { ...projectShake },
     frameCount,
     activeIdx,
     currentRatio,
@@ -11434,6 +11556,7 @@ function cloneProjectStateSnapshot(state) {
     segDurations: [...(state.segDurations || [])],
     segBlurSettings: (state.segBlurSettings || []).map(s => s ? {...s} : cloneDefaultSegBlur()),
     segTremorSettings: (state.segTremorSettings || []).map(s => s ? {...s} : cloneDefaultSegTremor()),
+    projectShake: state.projectShake ? { ...state.projectShake } : cloneDefaultProjectShake(),
     frameCount: state.frameCount,
     activeIdx: state.activeIdx,
     currentRatio: state.currentRatio,
@@ -11504,6 +11627,8 @@ function restoreState(state) {
   segTremorSettings.length = 0;
   (state.segTremorSettings || []).forEach(v => segTremorSettings.push(v ? {...v} : cloneDefaultSegTremor()));
   ensureSegTremorSettings();
+  projectShake = state.projectShake ? { ...state.projectShake } : cloneDefaultProjectShake();
+  ensureProjectShake();
   frameCount = state.frameCount;
   activeIdx  = state.activeIdx;
   currentRatio = state.currentRatio;
@@ -13246,6 +13371,7 @@ function startFirstFrameAssistedInsertion() {
   segDurations.length = 0;
   segBlurSettings.length = 0;
   segTremorSettings.length = 0;
+  projectShake = cloneDefaultProjectShake(); // v8z4b29BO — novo projeto: Tremor Global desligado.
   segEasings.length = 0;
   rotEasings.length = 0;
   scaleEasings.length = 0;
@@ -17220,9 +17346,11 @@ function applySegTremorLayer(state, t) {
   const cfg = info.isLoopSeg
     ? (segTremorSettings[Math.max(0, frameCount - 2)] || null)
     : (segTremorSettings[info.seg] || null);
-  if (!cfg || !cfg.enabled) return state;
-  const intensity = Math.max(0, Math.min(1, Number(cfg.intensity) || 0));
-  if (intensity <= 0) return state;
+  // v8z4b29BO — resolve modo do trecho (global/off/custom) contra o Tremor Global.
+  const eff = resolveSegTremor(cfg);
+  if (!eff.active) return state;
+  const intensity = eff.intensity;
+  const frequency = eff.frequency;
 
   // Envelope de extremidade: a tremida nasce e morre suavemente dentro do trecho.
   // Em localT=0 e localT=1 o offset é zero → os frames reais permanecem exatos
@@ -17236,11 +17364,16 @@ function applySegTremorLayer(state, t) {
 
   // Oscilação contínua e orgânica: soma de senoides com frequências
   // incomensuráveis, em função do tempo absoluto (sem Math.random, sem flicker).
+  // v8z4b29BO — a Frequência multiplica a velocidade angular das senoides:
+  // freq baixa → tremor lento; freq alta → tremor rápido. Continua 100%
+  // determinístico (função pura de t e da config), então Preview = MP4 e
+  // repetir o Preview reproduz exatamente o mesmo movimento.
   const tAbs = clamp01(t) * totalDurationFull();
   const TAU = Math.PI * 2;
-  const ox = Math.sin(tAbs * TAU * 2.00) * 0.62 + Math.sin(tAbs * TAU * 3.17 + 1.3) * 0.38;
-  const oy = Math.sin(tAbs * TAU * 2.31 + 2.1) * 0.62 + Math.sin(tAbs * TAU * 3.74 + 0.7) * 0.38;
-  const orr = Math.sin(tAbs * TAU * 1.73 + 0.5) * 0.7 + Math.sin(tAbs * TAU * 2.61 + 2.4) * 0.3;
+  const fw = frequency; // 1.0 reproduz o comportamento da v8z4b29BN.
+  const ox = Math.sin(tAbs * TAU * 2.00 * fw) * 0.62 + Math.sin(tAbs * TAU * 3.17 * fw + 1.3) * 0.38;
+  const oy = Math.sin(tAbs * TAU * 2.31 * fw + 2.1) * 0.62 + Math.sin(tAbs * TAU * 3.74 * fw + 0.7) * 0.38;
+  const orr = Math.sin(tAbs * TAU * 1.73 * fw + 0.5) * 0.7 + Math.sin(tAbs * TAU * 2.61 * fw + 2.4) * 0.3;
 
   // Amplitudes proporcionais ao tamanho do trecho (acompanham o zoom) e limitadas
   // internamente para evitar revelar bordas: máx ~2% do quadro e ~0,5° de rotação.
@@ -19247,9 +19380,11 @@ function applyGlobalBlurSetting(key, value) {
 }
 
 // ═══════════════════════════════════════
-// TREMOR POR TRECHO — UI (v8z4b29BN, experimental)
-// Atua sobre o trecho selecionado no painel de Edição/Movimento (panelEase),
-// não sobre o projeto inteiro nem sobre o frame individual.
+// TREMOR — UI (v8z4b29BN por trecho · v8z4b29BO Global + Frequência)
+// O bloco vive no painel de Edição/Movimento (panelEase). Há dois níveis:
+//   • Tremor Global do projeto (projectShake): liga/desliga + intensidade + freq.
+//   • Tremor do trecho selecionado: modo Global / Desligado / Personalizado.
+// Não atua sobre o frame individual nem redesenha outras telas.
 // ═══════════════════════════════════════
 function _tremorTargetSeg() {
   const normalSegs = frameCount - 1;
@@ -19260,50 +19395,135 @@ function _tremorTargetSeg() {
   return Math.max(0, Math.min(normalSegs - 1, activeIdx));
 }
 
-function syncTremorPanel() {
-  ensureSegTremorSettings();
-  const seg = _tremorTargetSeg();
-  const toggle = document.getElementById('tremorToggle');
-  const zone   = document.getElementById('tremorZone');
-  const slider = document.getElementById('tremorIntensitySlider');
-  const valEl  = document.getElementById('tremorIntensityVal');
-  const cfg = (seg >= 0 && segTremorSettings[seg]) ? segTremorSettings[seg] : cloneDefaultSegTremor();
-  const pct = Math.round(Math.max(0, Math.min(1, Number(cfg.intensity) || 0)) * 100);
-
-  if (toggle) toggle.checked = !!cfg.enabled;
-  if (zone)   zone.style.display = cfg.enabled ? 'flex' : 'none';
-  if (slider) { slider.value = pct; if (typeof updateSliderFill === 'function') updateSliderFill(slider); }
-  if (valEl)  valEl.textContent = pct + '%';
-
-  // Listeners do slider — registrados uma única vez.
-  if (!window._tremorListenersInit) {
-    window._tremorListenersInit = true;
-    const sl = document.getElementById('tremorIntensitySlider');
-    if (sl) {
-      let captured = false;
-      const grab = () => { if (!captured) { pushUndo(); captured = true; } };
-      sl.addEventListener('touchstart', grab, {passive:true});
-      sl.addEventListener('mousedown', grab);
-      sl.addEventListener('change', () => { captured = false; });
-      sl.addEventListener('input', function() {
-        const v = Math.max(0, Math.min(100, parseInt(this.value, 10) || 0));
-        const d = document.getElementById('tremorIntensityVal');
-        if (d) d.textContent = v + '%';
-        applySegTremorSetting('intensity', v / 100);
-      });
-    }
-  }
+// Mapeamento slider 0..100 ⇆ frequência TREMOR_FREQ_MIN..TREMOR_FREQ_MAX.
+function tremorSliderToFreq(v) {
+  const f = Math.max(0, Math.min(100, Number(v) || 0)) / 100;
+  return clampTremorFrequency(TREMOR_FREQ_MIN + f * (TREMOR_FREQ_MAX - TREMOR_FREQ_MIN));
+}
+function tremorFreqToSlider(freq) {
+  const f = clampTremorFrequency(freq);
+  return Math.round((f - TREMOR_FREQ_MIN) / (TREMOR_FREQ_MAX - TREMOR_FREQ_MIN) * 100);
+}
+// Rótulo amigável (sem "Hz"): Lenta ←→ Rápida.
+function tremorFreqLabel(freq) {
+  const f = clampTremorFrequency(freq);
+  if (f < 1.5) return 'Lenta';
+  if (f < 3.5) return 'Média';
+  if (f < 6.0) return 'Rápida';
+  return 'Muito rápida';
 }
 
-function toggleSegTremor(on) {
+// Wiring genérico de um slider de Tremor: captura Undo no início do gesto e
+// chama onInput(valor 0..100) durante o arraste. Registrado uma única vez.
+function _wireTremorSlider(id, onInput) {
+  const sl = document.getElementById(id);
+  if (!sl || sl._tremorWired) return;
+  sl._tremorWired = true;
+  let captured = false;
+  const grab = () => { if (!captured) { pushUndo(); captured = true; } };
+  sl.addEventListener('touchstart', grab, { passive: true });
+  sl.addEventListener('mousedown', grab);
+  sl.addEventListener('change', () => { captured = false; });
+  sl.addEventListener('input', function () {
+    const v = Math.max(0, Math.min(100, parseInt(this.value, 10) || 0));
+    onInput(v);
+  });
+}
+
+function _initTremorListeners() {
+  if (window._tremorListenersInit) return;
+  window._tremorListenersInit = true;
+  // Global do projeto
+  _wireTremorSlider('tremorGlobalIntensitySlider', v => {
+    const d = document.getElementById('tremorGlobalIntensityVal');
+    if (d) d.textContent = v + '%';
+    applyProjectShakeSetting('intensity', v / 100);
+  });
+  _wireTremorSlider('tremorGlobalFreqSlider', v => {
+    const freq = tremorSliderToFreq(v);
+    const d = document.getElementById('tremorGlobalFreqVal');
+    if (d) d.textContent = tremorFreqLabel(freq);
+    applyProjectShakeSetting('frequency', freq);
+  });
+  // Por trecho (Personalizado)
+  _wireTremorSlider('tremorIntensitySlider', v => {
+    const d = document.getElementById('tremorIntensityVal');
+    if (d) d.textContent = v + '%';
+    applySegTremorSetting('intensity', v / 100);
+  });
+  _wireTremorSlider('tremorFreqSlider', v => {
+    const freq = tremorSliderToFreq(v);
+    const d = document.getElementById('tremorFreqVal');
+    if (d) d.textContent = tremorFreqLabel(freq);
+    applySegTremorSetting('frequency', freq);
+  });
+}
+
+function syncTremorPanel() {
+  ensureSegTremorSettings();
+  ensureProjectShake();
+  _initTremorListeners();
+
+  // ── Tremor Global do projeto ──
+  const gToggle = document.getElementById('tremorGlobalToggle');
+  const gZone   = document.getElementById('tremorGlobalZone');
+  const gInt    = document.getElementById('tremorGlobalIntensitySlider');
+  const gIntVal = document.getElementById('tremorGlobalIntensityVal');
+  const gFreq   = document.getElementById('tremorGlobalFreqSlider');
+  const gFreqVal= document.getElementById('tremorGlobalFreqVal');
+  const gPct = Math.round(clampTremorIntensity(projectShake.intensity) * 100);
+  if (gToggle) gToggle.checked = !!projectShake.enabled;
+  if (gZone)   gZone.style.display = projectShake.enabled ? 'flex' : 'none';
+  if (gInt)    { gInt.value = gPct; if (typeof updateSliderFill === 'function') updateSliderFill(gInt); }
+  if (gIntVal) gIntVal.textContent = gPct + '%';
+  if (gFreq)   { gFreq.value = tremorFreqToSlider(projectShake.frequency); if (typeof updateSliderFill === 'function') updateSliderFill(gFreq); }
+  if (gFreqVal) gFreqVal.textContent = tremorFreqLabel(projectShake.frequency);
+
+  // ── Tremor do trecho selecionado ──
+  const seg = _tremorTargetSeg();
+  const cfg = (seg >= 0 && segTremorSettings[seg]) ? segTremorSettings[seg] : cloneDefaultSegTremor();
+  const mode = (cfg.mode === 'off' || cfg.mode === 'custom') ? cfg.mode : 'global';
+  const pct = Math.round(clampTremorIntensity(cfg.intensity) * 100);
+
+  document.querySelectorAll('#tremorModeChips .tremor-mode-chip').forEach(chip => {
+    const active = chip.dataset.tremorMode === mode;
+    chip.style.borderColor = active ? 'var(--accent)' : 'var(--border2)';
+    chip.style.color = active ? 'var(--accent)' : 'var(--text2)';
+  });
+
+  const zone   = document.getElementById('tremorZone');
+  const hint   = document.getElementById('tremorGlobalHint');
+  const slider = document.getElementById('tremorIntensitySlider');
+  const valEl  = document.getElementById('tremorIntensityVal');
+  const fSlider= document.getElementById('tremorFreqSlider');
+  const fValEl = document.getElementById('tremorFreqVal');
+
+  if (slider) { slider.value = pct; if (typeof updateSliderFill === 'function') updateSliderFill(slider); }
+  if (valEl)  valEl.textContent = pct + '%';
+  if (fSlider){ fSlider.value = tremorFreqToSlider(cfg.frequency); if (typeof updateSliderFill === 'function') updateSliderFill(fSlider); }
+  if (fValEl) fValEl.textContent = tremorFreqLabel(cfg.frequency);
+
+  // Visibilidade: sliders locais só no modo Personalizado; nota só no modo Global.
+  if (zone) zone.style.display = (mode === 'custom') ? 'flex' : 'none';
+  if (hint) hint.style.display = (mode === 'global') ? 'block' : 'none';
+}
+
+// Define o modo de Tremor do trecho ativo: 'global' | 'off' | 'custom'.
+function setSegTremorMode(mode) {
+  if (mode !== 'global' && mode !== 'off' && mode !== 'custom') return;
+  ensureSegTremorSettings();
+  const seg = _tremorTargetSeg();
+  if (seg < 0 || !segTremorSettings[seg]) return;
+  if (segTremorSettings[seg].mode === mode) return;
   pushUndo();
-  applySegTremorSetting('enabled', !!on);
-  const zone = document.getElementById('tremorZone');
-  if (zone) zone.style.display = on ? 'flex' : 'none';
-  const toggle = document.getElementById('tremorToggle');
-  if (toggle) toggle.checked = !!on;
-  // O Preview lê segTremorSettings em tempo real a cada frame via getStateAtT,
-  // então não é preciso reiniciar a animação.
+  segTremorSettings[seg].mode = mode;
+  // Ao entrar em Personalizado com intensidade zerada, usa valor moderado para
+  // que o efeito apareça (segurança visual — não exagera por padrão).
+  if (mode === 'custom' && clampTremorIntensity(segTremorSettings[seg].intensity) <= 0) {
+    segTremorSettings[seg].intensity = 0.4;
+  }
+  if (typeof markProjectDirty === 'function') markProjectDirty('tremor');
+  syncTremorPanel();
 }
 
 function applySegTremorSetting(key, value) {
@@ -19312,6 +19532,27 @@ function applySegTremorSetting(key, value) {
   if (seg < 0 || !segTremorSettings[seg]) return;
   segTremorSettings[seg][key] = value;
   if (typeof markProjectDirty === 'function') markProjectDirty('tremor');
+}
+
+// ── Tremor Global do projeto ──
+function toggleProjectShake(on) {
+  ensureProjectShake();
+  pushUndo();
+  projectShake.enabled = !!on;
+  // Ao ligar com intensidade zerada, aplica valor moderado (segurança visual).
+  if (on && clampTremorIntensity(projectShake.intensity) <= 0) {
+    projectShake.intensity = 0.4;
+  }
+  if (typeof markProjectDirty === 'function') markProjectDirty('tremor-global');
+  syncTremorPanel();
+}
+
+function applyProjectShakeSetting(key, value) {
+  ensureProjectShake();
+  if (key === 'intensity') projectShake.intensity = clampTremorIntensity(value);
+  else if (key === 'frequency') projectShake.frequency = clampTremorFrequency(value);
+  else if (key === 'enabled') projectShake.enabled = !!value;
+  if (typeof markProjectDirty === 'function') markProjectDirty('tremor-global');
 }
 
 function setEase(el) {
@@ -19914,6 +20155,7 @@ function clearCurrentProjectForNewFile() {
   segDurations.length = 0;
   segBlurSettings.length = 0;
   segTremorSettings.length = 0;
+  projectShake = cloneDefaultProjectShake(); // v8z4b29BO — novo projeto: Tremor Global desligado.
   segEasings.length = 0;
   rotEasings.length = 0;
   scaleEasings.length = 0;
@@ -19958,6 +20200,7 @@ function createInitialFrameForNewImageProject() {
   segDurations.length = 0;
   segBlurSettings.length = 0;
   segTremorSettings.length = 0;
+  projectShake = cloneDefaultProjectShake(); // v8z4b29BO — novo projeto: Tremor Global desligado.
   segEasings.length = 0;
   rotEasings.length = 0;
   scaleEasings.length = 0;
@@ -22172,6 +22415,7 @@ function buildProjectData() {
   // v8z4b20d: garantir que todos os arrays por trecho têm exatamente frameCount-1
   // entradas antes de serializar (corrige segBlurSettings curto como o bug reportado).
   ensureSegmentArraysIntegrity();
+  ensureProjectShake(); // v8z4b29BO — normaliza o Tremor Global antes de serializar.
   const framesNorm = frames.slice(0, frameCount).map(f => ({
     nx: f.x / stageW, ny: f.y / stageH,
     nw: f.w / stageW, nh: f.h / stageH
@@ -22195,6 +22439,8 @@ function buildProjectData() {
     segDurations: segDurations.slice(0, frameCount - 1),
     segBlurSettings: segBlurSettings.slice(0, frameCount - 1).map(s => ({...s})),
     segTremorSettings: segTremorSettings.slice(0, frameCount - 1).map(s => ({...s})),
+    // v8z4b29BO — Tremor Global do projeto (liga/desliga + intensidade + frequência).
+    projectShake: { ...projectShake },
     // v8z4b18r: framePauses serializado após ensureFramePauses() no topo da função,
     // garantindo array com exatamente frameCount entradas. Number()||0 preserva 0.
     framePauses: framePauses.slice(0, frameCount).map(p => ({ duration: Number(p?.duration) || 0 })),
@@ -22729,11 +22975,19 @@ function applyFrameData(data) {
   segBlurSettings.length = 0;
   (data.segBlurSettings || []).forEach(v => segBlurSettings.push(v ? {...v} : cloneDefaultSegBlur()));
   ensureSegBlurSettings();
-  // v8z4b29BN — Tremor por trecho. Projetos antigos sem o campo abrem com o
-  // efeito desligado (cloneDefaultSegTremor → enabled:false). Compatível.
+  // v8z4b29BN/BO — Tremor por trecho. Projetos antigos sem o campo abrem com o
+  // default (modo "global"; Global desligado → mesmo visual de antes). JSON da
+  // v8z4b29BN ({enabled,intensity}) é migrado por migrateSegTremorEntry():
+  // enabled:true → "custom"; enabled false/ausente → "global".
   segTremorSettings.length = 0;
   (data.segTremorSettings || []).forEach(v => segTremorSettings.push(v ? {...v} : cloneDefaultSegTremor()));
   ensureSegTremorSettings();
+  // v8z4b29BO — Tremor Global do projeto. Ausente em projetos antigos/BN → fica
+  // desligado (cloneDefaultProjectShake), preservando o visual anterior.
+  projectShake = (data.projectShake && typeof data.projectShake === 'object')
+    ? { ...cloneDefaultProjectShake(), ...data.projectShake }
+    : cloneDefaultProjectShake();
+  ensureProjectShake();
   // v8z4b18r: restaurar framePauses do JSON após frameCount estar ajustado.
   // framePauses.length=0 isola estado de qualquer projeto anterior (complementa
   // o clear antecipado em applyProjectData, cobrindo caminhos síncronos).
