@@ -1,3 +1,10 @@
+# v8z4b29BM
+
+- feat(brand): adiciona logo do Arco Motion ao launcher/página inicial.
+- feat(ios): configura apple-touch-icon com asset local para Tela de Início do iOS.
+- tweak(ui): renomeia item "Tempo" para "Edição" mantendo ícone e função.
+- preserve: mantém Stage, timeline, fluxo Novo Projeto/Abrir Projeto, Preview/export, JSON e motor sem alterações.
+
 # v8z4b29BL
 
 - fix(state): sincroniza frame ativo do Stage com frame destacado na timeline.

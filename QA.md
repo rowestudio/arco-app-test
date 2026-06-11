@@ -1,3 +1,18 @@
+# QA pendente — v8z4b29BM: logo no launcher, apple-touch-icon e renomeação "Tempo" → "Edição"
+
+> Base: v8z4b29BL (aprovada — sincronização do frame ativo entre Stage/timeline/label/controles). Esta versão faz três ajustes pontuais: insere o logotipo do Arco Motion no launcher, configura o ícone do app para iOS via `apple-touch-icon.png` local, e renomeia o item "Tempo" (ícone `director-chair`) para "Edição", sem alterar função.
+
+## Escopo v8z4b29BM
+
+- Adiciona `<img class="launcher-logo" src="assets/brand/arco-logo-white.svg">` na tela `#startLauncher`, centralizado e acima dos botões "Novo Projeto"/"Abrir Projeto"/"Recarregar", com CSS mínimo (`.launcher-logo`).
+- Atualiza o `<head>` para usar `assets/icons/apple-touch-icon.png` como `apple-touch-icon` local (substitui o ícone embutido em base64) e ajusta `apple-mobile-web-app-title` para "Arco Motion".
+- Renomeia o rótulo visível do botão de Duração geral (4ª linha do menu inferior, ícone `i-director-chair`) de "Tempo" para "Edição", preservando `onclick="openPanel('Duration')"` e o painel de Duração.
+- Preserva Stage, timeline, frame ativo, sincronização frame ativo/timeline, launcher (exceto logo), fluxo Novo Projeto/Abrir Projeto, Preview/export, JSON, templates e motor.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BM.md`.
+
+---
+
 # QA pendente — v8z4b29BL: sincronização do frame ativo (Stage/timeline/label/controles)
 
 > Base: v8z4b29BK (aprovada — ícones Iconoir cinema-old e director-chair). Esta versão corrige a divergência visual entre o frame ativo no Stage, o frame destacado na faixa/timeline, o label inferior e os controles de edição.
