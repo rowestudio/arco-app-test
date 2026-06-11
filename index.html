@@ -1,13 +1,28 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BP                                    ║
+║  Versão: v8z4b29BQ                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BQ                                           ║
+║    fix(ui): cabeçalho fixo no painel Edição de Tempo ║
+║              (título+check, resumo, Velocidade       ║
+║              Constante e abas Tempo/Preferências)    ║
+║    fix(ui): Velocidade Constante volta a ser         ║
+║              controle temporal (fora de              ║
+║              Preferências)                           ║
+║    feat(ui): design system de abas (.ds-tab-bar/     ║
+║              .ds-tab) — texto grande, sublinhado e   ║
+║              divisória fina                          ║
+║    fix(ui): aplica o padrão de abas ao painel        ║
+║              contextual de trechos (Velocidade/      ║
+║              Rotação/Escala)                         ║
+║    preserve: Stage, timeline, Tremor, Preview/export,║
+║              JSON e motor sem mudança estrutural     ║
 ║  v8z4b29BP                                           ║
 ║    feat(ui): painel "Edição" vira "Edição de Tempo"  ║
 ║              com abas Tempo e Preferências           ║
@@ -2392,10 +2407,10 @@ body.cust-open #toolbar{
 /* v8z4b17n — bloco Movimento: abas reais conectadas ao conteúdo ativo */
 /* hierarquia: painel(#1c1c1e) < abas-inativas(#2c2c2e) < aba-ativa+conteúdo(#3a3a3c) */
 .ease-channel-block{background:var(--surface);border-radius:12px;overflow:hidden;}
-.ease-tabs-bar{display:flex;background:var(--surface);padding:0;margin-bottom:0;gap:2px;}
-.ease-tab{flex:1;padding:9px 4px;border-radius:8px 8px 0 0;background:var(--surface2);border:none;color:rgba(174,174,178,0.65);font-size:11px;font-weight:500;cursor:pointer;-webkit-user-select:none;user-select:none;transition:background .18s,color .18s;text-align:center;}
-.ease-tab.ease-tab-active{background:#3a3a3c;color:#fff;font-weight:700;}
-.ease-tab-content{background:#3a3a3c;padding:10px 10px 10px;border-radius:0 0 12px 12px;}
+/* v8z4b29BQ — abas do bloco Movimento (Velocidade/Rotação/Escala) migram para
+   o design system de abas (.ds-tab-bar/.ds-tab), igual à Edição de Tempo.
+   .ease-tab-content vira um cartão independente abaixo das abas. */
+.ease-tab-content{background:#3a3a3c;padding:12px 10px 10px;border-radius:12px;margin-top:10px;}
 /* v8z4b17n — label de seção compartilhado: Duração e Movimento */
 .ease-section-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;}
 /* v8z4b17n — bloco Duração igual ao bloco Movimento */
@@ -2424,31 +2439,35 @@ body.cust-open #toolbar{
   overscroll-behavior:contain;
   padding-top:0 !important;
 }
-/* v8z4b16b — Handle superior FIXO ao rolar. Antes, o tracinho rolava
-   junto com o conteúdo do painel; agora vira um "banner" sticky no topo
-   da área de rolagem, com fundo igual ao painel (cobre o conteúdo que
-   desliza por baixo) e a bolinha visual via ::before. Sem novo
-   container de scroll: a única rolagem continua sendo #panelDuration. */
-#panelDuration > .panel-handle{
+/* v8z4b29BQ — Cabeçalho fixo do painel Edição de Tempo: handle, título+check,
+   resumo de duração, Velocidade Constante e abas Tempo/Preferências não rolam
+   com a lista. .dur-fixed-header vira um "banner" sticky no topo da área de
+   rolagem (mesma técnica do handle sticky da BP), cobrindo o conteúdo que
+   desliza por baixo. Sem novo container de scroll: a única rolagem continua
+   sendo #panelDuration; apenas .dur-scroll-area fica abaixo do cabeçalho. */
+.dur-fixed-header{
   position:sticky;
   top:0;
   z-index:5;
-  width:auto;
-  height:auto;
-  margin:0 -20px 12px;
-  padding:13px 0 8px;
+  margin:0 -20px;
+  padding:13px 20px 10px;
   background:var(--surface);
   border-radius:20px 20px 0 0;
 }
-#panelDuration > .panel-handle::before{
-  content:'';
-  display:block;
-  width:36px;
-  height:5px;
-  border-radius:3px;
-  background:var(--surface3);
-  margin:0 auto;
+.dur-fixed-header > .panel-handle{
+  margin:0 auto 14px;
 }
+.dur-header-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-bottom:14px;
+}
+.dur-fixed-header .panel-title{margin-bottom:0;}
+.dur-fixed-header .panel-close-check{
+  position:static;
+  flex-shrink:0;
+}
+.dur-velocity-block{margin-bottom:2px;}
+.dur-scroll-area{padding-top:2px;}
 #panelDuration #segBreakdown,
 #panelDuration #framePauseSection,
 #panelDuration #finishSection,
@@ -2525,19 +2544,25 @@ body.cust-open #toolbar{
   padding-top:6px;
 }
 /* ───────── v8z4b29BP — Edição de Tempo: abas, filtros e sequência Cena 1 ───────── */
-.dur-tabs-bar{
-  display:flex;gap:6px;margin:2px 0 14px;
-  background:var(--surface2);border-radius:12px;padding:4px;
-}
-.dur-tab{
-  flex:1;padding:10px 6px;border:none;border-radius:9px;cursor:pointer;
-  background:transparent;color:var(--text2);
-  font-size:13px;font-weight:600;letter-spacing:.2px;
-  -webkit-user-select:none;user-select:none;
-  transition:background .18s,color .18s;min-height:40px;
-}
-.dur-tab.dur-tab-active{background:#3a3a3c;color:#fff;font-weight:700;}
 .dur-tab-panel{width:100%;}
+/* ───────── v8z4b29BQ — Design system de abas (painéis Edição de Tempo e
+   contextual de trechos). Navegação principal: texto grande, aba ativa com
+   maior contraste e sublinhado, abas inativas em cinza, divisória horizontal
+   fina abaixo do conjunto. Não usar para filtros secundários (ex.: Todos /
+   Frames / Trechos, que seguem .cena1-filter). */
+.ds-tab-bar{
+  display:flex;gap:0;
+  border-bottom:.5px solid var(--border);
+  margin:4px 0 14px;
+}
+.ds-tab{
+  flex:1;padding:10px 6px 9px;border:none;background:transparent;
+  color:var(--text3);font-size:15px;font-weight:600;letter-spacing:.1px;
+  cursor:pointer;-webkit-user-select:none;user-select:none;text-align:center;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+  min-height:44px;transition:color .18s,border-color .18s;
+}
+.ds-tab.ds-tab-active{color:var(--text);font-weight:700;border-bottom-color:var(--accent);}
 /* Filtros da sequência (radio simples — nunca tudo desligado). */
 .cena1-filters{display:flex;gap:6px;margin-bottom:6px;}
 .cena1-filter{
@@ -3402,7 +3427,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BP</span><br><span id="appVersionNameText">v8z4b29BP</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BQ</span><br><span id="appVersionNameText">v8z4b29BQ</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -3700,34 +3725,65 @@ body.cust-open #toolbar{
 
 <!-- PANEL: Duração -->
 <div class="float-panel" id="panelDuration">
-  <div class="panel-handle" onclick="closeAll()"></div>
-  <button type="button" class="panel-close-check" onclick="closeAll()" aria-label="Confirmar e fechar Edição de Tempo" title="Confirmar e fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
-  <!-- v8z4b29BP — painel "Edição" reorganizado como "Edição de Tempo": centro
-       de controle do tempo do projeto, com resumo fixo no topo e abas
-       Tempo / Preferências. Lógica de cálculo preservada — apenas a
-       apresentação foi reorganizada. -->
-  <div class="panel-title">Edição de Tempo</div>
+  <!-- v8z4b29BQ — Cabeçalho fixo (.dur-fixed-header): handle, título+check na
+       mesma linha, resumo de duração, Velocidade Constante e abas
+       Tempo/Preferências não rolam com a lista. Apenas .dur-scroll-area
+       (abaixo das abas) tem rolagem. -->
+  <div class="dur-fixed-header">
+    <div class="panel-handle" onclick="closeAll()"></div>
+    <!-- v8z4b29BP — painel "Edição" reorganizado como "Edição de Tempo": centro
+         de controle do tempo do projeto, com resumo fixo no topo e abas
+         Tempo / Preferências. Lógica de cálculo preservada — apenas a
+         apresentação foi reorganizada.
+         v8z4b29BQ — título e botão de confirmar/fechar na mesma linha. -->
+    <div class="dur-header-row">
+      <div class="panel-title">Edição de Tempo</div>
+      <button type="button" class="panel-close-check" onclick="closeAll()" aria-label="Confirmar e fechar Edição de Tempo" title="Confirmar e fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+    </div>
 
-  <!-- v8z4b15y — TOPO 100% leitura. Não há sliders nem botões editáveis aqui.
-       Mostra: duração total (soma final) + breakdown por categoria.
-       v8z4b29BP — resumo fixo: Duração Total / Trechos / Pausas / Acabamento. -->
-  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;">
-    <span id="durNum" style="font-size:30px;font-weight:700;color:var(--accent);min-width:64px;flex-shrink:0;letter-spacing:-1px;">6s</span>
-    <span style="font-size:11px;color:var(--text3);line-height:1.3;">Duração total · soma de trechos + pausas + acabamento</span>
-  </div>
-  <div id="durationSummaryTop" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;padding:14px;border-radius:12px;background:var(--surface2);">
-    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);"><span>Duração Total</span><span id="durSummaryTotal" style="font-weight:700;color:var(--accent);">0.0s</span></div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Trechos</span><span id="durSummaryMove">0.0s</span></div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Pausas</span><span id="durSummaryPauses">0.0s</span></div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Acabamento</span><span id="durSummaryFinish">0.0s</span></div>
+    <!-- v8z4b15y — TOPO 100% leitura. Não há sliders nem botões editáveis aqui.
+         Mostra: duração total (soma final) + breakdown por categoria.
+         v8z4b29BP — resumo fixo: Duração Total / Trechos / Pausas / Acabamento. -->
+    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;">
+      <span id="durNum" style="font-size:30px;font-weight:700;color:var(--accent);min-width:64px;flex-shrink:0;letter-spacing:-1px;">6s</span>
+      <span style="font-size:11px;color:var(--text3);line-height:1.3;">Duração total · soma de trechos + pausas + acabamento</span>
+    </div>
+    <div id="durationSummaryTop" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;padding:14px;border-radius:12px;background:var(--surface2);">
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);"><span>Duração Total</span><span id="durSummaryTotal" style="font-weight:700;color:var(--accent);">0.0s</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Trechos</span><span id="durSummaryMove">0.0s</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Pausas</span><span id="durSummaryPauses">0.0s</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Acabamento</span><span id="durSummaryFinish">0.0s</span></div>
+    </div>
+
+    <!-- v8z4b29BQ — Velocidade Constante: controle TEMPORAL (altera a
+         distribuição/cálculo dos tempos dos trechos), por isso vive na área
+         fixa da aba Tempo e não em Preferências. setSegmentTimingMode /
+         syncTimingModeUI inalterados (id-based). -->
+    <div class="dur-velocity-block">
+      <div class="dur-sublabel-row" style="padding-top:0;">
+        <span class="dur-sublabel">Velocidade Constante</span>
+      </div>
+      <div style="display:flex;gap:8px;margin:6px 0 2px;" id="segTimingModeRow">
+        <button id="btnTimingManual" onclick="setSegmentTimingMode('manual')"
+          style="flex:1;padding:9px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--accent);color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;line-height:1.2;">Manual</button>
+        <button id="btnTimingConstant" onclick="setSegmentTimingMode('constant-speed')"
+          style="flex:1;padding:9px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;line-height:1.2;">Velocidade constante</button>
+      </div>
+      <div id="segTimingHint" style="display:none;font-size:10px;color:var(--text3);padding:2px 0 0 2px;">Distribui o tempo conforme o percurso curvo.</div>
+    </div>
+
+    <!-- v8z4b29BP — Abas principais: Tempo (padrão) e Preferências. Trocar de
+         aba não fecha o painel nem altera a seleção de frame/trecho.
+         v8z4b29BQ — design system de abas (.ds-tab-bar/.ds-tab): texto grande,
+         aba ativa com sublinhado, divisória fina abaixo do conjunto. -->
+    <div class="ds-tab-bar" role="tablist" aria-label="Edição de Tempo">
+      <button id="durTabBtnTempo" class="ds-tab ds-tab-active" type="button" role="tab" aria-selected="true" onclick="switchDurTab('tempo')">Tempo</button>
+      <button id="durTabBtnPrefs" class="ds-tab" type="button" role="tab" aria-selected="false" onclick="switchDurTab('prefs')">Preferências</button>
+    </div>
   </div>
 
-  <!-- v8z4b29BP — Abas discretas: Tempo (padrão) e Preferências. Trocar de aba
-       não fecha o painel nem altera a seleção de frame/trecho. -->
-  <div class="dur-tabs-bar" role="tablist" aria-label="Edição de Tempo">
-    <button id="durTabBtnTempo" class="dur-tab dur-tab-active" type="button" role="tab" aria-selected="true" onclick="switchDurTab('tempo')">Tempo</button>
-    <button id="durTabBtnPrefs" class="dur-tab" type="button" role="tab" aria-selected="false" onclick="switchDurTab('prefs')">Preferências</button>
-  </div>
+  <!-- v8z4b29BQ — Área rolável: apenas o conteúdo abaixo das abas rola. -->
+  <div class="dur-scroll-area">
 
   <!-- ════════════════ ABA TEMPO ════════════════ -->
   <div id="durTabTempo" class="dur-tab-panel" role="tabpanel" aria-labelledby="durTabBtnTempo">
@@ -3776,8 +3832,8 @@ body.cust-open #toolbar{
         <span class="dur-sublabel">Total dos trechos</span>
         <span id="segTotal" class="dur-sublabel-value">= 6s total</span>
       </div>
-      <!-- Modo de distribuição (Manual / Velocidade constante) foi movido para
-           a aba Preferências — v8z4b29BP. -->
+      <!-- Modo de distribuição (Velocidade Constante) vive na área fixa do
+           painel, acima das abas — v8z4b29BQ. -->
     </div>
 
     <!-- v8z4b16a — SEÇÃO: Frames — Pausas. Controles GLOBAIS de pausa.
@@ -3843,29 +3899,20 @@ body.cust-open #toolbar{
 
   <!-- ════════════════ ABA PREFERÊNCIAS ════════════════ -->
   <!-- v8z4b29BP — reúne ajustes que afetam o comportamento geral do projeto,
-       e não a duração direta dos itens. Movido para cá apenas o que é seguro:
-       a distribuição de tempo (Velocidade Constante) e o Tremor Global do
-       projeto. O motor do Tremor NÃO foi alterado — apenas o bloco visual do
-       Tremor Global foi reposicionado (a lógica é id-based). O Tremor por
-       trecho e o Movimento Inteligente continuam no painel de Movimento do
-       trecho (posição contextual mais limpa). -->
+       e não a duração direta dos itens. O motor do Tremor NÃO foi alterado —
+       apenas o bloco visual do Tremor Global foi reposicionado (a lógica é
+       id-based). O Tremor por trecho e o Movimento Inteligente continuam no
+       painel de Movimento do trecho (posição contextual mais limpa).
+       v8z4b29BQ — Velocidade Constante saiu daqui: por ser um controle
+       temporal, foi movida para a área fixa da aba Tempo. Preferências fica
+       enxuta: Tremor Global e espaço reservado. -->
   <div id="durTabPrefs" class="dur-tab-panel" role="tabpanel" aria-labelledby="durTabBtnPrefs" style="display:none;">
 
     <div class="dur-section-header">
       <span>Movimento</span>
     </div>
     <div class="dur-section-body" style="padding-top:8px;margin-bottom:6px;">
-      <div class="dur-sublabel-row">
-        <span class="dur-sublabel">Distribuição do tempo</span>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:2px;" id="segTimingModeRow">
-        <button id="btnTimingManual" onclick="setSegmentTimingMode('manual')"
-          style="flex:1;padding:9px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--accent);color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;line-height:1.2;">Manual</button>
-        <button id="btnTimingConstant" onclick="setSegmentTimingMode('constant-speed')"
-          style="flex:1;padding:9px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;line-height:1.2;">Velocidade constante</button>
-      </div>
-      <div id="segTimingHint" style="display:none;font-size:10px;color:var(--text3);padding:2px 0 4px 2px;">Distribui o tempo conforme o percurso curvo.</div>
-      <p class="prefs-note">Movimento Inteligente continua no painel de Movimento de cada trecho.</p>
+      <p class="prefs-note">Movimento Inteligente continua no painel de Movimento de cada trecho. Velocidade Constante agora vive na aba Tempo (controle de tempo direto).</p>
     </div>
 
     <!-- Tremor / câmera na mão — v8z4b29BP: Tremor Global do projeto reposicionado
@@ -3908,6 +3955,9 @@ body.cust-open #toolbar{
 
   </div>
   <!-- /ABA PREFERÊNCIAS -->
+
+  </div>
+  <!-- /.dur-scroll-area -->
 </div>
 
 <canvas id="recCanvas" style="display:none;"></canvas>
@@ -3927,14 +3977,17 @@ body.cust-open #toolbar{
     <span id="easePanelSegVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;flex-shrink:0;">4.0s</span>
   </div>
 
-  <!-- Bloco MOVIMENTO: seção label + abas conectadas + conteúdo — v8z4b17n -->
+  <!-- Bloco MOVIMENTO: seção label + abas conectadas + conteúdo — v8z4b17n
+       v8z4b29BQ — abas migradas para o design system (.ds-tab-bar/.ds-tab),
+       igual à Edição de Tempo: navegação principal clara, sem competir com o
+       cartão de conteúdo abaixo. -->
   <div class="ease-section-label">Movimento</div>
-  <div class="ease-channel-block">
+  <div>
     <!-- Faixa de abas reais — v8z4b17n -->
-    <div class="ease-tabs-bar">
-      <button id="easePanelCh_movement" class="ease-tab ease-tab-active" onclick="setEasePanelChannel('movement')">Velocidade</button>
-      <button id="easePanelCh_rotation" class="ease-tab" onclick="setEasePanelChannel('rotation')">Rotação</button>
-      <button id="easePanelCh_scale" class="ease-tab" onclick="setEasePanelChannel('scale')">Escala</button>
+    <div class="ds-tab-bar">
+      <button id="easePanelCh_movement" class="ds-tab ds-tab-active" onclick="setEasePanelChannel('movement')">Velocidade</button>
+      <button id="easePanelCh_rotation" class="ds-tab" onclick="setEasePanelChannel('rotation')">Rotação</button>
+      <button id="easePanelCh_scale" class="ds-tab" onclick="setEasePanelChannel('scale')">Escala</button>
     </div>
     <!-- Conteúdo conectado à aba ativa — v8z4b17n -->
     <div class="ease-tab-content">
@@ -5977,8 +6030,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BP';
-const APP_VERSION_NAME = 'v8z4b29BP';
+const APP_VERSION = 'v8z4b29BQ';
+const APP_VERSION_NAME = 'v8z4b29BQ';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -20820,7 +20873,7 @@ function _syncEaseChannelUI() {
     }
     // painel principal: abas reais — v8z4b17l
     const btnPane = document.getElementById('easePanelCh_' + ch);
-    if (btnPane) btnPane.classList.toggle('ease-tab-active', on);
+    if (btnPane) btnPane.classList.toggle('ds-tab-active', on);
   });
   // Mostrar/ocultar linha de ações contextual da aba ativa — v8z4b17l
   const movAct = document.getElementById('movChannelActions');
@@ -22341,8 +22394,8 @@ function switchDurTab(tab) {
   const btnP = document.getElementById('durTabBtnPrefs');
   if (tempo) tempo.style.display = isPrefs ? 'none' : '';
   if (prefs) prefs.style.display = isPrefs ? '' : 'none';
-  if (btnT) { btnT.classList.toggle('dur-tab-active', !isPrefs); btnT.setAttribute('aria-selected', String(!isPrefs)); }
-  if (btnP) { btnP.classList.toggle('dur-tab-active', isPrefs); btnP.setAttribute('aria-selected', String(isPrefs)); }
+  if (btnT) { btnT.classList.toggle('ds-tab-active', !isPrefs); btnT.setAttribute('aria-selected', String(!isPrefs)); }
+  if (btnP) { btnP.classList.toggle('ds-tab-active', isPrefs); btnP.setAttribute('aria-selected', String(isPrefs)); }
   if (isPrefs) {
     // Reflete o estado atual nos controles reposicionados (modo de tempo + Tremor Global).
     syncTimingModeUI();

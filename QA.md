@@ -1,3 +1,21 @@
+# QA pendente — v8z4b29BQ: cabeçalho fixo + design system de abas no painel Edição de Tempo
+
+> Base: v8z4b29BP (aprovada — painel "Edição de Tempo" com abas Tempo e Preferências). Esta versão é uma **correção visual/UX** e de design system. Não há mudança de motor, JSON, export, Stage, timeline ou lógica de tremor.
+
+## Escopo v8z4b29BQ
+
+- **Cabeçalho fixo** (`.dur-fixed-header`): handle, título "Edição de Tempo" + botão de confirmar/fechar (mesma linha), resumo de duração, Velocidade Constante e abas Tempo/Preferências não rolam com a lista. Apenas `.dur-scroll-area` (abaixo das abas) tem rolagem — continua sendo a única superfície de scroll de `#panelDuration`.
+- **Velocidade Constante** (`btnTimingManual`/`btnTimingConstant`) sai de Preferências e passa a viver na área fixa da aba Tempo, por ser um controle temporal. `setSegmentTimingMode`/`syncTimingModeUI` inalterados (id-based).
+- **Design system de abas** (`.ds-tab-bar`/`.ds-tab`/`.ds-tab-active`): texto grande, aba ativa com maior contraste e sublinhado, abas inativas em cinza, divisória horizontal fina abaixo do conjunto. Substitui o visual de pills das abas Tempo/Preferências (`switchDurTab` agora alterna `ds-tab-active`).
+- **Painel contextual de trechos** (Easing/Movimento): abas Velocidade/Rotação/Escala (`#panelEase`) migram do antigo `.ease-tabs-bar`/`.ease-tab` para o mesmo `.ds-tab-bar`/`.ds-tab` (`_syncEaseChannelUI` agora alterna `ds-tab-active`). `.ease-tab-content` vira um cartão independente abaixo das abas.
+- **Aba Preferências** fica enxuta: nota informativa (Movimento Inteligente / Velocidade Constante) + Tremor Global do projeto + espaço reservado.
+- **Filtro Todos / Frames / Trechos** (`.cena1-filter`) continua como filtro secundário, com peso visual distinto das abas principais.
+- Preserva Stage, timeline, frames/trechos no Stage, curvas/Bézier, seleção (simples/múltipla), Preview, export MP4, JSON (antigo e novo), templates, formato, launcher, logo, ícone iOS, ícones Iconoir, Tremor (Global e por trecho) e o motor de renderização. Não implementa Cena 2, múltiplas imagens, transição entre cenas, rótulos coloridos, Variação do Tremor, Tremor em pausa nem mudança de export/JSON.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BQ.md`.
+
+---
+
 # QA pendente — v8z4b29BP: painel "Edição de Tempo" com abas Tempo e Preferências
 
 > Base: v8z4b29BO (aprovada — Tremor Global do projeto + Frequência + modo por trecho). Esta versão é uma **reorganização visual/UX** do painel aberto pelo item "Edição" do menu inferior. Não há mudança de motor, JSON, export, multi-cena nem na lógica de cálculo de tempo — apenas a apresentação foi reorganizada.
