@@ -1,3 +1,18 @@
+# QA pendente — v8z4b29BK: ícones Iconoir cinema-old e director-chair
+
+> Base: v8z4b29BJ (aprovada — ajustes finos de UI/UX e ícones de Arquivos/Tempo já trocados, mas com formas próprias). Esta versão substitui apenas esses dois ícones pelos ícones individuais do Iconoir, sem regressões.
+
+## Escopo v8z4b29BK
+
+- Substitui o ícone do botão "Arquivos" no menu superior pelo ícone Iconoir `cinema-old` (símbolo `i-cinema-old`), inline, com `currentColor`, mesmo tamanho/área de toque/estado ativo dos demais ícones do topo.
+- Substitui o ícone do item "Tempo/Duração" na 4ª linha do menu inferior pelo ícone Iconoir `director-chair` (símbolo `i-director-chair`, conteúdo atualizado para o SVG do Iconoir), inline, com `currentColor`, mesmo tamanho/alinhamento/área de toque/estado ativo dos demais ícones da linha.
+- Não importa a biblioteca Iconoir nem usa CDN; apenas os dois SVGs individuais foram copiados e adaptados inline.
+- Preserva launcher → Novo Projeto → editor, Stage, timeline, templates, Preview/export, JSON, motor e todos os demais ícones.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BK.md`.
+
+---
+
 # QA pendente — v8z4b29BJ: ajustes finos de UI/UX e ícones
 
 > Base: v8z4b29BI (aprovada — launcher separado do Stage, fluxo de Novo Projeto mais direto, bloqueio da interface durante confirmação/cancelamento de frame e criação funcional de projeto).
