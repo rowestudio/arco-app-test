@@ -1,3 +1,12 @@
+# v8z4b29BP
+
+- feat(ui): reorganiza o painel "Edição" em **Edição de Tempo**, com abas **Tempo** e **Preferências**.
+- feat(ui): adiciona resumo fixo no topo com Duração Total, Trechos, Pausas e Acabamento (reflete o estado real do projeto).
+- feat(ui): apresenta a sequência de frames e trechos intercalada e agrupada como **Cena 1** (F1, 1–2, F2, 2–3, …), com filtro Todos / Frames / Trechos.
+- feat(ui): mantém os controles globais (Frames – Pausas, Trechos – Duração, Acabamento) na aba Tempo.
+- feat(ui): prepara a aba Preferências com a distribuição de tempo (Velocidade Constante) e o Tremor Global do projeto; reserva espaço para preferências futuras.
+- preserve: não implementa multi-cena real (apenas o agrupamento visual Cena 1); mantém Stage, timeline, frames/trechos, curvas, seleção, Tremor (motor e por trecho), Preview/export MP4, JSON e o motor de renderização sem alteração estrutural.
+
 # v8z4b29BO
 
 - feat(motion): adiciona Tremor Global do projeto.
