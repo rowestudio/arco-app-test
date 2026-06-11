@@ -1,3 +1,10 @@
+# v8z4b29BN
+
+- feat(motion): adiciona efeito experimental de Tremor por trecho.
+- feat(ui): adiciona toggle e intensidade para Tremor no contexto de edição de trecho.
+- feat(export): mantém o efeito de Tremor de forma determinística em Preview e MP4.
+- preserve: mantém frames, curvas, timeline, launcher, Preview/export, JSON e motor principal sem refatoração ampla.
+
 # v8z4b29BM
 
 - feat(brand): adiciona logo do Arco Motion ao launcher/página inicial.
