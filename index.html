@@ -1,13 +1,24 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BK                                    ║
+║  Versão: v8z4b29BL                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BL                                           ║
+║    fix(state): sincroniza frame ativo do Stage com   ║
+║              frame destacado na timeline             ║
+║    fix(ui): impede divergência visual entre frame    ║
+║              ativo, destaque da faixa e label        ║
+║              inferior                                ║
+║    fix(selection): remove destaque fantasma ao       ║
+║              trocar de frame ativo                   ║
+║    preserve: mantém seleção múltipla, trechos,       ║
+║              ícones, Stage, timeline, Preview/export, ║
+║              JSON e motor                            ║
 ║  v8z4b29BK                                           ║
 ║    feat(icon): substitui ícone de Arquivos do topo   ║
 ║              pelo Iconoir cinema-old                 ║
@@ -757,6 +768,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29BL — fix(state): sincroniza frame ativo do Stage com frame destacado na timeline; fix(ui): impede divergência visual entre frame ativo, destaque da faixa e label inferior; fix(selection): remove destaque fantasma ao trocar de frame ativo; preserve: mantém seleção múltipla, trechos, ícones Iconoir (cinema-old, director-chair), Stage, timeline, Preview/export, JSON e motor (base v8z4b29BK). -->
 <!-- Arco Motion App — v8z4b29BK — feat(icon): substitui ícone de Arquivos do topo por Iconoir cinema-old; feat(icon): substitui ícone de Tempo/Duração da 4ª linha por Iconoir director-chair; preserve: mantém layout, Stage, timeline, Preview/export, JSON e motor sem alterações (base v8z4b29BJ). -->
 <!-- Arco Motion App — v8z4b29BJ — fix(ui): reposiciona aviso "Confirme ou cancele o frame atual." para longe do topo e do pill de zoom; fix(ui): fecha painel de Duração/Tempo ao acionar qualquer item do menu superior; fix(ui): alinha à esquerda os ícones contextuais de trecho na 4ª linha do menu inferior; tweak(timeline): aumenta levemente a largura visual de frames e trechos na faixa; feat(icon): troca ícone de Arquivos do topo para rolo de filme; feat(icon): troca ícone de Tempo/Duração da faixa inferior para cadeira de diretor; preserve: mantém launcher, Stage, timeline, templates, Preview/export, JSON e motor sem regressões (base v8z4b29BI). -->
 <!-- Arco Motion App — v8z4b29BH — fix(flow): remove duplicidade de Fototeca/Tirar Foto/Escolher Arquivo na etapa Imagem do Novo Projeto, substituindo por botão único "Escolher imagem" que abre o seletor nativo; feat(launcher): adiciona ação discreta de Recarregar App na página inicial; fix(editor): botão X do Stage passa a fechar o projeto e voltar ao launcher, com aviso de possível perda se houver projeto aberto; preserve: mantém separação launcher/newProject/editor, Stage, timeline, templates, Preview/export, JSON e motor sem alterações funcionais (base v8z4b29BG). -->
@@ -3308,7 +3320,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BK</span><br><span id="appVersionNameText">v8z4b29BK</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BL</span><br><span id="appVersionNameText">v8z4b29BL</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -5765,8 +5777,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BK';
-const APP_VERSION_NAME = 'v8z4b29BK';
+const APP_VERSION = 'v8z4b29BL';
+const APP_VERSION_NAME = 'v8z4b29BL';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11638,6 +11650,10 @@ function setBottomContext(mode) {
 function selectFrameContext(fi, opts = {}) {
   if (typeof fi === 'number' && fi >= 0 && fi < frameCount) {
     activeIdx = fi;
+    // v8z4b29BL — mantém o destaque do Stage/timeline sincronizado com o
+    // frame ativo oficial assim que ele muda, sem depender da animação de centralização.
+    lowerTimelineCenterFrameIndex = fi;
+    timelineFocalFrameId = fi;
   }
   selectedSegmentIndex = -1;
   setBottomContext('frame');
@@ -11700,9 +11716,10 @@ let lowerTimelineSnapTimer = 0;
 let isLowerTimelineProgrammaticCentering = false;
 const LOWER_TIMELINE_SNAP_DELAY_MS = 160;
 function getTimelineStageFocusIndex() {
-  if (isMultiSelectionActive() || bottomContextMode === 'segment') return activeIdx;
-  if (timelineFocalFrameId >= 0 && timelineFocalFrameId < frameCount) return timelineFocalFrameId;
-  if (lowerTimelineCenterFrameIndex >= 0 && lowerTimelineCenterFrameIndex < frameCount) return lowerTimelineCenterFrameIndex;
+  // v8z4b29BL — fonte única de verdade: no modo normal de edição de frame,
+  // multi-seleção e trecho, o destaque do Stage/timeline segue sempre o
+  // frame ativo oficial (activeIdx). Evita divergência entre o frame ativo
+  // no Stage e o frame destacado na faixa/timeline.
   return activeIdx;
 }
 function syncLowerTimelineCenterMarkers() {
@@ -11745,6 +11762,15 @@ function updateLowerTimelineCenterFrameFromScroll() {
   if (bestIndex < 0 || bestIndex === lowerTimelineCenterFrameIndex) return;
   lowerTimelineCenterFrameIndex = bestIndex;
   timelineFocalFrameId = bestIndex;
+  // v8z4b29BL — ao centralizar um frame na faixa/timeline (scroll/scrub),
+  // ele também vira o frame ativo oficial: mantém Stage, label e controles
+  // sincronizados com o destaque da timeline (sem reconstruir a faixa de pills).
+  if (bestIndex !== activeIdx && bestIndex < frameCount) {
+    activeIdx = bestIndex;
+    selectedSegmentIndex = -1;
+    syncCustomizePanel();
+    refreshActiveFrameVisuals();
+  }
   applyStageTimelineFocusVisuals();
 }
 function applyTimelinePillFocusClasses() {
@@ -13925,6 +13951,61 @@ function dismissAutosave() {
   if (window._restorePromptEl) window._restorePromptEl.remove();
 }
 
+// v8z4b29BL — alças/cantos/HUD do frame ativo, extraído de renderAll para
+// poder ser reaplicado ao trocar o frame ativo via scrub da timeline sem
+// reconstruir a faixa de pills (evita perder a posição de scroll).
+function refreshActiveFrameVisuals() {
+  // Alça global de escala+rotação
+  ensureGlobalHandle();
+  if (globalHandleEl && imgNatW && frameCount > 0 && !isPreviewing && !isMultiSelectionActive()) {
+    updateHandleCornerForFrame(activeIdx);
+    const hp = getHandlePosForFrame(activeIdx);
+    globalHandleEl.style.left = hp.x + 'px';
+    globalHandleEl.style.top  = hp.y + 'px';
+    globalHandleEl.style.transform = `scale(${1 / editorZoomScale})`;
+    globalHandleEl.classList.add('show');
+    globalHandleEl.classList.remove('ghost-transform');
+    globalHandleEl.classList.toggle('centered', !!hp.centered);
+    stageAppendChild(globalHandleEl);
+  } else if (globalHandleEl) {
+    globalHandleEl.classList.remove('show');
+    globalHandleEl.classList.remove('ghost-transform');
+  }
+
+  // v8z4b29AY — corner handles + HUD (círculos fora da borda do frame)
+  // v8z4b29AZ — durante inserção ghost, abas são gerenciadas por updateGhostTransformHandle
+  ensureCornerHandles();
+  ensureFrameHud();
+  const _showCorners = !!(imgNatW && frameCount > 0 && !isPreviewing && !isMultiSelectionActive() && !isInsertingFrame);
+  if (cornerHandleEls) {
+    const _ckeys = ['tl','tr','bl','br'];
+    const _CORNER_OUT = 12; // px para fora da borda — visual externo, sem cobrir a moldura
+    const _fc = _showCorners ? getFrameCenter(activeIdx) : null;
+    cornerHandleEls.forEach((cel, idx) => {
+      if (_showCorners && _fc) {
+        const hp = getRawHandlePosForFrame(activeIdx, _ckeys[idx]);
+        const _dx = hp.x - _fc.cx, _dy = hp.y - _fc.cy;
+        const _dist = Math.hypot(_dx, _dy) || 1;
+        cel.style.left = (hp.x + (_dx / _dist) * _CORNER_OUT) + 'px';
+        cel.style.top  = (hp.y + (_dy / _dist) * _CORNER_OUT) + 'px';
+        cel.classList.add('show');
+        stageAppendChild(cel);
+      } else if (!isInsertingFrame) {
+        // Durante inserção ghost, as abas são controladas por updateGhostTransformHandle
+        cel.classList.remove('show');
+      }
+    });
+  }
+  // v8z4b29AZ: durante inserção, garantir que as abas do ghost estejam posicionadas
+  if (isInsertingFrame && ghostFrame) {
+    updateGhostTransformHandle();
+  }
+  if (frameHudEl) {
+    if (_showCorners) updateFrameHud(activeIdx);
+    else frameHudEl.classList.remove('show');
+  }
+}
+
 function renderAll() {
   removeDuplicateStageRenderNodes();
   // Sync pin button with active frame
@@ -14040,55 +14121,7 @@ function renderAll() {
   syncPointModeAccessButtonUI();
   syncFrameMultiSelectModeUI();
 
-  // Alça global de escala+rotação
-  ensureGlobalHandle();
-  if (globalHandleEl && imgNatW && frameCount > 0 && !isPreviewing && !isMultiSelectionActive()) {
-    updateHandleCornerForFrame(activeIdx);
-    const hp = getHandlePosForFrame(activeIdx);
-    globalHandleEl.style.left = hp.x + 'px';
-    globalHandleEl.style.top  = hp.y + 'px';
-    globalHandleEl.style.transform = `scale(${1 / editorZoomScale})`;
-    globalHandleEl.classList.add('show');
-    globalHandleEl.classList.remove('ghost-transform');
-    globalHandleEl.classList.toggle('centered', !!hp.centered);
-    stageAppendChild(globalHandleEl);
-  } else if (globalHandleEl) {
-    globalHandleEl.classList.remove('show');
-    globalHandleEl.classList.remove('ghost-transform');
-  }
-
-  // v8z4b29AY — corner handles + HUD (círculos fora da borda do frame)
-  // v8z4b29AZ — durante inserção ghost, abas são gerenciadas por updateGhostTransformHandle
-  ensureCornerHandles();
-  ensureFrameHud();
-  const _showCorners = !!(imgNatW && frameCount > 0 && !isPreviewing && !isMultiSelectionActive() && !isInsertingFrame);
-  if (cornerHandleEls) {
-    const _ckeys = ['tl','tr','bl','br'];
-    const _CORNER_OUT = 12; // px para fora da borda — visual externo, sem cobrir a moldura
-    const _fc = _showCorners ? getFrameCenter(activeIdx) : null;
-    cornerHandleEls.forEach((cel, idx) => {
-      if (_showCorners && _fc) {
-        const hp = getRawHandlePosForFrame(activeIdx, _ckeys[idx]);
-        const _dx = hp.x - _fc.cx, _dy = hp.y - _fc.cy;
-        const _dist = Math.hypot(_dx, _dy) || 1;
-        cel.style.left = (hp.x + (_dx / _dist) * _CORNER_OUT) + 'px';
-        cel.style.top  = (hp.y + (_dy / _dist) * _CORNER_OUT) + 'px';
-        cel.classList.add('show');
-        stageAppendChild(cel);
-      } else if (!isInsertingFrame) {
-        // Durante inserção ghost, as abas são controladas por updateGhostTransformHandle
-        cel.classList.remove('show');
-      }
-    });
-  }
-  // v8z4b29AZ: durante inserção, garantir que as abas do ghost estejam posicionadas
-  if (isInsertingFrame && ghostFrame) {
-    updateGhostTransformHandle();
-  }
-  if (frameHudEl) {
-    if (_showCorners) updateFrameHud(activeIdx);
-    else frameHudEl.classList.remove('show');
-  }
+  refreshActiveFrameVisuals();
 
   // Scroll automático da pill ativa: preservado na seleção simples, bloqueado na múltipla.
   if (!isMultiSelectionActive() && (lowerTimelineCenterFrameIndex < 0 || lowerTimelineCenterFrameIndex >= frameCount)) centerLowerTimelineOnFrame(activeIdx, false);
@@ -22748,6 +22781,7 @@ function clearFrameMultiSelectState() {
   frameMultiSelectMode = false;
   selectedFrames.clear();
   lowerTimelineCenterFrameIndex = activeIdx;
+  timelineFocalFrameId = activeIdx;
   closeAlignSubmenu();
   resetAlignBarActionsScroll();
   updateAlignBar();

@@ -1,3 +1,10 @@
+# v8z4b29BL
+
+- fix(state): sincroniza frame ativo do Stage com frame destacado na timeline.
+- fix(ui): impede divergência visual entre frame ativo, destaque da faixa e label inferior.
+- fix(selection): remove destaque fantasma ao trocar de frame ativo.
+- preserve: mantém seleção múltipla, trechos, ícones Iconoir (cinema-old, director-chair), Stage, timeline, Preview/export, JSON e motor.
+
 # v8z4b29BK
 
 - feat(icon): substitui ícone de Arquivos do topo por Iconoir cinema-old.
