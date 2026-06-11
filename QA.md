@@ -1,3 +1,21 @@
+# QA pendente — v8z4b29BR: reduz cabeçalho fixo, separa Tempo/Movimento do trecho e recupera Tremor Global
+
+> Base: v8z4b29BQ (aprovada — cabeçalho fixo + design system de abas no painel Edição de Tempo). Esta versão é uma **correção visual/UX** dos painéis: não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/tremor.
+
+## Escopo v8z4b29BR
+
+- **Painel Edição de Tempo**: o cabeçalho fixo (`.dur-fixed-header`) volta a conter apenas handle + título "Edição de Tempo" + botão check (mesma linha). Resumo de duração, Velocidade Constante, abas Tempo/Preferências e todo o conteúdo (Cena 1, frames, trechos, blocos globais) passam a rolar juntos em `.dur-scroll-area`, ganhando mais área útil de scroll.
+- **Painel contextual de trecho — Tempo** (`#panelSegTime`, novo): aberto pelo botão "Tempo" do menu contextual de trecho (`openSelectedSegmentMenu('time')`). Mostra apenas identificação do trecho (ex.: SEG. 2–3) + slider de duração + valor em segundos (`easePanelSegSlider`/`easePanelSegVal`, lógica inalterada).
+- **Painel contextual de trecho — Movimento** (`#panelEase`): aberto pelo botão "Movimento" (`openSelectedSegmentMenu('movement')`). Mantém identificação do trecho, abas Velocidade/Rotação/Escala, Movimento Inteligente, curvas e Tremor — sem o bloco de Duração, que saiu para `#panelSegTime`.
+- **Tremor Global recuperado no painel Movimento do trecho**: novo bloco "Tremor Global do projeto" com toggle + Intensidade + Frequência (ids com sufixo "2"), espelhando e sincronizado com o mesmo estado `projectShake` do bloco já existente em Preferências (`syncTremorPanel` agora sincroniza os dois conjuntos). O bloco "Tremor deste trecho" (Global/Desligado/Personalizado) permanece no painel Movimento.
+- **Design system de abas** (`.ds-tab-bar`/`.ds-tab`/`.ds-tab-active`): aba ativa com linha grossa ciano (`box-shadow inset 0 -3px`), abas inativas com linha fina discreta em `var(--border2)` (`box-shadow inset 0 -1px`). Sem novo fundo/pill. Aplica-se automaticamente às abas Tempo/Preferências e Velocidade/Rotação/Escala (já usavam `.ds-tab`).
+- Filtro Todos/Frames/Trechos (`.cena1-filter`) inalterado — continua com peso visual distinto das abas principais.
+- Preserva Stage, timeline, frames/trechos no Stage, curvas/Bézier, seleção (simples/múltipla), Preview, export MP4, JSON (antigo e novo), templates, formato, launcher, logo, ícone iOS, ícones Iconoir, Tremor (Global e por trecho) e o motor de renderização.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BR.md`.
+
+---
+
 # QA pendente — v8z4b29BQ: cabeçalho fixo + design system de abas no painel Edição de Tempo
 
 > Base: v8z4b29BP (aprovada — painel "Edição de Tempo" com abas Tempo e Preferências). Esta versão é uma **correção visual/UX** e de design system. Não há mudança de motor, JSON, export, Stage, timeline ou lógica de tremor.

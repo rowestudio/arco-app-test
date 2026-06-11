@@ -1,13 +1,26 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BQ                                    ║
+║  Versão: v8z4b29BR                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BR                                           ║
+║    fix(ui): reduz área fixa do painel Edição de      ║
+║              Tempo para título/check (resumo, abas e ║
+║              conteúdo passam a rolar)                ║
+║    fix(ui): separa painéis contextuais de trecho:    ║
+║              Tempo (apenas duração) e Movimento      ║
+║              (Velocidade/Rotação/Escala/Tremor)      ║
+║    fix(ui): recupera Tremor Global no painel         ║
+║              Movimento do trecho                     ║
+║    fix(ui): linha fina em abas inativas e linha      ║
+║              grossa na aba ativa (.ds-tab-bar)       ║
+║    preserve: Stage, timeline, Tremor, Preview/export,║
+║              JSON e motor sem mudança estrutural     ║
 ║  v8z4b29BQ                                           ║
 ║    fix(ui): cabeçalho fixo no painel Edição de Tempo ║
 ║              (título+check, resumo, Velocidade       ║
@@ -821,6 +834,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29BR — fix(ui): reduz a área fixa do painel Edição de Tempo para handle/título/check, deixando resumo, Velocidade Constante, abas e lista de frames/trechos rolarem juntos; fix(ui): separa os painéis contextuais de trecho — "Tempo" abre painel apenas com identificação e duração, "Movimento" abre painel com Velocidade/Rotação/Escala, Movimento Inteligente, curvas e Tremor; fix(ui): recupera o acesso ao Tremor Global do projeto dentro do painel Movimento do trecho (controles espelhados, mesmo estado projectShake), mantendo o bloco em Preferências; fix(ui): refina o design system de abas (.ds-tab-bar/.ds-tab) com linha grossa ciano na aba ativa e linha fina discreta nas inativas; preserve: mantém Stage, timeline, Tremor, Preview/export, JSON e motor sem alterações funcionais (base v8z4b29BQ). -->
 <!-- Arco Motion App — v8z4b29BN — feat(motion): adiciona efeito experimental de Tremor (câmera na mão) por trecho como camada procedural sobre o movimento já calculado; feat(ui): adiciona toggle e slider de Intensidade do Tremor no painel de Edição/Movimento do trecho selecionado; feat(export): Tremor determinístico e idêntico em Preview e MP4 (oscilação por senoides em função do tempo, sem random); preserve: mantém frames, posição/curvas/timeline, launcher, fluxo Novo Projeto/Abrir Projeto, Preview/export, JSON e motor principal sem refatoração ampla (base v8z4b29BM). -->
 <!-- Arco Motion App — v8z4b29BM — feat(brand): adiciona logo do Arco Motion ao launcher/página inicial; feat(ios): configura apple-touch-icon com asset local (assets/icons/apple-touch-icon.png) para Tela de Início do iOS; tweak(ui): renomeia item "Tempo" para "Edição" mantendo ícone director-chair e função; preserve: mantém Stage, timeline, frame ativo, fluxo Novo Projeto/Abrir Projeto, Preview/export, JSON e motor (base v8z4b29BL). -->
 <!-- Arco Motion App — v8z4b29BL — fix(state): sincroniza frame ativo do Stage com frame destacado na timeline; fix(ui): impede divergência visual entre frame ativo, destaque da faixa e label inferior; fix(selection): remove destaque fantasma ao trocar de frame ativo; preserve: mantém seleção múltipla, trechos, ícones Iconoir (cinema-old, director-chair), Stage, timeline, Preview/export, JSON e motor (base v8z4b29BK). -->
@@ -1539,6 +1553,7 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 /* iPhone/Safari: evitar seleção nativa de texto em áreas interativas */
 #pillsRow, #pillsRow *,
 #panelEase, #panelEase *,
+#panelSegTime, #panelSegTime *,
 #panelDuration, #panelDuration *,
 #toolbar, #toolbar *,
 .mid-pills, .mid-pills *,
@@ -2559,10 +2574,13 @@ body.cust-open #toolbar{
   flex:1;padding:10px 6px 9px;border:none;background:transparent;
   color:var(--text3);font-size:15px;font-weight:600;letter-spacing:.1px;
   cursor:pointer;-webkit-user-select:none;user-select:none;text-align:center;
-  border-bottom:2px solid transparent;margin-bottom:-1px;
-  min-height:44px;transition:color .18s,border-color .18s;
+  /* v8z4b29BR — linha fina e discreta nas abas inativas (base visual de
+     "também são abas"), via box-shadow para não alterar a altura da caixa. */
+  box-shadow:inset 0 -1px 0 0 var(--border2);
+  min-height:44px;transition:color .18s,box-shadow .18s;
 }
-.ds-tab.ds-tab-active{color:var(--text);font-weight:700;border-bottom-color:var(--accent);}
+/* v8z4b29BR — aba ativa: linha grossa ciano, contraste maior. */
+.ds-tab.ds-tab-active{color:var(--text);font-weight:700;box-shadow:inset 0 -3px 0 0 var(--accent);}
 /* Filtros da sequência (radio simples — nunca tudo desligado). */
 .cena1-filters{display:flex;gap:6px;margin-bottom:6px;}
 .cena1-filter{
@@ -3201,10 +3219,10 @@ body.cust-open #toolbar{
   <div class="tb-item ctx-only ctx-frame" onclick="openCustBarTabFromBottom('pos')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-move"></use></svg><span class="tb-lbl">Mover</span>
   </div>
-  <div class="tb-item ctx-only ctx-segment" onclick="openSelectedSegmentMenu()">
+  <div class="tb-item ctx-only ctx-segment" onclick="openSelectedSegmentMenu('time')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-clock"></use></svg><span class="tb-lbl" aria-label="Tempo do trecho" title="Tempo do trecho">Tempo</span>
   </div>
-  <div class="tb-item ctx-only ctx-segment" onclick="openSelectedSegmentMenu()">
+  <div class="tb-item ctx-only ctx-segment" onclick="openSelectedSegmentMenu('movement')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-move"></use></svg><span class="tb-lbl">Movimento</span>
   </div>
 </div>
@@ -3427,7 +3445,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BQ</span><br><span id="appVersionNameText">v8z4b29BQ</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BR</span><br><span id="appVersionNameText">v8z4b29BR</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -3725,10 +3743,11 @@ body.cust-open #toolbar{
 
 <!-- PANEL: Duração -->
 <div class="float-panel" id="panelDuration">
-  <!-- v8z4b29BQ — Cabeçalho fixo (.dur-fixed-header): handle, título+check na
-       mesma linha, resumo de duração, Velocidade Constante e abas
-       Tempo/Preferências não rolam com a lista. Apenas .dur-scroll-area
-       (abaixo das abas) tem rolagem. -->
+  <!-- v8z4b29BR — Cabeçalho fixo (.dur-fixed-header) reduzido a apenas:
+       handle, título "Edição de Tempo" e botão check/fechar (mesma linha).
+       Resumo de duração, Velocidade Constante e abas Tempo/Preferências
+       passaram a rolar junto com o conteúdo (.dur-scroll-area), ganhando
+       área útil para a lista de frames/trechos. -->
   <div class="dur-fixed-header">
     <div class="panel-handle" onclick="closeAll()"></div>
     <!-- v8z4b29BP — painel "Edição" reorganizado como "Edição de Tempo": centro
@@ -3740,50 +3759,54 @@ body.cust-open #toolbar{
       <div class="panel-title">Edição de Tempo</div>
       <button type="button" class="panel-close-check" onclick="closeAll()" aria-label="Confirmar e fechar Edição de Tempo" title="Confirmar e fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
     </div>
-
-    <!-- v8z4b15y — TOPO 100% leitura. Não há sliders nem botões editáveis aqui.
-         Mostra: duração total (soma final) + breakdown por categoria.
-         v8z4b29BP — resumo fixo: Duração Total / Trechos / Pausas / Acabamento. -->
-    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;">
-      <span id="durNum" style="font-size:30px;font-weight:700;color:var(--accent);min-width:64px;flex-shrink:0;letter-spacing:-1px;">6s</span>
-      <span style="font-size:11px;color:var(--text3);line-height:1.3;">Duração total · soma de trechos + pausas + acabamento</span>
-    </div>
-    <div id="durationSummaryTop" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;padding:14px;border-radius:12px;background:var(--surface2);">
-      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);"><span>Duração Total</span><span id="durSummaryTotal" style="font-weight:700;color:var(--accent);">0.0s</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Trechos</span><span id="durSummaryMove">0.0s</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Pausas</span><span id="durSummaryPauses">0.0s</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Acabamento</span><span id="durSummaryFinish">0.0s</span></div>
-    </div>
-
-    <!-- v8z4b29BQ — Velocidade Constante: controle TEMPORAL (altera a
-         distribuição/cálculo dos tempos dos trechos), por isso vive na área
-         fixa da aba Tempo e não em Preferências. setSegmentTimingMode /
-         syncTimingModeUI inalterados (id-based). -->
-    <div class="dur-velocity-block">
-      <div class="dur-sublabel-row" style="padding-top:0;">
-        <span class="dur-sublabel">Velocidade Constante</span>
-      </div>
-      <div style="display:flex;gap:8px;margin:6px 0 2px;" id="segTimingModeRow">
-        <button id="btnTimingManual" onclick="setSegmentTimingMode('manual')"
-          style="flex:1;padding:9px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--accent);color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;line-height:1.2;">Manual</button>
-        <button id="btnTimingConstant" onclick="setSegmentTimingMode('constant-speed')"
-          style="flex:1;padding:9px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;line-height:1.2;">Velocidade constante</button>
-      </div>
-      <div id="segTimingHint" style="display:none;font-size:10px;color:var(--text3);padding:2px 0 0 2px;">Distribui o tempo conforme o percurso curvo.</div>
-    </div>
-
-    <!-- v8z4b29BP — Abas principais: Tempo (padrão) e Preferências. Trocar de
-         aba não fecha o painel nem altera a seleção de frame/trecho.
-         v8z4b29BQ — design system de abas (.ds-tab-bar/.ds-tab): texto grande,
-         aba ativa com sublinhado, divisória fina abaixo do conjunto. -->
-    <div class="ds-tab-bar" role="tablist" aria-label="Edição de Tempo">
-      <button id="durTabBtnTempo" class="ds-tab ds-tab-active" type="button" role="tab" aria-selected="true" onclick="switchDurTab('tempo')">Tempo</button>
-      <button id="durTabBtnPrefs" class="ds-tab" type="button" role="tab" aria-selected="false" onclick="switchDurTab('prefs')">Preferências</button>
-    </div>
   </div>
 
-  <!-- v8z4b29BQ — Área rolável: apenas o conteúdo abaixo das abas rola. -->
+  <!-- v8z4b29BR — Área rolável: handle/título/check ficam fixos acima; todo
+       o resto (resumo, Velocidade Constante, abas e conteúdo) rola junto. -->
   <div class="dur-scroll-area">
+
+  <!-- v8z4b15y — TOPO 100% leitura. Não há sliders nem botões editáveis aqui.
+       Mostra: duração total (soma final) + breakdown por categoria.
+       v8z4b29BP — resumo fixo: Duração Total / Trechos / Pausas / Acabamento.
+       v8z4b29BR — passou a rolar com o restante do conteúdo. -->
+  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;">
+    <span id="durNum" style="font-size:30px;font-weight:700;color:var(--accent);min-width:64px;flex-shrink:0;letter-spacing:-1px;">6s</span>
+    <span style="font-size:11px;color:var(--text3);line-height:1.3;">Duração total · soma de trechos + pausas + acabamento</span>
+  </div>
+  <div id="durationSummaryTop" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;padding:14px;border-radius:12px;background:var(--surface2);">
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);"><span>Duração Total</span><span id="durSummaryTotal" style="font-weight:700;color:var(--accent);">0.0s</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Trechos</span><span id="durSummaryMove">0.0s</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Pausas</span><span id="durSummaryPauses">0.0s</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Acabamento</span><span id="durSummaryFinish">0.0s</span></div>
+  </div>
+
+  <!-- v8z4b29BQ — Velocidade Constante: controle TEMPORAL (altera a
+       distribuição/cálculo dos tempos dos trechos), por isso vive na aba
+       Tempo e não em Preferências. setSegmentTimingMode / syncTimingModeUI
+       inalterados (id-based).
+       v8z4b29BR — passou a rolar com o restante do conteúdo. -->
+  <div class="dur-velocity-block">
+    <div class="dur-sublabel-row" style="padding-top:0;">
+      <span class="dur-sublabel">Velocidade Constante</span>
+    </div>
+    <div style="display:flex;gap:8px;margin:6px 0 2px;" id="segTimingModeRow">
+      <button id="btnTimingManual" onclick="setSegmentTimingMode('manual')"
+        style="flex:1;padding:9px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--accent);color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;line-height:1.2;">Manual</button>
+      <button id="btnTimingConstant" onclick="setSegmentTimingMode('constant-speed')"
+        style="flex:1;padding:9px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;line-height:1.2;">Velocidade constante</button>
+    </div>
+    <div id="segTimingHint" style="display:none;font-size:10px;color:var(--text3);padding:2px 0 0 2px;">Distribui o tempo conforme o percurso curvo.</div>
+  </div>
+
+  <!-- v8z4b29BP — Abas principais: Tempo (padrão) e Preferências. Trocar de
+       aba não fecha o painel nem altera a seleção de frame/trecho.
+       v8z4b29BQ — design system de abas (.ds-tab-bar/.ds-tab): texto grande,
+       aba ativa com sublinhado, divisória fina abaixo do conjunto.
+       v8z4b29BR — passou a rolar com o restante do conteúdo. -->
+  <div class="ds-tab-bar" role="tablist" aria-label="Edição de Tempo">
+    <button id="durTabBtnTempo" class="ds-tab ds-tab-active" type="button" role="tab" aria-selected="true" onclick="switchDurTab('tempo')">Tempo</button>
+    <button id="durTabBtnPrefs" class="ds-tab" type="button" role="tab" aria-selected="false" onclick="switchDurTab('prefs')">Preferências</button>
+  </div>
 
   <!-- ════════════════ ABA TEMPO ════════════════ -->
   <div id="durTabTempo" class="dur-tab-panel" role="tabpanel" aria-labelledby="durTabBtnTempo">
@@ -3963,19 +3986,36 @@ body.cust-open #toolbar{
 <canvas id="recCanvas" style="display:none;"></canvas>
 
 
-<!-- PANEL: Easing por segmento — v8z4b17n: hierarquia visual Duração/Movimento + abas conectadas -->
-<div class="float-panel" id="panelEase">
+<!-- PANEL: Tempo do trecho — v8z4b29BR
+     Painel focado apenas em duração/tempo do trecho selecionado, aberto pelo
+     botão "Tempo" do menu contextual de trecho. Mantém apenas identificação
+     do trecho + slider de duração + valor em segundos (mesmos elementos
+     id-based easePanelSegSlider/easePanelSegVal — lógica de duração
+     inalterada). Velocidade, Rotação, Escala, Movimento Inteligente, curvas e
+     Tremor vivem no painel Movimento (panelEase). -->
+<div class="float-panel" id="panelSegTime">
   <div class="panel-handle" onclick="closeAll()"></div>
-  <button type="button" class="panel-close-check" onclick="closeAll()" aria-label="Confirmar e fechar Movimento" title="Confirmar e fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
-  <!-- Título do segmento centralizado — v8z4b17n -->
-  <div class="panel-title" id="panelEaseTitle" style="text-align:center;margin-bottom:14px;">Easing</div>
+  <button type="button" class="panel-close-check" onclick="closeAll()" aria-label="Confirmar e fechar Tempo do trecho" title="Confirmar e fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+  <!-- Título do segmento centralizado -->
+  <div class="panel-title" id="panelSegTimeTitle" style="text-align:center;margin-bottom:14px;">Seg.</div>
 
-  <!-- Bloco DURAÇÃO — mesmo valor gráfico que MOVIMENTO — v8z4b17n -->
+  <!-- Bloco DURAÇÃO -->
   <div class="ease-section-label">Duração</div>
   <div class="ease-dur-block" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
     <input type="range" class="dur-slider" id="easePanelSegSlider" min="0" max="20" step="0.1" value="4" style="flex:1;">
     <span id="easePanelSegVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;flex-shrink:0;">4.0s</span>
   </div>
+</div>
+
+<!-- PANEL: Movimento do trecho — v8z4b17n
+     v8z4b29BR — duração saiu deste painel (vive em panelSegTime); aqui ficam
+     Velocidade/Rotação/Escala, Movimento Inteligente, curvas e Tremor
+     (Global do projeto + por trecho). -->
+<div class="float-panel" id="panelEase">
+  <div class="panel-handle" onclick="closeAll()"></div>
+  <button type="button" class="panel-close-check" onclick="closeAll()" aria-label="Confirmar e fechar Movimento" title="Confirmar e fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+  <!-- Título do segmento centralizado — v8z4b17n -->
+  <div class="panel-title" id="panelEaseTitle" style="text-align:center;margin-bottom:14px;">Easing</div>
 
   <!-- Bloco MOVIMENTO: seção label + abas conectadas + conteúdo — v8z4b17n
        v8z4b29BQ — abas migradas para o design system (.ds-tab-bar/.ds-tab),
@@ -4044,8 +4084,36 @@ body.cust-open #toolbar{
   <!-- Tremor / câmera na mão — v8z4b29BN (por trecho) · v8z4b29BO (Global + Frequência)
        v8z4b29BP — o Tremor GLOBAL do projeto foi reposicionado para a aba
        Preferências do painel Edição de Tempo (mesma lógica id-based, motor
-       inalterado). Aqui permanece apenas o Tremor POR TRECHO. -->
+       inalterado).
+       v8z4b29BR — o Tremor Global volta a ficar acessível também aqui (painel
+       Movimento do trecho), com controles espelhados (sufixo "2") que leem e
+       escrevem o mesmo estado projectShake/motor — sem duplicar lógica nem
+       remover o bloco da aba Preferências. -->
   <div class="ease-section-label" style="margin-top:14px;">Tremor</div>
+
+  <!-- Tremor Global do projeto (espelho do bloco em Preferências) -->
+  <div class="ease-channel-block" style="padding:10px;margin-top:8px;">
+    <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Tremor Global do projeto</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label class="smart-toggle" title="Tremor Global do projeto">
+        <input type="checkbox" id="tremorGlobalToggle2" onchange="toggleProjectShake(this.checked)">
+        <span class="smart-toggle-track"></span>
+      </label>
+      <span style="font-size:11px;color:var(--text3);flex:1;cursor:pointer;" onclick="document.getElementById('tremorGlobalToggle2').click();">Tremor Global (projeto inteiro)</span>
+    </div>
+    <div id="tremorGlobalZone2" style="display:none;flex-direction:column;gap:10px;margin-top:10px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:var(--text3);flex-shrink:0;min-width:64px;">Intensidade</span>
+        <input type="range" class="dur-slider" id="tremorGlobalIntensitySlider2" min="0" max="100" step="1" value="40" style="flex:1;">
+        <span id="tremorGlobalIntensityVal2" style="font-size:13px;font-weight:700;color:var(--accent);min-width:40px;text-align:right;flex-shrink:0;">40%</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:var(--text3);flex-shrink:0;min-width:64px;">Frequência</span>
+        <input type="range" class="dur-slider" id="tremorGlobalFreqSlider2" min="0" max="100" step="1" value="7" style="flex:1;">
+        <span id="tremorGlobalFreqVal2" style="font-size:11px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;flex-shrink:0;">Lenta</span>
+      </div>
+    </div>
+  </div>
 
   <!-- Tremor do trecho selecionado -->
   <div class="ease-channel-block" style="padding:10px;margin-top:8px;">
@@ -6030,8 +6098,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BQ';
-const APP_VERSION_NAME = 'v8z4b29BQ';
+const APP_VERSION = 'v8z4b29BR';
+const APP_VERSION_NAME = 'v8z4b29BR';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11875,6 +11943,9 @@ function restoreState(state) {
   });
   // Fechar breakdown se estava aberto
   if (document.getElementById('panelEase')?.style.display !== 'none') initEasePanel();
+  // v8z4b29BR — painel "Tempo do trecho" (duração) também precisa refletir
+  // undo/redo e demais mudanças de estado, igual ao painel Movimento acima.
+  if (document.getElementById('panelSegTime')?.style.display !== 'none') initSegTimePanel();
   syncDurationSectionsUI();
   syncRatioUI();
   syncCustomizePanel();
@@ -12061,13 +12132,16 @@ function openCustBarTabFromBottom(tab) {
   openCustBar();
   switchCustTab(tab);
 }
-function openSelectedSegmentMenu() {
+// v8z4b29BR — "target" diferencia os botões contextuais do trecho:
+// 'time' abre o painel de Tempo (apenas duração); 'movement' (padrão) abre
+// o painel de Movimento (Velocidade/Rotação/Escala, curvas e Tremor).
+function openSelectedSegmentMenu(target) {
   if (selectedSegmentIndex < 0) selectedSegmentIndex = Math.max(0, Math.min(getActiveSegmentCount() - 1, activeIdx));
   if (selectedSegmentIndex < 0 || selectedSegmentIndex >= getActiveSegmentCount()) return;
   hideStageFrameMenu();
   _activeEaseSeg = selectedSegmentIndex;
   _easeForSegTarget = 'selected';
-  openPanel('Ease');
+  openPanel(target === 'time' ? 'SegTime' : 'Ease');
 }
 function handleLowerAddOrSelectAll() {
   insertFrameAfterActive();
@@ -19181,7 +19255,10 @@ function makeEaseChips(containerId, seg, onSelect) {
   }).join('');
 }
 
-function initEasePanel() {
+// v8z4b29BR — resolve o segmento ativo e o texto de identificação
+// ("Seg. X-Y" / "Seg. N–1 · Loop"), compartilhado pelos painéis Tempo
+// (panelSegTime) e Movimento (panelEase) do trecho selecionado.
+function _resolveActiveSegInfo() {
   ensureSegEasings();
   const normalSegs = frameCount - 1;
   const isLoopSeg = loopEnabled && frameCount >= 2 && _activeEaseSeg === normalSegs;
@@ -19189,14 +19266,17 @@ function initEasePanel() {
     ? _activeEaseSeg
     : Math.max(0, Math.min(normalSegs - 1, activeIdx));
   _activeEaseSeg = seg;
-  const title = document.getElementById('panelEaseTitle');
-  if (title) {
-    if (isLoopSeg) {
-      title.textContent = 'Seg. ' + frameCount + '–1 \xb7 Loop';
-    } else {
-      title.textContent = 'Seg. ' + (seg + 1) + '-' + (seg + 2);
-    }
-  }
+  const title = isLoopSeg ? ('Seg. ' + frameCount + '–1 \xb7 Loop') : ('Seg. ' + (seg + 1) + '-' + (seg + 2));
+  return { seg, isLoopSeg, normalSegs, title };
+}
+
+// v8z4b29BR — Painel "Tempo do trecho": identificação + duração/slider/valor.
+// Sem Velocidade/Rotação/Escala/Movimento Inteligente/Tremor — esses ficam no
+// painel Movimento (initEasePanel). Lógica de duração inalterada (id-based).
+function initSegTimePanel() {
+  const { seg, isLoopSeg, title } = _resolveActiveSegInfo();
+  const titleEl = document.getElementById('panelSegTimeTitle');
+  if (titleEl) titleEl.textContent = title;
 
   // Duração do segmento
   const segDur = isLoopSeg ? loopDuration : getSegDuration(seg);
@@ -19256,6 +19336,15 @@ function initEasePanel() {
       if (isPreviewing) { stopPreview(); startPreview(); }
     });
   }
+}
+
+// v8z4b29BR — Painel "Movimento do trecho": identificação + abas
+// Velocidade/Rotação/Escala, Movimento Inteligente, curvas e Tremor
+// (Global do projeto + por trecho). Duração saiu para initSegTimePanel.
+function initEasePanel() {
+  const { seg, title } = _resolveActiveSegInfo();
+  const titleEl = document.getElementById('panelEaseTitle');
+  if (titleEl) titleEl.textContent = title;
 
   _syncEaseChannelUI();
   syncApplyAllChannelsButtonState();
@@ -19602,17 +19691,17 @@ function _wireTremorSlider(id, onInput) {
 function _initTremorListeners() {
   if (window._tremorListenersInit) return;
   window._tremorListenersInit = true;
-  // Global do projeto
-  _wireTremorSlider('tremorGlobalIntensitySlider', v => {
-    const d = document.getElementById('tremorGlobalIntensityVal');
-    if (d) d.textContent = v + '%';
-    applyProjectShakeSetting('intensity', v / 100);
-  });
-  _wireTremorSlider('tremorGlobalFreqSlider', v => {
-    const freq = tremorSliderToFreq(v);
-    const d = document.getElementById('tremorGlobalFreqVal');
-    if (d) d.textContent = tremorFreqLabel(freq);
-    applyProjectShakeSetting('frequency', freq);
+  // Global do projeto — v8z4b29BR: wired duas vezes (Preferências + painel
+  // Movimento do trecho, sufixo "2"), ambos lendo/escrevendo projectShake.
+  ['', '2'].forEach(sfx => {
+    _wireTremorSlider('tremorGlobalIntensitySlider' + sfx, v => {
+      applyProjectShakeSetting('intensity', v / 100);
+      syncTremorPanel();
+    });
+    _wireTremorSlider('tremorGlobalFreqSlider' + sfx, v => {
+      applyProjectShakeSetting('frequency', tremorSliderToFreq(v));
+      syncTremorPanel();
+    });
   });
   // Por trecho (Personalizado)
   _wireTremorSlider('tremorIntensitySlider', v => {
@@ -19634,19 +19723,23 @@ function syncTremorPanel() {
   _initTremorListeners();
 
   // ── Tremor Global do projeto ──
-  const gToggle = document.getElementById('tremorGlobalToggle');
-  const gZone   = document.getElementById('tremorGlobalZone');
-  const gInt    = document.getElementById('tremorGlobalIntensitySlider');
-  const gIntVal = document.getElementById('tremorGlobalIntensityVal');
-  const gFreq   = document.getElementById('tremorGlobalFreqSlider');
-  const gFreqVal= document.getElementById('tremorGlobalFreqVal');
+  // v8z4b29BR: sincroniza os dois conjuntos de controles (Preferências + sufixo
+  // "2" no painel Movimento do trecho), ambos espelhando projectShake.
   const gPct = Math.round(clampTremorIntensity(projectShake.intensity) * 100);
-  if (gToggle) gToggle.checked = !!projectShake.enabled;
-  if (gZone)   gZone.style.display = projectShake.enabled ? 'flex' : 'none';
-  if (gInt)    { gInt.value = gPct; if (typeof updateSliderFill === 'function') updateSliderFill(gInt); }
-  if (gIntVal) gIntVal.textContent = gPct + '%';
-  if (gFreq)   { gFreq.value = tremorFreqToSlider(projectShake.frequency); if (typeof updateSliderFill === 'function') updateSliderFill(gFreq); }
-  if (gFreqVal) gFreqVal.textContent = tremorFreqLabel(projectShake.frequency);
+  ['', '2'].forEach(sfx => {
+    const gToggle = document.getElementById('tremorGlobalToggle' + sfx);
+    const gZone   = document.getElementById('tremorGlobalZone' + sfx);
+    const gInt    = document.getElementById('tremorGlobalIntensitySlider' + sfx);
+    const gIntVal = document.getElementById('tremorGlobalIntensityVal' + sfx);
+    const gFreq   = document.getElementById('tremorGlobalFreqSlider' + sfx);
+    const gFreqVal= document.getElementById('tremorGlobalFreqVal' + sfx);
+    if (gToggle) gToggle.checked = !!projectShake.enabled;
+    if (gZone)   gZone.style.display = projectShake.enabled ? 'flex' : 'none';
+    if (gInt)    { gInt.value = gPct; if (typeof updateSliderFill === 'function') updateSliderFill(gInt); }
+    if (gIntVal) gIntVal.textContent = gPct + '%';
+    if (gFreq)   { gFreq.value = tremorFreqToSlider(projectShake.frequency); if (typeof updateSliderFill === 'function') updateSliderFill(gFreq); }
+    if (gFreqVal) gFreqVal.textContent = tremorFreqLabel(projectShake.frequency);
+  });
 
   // ── Tremor do trecho selecionado ──
   const seg = _tremorTargetSeg();
@@ -20669,6 +20762,7 @@ function openPanel(id) {
     });
   }
   if (id === 'Ease') { initEasePanel(); }
+  if (id === 'SegTime') { initSegTimePanel(); }
   if (id === 'Smooth')    { initSmoothSlider(); }
   if (id === 'Duration')  { initFinishSlider(); }
   if (id === 'Duration')  {
