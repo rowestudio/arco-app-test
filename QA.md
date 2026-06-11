@@ -1,3 +1,26 @@
+# QA pendente — v8z4b29BP: painel "Edição de Tempo" com abas Tempo e Preferências
+
+> Base: v8z4b29BO (aprovada — Tremor Global do projeto + Frequência + modo por trecho). Esta versão é uma **reorganização visual/UX** do painel aberto pelo item "Edição" do menu inferior. Não há mudança de motor, JSON, export, multi-cena nem na lógica de cálculo de tempo — apenas a apresentação foi reorganizada.
+
+## Escopo v8z4b29BP
+
+- Renomeia o painel (antigo "Duração", aberto por `openPanel('Duration')`) para **Edição de Tempo**, preservando o botão de fechar/confirmar e o item "Edição" (ícone `director-chair`) no menu inferior.
+- **Resumo fixo no topo**: Duração Total, Trechos, Pausas e Acabamento. Reaproveita os elementos `durSummaryTotal/Move/Pauses/Finish`, atualizados por `syncDurationUI()` a partir de `getDurationParts()` — nenhuma fórmula de cálculo foi alterada.
+- **Abas Tempo / Preferências** (`switchDurTab`): a aba Tempo abre por padrão; trocar de aba não fecha o painel, não altera a seleção de frame/trecho e não toca no estado — apenas alterna a visibilidade e re-sincroniza os controles exibidos.
+- **Aba Tempo**:
+  - **Cena 1** (agrupamento visual preparatório — multi-cena NÃO é real): sequência intercalada `F1, 1–2, F2, 2–3, …` montada por `renderCena1Sequence()`, reaproveitando `buildFramePauseRow()` (pausas) e `buildSegDurationRow()` (durações de trecho). Os sliders escrevem nos mesmos estados `framePauses[]` / `segDurations[]` / `loopDuration` e usam o mesmo wiring de undo/preview de antes.
+  - **Filtro** Todos / Frames / Trechos (`setCena1Filter`): radio simples via classe no container (`flt-all|frames|segs`), sem estado ambíguo (nunca tudo desligado).
+  - **Controles globais** permanecem na aba Tempo: Trechos – Duração (Intervalo padrão, Total, Igualar intervalos), Frames – Pausas (Tudo, Zerar pausas) e Acabamento (Nenhum/Loop/Pausa final + tempos).
+- **Aba Preferências**:
+  - **Movimento — Distribuição do tempo**: botões Manual / Velocidade constante (`btnTimingManual`/`btnTimingConstant`) movidos para cá (lógica `setSegmentTimingMode`/`syncTimingModeUI` inalterada, id-based).
+  - **Tremor Global do projeto**: bloco (toggle + Intensidade + Frequência) reposicionado de `panelEase` para a aba Preferências. O motor do Tremor, o JSON e o Tremor **por trecho** (que continua em `panelEase`) NÃO foram alterados; toda a sincronização (`syncTremorPanel`/`_initTremorListeners`) é id-based e segue funcionando.
+  - Espaço reservado para preferências futuras. **Movimento Inteligente** permanece no painel de Movimento de cada trecho (posição contextual mais limpa).
+- Preserva Stage, timeline, frames/trechos no Stage, curvas/Bézier, seleção (simples/múltipla), Preview, export MP4, JSON (antigo e novo), templates, formato, launcher, logo, ícone iOS, ícones Iconoir e o motor de renderização. Não implementa Cena 2, múltiplas imagens, transição entre cenas, rótulos coloridos, Variação do Tremor nem Tremor em pausa.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BP.md`.
+
+---
+
 # QA pendente — v8z4b29BO: Tremor Global do projeto + Frequência + modo por trecho
 
 > Base: v8z4b29BN (aprovada — efeito experimental de Tremor/handheld por trecho). Esta versão evolui apenas a camada procedural de Tremor criada na BN, sem refatorar o motor: separa Intensidade (amplitude) de Frequência (velocidade/quantidade de tremidas), adiciona um Tremor Global no nível do projeto e permite que cada trecho use Global, fique Desligado ou tenha configuração Personalizada. Preview e MP4 continuam determinísticos.
