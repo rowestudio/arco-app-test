@@ -1,3 +1,21 @@
+# QA pendente — v8z4b29BN: efeito experimental de Tremor (câmera na mão) por trecho
+
+> Base: v8z4b29BM (aprovada — logo no launcher, apple-touch-icon e "Tempo" → "Edição"). Esta versão adiciona uma função experimental de motor: um efeito opcional de tremida/manual por TRECHO, aplicado como camada procedural sobre o movimento já calculado, sem criar frames e sem alterar frames/curvas/timeline. Escopo pequeno, isolado e reversível (desligar o Tremor reproduz exatamente o comportamento anterior).
+
+## Escopo v8z4b29BN
+
+- Adiciona `segTremorSettings[]` (array paralelo por trecho, espelhando `segBlurSettings`), com `{ enabled:false, intensity:0.4 }` por padrão. Projetos antigos sem o campo abrem com Tremor desligado.
+- Motor: `getStateAtT(t)` passa a ser uma fina camada que aplica o Tremor sobre o estado base (renomeado para `getStateAtTBase(t)`, que mantém o motor original intacto). O Tremor perturba só `cx`/`cy` (deslocamento) e `rot` (rotação leve); escala não é tocada.
+- O efeito é determinístico: oscilação por soma de senoides incomensuráveis em função do tempo absoluto (sem `Math.random`), com envelope de extremidade (fade-in/out por trecho) que zera o offset nos keyposes — frames reais permanecem exatos e não há salto entre trechos. Preview e MP4 usam a mesma função, casando visualmente.
+- Limites internos de segurança: deslocamento ≤ 2% do tamanho do quadro e rotação ≤ 0,5° na intensidade máxima; envelope evita revelar bordas nos pontos de quadro.
+- UI: no painel de Edição/Movimento do trecho (`panelEase`), adiciona a seção "Tremor" com toggle e slider "Intensidade" (0–100%), que só aparece quando o Tremor está ligado. Atua sobre o trecho selecionado (`_activeEaseSeg`), nunca sobre o projeto inteiro ou frame individual.
+- Persistência: `segTremorSettings` é salvo/lido no JSON, incluído em undo/redo (captureState/restoreState/clone), reset e templates. Carregar JSON antigo continua funcionando (Tremor desligado por ausência do campo).
+- Preserva motor, frames, posição/curvas/timeline, launcher, fluxo Novo Projeto/Abrir Projeto, Preview básico, export MP4 (exceto inclusão do efeito quando ativo), templates, ícones e seleção múltipla.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BN.md`.
+
+---
+
 # QA pendente — v8z4b29BM: logo no launcher, apple-touch-icon e renomeação "Tempo" → "Edição"
 
 > Base: v8z4b29BL (aprovada — sincronização do frame ativo entre Stage/timeline/label/controles). Esta versão faz três ajustes pontuais: insere o logotipo do Arco Motion no launcher, configura o ícone do app para iOS via `apple-touch-icon.png` local, e renomeia o item "Tempo" (ícone `director-chair`) para "Edição", sem alterar função.

@@ -1,13 +1,26 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BL                                    ║
+║  Versão: v8z4b29BN                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BN                                           ║
+║    feat(motion): Tremor (câmera na mão) por trecho   ║
+║              como camada sobre o movimento           ║
+║    feat(ui): toggle + Intensidade do Tremor no       ║
+║              painel de Edição/Movimento do trecho    ║
+║    feat(export): Tremor determinístico, idêntico     ║
+║              em Preview e MP4 (sem random)           ║
+║    preserve: mantém frames, curvas, timeline,        ║
+║              launcher, Preview/export, JSON e motor  ║
+║  v8z4b29BM                                           ║
+║    feat(brand): logo do Arco Motion no launcher      ║
+║    feat(ios): apple-touch-icon local                 ║
+║    tweak(ui): "Tempo" → "Edição"                     ║
 ║  v8z4b29BL                                           ║
 ║    fix(state): sincroniza frame ativo do Stage com   ║
 ║              frame destacado na timeline             ║
@@ -768,6 +781,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29BN — feat(motion): adiciona efeito experimental de Tremor (câmera na mão) por trecho como camada procedural sobre o movimento já calculado; feat(ui): adiciona toggle e slider de Intensidade do Tremor no painel de Edição/Movimento do trecho selecionado; feat(export): Tremor determinístico e idêntico em Preview e MP4 (oscilação por senoides em função do tempo, sem random); preserve: mantém frames, posição/curvas/timeline, launcher, fluxo Novo Projeto/Abrir Projeto, Preview/export, JSON e motor principal sem refatoração ampla (base v8z4b29BM). -->
 <!-- Arco Motion App — v8z4b29BM — feat(brand): adiciona logo do Arco Motion ao launcher/página inicial; feat(ios): configura apple-touch-icon com asset local (assets/icons/apple-touch-icon.png) para Tela de Início do iOS; tweak(ui): renomeia item "Tempo" para "Edição" mantendo ícone director-chair e função; preserve: mantém Stage, timeline, frame ativo, fluxo Novo Projeto/Abrir Projeto, Preview/export, JSON e motor (base v8z4b29BL). -->
 <!-- Arco Motion App — v8z4b29BL — fix(state): sincroniza frame ativo do Stage com frame destacado na timeline; fix(ui): impede divergência visual entre frame ativo, destaque da faixa e label inferior; fix(selection): remove destaque fantasma ao trocar de frame ativo; preserve: mantém seleção múltipla, trechos, ícones Iconoir (cinema-old, director-chair), Stage, timeline, Preview/export, JSON e motor (base v8z4b29BK). -->
 <!-- Arco Motion App — v8z4b29BK — feat(icon): substitui ícone de Arquivos do topo por Iconoir cinema-old; feat(icon): substitui ícone de Tempo/Duração da 4ª linha por Iconoir director-chair; preserve: mantém layout, Stage, timeline, Preview/export, JSON e motor sem alterações (base v8z4b29BJ). -->
@@ -3328,7 +3342,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BM</span><br><span id="appVersionNameText">v8z4b29BM</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BN</span><br><span id="appVersionNameText">v8z4b29BN</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -3825,6 +3839,23 @@ body.cust-open #toolbar{
         <button id="btnResetSegCurve" onclick="resetSelectedSegmentCurve()"
           style="width:100%;padding:5px 8px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text3);font-size:10px;font-weight:700;cursor:pointer;">Resetar curva</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Tremor / câmera na mão por trecho — experimental v8z4b29BN -->
+  <div class="ease-section-label" style="margin-top:14px;">Tremor</div>
+  <div class="ease-channel-block" style="padding:10px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label class="smart-toggle" title="Tremor / câmera na mão">
+        <input type="checkbox" id="tremorToggle" onchange="toggleSegTremor(this.checked)">
+        <span class="smart-toggle-track"></span>
+      </label>
+      <span style="font-size:11px;color:var(--text3);flex:1;cursor:pointer;" onclick="document.getElementById('tremorToggle').click();">Tremida (câmera na mão)</span>
+    </div>
+    <div id="tremorZone" style="display:none;align-items:center;gap:8px;margin-top:10px;">
+      <span style="font-size:11px;color:var(--text3);flex-shrink:0;">Intensidade</span>
+      <input type="range" class="dur-slider" id="tremorIntensitySlider" min="0" max="100" step="1" value="40" style="flex:1;">
+      <span id="tremorIntensityVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:40px;text-align:right;flex-shrink:0;">40%</span>
     </div>
   </div>
 </div>
@@ -5785,8 +5816,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BM';
-const APP_VERSION_NAME = 'v8z4b29BM';
+const APP_VERSION = 'v8z4b29BN';
+const APP_VERSION_NAME = 'v8z4b29BN';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -11116,6 +11147,35 @@ function ensureSegBlurSettings() {
   segBlurSettings.length = segs;
 }
 
+// ═══════════════════════════════════════
+// TREMOR / HANDHELD POR TRECHO — v8z4b29BN (experimental)
+// Camada procedural opcional aplicada SOBRE o movimento já calculado do trecho.
+// Não cria frames, não altera frames/curvas/timeline; só perturba o resultado
+// final de getStateAtT (X/Y + rotação leve) de forma determinística.
+// Modelo paralelo por trecho, espelhando segBlurSettings.
+// ═══════════════════════════════════════
+const segTremorSettings = [];
+function cloneDefaultSegTremor() {
+  // intensity: 0..1 (UI mostra 0..100%). Começa desligado e moderado.
+  return { enabled: false, intensity: 0.4 };
+}
+function ensureSegTremorSettings() {
+  const segs = frameCount - 1;
+  if (segs < 1) { segTremorSettings.length = 0; return; }
+  for (let i = 0; i < segs; i++) {
+    if (!segTremorSettings[i]) {
+      segTremorSettings[i] = cloneDefaultSegTremor();
+    } else {
+      const it = Number(segTremorSettings[i].intensity);
+      segTremorSettings[i] = {
+        enabled: !!segTremorSettings[i].enabled,
+        intensity: Number.isFinite(it) ? Math.max(0, Math.min(1, it)) : 0.4
+      };
+    }
+  }
+  segTremorSettings.length = segs;
+}
+
 // ── v8z4b20d: ensureSegmentArraysIntegrity — normaliza TODOS os arrays por trecho ──
 // Garante que ctrlPts, ctrlPtManual, segBlurSettings, segDurations,
 // rotEasings, scaleEasings têm exatamente frameCount-1 entradas.
@@ -11146,6 +11206,11 @@ function ensureSegmentArraysIntegrity() {
   while (segBlurSettings.length < expected) segBlurSettings.push(cloneDefaultSegBlur());
   if (segBlurSettings.length > expected) segBlurSettings.length = expected;
   ensureSegBlurSettings(); // validação de campos individuais
+
+  // segTremorSettings (v8z4b29BN): mesmo tratamento de comprimento/validação que o blur
+  while (segTremorSettings.length < expected) segTremorSettings.push(cloneDefaultSegTremor());
+  if (segTremorSettings.length > expected) segTremorSettings.length = expected;
+  ensureSegTremorSettings();
 
   // segDurations: preencher com defaultNewSegmentDuration ou 2
   if (Array.isArray(segDurations)) {
@@ -11319,6 +11384,7 @@ function captureState() {
     frameLocked: [...frameLocked],
     segDurations: [...segDurations],
     segBlurSettings: segBlurSettings.map(s => ({...s})),
+    segTremorSettings: segTremorSettings.map(s => ({...s})),
     frameCount,
     activeIdx,
     currentRatio,
@@ -11367,6 +11433,7 @@ function cloneProjectStateSnapshot(state) {
     frameLocked: [...(state.frameLocked || [])],
     segDurations: [...(state.segDurations || [])],
     segBlurSettings: (state.segBlurSettings || []).map(s => s ? {...s} : cloneDefaultSegBlur()),
+    segTremorSettings: (state.segTremorSettings || []).map(s => s ? {...s} : cloneDefaultSegTremor()),
     frameCount: state.frameCount,
     activeIdx: state.activeIdx,
     currentRatio: state.currentRatio,
@@ -11434,6 +11501,9 @@ function restoreState(state) {
   segBlurSettings.length = 0;
   (state.segBlurSettings || []).forEach(v => segBlurSettings.push(v ? {...v} : cloneDefaultSegBlur()));
   ensureSegBlurSettings();
+  segTremorSettings.length = 0;
+  (state.segTremorSettings || []).forEach(v => segTremorSettings.push(v ? {...v} : cloneDefaultSegTremor()));
+  ensureSegTremorSettings();
   frameCount = state.frameCount;
   activeIdx  = state.activeIdx;
   currentRatio = state.currentRatio;
@@ -13175,6 +13245,7 @@ function startFirstFrameAssistedInsertion() {
   framePauses.length = 0;
   segDurations.length = 0;
   segBlurSettings.length = 0;
+  segTremorSettings.length = 0;
   segEasings.length = 0;
   rotEasings.length = 0;
   scaleEasings.length = 0;
@@ -13295,6 +13366,7 @@ function addFrame() {
   activeIdx = i;
 
   ensureSegBlurSettings();
+  ensureSegTremorSettings();
   syncDurationUI();
   if (durationPanelSections.pauses) {
     renderFramePauseRows();
@@ -17127,7 +17199,68 @@ function applySegWeights(t, segs) {
   return segs - 0.0001;
 }
 
+// v8z4b29BN — getStateAtT agora é uma fina camada que aplica o Tremor sobre o
+// estado base do motor. getStateAtTBase mantém EXATAMENTE o motor original
+// (posição/escala/rotação/curvas/duração), garantindo reversibilidade total:
+// desligar o Tremor reproduz bit a bit o comportamento anterior.
 function getStateAtT(t) {
+  const base = getStateAtTBase(t);
+  return applySegTremorLayer(base, t);
+}
+
+// Camada procedural de tremida/câmera na mão por trecho.
+// Determinística: depende só de t (global 0..1) e da config do trecho, então
+// Preview e MP4 casam exatamente e repetir o Preview não muda o resultado.
+function applySegTremorLayer(state, t) {
+  if (!state || frameCount < 2) return state;
+  if (!segTremorSettings.length) return state;
+  ensureSegTremorSettings();
+  const info = getSegAndLocalTAtTime(t);
+  // Trecho de loop herda a config do último trecho normal (igual ao blur).
+  const cfg = info.isLoopSeg
+    ? (segTremorSettings[Math.max(0, frameCount - 2)] || null)
+    : (segTremorSettings[info.seg] || null);
+  if (!cfg || !cfg.enabled) return state;
+  const intensity = Math.max(0, Math.min(1, Number(cfg.intensity) || 0));
+  if (intensity <= 0) return state;
+
+  // Envelope de extremidade: a tremida nasce e morre suavemente dentro do trecho.
+  // Em localT=0 e localT=1 o offset é zero → os frames reais permanecem exatos
+  // nos keyposes e não há salto entre trechos (mesmo com intensidades diferentes).
+  const localT = clamp01(info.localT);
+  const edge = 0.14;
+  let env = 1;
+  if (localT < edge) env = smooth01(localT / edge);
+  else if (localT > 1 - edge) env = smooth01((1 - localT) / edge);
+  if (env <= 0) return state;
+
+  // Oscilação contínua e orgânica: soma de senoides com frequências
+  // incomensuráveis, em função do tempo absoluto (sem Math.random, sem flicker).
+  const tAbs = clamp01(t) * totalDurationFull();
+  const TAU = Math.PI * 2;
+  const ox = Math.sin(tAbs * TAU * 2.00) * 0.62 + Math.sin(tAbs * TAU * 3.17 + 1.3) * 0.38;
+  const oy = Math.sin(tAbs * TAU * 2.31 + 2.1) * 0.62 + Math.sin(tAbs * TAU * 3.74 + 0.7) * 0.38;
+  const orr = Math.sin(tAbs * TAU * 1.73 + 0.5) * 0.7 + Math.sin(tAbs * TAU * 2.61 + 2.4) * 0.3;
+
+  // Amplitudes proporcionais ao tamanho do trecho (acompanham o zoom) e limitadas
+  // internamente para evitar revelar bordas: máx ~2% do quadro e ~0,5° de rotação.
+  const amp = intensity * env;
+  const MAX_FRAC = 0.02;   // ≤ 2% do tamanho do quadro
+  const MAX_ROT_DEG = 0.5; // rotação leve
+  const dx = ox * MAX_FRAC * amp * state.sw;
+  const dy = oy * MAX_FRAC * amp * state.sh;
+  const dRot = orr * MAX_ROT_DEG * amp;
+
+  return {
+    cx: state.cx + dx,
+    cy: state.cy + dy,
+    sw: state.sw,
+    sh: state.sh,
+    rot: state.rot + dRot
+  };
+}
+
+function getStateAtTBase(t) {
   const scaleX = imgNatW / stageW;
   const scaleY = imgNatH / stageH;
   // v8z4b23a: guard para 0 frames (modo F1 assistido) — retorna centro da imagem
@@ -18850,6 +18983,8 @@ function initEasePanel() {
     </div>`;
   }).join('');
   updateSegGlobalButton();
+  // v8z4b29BN — sincroniza o controle de Tremor com o trecho ativo do painel.
+  if (typeof syncTremorPanel === 'function') syncTremorPanel();
 }
 
 let segGlobalMode = false;
@@ -19109,6 +19244,74 @@ function applyGlobalBlurSetting(key, value) {
     if (segBlurSettings[i]) segBlurSettings[i][key] = value;
   }
   // Loop herda do último segmento normal — não tem índice próprio
+}
+
+// ═══════════════════════════════════════
+// TREMOR POR TRECHO — UI (v8z4b29BN, experimental)
+// Atua sobre o trecho selecionado no painel de Edição/Movimento (panelEase),
+// não sobre o projeto inteiro nem sobre o frame individual.
+// ═══════════════════════════════════════
+function _tremorTargetSeg() {
+  const normalSegs = frameCount - 1;
+  if (normalSegs < 1) return -1;
+  const isLoopSeg = loopEnabled && frameCount >= 2 && _activeEaseSeg === normalSegs;
+  if (isLoopSeg) return Math.max(0, frameCount - 2); // loop herda o último trecho normal
+  if (_activeEaseSeg >= 0 && _activeEaseSeg < normalSegs) return _activeEaseSeg;
+  return Math.max(0, Math.min(normalSegs - 1, activeIdx));
+}
+
+function syncTremorPanel() {
+  ensureSegTremorSettings();
+  const seg = _tremorTargetSeg();
+  const toggle = document.getElementById('tremorToggle');
+  const zone   = document.getElementById('tremorZone');
+  const slider = document.getElementById('tremorIntensitySlider');
+  const valEl  = document.getElementById('tremorIntensityVal');
+  const cfg = (seg >= 0 && segTremorSettings[seg]) ? segTremorSettings[seg] : cloneDefaultSegTremor();
+  const pct = Math.round(Math.max(0, Math.min(1, Number(cfg.intensity) || 0)) * 100);
+
+  if (toggle) toggle.checked = !!cfg.enabled;
+  if (zone)   zone.style.display = cfg.enabled ? 'flex' : 'none';
+  if (slider) { slider.value = pct; if (typeof updateSliderFill === 'function') updateSliderFill(slider); }
+  if (valEl)  valEl.textContent = pct + '%';
+
+  // Listeners do slider — registrados uma única vez.
+  if (!window._tremorListenersInit) {
+    window._tremorListenersInit = true;
+    const sl = document.getElementById('tremorIntensitySlider');
+    if (sl) {
+      let captured = false;
+      const grab = () => { if (!captured) { pushUndo(); captured = true; } };
+      sl.addEventListener('touchstart', grab, {passive:true});
+      sl.addEventListener('mousedown', grab);
+      sl.addEventListener('change', () => { captured = false; });
+      sl.addEventListener('input', function() {
+        const v = Math.max(0, Math.min(100, parseInt(this.value, 10) || 0));
+        const d = document.getElementById('tremorIntensityVal');
+        if (d) d.textContent = v + '%';
+        applySegTremorSetting('intensity', v / 100);
+      });
+    }
+  }
+}
+
+function toggleSegTremor(on) {
+  pushUndo();
+  applySegTremorSetting('enabled', !!on);
+  const zone = document.getElementById('tremorZone');
+  if (zone) zone.style.display = on ? 'flex' : 'none';
+  const toggle = document.getElementById('tremorToggle');
+  if (toggle) toggle.checked = !!on;
+  // O Preview lê segTremorSettings em tempo real a cada frame via getStateAtT,
+  // então não é preciso reiniciar a animação.
+}
+
+function applySegTremorSetting(key, value) {
+  ensureSegTremorSettings();
+  const seg = _tremorTargetSeg();
+  if (seg < 0 || !segTremorSettings[seg]) return;
+  segTremorSettings[seg][key] = value;
+  if (typeof markProjectDirty === 'function') markProjectDirty('tremor');
 }
 
 function setEase(el) {
@@ -19710,6 +19913,7 @@ function clearCurrentProjectForNewFile() {
   ctrlPtManual.length = 0;
   segDurations.length = 0;
   segBlurSettings.length = 0;
+  segTremorSettings.length = 0;
   segEasings.length = 0;
   rotEasings.length = 0;
   scaleEasings.length = 0;
@@ -19753,6 +19957,7 @@ function createInitialFrameForNewImageProject() {
   ctrlPtManual.length = 0;
   segDurations.length = 0;
   segBlurSettings.length = 0;
+  segTremorSettings.length = 0;
   segEasings.length = 0;
   rotEasings.length = 0;
   scaleEasings.length = 0;
@@ -20857,7 +21062,7 @@ function applyTemplate(type) {
   }
   frames.length = 0; ctrlPts.length = 0; ctrlPtManual.length = 0;
   frameRotations.length = 0; frameLocked.length = 0; frameCount = 0;
-  segEasings.length = 0; rotEasings.length = 0; scaleEasings.length = 0; segDurations.length = 0; segBlurSettings.length = 0; framePauses.length = 0;
+  segEasings.length = 0; rotEasings.length = 0; scaleEasings.length = 0; segDurations.length = 0; segBlurSettings.length = 0; segTremorSettings.length = 0; framePauses.length = 0;
   curvesV2 = null; // v8z4b21a: resetar curvesV2 ao aplicar template
 
   // Usar dimensões do stage em coords reais (independente do zoom de edição)
@@ -20956,7 +21161,7 @@ function applyTemplate(type) {
     }
     frames.length = 0; ctrlPts.length = 0; ctrlPtManual.length = 0;
     frameRotations.length = 0; frameLocked.length = 0; frameCount = 0;
-    segEasings.length = 0; rotEasings.length = 0; scaleEasings.length = 0; segDurations.length = 0; segBlurSettings.length = 0; framePauses.length = 0;
+    segEasings.length = 0; rotEasings.length = 0; scaleEasings.length = 0; segDurations.length = 0; segBlurSettings.length = 0; segTremorSettings.length = 0; framePauses.length = 0;
     curvesV2 = null; // v8z4b21a: resetar curvesV2 ao aplicar template 'circle'
 
     for (let i = 0; i < nFrames; i++) {
@@ -21989,6 +22194,7 @@ function buildProjectData() {
     ctrlPtManual: ctrlPtManual.slice(0, frameCount - 1),
     segDurations: segDurations.slice(0, frameCount - 1),
     segBlurSettings: segBlurSettings.slice(0, frameCount - 1).map(s => ({...s})),
+    segTremorSettings: segTremorSettings.slice(0, frameCount - 1).map(s => ({...s})),
     // v8z4b18r: framePauses serializado após ensureFramePauses() no topo da função,
     // garantindo array com exatamente frameCount entradas. Number()||0 preserva 0.
     framePauses: framePauses.slice(0, frameCount).map(p => ({ duration: Number(p?.duration) || 0 })),
@@ -22523,6 +22729,11 @@ function applyFrameData(data) {
   segBlurSettings.length = 0;
   (data.segBlurSettings || []).forEach(v => segBlurSettings.push(v ? {...v} : cloneDefaultSegBlur()));
   ensureSegBlurSettings();
+  // v8z4b29BN — Tremor por trecho. Projetos antigos sem o campo abrem com o
+  // efeito desligado (cloneDefaultSegTremor → enabled:false). Compatível.
+  segTremorSettings.length = 0;
+  (data.segTremorSettings || []).forEach(v => segTremorSettings.push(v ? {...v} : cloneDefaultSegTremor()));
+  ensureSegTremorSettings();
   // v8z4b18r: restaurar framePauses do JSON após frameCount estar ajustado.
   // framePauses.length=0 isola estado de qualquer projeto anterior (complementa
   // o clear antecipado em applyProjectData, cobrindo caminhos síncronos).
