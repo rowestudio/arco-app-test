@@ -1,3 +1,14 @@
+# v8z4b29BS
+
+- fix(ui): padroniza o painel contextual de Tempo do trecho (`#panelSegTime`) com a mesma família visual dos painéis compactos de frame — cabeçalho com handle, título e botão check na mesma linha (`.dur-header-row`), mesma densidade de slider/valor e altura compatível com o conteúdo (sem área vazia).
+- feat(ui): adiciona ajuste global de duração ("Aplicar a todos os trechos") no painel Tempo do trecho, reaproveitando o mesmo padrão "Aplicar a todos" (`segGlobalMode`/`setSegEaseAll`) já usado no painel Movimento — afeta apenas durações de trechos, sem tocar pausas, tremor, curvas, movimento inteligente, escala ou rotação.
+- fix(ui): no painel Edição de Tempo, o resumo de duração passa a viver somente dentro da aba Tempo (sem duplicação em Preferências), sem alterar os cálculos.
+- fix(ui): reposiciona as abas Tempo / Preferências para o topo do conteúdo do painel Edição de Tempo, logo abaixo do cabeçalho (handle + título + check).
+- fix(ui): destaca visualmente o bloco de resumo (Duração Total / Trechos / Pausas / Acabamento) com borda discreta e divisória sutil separando o total do detalhamento.
+- tweak(ui): Velocidade Constante vira um toggle simples (desligado = Manual, ligado = Velocidade Constante), preservando exatamente `setSegmentTimingMode`/`syncTimingModeUI`.
+- feat(ui): adiciona ícones de frame (número dentro do ícone) e de trecho (segmento com dois círculos nas extremidades, número acima do ícone) na lista de Edição de Tempo, e nos filtros Frames/Trechos.
+- preserve: mantém a separação Tempo/Movimento dos trechos, Tremor (Global e por trecho), Stage, timeline, frames/trechos no Stage, curvas/Bézier, seleção, Preview/export MP4, JSON (antigo e novo) e o motor de renderização sem alterações funcionais.
+
 # v8z4b29BR
 
 - fix(ui): reduz a área fixa do painel Edição de Tempo para handle, título e botão check — resumo de duração, Velocidade Constante, abas Tempo/Preferências e o restante do conteúdo passam a rolar junto, ganhando mais espaço útil para a lista de frames/trechos.

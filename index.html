@@ -1,13 +1,33 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BR                                    ║
+║  Versão: v8z4b29BS                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BS                                           ║
+║    fix(ui): painel Tempo do trecho segue o padrão    ║
+║              dos painéis compactos (cabeçalho        ║
+║              título+check, densidade de frame)       ║
+║    feat(ui): ajuste global de duração ("Aplicar a    ║
+║              todos os trechos") no painel Tempo      ║
+║    fix(ui): resumo só dentro da aba Tempo no painel  ║
+║              Edição de Tempo (sem duplicar)          ║
+║    fix(ui): abas Tempo/Preferências voltam ao topo   ║
+║              do conteúdo do painel Edição de Tempo   ║
+║    fix(ui): bloco de resumo com contêiner mais       ║
+║              marcado (borda + divisória sutil)       ║
+║    tweak(ui): Velocidade Constante vira toggle       ║
+║              simples (Manual / Constante)            ║
+║    feat(ui): ícones de frame e trecho na lista de    ║
+║              Edição de Tempo e nos filtros           ║
+║              Frames/Trechos                          ║
+║    preserve: Tempo/Movimento dos trechos, Tremor,    ║
+║              Stage, timeline, Preview/export, JSON   ║
+║              e motor sem alterações funcionais       ║
 ║  v8z4b29BR                                           ║
 ║    fix(ui): reduz área fixa do painel Edição de      ║
 ║              Tempo para título/check (resumo, abas e ║
@@ -834,6 +854,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b29BS — fix(ui): padroniza o painel contextual de Tempo do trecho (#panelSegTime) com a mesma família visual dos painéis compactos (handle + cabeçalho título/check, densidade de frame, sem área vazia), incluindo ajuste global "Aplicar a todos os trechos" (reaproveita segGlobalMode/setSegEaseAll); fix(ui): no painel Edição de Tempo, as abas Tempo/Preferências voltam ao topo do conteúdo, com o resumo de duração (mais marcado visualmente) e Velocidade Constante (agora um toggle simples) somente dentro da aba Tempo, sem duplicação; feat(ui): adiciona ícones de frame (número dentro do ícone) e de trecho (segmento com dois círculos, número acima) na lista de Edição de Tempo e nos filtros Frames/Trechos; preserve: mantém a separação Tempo/Movimento dos trechos, Tremor (Global e por trecho), Stage, timeline, Preview/export, JSON e motor sem alterações funcionais (base v8z4b29BR). -->
 <!-- Arco Motion App — v8z4b29BR — fix(ui): reduz a área fixa do painel Edição de Tempo para handle/título/check, deixando resumo, Velocidade Constante, abas e lista de frames/trechos rolarem juntos; fix(ui): separa os painéis contextuais de trecho — "Tempo" abre painel apenas com identificação e duração, "Movimento" abre painel com Velocidade/Rotação/Escala, Movimento Inteligente, curvas e Tremor; fix(ui): recupera o acesso ao Tremor Global do projeto dentro do painel Movimento do trecho (controles espelhados, mesmo estado projectShake), mantendo o bloco em Preferências; fix(ui): refina o design system de abas (.ds-tab-bar/.ds-tab) com linha grossa ciano na aba ativa e linha fina discreta nas inativas; preserve: mantém Stage, timeline, Tremor, Preview/export, JSON e motor sem alterações funcionais (base v8z4b29BQ). -->
 <!-- Arco Motion App — v8z4b29BN — feat(motion): adiciona efeito experimental de Tremor (câmera na mão) por trecho como camada procedural sobre o movimento já calculado; feat(ui): adiciona toggle e slider de Intensidade do Tremor no painel de Edição/Movimento do trecho selecionado; feat(export): Tremor determinístico e idêntico em Preview e MP4 (oscilação por senoides em função do tempo, sem random); preserve: mantém frames, posição/curvas/timeline, launcher, fluxo Novo Projeto/Abrir Projeto, Preview/export, JSON e motor principal sem refatoração ampla (base v8z4b29BM). -->
 <!-- Arco Motion App — v8z4b29BM — feat(brand): adiciona logo do Arco Motion ao launcher/página inicial; feat(ios): configura apple-touch-icon com asset local (assets/icons/apple-touch-icon.png) para Tela de Início do iOS; tweak(ui): renomeia item "Tempo" para "Edição" mantendo ícone director-chair e função; preserve: mantém Stage, timeline, frame ativo, fluxo Novo Projeto/Abrir Projeto, Preview/export, JSON e motor (base v8z4b29BL). -->
@@ -2408,6 +2429,7 @@ body.cust-open #toolbar{
 #easeGlobeLock.global-on,
 #easeGlobeRot.global-on,
 #easeGlobeScale.global-on,
+#segTimeGlobeLock.global-on,
 #segEasePanel .global-on{
   color:#ff9500 !important;
   opacity:1 !important;
@@ -2416,6 +2438,7 @@ body.cust-open #toolbar{
 #easeGlobeLock.global-on svg,
 #easeGlobeRot.global-on svg,
 #easeGlobeScale.global-on svg,
+#segTimeGlobeLock.global-on svg,
 #segEasePanel .global-on svg{
   stroke:#ff9500 !important;
 }
@@ -2476,12 +2499,34 @@ body.cust-open #toolbar{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
   margin-bottom:14px;
 }
-.dur-fixed-header .panel-title{margin-bottom:0;}
-.dur-fixed-header .panel-close-check{
+/* v8z4b29BS — generaliza o cabeçalho título+check (antes restrito a
+   .dur-fixed-header) para qualquer .dur-header-row, reaproveitado pelo
+   painel compacto Tempo do trecho (#panelSegTime). */
+.dur-header-row .panel-title{margin-bottom:0;}
+.dur-header-row .panel-close-check{
   position:static;
   flex-shrink:0;
 }
-.dur-velocity-block{margin-bottom:2px;}
+.dur-velocity-block{margin-bottom:14px;}
+/* v8z4b29BS — Resumo de duração (Duração Total / Trechos / Pausas /
+   Acabamento) com contêiner mais marcado: fundo levemente diferente,
+   borda discreta e divisória sutil separando o total do detalhamento.
+   Apenas leitura — não altera os cálculos (durSummary*). */
+.dur-summary-box{
+  display:flex;flex-direction:column;gap:8px;margin-bottom:14px;
+  padding:14px;border-radius:12px;
+  background:var(--surface2);
+  border:1px solid var(--border2);
+}
+.dur-summary-row{
+  display:flex;justify-content:space-between;
+  font-size:12px;color:var(--text3);
+}
+.dur-summary-row-main{
+  font-size:13px;color:var(--text2);
+  padding-bottom:8px;
+  border-bottom:.5px solid var(--border2);
+}
 .dur-scroll-area{padding-top:2px;}
 #panelDuration #segBreakdown,
 #panelDuration #framePauseSection,
@@ -2539,6 +2584,27 @@ body.cust-open #toolbar{
 .dur-edit-row.is-bordered{
   border-top:1px solid var(--border2);
 }
+/* v8z4b29BS — Ícones de frame/trecho na sequência Cena 1 (#cena1Seq).
+   Substituem os labels textuais "F1"/"1-2" por ícones reconhecíveis,
+   sem alterar lógica/dados dos sliders. */
+.dur-edit-row > .dur-edit-icon-label{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-width:34px;flex-shrink:0;gap:2px;
+}
+.seq-icon-frame{
+  position:relative;display:flex;align-items:center;justify-content:center;
+  width:26px;height:26px;color:var(--text3);flex-shrink:0;
+}
+.seq-icon-frame svg{width:100%;height:100%;}
+.seq-icon-frame .seq-icon-num{
+  position:absolute;font-size:10px;font-weight:700;color:var(--text2);
+  line-height:1;
+}
+.seq-icon-segment{width:26px;height:14px;color:var(--text3);flex-shrink:0;}
+.seq-icon-seg-num{
+  font-size:9px;font-weight:700;color:var(--text2);letter-spacing:.4px;
+  line-height:1;white-space:nowrap;
+}
 /* v8z4b16c — Hierarquia tipográfica revista. Os três títulos principais
    (Trechos, Pausas por frame, Acabamento) ficam visualmente equivalentes
    entre si, com corpo maior e peso forte. Subtítulos internos
@@ -2588,13 +2654,20 @@ body.cust-open #toolbar{
   background:var(--surface2);border:1.5px solid var(--border2);
   color:var(--text2);font-size:11px;font-weight:700;
   -webkit-user-select:none;user-select:none;min-height:34px;
+  display:flex;align-items:center;justify-content:center;gap:5px;
 }
 .cena1-filter.active{border-color:var(--accent);color:var(--accent);}
+/* v8z4b29BS — ícones nos filtros Frames/Trechos (mesma linguagem visual da
+   listagem da Cena 1), apenas decorativos — não competem com as abas
+   principais Tempo/Preferências (.ds-tab-bar). */
+.cena1-filter .seq-icon-frame,
+.cena1-filter .seq-icon-segment{width:16px;height:16px;color:inherit;}
+.cena1-filter .seq-icon-frame .seq-icon-num{font-size:8px;}
+.cena1-filter.active .seq-icon-frame,
+.cena1-filter.active .seq-icon-segment{color:var(--accent);}
 /* Filtro aplicado via classe no container (sem estado ambíguo). */
 .cena1-seq.flt-frames [data-seg-row]{display:none !important;}
 .cena1-seq.flt-segs [data-frame-pause-row]{display:none !important;}
-/* Distinção visual leve entre linha de frame (pausa) e linha de trecho. */
-#cena1Seq [data-seg-row] > .dur-edit-label{color:var(--text2);}
 .prefs-note{
   font-size:10px;color:var(--text3);line-height:1.45;
   margin:10px 2px 2px;
@@ -2665,6 +2738,9 @@ body.cust-open #toolbar{
 #cena1Seq.global-synced [data-frame-pause-row] .dur-edit-value{
   color:var(--text3) !important;
 }
+#cena1Seq.global-synced [data-frame-pause-row] .dur-edit-icon-label{
+  opacity:.45;
+}
 .dur-edit-row.partial-synced .dur-slider{
   filter:grayscale(1);
   opacity:.45;
@@ -2680,6 +2756,9 @@ body.cust-open #toolbar{
 .dur-edit-row.partial-synced .dur-edit-label,
 .dur-edit-row.partial-synced .dur-edit-value{
   color:var(--text3) !important;
+}
+.dur-edit-row.partial-synced .dur-edit-icon-label{
+  opacity:.45;
 }
 /* v8z4b15z — track ligeiramente mais grossa para conforto visual. */
 .dur-slider{
@@ -2910,6 +2989,20 @@ body.cust-open #toolbar{
   <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="12" r="10"/>
     <polyline points="12 6 12 12 16 14"/>
+  </symbol>
+  <!-- v8z4b29BS — i-seq-frame: moldura de frame (usada com o número do frame
+       sobreposto via .seq-icon-num) na lista de Edição de Tempo e no filtro
+       "Frames". -->
+  <symbol id="i-seq-frame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="4"/>
+  </symbol>
+  <!-- v8z4b29BS — i-seq-segment: trecho representado como segmento com dois
+       círculos nas extremidades, usado na lista de Edição de Tempo (com o
+       número do trecho acima) e no filtro "Trechos". -->
+  <symbol id="i-seq-segment" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="5" cy="12" r="2.5"/>
+    <line x1="7.5" y1="12" x2="16.5" y2="12"/>
+    <circle cx="19" cy="12" r="2.5"/>
   </symbol>
   <!-- v8z4b29BK — i-director-chair (Iconoir) substitui o ícone anterior do item
        Tempo/Duração na 4ª linha do menu inferior. -->
@@ -3445,7 +3538,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BR</span><br><span id="appVersionNameText">v8z4b29BR</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BS</span><br><span id="appVersionNameText">v8z4b29BS</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -3761,48 +3854,19 @@ body.cust-open #toolbar{
     </div>
   </div>
 
-  <!-- v8z4b29BR — Área rolável: handle/título/check ficam fixos acima; todo
-       o resto (resumo, Velocidade Constante, abas e conteúdo) rola junto. -->
+  <!-- v8z4b29BS — Área rolável: handle/título/check ficam fixos acima; todo
+       o resto (abas e conteúdo) rola junto. As abas Tempo/Preferências agora
+       abrem o conteúdo (são a navegação principal, ficam logo abaixo do
+       cabeçalho); resumo e Velocidade Constante passaram para DENTRO da aba
+       Tempo (não aparecem mais em Preferências nem fora das abas). -->
   <div class="dur-scroll-area">
-
-  <!-- v8z4b15y — TOPO 100% leitura. Não há sliders nem botões editáveis aqui.
-       Mostra: duração total (soma final) + breakdown por categoria.
-       v8z4b29BP — resumo fixo: Duração Total / Trechos / Pausas / Acabamento.
-       v8z4b29BR — passou a rolar com o restante do conteúdo. -->
-  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;">
-    <span id="durNum" style="font-size:30px;font-weight:700;color:var(--accent);min-width:64px;flex-shrink:0;letter-spacing:-1px;">6s</span>
-    <span style="font-size:11px;color:var(--text3);line-height:1.3;">Duração total · soma de trechos + pausas + acabamento</span>
-  </div>
-  <div id="durationSummaryTop" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;padding:14px;border-radius:12px;background:var(--surface2);">
-    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);"><span>Duração Total</span><span id="durSummaryTotal" style="font-weight:700;color:var(--accent);">0.0s</span></div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Trechos</span><span id="durSummaryMove">0.0s</span></div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Pausas</span><span id="durSummaryPauses">0.0s</span></div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>Acabamento</span><span id="durSummaryFinish">0.0s</span></div>
-  </div>
-
-  <!-- v8z4b29BQ — Velocidade Constante: controle TEMPORAL (altera a
-       distribuição/cálculo dos tempos dos trechos), por isso vive na aba
-       Tempo e não em Preferências. setSegmentTimingMode / syncTimingModeUI
-       inalterados (id-based).
-       v8z4b29BR — passou a rolar com o restante do conteúdo. -->
-  <div class="dur-velocity-block">
-    <div class="dur-sublabel-row" style="padding-top:0;">
-      <span class="dur-sublabel">Velocidade Constante</span>
-    </div>
-    <div style="display:flex;gap:8px;margin:6px 0 2px;" id="segTimingModeRow">
-      <button id="btnTimingManual" onclick="setSegmentTimingMode('manual')"
-        style="flex:1;padding:9px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--accent);color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;line-height:1.2;">Manual</button>
-      <button id="btnTimingConstant" onclick="setSegmentTimingMode('constant-speed')"
-        style="flex:1;padding:9px 4px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;line-height:1.2;">Velocidade constante</button>
-    </div>
-    <div id="segTimingHint" style="display:none;font-size:10px;color:var(--text3);padding:2px 0 0 2px;">Distribui o tempo conforme o percurso curvo.</div>
-  </div>
 
   <!-- v8z4b29BP — Abas principais: Tempo (padrão) e Preferências. Trocar de
        aba não fecha o painel nem altera a seleção de frame/trecho.
        v8z4b29BQ — design system de abas (.ds-tab-bar/.ds-tab): texto grande,
        aba ativa com sublinhado, divisória fina abaixo do conjunto.
-       v8z4b29BR — passou a rolar com o restante do conteúdo. -->
+       v8z4b29BS — abas voltam a ser o primeiro elemento do conteúdo
+       (navegação principal, acima do resumo). -->
   <div class="ds-tab-bar" role="tablist" aria-label="Edição de Tempo">
     <button id="durTabBtnTempo" class="ds-tab ds-tab-active" type="button" role="tab" aria-selected="true" onclick="switchDurTab('tempo')">Tempo</button>
     <button id="durTabBtnPrefs" class="ds-tab" type="button" role="tab" aria-selected="false" onclick="switchDurTab('prefs')">Preferências</button>
@@ -3810,6 +3874,41 @@ body.cust-open #toolbar{
 
   <!-- ════════════════ ABA TEMPO ════════════════ -->
   <div id="durTabTempo" class="dur-tab-panel" role="tabpanel" aria-labelledby="durTabBtnTempo">
+
+  <!-- v8z4b15y — TOPO 100% leitura. Não há sliders nem botões editáveis aqui.
+       Mostra: duração total (soma final) + breakdown por categoria.
+       v8z4b29BP — resumo fixo: Duração Total / Trechos / Pausas / Acabamento.
+       v8z4b29BS — resumo vive exclusivamente dentro da aba Tempo (não
+       duplicado em Preferências) e ganha contêiner mais marcado
+       (.dur-summary-box), sem alterar os cálculos. -->
+  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;">
+    <span id="durNum" style="font-size:30px;font-weight:700;color:var(--accent);min-width:64px;flex-shrink:0;letter-spacing:-1px;">6s</span>
+    <span style="font-size:11px;color:var(--text3);line-height:1.3;">Duração total · soma de trechos + pausas + acabamento</span>
+  </div>
+  <div id="durationSummaryTop" class="dur-summary-box">
+    <div class="dur-summary-row dur-summary-row-main"><span>Duração Total</span><span id="durSummaryTotal" style="font-weight:700;color:var(--accent);">0.0s</span></div>
+    <div class="dur-summary-row"><span>Trechos</span><span id="durSummaryMove">0.0s</span></div>
+    <div class="dur-summary-row"><span>Pausas</span><span id="durSummaryPauses">0.0s</span></div>
+    <div class="dur-summary-row"><span>Acabamento</span><span id="durSummaryFinish">0.0s</span></div>
+  </div>
+
+  <!-- v8z4b29BQ — Velocidade Constante: controle TEMPORAL (altera a
+       distribuição/cálculo dos tempos dos trechos), por isso vive na aba
+       Tempo e não em Preferências. setSegmentTimingMode / syncTimingModeUI
+       inalterados (id-based).
+       v8z4b29BS — vira toggle simples (desligado = Manual, ligado =
+       Velocidade Constante), economizando espaço vertical. Lógica e
+       cálculo inalterados. -->
+  <div class="dur-velocity-block">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label class="smart-toggle" title="Velocidade Constante">
+        <input type="checkbox" id="constSpeedToggle" onchange="setSegmentTimingMode(this.checked ? 'constant-speed' : 'manual')">
+        <span class="smart-toggle-track"></span>
+      </label>
+      <span class="dur-sublabel" style="flex:1;cursor:pointer;" onclick="document.getElementById('constSpeedToggle').click();">Velocidade Constante</span>
+    </div>
+    <div id="segTimingHint" style="display:none;font-size:10px;color:var(--text3);padding:6px 0 0 2px;">Distribui o tempo conforme o percurso curvo.</div>
+  </div>
 
     <!-- v8z4b29BP — SEQUÊNCIA POR CENA. Nesta versão há apenas a Cena 1 como
          agrupamento visual preparatório (multi-cena NÃO é implementada de
@@ -3822,8 +3921,14 @@ body.cust-open #toolbar{
       <!-- Filtro de visualização (radio simples — sem estado ambíguo). -->
       <div id="cena1Filters" class="cena1-filters" role="group" aria-label="Filtrar sequência">
         <button class="cena1-filter active" type="button" data-filter="all" onclick="setCena1Filter('all')">Todos</button>
-        <button class="cena1-filter" type="button" data-filter="frames" onclick="setCena1Filter('frames')">Frames</button>
-        <button class="cena1-filter" type="button" data-filter="segs" onclick="setCena1Filter('segs')">Trechos</button>
+        <button class="cena1-filter" type="button" data-filter="frames" onclick="setCena1Filter('frames')">
+          <svg class="seq-icon-frame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-seq-frame"></use></svg>
+          Frames
+        </button>
+        <button class="cena1-filter" type="button" data-filter="segs" onclick="setCena1Filter('segs')">
+          <svg class="seq-icon-segment" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-seq-segment"></use></svg>
+          Trechos
+        </button>
       </div>
       <!-- Lista intercalada (frames + trechos). Sliders escrevem nos MESMOS
            estados (framePauses[] / segDurations[]) dos controles globais. -->
@@ -3986,24 +4091,38 @@ body.cust-open #toolbar{
 <canvas id="recCanvas" style="display:none;"></canvas>
 
 
-<!-- PANEL: Tempo do trecho — v8z4b29BR
+<!-- PANEL: Tempo do trecho — v8z4b29BS
      Painel focado apenas em duração/tempo do trecho selecionado, aberto pelo
-     botão "Tempo" do menu contextual de trecho. Mantém apenas identificação
-     do trecho + slider de duração + valor em segundos (mesmos elementos
+     botão "Tempo" do menu contextual de trecho. Segue o mesmo padrão visual
+     compacto dos demais painéis contextuais (.dur-header-row: handle, título
+     + check na mesma linha, sem grande área vazia). Mantém identificação do
+     trecho + slider de duração + valor em segundos (mesmos elementos
      id-based easePanelSegSlider/easePanelSegVal — lógica de duração
-     inalterada). Velocidade, Rotação, Escala, Movimento Inteligente, curvas e
-     Tremor vivem no painel Movimento (panelEase). -->
+     inalterada) + ajuste global de duração (segGlobalMode/setSegEaseAll,
+     mesmo padrão "Aplicar a todos" do painel Movimento). Velocidade, Rotação,
+     Escala, Movimento Inteligente, curvas e Tremor continuam exclusivamente
+     no painel Movimento (panelEase). -->
 <div class="float-panel" id="panelSegTime">
   <div class="panel-handle" onclick="closeAll()"></div>
-  <button type="button" class="panel-close-check" onclick="closeAll()" aria-label="Confirmar e fechar Tempo do trecho" title="Confirmar e fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
-  <!-- Título do segmento centralizado -->
-  <div class="panel-title" id="panelSegTimeTitle" style="text-align:center;margin-bottom:14px;">Seg.</div>
+  <div class="dur-header-row">
+    <div class="panel-title" id="panelSegTimeTitle">Seg.</div>
+    <button type="button" class="panel-close-check" onclick="closeAll()" aria-label="Confirmar e fechar Tempo do trecho" title="Confirmar e fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+  </div>
 
   <!-- Bloco DURAÇÃO -->
-  <div class="ease-section-label">Duração</div>
-  <div class="ease-dur-block" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-    <input type="range" class="dur-slider" id="easePanelSegSlider" min="0" max="20" step="0.1" value="4" style="flex:1;">
-    <span id="easePanelSegVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;flex-shrink:0;">4.0s</span>
+  <div class="ease-channel-block" style="padding:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span class="ease-section-label" style="margin:0;">Duração</span>
+      <div id="segTimeGlobeLock" onclick="setSegEaseAll()" title="Aplicar duração a todos os trechos"
+        style="display:flex;align-items:center;gap:5px;opacity:0.6;cursor:pointer;color:var(--text3);padding:4px 6px;border-radius:8px;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
+        <span style="font-size:10px;font-weight:700;letter-spacing:.4px;">Todos os trechos</span>
+      </div>
+    </div>
+    <div class="ease-dur-block" style="display:flex;align-items:center;gap:8px;">
+      <input type="range" class="dur-slider" id="easePanelSegSlider" min="0" max="20" step="0.1" value="4" style="flex:1;">
+      <span id="easePanelSegVal" style="font-size:13px;font-weight:700;color:var(--accent);min-width:36px;text-align:right;flex-shrink:0;">4.0s</span>
+    </div>
   </div>
 </div>
 
@@ -6098,8 +6217,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BR';
-const APP_VERSION_NAME = 'v8z4b29BR';
+const APP_VERSION = 'v8z4b29BS';
+const APP_VERSION_NAME = 'v8z4b29BS';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -19277,6 +19396,7 @@ function initSegTimePanel() {
   const { seg, isLoopSeg, title } = _resolveActiveSegInfo();
   const titleEl = document.getElementById('panelSegTimeTitle');
   if (titleEl) titleEl.textContent = title;
+  updateSegGlobalButton();
 
   // Duração do segmento
   const segDur = isLoopSeg ? loopDuration : getSegDuration(seg);
@@ -19405,6 +19525,9 @@ function updateSegGlobalButton() {
   paintGlobe(document.getElementById('easeGlobeLock'),  movImplicit);
   paintGlobe(document.getElementById('easeGlobeRot'),   rotImplicit);
   paintGlobe(document.getElementById('easeGlobeScale'), scaleImplicit);
+  // v8z4b29BS — "Aplicar a todos os trechos" no painel Tempo do trecho
+  // (#panelSegTime) reaproveita o mesmo segGlobalMode; nunca é "implícito".
+  paintGlobe(document.getElementById('segTimeGlobeLock'), false);
 
   // Mini-painel contextual de segmento
   const mini = document.getElementById('segEaseGlobalLockMini');
@@ -20045,10 +20168,13 @@ function buildFramePauseRow(i) {
   // O slider é filho DIRETO do row; sem wrapper, sem inline width,
   // sem grid-template — toda a largura útil vai para o thumb.
   row.className = 'dur-edit-row';
+  // v8z4b29BS — ícone de frame com o número do frame sobreposto (em vez do
+  // label textual "F1"), reaproveitando i-seq-frame.
   const lbl = document.createElement('span');
   lbl.dataset.frameLabel = '';
-  lbl.className = 'dur-edit-label';
-  lbl.textContent = 'F' + (i + 1);
+  lbl.className = 'dur-edit-icon-label';
+  lbl.title = 'Frame ' + (i + 1);
+  lbl.innerHTML = '<span class="seq-icon-frame"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-seq-frame"></use></svg><span class="seq-icon-num">' + (i + 1) + '</span></span>';
   const slider = document.createElement('input');
   slider.type = 'range';
   slider.className = 'dur-slider';
@@ -22425,21 +22551,15 @@ function setSegmentTimingMode(mode) {
   markProjectDirty('timing-mode');
 }
 
-// Sincroniza a UI dos botões de modo e o estado dos sliders individuais.
+// Sincroniza a UI do toggle de modo e o estado dos sliders individuais.
+// v8z4b29BS — Velocidade Constante virou toggle simples (#constSpeedToggle):
+// desligado = manual, ligado = constant-speed. Lógica/cálculo inalterados.
 function syncTimingModeUI() {
-  const manual = document.getElementById('btnTimingManual');
-  const constant = document.getElementById('btnTimingConstant');
+  const toggle = document.getElementById('constSpeedToggle');
   const hint = document.getElementById('segTimingHint');
   const isConstant = segmentTimingMode === 'constant-speed';
 
-  if (manual) {
-    manual.style.borderColor = !isConstant ? 'var(--accent)' : 'var(--border2)';
-    manual.style.color = !isConstant ? 'var(--accent)' : 'var(--text2)';
-  }
-  if (constant) {
-    constant.style.borderColor = isConstant ? 'var(--accent)' : 'var(--border2)';
-    constant.style.color = isConstant ? 'var(--accent)' : 'var(--text2)';
-  }
+  if (toggle) toggle.checked = isConstant;
   if (hint) hint.style.display = isConstant ? 'block' : 'none';
 
   // v8z4b18e: sliders permanecem habilitados; arrastar qualquer um desliga
@@ -22451,7 +22571,7 @@ function syncTimingModeUI() {
     container.querySelectorAll('[data-seg-row] input[type="range"]').forEach(sl => {
       sl.style.opacity = isConstant ? '0.4' : '';
     });
-    container.querySelectorAll('[data-seg-row] .dur-edit-label, [data-seg-row] .dur-edit-value').forEach(el => {
+    container.querySelectorAll('[data-seg-row] .dur-edit-label, [data-seg-row] .dur-edit-icon-label, [data-seg-row] .dur-edit-value').forEach(el => {
       el.style.opacity = isConstant ? '0.4' : '';
     });
   }
@@ -22510,9 +22630,12 @@ function buildSegDurationRow(seg) {
   row.dataset.segRow = '';
   row.dataset.segIndex = seg.isLoop ? 'loop' : String(seg.from);
   if (seg.isLoop) row.id = 'segRowLoop';
+  // v8z4b29BS — número do trecho (ex.: "1–2") acima do ícone de trecho
+  // (segmento com dois círculos nas extremidades), em vez do label textual.
   const lbl = document.createElement('span');
-  lbl.className = 'dur-edit-label';
-  lbl.textContent = seg.label;
+  lbl.className = 'dur-edit-icon-label';
+  lbl.title = 'Trecho ' + seg.label;
+  lbl.innerHTML = '<span class="seq-icon-seg-num">' + seg.label + '</span><svg class="seq-icon-segment" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-seq-segment"></use></svg>';
   const slider = document.createElement('input');
   slider.type = 'range';
   slider.className = 'dur-slider';

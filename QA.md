@@ -1,3 +1,21 @@
+# QA pendente — v8z4b29BS: padroniza painel Tempo do trecho, reorganiza Edição de Tempo e adiciona ícones de frame/trecho
+
+> Base: v8z4b29BR (aprovada — cabeçalho fixo reduzido + separação Tempo/Movimento do trecho + Tremor Global recuperado no painel Movimento). Esta versão é uma **correção visual/UX**: não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/tremor.
+
+## Escopo v8z4b29BS
+
+- **Painel Tempo do trecho** (`#panelSegTime`): adota o mesmo padrão visual dos painéis compactos — `.dur-header-row` (handle + título "Seg. X-Y" + check na mesma linha) + bloco único "Duração" (slider/valor inalterados), sem área vazia.
+- **Ajuste global de duração**: novo controle "Aplicar a todos os trechos" (`#segTimeGlobeLock`, ícone `i-globe-lock`) reaproveita `segGlobalMode`/`setSegEaseAll()`/`paintGlobe()` já existentes — afeta apenas `segDurations[]`/`loopDuration`, sincronizado com os ícones equivalentes do painel Movimento.
+- **Painel Edição de Tempo**: abas Tempo/Preferências voltam a ser o primeiro elemento da área rolável (navegação principal). Resumo de duração (`#durationSummaryTop`) vive exclusivamente dentro da aba Tempo, agora em um contêiner destacado (`.dur-summary-box`/`.dur-summary-row-main`), seguido por Velocidade Constante, Cena 1 (filtro + lista) e blocos globais.
+- **Velocidade Constante**: convertida de dois botões (Manual/Velocidade constante) para um toggle simples (`#constSpeedToggle`, padrão `.smart-toggle`). `setSegmentTimingMode`/lógica de cálculo inalterados; `syncTimingModeUI()` reescrito apenas para refletir o novo controle.
+- **Ícones de frame/trecho**: lista de Cena 1 ganha ícone de frame com número dentro do ícone (`i-seq-frame`) e ícone de trecho com dois círculos + número do trecho (`i-seq-segment`). Mesmos ícones (reduzidos) aparecem nos filtros Frames/Trechos; "Todos" permanece sem ícone. Sliders, ids e sincronização de estado inalterados.
+- Design system de abas (`.ds-tab-bar`/`.ds-tab`/`.ds-tab-active`) preservado (linha grossa ciano na ativa, linha fina nas inativas, sem pill/fundo novo).
+- Preserva painel Movimento (`#panelEase`), Tremor (Global e por trecho), Stage, timeline, curvas/Bézier, seleção, Preview, export MP4, JSON (antigo e novo), templates, formato, launcher, logo, ícone iOS, ícones Iconoir e o motor de renderização.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BS.md`.
+
+---
+
 # QA pendente — v8z4b29BR: reduz cabeçalho fixo, separa Tempo/Movimento do trecho e recupera Tremor Global
 
 > Base: v8z4b29BQ (aprovada — cabeçalho fixo + design system de abas no painel Edição de Tempo). Esta versão é uma **correção visual/UX** dos painéis: não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/tremor.
