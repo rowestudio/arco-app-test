@@ -1,3 +1,21 @@
+# QA pendente — v8z4b29BJ: ajustes finos de UI/UX e ícones
+
+> Base: v8z4b29BI (aprovada — launcher separado do Stage, fluxo de Novo Projeto mais direto, bloqueio da interface durante confirmação/cancelamento de frame e criação funcional de projeto).
+
+## Escopo v8z4b29BJ
+
+- Reposiciona o aviso "Confirme ou cancele o frame atual." para uma área mais segura do Stage, sem sobrepor o pill de zoom nem colidir com o topo.
+- Tocar em qualquer ação do menu superior (Voltar, Arquivos, Visualizar, Preview, Undo/Redo) fecha o painel de Duração/Tempo, se estiver aberto, antes de executar a ação.
+- Alinha à esquerda os ícones contextuais de trecho (Tempo, Movimento) na 4ª linha do menu inferior, com o mesmo ritmo/compacidade dos ícones contextuais de frame.
+- Aumenta levemente (≈2px) a largura visual de frames e trechos na faixa/timeline, sem alterar snap, posição das bolinhas, altura da timeline ou lógica de seleção.
+- Troca o ícone de Arquivos no menu superior (claquete → rolo de filme), preservando função, tamanho, alinhamento e área de toque.
+- Troca o ícone de Tempo/Duração na 4ª linha do menu inferior (relógio → cadeira de diretor), preservando função, tamanho, alinhamento e área de toque.
+- Preserva launcher → Novo Projeto → editor, Stage, timeline, templates, Preview/export, JSON e motor.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BJ.md`.
+
+---
+
 # QA pendente — v8z4b29BI: remove etapa "Imagem" do Novo Projeto e bloqueia UI durante criação de frame
 
 > Base: v8z4b29BH (não aprovada — duas pendências de fluxo/UX: etapa "Imagem" extra no Novo Projeto, e menus abrindo durante a criação/inserção de frame).
