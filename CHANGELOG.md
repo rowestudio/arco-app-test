@@ -1,3 +1,9 @@
+# v8z4b29BK
+
+- feat(icon): substitui ícone de Arquivos do topo por Iconoir cinema-old.
+- feat(icon): substitui ícone de Tempo/Duração da 4ª linha por Iconoir director-chair.
+- preserve: mantém layout, Stage, timeline, Preview/export, JSON e motor sem alterações.
+
 # v8z4b29BJ
 
 - fix(ui): reposiciona aviso de confirmação/cancelamento de frame para longe do topo e do pill de zoom.
