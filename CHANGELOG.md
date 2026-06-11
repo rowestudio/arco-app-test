@@ -1,3 +1,11 @@
+# v8z4b29BQ
+
+- fix(ui): fixa cabeçalho, resumo, Velocidade Constante e abas no painel Edição de Tempo — apenas a lista de frames/trechos abaixo das abas rola.
+- fix(ui): reposiciona Velocidade Constante como controle temporal (área fixa da aba Tempo), fora de Preferências.
+- feat(ui): consolida padrão visual de abas (`.ds-tab-bar` / `.ds-tab`) — texto grande, aba ativa com sublinhado e divisória fina abaixo do conjunto.
+- fix(ui): aplica o padrão de abas ao painel contextual de trechos (Velocidade / Rotação / Escala).
+- preserve: mantém Stage, timeline, Tremor (Global e por trecho), Preview/export, JSON e motor sem alterações funcionais.
+
 # v8z4b29BP
 
 - feat(ui): reorganiza o painel "Edição" em **Edição de Tempo**, com abas **Tempo** e **Preferências**.
