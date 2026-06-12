@@ -1,3 +1,18 @@
+# QA pendente — v8z4b29BT: aumenta ícones de frame/trecho no painel Edição de Tempo
+
+> Base: v8z4b29BS (aprovada — reorganização do painel Edição de Tempo, ícones de frame/trecho na lista e nos filtros, painel contextual de Tempo do trecho compactado, resumo/Velocidade Constante ajustados). Esta versão é um **ajuste visual pontual**: não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/tremor.
+
+## Escopo v8z4b29BT
+
+- **Ícones de frame e trecho na lista de Edição de Tempo**: `.seq-icon-frame` e `.seq-icon-segment` (e seus números `.seq-icon-num`/`.seq-icon-seg-num`) aumentados em ~50% (26px → 39px / 26×14px → 39×21px), para melhorar a legibilidade em projetos com muitos frames (20, 30 ou mais) e com números de dois dígitos (10, 12, 24, 30, 31, 30–31).
+- **Coluna dos ícones**: `.dur-edit-icon-label` ampliada (34px → 50px) para acomodar o ícone maior sem encostar no slider e sem empurrar o valor em segundos para fora da área visível.
+- **Ícones dos filtros Frames/Trechos**: ajustados proporcionalmente (16px → 20px), sem alterar a altura dos botões nem confundir com as abas Tempo/Preferências.
+- Preserva painel Edição de Tempo (estrutura/lógica), painel contextual de Tempo/Movimento do trecho, Tremor (Global e por trecho), Stage, timeline, curvas/Bézier, seleção, Preview, export MP4, JSON (antigo e novo), templates, formato, launcher, logo, ícone iOS e o motor de renderização.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BT.md`.
+
+---
+
 # QA pendente — v8z4b29BS: padroniza painel Tempo do trecho, reorganiza Edição de Tempo e adiciona ícones de frame/trecho
 
 > Base: v8z4b29BR (aprovada — cabeçalho fixo reduzido + separação Tempo/Movimento do trecho + Tremor Global recuperado no painel Movimento). Esta versão é uma **correção visual/UX**: não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/tremor.
