@@ -1,3 +1,23 @@
+# QA pendente — v8z4b29BX: auditoria visual + padronização de componentes (lista de frames/trechos, botões, campos, filtros e textos da Edição de Tempo)
+
+> Base: v8z4b29BW. Esta versão é **auditoria visual + padronização de componentes**, sem redesign, sem mudança de fluxo e sem alteração de lógica (Tremor inalterado nesta versão). Não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/movimento inteligente/velocidade constante.
+
+## Escopo v8z4b29BX
+
+- **fix(ui): lista de frames/trechos padronizada** — números (frame/trecho) compartilham corpo/peso/cor (`--text2`, 11px); ícones (frame/trecho) compartilham cor base (`--text3`) e espessura de traço; coluna de identificação (`.dur-edit-icon-label`) com largura única (56px).
+- **fix(ui): número + ícone de trecho como um único componente** — `.dur-edit-icon-label` em coluna central, `gap` 2px, `line-height:1`; ícone de trecho sem distorção (símbolo `#i-seq-segment` viewBox 24×24 → 32×16, círculos redondos; `.seq-icon-segment` 56×28px).
+- **tweak(ui): ícone de trecho no filtro "Trechos" maior e reconhecível** — `.cena1-filter .seq-icon-segment` 28×18px → 34×17px (sem distorção), mesma família do ícone de "Frames"; altura do botão preservada.
+- **tweak(ui): altura máxima oficial de botões grandes** — `--ctrl-lg-h: 40px` (referência = linha Todos/Frames/Trechos); `.dur-subitem-action` 48px → 40px e `.finish-chip` 46px → 40px.
+- **tweak(ui): famílias visuais diferenciadas** — botões grandes de ação com borda 1.5px + `:active`; botões pequenos contextuais (`#custBarContent .chip`: -5%/+5%/Reset) com fundo/borda próprios (`--surface-action`/`--border-action`), menores e uniformes; campo "Intervalo padrão" com tokens de campo (`--surface-field`/`--border-field`); filtros/abas mantêm `--surface2`/`--border2`.
+- **tweak(ui): textos explicativos maiores** — `.prefs-note` 10px → 12px (line-height 1.5); `#segTimingHint` 10px → 12px.
+- **fix(ui): Reset + Global alinhados** — `#custGlobalLock` à direita (`align-self:flex-end`), no eixo do Reset.
+- **verify(frame/ui)**: reconfirma Pausa global sem travamento (BW) e "Novo Projeto" sem quebra de linha no menu (BW) — sem alteração de lógica.
+- Preserva Tremor (Global/Desligado/Personalizado, Global e por trecho), Movimento Inteligente, Velocidade Constante, Stage, timeline, curvas/Bézier, seleção, Preview, export MP4, JSON (antigo e novo), templates, formato, launcher, logo, ícone iOS e o motor de renderização.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BX.md`.
+
+---
+
 # QA pendente — v8z4b29BW: corrige travamento da Pausa global, "Novo Projeto" no menu, ícones de trecho e padronização visual da Edição de Tempo
 
 > Base: v8z4b29BV. Esta versão é uma **correção visual/UX + bug pontual de travamento do slider de Pausa quando "Aplicar a todos" está ativo**: não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/tremor/movimento inteligente/velocidade constante.

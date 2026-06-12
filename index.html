@@ -1,13 +1,29 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BW                                    ║
+║  Versão: v8z4b29BX                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BX                                           ║
+║    fix(ui): padroniza lista de frames/trechos no     ║
+║              painel Edição de Tempo (cor/espessura)  ║
+║    fix(ui): número + ícone de trecho como um único   ║
+║              componente; ícone sem distorção         ║
+║    tweak(ui): ícone de trecho maior/reconhecível no  ║
+║              filtro "Trechos"                        ║
+║    tweak(ui): altura máxima oficial de botões        ║
+║              grandes (= Todos/Frames/Trechos)        ║
+║    tweak(ui): diferencia botões grandes, botões      ║
+║              pequenos contextuais, campos e filtros  ║
+║    tweak(ui): textos explicativos maiores/legíveis   ║
+║    fix(ui): alinha Reset/Global em bloco à direita   ║
+║    preserve: Tremor, Movimento Inteligente,          ║
+║              Velocidade Constante, Stage, timeline,  ║
+║              Preview/export, JSON e motor            ║
 ║  v8z4b29BW                                           ║
 ║    fix(frame): corrige travamento do slider de       ║
 ║              Pausa com "Aplicar a todos" ativo       ║
@@ -993,6 +1009,15 @@
      levemente mais claros que o fundo do painel (--surface2/--bg, ambos
      #3c3c3b), para diferenciá-los de abas/filtros sem mudar a paleta. */
   --surface-action:#48484c; --border-action:#6e6e72;
+  /* v8z4b29BX — alturas oficiais de controle. A linha de filtros
+     (Todos/Frames/Trechos) é a referência: nenhum botão grande pode
+     ultrapassá-la. Botões pequenos contextuais (-5%/+5%/Reset) formam
+     família própria, claramente menor. */
+  --ctrl-lg-h:40px; --ctrl-sm-h:30px;
+  /* v8z4b29BX — campos editáveis: mesmo tom de fundo dos botões de ação,
+     porém com borda própria (mais clara) para parecerem "afundados"
+     (editáveis), e não pressionáveis como os botões. */
+  --surface-field:#454547; --border-field:#7a7a7e;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{
@@ -1785,7 +1810,7 @@ body.align-submenu-open .lower-selection-actions{visibility:hidden;}
 .mid-bar.timeline-grid #custBarContent > .cust-content{justify-content:center;overflow:visible;}
 .mid-bar.timeline-grid #custBarContent .cust-content > div{min-height:0;}
 .mid-bar.timeline-grid #custBarContent .cust-content > div + div{margin-top:8px !important;}
-.mid-bar.timeline-grid #custBarContent .chip{padding:4px 10px !important;min-height:24px !important;font-size:12px !important;line-height:1 !important;}
+.mid-bar.timeline-grid #custBarContent .chip{padding:4px 12px !important;min-height:26px !important;font-size:12px !important;line-height:1 !important;background:var(--surface-action) !important;border:1.5px solid var(--border-action) !important;}
 .mid-bar.timeline-grid #custBarContent .dur-slider{height:4px;}
 .mid-bar.timeline-grid #custBarContent .dur-slider::-webkit-slider-thumb{width:24px;height:24px;}
 .mid-bar.timeline-grid #custBarContent .pos-cols{gap:6px !important;}
@@ -2109,7 +2134,12 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
    disponível (~58px em iPhone com home bar).
    v8z4b16m — Gap sobe mais 5px (10→15px): microajuste final para que
    a bolinha do slider e os botões não fiquem encavalados em iPhone/Safari. */
-#custBarContent .chip{padding:4px 12px !important;min-height:24px !important;font-size:13px !important;}
+/* v8z4b29BX — botões pequenos contextuais (-5%/+5%/Reset): família própria,
+   menor que os botões grandes, mas com presença clara — fundo destacado e
+   borda mais perceptível para parecerem clicáveis (não tag/rótulo). Altura
+   uniforme entre eles. */
+#custBarContent .chip{padding:0 14px !important;min-height:var(--ctrl-sm-h) !important;font-size:13px !important;background:var(--surface-action) !important;border:1.5px solid var(--border-action) !important;}
+#custBarContent .chip.active{background:rgba(4,255,242,.1) !important;border-color:var(--accent) !important;}
 #custBarContent .cust-content > div + div{margin-top:15px !important;}
 
 /* FLOAT PANEL
@@ -2684,8 +2714,11 @@ body.cust-open #toolbar{
    zerado entre número e ícone — os dois passam a ser percebidos como um
    único símbolo composto (número acima, ícone abaixo, sem sobrepor). */
 .dur-edit-row > .dur-edit-icon-label{
+  /* v8z4b29BX — pilha "número + ícone" como um único componente: coluna
+     central, gap vertical mínimo (2px), line-height:1 e sem margens herdadas,
+     para que número e ícone sejam percebidos como um símbolo composto. */
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  min-width:56px;flex-shrink:0;gap:0;
+  min-width:56px;flex-shrink:0;gap:2px;line-height:1;
 }
 /* v8z4b29BT — ícones de frame/trecho ~50% maiores (26px → 39px) para
    melhor leitura com números de dois dígitos (10, 24, 30, 31...).
@@ -2697,7 +2730,9 @@ body.cust-open #toolbar{
 }
 .seq-icon-frame svg{width:100%;height:100%;}
 .seq-icon-frame .seq-icon-num{
-  position:absolute;font-size:10px;font-weight:700;color:var(--text2);
+  /* v8z4b29BX — número do frame e número do trecho compartilham corpo, peso
+     e cor (identificação discreta, nunca competindo com o valor de tempo). */
+  position:absolute;font-size:11px;font-weight:700;color:var(--text2);
   line-height:1;
 }
 /* v8z4b29BU — ícone de trecho ~2x maior (39×21 → 78×42) para equilibrar
@@ -2705,8 +2740,12 @@ body.cust-open #toolbar{
    (10–11, 24–25, 30–31...). Número do trecho continua acima do ícone.
    v8z4b29BV — ícone reduzido a ~80% (78×42 → 62×34), ainda maior que o
    tamanho pré-BU (39×21); número do trecho mais discreto (15px → 11px) e
-   mais próximo do ícone, formando um único bloco visual. */
-.seq-icon-segment{width:62px;height:34px;color:var(--text3);flex-shrink:0;}
+   mais próximo do ícone, formando um único bloco visual.
+   v8z4b29BX — caixa 56×28 (razão 2.0, igual ao novo viewBox 32×16): ocupa
+   exatamente a coluna de identificação (56px), na mesma cor base do ícone de
+   frame (--text3), com círculos redondos e traço de espessura equivalente.
+   Frame e trecho passam a pertencer ao mesmo sistema visual. */
+.seq-icon-segment{width:56px;height:28px;color:var(--text3);flex-shrink:0;}
 .seq-icon-seg-num{
   font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.4px;
   line-height:1;white-space:nowrap;
@@ -2765,10 +2804,15 @@ body.cust-open #toolbar{
 /* Filtros da sequência (radio simples — nunca tudo desligado). */
 .cena1-filters{display:flex;gap:6px;margin-bottom:6px;}
 .cena1-filter{
-  flex:1;padding:7px 4px;border-radius:9px;cursor:pointer;
+  /* v8z4b29BX — esta linha (Todos/Frames/Trechos) é a REFERÊNCIA de altura
+     dos botões grandes (--ctrl-lg-h). Continua sendo um seletor de modo
+     (fundo neutro do painel + borda fina; ativo = ciano), visualmente
+     distinto dos botões de AÇÃO (.dur-subitem-action, fundo destacado). */
+  flex:1;padding:0 4px;border-radius:9px;cursor:pointer;
   background:var(--surface2);border:1.5px solid var(--border2);
   color:var(--text2);font-size:11px;font-weight:700;
-  -webkit-user-select:none;user-select:none;min-height:34px;
+  -webkit-user-select:none;user-select:none;height:var(--ctrl-lg-h);
+  box-sizing:border-box;
   display:flex;align-items:center;justify-content:center;gap:5px;
 }
 .cena1-filter.active{border-color:var(--accent);color:var(--accent);}
@@ -2777,9 +2821,13 @@ body.cust-open #toolbar{
    principais Tempo/Preferências (.ds-tab-bar).
    v8z4b29BW — ícone de trecho (segmento com dois círculos) ganha proporção
    mais larga (28×18, em vez do quadrado 20×20) para ficar mais reconhecível
-   sem aumentar a altura do botão; ícone de frame permanece 20×20. */
+   sem aumentar a altura do botão; ícone de frame permanece 20×20.
+   v8z4b29BX — ícone de trecho aumentado e sem distorção (34×17, razão 2.0):
+   nitidamente reconhecível como o mesmo símbolo da lista (segmento + dois
+   círculos redondos), na mesma família visual do ícone de Frames, sem
+   ultrapassar a altura do botão. */
 .cena1-filter .seq-icon-frame{width:20px;height:20px;color:inherit;}
-.cena1-filter .seq-icon-segment{width:28px;height:18px;color:inherit;}
+.cena1-filter .seq-icon-segment{width:34px;height:17px;color:inherit;}
 .cena1-filter .seq-icon-frame .seq-icon-num{font-size:10px;}
 .cena1-filter.active .seq-icon-frame,
 .cena1-filter.active .seq-icon-segment{color:var(--accent);}
@@ -2787,7 +2835,11 @@ body.cust-open #toolbar{
 .cena1-seq.flt-frames [data-seg-row]{display:none !important;}
 .cena1-seq.flt-segs [data-frame-pause-row]{display:none !important;}
 .prefs-note{
-  font-size:10px;color:var(--text3);line-height:1.45;
+  /* v8z4b29BX — textos explicativos/auxiliares com corpo maior (10px → 12px)
+     e line-height confortável: precisam ser LIDOS, não são microtexto de
+     rodapé. Mantêm cor secundária (--text3), abaixo de título e acima de
+     rodapé na hierarquia. */
+  font-size:12px;color:var(--text3);line-height:1.5;
   margin:10px 2px 2px;
 }
 .dur-subitem{
@@ -2826,13 +2878,16 @@ body.cust-open #toolbar{
    (que continuam em --surface2/--border2) e texto mais afirmativo. Largura
    total preservada. */
 .dur-subitem-action{
-  margin:3px 0;width:100%;height:48px;padding:0;border-radius:10px;
+  /* v8z4b29BX — altura igual à referência Todos/Frames/Trechos (--ctrl-lg-h),
+     sem inflar; borda mais perceptível (1.5px) e fundo destacado para parecer
+     BOTÃO pressionável (não aba/filtro): texto branco, forte, centralizado. */
+  margin:3px 0;width:100%;height:var(--ctrl-lg-h);padding:0;border-radius:10px;
   display:flex;align-items:center;justify-content:center;
-  border:1px solid var(--border-action);background:var(--surface-action);
+  border:1.5px solid var(--border-action);background:var(--surface-action);
   font-size:13px;font-weight:700;color:var(--text);cursor:pointer;
-  box-sizing:border-box;
+  box-sizing:border-box;transition:background .12s;
 }
-.dur-subitem-action:active{background:var(--surface3);}
+.dur-subitem-action:active{background:var(--surface3);border-color:var(--text3);}
 /* v8z4b15z — slider "Tudo" em estado misto: track e thumb dessaturados,
    indicando que os frames têm valores diferentes. Arrastar SAI do estado
    misto e aplica imediatamente a todos os frames. */
@@ -3133,10 +3188,15 @@ body.cust-open #toolbar{
   <!-- v8z4b29BS — i-seq-segment: trecho representado como segmento com dois
        círculos nas extremidades, usado na lista de Edição de Tempo (com o
        número do trecho acima) e no filtro "Trechos". -->
-  <symbol id="i-seq-segment" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="5" cy="12" r="2.5"/>
-    <line x1="7.5" y1="12" x2="16.5" y2="12"/>
-    <circle cx="19" cy="12" r="2.5"/>
+  <!-- v8z4b29BX — viewBox proporcional (32×16, mesma razão da caixa de
+       render) para que os círculos das extremidades fiquem REDONDOS, sem o
+       achatamento que ocorria ao esticar um viewBox 24×24 numa caixa larga.
+       Stroke 1.5 num viewBox 32×16 renderiza com a mesma espessura aparente
+       do ícone de frame (1.5 em 24×24) na lista — padronização de traço. -->
+  <symbol id="i-seq-segment" viewBox="0 0 32 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="5" cy="8" r="2.6"/>
+    <line x1="8" y1="8" x2="24" y2="8"/>
+    <circle cx="27" cy="8" r="2.6"/>
   </symbol>
   <!-- v8z4b29BK — i-director-chair (Iconoir) substitui o ícone anterior do item
        Tempo/Duração na 4ª linha do menu inferior. -->
@@ -3585,7 +3645,7 @@ body.cust-open #toolbar{
          ícone, à direita do conteúdo da aba ativa, válido para a aba
          selecionada no momento (resetado a cada troca de aba). -->
     <button type="button" id="custGlobalLock" onclick="toggleCustGlobalLock()" title="Aplicar a todos os frames" aria-label="Aplicar a todos os frames"
-      style="display:flex;align-items:center;justify-content:center;align-self:center;cursor:pointer;color:rgba(160,160,160,0.7);flex-shrink:0;">
+      style="display:flex;align-items:center;justify-content:center;align-self:flex-end;cursor:pointer;color:rgba(160,160,160,0.7);flex-shrink:0;padding:6px;margin-top:2px;">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe-lock"></use></svg>
     </button>
   </div>
@@ -3681,7 +3741,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BW</span><br><span id="appVersionNameText">v8z4b29BW</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BX</span><br><span id="appVersionNameText">v8z4b29BX</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -4050,7 +4110,7 @@ body.cust-open #toolbar{
         <span class="smart-toggle-track"></span>
       </label>
     </div>
-    <div id="segTimingHint" style="display:none;font-size:10px;color:var(--text3);padding:6px 0 0 2px;">Distribui o tempo conforme o percurso curvo.</div>
+    <div id="segTimingHint" style="display:none;font-size:12px;line-height:1.5;color:var(--text3);padding:6px 0 0 2px;">Distribui o tempo conforme o percurso curvo.</div>
   </div>
 
     <!-- v8z4b29BP — SEQUÊNCIA POR CENA. Nesta versão há apenas a Cena 1 como
@@ -4069,7 +4129,7 @@ body.cust-open #toolbar{
           Frames
         </button>
         <button class="cena1-filter" type="button" data-filter="segs" onclick="setCena1Filter('segs')">
-          <svg class="seq-icon-segment" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-seq-segment"></use></svg>
+          <svg class="seq-icon-segment" viewBox="0 0 32 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-seq-segment"></use></svg>
           Trechos
         </button>
       </div>
@@ -4087,7 +4147,7 @@ body.cust-open #toolbar{
       <!-- (1) Intervalo padrão de novos frames. -->
       <div class="dur-subitem">
         <span class="dur-subitem-label">Intervalo padrão</span>
-        <input id="newSegmentDurationInput" type="number" min="0" step="1" value="2" style="width:84px;padding:10px 12px;border-radius:10px;border:1px solid var(--border-action);background:var(--surface-action);color:var(--text);font-size:14px;font-weight:600;text-align:right;">
+        <input id="newSegmentDurationInput" type="number" min="0" step="1" value="2" style="width:84px;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border-field);background:var(--surface-field);color:var(--text);font-size:14px;font-weight:600;text-align:right;">
       </div>
       <!-- (2) Slider global: tempo total dos intervalos. -->
       <div class="dur-edit-row">
@@ -4136,15 +4196,15 @@ body.cust-open #toolbar{
     <div id="finishSection" class="dur-section-body" style="display:block;padding-top:4px;margin-bottom:2px;">
     <div style="display:flex;gap:8px;margin-bottom:12px;">
       <div class="finish-chip active" data-finish="none" onclick="setFinishing('none')"
-        style="flex:1;padding:12px 4px;text-align:center;border-radius:12px;background:var(--surface2);border:1.5px solid var(--accent);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);min-height:46px;display:flex;align-items:center;justify-content:center;">
+        style="flex:1;padding:0 4px;text-align:center;border-radius:12px;background:var(--surface2);border:1.5px solid var(--accent);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);height:var(--ctrl-lg-h);box-sizing:border-box;display:flex;align-items:center;justify-content:center;">
         Nenhum
       </div>
       <div class="finish-chip" data-finish="loop" onclick="setFinishing('loop')"
-        style="flex:1;padding:12px 4px;text-align:center;border-radius:12px;background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);min-height:46px;display:flex;align-items:center;justify-content:center;">
+        style="flex:1;padding:0 4px;text-align:center;border-radius:12px;background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);height:var(--ctrl-lg-h);box-sizing:border-box;display:flex;align-items:center;justify-content:center;">
         Loop
       </div>
       <div class="finish-chip" data-finish="pause" onclick="setFinishing('pause')"
-        style="flex:1;padding:12px 4px;text-align:center;border-radius:12px;background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);min-height:46px;display:flex;align-items:center;justify-content:center;">
+        style="flex:1;padding:0 4px;text-align:center;border-radius:12px;background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);height:var(--ctrl-lg-h);box-sizing:border-box;display:flex;align-items:center;justify-content:center;">
         Pausa final
       </div>
     </div>
@@ -6360,8 +6420,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BW';
-const APP_VERSION_NAME = 'v8z4b29BW';
+const APP_VERSION = 'v8z4b29BX';
+const APP_VERSION_NAME = 'v8z4b29BX';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -22792,7 +22852,7 @@ function buildSegDurationRow(seg) {
   const lbl = document.createElement('span');
   lbl.className = 'dur-edit-icon-label';
   lbl.title = 'Trecho ' + seg.label;
-  lbl.innerHTML = '<span class="seq-icon-seg-num">' + seg.label + '</span><svg class="seq-icon-segment" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-seq-segment"></use></svg>';
+  lbl.innerHTML = '<span class="seq-icon-seg-num">' + seg.label + '</span><svg class="seq-icon-segment" viewBox="0 0 32 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-seq-segment"></use></svg>';
   const slider = document.createElement('input');
   slider.type = 'range';
   slider.className = 'dur-slider';
