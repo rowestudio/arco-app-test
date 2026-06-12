@@ -1,3 +1,10 @@
+# v8z4b29BT
+
+- tweak(ui): aumenta em ~50% os ícones de frame e trecho na lista de Edição de Tempo (`.seq-icon-frame` 26px → 39px, `.seq-icon-segment` 26×14px → 39×21px), incluindo os números (`.seq-icon-num`/`.seq-icon-seg-num`), para manter a legibilidade com números de dois dígitos (10, 12, 24, 30, 30–31...) em projetos com muitos frames.
+- tweak(ui): amplia a coluna reservada aos ícones (`.dur-edit-icon-label`, 34px → 50px) para acomodar o ícone maior sem encostar no slider e sem empurrar o valor em segundos para fora.
+- tweak(ui): ajusta proporcionalmente (16px → 20px) os ícones de Frames/Trechos do filtro secundário (Todos/Frames/Trechos), sem alterar a altura dos botões.
+- preserve: mantém painel Edição de Tempo, painel contextual de Tempo/Movimento do trecho, Tremor (Global e por trecho), Stage, timeline, Preview/export, JSON e motor sem alterações funcionais.
+
 # v8z4b29BS
 
 - fix(ui): padroniza o painel contextual de Tempo do trecho (`#panelSegTime`) com a mesma família visual dos painéis compactos de frame — cabeçalho com handle, título e botão check na mesma linha (`.dur-header-row`), mesma densidade de slider/valor e altura compatível com o conteúdo (sem área vazia).
