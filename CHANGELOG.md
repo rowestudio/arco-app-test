@@ -1,3 +1,14 @@
+# v8z4b29BV
+
+- fix(ui): remove o recuo lateral esquerdo excessivo da lista do painel Edição de Tempo (`.dur-edit-icon-label` 84px → 64px, `gap` 2px → 1px), devolvendo largura útil aos sliders.
+- tweak(ui): reduz o ícone de trecho a ~80% do tamanho da v8z4b29BU (`.seq-icon-segment` 78×42px → 62×34px, ainda maior que o tamanho pré-BU de 39×21px), aproximando o número do trecho do ícone para formar um único bloco visual.
+- tweak(ui): reduz o destaque dos números de frame (`.seq-icon-num` 14px → 10px) e de trecho (`.seq-icon-seg-num` 15px → 11px) para identificação discreta, preservando o destaque dos valores de tempo (`.dur-edit-value`).
+- tweak(ui): compacta novamente o espaçamento vertical da lista (`.dur-edit-row` padding 6px → 4px, gap 10px → 8px) e dos blocos do painel Edição de Tempo (`.dur-section-header`, `.dur-section-body`, `.dur-subitem`, `.dur-sublabel-row`, `.dur-subitem-action`, `.dur-summary-box`, `.dur-velocity-block`), sem alterar cálculos, sliders ou valores.
+- fix(ui): compacta novamente o painel contextual "Tempo do trecho" (`#panelSegTime`), reduzindo margens do handle/cabeçalho e padding do bloco Duração para eliminar o vazio inferior remanescente.
+- fix(frame): corrige "Aplicar a todos" no painel de Pausa de frame — o slider local de pausa agora respeita `custGlobalLock.framepause`/`isCustLocked()`, aplicando o valor a todos os frames destravados tanto ao ligar o global antes do ajuste (`toggleCustGlobalLock`) quanto ao ligar depois de já ter ajustado o slider.
+- tweak(ui): impede quebra de linha em "Novo Projeto" no launcher (`white-space:nowrap`); quando o texto não cabe em uma linha, `fitNovoProjetoLabel()` troca para "Novo", sem alterar o fluxo do botão.
+- preserve: sem alteração funcional em Tremor (Global/Desligado/Personalizado), Movimento Inteligente, Velocidade Constante, Stage, timeline, frames/trechos no Stage, curvas/Bézier, seleção, Preview/export MP4, JSON (antigo e novo) e motor de renderização.
+
 # v8z4b29BU
 
 - tweak(ui): amplia ~2x o ícone de trecho no painel Edição de Tempo (`.seq-icon-segment` 39×21px → 78×42px, `.seq-icon-seg-num` 13px → 15px), mantendo o número do trecho acima do ícone e a leitura de trechos com dois dígitos (10–11, 12–13, 24–25, 30–31); amplia a coluna de ícones (`.dur-edit-icon-label`, 50px → 84px) para o ícone não encostar no slider.
