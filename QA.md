@@ -1,3 +1,21 @@
+# QA pendente — v8z4b29BW: corrige travamento da Pausa global, "Novo Projeto" no menu, ícones de trecho e padronização visual da Edição de Tempo
+
+> Base: v8z4b29BV. Esta versão é uma **correção visual/UX + bug pontual de travamento do slider de Pausa quando "Aplicar a todos" está ativo**: não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/tremor/movimento inteligente/velocidade constante.
+
+## Escopo v8z4b29BW
+
+- **fix(frame): slider de Pausa não trava mais com "Aplicar a todos" ativo** — durante o drag (`input`), o valor é escrito direto em `framePauses[]` para todos os frames destravados, sem disparar `refreshPauseControls()`/`setFramePause()` `frameCount` vezes por tick; `refreshPauseControls()` roda UMA vez por evento. Ao soltar (`change`), aplica o valor final, marca o projeto como sujo, sincroniza `finishMode` e re-renderiza uma vez. Fluxos "global antes" e "global depois" continuam aplicando a todos os frames destravados.
+- **fix(ui): "Novo Projeto" no menu superior aberto não quebra mais linha** — `fitMenuNewProjectLabel()` troca para "Novo" (`#menuNewProjectLabel`) se não couber em uma linha; fluxo do item (`requestNewProjectFlow()`) inalterado. Launcher (`fitNovoProjetoLabel()`) inalterado.
+- **tweak(ui): ícone de trecho maior no filtro "Trechos"** — `.cena1-filter .seq-icon-segment` 20×20px → 28×18px, mais reconhecível, sem aumentar a altura do botão.
+- **fix(ui): número + ícone de trecho como um único item visual** — `.dur-edit-icon-label` 64px → 56px, `gap` zerado entre `.seq-icon-seg-num`/`.seq-icon-segment`.
+- **tweak(ui): padronização de botões/campos** — botões grandes de ação (`.dur-subitem-action`) com altura fixa de 48px e tons `--surface-action`/`--border-action`; botões pequenos contextuais (ex.: "Reset" da Pausa) em 30px com os mesmos tons; campo "Intervalo padrão" também recebe os tons de campo. Abas/filtros (`.ds-tab`, `.cena1-filter`, `.finish-chip`) continuam em `--surface2`/`--border2`.
+- **tweak(ui): espaçamento entre grupos** — `.dur-section-header` `margin-top` 2px → 14px, separando Cena 1 / Trechos — Duração / Frames — Pausas / Acabamento; espaçamento interno de cada grupo inalterado.
+- Preserva Tremor (Global e por trecho), Movimento Inteligente, Velocidade Constante, Stage, timeline, curvas/Bézier, seleção, painel Movimento fora dos ajustes citados, Preview, export MP4, JSON (antigo e novo), templates, formato, launcher, logo, ícone iOS e o motor de renderização.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BW.md`.
+
+---
+
 # QA pendente — v8z4b29BV: corrige recuo da lista, ícone de trecho, hierarquia, densidade e bug de Pausa global
 
 > Base: v8z4b29BU (aprovada — compacta Edição de Tempo, amplia ícone de trecho e padroniza toggles/ícones globais). Esta versão é uma **correção visual/UX + bug pontual de "Aplicar a todos" na Pausa de frame**: não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/tremor/movimento inteligente/velocidade constante.

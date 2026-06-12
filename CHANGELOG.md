@@ -1,3 +1,13 @@
+# v8z4b29BW
+
+- fix(frame): corrige travamento do slider de Pausa de frame quando "Aplicar a todos" (`custGlobalLock.framepause`/`isCustLocked()`) está ativo — durante o drag (`input`), o valor é escrito direto em `framePauses[]` para todos os frames destravados e `refreshPauseControls()` é chamado UMA única vez por evento (antes, cada tick disparava até `frameCount` × `refreshPauseControls`/`setFramePause`, travando o slider no iPhone/Safari); ao soltar (`change`), aplica o valor final, marca o projeto como sujo, sincroniza `finishMode` e re-renderiza uma única vez. Fluxos "global antes do ajuste" e "global depois do ajuste" continuam aplicando a todos os frames destravados; não afeta `segDurations[]`, rotação, posição, escala ou tremor.
+- fix(ui): impede quebra de linha em "Novo Projeto" no menu superior aberto (`#settingsSheet`) — nova `fitMenuNewProjectLabel()` troca o texto para "Novo" (`#menuNewProjectLabel`) se "Novo Projeto" não couber em uma linha, sem alterar `onclick`/fluxo do item (launcher mantém `fitNovoProjetoLabel()` já existente, inalterado).
+- tweak(ui): ícone de trecho (segmento com dois círculos) no filtro "Trechos" fica mais largo e reconhecível (`.cena1-filter .seq-icon-segment` 20×20px → 28×18px), sem aumentar a altura do botão; ícone de "Frames" inalterado (20×20px).
+- fix(ui): número + ícone de trecho na lista de Edição de Tempo formam definitivamente um único item visual — `.dur-edit-icon-label` estreitada (64px → 56px, liberando largura extra para os sliders) e `gap` zerado entre `.seq-icon-seg-num` e `.seq-icon-segment` (número acima, ícone abaixo, sem sobrepor).
+- tweak(ui): botões grandes de ação (`.dur-subitem-action`: Igualar intervalos, Zerar pausas) ganham altura padronizada (48px, via flexbox) e tons dedicados de fundo/borda (`--surface-action`/`--border-action`), distintos das abas/filtros (`--surface2`/`--border2`); botões pequenos contextuais (ex.: "Reset" da Pausa) mantêm o padrão menor (30px) com os mesmos tons; campo "Intervalo padrão" (`#newSegmentDurationInput`) também usa os tons de campo.
+- tweak(ui): espaçamento ENTRE grupos do painel Edição de Tempo (`.dur-section-header`, `margin-top` 2px → 14px) para separar visualmente Cena 1 / Trechos — Duração / Frames — Pausas / Acabamento, sem alterar o espaçamento DENTRO de cada grupo.
+- preserve: sem alteração funcional em Tremor (Global/Desligado/Personalizado), Movimento Inteligente, Velocidade Constante, Stage, timeline, frames/trechos no Stage, curvas/Bézier, seleção, Preview/export MP4, JSON (antigo e novo) e motor de renderização.
+
 # v8z4b29BV
 
 - fix(ui): remove o recuo lateral esquerdo excessivo da lista do painel Edição de Tempo (`.dur-edit-icon-label` 84px → 64px, `gap` 2px → 1px), devolvendo largura útil aos sliders.

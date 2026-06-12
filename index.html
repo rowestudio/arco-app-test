@@ -1,13 +1,31 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29BV                                    ║
+║  Versão: v8z4b29BW                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b29BW                                           ║
+║    fix(frame): corrige travamento do slider de       ║
+║              Pausa com "Aplicar a todos" ativo       ║
+║    fix(ui): "Novo Projeto" não quebra linha no menu  ║
+║              superior aberto (fallback "Novo")       ║
+║    tweak(ui): ícone de trecho maior no filtro        ║
+║              "Trechos"                               ║
+║    fix(ui): número + ícone de trecho formam um       ║
+║              único item visual na lista              ║
+║    tweak(ui): padroniza altura de botões grandes e   ║
+║              botões pequenos contextuais             ║
+║    tweak(ui): diferencia botões de ação, campos e    ║
+║              abas (fundo/borda dedicados)            ║
+║    tweak(ui): espaçamento entre grupos no painel     ║
+║              Edição de Tempo                         ║
+║    preserve: Tremor, Movimento Inteligente,          ║
+║              Velocidade Constante, Stage, timeline,  ║
+║              Preview/export, JSON e motor            ║
 ║  v8z4b29BV                                           ║
 ║    fix(ui): remove recuo lateral esquerdo            ║
 ║              excessivo na lista de Edição de Tempo   ║
@@ -896,7 +914,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b29BV — fix(ui): remove o recuo lateral esquerdo excessivo da lista do painel Edição de Tempo, estreitando a coluna de ícones (.dur-edit-icon-label, 84px → 64px) e devolvendo largura útil aos sliders; tweak(ui): reduz o ícone de trecho (.seq-icon-segment) a ~80% do tamanho da v8z4b29BU (78×42 → 62×34, ainda maior que o tamanho pré-BU) e aproxima o número do trecho do ícone (gap 2px → 1px), formando um único bloco visual; tweak(ui): reduz o destaque dos números de frame (.seq-icon-num, 14px → 10px) e de trecho (.seq-icon-seg-num, 15px → 11px) para identificação discreta, preservando o destaque dos valores de tempo (.dur-edit-value); tweak(ui): compacta ainda mais o espaçamento vertical da lista (.dur-edit-row, padding 6px → 4px, gap 10px → 8px) e dos blocos do painel Edição de Tempo (.dur-section-header, .dur-section-body, .dur-subitem, .dur-sublabel-row, .dur-subitem-action, .dur-summary-box); fix(ui): compacta novamente o painel contextual "Tempo do trecho" (#panelSegTime), reduzindo margens do handle/cabeçalho e padding do bloco de Duração para eliminar o vazio inferior remanescente; fix(frame): corrige "Aplicar a todos" no painel de Pausa de frame — o slider local de pausa (_bindLocalFramePauseSliderOnce) agora respeita custGlobalLock.framepause/isCustLocked(), aplicando o valor a todos os frames destravados tanto ao ligar o global antes do ajuste quanto ao ligar depois (toggleCustGlobalLock aplica o valor do frame ativo a todos ao ativar); tweak(ui): "Novo Projeto" no launcher cai para "Novo" via fitNovoProjetoLabel() quando o texto não cabe em uma linha (white-space:nowrap), sem alterar o fluxo do botão; preserve: sem alteração funcional em Tremor (Global/Desligado/Personalizado), Movimento Inteligente, Velocidade Constante, Stage, timeline, Preview/export, JSON e motor (base v8z4b29BU). -->
+<!-- Arco Motion App — v8z4b29BW — fix(frame): corrige travamento do slider de Pausa de frame quando "Aplicar a todos" (custGlobalLock.framepause/isCustLocked()) está ativo — durante o drag (evento "input"), o valor passa a ser escrito direto em framePauses[] para todos os frames destravados, com refreshPauseControls() chamado UMA única vez por tick (antes, cada tick disparava até frameCount× refreshPauseControls/setFramePause, travando o slider no iPhone/Safari); ao soltar ("change"), aplica o valor final, marca o projeto como sujo, sincroniza finishMode e re-renderiza uma única vez; fluxos "global antes" e "global depois" continuam aplicando a todos, sem afetar segDurations/rotação/posição/escala/tremor; fix(ui): "Novo Projeto" no menu superior aberto (#settingsSheet) não quebra mais linha — novo fitMenuNewProjectLabel() troca para "Novo" se não couber em uma linha, sem alterar onclick/fluxo do item (launcher mantém fitNovoProjetoLabel já existente); tweak(ui): ícone de trecho (segmento com dois círculos) no filtro "Trechos" fica mais largo/reconhecível (20×20 → 28×18), sem aumentar a altura do botão; fix(ui): número + ícone de trecho na lista de Edição de Tempo formam um único item visual — coluna .dur-edit-icon-label estreitada (64px → 56px) e gap zerado entre .seq-icon-seg-num e .seq-icon-segment, sem sobrepor; tweak(ui): botões grandes de ação (.dur-subitem-action: Igualar intervalos, Zerar pausas) ganham altura padronizada (48px) e fundo/borda em tons dedicados (--surface-action/--border-action), distintos de abas/filtros (--surface2/--border2); botões pequenos contextuais (ex.: Reset da Pausa) mantêm padrão menor (30px) com os mesmos tons; campo "Intervalo padrão" (#newSegmentDurationInput) usa os mesmos tons de campo; tweak(ui): espaçamento ENTRE grupos do painel Edição de Tempo (.dur-section-header, margin-top 2px → 14px) sem alterar o espaçamento DENTRO de cada grupo; preserve: sem alteração funcional em Tremor (Global/Desligado/Personalizado), Movimento Inteligente, Velocidade Constante, Stage, timeline, Preview/export, JSON e motor (base v8z4b29BV). -->
 <!-- Arco Motion App — v8z4b29BU — tweak(ui): amplia ~2x o ícone de trecho (segmento com dois círculos) no painel Edição de Tempo, mantendo o número do trecho acima do ícone e ajustando a coluna de ícones (.dur-edit-icon-label) para não encostar no slider; tweak(ui): compacta o espaçamento vertical da lista (.dur-edit-row) e dos blocos do painel Edição de Tempo (cabeçalhos de seção, subitens, botões e resumo), reduzindo a rolagem sem perder área de toque; fix(ui): compacta o painel contextual "Tempo do trecho" (#panelSegTime) ao mesmo padrão de densidade dos demais painéis contextuais compactos, eliminando o vazio inferior; tweak(ui): padroniza a ordem de toggles e ícones "Aplicar a todos"/globo para sempre aparecerem depois do título (Velocidade Constante, Movimento/Rotação/Escala Inteligente, Tremor Global, Tempo do trecho); tweak(ui): corrige a hierarquia tipográfica de "Velocidade constante", "Movimento inteligente" e "Tremor" para item principal (caixa alta e baixa, fonte branca, sem tracking de cabeçalho); feat(ui): expõe o ícone "Aplicar a todos" (globo, já existente em custGlobalLock/toggleCustGlobalLock) nos painéis de frame Pausa, Rotação, Escala e Mover; preserve: sem alteração funcional em Tremor (Global/Desligado/Personalizado), Movimento Inteligente, Velocidade Constante, Stage, timeline, Preview/export, JSON e motor (base v8z4b29BT). -->
 <!-- Arco Motion App — v8z4b29BT — tweak(ui): aumenta em ~50% os ícones de frame (número dentro do ícone) e de trecho (segmento com dois círculos, número acima) na lista de Edição de Tempo, mantendo a leitura de números com dois dígitos (10, 12, 24, 30, 31, 30–31); tweak(ui): amplia a coluna reservada aos ícones (.dur-edit-icon-label) para preservar alinhamento entre ícone, slider e valor em segundos, sem encostar no slider; tweak(ui): ajusta proporcionalmente os ícones de Frames/Trechos do filtro secundário (Todos/Frames/Trechos), sem alterar a altura dos botões nem confundir com as abas Tempo/Preferências; preserve: mantém painel Edição de Tempo, painel contextual de Tempo/Movimento do trecho, Tremor (Global e por trecho), Stage, timeline, Preview/export, JSON e motor sem alterações funcionais (base v8z4b29BS). -->
 <!-- Arco Motion App — v8z4b29BS — fix(ui): padroniza o painel contextual de Tempo do trecho (#panelSegTime) com a mesma família visual dos painéis compactos (handle + cabeçalho título/check, densidade de frame, sem área vazia), incluindo ajuste global "Aplicar a todos os trechos" (reaproveita segGlobalMode/setSegEaseAll); fix(ui): no painel Edição de Tempo, as abas Tempo/Preferências voltam ao topo do conteúdo, com o resumo de duração (mais marcado visualmente) e Velocidade Constante (agora um toggle simples) somente dentro da aba Tempo, sem duplicação; feat(ui): adiciona ícones de frame (número dentro do ícone) e de trecho (segmento com dois círculos, número acima) na lista de Edição de Tempo e nos filtros Frames/Trechos; preserve: mantém a separação Tempo/Movimento dos trechos, Tremor (Global e por trecho), Stage, timeline, Preview/export, JSON e motor sem alterações funcionais (base v8z4b29BR). -->
@@ -971,6 +989,10 @@
   --text:#fff; --text2:#ebebf5; --text3:#aeaeb2;
   --accent:#04fff2; --red:#ff375f; --yellow:#ffd60a; --green:#30d158;
   --r:12px; --safe-bottom:env(safe-area-inset-bottom,0px);
+  /* v8z4b29BW — tons dedicados a botões de ação e campos editáveis,
+     levemente mais claros que o fundo do painel (--surface2/--bg, ambos
+     #3c3c3b), para diferenciá-los de abas/filtros sem mudar a paleta. */
+  --surface-action:#48484c; --border-action:#6e6e72;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{
@@ -2656,10 +2678,14 @@ body.cust-open #toolbar{
    v8z4b29BV — coluna estreitada (84px → 64px) acompanhando o ícone de
    trecho menor, removendo o recuo esquerdo excessivo e devolvendo largura
    ao slider; gap reduzido (2px → 1px) para que número + ícone formem um
-   único bloco compacto. */
+   único bloco compacto.
+   v8z4b29BW — coluna estreitada novamente (64px → 56px), liberando mais
+   largura útil para os sliders sem reduzir a área de toque dos ícones; gap
+   zerado entre número e ícone — os dois passam a ser percebidos como um
+   único símbolo composto (número acima, ícone abaixo, sem sobrepor). */
 .dur-edit-row > .dur-edit-icon-label{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  min-width:64px;flex-shrink:0;gap:1px;
+  min-width:56px;flex-shrink:0;gap:0;
 }
 /* v8z4b29BT — ícones de frame/trecho ~50% maiores (26px → 39px) para
    melhor leitura com números de dois dígitos (10, 24, 30, 31...).
@@ -2694,10 +2720,15 @@ body.cust-open #toolbar{
 /* v8z4b29BU — espaçamento do cabeçalho de seção reduzido para compactar o
    painel Edição de Tempo (menos vazios entre Cena 1 / Trechos / Pausas).
    v8z4b29BV — reduzido novamente (margem/padding) para eliminar vazios
-   ainda perceptíveis entre blocos. */
+   ainda perceptíveis entre blocos.
+   v8z4b29BW — margem superior aumentada (2px → 14px) para reabrir uma
+   separação clara ENTRE grupos diferentes (Cena 1 / Trechos — Duração /
+   Frames — Pausas / Acabamento), sem voltar ao espaçamento exagerado:
+   o espaçamento DENTRO de cada grupo (.dur-section-body, .dur-subitem,
+   .dur-edit-row etc.) continua compacto. */
 .dur-section-header{
   width:100%;display:flex;justify-content:space-between;align-items:center;
-  margin:2px 0 0;padding:8px 0 6px;
+  margin:14px 0 0;padding:8px 0 6px;
   background:transparent;border:none;color:var(--text);
   font-size:17px;font-weight:700;cursor:default;
   border-bottom:.5px solid var(--border);
@@ -2743,9 +2774,12 @@ body.cust-open #toolbar{
 .cena1-filter.active{border-color:var(--accent);color:var(--accent);}
 /* v8z4b29BS — ícones nos filtros Frames/Trechos (mesma linguagem visual da
    listagem da Cena 1), apenas decorativos — não competem com as abas
-   principais Tempo/Preferências (.ds-tab-bar). */
-.cena1-filter .seq-icon-frame,
-.cena1-filter .seq-icon-segment{width:20px;height:20px;color:inherit;}
+   principais Tempo/Preferências (.ds-tab-bar).
+   v8z4b29BW — ícone de trecho (segmento com dois círculos) ganha proporção
+   mais larga (28×18, em vez do quadrado 20×20) para ficar mais reconhecível
+   sem aumentar a altura do botão; ícone de frame permanece 20×20. */
+.cena1-filter .seq-icon-frame{width:20px;height:20px;color:inherit;}
+.cena1-filter .seq-icon-segment{width:28px;height:18px;color:inherit;}
 .cena1-filter .seq-icon-frame .seq-icon-num{font-size:10px;}
 .cena1-filter.active .seq-icon-frame,
 .cena1-filter.active .seq-icon-segment{color:var(--accent);}
@@ -2785,11 +2819,18 @@ body.cust-open #toolbar{
   font-size:11px;font-weight:600;color:var(--text3);
   letter-spacing:.4px;
 }
+/* v8z4b29BW — botões grandes de ação (Igualar intervalos, Zerar pausas e
+   equivalentes): altura padronizada (48px, via display:flex + height fixo
+   em vez de min-height+padding variável), fundo/borda em tons dedicados
+   (--surface-action/--border-action) para se diferenciarem de abas/filtros
+   (que continuam em --surface2/--border2) e texto mais afirmativo. Largura
+   total preservada. */
 .dur-subitem-action{
-  margin:3px 0;width:100%;padding:8px 0;border-radius:10px;
-  border:1px solid var(--border2);background:var(--surface2);
-  font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;
-  min-height:44px;
+  margin:3px 0;width:100%;height:48px;padding:0;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--border-action);background:var(--surface-action);
+  font-size:13px;font-weight:700;color:var(--text);cursor:pointer;
+  box-sizing:border-box;
 }
 .dur-subitem-action:active{background:var(--surface3);}
 /* v8z4b15z — slider "Tudo" em estado misto: track e thumb dessaturados,
@@ -3535,7 +3576,7 @@ body.cust-open #toolbar{
         <span id="framePauseVal" style="font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;">0s</span>
       </div>
       <div style="display:flex;gap:6px;margin-top:6px;">
-        <div class="chip" style="padding:6px 14px;font-size:13px;min-height:30px;justify-content:center;margin-left:auto;" onclick="resetFramePause()">Reset</div>
+        <div class="chip" style="padding:6px 14px;font-size:13px;min-height:30px;justify-content:center;margin-left:auto;background:var(--surface-action);border-color:var(--border-action);" onclick="resetFramePause()">Reset</div>
       </div>
     </div>
     <!-- v8z4b29BU — "Aplicar a todos" (Pausa/Rotação/Escala/Posição): expõe o
@@ -3623,7 +3664,7 @@ body.cust-open #toolbar{
         <svg viewBox="0 0 24 24"><use href="#i-download"></use></svg><span>Salvar</span>
       </div>
       <div class="settings-row" onclick="requestNewProjectFlow();closeSettingsSheet()">
-        <svg viewBox="0 0 24 24"><use href="#i-file-plus-2"></use></svg><span>Novo Projeto</span>
+        <svg viewBox="0 0 24 24"><use href="#i-file-plus-2"></use></svg><span id="menuNewProjectLabel" style="white-space:nowrap;">Novo Projeto</span>
       </div>
       <div class="settings-row" onclick="requestOpenProjectFlow();closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-folder-open"></use></svg><span>Abrir</span>
@@ -3640,7 +3681,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BV</span><br><span id="appVersionNameText">v8z4b29BV</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29BW</span><br><span id="appVersionNameText">v8z4b29BW</span></div>
   </div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
@@ -4046,7 +4087,7 @@ body.cust-open #toolbar{
       <!-- (1) Intervalo padrão de novos frames. -->
       <div class="dur-subitem">
         <span class="dur-subitem-label">Intervalo padrão</span>
-        <input id="newSegmentDurationInput" type="number" min="0" step="1" value="2" style="width:84px;padding:10px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:14px;font-weight:600;text-align:right;">
+        <input id="newSegmentDurationInput" type="number" min="0" step="1" value="2" style="width:84px;padding:10px 12px;border-radius:10px;border:1px solid var(--border-action);background:var(--surface-action);color:var(--text);font-size:14px;font-weight:600;text-align:right;">
       </div>
       <!-- (2) Slider global: tempo total dos intervalos. -->
       <div class="dur-edit-row">
@@ -6319,8 +6360,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29BV';
-const APP_VERSION_NAME = 'v8z4b29BV';
+const APP_VERSION = 'v8z4b29BW';
+const APP_VERSION_NAME = 'v8z4b29BW';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -23671,6 +23712,19 @@ function activateProMode() {
   showStatus('Plano Pro ativado — sem limites!');
 }
 
+// v8z4b29BW — "Novo Projeto" no menu superior aberto não pode quebrar
+// linha; se não couber em uma linha dentro do item, cai para "Novo" (mesmo
+// padrão de fitNovoProjetoLabel, sem alterar onclick/fluxo do item).
+function fitMenuNewProjectLabel() {
+  const lbl = document.getElementById('menuNewProjectLabel');
+  if (!lbl) return;
+  lbl.textContent = 'Novo Projeto';
+  if (lbl.scrollWidth > lbl.clientWidth + 1) {
+    lbl.textContent = 'Novo';
+  }
+}
+window.addEventListener('resize', fitMenuNewProjectLabel);
+
 function toggleSettingsSheet() {
   if (shouldBlockGlobalUIAction()) return;
   const sheet = document.getElementById('settingsSheet');
@@ -23684,6 +23738,7 @@ function toggleSettingsSheet() {
     if (editorPanMode) { editorPanMode = false; applyEditorZoom(); }
     sheet.classList.add('show');
     overlay.classList.add('show', 'light');
+    requestAnimationFrame(fitMenuNewProjectLabel);
   }
 }
 function closeSettingsSheet() {
@@ -25026,14 +25081,21 @@ function _bindLocalFramePauseSliderOnce() {
   // input: durante o drag, atualiza estado sem renderAll (mais barato).
   // fix(frame): "global antes" — com custGlobalLock.framepause ativo, o
   // ajuste é replicado para todos os frames destravados.
+  // v8z4b29BW — com o global ativo, escreve direto em framePauses[] (sem
+  // chamar setFramePause/refreshPauseControls por frame) e atualiza a UI
+  // UMA única vez ao final do loop. Antes, cada tick de "input" disparava
+  // até frameCount × refreshPauseControls() (rebuild completo da lista),
+  // travando o slider durante o drag no iPhone/Safari.
   slider.addEventListener('input', () => {
     const idx = Number(slider.dataset.frameIndex);
     if (!Number.isInteger(idx) || frameLocked[idx]) return;
     captureUndo();
     if (isCustLocked()) {
+      const value = clampFramePauseValue(slider.value);
       for (let i = 0; i < frameCount; i++) {
-        if (!frameLocked[i]) setFramePause(i, slider.value, { render: false });
+        if (!frameLocked[i]) framePauses[i] = { duration: value };
       }
+      refreshPauseControls();
     } else {
       setFramePause(idx, slider.value, { render: false });
     }
@@ -25043,9 +25105,19 @@ function _bindLocalFramePauseSliderOnce() {
     const idx = Number(slider.dataset.frameIndex);
     if (!Number.isInteger(idx) || frameLocked[idx]) return;
     if (isCustLocked()) {
+      const value = clampFramePauseValue(slider.value);
+      let changed = false;
       for (let i = 0; i < frameCount; i++) {
-        if (!frameLocked[i]) setFramePause(i, slider.value, { render: i === idx });
+        if (frameLocked[i]) continue;
+        const prev = framePauses[i]?.duration ?? 0;
+        framePauses[i] = { duration: value };
+        if (Math.abs(prev - value) > 0.0001) changed = true;
       }
+      if (changed) markProjectDirty('frame-pause');
+      refreshPauseControls();
+      if (idx === frameCount - 1) syncFinishControlsFromTimeline();
+      renderAll();
+      if (isPreviewing && changed) { stopPreview(); startPreview(); }
     } else {
       setFramePause(idx, slider.value, { render: true });
     }
