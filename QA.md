@@ -1,3 +1,22 @@
+# QA pendente — v8z4b29BY: limpeza visual conservadora da Edição de Tempo (filtros, botões grandes, números de frame/trecho, textos auxiliares e resumo)
+
+> Base: v8z4b29BX. Esta versão é **limpeza visual conservadora**, sem redesign, sem novo design system, sem mudança de fluxo e sem alteração de lógica (Tremor inalterado). Não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/movimento inteligente/velocidade constante. Não aplica o CSS bruto copiado do Safari Inspector (sem Style Attribute inline, sem `line-height:0`, sem `border:3px`/`3.5px`, sem `font-size:18px` nas abas, sem mexer em `.lower-add-pill`).
+
+## Escopo v8z4b29BY
+
+- **tweak(ui): filtros Todos/Frames/Trechos mais legíveis** — `.cena1-filter` texto 11px → 14px, fundo levemente mais claro que o painel (novo token `--surface-filter`) e borda na mesma cor do fundo (discreta, 1.5px mantido); sem borda grossa, sem virar CTA nem aba solta; altura `--ctrl-lg-h` preservada.
+- **tweak(ui): botões grandes de ação com borda discreta** — `.dur-subitem-action` mantém altura `--ctrl-lg-h` (≤ filtros), fundo destacado (`--surface-action`) e borda discreta (variação mínima do fundo, `--surface3` 1.5px) no lugar de `--border-action`; borda grossa do teste manual descartada.
+- **tweak(ui): números de frame/trecho 12px e bloco único** — `.seq-icon-num`/`.seq-icon-seg-num` 11px → 12px; número do trecho aproximado do ícone (`gap` 2px → 1px + `margin-bottom:-4px`), sem `line-height:0`, sem sobrepor os círculos, sem trocar o desenho; valores de tempo à direita inalterados.
+- **tweak(ui): textos auxiliares maiores** — `.prefs-note` 12px → 13px (LH 1.35), `#segTimingHint` 12px → 13px, labels/sublabels uppercase (`.dur-edit-label`/`.dur-subitem-label`/`.dur-sublabel`/`.dur-sublabel-value`) 11px → 12px mantendo subtítulo (não viram título).
+- **tweak(ui): resumo de duração mais legível** — `.dur-summary-row` 12px → 13px, `.dur-summary-row-main` 13px → 14px, borda do box mantida discreta (1px).
+- **preserve(ui)**: abas (`.ds-tab`) em 15px (sem 18px); botões pequenos contextuais e campo "Intervalo padrão" mantêm tokens da BX; `.lower-add-pill` intacto.
+- **verify(frame/ui)**: Pausa global sem travamento e aplicando a todos os frames destravados (fix BW preservado); alinhamento slider/valor/Reset/Global preservado — sem alteração de lógica.
+- Preserva Tremor (Global/Desligado/Personalizado, Global e por trecho), Movimento Inteligente, Velocidade Constante, Stage, timeline, curvas/Bézier, seleção, Preview, export MP4, JSON (antigo e novo), templates, formato, launcher/Novo Projeto, logo, ícone iOS e o motor de renderização.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BY.md`.
+
+---
+
 # QA pendente — v8z4b29BX: auditoria visual + padronização de componentes (lista de frames/trechos, botões, campos, filtros e textos da Edição de Tempo)
 
 > Base: v8z4b29BW. Esta versão é **auditoria visual + padronização de componentes**, sem redesign, sem mudança de fluxo e sem alteração de lógica (Tremor inalterado nesta versão). Não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/movimento inteligente/velocidade constante.
