@@ -1,3 +1,19 @@
+# QA pendente — v8z4b29BZ: ajustes visuais da Edição de Tempo e Movimento
+
+> Base: v8z4b29BY. Esta versão é **ajuste visual/UX controlado**, sem mudança de lógica de cálculo, Tremor, Movimento Inteligente, Velocidade Constante, Pausa Global, Preview, export, JSON, launcher, upload, stage ou timeline.
+
+## Escopo v8z4b29BZ
+
+- Remove o bloco grande duplicado de duração no topo da aba Tempo e mantém o box de resumo.
+- Separa "Velocidade constante" do resumo e mantém a legenda sempre visível com o texto: “Mantém o movimento em ritmo uniforme entre os frames.”
+- Reposiciona filtros Todos / Frames / Trechos acima de "Cena 1" sem alterar a lógica dos filtros.
+- Reduz o ícone de trecho em aproximadamente 30% e mantém a mesma família visual do ícone de frame.
+- Padroniza botões grandes/equivalentes com fundo #5b5b5b, bordas finas e respiro melhor.
+- Ajusta botões de acabamento, inputs numéricos, toggles/switches e hierarquia dos sub-itens de Tremor Global.
+- Remove duplicidade textual de Tremor Global no painel contextual de Movimento.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BZ.md`.
+
 # QA pendente — v8z4b29BY: limpeza visual conservadora da Edição de Tempo (filtros, botões grandes, números de frame/trecho, textos auxiliares e resumo)
 
 > Base: v8z4b29BX. Esta versão é **limpeza visual conservadora**, sem redesign, sem novo design system, sem mudança de fluxo e sem alteração de lógica (Tremor inalterado). Não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/movimento inteligente/velocidade constante. Não aplica o CSS bruto copiado do Safari Inspector (sem Style Attribute inline, sem `line-height:0`, sem `border:3px`/`3.5px`, sem `font-size:18px` nas abas, sem mexer em `.lower-add-pill`).

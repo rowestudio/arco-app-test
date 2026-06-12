@@ -1,3 +1,15 @@
+# v8z4b29BZ
+
+- tweak(ui): remove o bloco superior duplicado de duração na aba Tempo, mantendo o box de resumo (Duração Total / Trechos / Pausas / Acabamento) e os ids/cálculos existentes.
+- tweak(ui): separa visualmente "Velocidade constante" do resumo, mantém a legenda sempre visível com o texto exato "Mantém o movimento em ritmo uniforme entre os frames." e preserva a lógica do toggle.
+- tweak(ui): move os filtros Todos / Frames / Trechos para cima de "Cena 1", mantendo a lógica/seleção/comportamento da lista; "Cena 1" passa a ler como bloco de conteúdo.
+- tweak(ui): reduz o ícone de trecho da lista e do filtro em ~30%, preservando o desenho segmento + dois círculos, cor/traço da família do ícone de frame e números de frame/trecho na mesma cor.
+- tweak(ui): aplica fundo #5b5b5b aos botões grandes/equivalentes (Igualar intervalos, Zerar pausas, Aplicar aos 3, Resetar curva e acabamento), mantém bordas finas, reduz altura de ações contextuais e aumenta respiros pontuais.
+- tweak(ui): diferencia inputs numéricos dos botões com fundo próprio de campo, padding vertical menor e borda editável mais definida.
+- tweak(ui): aumenta toggles/switches em ~22%, melhora contraste do trilho desligado e do thumb, mantendo linguagem iOS-like e sem alterar estado/salvamento.
+- tweak(ui): reforça hierarquia de sub-itens configuráveis de Tremor Global na aba Preferências e no painel Movimento; remove duplicidade textual no painel contextual, mantendo apenas "Tremor Global do projeto".
+- preserve: sem alteração conceitual/funcional em Tremor, Movimento Inteligente, Velocidade Constante, Pausa Global, Preview, export, JSON, launcher, upload, stage, timeline ou motor.
+
 # v8z4b29BY
 
 - tweak(ui): limpeza visual conservadora dos filtros Todos/Frames/Trechos (`.cena1-filter`) — texto maior (11px → 14px) para leitura, fundo levemente mais claro que o painel (novo token `--surface-filter`, abaixo de `--surface-action` na hierarquia de presença) e borda na mesma cor do fundo (discreta), mantendo a espessura já usada na v8z4b29BX (1.5px); nada de borda 3px/3.5px, sem virar CTA nem aba solta. Altura de referência (`--ctrl-lg-h`) preservada.
