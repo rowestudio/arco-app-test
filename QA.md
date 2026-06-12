@@ -1,3 +1,21 @@
+# QA pendente — v8z4b29BU: compacta Edição de Tempo, amplia ícone de trecho e padroniza toggles/ícones globais
+
+> Base: v8z4b29BT (aprovada — aumento de ícones de frame/trecho no painel Edição de Tempo). Esta versão é um **ajuste visual/UX e de padronização de componentes**: não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/tremor/movimento inteligente/velocidade constante.
+
+## Escopo v8z4b29BU
+
+- **Ícone de trecho ~2x maior**: `.seq-icon-segment` 39×21px → 78×42px e `.seq-icon-seg-num` 13px → 15px; coluna `.dur-edit-icon-label` 50px → 84px para acomodar o ícone maior sem encostar no slider. Número do trecho continua acima do ícone (segmento com dois círculos nas extremidades); ícone de frame inalterado (39px, número dentro).
+- **Lista e blocos do painel Edição de Tempo mais compactos**: `.dur-edit-row` (padding 14px → 6px, gap 12px → 10px), `.dur-section-header` (padding 14px 0 10px → 10px 0 8px, margin 6px → 4px), `.dur-section-body` (6px → 4px), `.dur-subitem` (10px → 6px), `.dur-subitem-action` (margin/padding reduzidos, mantendo `min-height:44px`), `.dur-sublabel-row` (12px → 6px), `.dur-velocity-block` (14px → 8px) e `.dur-summary-box` (padding/gap/margem reduzidos). Valores, sliders e cálculos inalterados.
+- **Painel "Tempo do trecho" (`#panelSegTime`) mais compacto**: handle e `.dur-header-row` com margens reduzidas, `.ease-channel-block` com padding menor — elimina o vazio inferior, segue a densidade dos painéis contextuais compactos. Slider/valor de duração e `#segTimeGlobeLock` inalterados.
+- **Ordem universal de toggles/ícones globais**: título primeiro, controle depois — corrigido em Velocidade Constante (`#constSpeedToggle`), Movimento/Rotação/Escala Inteligente (`#movSmartToggle`/`#rotSmartToggle`/`#scaleSmartToggle` + `#easeGlobeLock`/`#easeGlobeRot`/`#easeGlobeScale`) e Tremor Global (`#tremorGlobalToggle`/`#tremorGlobalToggle2`). Handlers/ids/lógica inalterados.
+- **Hierarquia tipográfica**: nova classe `.dur-item-title` (15px, peso 600, branco, sem uppercase/letter-spacing) aplicada a "Velocidade constante" (Edição de Tempo), "Movimento inteligente" e "Tremor" (painel Movimento do trecho) — itens principais, não mais com visual de cabeçalho de seção.
+- **"Aplicar a todos" nos painéis de frame**: novo botão `#custGlobalLock` (ícone `i-globe-lock`) exposto no submenu de frame (Pausa/Rotação/Escala/Posição), reaproveitando `toggleCustGlobalLock()`/`custGlobalLock`/`isCustLocked()` já implementados em JS (sem função própria, apenas UI ausente até esta versão).
+- Preserva painel Movimento (`#panelEase`) fora dos ajustes citados, Tremor (Global e por trecho), Movimento Inteligente, Velocidade Constante, Stage, timeline, curvas/Bézier, seleção, Preview, export MP4, JSON (antigo e novo), templates, formato, launcher, logo, ícone iOS e o motor de renderização.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BU.md`.
+
+---
+
 # QA pendente — v8z4b29BT: aumenta ícones de frame/trecho no painel Edição de Tempo
 
 > Base: v8z4b29BS (aprovada — reorganização do painel Edição de Tempo, ícones de frame/trecho na lista e nos filtros, painel contextual de Tempo do trecho compactado, resumo/Velocidade Constante ajustados). Esta versão é um **ajuste visual pontual**: não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/tremor.
