@@ -1,3 +1,13 @@
+# v8z4b29BU
+
+- tweak(ui): amplia ~2x o ícone de trecho no painel Edição de Tempo (`.seq-icon-segment` 39×21px → 78×42px, `.seq-icon-seg-num` 13px → 15px), mantendo o número do trecho acima do ícone e a leitura de trechos com dois dígitos (10–11, 12–13, 24–25, 30–31); amplia a coluna de ícones (`.dur-edit-icon-label`, 50px → 84px) para o ícone não encostar no slider.
+- tweak(ui): compacta o espaçamento vertical da lista e dos blocos de Edição de Tempo — `.dur-edit-row` (padding 14px → 6px), `.dur-section-header` (padding 14px 0 10px → 10px 0 8px), `.dur-section-body`, `.dur-subitem`, `.dur-subitem-action`, `.dur-sublabel-row`, `.dur-velocity-block` e `.dur-summary-box`, sem alterar lógica de cálculo, sliders ou valores.
+- fix(ui): compacta o painel contextual "Tempo do trecho" (`#panelSegTime`) reduzindo a margem do handle/cabeçalho e o padding do bloco Duração, eliminando o vazio inferior e seguindo a mesma densidade dos painéis contextuais compactos já existentes.
+- tweak(ui): padroniza a ordem universal de toggles e ícones "Aplicar a todos"/globo para sempre aparecerem depois do título — Velocidade Constante, Movimento/Rotação/Escala Inteligente e Tremor Global (Preferências e painel Movimento).
+- tweak(ui): corrige a hierarquia tipográfica de "Velocidade constante", "Movimento inteligente" e "Tremor" (nova classe `.dur-item-title`) para visual de item principal — caixa alta e baixa, fonte branca, sem tracking/uppercase de cabeçalho de seção.
+- feat(ui): expõe o ícone "Aplicar a todos" (globo `#custGlobalLock`, lógica `toggleCustGlobalLock`/`custGlobalLock`/`isCustLocked` já existente em JS) nos painéis de frame Pausa, Rotação, Escala e Mover/Posição.
+- preserve: sem alteração funcional em Tremor (Global/Desligado/Personalizado), Movimento Inteligente, Velocidade Constante, Stage, timeline, frames/trechos no Stage, curvas/Bézier, seleção, Preview/export MP4, JSON (antigo e novo) e motor de renderização.
+
 # v8z4b29BT
 
 - tweak(ui): aumenta em ~50% os ícones de frame e trecho na lista de Edição de Tempo (`.seq-icon-frame` 26px → 39px, `.seq-icon-segment` 26×14px → 39×21px), incluindo os números (`.seq-icon-num`/`.seq-icon-seg-num`), para manter a legibilidade com números de dois dígitos (10, 12, 24, 30, 30–31...) em projetos com muitos frames.
