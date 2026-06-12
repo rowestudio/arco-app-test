@@ -1,3 +1,22 @@
+# QA pendente — v8z4b29BV: corrige recuo da lista, ícone de trecho, hierarquia, densidade e bug de Pausa global
+
+> Base: v8z4b29BU (aprovada — compacta Edição de Tempo, amplia ícone de trecho e padroniza toggles/ícones globais). Esta versão é uma **correção visual/UX + bug pontual de "Aplicar a todos" na Pausa de frame**: não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/tremor/movimento inteligente/velocidade constante.
+
+## Escopo v8z4b29BV
+
+- **Recuo lateral esquerdo da lista**: `.dur-edit-icon-label` 84px → 64px e `gap` 2px → 1px, liberando largura útil para os sliders sem mudar a estrutura da lista.
+- **Ícone de trecho ~80% do tamanho da BU**: `.seq-icon-segment` 78×42px → 62×34px (ainda maior que o tamanho pré-BU de 39×21px); `.seq-icon-seg-num` 15px → 11px, mais próximo do ícone — número + ícone formam um único bloco visual.
+- **Hierarquia dos números de frame/trecho**: `.seq-icon-num` (dentro do ícone de frame) 14px → 10px; `.seq-icon-seg-num` (acima do ícone de trecho) 15px → 11px — discretos, sem competir com `.dur-edit-value` (valor em segundos, inalterado).
+- **Lista e blocos do painel Edição de Tempo mais compactos**: `.dur-edit-row` (padding 6px → 4px, gap 10px → 8px), `.dur-section-header`, `.dur-section-body`, `.dur-subitem`, `.dur-sublabel-row`, `.dur-subitem-action`, `.dur-summary-box`, `.dur-velocity-block` — todos reduzidos novamente. Valores, sliders e cálculos inalterados.
+- **Painel "Tempo do trecho" (`#panelSegTime`) ainda mais compacto**: margens do handle/cabeçalho e padding do bloco Duração reduzidos — elimina o vazio inferior remanescente. Slider/valor de duração e `#segTimeGlobeLock` inalterados.
+- **fix(frame): "Aplicar a todos" na Pausa de frame** — `_bindLocalFramePauseSliderOnce` agora consulta `isCustLocked()`/`custGlobalLock.framepause`; `toggleCustGlobalLock()` aplica o valor de pausa do frame ativo a todos os frames destravados ao ligar o global. Cobre os dois fluxos: global antes do ajuste e global depois do ajuste.
+- **"Novo Projeto" → "Novo"**: botão do launcher ganha `white-space:nowrap`; `fitNovoProjetoLabel()` troca o texto para "Novo" se "Novo Projeto" não couber em uma linha. Fluxo do botão inalterado.
+- Preserva painel Movimento (`#panelEase`) fora dos ajustes citados, Tremor (Global e por trecho), Movimento Inteligente, Velocidade Constante, Stage, timeline, curvas/Bézier, seleção, Preview, export MP4, JSON (antigo e novo), templates, formato, launcher, logo, ícone iOS e o motor de renderização.
+
+Checklist detalhado: ver `docs/QA-v8z4b29BV.md`.
+
+---
+
 # QA pendente — v8z4b29BU: compacta Edição de Tempo, amplia ícone de trecho e padroniza toggles/ícones globais
 
 > Base: v8z4b29BT (aprovada — aumento de ícones de frame/trecho no painel Edição de Tempo). Esta versão é um **ajuste visual/UX e de padronização de componentes**: não há mudança de motor, JSON, export, Stage, timeline ou lógica de duração/tremor/movimento inteligente/velocidade constante.
