@@ -1,3 +1,15 @@
+# QA pendente — v8z4b29CC: reforço visual por bordas na Linha do tempo
+
+> Base confirmada: `v8z4b29CB`. Esta versão é ajuste fino visual controlado: reforça a borda do bloco “Linha do tempo” e os traços das abas locais Todos/Frames/Trechos, sem clarear o fundo e sem alterar lógica, lista, sliders, Preview/export/JSON, Tremor, Movimento Inteligente, Trajetória ou Stage. Não promove para estável.
+
+## Escopo v8z4b29CC
+
+- Confirmar em iPhone/Safari real que o bloco “Linha do tempo” ficou mais evidente por borda/traço, sem perda de contraste interno.
+- Confirmar em iPhone/Safari real que Todos/Frames/Trechos continuam como abas locais, com aba ativa mais nítida e conectada ao conteúdo abaixo, sem competir com Tempo/Preferências.
+- Confirmar que a área útil da lista foi preservada e que não houve alteração funcional.
+
+Checklist detalhado: executar os testes A, B e C do prompt de implementação.
+
 # QA pendente — v8z4b29CB: ajustes visuais/UX de Linha do tempo, Trajetória e seleção de trecho
 
 > Base confirmada: `v8z4b29CA`. Esta versão é uma correção visual/UX controlada: destaca a área Linha do tempo, transforma Todos/Frames/Trechos em abas locais, corrige espaçamento de Tremor, move Trajetória para painel próprio e sincroniza o destaque visual do Stage ao selecionar trechos. Não promove para estável e não altera Preview/export/JSON, Tremor, Duração, Pausa, Movimento Inteligente, easing, velocidade ou matemática da curva.
