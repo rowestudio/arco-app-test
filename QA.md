@@ -1,3 +1,16 @@
+# QA pendente — v8z4b29CD: Preview/Export com accent e refinamento visual da Linha do tempo
+
+> Base confirmada: `v8z4b29CC`. Esta versão é apenas uma correção visual controlada: substitui verdes remanescentes do Preview/Export pelo accent ciano/azul oficial, clareia discretamente o fundo externo do painel “Linha do tempo” e remove a borda inferior perceptível da aba local ativa Todos/Frames/Trechos. Não altera motor, render/export, MP4, JSON, Stage, timeline funcional, frames, trechos, curvas, Tremor, Movimento Inteligente, Trajetória, launcher, upload ou Novo Projeto. Não promove para estável.
+
+## Escopo v8z4b29CD
+
+- Confirmar em iPhone/Safari real que a versão visível mostra `v8z4b29CD` e que `APP_VERSION`/`APP_VERSION_NAME` também estão em `v8z4b29CD`.
+- Confirmar que, ao finalizar Preview/Export, o check/círculo de “Vídeo pronto!” e o ícone/estado pronto de “Salvar MP4” usam o accent ciano/azul do app, não verde.
+- Confirmar que “Salvar MP4” continua funcionando e que o MP4 continua sendo gerado/salvo normalmente.
+- Confirmar em Edição de Tempo > Tempo que o painel “Linha do tempo” ficou discretamente mais evidente pelo fundo externo levemente mais claro, enquanto abas e miolo da lista mantêm a cor geral atual.
+- Confirmar que a aba ativa Todos/Frames/Trechos não tem borda inferior perceptível e parece conectada ao conteúdo abaixo, sem competir com Tempo/Preferências.
+- Confirmar que sliders, textos, valores, seleção de frame/trecho, painéis de Tempo/Movimento/Trajetória, Preview, Export e JSON não regrediram.
+
 # QA pendente — v8z4b29CC: reforço visual por bordas na Linha do tempo
 
 > Base confirmada: `v8z4b29CB`. Esta versão é ajuste fino visual controlado: reforça a borda do bloco “Linha do tempo” e os traços das abas locais Todos/Frames/Trechos, sem clarear o fundo e sem alterar lógica, lista, sliders, Preview/export/JSON, Tremor, Movimento Inteligente, Trajetória ou Stage. Não promove para estável.
