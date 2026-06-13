@@ -1,3 +1,16 @@
+# QA pendente — v8z4b29CB: ajustes visuais/UX de Linha do tempo, Trajetória e seleção de trecho
+
+> Base confirmada: `v8z4b29CA`. Esta versão é uma correção visual/UX controlada: destaca a área Linha do tempo, transforma Todos/Frames/Trechos em abas locais, corrige espaçamento de Tremor, move Trajetória para painel próprio e sincroniza o destaque visual do Stage ao selecionar trechos. Não promove para estável e não altera Preview/export/JSON, Tremor, Duração, Pausa, Movimento Inteligente, easing, velocidade ou matemática da curva.
+
+## Escopo v8z4b29CB
+
+- Confirmar em iPhone/Safari real a área “Linha do tempo”, abas locais e ausência de empurrão excessivo da lista.
+- Confirmar Preferências > Tremor com espaçamento normalizado e toggle funcional.
+- Confirmar ordem texto + ícone/globo/toggle nos controles em linha, especialmente “Todos os trechos [globo]”.
+- Confirmar item Trajetória no menu contextual de trecho com ícone `fold-vertical`, alinhado com Edição/Tempo/Movimento.
+- Confirmar painel Trajetória próprio, sem Trajetória dentro de Movimento, com botões textuais de reset deste trecho/todos os trechos.
+- Confirmar seleção/troca rápida de trechos sem alpha/dim residual e com frames conectados visualmente associados.
+
 # QA pendente — v8z4b29CA: Trajetória/Linha reta e edição de curvas adjacentes
 
 > Base confirmada: `v8z4b29BZ`. Esta versão é uma **correção de UX/interação**: reposiciona a ação geométrica de retificar curva para `Trajetória > Linha reta` e explicita o trecho adjacente editado pelos handles IN/OUT do frame selecionado. Não promove para estável e não altera Preview/export/JSON, Tremor, Pausa, Duração, Movimento Inteligente, easing ou matemática da curva.
