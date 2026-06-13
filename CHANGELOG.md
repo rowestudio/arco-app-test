@@ -1,3 +1,14 @@
+# v8z4b29CB
+
+- Base `v8z4b29CA` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app, comentário/changelog de topo e `CHANGELOG.md`.
+- `index.html`: versionamento atualizado para `v8z4b29CB` em banner/comentário do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- `index.html`: área local “Linha do tempo” criada na aba Tempo, com fundo sutil e abas locais Todos/Frames/Trechos conectadas ao conteúdo abaixo, sem alterar filtros/lista/cálculos.
+- `index.html`: espaçamento da seção Preferências > Tremor normalizado e ordem do controle em linha “Todos os trechos [globo]” corrigida no painel Tempo do trecho.
+- `index.html`: Trajetória saiu do painel Movimento e ganhou item próprio no menu contextual de trecho com ícone Lucide `fold-vertical` e painel próprio com ações “Resetar este trecho (linha reta)” e “Resetar todos os trechos (linha reta)”.
+- `index.html`: seleção de trecho no Stage passa a associar visualmente os dois frames conectados e reduzir destaque residual de frames fora do trecho.
+- Preservados sem alteração intencional: launcher, Novo Projeto, upload, Preview/export, JSON, cálculos de duração, easing/velocidade, matemática de curvas, Tremor, Movimento Inteligente, pausa, escala e rotação.
+- Não promover para estável nesta versão; validar em iPhone/Safari real antes de estabilização.
+
 # v8z4b29CA
 
 - Base `v8z4b29BZ` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app, comentário/changelog de topo e `CHANGELOG.md`.
