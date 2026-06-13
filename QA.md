@@ -1,3 +1,16 @@
+# QA pendente — v8z4b29CA: Trajetória/Linha reta e edição de curvas adjacentes
+
+> Base confirmada: `v8z4b29BZ`. Esta versão é uma **correção de UX/interação**: reposiciona a ação geométrica de retificar curva para `Trajetória > Linha reta` e explicita o trecho adjacente editado pelos handles IN/OUT do frame selecionado. Não promove para estável e não altera Preview/export/JSON, Tremor, Pausa, Duração, Movimento Inteligente, easing ou matemática da curva.
+
+## Escopo v8z4b29CA
+
+- [ ] Confirmar em iPhone/Safari real que `Linha reta` aparece fora do bloco de Velocidade, na seção `Trajetória`.
+- [ ] Confirmar que acionar `Linha reta` retifica apenas o trecho atual e não altera os cards de velocidade/easing.
+- [ ] Confirmar que F2 selecionado em projeto F1→F2 permite editar F1→F2 mantendo F2 selecionado.
+- [ ] Confirmar que frame intermediário permite editar curva anterior e curva seguinte sem conflito de toque.
+- [ ] Confirmar que o último frame permite editar apenas a curva anterior.
+- [ ] Confirmar ausência de regressão em Preview/export/JSON, Tremor, Pausa, Duração e Movimento Inteligente.
+
 # QA pendente — v8z4b29BZ: ajustes visuais da Edição de Tempo e Movimento
 
 > Base: v8z4b29BY. Esta versão é **ajuste visual/UX controlado**, sem mudança de lógica de cálculo, Tremor, Movimento Inteligente, Velocidade Constante, Pausa Global, Preview, export, JSON, launcher, upload, stage ou timeline.

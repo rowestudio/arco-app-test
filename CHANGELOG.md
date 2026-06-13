@@ -1,3 +1,11 @@
+# v8z4b29CA
+
+- Base `v8z4b29BZ` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app, comentário/changelog de topo e `CHANGELOG.md`.
+- `index.html`: ação de retificar curva saiu do bloco de Velocidade/easing e passou para a seção própria `Trajetória`, como botão com ícone e rótulo `Linha reta`, reaproveitando `resetSelectedSegmentCurve()` sem alterar cálculo, easing, duração, Tremor, preview/export ou JSON.
+- `index.html`: drag dos handles IN/OUT do frame selecionado registra explicitamente o trecho adjacente tocado (`target`) e atualiza `_activeEaseSeg` para esse trecho, permitindo editar curva anterior ou seguinte mantendo o frame atual selecionado.
+- Versão atualizada para `v8z4b29CA` em banner/comentário do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- Não promover para estável nesta versão; validar em iPhone/Safari real antes de estabilização.
+
 # v8z4b29BZ
 
 - tweak(ui): remove o bloco superior duplicado de duração na aba Tempo, mantendo o box de resumo (Duração Total / Trechos / Pausas / Acabamento) e os ids/cálculos existentes.
