@@ -1,3 +1,10 @@
+# v8z4b29CC
+
+- Base `v8z4b29CB` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app, comentário/changelog de topo e `CHANGELOG.md`.
+- `index.html`: versionamento atualizado para `v8z4b29CC` em banner/comentário do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- `index.html`: reforço visual conservador da área “Linha do tempo” por borda externa mais contrastada e traços das abas locais Todos/Frames/Trechos mais nítidos, preservando fundo, estrutura, lógica, lista, sliders, Preview/export/JSON, Tremor, Movimento Inteligente, Trajetória e Stage.
+- Não promove para estável.
+
 # v8z4b29CB
 
 - Base `v8z4b29CA` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app, comentário/changelog de topo e `CHANGELOG.md`.
