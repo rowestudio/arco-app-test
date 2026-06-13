@@ -1,3 +1,11 @@
+# v8z4b29CD
+
+- Base `v8z4b29CC` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app, comentário/changelog de topo e `CHANGELOG.md`.
+- `index.html`: versionamento atualizado para `v8z4b29CD` em banner/comentário do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- `index.html`: Preview/Export troca os verdes remanescentes do check de “Vídeo pronto!” e do estado pronto do botão “Salvar MP4” por `var(--accent)`, preservando textos, layout e lógica de exportação.
+- `index.html`: painel “Linha do tempo” ganha fundo externo discretamente mais claro, mantendo abas/miolo na cor geral atual; a aba local ativa remove a linha inferior perceptível e se conecta ao conteúdo abaixo.
+- Preserve: sem alteração em motor, render/export/MP4, JSON, Stage, launcher, Novo Projeto, upload, timeline funcional, frames, trechos, curvas, Tremor, Movimento Inteligente ou Trajetória. Não promove para estável.
+
 # v8z4b29CC
 
 - Base `v8z4b29CB` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app, comentário/changelog de topo e `CHANGELOG.md`.
