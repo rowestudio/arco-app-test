@@ -1,3 +1,22 @@
+# QA pendente — v8z4b30E: HOTFIX export MP4 após troca de formato
+
+> Base confirmada: `v8z4b30D`. HOTFIX exclusivo: restaura a geração de MP4 após o usuário trocar o formato/proporção do projeto já configurado. Não implementa múltiplas imagens, não altera Stage, `layoutStage()`, zoom/pan/clamps, curvas, `projectWorld`/assets/views/permissões, visuais/ícones/textos/menus/fluxo aprovados. Não promove para estável.
+
+## Escopo v8z4b30E
+
+1. App abre igual visualmente (`v8z4b30E` no menu/configurações; `APP_VERSION`/`APP_VERSION_NAME` em `v8z4b30E`).
+2. Projeto novo com imagem e mais de 4 frames: "Salvar MP4" gera o vídeo normalmente (com aviso/marca d'água Free, sem bloquear).
+3. Trocar o formato/proporção do projeto (ex.: 9:16 → 1:1) e em seguida "Salvar MP4": exportação volta a funcionar, sem tela piscando e sem abortar silenciosamente.
+4. Testar 1:1 → 9:16 e exportar com sucesso.
+5. Testar 9:16 → 1:1 e exportar com sucesso.
+6. Testar 9:16 → 16:9 (se disponível) e exportar com sucesso.
+7. Após trocar de formato, o Preview continua funcionando normalmente (sem regressão de zoom/pan/frames).
+8. A exportação após a troca de formato usa a resolução correta do novo formato (`exportDims[currentRatio]`), refletida em `exportW`/`exportH` no Diagnóstico.
+9. Projetos com 4+ frames continuam mostrando o aviso/marca d'água premium sem bloquear a geração.
+10. "Adicionar como nova imagem" continua bloqueado como recurso Plus (modal Plus, nenhuma segunda imagem renderizada).
+11. Nenhuma segunda imagem é renderizada em nenhum cenário.
+12. iPhone/Safari: confirmar ausência de tela piscando e de aborto silencioso ao exportar após troca de formato; em caso de erro, conferir que o painel Diagnóstico mostra `lastExportStep`/`lastExportError` com a etapa/mensagem real, além de `exportW`/`exportH`, `currentFormat`, frames com NaN/Infinity, quantidade de frames e marca d'água aplicada.
+
 # QA pendente — v8z4b30D: fundação Project World / Assets / Visualizações / Premium Gate
 
 > Base confirmada: `v8z4b30C` (v8z4b30A/B revertidas e ignoradas). Esta versão implanta apenas a fundação técnica do novo conceito, **sem** múltiplas imagens reais. Não altera motor, `layoutStage()`, cálculo de Stage, zoom/pan/clamps, frames, curvas, Preview, export nem o formato do JSON. Não promove para estável.

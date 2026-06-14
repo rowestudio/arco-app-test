@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30E — fix(export): HOTFIX exclusivo para restaurar a geração de MP4 após troca de formato (proporção) em projetos já configurados — selectFormat() passa a preservar todas as propriedades extras do frame (ex.: pointMode) ao recalcular x/y/w/h para o novo currentRatio, com fallback finito caso algum frame chegue com valores ausentes/NaN/Infinity; nova normalizeFramesToCurrentFormat() é chamada no início de startRecord() para garantir, sem alterar Stage/layoutStage/zoom/pan/clamps/curvas, que todo frame esteja com w/h finitos, positivos e na proporção do formato atual antes de configurar o canvas de exportação; feat(diag): novo estado somente-leitura arcoExportDiag registra exportW/exportH e currentFormat usados na última geração, lastExportStep, lastExportError (mensagem real do erro, antes só genérica), presença de NaN/Infinity nos frames, quantidade de frames e watermark/premium aplicado — exibidos no painel Diagnóstico (sem alterar seu layout); erros do WebCodecs/MediaRecorder fallback agora também logam no console e no painel em vez de só piscar a tela; preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames além da normalização pós-troca de formato descrita, NÃO altera projectWorld/assets/views/permissões, visuais, ícones, textos, menus ou fluxo aprovados; sem prompt/alert/confirm (base v8z4b30D). -->
 <!-- Arco Motion App — v8z4b30C — diag(tooling): adiciona painel de Diagnóstico técnico temporário e discreto, acessível por novo item "Diagnóstico" no menu de ajustes; overlay textual rolável que apenas LÊ valores existentes (APP_VERSION, imageAreaW/H, stageW/H, imgNatW/H, proporções, formato, resolução de exportação, zoom atual/mín/máx, panX/panY e limites, frame ativo e x/y/w/h/rotation, fatores de conversão Stage→pixel natural, devicePixelRatio, viewport visual); botão "Copiar diagnóstico" via Clipboard API com fallback de seleção manual no Safari; preserve: NÃO altera layout aprovado, cores, textos, ícones, toolbar, faixa de frames, Preview, exportação, motor, layoutStage, zoom/pan, clamps, Stage, frames ou curvas; sem prompt/alert/confirm; sem múltiplas imagens, sem layers, sem cenas; apenas diagnóstico (base v8z4b29CD). -->
 <!-- Arco Motion App — v8z4b29CD — ajuste visual controlado: troca os verdes remanescentes do Preview/Export pelo accent ciano/azul oficial e clareia discretamente o fundo externo da Linha do tempo, conectando a aba local ativa ao conteúdo; sem alterar motor, render/export, JSON, Stage, timeline funcional, frames, trechos, curvas, Tremor, Movimento Inteligente ou Trajetória; sem promoção a estável. -->
 <!-- Arco Motion App — v8z4b30D — feat(foundation): fundação técnica do conceito Project World / Assets / Visualizações / Premium Gate, sem implementar múltiplas imagens reais. Adiciona modelo interno preparatório projectWorld{initialized,x,y,w,h,baseStageW,baseStageH}, assets[] (primeiro asset espelha a imagem única atual com sourceW/H e worldX/Y/W/H = Stage) e views[]; o render continua usando o fluxo atual de uma imagem só, sem mudar layoutStage(), cálculo de Stage, zoom/pan/clamps, motor de frames, curvas, Preview ou export. feat(permissions): camada central getFeatureAccess()/canUseMultipleImages()/canAddImageAsset()/getImageAssetCount() — framesOverThree mantém o comportamento atual (Free com aviso/marca d'água, regra antiga NÃO migrada), multipleImageAssets/jsonProject/aiMotion como Plus/Premium; contagem considera apenas assets type==="image" (texto não conta). feat(ux): ao escolher nova imagem com uma já carregada, abre action sheet customizada "Usar nova imagem" (Substituir imagem atual = fluxo atual; Adicionar como nova imagem = aviso Plus, não adiciona imagem real; Cancelar = limpa input e nada muda), sem prompt()/alert()/confirm(). feat(diag): painel de Diagnóstico exibe projectWorld/assets/views/permissões. Base v8z4b30C preservada (v8z4b30A/B revertidas e ignoradas). -->
@@ -3905,7 +3906,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30D</span><br><span id="appVersionNameText">v8z4b30D</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30E</span><br><span id="appVersionNameText">v8z4b30E</span></div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -6651,8 +6652,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30D';
-const APP_VERSION_NAME = 'v8z4b30D';
+const APP_VERSION = 'v8z4b30E';
+const APP_VERSION_NAME = 'v8z4b30E';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -6891,6 +6892,41 @@ function teardownFramePauseLocalSlider() {}
 // State
 let isPreviewing = false, isRecording = false;
 let exportCancelledFlag = false; // v8z4b19i — sinaliza cancelamento de export pelo usuário
+
+// v8z4b30E — HOTFIX: estado de diagnóstico da última tentativa de export MP4.
+// Somente leitura para o painel Diagnóstico; não influencia render/export.
+let arcoExportDiag = {
+  exportW: null,
+  exportH: null,
+  currentFormat: null,
+  lastExportStep: null,
+  lastExportError: null,
+  frameCount: null,
+  framesInvalid: false,
+  watermarkApplied: null,
+  timestamp: null
+};
+function arcoSetExportDiag(step, extra = {}) {
+  arcoExportDiag = {
+    ...arcoExportDiag,
+    lastExportStep: step,
+    timestamp: new Date().toISOString(),
+    ...extra
+  };
+  if (step === 'error') {
+    console.error('[Arco ' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '') + '][export]', step, extra);
+  } else if (window._arcoDebug) {
+    console.info('[Arco ' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '') + '][export]', step, extra);
+  }
+}
+function arcoFramesHaveInvalidValues() {
+  for (let i = 0; i < frameCount; i++) {
+    const f = frames[i];
+    if (!f) continue;
+    if (![f.x, f.y, f.w, f.h].every(v => Number.isFinite(v))) return true;
+  }
+  return false;
+}
 let animFrame = null, animStart = null;
 let activeIdx = 0;
 let frameCount = 0;
@@ -19166,6 +19202,26 @@ function showReadyOverlay() {
 async function startRecord() {
   if (shouldBlockGlobalUIAction()) return;
   if (isRecording) return;
+  // v8z4b30E — HOTFIX: reseta o diagnóstico de export ANTES de qualquer
+  // guard, para que o painel Diagnóstico sempre reflita a tentativa mais
+  // recente — inclusive abortos por guard de pré-condição.
+  arcoSetExportDiag('start', {
+    exportW: null,
+    exportH: null,
+    currentFormat: currentRatio,
+    lastExportError: null,
+    frameCount: frameCount,
+    framesInvalid: arcoFramesHaveInvalidValues(),
+    watermarkApplied: (!isProMode && frameCount >= 4)
+  });
+  // v8z4b30E — HOTFIX: normaliza frames para o formato atual ANTES de
+  // qualquer guard/render. Corrige resíduos de uma troca de formato anterior
+  // (w/h fora da proporção atual, ou valores não finitos), sem alterar Stage,
+  // zoom/pan, curvas ou layoutStage().
+  if (normalizeFramesToCurrentFormat('start-record')) {
+    renderAll();
+    arcoSetExportDiag('frames-normalized', { framesInvalid: arcoFramesHaveInvalidValues() });
+  }
   // v8z4b16d — Guards defensivos ANTES de ativar `isRecording`: se a
   // imagem base ou as dimensões de export estiverem inválidas, sair
   // sem entrar em estado de gravação (evita ficar preso piscando vermelho
@@ -19174,18 +19230,21 @@ async function startRecord() {
   const recordSourceDims = getImageSourceDimensions(recordSource);
   if (!imgEl || !imgNatW || !imgNatH || !imgEl.complete || !recordSource || !(recordSourceDims.width > 0) || !(recordSourceDims.height > 0)) {
     console.warn('[startRecord] imagem base/canônica não carregada', { imgNatW, imgNatH, complete: imgEl && imgEl.complete, canonical: recordSourceDims });
+    arcoSetExportDiag('error', { lastExportError: 'imagem base/canônica não carregada' });
     showStatus('Imagem ainda não carregada. Tente novamente em instantes.');
     return;
   }
   const dims0 = exportDims[currentRatio];
   if (!dims0 || !(dims0[0] > 0) || !(dims0[1] > 0)) {
     console.warn('[startRecord] dimensões de export inválidas', { currentRatio, dims0 });
+    arcoSetExportDiag('error', { lastExportError: 'dimensões de export inválidas para ' + currentRatio });
     showStatus('Proporção de export inválida.');
     return;
   }
   const durationSec0 = getComputedTimelineDuration();
   if (!Number.isFinite(durationSec0) || durationSec0 <= 0) {
     console.warn('[startRecord] duração total inválida — abortando export', { durationSec0 });
+    arcoSetExportDiag('error', { lastExportError: 'duração total inválida (' + durationSec0 + ')' });
     showStatus('Duração total inválida — ajuste os trechos e tente novamente.');
     return;
   }
@@ -19249,6 +19308,7 @@ async function startRecord() {
   // v8z4b16d — Sanidade do canvas de export antes de qualquer encode.
   if (!(W > 0) || !(H > 0) || !Number.isFinite(W) || !Number.isFinite(H)) {
     console.warn('[startRecord] recCanvas com dimensões inválidas', { W, H });
+    arcoSetExportDiag('error', { exportW: W, exportH: H, lastExportError: 'recCanvas com dimensões inválidas (' + W + 'x' + H + ')' });
     // cleanupFailedExport definido abaixo — usar reset manual mínimo aqui.
     isRecording = false;
     document.body.classList.remove('previewing');
@@ -19261,6 +19321,7 @@ async function startRecord() {
     showStatus('Erro ao preparar export.');
     return;
   }
+  arcoSetExportDiag('canvas-setup', { exportW: W, exportH: H });
   recCanvas.width = W;
   recCanvas.height = H;
   hardResetCanvas(rCtx, recCanvas, bgColor);
@@ -19277,6 +19338,7 @@ async function startRecord() {
   function cleanupFailedExport(message) {
     // v8z4b28b — falha de geração não deve fechar o Preview nem deixar tela preta.
     // Resetar export/overlay e manter o usuário no Preview em estado controlado.
+    arcoSetExportDiag('cleanup-failed', { lastExportError: message || arcoExportDiag.lastExportError || 'erro desconhecido' });
     isRecording = false;
     document.body.classList.add('previewing');
     if (animFrame) {
@@ -19329,6 +19391,7 @@ async function startRecord() {
       console.log('[finishExport] export cancelado — abortando finalização');
       return;
     }
+    arcoSetExportDiag('success', { lastExportError: null });
     if (generatedUrl) {
       try { URL.revokeObjectURL(generatedUrl); } catch(e) {}
     }
@@ -19388,8 +19451,10 @@ async function startRecord() {
     // v8z4b16d — Guard: se MediaRecorder não existir (browser muito
     // antigo), abortar com mensagem útil em vez de travar.
     if (typeof MediaRecorder === 'undefined' || !recCanvas.captureStream) {
+      arcoSetExportDiag('error', { lastExportError: 'MediaRecorder/captureStream indisponíveis' });
       throw new Error('MediaRecorder/captureStream indisponíveis');
     }
+    arcoSetExportDiag('mediarecorder-fallback');
     const stream = recCanvas.captureStream(fps);
     const track  = stream.getVideoTracks()[0];
     const useManual = !!(track && track.requestFrame);
@@ -19411,7 +19476,10 @@ async function startRecord() {
         // v8z4b28d — render seguro por frame: valida estado/canvas e usa
         // fallback universal antes de entregar qualquer frame ao recorder.
         const rendered = renderFrameSafely(rCtx, recCanvas, t, W, H, total, f, { rejectBlank: true });
-        if (!rendered) throw new Error('mediarecorder-frame-render-failed');
+        if (!rendered) {
+          arcoSetExportDiag('error', { lastExportError: 'mediarecorder-frame-render-failed (frame ' + f + ')' });
+          throw new Error('mediarecorder-frame-render-failed');
+        }
         if (useManual) track.requestFrame();
         if (f % 3 === 0 || f === total - 1) updateExportProgress(f + 1, 'Gerando vídeo (fallback)');
         const target = startTime + (f + 1) * frameDuration;
@@ -19496,7 +19564,10 @@ async function startRecord() {
       if (!isRecording || encError) break;
       const t = total > 1 ? f / (total - 1) : 0;
       const rendered = renderFrameSafely(rCtx, recCanvas, t, W, H, total, f, { rejectBlank: true });
-      if (!rendered) throw new Error('webcodecs-frame-render-failed');
+      if (!rendered) {
+        arcoSetExportDiag('error', { lastExportError: 'webcodecs-frame-render-failed (frame ' + f + ')' });
+        throw new Error('webcodecs-frame-render-failed');
+      }
 
       const ts  = Math.round(f * 1000000 / fps);
       const nts = Math.round((f + 1) * 1000000 / fps);
@@ -19570,6 +19641,9 @@ async function startRecord() {
   } catch (err) {
     logExportError(null, null, W, H, err, null);
     console.error('Export WebCodecs falhou:', err);
+    // v8z4b30E — registra o motivo real da falha para o painel Diagnóstico
+    // (a mensagem exibida ao usuário continua genérica).
+    arcoSetExportDiag('error', { lastExportError: err?.message || String(err) });
     cleanupFailedExport('Erro ao gerar vídeo. Tente novamente.');
   } finally {
     if (exportEncoder && !exportEncoderClosed) {
@@ -19582,6 +19656,7 @@ async function startRecord() {
     // com o botão piscando vermelho e a tela preta.
     if (isRecording) {
       console.warn('[startRecord] estado inconsistente ao final — forçando cleanup');
+      arcoSetExportDiag('error', { lastExportError: arcoExportDiag.lastExportError || 'Estado inconsistente ao final do export' });
       try { cleanupFailedExport('Export interrompido — tente novamente.'); } catch(e) {}
     }
   }
@@ -19667,11 +19742,21 @@ function selectFormat(chip) {
   setupPreviewCanvas();
   const ar = ratioMap[currentRatio];
   for (let i = 0; i < frameCount; i++) {
-    const cx = frames[i].x + frames[i].w / 2;
-    const cy = frames[i].y + frames[i].h / 2;
-    let nw = frames[i].w, nh = nw / ar;
+    const f = frames[i] || {};
+    // v8z4b30E — usar fallback finito caso x/y/w/h estejam ausentes/NaN/Infinity
+    // (não deve ocorrer no fluxo normal, mas evita propagar valor inválido
+    // para o frame após a troca de formato).
+    const fx = Number.isFinite(f.x) ? f.x : 0;
+    const fy = Number.isFinite(f.y) ? f.y : 0;
+    const fw = (Number.isFinite(f.w) && f.w > 0) ? f.w : Math.max(30, stageW * 0.3);
+    const fh = (Number.isFinite(f.h) && f.h > 0) ? f.h : fw / ar;
+    const cx = fx + fw / 2;
+    const cy = fy + fh / 2;
+    let nw = fw, nh = nw / ar;
+    if (!Number.isFinite(nh) || nh <= 0) { nh = Math.max(30, stageH * 0.3); nw = nh * ar; }
     if (nh > stageH) { nh = stageH; nw = nh * ar; }
-    frames[i] = { x: cx - nw/2, y: cy - nh/2, w: nw, h: nh };
+    // v8z4b30E — preserva propriedades do frame (ex.: pointMode) além de x/y/w/h.
+    frames[i] = { ...f, x: cx - nw/2, y: cy - nh/2, w: nw, h: nh };
     clampFrame(i);
   }
   renderAll();
@@ -21475,6 +21560,42 @@ function applyScaleEasingToT(t, ease) {
   }
 }
 // ─────────────────────────────────────────────────────────────────────────
+
+// v8z4b30E — HOTFIX: normalização defensiva pós-troca de formato.
+// Garante que todo frame esteja com w/h finitos, positivos e na proporção do
+// currentRatio antes de exportar. Frames já corretos (dentro de tolerância)
+// não são alterados — apenas corrige valores NaN/Infinity/0 ou proporção
+// desatualizada que possam ter sobrado de uma troca de formato anterior.
+// NÃO altera Stage, zoom/pan, curvas, layoutStage() ou projectWorld/assets.
+function normalizeFramesToCurrentFormat(reason) {
+  const ar = ratioMap[currentRatio];
+  if (!Number.isFinite(ar) || ar <= 0) return false;
+  let fixedAny = false;
+  for (let i = 0; i < frameCount; i++) {
+    const f = frames[i];
+    if (!f) continue;
+    const validXY = Number.isFinite(f.x) && Number.isFinite(f.y);
+    const validWH = Number.isFinite(f.w) && Number.isFinite(f.h) && f.w > 0 && f.h > 0;
+    const ratioOk = validWH && Math.abs((f.w / f.h) - ar) < 0.01;
+    if (validXY && validWH && ratioOk) continue;
+
+    const fx = validXY ? f.x : 0;
+    const fy = validXY ? f.y : 0;
+    const fw = (Number.isFinite(f.w) && f.w > 0) ? f.w : Math.max(30, (stageW || 300) * 0.3);
+    const cx = fx + fw / 2;
+    const cy = fy + (Number.isFinite(f.h) && f.h > 0 ? f.h : fw / ar) / 2;
+    let nw = fw, nh = nw / ar;
+    if (!Number.isFinite(nh) || nh <= 0) { nh = Math.max(30, (stageH || 300) * 0.3); nw = nh * ar; }
+    if (stageH && nh > stageH) { nh = stageH; nw = nh * ar; }
+    frames[i] = { ...f, x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh };
+    clampFrame(i);
+    fixedAny = true;
+  }
+  if (fixedAny && window._arcoDebug) {
+    console.info('[Arco ' + APP_VERSION + '] normalizeFramesToCurrentFormat:', reason || 'unknown', { currentRatio, frameCount });
+  }
+  return fixedAny;
+}
 
 function normalizeProjectArrays() {
   const segs = Math.max(0, frameCount - 1);
@@ -24311,6 +24432,17 @@ function buildDiagnosticsText() {
     }
   } catch (e) {}
   push('resolução de exportação atual', expStr);
+  L.push('');
+
+  // v8z4b30E — Diagnóstico do último export MP4 (HOTFIX troca de formato)
+  push('exportW (última geração)', _diagFmtNum(arcoExportDiag.exportW));
+  push('exportH (última geração)', _diagFmtNum(arcoExportDiag.exportH));
+  push('currentFormat (última geração)', arcoExportDiag.currentFormat || 'n/d');
+  push('lastExportStep', arcoExportDiag.lastExportStep || 'n/d');
+  push('lastExportError', arcoExportDiag.lastExportError || 'nenhum');
+  push('frames com NaN/Infinity (atual)', (typeof arcoFramesHaveInvalidValues === 'function' && arcoFramesHaveInvalidValues()) ? 'SIM' : 'não');
+  push('quantidade de frames', String((typeof frameCount !== 'undefined') ? frameCount : 'n/d'));
+  push('watermark/premium aplicado (última geração)', arcoExportDiag.watermarkApplied == null ? 'n/d' : String(arcoExportDiag.watermarkApplied));
   L.push('');
 
   // Zoom de edição
