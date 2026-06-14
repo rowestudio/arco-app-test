@@ -1,3 +1,13 @@
+# v8z4b30E
+
+- HOTFIX exclusivo: corrige a falha de geração de MP4 (tela "pisca" e nenhum arquivo é gerado) que ocorria após o usuário **trocar o formato/proporção do projeto** já configurado (com >4 frames ou não), reportada pelo usuário.
+- `index.html` (`selectFormat`): ao recalcular `x/y/w/h` de cada frame para o novo `currentRatio`, passa a preservar todas as propriedades extras do frame (ex.: `pointMode`) via spread, em vez de recriar o objeto só com `{x,y,w,h}`; adiciona fallback finito para `f.x/f.y/f.w/f.h` caso algum frame chegue com valor ausente/NaN/Infinity.
+- `index.html` (nova função `normalizeFramesToCurrentFormat(reason)`): passe de normalização defensiva que corrige frames com `x/y/w/h` não finitos, `w`/`h` <= 0 ou fora da proporção do `currentRatio` (tolerância 0.01), recalculando a partir do centro do frame e aplicando `clampFrame()`. Chamada no início de `startRecord()`, antes de qualquer guard, garantindo que o export sempre opere sobre frames coerentes com o formato atual — **sem** alterar Stage, `layoutStage()`, zoom/pan/clamps, curvas ou o motor de frames além dessa normalização.
+- `index.html` (diagnóstico de export — novo `arcoExportDiag`/`arcoSetExportDiag`/`arcoFramesHaveInvalidValues`): registra, a cada tentativa de export, `exportW`/`exportH` e `currentFormat` usados na geração, `lastExportStep` (etapa atual: start, frames-normalized, canvas-setup, mediarecorder-fallback, cleanup-failed, success, error), `lastExportError` (mensagem real do erro, incluindo erros do `WebCodecs`/`MediaRecorder` capturados nos `catch`), se algum frame está com NaN/Infinity, `frameCount` e se a marca d'água/aviso premium (`>=4` frames, modo não-Pro) foi aplicado.
+- `index.html` (painel Diagnóstico — `buildDiagnosticsText()`): exibe os novos campos de `arcoExportDiag` na seção "Formato / exportação", sem alterar o layout do painel.
+- `index.html`: versionamento atualizado para `v8z4b30E` em comentário do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- Preserve: nenhuma segunda imagem é renderizada/implementada; Stage, `layoutStage()`, zoom/pan/clamps, curvas, `projectWorld`/`assets`/`views`/permissões, visuais/ícones/textos/menus/fluxo aprovados permanecem inalterados; sem `prompt()`/`alert()`/`confirm()`. Regra de aviso/marca d'água para `>=4` frames mantida sem bloquear a geração. Validado via Playwright (export antes da troca de formato, e após 9:16→1:1 e 9:16→16:9, todos com sucesso).
+
 # v8z4b30D
 
 - Base `v8z4b30C` confirmada e preservada. `v8z4b30A` e `v8z4b30B` foram revertidas e são ignoradas.
