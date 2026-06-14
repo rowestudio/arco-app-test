@@ -1,13 +1,23 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29CD                                    ║
+║  Versão: v8z4b30A                                     ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
 ║   contexto técnico.)                                  ║
 ╠══════════════════════════════════════════════════════╣
 ║  CHANGELOG (histórico)                               ║
+║  v8z4b30A                                            ║
+║    feat(scenes): Cenas V1 — modelo scenes[], cada    ║
+║              cena com imagem e movimento próprios;    ║
+║              UI mínima na Linha do tempo (trocar/     ║
+║              + Cena/Duplicar/Excluir); preview/export ║
+║              concatenam cenas em sequência; JSON      ║
+║              salva/carrega multi-cena e converte      ║
+║              projeto antigo em "Cena 1".              ║
+║    tweak(ui): "TREMOR GLOBAL (PROJETO INTEIRO)" em    ║
+║              caixa alta, estilo técnico, sem recuo.   ║
 ║  v8z4b29CD                                           ║
 ║    tweak(ui): troca verde do Preview/Export pelo     ║
 ║              accent e refina Linha do tempo.         ║
@@ -2989,6 +2999,53 @@ body.cust-open #toolbar{
 #segTimingHint{display:block !important;}
 .cena1-section-header{margin-top:6px;}
 
+/* v8z4b30A — Cenas V1: cabeçalho de cena + menu de cenas. Estilo discreto,
+   mobile-first, alinhado ao restante da Linha do tempo. */
+.scene-header{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.scene-switch-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:none;border:none;padding:2px 0;margin:0;
+  color:var(--text);font-size:inherit;font-weight:inherit;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.scene-switch-btn:active{opacity:.7;}
+.scene-caret{font-size:11px;color:var(--text3);line-height:1;}
+.scene-header-actions{display:flex;align-items:center;gap:6px;}
+.scene-mini-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:7px;
+  border:1.5px solid var(--border2);background:var(--surface-field);
+  color:var(--text2);font-size:16px;line-height:1;cursor:pointer;padding:0;
+  -webkit-tap-highlight-color:transparent;
+}
+.scene-mini-btn:active{border-color:var(--accent);color:var(--accent);}
+.scene-menu{
+  margin:4px 0 6px;padding:6px;
+  border:1.5px solid var(--border2);border-radius:10px;
+  background:var(--surface-field);
+}
+.scene-menu-list{display:flex;flex-direction:column;gap:2px;margin-bottom:6px;}
+.scene-menu-item{
+  display:flex;align-items:center;gap:8px;width:100%;
+  background:none;border:none;border-radius:7px;padding:8px 10px;margin:0;
+  color:var(--text2);font-size:14px;text-align:left;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.scene-menu-item.active{color:var(--accent);background:rgba(4,255,242,0.08);}
+.scene-menu-item:active{background:rgba(4,255,242,0.05);}
+.scene-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0;}
+.scene-menu-item.active .scene-dot{background:var(--accent);}
+.scene-menu-actions{display:flex;gap:6px;border-top:1px solid var(--border2);padding-top:6px;}
+.scene-menu-action{
+  flex:1;background:var(--surface);border:1.5px solid var(--border2);border-radius:7px;
+  padding:8px 6px;margin:0;color:var(--text2);font-size:13px;font-weight:600;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.scene-menu-action:active{border-color:var(--accent);color:var(--accent);}
+.scene-menu-action.danger{color:#ff5a6e;}
+.scene-menu-action.danger:active{border-color:#ff5a6e;color:#ff5a6e;}
+.scene-menu-action.disabled{opacity:.35;pointer-events:none;}
+
 /* v8z4b15z — slider "Tudo" em estado misto: track e thumb dessaturados,
    indicando que os frames têm valores diferentes. Arrastar SAI do estado
    misto e aplica imediatamente a todos os frames. */
@@ -3860,6 +3917,8 @@ body.cust-open #toolbar{
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 <input type="file" id="newProjectImageInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
+<!-- v8z4b30A — Cenas V1: seletor de imagem para nova cena. -->
+<input type="file" id="sceneImageInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
 
 <!-- PREVIEW SCREEN -->
 <div class="preview-screen" id="previewScreen">
@@ -4242,9 +4301,18 @@ body.cust-open #toolbar{
       </button>
     </div>
     <div class="timeline-edit-content">
-    <div class="dur-section-header cena1-section-header">
-      <span>Cena 1</span>
+    <!-- v8z4b30A — Cenas V1: cabeçalho de cena interativo (trocar / + Cena /
+         Duplicar / Excluir). Em projeto de 1 cena aparece apenas "Cena 1". -->
+    <div class="dur-section-header cena1-section-header scene-header" id="sceneHeader">
+      <button type="button" class="scene-switch-btn" id="sceneSwitchBtn" onclick="toggleSceneMenu(event)">
+        <span id="sceneCurrentName">Cena 1</span>
+        <span class="scene-caret" id="sceneCaret" style="display:none;">▾</span>
+      </button>
+      <div class="scene-header-actions">
+        <button type="button" class="scene-mini-btn" id="sceneAddBtn" title="Adicionar cena" aria-label="Adicionar cena" onclick="onSceneAdd(event)">＋</button>
+      </div>
     </div>
+    <div id="sceneMenu" class="scene-menu" style="display:none;"></div>
     <div id="cena1Block" class="dur-section-body" style="padding-top:2px;margin-bottom:2px;">
       <!-- Lista intercalada (frames + trechos). Sliders escrevem nos MESMOS
            estados (framePauses[] / segDurations[]) dos controles globais. -->
@@ -4368,15 +4436,18 @@ body.cust-open #toolbar{
       <span>Tremor</span>
     </div>
     <div class="dur-section-body" style="padding-top:8px;margin-bottom:6px;">
-      <div class="ease-channel-block" style="padding:10px;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span class="dur-config-label" onclick="document.getElementById('tremorGlobalToggle').click();">Tremor Global (projeto inteiro)</span>
-          <label class="smart-toggle" title="Tremor Global do projeto">
-            <input type="checkbox" id="tremorGlobalToggle" onchange="toggleProjectShake(this.checked)">
-            <span class="smart-toggle-track"></span>
-          </label>
-        </div>
-        <div id="tremorGlobalZone" style="display:none;flex-direction:column;gap:10px;margin-top:10px;">
+      <!-- v8z4b30A — label técnico em CAIXA ALTA, alinhado à coluna principal da
+           seção (mesmo padrão de "INTERVALO PADRÃO"), sem recuo/gap inicial.
+           Toggle alinhado à direita. Lógica/estado/JSON do Tremor inalterados. -->
+      <div class="dur-subitem" style="padding:6px 0;">
+        <span class="dur-subitem-label" style="flex:1;cursor:pointer;" onclick="document.getElementById('tremorGlobalToggle').click();">TREMOR GLOBAL (PROJETO INTEIRO)</span>
+        <label class="smart-toggle" title="Tremor Global do projeto">
+          <input type="checkbox" id="tremorGlobalToggle" onchange="toggleProjectShake(this.checked)">
+          <span class="smart-toggle-track"></span>
+        </label>
+      </div>
+      <div id="tremorGlobalZone" style="display:none;flex-direction:column;gap:10px;margin-top:6px;">
+        <div class="ease-channel-block" style="padding:10px;display:flex;flex-direction:column;gap:10px;">
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:11px;color:var(--text3);flex-shrink:0;min-width:64px;">Intensidade</span>
             <input type="range" class="dur-slider" id="tremorGlobalIntensitySlider" min="0" max="100" step="1" value="40" style="flex:1;">
@@ -6543,8 +6614,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29CD';
-const APP_VERSION_NAME = 'v8z4b29CD';
+const APP_VERSION = 'v8z4b30A';
+const APP_VERSION_NAME = 'v8z4b30A';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12455,6 +12526,618 @@ function updateUndoRedoUI() {
   const br = document.getElementById('topBtnRedo');
   if (bu) { bu.style.opacity = undoStack.length ? '1' : '0.3'; bu.style.pointerEvents = undoStack.length ? 'auto' : 'none'; }
   if (br) { br.style.opacity = redoStack.length ? '1' : '0.3'; br.style.pointerEvents = redoStack.length ? 'auto' : 'none'; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CENAS V1 — v8z4b30A
+// Modelo de projeto com múltiplas cenas. Cada cena tem imagem própria e
+// movimento próprio (frames / trechos / curvas / durações / pausas / tremor).
+// A "cena ativa" é SEMPRE espelhada nas variáveis globais vivas (frames,
+// imgEl, canonicalRenderImage, segDurations…). Por isso, um projeto de cena
+// única se comporta exatamente como na v8z4b29CD: nenhuma troca de cena
+// ocorre e a maquinaria de cenas fica latente. A camada de cenas só age em
+// operações explícitas (trocar/adicionar/duplicar/excluir) e na sequência de
+// Preview/Export quando há mais de uma cena.
+// ═══════════════════════════════════════════════════════════════════════
+let scenes = [];
+let activeSceneIndex = 0;
+let _sceneIdSeq = 0;
+let _sceneMenuOpen = false;
+let _sceneHydrationInProgress = false;
+// Estado da sequência multi-cena durante Preview/Export (não salvo no JSON).
+let _sceneSeqActive = false;
+let _sceneSeqDurations = [];
+let _sceneSeqTotal = 0;
+let _sceneSeqMounted = -1;     // índice da cena hidratada para render no momento
+let _sceneSeqSavedActive = -1; // cena ativa antes de iniciar a sequência
+
+function newSceneId() { _sceneIdSeq++; return 'sc-' + Date.now().toString(36) + '-' + _sceneIdSeq; }
+function defaultSceneName(i) { return 'Cena ' + (i + 1); }
+function hasMultipleScenes() { return scenes.length > 1; }
+function _sceneEsc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Renomeação avançada não existe nesta versão: o nome segue a posição.
+function reindexSceneNames() { scenes.forEach((sc, i) => { sc.name = defaultSceneName(i); }); }
+
+// Captura a imagem viva atual num objeto de imagem de cena.
+function captureActiveSceneImage() {
+  return {
+    dataUrl: imageOriginalDataUrl || (imgEl ? imgEl.src : '') || '',
+    natW: imgNatW,
+    natH: imgNatH,
+    el: canonicalRenderImage || (imgEl && imgEl.complete ? imgEl : null),
+    meta: { ...imagePipelineMeta }
+  };
+}
+
+function makeSceneFromCurrent(name) {
+  return {
+    id: newSceneId(),
+    name: name || defaultSceneName(scenes.length),
+    image: captureActiveSceneImage(),
+    state: cloneProjectStateSnapshot(captureState()),
+    resetBaseline: projectResetBaseline ? cloneProjectStateSnapshot(projectResetBaseline) : null,
+    newFromImage: !!_projectNewFromImage
+  };
+}
+
+// Garante scenes[] inicializado a partir do estado vivo (projeto de 1 cena).
+function ensureScenesInitialized() {
+  if (scenes.length === 0) {
+    if (!imgNatW || frameCount < 1) return false;
+    scenes = [ makeSceneFromCurrent(defaultSceneName(0)) ];
+    activeSceneIndex = 0;
+    return true;
+  }
+  if (activeSceneIndex < 0 || activeSceneIndex >= scenes.length) activeSceneIndex = 0;
+  return true;
+}
+
+// Salva o estado vivo dentro da cena ativa (sem mexer no DOM). NÃO executar
+// durante a sequência de Preview/Export (globais apontam para outra cena).
+function commitActiveScene() {
+  if (_sceneSeqActive) return;
+  if (!ensureScenesInitialized()) return;
+  const sc = scenes[activeSceneIndex];
+  if (!sc) return;
+  sc.state = cloneProjectStateSnapshot(captureState());
+  sc.image = captureActiveSceneImage();
+  sc.resetBaseline = projectResetBaseline ? cloneProjectStateSnapshot(projectResetBaseline) : null;
+  sc.newFromImage = !!_projectNewFromImage;
+}
+
+function decodeSceneImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    if (!dataUrl) { resolve(null); return; }
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error('scene-image-decode-failed'));
+    im.src = dataUrl;
+  });
+}
+
+// Aplica a imagem de uma cena nas variáveis globais de render + Stage visível.
+function applySceneImageToGlobals(sc) {
+  if (!sc || !sc.image) return;
+  const img = sc.image;
+  imageOriginalDataUrl = img.dataUrl || '';
+  imagePipelineMeta = { ...(img.meta || {}) };
+  if (img.el) {
+    canonicalRenderImage = img.el;
+    canonicalRenderImageKind = getImageSourceType(img.el);
+    const d = getImageSourceDimensions(img.el);
+    imgNatW = img.natW || d.width;
+    imgNatH = img.natH || d.height;
+  } else {
+    imgNatW = img.natW || 0;
+    imgNatH = img.natH || 0;
+  }
+  invalidatePreviewRenderSource('scene-activate');
+  if (imgEl && img.dataUrl) {
+    imgEl.onload = null;
+    if (imgEl.src !== img.dataUrl) imgEl.src = img.dataUrl;
+    imgEl.style.display = 'block';
+  }
+}
+
+// Troca a cena ativa no editor (Stage + timeline + Edição de Tempo).
+function activateScene(targetIndex, opts) {
+  opts = opts || {};
+  if (!ensureScenesInitialized()) return;
+  targetIndex = Math.max(0, Math.min(scenes.length - 1, targetIndex | 0));
+  if (targetIndex === activeSceneIndex && !opts.force) { updateSceneUI(); return; }
+  if (!opts.skipCommit) commitActiveScene();
+  activeSceneIndex = targetIndex;
+  const sc = scenes[activeSceneIndex];
+  if (!sc) return;
+  // 1. imagem da nova cena
+  applySceneImageToGlobals(sc);
+  // 2. baseline de Reset e flag "novo por imagem" da cena
+  projectResetBaseline = sc.resetBaseline ? cloneProjectStateSnapshot(sc.resetBaseline) : null;
+  _projectNewFromImage = !!sc.newFromImage;
+  // 3. estado de movimento da nova cena (reconstrói DOM de frames + sincroniza UI)
+  undoStack.length = 0; redoStack.length = 0;
+  restoreState(sc.state);
+  // 4. limpar seleções residuais e focar F1 da nova cena
+  clearFrameMultiSelectState();
+  selectedSegmentIndex = -1;
+  bottomContextMode = 'frame';
+  activeIdx = Math.max(0, Math.min(frameCount - 1, 0));
+  // 5. re-render Stage/timeline/edição
+  if (imgNatW) { layoutStage(); setupPreviewCanvas(); }
+  renderAll();
+  updateFrameSelector();
+  if (typeof renderCena1Sequence === 'function') renderCena1Sequence();
+  requestLowerTimelineCenter(activeIdx);
+  updateToolbarLabels();
+  updateUndoRedoUI();
+  updateSceneUI();
+}
+
+// ── Adicionar nova cena (com nova imagem) ──────────────────────────────
+function pickImageForNewScene() {
+  if (typeof shouldBlockGlobalUIAction === 'function' && shouldBlockGlobalUIAction()) return;
+  if (!imgNatW || frameCount < 1) { showStatus('Carregue uma imagem primeiro.'); return; }
+  ensureScenesInitialized();
+  activeFileIntent = 'newSceneImage';
+  const input = document.getElementById('sceneImageInput');
+  if (!input) return;
+  input.value = '';
+  input.removeAttribute('capture');
+  input.click();
+}
+
+function loadNewSceneImage(file) {
+  activeFileIntent = null;
+  if (!file) return;                       // usuário cancelou → não cria cena vazia
+  if (!isSupportedNewProjectImage(file)) { showNewProjectImageError(); return; }
+  const reader = new FileReader();
+  reader.onerror = () => showNewProjectImageError();
+  reader.onload = e => {
+    const dataUrl = e.target.result || '';
+    const tmp = new Image();
+    tmp.onload = () => finishAddSceneWithImage(file, dataUrl, tmp);
+    tmp.onerror = () => showNewProjectImageError();
+    tmp.src = dataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+function finishAddSceneWithImage(file, dataUrl, tmp) {
+  ensureScenesInitialized();
+  // 1. salvar a cena atual antes de trocar a imagem global
+  commitActiveScene();
+  // 2. trocar globais para a nova imagem
+  resetPreviewAndExportStateForImageChange();
+  resetCanonicalRenderImage('new-scene-image');
+  imageOriginalDataUrl = dataUrl || '';
+  imagePipelineMeta = {
+    ...imagePipelineMeta,
+    originalMime: file.type || ((String(dataUrl).match(/^data:([^;]+)/) || [])[1] || ''),
+    sourceKind: 'newSceneImage', isEmbeddedBase64: false, isHeic: false
+  };
+  imgNatW = tmp.naturalWidth;
+  imgNatH = tmp.naturalHeight;
+  if (imgEl) { imgEl.onload = null; imgEl.src = dataUrl; imgEl.style.display = 'block'; }
+  setCanonicalRenderImage(tmp, {
+    label: 'new-scene-image', originalMime: imagePipelineMeta.originalMime,
+    sourceKind: 'newSceneImage', isEmbeddedBase64: false
+  });
+  // 3. novo estado de movimento válido (F1 assistido), mesmo formato/aspect
+  clearCurrentProjectForNewFile();    // zera arrays + DOM, NÃO mexe em scenes[]
+  layoutStage();
+  setupPreviewCanvas();
+  movementEasingMode = 'smart'; rotationEasingMode = 'smart'; scaleEasingMode = 'smart';
+  syncMovementEasingModeUI(); syncRotationEasingModeUI(); syncScaleEasingModeUI();
+  _projectNewFromImage = true;
+  createInitialFrameForNewImageProject();
+  captureProjectResetBaseline('new-scene-loaded');
+  renderAll();
+  // 4. criar entrada de cena e selecioná-la
+  const sc = makeSceneFromCurrent(defaultSceneName(scenes.length));
+  scenes.push(sc);
+  activeSceneIndex = scenes.length - 1;
+  reindexSceneNames();
+  undoStack.length = 0; redoStack.length = 0; updateUndoRedoUI();
+  updateFrameSelector();
+  if (typeof renderCena1Sequence === 'function') renderCena1Sequence();
+  requestLowerTimelineCenter(activeIdx);
+  updateToolbarLabels();
+  updateSceneUI();
+  showStatus('Cena ' + scenes.length + ' criada');
+}
+
+// ── Duplicar cena ──────────────────────────────────────────────────────
+function duplicateActiveScene() {
+  if (typeof shouldBlockGlobalUIAction === 'function' && shouldBlockGlobalUIAction()) return;
+  if (!ensureScenesInitialized()) return;
+  commitActiveScene();
+  const src = scenes[activeSceneIndex];
+  if (!src) return;
+  const dup = {
+    id: newSceneId(),
+    name: defaultSceneName(activeSceneIndex + 1),
+    // imagem é imutável: compartilhar o HTMLImageElement decodificado é seguro.
+    image: {
+      dataUrl: src.image.dataUrl,
+      natW: src.image.natW, natH: src.image.natH,
+      el: src.image.el,
+      meta: { ...(src.image.meta || {}) }
+    },
+    // deep copy do estado — editar a duplicata NÃO afeta a original.
+    state: cloneProjectStateSnapshot(src.state),
+    resetBaseline: src.resetBaseline ? cloneProjectStateSnapshot(src.resetBaseline) : null,
+    newFromImage: !!src.newFromImage
+  };
+  scenes.splice(activeSceneIndex + 1, 0, dup);
+  reindexSceneNames();
+  activateScene(activeSceneIndex + 1, { skipCommit: true, force: true });
+  showStatus('Cena duplicada');
+}
+
+// ── Excluir cena ───────────────────────────────────────────────────────
+function deleteActiveScene() {
+  if (typeof shouldBlockGlobalUIAction === 'function' && shouldBlockGlobalUIAction()) return;
+  if (!ensureScenesInitialized()) return;
+  if (scenes.length <= 1) { showStatus('O projeto precisa de pelo menos 1 cena.'); return; }
+  const nm = scenes[activeSceneIndex] ? scenes[activeSceneIndex].name : 'esta cena';
+  if (typeof confirm === 'function' && !confirm('Excluir ' + nm + '?')) return;
+  scenes.splice(activeSceneIndex, 1);
+  reindexSceneNames();
+  const neighbor = Math.min(activeSceneIndex, scenes.length - 1);
+  activeSceneIndex = neighbor;
+  activateScene(neighbor, { skipCommit: true, force: true });
+  showStatus('Cena excluída');
+}
+
+// ── UI do cabeçalho/menu de cenas ──────────────────────────────────────
+function updateSceneUI() {
+  const nameEl = document.getElementById('sceneCurrentName');
+  if (nameEl) nameEl.textContent = (scenes[activeSceneIndex] && scenes[activeSceneIndex].name) || defaultSceneName(activeSceneIndex);
+  const caret = document.getElementById('sceneCaret');
+  if (caret) caret.style.display = (scenes.length > 1) ? '' : 'none';
+  if (_sceneMenuOpen) renderSceneMenu();
+}
+
+function toggleSceneMenu(ev) {
+  if (ev) { ev.stopPropagation(); if (ev.preventDefault) ev.preventDefault(); }
+  ensureScenesInitialized();
+  _sceneMenuOpen = !_sceneMenuOpen;
+  const menu = document.getElementById('sceneMenu');
+  if (!menu) return;
+  if (_sceneMenuOpen) { renderSceneMenu(); menu.style.display = 'block'; }
+  else menu.style.display = 'none';
+}
+
+function closeSceneMenu() {
+  _sceneMenuOpen = false;
+  const menu = document.getElementById('sceneMenu');
+  if (menu) menu.style.display = 'none';
+}
+
+function renderSceneMenu() {
+  const menu = document.getElementById('sceneMenu');
+  if (!menu) return;
+  ensureScenesInitialized();
+  let html = '<div class="scene-menu-list">';
+  scenes.forEach((sc, i) => {
+    html += '<button type="button" class="scene-menu-item' + (i === activeSceneIndex ? ' active' : '') +
+            '" onclick="onSceneSelect(' + i + ',event)"><span class="scene-dot"></span>' +
+            _sceneEsc(sc.name || defaultSceneName(i)) + '</button>';
+  });
+  html += '</div><div class="scene-menu-actions">';
+  html += '<button type="button" class="scene-menu-action" onclick="onSceneAdd(event)">＋ Cena</button>';
+  html += '<button type="button" class="scene-menu-action" onclick="onSceneDuplicate(event)">Duplicar</button>';
+  const canDelete = scenes.length > 1;
+  html += '<button type="button" class="scene-menu-action ' + (canDelete ? 'danger' : 'disabled') + '"' +
+          (canDelete ? '' : ' disabled') + ' onclick="onSceneDelete(event)">Excluir</button>';
+  html += '</div>';
+  menu.innerHTML = html;
+}
+
+function onSceneSelect(i, ev) { if (ev) ev.stopPropagation(); closeSceneMenu(); activateScene(i); }
+function onSceneAdd(ev) { if (ev) ev.stopPropagation(); closeSceneMenu(); pickImageForNewScene(); }
+function onSceneDuplicate(ev) { if (ev) ev.stopPropagation(); closeSceneMenu(); duplicateActiveScene(); }
+function onSceneDelete(ev) { if (ev) ev.stopPropagation(); closeSceneMenu(); deleteActiveScene(); }
+
+// Fecha o menu de cenas ao tocar fora dele.
+document.addEventListener('click', function(e) {
+  if (!_sceneMenuOpen) return;
+  const menu = document.getElementById('sceneMenu');
+  const header = document.getElementById('sceneHeader');
+  if (menu && (menu.contains(e.target) || (header && header.contains(e.target)))) return;
+  closeSceneMenu();
+}, true);
+
+// ── Render multi-cena (Preview/Export) ─────────────────────────────────
+// Hidrata SOMENTE os dados de render de uma cena nos globais (sem DOM/UI).
+// Mantém currentRatio/bgColor do projeto (formato é comum a todas as cenas).
+function applySceneRenderData(st) {
+  if (!st) return;
+  frames.length = 0; (st.frames || []).forEach(f => frames.push({ ...f }));
+  frameRotations.length = 0; (st.frameRotations || []).forEach(r => frameRotations.push(r));
+  ctrlPts.length = 0; (st.ctrlPts || []).forEach(p => ctrlPts.push(p ? { ...p } : null));
+  ctrlPtManual.length = 0; (st.ctrlPtManual || []).forEach(v => ctrlPtManual.push(v));
+  frameLocked.length = 0; (st.frameLocked || []).forEach(v => frameLocked.push(v));
+  segDurations.length = 0; (st.segDurations || []).forEach(v => segDurations.push(v));
+  segBlurSettings.length = 0; (st.segBlurSettings || []).forEach(v => segBlurSettings.push(v ? { ...v } : cloneDefaultSegBlur()));
+  segTremorSettings.length = 0; (st.segTremorSettings || []).forEach(v => segTremorSettings.push(v ? { ...v } : cloneDefaultSegTremor()));
+  projectShake = st.projectShake ? { ...st.projectShake } : cloneDefaultProjectShake();
+  segEasings.length = 0; (st.segEasings || []).forEach(v => segEasings.push(v));
+  rotEasings.length = 0; (st.rotEasings || []).forEach(v => rotEasings.push(v));
+  scaleEasings.length = 0; (st.scaleEasings || []).forEach(v => scaleEasings.push(v));
+  framePauses.length = 0; (st.framePauses || []).forEach(p => framePauses.push(p ? { ...p } : { duration: 0 }));
+  curvesV2 = cloneCurvesV2(st.curvesV2 || null);
+  frameCount = st.frameCount || 1;
+  activeIdx = Math.max(0, Math.min(frameCount - 1, st.activeIdx || 0));
+  duration = st.duration;
+  baseFrameW = Number.isFinite(st.baseFrameW) ? st.baseFrameW : baseFrameW;
+  easeAmount = st.easeAmount; easeMode = st.easeMode; pauseDuration = st.pauseDuration ?? 0;
+  loopEnabled = !!st.loopEnabled; loopDuration = st.loopDuration ?? 1.0;
+  loopCtrlPt = st.loopCtrlPt ? { ...st.loopCtrlPt } : null;
+  loopSegEasing = st.loopSegEasing || 'linear';
+  loopSegRotEasing = st.loopSegRotEasing || 'linear';
+  loopSegScaleEasing = st.loopSegScaleEasing || 'linear';
+  finishMode = st.finishMode || 'none';
+  finishDuration = st.finishDuration ?? 0.8;
+  segmentTimingMode = st.segmentTimingMode || 'manual';
+  constantSpeedTotalDuration = st.constantSpeedTotalDuration ?? null;
+  movementEasingMode = (st.movementEasingMode === 'smart') ? 'smart' : 'manual';
+  rotationEasingMode = (st.rotationEasingMode === 'smart') ? 'smart' : 'manual';
+  scaleEasingMode = (st.scaleEasingMode === 'smart') ? 'smart' : 'manual';
+}
+
+function getSceneCanonicalImage(sc) { return (sc && sc.image && sc.image.el) ? sc.image.el : null; }
+
+// Proxy leve por cena para o Preview (evita drawImage de imagem gigante a
+// cada frame). Export usa a fonte canônica diretamente.
+function getScenePreviewSource(sc) {
+  if (!sc || !sc.image) return null;
+  const canonical = sc.image.el;
+  if (!canonical) return null;
+  const key = (sc.image.dataUrl || '').length;
+  if (sc._previewProxy && sc._previewProxyKey === key) return sc._previewProxy;
+  const dims = getImageSourceDimensions(canonical);
+  if (!(dims.width > 0)) return canonical;
+  const maxSide = Math.max(dims.width, dims.height);
+  if (maxSide <= PREVIEW_SOURCE_MAX_SIDE) { sc._previewProxy = canonical; sc._previewProxyKey = key; return canonical; }
+  try {
+    const scale = PREVIEW_SOURCE_MAX_SIDE / maxSide;
+    const pW = Math.max(1, Math.round(dims.width * scale));
+    const pH = Math.max(1, Math.round(dims.height * scale));
+    const cv = document.createElement('canvas');
+    cv.width = pW; cv.height = pH;
+    const cx = cv.getContext('2d', { alpha: false });
+    applyCanvasRenderQuality(cx);
+    cx.drawImage(canonical, 0, 0, pW, pH);
+    sc._previewProxy = cv; sc._previewProxyKey = key;
+    return cv;
+  } catch (e) {
+    sc._previewProxy = canonical; sc._previewProxyKey = key;
+    return canonical;
+  }
+}
+
+// Inicia a sequência multi-cena: salva a cena ativa, mede a duração de cada
+// cena e prepara a cena 0 para render. Chamado em Preview/Export quando há
+// mais de uma cena.
+function beginSceneSequence() {
+  commitActiveScene();
+  _sceneSeqSavedActive = activeSceneIndex;
+  const liveSnapshot = cloneProjectStateSnapshot(captureState());
+  _sceneSeqDurations = [];
+  for (let i = 0; i < scenes.length; i++) {
+    applySceneRenderData(scenes[i].state);
+    ensureSegmentArraysIntegrity();
+    const d = getComputedTimelineDuration();
+    _sceneSeqDurations.push((Number.isFinite(d) && d > 0) ? d : 0.001);
+  }
+  _sceneSeqTotal = _sceneSeqDurations.reduce((a, b) => a + b, 0);
+  if (!(_sceneSeqTotal > 0)) _sceneSeqTotal = 0.001;
+  // restaura os dados vivos antes de marcar a sequência como ativa
+  applySceneRenderData(liveSnapshot);
+  _sceneSeqMounted = -1;
+  _sceneSeqActive = true;
+  mountSceneForRender(0);
+}
+
+// Retoma a sequência (após export, para o preview de volta) sem recomeçar a
+// medição/commit — os globais já podem apontar para a última cena.
+function resumeSceneSequence() {
+  if (!_sceneSeqDurations.length) { beginSceneSequence(); return; }
+  _sceneSeqActive = true;
+  _sceneSeqMounted = -1;
+  mountSceneForRender(0);
+}
+
+function mountSceneForRender(i) {
+  if (i === _sceneSeqMounted) return;
+  const sc = scenes[i];
+  if (!sc) return;
+  applySceneRenderData(sc.state);
+  ensureSegmentArraysIntegrity();
+  const el = getSceneCanonicalImage(sc);
+  if (el) {
+    canonicalRenderImage = el;
+    canonicalRenderImageKind = getImageSourceType(el);
+    const d = getImageSourceDimensions(el);
+    imgNatW = sc.image.natW || d.width;
+    imgNatH = sc.image.natH || d.height;
+  }
+  _sceneSeqMounted = i;
+}
+
+// gt ∈ 0..1 sobre o projeto inteiro → { index, localT }.
+function sceneAtGlobalT(gt) {
+  const total = _sceneSeqTotal;
+  const target = Math.max(0, Math.min(1, gt)) * total;
+  let acc = 0;
+  const n = _sceneSeqDurations.length;
+  for (let i = 0; i < n; i++) {
+    const d = _sceneSeqDurations[i];
+    if (target < acc + d || i === n - 1) {
+      const localT = d > 0 ? Math.max(0, Math.min(1, (target - acc) / d)) : 0;
+      return { index: i, localT };
+    }
+    acc += d;
+  }
+  return { index: n - 1, localT: 1 };
+}
+
+// Encerra a sequência e restaura a cena ativa (dados + imagem) nos globais.
+// O DOM de frames permanece o da cena ativa (não é tocado na sequência).
+function endSceneSequence() {
+  if (!_sceneSeqActive) return;
+  _sceneSeqActive = false;
+  _sceneSeqMounted = -1;
+  const idx = (_sceneSeqSavedActive >= 0 && _sceneSeqSavedActive < scenes.length) ? _sceneSeqSavedActive : activeSceneIndex;
+  activeSceneIndex = idx;
+  const sc = scenes[idx];
+  if (sc) {
+    applySceneRenderData(sc.state);
+    ensureSegmentArraysIntegrity();
+    applySceneImageToGlobals(sc);
+    try { renderAll(); updateFrameSelector(); } catch (e) {}
+  }
+}
+
+// Ponto único de render para TODOS os loops de animação (preview + export).
+// Cena única: idêntico à v8z4b29CD. Multi-cena: mapeia o tempo global para a
+// cena correta e renderiza essa cena com sua própria imagem.
+function renderProjectFrame(ctx, canvas, gt, W, H, totalFrames, frameIdx, opts) {
+  opts = opts || {};
+  if (_sceneSeqActive && scenes.length > 1) {
+    const m = sceneAtGlobalT(gt);
+    mountSceneForRender(m.index);
+    const localFrameIdx = Math.round(m.localT * Math.max(0, totalFrames - 1));
+    if (opts.preview) {
+      const src = getScenePreviewSource(scenes[m.index]);
+      const o = { ...opts, renderSource: src };
+      return renderFrameSafely(ctx, canvas, m.localT, W, H, totalFrames, localFrameIdx, o);
+    }
+    return renderFrameSafely(ctx, canvas, m.localT, W, H, totalFrames, localFrameIdx, opts);
+  }
+  return renderFrameSafely(ctx, canvas, gt, W, H, totalFrames, frameIdx, opts);
+}
+
+// Duração usada pelos loops de animação/gravação (soma das cenas se >1).
+function getProjectAnimationDuration() {
+  if (_sceneSeqActive && scenes.length > 1 && _sceneSeqTotal > 0) return _sceneSeqTotal;
+  return getComputedTimelineDuration();
+}
+
+// Serializa um snapshot de estado de cena no mesmo formato de buildProjectData,
+// para que applyFrameData possa recarregá-lo como um projeto de cena única.
+function serializeSceneState(st) {
+  const fc = st.frameCount || 1;
+  const framesNorm = (st.framesNorm && st.framesNorm.length)
+    ? st.framesNorm.slice(0, fc).map(f => ({ nx: f.nx, ny: f.ny, nw: f.nw, nh: f.nh }))
+    : (st.frames || []).slice(0, fc).map(f => ({ nx: f.nx, ny: f.ny, nw: f.nw, nh: f.nh }));
+  return {
+    version: APP_VERSION,
+    currentRatio: st.currentRatio, duration: st.duration, bgColor: st.bgColor,
+    easeAmount: st.easeAmount, easeMode: st.easeMode, pauseDuration: st.pauseDuration,
+    loopEnabled: st.loopEnabled, frameCount: fc, activeIdx: st.activeIdx,
+    imageAR: st.imageAR ?? null, imageARLabel: st.imageARLabel ?? null, framesNorm,
+    loopDuration: st.loopDuration, defaultNewSegmentDuration: st.defaultNewSegmentDuration,
+    frameRotations: (st.frameRotations || []).slice(0, fc),
+    frameLocked: (st.frameLocked || []).slice(0, fc),
+    ctrlPts: (st.ctrlPts || []).slice(0, fc - 1).map(p => p ? { ...p } : null),
+    ctrlPtManual: (st.ctrlPtManual || []).slice(0, fc - 1),
+    segDurations: (st.segDurations || []).slice(0, fc - 1),
+    segBlurSettings: (st.segBlurSettings || []).slice(0, fc - 1).map(s => ({ ...s })),
+    segTremorSettings: (st.segTremorSettings || []).slice(0, fc - 1).map(s => ({ ...s })),
+    projectShake: { ...(st.projectShake || {}) },
+    framePauses: (st.framePauses || []).slice(0, fc).map(p => ({ duration: Number(p && p.duration) || 0 })),
+    pointModes: (st.frames || []).slice(0, fc).map(f => (f && f.pointMode) || POINT_MODE_DEFAULT),
+    rotEasings: (st.rotEasings || []).slice(0, fc - 1),
+    scaleEasings: (st.scaleEasings || []).slice(0, fc - 1),
+    segmentTimingMode: st.segmentTimingMode, constantSpeedTotalDuration: st.constantSpeedTotalDuration,
+    movementEasingMode: st.movementEasingMode, rotationEasingMode: st.rotationEasingMode, scaleEasingMode: st.scaleEasingMode,
+    finishMode: st.finishMode, finishDuration: st.finishDuration,
+    loopCtrlPt: st.loopCtrlPt ? { ...st.loopCtrlPt } : null,
+    loopSegEasing: st.loopSegEasing, loopSegRotEasing: st.loopSegRotEasing, loopSegScaleEasing: st.loopSegScaleEasing,
+    curvesV2: st.curvesV2 ? cloneCurvesV2(st.curvesV2) : null
+  };
+}
+
+// Constrói scenes[] a partir do JSON carregado. Projeto antigo (sem scenes[])
+// vira uma única "Cena 1" a partir do estado já aplicado por applyFrameData.
+function hydrateScenesFromProjectData(data) {
+  // Cena única (projeto antigo SEM scenes[], ou novo com exatamente 1 cena):
+  // o estado de topo já foi aplicado por applyFrameData — apenas o envolvemos
+  // numa "Cena 1". Caminho síncrono e leve, sem regressão para o caso comum.
+  if (!data || !Array.isArray(data.scenes) || data.scenes.length <= 1) {
+    scenes = [];
+    ensureScenesInitialized();
+    if (scenes[0]) scenes[0].name = defaultSceneName(0);
+    activeSceneIndex = 0;
+    updateSceneUI();
+    return Promise.resolve();
+  }
+  const entries = data.scenes;
+  // multi-cena precisa das imagens embutidas em cada cena; sem elas, mantém a
+  // experiência de cena única (a cena ativa já aplicada por applyFrameData).
+  const allHaveImages = entries.every(en => isValidImageBase64(en.imageBase64));
+  if (!allHaveImages) {
+    scenes = [];
+    ensureScenesInitialized();
+    if (scenes[0]) scenes[0].name = defaultSceneName(0);
+    activeSceneIndex = 0;
+    updateSceneUI();
+    console.warn('[Arco] JSON multi-cena sem imagens embutidas — carregado como cena única.');
+    return Promise.resolve();
+  }
+  const activeIdxReq = Math.max(0, Math.min(entries.length - 1, (data.activeSceneIndex | 0) || 0));
+  return Promise.all(entries.map(en => decodeSceneImage(en.imageBase64 || '').catch(() => null)))
+    .then(imgs => {
+      _sceneHydrationInProgress = true;
+      const built = [];
+      for (let i = 0; i < entries.length; i++) {
+        const en = entries[i];
+        const proj = en.project || en;
+        const el = imgs[i];
+        if (el) {
+          canonicalRenderImage = el;
+          canonicalRenderImageKind = getImageSourceType(el);
+          const d = getImageSourceDimensions(el);
+          imgNatW = en.imgNatW || d.width;
+          imgNatH = en.imgNatH || d.height;
+          imageOriginalDataUrl = en.imageBase64 || '';
+        }
+        layoutStage();
+        applyFrameData(proj);
+        captureProjectResetBaseline('scene-load');
+        built.push({
+          id: en.id || newSceneId(),
+          name: en.name || defaultSceneName(i),
+          image: {
+            dataUrl: en.imageBase64 || '',
+            natW: imgNatW, natH: imgNatH,
+            el: el || null,
+            meta: { ...imagePipelineMeta }
+          },
+          state: cloneProjectStateSnapshot(captureState()),
+          resetBaseline: cloneProjectStateSnapshot(captureState()),
+          newFromImage: false
+        });
+      }
+      scenes = built;
+      reindexSceneNames();
+      _sceneHydrationInProgress = false;
+      activeSceneIndex = -1;
+      activateScene(activeIdxReq, { skipCommit: true, force: true });
+      updateSceneUI();
+      showStatus(scenes.length > 1 ? ('Projeto com ' + scenes.length + ' cenas carregado') : 'Projeto carregado!');
+    })
+    .catch(err => {
+      _sceneHydrationInProgress = false;
+      console.error('[Arco] Falha ao hidratar cenas — mantendo cena única', err);
+      scenes = [];
+      ensureScenesInitialized();
+      activeSceneIndex = 0;
+      updateSceneUI();
+    });
 }
 
 // Drag state
@@ -18509,11 +19192,14 @@ function startPreview() {
 
   pausedElapsed = 0;
   animStart = null;
+  // v8z4b30A — Cenas V1: com mais de uma cena, o Preview toca as cenas em
+  // sequência (cada uma com sua imagem/frames) e a duração é a soma das cenas.
+  if (scenes.length > 1) beginSceneSequence();
   // v8z4b16b — fallback técnico mínimo (1ms) quando a duração real é 0.
   // Evita modulo por zero / NaN / loop infinito sem alterar valores do
   // usuário. Quando todos os trechos são 0, t fica preso em 0 e o preview
   // mostra estado estático seguro.
-  const durationSec = getComputedTimelineDuration();
+  const durationSec = getProjectAnimationDuration();
   const dur = Math.max(1, durationSec * 1000);
   const totalPF = Math.max(1, Math.round(durationSec * 25));
   const previewSource = getPreviewRenderSource();
@@ -18547,7 +19233,7 @@ function startPreview() {
     const blurPx = getBlurAtT(t, pW2);
     dispCanvas.style.filter = blurPx > 0 ? `blur(${(blurPx * 0.5).toFixed(1)}px)` : 'none';
     try {
-      renderFrameSafely(pCtx, dispCanvas, t, pW2, pH2, totalPF, Math.round(t * (totalPF - 1)), { renderSource: previewSource });
+      renderProjectFrame(pCtx, dispCanvas, t, pW2, pH2, totalPF, Math.round(t * (totalPF - 1)), { preview: true, renderSource: previewSource });
     } catch (err) {
       logExportError(Math.round(t * (totalPF - 1)), t, pW2, pH2, err, buildRenderDiagnostics(t, pW2, pH2, Math.round(t * (totalPF - 1))));
       renderUniversalFallback(pCtx, dispCanvas, t, pW2, pH2, Math.round(t * (totalPF - 1)), 'preview-loop-error', null);
@@ -18592,7 +19278,7 @@ function togglePreviewPlayback() {
     if (animStart !== null) {
       const now = performance.now();
       // v8z4b16b — guard contra duração 0 (% 0 = NaN).
-      pausedElapsed = (now - animStart + pausedElapsed) % Math.max(1, getComputedTimelineDuration() * 1000);
+      pausedElapsed = (now - animStart + pausedElapsed) % Math.max(1, getProjectAnimationDuration() * 1000);
     }
     previewLoopToken++;
     cancelAnimationFrame(animFrame);
@@ -18605,7 +19291,7 @@ function togglePreviewPlayback() {
     if (pb)  pb.style.display  = '';
     if (pb2) pb2.style.display = 'none';
     // v8z4b16b — guard contra duração 0 (% 0 = NaN).
-    const durationSec = getComputedTimelineDuration();
+    const durationSec = getProjectAnimationDuration();
     const dur  = Math.max(1, durationSec * 1000);
     const [eW, eH] = exportDims[currentRatio];
     const totalPF  = Math.max(1, Math.round(durationSec * 25));
@@ -18643,7 +19329,7 @@ function togglePreviewPlayback() {
       const blurPx = getBlurAtT(t, pW2r);
       dispCanvas.style.filter = blurPx > 0 ? `blur(${(blurPx * 0.5).toFixed(1)}px)` : 'none';
       try {
-        renderFrameSafely(pCtxR, dispCanvas, t, pW2r, pH2r, totalPF, Math.round(t * (totalPF - 1)), { renderSource: previewSource });
+        renderProjectFrame(pCtxR, dispCanvas, t, pW2r, pH2r, totalPF, Math.round(t * (totalPF - 1)), { preview: true, renderSource: previewSource });
       } catch (err) {
         logExportError(Math.round(t * (totalPF - 1)), t, pW2r, pH2r, err, buildRenderDiagnostics(t, pW2r, pH2r, Math.round(t * (totalPF - 1))));
         renderUniversalFallback(pCtxR, dispCanvas, t, pW2r, pH2r, Math.round(t * (totalPF - 1)), 'preview-resume-loop-error', null);
@@ -18729,6 +19415,8 @@ function resetPreviewPlaybackState() {
   }
   animStart = null;
   pausedElapsed = 0;
+  // v8z4b30A — Cenas V1: encerra a sequência multi-cena e restaura a cena ativa.
+  endSceneSequence();
   document.body.classList.remove('previewing');
   // Restaurar ícone/botão Play no Stage
   try { updatePlayButton(); } catch(e) {}
@@ -19077,6 +19765,9 @@ async function startRecord() {
   // Resetar flag de cancelamento: novo export começa sem estado residual
   // de um cancelamento anterior pelo usuário.
   exportCancelledFlag = false;
+  // v8z4b30A — Cenas V1: com mais de uma cena, o Export concatena as cenas em
+  // sequência (mesma lógica do Preview). A duração total é a soma das cenas.
+  if (scenes.length > 1) beginSceneSequence();
   document.body.classList.add('previewing');
 
   // v8z4b19i — Invalidar qualquer vídeo anterior antes de gerar outro.
@@ -19114,7 +19805,8 @@ async function startRecord() {
 
   const [W, H] = exportDims[currentRatio];
   const fps = 30;
-  const durationSec = durationSec0;
+  // v8z4b30A — Cenas V1: duração do projeto = soma das cenas quando multi-cena.
+  const durationSec = getProjectAnimationDuration();
   const total = Math.max(1, Math.round(durationSec * fps));
   const timelineFill = document.getElementById('previewTimelineFill');
   let exportEncodedFrames = 0;
@@ -19153,6 +19845,8 @@ async function startRecord() {
     // v8z4b28b — falha de geração não deve fechar o Preview nem deixar tela preta.
     // Resetar export/overlay e manter o usuário no Preview em estado controlado.
     isRecording = false;
+    // v8z4b30A — Cenas V1: restaura a cena ativa nos globais após falha de export.
+    endSceneSequence();
     document.body.classList.add('previewing');
     if (animFrame) {
       try { cancelAnimationFrame(animFrame); } catch(e) {}
@@ -19229,8 +19923,10 @@ async function startRecord() {
     isPreviewing = true;
     pausedElapsed = 0;
     animStart = null;
+    // v8z4b30A — Cenas V1: retoma a sequência multi-cena para o playback pós-export.
+    if (scenes.length > 1) resumeSceneSequence();
     const [eW2, eH2] = exportDims[currentRatio];
-    const dur2 = Math.max(1, getComputedTimelineDuration() * 1000);
+    const dur2 = Math.max(1, getProjectAnimationDuration() * 1000);
     const totalPF2 = Math.max(1, Math.round(durationSec * fps));
     const dispCanvasAfter = document.getElementById('previewDisplayCanvas');
     if (dispCanvasAfter) { dispCanvasAfter.style.display = 'block'; }
@@ -19249,7 +19945,7 @@ async function startRecord() {
       if (!animStart) animStart = ts;
       const elapsed = (ts - animStart + pausedElapsed) % dur2;
       const t2 = elapsed / dur2;
-      if (pCtxAfter) renderFrameSafely(pCtxAfter, dispCanvasAfter, t2, pWA, pHA, totalPF2, Math.round(t2 * (totalPF2 - 1)), { renderSource: previewSourceAfter });
+      if (pCtxAfter) renderProjectFrame(pCtxAfter, dispCanvasAfter, t2, pWA, pHA, totalPF2, Math.round(t2 * (totalPF2 - 1)), { preview: true, renderSource: previewSourceAfter });
       animFrame = requestAnimationFrame(loopAfter);
     }
     animFrame = requestAnimationFrame(loopAfter);
@@ -19285,7 +19981,7 @@ async function startRecord() {
         const t = total > 1 ? f / (total - 1) : 0;
         // v8z4b28d — render seguro por frame: valida estado/canvas e usa
         // fallback universal antes de entregar qualquer frame ao recorder.
-        const rendered = renderFrameSafely(rCtx, recCanvas, t, W, H, total, f, { rejectBlank: true });
+        const rendered = renderProjectFrame(rCtx, recCanvas, t, W, H, total, f, { rejectBlank: true });
         if (!rendered) throw new Error('mediarecorder-frame-render-failed');
         if (useManual) track.requestFrame();
         if (f % 3 === 0 || f === total - 1) updateExportProgress(f + 1, 'Gerando vídeo (fallback)');
@@ -19370,7 +20066,7 @@ async function startRecord() {
     for (let f = 0; f < total; f++) {
       if (!isRecording || encError) break;
       const t = total > 1 ? f / (total - 1) : 0;
-      const rendered = renderFrameSafely(rCtx, recCanvas, t, W, H, total, f, { rejectBlank: true });
+      const rendered = renderProjectFrame(rCtx, recCanvas, t, W, H, total, f, { rejectBlank: true });
       if (!rendered) throw new Error('webcodecs-frame-render-failed');
 
       const ts  = Math.round(f * 1000000 / fps);
@@ -21023,6 +21719,8 @@ function finishNewProjectImageLoad(file, dataUrl, tmp) {
     requestLowerTimelineCenter(activeIdx);
     updateToolbarLabels();
     captureProjectResetBaseline('new-project-loaded');
+    // v8z4b30A — Cenas V1: projeto novo começa como uma única "Cena 1".
+    scenes = []; activeSceneIndex = 0; ensureScenesInitialized(); updateSceneUI();
     validateProjectState('after-new-project');
     showStatus(chosenTemplate && chosenTemplate !== 'none' ? 'Novo projeto criado · template aplicado' : 'Novo projeto criado · Frame 1 ativo');
     requestAnimationFrame(() => {
@@ -21149,6 +21847,8 @@ function loadImage(file, onDoneCallback) {
           requestLowerTimelineCenter(activeIdx);
           updateToolbarLabels();
           captureProjectResetBaseline('image-loaded-f1-active');
+          // v8z4b30A — Cenas V1: projeto novo por imagem começa como "Cena 1".
+          scenes = []; activeSceneIndex = 0; ensureScenesInitialized(); updateSceneUI();
           validateProjectState('after-image-load-f1-active');
           showStatus('Imagem carregada · Frame 1 ativo');
         } else {
@@ -21200,6 +21900,8 @@ function loadImage(file, onDoneCallback) {
 document.getElementById('fileInput').addEventListener('change',  e => loadImage(e.target.files[0]));
 document.getElementById('fileInput2').addEventListener('change', e => loadImage(e.target.files[0]));
 document.getElementById('newProjectImageInput').addEventListener('change', e => loadNewProjectImage(e.target.files[0]));
+// v8z4b30A — Cenas V1: nova cena recebe imagem própria.
+(function(){ const si = document.getElementById('sceneImageInput'); if (si) si.addEventListener('change', e => loadNewSceneImage(e.target.files[0])); })();
 
 // ═══════════════════════════════════════
 // STATUS TOAST
@@ -23249,7 +23951,7 @@ function buildProjectData() {
     ? (imageAR > 1.7 ? '16:9 paisagem' : imageAR > 1.2 ? '4:3 paisagem' :
        imageAR > 0.95 ? '1:1 quadrado' : imageAR > 0.7 ? '3:4 retrato' : '9:16 retrato')
     : null;
-  return {
+  const data = {
     version: APP_VERSION,
     currentRatio, duration, bgColor, easeAmount, easeMode,
     pauseDuration, loopEnabled, frameCount, activeIdx,
@@ -23292,6 +23994,25 @@ function buildProjectData() {
     // v8z4b21a: curvesV2 — modelo cúbico com handles in/out independentes.
     curvesV2: isCurvesV2Active() ? cloneCurvesV2(curvesV2) : null,
   };
+  // v8z4b30A — Cenas V1: serializa scenes[]. Os campos de topo acima continuam
+  // refletindo a CENA ATIVA (compatibilidade com leitores antigos = cena única).
+  // As imagens por cena são anexadas só no save "com imagem" (doSaveDirect).
+  if (!_sceneHydrationInProgress) {
+    ensureScenesInitialized();
+    commitActiveScene();
+    if (scenes.length) {
+      data.scenes = scenes.map((sc, i) => ({
+        id: sc.id,
+        name: sc.name || defaultSceneName(i),
+        imgNatW: sc.image ? (sc.image.natW || 0) : 0,
+        imgNatH: sc.image ? (sc.image.natH || 0) : 0,
+        project: serializeSceneState(sc.state)
+      }));
+      data.activeSceneIndex = activeSceneIndex;
+      data.sceneCount = scenes.length;
+    }
+  }
+  return data;
 }
 
 let _pendingSaveIncludeImage = false;
@@ -23352,6 +24073,13 @@ function doSaveDirect(includeImage, nome) {
     // carregar novamente a mesma fonte máxima disponível na sessão salva.
     data.imageBase64 = imageOriginalDataUrl || imgEl.src;
     data.hasImage = true;
+    // v8z4b30A — Cenas V1: anexa a imagem de cada cena para round-trip completo.
+    if (Array.isArray(data.scenes)) {
+      data.scenes.forEach((s, i) => {
+        const du = scenes[i] && scenes[i].image ? scenes[i].image.dataUrl : '';
+        if (isValidImageBase64(du)) s.imageBase64 = du;
+      });
+    }
   }
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
@@ -23888,6 +24616,12 @@ function applyFrameData(data) {
     _newProjectOrigin = null;
     showStatus('Projeto carregado!');
     checkWatermarkWarning();
+  }
+  // v8z4b30A — Cenas V1: constrói scenes[] a partir do JSON (ou envolve este
+  // estado numa única "Cena 1"). Guard evita recursão durante a hidratação,
+  // pois hydrateScenesFromProjectData chama applyFrameData por cena.
+  if (!_sceneHydrationInProgress && imgNatW) {
+    hydrateScenesFromProjectData(data);
   }
 }
 
