@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30C — diag(tooling): adiciona painel de Diagnóstico técnico temporário e discreto, acessível por novo item "Diagnóstico" no menu de ajustes; overlay textual rolável que apenas LÊ valores existentes (APP_VERSION, imageAreaW/H, stageW/H, imgNatW/H, proporções, formato, resolução de exportação, zoom atual/mín/máx, panX/panY e limites, frame ativo e x/y/w/h/rotation, fatores de conversão Stage→pixel natural, devicePixelRatio, viewport visual); botão "Copiar diagnóstico" via Clipboard API com fallback de seleção manual no Safari; preserve: NÃO altera layout aprovado, cores, textos, ícones, toolbar, faixa de frames, Preview, exportação, motor, layoutStage, zoom/pan, clamps, Stage, frames ou curvas; sem prompt/alert/confirm; sem múltiplas imagens, sem layers, sem cenas; apenas diagnóstico (base v8z4b29CD). -->
 <!-- Arco Motion App — v8z4b29CD — ajuste visual controlado: troca os verdes remanescentes do Preview/Export pelo accent ciano/azul oficial e clareia discretamente o fundo externo da Linha do tempo, conectando a aba local ativa ao conteúdo; sem alterar motor, render/export, JSON, Stage, timeline funcional, frames, trechos, curvas, Tremor, Movimento Inteligente ou Trajetória; sem promoção a estável. -->
 <!-- Arco Motion App — v8z4b29CC — ajuste fino visual: reforça por bordas/traços a área Linha do tempo e as abas locais Todos/Frames/Trechos, preservando fundo, estrutura, lógica, lista, sliders, Preview/export/JSON, Tremor, Movimento Inteligente, Trajetória e Stage; sem promoção a estável. -->
 <!-- Arco Motion App — v8z4b29BY — limpeza visual conservadora do painel Edição de Tempo (base v8z4b29BX), sem redesign, sem novo design system e sem alteração de lógica: tweak(ui): filtros Todos/Frames/Trechos (.cena1-filter) com texto maior (11px → 14px), fundo levemente mais claro que o painel (--surface-filter) e borda na mesma cor do fundo (discreta, 1.5px mantido — sem 3px/3.5px), sem virar CTA nem aba solta; tweak(ui): botões grandes de ação (.dur-subitem-action: Zerar pausas, Igualar intervalos) mantêm a altura da referência (--ctrl-lg-h, ≤ filtros), fundo destacado (--surface-action) e borda discreta (variação mínima do fundo, --surface3 1.5px — borda grossa descartada); tweak(ui): números de frame (.seq-icon-num) e de trecho (.seq-icon-seg-num) 11px → 12px, e número do trecho aproximado do ícone (gap 2px → 1px + margin-bottom:-4px entrando na área vazia do topo do SVG, sem line-height:0 e sem sobrepor os círculos) para parecerem um único bloco; tweak(ui): textos auxiliares maiores no iPhone — .prefs-note 12px → 13px (line-height 1.5 → 1.35), #segTimingHint 12px → 13px, labels/sublabels uppercase (.dur-edit-label/.dur-subitem-label/.dur-sublabel/.dur-sublabel-value) 11px → 12px mantendo subtítulo (não viram título); tweak(ui): resumo de duração mais legível (.dur-summary-row 12px → 13px, .dur-summary-row-main 13px → 14px) com borda discreta mantida; abas (.ds-tab) mantidas em 15px (sem 18px); verify(frame): Pausa global (custGlobalLock.framepause/isCustLocked) sem travamento e aplicando a todos os frames destravados (fix BW preservado); verify(ui): alinhamento slider/valor/Reset/Global (#custGlobalLock align-self:flex-end) preservado; sem alteração no .lower-add-pill, no launcher/Novo Projeto, no Tremor, no motor, JSON, Preview ou export. -->
@@ -1215,6 +1216,51 @@ body.recording #editorZoomCtrl{display:none;}
   color:var(--text3);
   cursor:default;
   -webkit-user-select:text;user-select:text;
+}
+/* v8z4b30C — Painel de Diagnóstico técnico (overlay textual, discreto, rolável). */
+#diagnosticsPanel{
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:min(94vw,560px);
+  max-height:min(82vh,720px);
+  z-index:2147483000;
+  display:none;
+  flex-direction:column;
+  background:#16161a;
+  border:1px solid rgba(178,178,178,.32);
+  border-radius:14px;
+  box-shadow:0 18px 60px rgba(0,0,0,.55);
+  padding:12px;
+  box-sizing:border-box;
+}
+#diagnosticsPanel.show{display:flex;}
+#diagnosticsPanel .diag-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+#diagnosticsPanel .diag-title{font-size:12px;font-weight:800;letter-spacing:.14em;color:#fff;}
+#diagnosticsPanel .diag-close{width:32px;height:32px;border:0;border-radius:999px;background:transparent;color:#fff;font-size:16px;line-height:1;cursor:pointer;touch-action:manipulation;}
+#diagnosticsPanel .diag-actions{display:flex;gap:8px;margin-bottom:8px;}
+#diagnosticsPanel .diag-btn{flex:1;padding:10px 12px;border:1px solid rgba(178,178,178,.34);border-radius:10px;background:#26262c;color:#fff;font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;}
+#diagnosticsPanel .diag-btn:active{background:#303036;}
+#diagnosticsPanel .diag-hint{min-height:0;font-size:11px;line-height:1.3;color:rgba(255,255,255,.62);margin-bottom:6px;}
+#diagnosticsPanel .diag-text{
+  flex:1 1 auto;
+  width:100%;
+  min-height:240px;
+  resize:none;
+  box-sizing:border-box;
+  padding:10px;
+  border:1px solid rgba(178,178,178,.22);
+  border-radius:10px;
+  background:#0e0e11;
+  color:#d6d6da;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:12px;
+  line-height:1.45;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  -webkit-user-select:text;user-select:text;
+  white-space:pre;
 }
 #stageContextOverlay{position:absolute;inset:0;pointer-events:none;z-index:130;}
 #pointModeMenu{position:absolute;left:50%;bottom:calc(10px + var(--safe-bottom));transform:translateX(-50%);z-index:130;display:none;gap:5px;padding:8px 10px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:calc(100% - 20px);align-items:center;pointer-events:auto;}
@@ -3846,6 +3892,9 @@ body.cust-open #toolbar{
       <div class="settings-row" onclick="window.location.reload()">
         <svg viewBox="0 0 24 24"><use href="#i-reload"></use></svg><span>Recarregar</span>
       </div>
+      <div class="settings-row" id="diagnosticsItem" onclick="openDiagnosticsPanel();closeSettingsSheet()">
+        <svg viewBox="0 0 24 24"><use href="#i-settings"></use></svg><span>Diagnóstico</span>
+      </div>
     </div>
     <div class="settings-json-card" onclick="promptSaveProject();closeSettingsSheet()" role="button" aria-label="Salvar projeto JSON">
       <div>
@@ -3855,8 +3904,21 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b29CD</span><br><span id="appVersionNameText">v8z4b29CD</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30C</span><br><span id="appVersionNameText">v8z4b30C</span></div>
   </div>
+</div>
+<!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
+<div id="diagnosticsPanel" role="dialog" aria-label="Diagnóstico técnico" aria-hidden="true">
+  <div class="diag-head">
+    <div class="diag-title">DIAGNÓSTICO</div>
+    <button type="button" class="diag-close" onclick="closeDiagnosticsPanel()" title="Fechar Diagnóstico" aria-label="Fechar Diagnóstico">✕</button>
+  </div>
+  <div class="diag-actions">
+    <button type="button" class="diag-btn" onclick="copyDiagnostics()">Copiar diagnóstico</button>
+    <button type="button" class="diag-btn" onclick="refreshDiagnostics()">Atualizar</button>
+  </div>
+  <div class="diag-hint" id="diagHint"></div>
+  <textarea id="diagText" class="diag-text" readonly spellcheck="false" wrap="off"></textarea>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 <input type="file" id="newProjectImageInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
@@ -6543,8 +6605,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b29CD';
-const APP_VERSION_NAME = 'v8z4b29CD';
+const APP_VERSION = 'v8z4b30C';
+const APP_VERSION_NAME = 'v8z4b30C';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -23961,6 +24023,196 @@ function closeSettingsSheet() {
   const overlay = document.getElementById('overlayBg');
   if (sheet) sheet.classList.remove('show');
   if (overlay) overlay.classList.remove('show', 'light');
+}
+
+// ═══════════════════════════════════════
+// DIAGNÓSTICO — v8z4b30C
+// Painel técnico temporário e discreto. SOMENTE LEITURA: não altera estado do
+// projeto, não recalcula Stage, não move frame, não altera zoom/imagem e não
+// afeta Preview/Export. Apenas lê valores já existentes em memória/DOM.
+// ═══════════════════════════════════════
+function _diagFmtNum(v, dec) {
+  if (v == null || (typeof v === 'number' && !Number.isFinite(v))) return 'n/d';
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 'n/d';
+  return (dec == null) ? String(n) : n.toFixed(dec);
+}
+function _diagRatio(w, h) {
+  const nw = Number(w), nh = Number(h);
+  if (!Number.isFinite(nw) || !Number.isFinite(nh) || nh === 0) return 'n/d';
+  return (nw / nh).toFixed(4) + ' (' + Math.round(nw) + ':' + Math.round(nh) + ')';
+}
+function buildDiagnosticsText() {
+  const L = [];
+  const push = (k, v) => L.push(k + ': ' + v);
+
+  // Versão
+  push('APP_VERSION', (typeof APP_VERSION !== 'undefined') ? APP_VERSION : 'n/d');
+  push('APP_VERSION_NAME', (typeof APP_VERSION_NAME !== 'undefined') ? APP_VERSION_NAME : 'n/d');
+  L.push('— timestamp: ' + new Date().toISOString());
+  L.push('');
+
+  // Área de imagem (#imageArea)
+  let areaW = 'n/d', areaH = 'n/d';
+  try {
+    const ar = (typeof imageArea !== 'undefined' && imageArea) ? imageArea.getBoundingClientRect() : null;
+    if (ar) { areaW = _diagFmtNum(ar.width, 2); areaH = _diagFmtNum(ar.height, 2); }
+  } catch (e) {}
+  push('imageAreaW', areaW);
+  push('imageAreaH', areaH);
+  L.push('');
+
+  // Stage
+  const _stageW = (typeof stageW !== 'undefined') ? stageW : null;
+  const _stageH = (typeof stageH !== 'undefined') ? stageH : null;
+  push('stageW', _diagFmtNum(_stageW));
+  push('stageH', _diagFmtNum(_stageH));
+  push('proporção do Stage', _diagRatio(_stageW, _stageH));
+  L.push('');
+
+  // Imagem natural
+  const _natW = (typeof imgNatW !== 'undefined') ? imgNatW : null;
+  const _natH = (typeof imgNatH !== 'undefined') ? imgNatH : null;
+  push('imgNatW', _diagFmtNum(_natW));
+  push('imgNatH', _diagFmtNum(_natH));
+  push('proporção da imagem', _diagRatio(_natW, _natH));
+  L.push('');
+
+  // Formato / exportação
+  const _ratio = (typeof currentRatio !== 'undefined') ? currentRatio : 'n/d';
+  push('formato atual', _ratio);
+  let expStr = 'n/d';
+  try {
+    if (typeof exportDims !== 'undefined' && exportDims[_ratio]) {
+      expStr = exportDims[_ratio][0] + ' × ' + exportDims[_ratio][1];
+    }
+  } catch (e) {}
+  push('resolução de exportação atual', expStr);
+  L.push('');
+
+  // Zoom de edição
+  const _zoom = (typeof editorZoomScale !== 'undefined') ? editorZoomScale : null;
+  push('zoom atual', _diagFmtNum(_zoom, 4));
+  push('zoom mínimo', (typeof MIN_EDITOR_ZOOM !== 'undefined') ? _diagFmtNum(MIN_EDITOR_ZOOM, 4) : 'n/d');
+  push('zoom máximo', (typeof MAX_EDITOR_ZOOM !== 'undefined') ? _diagFmtNum(MAX_EDITOR_ZOOM, 4) : 'n/d');
+  L.push('');
+
+  // Pan de edição + limites (replica clampEditorPan() apenas para LEITURA)
+  const _panX = (typeof editorPanX !== 'undefined') ? editorPanX : null;
+  const _panY = (typeof editorPanY !== 'undefined') ? editorPanY : null;
+  push('panX', _diagFmtNum(_panX, 2));
+  push('panY', _diagFmtNum(_panY, 2));
+  if (_stageW != null && _stageH != null && _zoom != null) {
+    const extraX = _stageW, extraY = _stageH;
+    const scaledOverX = _stageW * Math.max(0, _zoom - 1);
+    const scaledOverY = _stageH * Math.max(0, _zoom - 1);
+    push('limites pan X', '[' + _diagFmtNum(-(scaledOverX + extraX), 2) + ', ' + _diagFmtNum(extraX, 2) + ']');
+    push('limites pan Y', '[' + _diagFmtNum(-(scaledOverY + extraY), 2) + ', ' + _diagFmtNum(extraY, 2) + ']');
+  } else {
+    push('limites de pan', 'n/d');
+  }
+  L.push('');
+
+  // Frame ativo
+  const _count = (typeof frameCount !== 'undefined') ? frameCount : 0;
+  const _idx = (typeof activeIdx !== 'undefined') ? activeIdx : 0;
+  push('frame ativo', (_count > 0 ? (_idx + 1) + ' / ' + _count + ' (índice ' + _idx + ')' : 'nenhum'));
+  let f = null, rot = null;
+  try {
+    if (typeof frames !== 'undefined' && frames[_idx]) f = frames[_idx];
+    if (typeof frameRotations !== 'undefined') rot = frameRotations[_idx];
+  } catch (e) {}
+  if (f) {
+    push('frame.x', _diagFmtNum(f.x, 3));
+    push('frame.y', _diagFmtNum(f.y, 3));
+    push('frame.w', _diagFmtNum(f.w, 3));
+    push('frame.h', _diagFmtNum(f.h, 3));
+    push('frame.rotation', _diagFmtNum(rot != null ? rot : 0, 3));
+  } else {
+    push('frame ativo (x/y/w/h/rotation)', 'n/d');
+  }
+  L.push('');
+
+  // Conversão Stage → pixel natural da imagem
+  // O Stage representa toda a imagem natural (ver layoutStage): a imagem ocupa
+  // stageW×stageH. Logo: pxNatural = (coordStage / stageDim) * imgNatDim.
+  if (_stageW && _stageH && _natW && _natH) {
+    const fx = _natW / _stageW;
+    const fy = _natH / _stageH;
+    push('fator Stage→px natural X', _diagFmtNum(fx, 5) + ' px/un');
+    push('fator Stage→px natural Y', _diagFmtNum(fy, 5) + ' px/un');
+    L.push('  fórmula: pxNatX = coordStageX * ' + _diagFmtNum(fx, 5));
+    L.push('  fórmula: pxNatY = coordStageY * ' + _diagFmtNum(fy, 5));
+    if (f) {
+      const cxStage = f.x + f.w / 2;
+      const cyStage = f.y + f.h / 2;
+      push('centro do frame ativo (Stage)', _diagFmtNum(cxStage, 2) + ', ' + _diagFmtNum(cyStage, 2));
+      push('centro do frame ativo (px natural)', _diagFmtNum(cxStage * fx, 1) + ', ' + _diagFmtNum(cyStage * fy, 1));
+    }
+  } else {
+    push('conversão Stage→px natural', 'n/d (imagem/Stage não disponíveis)');
+  }
+  L.push('');
+
+  // Ambiente
+  push('devicePixelRatio', _diagFmtNum(window.devicePixelRatio, 4));
+  push('window.innerWidth', _diagFmtNum(window.innerWidth));
+  push('window.innerHeight', _diagFmtNum(window.innerHeight));
+  let vv = 'n/d';
+  if (window.visualViewport) {
+    const v = window.visualViewport;
+    vv = _diagFmtNum(v.width, 2) + ' × ' + _diagFmtNum(v.height, 2) +
+         ' (scale ' + _diagFmtNum(v.scale, 4) + ', offsetTop ' + _diagFmtNum(v.offsetTop, 2) + ')';
+  }
+  push('viewport visual disponível', vv);
+
+  return L.join('\n');
+}
+function refreshDiagnostics() {
+  const ta = document.getElementById('diagText');
+  if (ta) ta.value = buildDiagnosticsText();
+}
+function openDiagnosticsPanel() {
+  const panel = document.getElementById('diagnosticsPanel');
+  if (!panel) return;
+  refreshDiagnostics();
+  panel.classList.add('show');
+  panel.setAttribute('aria-hidden', 'false');
+  const hint = document.getElementById('diagHint');
+  if (hint) hint.textContent = 'Somente leitura. Não altera o projeto.';
+}
+function closeDiagnosticsPanel() {
+  const panel = document.getElementById('diagnosticsPanel');
+  if (!panel) return;
+  panel.classList.remove('show');
+  panel.setAttribute('aria-hidden', 'true');
+}
+function toggleDiagnosticsPanel() {
+  const panel = document.getElementById('diagnosticsPanel');
+  if (!panel) return;
+  if (panel.classList.contains('show')) closeDiagnosticsPanel();
+  else openDiagnosticsPanel();
+}
+function copyDiagnostics() {
+  const ta = document.getElementById('diagText');
+  const hint = document.getElementById('diagHint');
+  if (!ta) return;
+  refreshDiagnostics();
+  const text = ta.value;
+  const onOk = () => { if (hint) hint.textContent = 'Diagnóstico copiado para a área de transferência.'; };
+  const onFail = () => {
+    // Fallback Safari: seleciona o texto para cópia manual.
+    try {
+      ta.focus();
+      ta.setSelectionRange(0, ta.value.length);
+    } catch (e) {}
+    if (hint) hint.textContent = 'Copie manualmente: texto selecionado (toque e segure → Copiar).';
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(onOk).catch(onFail);
+  } else {
+    onFail();
+  }
 }
 function triggerImageLoad() {
   const fi = document.getElementById('fileInput2');
