@@ -1,3 +1,22 @@
+# QA pendente — v8z4b30D: fundação Project World / Assets / Visualizações / Premium Gate
+
+> Base confirmada: `v8z4b30C` (v8z4b30A/B revertidas e ignoradas). Esta versão implanta apenas a fundação técnica do novo conceito, **sem** múltiplas imagens reais. Não altera motor, `layoutStage()`, cálculo de Stage, zoom/pan/clamps, frames, curvas, Preview, export nem o formato do JSON. Não promove para estável.
+
+## Escopo v8z4b30D
+
+1. App abre igual visualmente (`v8z4b30D` no menu/configurações; `APP_VERSION`/`APP_VERSION_NAME` em `v8z4b30D`).
+2. Arquivo novo com uma imagem funciona igual (primeira imagem carrega direto, sem action sheet; Frame 1 ativo).
+3. Trocar imagem por "Substituir imagem atual" funciona igual ao fluxo anterior (frames preservados, Stage recalculado normalmente).
+4. Cancelar nova imagem não altera nada (fecha a action sheet e limpa o input).
+5. Tentar "Adicionar como nova imagem" no Free mostra o modal Plus e não altera o projeto (nenhuma imagem adicionada/renderizada).
+6. Nenhuma segunda imagem é renderizada nesta versão.
+7. Frames continuam iguais.
+8. Zoom/pan continuam iguais.
+9. Preview continua igual.
+10. Exportação continua igual.
+11. Diagnóstico mostra `projectWorld` (initialized/x/y/w/h/baseStageW/baseStageH), `assets.length`, `imageAssetsCount`, `asset[0]` source/world, `views.length`, `canAddImageAsset` e `featureAccess multipleImageAssets`.
+12. iPhone/Safari: confirmar que o fluxo de nova imagem usa a action sheet customizada e o modal Plus, sem `prompt()`, `alert()` ou `confirm()`.
+
 # QA pendente — v8z4b29CD: Preview/Export com accent e refinamento visual da Linha do tempo
 
 > Base confirmada: `v8z4b29CC`. Esta versão é apenas uma correção visual controlada: substitui verdes remanescentes do Preview/Export pelo accent ciano/azul oficial, clareia discretamente o fundo externo do painel “Linha do tempo” e remove a borda inferior perceptível da aba local ativa Todos/Frames/Trechos. Não altera motor, render/export, MP4, JSON, Stage, timeline funcional, frames, trechos, curvas, Tremor, Movimento Inteligente, Trajetória, launcher, upload ou Novo Projeto. Não promove para estável.

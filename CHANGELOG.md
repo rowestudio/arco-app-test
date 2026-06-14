@@ -1,3 +1,14 @@
+# v8z4b30D
+
+- Base `v8z4b30C` confirmada e preservada. `v8z4b30A` e `v8z4b30B` foram revertidas e são ignoradas.
+- Objetivo: implantar apenas a **fundação técnica** do conceito Project World / Assets / Visualizações / Premium Gate, **sem** implementar múltiplas imagens reais. O app continua renderizando uma imagem só pelo fluxo atual.
+- `index.html` (Tarefa 1 — modelo interno preparatório): adiciona `projectWorld { initialized, x, y, w, h, baseStageW, baseStageH }`, `assets[]` e `views[]`. Ao carregar/trocar a imagem, `syncFirstImageAsset()` cria/atualiza o primeiro asset `type:"image"` espelhando a imagem atual (`sourceW/H` = natural; `worldX/Y` = 0; `worldW/H` = Stage) e atualiza `projectWorld`. É apenas preparatório/diagnóstico: **não** altera render, `layoutStage()`, cálculo de Stage, zoom/pan/clamps, motor de frames, curvas, Preview, export nem o formato do JSON.
+- `index.html` (Tarefa 2 — camada central de permissões): adiciona `getFeatureAccess(featureName)`, `canUseMultipleImages()`, `canAddImageAsset()` e `getImageAssetCount()`. `framesOverThree` mantém o comportamento atual (Free permite, com aviso/marca d'água — a regra antiga **não** foi migrada). `multipleImageAssets`, `jsonProject` e `aiMotion` são Plus/Premium. A contagem considera apenas `assets` com `type === "image"` (texto não conta).
+- `index.html` (Tarefa 3 — fluxo de nova imagem): ao escolher uma nova imagem com uma já carregada, abre a action sheet customizada **"Usar nova imagem"** com "Substituir imagem atual" (fluxo atual aprovado), "Adicionar como nova imagem" (indicação Plus — nesta versão **não** adiciona imagem real, mostra modal Plus) e "Cancelar" (fecha, limpa o input, não altera nada). Sem `prompt()`, `alert()` ou `confirm()`.
+- `index.html` (Tarefa 4 — diagnóstico): o painel passa a exibir `projectWorld` (initialized/x/y/w/h/baseStageW/baseStageH), `assets.length`, `imageAssetsCount`, `asset[0]` source/world, `views.length`, `canAddImageAsset` e `featureAccess multipleImageAssets`.
+- `index.html` (Tarefa 5 — versão): `APP_VERSION`/`APP_VERSION_NAME`, texto visível no menu e comentário de topo atualizados para `v8z4b30D`.
+- Preserve: nenhuma segunda imagem é renderizada; Stage, frames, zoom/pan, curvas, Preview e export inalterados. Não promove para estável; validar em iPhone/Safari real.
+
 # v8z4b29CD
 
 - Base `v8z4b29CC` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app, comentário/changelog de topo e `CHANGELOG.md`.
