@@ -1,3 +1,15 @@
+# v8z4b30B
+
+- Base `v8z4b29CD` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app, comentário/changelog de topo e `CHANGELOG.md`; a v8z4b30A revertida não foi usada como base conceitual.
+- `index.html`: versionamento atualizado para `v8z4b30B` em banner/comentário do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível do app.
+- `index.html`: adiciona experimento de workspace único 2×2 com até 4 regiões/cenas geolocalizadas, mantendo frames e timeline globais por meio de `workspace`, `activeRegionId` e `frameRegionIds`.
+- `index.html`: menu Visualização preserva os modos existentes e ganha bloco separado de Cenas/Visualizações com Cena 1–4 e `+ Nova cena`; trocar cena centraliza a viewport na região sem criar miniprojeto.
+- `index.html`: controle de Zoom ganha `Projeto inteiro` quando houver mais de uma região ativa, enquadrando o workspace reduzido sem alterar dados do projeto.
+- `index.html`: menu Imagem pergunta se a nova imagem substitui a imagem da cena atual, cria uma nova cena com a imagem ou cancela; com 4 cenas, não oferece criação adicional.
+- `index.html`: JSON passa a salvar `workspace`, `activeRegionId` e `frameRegionIds`; JSON antigo sem workspace carrega como Cena 1.
+- `index.html`: ajuste visual pendente no Tremor Global em Preferências: `TREMOR GLOBAL (PROJETO INTEIRO)` em caixa alta e estilo técnico, mantendo lógica/estado/Preview/export/JSON do Tremor.
+- Limitação experimental: a metáfora 2×2 e associações de regiões são salvas/carregadas, mas o motor de Preview/Export permanece conservador e compatível com o comportamento de uma cena; transições sofisticadas e múltiplas imagens simultâneas no render final não foram implementadas nesta versão.
+
 # v8z4b29CD
 
 - Base `v8z4b29CC` confirmada antes das alterações em `APP_VERSION`, `APP_VERSION_NAME`, texto visível do app, comentário/changelog de topo e `CHANGELOG.md`.
