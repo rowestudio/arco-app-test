@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30F — fix(export): corrige falha de exportação MP4 específica do formato 1:1 (1080×1080), incluindo arquivos novos criados já em 1:1 e projetos 9:16/4:3 trocados para 1:1. Causa raiz: em finishExport(), qualquer exceção lançada durante a restauração da UI do Preview pós-sucesso (após o blob/MP4 já estarem prontos) propagava para o catch de startRecord(), que sobrescrevia o diagnóstico de 'success' para 'cleanup-failed' e exibia o erro genérico "Erro ao gerar vídeo. Tente novamente." mesmo com o vídeo já gerado. finishExport() agora isola essa restauração em try/catch próprio: o MP4 gerado nunca é descartado nem reportado como falha por causa de um passo de limpeza/UI; cleanupFailedExport() também passa a ser idempotente/seguro (todas as operações de DOM/canvas em try/catch) e não sobrescreve mais lastExportStep/lastExportError com a mensagem genérica. feat(diag): arcoExportDiag agora separa lastExportStep, lastExportError (erro real da exportação), lastCleanupError (erro da limpeza/restauração pós-export, se houver), exportSuccess e cleanupSuccess — todos exibidos no painel Diagnóstico. fix(preview): startPreview()/startRecord() chamam closeAll() para fechar painéis/menus editoriais transitórios (Formato de saída, Edição de Tempo, Movimento, Trajetória etc.) antes de abrir o Preview/export, evitando overlays sobrepostos ao canvas (z-index 200 > 90). Validado: novo projeto 1:1 (Preview e MP4), 9:16→1:1, 4:3→1:1, 1:1→9:16, mantendo 9:16/4:3 funcionando. preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames, NÃO altera projectWorld/assets/views/permissões, visuais/ícones/textos/menus/fluxo aprovados; sem prompt/alert/confirm (base v8z4b30E). -->
 <!-- Arco Motion App — v8z4b30E — fix(export): HOTFIX exclusivo para restaurar a geração de MP4 após troca de formato (proporção) em projetos já configurados — selectFormat() passa a preservar todas as propriedades extras do frame (ex.: pointMode) ao recalcular x/y/w/h para o novo currentRatio, com fallback finito caso algum frame chegue com valores ausentes/NaN/Infinity; nova normalizeFramesToCurrentFormat() é chamada no início de startRecord() para garantir, sem alterar Stage/layoutStage/zoom/pan/clamps/curvas, que todo frame esteja com w/h finitos, positivos e na proporção do formato atual antes de configurar o canvas de exportação; feat(diag): novo estado somente-leitura arcoExportDiag registra exportW/exportH e currentFormat usados na última geração, lastExportStep, lastExportError (mensagem real do erro, antes só genérica), presença de NaN/Infinity nos frames, quantidade de frames e watermark/premium aplicado — exibidos no painel Diagnóstico (sem alterar seu layout); erros do WebCodecs/MediaRecorder fallback agora também logam no console e no painel em vez de só piscar a tela; preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames além da normalização pós-troca de formato descrita, NÃO altera projectWorld/assets/views/permissões, visuais, ícones, textos, menus ou fluxo aprovados; sem prompt/alert/confirm (base v8z4b30D). -->
 <!-- Arco Motion App — v8z4b30C — diag(tooling): adiciona painel de Diagnóstico técnico temporário e discreto, acessível por novo item "Diagnóstico" no menu de ajustes; overlay textual rolável que apenas LÊ valores existentes (APP_VERSION, imageAreaW/H, stageW/H, imgNatW/H, proporções, formato, resolução de exportação, zoom atual/mín/máx, panX/panY e limites, frame ativo e x/y/w/h/rotation, fatores de conversão Stage→pixel natural, devicePixelRatio, viewport visual); botão "Copiar diagnóstico" via Clipboard API com fallback de seleção manual no Safari; preserve: NÃO altera layout aprovado, cores, textos, ícones, toolbar, faixa de frames, Preview, exportação, motor, layoutStage, zoom/pan, clamps, Stage, frames ou curvas; sem prompt/alert/confirm; sem múltiplas imagens, sem layers, sem cenas; apenas diagnóstico (base v8z4b29CD). -->
 <!-- Arco Motion App — v8z4b29CD — ajuste visual controlado: troca os verdes remanescentes do Preview/Export pelo accent ciano/azul oficial e clareia discretamente o fundo externo da Linha do tempo, conectando a aba local ativa ao conteúdo; sem alterar motor, render/export, JSON, Stage, timeline funcional, frames, trechos, curvas, Tremor, Movimento Inteligente ou Trajetória; sem promoção a estável. -->
@@ -3906,7 +3907,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30E</span><br><span id="appVersionNameText">v8z4b30E</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30F</span><br><span id="appVersionNameText">v8z4b30F</span></div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -6652,8 +6653,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30E';
-const APP_VERSION_NAME = 'v8z4b30E';
+const APP_VERSION = 'v8z4b30F';
+const APP_VERSION_NAME = 'v8z4b30F';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -6901,6 +6902,13 @@ let arcoExportDiag = {
   currentFormat: null,
   lastExportStep: null,
   lastExportError: null,
+  // v8z4b30F — campos separados: lastExportError descreve a falha da
+  // EXPORTAÇÃO (encode/mux); lastCleanupError descreve falhas da
+  // restauração de UI/limpeza pós-export, que NÃO devem ser reportadas
+  // ao usuário como falha de exportação quando o vídeo já foi gerado.
+  lastCleanupError: null,
+  exportSuccess: null,
+  cleanupSuccess: null,
   frameCount: null,
   framesInvalid: false,
   watermarkApplied: null,
@@ -18643,6 +18651,10 @@ function startPreview() {
   // v8z4b23a: 1 frame é suficiente para preview (vídeo estático)
   if (frameCount < 1 || !imgNatW || !getCanonicalRenderSource()) return;
   if (isInsertingFrame) cancelAssistedFrameInsertion();
+  // v8z4b30F — fecha painéis/menus editoriais transitórios (Formato de
+  // saída, Edição de Tempo, Movimento, Trajetória etc.) antes de abrir o
+  // Preview, para que nenhum overlay fique sobreposto ao canvas de preview.
+  closeAll();
   normalizeProjectArrays();
   if (!validateProjectState('preview')) { showStatus('Estado inválido para Preview (veja console)'); return; }
   isPreviewing = true;
@@ -19202,6 +19214,10 @@ function showReadyOverlay() {
 async function startRecord() {
   if (shouldBlockGlobalUIAction()) return;
   if (isRecording) return;
+  // v8z4b30F — fecha painéis/menus editoriais transitórios (Formato de
+  // saída, Edição de Tempo, Movimento, Trajetória etc.) antes de configurar
+  // o Preview/export, para que nenhum overlay fique sobreposto ao canvas.
+  closeAll();
   // v8z4b30E — HOTFIX: reseta o diagnóstico de export ANTES de qualquer
   // guard, para que o painel Diagnóstico sempre reflita a tentativa mais
   // recente — inclusive abortos por guard de pré-condição.
@@ -19210,6 +19226,9 @@ async function startRecord() {
     exportH: null,
     currentFormat: currentRatio,
     lastExportError: null,
+    lastCleanupError: null,
+    exportSuccess: null,
+    cleanupSuccess: null,
     frameCount: frameCount,
     framesInvalid: arcoFramesHaveInvalidValues(),
     watermarkApplied: (!isProMode && frameCount >= 4)
@@ -19338,48 +19357,64 @@ async function startRecord() {
   function cleanupFailedExport(message) {
     // v8z4b28b — falha de geração não deve fechar o Preview nem deixar tela preta.
     // Resetar export/overlay e manter o usuário no Preview em estado controlado.
-    arcoSetExportDiag('cleanup-failed', { lastExportError: message || arcoExportDiag.lastExportError || 'erro desconhecido' });
-    isRecording = false;
-    document.body.classList.add('previewing');
-    if (animFrame) {
-      try { cancelAnimationFrame(animFrame); } catch(e) {}
-      animFrame = null;
+    // v8z4b30F — esta função SÓ executa a restauração de UI após uma falha de
+    // export já registrada pelo chamador (lastExportStep/lastExportError já
+    // setados via arcoSetExportDiag('error', ...)). Não deve sobrescrever o
+    // erro real com a mensagem genérica exibida ao usuário. Falhas durante a
+    // própria restauração de UI são registradas separadamente em
+    // lastCleanupError/cleanupSuccess, sem mascarar lastExportStep/lastExportError.
+    arcoSetExportDiag(arcoExportDiag.lastExportStep || 'error', { exportSuccess: false });
+    let cleanupErr = null;
+    try {
+      isRecording = false;
+      document.body.classList.add('previewing');
+      if (animFrame) {
+        try { cancelAnimationFrame(animFrame); } catch(e) {}
+        animFrame = null;
+      }
+      animStart = null;
+      pausedElapsed = 0;
+      isPreviewing = true;
+      hideGenOverlay();
+      if (pb)  pb.style.display  = '';
+      if (pb2) pb2.style.display = 'none';
+      btnGenerate.classList.remove('recording');
+      btnGenerate.classList.remove('done');
+      btnGenerate.disabled = false;
+      setGenerateLabel('Salvar MP4');
+      const tl = document.getElementById('previewTimeline');
+      const tf = document.getElementById('previewTimelineFill');
+      if (tl) tl.classList.add('show');
+      if (tf) tf.style.width = '0%';
+      const ps = document.getElementById('previewScreen');
+      if (ps) ps.classList.add('show');
+      const dc = document.getElementById('previewDisplayCanvas');
+      if (dc) {
+        dc.style.display = 'block';
+        dc.style.filter = 'none';
+        try {
+          const dctx = dc.getContext('2d');
+          if (dctx) {
+            applyCanvasRenderQuality(dctx);
+            const [safeW, safeH] = exportDims[currentRatio] || [W, H];
+            const safeScale = clampCanvasScaleForPixelLimit(safeW, safeH, Math.min(PREVIEW_SCALE, MAX_PREVIEW_DPR), MAX_INTERNAL_CANVAS_PIXELS);
+            dc.width = Math.round(safeW * safeScale);
+            dc.height = Math.round(safeH * safeScale);
+            hardResetCanvas(dctx, dc, bgColor);
+            renderFrameSafely(dctx, dc, 0, dc.width, dc.height, Math.max(1, total), 0);
+          }
+        } catch(e) { console.error('[cleanupFailedExport] preview restore falhou', e); }
+      }
+      try { updatePlayButton(); } catch(e) {}
+      cleanupExportSession('failed-export', { logOnly: true, encodedFrames: exportEncodedFrames, expectedFrames: total });
+    } catch (e) {
+      cleanupErr = e;
+      console.error('[cleanupFailedExport] limpeza/restauração de UI falhou:', e);
     }
-    animStart = null;
-    pausedElapsed = 0;
-    isPreviewing = true;
-    hideGenOverlay();
-    if (pb)  pb.style.display  = '';
-    if (pb2) pb2.style.display = 'none';
-    btnGenerate.classList.remove('recording');
-    btnGenerate.classList.remove('done');
-    btnGenerate.disabled = false;
-    setGenerateLabel('Salvar MP4');
-    const tl = document.getElementById('previewTimeline');
-    const tf = document.getElementById('previewTimelineFill');
-    if (tl) tl.classList.add('show');
-    if (tf) tf.style.width = '0%';
-    const ps = document.getElementById('previewScreen');
-    if (ps) ps.classList.add('show');
-    const dc = document.getElementById('previewDisplayCanvas');
-    if (dc) {
-      dc.style.display = 'block';
-      dc.style.filter = 'none';
-      try {
-        const dctx = dc.getContext('2d');
-        if (dctx) {
-          applyCanvasRenderQuality(dctx);
-          const [safeW, safeH] = exportDims[currentRatio] || [W, H];
-          const safeScale = clampCanvasScaleForPixelLimit(safeW, safeH, Math.min(PREVIEW_SCALE, MAX_PREVIEW_DPR), MAX_INTERNAL_CANVAS_PIXELS);
-          dc.width = Math.round(safeW * safeScale);
-          dc.height = Math.round(safeH * safeScale);
-          hardResetCanvas(dctx, dc, bgColor);
-          renderFrameSafely(dctx, dc, 0, dc.width, dc.height, Math.max(1, total), 0);
-        }
-      } catch(e) { console.error('[cleanupFailedExport] preview restore falhou', e); }
-    }
-    try { updatePlayButton(); } catch(e) {}
-    cleanupExportSession('failed-export', { logOnly: true, encodedFrames: exportEncodedFrames, expectedFrames: total });
+    arcoSetExportDiag(arcoExportDiag.lastExportStep || 'error', {
+      cleanupSuccess: !cleanupErr,
+      lastCleanupError: cleanupErr ? (cleanupErr.message || String(cleanupErr)) : null
+    });
     showStatus(message || 'Erro ao gerar vídeo');
   }
 
@@ -19391,7 +19426,11 @@ async function startRecord() {
       console.log('[finishExport] export cancelado — abortando finalização');
       return;
     }
-    arcoSetExportDiag('success', { lastExportError: null });
+    // v8z4b30F — o vídeo já está pronto neste ponto (blob criado e
+    // generatedUrl válido). A partir daqui, qualquer falha é de
+    // restauração de UI/cleanup, NÃO de exportação: exportSuccess
+    // permanece true e nenhum erro genérico é exibido ao usuário,
+    // mesmo que a restauração do Preview falhe (ex.: elemento ausente).
     if (generatedUrl) {
       try { URL.revokeObjectURL(generatedUrl); } catch(e) {}
     }
@@ -19399,49 +19438,73 @@ async function startRecord() {
     window._lastVideoBlob = blob;
     window._lastVideoExt  = ext;
     const mb = (blob.size / 1024 / 1024).toFixed(1);
-    cleanupExportSession('success', { logOnly: true, encodedFrames: exportEncodedFrames, expectedFrames: total });
-    isRecording = false;
-    document.body.classList.remove('previewing');
-    hideGenOverlay();
-    if (pb)  pb.style.display  = '';
-    if (pb2) pb2.style.display = 'none';
-    btnGenerate.classList.remove('recording');
-    btnGenerate.classList.add('done');
-    setGenerateLabel(mb + ' MB');
-    btnGenerate.disabled = false;
-    document.getElementById('previewTimeline').classList.remove('show');
-    document.getElementById('previewTimelineFill').style.width = '0%';
-    showReadyOverlay();
+    arcoSetExportDiag('success', {
+      lastExportError: null,
+      exportSuccess: true,
+      lastCleanupError: null,
+      cleanupSuccess: null
+    });
 
-    // Volta para playback do preview na mesma resolução final segura do formato.
-    isPreviewing = true;
-    pausedElapsed = 0;
-    animStart = null;
-    const [eW2, eH2] = exportDims[currentRatio];
-    const dur2 = Math.max(1, getComputedTimelineDuration() * 1000);
-    const totalPF2 = Math.max(1, Math.round(durationSec * fps));
-    const dispCanvasAfter = document.getElementById('previewDisplayCanvas');
-    if (dispCanvasAfter) { dispCanvasAfter.style.display = 'block'; }
-    const pCtxAfter = dispCanvasAfter ? dispCanvasAfter.getContext('2d', { alpha: false }) : null;
-    if (pCtxAfter) {
-      applyCanvasRenderQuality(pCtxAfter);
-    }
-    const previewScaleAfter = clampCanvasScaleForPixelLimit(eW2, eH2, Math.min(PREVIEW_SCALE, MAX_PREVIEW_DPR), MAX_INTERNAL_CANVAS_PIXELS);
-    const pWA = Math.round(eW2 * previewScaleAfter);
-    const pHA = Math.round(eH2 * previewScaleAfter);
-    if (dispCanvasAfter) { dispCanvasAfter.width = pWA; dispCanvasAfter.height = pHA; }
-    const previewSourceAfter = getPreviewRenderSource();
-    const tokenAfter = ++previewLoopToken;
-    function loopAfter(ts) {
-      if (!isPreviewing || tokenAfter !== previewLoopToken) return;
-      if (!animStart) animStart = ts;
-      const elapsed = (ts - animStart + pausedElapsed) % dur2;
-      const t2 = elapsed / dur2;
-      if (pCtxAfter) renderFrameSafely(pCtxAfter, dispCanvasAfter, t2, pWA, pHA, totalPF2, Math.round(t2 * (totalPF2 - 1)), { renderSource: previewSourceAfter });
+    try {
+      cleanupExportSession('success', { logOnly: true, encodedFrames: exportEncodedFrames, expectedFrames: total });
+      isRecording = false;
+      document.body.classList.remove('previewing');
+      hideGenOverlay();
+      if (pb)  pb.style.display  = '';
+      if (pb2) pb2.style.display = 'none';
+      btnGenerate.classList.remove('recording');
+      btnGenerate.classList.add('done');
+      setGenerateLabel(mb + ' MB');
+      btnGenerate.disabled = false;
+      const ptl = document.getElementById('previewTimeline');
+      if (ptl) ptl.classList.remove('show');
+      const ptf = document.getElementById('previewTimelineFill');
+      if (ptf) ptf.style.width = '0%';
+      showReadyOverlay();
+
+      // Volta para playback do preview na mesma resolução final segura do formato.
+      isPreviewing = true;
+      pausedElapsed = 0;
+      animStart = null;
+      const [eW2, eH2] = exportDims[currentRatio];
+      const dur2 = Math.max(1, getComputedTimelineDuration() * 1000);
+      const totalPF2 = Math.max(1, Math.round(durationSec * fps));
+      const dispCanvasAfter = document.getElementById('previewDisplayCanvas');
+      if (dispCanvasAfter) { dispCanvasAfter.style.display = 'block'; }
+      const pCtxAfter = dispCanvasAfter ? dispCanvasAfter.getContext('2d', { alpha: false }) : null;
+      if (pCtxAfter) {
+        applyCanvasRenderQuality(pCtxAfter);
+      }
+      const previewScaleAfter = clampCanvasScaleForPixelLimit(eW2, eH2, Math.min(PREVIEW_SCALE, MAX_PREVIEW_DPR), MAX_INTERNAL_CANVAS_PIXELS);
+      const pWA = Math.round(eW2 * previewScaleAfter);
+      const pHA = Math.round(eH2 * previewScaleAfter);
+      if (dispCanvasAfter) { dispCanvasAfter.width = pWA; dispCanvasAfter.height = pHA; }
+      const previewSourceAfter = getPreviewRenderSource();
+      const tokenAfter = ++previewLoopToken;
+      function loopAfter(ts) {
+        if (!isPreviewing || tokenAfter !== previewLoopToken) return;
+        if (!animStart) animStart = ts;
+        const elapsed = (ts - animStart + pausedElapsed) % dur2;
+        const t2 = elapsed / dur2;
+        if (pCtxAfter) renderFrameSafely(pCtxAfter, dispCanvasAfter, t2, pWA, pHA, totalPF2, Math.round(t2 * (totalPF2 - 1)), { renderSource: previewSourceAfter });
+        animFrame = requestAnimationFrame(loopAfter);
+      }
       animFrame = requestAnimationFrame(loopAfter);
+      updatePlayButton();
+      arcoSetExportDiag('success', { cleanupSuccess: true, lastCleanupError: null });
+    } catch (cleanupErr) {
+      // Vídeo já gerado com sucesso — não reportar como falha de export.
+      console.error('[finishExport] restauração de UI pós-export falhou (vídeo já gerado):', cleanupErr);
+      arcoSetExportDiag('success', {
+        cleanupSuccess: false,
+        lastCleanupError: cleanupErr?.message || String(cleanupErr)
+      });
+      isRecording = false;
+      document.body.classList.remove('previewing');
+      try { hideGenOverlay(); } catch(e) {}
+      try { btnGenerate.classList.remove('recording'); btnGenerate.classList.add('done'); btnGenerate.disabled = false; } catch(e) {}
+      try { setGenerateLabel(mb + ' MB'); } catch(e) {}
     }
-    animFrame = requestAnimationFrame(loopAfter);
-    updatePlayButton();
     showStatus('Pronto ' + mb + ' MB - toque para salvar');
   }
 
@@ -19643,7 +19706,7 @@ async function startRecord() {
     console.error('Export WebCodecs falhou:', err);
     // v8z4b30E — registra o motivo real da falha para o painel Diagnóstico
     // (a mensagem exibida ao usuário continua genérica).
-    arcoSetExportDiag('error', { lastExportError: err?.message || String(err) });
+    arcoSetExportDiag('error', { lastExportError: err?.message || String(err), exportSuccess: false });
     cleanupFailedExport('Erro ao gerar vídeo. Tente novamente.');
   } finally {
     if (exportEncoder && !exportEncoderClosed) {
@@ -19656,7 +19719,7 @@ async function startRecord() {
     // com o botão piscando vermelho e a tela preta.
     if (isRecording) {
       console.warn('[startRecord] estado inconsistente ao final — forçando cleanup');
-      arcoSetExportDiag('error', { lastExportError: arcoExportDiag.lastExportError || 'Estado inconsistente ao final do export' });
+      arcoSetExportDiag('error', { lastExportError: arcoExportDiag.lastExportError || 'Estado inconsistente ao final do export', exportSuccess: false });
       try { cleanupFailedExport('Export interrompido — tente novamente.'); } catch(e) {}
     }
   }
@@ -24434,12 +24497,15 @@ function buildDiagnosticsText() {
   push('resolução de exportação atual', expStr);
   L.push('');
 
-  // v8z4b30E — Diagnóstico do último export MP4 (HOTFIX troca de formato)
+  // v8z4b30E/F — Diagnóstico do último export MP4
   push('exportW (última geração)', _diagFmtNum(arcoExportDiag.exportW));
   push('exportH (última geração)', _diagFmtNum(arcoExportDiag.exportH));
   push('currentFormat (última geração)', arcoExportDiag.currentFormat || 'n/d');
   push('lastExportStep', arcoExportDiag.lastExportStep || 'n/d');
+  push('exportSuccess', arcoExportDiag.exportSuccess == null ? 'n/d' : String(arcoExportDiag.exportSuccess));
   push('lastExportError', arcoExportDiag.lastExportError || 'nenhum');
+  push('cleanupSuccess', arcoExportDiag.cleanupSuccess == null ? 'n/d' : String(arcoExportDiag.cleanupSuccess));
+  push('lastCleanupError', arcoExportDiag.lastCleanupError || 'nenhum');
   push('frames com NaN/Infinity (atual)', (typeof arcoFramesHaveInvalidValues === 'function' && arcoFramesHaveInvalidValues()) ? 'SIM' : 'não');
   push('quantidade de frames', String((typeof frameCount !== 'undefined') ? frameCount : 'n/d'));
   push('watermark/premium aplicado (última geração)', arcoExportDiag.watermarkApplied == null ? 'n/d' : String(arcoExportDiag.watermarkApplied));
