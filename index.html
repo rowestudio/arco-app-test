@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b30F — fix(export): corrige falha de exportação MP4 específica do formato 1:1 (1080×1080), incluindo arquivos novos criados já em 1:1 e projetos 9:16/4:3 trocados para 1:1. Causa raiz: em finishExport(), qualquer exceção lançada durante a restauração da UI do Preview pós-sucesso (após o blob/MP4 já estarem prontos) propagava para o catch de startRecord(), que sobrescrevia o diagnóstico de 'success' para 'cleanup-failed' e exibia o erro genérico "Erro ao gerar vídeo. Tente novamente." mesmo com o vídeo já gerado. finishExport() agora isola essa restauração em try/catch próprio: o MP4 gerado nunca é descartado nem reportado como falha por causa de um passo de limpeza/UI; cleanupFailedExport() também passa a ser idempotente/seguro (todas as operações de DOM/canvas em try/catch) e não sobrescreve mais lastExportStep/lastExportError com a mensagem genérica. feat(diag): arcoExportDiag agora separa lastExportStep, lastExportError (erro real da exportação), lastCleanupError (erro da limpeza/restauração pós-export, se houver), exportSuccess e cleanupSuccess — todos exibidos no painel Diagnóstico. fix(preview): startPreview()/startRecord() chamam closeAll() para fechar painéis/menus editoriais transitórios (Formato de saída, Edição de Tempo, Movimento, Trajetória etc.) antes de abrir o Preview/export, evitando overlays sobrepostos ao canvas (z-index 200 > 90). Validado: novo projeto 1:1 (Preview e MP4), 9:16→1:1, 4:3→1:1, 1:1→9:16, mantendo 9:16/4:3 funcionando. preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames, NÃO altera projectWorld/assets/views/permissões, visuais/ícones/textos/menus/fluxo aprovados; sem prompt/alert/confirm (base v8z4b30E). -->
+<!-- Arco Motion App — v8z4b30G — diag(export): instrumentação profunda do pipeline de export MP4, com foco no formato 1:1 (geração travando até em arquivo novo). arcoExportDiag ganha: exportSessionId (identifica cada tentativa e ignora callbacks tardios de tentativas anteriores), exportStartedAt/exportElapsedMs, activeFrameIndex/totalFrames/renderedFrameCount/failedFrameIndex, lastExportStepDetailed/lastSuccessfulExportStep, recorderState, chunksCount, blobSize, lastExportOriginalErrorName/Message/Stack (erro real completo, NUNCA substituído pela mensagem genérica). startRecord() agora registra etapas granulares (export-clicked, close-overlays-start/success, export-dimensions-ready, canvas-created, stream-created, recorder-created, recorder-started, render-loop-start, render-frame-start/success por frame, render-loop-complete, recorder-stop-requested/fired, blob-created, file-save-start/success, cleanup-start/success) tanto no caminho WebCodecs/Mp4Muxer quanto no fallback MediaRecorder. Novo watchdog: se uma etapa ficar sem progresso por >15s, registra stalledStep/stalledElapsedMs/stalledFormat/stalledResolution/stalledFrame/stalledRecorderState no diagnóstico, loga no console e libera a interface (cleanupFailedExport) SEM apagar o diagnóstico, para que o usuário possa tentar novamente. Todos os novos campos aparecem no painel Diagnóstico. preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames/layout aprovado, NÃO altera formatos 9:16/4:3 além desta instrumentação, NÃO refatora o exportador (apenas instrumentação + watchdog); sem prompt/alert/confirm (base v8z4b30F). -->
 <!-- Arco Motion App — v8z4b30E — fix(export): HOTFIX exclusivo para restaurar a geração de MP4 após troca de formato (proporção) em projetos já configurados — selectFormat() passa a preservar todas as propriedades extras do frame (ex.: pointMode) ao recalcular x/y/w/h para o novo currentRatio, com fallback finito caso algum frame chegue com valores ausentes/NaN/Infinity; nova normalizeFramesToCurrentFormat() é chamada no início de startRecord() para garantir, sem alterar Stage/layoutStage/zoom/pan/clamps/curvas, que todo frame esteja com w/h finitos, positivos e na proporção do formato atual antes de configurar o canvas de exportação; feat(diag): novo estado somente-leitura arcoExportDiag registra exportW/exportH e currentFormat usados na última geração, lastExportStep, lastExportError (mensagem real do erro, antes só genérica), presença de NaN/Infinity nos frames, quantidade de frames e watermark/premium aplicado — exibidos no painel Diagnóstico (sem alterar seu layout); erros do WebCodecs/MediaRecorder fallback agora também logam no console e no painel em vez de só piscar a tela; preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames além da normalização pós-troca de formato descrita, NÃO altera projectWorld/assets/views/permissões, visuais, ícones, textos, menus ou fluxo aprovados; sem prompt/alert/confirm (base v8z4b30D). -->
 <!-- Arco Motion App — v8z4b30C — diag(tooling): adiciona painel de Diagnóstico técnico temporário e discreto, acessível por novo item "Diagnóstico" no menu de ajustes; overlay textual rolável que apenas LÊ valores existentes (APP_VERSION, imageAreaW/H, stageW/H, imgNatW/H, proporções, formato, resolução de exportação, zoom atual/mín/máx, panX/panY e limites, frame ativo e x/y/w/h/rotation, fatores de conversão Stage→pixel natural, devicePixelRatio, viewport visual); botão "Copiar diagnóstico" via Clipboard API com fallback de seleção manual no Safari; preserve: NÃO altera layout aprovado, cores, textos, ícones, toolbar, faixa de frames, Preview, exportação, motor, layoutStage, zoom/pan, clamps, Stage, frames ou curvas; sem prompt/alert/confirm; sem múltiplas imagens, sem layers, sem cenas; apenas diagnóstico (base v8z4b29CD). -->
 <!-- Arco Motion App — v8z4b29CD — ajuste visual controlado: troca os verdes remanescentes do Preview/Export pelo accent ciano/azul oficial e clareia discretamente o fundo externo da Linha do tempo, conectando a aba local ativa ao conteúdo; sem alterar motor, render/export, JSON, Stage, timeline funcional, frames, trechos, curvas, Tremor, Movimento Inteligente ou Trajetória; sem promoção a estável. -->
@@ -3907,7 +3907,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30F</span><br><span id="appVersionNameText">v8z4b30F</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30G</span><br><span id="appVersionNameText">v8z4b30G</span></div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -6653,8 +6653,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30F';
-const APP_VERSION_NAME = 'v8z4b30F';
+const APP_VERSION = 'v8z4b30G';
+const APP_VERSION_NAME = 'v8z4b30G';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -6896,12 +6896,34 @@ let exportCancelledFlag = false; // v8z4b19i — sinaliza cancelamento de export
 
 // v8z4b30E — HOTFIX: estado de diagnóstico da última tentativa de export MP4.
 // Somente leitura para o painel Diagnóstico; não influencia render/export.
+// v8z4b30G — instrumentação profunda: campos adicionais para localizar
+// exatamente em qual etapa o export trava (especialmente 1:1), sem alterar
+// o comportamento de render/export em si.
 let arcoExportDiag = {
+  exportSessionId: null,
+  exportStartedAt: null,
+  exportElapsedMs: null,
   exportW: null,
   exportH: null,
   currentFormat: null,
   lastExportStep: null,
+  // v8z4b30G — etapa detalhada (inclui contexto de frame quando aplicável),
+  // e última etapa concluída com sucesso antes de erro/travamento.
+  lastExportStepDetailed: null,
+  lastSuccessfulExportStep: null,
+  activeFrameIndex: null,
+  totalFrames: null,
+  failedFrameIndex: null,
+  renderedFrameCount: null,
+  recorderState: null,
+  chunksCount: null,
+  blobSize: null,
   lastExportError: null,
+  // v8z4b30G — erro original completo (antes de qualquer mensagem genérica
+  // exibida ao usuário), para nunca perder a causa raiz real.
+  lastExportOriginalErrorName: null,
+  lastExportOriginalErrorMessage: null,
+  lastExportOriginalErrorStack: null,
   // v8z4b30F — campos separados: lastExportError descreve a falha da
   // EXPORTAÇÃO (encode/mux); lastCleanupError descreve falhas da
   // restauração de UI/limpeza pós-export, que NÃO devem ser reportadas
@@ -6909,23 +6931,54 @@ let arcoExportDiag = {
   lastCleanupError: null,
   exportSuccess: null,
   cleanupSuccess: null,
+  // v8z4b30G — preenchidos pelo watchdog de 15s quando uma etapa trava.
+  stalledStep: null,
+  stalledElapsedMs: null,
+  stalledFormat: null,
+  stalledResolution: null,
+  stalledFrame: null,
+  stalledRecorderState: null,
   frameCount: null,
   framesInvalid: false,
   watermarkApplied: null,
   timestamp: null
 };
+// v8z4b30G — timestamp (epoch ms) da última mudança de etapa, usado pelo
+// watchdog de export para detectar travamentos (>15s sem progresso).
+let _arcoExportLastStepChangeAt = null;
 function arcoSetExportDiag(step, extra = {}) {
+  const now = Date.now();
   arcoExportDiag = {
     ...arcoExportDiag,
     lastExportStep: step,
-    timestamp: new Date().toISOString(),
+    lastExportStepDetailed: step,
+    timestamp: new Date(now).toISOString(),
+    exportElapsedMs: arcoExportDiag.exportStartedAt ? (now - arcoExportDiag.exportStartedAt) : arcoExportDiag.exportElapsedMs,
     ...extra
   };
+  if (step !== 'error' && step !== 'stalled') {
+    arcoExportDiag.lastSuccessfulExportStep = step;
+  }
+  _arcoExportLastStepChangeAt = now;
   if (step === 'error') {
-    console.error('[Arco ' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '') + '][export]', step, extra);
+    console.error('[Arco ' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '') + '][export]', step, extra, arcoExportDiag);
+  } else if (step === 'stalled') {
+    console.error('[Arco ' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '') + '][export][STALL]', step, extra, arcoExportDiag);
   } else if (window._arcoDebug) {
     console.info('[Arco ' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '') + '][export]', step, extra);
   }
+}
+// v8z4b30G — atualização leve de progresso (ex.: por frame), sem o overhead
+// de log no console a cada chamada. Mantém o watchdog "vivo" enquanto há
+// progresso real, e atualiza os campos detalhados do diagnóstico.
+function arcoTouchExportStep(step, extra = {}) {
+  const now = Date.now();
+  arcoExportDiag.lastExportStepDetailed = step;
+  arcoExportDiag.lastSuccessfulExportStep = step;
+  arcoExportDiag.timestamp = new Date(now).toISOString();
+  arcoExportDiag.exportElapsedMs = arcoExportDiag.exportStartedAt ? (now - arcoExportDiag.exportStartedAt) : arcoExportDiag.exportElapsedMs;
+  Object.assign(arcoExportDiag, extra);
+  _arcoExportLastStepChangeAt = now;
 }
 function arcoFramesHaveInvalidValues() {
   for (let i = 0; i < frameCount; i++) {
@@ -19214,10 +19267,85 @@ function showReadyOverlay() {
 async function startRecord() {
   if (shouldBlockGlobalUIAction()) return;
   if (isRecording) return;
+  // v8z4b30G — gera um identificador único para esta tentativa de export,
+  // usado para isolar callbacks tardios (ex.: encoder travado que resolve
+  // depois de um novo export já ter começado) e para o painel Diagnóstico
+  // localizar exatamente qual tentativa travou.
+  const arcoExportSessionId = 'exp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  const arcoExportStartedAt = Date.now();
+  arcoSetExportDiag('export-clicked', {
+    exportSessionId: arcoExportSessionId,
+    exportStartedAt: arcoExportStartedAt,
+    exportElapsedMs: 0,
+    currentFormat: currentRatio,
+    activeFrameIndex: null,
+    totalFrames: null,
+    failedFrameIndex: null,
+    renderedFrameCount: 0,
+    recorderState: 'idle',
+    chunksCount: null,
+    blobSize: null,
+    lastExportOriginalErrorName: null,
+    lastExportOriginalErrorMessage: null,
+    lastExportOriginalErrorStack: null,
+    stalledStep: null,
+    stalledElapsedMs: null,
+    stalledFormat: null,
+    stalledResolution: null,
+    stalledFrame: null,
+    stalledRecorderState: null
+  });
+
+  // v8z4b30G — watchdog de segurança: se uma etapa do export ficar travada
+  // por mais de 15s, registra o estado completo no diagnóstico, loga no
+  // console e libera a interface (sem apagar o diagnóstico), permitindo
+  // que o usuário tente novamente em vez de ficar com a tela presa.
+  let arcoExportWatchdogTimer = null;
+  function arcoStartExportWatchdog() {
+    arcoStopExportWatchdog();
+    arcoExportWatchdogTimer = setInterval(() => {
+      if (arcoExportDiag.exportSessionId !== arcoExportSessionId || !isRecording) {
+        arcoStopExportWatchdog();
+        return;
+      }
+      const elapsed = Date.now() - (_arcoExportLastStepChangeAt || Date.now());
+      if (elapsed > 15000) {
+        const step = arcoExportDiag.lastExportStepDetailed || arcoExportDiag.lastExportStep || 'desconhecida';
+        const dims = (exportDims && exportDims[currentRatio]) || [null, null];
+        const stallInfo = {
+          stalledStep: step,
+          stalledElapsedMs: elapsed,
+          stalledFormat: currentRatio,
+          stalledResolution: (dims[0] != null && dims[1] != null) ? (dims[0] + 'x' + dims[1]) : 'n/d',
+          stalledFrame: arcoExportDiag.activeFrameIndex,
+          stalledRecorderState: arcoExportDiag.recorderState,
+          lastExportOriginalErrorName: arcoExportDiag.lastExportOriginalErrorName || 'ExportStallTimeout',
+          lastExportOriginalErrorMessage: 'Etapa "' + step + '" sem progresso por mais de ' + elapsed + 'ms',
+          exportSuccess: false
+        };
+        arcoSetExportDiag('stalled', stallInfo);
+        arcoStopExportWatchdog();
+        try {
+          cleanupFailedExport('A geração travou na etapa "' + step + '" — interface liberada. Veja o Diagnóstico.');
+        } catch (e) {
+          console.error('[Arco][export][STALL] cleanupFailedExport falhou:', e);
+        }
+      }
+    }, 3000);
+  }
+  function arcoStopExportWatchdog() {
+    if (arcoExportWatchdogTimer) {
+      clearInterval(arcoExportWatchdogTimer);
+      arcoExportWatchdogTimer = null;
+    }
+  }
+
   // v8z4b30F — fecha painéis/menus editoriais transitórios (Formato de
   // saída, Edição de Tempo, Movimento, Trajetória etc.) antes de configurar
   // o Preview/export, para que nenhum overlay fique sobreposto ao canvas.
+  arcoSetExportDiag('close-overlays-start');
   closeAll();
+  arcoSetExportDiag('close-overlays-success');
   // v8z4b30E — HOTFIX: reseta o diagnóstico de export ANTES de qualquer
   // guard, para que o painel Diagnóstico sempre reflita a tentativa mais
   // recente — inclusive abortos por guard de pré-condição.
@@ -19260,6 +19388,7 @@ async function startRecord() {
     showStatus('Proporção de export inválida.');
     return;
   }
+  arcoSetExportDiag('export-dimensions-ready', { exportW: dims0[0], exportH: dims0[1], currentFormat: currentRatio });
   const durationSec0 = getComputedTimelineDuration();
   if (!Number.isFinite(durationSec0) || durationSec0 <= 0) {
     console.warn('[startRecord] duração total inválida — abortando export', { durationSec0 });
@@ -19281,6 +19410,9 @@ async function startRecord() {
   // de um cancelamento anterior pelo usuário.
   exportCancelledFlag = false;
   document.body.classList.add('previewing');
+  // v8z4b30G — inicia o watchdog de 15s só agora, quando a gravação
+  // efetivamente começa (isRecording=true).
+  arcoStartExportWatchdog();
 
   // v8z4b19i — Invalidar qualquer vídeo anterior antes de gerar outro.
   // Usar clearGeneratedMp4 para revogar ObjectURL, limpar blob e resetar UI.
@@ -19329,6 +19461,7 @@ async function startRecord() {
     console.warn('[startRecord] recCanvas com dimensões inválidas', { W, H });
     arcoSetExportDiag('error', { exportW: W, exportH: H, lastExportError: 'recCanvas com dimensões inválidas (' + W + 'x' + H + ')' });
     // cleanupFailedExport definido abaixo — usar reset manual mínimo aqui.
+    arcoStopExportWatchdog();
     isRecording = false;
     document.body.classList.remove('previewing');
     btnGenerate.classList.remove('recording');
@@ -19340,10 +19473,11 @@ async function startRecord() {
     showStatus('Erro ao preparar export.');
     return;
   }
-  arcoSetExportDiag('canvas-setup', { exportW: W, exportH: H });
+  arcoSetExportDiag('canvas-setup', { exportW: W, exportH: H, totalFrames: total });
   recCanvas.width = W;
   recCanvas.height = H;
   hardResetCanvas(rCtx, recCanvas, bgColor);
+  arcoSetExportDiag('canvas-created', { exportW: W, exportH: H, totalFrames: total, recorderState: 'canvas-ready' });
   debugImagePipeline('export-start', { outputSize: `${W}x${H}`, fps, totalFrames: total });
   showStatus(`Exportando ${currentRatio} · ${W}×${H}px`);
 
@@ -19363,7 +19497,16 @@ async function startRecord() {
     // erro real com a mensagem genérica exibida ao usuário. Falhas durante a
     // própria restauração de UI são registradas separadamente em
     // lastCleanupError/cleanupSuccess, sem mascarar lastExportStep/lastExportError.
+    // v8z4b30G — para o watchdog (idempotente) e ignora callbacks tardios de
+    // uma tentativa de export já substituída por outra mais recente, para que
+    // o diagnóstico da tentativa atual não seja sobrescrito por uma antiga.
+    arcoStopExportWatchdog();
+    if (arcoExportDiag.exportSessionId !== arcoExportSessionId) {
+      console.warn('[cleanupFailedExport] ignorado — sessão de export obsoleta', { current: arcoExportDiag.exportSessionId, stale: arcoExportSessionId });
+      return;
+    }
     arcoSetExportDiag(arcoExportDiag.lastExportStep || 'error', { exportSuccess: false });
+    arcoTouchExportStep('cleanup-start');
     let cleanupErr = null;
     try {
       isRecording = false;
@@ -19415,10 +19558,14 @@ async function startRecord() {
       cleanupSuccess: !cleanupErr,
       lastCleanupError: cleanupErr ? (cleanupErr.message || String(cleanupErr)) : null
     });
+    arcoTouchExportStep(cleanupErr ? 'cleanup-failed' : 'cleanup-success');
     showStatus(message || 'Erro ao gerar vídeo');
   }
 
   function finishExport(blob, ext) {
+    // v8z4b30G — para o watchdog: o blob já está pronto, então a partir
+    // daqui não há mais "etapa travada" possível para esta tentativa.
+    arcoStopExportWatchdog();
     // v8z4b19i — guard: se o export foi cancelado pelo usuário (sair do Preview),
     // não completar finishExport mesmo que o encoder tenha terminado de processar
     // a fila de frames. O estado já foi limpo por cancelMp4ExportAndResetState().
@@ -19426,11 +19573,19 @@ async function startRecord() {
       console.log('[finishExport] export cancelado — abortando finalização');
       return;
     }
+    // v8z4b30G — ignora callbacks tardios de uma tentativa de export já
+    // substituída por outra mais recente.
+    if (arcoExportDiag.exportSessionId !== arcoExportSessionId) {
+      console.warn('[finishExport] ignorado — sessão de export obsoleta', { current: arcoExportDiag.exportSessionId, stale: arcoExportSessionId });
+      return;
+    }
+    arcoSetExportDiag('blob-created', { blobSize: blob.size });
     // v8z4b30F — o vídeo já está pronto neste ponto (blob criado e
     // generatedUrl válido). A partir daqui, qualquer falha é de
     // restauração de UI/cleanup, NÃO de exportação: exportSuccess
     // permanece true e nenhum erro genérico é exibido ao usuário,
     // mesmo que a restauração do Preview falhe (ex.: elemento ausente).
+    arcoTouchExportStep('file-save-start');
     if (generatedUrl) {
       try { URL.revokeObjectURL(generatedUrl); } catch(e) {}
     }
@@ -19438,13 +19593,16 @@ async function startRecord() {
     window._lastVideoBlob = blob;
     window._lastVideoExt  = ext;
     const mb = (blob.size / 1024 / 1024).toFixed(1);
+    arcoTouchExportStep('file-save-success');
     arcoSetExportDiag('success', {
       lastExportError: null,
       exportSuccess: true,
       lastCleanupError: null,
-      cleanupSuccess: null
+      cleanupSuccess: null,
+      blobSize: blob.size
     });
 
+    arcoTouchExportStep('cleanup-start');
     try {
       cleanupExportSession('success', { logOnly: true, encodedFrames: exportEncodedFrames, expectedFrames: total });
       isRecording = false;
@@ -19492,6 +19650,7 @@ async function startRecord() {
       animFrame = requestAnimationFrame(loopAfter);
       updatePlayButton();
       arcoSetExportDiag('success', { cleanupSuccess: true, lastCleanupError: null });
+      arcoTouchExportStep('cleanup-success');
     } catch (cleanupErr) {
       // Vídeo já gerado com sucesso — não reportar como falha de export.
       console.error('[finishExport] restauração de UI pós-export falhou (vídeo já gerado):', cleanupErr);
@@ -19499,6 +19658,7 @@ async function startRecord() {
         cleanupSuccess: false,
         lastCleanupError: cleanupErr?.message || String(cleanupErr)
       });
+      arcoTouchExportStep('cleanup-failed');
       isRecording = false;
       document.body.classList.remove('previewing');
       try { hideGenOverlay(); } catch(e) {}
@@ -19519,36 +19679,52 @@ async function startRecord() {
     }
     arcoSetExportDiag('mediarecorder-fallback');
     const stream = recCanvas.captureStream(fps);
+    arcoSetExportDiag('stream-created', { recorderState: 'stream-created' });
     const track  = stream.getVideoTracks()[0];
     const useManual = !!(track && track.requestFrame);
     const recMimes = ['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm'];
     const recMime  = recMimes.find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
     const rec  = new MediaRecorder(stream, { mimeType: recMime, videoBitsPerSecond: 10000000 });
+    arcoSetExportDiag('recorder-created', { recorderState: rec.state });
     const chunks = [];
-    rec.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    rec.ondataavailable = e => {
+      if (e.data.size > 0) chunks.push(e.data);
+      arcoTouchExportStep('recorder-data-available', { chunksCount: chunks.length, recorderState: rec.state });
+    };
     const stopped = new Promise(resolve => {
-      rec.onstop = () => resolve();
+      rec.onstop = () => {
+        arcoSetExportDiag('recorder-stop-fired', { recorderState: rec.state, chunksCount: chunks.length });
+        resolve();
+      };
     });
     try {
       rec.start();
+      arcoSetExportDiag('recorder-started', { recorderState: rec.state });
       const frameDuration = 1000 / fps;
       const startTime = performance.now();
+      let renderedCount = 0;
+      arcoSetExportDiag('render-loop-start', { activeFrameIndex: 0, totalFrames: total, renderedFrameCount: 0 });
       for (let f = 0; f < total; f++) {
         if (!isRecording) break;
         const t = total > 1 ? f / (total - 1) : 0;
+        arcoTouchExportStep('render-frame-start', { activeFrameIndex: f, totalFrames: total });
         // v8z4b28d — render seguro por frame: valida estado/canvas e usa
         // fallback universal antes de entregar qualquer frame ao recorder.
         const rendered = renderFrameSafely(rCtx, recCanvas, t, W, H, total, f, { rejectBlank: true });
         if (!rendered) {
-          arcoSetExportDiag('error', { lastExportError: 'mediarecorder-frame-render-failed (frame ' + f + ')' });
+          arcoSetExportDiag('error', { lastExportError: 'mediarecorder-frame-render-failed (frame ' + f + ')', failedFrameIndex: f, activeFrameIndex: f });
           throw new Error('mediarecorder-frame-render-failed');
         }
         if (useManual) track.requestFrame();
+        renderedCount = f + 1;
+        arcoTouchExportStep('render-frame-success', { activeFrameIndex: f, totalFrames: total, renderedFrameCount: renderedCount });
         if (f % 3 === 0 || f === total - 1) updateExportProgress(f + 1, 'Gerando vídeo (fallback)');
         const target = startTime + (f + 1) * frameDuration;
         await new Promise(r => setTimeout(r, Math.max(0, target - performance.now())));
       }
+      arcoSetExportDiag('render-loop-complete', { renderedFrameCount: renderedCount });
       await new Promise(r => setTimeout(r, frameDuration * 3));
+      arcoSetExportDiag('recorder-stop-requested', { recorderState: rec.state });
       try { rec.stop(); } catch(e) {}
       await stopped;
     } finally {
@@ -19594,6 +19770,7 @@ async function startRecord() {
       await exportWithMediaRecorderFallback();
       return;
     }
+    arcoSetExportDiag('stream-created', { recorderState: 'webcodecs:codec=' + codecStr });
 
     const muxer = new Mp4Muxer.Muxer({
       target: new Mp4Muxer.ArrayBufferTarget(),
@@ -19610,6 +19787,7 @@ async function startRecord() {
         console.error('[EncoderError]', { frameNumber: exportEncodedFrames, timestamp: null, error: e?.message || String(e) });
       }
     });
+    arcoSetExportDiag('recorder-created', { recorderState: 'webcodecs:encoder-created' });
 
     exportEncoder = encoder;
     encoder.configure({
@@ -19621,14 +19799,17 @@ async function startRecord() {
       latencyMode: 'quality',
       hardwareAcceleration: 'prefer-hardware'
     });
+    arcoSetExportDiag('recorder-started', { recorderState: 'webcodecs:configured' });
 
     // Render/encode sequencial: não guarda ImageBitmap[] na memória.
+    arcoSetExportDiag('render-loop-start', { activeFrameIndex: 0, totalFrames: total, renderedFrameCount: 0 });
     for (let f = 0; f < total; f++) {
       if (!isRecording || encError) break;
       const t = total > 1 ? f / (total - 1) : 0;
+      arcoTouchExportStep('render-frame-start', { activeFrameIndex: f, totalFrames: total, recorderState: 'webcodecs:encoding' });
       const rendered = renderFrameSafely(rCtx, recCanvas, t, W, H, total, f, { rejectBlank: true });
       if (!rendered) {
-        arcoSetExportDiag('error', { lastExportError: 'webcodecs-frame-render-failed (frame ' + f + ')' });
+        arcoSetExportDiag('error', { lastExportError: 'webcodecs-frame-render-failed (frame ' + f + ')', failedFrameIndex: f, activeFrameIndex: f });
         throw new Error('webcodecs-frame-render-failed');
       }
 
@@ -19673,6 +19854,8 @@ async function startRecord() {
         if (bitmap && typeof bitmap.close === 'function') { try { bitmap.close(); } catch(e) {} }
       }
 
+      arcoTouchExportStep('render-frame-success', { activeFrameIndex: f, totalFrames: total, renderedFrameCount: exportEncodedFrames, recorderState: 'webcodecs:encodeQueueSize=' + encoder.encodeQueueSize });
+
       // Backpressure mais rígido: evita fila grande/memória alta no iPhone.
       if (encoder.encodeQueueSize > 2) {
         await new Promise(r => setTimeout(r, 0));
@@ -19686,6 +19869,7 @@ async function startRecord() {
       }
     }
 
+    arcoSetExportDiag('render-loop-complete', { renderedFrameCount: exportEncodedFrames });
     if (encError) throw encError;
     // v8z4b19i — guard: se o usuário saiu do Preview durante export,
     // não finalizar o MP4. O encoder pode ter processado todos os frames
@@ -19697,16 +19881,27 @@ async function startRecord() {
       try { encoder.close(); exportEncoderClosed = true; } catch(e) {}
       return;
     }
+    arcoSetExportDiag('recorder-stop-requested', { recorderState: 'webcodecs:flushing' });
     await encoder.flush();
     try { encoder.close(); exportEncoderClosed = true; } catch(e) {}
     muxer.finalize();
+    arcoSetExportDiag('recorder-stop-fired', { recorderState: 'webcodecs:finalized' });
     finishExport(new Blob([muxer.target.buffer], { type: 'video/mp4' }), 'mp4');
   } catch (err) {
     logExportError(null, null, W, H, err, null);
     console.error('Export WebCodecs falhou:', err);
     // v8z4b30E — registra o motivo real da falha para o painel Diagnóstico
     // (a mensagem exibida ao usuário continua genérica).
-    arcoSetExportDiag('error', { lastExportError: err?.message || String(err), exportSuccess: false });
+    // v8z4b30G — preserva o erro original COMPLETO (nome, mensagem, stack)
+    // para o painel Diagnóstico, sem nunca substituí-lo pela mensagem
+    // genérica exibida ao usuário.
+    arcoSetExportDiag('error', {
+      lastExportError: err?.message || String(err),
+      lastExportOriginalErrorName: err?.name || (typeof err),
+      lastExportOriginalErrorMessage: err?.message != null ? String(err.message) : String(err),
+      lastExportOriginalErrorStack: err?.stack || null,
+      exportSuccess: false
+    });
     cleanupFailedExport('Erro ao gerar vídeo. Tente novamente.');
   } finally {
     if (exportEncoder && !exportEncoderClosed) {
@@ -19722,6 +19917,7 @@ async function startRecord() {
       arcoSetExportDiag('error', { lastExportError: arcoExportDiag.lastExportError || 'Estado inconsistente ao final do export', exportSuccess: false });
       try { cleanupFailedExport('Export interrompido — tente novamente.'); } catch(e) {}
     }
+    arcoStopExportWatchdog();
   }
 }
 
@@ -24509,6 +24705,33 @@ function buildDiagnosticsText() {
   push('frames com NaN/Infinity (atual)', (typeof arcoFramesHaveInvalidValues === 'function' && arcoFramesHaveInvalidValues()) ? 'SIM' : 'não');
   push('quantidade de frames', String((typeof frameCount !== 'undefined') ? frameCount : 'n/d'));
   push('watermark/premium aplicado (última geração)', arcoExportDiag.watermarkApplied == null ? 'n/d' : String(arcoExportDiag.watermarkApplied));
+  L.push('');
+
+  // v8z4b30G — instrumentação profunda do export (sessão/etapas/travamento)
+  push('exportSessionId', arcoExportDiag.exportSessionId || 'n/d');
+  push('exportStartedAt', arcoExportDiag.exportStartedAt ? new Date(arcoExportDiag.exportStartedAt).toISOString() : 'n/d');
+  push('exportElapsedMs', _diagFmtNum(arcoExportDiag.exportElapsedMs));
+  push('activeFrameIndex', _diagFmtNum(arcoExportDiag.activeFrameIndex));
+  push('totalFrames', _diagFmtNum(arcoExportDiag.totalFrames));
+  push('renderedFrameCount', _diagFmtNum(arcoExportDiag.renderedFrameCount));
+  push('failedFrameIndex', _diagFmtNum(arcoExportDiag.failedFrameIndex));
+  push('lastExportStepDetailed', arcoExportDiag.lastExportStepDetailed || 'n/d');
+  push('lastSuccessfulExportStep', arcoExportDiag.lastSuccessfulExportStep || 'n/d');
+  push('recorderState', arcoExportDiag.recorderState || 'n/d');
+  push('chunksCount', _diagFmtNum(arcoExportDiag.chunksCount));
+  push('blobSize', _diagFmtNum(arcoExportDiag.blobSize));
+  push('lastExportOriginalErrorName', arcoExportDiag.lastExportOriginalErrorName || 'nenhum');
+  push('lastExportOriginalErrorMessage', arcoExportDiag.lastExportOriginalErrorMessage || 'nenhum');
+  push('lastExportOriginalErrorStack', arcoExportDiag.lastExportOriginalErrorStack || 'nenhum');
+  L.push('');
+
+  // v8z4b30G — diagnóstico de travamento (watchdog de 15s)
+  push('stalledStep', arcoExportDiag.stalledStep || 'nenhum');
+  push('stalledElapsedMs', _diagFmtNum(arcoExportDiag.stalledElapsedMs));
+  push('stalledFormat', arcoExportDiag.stalledFormat || 'n/d');
+  push('stalledResolution', arcoExportDiag.stalledResolution || 'n/d');
+  push('stalledFrame', _diagFmtNum(arcoExportDiag.stalledFrame));
+  push('stalledRecorderState', arcoExportDiag.stalledRecorderState || 'n/d');
   L.push('');
 
   // Zoom de edição
