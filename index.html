@@ -950,7 +950,6 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b30H — fix(export): corrige a falha real de geração de MP4 no formato 1:1 (EncodingError do WebCodecs). Diagnóstico v8z4b30G mostrou que o pipeline 1:1 (1080x1080 = 4624 macroblocos de 16x16) excede o orçamento dos níveis H.264 3.0/3.1 (máx. 3600 MBs) usados nos candidatos de codec fixos — Safari aceita esses candidatos em isConfigSupported(), mas o encoder real falha com EncodingError. runWebCodecsExport() agora calcula, por resolução, o nível H.264 mínimo necessário (macroblocos ≤ orçamento do nível) e tenta primeiro candidatos com esse nível quando a resolução excede 3600 MBs; para 9:16/4:3 (≤3600 MBs) os candidatos e a ordem permanecem EXATAMENTE os mesmos de antes. feat(export): novo fallback automático e seguro — se o WebCodecs falhar em qualquer etapa (configure/encode/flush) com qualquer erro, startRecord() registra o erro original completo, libera o encoder/canvas e tenta o pipeline MediaRecorder antes de reportar falha ao usuário; 9:16/4:3 continuam usando WebCodecs normalmente (fallback só é acionado em caso de erro real). feat(diag): novos campos encoderPathUsed ('webcodecs'/'fallback'), fallbackUsed e lastCleanupStep no arcoExportDiag e no painel Diagnóstico; nova função arcoTouchCleanupStep() registra as etapas de limpeza/restauração de UI (cleanup-start/success/failed) separadamente de lastExportStepDetailed/lastSuccessfulExportStep, para que "cleanup-success" nunca mais apareça como etapa do export quando exportSuccess=false. preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/layout aprovado, NÃO altera o comportamento de 9:16/4:3 além do já descrito; sem prompt/alert/confirm (base v8z4b30G). -->
 <!-- Arco Motion App — v8z4b30G — diag(export): instrumentação profunda do pipeline de export MP4, com foco no formato 1:1 (geração travando até em arquivo novo). arcoExportDiag ganha: exportSessionId (identifica cada tentativa e ignora callbacks tardios de tentativas anteriores), exportStartedAt/exportElapsedMs, activeFrameIndex/totalFrames/renderedFrameCount/failedFrameIndex, lastExportStepDetailed/lastSuccessfulExportStep, recorderState, chunksCount, blobSize, lastExportOriginalErrorName/Message/Stack (erro real completo, NUNCA substituído pela mensagem genérica). startRecord() agora registra etapas granulares (export-clicked, close-overlays-start/success, export-dimensions-ready, canvas-created, stream-created, recorder-created, recorder-started, render-loop-start, render-frame-start/success por frame, render-loop-complete, recorder-stop-requested/fired, blob-created, file-save-start/success, cleanup-start/success) tanto no caminho WebCodecs/Mp4Muxer quanto no fallback MediaRecorder. Novo watchdog: se uma etapa ficar sem progresso por >15s, registra stalledStep/stalledElapsedMs/stalledFormat/stalledResolution/stalledFrame/stalledRecorderState no diagnóstico, loga no console e libera a interface (cleanupFailedExport) SEM apagar o diagnóstico, para que o usuário possa tentar novamente. Todos os novos campos aparecem no painel Diagnóstico. preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames/layout aprovado, NÃO altera formatos 9:16/4:3 além desta instrumentação, NÃO refatora o exportador (apenas instrumentação + watchdog); sem prompt/alert/confirm (base v8z4b30F). -->
 <!-- Arco Motion App — v8z4b30E — fix(export): HOTFIX exclusivo para restaurar a geração de MP4 após troca de formato (proporção) em projetos já configurados — selectFormat() passa a preservar todas as propriedades extras do frame (ex.: pointMode) ao recalcular x/y/w/h para o novo currentRatio, com fallback finito caso algum frame chegue com valores ausentes/NaN/Infinity; nova normalizeFramesToCurrentFormat() é chamada no início de startRecord() para garantir, sem alterar Stage/layoutStage/zoom/pan/clamps/curvas, que todo frame esteja com w/h finitos, positivos e na proporção do formato atual antes de configurar o canvas de exportação; feat(diag): novo estado somente-leitura arcoExportDiag registra exportW/exportH e currentFormat usados na última geração, lastExportStep, lastExportError (mensagem real do erro, antes só genérica), presença de NaN/Infinity nos frames, quantidade de frames e watermark/premium aplicado — exibidos no painel Diagnóstico (sem alterar seu layout); erros do WebCodecs/MediaRecorder fallback agora também logam no console e no painel em vez de só piscar a tela; preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames além da normalização pós-troca de formato descrita, NÃO altera projectWorld/assets/views/permissões, visuais, ícones, textos, menus ou fluxo aprovados; sem prompt/alert/confirm (base v8z4b30D). -->
 <!-- Arco Motion App — v8z4b30C — diag(tooling): adiciona painel de Diagnóstico técnico temporário e discreto, acessível por novo item "Diagnóstico" no menu de ajustes; overlay textual rolável que apenas LÊ valores existentes (APP_VERSION, imageAreaW/H, stageW/H, imgNatW/H, proporções, formato, resolução de exportação, zoom atual/mín/máx, panX/panY e limites, frame ativo e x/y/w/h/rotation, fatores de conversão Stage→pixel natural, devicePixelRatio, viewport visual); botão "Copiar diagnóstico" via Clipboard API com fallback de seleção manual no Safari; preserve: NÃO altera layout aprovado, cores, textos, ícones, toolbar, faixa de frames, Preview, exportação, motor, layoutStage, zoom/pan, clamps, Stage, frames ou curvas; sem prompt/alert/confirm; sem múltiplas imagens, sem layers, sem cenas; apenas diagnóstico (base v8z4b29CD). -->
@@ -3908,7 +3907,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30H</span><br><span id="appVersionNameText">v8z4b30H</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30G</span><br><span id="appVersionNameText">v8z4b30G</span></div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -6654,8 +6653,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30H';
-const APP_VERSION_NAME = 'v8z4b30H';
+const APP_VERSION = 'v8z4b30G';
+const APP_VERSION_NAME = 'v8z4b30G';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -6942,17 +6941,7 @@ let arcoExportDiag = {
   frameCount: null,
   framesInvalid: false,
   watermarkApplied: null,
-  timestamp: null,
-  // v8z4b30H — caminho de encoder efetivamente usado ('webcodecs' ou
-  // 'fallback') e se houve fallback automático após falha do WebCodecs
-  // (ex.: EncodingError no formato 1:1).
-  encoderPathUsed: null,
-  fallbackUsed: false,
-  // v8z4b30H — última etapa de LIMPEZA/restauração de UI (cleanup-start/
-  // success/failed), separada de lastExportStepDetailed/lastSuccessfulExportStep
-  // para que estes continuem refletindo a etapa real do EXPORT (encode/mux)
-  // sem serem mascarados por "cleanup-success" quando o export falhou.
-  lastCleanupStep: null
+  timestamp: null
 };
 // v8z4b30G — timestamp (epoch ms) da última mudança de etapa, usado pelo
 // watchdog de export para detectar travamentos (>15s sem progresso).
@@ -6988,17 +6977,6 @@ function arcoTouchExportStep(step, extra = {}) {
   arcoExportDiag.lastSuccessfulExportStep = step;
   arcoExportDiag.timestamp = new Date(now).toISOString();
   arcoExportDiag.exportElapsedMs = arcoExportDiag.exportStartedAt ? (now - arcoExportDiag.exportStartedAt) : arcoExportDiag.exportElapsedMs;
-  Object.assign(arcoExportDiag, extra);
-  _arcoExportLastStepChangeAt = now;
-}
-// v8z4b30H — registra etapas de LIMPEZA/restauração de UI pós-export em
-// lastCleanupStep, sem tocar em lastExportStepDetailed/lastSuccessfulExportStep.
-// Evita que "cleanup-success" sobrescreva a etapa real de falha do export
-// quando exportSuccess=false (ex.: encode falhou, mas a UI foi restaurada).
-function arcoTouchCleanupStep(step, extra = {}) {
-  const now = Date.now();
-  arcoExportDiag.lastCleanupStep = step;
-  arcoExportDiag.timestamp = new Date(now).toISOString();
   Object.assign(arcoExportDiag, extra);
   _arcoExportLastStepChangeAt = now;
 }
@@ -19315,10 +19293,7 @@ async function startRecord() {
     stalledFormat: null,
     stalledResolution: null,
     stalledFrame: null,
-    stalledRecorderState: null,
-    encoderPathUsed: null,
-    fallbackUsed: false,
-    lastCleanupStep: null
+    stalledRecorderState: null
   });
 
   // v8z4b30G — watchdog de segurança: se uma etapa do export ficar travada
@@ -19384,10 +19359,7 @@ async function startRecord() {
     cleanupSuccess: null,
     frameCount: frameCount,
     framesInvalid: arcoFramesHaveInvalidValues(),
-    watermarkApplied: (!isProMode && frameCount >= 4),
-    encoderPathUsed: null,
-    fallbackUsed: false,
-    lastCleanupStep: null
+    watermarkApplied: (!isProMode && frameCount >= 4)
   });
   // v8z4b30E — HOTFIX: normaliza frames para o formato atual ANTES de
   // qualquer guard/render. Corrige resíduos de uma troca de formato anterior
@@ -19534,7 +19506,7 @@ async function startRecord() {
       return;
     }
     arcoSetExportDiag(arcoExportDiag.lastExportStep || 'error', { exportSuccess: false });
-    arcoTouchCleanupStep('cleanup-start');
+    arcoTouchExportStep('cleanup-start');
     let cleanupErr = null;
     try {
       isRecording = false;
@@ -19586,7 +19558,7 @@ async function startRecord() {
       cleanupSuccess: !cleanupErr,
       lastCleanupError: cleanupErr ? (cleanupErr.message || String(cleanupErr)) : null
     });
-    arcoTouchCleanupStep(cleanupErr ? 'cleanup-failed' : 'cleanup-success');
+    arcoTouchExportStep(cleanupErr ? 'cleanup-failed' : 'cleanup-success');
     showStatus(message || 'Erro ao gerar vídeo');
   }
 
@@ -19630,7 +19602,7 @@ async function startRecord() {
       blobSize: blob.size
     });
 
-    arcoTouchCleanupStep('cleanup-start');
+    arcoTouchExportStep('cleanup-start');
     try {
       cleanupExportSession('success', { logOnly: true, encodedFrames: exportEncodedFrames, expectedFrames: total });
       isRecording = false;
@@ -19678,7 +19650,7 @@ async function startRecord() {
       animFrame = requestAnimationFrame(loopAfter);
       updatePlayButton();
       arcoSetExportDiag('success', { cleanupSuccess: true, lastCleanupError: null });
-      arcoTouchCleanupStep('cleanup-success');
+      arcoTouchExportStep('cleanup-success');
     } catch (cleanupErr) {
       // Vídeo já gerado com sucesso — não reportar como falha de export.
       console.error('[finishExport] restauração de UI pós-export falhou (vídeo já gerado):', cleanupErr);
@@ -19686,7 +19658,7 @@ async function startRecord() {
         cleanupSuccess: false,
         lastCleanupError: cleanupErr?.message || String(cleanupErr)
       });
-      arcoTouchCleanupStep('cleanup-failed');
+      arcoTouchExportStep('cleanup-failed');
       isRecording = false;
       document.body.classList.remove('previewing');
       try { hideGenOverlay(); } catch(e) {}
@@ -19769,46 +19741,16 @@ async function startRecord() {
     finishExport(new Blob(chunks, { type: recMime }), recMime.includes('mp4') ? 'mp4' : 'webm');
   }
 
-  // v8z4b30H — caminho WebCodecs isolado nesta função para permitir fallback
-  // automático e seguro para MediaRecorder quando o encoder falhar com
-  // EncodingError (ex.: formato 1:1, onde 1080x1080 = 4624 macroblocos
-  // excede o limite de 3600 dos níveis H.264 3.0/3.1 usados antes). NÃO
-  // altera o caminho/candidatos de codec para 9:16/4:3 (≤3600 MBs), que
-  // continuam recebendo exatamente os mesmos candidatos de antes, na mesma
-  // ordem.
-  // Retorna true se finishExport() já foi chamado (MP4 pronto via WebCodecs),
-  // ou false se o usuário cancelou o export durante o processo (nada mais a
-  // fazer). Lança o erro original em qualquer falha de configure/encode, para
-  // que o chamador decida acionar o fallback MediaRecorder.
-  async function runWebCodecsExport() {
-    const mbCount = Math.ceil(W / 16) * Math.ceil(H / 16);
-    const baseCandidates = ['avc1.42001f', 'avc1.42E01E', 'avc1.4D401F'];
-    let codecCandidates = baseCandidates;
-    if (mbCount > 3600) {
-      // v8z4b30H — resolução excede o orçamento de macroblocos dos níveis
-      // 3.0/3.1 (ex.: 1:1 1080x1080 = 4624 MBs). Calcula o nível H.264 mínimo
-      // necessário e tenta primeiro codecs configurados com esse nível,
-      // mantendo os candidatos originais como fallback final.
-      const h264Levels = [
-        [0x20, 5120],  // 3.2
-        [0x28, 8192],  // 4.0
-        [0x29, 8192],  // 4.1
-        [0x2A, 8704],  // 4.2
-        [0x32, 22080]  // 5.0
-      ];
-      let levelHex = h264Levels[h264Levels.length - 1][0];
-      for (const [lvl, maxMbs] of h264Levels) {
-        if (mbCount <= maxMbs) { levelHex = lvl; break; }
-      }
-      const levelStr = levelHex.toString(16).padStart(2, '0').toUpperCase();
-      codecCandidates = [
-        'avc1.4D40' + levelStr,
-        'avc1.6400' + levelStr,
-        'avc1.4200' + levelStr,
-        ...baseCandidates
-      ];
+  try {
+    const hasWebCodecs = (typeof VideoEncoder !== 'undefined') &&
+                         (typeof VideoFrame !== 'undefined') &&
+                         (typeof Mp4Muxer !== 'undefined');
+    if (!hasWebCodecs) {
+      await exportWithMediaRecorderFallback();
+      return;
     }
 
+    const codecCandidates = ['avc1.42001f', 'avc1.42E01E', 'avc1.4D401F'];
     let codecStr = null;
     for (const c of codecCandidates) {
       try {
@@ -19825,9 +19767,10 @@ async function startRecord() {
     }
 
     if (!codecStr) {
-      throw new Error('webcodecs-codec-unsupported');
+      await exportWithMediaRecorderFallback();
+      return;
     }
-    arcoSetExportDiag('stream-created', { recorderState: 'webcodecs:codec=' + codecStr, encoderPathUsed: 'webcodecs' });
+    arcoSetExportDiag('stream-created', { recorderState: 'webcodecs:codec=' + codecStr });
 
     const muxer = new Mp4Muxer.Muxer({
       target: new Mp4Muxer.ArrayBufferTarget(),
@@ -19936,7 +19879,7 @@ async function startRecord() {
     if (exportCancelledFlag) {
       console.log('[startRecord/WebCodecs] export cancelado — descartando muxer');
       try { encoder.close(); exportEncoderClosed = true; } catch(e) {}
-      return false;
+      return;
     }
     arcoSetExportDiag('recorder-stop-requested', { recorderState: 'webcodecs:flushing' });
     await encoder.flush();
@@ -19944,65 +19887,14 @@ async function startRecord() {
     muxer.finalize();
     arcoSetExportDiag('recorder-stop-fired', { recorderState: 'webcodecs:finalized' });
     finishExport(new Blob([muxer.target.buffer], { type: 'video/mp4' }), 'mp4');
-    return true;
-  }
-
-  try {
-    const hasWebCodecs = (typeof VideoEncoder !== 'undefined') &&
-                         (typeof VideoFrame !== 'undefined') &&
-                         (typeof Mp4Muxer !== 'undefined');
-
-    let webCodecsErr = null;
-    if (hasWebCodecs) {
-      try {
-        await runWebCodecsExport();
-      } catch (wcErr) {
-        webCodecsErr = wcErr;
-      }
-    }
-
-    if (exportCancelledFlag) {
-      // Cancelado pelo usuário durante (ou antes) do WebCodecs — nada mais a
-      // fazer; o estado já foi limpo por cancelMp4ExportAndResetState().
-    } else if (!hasWebCodecs || webCodecsErr) {
-      if (webCodecsErr) {
-        // v8z4b30H — fallback automático: WebCodecs falhou (ex.: EncodingError
-        // no formato 1:1). Registra o erro original completo para o painel
-        // Diagnóstico e tenta o caminho alternativo (MediaRecorder) antes de
-        // reportar falha ao usuário.
-        console.warn('[startRecord] WebCodecs falhou — acionando fallback automático MediaRecorder', webCodecsErr);
-        arcoSetExportDiag('webcodecs-failed-fallback', {
-          fallbackUsed: true,
-          encoderPathUsed: 'fallback',
-          lastExportOriginalErrorName: webCodecsErr?.name || (typeof webCodecsErr),
-          lastExportOriginalErrorMessage: webCodecsErr?.message != null ? String(webCodecsErr.message) : String(webCodecsErr),
-          lastExportOriginalErrorStack: webCodecsErr?.stack || null
-        });
-        if (exportEncoder && !exportEncoderClosed) {
-          try { exportEncoder.close(); } catch(e) {}
-          exportEncoderClosed = true;
-        }
-        exportEncoder = null;
-        exportEncodedFrames = 0;
-        hardResetCanvas(rCtx, recCanvas, bgColor);
-      } else {
-        arcoSetExportDiag('webcodecs-unavailable-fallback', { fallbackUsed: true, encoderPathUsed: 'fallback' });
-      }
-      await exportWithMediaRecorderFallback();
-    }
   } catch (err) {
     logExportError(null, null, W, H, err, null);
-    console.error('Export falhou:', err);
+    console.error('Export WebCodecs falhou:', err);
     // v8z4b30E — registra o motivo real da falha para o painel Diagnóstico
     // (a mensagem exibida ao usuário continua genérica).
     // v8z4b30G — preserva o erro original COMPLETO (nome, mensagem, stack)
     // para o painel Diagnóstico, sem nunca substituí-lo pela mensagem
     // genérica exibida ao usuário.
-    // v8z4b30H — se o WebCodecs já tinha falhado e o fallback MediaRecorder
-    // também falhou, este é o erro do FALLBACK (último caminho tentado);
-    // o erro original do WebCodecs permanece registrado em
-    // lastExportOriginalError* pelo passo 'webcodecs-failed-fallback' acima
-    // até este ponto sobrescrever com a falha definitiva.
     arcoSetExportDiag('error', {
       lastExportError: err?.message || String(err),
       lastExportOriginalErrorName: err?.name || (typeof err),
@@ -24831,12 +24723,6 @@ function buildDiagnosticsText() {
   push('lastExportOriginalErrorName', arcoExportDiag.lastExportOriginalErrorName || 'nenhum');
   push('lastExportOriginalErrorMessage', arcoExportDiag.lastExportOriginalErrorMessage || 'nenhum');
   push('lastExportOriginalErrorStack', arcoExportDiag.lastExportOriginalErrorStack || 'nenhum');
-  L.push('');
-
-  // v8z4b30H — caminho de encoder (webcodecs/fallback) e etapa de limpeza
-  push('encoderPathUsed', arcoExportDiag.encoderPathUsed || 'n/d');
-  push('fallbackUsed', String(!!arcoExportDiag.fallbackUsed));
-  push('lastCleanupStep', arcoExportDiag.lastCleanupStep || 'n/d');
   L.push('');
 
   // v8z4b30G — diagnóstico de travamento (watchdog de 15s)
