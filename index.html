@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30P — HOTFIX (estabilização da fase 1 de múltiplas imagens), base v8z4b30O. fix(bg): nova fonte única getProjectBackgroundColor()/DEFAULT_PROJECT_BG ('#3c3c3b', cinza padrão do app) usada por Stage (imageArea), Preview, Export, drawAtTDirect e drawWorldToCanvas — todos os fallbacks hard-coded '#000000'/'#000' para a cor de fundo do projeto foram substituídos; novo projeto (clearCurrentProjectForNewFile) já nasce com bgColor=DEFAULT_PROJECT_BG e sincroniza o menu "Cor de fundo" (syncBgColorUI) desde o início, eliminando o fundo preto inicial. fix(aspect-ratio): nova função fitContain(srcW,srcH,boxW,boxH) — addImageAssetAtSlot() calcula o tamanho da imagem adicional com fit contain dentro da célula do slot (baseStageW x baseStageH) e centraliza o asset (worldX/Y/W/H ajustados), preservando o aspect ratio original sem cortar/distorcer; gap 3x3 e drawWorldToCanvas/renderProjectWorldExtraImages (cover sobre um rect com a mesma proporção do asset = sem crop) inalterados. fix(undo): captureState()/restoreState() passam a incluir assets[]/projectWorld e uma referência leve (sem duplicar base64/bitmaps) à imagem principal (imageSnapshot); addImageAssetAtSlot() e a substituição de imagem (chooseReplaceCurrentImage→loadImage) capturam snapshot ANTES da mutação e chamam pushUndoSnapshot() — exatamente um passo de undo por ação, usando o mecanismo de undo/redo já existente. feat(diag): painel Diagnóstico ganha DEFAULT_PROJECT_BG/currentProjectBg/renderBgUsed/previewBgUsed/exportBgUsed, asset[i].id/type/sourceAR/worldAR/slotBoxW-H/fitMode e undoStackLength/redoStackLength/lastUndoAction. preserve: inserção de 2ª imagem, Preview/Export multi-imagem, gap 3x3, remoção de "Cena 1", ProjectWorld único, fundo cinza de "Gerando vídeo", modal Substituir/Adicionar acima do menu, MP4 1:1/9:16/4:3; NÃO altera motor de curvas, touch/drag/resize/zoom, suporte mobile/iPhone/Safari, WebCodecs/muxer/FPS além do mínimo, textos/ícones/cores/layout aprovados; sem edição livre de posição/escala, sem painel de layers/reorder, sem cenas, sem IA, sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30O — fix(multi-image): corrige a fase 1 de múltiplas imagens (Preview/Export + espaçamento), base v8z4b30N. Correção 1 (espaçamento 3x3): addImageAssetAtSlot() passa a posicionar a imagem extra com um gap em coordenadas de mundo — worldGap = clamp(min(baseStageW,baseStageH)*0.16, 48, 96), worldX = col*(baseStageW+worldGap) e worldY = row*(baseStageH+worldGap); a célula central (col0/row0) continua sendo a imagem principal e a imagem adicionada à esquerda/direita/acima/abaixo não encosta mais na principal (o Stage/DOM via renderProjectWorldExtraImages já reflete o gap). Correção 2/3 (Preview/Export com várias imagens): nova função central de render de mundo drawWorldToCanvas(ctx, cam, outW, outH, options) — limpa o canvas com o fundo correto, percorre os assets de imagem visíveis ordenados por zIndex, mapeia cada rect (worldX/Y/W/H) para px da câmera, desenha apenas a parte visível (clipping do canvas + cull) e respeita o frame/câmera; usa mainSource = proxy de edição/preview quando há override e original (canônica) no export, sem nunca depender do DOM visual do Stage. drawAtTDirect() redireciona para drawWorldToCanvas SOMENTE quando isMultiImageWorldActive() (2+ imagens) — projetos de 1 imagem mantêm o caminho single-image idêntico (Preview/MP4 1:1/9:16/4:3 inalterados). Substitui o antigo mundo composto 3x3 fixo (getProjectWorldCompositeSource) que ignorava assets no Preview (renderSourceOverride) e gerava tela preta quando o frame apontava para a segunda imagem. Correção 4 (diag): painel Diagnóstico ganha asset[i].visible/zIndex, worldGap usado, multiImageWorldActive, renderWorldLastAssetCount, previewRenderAssetCount, exportRenderAssetCount, lastPreviewError e lastWorldRenderError. preserve: remoção de "Cena 1", fundo cinza de "Gerando vídeo" e correções 30M/30N; NÃO altera motor de export MP4/1:1, Stage/layoutStage(), zoom/pan/clamps/curvas/motor de frames, textos/ícones/cores/layout aprovados; sem edição livre de posição/escala, sem painel de layers, sem cenas; sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30M — feat(perf): Tarefa 1 — proxy de edição para imagens grandes. createEditorImageProxyIfNeeded(image) gera, quando a imagem original tem o maior lado > 2048px OU > 6 megapixels, um canvas reduzido (maior lado ~2048px, mesma proporção) usado APENAS como src de #imgEl (Stage/editor); imagens pequenas/médias continuam usando a própria imagem original em #imgEl. originalImageElement/originalImageSrc preservam a imagem original (mesma fonte canônica de getCanonicalRenderSource()/export); editorImageElement/editorImageSrc apontam para o proxy (ou para a original quando não há proxy). imgNatW/imgNatH, frames, Stage/layoutStage(), zoom/pan/clamps e o motor de export continuam baseados exclusivamente na imagem original — proxy não altera proporção, posição de frames nem fator Stage→px natural. feat(diag): painel Diagnóstico ganha imageMegapixels, estimatedOriginalRGBABytes, hasEditorProxy, editorProxyW/H, editorProxyScale, editorDrawSource, exportDrawSource, lastProxyError, lastImageDecodeError e memoryRiskLevel (Tarefa 2). fix(preview): .preview-bottom usa var(--menu-bg) em vez de #111, removendo fundo preto remanescente da barra inferior do Preview (Tarefa 3). fix(ui): #imageChoiceSheet (Substituir/Adicionar/Cancelar imagem) e #multiImagePlusModal passam de z-index 220/230 para 320/330, acima do menu superior/preferências (#settingsSheet, z-index 300); as três opções agora chamam closeAll() para fechar o menu e voltar ao Stage (Tarefa 4). preserve: NÃO altera motor de exportação MP4, correção 1:1, Stage/layoutStage(), projectWorld/assets/views, múltiplas imagens reais, frames/curvas/zoom/pan/clamps, textos/ícones/cores aprovadas além dos fundos pretos remanescentes do Preview; sem prompt/alert/confirm (base v8z4b30I). -->
 <!-- Arco Motion App — v8z4b30I — fix(export): corrige EncodingError do WebCodecs ao gerar MP4 no formato 1:1 (1080×1080). Causa raiz: 1080×1080 = 68×68 = 4624 macroblocos de 16×16, acima do limite de 3600 MBs dos níveis H.264 3.0/3.1 usados pelos candidatos de codec fixos (9:16 = 720×1280 = 3600 MBs e 4:3 = 1080×810 = 3468 MBs, ambos dentro do limite — por isso funcionavam). O Safari aceitava os candidatos de nível 3.x via VideoEncoder.isConfigSupported() mesmo para 1:1, mas o encoder real falhava em runtime com EncodingError ("Encoding task failed"). startRecord() agora calcula o número de macroblocos da resolução de export e, quando acima de 3600 (hoje, só o 1:1), usa candidatos de codec com nível H.264 4.0 (avc1.420028/avc1.4D0028/avc1.640028, até 8192 MBs); 9:16/4:3 mantêm exatamente os mesmos candidatos/ordem de antes. Além disso, o pipeline WebCodecs roda em try/catch isolado: se o encoder falhar em runtime em qualquer formato, cai automaticamente para o fallback MediaRecorder (mesmo recCanvas/loop de render isolado já usado pelo fallback, sem tocar Stage/DOM do editor), preservando o erro original do WebCodecs em lastExportOriginalErrorName/Message. feat(diag): arcoExportDiag ganha encoderPathUsed ('webcodecs'|'mediarecorder') e fallbackUsed, exibidos no painel Diagnóstico junto com lastExportOriginalErrorName/Message. preserve: NÃO altera carregamento de imagem, Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames, projectWorld/assets/views, múltiplas imagens, menus/textos/ícones/cores/layout; sem prompt/alert/confirm; NÃO remerge 30G/30H (base v8z4b30F). -->
@@ -3917,7 +3918,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30O</span><br><span id="appVersionNameText">v8z4b30O</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30P</span><br><span id="appVersionNameText">v8z4b30P</span></div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -6686,8 +6687,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30O';
-const APP_VERSION_NAME = 'v8z4b30O';
+const APP_VERSION = 'v8z4b30P';
+const APP_VERSION_NAME = 'v8z4b30P';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12451,6 +12452,22 @@ function captureState() {
     scaleEasingMode,
     // v8z4b21a: curvesV2 — modelo cúbico com handles in/out independentes.
     curvesV2: cloneCurvesV2(curvesV2),
+    // v8z4b30P — Correção 3/4: assets/projectWorld e referência leve à imagem
+    // principal (sem duplicar base64/bitmaps), para que undo/redo restaure
+    // "adicionar nova imagem" e "substituir imagem atual" pelo mecanismo
+    // de undo já existente.
+    assets: assets.map(a => ({...a})),
+    projectWorld: {...projectWorld},
+    imageSnapshot: {
+      imgNatW, imgNatH,
+      originalImageElement, originalImageSrc,
+      editorImageSrc,
+      imageOriginalDataUrl,
+      imagePipelineMeta: {...imagePipelineMeta},
+      canonicalRenderImage, canonicalRenderImageKind,
+      hasEditorProxy, editorProxyW, editorProxyH, editorProxyScale, editorProxySource,
+      imageBaseName: window._imageBaseName,
+    },
   };
 }
 
@@ -12473,7 +12490,7 @@ function cloneProjectStateSnapshot(state) {
     activeIdx: state.activeIdx,
     currentRatio: state.currentRatio,
     duration: state.duration,
-    bgColor: state.bgColor || '#000000',
+    bgColor: state.bgColor || DEFAULT_PROJECT_BG,
     containFrames: !!state.containFrames,
     defaultNewSegmentDuration: state.defaultNewSegmentDuration,
     baseFrameW: state.baseFrameW,
@@ -12545,8 +12562,8 @@ function restoreState(state) {
   activeIdx  = state.activeIdx;
   currentRatio = state.currentRatio;
   duration  = state.duration;
-  bgColor = state.bgColor || '#000000';
-  imageArea.style.background = bgColor;
+  bgColor = state.bgColor || DEFAULT_PROJECT_BG;
+  imageArea.style.background = getProjectBackgroundColor();
   syncBgColorUI();
   containFrames = !!state.containFrames;
   syncContainFramesUI();
@@ -12628,6 +12645,41 @@ function restoreState(state) {
   if (durationPanelSections.pauses) renderFramePauseRows();
   if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]')) syncFramePauseUI();
   refreshPauseControls();
+
+  // v8z4b30P — Correção 3/4: restaurar assets/projectWorld e (se a imagem
+  // principal mudou) a referência da imagem anterior, sem duplicar
+  // base64/bitmaps — apenas reaponta para os objetos já decodificados.
+  if (Array.isArray(state.assets)) {
+    assets.length = 0;
+    state.assets.forEach(a => assets.push({...a}));
+  }
+  if (state.projectWorld) {
+    Object.assign(projectWorld, state.projectWorld);
+  }
+  const imgSnap = state.imageSnapshot;
+  if (imgSnap && imgSnap.editorImageSrc && imgSnap.editorImageSrc !== editorImageSrc) {
+    imgNatW = imgSnap.imgNatW;
+    imgNatH = imgSnap.imgNatH;
+    originalImageElement = imgSnap.originalImageElement;
+    originalImageSrc = imgSnap.originalImageSrc;
+    editorImageSrc = imgSnap.editorImageSrc;
+    imageOriginalDataUrl = imgSnap.imageOriginalDataUrl;
+    imagePipelineMeta = {...imgSnap.imagePipelineMeta};
+    canonicalRenderImage = imgSnap.canonicalRenderImage;
+    canonicalRenderImageKind = imgSnap.canonicalRenderImageKind;
+    hasEditorProxy = imgSnap.hasEditorProxy;
+    editorProxyW = imgSnap.editorProxyW;
+    editorProxyH = imgSnap.editorProxyH;
+    editorProxyScale = imgSnap.editorProxyScale;
+    editorProxySource = imgSnap.editorProxySource;
+    window._imageBaseName = imgSnap.imageBaseName;
+    invalidatePreviewRenderSource('undo-redo-image-restore');
+    editorImageElement = imgEl;
+    imgEl.src = editorImageSrc;
+  }
+  invalidateProjectWorldComposite();
+  renderProjectWorldExtraImages();
+
   renderAll();
   updateFrameSelector();
   updateUndoRedoUI();
@@ -12732,6 +12784,7 @@ let projectWorld = {
 let assets = []; // { id, type:'image', name, sourceW, sourceH, worldX, worldY, worldW, worldH, rotation, zIndex, visible, locked }
 let views = [];  // { id, type, name, x, y, w, h, zoom }
 let _pendingNewImageInput = null; // input file aguardando escolha na action sheet "Usar nova imagem"
+let _pendingImageReplaceUndoSnapshot = null; // v8z4b30P — snapshot pré-substituição p/ undo de "Substituir imagem atual"
 
 // v8z4b30N — Múltiplas imagens (fase 1): esquema 3x3 de posições relativas
 // ao Stage atual. col/row em {-1,0,1}; (0,0) = área da imagem principal.
@@ -12764,8 +12817,29 @@ const MAX_INTERNAL_CANVAS_PIXELS = 16000000;
 const MAX_PREVIEW_DPR = 2;
 const MAX_EXPORT_SUPERSAMPLE = 1;
 const MAX_SAFE_SOURCE_ZOOM = 64;
-let bgColor       = '#000000';
+// v8z4b30P — cinza padrão aprovado do app (var(--menu-bg)), usado como fundo
+// inicial do projeto até o usuário escolher outra cor pelo menu "Cor de fundo".
+const DEFAULT_PROJECT_BG = '#3c3c3b';
+let bgColor       = DEFAULT_PROJECT_BG;
 let containFrames = false;
+
+// v8z4b30P — fonte única da cor de fundo, usada por Stage, Preview, Export e
+// drawWorldToCanvas. Preserva o valor especial 'mirror'; qualquer outro valor
+// inválido/ausente cai no cinza padrão (nunca preto hard-coded).
+function getProjectBackgroundColor() {
+  if (bgColor === 'mirror') return bgColor;
+  return normalizeBgHex(bgColor) || DEFAULT_PROJECT_BG;
+}
+
+// v8z4b30P — diagnóstico: última cor de fundo efetivamente usada no Stage
+// (render direto), Preview e Export, para validar a sincronização.
+let renderBgUsed = '';
+let previewBgUsed = '';
+let exportBgUsed = '';
+
+// v8z4b30P — diagnóstico: última ação de undo registrada para assets
+// (addImageAsset / replaceImageAsset), em formato simples para o painel.
+let lastUndoAction = '';
 
 // ═══════════════════════════════════════
 // DOM REFS
@@ -18111,7 +18185,7 @@ function renderUniversalFallback(ctx, canvas, t, W, H, frameIdx, reason, diagnos
     return false;
   }
   try {
-    hardResetCanvas(ctx, canvas, bgColor);
+    hardResetCanvas(ctx, canvas, getProjectBackgroundColor());
     applyCanvasRenderQuality(ctx);
     const srcAspect = renderDims.width / renderDims.height;
     const outAspect = W / H;
@@ -18142,7 +18216,7 @@ function renderFrameSafely(ctx, canvas, t, W, H, totalFrames, frameIdx, options 
     diagnostics.reason = canvasCheck.reason;
     return renderUniversalFallback(ctx, canvas, t, W, H, frameIdx, canvasCheck.reason, diagnostics);
   }
-  hardResetCanvas(ctx, canvas, bgColor);
+  hardResetCanvas(ctx, canvas, getProjectBackgroundColor());
   let ok = false;
   try {
     ok = drawAtT(ctx, t, W, H, totalFrames, frameIdx, diagnostics, options.renderSource || null) === true;
@@ -18153,7 +18227,7 @@ function renderFrameSafely(ctx, canvas, t, W, H, totalFrames, frameIdx, options 
   if (!ok) {
     ok = renderUniversalFallback(ctx, canvas, t, W, H, frameIdx, diagnostics.reason || 'render-returned-false', diagnostics);
   }
-  if (ok && options.rejectBlank && isExportFrameLikelyBlank(ctx, canvas, bgColor)) {
+  if (ok && options.rejectBlank && isExportFrameLikelyBlank(ctx, canvas, getProjectBackgroundColor())) {
     ok = renderUniversalFallback(ctx, canvas, t, W, H, frameIdx, 'blank-frame-after-render', diagnostics);
   }
   if (!ok) logExportError(frameIdx, t, W, H, new Error(diagnostics.reason || 'render-frame-failed'), diagnostics);
@@ -18647,7 +18721,7 @@ function drawAtT(ctx, t, W, H, totalFrames, frameIdx, existingDiagnostics, rende
     logRenderFallback(frameIdx, t, 'direct-render-error', diagnostics);
     console.error('[drawAtT] render falhou', err);
     try {
-      hardResetCanvas(ctx, ctx?.canvas, bgColor);
+      hardResetCanvas(ctx, ctx?.canvas, getProjectBackgroundColor());
     } catch(e) {}
     return false;
   }
@@ -18663,7 +18737,7 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics, renderS
   const st = diagnostics?.state;
   if (!st || ![st.cx, st.cy, st.sw, st.sh, st.rot].every(isFiniteNum) || st.sw <= 0 || st.sh <= 0) {
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = bgColor;
+    ctx.fillStyle = getProjectBackgroundColor();
     ctx.fillRect(0, 0, W, H);
     return false;
   }
@@ -18704,10 +18778,18 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics, renderS
 
   ctx.clearRect(0, 0, W, H);
 
+  // v8z4b30P — diagnóstico: registra a cor de fundo efetivamente usada.
+  {
+    const _bgUsed = getProjectBackgroundColor();
+    if (isRecording) exportBgUsed = _bgUsed;
+    else if (isPreviewing) previewBgUsed = _bgUsed;
+    else renderBgUsed = _bgUsed;
+  }
+
   if (bgColor === 'mirror' && renderSource && renderDims.width > 0) {
     drawMirrorBg(ctx, W, H, sx, sy, cropW, cropH, rot, cover, renderSource);
   } else {
-    ctx.fillStyle = bgColor;
+    ctx.fillStyle = getProjectBackgroundColor();
     ctx.fillRect(0, 0, W, H);
   }
 
@@ -19047,7 +19129,7 @@ function cleanupExportSession(reason, stats = {}) {
     if (tf && !stats.keepTimeline) tf.style.width = '0%';
   }
   try { hideGenOverlay(); } catch(e) {}
-  try { hardResetCanvas(rCtx, recCanvas, bgColor); } catch(e) {}
+  try { hardResetCanvas(rCtx, recCanvas, getProjectBackgroundColor()); } catch(e) {}
 }
 
 // v8z4b19i — resetPreviewPlaybackState(): limpa completamente o estado de
@@ -19168,7 +19250,7 @@ function hardResetCanvas(ctx, canvas, fillColor) {
   try { ctx.rect(0, 0, canvas.width || 1, canvas.height || 1); } catch(e) {}
   try { ctx.clip(); } catch(e) {}
   ctx.clearRect(0, 0, canvas.width || 1, canvas.height || 1);
-  ctx.fillStyle = fillColor || bgColor || '#000';
+  ctx.fillStyle = fillColor || getProjectBackgroundColor();
   ctx.fillRect(0, 0, canvas.width || 1, canvas.height || 1);
 }
 
@@ -19187,7 +19269,7 @@ function isExportFrameLikelyBlank(ctx, canvas, fillColor) {
   probe.width = 1; probe.height = 1;
   const pctx = probe.getContext('2d');
   if (!pctx) return false;
-  pctx.fillStyle = fillColor || bgColor || '#000';
+  pctx.fillStyle = fillColor || getProjectBackgroundColor();
   pctx.fillRect(0, 0, 1, 1);
   const bg = pctx.getImageData(0, 0, 1, 1).data;
 
@@ -19506,7 +19588,7 @@ async function startRecord() {
   arcoSetExportDiag('canvas-setup', { exportW: W, exportH: H });
   recCanvas.width = W;
   recCanvas.height = H;
-  hardResetCanvas(rCtx, recCanvas, bgColor);
+  hardResetCanvas(rCtx, recCanvas, getProjectBackgroundColor());
   debugImagePipeline('export-start', { outputSize: `${W}x${H}`, fps, totalFrames: total });
   showStatus(`Exportando ${currentRatio} · ${W}×${H}px`);
 
@@ -19563,7 +19645,7 @@ async function startRecord() {
             const safeScale = clampCanvasScaleForPixelLimit(safeW, safeH, Math.min(PREVIEW_SCALE, MAX_PREVIEW_DPR), MAX_INTERNAL_CANVAS_PIXELS);
             dc.width = Math.round(safeW * safeScale);
             dc.height = Math.round(safeH * safeScale);
-            hardResetCanvas(dctx, dc, bgColor);
+            hardResetCanvas(dctx, dc, getProjectBackgroundColor());
             renderFrameSafely(dctx, dc, 0, dc.width, dc.height, Math.max(1, total), 0);
           }
         } catch(e) { console.error('[cleanupFailedExport] preview restore falhou', e); }
@@ -19954,8 +20036,8 @@ function resetAll() {
   // v8z4b23a — Caso A: projeto nasceu de imagem nova → Reset volta ao F1 assistido.
   if (_projectNewFromImage) {
     closeAll();
-    bgColor = projectResetBaseline?.bgColor || '#000000';
-    imageArea.style.background = bgColor;
+    bgColor = projectResetBaseline?.bgColor || DEFAULT_PROJECT_BG;
+    imageArea.style.background = getProjectBackgroundColor();
     syncBgColorUI();
     containFrames = false;
     syncContainFramesUI();
@@ -21363,6 +21445,12 @@ function showNewProjectImageError() {
 
 function clearCurrentProjectForNewFile() {
   if (isInsertingFrame) cancelAssistedFrameInsertion();
+  // v8z4b30P — novo projeto sempre nasce com o fundo cinza padrão (nunca preto
+  // residual de um projeto anterior); Stage/Preview/Export e o menu de cor
+  // de fundo ficam sincronizados com essa cor desde o início.
+  bgColor = DEFAULT_PROJECT_BG;
+  if (imageArea) imageArea.style.background = getProjectBackgroundColor();
+  syncBgColorUI();
   // v8z4b30D — limpa o modelo interno preparatório (será reespelhado ao carregar imagem).
   if (Array.isArray(assets)) assets.length = 0;
   if (Array.isArray(views)) views.length = 0;
@@ -21587,6 +21675,7 @@ function loadImage(file, onDoneCallback) {
     debugImagePipeline(isEmbeddedBase64 ? 'load-imagebase64-dataurl' : 'load-upload-dataurl');
     const tmp = new Image();
     tmp.onerror = () => {
+      _pendingImageReplaceUndoSnapshot = null;
       lastImageDecodeError = 'tmp.onerror (load-image)';
       debugImagePipeline('load-image-decode-error');
     };
@@ -21703,10 +21792,20 @@ function loadImage(file, onDoneCallback) {
           for (let i = 0; i < frameCount; i++) createFrameDOM(i);
           for (let i = 0; i < frameCount - 1; i++) createCtrlDOM(i);
           renderAll();
+          // v8z4b30P — Correção 4: "substituir imagem atual" gera exatamente
+          // um passo de undo, restaurando a imagem anterior (metadados +
+          // referência decodificada, sem duplicar base64/bitmaps).
+          if (_pendingImageReplaceUndoSnapshot) {
+            pushUndoSnapshot(_pendingImageReplaceUndoSnapshot);
+            _pendingImageReplaceUndoSnapshot = null;
+            lastUndoAction = 'replaceImageAsset';
+            markProjectDirty('replace-image');
+          }
           showStatus('Imagem trocada · frames preservados');
         }
       };
       imgEl.onerror = () => {
+        _pendingImageReplaceUndoSnapshot = null;
         lastImageDecodeError = 'imgEl.onerror (load-image, editorImageSrc)';
         debugImagePipeline('load-image-editor-decode-error');
       };
@@ -24258,8 +24357,8 @@ function applyFrameData(data) {
 
   currentRatio  = data.currentRatio || '9:16';
   duration      = data.duration || 6;
-  bgColor       = data.bgColor || data.backgroundColor || '#000000';
-  imageArea.style.background = bgColor;
+  bgColor       = data.bgColor || data.backgroundColor || DEFAULT_PROJECT_BG;
+  imageArea.style.background = getProjectBackgroundColor();
   syncBgColorUI();
   containFrames = false;
   syncContainFramesUI();
@@ -24580,7 +24679,12 @@ function chooseReplaceCurrentImage() {
   closeImageChoiceSheet();
   closeAll(); // v8z4b30M — fecha menu superior/preferências e volta ao Stage
   _pendingNewImageInput = null;
-  if (file) loadImage(file);
+  if (file) {
+    // v8z4b30P — Correção 4: captura snapshot ANTES da substituição para
+    // gerar exatamente um passo de undo (restaura a imagem anterior).
+    _pendingImageReplaceUndoSnapshot = captureState();
+    loadImage(file);
+  }
   if (input) { try { input.value = ''; } catch (e) {} }
 }
 function chooseAddNewImageAsset() {
@@ -24640,6 +24744,22 @@ function getProjectWorldExtraImageAssets() {
   }
   return out;
 }
+// v8z4b30P — Correção 2: imagens adicionais entram inteiras (fit contain),
+// preservando o aspect ratio original, sem cortar e sem distorcer.
+function fitContain(srcW, srcH, boxW, boxH) {
+  const srcAR = srcW / srcH;
+  const boxAR = boxW / boxH;
+  let width, height;
+  if (srcAR > boxAR) {
+    width = boxW;
+    height = width / srcAR;
+  } else {
+    height = boxH;
+    width = height * srcAR;
+  }
+  return { width, height };
+}
+
 function addImageAssetAtSlot(slotKey) {
   const slot = WORLD_SLOTS[slotKey];
   const input = _pendingNewImageInput;
@@ -24663,6 +24783,15 @@ function addImageAssetAtSlot(slotKey) {
       // continua sendo a posição da imagem principal.
       const worldGap = Math.max(48, Math.min(96, Math.min(baseW, baseH) * 0.16));
       lastWorldGapUsed = worldGap;
+      // v8z4b30P — Correção 2: a célula do slot continua com o tamanho/gap de
+      // sempre (baseW x baseH), mas o asset entra inteiro dentro dela via
+      // fit contain, centralizado, preservando o aspect ratio original.
+      const slotCenterX = slot.col * (baseW + worldGap) + baseW / 2;
+      const slotCenterY = slot.row * (baseH + worldGap) + baseH / 2;
+      const fitted = fitContain(img.naturalWidth, img.naturalHeight, baseW, baseH);
+      // v8z4b30P — Correção 3: capturar undo ANTES da mutação, exatamente um
+      // passo. Undo remove só este asset; redo restaura.
+      const beforeAddAsset = captureState();
       const asset = {
         id: 'img-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
         type: 'image',
@@ -24670,10 +24799,10 @@ function addImageAssetAtSlot(slotKey) {
         src: dataUrl,
         sourceW: img.naturalWidth,
         sourceH: img.naturalHeight,
-        worldX: slot.col * (baseW + worldGap),
-        worldY: slot.row * (baseH + worldGap),
-        worldW: baseW,
-        worldH: baseH,
+        worldX: slotCenterX - fitted.width / 2,
+        worldY: slotCenterY - fitted.height / 2,
+        worldW: fitted.width,
+        worldH: fitted.height,
         rotation: 0,
         zIndex: assets.length,
         visible: true,
@@ -24684,6 +24813,9 @@ function addImageAssetAtSlot(slotKey) {
       activeSlotSelection = slotKey;
       invalidateProjectWorldComposite();
       renderProjectWorldExtraImages();
+      pushUndoSnapshot(beforeAddAsset);
+      lastUndoAction = 'addImageAsset';
+      markProjectDirty('add-image-asset');
       if (window._arcoDebug) {
         console.info('[Arco ' + APP_VERSION + '] asset adicionado ao mundo:', { id: asset.id, slot: slotKey, worldX: asset.worldX, worldY: asset.worldY, worldW: asset.worldW, worldH: asset.worldH });
       }
@@ -24916,6 +25048,13 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
     count = renderAssets.length;
 
     ctx.clearRect(0, 0, outW, outH);
+    // v8z4b30P — diagnóstico: registra a cor de fundo efetivamente usada.
+    {
+      const _bgUsed = getProjectBackgroundColor();
+      if (context === 'export') exportBgUsed = _bgUsed;
+      else if (context === 'preview') previewBgUsed = _bgUsed;
+      else renderBgUsed = _bgUsed;
+    }
     // Fundo
     if (bgColor === 'mirror') {
       // Fundo espelhado a partir da imagem principal (paridade com single-image).
@@ -24924,7 +25063,7 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
       const cropW = cam.sw * ms * cover, cropH = cam.sh * ms * cover;
       drawMirrorBg(ctx, outW, outH, cam.cx * ms - cropW / 2, cam.cy * ms - cropH / 2, cropW, cropH, rot, cover, mainSource);
     } else {
-      ctx.fillStyle = bgColor;
+      ctx.fillStyle = getProjectBackgroundColor();
       ctx.fillRect(0, 0, outW, outH);
     }
 
@@ -25082,6 +25221,15 @@ function buildDiagnosticsText() {
   push('APP_VERSION', (typeof APP_VERSION !== 'undefined') ? APP_VERSION : 'n/d');
   push('APP_VERSION_NAME', (typeof APP_VERSION_NAME !== 'undefined') ? APP_VERSION_NAME : 'n/d');
   L.push('— timestamp: ' + new Date().toISOString());
+  L.push('');
+
+  // v8z4b30P — Cor de fundo (Correção 1): fonte única getProjectBackgroundColor().
+  push('DEFAULT_PROJECT_BG', DEFAULT_PROJECT_BG);
+  push('currentProjectBg', bgColor);
+  push('getProjectBackgroundColor()', getProjectBackgroundColor());
+  push('renderBgUsed', renderBgUsed || 'n/d');
+  push('previewBgUsed', previewBgUsed || 'n/d');
+  push('exportBgUsed', exportBgUsed || 'n/d');
   L.push('');
 
   // Área de imagem (#imageArea)
@@ -25255,12 +25403,20 @@ function buildDiagnosticsText() {
   // v8z4b30N — lista todos os assets de imagem (não apenas o asset[0]).
   // v8z4b30O — inclui visible e zIndex por asset.
   let _imgAssetIdx = 0;
+  const _baseW = (projectWorld && projectWorld.baseStageW) || 0;
+  const _baseH = (projectWorld && projectWorld.baseStageH) || 0;
   for (let i = 0; i < _assetsArr.length; i++) {
     const _a = _assetsArr[i];
     if (!_a || _a.type !== 'image') continue;
+    push('asset[' + _imgAssetIdx + '].id', _a.id != null ? String(_a.id) : 'n/d');
+    push('asset[' + _imgAssetIdx + '].type', _a.type);
     push('asset[' + _imgAssetIdx + '].sourceW/H', _diagFmtNum(_a.sourceW) + ' × ' + _diagFmtNum(_a.sourceH));
     push('asset[' + _imgAssetIdx + '].worldX/Y', _diagFmtNum(_a.worldX, 2) + ', ' + _diagFmtNum(_a.worldY, 2));
     push('asset[' + _imgAssetIdx + '].worldW/H', _diagFmtNum(_a.worldW, 2) + ' × ' + _diagFmtNum(_a.worldH, 2));
+    push('asset[' + _imgAssetIdx + '].sourceAR', _diagRatio(_a.sourceW, _a.sourceH));
+    push('asset[' + _imgAssetIdx + '].worldAR', _diagRatio(_a.worldW, _a.worldH));
+    push('asset[' + _imgAssetIdx + '].slotBoxW/H', _diagFmtNum(_baseW, 2) + ' × ' + _diagFmtNum(_baseH, 2));
+    push('asset[' + _imgAssetIdx + '].fitMode', 'contain');
     push('asset[' + _imgAssetIdx + '].visible', String(_a.visible !== false));
     push('asset[' + _imgAssetIdx + '].zIndex', _diagFmtNum(_a.zIndex));
     _imgAssetIdx++;
@@ -25285,6 +25441,12 @@ function buildDiagnosticsText() {
     }
   } catch (e) {}
   push('featureAccess multipleImageAssets', _faMulti);
+  L.push('');
+
+  // v8z4b30P — Correção 3/4: diagnóstico de undo para assets.
+  push('undoStackLength', String((typeof undoStack !== 'undefined' && Array.isArray(undoStack)) ? undoStack.length : 0));
+  push('redoStackLength', String((typeof redoStack !== 'undefined' && Array.isArray(redoStack)) ? redoStack.length : 0));
+  push('lastUndoAction', lastUndoAction || 'nenhuma');
   L.push('');
 
   // Ambiente
@@ -25360,7 +25522,7 @@ function normalizeBgHex(hex) {
   return /^#[0-9a-fA-F]{6}$/.test(hex || '') ? hex.toLowerCase() : null;
 }
 function syncBgColorUI() {
-  const hex = normalizeBgHex(bgColor) || '#000000';
+  const hex = normalizeBgHex(bgColor) || DEFAULT_PROJECT_BG;
   document.querySelectorAll('#bgSwatches .bg-swatch').forEach(c => {
     c.classList.toggle('active', (c.dataset.color || '').toLowerCase() === hex);
   });
