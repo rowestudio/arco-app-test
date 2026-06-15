@@ -6688,8 +6688,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30Q';
-const APP_VERSION_NAME = 'v8z4b30Q';
+const APP_VERSION = 'v8z4b30R';
+const APP_VERSION_NAME = 'v8z4b30R';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12568,6 +12568,7 @@ function restoreState(state) {
   bgColor = state.bgColor || DEFAULT_PROJECT_BG;
   bgColorUserSet = !!state.bgColorUserSet;
   imageArea.style.background = getProjectBackgroundColor();
+  renderBgUsed = getProjectBackgroundColor();
   syncBgColorUI();
   containFrames = !!state.containFrames;
   syncContainFramesUI();
@@ -12856,6 +12857,21 @@ let exportBgUsed = '';
 // v8z4b30P — diagnóstico: última ação de undo registrada para assets
 // (addImageAsset / replaceImageAsset), em formato simples para o painel.
 let lastUndoAction = '';
+
+// v8z4b30R — diagnóstico de persistência de assets (salvar/carregar projeto).
+const PROJECT_ASSETS_SCHEMA_VERSION = 1;
+let savedAssetsCount = 0;
+let savedImageAssetsCount = 0;
+let loadedAssetsCount = 0;
+let loadedImageAssetsCount = 0;
+let lastSaveSchemaVersion = null;
+let lastLoadSchemaVersion = null;
+let lastSaveIncludesMultipleImages = false;
+let lastLoadRestoredMultipleImages = false;
+let lastSaveError = '';
+let lastLoadError = '';
+let lastSaveProjectWorldBounds = null;
+let lastLoadProjectWorldBounds = null;
 
 // ═══════════════════════════════════════
 // DOM REFS
@@ -20070,6 +20086,7 @@ function resetAll() {
     closeAll();
     bgColor = projectResetBaseline?.bgColor || DEFAULT_PROJECT_BG;
     imageArea.style.background = getProjectBackgroundColor();
+    renderBgUsed = getProjectBackgroundColor();
     syncBgColorUI();
     containFrames = false;
     syncContainFramesUI();
@@ -21483,6 +21500,7 @@ function clearCurrentProjectForNewFile() {
   bgColor = DEFAULT_PROJECT_BG;
   bgColorUserSet = false;
   if (imageArea) imageArea.style.background = getProjectBackgroundColor();
+  renderBgUsed = getProjectBackgroundColor();
   syncBgColorUI();
   // v8z4b30D — limpa o modelo interno preparatório (será reespelhado ao carregar imagem).
   if (Array.isArray(assets)) assets.length = 0;
@@ -23919,7 +23937,35 @@ function syncRatioUI() {
 // ═══════════════════════════════════════
 // SALVAR / CARREGAR PROJETO
 // ═══════════════════════════════════════
-function buildProjectData() {
+// v8z4b30R — serializa um image asset do ProjectWorld para o JSON do projeto.
+// includeImages: quando true, imagens adicionais (idx>0) levam seu próprio
+// "src" (data URL). A imagem principal (idx 0) é coberta por data.imageBase64
+// (já existente), evitando duplicar o mesmo bitmap dentro do JSON.
+function serializeProjectAsset(a, idx, includeImages) {
+  const out = {
+    id: a.id,
+    type: a.type || 'image',
+    name: a.name || '',
+    sourceW: a.sourceW || 0,
+    sourceH: a.sourceH || 0,
+    worldX: a.worldX || 0,
+    worldY: a.worldY || 0,
+    worldW: a.worldW || 0,
+    worldH: a.worldH || 0,
+    rotation: a.rotation || 0,
+    zIndex: a.zIndex || 0,
+    visible: a.visible !== false,
+    locked: !!a.locked,
+    fitMode: a.fitMode || 'contain',
+  };
+  if (includeImages && idx > 0 && out.type === 'image') {
+    const src = a.src || (a._img && a._img.src) || '';
+    if (src) out.src = src;
+  }
+  return out;
+}
+
+function buildProjectData(includeImages) {
   // v8z4b18r: garantir que framePauses tem exatamente frameCount entradas antes de
   // serializar. Sem isso, applyTemplate() (que zera o array) seguido de save antes
   // de qualquer re-render do painel produzia "framePauses: []" no JSON.
@@ -23979,6 +24025,10 @@ function buildProjectData() {
     loopSegScaleEasing,
     // v8z4b21a: curvesV2 — modelo cúbico com handles in/out independentes.
     curvesV2: isCurvesV2Active() ? cloneCurvesV2(curvesV2) : null,
+    // v8z4b30R — ProjectWorld e todos os image assets (múltiplas imagens).
+    assetsSchemaVersion: PROJECT_ASSETS_SCHEMA_VERSION,
+    projectWorld: { ...projectWorld },
+    assets: assets.map((a, i) => serializeProjectAsset(a, i, !!includeImages)),
   };
 }
 
@@ -24028,30 +24078,49 @@ function confirmSaveModal(includeImage) {
 }
 
 function doSaveDirect(includeImage, nome) {
-  const data = buildProjectData();
-  // v8z4b18r: log de diagnóstico — verifica pausas no momento do save.
-  const nonzeroPauses = (data.framePauses || []).filter(p => (p?.duration || 0) > 0).length;
-  console.info('[Arco] doSaveDirect: frameCount=' + data.frameCount +
-    ', framePauses.length=' + (data.framePauses ? data.framePauses.length : 'N/A') +
-    ', pausas>0=' + nonzeroPauses);
-  if (includeImage && imgNatW) {
-    // v8z4b28a: JSON completo preserva a fonte carregada em resolução original.
-    // Não gerar canvas intermediário reduzido aqui; Preview/MP4 futuros devem
-    // carregar novamente a mesma fonte máxima disponível na sessão salva.
-    data.imageBase64 = imageOriginalDataUrl || imgEl.src;
-    data.hasImage = true;
+  lastSaveError = '';
+  try {
+    const data = buildProjectData(includeImage);
+    // v8z4b18r: log de diagnóstico — verifica pausas no momento do save.
+    const nonzeroPauses = (data.framePauses || []).filter(p => (p?.duration || 0) > 0).length;
+    console.info('[Arco] doSaveDirect: frameCount=' + data.frameCount +
+      ', framePauses.length=' + (data.framePauses ? data.framePauses.length : 'N/A') +
+      ', pausas>0=' + nonzeroPauses);
+    if (includeImage && imgNatW) {
+      // v8z4b28a: JSON completo preserva a fonte carregada em resolução original.
+      // Não gerar canvas intermediário reduzido aqui; Preview/MP4 futuros devem
+      // carregar novamente a mesma fonte máxima disponível na sessão salva.
+      data.imageBase64 = imageOriginalDataUrl || imgEl.src;
+      data.hasImage = true;
+    }
+    // v8z4b30R — sinaliza se este save embute todas as imagens (modo completo)
+    // ou apenas metadados de assets sem bitmaps adicionais (modo leve).
+    data.assetsImagesIncluded = !!includeImage;
+
+    // v8z4b30R — diagnóstico de persistência: contagens e bounds salvos.
+    const savedImageAssets = (data.assets || []).filter(a => a && a.type === 'image');
+    savedAssetsCount = (data.assets || []).length;
+    savedImageAssetsCount = savedImageAssets.length;
+    lastSaveSchemaVersion = data.assetsSchemaVersion;
+    lastSaveIncludesMultipleImages = savedImageAssets.length > 1;
+    lastSaveProjectWorldBounds = data.projectWorld ? { ...data.projectWorld } : null;
+
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    // v8z4b18w: remover .json redundante antes de adicionar para evitar dupla extensão
+    const safeName = nome.replace(/\.json$/i, '');
+    a.download = safeName + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showStatus('Salvo: ' + safeName + '.json' + (includeImage ? ' (com imagem)' : ''));
+  } catch (err) {
+    lastSaveError = String((err && err.message) || err);
+    console.error('[Arco] doSaveDirect: erro ao salvar projeto', err);
+    showStatus('Erro ao salvar o projeto.');
   }
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  // v8z4b18w: remover .json redundante antes de adicionar para evitar dupla extensão
-  const safeName = nome.replace(/\.json$/i, '');
-  a.download = safeName + '.json';
-  a.click();
-  URL.revokeObjectURL(url);
-  showStatus('Salvo: ' + safeName + '.json' + (includeImage ? ' (com imagem)' : ''));
 }
 
 function doSave(includeImage) { openSaveModal(includeImage); }
@@ -24412,6 +24481,7 @@ function applyFrameData(data) {
     }
   }
   imageArea.style.background = getProjectBackgroundColor();
+  renderBgUsed = getProjectBackgroundColor();
   syncBgColorUI();
   containFrames = false;
   syncContainFramesUI();
@@ -24581,6 +24651,10 @@ function applyFrameData(data) {
   syncDurationSectionsUI();
   if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]')) syncFramePauseUI();
   refreshPauseControls();
+  // v8z4b30R — restaura image assets adicionais do ProjectWorld (múltiplas
+  // imagens). syncFirstImageAsset() já sincronizou o asset principal antes
+  // de applyFrameData() ser chamado.
+  if (imgNatW) restoreProjectAssetsFromData(data);
   renderAll();
   updateFrameSelector();
   requestLowerTimelineCenter(activeIdx);
@@ -24649,6 +24723,98 @@ function syncFirstImageAsset(reason) {
         { sw, sh, imgNatW, imgNatH, assets: assets.length });
     }
   } catch (e) {}
+}
+
+// ═══════════════════════════════════════
+// v8z4b30R — RESTAURAR IMAGE ASSETS ADICIONAIS AO CARREGAR PROJETO
+// Chamado por applyFrameData() após syncFirstImageAsset() já ter sincronizado
+// o asset principal (imagem 1) com a imagem carregada. Recria assets[1+] a
+// partir de data.assets, preservando worldX/Y/W/H, zIndex, visible, fitMode
+// etc. Projetos antigos (sem data.assets ou com apenas 1 image asset) não são
+// afetados — comportamento idêntico ao anterior.
+// ═══════════════════════════════════════
+function restoreProjectAssetsFromData(data) {
+  loadedAssetsCount = 0;
+  loadedImageAssetsCount = 0;
+  lastLoadRestoredMultipleImages = false;
+  lastLoadError = '';
+  lastLoadSchemaVersion = data.assetsSchemaVersion || 0;
+  lastLoadProjectWorldBounds = null;
+
+  try {
+    // O asset principal (imagem 1) já foi (re)sincronizado por syncFirstImageAsset().
+    // Remove quaisquer assets extras deixados por um projeto anterior antes de
+    // restaurar os assets salvos neste projeto.
+    const primary = assets.find(x => x && x.type === 'image') || null;
+    assets.length = 0;
+    if (primary) assets.push(primary);
+
+    const savedAssets = Array.isArray(data.assets) ? data.assets : [];
+    const savedImageAssets = savedAssets.filter(a => a && a.type === 'image');
+
+    if (savedImageAssets.length > 1) {
+      // v8z4b30N — baseStageW/H definem a grade 3x3 usada para posicionar os
+      // assets adicionais. Restaurar os valores salvos mantém worldX/Y/W/H
+      // alinhados ao mundo original, independentemente do stage atual.
+      const savedWorld = data.projectWorld;
+      if (savedWorld && Number.isFinite(savedWorld.baseStageW) && Number.isFinite(savedWorld.baseStageH) &&
+          savedWorld.baseStageW > 0 && savedWorld.baseStageH > 0) {
+        projectWorld.baseStageW = savedWorld.baseStageW;
+        projectWorld.baseStageH = savedWorld.baseStageH;
+      }
+
+      let missingImageSrc = false;
+      for (let i = 1; i < savedImageAssets.length; i++) {
+        const sa = savedImageAssets[i];
+        if (!sa.src) { missingImageSrc = true; continue; }
+        const img = new Image();
+        const asset = {
+          id: sa.id || ('img-' + Date.now() + '-' + Math.floor(Math.random() * 1000) + '-' + i),
+          type: 'image',
+          name: sa.name || '',
+          src: sa.src,
+          sourceW: sa.sourceW || 0,
+          sourceH: sa.sourceH || 0,
+          worldX: sa.worldX || 0,
+          worldY: sa.worldY || 0,
+          worldW: sa.worldW || 0,
+          worldH: sa.worldH || 0,
+          rotation: sa.rotation || 0,
+          zIndex: sa.zIndex != null ? sa.zIndex : assets.length,
+          visible: sa.visible !== false,
+          locked: !!sa.locked,
+          fitMode: sa.fitMode || 'contain',
+          _img: img
+        };
+        img.onload = () => {
+          invalidateProjectWorldComposite();
+          renderProjectWorldExtraImages();
+        };
+        img.onerror = () => {
+          lastWorldRenderError = 'asset-load-error:' + asset.id;
+        };
+        img.src = sa.src;
+        assets.push(asset);
+      }
+      if (missingImageSrc) {
+        showStatus('Projeto carregado sem todas as imagens adicionais (não foram salvas neste arquivo).');
+      }
+    }
+
+    lastLoadProjectWorldBounds = { ...projectWorld };
+    invalidateProjectWorldComposite();
+    renderProjectWorldExtraImages();
+    loadedAssetsCount = assets.length;
+    loadedImageAssetsCount = getImageAssetCount();
+    lastLoadRestoredMultipleImages = loadedImageAssetsCount > 1;
+    if (window._arcoDebug) {
+      console.info('[Arco ' + APP_VERSION + '] restoreProjectAssetsFromData:',
+        { savedImageAssetsCount: savedImageAssets.length, loadedImageAssetsCount });
+    }
+  } catch (err) {
+    lastLoadError = String((err && err.message) || err);
+    console.error('[Arco] restoreProjectAssetsFromData: erro', err);
+  }
 }
 
 // ═══════════════════════════════════════
@@ -24811,6 +24977,24 @@ function fitContain(srcW, srcH, boxW, boxH) {
     width = height * srcAR;
   }
   return { width, height };
+}
+
+// v8z4b30R — Estima a célula do grid 3x3 (linha/coluna) de um asset a partir
+// de worldX/Y/W/H e baseStageW/H. Uso exclusivo de diagnóstico — não influencia
+// posicionamento, render, Preview ou Export.
+function computeAssetSlotRowCol(a) {
+  const baseW = (projectWorld && projectWorld.baseStageW) || 0;
+  const baseH = (projectWorld && projectWorld.baseStageH) || 0;
+  if (!a || !baseW || !baseH) return { row: null, col: null };
+  const gap = (typeof lastWorldGapUsed === 'number' && lastWorldGapUsed > 0)
+    ? lastWorldGapUsed
+    : Math.max(48, Math.min(96, Math.min(baseW, baseH) * 0.16));
+  const cx = (a.worldX || 0) + (a.worldW || 0) / 2;
+  const cy = (a.worldY || 0) + (a.worldH || 0) / 2;
+  return {
+    col: Math.round((cx - baseW / 2) / (baseW + gap)),
+    row: Math.round((cy - baseH / 2) / (baseH + gap))
+  };
 }
 
 function addImageAssetAtSlot(slotKey) {
@@ -25473,9 +25657,13 @@ function buildDiagnosticsText() {
     push('asset[' + _imgAssetIdx + '].sourceAR', _diagRatio(_a.sourceW, _a.sourceH));
     push('asset[' + _imgAssetIdx + '].worldAR', _diagRatio(_a.worldW, _a.worldH));
     push('asset[' + _imgAssetIdx + '].slotBoxW/H', _diagFmtNum(_baseW, 2) + ' × ' + _diagFmtNum(_baseH, 2));
-    push('asset[' + _imgAssetIdx + '].fitMode', 'contain');
+    push('asset[' + _imgAssetIdx + '].fitMode', _a.fitMode || 'contain');
     push('asset[' + _imgAssetIdx + '].visible', String(_a.visible !== false));
     push('asset[' + _imgAssetIdx + '].zIndex', _diagFmtNum(_a.zIndex));
+    {
+      const _slot = (typeof computeAssetSlotRowCol === 'function') ? computeAssetSlotRowCol(_a) : { row: null, col: null };
+      push('asset[' + _imgAssetIdx + '].slotRow/Col', (_slot.row == null ? 'n/d' : _slot.row) + ' / ' + (_slot.col == null ? 'n/d' : _slot.col));
+    }
     _imgAssetIdx++;
   }
   if (_imgAssetIdx === 0) push('asset[0]', 'n/d');
@@ -25507,6 +25695,21 @@ function buildDiagnosticsText() {
   push('undoStackLength', String((typeof undoStack !== 'undefined' && Array.isArray(undoStack)) ? undoStack.length : 0));
   push('redoStackLength', String((typeof redoStack !== 'undefined' && Array.isArray(redoStack)) ? redoStack.length : 0));
   push('lastUndoAction', lastUndoAction || 'nenhuma');
+  L.push('');
+
+  // v8z4b30R — Persistência de projeto (salvar/carregar múltiplas imagens).
+  push('lastSaveSchemaVersion', lastSaveSchemaVersion != null ? String(lastSaveSchemaVersion) : 'n/d');
+  push('lastLoadSchemaVersion', lastLoadSchemaVersion != null ? String(lastLoadSchemaVersion) : 'n/d');
+  push('savedAssetsCount', String(savedAssetsCount));
+  push('savedImageAssetsCount', String(savedImageAssetsCount));
+  push('loadedAssetsCount', String(loadedAssetsCount));
+  push('loadedImageAssetsCount', String(loadedImageAssetsCount));
+  push('lastSaveIncludesMultipleImages', String(lastSaveIncludesMultipleImages));
+  push('lastLoadRestoredMultipleImages', String(lastLoadRestoredMultipleImages));
+  push('lastSaveError', lastSaveError || 'nenhum');
+  push('lastLoadError', lastLoadError || 'nenhum');
+  push('projectWorld salvo (bounds)', lastSaveProjectWorldBounds ? JSON.stringify(lastSaveProjectWorldBounds) : 'n/d');
+  push('projectWorld carregado (bounds)', lastLoadProjectWorldBounds ? JSON.stringify(lastLoadProjectWorldBounds) : 'n/d');
   L.push('');
 
   // Ambiente
