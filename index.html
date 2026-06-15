@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30I — fix(export): corrige EncodingError do WebCodecs ao gerar MP4 no formato 1:1 (1080×1080). Causa raiz: 1080×1080 = 68×68 = 4624 macroblocos de 16×16, acima do limite de 3600 MBs dos níveis H.264 3.0/3.1 usados pelos candidatos de codec fixos (9:16 = 720×1280 = 3600 MBs e 4:3 = 1080×810 = 3468 MBs, ambos dentro do limite — por isso funcionavam). O Safari aceitava os candidatos de nível 3.x via VideoEncoder.isConfigSupported() mesmo para 1:1, mas o encoder real falhava em runtime com EncodingError ("Encoding task failed"). startRecord() agora calcula o número de macroblocos da resolução de export e, quando acima de 3600 (hoje, só o 1:1), usa candidatos de codec com nível H.264 4.0 (avc1.420028/avc1.4D0028/avc1.640028, até 8192 MBs); 9:16/4:3 mantêm exatamente os mesmos candidatos/ordem de antes. Além disso, o pipeline WebCodecs roda em try/catch isolado: se o encoder falhar em runtime em qualquer formato, cai automaticamente para o fallback MediaRecorder (mesmo recCanvas/loop de render isolado já usado pelo fallback, sem tocar Stage/DOM do editor), preservando o erro original do WebCodecs em lastExportOriginalErrorName/Message. feat(diag): arcoExportDiag ganha encoderPathUsed ('webcodecs'|'mediarecorder') e fallbackUsed, exibidos no painel Diagnóstico junto com lastExportOriginalErrorName/Message. preserve: NÃO altera carregamento de imagem, Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames, projectWorld/assets/views, múltiplas imagens, menus/textos/ícones/cores/layout; sem prompt/alert/confirm; NÃO remerge 30G/30H (base v8z4b30F). -->
 <!-- Arco Motion App — v8z4b30F — fix(export): corrige falha de exportação MP4 específica do formato 1:1 (1080×1080), incluindo arquivos novos criados já em 1:1 e projetos 9:16/4:3 trocados para 1:1. Causa raiz: em finishExport(), qualquer exceção lançada durante a restauração da UI do Preview pós-sucesso (após o blob/MP4 já estarem prontos) propagava para o catch de startRecord(), que sobrescrevia o diagnóstico de 'success' para 'cleanup-failed' e exibia o erro genérico "Erro ao gerar vídeo. Tente novamente." mesmo com o vídeo já gerado. finishExport() agora isola essa restauração em try/catch próprio: o MP4 gerado nunca é descartado nem reportado como falha por causa de um passo de limpeza/UI; cleanupFailedExport() também passa a ser idempotente/seguro (todas as operações de DOM/canvas em try/catch) e não sobrescreve mais lastExportStep/lastExportError com a mensagem genérica. feat(diag): arcoExportDiag agora separa lastExportStep, lastExportError (erro real da exportação), lastCleanupError (erro da limpeza/restauração pós-export, se houver), exportSuccess e cleanupSuccess — todos exibidos no painel Diagnóstico. fix(preview): startPreview()/startRecord() chamam closeAll() para fechar painéis/menus editoriais transitórios (Formato de saída, Edição de Tempo, Movimento, Trajetória etc.) antes de abrir o Preview/export, evitando overlays sobrepostos ao canvas (z-index 200 > 90). Validado: novo projeto 1:1 (Preview e MP4), 9:16→1:1, 4:3→1:1, 1:1→9:16, mantendo 9:16/4:3 funcionando. preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames, NÃO altera projectWorld/assets/views/permissões, visuais/ícones/textos/menus/fluxo aprovados; sem prompt/alert/confirm (base v8z4b30E). -->
 <!-- Arco Motion App — v8z4b30E — fix(export): HOTFIX exclusivo para restaurar a geração de MP4 após troca de formato (proporção) em projetos já configurados — selectFormat() passa a preservar todas as propriedades extras do frame (ex.: pointMode) ao recalcular x/y/w/h para o novo currentRatio, com fallback finito caso algum frame chegue com valores ausentes/NaN/Infinity; nova normalizeFramesToCurrentFormat() é chamada no início de startRecord() para garantir, sem alterar Stage/layoutStage/zoom/pan/clamps/curvas, que todo frame esteja com w/h finitos, positivos e na proporção do formato atual antes de configurar o canvas de exportação; feat(diag): novo estado somente-leitura arcoExportDiag registra exportW/exportH e currentFormat usados na última geração, lastExportStep, lastExportError (mensagem real do erro, antes só genérica), presença de NaN/Infinity nos frames, quantidade de frames e watermark/premium aplicado — exibidos no painel Diagnóstico (sem alterar seu layout); erros do WebCodecs/MediaRecorder fallback agora também logam no console e no painel em vez de só piscar a tela; preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames além da normalização pós-troca de formato descrita, NÃO altera projectWorld/assets/views/permissões, visuais, ícones, textos, menus ou fluxo aprovados; sem prompt/alert/confirm (base v8z4b30D). -->
 <!-- Arco Motion App — v8z4b30C — diag(tooling): adiciona painel de Diagnóstico técnico temporário e discreto, acessível por novo item "Diagnóstico" no menu de ajustes; overlay textual rolável que apenas LÊ valores existentes (APP_VERSION, imageAreaW/H, stageW/H, imgNatW/H, proporções, formato, resolução de exportação, zoom atual/mín/máx, panX/panY e limites, frame ativo e x/y/w/h/rotation, fatores de conversão Stage→pixel natural, devicePixelRatio, viewport visual); botão "Copiar diagnóstico" via Clipboard API com fallback de seleção manual no Safari; preserve: NÃO altera layout aprovado, cores, textos, ícones, toolbar, faixa de frames, Preview, exportação, motor, layoutStage, zoom/pan, clamps, Stage, frames ou curvas; sem prompt/alert/confirm; sem múltiplas imagens, sem layers, sem cenas; apenas diagnóstico (base v8z4b29CD). -->
@@ -6653,8 +6654,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30F';
-const APP_VERSION_NAME = 'v8z4b30F';
+const APP_VERSION = 'v8z4b30I';
+const APP_VERSION_NAME = 'v8z4b30I';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -6907,6 +6908,15 @@ let arcoExportDiag = {
   // restauração de UI/limpeza pós-export, que NÃO devem ser reportadas
   // ao usuário como falha de exportação quando o vídeo já foi gerado.
   lastCleanupError: null,
+  // v8z4b30I — diagnóstico mínimo do encoder usado no último export:
+  // 'webcodecs' ou 'mediarecorder', e se houve fallback automático de
+  // WebCodecs (falhou em runtime, não só em isConfigSupported) para
+  // MediaRecorder. lastExportOriginalError* preserva nome/mensagem do
+  // erro original do WebCodecs mesmo quando o fallback tem sucesso.
+  encoderPathUsed: null,
+  fallbackUsed: false,
+  lastExportOriginalErrorName: null,
+  lastExportOriginalErrorMessage: null,
   exportSuccess: null,
   cleanupSuccess: null,
   frameCount: null,
@@ -19227,6 +19237,10 @@ async function startRecord() {
     currentFormat: currentRatio,
     lastExportError: null,
     lastCleanupError: null,
+    encoderPathUsed: null,
+    fallbackUsed: false,
+    lastExportOriginalErrorName: null,
+    lastExportOriginalErrorMessage: null,
     exportSuccess: null,
     cleanupSuccess: null,
     frameCount: frameCount,
@@ -19508,7 +19522,7 @@ async function startRecord() {
     showStatus('Pronto ' + mb + ' MB - toque para salvar');
   }
 
-  async function exportWithMediaRecorderFallback() {
+  async function exportWithMediaRecorderFallback(isFallbackFromWebCodecs) {
     console.warn('WebCodecs indisponível — usando MediaRecorder como fallback');
     setGenStatus('Gerando vídeo (fallback)');
     // v8z4b16d — Guard: se MediaRecorder não existir (browser muito
@@ -19517,7 +19531,13 @@ async function startRecord() {
       arcoSetExportDiag('error', { lastExportError: 'MediaRecorder/captureStream indisponíveis' });
       throw new Error('MediaRecorder/captureStream indisponíveis');
     }
-    arcoSetExportDiag('mediarecorder-fallback');
+    // v8z4b30I — registra o caminho de encoder efetivamente usado e se este
+    // é um fallback automático a partir de uma falha de runtime do WebCodecs
+    // (encoderPathUsed/fallbackUsed exibidos no painel Diagnóstico).
+    arcoSetExportDiag('mediarecorder-fallback', {
+      encoderPathUsed: 'mediarecorder',
+      fallbackUsed: !!isFallbackFromWebCodecs
+    });
     const stream = recCanvas.captureStream(fps);
     const track  = stream.getVideoTracks()[0];
     const useManual = !!(track && track.requestFrame);
@@ -19570,11 +19590,23 @@ async function startRecord() {
                          (typeof VideoFrame !== 'undefined') &&
                          (typeof Mp4Muxer !== 'undefined');
     if (!hasWebCodecs) {
-      await exportWithMediaRecorderFallback();
+      await exportWithMediaRecorderFallback(false);
       return;
     }
 
-    const codecCandidates = ['avc1.42001f', 'avc1.42E01E', 'avc1.4D401F'];
+    // v8z4b30I — H.264 exige um nível mínimo conforme o número de
+    // macroblocos (16x16) do quadro. 1080x1080 (formato 1:1) = 68x68 =
+    // 4624 MBs, acima do limite de 3600 MBs dos níveis 3.0/3.1 usados
+    // pelos candidatos abaixo (1280x720/720x1280 = 3600 MBs e 1080x810 =
+    // 3468 MBs, ambos dentro do limite — por isso 9:16/4:3 funcionam).
+    // O Safari aceita os candidatos de nível 3.x via isConfigSupported()
+    // mesmo para 1:1, mas o encoder real falha em runtime com
+    // EncodingError ("Encoding task failed"). Para resoluções acima de
+    // 3600 MBs, usar candidatos de nível 4.0 (até 8192 MBs).
+    const mbCount = Math.ceil(W / 16) * Math.ceil(H / 16);
+    const codecCandidates = mbCount > 3600
+      ? ['avc1.420028', 'avc1.4D0028', 'avc1.640028']
+      : ['avc1.42001f', 'avc1.42E01E', 'avc1.4D401F'];
     let codecStr = null;
     for (const c of codecCandidates) {
       try {
@@ -19591,122 +19623,149 @@ async function startRecord() {
     }
 
     if (!codecStr) {
-      await exportWithMediaRecorderFallback();
+      await exportWithMediaRecorderFallback(true);
       return;
     }
 
-    const muxer = new Mp4Muxer.Muxer({
-      target: new Mp4Muxer.ArrayBufferTarget(),
-      video: { codec: 'avc', width: W, height: H, frameRate: fps, alpha: false },
-      fastStart: 'in-memory',
-      firstTimestampBehavior: 'strict'
-    });
+    arcoSetExportDiag('webcodecs-configured', { encoderPathUsed: 'webcodecs', fallbackUsed: false });
 
-    let encError = null;
-    const encoder = new VideoEncoder({
-      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-      error: (e) => {
-        encError = e;
-        console.error('[EncoderError]', { frameNumber: exportEncodedFrames, timestamp: null, error: e?.message || String(e) });
-      }
-    });
+    // v8z4b30I — pipeline WebCodecs isolado em try/catch próprio: se o
+    // encoder falhar em runtime (ex.: EncodingError no formato 1:1, mesmo
+    // com isConfigSupported() retornando suportado), cair para o fallback
+    // MediaRecorder sem propagar para cleanupFailedExport — preservando o
+    // erro original do WebCodecs em lastExportOriginalError* para o painel
+    // Diagnóstico. Não altera Stage/canvas do editor: usa o mesmo
+    // recCanvas isolado de export já usado pelo fallback.
+    try {
+      const muxer = new Mp4Muxer.Muxer({
+        target: new Mp4Muxer.ArrayBufferTarget(),
+        video: { codec: 'avc', width: W, height: H, frameRate: fps, alpha: false },
+        fastStart: 'in-memory',
+        firstTimestampBehavior: 'strict'
+      });
 
-    exportEncoder = encoder;
-    encoder.configure({
-      codec: codecStr,
-      width: W,
-      height: H,
-      framerate: fps,
-      bitrate: 10000000,
-      latencyMode: 'quality',
-      hardwareAcceleration: 'prefer-hardware'
-    });
-
-    // Render/encode sequencial: não guarda ImageBitmap[] na memória.
-    for (let f = 0; f < total; f++) {
-      if (!isRecording || encError) break;
-      const t = total > 1 ? f / (total - 1) : 0;
-      const rendered = renderFrameSafely(rCtx, recCanvas, t, W, H, total, f, { rejectBlank: true });
-      if (!rendered) {
-        arcoSetExportDiag('error', { lastExportError: 'webcodecs-frame-render-failed (frame ' + f + ')' });
-        throw new Error('webcodecs-frame-render-failed');
-      }
-
-      const ts  = Math.round(f * 1000000 / fps);
-      const nts = Math.round((f + 1) * 1000000 / fps);
-      if (![ts, nts].every(isFiniteNum) || nts <= ts) {
-        logExportError(f, t, W, H, new Error('invalid-frame-timestamp'), buildRenderDiagnostics(t, W, H, f));
-        throw new Error('invalid-frame-timestamp');
-      }
-      const canvasCheck = validateCanvasForEncode(recCanvas, W, H);
-      if (!canvasCheck.ok) {
-        logExportError(f, t, W, H, new Error(canvasCheck.reason), buildRenderDiagnostics(t, W, H, f));
-        throw new Error(canvasCheck.reason);
-      }
-      let bitmap = null;
-      let frame = null;
-      let source = recCanvas;
-      try {
-        // Snapshot por frame: evita que o encoder leia um canvas já redesenhado
-        // em exports após troca de template/easing. Não mantém array de bitmaps.
-        if (typeof createImageBitmap === 'function') {
-          try {
-            bitmap = await createImageBitmap(recCanvas);
-            source = bitmap;
-          } catch(e) {
-            bitmap = null;
-            source = recCanvas;
-          }
+      let encError = null;
+      const encoder = new VideoEncoder({
+        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+        error: (e) => {
+          encError = e;
+          console.error('[EncoderError]', { frameNumber: exportEncodedFrames, timestamp: null, error: e?.message || String(e) });
         }
-        frame = new VideoFrame(source, {
-          timestamp: ts,
-          duration: Math.max(1, nts - ts)
-        });
-        encoder.encode(frame, { keyFrame: f % (fps * 2) === 0 });
-        exportEncodedFrames++;
-      } catch (encodeErr) {
-        console.error('[EncoderError]', { frameNumber: f, timestamp: ts, error: encodeErr?.message || String(encodeErr) });
-        logExportError(f, t, W, H, encodeErr, buildRenderDiagnostics(t, W, H, f));
-        throw encodeErr;
-      } finally {
-        if (frame) { try { frame.close(); } catch(e) {} }
-        if (bitmap && typeof bitmap.close === 'function') { try { bitmap.close(); } catch(e) {} }
+      });
+
+      exportEncoder = encoder;
+      encoder.configure({
+        codec: codecStr,
+        width: W,
+        height: H,
+        framerate: fps,
+        bitrate: 10000000,
+        latencyMode: 'quality',
+        hardwareAcceleration: 'prefer-hardware'
+      });
+
+      // Render/encode sequencial: não guarda ImageBitmap[] na memória.
+      for (let f = 0; f < total; f++) {
+        if (!isRecording || encError) break;
+        const t = total > 1 ? f / (total - 1) : 0;
+        const rendered = renderFrameSafely(rCtx, recCanvas, t, W, H, total, f, { rejectBlank: true });
+        if (!rendered) {
+          arcoSetExportDiag('error', { lastExportError: 'webcodecs-frame-render-failed (frame ' + f + ')' });
+          throw new Error('webcodecs-frame-render-failed');
+        }
+
+        const ts  = Math.round(f * 1000000 / fps);
+        const nts = Math.round((f + 1) * 1000000 / fps);
+        if (![ts, nts].every(isFiniteNum) || nts <= ts) {
+          logExportError(f, t, W, H, new Error('invalid-frame-timestamp'), buildRenderDiagnostics(t, W, H, f));
+          throw new Error('invalid-frame-timestamp');
+        }
+        const canvasCheck = validateCanvasForEncode(recCanvas, W, H);
+        if (!canvasCheck.ok) {
+          logExportError(f, t, W, H, new Error(canvasCheck.reason), buildRenderDiagnostics(t, W, H, f));
+          throw new Error(canvasCheck.reason);
+        }
+        let bitmap = null;
+        let frame = null;
+        let source = recCanvas;
+        try {
+          // Snapshot por frame: evita que o encoder leia um canvas já redesenhado
+          // em exports após troca de template/easing. Não mantém array de bitmaps.
+          if (typeof createImageBitmap === 'function') {
+            try {
+              bitmap = await createImageBitmap(recCanvas);
+              source = bitmap;
+            } catch(e) {
+              bitmap = null;
+              source = recCanvas;
+            }
+          }
+          frame = new VideoFrame(source, {
+            timestamp: ts,
+            duration: Math.max(1, nts - ts)
+          });
+          encoder.encode(frame, { keyFrame: f % (fps * 2) === 0 });
+          exportEncodedFrames++;
+        } catch (encodeErr) {
+          console.error('[EncoderError]', { frameNumber: f, timestamp: ts, error: encodeErr?.message || String(encodeErr) });
+          logExportError(f, t, W, H, encodeErr, buildRenderDiagnostics(t, W, H, f));
+          throw encodeErr;
+        } finally {
+          if (frame) { try { frame.close(); } catch(e) {} }
+          if (bitmap && typeof bitmap.close === 'function') { try { bitmap.close(); } catch(e) {} }
+        }
+
+        // Backpressure mais rígido: evita fila grande/memória alta no iPhone.
+        if (encoder.encodeQueueSize > 2) {
+          await new Promise(r => setTimeout(r, 0));
+        }
+        if (f > 0 && f % 90 === 0) {
+          await encoder.flush();
+        }
+        if (f % 3 === 0 || f === total - 1) {
+          updateExportProgress(f + 1, 'Gerando vídeo');
+          await new Promise(r => setTimeout(r, 0));
+        }
       }
 
-      // Backpressure mais rígido: evita fila grande/memória alta no iPhone.
-      if (encoder.encodeQueueSize > 2) {
-        await new Promise(r => setTimeout(r, 0));
+      if (encError) throw encError;
+      // v8z4b19i — guard: se o usuário saiu do Preview durante export,
+      // não finalizar o MP4. O encoder pode ter processado todos os frames
+      // já na fila antes de verificar isRecording; mesmo assim não queremos
+      // disponibilizar um vídeo de export cancelado. O estado já foi limpo
+      // por cancelMp4ExportAndResetState() via stopPreview().
+      if (exportCancelledFlag) {
+        console.log('[startRecord/WebCodecs] export cancelado — descartando muxer');
+        try { encoder.close(); exportEncoderClosed = true; } catch(e) {}
+        return;
       }
-      if (f > 0 && f % 90 === 0) {
-        await encoder.flush();
-      }
-      if (f % 3 === 0 || f === total - 1) {
-        updateExportProgress(f + 1, 'Gerando vídeo');
-        await new Promise(r => setTimeout(r, 0));
-      }
-    }
-
-    if (encError) throw encError;
-    // v8z4b19i — guard: se o usuário saiu do Preview durante export,
-    // não finalizar o MP4. O encoder pode ter processado todos os frames
-    // já na fila antes de verificar isRecording; mesmo assim não queremos
-    // disponibilizar um vídeo de export cancelado. O estado já foi limpo
-    // por cancelMp4ExportAndResetState() via stopPreview().
-    if (exportCancelledFlag) {
-      console.log('[startRecord/WebCodecs] export cancelado — descartando muxer');
+      await encoder.flush();
       try { encoder.close(); exportEncoderClosed = true; } catch(e) {}
-      return;
+      muxer.finalize();
+      finishExport(new Blob([muxer.target.buffer], { type: 'video/mp4' }), 'mp4');
+    } catch (webcodecsErr) {
+      if (exportCancelledFlag) throw webcodecsErr;
+      if (exportEncoder && !exportEncoderClosed) {
+        try { exportEncoder.close(); exportEncoderClosed = true; } catch(e) {}
+      }
+      console.error('[startRecord] WebCodecs falhou em runtime — tentando fallback MediaRecorder:', webcodecsErr);
+      arcoSetExportDiag('webcodecs-failed-fallback', {
+        lastExportOriginalErrorName: webcodecsErr?.name || null,
+        lastExportOriginalErrorMessage: webcodecsErr?.message || String(webcodecsErr)
+      });
+      await exportWithMediaRecorderFallback(true);
     }
-    await encoder.flush();
-    try { encoder.close(); exportEncoderClosed = true; } catch(e) {}
-    muxer.finalize();
-    finishExport(new Blob([muxer.target.buffer], { type: 'video/mp4' }), 'mp4');
   } catch (err) {
     logExportError(null, null, W, H, err, null);
     console.error('Export WebCodecs falhou:', err);
     // v8z4b30E — registra o motivo real da falha para o painel Diagnóstico
     // (a mensagem exibida ao usuário continua genérica).
-    arcoSetExportDiag('error', { lastExportError: err?.message || String(err), exportSuccess: false });
+    arcoSetExportDiag('error', {
+      lastExportError: err?.message || String(err),
+      lastExportOriginalErrorName: arcoExportDiag.lastExportOriginalErrorName || err?.name || null,
+      lastExportOriginalErrorMessage: arcoExportDiag.lastExportOriginalErrorMessage || err?.message || String(err),
+      exportSuccess: false
+    });
     cleanupFailedExport('Erro ao gerar vídeo. Tente novamente.');
   } finally {
     if (exportEncoder && !exportEncoderClosed) {
@@ -24502,8 +24561,12 @@ function buildDiagnosticsText() {
   push('exportH (última geração)', _diagFmtNum(arcoExportDiag.exportH));
   push('currentFormat (última geração)', arcoExportDiag.currentFormat || 'n/d');
   push('lastExportStep', arcoExportDiag.lastExportStep || 'n/d');
+  push('encoderPathUsed', arcoExportDiag.encoderPathUsed || 'n/d');
+  push('fallbackUsed', String(!!arcoExportDiag.fallbackUsed));
   push('exportSuccess', arcoExportDiag.exportSuccess == null ? 'n/d' : String(arcoExportDiag.exportSuccess));
   push('lastExportError', arcoExportDiag.lastExportError || 'nenhum');
+  push('lastExportOriginalErrorName', arcoExportDiag.lastExportOriginalErrorName || 'nenhum');
+  push('lastExportOriginalErrorMessage', arcoExportDiag.lastExportOriginalErrorMessage || 'nenhum');
   push('cleanupSuccess', arcoExportDiag.cleanupSuccess == null ? 'n/d' : String(arcoExportDiag.cleanupSuccess));
   push('lastCleanupError', arcoExportDiag.lastCleanupError || 'nenhum');
   push('frames com NaN/Infinity (atual)', (typeof arcoFramesHaveInvalidValues === 'function' && arcoFramesHaveInvalidValues()) ? 'SIM' : 'não');
