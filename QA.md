@@ -1,3 +1,23 @@
+# QA pendente — v8z4b30H: fix(export) MP4 no formato 1:1 + fallback automático
+
+> Base confirmada: `v8z4b30G`. Corrige a falha real de geração de MP4 no formato **1:1** (`EncodingError` do WebCodecs em 1080×1080, que excede o orçamento de macroblocos dos níveis H.264 3.0/3.1 usados antes). Adiciona fallback automático para MediaRecorder caso o WebCodecs falhe em qualquer formato. Não implementa múltiplas imagens, não altera Stage, `layoutStage()`, zoom/pan/clamps, curvas, layout aprovado. Não promove para estável.
+
+## Escopo v8z4b30H
+
+1. App abre igual visualmente (`v8z4b30H` no menu/configurações; `APP_VERSION`/`APP_VERSION_NAME` em `v8z4b30H`).
+2. Projeto novo em **1:1**: "Salvar MP4" gera o Preview normalmente.
+3. Projeto novo em **1:1**: "Salvar MP4" gera o MP4 com sucesso (sem `EncodingError`, sem travar no iPhone/Safari).
+4. **9:16** continua gerando MP4 normalmente (sem regressão).
+5. **4:3** continua gerando MP4 normalmente (sem regressão).
+6. No painel Diagnóstico, após um export 1:1 bem-sucedido via WebCodecs: `encoderPathUsed: webcodecs`, `fallbackUsed: false`, `exportSuccess: true`, `cleanupSuccess: true`.
+7. Se o WebCodecs falhar em qualquer formato (simular, se possível, navegador sem suporte adequado): o fallback MediaRecorder gera o vídeo, com `encoderPathUsed: fallback`, `fallbackUsed: true`, `exportSuccess: true`, e `lastExportOriginalErrorName`/`Message` preenchidos com o erro real do WebCodecs.
+8. `lastExportStepDetailed` NUNCA mostra `cleanup-success`/`cleanup-start`/`cleanup-failed` quando `exportSuccess: false` — essas etapas aparecem apenas em `lastCleanupStep`.
+9. Projetos com 4+ frames continuam mostrando a marca d'água/aviso premium (Free) durante o Preview e no MP4 exportado.
+10. Painel "Formato de saída" não sobrepõe o Preview ao tocar em Preview/Gerar.
+11. Menus "Tempo" (Duração), "Movimento" (Templates) e "Trajetória" não sobrepõem o Preview ao tocar em Preview/Gerar.
+12. iPhone/Safari: gerar MP4 em 1:1 repetidamente (incluindo arquivo novo, sem JSON anterior) sem travar a interface; watchdog de 15s não deve disparar em exports normais.
+13. Nenhuma segunda imagem é renderizada em nenhum cenário.
+
 # QA pendente — v8z4b30E: HOTFIX export MP4 após troca de formato
 
 > Base confirmada: `v8z4b30D`. HOTFIX exclusivo: restaura a geração de MP4 após o usuário trocar o formato/proporção do projeto já configurado. Não implementa múltiplas imagens, não altera Stage, `layoutStage()`, zoom/pan/clamps, curvas, `projectWorld`/assets/views/permissões, visuais/ícones/textos/menus/fluxo aprovados. Não promove para estável.
