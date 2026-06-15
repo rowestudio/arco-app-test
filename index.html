@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30M — feat(perf): Tarefa 1 — proxy de edição para imagens grandes. createEditorImageProxyIfNeeded(image) gera, quando a imagem original tem o maior lado > 2048px OU > 6 megapixels, um canvas reduzido (maior lado ~2048px, mesma proporção) usado APENAS como src de #imgEl (Stage/editor); imagens pequenas/médias continuam usando a própria imagem original em #imgEl. originalImageElement/originalImageSrc preservam a imagem original (mesma fonte canônica de getCanonicalRenderSource()/export); editorImageElement/editorImageSrc apontam para o proxy (ou para a original quando não há proxy). imgNatW/imgNatH, frames, Stage/layoutStage(), zoom/pan/clamps e o motor de export continuam baseados exclusivamente na imagem original — proxy não altera proporção, posição de frames nem fator Stage→px natural. feat(diag): painel Diagnóstico ganha imageMegapixels, estimatedOriginalRGBABytes, hasEditorProxy, editorProxyW/H, editorProxyScale, editorDrawSource, exportDrawSource, lastProxyError, lastImageDecodeError e memoryRiskLevel (Tarefa 2). fix(preview): .preview-bottom usa var(--menu-bg) em vez de #111, removendo fundo preto remanescente da barra inferior do Preview (Tarefa 3). fix(ui): #imageChoiceSheet (Substituir/Adicionar/Cancelar imagem) e #multiImagePlusModal passam de z-index 220/230 para 320/330, acima do menu superior/preferências (#settingsSheet, z-index 300); as três opções agora chamam closeAll() para fechar o menu e voltar ao Stage (Tarefa 4). preserve: NÃO altera motor de exportação MP4, correção 1:1, Stage/layoutStage(), projectWorld/assets/views, múltiplas imagens reais, frames/curvas/zoom/pan/clamps, textos/ícones/cores aprovadas além dos fundos pretos remanescentes do Preview; sem prompt/alert/confirm (base v8z4b30I). -->
 <!-- Arco Motion App — v8z4b30I — fix(export): corrige EncodingError do WebCodecs ao gerar MP4 no formato 1:1 (1080×1080). Causa raiz: 1080×1080 = 68×68 = 4624 macroblocos de 16×16, acima do limite de 3600 MBs dos níveis H.264 3.0/3.1 usados pelos candidatos de codec fixos (9:16 = 720×1280 = 3600 MBs e 4:3 = 1080×810 = 3468 MBs, ambos dentro do limite — por isso funcionavam). O Safari aceitava os candidatos de nível 3.x via VideoEncoder.isConfigSupported() mesmo para 1:1, mas o encoder real falhava em runtime com EncodingError ("Encoding task failed"). startRecord() agora calcula o número de macroblocos da resolução de export e, quando acima de 3600 (hoje, só o 1:1), usa candidatos de codec com nível H.264 4.0 (avc1.420028/avc1.4D0028/avc1.640028, até 8192 MBs); 9:16/4:3 mantêm exatamente os mesmos candidatos/ordem de antes. Além disso, o pipeline WebCodecs roda em try/catch isolado: se o encoder falhar em runtime em qualquer formato, cai automaticamente para o fallback MediaRecorder (mesmo recCanvas/loop de render isolado já usado pelo fallback, sem tocar Stage/DOM do editor), preservando o erro original do WebCodecs em lastExportOriginalErrorName/Message. feat(diag): arcoExportDiag ganha encoderPathUsed ('webcodecs'|'mediarecorder') e fallbackUsed, exibidos no painel Diagnóstico junto com lastExportOriginalErrorName/Message. preserve: NÃO altera carregamento de imagem, Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames, projectWorld/assets/views, múltiplas imagens, menus/textos/ícones/cores/layout; sem prompt/alert/confirm; NÃO remerge 30G/30H (base v8z4b30F). -->
 <!-- Arco Motion App — v8z4b30F — fix(export): corrige falha de exportação MP4 específica do formato 1:1 (1080×1080), incluindo arquivos novos criados já em 1:1 e projetos 9:16/4:3 trocados para 1:1. Causa raiz: em finishExport(), qualquer exceção lançada durante a restauração da UI do Preview pós-sucesso (após o blob/MP4 já estarem prontos) propagava para o catch de startRecord(), que sobrescrevia o diagnóstico de 'success' para 'cleanup-failed' e exibia o erro genérico "Erro ao gerar vídeo. Tente novamente." mesmo com o vídeo já gerado. finishExport() agora isola essa restauração em try/catch próprio: o MP4 gerado nunca é descartado nem reportado como falha por causa de um passo de limpeza/UI; cleanupFailedExport() também passa a ser idempotente/seguro (todas as operações de DOM/canvas em try/catch) e não sobrescreve mais lastExportStep/lastExportError com a mensagem genérica. feat(diag): arcoExportDiag agora separa lastExportStep, lastExportError (erro real da exportação), lastCleanupError (erro da limpeza/restauração pós-export, se houver), exportSuccess e cleanupSuccess — todos exibidos no painel Diagnóstico. fix(preview): startPreview()/startRecord() chamam closeAll() para fechar painéis/menus editoriais transitórios (Formato de saída, Edição de Tempo, Movimento, Trajetória etc.) antes de abrir o Preview/export, evitando overlays sobrepostos ao canvas (z-index 200 > 90). Validado: novo projeto 1:1 (Preview e MP4), 9:16→1:1, 4:3→1:1, 1:1→9:16, mantendo 9:16/4:3 funcionando. preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames, NÃO altera projectWorld/assets/views/permissões, visuais/ícones/textos/menus/fluxo aprovados; sem prompt/alert/confirm (base v8z4b30E). -->
 <!-- Arco Motion App — v8z4b30E — fix(export): HOTFIX exclusivo para restaurar a geração de MP4 após troca de formato (proporção) em projetos já configurados — selectFormat() passa a preservar todas as propriedades extras do frame (ex.: pointMode) ao recalcular x/y/w/h para o novo currentRatio, com fallback finito caso algum frame chegue com valores ausentes/NaN/Infinity; nova normalizeFramesToCurrentFormat() é chamada no início de startRecord() para garantir, sem alterar Stage/layoutStage/zoom/pan/clamps/curvas, que todo frame esteja com w/h finitos, positivos e na proporção do formato atual antes de configurar o canvas de exportação; feat(diag): novo estado somente-leitura arcoExportDiag registra exportW/exportH e currentFormat usados na última geração, lastExportStep, lastExportError (mensagem real do erro, antes só genérica), presença de NaN/Infinity nos frames, quantidade de frames e watermark/premium aplicado — exibidos no painel Diagnóstico (sem alterar seu layout); erros do WebCodecs/MediaRecorder fallback agora também logam no console e no painel em vez de só piscar a tela; preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames além da normalização pós-troca de formato descrita, NÃO altera projectWorld/assets/views/permissões, visuais, ícones, textos, menus ou fluxo aprovados; sem prompt/alert/confirm (base v8z4b30D). -->
@@ -1949,7 +1950,7 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
   width:auto !important;height:auto !important;
 }
 .preview-bottom{
-  flex-shrink:0;background:#111;border-top:.5px solid rgba(255,255,255,.1);
+  flex-shrink:0;background:var(--menu-bg);border-top:.5px solid rgba(255,255,255,.1);
   padding:18px 24px max(calc(18px + var(--safe-bottom)),28px);
   display:flex;align-items:center;justify-content:space-between;gap:16px;
 }
@@ -3908,7 +3909,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30F</span><br><span id="appVersionNameText">v8z4b30F</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30M</span><br><span id="appVersionNameText">v8z4b30M</span></div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -4149,7 +4150,7 @@ body.cust-open #toolbar{
 </div>
 
 <!-- v8z4b30D — ACTION SHEET: Usar nova imagem (Substituir / Adicionar Plus / Cancelar) -->
-<div id="imageChoiceSheet" style="display:none;position:fixed;inset:0;z-index:220;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom);" onclick="if(event.target===this)cancelImageChoice()">
+<div id="imageChoiceSheet" style="display:none;position:fixed;inset:0;z-index:320;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom);" onclick="if(event.target===this)cancelImageChoice()">
   <div style="background:var(--surface);border-radius:22px 22px 0 0;padding:24px 22px 28px;width:100%;max-width:480px;box-shadow:0 -4px 32px rgba(0,0,0,.35);">
     <div style="width:36px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 18px;"></div>
     <div style="font-size:20px;font-weight:800;color:var(--text1);margin-bottom:18px;letter-spacing:-.3px;">Usar nova imagem</div>
@@ -4172,7 +4173,7 @@ body.cust-open #toolbar{
 </div>
 
 <!-- v8z4b30D — MODAL Plus: múltiplas imagens é recurso Plus -->
-<div id="multiImagePlusModal" style="display:none;position:fixed;inset:0;z-index:230;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom);" onclick="if(event.target===this)closeMultipleImagesPlusModal()">
+<div id="multiImagePlusModal" style="display:none;position:fixed;inset:0;z-index:330;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom);" onclick="if(event.target===this)closeMultipleImagesPlusModal()">
   <div style="background:var(--surface);border-radius:22px 22px 0 0;padding:28px 22px 32px;width:100%;max-width:480px;box-shadow:0 -4px 32px rgba(0,0,0,.35);">
     <div style="width:36px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 20px;"></div>
     <div style="font-size:22px;font-weight:800;color:var(--text1);margin-bottom:10px;letter-spacing:-.3px;">Múltiplas imagens é Plus</div>
@@ -6654,8 +6655,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30I';
-const APP_VERSION_NAME = 'v8z4b30I';
+const APP_VERSION = 'v8z4b30M';
+const APP_VERSION_NAME = 'v8z4b30M';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -6695,6 +6696,25 @@ let previewRenderSource = null;
 let previewRenderSourceKey = '';
 let previewLoopToken = 0;
 let previewPerfStats = null;
+
+// v8z4b30M — Editor proxy para imagens grandes (Tarefa 1).
+// originalImage*: fonte original preservada (mesma usada por export/canonical).
+// editorImage*: proxy reduzido usado SOMENTE para exibição visual no Stage
+// (#imgEl); não afeta imgNatW/imgNatH, frames, coordenadas, Stage ou export.
+const EDITOR_PROXY_MAX_SIDE = 2048;
+const EDITOR_PROXY_TRIGGER_SIDE = 2048;
+const EDITOR_PROXY_TRIGGER_MEGAPIXELS = 6;
+let originalImageElement = null;
+let originalImageSrc = '';
+let editorImageElement = null;
+let editorImageSrc = '';
+let hasEditorProxy = false;
+let editorProxyW = 0;
+let editorProxyH = 0;
+let editorProxyScale = 1;
+let editorProxySource = 'none'; // 'none' | 'canvas' | 'error'
+let lastProxyError = '';
+let lastImageDecodeError = '';
 // Stage display dimensions (always = image AR)
 let stageW = 0, stageH = 0;
 
@@ -13147,6 +13167,60 @@ function getImageSourceType(source) {
 
 function getCanonicalRenderSource() {
   return canonicalRenderImage || (imgEl && imgEl.complete ? imgEl : null);
+}
+
+// v8z4b30M — Tarefa 1: proxy de edição para imagens grandes.
+// Recebe a imagem original (HTMLImageElement já decodificado) e, se ela for
+// "grande" pela regra (maior lado > EDITOR_PROXY_TRIGGER_SIDE OU megapixels >
+// EDITOR_PROXY_TRIGGER_MEGAPIXELS), gera um dataURL reduzido (maior lado ~
+// EDITOR_PROXY_MAX_SIDE, mesma proporção) para uso EXCLUSIVO em #imgEl no
+// Stage/editor. Retorna null quando a imagem original já pode ser usada
+// diretamente. Não altera imgNatW/imgNatH nem a fonte canônica de export.
+function resetEditorImageProxyState() {
+  hasEditorProxy = false;
+  editorProxyW = 0;
+  editorProxyH = 0;
+  editorProxyScale = 1;
+  editorProxySource = 'none';
+  lastProxyError = '';
+}
+
+function createEditorImageProxyIfNeeded(image) {
+  const dims = getImageSourceDimensions(image);
+  const w = dims.width, h = dims.height;
+  resetEditorImageProxyState();
+  if (!(w > 0 && h > 0)) return null;
+  const maxSide = Math.max(w, h);
+  const megapixels = (w * h) / 1e6;
+  if (maxSide <= EDITOR_PROXY_TRIGGER_SIDE && megapixels <= EDITOR_PROXY_TRIGGER_MEGAPIXELS) {
+    editorProxyW = w;
+    editorProxyH = h;
+    editorProxyScale = 1;
+    return null;
+  }
+  try {
+    const scale = EDITOR_PROXY_MAX_SIDE / maxSide;
+    const pW = Math.max(1, Math.round(w * scale));
+    const pH = Math.max(1, Math.round(h * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = pW;
+    canvas.height = pH;
+    const ctx = canvas.getContext('2d', { alpha: true });
+    applyCanvasRenderQuality(ctx);
+    ctx.drawImage(image, 0, 0, pW, pH);
+    const dataUrl = canvas.toDataURL('image/png');
+    hasEditorProxy = true;
+    editorProxyW = pW;
+    editorProxyH = pH;
+    editorProxyScale = scale;
+    editorProxySource = 'canvas';
+    return dataUrl;
+  } catch (err) {
+    resetEditorImageProxyState();
+    editorProxySource = 'error';
+    lastProxyError = (err && err.message) || String(err);
+    return null;
+  }
 }
 
 function invalidatePreviewRenderSource(reason) {
@@ -21305,9 +21379,17 @@ function createInitialFrameForNewImageProject() {
 function finishNewProjectImageLoad(file, dataUrl, tmp) {
   const chosenFormat = npSelectedFormat;
   const chosenTemplate = npSelectedTemplate;
+  // v8z4b30M — Tarefa 1: original preservada para export; proxy reduzido
+  // (se necessário) é o que vai para #imgEl/Stage.
+  const editorProxyDataUrl = createEditorImageProxyIfNeeded(tmp);
+  const editorSrc = editorProxyDataUrl || dataUrl;
   imgEl.onload = () => {
     resetPreviewAndExportStateForImageChange();
     resetCanonicalRenderImage('new-project-image');
+    originalImageElement = tmp;
+    originalImageSrc = dataUrl;
+    editorImageElement = imgEl;
+    editorImageSrc = editorSrc;
     imageOriginalDataUrl = dataUrl || '';
     imagePipelineMeta = {
       ...imagePipelineMeta,
@@ -21374,7 +21456,7 @@ function finishNewProjectImageLoad(file, dataUrl, tmp) {
     });
   };
   imgEl.onerror = () => showNewProjectImageError();
-  imgEl.src = dataUrl;
+  imgEl.src = editorSrc;
 }
 
 function loadNewProjectImage(file) {
@@ -21426,12 +21508,23 @@ function loadImage(file, onDoneCallback) {
     };
     debugImagePipeline(isEmbeddedBase64 ? 'load-imagebase64-dataurl' : 'load-upload-dataurl');
     const tmp = new Image();
+    tmp.onerror = () => {
+      lastImageDecodeError = 'tmp.onerror (load-image)';
+      debugImagePipeline('load-image-decode-error');
+    };
     tmp.onload = () => {
       imgNatW = tmp.naturalWidth;
       imgNatH = tmp.naturalHeight;
+      // v8z4b30M — Tarefa 1: original preservada para export; proxy reduzido
+      // (se necessário) é o que vai para #imgEl/Stage.
+      originalImageElement = tmp;
+      originalImageSrc = tmp.src;
+      const editorProxyDataUrl = createEditorImageProxyIfNeeded(tmp);
+      editorImageElement = imgEl;
+      editorImageSrc = editorProxyDataUrl || tmp.src;
       imgEl.onload = () => {
         const imgDims = getImageSourceDimensions(imgEl);
-        if (imgDims.width && imgDims.height && (imgDims.width !== imgNatW || imgDims.height !== imgNatH)) {
+        if (!hasEditorProxy && imgDims.width && imgDims.height && (imgDims.width !== imgNatW || imgDims.height !== imgNatH)) {
           console.warn('[ImagePipeline] natural-size-discrepancy', {
             tmpNatural: `${imgNatW}x${imgNatH}`,
             imgElNatural: `${imgDims.width}x${imgDims.height}`,
@@ -21535,7 +21628,11 @@ function loadImage(file, onDoneCallback) {
           showStatus('Imagem trocada · frames preservados');
         }
       };
-      imgEl.src = tmp.src;
+      imgEl.onerror = () => {
+        lastImageDecodeError = 'imgEl.onerror (load-image, editorImageSrc)';
+        debugImagePipeline('load-image-editor-decode-error');
+      };
+      imgEl.src = editorImageSrc;
     };
     tmp.src = e.target.result;
   };
@@ -24394,6 +24491,7 @@ function chooseReplaceCurrentImage() {
   const input = _pendingNewImageInput;
   const file = input && input.files && input.files[0];
   closeImageChoiceSheet();
+  closeAll(); // v8z4b30M — fecha menu superior/preferências e volta ao Stage
   _pendingNewImageInput = null;
   if (file) loadImage(file);
   if (input) { try { input.value = ''; } catch (e) {} }
@@ -24402,12 +24500,14 @@ function chooseAddNewImageAsset() {
   // Nesta versão NÃO adiciona imagem real e NÃO altera o projeto.
   // Múltiplas imagens são recurso Plus/Premium.
   closeImageChoiceSheet();
+  closeAll(); // v8z4b30M — fecha menu superior/preferências antes do aviso Plus
   clearPendingNewImageInput();
   openMultipleImagesPlusModal();
 }
 function cancelImageChoice() {
   // Fecha a action sheet, limpa o input file e não altera nada.
   closeImageChoiceSheet();
+  closeAll(); // v8z4b30M — fecha menu superior/preferências e volta ao Stage
   clearPendingNewImageInput();
 }
 function openMultipleImagesPlusModal() {
@@ -24542,6 +24642,38 @@ function buildDiagnosticsText() {
   push('imgNatW', _diagFmtNum(_natW));
   push('imgNatH', _diagFmtNum(_natH));
   push('proporção da imagem', _diagRatio(_natW, _natH));
+  L.push('');
+
+  // v8z4b30M — Tarefa 2: proxy de edição / performance de imagem
+  const _imgMP = (_natW && _natH) ? (_natW * _natH) / 1e6 : null;
+  push('imageMegapixels', _imgMP != null ? _diagFmtNum(_imgMP, 2) + ' MP' : 'n/d');
+  push('estimatedOriginalRGBABytes', (_natW && _natH) ? String(_natW * _natH * 4) : 'n/d');
+  push('hasEditorProxy', String(!!hasEditorProxy));
+  push('editorProxyW', _diagFmtNum(editorProxyW));
+  push('editorProxyH', _diagFmtNum(editorProxyH));
+  push('editorProxyScale', _diagFmtNum(editorProxyScale, 4));
+  push('editorProxySource', editorProxySource || 'none');
+  push('editorDrawSource', hasEditorProxy ? 'proxy' : (imgNatW ? 'original' : 'n/d'));
+  let _exportDrawSource = 'n/d';
+  try {
+    const _src = getCanonicalRenderSource();
+    if (!_src) _exportDrawSource = 'n/d';
+    else if (_src === originalImageElement) _exportDrawSource = 'original';
+    else if (_src === editorImageElement) _exportDrawSource = hasEditorProxy ? 'fallback' : 'original';
+    else _exportDrawSource = 'original';
+  } catch (e) {}
+  push('exportDrawSource', _exportDrawSource);
+  push('lastProxyError', lastProxyError || 'nenhum');
+  push('lastImageDecodeError', lastImageDecodeError || 'nenhum');
+  let _memRisk = 'low';
+  if (_imgMP != null) {
+    if (_imgMP > 24) _memRisk = 'high';
+    else if (_imgMP > 8) _memRisk = 'medium';
+    else _memRisk = 'low';
+  } else {
+    _memRisk = 'n/d';
+  }
+  push('memoryRiskLevel', _memRisk);
   L.push('');
 
   // Formato / exportação
