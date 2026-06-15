@@ -951,6 +951,7 @@
 ╚══════════════════════════════════════════════════════╝
 -->
 <!-- Arco Motion App — v8z4b30Q — HOTFIX (estabilização da fase 1 de múltiplas imagens), base v8z4b30P. fix(bg): novo estado bgColorUserSet diferencia "preto escolhido pelo usuário" de "preto herdado de inicialização antiga/hard-coded". Projeto novo/reset (clearCurrentProjectForNewFile) nasce com bgColor=DEFAULT_PROJECT_BG ('#3c3c3b') e bgColorUserSet=false. applyFrameData() (abrir projeto/restaurar autosave) só preserva bgColor='#000000'/'#000'/'black' quando data.bgColorUserSet===true; sem essa flag (projetos/autosaves antigos), preto legado cai em DEFAULT_PROJECT_BG. Escolher uma cor pelo menu "Cor de fundo" (applyBgColorValue) marca bgColorUserSet=true e é persistido em captureState/restoreState/buildProjectData — preto escolhido manualmente continua funcionando em Stage/Preview/Export normalmente. fix(export): Correção 2 — renderFrameSafely() não aplica mais o fallback de "frame em branco" (isExportFrameLikelyBlank → renderUniversalFallback, que desenha a imagem canônica inteira via cover-fit ignorando a câmera) quando isMultiImageWorldActive()===true. Esse fallback, herdado do pipeline single-image, disparava incorretamente durante transições de câmera que cruzam o gap entre duas imagens no mundo composto (área de fundo válida), causando o salto/corte para a imagem inteira no MP4 relatado na v8z4b30P; drawWorldToCanvas continua sendo a única fonte de render de Preview/Export multi-imagem. feat(diag): painel Diagnóstico ganha exportUsedWorldRenderer/exportFallbackToSingleImage/exportFallbackReason, resetados a cada novo export. preserve: undo de "Adicionar como nova imagem"/"Substituir imagem atual" (asset principal/central img-1, exatamente um passo de undo/redo já validado na v8z4b30P), múltiplas imagens, fit contain, Preview/Export MP4 1:1/9:16/4:3, gap 3x3, ProjectWorld único, remoção de "Cena 1", modal Substituir/Adicionar acima do menu, fundo cinza de "Gerando vídeo", featureAccess multipleImageAssets; NÃO altera motor de curvas, touch/drag/resize/zoom, suporte mobile/iPhone/Safari, WebCodecs/muxer/FPS além do mínimo, textos/ícones/cores/layout aprovados; sem edição livre de posição/escala, sem painel de layers/reorder, sem cenas, sem IA, sem prompt/alert/confirm. -->
+<!-- Arco Motion App — v8z4b30S — fix(ux/multi-image): separa as ações "Trocar imagem" e "Adicionar imagem" e impede empilhamento silencioso no mesmo slot, base v8z4b30R. Correção 1: a action sheet "Usar nova imagem" (imageChoiceSheet) agora rotula os dois botões como "Trocar imagem" (chooseReplaceCurrentImage, fluxo inalterado: substitui assets[0]/imagem principal preservando frames) e "Adicionar imagem" (chooseAddNewImageAsset → seletor de posição 3x3). Correção 2: nova função isWorldSlotOccupied(slotKey) compara o slotRow/Col alvo (WORLD_SLOTS) com o slotRow/Col de cada asset de imagem existente (via computeAssetSlotRowCol, já usada em diagnóstico); addImageAssetAtSlot() agora bloqueia a ação ANTES de ler o arquivo se o slot já estiver ocupado (inclui a célula central, sempre ocupada pela imagem principal) — fecha os sheets, limpa o input pendente, mostra showStatus orientando a usar "Trocar imagem", e NÃO cria asset/Não aumenta assets.length/Não gera passo de undo. Correções 3/4 preservadas: "Trocar imagem" continua sem aumentar assets.length (substitui no lugar, undo restaura a imagem anterior via _pendingImageReplaceUndoSnapshot/pushUndoSnapshot) e "Adicionar imagem" em slot vazio continua aumentando assets.length em 1 com fit contain e undo remove o asset adicionado (mecanismo de undo/redo genérico já existente, inalterado). feat(diag): painel Diagnóstico ganha lastImageActionType (addImage|replaceImage), replacedAssetId, addedAssetId, slotOccupiedOnAdd e duplicatedSlotDetected/duplicatedSlotKey (nova função detectDuplicatedSlot(), somente leitura). preserve: salvar/carregar múltiplas imagens, fundo padrão, ProjectWorld persistido, Preview/Export, render via world renderer, reset preservando imagens, fit contain, gap 3x3; NÃO implementa painel de layers/reorder/zIndex por UI, NÃO altera posição/escala livre, touch/pan/zoom/gestos, curvas, WebCodecs/FPS/muxer, cores aprovadas, cenas; sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30P — HOTFIX (estabilização da fase 1 de múltiplas imagens), base v8z4b30O. fix(bg): nova fonte única getProjectBackgroundColor()/DEFAULT_PROJECT_BG ('#3c3c3b', cinza padrão do app) usada por Stage (imageArea), Preview, Export, drawAtTDirect e drawWorldToCanvas — todos os fallbacks hard-coded '#000000'/'#000' para a cor de fundo do projeto foram substituídos; novo projeto (clearCurrentProjectForNewFile) já nasce com bgColor=DEFAULT_PROJECT_BG e sincroniza o menu "Cor de fundo" (syncBgColorUI) desde o início, eliminando o fundo preto inicial. fix(aspect-ratio): nova função fitContain(srcW,srcH,boxW,boxH) — addImageAssetAtSlot() calcula o tamanho da imagem adicional com fit contain dentro da célula do slot (baseStageW x baseStageH) e centraliza o asset (worldX/Y/W/H ajustados), preservando o aspect ratio original sem cortar/distorcer; gap 3x3 e drawWorldToCanvas/renderProjectWorldExtraImages (cover sobre um rect com a mesma proporção do asset = sem crop) inalterados. fix(undo): captureState()/restoreState() passam a incluir assets[]/projectWorld e uma referência leve (sem duplicar base64/bitmaps) à imagem principal (imageSnapshot); addImageAssetAtSlot() e a substituição de imagem (chooseReplaceCurrentImage→loadImage) capturam snapshot ANTES da mutação e chamam pushUndoSnapshot() — exatamente um passo de undo por ação, usando o mecanismo de undo/redo já existente. feat(diag): painel Diagnóstico ganha DEFAULT_PROJECT_BG/currentProjectBg/renderBgUsed/previewBgUsed/exportBgUsed, asset[i].id/type/sourceAR/worldAR/slotBoxW-H/fitMode e undoStackLength/redoStackLength/lastUndoAction. preserve: inserção de 2ª imagem, Preview/Export multi-imagem, gap 3x3, remoção de "Cena 1", ProjectWorld único, fundo cinza de "Gerando vídeo", modal Substituir/Adicionar acima do menu, MP4 1:1/9:16/4:3; NÃO altera motor de curvas, touch/drag/resize/zoom, suporte mobile/iPhone/Safari, WebCodecs/muxer/FPS além do mínimo, textos/ícones/cores/layout aprovados; sem edição livre de posição/escala, sem painel de layers/reorder, sem cenas, sem IA, sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30O — fix(multi-image): corrige a fase 1 de múltiplas imagens (Preview/Export + espaçamento), base v8z4b30N. Correção 1 (espaçamento 3x3): addImageAssetAtSlot() passa a posicionar a imagem extra com um gap em coordenadas de mundo — worldGap = clamp(min(baseStageW,baseStageH)*0.16, 48, 96), worldX = col*(baseStageW+worldGap) e worldY = row*(baseStageH+worldGap); a célula central (col0/row0) continua sendo a imagem principal e a imagem adicionada à esquerda/direita/acima/abaixo não encosta mais na principal (o Stage/DOM via renderProjectWorldExtraImages já reflete o gap). Correção 2/3 (Preview/Export com várias imagens): nova função central de render de mundo drawWorldToCanvas(ctx, cam, outW, outH, options) — limpa o canvas com o fundo correto, percorre os assets de imagem visíveis ordenados por zIndex, mapeia cada rect (worldX/Y/W/H) para px da câmera, desenha apenas a parte visível (clipping do canvas + cull) e respeita o frame/câmera; usa mainSource = proxy de edição/preview quando há override e original (canônica) no export, sem nunca depender do DOM visual do Stage. drawAtTDirect() redireciona para drawWorldToCanvas SOMENTE quando isMultiImageWorldActive() (2+ imagens) — projetos de 1 imagem mantêm o caminho single-image idêntico (Preview/MP4 1:1/9:16/4:3 inalterados). Substitui o antigo mundo composto 3x3 fixo (getProjectWorldCompositeSource) que ignorava assets no Preview (renderSourceOverride) e gerava tela preta quando o frame apontava para a segunda imagem. Correção 4 (diag): painel Diagnóstico ganha asset[i].visible/zIndex, worldGap usado, multiImageWorldActive, renderWorldLastAssetCount, previewRenderAssetCount, exportRenderAssetCount, lastPreviewError e lastWorldRenderError. preserve: remoção de "Cena 1", fundo cinza de "Gerando vídeo" e correções 30M/30N; NÃO altera motor de export MP4/1:1, Stage/layoutStage(), zoom/pan/clamps/curvas/motor de frames, textos/ícones/cores/layout aprovados; sem edição livre de posição/escala, sem painel de layers, sem cenas; sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30M — feat(perf): Tarefa 1 — proxy de edição para imagens grandes. createEditorImageProxyIfNeeded(image) gera, quando a imagem original tem o maior lado > 2048px OU > 6 megapixels, um canvas reduzido (maior lado ~2048px, mesma proporção) usado APENAS como src de #imgEl (Stage/editor); imagens pequenas/médias continuam usando a própria imagem original em #imgEl. originalImageElement/originalImageSrc preservam a imagem original (mesma fonte canônica de getCanonicalRenderSource()/export); editorImageElement/editorImageSrc apontam para o proxy (ou para a original quando não há proxy). imgNatW/imgNatH, frames, Stage/layoutStage(), zoom/pan/clamps e o motor de export continuam baseados exclusivamente na imagem original — proxy não altera proporção, posição de frames nem fator Stage→px natural. feat(diag): painel Diagnóstico ganha imageMegapixels, estimatedOriginalRGBABytes, hasEditorProxy, editorProxyW/H, editorProxyScale, editorDrawSource, exportDrawSource, lastProxyError, lastImageDecodeError e memoryRiskLevel (Tarefa 2). fix(preview): .preview-bottom usa var(--menu-bg) em vez de #111, removendo fundo preto remanescente da barra inferior do Preview (Tarefa 3). fix(ui): #imageChoiceSheet (Substituir/Adicionar/Cancelar imagem) e #multiImagePlusModal passam de z-index 220/230 para 320/330, acima do menu superior/preferências (#settingsSheet, z-index 300); as três opções agora chamam closeAll() para fechar o menu e voltar ao Stage (Tarefa 4). preserve: NÃO altera motor de exportação MP4, correção 1:1, Stage/layoutStage(), projectWorld/assets/views, múltiplas imagens reais, frames/curvas/zoom/pan/clamps, textos/ícones/cores aprovadas além dos fundos pretos remanescentes do Preview; sem prompt/alert/confirm (base v8z4b30I). -->
@@ -4167,11 +4168,11 @@ body.cust-open #toolbar{
     <div style="display:flex;flex-direction:column;gap:10px;">
       <button type="button" onclick="chooseReplaceCurrentImage()"
         style="width:100%;padding:14px;border-radius:14px;border:none;background:var(--accent);font-size:15px;font-weight:700;color:#000;cursor:pointer;letter-spacing:-.1px;">
-        Substituir imagem atual
+        Trocar imagem
       </button>
       <button type="button" onclick="chooseAddNewImageAsset()"
         style="width:100%;padding:14px;border-radius:14px;border:1px solid var(--border2);background:transparent;font-size:15px;font-weight:600;color:var(--text1);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-        Adicionar como nova imagem
+        Adicionar imagem
         <span style="font-size:11px;font-weight:800;letter-spacing:.4px;padding:2px 8px;border-radius:999px;background:var(--accent);color:#000;">PLUS</span>
       </button>
       <button type="button" onclick="cancelImageChoice()"
@@ -6688,7 +6689,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30R';
+const APP_VERSION = 'v8z4b30S';
 const APP_VERSION_NAME = 'v8z4b30R';
 const WATERMARK_TEXT = 'arcomotion.app';
 
@@ -12857,6 +12858,14 @@ let exportBgUsed = '';
 // v8z4b30P — diagnóstico: última ação de undo registrada para assets
 // (addImageAsset / replaceImageAsset), em formato simples para o painel.
 let lastUndoAction = '';
+
+// v8z4b30S — diagnóstico: separação das ações "Trocar imagem" / "Adicionar
+// imagem" e prevenção de empilhamento silencioso no mesmo slot.
+let lastImageActionType = '';   // 'addImage' | 'replaceImage'
+let lastReplacedAssetId = null; // id do asset substituído por "Trocar imagem"
+let lastAddedAssetId = null;    // id do asset criado por "Adicionar imagem"
+let lastSlotOccupiedOnAdd = false; // true se a última tentativa de "Adicionar imagem" achou o slot ocupado
+let lastDuplicatedSlotKey = null;  // slotKey alvo da última tentativa bloqueada por ocupação
 
 // v8z4b30R — diagnóstico de persistência de assets (salvar/carregar projeto).
 const PROJECT_ASSETS_SCHEMA_VERSION = 1;
@@ -24902,6 +24911,13 @@ function chooseReplaceCurrentImage() {
     // v8z4b30P — Correção 4: captura snapshot ANTES da substituição para
     // gerar exatamente um passo de undo (restaura a imagem anterior).
     _pendingImageReplaceUndoSnapshot = captureState();
+    // v8z4b30S — diagnóstico: "Trocar imagem" substitui o asset principal
+    // (assets[0]), preservando slotRow/Col, world coords e zIndex do slot.
+    lastImageActionType = 'replaceImage';
+    lastReplacedAssetId = (Array.isArray(assets) && assets[0] && assets[0].type === 'image') ? assets[0].id : null;
+    lastAddedAssetId = null;
+    lastSlotOccupiedOnAdd = false;
+    lastDuplicatedSlotKey = null;
     loadImage(file);
   }
   if (input) { try { input.value = ''; } catch (e) {} }
@@ -24997,16 +25013,79 @@ function computeAssetSlotRowCol(a) {
   };
 }
 
+// v8z4b30S — Correção 2: verifica se já existe um asset de imagem ocupando
+// o slot (mesmo slotRow/slotCol) alvo de "Adicionar imagem". A célula central
+// (col=0,row=0) é sempre ocupada pela imagem principal (assets[0]).
+function isWorldSlotOccupied(slotKey) {
+  const slot = WORLD_SLOTS[slotKey];
+  if (!slot || !Array.isArray(assets)) return false;
+  for (let i = 0; i < assets.length; i++) {
+    const a = assets[i];
+    if (!a || a.type !== 'image') continue;
+    const pos = computeAssetSlotRowCol(a);
+    if (pos.row === slot.row && pos.col === slot.col) return true;
+  }
+  return false;
+}
+
+// v8z4b30S — diagnóstico: varre assets de imagem em busca de slotRow/Col
+// duplicados (dois assets na mesma célula do grid 3x3). Não influencia
+// posicionamento, render, Preview ou Export — apenas leitura.
+function detectDuplicatedSlot() {
+  if (!Array.isArray(assets)) return { found: false, key: null };
+  const seen = {};
+  for (let i = 0; i < assets.length; i++) {
+    const a = assets[i];
+    if (!a || a.type !== 'image') continue;
+    const pos = computeAssetSlotRowCol(a);
+    if (pos.row == null || pos.col == null) continue;
+    const key = pos.row + ',' + pos.col;
+    if (seen[key]) return { found: true, key: key };
+    seen[key] = true;
+  }
+  return { found: false, key: null };
+}
+
 function addImageAssetAtSlot(slotKey) {
   const slot = WORLD_SLOTS[slotKey];
   const input = _pendingNewImageInput;
   const file = input && input.files && input.files[0];
+  if (!file || !slot) {
+    closeImageSlotPicker();
+    closeImageChoiceSheet();
+    closeAll();
+    clearPendingNewImageInput();
+    return;
+  }
+  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) {
+    closeImageSlotPicker();
+    closeImageChoiceSheet();
+    closeAll();
+    clearPendingNewImageInput();
+    return;
+  }
+  // v8z4b30S — Correção 2: enquanto não existir painel de layers, o app não
+  // empilha imagens no mesmo slot. Se o slot escolhido já está ocupado,
+  // bloqueia a ação sem criar asset duplicado e orienta o usuário a usar
+  // "Trocar imagem" em vez de "Adicionar imagem".
+  if (isWorldSlotOccupied(slotKey)) {
+    closeImageSlotPicker();
+    closeImageChoiceSheet();
+    closeAll();
+    clearPendingNewImageInput();
+    lastSlotOccupiedOnAdd = true;
+    lastDuplicatedSlotKey = slotKey;
+    lastImageActionType = 'addImage';
+    lastAddedAssetId = null;
+    showStatus('Este espaço já tem uma imagem. Use "Trocar imagem" para substituí-la.');
+    return;
+  }
+  lastSlotOccupiedOnAdd = false;
+  lastDuplicatedSlotKey = null;
   closeImageSlotPicker();
   closeImageChoiceSheet();
   closeAll();
   clearPendingNewImageInput();
-  if (!file || !slot) return;
-  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) return;
   const reader = new FileReader();
   reader.onload = (e) => {
     const dataUrl = e.target.result || '';
@@ -25052,6 +25131,9 @@ function addImageAssetAtSlot(slotKey) {
       renderProjectWorldExtraImages();
       pushUndoSnapshot(beforeAddAsset);
       lastUndoAction = 'addImageAsset';
+      lastImageActionType = 'addImage';
+      lastAddedAssetId = asset.id;
+      lastReplacedAssetId = null;
       markProjectDirty('add-image-asset');
       if (window._arcoDebug) {
         console.info('[Arco ' + APP_VERSION + '] asset adicionado ao mundo:', { id: asset.id, slot: slotKey, worldX: asset.worldX, worldY: asset.worldY, worldW: asset.worldW, worldH: asset.worldH });
@@ -25669,6 +25751,17 @@ function buildDiagnosticsText() {
   if (_imgAssetIdx === 0) push('asset[0]', 'n/d');
   push('views.length', String(_viewsArr.length));
   push('activeSlotSelection', (typeof activeSlotSelection !== 'undefined' && activeSlotSelection) ? activeSlotSelection : 'n/d');
+  // v8z4b30S — diagnóstico: separação "Trocar imagem" / "Adicionar imagem"
+  // e prevenção de empilhamento silencioso no mesmo slot.
+  push('lastImageActionType', lastImageActionType || 'n/d');
+  push('replacedAssetId', lastReplacedAssetId != null ? String(lastReplacedAssetId) : 'n/d');
+  push('addedAssetId', lastAddedAssetId != null ? String(lastAddedAssetId) : 'n/d');
+  push('slotOccupiedOnAdd', String(lastSlotOccupiedOnAdd));
+  {
+    const _dup = (typeof detectDuplicatedSlot === 'function') ? detectDuplicatedSlot() : { found: false, key: null };
+    push('duplicatedSlotDetected', String(_dup.found));
+    push('duplicatedSlotKey', _dup.key != null ? _dup.key : (lastDuplicatedSlotKey || 'n/d'));
+  }
   // v8z4b30O — diagnóstico de mundo multi-imagem (Preview/Export).
   push('worldGap usado', _diagFmtNum((typeof lastWorldGapUsed !== 'undefined') ? lastWorldGapUsed : 0, 2));
   push('multiImageWorldActive', (typeof isMultiImageWorldActive === 'function') ? String(isMultiImageWorldActive()) : 'n/d');
