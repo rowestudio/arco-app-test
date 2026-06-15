@@ -1,3 +1,22 @@
+# QA pendente — v8z4b30Q: HOTFIX fase 1 múltiplas imagens (fundo padrão + export sem salto)
+
+> Base confirmada: `v8z4b30P`. HOTFIX de estabilização: corrige o fundo padrão do projeto (cinza `#3c3c3b`) e o salto para a imagem inteira no export MP4 ao transitar entre imagens diferentes. Valida (sem mudança de código) o undo de adicionar/substituir imagem e a regra de "Substituir imagem atual" sempre na imagem principal/central. Não implementa seleção de imagem, layers, cenas, edição livre de posição/escala. Não altera motor de curvas/easing/timing/pausa/loop/escala/rotação, touch/drag/resize/zoom, comportamento mobile/iPhone/Safari além do necessário. Não promove para estável.
+
+## Escopo v8z4b30Q
+
+1. App abre igual visualmente (`v8z4b30Q` no menu/configurações; `APP_VERSION`/`APP_VERSION_NAME` em `v8z4b30Q`).
+2. Projeto novo (1 imagem): fundo do Stage/Preview/Export é cinza `#3c3c3b` por padrão (Diagnóstico: `DEFAULT_PROJECT_BG`, `currentProjectBg`, `getProjectBackgroundColor()`, `renderBgUsed`/`previewBgUsed`/`exportBgUsed` todos `#3c3c3b`, `bgColorUserSet: false`).
+3. Escolher preto explicitamente em "Cor de fundo": Stage/Preview/Export ficam pretos (`bgColorUserSet: true`), preservado ao salvar/recarregar o projeto.
+4. Abrir um projeto/autosave salvo antes desta correção com fundo preto legado (sem `bgColorUserSet`): fundo passa a `#3c3c3b` em vez de preto.
+5. `renderBgUsed`/equivalente no Diagnóstico passa a exibir um valor de cor (não mais "n/d") após renderizar Stage/Preview/Export.
+6. Projeto com 2+ imagens: exportar MP4 1:1/9:16/4:3 com frames cuja câmera transita entre frames de imagens diferentes — a transição mostra a câmera contínua sobre o `ProjectWorld` (incluindo o gap entre imagens, se a câmera passar por ele), sem saltar para mostrar a imagem inteira.
+7. Diagnóstico durante/após export multi-imagem mostra `exportUsedWorldRenderer: true`, `exportFallbackToSingleImage: false` e `exportFallbackReason: nenhum` nos casos normais.
+8. Projeto com 1 imagem: export/Preview continuam idênticos (sem regressão), `exportUsedWorldRenderer` permanece `false`/n/a.
+9. "Adicionar como nova imagem": gera exatamente 1 passo de undo; `Ctrl/Cmd+Z` desfaz a adição (volta ao estado anterior) e redo reaplica; Preview/Export funcionam normalmente após undo/redo.
+10. "Substituir imagem atual" em projeto com 2+ imagens: substitui apenas a imagem principal/central (`img-1`/`assets[0]`); imagens laterais permanecem inalteradas; gera exatamente 1 passo de undo restaurando a imagem anterior (com metadados), redo reaplica; Preview/Export funcionam após undo/redo.
+11. iPhone/Safari: sem regressão de memória/performance ao adicionar/substituir imagens e fazer undo/redo repetidamente (sem duplicar base64/blobs, sem leak de proxies/objectURLs/bitmaps).
+12. Sem `prompt()`/`alert()`/`confirm()` em todo o fluxo.
+
 # QA pendente — v8z4b30O: múltiplas imagens (fase 1) — Preview/Export + espaçamento
 
 > Base confirmada: `v8z4b30N`. Corrige a fase 1 de múltiplas imagens com foco em Preview/Export e espaçamento entre imagens. Não implementa edição livre de posição/escala, painel de layers nem cenas. Não altera o motor de curvas, o motor de export MP4 1:1/9:16/4:3, `Stage`/`layoutStage()` além do mínimo, zoom/pan/clamps. Não promove para estável.
