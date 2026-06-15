@@ -1991,7 +1991,7 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
   position: absolute; inset: 0;
   display: none;
   flex-direction: column; align-items: center; justify-content: center;
-  background: rgba(0,0,0,.78);
+  background: rgba(60,60,59,.92); /* v8z4b30N — cinza geral do app, sem fundo preto */
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   z-index: 20;
   padding: 32px;
@@ -2239,6 +2239,14 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
 .tpl-pill{display:flex;align-items:center;gap:7px;padding:10px 14px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2);font-size:13px;font-weight:600;color:#fff;cursor:pointer;-webkit-user-select:none;user-select:none;}
 .tpl-pill:active{background:var(--surface3);}
 .tpl-pill.active{border-color:var(--accent);color:var(--accent);background:rgba(4,255,242,.06);}
+
+/* v8z4b30N — seletor de posição 3x3 (Adicionar imagem) */
+.slot-pick-btn{
+  padding:16px 6px;border-radius:14px;border:1px solid var(--border2);
+  background:var(--surface2);color:var(--text1);font-size:12.5px;font-weight:600;
+  line-height:1.3;cursor:pointer;text-align:center;-webkit-user-select:none;user-select:none;
+}
+.slot-pick-btn:active{background:var(--surface3);border-color:var(--accent);}
 .panel-handle:active{cursor:grabbing;}
 .panel-close-check{position:absolute;top:10px;right:14px;width:36px;height:36px;border:0;border-radius:50%;background:rgba(255,255,255,.08);color:rgba(235,235,245,.92);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6;}
 .panel-close-check:active{background:rgba(255,255,255,.14);}
@@ -3038,7 +3046,6 @@ body.cust-open #toolbar{
   background:var(--surface-action) !important;
 }
 #segTimingHint{display:block !important;}
-.cena1-section-header{margin-top:6px;}
 
 /* v8z4b15z — slider "Tudo" em estado misto: track e thumb dessaturados,
    indicando que os frames têm valores diferentes. Arrastar SAI do estado
@@ -3909,7 +3916,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30M</span><br><span id="appVersionNameText">v8z4b30M</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30N</span><br><span id="appVersionNameText">v8z4b30N</span></div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -4194,6 +4201,32 @@ body.cust-open #toolbar{
   </div>
 </div>
 
+<!-- v8z4b30N — SEletor de posição 3x3 para "Adicionar imagem" (múltiplas imagens, fase 1) -->
+<div id="imageSlotPickerSheet" style="display:none;position:fixed;inset:0;z-index:325;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom);" onclick="if(event.target===this)cancelImageSlotPicker()">
+  <div style="background:var(--surface);border-radius:22px 22px 0 0;padding:24px 22px 28px;width:100%;max-width:480px;box-shadow:0 -4px 32px rgba(0,0,0,.35);">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 18px;"></div>
+    <div style="font-size:20px;font-weight:800;color:var(--text1);margin-bottom:6px;letter-spacing:-.3px;">Posição da nova imagem</div>
+    <div style="font-size:13px;color:var(--text3);line-height:1.4;margin-bottom:16px;">
+      Escolha onde a nova imagem entra no mundo do projeto, em relação ao Stage atual.
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('top-left')">Superior<br>esquerda</button>
+      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('top-center')">Superior<br>centro</button>
+      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('top-right')">Superior<br>direita</button>
+      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('middle-left')">Centro<br>esquerda</button>
+      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('center')">Centro</button>
+      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('middle-right')">Centro<br>direita</button>
+      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('bottom-left')">Inferior<br>esquerda</button>
+      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('bottom-center')">Inferior<br>centro</button>
+      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('bottom-right')">Inferior<br>direita</button>
+    </div>
+    <button type="button" onclick="cancelImageSlotPicker()"
+      style="width:100%;padding:12px;border-radius:14px;border:none;background:transparent;font-size:14px;font-weight:500;color:var(--text3);cursor:pointer;">
+      Cancelar
+    </button>
+  </div>
+</div>
+
 <!-- PANEL: Template -->
 <div class="float-panel" id="panelTemplate">
   <div class="panel-handle" onclick="closeAll()"></div>
@@ -4354,9 +4387,6 @@ body.cust-open #toolbar{
       </button>
     </div>
     <div class="timeline-edit-content">
-    <div class="dur-section-header cena1-section-header">
-      <span>Cena 1</span>
-    </div>
     <div id="cena1Block" class="dur-section-body" style="padding-top:2px;margin-bottom:2px;">
       <!-- Lista intercalada (frames + trechos). Sliders escrevem nos MESMOS
            estados (framePauses[] / segDurations[]) dos controles globais. -->
@@ -6655,8 +6685,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30M';
-const APP_VERSION_NAME = 'v8z4b30M';
+const APP_VERSION = 'v8z4b30N';
+const APP_VERSION_NAME = 'v8z4b30N';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -6697,6 +6727,9 @@ let previewRenderSourceKey = '';
 let previewLoopToken = 0;
 let previewPerfStats = null;
 
+// v8z4b30N — Múltiplas imagens (fase 1): ProjectWorld passa a aceitar
+// imagens adicionais reais, posicionadas em um esquema 3x3 relativo ao
+// Stage atual. Projetos com 1 imagem continuam exatamente como antes.
 // v8z4b30M — Editor proxy para imagens grandes (Tarefa 1).
 // originalImage*: fonte original preservada (mesma usada por export/canonical).
 // editorImage*: proxy reduzido usado SOMENTE para exibição visual no Stage
@@ -12678,6 +12711,11 @@ let panDragState = null;   // { startClientX, startClientY, startPanX, startPanY
 let isProMode     = false;
 let proModalShown = false; // aviso de marca d'água mostrado nesta sessão
 
+// v8z4b30N — Build de teste interna: habilita o uso real de múltiplas
+// imagens (fase 1) para validação, sem remover a checagem/infra de
+// Plus/Premium (isProMode). Desligar este flag restaura o gate Premium.
+const DEV_ENABLE_MULTIPLE_IMAGES = true;
+
 // ═══════════════════════════════════════
 // v8z4b30D — MODELO INTERNO PREPARATÓRIO (Project World / Assets / Views)
 // Apenas estrutura/diagnóstico nesta versão. NÃO altera render, Stage, frames,
@@ -12693,6 +12731,21 @@ let projectWorld = {
 let assets = []; // { id, type:'image', name, sourceW, sourceH, worldX, worldY, worldW, worldH, rotation, zIndex, visible, locked }
 let views = [];  // { id, type, name, x, y, w, h, zoom }
 let _pendingNewImageInput = null; // input file aguardando escolha na action sheet "Usar nova imagem"
+
+// v8z4b30N — Múltiplas imagens (fase 1): esquema 3x3 de posições relativas
+// ao Stage atual. col/row em {-1,0,1}; (0,0) = área da imagem principal.
+const WORLD_SLOTS = {
+  'top-left':      { col: -1, row: -1, label: 'Superior esquerda' },
+  'top-center':    { col:  0, row: -1, label: 'Superior centro'   },
+  'top-right':     { col:  1, row: -1, label: 'Superior direita'  },
+  'middle-left':   { col: -1, row:  0, label: 'Centro esquerda'   },
+  'center':        { col:  0, row:  0, label: 'Centro'            },
+  'middle-right':  { col:  1, row:  0, label: 'Centro direita'    },
+  'bottom-left':   { col: -1, row:  1, label: 'Inferior esquerda' },
+  'bottom-center': { col:  0, row:  1, label: 'Inferior centro'   },
+  'bottom-right':  { col:  1, row:  1, label: 'Inferior direita'  }
+};
+let activeSlotSelection = null; // último slot escolhido no seletor 3x3 (diagnóstico)
 
 let globalHandleEl = null;
 let handleDragState = null;
@@ -13459,6 +13512,7 @@ function layoutStage() {
   bezierSvg.setAttribute('viewBox', `0 0 ${stageW} ${stageH}`);
   // previewCanvas must match export format AR, not image AR
   setupPreviewCanvas();
+  renderProjectWorldExtraImages(); // v8z4b30N — reposiciona imagens extras do mundo
 }
 
 window.addEventListener('resize', () => {
@@ -18601,8 +18655,8 @@ function drawAtT(ctx, t, W, H, totalFrames, frameIdx, existingDiagnostics, rende
 function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics, renderSourceOverride = null) {
   const canonicalSource = getCanonicalRenderSource();
   const canonicalDims = getImageSourceDimensions(canonicalSource);
-  const renderSource = renderSourceOverride || canonicalSource;
-  const renderDims = getImageSourceDimensions(renderSource);
+  let renderSource = renderSourceOverride || canonicalSource;
+  let renderDims = getImageSourceDimensions(renderSource);
   if (!ctx || !W || !H || !isFiniteNum(W) || !isFiniteNum(H) || !renderSource || !(renderDims.width > 0) || !(renderDims.height > 0)) return false;
   applyCanvasRenderQuality(ctx);
   const st = diagnostics?.state;
@@ -18615,10 +18669,28 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics, renderS
   const sourceScaleX = canonicalDims.width > 0 ? renderDims.width / canonicalDims.width : 1;
   const sourceScaleY = canonicalDims.height > 0 ? renderDims.height / canonicalDims.height : 1;
   const { rot } = st;
-  const cx = st.cx * sourceScaleX;
-  const cy = st.cy * sourceScaleY;
-  const sw = st.sw * sourceScaleX;
-  const sh = st.sh * sourceScaleY;
+  let cx = st.cx * sourceScaleX;
+  let cy = st.cy * sourceScaleY;
+  let sw = st.sw * sourceScaleX;
+  let sh = st.sh * sourceScaleY;
+
+  // v8z4b30N — Múltiplas imagens: quando o projeto tem mais de 1 imagem,
+  // renderiza a partir do mundo composto (3x3 células, imagem principal
+  // sempre na célula central). Para projetos com 1 imagem,
+  // getProjectWorldCompositeSource() retorna null e nada muda aqui.
+  if (!renderSourceOverride) {
+    const worldComposite = getProjectWorldCompositeSource();
+    if (worldComposite) {
+      const wScale = _worldCompositeScale;
+      cx = (st.cx + canonicalDims.width) * wScale;
+      cy = (st.cy + canonicalDims.height) * wScale;
+      sw = st.sw * wScale;
+      sh = st.sh * wScale;
+      renderSource = worldComposite;
+      renderDims = getImageSourceDimensions(worldComposite);
+    }
+  }
+
   const cover = diagnostics?.cover || rotationCoverScaleForRect(W, H, rot);
   if (!isFiniteNum(cover) || cover <= 0) return false;
 
@@ -21296,6 +21368,9 @@ function clearCurrentProjectForNewFile() {
     projectWorld.x = 0; projectWorld.y = 0; projectWorld.w = 0; projectWorld.h = 0;
     projectWorld.baseStageW = 0; projectWorld.baseStageH = 0;
   }
+  activeSlotSelection = null;
+  invalidateProjectWorldComposite();
+  renderProjectWorldExtraImages();
   clearFrameMultiSelectState();
   closeAll();
   document.querySelectorAll('.frame').forEach(el => el.remove());
@@ -24405,8 +24480,15 @@ function syncFirstImageAsset(reason) {
     projectWorld.y = 0;
     projectWorld.w = sw;
     projectWorld.h = sh;
-    projectWorld.baseStageW = sw;
-    projectWorld.baseStageH = sh;
+    // v8z4b30N — Múltiplas imagens: uma vez que existam imagens adicionais
+    // posicionadas no mundo (com base em baseStageW/H), preservar essas
+    // dimensões evita desalinhar os slots já posicionados ao trocar a
+    // imagem principal ou mudar de proporção.
+    const _hasExtraImageAssets = assets.some(x => x && x.type === 'image' && x !== a);
+    if (!_hasExtraImageAssets) {
+      projectWorld.baseStageW = sw;
+      projectWorld.baseStageH = sh;
+    }
     if (window._arcoDebug) {
       console.info('[Arco ' + APP_VERSION + '] projectWorld sync:', reason || 'unknown',
         { sw, sh, imgNatW, imgNatH, assets: assets.length });
@@ -24429,6 +24511,8 @@ function getImageAssetCount() {
 }
 function canUseMultipleImages() {
   // Múltiplas imagens/camadas são recurso Plus/Premium.
+  // v8z4b30N — build de teste interna: libera para validação da fase 1.
+  if (DEV_ENABLE_MULTIPLE_IMAGES) return true;
   return !!isProMode;
 }
 function canAddImageAsset() {
@@ -24497,12 +24581,16 @@ function chooseReplaceCurrentImage() {
   if (input) { try { input.value = ''; } catch (e) {} }
 }
 function chooseAddNewImageAsset() {
-  // Nesta versão NÃO adiciona imagem real e NÃO altera o projeto.
-  // Múltiplas imagens são recurso Plus/Premium.
+  // v8z4b30N — "Adicionar imagem" agora funciona de verdade (fase 1):
+  // abre o seletor de posição 3x3 para inserir a nova imagem no mundo.
   closeImageChoiceSheet();
-  closeAll(); // v8z4b30M — fecha menu superior/preferências antes do aviso Plus
-  clearPendingNewImageInput();
-  openMultipleImagesPlusModal();
+  if (!canAddImageAsset()) {
+    closeAll(); // fecha menu superior/preferências antes do aviso Plus
+    clearPendingNewImageInput();
+    openMultipleImagesPlusModal();
+    return;
+  }
+  openImageSlotPicker();
 }
 function cancelImageChoice() {
   // Fecha a action sheet, limpa o input file e não altera nada.
@@ -24517,6 +24605,210 @@ function openMultipleImagesPlusModal() {
 function closeMultipleImagesPlusModal() {
   const modal = document.getElementById('multiImagePlusModal');
   if (modal) modal.style.display = 'none';
+}
+
+// ═══════════════════════════════════════
+// v8z4b30N — MÚLTIPLAS IMAGENS (FASE 1)
+// Seletor de posição 3x3 + inserção real de imagem no ProjectWorld.
+// ═══════════════════════════════════════
+function openImageSlotPicker() {
+  const sheet = document.getElementById('imageSlotPickerSheet');
+  if (sheet) sheet.style.display = 'flex';
+}
+function closeImageSlotPicker() {
+  const sheet = document.getElementById('imageSlotPickerSheet');
+  if (sheet) sheet.style.display = 'none';
+}
+function cancelImageSlotPicker() {
+  // Fecha o seletor, limpa o input file e não altera nada no projeto.
+  closeImageSlotPicker();
+  closeAll();
+  clearPendingNewImageInput();
+}
+function getProjectWorldExtraImageAssets() {
+  if (!Array.isArray(assets)) return [];
+  const out = [];
+  let firstImageSeen = false;
+  for (let i = 0; i < assets.length; i++) {
+    const a = assets[i];
+    if (!a || a.type !== 'image') continue;
+    if (!firstImageSeen) { firstImageSeen = true; continue; } // primeiro = imagem principal (#imgEl)
+    out.push(a);
+  }
+  return out;
+}
+function addImageAssetAtSlot(slotKey) {
+  const slot = WORLD_SLOTS[slotKey];
+  const input = _pendingNewImageInput;
+  const file = input && input.files && input.files[0];
+  closeImageSlotPicker();
+  closeImageChoiceSheet();
+  closeAll();
+  clearPendingNewImageInput();
+  if (!file || !slot) return;
+  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result || '';
+    const img = new Image();
+    img.onload = () => {
+      const baseW = projectWorld.baseStageW;
+      const baseH = projectWorld.baseStageH;
+      const asset = {
+        id: 'img-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        type: 'image',
+        name: (file.name || 'imagem').replace(/\.[^.]+$/, ''),
+        src: dataUrl,
+        sourceW: img.naturalWidth,
+        sourceH: img.naturalHeight,
+        worldX: slot.col * baseW,
+        worldY: slot.row * baseH,
+        worldW: baseW,
+        worldH: baseH,
+        rotation: 0,
+        zIndex: assets.length,
+        visible: true,
+        locked: false,
+        _img: img
+      };
+      assets.push(asset);
+      activeSlotSelection = slotKey;
+      invalidateProjectWorldComposite();
+      renderProjectWorldExtraImages();
+      if (window._arcoDebug) {
+        console.info('[Arco ' + APP_VERSION + '] asset adicionado ao mundo:', { id: asset.id, slot: slotKey, worldX: asset.worldX, worldY: asset.worldY, worldW: asset.worldW, worldH: asset.worldH });
+      }
+      showStatus('Imagem adicionada');
+    };
+    img.onerror = () => { showStatus('Não foi possível abrir esta imagem.'); };
+    img.src = dataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Renderiza imagens adicionais do ProjectWorld como elementos absolutos
+// dentro do #stageContent, posicionados em "stage px" via baseStageW/H.
+// A imagem principal (#imgEl) e os frames continuam intocados.
+function renderProjectWorldExtraImages() {
+  if (typeof stageContent === 'undefined' || !stageContent) return;
+  const old = stageContent.querySelectorAll('.world-extra-img');
+  old.forEach(el => el.remove());
+  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) return;
+  const extras = getProjectWorldExtraImageAssets();
+  if (!extras.length) return;
+  const scaleX = stageW / projectWorld.baseStageW;
+  const scaleY = stageH / projectWorld.baseStageH;
+  extras.forEach(a => {
+    if (a.visible === false) return;
+    const src = a.src || (a._img && a._img.src);
+    if (!src) return;
+    const img = document.createElement('img');
+    img.className = 'world-extra-img';
+    img.draggable = false;
+    img.alt = '';
+    img.src = src;
+    img.style.position = 'absolute';
+    img.style.left = (a.worldX * scaleX) + 'px';
+    img.style.top = (a.worldY * scaleY) + 'px';
+    img.style.width = (a.worldW * scaleX) + 'px';
+    img.style.height = (a.worldH * scaleY) + 'px';
+    img.style.objectFit = 'cover';
+    img.style.pointerEvents = 'none';
+    img.style.userSelect = 'none';
+    img.style.webkitUserDrag = 'none';
+    img.style.zIndex = '0';
+    stageContent.insertBefore(img, imgEl);
+  });
+}
+
+// ─── Mundo composto (canvas) — fonte de render para Stage/Preview/Export ───
+// Construído SOMENTE quando há mais de 1 imagem no projeto. Para projetos
+// com 1 imagem, drawAtTDirect continua usando exatamente a fonte canônica
+// atual (sem mudanças, sem custo extra).
+let _worldCompositeCanvas = null;
+let _worldCompositeScale = 1;
+let _worldCompositeDirty = true;
+const WORLD_COMPOSITE_MAX_PIXELS = 9000000; // ~9MP — limite seguro de memória no iPhone/Safari
+
+function invalidateProjectWorldComposite() {
+  _worldCompositeDirty = true;
+}
+
+function drawCoverImage(ctx, source, dx, dy, dw, dh) {
+  const dims = getImageSourceDimensions(source);
+  if (!dims.width || !dims.height || dw <= 0 || dh <= 0) return;
+  const srcAR = dims.width / dims.height;
+  const dstAR = dw / dh;
+  let sx = 0, sy = 0, sw = dims.width, sh = dims.height;
+  if (srcAR > dstAR) {
+    sw = dims.height * dstAR;
+    sx = (dims.width - sw) / 2;
+  } else {
+    sh = dims.width / dstAR;
+    sy = (dims.height - sh) / 2;
+  }
+  ctx.drawImage(source, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+// Retorna o canvas do mundo composto (3x3 células, imagem principal sempre
+// na célula central) ou null quando há apenas 1 imagem no projeto.
+function getProjectWorldCompositeSource() {
+  try {
+    if (getImageAssetCount() < 2) return null;
+    if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) return null;
+    const canonical = canonicalRenderImage || (imgEl && imgEl.complete ? imgEl : null);
+    if (!canonical) return null;
+    const dims = getImageSourceDimensions(canonical);
+    if (!dims.width || !dims.height) return null;
+
+    if (!_worldCompositeDirty && _worldCompositeCanvas) return _worldCompositeCanvas;
+
+    const cellW = dims.width, cellH = dims.height;
+    const totalW = cellW * 3, totalH = cellH * 3;
+    let scale = 1;
+    if (totalW * totalH > WORLD_COMPOSITE_MAX_PIXELS) {
+      scale = Math.sqrt(WORLD_COMPOSITE_MAX_PIXELS / (totalW * totalH));
+    }
+    const canvasW = Math.max(1, Math.round(totalW * scale));
+    const canvasH = Math.max(1, Math.round(totalH * scale));
+
+    let canvas = _worldCompositeCanvas;
+    if (!canvas || canvas.width !== canvasW || canvas.height !== canvasH) {
+      canvas = document.createElement('canvas');
+      canvas.width = canvasW;
+      canvas.height = canvasH;
+    }
+    const ctx = canvas.getContext('2d');
+    applyCanvasRenderQuality(ctx);
+    ctx.clearRect(0, 0, canvasW, canvasH);
+
+    const cellPxW = cellW * scale, cellPxH = cellH * scale;
+    // Célula central — imagem principal (asset 0), inalterada.
+    ctx.drawImage(canonical, 0, 0, dims.width, dims.height, cellPxW, cellPxH, cellPxW, cellPxH);
+
+    const baseW = projectWorld.baseStageW, baseH = projectWorld.baseStageH;
+    const extras = getProjectWorldExtraImageAssets();
+    extras.forEach(a => {
+      if (a.visible === false) return;
+      const src = a._img || a.src;
+      if (!src) return;
+      const colOffset = (a.worldX || 0) / baseW;
+      const rowOffset = (a.worldY || 0) / baseH;
+      const destX = cellPxW * (1 + colOffset);
+      const destY = cellPxH * (1 + rowOffset);
+      const destW = cellPxW * ((a.worldW || baseW) / baseW);
+      const destH = cellPxH * ((a.worldH || baseH) / baseH);
+      if (destX + destW <= 0 || destY + destH <= 0 || destX >= canvasW || destY >= canvasH) return;
+      drawCoverImage(ctx, src, destX, destY, destW, destH);
+    });
+
+    _worldCompositeCanvas = canvas;
+    _worldCompositeScale = scale;
+    _worldCompositeDirty = false;
+    return canvas;
+  } catch (e) {
+    return null;
+  }
 }
 
 // ═══════════════════════════════════════
@@ -24786,18 +25078,21 @@ function buildDiagnosticsText() {
   const _viewsArr  = (typeof views  !== 'undefined' && Array.isArray(views))  ? views  : [];
   push('assets.length', String(_assetsArr.length));
   push('imageAssetsCount', String((typeof getImageAssetCount === 'function') ? getImageAssetCount() : 'n/d'));
-  let _a0 = null;
+  // v8z4b30N — lista todos os assets de imagem (não apenas o asset[0]).
+  let _imgAssetIdx = 0;
   for (let i = 0; i < _assetsArr.length; i++) {
-    if (_assetsArr[i] && _assetsArr[i].type === 'image') { _a0 = _assetsArr[i]; break; }
+    const _a = _assetsArr[i];
+    if (!_a || _a.type !== 'image') continue;
+    push('asset[' + _imgAssetIdx + '].sourceW/H', _diagFmtNum(_a.sourceW) + ' × ' + _diagFmtNum(_a.sourceH));
+    push('asset[' + _imgAssetIdx + '].worldX/Y', _diagFmtNum(_a.worldX, 2) + ', ' + _diagFmtNum(_a.worldY, 2));
+    push('asset[' + _imgAssetIdx + '].worldW/H', _diagFmtNum(_a.worldW, 2) + ' × ' + _diagFmtNum(_a.worldH, 2));
+    _imgAssetIdx++;
   }
-  if (_a0) {
-    push('asset[0].sourceW/H', _diagFmtNum(_a0.sourceW) + ' × ' + _diagFmtNum(_a0.sourceH));
-    push('asset[0].worldX/Y', _diagFmtNum(_a0.worldX, 2) + ', ' + _diagFmtNum(_a0.worldY, 2));
-    push('asset[0].worldW/H', _diagFmtNum(_a0.worldW, 2) + ' × ' + _diagFmtNum(_a0.worldH, 2));
-  } else {
-    push('asset[0]', 'n/d');
-  }
+  if (_imgAssetIdx === 0) push('asset[0]', 'n/d');
   push('views.length', String(_viewsArr.length));
+  push('activeSlotSelection', (typeof activeSlotSelection !== 'undefined' && activeSlotSelection) ? activeSlotSelection : 'n/d');
+  push('worldComposite.active', String((typeof getProjectWorldCompositeSource === 'function') && !!getProjectWorldCompositeSource()));
+  push('worldComposite.scale', _diagFmtNum((typeof _worldCompositeScale !== 'undefined') ? _worldCompositeScale : 1, 4));
   push('canAddImageAsset', (typeof canAddImageAsset === 'function') ? String(canAddImageAsset()) : 'n/d');
   let _faMulti = 'n/d';
   try {
