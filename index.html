@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30O — fix(multi-image): corrige a fase 1 de múltiplas imagens (Preview/Export + espaçamento), base v8z4b30N. Correção 1 (espaçamento 3x3): addImageAssetAtSlot() passa a posicionar a imagem extra com um gap em coordenadas de mundo — worldGap = clamp(min(baseStageW,baseStageH)*0.16, 48, 96), worldX = col*(baseStageW+worldGap) e worldY = row*(baseStageH+worldGap); a célula central (col0/row0) continua sendo a imagem principal e a imagem adicionada à esquerda/direita/acima/abaixo não encosta mais na principal (o Stage/DOM via renderProjectWorldExtraImages já reflete o gap). Correção 2/3 (Preview/Export com várias imagens): nova função central de render de mundo drawWorldToCanvas(ctx, cam, outW, outH, options) — limpa o canvas com o fundo correto, percorre os assets de imagem visíveis ordenados por zIndex, mapeia cada rect (worldX/Y/W/H) para px da câmera, desenha apenas a parte visível (clipping do canvas + cull) e respeita o frame/câmera; usa mainSource = proxy de edição/preview quando há override e original (canônica) no export, sem nunca depender do DOM visual do Stage. drawAtTDirect() redireciona para drawWorldToCanvas SOMENTE quando isMultiImageWorldActive() (2+ imagens) — projetos de 1 imagem mantêm o caminho single-image idêntico (Preview/MP4 1:1/9:16/4:3 inalterados). Substitui o antigo mundo composto 3x3 fixo (getProjectWorldCompositeSource) que ignorava assets no Preview (renderSourceOverride) e gerava tela preta quando o frame apontava para a segunda imagem. Correção 4 (diag): painel Diagnóstico ganha asset[i].visible/zIndex, worldGap usado, multiImageWorldActive, renderWorldLastAssetCount, previewRenderAssetCount, exportRenderAssetCount, lastPreviewError e lastWorldRenderError. preserve: remoção de "Cena 1", fundo cinza de "Gerando vídeo" e correções 30M/30N; NÃO altera motor de export MP4/1:1, Stage/layoutStage(), zoom/pan/clamps/curvas/motor de frames, textos/ícones/cores/layout aprovados; sem edição livre de posição/escala, sem painel de layers, sem cenas; sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30M — feat(perf): Tarefa 1 — proxy de edição para imagens grandes. createEditorImageProxyIfNeeded(image) gera, quando a imagem original tem o maior lado > 2048px OU > 6 megapixels, um canvas reduzido (maior lado ~2048px, mesma proporção) usado APENAS como src de #imgEl (Stage/editor); imagens pequenas/médias continuam usando a própria imagem original em #imgEl. originalImageElement/originalImageSrc preservam a imagem original (mesma fonte canônica de getCanonicalRenderSource()/export); editorImageElement/editorImageSrc apontam para o proxy (ou para a original quando não há proxy). imgNatW/imgNatH, frames, Stage/layoutStage(), zoom/pan/clamps e o motor de export continuam baseados exclusivamente na imagem original — proxy não altera proporção, posição de frames nem fator Stage→px natural. feat(diag): painel Diagnóstico ganha imageMegapixels, estimatedOriginalRGBABytes, hasEditorProxy, editorProxyW/H, editorProxyScale, editorDrawSource, exportDrawSource, lastProxyError, lastImageDecodeError e memoryRiskLevel (Tarefa 2). fix(preview): .preview-bottom usa var(--menu-bg) em vez de #111, removendo fundo preto remanescente da barra inferior do Preview (Tarefa 3). fix(ui): #imageChoiceSheet (Substituir/Adicionar/Cancelar imagem) e #multiImagePlusModal passam de z-index 220/230 para 320/330, acima do menu superior/preferências (#settingsSheet, z-index 300); as três opções agora chamam closeAll() para fechar o menu e voltar ao Stage (Tarefa 4). preserve: NÃO altera motor de exportação MP4, correção 1:1, Stage/layoutStage(), projectWorld/assets/views, múltiplas imagens reais, frames/curvas/zoom/pan/clamps, textos/ícones/cores aprovadas além dos fundos pretos remanescentes do Preview; sem prompt/alert/confirm (base v8z4b30I). -->
 <!-- Arco Motion App — v8z4b30I — fix(export): corrige EncodingError do WebCodecs ao gerar MP4 no formato 1:1 (1080×1080). Causa raiz: 1080×1080 = 68×68 = 4624 macroblocos de 16×16, acima do limite de 3600 MBs dos níveis H.264 3.0/3.1 usados pelos candidatos de codec fixos (9:16 = 720×1280 = 3600 MBs e 4:3 = 1080×810 = 3468 MBs, ambos dentro do limite — por isso funcionavam). O Safari aceitava os candidatos de nível 3.x via VideoEncoder.isConfigSupported() mesmo para 1:1, mas o encoder real falhava em runtime com EncodingError ("Encoding task failed"). startRecord() agora calcula o número de macroblocos da resolução de export e, quando acima de 3600 (hoje, só o 1:1), usa candidatos de codec com nível H.264 4.0 (avc1.420028/avc1.4D0028/avc1.640028, até 8192 MBs); 9:16/4:3 mantêm exatamente os mesmos candidatos/ordem de antes. Além disso, o pipeline WebCodecs roda em try/catch isolado: se o encoder falhar em runtime em qualquer formato, cai automaticamente para o fallback MediaRecorder (mesmo recCanvas/loop de render isolado já usado pelo fallback, sem tocar Stage/DOM do editor), preservando o erro original do WebCodecs em lastExportOriginalErrorName/Message. feat(diag): arcoExportDiag ganha encoderPathUsed ('webcodecs'|'mediarecorder') e fallbackUsed, exibidos no painel Diagnóstico junto com lastExportOriginalErrorName/Message. preserve: NÃO altera carregamento de imagem, Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames, projectWorld/assets/views, múltiplas imagens, menus/textos/ícones/cores/layout; sem prompt/alert/confirm; NÃO remerge 30G/30H (base v8z4b30F). -->
 <!-- Arco Motion App — v8z4b30F — fix(export): corrige falha de exportação MP4 específica do formato 1:1 (1080×1080), incluindo arquivos novos criados já em 1:1 e projetos 9:16/4:3 trocados para 1:1. Causa raiz: em finishExport(), qualquer exceção lançada durante a restauração da UI do Preview pós-sucesso (após o blob/MP4 já estarem prontos) propagava para o catch de startRecord(), que sobrescrevia o diagnóstico de 'success' para 'cleanup-failed' e exibia o erro genérico "Erro ao gerar vídeo. Tente novamente." mesmo com o vídeo já gerado. finishExport() agora isola essa restauração em try/catch próprio: o MP4 gerado nunca é descartado nem reportado como falha por causa de um passo de limpeza/UI; cleanupFailedExport() também passa a ser idempotente/seguro (todas as operações de DOM/canvas em try/catch) e não sobrescreve mais lastExportStep/lastExportError com a mensagem genérica. feat(diag): arcoExportDiag agora separa lastExportStep, lastExportError (erro real da exportação), lastCleanupError (erro da limpeza/restauração pós-export, se houver), exportSuccess e cleanupSuccess — todos exibidos no painel Diagnóstico. fix(preview): startPreview()/startRecord() chamam closeAll() para fechar painéis/menus editoriais transitórios (Formato de saída, Edição de Tempo, Movimento, Trajetória etc.) antes de abrir o Preview/export, evitando overlays sobrepostos ao canvas (z-index 200 > 90). Validado: novo projeto 1:1 (Preview e MP4), 9:16→1:1, 4:3→1:1, 1:1→9:16, mantendo 9:16/4:3 funcionando. preserve: NÃO implementa múltiplas imagens reais, NÃO altera Stage/layoutStage()/zoom/pan/clamps/curvas/motor de frames, NÃO altera projectWorld/assets/views/permissões, visuais/ícones/textos/menus/fluxo aprovados; sem prompt/alert/confirm (base v8z4b30E). -->
@@ -3916,7 +3917,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30N</span><br><span id="appVersionNameText">v8z4b30N</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30O</span><br><span id="appVersionNameText">v8z4b30O</span></div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -6685,8 +6686,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30N';
-const APP_VERSION_NAME = 'v8z4b30N';
+const APP_VERSION = 'v8z4b30O';
+const APP_VERSION_NAME = 'v8z4b30O';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -18666,6 +18667,23 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics, renderS
     ctx.fillRect(0, 0, W, H);
     return false;
   }
+
+  // v8z4b30O — Múltiplas imagens: quando o projeto tem 2+ imagens, todo o
+  // Preview/Export passa pela renderização central de mundo (drawWorldToCanvas),
+  // que percorre os assets visíveis e desenha apenas a parte dentro da câmera —
+  // inclusive a segunda imagem quando o frame aponta para ela (sem tela preta).
+  // mainSource segue a regra já existente: proxy de edição/preview quando há
+  // override; original (canônica) no export. Projetos de 1 imagem NÃO entram
+  // aqui e mantêm o caminho single-image idêntico ao atual.
+  if (isMultiImageWorldActive()) {
+    const ctxName = (typeof isRecording !== 'undefined' && isRecording) ? 'export'
+                  : (typeof isPreviewing !== 'undefined' && isPreviewing) ? 'preview' : 'world';
+    return drawWorldToCanvas(ctx,
+      { cx: st.cx, cy: st.cy, sw: st.sw, sh: st.sh, rot: st.rot },
+      W, H,
+      { t, context: ctxName, mainSource: renderSourceOverride || canonicalSource, canonicalDims });
+  }
+
   const sourceScaleX = canonicalDims.width > 0 ? renderDims.width / canonicalDims.width : 1;
   const sourceScaleY = canonicalDims.height > 0 ? renderDims.height / canonicalDims.height : 1;
   const { rot } = st;
@@ -18673,23 +18691,6 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics, renderS
   let cy = st.cy * sourceScaleY;
   let sw = st.sw * sourceScaleX;
   let sh = st.sh * sourceScaleY;
-
-  // v8z4b30N — Múltiplas imagens: quando o projeto tem mais de 1 imagem,
-  // renderiza a partir do mundo composto (3x3 células, imagem principal
-  // sempre na célula central). Para projetos com 1 imagem,
-  // getProjectWorldCompositeSource() retorna null e nada muda aqui.
-  if (!renderSourceOverride) {
-    const worldComposite = getProjectWorldCompositeSource();
-    if (worldComposite) {
-      const wScale = _worldCompositeScale;
-      cx = (st.cx + canonicalDims.width) * wScale;
-      cy = (st.cy + canonicalDims.height) * wScale;
-      sw = st.sw * wScale;
-      sh = st.sh * wScale;
-      renderSource = worldComposite;
-      renderDims = getImageSourceDimensions(worldComposite);
-    }
-  }
 
   const cover = diagnostics?.cover || rotationCoverScaleForRect(W, H, rot);
   if (!isFiniteNum(cover) || cover <= 0) return false;
@@ -18878,6 +18879,7 @@ function startPreview() {
     try {
       renderFrameSafely(pCtx, dispCanvas, t, pW2, pH2, totalPF, Math.round(t * (totalPF - 1)), { renderSource: previewSource });
     } catch (err) {
+      lastPreviewError = (err && err.message) || String(err); // v8z4b30O — diagnóstico
       logExportError(Math.round(t * (totalPF - 1)), t, pW2, pH2, err, buildRenderDiagnostics(t, pW2, pH2, Math.round(t * (totalPF - 1))));
       renderUniversalFallback(pCtx, dispCanvas, t, pW2, pH2, Math.round(t * (totalPF - 1)), 'preview-loop-error', null);
     }
@@ -18974,6 +18976,7 @@ function togglePreviewPlayback() {
       try {
         renderFrameSafely(pCtxR, dispCanvas, t, pW2r, pH2r, totalPF, Math.round(t * (totalPF - 1)), { renderSource: previewSource });
       } catch (err) {
+        lastPreviewError = (err && err.message) || String(err); // v8z4b30O — diagnóstico
         logExportError(Math.round(t * (totalPF - 1)), t, pW2r, pH2r, err, buildRenderDiagnostics(t, pW2r, pH2r, Math.round(t * (totalPF - 1))));
         renderUniversalFallback(pCtxR, dispCanvas, t, pW2r, pH2r, Math.round(t * (totalPF - 1)), 'preview-resume-loop-error', null);
       }
@@ -24654,6 +24657,12 @@ function addImageAssetAtSlot(slotKey) {
     img.onload = () => {
       const baseW = projectWorld.baseStageW;
       const baseH = projectWorld.baseStageH;
+      // v8z4b30O — Correção 1: espaçamento (gap) entre células do grid 3x3, em
+      // coordenadas de mundo. A imagem adicionada à esquerda/direita/acima/abaixo
+      // não encosta mais na imagem principal. A célula central (col=0,row=0)
+      // continua sendo a posição da imagem principal.
+      const worldGap = Math.max(48, Math.min(96, Math.min(baseW, baseH) * 0.16));
+      lastWorldGapUsed = worldGap;
       const asset = {
         id: 'img-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
         type: 'image',
@@ -24661,8 +24670,8 @@ function addImageAssetAtSlot(slotKey) {
         src: dataUrl,
         sourceW: img.naturalWidth,
         sourceH: img.naturalHeight,
-        worldX: slot.col * baseW,
-        worldY: slot.row * baseH,
+        worldX: slot.col * (baseW + worldGap),
+        worldY: slot.row * (baseH + worldGap),
         worldW: baseW,
         worldH: baseH,
         rotation: 0,
@@ -24729,6 +24738,14 @@ let _worldCompositeCanvas = null;
 let _worldCompositeScale = 1;
 let _worldCompositeDirty = true;
 const WORLD_COMPOSITE_MAX_PIXELS = 9000000; // ~9MP — limite seguro de memória no iPhone/Safari
+
+// v8z4b30O — estado de diagnóstico/render do mundo multi-imagem.
+let lastWorldGapUsed = 0;
+let renderWorldLastAssetCount = 0;
+let previewRenderAssetCount = 0;
+let exportRenderAssetCount = 0;
+let lastPreviewError = '';
+let lastWorldRenderError = '';
 
 function invalidateProjectWorldComposite() {
   _worldCompositeDirty = true;
@@ -24808,6 +24825,163 @@ function getProjectWorldCompositeSource() {
     return canvas;
   } catch (e) {
     return null;
+  }
+}
+
+// ═══════════════════════════════════════
+// v8z4b30O — RENDERIZAÇÃO CENTRAL DE MUNDO (Preview/Export multi-imagem)
+// drawWorldToCanvas é a fonte única de verdade para desenhar o mundo composto
+// (várias imagens) em um canvas, a partir do frame de câmera em px da imagem
+// canônica. NUNCA depende do DOM visual do Stage. Para projetos de 1 imagem
+// esta função NÃO é usada — o caminho single-image de drawAtTDirect permanece
+// exatamente igual ao atual (resultado visual idêntico).
+// ═══════════════════════════════════════
+function isMultiImageWorldActive() {
+  return getImageAssetCount() >= 2 &&
+         projectWorld.initialized &&
+         projectWorld.baseStageW > 0 &&
+         projectWorld.baseStageH > 0;
+}
+
+// Converte o rect de um asset (em px de Stage/mundo) para px da imagem canônica.
+// A imagem principal (worldX=0, worldY=0, worldW=baseStageW, worldH=baseStageH)
+// mapeia para [0,0, canonicalW, canonicalH].
+function getWorldRenderAssetRectSourcePx(a, canonicalDims) {
+  const baseW = projectWorld.baseStageW || 1;
+  const baseH = projectWorld.baseStageH || 1;
+  const sxPerStage = (canonicalDims.width || 0) / baseW;
+  const syPerStage = (canonicalDims.height || 0) / baseH;
+  return {
+    ax: (a.worldX || 0) * sxPerStage,
+    ay: (a.worldY || 0) * syPerStage,
+    aw: (a.worldW || baseW) * sxPerStage,
+    ah: (a.worldH || baseH) * syPerStage
+  };
+}
+
+// Coleta os assets de imagem VISÍVEIS com sua fonte decodificada e rect em px
+// canônico, ordenados por zIndex crescente. asset[0] (imagem principal) usa
+// mainSource (proxy de edição/preview ou original do export, conforme já
+// definido pelo chamador). Assets extras usam o elemento já decodificado;
+// quando ainda não decodificado, dispara a decodificação e o loop de Preview
+// redesenha nos frames seguintes (evita tela vazia por asset não carregado).
+function collectWorldRenderAssets(mainSource, canonicalDims) {
+  const out = [];
+  if (!Array.isArray(assets)) return out;
+  let firstImageSeen = false;
+  for (let i = 0; i < assets.length; i++) {
+    const a = assets[i];
+    if (!a || a.type !== 'image') continue;
+    const isMain = !firstImageSeen;
+    if (isMain) firstImageSeen = true;
+    if (a.visible === false) continue;
+    let src = null;
+    if (isMain) {
+      src = mainSource || getCanonicalRenderSource();
+    } else if (a._img && getImageSourceDimensions(a._img).width > 0) {
+      src = a._img;
+    } else if (a.src) {
+      const img = new Image();
+      img.src = a.src;
+      a._img = img; // ficará pronto em frames seguintes
+      if (getImageSourceDimensions(img).width > 0) src = img;
+    }
+    if (!src) continue;
+    const rect = getWorldRenderAssetRectSourcePx(a, canonicalDims);
+    if (!(rect.aw > 0) || !(rect.ah > 0)) continue;
+    out.push({ src, rect, zIndex: Number(a.zIndex) || 0 });
+  }
+  out.sort((p, q) => p.zIndex - q.zIndex);
+  return out;
+}
+
+// cam = { cx, cy, sw, sh, rot } em px da imagem canônica (mesmo espaço de
+// getStateAtT). outW/outH = resolução do canvas de saída.
+function drawWorldToCanvas(ctx, cam, outW, outH, options) {
+  options = options || {};
+  const context = options.context || 'world';
+  let count = 0;
+  try {
+    const canonicalDims = options.canonicalDims || getImageSourceDimensions(getCanonicalRenderSource());
+    const mainSource = options.mainSource || getCanonicalRenderSource();
+    if (!ctx || !(outW > 0) || !(outH > 0) || !cam ||
+        !(cam.sw > 0) || !(cam.sh > 0) || !(canonicalDims.width > 0) || !(canonicalDims.height > 0)) {
+      lastWorldRenderError = 'parametros invalidos';
+      return false;
+    }
+    applyCanvasRenderQuality(ctx);
+    const rot = cam.rot || 0;
+    const cover = rotationCoverScaleForRect(outW, outH, rot);
+    const renderAssets = collectWorldRenderAssets(mainSource, canonicalDims);
+    count = renderAssets.length;
+
+    ctx.clearRect(0, 0, outW, outH);
+    // Fundo
+    if (bgColor === 'mirror') {
+      // Fundo espelhado a partir da imagem principal (paridade com single-image).
+      const mDims = getImageSourceDimensions(mainSource);
+      const ms = (canonicalDims.width > 0) ? (mDims.width / canonicalDims.width) : 1;
+      const cropW = cam.sw * ms * cover, cropH = cam.sh * ms * cover;
+      drawMirrorBg(ctx, outW, outH, cam.cx * ms - cropW / 2, cam.cy * ms - cropH / 2, cropW, cropH, rot, cover, mainSource);
+    } else {
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, outW, outH);
+    }
+
+    // Câmera: px canônico → canvas. Para rot=0/cover=1 equivale a
+    // screen = outW/2 + (outW/cam.sw) * (px - cam.cx).
+    ctx.save();
+    try {
+      // Câmera px canônico → canvas. NÃO multiplicamos por cover aqui: no caminho
+      // single-image (drawAtTDirect) o cover apenas amplia o crop amostrado, não a
+      // escala em tela (escala líquida = outW/cam.sw). Como aqui desenhamos o asset
+      // inteiro (clipado pelo canvas), a cobertura de cantos sob rotação acontece
+      // naturalmente, preservando a paridade visual com o single-image.
+      ctx.translate(outW / 2, outH / 2);
+      ctx.rotate(rot * Math.PI / 180);
+      ctx.scale(outW / cam.sw, outH / cam.sh);
+      ctx.translate(-cam.cx, -cam.cy);
+      const blurPx = (options.t != null) ? getBlurAtT(options.t, outW) : 0;
+      if (blurPx > 0) ctx.filter = `blur(${(blurPx * cam.sw / outW).toFixed(2)}px)`;
+      // Cull: bbox da câmera em px canônico, com folga para cobertura/rotação.
+      const reach = Math.max(cam.sw, cam.sh) * cover;
+      const camMinX = cam.cx - reach, camMaxX = cam.cx + reach;
+      const camMinY = cam.cy - reach, camMaxY = cam.cy + reach;
+      for (let i = 0; i < renderAssets.length; i++) {
+        const r = renderAssets[i].rect;
+        if (r.ax + r.aw < camMinX || r.ax > camMaxX || r.ay + r.ah < camMinY || r.ay > camMaxY) continue;
+        drawCoverImage(ctx, renderAssets[i].src, r.ax, r.ay, r.aw, r.ah);
+      }
+    } finally {
+      ctx.filter = 'none';
+      ctx.restore();
+    }
+
+    // Marca d'água — mesma regra do caminho single-image (free com 4+ frames).
+    if (!isProMode && frameCount >= 4) {
+      ctx.save();
+      const fontSize = Math.round(outW * 0.032);
+      ctx.font = `600 ${fontSize}px -apple-system, system-ui, sans-serif`;
+      ctx.globalAlpha = 0.55;
+      const isLight = bgColor === '#ffffff' || bgColor === '#e6e6e6' || bgColor === '#cccccc' || bgColor === '#b3b3b3';
+      ctx.fillStyle = isLight ? '#000' : '#fff';
+      ctx.shadowColor = isLight ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 6;
+      const txt = WATERMARK_TEXT;
+      const tw = ctx.measureText(txt).width;
+      ctx.fillText(txt, outW - tw - outW * 0.025, outH - outH * 0.025);
+      ctx.restore();
+    }
+
+    renderWorldLastAssetCount = count;
+    if (context === 'preview') previewRenderAssetCount = count;
+    else if (context === 'export') exportRenderAssetCount = count;
+    lastWorldRenderError = '';
+    return count > 0;
+  } catch (e) {
+    lastWorldRenderError = (e && e.message) || String(e);
+    renderWorldLastAssetCount = count;
+    return false;
   }
 }
 
@@ -25079,6 +25253,7 @@ function buildDiagnosticsText() {
   push('assets.length', String(_assetsArr.length));
   push('imageAssetsCount', String((typeof getImageAssetCount === 'function') ? getImageAssetCount() : 'n/d'));
   // v8z4b30N — lista todos os assets de imagem (não apenas o asset[0]).
+  // v8z4b30O — inclui visible e zIndex por asset.
   let _imgAssetIdx = 0;
   for (let i = 0; i < _assetsArr.length; i++) {
     const _a = _assetsArr[i];
@@ -25086,13 +25261,21 @@ function buildDiagnosticsText() {
     push('asset[' + _imgAssetIdx + '].sourceW/H', _diagFmtNum(_a.sourceW) + ' × ' + _diagFmtNum(_a.sourceH));
     push('asset[' + _imgAssetIdx + '].worldX/Y', _diagFmtNum(_a.worldX, 2) + ', ' + _diagFmtNum(_a.worldY, 2));
     push('asset[' + _imgAssetIdx + '].worldW/H', _diagFmtNum(_a.worldW, 2) + ' × ' + _diagFmtNum(_a.worldH, 2));
+    push('asset[' + _imgAssetIdx + '].visible', String(_a.visible !== false));
+    push('asset[' + _imgAssetIdx + '].zIndex', _diagFmtNum(_a.zIndex));
     _imgAssetIdx++;
   }
   if (_imgAssetIdx === 0) push('asset[0]', 'n/d');
   push('views.length', String(_viewsArr.length));
   push('activeSlotSelection', (typeof activeSlotSelection !== 'undefined' && activeSlotSelection) ? activeSlotSelection : 'n/d');
-  push('worldComposite.active', String((typeof getProjectWorldCompositeSource === 'function') && !!getProjectWorldCompositeSource()));
-  push('worldComposite.scale', _diagFmtNum((typeof _worldCompositeScale !== 'undefined') ? _worldCompositeScale : 1, 4));
+  // v8z4b30O — diagnóstico de mundo multi-imagem (Preview/Export).
+  push('worldGap usado', _diagFmtNum((typeof lastWorldGapUsed !== 'undefined') ? lastWorldGapUsed : 0, 2));
+  push('multiImageWorldActive', (typeof isMultiImageWorldActive === 'function') ? String(isMultiImageWorldActive()) : 'n/d');
+  push('renderWorldLastAssetCount', _diagFmtNum((typeof renderWorldLastAssetCount !== 'undefined') ? renderWorldLastAssetCount : 0));
+  push('previewRenderAssetCount', _diagFmtNum((typeof previewRenderAssetCount !== 'undefined') ? previewRenderAssetCount : 0));
+  push('exportRenderAssetCount', _diagFmtNum((typeof exportRenderAssetCount !== 'undefined') ? exportRenderAssetCount : 0));
+  push('lastPreviewError', (typeof lastPreviewError !== 'undefined' && lastPreviewError) ? lastPreviewError : 'nenhum');
+  push('lastWorldRenderError', (typeof lastWorldRenderError !== 'undefined' && lastWorldRenderError) ? lastWorldRenderError : 'nenhum');
   push('canAddImageAsset', (typeof canAddImageAsset === 'function') ? String(canAddImageAsset()) : 'n/d');
   let _faMulti = 'n/d';
   try {

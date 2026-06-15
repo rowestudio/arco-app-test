@@ -1,3 +1,26 @@
+# QA pendente — v8z4b30O: múltiplas imagens (fase 1) — Preview/Export + espaçamento
+
+> Base confirmada: `v8z4b30N`. Corrige a fase 1 de múltiplas imagens com foco em Preview/Export e espaçamento entre imagens. Não implementa edição livre de posição/escala, painel de layers nem cenas. Não altera o motor de curvas, o motor de export MP4 1:1/9:16/4:3, `Stage`/`layoutStage()` além do mínimo, zoom/pan/clamps. Não promove para estável.
+
+## Escopo v8z4b30O
+
+1. App abre igual visualmente (`v8z4b30O` no menu/configurações; `APP_VERSION`/`APP_VERSION_NAME` em `v8z4b30O`).
+2. Projeto com 1 imagem continua igual (Stage, Preview, MP4 1:1/9:16/4:3, frames/curvas/zoom/pan).
+3. Adicionar segunda imagem no slot esquerdo cria espaçamento visível (não encosta na imagem principal).
+4. Adicionar segunda imagem no slot direito cria espaçamento visível.
+5. Slots acima/abaixo também criam espaçamento (gap em mundo).
+6. Stage mostra a(s) imagem(ns) adicionada(s).
+7. O frame pode ser movido para a região da segunda imagem (modo livre, sem clamp).
+8. Preview **não** abre tela preta com 2+ imagens.
+9. Preview mostra a segunda imagem quando o frame aponta para ela.
+10. MP4 1:1 continua funcionando.
+11. MP4 9:16 continua funcionando.
+12. MP4 4:3 continua funcionando.
+13. MP4 com 2 imagens mostra o conteúdo correto conforme o frame/câmera.
+14. Nenhuma mudança em projetos antigos de uma imagem.
+15. iPhone/Safari: sem regressão de pan/zoom; conferir no Diagnóstico `worldGap usado`, `multiImageWorldActive`, `renderWorldLastAssetCount`, `previewRenderAssetCount`, `exportRenderAssetCount`, `lastPreviewError`, `lastWorldRenderError`, e por asset `visible`/`zIndex`/`worldX/Y`/`worldW/H`/`sourceW/H`.
+16. Sem `prompt()`/`alert()`/`confirm()` em todo o fluxo.
+
 # QA pendente — v8z4b30E: HOTFIX export MP4 após troca de formato
 
 > Base confirmada: `v8z4b30D`. HOTFIX exclusivo: restaura a geração de MP4 após o usuário trocar o formato/proporção do projeto já configurado. Não implementa múltiplas imagens, não altera Stage, `layoutStage()`, zoom/pan/clamps, curvas, `projectWorld`/assets/views/permissões, visuais/ícones/textos/menus/fluxo aprovados. Não promove para estável.
