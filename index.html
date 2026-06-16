@@ -6693,8 +6693,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30W';
-const APP_VERSION_NAME = 'v8z4b30W';
+const APP_VERSION = 'v8z4b30Y';
+const APP_VERSION_NAME = 'v8z4b30Y';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7580,6 +7580,9 @@ function setSegmentTrajectoryPoint(segIndex, pointDescriptor, nextPoint) {
 
   // Aplicar via pipeline guardado — sem pushUndo/markDirty/render (gerenciados pelo chamador)
   applyExistingCurveEditViaPatch(_target, _nextCtrlPt, { pushUndo: false, markDirty: false, render: false });
+  // v8z4b30Y diagnostics
+  lastCurveMutatedIndex = segIndex;
+  if (lockedDragSegmentIndex >= 0 && lastCurveMutatedIndex !== lockedDragSegmentIndex) curveDragMismatchDetected = true;
 }
 
 function getAllTrajectoryPoints() {
@@ -12926,6 +12929,15 @@ let _frameLoadRawSnapshots = null;      // [{nx,ny,nw,nh,rawX,rawY,rawW,rawH}]
 let _frameLoadRestoredSnapshots = null; // [{x,y,w,h}]
 let _frameLoadPostLoadSnapshots = null; // [{x,y,w,h}]
 
+// v8z4b30Y: curve/segment drag diagnostics (BUG1 tracking)
+let lockedDragSegmentIndex = -1;   // segment index locked at drag start
+let lockedDragCurveIndex   = -1;   // expected curve index for that segment
+let lockedDragHandleType   = '';   // 'in' | 'out' | 'ctrl' | 'midpoint' | 'tangent'
+let lastCurveMutatedIndex  = -1;   // last segment whose curve was actually modified
+let curveDragMismatchDetected = false; // true if locked != mutated during drag
+let lastSelectionSource    = '';   // what triggered last frame/segment selection
+let selectionStateConsistent = true; // false if selectedSegmentIndex doesn't match activeIdx
+
 // ═══════════════════════════════════════
 // DOM REFS
 // ═══════════════════════════════════════
@@ -12969,11 +12981,13 @@ function selectFrameContext(fi, opts = {}) {
     timelineFocalFrameId = fi;
   }
   selectedSegmentIndex = -1;
+  lastSelectionSource = opts._src || 'selectFrameContext';
+  selectionStateConsistent = true;
   setBottomContext('frame');
   if (opts.showStageMenu) showStageFrameMenu();
   if (opts.centerTimeline || opts.updateTimelineFocus === true) requestLowerTimelineCenter(activeIdx);
 }
-function selectSegmentContext(seg) {
+function selectSegmentContext(seg, _src) {
   if (typeof seg !== 'number' || seg < 0 || seg >= getActiveSegmentCount()) return;
   closeCustBar();
   hideStageFrameMenu();
@@ -12984,6 +12998,8 @@ function selectSegmentContext(seg) {
   // v8z4b30V: manter valor válido para não acionar centralização automática ao selecionar trecho
   lowerTimelineCenterFrameIndex = activeIdx;
   _activeEaseSeg = seg;
+  lastSelectionSource = _src || 'selectSegmentContext';
+  selectionStateConsistent = (selectedSegmentIndex === activeIdx || selectedSegmentIndex === activeIdx + 1 || selectedSegmentIndex === activeIdx - 1);
   setBottomContext('segment');
   renderAll();
 }
@@ -16484,12 +16500,15 @@ function updateCtrlPts() {
                   if (editorPanMode || isPreviewing || isStageNavigationActiveOrCoolingDown()) return;
                   e.preventDefault();
                   e.stopPropagation();
-                  startFrameHandleDrag('out', _gFiOut);
+                  // BUG1 FIX: read fi from dataset at event time, not from stale closure
+                  const fi = parseInt(ghostOutEl.dataset.arcoFi || '0', 10);
+                  startFrameHandleDrag('out', fi);
                 });
                 ghostOutEl._arcoListenerAttached = true;
               }
               stageAppendChild(ghostOutEl);
             }
+            ghostOutEl.dataset.arcoFi = String(_gFiOut); // updated every render
             ghostOutEl.style.pointerEvents = '';
             ghostOutEl.style.opacity = '0.58';
             ghostOutEl.style.display = 'block';
@@ -16519,12 +16538,15 @@ function updateCtrlPts() {
                   if (editorPanMode || isPreviewing || isStageNavigationActiveOrCoolingDown()) return;
                   e.preventDefault();
                   e.stopPropagation();
-                  startFrameHandleDrag('in', _gFiIn);
+                  // BUG1 FIX: read fi from dataset at event time, not from stale closure
+                  const fi = parseInt(ghostInEl.dataset.arcoFi || '0', 10);
+                  startFrameHandleDrag('in', fi);
                 });
                 ghostInEl._arcoListenerAttached = true;
               }
               stageAppendChild(ghostInEl);
             }
+            ghostInEl.dataset.arcoFi = String(_gFiIn); // updated every render
             ghostInEl.style.pointerEvents = '';
             ghostInEl.style.opacity = '0.58';
             ghostInEl.style.display = 'block';
@@ -16657,6 +16679,12 @@ function startFrameHandleDrag(which, fiOverride) {
   }
   gestureState.mode = 'pendingSingleTouch';
   frameHandleDragState = { which, fi: dragFi, target: dragTarget, didMove: false, undoCaptured: false };
+  // v8z4b30Y diagnostics
+  lockedDragHandleType = which;
+  lockedDragSegmentIndex = dragTarget && dragTarget.type === 'segment' ? dragTarget.segIndex : -1;
+  lockedDragCurveIndex   = lockedDragSegmentIndex;
+  curveDragMismatchDetected = false;
+  lastSelectionSource = 'startFrameHandleDrag';
 }
 
 function applyPointModeForFrame(fi, mode) {
@@ -17465,6 +17493,12 @@ function startCtrlDrag(seg) {
   ctrlDragUndoCaptured = false;
   // Marcar como manual — não reposiciona mais automaticamente
   if (typeof seg === 'number' && seg >= 0) setSegmentCurveManual(seg, true);
+  // v8z4b30Y diagnostics
+  lockedDragHandleType = 'ctrl';
+  lockedDragSegmentIndex = typeof seg === 'number' ? seg : -1;
+  lockedDragCurveIndex   = lockedDragSegmentIndex;
+  curveDragMismatchDetected = false;
+  lastSelectionSource = 'startCtrlDrag';
 }
 
 // Prevent scroll/native zoom on the Stage viewport but allow controls outside it.
@@ -17778,6 +17812,10 @@ function onMove(e) {
     const applied = applyFrameConnectedHandleEdit(_dragFi, frameHandleDragState.which, _dragTarget, sc.x, sc.y);
     if (applied) {
       frameHandleDragState.didMove = true;
+      // v8z4b30Y diagnostics
+      const _mutSeg = _dragTarget && _dragTarget.type === 'segment' ? _dragTarget.segIndex : -1;
+      lastCurveMutatedIndex = _mutSeg;
+      if (lockedDragSegmentIndex >= 0 && _mutSeg >= 0 && _mutSeg !== lockedDragSegmentIndex) curveDragMismatchDetected = true;
       drawBezier(); updateCtrlPts();
     }
     return;
@@ -18386,12 +18424,18 @@ function renderFrameSafely(ctx, canvas, t, W, H, totalFrames, frameIdx, options 
   }
   hardResetCanvas(ctx, canvas, getProjectBackgroundColor());
   let ok = false;
+  let renderHadException = false;
   try {
     ok = drawAtT(ctx, t, W, H, totalFrames, frameIdx, diagnostics, options.renderSource || null) === true;
   } catch (err) {
+    renderHadException = true;
     logExportError(frameIdx, t, W, H, err, diagnostics);
     ok = false;
   }
+  // BUG2 FIX: in multi-image mode, drawWorldToCanvas returns false when camera is in a
+  // gray zone (gap between images) — background is already correctly drawn, no exception.
+  // Accept this as a valid render so we don't overwrite the gray background with image 1.
+  if (!ok && multiWorld && !renderHadException) ok = true;
   if (!ok) {
     ok = renderUniversalFallback(ctx, canvas, t, W, H, frameIdx, diagnostics.reason || 'render-returned-false', diagnostics);
     if (isRecording) { exportFallbackToSingleImage = true; exportFallbackReason = diagnostics.reason || 'render-returned-false'; }
@@ -26382,6 +26426,55 @@ function buildDiagnosticsText() {
         push('frame[' + _si + '].deltaRawToPostLoadY', _diagFmtNum(_res.deltaRawToPostLoadY, 2));
       }
     }
+  }
+  L.push('');
+
+  // v8z4b30Y — BUG1: associação curva/trecho/handle
+  push('bottomContextMode', (typeof bottomContextMode !== 'undefined') ? bottomContextMode : 'n/d');
+  push('selectedSegmentIndex', (typeof selectedSegmentIndex !== 'undefined') ? String(selectedSegmentIndex) : 'n/d');
+  push('activeIdx', (typeof activeIdx !== 'undefined') ? String(activeIdx) : 'n/d');
+  push('lastSelectionSource', lastSelectionSource || 'n/d');
+  push('selectionStateConsistent', String(selectionStateConsistent));
+  push('lockedDragHandleType', lockedDragHandleType || 'none');
+  push('lockedDragSegmentIndex', String(lockedDragSegmentIndex));
+  push('lockedDragCurveIndex', String(lockedDragCurveIndex));
+  push('lastCurveMutatedIndex', String(lastCurveMutatedIndex));
+  push('curveDragMismatchDetected', String(curveDragMismatchDetected));
+  {
+    // Ghost handle dataset.arcoFi valores atuais (leitura ao vivo)
+    const _go = document.getElementById('frame_ghost_out');
+    const _gi = document.getElementById('frame_ghost_in');
+    push('ghostOut.dataset.arcoFi', _go ? (_go.dataset.arcoFi != null ? _go.dataset.arcoFi : 'n/d') : 'n/d (elemento ausente)');
+    push('ghostIn.dataset.arcoFi',  _gi ? (_gi.dataset.arcoFi  != null ? _gi.dataset.arcoFi  : 'n/d') : 'n/d (elemento ausente)');
+  }
+  L.push('');
+
+  // v8z4b30Y — BUG2: renderização zona cinza multi-imagem
+  push('multiWorld (ao abrir diag)', (typeof isMultiImageWorldActive === 'function') ? String(isMultiImageWorldActive()) : 'n/d');
+  push('exportUsedWorldRenderer', String((typeof exportUsedWorldRenderer !== 'undefined') ? exportUsedWorldRenderer : false));
+  push('exportFallbackToSingleImage', String((typeof exportFallbackToSingleImage !== 'undefined') ? exportFallbackToSingleImage : false));
+  push('exportFallbackReason', (typeof exportFallbackReason !== 'undefined' && exportFallbackReason) ? exportFallbackReason : 'nenhum');
+  L.push('');
+
+  // v8z4b30Y — BUG3: consistência de geometria no load
+  push('framesRestoredInProjectWorld', String((typeof framesRestoredInProjectWorld !== 'undefined') ? framesRestoredInProjectWorld : false));
+  push('framesChangedAfterPostLoad', String((typeof framesChangedAfterPostLoad !== 'undefined') ? framesChangedAfterPostLoad : false));
+  push('framesNormalizedOnLoad', String((typeof framesNormalizedOnLoad !== 'undefined') ? framesNormalizedOnLoad : false));
+  push('framesRecenteredOnLoad', String((typeof framesRecenteredOnLoad !== 'undefined') ? framesRecenteredOnLoad : false));
+  push('frameOutOfWorldCorrectionApplied', String((typeof frameOutOfWorldCorrectionApplied !== 'undefined') ? frameOutOfWorldCorrectionApplied : false));
+  {
+    // Geometria atual do ProjectWorld e Stage para verificar consistência de load
+    const _pw = (typeof projectWorld !== 'undefined' && projectWorld) ? projectWorld : null;
+    push('projectWorld.baseStageW (load)', _pw ? _diagFmtNum(_pw.baseStageW, 2) : 'n/d');
+    push('projectWorld.baseStageH (load)', _pw ? _diagFmtNum(_pw.baseStageH, 2) : 'n/d');
+    push('stageW (atual)', _diagFmtNum((typeof stageW !== 'undefined') ? stageW : null, 2));
+    push('stageH (atual)', _diagFmtNum((typeof stageH !== 'undefined') ? stageH : null, 2));
+    const _bsW = _pw ? _pw.baseStageW : null;
+    const _bsH = _pw ? _pw.baseStageH : null;
+    const _sw = (typeof stageW !== 'undefined') ? stageW : null;
+    const _sh = (typeof stageH !== 'undefined') ? stageH : null;
+    const _geomOk = (_bsW != null && _sw != null && Math.abs(_bsW - _sw) < 1 && _bsH != null && _sh != null && Math.abs(_bsH - _sh) < 1);
+    push('geometria baseStage==Stage', _bsW != null ? (_geomOk ? 'OK' : 'DIVERGENTE') : 'n/d');
   }
   L.push('');
 
