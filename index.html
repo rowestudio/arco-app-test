@@ -6693,8 +6693,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30V';
-const APP_VERSION_NAME = 'v8z4b30V';
+const APP_VERSION = 'v8z4b30W';
+const APP_VERSION_NAME = 'v8z4b30W';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12895,6 +12895,36 @@ let lastSaveError = '';
 let lastLoadError = '';
 let lastSaveProjectWorldBounds = null;
 let lastLoadProjectWorldBounds = null;
+
+// v8z4b30W — diagnóstico de posições de frames no ProjectWorld (frame load/save).
+let savedFramesCount = 0;
+let savedFrameCoordinateSpace = '';
+let savedFrameMinX = null; let savedFrameMaxX = null;
+let savedFrameMinY = null; let savedFrameMaxY = null;
+let savedHasNegativeFrameCoords = false;
+let savedHasFramesOutsideMainImage = false;
+let loadedFramesCount = 0;
+let loadedFrameCoordinateSpace = '';
+let loadedFrameMinX = null; let loadedFrameMaxX = null;
+let loadedFrameMinY = null; let loadedFrameMaxY = null;
+let loadedHasNegativeFrameCoords = false;
+let loadedHasFramesOutsideMainImage = false;
+let framesRawLoadedCount = 0;
+let framesAfterRestoreCount = 0;
+let framesAfterPostLoadCount = 0;
+let framesChangedDuringRestore = false;
+let framesChangedAfterPostLoad = false;
+let framesRestoredInProjectWorld = false;
+let framesNormalizedOnLoad = false;
+let framesRecenteredOnLoad = false;
+let frameOutOfWorldCorrectionApplied = false;
+let frameLoadMigrationApplied = false;
+let frameLoadMigrationReason = '';
+let legacyFrameMigrationSkippedBecauseProjectWorld = false;
+let framePostLoadMutatorName = 'none';
+let _frameLoadRawSnapshots = null;      // [{nx,ny,nw,nh,rawX,rawY,rawW,rawH}]
+let _frameLoadRestoredSnapshots = null; // [{x,y,w,h}]
+let _frameLoadPostLoadSnapshots = null; // [{x,y,w,h}]
 
 // ═══════════════════════════════════════
 // DOM REFS
@@ -24076,6 +24106,32 @@ function buildProjectData(includeImages) {
     nx: f.x / stageW, ny: f.y / stageH,
     nw: f.w / stageW, nh: f.h / stageH
   }));
+  // v8z4b30W — para ProjectWorld com múltiplas imagens, salvar também coordenadas
+  // absolutas do mundo. Garante que nx/ny negativos (frames em slots laterais) não
+  // dependem apenas da interpretação normalizada no load.
+  const _isWorldSave = !!(projectWorld && projectWorld.initialized === true &&
+    (typeof getImageAssetCount === 'function' ? getImageAssetCount() : 0) > 1);
+  const framesAbs = _isWorldSave
+    ? frames.slice(0, frameCount).map((f, i) => ({
+        x: f.x, y: f.y, w: f.w, h: f.h,
+        rotation: (Array.isArray(frameRotations) ? (frameRotations[i] || 0) : 0)
+      }))
+    : null;
+  // v8z4b30W — diagnóstico de save de frames
+  {
+    savedFramesCount = frameCount;
+    savedFrameCoordinateSpace = _isWorldSave ? 'projectWorld' : 'stage';
+    const _fxs = frames.slice(0, frameCount).map(f => f.x);
+    const _fys = frames.slice(0, frameCount).map(f => f.y);
+    savedFrameMinX = _fxs.length ? Math.min.apply(null, _fxs) : null;
+    savedFrameMaxX = _fxs.length ? Math.max.apply(null, _fxs) : null;
+    savedFrameMinY = _fys.length ? Math.min.apply(null, _fys) : null;
+    savedFrameMaxY = _fys.length ? Math.max.apply(null, _fys) : null;
+    savedHasNegativeFrameCoords = (savedFrameMinX !== null && savedFrameMinX < 0) ||
+                                  (savedFrameMinY !== null && savedFrameMinY < 0);
+    savedHasFramesOutsideMainImage = _isWorldSave && frames.slice(0, frameCount).some(
+      f => f.x < 0 || f.y < 0 || (f.x + f.w) > stageW || (f.y + f.h) > stageH);
+  }
   const imageAR = imgNatW && imgNatH ? imgNatW / imgNatH : null;
   const imageARLabel = imageAR
     ? (imageAR > 1.7 ? '16:9 paisagem' : imageAR > 1.2 ? '4:3 paisagem' :
@@ -24086,6 +24142,7 @@ function buildProjectData(includeImages) {
     currentRatio, duration, bgColor, bgColorUserSet, easeAmount, easeMode,
     pauseDuration, loopEnabled, frameCount, activeIdx,
     imageAR, imageARLabel, framesNorm,
+    framesAbs, // v8z4b30W — coordenadas absolutas do mundo para ProjectWorld
     loopDuration,
     defaultNewSegmentDuration,
     frameRotations: frameRotations.slice(0, frameCount),
@@ -24613,22 +24670,89 @@ function applyFrameData(data) {
   }
 
   frames.length = 0;
-  if (data.framesNorm && imgNatW) {
+  // v8z4b30W — detecta se é projeto ProjectWorld para preservar coordenadas absolutas.
+  // Projetos com projectWorld.initialized=true OU com framesAbs salvos (v8z4b30W+)
+  // NÃO devem ter frames clampados ao bounds do stage: frames em slots laterais têm
+  // coordenadas negativas ou acima de stageW/stageH que são VÁLIDAS no mundo.
+  const _loadIsProjectWorld = !!(data.projectWorld && data.projectWorld.initialized === true);
+  const _loadHasMultiImage = !!(Array.isArray(data.assets) &&
+    data.assets.filter(function(a){ return a && a.type === 'image'; }).length > 1);
+  const _loadSkipClamp = _loadIsProjectWorld || _loadHasMultiImage;
+
+  // v8z4b30W — snapshot raw: coordenadas exatamente como vieram do arquivo
+  _frameLoadRawSnapshots = null;
+  _frameLoadRestoredSnapshots = null;
+  _frameLoadPostLoadSnapshots = null;
+  framesChangedDuringRestore = false;
+  framesChangedAfterPostLoad = false;
+  frameLoadMigrationApplied = false;
+  frameLoadMigrationReason = '';
+  legacyFrameMigrationSkippedBecauseProjectWorld = _loadIsProjectWorld;
+  framePostLoadMutatorName = 'none';
+
+  // Se o arquivo tem framesAbs (salvo por v8z4b30W com ProjectWorld), usar direto.
+  if (data.framesAbs && Array.isArray(data.framesAbs) && data.framesAbs.length > 0 && _loadIsProjectWorld) {
+    const rawSnap = data.framesAbs.slice(0, 20).map(function(f){ return {rawX: f.x, rawY: f.y, rawW: f.w, rawH: f.h, rawRotation: f.rotation || 0}; });
+    data.framesAbs.forEach(function(f){ frames.push({x: f.x, y: f.y, w: f.w, h: f.h}); });
+    const resSnap = frames.slice(0, 20).map(function(f, i){
+      return {restoredX: f.x, restoredY: f.y, restoredW: f.w, restoredH: f.h,
+              deltaRawToPostLoadX: f.x - (rawSnap[i]||{rawX:f.x}).rawX,
+              deltaRawToPostLoadY: f.y - (rawSnap[i]||{rawY:f.y}).rawY};
+    });
+    _frameLoadRawSnapshots = rawSnap;
+    _frameLoadRestoredSnapshots = resSnap;
+    framesRawLoadedCount = data.framesAbs.length;
+  } else if (data.framesNorm && imgNatW) {
+    // v8z4b30W — snapshot raw a partir de framesNorm (converte para coords absolutas esperadas)
+    const _rawSnap = data.framesNorm.slice(0, 20).map(function(f){
+      return {rawX: f.nx * stageW, rawY: f.ny * stageH, rawW: f.nw * stageW, rawH: f.nh * stageH, rawRotation: 0};
+    });
+    _frameLoadRawSnapshots = _rawSnap;
+    framesRawLoadedCount = data.framesNorm.length;
+
     const ar = ratioMap[currentRatio];
-    data.framesNorm.forEach(f => {
+    data.framesNorm.forEach(function(f) {
       let fw = f.nw * stageW;
       let fh = fw / ar;
       if (fh > stageH * 0.95) { fh = stageH * 0.95; fw = fh * ar; }
       const cx = f.nx * stageW + f.nw * stageW / 2;
       const cy = f.ny * stageH + f.nh * stageH / 2;
-      frames.push({
-        x: Math.max(0, Math.min(stageW - fw, cx - fw / 2)),
-        y: Math.max(0, Math.min(stageH - fh, cy - fh / 2)),
-        w: fw, h: fh
-      });
+      var fx, fy;
+      if (_loadSkipClamp) {
+        // v8z4b30W — ProjectWorld: preservar coordenadas absolutas sem clamping.
+        // Coordenadas negativas e fora do stage são VÁLIDAS no mundo.
+        fx = cx - fw / 2;
+        fy = cy - fh / 2;
+      } else {
+        // Legado (imagem única): clampar ao bounds do stage.
+        fx = Math.max(0, Math.min(stageW - fw, cx - fw / 2));
+        fy = Math.max(0, Math.min(stageH - fh, cy - fh / 2));
+      }
+      frames.push({x: fx, y: fy, w: fw, h: fh});
     });
+
+    // v8z4b30W — snapshot restored e verificação de mudança
+    const _resSnap = frames.slice(0, 20).map(function(f, i){
+      const raw = _rawSnap[i] || {rawX: f.x, rawY: f.y};
+      return {restoredX: f.x, restoredY: f.y, restoredW: f.w, restoredH: f.h,
+              restoredRotation: 0,
+              deltaRawToPostLoadX: f.x - raw.rawX,
+              deltaRawToPostLoadY: f.y - raw.rawY,
+              deltaRawToPostLoadW: f.w - raw.rawW,
+              deltaRawToPostLoadH: f.h - raw.rawH,
+              deltaRawToPostLoadRotation: 0};
+    });
+    _frameLoadRestoredSnapshots = _resSnap;
+    // detectar mudança: compara x/y esperados (raw) vs reais (restored)
+    for (var _ci = 0; _ci < _rawSnap.length && _ci < frames.length; _ci++) {
+      if (Math.abs(frames[_ci].x - _rawSnap[_ci].rawX) > 1 ||
+          Math.abs(frames[_ci].y - _rawSnap[_ci].rawY) > 1) {
+        framesChangedDuringRestore = true; break;
+      }
+    }
   } else if (data.frames) {
-    data.frames.forEach(f => frames.push({...f}));
+    framesRawLoadedCount = data.frames.length;
+    data.frames.forEach(function(f){ frames.push({...f}); });
   }
   frames.forEach((f, i) => {
     const fromNorm = data.framesNorm && data.framesNorm[i] && data.framesNorm[i].pointMode;
@@ -24762,6 +24886,52 @@ function applyFrameData(data) {
   if (tbTpl) tbTpl.textContent = 'Livre';
   captureProjectResetBaseline('project-load');
   updateUndoRedoUI();
+
+  // v8z4b30W — snapshot pós-load (após renderAll e todas as rotinas pós-load).
+  // Compara com restored para detectar qualquer mutação indevida pós-carga.
+  {
+    const _postSnap = frames.slice(0, Math.min(frameCount, 20)).map(function(f, i){
+      const res = (_frameLoadRestoredSnapshots && _frameLoadRestoredSnapshots[i]) || null;
+      return {
+        postLoadX: f.x, postLoadY: f.y, postLoadW: f.w, postLoadH: f.h, postLoadRotation: 0,
+        deltaRawToPostLoadX: res ? (f.x - (res.restoredX - res.deltaRawToPostLoadX) - (f.x - res.restoredX)) + res.deltaRawToPostLoadX : 0,
+        deltaRawToPostLoadY: res ? (f.y - (res.restoredY - res.deltaRawToPostLoadY) - (f.y - res.restoredY)) + res.deltaRawToPostLoadY : 0
+      };
+    });
+    _frameLoadPostLoadSnapshots = _postSnap;
+    // detectar mudança entre restored e pós-load
+    if (_frameLoadRestoredSnapshots) {
+      for (var _pi = 0; _pi < _frameLoadRestoredSnapshots.length && _pi < frames.length; _pi++) {
+        const _res = _frameLoadRestoredSnapshots[_pi];
+        if (_res && (Math.abs(frames[_pi].x - _res.restoredX) > 0.5 ||
+                     Math.abs(frames[_pi].y - _res.restoredY) > 0.5)) {
+          framesChangedAfterPostLoad = true;
+          framePostLoadMutatorName = 'unknown-post-load-routine';
+          break;
+        }
+      }
+    }
+    framesAfterRestoreCount = frames.length;
+    framesAfterPostLoadCount = frames.length;
+    // diagnóstico de load de frames
+    framesRestoredInProjectWorld = _loadIsProjectWorld;
+    framesNormalizedOnLoad = false;
+    framesRecenteredOnLoad = false;
+    frameOutOfWorldCorrectionApplied = false;
+    loadedFramesCount = frames.length;
+    loadedFrameCoordinateSpace = _loadIsProjectWorld ? 'projectWorld' : 'stage';
+    const _lfxs = frames.slice(0, frameCount).map(function(f){ return f.x; });
+    const _lfys = frames.slice(0, frameCount).map(function(f){ return f.y; });
+    loadedFrameMinX = _lfxs.length ? Math.min.apply(null, _lfxs) : null;
+    loadedFrameMaxX = _lfxs.length ? Math.max.apply(null, _lfxs) : null;
+    loadedFrameMinY = _lfys.length ? Math.min.apply(null, _lfys) : null;
+    loadedFrameMaxY = _lfys.length ? Math.max.apply(null, _lfys) : null;
+    loadedHasNegativeFrameCoords = (loadedFrameMinX !== null && loadedFrameMinX < 0) ||
+                                   (loadedFrameMinY !== null && loadedFrameMinY < 0);
+    loadedHasFramesOutsideMainImage = _loadIsProjectWorld && frames.slice(0, frameCount).some(
+      function(f){ return f.x < 0 || f.y < 0 || (f.x + f.w) > stageW || (f.y + f.h) > stageH; });
+  }
+
   if (imgNatW) {
     // v8z4b29BG — JSON aberto com sucesso e imagem pronta: entra no editor/Stage.
     enterEditorMode();
@@ -26159,6 +26329,60 @@ function buildDiagnosticsText() {
   push('lastLoadError', lastLoadError || 'nenhum');
   push('projectWorld salvo (bounds)', lastSaveProjectWorldBounds ? JSON.stringify(lastSaveProjectWorldBounds) : 'n/d');
   push('projectWorld carregado (bounds)', lastLoadProjectWorldBounds ? JSON.stringify(lastLoadProjectWorldBounds) : 'n/d');
+  L.push('');
+
+  // v8z4b30W — diagnóstico de frames no ProjectWorld (save/load).
+  push('savedFramesCount', String(savedFramesCount));
+  push('savedFrameCoordinateSpace', savedFrameCoordinateSpace || 'n/d');
+  push('savedFrameMinX', savedFrameMinX !== null ? _diagFmtNum(savedFrameMinX, 2) : 'n/d');
+  push('savedFrameMaxX', savedFrameMaxX !== null ? _diagFmtNum(savedFrameMaxX, 2) : 'n/d');
+  push('savedFrameMinY', savedFrameMinY !== null ? _diagFmtNum(savedFrameMinY, 2) : 'n/d');
+  push('savedFrameMaxY', savedFrameMaxY !== null ? _diagFmtNum(savedFrameMaxY, 2) : 'n/d');
+  push('savedHasNegativeFrameCoords', String(savedHasNegativeFrameCoords));
+  push('savedHasFramesOutsideMainImage', String(savedHasFramesOutsideMainImage));
+  L.push('');
+  push('framesRawLoadedCount', String(framesRawLoadedCount));
+  push('framesAfterRestoreCount', String(framesAfterRestoreCount));
+  push('framesAfterPostLoadCount', String(framesAfterPostLoadCount));
+  push('frameCoordinateSpace', loadedFrameCoordinateSpace || 'n/d');
+  push('framesRestoredInProjectWorld', String(framesRestoredInProjectWorld));
+  push('framesChangedDuringRestore', String(framesChangedDuringRestore));
+  push('framesChangedAfterPostLoad', String(framesChangedAfterPostLoad));
+  push('framesNormalizedOnLoad', String(framesNormalizedOnLoad));
+  push('framesRecenteredOnLoad', String(framesRecenteredOnLoad));
+  push('frameOutOfWorldCorrectionApplied', String(frameOutOfWorldCorrectionApplied));
+  push('frameLoadMigrationApplied', String(frameLoadMigrationApplied));
+  push('frameLoadMigrationReason', frameLoadMigrationReason || 'none');
+  push('legacyFrameMigrationSkippedBecauseProjectWorld', String(legacyFrameMigrationSkippedBecauseProjectWorld));
+  push('framePostLoadMutatorName', framePostLoadMutatorName || 'none');
+  push('loadedFramesCount', String(loadedFramesCount));
+  push('loadedFrameCoordinateSpace', loadedFrameCoordinateSpace || 'n/d');
+  push('loadedFrameMinX', loadedFrameMinX !== null ? _diagFmtNum(loadedFrameMinX, 2) : 'n/d');
+  push('loadedFrameMaxX', loadedFrameMaxX !== null ? _diagFmtNum(loadedFrameMaxX, 2) : 'n/d');
+  push('loadedFrameMinY', loadedFrameMinY !== null ? _diagFmtNum(loadedFrameMinY, 2) : 'n/d');
+  push('loadedFrameMaxY', loadedFrameMaxY !== null ? _diagFmtNum(loadedFrameMaxY, 2) : 'n/d');
+  push('loadedHasNegativeFrameCoords', String(loadedHasNegativeFrameCoords));
+  push('loadedHasFramesOutsideMainImage', String(loadedHasFramesOutsideMainImage));
+  // snapshots por frame (até 20 frames)
+  if (_frameLoadRawSnapshots && _frameLoadRestoredSnapshots) {
+    const _snapLen = Math.min(_frameLoadRawSnapshots.length, _frameLoadRestoredSnapshots.length, 20);
+    for (var _si = 0; _si < _snapLen; _si++) {
+      const _raw = _frameLoadRawSnapshots[_si];
+      const _res = _frameLoadRestoredSnapshots[_si];
+      if (_raw) {
+        push('frame[' + _si + '].rawX', _diagFmtNum(_raw.rawX, 2));
+        push('frame[' + _si + '].rawY', _diagFmtNum(_raw.rawY, 2));
+        push('frame[' + _si + '].rawW', _diagFmtNum(_raw.rawW, 2));
+        push('frame[' + _si + '].rawH', _diagFmtNum(_raw.rawH, 2));
+      }
+      if (_res) {
+        push('frame[' + _si + '].restoredX', _diagFmtNum(_res.restoredX, 2));
+        push('frame[' + _si + '].restoredY', _diagFmtNum(_res.restoredY, 2));
+        push('frame[' + _si + '].deltaRawToPostLoadX', _diagFmtNum(_res.deltaRawToPostLoadX, 2));
+        push('frame[' + _si + '].deltaRawToPostLoadY', _diagFmtNum(_res.deltaRawToPostLoadY, 2));
+      }
+    }
+  }
   L.push('');
 
   // Ambiente
