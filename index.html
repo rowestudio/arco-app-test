@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZA — base v8z4b30Z. HOTFIX crítico e cirúrgico do sistema de coordenadas do ProjectWorld (mundo híbrido) + auditoria de render/câmera + estado de handles. fix(coords): ESTRATÉGIA A (preserveSavedWorld) — o ProjectWorld passa a ser um único sistema canônico ancorado em baseStageW/H. syncFirstImageAsset() NÃO redimensiona mais o asset principal (img-1) nem projectWorld.w/h com o Stage atual quando o projeto é multi-imagem (Stage vira apenas viewport/janela do editor); restoreProjectAssetsFromData() ancora projectWorld.w/h e o asset[0] em baseStage canônica no load, auto-curando inclusive arquivos da 30Z salvos já em estado híbrido (asset[0] em 374×561 enquanto baseStage/laterais em 341×512). Isso elimina a falha em que o asset do slot superior direito sumia/piscava no Preview/Export com 9 imagens. fix(handles): limpeza de estado transitório de drag (lockedDragSegmentIndex/CurveIndex/HandleType zerados ao soltar) e limpeza de dataset.arcoFi dos ghost handles ocultos (sem índice fantasma). diag: nova auditoria worldCoordinateStrategy/worldCoordinateSystemConsistent/mixedWorldScaleDetected/asset0MatchesWorldCoordinateSystem/allAssetsSameCoordinateSystem/frames-curvesMatchWorldCoordinateSystem; render transform real por asset (renderCamera*, renderWorldToCanvasScaleX/Y, assetRender[id].screen/flags, intersectsCamera, imageReady, cullingReason=none); cameraAssetCoordinateMismatch; ghostHandlesConsistent + ghostIn/OutExpected/Actual + activeFrameHasValidIn/OutHandle. preserve: APP_VERSION/NAME=v8z4b30ZA, fundo #3c3c3b, múltiplas imagens, save/load de assets e de frames em coordenadas absolutas do ProjectWorld, Preview/Export via World Renderer (exportUsedWorldRenderer=true, sem fallback), WebCodecs, zoom mínimo dinâmico, ausência de filtro por slot/selected asset/main image. NÃO altera UI/layout/cores/textos/ícones/menus, fluxo Inserir/Trocar imagem, reset, zoom dinâmico, pan/zoom/touch, WebCodecs/muxer/encoder, motor de curvas/easing/timing; sem Layers, sem cenas, sem "Inverter sentido", sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30V — base v8z4b30U. fix(ux): remove marcador visual de "exceder moldura" (borda vermelha no Stage + @keyframes stage-warn + class .out-of-bounds) — desnecessário no modelo ProjectWorld onde frames podem ultrapassar a imagem principal por design; isFrameOutside() preservada mas sem uso visual. fix(ux): tipo de visualização (viewMode: Normal/Isolamento/Mapa) passa a ser global — applyViewMode() aplica opacity ao imgEl E a todos os .world-extra-img do ProjectWorld; renderProjectWorldExtraImages() respeita viewMode ao criar elementos extras, garantindo consistência após rerenders. fix(ux): novo frame no ProjectWorld multi-imagem nasce próximo ao frame anterior sem ser clampado ao Stage da imagem principal — buildPendingFrameInsertion() usa _rawNewFrame diretamente quando isMultiImageWorldActive(), preservando clampNewFrameRectToStage para projetos de imagem única. fix(timeline): selecionar trecho na faixa de frames não dispara mais centralização automática — selectSegmentContext() passa a definir lowerTimelineCenterFrameIndex = activeIdx (valor válido) em vez de -1, evitando que renderAll() acione centerLowerTimelineOnFrame indevidamente; apenas seleção de frame continua centralizando a pill. fix(diag): painel Diagnóstico exibe o zoom mínimo efetivo (getEditorMinZoom(), valor dinâmico em ProjectWorld multi-imagem) em vez do MIN_EDITOR_ZOOM fixo (0.5000), eliminando a inconsistência onde "zoom mínimo" mostrava 0.5000 enquanto "dynamicEditorMinZoom" mostrava 0.2711. preserve: exportação MP4 multi-imagem (exportUsedWorldRenderer/fallback), Preview/Export, motor de curvas/frames, WebCodecs/FPS/muxer, touch/pan/zoom, suporte iPhone/Safari, isFrameOutside(), clampNewFrameRectToStage (projetos com 1 imagem), cores/textos/ícones aprovados; sem painel de layers, sem edição livre de posição/escala, sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30U — base v8z4b30R (v8z4b30S/T canceladas e revertidas). Correção funcional do fluxo de imagem + navegação superior + zoom out do ProjectWorld. fix(version): APP_VERSION e APP_VERSION_NAME = v8z4b30U; interface mostra UMA versão visível ("Arco Motion App v8z4b30U"), removida a 2ª linha de versão. ux(image): menu Imagem agora tem DUAS ações diretas e separadas — "Inserir imagem" (startInsertImageFlow) e "Trocar imagem" (startReplaceImageFlow); o seletor de Fotos/Arquivos só abre DEPOIS da escolha da ação (sem ação única ambígua, sem perguntar após o arquivo). fix(intent/target): a intenção (pendingImageAction) e o alvo (pendingImageTargetSlot/pendingImageTargetAssetId) são CONGELADOS antes do seletor; ao voltar, o app usa exclusivamente o alvo congelado — nunca recalcula pelo estado visual nem cai no centro (exceto projeto realmente vazio). fix(insert): performInsertImageAtSlot() respeita o slot congelado, cria novo asset (assets.length+1), fit contain, slotRow/Col e zIndex coerente (slot ocupado → nova camada acima); undo=addImageAsset remove o asset inserido. fix(replace): doReplaceImageFromFile()/doReplaceExtraAsset() substituem APENAS o asset alvo sem criar camada (assets.length inalterado), preservando slot/zIndex/visible e mantendo fit contain; trocar lateral não substitui img-1; trocar em slot vazio não abre seletor; undo=replaceImageAsset restaura a imagem anterior. ux(nav): X/Fechar removido do canto superior esquerdo e movido para o menu Arquivo como "Início" (ícone Lucide home, mesma ação requestCloseStageToLauncher); placeholder invisível preserva a geometria do topo — Preview e Visualizar NÃO se deslocam. feat(zoom): zoom out dinâmico do editor (getEditorMinZoom/computeFitAllWorldZoom) para visualizar todo o ProjectWorld/grid 3x3 quando há múltiplas imagens; pan world-aware (clampEditorPan alarga, nunca restringe) — sem alterar frames, Preview, Export ou escala real dos assets. feat(diag): novos campos de ação de imagem, layers lógicos, plano/marca d'água e zoom out. preserve: salvar/carregar múltiplas imagens, ProjectWorld único, Preview/Export multi-imagem (exportUsedWorldRenderer/fallback), fundo #3c3c3b, reset preservando imagens, gap 3x3, featureAccess multipleImageAssets liberado em teste, iPhone/Safari; NÃO altera motor de curvas/frames, WebCodecs/FPS/muxer, touch/pan/zoom de câmera dos frames, cores/textos/posições aprovadas; sem painel de layers/reorder, sem edição livre de posição/escala, sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30Q — HOTFIX (estabilização da fase 1 de múltiplas imagens), base v8z4b30P. fix(bg): novo estado bgColorUserSet diferencia "preto escolhido pelo usuário" de "preto herdado de inicialização antiga/hard-coded". Projeto novo/reset (clearCurrentProjectForNewFile) nasce com bgColor=DEFAULT_PROJECT_BG ('#3c3c3b') e bgColorUserSet=false. applyFrameData() (abrir projeto/restaurar autosave) só preserva bgColor='#000000'/'#000'/'black' quando data.bgColorUserSet===true; sem essa flag (projetos/autosaves antigos), preto legado cai em DEFAULT_PROJECT_BG. Escolher uma cor pelo menu "Cor de fundo" (applyBgColorValue) marca bgColorUserSet=true e é persistido em captureState/restoreState/buildProjectData — preto escolhido manualmente continua funcionando em Stage/Preview/Export normalmente. fix(export): Correção 2 — renderFrameSafely() não aplica mais o fallback de "frame em branco" (isExportFrameLikelyBlank → renderUniversalFallback, que desenha a imagem canônica inteira via cover-fit ignorando a câmera) quando isMultiImageWorldActive()===true. Esse fallback, herdado do pipeline single-image, disparava incorretamente durante transições de câmera que cruzam o gap entre duas imagens no mundo composto (área de fundo válida), causando o salto/corte para a imagem inteira no MP4 relatado na v8z4b30P; drawWorldToCanvas continua sendo a única fonte de render de Preview/Export multi-imagem. feat(diag): painel Diagnóstico ganha exportUsedWorldRenderer/exportFallbackToSingleImage/exportFallbackReason, resetados a cada novo export. preserve: undo de "Adicionar como nova imagem"/"Substituir imagem atual" (asset principal/central img-1, exatamente um passo de undo/redo já validado na v8z4b30P), múltiplas imagens, fit contain, Preview/Export MP4 1:1/9:16/4:3, gap 3x3, ProjectWorld único, remoção de "Cena 1", modal Substituir/Adicionar acima do menu, fundo cinza de "Gerando vídeo", featureAccess multipleImageAssets; NÃO altera motor de curvas, touch/drag/resize/zoom, suporte mobile/iPhone/Safari, WebCodecs/muxer/FPS além do mínimo, textos/ícones/cores/layout aprovados; sem edição livre de posição/escala, sem painel de layers/reorder, sem cenas, sem IA, sem prompt/alert/confirm. -->
@@ -6693,8 +6694,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30Z';
-const APP_VERSION_NAME = 'v8z4b30Z';
+const APP_VERSION = 'v8z4b30ZA';
+const APP_VERSION_NAME = 'v8z4b30ZA';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -16558,8 +16559,11 @@ function updateCtrlPts() {
         }
       }
 
-      if (!showGhostIn  && ghostInEl)  ghostInEl.style.display  = 'none';
-      if (!showGhostOut && ghostOutEl) ghostOutEl.style.display = 'none';
+      // v8z4b30ZA — ao ocultar um ghost handle, limpar dataset.arcoFi para não
+      // deixar índice fantasma (o diagnóstico/handler só deve ver índice válido
+      // quando o ghost está realmente visível e apontando para o frame correto).
+      if (!showGhostIn  && ghostInEl)  { ghostInEl.style.display  = 'none'; delete ghostInEl.dataset.arcoFi; }
+      if (!showGhostOut && ghostOutEl) { ghostOutEl.style.display = 'none'; delete ghostOutEl.dataset.arcoFi; }
 
     } else {
       if (inHandleEl)  inHandleEl.style.display  = 'none';
@@ -16567,8 +16571,8 @@ function updateCtrlPts() {
       // Ocultar ghosts quando handles principais estão ocultos
       const _gi = document.getElementById('frame_ghost_in');
       const _go = document.getElementById('frame_ghost_out');
-      if (_gi) _gi.style.display = 'none';
-      if (_go) _go.style.display = 'none';
+      if (_gi) { _gi.style.display = 'none'; delete _gi.dataset.arcoFi; } // v8z4b30ZA
+      if (_go) { _go.style.display = 'none'; delete _go.dataset.arcoFi; } // v8z4b30ZA
     }
   } else {
     if (inHandleEl)  inHandleEl.style.display  = 'none';
@@ -16581,8 +16585,8 @@ function updateCtrlPts() {
     // v8z4b20d: ocultar ghosts
     const _gi2 = document.getElementById('frame_ghost_in');
     const _go2 = document.getElementById('frame_ghost_out');
-    if (_gi2) _gi2.style.display = 'none';
-    if (_go2) _go2.style.display = 'none';
+    if (_gi2) { _gi2.style.display = 'none'; delete _gi2.dataset.arcoFi; } // v8z4b30ZA
+    if (_go2) { _go2.style.display = 'none'; delete _go2.dataset.arcoFi; } // v8z4b30ZA
   }
   // ──────────────────────────────────────────────────────────────────────────
 }
@@ -17330,6 +17334,10 @@ function cancelStageEditingForNavigation() {
   panDragState = null;
   handleDragState = null;
   ghostDragState = null;
+  // v8z4b30ZA — limpar estado transitório de drag (diagnóstico).
+  lockedDragSegmentIndex = -1;
+  lockedDragCurveIndex   = -1;
+  lockedDragHandleType   = '';
   if (isInsertingFrame && ghostInteraction.mode !== 'idle') resetGhostInteraction();
   document.body.classList.remove('dragging');
   hideAngleIndicator();
@@ -18070,6 +18078,12 @@ function endDrag(e) {
   midpointDragState     = null; // v8z4b19v
   frameTangentDragState = null; // v8z4b19y (legado)
   frameHandleDragState  = null; // v8z4b20b
+  // v8z4b30ZA — limpar estado transitório de drag (diagnóstico). Sem drag ativo,
+  // lockedDragSegmentIndex/CurveIndex/HandleType não devem manter índices antigos
+  // (estado fantasma). Apenas diagnóstico — não altera curvas/frames.
+  lockedDragSegmentIndex = -1;
+  lockedDragCurveIndex   = -1;
+  lockedDragHandleType   = '';
   clearPendingStageGesture();
   document.body.classList.remove('dragging');
   hideAngleIndicator();
@@ -18966,6 +18980,11 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics, renderS
   if (isMultiImageWorldActive()) {
     const ctxName = (typeof isRecording !== 'undefined' && isRecording) ? 'export'
                   : (typeof isPreviewing !== 'undefined' && isPreviewing) ? 'preview' : 'world';
+    // v8z4b30ZA — pistas de frame/segmento para a auditoria de render (diagnóstico).
+    _renderActiveFrameIndexHint = (typeof frameIdx === 'number') ? frameIdx : -1;
+    _renderActiveSegmentIndexHint = (typeof totalFrames === 'number' && totalFrames > 1 && typeof t === 'number')
+      ? Math.max(0, Math.min((typeof frameCount === 'number' ? frameCount : 2) - 2, Math.floor(t * ((typeof frameCount === 'number' ? frameCount : 2) - 1))))
+      : -1;
     return drawWorldToCanvas(ctx,
       { cx: st.cx, cy: st.cy, sw: st.sw, sh: st.sh, rot: st.rot },
       W, H,
@@ -25008,10 +25027,6 @@ function syncFirstImageAsset(reason) {
     a.name     = name;
     a.sourceW  = imgNatW;
     a.sourceH  = imgNatH;
-    a.worldX   = 0;
-    a.worldY   = 0;
-    a.worldW   = sw;
-    a.worldH   = sh;
     a.rotation = 0;
     a.zIndex   = 0;
     a.visible  = true;
@@ -25019,16 +25034,41 @@ function syncFirstImageAsset(reason) {
     projectWorld.initialized = true;
     projectWorld.x = 0;
     projectWorld.y = 0;
-    projectWorld.w = sw;
-    projectWorld.h = sh;
-    // v8z4b30N — Múltiplas imagens: uma vez que existam imagens adicionais
-    // posicionadas no mundo (com base em baseStageW/H), preservar essas
-    // dimensões evita desalinhar os slots já posicionados ao trocar a
-    // imagem principal ou mudar de proporção.
+    // v8z4b30ZA — ESTRATÉGIA A (preserveSavedWorld): eliminar mundo híbrido.
+    // O ProjectWorld é um sistema de coordenadas canônico único. Uma vez que o
+    // projeto vira multi-imagem (existem assets adicionais posicionados com base
+    // em baseStageW/H), o asset principal (img-1), projectWorld.w/h e baseStage
+    // ficam CONGELADOS no sistema canônico salvo. O Stage atual passa a ser apenas
+    // a janela/viewport do editor e NÃO redimensiona mais nem o asset[0] nem o
+    // mundo — evitando o estado híbrido (asset[0] em 374×561 enquanto baseStage e
+    // assets laterais ficam em 341×512) que ocultava o asset do slot superior
+    // direito no Preview/Export.
     const _hasExtraImageAssets = assets.some(x => x && x.type === 'image' && x !== a);
     if (!_hasExtraImageAssets) {
+      // Projeto de imagem única: o Stage É o mundo (tudo consistente). asset[0],
+      // projectWorld.w/h e baseStage acompanham o Stage atual normalmente.
+      a.worldX = 0;
+      a.worldY = 0;
+      a.worldW = sw;
+      a.worldH = sh;
+      projectWorld.w = sw;
+      projectWorld.h = sh;
       projectWorld.baseStageW = sw;
       projectWorld.baseStageH = sh;
+    } else {
+      // Multi-imagem → NÃO redimensionar o asset[0] com o Stage atual nem mexer em
+      // projectWorld.w/h/baseStage; manter o sistema canônico único. Apenas
+      // garantir que worldX/Y/W/H do asset[0] sejam válidos (ex.: asset principal
+      // recriado no fluxo autosave-restore, onde restore roda antes do sync) —
+      // nesse caso usa-se a baseStage canônica, NUNCA o Stage atual.
+      const baseW = projectWorld.baseStageW || sw;
+      const baseH = projectWorld.baseStageH || sh;
+      if (!Number.isFinite(a.worldW) || a.worldW <= 0) a.worldW = baseW;
+      if (!Number.isFinite(a.worldH) || a.worldH <= 0) a.worldH = baseH;
+      if (!Number.isFinite(a.worldX)) a.worldX = 0;
+      if (!Number.isFinite(a.worldY)) a.worldY = 0;
+      if (!Number.isFinite(projectWorld.w) || projectWorld.w <= 0) projectWorld.w = baseW;
+      if (!Number.isFinite(projectWorld.h) || projectWorld.h <= 0) projectWorld.h = baseH;
     }
     if (window._arcoDebug) {
       console.info('[Arco ' + APP_VERSION + '] projectWorld sync:', reason || 'unknown',
@@ -25068,11 +25108,38 @@ function restoreProjectAssetsFromData(data) {
       // v8z4b30N — baseStageW/H definem a grade 3x3 usada para posicionar os
       // assets adicionais. Restaurar os valores salvos mantém worldX/Y/W/H
       // alinhados ao mundo original, independentemente do stage atual.
+      // v8z4b30ZA — ESTRATÉGIA A (preserveSavedWorld): restaurar o sistema de
+      // coordenadas canônico COMPLETO do save — baseStage, projectWorld.w/h E o
+      // asset principal (img-1). syncFirstImageAsset() acabou de sincronizar o
+      // asset[0]/projectWorld.w/h com o Stage atual (ex.: 374×561); aqui
+      // sobrescrevemos esses valores pelos valores canônicos salvos (ex.: 341×512)
+      // para que TODO o mundo — asset[0], assets laterais, frames (framesAbs) e
+      // câmera — fique num único sistema. Sem isto, o asset[0] ficava 9~10% maior
+      // que baseStage (mundo híbrido), desalinhando o slot superior direito.
       const savedWorld = data.projectWorld;
       if (savedWorld && Number.isFinite(savedWorld.baseStageW) && Number.isFinite(savedWorld.baseStageH) &&
           savedWorld.baseStageW > 0 && savedWorld.baseStageH > 0) {
-        projectWorld.baseStageW = savedWorld.baseStageW;
-        projectWorld.baseStageH = savedWorld.baseStageH;
+        // baseStage é a ÂNCORA canônica do mundo (mesmo sistema dos assets laterais
+        // e dos frames/framesAbs salvos). Ancorar TUDO nela é auto-curativo: corrige
+        // inclusive arquivos da 30Z que foram salvos já em estado híbrido
+        // (asset[0]/projectWorld.w em 374×561 enquanto baseStage/laterais em 341×512).
+        const baseW = projectWorld.baseStageW = savedWorld.baseStageW;
+        const baseH = projectWorld.baseStageH = savedWorld.baseStageH;
+        // Mundo canônico (w/h) = célula central = baseStage (por design da app, o
+        // asset principal sempre preenche a célula central do grid 3x3).
+        projectWorld.w = baseW;
+        projectWorld.h = baseH;
+        // Asset principal (img-1): forçar para a célula canônica central, em vez de
+        // manter o tamanho do Stage atual aplicado por syncFirstImageAsset() ou um
+        // valor híbrido salvo. zIndex preservado do save quando válido.
+        const savedPrimary = savedImageAssets[0];
+        if (primary) {
+          primary.worldX = 0;
+          primary.worldY = 0;
+          primary.worldW = baseW;
+          primary.worldH = baseH;
+          if (savedPrimary && Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
+        }
       }
 
       let missingImageSrc = false;
@@ -25964,6 +26031,25 @@ let endpointContinuityFailedCount = 0;
 let endpointContinuityOkAllSegments = true;
 let endpointContinuityFailures = [];
 
+// v8z4b30ZA — diagnóstico de render transform real por amostra (preview/export).
+// Capturado dentro de drawWorldToCanvas para o ÚLTIMO frame renderizado de cada
+// contexto. Permite auditar a transformação world→camera→canvas no segmento
+// problemático (slot superior direito) sem depender só de contagens globais.
+let renderTransform = {
+  preview: null, // { cameraX, cameraY, cameraW, cameraH, cameraRotation, canvasW, canvasH, scaleX, scaleY, assets:[...] }
+  export:  null,
+  world:   null
+};
+let renderSampleCount = 0;
+let renderLastSegmentIndex = -1;
+let renderLastFrameIndex = -1;
+let renderTransformConsistent = true;
+let renderTransformIssue = 'none';
+// Índice de frame/segmento atualmente sendo renderizado (alimentado pelo loop de
+// preview/export quando disponível; usado apenas para diagnóstico).
+let _renderActiveFrameIndexHint = -1;
+let _renderActiveSegmentIndexHint = -1;
+
 function invalidateProjectWorldComposite() {
   _worldCompositeDirty = true;
 }
@@ -26106,7 +26192,8 @@ function collectWorldRenderAssets(mainSource, canonicalDims) {
     if (!src) continue;
     const rect = getWorldRenderAssetRectSourcePx(a, canonicalDims);
     if (!(rect.aw > 0) || !(rect.ah > 0)) continue;
-    out.push({ src, rect, zIndex: Number(a.zIndex) || 0 });
+    // v8z4b30ZA — id/asset anexados p/ auditoria de render por asset (diagnóstico).
+    out.push({ src, rect, zIndex: Number(a.zIndex) || 0, id: a.id, asset: a });
   }
   out.sort((p, q) => p.zIndex - q.zIndex);
   return out;
@@ -26192,6 +26279,73 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
       const tw = ctx.measureText(txt).width;
       ctx.fillText(txt, outW - tw - outW * 0.025, outH - outH * 0.025);
       ctx.restore();
+    }
+
+    // v8z4b30ZA — AUDITORIA DE RENDER REAL POR ASSET (transform world→canvas).
+    // Captura o transform e a posição em tela de cada asset para o último frame
+    // renderizado deste contexto. Espaço de coordenadas: câmera, assets, frames e
+    // curvas vivem todos em px da imagem canônica (= ProjectWorld). Só diagnóstico;
+    // não altera o render. Envolto em try para nunca quebrar Preview/Export.
+    try {
+      const _scaleX = outW / cam.sw;
+      const _scaleY = outH / cam.sh;
+      const _rad = rot * Math.PI / 180;
+      const _cs = Math.cos(_rad), _sn = Math.sin(_rad);
+      const _toScreen = (px, py) => {
+        const x = (px - cam.cx) * _scaleX;
+        const y = (py - cam.cy) * _scaleY;
+        return { x: outW / 2 + x * _cs - y * _sn, y: outH / 2 + x * _sn + y * _cs };
+      };
+      const _assetAudit = [];
+      for (let i = 0; i < renderAssets.length; i++) {
+        const ra = renderAssets[i];
+        const r = ra.rect;
+        const c0 = _toScreen(r.ax, r.ay);
+        const c1 = _toScreen(r.ax + r.aw, r.ay);
+        const c2 = _toScreen(r.ax, r.ay + r.ah);
+        const c3 = _toScreen(r.ax + r.aw, r.ay + r.ah);
+        const minX = Math.min(c0.x, c1.x, c2.x, c3.x);
+        const maxX = Math.max(c0.x, c1.x, c2.x, c3.x);
+        const minY = Math.min(c0.y, c1.y, c2.y, c3.y);
+        const maxY = Math.max(c0.y, c1.y, c2.y, c3.y);
+        const sw2 = maxX - minX, sh2 = maxY - minY;
+        const dims = getImageSourceDimensions(ra.src);
+        const ready = !!(dims && dims.width > 0 && dims.height > 0);
+        const a = ra.asset || {};
+        _assetAudit.push({
+          id: ra.id != null ? String(ra.id) : ('idx' + i),
+          worldX: a.worldX || 0, worldY: a.worldY || 0,
+          worldW: a.worldW || 0, worldH: a.worldH || 0,
+          zIndex: ra.zIndex, visible: a.visible !== false,
+          considered: true, drawn: true, drawReason: 'visible-projectWorld-asset',
+          culled: false, cullingReason: 'none',
+          intersectsCamera: (maxX > 0 && minX < outW && maxY > 0 && minY < outH),
+          screenX: minX, screenY: minY, screenW: sw2, screenH: sh2, screenArea: Math.max(0, sw2) * Math.max(0, sh2),
+          alphaUsed: 1, imageReady: ready, decodeReady: ready,
+          naturalW: ready ? dims.width : 0, naturalH: ready ? dims.height : 0
+        });
+      }
+      const _snapshot = {
+        cameraX: cam.cx, cameraY: cam.cy, cameraW: cam.sw, cameraH: cam.sh, cameraRotation: rot,
+        cameraCoordinateSpace: 'projectWorld',
+        canvasW: outW, canvasH: outH,
+        worldToCanvasScaleX: _scaleX, worldToCanvasScaleY: _scaleY,
+        frameIndex: (typeof _renderActiveFrameIndexHint === 'number') ? _renderActiveFrameIndexHint : -1,
+        segmentIndex: (typeof _renderActiveSegmentIndexHint === 'number') ? _renderActiveSegmentIndexHint : -1,
+        assets: _assetAudit
+      };
+      renderTransform[context] = _snapshot;
+      renderSampleCount++;
+      renderLastFrameIndex = _snapshot.frameIndex;
+      renderLastSegmentIndex = _snapshot.segmentIndex;
+      // Transform consistente: escalas finitas/positivas e câmera válida.
+      const _ok = isFinite(_scaleX) && isFinite(_scaleY) && _scaleX > 0 && _scaleY > 0 &&
+                  isFinite(cam.cx) && isFinite(cam.cy) && cam.sw > 0 && cam.sh > 0;
+      renderTransformConsistent = _ok;
+      renderTransformIssue = _ok ? 'none' : 'invalid-camera-or-scale';
+    } catch (e) {
+      renderTransformConsistent = false;
+      renderTransformIssue = (e && e.message) || String(e);
     }
 
     renderWorldLastAssetCount = count;
@@ -26311,6 +26465,165 @@ function _diagRatio(w, h) {
   if (!Number.isFinite(nw) || !Number.isFinite(nh) || nh === 0) return 'n/d';
   return (nw / nh).toFixed(4) + ' (' + Math.round(nw) + ':' + Math.round(nh) + ')';
 }
+
+// ═══════════════════════════════════════
+// v8z4b30ZA — AUDITORIA DO SISTEMA DE COORDENADAS DO PROJECTWORLD
+// Detecta "mundo híbrido": projectWorld/baseStage num sistema enquanto asset[0]
+// (ou projectWorld.w/h) está em outro. SOMENTE LEITURA — não altera nada.
+// Estratégia implementada: A (preserveSavedWorld) — baseStage é canônica; asset[0],
+// projectWorld.w/h, assets, frames e curvas vivem no mesmo sistema canônico.
+// ═══════════════════════════════════════
+function computeWorldCoordinateAudit() {
+  const TOL = 0.6; // px de tolerância
+  const out = {
+    strategy: 'preserveSavedWorld',
+    consistent: true,
+    issue: 'none',
+    projectWorldW: (projectWorld && projectWorld.w) || 0,
+    projectWorldH: (projectWorld && projectWorld.h) || 0,
+    baseStageW: (projectWorld && projectWorld.baseStageW) || 0,
+    baseStageH: (projectWorld && projectWorld.baseStageH) || 0,
+    stageW: (typeof stageW === 'number') ? stageW : 0,
+    stageH: (typeof stageH === 'number') ? stageH : 0,
+    asset0Matches: true,
+    allAssetsSame: true,
+    framesMatch: true,
+    curvesMatch: true,
+    mixedScaleDetected: false,
+    mixedScaleDetails: ''
+  };
+  try {
+    const baseW = out.baseStageW, baseH = out.baseStageH;
+    const multi = (typeof isMultiImageWorldActive === 'function') && isMultiImageWorldActive();
+    const imgAssets = (Array.isArray(assets) ? assets : []).filter(a => a && a.type === 'image');
+    const a0 = imgAssets[0] || null;
+
+    if (!baseW || !baseH) {
+      // Sem mundo inicializado (sem imagem). Nada a auditar.
+      out.strategy = 'preserveSavedWorld';
+      return out;
+    }
+
+    const details = [];
+
+    // asset[0] deve casar com baseStage (worldW≈baseStageW, worldH≈baseStageH).
+    if (a0) {
+      const dW = Math.abs((a0.worldW || 0) - baseW);
+      const dH = Math.abs((a0.worldH || 0) - baseH);
+      out.asset0Matches = (dW <= TOL && dH <= TOL);
+      if (!out.asset0Matches) {
+        details.push('asset0 worldW/H=' + _diagFmtNum(a0.worldW, 1) + '×' + _diagFmtNum(a0.worldH, 1) +
+                     ' ≠ baseStage=' + _diagFmtNum(baseW, 1) + '×' + _diagFmtNum(baseH, 1));
+      }
+    }
+
+    // projectWorld.w/h deve casar com baseStage (mundo canônico único).
+    const dPW = Math.abs(out.projectWorldW - baseW);
+    const dPH = Math.abs(out.projectWorldH - baseH);
+    const pwMatches = (dPW <= TOL && dPH <= TOL);
+    if (!pwMatches) {
+      details.push('projectWorld.w/h=' + _diagFmtNum(out.projectWorldW, 1) + '×' + _diagFmtNum(out.projectWorldH, 1) +
+                   ' ≠ baseStage=' + _diagFmtNum(baseW, 1) + '×' + _diagFmtNum(baseH, 1));
+    }
+
+    // Todos os image assets devem ter worldW/H finitos e positivos.
+    out.allAssetsSame = imgAssets.every(a => Number.isFinite(a.worldW) && Number.isFinite(a.worldH) &&
+                                              a.worldW > 0 && a.worldH > 0 &&
+                                              Number.isFinite(a.worldX) && Number.isFinite(a.worldY));
+    if (!out.allAssetsSame) details.push('um ou mais assets com world coords inválidas');
+
+    // Frames/curvas: vivem no MESMO espaço de px da câmera (getStateAtT consome os
+    // frames e produz a câmera; as curvas derivam dos frames). Logo, pertencem ao
+    // mesmo sistema do ProjectWorld por construção. A única falha detectável é
+    // coordenada não-finita (frame corrompido).
+    const _fc = (typeof frameCount === 'number') ? frameCount : 0;
+    let _framesFinite = true;
+    for (let i = 0; i < _fc && i < frames.length; i++) {
+      const f = frames[i];
+      if (!f || !Number.isFinite(f.x) || !Number.isFinite(f.y) || !Number.isFinite(f.w) || !Number.isFinite(f.h)) {
+        _framesFinite = false; break;
+      }
+    }
+    out.framesMatch = _framesFinite;
+    out.curvesMatch = _framesFinite; // curvas compartilham o espaço dos frames
+
+    out.mixedScaleDetected = !out.asset0Matches || !pwMatches || !out.allAssetsSame;
+    out.consistent = out.asset0Matches && pwMatches && out.allAssetsSame && out.framesMatch && out.curvesMatch;
+    out.mixedScaleDetails = details.length ? details.join(' | ') : 'nenhuma';
+    out.strategy = out.consistent ? 'preserveSavedWorld' : 'mixed/invalid';
+    out.issue = out.consistent ? 'none' : out.mixedScaleDetails;
+  } catch (e) {
+    out.consistent = false;
+    out.strategy = 'mixed/invalid';
+    out.issue = (e && e.message) || String(e);
+  }
+  return out;
+}
+
+// v8z4b30ZA — Auditoria de estado de handles fantasmas (ghost in/out).
+function computeGhostHandleAudit() {
+  const out = {
+    dragStateActive: false,
+    dragStateType: 'none',
+    ghostInExpectedFrameIndex: -1,
+    ghostInActualFrameIndex: -1,
+    ghostOutExpectedFrameIndex: -1,
+    ghostOutActualFrameIndex: -1,
+    activeFrameHasValidInHandle: false,
+    activeFrameHasValidOutHandle: false,
+    consistent: true,
+    issue: 'none'
+  };
+  try {
+    const ai = (typeof activeIdx === 'number') ? activeIdx : -1;
+    const fc = (typeof frameCount === 'number') ? frameCount : 0;
+    // Drag ativo?
+    const handleDrag = (typeof frameHandleDragState !== 'undefined' && frameHandleDragState);
+    const frameDrag = (typeof dragState !== 'undefined' && dragState);
+    const ctrlDrag = (typeof ctrlDragSeg !== 'undefined' && ctrlDragSeg >= 0) ||
+                     (typeof lockedDragSegmentIndex !== 'undefined' && lockedDragSegmentIndex >= 0);
+    if (handleDrag || ctrlDrag) { out.dragStateActive = true; out.dragStateType = 'curve'; }
+    else if (frameDrag) { out.dragStateActive = true; out.dragStateType = 'frame'; }
+
+    // Handles válidos do frame ativo (segmentos adjacentes reais).
+    out.activeFrameHasValidInHandle  = (ai > 0);
+    out.activeFrameHasValidOutHandle  = (ai >= 0 && ai < fc - 1);
+    out.ghostOutExpectedFrameIndex = (ai > 0) ? (ai - 1) : -1;
+    out.ghostInExpectedFrameIndex  = (ai >= 0 && ai < fc - 1) ? (ai + 1) : -1;
+
+    const readGhost = (id) => {
+      const el = document.getElementById(id);
+      if (!el || el.style.display === 'none') return -1;
+      const v = el.dataset ? el.dataset.arcoFi : undefined;
+      if (v == null || v === '') return -1;
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) ? n : -1;
+    };
+    out.ghostOutActualFrameIndex = readGhost('frame_ghost_out');
+    out.ghostInActualFrameIndex  = readGhost('frame_ghost_in');
+
+    const issues = [];
+    // Ghost visível deve casar com o esperado.
+    if (out.ghostOutActualFrameIndex !== -1 && out.ghostOutActualFrameIndex !== out.ghostOutExpectedFrameIndex)
+      issues.push('ghostOut=' + out.ghostOutActualFrameIndex + ' esperado=' + out.ghostOutExpectedFrameIndex);
+    if (out.ghostInActualFrameIndex !== -1 && out.ghostInActualFrameIndex !== out.ghostInExpectedFrameIndex)
+      issues.push('ghostIn=' + out.ghostInActualFrameIndex + ' esperado=' + out.ghostInExpectedFrameIndex);
+    // Primeiro frame não pode ter ghost de entrada/handle de entrada válido.
+    if (ai === 0 && out.ghostOutActualFrameIndex !== -1)
+      issues.push('primeiro frame com ghost de entrada (fantasma)');
+    // Último frame não pode ter ghost de saída/handle de saída válido.
+    if (ai === fc - 1 && out.ghostInActualFrameIndex !== -1)
+      issues.push('último frame com ghost de saída (fantasma)');
+
+    out.consistent = issues.length === 0;
+    out.issue = out.consistent ? 'none' : issues.join(' | ');
+  } catch (e) {
+    out.consistent = false;
+    out.issue = (e && e.message) || String(e);
+  }
+  return out;
+}
+
 function buildDiagnosticsText() {
   const L = [];
   const push = (k, v) => L.push(k + ': ' + v);
@@ -26748,6 +27061,107 @@ function buildDiagnosticsText() {
           'seg=' + _ef.segmentIndex + ' reason=' + (_ef.reason || 'unknown'));
       }
     }
+  }
+  L.push('');
+
+  // ═══════════════════════════════════════
+  // v8z4b30ZA — AUDITORIA DE SISTEMA DE COORDENADAS (mundo híbrido)
+  // ═══════════════════════════════════════
+  L.push('── v8z4b30ZA: coordenadas do ProjectWorld ──');
+  {
+    const _wa = computeWorldCoordinateAudit();
+    push('worldCoordinateStrategy', _wa.strategy);
+    push('worldCoordinateSystemConsistent', String(_wa.consistent));
+    push('worldCoordinateIssue', _wa.issue);
+    push('projectWorldW', _diagFmtNum(_wa.projectWorldW, 2));
+    push('projectWorldH', _diagFmtNum(_wa.projectWorldH, 2));
+    push('projectWorldBaseStageW', _diagFmtNum(_wa.baseStageW, 2));
+    push('projectWorldBaseStageH', _diagFmtNum(_wa.baseStageH, 2));
+    push('stageW', _diagFmtNum(_wa.stageW, 2));
+    push('stageH', _diagFmtNum(_wa.stageH, 2));
+    push('asset0MatchesWorldCoordinateSystem', String(_wa.asset0Matches));
+    push('allAssetsSameCoordinateSystem', String(_wa.allAssetsSame));
+    push('framesMatchWorldCoordinateSystem', String(_wa.framesMatch));
+    push('curvesMatchWorldCoordinateSystem', String(_wa.curvesMatch));
+    push('mixedWorldScaleDetected', String(_wa.mixedScaleDetected));
+    push('mixedWorldScaleDetails', _wa.mixedScaleDetails);
+  }
+  L.push('');
+
+  // ═══════════════════════════════════════
+  // v8z4b30ZA — RENDER TRANSFORM REAL POR ASSET (preview/export)
+  // ═══════════════════════════════════════
+  L.push('── v8z4b30ZA: render transform (world→camera→canvas) ──');
+  push('renderSampleCount', _diagFmtNum((typeof renderSampleCount !== 'undefined') ? renderSampleCount : 0));
+  push('renderLastSegmentIndex', _diagFmtNum((typeof renderLastSegmentIndex !== 'undefined') ? renderLastSegmentIndex : -1));
+  push('renderLastFrameIndex', _diagFmtNum((typeof renderLastFrameIndex !== 'undefined') ? renderLastFrameIndex : -1));
+  push('renderTransformConsistent', String((typeof renderTransformConsistent !== 'undefined') ? renderTransformConsistent : true));
+  push('renderTransformIssue', (typeof renderTransformIssue !== 'undefined') ? renderTransformIssue : 'none');
+  push('cameraCoordinateSpace', 'projectWorld');
+  push('assetCoordinateSpace', 'projectWorld');
+  push('frameCoordinateSpace', 'projectWorld');
+  push('curveCoordinateSpace', 'projectWorld');
+  push('cameraAssetCoordinateMismatch', String((typeof renderTransformConsistent !== 'undefined') ? !renderTransformConsistent : false));
+  {
+    const _rt = (typeof renderTransform !== 'undefined' && renderTransform)
+      ? (renderTransform.export || renderTransform.preview || renderTransform.world) : null;
+    if (_rt) {
+      const _lbl = renderTransform.export ? 'export' : (renderTransform.preview ? 'preview' : 'world');
+      push('renderSampleContext', _lbl);
+      push('renderCameraX', _diagFmtNum(_rt.cameraX, 2));
+      push('renderCameraY', _diagFmtNum(_rt.cameraY, 2));
+      push('renderCameraW', _diagFmtNum(_rt.cameraW, 2));
+      push('renderCameraH', _diagFmtNum(_rt.cameraH, 2));
+      push('renderCameraRotation', _diagFmtNum(_rt.cameraRotation, 2));
+      push('renderCanvasW', _diagFmtNum(_rt.canvasW, 2));
+      push('renderCanvasH', _diagFmtNum(_rt.canvasH, 2));
+      push('renderWorldToCanvasScaleX', _diagFmtNum(_rt.worldToCanvasScaleX, 5));
+      push('renderWorldToCanvasScaleY', _diagFmtNum(_rt.worldToCanvasScaleY, 5));
+      const _ras = Array.isArray(_rt.assets) ? _rt.assets : [];
+      for (let _i = 0; _i < _ras.length; _i++) {
+        const _r = _ras[_i];
+        push('assetRender[' + _r.id + '].world',
+          _diagFmtNum(_r.worldX, 1) + ',' + _diagFmtNum(_r.worldY, 1) + ' ' +
+          _diagFmtNum(_r.worldW, 1) + '×' + _diagFmtNum(_r.worldH, 1) +
+          ' z=' + _diagFmtNum(_r.zIndex) + ' vis=' + _r.visible);
+        push('assetRender[' + _r.id + '].screen',
+          'x=' + _diagFmtNum(_r.screenX, 1) + ' y=' + _diagFmtNum(_r.screenY, 1) +
+          ' w=' + _diagFmtNum(_r.screenW, 1) + ' h=' + _diagFmtNum(_r.screenH, 1) +
+          ' area=' + _diagFmtNum(_r.screenArea, 0));
+        push('assetRender[' + _r.id + '].flags',
+          'considered=' + _r.considered + ' drawn=' + _r.drawn +
+          ' intersects=' + _r.intersectsCamera + ' culled=' + _r.culled +
+          ' cullReason=' + _r.cullingReason + ' alpha=' + _diagFmtNum(_r.alphaUsed, 2) +
+          ' imgReady=' + _r.imageReady + ' decodeReady=' + _r.decodeReady +
+          ' nat=' + _diagFmtNum(_r.naturalW) + '×' + _diagFmtNum(_r.naturalH) +
+          ' drawReason=' + _r.drawReason);
+      }
+    } else {
+      push('renderSample', 'n/d (rode Preview ou Export para amostrar)');
+    }
+  }
+  L.push('');
+
+  // ═══════════════════════════════════════
+  // v8z4b30ZA — ESTADO DE HANDLES FANTASMAS (ghost in/out)
+  // ═══════════════════════════════════════
+  L.push('── v8z4b30ZA: handles (ghost in/out) ──');
+  {
+    const _ga = computeGhostHandleAudit();
+    push('dragStateActive', String(_ga.dragStateActive));
+    push('dragStateType', _ga.dragStateType);
+    push('ghostHandlesConsistent', String(_ga.consistent));
+    push('ghostHandlesIssue', _ga.issue);
+    push('ghostInExpectedFrameIndex', _diagFmtNum(_ga.ghostInExpectedFrameIndex));
+    push('ghostInActualFrameIndex', _ga.ghostInActualFrameIndex === -1 ? 'none' : String(_ga.ghostInActualFrameIndex));
+    push('ghostOutExpectedFrameIndex', _diagFmtNum(_ga.ghostOutExpectedFrameIndex));
+    push('ghostOutActualFrameIndex', _ga.ghostOutActualFrameIndex === -1 ? 'none' : String(_ga.ghostOutActualFrameIndex));
+    push('activeFrameHasValidInHandle', String(_ga.activeFrameHasValidInHandle));
+    push('activeFrameHasValidOutHandle', String(_ga.activeFrameHasValidOutHandle));
+    push('lockedDragSegmentIndex', (typeof lockedDragSegmentIndex !== 'undefined' && lockedDragSegmentIndex >= 0) ? String(lockedDragSegmentIndex) : 'none');
+    push('lockedDragCurveIndex', (typeof lockedDragCurveIndex !== 'undefined' && lockedDragCurveIndex >= 0) ? String(lockedDragCurveIndex) : 'none');
+    push('lockedDragHandleType', (typeof lockedDragHandleType !== 'undefined' && lockedDragHandleType) ? lockedDragHandleType : 'none');
+    push('lastCurveMutatedIndex', (typeof lastCurveMutatedIndex !== 'undefined' && lastCurveMutatedIndex >= 0) ? String(lastCurveMutatedIndex) : 'none');
   }
   L.push('');
 
