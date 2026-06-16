@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30V — base v8z4b30U. fix(ux): remove marcador visual de "exceder moldura" (borda vermelha no Stage + @keyframes stage-warn + class .out-of-bounds) — desnecessário no modelo ProjectWorld onde frames podem ultrapassar a imagem principal por design; isFrameOutside() preservada mas sem uso visual. fix(ux): tipo de visualização (viewMode: Normal/Isolamento/Mapa) passa a ser global — applyViewMode() aplica opacity ao imgEl E a todos os .world-extra-img do ProjectWorld; renderProjectWorldExtraImages() respeita viewMode ao criar elementos extras, garantindo consistência após rerenders. fix(ux): novo frame no ProjectWorld multi-imagem nasce próximo ao frame anterior sem ser clampado ao Stage da imagem principal — buildPendingFrameInsertion() usa _rawNewFrame diretamente quando isMultiImageWorldActive(), preservando clampNewFrameRectToStage para projetos de imagem única. fix(timeline): selecionar trecho na faixa de frames não dispara mais centralização automática — selectSegmentContext() passa a definir lowerTimelineCenterFrameIndex = activeIdx (valor válido) em vez de -1, evitando que renderAll() acione centerLowerTimelineOnFrame indevidamente; apenas seleção de frame continua centralizando a pill. fix(diag): painel Diagnóstico exibe o zoom mínimo efetivo (getEditorMinZoom(), valor dinâmico em ProjectWorld multi-imagem) em vez do MIN_EDITOR_ZOOM fixo (0.5000), eliminando a inconsistência onde "zoom mínimo" mostrava 0.5000 enquanto "dynamicEditorMinZoom" mostrava 0.2711. preserve: exportação MP4 multi-imagem (exportUsedWorldRenderer/fallback), Preview/Export, motor de curvas/frames, WebCodecs/FPS/muxer, touch/pan/zoom, suporte iPhone/Safari, isFrameOutside(), clampNewFrameRectToStage (projetos com 1 imagem), cores/textos/ícones aprovados; sem painel de layers, sem edição livre de posição/escala, sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30U — base v8z4b30R (v8z4b30S/T canceladas e revertidas). Correção funcional do fluxo de imagem + navegação superior + zoom out do ProjectWorld. fix(version): APP_VERSION e APP_VERSION_NAME = v8z4b30U; interface mostra UMA versão visível ("Arco Motion App v8z4b30U"), removida a 2ª linha de versão. ux(image): menu Imagem agora tem DUAS ações diretas e separadas — "Inserir imagem" (startInsertImageFlow) e "Trocar imagem" (startReplaceImageFlow); o seletor de Fotos/Arquivos só abre DEPOIS da escolha da ação (sem ação única ambígua, sem perguntar após o arquivo). fix(intent/target): a intenção (pendingImageAction) e o alvo (pendingImageTargetSlot/pendingImageTargetAssetId) são CONGELADOS antes do seletor; ao voltar, o app usa exclusivamente o alvo congelado — nunca recalcula pelo estado visual nem cai no centro (exceto projeto realmente vazio). fix(insert): performInsertImageAtSlot() respeita o slot congelado, cria novo asset (assets.length+1), fit contain, slotRow/Col e zIndex coerente (slot ocupado → nova camada acima); undo=addImageAsset remove o asset inserido. fix(replace): doReplaceImageFromFile()/doReplaceExtraAsset() substituem APENAS o asset alvo sem criar camada (assets.length inalterado), preservando slot/zIndex/visible e mantendo fit contain; trocar lateral não substitui img-1; trocar em slot vazio não abre seletor; undo=replaceImageAsset restaura a imagem anterior. ux(nav): X/Fechar removido do canto superior esquerdo e movido para o menu Arquivo como "Início" (ícone Lucide home, mesma ação requestCloseStageToLauncher); placeholder invisível preserva a geometria do topo — Preview e Visualizar NÃO se deslocam. feat(zoom): zoom out dinâmico do editor (getEditorMinZoom/computeFitAllWorldZoom) para visualizar todo o ProjectWorld/grid 3x3 quando há múltiplas imagens; pan world-aware (clampEditorPan alarga, nunca restringe) — sem alterar frames, Preview, Export ou escala real dos assets. feat(diag): novos campos de ação de imagem, layers lógicos, plano/marca d'água e zoom out. preserve: salvar/carregar múltiplas imagens, ProjectWorld único, Preview/Export multi-imagem (exportUsedWorldRenderer/fallback), fundo #3c3c3b, reset preservando imagens, gap 3x3, featureAccess multipleImageAssets liberado em teste, iPhone/Safari; NÃO altera motor de curvas/frames, WebCodecs/FPS/muxer, touch/pan/zoom de câmera dos frames, cores/textos/posições aprovadas; sem painel de layers/reorder, sem edição livre de posição/escala, sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30Q — HOTFIX (estabilização da fase 1 de múltiplas imagens), base v8z4b30P. fix(bg): novo estado bgColorUserSet diferencia "preto escolhido pelo usuário" de "preto herdado de inicialização antiga/hard-coded". Projeto novo/reset (clearCurrentProjectForNewFile) nasce com bgColor=DEFAULT_PROJECT_BG ('#3c3c3b') e bgColorUserSet=false. applyFrameData() (abrir projeto/restaurar autosave) só preserva bgColor='#000000'/'#000'/'black' quando data.bgColorUserSet===true; sem essa flag (projetos/autosaves antigos), preto legado cai em DEFAULT_PROJECT_BG. Escolher uma cor pelo menu "Cor de fundo" (applyBgColorValue) marca bgColorUserSet=true e é persistido em captureState/restoreState/buildProjectData — preto escolhido manualmente continua funcionando em Stage/Preview/Export normalmente. fix(export): Correção 2 — renderFrameSafely() não aplica mais o fallback de "frame em branco" (isExportFrameLikelyBlank → renderUniversalFallback, que desenha a imagem canônica inteira via cover-fit ignorando a câmera) quando isMultiImageWorldActive()===true. Esse fallback, herdado do pipeline single-image, disparava incorretamente durante transições de câmera que cruzam o gap entre duas imagens no mundo composto (área de fundo válida), causando o salto/corte para a imagem inteira no MP4 relatado na v8z4b30P; drawWorldToCanvas continua sendo a única fonte de render de Preview/Export multi-imagem. feat(diag): painel Diagnóstico ganha exportUsedWorldRenderer/exportFallbackToSingleImage/exportFallbackReason, resetados a cada novo export. preserve: undo de "Adicionar como nova imagem"/"Substituir imagem atual" (asset principal/central img-1, exatamente um passo de undo/redo já validado na v8z4b30P), múltiplas imagens, fit contain, Preview/Export MP4 1:1/9:16/4:3, gap 3x3, ProjectWorld único, remoção de "Cena 1", modal Substituir/Adicionar acima do menu, fundo cinza de "Gerando vídeo", featureAccess multipleImageAssets; NÃO altera motor de curvas, touch/drag/resize/zoom, suporte mobile/iPhone/Safari, WebCodecs/muxer/FPS além do mínimo, textos/ícones/cores/layout aprovados; sem edição livre de posição/escala, sem painel de layers/reorder, sem cenas, sem IA, sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30P — HOTFIX (estabilização da fase 1 de múltiplas imagens), base v8z4b30O. fix(bg): nova fonte única getProjectBackgroundColor()/DEFAULT_PROJECT_BG ('#3c3c3b', cinza padrão do app) usada por Stage (imageArea), Preview, Export, drawAtTDirect e drawWorldToCanvas — todos os fallbacks hard-coded '#000000'/'#000' para a cor de fundo do projeto foram substituídos; novo projeto (clearCurrentProjectForNewFile) já nasce com bgColor=DEFAULT_PROJECT_BG e sincroniza o menu "Cor de fundo" (syncBgColorUI) desde o início, eliminando o fundo preto inicial. fix(aspect-ratio): nova função fitContain(srcW,srcH,boxW,boxH) — addImageAssetAtSlot() calcula o tamanho da imagem adicional com fit contain dentro da célula do slot (baseStageW x baseStageH) e centraliza o asset (worldX/Y/W/H ajustados), preservando o aspect ratio original sem cortar/distorcer; gap 3x3 e drawWorldToCanvas/renderProjectWorldExtraImages (cover sobre um rect com a mesma proporção do asset = sem crop) inalterados. fix(undo): captureState()/restoreState() passam a incluir assets[]/projectWorld e uma referência leve (sem duplicar base64/bitmaps) à imagem principal (imageSnapshot); addImageAssetAtSlot() e a substituição de imagem (chooseReplaceCurrentImage→loadImage) capturam snapshot ANTES da mutação e chamam pushUndoSnapshot() — exatamente um passo de undo por ação, usando o mecanismo de undo/redo já existente. feat(diag): painel Diagnóstico ganha DEFAULT_PROJECT_BG/currentProjectBg/renderBgUsed/previewBgUsed/exportBgUsed, asset[i].id/type/sourceAR/worldAR/slotBoxW-H/fitMode e undoStackLength/redoStackLength/lastUndoAction. preserve: inserção de 2ª imagem, Preview/Export multi-imagem, gap 3x3, remoção de "Cena 1", ProjectWorld único, fundo cinza de "Gerando vídeo", modal Substituir/Adicionar acima do menu, MP4 1:1/9:16/4:3; NÃO altera motor de curvas, touch/drag/resize/zoom, suporte mobile/iPhone/Safari, WebCodecs/muxer/FPS além do mínimo, textos/ícones/cores/layout aprovados; sem edição livre de posição/escala, sem painel de layers/reorder, sem cenas, sem IA, sem prompt/alert/confirm. -->
@@ -1099,21 +1100,6 @@ html,body{
   content:'';position:absolute;inset:0;pointer-events:none;
   border:3px solid transparent;box-sizing:border-box;z-index:100;
   transition:border-color .15s;
-}
-.stage.out-of-bounds::after{
-  border-color:rgba(255,60,60,.9);
-  animation:stage-warn .6s ease-in-out infinite alternate;
-}
-/* Nunca mostrar borda durante preview, gravação ou painel aberto */
-.preview-screen.show ~ * .stage.out-of-bounds::after,
-body.previewing .stage.out-of-bounds::after,
-body.panel-open .stage.out-of-bounds::after{
-  border-color:transparent !important;
-  animation:none !important;
-}
-@keyframes stage-warn{
-  from{border-color:rgba(255,60,60,.9);}
-  to  {border-color:rgba(255,60,60,.25);}
 }
 #imgEl{display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;}
 
@@ -3935,7 +3921,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30U</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30V</span></div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -6707,8 +6693,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30U';
-const APP_VERSION_NAME = 'v8z4b30U';
+const APP_VERSION = 'v8z4b30V';
+const APP_VERSION_NAME = 'v8z4b30V';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12962,10 +12948,11 @@ function selectSegmentContext(seg) {
   closeCustBar();
   hideStageFrameMenu();
   selectedFrames.clear();
-  lowerTimelineCenterFrameIndex = -1;
   selectedSegmentIndex = seg;
   activeIdx = Math.max(0, Math.min(frameCount - 1, seg));
   timelineFocalFrameId = activeIdx;
+  // v8z4b30V: manter valor válido para não acionar centralização automática ao selecionar trecho
+  lowerTimelineCenterFrameIndex = activeIdx;
   _activeEaseSeg = seg;
   setBottomContext('segment');
   renderAll();
@@ -14542,8 +14529,8 @@ function startFirstFrameAssistedInsertion() {
   redoStack.length = 0;
   updateUndoRedoUI();
   // v8z4b23b: limpar overlays visuais antigos imediatamente após zerar estado —
-  // dim overlay (#stageDimSvg), bezier paths, handle de escala/rotação, borda
-  // out-of-bounds e indicador de ângulo devem ser apagados antes de recriar o ghost.
+  // dim overlay (#stageDimSvg), bezier paths, handle de escala/rotação e
+  // indicador de ângulo devem ser apagados antes de recriar o ghost.
   // Sem esta limpeza, o overlay escuro do último frame ativo permanece na tela
   // até o usuário confirmar F1 assistido.
   {
@@ -14556,7 +14543,6 @@ function startFirstFrameAssistedInsertion() {
       globalHandleEl.classList.remove('show');
       globalHandleEl.classList.remove('ghost-transform');
     }
-    stage.classList.remove('out-of-bounds');
   }
   // Iniciar inserção assistida do F1
   _isFirstFrameInsertion = true;
@@ -14958,8 +14944,12 @@ function buildPendingFrameInsertion() {
   }
 
   // v8z4b29AZ: clampar posição inicial do ghost para que nasça dentro do Stage.
-  // O arrasto posterior pode ir além da área visível (comportamento preservado).
-  const _initFrame = clampNewFrameRectToStage({ x: cx - w / 2, y: cy - h / 2, w, h }, 12);
+  // v8z4b30V: em ProjectWorld com múltiplas imagens, não clampar ao Stage principal —
+  // o novo frame pode nascer em qualquer área do mundo, próximo ao frame anterior.
+  const _rawNewFrame = { x: cx - w / 2, y: cy - h / 2, w, h };
+  const _initFrame = (typeof isMultiImageWorldActive === 'function' && isMultiImageWorldActive())
+    ? _rawNewFrame
+    : clampNewFrameRectToStage(_rawNewFrame, 12);
 
   return {
     mode: isBetween ? 'between' : (isLoopAppend ? 'loop-append' : 'append'),
@@ -15492,12 +15482,6 @@ function renderAll() {
 
   // Overlay escuro fora dos frames
   updateDimOverlay();
-
-  // Borda vermelha no stage só se o frame ATIVO ultrapassar os limites
-  // v8z4b23b: guard frameCount > 0 — isFrameOutside(i) lê frames[i] e crasharia com frames vazio
-  // (ex: cancelar F1 assistido após reset chama renderAll com frameCount=0).
-  const anyPanelOpen = document.querySelector('.float-panel.show');
-  stage.classList.toggle('out-of-bounds', !!imgNatW && frameCount > 0 && isFrameOutside(activeIdx) && !anyPanelOpen);
 }
 
 // ═══════════════════════════════════════
@@ -19055,7 +19039,6 @@ function startPreview() {
   isPreviewing = true;
   updatePlayButton();
   document.body.classList.add('previewing');
-  stage.classList.remove('out-of-bounds');
 
   const [eW, eH] = exportDims[currentRatio];
   debugImagePipeline('preview-start');
@@ -21672,7 +21655,6 @@ function clearCurrentProjectForNewFile() {
     globalHandleEl.classList.remove('show');
     globalHandleEl.classList.remove('ghost-transform');
   }
-  stage.classList.remove('out-of-bounds');
 }
 
 function createInitialFrameForNewImageProject() {
@@ -22825,8 +22807,11 @@ function applyViewMode() {
   if (!imgEl) return;
   const isoMode = viewMode === 1;
   const mapMode = viewMode === 2;
-  imgEl.style.opacity = mapMode ? '0.06' : '1';
+  const _mapOpacity = mapMode ? '0.06' : '1';
+  imgEl.style.opacity = _mapOpacity;
   imgEl.style.boxShadow = mapMode ? '0 0 0 1.5px rgba(180,180,180,0.5)' : 'none';
+  // v8z4b30V — aplicar modo a TODAS as imagens do ProjectWorld (global, não apenas imgEl)
+  if (stageContent) stageContent.querySelectorAll('.world-extra-img').forEach(el => { el.style.opacity = _mapOpacity; });
   window._isoMode = isoMode;
   renderAll();
   showStatus(['Modo normal', 'Isolamento — só frame ativo', 'Modo Mapa'][viewMode]);
@@ -25500,6 +25485,8 @@ function renderProjectWorldExtraImages() {
     img.style.pointerEvents = 'none';
     img.style.userSelect = 'none';
     img.style.webkitUserDrag = 'none';
+    // v8z4b30V — respeitar viewMode global ao criar imagem extra do mundo
+    if (typeof viewMode !== 'undefined' && viewMode === 2) img.style.opacity = '0.06';
     img.style.zIndex = '0';
     stageContent.insertBefore(img, imgEl);
   });
@@ -25970,7 +25957,9 @@ function buildDiagnosticsText() {
   // Zoom de edição
   const _zoom = (typeof editorZoomScale !== 'undefined') ? editorZoomScale : null;
   push('zoom atual', _diagFmtNum(_zoom, 4));
-  push('zoom mínimo', (typeof MIN_EDITOR_ZOOM !== 'undefined') ? _diagFmtNum(MIN_EDITOR_ZOOM, 4) : 'n/d');
+  // v8z4b30V: exibir zoom mínimo efetivo (dinâmico em ProjectWorld, fixo em projeto simples)
+  const _effMinZoom = (typeof getEditorMinZoom === 'function') ? getEditorMinZoom() : (typeof MIN_EDITOR_ZOOM !== 'undefined' ? MIN_EDITOR_ZOOM : null);
+  push('zoom mínimo', _effMinZoom != null ? _diagFmtNum(_effMinZoom, 4) : 'n/d');
   push('zoom máximo', (typeof MAX_EDITOR_ZOOM !== 'undefined') ? _diagFmtNum(MAX_EDITOR_ZOOM, 4) : 'n/d');
   // v8z4b30U — zoom out dinâmico do ProjectWorld
   {
