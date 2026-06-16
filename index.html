@@ -6694,8 +6694,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZB';
-const APP_VERSION_NAME = 'v8z4b30ZB';
+const APP_VERSION = 'v8z4b30ZA';
+const APP_VERSION_NAME = 'v8z4b30ZA';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -19130,16 +19130,6 @@ function startPreview() {
   normalizeProjectArrays();
   if (!validateProjectState('preview')) { showStatus('Estado inválido para Preview (veja console)'); return; }
   isPreviewing = true;
-  // v8z4b30ZB — resetar diagnósticos de câmera de Preview ao iniciar
-  previewActiveSegmentIndex = -1; previewFromFrameIndex = -1; previewToFrameIndex = -1;
-  previewLocalT = 0; previewCameraSource = 'projectWorld';
-  previewCameraX = 0; previewCameraY = 0; previewCameraW = 0; previewCameraH = 0; previewCameraRotation = 0;
-  previewPreviousCameraX = 0; previewPreviousCameraY = 0; previewPreviousCameraW = 0; previewPreviousCameraH = 0; previewPreviousCameraRotation = 0;
-  previewJumpDeltaX = 0; previewJumpDeltaY = 0; previewJumpDeltaW = 0; previewJumpDeltaH = 0; previewJumpDeltaRotation = 0;
-  previewSegmentBoundaryCrossed = false; previewSegmentBoundaryFrom = -1; previewSegmentBoundaryTo = -1;
-  previewCrossSlotTransition = false; previewCrossSlotFromAssetId = null; previewCrossSlotToAssetId = null;
-  previewCrossSlotFromSlotRowCol = ''; previewCrossSlotToSlotRowCol = '';
-  previewCameraMatchesExportMath = true; previewCameraMismatchReason = ''; previewSeg3To4Samples = null;
   updatePlayButton();
   document.body.classList.add('previewing');
 
@@ -19182,7 +19172,6 @@ function startPreview() {
   const pH2 = Math.round(eH * previewScale);
   const timelineFill = document.getElementById('previewTimelineFill');
 
-  let _prevPreviewSegIdx = -1; // v8z4b30ZB — rastrear transições de segmento
   function loop(ts) {
     if (!isPreviewing || token !== previewLoopToken) return;
     if (!animStart) animStart = ts;
@@ -19193,12 +19182,6 @@ function startPreview() {
       animFrame = requestAnimationFrame(loop);
       return;
     }
-    // v8z4b30ZB — cap de atraso por render: limita avanço temporal a 150 ms por frame.
-    // Previne salto visual quando o browser stalla em cross-slot transitions (frame 3→4).
-    if (previewPerfStats.lastRenderTs && animStart !== null) {
-      const _renderDelta = ts - previewPerfStats.lastRenderTs;
-      if (_renderDelta > 150) animStart += (_renderDelta - 150);
-    }
     previewPerfStats.lastRenderTs = ts;
     previewPerfStats.lastRafDelta = rafDelta;
     const elapsed = (ts - animStart + pausedElapsed) % dur;
@@ -19207,65 +19190,6 @@ function startPreview() {
     // CSS filter no elemento canvas — compatível com Safari (alternativa a ctx.filter)
     const blurPx = getBlurAtT(t, pW2);
     dispCanvas.style.filter = blurPx > 0 ? `blur(${(blurPx * 0.5).toFixed(1)}px)` : 'none';
-    // v8z4b30ZB — rastrear segmento e câmera para diagnóstico de salto frame 3→4
-    if (previewSegmentJumpCheckEnabled) {
-      try {
-        const _sl = getSegAndLocalTAtTime(t);
-        const _segIdx = (_sl && typeof _sl.seg === 'number') ? _sl.seg : -1;
-        previewActiveSegmentIndex = _segIdx;
-        previewFromFrameIndex = _segIdx >= 0 ? _segIdx : -1;
-        previewToFrameIndex = (_segIdx >= 0 && _segIdx + 1 < frameCount) ? _segIdx + 1 : -1;
-        previewLocalT = _sl ? (_sl.localT || 0) : 0;
-        previewSegmentBoundaryCrossed = (_prevPreviewSegIdx >= 0 && _segIdx !== _prevPreviewSegIdx);
-        if (previewSegmentBoundaryCrossed) {
-          previewSegmentBoundaryFrom = _prevPreviewSegIdx;
-          previewSegmentBoundaryTo = _segIdx;
-          if (typeof isMultiImageWorldActive === 'function' && isMultiImageWorldActive()) {
-            const _fa = _getAssetForFrameCenter(_prevPreviewSegIdx);
-            const _ta = _getAssetForFrameCenter(previewToFrameIndex);
-            const _faId = _fa ? _fa.id : null;
-            const _taId = _ta ? _ta.id : null;
-            previewCrossSlotTransition = !!(_faId !== null && _taId !== null && _faId !== _taId);
-            previewCrossSlotFromAssetId = _faId;
-            previewCrossSlotToAssetId = _taId;
-            previewCrossSlotFromSlotRowCol = _fa ? _getAssetSlotRowCol(_fa.id) : '';
-            previewCrossSlotToSlotRowCol = _ta ? _getAssetSlotRowCol(_ta.id) : '';
-          } else {
-            previewCrossSlotTransition = false;
-            previewCrossSlotFromAssetId = null; previewCrossSlotToAssetId = null;
-            previewCrossSlotFromSlotRowCol = ''; previewCrossSlotToSlotRowCol = '';
-          }
-        }
-        _prevPreviewSegIdx = _segIdx;
-        const _cam = getStateAtT(t);
-        if (_cam) {
-          previewPreviousCameraX = previewCameraX; previewPreviousCameraY = previewCameraY;
-          previewPreviousCameraW = previewCameraW; previewPreviousCameraH = previewCameraH;
-          previewPreviousCameraRotation = previewCameraRotation;
-          previewCameraX = _cam.cx; previewCameraY = _cam.cy;
-          previewCameraW = _cam.sw; previewCameraH = _cam.sh;
-          previewCameraRotation = _cam.rot;
-          previewCameraSource = 'projectWorld';
-          previewJumpDeltaX = previewCameraX - previewPreviousCameraX;
-          previewJumpDeltaY = previewCameraY - previewPreviousCameraY;
-          previewJumpDeltaW = previewCameraW - previewPreviousCameraW;
-          previewJumpDeltaH = previewCameraH - previewPreviousCameraH;
-          previewJumpDeltaRotation = previewCameraRotation - previewPreviousCameraRotation;
-        }
-        if (_segIdx === 3 && previewFromFrameIndex === 3 && previewToFrameIndex === 4) {
-          if (!previewSeg3To4Samples) previewSeg3To4Samples = {};
-          const _pct = Math.round(previewLocalT * 100);
-          const _key = _pct <= 12 ? 0 : _pct <= 37 ? 25 : _pct <= 62 ? 50 : _pct <= 87 ? 75 : 100;
-          if (!(_key in previewSeg3To4Samples)) {
-            previewSeg3To4Samples[_key] = { localT: previewLocalT, x: previewCameraX, y: previewCameraY, w: previewCameraW, h: previewCameraH, r: previewCameraRotation };
-          }
-        }
-        previewCameraMatchesExportMath = true;
-      } catch(_diagErr) {
-        previewCameraMatchesExportMath = false;
-        previewCameraMismatchReason = _diagErr && _diagErr.message ? _diagErr.message : String(_diagErr);
-      }
-    }
     try {
       renderFrameSafely(pCtx, dispCanvas, t, pW2, pH2, totalPF, Math.round(t * (totalPF - 1)), { renderSource: previewSource });
     } catch (err) {
@@ -19346,7 +19270,6 @@ function togglePreviewPlayback() {
     const previewSource = getPreviewRenderSource();
     const token = ++previewLoopToken;
     previewPerfStats = { renders: 0, skipped: 0, totalRenderMs: 0, lastRafDelta: 0 };
-    let _prevPreviewSegIdx2 = -1; // v8z4b30ZB — rastrear transições de segmento
     function loop(ts) {
       if (!isPreviewing || token !== previewLoopToken) return;
       if (!animStart) animStart = ts;
@@ -19357,11 +19280,6 @@ function togglePreviewPlayback() {
         animFrame = requestAnimationFrame(loop);
         return;
       }
-      // v8z4b30ZB — cap de atraso por render: limita avanço temporal a 150 ms por frame.
-      if (previewPerfStats.lastRenderTs && animStart !== null) {
-        const _renderDelta = ts - previewPerfStats.lastRenderTs;
-        if (_renderDelta > 150) animStart += (_renderDelta - 150);
-      }
       previewPerfStats.lastRenderTs = ts;
       previewPerfStats.lastRafDelta = rafDelta;
       const elapsed = (ts - animStart + pausedElapsed) % dur;
@@ -19369,65 +19287,6 @@ function togglePreviewPlayback() {
       const renderStart = DEBUG_PREVIEW_PERF ? performance.now() : 0;
       const blurPx = getBlurAtT(t, pW2r);
       dispCanvas.style.filter = blurPx > 0 ? `blur(${(blurPx * 0.5).toFixed(1)}px)` : 'none';
-      // v8z4b30ZB — rastrear segmento e câmera para diagnóstico de salto frame 3→4
-      if (previewSegmentJumpCheckEnabled) {
-        try {
-          const _sl = getSegAndLocalTAtTime(t);
-          const _segIdx = (_sl && typeof _sl.seg === 'number') ? _sl.seg : -1;
-          previewActiveSegmentIndex = _segIdx;
-          previewFromFrameIndex = _segIdx >= 0 ? _segIdx : -1;
-          previewToFrameIndex = (_segIdx >= 0 && _segIdx + 1 < frameCount) ? _segIdx + 1 : -1;
-          previewLocalT = _sl ? (_sl.localT || 0) : 0;
-          previewSegmentBoundaryCrossed = (_prevPreviewSegIdx2 >= 0 && _segIdx !== _prevPreviewSegIdx2);
-          if (previewSegmentBoundaryCrossed) {
-            previewSegmentBoundaryFrom = _prevPreviewSegIdx2;
-            previewSegmentBoundaryTo = _segIdx;
-            if (typeof isMultiImageWorldActive === 'function' && isMultiImageWorldActive()) {
-              const _fa = _getAssetForFrameCenter(_prevPreviewSegIdx2);
-              const _ta = _getAssetForFrameCenter(previewToFrameIndex);
-              const _faId = _fa ? _fa.id : null;
-              const _taId = _ta ? _ta.id : null;
-              previewCrossSlotTransition = !!(_faId !== null && _taId !== null && _faId !== _taId);
-              previewCrossSlotFromAssetId = _faId;
-              previewCrossSlotToAssetId = _taId;
-              previewCrossSlotFromSlotRowCol = _fa ? _getAssetSlotRowCol(_fa.id) : '';
-              previewCrossSlotToSlotRowCol = _ta ? _getAssetSlotRowCol(_ta.id) : '';
-            } else {
-              previewCrossSlotTransition = false;
-              previewCrossSlotFromAssetId = null; previewCrossSlotToAssetId = null;
-              previewCrossSlotFromSlotRowCol = ''; previewCrossSlotToSlotRowCol = '';
-            }
-          }
-          _prevPreviewSegIdx2 = _segIdx;
-          const _cam = getStateAtT(t);
-          if (_cam) {
-            previewPreviousCameraX = previewCameraX; previewPreviousCameraY = previewCameraY;
-            previewPreviousCameraW = previewCameraW; previewPreviousCameraH = previewCameraH;
-            previewPreviousCameraRotation = previewCameraRotation;
-            previewCameraX = _cam.cx; previewCameraY = _cam.cy;
-            previewCameraW = _cam.sw; previewCameraH = _cam.sh;
-            previewCameraRotation = _cam.rot;
-            previewCameraSource = 'projectWorld';
-            previewJumpDeltaX = previewCameraX - previewPreviousCameraX;
-            previewJumpDeltaY = previewCameraY - previewPreviousCameraY;
-            previewJumpDeltaW = previewCameraW - previewPreviousCameraW;
-            previewJumpDeltaH = previewCameraH - previewPreviousCameraH;
-            previewJumpDeltaRotation = previewCameraRotation - previewPreviousCameraRotation;
-          }
-          if (_segIdx === 3 && previewFromFrameIndex === 3 && previewToFrameIndex === 4) {
-            if (!previewSeg3To4Samples) previewSeg3To4Samples = {};
-            const _pct = Math.round(previewLocalT * 100);
-            const _key = _pct <= 12 ? 0 : _pct <= 37 ? 25 : _pct <= 62 ? 50 : _pct <= 87 ? 75 : 100;
-            if (!(_key in previewSeg3To4Samples)) {
-              previewSeg3To4Samples[_key] = { localT: previewLocalT, x: previewCameraX, y: previewCameraY, w: previewCameraW, h: previewCameraH, r: previewCameraRotation };
-            }
-          }
-          previewCameraMatchesExportMath = true;
-        } catch(_diagErr) {
-          previewCameraMatchesExportMath = false;
-          previewCameraMismatchReason = _diagErr && _diagErr.message ? _diagErr.message : String(_diagErr);
-        }
-      }
       try {
         renderFrameSafely(pCtxR, dispCanvas, t, pW2r, pH2r, totalPF, Math.round(t * (totalPF - 1)), { renderSource: previewSource });
       } catch (err) {
@@ -26191,64 +26050,6 @@ let renderTransformIssue = 'none';
 let _renderActiveFrameIndexHint = -1;
 let _renderActiveSegmentIndexHint = -1;
 
-// v8z4b30ZB — diagnóstico específico de Preview: câmera e salto entre segmentos/slots
-let previewSegmentJumpCheckEnabled = true;
-let previewActiveSegmentIndex = -1;
-let previewFromFrameIndex = -1;
-let previewToFrameIndex = -1;
-let previewLocalT = 0;
-let previewCameraSource = 'projectWorld';
-let previewCameraX = 0, previewCameraY = 0, previewCameraW = 0, previewCameraH = 0, previewCameraRotation = 0;
-let previewPreviousCameraX = 0, previewPreviousCameraY = 0, previewPreviousCameraW = 0, previewPreviousCameraH = 0, previewPreviousCameraRotation = 0;
-let previewJumpDeltaX = 0, previewJumpDeltaY = 0, previewJumpDeltaW = 0, previewJumpDeltaH = 0, previewJumpDeltaRotation = 0;
-let previewSegmentBoundaryCrossed = false;
-let previewSegmentBoundaryFrom = -1;
-let previewSegmentBoundaryTo = -1;
-let previewCrossSlotTransition = false;
-let previewCrossSlotFromAssetId = null;
-let previewCrossSlotToAssetId = null;
-let previewCrossSlotFromSlotRowCol = '';
-let previewCrossSlotToSlotRowCol = '';
-let previewCameraMatchesExportMath = true;
-let previewCameraMismatchReason = '';
-let previewSeg3To4Samples = null;
-
-function _getAssetForFrameCenter(frameIdx) {
-  try {
-    if (!Array.isArray(frames) || frameIdx < 0 || frameIdx >= frames.length) return null;
-    const f = frames[frameIdx];
-    if (!f) return null;
-    const cx = (f.x || 0) + (f.w || 0) / 2;
-    const cy = (f.y || 0) + (f.h || 0) / 2;
-    const _as = (typeof assets !== 'undefined' && Array.isArray(assets)) ? assets : [];
-    for (let _i = 0; _i < _as.length; _i++) {
-      const a = _as[_i];
-      if (!a || a.type !== 'image' || a.visible === false) continue;
-      const ax = a.worldX || 0, ay = a.worldY || 0;
-      const aw = a.worldW || 0, ah = a.worldH || 0;
-      if (aw > 0 && ah > 0 && cx >= ax && cx < ax + aw && cy >= ay && cy < ay + ah) return a;
-    }
-  } catch(_e) {}
-  return null;
-}
-
-function _getAssetSlotRowCol(assetId) {
-  try {
-    const _as = (typeof assets !== 'undefined' && Array.isArray(assets)) ? assets : [];
-    const _pw = (typeof projectWorld !== 'undefined' && projectWorld) ? projectWorld : null;
-    const baseW = _pw && _pw.baseStageW > 0 ? _pw.baseStageW : 1;
-    const baseH = _pw && _pw.baseStageH > 0 ? _pw.baseStageH : 1;
-    for (let _i = 0; _i < _as.length; _i++) {
-      if (_as[_i] && _as[_i].id === assetId) {
-        const col = Math.round((_as[_i].worldX || 0) / baseW);
-        const row = Math.round((_as[_i].worldY || 0) / baseH);
-        return 'r' + row + 'c' + col;
-      }
-    }
-  } catch(_e) {}
-  return '';
-}
-
 function invalidateProjectWorldComposite() {
   _worldCompositeDirty = true;
 }
@@ -27383,62 +27184,6 @@ function buildDiagnosticsText() {
     const _sh = (typeof stageH !== 'undefined') ? stageH : null;
     const _geomOk = (_bsW != null && _sw != null && Math.abs(_bsW - _sw) < 1 && _bsH != null && _sh != null && Math.abs(_bsH - _sh) < 1);
     push('geometria baseStage==Stage', _bsW != null ? (_geomOk ? 'OK' : 'DIVERGENTE') : 'n/d');
-  }
-  L.push('');
-
-  // ═══════════════════════════════════════
-  // v8z4b30ZB — PREVIEW CÂMERA & SALTO (frame 3→4)
-  // ═══════════════════════════════════════
-  L.push('── v8z4b30ZB: preview câmera & salto segmento ──');
-  push('previewSegmentJumpCheckEnabled', String((typeof previewSegmentJumpCheckEnabled !== 'undefined') ? previewSegmentJumpCheckEnabled : false));
-  push('previewActiveSegmentIndex', _diagFmtNum((typeof previewActiveSegmentIndex !== 'undefined') ? previewActiveSegmentIndex : -1));
-  push('previewFromFrameIndex', _diagFmtNum((typeof previewFromFrameIndex !== 'undefined') ? previewFromFrameIndex : -1));
-  push('previewToFrameIndex', _diagFmtNum((typeof previewToFrameIndex !== 'undefined') ? previewToFrameIndex : -1));
-  push('previewLocalT', _diagFmtNum((typeof previewLocalT !== 'undefined') ? previewLocalT : 0, 4));
-  push('previewCameraSource', (typeof previewCameraSource !== 'undefined') ? previewCameraSource : 'n/d');
-  push('previewCameraX', _diagFmtNum((typeof previewCameraX !== 'undefined') ? previewCameraX : 0, 2));
-  push('previewCameraY', _diagFmtNum((typeof previewCameraY !== 'undefined') ? previewCameraY : 0, 2));
-  push('previewCameraW', _diagFmtNum((typeof previewCameraW !== 'undefined') ? previewCameraW : 0, 2));
-  push('previewCameraH', _diagFmtNum((typeof previewCameraH !== 'undefined') ? previewCameraH : 0, 2));
-  push('previewCameraRotation', _diagFmtNum((typeof previewCameraRotation !== 'undefined') ? previewCameraRotation : 0, 4));
-  push('previewPreviousCameraX', _diagFmtNum((typeof previewPreviousCameraX !== 'undefined') ? previewPreviousCameraX : 0, 2));
-  push('previewPreviousCameraY', _diagFmtNum((typeof previewPreviousCameraY !== 'undefined') ? previewPreviousCameraY : 0, 2));
-  push('previewPreviousCameraW', _diagFmtNum((typeof previewPreviousCameraW !== 'undefined') ? previewPreviousCameraW : 0, 2));
-  push('previewPreviousCameraH', _diagFmtNum((typeof previewPreviousCameraH !== 'undefined') ? previewPreviousCameraH : 0, 2));
-  push('previewPreviousCameraRotation', _diagFmtNum((typeof previewPreviousCameraRotation !== 'undefined') ? previewPreviousCameraRotation : 0, 4));
-  push('previewJumpDeltaX', _diagFmtNum((typeof previewJumpDeltaX !== 'undefined') ? previewJumpDeltaX : 0, 2));
-  push('previewJumpDeltaY', _diagFmtNum((typeof previewJumpDeltaY !== 'undefined') ? previewJumpDeltaY : 0, 2));
-  push('previewJumpDeltaW', _diagFmtNum((typeof previewJumpDeltaW !== 'undefined') ? previewJumpDeltaW : 0, 2));
-  push('previewJumpDeltaH', _diagFmtNum((typeof previewJumpDeltaH !== 'undefined') ? previewJumpDeltaH : 0, 2));
-  push('previewJumpDeltaRotation', _diagFmtNum((typeof previewJumpDeltaRotation !== 'undefined') ? previewJumpDeltaRotation : 0, 4));
-  push('previewSegmentBoundaryCrossed', String((typeof previewSegmentBoundaryCrossed !== 'undefined') ? previewSegmentBoundaryCrossed : false));
-  push('previewSegmentBoundaryFrom', _diagFmtNum((typeof previewSegmentBoundaryFrom !== 'undefined') ? previewSegmentBoundaryFrom : -1));
-  push('previewSegmentBoundaryTo', _diagFmtNum((typeof previewSegmentBoundaryTo !== 'undefined') ? previewSegmentBoundaryTo : -1));
-  push('previewCrossSlotTransition', String((typeof previewCrossSlotTransition !== 'undefined') ? previewCrossSlotTransition : false));
-  push('previewCrossSlotFromAssetId', String((typeof previewCrossSlotFromAssetId !== 'undefined' && previewCrossSlotFromAssetId !== null) ? previewCrossSlotFromAssetId : 'null'));
-  push('previewCrossSlotToAssetId', String((typeof previewCrossSlotToAssetId !== 'undefined' && previewCrossSlotToAssetId !== null) ? previewCrossSlotToAssetId : 'null'));
-  push('previewCrossSlotFromSlotRowCol', (typeof previewCrossSlotFromSlotRowCol !== 'undefined') ? previewCrossSlotFromSlotRowCol : '');
-  push('previewCrossSlotToSlotRowCol', (typeof previewCrossSlotToSlotRowCol !== 'undefined') ? previewCrossSlotToSlotRowCol : '');
-  push('previewCameraMatchesExportMath', String((typeof previewCameraMatchesExportMath !== 'undefined') ? previewCameraMatchesExportMath : true));
-  push('previewCameraMismatchReason', (typeof previewCameraMismatchReason !== 'undefined' && previewCameraMismatchReason) ? previewCameraMismatchReason : '');
-  {
-    const _s34 = (typeof previewSeg3To4Samples !== 'undefined') ? previewSeg3To4Samples : null;
-    if (_s34 && typeof _s34 === 'object') {
-      [0, 25, 50, 75, 100].forEach(function(_pct) {
-        if (_pct in _s34) {
-          const _s = _s34[_pct];
-          push('previewSeg3to4@' + _pct + '%',
-            'localT=' + _diagFmtNum(_s.localT, 4) +
-            ' x=' + _diagFmtNum(_s.x, 2) + ' y=' + _diagFmtNum(_s.y, 2) +
-            ' w=' + _diagFmtNum(_s.w, 2) + ' h=' + _diagFmtNum(_s.h, 2) +
-            ' r=' + _diagFmtNum(_s.r, 4));
-        } else {
-          push('previewSeg3to4@' + _pct + '%', 'n/d');
-        }
-      });
-    } else {
-      push('previewSeg3to4Samples', 'n/d (rode Preview para amostrar)');
-    }
   }
   L.push('');
 
