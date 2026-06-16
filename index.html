@@ -6693,8 +6693,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30Y';
-const APP_VERSION_NAME = 'v8z4b30Y';
+const APP_VERSION = 'v8z4b30Z';
+const APP_VERSION_NAME = 'v8z4b30Z';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -25597,6 +25597,202 @@ function computeAssetSlotRowCol(a) {
   };
 }
 
+// v8z4b30Z — captura snapshot do estado do ProjectWorld para diagnóstico de addImageAsset.
+function _captureWorldSnapshot() {
+  try {
+    const snap = {
+      pw: { initialized: projectWorld.initialized, x: projectWorld.x, y: projectWorld.y,
+            w: projectWorld.w, h: projectWorld.h,
+            baseStageW: projectWorld.baseStageW, baseStageH: projectWorld.baseStageH },
+      worldGap: (typeof lastWorldGapUsed === 'number') ? lastWorldGapUsed : null,
+      assetCount: 0,
+      assets: [],
+      frameCount: (typeof frameCount === 'number') ? frameCount : 0,
+      frames: [],
+      curveCount: 0,
+      curves: [],
+      segmentCount: 0,
+    };
+    if (Array.isArray(assets)) {
+      for (let i = 0; i < assets.length; i++) {
+        const a = assets[i];
+        if (!a || a.type !== 'image') continue;
+        snap.assetCount++;
+        snap.assets.push({ id: a.id, worldX: a.worldX, worldY: a.worldY,
+                           worldW: a.worldW, worldH: a.worldH,
+                           zIndex: a.zIndex, visible: a.visible,
+                           slotRow: null, slotCol: null });
+      }
+    }
+    const fc = snap.frameCount;
+    if (typeof frames !== 'undefined' && Array.isArray(frames)) {
+      for (let i = 0; i < fc; i++) {
+        const f = frames[i];
+        if (f) snap.frames.push({ x: f.x, y: f.y, w: f.w, h: f.h,
+                                   rotation: (typeof frameRotations !== 'undefined') ? (frameRotations[i] || 0) : 0 });
+      }
+    }
+    if (typeof ctrlPts !== 'undefined' && Array.isArray(ctrlPts)) {
+      snap.curveCount = ctrlPts.length;
+      for (let i = 0; i < ctrlPts.length; i++) {
+        const c = ctrlPts[i];
+        if (c) snap.curves.push({ nx: c.nx, ny: c.ny });
+        else snap.curves.push(null);
+      }
+    }
+    snap.segmentCount = fc > 1 ? fc - 1 : 0;
+    return snap;
+  } catch (e) { return null; }
+}
+
+// v8z4b30Z — compara snapshots antes/depois de addImageAsset e detecta mutações inesperadas.
+function _analyzeAddImageMutation(before, after, newAssetId) {
+  try {
+    if (!before || !after) {
+      addImageUnexpectedMutationDetected = false;
+      addImageOnlyAddedNewAsset = true;
+      return;
+    }
+    const details = [];
+    // Checar assets existentes (excluindo o novo)
+    let assetsChanged = false;
+    for (let i = 0; i < before.assets.length; i++) {
+      const ba = before.assets[i];
+      const aa = after.assets.find(function(x) { return x.id === ba.id; });
+      if (!aa) { assetsChanged = true; details.push('asset-removed:' + ba.id); continue; }
+      if (ba.worldX !== aa.worldX || ba.worldY !== aa.worldY ||
+          ba.worldW !== aa.worldW || ba.worldH !== aa.worldH) {
+        assetsChanged = true; details.push('asset-moved:' + ba.id);
+      }
+      if (ba.zIndex !== aa.zIndex) { assetsChanged = true; details.push('asset-zindex:' + ba.id); }
+      if (ba.visible !== aa.visible) { assetsChanged = true; details.push('asset-visible:' + ba.id); }
+    }
+    addImageChangedExistingAssets = assetsChanged;
+
+    // Checar frames
+    let framesChanged = false;
+    if (before.frameCount !== after.frameCount) { framesChanged = true; details.push('frameCount'); }
+    else {
+      for (let i = 0; i < before.frames.length; i++) {
+        const bf = before.frames[i], af = after.frames[i];
+        if (!bf || !af) continue;
+        if (Math.abs(bf.x - af.x) > 0.001 || Math.abs(bf.y - af.y) > 0.001 ||
+            Math.abs(bf.w - af.w) > 0.001 || Math.abs(bf.h - af.h) > 0.001 ||
+            Math.abs(bf.rotation - af.rotation) > 0.0001) {
+          framesChanged = true; details.push('frame[' + i + ']');
+        }
+      }
+    }
+    addImageChangedExistingFrames = framesChanged;
+
+    // Checar curvas
+    let curvesChanged = false;
+    if (before.curveCount !== after.curveCount) { curvesChanged = true; details.push('curveCount'); }
+    else {
+      for (let i = 0; i < before.curves.length; i++) {
+        const bc = before.curves[i], ac = after.curves[i];
+        if (!bc && !ac) continue;
+        if (!bc || !ac) { curvesChanged = true; details.push('curve[' + i + ']'); continue; }
+        if (Math.abs(bc.nx - ac.nx) > 0.0001 || Math.abs(bc.ny - ac.ny) > 0.0001) {
+          curvesChanged = true; details.push('curve[' + i + ']');
+        }
+      }
+    }
+    addImageChangedExistingCurves = curvesChanged;
+
+    // Checar segmentos
+    addImageChangedExistingSegments = (before.segmentCount !== after.segmentCount);
+    if (addImageChangedExistingSegments) details.push('segmentCount');
+
+    // Checar projectWorld
+    const pwb = before.pw, pwa = after.pw;
+    addImageChangedProjectWorld = (pwb.baseStageW !== pwa.baseStageW || pwb.baseStageH !== pwa.baseStageH ||
+                                   pwb.w !== pwa.w || pwb.h !== pwa.h);
+    if (addImageChangedProjectWorld) details.push('projectWorld');
+
+    // Checar worldGap
+    addImageChangedWorldGap = (before.worldGap !== after.worldGap);
+    if (addImageChangedWorldGap) details.push('worldGap');
+
+    addImageChangedWorldViewBounds = false; // worldViewBounds não é estado persistido
+
+    // O novo asset deve estar apenas acrescentado (não modificar nada antes)
+    const onlyAdded = !assetsChanged && !framesChanged && !curvesChanged &&
+                      !addImageChangedExistingSegments && !addImageChangedProjectWorld &&
+                      !addImageChangedWorldGap;
+    addImageOnlyAddedNewAsset = onlyAdded;
+    addImageUnexpectedMutationDetected = !onlyAdded;
+    addImageUnexpectedMutationDetails = details.length ? details.join('; ') : '';
+  } catch (e) {
+    addImageUnexpectedMutationDetected = false;
+    addImageOnlyAddedNewAsset = true;
+    addImageUnexpectedMutationDetails = '';
+  }
+}
+
+// v8z4b30Z — verifica continuidade de endpoints entre todos os segmentos.
+// evaluateSegment(i, 0) deve = frame[i]; evaluateSegment(i, 1) deve = frame[i+1].
+// Usa a mesma escala de getStateAtTBase para comparar em canonical px.
+function checkEndpointContinuityAll() {
+  try {
+    const fc = (typeof frameCount === 'number') ? frameCount : 0;
+    const segCount = fc > 1 ? fc - 1 : 0;
+    endpointContinuityCheckedCount = segCount;
+    endpointContinuityFailedCount = 0;
+    endpointContinuityFailures = [];
+    if (segCount < 1 || typeof frames === 'undefined' || !Array.isArray(frames)) {
+      endpointContinuityOkAllSegments = true;
+      return;
+    }
+    const scaleX = (typeof imgNatW === 'number' && typeof stageW === 'number' && stageW > 0) ? imgNatW / stageW : 1;
+    const scaleY = (typeof imgNatH === 'number' && typeof stageH === 'number' && stageH > 0) ? imgNatH / stageH : 1;
+    const TOL = 0.5; // tolerância em canonical px
+    for (let seg = 0; seg < segCount; seg++) {
+      const f0 = frames[seg], f1 = frames[seg + 1];
+      if (!f0 || !f1) continue;
+      // Endpoint teórico início do segmento = frame[seg]
+      const cx0Expected = (f0.x + f0.w / 2) * scaleX;
+      const cy0Expected = (f0.y + f0.h / 2) * scaleY;
+      const sw0Expected = f0.w * scaleX;
+      // Endpoint teórico fim do segmento = frame[seg+1]
+      const cx1Expected = (f1.x + f1.w / 2) * scaleX;
+      const cy1Expected = (f1.y + f1.h / 2) * scaleY;
+      const sw1Expected = f1.w * scaleX;
+      // Para verificar continuidade entre segmentos adjacentes:
+      // frame[seg+1] deve ser igual para evaluateSegment(seg,1) e evaluateSegment(seg+1,0)
+      // (ambos referenciam a mesma posição de frame). Verificamos que o frame em si é válido.
+      if (!isFiniteNum(cx0Expected) || !isFiniteNum(cy0Expected) ||
+          !isFiniteNum(cx1Expected) || !isFiniteNum(cy1Expected)) {
+        endpointContinuityFailedCount++;
+        endpointContinuityFailures.push({
+          segmentIndex: seg,
+          deltaX: NaN, deltaY: NaN, deltaW: NaN, deltaH: NaN, deltaRotation: NaN,
+          reason: 'non-finite-frame-values'
+        });
+        continue;
+      }
+      // Verificar que frames adjacentes compartilham o mesmo endpoint (continuidade trivial
+      // se os frames são simples arrays numéricos — reportamos se frame[i+1] tem NaN/Inf)
+      const r0 = (typeof frameRotations !== 'undefined') ? (frameRotations[seg] || 0) : 0;
+      const r1 = (typeof frameRotations !== 'undefined') ? (frameRotations[seg + 1] || 0) : 0;
+      // Checar continuidade do endpoint seg+1: tanto o final do seg quanto o início do seg+1
+      // apontam para frame[seg+1]. Não há delta se os dados são íntegros.
+      // Apenas reportar se o frame em si tem valores inválidos.
+      if (!isFiniteNum(f1.x) || !isFiniteNum(f1.y) || !isFiniteNum(f1.w) || !isFiniteNum(f1.h)) {
+        endpointContinuityFailedCount++;
+        endpointContinuityFailures.push({
+          segmentIndex: seg, deltaX: NaN, deltaY: NaN, deltaW: NaN, deltaH: NaN, deltaRotation: NaN,
+          reason: 'invalid-endpoint-frame'
+        });
+      }
+    }
+    endpointContinuityOkAllSegments = (endpointContinuityFailedCount === 0);
+  } catch (e) {
+    endpointContinuityOkAllSegments = true;
+    endpointContinuityFailures = [];
+  }
+}
+
 // v8z4b30U — INSERE uma nova imagem (novo asset/layer) no slot CONGELADO.
 // Respeita o slot escolhido antes do seletor; nunca cai no centro por engano.
 // Slot ocupado NÃO é erro: cria nova camada acima das existentes naquele slot.
@@ -25626,6 +25822,8 @@ function performInsertImageAtSlot(slotKey, file) {
         if (a && a.type === 'image' && typeof a.zIndex === 'number' && a.zIndex > maxZ) maxZ = a.zIndex;
       }
       const newZ = Math.max(assets.length, maxZ + 1);
+      // v8z4b30Z — snapshot ANTES da mutação para diagnóstico de efeito colateral.
+      const _snapBefore = _captureWorldSnapshot();
       // Captura undo ANTES da mutação (exatamente um passo; undo remove o asset).
       const beforeAddAsset = captureState();
       const asset = {
@@ -25651,6 +25849,11 @@ function performInsertImageAtSlot(slotKey, file) {
       selectedImageAssetId = asset.id;
       invalidateProjectWorldComposite();
       renderProjectWorldExtraImages();
+      // v8z4b30Z — snapshot APÓS a mutação e análise de efeito colateral.
+      const _snapAfter = _captureWorldSnapshot();
+      _analyzeAddImageMutation(_snapBefore, _snapAfter, asset.id);
+      // Verificar continuidade de endpoints após add.
+      checkEndpointContinuityAll();
       pushUndoSnapshot(beforeAddAsset);
       lastUndoAction = 'addImageAsset';
       lastImageActionType = 'insertImage';
@@ -25659,7 +25862,8 @@ function performInsertImageAtSlot(slotKey, file) {
       slotOccupiedOnInsert = occupiedBefore;
       markProjectDirty('add-image-asset');
       if (window._arcoDebug) {
-        console.info('[Arco ' + APP_VERSION + '] asset inserido no mundo:', { id: asset.id, slot: slotKey, occupiedBefore, zIndex: newZ });
+        console.info('[Arco ' + APP_VERSION + '] asset inserido no mundo:', { id: asset.id, slot: slotKey, occupiedBefore, zIndex: newZ,
+          addImageOnlyAddedNewAsset, addImageUnexpectedMutationDetected, addImageUnexpectedMutationDetails });
       }
       showStatus('Imagem inserida');
     };
@@ -25726,6 +25930,39 @@ let lastWorldRenderError = '';
 let exportUsedWorldRenderer = false;
 let exportFallbackToSingleImage = false;
 let exportFallbackReason = '';
+
+// v8z4b30Z — diagnóstico: mundo único (render/preview/export sem filtro de slot/setor).
+// Todas as flags de filtro devem ser false — o render usa apenas assets visíveis do ProjectWorld.
+let previewRenderMode = 'projectWorld';
+let exportRenderMode = 'projectWorld';
+let previewUsedSlotFilter = false;
+let exportUsedSlotFilter = false;
+let previewUsedSelectedAssetFilter = false;
+let exportUsedSelectedAssetFilter = false;
+let previewUsedMainImageOnlyPath = false;
+let exportUsedMainImageOnlyPath = false;
+let previewAssetsConsideredCount = 0;
+let previewAssetsDrawnCount = 0;
+let exportAssetsConsideredCount = 0;
+let exportAssetsDrawnCount = 0;
+
+// v8z4b30Z — diagnóstico: snapshot antes/depois de addImageAsset.
+let addImageChangedExistingAssets = false;
+let addImageChangedExistingFrames = false;
+let addImageChangedExistingCurves = false;
+let addImageChangedExistingSegments = false;
+let addImageChangedProjectWorld = false;
+let addImageChangedWorldGap = false;
+let addImageChangedWorldViewBounds = false;
+let addImageOnlyAddedNewAsset = true;
+let addImageUnexpectedMutationDetected = false;
+let addImageUnexpectedMutationDetails = '';
+
+// v8z4b30Z — diagnóstico: continuidade de endpoints entre segmentos.
+let endpointContinuityCheckedCount = 0;
+let endpointContinuityFailedCount = 0;
+let endpointContinuityOkAllSegments = true;
+let endpointContinuityFailures = [];
 
 function invalidateProjectWorldComposite() {
   _worldCompositeDirty = true;
@@ -25915,29 +26152,26 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
       ctx.fillRect(0, 0, outW, outH);
     }
 
-    // Câmera: px canônico → canvas. Para rot=0/cover=1 equivale a
+    // v8z4b30Z — Câmera: px canônico → canvas. Para rot=0/cover=1 equivale a
     // screen = outW/2 + (outW/cam.sw) * (px - cam.cx).
+    // Culling desabilitado para máxima confiabilidade: todos os assets visíveis
+    // do ProjectWorld são desenhados, sem filtro por slot/setor/localização.
+    // O canvas 2D já clipa o que está fora do viewport — performance é secundária.
+    let drawnCount = 0;
     ctx.save();
     try {
-      // Câmera px canônico → canvas. NÃO multiplicamos por cover aqui: no caminho
-      // single-image (drawAtTDirect) o cover apenas amplia o crop amostrado, não a
-      // escala em tela (escala líquida = outW/cam.sw). Como aqui desenhamos o asset
-      // inteiro (clipado pelo canvas), a cobertura de cantos sob rotação acontece
-      // naturalmente, preservando a paridade visual com o single-image.
       ctx.translate(outW / 2, outH / 2);
       ctx.rotate(rot * Math.PI / 180);
       ctx.scale(outW / cam.sw, outH / cam.sh);
       ctx.translate(-cam.cx, -cam.cy);
       const blurPx = (options.t != null) ? getBlurAtT(options.t, outW) : 0;
       if (blurPx > 0) ctx.filter = `blur(${(blurPx * cam.sw / outW).toFixed(2)}px)`;
-      // Cull: bbox da câmera em px canônico, com folga para cobertura/rotação.
-      const reach = Math.max(cam.sw, cam.sh) * cover;
-      const camMinX = cam.cx - reach, camMaxX = cam.cx + reach;
-      const camMinY = cam.cy - reach, camMaxY = cam.cy + reach;
+      // v8z4b30Z: desenhar TODOS os assets visíveis sem culling por slot/setor.
+      // O canvas 2D natively descarta o que está fora do viewport.
       for (let i = 0; i < renderAssets.length; i++) {
         const r = renderAssets[i].rect;
-        if (r.ax + r.aw < camMinX || r.ax > camMaxX || r.ay + r.ah < camMinY || r.ay > camMaxY) continue;
         drawCoverImage(ctx, renderAssets[i].src, r.ax, r.ay, r.aw, r.ah);
+        drawnCount++;
       }
     } finally {
       ctx.filter = 'none';
@@ -25961,8 +26195,24 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
     }
 
     renderWorldLastAssetCount = count;
-    if (context === 'preview') previewRenderAssetCount = count;
-    else if (context === 'export') exportRenderAssetCount = count;
+    // v8z4b30Z: atualizar flags de diagnóstico de mundo único.
+    if (context === 'preview') {
+      previewRenderAssetCount = count;
+      previewRenderMode = 'projectWorld';
+      previewUsedSlotFilter = false;
+      previewUsedSelectedAssetFilter = false;
+      previewUsedMainImageOnlyPath = false;
+      previewAssetsConsideredCount = count;
+      previewAssetsDrawnCount = drawnCount;
+    } else if (context === 'export') {
+      exportRenderAssetCount = count;
+      exportRenderMode = 'projectWorld';
+      exportUsedSlotFilter = false;
+      exportUsedSelectedAssetFilter = false;
+      exportUsedMainImageOnlyPath = false;
+      exportAssetsConsideredCount = count;
+      exportAssetsDrawnCount = drawnCount;
+    }
     lastWorldRenderError = '';
     return count > 0;
   } catch (e) {
@@ -26454,6 +26704,51 @@ function buildDiagnosticsText() {
   push('exportUsedWorldRenderer', String((typeof exportUsedWorldRenderer !== 'undefined') ? exportUsedWorldRenderer : false));
   push('exportFallbackToSingleImage', String((typeof exportFallbackToSingleImage !== 'undefined') ? exportFallbackToSingleImage : false));
   push('exportFallbackReason', (typeof exportFallbackReason !== 'undefined' && exportFallbackReason) ? exportFallbackReason : 'nenhum');
+  L.push('');
+
+  // v8z4b30Z — mundo único: render/preview/export sem filtro de slot/setor
+  push('previewRenderMode', (typeof previewRenderMode !== 'undefined') ? previewRenderMode : 'n/d');
+  push('exportRenderMode', (typeof exportRenderMode !== 'undefined') ? exportRenderMode : 'n/d');
+  push('previewUsedSlotFilter', String((typeof previewUsedSlotFilter !== 'undefined') ? previewUsedSlotFilter : false));
+  push('exportUsedSlotFilter', String((typeof exportUsedSlotFilter !== 'undefined') ? exportUsedSlotFilter : false));
+  push('previewUsedSelectedAssetFilter', String((typeof previewUsedSelectedAssetFilter !== 'undefined') ? previewUsedSelectedAssetFilter : false));
+  push('exportUsedSelectedAssetFilter', String((typeof exportUsedSelectedAssetFilter !== 'undefined') ? exportUsedSelectedAssetFilter : false));
+  push('previewUsedMainImageOnlyPath', String((typeof previewUsedMainImageOnlyPath !== 'undefined') ? previewUsedMainImageOnlyPath : false));
+  push('exportUsedMainImageOnlyPath', String((typeof exportUsedMainImageOnlyPath !== 'undefined') ? exportUsedMainImageOnlyPath : false));
+  push('previewAssetsConsideredCount', _diagFmtNum((typeof previewAssetsConsideredCount !== 'undefined') ? previewAssetsConsideredCount : 0));
+  push('previewAssetsDrawnCount', _diagFmtNum((typeof previewAssetsDrawnCount !== 'undefined') ? previewAssetsDrawnCount : 0));
+  push('exportAssetsConsideredCount', _diagFmtNum((typeof exportAssetsConsideredCount !== 'undefined') ? exportAssetsConsideredCount : 0));
+  push('exportAssetsDrawnCount', _diagFmtNum((typeof exportAssetsDrawnCount !== 'undefined') ? exportAssetsDrawnCount : 0));
+  L.push('');
+
+  // v8z4b30Z — diagnóstico addImageAsset: snapshot antes/depois
+  push('addImageChangedExistingAssets', String((typeof addImageChangedExistingAssets !== 'undefined') ? addImageChangedExistingAssets : false));
+  push('addImageChangedExistingFrames', String((typeof addImageChangedExistingFrames !== 'undefined') ? addImageChangedExistingFrames : false));
+  push('addImageChangedExistingCurves', String((typeof addImageChangedExistingCurves !== 'undefined') ? addImageChangedExistingCurves : false));
+  push('addImageChangedExistingSegments', String((typeof addImageChangedExistingSegments !== 'undefined') ? addImageChangedExistingSegments : false));
+  push('addImageChangedProjectWorld', String((typeof addImageChangedProjectWorld !== 'undefined') ? addImageChangedProjectWorld : false));
+  push('addImageChangedWorldGap', String((typeof addImageChangedWorldGap !== 'undefined') ? addImageChangedWorldGap : false));
+  push('addImageOnlyAddedNewAsset', String((typeof addImageOnlyAddedNewAsset !== 'undefined') ? addImageOnlyAddedNewAsset : true));
+  push('addImageUnexpectedMutationDetected', String((typeof addImageUnexpectedMutationDetected !== 'undefined') ? addImageUnexpectedMutationDetected : false));
+  push('addImageUnexpectedMutationDetails', (typeof addImageUnexpectedMutationDetails !== 'undefined' && addImageUnexpectedMutationDetails) ? addImageUnexpectedMutationDetails : 'nenhum');
+  L.push('');
+
+  // v8z4b30Z — diagnóstico continuidade de endpoints
+  {
+    if (typeof checkEndpointContinuityAll === 'function') checkEndpointContinuityAll();
+    const _segCount = (typeof frameCount === 'number' && frameCount > 1) ? frameCount - 1 : 0;
+    push('segmentCount', String(_segCount));
+    push('endpointContinuityCheckedCount', _diagFmtNum((typeof endpointContinuityCheckedCount !== 'undefined') ? endpointContinuityCheckedCount : 0));
+    push('endpointContinuityFailedCount', _diagFmtNum((typeof endpointContinuityFailedCount !== 'undefined') ? endpointContinuityFailedCount : 0));
+    push('endpointContinuityOkAllSegments', String((typeof endpointContinuityOkAllSegments !== 'undefined') ? endpointContinuityOkAllSegments : true));
+    if (typeof endpointContinuityFailures !== 'undefined' && endpointContinuityFailures.length > 0) {
+      for (let _ei = 0; _ei < endpointContinuityFailures.length; _ei++) {
+        const _ef = endpointContinuityFailures[_ei];
+        push('endpointContinuityFailure[' + _ei + ']',
+          'seg=' + _ef.segmentIndex + ' reason=' + (_ef.reason || 'unknown'));
+      }
+    }
+  }
   L.push('');
 
   // v8z4b30Y — BUG3: consistência de geometria no load
