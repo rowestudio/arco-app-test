@@ -950,8 +950,8 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30U — base v8z4b30R (v8z4b30S/T canceladas e revertidas). Correção funcional do fluxo de imagem + navegação superior + zoom out do ProjectWorld. fix(version): APP_VERSION e APP_VERSION_NAME = v8z4b30U; interface mostra UMA versão visível ("Arco Motion App v8z4b30U"), removida a 2ª linha de versão. ux(image): menu Imagem agora tem DUAS ações diretas e separadas — "Inserir imagem" (startInsertImageFlow) e "Trocar imagem" (startReplaceImageFlow); o seletor de Fotos/Arquivos só abre DEPOIS da escolha da ação (sem ação única ambígua, sem perguntar após o arquivo). fix(intent/target): a intenção (pendingImageAction) e o alvo (pendingImageTargetSlot/pendingImageTargetAssetId) são CONGELADOS antes do seletor; ao voltar, o app usa exclusivamente o alvo congelado — nunca recalcula pelo estado visual nem cai no centro (exceto projeto realmente vazio). fix(insert): performInsertImageAtSlot() respeita o slot congelado, cria novo asset (assets.length+1), fit contain, slotRow/Col e zIndex coerente (slot ocupado → nova camada acima); undo=addImageAsset remove o asset inserido. fix(replace): doReplaceImageFromFile()/doReplaceExtraAsset() substituem APENAS o asset alvo sem criar camada (assets.length inalterado), preservando slot/zIndex/visible e mantendo fit contain; trocar lateral não substitui img-1; trocar em slot vazio não abre seletor; undo=replaceImageAsset restaura a imagem anterior. ux(nav): X/Fechar removido do canto superior esquerdo e movido para o menu Arquivo como "Início" (ícone Lucide home, mesma ação requestCloseStageToLauncher); placeholder invisível preserva a geometria do topo — Preview e Visualizar NÃO se deslocam. feat(zoom): zoom out dinâmico do editor (getEditorMinZoom/computeFitAllWorldZoom) para visualizar todo o ProjectWorld/grid 3x3 quando há múltiplas imagens; pan world-aware (clampEditorPan alarga, nunca restringe) — sem alterar frames, Preview, Export ou escala real dos assets. feat(diag): novos campos de ação de imagem, layers lógicos, plano/marca d'água e zoom out. preserve: salvar/carregar múltiplas imagens, ProjectWorld único, Preview/Export multi-imagem (exportUsedWorldRenderer/fallback), fundo #3c3c3b, reset preservando imagens, gap 3x3, featureAccess multipleImageAssets liberado em teste, iPhone/Safari; NÃO altera motor de curvas/frames, WebCodecs/FPS/muxer, touch/pan/zoom de câmera dos frames, cores/textos/posições aprovadas; sem painel de layers/reorder, sem edição livre de posição/escala, sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30Q — HOTFIX (estabilização da fase 1 de múltiplas imagens), base v8z4b30P. fix(bg): novo estado bgColorUserSet diferencia "preto escolhido pelo usuário" de "preto herdado de inicialização antiga/hard-coded". Projeto novo/reset (clearCurrentProjectForNewFile) nasce com bgColor=DEFAULT_PROJECT_BG ('#3c3c3b') e bgColorUserSet=false. applyFrameData() (abrir projeto/restaurar autosave) só preserva bgColor='#000000'/'#000'/'black' quando data.bgColorUserSet===true; sem essa flag (projetos/autosaves antigos), preto legado cai em DEFAULT_PROJECT_BG. Escolher uma cor pelo menu "Cor de fundo" (applyBgColorValue) marca bgColorUserSet=true e é persistido em captureState/restoreState/buildProjectData — preto escolhido manualmente continua funcionando em Stage/Preview/Export normalmente. fix(export): Correção 2 — renderFrameSafely() não aplica mais o fallback de "frame em branco" (isExportFrameLikelyBlank → renderUniversalFallback, que desenha a imagem canônica inteira via cover-fit ignorando a câmera) quando isMultiImageWorldActive()===true. Esse fallback, herdado do pipeline single-image, disparava incorretamente durante transições de câmera que cruzam o gap entre duas imagens no mundo composto (área de fundo válida), causando o salto/corte para a imagem inteira no MP4 relatado na v8z4b30P; drawWorldToCanvas continua sendo a única fonte de render de Preview/Export multi-imagem. feat(diag): painel Diagnóstico ganha exportUsedWorldRenderer/exportFallbackToSingleImage/exportFallbackReason, resetados a cada novo export. preserve: undo de "Adicionar como nova imagem"/"Substituir imagem atual" (asset principal/central img-1, exatamente um passo de undo/redo já validado na v8z4b30P), múltiplas imagens, fit contain, Preview/Export MP4 1:1/9:16/4:3, gap 3x3, ProjectWorld único, remoção de "Cena 1", modal Substituir/Adicionar acima do menu, fundo cinza de "Gerando vídeo", featureAccess multipleImageAssets; NÃO altera motor de curvas, touch/drag/resize/zoom, suporte mobile/iPhone/Safari, WebCodecs/muxer/FPS além do mínimo, textos/ícones/cores/layout aprovados; sem edição livre de posição/escala, sem painel de layers/reorder, sem cenas, sem IA, sem prompt/alert/confirm. -->
-<!-- Arco Motion App — v8z4b30S — fix(ux/multi-image): separa as ações "Trocar imagem" e "Adicionar imagem" e impede empilhamento silencioso no mesmo slot, base v8z4b30R. Correção 1: a action sheet "Usar nova imagem" (imageChoiceSheet) agora rotula os dois botões como "Trocar imagem" (chooseReplaceCurrentImage, fluxo inalterado: substitui assets[0]/imagem principal preservando frames) e "Adicionar imagem" (chooseAddNewImageAsset → seletor de posição 3x3). Correção 2: nova função isWorldSlotOccupied(slotKey) compara o slotRow/Col alvo (WORLD_SLOTS) com o slotRow/Col de cada asset de imagem existente (via computeAssetSlotRowCol, já usada em diagnóstico); addImageAssetAtSlot() agora bloqueia a ação ANTES de ler o arquivo se o slot já estiver ocupado (inclui a célula central, sempre ocupada pela imagem principal) — fecha os sheets, limpa o input pendente, mostra showStatus orientando a usar "Trocar imagem", e NÃO cria asset/Não aumenta assets.length/Não gera passo de undo. Correções 3/4 preservadas: "Trocar imagem" continua sem aumentar assets.length (substitui no lugar, undo restaura a imagem anterior via _pendingImageReplaceUndoSnapshot/pushUndoSnapshot) e "Adicionar imagem" em slot vazio continua aumentando assets.length em 1 com fit contain e undo remove o asset adicionado (mecanismo de undo/redo genérico já existente, inalterado). feat(diag): painel Diagnóstico ganha lastImageActionType (addImage|replaceImage), replacedAssetId, addedAssetId, slotOccupiedOnAdd e duplicatedSlotDetected/duplicatedSlotKey (nova função detectDuplicatedSlot(), somente leitura). preserve: salvar/carregar múltiplas imagens, fundo padrão, ProjectWorld persistido, Preview/Export, render via world renderer, reset preservando imagens, fit contain, gap 3x3; NÃO implementa painel de layers/reorder/zIndex por UI, NÃO altera posição/escala livre, touch/pan/zoom/gestos, curvas, WebCodecs/FPS/muxer, cores aprovadas, cenas; sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30P — HOTFIX (estabilização da fase 1 de múltiplas imagens), base v8z4b30O. fix(bg): nova fonte única getProjectBackgroundColor()/DEFAULT_PROJECT_BG ('#3c3c3b', cinza padrão do app) usada por Stage (imageArea), Preview, Export, drawAtTDirect e drawWorldToCanvas — todos os fallbacks hard-coded '#000000'/'#000' para a cor de fundo do projeto foram substituídos; novo projeto (clearCurrentProjectForNewFile) já nasce com bgColor=DEFAULT_PROJECT_BG e sincroniza o menu "Cor de fundo" (syncBgColorUI) desde o início, eliminando o fundo preto inicial. fix(aspect-ratio): nova função fitContain(srcW,srcH,boxW,boxH) — addImageAssetAtSlot() calcula o tamanho da imagem adicional com fit contain dentro da célula do slot (baseStageW x baseStageH) e centraliza o asset (worldX/Y/W/H ajustados), preservando o aspect ratio original sem cortar/distorcer; gap 3x3 e drawWorldToCanvas/renderProjectWorldExtraImages (cover sobre um rect com a mesma proporção do asset = sem crop) inalterados. fix(undo): captureState()/restoreState() passam a incluir assets[]/projectWorld e uma referência leve (sem duplicar base64/bitmaps) à imagem principal (imageSnapshot); addImageAssetAtSlot() e a substituição de imagem (chooseReplaceCurrentImage→loadImage) capturam snapshot ANTES da mutação e chamam pushUndoSnapshot() — exatamente um passo de undo por ação, usando o mecanismo de undo/redo já existente. feat(diag): painel Diagnóstico ganha DEFAULT_PROJECT_BG/currentProjectBg/renderBgUsed/previewBgUsed/exportBgUsed, asset[i].id/type/sourceAR/worldAR/slotBoxW-H/fitMode e undoStackLength/redoStackLength/lastUndoAction. preserve: inserção de 2ª imagem, Preview/Export multi-imagem, gap 3x3, remoção de "Cena 1", ProjectWorld único, fundo cinza de "Gerando vídeo", modal Substituir/Adicionar acima do menu, MP4 1:1/9:16/4:3; NÃO altera motor de curvas, touch/drag/resize/zoom, suporte mobile/iPhone/Safari, WebCodecs/muxer/FPS além do mínimo, textos/ícones/cores/layout aprovados; sem edição livre de posição/escala, sem painel de layers/reorder, sem cenas, sem IA, sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30O — fix(multi-image): corrige a fase 1 de múltiplas imagens (Preview/Export + espaçamento), base v8z4b30N. Correção 1 (espaçamento 3x3): addImageAssetAtSlot() passa a posicionar a imagem extra com um gap em coordenadas de mundo — worldGap = clamp(min(baseStageW,baseStageH)*0.16, 48, 96), worldX = col*(baseStageW+worldGap) e worldY = row*(baseStageH+worldGap); a célula central (col0/row0) continua sendo a imagem principal e a imagem adicionada à esquerda/direita/acima/abaixo não encosta mais na principal (o Stage/DOM via renderProjectWorldExtraImages já reflete o gap). Correção 2/3 (Preview/Export com várias imagens): nova função central de render de mundo drawWorldToCanvas(ctx, cam, outW, outH, options) — limpa o canvas com o fundo correto, percorre os assets de imagem visíveis ordenados por zIndex, mapeia cada rect (worldX/Y/W/H) para px da câmera, desenha apenas a parte visível (clipping do canvas + cull) e respeita o frame/câmera; usa mainSource = proxy de edição/preview quando há override e original (canônica) no export, sem nunca depender do DOM visual do Stage. drawAtTDirect() redireciona para drawWorldToCanvas SOMENTE quando isMultiImageWorldActive() (2+ imagens) — projetos de 1 imagem mantêm o caminho single-image idêntico (Preview/MP4 1:1/9:16/4:3 inalterados). Substitui o antigo mundo composto 3x3 fixo (getProjectWorldCompositeSource) que ignorava assets no Preview (renderSourceOverride) e gerava tela preta quando o frame apontava para a segunda imagem. Correção 4 (diag): painel Diagnóstico ganha asset[i].visible/zIndex, worldGap usado, multiImageWorldActive, renderWorldLastAssetCount, previewRenderAssetCount, exportRenderAssetCount, lastPreviewError e lastWorldRenderError. preserve: remoção de "Cena 1", fundo cinza de "Gerando vídeo" e correções 30M/30N; NÃO altera motor de export MP4/1:1, Stage/layoutStage(), zoom/pan/clamps/curvas/motor de frames, textos/ícones/cores/layout aprovados; sem edição livre de posição/escala, sem painel de layers, sem cenas; sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30M — feat(perf): Tarefa 1 — proxy de edição para imagens grandes. createEditorImageProxyIfNeeded(image) gera, quando a imagem original tem o maior lado > 2048px OU > 6 megapixels, um canvas reduzido (maior lado ~2048px, mesma proporção) usado APENAS como src de #imgEl (Stage/editor); imagens pequenas/médias continuam usando a própria imagem original em #imgEl. originalImageElement/originalImageSrc preservam a imagem original (mesma fonte canônica de getCanonicalRenderSource()/export); editorImageElement/editorImageSrc apontam para o proxy (ou para a original quando não há proxy). imgNatW/imgNatH, frames, Stage/layoutStage(), zoom/pan/clamps e o motor de export continuam baseados exclusivamente na imagem original — proxy não altera proporção, posição de frames nem fator Stage→px natural. feat(diag): painel Diagnóstico ganha imageMegapixels, estimatedOriginalRGBABytes, hasEditorProxy, editorProxyW/H, editorProxyScale, editorDrawSource, exportDrawSource, lastProxyError, lastImageDecodeError e memoryRiskLevel (Tarefa 2). fix(preview): .preview-bottom usa var(--menu-bg) em vez de #111, removendo fundo preto remanescente da barra inferior do Preview (Tarefa 3). fix(ui): #imageChoiceSheet (Substituir/Adicionar/Cancelar imagem) e #multiImagePlusModal passam de z-index 220/230 para 320/330, acima do menu superior/preferências (#settingsSheet, z-index 300); as três opções agora chamam closeAll() para fechar o menu e voltar ao Stage (Tarefa 4). preserve: NÃO altera motor de exportação MP4, correção 1:1, Stage/layoutStage(), projectWorld/assets/views, múltiplas imagens reais, frames/curvas/zoom/pan/clamps, textos/ícones/cores aprovadas além dos fundos pretos remanescentes do Preview; sem prompt/alert/confirm (base v8z4b30I). -->
@@ -2251,6 +2251,7 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
   line-height:1.3;cursor:pointer;text-align:center;-webkit-user-select:none;user-select:none;
 }
 .slot-pick-btn:active{background:var(--surface3);border-color:var(--accent);}
+.slot-pick-btn.slot-disabled{opacity:.32;pointer-events:none;}
 .panel-handle:active{cursor:grabbing;}
 .panel-close-check{position:absolute;top:10px;right:14px;width:36px;height:36px;border:0;border-radius:50%;background:rgba(255,255,255,.08);color:rgba(235,235,245,.92);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6;}
 .panel-close-check:active{background:rgba(255,255,255,.14);}
@@ -3441,6 +3442,10 @@ body.cust-open #toolbar{
     <line x1="18" y1="6" x2="6" y2="18"/>
     <line x1="6" y1="6" x2="18" y2="18"/>
   </symbol>
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <polyline points="9 22 9 12 15 12 15 22"/>
+  </symbol>
   <symbol id="i-contain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
     <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
@@ -3517,7 +3522,10 @@ body.cust-open #toolbar{
      contextual). Nenhuma mudança de layout agora; apenas evita
      dependências (CSS/JS) que impeçam o slot depois. -->
 <div class="top-bar" id="topBar" data-role="top-bar">
-  <div class="top-btn labeled top-gap-after" onclick="requestCloseStageToLauncher()" title="Fechar projeto" aria-label="Fechar projeto">
+  <!-- v8z4b30U — X/Fechar removido daqui e movido para o menu Arquivo como "Início".
+       Placeholder invisível preserva exatamente a largura/gap do antigo botão para
+       NÃO deslocar Visualizar/Preview no topo. Espaço reservado para futuro menu Layers/Imagens. -->
+  <div class="top-btn labeled top-gap-after" aria-hidden="true" data-role="top-left-placeholder" style="visibility:hidden;pointer-events:none;">
     <svg viewBox="0 0 24 24"><use href="#i-close"></use></svg><span class="top-label">Voltar</span>
   </div>
   <div class="top-btn labeled top-gap-after" onclick="toggleSettingsSheet()" title="Arquivos" aria-label="Arquivos">
@@ -3874,10 +3882,13 @@ body.cust-open #toolbar{
   </div>
   <div class="settings-blocks">
     <div class="settings-grid" aria-label="Menu principal de arquivos">
-      <label class="settings-row" style="cursor:pointer;">
-        <input type="file" id="fileInput2" accept="image/*" style="display:none;">
-        <svg viewBox="0 0 24 24"><use href="#i-image"></use></svg><span>Imagem</span>
-      </label>
+      <!-- v8z4b30U — duas ações diretas e separadas de imagem. -->
+      <div class="settings-row" onclick="startInsertImageFlow()">
+        <svg viewBox="0 0 24 24"><use href="#i-image-up"></use></svg><span>Inserir imagem</span>
+      </div>
+      <div class="settings-row" onclick="startReplaceImageFlow()">
+        <svg viewBox="0 0 24 24"><use href="#i-image"></use></svg><span>Trocar imagem</span>
+      </div>
       <div class="settings-row" onclick="openPanel('Format');closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-proportions"></use></svg><span>Formato</span>
       </div>
@@ -3896,6 +3907,10 @@ body.cust-open #toolbar{
     </div>
     <div class="settings-divider"></div>
     <div class="settings-grid" aria-label="Arquivos de projeto">
+      <!-- v8z4b30U — "Início" assume a função do antigo X/Fechar do topo (voltar à tela inicial). -->
+      <div class="settings-row" onclick="closeSettingsSheet();requestCloseStageToLauncher()">
+        <svg viewBox="0 0 24 24"><use href="#i-home"></use></svg><span>Início</span>
+      </div>
       <div class="settings-row disabled" id="settingsSaveRow" aria-disabled="true" onclick="promptSaveProject();closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-download"></use></svg><span>Salvar</span>
       </div>
@@ -3920,7 +3935,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30Q</span><br><span id="appVersionNameText">v8z4b30Q</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b30U</span></div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -3938,6 +3953,9 @@ body.cust-open #toolbar{
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 <input type="file" id="newProjectImageInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
+<!-- v8z4b30U — input de imagem do editor (Inserir/Trocar) em nível de topo, fora de
+     qualquer container display:none, para que .click() funcione no iPhone/Safari. -->
+<input type="file" id="fileInput2" accept="image/*" style="display:none;">
 
 <!-- PREVIEW SCREEN -->
 <div class="preview-screen" id="previewScreen">
@@ -4168,11 +4186,11 @@ body.cust-open #toolbar{
     <div style="display:flex;flex-direction:column;gap:10px;">
       <button type="button" onclick="chooseReplaceCurrentImage()"
         style="width:100%;padding:14px;border-radius:14px;border:none;background:var(--accent);font-size:15px;font-weight:700;color:#000;cursor:pointer;letter-spacing:-.1px;">
-        Trocar imagem
+        Substituir imagem atual
       </button>
       <button type="button" onclick="chooseAddNewImageAsset()"
         style="width:100%;padding:14px;border-radius:14px;border:1px solid var(--border2);background:transparent;font-size:15px;font-weight:600;color:var(--text1);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-        Adicionar imagem
+        Adicionar como nova imagem
         <span style="font-size:11px;font-weight:800;letter-spacing:.4px;padding:2px 8px;border-radius:999px;background:var(--accent);color:#000;">PLUS</span>
       </button>
       <button type="button" onclick="cancelImageChoice()"
@@ -4209,20 +4227,20 @@ body.cust-open #toolbar{
 <div id="imageSlotPickerSheet" style="display:none;position:fixed;inset:0;z-index:325;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom);" onclick="if(event.target===this)cancelImageSlotPicker()">
   <div style="background:var(--surface);border-radius:22px 22px 0 0;padding:24px 22px 28px;width:100%;max-width:480px;box-shadow:0 -4px 32px rgba(0,0,0,.35);">
     <div style="width:36px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 18px;"></div>
-    <div style="font-size:20px;font-weight:800;color:var(--text1);margin-bottom:6px;letter-spacing:-.3px;">Posição da nova imagem</div>
-    <div style="font-size:13px;color:var(--text3);line-height:1.4;margin-bottom:16px;">
+    <div id="imageSlotPickerTitle" style="font-size:20px;font-weight:800;color:var(--text1);margin-bottom:6px;letter-spacing:-.3px;">Posição da nova imagem</div>
+    <div id="imageSlotPickerDesc" style="font-size:13px;color:var(--text3);line-height:1.4;margin-bottom:16px;">
       Escolha onde a nova imagem entra no mundo do projeto, em relação ao Stage atual.
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
-      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('top-left')">Superior<br>esquerda</button>
-      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('top-center')">Superior<br>centro</button>
-      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('top-right')">Superior<br>direita</button>
-      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('middle-left')">Centro<br>esquerda</button>
-      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('center')">Centro</button>
-      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('middle-right')">Centro<br>direita</button>
-      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('bottom-left')">Inferior<br>esquerda</button>
-      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('bottom-center')">Inferior<br>centro</button>
-      <button type="button" class="slot-pick-btn" onclick="addImageAssetAtSlot('bottom-right')">Inferior<br>direita</button>
+      <button type="button" class="slot-pick-btn" data-slot="top-left" onclick="pickImageSlot('top-left')">Superior<br>esquerda</button>
+      <button type="button" class="slot-pick-btn" data-slot="top-center" onclick="pickImageSlot('top-center')">Superior<br>centro</button>
+      <button type="button" class="slot-pick-btn" data-slot="top-right" onclick="pickImageSlot('top-right')">Superior<br>direita</button>
+      <button type="button" class="slot-pick-btn" data-slot="middle-left" onclick="pickImageSlot('middle-left')">Centro<br>esquerda</button>
+      <button type="button" class="slot-pick-btn" data-slot="center" onclick="pickImageSlot('center')">Centro</button>
+      <button type="button" class="slot-pick-btn" data-slot="middle-right" onclick="pickImageSlot('middle-right')">Centro<br>direita</button>
+      <button type="button" class="slot-pick-btn" data-slot="bottom-left" onclick="pickImageSlot('bottom-left')">Inferior<br>esquerda</button>
+      <button type="button" class="slot-pick-btn" data-slot="bottom-center" onclick="pickImageSlot('bottom-center')">Inferior<br>centro</button>
+      <button type="button" class="slot-pick-btn" data-slot="bottom-right" onclick="pickImageSlot('bottom-right')">Inferior<br>direita</button>
     </div>
     <button type="button" onclick="cancelImageSlotPicker()"
       style="width:100%;padding:12px;border-radius:14px;border:none;background:transparent;font-size:14px;font-weight:500;color:var(--text3);cursor:pointer;">
@@ -6689,8 +6707,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30S';
-const APP_VERSION_NAME = 'v8z4b30R';
+const APP_VERSION = 'v8z4b30U';
+const APP_VERSION_NAME = 'v8z4b30U';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12807,6 +12825,24 @@ const WORLD_SLOTS = {
 };
 let activeSlotSelection = null; // último slot escolhido no seletor 3x3 (diagnóstico)
 
+// ═══════════════════════════════════════
+// v8z4b30U — ESTADO DE AÇÃO DE IMAGEM (Inserir / Trocar)
+// Intenção e alvo são CONGELADOS antes de abrir o seletor de Fotos/Arquivos
+// (iPhone/Safari pode alterar o estado visual ao abrir o seletor). Depois de
+// escolher o arquivo, o app usa exclusivamente estes valores congelados.
+// ═══════════════════════════════════════
+let selectedImageAssetId = null;     // asset de imagem atualmente selecionado (base lógica de layers)
+let pendingImageAction = null;       // 'insertImage' | 'replaceImage' | null
+let pendingImageTargetSlot = null;   // { key, row, col } congelado
+let pendingImageTargetAssetId = null;// asset alvo (troca) ou null (inserção)
+let _imageSlotPickerMode = 'insert'; // 'insert' | 'replace'
+// Diagnóstico da última ação de imagem.
+let lastImageActionType = null;      // 'insertImage' | 'replaceImage'
+let lastAddedAssetId = null;
+let lastReplacedAssetId = null;
+let slotOccupiedOnInsert = null;
+let slotOccupiedOnReplace = null;
+
 let globalHandleEl = null;
 let handleDragState = null;
 let handleCornerByFrame = Array(MAX_FRAMES).fill('br');
@@ -12858,14 +12894,6 @@ let exportBgUsed = '';
 // v8z4b30P — diagnóstico: última ação de undo registrada para assets
 // (addImageAsset / replaceImageAsset), em formato simples para o painel.
 let lastUndoAction = '';
-
-// v8z4b30S — diagnóstico: separação das ações "Trocar imagem" / "Adicionar
-// imagem" e prevenção de empilhamento silencioso no mesmo slot.
-let lastImageActionType = '';   // 'addImage' | 'replaceImage'
-let lastReplacedAssetId = null; // id do asset substituído por "Trocar imagem"
-let lastAddedAssetId = null;    // id do asset criado por "Adicionar imagem"
-let lastSlotOccupiedOnAdd = false; // true se a última tentativa de "Adicionar imagem" achou o slot ocupado
-let lastDuplicatedSlotKey = null;  // slotKey alvo da última tentativa bloqueada por ocupação
 
 // v8z4b30R — diagnóstico de persistência de assets (salvar/carregar projeto).
 const PROJECT_ASSETS_SCHEMA_VERSION = 1;
@@ -17022,6 +17050,64 @@ function removeDuplicateStageRenderNodes() {
   });
 }
 
+// ═══════════════════════════════════════
+// v8z4b30U — ZOOM OUT DINÂMICO DO PROJECTWORLD (editor/Stage apenas)
+// Permite zoom out maior para visualizar todo o grid de slots quando há
+// múltiplas imagens. NÃO altera frames, Preview, Export, escala real dos
+// assets nem coordenadas — apenas o zoom/pan de navegação do editor.
+// ═══════════════════════════════════════
+// Bounds do mundo visível em coordenadas de MUNDO (inclui imagem principal e
+// assets extras visíveis). Retorna null fora do modo multi-imagem.
+function getWorldViewBoundsWorld() {
+  if (!isMultiImageWorldActive()) return null;
+  if (!Array.isArray(assets) || !assets.length) return null;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, n = 0;
+  for (let i = 0; i < assets.length; i++) {
+    const a = assets[i];
+    if (!a || a.type !== 'image' || a.visible === false) continue;
+    const x = a.worldX || 0, y = a.worldY || 0;
+    const w = a.worldW || projectWorld.baseStageW || 0;
+    const h = a.worldH || projectWorld.baseStageH || 0;
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x + w > maxX) maxX = x + w;
+    if (y + h > maxY) maxY = y + h;
+    n++;
+  }
+  if (!n || !isFinite(minX)) return null;
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY,
+           minX, minY, maxX, maxY };
+}
+// Mesmos bounds convertidos para px de Stage (escala baseStage → Stage).
+function getWorldViewBoundsStagePx() {
+  const wb = getWorldViewBoundsWorld();
+  if (!wb) return null;
+  const baseW = projectWorld.baseStageW || 0;
+  const baseH = projectWorld.baseStageH || 0;
+  if (!baseW || !baseH || !stageW || !stageH) return null;
+  const sx = stageW / baseW, sy = stageH / baseH;
+  return {
+    minX: wb.minX * sx, minY: wb.minY * sy,
+    maxX: wb.maxX * sx, maxY: wb.maxY * sy,
+    w: wb.w * sx, h: wb.h * sy
+  };
+}
+// Zoom que faz todo o ProjectWorld caber na área útil do editor (com margem).
+function computeFitAllWorldZoom() {
+  const wb = getWorldViewBoundsStagePx();
+  if (!wb || wb.w <= 0 || wb.h <= 0 || !stageW || !stageH) return null;
+  const margin = 0.9; // ~10% de respiro nas bordas
+  return Math.min(stageW / wb.w, stageH / wb.h) * margin;
+}
+// Zoom mínimo dinâmico do editor. Projeto de 1 imagem → mínimo atual (0.5).
+// Múltiplas imagens → permite descer até caber o mundo (com piso de segurança).
+function getEditorMinZoom() {
+  if (!isMultiImageWorldActive()) return MIN_EDITOR_ZOOM;
+  const fit = computeFitAllWorldZoom();
+  if (fit == null) return MIN_EDITOR_ZOOM;
+  return Math.max(0.05, Math.min(MIN_EDITOR_ZOOM, fit));
+}
+
 function clampEditorPan() {
   // v8z4b24a — range generoso: permite navegar até conteúdo fora do viewport
   // (frames/ghost colocados fora da área visível do Stage).
@@ -17031,8 +17117,23 @@ function clampEditorPan() {
   // Espaço adicional gerado pelo zoom (zoom>1 amplia conteúdo além do viewport)
   const scaledOverX = stageW * Math.max(0, editorZoomScale - 1);
   const scaledOverY = stageH * Math.max(0, editorZoomScale - 1);
-  editorPanX = Math.max(-(scaledOverX + extraX), Math.min(extraX, editorPanX));
-  editorPanY = Math.max(-(scaledOverY + extraY), Math.min(extraY, editorPanY));
+  let minPanX = -(scaledOverX + extraX), maxPanX = extraX;
+  let minPanY = -(scaledOverY + extraY), maxPanY = extraY;
+  // v8z4b30U — multi-imagem: ALARGA (nunca restringe) os limites de pan para
+  // permitir navegar por todo o ProjectWorld no novo zoom mínimo dinâmico.
+  const wb = getWorldViewBoundsStagePx();
+  if (wb) {
+    const z = editorZoomScale;
+    const mX = stageW * 0.15, mY = stageH * 0.15;
+    const wMaxPanX = -wb.minX * z + mX;          // borda esquerda do mundo chega à esquerda
+    const wMinPanX = stageW - wb.maxX * z - mX;  // borda direita do mundo chega à direita
+    const wMaxPanY = -wb.minY * z + mY;
+    const wMinPanY = stageH - wb.maxY * z - mY;
+    minPanX = Math.min(minPanX, wMinPanX); maxPanX = Math.max(maxPanX, wMaxPanX);
+    minPanY = Math.min(minPanY, wMinPanY); maxPanY = Math.max(maxPanY, wMaxPanY);
+  }
+  editorPanX = Math.max(minPanX, Math.min(maxPanX, editorPanX));
+  editorPanY = Math.max(minPanY, Math.min(maxPanY, editorPanY));
 }
 
 
@@ -17095,7 +17196,8 @@ function applyEditorZoom() {
     panBtn.classList.toggle('active', editorPanMode);
   }
   // v8z4b24a — usar MIN/MAX_EDITOR_ZOOM para disabled states
-  if (minusBtn) minusBtn.disabled = (editorZoomScale <= MIN_EDITOR_ZOOM);
+  // v8z4b30U — usa o zoom mínimo dinâmico (multi-imagem permite descer mais).
+  if (minusBtn) minusBtn.disabled = (editorZoomScale <= getEditorMinZoom() + 1e-4);
   if (plusBtn)  plusBtn.disabled  = (editorZoomScale >= MAX_EDITOR_ZOOM);
   // Cursor do stage: mão quando pan mode ativo
   stage.style.cursor = (active && editorPanMode) ? 'grab' : '';
@@ -17443,7 +17545,9 @@ imageArea.addEventListener('touchmove', e => {
 
     // Novo zoom: proporcional à variação de distância entre os dedos
     let newZoom = startZoom * (currentDist / startDist);
-    newZoom = Math.max(MIN_EDITOR_ZOOM, Math.min(MAX_EDITOR_ZOOM, newZoom));
+    // v8z4b30U — zoom mínimo dinâmico: múltiplas imagens permitem zoom out maior
+    // para ver todo o ProjectWorld/grid. Projeto de 1 imagem mantém o mínimo atual.
+    newZoom = Math.max(getEditorMinZoom(), Math.min(MAX_EDITOR_ZOOM, newZoom));
 
     // Ponto âncora em coords do Stage (permanece fixo sob o midpoint inicial dos dedos)
     // Formula: anchorX = (startMidX - stageNaturalLeft - startPanX) / startZoom
@@ -21877,7 +21981,7 @@ function loadImage(file, onDoneCallback) {
 }
 
 document.getElementById('fileInput').addEventListener('change',  handleNewImageSelection);
-document.getElementById('fileInput2').addEventListener('change', handleNewImageSelection);
+document.getElementById('fileInput2').addEventListener('change', handleImageFileChosen);
 document.getElementById('newProjectImageInput').addEventListener('change', e => loadNewProjectImage(e.target.files[0]));
 
 // ═══════════════════════════════════════
@@ -24874,17 +24978,26 @@ function getFeatureAccess(featureName) {
 // prompt nativo. Sem prompt()/alert()/confirm().
 // ═══════════════════════════════════════
 function handleNewImageSelection(e) {
+  // v8z4b30U — usado APENAS pelo #fileInput da tela inicial (primeira imagem do
+  // projeto). O fluxo do editor passa por startInsertImageFlow/startReplaceImageFlow
+  // (intenção + alvo congelados ANTES de abrir o seletor). Sem action sheet pós-arquivo.
   const input = e && e.target;
   const file = input && input.files && input.files[0];
   if (!file) return;
-  // Primeira imagem do projeto: fluxo atual de carregamento, sem action sheet.
   if (!imgNatW) {
+    pendingImageAction = 'insertImage';
+    pendingImageTargetSlot = { key: 'center', row: 0, col: 0 };
+    pendingImageTargetAssetId = null;
     loadImage(file);
-    return;
+    lastImageActionType = 'insertImage';
+    clearPendingImageAction();
+  } else {
+    // Fallback de segurança: trata como troca da imagem principal.
+    _pendingImageReplaceUndoSnapshot = captureState();
+    loadImage(file);
+    lastImageActionType = 'replaceImage';
   }
-  // Já existe imagem: abrir action sheet customizada para a escolha do usuário.
-  _pendingNewImageInput = input;
-  openImageChoiceSheet();
+  if (input) { try { input.value = ''; } catch (_) {} }
 }
 function clearPendingNewImageInput() {
   if (_pendingNewImageInput) {
@@ -24911,13 +25024,6 @@ function chooseReplaceCurrentImage() {
     // v8z4b30P — Correção 4: captura snapshot ANTES da substituição para
     // gerar exatamente um passo de undo (restaura a imagem anterior).
     _pendingImageReplaceUndoSnapshot = captureState();
-    // v8z4b30S — diagnóstico: "Trocar imagem" substitui o asset principal
-    // (assets[0]), preservando slotRow/Col, world coords e zIndex do slot.
-    lastImageActionType = 'replaceImage';
-    lastReplacedAssetId = (Array.isArray(assets) && assets[0] && assets[0].type === 'image') ? assets[0].id : null;
-    lastAddedAssetId = null;
-    lastSlotOccupiedOnAdd = false;
-    lastDuplicatedSlotKey = null;
     loadImage(file);
   }
   if (input) { try { input.value = ''; } catch (e) {} }
@@ -24950,22 +25056,301 @@ function closeMultipleImagesPlusModal() {
 }
 
 // ═══════════════════════════════════════
+// v8z4b30U — DUAS AÇÕES DIRETAS DE IMAGEM (Inserir / Trocar)
+// Regra central: a intenção (insertImage|replaceImage) e o alvo (slot/asset)
+// são CONGELADOS antes de abrir o seletor de Fotos/Arquivos. Depois do arquivo
+// escolhido, o app usa exclusivamente o alvo congelado — nunca recalcula pelo
+// estado visual atual e nunca cai no centro como fallback silencioso.
+// Sem prompt()/alert()/confirm().
+// ═══════════════════════════════════════
+function clearPendingImageAction() {
+  pendingImageAction = null;
+  pendingImageTargetSlot = null;
+  pendingImageTargetAssetId = null;
+}
+function getMainImageAsset() {
+  if (!Array.isArray(assets)) return null;
+  for (let i = 0; i < assets.length; i++) {
+    if (assets[i] && assets[i].type === 'image') return assets[i];
+  }
+  return null;
+}
+// Resolve a chave de slot (WORLD_SLOTS) de um asset a partir do seu row/col.
+function getAssetSlotKey(a) {
+  const sc = computeAssetSlotRowCol(a);
+  if (sc.row == null || sc.col == null) return null;
+  for (const k in WORLD_SLOTS) {
+    if (WORLD_SLOTS[k].row === sc.row && WORLD_SLOTS[k].col === sc.col) return k;
+  }
+  return null;
+}
+// Asset de maior zIndex (camada superior) ocupando um dado slot, ou null.
+function findTopAssetInSlot(slotKey) {
+  const slot = WORLD_SLOTS[slotKey];
+  if (!slot || !Array.isArray(assets)) return null;
+  let best = null;
+  for (let i = 0; i < assets.length; i++) {
+    const a = assets[i];
+    if (!a || a.type !== 'image') continue;
+    const sc = computeAssetSlotRowCol(a);
+    if (sc.row === slot.row && sc.col === slot.col) {
+      if (!best || (a.zIndex || 0) >= (best.zIndex || 0)) best = a;
+    }
+  }
+  return best;
+}
+// Lista de imagens substituíveis (uma entrada por asset de imagem existente).
+function getReplaceableImageAssets() {
+  const out = [];
+  if (!Array.isArray(assets)) return out;
+  for (let i = 0; i < assets.length; i++) {
+    const a = assets[i];
+    if (!a || a.type !== 'image') continue;
+    out.push({ asset: a, slotKey: getAssetSlotKey(a) || 'center' });
+  }
+  return out;
+}
+// Slots ocupados (para diagnóstico).
+function getOccupiedSlotKeys() {
+  const set = [];
+  for (const k in WORLD_SLOTS) {
+    if (findTopAssetInSlot(k)) set.push(k);
+  }
+  return set;
+}
+function triggerImageFilePicker() {
+  const fi = document.getElementById('fileInput2');
+  if (!fi) return;
+  try { fi.value = ''; } catch (_) {}
+  fi.click();
+}
+
+// ── Ação 1: INSERIR IMAGEM ──────────────────────────────────────────────
+function startInsertImageFlow() {
+  closeSettingsSheet();
+  closeAll();
+  clearPendingImageAction();
+  // Projeto vazio: inserir = carregar a imagem principal (centro), sem seletor de slot.
+  if (!imgNatW) {
+    pendingImageAction = 'insertImage';
+    pendingImageTargetSlot = { key: 'center', row: 0, col: 0 };
+    pendingImageTargetAssetId = null;
+    activeSlotSelection = 'center';
+    triggerImageFilePicker();
+    return;
+  }
+  // Plano: adicionar imagem extra é Plus/Premium (liberado em teste interno por featureAccess).
+  if (!canAddImageAsset()) {
+    openMultipleImagesPlusModal();
+    return;
+  }
+  // Já existe imagem: escolher o slot ANTES de abrir Fotos/Arquivos.
+  openImageSlotPicker('insert');
+}
+
+// ── Ação 2: TROCAR IMAGEM ───────────────────────────────────────────────
+function startReplaceImageFlow() {
+  closeSettingsSheet();
+  closeAll();
+  clearPendingImageAction();
+  const replaceables = getReplaceableImageAssets();
+  if (replaceables.length === 0) {
+    // Nada para trocar: não abrir seletor, não cair no centro.
+    showStatus('Não há imagem para trocar.');
+    return;
+  }
+  if (replaceables.length === 1) {
+    // Apenas a imagem principal/única: trocar direto, sem seletor de slot.
+    freezeReplaceTarget(replaceables[0]);
+    triggerImageFilePicker();
+    return;
+  }
+  // Várias imagens: escolher qual trocar ANTES de abrir Fotos/Arquivos.
+  openImageSlotPicker('replace');
+}
+
+function freezeReplaceTarget(t) {
+  const slot = WORLD_SLOTS[t.slotKey] || { row: null, col: null };
+  pendingImageAction = 'replaceImage';
+  pendingImageTargetSlot = { key: t.slotKey, row: slot.row, col: slot.col };
+  pendingImageTargetAssetId = (t.asset && t.asset.id != null) ? t.asset.id : null;
+  selectedImageAssetId = pendingImageTargetAssetId;
+  activeSlotSelection = t.slotKey;
+}
+
+// Toque em um slot do seletor 3x3 → congela intenção+alvo e abre o seletor.
+function pickImageSlot(slotKey) {
+  const slot = WORLD_SLOTS[slotKey];
+  if (!slot) return;
+  if (_imageSlotPickerMode === 'replace') {
+    const target = findTopAssetInSlot(slotKey);
+    if (!target) {
+      // Slot vazio: não troca, não abre seletor, não cai no centro.
+      showStatus('Esse espaço está vazio. Escolha uma imagem existente.');
+      return;
+    }
+    freezeReplaceTarget({ asset: target, slotKey });
+  } else {
+    pendingImageAction = 'insertImage';
+    pendingImageTargetSlot = { key: slotKey, row: slot.row, col: slot.col };
+    pendingImageTargetAssetId = null;
+    activeSlotSelection = slotKey;
+  }
+  closeImageSlotPicker();
+  triggerImageFilePicker();
+}
+
+// Arquivo escolhido (após intenção+alvo congelados) — dispara Inserir ou Trocar.
+function handleImageFileChosen(e) {
+  const input = e && e.target;
+  const file = input && input.files && input.files[0];
+  if (!file) { clearPendingImageAction(); return; }
+  const action = pendingImageAction;
+  if (action === 'insertImage') {
+    doInsertImageFromFile(file);
+  } else if (action === 'replaceImage') {
+    doReplaceImageFromFile(file);
+  } else {
+    // Sem intenção congelada: segurança — trata como primeira imagem se vazio.
+    if (!imgNatW) loadImage(file);
+  }
+  if (input) { try { input.value = ''; } catch (_) {} }
+}
+
+function doInsertImageFromFile(file) {
+  const slotKey = (pendingImageTargetSlot && pendingImageTargetSlot.key) || 'center';
+  // Primeira imagem do projeto: vira a imagem principal (centro).
+  if (!imgNatW) {
+    loadImage(file);
+    lastImageActionType = 'insertImage';
+    lastReplacedAssetId = null;
+    slotOccupiedOnInsert = false;
+    clearPendingImageAction();
+    return;
+  }
+  performInsertImageAtSlot(slotKey, file);
+  clearPendingImageAction();
+}
+
+function doReplaceImageFromFile(file) {
+  const targetId = pendingImageTargetAssetId;
+  const mainAsset = getMainImageAsset();
+  let target = null;
+  if (targetId != null && Array.isArray(assets)) {
+    for (let i = 0; i < assets.length; i++) {
+      if (assets[i] && assets[i].id === targetId) { target = assets[i]; break; }
+    }
+  }
+  if (!target) target = mainAsset;
+  if (!target) { clearPendingImageAction(); showStatus('Não há imagem para trocar.'); return; }
+  if (mainAsset && target === mainAsset) {
+    // Trocar a imagem principal/central — reaproveita o fluxo aprovado (undo 1 passo).
+    selectedImageAssetId = mainAsset.id;
+    lastImageActionType = 'replaceImage';
+    lastReplacedAssetId = mainAsset.id;
+    lastAddedAssetId = null;
+    slotOccupiedOnReplace = true;
+    _pendingImageReplaceUndoSnapshot = captureState();
+    loadImage(file);
+    clearPendingImageAction();
+  } else {
+    doReplaceExtraAsset(target, file);
+    clearPendingImageAction();
+  }
+}
+
+// Troca o bitmap de um asset extra NO LUGAR (não cria nova camada/asset).
+// Preserva slot/zIndex/visible; mantém fit contain dentro da mesma célula.
+function doReplaceExtraAsset(asset, file) {
+  if (!asset || !file) return;
+  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) return;
+  const beforeReplace = captureState();
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result || '';
+    const img = new Image();
+    img.onload = () => {
+      const baseW = projectWorld.baseStageW;
+      const baseH = projectWorld.baseStageH;
+      const worldGap = (typeof lastWorldGapUsed === 'number' && lastWorldGapUsed > 0)
+        ? lastWorldGapUsed
+        : Math.max(48, Math.min(96, Math.min(baseW, baseH) * 0.16));
+      lastWorldGapUsed = worldGap;
+      const sc = computeAssetSlotRowCol(asset);
+      const col = (sc.col == null) ? 0 : sc.col;
+      const row = (sc.row == null) ? 0 : sc.row;
+      const slotCenterX = col * (baseW + worldGap) + baseW / 2;
+      const slotCenterY = row * (baseH + worldGap) + baseH / 2;
+      const fitted = fitContain(img.naturalWidth, img.naturalHeight, baseW, baseH);
+      // Atualiza apenas a fonte e o tamanho (fit contain); slot/zIndex/visible preservados.
+      asset.src     = dataUrl;
+      asset.sourceW = img.naturalWidth;
+      asset.sourceH = img.naturalHeight;
+      asset._img    = img;
+      asset.worldW  = fitted.width;
+      asset.worldH  = fitted.height;
+      asset.worldX  = slotCenterX - fitted.width / 2;
+      asset.worldY  = slotCenterY - fitted.height / 2;
+      asset.fitMode = 'contain';
+      asset.name    = (file.name || asset.name || 'imagem').replace(/\.[^.]+$/, '');
+      selectedImageAssetId = asset.id;
+      invalidateProjectWorldComposite();
+      renderProjectWorldExtraImages();
+      pushUndoSnapshot(beforeReplace);
+      lastUndoAction = 'replaceImageAsset';
+      lastImageActionType = 'replaceImage';
+      lastReplacedAssetId = asset.id;
+      lastAddedAssetId = null;
+      slotOccupiedOnReplace = true;
+      markProjectDirty('replace-image-asset');
+      showStatus('Imagem trocada');
+    };
+    img.onerror = () => { showStatus('Não foi possível abrir esta imagem.'); };
+    img.src = dataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ═══════════════════════════════════════
 // v8z4b30N — MÚLTIPLAS IMAGENS (FASE 1)
 // Seletor de posição 3x3 + inserção real de imagem no ProjectWorld.
 // ═══════════════════════════════════════
-function openImageSlotPicker() {
+function openImageSlotPicker(mode) {
+  _imageSlotPickerMode = (mode === 'replace') ? 'replace' : 'insert';
+  configureSlotPickerForMode(_imageSlotPickerMode);
   const sheet = document.getElementById('imageSlotPickerSheet');
   if (sheet) sheet.style.display = 'flex';
+}
+// v8z4b30U — adapta o seletor 3x3 ao modo: "insert" habilita todos os slots;
+// "replace" habilita apenas os slots ocupados (não oferece troca em slot vazio).
+function configureSlotPickerForMode(mode) {
+  const title = document.getElementById('imageSlotPickerTitle');
+  const desc  = document.getElementById('imageSlotPickerDesc');
+  const btns  = document.querySelectorAll('#imageSlotPickerSheet .slot-pick-btn');
+  if (mode === 'replace') {
+    if (title) title.textContent = 'Qual imagem trocar';
+    if (desc)  desc.textContent  = 'Escolha o espaço da imagem que você quer trocar.';
+    btns.forEach(b => {
+      const key = b.getAttribute('data-slot');
+      const occupied = !!findTopAssetInSlot(key);
+      b.classList.toggle('slot-disabled', !occupied);
+    });
+  } else {
+    if (title) title.textContent = 'Posição da nova imagem';
+    if (desc)  desc.textContent  = 'Escolha onde a nova imagem entra no mundo do projeto, em relação ao Stage atual.';
+    btns.forEach(b => b.classList.remove('slot-disabled'));
+  }
 }
 function closeImageSlotPicker() {
   const sheet = document.getElementById('imageSlotPickerSheet');
   if (sheet) sheet.style.display = 'none';
 }
 function cancelImageSlotPicker() {
-  // Fecha o seletor, limpa o input file e não altera nada no projeto.
+  // Fecha o seletor, limpa intenção/alvo congelados e não altera nada no projeto.
   closeImageSlotPicker();
   closeAll();
   clearPendingNewImageInput();
+  clearPendingImageAction();
 }
 function getProjectWorldExtraImageAssets() {
   if (!Array.isArray(assets)) return [];
@@ -25013,79 +25398,14 @@ function computeAssetSlotRowCol(a) {
   };
 }
 
-// v8z4b30S — Correção 2: verifica se já existe um asset de imagem ocupando
-// o slot (mesmo slotRow/slotCol) alvo de "Adicionar imagem". A célula central
-// (col=0,row=0) é sempre ocupada pela imagem principal (assets[0]).
-function isWorldSlotOccupied(slotKey) {
+// v8z4b30U — INSERE uma nova imagem (novo asset/layer) no slot CONGELADO.
+// Respeita o slot escolhido antes do seletor; nunca cai no centro por engano.
+// Slot ocupado NÃO é erro: cria nova camada acima das existentes naquele slot.
+function performInsertImageAtSlot(slotKey, file) {
   const slot = WORLD_SLOTS[slotKey];
-  if (!slot || !Array.isArray(assets)) return false;
-  for (let i = 0; i < assets.length; i++) {
-    const a = assets[i];
-    if (!a || a.type !== 'image') continue;
-    const pos = computeAssetSlotRowCol(a);
-    if (pos.row === slot.row && pos.col === slot.col) return true;
-  }
-  return false;
-}
-
-// v8z4b30S — diagnóstico: varre assets de imagem em busca de slotRow/Col
-// duplicados (dois assets na mesma célula do grid 3x3). Não influencia
-// posicionamento, render, Preview ou Export — apenas leitura.
-function detectDuplicatedSlot() {
-  if (!Array.isArray(assets)) return { found: false, key: null };
-  const seen = {};
-  for (let i = 0; i < assets.length; i++) {
-    const a = assets[i];
-    if (!a || a.type !== 'image') continue;
-    const pos = computeAssetSlotRowCol(a);
-    if (pos.row == null || pos.col == null) continue;
-    const key = pos.row + ',' + pos.col;
-    if (seen[key]) return { found: true, key: key };
-    seen[key] = true;
-  }
-  return { found: false, key: null };
-}
-
-function addImageAssetAtSlot(slotKey) {
-  const slot = WORLD_SLOTS[slotKey];
-  const input = _pendingNewImageInput;
-  const file = input && input.files && input.files[0];
-  if (!file || !slot) {
-    closeImageSlotPicker();
-    closeImageChoiceSheet();
-    closeAll();
-    clearPendingNewImageInput();
-    return;
-  }
-  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) {
-    closeImageSlotPicker();
-    closeImageChoiceSheet();
-    closeAll();
-    clearPendingNewImageInput();
-    return;
-  }
-  // v8z4b30S — Correção 2: enquanto não existir painel de layers, o app não
-  // empilha imagens no mesmo slot. Se o slot escolhido já está ocupado,
-  // bloqueia a ação sem criar asset duplicado e orienta o usuário a usar
-  // "Trocar imagem" em vez de "Adicionar imagem".
-  if (isWorldSlotOccupied(slotKey)) {
-    closeImageSlotPicker();
-    closeImageChoiceSheet();
-    closeAll();
-    clearPendingNewImageInput();
-    lastSlotOccupiedOnAdd = true;
-    lastDuplicatedSlotKey = slotKey;
-    lastImageActionType = 'addImage';
-    lastAddedAssetId = null;
-    showStatus('Este espaço já tem uma imagem. Use "Trocar imagem" para substituí-la.');
-    return;
-  }
-  lastSlotOccupiedOnAdd = false;
-  lastDuplicatedSlotKey = null;
-  closeImageSlotPicker();
-  closeImageChoiceSheet();
-  closeAll();
-  clearPendingNewImageInput();
+  if (!file || !slot) return;
+  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) return;
+  const occupiedBefore = !!findTopAssetInSlot(slotKey);
   const reader = new FileReader();
   reader.onload = (e) => {
     const dataUrl = e.target.result || '';
@@ -25093,20 +25413,21 @@ function addImageAssetAtSlot(slotKey) {
     img.onload = () => {
       const baseW = projectWorld.baseStageW;
       const baseH = projectWorld.baseStageH;
-      // v8z4b30O — Correção 1: espaçamento (gap) entre células do grid 3x3, em
-      // coordenadas de mundo. A imagem adicionada à esquerda/direita/acima/abaixo
-      // não encosta mais na imagem principal. A célula central (col=0,row=0)
-      // continua sendo a posição da imagem principal.
+      // Espaçamento (gap) entre células do grid 3x3, em coordenadas de mundo.
       const worldGap = Math.max(48, Math.min(96, Math.min(baseW, baseH) * 0.16));
       lastWorldGapUsed = worldGap;
-      // v8z4b30P — Correção 2: a célula do slot continua com o tamanho/gap de
-      // sempre (baseW x baseH), mas o asset entra inteiro dentro dela via
-      // fit contain, centralizado, preservando o aspect ratio original.
       const slotCenterX = slot.col * (baseW + worldGap) + baseW / 2;
       const slotCenterY = slot.row * (baseH + worldGap) + baseH / 2;
       const fitted = fitContain(img.naturalWidth, img.naturalHeight, baseW, baseH);
-      // v8z4b30P — Correção 3: capturar undo ANTES da mutação, exatamente um
-      // passo. Undo remove só este asset; redo restaura.
+      // zIndex coerente: acima de qualquer asset já existente no MESMO slot
+      // (slot ocupado → nova camada por cima), e acima do topo global.
+      let maxZ = 0;
+      for (let i = 0; i < assets.length; i++) {
+        const a = assets[i];
+        if (a && a.type === 'image' && typeof a.zIndex === 'number' && a.zIndex > maxZ) maxZ = a.zIndex;
+      }
+      const newZ = Math.max(assets.length, maxZ + 1);
+      // Captura undo ANTES da mutação (exatamente um passo; undo remove o asset).
       const beforeAddAsset = captureState();
       const asset = {
         id: 'img-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
@@ -25120,25 +25441,28 @@ function addImageAssetAtSlot(slotKey) {
         worldW: fitted.width,
         worldH: fitted.height,
         rotation: 0,
-        zIndex: assets.length,
+        zIndex: newZ,
         visible: true,
         locked: false,
+        fitMode: 'contain',
         _img: img
       };
       assets.push(asset);
       activeSlotSelection = slotKey;
+      selectedImageAssetId = asset.id;
       invalidateProjectWorldComposite();
       renderProjectWorldExtraImages();
       pushUndoSnapshot(beforeAddAsset);
       lastUndoAction = 'addImageAsset';
-      lastImageActionType = 'addImage';
+      lastImageActionType = 'insertImage';
       lastAddedAssetId = asset.id;
       lastReplacedAssetId = null;
+      slotOccupiedOnInsert = occupiedBefore;
       markProjectDirty('add-image-asset');
       if (window._arcoDebug) {
-        console.info('[Arco ' + APP_VERSION + '] asset adicionado ao mundo:', { id: asset.id, slot: slotKey, worldX: asset.worldX, worldY: asset.worldY, worldW: asset.worldW, worldH: asset.worldH });
+        console.info('[Arco ' + APP_VERSION + '] asset inserido no mundo:', { id: asset.id, slot: slotKey, occupiedBefore, zIndex: newZ });
       }
-      showStatus('Imagem adicionada');
+      showStatus('Imagem inserida');
     };
     img.onerror = () => { showStatus('Não foi possível abrir esta imagem.'); };
     img.src = dataUrl;
@@ -25648,6 +25972,22 @@ function buildDiagnosticsText() {
   push('zoom atual', _diagFmtNum(_zoom, 4));
   push('zoom mínimo', (typeof MIN_EDITOR_ZOOM !== 'undefined') ? _diagFmtNum(MIN_EDITOR_ZOOM, 4) : 'n/d');
   push('zoom máximo', (typeof MAX_EDITOR_ZOOM !== 'undefined') ? _diagFmtNum(MAX_EDITOR_ZOOM, 4) : 'n/d');
+  // v8z4b30U — zoom out dinâmico do ProjectWorld
+  {
+    const _dynMin = (typeof getEditorMinZoom === 'function') ? getEditorMinZoom() : null;
+    const _multi = (typeof isMultiImageWorldActive === 'function') ? isMultiImageWorldActive() : false;
+    const _wb = (typeof getWorldViewBoundsWorld === 'function') ? getWorldViewBoundsWorld() : null;
+    const _fit = (typeof computeFitAllWorldZoom === 'function') ? computeFitAllWorldZoom() : null;
+    push('editorMinZoomMode', _multi ? 'dynamic' : 'fixed');
+    push('dynamicEditorMinZoom', _dynMin == null ? 'n/d' : _diagFmtNum(_dynMin, 4));
+    push('worldViewBoundsX', _wb ? _diagFmtNum(_wb.x, 2) : 'n/d');
+    push('worldViewBoundsY', _wb ? _diagFmtNum(_wb.y, 2) : 'n/d');
+    push('worldViewBoundsW', _wb ? _diagFmtNum(_wb.w, 2) : 'n/d');
+    push('worldViewBoundsH', _wb ? _diagFmtNum(_wb.h, 2) : 'n/d');
+    push('fitAllWorldZoom', _fit == null ? 'n/d' : _diagFmtNum(_fit, 4));
+    push('panBoundsSource', _wb ? 'worldView+stage' : 'stage');
+    push('canViewAllSlotsAtMinZoom', String(!!(_fit != null && _dynMin != null && _dynMin <= _fit + 1e-4)));
+  }
   L.push('');
 
   // Pan de edição + limites (replica clampEditorPan() apenas para LEITURA)
@@ -25751,17 +26091,6 @@ function buildDiagnosticsText() {
   if (_imgAssetIdx === 0) push('asset[0]', 'n/d');
   push('views.length', String(_viewsArr.length));
   push('activeSlotSelection', (typeof activeSlotSelection !== 'undefined' && activeSlotSelection) ? activeSlotSelection : 'n/d');
-  // v8z4b30S — diagnóstico: separação "Trocar imagem" / "Adicionar imagem"
-  // e prevenção de empilhamento silencioso no mesmo slot.
-  push('lastImageActionType', lastImageActionType || 'n/d');
-  push('replacedAssetId', lastReplacedAssetId != null ? String(lastReplacedAssetId) : 'n/d');
-  push('addedAssetId', lastAddedAssetId != null ? String(lastAddedAssetId) : 'n/d');
-  push('slotOccupiedOnAdd', String(lastSlotOccupiedOnAdd));
-  {
-    const _dup = (typeof detectDuplicatedSlot === 'function') ? detectDuplicatedSlot() : { found: false, key: null };
-    push('duplicatedSlotDetected', String(_dup.found));
-    push('duplicatedSlotKey', _dup.key != null ? _dup.key : (lastDuplicatedSlotKey || 'n/d'));
-  }
   // v8z4b30O — diagnóstico de mundo multi-imagem (Preview/Export).
   push('worldGap usado', _diagFmtNum((typeof lastWorldGapUsed !== 'undefined') ? lastWorldGapUsed : 0, 2));
   push('multiImageWorldActive', (typeof isMultiImageWorldActive === 'function') ? String(isMultiImageWorldActive()) : 'n/d');
@@ -25782,6 +26111,44 @@ function buildDiagnosticsText() {
     }
   } catch (e) {}
   push('featureAccess multipleImageAssets', _faMulti);
+  // v8z4b30U — Ação de imagem (Inserir / Trocar): intenção, alvo e diagnóstico.
+  push('selectedImageAssetId', (typeof selectedImageAssetId !== 'undefined' && selectedImageAssetId) ? String(selectedImageAssetId) : 'n/d');
+  push('pendingImageAction', (typeof pendingImageAction !== 'undefined' && pendingImageAction) ? pendingImageAction : 'n/d');
+  push('pendingImageTargetSlot', (typeof pendingImageTargetSlot !== 'undefined' && pendingImageTargetSlot) ? (pendingImageTargetSlot.key + ' (' + pendingImageTargetSlot.row + '/' + pendingImageTargetSlot.col + ')') : 'n/d');
+  push('pendingImageTargetAssetId', (typeof pendingImageTargetAssetId !== 'undefined' && pendingImageTargetAssetId) ? String(pendingImageTargetAssetId) : 'n/d');
+  push('lastImageActionType', (typeof lastImageActionType !== 'undefined' && lastImageActionType) ? lastImageActionType : 'n/d');
+  push('addedAssetId', (typeof lastAddedAssetId !== 'undefined' && lastAddedAssetId) ? String(lastAddedAssetId) : 'n/d');
+  push('replacedAssetId', (typeof lastReplacedAssetId !== 'undefined' && lastReplacedAssetId) ? String(lastReplacedAssetId) : 'n/d');
+  push('slotOccupiedOnInsert', (typeof slotOccupiedOnInsert === 'boolean') ? String(slotOccupiedOnInsert) : 'n/d');
+  push('slotOccupiedOnReplace', (typeof slotOccupiedOnReplace === 'boolean') ? String(slotOccupiedOnReplace) : 'n/d');
+  {
+    const _occ = (typeof getOccupiedSlotKeys === 'function') ? getOccupiedSlotKeys() : [];
+    const _repl = (typeof getReplaceableImageAssets === 'function') ? getReplaceableImageAssets() : [];
+    // Detecção de slot duplicado (mais de um asset no mesmo slot).
+    let _dupKey = null;
+    try {
+      const seen = {};
+      for (let i = 0; i < _assetsArr.length; i++) {
+        const a = _assetsArr[i];
+        if (!a || a.type !== 'image') continue;
+        const k = (typeof getAssetSlotKey === 'function') ? getAssetSlotKey(a) : null;
+        if (!k) continue;
+        if (seen[k]) { _dupKey = k; break; }
+        seen[k] = true;
+      }
+    } catch (e) {}
+    push('duplicatedSlotDetected', String(!!_dupKey));
+    push('duplicatedSlotKey', _dupKey || 'n/d');
+    push('layerInsertAllowed', (typeof canAddImageAsset === 'function') ? String(canAddImageAsset()) : 'n/d');
+    push('imageLayerCount', String((typeof getImageAssetCount === 'function') ? getImageAssetCount() : 'n/d'));
+    push('imageSlotsOccupiedCount', String(_occ.length));
+    push('occupiedSlotsList', _occ.length ? _occ.join(', ') : 'nenhum');
+    push('replaceableImageCount', String(_repl.length));
+    push('selectedReplaceTargetSlot', (typeof pendingImageTargetSlot !== 'undefined' && pendingImageTargetSlot && pendingImageAction === 'replaceImage') ? pendingImageTargetSlot.key : 'n/d');
+    push('selectedReplaceTargetAssetId', (typeof pendingImageTargetAssetId !== 'undefined' && pendingImageTargetAssetId && pendingImageAction === 'replaceImage') ? String(pendingImageTargetAssetId) : 'n/d');
+  }
+  push('premiumFeatureMultipleImagesEnabled', (typeof canUseMultipleImages === 'function') ? String(canUseMultipleImages()) : 'n/d');
+  push('watermarkRequiredForCurrentPlan', String((typeof isProMode !== 'undefined') ? !isProMode : 'n/d'));
   L.push('');
 
   // v8z4b30P — Correção 3/4: diagnóstico de undo para assets.

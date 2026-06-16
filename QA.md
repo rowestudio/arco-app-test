@@ -1,3 +1,30 @@
+# QA pendente — v8z4b30U: fluxo de imagem (Inserir/Trocar) + navegação superior + zoom out do ProjectWorld
+
+> Base confirmada: `v8z4b30R` (`v8z4b30S`/`v8z4b30T` canceladas; `index.html` restaurado de `v8z4b30R` antes desta versão). Implementa duas ações diretas de imagem com intenção/alvo congelados antes do seletor, X/Fechar movido para "Início" no menu Arquivo (sem deslocar Preview/Visualizar) e zoom out dinâmico para ver o grid. Não implementa painel de layers/reorder nem edição livre de posição/escala. Não altera motor de curvas/frames, WebCodecs/FPS/muxer, touch/pan/zoom de câmera dos frames, cores/textos/posições aprovadas. Não promove para estável.
+
+## Escopo v8z4b30U
+
+1. App abre igual visualmente; menu mostra **uma** versão: "Arco Motion App v8z4b30U" (`APP_VERSION`=`APP_VERSION_NAME`=`v8z4b30U`); sem 2ª linha de versão e sem resíduo de `v8z4b30R/S/T`.
+2. Menu Arquivos tem **duas** ações diretas: "Inserir imagem" e "Trocar imagem"; não existe ação única ambígua de imagem.
+3. Fotos/Arquivos só abre **depois** de escolher Inserir/Trocar (e o slot/alvo quando aplicável); o app não pergunta após o arquivo.
+4. Inserir imagem no centro: cria novo asset (`assets.length` +1) no centro; `lastImageActionType=insertImage`, `addedAssetId` preenchido, `replacedAssetId=n/d`.
+5. Inserir imagem em slot lateral vazio: cria novo asset no slot escolhido (não cai no centro).
+6. Inserir imagem em slot ocupado: cria nova camada acima (não substitui, não bloqueia); `slotOccupiedOnInsert: true`.
+7. Trocar imagem principal: substitui `img-1` sem aumentar `assets.length`; `lastImageActionType=replaceImage`, `replacedAssetId` preenchido, `addedAssetId=n/d`.
+8. Trocar imagem lateral: substitui apenas o asset alvo (não toca em `img-1`); `assets.length` inalterado.
+9. Trocar em slot vazio: não abre seletor, não cai no centro (status visual).
+10. Com apenas a imagem principal: só a principal é oferecida para troca (sem slots laterais vazios).
+11. Undo de Inserir remove o asset inserido; Undo de Trocar restaura a imagem anterior; nenhum afeta imagens de outros slots.
+12. Salvar/carregar: projeto com 1 imagem, com múltiplas imagens e com layers no mesmo slot voltam com `zIndex`/posições corretos; projeto salvo após Inserir/Trocar carrega com o resultado; `v8z4b30R` continua abrindo (schemaVersion 1).
+13. X/Fechar não aparece mais isolado à esquerda; menu Arquivo tem "Início" (ícone Lucide `home`) que executa a mesma ação do antigo X (volta à tela inicial, preserva aviso de não salvo).
+14. Topo: **Preview** e **Visualizar** permanecem na mesma posição da `v8z4b30R` (placeholder invisível preserva a geometria; sem reflow).
+15. Zoom out: com grid 3x3, o gesto de pinça permite zoom out menor/dinâmico até ver todo o ProjectWorld; projeto de 1 imagem mantém o mínimo atual. Diagnóstico: `editorMinZoomMode`, `dynamicEditorMinZoom`, `worldViewBounds*`, `fitAllWorldZoom`, `canViewAllSlotsAtMinZoom`.
+16. Zoom out não altera frames, Preview, Export nem escala real dos assets.
+17. Preview/Export multi-imagem continuam: `exportUsedWorldRenderer=true`, `exportFallbackToSingleImage=false`; MP4 1:1/9:16/4:3 sem regressão; fundo `#3c3c3b`.
+18. Reset preserva imagens (reseta apenas caminho/frames).
+19. iPhone/Safari: seletor abre dentro do gesto do usuário (toque na ação/slot); sem regressão de gestos/curvas.
+20. Sem `prompt()`/`alert()`/`confirm()` em todo o fluxo.
+
 # QA pendente — v8z4b30Q: HOTFIX fase 1 múltiplas imagens (fundo padrão + export sem salto)
 
 > Base confirmada: `v8z4b30P`. HOTFIX de estabilização: corrige o fundo padrão do projeto (cinza `#3c3c3b`) e o salto para a imagem inteira no export MP4 ao transitar entre imagens diferentes. Valida (sem mudança de código) o undo de adicionar/substituir imagem e a regra de "Substituir imagem atual" sempre na imagem principal/central. Não implementa seleção de imagem, layers, cenas, edição livre de posição/escala. Não altera motor de curvas/easing/timing/pausa/loop/escala/rotação, touch/drag/resize/zoom, comportamento mobile/iPhone/Safari além do necessário. Não promove para estável.
