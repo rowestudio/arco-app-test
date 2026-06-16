@@ -1,3 +1,20 @@
+# QA pendente — v8z4b30ZA: sistema de coordenadas único do ProjectWorld (mundo híbrido) + auditoria de render/handles
+
+> Base confirmada: `v8z4b30Z` (não revertida). Hotfix cirúrgico de coordenadas: elimina o mundo híbrido (Estratégia A — `preserveSavedWorld`) para que `ProjectWorld`, assets, frames, curvas, câmera, Preview e Export usem um único sistema canônico ancorado em `baseStageW/H`; o Stage atual é apenas viewport. Corrige o asset do slot superior direito sumindo/piscando com 9 imagens. Adiciona auditoria de escala mista, render transform real por asset e consistência de handles. NÃO altera UI/layout/cores/textos/ícones/menus, fluxo Inserir/Trocar, reset, zoom dinâmico, pan/zoom/touch, WebCodecs/muxer/encoder, motor de curvas; sem Layers, sem cenas, sem "Inverter sentido". Não promove para estável.
+
+## Escopo v8z4b30ZA
+
+1. App abre igual visualmente; menu mostra "Arco Motion App v8z4b30ZA" (`APP_VERSION`=`APP_VERSION_NAME`=`v8z4b30ZA`).
+2. **Teste 1 — carregar arquivo com 9 imagens.** Após carregar projeto com os 9 slots preenchidos, no Diagnóstico: `framesRestoredInProjectWorld=true`, `mixedWorldScaleDetected=false`, `worldCoordinateSystemConsistent=true`, `asset0MatchesWorldCoordinateSystem=true`, `allAssetsSameCoordinateSystem=true`, `worldCoordinateStrategy=preserveSavedWorld`. `projectWorldW/H` == `projectWorldBaseStageW/H`.
+3. **Teste 2 — trecho superior direito.** Preview no trecho que chega ao asset do slot superior direito: a imagem aparece corretamente, não pisca, não some, não pula a chegada. Exportar MP4: o mesmo. No Diagnóstico, para o asset superior direito: `considered=true`, `drawn=true`, `imageReady=true`, `decodeReady=true`, `intersectsCamera=true`, `screenArea>0`, `alphaUsed>0`, `cullingReason=none`.
+4. **Teste 3 — regressão com todos os slots.** Passando por todos os trechos entre imagens, nenhum asset some/pisca ao chegar. `previewAssetsConsideredCount=9`, `exportAssetsConsideredCount=9`, `previewUsedSlotFilter=false`, `exportUsedSlotFilter=false`, `endpointContinuityOkAllSegments=true`, `renderTransformConsistent=true`, `cameraAssetCoordinateMismatch=false`.
+5. **Teste 4 — handles.** Primeiro/intermediário/último frame: `ghostHandlesConsistent=true`; último frame sem handle de saída válido (`activeFrameHasValidOutHandle=false`, `ghostInActualFrameIndex=none`); primeiro frame sem handle de entrada válido (`activeFrameHasValidInHandle=false`, `ghostOutActualFrameIndex=none`); frame intermediário com entrada/saída coerentes; após soltar um drag, `lockedDragSegmentIndex`/`lockedDragCurveIndex`=`none` (sem fantasma).
+6. Mundo híbrido impossível: não pode haver `baseStage` em 341×512 com `asset[0]`/`projectWorld.w` em 374×561. Arquivo da 30Z salvo já híbrido é auto-curado no load.
+7. Preview/Export continuam usando o World Renderer: `exportUsedWorldRenderer=true`, `exportFallbackToSingleImage=false`, `previewUsedMainImageOnlyPath=false`, `exportUsedMainImageOnlyPath=false`.
+8. Save/load de frames (30W/30Y/30Z) preservado; WebCodecs funcionando; `exportSuccess=true`; fundo `#3c3c3b`.
+9. Projeto de **imagem única** sem regressão (Stage = mundo); Preview/MP4 1:1/9:16/4:3 idênticos.
+10. Sem qualquer alteração de UI/layout/menu/texto/ícone; Layers, Reset, Inserir/Trocar, zoom dinâmico e "Inverter sentido" inalterados; sem `prompt()`/`alert()`/`confirm()`.
+
 # QA pendente — v8z4b30U: fluxo de imagem (Inserir/Trocar) + navegação superior + zoom out do ProjectWorld
 
 > Base confirmada: `v8z4b30R` (`v8z4b30S`/`v8z4b30T` canceladas; `index.html` restaurado de `v8z4b30R` antes desta versão). Implementa duas ações diretas de imagem com intenção/alvo congelados antes do seletor, X/Fechar movido para "Início" no menu Arquivo (sem deslocar Preview/Visualizar) e zoom out dinâmico para ver o grid. Não implementa painel de layers/reorder nem edição livre de posição/escala. Não altera motor de curvas/frames, WebCodecs/FPS/muxer, touch/pan/zoom de câmera dos frames, cores/textos/posições aprovadas. Não promove para estável.
