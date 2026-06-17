@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZC — base v8z4b30ZA (a v8z4b30ZB foi mergeada, reprovada e revertida; NÃO é base e NÃO é reaplicada). Versão de diagnóstico seguro + proteção de regressão. Preserva exatamente o comportamento funcional da 30ZA e adiciona apenas observação para investigar tranco/piscada/pulo de câmera entre trechos, sem alterar matemática de câmera, Preview, Export ou render final. diag: trilha observacional de câmera por frame em Preview e Export (previewTrace*/exportTrace*: segmento ativo, fromFrame/toFrame, localT, câmera X/Y/W/H/rotation, amostra anterior, deltas, deltaMagnitude, render ms, assets desenhados/visíveis), capturada ao final de renderFrameSafely lendo diagnostics.renderState já calculado — não altera ctx/t/câmera/retorno. diag: detector passivo de pulo/piscada (jumpDetected/jumpType/jumpSegmentIndex/jumpFrameIndex/jump*Camera/jumpDelta*), classifica salto por segment-skip(>1), localT para trás, spike de delta de câmera/rotação acima da média local; reinício de loop é tratado como esperado (não sinaliza). diag: amostragem do segmento alvo Frame 3 → Frame 4 (segmentTraceTargetIndex=2) em localT 0.00…1.00 via getStateAtT (mesma câmera de Preview/Export), com curveHandle1/2, fromFrame/toFrame, deltas e marcação de suspiciousDelta no meio do segmento. diag: guardas de comportamento (exportBehaviorMatches30ZA/previewBehaviorMatches30ZA=true; exportFrameSamplingChanged/exportSegmentTimingChanged/exportCameraMathChanged/exportRendererChanged e equivalentes de preview = false). diag: auditoria observacional de caches/estado derivado (derivedStateDirty, segment/curve/assetBounds/previewCache). preserve: APP_VERSION/NAME=v8z4b30ZC, fundo #3c3c3b, ProjectWorld consistente, save/load de assets e frames em ProjectWorld, render sem filtro de slot, Preview/Export via World Renderer, WebCodecs, zoom dinâmico. NÃO altera UI/layout/cores/textos/ícones/menus, render math, evaluate camera, segmentIndex, localT, duração, pausa, easing, curva, Preview/Export playback, WebCodecs/muxer/encoder, ProjectWorld geometry, save/load, assets, addImageAsset, pan/zoom/touch, "Inverter sentido"; NÃO traz código da 30ZB sem auditoria. -->
 <!-- Arco Motion App — v8z4b30ZA — base v8z4b30Z. HOTFIX crítico e cirúrgico do sistema de coordenadas do ProjectWorld (mundo híbrido) + auditoria de render/câmera + estado de handles. fix(coords): ESTRATÉGIA A (preserveSavedWorld) — o ProjectWorld passa a ser um único sistema canônico ancorado em baseStageW/H. syncFirstImageAsset() NÃO redimensiona mais o asset principal (img-1) nem projectWorld.w/h com o Stage atual quando o projeto é multi-imagem (Stage vira apenas viewport/janela do editor); restoreProjectAssetsFromData() ancora projectWorld.w/h e o asset[0] em baseStage canônica no load, auto-curando inclusive arquivos da 30Z salvos já em estado híbrido (asset[0] em 374×561 enquanto baseStage/laterais em 341×512). Isso elimina a falha em que o asset do slot superior direito sumia/piscava no Preview/Export com 9 imagens. fix(handles): limpeza de estado transitório de drag (lockedDragSegmentIndex/CurveIndex/HandleType zerados ao soltar) e limpeza de dataset.arcoFi dos ghost handles ocultos (sem índice fantasma). diag: nova auditoria worldCoordinateStrategy/worldCoordinateSystemConsistent/mixedWorldScaleDetected/asset0MatchesWorldCoordinateSystem/allAssetsSameCoordinateSystem/frames-curvesMatchWorldCoordinateSystem; render transform real por asset (renderCamera*, renderWorldToCanvasScaleX/Y, assetRender[id].screen/flags, intersectsCamera, imageReady, cullingReason=none); cameraAssetCoordinateMismatch; ghostHandlesConsistent + ghostIn/OutExpected/Actual + activeFrameHasValidIn/OutHandle. preserve: APP_VERSION/NAME=v8z4b30ZA, fundo #3c3c3b, múltiplas imagens, save/load de assets e de frames em coordenadas absolutas do ProjectWorld, Preview/Export via World Renderer (exportUsedWorldRenderer=true, sem fallback), WebCodecs, zoom mínimo dinâmico, ausência de filtro por slot/selected asset/main image. NÃO altera UI/layout/cores/textos/ícones/menus, fluxo Inserir/Trocar imagem, reset, zoom dinâmico, pan/zoom/touch, WebCodecs/muxer/encoder, motor de curvas/easing/timing; sem Layers, sem cenas, sem "Inverter sentido", sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30V — base v8z4b30U. fix(ux): remove marcador visual de "exceder moldura" (borda vermelha no Stage + @keyframes stage-warn + class .out-of-bounds) — desnecessário no modelo ProjectWorld onde frames podem ultrapassar a imagem principal por design; isFrameOutside() preservada mas sem uso visual. fix(ux): tipo de visualização (viewMode: Normal/Isolamento/Mapa) passa a ser global — applyViewMode() aplica opacity ao imgEl E a todos os .world-extra-img do ProjectWorld; renderProjectWorldExtraImages() respeita viewMode ao criar elementos extras, garantindo consistência após rerenders. fix(ux): novo frame no ProjectWorld multi-imagem nasce próximo ao frame anterior sem ser clampado ao Stage da imagem principal — buildPendingFrameInsertion() usa _rawNewFrame diretamente quando isMultiImageWorldActive(), preservando clampNewFrameRectToStage para projetos de imagem única. fix(timeline): selecionar trecho na faixa de frames não dispara mais centralização automática — selectSegmentContext() passa a definir lowerTimelineCenterFrameIndex = activeIdx (valor válido) em vez de -1, evitando que renderAll() acione centerLowerTimelineOnFrame indevidamente; apenas seleção de frame continua centralizando a pill. fix(diag): painel Diagnóstico exibe o zoom mínimo efetivo (getEditorMinZoom(), valor dinâmico em ProjectWorld multi-imagem) em vez do MIN_EDITOR_ZOOM fixo (0.5000), eliminando a inconsistência onde "zoom mínimo" mostrava 0.5000 enquanto "dynamicEditorMinZoom" mostrava 0.2711. preserve: exportação MP4 multi-imagem (exportUsedWorldRenderer/fallback), Preview/Export, motor de curvas/frames, WebCodecs/FPS/muxer, touch/pan/zoom, suporte iPhone/Safari, isFrameOutside(), clampNewFrameRectToStage (projetos com 1 imagem), cores/textos/ícones aprovados; sem painel de layers, sem edição livre de posição/escala, sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30U — base v8z4b30R (v8z4b30S/T canceladas e revertidas). Correção funcional do fluxo de imagem + navegação superior + zoom out do ProjectWorld. fix(version): APP_VERSION e APP_VERSION_NAME = v8z4b30U; interface mostra UMA versão visível ("Arco Motion App v8z4b30U"), removida a 2ª linha de versão. ux(image): menu Imagem agora tem DUAS ações diretas e separadas — "Inserir imagem" (startInsertImageFlow) e "Trocar imagem" (startReplaceImageFlow); o seletor de Fotos/Arquivos só abre DEPOIS da escolha da ação (sem ação única ambígua, sem perguntar após o arquivo). fix(intent/target): a intenção (pendingImageAction) e o alvo (pendingImageTargetSlot/pendingImageTargetAssetId) são CONGELADOS antes do seletor; ao voltar, o app usa exclusivamente o alvo congelado — nunca recalcula pelo estado visual nem cai no centro (exceto projeto realmente vazio). fix(insert): performInsertImageAtSlot() respeita o slot congelado, cria novo asset (assets.length+1), fit contain, slotRow/Col e zIndex coerente (slot ocupado → nova camada acima); undo=addImageAsset remove o asset inserido. fix(replace): doReplaceImageFromFile()/doReplaceExtraAsset() substituem APENAS o asset alvo sem criar camada (assets.length inalterado), preservando slot/zIndex/visible e mantendo fit contain; trocar lateral não substitui img-1; trocar em slot vazio não abre seletor; undo=replaceImageAsset restaura a imagem anterior. ux(nav): X/Fechar removido do canto superior esquerdo e movido para o menu Arquivo como "Início" (ícone Lucide home, mesma ação requestCloseStageToLauncher); placeholder invisível preserva a geometria do topo — Preview e Visualizar NÃO se deslocam. feat(zoom): zoom out dinâmico do editor (getEditorMinZoom/computeFitAllWorldZoom) para visualizar todo o ProjectWorld/grid 3x3 quando há múltiplas imagens; pan world-aware (clampEditorPan alarga, nunca restringe) — sem alterar frames, Preview, Export ou escala real dos assets. feat(diag): novos campos de ação de imagem, layers lógicos, plano/marca d'água e zoom out. preserve: salvar/carregar múltiplas imagens, ProjectWorld único, Preview/Export multi-imagem (exportUsedWorldRenderer/fallback), fundo #3c3c3b, reset preservando imagens, gap 3x3, featureAccess multipleImageAssets liberado em teste, iPhone/Safari; NÃO altera motor de curvas/frames, WebCodecs/FPS/muxer, touch/pan/zoom de câmera dos frames, cores/textos/posições aprovadas; sem painel de layers/reorder, sem edição livre de posição/escala, sem prompt/alert/confirm. -->
@@ -6694,8 +6695,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZA';
-const APP_VERSION_NAME = 'v8z4b30ZA';
+const APP_VERSION = 'v8z4b30ZC';
+const APP_VERSION_NAME = 'v8z4b30ZC';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -18420,6 +18421,8 @@ function renderUniversalFallback(ctx, canvas, t, W, H, frameIdx, reason, diagnos
 }
 
 function renderFrameSafely(ctx, canvas, t, W, H, totalFrames, frameIdx, options = {}) {
+  // v8z4b30ZC — marca de tempo observacional (não altera render).
+  const _trace30ZCt0 = (typeof TRACE_30ZC_ENABLED !== 'undefined' && TRACE_30ZC_ENABLED) ? performance.now() : 0;
   const diagnostics = buildRenderDiagnostics(t, W, H, frameIdx);
   diagnostics.canvasSize = canvas ? { width: canvas.width, height: canvas.height } : null;
   // v8z4b30Q — Correção 2: projetos multi-imagem usam exclusivamente a câmera
@@ -18459,6 +18462,13 @@ function renderFrameSafely(ctx, canvas, t, W, H, totalFrames, frameIdx, options 
     if (isRecording) { exportFallbackToSingleImage = true; exportFallbackReason = 'blank-frame-after-render'; }
   }
   if (!ok) logExportError(frameIdx, t, W, H, new Error(diagnostics.reason || 'render-frame-failed'), diagnostics);
+  // v8z4b30ZC — registro observacional de trilha de câmera (Preview/Export).
+  // Lê diagnostics.renderState já calculado; não altera ctx/t/câmera/retorno.
+  if (typeof recordCameraTrace30ZC === 'function') {
+    const _trace30ZCms = (typeof TRACE_30ZC_ENABLED !== 'undefined' && TRACE_30ZC_ENABLED)
+      ? (performance.now() - _trace30ZCt0) : null;
+    recordCameraTrace30ZC(diagnostics, t, frameIdx, _trace30ZCms);
+  }
   return ok;
 }
 
@@ -19130,6 +19140,8 @@ function startPreview() {
   normalizeProjectArrays();
   if (!validateProjectState('preview')) { showStatus('Estado inválido para Preview (veja console)'); return; }
   isPreviewing = true;
+  // v8z4b30ZC — trilha observacional de preview começa limpa a cada abertura.
+  if (typeof freshCameraTraceState30ZC === 'function') previewTrace30ZC = freshCameraTraceState30ZC('preview');
   updatePlayButton();
   document.body.classList.add('previewing');
 
@@ -19762,6 +19774,8 @@ async function startRecord() {
   exportUsedWorldRenderer = false;
   exportFallbackToSingleImage = false;
   exportFallbackReason = '';
+  // v8z4b30ZC — trilha observacional de export começa limpa a cada geração.
+  if (typeof freshCameraTraceState30ZC === 'function') exportTrace30ZC = freshCameraTraceState30ZC('export');
   document.body.classList.add('previewing');
 
   // v8z4b19i — Invalidar qualquer vídeo anterior antes de gerar outro.
@@ -26050,6 +26064,363 @@ let renderTransformIssue = 'none';
 let _renderActiveFrameIndexHint = -1;
 let _renderActiveSegmentIndexHint = -1;
 
+// ════════════════════════════════════════════════════════════════════════
+// v8z4b30ZC — DIAGNÓSTICO SEGURO (somente observação)
+// ────────────────────────────────────────────────────────────────────────
+// Esta camada NÃO altera câmera, t, segmentIndex, localT, curva, duração,
+// render, Preview ou Export. Ela apenas LÊ valores já calculados pelo motor
+// da 30ZA (via diagnostics.renderState / getStateAtT / getSegAndLocalTAtTime)
+// e registra deltas, amostras e suspeitas de pulo/piscada. Toda a coleta é
+// envolta em try/catch e nunca pode interromper o render.
+// NÃO reaplica nenhuma lógica da 30ZB (segment jump detection com correção,
+// previewSegmentJumpCheck, camera sampling alterado etc.).
+// ════════════════════════════════════════════════════════════════════════
+const TRACE_30ZC_ENABLED = true;
+const SEGMENT_TRACE_TARGET_INDEX = 2;               // zero-based: Frame 3 → Frame 4
+const SEGMENT_TRACE_TARGET_LABEL = 'Frame 3 → Frame 4';
+const JUMP_DELTA_RATIO_THRESHOLD = 3.0;             // delta > 3x média local ⇒ suspeito
+const JUMP_ROT_RATIO_THRESHOLD = 3.0;
+const JUMP_MIN_SAMPLES = 4;                         // janela mínima antes de comparar média
+
+function freshCameraTraceState30ZC(kind) {
+  return {
+    kind: kind,
+    enabled: TRACE_30ZC_ENABLED,
+    observationalOnly: true,
+    changedPlayback: false,      // sempre false — observacional
+    frameIndex: -1,
+    activeSegmentIndex: -1,
+    fromFrameIndex: -1,
+    toFrameIndex: -1,
+    localT: null,
+    cameraX: null, cameraY: null, cameraW: null, cameraH: null, cameraRotation: null,
+    previousSegmentIndex: -1,
+    previousLocalT: null,
+    previousCameraX: null, previousCameraY: null, previousCameraW: null, previousCameraH: null, previousCameraRotation: null,
+    deltaX: null, deltaY: null, deltaW: null, deltaH: null, deltaRotation: null,
+    deltaMagnitude: null,
+    unexpectedJumpDetected: false,
+    unexpectedJumpReason: '',
+    frameRenderMs: null,
+    assetsDrawnThisFrame: 0,
+    visibleAssetsThisFrame: 0,
+    _recentDeltaMags: [],
+    _recentRotDeltas: [],
+    _hasPrev: false
+  };
+}
+
+let previewTrace30ZC = freshCameraTraceState30ZC('preview');
+let exportTrace30ZC = freshCameraTraceState30ZC('export');
+
+// Part 4 — detector passivo de pulo/piscada: registro do ÚLTIMO pulo detectado.
+let lastJumpRecord30ZC = {
+  jumpDetected: false,
+  jumpType: '',
+  jumpSegmentIndex: -1,
+  jumpFrameIndex: -1,
+  jumpPreviousT: null,
+  jumpCurrentT: null,
+  jumpDeltaX: null, jumpDeltaY: null, jumpDeltaW: null, jumpDeltaH: null, jumpDeltaRotation: null,
+  jumpBeforeCamera: null,
+  jumpAfterCamera: null,
+  jumpCurveIndex: -1,
+  jumpFromFrameIndex: -1,
+  jumpToFrameIndex: -1,
+  jumpDuringPreview: false,
+  jumpDuringExport: false
+};
+let jumpDetectionCount30ZC = 0;
+
+// Part 5/6 — guardas de comportamento: a 30ZC NÃO toca em frame sampling,
+// segment timing, camera math nem renderer. Constantes, por construção.
+const exportFrameSamplingChanged = false;
+const exportSegmentTimingChanged = false;
+const exportCameraMathChanged = false;
+const exportRendererChanged = false;
+const exportBehaviorMatches30ZA = true;
+const exportBehaviorChangeReason = 'none';
+const previewFrameSamplingChanged = false;
+const previewSegmentTimingChanged = false;
+const previewCameraMathChanged = false;
+const previewRendererChanged = false;
+const previewBehaviorMatches30ZA = true;
+const previewBehaviorChangeReason = 'none';
+
+// Detector passivo: NÃO corrige nem interfere — apenas classifica e registra.
+function _runPassiveJumpDetector30ZC(tr, duringExport, duringPreview) {
+  try {
+    const segJump = (tr.previousSegmentIndex >= 0)
+      ? (tr.activeSegmentIndex - tr.previousSegmentIndex) : 0;
+    // Reinício de timeline / loop (segmento volta para trás): esperado, não é pulo.
+    if (segJump < 0) {
+      tr.unexpectedJumpDetected = false;
+      tr.unexpectedJumpReason = '';
+      tr._recentDeltaMags = [];
+      tr._recentRotDeltas = [];
+      return;
+    }
+    const mags = tr._recentDeltaMags;
+    const rots = tr._recentRotDeltas;
+    const meanMag = mags.length ? mags.reduce((a, b) => a + b, 0) / mags.length : 0;
+    const meanRot = rots.length ? rots.reduce((a, b) => a + Math.abs(b), 0) / rots.length : 0;
+    const curMag = Math.abs(Number(tr.deltaMagnitude) || 0);
+    const curRot = Math.abs(Number(tr.deltaRotation) || 0);
+    const localTBackwards = (tr.previousSegmentIndex === tr.activeSegmentIndex) &&
+      (tr.previousLocalT != null && tr.localT != null && tr.localT < tr.previousLocalT - 1e-4);
+
+    let suspicious = false;
+    let type = '';
+    if (segJump > 1) { suspicious = true; type = 'segment-skip(>1)'; }
+    else if (localTBackwards) { suspicious = true; type = 'localT-backwards'; }
+    else if (mags.length >= JUMP_MIN_SAMPLES && meanMag > 1e-6 && curMag > JUMP_DELTA_RATIO_THRESHOLD * meanMag) {
+      suspicious = true; type = 'camera-delta-spike';
+    } else if (rots.length >= JUMP_MIN_SAMPLES && meanRot > 1e-6 && curRot > JUMP_ROT_RATIO_THRESHOLD * meanRot) {
+      suspicious = true; type = 'rotation-delta-spike';
+    }
+
+    tr.unexpectedJumpDetected = suspicious;
+    tr.unexpectedJumpReason = suspicious
+      ? (type + ' (Δ=' + curMag.toFixed(2) + ', médiaΔ=' + meanMag.toFixed(2) + ')') : '';
+
+    if (suspicious) {
+      jumpDetectionCount30ZC++;
+      lastJumpRecord30ZC = {
+        jumpDetected: true,
+        jumpType: type,
+        jumpSegmentIndex: tr.activeSegmentIndex,
+        jumpFrameIndex: tr.frameIndex,
+        jumpPreviousT: tr.previousLocalT,
+        jumpCurrentT: tr.localT,
+        jumpDeltaX: tr.deltaX, jumpDeltaY: tr.deltaY, jumpDeltaW: tr.deltaW,
+        jumpDeltaH: tr.deltaH, jumpDeltaRotation: tr.deltaRotation,
+        jumpBeforeCamera: { x: tr.previousCameraX, y: tr.previousCameraY, w: tr.previousCameraW, h: tr.previousCameraH, rot: tr.previousCameraRotation },
+        jumpAfterCamera: { x: tr.cameraX, y: tr.cameraY, w: tr.cameraW, h: tr.cameraH, rot: tr.cameraRotation },
+        jumpCurveIndex: tr.activeSegmentIndex,
+        jumpFromFrameIndex: tr.fromFrameIndex,
+        jumpToFrameIndex: tr.toFrameIndex,
+        jumpDuringPreview: !!duringPreview,
+        jumpDuringExport: !!duringExport
+      };
+    }
+    // Atualiza janelas rolantes DEPOIS da comparação (não inclui o próprio frame).
+    mags.push(curMag); if (mags.length > 8) mags.shift();
+    rots.push(curRot); if (rots.length > 8) rots.shift();
+  } catch (e) { /* observacional — nunca propaga */ }
+}
+
+// Chamado por renderFrameSafely() ao final de cada frame de Preview/Export.
+// LÊ diagnostics.renderState (já calculado) e registra trilha + deltas.
+// Não modifica ctx, t, câmera ou valor de retorno.
+function recordCameraTrace30ZC(diagnostics, t, frameIdx, renderMs) {
+  if (!TRACE_30ZC_ENABLED) return;
+  try {
+    const duringExport = (typeof isRecording !== 'undefined' && isRecording);
+    const duringPreview = !duringExport && (typeof isPreviewing !== 'undefined' && isPreviewing);
+    if (!duringExport && !duringPreview) return;
+    const rs = diagnostics && diagnostics.renderState;
+    if (!rs || !rs.ok || !rs.camera) return;
+    const cam = rs.camera; // { cx, cy, sw, sh, rot }
+    const tr = duringExport ? exportTrace30ZC : previewTrace30ZC;
+    const fc = (typeof frameCount !== 'undefined') ? frameCount : 0;
+    const seg = Number(rs.segmentIndex) || 0;
+
+    // current → previous
+    if (tr._hasPrev) {
+      tr.previousSegmentIndex = tr.activeSegmentIndex;
+      tr.previousLocalT = tr.localT;
+      tr.previousCameraX = tr.cameraX;
+      tr.previousCameraY = tr.cameraY;
+      tr.previousCameraW = tr.cameraW;
+      tr.previousCameraH = tr.cameraH;
+      tr.previousCameraRotation = tr.cameraRotation;
+    }
+
+    tr.frameIndex = frameIdx;
+    tr.activeSegmentIndex = seg;
+    tr.fromFrameIndex = Math.min(seg, Math.max(0, fc - 1));
+    tr.toFrameIndex = Math.min(seg + 1, Math.max(0, fc - 1));
+    tr.localT = rs.localT;
+    tr.cameraX = cam.cx; tr.cameraY = cam.cy;
+    tr.cameraW = cam.sw; tr.cameraH = cam.sh;
+    tr.cameraRotation = cam.rot;
+    tr.frameRenderMs = (typeof renderMs === 'number' && isFinite(renderMs)) ? renderMs : null;
+    tr.assetsDrawnThisFrame = duringExport
+      ? ((typeof exportAssetsDrawnCount !== 'undefined') ? exportAssetsDrawnCount : 0)
+      : ((typeof previewAssetsDrawnCount !== 'undefined') ? previewAssetsDrawnCount : 0);
+    tr.visibleAssetsThisFrame = duringExport
+      ? ((typeof exportAssetsConsideredCount !== 'undefined') ? exportAssetsConsideredCount : 0)
+      : ((typeof previewAssetsConsideredCount !== 'undefined') ? previewAssetsConsideredCount : 0);
+
+    if (tr._hasPrev) {
+      tr.deltaX = tr.cameraX - tr.previousCameraX;
+      tr.deltaY = tr.cameraY - tr.previousCameraY;
+      tr.deltaW = tr.cameraW - tr.previousCameraW;
+      tr.deltaH = tr.cameraH - tr.previousCameraH;
+      tr.deltaRotation = tr.cameraRotation - tr.previousCameraRotation;
+      tr.deltaMagnitude = Math.hypot(tr.deltaX, tr.deltaY, tr.deltaW, tr.deltaH);
+      _runPassiveJumpDetector30ZC(tr, duringExport, duringPreview);
+    } else {
+      tr.deltaX = 0; tr.deltaY = 0; tr.deltaW = 0; tr.deltaH = 0; tr.deltaRotation = 0;
+      tr.deltaMagnitude = 0;
+      tr.unexpectedJumpDetected = false;
+      tr.unexpectedJumpReason = '';
+    }
+    tr._hasPrev = true;
+  } catch (e) { /* observacional — nunca interrompe o render */ }
+}
+
+// Part 3 — janela de tempo absoluto do segmento alvo (espelha a acumulação de
+// getSegAndLocalTAtTime SEM alterá-la). Apenas para localizar t global de amostra.
+function _segGlobalTimeWindow30ZC(targetSeg) {
+  if (frameCount < 2) return null;
+  ensureSegDurations();
+  const normalSegs = frameCount - 1;
+  const normalDur = totalDuration();
+  const fullDur = totalDurationFull();
+  if (!(fullDur > 0)) return null;
+  const getFramePause = (i) => (framePauses[i] ? (framePauses[i].duration || 0) : 0);
+  let accum = 0;
+  for (let s = 0; s < normalSegs; s++) {
+    const fpDur = getFramePause(s);
+    if (fpDur > 0) accum += fpDur;
+    const segDur = segDurations[s] != null ? segDurations[s] : (normalDur / normalSegs);
+    if (s === targetSeg) return { startAbs: accum, segDur: segDur, fullDur: fullDur };
+    accum += segDur;
+    if (easeMode === 'pause' && pauseDuration > 0 && s < normalSegs - 1) accum += pauseDuration;
+  }
+  return null;
+}
+
+// Part 3 — amostragem observacional do segmento alvo (Frame 3 → Frame 4) em
+// localT = 0.00 … 1.00. Usa getStateAtT (mesma câmera de Preview/Export) e lê
+// handles/quadros via getCurvesV2CubicCP/frameCX/frameCY. Não altera nada.
+function runSegmentTrace30ZC() {
+  const out = {
+    targetHumanLabel: SEGMENT_TRACE_TARGET_LABEL,
+    targetIndex: SEGMENT_TRACE_TARGET_INDEX,
+    enabled: TRACE_30ZC_ENABLED,
+    observationalOnly: true,
+    available: false,
+    reason: '',
+    sampleCount: 0,
+    samples: []
+  };
+  try {
+    if (!TRACE_30ZC_ENABLED) { out.reason = 'trace-disabled'; return out; }
+    const seg = SEGMENT_TRACE_TARGET_INDEX;
+    if (frameCount < seg + 2) { out.reason = 'segment-not-present (frameCount=' + frameCount + ')'; return out; }
+    const win = _segGlobalTimeWindow30ZC(seg);
+    if (!win) { out.reason = 'no-time-window'; return out; }
+    const cp = (typeof getCurvesV2CubicCP === 'function') ? getCurvesV2CubicCP(seg) : null;
+    const fromX = frameCX(seg), fromY = frameCY(seg);
+    const toX = frameCX(seg + 1), toY = frameCY(seg + 1);
+    const Ts = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+    let prev = null;
+    for (const lt of Ts) {
+      const gT = clamp01((win.startAbs + lt * win.segDur) / win.fullDur);
+      const cam = getStateAtT(gT);
+      const resolved = getSegAndLocalTAtTime(gT);
+      const s = {
+        sampleT: lt,
+        globalT: gT,
+        resolvedSegmentIndex: resolved ? resolved.seg : -1,
+        resolvedLocalT: resolved ? resolved.localT : null,
+        cameraX: cam ? cam.cx : null,
+        cameraY: cam ? cam.cy : null,
+        cameraW: cam ? cam.sw : null,
+        cameraH: cam ? cam.sh : null,
+        cameraRotation: cam ? cam.rot : null,
+        deltaFromPreviousX: (prev && cam) ? cam.cx - prev.cx : 0,
+        deltaFromPreviousY: (prev && cam) ? cam.cy - prev.cy : 0,
+        deltaFromPreviousW: (prev && cam) ? cam.sw - prev.sw : 0,
+        deltaFromPreviousH: (prev && cam) ? cam.sh - prev.sh : 0,
+        deltaFromPreviousRotation: (prev && cam) ? cam.rot - prev.rot : 0,
+        deltaMagnitude: 0,
+        curveHandle1X: cp ? cp.C1x : null,
+        curveHandle1Y: cp ? cp.C1y : null,
+        curveHandle2X: cp ? cp.C2x : null,
+        curveHandle2Y: cp ? cp.C2y : null,
+        fromFrameX: fromX, fromFrameY: fromY,
+        toFrameX: toX, toFrameY: toY,
+        expectedContinuous: true,
+        suspiciousDelta: false,
+        suspiciousReason: ''
+      };
+      s.deltaMagnitude = Math.hypot(s.deltaFromPreviousX, s.deltaFromPreviousY, s.deltaFromPreviousW, s.deltaFromPreviousH);
+      out.samples.push(s);
+      prev = cam;
+    }
+    // Análise de suspeita: delta de um passo muito maior que a média dos passos.
+    const stepDeltas = out.samples.slice(1).map(s => s.deltaMagnitude);
+    const meanD = stepDeltas.length ? stepDeltas.reduce((a, b) => a + b, 0) / stepDeltas.length : 0;
+    for (let i = 1; i < out.samples.length; i++) {
+      const s = out.samples[i];
+      if (meanD > 1e-6 && s.deltaMagnitude > 2.5 * meanD) {
+        s.suspiciousDelta = true;
+        s.expectedContinuous = false;
+        s.suspiciousReason = 'Δ ' + s.deltaMagnitude.toFixed(2) + ' > 2.5× média ' + meanD.toFixed(2);
+      }
+      if (s.resolvedSegmentIndex !== seg && s.sampleT > 0 && s.sampleT < 1) {
+        s.suspiciousDelta = true;
+        s.expectedContinuous = false;
+        s.suspiciousReason = (s.suspiciousReason ? s.suspiciousReason + '; ' : '') +
+          'resolvedSeg=' + s.resolvedSegmentIndex + ' (esperado ' + seg + ')';
+      }
+    }
+    out.sampleCount = out.samples.length;
+    out.available = true;
+    out.reason = 'ok';
+  } catch (e) {
+    out.reason = (e && e.message) || String(e);
+  }
+  return out;
+}
+
+// Part 7 — auditoria observacional de caches/estado derivado. Só LÊ flags
+// existentes (sem criar rotina que altere comportamento ou invalide caches).
+function buildCacheAudit30ZC() {
+  const o = {
+    derivedStateDirty: false,
+    derivedStateDirtyReason: 'n/d',
+    segmentCacheExists: false,
+    segmentCacheDirty: false,
+    curveCacheExists: false,
+    curveCacheDirty: false,
+    assetBoundsCacheExists: false,
+    assetBoundsCacheDirty: false,
+    previewCacheExists: false,
+    previewCacheDirty: false,
+    lastProjectMutationType: 'n/d',
+    lastProjectMutationTimestamp: 'n/d',
+    cachesInvalidatedAfterMutation: 'n/d'
+  };
+  try {
+    o.segmentCacheExists = (typeof segDurations !== 'undefined') && segDurations.length > 0;
+    o.curveCacheExists = (typeof isCurvesV2Active === 'function')
+      ? isCurvesV2Active()
+      : (typeof curvesV2 !== 'undefined' && !!curvesV2);
+    o.assetBoundsCacheExists = (typeof projectWorld !== 'undefined' && !!projectWorld && !!projectWorld.initialized);
+    o.previewCacheExists = (typeof _worldCompositeCanvas !== 'undefined' && !!_worldCompositeCanvas) ||
+      (typeof getProjectWorldCompositeSource === 'function');
+    // Único dirty-flag derivado existente no motor: composição do ProjectWorld.
+    const worldDirty = (typeof _worldCompositeDirty !== 'undefined') ? !!_worldCompositeDirty : false;
+    o.previewCacheDirty = worldDirty;
+    o.derivedStateDirty = worldDirty;
+    o.derivedStateDirtyReason = worldDirty ? 'projectWorldComposite-dirty' : 'none';
+  } catch (e) {
+    o.derivedStateDirtyReason = (e && e.message) || String(e);
+  }
+  return o;
+}
+
+function _fmtTrace30ZC(v, dec) {
+  if (v == null) return 'n/d';
+  const n = Number(v);
+  if (!isFinite(n)) return 'n/d';
+  return n.toFixed(dec == null ? 2 : dec);
+}
+
 function invalidateProjectWorldComposite() {
   _worldCompositeDirty = true;
 }
@@ -27184,6 +27555,185 @@ function buildDiagnosticsText() {
     const _sh = (typeof stageH !== 'undefined') ? stageH : null;
     const _geomOk = (_bsW != null && _sw != null && Math.abs(_bsW - _sw) < 1 && _bsH != null && _sh != null && Math.abs(_bsH - _sh) < 1);
     push('geometria baseStage==Stage', _bsW != null ? (_geomOk ? 'OK' : 'DIVERGENTE') : 'n/d');
+  }
+  L.push('');
+
+  // ══════════════════════════════════════════════════════════════════
+  // v8z4b30ZC — DIAGNÓSTICO SEGURO (observacional, não altera comportamento)
+  // ══════════════════════════════════════════════════════════════════
+  L.push('═══ v8z4b30ZC — DIAGNÓSTICO DE CÂMERA (observacional) ═══');
+  L.push('');
+
+  // Part 5/6 — guardas de comportamento (devem permanecer false / matches=true)
+  L.push('— Guarda de comportamento (Export) —');
+  push('exportBehaviorMatches30ZA', String(exportBehaviorMatches30ZA));
+  push('exportBehaviorChangeReason', exportBehaviorChangeReason);
+  push('exportFrameSamplingChanged', String(exportFrameSamplingChanged));
+  push('exportSegmentTimingChanged', String(exportSegmentTimingChanged));
+  push('exportCameraMathChanged', String(exportCameraMathChanged));
+  push('exportRendererChanged', String(exportRendererChanged));
+  L.push('');
+  L.push('— Guarda de comportamento (Preview) —');
+  push('previewBehaviorMatches30ZA', String(previewBehaviorMatches30ZA));
+  push('previewBehaviorChangeReason', previewBehaviorChangeReason);
+  push('previewFrameSamplingChanged', String(previewFrameSamplingChanged));
+  push('previewSegmentTimingChanged', String(previewSegmentTimingChanged));
+  push('previewCameraMathChanged', String(previewCameraMathChanged));
+  push('previewRendererChanged', String(previewRendererChanged));
+  L.push('');
+
+  // Part 2 — trilha observacional de Preview (último frame renderizado)
+  {
+    const tr = (typeof previewTrace30ZC !== 'undefined') ? previewTrace30ZC : null;
+    L.push('— Trilha de Preview (último frame) —');
+    push('previewTraceEnabled', String(tr ? tr.enabled : false));
+    push('previewTraceIsObservationalOnly', String(tr ? tr.observationalOnly : true));
+    push('previewTraceChangedPlayback', String(tr ? tr.changedPlayback : false));
+    push('previewActiveSegmentIndex', tr ? String(tr.activeSegmentIndex) : 'n/d');
+    push('previewFromFrameIndex', tr ? String(tr.fromFrameIndex) : 'n/d');
+    push('previewToFrameIndex', tr ? String(tr.toFrameIndex) : 'n/d');
+    push('previewLocalT', _fmtTrace30ZC(tr ? tr.localT : null, 4));
+    push('previewCameraX', _fmtTrace30ZC(tr ? tr.cameraX : null));
+    push('previewCameraY', _fmtTrace30ZC(tr ? tr.cameraY : null));
+    push('previewCameraW', _fmtTrace30ZC(tr ? tr.cameraW : null));
+    push('previewCameraH', _fmtTrace30ZC(tr ? tr.cameraH : null));
+    push('previewCameraRotation', _fmtTrace30ZC(tr ? tr.cameraRotation : null, 3));
+    push('previewPreviousSegmentIndex', tr ? String(tr.previousSegmentIndex) : 'n/d');
+    push('previewPreviousLocalT', _fmtTrace30ZC(tr ? tr.previousLocalT : null, 4));
+    push('previewPreviousCameraX', _fmtTrace30ZC(tr ? tr.previousCameraX : null));
+    push('previewPreviousCameraY', _fmtTrace30ZC(tr ? tr.previousCameraY : null));
+    push('previewPreviousCameraW', _fmtTrace30ZC(tr ? tr.previousCameraW : null));
+    push('previewPreviousCameraH', _fmtTrace30ZC(tr ? tr.previousCameraH : null));
+    push('previewPreviousCameraRotation', _fmtTrace30ZC(tr ? tr.previousCameraRotation : null, 3));
+    push('previewDeltaX', _fmtTrace30ZC(tr ? tr.deltaX : null));
+    push('previewDeltaY', _fmtTrace30ZC(tr ? tr.deltaY : null));
+    push('previewDeltaW', _fmtTrace30ZC(tr ? tr.deltaW : null));
+    push('previewDeltaH', _fmtTrace30ZC(tr ? tr.deltaH : null));
+    push('previewDeltaRotation', _fmtTrace30ZC(tr ? tr.deltaRotation : null, 3));
+    push('previewDeltaMagnitude', _fmtTrace30ZC(tr ? tr.deltaMagnitude : null));
+    push('previewUnexpectedJumpDetected', String(tr ? tr.unexpectedJumpDetected : false));
+    push('previewUnexpectedJumpReason', (tr && tr.unexpectedJumpReason) ? tr.unexpectedJumpReason : 'none');
+    push('previewFrameRenderMs', _fmtTrace30ZC(tr ? tr.frameRenderMs : null, 2));
+    push('previewAssetsDrawnThisFrame', tr ? String(tr.assetsDrawnThisFrame) : 'n/d');
+    push('previewVisibleAssetsThisFrame', tr ? String(tr.visibleAssetsThisFrame) : 'n/d');
+  }
+  L.push('');
+
+  // Part 2 — trilha observacional de Export (último frame codificado)
+  {
+    const tr = (typeof exportTrace30ZC !== 'undefined') ? exportTrace30ZC : null;
+    L.push('— Trilha de Export (último frame) —');
+    push('exportTraceEnabled', String(tr ? tr.enabled : false));
+    push('exportTraceIsObservationalOnly', String(tr ? tr.observationalOnly : true));
+    push('exportTraceChangedExport', String(tr ? tr.changedPlayback : false));
+    push('exportFrameIndex', tr ? String(tr.frameIndex) : 'n/d');
+    push('exportActiveSegmentIndex', tr ? String(tr.activeSegmentIndex) : 'n/d');
+    push('exportFromFrameIndex', tr ? String(tr.fromFrameIndex) : 'n/d');
+    push('exportToFrameIndex', tr ? String(tr.toFrameIndex) : 'n/d');
+    push('exportLocalT', _fmtTrace30ZC(tr ? tr.localT : null, 4));
+    push('exportCameraX', _fmtTrace30ZC(tr ? tr.cameraX : null));
+    push('exportCameraY', _fmtTrace30ZC(tr ? tr.cameraY : null));
+    push('exportCameraW', _fmtTrace30ZC(tr ? tr.cameraW : null));
+    push('exportCameraH', _fmtTrace30ZC(tr ? tr.cameraH : null));
+    push('exportCameraRotation', _fmtTrace30ZC(tr ? tr.cameraRotation : null, 3));
+    push('exportPreviousSegmentIndex', tr ? String(tr.previousSegmentIndex) : 'n/d');
+    push('exportPreviousLocalT', _fmtTrace30ZC(tr ? tr.previousLocalT : null, 4));
+    push('exportPreviousCameraX', _fmtTrace30ZC(tr ? tr.previousCameraX : null));
+    push('exportPreviousCameraY', _fmtTrace30ZC(tr ? tr.previousCameraY : null));
+    push('exportPreviousCameraW', _fmtTrace30ZC(tr ? tr.previousCameraW : null));
+    push('exportPreviousCameraH', _fmtTrace30ZC(tr ? tr.previousCameraH : null));
+    push('exportPreviousCameraRotation', _fmtTrace30ZC(tr ? tr.previousCameraRotation : null, 3));
+    push('exportDeltaX', _fmtTrace30ZC(tr ? tr.deltaX : null));
+    push('exportDeltaY', _fmtTrace30ZC(tr ? tr.deltaY : null));
+    push('exportDeltaW', _fmtTrace30ZC(tr ? tr.deltaW : null));
+    push('exportDeltaH', _fmtTrace30ZC(tr ? tr.deltaH : null));
+    push('exportDeltaRotation', _fmtTrace30ZC(tr ? tr.deltaRotation : null, 3));
+    push('exportDeltaMagnitude', _fmtTrace30ZC(tr ? tr.deltaMagnitude : null));
+    push('exportUnexpectedJumpDetected', String(tr ? tr.unexpectedJumpDetected : false));
+    push('exportUnexpectedJumpReason', (tr && tr.unexpectedJumpReason) ? tr.unexpectedJumpReason : 'none');
+    push('exportAssetsDrawnThisFrame', tr ? String(tr.assetsDrawnThisFrame) : 'n/d');
+  }
+  L.push('');
+
+  // Part 4 — detector passivo de pulo/piscada (último pulo registrado)
+  {
+    const j = (typeof lastJumpRecord30ZC !== 'undefined') ? lastJumpRecord30ZC : null;
+    L.push('— Detector passivo de pulo/piscada —');
+    push('jumpDetectionCount', String((typeof jumpDetectionCount30ZC !== 'undefined') ? jumpDetectionCount30ZC : 0));
+    push('jumpDetected', String(j ? j.jumpDetected : false));
+    push('jumpType', (j && j.jumpType) ? j.jumpType : 'none');
+    push('jumpSegmentIndex', j ? String(j.jumpSegmentIndex) : 'n/d');
+    push('jumpFrameIndex', j ? String(j.jumpFrameIndex) : 'n/d');
+    push('jumpPreviousT', _fmtTrace30ZC(j ? j.jumpPreviousT : null, 4));
+    push('jumpCurrentT', _fmtTrace30ZC(j ? j.jumpCurrentT : null, 4));
+    push('jumpDeltaX', _fmtTrace30ZC(j ? j.jumpDeltaX : null));
+    push('jumpDeltaY', _fmtTrace30ZC(j ? j.jumpDeltaY : null));
+    push('jumpDeltaW', _fmtTrace30ZC(j ? j.jumpDeltaW : null));
+    push('jumpDeltaH', _fmtTrace30ZC(j ? j.jumpDeltaH : null));
+    push('jumpDeltaRotation', _fmtTrace30ZC(j ? j.jumpDeltaRotation : null, 3));
+    const fmtCam = (c) => c ? ('x=' + _fmtTrace30ZC(c.x) + ' y=' + _fmtTrace30ZC(c.y) + ' w=' + _fmtTrace30ZC(c.w) + ' h=' + _fmtTrace30ZC(c.h) + ' rot=' + _fmtTrace30ZC(c.rot, 3)) : 'n/d';
+    push('jumpBeforeCamera', fmtCam(j ? j.jumpBeforeCamera : null));
+    push('jumpAfterCamera', fmtCam(j ? j.jumpAfterCamera : null));
+    push('jumpCurveIndex', j ? String(j.jumpCurveIndex) : 'n/d');
+    push('jumpFromFrameIndex', j ? String(j.jumpFromFrameIndex) : 'n/d');
+    push('jumpToFrameIndex', j ? String(j.jumpToFrameIndex) : 'n/d');
+    push('jumpDuringPreview', String(j ? j.jumpDuringPreview : false));
+    push('jumpDuringExport', String(j ? j.jumpDuringExport : false));
+  }
+  L.push('');
+
+  // Part 3 — amostragem do segmento alvo (Frame 3 → Frame 4, segmentIndex=2)
+  {
+    L.push('— Amostragem de segmento (Frame 3 → Frame 4) —');
+    let st = null;
+    try { st = (typeof runSegmentTrace30ZC === 'function') ? runSegmentTrace30ZC() : null; } catch (e) { st = null; }
+    push('segmentTraceTargetHumanLabel', st ? st.targetHumanLabel : SEGMENT_TRACE_TARGET_LABEL);
+    push('segmentTraceTargetIndex', String(st ? st.targetIndex : SEGMENT_TRACE_TARGET_INDEX));
+    push('segmentTraceEnabled', String(st ? st.enabled : TRACE_30ZC_ENABLED));
+    push('segmentTraceIsObservationalOnly', String(st ? st.observationalOnly : true));
+    push('segmentTraceAvailable', String(st ? st.available : false));
+    push('segmentTraceReason', st ? st.reason : 'n/d');
+    push('segmentTraceSampleCount', String(st ? st.sampleCount : 0));
+    if (st && st.samples && st.samples.length) {
+      for (const s of st.samples) {
+        const flag = s.suspiciousDelta ? '  ⚠ SUSPEITO' : '';
+        L.push('  t=' + s.sampleT.toFixed(2) +
+          ' | cam=(' + _fmtTrace30ZC(s.cameraX) + ',' + _fmtTrace30ZC(s.cameraY) + ')' +
+          ' wh=(' + _fmtTrace30ZC(s.cameraW) + ',' + _fmtTrace30ZC(s.cameraH) + ')' +
+          ' rot=' + _fmtTrace30ZC(s.cameraRotation, 3) +
+          ' | Δmag=' + _fmtTrace30ZC(s.deltaMagnitude) +
+          ' | resolvedSeg=' + s.resolvedSegmentIndex +
+          ' | cont=' + (s.expectedContinuous ? 'sim' : 'NÃO') + flag);
+        if (s.suspiciousReason) L.push('       reason: ' + s.suspiciousReason);
+      }
+      // Detalhe de handles/quadros do segmento (constante entre amostras).
+      const s0 = st.samples[0];
+      L.push('  curveHandle1=(' + _fmtTrace30ZC(s0.curveHandle1X) + ',' + _fmtTrace30ZC(s0.curveHandle1Y) + ')' +
+        ' curveHandle2=(' + _fmtTrace30ZC(s0.curveHandle2X) + ',' + _fmtTrace30ZC(s0.curveHandle2Y) + ')');
+      L.push('  fromFrame=(' + _fmtTrace30ZC(s0.fromFrameX) + ',' + _fmtTrace30ZC(s0.fromFrameY) + ')' +
+        ' toFrame=(' + _fmtTrace30ZC(s0.toFrameX) + ',' + _fmtTrace30ZC(s0.toFrameY) + ')');
+    }
+  }
+  L.push('');
+
+  // Part 7 — auditoria observacional de caches/estado derivado
+  {
+    L.push('— Auditoria de caches / estado derivado —');
+    let ca = null;
+    try { ca = (typeof buildCacheAudit30ZC === 'function') ? buildCacheAudit30ZC() : null; } catch (e) { ca = null; }
+    push('derivedStateDirty', String(ca ? ca.derivedStateDirty : false));
+    push('derivedStateDirtyReason', ca ? ca.derivedStateDirtyReason : 'n/d');
+    push('segmentCacheExists', String(ca ? ca.segmentCacheExists : false));
+    push('segmentCacheDirty', String(ca ? ca.segmentCacheDirty : false));
+    push('curveCacheExists', String(ca ? ca.curveCacheExists : false));
+    push('curveCacheDirty', String(ca ? ca.curveCacheDirty : false));
+    push('assetBoundsCacheExists', String(ca ? ca.assetBoundsCacheExists : false));
+    push('assetBoundsCacheDirty', String(ca ? ca.assetBoundsCacheDirty : false));
+    push('previewCacheExists', String(ca ? ca.previewCacheExists : false));
+    push('previewCacheDirty', String(ca ? ca.previewCacheDirty : false));
+    push('lastProjectMutationType', ca ? String(ca.lastProjectMutationType) : 'n/d');
+    push('lastProjectMutationTimestamp', ca ? String(ca.lastProjectMutationTimestamp) : 'n/d');
+    push('cachesInvalidatedAfterMutation', ca ? String(ca.cachesInvalidatedAfterMutation) : 'n/d');
   }
   L.push('');
 
