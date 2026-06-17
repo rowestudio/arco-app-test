@@ -6695,8 +6695,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZC';
-const APP_VERSION_NAME = 'v8z4b30ZC';
+const APP_VERSION = 'v8z4b30ZD';
+const APP_VERSION_NAME = 'v8z4b30ZD';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -19184,9 +19184,133 @@ function startPreview() {
   const pH2 = Math.round(eH * previewScale);
   const timelineFill = document.getElementById('previewTimelineFill');
 
+  // ── v8z4b30ZD: Warm-up do Preview ───────────────────────────────────────
+  // Pré-renderiza amostras (t=0 e início do segmento 2) antes de iniciar o
+  // relógio real, eliminando tranco causado por cache/decode frio.
+  // NÃO altera câmera, curva, duração, easing, frames ou Export.
+  const _warmupTotal = PREVIEW_WARMUP_ENABLED ? PREVIEW_WARMUP_FRAME_COUNT : 0;
+  let _warmupLeft = _warmupTotal;
+  // t global do segmento 2 (Frame 3 → Frame 4) para pré-aquecimento
+  let _warmupSeg2T = null;
+  if (_warmupTotal >= 2 && frameCount >= 4) {
+    try {
+      const _w2 = (typeof _segGlobalTimeWindow30ZC === 'function') ? _segGlobalTimeWindow30ZC(2) : null;
+      if (_w2 && _w2.fullDur > 0) {
+        _warmupSeg2T = Math.max(0, Math.min(1, (_w2.startAbs + _w2.segDur * 0.05) / _w2.fullDur));
+      }
+    } catch (e) {}
+  }
+  // Inicializar diagnósticos de warm-up
+  _previewWarmupEnabled = PREVIEW_WARMUP_ENABLED;
+  _previewWarmupCompleted = false;
+  _previewStartedAfterWarmup = false;
+  _previewClockStartedBeforeWarmup = false;
+  _previewWarmupFrameCount = 0;
+  _previewWarmupSampleCount = 0;
+  _previewWarmupRenderedInitialFrame = false;
+  _previewWarmupRenderedSegment2 = false;
+  _previewWarmupSkippedReason = (_warmupTotal === 0) ? 'warmup-disabled' : '';
+  _segment2WarmupApplied = false;
+  _segment2WarmupSampleT = _warmupSeg2T;
+  _segment2WarmupRenderMs = 0;
+  _segment2WarmupAssetsDrawn = 0;
+  _segment2FirstPlaybackRenderMs = null;
+  _segment2SecondPlaybackRenderMs = null;
+  _segment2FirstPassJumpDetected = null;
+  _segment2SecondPassJumpDetected = null;
+  _segment2JumpImprovedAfterWarmup = null;
+  _segment2PassCount = 0;
+  _segment2InPass = false;
+  _cachesRebuiltBeforePreview = false;
+  _cachesRebuiltList = [];
+  _previewWarmupStartedAt = performance.now();
+  _previewWarmupEndedAt = null;
+  _previewWarmupDurationMs = null;
+  _previewWarmupAssetsReadyCount = 0;
+  _previewWarmupAssetsNotReadyCount = 0;
+  _previewWarmupProjectWorldCompositeReady = false;
+  _previewWarmupCacheReady = false;
+  _previewWarmupAssetBoundsReady = false;
+  _derivedStateDirtyAfterWarmup = null;
+  _derivedStateDirtyReasonAfterWarmup = null;
+  _projectWorldCompositeDirtyAfterWarmup = null;
+  _previewCacheDirtyAfterWarmup = null;
+  _assetBoundsCacheDirtyAfterWarmup = null;
+  try {
+    const _caBefore = (typeof buildCacheAudit30ZC === 'function') ? buildCacheAudit30ZC() : null;
+    _derivedStateDirtyBeforeWarmup = _caBefore ? _caBefore.derivedStateDirty : false;
+    _derivedStateDirtyReasonBeforeWarmup = _caBefore ? _caBefore.derivedStateDirtyReason : 'n/d';
+    _projectWorldCompositeDirtyBeforeWarmup = (typeof _worldCompositeDirty !== 'undefined') ? !!_worldCompositeDirty : false;
+    _previewCacheDirtyBeforeWarmup = _caBefore ? _caBefore.previewCacheDirty : false;
+    _assetBoundsCacheDirtyBeforeWarmup = _caBefore ? _caBefore.assetBoundsCacheDirty : false;
+  } catch (e) {}
+  // ── fim configuração warm-up ─────────────────────────────────────────────
+
   function loop(ts) {
     if (!isPreviewing || token !== previewLoopToken) return;
-    if (!animStart) animStart = ts;
+
+    // ── FASE DE WARM-UP (v8z4b30ZD) ────────────────────────────────────────
+    // Pré-renderiza amostras sem avançar o relógio de playback.
+    // O relógio (animStart) só é definido DEPOIS que o warm-up termina.
+    if (_warmupLeft > 0) {
+      _previewWarmupFrameCount++;
+      try {
+        const _isFirst = (_warmupLeft === _warmupTotal);
+        // Frame 1: t=0 (aquece GPU, canvas, primeira imagem)
+        // Frame 2: início do segmento 2 (aquece assets do trecho Frame 3→Frame 4)
+        const _wuT = _isFirst ? 0 : (_warmupSeg2T != null ? _warmupSeg2T : 0);
+        const _wuFi = Math.round(_wuT * Math.max(1, totalPF - 1));
+        const _wuBlur = getBlurAtT(_wuT, pW2);
+        dispCanvas.style.filter = _wuBlur > 0 ? `blur(${(_wuBlur * 0.5).toFixed(1)}px)` : 'none';
+        const _wuT0 = performance.now();
+        renderFrameSafely(pCtx, dispCanvas, _wuT, pW2, pH2, totalPF, _wuFi, { renderSource: previewSource });
+        const _wuMs = performance.now() - _wuT0;
+        _previewWarmupSampleCount++;
+        if (_isFirst) {
+          _previewWarmupRenderedInitialFrame = true;
+        } else {
+          if (_warmupSeg2T != null) {
+            _previewWarmupRenderedSegment2 = true;
+            _segment2WarmupApplied = true;
+            _segment2WarmupRenderMs = _wuMs;
+            _segment2WarmupAssetsDrawn = (typeof previewAssetsDrawnCount !== 'undefined') ? previewAssetsDrawnCount : 0;
+          }
+        }
+      } catch (e) { /* warm-up nunca propaga erro */ }
+
+      _warmupLeft--;
+
+      if (_warmupLeft === 0) {
+        // Warm-up concluído — registrar estado pós-warm-up
+        try {
+          const _caAfter = (typeof buildCacheAudit30ZC === 'function') ? buildCacheAudit30ZC() : null;
+          _derivedStateDirtyAfterWarmup = _caAfter ? _caAfter.derivedStateDirty : false;
+          _derivedStateDirtyReasonAfterWarmup = _caAfter ? _caAfter.derivedStateDirtyReason : 'n/d';
+          _projectWorldCompositeDirtyAfterWarmup = (typeof _worldCompositeDirty !== 'undefined') ? !!_worldCompositeDirty : false;
+          _previewCacheDirtyAfterWarmup = _caAfter ? _caAfter.previewCacheDirty : false;
+          _assetBoundsCacheDirtyAfterWarmup = _caAfter ? _caAfter.assetBoundsCacheDirty : false;
+          _previewWarmupAssetsReadyCount = (typeof previewAssetsDrawnCount !== 'undefined') ? previewAssetsDrawnCount : 0;
+          _previewWarmupAssetsNotReadyCount = Math.max(0, ((typeof previewAssetsConsideredCount !== 'undefined') ? previewAssetsConsideredCount : 0) - _previewWarmupAssetsReadyCount);
+          _previewWarmupDecodedAssetsCount = _previewWarmupAssetsReadyCount;
+          _previewWarmupProjectWorldCompositeReady = !_projectWorldCompositeDirtyAfterWarmup;
+          _previewWarmupCacheReady = !(_caAfter ? _caAfter.previewCacheDirty : true);
+          _previewWarmupAssetBoundsReady = !!(typeof projectWorld !== 'undefined' && projectWorld && projectWorld.initialized);
+        } catch (e) {}
+        _previewWarmupEndedAt = performance.now();
+        _previewWarmupDurationMs = _previewWarmupEndedAt - (_previewWarmupStartedAt || _previewWarmupEndedAt);
+        _previewWarmupCompleted = true;
+        _previewStartedAfterWarmup = true;
+      }
+
+      animFrame = requestAnimationFrame(loop);
+      return;
+    }
+    // ── FIM FASE DE WARM-UP ─────────────────────────────────────────────────
+
+    if (!animStart) {
+      animStart = ts;
+      if (!_previewWarmupCompleted) _previewClockStartedBeforeWarmup = true;
+    }
     const rafDelta = previewPerfStats.lastTs ? ts - previewPerfStats.lastTs : PREVIEW_TARGET_FRAME_MS;
     previewPerfStats.lastTs = ts;
     if (previewPerfStats.lastRenderTs && ts - previewPerfStats.lastRenderTs < PREVIEW_TARGET_FRAME_MS) {
@@ -19209,6 +19333,35 @@ function startPreview() {
       logExportError(Math.round(t * (totalPF - 1)), t, pW2, pH2, err, buildRenderDiagnostics(t, pW2, pH2, Math.round(t * (totalPF - 1))));
       renderUniversalFallback(pCtx, dispCanvas, t, pW2, pH2, Math.round(t * (totalPF - 1)), 'preview-loop-error', null);
     }
+    // ── Rastreamento de passadas pelo segmento 2 (diagnóstico, v8z4b30ZD) ──
+    try {
+      if (typeof previewTrace30ZC !== 'undefined') {
+        const _cs = previewTrace30ZC.activeSegmentIndex;
+        if (_cs === SEGMENT_TRACE_TARGET_INDEX && !_segment2InPass) {
+          _segment2InPass = true;
+          _segment2PassCount++;
+          if (_segment2PassCount === 1) _segment2FirstPassJumpDetected = false;
+          else if (_segment2PassCount === 2) _segment2SecondPassJumpDetected = false;
+        } else if (_cs !== SEGMENT_TRACE_TARGET_INDEX && _segment2InPass) {
+          _segment2InPass = false;
+          if (_segment2PassCount >= 2 && _segment2FirstPassJumpDetected !== null && _segment2SecondPassJumpDetected !== null) {
+            _segment2JumpImprovedAfterWarmup = (_segment2FirstPassJumpDetected === true && _segment2SecondPassJumpDetected === false);
+          }
+        }
+        if (_segment2InPass && previewTrace30ZC.unexpectedJumpDetected) {
+          if (_segment2PassCount === 1) _segment2FirstPassJumpDetected = true;
+          else if (_segment2PassCount === 2) _segment2SecondPassJumpDetected = true;
+        }
+        if (_segment2InPass) {
+          if (_segment2PassCount === 1 && _segment2FirstPlaybackRenderMs === null) {
+            _segment2FirstPlaybackRenderMs = DEBUG_PREVIEW_PERF ? (performance.now() - renderStart) : 0;
+          } else if (_segment2PassCount === 2 && _segment2SecondPlaybackRenderMs === null) {
+            _segment2SecondPlaybackRenderMs = DEBUG_PREVIEW_PERF ? (performance.now() - renderStart) : 0;
+          }
+        }
+      }
+    } catch (e) { /* rastreamento nunca propaga */ }
+    // ── fim rastreamento segmento 2 ────────────────────────────────────────
     if (DEBUG_PREVIEW_PERF) {
       previewPerfStats.renders++;
       previewPerfStats.totalRenderMs += performance.now() - renderStart;
@@ -26076,6 +26229,9 @@ let _renderActiveSegmentIndexHint = -1;
 // previewSegmentJumpCheck, camera sampling alterado etc.).
 // ════════════════════════════════════════════════════════════════════════
 const TRACE_30ZC_ENABLED = true;
+// v8z4b30ZD — warm-up do Preview: pré-renderiza amostras antes de iniciar o relógio real.
+const PREVIEW_WARMUP_ENABLED = true;
+const PREVIEW_WARMUP_FRAME_COUNT = 2; // 1 frame t=0 + 1 frame segmento 2
 const SEGMENT_TRACE_TARGET_INDEX = 2;               // zero-based: Frame 3 → Frame 4
 const SEGMENT_TRACE_TARGET_LABEL = 'Frame 3 → Frame 4';
 const JUMP_DELTA_RATIO_THRESHOLD = 3.0;             // delta > 3x média local ⇒ suspeito
@@ -26140,12 +26296,66 @@ const exportCameraMathChanged = false;
 const exportRendererChanged = false;
 const exportBehaviorMatches30ZA = true;
 const exportBehaviorChangeReason = 'none';
+// v8z4b30ZD — guarda: warm-up NUNCA afeta Export. Nenhuma rotina de warm-up do Preview
+// é chamada pelo Export. Constante por construção — nenhum código de warm-up é invocável
+// a partir do caminho de Export/WebCodecs/muxer.
+const exportWarmupApplied = false;
 const previewFrameSamplingChanged = false;
 const previewSegmentTimingChanged = false;
 const previewCameraMathChanged = false;
 const previewRendererChanged = false;
 const previewBehaviorMatches30ZA = true;
 const previewBehaviorChangeReason = 'none';
+
+// ════════════════════════════════════════════════════════════════════════
+// v8z4b30ZD — ESTADO DE DIAGNÓSTICO DO WARM-UP DO PREVIEW
+// Somente leitura externa — nunca altera câmera, t, curva, duração ou Export.
+// ════════════════════════════════════════════════════════════════════════
+let _previewWarmupEnabled = false;
+let _previewWarmupCompleted = false;
+let _previewWarmupStartedAt = null;
+let _previewWarmupEndedAt = null;
+let _previewWarmupDurationMs = null;
+let _previewWarmupFrameCount = 0;
+let _previewWarmupSampleCount = 0;
+let _previewWarmupRenderedInitialFrame = false;
+let _previewWarmupRenderedSegment2 = false;
+let _previewWarmupDecodedAssetsCount = 0;
+let _previewWarmupAssetsReadyCount = 0;
+let _previewWarmupAssetsNotReadyCount = 0;
+let _previewWarmupProjectWorldCompositeReady = false;
+let _previewWarmupCacheReady = false;
+let _previewWarmupAssetBoundsReady = false;
+let _previewWarmupSkippedReason = '';
+let _previewStartedAfterWarmup = false;
+let _previewClockStartedBeforeWarmup = false;
+
+// Estado de cache antes/depois do warm-up
+let _derivedStateDirtyBeforeWarmup = null;
+let _derivedStateDirtyAfterWarmup = null;
+let _derivedStateDirtyReasonBeforeWarmup = null;
+let _derivedStateDirtyReasonAfterWarmup = null;
+let _projectWorldCompositeDirtyBeforeWarmup = null;
+let _projectWorldCompositeDirtyAfterWarmup = null;
+let _previewCacheDirtyBeforeWarmup = null;
+let _previewCacheDirtyAfterWarmup = null;
+let _assetBoundsCacheDirtyBeforeWarmup = null;
+let _assetBoundsCacheDirtyAfterWarmup = null;
+let _cachesRebuiltBeforePreview = false;
+let _cachesRebuiltList = [];
+
+// Diagnósticos específicos do trecho Frame 3 → Frame 4 (segmentIndex=2)
+let _segment2WarmupApplied = false;
+let _segment2WarmupSampleT = null;
+let _segment2WarmupAssetsDrawn = 0;
+let _segment2WarmupRenderMs = 0;
+let _segment2FirstPlaybackRenderMs = null;
+let _segment2SecondPlaybackRenderMs = null;
+let _segment2FirstPassJumpDetected = null;
+let _segment2SecondPassJumpDetected = null;
+let _segment2JumpImprovedAfterWarmup = null;
+let _segment2PassCount = 0;
+let _segment2InPass = false;
 
 // Detector passivo: NÃO corrige nem interfere — apenas classifica e registra.
 function _runPassiveJumpDetector30ZC(tr, duringExport, duringPreview) {
@@ -27734,6 +27944,57 @@ function buildDiagnosticsText() {
     push('lastProjectMutationType', ca ? String(ca.lastProjectMutationType) : 'n/d');
     push('lastProjectMutationTimestamp', ca ? String(ca.lastProjectMutationTimestamp) : 'n/d');
     push('cachesInvalidatedAfterMutation', ca ? String(ca.cachesInvalidatedAfterMutation) : 'n/d');
+  }
+  L.push('');
+
+  // v8z4b30ZD — Warm-up do Preview
+  {
+    L.push('— Warm-up do Preview (v8z4b30ZD) —');
+    push('previewWarmupEnabled', String(_previewWarmupEnabled));
+    push('previewWarmupCompleted', String(_previewWarmupCompleted));
+    push('previewWarmupStartedAt', _previewWarmupStartedAt != null ? _diagFmtNum(_previewWarmupStartedAt, 1) : 'n/d');
+    push('previewWarmupEndedAt', _previewWarmupEndedAt != null ? _diagFmtNum(_previewWarmupEndedAt, 1) : 'n/d');
+    push('previewWarmupDurationMs', _previewWarmupDurationMs != null ? _diagFmtNum(_previewWarmupDurationMs, 1) + 'ms' : 'n/d');
+    push('previewWarmupFrameCount', String(_previewWarmupFrameCount));
+    push('previewWarmupSampleCount', String(_previewWarmupSampleCount));
+    push('previewWarmupRenderedInitialFrame', String(_previewWarmupRenderedInitialFrame));
+    push('previewWarmupRenderedSegment2', String(_previewWarmupRenderedSegment2));
+    push('previewWarmupDecodedAssetsCount', String(_previewWarmupDecodedAssetsCount));
+    push('previewWarmupAssetsReadyCount', String(_previewWarmupAssetsReadyCount));
+    push('previewWarmupAssetsNotReadyCount', String(_previewWarmupAssetsNotReadyCount));
+    push('previewWarmupProjectWorldCompositeReady', String(_previewWarmupProjectWorldCompositeReady));
+    push('previewWarmupCacheReady', String(_previewWarmupCacheReady));
+    push('previewWarmupAssetBoundsReady', String(_previewWarmupAssetBoundsReady));
+    push('previewWarmupSkippedReason', _previewWarmupSkippedReason || 'none');
+    push('previewStartedAfterWarmup', String(_previewStartedAfterWarmup));
+    push('previewClockStartedBeforeWarmup', String(_previewClockStartedBeforeWarmup));
+    L.push('');
+    L.push('— Cache antes/depois do warm-up (v8z4b30ZD) —');
+    push('derivedStateDirtyBeforeWarmup', _derivedStateDirtyBeforeWarmup != null ? String(_derivedStateDirtyBeforeWarmup) : 'n/d');
+    push('derivedStateDirtyAfterWarmup', _derivedStateDirtyAfterWarmup != null ? String(_derivedStateDirtyAfterWarmup) : 'n/d');
+    push('derivedStateDirtyReasonBeforeWarmup', _derivedStateDirtyReasonBeforeWarmup != null ? String(_derivedStateDirtyReasonBeforeWarmup) : 'n/d');
+    push('derivedStateDirtyReasonAfterWarmup', _derivedStateDirtyReasonAfterWarmup != null ? String(_derivedStateDirtyReasonAfterWarmup) : 'n/d');
+    push('projectWorldCompositeDirtyBeforeWarmup', _projectWorldCompositeDirtyBeforeWarmup != null ? String(_projectWorldCompositeDirtyBeforeWarmup) : 'n/d');
+    push('projectWorldCompositeDirtyAfterWarmup', _projectWorldCompositeDirtyAfterWarmup != null ? String(_projectWorldCompositeDirtyAfterWarmup) : 'n/d');
+    push('previewCacheDirtyBeforeWarmup', _previewCacheDirtyBeforeWarmup != null ? String(_previewCacheDirtyBeforeWarmup) : 'n/d');
+    push('previewCacheDirtyAfterWarmup', _previewCacheDirtyAfterWarmup != null ? String(_previewCacheDirtyAfterWarmup) : 'n/d');
+    push('assetBoundsCacheDirtyBeforeWarmup', _assetBoundsCacheDirtyBeforeWarmup != null ? String(_assetBoundsCacheDirtyBeforeWarmup) : 'n/d');
+    push('assetBoundsCacheDirtyAfterWarmup', _assetBoundsCacheDirtyAfterWarmup != null ? String(_assetBoundsCacheDirtyAfterWarmup) : 'n/d');
+    push('cachesRebuiltBeforePreview', String(_cachesRebuiltBeforePreview));
+    push('cachesRebuiltList', _cachesRebuiltList && _cachesRebuiltList.length ? _cachesRebuiltList.join(', ') : 'none');
+    L.push('');
+    L.push('— Segmento 2 warm-up e passadas (v8z4b30ZD) —');
+    push('segment2WarmupApplied', String(_segment2WarmupApplied));
+    push('segment2WarmupSampleT', _segment2WarmupSampleT != null ? _diagFmtNum(_segment2WarmupSampleT, 4) : 'n/d');
+    push('segment2WarmupAssetsDrawn', String(_segment2WarmupAssetsDrawn));
+    push('segment2WarmupRenderMs', _diagFmtNum(_segment2WarmupRenderMs, 2) + 'ms');
+    push('segment2FirstPlaybackRenderMs', _segment2FirstPlaybackRenderMs != null ? _diagFmtNum(_segment2FirstPlaybackRenderMs, 2) + 'ms' : 'n/d');
+    push('segment2SecondPlaybackRenderMs', _segment2SecondPlaybackRenderMs != null ? _diagFmtNum(_segment2SecondPlaybackRenderMs, 2) + 'ms' : 'n/d');
+    push('segment2FirstPassJumpDetected', _segment2FirstPassJumpDetected != null ? String(_segment2FirstPassJumpDetected) : 'n/d (aguardando passada)');
+    push('segment2SecondPassJumpDetected', _segment2SecondPassJumpDetected != null ? String(_segment2SecondPassJumpDetected) : 'n/d (aguardando passada)');
+    push('segment2JumpImprovedAfterWarmup', _segment2JumpImprovedAfterWarmup != null ? String(_segment2JumpImprovedAfterWarmup) : 'n/d (aguardando 2ª passada)');
+    push('segment2PassCount', String(_segment2PassCount));
+    push('exportWarmupApplied', String(typeof exportWarmupApplied !== 'undefined' ? exportWarmupApplied : false));
   }
   L.push('');
 
