@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZF — Adicionado botão discreto no painel de diagnóstico para baixar o JSON completo do diagnóstico de abertura no iPhone/Safari. Botão "Baixar diagnóstico de abertura" chama window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__() com fallback robusto: Blob+download, nova aba com JSON em texto puro (iOS), clipboard opcional. Sem alterações em preview, export, save, load, ProjectWorld, frames ou curvas. base v8z4b30ZE. -->
 <!-- Arco Motion App — v8z4b30ZE — Diagnóstico observacional de reabertura visual: snapshots leves do load/render inicial para investigar diferença de viewport/render com JSON estruturalmente idêntico. Adiciona window.__ARCO_LOAD_VISUAL_DIAG__ com snapshots por fase (rawParsedJson, beforeProjectApply, afterActiveFrameRestore, afterProjectApply, afterMigrationOrNormalization, beforeFirstEditorRender, afterFirstEditorRender, afterFirstAnimationFrame), window.__ARCO_COMPARE_LOAD_VISUAL_DIAG__() e window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__(). Sem mudanças no motor de preview/export/save/curvas/frames/ProjectWorld/UI. base v8z4b30ZD. -->
 <!-- Arco Motion App — v8z4b30ZC — base v8z4b30ZA (a v8z4b30ZB foi mergeada, reprovada e revertida; NÃO é base e NÃO é reaplicada). Versão de diagnóstico seguro + proteção de regressão. Preserva exatamente o comportamento funcional da 30ZA e adiciona apenas observação para investigar tranco/piscada/pulo de câmera entre trechos, sem alterar matemática de câmera, Preview, Export ou render final. diag: trilha observacional de câmera por frame em Preview e Export (previewTrace*/exportTrace*: segmento ativo, fromFrame/toFrame, localT, câmera X/Y/W/H/rotation, amostra anterior, deltas, deltaMagnitude, render ms, assets desenhados/visíveis), capturada ao final de renderFrameSafely lendo diagnostics.renderState já calculado — não altera ctx/t/câmera/retorno. diag: detector passivo de pulo/piscada (jumpDetected/jumpType/jumpSegmentIndex/jumpFrameIndex/jump*Camera/jumpDelta*), classifica salto por segment-skip(>1), localT para trás, spike de delta de câmera/rotação acima da média local; reinício de loop é tratado como esperado (não sinaliza). diag: amostragem do segmento alvo Frame 3 → Frame 4 (segmentTraceTargetIndex=2) em localT 0.00…1.00 via getStateAtT (mesma câmera de Preview/Export), com curveHandle1/2, fromFrame/toFrame, deltas e marcação de suspiciousDelta no meio do segmento. diag: guardas de comportamento (exportBehaviorMatches30ZA/previewBehaviorMatches30ZA=true; exportFrameSamplingChanged/exportSegmentTimingChanged/exportCameraMathChanged/exportRendererChanged e equivalentes de preview = false). diag: auditoria observacional de caches/estado derivado (derivedStateDirty, segment/curve/assetBounds/previewCache). preserve: APP_VERSION/NAME=v8z4b30ZC, fundo #3c3c3b, ProjectWorld consistente, save/load de assets e frames em ProjectWorld, render sem filtro de slot, Preview/Export via World Renderer, WebCodecs, zoom dinâmico. NÃO altera UI/layout/cores/textos/ícones/menus, render math, evaluate camera, segmentIndex, localT, duração, pausa, easing, curva, Preview/Export playback, WebCodecs/muxer/encoder, ProjectWorld geometry, save/load, assets, addImageAsset, pan/zoom/touch, "Inverter sentido"; NÃO traz código da 30ZB sem auditoria. -->
 <!-- Arco Motion App — v8z4b30ZA — base v8z4b30Z. HOTFIX crítico e cirúrgico do sistema de coordenadas do ProjectWorld (mundo híbrido) + auditoria de render/câmera + estado de handles. fix(coords): ESTRATÉGIA A (preserveSavedWorld) — o ProjectWorld passa a ser um único sistema canônico ancorado em baseStageW/H. syncFirstImageAsset() NÃO redimensiona mais o asset principal (img-1) nem projectWorld.w/h com o Stage atual quando o projeto é multi-imagem (Stage vira apenas viewport/janela do editor); restoreProjectAssetsFromData() ancora projectWorld.w/h e o asset[0] em baseStage canônica no load, auto-curando inclusive arquivos da 30Z salvos já em estado híbrido (asset[0] em 374×561 enquanto baseStage/laterais em 341×512). Isso elimina a falha em que o asset do slot superior direito sumia/piscava no Preview/Export com 9 imagens. fix(handles): limpeza de estado transitório de drag (lockedDragSegmentIndex/CurveIndex/HandleType zerados ao soltar) e limpeza de dataset.arcoFi dos ghost handles ocultos (sem índice fantasma). diag: nova auditoria worldCoordinateStrategy/worldCoordinateSystemConsistent/mixedWorldScaleDetected/asset0MatchesWorldCoordinateSystem/allAssetsSameCoordinateSystem/frames-curvesMatchWorldCoordinateSystem; render transform real por asset (renderCamera*, renderWorldToCanvasScaleX/Y, assetRender[id].screen/flags, intersectsCamera, imageReady, cullingReason=none); cameraAssetCoordinateMismatch; ghostHandlesConsistent + ghostIn/OutExpected/Actual + activeFrameHasValidIn/OutHandle. preserve: APP_VERSION/NAME=v8z4b30ZA, fundo #3c3c3b, múltiplas imagens, save/load de assets e de frames em coordenadas absolutas do ProjectWorld, Preview/Export via World Renderer (exportUsedWorldRenderer=true, sem fallback), WebCodecs, zoom mínimo dinâmico, ausência de filtro por slot/selected asset/main image. NÃO altera UI/layout/cores/textos/ícones/menus, fluxo Inserir/Trocar imagem, reset, zoom dinâmico, pan/zoom/touch, WebCodecs/muxer/encoder, motor de curvas/easing/timing; sem Layers, sem cenas, sem "Inverter sentido", sem prompt/alert/confirm. -->
@@ -3937,6 +3938,9 @@ body.cust-open #toolbar{
     <button type="button" class="diag-btn" onclick="copyDiagnostics()">Copiar diagnóstico</button>
     <button type="button" class="diag-btn" onclick="refreshDiagnostics()">Atualizar</button>
   </div>
+  <div class="diag-actions" style="margin-top:-2px;">
+    <button type="button" class="diag-btn" onclick="if(typeof window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__==='function'){window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__();}else{alert('Diagnóstico de abertura indisponível nesta versão.');}">Baixar diagnóstico de abertura</button>
+  </div>
   <div class="diag-hint" id="diagHint"></div>
   <textarea id="diagText" class="diag-text" readonly spellcheck="false" wrap="off"></textarea>
 </div>
@@ -6696,8 +6700,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZE';
-const APP_VERSION_NAME = 'v8z4b30ZE';
+const APP_VERSION = 'v8z4b30ZF';
+const APP_VERSION_NAME = 'v8z4b30ZF';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -29789,7 +29793,7 @@ initInsertionActionBar();
       requestAnimationFrame(function () {
         _snaps.afterFirstAnimationFrame = _snapGeometry('afterFirstAnimationFrame');
         _snaps.afterFirstAnimationFrame.rafAt = Date.now();
-        console.info('[Arco Load Visual Diag] ready: use window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__()');
+        console.info('[Arco Load Visual Diag] download button ready');
       });
     }
   };
@@ -29872,7 +29876,7 @@ initInsertionActionBar();
     };
   };
 
-  // ── Download ─────────────────────────────────────────────────────────────────
+  // ── Download — v8z4b30ZF: fallback robusto para iPhone/Safari ───────────────
   window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__ = function () {
     var av = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : 'unknown';
     var payload = {
@@ -29888,14 +29892,40 @@ initInsertionActionBar();
     };
     var ts = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
     var fname = 'arco-load-visual-diag-' + av + '-' + ts + '.json';
+    var jsonStr = JSON.stringify(payload, null, 2);
+
+    var blobOk = false;
+    // 1. Tentar Blob + URL.createObjectURL + link com download
     try {
-      var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      var blob = new Blob([jsonStr], { type: 'application/json' });
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
       a.href = url; a.download = fname;
       document.body.appendChild(a); a.click();
       setTimeout(function () { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch (_) {} }, 2000);
-    } catch (err) { console.error('[Arco Load Visual Diag] download failed:', err); }
+      blobOk = true;
+    } catch (e1) { blobOk = false; }
+
+    // 2. No iOS/Safari o atributo download é ignorado — abrir nova aba com JSON em texto
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (!blobOk || isIOS) {
+      try {
+        var safe = jsonStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        var w = window.open('', '_blank');
+        if (w) {
+          w.document.write('<html><head><title>' + fname + '</title></head><body><pre style="word-wrap:break-word;white-space:pre-wrap;font-size:12px;">' + safe + '</pre></body></html>');
+          w.document.close();
+        }
+      } catch (e2) { /* popup bloqueado — clipboard abaixo ainda pode ajudar */ }
+    }
+
+    // 3. Clipboard opcional — copiar JSON e mostrar confirmação
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(jsonStr).then(function () {
+        var hint = document.getElementById('diagHint');
+        if (hint) hint.textContent = 'Diagnóstico copiado.';
+      }).catch(function () { /* manter nova aba com JSON selecionável */ });
+    }
   };
 
 })();
