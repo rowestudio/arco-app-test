@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Arco JSON Inspector</title>
+  <title>Arco JSON Inspector v1.1</title>
   <style>
     :root {
       --bg: #242424;
@@ -69,12 +69,6 @@
       font-size: 17px;
       margin: 0 0 10px;
       letter-spacing: -0.01em;
-    }
-
-    h3 {
-      font-size: 15px;
-      margin: 16px 0 8px;
-      color: var(--text);
     }
 
     p, li {
@@ -254,7 +248,6 @@
       font-weight: 700;
     }
 
-    .tag.same { color: #123315; background: var(--ok); }
     .tag.diff { color: #3b0d0d; background: var(--bad); }
     .tag.missing { color: #3b2800; background: var(--warn); }
 
@@ -285,8 +278,8 @@
 </head>
 <body>
   <header>
-    <h1>Arco JSON Inspector</h1>
-    <p class="subtitle">Ferramenta interna de QA para sanitizar e comparar arquivos JSON brutos do Arco Motion sem abrir o projeto no app.</p>
+    <h1>Arco JSON Inspector v1.1</h1>
+    <p class="subtitle">Sanitiza e compara JSON bruto sem passar pelo load do app. Agora com busca recursiva de frames, curvas e árvore estrutural sanitizada.</p>
   </header>
 
   <main>
@@ -297,9 +290,8 @@
         <li>Escolha o JSON original em <code>Arquivo A</code>.</li>
         <li>Escolha o JSON salvo novamente sem alteração em <code>Arquivo B</code>.</li>
         <li>Clique em <code>Sanitizar e comparar</code>.</li>
-        <li>Baixe os snapshots leves e/ou o relatório de diferenças.</li>
+        <li>Baixe o relatório v1.1.</li>
       </ol>
-      <p class="small">Objetivo: separar se o bug antigo de round-trip está em viewport/editor state, ProjectWorld, assets, frames, curvas ou campos temporários que entraram no save.</p>
     </section>
 
     <section>
@@ -321,7 +313,7 @@
         <button id="runBtn">Sanitizar e comparar</button>
         <button id="downloadA" class="secondary" disabled>Baixar snapshot A</button>
         <button id="downloadB" class="secondary" disabled>Baixar snapshot B</button>
-        <button id="downloadReport" class="warn" disabled>Baixar relatório</button>
+        <button id="downloadReport" class="warn" disabled>Baixar relatório v1.1</button>
         <button id="clearBtn" class="secondary">Limpar</button>
       </div>
     </section>
@@ -334,13 +326,13 @@
 
     <section>
       <h2>Diferenças principais</h2>
-      <p class="small">A tabela prioriza campos que explicam mudança visual após abrir → salvar sem alterar → reabrir.</p>
+      <p class="small">A tabela prioriza ProjectWorld, assets, frames, curvas, timing e viewport.</p>
       <div id="diffTableWrap"></div>
     </section>
 
     <section>
-      <h2>Snapshot leve</h2>
-      <p class="small">Copie ou baixe este conteúdo se precisar enviar para análise. Ele não contém base64/imagem bruta.</p>
+      <h2>Saída</h2>
+      <p class="small">Contém relatório, snapshots leves, candidatos recursivos e árvore estrutural sanitizada.</p>
       <textarea id="snapshotOut" spellcheck="false" placeholder="O snapshot/relatório aparecerá aqui."></textarea>
     </section>
 
@@ -356,6 +348,8 @@
   <script>
     "use strict";
 
+    const TOOL_VERSION = "1.1.0";
+
     const HEAVY_KEY_EXACT = new Set([
       "dataUrl", "dataURL", "data_uri", "dataURI", "src", "href",
       "imageData", "image_data", "base64", "blob", "file", "files",
@@ -364,62 +358,19 @@
       "offscreenCanvas", "ctx", "context", "previewCache",
       "projectWorldComposite", "worldComposite", "compositeCanvas",
       "editorProxy", "proxyImage", "thumbnail", "thumb", "thumbDataUrl",
-      "renderSamples", "assetRenderSamples", "screenSamples"
+      "renderSamples", "assetRenderSamples", "screenSamples",
+      "debugLog", "traceLog"
     ]);
 
     const HEAVY_KEY_PARTS = [
       "base64", "dataurl", "data_url", "imagedata", "bitmap", "blob",
       "objecturl", "thumbnail", "previewcache", "composite", "proxy",
-      "renderlog", "rendersamples", "screenlog"
-    ];
-
-    const IMPORTANT_PATHS = [
-      "schemaVersion",
-      "appVersion",
-      "APP_VERSION",
-      "appVersionName",
-      "APP_VERSION_NAME",
-      "currentFormat",
-      "format",
-      "exportW",
-      "exportH",
-      "background",
-      "currentProjectBg",
-      "projectWorld",
-      "stageW",
-      "stageH",
-      "imageAreaW",
-      "imageAreaH",
-      "zoom",
-      "panX",
-      "panY",
-      "editorMinZoomMode",
-      "dynamicEditorMinZoom",
-      "worldViewBounds",
-      "activeFrameIndex",
-      "activeIdx",
-      "selectedSegmentIndex",
-      "selectedImageAssetId",
-      "assets",
-      "imageAssets",
-      "frames",
-      "curves",
-      "views",
-      "duration",
-      "totalDuration",
-      "timing",
-      "easing",
-      "pause",
-      "pauses"
+      "renderlog", "rendersamples", "screenlog", "debuglog", "tracelog"
     ];
 
     const state = {
       fileA: null,
       fileB: null,
-      rawA: null,
-      rawB: null,
-      parsedA: null,
-      parsedB: null,
       snapshotA: null,
       snapshotB: null,
       report: null
@@ -434,10 +385,10 @@ ${Array.from(HEAVY_KEY_EXACT).sort().join(", ")}
 Remove/resume por padrão no nome:
 ${HEAVY_KEY_PARTS.join(", ")}
 
-Strings muito longas, data URLs e prováveis base64 são substituídas por metadados:
-{ "__removedString": true, "reason": "...", "length": ... }
-
-A ferramenta não chama nenhuma função do Arco Motion App.`;
+Novidade v1.1:
+- busca recursiva por arrays/objetos chamados frames, curvas, points, rotations, durations, pauses etc.
+- inclui rawStructural sanitizado para capturar campos em caminhos não previstos.
+- compara frames/curvas mesmo quando eles não estão no topo do JSON.`;
 
     function setStatus(message, kind = "") {
       const el = $("status");
@@ -504,39 +455,6 @@ A ferramenta não chama nenhuma função do Arco Motion App.`;
       };
     }
 
-    function sanitizeValue(value, path = "", stats = { removedFields: 0, removedStrings: 0 }) {
-      if (value === null || typeof value === "number" || typeof value === "boolean") return value;
-
-      if (typeof value === "string") {
-        if (stringLooksHeavy(value)) {
-          stats.removedStrings++;
-          const reason = value.startsWith("data:image/") ? "data-url/base64" : "long-or-base64-like-string";
-          return summarizeRemovedString(value, reason);
-        }
-        return value;
-      }
-
-      if (Array.isArray(value)) {
-        return value.map((item, index) => sanitizeValue(item, `${path}[${index}]`, stats));
-      }
-
-      if (typeof value === "object") {
-        const out = {};
-        for (const [key, child] of Object.entries(value)) {
-          const childPath = path ? `${path}.${key}` : key;
-          if (keyLooksHeavy(key)) {
-            stats.removedFields++;
-            out[key] = summarizeRemovedField(child, childPath);
-            continue;
-          }
-          out[key] = sanitizeValue(child, childPath, stats);
-        }
-        return out;
-      }
-
-      return String(value);
-    }
-
     function summarizeRemovedField(value, path) {
       const summary = {
         __removedField: true,
@@ -554,6 +472,51 @@ A ferramenta não chama nenhuma função do Arco Motion App.`;
       return summary;
     }
 
+    function sanitizeValue(value, path = "", stats = { removedFields: 0, removedStrings: 0 }, depth = 0) {
+      if (value === null || typeof value === "number" || typeof value === "boolean") return value;
+
+      if (typeof value === "string") {
+        if (stringLooksHeavy(value)) {
+          stats.removedStrings++;
+          const reason = value.startsWith("data:image/") ? "data-url/base64" : "long-or-base64-like-string";
+          return summarizeRemovedString(value, reason);
+        }
+        return value;
+      }
+
+      if (Array.isArray(value)) {
+        return value.map((item, index) => sanitizeValue(item, `${path}[${index}]`, stats, depth + 1));
+      }
+
+      if (typeof value === "object") {
+        const out = {};
+        for (const [key, child] of Object.entries(value)) {
+          const childPath = path ? `${path}.${key}` : key;
+          if (keyLooksHeavy(key)) {
+            stats.removedFields++;
+            out[key] = summarizeRemovedField(child, childPath);
+            continue;
+          }
+          out[key] = sanitizeValue(child, childPath, stats, depth + 1);
+        }
+        return out;
+      }
+
+      return String(value);
+    }
+
+    function removeUndefined(obj) {
+      if (Array.isArray(obj)) return obj.map(removeUndefined);
+      if (obj && typeof obj === "object") {
+        const out = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (value !== undefined) out[key] = removeUndefined(value);
+        }
+        return out;
+      }
+      return obj;
+    }
+
     function get(obj, path) {
       if (!obj) return undefined;
       const parts = path.split(".");
@@ -568,34 +531,91 @@ A ferramenta não chama nenhuma função do Arco Motion App.`;
       return current;
     }
 
-    function findFirst(obj, keys) {
-      for (const key of keys) {
-        const value = get(obj, key);
+    function findFirst(obj, paths) {
+      for (const path of paths) {
+        const value = get(obj, path);
         if (value !== undefined) return value;
       }
       return undefined;
     }
 
-    function pickKnownTopLevel(obj) {
-      const out = {};
-      for (const path of IMPORTANT_PATHS) {
-        const value = get(obj, path);
-        if (value !== undefined) {
-          setNested(out, path, value);
-        }
-      }
-      return out;
+    function pathLastKey(path) {
+      const parts = String(path).split(".");
+      return parts[parts.length - 1].replace(/\[\d+\]/g, "");
     }
 
-    function setNested(obj, path, value) {
-      const parts = path.split(".");
-      let current = obj;
-      for (let i = 0; i < parts.length - 1; i++) {
-        const key = parts[i];
-        if (!current[key] || typeof current[key] !== "object") current[key] = {};
-        current = current[key];
+    function looksLikeFrameArray(key, value) {
+      const lower = key.toLowerCase();
+      if (!Array.isArray(value)) return false;
+      if (!/(^|[^a-z])(frames?|keyframes?|cameraframes?|arcoframes?|motionframes?)($|[^a-z])/.test(lower)) return false;
+      return true;
+    }
+
+    function looksLikeCurveArray(key, value) {
+      const lower = key.toLowerCase();
+      if (!Array.isArray(value)) return false;
+      return /(curves?|ctrlpts?|controlpoints?|handles?|segments?|paths?)($|[^a-z])/.test(lower);
+    }
+
+    function looksLikeTimingArray(key, value) {
+      const lower = key.toLowerCase();
+      if (!Array.isArray(value)) return false;
+      return /(durations?|pauses?|easings?|rotations?|frameRotations?)($|[^a-z])/.test(lower);
+    }
+
+    function findCandidates(root) {
+      const candidates = {
+        frameArrays: [],
+        curveArrays: [],
+        timingArrays: [],
+        projectWorldObjects: [],
+        assetArrays: []
+      };
+
+      const seen = new WeakSet();
+
+      function walk(value, path) {
+        if (!value || typeof value !== "object") return;
+        if (seen.has(value)) return;
+        seen.add(value);
+
+        if (Array.isArray(value)) {
+          const key = pathLastKey(path);
+          if (looksLikeFrameArray(key, value)) {
+            candidates.frameArrays.push({ path, length: value.length, value });
+          }
+          if (looksLikeCurveArray(key, value)) {
+            candidates.curveArrays.push({ path, length: value.length, value });
+          }
+          if (looksLikeTimingArray(key, value)) {
+            candidates.timingArrays.push({ path, length: value.length, value });
+          }
+          if (/assets?|imageAssets?|layers?/.test(key.toLowerCase())) {
+            candidates.assetArrays.push({ path, length: value.length, value });
+          }
+          value.forEach((item, index) => walk(item, `${path}[${index}]`));
+          return;
+        }
+
+        for (const [key, child] of Object.entries(value)) {
+          const childPath = path ? `${path}.${key}` : key;
+          const lower = key.toLowerCase();
+
+          if (child && typeof child === "object" && !Array.isArray(child)) {
+            if (lower === "projectworld" || lower === "world" || lower === "project_world") {
+              const hasWorldShape = ["w", "h", "baseStageW", "baseStageH", "x", "y"].some(k => Object.prototype.hasOwnProperty.call(child, k));
+              if (hasWorldShape) {
+                candidates.projectWorldObjects.push({ path: childPath, value: child });
+              }
+            }
+          }
+
+          walk(child, childPath);
+        }
       }
-      current[parts[parts.length - 1]] = value;
+
+      walk(root, "");
+      return candidates;
     }
 
     function sanitizeAsset(asset) {
@@ -616,99 +636,104 @@ A ferramenta não chama nenhuma função do Arco Motion App.`;
       return out;
     }
 
-    function sanitizeFrames(frames) {
-      if (!Array.isArray(frames)) return frames;
-      return frames.map((frame, index) => {
-        if (!frame || typeof frame !== "object") return frame;
+    function sanitizeArrayItems(array) {
+      if (!Array.isArray(array)) return array;
+      const stats = { removedFields: 0, removedStrings: 0 };
+      return array.map((item, index) => {
+        if (!item || typeof item !== "object") return item;
         const out = { index };
-        for (const [key, value] of Object.entries(frame)) {
+        for (const [key, value] of Object.entries(item)) {
           if (keyLooksHeavy(key)) continue;
           if (typeof value === "string" && stringLooksHeavy(value)) continue;
-          out[key] = value;
+          out[key] = sanitizeValue(value, key, stats);
         }
         return out;
       });
     }
 
-    function sanitizeCurves(curves) {
-      if (!Array.isArray(curves)) return curves;
-      return curves.map((curve, index) => {
-        if (!curve || typeof curve !== "object") return curve;
-        const out = { index };
-        for (const [key, value] of Object.entries(curve)) {
-          if (keyLooksHeavy(key)) continue;
-          if (typeof value === "string" && stringLooksHeavy(value)) continue;
-          out[key] = value;
-        }
-        return out;
-      });
+    function makeCandidateSummary(candidates) {
+      function summarizeList(list, sanitizerName) {
+        return list.map(item => ({
+          path: item.path,
+          length: item.length,
+          value: sanitizerName === "asset"
+            ? item.value.map(sanitizeAsset)
+            : sanitizeArrayItems(item.value)
+        }));
+      }
+
+      return {
+        frameArrays: summarizeList(candidates.frameArrays, "generic"),
+        curveArrays: summarizeList(candidates.curveArrays, "generic"),
+        timingArrays: summarizeList(candidates.timingArrays, "generic"),
+        assetArrays: summarizeList(candidates.assetArrays, "asset"),
+        projectWorldObjects: candidates.projectWorldObjects.map(item => ({
+          path: item.path,
+          value: sanitizeValue(item.value)
+        }))
+      };
     }
 
     function makeSnapshot(parsed, fileMeta) {
       const stats = { removedFields: 0, removedStrings: 0 };
-      const known = pickKnownTopLevel(parsed);
-      const sanitizedKnown = sanitizeValue(known, "", stats);
+      const candidates = findCandidates(parsed);
 
-      const assets = findFirst(parsed, ["assets", "imageAssets", "project.assets", "project.imageAssets"]);
-      const frames = findFirst(parsed, ["frames", "project.frames"]);
-      const curves = findFirst(parsed, ["curves", "project.curves"]);
-      const views = findFirst(parsed, ["views", "project.views"]);
-      const projectWorld = findFirst(parsed, ["projectWorld", "project.projectWorld"]);
+      const directAssets = findFirst(parsed, ["assets", "imageAssets", "project.assets", "project.imageAssets", "state.assets", "data.assets"]);
+      const directFrames = findFirst(parsed, ["frames", "project.frames", "state.frames", "data.frames"]);
+      const directCurves = findFirst(parsed, ["curves", "project.curves", "state.curves", "data.curves", "ctrlPts", "project.ctrlPts", "state.ctrlPts"]);
+      const directViews = findFirst(parsed, ["views", "project.views", "state.views", "data.views"]);
+      const directProjectWorld = findFirst(parsed, ["projectWorld", "project.projectWorld", "state.projectWorld", "data.projectWorld"]);
 
-      const focused = {
+      const rawStructural = sanitizeValue(parsed, "", stats);
+
+      const snapshot = {
         file: {
           name: fileMeta.name,
           sizeBytes: fileMeta.size,
           lastModified: fileMeta.lastModified || null
         },
         detected: {
-          schemaVersion: findFirst(parsed, ["schemaVersion", "project.schemaVersion"]),
-          appVersion: findFirst(parsed, ["appVersion", "APP_VERSION", "version", "project.appVersion"]),
-          appVersionName: findFirst(parsed, ["appVersionName", "APP_VERSION_NAME", "project.appVersionName"]),
-          currentFormat: findFirst(parsed, ["currentFormat", "format", "project.currentFormat"]),
-          background: findFirst(parsed, ["background", "currentProjectBg", "project.background", "project.currentProjectBg"])
+          schemaVersion: findFirst(parsed, ["schemaVersion", "project.schemaVersion", "state.schemaVersion", "data.schemaVersion"]),
+          appVersion: findFirst(parsed, ["appVersion", "APP_VERSION", "version", "project.appVersion", "state.appVersion", "data.appVersion"]),
+          appVersionName: findFirst(parsed, ["appVersionName", "APP_VERSION_NAME", "project.appVersionName", "state.appVersionName"]),
+          currentFormat: findFirst(parsed, ["currentFormat", "format", "project.currentFormat", "state.currentFormat", "data.currentFormat"]),
+          background: findFirst(parsed, ["background", "currentProjectBg", "project.background", "project.currentProjectBg", "state.background"])
         },
         geometry: {
-          stageW: findFirst(parsed, ["stageW", "project.stageW"]),
-          stageH: findFirst(parsed, ["stageH", "project.stageH"]),
-          imageAreaW: findFirst(parsed, ["imageAreaW", "project.imageAreaW"]),
-          imageAreaH: findFirst(parsed, ["imageAreaH", "project.imageAreaH"]),
-          zoom: findFirst(parsed, ["zoom", "editor.zoom", "editorState.zoom", "project.zoom"]),
-          panX: findFirst(parsed, ["panX", "editor.panX", "editorState.panX", "project.panX"]),
-          panY: findFirst(parsed, ["panY", "editor.panY", "editorState.panY", "project.panY"]),
-          editorMinZoomMode: findFirst(parsed, ["editorMinZoomMode", "project.editorMinZoomMode"]),
-          dynamicEditorMinZoom: findFirst(parsed, ["dynamicEditorMinZoom", "project.dynamicEditorMinZoom"]),
-          worldViewBounds: findFirst(parsed, ["worldViewBounds", "project.worldViewBounds"])
+          stageW: findFirst(parsed, ["stageW", "project.stageW", "state.stageW", "editor.stageW"]),
+          stageH: findFirst(parsed, ["stageH", "project.stageH", "state.stageH", "editor.stageH"]),
+          imageAreaW: findFirst(parsed, ["imageAreaW", "project.imageAreaW", "state.imageAreaW"]),
+          imageAreaH: findFirst(parsed, ["imageAreaH", "project.imageAreaH", "state.imageAreaH"]),
+          zoom: findFirst(parsed, ["zoom", "editor.zoom", "editorState.zoom", "project.zoom", "state.zoom"]),
+          panX: findFirst(parsed, ["panX", "editor.panX", "editorState.panX", "project.panX", "state.panX"]),
+          panY: findFirst(parsed, ["panY", "editor.panY", "editorState.panY", "project.panY", "state.panY"]),
+          editorMinZoomMode: findFirst(parsed, ["editorMinZoomMode", "project.editorMinZoomMode", "state.editorMinZoomMode"]),
+          dynamicEditorMinZoom: findFirst(parsed, ["dynamicEditorMinZoom", "project.dynamicEditorMinZoom", "state.dynamicEditorMinZoom"]),
+          worldViewBounds: findFirst(parsed, ["worldViewBounds", "project.worldViewBounds", "state.worldViewBounds"])
         },
-        projectWorld: projectWorld === undefined ? undefined : sanitizeValue(projectWorld, "projectWorld", stats),
-        assets: Array.isArray(assets) ? assets.map(sanitizeAsset) : assets,
-        frames: sanitizeFrames(frames),
-        curves: sanitizeCurves(curves),
-        views: sanitizeValue(views, "views", stats),
-        focusedKnownFields: sanitizedKnown,
+        projectWorld: directProjectWorld === undefined ? undefined : sanitizeValue(directProjectWorld, "projectWorld", stats),
+        assets: Array.isArray(directAssets) ? directAssets.map(sanitizeAsset) : directAssets,
+        frames: sanitizeArrayItems(directFrames),
+        curves: sanitizeArrayItems(directCurves),
+        views: sanitizeValue(directViews, "views", stats),
+        recursiveCandidates: makeCandidateSummary(candidates),
+        rawStructural,
         sanitizer: {
           tool: "Arco JSON Inspector",
-          toolVersion: "1.0.0",
+          toolVersion: TOOL_VERSION,
           generatedAt: new Date().toISOString(),
           removedFields: stats.removedFields,
           removedStrings: stats.removedStrings,
+          frameCandidateCount: candidates.frameArrays.length,
+          curveCandidateCount: candidates.curveArrays.length,
+          timingCandidateCount: candidates.timingArrays.length,
+          projectWorldCandidateCount: candidates.projectWorldObjects.length,
+          assetCandidateCount: candidates.assetArrays.length,
           note: "Snapshot criado a partir do JSON bruto, sem chamar loadProject/normalizeProject/saveProject."
         }
       };
 
-      return removeUndefined(focused);
-    }
-
-    function removeUndefined(obj) {
-      if (Array.isArray(obj)) return obj.map(removeUndefined);
-      if (obj && typeof obj === "object") {
-        const out = {};
-        for (const [key, value] of Object.entries(obj)) {
-          if (value !== undefined) out[key] = removeUndefined(value);
-        }
-        return out;
-      }
-      return obj;
+      return removeUndefined(snapshot);
     }
 
     function stableStringify(value) {
@@ -795,7 +820,11 @@ A ferramenta não chama nenhuma função do Arco Motion App.`;
           totalDifferences: diffs.length,
           criticalDifferences: diffs.filter(d => d.priority >= 90).length,
           importantDifferences: diffs.filter(d => d.priority >= 60 && d.priority < 90).length,
-          minorDifferences: diffs.filter(d => d.priority < 60).length
+          minorDifferences: diffs.filter(d => d.priority < 60).length,
+          frameCandidateCountA: a.sanitizer.frameCandidateCount,
+          frameCandidateCountB: b.sanitizer.frameCandidateCount,
+          curveCandidateCountA: a.sanitizer.curveCandidateCount,
+          curveCandidateCountB: b.sanitizer.curveCandidateCount
         },
         files: {
           a: a.file,
@@ -806,9 +835,12 @@ A ferramenta não chama nenhuma função do Arco Motion App.`;
     }
 
     function classifyPriority(path) {
-      if (/projectWorld|assets\[\d+\]\.(worldX|worldY|worldW|worldH|slotRow|slotCol|zIndex|fitMode|visible)|frames\[\d+\]\.(x|y|w|h|rotation)|curves\[\d+\]/.test(path)) return 100;
+      if (/projectWorld|rawStructural\.projectWorld|recursiveCandidates\.projectWorldObjects/.test(path)) return 100;
+      if (/assets\[\d+\]\.(worldX|worldY|worldW|worldH|slotRow|slotCol|zIndex|fitMode|visible)|rawStructural\.assets\[\d+\]\.(worldX|worldY|worldW|worldH|slotRow|slotCol|zIndex|fitMode|visible)|recursiveCandidates\.assetArrays/.test(path)) return 100;
+      if (/frames\[\d+\]\.(x|y|w|h|rotation)|rawStructural\..*frames.*\[\d+\]\.(x|y|w|h|rotation)|recursiveCandidates\.frameArrays/.test(path)) return 100;
+      if (/curves\[\d+\]|ctrlPts|controlPoints|rawStructural\..*(curves|ctrlPts|controlPoints)|recursiveCandidates\.curveArrays/.test(path)) return 95;
       if (/stageW|stageH|zoom|panX|panY|worldViewBounds|editorMinZoomMode|dynamicEditorMinZoom|activeFrameIndex|activeIdx/.test(path)) return 80;
-      if (/format|currentFormat|background|duration|timing|pause|easing|schemaVersion/.test(path)) return 70;
+      if (/format|currentFormat|background|duration|timing|pause|easing|schemaVersion|recursiveCandidates\.timingArrays/.test(path)) return 70;
       if (/file|generatedAt|lastModified|sanitizer/.test(path)) return 10;
       return 40;
     }
@@ -816,7 +848,7 @@ A ferramenta não chama nenhuma função do Arco Motion App.`;
     function tagForStatus(status) {
       if (status === "different") return `<span class="tag diff">diferente</span>`;
       if (status === "missing-in-A" || status === "missing-in-B") return `<span class="tag missing">ausente</span>`;
-      return `<span class="tag same">igual</span>`;
+      return "";
     }
 
     function renderDiffTable(report) {
@@ -887,8 +919,8 @@ A ferramenta não chama nenhuma função do Arco Motion App.`;
       const cards = [
         ["Diferenças", r.summary.totalDifferences],
         ["Críticas", r.summary.criticalDifferences],
-        ["Importantes", r.summary.importantDifferences],
-        ["Menores", r.summary.minorDifferences]
+        ["Frames A/B", `${r.summary.frameCandidateCountA}/${r.summary.frameCandidateCountB}`],
+        ["Curvas A/B", `${r.summary.curveCandidateCountA}/${r.summary.curveCandidateCountB}`]
       ];
 
       el.innerHTML = cards.map(([k, v]) => `
@@ -938,20 +970,20 @@ A ferramenta não chama nenhuma função do Arco Motion App.`;
         }
 
         setStatus("Lendo arquivos localmente…");
-        state.rawA = await readFile(state.fileA);
-        state.rawB = await readFile(state.fileB);
+        const rawA = await readFile(state.fileA);
+        const rawB = await readFile(state.fileB);
 
         setStatus("Parseando JSON bruto…");
-        state.parsedA = maybeParseJSON(state.rawA);
-        state.parsedB = maybeParseJSON(state.rawB);
+        const parsedA = maybeParseJSON(rawA);
+        const parsedB = maybeParseJSON(rawB);
 
-        setStatus("Sanitizando snapshots leves…");
-        state.snapshotA = makeSnapshot(state.parsedA, {
+        setStatus("Sanitizando snapshots v1.1…");
+        state.snapshotA = makeSnapshot(parsedA, {
           name: state.fileA.name,
           size: state.fileA.size,
           lastModified: state.fileA.lastModified
         });
-        state.snapshotB = makeSnapshot(state.parsedB, {
+        state.snapshotB = makeSnapshot(parsedB, {
           name: state.fileB.name,
           size: state.fileB.size,
           lastModified: state.fileB.lastModified
@@ -961,7 +993,7 @@ A ferramenta não chama nenhuma função do Arco Motion App.`;
         state.report = compareSnapshots(state.snapshotA, state.snapshotB);
 
         const output = {
-          note: "Relatório gerado a partir dos JSONs brutos, sem abrir no app.",
+          note: "Relatório v1.1 gerado a partir dos JSONs brutos, sem abrir no app.",
           report: state.report,
           snapshotA: state.snapshotA,
           snapshotB: state.snapshotB
@@ -977,7 +1009,7 @@ A ferramenta não chama nenhuma função do Arco Motion App.`;
 
         const kind = state.report.summary.criticalDifferences ? "bad" : state.report.summary.totalDifferences ? "warn" : "ok";
         setStatus(
-          `Comparação concluída.\nDiferenças: ${state.report.summary.totalDifferences}\nCríticas: ${state.report.summary.criticalDifferences}\nImportantes: ${state.report.summary.importantDifferences}`,
+          `Comparação concluída.\nDiferenças: ${state.report.summary.totalDifferences}\nCríticas: ${state.report.summary.criticalDifferences}\nFrames candidatos A/B: ${state.report.summary.frameCandidateCountA}/${state.report.summary.frameCandidateCountB}\nCurvas candidatas A/B: ${state.report.summary.curveCandidateCountA}/${state.report.summary.curveCandidateCountB}`,
           kind
         );
       } catch (err) {
@@ -988,17 +1020,17 @@ A ferramenta não chama nenhuma função do Arco Motion App.`;
 
     $("downloadA").addEventListener("click", () => {
       if (!state.snapshotA) return;
-      downloadJSON(`${safeFileBase(state.fileA, "arquivo-a")}-snapshot-leve.json`, state.snapshotA);
+      downloadJSON(`${safeFileBase(state.fileA, "arquivo-a")}-snapshot-leve-v1-1.json`, state.snapshotA);
     });
 
     $("downloadB").addEventListener("click", () => {
       if (!state.snapshotB) return;
-      downloadJSON(`${safeFileBase(state.fileB, "arquivo-b")}-snapshot-leve.json`, state.snapshotB);
+      downloadJSON(`${safeFileBase(state.fileB, "arquivo-b")}-snapshot-leve-v1-1.json`, state.snapshotB);
     });
 
     $("downloadReport").addEventListener("click", () => {
       if (!state.report) return;
-      downloadJSON(`arco-json-diff-report-${new Date().toISOString().replaceAll(":", "-")}.json`, {
+      downloadJSON(`arco-json-diff-report-v1-1-${new Date().toISOString().replaceAll(":", "-")}.json`, {
         report: state.report,
         snapshotA: state.snapshotA,
         snapshotB: state.snapshotB
@@ -1008,10 +1040,6 @@ A ferramenta não chama nenhuma função do Arco Motion App.`;
     $("clearBtn").addEventListener("click", () => {
       state.fileA = null;
       state.fileB = null;
-      state.rawA = null;
-      state.rawB = null;
-      state.parsedA = null;
-      state.parsedB = null;
       state.snapshotA = null;
       state.snapshotB = null;
       state.report = null;
