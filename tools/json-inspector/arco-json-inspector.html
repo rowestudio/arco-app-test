@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Arco JSON Inspector</title>
+  <style>
+    :root {
+      --bg: #242424;
+      --panel: #303030;
+      --panel-2: #3a3a3a;
+      --text: #f4f4f4;
+      --muted: #b9b9b9;
+      --line: #555;
+      --accent: #00f5f0;
+      --warn: #ffb02e;
+      --bad: #ff5c5c;
+      --ok: #62d26f;
+      --code: #181818;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    header {
+      padding: 22px 18px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #2b2b2b;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      font-weight: 750;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    h2 {
+      font-size: 17px;
+      margin: 0 0 10px;
+      letter-spacing: -0.01em;
+    }
+
+    h3 {
+      font-size: 15px;
+      margin: 16px 0 8px;
+      color: var(--text);
+    }
+
+    p, li {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    code {
+      background: var(--code);
+      color: #e7e7e7;
+      padding: 2px 5px;
+      border-radius: 5px;
+      font-size: 0.92em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+      header { position: static; }
+    }
+
+    .filebox {
+      border: 1px dashed #777;
+      border-radius: 14px;
+      padding: 14px;
+      background: var(--panel-2);
+    }
+
+    .filebox label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      color: var(--muted);
+    }
+
+    .meta {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #111;
+      font-weight: 800;
+      padding: 11px 14px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button.secondary {
+      background: #505050;
+      color: var(--text);
+      border: 1px solid #6a6a6a;
+    }
+
+    button.warn {
+      background: var(--warn);
+      color: #1f1600;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .status {
+      padding: 12px;
+      border-radius: 12px;
+      background: #232323;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    .status.ok { border-color: rgba(98,210,111,.8); color: #d9ffdd; }
+    .status.bad { border-color: rgba(255,92,92,.8); color: #ffd9d9; }
+    .status.warn { border-color: rgba(255,176,46,.8); color: #fff0cf; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 10px 0 4px;
+    }
+
+    @media (max-width: 900px) {
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    .card {
+      padding: 12px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    .card .k {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .card .v {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      background: var(--code);
+      color: #f0f0f0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--text);
+      background: #282828;
+      position: sticky;
+      top: 87px;
+      z-index: 1;
+    }
+
+    td {
+      color: var(--muted);
+      word-break: break-word;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .tag.same { color: #123315; background: var(--ok); }
+    .tag.diff { color: #3b0d0d; background: var(--bad); }
+    .tag.missing { color: #3b2800; background: var(--warn); }
+
+    .small {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    details {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #292929;
+      margin-top: 10px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 750;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Arco JSON Inspector</h1>
+    <p class="subtitle">Ferramenta interna de QA para sanitizar e comparar arquivos JSON brutos do Arco Motion sem abrir o projeto no app.</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Uso correto</h2>
+      <p>Esta ferramenta lê o arquivo como texto local pelo navegador. Ela <strong>não chama</strong> funções do app, não executa migração, não normaliza frames, não recalcula ProjectWorld e não altera o arquivo original.</p>
+      <ol>
+        <li>Escolha o JSON original em <code>Arquivo A</code>.</li>
+        <li>Escolha o JSON salvo novamente sem alteração em <code>Arquivo B</code>.</li>
+        <li>Clique em <code>Sanitizar e comparar</code>.</li>
+        <li>Baixe os snapshots leves e/ou o relatório de diferenças.</li>
+      </ol>
+      <p class="small">Objetivo: separar se o bug antigo de round-trip está em viewport/editor state, ProjectWorld, assets, frames, curvas ou campos temporários que entraram no save.</p>
+    </section>
+
+    <section>
+      <h2>Arquivos</h2>
+      <div class="grid">
+        <div class="filebox">
+          <label for="fileA">Arquivo A — original bruto</label>
+          <input id="fileA" type="file" accept=".json,.txt,application/json,text/plain" />
+          <div id="metaA" class="meta">Nenhum arquivo selecionado.</div>
+        </div>
+        <div class="filebox">
+          <label for="fileB">Arquivo B — salvo sem alteração</label>
+          <input id="fileB" type="file" accept=".json,.txt,application/json,text/plain" />
+          <div id="metaB" class="meta">Nenhum arquivo selecionado.</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="runBtn">Sanitizar e comparar</button>
+        <button id="downloadA" class="secondary" disabled>Baixar snapshot A</button>
+        <button id="downloadB" class="secondary" disabled>Baixar snapshot B</button>
+        <button id="downloadReport" class="warn" disabled>Baixar relatório</button>
+        <button id="clearBtn" class="secondary">Limpar</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Status</h2>
+      <div id="status" class="status">Aguardando arquivos.</div>
+      <div id="summary" class="summary-grid" aria-live="polite"></div>
+    </section>
+
+    <section>
+      <h2>Diferenças principais</h2>
+      <p class="small">A tabela prioriza campos que explicam mudança visual após abrir → salvar sem alterar → reabrir.</p>
+      <div id="diffTableWrap"></div>
+    </section>
+
+    <section>
+      <h2>Snapshot leve</h2>
+      <p class="small">Copie ou baixe este conteúdo se precisar enviar para análise. Ele não contém base64/imagem bruta.</p>
+      <textarea id="snapshotOut" spellcheck="false" placeholder="O snapshot/relatório aparecerá aqui."></textarea>
+    </section>
+
+    <section>
+      <h2>Regras de sanitização</h2>
+      <details>
+        <summary>Campos removidos ou resumidos</summary>
+        <div class="mono" id="rules"></div>
+      </details>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const HEAVY_KEY_EXACT = new Set([
+      "dataUrl", "dataURL", "data_uri", "dataURI", "src", "href",
+      "imageData", "image_data", "base64", "blob", "file", "files",
+      "objectUrl", "objectURL", "urlObject", "bitmap", "imageBitmap",
+      "img", "image", "htmlImage", "naturalImageObject", "canvas",
+      "offscreenCanvas", "ctx", "context", "previewCache",
+      "projectWorldComposite", "worldComposite", "compositeCanvas",
+      "editorProxy", "proxyImage", "thumbnail", "thumb", "thumbDataUrl",
+      "renderSamples", "assetRenderSamples", "screenSamples"
+    ]);
+
+    const HEAVY_KEY_PARTS = [
+      "base64", "dataurl", "data_url", "imagedata", "bitmap", "blob",
+      "objecturl", "thumbnail", "previewcache", "composite", "proxy",
+      "renderlog", "rendersamples", "screenlog"
+    ];
+
+    const IMPORTANT_PATHS = [
+      "schemaVersion",
+      "appVersion",
+      "APP_VERSION",
+      "appVersionName",
+      "APP_VERSION_NAME",
+      "currentFormat",
+      "format",
+      "exportW",
+      "exportH",
+      "background",
+      "currentProjectBg",
+      "projectWorld",
+      "stageW",
+      "stageH",
+      "imageAreaW",
+      "imageAreaH",
+      "zoom",
+      "panX",
+      "panY",
+      "editorMinZoomMode",
+      "dynamicEditorMinZoom",
+      "worldViewBounds",
+      "activeFrameIndex",
+      "activeIdx",
+      "selectedSegmentIndex",
+      "selectedImageAssetId",
+      "assets",
+      "imageAssets",
+      "frames",
+      "curves",
+      "views",
+      "duration",
+      "totalDuration",
+      "timing",
+      "easing",
+      "pause",
+      "pauses"
+    ];
+
+    const state = {
+      fileA: null,
+      fileB: null,
+      rawA: null,
+      rawB: null,
+      parsedA: null,
+      parsedB: null,
+      snapshotA: null,
+      snapshotB: null,
+      report: null
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    $("rules").textContent =
+`Remove por nome exato:
+${Array.from(HEAVY_KEY_EXACT).sort().join(", ")}
+
+Remove/resume por padrão no nome:
+${HEAVY_KEY_PARTS.join(", ")}
+
+Strings muito longas, data URLs e prováveis base64 são substituídas por metadados:
+{ "__removedString": true, "reason": "...", "length": ... }
+
+A ferramenta não chama nenhuma função do Arco Motion App.`;
+
+    function setStatus(message, kind = "") {
+      const el = $("status");
+      el.className = "status" + (kind ? " " + kind : "");
+      el.textContent = message;
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) return "n/d";
+      const units = ["B", "KB", "MB", "GB"];
+      let value = bytes;
+      let i = 0;
+      while (value >= 1024 && i < units.length - 1) {
+        value /= 1024;
+        i++;
+      }
+      return `${value.toFixed(value >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+    }
+
+    function readFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(reader.error || new Error("Falha ao ler arquivo."));
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.readAsText(file);
+      });
+    }
+
+    function maybeParseJSON(text) {
+      try {
+        return JSON.parse(text);
+      } catch (err) {
+        const trimmed = text.trim();
+        const firstBrace = trimmed.indexOf("{");
+        const lastBrace = trimmed.lastIndexOf("}");
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+          return JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
+        }
+        throw err;
+      }
+    }
+
+    function keyLooksHeavy(key) {
+      const lower = String(key).toLowerCase();
+      if (HEAVY_KEY_EXACT.has(key)) return true;
+      return HEAVY_KEY_PARTS.some(part => lower.includes(part));
+    }
+
+    function stringLooksHeavy(value) {
+      if (typeof value !== "string") return false;
+      if (value.length > 5000) return true;
+      if (/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(value)) return true;
+      if (/^blob:/.test(value) && value.length > 120) return true;
+      if (value.length > 1200 && /^[A-Za-z0-9+/=\r\n]+$/.test(value)) return true;
+      return false;
+    }
+
+    function summarizeRemovedString(value, reason) {
+      return {
+        __removedString: true,
+        reason,
+        length: value.length,
+        prefix: value.slice(0, 48)
+      };
+    }
+
+    function sanitizeValue(value, path = "", stats = { removedFields: 0, removedStrings: 0 }) {
+      if (value === null || typeof value === "number" || typeof value === "boolean") return value;
+
+      if (typeof value === "string") {
+        if (stringLooksHeavy(value)) {
+          stats.removedStrings++;
+          const reason = value.startsWith("data:image/") ? "data-url/base64" : "long-or-base64-like-string";
+          return summarizeRemovedString(value, reason);
+        }
+        return value;
+      }
+
+      if (Array.isArray(value)) {
+        return value.map((item, index) => sanitizeValue(item, `${path}[${index}]`, stats));
+      }
+
+      if (typeof value === "object") {
+        const out = {};
+        for (const [key, child] of Object.entries(value)) {
+          const childPath = path ? `${path}.${key}` : key;
+          if (keyLooksHeavy(key)) {
+            stats.removedFields++;
+            out[key] = summarizeRemovedField(child, childPath);
+            continue;
+          }
+          out[key] = sanitizeValue(child, childPath, stats);
+        }
+        return out;
+      }
+
+      return String(value);
+    }
+
+    function summarizeRemovedField(value, path) {
+      const summary = {
+        __removedField: true,
+        path,
+        valueType: Array.isArray(value) ? "array" : typeof value
+      };
+      if (typeof value === "string") {
+        summary.length = value.length;
+        summary.prefix = value.slice(0, 48);
+      } else if (Array.isArray(value)) {
+        summary.length = value.length;
+      } else if (value && typeof value === "object") {
+        summary.keys = Object.keys(value).slice(0, 20);
+      }
+      return summary;
+    }
+
+    function get(obj, path) {
+      if (!obj) return undefined;
+      const parts = path.split(".");
+      let current = obj;
+      for (const part of parts) {
+        if (current && Object.prototype.hasOwnProperty.call(current, part)) {
+          current = current[part];
+        } else {
+          return undefined;
+        }
+      }
+      return current;
+    }
+
+    function findFirst(obj, keys) {
+      for (const key of keys) {
+        const value = get(obj, key);
+        if (value !== undefined) return value;
+      }
+      return undefined;
+    }
+
+    function pickKnownTopLevel(obj) {
+      const out = {};
+      for (const path of IMPORTANT_PATHS) {
+        const value = get(obj, path);
+        if (value !== undefined) {
+          setNested(out, path, value);
+        }
+      }
+      return out;
+    }
+
+    function setNested(obj, path, value) {
+      const parts = path.split(".");
+      let current = obj;
+      for (let i = 0; i < parts.length - 1; i++) {
+        const key = parts[i];
+        if (!current[key] || typeof current[key] !== "object") current[key] = {};
+        current = current[key];
+      }
+      current[parts[parts.length - 1]] = value;
+    }
+
+    function sanitizeAsset(asset) {
+      if (!asset || typeof asset !== "object") return asset;
+      const fields = [
+        "id", "type", "name", "sourceW", "sourceH", "naturalW", "naturalH",
+        "worldX", "worldY", "worldW", "worldH",
+        "x", "y", "w", "h",
+        "slotBoxW", "slotBoxH", "slotRow", "slotCol",
+        "fitMode", "visible", "zIndex", "opacity",
+        "sourceAR", "worldAR", "rotation", "locked"
+      ];
+      const out = {};
+      for (const key of fields) {
+        if (asset[key] !== undefined) out[key] = asset[key];
+      }
+      out.__presentKeys = Object.keys(asset).filter(k => !keyLooksHeavy(k)).sort();
+      return out;
+    }
+
+    function sanitizeFrames(frames) {
+      if (!Array.isArray(frames)) return frames;
+      return frames.map((frame, index) => {
+        if (!frame || typeof frame !== "object") return frame;
+        const out = { index };
+        for (const [key, value] of Object.entries(frame)) {
+          if (keyLooksHeavy(key)) continue;
+          if (typeof value === "string" && stringLooksHeavy(value)) continue;
+          out[key] = value;
+        }
+        return out;
+      });
+    }
+
+    function sanitizeCurves(curves) {
+      if (!Array.isArray(curves)) return curves;
+      return curves.map((curve, index) => {
+        if (!curve || typeof curve !== "object") return curve;
+        const out = { index };
+        for (const [key, value] of Object.entries(curve)) {
+          if (keyLooksHeavy(key)) continue;
+          if (typeof value === "string" && stringLooksHeavy(value)) continue;
+          out[key] = value;
+        }
+        return out;
+      });
+    }
+
+    function makeSnapshot(parsed, fileMeta) {
+      const stats = { removedFields: 0, removedStrings: 0 };
+      const known = pickKnownTopLevel(parsed);
+      const sanitizedKnown = sanitizeValue(known, "", stats);
+
+      const assets = findFirst(parsed, ["assets", "imageAssets", "project.assets", "project.imageAssets"]);
+      const frames = findFirst(parsed, ["frames", "project.frames"]);
+      const curves = findFirst(parsed, ["curves", "project.curves"]);
+      const views = findFirst(parsed, ["views", "project.views"]);
+      const projectWorld = findFirst(parsed, ["projectWorld", "project.projectWorld"]);
+
+      const focused = {
+        file: {
+          name: fileMeta.name,
+          sizeBytes: fileMeta.size,
+          lastModified: fileMeta.lastModified || null
+        },
+        detected: {
+          schemaVersion: findFirst(parsed, ["schemaVersion", "project.schemaVersion"]),
+          appVersion: findFirst(parsed, ["appVersion", "APP_VERSION", "version", "project.appVersion"]),
+          appVersionName: findFirst(parsed, ["appVersionName", "APP_VERSION_NAME", "project.appVersionName"]),
+          currentFormat: findFirst(parsed, ["currentFormat", "format", "project.currentFormat"]),
+          background: findFirst(parsed, ["background", "currentProjectBg", "project.background", "project.currentProjectBg"])
+        },
+        geometry: {
+          stageW: findFirst(parsed, ["stageW", "project.stageW"]),
+          stageH: findFirst(parsed, ["stageH", "project.stageH"]),
+          imageAreaW: findFirst(parsed, ["imageAreaW", "project.imageAreaW"]),
+          imageAreaH: findFirst(parsed, ["imageAreaH", "project.imageAreaH"]),
+          zoom: findFirst(parsed, ["zoom", "editor.zoom", "editorState.zoom", "project.zoom"]),
+          panX: findFirst(parsed, ["panX", "editor.panX", "editorState.panX", "project.panX"]),
+          panY: findFirst(parsed, ["panY", "editor.panY", "editorState.panY", "project.panY"]),
+          editorMinZoomMode: findFirst(parsed, ["editorMinZoomMode", "project.editorMinZoomMode"]),
+          dynamicEditorMinZoom: findFirst(parsed, ["dynamicEditorMinZoom", "project.dynamicEditorMinZoom"]),
+          worldViewBounds: findFirst(parsed, ["worldViewBounds", "project.worldViewBounds"])
+        },
+        projectWorld: projectWorld === undefined ? undefined : sanitizeValue(projectWorld, "projectWorld", stats),
+        assets: Array.isArray(assets) ? assets.map(sanitizeAsset) : assets,
+        frames: sanitizeFrames(frames),
+        curves: sanitizeCurves(curves),
+        views: sanitizeValue(views, "views", stats),
+        focusedKnownFields: sanitizedKnown,
+        sanitizer: {
+          tool: "Arco JSON Inspector",
+          toolVersion: "1.0.0",
+          generatedAt: new Date().toISOString(),
+          removedFields: stats.removedFields,
+          removedStrings: stats.removedStrings,
+          note: "Snapshot criado a partir do JSON bruto, sem chamar loadProject/normalizeProject/saveProject."
+        }
+      };
+
+      return removeUndefined(focused);
+    }
+
+    function removeUndefined(obj) {
+      if (Array.isArray(obj)) return obj.map(removeUndefined);
+      if (obj && typeof obj === "object") {
+        const out = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (value !== undefined) out[key] = removeUndefined(value);
+        }
+        return out;
+      }
+      return obj;
+    }
+
+    function stableStringify(value) {
+      return JSON.stringify(sortKeys(value), null, 2);
+    }
+
+    function sortKeys(value) {
+      if (Array.isArray(value)) return value.map(sortKeys);
+      if (value && typeof value === "object") {
+        const out = {};
+        for (const key of Object.keys(value).sort()) {
+          out[key] = sortKeys(value[key]);
+        }
+        return out;
+      }
+      return value;
+    }
+
+    function flatten(obj, prefix = "", out = {}) {
+      if (obj === null || typeof obj !== "object") {
+        out[prefix || "(root)"] = obj;
+        return out;
+      }
+
+      if (Array.isArray(obj)) {
+        out[prefix + ".length"] = obj.length;
+        obj.forEach((item, index) => flatten(item, `${prefix}[${index}]`, out));
+        return out;
+      }
+
+      const keys = Object.keys(obj);
+      out[prefix ? `${prefix}.__keyCount` : "__keyCount"] = keys.length;
+
+      for (const key of keys) {
+        const path = prefix ? `${prefix}.${key}` : key;
+        const value = obj[key];
+
+        if (value && typeof value === "object") {
+          flatten(value, path, out);
+        } else {
+          out[path] = value;
+        }
+      }
+
+      return out;
+    }
+
+    function normalizeForCompare(value) {
+      if (typeof value === "number") {
+        return Number.isFinite(value) ? Number(value.toFixed(6)) : value;
+      }
+      return value;
+    }
+
+    function compareSnapshots(a, b) {
+      const flatA = flatten(a);
+      const flatB = flatten(b);
+      const keys = Array.from(new Set([...Object.keys(flatA), ...Object.keys(flatB)])).sort();
+      const diffs = [];
+
+      for (const key of keys) {
+        const hasA = Object.prototype.hasOwnProperty.call(flatA, key);
+        const hasB = Object.prototype.hasOwnProperty.call(flatB, key);
+        const va = hasA ? normalizeForCompare(flatA[key]) : undefined;
+        const vb = hasB ? normalizeForCompare(flatB[key]) : undefined;
+        const same = JSON.stringify(va) === JSON.stringify(vb);
+
+        if (!same) {
+          diffs.push({
+            path: key,
+            status: !hasA ? "missing-in-A" : !hasB ? "missing-in-B" : "different",
+            a: hasA ? va : "(ausente)",
+            b: hasB ? vb : "(ausente)",
+            priority: classifyPriority(key)
+          });
+        }
+      }
+
+      diffs.sort((d1, d2) => d2.priority - d1.priority || d1.path.localeCompare(d2.path));
+
+      return {
+        generatedAt: new Date().toISOString(),
+        summary: {
+          totalDifferences: diffs.length,
+          criticalDifferences: diffs.filter(d => d.priority >= 90).length,
+          importantDifferences: diffs.filter(d => d.priority >= 60 && d.priority < 90).length,
+          minorDifferences: diffs.filter(d => d.priority < 60).length
+        },
+        files: {
+          a: a.file,
+          b: b.file
+        },
+        diffs
+      };
+    }
+
+    function classifyPriority(path) {
+      if (/projectWorld|assets\[\d+\]\.(worldX|worldY|worldW|worldH|slotRow|slotCol|zIndex|fitMode|visible)|frames\[\d+\]\.(x|y|w|h|rotation)|curves\[\d+\]/.test(path)) return 100;
+      if (/stageW|stageH|zoom|panX|panY|worldViewBounds|editorMinZoomMode|dynamicEditorMinZoom|activeFrameIndex|activeIdx/.test(path)) return 80;
+      if (/format|currentFormat|background|duration|timing|pause|easing|schemaVersion/.test(path)) return 70;
+      if (/file|generatedAt|lastModified|sanitizer/.test(path)) return 10;
+      return 40;
+    }
+
+    function tagForStatus(status) {
+      if (status === "different") return `<span class="tag diff">diferente</span>`;
+      if (status === "missing-in-A" || status === "missing-in-B") return `<span class="tag missing">ausente</span>`;
+      return `<span class="tag same">igual</span>`;
+    }
+
+    function renderDiffTable(report) {
+      const wrap = $("diffTableWrap");
+      if (!report || !report.diffs.length) {
+        wrap.innerHTML = `<div class="status ok">Nenhuma diferença estrutural detectada no snapshot leve.</div>`;
+        return;
+      }
+
+      const maxRows = 300;
+      const rows = report.diffs.slice(0, maxRows).map(diff => `
+        <tr>
+          <td>${tagForStatus(diff.status)}</td>
+          <td><code>${escapeHtml(diff.path)}</code></td>
+          <td>${escapeHtml(shortValue(diff.a))}</td>
+          <td>${escapeHtml(shortValue(diff.b))}</td>
+          <td>${diff.priority}</td>
+        </tr>
+      `).join("");
+
+      const more = report.diffs.length > maxRows
+        ? `<p class="small">Mostrando ${maxRows} de ${report.diffs.length} diferenças. Baixe o relatório completo.</p>`
+        : "";
+
+      wrap.innerHTML = `
+        ${more}
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Caminho</th>
+              <th>A original</th>
+              <th>B salvo</th>
+              <th>Prioridade</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function shortValue(value) {
+      const text = typeof value === "string" ? value : JSON.stringify(value);
+      if (text === undefined) return "undefined";
+      if (text.length > 220) return text.slice(0, 220) + "…";
+      return text;
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function renderSummary() {
+      const el = $("summary");
+      const a = state.snapshotA;
+      const b = state.snapshotB;
+      const r = state.report;
+      if (!a || !b || !r) {
+        el.innerHTML = "";
+        return;
+      }
+
+      const cards = [
+        ["Diferenças", r.summary.totalDifferences],
+        ["Críticas", r.summary.criticalDifferences],
+        ["Importantes", r.summary.importantDifferences],
+        ["Menores", r.summary.minorDifferences]
+      ];
+
+      el.innerHTML = cards.map(([k, v]) => `
+        <div class="card">
+          <div class="k">${k}</div>
+          <div class="v">${v}</div>
+        </div>
+      `).join("");
+    }
+
+    function downloadJSON(filename, data) {
+      const blob = new Blob([stableStringify(data)], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function safeFileBase(file, fallback) {
+      const name = (file && file.name ? file.name : fallback).replace(/\.[^.]+$/, "");
+      return name.replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 80) || fallback;
+    }
+
+    $("fileA").addEventListener("change", (event) => {
+      state.fileA = event.target.files[0] || null;
+      $("metaA").textContent = state.fileA
+        ? `${state.fileA.name}\n${formatBytes(state.fileA.size)}`
+        : "Nenhum arquivo selecionado.";
+    });
+
+    $("fileB").addEventListener("change", (event) => {
+      state.fileB = event.target.files[0] || null;
+      $("metaB").textContent = state.fileB
+        ? `${state.fileB.name}\n${formatBytes(state.fileB.size)}`
+        : "Nenhum arquivo selecionado.";
+    });
+
+    $("runBtn").addEventListener("click", async () => {
+      try {
+        if (!state.fileA || !state.fileB) {
+          setStatus("Selecione os dois arquivos antes de comparar.", "warn");
+          return;
+        }
+
+        setStatus("Lendo arquivos localmente…");
+        state.rawA = await readFile(state.fileA);
+        state.rawB = await readFile(state.fileB);
+
+        setStatus("Parseando JSON bruto…");
+        state.parsedA = maybeParseJSON(state.rawA);
+        state.parsedB = maybeParseJSON(state.rawB);
+
+        setStatus("Sanitizando snapshots leves…");
+        state.snapshotA = makeSnapshot(state.parsedA, {
+          name: state.fileA.name,
+          size: state.fileA.size,
+          lastModified: state.fileA.lastModified
+        });
+        state.snapshotB = makeSnapshot(state.parsedB, {
+          name: state.fileB.name,
+          size: state.fileB.size,
+          lastModified: state.fileB.lastModified
+        });
+
+        setStatus("Comparando snapshots…");
+        state.report = compareSnapshots(state.snapshotA, state.snapshotB);
+
+        const output = {
+          note: "Relatório gerado a partir dos JSONs brutos, sem abrir no app.",
+          report: state.report,
+          snapshotA: state.snapshotA,
+          snapshotB: state.snapshotB
+        };
+
+        $("snapshotOut").value = stableStringify(output);
+        renderDiffTable(state.report);
+        renderSummary();
+
+        $("downloadA").disabled = false;
+        $("downloadB").disabled = false;
+        $("downloadReport").disabled = false;
+
+        const kind = state.report.summary.criticalDifferences ? "bad" : state.report.summary.totalDifferences ? "warn" : "ok";
+        setStatus(
+          `Comparação concluída.\nDiferenças: ${state.report.summary.totalDifferences}\nCríticas: ${state.report.summary.criticalDifferences}\nImportantes: ${state.report.summary.importantDifferences}`,
+          kind
+        );
+      } catch (err) {
+        console.error(err);
+        setStatus(`Erro ao processar arquivos:\n${err && err.message ? err.message : String(err)}`, "bad");
+      }
+    });
+
+    $("downloadA").addEventListener("click", () => {
+      if (!state.snapshotA) return;
+      downloadJSON(`${safeFileBase(state.fileA, "arquivo-a")}-snapshot-leve.json`, state.snapshotA);
+    });
+
+    $("downloadB").addEventListener("click", () => {
+      if (!state.snapshotB) return;
+      downloadJSON(`${safeFileBase(state.fileB, "arquivo-b")}-snapshot-leve.json`, state.snapshotB);
+    });
+
+    $("downloadReport").addEventListener("click", () => {
+      if (!state.report) return;
+      downloadJSON(`arco-json-diff-report-${new Date().toISOString().replaceAll(":", "-")}.json`, {
+        report: state.report,
+        snapshotA: state.snapshotA,
+        snapshotB: state.snapshotB
+      });
+    });
+
+    $("clearBtn").addEventListener("click", () => {
+      state.fileA = null;
+      state.fileB = null;
+      state.rawA = null;
+      state.rawB = null;
+      state.parsedA = null;
+      state.parsedB = null;
+      state.snapshotA = null;
+      state.snapshotB = null;
+      state.report = null;
+
+      $("fileA").value = "";
+      $("fileB").value = "";
+      $("metaA").textContent = "Nenhum arquivo selecionado.";
+      $("metaB").textContent = "Nenhum arquivo selecionado.";
+      $("snapshotOut").value = "";
+      $("diffTableWrap").innerHTML = "";
+      $("summary").innerHTML = "";
+      $("downloadA").disabled = true;
+      $("downloadB").disabled = true;
+      $("downloadReport").disabled = true;
+      setStatus("Aguardando arquivos.");
+    });
+  </script>
+</body>
+</html>
