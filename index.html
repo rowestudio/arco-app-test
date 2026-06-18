@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZE — Diagnóstico observacional de reabertura visual: snapshots leves do load/render inicial para investigar diferença de viewport/render com JSON estruturalmente idêntico. Adiciona window.__ARCO_LOAD_VISUAL_DIAG__ com snapshots por fase (rawParsedJson, beforeProjectApply, afterActiveFrameRestore, afterProjectApply, afterMigrationOrNormalization, beforeFirstEditorRender, afterFirstEditorRender, afterFirstAnimationFrame), window.__ARCO_COMPARE_LOAD_VISUAL_DIAG__() e window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__(). Sem mudanças no motor de preview/export/save/curvas/frames/ProjectWorld/UI. base v8z4b30ZD. -->
 <!-- Arco Motion App — v8z4b30ZC — base v8z4b30ZA (a v8z4b30ZB foi mergeada, reprovada e revertida; NÃO é base e NÃO é reaplicada). Versão de diagnóstico seguro + proteção de regressão. Preserva exatamente o comportamento funcional da 30ZA e adiciona apenas observação para investigar tranco/piscada/pulo de câmera entre trechos, sem alterar matemática de câmera, Preview, Export ou render final. diag: trilha observacional de câmera por frame em Preview e Export (previewTrace*/exportTrace*: segmento ativo, fromFrame/toFrame, localT, câmera X/Y/W/H/rotation, amostra anterior, deltas, deltaMagnitude, render ms, assets desenhados/visíveis), capturada ao final de renderFrameSafely lendo diagnostics.renderState já calculado — não altera ctx/t/câmera/retorno. diag: detector passivo de pulo/piscada (jumpDetected/jumpType/jumpSegmentIndex/jumpFrameIndex/jump*Camera/jumpDelta*), classifica salto por segment-skip(>1), localT para trás, spike de delta de câmera/rotação acima da média local; reinício de loop é tratado como esperado (não sinaliza). diag: amostragem do segmento alvo Frame 3 → Frame 4 (segmentTraceTargetIndex=2) em localT 0.00…1.00 via getStateAtT (mesma câmera de Preview/Export), com curveHandle1/2, fromFrame/toFrame, deltas e marcação de suspiciousDelta no meio do segmento. diag: guardas de comportamento (exportBehaviorMatches30ZA/previewBehaviorMatches30ZA=true; exportFrameSamplingChanged/exportSegmentTimingChanged/exportCameraMathChanged/exportRendererChanged e equivalentes de preview = false). diag: auditoria observacional de caches/estado derivado (derivedStateDirty, segment/curve/assetBounds/previewCache). preserve: APP_VERSION/NAME=v8z4b30ZC, fundo #3c3c3b, ProjectWorld consistente, save/load de assets e frames em ProjectWorld, render sem filtro de slot, Preview/Export via World Renderer, WebCodecs, zoom dinâmico. NÃO altera UI/layout/cores/textos/ícones/menus, render math, evaluate camera, segmentIndex, localT, duração, pausa, easing, curva, Preview/Export playback, WebCodecs/muxer/encoder, ProjectWorld geometry, save/load, assets, addImageAsset, pan/zoom/touch, "Inverter sentido"; NÃO traz código da 30ZB sem auditoria. -->
 <!-- Arco Motion App — v8z4b30ZA — base v8z4b30Z. HOTFIX crítico e cirúrgico do sistema de coordenadas do ProjectWorld (mundo híbrido) + auditoria de render/câmera + estado de handles. fix(coords): ESTRATÉGIA A (preserveSavedWorld) — o ProjectWorld passa a ser um único sistema canônico ancorado em baseStageW/H. syncFirstImageAsset() NÃO redimensiona mais o asset principal (img-1) nem projectWorld.w/h com o Stage atual quando o projeto é multi-imagem (Stage vira apenas viewport/janela do editor); restoreProjectAssetsFromData() ancora projectWorld.w/h e o asset[0] em baseStage canônica no load, auto-curando inclusive arquivos da 30Z salvos já em estado híbrido (asset[0] em 374×561 enquanto baseStage/laterais em 341×512). Isso elimina a falha em que o asset do slot superior direito sumia/piscava no Preview/Export com 9 imagens. fix(handles): limpeza de estado transitório de drag (lockedDragSegmentIndex/CurveIndex/HandleType zerados ao soltar) e limpeza de dataset.arcoFi dos ghost handles ocultos (sem índice fantasma). diag: nova auditoria worldCoordinateStrategy/worldCoordinateSystemConsistent/mixedWorldScaleDetected/asset0MatchesWorldCoordinateSystem/allAssetsSameCoordinateSystem/frames-curvesMatchWorldCoordinateSystem; render transform real por asset (renderCamera*, renderWorldToCanvasScaleX/Y, assetRender[id].screen/flags, intersectsCamera, imageReady, cullingReason=none); cameraAssetCoordinateMismatch; ghostHandlesConsistent + ghostIn/OutExpected/Actual + activeFrameHasValidIn/OutHandle. preserve: APP_VERSION/NAME=v8z4b30ZA, fundo #3c3c3b, múltiplas imagens, save/load de assets e de frames em coordenadas absolutas do ProjectWorld, Preview/Export via World Renderer (exportUsedWorldRenderer=true, sem fallback), WebCodecs, zoom mínimo dinâmico, ausência de filtro por slot/selected asset/main image. NÃO altera UI/layout/cores/textos/ícones/menus, fluxo Inserir/Trocar imagem, reset, zoom dinâmico, pan/zoom/touch, WebCodecs/muxer/encoder, motor de curvas/easing/timing; sem Layers, sem cenas, sem "Inverter sentido", sem prompt/alert/confirm. -->
 <!-- Arco Motion App — v8z4b30V — base v8z4b30U. fix(ux): remove marcador visual de "exceder moldura" (borda vermelha no Stage + @keyframes stage-warn + class .out-of-bounds) — desnecessário no modelo ProjectWorld onde frames podem ultrapassar a imagem principal por design; isFrameOutside() preservada mas sem uso visual. fix(ux): tipo de visualização (viewMode: Normal/Isolamento/Mapa) passa a ser global — applyViewMode() aplica opacity ao imgEl E a todos os .world-extra-img do ProjectWorld; renderProjectWorldExtraImages() respeita viewMode ao criar elementos extras, garantindo consistência após rerenders. fix(ux): novo frame no ProjectWorld multi-imagem nasce próximo ao frame anterior sem ser clampado ao Stage da imagem principal — buildPendingFrameInsertion() usa _rawNewFrame diretamente quando isMultiImageWorldActive(), preservando clampNewFrameRectToStage para projetos de imagem única. fix(timeline): selecionar trecho na faixa de frames não dispara mais centralização automática — selectSegmentContext() passa a definir lowerTimelineCenterFrameIndex = activeIdx (valor válido) em vez de -1, evitando que renderAll() acione centerLowerTimelineOnFrame indevidamente; apenas seleção de frame continua centralizando a pill. fix(diag): painel Diagnóstico exibe o zoom mínimo efetivo (getEditorMinZoom(), valor dinâmico em ProjectWorld multi-imagem) em vez do MIN_EDITOR_ZOOM fixo (0.5000), eliminando a inconsistência onde "zoom mínimo" mostrava 0.5000 enquanto "dynamicEditorMinZoom" mostrava 0.2711. preserve: exportação MP4 multi-imagem (exportUsedWorldRenderer/fallback), Preview/Export, motor de curvas/frames, WebCodecs/FPS/muxer, touch/pan/zoom, suporte iPhone/Safari, isFrameOutside(), clampNewFrameRectToStage (projetos com 1 imagem), cores/textos/ícones aprovados; sem painel de layers, sem edição livre de posição/escala, sem prompt/alert/confirm. -->
@@ -6695,8 +6696,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZD';
-const APP_VERSION_NAME = 'v8z4b30ZD';
+const APP_VERSION = 'v8z4b30ZE';
+const APP_VERSION_NAME = 'v8z4b30ZE';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -24588,6 +24589,7 @@ function loadProjectFromJson() {
   if (!ta || !ta.value.trim()) { showStatus('Cole o JSON primeiro'); return; }
   try {
     const data = JSON.parse(ta.value.trim());
+    if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__captureRawParsedJson(data); // v8z4b30ZE diag
     ta.value = '';
     closeAll();
     applyProjectData(data);
@@ -24610,6 +24612,7 @@ function loadProjectFromFile(e) {
   reader.onload = evt => {
     try {
       const data = JSON.parse(evt.target.result);
+      if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__captureRawParsedJson(data); // v8z4b30ZE diag
       applyProjectData(data);
     } catch(err) {
       // v8z4b18o — log diagnóstico para facilitar debugging sem expor UI complexa
@@ -24831,6 +24834,7 @@ function normalizeImportedFramePauses(projectData, frameCount) {
 function applyFrameData(data) {
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   clearFrameMultiSelectState();
+  if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__capturePhase('beforeProjectApply'); // v8z4b30ZE diag
   data = migrateLegacyProjectData(data);
   // v8z4b24a — reset zoom/pan de edição ao carregar projeto (não é dado do projeto)
   resetEditorZoom();
@@ -24891,6 +24895,7 @@ function applyFrameData(data) {
   syncRatioUI();
 
   if (imgNatW) { layoutStage(); setupPreviewCanvas(); }
+  if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__capturePhase('afterActiveFrameRestore'); // v8z4b30ZE diag
 
   if (imgNatW && data.imageAR) {
     const curAR = imgNatW / imgNatH;
@@ -25023,6 +25028,7 @@ function applyFrameData(data) {
     };
     console.info('[Arco v8z4b21a] curvesV2 restaurado do JSON');
   }
+  if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__capturePhase('afterProjectApply'); // v8z4b30ZE diag
   segDurations.length = 0;
   (data.segDurations || []).forEach(v => segDurations.push(v));
   ensureSegDurations(); // v8z4b17r — preencher valores ausentes com defaults
@@ -25091,6 +25097,7 @@ function applyFrameData(data) {
   // frameCount carregado evita herdar easings de um projeto anterior.
   segEasings.length = 0;
   ensureSegEasings();
+  if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__capturePhase('afterMigrationOrNormalization'); // v8z4b30ZE diag
 
   const durSlider = document.getElementById('durSlider');
   if (durSlider) durSlider.value = duration;
@@ -25107,7 +25114,9 @@ function applyFrameData(data) {
   // imagens). syncFirstImageAsset() já sincronizou o asset principal antes
   // de applyFrameData() ser chamado.
   if (imgNatW) restoreProjectAssetsFromData(data);
+  if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__captureBeforeRender(); // v8z4b30ZE diag
   renderAll();
+  if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__captureAfterRender(); // v8z4b30ZE diag
   updateFrameSelector();
   requestLowerTimelineCenter(activeIdx);
   updateToolbarLabels();
@@ -29593,6 +29602,304 @@ syncRatioUI();
 
 // v8z4b22e — Inicializar barra fixa de inserção assistida (única origem de Confirmar/Cancelar)
 initInsertionActionBar();
+
+// ═══════════════════════════════════════
+// v8z4b30ZE — DIAGNÓSTICO OBSERVACIONAL DE REABERTURA VISUAL
+// Snapshots leves do pipeline load→render para localizar onde JSON idêntico
+// produz render visual diferente. Sem base64, sem canvas, sem alteração de UI.
+// API pública: window.__ARCO_LOAD_VISUAL_DIAG__  (objeto de snapshots)
+//              window.__ARCO_COMPARE_LOAD_VISUAL_DIAG__()  (comparador)
+//              window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__()  (download JSON)
+// ═══════════════════════════════════════
+(function () {
+  var _snaps = {};
+  var _notes = [];
+
+  function _safeRect(el) {
+    if (!el || !el.getBoundingClientRect) return null;
+    try { var r = el.getBoundingClientRect(); return { left: r.left, top: r.top, width: r.width, height: r.height }; }
+    catch (_) { return null; }
+  }
+
+  function _framesSample(framesArr, aidx) {
+    if (!Array.isArray(framesArr) || !framesArr.length) return [];
+    var idxs = [0, 1, 2, (aidx || 0), framesArr.length - 1];
+    var seen = {}, result = [];
+    idxs.forEach(function (i) {
+      if (i < 0 || i >= framesArr.length || seen[i]) return;
+      seen[i] = true;
+      var f = framesArr[i];
+      if (!f) return;
+      var rot = (typeof frameRotations !== 'undefined' && frameRotations) ? (frameRotations[i] || 0) : 0;
+      result.push({ i: i, x: f.x, y: f.y, w: f.w, h: f.h, rotation: rot });
+    });
+    return result;
+  }
+
+  function _cv2Snap(cv2) {
+    if (!cv2) return null;
+    var inH = (cv2.frameHandles && cv2.frameHandles.in) || [];
+    var outH = (cv2.frameHandles && cv2.frameHandles.out) || [];
+    var aidx = (typeof activeIdx !== 'undefined') ? activeIdx : 0;
+    var idxs = [0, 1, 2, aidx, inH.length - 1];
+    var seen = {}, inSample = [], outSample = [];
+    idxs.forEach(function (i) {
+      if (i < 0 || i >= inH.length || seen[i]) return;
+      seen[i] = true;
+      inSample.push(inH[i] ? { i: i, dx: inH[i].dx, dy: inH[i].dy } : { i: i, null: true });
+      outSample.push(outH[i] ? { i: i, dx: outH[i].dx, dy: outH[i].dy } : { i: i, null: true });
+    });
+    return { version: cv2.version, mode: cv2.mode, inLength: inH.length, outLength: outH.length, inSample: inSample, outSample: outSample };
+  }
+
+  function _snapGeometry(phase) {
+    var s = { phase: phase, ts: Date.now() };
+    s.stageW           = (typeof stageW !== 'undefined') ? stageW : null;
+    s.stageH           = (typeof stageH !== 'undefined') ? stageH : null;
+    s.editorZoomScale  = (typeof editorZoomScale !== 'undefined') ? editorZoomScale : null;
+    s.editorPanX       = (typeof editorPanX !== 'undefined') ? editorPanX : null;
+    s.editorPanY       = (typeof editorPanY !== 'undefined') ? editorPanY : null;
+    s.activeIdx        = (typeof activeIdx !== 'undefined') ? activeIdx : null;
+    s.frameCount       = (typeof frameCount !== 'undefined') ? frameCount : null;
+    s.imgNatW          = (typeof imgNatW !== 'undefined') ? imgNatW : null;
+    s.imgNatH          = (typeof imgNatH !== 'undefined') ? imgNatH : null;
+    s.currentRatio     = (typeof currentRatio !== 'undefined') ? currentRatio : null;
+    s.editorMinZoomMode = (typeof editorMinZoomMode !== 'undefined') ? editorMinZoomMode : null;
+    s.dynamicEditorMinZoom = (typeof getEditorMinZoom === 'function') ? (function(){ try { return getEditorMinZoom(); } catch(_){ return null; } })() : null;
+
+    if (typeof projectWorld !== 'undefined' && projectWorld) {
+      s.projectWorld = { initialized: projectWorld.initialized, x: projectWorld.x, y: projectWorld.y, w: projectWorld.w, h: projectWorld.h, baseStageW: projectWorld.baseStageW, baseStageH: projectWorld.baseStageH };
+    } else { s.projectWorld = null; }
+
+    s.assetsCount = (typeof assets !== 'undefined' && Array.isArray(assets)) ? assets.length : null;
+
+    if (typeof frames !== 'undefined') { s.framesSample = _framesSample(frames, s.activeIdx); }
+
+    s.ctrlPtsLength = (typeof ctrlPts !== 'undefined') ? ctrlPts.length : null;
+    s.curvesV2 = (typeof curvesV2 !== 'undefined') ? _cv2Snap(curvesV2) : null;
+    s.framesAbsLength = (typeof frames !== 'undefined') ? frames.length : null;
+    s.framesNormLength = null;
+
+    var stEl = (typeof stage !== 'undefined') ? stage : document.getElementById('stage');
+    var imEl = (typeof imgEl !== 'undefined') ? imgEl : document.getElementById('imgEl');
+    var iaEl = (typeof imageArea !== 'undefined') ? imageArea : document.getElementById('imageArea');
+    s.stageBCR    = _safeRect(stEl);
+    s.imgElBCR    = _safeRect(imEl);
+    s.imageAreaBCR = _safeRect(iaEl);
+
+    s.innerWidth  = window.innerWidth;
+    s.innerHeight = window.innerHeight;
+    s.devicePixelRatio = window.devicePixelRatio;
+    if (window.visualViewport) {
+      s.visualViewportWidth  = window.visualViewport.width;
+      s.visualViewportHeight = window.visualViewport.height;
+      s.visualViewportScale  = window.visualViewport.scale;
+    }
+    return s;
+  }
+
+  function _snapFromJson(data) {
+    if (!data) return null;
+    var s = { ts: Date.now() };
+    s.detectedVersionFromJson = data.appVersion || data.version || null;
+    s.currentRatio  = data.currentRatio || null;
+    s.frameCount    = data.frameCount || null;
+    s.activeIdx     = data.activeIdx || 0;
+    s.hasImage      = !!data.hasImage;
+    s.imageAR       = data.imageAR || null;
+    s.imageARLabel  = data.imageARLabel || null;
+    s.assetsCount   = Array.isArray(data.assets) ? data.assets.length : 0;
+    s.projectWorld  = data.projectWorld ? { initialized: data.projectWorld.initialized, x: data.projectWorld.x, y: data.projectWorld.y, w: data.projectWorld.w, h: data.projectWorld.h, baseStageW: data.projectWorld.baseStageW, baseStageH: data.projectWorld.baseStageH } : null;
+
+    if (Array.isArray(data.framesAbs) && data.framesAbs.length > 0) {
+      var fa = data.framesAbs; var aidx = data.activeIdx || 0;
+      var idxs = [0, 1, 2, aidx, fa.length - 1]; var seen = {};
+      s.framesAbsLength = fa.length; s.framesAbsSample = [];
+      idxs.forEach(function (i) { if (i < 0 || i >= fa.length || seen[i]) return; seen[i] = true; s.framesAbsSample.push({ i: i, x: fa[i].x, y: fa[i].y, w: fa[i].w, h: fa[i].h, rotation: fa[i].rotation || 0 }); });
+    }
+    if (Array.isArray(data.framesNorm) && data.framesNorm.length > 0) {
+      var fn = data.framesNorm; var aidx2 = data.activeIdx || 0;
+      var idxs2 = [0, 1, 2, aidx2, fn.length - 1]; var seen2 = {};
+      s.framesNormLength = fn.length; s.framesNormSample = [];
+      idxs2.forEach(function (i) { if (i < 0 || i >= fn.length || seen2[i]) return; seen2[i] = true; s.framesNormSample.push({ i: i, nx: fn[i].nx, ny: fn[i].ny, nw: fn[i].nw, nh: fn[i].nh }); });
+    }
+
+    s.ctrlPtsLength        = Array.isArray(data.ctrlPts) ? data.ctrlPts.length : null;
+    s.frameRotationsLength = Array.isArray(data.frameRotations) ? data.frameRotations.length : null;
+    s.curvesV2 = data.curvesV2 ? (function () {
+      var inH = (data.curvesV2.frameHandles && data.curvesV2.frameHandles.in) || [];
+      var outH = (data.curvesV2.frameHandles && data.curvesV2.frameHandles.out) || [];
+      var aidx3 = data.activeIdx || 0;
+      var idxs3 = [0, 1, 2, aidx3, inH.length - 1]; var seen3 = {}; var inSmp = []; var outSmp = [];
+      idxs3.forEach(function (i) { if (i < 0 || i >= inH.length || seen3[i]) return; seen3[i] = true; inSmp.push(inH[i] ? { i: i, dx: inH[i].dx, dy: inH[i].dy } : { i: i, null: true }); outSmp.push(outH[i] ? { i: i, dx: outH[i].dx, dy: outH[i].dy } : { i: i, null: true }); });
+      return { version: data.curvesV2.version, mode: data.curvesV2.mode, inLength: inH.length, outLength: outH.length, inSample: inSmp, outSample: outSmp };
+    })() : null;
+    return s;
+  }
+
+  function _snapStorage() {
+    var result = { localStorage: [], sessionStorage: [] };
+    var kw = ['arco', 'kenburns', 'editor', 'stage', 'zoom', 'pan', 'viewport', 'autosave', 'project'];
+    function scanStore(store, key) {
+      try {
+        for (var i = 0; i < store.length; i++) {
+          var k = store.key(i); if (!k) continue;
+          if (kw.some(function (w) { return k.toLowerCase().indexOf(w) >= 0; })) {
+            var v = store.getItem(k);
+            var e = { key: k, length: v ? v.length : 0 };
+            if (v && v.length <= 300) e.value = v; else if (v) e.prefix = v.substring(0, 100);
+            result[key].push(e);
+          }
+        }
+      } catch (err) { result[key + 'Error'] = String(err); }
+    }
+    scanStore(localStorage, 'localStorage');
+    scanStore(sessionStorage, 'sessionStorage');
+    return result;
+  }
+
+  var D = {
+    snapshots: _snaps,
+    notes: _notes,
+
+    __reset: function () {
+      Object.keys(_snaps).forEach(function (k) { delete _snaps[k]; });
+      _notes.length = 0;
+    },
+
+    __captureRawParsedJson: function (data) {
+      this.__reset();
+      _snaps.rawParsedJson = _snapFromJson(data);
+      _snaps.rawParsedJson._storage = _snapStorage();
+      _snaps.rawParsedJson._appStateBefore = _snapGeometry('_appStateBefore');
+    },
+
+    __capturePhase: function (phase) {
+      _snaps[phase] = _snapGeometry(phase);
+    },
+
+    __captureBeforeRender: function () {
+      _snaps.beforeFirstEditorRender = _snapGeometry('beforeFirstEditorRender');
+      _snaps.beforeFirstEditorRender.firstRenderStartedAt = Date.now();
+    },
+
+    __captureAfterRender: function () {
+      _snaps.afterFirstEditorRender = _snapGeometry('afterFirstEditorRender');
+      _snaps.afterFirstEditorRender.firstRenderFinishedAt = Date.now();
+      requestAnimationFrame(function () {
+        _snaps.afterFirstAnimationFrame = _snapGeometry('afterFirstAnimationFrame');
+        _snaps.afterFirstAnimationFrame.rafAt = Date.now();
+        console.info('[Arco Load Visual Diag] ready: use window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__()');
+      });
+    }
+  };
+
+  window.__ARCO_LOAD_VISUAL_DIAG__ = D;
+
+  // ── Comparador ──────────────────────────────────────────────────────────────
+  window.__ARCO_COMPARE_LOAD_VISUAL_DIAG__ = function () {
+    var EPS = 0.000001;
+    var diffs = [], missing = [];
+
+    function nd(label, a, b) {
+      if (a == null && b == null) return;
+      if (a == null || b == null) { diffs.push({ field: label, a: a, b: b, note: 'one_null' }); return; }
+      if (typeof a === 'number' && typeof b === 'number') {
+        if (Math.abs(a - b) > EPS) diffs.push({ field: label, a: a, b: b, delta: b - a });
+      } else if (a !== b) { diffs.push({ field: label, a: a, b: b, note: 'changed' }); }
+    }
+
+    function cmpPair(nameA, nameB, sA, sB) {
+      if (!sA) { missing.push(nameA); return; }
+      if (!sB) { missing.push(nameB); return; }
+      var p = '[' + nameA + '→' + nameB + ']';
+      nd('stageW' + p, sA.stageW, sB.stageW);
+      nd('stageH' + p, sA.stageH, sB.stageH);
+      nd('activeIdx' + p, sA.activeIdx, sB.activeIdx);
+      nd('editorZoomScale' + p, sA.editorZoomScale, sB.editorZoomScale);
+      nd('editorPanX' + p, sA.editorPanX, sB.editorPanX);
+      nd('editorPanY' + p, sA.editorPanY, sB.editorPanY);
+      if (sA.projectWorld || sB.projectWorld) {
+        var pwA = sA.projectWorld || {}; var pwB = sB.projectWorld || {};
+        ['initialized', 'x', 'y', 'w', 'h', 'baseStageW', 'baseStageH'].forEach(function (k) { nd('projectWorld.' + k + p, pwA[k], pwB[k]); });
+      }
+      if (sA.framesSample && sB.framesSample) {
+        var fa = sA.framesSample; var fb = sB.framesSample;
+        for (var i = 0; i < Math.min(fa.length, fb.length); i++) {
+          if (!fa[i] || !fb[i] || fa[i].i !== fb[i].i) continue;
+          var fp = 'frames[' + fa[i].i + ']' + p;
+          nd(fp + '.x', fa[i].x, fb[i].x); nd(fp + '.y', fa[i].y, fb[i].y);
+          nd(fp + '.w', fa[i].w, fb[i].w); nd(fp + '.h', fa[i].h, fb[i].h);
+        }
+      }
+      if (sA.stageBCR && sB.stageBCR) {
+        nd('stageBCR.width' + p, sA.stageBCR.width, sB.stageBCR.width);
+        nd('stageBCR.height' + p, sA.stageBCR.height, sB.stageBCR.height);
+      }
+    }
+
+    var s = _snaps;
+
+    // raw JSON vs afterProjectApply
+    if (s.rawParsedJson && s.afterProjectApply) {
+      var rPW = s.rawParsedJson.projectWorld || {}; var aPW = s.afterProjectApply.projectWorld || {};
+      ['baseStageW', 'baseStageH', 'initialized', 'w', 'h'].forEach(function (k) { nd('projectWorld.' + k + '[raw→afterApply]', rPW[k], aPW[k]); });
+      nd('activeIdx[raw→afterApply]', s.rawParsedJson.activeIdx, s.afterProjectApply.activeIdx);
+      nd('frameCount[raw→afterApply]', s.rawParsedJson.frameCount, s.afterProjectApply.frameCount);
+      // framesAbs vs afterProjectApply.frames
+      if (s.rawParsedJson.framesAbsSample && s.afterProjectApply.framesSample) {
+        var rawF = s.rawParsedJson.framesAbsSample; var appF = s.afterProjectApply.framesSample;
+        for (var ri = 0; ri < Math.min(rawF.length, appF.length); ri++) {
+          if (!rawF[ri] || !appF[ri] || rawF[ri].i !== appF[ri].i) continue;
+          var rp = 'frames[' + rawF[ri].i + '][raw→afterApply]';
+          nd(rp + '.x', rawF[ri].x, appF[ri].x); nd(rp + '.y', rawF[ri].y, appF[ri].y);
+          nd(rp + '.w', rawF[ri].w, appF[ri].w); nd(rp + '.h', rawF[ri].h, appF[ri].h);
+        }
+      }
+    }
+
+    cmpPair('afterProjectApply', 'afterMigrationOrNormalization', s.afterProjectApply, s.afterMigrationOrNormalization);
+    cmpPair('afterMigrationOrNormalization', 'beforeFirstEditorRender', s.afterMigrationOrNormalization, s.beforeFirstEditorRender);
+    cmpPair('beforeFirstEditorRender', 'afterFirstEditorRender', s.beforeFirstEditorRender, s.afterFirstEditorRender);
+    cmpPair('afterFirstEditorRender', 'afterFirstAnimationFrame', s.afterFirstEditorRender, s.afterFirstAnimationFrame);
+
+    return {
+      diffs: diffs,
+      diffsCount: diffs.length,
+      missingPhases: missing,
+      capturedPhases: Object.keys(s),
+      summary: 'diffs: ' + diffs.length + ' | phases: ' + Object.keys(s).join(', ')
+    };
+  };
+
+  // ── Download ─────────────────────────────────────────────────────────────────
+  window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__ = function () {
+    var av = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : 'unknown';
+    var payload = {
+      appVersion: av,
+      userAgent: navigator.userAgent,
+      devicePixelRatio: window.devicePixelRatio,
+      innerWidth: window.innerWidth,
+      innerHeight: window.innerHeight,
+      generatedAt: new Date().toISOString(),
+      snapshots: _snaps,
+      compareResult: window.__ARCO_COMPARE_LOAD_VISUAL_DIAG__(),
+      notes: _notes
+    };
+    var ts = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+    var fname = 'arco-load-visual-diag-' + av + '-' + ts + '.json';
+    try {
+      var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch (_) {} }, 2000);
+    } catch (err) { console.error('[Arco Load Visual Diag] download failed:', err); }
+  };
+
+})();
+// ═══════════════════════════════════════
 
 
 </script>
