@@ -6743,6 +6743,7 @@ let previewRenderSource = null;
 let previewRenderSourceKey = '';
 let previewLoopToken = 0;
 let previewPerfStats = null;
+let previewRendererPreparedForCurrentState = false; // v8z4b30ZI — flag de preflight assíncrono
 
 // v8z4b30N — Múltiplas imagens (fase 1): ProjectWorld passa a aceitar
 // imagens adicionais reais, posicionadas em um esquema 3x3 relativo ao
@@ -19506,7 +19507,20 @@ function startPreview() {
     }
     animFrame = requestAnimationFrame(loop);
   }
-  animFrame = requestAnimationFrame(loop);
+  // v8z4b30ZI — preflight assíncrono: decode de assets + warm-up real antes do relógio visível.
+  (async function _previewPreflightAndStartZI() {
+    await _preparePreviewRendererZI(pCtx, dispCanvas, pW2, pH2, totalPF, previewSource, _warmupSeg2T);
+    if (!isPreviewing || token !== previewLoopToken) return; // guard: usuário fechou antes do preflight terminar
+    // Preflight concluído: marcar warm-up do loop como feito (skip fase in-loop)
+    _warmupLeft = 0;
+    _previewWarmupCompleted = true;
+    _previewStartedAfterWarmup = true;
+    if (!_previewWarmupEndedAt) {
+      _previewWarmupEndedAt = performance.now();
+      _previewWarmupDurationMs = _previewWarmupEndedAt - (_previewWarmupStartedAt || _previewWarmupEndedAt);
+    }
+    animFrame = requestAnimationFrame(loop);
+  })();
 }
 
 function stopPreview() {
@@ -19677,6 +19691,7 @@ function resetPreviewPlaybackState() {
   animStart = null;
   pausedElapsed = 0;
   resetPreviewClock(); // v8z4b30ZH — limpa o relógio visual limitado do Preview
+  previewRendererPreparedForCurrentState = false; // v8z4b30ZI — invalida preflight ao fechar Preview
   document.body.classList.remove('previewing');
   // Restaurar ícone/botão Play no Stage
   try { updatePlayButton(); } catch(e) {}
@@ -26441,6 +26456,74 @@ const SEGMENT_TRACE_TARGET_LABEL = 'Frame 3 → Frame 4';
 const JUMP_DELTA_RATIO_THRESHOLD = 3.0;             // delta > 3x média local ⇒ suspeito
 const JUMP_ROT_RATIO_THRESHOLD = 3.0;
 const JUMP_MIN_SAMPLES = 4;                         // janela mínima antes de comparar média
+
+// ── v8z4b30ZI — Preflight assíncrono do renderer do Preview ─────────────────
+// Corrige o tranco da primeira passada fazendo decode de assets e warm-up real
+// do renderer ANTES de iniciar o relógio visível do playback.
+// NÃO altera Export, Save/Load, JSON, frames, curvas, assets ou UI.
+function _nextAnimFrameAsync() {
+  return new Promise(function(r) { requestAnimationFrame(r); });
+}
+
+async function _decodePreviewAssetsBestEffort() {
+  try {
+    const _imgs = [];
+    const _canon = (typeof getCanonicalRenderSource === 'function') ? getCanonicalRenderSource() : null;
+    if (_canon && typeof HTMLImageElement !== 'undefined' && _canon instanceof HTMLImageElement) _imgs.push(_canon);
+    if (typeof previewRenderSource !== 'undefined' && previewRenderSource &&
+        typeof HTMLImageElement !== 'undefined' && previewRenderSource instanceof HTMLImageElement &&
+        _imgs.indexOf(previewRenderSource) < 0) {
+      _imgs.push(previewRenderSource);
+    }
+    if (typeof imgEl !== 'undefined' && imgEl &&
+        typeof HTMLImageElement !== 'undefined' && imgEl instanceof HTMLImageElement &&
+        _imgs.indexOf(imgEl) < 0) {
+      _imgs.push(imgEl);
+    }
+    for (let _i = 0; _i < _imgs.length; _i++) {
+      try { await _imgs[_i].decode(); } catch (_e) { /* Safari/fallback: não bloqueia */ }
+    }
+  } catch (_e) { /* decode falhou mas nunca bloqueia play */ }
+}
+
+function _buildPreviewWarmupTimesZI(warmupSeg2T) {
+  const _ts = [0];
+  if (warmupSeg2T != null) {
+    try {
+      const _w = (typeof _segGlobalTimeWindow30ZC === 'function')
+        ? _segGlobalTimeWindow30ZC(SEGMENT_TRACE_TARGET_INDEX) : null;
+      if (_w && _w.fullDur > 0) {
+        _ts.push(Math.max(0, _w.startAbs / _w.fullDur));
+        _ts.push(Math.max(0, Math.min(1, (_w.startAbs + _w.segDur * 0.5) / _w.fullDur)));
+        _ts.push(Math.max(0, Math.min(1, (_w.startAbs + _w.segDur) / _w.fullDur)));
+      }
+    } catch (_e) {}
+    if (_ts.indexOf(warmupSeg2T) < 0) _ts.push(warmupSeg2T);
+  }
+  return _ts.map(function(v) { return Math.max(0, Math.min(1, v)); });
+}
+
+async function _preparePreviewRendererZI(pCtx, dispCanvas, pW2, pH2, totalPF, previewSrc, warmupSeg2T) {
+  if (previewRendererPreparedForCurrentState) return;
+  await _decodePreviewAssetsBestEffort();
+  const _times = _buildPreviewWarmupTimesZI(warmupSeg2T);
+  for (let _i = 0; _i < _times.length; _i++) {
+    try {
+      const _t = _times[_i];
+      const _fi = Math.round(_t * Math.max(1, totalPF - 1));
+      renderFrameSafely(pCtx, dispCanvas, _t, pW2, pH2, totalPF, _fi, { renderSource: previewSrc });
+    } catch (_e) { /* warm-up nunca propaga */ }
+  }
+  // Dá chance ao Safari de efetivar composição/render antes do play visível.
+  await _nextAnimFrameAsync();
+  await _nextAnimFrameAsync();
+  // Volta para t=0 antes do relógio visível começar.
+  try {
+    renderFrameSafely(pCtx, dispCanvas, 0, pW2, pH2, totalPF, 0, { renderSource: previewSrc });
+  } catch (_e) {}
+  previewRendererPreparedForCurrentState = true;
+}
+// ── fim v8z4b30ZI ────────────────────────────────────────────────────────────
 
 function freshCameraTraceState30ZC(kind) {
   return {
