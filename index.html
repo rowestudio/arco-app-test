@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZH — fix(preview): o Preview de tempo real passa a usar avanço temporal LIMITADO para eliminar o engasgo/pulinho entre Frame 3 e Frame 4 (diagnosticado como rotation-delta-spike no Preview). Separa o tempo real bruto do requestAnimationFrame (ts) do tempo VISUAL exibido (previewElapsedMs): a cada frame calcula rawDt = ts - previewLastNow, limita a PREVIEW_MAX_DT_MS (1000/30 ≈ 33.333ms) e acumula previewElapsedMs += clampedDt; t = (previewElapsedMs % dur)/dur. No primeiro frame após início/replay/retomada apenas ancora previewLastNow e desenha t=0 (sem catch-up após pausa longa / troca de aba / travada do Safari). Aplicado aos três loops de playback em tempo real do Preview (startPreview, retomada em togglePreviewPlayback e loopAfter pós-export); helpers advancePreviewClockMs/resetPreviewClock e diagnóstico opcional debugPreviewClock atrás da flag DEBUG_PREVIEW_CLOCK (off em produção: mede rawDt/clampedDt, globalT, segmentIndex, localT e delta de rotação entre frames exibidos). Se o aparelho engasgar, o Preview atrasa levemente em vez de pular. NÃO altera Export (render determinístico por frame), motor de interpolação/getStateAtT, Save, Load, ProjectWorld, framesAbs/framesNorm, assets, curvas, easing, JSON, UI/textos/cores/ícones, nem a correção de reabertura da 30ZG. base v8z4b30ZG. -->
 <!-- Arco Motion App — v8z4b30ZG — Corrigida instabilidade de reabertura visual: ProjectWorld salvo é preservado durante todo o load (syncFirstImageAsset não sobrescreve baseStageW/H quando projectWorld.initialized===true com baseStageW/H válidos); primeiro render do editor aguarda Stage com medida válida (guard de stageBCR com até 3 requestAnimationFrame); transformação ProjectWorld→Stage aplicada no editor para frames, handles e bezier (scale = min(stageW/baseStageW, stageH/baseStageH), offset centralizado). Diagnósticos: projectWorldMutationDuringLoad, projectWorldPreservedDuringLoad, firstEditorRenderDeferredUntilStageReady, firstEditorRenderStageBcrValid, editorProjectToStageTransformActive e derivados. Sem alterações em Preview, Export, Save, frames, curvas ou ProjectWorld salvo. base v8z4b30ZF. -->
 <!-- Arco Motion App — v8z4b30ZF — Adicionado botão discreto no painel de diagnóstico para baixar o JSON completo do diagnóstico de abertura no iPhone/Safari. Botão "Baixar diagnóstico de abertura" chama window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__() com fallback robusto: Blob+download, nova aba com JSON em texto puro (iOS), clipboard opcional. Sem alterações em preview, export, save, load, ProjectWorld, frames ou curvas. base v8z4b30ZE. -->
 <!-- Arco Motion App — v8z4b30ZE — Diagnóstico observacional de reabertura visual: snapshots leves do load/render inicial para investigar diferença de viewport/render com JSON estruturalmente idêntico. Adiciona window.__ARCO_LOAD_VISUAL_DIAG__ com snapshots por fase (rawParsedJson, beforeProjectApply, afterActiveFrameRestore, afterProjectApply, afterMigrationOrNormalization, beforeFirstEditorRender, afterFirstEditorRender, afterFirstAnimationFrame), window.__ARCO_COMPARE_LOAD_VISUAL_DIAG__() e window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__(). Sem mudanças no motor de preview/export/save/curvas/frames/ProjectWorld/UI. base v8z4b30ZD. -->
@@ -6701,8 +6702,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZG';
-const APP_VERSION_NAME = 'v8z4b30ZG';
+const APP_VERSION = 'v8z4b30ZH';
+const APP_VERSION_NAME = 'v8z4b30ZH';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -19176,6 +19177,80 @@ function togglePlay() {
 // Tempo pausado acumulado — para retomar do ponto certo
 let pausedElapsed = 0;
 
+// ── v8z4b30ZH — Relógio do Preview com avanço temporal limitado ────────────
+// PROBLEMA: o Preview derivava t diretamente do tempo real bruto
+// (ts - animStart). Em iPhone/Safari, uma queda de frame, troca de aba ou
+// travada momentânea produz um deltaTime grande de uma só vez, fazendo o tempo
+// visual atravessar um trecho crítico num único passo. Entre Frame 3 e Frame 4
+// isso aparecia como rotation-delta-spike (engasgo/pulinho visual), embora o
+// estado matemático e o vídeo exportado estejam corretos.
+// CORREÇÃO (apenas Preview): separar o tempo real bruto vindo de
+// requestAnimationFrame do tempo VISUAL exibido. O tempo visual passa a ser
+// acumulado com deltas LIMITADOS a um teto seguro (previewElapsedMs += dt).
+// Assim, se o aparelho engasgar, o Preview atrasa levemente em vez de pular.
+// O Export NÃO usa este relógio — continua determinístico por frame.
+const PREVIEW_MAX_DT_MS = 1000 / 30;   // teto de avanço por passo (~33.333ms)
+const DEBUG_PREVIEW_CLOCK = false;     // diagnóstico do relógio (flag, off em produção)
+let previewLastNow = null;             // último ts de rAF que avançou o relógio do Preview
+let previewElapsedMs = 0;              // tempo visual acumulado (clamped), não-wrapped
+let _previewClockLastRot = null;       // diag: rotação do frame exibido anterior
+
+// Avança o tempo visual do Preview a partir do timestamp de rAF, limitando o
+// delta a PREVIEW_MAX_DT_MS. Retorna previewElapsedMs (não-wrapped). No primeiro
+// frame após (re)início apenas ancora previewLastNow e não avança — desenha t=0
+// e evita catch-up instantâneo após pausa longa / troca de aba / travamento.
+function advancePreviewClockMs(ts) {
+  if (previewLastNow == null) {
+    previewLastNow = ts;
+    return previewElapsedMs;
+  }
+  let rawDt = ts - previewLastNow;
+  previewLastNow = ts;
+  if (!Number.isFinite(rawDt) || rawDt < 0) rawDt = 0;
+  const clampedDt = Math.min(rawDt, PREVIEW_MAX_DT_MS);
+  previewElapsedMs += clampedDt;
+  if (DEBUG_PREVIEW_CLOCK && rawDt > 50) {
+    console.info('[PreviewClock] rawDt alto (clamp aplicado)', {
+      rawDt: +rawDt.toFixed(1),
+      clampedDt: +clampedDt.toFixed(1),
+      previewElapsedMs: +previewElapsedMs.toFixed(1)
+    });
+  }
+  return previewElapsedMs;
+}
+
+// Reinicia o relógio do Preview (início/replay/pós-export). Faz o primeiro
+// frame seguinte desenhar t=0 e re-ancorar previewLastNow.
+function resetPreviewClock() {
+  previewLastNow = null;
+  previewElapsedMs = 0;
+  _previewClockLastRot = null;
+}
+
+// Diagnóstico opcional (flag) do relógio do Preview: mede o salto de rotação
+// entre frames exibidos, junto do trecho/localT atual. Como getStateAtT só é
+// chamado quando DEBUG_PREVIEW_CLOCK está ligado, não há custo em produção.
+function debugPreviewClock(globalT) {
+  if (!DEBUG_PREVIEW_CLOCK) return;
+  try {
+    const info = (typeof getSegAndLocalTAtTime === 'function') ? getSegAndLocalTAtTime(globalT) : null;
+    const st = (typeof getStateAtT === 'function') ? getStateAtT(globalT) : null;
+    const rot = st ? st.rot : null;
+    let dRot = null;
+    if (rot != null && _previewClockLastRot != null) dRot = rot - _previewClockLastRot;
+    _previewClockLastRot = rot;
+    if (dRot != null && Math.abs(dRot) > 1.0) {
+      console.info('[PreviewClock] rotation-delta entre frames exibidos', {
+        globalT: +globalT.toFixed(4),
+        segmentIndex: info ? info.seg : null,
+        localT: (info && Number.isFinite(info.localT)) ? +info.localT.toFixed(4) : null,
+        rot: +rot.toFixed(3),
+        dRot: +dRot.toFixed(3)
+      });
+    }
+  } catch (e) { /* diagnóstico nunca propaga */ }
+}
+
 function startPreview() {
   hideStageFrameMenu();
   if (shouldBlockGlobalUIAction()) return;
@@ -19214,6 +19289,7 @@ function startPreview() {
 
   pausedElapsed = 0;
   animStart = null;
+  resetPreviewClock(); // v8z4b30ZH — zera o relógio visual limitado do Preview
   // v8z4b16b — fallback técnico mínimo (1ms) quando a duração real é 0.
   // Evita modulo por zero / NaN / loop infinito sem alterar valores do
   // usuário. Quando todos os trechos são 0, t fica preso em 0 e o preview
@@ -19369,8 +19445,12 @@ function startPreview() {
     }
     previewPerfStats.lastRenderTs = ts;
     previewPerfStats.lastRafDelta = rafDelta;
-    const elapsed = (ts - animStart + pausedElapsed) % dur;
+    // v8z4b30ZH — tempo visual com avanço limitado (anti rotation-delta-spike).
+    // Substitui (ts - animStart + pausedElapsed) pelo acumulador clamped.
+    const elapsedMs = advancePreviewClockMs(ts);
+    const elapsed = elapsedMs % dur;
     const t = elapsed / dur;
+    debugPreviewClock(t); // diag opcional (flag), sem custo em produção
     const renderStart = DEBUG_PREVIEW_PERF ? performance.now() : 0;
     // CSS filter no elemento canvas — compatível com Safari (alternativa a ctx.filter)
     const blurPx = getBlurAtT(t, pW2);
@@ -19457,6 +19537,10 @@ function togglePreviewPlayback() {
     cancelAnimationFrame(animFrame);
     animFrame = null;
     animStart = null;
+    // v8z4b30ZH — o relógio visual (previewElapsedMs) é preservado na pausa;
+    // re-ancorar previewLastNow garante que o intervalo parado não seja
+    // contabilizado ao retomar (evita catch-up).
+    previewLastNow = null;
     if (pb)  pb.style.display  = 'none';
     if (pb2) pb2.style.display = '';
   } else {
@@ -19496,8 +19580,11 @@ function togglePreviewPlayback() {
       }
       previewPerfStats.lastRenderTs = ts;
       previewPerfStats.lastRafDelta = rafDelta;
-      const elapsed = (ts - animStart + pausedElapsed) % dur;
+      // v8z4b30ZH — retoma do tempo visual acumulado, com avanço limitado.
+      const elapsedMs = advancePreviewClockMs(ts);
+      const elapsed = elapsedMs % dur;
       const t = elapsed / dur;
+      debugPreviewClock(t); // diag opcional (flag), sem custo em produção
       const renderStart = DEBUG_PREVIEW_PERF ? performance.now() : 0;
       const blurPx = getBlurAtT(t, pW2r);
       dispCanvas.style.filter = blurPx > 0 ? `blur(${(blurPx * 0.5).toFixed(1)}px)` : 'none';
@@ -19589,6 +19676,7 @@ function resetPreviewPlaybackState() {
   }
   animStart = null;
   pausedElapsed = 0;
+  resetPreviewClock(); // v8z4b30ZH — limpa o relógio visual limitado do Preview
   document.body.classList.remove('previewing');
   // Restaurar ícone/botão Play no Stage
   try { updatePlayButton(); } catch(e) {}
@@ -20072,6 +20160,7 @@ async function startRecord() {
       }
       animStart = null;
       pausedElapsed = 0;
+      resetPreviewClock(); // v8z4b30ZH — reinicia o relógio visual limitado do Preview
       isPreviewing = true;
       hideGenOverlay();
       if (pb)  pb.style.display  = '';
@@ -20164,6 +20253,7 @@ async function startRecord() {
       isPreviewing = true;
       pausedElapsed = 0;
       animStart = null;
+      resetPreviewClock(); // v8z4b30ZH — reinicia o relógio visual limitado do Preview
       const [eW2, eH2] = exportDims[currentRatio];
       const dur2 = Math.max(1, getComputedTimelineDuration() * 1000);
       const totalPF2 = Math.max(1, Math.round(durationSec * fps));
@@ -20182,7 +20272,9 @@ async function startRecord() {
       function loopAfter(ts) {
         if (!isPreviewing || tokenAfter !== previewLoopToken) return;
         if (!animStart) animStart = ts;
-        const elapsed = (ts - animStart + pausedElapsed) % dur2;
+        // v8z4b30ZH — tempo visual com avanço limitado (anti rotation-delta-spike).
+        const elapsedMs = advancePreviewClockMs(ts);
+        const elapsed = elapsedMs % dur2;
         const t2 = elapsed / dur2;
         if (pCtxAfter) renderFrameSafely(pCtxAfter, dispCanvasAfter, t2, pWA, pHA, totalPF2, Math.round(t2 * (totalPF2 - 1)), { renderSource: previewSourceAfter });
         animFrame = requestAnimationFrame(loopAfter);
