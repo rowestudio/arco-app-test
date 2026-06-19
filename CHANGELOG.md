@@ -1,3 +1,25 @@
+# v8z4b30ZJ
+
+- **feat:** adiciona modo **Selecionar** para assets/layers no ProjectWorld.
+- **feat:** assets podem ser selecionados no Stage (hit-test) e em painel básico de **Layers**.
+- **fix:** **Trocar imagem** passa a substituir o **asset selecionado**, sem depender de slot/setor.
+- **safe:** slots/setores continuam apenas como presets de inserção.
+- **safe:** Preview da 30ZI, Export, Save/Load, ProjectWorld, frames e curvas preservados.
+- **prep:** estrutura preparada para crop/moldura futura (`asset.crop`/`asset.frameStyle`, `enabled:false`) sem alterar o render atual.
+- **Base `v8z4b30ZI`** (Preview sem tranco e troca de imagens aprovados — tratada como base confiável).
+- **Conceito.** Frames animam a câmera; assets/layers compõem o mundo; slots/setores são apenas presets de inserção; trocar imagem age sobre o **asset selecionado**, não sobre o setor; asset é tratado como caixa visual futura (preparada para moldura/crop), **sem** implementar crop/moldura nesta versão.
+- **feat — estado global de seleção.** `selectedAssetId` (null | string) + `getSelectedAsset()`, `setSelectedAsset(id)`, `clearSelectedAsset()`. Modo de ferramenta `toolMode` (`'camera'` | `'asset-select'`), com `setToolMode`/`enterAssetSelectMode`/`exitAssetSelectMode`/`toggleAssetSelectMode`.
+- **feat — ferramenta Selecionar.** Item de menu "Selecionar" (ícone cursor `#i-mouse-pointer`) que entra/sai de `asset-select`; item "Layers" abre o painel. Layout geral inalterado.
+- **feat — seleção no Stage.** Em `asset-select`, um toque no Stage faz hit-test (screen → stage → world via `editorStageToWorld`), seleciona o asset de **maior zIndex** sob o ponto (fallback: ordem do array). Frames, handles e curvas **não** capturam o toque (listener em fase de captura + `stopImmediatePropagation`); pinch/zoom de dois dedos preservado; área vazia limpa a seleção. Assets sem imagem carregada e slots vazios não são selecionáveis.
+- **feat — realce visual.** Contorno discreto (overlay DOM `#assetSelectOutline` em `#stageContent`) do asset selecionado, **apenas no editor**; nunca no Preview/Export (que usam canvas). Sem handles de mover/escalar/rotacionar, sem crop/moldura.
+- **feat — painel de Layers.** Lista simples com miniatura, nome automático ("Imagem 1/2/3"), seleção por toque e destaque do item selecionado. Sem reorder/lock/hide/show/renomear/apagar/mover/crop.
+- **fix — Trocar imagem.** Usa `selectedAssetId`: substitui apenas o asset selecionado, preservando `id`/`worldX`/`worldY`/centro visual/caixa atual/`zIndex` e campos futuros (`crop`/`frameStyle`). `doReplaceExtraAsset` passa a preservar o **centro visual atual** (não recentraliza no setor), permitindo trocar asset fora do slot original. Sem asset selecionado e com várias imagens: aviso discreto "Selecione uma imagem para trocar." + abre o painel de Layers; **sem** troca automática por slot.
+- **safe — Inserir imagem.** Mantém o fluxo por slot/preset (apenas posição inicial), cria asset livre e seleciona automaticamente o novo asset.
+- **prep — crop/moldura.** Defaults não destrutivos `asset.crop = { enabled:false, x:0, y:0, w:1, h:1 }` e `asset.frameStyle = { enabled:false, strokeColor:'#ffffff', strokeWidth:0, radius:0, padding:0, shadow:false }` aplicados na inserção, no load e ao selecionar; com `enabled:false` **não** alteram aparência/Preview/Export.
+- **Save/Load.** `selectedAssetId` mantido **apenas em memória** (não salvo no JSON). Projetos antigos sem `crop`/`frameStyle`/`zIndex` carregam normalmente; projetos da 30ZI abrem iguais.
+- `index.html`: comentário do topo, `APP_VERSION`, `APP_VERSION_NAME` e texto visível atualizados para `v8z4b30ZJ`.
+- **Preserve / NÃO altera:** motor de Preview aprovado na 30ZI; Export; Save/Load estrutural além dos defaults seguros; `ProjectWorld`; `framesAbs`/`framesNorm`; curvas; easing; rotação de frames; timeline; layout geral; cores; textos e ícones já aprovados (exceto o novo ícone/ferramenta Selecionar).
+
 # v8z4b30ZH
 
 - **fix:** Preview usa avanço temporal limitado para evitar salto visual por delta alto de `requestAnimationFrame`.
