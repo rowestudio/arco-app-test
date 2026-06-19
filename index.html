@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZJ — base v8z4b30ZI (Preview sem tranco, aprovado). feat(asset-select): primeira estrutura de seleção de assets/layers no ProjectWorld, independente de slot/setor. Conceito: frames animam a câmera; assets/layers compõem o mundo; slots/setores são apenas presets de inserção; trocar imagem age sobre o ASSET selecionado, não sobre o setor; asset é tratado como caixa visual futura (preparada para moldura/crop, sem implementar crop/moldura nesta versão). feat(state): estado global de seleção (selectedAssetId + getSelectedAsset/setSelectedAsset/clearSelectedAsset) e modo de ferramenta toolMode ('camera' | 'asset-select'). feat(tool): item de menu "Selecionar" (ícone cursor i-mouse-pointer) que entra/sai do modo asset-select. feat(stage): em asset-select, toques no Stage fazem hit-test de assets (screen→stage→world via editorStageToWorld), selecionam o asset de maior zIndex (fallback ordem do array), ignoram frames/handles/curvas (captura em fase de captura + stopImmediatePropagation), preservam pinch/zoom de dois dedos; assets sem imagem carregada e slots vazios não são selecionáveis. feat(highlight): contorno discreto (overlay DOM em #stageContent) do asset selecionado apenas no editor — nunca em Preview/Export, sem handles, sem crop/moldura. feat(layers): painel básico de Layers com miniatura, nome automático ("Imagem 1/2/3"), seleção por toque e destaque do item selecionado (sem reorder/lock/hide/rename/delete/crop). fix(replace): "Trocar imagem" passa a substituir APENAS o asset selecionado (selectedAssetId), preservando id/worldX/worldY/centro/caixa/zIndex/campos futuros; sem asset selecionado mostra "Selecione uma imagem para trocar." e abre o painel de Layers; sem troca automática por slot. safe(insert): inserir imagem continua usando slot/preset apenas como posição inicial, cria asset livre e seleciona o novo asset. prep(crop): defaults não destrutivos asset.crop/asset.frameStyle (enabled:false) sem alterar render/Preview/Export. safe: Preview 30ZI, Export, Save/Load (selectedAssetId só em memória; projetos antigos sem crop/frameStyle/zIndex abrem normais), ProjectWorld, framesAbs/framesNorm, curvas, easing, rotação, timeline, layout, cores, textos e ícones preservados. -->
 <!-- Arco Motion App — v8z4b30ZH — fix(preview): o Preview de tempo real passa a usar avanço temporal LIMITADO para eliminar o engasgo/pulinho entre Frame 3 e Frame 4 (diagnosticado como rotation-delta-spike no Preview). Separa o tempo real bruto do requestAnimationFrame (ts) do tempo VISUAL exibido (previewElapsedMs): a cada frame calcula rawDt = ts - previewLastNow, limita a PREVIEW_MAX_DT_MS (1000/30 ≈ 33.333ms) e acumula previewElapsedMs += clampedDt; t = (previewElapsedMs % dur)/dur. No primeiro frame após início/replay/retomada apenas ancora previewLastNow e desenha t=0 (sem catch-up após pausa longa / troca de aba / travada do Safari). Aplicado aos três loops de playback em tempo real do Preview (startPreview, retomada em togglePreviewPlayback e loopAfter pós-export); helpers advancePreviewClockMs/resetPreviewClock e diagnóstico opcional debugPreviewClock atrás da flag DEBUG_PREVIEW_CLOCK (off em produção: mede rawDt/clampedDt, globalT, segmentIndex, localT e delta de rotação entre frames exibidos). Se o aparelho engasgar, o Preview atrasa levemente em vez de pular. NÃO altera Export (render determinístico por frame), motor de interpolação/getStateAtT, Save, Load, ProjectWorld, framesAbs/framesNorm, assets, curvas, easing, JSON, UI/textos/cores/ícones, nem a correção de reabertura da 30ZG. base v8z4b30ZG. -->
 <!-- Arco Motion App — v8z4b30ZG — Corrigida instabilidade de reabertura visual: ProjectWorld salvo é preservado durante todo o load (syncFirstImageAsset não sobrescreve baseStageW/H quando projectWorld.initialized===true com baseStageW/H válidos); primeiro render do editor aguarda Stage com medida válida (guard de stageBCR com até 3 requestAnimationFrame); transformação ProjectWorld→Stage aplicada no editor para frames, handles e bezier (scale = min(stageW/baseStageW, stageH/baseStageH), offset centralizado). Diagnósticos: projectWorldMutationDuringLoad, projectWorldPreservedDuringLoad, firstEditorRenderDeferredUntilStageReady, firstEditorRenderStageBcrValid, editorProjectToStageTransformActive e derivados. Sem alterações em Preview, Export, Save, frames, curvas ou ProjectWorld salvo. base v8z4b30ZF. -->
 <!-- Arco Motion App — v8z4b30ZF — Adicionado botão discreto no painel de diagnóstico para baixar o JSON completo do diagnóstico de abertura no iPhone/Safari. Botão "Baixar diagnóstico de abertura" chama window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__() com fallback robusto: Blob+download, nova aba com JSON em texto puro (iOS), clipboard opcional. Sem alterações em preview, export, save, load, ProjectWorld, frames ou curvas. base v8z4b30ZE. -->
@@ -1263,6 +1264,46 @@ body.recording #editorZoomCtrl{display:none;}
   -webkit-user-select:text;user-select:text;
   white-space:pre;
 }
+/* v8z4b30ZJ — contorno discreto do asset selecionado (apenas editor). */
+.asset-select-outline{
+  border:1.5px solid rgba(120,190,255,.95);
+  border-radius:2px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.25);
+  pointer-events:none;
+}
+/* v8z4b30ZJ — destaque do item ativo da ferramenta Selecionar no menu. */
+.settings-row.active{color:var(--accent,#7ab8ff);}
+/* v8z4b30ZJ — painel básico de Layers. */
+#layersPanel{
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:min(92vw,420px);
+  max-height:min(78vh,640px);
+  z-index:2147483000;
+  display:none;
+  flex-direction:column;
+  background:#16161a;
+  border:1px solid rgba(178,178,178,.32);
+  border-radius:14px;
+  box-shadow:0 18px 60px rgba(0,0,0,.55);
+  padding:12px;
+  box-sizing:border-box;
+}
+#layersPanel.show{display:flex;}
+#layersPanel .layers-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+#layersPanel .layers-title{font-size:12px;font-weight:800;letter-spacing:.14em;color:#fff;}
+#layersPanel .layers-close{width:32px;height:32px;border:0;border-radius:999px;background:transparent;color:#fff;font-size:16px;line-height:1;cursor:pointer;touch-action:manipulation;}
+#layersPanel .layers-hint{font-size:11px;line-height:1.3;color:rgba(255,255,255,.6);margin-bottom:10px;}
+#layersPanel .layers-list{flex:1 1 auto;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:8px;}
+#layersPanel .layers-empty{font-size:13px;color:rgba(255,255,255,.55);padding:12px 4px;}
+#layersPanel .layers-item{display:flex;align-items:center;gap:12px;padding:8px;border:1px solid rgba(178,178,178,.22);border-radius:10px;background:#1d1d22;cursor:pointer;touch-action:manipulation;}
+#layersPanel .layers-item:active{background:#26262c;}
+#layersPanel .layers-item.selected{border-color:rgba(120,190,255,.9);background:#22303f;}
+#layersPanel .layers-thumb{width:44px;height:44px;flex:0 0 auto;border-radius:6px;overflow:hidden;background:#0e0e11;display:flex;align-items:center;justify-content:center;}
+#layersPanel .layers-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+#layersPanel .layers-name{font-size:14px;font-weight:600;color:#fff;}
 #stageContextOverlay{position:absolute;inset:0;pointer-events:none;z-index:130;}
 #pointModeMenu{position:absolute;left:50%;bottom:calc(10px + var(--safe-bottom));transform:translateX(-50%);z-index:130;display:none;gap:5px;padding:8px 10px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:calc(100% - 20px);align-items:center;pointer-events:auto;}
 .point-mode-btn{width:40px;height:40px;border:0;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:0;}
@@ -3232,6 +3273,15 @@ body.cust-open #toolbar{
     <path d="m5 9-3 3 3 3"/>
     <path d="m9 5 3-3 3 3"/>
   </symbol>
+  <symbol id="i-mouse-pointer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12.586 12.586 19 19"/>
+    <path d="M3.688 3.037a.497.497 0 0 0-.651.651l6.5 15.999a.501.501 0 0 0 .947-.062l1.569-6.083a2 2 0 0 1 1.448-1.479l6.124-1.579a.5.5 0 0 0 .063-.947z"/>
+  </symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/>
+    <path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/>
+    <path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>
+  </symbol>
   <symbol id="i-list-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M11 18H3"/>
     <path d="m15 18 2 2 4-4"/>
@@ -3881,6 +3931,13 @@ body.cust-open #toolbar{
       <div class="settings-row" onclick="startReplaceImageFlow()">
         <svg viewBox="0 0 24 24"><use href="#i-image"></use></svg><span>Trocar imagem</span>
       </div>
+      <!-- v8z4b30ZJ — ferramenta de seleção de assets/layers no ProjectWorld. -->
+      <div class="settings-row" id="toolSelectRow" onclick="closeSettingsSheet();toggleAssetSelectMode()">
+        <svg viewBox="0 0 24 24"><use href="#i-mouse-pointer"></use></svg><span>Selecionar</span>
+      </div>
+      <div class="settings-row" onclick="closeSettingsSheet();openLayersPanel()">
+        <svg viewBox="0 0 24 24"><use href="#i-layers"></use></svg><span>Layers</span>
+      </div>
       <div class="settings-row" onclick="openPanel('Format');closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-proportions"></use></svg><span>Formato</span>
       </div>
@@ -3945,6 +4002,15 @@ body.cust-open #toolbar{
   </div>
   <div class="diag-hint" id="diagHint"></div>
   <textarea id="diagText" class="diag-text" readonly spellcheck="false" wrap="off"></textarea>
+</div>
+<!-- v8z4b30ZJ — Painel básico de Layers (assets/imagens do ProjectWorld). -->
+<div id="layersPanel" role="dialog" aria-label="Camadas" aria-hidden="true">
+  <div class="layers-head">
+    <div class="layers-title">LAYERS</div>
+    <button type="button" class="layers-close" onclick="closeLayersPanel()" title="Fechar" aria-label="Fechar">✕</button>
+  </div>
+  <div class="layers-hint">Toque numa imagem para selecioná-la e trocá-la.</div>
+  <div id="layersList" class="layers-list"></div>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
 <input type="file" id="newProjectImageInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
@@ -6702,8 +6768,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZH';
-const APP_VERSION_NAME = 'v8z4b30ZH';
+const APP_VERSION = 'v8z4b30ZJ';
+const APP_VERSION_NAME = 'v8z4b30ZJ';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12844,6 +12910,17 @@ function editorWorldToStage(wx, wy, ww, wh) {
     h: wh * tf.scale
   };
 }
+// v8z4b30ZJ — inverso de editorWorldToStage: converte um ponto em coordenadas de
+// Stage (px do #stageContent, já sem o zoom de navegação) para coordenadas de
+// ProjectWorld. Usado pelo hit-test de seleção de assets. Não altera render.
+function editorStageToWorld(sx, sy) {
+  var tf = _editorTransform;
+  if (!tf.active) return { x: sx, y: sy };
+  return {
+    x: (sx - tf.offsetX) / tf.scale,
+    y: (sy - tf.offsetY) / tf.scale
+  };
+}
 let assets = []; // { id, type:'image', name, sourceW, sourceH, worldX, worldY, worldW, worldH, rotation, zIndex, visible, locked }
 let views = [];  // { id, type, name, x, y, w, h, zoom }
 let _pendingNewImageInput = null; // input file aguardando escolha na action sheet "Usar nova imagem"
@@ -12863,6 +12940,74 @@ const WORLD_SLOTS = {
   'bottom-right':  { col:  1, row:  1, label: 'Inferior direita'  }
 };
 let activeSlotSelection = null; // último slot escolhido no seletor 3x3 (diagnóstico)
+
+// ═══════════════════════════════════════
+// v8z4b30ZJ — SELEÇÃO DE ASSETS/LAYERS + MODO DE FERRAMENTA
+// Conceito: frames animam a câmera; assets/layers compõem o mundo; slots/setores
+// são apenas presets de inserção. A seleção age sobre o ASSET (não sobre o setor).
+// Estado mantido APENAS em memória (não é salvo no JSON nesta versão).
+// ═══════════════════════════════════════
+let selectedAssetId = null;   // null | string — asset atualmente selecionado
+let toolMode = 'camera';      // 'camera' (normal/frames) | 'asset-select'
+
+function getSelectedAsset() {
+  if (selectedAssetId == null || !Array.isArray(assets)) return null;
+  for (let i = 0; i < assets.length; i++) {
+    if (assets[i] && assets[i].id === selectedAssetId) return assets[i];
+  }
+  return null;
+}
+function setSelectedAsset(assetId) {
+  selectedAssetId = (assetId == null) ? null : assetId;
+  // Mantém o estado legado de troca alinhado ao asset selecionado.
+  selectedImageAssetId = selectedAssetId;
+  ensureAssetVisualDefaults(getSelectedAsset());
+  renderAssetSelectionOverlay();
+  if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+}
+function clearSelectedAsset() {
+  selectedAssetId = null;
+  renderAssetSelectionOverlay();
+  if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+}
+
+// v8z4b30ZJ — defaults não destrutivos para tratar o asset como caixa visual
+// futura (crop/moldura). Com enabled:false NÃO alteram aparência/Preview/Export.
+function ensureAssetVisualDefaults(asset) {
+  if (!asset || asset.type !== 'image') return asset;
+  asset.crop = asset.crop || { enabled: false, x: 0, y: 0, w: 1, h: 1 };
+  asset.frameStyle = asset.frameStyle || {
+    enabled: false, strokeColor: '#ffffff', strokeWidth: 0, radius: 0, padding: 0, shadow: false
+  };
+  return asset;
+}
+
+// v8z4b30ZJ — alterna o modo de ferramenta. 'asset-select' habilita seleção de
+// assets no Stage; qualquer outro valor volta ao modo normal de frames/câmera.
+function setToolMode(mode) {
+  const next = (mode === 'asset-select') ? 'asset-select' : 'camera';
+  toolMode = next;
+  syncToolModeUI();
+  renderAssetSelectionOverlay();
+}
+function enterAssetSelectMode() {
+  setToolMode('asset-select');
+  showStatus('Modo Selecionar ativo. Toque numa imagem.');
+  openLayersPanel();
+}
+function exitAssetSelectMode() {
+  setToolMode('camera');
+  closeLayersPanel();
+  showStatus('Modo Selecionar desativado.');
+}
+function toggleAssetSelectMode() {
+  if (toolMode === 'asset-select') exitAssetSelectMode();
+  else enterAssetSelectMode();
+}
+function syncToolModeUI() {
+  const row = document.getElementById('toolSelectRow');
+  if (row) row.classList.toggle('active', toolMode === 'asset-select');
+}
 
 // ═══════════════════════════════════════
 // v8z4b30U — ESTADO DE AÇÃO DE IMAGEM (Inserir / Trocar)
@@ -15581,6 +15726,9 @@ function renderAll() {
 
   // Overlay escuro fora dos frames
   updateDimOverlay();
+
+  // v8z4b30ZJ — manter o contorno de seleção alinhado ao novo transform/Stage.
+  renderAssetSelectionOverlay();
 }
 
 // ═══════════════════════════════════════
@@ -17560,6 +17708,14 @@ function startCtrlDrag(seg) {
   curveDragMismatchDetected = false;
   lastSelectionSource = 'startCtrlDrag';
 }
+
+// v8z4b30ZJ — interceptação em fase de CAPTURA: no modo asset-select, o toque no
+// Stage seleciona assets e NÃO inicia edição/drag de frames, curvas ou handles
+// (capture roda antes dos listeners de target dos frames; stopImmediatePropagation
+// impede o drag). Pinch/zoom de dois dedos continua via touchstart (não afetado).
+imageArea.addEventListener('pointerdown', (e) => {
+  try { handleStageAssetSelectPointer(e); } catch (_) {}
+}, true);
 
 // Prevent scroll/native zoom on the Stage viewport but allow controls outside it.
 imageArea.addEventListener('touchstart', e => {
@@ -25546,6 +25702,10 @@ function restoreProjectAssetsFromData(data) {
           visible: sa.visible !== false,
           locked: !!sa.locked,
           fitMode: sa.fitMode || 'contain',
+          // v8z4b30ZJ — defaults não destrutivos; projetos antigos sem estes
+          // campos (ou sem zIndex) carregam normalmente. enabled:false = sem efeito.
+          crop: sa.crop || { enabled: false, x: 0, y: 0, w: 1, h: 1 },
+          frameStyle: sa.frameStyle || { enabled: false, strokeColor: '#ffffff', strokeWidth: 0, radius: 0, padding: 0, shadow: false },
           _img: img
         };
         img.onload = () => {
@@ -25798,6 +25958,9 @@ function startInsertImageFlow() {
 }
 
 // ── Ação 2: TROCAR IMAGEM ───────────────────────────────────────────────
+// v8z4b30ZJ — a troca passa a agir sobre o ASSET SELECIONADO (selectedAssetId),
+// não sobre o setor/slot. Sem asset selecionado e com várias imagens: aviso
+// discreto + painel de Layers (sem troca automática por slot/setor).
 function startReplaceImageFlow() {
   closeSettingsSheet();
   closeAll();
@@ -25808,14 +25971,24 @@ function startReplaceImageFlow() {
     showStatus('Não há imagem para trocar.');
     return;
   }
-  if (replaceables.length === 1) {
-    // Apenas a imagem principal/única: trocar direto, sem seletor de slot.
-    freezeReplaceTarget(replaceables[0]);
+  const sel = getSelectedAsset();
+  if (sel && sel.type === 'image') {
+    // Trocar exatamente o asset selecionado, onde quer que ele esteja no mundo.
+    freezeReplaceTarget({ asset: sel, slotKey: getAssetSlotKey(sel) || 'center' });
     triggerImageFilePicker();
     return;
   }
-  // Várias imagens: escolher qual trocar ANTES de abrir Fotos/Arquivos.
-  openImageSlotPicker('replace');
+  if (replaceables.length === 1) {
+    // Apenas uma imagem: seleção implícita é segura e sem ambiguidade.
+    freezeReplaceTarget(replaceables[0]);
+    setSelectedAsset(replaceables[0].asset.id);
+    triggerImageFilePicker();
+    return;
+  }
+  // Várias imagens e nenhuma selecionada: NÃO trocar por setor automaticamente.
+  showStatus('Selecione uma imagem para trocar.');
+  setToolMode('asset-select');
+  openLayersPanel();
 }
 
 function freezeReplaceTarget(t) {
@@ -25824,6 +25997,7 @@ function freezeReplaceTarget(t) {
   pendingImageTargetSlot = { key: t.slotKey, row: slot.row, col: slot.col };
   pendingImageTargetAssetId = (t.asset && t.asset.id != null) ? t.asset.id : null;
   selectedImageAssetId = pendingImageTargetAssetId;
+  selectedAssetId = pendingImageTargetAssetId; // v8z4b30ZJ — alinhar seleção de asset
   activeSlotSelection = t.slotKey;
 }
 
@@ -25921,28 +26095,28 @@ function doReplaceExtraAsset(asset, file) {
     img.onload = () => {
       const baseW = projectWorld.baseStageW;
       const baseH = projectWorld.baseStageH;
-      const worldGap = (typeof lastWorldGapUsed === 'number' && lastWorldGapUsed > 0)
-        ? lastWorldGapUsed
-        : Math.max(48, Math.min(96, Math.min(baseW, baseH) * 0.16));
-      lastWorldGapUsed = worldGap;
-      const sc = computeAssetSlotRowCol(asset);
-      const col = (sc.col == null) ? 0 : sc.col;
-      const row = (sc.row == null) ? 0 : sc.row;
-      const slotCenterX = col * (baseW + worldGap) + baseW / 2;
-      const slotCenterY = row * (baseH + worldGap) + baseH / 2;
+      // v8z4b30ZJ — preservar o CENTRO VISUAL ATUAL do asset (não recentralizar no
+      // setor). Assim um asset movido para fora do slot original é trocado no lugar.
+      const curW = (asset.worldW || 0) > 0 ? asset.worldW : baseW;
+      const curH = (asset.worldH || 0) > 0 ? asset.worldH : baseH;
+      const centerX = (asset.worldX || 0) + curW / 2;
+      const centerY = (asset.worldY || 0) + curH / 2;
       const fitted = fitContain(img.naturalWidth, img.naturalHeight, baseW, baseH);
-      // Atualiza apenas a fonte e o tamanho (fit contain); slot/zIndex/visible preservados.
+      // Atualiza apenas conteúdo/tamanho (fit contain); id/zIndex/visible/crop/
+      // frameStyle e demais campos futuros do asset são preservados.
       asset.src     = dataUrl;
       asset.sourceW = img.naturalWidth;
       asset.sourceH = img.naturalHeight;
       asset._img    = img;
       asset.worldW  = fitted.width;
       asset.worldH  = fitted.height;
-      asset.worldX  = slotCenterX - fitted.width / 2;
-      asset.worldY  = slotCenterY - fitted.height / 2;
+      asset.worldX  = centerX - fitted.width / 2;
+      asset.worldY  = centerY - fitted.height / 2;
       asset.fitMode = 'contain';
       asset.name    = (file.name || asset.name || 'imagem').replace(/\.[^.]+$/, '');
+      ensureAssetVisualDefaults(asset);
       selectedImageAssetId = asset.id;
+      selectedAssetId = asset.id;
       invalidateProjectWorldComposite();
       renderProjectWorldExtraImages();
       pushUndoSnapshot(beforeReplace);
@@ -25952,6 +26126,8 @@ function doReplaceExtraAsset(asset, file) {
       lastAddedAssetId = null;
       slotOccupiedOnReplace = true;
       markProjectDirty('replace-image-asset');
+      renderAssetSelectionOverlay();
+      if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
       showStatus('Imagem trocada');
     };
     img.onerror = () => { showStatus('Não foi possível abrir esta imagem.'); };
@@ -26292,13 +26468,19 @@ function performInsertImageAtSlot(slotKey, file) {
         visible: true,
         locked: false,
         fitMode: 'contain',
+        // v8z4b30ZJ — defaults não destrutivos (crop/moldura futuros); enabled:false
+        // não altera render/Preview/Export nesta versão.
+        crop: { enabled: false, x: 0, y: 0, w: 1, h: 1 },
+        frameStyle: { enabled: false, strokeColor: '#ffffff', strokeWidth: 0, radius: 0, padding: 0, shadow: false },
         _img: img
       };
       assets.push(asset);
       activeSlotSelection = slotKey;
       selectedImageAssetId = asset.id;
+      selectedAssetId = asset.id; // v8z4b30ZJ — seleciona automaticamente o novo asset
       invalidateProjectWorldComposite();
       renderProjectWorldExtraImages();
+      if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
       // v8z4b30Z — snapshot APÓS a mutação e análise de efeito colateral.
       const _snapAfter = _captureWorldSnapshot();
       _analyzeAddImageMutation(_snapBefore, _snapAfter, asset.id);
@@ -26360,6 +26542,196 @@ function renderProjectWorldExtraImages() {
     if (typeof viewMode !== 'undefined' && viewMode === 2) img.style.opacity = '0.06';
     img.style.zIndex = '0';
     stageContent.insertBefore(img, imgEl);
+  });
+  // v8z4b30ZJ — manter o contorno de seleção alinhado após reposicionar assets.
+  renderAssetSelectionOverlay();
+}
+
+// ═══════════════════════════════════════
+// v8z4b30ZJ — SELEÇÃO DE ASSETS NO STAGE (hit-test + contorno + layers)
+// Independente de slot/setor. Trata cada asset como uma caixa visual no
+// ProjectWorld. NUNCA afeta Preview nem Export (apenas overlay DOM do editor).
+// ═══════════════════════════════════════
+
+// Lista de assets de imagem selecionáveis (têm imagem carregada e estão visíveis).
+function getSelectableImageAssets() {
+  const out = [];
+  if (!Array.isArray(assets)) return out;
+  for (let i = 0; i < assets.length; i++) {
+    const a = assets[i];
+    if (!a || a.type !== 'image') continue;
+    out.push(a);
+  }
+  return out;
+}
+function assetHasLoadedImage(a) {
+  if (!a) return false;
+  if (a.src) return true;
+  if (a._img && (a._img.src || a._img.complete)) return true;
+  // Asset principal (img-1) usa o #imgEl; considerar carregado se há imagem principal.
+  if (a === getMainImageAsset() && typeof imgNatW !== 'undefined' && imgNatW > 0) return true;
+  return false;
+}
+// Fonte de miniatura/thumbnail de um asset (inclui o caso do asset principal).
+function getAssetThumbSrc(a) {
+  if (!a) return '';
+  if (a.src) return a.src;
+  if (a._img && a._img.src) return a._img.src;
+  if (a === getMainImageAsset() && typeof imgEl !== 'undefined' && imgEl && imgEl.src) return imgEl.src;
+  return '';
+}
+// Hit-test em coordenadas de MUNDO. Retorna o asset de maior zIndex sob o ponto
+// (fallback: ordem do array — último desenhado fica acima). Ignora assets sem
+// imagem carregada e invisíveis (slots vazios nunca entram em assets).
+function hitTestAssetAtWorld(wx, wy) {
+  if (!Array.isArray(assets)) return null;
+  let best = null, bestZ = -Infinity, bestIdx = -1;
+  for (let i = 0; i < assets.length; i++) {
+    const a = assets[i];
+    if (!a || a.type !== 'image') continue;
+    if (a.visible === false) continue;
+    if (!assetHasLoadedImage(a)) continue;
+    const x = a.worldX || 0;
+    const y = a.worldY || 0;
+    const w = a.worldW || 0;
+    const h = a.worldH || 0;
+    if (w <= 0 || h <= 0) continue;
+    if (wx < x || wx > x + w || wy < y || wy > y + h) continue;
+    const z = (typeof a.zIndex === 'number') ? a.zIndex : -1;
+    // Maior zIndex vence; empate → maior índice no array (desenhado por último).
+    if (z > bestZ || (z === bestZ && i >= bestIdx)) {
+      best = a; bestZ = z; bestIdx = i;
+    }
+  }
+  return best;
+}
+
+// Trata um toque/clique do Stage no modo asset-select. Retorna true se consumiu.
+function handleStageAssetSelectPointer(e) {
+  if (toolMode !== 'asset-select') return false;
+  if (typeof isPreviewing !== 'undefined' && isPreviewing) return false;
+  // Não interceptar gestos de dois dedos (pinch/zoom continuam funcionando).
+  if (typeof twoFingerState !== 'undefined' && twoFingerState) return false;
+  if (e.pointerType === 'touch' && e.isPrimary === false) return false;
+  // Não interceptar controles de UI sobre a área do Stage.
+  if (e.target && e.target.closest && (
+        e.target.closest('#editorZoomCtrl') ||
+        e.target.closest('.float-panel') ||
+        e.target.closest('#layersPanel') ||
+        e.target.closest('.top-bar') ||
+        e.target.closest('#midBar') ||
+        e.target.closest('#stageFrameMenu'))) {
+    return false;
+  }
+  // Bloqueia frames/handles/curvas: a seleção captura o toque antes deles.
+  e.preventDefault();
+  e.stopPropagation();
+  if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+  computeEditorTransform();
+  const sc = screenToStageCoord(e.clientX, e.clientY);
+  const wp = editorStageToWorld(sc.x, sc.y);
+  const hit = hitTestAssetAtWorld(wp.x, wp.y);
+  if (hit) {
+    setSelectedAsset(hit.id);
+  } else {
+    // Área vazia: limpar seleção (sem conflito — não inicia edição de frame).
+    clearSelectedAsset();
+  }
+  return true;
+}
+
+// Contorno discreto do asset selecionado — overlay DOM dentro de #stageContent,
+// alinhado por editorWorldToStage. Some no Preview/Export (que usam canvas).
+function renderAssetSelectionOverlay() {
+  if (typeof stageContent === 'undefined' || !stageContent) return;
+  let box = document.getElementById('assetSelectOutline');
+  const asset = getSelectedAsset();
+  const show = (toolMode === 'asset-select') && asset &&
+               (typeof isPreviewing === 'undefined' || !isPreviewing) &&
+               assetHasLoadedImage(asset) && asset.visible !== false;
+  if (!show) {
+    if (box) box.style.display = 'none';
+    return;
+  }
+  computeEditorTransform();
+  const p = editorWorldToStage(asset.worldX || 0, asset.worldY || 0, asset.worldW || 0, asset.worldH || 0);
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'assetSelectOutline';
+    box.className = 'asset-select-outline';
+    box.style.position = 'absolute';
+    box.style.pointerEvents = 'none';
+    box.style.zIndex = '6';
+    box.style.boxSizing = 'border-box';
+    stageContent.appendChild(box);
+  }
+  box.style.display = 'block';
+  box.style.left = p.x + 'px';
+  box.style.top = p.y + 'px';
+  box.style.width = p.w + 'px';
+  box.style.height = p.h + 'px';
+}
+
+// ── Painel básico de Layers ──────────────────────────────────────────────
+function openLayersPanel() {
+  const panel = document.getElementById('layersPanel');
+  if (!panel) return;
+  renderLayersPanelList();
+  panel.classList.add('show');
+  panel.setAttribute('aria-hidden', 'false');
+}
+function closeLayersPanel() {
+  const panel = document.getElementById('layersPanel');
+  if (!panel) return;
+  panel.classList.remove('show');
+  panel.setAttribute('aria-hidden', 'true');
+}
+function toggleLayersPanel() {
+  const panel = document.getElementById('layersPanel');
+  if (!panel) return;
+  if (panel.classList.contains('show')) closeLayersPanel();
+  else openLayersPanel();
+}
+// Nome automático estável: "Imagem 1", "Imagem 2", ... pela ordem dos assets.
+function getAssetDisplayName(asset) {
+  const imgs = getSelectableImageAssets();
+  const idx = imgs.indexOf(asset);
+  return 'Imagem ' + (idx >= 0 ? idx + 1 : imgs.length + 1);
+}
+function renderLayersPanelList() {
+  const list = document.getElementById('layersList');
+  if (!list) return;
+  const imgs = getSelectableImageAssets();
+  list.innerHTML = '';
+  if (!imgs.length) {
+    const empty = document.createElement('div');
+    empty.className = 'layers-empty';
+    empty.textContent = 'Nenhuma imagem ainda.';
+    list.appendChild(empty);
+    return;
+  }
+  imgs.forEach((a, i) => {
+    const item = document.createElement('div');
+    item.className = 'layers-item' + (a.id === selectedAssetId ? ' selected' : '');
+    item.setAttribute('role', 'button');
+    const thumbWrap = document.createElement('div');
+    thumbWrap.className = 'layers-thumb';
+    const src = getAssetThumbSrc(a);
+    if (src) {
+      const im = document.createElement('img');
+      im.src = src; im.alt = ''; im.draggable = false;
+      thumbWrap.appendChild(im);
+    }
+    const label = document.createElement('div');
+    label.className = 'layers-name';
+    label.textContent = 'Imagem ' + (i + 1);
+    item.appendChild(thumbWrap);
+    item.appendChild(label);
+    item.addEventListener('click', () => {
+      if (toolMode !== 'asset-select') setToolMode('asset-select');
+      setSelectedAsset(a.id);
+    });
+    list.appendChild(item);
   });
 }
 
