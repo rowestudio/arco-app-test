@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZG — Corrigida instabilidade de reabertura visual: ProjectWorld salvo é preservado durante todo o load (syncFirstImageAsset não sobrescreve baseStageW/H quando projectWorld.initialized===true com baseStageW/H válidos); primeiro render do editor aguarda Stage com medida válida (guard de stageBCR com até 3 requestAnimationFrame); transformação ProjectWorld→Stage aplicada no editor para frames, handles e bezier (scale = min(stageW/baseStageW, stageH/baseStageH), offset centralizado). Diagnósticos: projectWorldMutationDuringLoad, projectWorldPreservedDuringLoad, firstEditorRenderDeferredUntilStageReady, firstEditorRenderStageBcrValid, editorProjectToStageTransformActive e derivados. Sem alterações em Preview, Export, Save, frames, curvas ou ProjectWorld salvo. base v8z4b30ZF. -->
 <!-- Arco Motion App — v8z4b30ZF — Adicionado botão discreto no painel de diagnóstico para baixar o JSON completo do diagnóstico de abertura no iPhone/Safari. Botão "Baixar diagnóstico de abertura" chama window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__() com fallback robusto: Blob+download, nova aba com JSON em texto puro (iOS), clipboard opcional. Sem alterações em preview, export, save, load, ProjectWorld, frames ou curvas. base v8z4b30ZE. -->
 <!-- Arco Motion App — v8z4b30ZE — Diagnóstico observacional de reabertura visual: snapshots leves do load/render inicial para investigar diferença de viewport/render com JSON estruturalmente idêntico. Adiciona window.__ARCO_LOAD_VISUAL_DIAG__ com snapshots por fase (rawParsedJson, beforeProjectApply, afterActiveFrameRestore, afterProjectApply, afterMigrationOrNormalization, beforeFirstEditorRender, afterFirstEditorRender, afterFirstAnimationFrame), window.__ARCO_COMPARE_LOAD_VISUAL_DIAG__() e window.__ARCO_DOWNLOAD_LOAD_VISUAL_DIAG__(). Sem mudanças no motor de preview/export/save/curvas/frames/ProjectWorld/UI. base v8z4b30ZD. -->
 <!-- Arco Motion App — v8z4b30ZC — base v8z4b30ZA (a v8z4b30ZB foi mergeada, reprovada e revertida; NÃO é base e NÃO é reaplicada). Versão de diagnóstico seguro + proteção de regressão. Preserva exatamente o comportamento funcional da 30ZA e adiciona apenas observação para investigar tranco/piscada/pulo de câmera entre trechos, sem alterar matemática de câmera, Preview, Export ou render final. diag: trilha observacional de câmera por frame em Preview e Export (previewTrace*/exportTrace*: segmento ativo, fromFrame/toFrame, localT, câmera X/Y/W/H/rotation, amostra anterior, deltas, deltaMagnitude, render ms, assets desenhados/visíveis), capturada ao final de renderFrameSafely lendo diagnostics.renderState já calculado — não altera ctx/t/câmera/retorno. diag: detector passivo de pulo/piscada (jumpDetected/jumpType/jumpSegmentIndex/jumpFrameIndex/jump*Camera/jumpDelta*), classifica salto por segment-skip(>1), localT para trás, spike de delta de câmera/rotação acima da média local; reinício de loop é tratado como esperado (não sinaliza). diag: amostragem do segmento alvo Frame 3 → Frame 4 (segmentTraceTargetIndex=2) em localT 0.00…1.00 via getStateAtT (mesma câmera de Preview/Export), com curveHandle1/2, fromFrame/toFrame, deltas e marcação de suspiciousDelta no meio do segmento. diag: guardas de comportamento (exportBehaviorMatches30ZA/previewBehaviorMatches30ZA=true; exportFrameSamplingChanged/exportSegmentTimingChanged/exportCameraMathChanged/exportRendererChanged e equivalentes de preview = false). diag: auditoria observacional de caches/estado derivado (derivedStateDirty, segment/curve/assetBounds/previewCache). preserve: APP_VERSION/NAME=v8z4b30ZC, fundo #3c3c3b, ProjectWorld consistente, save/load de assets e frames em ProjectWorld, render sem filtro de slot, Preview/Export via World Renderer, WebCodecs, zoom dinâmico. NÃO altera UI/layout/cores/textos/ícones/menus, render math, evaluate camera, segmentIndex, localT, duração, pausa, easing, curva, Preview/Export playback, WebCodecs/muxer/encoder, ProjectWorld geometry, save/load, assets, addImageAsset, pan/zoom/touch, "Inverter sentido"; NÃO traz código da 30ZB sem auditoria. -->
@@ -6700,8 +6701,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZF';
-const APP_VERSION_NAME = 'v8z4b30ZF';
+const APP_VERSION = 'v8z4b30ZG';
+const APP_VERSION_NAME = 'v8z4b30ZG';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -12801,6 +12802,46 @@ let projectWorld = {
   x: 0, y: 0, w: 0, h: 0,
   baseStageW: 0, baseStageH: 0
 };
+let _pendingProjectWorldToPreserve = null; // v8z4b30ZG — projectWorld do JSON a preservar durante load
+let _projectWorldPreservedDuringLoad = false; // v8z4b30ZG — diag
+let _projectWorldMutationDuringLoad = false;  // v8z4b30ZG — diag
+let _firstEditorRenderDeferredUntilStageReady = false; // v8z4b30ZG — diag
+let _firstEditorRenderStageBcrValid = false;           // v8z4b30ZG — diag
+
+// v8z4b30ZG — CORREÇÃO 3: transformação canônica ProjectWorld → Stage para o editor.
+// Usada somente para posicionamento visual de frames/assets/handles no editor.
+// NÃO altera Preview, Export, framesAbs, curvesV2 ou projectWorld salvo.
+let _editorTransform = { active: false, scale: 1, offsetX: 0, offsetY: 0, basisW: 0, basisH: 0, displayW: 0, displayH: 0 };
+
+function computeEditorTransform() {
+  var basisW = (projectWorld && projectWorld.initialized && projectWorld.baseStageW > 0) ? projectWorld.baseStageW : 0;
+  var basisH = (projectWorld && projectWorld.initialized && projectWorld.baseStageH > 0) ? projectWorld.baseStageH : 0;
+  var displayW = (typeof stageW === 'number' && stageW > 0) ? stageW : 0;
+  var displayH = (typeof stageH === 'number' && stageH > 0) ? stageH : 0;
+  if (basisW <= 0 || basisH <= 0 || displayW <= 0 || displayH <= 0 ||
+      (basisW === displayW && basisH === displayH)) {
+    _editorTransform = { active: false, scale: 1, offsetX: 0, offsetY: 0, basisW: basisW, basisH: basisH, displayW: displayW, displayH: displayH };
+    return _editorTransform;
+  }
+  var scaleX = displayW / basisW;
+  var scaleY = displayH / basisH;
+  var scale = Math.min(scaleX, scaleY);
+  var offsetX = (displayW - basisW * scale) / 2;
+  var offsetY = (displayH - basisH * scale) / 2;
+  _editorTransform = { active: true, scale: scale, offsetX: offsetX, offsetY: offsetY, basisW: basisW, basisH: basisH, displayW: displayW, displayH: displayH };
+  return _editorTransform;
+}
+
+function editorWorldToStage(wx, wy, ww, wh) {
+  var tf = _editorTransform;
+  if (!tf.active) return { x: wx, y: wy, w: ww, h: wh };
+  return {
+    x: wx * tf.scale + tf.offsetX,
+    y: wy * tf.scale + tf.offsetY,
+    w: ww * tf.scale,
+    h: wh * tf.scale
+  };
+}
 let assets = []; // { id, type:'image', name, sourceW, sourceH, worldX, worldY, worldW, worldH, rotation, zIndex, visible, locked }
 let views = [];  // { id, type, name, x, y, w, h, zoom }
 let _pendingNewImageInput = null; // input file aguardando escolha na action sheet "Usar nova imagem"
@@ -15411,6 +15452,7 @@ function refreshActiveFrameVisuals() {
 }
 
 function renderAll() {
+  computeEditorTransform(); // v8z4b30ZG — Correção 3: atualiza transform ProjectWorld→Stage
   removeDuplicateStageRenderNodes();
   // Sync pin button with active frame
   const lockBtn = document.getElementById('btnLockFrame');
@@ -15427,10 +15469,12 @@ function renderAll() {
     const f = frames[i];
     // v8z4b18o — Defensivo: frames[i] pode ser undefined se frameCount > frames.length.
     if (!f) { el.style.display = 'none'; continue; }
-    el.style.left   = f.x + 'px';
-    el.style.top    = f.y + 'px';
-    el.style.width  = f.w + 'px';
-    el.style.height = f.h + 'px';
+    // v8z4b30ZG — Correção 3: aplicar transformação ProjectWorld→Stage para display no editor.
+    var _fp = editorWorldToStage(f.x, f.y, f.w, f.h);
+    el.style.left   = _fp.x + 'px';
+    el.style.top    = _fp.y + 'px';
+    el.style.width  = _fp.w + 'px';
+    el.style.height = _fp.h + 'px';
     el.style.display = 'block';
     updateStageFrameUIScale(el, f);
 
@@ -22140,7 +22184,13 @@ function loadImage(file, onDoneCallback) {
           const data = pendingProjectData;
           pendingProjectData = null;
           layoutStage();
+          // v8z4b30ZG — Correção 1: sinalizar projectWorld salvo antes de syncFirstImageAsset
+          _pendingProjectWorldToPreserve = (data.projectWorld && data.projectWorld.initialized === true &&
+            Number.isFinite(data.projectWorld.baseStageW) && data.projectWorld.baseStageW > 0 &&
+            Number.isFinite(data.projectWorld.baseStageH) && data.projectWorld.baseStageH > 0)
+            ? data.projectWorld : null;
           syncFirstImageAsset('load-project-data'); // v8z4b30D — modelo preparatório
+          _pendingProjectWorldToPreserve = null; // v8z4b30ZG — limpar após uso
           applyProjectData(data);
           showStatus('Projeto carregado!');
         } else if (isFirstLoad || frameCount === 0) {
@@ -24662,7 +24712,12 @@ function applyProjectData(data) {
     try {
       const file = dataUrlToFile(data.imageBase64, 'projeto');
       file._arcoSourceKind = 'imageBase64';
-      loadImage(file, () => applyFrameData(data));
+      // v8z4b30ZG — Correção 1: sinalizar projectWorld salvo antes de loadImage/syncFirstImageAsset
+      _pendingProjectWorldToPreserve = (data.projectWorld && data.projectWorld.initialized === true &&
+        Number.isFinite(data.projectWorld.baseStageW) && data.projectWorld.baseStageW > 0 &&
+        Number.isFinite(data.projectWorld.baseStageH) && data.projectWorld.baseStageH > 0)
+        ? data.projectWorld : null;
+      loadImage(file, () => { _pendingProjectWorldToPreserve = null; applyFrameData(data); });
       showStatus('Carregando projeto com imagem…');
       return;
     } catch(err) {
@@ -25118,17 +25173,6 @@ function applyFrameData(data) {
   // imagens). syncFirstImageAsset() já sincronizou o asset principal antes
   // de applyFrameData() ser chamado.
   if (imgNatW) restoreProjectAssetsFromData(data);
-  if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__captureBeforeRender(); // v8z4b30ZE diag
-  renderAll();
-  if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__captureAfterRender(); // v8z4b30ZE diag
-  updateFrameSelector();
-  requestLowerTimelineCenter(activeIdx);
-  updateToolbarLabels();
-  // Projeto carregado = sem template ativo
-  const tbTpl = document.getElementById('tbTemplate');
-  if (tbTpl) tbTpl.textContent = 'Livre';
-  captureProjectResetBaseline('project-load');
-  updateUndoRedoUI();
 
   // v8z4b30W — snapshot pós-load (após renderAll e todas as rotinas pós-load).
   // Compara com restored para detectar qualquer mutação indevida pós-carga.
@@ -25175,13 +25219,39 @@ function applyFrameData(data) {
       function(f){ return f.x < 0 || f.y < 0 || (f.x + f.w) > stageW || (f.y + f.h) > stageH; });
   }
 
+  // v8z4b30ZG — CORREÇÃO 2: entrar no editor ANTES do render para garantir Stage visível.
   if (imgNatW) {
-    // v8z4b29BG — JSON aberto com sucesso e imagem pronta: entra no editor/Stage.
     enterEditorMode();
     _newProjectOrigin = null;
-    showStatus('Projeto carregado!');
-    checkWatermarkWarning();
   }
+  // v8z4b30ZG — CORREÇÃO 2: aguardar Stage com BCR válido antes do primeiro render visual.
+  _firstEditorRenderDeferredUntilStageReady = false;
+  _firstEditorRenderStageBcrValid = false;
+  (function _doFirstEditorRender(retriesLeft) {
+    var _stEl = (typeof stage !== 'undefined') ? stage : document.getElementById('stage');
+    var _bcr = _stEl ? _stEl.getBoundingClientRect() : null;
+    var _bcrValid = !!(_bcr && _bcr.width > 0 && _bcr.height > 0);
+    if (!_bcrValid && retriesLeft > 0) {
+      _firstEditorRenderDeferredUntilStageReady = true;
+      requestAnimationFrame(function() { _doFirstEditorRender(retriesLeft - 1); });
+      return;
+    }
+    _firstEditorRenderStageBcrValid = _bcrValid;
+    if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__captureBeforeRender();
+    renderAll();
+    if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__captureAfterRender();
+    updateFrameSelector();
+    requestLowerTimelineCenter(activeIdx);
+    updateToolbarLabels();
+    var _tbTpl = document.getElementById('tbTemplate');
+    if (_tbTpl) _tbTpl.textContent = 'Livre';
+    captureProjectResetBaseline('project-load');
+    updateUndoRedoUI();
+    if (imgNatW) {
+      showStatus('Projeto carregado!');
+      checkWatermarkWarning();
+    }
+  })(3);
 }
 
 // ═══════════════════════════════════════
@@ -25225,16 +25295,42 @@ function syncFirstImageAsset(reason) {
     // direito no Preview/Export.
     const _hasExtraImageAssets = assets.some(x => x && x.type === 'image' && x !== a);
     if (!_hasExtraImageAssets) {
-      // Projeto de imagem única: o Stage É o mundo (tudo consistente). asset[0],
-      // projectWorld.w/h e baseStage acompanham o Stage atual normalmente.
-      a.worldX = 0;
-      a.worldY = 0;
-      a.worldW = sw;
-      a.worldH = sh;
-      projectWorld.w = sw;
-      projectWorld.h = sh;
-      projectWorld.baseStageW = sw;
-      projectWorld.baseStageH = sh;
+      // v8z4b30ZG — CORREÇÃO 1: se há um projectWorld salvo válido aguardando preservação,
+      // usar as dimensões canônicas salvas em vez do Stage atual. Isso evita que
+      // syncFirstImageAsset sobrescreva o sistema de coordenadas do arquivo.
+      const _savedPW = _pendingProjectWorldToPreserve;
+      const _hasSavedWorld = !!(
+        _savedPW &&
+        _savedPW.initialized === true &&
+        Number.isFinite(_savedPW.baseStageW) && _savedPW.baseStageW > 0 &&
+        Number.isFinite(_savedPW.baseStageH) && _savedPW.baseStageH > 0
+      );
+      if (_hasSavedWorld) {
+        // Preservar o sistema canônico salvo; não mexer em projectWorld.w/h/baseStage.
+        a.worldX = 0;
+        a.worldY = 0;
+        a.worldW = _savedPW.baseStageW;
+        a.worldH = _savedPW.baseStageH;
+        if (!Number.isFinite(projectWorld.w) || projectWorld.w <= 0) projectWorld.w = _savedPW.baseStageW;
+        if (!Number.isFinite(projectWorld.h) || projectWorld.h <= 0) projectWorld.h = _savedPW.baseStageH;
+        if (!Number.isFinite(projectWorld.baseStageW) || projectWorld.baseStageW <= 0) projectWorld.baseStageW = _savedPW.baseStageW;
+        if (!Number.isFinite(projectWorld.baseStageH) || projectWorld.baseStageH <= 0) projectWorld.baseStageH = _savedPW.baseStageH;
+        _projectWorldPreservedDuringLoad = true;
+        _projectWorldMutationDuringLoad = false;
+      } else {
+        // Projeto de imagem única sem world salvo: o Stage É o mundo (comportamento original).
+        a.worldX = 0;
+        a.worldY = 0;
+        a.worldW = sw;
+        a.worldH = sh;
+        projectWorld.w = sw;
+        projectWorld.h = sh;
+        projectWorld.baseStageW = sw;
+        projectWorld.baseStageH = sh;
+        _projectWorldPreservedDuringLoad = false;
+        _projectWorldMutationDuringLoad = (projectWorld.initialized === true &&
+          Number.isFinite(sw) && sw > 0);
+      }
     } else {
       // Multi-imagem → NÃO redimensionar o asset[0] com o Stage atual nem mexer em
       // projectWorld.w/h/baseStage; manter o sistema canônico único. Apenas
@@ -26132,6 +26228,8 @@ function renderProjectWorldExtraImages() {
   if (!extras.length) return;
   const scaleX = stageW / projectWorld.baseStageW;
   const scaleY = stageH / projectWorld.baseStageH;
+  // v8z4b30ZG — Correção 3: usar editorTransform para consistência com frames
+  var _etf = computeEditorTransform();
   extras.forEach(a => {
     if (a.visible === false) return;
     const src = a.src || (a._img && a._img.src);
@@ -26142,10 +26240,11 @@ function renderProjectWorldExtraImages() {
     img.alt = '';
     img.src = src;
     img.style.position = 'absolute';
-    img.style.left = (a.worldX * scaleX) + 'px';
-    img.style.top = (a.worldY * scaleY) + 'px';
-    img.style.width = (a.worldW * scaleX) + 'px';
-    img.style.height = (a.worldH * scaleY) + 'px';
+    var _ep = editorWorldToStage(a.worldX, a.worldY, a.worldW, a.worldH);
+    img.style.left = _ep.x + 'px';
+    img.style.top = _ep.y + 'px';
+    img.style.width = _ep.w + 'px';
+    img.style.height = _ep.h + 'px';
     img.style.objectFit = 'cover';
     img.style.pointerEvents = 'none';
     img.style.userSelect = 'none';
@@ -29676,6 +29775,18 @@ initInsertionActionBar();
     } else { s.projectWorld = null; }
 
     s.assetsCount = (typeof assets !== 'undefined' && Array.isArray(assets)) ? assets.length : null;
+    s.projectWorldMutationDuringLoad = (typeof _projectWorldMutationDuringLoad !== 'undefined') ? _projectWorldMutationDuringLoad : null;
+    s.projectWorldPreservedDuringLoad = (typeof _projectWorldPreservedDuringLoad !== 'undefined') ? _projectWorldPreservedDuringLoad : null;
+    s.firstEditorRenderDeferredUntilStageReady = (typeof _firstEditorRenderDeferredUntilStageReady !== 'undefined') ? _firstEditorRenderDeferredUntilStageReady : null;
+    s.firstEditorRenderStageBcrValid = (typeof _firstEditorRenderStageBcrValid !== 'undefined') ? _firstEditorRenderStageBcrValid : null;
+    s.editorProjectToStageTransformActive = (typeof _editorTransform !== 'undefined') ? _editorTransform.active : null;
+    s.editorTransformBasisW = (typeof _editorTransform !== 'undefined') ? _editorTransform.basisW : null;
+    s.editorTransformBasisH = (typeof _editorTransform !== 'undefined') ? _editorTransform.basisH : null;
+    s.editorTransformDisplayW = (typeof _editorTransform !== 'undefined') ? _editorTransform.displayW : null;
+    s.editorTransformDisplayH = (typeof _editorTransform !== 'undefined') ? _editorTransform.displayH : null;
+    s.editorTransformScale = (typeof _editorTransform !== 'undefined') ? _editorTransform.scale : null;
+    s.editorTransformOffsetX = (typeof _editorTransform !== 'undefined') ? _editorTransform.offsetX : null;
+    s.editorTransformOffsetY = (typeof _editorTransform !== 'undefined') ? _editorTransform.offsetY : null;
 
     if (typeof frames !== 'undefined') { s.framesSample = _framesSample(frames, s.activeIdx); }
 
