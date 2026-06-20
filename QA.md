@@ -1,3 +1,23 @@
+# QA pendente — v8z4b30ZK: alternância inicial entre Modo Câmera e Modo Ativos
+
+> Base aprovada: `v8z4b30ZI` (Preview sem tranco). Reaproveita apenas a lógica segura de seleção de assets da 30ZJ e **remove** o botão "Selecionar" indevido. Cria a estrutura inicial de dois modos de edição (Câmera/Frames/Filmagem e Ativos/Mundo/Imagens) alternáveis pelo topo. NÃO move/escala/rotaciona assets; sem crop/moldura/texto/GIF/stickers/efeitos temporais; NÃO altera Preview, Export, Save/Load nem ProjectWorld.
+
+## Escopo v8z4b30ZK
+
+1. App abre igual; menu mostra "Arco Motion App v8z4b30ZK" (`APP_VERSION`=`APP_VERSION_NAME`=`v8z4b30ZK`).
+2. Abrir projeto existente da 30ZI: abre igual, sem mudança visual.
+3. **Modo Câmera (padrão)** funciona igual ao atual: frames editáveis, curvas/handles, timeline e menu inferior; Preview continua sem tranco; Export continua igual.
+4. Botão "Selecionar" da 30ZJ **não** existe mais no menu Arquivos.
+5. Topo tem dois ícones de modo: **câmera** (ativa `editorMode='camera'`, cor ciano/verde) e **imagem** (ativa `editorMode='assets'`, cor roxa). O ícone do modo ativo recebe destaque de cor.
+6. **Modo Ativos:** frames continuam visíveis como referência, porém mais discretos/transparentes e **não editáveis** (handles/curvas não respondem; tocar no frame não inicia drag).
+7. **Seleção no Stage:** tocar numa imagem/asset seleciona (contorno roxo, só no editor); tocar em outro asset troca a seleção; tocar no vazio limpa; assets sem imagem não são selecionáveis; sobreposição seleciona o de maior zIndex.
+8. **Layers:** tocar numa miniatura do painel Layers seleciona o asset correspondente.
+9. **Barra contextual inferior do Modo Ativos:** sem asset selecionado mostra estado geral ("Toque numa imagem para selecionar" / "Nenhuma imagem no mundo ainda"); com asset selecionado mostra o nome ("Imagem 1"…).
+10. Voltar para Modo Câmera: frames voltam a ser editáveis normalmente.
+11. **Preview/Export:** o contorno de seleção **nunca** aparece no Preview nem no vídeo exportado.
+12. **Save/Load:** salvar/reabrir não muda nada visualmente; `selectedAssetId` é só de memória (volta a `null` ao carregar) e o editor retorna ao Modo Câmera; projetos da 30ZI abrem iguais; `ProjectWorld`/frames inalterados.
+13. Testar em iPhone/Safari real (toque, pinch/zoom de dois dedos preservado no Modo Ativos).
+
 # QA pendente — v8z4b30ZA: sistema de coordenadas único do ProjectWorld (mundo híbrido) + auditoria de render/handles
 
 > Base confirmada: `v8z4b30Z` (não revertida). Hotfix cirúrgico de coordenadas: elimina o mundo híbrido (Estratégia A — `preserveSavedWorld`) para que `ProjectWorld`, assets, frames, curvas, câmera, Preview e Export usem um único sistema canônico ancorado em `baseStageW/H`; o Stage atual é apenas viewport. Corrige o asset do slot superior direito sumindo/piscando com 9 imagens. Adiciona auditoria de escala mista, render transform real por asset e consistência de handles. NÃO altera UI/layout/cores/textos/ícones/menus, fluxo Inserir/Trocar, reset, zoom dinâmico, pan/zoom/touch, WebCodecs/muxer/encoder, motor de curvas; sem Layers, sem cenas, sem "Inverter sentido". Não promove para estável.
