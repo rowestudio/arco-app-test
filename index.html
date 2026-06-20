@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZL — base v8z4b30ZK. feat(ui): refinamento visual e estrutural da interface de modos. feat(pills): menus de modo convertidos em pills no topo esquerdo — pill "Câmera" (ícone câmera de vídeo) e pill "Ativos" (ícone de imagem); ícone de câmera de vídeo (#i-video-camera) substituiu a câmera fotográfica no Modo Filmagem. feat(accent-assets): cor de destaque roxa (#8b3fff) no Modo Ativos — pill ativa, botão "+", contorno de seleção de asset reforçado; no Modo Câmera a cor de destaque atual (ciano/verde) é preservada. feat(bottom-assets): 4ª linha do menu inferior exibe ferramentas de asset no Modo Ativos (Trocar, Excluir, Frente, Trás) e restaura ferramentas de frame ao voltar para o Modo Câmera; assetsContextBar legado substituído pela integração ao toolbar existente. feat(add-btn): botão "+" roxo no Modo Ativos e chama startInsertImageFlow() em vez de inserir frame. feat(asset-ops): novas funções deleteSelectedAsset(), bringSelectedAssetForward(), sendSelectedAssetBackward(). preserve: seleção direta de assets no Stage, motor de Preview/Export/Save/Load, ProjectWorld, frames, curvas, timeline — sem alteração. base v8z4b30ZK. -->
 <!-- Arco Motion App — v8z4b30ZK — base aprovada v8z4b30ZI (Preview sem tranco). feat(dual-mode): cria a estrutura inicial de DOIS modos de edição alternáveis pelo topo — Modo Câmera/Frames/Filmagem (editorMode="camera", ícone de câmera, cor ciano/verde atual) e Modo Ativos/Mundo/Imagens (editorMode="assets", ícone de imagem, cor roxa). Padrão inicial editorMode="camera" para preservar o fluxo atual. feat(state): estado global editorMode + helpers setEditorMode/isCameraMode/isAssetsMode/syncEditorModeUI; classe body.editor-assets sincroniza dimming dos frames e destaque dos ícones. feat(camera-mode): Modo Câmera preserva integralmente o comportamento atual (frames editáveis, curvas, handles, timeline e menu inferior atuais; Preview 30ZI preservado). feat(assets-mode): no Modo Ativos os frames continuam desenhados como REFERÊNCIA porém mais discretos (opacidade reduzida) e SEM captura de toque (handles/curvas não respondem); tocar diretamente no Stage executa hit-test de assets (screen→stage→world via editorStageToWorld), seleciona o asset de maior zIndex (fallback: último desenhado), troca a seleção ao tocar em outro asset e limpa ao tocar no vazio; ignora assets vazios/não carregados; pinch/zoom de dois dedos preservado. feat(highlight): contorno discreto do asset selecionado na cor do Modo Ativos (roxo), overlay DOM apenas no editor — NUNCA em Preview, NUNCA em Export, não salvo no JSON. feat(context-bar): barra contextual inferior do Modo Ativos preparada (sem funções avançadas) — mostra estado geral dos ativos ou o nome do asset selecionado ("Imagem 1"...). feat(layers): mantém painel básico de Layers (miniaturas + seleção por toque) reaproveitado da base de seleção. cleanup(30ZJ): REMOVIDO o botão "Selecionar" indevido (inserido fora do layout aprovado na 30ZJ); reaproveitada apenas a lógica segura de seleção de assets. state: selectedAssetId só em memória (volta a null ao carregar projeto). safe: Preview 30ZI, Export, Save/Load, ProjectWorld, framesAbs/framesNorm, curvas, easing, rotação, timeline e motor aprovado preservados; sem mover/escalar/rotacionar assets; sem crop/moldura/texto/GIF/stickers/efeitos temporais. base v8z4b30ZJ (apenas seleção segura reaproveitada). -->
 <!-- Arco Motion App — v8z4b30ZJ — base v8z4b30ZI (Preview sem tranco, aprovado). feat(asset-select): primeira estrutura de seleção de assets/layers no ProjectWorld, independente de slot/setor. Conceito: frames animam a câmera; assets/layers compõem o mundo; slots/setores são apenas presets de inserção; trocar imagem age sobre o ASSET selecionado, não sobre o setor; asset é tratado como caixa visual futura (preparada para moldura/crop, sem implementar crop/moldura nesta versão). feat(state): estado global de seleção (selectedAssetId + getSelectedAsset/setSelectedAsset/clearSelectedAsset) e modo de ferramenta toolMode ('camera' | 'asset-select'). feat(tool): item de menu "Selecionar" (ícone cursor i-mouse-pointer) que entra/sai do modo asset-select. feat(stage): em asset-select, toques no Stage fazem hit-test de assets (screen→stage→world via editorStageToWorld), selecionam o asset de maior zIndex (fallback ordem do array), ignoram frames/handles/curvas (captura em fase de captura + stopImmediatePropagation), preservam pinch/zoom de dois dedos; assets sem imagem carregada e slots vazios não são selecionáveis. feat(highlight): contorno discreto (overlay DOM em #stageContent) do asset selecionado apenas no editor — nunca em Preview/Export, sem handles, sem crop/moldura. feat(layers): painel básico de Layers com miniatura, nome automático ("Imagem 1/2/3"), seleção por toque e destaque do item selecionado (sem reorder/lock/hide/rename/delete/crop). fix(replace): "Trocar imagem" passa a substituir APENAS o asset selecionado (selectedAssetId), preservando id/worldX/worldY/centro/caixa/zIndex/campos futuros; sem asset selecionado mostra "Selecione uma imagem para trocar." e abre o painel de Layers; sem troca automática por slot. safe(insert): inserir imagem continua usando slot/preset apenas como posição inicial, cria asset livre e seleciona o novo asset. prep(crop): defaults não destrutivos asset.crop/asset.frameStyle (enabled:false) sem alterar render/Preview/Export. safe: Preview 30ZI, Export, Save/Load (selectedAssetId só em memória; projetos antigos sem crop/frameStyle/zIndex abrem normais), ProjectWorld, framesAbs/framesNorm, curvas, easing, rotação, timeline, layout, cores, textos e ícones preservados. -->
 <!-- Arco Motion App — v8z4b30ZH — fix(preview): o Preview de tempo real passa a usar avanço temporal LIMITADO para eliminar o engasgo/pulinho entre Frame 3 e Frame 4 (diagnosticado como rotation-delta-spike no Preview). Separa o tempo real bruto do requestAnimationFrame (ts) do tempo VISUAL exibido (previewElapsedMs): a cada frame calcula rawDt = ts - previewLastNow, limita a PREVIEW_MAX_DT_MS (1000/30 ≈ 33.333ms) e acumula previewElapsedMs += clampedDt; t = (previewElapsedMs % dur)/dur. No primeiro frame após início/replay/retomada apenas ancora previewLastNow e desenha t=0 (sem catch-up após pausa longa / troca de aba / travada do Safari). Aplicado aos três loops de playback em tempo real do Preview (startPreview, retomada em togglePreviewPlayback e loopAfter pós-export); helpers advancePreviewClockMs/resetPreviewClock e diagnóstico opcional debugPreviewClock atrás da flag DEBUG_PREVIEW_CLOCK (off em produção: mede rawDt/clampedDt, globalT, segmentIndex, localT e delta de rotação entre frames exibidos). Se o aparelho engasgar, o Preview atrasa levemente em vez de pular. NÃO altera Export (render determinístico por frame), motor de interpolação/getStateAtT, Save, Load, ProjectWorld, framesAbs/framesNorm, assets, curvas, easing, JSON, UI/textos/cores/ícones, nem a correção de reabertura da 30ZG. base v8z4b30ZG. -->
@@ -1268,33 +1269,47 @@ body.recording #editorZoomCtrl{display:none;}
 /* v8z4b30ZK — contorno discreto do asset selecionado (apenas editor), na cor do
    Modo Ativos (roxo). NUNCA aparece em Preview/Export (que renderizam por canvas). */
 .asset-select-outline{
-  border:1.5px solid rgba(176,108,255,.95);
-  border-radius:2px;
-  box-shadow:0 0 0 1px rgba(0,0,0,.25);
+  border:2px solid rgba(176,108,255,.98);
+  border-radius:3px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.3),0 0 8px rgba(176,108,255,.3);
   pointer-events:none;
 }
-/* v8z4b30ZK — Alternância de modo no topo (Câmera ciano / Ativos roxo). */
-.top-mode-toggle{display:flex;align-items:flex-end;gap:2px;margin-left:10px;}
-.top-mode-toggle .mode-btn svg{width:24px;height:24px;}
-.top-mode-toggle .mode-btn{color:rgba(255,255,255,.55);}
-.top-mode-toggle .mode-cam.active{color:var(--accent);}
-.top-mode-toggle .mode-assets.active{color:#b06cff;}
+/* v8z4b30ZL — Pills de modo no topo esquerdo (Filmagem ↔ Ativos). */
+.top-mode-toggle{display:flex;align-items:center;gap:3px;margin-right:2px;}
+.top-mode-toggle .mode-btn{
+  display:flex;flex-direction:row;align-items:center;gap:4px;
+  padding:5px 9px;border-radius:999px;height:30px;
+  color:rgba(255,255,255,.36);background:rgba(255,255,255,.06);
+  cursor:pointer;-webkit-user-select:none;user-select:none;
+  touch-action:manipulation;flex-shrink:0;
+  border:0;font-size:0;
+}
+.top-mode-toggle .mode-btn svg{width:14px;height:14px;flex-shrink:0;}
+.mode-pill-label{font-size:11px;font-weight:650;line-height:1;white-space:nowrap;}
+.top-mode-toggle .mode-cam.active{color:var(--accent);background:rgba(4,255,242,.15);}
+.top-mode-toggle .mode-assets.active{color:#b06cff;background:rgba(176,108,255,.18);}
+.top-mode-toggle .mode-btn:active{filter:brightness(1.18);}
 /* v8z4b30ZK — Modo Ativos: frames/curvas viram referência discreta e NÃO capturam
    toque (handles/curvas não respondem). O toque no Stage passa a selecionar assets. */
 body.editor-assets .frame{opacity:.32;pointer-events:none;}
 body.editor-assets #bezierSvg{opacity:.26;}
 body.editor-assets .frame-out-handle{pointer-events:none !important;}
-/* v8z4b30ZK — Área contextual inferior do Modo Ativos (preparada, sem funções
-   avançadas). Mostra estado geral dos ativos ou o nome do asset selecionado. */
-#assetsContextBar{
-  position:fixed;left:0;right:0;bottom:0;z-index:80;display:none;
-  align-items:center;gap:10px;
-  background:var(--menu-bg);border-top:.5px solid rgba(176,108,255,.42);
-  padding:11px 16px calc(11px + var(--safe-bottom));box-sizing:border-box;
+/* v8z4b30ZL — Botão + vira roxo no Modo Ativos */
+body.editor-assets .lower-add-pill{
+  background:#8b3fff;color:#fff;
+  box-shadow:0 0 0 1px rgba(255,255,255,.14) inset,0 0 14px rgba(139,63,255,.28);
 }
-#assetsContextBar.show{display:flex;}
-#assetsContextBar .ac-dot{width:9px;height:9px;border-radius:999px;background:#b06cff;flex:0 0 auto;}
-#assetsContextBar .ac-label{font-size:13px;font-weight:650;color:#fff;}
+/* v8z4b30ZL — 4ª linha: ferramentas de asset no Modo Ativos */
+#toolbar.contextual-toolbar .ctx-asset{display:none;}
+body.editor-assets #toolbar.contextual-toolbar .ctx-asset{display:flex;}
+body.editor-assets #toolbar.contextual-toolbar .ctx-frame,
+body.editor-assets #toolbar.contextual-toolbar .ctx-segment,
+body.editor-assets #toolbar.contextual-toolbar .ctx-common{display:none !important;}
+/* v8z4b30ZL — assetsContextBar substituído pelo toolbar integrado; overlay oculto */
+#assetsContextBar{display:none !important;}
+/* v8z4b30ZL — ferramenta de asset desabilitada (sem asset selecionado) */
+.tb-item.ctx-asset.asset-tool-disabled{opacity:.35;pointer-events:none;}
+/* v8z4b30ZJ — painel básico de Layers (mantido, removido #assetsContextBar legado) */
 /* v8z4b30ZJ — destaque do item ativo da ferramenta Selecionar no menu. */
 .settings-row.active{color:var(--accent,#7ab8ff);}
 /* v8z4b30ZJ — painel básico de Layers. */
@@ -3477,6 +3492,24 @@ body.cust-open #toolbar{
     <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/>
     <circle cx="12" cy="13" r="3"/>
   </symbol>
+  <!-- v8z4b30ZL — ícone de câmera de vídeo para a pill do Modo Filmagem. -->
+  <symbol id="i-video-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/>
+    <rect x="2" y="6" width="14" height="12" rx="2"/>
+  </symbol>
+  <!-- v8z4b30ZL — ícone de trazer para frente (z-order up). -->
+  <symbol id="i-bring-forward" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="12" height="12" rx="2"/>
+    <path d="M4 16V4a2 2 0 0 1 2-2h12"/>
+    <path d="M14 12h-4"/>
+    <path d="M12 10v4"/>
+  </symbol>
+  <!-- v8z4b30ZL — ícone de enviar para trás (z-order down). -->
+  <symbol id="i-send-backward" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="12" height="12" rx="2"/>
+    <path d="M20 8h-2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2z"/>
+    <path d="M20 8v10"/>
+  </symbol>
   <symbol id="i-image-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L9 18"/>
     <path d="m14 19 3-3v6"/>
@@ -3593,11 +3626,16 @@ body.cust-open #toolbar{
      contextual). Nenhuma mudança de layout agora; apenas evita
      dependências (CSS/JS) que impeçam o slot depois. -->
 <div class="top-bar" id="topBar" data-role="top-bar">
-  <!-- v8z4b30U — X/Fechar removido daqui e movido para o menu Arquivo como "Início".
-       Placeholder invisível preserva exatamente a largura/gap do antigo botão para
-       NÃO deslocar Visualizar/Preview no topo. Espaço reservado para futuro menu Layers/Imagens. -->
-  <div class="top-btn labeled top-gap-after" aria-hidden="true" data-role="top-left-placeholder" style="visibility:hidden;pointer-events:none;">
-    <svg viewBox="0 0 24 24"><use href="#i-close"></use></svg><span class="top-label">Voltar</span>
+  <!-- v8z4b30ZL — Pills de modo no topo esquerdo: Filmagem (câmera de vídeo) e Ativos (imagem). -->
+  <div class="top-mode-toggle" role="group" aria-label="Modo de edição">
+    <div class="mode-btn mode-cam active" id="modeCameraBtn" onclick="setEditorMode('camera')" title="Modo Filmagem" aria-label="Modo Filmagem">
+      <svg viewBox="0 0 24 24"><use href="#i-video-camera"></use></svg>
+      <span class="mode-pill-label">Câmera</span>
+    </div>
+    <div class="mode-btn mode-assets" id="modeAssetsBtn" onclick="setEditorMode('assets')" title="Modo Ativos" aria-label="Modo Ativos">
+      <svg viewBox="0 0 24 24"><use href="#i-image"></use></svg>
+      <span class="mode-pill-label">Ativos</span>
+    </div>
   </div>
   <div class="top-btn labeled top-gap-after" onclick="toggleSettingsSheet()" title="Arquivos" aria-label="Arquivos">
     <svg viewBox="0 0 24 24"><use href="#i-cinema-old"></use></svg><span class="top-label">Arquivos</span>
@@ -3607,15 +3645,6 @@ body.cust-open #toolbar{
   </div>
   <div class="top-btn labeled" id="topBtnPreview" onclick="togglePlay()" title="Preview" aria-label="Preview">
     <svg id="playIcon" viewBox="0 0 24 24"><use href="#i-play"></use></svg><span class="top-label" id="playLbl">Preview</span>
-  </div>
-  <!-- v8z4b30ZK — Alternância de modo de edição: Câmera/Frames (atual) ↔ Ativos/Mundo/Imagens. -->
-  <div class="top-mode-toggle" role="group" aria-label="Modo de edição">
-    <div class="top-btn mode-btn mode-cam active" id="modeCameraBtn" onclick="setEditorMode('camera')" title="Modo Câmera" aria-label="Modo Câmera">
-      <svg viewBox="0 0 24 24"><use href="#i-camera"></use></svg>
-    </div>
-    <div class="top-btn mode-btn mode-assets" id="modeAssetsBtn" onclick="setEditorMode('assets')" title="Modo Ativos" aria-label="Modo Ativos">
-      <svg viewBox="0 0 24 24"><use href="#i-image"></use></svg>
-    </div>
   </div>
   <div class="top-spacer"></div>
   <div class="top-btn" id="topBtnUndo" onclick="undo()" title="Desfazer" aria-label="Desfazer" style="opacity:0.3;pointer-events:none;">
@@ -3775,6 +3804,19 @@ body.cust-open #toolbar{
   </div>
   <div class="tb-item ctx-only ctx-segment" onclick="openSelectedSegmentMenu('trajectory')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-fold-vertical"></use></svg><span class="tb-lbl">Trajetória</span>
+  </div>
+  <!-- v8z4b30ZL — ferramentas do Modo Ativos (ctx-asset). Visíveis apenas em body.editor-assets. -->
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetReplace" onclick="isAssetsMode()&&getSelectedAsset()?startReplaceImageFlow():showStatus('Selecione uma imagem primeiro.')">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-image-down"></use></svg><span class="tb-lbl">Trocar</span>
+  </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetDelete" onclick="isAssetsMode()&&getSelectedAsset()?deleteSelectedAsset():showStatus('Selecione uma imagem primeiro.')">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-trash"></use></svg><span class="tb-lbl">Excluir</span>
+  </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetForward" onclick="isAssetsMode()?bringSelectedAssetForward():null">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-bring-forward"></use></svg><span class="tb-lbl">Frente</span>
+  </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetBackward" onclick="isAssetsMode()?sendSelectedAssetBackward():null">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-send-backward"></use></svg><span class="tb-lbl">Trás</span>
   </div>
 </div>
 <!-- ALIGN BAR: seleção múltipla ocupa o slot da Linha 4 / Coluna 2, sem overlay sobre Duração. -->
@@ -6811,8 +6853,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZK';
-const APP_VERSION_NAME = 'v8z4b30ZK';
+const APP_VERSION = 'v8z4b30ZL';
+const APP_VERSION_NAME = 'v8z4b30ZL';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -13050,41 +13092,101 @@ function setEditorMode(mode) {
   syncEditorModeUI();
   renderAssetSelectionOverlay();
 }
-// v8z4b30ZK — sincroniza a UI ao modo atual: classe no body (dimming de frames),
-// destaque dos ícones do topo (Câmera ciano / Ativos roxo) e barra contextual.
+// v8z4b30ZL — sincroniza a UI ao modo atual: classe no body (dimming de frames,
+// cor roxa no Modo Ativos), destaque das pills do topo e ferramentas da 4ª linha.
 function syncEditorModeUI() {
   if (document.body) document.body.classList.toggle('editor-assets', isAssetsMode());
   const camBtn = document.getElementById('modeCameraBtn');
   const assetBtn = document.getElementById('modeAssetsBtn');
   if (camBtn) camBtn.classList.toggle('active', isCameraMode());
   if (assetBtn) assetBtn.classList.toggle('active', isAssetsMode());
-  renderAssetsContextBar();
-}
-// v8z4b30ZK — barra contextual inferior do Modo Ativos (item 10): sem funções
-// avançadas; mostra o estado geral dos ativos ou o nome do asset selecionado.
-function renderAssetsContextBar() {
-  const bar = document.getElementById('assetsContextBar');
-  if (!bar) return;
-  if (!isAssetsMode()) {
-    bar.classList.remove('show');
-    bar.setAttribute('aria-hidden', 'true');
-    return;
-  }
-  const label = document.getElementById('assetsContextLabel');
-  if (label) {
-    const sel = getSelectedAsset();
-    if (sel) {
-      label.textContent = (typeof getAssetDisplayName === 'function')
-        ? getAssetDisplayName(sel) : 'Imagem selecionada';
+  // Atualiza título/aria do botão + e ferramentas de asset.
+  const addBtn = document.getElementById('lowerAddOrSelectAllBtn');
+  if (addBtn) {
+    if (isAssetsMode()) {
+      addBtn.title = 'Adicionar imagem';
+      addBtn.setAttribute('aria-label', 'Adicionar imagem');
     } else {
-      const imgs = (typeof getSelectableImageAssets === 'function') ? getSelectableImageAssets() : [];
-      label.textContent = imgs.length
-        ? 'Toque numa imagem para selecionar'
-        : 'Nenhuma imagem no mundo ainda';
+      addBtn.title = 'Adicionar frame';
+      addBtn.setAttribute('aria-label', 'Adicionar frame');
     }
   }
-  bar.classList.add('show');
-  bar.setAttribute('aria-hidden', 'false');
+  syncAssetToolbarState();
+  // assetsContextBar mantido oculto (integrado ao toolbar da 4ª linha).
+}
+// v8z4b30ZL — atualiza estado visual das ferramentas de asset na 4ª linha.
+function syncAssetToolbarState() {
+  const hasSel = isAssetsMode() && !!getSelectedAsset();
+  const needSel = ['tbAssetReplace','tbAssetDelete','tbAssetForward','tbAssetBackward'];
+  needSel.forEach(function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (hasSel) el.classList.remove('asset-tool-disabled');
+    else el.classList.add('asset-tool-disabled');
+  });
+}
+// v8z4b30ZK — barra contextual legada (agora sempre oculta; substituída pelo toolbar).
+function renderAssetsContextBar() {
+  // v8z4b30ZL — a 4ª linha do toolbar substitui este overlay. Apenas sincroniza estado.
+  syncAssetToolbarState();
+}
+// v8z4b30ZL — exclui o asset atualmente selecionado do ProjectWorld.
+function deleteSelectedAsset() {
+  const sel = getSelectedAsset();
+  if (!sel) { showStatus('Selecione uma imagem para excluir.'); return; }
+  const selId = sel.id;
+  const isMain = assets.length > 0 && assets[0] && assets[0].id === selId;
+  if (isMain && assets.length === 1) {
+    showStatus('Não é possível excluir a única imagem do projeto.');
+    return;
+  }
+  // Captura snapshot para undo antes de mutar.
+  if (typeof captureState === 'function' && typeof pushUndoSnapshot === 'function') {
+    pushUndoSnapshot(cloneProjectStateSnapshot(captureState()));
+  }
+  const idx = assets.findIndex(function(a) { return a && a.id === selId; });
+  if (idx < 0) return;
+  // Remove o elemento DOM extra (imagens extras têm .world-extra-img).
+  const domEl = document.querySelector('.world-extra-img[data-asset-id="' + selId + '"]');
+  if (domEl) domEl.remove();
+  assets.splice(idx, 1);
+  clearSelectedAsset();
+  if (typeof renderAll === 'function') renderAll();
+  showStatus('Imagem excluída.');
+}
+// v8z4b30ZL — traz o asset selecionado uma posição para frente (zIndex +1).
+function bringSelectedAssetForward() {
+  const sel = getSelectedAsset();
+  if (!sel) { showStatus('Selecione uma imagem para trazer à frente.'); return; }
+  const sorted = assets.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); });
+  const pos = sorted.findIndex(function(a){ return a.id===sel.id; });
+  if (pos >= sorted.length - 1) { showStatus('Já está na frente.'); return; }
+  const next = sorted[pos+1];
+  if (typeof captureState === 'function' && typeof pushUndoSnapshot === 'function') {
+    pushUndoSnapshot(cloneProjectStateSnapshot(captureState()));
+  }
+  const tmp = sel.zIndex;
+  sel.zIndex = next.zIndex;
+  next.zIndex = tmp;
+  if (typeof renderAll === 'function') renderAll();
+  syncAssetToolbarState();
+}
+// v8z4b30ZL — envia o asset selecionado uma posição para trás (zIndex -1).
+function sendSelectedAssetBackward() {
+  const sel = getSelectedAsset();
+  if (!sel) { showStatus('Selecione uma imagem para enviar para trás.'); return; }
+  const sorted = assets.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); });
+  const pos = sorted.findIndex(function(a){ return a.id===sel.id; });
+  if (pos <= 0) { showStatus('Já está atrás de tudo.'); return; }
+  const prev = sorted[pos-1];
+  if (typeof captureState === 'function' && typeof pushUndoSnapshot === 'function') {
+    pushUndoSnapshot(cloneProjectStateSnapshot(captureState()));
+  }
+  const tmp = sel.zIndex;
+  sel.zIndex = prev.zIndex;
+  prev.zIndex = tmp;
+  if (typeof renderAll === 'function') renderAll();
+  syncAssetToolbarState();
 }
 
 // ═══════════════════════════════════════
@@ -13306,7 +13408,12 @@ function openSelectedSegmentMenu(target) {
   openPanel(target === 'time' ? 'SegTime' : (target === 'trajectory' ? 'Trajectory' : 'Ease'));
 }
 function handleLowerAddOrSelectAll() {
-  insertFrameAfterActive();
+  // v8z4b30ZL — no Modo Ativos, o + adiciona imagem; no Modo Câmera, adiciona frame.
+  if (isAssetsMode()) {
+    startInsertImageFlow();
+  } else {
+    insertFrameAfterActive();
+  }
 }
 function formatLowerTimeValue(v, showSuffix = true) {
   const n = Number(v);
