@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZN — base v8z4b30ZM. fix(topbar-layout): barra superior passa a ter layout FIXO — a posição dos ícones não muda ao alternar entre Modo Câmera e Modo Ativos. fix(mode-buttons): botões de modo (Câmera e Ativos) redimensionados para área de toque adequada (40×44px, ícone 22px) — mesma importância visual dos controles principais; sem texto (somente ícones). fix(visualizar-slot): #topBtnMapa deixa de usar display:none no Modo Ativos (que colapsava o espaço e deslocava Play/Undo/Redo); passa a usar visibility:hidden+pointer-events:none, preservando o slot no layout. fix(version): APP_VERSION e APP_VERSION_NAME = v8z4b30ZN. preserve: iconografia (câmera de vídeo = Modo Câmera, imagem = Modo Ativos), cor de destaque roxa no Modo Ativos (--accent:#8b3fff), Play roxo no Modo Ativos, botão + roxo no Modo Ativos, handles ocultos no Modo Ativos, seleção de assets, Trocar imagem, motor de Preview/Export/Save/Load, ProjectWorld, frames, curvas, timeline — sem alteração. base v8z4b30ZM. -->
 <!-- Arco Motion App — v8z4b30ZM — base v8z4b30ZL. fix(pills): pills de modo agora exibem somente ícones, sem texto (span.mode-pill-label removido do HTML). fix(icon): pill Câmera continua usando ícone de câmera de vídeo (#i-video-camera); pill Ativos continua usando #i-image. fix(accent-global): implementada regra centralizada de cor de destaque por modo — body.editor-assets sobrescreve --accent:#8b3fff, fazendo roxo propagar automaticamente para Play, timeline, outline de seleção e todos os elementos que usam var(--accent). fix(play): botão Play segue a cor do modo (roxo no Modo Ativos, ciano no Modo Câmera). fix(visualize): botão Visualizar (#topBtnMapa) oculto no Modo Ativos (body.editor-assets #topBtnMapa{display:none}); modos de visualização restritos ao Modo Câmera. fix(camera-leak): handles de câmera/frame (corner-handle, frameHud, stageFrameMenu) ocultos no Modo Ativos via CSS; setEditorMode chama clearFrameMultiSelectState ao entrar em assets. fix(forward-back): bringSelectedAssetForward e sendSelectedAssetBackward normalizam zIndex para valores únicos antes de trocar posições, garantindo que Frente/Trás funcionem inclusive em projetos cujos assets têm zIndex duplicado (0); renderProjectWorldExtraImages ordena extras por zIndex antes de inserir no DOM, refletindo a ordem no Stage além do Preview/Export. preserve: seleção direta de assets, Trocar imagem, motor de Preview/Export/Save/Load, ProjectWorld, frames, curvas, timeline. base v8z4b30ZL. -->
 <!-- Arco Motion App — v8z4b30ZL — base v8z4b30ZK. feat(ui): refinamento visual e estrutural da interface de modos. feat(pills): menus de modo convertidos em pills no topo esquerdo — pill "Câmera" (ícone câmera de vídeo) e pill "Ativos" (ícone de imagem); ícone de câmera de vídeo (#i-video-camera) substituiu a câmera fotográfica no Modo Filmagem. feat(accent-assets): cor de destaque roxa (#8b3fff) no Modo Ativos — pill ativa, botão "+", contorno de seleção de asset reforçado; no Modo Câmera a cor de destaque atual (ciano/verde) é preservada. feat(bottom-assets): 4ª linha do menu inferior exibe ferramentas de asset no Modo Ativos (Trocar, Excluir, Frente, Trás) e restaura ferramentas de frame ao voltar para o Modo Câmera; assetsContextBar legado substituído pela integração ao toolbar existente. feat(add-btn): botão "+" roxo no Modo Ativos e chama startInsertImageFlow() em vez de inserir frame. feat(asset-ops): novas funções deleteSelectedAsset(), bringSelectedAssetForward(), sendSelectedAssetBackward(). preserve: seleção direta de assets no Stage, motor de Preview/Export/Save/Load, ProjectWorld, frames, curvas, timeline — sem alteração. base v8z4b30ZK. -->
 <!-- Arco Motion App — v8z4b30ZK — base aprovada v8z4b30ZI (Preview sem tranco). feat(dual-mode): cria a estrutura inicial de DOIS modos de edição alternáveis pelo topo — Modo Câmera/Frames/Filmagem (editorMode="camera", ícone de câmera, cor ciano/verde atual) e Modo Ativos/Mundo/Imagens (editorMode="assets", ícone de imagem, cor roxa). Padrão inicial editorMode="camera" para preservar o fluxo atual. feat(state): estado global editorMode + helpers setEditorMode/isCameraMode/isAssetsMode/syncEditorModeUI; classe body.editor-assets sincroniza dimming dos frames e destaque dos ícones. feat(camera-mode): Modo Câmera preserva integralmente o comportamento atual (frames editáveis, curvas, handles, timeline e menu inferior atuais; Preview 30ZI preservado). feat(assets-mode): no Modo Ativos os frames continuam desenhados como REFERÊNCIA porém mais discretos (opacidade reduzida) e SEM captura de toque (handles/curvas não respondem); tocar diretamente no Stage executa hit-test de assets (screen→stage→world via editorStageToWorld), seleciona o asset de maior zIndex (fallback: último desenhado), troca a seleção ao tocar em outro asset e limpa ao tocar no vazio; ignora assets vazios/não carregados; pinch/zoom de dois dedos preservado. feat(highlight): contorno discreto do asset selecionado na cor do Modo Ativos (roxo), overlay DOM apenas no editor — NUNCA em Preview, NUNCA em Export, não salvo no JSON. feat(context-bar): barra contextual inferior do Modo Ativos preparada (sem funções avançadas) — mostra estado geral dos ativos ou o nome do asset selecionado ("Imagem 1"...). feat(layers): mantém painel básico de Layers (miniaturas + seleção por toque) reaproveitado da base de seleção. cleanup(30ZJ): REMOVIDO o botão "Selecionar" indevido (inserido fora do layout aprovado na 30ZJ); reaproveitada apenas a lógica segura de seleção de assets. state: selectedAssetId só em memória (volta a null ao carregar projeto). safe: Preview 30ZI, Export, Save/Load, ProjectWorld, framesAbs/framesNorm, curvas, easing, rotação, timeline e motor aprovado preservados; sem mover/escalar/rotacionar assets; sem crop/moldura/texto/GIF/stickers/efeitos temporais. base v8z4b30ZJ (apenas seleção segura reaproveitada). -->
@@ -1275,21 +1276,22 @@ body.recording #editorZoomCtrl{display:none;}
   box-shadow:0 0 0 1px rgba(0,0,0,.3),0 0 8px rgba(176,108,255,.3);
   pointer-events:none;
 }
-/* v8z4b30ZL — Pills de modo no topo esquerdo (Filmagem ↔ Ativos). */
-.top-mode-toggle{display:flex;align-items:center;gap:3px;margin-right:2px;}
+/* v8z4b30ZN — Botões de modo: área de toque adequada, ícones grandes, sem texto.
+   Layout fixo: mesmo tamanho dos controles principais; slot sempre reservado. */
+.top-mode-toggle{display:flex;align-items:center;gap:2px;margin-right:2px;}
 .top-mode-toggle .mode-btn{
-  display:flex;flex-direction:row;align-items:center;gap:4px;
-  padding:5px 9px;border-radius:999px;height:30px;
-  color:rgba(255,255,255,.36);background:rgba(255,255,255,.06);
+  width:40px;height:44px;display:flex;align-items:center;justify-content:center;
+  border-radius:10px;
+  color:rgba(255,255,255,.45);background:transparent;
   cursor:pointer;-webkit-user-select:none;user-select:none;
   touch-action:manipulation;flex-shrink:0;
-  border:0;font-size:0;
+  border:0;
 }
-.top-mode-toggle .mode-btn svg{width:14px;height:14px;flex-shrink:0;}
-.mode-pill-label{font-size:11px;font-weight:650;line-height:1;white-space:nowrap;display:none;}
-.top-mode-toggle .mode-cam.active{color:var(--accent);background:rgba(4,255,242,.15);}
-.top-mode-toggle .mode-assets.active{color:#b06cff;background:rgba(176,108,255,.18);}
-.top-mode-toggle .mode-btn:active{filter:brightness(1.18);}
+.top-mode-toggle .mode-btn svg{width:22px;height:22px;flex-shrink:0;}
+.mode-pill-label{display:none;}
+.top-mode-toggle .mode-cam.active{color:var(--accent);background:rgba(4,255,242,.12);}
+.top-mode-toggle .mode-assets.active{color:#b06cff;background:rgba(176,108,255,.15);}
+.top-mode-toggle .mode-btn:active{background:rgba(255,255,255,.08);}
 /* v8z4b30ZK — Modo Ativos: frames/curvas viram referência discreta e NÃO capturam
    toque (handles/curvas não respondem). O toque no Stage passa a selecionar assets. */
 body.editor-assets .frame{opacity:.32;pointer-events:none;}
@@ -1320,8 +1322,9 @@ body.editor-assets .mid-bar.timeline-grid .fp.active,
 body.editor-assets .mid-bar.timeline-grid .fp.active.selected{
   box-shadow:0 0 0 1px rgba(139,63,255,.55) inset,0 0 10px rgba(139,63,255,.18);
 }
-/* v8z4b30ZM — Botão Visualizar restrito ao Modo Câmera/Frames. */
-body.editor-assets #topBtnMapa{display:none;}
+/* v8z4b30ZN — Botão Visualizar: oculto no Modo Ativos mas preserva o slot
+   (visibility:hidden mantém a largura; display:none causava deslocamento do Play). */
+body.editor-assets #topBtnMapa{visibility:hidden;pointer-events:none;}
 /* v8z4b30ZM — Handles de câmera/frame ocultos no Modo Ativos (evita "vazamento" visual). */
 body.editor-assets .corner-handle,
 body.editor-assets #frameHud,
@@ -6868,8 +6871,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZL';
-const APP_VERSION_NAME = 'v8z4b30ZL';
+const APP_VERSION = 'v8z4b30ZN';
+const APP_VERSION_NAME = 'v8z4b30ZN';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
