@@ -1,3 +1,23 @@
+# v8z4b30ZK
+
+- **feat:** cria a alternância inicial entre **Modo Câmera** (Câmera/Frames/Filmagem) e **Modo Ativos** (Ativos/Mundo/Imagens).
+- **feat:** o Modo Ativos permite selecionar imagens/assets **diretamente no Stage** (toque), sem botão "Selecionar" separado.
+- **feat:** os frames ficam visíveis como **referência** no Modo Ativos (mais discretos/transparentes), porém **sem edição**.
+- **safe:** Preview da 30ZI, Export, Save/Load, ProjectWorld, frames e curvas preservados.
+- **prep:** base criada para o futuro menu contextual de ativos, layers, botão **+** e edição de assets.
+- **Base aprovada `v8z4b30ZI`** (Preview sem tranco). Reaproveitada apenas a **lógica segura de seleção de assets** da 30ZJ.
+- **cleanup — 30ZJ.** Removido o botão **"Selecionar"** indevido (inserido na 30ZJ fora do layout aprovado). Nenhum botão novo criado sem autorização; a alternância de modos vive no **topo**.
+- **feat — estado global.** `editorMode` (`'camera'` | `'assets'`), padrão `'camera'` para preservar o fluxo atual; helpers `setEditorMode(mode)`, `isCameraMode()`, `isAssetsMode()`, `syncEditorModeUI()`. Classe `body.editor-assets` sincroniza o dimming dos frames e o destaque dos ícones do topo.
+- **feat — topo.** Ícone de **câmera** ativa `editorMode='camera'` (cor ciano/verde atual); ícone de **imagem** ativa `editorMode='assets'` (cor **roxa**). Sem novos menus.
+- **feat — Modo Câmera.** Preserva integralmente o comportamento atual: frames editáveis, curvas, handles, timeline e menu inferior atuais; Preview 30ZI preservado.
+- **feat — Modo Ativos.** Frames continuam desenhados como **referência**, mais discretos e **sem captura de toque** (handles/curvas não respondem). Tocar no Stage faz hit-test (screen → stage → world via `editorStageToWorld`), seleciona o asset de **maior zIndex** (fallback: último desenhado), troca a seleção ao tocar em outro asset e limpa ao tocar no vazio; ignora assets vazios/não carregados; pinch/zoom de dois dedos preservado.
+- **feat — realce.** Contorno discreto do asset selecionado na **cor do Modo Ativos (roxo)**, overlay DOM `#assetSelectOutline` **apenas no editor**: nunca no Preview, nunca no Export, **não salvo** no JSON.
+- **feat — barra contextual inferior (preparada).** No Modo Ativos, `#assetsContextBar` mostra o **estado geral dos ativos** ou o **nome do asset selecionado** ("Imagem 1"…). Sem funções avançadas nesta versão.
+- **feat — Layers.** Mantido o painel básico de Layers (miniaturas + seleção por toque) reaproveitado da base de seleção; sem reorder/lock/hide/apagar.
+- **state.** `selectedAssetId` mantido **apenas em memória**; ao carregar projeto volta a `null` e o editor retorna ao Modo Câmera.
+- `index.html`: comentário do topo, `APP_VERSION`, `APP_VERSION_NAME` e versão visível atualizados para `v8z4b30ZK`.
+- **Preserve / NÃO altera:** motor aprovado de Preview da 30ZI; Export; Save/Load; `ProjectWorld`; `framesAbs`/`framesNorm`; curvas; easing; timeline. **Sem** mover/escalar/rotacionar assets; **sem** crop/moldura/texto/GIF/stickers/efeitos temporais.
+
 # v8z4b30ZJ
 
 - **feat:** adiciona modo **Selecionar** para assets/layers no ProjectWorld.
