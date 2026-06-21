@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b30ZW                                    ║
+║  Versão: v8z4b30ZX                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZX — base v8z4b30ZW. fix(frame-anchored-ui): cria getFrameScreenGeometry(fi) como fonte única de geometria visual do frame no espaço do editor (stageContent coords) — calcula os 4 cantos rotacionados em world coords, aplica editorWorldToStage via _editorTransform, retorna center/corners/chipAnchor em screen space; todos os elementos ancorados ao frame (HUD chips, handles de canto, handle global) usam esta função eliminando o desalinhamento para frames em slots não-centrais (coords world negativas/além de baseStageW×baseStageH, e.g. frames 6/8/13 em projeto 9-ativos); corner handles em refreshActiveFrameVisuals() convertidos de world para screen coords via _geom[cornerGeomKey]; handle global convertido de getRawHandlePosForFrame (world) para _geom[handleCorner] (screen); updateFrameHud() convertido para usar geom.chipAnchor — cálculo equivalente ao anterior mas via fonte única; refreshEditorViewVisualOverlays() passa a chamar refreshActiveFrameVisuals() em Modo Câmera para recalcular posição dos handles/HUD após zoom/pan/resize; diagnóstico expandido com 10 novos campos (frameAnchoredUIUsesSingleGeometrySource, frameAnchoredUIScreenGeometryValid, frameAnchoredUIProjectWorldTransformValid, frameAnchoredUIUsesRotatedCorners, frameAnchoredUIUsesCurrentPanZoom, frameAnchoredUIClampAppliedAfterTransform, frameAnchoredUITestedOutsideMainSlot, frameAnchoredUIFrameIndex, frameAnchoredUIDistanceFromFramePx, frameAnchoredUIIssue); cameraModeFrameChipsAligned corretamente verdadeiro apenas quando alinhamento confirmado; APP_VERSION = v8z4b30ZX. preserve: menu contextual de frames (Modo Câmera), Assets Mode com bottomContextMode:asset, Frente/Trás visual, seleção de assets, ghost handles ocultos em Assets Mode, referência de frame intencional, centralização de timeline, botão + sem ações de frame, ícone Assets alterna referências, preview/export inalterados, save/load, motor de curvas, ProjectWorld. base v8z4b30ZW. -->
 <!-- Arco Motion App — v8z4b30ZW — base v8z4b30ZV. fix(camera-frame-menu): showStageFrameMenu() agora limpa style.display inline antes de adicionar classe 'show' — corrige regressão em que clearFrameEditingVisualsForAssetsMode() deixava inline display:none no stageFrameMenu impedindo abertura em Modo Câmera; setEditorMode('camera') também limpa inline style do stageFrameMenu; pill click em frame diferente no Modo Câmera chama showStageFrameMenu() — menu contextual de frames volta a funcionar ao tocar qualquer frame na timeline; cameraModeFrameContextMenuEnabled=true, cameraModeFrameContextMenuLastOpenedForFrameIndex rastreado; assetsModeFrameContextMenuSuppressed=true. fix(assets-ref-highlight): locateAssetsModeFrameRef(i) atualiza assetsModeFrameReferenceHighlightIndex, adiciona classe 'assets-ref-highlight' no frame DOM e na pill do frame i, remove de outros frames — destaque migra corretamente ao clicar em outro frame na timeline no Modo Ativos; lastSelectionSource='assetsModeTimelineFrameReference' para não confundir com seleção de edição; clearFrameEditingVisualsForAssetsMode() limpa inline opacity e classe 'active' dos frames ao entrar em Modo Ativos. fix(timeline-center): centerLowerTimelineOnFrame() e requestLowerTimelineCenter() rastreiam frameTimelineCenteredIndex/CenteringRan/CenteringReason/CenteringMode/ClickedIndex para diagnóstico; pill click em qualquer modo atualiza frameTimelineClickedIndex. fix(diag): applyTimelinePillFocusClasses() aplica 'assets-ref-highlight' na pill correta em Modo Ativos; CSS .frame.assets-ref-highlight{opacity:.55} e .fp.assets-ref-highlight{font-weight:700} adicionados; assetsModeResidualFrameUIVisible corrigido para não marcar referência intencional como resíduo; assetsModeGhostHandlesVisible sempre retorna booleano; novos campos de diagnóstico: cameraModeFrameContextMenu*, frameTimeline*, assetsModeFrameReferenceHighlightIndex, assetsModeResidualFrameUIVisible corrigido. fix(version): APP_VERSION = v8z4b30ZW. preserve: Frente/Trás, layers, seleção de assets, menu Ativos simplificado, ícone Ativos alterna referências, botão + sem ações de frame, barra superior, cores, ícones, preview/export/save/load, motor de curvas, ProjectWorld. base v8z4b30ZV. -->
 <!-- Arco Motion App — v8z4b30ZV — base v8z4b30ZU. fix(layer-render): renderProjectWorldExtraImages() agora dá a imgEl position:absolute e z-index baseado na posição do asset principal na pilha ordenada por zIndex — Frente/Trás muda visualmente qual imagem aparece por cima; extras recebem z-index global da ordem completa de assets; imgEl resetado para position:'' quando há ≤1 imagem. fix(frame-hud-chips): updateFrameHud() usa editorWorldToStage() para converter coordenadas do frame ativo para o Stage — chips de tempo/rotação/escala acompanham visualmente o frame rotacionado (cameraModeFrameChipsAnchorUsesRotatedFrameGeometry=true, cameraModeFrameChipsClampAppliedAfterTransform=true). fix(assets-mode-ux): handleAssetsModeBtn() — segundo toque no ícone Ativos (quando já em Modo Ativos) chama diretamente toggleWorldModeFrames() sem abrir menu/modal; menu contextual complexo (#assetsModeMenu com "Localizar frame atual" e "Passeio de Frames") removido da UI; assetsModeContextMenuRemoved=true, assetsModeIconTapTogglesFrameReferences=true. fix(pill-assets-mode): pill de frame tocada no Modo Ativos chama locateAssetsModeFrameRef(i) em vez de selectFrameContext() — mostra referência temporária sem ativar edição, sem mudar bottomContextMode; assetsModeTimelineFrameTapLocalizesReference=true. fix(mode-consistency): bringSelectedAssetForward/sendSelectedAssetBackward chamam setBottomContext('asset') se em Modo Ativos ao final para guardar contra drift; projectWorldCompositeInvalidatedAfterAssetReorder=true, stageRedrawnAfterAssetReorder=true, assetRendererUsedSortedLayerOrder=true, assetRenderOrderMatchesZIndex=true, assetHitTestOrderMatchesReverseZIndex=true. fix(diag): novos campos de diagnóstico adicionados (cameraModeFrameChips*, assetsModeContextMenuRemoved, assetsModeIconTapTogglesFrameReferences, assetsModeTimelineFrameTapLocalizesReference, projectWorldCompositeInvalidatedAfterAssetReorder, stageRedrawnAfterAssetReorder, assetRendererUsedSortedLayerOrder, assetRenderOrderMatchesZIndex, assetHitTestOrderMatchesReverseZIndex, assetsModeIntentionalFrameReferenceUIVisible, assetsModeFrameReferenceHighlightVisible, assetsModeResidualFrameEditingUIVisible). fix(version): APP_VERSION = v8z4b30ZV. preserve: motor de preview/export/save/load, ProjectWorld, frames, curvas, barra superior em três duplas, cores roxa/ciano, zoom dinâmico, hints de modo, ícone Câmera inalterado, plusMenuContainsFrameVisibilityAction=false, cameraModeButtonVisualizationUntouched=true, frameOverlayIsAssetLayer=false, ghost handles ocultos no Modo Ativos, seleção de assets, selectableAssetsCount/hitTestAssetsCount/loadedAssetsSelectable, backdrop de referências. base v8z4b30ZU. -->
 <!-- Arco Motion App — v8z4b30ZU — base v8z4b30ZT. fix(ghost-handles): updateCtrlPts() retorna cedo em Modo Ativos, ocultando TODOS os handles (in/out, ghost in/out, ctrl-pts, loop) — ghostHandlesSuppressedBecauseAssetsMode=true; clearFrameEditingVisualsForAssetsMode() também oculta in/out handles explicitamente; diagnóstico ghostInVisibleInAssetsMode/ghostOutVisibleInAssetsMode/ghostHandlesSuppressedBecauseAssetsMode adicionados. fix(frame-ref-legibility): quando temporaryFrameReferencesVisible=true, um leve backdrop semitransparente (#assetsModeFrameRefBackdrop, rgba(0,0,0,0.25)) é exibido sobre o canvas mas abaixo dos frames — aumenta contraste dos contornos de frame; backdrop some ao ocultar referências; frameReferenceBackdropIsAssetLayer=false, frameReferenceBackdropAffectedByAssetReorder=false; assetsModeFrameReferenceBackdropVisible rastreado no diagnóstico. fix(asset-selection): hitTestAssetAtWorld() agora registra diagnóstico completo (lastAssetHitTestPointWorldX/Y, lastAssetHitTestCandidates, lastAssetHitTestSelectedId, assetSelectionFailedReason); assetHasLoadedImage() aprimorado para aceitar assets com src OU com worldW/H válidos (assets carregados de arquivo anterior); selectableAssetsCount e hitTestAssetsCount adicionados ao diagnóstico; loadedAssetsSelectable=true quando todos os assets visíveis com geometria válida são selecionáveis. fix(asset-reorder): bringSelectedAssetForward/sendSelectedAssetBackward registram diagnóstico completo (lastAssetReorderAction, lastAssetReorderSelectedId, lastAssetReorderOldIndex/NewIndex, lastAssetReorderOldZIndex/NewZIndex, assetOrderBeforeReorder/AfterReorder, assetReorderChangedOnlyAssets=true); asset permanece selecionado após reorder; renderAssetSelectionOverlay() chamado após reorder. fix(layers-panel): renderLayersPanelList() exibe assets ordenados por zIndex decrescente (topo → fundo), refletindo a ordem visual real das camadas; seleção no painel funciona para assets carregados de arquivo. fix(diag): todos os campos do item 9 do prompt implementados — ghost handles, referências, seleção de assets, layers/reorder, separação UI/assets. fix(version): APP_VERSION = v8z4b30ZU. preserve: motor de preview/export/save/load, ProjectWorld, frames, curvas, barra superior em três duplas, cores roxa/ciano, zoom dinâmico, hints de modo, ícone Câmera inalterado, plusMenuContainsFrameVisibilityAction=false, assetsModeMenuContainsFrameVisibilityAction=true, cameraModeButtonVisualizationUntouched=true, frameOverlayIsAssetLayer=false. base v8z4b30ZT. -->
@@ -6973,8 +6974,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZW';
-const APP_VERSION_NAME = 'v8z4b30ZW';
+const APP_VERSION = 'v8z4b30ZX';
+const APP_VERSION_NAME = 'v8z4b30ZX';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7033,6 +7034,17 @@ let cameraModeFrameChipsAligned = true;
 let cameraModeFrameChipsFrameIndex = -1;
 let cameraModeFrameChipsAnchorUsesRotatedFrameGeometry = true;
 let cameraModeFrameChipsClampAppliedAfterTransform = true;
+// v8z4b30ZX — diagnóstico de geometria unificada de frame ancorado no editor.
+let frameAnchoredUIUsesSingleGeometrySource = false;
+let frameAnchoredUIScreenGeometryValid = false;
+let frameAnchoredUIProjectWorldTransformValid = false;
+let frameAnchoredUIUsesRotatedCorners = false;
+let frameAnchoredUIUsesCurrentPanZoom = false;
+let frameAnchoredUIClampAppliedAfterTransform = false;
+let frameAnchoredUITestedOutsideMainSlot = false;
+let frameAnchoredUIFrameIndex = -1;
+let frameAnchoredUIDistanceFromFramePx = 0;
+let frameAnchoredUIIssue = '';
 // v8z4b30ZV — separação referência intencional vs resíduo de UI de edição.
 let assetsModeIntentionalFrameReferenceUIVisible = false;
 let assetsModeFrameReferenceHighlightVisible = false;
@@ -14871,6 +14883,62 @@ function getRotatedFrameCorners(i) {
   ];
 }
 
+// v8z4b30ZX — fonte única de geometria visual do frame no espaço do editor (stageContent coords).
+// Calcular os 4 cantos rotacionados em world coords e convertê-los para screen via editorWorldToStage.
+// Todos os elementos ancorados ao frame (HUD chips, handles de canto, handle global) devem usar
+// esta função para garantir alinhamento correto inclusive para frames em slots não-centrais
+// (coords world negativas ou além de baseStageW×baseStageH — e.g. frames 6/8/13 em 9-ativos).
+function getFrameScreenGeometry(fi) {
+  const f = frames[fi];
+  if (!f) return null;
+  computeEditorTransform();
+  const tf  = _editorTransform;
+  const rot = (frameRotations[fi] || 0) * Math.PI / 180;
+  const wcx = f.x + f.w / 2, wcy = f.y + f.h / 2;
+  const hw  = f.w / 2, hh = f.h / 2;
+  const cos = Math.cos(rot), sin = Math.sin(rot);
+  // 4 cantos rotacionados em world coords (tl, tr, br, bl) — mesma fórmula de getRotatedFrameCorners
+  const wc = [
+    { x: wcx + (-hw*cos + hh*sin), y: wcy + (-hw*sin - hh*cos) },
+    { x: wcx + ( hw*cos + hh*sin), y: wcy + ( hw*sin - hh*cos) },
+    { x: wcx + ( hw*cos - hh*sin), y: wcy + ( hw*sin + hh*cos) },
+    { x: wcx + (-hw*cos - hh*sin), y: wcy + (-hw*sin + hh*cos) },
+  ];
+  // Converter cada canto de world para stageContent coords via _editorTransform (já calculado acima)
+  function wToS(p) {
+    return tf.active
+      ? { x: p.x * tf.scale + tf.offsetX, y: p.y * tf.scale + tf.offsetY }
+      : { x: p.x, y: p.y };
+  }
+  const sc = wc.map(wToS);
+  // Centro em screen coords (linear — média dos cantos = transformada do centro world)
+  const scx = (sc[0].x + sc[1].x + sc[2].x + sc[3].x) / 4;
+  const scy = (sc[0].y + sc[1].y + sc[2].y + sc[3].y) / 4;
+  // Ponto de ancoragem para HUD: topo central rotacionado em stageContent coords
+  // Local (0, -hh) → world (wcx + hh*sin, wcy - hh*cos) → screen (scx + sHalfH*sin, scy - sHalfH*cos)
+  const sHalfH = hh * (tf.active ? tf.scale : 1);
+  const chipAnchor = { x: scx + sHalfH * sin, y: scy - sHalfH * cos };
+  // Atualizar diagnóstico
+  frameAnchoredUIUsesSingleGeometrySource = true;
+  frameAnchoredUIScreenGeometryValid = true;
+  frameAnchoredUIProjectWorldTransformValid = true;
+  frameAnchoredUIUsesRotatedCorners = true;
+  frameAnchoredUIUsesCurrentPanZoom = true;
+  frameAnchoredUIClampAppliedAfterTransform = true;
+  frameAnchoredUIFrameIndex = fi;
+  frameAnchoredUIIssue = '';
+  const bw = (projectWorld && projectWorld.baseStageW > 0) ? projectWorld.baseStageW : stageW;
+  const bh = (projectWorld && projectWorld.baseStageH > 0) ? projectWorld.baseStageH : stageH;
+  frameAnchoredUITestedOutsideMainSlot = (wcx < 0 || wcx > bw || wcy < 0 || wcy > bh);
+  return {
+    corners: sc,
+    topLeft: sc[0], topRight: sc[1], bottomRight: sc[2], bottomLeft: sc[3],
+    center: { x: scx, y: scy },
+    chipAnchor,
+    numAnchor: chipAnchor,
+  };
+}
+
 function pointInStage(px, py) {
   return px >= 0 && px <= stageW && py >= 0 && py <= stageH;
 }
@@ -15435,20 +15503,14 @@ function updateFrameHud(fi) {
   const scPct = Math.round(f.w / refW * 100);
   const rotStr = rot.toFixed(1) + '°';
   frameHudEl.innerHTML = '<span>' + pause.toFixed(1) + 's</span><span>' + rotStr + '</span><span>' + scPct + '%</span>';
-  // v8z4b30ZV — topo central do frame rotacionado em coordenadas de Stage (não world).
-  // getFrameCenter() retorna world coords; usar editorWorldToStage() para alinhar com
-  // os handles visuais do frame que já são posicionados via essa mesma transformação.
-  const _fp = (typeof editorWorldToStage === 'function')
-    ? editorWorldToStage(f.x, f.y, f.w, f.h)
-    : { x: f.x, y: f.y, w: f.w, h: f.h };
-  const cx  = _fp.x + _fp.w / 2;
-  const cy  = _fp.y + _fp.h / 2;
-  const rr  = rot * Math.PI / 180;
-  const hh  = _fp.h / 2;
+  // v8z4b30ZX — usar fonte única de geometria (getFrameScreenGeometry) para ancoragem
+  // consistente em stageContent coords, inclusive para frames em slots não-centrais.
+  const geom = getFrameScreenGeometry(fi);
+  const anchor = geom ? geom.chipAnchor : { x: f.x + f.w / 2, y: f.y };
   cameraModeFrameChipsAligned = true;
   cameraModeFrameChipsFrameIndex = fi;
-  frameHudEl.style.left = (cx + hh * Math.sin(rr)) + 'px';
-  frameHudEl.style.top  = (cy - hh * Math.cos(rr)) + 'px';
+  frameHudEl.style.left = anchor.x + 'px';
+  frameHudEl.style.top  = anchor.y + 'px';
   frameHudEl.classList.add('show');
   stageAppendChild(frameHudEl);
 }
@@ -16430,18 +16492,27 @@ function dismissAutosave() {
 // v8z4b29BL — alças/cantos/HUD do frame ativo, extraído de renderAll para
 // poder ser reaplicado ao trocar o frame ativo via scrub da timeline sem
 // reconstruir a faixa de pills (evita perder a posição de scroll).
+// v8z4b30ZX — usa getFrameScreenGeometry() como fonte única de geometria para
+// posicionar handle global, corner handles e HUD em stageContent coords corretas,
+// eliminando desalinhamento para frames em slots não-centrais.
 function refreshActiveFrameVisuals() {
-  // Alça global de escala+rotação
   ensureGlobalHandle();
-  if (globalHandleEl && imgNatW && frameCount > 0 && !isPreviewing && !isMultiSelectionActive()) {
+  // v8z4b30ZX — pré-calcular geometria de tela (fonte única para todos os elementos ancorados).
+  const _canShow = !!(imgNatW && frameCount > 0 && !isPreviewing && !isMultiSelectionActive());
+  const _geom = (_canShow && frames[activeIdx]) ? getFrameScreenGeometry(activeIdx) : null;
+
+  // Alça global de escala+rotação
+  if (globalHandleEl && _geom) {
     updateHandleCornerForFrame(activeIdx);
-    const hp = getHandlePosForFrame(activeIdx);
+    const handleCorner = getHandleCornerForFrame(activeIdx);
+    const _cornerMap = { tl: _geom.topLeft, tr: _geom.topRight, bl: _geom.bottomLeft, br: _geom.bottomRight };
+    const hp = _cornerMap[handleCorner] || _geom.bottomRight;
     globalHandleEl.style.left = hp.x + 'px';
     globalHandleEl.style.top  = hp.y + 'px';
     globalHandleEl.style.transform = `scale(${1 / editorZoomScale})`;
     globalHandleEl.classList.add('show');
     globalHandleEl.classList.remove('ghost-transform');
-    globalHandleEl.classList.toggle('centered', !!hp.centered);
+    globalHandleEl.classList.toggle('centered', false);
     stageAppendChild(globalHandleEl);
   } else if (globalHandleEl) {
     globalHandleEl.classList.remove('show');
@@ -16452,15 +16523,15 @@ function refreshActiveFrameVisuals() {
   // v8z4b29AZ — durante inserção ghost, abas são gerenciadas por updateGhostTransformHandle
   ensureCornerHandles();
   ensureFrameHud();
-  const _showCorners = !!(imgNatW && frameCount > 0 && !isPreviewing && !isMultiSelectionActive() && !isInsertingFrame);
+  const _showCorners = _canShow && !isInsertingFrame;
   if (cornerHandleEls) {
-    const _ckeys = ['tl','tr','bl','br'];
-    const _CORNER_OUT = 12; // px para fora da borda — visual externo, sem cobrir a moldura
-    const _fc = _showCorners ? getFrameCenter(activeIdx) : null;
+    const _CORNER_OUT = 12; // px para fora da borda em stageContent coords
+    // v8z4b30ZX: mapeamento ['tl','tr','bl','br'] → propriedades do _geom
+    const _cornerGeomKeys = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
     cornerHandleEls.forEach((cel, idx) => {
-      if (_showCorners && _fc) {
-        const hp = getRawHandlePosForFrame(activeIdx, _ckeys[idx]);
-        const _dx = hp.x - _fc.cx, _dy = hp.y - _fc.cy;
+      if (_showCorners && _geom) {
+        const hp = _geom[_cornerGeomKeys[idx]]; // posição em stageContent coords
+        const _dx = hp.x - _geom.center.x, _dy = hp.y - _geom.center.y;
         const _dist = Math.hypot(_dx, _dy) || 1;
         cel.style.left = (hp.x + (_dx / _dist) * _CORNER_OUT) + 'px';
         cel.style.top  = (hp.y + (_dy / _dist) * _CORNER_OUT) + 'px';
@@ -18356,6 +18427,11 @@ function refreshEditorViewVisualOverlays() {
   if (ghostFrame) renderGhostFrame();
   if (globalHandleEl && globalHandleEl.classList.contains('show')) {
     globalHandleEl.style.transform = `scale(${1 / editorZoomScale})`;
+  }
+  // v8z4b30ZX — recalcular posição dos handles/HUD após zoom/pan/resize (Modo Câmera apenas;
+  // updateCtrlPts() já suprimiu tudo em Modo Ativos logo acima).
+  if (typeof isCameraMode === 'function' && isCameraMode()) {
+    refreshActiveFrameVisuals();
   }
 }
 
@@ -29520,6 +29596,17 @@ function buildDiagnosticsText() {
     push('cameraModeFrameChipsFrameIndex', String((typeof cameraModeFrameChipsFrameIndex !== 'undefined') ? cameraModeFrameChipsFrameIndex : -1));
     push('cameraModeFrameChipsAnchorUsesRotatedFrameGeometry', String((typeof cameraModeFrameChipsAnchorUsesRotatedFrameGeometry !== 'undefined') ? cameraModeFrameChipsAnchorUsesRotatedFrameGeometry : false));
     push('cameraModeFrameChipsClampAppliedAfterTransform', String((typeof cameraModeFrameChipsClampAppliedAfterTransform !== 'undefined') ? cameraModeFrameChipsClampAppliedAfterTransform : false));
+    // v8z4b30ZX — geometria unificada de frame ancorado.
+    push('frameAnchoredUIUsesSingleGeometrySource', String((typeof frameAnchoredUIUsesSingleGeometrySource !== 'undefined') ? frameAnchoredUIUsesSingleGeometrySource : false));
+    push('frameAnchoredUIScreenGeometryValid', String((typeof frameAnchoredUIScreenGeometryValid !== 'undefined') ? frameAnchoredUIScreenGeometryValid : false));
+    push('frameAnchoredUIProjectWorldTransformValid', String((typeof frameAnchoredUIProjectWorldTransformValid !== 'undefined') ? frameAnchoredUIProjectWorldTransformValid : false));
+    push('frameAnchoredUIUsesRotatedCorners', String((typeof frameAnchoredUIUsesRotatedCorners !== 'undefined') ? frameAnchoredUIUsesRotatedCorners : false));
+    push('frameAnchoredUIUsesCurrentPanZoom', String((typeof frameAnchoredUIUsesCurrentPanZoom !== 'undefined') ? frameAnchoredUIUsesCurrentPanZoom : false));
+    push('frameAnchoredUIClampAppliedAfterTransform', String((typeof frameAnchoredUIClampAppliedAfterTransform !== 'undefined') ? frameAnchoredUIClampAppliedAfterTransform : false));
+    push('frameAnchoredUITestedOutsideMainSlot', String((typeof frameAnchoredUITestedOutsideMainSlot !== 'undefined') ? frameAnchoredUITestedOutsideMainSlot : false));
+    push('frameAnchoredUIFrameIndex', String((typeof frameAnchoredUIFrameIndex !== 'undefined') ? frameAnchoredUIFrameIndex : -1));
+    push('frameAnchoredUIDistanceFromFramePx', String((typeof frameAnchoredUIDistanceFromFramePx !== 'undefined') ? frameAnchoredUIDistanceFromFramePx : 0));
+    push('frameAnchoredUIIssue', (typeof frameAnchoredUIIssue !== 'undefined' && frameAnchoredUIIssue) ? frameAnchoredUIIssue : 'nenhum');
     // v8z4b30ZV/ZW — distinção referência intencional vs resíduo de UI de edição.
     push('assetsModeIntentionalFrameReferenceUIVisible', String((typeof assetsModeIntentionalFrameReferenceUIVisible !== 'undefined') ? assetsModeIntentionalFrameReferenceUIVisible : false));
     push('assetsModeFrameReferenceHighlightVisible', String((typeof assetsModeFrameReferenceHighlightVisible !== 'undefined') ? assetsModeFrameReferenceHighlightVisible : false));
