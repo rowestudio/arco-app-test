@@ -1,3 +1,22 @@
+# QA pendente — v8z4b30ZR: troca real e centralizada de modo + barra superior em três duplas
+
+> Base: `v8z4b30ZQ`. Corrige a origem do problema de troca de modo: `setEditorMode(mode, source)` é a ÚNICA fonte de verdade e fica totalmente instrumentada; botões Câmera/Ativos passam obrigatoriamente por `setMode(...)`. Reorganiza a barra superior em três duplas fixas (grid `1fr auto 1fr`), restaura o zoom/world-view dinâmico do editor e expande o diagnóstico de modo. NÃO altera preview, export, save/load, ProjectWorld, frames, curvas, interpolação, render ou motor.
+
+## Escopo v8z4b30ZR
+
+1. Menu mostra "Arco Motion App v8z4b30ZR" (`APP_VERSION`=`APP_VERSION_NAME`=`v8z4b30ZR`).
+2. **Barra superior — três duplas fixas:** esquerda = Câmera + Ativos; centro = Settings/Arquivos + Play (realmente centralizada); direita = Undo + Redo. Trocar de modo **não** move os ícones (só muda estado/cor/contexto).
+3. **Tocar em Ativos** → diagnóstico: `lastModeButtonTapped: assets`, `lastModeRequested: assets`, `lastModeApplied: assets`, `lastModeChangeSource: topModeButtonAssets`, `setModeLastBlockedReason: none`, `activeMode: assets`, `bottomContextMode: asset`, `toolbarContext: asset`, `assetModeButtonActive: true`, `cameraModeButtonActive: false`, `assetToolbarVisible: true`, `frameToolbarVisible: false`, `modeStateConsistent: true`.
+4. **Tocar em Câmera** → diagnóstico: `lastModeButtonTapped: camera`, `lastModeApplied: camera`, `lastModeChangeSource: topModeButtonCamera`, `activeMode: camera`, `bottomContextMode: frame`, `toolbarContext: frame`, `cameraModeButtonActive: true`, `assetModeButtonActive: false`, `assetToolbarVisible: false`, `frameToolbarVisible: true`, `modeStateConsistent: true`.
+5. **Entrar em Ativos limpa seleção:** `frameSelectionClearedOnEnterAssets: true`, `segmentSelectionClearedOnEnterAssets: true`; o Stage não mantém frame/segmento selecionado como foco.
+6. **Modo Ativos:** imagens/assets são o foco (contorno roxo); frames/trechos discretos ou ocultáveis via `showFrameReferencesInAssetsMode` (toggle de frames no menu do "+").
+7. **Frente/Trás** funcionam sobre o asset selecionado (≥2 assets); motivos corretos: "asset já está no topo" / "asset já está no fundo" / "apenas 1 asset — sem outra camada" / "nenhum asset selecionado". Nova ordem reflete em Stage, Preview, Export e Save/Load.
+8. **Consistência visual:** `modeButtonVisualStateConsistent` e `toolbarVisualStateConsistent` validam botões/toolbars; `modeStateConsistent` fica `false` em qualquer combinação contraditória.
+9. **Zoom dinâmico:** com ProjectWorld inicializado, `editorMinZoomMode: dynamic`, `worldViewBounds*` preenchidos, `fitAllWorldZoom` calculado e `canViewAllSlotsAtMinZoom: true`. Não altera câmera/frames/preview/export.
+10. **Sem regressão** em preview/export/save/load e no Modo Câmera/Frames. Testar em iPhone/Safari real.
+
+---
+
 # QA pendente — v8z4b30ZK: alternância inicial entre Modo Câmera e Modo Ativos
 
 > Base aprovada: `v8z4b30ZI` (Preview sem tranco). Reaproveita apenas a lógica segura de seleção de assets da 30ZJ e **remove** o botão "Selecionar" indevido. Cria a estrutura inicial de dois modos de edição (Câmera/Frames/Filmagem e Ativos/Mundo/Imagens) alternáveis pelo topo. NÃO move/escala/rotaciona assets; sem crop/moldura/texto/GIF/stickers/efeitos temporais; NÃO altera Preview, Export, Save/Load nem ProjectWorld.
