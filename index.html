@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZY — base v8z4b30ZX. fix(timeline-visual-index): getTimelineVisualActiveIndex() — fonte única da bolinha laranja; em Modo Ativos usa temporaryFrameReferenceTargetIndex→assetsModeFrameReferenceHighlightIndex→frameTimelineCenteredIndex→activeIdx; getTimelineStageFocusIndex() delega para getTimelineVisualActiveIndex() em Modo Ativos — bolinha migra com o frame de referência. fix(pills-single-highlight): applyTimelinePillFocusClasses() em Modo Ativos não aplica 'selected' para activeIdx — somente o frame de referência recebe 'active'; timelineActiveHighlightCount, timelineMultipleActiveHighlightsDetected, assetsModeOnlyOneFrameReferenceHighlighted rastreados. fix(renderAll-assets-mode): frame loop em renderAll() detecta isAssetsMode() — em Modo Ativos não aplica hierarquia de opacidade/zIndex/active do Modo Câmera; limpa inline styles (opacity='', zIndex='') deixando CSS tomar conta; assetsModeInheritedFrameOpacityCleared=true, assetsModeCameraFrameHierarchyVisible=false; número do frame renderizado como referência com destaque roxo para o frame referenciado. fix(frame-num-assets-mode): CSS body.editor-assets:not(.assets-refs-visible) .frame .frame-num{display:none} — números visíveis quando classe assets-refs-visible ativa; classe toggled em toggleWorldModeFrames/locateAssetsModeFrameRef/hideTemporaryFrameReferences/clearFrameEditingVisualsForAssetsMode. fix(frameHud-regression): setEditorMode('camera') agora limpa inline frameHud.style.display='' — corrige regressão em que display:none do Modo Ativos persistia e impedia HUD de aparecer; frameActiveInfoTextVisible=true em Modo Câmera. fix(delete-visual-update): deleteSelectedAsset() chama invalidateProjectWorldComposite+renderProjectWorldExtraImages+renderAll+renderAssetSelectionOverlay+syncAssetToolbarState explicitamente; rastreia lastAssetDeleteAction/lastAssetDeletedId/assetDeletedVisualUpdateRan/projectWorldCompositeInvalidatedAfterAssetDelete/stageRedrawnAfterAssetDelete. fix(undo-redo-visual): undo()/redo() chamam renderAssetSelectionOverlay()+syncAssetToolbarState() após restoreState(); rastreia lastAssetUndoAction/assetUndoVisualUpdateRan/stageRedrawnAfterAssetUndo. fix(renderAssetSelectionOverlay-diag): rastreia assetSelectionOutlineVisible/assetSelectionOutlineAssetId/assetSelectionOutlineUsesAssetGeometry/assetSelectionOutlineIssue/selectedAssetIdExistsInAssets/selectedAssetVisualFeedbackConsistent. fix(frameAnchoredUIDiag): frameAnchoredUIDiagnosticTargetIndex usa referência em Modo Ativos (não activeIdx fixo em 0); frameAnchoredUIDiagnosticMode/frameAnchoredUIDiagnosticUsesReferenceFrame adicionados. fix(locateRef-pill): locateAssetsModeFrameRef() chama applyTimelinePillFocusClasses()+centerLowerTimelineOnFrame() — bolinha e scroll seguem o frame referenciado; ativa assets-refs-visible. fix(version): APP_VERSION=v8z4b30ZY. preserve: menu contextual frames Câmera, bottomContextMode:asset, Frente/Trás, seleção de assets, ghost handles ocultos, ProjectWorld, save/load, preview, export, motor de curvas, interpolação. base v8z4b30ZX. -->
 <!-- Arco Motion App — v8z4b30ZX — base v8z4b30ZW. fix(frame-anchored-ui): cria getFrameScreenGeometry(fi) como fonte única de geometria visual do frame no espaço do editor (stageContent coords) — calcula os 4 cantos rotacionados em world coords, aplica editorWorldToStage via _editorTransform, retorna center/corners/chipAnchor em screen space; todos os elementos ancorados ao frame (HUD chips, handles de canto, handle global) usam esta função eliminando o desalinhamento para frames em slots não-centrais (coords world negativas/além de baseStageW×baseStageH, e.g. frames 6/8/13 em projeto 9-ativos); corner handles em refreshActiveFrameVisuals() convertidos de world para screen coords via _geom[cornerGeomKey]; handle global convertido de getRawHandlePosForFrame (world) para _geom[handleCorner] (screen); updateFrameHud() convertido para usar geom.chipAnchor — cálculo equivalente ao anterior mas via fonte única; refreshEditorViewVisualOverlays() passa a chamar refreshActiveFrameVisuals() em Modo Câmera para recalcular posição dos handles/HUD após zoom/pan/resize; diagnóstico expandido com 10 novos campos (frameAnchoredUIUsesSingleGeometrySource, frameAnchoredUIScreenGeometryValid, frameAnchoredUIProjectWorldTransformValid, frameAnchoredUIUsesRotatedCorners, frameAnchoredUIUsesCurrentPanZoom, frameAnchoredUIClampAppliedAfterTransform, frameAnchoredUITestedOutsideMainSlot, frameAnchoredUIFrameIndex, frameAnchoredUIDistanceFromFramePx, frameAnchoredUIIssue); cameraModeFrameChipsAligned corretamente verdadeiro apenas quando alinhamento confirmado; APP_VERSION = v8z4b30ZX. preserve: menu contextual de frames (Modo Câmera), Assets Mode com bottomContextMode:asset, Frente/Trás visual, seleção de assets, ghost handles ocultos em Assets Mode, referência de frame intencional, centralização de timeline, botão + sem ações de frame, ícone Assets alterna referências, preview/export inalterados, save/load, motor de curvas, ProjectWorld. base v8z4b30ZW. -->
 <!-- Arco Motion App — v8z4b30ZW — base v8z4b30ZV. fix(camera-frame-menu): showStageFrameMenu() agora limpa style.display inline antes de adicionar classe 'show' — corrige regressão em que clearFrameEditingVisualsForAssetsMode() deixava inline display:none no stageFrameMenu impedindo abertura em Modo Câmera; setEditorMode('camera') também limpa inline style do stageFrameMenu; pill click em frame diferente no Modo Câmera chama showStageFrameMenu() — menu contextual de frames volta a funcionar ao tocar qualquer frame na timeline; cameraModeFrameContextMenuEnabled=true, cameraModeFrameContextMenuLastOpenedForFrameIndex rastreado; assetsModeFrameContextMenuSuppressed=true. fix(assets-ref-highlight): locateAssetsModeFrameRef(i) atualiza assetsModeFrameReferenceHighlightIndex, adiciona classe 'assets-ref-highlight' no frame DOM e na pill do frame i, remove de outros frames — destaque migra corretamente ao clicar em outro frame na timeline no Modo Ativos; lastSelectionSource='assetsModeTimelineFrameReference' para não confundir com seleção de edição; clearFrameEditingVisualsForAssetsMode() limpa inline opacity e classe 'active' dos frames ao entrar em Modo Ativos. fix(timeline-center): centerLowerTimelineOnFrame() e requestLowerTimelineCenter() rastreiam frameTimelineCenteredIndex/CenteringRan/CenteringReason/CenteringMode/ClickedIndex para diagnóstico; pill click em qualquer modo atualiza frameTimelineClickedIndex. fix(diag): applyTimelinePillFocusClasses() aplica 'assets-ref-highlight' na pill correta em Modo Ativos; CSS .frame.assets-ref-highlight{opacity:.55} e .fp.assets-ref-highlight{font-weight:700} adicionados; assetsModeResidualFrameUIVisible corrigido para não marcar referência intencional como resíduo; assetsModeGhostHandlesVisible sempre retorna booleano; novos campos de diagnóstico: cameraModeFrameContextMenu*, frameTimeline*, assetsModeFrameReferenceHighlightIndex, assetsModeResidualFrameUIVisible corrigido. fix(version): APP_VERSION = v8z4b30ZW. preserve: Frente/Trás, layers, seleção de assets, menu Ativos simplificado, ícone Ativos alterna referências, botão + sem ações de frame, barra superior, cores, ícones, preview/export/save/load, motor de curvas, ProjectWorld. base v8z4b30ZV. -->
 <!-- Arco Motion App — v8z4b30ZV — base v8z4b30ZU. fix(layer-render): renderProjectWorldExtraImages() agora dá a imgEl position:absolute e z-index baseado na posição do asset principal na pilha ordenada por zIndex — Frente/Trás muda visualmente qual imagem aparece por cima; extras recebem z-index global da ordem completa de assets; imgEl resetado para position:'' quando há ≤1 imagem. fix(frame-hud-chips): updateFrameHud() usa editorWorldToStage() para converter coordenadas do frame ativo para o Stage — chips de tempo/rotação/escala acompanham visualmente o frame rotacionado (cameraModeFrameChipsAnchorUsesRotatedFrameGeometry=true, cameraModeFrameChipsClampAppliedAfterTransform=true). fix(assets-mode-ux): handleAssetsModeBtn() — segundo toque no ícone Ativos (quando já em Modo Ativos) chama diretamente toggleWorldModeFrames() sem abrir menu/modal; menu contextual complexo (#assetsModeMenu com "Localizar frame atual" e "Passeio de Frames") removido da UI; assetsModeContextMenuRemoved=true, assetsModeIconTapTogglesFrameReferences=true. fix(pill-assets-mode): pill de frame tocada no Modo Ativos chama locateAssetsModeFrameRef(i) em vez de selectFrameContext() — mostra referência temporária sem ativar edição, sem mudar bottomContextMode; assetsModeTimelineFrameTapLocalizesReference=true. fix(mode-consistency): bringSelectedAssetForward/sendSelectedAssetBackward chamam setBottomContext('asset') se em Modo Ativos ao final para guardar contra drift; projectWorldCompositeInvalidatedAfterAssetReorder=true, stageRedrawnAfterAssetReorder=true, assetRendererUsedSortedLayerOrder=true, assetRenderOrderMatchesZIndex=true, assetHitTestOrderMatchesReverseZIndex=true. fix(diag): novos campos de diagnóstico adicionados (cameraModeFrameChips*, assetsModeContextMenuRemoved, assetsModeIconTapTogglesFrameReferences, assetsModeTimelineFrameTapLocalizesReference, projectWorldCompositeInvalidatedAfterAssetReorder, stageRedrawnAfterAssetReorder, assetRendererUsedSortedLayerOrder, assetRenderOrderMatchesZIndex, assetHitTestOrderMatchesReverseZIndex, assetsModeIntentionalFrameReferenceUIVisible, assetsModeFrameReferenceHighlightVisible, assetsModeResidualFrameEditingUIVisible). fix(version): APP_VERSION = v8z4b30ZV. preserve: motor de preview/export/save/load, ProjectWorld, frames, curvas, barra superior em três duplas, cores roxa/ciano, zoom dinâmico, hints de modo, ícone Câmera inalterado, plusMenuContainsFrameVisibilityAction=false, cameraModeButtonVisualizationUntouched=true, frameOverlayIsAssetLayer=false, ghost handles ocultos no Modo Ativos, seleção de assets, selectableAssetsCount/hitTestAssetsCount/loadedAssetsSelectable, backdrop de referências. base v8z4b30ZU. -->
@@ -1319,7 +1320,9 @@ body.editor-assets .frame{opacity:.17;pointer-events:none;}
 body.editor-assets #bezierSvg{opacity:.17;}
 body.editor-assets .frame-out-handle{pointer-events:none !important;}
 body.editor-assets .frame .frame-dim{background:transparent !important;box-shadow:none !important;}
-body.editor-assets .frame .frame-num{display:none !important;}
+body.editor-assets:not(.assets-refs-visible) .frame .frame-num{display:none !important;}
+/* v8z4b30ZY — frame numbers visíveis como referência quando assets-refs-visible ativo */
+body.editor-assets.assets-refs-visible .frame .frame-num{display:block !important;}
 body.editor-assets .frame .frame-crosshair{display:none !important;}
 body.editor-assets .frame .frame-center{display:none !important;}
 /* v8z4b30ZL — Botão + vira roxo no Modo Ativos */
@@ -6974,8 +6977,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZX';
-const APP_VERSION_NAME = 'v8z4b30ZX';
+const APP_VERSION = 'v8z4b30ZY';
+const APP_VERSION_NAME = 'v8z4b30ZY';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7061,6 +7064,44 @@ let frameTimelineCenteringRan = false;
 let frameTimelineCenteringReason = '';
 let frameTimelineCenteringMode = '';
 let frameTimelineClickedIndex = -1;
+// v8z4b30ZY — índice visual unificado da timeline (bolinha laranja).
+// Câmera: segue activeIdx. Ativos: segue frame de referência.
+let timelineVisualActiveIndex = -1;
+let timelineEditingActiveIndex = -1;
+let timelineReferenceActiveIndex = -1;
+let timelineActiveHighlightCount = 0;
+let timelineMultipleActiveHighlightsDetected = false;
+let assetsModeOnlyOneFrameReferenceHighlighted = true;
+let assetsModeInheritedTimelineHighlightCleared = false;
+let assetsModeInheritedFrameOpacityCleared = false;
+let assetsModeFrameEditHighlightClearedOnEnter = false;
+let assetsModeCameraFrameHierarchyVisible = false;
+let assetsModeFrameReferenceOpacityUniform = false;
+let assetsModeFrameNumberReferenceVisible = false;
+let assetsModeFrameNumberHighlightIndex = -1;
+let assetsModeFrameNumberUsesAnchoredGeometry = false;
+let frameActiveInfoTextVisible = false;
+let frameActiveInfoTextFrameIndex = -1;
+let frameActiveInfoTextUsesAnchoredGeometry = false;
+let frameActiveInfoTextSuppressedReason = '';
+let frameAnchoredUIDiagnosticTargetIndex = -1;
+let frameAnchoredUIDiagnosticMode = '';
+let frameAnchoredUIDiagnosticUsesReferenceFrame = false;
+let lastAssetDeleteAction = 'none';
+let lastAssetDeletedId = 'none';
+let assetDeletedVisualUpdateRan = false;
+let projectWorldCompositeInvalidatedAfterAssetDelete = false;
+let stageRedrawnAfterAssetDelete = false;
+let lastAssetUndoAction = 'none';
+let assetUndoVisualUpdateRan = false;
+let projectWorldCompositeInvalidatedAfterAssetUndo = false;
+let stageRedrawnAfterAssetUndo = false;
+let selectedAssetIdExistsInAssets = false;
+let selectedAssetVisualFeedbackConsistent = false;
+let assetSelectionOutlineVisible = false;
+let assetSelectionOutlineAssetId = 'none';
+let assetSelectionOutlineUsesAssetGeometry = false;
+let assetSelectionOutlineIssue = '';
 
 // Image natural dimensions
 let imgNatW = 0, imgNatH = 0;
@@ -13076,9 +13117,20 @@ function undo() {
   if (shouldBlockGlobalUIAction()) return;
   if (!undoStack.length) return;
   if (alignBarActiveGroup === 'pause') batchPauseEditSession = null;
+  // v8z4b30ZY — diagnóstico de undo
+  lastAssetUndoAction = 'undo';
+  assetUndoVisualUpdateRan = false;
+  projectWorldCompositeInvalidatedAfterAssetUndo = false;
+  stageRedrawnAfterAssetUndo = false;
   redoStack.push(captureState());
   restoreState(undoStack.pop());
   resyncOpenAlignSubmenuAfterHistory();
+  // v8z4b30ZY — garantir visual update explícito após undo
+  if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
+  if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
+  projectWorldCompositeInvalidatedAfterAssetUndo = true;
+  assetUndoVisualUpdateRan = true;
+  stageRedrawnAfterAssetUndo = true;
   showStatus('Desfeito');
 }
 
@@ -13086,9 +13138,20 @@ function redo() {
   if (shouldBlockGlobalUIAction()) return;
   if (!redoStack.length) return;
   if (alignBarActiveGroup === 'pause') batchPauseEditSession = null;
+  // v8z4b30ZY — diagnóstico de redo (rastreado nos mesmos campos que undo)
+  lastAssetUndoAction = 'redo';
+  assetUndoVisualUpdateRan = false;
+  projectWorldCompositeInvalidatedAfterAssetUndo = false;
+  stageRedrawnAfterAssetUndo = false;
   undoStack.push(captureState());
   restoreState(redoStack.pop());
   resyncOpenAlignSubmenuAfterHistory();
+  // v8z4b30ZY — garantir visual update explícito após redo
+  if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
+  if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
+  projectWorldCompositeInvalidatedAfterAssetUndo = true;
+  assetUndoVisualUpdateRan = true;
+  stageRedrawnAfterAssetUndo = true;
   showStatus('Refeito');
 }
 
@@ -13327,9 +13390,22 @@ function handleAssetsModeBtn() {
 function toggleWorldModeFrames() {
   worldModeShowFrames = !worldModeShowFrames;
   temporaryFrameReferencesVisible = worldModeShowFrames && isAssetsMode();
-  if (!worldModeShowFrames) temporaryFrameReferenceTargetIndex = -1;
-  if (document.body) document.body.classList.toggle('world-frames-hidden', !worldModeShowFrames);
+  if (!worldModeShowFrames) {
+    temporaryFrameReferenceTargetIndex = -1;
+    assetsModeFrameReferenceHighlightIndex = -1;
+    assetsModeFrameReferenceHighlightVisible = false;
+    assetsModeIntentionalFrameReferenceUIVisible = false;
+    assetsModeFrameNumberReferenceVisible = false;
+    assetsModeFrameNumberHighlightIndex = -1;
+  }
+  if (document.body) {
+    document.body.classList.toggle('world-frames-hidden', !worldModeShowFrames);
+    // v8z4b30ZY — classe para mostrar números de frame como referência
+    document.body.classList.toggle('assets-refs-visible', !!(temporaryFrameReferencesVisible && isAssetsMode()));
+  }
   updateAssetsModeFrameReferenceBackdrop();
+  // v8z4b30ZY — atualizar bolinha laranja e pill focus
+  applyTimelinePillFocusClasses();
   showStatus(worldModeShowFrames ? 'Referências de frames visíveis' : 'Referências de frames ocultas');
 }
 // v8z4b30ZS — oculta as referências temporárias de frames no Modo Ativos.
@@ -13342,7 +13418,13 @@ function hideTemporaryFrameReferences() {
   assetsModeFrameReferenceHighlightIndex = -1;
   assetsModeFrameReferenceHighlightVisible = false;
   assetsModeIntentionalFrameReferenceUIVisible = false;
-  if (document.body) document.body.classList.add('world-frames-hidden');
+  assetsModeFrameNumberReferenceVisible = false;
+  assetsModeFrameNumberHighlightIndex = -1;
+  if (document.body) {
+    document.body.classList.add('world-frames-hidden');
+    // v8z4b30ZY — remover classe de números visíveis
+    document.body.classList.remove('assets-refs-visible');
+  }
   // Limpar destaque visual dos frames DOM
   if (typeof frameCount === 'number' && typeof getFrameEl === 'function') {
     for (let _fi = 0; _fi < frameCount; _fi++) {
@@ -13435,6 +13517,15 @@ function clearFrameEditingVisualsForAssetsMode(reason) {
     // Limpar classe assets-ref-highlight de pills
     const _pRow = document.getElementById('pillsRow');
     if (_pRow) _pRow.querySelectorAll('.fp.assets-ref-highlight').forEach(function(el) { el.classList.remove('assets-ref-highlight'); });
+    // v8z4b30ZY — remover classe assets-refs-visible (referências ocultas por padrão ao entrar)
+    if (document.body) document.body.classList.remove('assets-refs-visible');
+    // v8z4b30ZY — rastrear limpeza de hierarquia de modo câmera
+    assetsModeFrameEditHighlightClearedOnEnter = true;
+    assetsModeInheritedFrameOpacityCleared = true;
+    assetsModeInheritedTimelineHighlightCleared = true;
+    assetsModeCameraFrameHierarchyVisible = false;
+    assetsModeFrameNumberHighlightIndex = -1;
+    assetsModeFrameNumberReferenceVisible = false;
     // Registrar estado
     frameEditingVisualCleanupRan = true;
     frameEditingVisualCleanupReason = reason || 'enterAssetsMode';
@@ -13487,8 +13578,14 @@ function locateActiveFrameInAssetsMode() {
   worldModeShowFrames = true;
   temporaryFrameReferencesVisible = true;
   temporaryFrameReferenceTargetIndex = activeIdx;
-  if (document.body) document.body.classList.remove('world-frames-hidden');
+  if (document.body) {
+    document.body.classList.remove('world-frames-hidden');
+    // v8z4b30ZY — ativar classe para mostrar números de frame
+    document.body.classList.add('assets-refs-visible');
+  }
   updateAssetsModeFrameReferenceBackdrop();
+  // v8z4b30ZY — atualizar bolinha laranja e pill focus
+  applyTimelinePillFocusClasses();
   showStatus('Frame ' + (activeIdx + 1) + ' localizado como referência.');
 }
 
@@ -13523,8 +13620,23 @@ function locateAssetsModeFrameRef(i) {
       el.classList.toggle('assets-ref-highlight', Number(el.dataset.frameIndex) === i);
     });
   }
-  if (document.body) document.body.classList.remove('world-frames-hidden');
+  if (document.body) {
+    document.body.classList.remove('world-frames-hidden');
+    // v8z4b30ZY — ativar classe para mostrar números de frame
+    document.body.classList.add('assets-refs-visible');
+  }
   updateAssetsModeFrameReferenceBackdrop();
+  // v8z4b30ZY — atualizar bolinha laranja na timeline para o frame referenciado
+  applyTimelinePillFocusClasses();
+  // v8z4b30ZY — centralizar timeline no frame referenciado
+  if (typeof centerLowerTimelineOnFrame === 'function') {
+    frameTimelineCenteredIndex = i;
+    centerLowerTimelineOnFrame(i, false);
+  }
+  // v8z4b30ZY — atualizar diagnóstico de referência de frame
+  assetsModeFrameNumberReferenceVisible = true;
+  assetsModeFrameNumberHighlightIndex = i;
+  assetsModeFrameNumberUsesAnchoredGeometry = true;
   showStatus('Frame ' + (i + 1) + ' localizado como referência.');
 }
 
@@ -13579,6 +13691,18 @@ function setEditorMode(mode, source) {
       // para que showStageFrameMenu() possa mostrar o menu via CSS .show
       const _stfm = document.getElementById('stageFrameMenu');
       if (_stfm) _stfm.style.display = '';
+      // v8z4b30ZY — limpar inline style do frameHud (setado por clearFrameEditingVisualsForAssetsMode).
+      // Sem limpar, 'display:none' persiste no Modo Câmera e impede #frameHud.show{display:flex}.
+      const _fhud = document.getElementById('frameHud');
+      if (_fhud) _fhud.style.display = '';
+      if (typeof frameHudEl !== 'undefined' && frameHudEl) frameHudEl.style.display = '';
+      // v8z4b30ZY — remover classe assets-refs-visible ao sair do Modo Ativos
+      if (document.body) document.body.classList.remove('assets-refs-visible');
+      // v8z4b30ZY — restaurar diagnóstico de hierarquia
+      assetsModeCameraFrameHierarchyVisible = false;
+      assetsModeInheritedFrameOpacityCleared = false;
+      assetsModeFrameEditHighlightClearedOnEnter = false;
+      assetsModeInheritedTimelineHighlightCleared = false;
       if (document.body) document.body.classList.remove('world-frames-hidden');
       // v8z4b30ZU — ocultar backdrop de referências ao sair do Modo Ativos
       hideAssetsModeFrameReferenceBackdrop();
@@ -13774,6 +13898,12 @@ function deleteSelectedAsset() {
     showStatus('Não é possível excluir a única imagem do projeto.');
     return;
   }
+  // v8z4b30ZY — diagnóstico de delete
+  lastAssetDeleteAction = 'delete';
+  lastAssetDeletedId = String(selId);
+  assetDeletedVisualUpdateRan = false;
+  projectWorldCompositeInvalidatedAfterAssetDelete = false;
+  stageRedrawnAfterAssetDelete = false;
   // Captura snapshot para undo antes de mutar.
   if (typeof captureState === 'function' && typeof pushUndoSnapshot === 'function') {
     pushUndoSnapshot(cloneProjectStateSnapshot(captureState()));
@@ -13785,7 +13915,19 @@ function deleteSelectedAsset() {
   if (domEl) domEl.remove();
   assets.splice(idx, 1);
   clearSelectedAsset();
+  // v8z4b30ZY — invalidar composite e redesenhar Stage imediatamente
+  if (typeof invalidateProjectWorldComposite === 'function') {
+    invalidateProjectWorldComposite();
+    projectWorldCompositeInvalidatedAfterAssetDelete = true;
+  }
+  if (typeof renderProjectWorldExtraImages === 'function') renderProjectWorldExtraImages();
   if (typeof renderAll === 'function') renderAll();
+  if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
+  if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
+  if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+  assetDeletedVisualUpdateRan = true;
+  stageRedrawnAfterAssetDelete = true;
+  if (typeof markProjectDirty === 'function') markProjectDirty('deleteAsset');
   showStatus('Imagem excluída.');
 }
 // v8z4b30ZM — normaliza os zIndex de todos os assets para valores únicos
@@ -14128,11 +14270,25 @@ let lowerTimelineScrollAnimFrame = 0;
 let lowerTimelineSnapTimer = 0;
 let isLowerTimelineProgrammaticCentering = false;
 const LOWER_TIMELINE_SNAP_DELAY_MS = 160;
+// v8z4b30ZY — índice visual unificado: câmera usa activeIdx, ativos usa frame de referência.
+// Esta é a fonte única para a bolinha laranja (pill.active) e destaque do Stage.
+function getTimelineVisualActiveIndex() {
+  if (typeof isAssetsMode === 'function' && isAssetsMode()) {
+    if (typeof temporaryFrameReferenceTargetIndex !== 'undefined' && temporaryFrameReferenceTargetIndex >= 0)
+      return temporaryFrameReferenceTargetIndex;
+    if (typeof assetsModeFrameReferenceHighlightIndex !== 'undefined' && assetsModeFrameReferenceHighlightIndex >= 0)
+      return assetsModeFrameReferenceHighlightIndex;
+    if (typeof frameTimelineCenteredIndex !== 'undefined' && frameTimelineCenteredIndex >= 0)
+      return frameTimelineCenteredIndex;
+  }
+  return typeof activeIdx !== 'undefined' ? activeIdx : 0;
+}
 function getTimelineStageFocusIndex() {
-  // v8z4b29BL — fonte única de verdade: no modo normal de edição de frame,
-  // multi-seleção e trecho, o destaque do Stage/timeline segue sempre o
-  // frame ativo oficial (activeIdx). Evita divergência entre o frame ativo
-  // no Stage e o frame destacado na faixa/timeline.
+  // v8z4b30ZY — em Modo Ativos, bolinha e destaque seguem o frame de referência,
+  // não o activeIdx (frame de edição). Em Modo Câmera, segue activeIdx normalmente.
+  if (typeof isAssetsMode === 'function' && isAssetsMode()) {
+    return getTimelineVisualActiveIndex();
+  }
   return activeIdx;
 }
 function syncLowerTimelineCenterMarkers() {
@@ -14191,17 +14347,30 @@ function applyTimelinePillFocusClasses() {
   if (!pillsEl) return;
   const focusIdx = getTimelineStageFocusIndex();
   const multiSelectionActive = isMultiSelectionActive();
+  // v8z4b30ZY — em Modo Ativos, só o frame de referência recebe destaque.
+  // activeIdx NÃO deve gerar 'selected' para evitar dois frames destacados.
+  const inAssetsMode = (typeof isAssetsMode === 'function') && isAssetsMode();
+  let highlightCount = 0;
   pillsEl.querySelectorAll('[data-frame-index]').forEach(el => {
     const idx = Number(el.dataset.frameIndex);
     const isFocus = idx === focusIdx && !multiSelectionActive && bottomContextMode !== 'segment';
-    const isSelected = idx === activeIdx && !multiSelectionActive && bottomContextMode !== 'segment';
+    // Em Modo Ativos, não destacar activeIdx separadamente
+    const isSelected = !inAssetsMode && idx === activeIdx && !multiSelectionActive && bottomContextMode !== 'segment';
     const isMulti = isFrameVisuallyMultiSelected(idx);
     el.classList.toggle('active', isFocus);
     el.classList.toggle('selected', isMulti || (isSelected && !isFocus));
+    if (isFocus) highlightCount++;
     if (frameLocked[idx]) el.style.color = '#f5c518';
     else if (isMulti || (isSelected && !isFocus)) el.style.color = '#ff9500';
     else el.style.color = '';
   });
+  // v8z4b30ZY — diagnóstico de múltiplos destaques
+  timelineVisualActiveIndex = focusIdx;
+  timelineEditingActiveIndex = typeof activeIdx !== 'undefined' ? activeIdx : -1;
+  timelineReferenceActiveIndex = inAssetsMode ? getTimelineVisualActiveIndex() : -1;
+  timelineActiveHighlightCount = highlightCount;
+  timelineMultipleActiveHighlightsDetected = highlightCount > 1;
+  assetsModeOnlyOneFrameReferenceHighlighted = !inAssetsMode || highlightCount <= 1;
   syncLowerTimelineCenterMarkers();
 }
 function applyStageTimelineFocusVisuals() {
@@ -16548,8 +16717,32 @@ function refreshActiveFrameVisuals() {
     updateGhostTransformHandle();
   }
   if (frameHudEl) {
-    if (_showCorners) updateFrameHud(activeIdx);
-    else frameHudEl.classList.remove('show');
+    if (_showCorners) {
+      updateFrameHud(activeIdx);
+      // v8z4b30ZY — diagnóstico de texto de informação do frame ativo
+      frameActiveInfoTextVisible = true;
+      frameActiveInfoTextFrameIndex = activeIdx;
+      frameActiveInfoTextUsesAnchoredGeometry = true;
+      frameActiveInfoTextSuppressedReason = '';
+    } else {
+      frameHudEl.classList.remove('show');
+      frameActiveInfoTextVisible = false;
+      frameActiveInfoTextFrameIndex = -1;
+      frameActiveInfoTextSuppressedReason = !_canShow ? 'canShow=false' : (isInsertingFrame ? 'isInsertingFrame' : 'unknown');
+    }
+  }
+  // v8z4b30ZY — diagnóstico de target de geometria ancorada
+  frameAnchoredUIDiagnosticMode = (typeof isAssetsMode === 'function' && isAssetsMode()) ? 'assets' : 'camera';
+  if (frameAnchoredUIDiagnosticMode === 'assets') {
+    const _refIdx = (typeof temporaryFrameReferenceTargetIndex !== 'undefined' && temporaryFrameReferenceTargetIndex >= 0)
+      ? temporaryFrameReferenceTargetIndex
+      : ((typeof assetsModeFrameReferenceHighlightIndex !== 'undefined' && assetsModeFrameReferenceHighlightIndex >= 0)
+        ? assetsModeFrameReferenceHighlightIndex : activeIdx);
+    frameAnchoredUIDiagnosticTargetIndex = _refIdx;
+    frameAnchoredUIDiagnosticUsesReferenceFrame = _refIdx !== activeIdx;
+  } else {
+    frameAnchoredUIDiagnosticTargetIndex = activeIdx;
+    frameAnchoredUIDiagnosticUsesReferenceFrame = false;
   }
 }
 
@@ -16580,77 +16773,121 @@ function renderAll() {
     el.style.display = 'block';
     updateStageFrameUIScale(el, f);
 
-    const stageFocusIdx = getTimelineStageFocusIndex();
-    const dist = Math.abs(i - stageFocusIdx);
-    const isActive   = dist === 0;
-    const isPrevAdj  = i === stageFocusIdx - 1;
-    const isNextAdj  = i === stageFocusIdx + 1;
-    const isLocked   = !!frameLocked[i];
-    const multiSelectionActive = isMultiSelectionActive();
-    const isSelected = isFrameVisuallyMultiSelected(i);
-    const isSegmentEndpoint = !multiSelectionActive && bottomContextMode === 'segment' && selectedSegmentIndex >= 0 && (i === selectedSegmentIndex || i === selectedSegmentIndex + 1);
-    const isAdjacent = !multiSelectionActive && bottomContextMode !== 'segment' && (isPrevAdj || isNextAdj);
-    const showActiveStageFocus = isActive && !multiSelectionActive && bottomContextMode !== 'segment';
-    el.classList.toggle('active', showActiveStageFocus);
-    el.classList.toggle('multi-selected', isSelected || isSegmentEndpoint);
-
-    let col;
-    if (showActiveStageFocus) col = FRAME_COLORS.active;
-    else if (isSegmentEndpoint) col = FRAME_COLORS.active;
-    else if (isAdjacent && isPrevAdj) col = FRAME_COLORS.prevAdj;
-    else if (isAdjacent && isNextAdj) col = FRAME_COLORS.nextAdj;
-    else                             col = FRAME_COLORS.distant;
-
-    const invZ = 1 / editorZoomScale;
-    const selectedStageFocus = (multiSelectionActive && isSelected) || isSegmentEndpoint;
-    const borderW = selectedStageFocus ? (3 * invZ) + 'px'
-                  : showActiveStageFocus ? (3.5 * invZ) + 'px'
-                  : (2 * invZ) + 'px';
-    const op = selectedStageFocus ? 1.0
-             : multiSelectionActive ? 0.75
-             : showActiveStageFocus ? 1.0
-             : isSegmentEndpoint ? 1.0
-             : bottomContextMode === 'segment' ? 0.62
-             : isAdjacent ? 0.80
-             : 0.62;
-    el.style.zIndex = multiSelectionActive ? '20'
-                    : (showActiveStageFocus || isSegmentEndpoint) ? '30'
-                    : isAdjacent ? '25'
-                    : '20';
-    // Modo isolamento: outros frames invisíveis e não interativos
-    if (window._isoMode && !isActive) {
-      el.style.opacity = '0';
-      el.style.pointerEvents = 'none';
-    } else {
-      el.style.opacity = op;
+    // v8z4b30ZY — no Modo Ativos, não aplicar hierarquia de opacidade/foco do Modo Câmera.
+    // CSS e assets-ref-highlight controlam a aparência. Limpar inline styles para deixar CSS agir.
+    const _inAssetsMode = (typeof isAssetsMode === 'function') && isAssetsMode();
+    if (_inAssetsMode) {
+      // Limpar hierarquia visual herdada do Modo Câmera
+      el.classList.remove('active', 'multi-selected');
+      el.style.opacity = '';
+      el.style.zIndex = '';
       el.style.pointerEvents = '';
-    }
-
-    const rot = frameRotations[i] || 0;
-    el.querySelector('.frame-visual').style.transform   = `rotate(${rot}deg)`;
-    const borderEl = el.querySelector('.frame-border');
-    const numEl = el.querySelector('.frame-num');
-    // Frame travado: borda vermelha
-    if (frameLocked[i]) {
-      borderEl.style.borderColor = 'rgba(255,80,80,0.8)';
-    } else if (selectedStageFocus) {
-      borderEl.style.borderColor = '#ff9500';
+      const rot = frameRotations[i] || 0;
+      el.querySelector('.frame-visual').style.transform = `rotate(${rot}deg)`;
+      const borderEl = el.querySelector('.frame-border');
+      const numEl = el.querySelector('.frame-num');
+      const invZ = 1 / editorZoomScale;
+      if (borderEl) {
+        borderEl.style.borderColor = '';
+        borderEl.style.borderWidth = (2 * invZ) + 'px';
+        borderEl.style.boxShadow = 'none';
+      }
+      // Número do frame: referência visual no Modo Ativos
+      if (numEl) {
+        numEl.textContent = String(i + 1);
+        const _refIdx = (typeof temporaryFrameReferenceTargetIndex !== 'undefined' && temporaryFrameReferenceTargetIndex >= 0)
+          ? temporaryFrameReferenceTargetIndex
+          : ((typeof assetsModeFrameReferenceHighlightIndex !== 'undefined') ? assetsModeFrameReferenceHighlightIndex : -1);
+        const _isRefFrame = i === _refIdx && _refIdx >= 0;
+        numEl.style.color = _isRefFrame ? '#ffffff' : '';
+        numEl.style.background = _isRefFrame ? 'rgba(139,63,255,.65)' : '';
+        numEl.style.fontWeight = _isRefFrame ? '700' : '';
+        numEl.style.boxShadow = '';
+        // Diagnóstico
+        if (_isRefFrame) {
+          assetsModeFrameNumberHighlightIndex = i;
+          assetsModeFrameNumberUsesAnchoredGeometry = true;
+        }
+      }
+      const rh = el.querySelector('.rot-handle');
+      if (rh) rh.classList.remove('show');
+      // Rastrear se hierarquia de câmera foi limpa
+      assetsModeCameraFrameHierarchyVisible = false;
+      assetsModeInheritedFrameOpacityCleared = true;
+      assetsModeFrameReferenceOpacityUniform = true;
     } else {
-      borderEl.style.borderColor = col.border;
+      // Modo Câmera — lógica original de hierarquia visual
+      const stageFocusIdx = getTimelineStageFocusIndex();
+      const dist = Math.abs(i - stageFocusIdx);
+      const isActive   = dist === 0;
+      const isPrevAdj  = i === stageFocusIdx - 1;
+      const isNextAdj  = i === stageFocusIdx + 1;
+      const multiSelectionActive = isMultiSelectionActive();
+      const isSelected = isFrameVisuallyMultiSelected(i);
+      const isSegmentEndpoint = !multiSelectionActive && bottomContextMode === 'segment' && selectedSegmentIndex >= 0 && (i === selectedSegmentIndex || i === selectedSegmentIndex + 1);
+      const isAdjacent = !multiSelectionActive && bottomContextMode !== 'segment' && (isPrevAdj || isNextAdj);
+      const showActiveStageFocus = isActive && !multiSelectionActive && bottomContextMode !== 'segment';
+      el.classList.toggle('active', showActiveStageFocus);
+      el.classList.toggle('multi-selected', isSelected || isSegmentEndpoint);
+
+      let col;
+      if (showActiveStageFocus) col = FRAME_COLORS.active;
+      else if (isSegmentEndpoint) col = FRAME_COLORS.active;
+      else if (isAdjacent && isPrevAdj) col = FRAME_COLORS.prevAdj;
+      else if (isAdjacent && isNextAdj) col = FRAME_COLORS.nextAdj;
+      else                             col = FRAME_COLORS.distant;
+
+      const invZ = 1 / editorZoomScale;
+      const selectedStageFocus = (multiSelectionActive && isSelected) || isSegmentEndpoint;
+      const borderW = selectedStageFocus ? (3 * invZ) + 'px'
+                    : showActiveStageFocus ? (3.5 * invZ) + 'px'
+                    : (2 * invZ) + 'px';
+      const op = selectedStageFocus ? 1.0
+               : multiSelectionActive ? 0.75
+               : showActiveStageFocus ? 1.0
+               : isSegmentEndpoint ? 1.0
+               : bottomContextMode === 'segment' ? 0.62
+               : isAdjacent ? 0.80
+               : 0.62;
+      el.style.zIndex = multiSelectionActive ? '20'
+                      : (showActiveStageFocus || isSegmentEndpoint) ? '30'
+                      : isAdjacent ? '25'
+                      : '20';
+      // Modo isolamento: outros frames invisíveis e não interativos
+      if (window._isoMode && !isActive) {
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+      } else {
+        el.style.opacity = op;
+        el.style.pointerEvents = '';
+      }
+
+      const rot = frameRotations[i] || 0;
+      el.querySelector('.frame-visual').style.transform   = `rotate(${rot}deg)`;
+      const borderEl = el.querySelector('.frame-border');
+      const numEl = el.querySelector('.frame-num');
+      // Frame travado: borda vermelha
+      if (frameLocked[i]) {
+        borderEl.style.borderColor = 'rgba(255,80,80,0.8)';
+      } else if (selectedStageFocus) {
+        borderEl.style.borderColor = '#ff9500';
+      } else {
+        borderEl.style.borderColor = col.border;
+      }
+      borderEl.style.borderWidth = borderW;
+      borderEl.style.boxShadow = selectedStageFocus
+        ? `0 0 ${12 * invZ}px rgba(0,0,0,.42), 0 0 ${10 * invZ}px rgba(255,149,0,.28)`
+        : 'none';
+      if (numEl) {
+        numEl.textContent = String(i + 1);
+        numEl.style.color = selectedStageFocus ? '#ffffff' : '';
+        numEl.style.background = selectedStageFocus ? 'rgba(0,0,0,.58)' : '';
+        numEl.style.fontWeight = selectedStageFocus ? '800' : '';
+        numEl.style.boxShadow = selectedStageFocus ? `0 0 ${8 * invZ}px rgba(255,149,0,.45)` : '';
+      }
+      const rh = el.querySelector('.rot-handle');
+      if (rh) rh.classList.remove('show');
     }
-    borderEl.style.borderWidth = borderW;
-    borderEl.style.boxShadow = selectedStageFocus
-      ? `0 0 ${12 * invZ}px rgba(0,0,0,.42), 0 0 ${10 * invZ}px rgba(255,149,0,.28)`
-      : 'none';
-    if (numEl) {
-      numEl.textContent = String(i + 1);
-      numEl.style.color = selectedStageFocus ? '#ffffff' : '';
-      numEl.style.background = selectedStageFocus ? 'rgba(0,0,0,.58)' : '';
-      numEl.style.fontWeight = selectedStageFocus ? '800' : '';
-      numEl.style.boxShadow = selectedStageFocus ? `0 0 ${8 * invZ}px rgba(255,149,0,.45)` : '';
-    }
-    const rh = el.querySelector('.rot-handle');
-    if (rh) rh.classList.remove('show');
   }
 
   // Durante seleção múltipla, manter a ordem visual atual: a fonte de verdade é
@@ -27779,8 +28016,16 @@ function renderAssetSelectionOverlay() {
   const show = isAssetsMode() && asset &&
                (typeof isPreviewing === 'undefined' || !isPreviewing) &&
                assetHasLoadedImage(asset) && asset.visible !== false;
+  // v8z4b30ZY — diagnóstico de seleção de asset
+  const _selId = (typeof selectedAssetId !== 'undefined' && selectedAssetId) ? String(selectedAssetId) : 'none';
+  selectedAssetIdExistsInAssets = _selId !== 'none' && Array.isArray(assets) && assets.some(function(a) { return a && a.id === selectedAssetId; });
   if (!show) {
     if (box) box.style.display = 'none';
+    assetSelectionOutlineVisible = false;
+    assetSelectionOutlineAssetId = _selId;
+    assetSelectionOutlineUsesAssetGeometry = false;
+    assetSelectionOutlineIssue = _selId !== 'none' && !selectedAssetIdExistsInAssets ? 'asset não encontrado' : (_selId !== 'none' && !isAssetsMode() ? 'não está em Modo Ativos' : '');
+    selectedAssetVisualFeedbackConsistent = _selId === 'none' || !isAssetsMode();
     return;
   }
   computeEditorTransform();
@@ -27800,6 +28045,12 @@ function renderAssetSelectionOverlay() {
   box.style.top = p.y + 'px';
   box.style.width = p.w + 'px';
   box.style.height = p.h + 'px';
+  // v8z4b30ZY — atualizar diagnóstico
+  assetSelectionOutlineVisible = true;
+  assetSelectionOutlineAssetId = String(asset.id);
+  assetSelectionOutlineUsesAssetGeometry = true;
+  assetSelectionOutlineIssue = '';
+  selectedAssetVisualFeedbackConsistent = true;
 }
 
 // ── Painel básico de Layers ──────────────────────────────────────────────
@@ -30057,6 +30308,96 @@ function buildDiagnosticsText() {
          ' (scale ' + _diagFmtNum(v.scale, 4) + ', offsetTop ' + _diagFmtNum(v.offsetTop, 2) + ')';
   }
   push('viewport visual disponível', vv);
+
+  // v8z4b30ZY — diagnóstico completo da nova versão
+  L.push('');
+  L.push('═══ v8z4b30ZY — Timeline Visual ═══');
+  push('timelineVisualActiveIndex', String((typeof timelineVisualActiveIndex !== 'undefined') ? timelineVisualActiveIndex : -1));
+  push('timelineEditingActiveIndex', String((typeof timelineEditingActiveIndex !== 'undefined') ? timelineEditingActiveIndex : -1));
+  push('timelineReferenceActiveIndex', String((typeof timelineReferenceActiveIndex !== 'undefined') ? timelineReferenceActiveIndex : -1));
+  push('timelineActiveHighlightCount', String((typeof timelineActiveHighlightCount !== 'undefined') ? timelineActiveHighlightCount : 0));
+  push('timelineMultipleActiveHighlightsDetected', String((typeof timelineMultipleActiveHighlightsDetected !== 'undefined') ? timelineMultipleActiveHighlightsDetected : false));
+  push('assetsModeOnlyOneFrameReferenceHighlighted', String((typeof assetsModeOnlyOneFrameReferenceHighlighted !== 'undefined') ? assetsModeOnlyOneFrameReferenceHighlighted : true));
+  push('assetsModeInheritedTimelineHighlightCleared', String((typeof assetsModeInheritedTimelineHighlightCleared !== 'undefined') ? assetsModeInheritedTimelineHighlightCleared : false));
+  // Contagem real de pills com classe 'active' (verificação ao vivo)
+  {
+    const _pillsRow = document.getElementById('pillsRow');
+    const _activePills = _pillsRow ? _pillsRow.querySelectorAll('.fp.active').length : 0;
+    const _selectedPills = _pillsRow ? _pillsRow.querySelectorAll('.fp.selected').length : 0;
+    push('timelinePillsActiveCount', String(_activePills));
+    push('timelinePillsSelectedCount', String(_selectedPills));
+    push('timelineMultiHighlightDetectedLive', String(_activePills + _selectedPills > 1));
+  }
+
+  L.push('');
+  L.push('═══ v8z4b30ZY — Referência Modo Ativos ═══');
+  push('assetsModeInheritedFrameOpacityCleared', String((typeof assetsModeInheritedFrameOpacityCleared !== 'undefined') ? assetsModeInheritedFrameOpacityCleared : false));
+  push('assetsModeFrameEditHighlightClearedOnEnter', String((typeof assetsModeFrameEditHighlightClearedOnEnter !== 'undefined') ? assetsModeFrameEditHighlightClearedOnEnter : false));
+  push('assetsModeCameraFrameHierarchyVisible', String((typeof assetsModeCameraFrameHierarchyVisible !== 'undefined') ? assetsModeCameraFrameHierarchyVisible : false));
+  push('assetsModeFrameReferenceOpacityUniform', String((typeof assetsModeFrameReferenceOpacityUniform !== 'undefined') ? assetsModeFrameReferenceOpacityUniform : false));
+  push('assetsModeOnlyReferenceFrameHighlighted', String((typeof assetsModeOnlyOneFrameReferenceHighlighted !== 'undefined') ? assetsModeOnlyOneFrameReferenceHighlighted : true));
+  // Live check: frames com inline opacity
+  {
+    const _inAssetsNow = (typeof isAssetsMode === 'function') && isAssetsMode();
+    let _hasInlineOpacity = false;
+    if (_inAssetsNow && typeof getFrameEl === 'function' && typeof frameCount === 'number') {
+      for (let _fi2 = 0; _fi2 < frameCount; _fi2++) {
+        const _fe = getFrameEl(_fi2);
+        if (_fe && _fe.style.opacity !== '' && _fe.style.opacity !== undefined) { _hasInlineOpacity = true; break; }
+      }
+    }
+    push('assetsModeLiveFrameHasInlineOpacity', String(!!_hasInlineOpacity));
+    push('assetsModeCameraFrameHierarchyLive', String(!!_inAssetsNow && _hasInlineOpacity));
+  }
+
+  L.push('');
+  L.push('═══ v8z4b30ZY — Número de Frame ═══');
+  push('assetsModeFrameNumbersVisible', String((function() {
+    const _bn = document.body && document.body.classList.contains('assets-refs-visible');
+    return !!(typeof isAssetsMode === 'function' && isAssetsMode() && _bn);
+  })()));
+  push('assetsModeFrameNumberReferenceVisible', String((typeof assetsModeFrameNumberReferenceVisible !== 'undefined') ? assetsModeFrameNumberReferenceVisible : false));
+  push('assetsModeFrameNumberHighlightIndex', String((typeof assetsModeFrameNumberHighlightIndex !== 'undefined') ? assetsModeFrameNumberHighlightIndex : -1));
+  push('assetsModeFrameNumberUsesAnchoredGeometry', String((typeof assetsModeFrameNumberUsesAnchoredGeometry !== 'undefined') ? assetsModeFrameNumberUsesAnchoredGeometry : false));
+  push('bodyHasAssetsRefsVisible', String(!!(document.body && document.body.classList.contains('assets-refs-visible'))));
+
+  L.push('');
+  L.push('═══ v8z4b30ZY — Texto de Informação do Frame ═══');
+  push('frameActiveInfoTextVisible', String((typeof frameActiveInfoTextVisible !== 'undefined') ? frameActiveInfoTextVisible : false));
+  push('frameActiveInfoTextFrameIndex', String((typeof frameActiveInfoTextFrameIndex !== 'undefined') ? frameActiveInfoTextFrameIndex : -1));
+  push('frameActiveInfoTextUsesAnchoredGeometry', String((typeof frameActiveInfoTextUsesAnchoredGeometry !== 'undefined') ? frameActiveInfoTextUsesAnchoredGeometry : false));
+  push('frameActiveInfoTextSuppressedReason', (typeof frameActiveInfoTextSuppressedReason !== 'undefined' && frameActiveInfoTextSuppressedReason) ? frameActiveInfoTextSuppressedReason : 'n/a');
+  // Live check: HUD element visible
+  {
+    const _hudEl = document.getElementById('frameHud');
+    const _hudShow = _hudEl && _hudEl.classList.contains('show') && _hudEl.style.display !== 'none';
+    push('frameHudLiveVisible', String(!!_hudShow));
+    push('frameHudInlineDisplay', _hudEl ? (_hudEl.style.display || 'não definido') : 'elemento ausente');
+  }
+
+  L.push('');
+  L.push('═══ v8z4b30ZY — Geometria Diagnóstico Target ═══');
+  push('frameAnchoredUIDiagnosticTargetIndex', String((typeof frameAnchoredUIDiagnosticTargetIndex !== 'undefined') ? frameAnchoredUIDiagnosticTargetIndex : -1));
+  push('frameAnchoredUIDiagnosticMode', (typeof frameAnchoredUIDiagnosticMode !== 'undefined') ? (frameAnchoredUIDiagnosticMode || 'n/d') : 'n/d');
+  push('frameAnchoredUIDiagnosticUsesReferenceFrame', String((typeof frameAnchoredUIDiagnosticUsesReferenceFrame !== 'undefined') ? frameAnchoredUIDiagnosticUsesReferenceFrame : false));
+
+  L.push('');
+  L.push('═══ v8z4b30ZY — Asset Seleção/Delete/Undo ═══');
+  push('assetSelectionOutlineVisible', String((typeof assetSelectionOutlineVisible !== 'undefined') ? assetSelectionOutlineVisible : false));
+  push('assetSelectionOutlineAssetId', (typeof assetSelectionOutlineAssetId !== 'undefined') ? (assetSelectionOutlineAssetId || 'none') : 'none');
+  push('assetSelectionOutlineUsesAssetGeometry', String((typeof assetSelectionOutlineUsesAssetGeometry !== 'undefined') ? assetSelectionOutlineUsesAssetGeometry : false));
+  push('assetSelectionOutlineIssue', (typeof assetSelectionOutlineIssue !== 'undefined' && assetSelectionOutlineIssue) ? assetSelectionOutlineIssue : 'nenhum');
+  push('selectedAssetIdExistsInAssets', String((typeof selectedAssetIdExistsInAssets !== 'undefined') ? selectedAssetIdExistsInAssets : false));
+  push('selectedAssetVisualFeedbackConsistent', String((typeof selectedAssetVisualFeedbackConsistent !== 'undefined') ? selectedAssetVisualFeedbackConsistent : false));
+  push('lastAssetDeleteAction', (typeof lastAssetDeleteAction !== 'undefined') ? (lastAssetDeleteAction || 'none') : 'none');
+  push('lastAssetDeletedId', (typeof lastAssetDeletedId !== 'undefined') ? (lastAssetDeletedId || 'none') : 'none');
+  push('assetDeletedVisualUpdateRan', String((typeof assetDeletedVisualUpdateRan !== 'undefined') ? assetDeletedVisualUpdateRan : false));
+  push('projectWorldCompositeInvalidatedAfterAssetDelete', String((typeof projectWorldCompositeInvalidatedAfterAssetDelete !== 'undefined') ? projectWorldCompositeInvalidatedAfterAssetDelete : false));
+  push('stageRedrawnAfterAssetDelete', String((typeof stageRedrawnAfterAssetDelete !== 'undefined') ? stageRedrawnAfterAssetDelete : false));
+  push('lastAssetUndoAction', (typeof lastAssetUndoAction !== 'undefined') ? (lastAssetUndoAction || 'none') : 'none');
+  push('assetUndoVisualUpdateRan', String((typeof assetUndoVisualUpdateRan !== 'undefined') ? assetUndoVisualUpdateRan : false));
+  push('projectWorldCompositeInvalidatedAfterAssetUndo', String((typeof projectWorldCompositeInvalidatedAfterAssetUndo !== 'undefined') ? projectWorldCompositeInvalidatedAfterAssetUndo : false));
+  push('stageRedrawnAfterAssetUndo', String((typeof stageRedrawnAfterAssetUndo !== 'undefined') ? stageRedrawnAfterAssetUndo : false));
 
   return L.join('\n');
 }
