@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b29CD                                    ║
+║  Versão: v8z4b30ZP                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZP — base v8z4b30ZO. fix(state): corrige inconsistência real de contexto ao entrar no Modo Ativos — setBottomContext() agora aceita 'asset' como modo válido, adicionando classe body.bottom-context-asset; setEditorMode('assets') chama setBottomContext('asset') imediatamente, eliminando bottomContextMode: frame no diagnóstico quando em Modo Ativos; setEditorMode('camera') chama setBottomContext('frame') ao sair. fix(selection): clearSelectedAsset() agora também zera selectedImageAssetId (mantinha null apenas em selectedAssetId, causando selectedImageAssetId: n/d mesmo após limpar seleção). fix(diag): diagnóstico expandido — exibe activeMode, bottomContextMode, selectedAssetId, selectedImageAssetId, selectedAsset.zIndex, toolbarContext (frame ou asset), tbAssetForward.enabled, tbAssetBackward.enabled e tbAssetForward.disableReason. fix(version): APP_VERSION = v8z4b30ZP. preserve: layout, render, preview, exportação, save/load, ProjectWorld, motor de frames, curvas, cores, menu superior, seleção de assets, Frente/Trás, Trocar, Excluir. base v8z4b30ZO. -->
 <!-- Arco Motion App — v8z4b30ZO — base v8z4b30ZN. fix(topbar): remove #topBtnMapa (botão de Visualizar/olho) da barra superior; visualização migra para botão de Modo Câmera (toque secundário cicla viewMode via toggleMapa()). fix(assets-overlay): updateDimOverlay() retorna cedo no Modo Ativos — sem overlay escuro fora do frame quando o foco é nos assets. fix(frames-toggle): worldModeShowFrames state + toggleWorldModeFrames() + CSS body.editor-assets.world-frames-hidden oculta .frame e #bezierSvg no Modo Ativos; toggle disponível no menu do "+". fix(add-menu): handleLowerAddOrSelectAll() abre openAssetsAddMenu() no Modo Ativos; assetsAddMenu é modal central com fechar explícito (X), opções "Nova imagem" e "Trocar imagem" (visível só com asset selecionado) e toggle de frames. fix(slot-picker): imageSlotPickerSheet convertido de bottom sheet para modal central (align-items:center, border-radius:22px, width:min(92vw,440px)) com botão X explícito. fix(frente-tras): bringSelectedAssetForward e sendSelectedAssetBackward chamam renderProjectWorldExtraImages() + markProjectDirty() após trocar zIndex — ordem reflete no Stage/Preview/Export/Save. fix(version): APP_VERSION e APP_VERSION_NAME = v8z4b30ZO. preserve: cor roxa no Modo Ativos, Play roxo, botão + roxo, handles ocultos, seleção de assets, Trocar imagem, motor de Preview/Export/Save/Load, ProjectWorld, frames, curvas, timeline. base v8z4b30ZN. -->
 <!-- Arco Motion App — v8z4b30ZN — base v8z4b30ZM. fix(topbar-layout): barra superior passa a ter layout FIXO — a posição dos ícones não muda ao alternar entre Modo Câmera e Modo Ativos. fix(mode-buttons): botões de modo (Câmera e Ativos) redimensionados para área de toque adequada (40×44px, ícone 22px) — mesma importância visual dos controles principais; sem texto (somente ícones). fix(visualizar-slot): #topBtnMapa deixa de usar display:none no Modo Ativos (que colapsava o espaço e deslocava Play/Undo/Redo); passa a usar visibility:hidden+pointer-events:none, preservando o slot no layout. fix(version): APP_VERSION e APP_VERSION_NAME = v8z4b30ZN. preserve: iconografia (câmera de vídeo = Modo Câmera, imagem = Modo Ativos), cor de destaque roxa no Modo Ativos (--accent:#8b3fff), Play roxo no Modo Ativos, botão + roxo no Modo Ativos, handles ocultos no Modo Ativos, seleção de assets, Trocar imagem, motor de Preview/Export/Save/Load, ProjectWorld, frames, curvas, timeline — sem alteração. base v8z4b30ZM. -->
 <!-- Arco Motion App — v8z4b30ZM — base v8z4b30ZL. fix(pills): pills de modo agora exibem somente ícones, sem texto (span.mode-pill-label removido do HTML). fix(icon): pill Câmera continua usando ícone de câmera de vídeo (#i-video-camera); pill Ativos continua usando #i-image. fix(accent-global): implementada regra centralizada de cor de destaque por modo — body.editor-assets sobrescreve --accent:#8b3fff, fazendo roxo propagar automaticamente para Play, timeline, outline de seleção e todos os elementos que usam var(--accent). fix(play): botão Play segue a cor do modo (roxo no Modo Ativos, ciano no Modo Câmera). fix(visualize): botão Visualizar (#topBtnMapa) oculto no Modo Ativos (body.editor-assets #topBtnMapa{display:none}); modos de visualização restritos ao Modo Câmera. fix(camera-leak): handles de câmera/frame (corner-handle, frameHud, stageFrameMenu) ocultos no Modo Ativos via CSS; setEditorMode chama clearFrameMultiSelectState ao entrar em assets. fix(forward-back): bringSelectedAssetForward e sendSelectedAssetBackward normalizam zIndex para valores únicos antes de trocar posições, garantindo que Frente/Trás funcionem inclusive em projetos cujos assets têm zIndex duplicado (0); renderProjectWorldExtraImages ordena extras por zIndex antes de inserir no DOM, refletindo a ordem no Stage além do Preview/Export. preserve: seleção direta de assets, Trocar imagem, motor de Preview/Export/Save/Load, ProjectWorld, frames, curvas, timeline. base v8z4b30ZL. -->
@@ -6909,8 +6910,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZO';
-const APP_VERSION_NAME = 'v8z4b30ZO';
+const APP_VERSION = 'v8z4b30ZP';
+const APP_VERSION_NAME = 'v8z4b30ZP';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -13122,6 +13123,7 @@ function setSelectedAsset(assetId) {
 }
 function clearSelectedAsset() {
   selectedAssetId = null;
+  selectedImageAssetId = null; // v8z4b30ZP — mantém legado em sincronia
   renderAssetSelectionOverlay();
   renderAssetsContextBar();
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
@@ -13184,11 +13186,18 @@ function setEditorMode(mode) {
       // v8z4b30ZO — restaurar worldModeShowFrames ao voltar para câmera
       worldModeShowFrames = true;
       if (document.body) document.body.classList.remove('world-frames-hidden');
+      // v8z4b30ZP — ao sair do Modo Ativos, restaura contexto de frame.
+      setBottomContext('frame');
     }
     // v8z4b30ZM — ao entrar no Modo Ativos, limpa seleção múltipla de frames
     // para que handles e destaques de câmera não "vazem" para o Stage de assets.
     if (isAssetsMode() && typeof clearFrameMultiSelectState === 'function') {
       clearFrameMultiSelectState();
+    }
+    // v8z4b30ZP — ao entrar no Modo Ativos, muda bottomContextMode para 'asset'
+    // para que o diagnóstico e o roteamento de ações reflitam o contexto real.
+    if (isAssetsMode()) {
+      setBottomContext('asset');
     }
   }
   syncEditorModeUI();
@@ -13457,11 +13466,12 @@ if (stageContextOverlay && pointModeMenuEl && pointModeMenuEl.parentElement !== 
 let bottomContextMode = 'frame';
 let selectedSegmentIndex = -1;
 function setBottomContext(mode) {
-  const next = (mode === 'segment') ? 'segment' : 'frame';
+  const next = (mode === 'segment') ? 'segment' : (mode === 'asset') ? 'asset' : 'frame';
   bottomContextMode = next;
   document.body.classList.remove('bottom-context-general');
   document.body.classList.toggle('bottom-context-frame', next === 'frame');
   document.body.classList.toggle('bottom-context-segment', next === 'segment');
+  document.body.classList.toggle('bottom-context-asset', next === 'asset');
   if (next !== 'frame') hideStageFrameMenu();
   if (next !== 'segment') selectedSegmentIndex = -1;
 }
@@ -28549,8 +28559,30 @@ function buildDiagnosticsText() {
   }
   L.push('');
 
-  // v8z4b30Y — BUG1: associação curva/trecho/handle
+  // v8z4b30ZP — diagnóstico de modo de edição e contexto ativo
+  push('activeMode', (typeof editorMode !== 'undefined') ? editorMode : 'n/d');
   push('bottomContextMode', (typeof bottomContextMode !== 'undefined') ? bottomContextMode : 'n/d');
+  {
+    const _selA = (typeof getSelectedAsset === 'function') ? getSelectedAsset() : null;
+    const _selId = (typeof selectedAssetId !== 'undefined') ? selectedAssetId : null;
+    push('selectedAssetId', _selId ? String(_selId) : 'n/d');
+    push('selectedImageAssetId', (typeof selectedImageAssetId !== 'undefined' && selectedImageAssetId) ? String(selectedImageAssetId) : 'n/d');
+    push('selectedAsset.zIndex', _selA ? String(_selA.zIndex != null ? _selA.zIndex : 'n/d') : 'n/d');
+    const _isAssets = (typeof isAssetsMode === 'function') ? isAssetsMode() : false;
+    push('toolbarContext', _isAssets ? 'asset' : 'frame');
+    const _assLen = (typeof assets !== 'undefined' && Array.isArray(assets)) ? assets.length : 0;
+    const _fwdEnabled = _isAssets && !!_selA && _assLen > 1;
+    const _bkwEnabled = _isAssets && !!_selA && _assLen > 1;
+    push('tbAssetForward.enabled', String(_fwdEnabled));
+    push('tbAssetBackward.enabled', String(_bkwEnabled));
+    let _fwdDisableReason = '';
+    if (!_isAssets) _fwdDisableReason = 'não está em Modo Ativos';
+    else if (!_selA) _fwdDisableReason = 'nenhum asset selecionado';
+    else if (_assLen <= 1) _fwdDisableReason = 'apenas 1 asset — sem outra camada';
+    push('tbAssetForward.disableReason', _fwdDisableReason || 'n/d (habilitado)');
+  }
+  L.push('');
+  // v8z4b30Y — BUG1: associação curva/trecho/handle
   push('selectedSegmentIndex', (typeof selectedSegmentIndex !== 'undefined') ? String(selectedSegmentIndex) : 'n/d');
   push('activeIdx', (typeof activeIdx !== 'undefined') ? String(activeIdx) : 'n/d');
   push('lastSelectionSource', lastSelectionSource || 'n/d');
