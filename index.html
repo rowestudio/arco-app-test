@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b30ZR                                    ║
+║  Versão: v8z4b30ZS                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZS — base v8z4b30ZR. fix(assets-mode-visual): clareza visual do Modo Ativos — frames ocultos por padrão ao entrar no Modo Ativos (worldModeShowFrames=false + world-frames-hidden automático); referências de frames visíveis apenas sob demanda via toggleWorldModeFrames(); quando visíveis, opacidade reduzida a 17% (ghost leve) com apenas contorno (frame-dim/frame-num/frame-crosshair/frame-center ocultos em assets mode); selecionar um asset ou clicar no fundo oculta as referências temporárias. feat(temp-refs): novo estado temporaryFrameReferencesVisible + temporaryFrameReferenceTargetIndex para rastrear referências temporárias de frames no Modo Ativos; diagnóstico completo. fix(camera-overlay): updateDimOverlay() agora chama computeEditorTransform() e converte coords de frame do espaço de mundo para espaço de Stage via editorWorldToStage antes de desenhar o SVG — corrige desalinhamento do alfa/overlay de câmera quando há zoom/pan no editor (especialmente com frame rotacionado). feat(mode-hints): mensagem contextual na 1ª entrada de cada modo — 'Modo Câmera' e 'Modo Ativos'; salvo em localStorage (hasSeenCameraModeHint / hasSeenAssetsModeHint); não reparece em trocas subsequentes; exibição como toast discreto (4 s). fix(diag): diagnóstico expandido com temporaryFrameReferencesVisible, temporaryFrameReferenceTargetIndex, assetsModeFrameOverlayVisible, assetsModeCameraAlphaVisible, cameraModeFrameOverlayAligned, cameraModeFrameOverlayFrameIndex, hasSeenCameraModeHint, hasSeenAssetsModeHint. fix(version): APP_VERSION = v8z4b30ZS. preserve: motor de preview/export/save/load, ProjectWorld, frames, curvas, troca real de modo da v8z4b30ZR, barra superior em três duplas, cores roxa/ciano, seleção de assets, Frente/Trás, Trocar/Excluir, zoom dinâmico. base v8z4b30ZR. -->
 <!-- Arco Motion App — v8z4b30ZR — base v8z4b30ZQ. fix(mode-router): setEditorMode/setMode agora recebem uma ORIGEM e instrumentam a transição de modo (lastModeButtonTapped, lastModeRequested, lastModeApplied, lastModeChangeSource, lastModeChangeTimestamp, setModeCallCount, setModeLastBlockedReason, setModeLastError) — toda troca de modo é verificável no diagnóstico. fix(buttons): botão Câmera (handleCameraModeBtn) e botão Ativos (handleAssetsModeBtn) passam OBRIGATORIAMENTE por setMode('camera','topModeButtonCamera') / setMode('assets','topModeButtonAssets'); nenhum botão altera modo só visualmente. feat(clear-selection): ao entrar no Modo Ativos limpa seleção de frame e de trecho/segmento no Stage; diagnóstico frameSelectionClearedOnEnterAssets / segmentSelectionClearedOnEnterAssets. feat(consistency): isModeStateConsistent() agora também valida o estado VISUAL dos botões e toolbars; novos isModeButtonVisualStateConsistent()/isToolbarVisualStateConsistent() e diagnósticos modeButtonVisualStateConsistent/toolbarVisualStateConsistent. fix(topbar): barra superior reorganizada em TRÊS duplas fixas (.top-left-group: Câmera+Ativos | .top-center-group: Settings+Play centralizada via grid 1fr auto 1fr | .top-right-group: Undo+Redo); ícones não mudam de posição ao trocar de modo. fix(zoom): editorMinZoomMode volta a 'dynamic' (worldViewBounds + fitAllWorldZoom + canViewAllSlotsAtMinZoom) sempre que o ProjectWorld está inicializado, não apenas em multi-imagem — apenas navegação/edição do editor. feat(diag): showFrameReferencesInAssetsMode exposto. fix(version): APP_VERSION = v8z4b30ZR. preserve: motor de preview/export/save/load, ProjectWorld, frames, curvas, cores roxa/ciano, seleção de assets, Frente/Trás, Trocar/Excluir. base v8z4b30ZQ. -->
 <!-- Arco Motion App — v8z4b30ZQ — base v8z4b30ZP. fix(mode-router): corrige o ROTEAMENTO CENTRAL de modo — setEditorMode() passa a ser a única fonte de verdade e SEMPRE re-sincroniza bottomContextMode/UI (não só quando o modo muda), eliminando o estado preso activeMode:camera + selectedImageAssetId definido; Modo Ativos força bottomContext 'asset', Modo Câmera força bottomContext 'frame'. feat(setMode): adicionado alias setMode('camera')/setMode('assets') no padrão pedido, delegando para setEditorMode. fix(z-order): getAssetZOrderInfo() é fonte única de Frente/Trás — habilitação dos botões e diagnóstico avaliam modo + posição do asset na pilha; motivos corretos 'asset já está no topo' / 'asset já está no fundo' / 'apenas 1 asset — sem outra camada' / 'nenhum asset selecionado'; 'não está em Modo Ativos' só quando activeMode realmente é câmera. feat(consistency): isModeStateConsistent() detecta combinações contraditórias (assets+frame, camera+asset). fix(diag): diagnóstico expandido com activeMode, bottomContextMode, toolbarContext, selectedImageAssetId, selectedAssetId, activeFrameIndex, topModeButtonActive, cameraModeButtonActive, assetModeButtonActive, assetToolbarVisible, frameToolbarVisible, assetForward/assetBackward.enabled+disableReason e modeStateConsistent. fix(version): APP_VERSION = v8z4b30ZQ. preserve: motor de preview/export/save/load, ProjectWorld, frames, curvas, cores roxa/ciano, layout, seleção de assets, Trocar/Excluir. base v8z4b30ZP. -->
 <!-- Arco Motion App — v8z4b30ZP — base v8z4b30ZO. fix(state): corrige inconsistência real de contexto ao entrar no Modo Ativos — setBottomContext() agora aceita 'asset' como modo válido, adicionando classe body.bottom-context-asset; setEditorMode('assets') chama setBottomContext('asset') imediatamente, eliminando bottomContextMode: frame no diagnóstico quando em Modo Ativos; setEditorMode('camera') chama setBottomContext('frame') ao sair. fix(selection): clearSelectedAsset() agora também zera selectedImageAssetId (mantinha null apenas em selectedAssetId, causando selectedImageAssetId: n/d mesmo após limpar seleção). fix(diag): diagnóstico expandido — exibe activeMode, bottomContextMode, selectedAssetId, selectedImageAssetId, selectedAsset.zIndex, toolbarContext (frame ou asset), tbAssetForward.enabled, tbAssetBackward.enabled e tbAssetForward.disableReason. fix(version): APP_VERSION = v8z4b30ZP. preserve: layout, render, preview, exportação, save/load, ProjectWorld, motor de frames, curvas, cores, menu superior, seleção de assets, Frente/Trás, Trocar, Excluir. base v8z4b30ZO. -->
@@ -1305,11 +1306,17 @@ body.recording #editorZoomCtrl{display:none;}
 .top-mode-toggle .mode-cam.active{color:var(--accent);background:rgba(4,255,242,.12);}
 .top-mode-toggle .mode-assets.active{color:#b06cff;background:rgba(176,108,255,.15);}
 .top-mode-toggle .mode-btn:active{background:rgba(255,255,255,.08);}
-/* v8z4b30ZK — Modo Ativos: frames/curvas viram referência discreta e NÃO capturam
-   toque (handles/curvas não respondem). O toque no Stage passa a selecionar assets. */
-body.editor-assets .frame{opacity:.32;pointer-events:none;}
-body.editor-assets #bezierSvg{opacity:.26;}
+/* v8z4b30ZK — Modo Ativos: frames/curvas viram referência e NÃO capturam
+   toque (handles/curvas não respondem). O toque no Stage passa a selecionar assets.
+   v8z4b30ZS — quando visíveis como referência temporária, opacidade leve (17%),
+   apenas contorno, sem preenchimento, sem número, sem crosshair. */
+body.editor-assets .frame{opacity:.17;pointer-events:none;}
+body.editor-assets #bezierSvg{opacity:.17;}
 body.editor-assets .frame-out-handle{pointer-events:none !important;}
+body.editor-assets .frame .frame-dim{background:transparent !important;box-shadow:none !important;}
+body.editor-assets .frame .frame-num{display:none !important;}
+body.editor-assets .frame .frame-crosshair{display:none !important;}
+body.editor-assets .frame .frame-center{display:none !important;}
 /* v8z4b30ZL — Botão + vira roxo no Modo Ativos */
 body.editor-assets .lower-add-pill{
   background:#8b3fff;color:#fff;
@@ -1717,6 +1724,19 @@ body.mode-newproject #stageFrameMenu{
    z-index:30;
 }
 .status-bar.show{display:block;}
+
+/* v8z4b30ZS — hint de modo: toast discreto na 1ª entrada de cada modo */
+#modeHintToast{
+  position:absolute;bottom:76px;left:50%;transform:translateX(-50%);
+  background:rgba(22,22,26,.96);border:1px solid rgba(255,255,255,.13);
+  border-radius:14px;padding:9px 16px 10px;
+  min-width:200px;max-width:min(86vw,310px);
+  pointer-events:none;display:none;z-index:35;text-align:center;
+  box-shadow:0 4px 20px rgba(0,0,0,.5);
+}
+#modeHintToast.show{display:block;}
+.hint-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;letter-spacing:-.1px;}
+.hint-msg{font-size:12px;font-weight:400;color:rgba(255,255,255,.6);line-height:1.45;}
 
 /* Progress bar */
 .progress-wrap{position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--surface3);display:none;}
@@ -3744,6 +3764,11 @@ body.cust-open #toolbar{
   </div>
   <!-- Status toast fora do stage — não afetado pelo zoom de edição (v8z4b17y) -->
   <div class="status-bar" id="statusBar"></div>
+  <!-- v8z4b30ZS — hint de modo (1ª entrada em cada modo) -->
+  <div id="modeHintToast">
+    <div class="hint-title" id="modeHintTitle"></div>
+    <div class="hint-msg" id="modeHintMsg"></div>
+  </div>
   <!-- Editor Zoom Control flutuante — v8z4b18b (não alterado em v8z4b18c) -->
   <div id="editorZoomCtrl" style="display:none;">
     <div class="ezc-row">
@@ -4466,7 +4491,7 @@ body.cust-open #toolbar{
     <div class="assets-menu-divider"></div>
     <button id="assetsMenuFramesToggle" type="button" class="assets-menu-btn-sec" onclick="closeAssetsAddMenu();toggleWorldModeFrames();">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-      <span id="assetsMenuFramesLabel">Ocultar frames</span>
+      <span id="assetsMenuFramesLabel">Mostrar frames</span>
     </button>
     <button type="button" class="assets-menu-cancel" onclick="closeAssetsAddMenu()">Cancelar</button>
   </div>
@@ -6930,8 +6955,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZR';
-const APP_VERSION_NAME = 'v8z4b30ZR';
+const APP_VERSION = 'v8z4b30ZS';
+const APP_VERSION_NAME = 'v8z4b30ZS';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -6941,6 +6966,14 @@ if (appVersionNameTextEl) appVersionNameTextEl.textContent = APP_VERSION_NAME;
 
 // v8z4b30ZO — estado de visibilidade dos frames no Modo Ativos.
 let worldModeShowFrames = true;
+// v8z4b30ZS — referências temporárias de frames no Modo Ativos.
+let temporaryFrameReferencesVisible = false;
+let temporaryFrameReferenceTargetIndex = -1;
+// v8z4b30ZS — hints de modo (aparecem apenas na 1ª entrada de cada modo).
+let hasSeenCameraModeHint = false;
+let hasSeenAssetsModeHint = false;
+try { hasSeenCameraModeHint = localStorage.getItem('hasSeenCameraModeHint') === 'true'; } catch(e) {}
+try { hasSeenAssetsModeHint = localStorage.getItem('hasSeenAssetsModeHint') === 'true'; } catch(e) {}
 
 // Image natural dimensions
 let imgNatW = 0, imgNatH = 0;
@@ -13153,6 +13186,8 @@ function setSelectedAsset(assetId) {
   // Mantém o estado legado de troca alinhado ao asset selecionado.
   selectedImageAssetId = selectedAssetId;
   ensureAssetVisualDefaults(getSelectedAsset());
+  // v8z4b30ZS — selecionar um asset oculta referências temporárias de frames.
+  if (isAssetsMode() && temporaryFrameReferencesVisible) hideTemporaryFrameReferences();
   renderAssetSelectionOverlay();
   renderAssetsContextBar();
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
@@ -13193,10 +13228,21 @@ function handleAssetsModeBtn() {
 }
 
 // v8z4b30ZO — alterna visibilidade dos frames no Modo Ativos.
+// v8z4b30ZS — frames são referência temporária no Modo Ativos; rastreia temporaryFrameReferencesVisible.
 function toggleWorldModeFrames() {
   worldModeShowFrames = !worldModeShowFrames;
+  temporaryFrameReferencesVisible = worldModeShowFrames && isAssetsMode();
+  if (!worldModeShowFrames) temporaryFrameReferenceTargetIndex = -1;
   if (document.body) document.body.classList.toggle('world-frames-hidden', !worldModeShowFrames);
-  showStatus(worldModeShowFrames ? 'Frames visíveis' : 'Frames ocultos');
+  showStatus(worldModeShowFrames ? 'Referências de frames visíveis' : 'Referências de frames ocultas');
+}
+// v8z4b30ZS — oculta as referências temporárias de frames no Modo Ativos.
+function hideTemporaryFrameReferences() {
+  if (!temporaryFrameReferencesVisible) return;
+  temporaryFrameReferencesVisible = false;
+  temporaryFrameReferenceTargetIndex = -1;
+  worldModeShowFrames = false;
+  if (document.body) document.body.classList.add('world-frames-hidden');
 }
 
 // v8z4b30ZO — abre o menu contextual de ações de imagem no Modo Ativos.
@@ -13247,6 +13293,8 @@ function setEditorMode(mode, source) {
       if (changed) closeLayersPanel();
       // v8z4b30ZO — restaurar worldModeShowFrames ao voltar para câmera
       worldModeShowFrames = true;
+      temporaryFrameReferencesVisible = false;
+      temporaryFrameReferenceTargetIndex = -1;
       if (document.body) document.body.classList.remove('world-frames-hidden');
       // v8z4b30ZP/ZQ — Modo Câmera => contexto de frame (sempre re-sincronizado).
       // bottomContextMode 'segment' é um sub-estado legítimo do Modo Câmera e só é
@@ -13255,6 +13303,8 @@ function setEditorMode(mode, source) {
       // v8z4b30ZR — reset dos flags de limpeza (só fazem sentido em Modo Ativos).
       frameSelectionClearedOnEnterAssets = false;
       segmentSelectionClearedOnEnterAssets = false;
+      // v8z4b30ZS — hint de modo Câmera na 1ª entrada.
+      if (changed) { try { maybeShowModeHint('camera'); } catch(e) {} }
     } else {
       // v8z4b30ZR — ao ENTRAR no Modo Ativos, limpa OBRIGATORIAMENTE a seleção
       // visual de frame e de trecho/segmento no Stage (item 9), para que o palco
@@ -13263,11 +13313,18 @@ function setEditorMode(mode, source) {
       if (typeof clearFrameMultiSelectState === 'function') clearFrameMultiSelectState();
       // v8z4b30ZP/ZQ — Modo Ativos => contexto de asset (zera selectedSegmentIndex).
       setBottomContext('asset');
+      // v8z4b30ZS — frames ocultos por padrão ao entrar no Modo Ativos.
+      worldModeShowFrames = false;
+      temporaryFrameReferencesVisible = false;
+      temporaryFrameReferenceTargetIndex = -1;
+      if (document.body) document.body.classList.add('world-frames-hidden');
       // v8z4b30ZR — pós-condição garantida: nenhuma seleção de frame/segmento
       // permanece ativa no Stage ao entrar no Modo Ativos.
       frameSelectionClearedOnEnterAssets = (typeof isMultiSelectionActive === 'function')
         ? !isMultiSelectionActive() : true;
       segmentSelectionClearedOnEnterAssets = (typeof selectedSegmentIndex === 'undefined') || (selectedSegmentIndex < 0);
+      // v8z4b30ZS — hint de modo Ativos na 1ª entrada.
+      if (changed) { try { maybeShowModeHint('assets'); } catch(e) {} }
     }
     syncEditorModeUI();
     renderAssetSelectionOverlay();
@@ -16347,6 +16404,15 @@ function updateDimOverlay() {
   const W = stageW, H = stageH;
   if (!W || !H) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
 
+  // v8z4b30ZS — garantir que o transform do editor está atualizado antes de converter coordenadas.
+  computeEditorTransform();
+
+  // Converte um ponto de mundo para stage para o SVG overlay (corrige desalinhamento com zoom/pan/rotação).
+  function _worldPtToStage(wx, wy) {
+    const sp = editorWorldToStage(wx, wy, 0, 0);
+    return { x: sp.x, y: sp.y };
+  }
+
   const multiTargets = (bottomContextMode === 'segment' && selectedSegmentIndex >= 0)
     ? [selectedSegmentIndex, selectedSegmentIndex + 1].filter(i => i >= 0 && i < frameCount)
     : Array.from(selectedFrames).filter(i => i >= 0 && i < frameCount).sort((a, b) => a - b);
@@ -16354,8 +16420,8 @@ function updateDimOverlay() {
   if (multiTargets.length > 1) {
     const maskId = 'multiDimMask';
     const holes = multiTargets.map(i => {
-      const corners = getRotatedFrameCorners(i);
-      const pts = corners.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+      const worldCorners = getRotatedFrameCorners(i);
+      const pts = worldCorners.map(c => { const s = _worldPtToStage(c.x, c.y); return `${s.x.toFixed(1)},${s.y.toFixed(1)}`; }).join(' ');
       return `<polygon points="${pts}" fill="black"/>`;
     }).join('');
     svg.style.display = 'block';
@@ -16376,33 +16442,38 @@ function updateDimOverlay() {
   const focusIdx = getTimelineStageFocusIndex();
   const f = frames[focusIdx];
   if (!f) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
-  const { cx, cy } = getFrameCenter(focusIdx);
+  // v8z4b30ZS — converter coords de mundo para stage (corrige desalinhamento com rotação + zoom/pan).
+  const sp = editorWorldToStage(f.x, f.y, f.w, f.h);
+  const scx = sp.x + sp.w / 2;
+  const scy = sp.y + sp.h / 2;
+  const shw = sp.w / 2;
+  const shh = sp.h / 2;
   const rot = (frameRotations[focusIdx] || 0);
-  const hw = f.w / 2, hh = f.h / 2;
-  const rx = 10;
+  const tf = _editorTransform;
+  const rx = Math.max(4, Math.round(10 * (tf && tf.active ? tf.scale : 1)));
 
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   const uid = 'dimClip' + focusIdx;
   svg.innerHTML = `
     <defs>
       <clipPath id="${uid}" clipPathUnits="userSpaceOnUse">
-        <rect x="${(cx-hw).toFixed(1)}" y="${(cy-hh).toFixed(1)}"
-              width="${f.w.toFixed(1)}" height="${f.h.toFixed(1)}"
+        <rect x="${(scx-shw).toFixed(1)}" y="${(scy-shh).toFixed(1)}"
+              width="${sp.w.toFixed(1)}" height="${sp.h.toFixed(1)}"
               rx="${rx}" ry="${rx}"
-              transform="rotate(${rot.toFixed(2)},${cx.toFixed(1)},${cy.toFixed(1)})"/>
+              transform="rotate(${rot.toFixed(2)},${scx.toFixed(1)},${scy.toFixed(1)})"/>
       </clipPath>
     </defs>
     <rect x="0" y="0" width="${W}" height="${H}" fill="rgba(0,0,0,0.38)"/>
-    <rect x="${(cx-hw).toFixed(1)}" y="${(cy-hh).toFixed(1)}"
-          width="${f.w.toFixed(1)}" height="${f.h.toFixed(1)}"
+    <rect x="${(scx-shw).toFixed(1)}" y="${(scy-shh).toFixed(1)}"
+          width="${sp.w.toFixed(1)}" height="${sp.h.toFixed(1)}"
           rx="${rx}" ry="${rx}"
-          transform="rotate(${rot.toFixed(2)},${cx.toFixed(1)},${cy.toFixed(1)})"
+          transform="rotate(${rot.toFixed(2)},${scx.toFixed(1)},${scy.toFixed(1)})"
           fill="black"
           style="mix-blend-mode:destination-out;"/>
   `;
   if (!CSS.supports('mix-blend-mode', 'destination-out')) {
-    const corners = getRotatedFrameCorners(focusIdx);
-    const pts = corners.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' L ');
+    const worldCorners = getRotatedFrameCorners(focusIdx);
+    const pts = worldCorners.map(c => { const s = _worldPtToStage(c.x, c.y); return `${s.x.toFixed(1)},${s.y.toFixed(1)}`; }).join(' L ');
     svg.innerHTML = `<path d="M0,0 H${W} V${H} H0 Z M${pts} Z" fill="rgba(0,0,0,0.38)" fill-rule="evenodd"/>`;
   }
 }
@@ -23038,6 +23109,30 @@ function showStatus(msg) {
   clearTimeout(stTimer);
   stTimer = setTimeout(() => statusBar.classList.remove('show'), 2500);
 }
+// v8z4b30ZS — toast de hint de modo (1ª entrada em cada modo; salvo em localStorage).
+let _modeHintTimer = null;
+function showModeHintToast(title, msg) {
+  const el = document.getElementById('modeHintToast');
+  if (!el) return;
+  const titleEl = document.getElementById('modeHintTitle');
+  const msgEl   = document.getElementById('modeHintMsg');
+  if (titleEl) titleEl.textContent = title;
+  if (msgEl)   msgEl.textContent   = msg;
+  el.classList.add('show');
+  clearTimeout(_modeHintTimer);
+  _modeHintTimer = setTimeout(() => { if (el) el.classList.remove('show'); }, 4000);
+}
+function maybeShowModeHint(mode) {
+  if (mode === 'camera' && !hasSeenCameraModeHint) {
+    hasSeenCameraModeHint = true;
+    try { localStorage.setItem('hasSeenCameraModeHint', 'true'); } catch(e) {}
+    showModeHintToast('Modo Câmera', 'Aqui você define os enquadramentos, o movimento e o tempo da animação.');
+  } else if (mode === 'assets' && !hasSeenAssetsModeHint) {
+    hasSeenAssetsModeHint = true;
+    try { localStorage.setItem('hasSeenAssetsModeHint', 'true'); } catch(e) {}
+    showModeHintToast('Modo Ativos', 'Aqui você monta o mundo do projeto: adiciona, troca, move e organiza imagens em camadas.');
+  }
+}
 
 // ═══════════════════════════════════════
 // PANELS
@@ -27131,6 +27226,8 @@ function handleStageAssetSelectPointer(e) {
   } else {
     // Área vazia: limpar seleção (sem conflito — não inicia edição de frame).
     clearSelectedAsset();
+    // v8z4b30ZS — tocar no fundo oculta referências temporárias de frames.
+    if (temporaryFrameReferencesVisible) hideTemporaryFrameReferences();
   }
   return true;
 }
@@ -28770,8 +28867,20 @@ function buildDiagnosticsText() {
     push('assetForward.disableReason', _z.canForward ? 'n/d (habilitado)' : (_z.forwardReason || 'n/d'));
     push('assetBackward.enabled', String(_z.canBackward));
     push('assetBackward.disableReason', _z.canBackward ? 'n/d (habilitado)' : (_z.backwardReason || 'n/d'));
-    // v8z4b30ZR — referências de frames no Modo Ativos (showFrameReferencesInAssetsMode).
-    push('showFrameReferencesInAssetsMode', String((typeof worldModeShowFrames !== 'undefined') ? worldModeShowFrames : true));
+    // v8z4b30ZR/ZS — referências de frames no Modo Ativos.
+    push('showFrameReferencesInAssetsMode', String((typeof worldModeShowFrames !== 'undefined') ? worldModeShowFrames : false));
+    // v8z4b30ZS — referências temporárias de frames no Modo Ativos.
+    push('temporaryFrameReferencesVisible', String((typeof temporaryFrameReferencesVisible !== 'undefined') ? temporaryFrameReferencesVisible : false));
+    push('temporaryFrameReferenceTargetIndex', String((typeof temporaryFrameReferenceTargetIndex !== 'undefined') ? temporaryFrameReferenceTargetIndex : -1));
+    // v8z4b30ZS — overlay/alfa de câmera no Modo Ativos (deve ser sempre false).
+    push('assetsModeFrameOverlayVisible', String(_isAssets ? ((typeof worldModeShowFrames !== 'undefined') ? worldModeShowFrames : false) : false));
+    push('assetsModeCameraAlphaVisible', 'false'); // updateDimOverlay() retorna cedo em assets mode
+    // v8z4b30ZS — alinhamento do overlay de câmera no Modo Câmera.
+    push('cameraModeFrameOverlayAligned', String(!_isAssets)); // coords mundo→stage corrigidas em v8z4b30ZS
+    push('cameraModeFrameOverlayFrameIndex', String(!_isAssets && (typeof activeIdx !== 'undefined') ? activeIdx : -1));
+    // v8z4b30ZS — hints de modo (primeira entrada).
+    push('hasSeenCameraModeHint', String((typeof hasSeenCameraModeHint !== 'undefined') ? hasSeenCameraModeHint : false));
+    push('hasSeenAssetsModeHint', String((typeof hasSeenAssetsModeHint !== 'undefined') ? hasSeenAssetsModeHint : false));
     // v8z4b30ZR — confirmação da limpeza de seleção ao entrar no Modo Ativos (item 9).
     push('frameSelectionClearedOnEnterAssets', String((typeof frameSelectionClearedOnEnterAssets !== 'undefined') ? frameSelectionClearedOnEnterAssets : false));
     push('segmentSelectionClearedOnEnterAssets', String((typeof segmentSelectionClearedOnEnterAssets !== 'undefined') ? segmentSelectionClearedOnEnterAssets : false));
