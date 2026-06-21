@@ -1,3 +1,13 @@
+# v8z4b30ZQ
+
+- **fix — roteador central de modo.** `setEditorMode(mode)` passa a ser a **única fonte de verdade** para alternar entre **Modo Câmera/Frames** e **Modo Ativos/Mundo**, e agora **SEMPRE** re-sincroniza `bottomContextMode`/UI (não só quando o modo muda). Isso elimina o estado preso `activeMode: camera` + `selectedImageAssetId` definido: Modo Ativos força `bottomContext = 'asset'`, Modo Câmera força `bottomContext = 'frame'`.
+- **feat — `setMode`.** Adicionado alias `setMode('camera')` / `setMode('assets')` no padrão pedido, delegando para `setEditorMode`. Nenhum botão/pill/toolbar altera o modo fora do roteador central.
+- **fix — Frente/Trás.** `getAssetZOrderInfo()` vira a **fonte única** de habilitação de Frente/Trás (botões e diagnóstico), avaliando o **modo ativo** e a **posição do asset na pilha**. Motivos corretos: `'asset já está no topo'`, `'asset já está no fundo'`, `'apenas 1 asset — sem outra camada'`, `'nenhum asset selecionado'`; `'não está em Modo Ativos'` só quando `activeMode` é realmente câmera. Com 2 assets e asset selecionado em Modo Ativos, Frente/Trás não ficam mais desabilitados por "não está em Modo Ativos".
+- **feat — consistência.** `isModeStateConsistent()` detecta combinações contraditórias (`assets`+`frame`, `camera`+`asset`) e alimenta `modeStateConsistent` no diagnóstico.
+- **fix — diagnóstico.** Campos expandidos: `activeMode`, `bottomContextMode`, `toolbarContext`, `selectedImageAssetId`, `selectedAssetId`, `activeFrameIndex`, `topModeButtonActive`, `cameraModeButtonActive`, `assetModeButtonActive`, `assetToolbarVisible`, `frameToolbarVisible`, `assetForward.enabled` + `assetForward.disableReason`, `assetBackward.enabled` + `assetBackward.disableReason`, `modeStateConsistent`.
+- `index.html`: comentário do topo, `APP_VERSION`, `APP_VERSION_NAME` e versão visível atualizados para `v8z4b30ZQ`.
+- **Preserve / NÃO altera:** motor de Preview/Export/Save/Load, `ProjectWorld`, frames, curvas, easing, timeline, cores (roxo do Modo Ativos / ciano do Modo Câmera), layout, seleção de assets, Trocar/Excluir. **Base `v8z4b30ZP`.**
+
 # v8z4b30ZK
 
 - **feat:** cria a alternância inicial entre **Modo Câmera** (Câmera/Frames/Filmagem) e **Modo Ativos** (Ativos/Mundo/Imagens).
