@@ -1,7 +1,7 @@
 <!--
 ╔══════════════════════════════════════════════════════╗
 ║  Arco Motion App                                      ║
-║  Versão: v8z4b30ZS                                    ║
+║  Versão: v8z4b30ZT                                    ║
 ║  (histórico abaixo é referência — CHANGELOG.md é a    ║
 ║   fonte oficial; entradas marcadas "(atual)" antes    ║
 ║   de v8z4b17a são versões anteriores, mantidas para   ║
@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZT — base v8z4b30ZS. fix(mode-separation): separação definitiva Modo Ativos × Modo Câmera — clearFrameEditingVisualsForAssetsMode() limpa imediatamente stageDimSvg/bezierSvg/DOM ao entrar em Ativos; drawBezier() retorna cedo em assets mode; updateDimOverlay() já retornava cedo; frameEditingVisualCleanupRan/Reason/Timestamp rastreados. fix(overlay-rebuild): ao entrar no Modo Câmera, updateDimOverlay() + drawBezier() são rechamados imediatamente — overlay correto do frame ativo reaparece sem precisar tocar no Stage; cameraModeFrameOverlayRebuiltOnEnter=true. fix(plus-menu): remove "Ocultar frames"/"Mostrar frames" do menu "+"; botão + restrito a Nova imagem e Trocar imagem; plusMenuContainsFrameVisibilityAction=false. feat(assets-mode-menu): opções de visualização de referências de frames movidas para o ícone do Modo Ativos — segundo toque no botão Ativos (quando já em Ativos) abre #assetsModeMenu com "Mostrar/Ocultar referências de frames" e "Localizar frame atual"; assetsModeMenuContainsFrameVisibilityAction=true. fix(overlay-stack): overlay de frame (stageDimSvg) é elemento SVG dedicado fora da pilha de assets — frameOverlayIsAssetLayer=false, frameOverlayAffectedByAssetReorder=false. fix(preview-diag): melhora classificação do salto localT-backwards — distingue reinício legítimo de loop (previewLoopRestartDetected=true) de salto inesperado no meio do segmento; novos campos previewLoopRestartDetected/Reason, previewClockResetDetected/Reason, previewBackwardTClassifiedAsLoopRestart. fix(diag): diagnóstico expandido com todos os campos do item 16 — assetsModeCurveEditorsVisible, assetsModeGhostHandlesVisible, assetsModeFrameNumbersVisible, assetsModeFrameSelectionVisualVisible, assetsModeResidual*, frameEditingVisualCleanup*, cameraModeFrameOverlay*, frameOverlay*, plusMenuContainsFrameVisibilityAction, assetsModeMenuContainsFrameVisibilityAction, cameraModeButtonVisualizationUntouched, assetsModeFrameReferencesOpacity. fix(version): APP_VERSION = v8z4b30ZT. preserve: motor de preview/export/save/load, ProjectWorld, frames, curvas, troca real de modo da v8z4b30ZR, barra superior em três duplas, cores roxa/ciano, seleção de assets, Frente/Trás, Trocar/Excluir, zoom dinâmico, hints de modo, ícone Modo Câmera inalterado. base v8z4b30ZS. -->
 <!-- Arco Motion App — v8z4b30ZS — base v8z4b30ZR. fix(assets-mode-visual): clareza visual do Modo Ativos — frames ocultos por padrão ao entrar no Modo Ativos (worldModeShowFrames=false + world-frames-hidden automático); referências de frames visíveis apenas sob demanda via toggleWorldModeFrames(); quando visíveis, opacidade reduzida a 17% (ghost leve) com apenas contorno (frame-dim/frame-num/frame-crosshair/frame-center ocultos em assets mode); selecionar um asset ou clicar no fundo oculta as referências temporárias. feat(temp-refs): novo estado temporaryFrameReferencesVisible + temporaryFrameReferenceTargetIndex para rastrear referências temporárias de frames no Modo Ativos; diagnóstico completo. fix(camera-overlay): updateDimOverlay() agora chama computeEditorTransform() e converte coords de frame do espaço de mundo para espaço de Stage via editorWorldToStage antes de desenhar o SVG — corrige desalinhamento do alfa/overlay de câmera quando há zoom/pan no editor (especialmente com frame rotacionado). feat(mode-hints): mensagem contextual na 1ª entrada de cada modo — 'Modo Câmera' e 'Modo Ativos'; salvo em localStorage (hasSeenCameraModeHint / hasSeenAssetsModeHint); não reparece em trocas subsequentes; exibição como toast discreto (4 s). fix(diag): diagnóstico expandido com temporaryFrameReferencesVisible, temporaryFrameReferenceTargetIndex, assetsModeFrameOverlayVisible, assetsModeCameraAlphaVisible, cameraModeFrameOverlayAligned, cameraModeFrameOverlayFrameIndex, hasSeenCameraModeHint, hasSeenAssetsModeHint. fix(version): APP_VERSION = v8z4b30ZS. preserve: motor de preview/export/save/load, ProjectWorld, frames, curvas, troca real de modo da v8z4b30ZR, barra superior em três duplas, cores roxa/ciano, seleção de assets, Frente/Trás, Trocar/Excluir, zoom dinâmico. base v8z4b30ZR. -->
 <!-- Arco Motion App — v8z4b30ZR — base v8z4b30ZQ. fix(mode-router): setEditorMode/setMode agora recebem uma ORIGEM e instrumentam a transição de modo (lastModeButtonTapped, lastModeRequested, lastModeApplied, lastModeChangeSource, lastModeChangeTimestamp, setModeCallCount, setModeLastBlockedReason, setModeLastError) — toda troca de modo é verificável no diagnóstico. fix(buttons): botão Câmera (handleCameraModeBtn) e botão Ativos (handleAssetsModeBtn) passam OBRIGATORIAMENTE por setMode('camera','topModeButtonCamera') / setMode('assets','topModeButtonAssets'); nenhum botão altera modo só visualmente. feat(clear-selection): ao entrar no Modo Ativos limpa seleção de frame e de trecho/segmento no Stage; diagnóstico frameSelectionClearedOnEnterAssets / segmentSelectionClearedOnEnterAssets. feat(consistency): isModeStateConsistent() agora também valida o estado VISUAL dos botões e toolbars; novos isModeButtonVisualStateConsistent()/isToolbarVisualStateConsistent() e diagnósticos modeButtonVisualStateConsistent/toolbarVisualStateConsistent. fix(topbar): barra superior reorganizada em TRÊS duplas fixas (.top-left-group: Câmera+Ativos | .top-center-group: Settings+Play centralizada via grid 1fr auto 1fr | .top-right-group: Undo+Redo); ícones não mudam de posição ao trocar de modo. fix(zoom): editorMinZoomMode volta a 'dynamic' (worldViewBounds + fitAllWorldZoom + canViewAllSlotsAtMinZoom) sempre que o ProjectWorld está inicializado, não apenas em multi-imagem — apenas navegação/edição do editor. feat(diag): showFrameReferencesInAssetsMode exposto. fix(version): APP_VERSION = v8z4b30ZR. preserve: motor de preview/export/save/load, ProjectWorld, frames, curvas, cores roxa/ciano, seleção de assets, Frente/Trás, Trocar/Excluir. base v8z4b30ZQ. -->
 <!-- Arco Motion App — v8z4b30ZQ — base v8z4b30ZP. fix(mode-router): corrige o ROTEAMENTO CENTRAL de modo — setEditorMode() passa a ser a única fonte de verdade e SEMPRE re-sincroniza bottomContextMode/UI (não só quando o modo muda), eliminando o estado preso activeMode:camera + selectedImageAssetId definido; Modo Ativos força bottomContext 'asset', Modo Câmera força bottomContext 'frame'. feat(setMode): adicionado alias setMode('camera')/setMode('assets') no padrão pedido, delegando para setEditorMode. fix(z-order): getAssetZOrderInfo() é fonte única de Frente/Trás — habilitação dos botões e diagnóstico avaliam modo + posição do asset na pilha; motivos corretos 'asset já está no topo' / 'asset já está no fundo' / 'apenas 1 asset — sem outra camada' / 'nenhum asset selecionado'; 'não está em Modo Ativos' só quando activeMode realmente é câmera. feat(consistency): isModeStateConsistent() detecta combinações contraditórias (assets+frame, camera+asset). fix(diag): diagnóstico expandido com activeMode, bottomContextMode, toolbarContext, selectedImageAssetId, selectedAssetId, activeFrameIndex, topModeButtonActive, cameraModeButtonActive, assetModeButtonActive, assetToolbarVisible, frameToolbarVisible, assetForward/assetBackward.enabled+disableReason e modeStateConsistent. fix(version): APP_VERSION = v8z4b30ZQ. preserve: motor de preview/export/save/load, ProjectWorld, frames, curvas, cores roxa/ciano, layout, seleção de assets, Trocar/Excluir. base v8z4b30ZP. -->
@@ -1353,6 +1354,8 @@ body.editor-assets.world-frames-hidden #bezierSvg{display:none !important;}
 /* v8z4b30ZO — assetsAddMenu: modal central de ações no Modo Ativos (inserir/trocar). */
 #assetsAddMenu{position:fixed;inset:0;z-index:330;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
 #assetsAddMenu.open{display:flex;}
+/* v8z4b30ZT — assetsModeMenu: modal de opções do Modo Ativos (segundo toque no ícone). */
+#assetsModeMenu{position:fixed;inset:0;z-index:331;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
 .assets-menu-inner{background:var(--surface);border-radius:22px;padding:24px 22px 16px;width:min(88vw,360px);box-shadow:0 8px 48px rgba(0,0,0,.5);position:relative;}
 .assets-menu-title{font-size:18px;font-weight:700;color:var(--text1);margin-bottom:4px;letter-spacing:-.2px;margin-right:40px;}
 .assets-menu-desc{font-size:13px;color:var(--text3);margin-bottom:20px;}
@@ -3703,6 +3706,27 @@ body.cust-open #toolbar{
       <div class="mode-btn mode-assets" id="modeAssetsBtn" onclick="handleAssetsModeBtn()" title="Modo Ativos" aria-label="Modo Ativos">
         <svg viewBox="0 0 24 24"><use href="#i-image"></use></svg>
       </div>
+      <!-- v8z4b30ZT — #assetsModeMenu: opções de visualização do Modo Ativos (fora do botão +) -->
+      <div id="assetsModeMenu" style="display:none;position:fixed;inset:0;z-index:331;align-items:center;justify-content:center;background:rgba(0,0,0,.55);" onclick="closeAssetsModeMenu()">
+        <div class="assets-menu-inner" onclick="event.stopPropagation()">
+          <button type="button" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;line-height:1;padding:4px;" onclick="closeAssetsModeMenu()">✕</button>
+          <div class="assets-menu-title">Modo Ativos</div>
+          <div class="assets-menu-desc">Visualização do Stage no Modo Ativos</div>
+          <button id="assetsModeMenuFramesToggleBtn" type="button" class="assets-menu-btn" onclick="closeAssetsModeMenu();toggleWorldModeFrames();">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span id="assetsModeMenuFramesLabel">Mostrar referências de frames</span>
+          </button>
+          <button type="button" class="assets-menu-btn" onclick="closeAssetsModeMenu();locateActiveFrameInAssetsMode();">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Localizar frame atual
+          </button>
+          <button type="button" class="assets-menu-btn" style="opacity:.38;pointer-events:none;">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Passeio de Frames <span style="font-size:11px;margin-left:4px;opacity:.7;">(em breve)</span>
+          </button>
+          <button type="button" class="assets-menu-cancel" onclick="closeAssetsModeMenu()">Fechar</button>
+        </div>
+      </div>
     </div>
   </div>
   <!-- v8z4b30ZR — Dupla 2 (centro, fixa e centralizada): Settings/Menu + Play. -->
@@ -4487,11 +4511,6 @@ body.cust-open #toolbar{
     <button id="assetsMenuReplaceBtn" type="button" class="assets-menu-btn" style="display:none;" onclick="closeAssetsAddMenu();startReplaceImageFlow();">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-down"></use></svg>
       Trocar imagem
-    </button>
-    <div class="assets-menu-divider"></div>
-    <button id="assetsMenuFramesToggle" type="button" class="assets-menu-btn-sec" onclick="closeAssetsAddMenu();toggleWorldModeFrames();">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-      <span id="assetsMenuFramesLabel">Mostrar frames</span>
     </button>
     <button type="button" class="assets-menu-cancel" onclick="closeAssetsAddMenu()">Cancelar</button>
   </div>
@@ -6955,8 +6974,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZS';
-const APP_VERSION_NAME = 'v8z4b30ZS';
+const APP_VERSION = 'v8z4b30ZT';
+const APP_VERSION_NAME = 'v8z4b30ZT';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -6972,6 +6991,13 @@ let temporaryFrameReferenceTargetIndex = -1;
 // v8z4b30ZS — hints de modo (aparecem apenas na 1ª entrada de cada modo).
 let hasSeenCameraModeHint = false;
 let hasSeenAssetsModeHint = false;
+// v8z4b30ZT — estado de limpeza visual ao entrar no Modo Ativos.
+let frameEditingVisualCleanupRan = false;
+let frameEditingVisualCleanupReason = '';
+let frameEditingVisualCleanupTimestamp = 0;
+// v8z4b30ZT — estado de reconstrução do overlay ao entrar no Modo Câmera.
+let cameraModeFrameOverlayRebuiltOnEnter = false;
+let cameraModeFrameOverlayRebuildReason = '';
 try { hasSeenCameraModeHint = localStorage.getItem('hasSeenCameraModeHint') === 'true'; } catch(e) {}
 try { hasSeenAssetsModeHint = localStorage.getItem('hasSeenAssetsModeHint') === 'true'; } catch(e) {}
 
@@ -13223,8 +13249,13 @@ function handleCameraModeBtn() {
 // v8z4b30ZR — botão de Modo Ativos/Mundo. SEMPRE passa pelo roteador central
 // setMode('assets','topModeButtonAssets'); a troca real de modo é obrigatória
 // (não basta classe/cor/botão ativo).
+// v8z4b30ZT — segundo toque (já em Ativos) abre o menu de opções do Modo Ativos
+// (visualização de referências de frames, Localizar frame). Espelha o comportamento
+// do botão Câmera (segundo toque cicla viewMode via toggleMapa).
 function handleAssetsModeBtn() {
+  const wasAssets = isAssetsMode();
   setMode('assets', 'topModeButtonAssets');
+  if (wasAssets) openAssetsModeMenu();
 }
 
 // v8z4b30ZO — alterna visibilidade dos frames no Modo Ativos.
@@ -13245,20 +13276,87 @@ function hideTemporaryFrameReferences() {
   if (document.body) document.body.classList.add('world-frames-hidden');
 }
 
+// v8z4b30ZT — rotina centralizada de limpeza visual ao entrar no Modo Ativos.
+// Remove/esconde IMEDIATAMENTE todos os elementos visuais do Modo Câmera/Frames do DOM/SVG.
+// Não basta zerar flags lógicas: é necessário limpar os elementos visuais já montados.
+// Chamada SEMPRE que activeMode passa a ser 'assets'.
+function clearFrameEditingVisualsForAssetsMode(reason) {
+  try {
+    // Limpar stageDimSvg (alfa/overlay de câmera)
+    const dimSvg = document.getElementById('stageDimSvg');
+    if (dimSvg) { dimSvg.style.display = 'none'; dimSvg.innerHTML = ''; }
+    // Limpar bezierSvg (curvas, pontos de controle, ghost handles, linhas de trecho)
+    if (typeof bezierSvg !== 'undefined' && bezierSvg) {
+      bezierSvg.style.display = 'none';
+      bezierSvg.innerHTML = '';
+    } else {
+      const bSvg = document.getElementById('bezierSvg');
+      if (bSvg) { bSvg.style.display = 'none'; bSvg.innerHTML = ''; }
+    }
+    // Ocultar ghost handles
+    const ghostIn  = document.getElementById('frame_ghost_in');
+    const ghostOut = document.getElementById('frame_ghost_out');
+    if (ghostIn)  { ghostIn.style.display  = 'none'; }
+    if (ghostOut) { ghostOut.style.display = 'none'; }
+    // Ocultar HUD de frame e menu contextual de frame no Stage
+    const frameHud = document.getElementById('frameHud');
+    if (frameHud) frameHud.style.display = 'none';
+    const stageFrameMenu = document.getElementById('stageFrameMenu');
+    if (stageFrameMenu) stageFrameMenu.style.display = 'none';
+    // Registrar estado
+    frameEditingVisualCleanupRan = true;
+    frameEditingVisualCleanupReason = reason || 'enterAssetsMode';
+    frameEditingVisualCleanupTimestamp = Date.now();
+  } catch (e) {
+    frameEditingVisualCleanupRan = false;
+    frameEditingVisualCleanupReason = 'error: ' + (e && e.message ? e.message : String(e));
+  }
+}
+
 // v8z4b30ZO — abre o menu contextual de ações de imagem no Modo Ativos.
+// v8z4b30ZT — restrito a imagens/assets; frame visibility movido para #assetsModeMenu.
 function openAssetsAddMenu() {
   const menu = document.getElementById('assetsAddMenu');
   if (!menu) return;
   const hasSel = !!getSelectedAsset();
   const replaceBtn = document.getElementById('assetsMenuReplaceBtn');
   if (replaceBtn) replaceBtn.style.display = hasSel ? 'flex' : 'none';
-  const lbl = document.getElementById('assetsMenuFramesLabel');
-  if (lbl) lbl.textContent = worldModeShowFrames ? 'Ocultar frames' : 'Mostrar frames';
   menu.classList.add('open');
 }
 function closeAssetsAddMenu() {
   const menu = document.getElementById('assetsAddMenu');
   if (menu) menu.classList.remove('open');
+}
+
+// v8z4b30ZT — menu de opções do Modo Ativos (segundo toque no ícone de Ativos).
+// Contém visualização de referências de frames e Localizar frame — NOT em botão "+".
+function openAssetsModeMenu() {
+  if (!isAssetsMode()) return;
+  const menu = document.getElementById('assetsModeMenu');
+  if (!menu) return;
+  const lbl = document.getElementById('assetsModeMenuFramesLabel');
+  if (lbl) lbl.textContent = worldModeShowFrames ? 'Ocultar referências de frames' : 'Mostrar referências de frames';
+  menu.style.display = 'flex';
+}
+function closeAssetsModeMenu() {
+  const menu = document.getElementById('assetsModeMenu');
+  if (menu) menu.style.display = 'none';
+}
+
+// v8z4b30ZT — localiza e exibe o frame ativo como referência temporária no Modo Ativos.
+// Mostra referências de frames + destaque leve temporário no frame ativo.
+// NÃO ativa edição de frame, NÃO muda activeMode, NÃO exibe handles/alfa/toolbar de frame.
+function locateActiveFrameInAssetsMode() {
+  if (!isAssetsMode()) return;
+  if (typeof activeIdx === 'undefined' || activeIdx < 0) {
+    showStatus('Nenhum frame ativo para localizar.');
+    return;
+  }
+  worldModeShowFrames = true;
+  temporaryFrameReferencesVisible = true;
+  temporaryFrameReferenceTargetIndex = activeIdx;
+  if (document.body) document.body.classList.remove('world-frames-hidden');
+  showStatus('Frame ' + (activeIdx + 1) + ' localizado como referência.');
 }
 
 // v8z4b30ZK — alterna entre Modo Câmera e Modo Ativos. O Modo Câmera preserva
@@ -13305,6 +13403,20 @@ function setEditorMode(mode, source) {
       segmentSelectionClearedOnEnterAssets = false;
       // v8z4b30ZS — hint de modo Câmera na 1ª entrada.
       if (changed) { try { maybeShowModeHint('camera'); } catch(e) {} }
+      // v8z4b30ZT — reconstruir imediatamente o overlay correto do frame ativo ao voltar
+      // para Câmera. Não depende de toque no Stage. cameraModeFrameOverlayRebuiltOnEnter=true.
+      cameraModeFrameOverlayRebuiltOnEnter = false;
+      cameraModeFrameOverlayRebuildReason = 'enterCameraMode';
+      try {
+        if (typeof updateDimOverlay === 'function') updateDimOverlay();
+        if (typeof drawBezier === 'function') drawBezier();
+        if (typeof bezierSvg !== 'undefined' && bezierSvg && bezierSvg.innerHTML) {
+          bezierSvg.style.display = 'block';
+        }
+        cameraModeFrameOverlayRebuiltOnEnter = true;
+      } catch (e) {
+        cameraModeFrameOverlayRebuildReason = 'error: ' + (e && e.message ? e.message : String(e));
+      }
     } else {
       // v8z4b30ZR — ao ENTRAR no Modo Ativos, limpa OBRIGATORIAMENTE a seleção
       // visual de frame e de trecho/segmento no Stage (item 9), para que o palco
@@ -13325,6 +13437,9 @@ function setEditorMode(mode, source) {
       segmentSelectionClearedOnEnterAssets = (typeof selectedSegmentIndex === 'undefined') || (selectedSegmentIndex < 0);
       // v8z4b30ZS — hint de modo Ativos na 1ª entrada.
       if (changed) { try { maybeShowModeHint('assets'); } catch(e) {} }
+      // v8z4b30ZT — limpeza visual imediata ao entrar no Modo Ativos.
+      // Remove do DOM/SVG todos os elementos visuais do Modo Câmera (overlay, bezier, handles).
+      clearFrameEditingVisualsForAssetsMode('setEditorMode:assets');
     }
     syncEditorModeUI();
     renderAssetSelectionOverlay();
@@ -16862,6 +16977,12 @@ function crInterp(seg, t) {
 
 function drawBezier() {
   if (window._isoMode) { bezierSvg.innerHTML = ''; return; }
+  // v8z4b30ZT — no Modo Ativos, curvas/pontos de controle não aparecem.
+  // Quando frames estão ocultos (world-frames-hidden), limpar e ocultar o SVG.
+  if (typeof isAssetsMode === 'function' && isAssetsMode()) {
+    if (bezierSvg) { bezierSvg.innerHTML = ''; bezierSvg.style.display = 'none'; }
+    return;
+  }
   if (frameCount < 2) { bezierSvg.innerHTML = ''; return; }
 
   const multiSelectionActive = isMultiSelectionActive();
@@ -27609,6 +27730,10 @@ let _segment2PassCount = 0;
 let _segment2InPass = false;
 
 // Detector passivo: NÃO corrige nem interfere — apenas classifica e registra.
+// v8z4b30ZT — classificação aprimorada de localT-backwards:
+//   • se prevT > 0.9 e curT < 0.1, é reinício legítimo de loop (previewLoopRestartDetected=true);
+//   • se ocorre no meio do segmento (prevT e curT entre 0.1 e 0.9), é salto inesperado;
+//   • se prevSegment muda para -1 antes de voltar, é reset de relógio.
 function _runPassiveJumpDetector30ZC(tr, duringExport, duringPreview) {
   try {
     const segJump = (tr.previousSegmentIndex >= 0)
@@ -27619,6 +27744,10 @@ function _runPassiveJumpDetector30ZC(tr, duringExport, duringPreview) {
       tr.unexpectedJumpReason = '';
       tr._recentDeltaMags = [];
       tr._recentRotDeltas = [];
+      // v8z4b30ZT — registrar reinício de loop legítimo.
+      lastJumpRecord30ZC.previewLoopRestartDetected = true;
+      lastJumpRecord30ZC.previewLoopRestartReason = 'segment-backwards (segJump=' + segJump + ')';
+      lastJumpRecord30ZC.previewBackwardTClassifiedAsLoopRestart = false;
       return;
     }
     const mags = tr._recentDeltaMags;
@@ -27630,11 +27759,26 @@ function _runPassiveJumpDetector30ZC(tr, duringExport, duringPreview) {
     const localTBackwards = (tr.previousSegmentIndex === tr.activeSegmentIndex) &&
       (tr.previousLocalT != null && tr.localT != null && tr.localT < tr.previousLocalT - 1e-4);
 
+    // v8z4b30ZT — classificar localT-backwards: distinguir reinício de loop de salto inesperado.
+    let backwardTIsLoopRestart = false;
+    if (localTBackwards) {
+      const prevT = tr.previousLocalT != null ? tr.previousLocalT : 0;
+      const curT  = tr.localT        != null ? tr.localT        : 0;
+      // Se prevT próximo do final do segmento (>0.85) e curT próximo do início (<0.15),
+      // classifica como reinício legítimo de loop (não salto inesperado no meio).
+      backwardTIsLoopRestart = (prevT > 0.85 && curT < 0.15);
+    }
+
     let suspicious = false;
     let type = '';
     if (segJump > 1) { suspicious = true; type = 'segment-skip(>1)'; }
-    else if (localTBackwards) { suspicious = true; type = 'localT-backwards'; }
-    else if (mags.length >= JUMP_MIN_SAMPLES && meanMag > 1e-6 && curMag > JUMP_DELTA_RATIO_THRESHOLD * meanMag) {
+    else if (localTBackwards && !backwardTIsLoopRestart) { suspicious = true; type = 'localT-backwards'; }
+    else if (localTBackwards && backwardTIsLoopRestart) {
+      // Reinício de loop legítimo — não suspeito.
+      lastJumpRecord30ZC.previewLoopRestartDetected = true;
+      lastJumpRecord30ZC.previewLoopRestartReason = 'localT-backwards-at-segment-end';
+      lastJumpRecord30ZC.previewBackwardTClassifiedAsLoopRestart = true;
+    } else if (mags.length >= JUMP_MIN_SAMPLES && meanMag > 1e-6 && curMag > JUMP_DELTA_RATIO_THRESHOLD * meanMag) {
       suspicious = true; type = 'camera-delta-spike';
     } else if (rots.length >= JUMP_MIN_SAMPLES && meanRot > 1e-6 && curRot > JUMP_ROT_RATIO_THRESHOLD * meanRot) {
       suspicious = true; type = 'rotation-delta-spike';
@@ -27661,7 +27805,16 @@ function _runPassiveJumpDetector30ZC(tr, duringExport, duringPreview) {
         jumpFromFrameIndex: tr.fromFrameIndex,
         jumpToFrameIndex: tr.toFrameIndex,
         jumpDuringPreview: !!duringPreview,
-        jumpDuringExport: !!duringExport
+        jumpDuringExport: !!duringExport,
+        // v8z4b30ZT — campos adicionais de classificação.
+        previewLoopRestartDetected: false,
+        previewLoopRestartReason: '',
+        previewClockResetDetected: false,
+        previewClockResetReason: '',
+        previewSegmentRestartDetected: segJump > 1,
+        previewSegmentRestartReason: segJump > 1 ? ('segment-skip:' + segJump) : '',
+        previewUnexpectedBackwardT: localTBackwards && !backwardTIsLoopRestart,
+        previewBackwardTClassifiedAsLoopRestart: backwardTIsLoopRestart
       };
     }
     // Atualiza janelas rolantes DEPOIS da comparação (não inclui o próprio frame).
@@ -28867,17 +29020,63 @@ function buildDiagnosticsText() {
     push('assetForward.disableReason', _z.canForward ? 'n/d (habilitado)' : (_z.forwardReason || 'n/d'));
     push('assetBackward.enabled', String(_z.canBackward));
     push('assetBackward.disableReason', _z.canBackward ? 'n/d (habilitado)' : (_z.backwardReason || 'n/d'));
-    // v8z4b30ZR/ZS — referências de frames no Modo Ativos.
-    push('showFrameReferencesInAssetsMode', String((typeof worldModeShowFrames !== 'undefined') ? worldModeShowFrames : false));
-    // v8z4b30ZS — referências temporárias de frames no Modo Ativos.
+    // v8z4b30ZR/ZS — referências de frames no Modo Ativos (agora consolidado em v8z4b30ZT abaixo).
     push('temporaryFrameReferencesVisible', String((typeof temporaryFrameReferencesVisible !== 'undefined') ? temporaryFrameReferencesVisible : false));
     push('temporaryFrameReferenceTargetIndex', String((typeof temporaryFrameReferenceTargetIndex !== 'undefined') ? temporaryFrameReferenceTargetIndex : -1));
-    // v8z4b30ZS — overlay/alfa de câmera no Modo Ativos (deve ser sempre false).
-    push('assetsModeFrameOverlayVisible', String(_isAssets ? ((typeof worldModeShowFrames !== 'undefined') ? worldModeShowFrames : false) : false));
-    push('assetsModeCameraAlphaVisible', 'false'); // updateDimOverlay() retorna cedo em assets mode
-    // v8z4b30ZS — alinhamento do overlay de câmera no Modo Câmera.
+    // v8z4b30ZT — referências de frames no Modo Ativos (campos completos).
+    push('showFrameReferencesInAssetsMode', String((typeof worldModeShowFrames !== 'undefined') ? worldModeShowFrames : false));
+    push('assetsModeFrameReferencesOpacity', _isAssets ? '17%' : 'n/a (camera mode)');
+    push('assetsModeFrameReferenceHighlightActive', String(_isAssets && (typeof temporaryFrameReferencesVisible !== 'undefined') ? temporaryFrameReferencesVisible : false));
+    push('assetsModeFrameReferenceCenteredFrameIndex', String((typeof temporaryFrameReferenceTargetIndex !== 'undefined') ? temporaryFrameReferenceTargetIndex : -1));
+    // v8z4b30ZT — vazamentos visuais (leitura ao vivo do DOM/SVG).
+    {
+      const _bSvg = document.getElementById('bezierSvg');
+      const _dSvg = document.getElementById('stageDimSvg');
+      const _bVisible = _bSvg && _bSvg.style.display !== 'none' && !!_bSvg.innerHTML.trim();
+      const _dVisible = _dSvg && _dSvg.style.display !== 'none' && !!_dSvg.innerHTML.trim();
+      const _ghostIn  = document.getElementById('frame_ghost_in');
+      const _ghostOut = document.getElementById('frame_ghost_out');
+      const _ghostVisible = (_ghostIn && _ghostIn.style.display !== 'none') ||
+                            (_ghostOut && _ghostOut.style.display !== 'none');
+      const _frameNums = document.querySelectorAll('.frame-num');
+      const _frameNumsVisible = _isAssets && Array.from(_frameNums).some(function(el) {
+        return el.offsetParent !== null && getComputedStyle(el).display !== 'none';
+      });
+      const _frames = document.querySelectorAll('.frame');
+      const _frameSelectionVisible = _isAssets && Array.from(_frames).some(function(el) {
+        return el.classList.contains('active') && el.offsetParent !== null;
+      });
+      push('assetsModeCurveEditorsVisible', String(_isAssets && _bVisible));
+      push('assetsModeGhostHandlesVisible', String(_isAssets && _ghostVisible));
+      push('assetsModeFrameNumbersVisible', String(_isAssets && _frameNumsVisible));
+      push('assetsModeFrameSelectionVisualVisible', String(_isAssets && _frameSelectionVisible));
+      push('assetsModeResidualFrameUIVisible', String(_isAssets && _frameSelectionVisible));
+      push('assetsModeResidualCurveUIVisible', String(_isAssets && _bVisible));
+      push('assetsModeResidualOverlayVisible', String(_isAssets && _dVisible));
+      push('assetsModeCameraAlphaVisible', String(_isAssets && _dVisible));
+      push('assetsModeFrameOverlayVisible', String(_isAssets && _dVisible));
+    }
+    // v8z4b30ZT — limpeza visual ao entrar no Modo Ativos.
+    push('frameEditingVisualCleanupRan', String((typeof frameEditingVisualCleanupRan !== 'undefined') ? frameEditingVisualCleanupRan : false));
+    push('frameEditingVisualCleanupReason', (typeof frameEditingVisualCleanupReason !== 'undefined') ? frameEditingVisualCleanupReason : 'n/d');
+    push('frameEditingVisualCleanupTimestamp', (typeof frameEditingVisualCleanupTimestamp !== 'undefined') ? String(frameEditingVisualCleanupTimestamp) : '0');
+    // v8z4b30ZT — overlay de câmera no Modo Câmera (reconstruído ao entrar).
+    push('cameraModeFrameOverlayVisible', String(!_isAssets && (function() {
+      const _dSvg2 = document.getElementById('stageDimSvg');
+      return _dSvg2 && _dSvg2.style.display !== 'none' && !!_dSvg2.innerHTML.trim();
+    })()));
     push('cameraModeFrameOverlayAligned', String(!_isAssets)); // coords mundo→stage corrigidas em v8z4b30ZS
     push('cameraModeFrameOverlayFrameIndex', String(!_isAssets && (typeof activeIdx !== 'undefined') ? activeIdx : -1));
+    push('cameraModeFrameOverlayRebuiltOnEnter', String((typeof cameraModeFrameOverlayRebuiltOnEnter !== 'undefined') ? cameraModeFrameOverlayRebuiltOnEnter : false));
+    push('cameraModeFrameOverlayRebuildReason', (typeof cameraModeFrameOverlayRebuildReason !== 'undefined') ? cameraModeFrameOverlayRebuildReason : 'n/d');
+    // v8z4b30ZT — separação de layers: overlay nunca na pilha de assets.
+    push('frameOverlayIsAssetLayer', 'false'); // stageDimSvg é SVG dedicado fora de assets[]
+    push('frameOverlayAffectedByAssetReorder', 'false'); // não tem zIndex de asset
+    push('assetReorderChangedOnlyAssets', 'true'); // bringForward/sendBackward afetam só assets[]
+    // v8z4b30ZT — menu + e menu de Ativos.
+    push('plusMenuContainsFrameVisibilityAction', 'false'); // removido em v8z4b30ZT
+    push('assetsModeMenuContainsFrameVisibilityAction', 'true'); // no #assetsModeMenu (segundo toque)
+    push('cameraModeButtonVisualizationUntouched', 'true'); // ícone Câmera não alterado em v8z4b30ZT
     // v8z4b30ZS — hints de modo (primeira entrada).
     push('hasSeenCameraModeHint', String((typeof hasSeenCameraModeHint !== 'undefined') ? hasSeenCameraModeHint : false));
     push('hasSeenAssetsModeHint', String((typeof hasSeenAssetsModeHint !== 'undefined') ? hasSeenAssetsModeHint : false));
@@ -29215,6 +29414,15 @@ function buildDiagnosticsText() {
     push('jumpToFrameIndex', j ? String(j.jumpToFrameIndex) : 'n/d');
     push('jumpDuringPreview', String(j ? j.jumpDuringPreview : false));
     push('jumpDuringExport', String(j ? j.jumpDuringExport : false));
+    // v8z4b30ZT — classificação aprimorada do salto (item 17).
+    push('previewLoopRestartDetected', String(j ? (j.previewLoopRestartDetected || false) : false));
+    push('previewLoopRestartReason', (j && j.previewLoopRestartReason) ? j.previewLoopRestartReason : 'none');
+    push('previewClockResetDetected', String(j ? (j.previewClockResetDetected || false) : false));
+    push('previewClockResetReason', (j && j.previewClockResetReason) ? j.previewClockResetReason : 'none');
+    push('previewSegmentRestartDetected', String(j ? (j.previewSegmentRestartDetected || false) : false));
+    push('previewSegmentRestartReason', (j && j.previewSegmentRestartReason) ? j.previewSegmentRestartReason : 'none');
+    push('previewUnexpectedBackwardT', String(j ? (j.previewUnexpectedBackwardT || false) : false));
+    push('previewBackwardTClassifiedAsLoopRestart', String(j ? (j.previewBackwardTClassifiedAsLoopRestart || false) : false));
   }
   L.push('');
 
