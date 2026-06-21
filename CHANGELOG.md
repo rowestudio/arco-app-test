@@ -1,3 +1,15 @@
+# v8z4b30ZR
+
+- **fix — troca real e instrumentada de modo.** `setEditorMode(mode, source)` continua sendo a única fonte de verdade, agora **totalmente instrumentada**: cada chamada preenche `lastModeButtonTapped`, `lastModeRequested`, `lastModeApplied`, `lastModeChangeSource`, `lastModeChangeTimestamp`, `setModeCallCount`, `setModeLastBlockedReason` e `setModeLastError`. Toda transição é verificável no diagnóstico (origem da troca, sucesso/bloqueio/erro).
+- **fix — botões de modo.** O botão **Câmera** (`handleCameraModeBtn`) chama obrigatoriamente `setMode('camera', 'topModeButtonCamera')` (e só então cicla a visualização se já estava em câmera); o botão **Ativos** (`handleAssetsModeBtn`) chama obrigatoriamente `setMode('assets', 'topModeButtonAssets')`. Nenhum botão altera o modo apenas visualmente.
+- **feat — limpeza de seleção ao entrar em Ativos.** Ao entrar no Modo Ativos, a seleção de frame e de trecho/segmento no Stage é limpa; diagnóstico `frameSelectionClearedOnEnterAssets` e `segmentSelectionClearedOnEnterAssets`.
+- **feat — consistência visual.** `isModeStateConsistent()` agora também valida o estado **visual** dos botões e toolbars; novos `isModeButtonVisualStateConsistent()` / `isToolbarVisualStateConsistent()` e diagnósticos `modeButtonVisualStateConsistent` / `toolbarVisualStateConsistent`.
+- **fix — barra superior em três duplas fixas.** Reorganizada em `.top-left-group` (Câmera + Ativos), `.top-center-group` (Settings/Arquivos + Play) e `.top-right-group` (Undo + Redo), com `grid-template-columns: 1fr auto 1fr` para manter a dupla central **realmente centralizada** independentemente da largura das pontas. Trocar de modo não move os ícones.
+- **fix — zoom/world-view dinâmico.** `editorMinZoomMode` volta a `dynamic` (com `worldViewBounds*`, `fitAllWorldZoom` e `canViewAllSlotsAtMinZoom: true`) sempre que o `ProjectWorld` está inicializado (`isProjectWorldReady()`), não apenas em multi-imagem. Afeta **apenas** navegação/edição do editor.
+- **feat — diagnóstico.** Adicionado `showFrameReferencesInAssetsMode` e todos os campos de transição de modo listados acima.
+- `index.html`: comentário do topo, `APP_VERSION`, `APP_VERSION_NAME` e versão visível atualizados para `v8z4b30ZR`.
+- **Preserve / NÃO altera:** motor de Preview/Export/Save/Load, `ProjectWorld`, frames, curvas, easing, interpolação, render, timeline, cores (roxo do Modo Ativos / ciano do Modo Câmera), seleção de assets, Frente/Trás, Trocar/Excluir. **Base `v8z4b30ZQ`.**
+
 # v8z4b30ZQ
 
 - **fix — roteador central de modo.** `setEditorMode(mode)` passa a ser a **única fonte de verdade** para alternar entre **Modo Câmera/Frames** e **Modo Ativos/Mundo**, e agora **SEMPRE** re-sincroniza `bottomContextMode`/UI (não só quando o modo muda). Isso elimina o estado preso `activeMode: camera` + `selectedImageAssetId` definido: Modo Ativos força `bottomContext = 'asset'`, Modo Câmera força `bottomContext = 'frame'`.
