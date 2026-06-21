@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b30ZO — base v8z4b30ZN. fix(topbar): remove #topBtnMapa (botão de Visualizar/olho) da barra superior; visualização migra para botão de Modo Câmera (toque secundário cicla viewMode via toggleMapa()). fix(assets-overlay): updateDimOverlay() retorna cedo no Modo Ativos — sem overlay escuro fora do frame quando o foco é nos assets. fix(frames-toggle): worldModeShowFrames state + toggleWorldModeFrames() + CSS body.editor-assets.world-frames-hidden oculta .frame e #bezierSvg no Modo Ativos; toggle disponível no menu do "+". fix(add-menu): handleLowerAddOrSelectAll() abre openAssetsAddMenu() no Modo Ativos; assetsAddMenu é modal central com fechar explícito (X), opções "Nova imagem" e "Trocar imagem" (visível só com asset selecionado) e toggle de frames. fix(slot-picker): imageSlotPickerSheet convertido de bottom sheet para modal central (align-items:center, border-radius:22px, width:min(92vw,440px)) com botão X explícito. fix(frente-tras): bringSelectedAssetForward e sendSelectedAssetBackward chamam renderProjectWorldExtraImages() + markProjectDirty() após trocar zIndex — ordem reflete no Stage/Preview/Export/Save. fix(version): APP_VERSION e APP_VERSION_NAME = v8z4b30ZO. preserve: cor roxa no Modo Ativos, Play roxo, botão + roxo, handles ocultos, seleção de assets, Trocar imagem, motor de Preview/Export/Save/Load, ProjectWorld, frames, curvas, timeline. base v8z4b30ZN. -->
 <!-- Arco Motion App — v8z4b30ZN — base v8z4b30ZM. fix(topbar-layout): barra superior passa a ter layout FIXO — a posição dos ícones não muda ao alternar entre Modo Câmera e Modo Ativos. fix(mode-buttons): botões de modo (Câmera e Ativos) redimensionados para área de toque adequada (40×44px, ícone 22px) — mesma importância visual dos controles principais; sem texto (somente ícones). fix(visualizar-slot): #topBtnMapa deixa de usar display:none no Modo Ativos (que colapsava o espaço e deslocava Play/Undo/Redo); passa a usar visibility:hidden+pointer-events:none, preservando o slot no layout. fix(version): APP_VERSION e APP_VERSION_NAME = v8z4b30ZN. preserve: iconografia (câmera de vídeo = Modo Câmera, imagem = Modo Ativos), cor de destaque roxa no Modo Ativos (--accent:#8b3fff), Play roxo no Modo Ativos, botão + roxo no Modo Ativos, handles ocultos no Modo Ativos, seleção de assets, Trocar imagem, motor de Preview/Export/Save/Load, ProjectWorld, frames, curvas, timeline — sem alteração. base v8z4b30ZM. -->
 <!-- Arco Motion App — v8z4b30ZM — base v8z4b30ZL. fix(pills): pills de modo agora exibem somente ícones, sem texto (span.mode-pill-label removido do HTML). fix(icon): pill Câmera continua usando ícone de câmera de vídeo (#i-video-camera); pill Ativos continua usando #i-image. fix(accent-global): implementada regra centralizada de cor de destaque por modo — body.editor-assets sobrescreve --accent:#8b3fff, fazendo roxo propagar automaticamente para Play, timeline, outline de seleção e todos os elementos que usam var(--accent). fix(play): botão Play segue a cor do modo (roxo no Modo Ativos, ciano no Modo Câmera). fix(visualize): botão Visualizar (#topBtnMapa) oculto no Modo Ativos (body.editor-assets #topBtnMapa{display:none}); modos de visualização restritos ao Modo Câmera. fix(camera-leak): handles de câmera/frame (corner-handle, frameHud, stageFrameMenu) ocultos no Modo Ativos via CSS; setEditorMode chama clearFrameMultiSelectState ao entrar em assets. fix(forward-back): bringSelectedAssetForward e sendSelectedAssetBackward normalizam zIndex para valores únicos antes de trocar posições, garantindo que Frente/Trás funcionem inclusive em projetos cujos assets têm zIndex duplicado (0); renderProjectWorldExtraImages ordena extras por zIndex antes de inserir no DOM, refletindo a ordem no Stage além do Preview/Export. preserve: seleção direta de assets, Trocar imagem, motor de Preview/Export/Save/Load, ProjectWorld, frames, curvas, timeline. base v8z4b30ZL. -->
 <!-- Arco Motion App — v8z4b30ZL — base v8z4b30ZK. feat(ui): refinamento visual e estrutural da interface de modos. feat(pills): menus de modo convertidos em pills no topo esquerdo — pill "Câmera" (ícone câmera de vídeo) e pill "Ativos" (ícone de imagem); ícone de câmera de vídeo (#i-video-camera) substituiu a câmera fotográfica no Modo Filmagem. feat(accent-assets): cor de destaque roxa (#8b3fff) no Modo Ativos — pill ativa, botão "+", contorno de seleção de asset reforçado; no Modo Câmera a cor de destaque atual (ciano/verde) é preservada. feat(bottom-assets): 4ª linha do menu inferior exibe ferramentas de asset no Modo Ativos (Trocar, Excluir, Frente, Trás) e restaura ferramentas de frame ao voltar para o Modo Câmera; assetsContextBar legado substituído pela integração ao toolbar existente. feat(add-btn): botão "+" roxo no Modo Ativos e chama startInsertImageFlow() em vez de inserir frame. feat(asset-ops): novas funções deleteSelectedAsset(), bringSelectedAssetForward(), sendSelectedAssetBackward(). preserve: seleção direta de assets no Stage, motor de Preview/Export/Save/Load, ProjectWorld, frames, curvas, timeline — sem alteração. base v8z4b30ZK. -->
@@ -1167,8 +1168,7 @@ body.recording #editorZoomCtrl{display:none;}
 .top-btn svg{width:26px;height:26px;display:block;}
 .top-btn:first-child svg{stroke-width:2.8;}
 .top-gap-after{margin-right:8px;}
-#topBtnMapa{margin-left:14px;}
-#topBtnPreview{width:48px;border-radius:9px;background:var(--accent);color:#001014;box-shadow:0 0 0 1px rgba(255,255,255,.12) inset;}
+#topBtnPreview{width:48px;margin-left:14px;border-radius:9px;background:var(--accent);color:#001014;box-shadow:0 0 0 1px rgba(255,255,255,.12) inset;}
 #topBtnPreview:active{background:#36defd;}
 #topBtnPreview.playing{background:var(--surface3);color:#fff;}
 .top-spacer{flex:1;}
@@ -1322,13 +1322,27 @@ body.editor-assets .mid-bar.timeline-grid .fp.active,
 body.editor-assets .mid-bar.timeline-grid .fp.active.selected{
   box-shadow:0 0 0 1px rgba(139,63,255,.55) inset,0 0 10px rgba(139,63,255,.18);
 }
-/* v8z4b30ZN — Botão Visualizar: oculto no Modo Ativos mas preserva o slot
-   (visibility:hidden mantém a largura; display:none causava deslocamento do Play). */
-body.editor-assets #topBtnMapa{visibility:hidden;pointer-events:none;}
-/* v8z4b30ZM — Handles de câmera/frame ocultos no Modo Ativos (evita "vazamento" visual). */
+/* v8z4b30ZO — Handles de câmera/frame ocultos no Modo Ativos (evita "vazamento" visual). */
 body.editor-assets .corner-handle,
 body.editor-assets #frameHud,
 body.editor-assets #stageFrameMenu{display:none !important;}
+/* v8z4b30ZO — worldModeShowFrames: quando frames ocultos no Modo Ativos, esconde
+   molduras, números, handles, bezier e overlays de câmera. */
+body.editor-assets.world-frames-hidden .frame{display:none !important;}
+body.editor-assets.world-frames-hidden #bezierSvg{display:none !important;}
+/* v8z4b30ZO — assetsAddMenu: modal central de ações no Modo Ativos (inserir/trocar). */
+#assetsAddMenu{position:fixed;inset:0;z-index:330;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
+#assetsAddMenu.open{display:flex;}
+.assets-menu-inner{background:var(--surface);border-radius:22px;padding:24px 22px 16px;width:min(88vw,360px);box-shadow:0 8px 48px rgba(0,0,0,.5);position:relative;}
+.assets-menu-title{font-size:18px;font-weight:700;color:var(--text1);margin-bottom:4px;letter-spacing:-.2px;margin-right:40px;}
+.assets-menu-desc{font-size:13px;color:var(--text3);margin-bottom:20px;}
+.assets-menu-btn{display:flex;align-items:center;gap:14px;width:100%;padding:15px 16px;border-radius:16px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;-webkit-user-select:none;user-select:none;text-align:left;box-sizing:border-box;}
+.assets-menu-btn:active{background:var(--surface3);}
+.assets-menu-btn svg{flex-shrink:0;}
+.assets-menu-btn-sec{display:flex;align-items:center;gap:14px;width:100%;padding:13px 16px;border-radius:16px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:14px;font-weight:500;cursor:pointer;margin-bottom:6px;-webkit-user-select:none;user-select:none;text-align:left;box-sizing:border-box;}
+.assets-menu-btn-sec:active{background:var(--surface2);}
+.assets-menu-cancel{width:100%;padding:13px;border-radius:14px;border:none;background:transparent;font-size:14px;font-weight:500;color:var(--text3);cursor:pointer;margin-top:4px;}
+.assets-menu-divider{height:1px;background:var(--border2);margin:4px 0 14px;}
 /* v8z4b30ZJ — painel básico de Layers (mantido, removido #assetsContextBar legado) */
 /* v8z4b30ZJ — destaque do item ativo da ferramenta Selecionar no menu. */
 .settings-row.active{color:var(--accent,#7ab8ff);}
@@ -3648,7 +3662,7 @@ body.cust-open #toolbar{
 <div class="top-bar" id="topBar" data-role="top-bar">
   <!-- v8z4b30ZL — Pills de modo no topo esquerdo: Filmagem (câmera de vídeo) e Ativos (imagem). -->
   <div class="top-mode-toggle" role="group" aria-label="Modo de edição">
-    <div class="mode-btn mode-cam active" id="modeCameraBtn" onclick="setEditorMode('camera')" title="Modo Filmagem" aria-label="Modo Filmagem">
+    <div class="mode-btn mode-cam active" id="modeCameraBtn" onclick="handleCameraModeBtn()" title="Modo Filmagem" aria-label="Modo Filmagem">
       <svg viewBox="0 0 24 24"><use href="#i-video-camera"></use></svg>
     </div>
     <div class="mode-btn mode-assets" id="modeAssetsBtn" onclick="setEditorMode('assets')" title="Modo Ativos" aria-label="Modo Ativos">
@@ -3657,9 +3671,6 @@ body.cust-open #toolbar{
   </div>
   <div class="top-btn labeled top-gap-after" onclick="toggleSettingsSheet()" title="Arquivos" aria-label="Arquivos">
     <svg viewBox="0 0 24 24"><use href="#i-cinema-old"></use></svg><span class="top-label">Arquivos</span>
-  </div>
-  <div class="top-btn labeled" id="topBtnMapa" onclick="toggleMapa()" title="Visualizar" aria-label="Visualizar">
-    <svg viewBox="0 0 24 24"><use href="#i-mapa"></use></svg><span class="top-label">Visualizar</span>
   </div>
   <div class="top-btn labeled" id="topBtnPreview" onclick="togglePlay()" title="Preview" aria-label="Preview">
     <svg id="playIcon" viewBox="0 0 24 24"><use href="#i-play"></use></svg><span class="top-label" id="playLbl">Preview</span>
@@ -4387,15 +4398,17 @@ body.cust-open #toolbar{
   </div>
 </div>
 
-<!-- v8z4b30N — SEletor de posição 3x3 para "Adicionar imagem" (múltiplas imagens, fase 1) -->
-<div id="imageSlotPickerSheet" style="display:none;position:fixed;inset:0;z-index:325;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom);" onclick="if(event.target===this)cancelImageSlotPicker()">
-  <div style="background:var(--surface);border-radius:22px 22px 0 0;padding:24px 22px 28px;width:100%;max-width:480px;box-shadow:0 -4px 32px rgba(0,0,0,.35);">
-    <div style="width:36px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 18px;"></div>
-    <div id="imageSlotPickerTitle" style="font-size:20px;font-weight:800;color:var(--text1);margin-bottom:6px;letter-spacing:-.3px;">Posição da nova imagem</div>
-    <div id="imageSlotPickerDesc" style="font-size:13px;color:var(--text3);line-height:1.4;margin-bottom:16px;">
+<!-- v8z4b30ZO — Seletor de posição 3x3: convertido de bottom sheet para modal central com fechar explícito. -->
+<div id="imageSlotPickerSheet" style="display:none;position:fixed;inset:0;z-index:325;align-items:center;justify-content:center;background:rgba(0,0,0,.55);" onclick="if(event.target===this)cancelImageSlotPicker()">
+  <div style="background:var(--surface);border-radius:22px;padding:24px 22px 20px;width:min(92vw,440px);max-height:min(90vh,640px);overflow-y:auto;box-shadow:0 8px 48px rgba(0,0,0,.5);position:relative;box-sizing:border-box;">
+    <button type="button" onclick="cancelImageSlotPicker()" class="panel-close-check" aria-label="Fechar" style="position:absolute;top:14px;right:14px;">
+      <svg viewBox="0 0 24 24"><use href="#i-close"></use></svg>
+    </button>
+    <div id="imageSlotPickerTitle" style="font-size:20px;font-weight:800;color:var(--text1);margin-bottom:6px;letter-spacing:-.3px;margin-right:44px;">Posição da nova imagem</div>
+    <div id="imageSlotPickerDesc" style="font-size:13px;color:var(--text3);line-height:1.4;margin-bottom:18px;">
       Escolha onde a nova imagem entra no mundo do projeto, em relação ao Stage atual.
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
       <button type="button" class="slot-pick-btn" data-slot="top-left" onclick="pickImageSlot('top-left')">Superior<br>esquerda</button>
       <button type="button" class="slot-pick-btn" data-slot="top-center" onclick="pickImageSlot('top-center')">Superior<br>centro</button>
       <button type="button" class="slot-pick-btn" data-slot="top-right" onclick="pickImageSlot('top-right')">Superior<br>direita</button>
@@ -4410,6 +4423,31 @@ body.cust-open #toolbar{
       style="width:100%;padding:12px;border-radius:14px;border:none;background:transparent;font-size:14px;font-weight:500;color:var(--text3);cursor:pointer;">
       Cancelar
     </button>
+  </div>
+</div>
+
+<!-- v8z4b30ZO — Menu contextual do "+" no Modo Ativos: inserir / trocar / frames toggle. -->
+<div id="assetsAddMenu" onclick="if(event.target===this)closeAssetsAddMenu()">
+  <div class="assets-menu-inner">
+    <button type="button" onclick="closeAssetsAddMenu()" class="panel-close-check" aria-label="Fechar">
+      <svg viewBox="0 0 24 24"><use href="#i-close"></use></svg>
+    </button>
+    <div class="assets-menu-title">Imagens</div>
+    <div class="assets-menu-desc">Adicionar ou gerenciar imagens</div>
+    <button type="button" class="assets-menu-btn" onclick="closeAssetsAddMenu();startInsertImageFlow();">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image"></use></svg>
+      Nova imagem
+    </button>
+    <button id="assetsMenuReplaceBtn" type="button" class="assets-menu-btn" style="display:none;" onclick="closeAssetsAddMenu();startReplaceImageFlow();">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-down"></use></svg>
+      Trocar imagem
+    </button>
+    <div class="assets-menu-divider"></div>
+    <button id="assetsMenuFramesToggle" type="button" class="assets-menu-btn-sec" onclick="closeAssetsAddMenu();toggleWorldModeFrames();">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span id="assetsMenuFramesLabel">Ocultar frames</span>
+    </button>
+    <button type="button" class="assets-menu-cancel" onclick="closeAssetsAddMenu()">Cancelar</button>
   </div>
 </div>
 
@@ -6871,14 +6909,17 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b30ZN';
-const APP_VERSION_NAME = 'v8z4b30ZN';
+const APP_VERSION = 'v8z4b30ZO';
+const APP_VERSION_NAME = 'v8z4b30ZO';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
 if (appVersionTextEl) appVersionTextEl.textContent = APP_VERSION;
 if (appVersionNameTextEl) appVersionNameTextEl.textContent = APP_VERSION_NAME;
+
+// v8z4b30ZO — estado de visibilidade dos frames no Modo Ativos.
+let worldModeShowFrames = true;
 
 // Image natural dimensions
 let imgNatW = 0, imgNatH = 0;
@@ -13097,6 +13138,39 @@ function ensureAssetVisualDefaults(asset) {
   return asset;
 }
 
+// v8z4b30ZO — botão de Modo Câmera: se já em câmera, cicla visualização (toggleMapa);
+// se em outro modo, troca para câmera. Visualização é função do Modo Câmera/Frames.
+function handleCameraModeBtn() {
+  if (isAssetsMode()) {
+    setEditorMode('camera');
+  } else {
+    toggleMapa();
+  }
+}
+
+// v8z4b30ZO — alterna visibilidade dos frames no Modo Ativos.
+function toggleWorldModeFrames() {
+  worldModeShowFrames = !worldModeShowFrames;
+  if (document.body) document.body.classList.toggle('world-frames-hidden', !worldModeShowFrames);
+  showStatus(worldModeShowFrames ? 'Frames visíveis' : 'Frames ocultos');
+}
+
+// v8z4b30ZO — abre o menu contextual de ações de imagem no Modo Ativos.
+function openAssetsAddMenu() {
+  const menu = document.getElementById('assetsAddMenu');
+  if (!menu) return;
+  const hasSel = !!getSelectedAsset();
+  const replaceBtn = document.getElementById('assetsMenuReplaceBtn');
+  if (replaceBtn) replaceBtn.style.display = hasSel ? 'flex' : 'none';
+  const lbl = document.getElementById('assetsMenuFramesLabel');
+  if (lbl) lbl.textContent = worldModeShowFrames ? 'Ocultar frames' : 'Mostrar frames';
+  menu.classList.add('open');
+}
+function closeAssetsAddMenu() {
+  const menu = document.getElementById('assetsAddMenu');
+  if (menu) menu.classList.remove('open');
+}
+
 // v8z4b30ZK — alterna entre Modo Câmera e Modo Ativos. O Modo Câmera preserva
 // integralmente o fluxo atual; o Modo Ativos habilita seleção de imagens no Stage
 // e torna frames/curvas apenas referência (via classe body.editor-assets no CSS).
@@ -13105,7 +13179,12 @@ function setEditorMode(mode) {
   const next = (mode === 'assets') ? 'assets' : 'camera';
   if (editorMode !== next) {
     editorMode = next;
-    if (isCameraMode()) closeLayersPanel();
+    if (isCameraMode()) {
+      closeLayersPanel();
+      // v8z4b30ZO — restaurar worldModeShowFrames ao voltar para câmera
+      worldModeShowFrames = true;
+      if (document.body) document.body.classList.remove('world-frames-hidden');
+    }
     // v8z4b30ZM — ao entrar no Modo Ativos, limpa seleção múltipla de frames
     // para que handles e destaques de câmera não "vazem" para o Stage de assets.
     if (isAssetsMode() && typeof clearFrameMultiSelectState === 'function') {
@@ -13185,7 +13264,7 @@ function normalizeAssetZIndices() {
   const byZ = assets.slice().sort(function(a, b) { return (a.zIndex||0) - (b.zIndex||0); });
   for (var k = 0; k < byZ.length; k++) byZ[k].zIndex = k + 1;
 }
-// v8z4b30ZL (fix v8z4b30ZM) — traz o asset selecionado uma posição para frente.
+// v8z4b30ZL (fix v8z4b30ZM, fix v8z4b30ZO) — traz o asset selecionado uma posição para frente.
 function bringSelectedAssetForward() {
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para trazer à frente.'); return; }
@@ -13200,11 +13279,13 @@ function bringSelectedAssetForward() {
   const tmp = sel.zIndex;
   sel.zIndex = next.zIndex;
   next.zIndex = tmp;
+  if (typeof renderProjectWorldExtraImages === 'function') renderProjectWorldExtraImages();
   if (typeof renderAll === 'function') renderAll();
+  if (typeof markProjectDirty === 'function') markProjectDirty('frente');
   syncAssetToolbarState();
   showStatus('Imagem movida para frente.');
 }
-// v8z4b30ZL (fix v8z4b30ZM) — envia o asset selecionado uma posição para trás.
+// v8z4b30ZL (fix v8z4b30ZM, fix v8z4b30ZO) — envia o asset selecionado uma posição para trás.
 function sendSelectedAssetBackward() {
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para enviar para trás.'); return; }
@@ -13219,7 +13300,9 @@ function sendSelectedAssetBackward() {
   const tmp = sel.zIndex;
   sel.zIndex = prev.zIndex;
   prev.zIndex = tmp;
+  if (typeof renderProjectWorldExtraImages === 'function') renderProjectWorldExtraImages();
   if (typeof renderAll === 'function') renderAll();
+  if (typeof markProjectDirty === 'function') markProjectDirty('trás');
   syncAssetToolbarState();
   showStatus('Imagem movida para trás.');
 }
@@ -13443,9 +13526,10 @@ function openSelectedSegmentMenu(target) {
   openPanel(target === 'time' ? 'SegTime' : (target === 'trajectory' ? 'Trajectory' : 'Ease'));
 }
 function handleLowerAddOrSelectAll() {
-  // v8z4b30ZL — no Modo Ativos, o + adiciona imagem; no Modo Câmera, adiciona frame.
+  // v8z4b30ZO — no Modo Ativos, o + abre o menu contextual de imagens (inserir/trocar/frames).
+  // No Modo Câmera, adiciona frame normalmente.
   if (isAssetsMode()) {
-    startInsertImageFlow();
+    openAssetsAddMenu();
   } else {
     insertFrameAfterActive();
   }
@@ -16081,6 +16165,8 @@ function updateFrameSelector() {
 function updateDimOverlay() {
   const svg = document.getElementById('stageDimSvg');
   if (!svg) return;
+  // v8z4b30ZO — no Modo Ativos, não aplicar overlay escuro (destaque é nos assets, não no frame).
+  if (isAssetsMode()) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
   // v8z3e: mostrar nas vistas Normal e Isolamento; esconder apenas no Mapa/preview/sem imagem.
   if (hasPendingAssistedFrame() && updateGhostDimOverlay()) return;
   if (!imgNatW || frameCount < 1 || viewMode === 2 || isPreviewing) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
@@ -23323,6 +23409,9 @@ function closeAll() {
   document.querySelectorAll('.float-panel').forEach(p => p.classList.remove('show'));
   const sheet = document.getElementById('settingsSheet');
   if (sheet) sheet.classList.remove('show');
+  // v8z4b30ZO — fechar também o menu contextual de assets e o slot picker.
+  closeAssetsAddMenu();
+  closeImageSlotPicker();
   syncEditorZoomCtrlVisibility(); // v8z4b18b
 }
 
