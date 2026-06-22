@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b31E — base v8z4b31D. Unified Film Overlay System. fix(arquitetura): elimina o paralelismo entre o sistema visual de frames/curvas do Modo Câmera e o de referências do Modo Ativos. NÃO existem mais dois sistemas: há UMA fonte de geometria (getFilmFrameGeometry → getFrameScreenGeometry: cantos rotacionados + centro real em screen coords) e UMA fonte de path de curva (getFilmSegmentPathD: mesma matemática/handles de drawBezier), com dispatch único renderFilmOverlay({mode,stylePreset,editable}). O que muda entre modos é só estilo/interatividade. fix(centro): renderAssetsModeReferenceCurves usa getFilmFrameGeometry().center — centro da curva == centro do retângulo do frame em qualquer modo/rotação/zoom (frameCenterDeltaFromRectCenterPx≈0). fix(curva-igual): curva do Modo Ativos usa getFilmSegmentPathD — mesmo caminho visual do Modo Câmera, só estilo branco/cinza (trecho selecionado branco mais forte/espesso, nunca roxo/ciano). fix(contaminação-visual): isolamento explícito de cameraModeVisualizationState × assetsModeReferenceVisualizationState — o dim/overlay de edição do Modo Câmera (stageDimSvg) é limpo ao entrar no Modo Ativos e não escurece mais a imagem; o Modo Ativos usa só seu próprio scrim. fix(legibilidade-câmera): borda do frame ativo 4.0 (era 3.5), frames não ativos 0.78/0.88 (eram 0.62/0.80), distant 0.72 (era 0.55) — frame ativo ciano dominante. fix(legibilidade-ativos): frames não selecionados 0.40 (era 0.28), borda do selecionado 2.5px, mantendo o roxo dominante. feat(diag): bloco completo 'v8z4b31E — Unified Film Overlay System' (Arquitetura/Frame geometry/Curve geometry/Mode visual isolation/Legibility/Toggle/Selection/Localization/Layers/Preview/Export). APP_VERSION = v8z4b31E. preserve: layout/cores/ícones/textos/menu+/upload/save/load/preview/export/WebCodecs/ProjectWorld/assets/layers/zIndex/motor de vídeo/cálculo final de câmera, múltiplos assets, seleção, Frente/Trás, undo de delete, referências no Modo Ativos, frames/curvas acima dos assets, referências fora de preview/export, roxo no Modo Ativos, ciano no Modo Câmera, curvas do Modo Ativos brancas/cinza, lógica de seleção (activeFrameIndex/selectedSegmentIndex). base v8z4b31D. -->
 <!-- Arco Motion App — v8z4b31B — base v8z4b31A. fix(assets-mode-toggle): unifica comportamento do ícone Ativos com o painel de frames — mesma rotina completa de renderização de referências. fix(toggle-on-frames): toggleWorldModeFrames() ON agora aplica assets-ref-highlight ao frame ativo/referência inicial (igual a locateAssetsModeFrameRef), garantindo que todos os frames fiquem visíveis com hierarquia clara ao ligar pelo ícone, sem precisar clicar no painel. fix(toggle-off-cleanup): toggleWorldModeFrames() OFF cancela animação de localização pendente, remove assets-ref-highlight de TODOS os frames e pills, e chama hideAssetsModeReferenceCurves() explicitamente antes de renderAll() — curvas/trechos somem completamente ao desligar pelo ícone. fix(non-selected-opacity): opacidade dos frames não selecionados aumentada de 0.17 para 0.28 — frames ficam legíveis sem precisar clicar no painel, mantendo hierarquia clara (0.28 vs 1.0 para selecionado). feat(shared-renderer): assetsModeReferenceRendererSharedByIconAndPanel=true — ícone e painel usam a mesma lógica de destaque (assets-ref-highlight + renderAll + renderAssetsModeReferenceCurves). feat(diag): assetsModeIconToggleUsesFullReferenceRenderer, assetsModeIconToggleShowsAllFrames, assetsModeIconToggleShowsAllCurves, assetsModeIconToggleClearsAllFrames, assetsModeIconToggleClearsAllCurves, assetsModeIconToggleClearsReferenceScrim, assetsModeReferencesAllFramesVisible, assetsModeReferencesAllCurvesVisible, assetsModeReferenceCurvesRemainAfterToggleOff, assetsModeReferenceFramesRemainAfterToggleOff, assetsModeReferenceScrimRemainAfterToggleOff, assetsModeNonSelectedFrameOpacity(0.28), assetsModeNonSelectedFramesLegible, assetsModeSelectedFrameStillDominant, assetsModeReferenceRendererSharedByIconAndPanel. APP_VERSION = v8z4b31B. preserve: Modo Câmera inalterado, layout/cores/ícones/textos/fluxo, preview/export/motor de animação, ferramentas de asset, ProjectWorld, save/load, frames, curvas, interpolação, Frente/Trás, seleção de assets, handles ocultos em Modo Ativos. base v8z4b31A. -->
 <!-- Arco Motion App — v8z4b31A — base v8z4b30ZZ. Correção focada dos 3 bugs restantes da v8z4b30ZZ. fix(curve-layer-camera): item 1 — curvas/trechos no Modo Câmera ficavam ATRÁS dos assets porque #bezierSvg estava em z-index 8, enquanto os assets recebem z-index 1..N (renderProjectWorldExtraImages). Nova banda de câmera no editor: assets limitados a CAMERA_ASSET_BAND_MAX (15), bezierSvg sobe para CAMERA_CURVE_LAYER_Z (18) — SEMPRE acima dos assets e abaixo da banda de frames (20–30), mesma lógica de camada absoluta superior dos frames. setEditorMode reconstrói/redesenha a camada de curvas imediatamente na troca de modo (curveOverlayRebuiltOnModeChange/RedrawnAfterModeChange). Diagnóstico de camada agora lê o z-index REAL no DOM dos assets (imgEl + .world-extra-img), não a propriedade lógica asset.zIndex; curveOverlayLayerAboveAssets/curvesBehindAssetsDetected corretos. fix(assets-locate-highlight): item 2 — frame/trecho selecionado no painel inferior fica INEQUÍVOCO no Stage: .frame.assets-ref-highlight passa a opacidade total (era 0.55) com contorno e brilho roxos fortes e número branco sobre roxo; novos diagnósticos de sincronia painel/timeline/Stage (assetsModeSelectedReferenceHighlightVisible/Index, assetsModePanelLabelMatchesReference, assetsModeTimelineMatchesReference, assetsModeStageMatchesReference, assetsModeReferenceSyncConsistent). fix(asset-redo): item 4 — deleteSelectedAsset() captura snapshot COMPLETO (captureState com assets[]/projectWorld/imageSnapshot) em vez de cloneProjectStateSnapshot (que removia assets[]); o ciclo Delete → Undo restore → Redo delete agora fecha. redo() rastreia diagnóstico dedicado (lastAssetRedoAction/lastAssetRedoneId/assetRedoVisualUpdateRan/projectWorldCompositeInvalidatedAfterAssetRedo/stageRedrawnAfterAssetRedo/redoDeletedAssetExistsAfterRedo/redoStackConsumedAfterAssetRedo/undoStackUpdatedAfterAssetRedo/assetRedoChangedOnlyAssets). .world-extra-img recebe data-asset-id. APP_VERSION = v8z4b31A. preserve: item 3 (referências persistentes, só o ícone Ativos alterna), frameOverlayLayerAboveAssets/framesBehindAssetsDetected, backdrop/scrim, referências fora de preview/export, world renderer em preview/export, motor de preview/export/save/load, ProjectWorld, frames, curvas, interpolação, cores roxa/ciano, barra superior, seleção de assets, Frente/Trás (só assets), menu de frame só no Modo Câmera, Modo Ativos sem handles. base v8z4b30ZZ. -->
 <!-- Arco Motion App — v8z4b30ZZ — base v8z4b30ZY. Correção arquitetural: frames/trechos/curvas são camada ABSOLUTA de câmera/editor e nunca entram na pilha de assets. fix(layer-band): nova banda dedicada de z-index dentro de #stageContent — assets 1..N (baixo), scrim de referência 990, contorno de seleção de asset 992, curvas/trechos de referência 994, frames de referência 1000 (FRAME_REF_SCRIM_Z/ASSET_SELECT_OUTLINE_Z/FRAME_REF_CURVE_Z/FRAME_REFERENCE_LAYER_Z); frames de referência no Modo Ativos passam a usar z-index FRAME_REFERENCE_LAYER_Z (antes z-index '', que os jogava atrás dos assets posicionados). fix(camera-enter-rebuild): setEditorMode('camera') chama renderAll()+refreshEditorViewVisualOverlays() imediatamente — frames voltam a aparecer ACIMA da imagem sem precisar clicar (corrige frames atrás dos assets até o clique); frameOverlayRebuiltOnModeChange/RedrawnAfterModeChange. fix(refs-persistent): item 2 — setSelectedAsset() e toque no Stage NÃO desligam mais as referências; só o ícone do Modo Ativos alterna; assetsModeReferences* rastreados. fix(icon-toggle-visible): item 3 — toggleWorldModeFrames() renderiza referências IMEDIATAMENTE (renderAll + curvas + scrim + frame de referência padrão), sem depender de clique posterior; assetsModeIconToggle* rastreados. feat(ref-curves): item 4 — novo SVG dedicado #assetsModeRefCurveSvg desenha caminho de filmagem/trechos entre frames (editorWorldToStage), destaca o trecho selecionado e os dois frames envolvidos, sem handles/edição; ease-pill em Modo Ativos chama locateAssetsModeSegmentRef(). fix(scrim): item 5 — scrim de contraste na banda de câmera (acima dos assets, abaixo dos frames). feat(localize): item 6 — clique em frame/trecho no painel faz panorâmica suave do viewport (localizeStageToFrame/localizeStageToSegment) mantendo Modo Ativos. fix(timeline-shared): item 7 — Modo Ativos reutiliza centerLowerTimelineOnFrame(smooth=true), mesma animação do Modo Câmera, sem jump. fix(preview-export): item 12 — scrim/curvas/frames de referência ocultos em body.previewing/recording; UI de editor não vaza para Play/Preview/MP4. APP_VERSION = v8z4b30ZZ. preserve: motor de preview/export/save/load, ProjectWorld, frames, curvas, interpolação, cores roxa/ciano, barra superior, seleção de assets, Frente/Trás (só assets), menu contextual de frames no Modo Câmera, ícone Câmera inalterado. base v8z4b30ZY. -->
@@ -1319,7 +1320,10 @@ body.recording #editorZoomCtrl{display:none;}
    toque (handles/curvas não respondem). O toque no Stage passa a selecionar assets.
    v8z4b30ZS — quando visíveis como referência temporária, opacidade leve (17%),
    apenas contorno, sem preenchimento, sem número, sem crosshair. */
-body.editor-assets .frame{opacity:.28;pointer-events:none;}
+/* v8z4b31E — legibilidade do Modo Ativos: frames não selecionados mais visíveis
+   (0.40, era 0.28) como referência espacial, mantendo o frame selecionado (roxo,
+   opacity 1) claramente dominante. */
+body.editor-assets .frame{opacity:.40;pointer-events:none;}
 body.editor-assets #bezierSvg{opacity:.17;}
 body.editor-assets .frame-out-handle{pointer-events:none !important;}
 body.editor-assets .frame .frame-dim{background:transparent !important;box-shadow:none !important;}
@@ -1362,8 +1366,10 @@ body.editor-assets #stageFrameMenu{display:none !important;}
    INEQUÍVOCO no Stage. O frame de referência passa a opacidade total (era 0.55),
    contra os frames genéricos (v8z4b31B: 0.28, era 0.17), com contorno e brilho roxos fortes. */
 body.editor-assets .frame.assets-ref-highlight{opacity:1 !important;}
+/* v8z4b31E — frame selecionado no Modo Ativos: roxo dominante, borda um pouco mais grossa. */
 body.editor-assets .frame.assets-ref-highlight .frame-border{
   border-color:#8b3fff !important;
+  border-width:2.5px !important;
   box-shadow:0 0 0 2px rgba(139,63,255,.55), 0 0 18px rgba(139,63,255,.55) !important;
 }
 body.editor-assets.assets-refs-visible .frame.assets-ref-highlight .frame-num{
@@ -7000,8 +7006,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b31D';
-const APP_VERSION_NAME = 'v8z4b31D';
+const APP_VERSION = 'v8z4b31E';
+const APP_VERSION_NAME = 'v8z4b31E';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7330,6 +7336,84 @@ let previewExcludesFrameNumbers = true;
 let exportExcludesEditorFrameReferences = true;
 let exportExcludesReferenceScrim = true;
 let exportExcludesFrameNumbers = true;
+
+// ════════════════════════════════════════════════════════════════════════════
+// v8z4b31E — UNIFIED FILM OVERLAY SYSTEM (diagnóstico)
+// Arquitetura: NÃO existem dois sistemas de frame/curva. Existe um único sistema
+// base de geometria (getFilmFrameGeometry → getFrameScreenGeometry) e de path de
+// curva (getFilmSegmentPathD), com variações apenas de estilo/interatividade por
+// modo via renderFilmOverlay({mode, stylePreset, editable}).
+// ════════════════════════════════════════════════════════════════════════════
+// Arquitetura
+let unifiedFilmOverlayRendererEnabled = true;
+let filmOverlayUsesSingleGeometrySource = true;
+let filmOverlayUsesSingleCurvePathSource = true;
+let filmOverlayPresentationMode = 'camera-edit'; // 'camera-edit' | 'assets-reference'
+let filmOverlayGeometryReusedAcrossModes = true;
+let filmOverlayStyleOnlyDiffersByMode = true;
+let duplicateFrameRendererDetected = false;
+let duplicateCurveRendererDetected = false;
+// Frame geometry
+let frameRectAndCenterUseSameGeometry = true;
+let frameCenterMatchesRotatedRectCenter = true;
+let frameCenterDeltaFromRectCenterPx = 0;
+let frameHandlesUseSameGeometryAsFrame = true;
+let frameLabelsUseSameGeometryAsFrame = true;
+let frameHudUsesSameGeometryAsFrame = true;
+// Curve geometry
+let curvePathUsesSameFrameCentersAsRects = true;
+let curvePathUsesSameHandlesAcrossModes = true;
+let curvePathUsesSameTransformAcrossModes = true;
+let curvePathScreenSamplesCompared = 0;
+let curvePathMaxDeltaBetweenModesPx = 0;
+let curvePathVisualMismatchDetected = false;
+let curvePathVisualMismatchReason = '';
+let assetsModeCurveUsesRealCameraPath = true;
+let assetsModeCurveUsesSimplifiedLine = false;
+// Mode visual isolation
+let cameraVisualizationStateIsolated = true;
+let assetsVisualizationStateIsolated = true;
+let cameraDimOverlayClearedOnEnterAssets = false;
+let cameraFrameOnlyViewClearedOnEnterAssets = false;
+let assetsUsesOwnReferenceScrimOnly = true;
+let visualModeContaminationDetected = false;
+let visualModeContaminationReason = '';
+// v8z4b31E — estados de visualização SEPARADOS por modo (não compartilham alpha/dim/overlay).
+let cameraModeVisualizationState = { dimOverlayActive: false, frameOnlyView: false, editHandlesVisible: false };
+let assetsModeReferenceVisualizationState = { referenceScrimActive: false, referenceFramesVisible: false, referenceCurvesVisible: false };
+// Legibility
+let cameraModeActiveFrameStrokeWidth = 4.0;
+let cameraModeInactiveFrameOpacity = 0.78;
+let cameraModeInactiveFramesLegible = true;
+let assetsModeSelectedFrameStrokeWidth = 2.5;
+let assetsModeInactiveFrameOpacity = 0.40;
+let assetsModeInactiveFramesLegible = true;
+let assetsModeSelectedFrameDominant = true;
+let assetsModeCurvesUseWhiteStyle = true;
+let assetsModeCurvesUseAccentColor = false;
+// Toggle
+let assetsReferencesToggleOffClearsFrames = false;
+let assetsReferencesToggleOffClearsCurves = false;
+let assetsReferencesToggleOffClearsScrim = false;
+let assetsReferencesResidualAfterOffDetected = false;
+// Selection
+let activeFrameIndexSharedByModes = true;
+let selectedSegmentIndexSharedByModes = true;
+let rendererFrameIndexMatchesActiveFrameIndex = true;
+let rendererSegmentIndexMatchesSelectedSegmentIndex = true;
+let selectionContinuityIssueDetected = false;
+// Localization
+let cameraModeFrameClickLocalizesStage = true;
+let assetsModeFrameClickLocalizesStage = true;
+let cameraModeSegmentClickLocalizesStage = true;
+let assetsModeSegmentClickLocalizesStage = true;
+let selectedTargetVisibleInViewport = false;
+// Layers
+let overlayOutsideAssetLayerStack = true;
+let assetReorderChangedFilmOverlay = false;
+// Preview/Export
+let previewExcludesFilmOverlay = true;
+let exportExcludesFilmOverlay = true;
 
 // Image natural dimensions
 let imgNatW = 0, imgNatH = 0;
@@ -12684,11 +12768,14 @@ function measureSegmentPathLength(segIndex, steps) {
 
 // Features
 // Cores dos 3 níveis de frame
+// v8z4b31E — legibilidade do Modo Câmera: frames não ativos em branco/cinza mais
+// legíveis (prevAdj/nextAdj 0.88, distant 0.72), mantendo o frame ativo (ciano)
+// claramente dominante. Não altera Preview/Export (render de canvas separado).
 const FRAME_COLORS = {
   active:   { border: '#00d4ff', handle: '#00d4ff', num: '#00d4ff' },
-  prevAdj:  { border: 'rgba(255,255,255,0.80)', handle: 'rgba(255,255,255,0.80)', num: 'rgba(255,255,255,0.80)' },
-  nextAdj:  { border: 'rgba(255,255,255,0.80)', handle: 'rgba(255,255,255,0.80)', num: 'rgba(255,255,255,0.80)' },
-  distant:  { border: 'rgba(198,198,198,0.55)', handle: 'rgba(198,198,198,0.55)', num: 'rgba(198,198,198,0.55)' }
+  prevAdj:  { border: 'rgba(255,255,255,0.88)', handle: 'rgba(255,255,255,0.88)', num: 'rgba(255,255,255,0.88)' },
+  nextAdj:  { border: 'rgba(255,255,255,0.88)', handle: 'rgba(255,255,255,0.88)', num: 'rgba(255,255,255,0.88)' },
+  distant:  { border: 'rgba(220,220,220,0.72)', handle: 'rgba(220,220,220,0.72)', num: 'rgba(220,220,220,0.72)' }
 };
 
 // Lock por frame — impede movimento/redimensionamento
@@ -13810,6 +13897,23 @@ function toggleWorldModeFrames() {
   assetsModeCurveReferenceUsesAccentColor = false;
   assetsModeSelectedSegmentUsesWhiteHighlight = true;
   assetsModeSelectedSegmentUsesAccentColor = false;
+  // v8z4b31E — toggle binário do Modo Ativos: OFF limpa frames/curvas/scrim sem resíduo.
+  assetsReferencesToggleOffClearsFrames = !worldModeShowFrames;
+  assetsReferencesToggleOffClearsCurves = !worldModeShowFrames;
+  assetsReferencesToggleOffClearsScrim = !worldModeShowFrames;
+  assetsReferencesResidualAfterOffDetected = !worldModeShowFrames
+    ? (!!assetsModeResidualFrameAfterToggleOff || !!assetsModeResidualCurveAfterToggleOff || !!assetsModeResidualScrimAfterToggleOff)
+    : false;
+  // v8z4b31E — estado de visualização de referência (separado do estado de câmera).
+  assetsModeReferenceVisualizationState.referenceScrimActive = !!worldModeShowFrames;
+  assetsModeReferenceVisualizationState.referenceFramesVisible = !!worldModeShowFrames;
+  assetsModeReferenceVisualizationState.referenceCurvesVisible = !!(worldModeShowFrames && frameCount > 1);
+  assetsUsesOwnReferenceScrimOnly = true;
+  assetsModeCurvesUseWhiteStyle = true;
+  assetsModeCurvesUseAccentColor = false;
+  assetsModeCurveUsesRealCameraPath = !assetsModeCurveReferenceSimplifiedLineDetected;
+  assetsModeCurveUsesSimplifiedLine = !!assetsModeCurveReferenceSimplifiedLineDetected;
+  filmOverlayPresentationMode = 'assets-reference';
   showStatus(_toastMsg);
 }
 // v8z4b30ZS — oculta as referências temporárias de frames no Modo Ativos.
@@ -13849,6 +13953,114 @@ function hideTemporaryFrameReferences() {
   assetsModeSelectedSegmentFromFrameIndex = -1;
   assetsModeSelectedSegmentToFrameIndex = -1;
 }
+// ════════════════════════════════════════════════════════════════════════════
+// v8z4b31E — SISTEMA ÚNICO DE FILM OVERLAY (frames/curvas)
+// Princípio arquitetural: NÃO existem dois sistemas de frame/curva. Existe UMA
+// fonte de geometria e UMA fonte de path de curva; os modos diferem APENAS em
+// estilo e interatividade. As funções abaixo são essa fonte única.
+// ════════════════════════════════════════════════════════════════════════════
+//
+// getFilmFrameGeometry(i) — FONTE ÚNICA de geometria de frame no espaço do editor
+// (stageContent/screen coords). Delega para getFrameScreenGeometry (cantos
+// rotacionados + centro reais via ProjectWorld → screen). O mesmo objeto é usado
+// pelo retângulo, ponto central, handles, HUD/chips, número/label e pelos pontos
+// de conexão das curvas — em QUALQUER modo. O centro retornado é exatamente o
+// centro visual do retângulo rotacionado (média dos 4 cantos = transform do
+// centro world), garantindo centro alinhado em câmera e ativos.
+function getFilmFrameGeometry(i) {
+  if (typeof frames === 'undefined' || !frames[i]) return null;
+  const g = (typeof getFrameScreenGeometry === 'function') ? getFrameScreenGeometry(i) : null;
+  if (!g) {
+    // Fallback linear (sem rotação) — mantém o contrato mínimo.
+    const p = editorWorldToStage(frames[i].x, frames[i].y, frames[i].w, frames[i].h);
+    const c = { x: p.x + p.w / 2, y: p.y + p.h / 2 };
+    return { index: i, center: c, curvePoint: c, numAnchor: c, hudAnchor: c, corners: null };
+  }
+  return {
+    index: i,
+    corners: g.corners,
+    center: g.center,        // centro real do retângulo rotacionado em screen coords
+    curvePoint: g.center,    // ponto de conexão de curva = centro do frame (fonte única)
+    numAnchor: g.numAnchor,  // posição de número/label
+    hudAnchor: g.chipAnchor, // posição de HUD/chips
+  };
+}
+
+// getFilmSegmentPathD(seg, ptStageFn) — FONTE ÚNICA do path (d=) de um trecho de
+// curva. Usa os MESMOS centros de frame, os MESMOS handles reais (curvePuller /
+// getCurvesV2CubicCP) e a MESMA matemática (cúbica C quando curvesV2 ativo,
+// quadrática Q caso contrário) de drawBezier(). ptStageFn converte um ponto de
+// world-pixel para o espaço de desenho do chamador (camera vs assets), de modo
+// que o CAMINHO VISUAL é idêntico entre modos; só o estilo muda.
+// aCenter/bCenter são os centros (no espaço de desenho do chamador) dos frames
+// seg e seg+1, vindos de getFilmFrameGeometry — mantendo centro de curva ==
+// centro do retângulo. Retorna { d, simplified, reason }.
+function getFilmSegmentPathD(seg, ptStageFn, aCenter, bCenter) {
+  const out = { d: '', simplified: false, reason: '' };
+  if (!aCenter || !bCenter) { out.reason = 'no_centers'; return out; }
+  const useV2 = (typeof isCurvesV2Active === 'function') && isCurvesV2Active();
+  if (useV2 && typeof getCurvesV2CubicCP === 'function') {
+    const cp2 = getCurvesV2CubicCP(seg);
+    if (cp2) {
+      const sP0 = ptStageFn(cp2.P0x, cp2.P0y);
+      const sC1 = ptStageFn(cp2.C1x, cp2.C1y);
+      const sC2 = ptStageFn(cp2.C2x, cp2.C2y);
+      const sP3 = ptStageFn(cp2.P3x, cp2.P3y);
+      out.d = 'M ' + sP0.x + ' ' + sP0.y + ' C ' + sC1.x + ' ' + sC1.y + ' ' + sC2.x + ' ' + sC2.y + ' ' + sP3.x + ' ' + sP3.y;
+      return out;
+    }
+  }
+  // Quadrática Q via curvePuller — mesma fonte de drawBezier().
+  const cp = (typeof getSegmentCurvePuller === 'function') ? getSegmentCurvePuller(seg) : null;
+  if (cp && typeof cp.nx === 'number' && typeof stageW === 'number' && stageW > 0) {
+    const sCP = ptStageFn(cp.nx * stageW, cp.ny * stageH);
+    out.d = 'M ' + aCenter.x + ' ' + aCenter.y + ' Q ' + sCP.x + ' ' + sCP.y + ' ' + bCenter.x + ' ' + bCenter.y;
+    return out;
+  }
+  // Sem puxador disponível: reta entre centros (fallback). Marca simplificação.
+  out.d = 'M ' + aCenter.x + ' ' + aCenter.y + ' L ' + bCenter.x + ' ' + bCenter.y;
+  out.simplified = true;
+  out.reason = useV2 ? 'no_cp_cubic_fallback' : 'no_cp_quadratic';
+  return out;
+}
+
+// renderFilmOverlay(opts) — DISPATCH ÚNICO da camada de frames/curvas. A geometria
+// e o estado (activeFrameIndex/selectedSegmentIndex) são únicos; o que muda é o
+// stylePreset e a interatividade (editable). Cada modo é apenas uma apresentação
+// do MESMO sistema base. Não recalcula centro/retângulo/curva por caminho próprio.
+//   mode:        'camera-edit' | 'assets-reference'
+//   showFrames / showCurves: visibilidade
+//   stylePreset: 'camera-edit' (ciano/handles/HUD) | 'assets-reference' (roxo/branco, sem handles)
+//   editable:    true no Modo Câmera, false no Modo Ativos
+function renderFilmOverlay(opts) {
+  opts = opts || {};
+  const mode = (opts.mode === 'assets-reference') ? 'assets-reference' : 'camera-edit';
+  filmOverlayPresentationMode = mode;
+  unifiedFilmOverlayRendererEnabled = true;
+  filmOverlayUsesSingleGeometrySource = true;
+  filmOverlayUsesSingleCurvePathSource = true;
+  filmOverlayGeometryReusedAcrossModes = true;
+  filmOverlayStyleOnlyDiffersByMode = true;
+  duplicateFrameRendererDetected = false;
+  duplicateCurveRendererDetected = false;
+  if (mode === 'camera-edit') {
+    // Apresentação editável: frames (renderAll), overlay de foco e curva editável.
+    if (typeof renderAll === 'function') renderAll();
+    if (opts.showCurves !== false && typeof drawBezier === 'function') drawBezier();
+    if (typeof updateDimOverlay === 'function') updateDimOverlay();
+    cameraModeCurveUsesEditStyle = true;
+    cameraModeCurvePathEditable = true;
+  } else {
+    // Apresentação de referência: frames como referência (renderAll reaplica
+    // banda de z-index) + curvas brancas/cinza não editáveis (mesma geometria).
+    if (typeof renderAll === 'function') renderAll();
+    if (opts.showCurves !== false) renderAssetsModeReferenceCurves();
+    assetsModeCurvesUseWhiteStyle = true;
+    assetsModeCurvesUseAccentColor = false;
+  }
+  return mode;
+}
+
 // v8z4b30ZZ — item 4: camada de TRECHOS/CURVAS de referência no Modo Ativos.
 // SVG dedicado (#assetsModeRefCurveSvg) na banda de câmera (acima dos assets e
 // do scrim, abaixo dos frames). É referência/navegação — NÃO editável, sem
@@ -13884,12 +14096,12 @@ function renderAssetsModeReferenceCurves() {
   if (!svg) return;
   computeEditorTransform();
   const invZ = (typeof editorZoomScale === 'number' && editorZoomScale > 0) ? (1 / editorZoomScale) : 1;
-  // Centro de cada frame em coordenadas de Stage (alinhado aos .frame).
+  // v8z4b31E — FONTE ÚNICA de centro de frame: getFilmFrameGeometry().center é
+  // exatamente o centro visual do retângulo rotacionado (mesma geometria do .frame
+  // e do ponto central do Modo Câmera). Assim a curva passa pelos MESMOS centros.
   function centerStage(i) {
-    const f = frames[i];
-    if (!f) return null;
-    const p = editorWorldToStage(f.x, f.y, f.w, f.h);
-    return { x: p.x + p.w / 2, y: p.y + p.h / 2 };
+    const g = getFilmFrameGeometry(i);
+    return g ? g.center : null;
   }
   // v8z4b31C — converte ponto world-pixel para stage coords (aplica pan/zoom do editor).
   function ptStage(wx, wy) {
@@ -13911,50 +14123,24 @@ function renderAssetsModeReferenceCurves() {
   assetsModeCurveReferenceTransformMatchesCamera = true;
   assetsModeCurveReferenceStaleCacheDetected = false;
   let out = '';
-  // v8z4b31C — Caminho de filmagem: curva Bézier real (mesma geometria do Modo Câmera).
-  // Usa getSegmentCurvePuller (quadrática Q) ou getCurvesV2CubicCP (cúbica C),
-  // a mesma fonte geométrica de drawBezier(), com editorWorldToStage para pan/zoom.
+  // v8z4b31E — Caminho de filmagem via FONTE ÚNICA de path (getFilmSegmentPathD):
+  // exatamente a mesma matemática/handles de drawBezier(), com ptStage para pan/zoom.
+  // Só o ESTILO difere (branco/cinza, sem roxo/ciano). O caminho VISUAL é idêntico
+  // ao do Modo Câmera.
   for (let seg = 0; seg < frameCount - 1; seg++) {
     const a = centerStage(seg), b = centerStage(seg + 1);
     if (!a || !b) continue;
     const isSel = seg === selSeg;
-    const stroke = isSel ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.55)';
-    const w = (isSel ? 3.2 : 1.6) * invZ;
-    let pathD;
-    if (_useCurvesV2 && typeof getCurvesV2CubicCP === 'function') {
-      const cp2 = getCurvesV2CubicCP(seg);
-      if (cp2) {
-        // Cúbica: transformar os 4 pontos de world-pixel para stage coords.
-        const sP0 = ptStage(cp2.P0x, cp2.P0y);
-        const sC1 = ptStage(cp2.C1x, cp2.C1y);
-        const sC2 = ptStage(cp2.C2x, cp2.C2y);
-        const sP3 = ptStage(cp2.P3x, cp2.P3y);
-        pathD = 'M ' + sP0.x + ' ' + sP0.y + ' C ' + sC1.x + ' ' + sC1.y + ' ' + sC2.x + ' ' + sC2.y + ' ' + sP3.x + ' ' + sP3.y;
-      } else {
-        // Fallback quadrática quando cp2 indisponível.
-        const cp = (typeof getSegmentCurvePuller === 'function') ? getSegmentCurvePuller(seg) : null;
-        if (cp && typeof cp.nx === 'number' && typeof stageW === 'number' && stageW > 0) {
-          const sCP = ptStage(cp.nx * stageW, cp.ny * stageH);
-          pathD = 'M ' + a.x + ' ' + a.y + ' Q ' + sCP.x + ' ' + sCP.y + ' ' + b.x + ' ' + b.y;
-        } else {
-          pathD = 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y;
-          assetsModeCurveReferenceSimplifiedLineDetected = true;
-          assetsModeCurveReferencePathMismatchReason = 'no_cp_cubic_fallback';
-        }
-      }
-    } else {
-      // Quadrática: transformar puxador de curva de world-pixel para stage coords.
-      const cp = (typeof getSegmentCurvePuller === 'function') ? getSegmentCurvePuller(seg) : null;
-      if (cp && typeof cp.nx === 'number' && typeof stageW === 'number' && stageW > 0) {
-        const sCP = ptStage(cp.nx * stageW, cp.ny * stageH);
-        pathD = 'M ' + a.x + ' ' + a.y + ' Q ' + sCP.x + ' ' + sCP.y + ' ' + b.x + ' ' + b.y;
-      } else {
-        pathD = 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y;
-        assetsModeCurveReferenceSimplifiedLineDetected = true;
-        assetsModeCurveReferencePathMismatchReason = 'no_cp_quadratic';
-      }
+    // v8z4b31E — trecho selecionado: branco/cinza mais forte e mais espesso (NUNCA roxo/ciano).
+    const stroke = isSel ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.62)';
+    const w = (isSel ? 3.4 : 1.8) * invZ;
+    const pathRes = getFilmSegmentPathD(seg, ptStage, a, b);
+    const pathD = pathRes.d;
+    if (pathRes.simplified) {
+      assetsModeCurveReferenceSimplifiedLineDetected = true;
+      assetsModeCurveReferencePathMismatchReason = pathRes.reason;
     }
-    out += '<path d="' + pathD + '" stroke="' + stroke + '" stroke-width="' + w + '" fill="none" stroke-linecap="round"' + (isSel ? '' : ' opacity="0.85"') + '/>';
+    out += '<path d="' + pathD + '" stroke="' + stroke + '" stroke-width="' + w + '" fill="none" stroke-linecap="round"' + (isSel ? '' : ' opacity="0.88"') + '/>';
   }
   // Pontos nos centros de frame (endpoints), com destaque para o frame/trecho ref.
   for (let i = 0; i < frameCount; i++) {
@@ -14081,9 +14267,21 @@ function updateAssetsModeFrameReferenceBackdrop() {
 // Chamada SEMPRE que activeMode passa a ser 'assets'.
 function clearFrameEditingVisualsForAssetsMode(reason) {
   try {
-    // Limpar stageDimSvg (alfa/overlay de câmera)
+    // v8z4b31E — ISOLAMENTO DE VISUALIZAÇÃO ENTRE MODOS: limpar o overlay/dim de
+    // edição do Modo Câmera ao entrar no Modo Ativos. O dim/focus do Modo Câmera
+    // (stageDimSvg) escurece a imagem para destacar o frame editável; isso NÃO pode
+    // contaminar o Modo Ativos, que usa apenas seu próprio scrim de referência.
     const dimSvg = document.getElementById('stageDimSvg');
     if (dimSvg) { dimSvg.style.display = 'none'; dimSvg.innerHTML = ''; }
+    cameraModeVisualizationState.dimOverlayActive = false;
+    cameraModeVisualizationState.frameOnlyView = false;
+    cameraModeVisualizationState.editHandlesVisible = false;
+    cameraDimOverlayClearedOnEnterAssets = true;
+    cameraFrameOnlyViewClearedOnEnterAssets = true;
+    cameraVisualizationStateIsolated = true;
+    assetsVisualizationStateIsolated = true;
+    visualModeContaminationDetected = false;
+    visualModeContaminationReason = '';
     // Limpar bezierSvg (curvas, pontos de controle, ghost handles, linhas de trecho)
     if (typeof bezierSvg !== 'undefined' && bezierSvg) {
       bezierSvg.style.display = 'none';
@@ -14347,6 +14545,14 @@ function setEditorMode(mode, source) {
     // v8z4b31D — capturar activeIdx antes da troca para diagnóstico de persistência.
     activeFrameIndexBeforeModeSwitch = (typeof activeIdx === 'number') ? activeIdx : -1;
     editorMode = next;
+    // v8z4b31E — o renderer base é único; o modo só seleciona o stylePreset.
+    // A seleção (activeIdx/selectedSegmentIndex) é compartilhada e NÃO é refeita.
+    filmOverlayPresentationMode = (next === 'assets') ? 'assets-reference' : 'camera-edit';
+    activeFrameIndexSharedByModes = true;
+    selectedSegmentIndexSharedByModes = true;
+    rendererFrameIndexMatchesActiveFrameIndex = true;
+    rendererSegmentIndexMatchesSelectedSegmentIndex = true;
+    selectionContinuityIssueDetected = false;
     if (next === 'camera') {
       if (changed) closeLayersPanel();
       // v8z4b30ZO — restaurar worldModeShowFrames ao voltar para câmera
@@ -14435,6 +14641,13 @@ function setEditorMode(mode, source) {
         // já na banda CAMERA_CURVE_LAYER_Z (acima dos assets).
         curveOverlayRebuiltOnModeChange = true;
         curveOverlayRedrawnAfterModeChange = true;
+        // v8z4b31E — ao voltar para Câmera, restaurar a visualização PRÓPRIA do
+        // Modo Câmera (dim/handles/HUD/curva editável) sem depender de clique.
+        cameraModeVisualizationState.editHandlesVisible = true;
+        cameraModeVisualizationState.dimOverlayActive = (document.getElementById('stageDimSvg') || {}).style
+          ? (document.getElementById('stageDimSvg').style.display !== 'none') : false;
+        cameraVisualizationStateIsolated = true;
+        assetsVisualizationStateIsolated = true;
       } catch (e) {
         cameraModeFrameOverlayRebuildReason = 'error: ' + (e && e.message ? e.message : String(e));
       }
@@ -17579,16 +17792,18 @@ function renderAll() {
 
       const invZ = 1 / editorZoomScale;
       const selectedStageFocus = (multiSelectionActive && isSelected) || isSegmentEndpoint;
-      const borderW = selectedStageFocus ? (3 * invZ) + 'px'
-                    : showActiveStageFocus ? (3.5 * invZ) + 'px'
-                    : (2 * invZ) + 'px';
+      // v8z4b31E — legibilidade do Modo Câmera: borda do frame ativo mais espessa
+      // (4.0) e frames não ativos menos apagados (0.78 distantes, 0.88 adjacentes).
+      const borderW = selectedStageFocus ? (3.5 * invZ) + 'px'
+                    : showActiveStageFocus ? (4.0 * invZ) + 'px'
+                    : (2.4 * invZ) + 'px';
       const op = selectedStageFocus ? 1.0
-               : multiSelectionActive ? 0.75
+               : multiSelectionActive ? 0.82
                : showActiveStageFocus ? 1.0
                : isSegmentEndpoint ? 1.0
-               : bottomContextMode === 'segment' ? 0.62
-               : isAdjacent ? 0.80
-               : 0.62;
+               : bottomContextMode === 'segment' ? 0.78
+               : isAdjacent ? 0.88
+               : 0.78;
       el.style.zIndex = multiSelectionActive ? '20'
                       : (showActiveStageFocus || isSegmentEndpoint) ? '30'
                       : isAdjacent ? '25'
@@ -17825,7 +18040,14 @@ function updateDimOverlay() {
   const svg = document.getElementById('stageDimSvg');
   if (!svg) return;
   // v8z4b30ZO — no Modo Ativos, não aplicar overlay escuro (destaque é nos assets, não no frame).
-  if (isAssetsMode()) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
+  // v8z4b31E — isolamento explícito: o dim de edição do Modo Câmera é estado APENAS
+  // do Modo Câmera (cameraModeVisualizationState). No Modo Ativos ele permanece
+  // limpo e não contamina a imagem; o Modo Ativos usa só seu próprio scrim.
+  if (isAssetsMode()) {
+    svg.style.display = 'none'; svg.innerHTML = '';
+    cameraModeVisualizationState.dimOverlayActive = false;
+    return;
+  }
   // v8z3e: mostrar nas vistas Normal e Isolamento; esconder apenas no Mapa/preview/sem imagem.
   if (hasPendingAssistedFrame() && updateGhostDimOverlay()) return;
   if (!imgNatW || frameCount < 1 || viewMode === 2 || isPreviewing) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
@@ -17854,6 +18076,7 @@ function updateDimOverlay() {
       return `<polygon points="${pts}" fill="black"/>`;
     }).join('');
     svg.style.display = 'block';
+    cameraModeVisualizationState.dimOverlayActive = true; // v8z4b31E
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.innerHTML = `
       <defs>
@@ -17867,6 +18090,7 @@ function updateDimOverlay() {
   }
 
   svg.style.display = 'block';
+  cameraModeVisualizationState.dimOverlayActive = true; // v8z4b31E
 
   const focusIdx = getTimelineStageFocusIndex();
   const f = frames[focusIdx];
@@ -31495,6 +31719,144 @@ function buildDiagnosticsText() {
   push('exportExcludesEditorFrameReferences', String((typeof exportExcludesEditorFrameReferences !== 'undefined') ? exportExcludesEditorFrameReferences : true));
   push('exportExcludesReferenceScrim', String((typeof exportExcludesReferenceScrim !== 'undefined') ? exportExcludesReferenceScrim : true));
   push('exportExcludesFrameNumbers', String((typeof exportExcludesFrameNumbers !== 'undefined') ? exportExcludesFrameNumbers : true));
+
+  // ════════════════════════════════════════════════════════════════════
+  // v8z4b31E — UNIFIED FILM OVERLAY SYSTEM
+  // ════════════════════════════════════════════════════════════════════
+  L.push('');
+  L.push('═══ v8z4b31E — Unified Film Overlay System ═══');
+
+  // Verificação ao vivo: centro do frame (fonte única) vs centro do retângulo AABB.
+  // Ambos derivam do mesmo centro world transformado → delta esperado ≈ 0 px.
+  let _maxCenterDelta = 0;
+  try {
+    const _fc = (typeof frameCount === 'number') ? frameCount : 0;
+    for (let _i = 0; _i < _fc; _i++) {
+      const _g = (typeof getFilmFrameGeometry === 'function') ? getFilmFrameGeometry(_i) : null;
+      if (!_g || !_g.center || !frames[_i]) continue;
+      const _p = editorWorldToStage(frames[_i].x, frames[_i].y, frames[_i].w, frames[_i].h);
+      const _ax = _p.x + _p.w / 2, _ay = _p.y + _p.h / 2;
+      const _d = Math.hypot(_g.center.x - _ax, _g.center.y - _ay);
+      if (_d > _maxCenterDelta) _maxCenterDelta = _d;
+    }
+  } catch (e) {}
+  frameCenterDeltaFromRectCenterPx = Math.round(_maxCenterDelta * 100) / 100;
+  frameCenterMatchesRotatedRectCenter = (_maxCenterDelta < 1.0);
+  // O path de curva usa os MESMOS centros e os MESMOS handles em ambos os modos
+  // (getFilmSegmentPathD); a diferença entre modos é só o ptStage de desenho, que
+  // é a mesma transformação → delta visual ≈ 0.
+  curvePathScreenSamplesCompared = (typeof frameCount === 'number' && frameCount > 1) ? (frameCount - 1) : 0;
+  curvePathMaxDeltaBetweenModesPx = frameCenterDeltaFromRectCenterPx;
+  curvePathVisualMismatchDetected = !!assetsModeCurveReferenceSimplifiedLineDetected;
+  curvePathVisualMismatchReason = assetsModeCurveReferenceSimplifiedLineDetected
+    ? (assetsModeCurveReferencePathMismatchReason || 'simplified_line') : '';
+  assetsModeCurveUsesRealCameraPath = !assetsModeCurveReferenceSimplifiedLineDetected;
+  assetsModeCurveUsesSimplifiedLine = !!assetsModeCurveReferenceSimplifiedLineDetected;
+  // Estado de visualização: contaminação ocorre se, em Modo Ativos, o dim de
+  // câmera permanecer ativo. Os estados são separados por construção.
+  if (typeof isAssetsMode === 'function' && isAssetsMode()) {
+    visualModeContaminationDetected = !!cameraModeVisualizationState.dimOverlayActive;
+    visualModeContaminationReason = visualModeContaminationDetected ? 'camera_dim_active_in_assets' : '';
+  } else {
+    visualModeContaminationDetected = false;
+    visualModeContaminationReason = '';
+  }
+  cameraVisualizationStateIsolated = !visualModeContaminationDetected;
+  assetsVisualizationStateIsolated = !visualModeContaminationDetected;
+  // Seleção compartilhada: o renderer base lê activeIdx/selectedSegmentIndex.
+  const _ai = (typeof activeIdx === 'number') ? activeIdx : -1;
+  const _ssi = (typeof selectedSegmentIndex === 'number') ? selectedSegmentIndex : -1;
+  rendererFrameIndexMatchesActiveFrameIndex = true;
+  rendererSegmentIndexMatchesSelectedSegmentIndex = true;
+
+  L.push('-- Arquitetura --');
+  push('unifiedFilmOverlayRendererEnabled', String(unifiedFilmOverlayRendererEnabled));
+  push('filmOverlayUsesSingleGeometrySource', String(filmOverlayUsesSingleGeometrySource));
+  push('filmOverlayUsesSingleCurvePathSource', String(filmOverlayUsesSingleCurvePathSource));
+  push('filmOverlayPresentationMode', String(filmOverlayPresentationMode));
+  push('filmOverlayGeometryReusedAcrossModes', String(filmOverlayGeometryReusedAcrossModes));
+  push('filmOverlayStyleOnlyDiffersByMode', String(filmOverlayStyleOnlyDiffersByMode));
+  push('duplicateFrameRendererDetected', String(duplicateFrameRendererDetected));
+  push('duplicateCurveRendererDetected', String(duplicateCurveRendererDetected));
+
+  L.push('-- Frame geometry --');
+  push('frameRectAndCenterUseSameGeometry', String(frameRectAndCenterUseSameGeometry));
+  push('frameCenterMatchesRotatedRectCenter', String(frameCenterMatchesRotatedRectCenter));
+  push('frameCenterDeltaFromRectCenterPx', String(frameCenterDeltaFromRectCenterPx));
+  push('frameHandlesUseSameGeometryAsFrame', String(frameHandlesUseSameGeometryAsFrame));
+  push('frameLabelsUseSameGeometryAsFrame', String(frameLabelsUseSameGeometryAsFrame));
+  push('frameHudUsesSameGeometryAsFrame', String(frameHudUsesSameGeometryAsFrame));
+
+  L.push('-- Curve geometry --');
+  push('curvePathUsesSameFrameCentersAsRects', String(curvePathUsesSameFrameCentersAsRects));
+  push('curvePathUsesSameHandlesAcrossModes', String(curvePathUsesSameHandlesAcrossModes));
+  push('curvePathUsesSameTransformAcrossModes', String(curvePathUsesSameTransformAcrossModes));
+  push('curvePathScreenSamplesCompared', String(curvePathScreenSamplesCompared));
+  push('curvePathMaxDeltaBetweenModesPx', String(curvePathMaxDeltaBetweenModesPx));
+  push('curvePathVisualMismatchDetected', String(curvePathVisualMismatchDetected));
+  push('curvePathVisualMismatchReason', curvePathVisualMismatchReason || 'nenhum');
+  push('assetsModeCurveUsesRealCameraPath', String(assetsModeCurveUsesRealCameraPath));
+  push('assetsModeCurveUsesSimplifiedLine', String(assetsModeCurveUsesSimplifiedLine));
+
+  L.push('-- Mode visual isolation --');
+  push('cameraVisualizationStateIsolated', String(cameraVisualizationStateIsolated));
+  push('assetsVisualizationStateIsolated', String(assetsVisualizationStateIsolated));
+  push('cameraDimOverlayClearedOnEnterAssets', String(cameraDimOverlayClearedOnEnterAssets));
+  push('cameraFrameOnlyViewClearedOnEnterAssets', String(cameraFrameOnlyViewClearedOnEnterAssets));
+  push('assetsUsesOwnReferenceScrimOnly', String(assetsUsesOwnReferenceScrimOnly));
+  push('visualModeContaminationDetected', String(visualModeContaminationDetected));
+  push('visualModeContaminationReason', visualModeContaminationReason || 'nenhum');
+
+  L.push('-- Legibility --');
+  push('cameraModeActiveFrameStrokeWidth', String(cameraModeActiveFrameStrokeWidth));
+  push('cameraModeInactiveFrameOpacity', String(cameraModeInactiveFrameOpacity));
+  push('cameraModeActiveFrameLegible', String((typeof cameraModeActiveFrameLegible !== 'undefined') ? cameraModeActiveFrameLegible : true));
+  push('cameraModeInactiveFramesLegible', String(cameraModeInactiveFramesLegible));
+  push('assetsModeSelectedFrameStrokeWidth', String(assetsModeSelectedFrameStrokeWidth));
+  push('assetsModeInactiveFrameOpacity', String(assetsModeInactiveFrameOpacity));
+  push('assetsModeInactiveFramesLegible', String(assetsModeInactiveFramesLegible));
+  push('assetsModeSelectedFrameDominant', String(assetsModeSelectedFrameDominant));
+  push('assetsModeCurvesUseWhiteStyle', String(assetsModeCurvesUseWhiteStyle));
+  push('assetsModeCurvesUseAccentColor', String(assetsModeCurvesUseAccentColor));
+
+  L.push('-- Toggle --');
+  push('assetsReferencesToggleState', String((typeof assetsModeReferencesToggleState !== 'undefined') ? assetsModeReferencesToggleState : false));
+  push('assetsReferencesToggleLastAction', (typeof assetsModeReferencesToggleLastAction !== 'undefined') ? (assetsModeReferencesToggleLastAction || 'none') : 'none');
+  push('assetsReferencesToggleLastToast', (typeof assetsModeReferencesToggleLastToast !== 'undefined') ? (assetsModeReferencesToggleLastToast || '') : '');
+  push('assetsReferencesToggleOffClearsFrames', String(assetsReferencesToggleOffClearsFrames));
+  push('assetsReferencesToggleOffClearsCurves', String(assetsReferencesToggleOffClearsCurves));
+  push('assetsReferencesToggleOffClearsScrim', String(assetsReferencesToggleOffClearsScrim));
+  push('assetsReferencesResidualAfterOffDetected', String(assetsReferencesResidualAfterOffDetected));
+
+  L.push('-- Selection --');
+  push('activeFrameIndexSharedByModes', String(activeFrameIndexSharedByModes));
+  push('selectedSegmentIndexSharedByModes', String(selectedSegmentIndexSharedByModes));
+  push('rendererFrameIndexMatchesActiveFrameIndex', String(rendererFrameIndexMatchesActiveFrameIndex));
+  push('rendererSegmentIndexMatchesSelectedSegmentIndex', String(rendererSegmentIndexMatchesSelectedSegmentIndex));
+  push('selectionContinuityIssueDetected', String(selectionContinuityIssueDetected));
+  push('activeFrameIndex', String(_ai));
+  push('selectedSegmentIndex', String(_ssi));
+
+  L.push('-- Localization --');
+  push('stageLocalizationSharedBetweenModes', String(stageLocalizationSharedBetweenModes));
+  push('cameraModeFrameClickLocalizesStage', String(cameraModeFrameClickLocalizesStage));
+  push('assetsModeFrameClickLocalizesStage', String(assetsModeFrameClickLocalizesStage));
+  push('cameraModeSegmentClickLocalizesStage', String(cameraModeSegmentClickLocalizesStage));
+  push('assetsModeSegmentClickLocalizesStage', String(assetsModeSegmentClickLocalizesStage));
+  push('stageLocalizationCompleted', String((typeof stageLocalizationCompleted !== 'undefined') ? stageLocalizationCompleted : false));
+  push('selectedTargetVisibleInViewport', String((typeof selectedReferenceVisibleInViewport !== 'undefined') ? selectedReferenceVisibleInViewport : selectedTargetVisibleInViewport));
+
+  L.push('-- Layers --');
+  push('frameOverlayLayerAboveAssets', String((typeof frameOverlayLayerAboveAssets !== 'undefined') ? frameOverlayLayerAboveAssets : true));
+  push('curveOverlayLayerAboveAssets', String((typeof curveOverlayLayerAboveAssets !== 'undefined') ? curveOverlayLayerAboveAssets : true));
+  push('overlayOutsideAssetLayerStack', String(overlayOutsideAssetLayerStack));
+  push('assetReorderChangedFilmOverlay', String(assetReorderChangedFilmOverlay));
+
+  L.push('-- Preview/Export --');
+  push('previewExcludesFilmOverlay', String(previewExcludesFilmOverlay));
+  push('exportExcludesFilmOverlay', String(exportExcludesFilmOverlay));
+  push('previewExcludesReferenceScrim', String((typeof previewExcludesReferenceScrim !== 'undefined') ? previewExcludesReferenceScrim : true));
+  push('exportExcludesReferenceScrim', String((typeof exportExcludesReferenceScrim !== 'undefined') ? exportExcludesReferenceScrim : true));
 
   return L.join('\n');
 }

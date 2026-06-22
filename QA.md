@@ -1,3 +1,20 @@
+# QA pendente — v8z4b31E: Unified Film Overlay System (sistema único de frames/curvas)
+
+> Base: `v8z4b31D`. Correção arquitetural + ajuste visual controlado: **um único** sistema base de geometria (`getFilmFrameGeometry`) e de path de curva (`getFilmSegmentPathD`), com variação apenas de estilo/interatividade por modo (`renderFilmOverlay`). Isolamento de visualização entre modos e legibilidade. NÃO altera layout/cores/ícones/textos/menu+/upload/save/load/preview/export/WebCodecs/ProjectWorld/assets/zIndex/motor/cálculo final.
+
+## Escopo v8z4b31E
+
+1. Menu mostra "Arco Motion App v8z4b31E" (`APP_VERSION`=`APP_VERSION_NAME`=`v8z4b31E`).
+2. **Teste 1 — centro do frame.** Modo Câmera → selecionar frame **rotacionado** → o ponto central fica no **centro visual do retângulo**. Alternar para Modo Ativos → o centro continua no mesmo lugar relativo ao frame. Diagnóstico: `frameCenterMatchesRotatedRectCenter: true`, `frameCenterDeltaFromRectCenterPx` ≈ 0, `frameRectAndCenterUseSameGeometry: true`.
+3. **Teste 2 — curva igual.** Observar a curva no Modo Câmera → alternar para Modo Ativos → a curva **branca/cinza** segue o **mesmo caminho**; voltar para Câmera → o path não muda. `curvePathVisualMismatchDetected: false`, `curvePathMaxDeltaBetweenModesPx` ≈ 0, `assetsModeCurveUsesRealCameraPath: true`, `assetsModeCurveUsesSimplifiedLine: false`, `assetsModeCurvesUseAccentColor: false`.
+4. **Teste 3 — contaminação visual.** No Modo Câmera, com o dim/foco escurecendo a imagem fora do frame ativo → alternar para Modo Ativos → a imagem **não** herda o escurecimento; se referências estiverem ligadas, usa só o scrim próprio. `cameraDimOverlayClearedOnEnterAssets: true`, `cameraFrameOnlyViewClearedOnEnterAssets: true`, `assetsUsesOwnReferenceScrimOnly: true`, `visualModeContaminationDetected: false`.
+5. **Teste 4 — legibilidade.** Modo Câmera sobre imagem clara/complexa: frame ativo ciano e legível (borda 4.0), outros frames mais visíveis (0.78/0.88). Modo Ativos com referências ligadas: frames não selecionados mais visíveis (0.40), selecionado roxo dominante. `cameraModeActiveFrameStrokeWidth: 4`, `cameraModeInactiveFramesLegible: true`, `assetsModeInactiveFrameOpacity: 0.4`, `assetsModeSelectedFrameDominant: true`.
+6. **Teste 5 — toggle.** No Modo Ativos, tocar o ícone Ativos → referências aparecem (frames+números+curvas+scrim); tocar de novo → tudo some, sem resíduo. Repetir 5×. `assetsReferencesToggleOffClearsFrames/Curves/Scrim: true`, `assetsReferencesResidualAfterOffDetected: false`.
+7. **Teste 6 — Preview/Export.** Rodar Preview e exportar → nenhum overlay de editor (frames/números/curvas/scrim/HUD/handles) aparece. `previewExcludesFilmOverlay: true`, `exportExcludesFilmOverlay: true`.
+8. **Sem regressão** em save/load, preview, export, WebCodecs, assets, Frente/Trás, seleção, layout. Frente/Trás de assets não altera frames/curvas (`assetReorderChangedFilmOverlay: false`). Testar em iPhone/Safari real.
+
+---
+
 # QA pendente — v8z4b31A: curvas acima dos assets + localização/destaque no Modo Ativos + Redo de delete
 
 > Base: `v8z4b30ZZ`. Correção **focada** dos três bugs restantes: (1) curvas/trechos atrás dos assets no Modo Câmera; (2) localização/destaque inequívoco de frame/trecho no Modo Ativos; (3) Redo após deletar imagem/asset. NÃO altera layout, cores, textos, ícones, fluxo, preview/export ou funcionalidades não relacionadas.
