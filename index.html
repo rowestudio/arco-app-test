@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b31B — base v8z4b31A. fix(assets-mode-toggle): unifica comportamento do ícone Ativos com o painel de frames — mesma rotina completa de renderização de referências. fix(toggle-on-frames): toggleWorldModeFrames() ON agora aplica assets-ref-highlight ao frame ativo/referência inicial (igual a locateAssetsModeFrameRef), garantindo que todos os frames fiquem visíveis com hierarquia clara ao ligar pelo ícone, sem precisar clicar no painel. fix(toggle-off-cleanup): toggleWorldModeFrames() OFF cancela animação de localização pendente, remove assets-ref-highlight de TODOS os frames e pills, e chama hideAssetsModeReferenceCurves() explicitamente antes de renderAll() — curvas/trechos somem completamente ao desligar pelo ícone. fix(non-selected-opacity): opacidade dos frames não selecionados aumentada de 0.17 para 0.28 — frames ficam legíveis sem precisar clicar no painel, mantendo hierarquia clara (0.28 vs 1.0 para selecionado). feat(shared-renderer): assetsModeReferenceRendererSharedByIconAndPanel=true — ícone e painel usam a mesma lógica de destaque (assets-ref-highlight + renderAll + renderAssetsModeReferenceCurves). feat(diag): assetsModeIconToggleUsesFullReferenceRenderer, assetsModeIconToggleShowsAllFrames, assetsModeIconToggleShowsAllCurves, assetsModeIconToggleClearsAllFrames, assetsModeIconToggleClearsAllCurves, assetsModeIconToggleClearsReferenceScrim, assetsModeReferencesAllFramesVisible, assetsModeReferencesAllCurvesVisible, assetsModeReferenceCurvesRemainAfterToggleOff, assetsModeReferenceFramesRemainAfterToggleOff, assetsModeReferenceScrimRemainAfterToggleOff, assetsModeNonSelectedFrameOpacity(0.28), assetsModeNonSelectedFramesLegible, assetsModeSelectedFrameStillDominant, assetsModeReferenceRendererSharedByIconAndPanel. APP_VERSION = v8z4b31B. preserve: Modo Câmera inalterado, layout/cores/ícones/textos/fluxo, preview/export/motor de animação, ferramentas de asset, ProjectWorld, save/load, frames, curvas, interpolação, Frente/Trás, seleção de assets, handles ocultos em Modo Ativos. base v8z4b31A. -->
 <!-- Arco Motion App — v8z4b31A — base v8z4b30ZZ. Correção focada dos 3 bugs restantes da v8z4b30ZZ. fix(curve-layer-camera): item 1 — curvas/trechos no Modo Câmera ficavam ATRÁS dos assets porque #bezierSvg estava em z-index 8, enquanto os assets recebem z-index 1..N (renderProjectWorldExtraImages). Nova banda de câmera no editor: assets limitados a CAMERA_ASSET_BAND_MAX (15), bezierSvg sobe para CAMERA_CURVE_LAYER_Z (18) — SEMPRE acima dos assets e abaixo da banda de frames (20–30), mesma lógica de camada absoluta superior dos frames. setEditorMode reconstrói/redesenha a camada de curvas imediatamente na troca de modo (curveOverlayRebuiltOnModeChange/RedrawnAfterModeChange). Diagnóstico de camada agora lê o z-index REAL no DOM dos assets (imgEl + .world-extra-img), não a propriedade lógica asset.zIndex; curveOverlayLayerAboveAssets/curvesBehindAssetsDetected corretos. fix(assets-locate-highlight): item 2 — frame/trecho selecionado no painel inferior fica INEQUÍVOCO no Stage: .frame.assets-ref-highlight passa a opacidade total (era 0.55) com contorno e brilho roxos fortes e número branco sobre roxo; novos diagnósticos de sincronia painel/timeline/Stage (assetsModeSelectedReferenceHighlightVisible/Index, assetsModePanelLabelMatchesReference, assetsModeTimelineMatchesReference, assetsModeStageMatchesReference, assetsModeReferenceSyncConsistent). fix(asset-redo): item 4 — deleteSelectedAsset() captura snapshot COMPLETO (captureState com assets[]/projectWorld/imageSnapshot) em vez de cloneProjectStateSnapshot (que removia assets[]); o ciclo Delete → Undo restore → Redo delete agora fecha. redo() rastreia diagnóstico dedicado (lastAssetRedoAction/lastAssetRedoneId/assetRedoVisualUpdateRan/projectWorldCompositeInvalidatedAfterAssetRedo/stageRedrawnAfterAssetRedo/redoDeletedAssetExistsAfterRedo/redoStackConsumedAfterAssetRedo/undoStackUpdatedAfterAssetRedo/assetRedoChangedOnlyAssets). .world-extra-img recebe data-asset-id. APP_VERSION = v8z4b31A. preserve: item 3 (referências persistentes, só o ícone Ativos alterna), frameOverlayLayerAboveAssets/framesBehindAssetsDetected, backdrop/scrim, referências fora de preview/export, world renderer em preview/export, motor de preview/export/save/load, ProjectWorld, frames, curvas, interpolação, cores roxa/ciano, barra superior, seleção de assets, Frente/Trás (só assets), menu de frame só no Modo Câmera, Modo Ativos sem handles. base v8z4b30ZZ. -->
 <!-- Arco Motion App — v8z4b30ZZ — base v8z4b30ZY. Correção arquitetural: frames/trechos/curvas são camada ABSOLUTA de câmera/editor e nunca entram na pilha de assets. fix(layer-band): nova banda dedicada de z-index dentro de #stageContent — assets 1..N (baixo), scrim de referência 990, contorno de seleção de asset 992, curvas/trechos de referência 994, frames de referência 1000 (FRAME_REF_SCRIM_Z/ASSET_SELECT_OUTLINE_Z/FRAME_REF_CURVE_Z/FRAME_REFERENCE_LAYER_Z); frames de referência no Modo Ativos passam a usar z-index FRAME_REFERENCE_LAYER_Z (antes z-index '', que os jogava atrás dos assets posicionados). fix(camera-enter-rebuild): setEditorMode('camera') chama renderAll()+refreshEditorViewVisualOverlays() imediatamente — frames voltam a aparecer ACIMA da imagem sem precisar clicar (corrige frames atrás dos assets até o clique); frameOverlayRebuiltOnModeChange/RedrawnAfterModeChange. fix(refs-persistent): item 2 — setSelectedAsset() e toque no Stage NÃO desligam mais as referências; só o ícone do Modo Ativos alterna; assetsModeReferences* rastreados. fix(icon-toggle-visible): item 3 — toggleWorldModeFrames() renderiza referências IMEDIATAMENTE (renderAll + curvas + scrim + frame de referência padrão), sem depender de clique posterior; assetsModeIconToggle* rastreados. feat(ref-curves): item 4 — novo SVG dedicado #assetsModeRefCurveSvg desenha caminho de filmagem/trechos entre frames (editorWorldToStage), destaca o trecho selecionado e os dois frames envolvidos, sem handles/edição; ease-pill em Modo Ativos chama locateAssetsModeSegmentRef(). fix(scrim): item 5 — scrim de contraste na banda de câmera (acima dos assets, abaixo dos frames). feat(localize): item 6 — clique em frame/trecho no painel faz panorâmica suave do viewport (localizeStageToFrame/localizeStageToSegment) mantendo Modo Ativos. fix(timeline-shared): item 7 — Modo Ativos reutiliza centerLowerTimelineOnFrame(smooth=true), mesma animação do Modo Câmera, sem jump. fix(preview-export): item 12 — scrim/curvas/frames de referência ocultos em body.previewing/recording; UI de editor não vaza para Play/Preview/MP4. APP_VERSION = v8z4b30ZZ. preserve: motor de preview/export/save/load, ProjectWorld, frames, curvas, interpolação, cores roxa/ciano, barra superior, seleção de assets, Frente/Trás (só assets), menu contextual de frames no Modo Câmera, ícone Câmera inalterado. base v8z4b30ZY. -->
 <!-- Arco Motion App — v8z4b30ZY — base v8z4b30ZX. fix(timeline-visual-index): getTimelineVisualActiveIndex() — fonte única da bolinha laranja; em Modo Ativos usa temporaryFrameReferenceTargetIndex→assetsModeFrameReferenceHighlightIndex→frameTimelineCenteredIndex→activeIdx; getTimelineStageFocusIndex() delega para getTimelineVisualActiveIndex() em Modo Ativos — bolinha migra com o frame de referência. fix(pills-single-highlight): applyTimelinePillFocusClasses() em Modo Ativos não aplica 'selected' para activeIdx — somente o frame de referência recebe 'active'; timelineActiveHighlightCount, timelineMultipleActiveHighlightsDetected, assetsModeOnlyOneFrameReferenceHighlighted rastreados. fix(renderAll-assets-mode): frame loop em renderAll() detecta isAssetsMode() — em Modo Ativos não aplica hierarquia de opacidade/zIndex/active do Modo Câmera; limpa inline styles (opacity='', zIndex='') deixando CSS tomar conta; assetsModeInheritedFrameOpacityCleared=true, assetsModeCameraFrameHierarchyVisible=false; número do frame renderizado como referência com destaque roxo para o frame referenciado. fix(frame-num-assets-mode): CSS body.editor-assets:not(.assets-refs-visible) .frame .frame-num{display:none} — números visíveis quando classe assets-refs-visible ativa; classe toggled em toggleWorldModeFrames/locateAssetsModeFrameRef/hideTemporaryFrameReferences/clearFrameEditingVisualsForAssetsMode. fix(frameHud-regression): setEditorMode('camera') agora limpa inline frameHud.style.display='' — corrige regressão em que display:none do Modo Ativos persistia e impedia HUD de aparecer; frameActiveInfoTextVisible=true em Modo Câmera. fix(delete-visual-update): deleteSelectedAsset() chama invalidateProjectWorldComposite+renderProjectWorldExtraImages+renderAll+renderAssetSelectionOverlay+syncAssetToolbarState explicitamente; rastreia lastAssetDeleteAction/lastAssetDeletedId/assetDeletedVisualUpdateRan/projectWorldCompositeInvalidatedAfterAssetDelete/stageRedrawnAfterAssetDelete. fix(undo-redo-visual): undo()/redo() chamam renderAssetSelectionOverlay()+syncAssetToolbarState() após restoreState(); rastreia lastAssetUndoAction/assetUndoVisualUpdateRan/stageRedrawnAfterAssetUndo. fix(renderAssetSelectionOverlay-diag): rastreia assetSelectionOutlineVisible/assetSelectionOutlineAssetId/assetSelectionOutlineUsesAssetGeometry/assetSelectionOutlineIssue/selectedAssetIdExistsInAssets/selectedAssetVisualFeedbackConsistent. fix(frameAnchoredUIDiag): frameAnchoredUIDiagnosticTargetIndex usa referência em Modo Ativos (não activeIdx fixo em 0); frameAnchoredUIDiagnosticMode/frameAnchoredUIDiagnosticUsesReferenceFrame adicionados. fix(locateRef-pill): locateAssetsModeFrameRef() chama applyTimelinePillFocusClasses()+centerLowerTimelineOnFrame() — bolinha e scroll seguem o frame referenciado; ativa assets-refs-visible. fix(version): APP_VERSION=v8z4b30ZY. preserve: menu contextual frames Câmera, bottomContextMode:asset, Frente/Trás, seleção de assets, ghost handles ocultos, ProjectWorld, save/load, preview, export, motor de curvas, interpolação. base v8z4b30ZX. -->
@@ -1318,7 +1319,7 @@ body.recording #editorZoomCtrl{display:none;}
    toque (handles/curvas não respondem). O toque no Stage passa a selecionar assets.
    v8z4b30ZS — quando visíveis como referência temporária, opacidade leve (17%),
    apenas contorno, sem preenchimento, sem número, sem crosshair. */
-body.editor-assets .frame{opacity:.17;pointer-events:none;}
+body.editor-assets .frame{opacity:.28;pointer-events:none;}
 body.editor-assets #bezierSvg{opacity:.17;}
 body.editor-assets .frame-out-handle{pointer-events:none !important;}
 body.editor-assets .frame .frame-dim{background:transparent !important;box-shadow:none !important;}
@@ -1359,7 +1360,7 @@ body.editor-assets #stageFrameMenu{display:none !important;}
 /* v8z4b30ZW — destaque de referência intencional no Modo Ativos.
    v8z4b31A — item 2: o frame/trecho selecionado no painel inferior precisa ficar
    INEQUÍVOCO no Stage. O frame de referência passa a opacidade total (era 0.55),
-   contra os frames genéricos a 0.17, com contorno e brilho roxos fortes. */
+   contra os frames genéricos (v8z4b31B: 0.28, era 0.17), com contorno e brilho roxos fortes. */
 body.editor-assets .frame.assets-ref-highlight{opacity:1 !important;}
 body.editor-assets .frame.assets-ref-highlight .frame-border{
   border-color:#8b3fff !important;
@@ -6999,8 +7000,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b31A';
-const APP_VERSION_NAME = 'v8z4b31A';
+const APP_VERSION = 'v8z4b31B';
+const APP_VERSION_NAME = 'v8z4b31B';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7187,6 +7188,22 @@ let assetsModeIconToggleReferencesState = false;
 let assetsModeIconToggleTriggeredRedraw = false;
 let assetsModeIconToggleReferenceLayerRebuilt = false;
 let assetsModeIconToggleToastMatchesVisualState = true;
+// v8z4b31B — diagnóstico de toggle unificado (ícone = painel, mesma rotina).
+let assetsModeIconToggleUsesFullReferenceRenderer = false;
+let assetsModeIconToggleShowsAllFrames = false;
+let assetsModeIconToggleShowsAllCurves = false;
+let assetsModeIconToggleClearsAllFrames = false;
+let assetsModeIconToggleClearsAllCurves = false;
+let assetsModeIconToggleClearsReferenceScrim = false;
+let assetsModeReferencesAllFramesVisible = false;
+let assetsModeReferencesAllCurvesVisible = false;
+let assetsModeReferenceCurvesRemainAfterToggleOff = false;
+let assetsModeReferenceFramesRemainAfterToggleOff = false;
+let assetsModeReferenceScrimRemainAfterToggleOff = false;
+const assetsModeNonSelectedFrameOpacity = 0.28; // v8z4b31B: aumentado de 0.17
+let assetsModeNonSelectedFramesLegible = true;
+let assetsModeSelectedFrameStillDominant = true;
+let assetsModeReferenceRendererSharedByIconAndPanel = true;
 // Estado/diagnóstico de referências de trecho/curva no Modo Ativos (item 4).
 let assetsModeSelectedSegmentIndex = -1;
 let assetsModeSelectedSegmentFromFrameIndex = -1;
@@ -13520,29 +13537,85 @@ function handleAssetsModeBtn() {
 // v8z4b30ZO — alterna visibilidade dos frames no Modo Ativos.
 // v8z4b30ZS — frames são referência temporária no Modo Ativos; rastreia temporaryFrameReferencesVisible.
 // v8z4b30ZU — gerencia backdrop de legibilidade junto com visibilidade.
+// v8z4b31B — unifica comportamento do ícone com o painel de frames (mesma rotina completa).
+//   ON:  aplica assets-ref-highlight no frame de referência inicial (igual a locateAssetsModeFrameRef).
+//   OFF: cancela animação pendente, remove todos os highlights, limpa curvas explicitamente.
 function toggleWorldModeFrames() {
   worldModeShowFrames = !worldModeShowFrames;
   temporaryFrameReferencesVisible = worldModeShowFrames && isAssetsMode();
-  // v8z4b30ZZ — item 3: o toque no ícone de Ativos é a ÚNICA fonte de verdade
-  // para mostrar/ocultar referências. Ao ativar, a camada de referência é
-  // renderizada IMEDIATAMENTE no Stage (frames + números + trechos/curvas +
-  // scrim), sem depender de clique posterior na timeline.
   assetsModeIconToggleReferencesRequested = true;
   assetsModeIconToggleReferencesState = !!temporaryFrameReferencesVisible;
   if (worldModeShowFrames && isAssetsMode()) {
+    // v8z4b31B — ON: mesma rotina completa usada pelo painel de frames.
     // Garante um frame de referência inicial (frame ativo) para o destaque/bolinha.
     if (temporaryFrameReferenceTargetIndex < 0) {
       temporaryFrameReferenceTargetIndex = (typeof activeIdx === 'number' && activeIdx >= 0) ? activeIdx : 0;
     }
+    const _refIdx = temporaryFrameReferenceTargetIndex;
+    assetsModeFrameReferenceHighlightIndex = _refIdx;
+    assetsModeFrameReferenceHighlightVisible = _refIdx >= 0;
+    assetsModeSelectedReferenceHighlightVisible = _refIdx >= 0;
+    assetsModeSelectedReferenceHighlightIndex = _refIdx;
     assetsModeIntentionalFrameReferenceUIVisible = true;
     assetsModeFrameNumberReferenceVisible = true;
+    // v8z4b31B — aplicar assets-ref-highlight ao frame de referência inicial,
+    // exatamente como locateAssetsModeFrameRef faz ao clicar no painel.
+    const _fcOn = (typeof frameCount === 'number') ? frameCount : 0;
+    if (typeof getFrameEl === 'function') {
+      for (let _fi = 0; _fi < _fcOn; _fi++) {
+        const _fel = getFrameEl(_fi);
+        if (_fel) _fel.classList.toggle('assets-ref-highlight', _fi === _refIdx && _refIdx >= 0);
+      }
+    }
+    const _pRowOn = document.getElementById('pillsRow');
+    if (_pRowOn) {
+      _pRowOn.querySelectorAll('[data-frame-index]').forEach(function(el) {
+        el.classList.toggle('assets-ref-highlight', Number(el.dataset.frameIndex) === _refIdx && _refIdx >= 0);
+      });
+    }
+    // v8z4b31B — diagnóstico: ícone usa rotina completa
+    assetsModeIconToggleUsesFullReferenceRenderer = true;
+    assetsModeIconToggleShowsAllFrames = true;
+    assetsModeIconToggleShowsAllCurves = true;
+    assetsModeReferencesAllFramesVisible = true;
+    assetsModeReferencesAllCurvesVisible = true;
+    assetsModeReferenceRendererSharedByIconAndPanel = true;
+    assetsModeNonSelectedFramesLegible = true;
+    assetsModeSelectedFrameStillDominant = true;
   } else {
+    // v8z4b31B — OFF: limpeza completa (igual a hideTemporaryFrameReferences + mais).
+    // 1. Cancelar animação de localização pendente para evitar re-render tardio.
+    if (typeof _assetsModeLocalizeAnimFrame !== 'undefined' && _assetsModeLocalizeAnimFrame) {
+      cancelAnimationFrame(_assetsModeLocalizeAnimFrame);
+      _assetsModeLocalizeAnimFrame = 0;
+    }
     temporaryFrameReferenceTargetIndex = -1;
     assetsModeFrameReferenceHighlightIndex = -1;
     assetsModeFrameReferenceHighlightVisible = false;
     assetsModeIntentionalFrameReferenceUIVisible = false;
     assetsModeFrameNumberReferenceVisible = false;
     assetsModeFrameNumberHighlightIndex = -1;
+    // 2. Remover assets-ref-highlight de TODOS os frames DOM e pills.
+    const _fcOff = (typeof frameCount === 'number') ? frameCount : 0;
+    if (typeof getFrameEl === 'function') {
+      for (let _fi = 0; _fi < _fcOff; _fi++) {
+        const _fel = getFrameEl(_fi);
+        if (_fel) _fel.classList.remove('assets-ref-highlight');
+      }
+    }
+    const _pRowOff = document.getElementById('pillsRow');
+    if (_pRowOff) _pRowOff.querySelectorAll('.fp.assets-ref-highlight').forEach(function(el) { el.classList.remove('assets-ref-highlight'); });
+    // 3. Limpar curvas EXPLICITAMENTE antes de renderAll para garantir remoção completa.
+    hideAssetsModeReferenceCurves();
+    // v8z4b31B — diagnóstico: limpeza completa
+    assetsModeIconToggleClearsAllFrames = true;
+    assetsModeIconToggleClearsAllCurves = true;
+    assetsModeIconToggleClearsReferenceScrim = true;
+    assetsModeReferenceCurvesRemainAfterToggleOff = false;
+    assetsModeReferenceFramesRemainAfterToggleOff = false;
+    assetsModeReferenceScrimRemainAfterToggleOff = false;
+    assetsModeReferencesAllFramesVisible = false;
+    assetsModeReferencesAllCurvesVisible = false;
   }
   if (document.body) {
     document.body.classList.toggle('world-frames-hidden', !worldModeShowFrames);
@@ -13791,7 +13864,7 @@ function clearFrameEditingVisualsForAssetsMode(reason) {
     const stageFrameMenu = document.getElementById('stageFrameMenu');
     if (stageFrameMenu) stageFrameMenu.style.display = 'none';
     // v8z4b30ZW — limpar inline opacity e classe 'active' dos frames ao entrar em Modo Ativos.
-    // Isso garante que o CSS body.editor-assets .frame{opacity:.17} funcione corretamente
+    // Isso garante que o CSS body.editor-assets .frame{opacity:.28} funcione corretamente
     // sem interferência de inline styles deixados pelo Modo Câmera.
     const _fc = (typeof frameCount === 'number') ? frameCount : 0;
     for (let _fi = 0; _fi < _fc; _fi++) {
@@ -17191,9 +17264,12 @@ function renderAll() {
       const borderEl = el.querySelector('.frame-border');
       const numEl = el.querySelector('.frame-num');
       const invZ = 1 / editorZoomScale;
+      const _isHl = el.classList.contains('assets-ref-highlight');
       if (borderEl) {
-        borderEl.style.borderColor = '';
-        borderEl.style.borderWidth = (2 * invZ) + 'px';
+        // v8z4b31B — contorno levemente mais visível para frames não selecionados
+        // (era '' vazio, deixando CSS padrão invisível; agora reforça levemente).
+        borderEl.style.borderColor = _isHl ? '' : 'rgba(255,255,255,0.35)';
+        borderEl.style.borderWidth = ((_isHl ? 2.5 : 2) * invZ) + 'px';
         borderEl.style.boxShadow = 'none';
       }
       // Número do frame: referência visual no Modo Ativos
@@ -30169,7 +30245,7 @@ function buildDiagnosticsText() {
     push('assetsModeFrameReferenceHighlightIndex', String((typeof assetsModeFrameReferenceHighlightIndex !== 'undefined') ? assetsModeFrameReferenceHighlightIndex : -1));
     // v8z4b30ZT — referências de frames no Modo Ativos (campos completos).
     push('showFrameReferencesInAssetsMode', String((typeof worldModeShowFrames !== 'undefined') ? worldModeShowFrames : false));
-    push('assetsModeFrameReferencesOpacity', _isAssets ? '17%' : 'n/a (camera mode)');
+    push('assetsModeFrameReferencesOpacity', _isAssets ? '28%' : 'n/a (camera mode)'); // v8z4b31B: aumentado de 17%
     push('assetsModeFrameReferenceHighlightActive', String(_isAssets && (typeof temporaryFrameReferencesVisible !== 'undefined') ? temporaryFrameReferencesVisible : false));
     push('assetsModeFrameReferenceCenteredFrameIndex', String((typeof frameTimelineCenteredIndex !== 'undefined') ? frameTimelineCenteredIndex : -1));
     push('assetsModeTimelineFrameTapLocalizesReference', String((typeof assetsModeTimelineFrameTapLocalizesReference !== 'undefined') ? assetsModeTimelineFrameTapLocalizesReference : false));
@@ -30361,6 +30437,31 @@ function buildDiagnosticsText() {
       push('assetsModeIconToggleReferencesVisibleOnStage', String(!!_refsOnStage));
       // Toast bate com estado visual: se referências ligadas, camada está visível.
       push('assetsModeIconToggleToastMatchesVisualState', String(!_isAssets || (temporaryFrameReferencesVisible === !!_refsOnStage)));
+      // v8z4b31B — diagnóstico de toggle unificado (ícone = painel).
+      L.push('  — v8z4b31B: toggle unificado ícone/painel —');
+      push('assetsModeIconToggleUsesFullReferenceRenderer', String((typeof assetsModeIconToggleUsesFullReferenceRenderer !== 'undefined') ? assetsModeIconToggleUsesFullReferenceRenderer : false));
+      push('assetsModeIconToggleShowsAllFrames', String((typeof assetsModeIconToggleShowsAllFrames !== 'undefined') ? assetsModeIconToggleShowsAllFrames : false));
+      push('assetsModeIconToggleShowsAllCurves', String((typeof assetsModeIconToggleShowsAllCurves !== 'undefined') ? assetsModeIconToggleShowsAllCurves : false));
+      push('assetsModeIconToggleClearsAllFrames', String((typeof assetsModeIconToggleClearsAllFrames !== 'undefined') ? assetsModeIconToggleClearsAllFrames : false));
+      push('assetsModeIconToggleClearsAllCurves', String((typeof assetsModeIconToggleClearsAllCurves !== 'undefined') ? assetsModeIconToggleClearsAllCurves : false));
+      push('assetsModeIconToggleClearsReferenceScrim', String((typeof assetsModeIconToggleClearsReferenceScrim !== 'undefined') ? assetsModeIconToggleClearsReferenceScrim : false));
+      {
+        // Verificação ao vivo: frames visíveis no DOM (não apenas flags)
+        const _curveSvgB = document.getElementById('assetsModeRefCurveSvg');
+        const _curvesOnStageB = !!(_curveSvgB && _curveSvgB.style.display !== 'none' && _curveSvgB.innerHTML.trim());
+        const _refsVisB = _isAssets && temporaryFrameReferencesVisible;
+        const _backdropEl = document.getElementById('assetsModeFrameRefBackdrop');
+        const _scrimVisB = !!(_backdropEl && _backdropEl.style.display !== 'none');
+        push('assetsModeReferencesAllFramesVisible', String((typeof assetsModeReferencesAllFramesVisible !== 'undefined') ? assetsModeReferencesAllFramesVisible : false));
+        push('assetsModeReferencesAllCurvesVisible', String(_refsVisB && _curvesOnStageB));
+        push('assetsModeReferenceCurvesRemainAfterToggleOff', String(!_refsVisB && _curvesOnStageB));
+        push('assetsModeReferenceFramesRemainAfterToggleOff', String((typeof assetsModeReferenceFramesRemainAfterToggleOff !== 'undefined') ? assetsModeReferenceFramesRemainAfterToggleOff : false));
+        push('assetsModeReferenceScrimRemainAfterToggleOff', String(!_refsVisB && _scrimVisB));
+        push('assetsModeNonSelectedFrameOpacity', String((typeof assetsModeNonSelectedFrameOpacity !== 'undefined') ? assetsModeNonSelectedFrameOpacity : 0.28));
+        push('assetsModeNonSelectedFramesLegible', String((typeof assetsModeNonSelectedFramesLegible !== 'undefined') ? assetsModeNonSelectedFramesLegible : true));
+        push('assetsModeSelectedFrameStillDominant', String((typeof assetsModeSelectedFrameStillDominant !== 'undefined') ? assetsModeSelectedFrameStillDominant : true));
+        push('assetsModeReferenceRendererSharedByIconAndPanel', String((typeof assetsModeReferenceRendererSharedByIconAndPanel !== 'undefined') ? assetsModeReferenceRendererSharedByIconAndPanel : true));
+      }
     }
     // Item 4 — frames, números, trechos e curvas como referência.
     L.push('  — v8z4b30ZZ: referências de frame/curva (Modo Ativos) —');
