@@ -1,3 +1,20 @@
+# QA pendente — v8z4b31F: Single Film System Architecture (seleção/timeline/localização únicas)
+
+> Base: `v8z4b31E`. Correção arquitetural controlada. Aprofunda a unificação: **seleção, timeline (bolinha/mira) e localização** passam a ser um único sistema compartilhado entre Modo Frames/Câmera e Modo Ativos/Mundo. O Modo Ativos **consome o mesmo sistema** do Modo Frames, diferindo apenas em `presentationMode`/`stylePreset`/`editability`. NÃO altera Preview/Export/WebCodecs/save/load/schema/upload/múltiplos assets/Frente-Trás/undo-redo/menu+/layout/textos/ícones.
+
+## Escopo v8z4b31F
+
+1. Menu mostra "Arco Motion App v8z4b31F" (`APP_VERSION`=`APP_VERSION_NAME`=`v8z4b31F`).
+2. **Teste 1 — alternância de modo (critério 2).** Modo Ativos → selecionar Frame 12 → alternar para Modo Frames → confirmar **Frame 12 selecionado** → alternar de volta para Modo Ativos → confirmar **Frame 12 referenciado**. Repetir com outros frames. Diagnóstico: `canonicalFrameIndex` = 11, `allFrameTargetsMatchCanonical: true`, `frameTargetMismatchDetected: false`, `modeSwitchPreservesCanonicalFrame: true`, `modeSwitchChangedCanonicalFrame: false`.
+3. **Teste 2 — timeline mira fixa (critério 4/5).** No Modo Ativos, arrastar a timeline horizontalmente → a **bolinha central NÃO se move**; os frames rolam por baixo dela. Clicar em outro frame → o frame **rola até a bolinha**. Alternar para Modo Frames → **mesmo comportamento**. `timelineCenterMarkerIsFixedOverlay: true`, `timelineCenterMarkerInsideScrollableContent: false`, `timelineMarkerMovedWithScrollableContent: false`, `timelineMarkerFixedDuringManualScroll: true`, `timelineFrameUnderMarkerMatchesCanonical: true`, `singleTimelineEngineEnabled: true`.
+4. **Teste 3 — opacidade uniforme (critério 10/11).** Ligar referências no Modo Ativos pelo ícone → observar frames não selecionados; clicar em frame na timeline; clicar no Stage; selecionar asset; pan/zoom → frames não selecionados mantêm **mesma opacidade e espessura** sempre. `assetsModeInactiveFrameOpacityUniform: true`, `assetsModeInactiveFrameStrokeUniform: true`, `assetsModeInactiveFrameOpacityChangedBySource: false`, `assetsModeInactiveFrameStrokeChangedBySource: false`, `assetsReferenceStyleActivationSourceAgnostic: true`.
+5. **Teste 4 — editabilidade (critério 7).** No Modo Ativos, tentar arrastar frame → frame **não edita**; asset continua editável. Alternar para Modo Frames → o **mesmo frame fica editável**. `assetsModeFrameEditable: false`, `assetsModeFrameHitTestSuppressed: true`, `assetsModeFrameHandlesSuppressed: true`, `assetsModeFrameHudSuppressed: true`, `cameraModeFrameEditable: true`, `assetsModeAssetEditingEnabled: true`.
+6. **Teste 5 — curva (critério 13).** Observar curva no Modo Frames → alternar para Modo Ativos → confirmar **mesma curva** em branco/cinza, **sem handles editáveis**. `singleCurveGeometrySource: true`, `curvePathSharedAcrossPresentationModes: true`, `curvePathMaxDeltaBetweenModesPx` ≈ 0.
+7. **Teste 6 — Preview/Export (critério 16).** Rodar Preview e exportar MP4 → **ausência de overlays de editor**. `previewUsesNoEditorOverlay: true`, `exportUsesNoEditorOverlay: true`, `previewUnaffectedBySingleFilmSystem: true`, `exportUnaffectedBySingleFilmSystem: true`.
+8. **Sem regressão** em save/load, preview, export, WebCodecs, assets, Frente/Trás, undo/redo, seleção de assets, menu "+", layout. Geometria/curva únicas do `v8z4b31E` preservadas. Testar em iPhone/Safari real.
+
+---
+
 # QA pendente — v8z4b31E: Unified Film Overlay System (sistema único de frames/curvas)
 
 > Base: `v8z4b31D`. Correção arquitetural + ajuste visual controlado: **um único** sistema base de geometria (`getFilmFrameGeometry`) e de path de curva (`getFilmSegmentPathD`), com variação apenas de estilo/interatividade por modo (`renderFilmOverlay`). Isolamento de visualização entre modos e legibilidade. NÃO altera layout/cores/ícones/textos/menu+/upload/save/load/preview/export/WebCodecs/ProjectWorld/assets/zIndex/motor/cálculo final.

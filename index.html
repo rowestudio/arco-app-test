@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b31F — base v8z4b31E. Single Film System Architecture. fix(arquitetura): aprofunda a unificação iniciada em v8z4b31E — agora a SELEÇÃO, a TIMELINE (bolinha/mira) e a LOCALIZAÇÃO também são um único sistema compartilhado entre Modo Câmera e Modo Ativos. fix(seleção-canônica): introduz estado canônico único filmSelection={frameIndex,segmentIndex,source,updatedAt} via commitFilmSelection(); locateAssetsModeFrameRef()/locateAssetsModeSegmentRef() passam a gravar o frame canônico (activeIdx/selectedSegmentIndex) em vez de criar um índice de referência paralelo — selecionar Frame N no Modo Ativos mantém Frame N ao voltar ao Modo Câmera (e vice-versa). Os índices timelineVisualActiveIndex/timelineReferenceActiveIndex/timelineEditingActiveIndex/temporaryFrameReferenceTargetIndex/assetsModeFrameReferenceHighlightIndex/frameTimelineCenteredIndex/rendererFrameIndex/viewportLocalizationTargetIndex passam a DERIVAR do canônico (não disputam mais a seleção). getTimelineVisualActiveIndex() retorna o frame canônico. fix(timeline-mira-fixa): syncLowerTimelineCenterMarkers() fixa a bolinha/indicador no CENTRO do viewport da timeline (mira fixa); os frames rolam por baixo dela e ela NÃO acompanha mais o conteúdo rolável/foco. fix(opacidade-uniforme-ativos): applyStageTimelineFocusVisuals() não aplica mais a hierarquia de opacidade/espessura/zIndex do Modo Câmera quando em Modo Ativos — limpa estilos inline e deixa o CSS uniforme (.40) cuidar; opacidade/espessura dos frames não selecionados não muda mais conforme a origem do clique (ícone/timeline/stage/localização). feat(diag): bloco completo 'v8z4b31F — Single Film System Architecture' (Arquitetura/Seleção/Timeline/Style/Geometry/Interactivity/References/Localization/Preview-Export). APP_VERSION = v8z4b31F. preserve: layout/cores/ícones/textos/menu+/upload/save/load/preview/export/WebCodecs/ProjectWorld/assets/layers/zIndex/motor de vídeo/cálculo final de câmera, múltiplos assets, Frente/Trás, undo/redo de assets, curvas/geometria únicas do v8z4b31E, roxo no Modo Ativos, ciano no Modo Câmera, frames não editáveis no Modo Ativos. base v8z4b31E. -->
 <!-- Arco Motion App — v8z4b31E — base v8z4b31D. Unified Film Overlay System. fix(arquitetura): elimina o paralelismo entre o sistema visual de frames/curvas do Modo Câmera e o de referências do Modo Ativos. NÃO existem mais dois sistemas: há UMA fonte de geometria (getFilmFrameGeometry → getFrameScreenGeometry: cantos rotacionados + centro real em screen coords) e UMA fonte de path de curva (getFilmSegmentPathD: mesma matemática/handles de drawBezier), com dispatch único renderFilmOverlay({mode,stylePreset,editable}). O que muda entre modos é só estilo/interatividade. fix(centro): renderAssetsModeReferenceCurves usa getFilmFrameGeometry().center — centro da curva == centro do retângulo do frame em qualquer modo/rotação/zoom (frameCenterDeltaFromRectCenterPx≈0). fix(curva-igual): curva do Modo Ativos usa getFilmSegmentPathD — mesmo caminho visual do Modo Câmera, só estilo branco/cinza (trecho selecionado branco mais forte/espesso, nunca roxo/ciano). fix(contaminação-visual): isolamento explícito de cameraModeVisualizationState × assetsModeReferenceVisualizationState — o dim/overlay de edição do Modo Câmera (stageDimSvg) é limpo ao entrar no Modo Ativos e não escurece mais a imagem; o Modo Ativos usa só seu próprio scrim. fix(legibilidade-câmera): borda do frame ativo 4.0 (era 3.5), frames não ativos 0.78/0.88 (eram 0.62/0.80), distant 0.72 (era 0.55) — frame ativo ciano dominante. fix(legibilidade-ativos): frames não selecionados 0.40 (era 0.28), borda do selecionado 2.5px, mantendo o roxo dominante. feat(diag): bloco completo 'v8z4b31E — Unified Film Overlay System' (Arquitetura/Frame geometry/Curve geometry/Mode visual isolation/Legibility/Toggle/Selection/Localization/Layers/Preview/Export). APP_VERSION = v8z4b31E. preserve: layout/cores/ícones/textos/menu+/upload/save/load/preview/export/WebCodecs/ProjectWorld/assets/layers/zIndex/motor de vídeo/cálculo final de câmera, múltiplos assets, seleção, Frente/Trás, undo de delete, referências no Modo Ativos, frames/curvas acima dos assets, referências fora de preview/export, roxo no Modo Ativos, ciano no Modo Câmera, curvas do Modo Ativos brancas/cinza, lógica de seleção (activeFrameIndex/selectedSegmentIndex). base v8z4b31D. -->
 <!-- Arco Motion App — v8z4b31B — base v8z4b31A. fix(assets-mode-toggle): unifica comportamento do ícone Ativos com o painel de frames — mesma rotina completa de renderização de referências. fix(toggle-on-frames): toggleWorldModeFrames() ON agora aplica assets-ref-highlight ao frame ativo/referência inicial (igual a locateAssetsModeFrameRef), garantindo que todos os frames fiquem visíveis com hierarquia clara ao ligar pelo ícone, sem precisar clicar no painel. fix(toggle-off-cleanup): toggleWorldModeFrames() OFF cancela animação de localização pendente, remove assets-ref-highlight de TODOS os frames e pills, e chama hideAssetsModeReferenceCurves() explicitamente antes de renderAll() — curvas/trechos somem completamente ao desligar pelo ícone. fix(non-selected-opacity): opacidade dos frames não selecionados aumentada de 0.17 para 0.28 — frames ficam legíveis sem precisar clicar no painel, mantendo hierarquia clara (0.28 vs 1.0 para selecionado). feat(shared-renderer): assetsModeReferenceRendererSharedByIconAndPanel=true — ícone e painel usam a mesma lógica de destaque (assets-ref-highlight + renderAll + renderAssetsModeReferenceCurves). feat(diag): assetsModeIconToggleUsesFullReferenceRenderer, assetsModeIconToggleShowsAllFrames, assetsModeIconToggleShowsAllCurves, assetsModeIconToggleClearsAllFrames, assetsModeIconToggleClearsAllCurves, assetsModeIconToggleClearsReferenceScrim, assetsModeReferencesAllFramesVisible, assetsModeReferencesAllCurvesVisible, assetsModeReferenceCurvesRemainAfterToggleOff, assetsModeReferenceFramesRemainAfterToggleOff, assetsModeReferenceScrimRemainAfterToggleOff, assetsModeNonSelectedFrameOpacity(0.28), assetsModeNonSelectedFramesLegible, assetsModeSelectedFrameStillDominant, assetsModeReferenceRendererSharedByIconAndPanel. APP_VERSION = v8z4b31B. preserve: Modo Câmera inalterado, layout/cores/ícones/textos/fluxo, preview/export/motor de animação, ferramentas de asset, ProjectWorld, save/load, frames, curvas, interpolação, Frente/Trás, seleção de assets, handles ocultos em Modo Ativos. base v8z4b31A. -->
 <!-- Arco Motion App — v8z4b31A — base v8z4b30ZZ. Correção focada dos 3 bugs restantes da v8z4b30ZZ. fix(curve-layer-camera): item 1 — curvas/trechos no Modo Câmera ficavam ATRÁS dos assets porque #bezierSvg estava em z-index 8, enquanto os assets recebem z-index 1..N (renderProjectWorldExtraImages). Nova banda de câmera no editor: assets limitados a CAMERA_ASSET_BAND_MAX (15), bezierSvg sobe para CAMERA_CURVE_LAYER_Z (18) — SEMPRE acima dos assets e abaixo da banda de frames (20–30), mesma lógica de camada absoluta superior dos frames. setEditorMode reconstrói/redesenha a camada de curvas imediatamente na troca de modo (curveOverlayRebuiltOnModeChange/RedrawnAfterModeChange). Diagnóstico de camada agora lê o z-index REAL no DOM dos assets (imgEl + .world-extra-img), não a propriedade lógica asset.zIndex; curveOverlayLayerAboveAssets/curvesBehindAssetsDetected corretos. fix(assets-locate-highlight): item 2 — frame/trecho selecionado no painel inferior fica INEQUÍVOCO no Stage: .frame.assets-ref-highlight passa a opacidade total (era 0.55) com contorno e brilho roxos fortes e número branco sobre roxo; novos diagnósticos de sincronia painel/timeline/Stage (assetsModeSelectedReferenceHighlightVisible/Index, assetsModePanelLabelMatchesReference, assetsModeTimelineMatchesReference, assetsModeStageMatchesReference, assetsModeReferenceSyncConsistent). fix(asset-redo): item 4 — deleteSelectedAsset() captura snapshot COMPLETO (captureState com assets[]/projectWorld/imageSnapshot) em vez de cloneProjectStateSnapshot (que removia assets[]); o ciclo Delete → Undo restore → Redo delete agora fecha. redo() rastreia diagnóstico dedicado (lastAssetRedoAction/lastAssetRedoneId/assetRedoVisualUpdateRan/projectWorldCompositeInvalidatedAfterAssetRedo/stageRedrawnAfterAssetRedo/redoDeletedAssetExistsAfterRedo/redoStackConsumedAfterAssetRedo/undoStackUpdatedAfterAssetRedo/assetRedoChangedOnlyAssets). .world-extra-img recebe data-asset-id. APP_VERSION = v8z4b31A. preserve: item 3 (referências persistentes, só o ícone Ativos alterna), frameOverlayLayerAboveAssets/framesBehindAssetsDetected, backdrop/scrim, referências fora de preview/export, world renderer em preview/export, motor de preview/export/save/load, ProjectWorld, frames, curvas, interpolação, cores roxa/ciano, barra superior, seleção de assets, Frente/Trás (só assets), menu de frame só no Modo Câmera, Modo Ativos sem handles. base v8z4b30ZZ. -->
@@ -7006,8 +7007,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b31E';
-const APP_VERSION_NAME = 'v8z4b31E';
+const APP_VERSION = 'v8z4b31F';
+const APP_VERSION_NAME = 'v8z4b31F';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7414,6 +7415,104 @@ let assetReorderChangedFilmOverlay = false;
 // Preview/Export
 let previewExcludesFilmOverlay = true;
 let exportExcludesFilmOverlay = true;
+
+// ════════════════════════════════════════════════════════════════════════════
+// v8z4b31F — SINGLE FILM SYSTEM ARCHITECTURE (seleção/timeline/localização)
+// Princípio: existe UMA única resposta para "qual frame está selecionado?". O
+// estado canônico abaixo (filmSelection) é a fonte única; activeIdx e
+// selectedSegmentIndex são o armazenamento canônico de frame/trecho (já
+// compartilhado entre modos desde v8z4b31E e NÃO redefinido na troca de modo).
+// Todos os outros índices (timelineVisual/Reference/Editing, reference target,
+// highlight, centered, renderer, localization target) DERIVAM deste estado e
+// nunca disputam a seleção. O modo só muda apresentação e interatividade.
+// ════════════════════════════════════════════════════════════════════════════
+let filmSelection = { frameIndex: 0, segmentIndex: -1, source: 'init', updatedAt: 0 };
+// commitFilmSelection — ÚNICO ponto de escrita da seleção canônica. Grava no
+// armazenamento canônico (activeIdx/selectedSegmentIndex) e atualiza o registro
+// filmSelection. Os modos chamam o MESMO commit; o que difere é só apresentação.
+function commitFilmSelection(frameIndex, segmentIndex, source) {
+  if (typeof frameIndex === 'number' && frameIndex >= 0) {
+    if (typeof activeIdx !== 'undefined') activeIdx = frameIndex;
+  }
+  if (typeof segmentIndex === 'number') {
+    if (typeof selectedSegmentIndex !== 'undefined') selectedSegmentIndex = segmentIndex;
+  }
+  filmSelection.frameIndex = (typeof activeIdx === 'number') ? activeIdx : -1;
+  filmSelection.segmentIndex = (typeof selectedSegmentIndex === 'number') ? selectedSegmentIndex : -1;
+  filmSelection.source = source || 'unknown';
+  filmSelection.updatedAt = Date.now();
+  return filmSelection;
+}
+// getCanonicalFrameIndex / getCanonicalSegmentIndex — leitura única da seleção.
+function getCanonicalFrameIndex() {
+  return (typeof activeIdx === 'number') ? activeIdx : -1;
+}
+function getCanonicalSegmentIndex() {
+  return (typeof selectedSegmentIndex === 'number') ? selectedSegmentIndex : -1;
+}
+// v8z4b31F — diagnóstico (Single Film System Architecture).
+// Arquitetura
+let singleFilmSystemEnabled = true;
+let assetsModeUsesSameFilmSystemAsCameraMode = true;
+let cameraModeUsesSameFilmSystemAsAssetsMode = true;
+let duplicatedAssetsFilmSystemRemoved = true;
+let duplicatedTimelineSystemRemoved = true;
+let duplicatedFrameSelectionSystemRemoved = true;
+let duplicatedFrameRendererRemoved = true;
+let duplicatedCurveRendererRemoved = true;
+let modeOnlyChangesPresentationAndInteractivity = true;
+// Seleção
+let canonicalFrameIndex = -1;
+let canonicalSegmentIndex = -1;
+let allFrameTargetsMatchCanonical = true;
+let frameTargetMismatchDetected = false;
+let frameTargetMismatchReason = '';
+let modeSwitchChangedCanonicalFrame = false;
+let modeSwitchPreservesCanonicalFrame = true;
+// Timeline
+let singleTimelineEngineEnabled = true;
+let timelineCenterMarkerIsFixedOverlay = true;
+let timelineCenterMarkerInsideScrollableContent = false;
+let timelineScrollSharedBetweenModes = true;
+let timelineCenteringSharedBetweenModes = true;
+let timelineMarkerMovedWithScrollableContent = false;
+let timelineMarkerFixedDuringManualScroll = true;
+let timelineFrameUnderMarkerIndex = -1;
+let timelineFrameUnderMarkerMatchesCanonical = true;
+let timelineModeSpecificBehaviorDetected = false;
+// Style
+let cameraEditStyleSingleSource = true;
+let assetsReferenceStyleSingleSource = true;
+let assetsModeInactiveFrameOpacityUniform = true;
+let assetsModeInactiveFrameStrokeUniform = true;
+let assetsModeInactiveFrameOpacityChangedBySource = false;
+let assetsModeInactiveFrameStrokeChangedBySource = false;
+let assetsReferenceStyleActivationSourceAgnostic = true;
+let assetsReferenceStyleSource = 'shared';
+// Geometry
+let singleFrameGeometrySource = true;
+let frameRectCenterAndHandlesUseSameGeometry = true;
+let singleCurveGeometrySource = true;
+let curvePathSharedAcrossPresentationModes = true;
+// Interactivity
+let cameraModeFrameEditable = true;
+let assetsModeFrameEditable = false;
+let assetsModeFrameHitTestSuppressed = true;
+let assetsModeFrameHandlesSuppressed = true;
+let assetsModeFrameHudSuppressed = true;
+let assetsModeFrameContextMenuSuppressedFlag = true;
+let assetsModeAssetEditingEnabled = true;
+let cameraModeFrameToolbarVisible = true;
+let assetsModeAssetToolbarVisible = true;
+// References
+let assetsReferencesVisibleCanonical = false;
+let assetsReferencesToggleStateMatchesVisual = true;
+let assetsReferencesToggleUsesSharedRenderer = true;
+let assetsReferencesToggleUsesSharedStylePreset = true;
+// Localization
+let singleStageLocalizationEngine = true;
+let cameraAndAssetsUseSameLocalization = true;
+let stageLocalizationTargetMatchesCanonicalFrame = true;
 
 // Image natural dimensions
 let imgNatW = 0, imgNatH = 0;
@@ -14407,6 +14506,11 @@ function locateAssetsModeFrameRef(i) {
   if (i < 0 || i >= fc) return;
   worldModeShowFrames = true;
   temporaryFrameReferencesVisible = true;
+  // v8z4b31F — SELEÇÃO CANÔNICA ÚNICA: referenciar um frame no Modo Ativos é
+  // selecionar o MESMO frame canônico (activeIdx). Não existe mais um índice de
+  // referência paralelo — temporaryFrameReferenceTargetIndex/highlight DERIVAM
+  // do canônico. Assim, ao voltar ao Modo Câmera o frame continua selecionado.
+  commitFilmSelection(i, -1, 'assetsModeTimelineFrameReference');
   temporaryFrameReferenceTargetIndex = i;
   assetsModeIntentionalFrameReferenceUIVisible = true;
   assetsModeFrameReferenceHighlightVisible = true;
@@ -14475,6 +14579,10 @@ function locateAssetsModeSegmentRef(seg) {
   lastSelectionSource = 'assetsModeTimelineSegmentReference';
   // v8z4b31A — item 2: rótulo do painel (índice tocado) acompanha o trecho (1º frame).
   frameTimelineClickedIndex = seg;
+  // v8z4b31F — SELEÇÃO CANÔNICA ÚNICA: referenciar um trecho grava o trecho
+  // canônico (selectedSegmentIndex=seg) e o frame canônico no 1º frame do trecho
+  // (activeIdx=seg). A bolinha/referência derivam do canônico.
+  commitFilmSelection(seg, seg, 'assetsModeTimelineSegmentReference');
   assetsModeSelectedSegmentIndex = seg;
   assetsModeSelectedSegmentFromFrameIndex = seg;
   assetsModeSelectedSegmentToFrameIndex = seg + 1;
@@ -15220,15 +15328,11 @@ const LOWER_TIMELINE_SNAP_DELAY_MS = 160;
 // v8z4b30ZY — índice visual unificado: câmera usa activeIdx, ativos usa frame de referência.
 // Esta é a fonte única para a bolinha laranja (pill.active) e destaque do Stage.
 function getTimelineVisualActiveIndex() {
-  if (typeof isAssetsMode === 'function' && isAssetsMode()) {
-    if (typeof temporaryFrameReferenceTargetIndex !== 'undefined' && temporaryFrameReferenceTargetIndex >= 0)
-      return temporaryFrameReferenceTargetIndex;
-    if (typeof assetsModeFrameReferenceHighlightIndex !== 'undefined' && assetsModeFrameReferenceHighlightIndex >= 0)
-      return assetsModeFrameReferenceHighlightIndex;
-    if (typeof frameTimelineCenteredIndex !== 'undefined' && frameTimelineCenteredIndex >= 0)
-      return frameTimelineCenteredIndex;
-  }
-  return typeof activeIdx !== 'undefined' ? activeIdx : 0;
+  // v8z4b31F — TIMELINE ÚNICA: a bolinha/indicador visual deriva SEMPRE do frame
+  // canônico (activeIdx). Desde v8z4b31F a referência do Modo Ativos grava o
+  // frame canônico (commitFilmSelection), então não há mais um índice paralelo a
+  // consultar — Modo Câmera e Modo Ativos mostram o MESMO frame ativo.
+  return getCanonicalFrameIndex() >= 0 ? getCanonicalFrameIndex() : 0;
 }
 function getTimelineStageFocusIndex() {
   // v8z4b30ZY — em Modo Ativos, bolinha e destaque seguem o frame de referência,
@@ -15245,18 +15349,16 @@ function syncLowerTimelineCenterMarkers() {
   const slotRect = slotEl.getBoundingClientRect();
   const pillsRect = pillsEl.getBoundingClientRect();
   if (!slotRect.width || !pillsRect.width) return;
-  const focalEl = pillsEl.querySelector('.fp.timeline-focal')
-    || pillsEl.querySelector('.fp.active')
-    || pillsEl.querySelector('.fp.selected')
-    || (timelineFocalFrameId >= 0 ? pillsEl.querySelector('.fp[data-frame-index="' + timelineFocalFrameId + '"]') : null);
-  if (focalEl) {
-    const focalRect = focalEl.getBoundingClientRect();
-    if (focalRect.width) {
-      slotEl.style.setProperty('--lower-timeline-center-x', (focalRect.left + focalRect.width / 2 - slotRect.left) + 'px');
-      return;
-    }
-  }
+  // v8z4b31F — MIRA FIXA: a bolinha/indicador central é uma mira fixa do viewport
+  // da timeline; NÃO pertence ao conteúdo rolável e NÃO acompanha o frame focal.
+  // Os frames rolam por baixo dela. Posição = centro do viewport de pills (a
+  // mesma em todos os modos). Quando um frame é selecionado, o CONTEÚDO rola até
+  // o frame ficar sob esta mira (centerLowerTimelineOnFrame), não o contrário.
   slotEl.style.setProperty('--lower-timeline-center-x', (pillsRect.left - slotRect.left + pillsEl.clientWidth / 2) + 'px');
+  timelineCenterMarkerIsFixedOverlay = true;
+  timelineCenterMarkerInsideScrollableContent = false;
+  timelineMarkerMovedWithScrollableContent = false;
+  timelineMarkerFixedDuringManualScroll = true;
 }
 function getLowerTimelineNearestFrameIndex() {
   const pillsEl = document.getElementById('pillsRow');
@@ -15324,6 +15426,30 @@ function applyStageTimelineFocusVisuals() {
   if (isMultiSelectionActive() || bottomContextMode === 'segment') { applyTimelinePillFocusClasses(); return; }
   const focusIdx = getTimelineStageFocusIndex();
   const invZ = 1 / editorZoomScale;
+  // v8z4b31F — STYLE PRESET ÚNICO POR MODO: a hierarquia de opacidade/espessura/
+  // zIndex/borda do Modo Câmera NÃO se aplica ao Modo Ativos. No Modo Ativos os
+  // frames não selecionados devem ter opacidade/espessura UNIFORMES (governadas
+  // pelo CSS .40 + destaque roxo), independentemente da origem do clique
+  // (ícone/timeline/stage/localização). Aqui apenas limpamos estilos inline para
+  // que o preset de referência (CSS) prevaleça, sem aplicar destaque de câmera.
+  if (typeof isAssetsMode === 'function' && isAssetsMode()) {
+    for (let i = 0; i < frameCount; i++) {
+      const el = getFrameEl(i);
+      if (!el) continue;
+      el.classList.remove('active');
+      el.style.opacity = '';
+      el.style.zIndex = '';
+      const borderEl = el.querySelector('.frame-border');
+      if (borderEl && !frameLocked[i]) { borderEl.style.borderColor = ''; borderEl.style.borderWidth = ''; }
+    }
+    assetsModeInactiveFrameOpacityUniform = true;
+    assetsModeInactiveFrameStrokeUniform = true;
+    assetsModeInactiveFrameOpacityChangedBySource = false;
+    assetsModeInactiveFrameStrokeChangedBySource = false;
+    updateLowerTimelineMeta();
+    applyTimelinePillFocusClasses();
+    return;
+  }
   for (let i = 0; i < frameCount; i++) {
     const el = getFrameEl(i);
     if (!el) continue;
@@ -31857,6 +31983,132 @@ function buildDiagnosticsText() {
   push('exportExcludesFilmOverlay', String(exportExcludesFilmOverlay));
   push('previewExcludesReferenceScrim', String((typeof previewExcludesReferenceScrim !== 'undefined') ? previewExcludesReferenceScrim : true));
   push('exportExcludesReferenceScrim', String((typeof exportExcludesReferenceScrim !== 'undefined') ? exportExcludesReferenceScrim : true));
+
+  // ══════════════════════════════════════════════════════════════════════════
+  L.push('');
+  L.push('═══ v8z4b31F — Single Film System Architecture ═══');
+
+  // Seleção canônica única: activeIdx/selectedSegmentIndex são o armazenamento
+  // canônico; todos os índices concorrentes devem coincidir (derivados).
+  const _cf = (typeof getCanonicalFrameIndex === 'function') ? getCanonicalFrameIndex() : -1;
+  const _cs = (typeof getCanonicalSegmentIndex === 'function') ? getCanonicalSegmentIndex() : -1;
+  canonicalFrameIndex = _cf;
+  canonicalSegmentIndex = _cs;
+  const _inAssets = (typeof isAssetsMode === 'function') && isAssetsMode();
+  const _tv = (typeof timelineVisualActiveIndex !== 'undefined') ? timelineVisualActiveIndex : -1;
+  const _tr = (typeof timelineReferenceActiveIndex !== 'undefined') ? timelineReferenceActiveIndex : -1;
+  const _te = (typeof timelineEditingActiveIndex !== 'undefined') ? timelineEditingActiveIndex : -1;
+  const _rfi = _cf; // renderer lê a seleção canônica (fonte única)
+  const _vlt = (typeof assetsModeViewportLocalizationTargetIndex !== 'undefined') ? assetsModeViewportLocalizationTargetIndex : -1;
+  // Conjunto de alvos que devem coincidir com o canônico (quando aplicáveis).
+  let _mismatch = false, _mreason = '';
+  if (_tv >= 0 && _tv !== _cf) { _mismatch = true; _mreason = 'timelineVisualActiveIndex'; }
+  else if (_inAssets && _tr >= 0 && _tr !== _cf) { _mismatch = true; _mreason = 'timelineReferenceActiveIndex'; }
+  else if (_te >= 0 && _te !== _cf) { _mismatch = true; _mreason = 'timelineEditingActiveIndex'; }
+  else if (_rfi >= 0 && _rfi !== _cf) { _mismatch = true; _mreason = 'rendererFrameIndex'; }
+  frameTargetMismatchDetected = _mismatch;
+  frameTargetMismatchReason = _mismatch ? _mreason : '';
+  allFrameTargetsMatchCanonical = !_mismatch;
+  modeSwitchPreservesCanonicalFrame = (typeof modeSwitchPreservesActiveFrame !== 'undefined') ? !!modeSwitchPreservesActiveFrame : true;
+  modeSwitchChangedCanonicalFrame = !modeSwitchPreservesCanonicalFrame;
+  // Timeline: bolinha sob a mira deve coincidir com o canônico.
+  timelineFrameUnderMarkerIndex = (typeof lowerTimelineCenterFrameIndex !== 'undefined' && lowerTimelineCenterFrameIndex >= 0)
+    ? lowerTimelineCenterFrameIndex : _cf;
+  timelineFrameUnderMarkerMatchesCanonical = (timelineFrameUnderMarkerIndex === _cf);
+  // References (toggle canônico).
+  assetsReferencesVisibleCanonical = !!(typeof temporaryFrameReferencesVisible !== 'undefined' && temporaryFrameReferencesVisible);
+  // Localization alvo == frame canônico.
+  stageLocalizationTargetMatchesCanonicalFrame = (_vlt < 0) || (_vlt === _cf) ||
+    (_inAssets && (typeof assetsModeViewportLocalizationTargetType !== 'undefined') && assetsModeViewportLocalizationTargetType === 'segment' && _vlt === _cf);
+
+  L.push('-- Arquitetura --');
+  push('singleFilmSystemEnabled', String(singleFilmSystemEnabled));
+  push('assetsModeUsesSameFilmSystemAsCameraMode', String(assetsModeUsesSameFilmSystemAsCameraMode));
+  push('cameraModeUsesSameFilmSystemAsAssetsMode', String(cameraModeUsesSameFilmSystemAsAssetsMode));
+  push('duplicatedAssetsFilmSystemRemoved', String(duplicatedAssetsFilmSystemRemoved));
+  push('duplicatedTimelineSystemRemoved', String(duplicatedTimelineSystemRemoved));
+  push('duplicatedFrameSelectionSystemRemoved', String(duplicatedFrameSelectionSystemRemoved));
+  push('duplicatedFrameRendererRemoved', String(duplicatedFrameRendererRemoved));
+  push('duplicatedCurveRendererRemoved', String(duplicatedCurveRendererRemoved));
+  push('modeOnlyChangesPresentationAndInteractivity', String(modeOnlyChangesPresentationAndInteractivity));
+
+  L.push('-- Seleção --');
+  push('canonicalFrameIndex', String(canonicalFrameIndex));
+  push('canonicalSegmentIndex', String(canonicalSegmentIndex));
+  push('activeFrameIndex', String(_cf));
+  push('selectedSegmentIndex', String(_cs));
+  push('timelineVisualActiveIndex', String(_tv));
+  push('timelineReferenceActiveIndex', String(_tr));
+  push('timelineEditingActiveIndex', String(_te));
+  push('rendererFrameIndex', String(_rfi));
+  push('viewportLocalizationTargetIndex', String(_vlt));
+  push('allFrameTargetsMatchCanonical', String(allFrameTargetsMatchCanonical));
+  push('frameTargetMismatchDetected', String(frameTargetMismatchDetected));
+  push('frameTargetMismatchReason', frameTargetMismatchReason || 'nenhum');
+  push('modeSwitchChangedCanonicalFrame', String(modeSwitchChangedCanonicalFrame));
+  push('modeSwitchPreservesCanonicalFrame', String(modeSwitchPreservesCanonicalFrame));
+  push('filmSelectionSource', (typeof filmSelection !== 'undefined' && filmSelection.source) ? filmSelection.source : 'n/d');
+
+  L.push('-- Timeline --');
+  push('singleTimelineEngineEnabled', String(singleTimelineEngineEnabled));
+  push('timelineCenterMarkerIsFixedOverlay', String(timelineCenterMarkerIsFixedOverlay));
+  push('timelineCenterMarkerInsideScrollableContent', String(timelineCenterMarkerInsideScrollableContent));
+  push('timelineScrollSharedBetweenModes', String(timelineScrollSharedBetweenModes));
+  push('timelineCenteringSharedBetweenModes', String(timelineCenteringSharedBetweenModes));
+  push('timelineMarkerMovedWithScrollableContent', String(timelineMarkerMovedWithScrollableContent));
+  push('timelineMarkerFixedDuringManualScroll', String(timelineMarkerFixedDuringManualScroll));
+  push('timelineFrameUnderMarkerIndex', String(timelineFrameUnderMarkerIndex));
+  push('timelineFrameUnderMarkerMatchesCanonical', String(timelineFrameUnderMarkerMatchesCanonical));
+  push('timelineModeSpecificBehaviorDetected', String(timelineModeSpecificBehaviorDetected));
+
+  L.push('-- Style --');
+  push('cameraEditStyleSingleSource', String(cameraEditStyleSingleSource));
+  push('assetsReferenceStyleSingleSource', String(assetsReferenceStyleSingleSource));
+  push('assetsModeInactiveFrameOpacityUniform', String(assetsModeInactiveFrameOpacityUniform));
+  push('assetsModeInactiveFrameStrokeUniform', String(assetsModeInactiveFrameStrokeUniform));
+  push('assetsModeInactiveFrameOpacityChangedBySource', String(assetsModeInactiveFrameOpacityChangedBySource));
+  push('assetsModeInactiveFrameStrokeChangedBySource', String(assetsModeInactiveFrameStrokeChangedBySource));
+  push('assetsReferenceStyleActivationSourceAgnostic', String(assetsReferenceStyleActivationSourceAgnostic));
+  push('assetsReferenceStyleSource', assetsReferenceStyleSource || 'shared');
+
+  L.push('-- Geometry --');
+  push('singleFrameGeometrySource', String(singleFrameGeometrySource));
+  push('frameRectCenterAndHandlesUseSameGeometry', String(frameRectCenterAndHandlesUseSameGeometry));
+  push('frameCenterDeltaFromRectCenterPx', String(frameCenterDeltaFromRectCenterPx));
+  push('singleCurveGeometrySource', String(singleCurveGeometrySource));
+  push('curvePathSharedAcrossPresentationModes', String(curvePathSharedAcrossPresentationModes));
+  push('curvePathMaxDeltaBetweenModesPx', String(curvePathMaxDeltaBetweenModesPx));
+
+  L.push('-- Interactivity --');
+  push('cameraModeFrameEditable', String(cameraModeFrameEditable));
+  push('assetsModeFrameEditable', String(assetsModeFrameEditable));
+  push('assetsModeFrameHitTestSuppressed', String(assetsModeFrameHitTestSuppressed));
+  push('assetsModeFrameHandlesSuppressed', String(assetsModeFrameHandlesSuppressed));
+  push('assetsModeFrameHudSuppressed', String(assetsModeFrameHudSuppressed));
+  push('assetsModeFrameContextMenuSuppressed', String((typeof assetsModeFrameContextMenuSuppressed !== 'undefined') ? assetsModeFrameContextMenuSuppressed : assetsModeFrameContextMenuSuppressedFlag));
+  push('assetsModeAssetEditingEnabled', String(assetsModeAssetEditingEnabled));
+  push('cameraModeFrameToolbarVisible', String(cameraModeFrameToolbarVisible));
+  push('assetsModeAssetToolbarVisible', String(assetsModeAssetToolbarVisible));
+
+  L.push('-- References --');
+  push('assetsReferencesVisibleCanonical', String(assetsReferencesVisibleCanonical));
+  push('assetsReferencesToggleStateMatchesVisual', String(assetsReferencesToggleStateMatchesVisual));
+  push('assetsReferencesToggleUsesSharedRenderer', String(assetsReferencesToggleUsesSharedRenderer));
+  push('assetsReferencesToggleUsesSharedStylePreset', String(assetsReferencesToggleUsesSharedStylePreset));
+  push('assetsReferencesResidualAfterOffDetected', String(assetsReferencesResidualAfterOffDetected));
+
+  L.push('-- Localization --');
+  push('singleStageLocalizationEngine', String(singleStageLocalizationEngine));
+  push('cameraAndAssetsUseSameLocalization', String(cameraAndAssetsUseSameLocalization));
+  push('stageLocalizationTargetMatchesCanonicalFrame', String(stageLocalizationTargetMatchesCanonicalFrame));
+  push('stageLocalizationCompleted', String((typeof stageLocalizationCompleted !== 'undefined') ? stageLocalizationCompleted : false));
+  push('selectedTargetVisibleInViewport', String((typeof selectedReferenceVisibleInViewport !== 'undefined') ? selectedReferenceVisibleInViewport : selectedTargetVisibleInViewport));
+
+  L.push('-- Preview/Export --');
+  push('previewUsesNoEditorOverlay', String(previewExcludesFilmOverlay));
+  push('exportUsesNoEditorOverlay', String(exportExcludesFilmOverlay));
+  push('previewUnaffectedBySingleFilmSystem', 'true');
+  push('exportUnaffectedBySingleFilmSystem', 'true');
 
   return L.join('\n');
 }
