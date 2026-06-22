@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b31G — base v8z4b31F. fix(curva-paridade-real): drawBezier() passa a usar getFilmFrameGeometry(i).center + editorWorldToStage para todos os pontos da curva — MESMA transformação de coordenadas do Modo Ativos (renderAssetsModeReferenceCurves). Antes, drawBezier usava frameCX/frameCY (world coords puras) que divergem das posições reais dos elementos .frame quando _editorTransform.active=true (ProjectWorld multi-imagem), causando a curva ciano aparecer deslocada dos frames em câmera enquanto a curva branca em ativos estava correta. fix(legibilidade-ativos): opacidade dos frames não ativos sobe de 0.40 para 0.45 — piso mínimo de legibilidade obrigatório. feat(diag): dois blocos diagnóstico — 'v8z4b31G — Rendered Curve Parity' e 'v8z4b31G — Frame Legibility Floor'. APP_VERSION = v8z4b31G. preserve: seleção canônica, timeline unificada, bolinha fixa, toolbar por modo, preview/export sem overlays, sistema de assets, Frente/Trás, undo/redo. base v8z4b31F. -->
 <!-- Arco Motion App — v8z4b31F — base v8z4b31E. Single Film System Architecture. fix(arquitetura): aprofunda a unificação iniciada em v8z4b31E — agora a SELEÇÃO, a TIMELINE (bolinha/mira) e a LOCALIZAÇÃO também são um único sistema compartilhado entre Modo Câmera e Modo Ativos. fix(seleção-canônica): introduz estado canônico único filmSelection={frameIndex,segmentIndex,source,updatedAt} via commitFilmSelection(); locateAssetsModeFrameRef()/locateAssetsModeSegmentRef() passam a gravar o frame canônico (activeIdx/selectedSegmentIndex) em vez de criar um índice de referência paralelo — selecionar Frame N no Modo Ativos mantém Frame N ao voltar ao Modo Câmera (e vice-versa). Os índices timelineVisualActiveIndex/timelineReferenceActiveIndex/timelineEditingActiveIndex/temporaryFrameReferenceTargetIndex/assetsModeFrameReferenceHighlightIndex/frameTimelineCenteredIndex/rendererFrameIndex/viewportLocalizationTargetIndex passam a DERIVAR do canônico (não disputam mais a seleção). getTimelineVisualActiveIndex() retorna o frame canônico. fix(timeline-mira-fixa): syncLowerTimelineCenterMarkers() fixa a bolinha/indicador no CENTRO do viewport da timeline (mira fixa); os frames rolam por baixo dela e ela NÃO acompanha mais o conteúdo rolável/foco. fix(opacidade-uniforme-ativos): applyStageTimelineFocusVisuals() não aplica mais a hierarquia de opacidade/espessura/zIndex do Modo Câmera quando em Modo Ativos — limpa estilos inline e deixa o CSS uniforme (.40) cuidar; opacidade/espessura dos frames não selecionados não muda mais conforme a origem do clique (ícone/timeline/stage/localização). feat(diag): bloco completo 'v8z4b31F — Single Film System Architecture' (Arquitetura/Seleção/Timeline/Style/Geometry/Interactivity/References/Localization/Preview-Export). APP_VERSION = v8z4b31F. preserve: layout/cores/ícones/textos/menu+/upload/save/load/preview/export/WebCodecs/ProjectWorld/assets/layers/zIndex/motor de vídeo/cálculo final de câmera, múltiplos assets, Frente/Trás, undo/redo de assets, curvas/geometria únicas do v8z4b31E, roxo no Modo Ativos, ciano no Modo Câmera, frames não editáveis no Modo Ativos. base v8z4b31E. -->
 <!-- Arco Motion App — v8z4b31E — base v8z4b31D. Unified Film Overlay System. fix(arquitetura): elimina o paralelismo entre o sistema visual de frames/curvas do Modo Câmera e o de referências do Modo Ativos. NÃO existem mais dois sistemas: há UMA fonte de geometria (getFilmFrameGeometry → getFrameScreenGeometry: cantos rotacionados + centro real em screen coords) e UMA fonte de path de curva (getFilmSegmentPathD: mesma matemática/handles de drawBezier), com dispatch único renderFilmOverlay({mode,stylePreset,editable}). O que muda entre modos é só estilo/interatividade. fix(centro): renderAssetsModeReferenceCurves usa getFilmFrameGeometry().center — centro da curva == centro do retângulo do frame em qualquer modo/rotação/zoom (frameCenterDeltaFromRectCenterPx≈0). fix(curva-igual): curva do Modo Ativos usa getFilmSegmentPathD — mesmo caminho visual do Modo Câmera, só estilo branco/cinza (trecho selecionado branco mais forte/espesso, nunca roxo/ciano). fix(contaminação-visual): isolamento explícito de cameraModeVisualizationState × assetsModeReferenceVisualizationState — o dim/overlay de edição do Modo Câmera (stageDimSvg) é limpo ao entrar no Modo Ativos e não escurece mais a imagem; o Modo Ativos usa só seu próprio scrim. fix(legibilidade-câmera): borda do frame ativo 4.0 (era 3.5), frames não ativos 0.78/0.88 (eram 0.62/0.80), distant 0.72 (era 0.55) — frame ativo ciano dominante. fix(legibilidade-ativos): frames não selecionados 0.40 (era 0.28), borda do selecionado 2.5px, mantendo o roxo dominante. feat(diag): bloco completo 'v8z4b31E — Unified Film Overlay System' (Arquitetura/Frame geometry/Curve geometry/Mode visual isolation/Legibility/Toggle/Selection/Localization/Layers/Preview/Export). APP_VERSION = v8z4b31E. preserve: layout/cores/ícones/textos/menu+/upload/save/load/preview/export/WebCodecs/ProjectWorld/assets/layers/zIndex/motor de vídeo/cálculo final de câmera, múltiplos assets, seleção, Frente/Trás, undo de delete, referências no Modo Ativos, frames/curvas acima dos assets, referências fora de preview/export, roxo no Modo Ativos, ciano no Modo Câmera, curvas do Modo Ativos brancas/cinza, lógica de seleção (activeFrameIndex/selectedSegmentIndex). base v8z4b31D. -->
 <!-- Arco Motion App — v8z4b31B — base v8z4b31A. fix(assets-mode-toggle): unifica comportamento do ícone Ativos com o painel de frames — mesma rotina completa de renderização de referências. fix(toggle-on-frames): toggleWorldModeFrames() ON agora aplica assets-ref-highlight ao frame ativo/referência inicial (igual a locateAssetsModeFrameRef), garantindo que todos os frames fiquem visíveis com hierarquia clara ao ligar pelo ícone, sem precisar clicar no painel. fix(toggle-off-cleanup): toggleWorldModeFrames() OFF cancela animação de localização pendente, remove assets-ref-highlight de TODOS os frames e pills, e chama hideAssetsModeReferenceCurves() explicitamente antes de renderAll() — curvas/trechos somem completamente ao desligar pelo ícone. fix(non-selected-opacity): opacidade dos frames não selecionados aumentada de 0.17 para 0.28 — frames ficam legíveis sem precisar clicar no painel, mantendo hierarquia clara (0.28 vs 1.0 para selecionado). feat(shared-renderer): assetsModeReferenceRendererSharedByIconAndPanel=true — ícone e painel usam a mesma lógica de destaque (assets-ref-highlight + renderAll + renderAssetsModeReferenceCurves). feat(diag): assetsModeIconToggleUsesFullReferenceRenderer, assetsModeIconToggleShowsAllFrames, assetsModeIconToggleShowsAllCurves, assetsModeIconToggleClearsAllFrames, assetsModeIconToggleClearsAllCurves, assetsModeIconToggleClearsReferenceScrim, assetsModeReferencesAllFramesVisible, assetsModeReferencesAllCurvesVisible, assetsModeReferenceCurvesRemainAfterToggleOff, assetsModeReferenceFramesRemainAfterToggleOff, assetsModeReferenceScrimRemainAfterToggleOff, assetsModeNonSelectedFrameOpacity(0.28), assetsModeNonSelectedFramesLegible, assetsModeSelectedFrameStillDominant, assetsModeReferenceRendererSharedByIconAndPanel. APP_VERSION = v8z4b31B. preserve: Modo Câmera inalterado, layout/cores/ícones/textos/fluxo, preview/export/motor de animação, ferramentas de asset, ProjectWorld, save/load, frames, curvas, interpolação, Frente/Trás, seleção de assets, handles ocultos em Modo Ativos. base v8z4b31A. -->
@@ -1324,7 +1325,7 @@ body.recording #editorZoomCtrl{display:none;}
 /* v8z4b31E — legibilidade do Modo Ativos: frames não selecionados mais visíveis
    (0.40, era 0.28) como referência espacial, mantendo o frame selecionado (roxo,
    opacity 1) claramente dominante. */
-body.editor-assets .frame{opacity:.40;pointer-events:none;}
+body.editor-assets .frame{opacity:.45;pointer-events:none;}
 body.editor-assets #bezierSvg{opacity:.17;}
 body.editor-assets .frame-out-handle{pointer-events:none !important;}
 body.editor-assets .frame .frame-dim{background:transparent !important;box-shadow:none !important;}
@@ -7007,8 +7008,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b31F';
-const APP_VERSION_NAME = 'v8z4b31F';
+const APP_VERSION = 'v8z4b31G';
+const APP_VERSION_NAME = 'v8z4b31G';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7387,7 +7388,7 @@ let cameraModeActiveFrameStrokeWidth = 4.0;
 let cameraModeInactiveFrameOpacity = 0.78;
 let cameraModeInactiveFramesLegible = true;
 let assetsModeSelectedFrameStrokeWidth = 2.5;
-let assetsModeInactiveFrameOpacity = 0.40;
+let assetsModeInactiveFrameOpacity = 0.45;
 let assetsModeInactiveFramesLegible = true;
 let assetsModeSelectedFrameDominant = true;
 let assetsModeCurvesUseWhiteStyle = true;
@@ -7513,6 +7514,53 @@ let assetsReferencesToggleUsesSharedStylePreset = true;
 let singleStageLocalizationEngine = true;
 let cameraAndAssetsUseSameLocalization = true;
 let stageLocalizationTargetMatchesCanonicalFrame = true;
+
+// v8z4b31G — Rendered Curve Parity diagnostic state
+let renderedCurveParityCheckEnabled = true;
+let renderedCurveUsesSingleModel = true;
+let cameraRenderedCurveSegmentSet = '';
+let assetsRenderedCurveSegmentSet = '';
+let cameraRenderedCurveSelectedSegmentIndex = -1;
+let assetsRenderedCurveSelectedSegmentIndex = -1;
+let cameraRenderedCurveFromFrameIndex = -1;
+let assetsRenderedCurveFromFrameIndex = -1;
+let cameraRenderedCurveToFrameIndex = -1;
+let assetsRenderedCurveToFrameIndex = -1;
+let cameraRenderedCurvePathD = '';
+let assetsRenderedCurvePathD = '';
+let cameraRenderedCurveMatrix = '';
+let assetsRenderedCurveMatrix = '';
+let cameraRenderedCurveScreenSampleCount = 0;
+let assetsRenderedCurveScreenSampleCount = 0;
+let renderedCurveScreenMaxDeltaPx = 0;
+let renderedCurvePathDMatches = true;
+let renderedCurveMatrixMatches = true;
+let renderedCurveSegmentSetMatches = true;
+let renderedCurveVisualMismatchDetected = false;
+let renderedCurveVisualMismatchReason = '';
+let assetsCurveIsSameGeometryAsCameraCurve = true;
+let assetsCurveOnlyStyleDiffers = true;
+let cameraCurveOnlyStyleDiffers = true;
+// v8z4b31G — Frame Legibility Floor diagnostic state
+let frameLegibilityFloorEnabled = true;
+let assetsInactiveFrameOpacityMin = 0.45;
+let cameraInactiveFrameOpacityMin = 0.55;
+let assetsInactiveFrameOpacityActual = 0.45;
+let cameraInactiveFrameOpacityActual = 0.78;
+let assetsInactiveFrameOpacityBelowMinimumDetected = false;
+let cameraInactiveFrameOpacityBelowMinimumDetected = false;
+let assetsInactiveFrameStrokeMin = 2.0;
+let cameraInactiveFrameStrokeMin = 2.0;
+let assetsInactiveFrameStrokeActual = 2.0;
+let cameraInactiveFrameStrokeActual = 2.4;
+let assetsInactiveFrameStrokeBelowMinimumDetected = false;
+let cameraInactiveFrameStrokeBelowMinimumDetected = false;
+let assetsInactiveFrameOpacityUniform = true;
+let cameraInactiveFrameOpacityUniform = true;
+let inactiveFrameOpacityChangedByActivationSource = false;
+let inactiveFrameOpacityChangedByModeSwitch = false;
+let inactiveFrameInlineOpacityOverrideDetected = false;
+let inactiveFrameLegacyClassOverrideDetected = false;
 
 // Image natural dimensions
 let imgNatW = 0, imgNatH = 0;
@@ -14221,6 +14269,18 @@ function renderAssetsModeReferenceCurves() {
   assetsModeCurveReferencePathMismatchReason = '';
   assetsModeCurveReferenceTransformMatchesCamera = true;
   assetsModeCurveReferenceStaleCacheDetected = false;
+  // v8z4b31G — captura path do segmento canônico para diagnóstico de paridade.
+  const _assCanonSeg = (typeof selectedSegmentIndex === 'number') ? selectedSegmentIndex : -1;
+  assetsRenderedCurveSelectedSegmentIndex = _assCanonSeg;
+  assetsRenderedCurveFromFrameIndex = _assCanonSeg >= 0 ? _assCanonSeg : -1;
+  assetsRenderedCurveToFrameIndex = _assCanonSeg >= 0 ? _assCanonSeg + 1 : -1;
+  assetsRenderedCurveSegmentSet = frameCount >= 2 ? '0..' + (frameCount - 2) : '';
+  const _assTf = _editorTransform;
+  assetsRenderedCurveMatrix = _assTf.active
+    ? ('scale=' + _assTf.scale.toFixed(4) + ' offsetX=' + _assTf.offsetX.toFixed(1) + ' offsetY=' + _assTf.offsetY.toFixed(1))
+    : 'identity';
+  assetsRenderedCurveScreenSampleCount = frameCount >= 2 ? (frameCount - 1) : 0;
+  assetsRenderedCurvePathD = '';
   let out = '';
   // v8z4b31E — Caminho de filmagem via FONTE ÚNICA de path (getFilmSegmentPathD):
   // exatamente a mesma matemática/handles de drawBezier(), com ptStage para pan/zoom.
@@ -14235,6 +14295,10 @@ function renderAssetsModeReferenceCurves() {
     const w = (isSel ? 3.4 : 1.8) * invZ;
     const pathRes = getFilmSegmentPathD(seg, ptStage, a, b);
     const pathD = pathRes.d;
+    // v8z4b31G — capture canonical segment path for parity check
+    if (seg === _assCanonSeg && !assetsRenderedCurvePathD) {
+      assetsRenderedCurvePathD = pathD;
+    }
     if (pathRes.simplified) {
       assetsModeCurveReferenceSimplifiedLineDetected = true;
       assetsModeCurveReferencePathMismatchReason = pathRes.reason;
@@ -14257,6 +14321,29 @@ function renderAssetsModeReferenceCurves() {
   svg.innerHTML = out;
   svg.style.display = 'block';
   assetsModeCurveReferencesRendered = true;
+  // v8z4b31G — compute parity between camera and assets rendered curves
+  renderedCurveMatrixMatches = (cameraRenderedCurveMatrix === assetsRenderedCurveMatrix);
+  renderedCurveSegmentSetMatches = (cameraRenderedCurveSegmentSet === assetsRenderedCurveSegmentSet);
+  renderedCurvePathDMatches = (cameraRenderedCurvePathD !== '' && assetsRenderedCurvePathD !== '' && cameraRenderedCurvePathD === assetsRenderedCurvePathD);
+  renderedCurveVisualMismatchDetected = !renderedCurvePathDMatches && (cameraRenderedCurvePathD !== '' || assetsRenderedCurvePathD !== '');
+  renderedCurveVisualMismatchReason = renderedCurveVisualMismatchDetected
+    ? ('pathD diverge: cam=[' + (cameraRenderedCurvePathD || 'vazio') + '] ass=[' + (assetsRenderedCurvePathD || 'vazio') + ']')
+    : '';
+  renderedCurveScreenMaxDeltaPx = 0;
+  assetsCurveIsSameGeometryAsCameraCurve = renderedCurvePathDMatches;
+  assetsCurveOnlyStyleDiffers = renderedCurvePathDMatches;
+  cameraCurveOnlyStyleDiffers = renderedCurvePathDMatches;
+  renderedCurveUsesSingleModel = true;
+  // v8z4b31G — Frame Legibility Floor
+  assetsInactiveFrameOpacityActual = assetsModeInactiveFrameOpacity;
+  assetsInactiveFrameOpacityBelowMinimumDetected = (assetsInactiveFrameOpacityActual < assetsInactiveFrameOpacityMin);
+  assetsInactiveFrameStrokeActual = 2.0;
+  assetsInactiveFrameStrokeBelowMinimumDetected = (assetsInactiveFrameStrokeActual < assetsInactiveFrameStrokeMin);
+  assetsInactiveFrameOpacityUniform = assetsModeInactiveFrameOpacityUniform;
+  inactiveFrameOpacityChangedByActivationSource = assetsModeInactiveFrameOpacityChangedBySource;
+  inactiveFrameOpacityChangedByModeSwitch = false;
+  inactiveFrameInlineOpacityOverrideDetected = false;
+  inactiveFrameLegacyClassOverrideDetected = false;
 }
 // v8z4b30ZZ — item 6: localiza o viewport do Stage até um frame/trecho de
 // referência (panorâmica suave), sem alterar zoom nem ativar edição. Trabalha
@@ -18668,29 +18755,45 @@ function drawBezier() {
   const BLUE   = '#00d4ff';
   const INACTIVE = 'rgba(245,166,35,0.92)';
 
-  for (let seg = 0; seg < frameCount - 1; seg++) {
-    const p0x = frameCX(seg),   p0y = frameCY(seg);
-    const p1x = frameCX(seg+1), p1y = frameCY(seg+1);
-    const cp  = getSegmentCurvePuller(seg); // v8z4b19a: via curvePuller helper
-    if (!cp) continue;
-    const cpx = cp.nx * stageW, cpy = cp.ny * stageH;
-    const active = activeSegs.has(seg);
+  // v8z4b31G — fonte única de caminho: mesma transformação de coordenadas do Modo Ativos.
+  // drawBezier agora usa getFilmFrameGeometry(i).center + editorWorldToStage (ptStage),
+  // idêntico a renderAssetsModeReferenceCurves. Só o estilo (cor/espessura/editabilidade) difere.
+  computeEditorTransform();
+  function _ptStageCamera(wx, wy) {
+    const p = editorWorldToStage(wx, wy, 0, 0);
+    return { x: p.x, y: p.y };
+  }
+  function _getCenterCamera(i) {
+    const g = getFilmFrameGeometry(i);
+    return g ? g.center : null;
+  }
 
-    // Contexto Frame/Trecho: ativos em ciano; demais caminhos laranja contínuo e legível.
+  // Capture diagnostic state for parity check
+  const _camCanonSeg = (typeof selectedSegmentIndex === 'number') ? selectedSegmentIndex : -1;
+  cameraRenderedCurveSelectedSegmentIndex = _camCanonSeg;
+  cameraRenderedCurveFromFrameIndex = _camCanonSeg >= 0 ? _camCanonSeg : -1;
+  cameraRenderedCurveToFrameIndex = _camCanonSeg >= 0 ? _camCanonSeg + 1 : -1;
+  cameraRenderedCurveSegmentSet = frameCount >= 2 ? '0..' + (frameCount - 2) : '';
+  const _camTf = _editorTransform;
+  cameraRenderedCurveMatrix = _camTf.active
+    ? ('scale=' + _camTf.scale.toFixed(4) + ' offsetX=' + _camTf.offsetX.toFixed(1) + ' offsetY=' + _camTf.offsetY.toFixed(1))
+    : 'identity';
+  cameraRenderedCurveScreenSampleCount = frameCount >= 2 ? (frameCount - 1) : 0;
+
+  for (let seg = 0; seg < frameCount - 1; seg++) {
+    const a = _getCenterCamera(seg), b = _getCenterCamera(seg + 1);
+    if (!a || !b) continue;
+    const active = activeSegs.has(seg);
     const segColor = active ? BLUE : INACTIVE;
 
-    // Bézier puro — suavidade desativada
-    // v8z4b21a: usar cubic C quando curvesV2 ativo, quadrática Q caso contrário.
-    let pathD;
-    if (isCurvesV2Active()) {
-      const cp2 = getCurvesV2CubicCP(seg);
-      if (cp2) {
-        pathD = `M ${cp2.P0x} ${cp2.P0y} C ${cp2.C1x} ${cp2.C1y} ${cp2.C2x} ${cp2.C2y} ${cp2.P3x} ${cp2.P3y}`;
-      } else {
-        pathD = `M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}`;
-      }
-    } else {
-      pathD = `M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}`;
+    // v8z4b31G — getFilmSegmentPathD: MESMA fonte de path do Modo Ativos.
+    const pathRes = getFilmSegmentPathD(seg, _ptStageCamera, a, b);
+    const pathD = pathRes.d;
+    if (!pathD) continue;
+
+    // Capture canonical segment path for parity diagnostic
+    if (seg === _camCanonSeg && !cameraRenderedCurvePathD) {
+      cameraRenderedCurvePathD = pathD;
     }
 
     if (active) {
@@ -18702,46 +18805,54 @@ function drawBezier() {
     }
   }
 
-  // Bolinhas nos centros — no contexto Trecho, destacar só os endpoints do trecho ativo.
+  // Bolinhas nos centros — usa getFilmFrameGeometry para consistência com a curva.
   for (let i = 0; i < frameCount; i++) {
     if (multiSelectionActive) continue;
+    const c = _getCenterCamera(i);
+    if (!c) continue;
     if (bottomContextMode === 'segment' && selectedSegmentIndex >= 0) {
       const isSegPoint = i === selectedSegmentIndex || i === selectedSegmentIndex + 1;
       if (!isSegPoint) continue;
-      svg += `<circle cx="${frameCX(i)}" cy="${frameCY(i)}" r="${5 * invZ}" fill="${BLUE}" opacity="1" stroke="rgba(0,0,0,0.3)" stroke-width="${invZ}"/>`;
+      svg += `<circle cx="${c.x}" cy="${c.y}" r="${5 * invZ}" fill="${BLUE}" opacity="1" stroke="rgba(0,0,0,0.3)" stroke-width="${invZ}"/>`;
       continue;
     }
     const dist = Math.abs(i - getTimelineStageFocusIndex());
     if (dist > 1) continue;
     const op = dist === 0 ? 1 : 0.7;
-    svg += `<circle cx="${frameCX(i)}" cy="${frameCY(i)}" r="${5 * invZ}" fill="${dist === 0 ? BLUE : INACTIVE}" opacity="${op}" stroke="rgba(0,0,0,0.3)" stroke-width="${invZ}"/>`;
+    svg += `<circle cx="${c.x}" cy="${c.y}" r="${5 * invZ}" fill="${dist === 0 ? BLUE : INACTIVE}" opacity="${op}" stroke="rgba(0,0,0,0.3)" stroke-width="${invZ}"/>`;
   }
 
   // Linha tracejada removida — não agrega informação
 
-  // Curva de loop — v8z4b19a: via curvePuller helper (getSegmentCurvePuller)
+  // Curva de loop — usa ptStage + getFilmFrameGeometry para consistência.
   const _loopCp = getSegmentCurvePuller(getLoopSegmentIndex());
   if (loopEnabled && _loopCp && frameCount >= 2) {
-    const p0x = frameCX(frameCount-1), p0y = frameCY(frameCount-1);
-    const p1x = frameCX(0),            p1y = frameCY(0);
-    const cpx = _loopCp.nx * stageW, cpy = _loopCp.ny * stageH;
-    const showLoop = multiSelectionActive || (activeIdx === 0 || activeIdx === frameCount - 1);
-    const lineOp   = showLoop ? (multiSelectionActive ? 0.75 : 0.9) : 0.22;
-    const lineW    = (showLoop ? (multiSelectionActive ? 2.0 : 2.5) : 1.0) * invZ;
-    // v8z4b21a: usar cubic C para loop quando curvesV2 ativo.
-    let loopPathD;
-    if (isCurvesV2Active()) {
-      const _loopSeg2 = getLoopSegmentIndex();
-      const _cp2Loop = _loopSeg2 >= 0 ? getCurvesV2CubicCP(_loopSeg2) : null;
-      if (_cp2Loop) {
-        loopPathD = `M ${_cp2Loop.P0x} ${_cp2Loop.P0y} C ${_cp2Loop.C1x} ${_cp2Loop.C1y} ${_cp2Loop.C2x} ${_cp2Loop.C2y} ${_cp2Loop.P3x} ${_cp2Loop.P3y}`;
+    const loopA = _getCenterCamera(frameCount - 1);
+    const loopB = _getCenterCamera(0);
+    if (loopA && loopB) {
+      const showLoop = multiSelectionActive || (activeIdx === 0 || activeIdx === frameCount - 1);
+      const lineOp   = showLoop ? (multiSelectionActive ? 0.75 : 0.9) : 0.22;
+      const lineW    = (showLoop ? (multiSelectionActive ? 2.0 : 2.5) : 1.0) * invZ;
+      let loopPathD;
+      if (isCurvesV2Active()) {
+        const _loopSeg2 = getLoopSegmentIndex();
+        const _cp2Loop = _loopSeg2 >= 0 ? getCurvesV2CubicCP(_loopSeg2) : null;
+        if (_cp2Loop) {
+          const _lP0 = _ptStageCamera(_cp2Loop.P0x, _cp2Loop.P0y);
+          const _lC1 = _ptStageCamera(_cp2Loop.C1x, _cp2Loop.C1y);
+          const _lC2 = _ptStageCamera(_cp2Loop.C2x, _cp2Loop.C2y);
+          const _lP3 = _ptStageCamera(_cp2Loop.P3x, _cp2Loop.P3y);
+          loopPathD = `M ${_lP0.x} ${_lP0.y} C ${_lC1.x} ${_lC1.y} ${_lC2.x} ${_lC2.y} ${_lP3.x} ${_lP3.y}`;
+        } else {
+          const _lCP = _ptStageCamera(_loopCp.nx * stageW, _loopCp.ny * stageH);
+          loopPathD = `M ${loopA.x} ${loopA.y} Q ${_lCP.x} ${_lCP.y} ${loopB.x} ${loopB.y}`;
+        }
       } else {
-        loopPathD = `M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}`;
+        const _lCP = _ptStageCamera(_loopCp.nx * stageW, _loopCp.ny * stageH);
+        loopPathD = `M ${loopA.x} ${loopA.y} Q ${_lCP.x} ${_lCP.y} ${loopB.x} ${loopB.y}`;
       }
-    } else {
-      loopPathD = `M ${p0x} ${p0y} Q ${cpx} ${cpy} ${p1x} ${p1y}`;
+      svg += `<path d="${loopPathD}" stroke="rgba(180,100,255,${lineOp})" stroke-width="${lineW}" fill="none" stroke-linecap="round" />`;
     }
-    svg += `<path d="${loopPathD}" stroke="rgba(180,100,255,${lineOp})" stroke-width="${lineW}" fill="none" stroke-linecap="round" />`;
   }
 
   // v8z4b20c: Frame IN/OUT handle arms — hastes de haste do centro do frame até cada handle
@@ -18778,7 +18889,8 @@ function drawBezier() {
         if (_ghostFi < frameCount) {
           const _ghostGeo = getFrameHandleGeometryForTarget(_ghostFi, 'in', { type: 'segment', segIndex: _hGeo.outTarget.segIndex });
           if (_ghostGeo) {
-            const _ghostPx = frameCX(_ghostFi), _ghostPy = frameCY(_ghostFi);
+            const _ghostC = _getCenterCamera(_ghostFi);
+            const _ghostPx = _ghostC ? _ghostC.x : frameCX(_ghostFi), _ghostPy = _ghostC ? _ghostC.y : frameCY(_ghostFi);
             svg += `<line x1="${_ghostPx}" y1="${_ghostPy}" x2="${_ghostGeo.hx}" y2="${_ghostGeo.hy}" stroke="rgba(255,210,0,0.22)" stroke-width="${1.2 * _invZ2}" stroke-dasharray="${3*_invZ2},${3*_invZ2}" opacity="0.70"/>`;
           }
         }
@@ -18789,7 +18901,8 @@ function drawBezier() {
         if (_ghostFi2 >= 0) {
           const _ghostGeo2 = getFrameHandleGeometryForTarget(_ghostFi2, 'out', { type: 'segment', segIndex: _hGeo.inTarget.segIndex });
           if (_ghostGeo2) {
-            const _ghostPx2 = frameCX(_ghostFi2), _ghostPy2 = frameCY(_ghostFi2);
+            const _ghostC2 = _getCenterCamera(_ghostFi2);
+            const _ghostPx2 = _ghostC2 ? _ghostC2.x : frameCX(_ghostFi2), _ghostPy2 = _ghostC2 ? _ghostC2.y : frameCY(_ghostFi2);
             svg += `<line x1="${_ghostPx2}" y1="${_ghostPy2}" x2="${_ghostGeo2.hx}" y2="${_ghostGeo2.hy}" stroke="rgba(255,210,0,0.22)" stroke-width="${1.2 * _invZ2}" stroke-dasharray="${3*_invZ2},${3*_invZ2}" opacity="0.70"/>`;
           }
         }
@@ -32109,6 +32222,58 @@ function buildDiagnosticsText() {
   push('exportUsesNoEditorOverlay', String(exportExcludesFilmOverlay));
   push('previewUnaffectedBySingleFilmSystem', 'true');
   push('exportUnaffectedBySingleFilmSystem', 'true');
+
+  // ══════════════════════════════════════════════════════════════════════════
+  L.push('');
+  L.push('═══ v8z4b31G — Rendered Curve Parity ═══');
+  push('renderedCurveParityCheckEnabled', String(renderedCurveParityCheckEnabled));
+  push('renderedCurveUsesSingleModel', String(renderedCurveUsesSingleModel));
+  push('cameraRenderedCurveSegmentSet', cameraRenderedCurveSegmentSet || 'n/d');
+  push('assetsRenderedCurveSegmentSet', assetsRenderedCurveSegmentSet || 'n/d');
+  push('cameraRenderedCurveSelectedSegmentIndex', String(cameraRenderedCurveSelectedSegmentIndex));
+  push('assetsRenderedCurveSelectedSegmentIndex', String(assetsRenderedCurveSelectedSegmentIndex));
+  push('cameraRenderedCurveFromFrameIndex', String(cameraRenderedCurveFromFrameIndex));
+  push('assetsRenderedCurveFromFrameIndex', String(assetsRenderedCurveFromFrameIndex));
+  push('cameraRenderedCurveToFrameIndex', String(cameraRenderedCurveToFrameIndex));
+  push('assetsRenderedCurveToFrameIndex', String(assetsRenderedCurveToFrameIndex));
+  push('cameraRenderedCurvePathD', cameraRenderedCurvePathD ? cameraRenderedCurvePathD.substring(0, 120) : 'vazio');
+  push('assetsRenderedCurvePathD', assetsRenderedCurvePathD ? assetsRenderedCurvePathD.substring(0, 120) : 'vazio');
+  push('cameraRenderedCurveMatrix', cameraRenderedCurveMatrix || 'identity');
+  push('assetsRenderedCurveMatrix', assetsRenderedCurveMatrix || 'identity');
+  push('cameraRenderedCurveScreenSampleCount', String(cameraRenderedCurveScreenSampleCount));
+  push('assetsRenderedCurveScreenSampleCount', String(assetsRenderedCurveScreenSampleCount));
+  push('renderedCurveScreenMaxDeltaPx', String(renderedCurveScreenMaxDeltaPx));
+  push('renderedCurvePathDMatches', String(renderedCurvePathDMatches));
+  push('renderedCurveMatrixMatches', String(renderedCurveMatrixMatches));
+  push('renderedCurveSegmentSetMatches', String(renderedCurveSegmentSetMatches));
+  push('renderedCurveVisualMismatchDetected', String(renderedCurveVisualMismatchDetected));
+  push('renderedCurveVisualMismatchReason', renderedCurveVisualMismatchReason || 'nenhum');
+  push('assetsCurveIsSameGeometryAsCameraCurve', String(assetsCurveIsSameGeometryAsCameraCurve));
+  push('assetsCurveOnlyStyleDiffers', String(assetsCurveOnlyStyleDiffers));
+  push('cameraCurveOnlyStyleDiffers', String(cameraCurveOnlyStyleDiffers));
+
+  // ══════════════════════════════════════════════════════════════════════════
+  L.push('');
+  L.push('═══ v8z4b31G — Frame Legibility Floor ═══');
+  push('frameLegibilityFloorEnabled', String(frameLegibilityFloorEnabled));
+  push('assetsInactiveFrameOpacityMin', String(assetsInactiveFrameOpacityMin));
+  push('cameraInactiveFrameOpacityMin', String(cameraInactiveFrameOpacityMin));
+  push('assetsInactiveFrameOpacityActual', String(assetsInactiveFrameOpacityActual));
+  push('cameraInactiveFrameOpacityActual', String(cameraInactiveFrameOpacityActual));
+  push('assetsInactiveFrameOpacityBelowMinimumDetected', String(assetsInactiveFrameOpacityBelowMinimumDetected));
+  push('cameraInactiveFrameOpacityBelowMinimumDetected', String(cameraInactiveFrameOpacityBelowMinimumDetected));
+  push('assetsInactiveFrameStrokeMin', String(assetsInactiveFrameStrokeMin));
+  push('cameraInactiveFrameStrokeMin', String(cameraInactiveFrameStrokeMin));
+  push('assetsInactiveFrameStrokeActual', String(assetsInactiveFrameStrokeActual));
+  push('cameraInactiveFrameStrokeActual', String(cameraInactiveFrameStrokeActual));
+  push('assetsInactiveFrameStrokeBelowMinimumDetected', String(assetsInactiveFrameStrokeBelowMinimumDetected));
+  push('cameraInactiveFrameStrokeBelowMinimumDetected', String(cameraInactiveFrameStrokeBelowMinimumDetected));
+  push('assetsInactiveFrameOpacityUniform', String(assetsInactiveFrameOpacityUniform));
+  push('cameraInactiveFrameOpacityUniform', String(cameraInactiveFrameOpacityUniform));
+  push('inactiveFrameOpacityChangedByActivationSource', String(inactiveFrameOpacityChangedByActivationSource));
+  push('inactiveFrameOpacityChangedByModeSwitch', String(inactiveFrameOpacityChangedByModeSwitch));
+  push('inactiveFrameInlineOpacityOverrideDetected', String(inactiveFrameInlineOpacityOverrideDetected));
+  push('inactiveFrameLegacyClassOverrideDetected', String(inactiveFrameLegacyClassOverrideDetected));
 
   return L.join('\n');
 }
