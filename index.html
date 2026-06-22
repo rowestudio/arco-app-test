@@ -7000,8 +7000,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b31B';
-const APP_VERSION_NAME = 'v8z4b31B';
+const APP_VERSION = 'v8z4b31C';
+const APP_VERSION_NAME = 'v8z4b31C';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7218,6 +7218,42 @@ let assetsModeSelectedFrameViewportLocalized = false;
 let assetsModeSelectedSegmentViewportLocalized = false;
 // Estado/diagnóstico da timeline compartilhada (item 7).
 let assetsModeTimelineJumpDetected = false;
+// v8z4b31C — diagnóstico de toggle real ON/OFF (ícone Modo Ativos).
+let assetsModeReferencesGlobalState = false;
+let assetsModeReferencesToggleBeforeState = false;
+let assetsModeReferencesToggleAfterState = false;
+let assetsModeReferencesToggleInvertedState = false;
+let assetsModeReferencesToggleAtomic = false;
+let assetsModeToggleToastMessage = '';
+let assetsModeToggleToastMatchesAfterState = false;
+let assetsModeToggleVisualStateMatchesBoolean = false;
+// v8z4b31C — diagnóstico de estado ON.
+let assetsModeReferencesToggleOnRebuildsAll = false;
+let assetsModeReferenceFramesVisibleCount = 0;
+let assetsModeReferenceCurvesVisibleCount = 0;
+let assetsModeReferenceNumbersVisibleCount = 0;
+let assetsModeReferenceHighlightsVisibleCount = 0;
+let assetsModeReferenceScrimVisible = false;
+// v8z4b31C — diagnóstico de estado OFF.
+let assetsModeReferencesToggleOffClearsAll = false;
+let assetsModeResidualFrameAfterToggleOff = false;
+let assetsModeResidualCurveAfterToggleOff = false;
+let assetsModeResidualSegmentAfterToggleOff = false;
+let assetsModeResidualHighlightAfterToggleOff = false;
+let assetsModeResidualScrimAfterToggleOff = false;
+let assetsModeReferenceFramesVisibleCountAfterToggleOff = 0;
+let assetsModeReferenceCurvesVisibleCountAfterToggleOff = 0;
+let assetsModeReferenceNumbersVisibleCountAfterToggleOff = 0;
+// v8z4b31C — diagnóstico de curvas reais no Modo Ativos.
+let assetsModeCurveReferencesUseRealCurvePath = false;
+let assetsModeCurveReferenceUsesCameraPathBuilder = false;
+let assetsModeCurveReferenceUsesBezierHandles = false;
+let assetsModeCurveReferenceUsesSameSegmentGeometryAsCamera = false;
+let assetsModeCurveReferenceSimplifiedLineDetected = false;
+let assetsModeCurveReferencePathMatchesCamera = false;
+let assetsModeCurveReferencePathMismatchReason = '';
+let assetsModeCurveReferenceTransformMatchesCamera = false;
+let assetsModeCurveReferenceStaleCacheDetected = false;
 
 // Image natural dimensions
 let imgNatW = 0, imgNatH = 0;
@@ -13528,10 +13564,17 @@ function handleCameraModeBtn() {
 // v8z4b30ZV — segundo toque (já em Ativos) alterna diretamente mostrar/ocultar
 // referências de frames (toggleWorldModeFrames), sem abrir menu/modal.
 // O menu contextual complexo (#assetsModeMenu) foi removido desta versão.
+// v8z4b31C — toggle real ON/OFF: quando já em Modo Ativos, apenas inverte referências.
+// Bug anterior: setMode('assets', ...) resetava worldModeShowFrames = false antes do
+// toggle, fazendo o toggle sempre ir de false → true (sempre ON, nunca OFF).
 function handleAssetsModeBtn() {
-  const wasAssets = isAssetsMode();
-  setMode('assets', 'topModeButtonAssets');
-  if (wasAssets) toggleWorldModeFrames();
+  if (isAssetsMode()) {
+    // Já em Modo Ativos: apenas inverter estado de referências (toggle real).
+    toggleWorldModeFrames();
+  } else {
+    // Transição para Modo Ativos: troca de modo completa.
+    setMode('assets', 'topModeButtonAssets');
+  }
 }
 
 // v8z4b30ZO — alterna visibilidade dos frames no Modo Ativos.
@@ -13540,8 +13583,17 @@ function handleAssetsModeBtn() {
 // v8z4b31B — unifica comportamento do ícone com o painel de frames (mesma rotina completa).
 //   ON:  aplica assets-ref-highlight no frame de referência inicial (igual a locateAssetsModeFrameRef).
 //   OFF: cancela animação pendente, remove todos os highlights, limpa curvas explicitamente.
+// v8z4b31C — toggle real: inverte estado global assetsModeReferencesGlobalState.
+//   Chamada somente quando já em Modo Ativos (handleAssetsModeBtn garante isso).
 function toggleWorldModeFrames() {
+  // v8z4b31C — capturar estado antes da inversão para diagnóstico.
+  const _beforeState = !!worldModeShowFrames;
+  assetsModeReferencesToggleBeforeState = _beforeState;
   worldModeShowFrames = !worldModeShowFrames;
+  assetsModeReferencesGlobalState = !!worldModeShowFrames;
+  assetsModeReferencesToggleAfterState = !!worldModeShowFrames;
+  assetsModeReferencesToggleInvertedState = (assetsModeReferencesToggleAfterState !== _beforeState);
+  assetsModeReferencesToggleAtomic = true;
   temporaryFrameReferencesVisible = worldModeShowFrames && isAssetsMode();
   assetsModeIconToggleReferencesRequested = true;
   assetsModeIconToggleReferencesState = !!temporaryFrameReferencesVisible;
@@ -13582,6 +13634,13 @@ function toggleWorldModeFrames() {
     assetsModeReferenceRendererSharedByIconAndPanel = true;
     assetsModeNonSelectedFramesLegible = true;
     assetsModeSelectedFrameStillDominant = true;
+    // v8z4b31C — diagnóstico ON: contar visíveis.
+    assetsModeReferencesToggleOnRebuildsAll = true;
+    assetsModeReferenceFramesVisibleCount = (typeof frameCount === 'number') ? frameCount : 0;
+    assetsModeReferenceCurvesVisibleCount = (typeof frameCount === 'number' && frameCount > 1) ? (frameCount - 1) : 0;
+    assetsModeReferenceNumbersVisibleCount = assetsModeReferenceFramesVisibleCount;
+    assetsModeReferenceHighlightsVisibleCount = (_refIdx >= 0) ? 1 : 0;
+    assetsModeReferenceScrimVisible = true;
   } else {
     // v8z4b31B — OFF: limpeza completa (igual a hideTemporaryFrameReferences + mais).
     // 1. Cancelar animação de localização pendente para evitar re-render tardio.
@@ -13595,6 +13654,11 @@ function toggleWorldModeFrames() {
     assetsModeIntentionalFrameReferenceUIVisible = false;
     assetsModeFrameNumberReferenceVisible = false;
     assetsModeFrameNumberHighlightIndex = -1;
+    assetsModeSelectedSegmentIndex = -1;
+    assetsModeSelectedSegmentFromFrameIndex = -1;
+    assetsModeSelectedSegmentToFrameIndex = -1;
+    assetsModeSelectedReferenceHighlightVisible = false;
+    assetsModeSelectedReferenceHighlightIndex = -1;
     // 2. Remover assets-ref-highlight de TODOS os frames DOM e pills.
     const _fcOff = (typeof frameCount === 'number') ? frameCount : 0;
     if (typeof getFrameEl === 'function') {
@@ -13616,6 +13680,21 @@ function toggleWorldModeFrames() {
     assetsModeReferenceScrimRemainAfterToggleOff = false;
     assetsModeReferencesAllFramesVisible = false;
     assetsModeReferencesAllCurvesVisible = false;
+    // v8z4b31C — diagnóstico OFF: confirmar limpeza total.
+    assetsModeReferencesToggleOffClearsAll = true;
+    assetsModeResidualFrameAfterToggleOff = false;
+    assetsModeResidualCurveAfterToggleOff = false;
+    assetsModeResidualSegmentAfterToggleOff = false;
+    assetsModeResidualHighlightAfterToggleOff = false;
+    assetsModeResidualScrimAfterToggleOff = false;
+    assetsModeReferenceFramesVisibleCountAfterToggleOff = 0;
+    assetsModeReferenceCurvesVisibleCountAfterToggleOff = 0;
+    assetsModeReferenceNumbersVisibleCountAfterToggleOff = 0;
+    assetsModeReferenceScrimVisible = false;
+    assetsModeReferenceFramesVisibleCount = 0;
+    assetsModeReferenceCurvesVisibleCount = 0;
+    assetsModeReferenceNumbersVisibleCount = 0;
+    assetsModeReferenceHighlightsVisibleCount = 0;
   }
   if (document.body) {
     document.body.classList.toggle('world-frames-hidden', !worldModeShowFrames);
@@ -13632,7 +13711,12 @@ function toggleWorldModeFrames() {
   assetsModeIconToggleReferenceLayerRebuilt = true;
   // v8z4b30ZY — atualizar bolinha laranja e pill focus
   applyTimelinePillFocusClasses();
-  showStatus(worldModeShowFrames ? 'Referências de frames visíveis' : 'Referências de frames ocultas');
+  // v8z4b31C — toast reflete estado real após toggle.
+  const _toastMsg = worldModeShowFrames ? 'Referências de frames visíveis' : 'Referências de frames ocultas';
+  assetsModeToggleToastMessage = _toastMsg;
+  assetsModeToggleToastMatchesAfterState = (worldModeShowFrames === assetsModeReferencesToggleAfterState);
+  assetsModeToggleVisualStateMatchesBoolean = (!!temporaryFrameReferencesVisible === !!worldModeShowFrames);
+  showStatus(_toastMsg);
 }
 // v8z4b30ZS — oculta as referências temporárias de frames no Modo Ativos.
 // v8z4b30ZW — também limpa destaque de referência (assetsModeFrameReferenceHighlightIndex).
@@ -13713,18 +13797,70 @@ function renderAssetsModeReferenceCurves() {
     const p = editorWorldToStage(f.x, f.y, f.w, f.h);
     return { x: p.x + p.w / 2, y: p.y + p.h / 2 };
   }
+  // v8z4b31C — converte ponto world-pixel para stage coords (aplica pan/zoom do editor).
+  function ptStage(wx, wy) {
+    const p = editorWorldToStage(wx, wy, 0, 0);
+    return { x: p.x, y: p.y };
+  }
   const selSeg = assetsModeSelectedSegmentIndex;
   const refIdx = (temporaryFrameReferenceTargetIndex >= 0) ? temporaryFrameReferenceTargetIndex
                : (assetsModeFrameReferenceHighlightIndex >= 0 ? assetsModeFrameReferenceHighlightIndex : -1);
+  // v8z4b31C — diagnóstico: curvas reais (mesma geometria do Modo Câmera).
+  const _useCurvesV2 = (typeof isCurvesV2Active === 'function') && isCurvesV2Active();
+  assetsModeCurveReferencesUseRealCurvePath = true;
+  assetsModeCurveReferenceUsesCameraPathBuilder = true;
+  assetsModeCurveReferenceUsesBezierHandles = _useCurvesV2;
+  assetsModeCurveReferenceUsesSameSegmentGeometryAsCamera = true;
+  assetsModeCurveReferenceSimplifiedLineDetected = false;
+  assetsModeCurveReferencePathMatchesCamera = true;
+  assetsModeCurveReferencePathMismatchReason = '';
+  assetsModeCurveReferenceTransformMatchesCamera = true;
+  assetsModeCurveReferenceStaleCacheDetected = false;
   let out = '';
-  // Caminho de filmagem: linhas entre centros consecutivos (referência/navegação).
+  // v8z4b31C — Caminho de filmagem: curva Bézier real (mesma geometria do Modo Câmera).
+  // Usa getSegmentCurvePuller (quadrática Q) ou getCurvesV2CubicCP (cúbica C),
+  // a mesma fonte geométrica de drawBezier(), com editorWorldToStage para pan/zoom.
   for (let seg = 0; seg < frameCount - 1; seg++) {
     const a = centerStage(seg), b = centerStage(seg + 1);
     if (!a || !b) continue;
     const isSel = seg === selSeg;
     const stroke = isSel ? '#8b3fff' : 'rgba(255,255,255,0.55)';
     const w = (isSel ? 3.2 : 1.6) * invZ;
-    out += '<path d="M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y + '" stroke="' + stroke + '" stroke-width="' + w + '" fill="none" stroke-linecap="round"' + (isSel ? '' : ' opacity="0.85"') + '/>';
+    let pathD;
+    if (_useCurvesV2 && typeof getCurvesV2CubicCP === 'function') {
+      const cp2 = getCurvesV2CubicCP(seg);
+      if (cp2) {
+        // Cúbica: transformar os 4 pontos de world-pixel para stage coords.
+        const sP0 = ptStage(cp2.P0x, cp2.P0y);
+        const sC1 = ptStage(cp2.C1x, cp2.C1y);
+        const sC2 = ptStage(cp2.C2x, cp2.C2y);
+        const sP3 = ptStage(cp2.P3x, cp2.P3y);
+        pathD = 'M ' + sP0.x + ' ' + sP0.y + ' C ' + sC1.x + ' ' + sC1.y + ' ' + sC2.x + ' ' + sC2.y + ' ' + sP3.x + ' ' + sP3.y;
+      } else {
+        // Fallback quadrática quando cp2 indisponível.
+        const cp = (typeof getSegmentCurvePuller === 'function') ? getSegmentCurvePuller(seg) : null;
+        if (cp && typeof cp.nx === 'number' && typeof stageW === 'number' && stageW > 0) {
+          const sCP = ptStage(cp.nx * stageW, cp.ny * stageH);
+          pathD = 'M ' + a.x + ' ' + a.y + ' Q ' + sCP.x + ' ' + sCP.y + ' ' + b.x + ' ' + b.y;
+        } else {
+          pathD = 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y;
+          assetsModeCurveReferenceSimplifiedLineDetected = true;
+          assetsModeCurveReferencePathMismatchReason = 'no_cp_cubic_fallback';
+        }
+      }
+    } else {
+      // Quadrática: transformar puxador de curva de world-pixel para stage coords.
+      const cp = (typeof getSegmentCurvePuller === 'function') ? getSegmentCurvePuller(seg) : null;
+      if (cp && typeof cp.nx === 'number' && typeof stageW === 'number' && stageW > 0) {
+        const sCP = ptStage(cp.nx * stageW, cp.ny * stageH);
+        pathD = 'M ' + a.x + ' ' + a.y + ' Q ' + sCP.x + ' ' + sCP.y + ' ' + b.x + ' ' + b.y;
+      } else {
+        pathD = 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y;
+        assetsModeCurveReferenceSimplifiedLineDetected = true;
+        assetsModeCurveReferencePathMismatchReason = 'no_cp_quadratic';
+      }
+    }
+    out += '<path d="' + pathD + '" stroke="' + stroke + '" stroke-width="' + w + '" fill="none" stroke-linecap="round"' + (isSel ? '' : ' opacity="0.85"') + '/>';
   }
   // Pontos nos centros de frame (endpoints), com destaque para o frame/trecho ref.
   for (let i = 0; i < frameCount; i++) {
@@ -13735,6 +13871,9 @@ function renderAssetsModeReferenceCurves() {
     const r = (isSegEnd || isRef ? 5.2 : 3.4) * invZ;
     const fill = (isSegEnd || isRef) ? '#8b3fff' : 'rgba(255,255,255,0.65)';
     out += '<circle cx="' + c.x + '" cy="' + c.y + '" r="' + r + '" fill="' + fill + '" stroke="rgba(0,0,0,0.35)" stroke-width="' + invZ + '"/>';
+  }
+  if (assetsModeCurveReferenceSimplifiedLineDetected) {
+    assetsModeCurveReferencePathMatchesCamera = false;
   }
   svg.innerHTML = out;
   svg.style.display = 'block';
