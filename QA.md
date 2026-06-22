@@ -1,3 +1,24 @@
+# QA pendente — v8z4b30ZZ: camada absoluta de câmera (frames/trechos/curvas) acima dos assets
+
+> Base: `v8z4b30ZY`. Correção arquitetural: **frames, contornos, números, trechos e curvas são camada ABSOLUTA de câmera/editor** e nunca entram na pilha de assets nem são afetados por `asset.zIndex`/Frente-Trás. Banda de z-index dedicada dentro de `#stageContent`; referências persistentes no Modo Ativos; ícone do Modo Ativos mostra referências de verdade; trechos/curvas de referência; scrim de contraste; localização do viewport; timeline suave compartilhada. NÃO altera motor de preview/export/save/load, ProjectWorld, frames, curvas, interpolação, layout, cores, textos, ícones ou fluxo aprovado. Sem painel novo de layers e sem movimentação avançada de ativos.
+
+## Escopo v8z4b30ZZ
+
+1. Menu mostra "Arco Motion App v8z4b30ZZ" (`APP_VERSION`=`APP_VERSION_NAME`=`v8z4b30ZZ`).
+2. **Item 1 — camadas.** Ir de Modo Ativos → Modo Câmera **sem clicar em nada**: frames/curvas/números aparecem **imediatamente acima** da imagem. Diagnóstico: `frameOverlayLayerAboveAssets: true`, `curveOverlayLayerAboveAssets: true`, `framesBehindAssetsDetected: false`, `frameOverlayRebuiltOnModeChange: true`, `frameOverlayRedrawnAfterModeChange: true`. Frente/Trás nunca muda a ordem dos frames (`assetReorderChangedFrameLayer: false`).
+3. **Item 2 — referências persistentes.** No Modo Ativos, ligar referências (ícone Ativos), tocar no Stage e tocar/mover/escalar/rotacionar assets: referências **continuam visíveis**. `assetsModeReferencesPersistent: true`, `assetsModeReferencesDismissedByStageTap: false`, `assetsModeReferencesDismissedByAssetTap: false`, `assetsModeReferencesStillVisibleAfterAssetSelection: true`.
+4. **Item 3 — ícone mostra de verdade.** Tocar no ícone Ativos (já em Ativos) mostra frames/números/curvas **imediatamente** no Stage, sem clicar no painel inferior. `assetsModeIconToggleReferencesVisibleOnStage: true`, `assetsModeIconToggleToastMatchesVisualState: true`.
+5. **Item 4 — trechos/curvas.** Selecionar um trecho (ease-pill) no painel: vê os **dois frames** e a **linha/curva** entre eles, trecho destacado, sem handles. `assetsModeFilmPathReferencesVisible: true`, `assetsModeCurveReferencesVisible: true`, `assetsModeSelectedSegmentIndex/From/To` corretos, `assetsModeCurveReferenceIsEditable: false`.
+6. **Item 5 — contraste.** Com referências ativas, frames/números/curvas legíveis sobre imagens claras/escuras (scrim leve). `assetsModeReferenceBackdropVisible: true`, `assetsModeReferenceBackdropAboveAssets: true`, `assetsModeReferenceBackdropBelowFrames: true`.
+7. **Item 6 — localizar no Stage.** Clicar no Frame 11 → o Stage **navega** (panorâmica suave) até o Frame 11; clicar no Trecho 11–12 → navega até a região do trecho. `assetsModeSelectedFrameViewportLocalized` / `assetsModeSelectedSegmentViewportLocalized`, `assetsModeViewportLocalizationAnimated: true`, `assetsModeViewportLocalizationCompleted: true`.
+8. **Item 7/8 — timeline.** No Modo Ativos a timeline usa a **mesma animação suave** do Modo Câmera (sem jump), bolinha no item correto, **um único** destaque. `assetsModeTimelineUsesCameraModeAnimation: true`, `assetsModeTimelineJumpDetected: false`, `timelineMultipleActiveHighlightsDetected: false`, `assetsModeOnlyOneFrameReferenceHighlighted: true`.
+9. **Item 9 — info do frame (Câmera).** No Modo Câmera, ao entrar/selecionar frame, o texto/HUD de informação aparece e acompanha o frame correto. `frameActiveInfoTextVisible: true`.
+10. **Item 10 — assets.** Selecionar qualquer asset mostra contorno roxo (`assetSelectionOutlineVisible: true`); excluir remove visualmente na hora; Undo restaura na hora; Redo remove na hora (`assetDeletedVisualUpdateRan`, `assetUndoVisualUpdateRan`, `stageRedrawnAfterAssetDelete/Undo: true`).
+11. **Item 12 — preview/export.** Ativar referências no Modo Ativos e rodar Play/Preview e exportar: referências/scrim/números **não** aparecem no preview final nem no MP4. `previewExcludesEditorFrameReferences: true`, `exportExcludesEditorFrameReferences: true`.
+12. **Sem regressão** em preview/export/save/load, motor de curvas/frames, e no Modo Câmera/Frames. Testar em iPhone/Safari real.
+
+---
+
 # QA pendente — v8z4b30ZR: troca real e centralizada de modo + barra superior em três duplas
 
 > Base: `v8z4b30ZQ`. Corrige a origem do problema de troca de modo: `setEditorMode(mode, source)` é a ÚNICA fonte de verdade e fica totalmente instrumentada; botões Câmera/Ativos passam obrigatoriamente por `setMode(...)`. Reorganiza a barra superior em três duplas fixas (grid `1fr auto 1fr`), restaura o zoom/world-view dinâmico do editor e expande o diagnóstico de modo. NÃO altera preview, export, save/load, ProjectWorld, frames, curvas, interpolação, render ou motor.
