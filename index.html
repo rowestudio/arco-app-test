@@ -7000,8 +7000,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b31C';
-const APP_VERSION_NAME = 'v8z4b31C';
+const APP_VERSION = 'v8z4b31D';
+const APP_VERSION_NAME = 'v8z4b31D';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7254,6 +7254,82 @@ let assetsModeCurveReferencePathMatchesCamera = false;
 let assetsModeCurveReferencePathMismatchReason = '';
 let assetsModeCurveReferenceTransformMatchesCamera = false;
 let assetsModeCurveReferenceStaleCacheDetected = false;
+
+// v8z4b31D — diagnóstico de geometria compartilhada entre modos.
+let filmGeometrySharedBetweenModes = true;
+let frameGeometrySharedBetweenModes = true;
+let curveGeometrySharedBetweenModes = true;
+let assetsModeUsesCameraCurvePath = true;
+let assetsModeUsesSameCurveMathAsCameraMode = true;
+let assetsModeCurvePathMatchesCameraMode = true;
+let assetsModeCurvePathMismatchDetected = false;
+let assetsModeCurvePathMismatchReason = '';
+// v8z4b31D — diagnóstico de estilo de curvas por modo.
+let cameraModeCurvePathVisible = false;
+let cameraModeCurvePathEditable = true;
+let cameraModeCurveUsesEditStyle = true;
+let assetsModeCurveReferencesVisible = false;
+let assetsModeCurveReferenceUsesWhiteStyle = true;
+let assetsModeCurveReferenceUsesAccentColor = false;
+let assetsModeCurveReferenceIsEditable = false;
+let assetsModeCurveReferenceHandlesVisible = false;
+let assetsModeSelectedSegmentUsesWhiteHighlight = true;
+let assetsModeSelectedSegmentUsesAccentColor = false;
+// v8z4b31D — diagnóstico do toggle de referências (binário ON/OFF).
+let assetsModeReferencesToggleState = false;
+let assetsModeReferencesToggleLastAction = 'none';
+let assetsModeReferencesToggleLastToast = '';
+let assetsModeReferencesToggleShowsAllFrames = false;
+let assetsModeReferencesToggleShowsAllCurves = false;
+let assetsModeReferencesToggleClearsAllFrames = false;
+let assetsModeReferencesToggleClearsAllCurves = false;
+let assetsModeReferencesToggleClearsScrim = false;
+let assetsModeReferencesRemainVisibleAfterToggleOff = false;
+let assetsModeCurvesRemainVisibleAfterToggleOff = false;
+let assetsModeScrimRemainVisibleAfterToggleOff = false;
+// v8z4b31D — diagnóstico de persistência de seleção entre modos.
+let modeSwitchPreservesActiveFrame = true;
+let modeSwitchPreservesReferenceFrame = true;
+let activeFrameIndexBeforeModeSwitch = -1;
+let activeFrameIndexAfterModeSwitch = -1;
+let referenceFrameIndexAfterModeSwitch = -1;
+let cameraModeRestoresEditableSelectionOnReturn = true;
+let assetsModeKeepsFrameAsReferenceOnly = true;
+// v8z4b31D — diagnóstico de localização/viewport por modo.
+let stageLocalizationSharedBetweenModes = true;
+let cameraModePanelClickLocalizesStage = true;
+let assetsModePanelClickLocalizesStage = true;
+let cameraModeSelectedFrameViewportLocalized = false;
+let assetsModeSelectedFrameViewportLocalizedD = false;
+let cameraModeSelectedSegmentViewportLocalized = false;
+let assetsModeSelectedSegmentViewportLocalizedD = false;
+let stageLocalizationAnimated = true;
+let stageLocalizationCompleted = false;
+let selectedReferenceVisibleInViewport = false;
+// v8z4b31D — diagnóstico de highlight/legibilidade por modo.
+let cameraModeActiveFrameUsesCyanHighlight = true;
+let cameraModeActiveFrameAlphaVisible = true;
+let cameraModeActiveFrameLegible = true;
+let assetsModeActiveFrameUsesPurpleHighlight = false;
+let assetsModeNonSelectedFrameOpacityD = 0.28;
+let assetsModeNonSelectedFramesLegibleD = true;
+let assetsModeSelectedFrameStillDominantD = true;
+// v8z4b31D — diagnóstico de camadas de frames/curvas.
+let frameOverlayLayerAboveAssets = true;
+let curveOverlayLayerAboveAssets = true;
+let frameOverlayIsOutsideAssetLayerStack = true;
+let curveOverlayIsOutsideAssetLayerStack = true;
+let frameOverlayAffectedByAssetZIndex = false;
+let curveOverlayAffectedByAssetZIndex = false;
+let assetReorderChangedFrameLayerD = false;
+let assetReorderChangedCurveLayerD = false;
+// v8z4b31D — diagnóstico de Preview/Export.
+let previewExcludesEditorFrameReferences = true;
+let previewExcludesReferenceScrim = true;
+let previewExcludesFrameNumbers = true;
+let exportExcludesEditorFrameReferences = true;
+let exportExcludesReferenceScrim = true;
+let exportExcludesFrameNumbers = true;
 
 // Image natural dimensions
 let imgNatW = 0, imgNatH = 0;
@@ -12609,7 +12685,7 @@ function measureSegmentPathLength(segIndex, steps) {
 // Features
 // Cores dos 3 níveis de frame
 const FRAME_COLORS = {
-  active:   { border: '#ffffff', handle: '#ffffff', num: '#ffffff' },
+  active:   { border: '#00d4ff', handle: '#00d4ff', num: '#00d4ff' },
   prevAdj:  { border: 'rgba(255,255,255,0.80)', handle: 'rgba(255,255,255,0.80)', num: 'rgba(255,255,255,0.80)' },
   nextAdj:  { border: 'rgba(255,255,255,0.80)', handle: 'rgba(255,255,255,0.80)', num: 'rgba(255,255,255,0.80)' },
   distant:  { border: 'rgba(198,198,198,0.55)', handle: 'rgba(198,198,198,0.55)', num: 'rgba(198,198,198,0.55)' }
@@ -13716,6 +13792,24 @@ function toggleWorldModeFrames() {
   assetsModeToggleToastMessage = _toastMsg;
   assetsModeToggleToastMatchesAfterState = (worldModeShowFrames === assetsModeReferencesToggleAfterState);
   assetsModeToggleVisualStateMatchesBoolean = (!!temporaryFrameReferencesVisible === !!worldModeShowFrames);
+  // v8z4b31D — atualizar diagnóstico unificado de toggle binário.
+  assetsModeReferencesToggleState = !!worldModeShowFrames;
+  assetsModeReferencesToggleLastAction = worldModeShowFrames ? 'on' : 'off';
+  assetsModeReferencesToggleLastToast = _toastMsg;
+  assetsModeReferencesToggleShowsAllFrames = worldModeShowFrames ? assetsModeIconToggleShowsAllFrames : false;
+  assetsModeReferencesToggleShowsAllCurves = worldModeShowFrames ? assetsModeIconToggleShowsAllCurves : false;
+  assetsModeReferencesToggleClearsAllFrames = !worldModeShowFrames ? assetsModeIconToggleClearsAllFrames : false;
+  assetsModeReferencesToggleClearsAllCurves = !worldModeShowFrames ? assetsModeIconToggleClearsAllCurves : false;
+  assetsModeReferencesToggleClearsScrim = !worldModeShowFrames ? assetsModeIconToggleClearsReferenceScrim : false;
+  assetsModeReferencesRemainVisibleAfterToggleOff = !worldModeShowFrames ? assetsModeReferenceFramesRemainAfterToggleOff : false;
+  assetsModeCurvesRemainVisibleAfterToggleOff = !worldModeShowFrames ? assetsModeReferenceCurvesRemainAfterToggleOff : false;
+  assetsModeScrimRemainVisibleAfterToggleOff = !worldModeShowFrames ? assetsModeReferenceScrimRemainAfterToggleOff : false;
+  // v8z4b31D — estado de curvas Assets mode.
+  assetsModeCurveReferencesVisible = !!worldModeShowFrames;
+  assetsModeCurveReferenceUsesWhiteStyle = true;
+  assetsModeCurveReferenceUsesAccentColor = false;
+  assetsModeSelectedSegmentUsesWhiteHighlight = true;
+  assetsModeSelectedSegmentUsesAccentColor = false;
   showStatus(_toastMsg);
 }
 // v8z4b30ZS — oculta as referências temporárias de frames no Modo Ativos.
@@ -13824,7 +13918,7 @@ function renderAssetsModeReferenceCurves() {
     const a = centerStage(seg), b = centerStage(seg + 1);
     if (!a || !b) continue;
     const isSel = seg === selSeg;
-    const stroke = isSel ? '#8b3fff' : 'rgba(255,255,255,0.55)';
+    const stroke = isSel ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.55)';
     const w = (isSel ? 3.2 : 1.6) * invZ;
     let pathD;
     if (_useCurvesV2 && typeof getCurvesV2CubicCP === 'function') {
@@ -13869,7 +13963,7 @@ function renderAssetsModeReferenceCurves() {
     const isSegEnd = selSeg >= 0 && (i === selSeg || i === selSeg + 1);
     const isRef = i === refIdx;
     const r = (isSegEnd || isRef ? 5.2 : 3.4) * invZ;
-    const fill = (isSegEnd || isRef) ? '#8b3fff' : 'rgba(255,255,255,0.65)';
+    const fill = isRef ? '#8b3fff' : (isSegEnd ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.65)');
     out += '<circle cx="' + c.x + '" cy="' + c.y + '" r="' + r + '" fill="' + fill + '" stroke="rgba(0,0,0,0.35)" stroke-width="' + invZ + '"/>';
   }
   if (assetsModeCurveReferenceSimplifiedLineDetected) {
@@ -13923,6 +14017,12 @@ function localizeStageToFrame(fi, animated) {
   const p = editorWorldToStage(f.x, f.y, f.w, f.h);
   assetsModeSelectedFrameViewportLocalized = true;
   assetsModeSelectedSegmentViewportLocalized = false;
+  // v8z4b31D — rastrear localização por modo.
+  if (isAssetsMode()) {
+    assetsModeSelectedFrameViewportLocalizedD = true;
+    assetsModeSelectedSegmentViewportLocalizedD = false;
+  }
+  stageLocalizationAnimated = !!animated;
   localizeStageToStageCenter(p.x + p.w / 2, p.y + p.h / 2, animated, 'frame', fi);
 }
 function localizeStageToSegment(seg, animated) {
@@ -13935,6 +14035,12 @@ function localizeStageToSegment(seg, animated) {
   const cy = ((pa.y + pa.h / 2) + (pb.y + pb.h / 2)) / 2;
   assetsModeSelectedSegmentViewportLocalized = true;
   assetsModeSelectedFrameViewportLocalized = false;
+  // v8z4b31D — rastrear localização por modo.
+  if (isAssetsMode()) {
+    assetsModeSelectedSegmentViewportLocalizedD = true;
+    assetsModeSelectedFrameViewportLocalizedD = false;
+  }
+  stageLocalizationAnimated = !!animated;
   localizeStageToStageCenter(cx, cy, animated, 'segment', seg);
 }
 // v8z4b30ZU — backdrop de legibilidade para referências de frames no Modo Ativos.
@@ -14238,6 +14344,8 @@ function setEditorMode(mode, source) {
   setModeLastError = 'none';
   try {
     const changed = (editorMode !== next);
+    // v8z4b31D — capturar activeIdx antes da troca para diagnóstico de persistência.
+    activeFrameIndexBeforeModeSwitch = (typeof activeIdx === 'number') ? activeIdx : -1;
     editorMode = next;
     if (next === 'camera') {
       if (changed) closeLayersPanel();
@@ -14284,6 +14392,12 @@ function setEditorMode(mode, source) {
       // bottomContextMode 'segment' é um sub-estado legítimo do Modo Câmera e só é
       // ativado por selectSegmentContext; ao ENTRAR no modo câmera voltamos a 'frame'.
       setBottomContext('frame');
+      // v8z4b31D — diagnóstico de persistência de frame ao retornar ao Modo Câmera.
+      activeFrameIndexAfterModeSwitch = (typeof activeIdx === 'number') ? activeIdx : -1;
+      referenceFrameIndexAfterModeSwitch = -1;
+      modeSwitchPreservesActiveFrame = (activeFrameIndexAfterModeSwitch === activeFrameIndexBeforeModeSwitch);
+      cameraModeRestoresEditableSelectionOnReturn = true;
+      assetsModeKeepsFrameAsReferenceOnly = true;
       // v8z4b30ZR — reset dos flags de limpeza (só fazem sentido em Modo Ativos).
       frameSelectionClearedOnEnterAssets = false;
       segmentSelectionClearedOnEnterAssets = false;
@@ -14332,6 +14446,13 @@ function setEditorMode(mode, source) {
       if (typeof clearFrameMultiSelectState === 'function') clearFrameMultiSelectState();
       // v8z4b30ZP/ZQ — Modo Ativos => contexto de asset (zera selectedSegmentIndex).
       setBottomContext('asset');
+      // v8z4b31D — diagnóstico de persistência de frame ao entrar no Modo Ativos.
+      // activeIdx NÃO é zerado — persistência garantida.
+      activeFrameIndexAfterModeSwitch = (typeof activeIdx === 'number') ? activeIdx : -1;
+      referenceFrameIndexAfterModeSwitch = activeFrameIndexAfterModeSwitch;
+      modeSwitchPreservesActiveFrame = (activeFrameIndexAfterModeSwitch === activeFrameIndexBeforeModeSwitch);
+      modeSwitchPreservesReferenceFrame = modeSwitchPreservesActiveFrame;
+      assetsModeKeepsFrameAsReferenceOnly = true;
       // v8z4b30ZS — frames ocultos por padrão ao entrar no Modo Ativos.
       worldModeShowFrames = false;
       temporaryFrameReferencesVisible = false;
@@ -17496,7 +17617,9 @@ function renderAll() {
       borderEl.style.borderWidth = borderW;
       borderEl.style.boxShadow = selectedStageFocus
         ? `0 0 ${12 * invZ}px rgba(0,0,0,.42), 0 0 ${10 * invZ}px rgba(255,149,0,.28)`
-        : 'none';
+        : showActiveStageFocus
+          ? `0 0 ${12 * invZ}px rgba(0,0,0,.42), 0 0 ${10 * invZ}px rgba(0,212,255,.36)`
+          : 'none';
       if (numEl) {
         numEl.textContent = String(i + 1);
         numEl.style.color = selectedStageFocus ? '#ffffff' : '';
@@ -17578,6 +17701,8 @@ function makeEasePillEl(seg, which) {
     _easeForSegTarget = which;
     _activeEaseSeg = seg;
     selectSegmentContext(seg);
+    localizeStageToSegment(seg, true);
+    cameraModeSelectedSegmentViewportLocalized = true;
   });
   return el;
 }
@@ -17658,6 +17783,8 @@ function updateFrameSelector() {
           lastPillSelectTapAt = now;
           selectFrameContext(i);
           renderAll();
+          localizeStageToFrame(i, true);
+          cameraModeSelectedFrameViewportLocalized = true;
           requestLowerTimelineCenter(i);
           showStageFrameMenu();
         }
@@ -17667,6 +17794,8 @@ function updateFrameSelector() {
         lastPillTap = i;
         lastPillSelectTapAt = now;
         renderAll();
+        localizeStageToFrame(i, true);
+        cameraModeSelectedFrameViewportLocalized = true;
         syncCustomizePanel();
         if (document.querySelector('.cust-tab.active-tab[data-tab="framepause"]')) syncFramePauseUI();
         const lockBtn = document.getElementById('btnLockFrame');
@@ -31272,6 +31401,100 @@ function buildDiagnosticsText() {
   push('redoStackConsumedAfterAssetRedo', String((typeof redoStackConsumedAfterAssetRedo !== 'undefined') ? redoStackConsumedAfterAssetRedo : false));
   push('undoStackUpdatedAfterAssetRedo', String((typeof undoStackUpdatedAfterAssetRedo !== 'undefined') ? undoStackUpdatedAfterAssetRedo : false));
   push('assetRedoChangedOnlyAssets', String((typeof assetRedoChangedOnlyAssets !== 'undefined') ? assetRedoChangedOnlyAssets : true));
+
+  // ════════════════════════════════════════════════════════════════════
+  // v8z4b31D — GEOMETRIA UNIFICADA DE FRAMES/CURVAS ENTRE MODOS
+  // ════════════════════════════════════════════════════════════════════
+  L.push('');
+  L.push('═══ v8z4b31D — Geometria Compartilhada Câmera/Ativos ═══');
+  push('filmGeometrySharedBetweenModes', String((typeof filmGeometrySharedBetweenModes !== 'undefined') ? filmGeometrySharedBetweenModes : true));
+  push('frameGeometrySharedBetweenModes', String((typeof frameGeometrySharedBetweenModes !== 'undefined') ? frameGeometrySharedBetweenModes : true));
+  push('curveGeometrySharedBetweenModes', String((typeof curveGeometrySharedBetweenModes !== 'undefined') ? curveGeometrySharedBetweenModes : true));
+  push('assetsModeUsesCameraCurvePath', String((typeof assetsModeUsesCameraCurvePath !== 'undefined') ? assetsModeUsesCameraCurvePath : true));
+  push('assetsModeUsesSameCurveMathAsCameraMode', String((typeof assetsModeUsesSameCurveMathAsCameraMode !== 'undefined') ? assetsModeUsesSameCurveMathAsCameraMode : true));
+  push('assetsModeCurvePathMatchesCameraMode', String((typeof assetsModeCurvePathMatchesCameraMode !== 'undefined') ? assetsModeCurvePathMatchesCameraMode : true));
+  push('assetsModeCurvePathMismatchDetected', String((typeof assetsModeCurvePathMismatchDetected !== 'undefined') ? assetsModeCurvePathMismatchDetected : false));
+  push('assetsModeCurvePathMismatchReason', (typeof assetsModeCurvePathMismatchReason !== 'undefined' && assetsModeCurvePathMismatchReason) ? assetsModeCurvePathMismatchReason : 'nenhum');
+
+  L.push('');
+  L.push('═══ v8z4b31D — Estilo de Curvas por Modo ═══');
+  push('cameraModeCurvePathVisible', String((typeof cameraModeCurvePathVisible !== 'undefined') ? cameraModeCurvePathVisible : false));
+  push('cameraModeCurvePathEditable', String((typeof cameraModeCurvePathEditable !== 'undefined') ? cameraModeCurvePathEditable : true));
+  push('cameraModeCurveUsesEditStyle', String((typeof cameraModeCurveUsesEditStyle !== 'undefined') ? cameraModeCurveUsesEditStyle : true));
+  push('assetsModeCurveReferencesVisible', String((typeof assetsModeCurveReferencesVisible !== 'undefined') ? assetsModeCurveReferencesVisible : false));
+  push('assetsModeCurveReferenceUsesWhiteStyle', String((typeof assetsModeCurveReferenceUsesWhiteStyle !== 'undefined') ? assetsModeCurveReferenceUsesWhiteStyle : true));
+  push('assetsModeCurveReferenceUsesAccentColor', String((typeof assetsModeCurveReferenceUsesAccentColor !== 'undefined') ? assetsModeCurveReferenceUsesAccentColor : false));
+  push('assetsModeCurveReferenceIsEditable', String((typeof assetsModeCurveReferenceIsEditable !== 'undefined') ? assetsModeCurveReferenceIsEditable : false));
+  push('assetsModeCurveReferenceHandlesVisible', String((typeof assetsModeCurveReferenceHandlesVisible !== 'undefined') ? assetsModeCurveReferenceHandlesVisible : false));
+  push('assetsModeSelectedSegmentUsesWhiteHighlight', String((typeof assetsModeSelectedSegmentUsesWhiteHighlight !== 'undefined') ? assetsModeSelectedSegmentUsesWhiteHighlight : true));
+  push('assetsModeSelectedSegmentUsesAccentColor', String((typeof assetsModeSelectedSegmentUsesAccentColor !== 'undefined') ? assetsModeSelectedSegmentUsesAccentColor : false));
+
+  L.push('');
+  L.push('═══ v8z4b31D — Toggle de Referências (binário ON/OFF) ═══');
+  push('assetsModeReferencesToggleState', String((typeof assetsModeReferencesToggleState !== 'undefined') ? assetsModeReferencesToggleState : false));
+  push('assetsModeReferencesToggleLastAction', (typeof assetsModeReferencesToggleLastAction !== 'undefined') ? (assetsModeReferencesToggleLastAction || 'none') : 'none');
+  push('assetsModeReferencesToggleLastToast', (typeof assetsModeReferencesToggleLastToast !== 'undefined') ? (assetsModeReferencesToggleLastToast || '') : '');
+  push('assetsModeReferencesToggleShowsAllFrames', String((typeof assetsModeReferencesToggleShowsAllFrames !== 'undefined') ? assetsModeReferencesToggleShowsAllFrames : false));
+  push('assetsModeReferencesToggleShowsAllCurves', String((typeof assetsModeReferencesToggleShowsAllCurves !== 'undefined') ? assetsModeReferencesToggleShowsAllCurves : false));
+  push('assetsModeReferencesToggleClearsAllFrames', String((typeof assetsModeReferencesToggleClearsAllFrames !== 'undefined') ? assetsModeReferencesToggleClearsAllFrames : false));
+  push('assetsModeReferencesToggleClearsAllCurves', String((typeof assetsModeReferencesToggleClearsAllCurves !== 'undefined') ? assetsModeReferencesToggleClearsAllCurves : false));
+  push('assetsModeReferencesToggleClearsScrim', String((typeof assetsModeReferencesToggleClearsScrim !== 'undefined') ? assetsModeReferencesToggleClearsScrim : false));
+  push('assetsModeReferencesRemainVisibleAfterToggleOff', String((typeof assetsModeReferencesRemainVisibleAfterToggleOff !== 'undefined') ? assetsModeReferencesRemainVisibleAfterToggleOff : false));
+  push('assetsModeCurvesRemainVisibleAfterToggleOff', String((typeof assetsModeCurvesRemainVisibleAfterToggleOff !== 'undefined') ? assetsModeCurvesRemainVisibleAfterToggleOff : false));
+  push('assetsModeScrimRemainVisibleAfterToggleOff', String((typeof assetsModeScrimRemainVisibleAfterToggleOff !== 'undefined') ? assetsModeScrimRemainVisibleAfterToggleOff : false));
+
+  L.push('');
+  L.push('═══ v8z4b31D — Persistência de Seleção Entre Modos ═══');
+  push('modeSwitchPreservesActiveFrame', String((typeof modeSwitchPreservesActiveFrame !== 'undefined') ? modeSwitchPreservesActiveFrame : true));
+  push('modeSwitchPreservesReferenceFrame', String((typeof modeSwitchPreservesReferenceFrame !== 'undefined') ? modeSwitchPreservesReferenceFrame : true));
+  push('activeFrameIndexBeforeModeSwitch', String((typeof activeFrameIndexBeforeModeSwitch !== 'undefined') ? activeFrameIndexBeforeModeSwitch : -1));
+  push('activeFrameIndexAfterModeSwitch', String((typeof activeFrameIndexAfterModeSwitch !== 'undefined') ? activeFrameIndexAfterModeSwitch : -1));
+  push('referenceFrameIndexAfterModeSwitch', String((typeof referenceFrameIndexAfterModeSwitch !== 'undefined') ? referenceFrameIndexAfterModeSwitch : -1));
+  push('cameraModeRestoresEditableSelectionOnReturn', String((typeof cameraModeRestoresEditableSelectionOnReturn !== 'undefined') ? cameraModeRestoresEditableSelectionOnReturn : true));
+  push('assetsModeKeepsFrameAsReferenceOnly', String((typeof assetsModeKeepsFrameAsReferenceOnly !== 'undefined') ? assetsModeKeepsFrameAsReferenceOnly : true));
+
+  L.push('');
+  L.push('═══ v8z4b31D — Localização do Viewport por Modo ═══');
+  push('stageLocalizationSharedBetweenModes', String((typeof stageLocalizationSharedBetweenModes !== 'undefined') ? stageLocalizationSharedBetweenModes : true));
+  push('cameraModePanelClickLocalizesStage', String((typeof cameraModePanelClickLocalizesStage !== 'undefined') ? cameraModePanelClickLocalizesStage : true));
+  push('assetsModePanelClickLocalizesStage', String((typeof assetsModePanelClickLocalizesStage !== 'undefined') ? assetsModePanelClickLocalizesStage : true));
+  push('cameraModeSelectedFrameViewportLocalized', String((typeof cameraModeSelectedFrameViewportLocalized !== 'undefined') ? cameraModeSelectedFrameViewportLocalized : false));
+  push('assetsModeSelectedFrameViewportLocalized', String((typeof assetsModeSelectedFrameViewportLocalizedD !== 'undefined') ? assetsModeSelectedFrameViewportLocalizedD : false));
+  push('cameraModeSelectedSegmentViewportLocalized', String((typeof cameraModeSelectedSegmentViewportLocalized !== 'undefined') ? cameraModeSelectedSegmentViewportLocalized : false));
+  push('assetsModeSelectedSegmentViewportLocalized', String((typeof assetsModeSelectedSegmentViewportLocalizedD !== 'undefined') ? assetsModeSelectedSegmentViewportLocalizedD : false));
+  push('stageLocalizationAnimated', String((typeof stageLocalizationAnimated !== 'undefined') ? stageLocalizationAnimated : true));
+  push('stageLocalizationCompleted', String((typeof stageLocalizationCompleted !== 'undefined') ? stageLocalizationCompleted : false));
+  push('selectedReferenceVisibleInViewport', String((typeof selectedReferenceVisibleInViewport !== 'undefined') ? selectedReferenceVisibleInViewport : false));
+
+  L.push('');
+  L.push('═══ v8z4b31D — Highlight e Legibilidade por Modo ═══');
+  push('cameraModeActiveFrameUsesCyanHighlight', String((typeof cameraModeActiveFrameUsesCyanHighlight !== 'undefined') ? cameraModeActiveFrameUsesCyanHighlight : true));
+  push('cameraModeActiveFrameAlphaVisible', String((typeof cameraModeActiveFrameAlphaVisible !== 'undefined') ? cameraModeActiveFrameAlphaVisible : true));
+  push('cameraModeActiveFrameLegible', String((typeof cameraModeActiveFrameLegible !== 'undefined') ? cameraModeActiveFrameLegible : true));
+  push('assetsModeActiveFrameUsesPurpleHighlight', String((typeof assetsModeActiveFrameUsesPurpleHighlight !== 'undefined') ? assetsModeActiveFrameUsesPurpleHighlight : false));
+  push('assetsModeNonSelectedFrameOpacity', String((typeof assetsModeNonSelectedFrameOpacityD !== 'undefined') ? assetsModeNonSelectedFrameOpacityD : 0.28));
+  push('assetsModeNonSelectedFramesLegible', String((typeof assetsModeNonSelectedFramesLegibleD !== 'undefined') ? assetsModeNonSelectedFramesLegibleD : true));
+  push('assetsModeSelectedFrameStillDominant', String((typeof assetsModeSelectedFrameStillDominantD !== 'undefined') ? assetsModeSelectedFrameStillDominantD : true));
+
+  L.push('');
+  L.push('═══ v8z4b31D — Camadas de Frames/Curvas ═══');
+  push('frameOverlayLayerAboveAssets', String((typeof frameOverlayLayerAboveAssets !== 'undefined') ? frameOverlayLayerAboveAssets : true));
+  push('curveOverlayLayerAboveAssets', String((typeof curveOverlayLayerAboveAssets !== 'undefined') ? curveOverlayLayerAboveAssets : true));
+  push('frameOverlayIsOutsideAssetLayerStack', String((typeof frameOverlayIsOutsideAssetLayerStack !== 'undefined') ? frameOverlayIsOutsideAssetLayerStack : true));
+  push('curveOverlayIsOutsideAssetLayerStack', String((typeof curveOverlayIsOutsideAssetLayerStack !== 'undefined') ? curveOverlayIsOutsideAssetLayerStack : true));
+  push('frameOverlayAffectedByAssetZIndex', String((typeof frameOverlayAffectedByAssetZIndex !== 'undefined') ? frameOverlayAffectedByAssetZIndex : false));
+  push('curveOverlayAffectedByAssetZIndex', String((typeof curveOverlayAffectedByAssetZIndex !== 'undefined') ? curveOverlayAffectedByAssetZIndex : false));
+  push('assetReorderChangedFrameLayer', String((typeof assetReorderChangedFrameLayerD !== 'undefined') ? assetReorderChangedFrameLayerD : false));
+  push('assetReorderChangedCurveLayer', String((typeof assetReorderChangedCurveLayerD !== 'undefined') ? assetReorderChangedCurveLayerD : false));
+
+  L.push('');
+  L.push('═══ v8z4b31D — Preview/Export sem Referências de Editor ═══');
+  push('previewExcludesEditorFrameReferences', String((typeof previewExcludesEditorFrameReferences !== 'undefined') ? previewExcludesEditorFrameReferences : true));
+  push('previewExcludesReferenceScrim', String((typeof previewExcludesReferenceScrim !== 'undefined') ? previewExcludesReferenceScrim : true));
+  push('previewExcludesFrameNumbers', String((typeof previewExcludesFrameNumbers !== 'undefined') ? previewExcludesFrameNumbers : true));
+  push('exportExcludesEditorFrameReferences', String((typeof exportExcludesEditorFrameReferences !== 'undefined') ? exportExcludesEditorFrameReferences : true));
+  push('exportExcludesReferenceScrim', String((typeof exportExcludesReferenceScrim !== 'undefined') ? exportExcludesReferenceScrim : true));
+  push('exportExcludesFrameNumbers', String((typeof exportExcludesFrameNumbers !== 'undefined') ? exportExcludesFrameNumbers : true));
 
   return L.join('\n');
 }
