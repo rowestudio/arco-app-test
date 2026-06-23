@@ -1,3 +1,13 @@
+# v8z4b31H
+
+**Film Alpha Scrim Restoration.** Bug fix visual/arquitetural controlado sobre `v8z4b31G`: restaura o alfa/scrim externo de filmagem como overlay editor-only do sistema único, acima de assets/imagens e abaixo de frames/curvas/HUD, com recorte no frame canônico/ativo e sem afetar Preview/Export.
+
+- **fix — scrim único com recorte.** `#stageDimSvg` volta a desenhar o scrim de filmagem nos dois modos, usando o frame canônico como janela clara e respeitando rotação, pan e zoom.
+- **fix — legibilidade sem glow.** Frames não ativos preservam opacidade/espessura mínimas; o glow roxo do frame ativo no Modo Ativos foi reduzido para não substituir o alfa/scrim.
+- **preserve.** Modo Frames segue editável/ciano; Modo Ativos segue referência roxa não editável; curvas ficam acima do scrim; assets/layers e Frente/Trás não afetam scrim/frames/curvas; Preview/Export continuam sem overlays de editor.
+- **diagnóstico.** Nova seção `═══ v8z4b31H — Film Alpha Scrim Restoration ═══` com arquitetura, camadas, recorte, modos, glow/sombra, legibilidade, curvas e Preview/Export.
+- `index.html`: comentário do topo, `APP_VERSION` e `APP_VERSION_NAME` atualizados para `v8z4b31H`.
+
 # v8z4b31F
 
 **Single Film System Architecture.** Correção arquitetural controlada. Aprofunda a unificação iniciada em `v8z4b31E`: agora **seleção, timeline (bolinha/mira) e localização** também são um **único sistema compartilhado** entre **Modo Frames/Câmera** e **Modo Ativos/Mundo**. Não é nova função, não é ajuste cosmético isolado, não corrige o Modo Ativos "à parte". Regra-mãe: o Modo Ativos passa a **consumir o mesmo sistema** do Modo Frames, mudando apenas `presentationMode`, `stylePreset` e `editability`. Não altera Preview, Export, WebCodecs, save/load, schema, upload, múltiplos assets, Frente/Trás, undo/redo, menu "+", layout, textos ou ícones. **Base `v8z4b31E`.**
