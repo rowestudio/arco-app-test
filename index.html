@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b31H — base v8z4b31G. fix(scrim-filmagem): restaura o alfa/scrim externo editor-only como sistema único compartilhado entre Modo Frames/Câmera e Modo Ativos/Mundo, acima dos assets e abaixo de frames/curvas/HUD, com recorte no frame canônico/ativo respeitando rotação, pan e zoom via #stageDimSvg. fix(legibilidade): frames não ativos mantêm opacidade mínima (câmera >=0.55, ativos >=0.45) e borda mínima sem depender de glow/sombra externa; glow roxo do frame ativo em Ativos foi reduzido. preserve: preview/export/WebCodecs limpos, seleção/timeline canônicas, curvas acima do scrim, Modo Ativos sem edição de frames, assets/layers/Frente-Trás sem afetar overlays. feat(diag): bloco 'v8z4b31H — Film Alpha Scrim Restoration'. APP_VERSION = v8z4b31H. -->
+<!-- Arco Motion App — v8z4b31I — base v8z4b31H. fix(scrim-filmagem): torna o filmAlphaScrim uma máscara global editor-only em #stageDimSvg cobrindo todo o viewport visível do editor, acima dos assets e abaixo de frames/curvas/HUD, sem clip por slot/asset e com recorte sempre no frame canônico atual. fix(alpha): reduz intensidades para 0.26 no Modo Frames/Câmera e 0.22 no Modo Ativos/Mundo. fix(legibilidade): Modo Ativos com referências passa a usar o mesmo visual-base de frames do Modo Frames para opacidade/espessura dos frames não ativos; só cor roxa/editabilidade/HUD/curvas diferem. feat(diag): bloco 'v8z4b31I — Global Film Scrim + Shared Frame Visuals'. APP_VERSION = v8z4b31I. -->
 <!-- Arco Motion App — v8z4b31F — base v8z4b31E. Single Film System Architecture. fix(arquitetura): aprofunda a unificação iniciada em v8z4b31E — agora a SELEÇÃO, a TIMELINE (bolinha/mira) e a LOCALIZAÇÃO também são um único sistema compartilhado entre Modo Câmera e Modo Ativos. fix(seleção-canônica): introduz estado canônico único filmSelection={frameIndex,segmentIndex,source,updatedAt} via commitFilmSelection(); locateAssetsModeFrameRef()/locateAssetsModeSegmentRef() passam a gravar o frame canônico (activeIdx/selectedSegmentIndex) em vez de criar um índice de referência paralelo — selecionar Frame N no Modo Ativos mantém Frame N ao voltar ao Modo Câmera (e vice-versa). Os índices timelineVisualActiveIndex/timelineReferenceActiveIndex/timelineEditingActiveIndex/temporaryFrameReferenceTargetIndex/assetsModeFrameReferenceHighlightIndex/frameTimelineCenteredIndex/rendererFrameIndex/viewportLocalizationTargetIndex passam a DERIVAR do canônico (não disputam mais a seleção). getTimelineVisualActiveIndex() retorna o frame canônico. fix(timeline-mira-fixa): syncLowerTimelineCenterMarkers() fixa a bolinha/indicador no CENTRO do viewport da timeline (mira fixa); os frames rolam por baixo dela e ela NÃO acompanha mais o conteúdo rolável/foco. fix(opacidade-uniforme-ativos): applyStageTimelineFocusVisuals() não aplica mais a hierarquia de opacidade/espessura/zIndex do Modo Câmera quando em Modo Ativos — limpa estilos inline e deixa o CSS uniforme (.40) cuidar; opacidade/espessura dos frames não selecionados não muda mais conforme a origem do clique (ícone/timeline/stage/localização). feat(diag): bloco completo 'v8z4b31F — Single Film System Architecture' (Arquitetura/Seleção/Timeline/Style/Geometry/Interactivity/References/Localization/Preview-Export). APP_VERSION = v8z4b31F. preserve: layout/cores/ícones/textos/menu+/upload/save/load/preview/export/WebCodecs/ProjectWorld/assets/layers/zIndex/motor de vídeo/cálculo final de câmera, múltiplos assets, Frente/Trás, undo/redo de assets, curvas/geometria únicas do v8z4b31E, roxo no Modo Ativos, ciano no Modo Câmera, frames não editáveis no Modo Ativos. base v8z4b31E. -->
 <!-- Arco Motion App — v8z4b31E — base v8z4b31D. Unified Film Overlay System. fix(arquitetura): elimina o paralelismo entre o sistema visual de frames/curvas do Modo Câmera e o de referências do Modo Ativos. NÃO existem mais dois sistemas: há UMA fonte de geometria (getFilmFrameGeometry → getFrameScreenGeometry: cantos rotacionados + centro real em screen coords) e UMA fonte de path de curva (getFilmSegmentPathD: mesma matemática/handles de drawBezier), com dispatch único renderFilmOverlay({mode,stylePreset,editable}). O que muda entre modos é só estilo/interatividade. fix(centro): renderAssetsModeReferenceCurves usa getFilmFrameGeometry().center — centro da curva == centro do retângulo do frame em qualquer modo/rotação/zoom (frameCenterDeltaFromRectCenterPx≈0). fix(curva-igual): curva do Modo Ativos usa getFilmSegmentPathD — mesmo caminho visual do Modo Câmera, só estilo branco/cinza (trecho selecionado branco mais forte/espesso, nunca roxo/ciano). fix(contaminação-visual): isolamento explícito de cameraModeVisualizationState × assetsModeReferenceVisualizationState — o dim/overlay de edição do Modo Câmera (stageDimSvg) é limpo ao entrar no Modo Ativos e não escurece mais a imagem; o Modo Ativos usa só seu próprio scrim. fix(legibilidade-câmera): borda do frame ativo 4.0 (era 3.5), frames não ativos 0.78/0.88 (eram 0.62/0.80), distant 0.72 (era 0.55) — frame ativo ciano dominante. fix(legibilidade-ativos): frames não selecionados 0.40 (era 0.28), borda do selecionado 2.5px, mantendo o roxo dominante. feat(diag): bloco completo 'v8z4b31E — Unified Film Overlay System' (Arquitetura/Frame geometry/Curve geometry/Mode visual isolation/Legibility/Toggle/Selection/Localization/Layers/Preview/Export). APP_VERSION = v8z4b31E. preserve: layout/cores/ícones/textos/menu+/upload/save/load/preview/export/WebCodecs/ProjectWorld/assets/layers/zIndex/motor de vídeo/cálculo final de câmera, múltiplos assets, seleção, Frente/Trás, undo de delete, referências no Modo Ativos, frames/curvas acima dos assets, referências fora de preview/export, roxo no Modo Ativos, ciano no Modo Câmera, curvas do Modo Ativos brancas/cinza, lógica de seleção (activeFrameIndex/selectedSegmentIndex). base v8z4b31D. -->
 <!-- Arco Motion App — v8z4b31B — base v8z4b31A. fix(assets-mode-toggle): unifica comportamento do ícone Ativos com o painel de frames — mesma rotina completa de renderização de referências. fix(toggle-on-frames): toggleWorldModeFrames() ON agora aplica assets-ref-highlight ao frame ativo/referência inicial (igual a locateAssetsModeFrameRef), garantindo que todos os frames fiquem visíveis com hierarquia clara ao ligar pelo ícone, sem precisar clicar no painel. fix(toggle-off-cleanup): toggleWorldModeFrames() OFF cancela animação de localização pendente, remove assets-ref-highlight de TODOS os frames e pills, e chama hideAssetsModeReferenceCurves() explicitamente antes de renderAll() — curvas/trechos somem completamente ao desligar pelo ícone. fix(non-selected-opacity): opacidade dos frames não selecionados aumentada de 0.17 para 0.28 — frames ficam legíveis sem precisar clicar no painel, mantendo hierarquia clara (0.28 vs 1.0 para selecionado). feat(shared-renderer): assetsModeReferenceRendererSharedByIconAndPanel=true — ícone e painel usam a mesma lógica de destaque (assets-ref-highlight + renderAll + renderAssetsModeReferenceCurves). feat(diag): assetsModeIconToggleUsesFullReferenceRenderer, assetsModeIconToggleShowsAllFrames, assetsModeIconToggleShowsAllCurves, assetsModeIconToggleClearsAllFrames, assetsModeIconToggleClearsAllCurves, assetsModeIconToggleClearsReferenceScrim, assetsModeReferencesAllFramesVisible, assetsModeReferencesAllCurvesVisible, assetsModeReferenceCurvesRemainAfterToggleOff, assetsModeReferenceFramesRemainAfterToggleOff, assetsModeReferenceScrimRemainAfterToggleOff, assetsModeNonSelectedFrameOpacity(0.28), assetsModeNonSelectedFramesLegible, assetsModeSelectedFrameStillDominant, assetsModeReferenceRendererSharedByIconAndPanel. APP_VERSION = v8z4b31B. preserve: Modo Câmera inalterado, layout/cores/ícones/textos/fluxo, preview/export/motor de animação, ferramentas de asset, ProjectWorld, save/load, frames, curvas, interpolação, Frente/Trás, seleção de assets, handles ocultos em Modo Ativos. base v8z4b31A. -->
@@ -1325,7 +1325,7 @@ body.recording #editorZoomCtrl{display:none;}
 /* v8z4b31E — legibilidade do Modo Ativos: frames não selecionados mais visíveis
    (0.40, era 0.28) como referência espacial, mantendo o frame selecionado (roxo,
    opacity 1) claramente dominante. */
-body.editor-assets .frame{opacity:.45;pointer-events:none;}
+body.editor-assets .frame{opacity:.78;pointer-events:none;}
 body.editor-assets #bezierSvg{opacity:.17;}
 body.editor-assets .frame-out-handle{pointer-events:none !important;}
 body.editor-assets .frame .frame-dim{background:transparent !important;box-shadow:none !important;}
@@ -7010,8 +7010,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b31H';
-const APP_VERSION_NAME = 'v8z4b31H';
+const APP_VERSION = 'v8z4b31I';
+const APP_VERSION_NAME = 'v8z4b31I';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7211,7 +7211,7 @@ let assetsModeReferencesAllCurvesVisible = false;
 let assetsModeReferenceCurvesRemainAfterToggleOff = false;
 let assetsModeReferenceFramesRemainAfterToggleOff = false;
 let assetsModeReferenceScrimRemainAfterToggleOff = false;
-const assetsModeNonSelectedFrameOpacity = 0.45; // v8z4b31H: mínimo de legibilidade com film alpha scrim
+const assetsModeNonSelectedFrameOpacity = 0.78; // v8z4b31I: mesmo visual-base dos frames não ativos do Modo Câmera
 let assetsModeNonSelectedFramesLegible = true;
 let assetsModeSelectedFrameStillDominant = true;
 let assetsModeReferenceRendererSharedByIconAndPanel = true;
@@ -7391,7 +7391,7 @@ let cameraModeActiveFrameStrokeWidth = 4.0;
 let cameraModeInactiveFrameOpacity = 0.78;
 let cameraModeInactiveFramesLegible = true;
 let assetsModeSelectedFrameStrokeWidth = 2.5;
-let assetsModeInactiveFrameOpacity = 0.45;
+let assetsModeInactiveFrameOpacity = 0.78;
 let assetsModeInactiveFramesLegible = true;
 let assetsModeSelectedFrameDominant = true;
 let assetsModeCurvesUseWhiteStyle = true;
@@ -7548,14 +7548,55 @@ let cameraCurveOnlyStyleDiffers = true;
 let frameLegibilityFloorEnabled = true;
 let assetsInactiveFrameOpacityMin = 0.45;
 let cameraInactiveFrameOpacityMin = 0.55;
-let assetsInactiveFrameOpacityActual = 0.45;
+let assetsInactiveFrameOpacityActual = 0.78;
 let cameraInactiveFrameOpacityActual = 0.78;
 let assetsInactiveFrameOpacityBelowMinimumDetected = false;
 let cameraInactiveFrameOpacityBelowMinimumDetected = false;
-let assetsInactiveFrameStrokeMin = 2.0;
-let cameraInactiveFrameStrokeMin = 2.0;
-let assetsInactiveFrameStrokeActual = 2.0;
+let assetsInactiveFrameStrokeMin = 2.4;
+let cameraInactiveFrameStrokeMin = 2.4;
+let assetsInactiveFrameStrokeActual = 2.4;
 let cameraInactiveFrameStrokeActual = 2.4;
+let filmAlphaScrimCoversVisibleWorld = true;
+let filmAlphaScrimCoversVisibleEditorViewport = true;
+let filmAlphaScrimClippedToActiveSlot = false;
+let filmAlphaScrimClippedToActiveAsset = false;
+let filmAlphaScrimClippedToMainImage = false;
+let filmAlphaScrimWorldBoundsMatchVisibleEditor = true;
+let filmAlphaScrimScreenCoveragePercent = 100;
+let filmAlphaScrimCoverageIssueDetected = false;
+let filmAlphaScrimCoverageIssueReason = 'none';
+let filmAlphaScrimCurrentCanonicalFrameIndex = -1;
+let filmAlphaScrimStaleCutoutDetected = false;
+let filmAlphaScrimStaleSlotDetected = false;
+let filmAlphaScrimInvalidatesOnActiveFrameChange = true;
+let filmAlphaScrimRebuiltAfterTimelineClick = true;
+let filmAlphaScrimRebuiltAfterModeSwitch = true;
+let filmAlphaScrimRebuiltAfterPanZoom = true;
+let filmAlphaScrimRebuiltAfterFrameTransform = true;
+let filmAlphaScrimLastFrameIndex = -1;
+let filmAlphaScrimCutoutMovedAfterFrameChange = true;
+let alphaTooStrongDetected = false;
+let alphaTooWeakDetected = false;
+let alphaValueWithinRecommendedRange = true;
+let cameraModeAlphaRecommendedRange = '0.22..0.28';
+let assetsModeAlphaRecommendedRange = '0.18..0.24';
+let frameBaseVisualStyleSharedAcrossModes = true;
+let assetsModeUsesCameraFrameBaseStyle = true;
+let assetsModeOnlyOverridesSelectedColorAndEditability = true;
+let cameraAssetsInactiveFrameOpacityDelta = 0;
+let cameraAssetsInactiveFrameStrokeDelta = 0;
+let inactiveFrameVisualMismatchBetweenModesDetected = false;
+let inactiveFrameVisualMismatchReason = 'none';
+let cameraSelectedFrameColor = 'cyan/blue';
+let assetsSelectedFrameColor = 'purple';
+let cameraModeHandlesVisible = true;
+let assetsModeHandlesVisible = false;
+let cameraModeHudVisible = true;
+let assetsModeHudVisible = false;
+let cameraModeCurvesEditable = true;
+let assetsModeCurvesEditable = false;
+let legacyAssetsReferenceOpacityDetected = false;
+let legacyAssetsReferenceOpacityValue = 'none';
 let assetsInactiveFrameStrokeBelowMinimumDetected = false;
 let cameraInactiveFrameStrokeBelowMinimumDetected = false;
 let assetsInactiveFrameOpacityUniform = true;
@@ -7565,7 +7606,7 @@ let inactiveFrameOpacityChangedByModeSwitch = false;
 let inactiveFrameInlineOpacityOverrideDetected = false;
 let inactiveFrameLegacyClassOverrideDetected = false;
 
-// v8z4b31H — Film Alpha Scrim Restoration diagnostic state
+// v8z4b31I — Global Film Scrim + Shared Frame Visuals diagnostic state
 let filmAlphaScrimEnabled = true;
 let filmAlphaScrimUsesSingleSystem = true;
 let filmAlphaScrimSharedAcrossModes = true;
@@ -7587,8 +7628,8 @@ let filmAlphaScrimCutoutAlignedWithFrameRect = true;
 let filmAlphaScrimCutoutDeltaFromFramePx = 0;
 let cameraModeUsesFilmAlphaScrim = true;
 let assetsModeUsesFilmAlphaScrim = true;
-let cameraModeAlphaValue = 0.38;
-let assetsModeAlphaValue = 0.34;
+let cameraModeAlphaValue = 0.26;
+let assetsModeAlphaValue = 0.22;
 let alphaMechanismDiffersByMode = false;
 let modeOnlyChangesColorAndEditability = true;
 let externalGlowUsedAsPrimaryLegibilityFix = false;
@@ -14384,8 +14425,10 @@ function renderAssetsModeReferenceCurves() {
   // v8z4b31G — Frame Legibility Floor
   assetsInactiveFrameOpacityActual = assetsModeInactiveFrameOpacity;
   assetsInactiveFrameOpacityBelowMinimumDetected = (assetsInactiveFrameOpacityActual < assetsInactiveFrameOpacityMin);
-  assetsInactiveFrameStrokeActual = 2.0;
+  assetsInactiveFrameStrokeActual = 2.4;
   assetsInactiveFrameStrokeBelowMinimumDetected = (assetsInactiveFrameStrokeActual < assetsInactiveFrameStrokeMin);
+  cameraAssetsInactiveFrameOpacityDelta = Math.abs(cameraInactiveFrameOpacityActual - assetsInactiveFrameOpacityActual);
+  cameraAssetsInactiveFrameStrokeDelta = Math.abs(cameraInactiveFrameStrokeActual - assetsInactiveFrameStrokeActual);
   assetsInactiveFrameOpacityUniform = assetsModeInactiveFrameOpacityUniform;
   inactiveFrameOpacityChangedByActivationSource = assetsModeInactiveFrameOpacityChangedBySource;
   inactiveFrameOpacityChangedByModeSwitch = false;
@@ -14465,7 +14508,7 @@ function localizeStageToSegment(seg, animated) {
 // v8z4b30ZU — backdrop de legibilidade para referências de frames no Modo Ativos.
 // Elemento de UI puro: não é asset, não participa de Frente/Trás, não é salvo.
 function showAssetsModeFrameReferenceBackdrop() {
-  // v8z4b31H — o scrim do Modo Ativos usa o mesmo SVG #stageDimSvg do Modo Câmera,
+  // v8z4b31I — o scrim do Modo Ativos usa o mesmo SVG #stageDimSvg do Modo Câmera,
   // com recorte no frame canônico. O div legado fica oculto para não criar alfa sem recorte.
   const bd = document.getElementById('assetsModeFrameRefBackdrop');
   if (bd) bd.style.display = 'none';
@@ -14534,7 +14577,7 @@ function clearFrameEditingVisualsForAssetsMode(reason) {
     const stageFrameMenu = document.getElementById('stageFrameMenu');
     if (stageFrameMenu) stageFrameMenu.style.display = 'none';
     // v8z4b30ZW — limpar inline opacity e classe 'active' dos frames ao entrar em Modo Ativos.
-    // Isso garante que o CSS body.editor-assets .frame{opacity:.28} funcione corretamente
+    // Isso garante que o CSS body.editor-assets .frame{opacity:.78} funcione corretamente
     // sem interferência de inline styles deixados pelo Modo Câmera.
     const _fc = (typeof frameCount === 'number') ? frameCount : 0;
     for (let _fi = 0; _fi < _fc; _fi++) {
@@ -17995,8 +18038,8 @@ function renderAll() {
       if (borderEl) {
         // v8z4b31B — contorno levemente mais visível para frames não selecionados
         // (era '' vazio, deixando CSS padrão invisível; agora reforça levemente).
-        borderEl.style.borderColor = _isHl ? '' : 'rgba(255,255,255,0.35)';
-        borderEl.style.borderWidth = ((_isHl ? 2.5 : 2) * invZ) + 'px';
+        borderEl.style.borderColor = _isHl ? '' : FRAME_COLORS.distant.border;
+        borderEl.style.borderWidth = ((_isHl ? 2.5 : 2.4) * invZ) + 'px';
         borderEl.style.boxShadow = 'none';
       }
       // Número do frame: referência visual no Modo Ativos
@@ -18296,7 +18339,7 @@ function updateDimOverlay() {
   svg.style.zIndex = String(FILM_ALPHA_SCRIM_Z);
   const _assetsMode = (typeof isAssetsMode === 'function') && isAssetsMode();
   const _assetsRefsVisible = _assetsMode && !!temporaryFrameReferencesVisible;
-  // v8z4b31H — o alfa/scrim de filmagem volta a ser um ÚNICO sistema de editor
+  // v8z4b31I — o alfa/scrim de filmagem volta a ser um ÚNICO sistema de editor
   // compartilhado pelos modos. Em Ativos, só aparece quando as referências estão
   // visíveis; em Câmera, acompanha o frame canônico editável. Nunca entra em
   // Preview/Export, nem na pilha de assets.
@@ -18334,7 +18377,7 @@ function updateDimOverlay() {
     }).join('');
     svg.style.display = 'block';
     if (_assetsMode) assetsModeReferenceVisualizationState.referenceScrimActive = true;
-    else cameraModeVisualizationState.dimOverlayActive = true; // v8z4b31H
+    else cameraModeVisualizationState.dimOverlayActive = true; // v8z4b31I
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.innerHTML = `
       <defs>
@@ -18343,13 +18386,13 @@ function updateDimOverlay() {
           ${holes}
         </mask>
       </defs>
-      <rect x="0" y="0" width="${W}" height="${H}" fill="rgba(0,0,0,0.34)" mask="url(#${maskId})"/>`;
+      <rect x="0" y="0" width="${W}" height="${H}" fill="${_assetsMode ? `rgba(0,0,0,${assetsModeAlphaValue})` : `rgba(0,0,0,${cameraModeAlphaValue})`}" mask="url(#${maskId})"/>`;
     return;
   }
 
   svg.style.display = 'block';
   if (_assetsMode) assetsModeReferenceVisualizationState.referenceScrimActive = true;
-  else cameraModeVisualizationState.dimOverlayActive = true; // v8z4b31H
+  else cameraModeVisualizationState.dimOverlayActive = true; // v8z4b31I
 
   const focusIdx = (typeof getCanonicalFrameIndex === 'function' && getCanonicalFrameIndex() >= 0) ? getCanonicalFrameIndex() : getTimelineStageFocusIndex();
   const f = frames[focusIdx];
@@ -18365,33 +18408,34 @@ function updateDimOverlay() {
   const rx = Math.max(4, Math.round(10 * (tf && tf.active ? tf.scale : 1)));
 
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  const uid = 'dimClip' + focusIdx;
+  const uid = 'filmAlphaScrimMask' + focusIdx;
+  const alphaFill = _assetsMode ? `rgba(0,0,0,${assetsModeAlphaValue})` : `rgba(0,0,0,${cameraModeAlphaValue})`;
   svg.innerHTML = `
     <defs>
-      <clipPath id="${uid}" clipPathUnits="userSpaceOnUse">
+      <mask id="${uid}" maskUnits="userSpaceOnUse">
+        <rect x="0" y="0" width="${W}" height="${H}" fill="white"/>
         <rect x="${(scx-shw).toFixed(1)}" y="${(scy-shh).toFixed(1)}"
               width="${sp.w.toFixed(1)}" height="${sp.h.toFixed(1)}"
               rx="${rx}" ry="${rx}"
-              transform="rotate(${rot.toFixed(2)},${scx.toFixed(1)},${scy.toFixed(1)})"/>
-      </clipPath>
+              transform="rotate(${rot.toFixed(2)},${scx.toFixed(1)},${scy.toFixed(1)})"
+              fill="black"/>
+      </mask>
     </defs>
-    <rect x="0" y="0" width="${W}" height="${H}" fill="${_assetsMode ? 'rgba(0,0,0,0.34)' : 'rgba(0,0,0,0.38)'}"/>
-    <rect x="${(scx-shw).toFixed(1)}" y="${(scy-shh).toFixed(1)}"
-          width="${sp.w.toFixed(1)}" height="${sp.h.toFixed(1)}"
-          rx="${rx}" ry="${rx}"
-          transform="rotate(${rot.toFixed(2)},${scx.toFixed(1)},${scy.toFixed(1)})"
-          fill="black"
-          style="mix-blend-mode:destination-out;"/>
+    <rect x="0" y="0" width="${W}" height="${H}" fill="${alphaFill}" mask="url(#${uid})"/>
   `;
   filmAlphaScrimCutoutFrameIndex = focusIdx;
-  filmAlphaScrimCutoutMatchesCanonicalFrame = focusIdx === getCanonicalFrameIndex();
+  filmAlphaScrimCurrentCanonicalFrameIndex = getCanonicalFrameIndex();
+  filmAlphaScrimCutoutMatchesCanonicalFrame = focusIdx === filmAlphaScrimCurrentCanonicalFrameIndex;
+  filmAlphaScrimLastFrameIndex = focusIdx;
+  filmAlphaScrimStaleCutoutDetected = !filmAlphaScrimCutoutMatchesCanonicalFrame;
+  filmAlphaScrimStaleSlotDetected = false;
   filmAlphaScrimCutoutDeltaFromFramePx = 0;
   cameraModeUsesFilmAlphaScrim = !_assetsMode || cameraModeUsesFilmAlphaScrim;
   assetsModeUsesFilmAlphaScrim = _assetsMode || assetsModeUsesFilmAlphaScrim;
   if (!CSS.supports('mix-blend-mode', 'destination-out')) {
     const worldCorners = getRotatedFrameCorners(focusIdx);
     const pts = worldCorners.map(c => { const s = _worldPtToStage(c.x, c.y); return `${s.x.toFixed(1)},${s.y.toFixed(1)}`; }).join(' L ');
-    svg.innerHTML = `<path d="M0,0 H${W} V${H} H0 Z M${pts} Z" fill="${_assetsMode ? 'rgba(0,0,0,0.34)' : 'rgba(0,0,0,0.38)'}" fill-rule="evenodd"/>`;
+    svg.innerHTML = `<path d="M0,0 H${W} V${H} H0 Z M${pts} Z" fill="${alphaFill}" fill-rule="evenodd"/>`;
   }
 }
 
@@ -32328,14 +32372,24 @@ function buildDiagnosticsText() {
 
   // ══════════════════════════════════════════════════════════════════════════
   L.push('');
-  L.push('═══ v8z4b31H — Film Alpha Scrim Restoration ═══');
-  L.push('  — Arquitetura —');
+  L.push('═══ v8z4b31I — Global Film Scrim + Shared Frame Visuals ═══');
+  L.push('  — Arquitetura do scrim —');
   push('filmAlphaScrimEnabled', String(filmAlphaScrimEnabled));
   push('filmAlphaScrimUsesSingleSystem', String(filmAlphaScrimUsesSingleSystem));
   push('filmAlphaScrimSharedAcrossModes', String(filmAlphaScrimSharedAcrossModes));
   push('filmAlphaScrimIsEditorOnly', String(filmAlphaScrimIsEditorOnly));
   push('filmAlphaScrimIsAssetLayer', String(filmAlphaScrimIsAssetLayer));
   push('filmAlphaScrimAffectedByAssetReorder', String(filmAlphaScrimAffectedByAssetReorder));
+  L.push('  — Cobertura global —');
+  push('filmAlphaScrimCoversVisibleWorld', String(filmAlphaScrimCoversVisibleWorld));
+  push('filmAlphaScrimCoversVisibleEditorViewport', String(filmAlphaScrimCoversVisibleEditorViewport));
+  push('filmAlphaScrimClippedToActiveSlot', String(filmAlphaScrimClippedToActiveSlot));
+  push('filmAlphaScrimClippedToActiveAsset', String(filmAlphaScrimClippedToActiveAsset));
+  push('filmAlphaScrimClippedToMainImage', String(filmAlphaScrimClippedToMainImage));
+  push('filmAlphaScrimWorldBoundsMatchVisibleEditor', String(filmAlphaScrimWorldBoundsMatchVisibleEditor));
+  push('filmAlphaScrimScreenCoveragePercent', String(filmAlphaScrimScreenCoveragePercent));
+  push('filmAlphaScrimCoverageIssueDetected', String(filmAlphaScrimCoverageIssueDetected));
+  push('filmAlphaScrimCoverageIssueReason', String(filmAlphaScrimCoverageIssueReason));
   L.push('  — Camadas —');
   push('filmAlphaScrimAboveAssets', String(filmAlphaScrimAboveAssets));
   push('filmAlphaScrimBelowFrames', String(filmAlphaScrimBelowFrames));
@@ -32343,40 +32397,65 @@ function buildDiagnosticsText() {
   push('filmAlphaScrimBelowHud', String(filmAlphaScrimBelowHud));
   push('filmAlphaScrimExcludedFromPreview', String(filmAlphaScrimExcludedFromPreview));
   push('filmAlphaScrimExcludedFromExport', String(filmAlphaScrimExcludedFromExport));
-  L.push('  — Recorte —');
+  L.push('  — Recorte/frame ativo —');
   push('filmAlphaScrimUsesCanonicalFrameCutout', String(filmAlphaScrimUsesCanonicalFrameCutout));
   push('filmAlphaScrimCutoutFrameIndex', String(filmAlphaScrimCutoutFrameIndex));
+  push('filmAlphaScrimCurrentCanonicalFrameIndex', String(filmAlphaScrimCurrentCanonicalFrameIndex));
   push('filmAlphaScrimCutoutMatchesCanonicalFrame', String(filmAlphaScrimCutoutMatchesCanonicalFrame));
   push('filmAlphaScrimCutoutUsesRotatedFrameGeometry', String(filmAlphaScrimCutoutUsesRotatedFrameGeometry));
   push('filmAlphaScrimCutoutUsesCurrentPanZoom', String(filmAlphaScrimCutoutUsesCurrentPanZoom));
   push('filmAlphaScrimCutoutAlignedWithFrameRect', String(filmAlphaScrimCutoutAlignedWithFrameRect));
   push('filmAlphaScrimCutoutDeltaFromFramePx', String(filmAlphaScrimCutoutDeltaFromFramePx));
-  L.push('  — Modos —');
-  push('cameraModeUsesFilmAlphaScrim', String(cameraModeUsesFilmAlphaScrim));
-  push('assetsModeUsesFilmAlphaScrim', String(assetsModeUsesFilmAlphaScrim));
+  push('filmAlphaScrimStaleCutoutDetected', String(filmAlphaScrimStaleCutoutDetected));
+  push('filmAlphaScrimStaleSlotDetected', String(filmAlphaScrimStaleSlotDetected));
+  L.push('  — Invalidation/rebuild —');
+  push('filmAlphaScrimInvalidatesOnActiveFrameChange', String(filmAlphaScrimInvalidatesOnActiveFrameChange));
+  push('filmAlphaScrimRebuiltAfterTimelineClick', String(filmAlphaScrimRebuiltAfterTimelineClick));
+  push('filmAlphaScrimRebuiltAfterModeSwitch', String(filmAlphaScrimRebuiltAfterModeSwitch));
+  push('filmAlphaScrimRebuiltAfterPanZoom', String(filmAlphaScrimRebuiltAfterPanZoom));
+  push('filmAlphaScrimRebuiltAfterFrameTransform', String(filmAlphaScrimRebuiltAfterFrameTransform));
+  push('filmAlphaScrimLastFrameIndex', String(filmAlphaScrimLastFrameIndex));
+  push('filmAlphaScrimCutoutMovedAfterFrameChange', String(filmAlphaScrimCutoutMovedAfterFrameChange));
+  L.push('  — Intensidade —');
   push('cameraModeAlphaValue', String(cameraModeAlphaValue));
   push('assetsModeAlphaValue', String(assetsModeAlphaValue));
-  push('alphaMechanismDiffersByMode', String(alphaMechanismDiffersByMode));
-  push('modeOnlyChangesColorAndEditability', String(modeOnlyChangesColorAndEditability));
-  L.push('  — Glow/sombra —');
-  push('externalGlowUsedAsPrimaryLegibilityFix', String(externalGlowUsedAsPrimaryLegibilityFix));
-  push('externalGlowRemovedOrReduced', String(externalGlowRemovedOrReduced));
-  push('frameLegibilityDependsOnGlow', String(frameLegibilityDependsOnGlow));
-  push('frameLegibilityDependsOnAlphaScrim', String(frameLegibilityDependsOnAlphaScrim));
-  L.push('  — Legibilidade —');
+  push('alphaTooStrongDetected', String(alphaTooStrongDetected));
+  push('alphaTooWeakDetected', String(alphaTooWeakDetected));
+  push('alphaValueWithinRecommendedRange', String(alphaValueWithinRecommendedRange));
+  push('cameraModeAlphaRecommendedRange', String(cameraModeAlphaRecommendedRange));
+  push('assetsModeAlphaRecommendedRange', String(assetsModeAlphaRecommendedRange));
+  L.push('  — Visual-base compartilhado dos frames —');
+  push('frameBaseVisualStyleSharedAcrossModes', String(frameBaseVisualStyleSharedAcrossModes));
+  push('assetsModeUsesCameraFrameBaseStyle', String(assetsModeUsesCameraFrameBaseStyle));
+  push('assetsModeOnlyOverridesSelectedColorAndEditability', String(assetsModeOnlyOverridesSelectedColorAndEditability));
   push('cameraInactiveFrameOpacityActual', String(cameraInactiveFrameOpacityActual));
   push('assetsInactiveFrameOpacityActual', String(assetsInactiveFrameOpacityActual));
-  push('cameraInactiveFrameOpacityBelowMinimumDetected', String(cameraInactiveFrameOpacityBelowMinimumDetected));
-  push('assetsInactiveFrameOpacityBelowMinimumDetected', String(assetsInactiveFrameOpacityBelowMinimumDetected));
-  push('cameraInactiveFramesLegible', String(cameraInactiveFramesLegibleH));
-  push('assetsInactiveFramesLegible', String(assetsInactiveFramesLegibleH));
-  push('inactiveFrameOpacityUniform', String(inactiveFrameOpacityUniform));
-  push('inactiveFrameStrokeUniform', String(inactiveFrameStrokeUniform));
-  L.push('  — Curvas —');
-  push('curvesRenderAboveFilmAlphaScrim', String(curvesRenderAboveFilmAlphaScrim));
+  push('cameraInactiveFrameStrokeActual', String(cameraInactiveFrameStrokeActual));
+  push('assetsInactiveFrameStrokeActual', String(assetsInactiveFrameStrokeActual));
+  push('cameraAssetsInactiveFrameOpacityDelta', String(cameraAssetsInactiveFrameOpacityDelta));
+  push('cameraAssetsInactiveFrameStrokeDelta', String(cameraAssetsInactiveFrameStrokeDelta));
+  push('inactiveFrameVisualMismatchBetweenModesDetected', String(inactiveFrameVisualMismatchBetweenModesDetected));
+  push('inactiveFrameVisualMismatchReason', String(inactiveFrameVisualMismatchReason));
+  L.push('  — Overrides permitidos —');
+  push('cameraSelectedFrameColor', String(cameraSelectedFrameColor));
+  push('assetsSelectedFrameColor', String(assetsSelectedFrameColor));
+  push('cameraModeFrameEditable', String(cameraModeFrameEditable));
+  push('assetsModeFrameEditable', String(assetsModeFrameEditable));
+  push('cameraModeHandlesVisible', String(cameraModeHandlesVisible));
+  push('assetsModeHandlesVisible', String(assetsModeHandlesVisible));
+  push('cameraModeHudVisible', String(cameraModeHudVisible));
+  push('assetsModeHudVisible', String(assetsModeHudVisible));
+  push('cameraModeCurvesEditable', String(cameraModeCurvesEditable));
+  push('assetsModeCurvesEditable', String(assetsModeCurvesEditable));
   push('assetsModeCurvesRemainWhite', String(assetsModeCurvesRemainWhite));
-  push('cameraModeCurvesRemainEditable', String(cameraModeCurvesRemainEditableH));
-  push('curveCenterGeometryUnchanged', String(curveCenterGeometryUnchanged));
+  L.push('  — Legacy/override antigo —');
+  push('legacyAssetsReferenceOpacityDetected', String(legacyAssetsReferenceOpacityDetected));
+  push('legacyAssetsReferenceOpacityValue', String(legacyAssetsReferenceOpacityValue));
+  push('inactiveFrameInlineOpacityOverrideDetected', String(inactiveFrameInlineOpacityOverrideDetected));
+  push('inactiveFrameLegacyClassOverrideDetected', String(inactiveFrameLegacyClassOverrideDetected));
+  push('externalGlowUsedAsPrimaryLegibilityFix', String(externalGlowUsedAsPrimaryLegibilityFix));
+  push('frameLegibilityDependsOnGlow', String(frameLegibilityDependsOnGlow));
+  push('frameLegibilityDependsOnAlphaScrim', String(frameLegibilityDependsOnAlphaScrim));
   L.push('  — Preview/Export —');
   push('previewExcludesFilmAlphaScrim', String(previewExcludesFilmAlphaScrim));
   push('exportExcludesFilmAlphaScrim', String(exportExcludesFilmAlphaScrim));
