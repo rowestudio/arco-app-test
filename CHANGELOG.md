@@ -1,4 +1,14 @@
 # v8z4b31H
+## v8z4b31N
+
+- Corrige estruturalmente o alfa/scrim do editor.
+- Move o alfa para uma camada fixa de viewport, fora do `stageContent` transformado.
+- Impede que o alfa se mova junto com pan/zoom do Stage.
+- Mantém apenas o cutout do frame ativo recalculado em screen-space.
+- Preserva frames, curvas, números e HUD acima do alfa por z-index de overlay.
+- Mantém assets abaixo do alfa.
+- Preserva Preview, Export, JSON, ProjectWorld e bolinhas centrais da timeline sem alterações.
+
 ## v8z4b31M
 
 - Corrige o alfa/scrim global do editor para cobrir todo o viewport visível, sem ficar preso ao slot central.
