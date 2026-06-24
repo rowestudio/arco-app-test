@@ -1,3 +1,15 @@
+## v8z4b31N
+
+Base confirmada antes do patch: `v8z4b31M` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
+
+### Validação obrigatória
+- [ ] Menu mostra "Arco Motion App v8z4b31N" (`APP_VERSION`=`APP_VERSION_NAME`=`v8z4b31N`).
+- [ ] Diagnóstico mostra `stageDimSvgParentIsStageContent:false`, `filmAlphaScrimParentIsViewportLayer:true`, `filmAlphaScrimMovesWithPanZoom:false`, `filmAlphaScrimViewportFixed:true`.
+- [ ] Em Modo Câmera, com múltiplos assets visíveis, o scrim cobre 100% do viewport e não desliza ao panar/alterar zoom em 69% e 102%; apenas o cutout acompanha o frame ativo.
+- [ ] Em Modo Ativos com referências, o scrim permanece fixo no viewport e abaixo de frames/números/curvas, sem bloquear hit-test de assets/frames.
+- [ ] Preview curto e Export MP4 curto não mostram alfa/scrim de editor.
+- [ ] Bolinhas centrais laranjas da timeline continuam na posição corrigida da v8z4b31M.
+
 ## v8z4b31M
 
 Base confirmada antes do patch: `v8z4b31L` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
