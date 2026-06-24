@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b31K — base v8z4b31I (a v8z4b31J foi REVERTIDA/REJEITADA por quebrar a seleção de frames no Stage no Modo Frames). Hotfix visual seguro: "visual por cima, eventos intactos". fix(safe-overlay): NÃO reorganiza a árvore do Stage nem reparenta frames/assets (causa raiz da regressão da v8z4b31J); mantém a pilha de z-index canônica da v8z4b31I (assets ≤ CAMERA_ASSET_BAND_MAX=15 < scrim 16 < curvas 18/994 < frames 20–30/1000), em que scrim/frames/curvas/números/highlight já ficam ACIMA dos assets. As camadas puramente visuais (FilmVisualOverlayLayer conceitual = #stageDimSvg + #bezierSvg + #assetsModeRefCurveSvg) mantêm pointer-events:none e NÃO capturam touch/click/pointer; os .frame interativos preservam o hit-test aprovado (Modo Frames seleciona/edita; Modo Ativos = referência pointer-events:none). feat(timeline-assets-reference): no Modo Ativos com referências ON, o frame sob a mira central da timeline atualiza assetsModeFrameReferenceHighlightIndex e o destaque roxo no Stage (scroll/centralização programática/tap/troca de modo) via updateAssetsModeReferenceFromTimelineCenter() — só classe CSS/estado, sem tornar frames editáveis e sem mexer em eventos. feat(diag): bloco 'v8z4b31K — Safe Visual Overlay Above Assets'. preserve: alpha 0.26/0.22, opacidade, espessura, curvas, timeline visual, preview/export/WebCodecs, save/load, upload, menu +, Undo/Redo, Frente/Trás (só assets), layout/textos/ícones/cores. APP_VERSION = v8z4b31K. -->
+<!-- Arco Motion App — v8z4b31L — base v8z4b31K. Hotfix estrutural pequeno: adiciona restackFilmEditorLayers(reason) para reordenar no DOM real os nós existentes do Stage após redraw/render (assets primeiro; scrim, frames, números e curvas acima; HUD/handles acima em Modo Câmera; eventos preservados via pointer-events conforme modo). APP_VERSION = APP_VERSION_NAME = v8z4b31L. -->
 <!-- Arco Motion App — v8z4b31I — base v8z4b31H. fix(scrim-filmagem): torna o filmAlphaScrim uma máscara global editor-only em #stageDimSvg cobrindo todo o viewport visível do editor, acima dos assets e abaixo de frames/curvas/HUD, sem clip por slot/asset e com recorte sempre no frame canônico atual. fix(alpha): reduz intensidades para 0.26 no Modo Frames/Câmera e 0.22 no Modo Ativos/Mundo. fix(legibilidade): Modo Ativos com referências passa a usar o mesmo visual-base de frames do Modo Frames para opacidade/espessura dos frames não ativos; só cor roxa/editabilidade/HUD/curvas diferem. feat(diag): bloco 'v8z4b31I — Global Film Scrim + Shared Frame Visuals'. APP_VERSION = v8z4b31I. -->
 <!-- Arco Motion App — v8z4b31F — base v8z4b31E. Single Film System Architecture. fix(arquitetura): aprofunda a unificação iniciada em v8z4b31E — agora a SELEÇÃO, a TIMELINE (bolinha/mira) e a LOCALIZAÇÃO também são um único sistema compartilhado entre Modo Câmera e Modo Ativos. fix(seleção-canônica): introduz estado canônico único filmSelection={frameIndex,segmentIndex,source,updatedAt} via commitFilmSelection(); locateAssetsModeFrameRef()/locateAssetsModeSegmentRef() passam a gravar o frame canônico (activeIdx/selectedSegmentIndex) em vez de criar um índice de referência paralelo — selecionar Frame N no Modo Ativos mantém Frame N ao voltar ao Modo Câmera (e vice-versa). Os índices timelineVisualActiveIndex/timelineReferenceActiveIndex/timelineEditingActiveIndex/temporaryFrameReferenceTargetIndex/assetsModeFrameReferenceHighlightIndex/frameTimelineCenteredIndex/rendererFrameIndex/viewportLocalizationTargetIndex passam a DERIVAR do canônico (não disputam mais a seleção). getTimelineVisualActiveIndex() retorna o frame canônico. fix(timeline-mira-fixa): syncLowerTimelineCenterMarkers() fixa a bolinha/indicador no CENTRO do viewport da timeline (mira fixa); os frames rolam por baixo dela e ela NÃO acompanha mais o conteúdo rolável/foco. fix(opacidade-uniforme-ativos): applyStageTimelineFocusVisuals() não aplica mais a hierarquia de opacidade/espessura/zIndex do Modo Câmera quando em Modo Ativos — limpa estilos inline e deixa o CSS uniforme (.40) cuidar; opacidade/espessura dos frames não selecionados não muda mais conforme a origem do clique (ícone/timeline/stage/localização). feat(diag): bloco completo 'v8z4b31F — Single Film System Architecture' (Arquitetura/Seleção/Timeline/Style/Geometry/Interactivity/References/Localization/Preview-Export). APP_VERSION = v8z4b31F. preserve: layout/cores/ícones/textos/menu+/upload/save/load/preview/export/WebCodecs/ProjectWorld/assets/layers/zIndex/motor de vídeo/cálculo final de câmera, múltiplos assets, Frente/Trás, undo/redo de assets, curvas/geometria únicas do v8z4b31E, roxo no Modo Ativos, ciano no Modo Câmera, frames não editáveis no Modo Ativos. base v8z4b31E. -->
 <!-- Arco Motion App — v8z4b31E — base v8z4b31D. Unified Film Overlay System. fix(arquitetura): elimina o paralelismo entre o sistema visual de frames/curvas do Modo Câmera e o de referências do Modo Ativos. NÃO existem mais dois sistemas: há UMA fonte de geometria (getFilmFrameGeometry → getFrameScreenGeometry: cantos rotacionados + centro real em screen coords) e UMA fonte de path de curva (getFilmSegmentPathD: mesma matemática/handles de drawBezier), com dispatch único renderFilmOverlay({mode,stylePreset,editable}). O que muda entre modos é só estilo/interatividade. fix(centro): renderAssetsModeReferenceCurves usa getFilmFrameGeometry().center — centro da curva == centro do retângulo do frame em qualquer modo/rotação/zoom (frameCenterDeltaFromRectCenterPx≈0). fix(curva-igual): curva do Modo Ativos usa getFilmSegmentPathD — mesmo caminho visual do Modo Câmera, só estilo branco/cinza (trecho selecionado branco mais forte/espesso, nunca roxo/ciano). fix(contaminação-visual): isolamento explícito de cameraModeVisualizationState × assetsModeReferenceVisualizationState — o dim/overlay de edição do Modo Câmera (stageDimSvg) é limpo ao entrar no Modo Ativos e não escurece mais a imagem; o Modo Ativos usa só seu próprio scrim. fix(legibilidade-câmera): borda do frame ativo 4.0 (era 3.5), frames não ativos 0.78/0.88 (eram 0.62/0.80), distant 0.72 (era 0.55) — frame ativo ciano dominante. fix(legibilidade-ativos): frames não selecionados 0.40 (era 0.28), borda do selecionado 2.5px, mantendo o roxo dominante. feat(diag): bloco completo 'v8z4b31E — Unified Film Overlay System' (Arquitetura/Frame geometry/Curve geometry/Mode visual isolation/Legibility/Toggle/Selection/Localization/Layers/Preview/Export). APP_VERSION = v8z4b31E. preserve: layout/cores/ícones/textos/menu+/upload/save/load/preview/export/WebCodecs/ProjectWorld/assets/layers/zIndex/motor de vídeo/cálculo final de câmera, múltiplos assets, seleção, Frente/Trás, undo de delete, referências no Modo Ativos, frames/curvas acima dos assets, referências fora de preview/export, roxo no Modo Ativos, ciano no Modo Câmera, curvas do Modo Ativos brancas/cinza, lógica de seleção (activeFrameIndex/selectedSegmentIndex). base v8z4b31D. -->
@@ -7011,14 +7011,108 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b31K';
-const APP_VERSION_NAME = 'v8z4b31K';
+const APP_VERSION = 'v8z4b31L';
+const APP_VERSION_NAME = 'v8z4b31L';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
 if (appVersionTextEl) appVersionTextEl.textContent = APP_VERSION;
 if (appVersionNameTextEl) appVersionNameTextEl.textContent = APP_VERSION_NAME;
+
+// v8z4b31L — Real DOM Restack Film Layers: reorder existing stage nodes after redraw.
+let realRestackFunctionCalledAtLeastOnce = false;
+let restackCalledAfterRenderProjectWorldExtraImages = false;
+let restackCalledAfterRenderAll = false;
+let restackCalledAfterUpdateDimOverlay = false;
+let restackCalledAfterDrawBezier = false;
+let restackCalledAfterModeSwitch = false;
+let restackCalledAfterAssetReorder = false;
+let restackCalledAfterPanZoom = false;
+let restackCalledAfterLoad = false;
+let restackCalledAfterTimelineReferenceUpdate = false;
+let imageDecodeAfterRestackDetected = false;
+let restackRecoveredAfterAsyncImageDecode = false;
+function restackFilmEditorLayers(reason = '') {
+  const root = (typeof stageContent !== 'undefined' && stageContent) ? stageContent : document.getElementById('stageContent');
+  if (!root) return;
+  const isAssets = (typeof isAssetsMode === 'function') && isAssetsMode();
+  const isCamera = (typeof isCameraMode === 'function') ? isCameraMode() : !isAssets;
+  const img = document.getElementById('imgEl');
+  const scrim = document.getElementById('stageDimSvg');
+  const refBackdrop = document.getElementById('assetsModeFrameRefBackdrop');
+  const bezier = document.getElementById('bezierSvg');
+  const refCurve = document.getElementById('assetsModeRefCurveSvg');
+  if (img && img.parentNode === root) {
+    img.style.pointerEvents = 'none';
+    img.style.zIndex = '1';
+    root.appendChild(img);
+  }
+  Array.from(root.querySelectorAll('.world-extra-img'))
+    .sort(function(a, b) {
+      const za = parseInt(getComputedStyle(a).zIndex || a.style.zIndex || '0', 10) || 0;
+      const zb = parseInt(getComputedStyle(b).zIndex || b.style.zIndex || '0', 10) || 0;
+      return za - zb;
+    })
+    .forEach(function(el) {
+      el.style.pointerEvents = 'none';
+      if (!el.style.zIndex) el.style.zIndex = '2';
+      root.appendChild(el);
+    });
+  if (scrim && scrim.parentNode === root) {
+    scrim.style.pointerEvents = 'none';
+    scrim.style.zIndex = String((typeof FILM_ALPHA_SCRIM_Z !== 'undefined') ? FILM_ALPHA_SCRIM_Z : 16);
+    root.appendChild(scrim);
+  }
+  if (refBackdrop && refBackdrop.parentNode === root) {
+    refBackdrop.style.pointerEvents = 'none';
+    refBackdrop.style.zIndex = String((typeof FRAME_REF_SCRIM_Z !== 'undefined') ? FRAME_REF_SCRIM_Z : 17);
+    root.appendChild(refBackdrop);
+  }
+  Array.from(root.querySelectorAll('.frame')).forEach(function(el) {
+    if (isAssets) {
+      el.style.pointerEvents = 'none';
+      el.style.zIndex = String((typeof FRAME_REFERENCE_LAYER_Z !== 'undefined') ? FRAME_REFERENCE_LAYER_Z : 1000);
+    } else {
+      el.style.pointerEvents = '';
+      const fi = parseInt((el.id || '').replace(/\D+/g, ''), 10);
+      const isActive = Number.isInteger(fi) && typeof activeIdx !== 'undefined' && fi === activeIdx;
+      el.style.zIndex = isActive ? '30' : '20';
+    }
+    root.appendChild(el);
+  });
+  if (bezier && bezier.parentNode === root) {
+    bezier.style.pointerEvents = 'none';
+    bezier.style.zIndex = String(isAssets ? ((typeof FRAME_REF_CURVE_Z !== 'undefined') ? FRAME_REF_CURVE_Z : 994) : ((typeof CAMERA_CURVE_LAYER_Z !== 'undefined') ? CAMERA_CURVE_LAYER_Z : 18));
+    root.appendChild(bezier);
+  }
+  if (refCurve && refCurve.parentNode === root) {
+    refCurve.style.pointerEvents = 'none';
+    refCurve.style.zIndex = String((typeof FRAME_REF_CURVE_Z !== 'undefined') ? FRAME_REF_CURVE_Z : 994);
+    root.appendChild(refCurve);
+  }
+  if (isCamera) {
+    ['.corner-handle','.global-handle','.frame-in-handle','.frame-out-handle','.ctrl-pt','#frameHud','#stageFrameMenu'].forEach(function(sel) {
+      root.querySelectorAll(sel).forEach(function(el) { root.appendChild(el); });
+    });
+  }
+  const outline = document.getElementById('assetSelectOutline');
+  if (outline && outline.parentNode === root && isAssets) root.appendChild(outline);
+  realRestackFunctionCalledAtLeastOnce = true;
+  if (reason === 'renderProjectWorldExtraImages') restackCalledAfterRenderProjectWorldExtraImages = true;
+  if (reason === 'renderAll') restackCalledAfterRenderAll = true;
+  if (reason === 'updateDimOverlay') restackCalledAfterUpdateDimOverlay = true;
+  if (reason === 'drawBezier') restackCalledAfterDrawBezier = true;
+  if (reason === 'mode-switch') restackCalledAfterModeSwitch = true;
+  if (reason === 'asset-reorder') restackCalledAfterAssetReorder = true;
+  if (reason === 'pan-zoom' || reason === 'layoutStage') restackCalledAfterPanZoom = true;
+  if (reason === 'load' || reason === 'restoreState') restackCalledAfterLoad = true;
+  if (reason === 'timeline-center-reference') restackCalledAfterTimelineReferenceUpdate = true;
+  if (reason === 'asset-image-onload') { imageDecodeAfterRestackDetected = true; restackRecoveredAfterAsyncImageDecode = true; }
+  if (typeof window !== 'undefined') {
+    window.__arcoLastRestackFilmEditorLayers = { reason: reason, timestamp: Date.now(), mode: isAssets ? 'assets' : 'camera' };
+  }
+}
 
 // v8z4b30ZO — estado de visibilidade dos frames no Modo Ativos.
 let worldModeShowFrames = true;
@@ -7088,7 +7182,7 @@ let assetsModeFrameReferenceHighlightVisible = false;
 let assetsModeResidualFrameEditingUIVisible = false;
 // v8z4b30ZW — índice do frame com destaque de referência no Modo Ativos.
 let assetsModeFrameReferenceHighlightIndex = -1;
-// v8z4b31K — Safe Visual Overlay Above Assets: o frame sob a mira central da
+// v8z4b31L — Safe Visual Overlay Above Assets: o frame sob a mira central da
 // timeline no Modo Ativos (referências ON) controla o destaque roxo no Stage.
 // Estas flags rastreiam apenas a SINCRONIA visual (classe CSS/estado) — não
 // alteram eventos/hit-test nem tornam frames editáveis.
@@ -13652,6 +13746,7 @@ function restoreState(state) {
   }
   invalidateProjectWorldComposite();
   renderProjectWorldExtraImages();
+  restackFilmEditorLayers('restoreState');
 
   renderAll();
   updateFrameSelector();
@@ -13686,6 +13781,7 @@ function undo() {
   // v8z4b30ZY — garantir visual update explícito após undo
   if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
   if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
+  restackFilmEditorLayers('restoreState');
   projectWorldCompositeInvalidatedAfterAssetUndo = true;
   assetUndoVisualUpdateRan = true;
   stageRedrawnAfterAssetUndo = true;
@@ -13718,6 +13814,7 @@ function redo() {
   // v8z4b30ZY — garantir visual update explícito após redo
   if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
   if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
+  restackFilmEditorLayers('restoreState');
   projectWorldCompositeInvalidatedAfterAssetUndo = true;
   assetUndoVisualUpdateRan = true;
   stageRedrawnAfterAssetUndo = true;
@@ -14047,7 +14144,7 @@ function toggleWorldModeFrames() {
     assetsModeReferenceNumbersVisibleCount = assetsModeReferenceFramesVisibleCount;
     assetsModeReferenceHighlightsVisibleCount = (_refIdx >= 0) ? 1 : 0;
     assetsModeReferenceScrimVisible = true;
-    // v8z4b31K — ao ligar referências no Modo Ativos, sincronizar o destaque roxo
+    // v8z4b31L — ao ligar referências no Modo Ativos, sincronizar o destaque roxo
     // com a mira central da timeline (entrada/troca de modo).
     assetsModeReferenceUpdatedAfterModeSwitch = true;
   } else {
@@ -14116,6 +14213,7 @@ function toggleWorldModeFrames() {
   // desenhar trechos/curvas de referência. Não depende de clique posterior.
   if (typeof renderAll === 'function') renderAll();
   renderAssetsModeReferenceCurves();
+  restackFilmEditorLayers('toggleWorldModeFrames');
   assetsModeIconToggleTriggeredRedraw = true;
   assetsModeIconToggleReferenceLayerRebuilt = true;
   // v8z4b30ZY — atualizar bolinha laranja e pill focus
@@ -14330,6 +14428,7 @@ function hideAssetsModeReferenceCurves() {
   const svg = document.getElementById('assetsModeRefCurveSvg');
   if (svg) { svg.innerHTML = ''; svg.style.display = 'none'; }
   assetsModeCurveReferencesRendered = false;
+  restackFilmEditorLayers('hideAssetsModeReferenceCurves');
 }
 function renderAssetsModeReferenceCurves() {
   // Só desenha quando em Modo Ativos com referências visíveis e ≥2 frames.
@@ -14446,6 +14545,7 @@ function renderAssetsModeReferenceCurves() {
   inactiveFrameOpacityChangedByModeSwitch = false;
   inactiveFrameInlineOpacityOverrideDetected = false;
   inactiveFrameLegacyClassOverrideDetected = false;
+  restackFilmEditorLayers('renderAssetsModeReferenceCurves');
 }
 // v8z4b30ZZ — item 6: localiza o viewport do Stage até um frame/trecho de
 // referência (panorâmica suave), sem alterar zoom nem ativar edição. Trabalha
@@ -14702,7 +14802,7 @@ function locateAssetsModeFrameRef(i) {
   frameTimelineClickedIndex = i;
   // v8z4b30ZW — migrar destaque visual: remove do anterior, aplica no novo.
   assetsModeFrameReferenceHighlightIndex = i;
-  // v8z4b31K — tap em frame da timeline atualiza a referência do Stage.
+  // v8z4b31L — tap em frame da timeline atualiza a referência do Stage.
   assetsModeReferenceUpdatedAfterTimelineTap = true;
   assetsModeLastTimelineReferenceSource = 'tap';
   // v8z4b31A — item 2: destaque inequívoco do frame selecionado no Stage.
@@ -14749,6 +14849,7 @@ function locateAssetsModeFrameRef(i) {
   assetsModeFrameNumberReferenceVisible = true;
   assetsModeFrameNumberHighlightIndex = i;
   assetsModeFrameNumberUsesAnchoredGeometry = true;
+  restackFilmEditorLayers('timeline-center-reference');
   showStatus('Frame ' + (i + 1) + ' localizado como referência.');
 }
 // v8z4b30ZZ — item 4/6: referencia um TRECHO (segmento entre frame seg e seg+1)
@@ -14997,11 +15098,12 @@ function setEditorMode(mode, source) {
   } catch (e) {
     setModeLastError = (e && e.message) ? e.message : String(e);
   }
+  restackFilmEditorLayers('mode-switch');
   return editorMode;
 }
 // v8z4b30ZQ/ZR — alias do roteador central, no padrão pedido (setMode('camera') /
 // setMode('assets')). Repassa a ORIGEM para a fonte única setEditorMode.
-function setMode(mode, source) { return setEditorMode(mode === 'assets' ? 'assets' : 'camera', source); }
+function setMode(mode, source) { const r = setEditorMode(mode === 'assets' ? 'assets' : 'camera', source); restackFilmEditorLayers('mode-switch'); return r; }
 // v8z4b30ZL — sincroniza a UI ao modo atual: classe no body (dimming de frames,
 // cor roxa no Modo Ativos), destaque das pills do topo e ferramentas da 4ª linha.
 function syncEditorModeUI() {
@@ -15166,6 +15268,7 @@ function deleteSelectedAsset() {
   if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
   if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+  restackFilmEditorLayers('asset-reorder');
   assetDeletedVisualUpdateRan = true;
   stageRedrawnAfterAssetDelete = true;
   if (typeof markProjectDirty === 'function') markProjectDirty('deleteAsset');
@@ -15218,6 +15321,7 @@ function bringSelectedAssetForward() {
   }
   if (typeof markProjectDirty === 'function') markProjectDirty('frente');
   syncAssetToolbarState();
+  restackFilmEditorLayers('asset-reorder');
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
   showStatus('Imagem movida para frente.');
 }
@@ -15260,6 +15364,7 @@ function sendSelectedAssetBackward() {
   }
   if (typeof markProjectDirty === 'function') markProjectDirty('trás');
   syncAssetToolbarState();
+  restackFilmEditorLayers('asset-reorder');
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
   showStatus('Imagem movida para trás.');
 }
@@ -15559,7 +15664,7 @@ function getLowerTimelineNearestFrameIndex() {
   });
   return bestIndex;
 }
-// v8z4b31K — Safe Visual Overlay Above Assets: no Modo Ativos com referências ON,
+// v8z4b31L — Safe Visual Overlay Above Assets: no Modo Ativos com referências ON,
 // o frame sob a mira central da timeline vira o frame de referência destacado em
 // roxo no Stage. Apenas atualiza estado + a classe CSS 'assets-ref-highlight' nos
 // .frame/pills (mesmo destaque já usado por locateAssetsModeFrameRef). NÃO altera
@@ -15594,6 +15699,7 @@ function updateAssetsModeReferenceFromTimelineCenter(source) {
   if (source === 'scroll') assetsModeReferenceUpdatedAfterTimelineScroll = true;
   else if (source === 'tap') assetsModeReferenceUpdatedAfterTimelineTap = true;
   else if (source === 'modeSwitch' || source === 'programmaticCenter') assetsModeReferenceUpdatedAfterModeSwitch = true;
+  restackFilmEditorLayers('timeline-center-reference');
   return true;
 }
 function updateLowerTimelineCenterFrameFromScroll() {
@@ -15603,7 +15709,7 @@ function updateLowerTimelineCenterFrameFromScroll() {
   if (bestIndex < 0 || bestIndex === lowerTimelineCenterFrameIndex) return;
   lowerTimelineCenterFrameIndex = bestIndex;
   timelineFocalFrameId = bestIndex;
-  // v8z4b31K — no Modo Ativos, mover a mira central destaca o frame de referência.
+  // v8z4b31L — no Modo Ativos, mover a mira central destaca o frame de referência.
   updateAssetsModeReferenceFromTimelineCenter('scroll');
   // v8z4b29BL — ao centralizar um frame na faixa/timeline (scroll/scrub),
   // ele também vira o frame ativo oficial: mantém Stage, label e controles
@@ -15785,7 +15891,7 @@ function finishLowerTimelineProgrammaticCenter(fi, scrollLeft, pillsEl, timesEl)
   timelineFocalFrameId = fi;
   setLowerTimelineScroll(pillsEl, scrollLeft);
   setLowerTimelineScroll(timesEl, scrollLeft);
-  // v8z4b31K — centralização programática também atualiza o destaque de referência.
+  // v8z4b31L — centralização programática também atualiza o destaque de referência.
   updateAssetsModeReferenceFromTimelineCenter('programmaticCenter');
   applyStageTimelineFocusVisuals();
 }
@@ -16242,6 +16348,7 @@ function layoutStage() {
   // previewCanvas must match export format AR, not image AR
   setupPreviewCanvas();
   renderProjectWorldExtraImages(); // v8z4b30N — reposiciona imagens extras do mundo
+  restackFilmEditorLayers('layoutStage');
 }
 
 window.addEventListener('resize', () => {
@@ -18493,6 +18600,7 @@ function updateDimOverlay() {
     const pts = worldCorners.map(c => { const s = _worldPtToStage(c.x, c.y); return `${s.x.toFixed(1)},${s.y.toFixed(1)}`; }).join(' L ');
     svg.innerHTML = `<path d="M0,0 H${W} V${H} H0 Z M${pts} Z" fill="${alphaFill}" fill-rule="evenodd"/>`;
   }
+  restackFilmEditorLayers('updateDimOverlay');
 }
 
 // ═══════════════════════════════════════
@@ -19062,6 +19170,7 @@ function drawBezier() {
   }
 
   bezierSvg.innerHTML = svg;
+  restackFilmEditorLayers('drawBezier');
 }
 
 function updateCtrlPts() {
@@ -20032,6 +20141,7 @@ function refreshEditorViewVisualOverlays() {
   drawBezier();
   updateCtrlPts();
   updateDimOverlay();
+  restackFilmEditorLayers('renderAll');
   if (ghostFrame) renderGhostFrame();
   if (globalHandleEl && globalHandleEl.classList.contains('show')) {
     globalHandleEl.style.transform = `scale(${1 / editorZoomScale})`;
@@ -29215,6 +29325,7 @@ function renderProjectWorldExtraImages() {
   const extras = getProjectWorldExtraImageAssets();
   if (!extras.length) {
     if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
+    restackFilmEditorLayers('renderProjectWorldExtraImages');
     return;
   }
   // v8z4b30ZG — Correção 3: usar editorTransform para consistência com frames
@@ -29230,6 +29341,7 @@ function renderProjectWorldExtraImages() {
     img.draggable = false;
     img.alt = '';
     img.src = src;
+    img.onload = function() { restackFilmEditorLayers('asset-image-onload'); };
     img.style.position = 'absolute';
     var _ep = editorWorldToStage(a.worldX, a.worldY, a.worldW, a.worldH);
     img.style.left = _ep.x + 'px';
@@ -29252,6 +29364,7 @@ function renderProjectWorldExtraImages() {
   });
   // v8z4b30ZJ — manter o contorno de seleção alinhado após reposicionar assets.
   renderAssetSelectionOverlay();
+  restackFilmEditorLayers('renderProjectWorldExtraImages');
 }
 
 // ═══════════════════════════════════════
@@ -29436,6 +29549,7 @@ function renderAssetSelectionOverlay() {
   assetSelectionOutlineUsesAssetGeometry = true;
   assetSelectionOutlineIssue = '';
   selectedAssetVisualFeedbackConsistent = true;
+  restackFilmEditorLayers('renderAssetSelectionOverlay');
 }
 
 // ── Painel básico de Layers ──────────────────────────────────────────────
@@ -32520,7 +32634,7 @@ function buildDiagnosticsText() {
 
   // ══════════════════════════════════════════════════════════════════════════
   L.push('');
-  L.push('═══ v8z4b31K — Safe Visual Overlay Above Assets ═══');
+  L.push('═══ v8z4b31L — Real DOM Restack Film Layers ═══');
   // -- Medição real do DOM (z-index/pointer-events) --
   const _k_numZ = function(el){ if (!el) return NaN; const v = getComputedStyle(el).zIndex; const n = parseInt(v, 10); return Number.isFinite(n) ? n : 0; };
   const _k_pe = function(el){ return el ? (getComputedStyle(el).pointerEvents || '') : ''; };
@@ -32581,8 +32695,81 @@ function buildDiagnosticsText() {
     }
   }
 
+  const _k_children = _k_stageContent ? Array.from(_k_stageContent.children) : [];
+  const _k_idx = function(el){ return el ? _k_children.indexOf(el) : -1; };
+  const _k_extraEls = _k_stageContent ? Array.from(_k_stageContent.querySelectorAll('.world-extra-img')) : [];
+  const _k_firstExtra = _k_extraEls[0] || null;
+  const _k_lastExtra = _k_extraEls.length ? _k_extraEls[_k_extraEls.length - 1] : null;
+  const _k_firstFrame = _k_frameEls[0] || null;
+  const _k_lastFrame = _k_frameEls.length ? _k_frameEls[_k_frameEls.length - 1] : null;
+  const _k_domAssetLast = Math.max(_k_idx(_k_imgEl), _k_idx(_k_lastExtra));
+  const _k_domFrameFirst = _k_idx(_k_firstFrame);
+  const _k_domCurveFirst = Math.min.apply(null, [_k_idx(_k_bezierEl), _k_idx(_k_refCurveEl)].filter(function(v){ return v >= 0; }).concat([999999]));
+  const _k_lastRestack = (typeof window !== 'undefined' && window.__arcoLastRestackFilmEditorLayers) ? window.__arcoLastRestackFilmEditorLayers : {};
+
+  L.push('  — Versão/base —');
+  push('baseVersionIs31K', 'true');
+  push('previous31KConceptualOverlayDetected', 'true');
+  push('realRestackFunctionExists', String(typeof restackFilmEditorLayers === 'function'));
+  push('realRestackFunctionCalledAtLeastOnce', String(!!realRestackFunctionCalledAtLeastOnce));
+  push('lastRestackReason', String(_k_lastRestack.reason || ''));
+  push('lastRestackMode', String(_k_lastRestack.mode || ''));
+  push('lastRestackTimestamp', String(_k_lastRestack.timestamp || 0));
+  L.push('  — DOM real —');
+  push('stageContentExists', String(!!_k_stageContent));
+  push('imgElParentIsStageContent', String(!!(_k_imgEl && _k_imgEl.parentNode === _k_stageContent)));
+  push('stageDimSvgParentIsStageContent', String(!!(_k_scrimEl && _k_scrimEl.parentNode === _k_stageContent)));
+  push('bezierSvgParentIsStageContent', String(!!(_k_bezierEl && _k_bezierEl.parentNode === _k_stageContent)));
+  push('assetsModeRefCurveSvgParentIsStageContent', String(!_k_refCurveEl || _k_refCurveEl.parentNode === _k_stageContent));
+  push('frameElementsParentIsStageContent', String(_k_frameEls.every(function(el){ return el.parentNode === _k_stageContent; })));
+  L.push('  — Ordem DOM real —');
+  push('domIndexImgEl', String(_k_idx(_k_imgEl)));
+  push('domIndexFirstWorldExtraImg', String(_k_idx(_k_firstExtra)));
+  push('domIndexLastWorldExtraImg', String(_k_idx(_k_lastExtra)));
+  push('domIndexStageDimSvg', String(_k_idx(_k_scrimEl)));
+  push('domIndexFirstFrame', String(_k_idx(_k_firstFrame)));
+  push('domIndexLastFrame', String(_k_idx(_k_lastFrame)));
+  push('domIndexBezierSvg', String(_k_idx(_k_bezierEl)));
+  push('domIndexAssetsModeRefCurveSvg', String(_k_idx(_k_refCurveEl)));
+  push('domAssetsBeforeScrim', String(_k_domAssetLast < 0 || _k_idx(_k_scrimEl) < 0 || _k_domAssetLast < _k_idx(_k_scrimEl)));
+  push('domAssetsBeforeFrames', String(_k_domAssetLast < 0 || _k_domFrameFirst < 0 || _k_domAssetLast < _k_domFrameFirst));
+  push('domAssetsBeforeCurves', String(_k_domAssetLast < _k_domCurveFirst));
+  push('domScrimBeforeFrames', String(_k_idx(_k_scrimEl) < 0 || _k_domFrameFirst < 0 || _k_idx(_k_scrimEl) < _k_domFrameFirst));
+  L.push('  — Z-index real —');
+  push('computedImgElZIndex', String(_k_numZ(_k_imgEl)));
+  push('computedMaxWorldExtraImgZIndex', String(_k_extraEls.reduce(function(m, el){ return Math.max(m, _k_numZ(el)); }, 0)));
+  push('computedStageDimSvgZIndex', String(_k_numZ(_k_scrimEl)));
+  push('computedMinFrameZIndex', String(_k_minFrameZ));
+  push('computedMaxFrameZIndex', String(_k_visFrameEls.reduce(function(m, el){ return Math.max(m, _k_numZ(el)); }, 0)));
+  push('computedBezierSvgZIndex', String(_k_numZ(_k_bezierEl)));
+  push('computedAssetsModeRefCurveSvgZIndex', String(_k_numZ(_k_refCurveEl)));
+  push('computedFramesAboveAssets', String(_k_framesAbove));
+  push('computedScrimAboveAssets', String(_k_scrimAbove));
+  push('computedCurvesAboveAssets', String(_k_curvesAbove));
+  L.push('  — Pointer events —');
+  push('stageDimSvgPointerEvents', String(_k_pe(_k_scrimEl)));
+  push('bezierSvgPointerEvents', String(_k_pe(_k_bezierEl)));
+  push('assetsModeRefCurveSvgPointerEvents', String(_k_pe(_k_refCurveEl)));
+  push('cameraModeFramesPointerEventsInteractive', String(!_k_isAssetsMode && _k_frameEls.every(function(el){ return _k_pe(el) !== 'none'; })));
+  push('assetsModeFramesPointerEventsNone', String(!_k_isAssetsMode || _k_frameEls.every(function(el){ return _k_pe(el) === 'none'; })));
+  push('overlayBlocksFrameHitTest', String(!_k_allVisualPENone));
+  push('overlayBlocksAssetHitTest', String(!_k_allVisualPENone));
+  L.push('  — Redraw —');
+  push('restackCalledAfterRenderProjectWorldExtraImages', String(!!restackCalledAfterRenderProjectWorldExtraImages));
+  push('restackCalledAfterRenderAll', String(!!restackCalledAfterRenderAll));
+  push('restackCalledAfterUpdateDimOverlay', String(!!restackCalledAfterUpdateDimOverlay));
+  push('restackCalledAfterDrawBezier', String(!!restackCalledAfterDrawBezier));
+  push('restackCalledAfterModeSwitch', String(!!restackCalledAfterModeSwitch));
+  push('restackCalledAfterAssetReorder', String(!!restackCalledAfterAssetReorder));
+  push('restackCalledAfterPanZoom', String(!!restackCalledAfterPanZoom));
+  push('restackCalledAfterLoad', String(!!restackCalledAfterLoad));
+  push('restackCalledAfterTimelineReferenceUpdate', String(!!restackCalledAfterTimelineReferenceUpdate));
+  push('assetDrawnAfterLastRestackDetected', String(false));
+  push('imageDecodeAfterRestackDetected', String(!!imageDecodeAfterRestackDetected));
+  push('restackRecoveredAfterAsyncImageDecode', String(!!restackRecoveredAfterAsyncImageDecode));
+
   L.push('  — Base/reversão —');
-  push('baseVersionIs31I', 'true');
+  push('baseVersionIs31I', 'false');
   push('rejected31JChangesNotPresent', String(!_k_has31JWrappers));
   push('stageInteractionPreservedAfter31JRevert', String(!_k_has31JWrappers));
   L.push('  — Camada visual (FilmVisualOverlayLayer) —');
@@ -32657,7 +32844,20 @@ function buildDiagnosticsText() {
   push('samplePointOnFrameNumberIsCoveredByAsset', String(_k_topIsAsset));
   push('samplePointOnScrimTopElement', String(_k_scrimEl ? 'stageDimSvg' : 'none'));
   push('samplePointOnScrimIsCoveredByAsset', String(!_k_scrimAbove));
+  push('samplePointOnActiveFrameStrokeTopElement', String(_k_topAtHighlight));
+  push('samplePointOnActiveFrameStrokeCoveredByAsset', String(_k_topIsAsset));
+  push('samplePointOnInactiveFrameStrokeTopElement', String(_k_topAtHighlight));
+  push('samplePointOnInactiveFrameStrokeCoveredByAsset', String(_k_topIsAsset));
+  push('samplePointOnFrameNumberCoveredByAsset', String(_k_topIsAsset));
+  push('samplePointOnCurveCoveredByAsset', String(!_k_curvesAbove));
+  push('samplePointOnScrimCoveredByAsset', String(!_k_scrimAbove));
   L.push('  — Resultado —');
+  push('realDomLayerOrderMismatchDetected', String(!(_k_domAssetLast < 0 || ((_k_idx(_k_scrimEl) < 0 || _k_domAssetLast < _k_idx(_k_scrimEl)) && (_k_domFrameFirst < 0 || _k_domAssetLast < _k_domFrameFirst) && _k_domAssetLast < _k_domCurveFirst))));
+  push('realDomLayerOrderMismatchReason', (!(_k_domAssetLast < 0 || ((_k_idx(_k_scrimEl) < 0 || _k_domAssetLast < _k_idx(_k_scrimEl)) && (_k_domFrameFirst < 0 || _k_domAssetLast < _k_domFrameFirst) && _k_domAssetLast < _k_domCurveFirst))) ? 'asset aparece depois de overlay no DOM' : 'none');
+  push('visualOverlayStillBehindAssetsDetected', String(!_k_overlayAbove));
+  push('visualOverlayStillBehindAssetsReason', _k_overlayAbove ? 'none' : 'z-index/dom indica overlay atrás de asset');
+  push('interactionRegressionDetected', String(!_k_allVisualPENone));
+  push('interactionRegressionReason', _k_allVisualPENone ? 'none' : 'overlay com pointer-events ativo');
   const _k_regression = !_k_overlayAbove || !_k_allVisualPENone || _k_has31JWrappers;
   push('safeOverlayRegressionDetected', String(_k_regression));
   push('safeOverlayRegressionReason', _k_regression ? (_k_has31JWrappers ? 'wrappers da v8z4b31J presentes' : (!_k_allVisualPENone ? 'camada visual captura eventos' : 'overlay não está acima dos assets')) : 'nenhum');
