@@ -1,3 +1,21 @@
+## v8z4b31M
+
+Base confirmada antes do patch: `v8z4b31L` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
+
+### Escopo
+- [x] Scrim alfa global do editor cobre o viewport visível e não depende de asset[0], slot central, selectedAsset ou imagem principal.
+- [x] Scrim fica acima de assets e abaixo de frames/curvas, com reempilhamento após render/reorder/decode/redraw.
+- [x] Bolinhas centrais da timeline usam o centro real do chip/frame ativo via geometria renderizada.
+- [x] Preview, Export, JSON, ProjectWorld, curvas, easing e lógica de seleção preservados.
+
+### Teste obrigatório em iPhone/Safari real
+- [ ] Validar múltiplos assets nos cantos/superior/inferior e maior zIndex com scrim acima dos assets.
+- [ ] Validar reorder Frente/Trás, pan e zoom com scrim cobrindo o viewport visível.
+- [ ] Validar que Preview curto e Export MP4 curto não mostram o scrim.
+- [ ] Validar Frames 4, 5 e 6 com bolinhas superior/inferior centralizadas no chip ativo em Modo Câmera e Modo Ativos.
+- [ ] Validar rolagem manual da timeline e abrir/fechar menus inferiores sem desalinhamento lateral.
+
+
 # QA pendente — v8z4b31F: Single Film System Architecture (seleção/timeline/localização únicas)
 
 > Base: `v8z4b31E`. Correção arquitetural controlada. Aprofunda a unificação: **seleção, timeline (bolinha/mira) e localização** passam a ser um único sistema compartilhado entre Modo Frames/Câmera e Modo Ativos/Mundo. O Modo Ativos **consome o mesmo sistema** do Modo Frames, diferindo apenas em `presentationMode`/`stylePreset`/`editability`. NÃO altera Preview/Export/WebCodecs/save/load/schema/upload/múltiplos assets/Frente-Trás/undo-redo/menu+/layout/textos/ícones.
