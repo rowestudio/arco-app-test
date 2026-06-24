@@ -1,4 +1,13 @@
 # v8z4b31H
+## v8z4b31M
+
+- Corrige o alfa/scrim global do editor para cobrir todo o viewport visível, sem ficar preso ao slot central.
+- Garante que o alfa fique acima de todos os assets e abaixo dos frames/curvas.
+- Reempilha o alfa após redraw, decode assíncrono, reorder de assets, pan, zoom e troca de modo.
+- Corrige regressão nas bolinhas laranjas centrais da timeline.
+- Bolinhas da timeline agora usam o centro real do chip/frame ativo.
+- Preserva Preview, Export, JSON, ProjectWorld e comportamento de edição sem alterações.
+
 
 **Film Alpha Scrim Restoration.** Bug fix visual/arquitetural controlado sobre `v8z4b31G`: restaura o alfa/scrim externo de filmagem como overlay editor-only do sistema único, acima de assets/imagens e abaixo de frames/curvas/HUD, com recorte no frame canônico/ativo e sem afetar Preview/Export.
 
