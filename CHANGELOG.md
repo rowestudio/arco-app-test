@@ -1,3 +1,12 @@
+## v8z4b31O
+
+- Unifica o comportamento de frames e menu de frames entre Modo Câmera e Modo Ativos.
+- No Modo Ativos, frames agora espelham o Modo Câmera, mudando apenas cor de destaque e bloqueio de edição.
+- Corrige destaque do frame central da timeline no Modo Ativos.
+- Corrige sincronização entre chip central, frame destacado no Stage e cutout do alfa.
+- Reforça legibilidade dos frames não selecionados nos modos Câmera e Ativos.
+- Preserva alfa viewport-fixed, bolinhas centrais, Preview, Export, JSON e ProjectWorld.
+
 # v8z4b31H
 ## v8z4b31N
 

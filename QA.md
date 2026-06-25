@@ -1,3 +1,14 @@
+## v8z4b31O
+
+Base confirmada antes do patch: `v8z4b31N` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
+
+- [ ] Menu mostra "Arco Motion App v8z4b31O" (`APP_VERSION`=`APP_VERSION_NAME`=`v8z4b31O`).
+- [ ] Modo Câmera: Frame 3/4 destacam chip, Stage e cutout do alfa no mesmo índice; pan/zoom mantém scrim viewport-fixed.
+- [ ] Modo Ativos: tocar/rolar até Frame 3/4 destaca chip central, frame no Stage, número e cutout do alfa no mesmo índice, com cor roxa e edição bloqueada.
+- [ ] Legibilidade: frames não selecionados mais visíveis (opacidade 0.88/0.92 e stroke 3.0), mantendo frame ativo dominante.
+- [ ] Diagnóstico preserva `stageDimSvgParentIsStageContent:false`, `filmAlphaScrimParentIsViewportLayer:true`, `filmAlphaScrimMovesWithPanZoom:false`, `filmAlphaScrimViewportFixed:true`, `timelineCenterDotsAlignedToActiveChip:true`, `timelineCenterDotsLateralDeltaPx:0`.
+- [ ] Preview/Export/JSON/ProjectWorld sem regressão; Preview e Export não mostram alfa.
+
 ## v8z4b31N
 
 Base confirmada antes do patch: `v8z4b31M` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
