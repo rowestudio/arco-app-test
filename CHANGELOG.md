@@ -1,3 +1,15 @@
+## v8z4b31T
+
+**Harden Diagnostics Collector — hardening preventivo do Diagnóstico (sem nova feature, sem mudança visual).** Refatoração defensiva / QA técnico focada exclusivamente no sistema de Diagnóstico. Base: `v8z4b31S` (aprovada). Objetivo: reduzir o risco de recorrência da regressão v31O (uma nova exceção dentro do relatório rico não pode mais derrubar a abertura do painel).
+
+- **rota única preservada.** `window.AppDebug.{collect,open,copy,smokeTest}` permanece como rota única/protegida do Diagnóstico. Sem `closeAll()` após abrir; sem dependência de `currentMode`/`activePanel`/Layers/estado de asset para abrir o painel.
+- **dois níveis de coleta.** *Nível 1 — núcleo obrigatório* (`app`, `version`, `timestamp`, `userAgent`, `viewport`, `devicePixelRatio`, `mode`, `framesCount`, `activeFrameIndex`, `assetsCount`, `selectedAssetId`, `preview`, `exportState`, `rendererWorld`, `smokeTest`) é montado campo-a-campo e **não depende** de `buildDiagnosticsText()`; é serializado primeiro e sempre entra. *Nível 2 — relatório rico* (`buildDiagnosticsText()`) é anexado **depois** do núcleo.
+- **helper `appendDiagnosticsBlock`.** Novo `window.AppDebug.appendDiagnosticsBlock(parts, title, fn)`: roda `fn()` em `try/catch` **isolado**; em sucesso anexa linha em branco + título + conteúdo (saída idêntica à esperada quando não há erro); em falha anexa `[ERRO NO BLOCO DE DIAGNÓSTICO]` + stack, registrando claramente **qual bloco** falhou. O relatório rico passa a ser anexado por esse helper.
+- **falha de bloco não derruba mais nada.** Um erro no relatório rico não impede: abertura do painel (`.show`), coleta do núcleo, cópia do diagnóstico nem `smokeTest`. Não gera `diagnosticFallback:true` — esse marcador permanece apenas como proteção extrema (app não carregado).
+- **lint/CI.** Projeto sem `package.json`/ESLint/pipeline: nenhuma infraestrutura pesada criada. Registrada recomendação como **checklist técnico** em comentário acima de `buildDiagnosticsText()`: antes de aprovar alterações nessa função, verificar uso de `const`/`let` antes da declaração (TDZ); habilitar `no-use-before-define` quando houver pipeline.
+- **preserve.** `buildDiagnosticsText()` permanece monolítico e com conteúdo textual inalterado; nenhuma alteração em Layers, Trocar imagem, Reset, Modo Câmera, Modo Ativos, Preview, Export, ProjectWorld, JSON, alfa/scrim, timeline, frames, assets, Settings, layout/cores/textos/ícones/espaçamentos/UX. Sem reformatação do arquivo.
+- `index.html`: comentário do topo, `APP_VERSION` e `APP_VERSION_NAME` atualizados para `v8z4b31T`.
+
 ## v8z4b31S
 
 **Debug Core Restore — Diagnóstico real como módulo protegido (sem fallback).** Correção de auditoria/restauração focada exclusivamente no sistema de Diagnóstico. Base: `v8z4b31R`.

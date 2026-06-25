@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b31T — base v8z4b31S. harden(diagnostics): hardening preventivo do Diagnóstico para reduzir risco de recorrência da regressão v31O (TDZ no relatório rico), SEM nova feature e SEM mudança visual/de fluxo. window.AppDebug permanece como rota única/protegida. NÍVEL 1 (núcleo obrigatório): app/version/timestamp/userAgent/viewport/dpr/modo/frames/frame ativo/assets/asset selecionado/Preview/Export/rendererWorld/smokeTest — montado campo-a-campo e NÃO depende de buildDiagnosticsText(). NÍVEL 2 (relatório rico): buildDiagnosticsText() anexado DEPOIS do núcleo via novo helper window.AppDebug.appendDiagnosticsBlock() (try/catch ISOLADO); se um bloco falhar, registra título + stack [ERRO NO BLOCO DE DIAGNÓSTICO] sem derrubar o núcleo, sem impedir o .show do painel e sem gerar diagnosticFallback:true. Saída textual idêntica quando não há erro. Sem pipeline de lint/CI no projeto: registrada recomendação como CHECKLIST TÉCNICO (verificar uso de const/let antes da declaração; no-use-before-define quando houver pipeline) em comentário acima de buildDiagnosticsText(). FORA DE ESCOPO (inalterado): alfa/scrim, timeline, frames, espessura de frames, assets, Layers, Trocar imagem, botões de modo, Settings, Modo Câmera/Ativos, Preview, Export, JSON, layout/cores/textos/ícones. APP_VERSION = APP_VERSION_NAME = v8z4b31T. -->
 <!-- Arco Motion App — v8z4b31S — base v8z4b31R. fix(debug-core): restaura o Diagnóstico REAL como módulo protegido window.AppDebug.{collect,open,copy,smokeTest}, eliminando o diagnosticFallback:true da v31R. CAUSA: a v31R envolvia o coletor monolítico buildDiagnosticsText() (real, inalterado desde a v31N) em um único try/catch tudo-ou-nada em getDiagnosticsTextHard(); qualquer exceção dentro das ~2000 linhas do coletor (estado de assets/frames/scrim/timeline alterado em v31O–v31R que ele lê) descartava o diagnóstico inteiro e devolvia o objeto de emergência diagnosticFallback:true. A regressão começou na v31O, quando o onclick do item Diagnóstico trocou da rota direta openDiagnosticsPanel() para handleDiagnosticsMenuClick() com lista de nomes prováveis. CORREÇÃO: AppDebug.collect() monta um núcleo real campo-a-campo (app/version/timestamp/userAgent/viewport/dpr/modo/frames/frame ativo/assets/asset selecionado/Preview/Export-WebCodecs/flags renderer-world) com proteção individual por campo, sempre inclui smokeTest({fallback:false}) e ANEXA o relatório rico buildDiagnosticsText() de forma isolada; AppDebug.open() abre o painel real #diagnosticsPanel (textarea #diagText) sem depender de currentMode/activePanel, sem closeAll() e sem overlay, fechando apenas o Settings; o botão Diagnóstico chama somente window.AppDebug.open(). diagnosticFallback:true permanece só como proteção extrema marcada (app não carregado). FORA DE ESCOPO (inalterado): alfa/scrim, timeline, frames, espessura de frames, assets, Layers, Trocar imagem, botões de modo, Settings, Modo Câmera/Ativos, Preview, Export, JSON, layout/cores/textos/ícones. APP_VERSION = APP_VERSION_NAME = v8z4b31S. -->
 <!-- Arco Motion App — v8z4b31R — base v8z4b31Q. hotfix(diag): abre o Diagnóstico por fluxo determinístico e autossuficiente, sem depender de nomes antigos incertos e sem closeAll/openPanel no clique. preserve: espessura de frames autorizada na v31P, conteúdo Diagnóstico, layout/cores/textos/ícones, bolinhas centrais, Preview/Export/JSON/ProjectWorld/assets/frames/curvas. APP_VERSION = APP_VERSION_NAME = v8z4b31R. -->
 <!-- Arco Motion App — v8z4b31O — base v8z4b31N. fix(assets-frames): unifica destaque do frame central da timeline entre Modo Câmera e Modo Ativos, mantendo no Modo Ativos apenas cor roxa e bloqueio de edição; chip, Stage e cutout do alfa usam o mesmo índice central/de referência. fix(scrim): cutout do alfa no Modo Ativos segue o frame central destacado sem alterar arquitetura viewport-fixed da v8z4b31N. fix(legibilidade): reforça opacidade/espessura de frames não selecionados nos dois modos. preserve: bolinhas centrais, Preview/Export/JSON/ProjectWorld/assets/frames/curvas. APP_VERSION = APP_VERSION_NAME = v8z4b31O. -->
@@ -7013,8 +7014,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b31S';
-const APP_VERSION_NAME = 'v8z4b31S';
+const APP_VERSION = 'v8z4b31T';
+const APP_VERSION_NAME = 'v8z4b31T';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -30859,6 +30860,18 @@ function computeGhostHandleAudit() {
   return out;
 }
 
+// v8z4b31T — CHECKLIST TÉCNICO (sem pipeline de lint/CI neste projeto):
+//   Antes de aprovar alterações em buildDiagnosticsText(), verificar uso de
+//   const/let ANTES da declaração (Temporal Dead Zone). A regressão do
+//   Diagnóstico na v31O nasceu exatamente disto: o bloco "v8z4b31O — Shared
+//   Camera/Assets Frame Timeline" usava _k_isAssetsMode/_k_highlightIdx antes
+//   das declarações const, lançando ReferenceError e derrubando a coleta.
+//   Recomendação para quando houver pipeline: habilitar ESLint
+//   no-use-before-define (variables/classes/functions) — sem forçar refatoração
+//   ampla se gerar muitos falsos positivos fora do escopo do Diagnóstico.
+//   Mitigação de runtime já ativa: esta função é chamada SOMENTE via
+//   window.AppDebug.appendDiagnosticsBlock (try/catch isolado), de modo que um
+//   erro aqui não impede a abertura do painel nem gera diagnosticFallback:true.
 function buildDiagnosticsText() {
   const L = [];
   const push = (k, v) => L.push(k + ': ' + v);
@@ -33075,6 +33088,29 @@ window.AppDebug.smokeTest = function smokeTestDiagnostics() {
   };
 };
 
+// v8z4b31T — hardening preventivo: helper explícito para anexar blocos do
+// relatório rico ao diagnóstico. Cada bloco roda em try/catch ISOLADO: uma
+// exceção em um bloco específico NÃO derruba a abertura do painel, a coleta do
+// núcleo, a cópia nem o smokeTest. Quando o bloco falha, registra claramente
+// QUAL bloco falhou (título + stack), em vez de descartar o diagnóstico.
+// Quando o bloco roda sem erro, a saída é idêntica à esperada (sem mudança
+// visual): linha em branco, título, conteúdo.
+window.AppDebug.appendDiagnosticsBlock = function appendDiagnosticsBlock(parts, title, fn) {
+  try {
+    const result = fn();
+    if (result !== undefined && result !== null && result !== '') {
+      parts.push('');
+      parts.push(title);
+      parts.push(String(result));
+    }
+  } catch (err) {
+    parts.push('');
+    parts.push(title);
+    parts.push('[ERRO NO BLOCO DE DIAGNÓSTICO]');
+    parts.push(String(err && err.stack ? err.stack : err));
+  }
+};
+
 window.AppDebug.collect = function collectAppDiagnostics() {
   // Cada campo é lido com proteção INDIVIDUAL: uma leitura que falhe não derruba
   // o diagnóstico inteiro (ao contrário do try/catch tudo-ou-nada da v31R).
@@ -33118,18 +33154,22 @@ window.AppDebug.collect = function collectAppDiagnostics() {
       smokeTest: window.AppDebug.smokeTest()
     };
 
-    // Relatório rico (coletor real e detalhado). ISOLADO: se falhar, o núcleo real
-    // acima permanece intacto e NÃO há diagnosticFallback.
-    let richReport = '';
-    try {
-      if (typeof buildDiagnosticsText === 'function') richReport = buildDiagnosticsText();
-    } catch (err) {
-      richReport = '[relatório detalhado indisponível nesta coleta: ' + (err && err.message ? err.message : String(err)) + ']';
-    }
+    // v8z4b31T — NÍVEL 1 (núcleo obrigatório): o núcleo acima é montado campo-a-campo
+    // e NÃO depende de buildDiagnosticsText(). Ele é serializado primeiro e sempre
+    // entra no diagnóstico, mesmo que o relatório rico falhe.
+    const parts = [JSON.stringify(core, null, 2)];
 
-    return JSON.stringify(core, null, 2) +
-      '\n\n— Diagnóstico detalhado (buildDiagnosticsText) —\n' +
-      richReport;
+    // v8z4b31T — NÍVEL 2 (relatório rico): anexado DEPOIS do núcleo, dentro de um
+    // bloco try/catch ISOLADO via appendDiagnosticsBlock. Se buildDiagnosticsText()
+    // lançar (ex.: TDZ como na regressão v31O), o helper registra o bloco que falhou
+    // e seu stack SEM apagar o núcleo e SEM gerar diagnosticFallback:true.
+    window.AppDebug.appendDiagnosticsBlock(
+      parts,
+      '— Diagnóstico detalhado (buildDiagnosticsText) —',
+      () => (typeof buildDiagnosticsText === 'function') ? buildDiagnosticsText() : ''
+    );
+
+    return parts.join('\n');
   } catch (fatal) {
     // Proteção extrema: só chega aqui se o app não estiver carregado.
     // Claramente marcado. O critério de aceite exige que isto NÃO apareça
