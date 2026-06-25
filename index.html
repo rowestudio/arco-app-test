@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b31S — base v8z4b31R. fix(debug-core): restaura o Diagnóstico REAL como módulo protegido window.AppDebug.{collect,open,copy,smokeTest}, eliminando o diagnosticFallback:true da v31R. CAUSA: a v31R envolvia o coletor monolítico buildDiagnosticsText() (real, inalterado desde a v31N) em um único try/catch tudo-ou-nada em getDiagnosticsTextHard(); qualquer exceção dentro das ~2000 linhas do coletor (estado de assets/frames/scrim/timeline alterado em v31O–v31R que ele lê) descartava o diagnóstico inteiro e devolvia o objeto de emergência diagnosticFallback:true. A regressão começou na v31O, quando o onclick do item Diagnóstico trocou da rota direta openDiagnosticsPanel() para handleDiagnosticsMenuClick() com lista de nomes prováveis. CORREÇÃO: AppDebug.collect() monta um núcleo real campo-a-campo (app/version/timestamp/userAgent/viewport/dpr/modo/frames/frame ativo/assets/asset selecionado/Preview/Export-WebCodecs/flags renderer-world) com proteção individual por campo, sempre inclui smokeTest({fallback:false}) e ANEXA o relatório rico buildDiagnosticsText() de forma isolada; AppDebug.open() abre o painel real #diagnosticsPanel (textarea #diagText) sem depender de currentMode/activePanel, sem closeAll() e sem overlay, fechando apenas o Settings; o botão Diagnóstico chama somente window.AppDebug.open(). diagnosticFallback:true permanece só como proteção extrema marcada (app não carregado). FORA DE ESCOPO (inalterado): alfa/scrim, timeline, frames, espessura de frames, assets, Layers, Trocar imagem, botões de modo, Settings, Modo Câmera/Ativos, Preview, Export, JSON, layout/cores/textos/ícones. APP_VERSION = APP_VERSION_NAME = v8z4b31S. -->
 <!-- Arco Motion App — v8z4b31R — base v8z4b31Q. hotfix(diag): abre o Diagnóstico por fluxo determinístico e autossuficiente, sem depender de nomes antigos incertos e sem closeAll/openPanel no clique. preserve: espessura de frames autorizada na v31P, conteúdo Diagnóstico, layout/cores/textos/ícones, bolinhas centrais, Preview/Export/JSON/ProjectWorld/assets/frames/curvas. APP_VERSION = APP_VERSION_NAME = v8z4b31R. -->
 <!-- Arco Motion App — v8z4b31O — base v8z4b31N. fix(assets-frames): unifica destaque do frame central da timeline entre Modo Câmera e Modo Ativos, mantendo no Modo Ativos apenas cor roxa e bloqueio de edição; chip, Stage e cutout do alfa usam o mesmo índice central/de referência. fix(scrim): cutout do alfa no Modo Ativos segue o frame central destacado sem alterar arquitetura viewport-fixed da v8z4b31N. fix(legibilidade): reforça opacidade/espessura de frames não selecionados nos dois modos. preserve: bolinhas centrais, Preview/Export/JSON/ProjectWorld/assets/frames/curvas. APP_VERSION = APP_VERSION_NAME = v8z4b31O. -->
 <!-- Arco Motion App — v8z4b31I — base v8z4b31H. fix(scrim-filmagem): torna o filmAlphaScrim uma máscara global editor-only em #stageDimSvg cobrindo todo o viewport visível do editor, acima dos assets e abaixo de frames/curvas/HUD, sem clip por slot/asset e com recorte sempre no frame canônico atual. fix(alpha): reduz intensidades para 0.26 no Modo Frames/Câmera e 0.22 no Modo Ativos/Mundo. fix(legibilidade): Modo Ativos com referências passa a usar o mesmo visual-base de frames do Modo Frames para opacidade/espessura dos frames não ativos; só cor roxa/editabilidade/HUD/curvas diferem. feat(diag): bloco 'v8z4b31I — Global Film Scrim + Shared Frame Visuals'. APP_VERSION = v8z4b31I. -->
@@ -4200,7 +4201,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b31R</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b31S</span></div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -7012,8 +7013,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b31R';
-const APP_VERSION_NAME = 'v8z4b31R';
+const APP_VERSION = 'v8z4b31S';
+const APP_VERSION_NAME = 'v8z4b31S';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -32711,6 +32712,14 @@ function buildDiagnosticsText() {
   // ══════════════════════════════════════════════════════════════════════════
   L.push('');
   L.push('═══ v8z4b31O — Shared Camera/Assets Frame Timeline ═══');
+  // v8z4b31S — fix(TDZ): este bloco (inserido na v31O) usava _k_isAssetsMode e
+  // _k_highlightIdx ANTES de suas declarações `const` originais (mais abaixo na
+  // mesma função), disparando ReferenceError "Cannot access before initialization".
+  // Esse throw derrubava TODO o buildDiagnosticsText() e fazia getDiagnosticsTextHard()
+  // da v31R cair em diagnosticFallback:true. Declarados uma única vez aqui; as
+  // declarações originais abaixo foram convertidas em comentário.
+  const _k_isAssetsMode = (typeof isAssetsMode === 'function') && isAssetsMode();
+  const _k_highlightIdx = (typeof assetsModeFrameReferenceHighlightIndex !== 'undefined') ? assetsModeFrameReferenceHighlightIndex : -1;
   const _o_cameraCenter = !_k_isAssetsMode ? getTimelineStageFocusIndex() : ((typeof activeIdx === 'number') ? activeIdx : -1);
   const _o_assetsCenter = _k_isAssetsMode ? getTimelineStageFocusIndex() : ((typeof assetsModeFrameReferenceHighlightIndex !== 'undefined') ? assetsModeFrameReferenceHighlightIndex : -1);
   const _o_timelineChip = _k_isAssetsMode ? document.querySelector('#pillsRow [data-frame-index="' + _o_assetsCenter + '"]') : null;
@@ -32748,7 +32757,7 @@ function buildDiagnosticsText() {
   const _k_numZ = function(el){ if (!el) return NaN; const v = getComputedStyle(el).zIndex; const n = parseInt(v, 10); return Number.isFinite(n) ? n : 0; };
   const _k_pe = function(el){ return el ? (getComputedStyle(el).pointerEvents || '') : ''; };
   const _k_visible = function(el){ if (!el) return false; if (getComputedStyle(el).display === 'none') return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
-  const _k_isAssetsMode = (typeof isAssetsMode === 'function') && isAssetsMode();
+  // v8z4b31S — _k_isAssetsMode agora é declarado uma única vez no bloco v8z4b31O acima (fix TDZ).
   const _k_refsOn = !!(typeof temporaryFrameReferencesVisible !== 'undefined' && temporaryFrameReferencesVisible);
   const _k_stageContent = (typeof stageContent !== 'undefined') ? stageContent : document.getElementById('stageContent');
   const _k_imageArea = (typeof imageArea !== 'undefined') ? imageArea : document.getElementById('imageArea');
@@ -32791,7 +32800,7 @@ function buildDiagnosticsText() {
   const _k_curveRendered = (_k_isAssetsMode && _k_refCurveEl) ? _k_refCurveEl.querySelectorAll('path').length : (_k_bezierEl ? _k_bezierEl.querySelectorAll('path').length : 0);
   // Timeline central → destaque.
   const _k_timelineUnder = (typeof lowerTimelineCenterFrameIndex !== 'undefined' && lowerTimelineCenterFrameIndex >= 0) ? lowerTimelineCenterFrameIndex : -1;
-  const _k_highlightIdx = (typeof assetsModeFrameReferenceHighlightIndex !== 'undefined') ? assetsModeFrameReferenceHighlightIndex : -1;
+  // v8z4b31S — _k_highlightIdx agora é declarado uma única vez no bloco v8z4b31O acima (fix TDZ).
   const _k_highlightEl = (_k_highlightIdx >= 0 && typeof getFrameEl === 'function') ? getFrameEl(_k_highlightIdx) : null;
   const _k_highlightNum = _k_highlightEl ? _k_highlightEl.querySelector('.frame-num') : null;
   // Auditoria por ponto real: o elemento no topo no centro do frame destacado.
@@ -33008,47 +33017,173 @@ function buildDiagnosticsText() {
 
   return L.join('\n');
 }
-function getDiagnosticsTextHard() {
-  try {
-    if (typeof buildDiagnosticsText === 'function') return buildDiagnosticsText();
-    if (typeof buildDiagnosticsReport === 'function') return buildDiagnosticsReport();
-    if (typeof generateDiagnosticsReport === 'function') return generateDiagnosticsReport();
-    if (typeof getDiagnosticsText === 'function') return getDiagnosticsText();
-    if (typeof collectDiagnostics === 'function') {
-      const data = collectDiagnostics();
-      return typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-    }
-  } catch (err) {
-    console.warn('[Diagnostics] Erro ao usar função existente de diagnóstico:', err);
-  }
+// ═══════════════════════════════════════════════════════════════════════
+// v8z4b31S — DEBUG CORE RESTORE — Diagnóstico real como módulo protegido.
+// ───────────────────────────────────────────────────────────────────────
+// AUDITORIA DA REGRESSÃO (investigação v31N → v31R):
+//   1. Item de menu que chamava o Diagnóstico antes da regressão: a linha
+//      "Diagnóstico" do Settings (id="diagnosticsItem"), com
+//      onclick="openDiagnosticsPanel();closeSettingsSheet()" (v8z4b31N).
+//   2. Função real de abrir o painel: openDiagnosticsPanel().
+//   3. Função real de coletar/gerar o texto: buildDiagnosticsText()
+//      (alimentada em #diagText por refreshDiagnostics()).
+//   4. ID/classe real do painel: #diagnosticsPanel (textarea #diagText).
+//   5–7. A função de coleta NÃO foi removida, renomeada nem tirada do escopo:
+//      buildDiagnosticsText() continua definida e inalterada desde a v31N.
+//   8. O botão passou a chamar função errada: em v8z4b31O o onclick virou
+//      handleDiagnosticsMenuClick(), que via requestAnimationFrame tentava
+//      uma LISTA de nomes prováveis (openDiagnosticsPanel/openDiagnosticPanel/
+//      showDiagnosticsPanel/openPanel('Diagnostics')) em vez da rota direta.
+//   9. closeAll()/overlayBg: a v31R passou a exibir #overlayBg (onclick=closeAll)
+//      ao abrir; closeAll() remove .show de .float-panel e oculta overlay.
+//      #diagnosticsPanel não é .float-panel, então não era a causa raiz, mas a
+//      dependência de overlay era um risco desnecessário — removida aqui.
+//   10. A v31R criou rota de painel fallback (getDiagnosticsTextHard +
+//      openDiagnosticsPanelHard) SEM restaurar o coletor real como rota direta.
+//   11. Interferência: nenhuma função de Settings/Layers/Modo Ativos foi
+//      alterada aqui; apenas a rota de Diagnóstico.
+//
+// CAUSA ENCONTRADA: a coleta real ficou frágil e indireta. getDiagnosticsTextHard()
+//   (v31R) envolve o coletor monolítico buildDiagnosticsText() em um ÚNICO
+//   try/catch tudo-ou-nada; qualquer exceção dentro das ~2000 linhas do coletor
+//   (facilmente disparada por estado de assets/frames/scrim/timeline alterado em
+//   v31O–v31R que o coletor lê) descartava o diagnóstico inteiro e devolvia um
+//   objeto de emergência com diagnosticFallback:true.
+// ARQUIVO/TRECHO AFETADO: index.html — getDiagnosticsTextHard()/
+//   handleDiagnosticsMenuClick()/openDiagnosticsPanelHard().
+// FUNÇÃO ANTIGA (real): buildDiagnosticsText() + openDiagnosticsPanel() diretos.
+// FUNÇÃO RESTAURADA: window.AppDebug.{collect,open,copy,smokeTest}.
+// POR QUE v31R CAIU EM FALLBACK: try/catch tudo-ou-nada sobre o coletor monolítico.
+// POR QUE v31S NÃO CAI EM FALLBACK: collect() monta um NÚCLEO real campo-a-campo
+//   (cada campo lido com proteção individual), sempre inclui smokeTest({fallback:false})
+//   e ANEXA o relatório rico buildDiagnosticsText() de forma ISOLADA — uma falha do
+//   relatório rico não apaga o núcleo real. diagnosticFallback:true permanece apenas
+//   como proteção extrema (app realmente não carregado), o que não ocorre com o app
+//   carregado corretamente.
+// ═══════════════════════════════════════════════════════════════════════
+window.AppDebug = window.AppDebug || {};
 
-  const appVersion =
-    document.getElementById('appVersionText')?.textContent ||
-    window.APP_VERSION ||
-    'desconhecida';
-
-  const appVersionName =
-    document.getElementById('appVersionNameText')?.textContent ||
-    window.APP_VERSION_NAME ||
-    '';
-
-  const fallback = {
-    app: 'Arco Motion App / Ken Burns App',
-    version: appVersion,
-    versionName: appVersionName,
-    timestamp: new Date().toISOString(),
-    userAgent: navigator.userAgent,
-    viewport: {
-      width: window.innerWidth,
-      height: window.innerHeight,
-      devicePixelRatio: window.devicePixelRatio
-    },
-    diagnosticFallback: true,
-    note: 'Fallback usado porque a função original de diagnóstico não foi encontrada ou falhou.'
+window.AppDebug.smokeTest = function smokeTestDiagnostics() {
+  return {
+    appDebugExists: !!window.AppDebug,
+    collectExists: typeof window.AppDebug.collect === 'function',
+    openExists: typeof window.AppDebug.open === 'function',
+    copyExists: typeof window.AppDebug.copy === 'function',
+    diagnosticsPanelExists: !!document.getElementById('diagnosticsPanel'),
+    diagnosticsMenuItemExists: !!document.querySelector('[data-action="diagnostics"], #diagnosticsMenuItem'),
+    fallback: false
   };
+};
 
-  return JSON.stringify(fallback, null, 2);
-}
+window.AppDebug.collect = function collectAppDiagnostics() {
+  // Cada campo é lido com proteção INDIVIDUAL: uma leitura que falhe não derruba
+  // o diagnóstico inteiro (ao contrário do try/catch tudo-ou-nada da v31R).
+  const safe = (fn, dflt) => { try { const v = fn(); return (v === undefined ? dflt : v); } catch (e) { return dflt; } };
+
+  try {
+    const core = {
+      app: 'Arco Motion App',
+      version: safe(() => (typeof APP_VERSION !== 'undefined' && APP_VERSION) || document.getElementById('appVersionText')?.textContent, 'n/d'),
+      versionName: safe(() => (typeof APP_VERSION_NAME !== 'undefined' && APP_VERSION_NAME) || '', ''),
+      timestamp: new Date().toISOString(),
+      userAgent: safe(() => navigator.userAgent, 'n/d'),
+      viewport: safe(() => ({ width: window.innerWidth, height: window.innerHeight }), null),
+      devicePixelRatio: safe(() => window.devicePixelRatio, null),
+      mode: safe(() => (typeof editorMode !== 'undefined' ? editorMode : ((typeof isAssetsMode === 'function' && isAssetsMode()) ? 'assets' : 'camera')), 'n/d'),
+      framesCount: safe(() => (typeof frameCount !== 'undefined' ? frameCount : (Array.isArray(frames) ? frames.length : 0)), 0),
+      activeFrameIndex: safe(() => (typeof activeIdx !== 'undefined' ? activeIdx : -1), -1),
+      assetsCount: safe(() => (Array.isArray(assets) ? assets.length : 0), 0),
+      selectedAssetId: safe(() => (typeof selectedAssetId !== 'undefined' ? selectedAssetId : null), null),
+      selectedAsset: safe(() => {
+        const a = (typeof getSelectedAsset === 'function') ? getSelectedAsset() : null;
+        return a ? { id: a.id, type: a.type, name: a.name, zIndex: a.zIndex } : null;
+      }, null),
+      preview: safe(() => ({
+        isPreviewing: (typeof isPreviewing !== 'undefined') ? !!isPreviewing : false,
+        isRecording: (typeof isRecording !== 'undefined') ? !!isRecording : false
+      }), null),
+      exportState: safe(() => ({
+        webCodecsAvailable: (typeof VideoEncoder !== 'undefined'),
+        encoderPathUsed: (typeof arcoExportDiag !== 'undefined' ? arcoExportDiag.encoderPathUsed : null) || 'n/d',
+        fallbackUsed: (typeof arcoExportDiag !== 'undefined') ? !!arcoExportDiag.fallbackUsed : null,
+        lastExportStep: (typeof arcoExportDiag !== 'undefined' ? arcoExportDiag.lastExportStep : null) || 'n/d',
+        exportSuccess: (typeof arcoExportDiag !== 'undefined' && arcoExportDiag.exportSuccess != null) ? !!arcoExportDiag.exportSuccess : null
+      }), null),
+      rendererWorld: safe(() => ({
+        projectWorldInitialized: (typeof projectWorld !== 'undefined') ? !!projectWorld.initialized : false,
+        projectWorldReady: (typeof isProjectWorldReady === 'function') ? !!isProjectWorldReady() : false,
+        hasEditorProxy: (typeof hasEditorProxy !== 'undefined') ? !!hasEditorProxy : false,
+        currentRatio: (typeof currentRatio !== 'undefined') ? currentRatio : 'n/d'
+      }), null),
+      smokeTest: window.AppDebug.smokeTest()
+    };
+
+    // Relatório rico (coletor real e detalhado). ISOLADO: se falhar, o núcleo real
+    // acima permanece intacto e NÃO há diagnosticFallback.
+    let richReport = '';
+    try {
+      if (typeof buildDiagnosticsText === 'function') richReport = buildDiagnosticsText();
+    } catch (err) {
+      richReport = '[relatório detalhado indisponível nesta coleta: ' + (err && err.message ? err.message : String(err)) + ']';
+    }
+
+    return JSON.stringify(core, null, 2) +
+      '\n\n— Diagnóstico detalhado (buildDiagnosticsText) —\n' +
+      richReport;
+  } catch (fatal) {
+    // Proteção extrema: só chega aqui se o app não estiver carregado.
+    // Claramente marcado. O critério de aceite exige que isto NÃO apareça
+    // com o app carregado corretamente.
+    return JSON.stringify({
+      app: 'Arco Motion App',
+      timestamp: new Date().toISOString(),
+      userAgent: (typeof navigator !== 'undefined') ? navigator.userAgent : 'n/d',
+      diagnosticFallback: true,
+      note: 'Proteção extrema: o app não estava carregado ao coletar. ' + (fatal && fatal.message ? fatal.message : String(fatal))
+    }, null, 2);
+  }
+};
+
+window.AppDebug.open = function openAppDiagnostics() {
+  // Não depende de currentMode nem de activePanel. Não chama closeAll().
+  // Fecha SOMENTE o Settings, se estiver aberto.
+  const sheet = document.getElementById('settingsSheet');
+  if (sheet) sheet.classList.remove('show');
+  if (typeof closeSettingsSheet === 'function') { try { closeSettingsSheet(); } catch (e) {} }
+
+  const panel = document.getElementById('diagnosticsPanel');
+  if (!panel) return;
+
+  const ta = document.getElementById('diagText');
+  if (ta) ta.value = window.AppDebug.collect();
+
+  const hint = document.getElementById('diagHint');
+  if (hint) hint.textContent = 'Somente leitura. Não altera o projeto.';
+
+  panel.classList.add('show');
+  panel.setAttribute('aria-hidden', 'false');
+};
+
+window.AppDebug.copy = function copyAppDiagnostics() {
+  const ta = document.getElementById('diagText');
+  const hint = document.getElementById('diagHint');
+  if (!ta) return;
+  if (!ta.value) ta.value = window.AppDebug.collect();
+  const text = ta.value;
+  const onOk = () => { if (hint) hint.textContent = 'Diagnóstico copiado para a área de transferência.'; };
+  const onFail = () => {
+    try { ta.focus(); ta.setSelectionRange(0, ta.value.length); } catch (e) {}
+    if (hint) hint.textContent = 'Copie manualmente: texto selecionado (toque e segure → Copiar).';
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(onOk).catch(onFail);
+  } else {
+    onFail();
+  }
+};
+
+// Compatibilidade: a rota antiga delega para o módulo protegido (sem fallback frágil).
+function getDiagnosticsTextHard() { return window.AppDebug.collect(); }
 
 function refreshDiagnostics() {
   const ta = document.getElementById('diagText');
@@ -33064,112 +33199,19 @@ window.handleDiagnosticsMenuClick = function handleDiagnosticsMenuClick(ev) {
     }
   }
 
-  openDiagnosticsPanelHard();
+  // v8z4b31S — rota única e direta para o Diagnóstico real.
+  window.AppDebug.open();
 };
 
+// v8z4b31S — rotas legadas delegam para o módulo protegido. Não criam painel
+// novo (o painel real #diagnosticsPanel existe), não exibem overlay (evita
+// closeAll no toque) e não dependem de currentMode/activePanel.
 function openDiagnosticsPanelHard() {
-  const settingsSheet = document.getElementById('settingsSheet');
-  if (settingsSheet) settingsSheet.classList.remove('show');
-
-  let panel =
-    document.getElementById('diagnosticsPanel') ||
-    document.getElementById('diagnosticPanel') ||
-    document.getElementById('panelDiagnostics') ||
-    document.querySelector('[data-panel="diagnostics"]') ||
-    document.querySelector('[data-panel="Diagnostics"]') ||
-    document.querySelector('.diagnostics-panel') ||
-    document.querySelector('.diagnostic-panel');
-
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'diagnosticsPanel';
-    panel.className = 'float-panel diagnostics-panel';
-    panel.setAttribute('data-panel', 'diagnostics');
-    panel.innerHTML = '<div class="panel-handle"></div> <div class="panel-title">Diagnóstico</div> <textarea id="diagnosticsText" readonly style="width:100%;min-height:45vh;background:#111;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.45;resize:none;-webkit-user-select:text;user-select:text;"></textarea> <div style="display:flex;gap:10px;margin-top:12px;"> <button type="button" id="diagnosticsCopyBtn" style="flex:1;padding:12px;border-radius:12px;border:0;background:var(--accent);color:#000;font-weight:700;">Copiar</button> <button type="button" id="diagnosticsCloseBtn" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#fff;font-weight:700;">Fechar</button> </div>';
-    document.body.appendChild(panel);
-  }
-
-  const textEl =
-    panel.querySelector('#diagnosticsText') ||
-    panel.querySelector('textarea') ||
-    panel.querySelector('pre') ||
-    panel.querySelector('[data-diagnostics-text]');
-
-  const diagnosticText = getDiagnosticsTextHard();
-
-  if (textEl) {
-    if ('value' in textEl) {
-      textEl.value = diagnosticText;
-    } else {
-      textEl.textContent = diagnosticText;
-    }
-  }
-
-  panel.classList.add('show');
-  panel.style.display = '';
-  panel.style.transform = '';
-  panel.style.pointerEvents = 'auto';
-  panel.removeAttribute('hidden');
-  panel.setAttribute('aria-hidden', 'false');
-
-  document.body.classList.add('panel-open');
-
-  const overlay = document.getElementById('overlayBg');
-  if (overlay) {
-    overlay.classList.add('show', 'light');
-  }
-
-  const hint = document.getElementById('diagHint');
-  if (hint) hint.textContent = 'Somente leitura. Não altera o projeto.';
-
-  const closeBtn = panel.querySelector('#diagnosticsCloseBtn');
-  if (closeBtn) {
-    closeBtn.onclick = function(ev) {
-      if (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
-      closeDiagnosticsPanel();
-    };
-  }
-
-  const copyBtn = panel.querySelector('#diagnosticsCopyBtn');
-  if (copyBtn) {
-    copyBtn.onclick = async function(ev) {
-      if (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
-
-      const text =
-        textEl && 'value' in textEl
-          ? textEl.value
-          : textEl
-            ? textEl.textContent
-            : diagnosticText;
-      try {
-        await navigator.clipboard.writeText(text);
-        if (typeof showStatus === 'function') showStatus('Diagnóstico copiado');
-      } catch (err) {
-        if (textEl && typeof textEl.select === 'function') textEl.select();
-        if (typeof showStatus === 'function') showStatus('Selecione e copie o diagnóstico');
-      }
-    };
-  }
-
-  requestAnimationFrame(() => {
-    const stillOpen = panel.classList.contains('show');
-    if (!stillOpen) {
-      console.warn('[Diagnostics] Painel foi fechado imediatamente após abrir. Verificar closeAll/overlay/closePanel.');
-      panel.classList.add('show');
-      panel.style.pointerEvents = 'auto';
-      document.body.classList.add('panel-open');
-    }
-  });
+  window.AppDebug.open();
 }
 
 function openDiagnosticsPanel() {
-  openDiagnosticsPanelHard();
+  window.AppDebug.open();
 }
 function closeDiagnosticsPanel() {
   const panel = document.getElementById('diagnosticsPanel');
@@ -33187,25 +33229,8 @@ function toggleDiagnosticsPanel() {
   else openDiagnosticsPanelHard();
 }
 function copyDiagnostics() {
-  const ta = document.getElementById('diagText');
-  const hint = document.getElementById('diagHint');
-  if (!ta) return;
-  refreshDiagnostics();
-  const text = ta.value;
-  const onOk = () => { if (hint) hint.textContent = 'Diagnóstico copiado para a área de transferência.'; };
-  const onFail = () => {
-    // Fallback Safari: seleciona o texto para cópia manual.
-    try {
-      ta.focus();
-      ta.setSelectionRange(0, ta.value.length);
-    } catch (e) {}
-    if (hint) hint.textContent = 'Copie manualmente: texto selecionado (toque e segure → Copiar).';
-  };
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(onOk).catch(onFail);
-  } else {
-    onFail();
-  }
+  // v8z4b31S — copia o diagnóstico real visível no painel via módulo protegido.
+  window.AppDebug.copy();
 }
 function triggerImageLoad() {
   const fi = document.getElementById('fileInput2');

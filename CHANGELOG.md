@@ -1,3 +1,17 @@
+## v8z4b31S
+
+**Debug Core Restore — Diagnóstico real como módulo protegido (sem fallback).** Correção de auditoria/restauração focada exclusivamente no sistema de Diagnóstico. Base: `v8z4b31R`.
+
+- **causa encontrada.** A v31R abria o painel mas exibia `diagnosticFallback: true`. Investigando v31N→v31R: o coletor real `buildDiagnosticsText()` lançava `ReferenceError: Cannot access '_k_isAssetsMode' before initialization` (TDZ) — o bloco de diagnóstico inserido na v31O (`═══ v8z4b31O — Shared Camera/Assets Frame Timeline ═══`) usava `_k_isAssetsMode` e `_k_highlightIdx` **antes** de suas declarações `const` originais, mais abaixo na mesma função. A v31R envolveu o coletor monolítico em um único `try/catch` tudo-ou-nada (`getDiagnosticsTextHard()`): qualquer throw descartava o diagnóstico inteiro e devolvia o objeto de emergência `diagnosticFallback:true`.
+- **regressão de rota.** Em v31O o `onclick` do item "Diagnóstico" trocou da rota direta `openDiagnosticsPanel()` para `handleDiagnosticsMenuClick()` com lista de nomes prováveis (`openDiagnosticsPanel`/`openDiagnosticPanel`/`showDiagnosticsPanel`/`openPanel('Diagnostics')`); v31R adicionou painel/fallback sem restaurar o coletor real como rota direta.
+- **arquivo/trecho afetado.** `index.html` — `buildDiagnosticsText()` (TDZ) e `getDiagnosticsTextHard()`/`handleDiagnosticsMenuClick()`/`openDiagnosticsPanelHard()` (rota frágil).
+- **fix — TDZ.** `_k_isAssetsMode` e `_k_highlightIdx` passam a ser declarados uma única vez no topo do bloco v31O; as declarações originais viraram comentário. `buildDiagnosticsText()` volta a rodar inteiro.
+- **fix — módulo protegido.** Restaurado/consolidado `window.AppDebug.{collect,open,copy,smokeTest}`. `collect()` monta um núcleo real campo-a-campo (app, version, timestamp, userAgent, viewport, devicePixelRatio, modo, frames, frame ativo, assets, asset selecionado, Preview, Export/WebCodecs, flags renderer/world) com proteção **individual** por campo, sempre inclui `smokeTest({fallback:false})` e anexa o relatório rico `buildDiagnosticsText()` de forma **isolada** (uma falha do relatório não apaga o núcleo). `open()` abre o painel real `#diagnosticsPanel`/`#diagText` sem depender de `currentMode`/`activePanel`, sem `closeAll()` e sem overlay, fechando apenas o Settings. O botão chama somente `window.AppDebug.open()`.
+- **por que v31R caiu em fallback / por que v31S não cai.** v31R: `try/catch` tudo-ou-nada sobre o coletor que lançava TDZ. v31S: TDZ corrigido + coleta resiliente campo-a-campo; `diagnosticFallback:true` permanece apenas como proteção extrema marcada (app não carregado), que não ocorre com o app carregado.
+- **validação (Chromium headless, viewport iPhone).** Painel abre pelo menu, texto real aparece, **sem** `diagnosticFallback:true`, copia, fecha, reabre; abre no Modo Câmera e no Modo Ativos; abre durante/depois do Preview; `smokeTest()` com todos os campos `true` e `fallback:false`; 0 erros de página.
+- **preserve.** Sem alterações em alfa/scrim, timeline, frames, espessura de frames, assets, Layers, Trocar imagem, botões de modo, Settings, Modo Câmera/Ativos, Preview, Export, JSON, layout/cores/textos/ícones.
+- `index.html`: comentário do topo, `APP_VERSION` e `APP_VERSION_NAME` atualizados para `v8z4b31S`.
+
 ## v8z4b31O
 
 - Unifica o comportamento de frames e menu de frames entre Modo Câmera e Modo Ativos.

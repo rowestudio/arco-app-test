@@ -1,3 +1,24 @@
+## v8z4b31S
+
+Base confirmada antes do patch: `v8z4b31R` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
+
+### Escopo
+- [x] Corrige TDZ em `buildDiagnosticsText()` (`_k_isAssetsMode`/`_k_highlightIdx` usados antes da declaração) que derrubava o coletor real.
+- [x] Restaura/consolida `window.AppDebug.{collect,open,copy,smokeTest}`; botão Diagnóstico chama somente `window.AppDebug.open()`.
+- [x] `collect()` retorna dados reais campo-a-campo + `smokeTest({fallback:false})` + relatório rico isolado; sem `diagnosticFallback:true` com app carregado.
+- [x] `open()` não depende de `currentMode`/`activePanel`, não chama `closeAll()` nem usa overlay; fecha apenas o Settings.
+
+### Validação obrigatória
+- [ ] Menu mostra "Arco Motion App v8z4b31S" (`APP_VERSION`=`APP_VERSION_NAME`=`v8z4b31S`).
+- [ ] Abrir Settings → tocar em Diagnóstico: painel abre e NÃO fecha imediatamente.
+- [ ] Texto do diagnóstico aparece e NÃO contém `diagnosticFallback: true`.
+- [ ] Diagnóstico mostra dados reais: `app`, `version`, `timestamp`, `userAgent`, `viewport`, `devicePixelRatio`, `mode`, `framesCount`, `activeFrameIndex`, `assetsCount`, `selectedAssetId`, `preview`, `exportState`, `rendererWorld`, `smokeTest`.
+- [ ] Copiar diagnóstico funciona (clipboard ou seleção manual no Safari).
+- [ ] Fechar e reabrir Diagnóstico: abre na segunda vez.
+- [ ] Abre no Modo Câmera e no Modo Ativos; abre antes e depois de um Preview curto.
+- [ ] Preview e Export não foram alterados; Layers, Trocar imagem e Reset permanecem como na v31R.
+- [ ] Teste em iPhone/Safari real.
+
 ## v8z4b31O
 
 Base confirmada antes do patch: `v8z4b31N` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
