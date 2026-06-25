@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b31P — base v8z4b31O. hotfix(diag): restaura abertura do painel Diagnóstico pelo item do menu com handler dedicado que bloqueia propagação, fecha o sheet e abre o painel existente no próximo frame. fix(frame-stroke): aumenta apenas a espessura visual dos contornos dos frames no Modo Câmera e no Modo Ativos, preservando cor/alpha/z-index/geometria/fluxo. preserve: conteúdo Diagnóstico, layout/cores/textos/ícones, bolinhas centrais, Preview/Export/JSON/ProjectWorld/assets/frames/curvas. APP_VERSION = APP_VERSION_NAME = v8z4b31P. -->
 <!-- Arco Motion App — v8z4b31O — base v8z4b31N. fix(assets-frames): unifica destaque do frame central da timeline entre Modo Câmera e Modo Ativos, mantendo no Modo Ativos apenas cor roxa e bloqueio de edição; chip, Stage e cutout do alfa usam o mesmo índice central/de referência. fix(scrim): cutout do alfa no Modo Ativos segue o frame central destacado sem alterar arquitetura viewport-fixed da v8z4b31N. fix(legibilidade): reforça opacidade/espessura de frames não selecionados nos dois modos. preserve: bolinhas centrais, Preview/Export/JSON/ProjectWorld/assets/frames/curvas. APP_VERSION = APP_VERSION_NAME = v8z4b31O. -->
 <!-- Arco Motion App — v8z4b31I — base v8z4b31H. fix(scrim-filmagem): torna o filmAlphaScrim uma máscara global editor-only em #stageDimSvg cobrindo todo o viewport visível do editor, acima dos assets e abaixo de frames/curvas/HUD, sem clip por slot/asset e com recorte sempre no frame canônico atual. fix(alpha): reduz intensidades para 0.26 no Modo Frames/Câmera e 0.22 no Modo Ativos/Mundo. fix(legibilidade): Modo Ativos com referências passa a usar o mesmo visual-base de frames do Modo Frames para opacidade/espessura dos frames não ativos; só cor roxa/editabilidade/HUD/curvas diferem. feat(diag): bloco 'v8z4b31I — Global Film Scrim + Shared Frame Visuals'. APP_VERSION = v8z4b31I. -->
 <!-- Arco Motion App — v8z4b31F — base v8z4b31E. Single Film System Architecture. fix(arquitetura): aprofunda a unificação iniciada em v8z4b31E — agora a SELEÇÃO, a TIMELINE (bolinha/mira) e a LOCALIZAÇÃO também são um único sistema compartilhado entre Modo Câmera e Modo Ativos. fix(seleção-canônica): introduz estado canônico único filmSelection={frameIndex,segmentIndex,source,updatedAt} via commitFilmSelection(); locateAssetsModeFrameRef()/locateAssetsModeSegmentRef() passam a gravar o frame canônico (activeIdx/selectedSegmentIndex) em vez de criar um índice de referência paralelo — selecionar Frame N no Modo Ativos mantém Frame N ao voltar ao Modo Câmera (e vice-versa). Os índices timelineVisualActiveIndex/timelineReferenceActiveIndex/timelineEditingActiveIndex/temporaryFrameReferenceTargetIndex/assetsModeFrameReferenceHighlightIndex/frameTimelineCenteredIndex/rendererFrameIndex/viewportLocalizationTargetIndex passam a DERIVAR do canônico (não disputam mais a seleção). getTimelineVisualActiveIndex() retorna o frame canônico. fix(timeline-mira-fixa): syncLowerTimelineCenterMarkers() fixa a bolinha/indicador no CENTRO do viewport da timeline (mira fixa); os frames rolam por baixo dela e ela NÃO acompanha mais o conteúdo rolável/foco. fix(opacidade-uniforme-ativos): applyStageTimelineFocusVisuals() não aplica mais a hierarquia de opacidade/espessura/zIndex do Modo Câmera quando em Modo Ativos — limpa estilos inline e deixa o CSS uniforme (.40) cuidar; opacidade/espessura dos frames não selecionados não muda mais conforme a origem do clique (ícone/timeline/stage/localização). feat(diag): bloco completo 'v8z4b31F — Single Film System Architecture' (Arquitetura/Seleção/Timeline/Style/Geometry/Interactivity/References/Localization/Preview-Export). APP_VERSION = v8z4b31F. preserve: layout/cores/ícones/textos/menu+/upload/save/load/preview/export/WebCodecs/ProjectWorld/assets/layers/zIndex/motor de vídeo/cálculo final de câmera, múltiplos assets, Frente/Trás, undo/redo de assets, curvas/geometria únicas do v8z4b31E, roxo no Modo Ativos, ciano no Modo Câmera, frames não editáveis no Modo Ativos. base v8z4b31E. -->
@@ -1372,7 +1373,7 @@ body.editor-assets .frame.assets-ref-highlight{opacity:1 !important;}
 /* v8z4b31E — frame selecionado no Modo Ativos: roxo dominante, borda um pouco mais grossa. */
 body.editor-assets .frame.assets-ref-highlight .frame-border{
   border-color:#8b3fff !important;
-  border-width:2.5px !important;
+  border-width:3.5px !important;
   box-shadow:0 0 0 1px rgba(139,63,255,.35) !important;
 }
 body.editor-assets.assets-refs-visible .frame.assets-ref-highlight .frame-num{
@@ -1472,7 +1473,7 @@ body.editor-assets.recording .frame{display:none !important;}
 #stage { overflow: visible !important; }
 .frame-visual{position:absolute;inset:0;transform-origin:center center;overflow:visible;}
 .frame-visual .frame-border,.frame-visual .frame-dim,.frame-visual .frame-num,.frame-visual .frame-center{pointer-events:none;}
-.frame-border{position:absolute;inset:0;border:2px solid #c6c6c6;box-sizing:border-box;pointer-events:none;border-radius:calc(10px * var(--stage-frame-ui-scale, 1));filter:none;}
+.frame-border{position:absolute;inset:0;border:3px solid #c6c6c6;box-sizing:border-box;pointer-events:none;border-radius:calc(10px * var(--stage-frame-ui-scale, 1));filter:none;}
 .frame.multi-selected .frame-border{box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.28);}
 .frame.multi-selected .frame-dim{background:transparent !important;box-shadow:none !important;border-radius:10px;}
 .frame.active.multi-selected .frame-border{box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.28);}
@@ -4187,7 +4188,7 @@ body.cust-open #toolbar{
       <div class="settings-row" onclick="window.location.reload()">
         <svg viewBox="0 0 24 24"><use href="#i-reload"></use></svg><span>Recarregar</span>
       </div>
-      <div class="settings-row" id="diagnosticsItem" onclick="openDiagnosticsPanel();closeSettingsSheet()">
+      <div class="settings-row" id="diagnosticsItem" onclick="handleDiagnosticsMenuClick(event)">
         <svg viewBox="0 0 24 24"><use href="#i-settings"></use></svg><span>Diagnóstico</span>
       </div>
     </div>
@@ -4199,7 +4200,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b31O</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b31P</span></div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -7011,8 +7012,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b31O';
-const APP_VERSION_NAME = 'v8z4b31O';
+const APP_VERSION = 'v8z4b31P';
+const APP_VERSION_NAME = 'v8z4b31P';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -15803,7 +15804,7 @@ function applyStageTimelineFocusVisuals() {
       el.style.zIndex = String(isFocus ? FRAME_REFERENCE_LAYER_Z + 2 : (isAdjacent ? FRAME_REFERENCE_LAYER_Z + 1 : FRAME_REFERENCE_LAYER_Z));
       if (borderEl && !frameLocked[i]) {
         borderEl.style.borderColor = isFocus ? '' : (isAdjacent ? (i < focusIdx ? FRAME_COLORS.prevAdj.border : FRAME_COLORS.nextAdj.border) : FRAME_COLORS.distant.border);
-        borderEl.style.borderWidth = (isFocus ? 4.0 * invZ : 3.0 * invZ) + 'px';
+        borderEl.style.borderWidth = (isFocus ? 5.0 * invZ : 4.0 * invZ) + 'px';
       }
     }
     assetsModeInactiveFrameOpacityUniform = true;
@@ -15827,7 +15828,7 @@ function applyStageTimelineFocusVisuals() {
     el.style.zIndex = isFocus ? '30' : (isAdjacent ? '25' : '20');
     if (borderEl && !frameLocked[i]) {
       borderEl.style.borderColor = isFocus ? FRAME_COLORS.active.border : (isAdjacent ? (i < focusIdx ? FRAME_COLORS.prevAdj.border : FRAME_COLORS.nextAdj.border) : FRAME_COLORS.distant.border);
-      borderEl.style.borderWidth = (isFocus ? 4.0 * invZ : 3.0 * invZ) + 'px';
+      borderEl.style.borderWidth = (isFocus ? 5.0 * invZ : 4.0 * invZ) + 'px';
     }
   }
   drawBezier();
@@ -18237,7 +18238,7 @@ function renderAll() {
         // v8z4b31B — contorno levemente mais visível para frames não selecionados
         // (era '' vazio, deixando CSS padrão invisível; agora reforça levemente).
         borderEl.style.borderColor = _isHl ? '' : FRAME_COLORS.distant.border;
-        borderEl.style.borderWidth = ((_isHl ? 4.0 : 3.0) * invZ) + 'px';
+        borderEl.style.borderWidth = ((_isHl ? 5.0 : 4.0) * invZ) + 'px';
         borderEl.style.boxShadow = 'none';
       }
       // Número do frame: referência visual no Modo Ativos
@@ -20201,7 +20202,7 @@ function refreshEditorViewVisualOverlays() {
       const focused = el.classList.contains('active');
       const selected = el.classList.contains('multi-selected');
       const inv = 1 / editorZoomScale;
-      borderEl.style.borderWidth = (selected ? 3 * inv : focused ? 3.5 * inv : 2 * inv) + 'px';
+      borderEl.style.borderWidth = (selected ? 4 * inv : focused ? 4.5 * inv : 3 * inv) + 'px';
     }
     updateStageFrameUIScale(el, frames[i]);
   }
@@ -33010,6 +33011,27 @@ function buildDiagnosticsText() {
 function refreshDiagnostics() {
   const ta = document.getElementById('diagText');
   if (ta) ta.value = buildDiagnosticsText();
+}
+
+function handleDiagnosticsMenuClick(ev) {
+  if (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+  closeSettingsSheet?.();
+  requestAnimationFrame(() => {
+    if (typeof openDiagnosticsPanel === 'function') {
+      openDiagnosticsPanel();
+    } else if (typeof openDiagnosticPanel === 'function') {
+      openDiagnosticPanel();
+    } else if (typeof showDiagnosticsPanel === 'function') {
+      showDiagnosticsPanel();
+    } else if (typeof openPanel === 'function') {
+      openPanel('Diagnostics');
+    } else {
+      console.warn('[Diagnostics] Nenhuma função de abertura encontrada.');
+    }
+  });
 }
 function openDiagnosticsPanel() {
   const panel = document.getElementById('diagnosticsPanel');
