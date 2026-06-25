@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b31P — base v8z4b31O. hotfix(diag): restaura abertura do painel Diagnóstico pelo item do menu com handler dedicado que bloqueia propagação, fecha o sheet e abre o painel existente no próximo frame. fix(frame-stroke): aumenta apenas a espessura visual dos contornos dos frames no Modo Câmera e no Modo Ativos, preservando cor/alpha/z-index/geometria/fluxo. preserve: conteúdo Diagnóstico, layout/cores/textos/ícones, bolinhas centrais, Preview/Export/JSON/ProjectWorld/assets/frames/curvas. APP_VERSION = APP_VERSION_NAME = v8z4b31P. -->
+<!-- Arco Motion App — v8z4b31Q — base v8z4b31P. hotfix(diag): restaura o wiring funcional do item Diagnóstico chamando diretamente openDiagnosticsPanel() antes de recolher apenas o menu de ajustes; remove fallback genérico/RAF e preserva o painel aberto. preserve: espessura de frames autorizada na v31P, conteúdo Diagnóstico, layout/cores/textos/ícones, bolinhas centrais, Preview/Export/JSON/ProjectWorld/assets/frames/curvas. APP_VERSION = APP_VERSION_NAME = v8z4b31Q. -->
 <!-- Arco Motion App — v8z4b31O — base v8z4b31N. fix(assets-frames): unifica destaque do frame central da timeline entre Modo Câmera e Modo Ativos, mantendo no Modo Ativos apenas cor roxa e bloqueio de edição; chip, Stage e cutout do alfa usam o mesmo índice central/de referência. fix(scrim): cutout do alfa no Modo Ativos segue o frame central destacado sem alterar arquitetura viewport-fixed da v8z4b31N. fix(legibilidade): reforça opacidade/espessura de frames não selecionados nos dois modos. preserve: bolinhas centrais, Preview/Export/JSON/ProjectWorld/assets/frames/curvas. APP_VERSION = APP_VERSION_NAME = v8z4b31O. -->
 <!-- Arco Motion App — v8z4b31I — base v8z4b31H. fix(scrim-filmagem): torna o filmAlphaScrim uma máscara global editor-only em #stageDimSvg cobrindo todo o viewport visível do editor, acima dos assets e abaixo de frames/curvas/HUD, sem clip por slot/asset e com recorte sempre no frame canônico atual. fix(alpha): reduz intensidades para 0.26 no Modo Frames/Câmera e 0.22 no Modo Ativos/Mundo. fix(legibilidade): Modo Ativos com referências passa a usar o mesmo visual-base de frames do Modo Frames para opacidade/espessura dos frames não ativos; só cor roxa/editabilidade/HUD/curvas diferem. feat(diag): bloco 'v8z4b31I — Global Film Scrim + Shared Frame Visuals'. APP_VERSION = v8z4b31I. -->
 <!-- Arco Motion App — v8z4b31F — base v8z4b31E. Single Film System Architecture. fix(arquitetura): aprofunda a unificação iniciada em v8z4b31E — agora a SELEÇÃO, a TIMELINE (bolinha/mira) e a LOCALIZAÇÃO também são um único sistema compartilhado entre Modo Câmera e Modo Ativos. fix(seleção-canônica): introduz estado canônico único filmSelection={frameIndex,segmentIndex,source,updatedAt} via commitFilmSelection(); locateAssetsModeFrameRef()/locateAssetsModeSegmentRef() passam a gravar o frame canônico (activeIdx/selectedSegmentIndex) em vez de criar um índice de referência paralelo — selecionar Frame N no Modo Ativos mantém Frame N ao voltar ao Modo Câmera (e vice-versa). Os índices timelineVisualActiveIndex/timelineReferenceActiveIndex/timelineEditingActiveIndex/temporaryFrameReferenceTargetIndex/assetsModeFrameReferenceHighlightIndex/frameTimelineCenteredIndex/rendererFrameIndex/viewportLocalizationTargetIndex passam a DERIVAR do canônico (não disputam mais a seleção). getTimelineVisualActiveIndex() retorna o frame canônico. fix(timeline-mira-fixa): syncLowerTimelineCenterMarkers() fixa a bolinha/indicador no CENTRO do viewport da timeline (mira fixa); os frames rolam por baixo dela e ela NÃO acompanha mais o conteúdo rolável/foco. fix(opacidade-uniforme-ativos): applyStageTimelineFocusVisuals() não aplica mais a hierarquia de opacidade/espessura/zIndex do Modo Câmera quando em Modo Ativos — limpa estilos inline e deixa o CSS uniforme (.40) cuidar; opacidade/espessura dos frames não selecionados não muda mais conforme a origem do clique (ícone/timeline/stage/localização). feat(diag): bloco completo 'v8z4b31F — Single Film System Architecture' (Arquitetura/Seleção/Timeline/Style/Geometry/Interactivity/References/Localization/Preview-Export). APP_VERSION = v8z4b31F. preserve: layout/cores/ícones/textos/menu+/upload/save/load/preview/export/WebCodecs/ProjectWorld/assets/layers/zIndex/motor de vídeo/cálculo final de câmera, múltiplos assets, Frente/Trás, undo/redo de assets, curvas/geometria únicas do v8z4b31E, roxo no Modo Ativos, ciano no Modo Câmera, frames não editáveis no Modo Ativos. base v8z4b31E. -->
@@ -4200,7 +4200,7 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24"><use href="#i-json-doc"></use></svg>
       <div class="settings-json-label">Json</div>
     </div>
-    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b31P</span></div>
+    <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b31Q</span></div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -7012,8 +7012,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b31P';
-const APP_VERSION_NAME = 'v8z4b31P';
+const APP_VERSION = 'v8z4b31Q';
+const APP_VERSION_NAME = 'v8z4b31Q';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -33018,24 +33018,16 @@ function handleDiagnosticsMenuClick(ev) {
     ev.preventDefault();
     ev.stopPropagation();
   }
-  closeSettingsSheet?.();
-  requestAnimationFrame(() => {
-    if (typeof openDiagnosticsPanel === 'function') {
-      openDiagnosticsPanel();
-    } else if (typeof openDiagnosticPanel === 'function') {
-      openDiagnosticPanel();
-    } else if (typeof showDiagnosticsPanel === 'function') {
-      showDiagnosticsPanel();
-    } else if (typeof openPanel === 'function') {
-      openPanel('Diagnostics');
-    } else {
-      console.warn('[Diagnostics] Nenhuma função de abertura encontrada.');
-    }
-  });
+  openDiagnosticsPanel();
+  closeSettingsSheet();
 }
+window.handleDiagnosticsMenuClick = handleDiagnosticsMenuClick;
 function openDiagnosticsPanel() {
   const panel = document.getElementById('diagnosticsPanel');
-  if (!panel) return;
+  if (!panel) {
+    console.warn('[Diagnostics] Painel Diagnóstico não encontrado.');
+    return;
+  }
   refreshDiagnostics();
   panel.classList.add('show');
   panel.setAttribute('aria-hidden', 'false');
