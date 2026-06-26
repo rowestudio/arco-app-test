@@ -1,3 +1,15 @@
+## v8z4b32C
+
+**Camera view menu and assets mode isolation — correção de arquitetura de menus e isolamento de estado entre modos (sem alterar Preview/Export/câmera/render).** Base: `v8z4b32B`.
+
+- **isola estados de visualização do Modo Câmera para não contaminarem Modo Ativos.** Nova função `clearCameraViewOverridesForAssetsMode()` chamada em `setEditorMode()` ao entrar no Modo Ativos: restaura `imgEl.style.opacity`, `boxShadow` e `.world-extra-img` para normal, seta `window._isoMode = false`. `applyViewMode()` tem guard `isAssetsMode()` — nunca aplica efeitos de câmera no Modo Ativos. `renderProjectWorldExtraImages()` idem. Ao retornar para Câmera, `applyViewMode()` restaura o viewMode correto.
+- **menu contextual de Câmera com opções explícitas.** Substituído o item genérico "Alternar visualização" por três botões: **Mostrar tudo** (viewMode=0), **Isolar frame** (viewMode=1), **Esconder imagens** (viewMode=2). Nova função `setCameraViewModeExplicit(n)` aciona diretamente o estado sem ciclo implícito. Estado atual indicado via `.assets-menu-btn-current`. Não existe mais o item genérico "Alternar visualização".
+- **Modo Ativos mantém apenas ações de modo/organização no contextual.** Removidos do menu contextual de Ativos: Trocar imagem, Trazer para frente, Enviar para trás. Mantidos: Layers, Inserir imagem, Ver frames / Esconder frames. Ações de asset selecionado (Trocar/Excluir/Frente/Trás) permanecem exclusivamente na barra inferior.
+- **reorder direto em Layers preparado para próxima etapa.** Não implementado nesta versão; registrado como backlog imediato para v32D (botões subir/descer ou drag handle, sem afetar Preview/Export).
+- **diagnóstico (campos observacionais protegidos).** Novos campos: `cameraContextMenuItems`, `cameraViewMode`, `cameraViewModeLabel`, `cameraViewModeDoesNotLeakToAssetsMode`, `assetsModeForcesImagesVisible`, `assetsModeIgnoresCameraHideImages`, `assetsModeIgnoresCameraIsolateFrame`, `assetsContextMenuItems`, `assetsContextMenuHasOnlyModeActions`, `assetSelectedActionsRemainInBottomToolbar`, `duplicatedAssetActionsRemovedFromAssetsContextMenu`, `globalMenuAssetActionsMovedOrMarkedLegacy`, `layersReorderInPanelAvailable`, `layersReorderPlannedForNextVersion`, `noPreviewExportCodeTouched`.
+- **preserve (não alterado).** `getStateAtT`, `getStateAtTBase`, `drawWorldToCanvas`, `renderFrameSafely`, `renderVideoFrame`, WebCodecs, export/render final, preview clock, `ProjectWorld`, save/load, JSON, coordenadas de frames, curvas, scrim/alfa, motor de câmera/interpolação, timeline, layout, cores, ícones.
+- `index.html`: comentário do topo, `APP_VERSION` e `APP_VERSION_NAME` atualizados para `v8z4b32C`.
+
 ## v8z4b32B
 
 **Complete contextual mode menus from v31T — menus contextuais completos para os botões de modo (sem alterar Preview/Export/câmera/render).** Base oficial: `v8z4b31T` (revalidada após fechar/reabrir o app: Preview e Export OK). A `v8z4b32A` foi **reprovada e descartada** — nenhuma implementação dela foi reaproveitada.
