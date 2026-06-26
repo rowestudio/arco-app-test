@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32A — base v8z4b31T. feat(ui): botões de modo passam a suportar comportamento contextual; primeiro toque muda de modo; segundo toque no modo ativo abre menu contextual; Modo Ativos concentra Layers, Ver frames, Inserir, Trocar e ordem de assets; Trocar ativo exige asset selecionado; Diagnóstico/AppDebug preservado; Preview/Export/ProjectWorld não alterados. APP_VERSION = APP_VERSION_NAME = v8z4b32A. -->
 <!-- Arco Motion App — v8z4b31T — base v8z4b31S. harden(diagnostics): hardening preventivo do Diagnóstico para reduzir risco de recorrência da regressão v31O (TDZ no relatório rico), SEM nova feature e SEM mudança visual/de fluxo. window.AppDebug permanece como rota única/protegida. NÍVEL 1 (núcleo obrigatório): app/version/timestamp/userAgent/viewport/dpr/modo/frames/frame ativo/assets/asset selecionado/Preview/Export/rendererWorld/smokeTest — montado campo-a-campo e NÃO depende de buildDiagnosticsText(). NÍVEL 2 (relatório rico): buildDiagnosticsText() anexado DEPOIS do núcleo via novo helper window.AppDebug.appendDiagnosticsBlock() (try/catch ISOLADO); se um bloco falhar, registra título + stack [ERRO NO BLOCO DE DIAGNÓSTICO] sem derrubar o núcleo, sem impedir o .show do painel e sem gerar diagnosticFallback:true. Saída textual idêntica quando não há erro. Sem pipeline de lint/CI no projeto: registrada recomendação como CHECKLIST TÉCNICO (verificar uso de const/let antes da declaração; no-use-before-define quando houver pipeline) em comentário acima de buildDiagnosticsText(). FORA DE ESCOPO (inalterado): alfa/scrim, timeline, frames, espessura de frames, assets, Layers, Trocar imagem, botões de modo, Settings, Modo Câmera/Ativos, Preview, Export, JSON, layout/cores/textos/ícones. APP_VERSION = APP_VERSION_NAME = v8z4b31T. -->
 <!-- Arco Motion App — v8z4b31S — base v8z4b31R. fix(debug-core): restaura o Diagnóstico REAL como módulo protegido window.AppDebug.{collect,open,copy,smokeTest}, eliminando o diagnosticFallback:true da v31R. CAUSA: a v31R envolvia o coletor monolítico buildDiagnosticsText() (real, inalterado desde a v31N) em um único try/catch tudo-ou-nada em getDiagnosticsTextHard(); qualquer exceção dentro das ~2000 linhas do coletor (estado de assets/frames/scrim/timeline alterado em v31O–v31R que ele lê) descartava o diagnóstico inteiro e devolvia o objeto de emergência diagnosticFallback:true. A regressão começou na v31O, quando o onclick do item Diagnóstico trocou da rota direta openDiagnosticsPanel() para handleDiagnosticsMenuClick() com lista de nomes prováveis. CORREÇÃO: AppDebug.collect() monta um núcleo real campo-a-campo (app/version/timestamp/userAgent/viewport/dpr/modo/frames/frame ativo/assets/asset selecionado/Preview/Export-WebCodecs/flags renderer-world) com proteção individual por campo, sempre inclui smokeTest({fallback:false}) e ANEXA o relatório rico buildDiagnosticsText() de forma isolada; AppDebug.open() abre o painel real #diagnosticsPanel (textarea #diagText) sem depender de currentMode/activePanel, sem closeAll() e sem overlay, fechando apenas o Settings; o botão Diagnóstico chama somente window.AppDebug.open(). diagnosticFallback:true permanece só como proteção extrema marcada (app não carregado). FORA DE ESCOPO (inalterado): alfa/scrim, timeline, frames, espessura de frames, assets, Layers, Trocar imagem, botões de modo, Settings, Modo Câmera/Ativos, Preview, Export, JSON, layout/cores/textos/ícones. APP_VERSION = APP_VERSION_NAME = v8z4b31S. -->
 <!-- Arco Motion App — v8z4b31R — base v8z4b31Q. hotfix(diag): abre o Diagnóstico por fluxo determinístico e autossuficiente, sem depender de nomes antigos incertos e sem closeAll/openPanel no clique. preserve: espessura de frames autorizada na v31P, conteúdo Diagnóstico, layout/cores/textos/ícones, bolinhas centrais, Preview/Export/JSON/ProjectWorld/assets/frames/curvas. APP_VERSION = APP_VERSION_NAME = v8z4b31R. -->
@@ -1414,6 +1415,7 @@ body.editor-assets.recording .frame{display:none !important;}
 .assets-menu-desc{font-size:13px;color:var(--text3);margin-bottom:20px;}
 .assets-menu-btn{display:flex;align-items:center;gap:14px;width:100%;padding:15px 16px;border-radius:16px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;-webkit-user-select:none;user-select:none;text-align:left;box-sizing:border-box;}
 .assets-menu-btn:active{background:var(--surface3);}
+.assets-menu-btn.asset-tool-disabled{opacity:.35;pointer-events:none;}
 .assets-menu-btn svg{flex-shrink:0;}
 .assets-menu-btn-sec{display:flex;align-items:center;gap:14px;width:100%;padding:13px 16px;border-radius:16px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:14px;font-weight:500;cursor:pointer;margin-bottom:6px;-webkit-user-select:none;user-select:none;text-align:left;box-sizing:border-box;}
 .assets-menu-btn-sec:active{background:var(--surface2);}
@@ -3757,16 +3759,29 @@ body.cust-open #toolbar{
        Câmera = ícone de câmera de vídeo (ciano); Ativos = ícone de imagem (roxo). -->
   <div class="top-left-group">
     <div class="top-mode-toggle" role="group" aria-label="Modo de edição">
-      <div class="mode-btn mode-cam active" id="modeCameraBtn" onclick="handleCameraModeBtn()" title="Modo Filmagem" aria-label="Modo Filmagem">
+      <div class="mode-btn mode-cam active" id="modeCameraBtn" onclick="handleCameraModeBtn(event)" title="Modo Filmagem" aria-label="Modo Filmagem">
         <svg viewBox="0 0 24 24"><use href="#i-video-camera"></use></svg>
       </div>
-      <div class="mode-btn mode-assets" id="modeAssetsBtn" onclick="handleAssetsModeBtn()" title="Modo Ativos" aria-label="Modo Ativos">
+      <div class="mode-btn mode-assets" id="modeAssetsBtn" onclick="handleAssetsModeBtn(event)" title="Modo Ativos" aria-label="Modo Ativos">
         <svg viewBox="0 0 24 24"><use href="#i-image"></use></svg>
       </div>
-      <!-- v8z4b30ZV — #assetsModeMenu removido: segundo toque no ícone Ativos agora
-           alterna diretamente toggleWorldModeFrames() sem abrir menu/modal.
-           "Localizar frame atual" e "Passeio de Frames" não expostos na UI nesta versão. -->
-      <div id="assetsModeMenu" style="display:none;" aria-hidden="true"></div>
+      <!-- v8z4b32A — segundo toque no Modo Ativos abre menu contextual com ações existentes. -->
+      <div id="assetsModeMenu" style="display:none;" aria-hidden="true" onclick="if(event.target===this)closeAssetsModeMenu()">
+        <div class="assets-menu-inner">
+          <button type="button" onclick="closeAssetsModeMenu()" class="panel-close-check" aria-label="Fechar">
+            <svg viewBox="0 0 24 24"><use href="#i-close"></use></svg>
+          </button>
+          <div class="assets-menu-title">Ativos</div>
+          <div class="assets-menu-desc">Ações do Modo Ativos</div>
+          <button id="assetsModeMenuLayersBtn" type="button" class="assets-menu-btn" onclick="handleAssetsModeContextAction('layers')"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-layers"></use></svg>Layers</button>
+          <button id="assetsModeMenuFramesBtn" type="button" class="assets-menu-btn" onclick="handleAssetsModeContextAction('frames')"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-video-camera"></use></svg><span id="assetsModeMenuFramesLabel">Ver frames</span></button>
+          <button id="assetsModeMenuInsertBtn" type="button" class="assets-menu-btn" onclick="handleAssetsModeContextAction('insert')"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-up"></use></svg>Inserir imagem/ativo</button>
+          <button id="assetsModeMenuReplaceBtn" type="button" class="assets-menu-btn" onclick="handleAssetsModeContextAction('replace')"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-down"></use></svg>Trocar imagem/ativo</button>
+          <button id="assetsModeMenuForwardBtn" type="button" class="assets-menu-btn" onclick="handleAssetsModeContextAction('forward')"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-bring-forward"></use></svg>Trazer para frente</button>
+          <button id="assetsModeMenuBackwardBtn" type="button" class="assets-menu-btn" onclick="handleAssetsModeContextAction('backward')"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-send-backward"></use></svg>Enviar para trás</button>
+          <button type="button" class="assets-menu-cancel" onclick="closeAssetsModeMenu()">Cancelar</button>
+        </div>
+      </div>
     </div>
   </div>
   <!-- v8z4b30ZR — Dupla 2 (centro, fixa e centralizada): Settings/Menu + Play. -->
@@ -7014,9 +7029,26 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b31T';
-const APP_VERSION_NAME = 'v8z4b31T';
+const APP_VERSION = 'v8z4b32A';
+const APP_VERSION_NAME = 'v8z4b32A';
 const WATERMARK_TEXT = 'arcomotion.app';
+
+// v8z4b32A — diagnóstico observacional dos menus contextuais de modo.
+let modeContextMenuEnabled = true;
+let lastModeContextMenuOpened = false;
+let lastModeContextMenuMode = '';
+let lastModeContextMenuAction = '';
+let activeModeButtonSecondTapDetected = false;
+let assetsModeContextMenuAvailable = true;
+let assetsModeContextMenuItems = 'Layers,Ver frames,Inserir imagem/ativo,Trocar imagem/ativo,Trazer para frente,Enviar para trás';
+let assetsModeContextMenuSelectedAssetId = null;
+let assetsModeContextMenuReplaceEnabled = false;
+let assetsModeContextMenuForwardEnabled = false;
+let assetsModeContextMenuBackwardEnabled = false;
+let assetsModeIconSecondTapOpensMenu = false;
+let assetsModeIconNoLongerDirectlyTogglesReferences = true;
+let assetsModeReferencesToggleMovedToContextMenu = true;
+let cameraModeSecondTapHandledSafely = false;
 
 const appVersionTextEl = document.getElementById('appVersionText');
 const appVersionNameTextEl = document.getElementById('appVersionNameText');
@@ -14069,27 +14101,42 @@ function ensureAssetVisualDefaults(asset) {
 // setMode('camera','topModeButtonCamera') (não altera modo só visualmente). Se já
 // estava em câmera, o toque secundário cicla a visualização (toggleMapa), que é
 // função exclusiva do Modo Câmera/Frames.
-function handleCameraModeBtn() {
-  const wasCamera = isCameraMode();
-  setMode('camera', 'topModeButtonCamera');
-  if (wasCamera) toggleMapa();
+function handleModeButtonTap(targetMode, ev) {
+  if (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+  const current = (typeof editorMode !== 'undefined') ? editorMode : 'camera';
+  if (current !== targetMode) {
+    setMode(targetMode, targetMode === 'assets' ? 'topModeButtonAssets' : 'topModeButtonCamera');
+    return;
+  }
+  activeModeButtonSecondTapDetected = true;
+  openModeContextMenu(targetMode);
 }
-// v8z4b30ZR — botão de Modo Ativos/Mundo. SEMPRE passa pelo roteador central
-// setMode('assets','topModeButtonAssets'); a troca real de modo é obrigatória
-// (não basta classe/cor/botão ativo).
-// v8z4b30ZV — segundo toque (já em Ativos) alterna diretamente mostrar/ocultar
-// referências de frames (toggleWorldModeFrames), sem abrir menu/modal.
-// O menu contextual complexo (#assetsModeMenu) foi removido desta versão.
-// v8z4b31C — toggle real ON/OFF: quando já em Modo Ativos, apenas inverte referências.
-// Bug anterior: setMode('assets', ...) resetava worldModeShowFrames = false antes do
-// toggle, fazendo o toggle sempre ir de false → true (sempre ON, nunca OFF).
-function handleAssetsModeBtn() {
-  if (isAssetsMode()) {
-    // Já em Modo Ativos: apenas inverter estado de referências (toggle real).
-    toggleWorldModeFrames();
-  } else {
-    // Transição para Modo Ativos: troca de modo completa.
-    setMode('assets', 'topModeButtonAssets');
+
+function handleCameraModeBtn(ev) {
+  handleModeButtonTap('camera', ev);
+}
+
+function handleAssetsModeBtn(ev) {
+  handleModeButtonTap('assets', ev);
+}
+
+function openModeContextMenu(targetMode) {
+  lastModeContextMenuMode = targetMode;
+  if (targetMode === 'assets') {
+    activeModeButtonSecondTapDetected = true;
+    assetsModeIconSecondTapOpensMenu = true;
+    assetsModeIconNoLongerDirectlyTogglesReferences = true;
+    assetsModeReferencesToggleMovedToContextMenu = true;
+    openAssetsModeMenu();
+    return;
+  }
+  if (targetMode === 'camera') {
+    cameraModeSecondTapHandledSafely = true;
+    lastModeContextMenuOpened = false;
+    closeAssetsModeMenu();
   }
 }
 
@@ -14756,17 +14803,73 @@ function closeAssetsAddMenu() {
 
 // v8z4b30ZT — menu de opções do Modo Ativos (segundo toque no ícone de Ativos).
 // Contém visualização de referências de frames e Localizar frame — NOT em botão "+".
+function syncAssetsModeContextMenuState() {
+  const sel = (typeof getSelectedAsset === 'function') ? getSelectedAsset() : null;
+  const z = (typeof getAssetZOrderInfo === 'function') ? getAssetZOrderInfo() : { canForward:false, canBackward:false };
+  assetsModeContextMenuSelectedAssetId = sel ? sel.id : null;
+  assetsModeContextMenuReplaceEnabled = !!(sel && sel.type === 'image');
+  assetsModeContextMenuForwardEnabled = !!z.canForward;
+  assetsModeContextMenuBackwardEnabled = !!z.canBackward;
+  const imgs = (typeof getSelectableImageAssets === 'function') ? getSelectableImageAssets() : [];
+  const addEnabled = (typeof canAddImageAsset === 'function') ? !!canAddImageAsset() : true;
+  const states = {
+    assetsModeMenuLayersBtn: imgs.length > 0,
+    assetsModeMenuFramesBtn: true,
+    assetsModeMenuInsertBtn: addEnabled,
+    assetsModeMenuReplaceBtn: assetsModeContextMenuReplaceEnabled,
+    assetsModeMenuForwardBtn: assetsModeContextMenuForwardEnabled,
+    assetsModeMenuBackwardBtn: assetsModeContextMenuBackwardEnabled
+  };
+  Object.keys(states).forEach(function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('asset-tool-disabled', !states[id]);
+    el.setAttribute('aria-disabled', states[id] ? 'false' : 'true');
+  });
+}
+
 function openAssetsModeMenu() {
   if (!isAssetsMode()) return;
   const menu = document.getElementById('assetsModeMenu');
   if (!menu) return;
   const lbl = document.getElementById('assetsModeMenuFramesLabel');
-  if (lbl) lbl.textContent = worldModeShowFrames ? 'Ocultar referências de frames' : 'Mostrar referências de frames';
+  if (lbl) lbl.textContent = 'Ver frames';
+  syncAssetsModeContextMenuState();
+  lastModeContextMenuOpened = true;
+  lastModeContextMenuMode = 'assets';
+  assetsModeContextMenuAvailable = true;
   menu.style.display = 'flex';
+  menu.setAttribute('aria-hidden', 'false');
 }
 function closeAssetsModeMenu() {
   const menu = document.getElementById('assetsModeMenu');
-  if (menu) menu.style.display = 'none';
+  if (menu) {
+    menu.style.display = 'none';
+    menu.setAttribute('aria-hidden', 'true');
+  }
+}
+function handleAssetsModeContextAction(action) {
+  lastModeContextMenuAction = action;
+  if (action === 'layers') { closeAssetsModeMenu(); openLayersPanel(); return; }
+  if (action === 'frames') { closeAssetsModeMenu(); toggleWorldModeFrames(); return; }
+  if (action === 'insert') {
+    if (typeof canAddImageAsset === 'function' && !canAddImageAsset()) return;
+    closeAssetsModeMenu(); startInsertImageFlow(); return;
+  }
+  if (action === 'replace') {
+    if (!getSelectedAsset()) return;
+    closeAssetsModeMenu(); startReplaceImageFlow(); return;
+  }
+  if (action === 'forward') {
+    const z = getAssetZOrderInfo();
+    if (!z.canForward) return;
+    closeAssetsModeMenu(); bringSelectedAssetForward(); return;
+  }
+  if (action === 'backward') {
+    const z = getAssetZOrderInfo();
+    if (!z.canBackward) return;
+    closeAssetsModeMenu(); sendSelectedAssetBackward(); return;
+  }
 }
 
 // v8z4b30ZT — localiza e exibe o frame ativo como referência temporária no Modo Ativos.
@@ -28830,17 +28933,9 @@ function startReplaceImageFlow() {
     triggerImageFilePicker();
     return;
   }
-  if (replaceables.length === 1) {
-    // Apenas uma imagem: seleção implícita é segura e sem ambiguidade.
-    freezeReplaceTarget(replaceables[0]);
-    setSelectedAsset(replaceables[0].asset.id);
-    triggerImageFilePicker();
-    return;
-  }
-  // Várias imagens e nenhuma selecionada: NÃO trocar por setor automaticamente.
+  // v8z4b32A — troca direta somente com asset selecionado. Sem seleção,
+  // não abrir Layers automaticamente e não selecionar implicitamente a única imagem.
   showStatus('Selecione uma imagem para trocar.');
-  setEditorMode('assets', 'replaceFlowNeedsSelection');
-  openLayersPanel();
 }
 
 function freezeReplaceTarget(t) {
@@ -31304,6 +31399,22 @@ function buildDiagnosticsText() {
     push('assetForward.disableReason', _z.canForward ? 'n/d (habilitado)' : (_z.forwardReason || 'n/d'));
     push('assetBackward.enabled', String(_z.canBackward));
     push('assetBackward.disableReason', _z.canBackward ? 'n/d (habilitado)' : (_z.backwardReason || 'n/d'));
+    // v8z4b32A — diagnóstico observacional do menu contextual de modo.
+    push('modeContextMenuEnabled', String((typeof modeContextMenuEnabled !== 'undefined') ? modeContextMenuEnabled : false));
+    push('lastModeContextMenuOpened', String((typeof lastModeContextMenuOpened !== 'undefined') ? lastModeContextMenuOpened : false));
+    push('lastModeContextMenuMode', (typeof lastModeContextMenuMode !== 'undefined' && lastModeContextMenuMode) ? lastModeContextMenuMode : 'n/d');
+    push('lastModeContextMenuAction', (typeof lastModeContextMenuAction !== 'undefined' && lastModeContextMenuAction) ? lastModeContextMenuAction : 'n/d');
+    push('activeModeButtonSecondTapDetected', String((typeof activeModeButtonSecondTapDetected !== 'undefined') ? activeModeButtonSecondTapDetected : false));
+    push('assetsModeContextMenuAvailable', String((typeof assetsModeContextMenuAvailable !== 'undefined') ? assetsModeContextMenuAvailable : false));
+    push('assetsModeContextMenuItems', (typeof assetsModeContextMenuItems !== 'undefined') ? assetsModeContextMenuItems : 'n/d');
+    push('assetsModeContextMenuSelectedAssetId', (typeof assetsModeContextMenuSelectedAssetId !== 'undefined' && assetsModeContextMenuSelectedAssetId) ? String(assetsModeContextMenuSelectedAssetId) : 'n/d');
+    push('assetsModeContextMenuReplaceEnabled', String((typeof assetsModeContextMenuReplaceEnabled !== 'undefined') ? assetsModeContextMenuReplaceEnabled : false));
+    push('assetsModeContextMenuForwardEnabled', String((typeof assetsModeContextMenuForwardEnabled !== 'undefined') ? assetsModeContextMenuForwardEnabled : false));
+    push('assetsModeContextMenuBackwardEnabled', String((typeof assetsModeContextMenuBackwardEnabled !== 'undefined') ? assetsModeContextMenuBackwardEnabled : false));
+    push('assetsModeIconSecondTapOpensMenu', String((typeof assetsModeIconSecondTapOpensMenu !== 'undefined') ? assetsModeIconSecondTapOpensMenu : true));
+    push('assetsModeIconNoLongerDirectlyTogglesReferences', String((typeof assetsModeIconNoLongerDirectlyTogglesReferences !== 'undefined') ? assetsModeIconNoLongerDirectlyTogglesReferences : true));
+    push('assetsModeReferencesToggleMovedToContextMenu', String((typeof assetsModeReferencesToggleMovedToContextMenu !== 'undefined') ? assetsModeReferencesToggleMovedToContextMenu : true));
+    push('cameraModeSecondTapHandledSafely', String((typeof cameraModeSecondTapHandledSafely !== 'undefined') ? cameraModeSecondTapHandledSafely : false));
     // v8z4b30ZW — menu contextual de frames por modo.
     push('cameraModeFrameContextMenuEnabled', String((typeof cameraModeFrameContextMenuEnabled !== 'undefined') ? cameraModeFrameContextMenuEnabled : true));
     push('cameraModeFrameContextMenuLastOpenedForFrameIndex', String((typeof cameraModeFrameContextMenuLastOpenedForFrameIndex !== 'undefined') ? cameraModeFrameContextMenuLastOpenedForFrameIndex : -1));

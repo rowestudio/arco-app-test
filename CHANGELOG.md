@@ -1,3 +1,12 @@
+# v8z4b32A — mode contextual actions, assets menu first pass
+
+- **botões de modo contextuais.** Primeiro toque em um modo inativo apenas muda de modo; segundo toque no modo ativo chama um roteador explícito e abre o menu contextual seguro daquele modo.
+- **Modo Ativos.** O segundo toque no botão Ativos abre o menu contextual de Ativos com ações existentes: Layers, Ver frames, Inserir imagem/ativo, Trocar imagem/ativo, Trazer para frente e Enviar para trás.
+- **Ver frames.** O toggle de referências de frames foi movido do segundo toque direto no ícone Ativos para o item “Ver frames” do menu contextual.
+- **Trocar ativo.** A troca de imagem/ativo exige asset selecionado; sem seleção, o fluxo não abre Layers automaticamente.
+- **Diagnóstico/AppDebug preservado.** Campos observacionais de menu contextual foram adicionados sem torná-los críticos para funcionamento.
+- **Preserve.** Preview, Export e ProjectWorld não foram alterados.
+
 ## v8z4b31T
 
 **Harden Diagnostics Collector — hardening preventivo do Diagnóstico (sem nova feature, sem mudança visual).** Refatoração defensiva / QA técnico focada exclusivamente no sistema de Diagnóstico. Base: `v8z4b31S` (aprovada). Objetivo: reduzir o risco de recorrência da regressão v31O (uma nova exceção dentro do relatório rico não pode mais derrubar a abertura do painel).
