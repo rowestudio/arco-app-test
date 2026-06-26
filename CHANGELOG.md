@@ -1,3 +1,23 @@
+## v8z4b32D
+
+**Menu cleanup and no-limit removal — limpeza de menus e remoção do comando legado "Não limitar" (sem alterar Preview/Export/câmera/render).** Base: `v8z4b32C`.
+
+- **remove comando legado "Não limitar" da interface.** `#containItem` removido do menu global. `toggleContainFrames()` permanece no código mas inacessível pela UI — nenhum botão visível aciona a lógica legada de limitar/deslimitar frames. O comportamento padrão passa a ser livre: frames podem vazar visualmente se o usuário quiser.
+- **neutraliza acesso UI ao handler legado de limite.** Nenhum botão, item de menu ou atalho expõe `toggleContainFrames()` ao usuário. Compatibilidade interna de arquivos antigos preservada.
+- **remove ações de imagem e modo do menu global.** Removidos: Inserir imagem, Trocar imagem, Layers, Formato, Fundo. Mantidos: Templates, Reset, Início, Salvar, Novo Projeto, Abrir, Recarregar, Diagnóstico.
+- **move Formato para menu contextual Câmera/Frames — seção Enquadramento.** `runCameraContextMenuAction('format')` chama `openPanel('Format')`. Não altera opções de formato, export ou render.
+- **move Inserir imagem e Layers para menu contextual Ativos — seção Imagens.** Fluxos existentes inalterados.
+- **move Fundo para menu contextual Ativos — seção Visualização.** `runAssetsContextMenuAction('background')` chama `openPanel('BgColor')`.
+- **separa menu Câmera/Frames em Enquadramento e Visualização.** Seção Enquadramento: Formato. Seção Visualização: Mostrar tudo, Isolar frame, Esconder imagens.
+- **separa menu Ativos em Imagens e Visualização.** Seção Imagens: Inserir imagem, Layers. Seção Visualização: Fundo, Mostrar/Esconder frames.
+- **corrige estado ativo/desativado de Mostrar tudo, Isolar frame e Esconder imagens.** Botão do estado atual recebe `disabled` + `aria-disabled="true"` ao abrir o menu. `runCameraContextMenuAction()` tem guard que impede re-acionar o estado já ativo.
+- **corrige label Mostrar frames / Esconder frames.** `getAssetsFramesToggleLabel()` corrigido: "Ver frames" → "Mostrar frames". Label sempre lido do estado real `worldModeShowFrames` ao abrir o menu contextual de Ativos.
+- **mantém Trocar/Excluir/Frente/Trás apenas no toolbar inferior de Ativos.** Nenhuma dessas ações aparece no menu contextual de Ativos.
+- **reorder de Layers registrado como backlog para v32E.** Não implementado nesta versão.
+- **diagnóstico (campos observacionais protegidos).** Novos campos: `globalMenuHasInsertImage`, `globalMenuHasReplaceImage`, `globalMenuHasLayers`, `globalMenuHasFormat`, `globalMenuHasBackground`, `globalMenuHasNoLimit`, `globalMenuCleanupApplied`, `noLimitControlVisible`, `noLimitLegacyHandlerReachableFromUI`, `noLimitDoesNotMutateFrames`, `framesChangedAfterNoLimitAction`, `noLimitLegacyUiRemoved`, `cameraContextMenuHasFormat`, `cameraContextMenuHasSectionFraming`, `cameraContextMenuHasSectionVisualization`, `cameraShowAllEnabled`, `cameraIsolateFrameEnabled`, `cameraHideImagesEnabled`, `cameraContextMenuCurrentModeDisabled`, `cameraContextMenuDoesNotTriggerCurrentModeAgain`, `assetsContextMenuHasInsert`, `assetsContextMenuHasLayers`, `assetsContextMenuHasBackground`, `assetsContextMenuHasToggleFrames`, `assetsContextMenuHasSectionImages`, `assetsContextMenuHasSectionVisualization`, `assetsFramesToggleLabelMatchesState`, `assetsContextMenuHasReplaceImage`, `assetsContextMenuHasForward`, `assetsContextMenuHasBackward`, `assetsContextMenuHasDelete`, `frameMutationFromMenuDetected`, `menuCleanupDoesNotMutateFrames`.
+- **preserve (não alterado).** `getStateAtT`, `getStateAtTBase`, `drawWorldToCanvas`, `renderFrameSafely`, `renderVideoFrame`, WebCodecs, export/render final, preview clock, `ProjectWorld`, save/load, JSON, coordenadas de frames, curvas, scrim/alfa, motor de câmera/interpolação, timeline, layout, cores, ícones, toolbar inferior de Ativos.
+- `index.html`: comentário do topo, `APP_VERSION` e `APP_VERSION_NAME` atualizados para `v8z4b32D`.
+
 ## v8z4b32C
 
 **Camera view menu and assets mode isolation — correção de arquitetura de menus e isolamento de estado entre modos (sem alterar Preview/Export/câmera/render).** Base: `v8z4b32B`.
