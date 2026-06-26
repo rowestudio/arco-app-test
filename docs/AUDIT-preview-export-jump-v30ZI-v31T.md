@@ -1,5 +1,17 @@
 # Auditoria Forense — Pulo em Preview/Export (v8z4b30ZI → v8z4b31T)
 
+> ## 🟢 STATUS FINAL: RESOLVIDO — causa de cache/runtime, **não** de código. Documento ARQUIVADO como referência.
+>
+> **Confirmado pelo usuário (2026-06-26):** após fechar e reabrir **completamente** o app, a **v31T limpa não apresentou pulo**. A regressão observada foi **cache / runtime / estado contaminado após v32A e seu revert** — não um bug persistente da v31T. Isso valida as seções **A.6 / A.7** (vetor de cache como mais provável) e o achado central (motor de render idêntico/inalterado).
+>
+> **Decisões registradas:**
+> - **NÃO** aplicar patch em `getStateAtTBase`; **NÃO** alterar motor de câmera; **NÃO** alterar Preview/Export.
+> - **NÃO** abrir PR funcional de continuidade de rotação. (As seções 9/11 ficam apenas como hipótese teórica arquivada, **não** acionável.)
+> - **v8z4b31T** = baseline saudável (confirmada após reload limpo).
+> - **v8z4b32A** permanece **reprovada e descartada**; não reaproveitar seu código.
+> - Próxima implementação de **menus contextuais** parte **novamente da v31T, redesenhada do zero**, sem herdar v32A.
+> - Este relatório fica **arquivado como referência forense** (sem ação de código pendente).
+
 **Projeto:** Arco Motion App / Ken Burns App
 **Tipo:** Auditoria forense de regressão (Preview/Export), somente por histórico Git, diffs e código.
 **Data:** 2026-06-26
