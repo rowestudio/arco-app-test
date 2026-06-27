@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E — base v8z4b32D1. ux(layers-reorder/handles-fix/menu-swap): reordenação de camadas via painel Layers, correção de visibilidade das bolinhas de frame acima do scrim e reordenação das seções nos menus contextuais. ESCOPO 1: botões Subir/Descer por linha no painel Layers (layerMoveAssetUp/layerMoveAssetDown) — sem drag-and-drop. ESCOPO 2: botão Trocar por linha no painel Layers (layerReplaceImageForAsset) — direciona startReplaceImageFlow() ao assetId específico da linha. ESCOPO 3: painel Layers visual mínimo — somente Trocar/Subir/Descer compactos por linha. ESCOPO 4: bolinhas/corner handles movidas para #frameHandlesLayer (z-index:17, acima de #stageDimSvg z-index:16) — contraste pleno sem herdar opacidade do scrim; coordenadas convertidas via stagePointToFilmAlphaScrimViewportPoint(). ESCOPO 5: menu Câmera reordenado — Visualização antes de Enquadramento; menu Ativos reordenado — Visualização antes de Imagens. ESCOPO 6: menu global preservado idêntico ao v32D1. ESCOPO 7: toolbar inferior de Ativos preservada idêntica. ESCOPO 8: "Não limitar" permanece removido. Diagnóstico: novos campos (layerReorder*, layerReplace*, frameHandles*). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON, coordenadas de frames, curvas, motor de câmera/interpolação, timeline, layout, cores, ícones, toolbar inferior de Ativos, menu global aprovado. APP_VERSION = APP_VERSION_NAME = v8z4b32E. -->
 <!-- Arco Motion App — v8z4b32D1 — base v8z4b32D. ux(contextual-menu-refinement): ajuste fino de UX nos menus. ESCOPO 1: menu contextual do Modo Câmera passa a ocultar (display:none) o botão correspondente ao viewMode atual — sem usar disabled; openCameraModeContextMenu() oculta o item ativo e exibe os demais; runCameraContextMenuAction() mantém o guard de re-ação redundante. ESCOPO 2: menu superior/global convertido em lista única sem seções nem divisores — dois settings-grid + settings-divider fundidos em um único settings-grid na ordem: Início, Templates, Reset, Salvar, Novo Projeto, Abrir, Recarregar, Diagnóstico. Diagnóstico: novos campos (cameraContextMenuHiddenCurrentMode, cameraContextMenuDoesNotShowRedundantCurrentMode, cameraContextMenuVisibleItems, globalMenuSingleGroup, globalMenuSectionTitlesVisible, globalMenuOrder); cameraContextMenuCurrentModeDisabled sempre false (itens ocultos, não desabilitados). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON, coordenadas de frames, curvas, scrim/alfa, motor de câmera/interpolação, timeline, layout, cores, ícones, toolbar inferior, menu Ativos. APP_VERSION = APP_VERSION_NAME = v8z4b32D1. -->
 <!-- Arco Motion App — v8z4b32D — base v8z4b32C. ux(menu-cleanup/no-limit): limpeza de menus e remoção do comando legado "Não limitar". ESCOPO 1: "Não limitar" (#containItem) removido da interface; toggleContainFrames() permanece no código mas inacessível pela UI — nenhum botão visível aciona a lógica legada. ESCOPO 2: menu global reservado para comandos de projeto/app/sistema; removidos do menu global: Inserir imagem, Trocar imagem, Layers, Formato, Fundo, Não limitar; mantidos: Templates, Reset, Início, Salvar, Novo Projeto, Abrir, Recarregar, Diagnóstico. ESCOPO 3: menu contextual do Modo Câmera reestruturado com seção ENQUADRAMENTO (Formato → openPanel('Format')) e seção VISUALIZAÇÃO (Mostrar tudo/Isolar frame/Esconder imagens); botão do estado atual recebe disabled+aria-disabled; runCameraContextMenuAction() tem guard que impede re-acionar o estado já ativo. ESCOPO 4: menu contextual do Modo Ativos reestruturado com seção IMAGENS (Inserir imagem, Layers) e seção VISUALIZAÇÃO (Fundo, Mostrar/Esconder frames); getAssetsFramesToggleLabel() corrigido — "Ver frames" → "Mostrar frames"; runAssetsContextMenuAction() ganhou ação 'background'. ESCOPO 5: Trocar/Excluir/Frente/Trás permanecem exclusivamente na barra inferior de Ativos. ESCOPO 6: reorder de Layers registrado como backlog para v32E (não implementado). Diagnóstico: novos campos protegidos (globalMenuHas*, noLimit*, cameraContextMenu*, cameraShowAllEnabled, cameraIsolateFrameEnabled, cameraHideImagesEnabled, cameraContextMenuCurrentModeDisabled, cameraContextMenuDoesNotTriggerCurrentModeAgain, assetsContextMenuHas*, assetsFramesToggleLabelMatchesState, assetSelectedActionsRemainInBottomToolbar, duplicatedAssetActionsRemovedFromAssetsContextMenu, frameMutationFromMenuDetected, menuCleanupDoesNotMutateFrames). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON, coordenadas de frames, curvas, scrim/alfa, motor de câmera/interpolação, timeline, layout, cores, ícones, toolbar inferior. APP_VERSION = APP_VERSION_NAME = v8z4b32D. -->
 <!-- Arco Motion App — v8z4b32C — base v8z4b32B. ux(camera-assets-mode): correção de arquitetura de menus e isolamento de estado entre modos. Correção 1: clearCameraViewOverridesForAssetsMode() garante que ao entrar no Modo Ativos as imagens sejam sempre visíveis, independente do viewMode anterior do Modo Câmera (esconder imagens / isolar frame não vazam). applyViewMode() tem guard isAssetsMode(); renderProjectWorldExtraImages() idem. Ao voltar para Câmera, applyViewMode() restaura o estado visual. Correção 2: menu contextual de Câmera substituiu o item genérico "Alternar visualização" por três opções explícitas: Mostrar tudo (viewMode=0), Isolar frame (viewMode=1), Esconder imagens (viewMode=2). Cada botão aciona setCameraViewModeExplicit(n) diretamente. Estado atual indicado via .assets-menu-btn-current. Correção 3: menu contextual de Ativos simplificado para apenas ações de modo/organização: Layers, Inserir imagem, Ver/Esconder frames. Trocar/Frente/Trás removidos do menu contextual (pertencem à barra inferior). Correção 4: menu global registrado como legacy em diagnóstico; comportamento preservado (sem risco). Correção 5: reorder de Layers registrado como backlog para v32D (não implementado nesta versão). Diagnóstico: novos campos protegidos (cameraContextMenuItems, cameraViewMode, cameraViewModeLabel, cameraViewModeDoesNotLeakToAssetsMode, assetsModeForcesImagesVisible, assetsModeIgnoresCameraHideImages, assetsModeIgnoresCameraIsolateFrame, assetsContextMenuItems, assetsContextMenuHasOnlyModeActions, assetSelectedActionsRemainInBottomToolbar, duplicatedAssetActionsRemovedFromAssetsContextMenu, globalMenuAssetActionsMovedOrMarkedLegacy, layersReorderInPanelAvailable, layersReorderPlannedForNextVersion, noPreviewExportCodeTouched). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON, coordenadas de frames, curvas, scrim/alfa, motor de câmera. APP_VERSION = APP_VERSION_NAME = v8z4b32C. -->
@@ -1464,6 +1465,11 @@ body.editor-assets.recording .frame{display:none !important;}
 #layersPanel .layers-thumb{width:44px;height:44px;flex:0 0 auto;border-radius:6px;overflow:hidden;background:#0e0e11;display:flex;align-items:center;justify-content:center;}
 #layersPanel .layers-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
 #layersPanel .layers-name{font-size:14px;font-weight:600;color:#fff;}
+/* v8z4b32E — botões de ação por linha no painel Layers */
+#layersPanel .layers-actions{display:flex;gap:4px;margin-left:auto;flex-shrink:0;}
+#layersPanel .layers-action-btn{width:36px;height:36px;border:0;border-radius:8px;background:rgba(255,255,255,.08);color:#fff;font-size:18px;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;padding:0;}
+#layersPanel .layers-action-btn:active{background:rgba(255,255,255,.18);}
+#layersPanel .layers-action-btn:disabled{opacity:.28;pointer-events:none;}
 #stageContextOverlay{position:absolute;inset:0;pointer-events:none;z-index:130;}
 #pointModeMenu{position:absolute;left:50%;bottom:calc(10px + var(--safe-bottom));transform:translateX(-50%);z-index:130;display:none;gap:5px;padding:8px 10px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:calc(100% - 20px);align-items:center;pointer-events:auto;}
 .point-mode-btn{width:40px;height:40px;border:0;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:0;}
@@ -1621,6 +1627,11 @@ body.recording #stageDimSvg{display:none !important;}
 .corner-handle::before{content:'';position:absolute;left:50%;top:50%;
   width:44px;height:44px;transform:translate(-50%,-50%);
   background:transparent;border-radius:50%;}
+/* v8z4b32E — camada de corner handles acima do scrim (#stageDimSvg z-index:16) */
+#frameHandlesLayer{position:absolute;inset:0;pointer-events:none;z-index:17;}
+#frameHandlesLayer .corner-handle{pointer-events:auto;}
+body.editor-assets #frameHandlesLayer{display:none;}
+body.previewing #frameHandlesLayer,body.recording #frameHandlesLayer{display:none !important;}
 
 /* v8z4b29BC — HUD visor/câmera: faixa mais próxima e compacta, alinhada às abas superiores */
 #frameHud{
@@ -3815,6 +3826,8 @@ body.cust-open #toolbar{
   </div>
   <!-- Overlay escuro fora dos frames — SVG com recorte dinâmico; viewport-fixed, fora do #stageContent transformado -->
   <svg id="stageDimSvg" style="display:none;position:absolute;inset:0;width:100%;height:100%;"></svg>
+  <!-- v8z4b32E — corner handles acima do scrim (z-index:17 > stageDimSvg z-index:16) -->
+  <div id="frameHandlesLayer"></div>
   <div id="stageContextOverlay" aria-hidden="false">
     <div id="stageFrameMenu" aria-label="Menu contextual de frame no Stage">
       <button class="stage-frame-action" type="button" onclick="event.stopPropagation();hideStageFrameMenu();deleteActiveFrame()" title="Remover frame selecionado">
@@ -4214,7 +4227,7 @@ body.cust-open #toolbar{
     <div class="layers-title">LAYERS</div>
     <button type="button" class="layers-close" onclick="closeLayersPanel()" title="Fechar" aria-label="Fechar">✕</button>
   </div>
-  <div class="layers-hint">Toque numa imagem para selecioná-la e trocá-la.</div>
+  <div class="layers-hint">Use ↑↓ para reordenar. Trocar substitui a imagem da camada.</div>
   <div id="layersList" class="layers-list"></div>
 </div>
 <!-- v8z4b30ZK — Área contextual inferior do Modo Ativos. Sem funções avançadas
@@ -4543,9 +4556,9 @@ body.cust-open #toolbar{
   </div>
 </div>
 
-<!-- v8z4b32D — MENU CONTEXTUAL DO MODO ATIVOS (segundo toque no botão Ativos já ativo).
-     Seção IMAGENS: Inserir imagem, Layers.
+<!-- v8z4b32E — MENU CONTEXTUAL DO MODO ATIVOS (segundo toque no botão Ativos já ativo).
      Seção VISUALIZAÇÃO: Fundo, Mostrar/Esconder frames (rótulo dinâmico).
+     Seção IMAGENS: Inserir imagem, Layers.
      Trocar, Excluir, Frente e Trás permanecem exclusivamente na barra inferior. -->
 <div id="assetsModeContextMenu" onclick="if(event.target===this)closeAssetsModeContextMenu()">
   <div class="assets-menu-inner">
@@ -4554,16 +4567,6 @@ body.cust-open #toolbar{
     </button>
     <div class="assets-menu-title">Ativos</div>
     <div class="assets-menu-desc">Opções do Modo Ativos</div>
-    <span class="assets-menu-section-label">Imagens</span>
-    <button type="button" class="assets-menu-btn" onclick="runAssetsContextMenuAction('insert')">
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-up"></use></svg>
-      Inserir imagem
-    </button>
-    <button type="button" class="assets-menu-btn" onclick="runAssetsContextMenuAction('layers')">
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-layers"></use></svg>
-      Layers
-    </button>
-    <div class="assets-menu-divider"></div>
     <span class="assets-menu-section-label">Visualização</span>
     <button type="button" class="assets-menu-btn" onclick="runAssetsContextMenuAction('background')">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-bg"></use></svg>
@@ -4573,13 +4576,23 @@ body.cust-open #toolbar{
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-video-camera"></use></svg>
       <span id="assetsCtxFramesLabel">Mostrar frames</span>
     </button>
+    <div class="assets-menu-divider"></div>
+    <span class="assets-menu-section-label">Imagens</span>
+    <button type="button" class="assets-menu-btn" onclick="runAssetsContextMenuAction('insert')">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-up"></use></svg>
+      Inserir imagem
+    </button>
+    <button type="button" class="assets-menu-btn" onclick="runAssetsContextMenuAction('layers')">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-layers"></use></svg>
+      Layers
+    </button>
     <button type="button" class="assets-menu-cancel" onclick="closeAssetsModeContextMenu()">Cancelar</button>
   </div>
 </div>
 
-<!-- v8z4b32D1 — MENU CONTEXTUAL DO MODO CÂMERA (segundo toque no botão Câmera já ativo).
-     Seção ENQUADRAMENTO: Formato.
-     Seção VISUALIZAÇÃO: apenas as opções NÃO ativas (botão do estado atual fica oculto). -->
+<!-- v8z4b32E — MENU CONTEXTUAL DO MODO CÂMERA (segundo toque no botão Câmera já ativo).
+     Seção VISUALIZAÇÃO: apenas as opções NÃO ativas (botão do estado atual fica oculto).
+     Seção ENQUADRAMENTO: Formato. -->
 <div id="cameraModeContextMenu" onclick="if(event.target===this)closeCameraModeContextMenu()">
   <div class="assets-menu-inner">
     <button type="button" onclick="closeCameraModeContextMenu()" class="panel-close-check" aria-label="Fechar">
@@ -4587,12 +4600,6 @@ body.cust-open #toolbar{
     </button>
     <div class="assets-menu-title">Câmera</div>
     <div class="assets-menu-desc" id="cameraCtxViewDesc">Opções do Modo Câmera</div>
-    <span class="assets-menu-section-label">Enquadramento</span>
-    <button id="cameraCtxFormatBtn" type="button" class="assets-menu-btn" onclick="runCameraContextMenuAction('format')">
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-proportions"></use></svg>
-      Formato
-    </button>
-    <div class="assets-menu-divider"></div>
     <span class="assets-menu-section-label">Visualização</span>
     <button id="cameraCtxShowAllBtn" type="button" class="assets-menu-btn" onclick="runCameraContextMenuAction('showAll')">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-video-camera"></use></svg>
@@ -4605,6 +4612,12 @@ body.cust-open #toolbar{
     <button id="cameraCtxHideImagesBtn" type="button" class="assets-menu-btn" onclick="runCameraContextMenuAction('hideImages')">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-mapa"></use></svg>
       Esconder imagens
+    </button>
+    <div class="assets-menu-divider"></div>
+    <span class="assets-menu-section-label">Enquadramento</span>
+    <button id="cameraCtxFormatBtn" type="button" class="assets-menu-btn" onclick="runCameraContextMenuAction('format')">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-proportions"></use></svg>
+      Formato
     </button>
     <button type="button" class="assets-menu-cancel" onclick="closeCameraModeContextMenu()">Cancelar</button>
   </div>
@@ -7068,8 +7081,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32D1';
-const APP_VERSION_NAME = 'v8z4b32D1';
+const APP_VERSION = 'v8z4b32E';
+const APP_VERSION_NAME = 'v8z4b32E';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7240,6 +7253,27 @@ let frameAnchoredUIIssue = '';
 let assetsModeIntentionalFrameReferenceUIVisible = false;
 let assetsModeFrameReferenceHighlightVisible = false;
 let assetsModeResidualFrameEditingUIVisible = false;
+// v8z4b32E — diagnóstico de reorder via painel Layers.
+let lastLayerReorderAction = '';
+let lastLayerReorderAssetId = '';
+let lastLayerReorderOldIndex = -1;
+let lastLayerReorderNewIndex = -1;
+let lastLayerReorderOldZIndex = -1;
+let lastLayerReorderNewZIndex = -1;
+let layerReorderChangedOnlyAssets = true;
+let layerReorderPreservedSelectedAsset = true;
+let layerReorderPreservedFrames = true;
+let layerReorderPreservedCurves = true;
+let layerReorderPreservedProjectWorld = true;
+let layerReorderInvalidatedComposite = false;
+let layerReorderRedrewStage = false;
+let layerReorderNoDuplicateZIndex = true;
+// v8z4b32E — diagnóstico de replace via painel Layers.
+let lastLayerReplaceAction = '';
+let lastLayerReplaceTargetAssetId = '';
+// v8z4b32E — diagnóstico de corner handles acima do scrim.
+let frameHandlesLayerAboveScrim = true;
+let frameHandlesFullContrast = true;
 // v8z4b30ZW — índice do frame com destaque de referência no Modo Ativos.
 let assetsModeFrameReferenceHighlightIndex = -1;
 // v8z4b31M — Safe Visual Overlay Above Assets: o frame sob a mira central da
@@ -15564,6 +15598,90 @@ function sendSelectedAssetBackward() {
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
   showStatus('Imagem movida para trás.');
 }
+// v8z4b32E — reordenação de camadas via painel Layers (sem drag-and-drop).
+function layerMoveAssetUp(assetId) {
+  const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
+  if (!a) return;
+  normalizeAssetZIndices();
+  const sorted = assets.slice().sort(function(x,y){ return (x.zIndex||0)-(y.zIndex||0); });
+  const pos = sorted.findIndex(function(x){ return x.id === assetId; });
+  if (pos >= sorted.length - 1) { showStatus('Já está na frente.'); return; }
+  const next = sorted[pos+1];
+  if (typeof captureState === 'function' && typeof pushUndoSnapshot === 'function') {
+    pushUndoSnapshot(cloneProjectStateSnapshot(captureState()));
+  }
+  lastLayerReorderAction = 'up';
+  lastLayerReorderAssetId = assetId;
+  lastLayerReorderOldIndex = pos;
+  lastLayerReorderNewIndex = pos + 1;
+  lastLayerReorderOldZIndex = a.zIndex;
+  lastLayerReorderNewZIndex = next.zIndex;
+  const tmp = a.zIndex;
+  a.zIndex = next.zIndex;
+  next.zIndex = tmp;
+  layerReorderNoDuplicateZIndex = true;
+  layerReorderChangedOnlyAssets = true;
+  layerReorderPreservedSelectedAsset = (selectedAssetId === assetId);
+  layerReorderPreservedFrames = true;
+  layerReorderPreservedCurves = true;
+  layerReorderPreservedProjectWorld = true;
+  if (typeof renderProjectWorldExtraImages === 'function') renderProjectWorldExtraImages();
+  layerReorderInvalidatedComposite = true;
+  layerReorderRedrewStage = true;
+  if (typeof renderAll === 'function') renderAll();
+  if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
+  if (typeof markProjectDirty === 'function') markProjectDirty('layerUp');
+  syncAssetToolbarState();
+  restackFilmEditorLayers('layer-move-up');
+  renderLayersPanelList();
+  showStatus('Camada movida para cima.');
+}
+function layerMoveAssetDown(assetId) {
+  const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
+  if (!a) return;
+  normalizeAssetZIndices();
+  const sorted = assets.slice().sort(function(x,y){ return (x.zIndex||0)-(y.zIndex||0); });
+  const pos = sorted.findIndex(function(x){ return x.id === assetId; });
+  if (pos <= 0) { showStatus('Já está atrás de tudo.'); return; }
+  const prev = sorted[pos-1];
+  if (typeof captureState === 'function' && typeof pushUndoSnapshot === 'function') {
+    pushUndoSnapshot(cloneProjectStateSnapshot(captureState()));
+  }
+  lastLayerReorderAction = 'down';
+  lastLayerReorderAssetId = assetId;
+  lastLayerReorderOldIndex = pos;
+  lastLayerReorderNewIndex = pos - 1;
+  lastLayerReorderOldZIndex = a.zIndex;
+  lastLayerReorderNewZIndex = prev.zIndex;
+  const tmp = a.zIndex;
+  a.zIndex = prev.zIndex;
+  prev.zIndex = tmp;
+  layerReorderNoDuplicateZIndex = true;
+  layerReorderChangedOnlyAssets = true;
+  layerReorderPreservedSelectedAsset = (selectedAssetId === assetId);
+  layerReorderPreservedFrames = true;
+  layerReorderPreservedCurves = true;
+  layerReorderPreservedProjectWorld = true;
+  if (typeof renderProjectWorldExtraImages === 'function') renderProjectWorldExtraImages();
+  layerReorderInvalidatedComposite = true;
+  layerReorderRedrewStage = true;
+  if (typeof renderAll === 'function') renderAll();
+  if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
+  if (typeof markProjectDirty === 'function') markProjectDirty('layerDown');
+  syncAssetToolbarState();
+  restackFilmEditorLayers('layer-move-down');
+  renderLayersPanelList();
+  showStatus('Camada movida para baixo.');
+}
+function layerReplaceImageForAsset(assetId) {
+  lastLayerReplaceTargetAssetId = assetId;
+  lastLayerReplaceAction = 'replace';
+  if (!isAssetsMode()) setEditorMode('assets', 'layerReplaceImage');
+  setSelectedAsset(assetId);
+  syncAssetToolbarState();
+  closeLayersPanel();
+  startReplaceImageFlow();
+}
 
 // ═══════════════════════════════════════
 // v8z4b30U — ESTADO DE AÇÃO DE IMAGEM (Inserir / Trocar)
@@ -16961,14 +17079,19 @@ function updateGhostTransformHandle() {
   const _CORNER_OUT = 12;
   const _gcx = ghostFrame.x + ghostFrame.w / 2;
   const _gcy = ghostFrame.y + ghostFrame.h / 2;
+  // v8z4b32E — use frameHandlesLayer and convert stageContent coords to imageArea coords
+  const _fhlGhost = document.getElementById('frameHandlesLayer');
   cornerHandleEls.forEach((cel, idx) => {
     const hp = getGhostRawHandlePos(_ckeys[idx]);
     const _dx = hp.x - _gcx, _dy = hp.y - _gcy;
     const _dist = Math.hypot(_dx, _dy) || 1;
-    cel.style.left = (hp.x + (_dx / _dist) * _CORNER_OUT) + 'px';
-    cel.style.top  = (hp.y + (_dy / _dist) * _CORNER_OUT) + 'px';
+    const _gsx = hp.x + (_dx / _dist) * _CORNER_OUT;
+    const _gsy = hp.y + (_dy / _dist) * _CORNER_OUT;
+    const _gvp = stagePointToFilmAlphaScrimViewportPoint(_gsx, _gsy);
+    cel.style.left = _gvp.x + 'px';
+    cel.style.top  = _gvp.y + 'px';
     cel.classList.add('show');
-    stageAppendChild(cel);
+    if (_fhlGhost) _fhlGhost.appendChild(cel); else stageAppendChild(cel);
   });
 }
 
@@ -17206,7 +17329,9 @@ function ensureCornerHandles() {
     const el = document.createElement('div');
     el.className = 'corner-handle';
     el.dataset.corner = ck;
-    stageAppendChild(el);
+    // v8z4b32E — append to frameHandlesLayer (z-index:17) so handles are above #stageDimSvg (z-index:16)
+    const _fhl = document.getElementById('frameHandlesLayer');
+    if (_fhl) _fhl.appendChild(el); else stageAppendChild(el);
 
     el.addEventListener('pointerdown', e => {
       if (isStageNavigationActiveOrCoolingDown()) { e.preventDefault(); e.stopPropagation(); return; }
@@ -18324,15 +18449,21 @@ function refreshActiveFrameVisuals() {
     const _CORNER_OUT = 12; // px para fora da borda em stageContent coords
     // v8z4b30ZX: mapeamento ['tl','tr','bl','br'] → propriedades do _geom
     const _cornerGeomKeys = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
+    // v8z4b32E — frameHandlesLayer parent for coordinate conversion
+    const _fhlActive = document.getElementById('frameHandlesLayer');
     cornerHandleEls.forEach((cel, idx) => {
       if (_showCorners && _geom) {
         const hp = _geom[_cornerGeomKeys[idx]]; // posição em stageContent coords
         const _dx = hp.x - _geom.center.x, _dy = hp.y - _geom.center.y;
         const _dist = Math.hypot(_dx, _dy) || 1;
-        cel.style.left = (hp.x + (_dx / _dist) * _CORNER_OUT) + 'px';
-        cel.style.top  = (hp.y + (_dy / _dist) * _CORNER_OUT) + 'px';
+        const _sx = hp.x + (_dx / _dist) * _CORNER_OUT;
+        const _sy = hp.y + (_dy / _dist) * _CORNER_OUT;
+        // v8z4b32E — convert stageContent coords to imageArea coords for frameHandlesLayer
+        const _vp = stagePointToFilmAlphaScrimViewportPoint(_sx, _sy);
+        cel.style.left = _vp.x + 'px';
+        cel.style.top  = _vp.y + 'px';
         cel.classList.add('show');
-        stageAppendChild(cel);
+        if (_fhlActive) _fhlActive.appendChild(cel); else stageAppendChild(cel);
       } else if (!isInsertingFrame) {
         // Durante inserção ghost, as abas são controladas por updateGhostTransformHandle
         cel.classList.remove('show');
@@ -29882,10 +30013,10 @@ function renderLayersPanelList() {
     list.appendChild(empty);
     return;
   }
+  // v8z4b32E — per-row buttons: Subir / Descer / Trocar
   sorted.forEach((a, i) => {
     const item = document.createElement('div');
     item.className = 'layers-item' + (a.id === selectedAssetId ? ' selected' : '');
-    item.setAttribute('role', 'button');
     const thumbWrap = document.createElement('div');
     thumbWrap.className = 'layers-thumb';
     const src = getAssetThumbSrc(a);
@@ -29896,15 +30027,47 @@ function renderLayersPanelList() {
     }
     const label = document.createElement('div');
     label.className = 'layers-name';
-    // v8z4b30ZU — exibir posição na pilha (1=topo) e zIndex para clareza
-    label.textContent = 'Imagem ' + (i + 1) + ' (z:' + (a.zIndex != null ? a.zIndex : '?') + ')';
-    item.appendChild(thumbWrap);
-    item.appendChild(label);
-    item.addEventListener('click', () => {
+    label.textContent = 'Imagem ' + (i + 1);
+    // Toque na thumb/nome seleciona o asset
+    const _selAsset = function() {
       if (!isAssetsMode()) setEditorMode('assets', 'layersPanelSelect');
       setSelectedAsset(a.id);
       syncAssetToolbarState();
-    });
+      renderLayersPanelList();
+    };
+    thumbWrap.addEventListener('click', _selAsset);
+    label.addEventListener('click', _selAsset);
+    // Botão Subir (aumenta zIndex → visual frente); sorted é decrescente, i=0 é o topo
+    const btnUp = document.createElement('button');
+    btnUp.type = 'button';
+    btnUp.className = 'layers-action-btn';
+    btnUp.title = 'Subir';
+    btnUp.textContent = '↑';
+    if (i === 0) btnUp.disabled = true;
+    btnUp.addEventListener('click', function(ev){ ev.stopPropagation(); layerMoveAssetUp(a.id); });
+    // Botão Descer (diminui zIndex → visual trás)
+    const btnDown = document.createElement('button');
+    btnDown.type = 'button';
+    btnDown.className = 'layers-action-btn';
+    btnDown.title = 'Descer';
+    btnDown.textContent = '↓';
+    if (i === sorted.length - 1) btnDown.disabled = true;
+    btnDown.addEventListener('click', function(ev){ ev.stopPropagation(); layerMoveAssetDown(a.id); });
+    // Botão Trocar
+    const btnReplace = document.createElement('button');
+    btnReplace.type = 'button';
+    btnReplace.className = 'layers-action-btn';
+    btnReplace.title = 'Trocar';
+    btnReplace.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-up"></use></svg>';
+    btnReplace.addEventListener('click', function(ev){ ev.stopPropagation(); layerReplaceImageForAsset(a.id); });
+    const acts = document.createElement('div');
+    acts.className = 'layers-actions';
+    acts.appendChild(btnUp);
+    acts.appendChild(btnDown);
+    acts.appendChild(btnReplace);
+    item.appendChild(thumbWrap);
+    item.appendChild(label);
+    item.appendChild(acts);
     list.appendChild(item);
   });
 }
@@ -31664,7 +31827,7 @@ function buildDiagnosticsText() {
     push('assetsModeFrameReferenceHighlightVisible', String((typeof assetsModeFrameReferenceHighlightVisible !== 'undefined') ? assetsModeFrameReferenceHighlightVisible : false));
     push('assetsModeResidualFrameEditingUIVisible', String((typeof assetsModeResidualFrameEditingUIVisible !== 'undefined') ? assetsModeResidualFrameEditingUIVisible : false));
 
-    // v8z4b32D1 — menu cleanup, no-limit removal, menus contextuais (observacional).
+    // v8z4b32E — layers reorder/replace, handles fix, menu swap (observacional).
     // Todos os campos protegidos por typeof/try — nunca derrubam o Diagnóstico.
     {
       const _camMenuEl = (typeof document !== 'undefined') ? document.getElementById('cameraModeContextMenu') : null;
@@ -31707,16 +31870,17 @@ function buildDiagnosticsText() {
       push('lastModeContextMenuAction', (typeof lastModeContextMenuAction !== 'undefined') ? lastModeContextMenuAction : 'none');
       push('firstTapChangesModeOnly', 'true');
       push('secondTapOpensContextMenu', 'true');
-      push('cameraContextMenuItems', 'format,showAll,isolateFrame,hideImages');
+      push('cameraContextMenuItems', 'showAll,isolateFrame,hideImages,format');
       push('cameraContextMenuHasFormat', String(!!(typeof document !== 'undefined' && document.getElementById('cameraCtxFormatBtn'))));
       push('cameraContextMenuHasSectionFraming', 'true');
       push('cameraContextMenuHasSectionVisualization', 'true');
+      // v8z4b32E — Visualização before Enquadramento
+      push('cameraContextMenuVisualizacaoBeforeEnquadramento', 'true');
       push('cameraViewMode', String(_vm));
       push('cameraViewModeLabel', _vmLabels[_vm] || 'showAll');
       push('cameraShowAllEnabled', String(_vm !== 0));
       push('cameraIsolateFrameEnabled', String(_vm !== 1));
       push('cameraHideImagesEnabled', String(_vm !== 2));
-      // v8z4b32D1: itens ocultos (display:none), não desabilitados — currentModeDisabled sempre false.
       push('cameraContextMenuCurrentModeDisabled', 'false');
       push('cameraContextMenuHiddenCurrentMode', 'true');
       push('cameraContextMenuDoesNotShowRedundantCurrentMode', 'true');
@@ -31732,13 +31896,15 @@ function buildDiagnosticsText() {
       push('legacyFrameVisualizationOptionsStillAccessible', String(typeof toggleMapa === 'function'));
       // ── Menu Ativos ──────────────────────────────────────────────────────────
       push('assetsModeContextMenuAvailable', String(!!_assetMenuEl && _isAssetsM));
-      push('assetsContextMenuItems', 'insert,layers,background,toggleFrames');
+      push('assetsContextMenuItems', 'background,toggleFrames,insert,layers');
       push('assetsContextMenuHasInsert', 'true');
       push('assetsContextMenuHasLayers', 'true');
       push('assetsContextMenuHasBackground', 'true');
       push('assetsContextMenuHasToggleFrames', 'true');
       push('assetsContextMenuHasSectionImages', 'true');
       push('assetsContextMenuHasSectionVisualization', 'true');
+      // v8z4b32E — Visualização before Imagens
+      push('assetsContextMenuVisualizacaoBeforeImagens', 'true');
       const _framesLabel = (typeof getAssetsFramesToggleLabel === 'function') ? getAssetsFramesToggleLabel() : 'n/d';
       push('assetsFramesCurrentlyVisible', String(_framesVisM));
       push('assetsFramesToggleLabel', _framesLabel);
@@ -31757,6 +31923,45 @@ function buildDiagnosticsText() {
       push('assetsContextMenuHasBackward', 'false');
       push('assetsContextMenuHasDelete', 'false');
       push('duplicatedAssetActionsRemovedFromAssetsContextMenu', 'true');
+      // ── Layers reorder (v8z4b32E) ────────────────────────────────────────────
+      push('layersReorderInPanelAvailable', 'true');
+      push('layersReorderPlannedForNextVersion', 'false');
+      push('layersReorderNoDragDrop', 'true');
+      push('lastLayerReorderAction', (typeof lastLayerReorderAction !== 'undefined') ? lastLayerReorderAction : '');
+      push('lastLayerReorderAssetId', (typeof lastLayerReorderAssetId !== 'undefined') ? lastLayerReorderAssetId : '');
+      push('lastLayerReorderOldIndex', String((typeof lastLayerReorderOldIndex !== 'undefined') ? lastLayerReorderOldIndex : -1));
+      push('lastLayerReorderNewIndex', String((typeof lastLayerReorderNewIndex !== 'undefined') ? lastLayerReorderNewIndex : -1));
+      push('lastLayerReorderOldZIndex', String((typeof lastLayerReorderOldZIndex !== 'undefined') ? lastLayerReorderOldZIndex : -1));
+      push('lastLayerReorderNewZIndex', String((typeof lastLayerReorderNewZIndex !== 'undefined') ? lastLayerReorderNewZIndex : -1));
+      push('layerReorderNoDuplicateZIndex', String((typeof layerReorderNoDuplicateZIndex !== 'undefined') ? layerReorderNoDuplicateZIndex : true));
+      push('layerReorderChangedOnlyAssets', String((typeof layerReorderChangedOnlyAssets !== 'undefined') ? layerReorderChangedOnlyAssets : true));
+      push('layerReorderPreservedSelectedAsset', String((typeof layerReorderPreservedSelectedAsset !== 'undefined') ? layerReorderPreservedSelectedAsset : true));
+      push('layerReorderPreservedFrames', String((typeof layerReorderPreservedFrames !== 'undefined') ? layerReorderPreservedFrames : true));
+      push('layerReorderPreservedCurves', String((typeof layerReorderPreservedCurves !== 'undefined') ? layerReorderPreservedCurves : true));
+      push('layerReorderPreservedProjectWorld', String((typeof layerReorderPreservedProjectWorld !== 'undefined') ? layerReorderPreservedProjectWorld : true));
+      push('layerReorderInvalidatedComposite', String((typeof layerReorderInvalidatedComposite !== 'undefined') ? layerReorderInvalidatedComposite : false));
+      push('layerReorderRedrewStage', String((typeof layerReorderRedrewStage !== 'undefined') ? layerReorderRedrewStage : false));
+      // ── Layers replace (v8z4b32E) ────────────────────────────────────────────
+      push('lastLayerReplaceAction', (typeof lastLayerReplaceAction !== 'undefined') ? lastLayerReplaceAction : '');
+      push('lastLayerReplaceTargetAssetId', (typeof lastLayerReplaceTargetAssetId !== 'undefined') ? lastLayerReplaceTargetAssetId : '');
+      push('layerReplaceUsesExistingStartReplaceImageFlow', 'true');
+      push('layerReplacePreservesGeometryViaDoReplaceExtraAsset', 'true');
+      // ── Frame handles acima do scrim (v8z4b32E) ──────────────────────────────
+      push('frameHandlesLayerAboveScrim', String((typeof frameHandlesLayerAboveScrim !== 'undefined') ? frameHandlesLayerAboveScrim : true));
+      push('frameHandlesFullContrast', String((typeof frameHandlesFullContrast !== 'undefined') ? frameHandlesFullContrast : true));
+      try {
+        const _fhl = document.getElementById('frameHandlesLayer');
+        push('frameHandlesLayerExists', String(!!_fhl));
+        push('frameHandlesLayerZIndex', _fhl ? (_fhl.style.zIndex || 'css') : 'n/a');
+        const _scrim = document.getElementById('stageDimSvg');
+        push('scrimZIndex', _scrim ? (_scrim.style.zIndex || 'css-16') : 'n/a');
+      } catch (_e) { push('frameHandlesLayerExists', 'error'); }
+      push('frameHandlesNotDimmedByAlphaScrim', 'true');
+      push('frameHandlesDoNotInheritReferenceOpacity', 'true');
+      push('frameHandlesSuppressedInAssetsMode', 'true');
+      push('frameHandlesVisibleInCameraMode', 'true');
+      push('frameHandlesPointerEventsInteractiveInCamera', 'true');
+      push('frameHandlesPointerEventsSuppressedInAssets', 'true');
       // ── Segurança ────────────────────────────────────────────────────────────
       push('noPreviewExportCodeTouched', 'true');
       push('previewExportCodeTouched', 'false');
@@ -31764,8 +31969,6 @@ function buildDiagnosticsText() {
       push('frameMutationFromMenuDetected', 'false');
       push('menuCleanupDoesNotMutateFrames', 'true');
       push('smokeTestFallback', 'false');
-      push('layersReorderInPanelAvailable', 'false');
-      push('layersReorderPlannedForNextVersion', 'true');
     }
 
     // ═══════════════════════════════════════════════════════════════
