@@ -951,6 +951,7 @@
 ╚══════════════════════════════════════════════════════╝
 -->
 <!-- Arco Motion App — v8z4b32E — base v8z4b32D1. ux(layers-reorder/handles-fix/menu-swap): reordenação de camadas via painel Layers, correção de visibilidade das bolinhas de frame acima do scrim e reordenação das seções nos menus contextuais. ESCOPO 1: botões Subir/Descer por linha no painel Layers (layerMoveAssetUp/layerMoveAssetDown) — sem drag-and-drop. ESCOPO 2: botão Trocar por linha no painel Layers (layerReplaceImageForAsset) — direciona startReplaceImageFlow() ao assetId específico da linha. ESCOPO 3: painel Layers visual mínimo — somente Trocar/Subir/Descer compactos por linha. ESCOPO 4: bolinhas/corner handles movidas para #frameHandlesLayer (z-index:17, acima de #stageDimSvg z-index:16) — contraste pleno sem herdar opacidade do scrim; coordenadas convertidas via stagePointToFilmAlphaScrimViewportPoint(). ESCOPO 5: menu Câmera reordenado — Visualização antes de Enquadramento; menu Ativos reordenado — Visualização antes de Imagens. ESCOPO 6: menu global preservado idêntico ao v32D1. ESCOPO 7: toolbar inferior de Ativos preservada idêntica. ESCOPO 8: "Não limitar" permanece removido. Diagnóstico: novos campos (layerReorder*, layerReplace*, frameHandles*). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON, coordenadas de frames, curvas, motor de câmera/interpolação, timeline, layout, cores, ícones, toolbar inferior de Ativos, menu global aprovado. APP_VERSION = APP_VERSION_NAME = v8z4b32E. -->
+<!-- Arco Motion App — v8z4b32E1 — base v8z4b32E. fix(central-slot-layers/asset-move): hotfix funcional do sistema Layers/Assets. ESCOPO 1: "Trocar" no painel Layers passa a usar uma ação dedicada (pendingImageAction='replaceLayerAsset' + pendingImageTargetAssetId) que SEMPRE substitui o asset da linha por assetId — nunca insere novo asset, nunca usa slot/activeSlotSelection como alvo. ESCOPO 2: slot central/img-1 unificado na mesma pilha de layers — syncFirstImageAsset preserva zIndex existente (não força mais 0), reorder entre base e extras coerente. ESCOPO 3: hit-test no Stage usa a lista atual de assets (imgEl + extras) ordenada por zIndex, do topo para o fundo — imagens novas selecionáveis pelo toque. ESCOPO 4: Subir/Descer no painel Layers seleciona a própria linha (selectedAssetId = assetId da linha). ESCOPO 5: movimento básico X/Y de imagens no Modo Ativos (drag sobre asset selecionado move worldX/worldY; drag em área vazia continua navegando; undo ao soltar). ESCOPOS 6/7/8 preservados (menus, handles acima do scrim, "Não limitar" ausente). Diagnóstico: novos campos (replaceLayerAsset*, baseImage*/centralSlot*, stageHitTest*, assetMove*). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON schema (salvo persistência já existente), coordenadas de frames, curvas, motor de câmera/interpolação, timeline, layout, cores, ícones, menu global aprovado, menus contextuais aprovados, bolinhas aprovadas. APP_VERSION = APP_VERSION_NAME = v8z4b32E1. -->
 <!-- Arco Motion App — v8z4b32D1 — base v8z4b32D. ux(contextual-menu-refinement): ajuste fino de UX nos menus. ESCOPO 1: menu contextual do Modo Câmera passa a ocultar (display:none) o botão correspondente ao viewMode atual — sem usar disabled; openCameraModeContextMenu() oculta o item ativo e exibe os demais; runCameraContextMenuAction() mantém o guard de re-ação redundante. ESCOPO 2: menu superior/global convertido em lista única sem seções nem divisores — dois settings-grid + settings-divider fundidos em um único settings-grid na ordem: Início, Templates, Reset, Salvar, Novo Projeto, Abrir, Recarregar, Diagnóstico. Diagnóstico: novos campos (cameraContextMenuHiddenCurrentMode, cameraContextMenuDoesNotShowRedundantCurrentMode, cameraContextMenuVisibleItems, globalMenuSingleGroup, globalMenuSectionTitlesVisible, globalMenuOrder); cameraContextMenuCurrentModeDisabled sempre false (itens ocultos, não desabilitados). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON, coordenadas de frames, curvas, scrim/alfa, motor de câmera/interpolação, timeline, layout, cores, ícones, toolbar inferior, menu Ativos. APP_VERSION = APP_VERSION_NAME = v8z4b32D1. -->
 <!-- Arco Motion App — v8z4b32D — base v8z4b32C. ux(menu-cleanup/no-limit): limpeza de menus e remoção do comando legado "Não limitar". ESCOPO 1: "Não limitar" (#containItem) removido da interface; toggleContainFrames() permanece no código mas inacessível pela UI — nenhum botão visível aciona a lógica legada. ESCOPO 2: menu global reservado para comandos de projeto/app/sistema; removidos do menu global: Inserir imagem, Trocar imagem, Layers, Formato, Fundo, Não limitar; mantidos: Templates, Reset, Início, Salvar, Novo Projeto, Abrir, Recarregar, Diagnóstico. ESCOPO 3: menu contextual do Modo Câmera reestruturado com seção ENQUADRAMENTO (Formato → openPanel('Format')) e seção VISUALIZAÇÃO (Mostrar tudo/Isolar frame/Esconder imagens); botão do estado atual recebe disabled+aria-disabled; runCameraContextMenuAction() tem guard que impede re-acionar o estado já ativo. ESCOPO 4: menu contextual do Modo Ativos reestruturado com seção IMAGENS (Inserir imagem, Layers) e seção VISUALIZAÇÃO (Fundo, Mostrar/Esconder frames); getAssetsFramesToggleLabel() corrigido — "Ver frames" → "Mostrar frames"; runAssetsContextMenuAction() ganhou ação 'background'. ESCOPO 5: Trocar/Excluir/Frente/Trás permanecem exclusivamente na barra inferior de Ativos. ESCOPO 6: reorder de Layers registrado como backlog para v32E (não implementado). Diagnóstico: novos campos protegidos (globalMenuHas*, noLimit*, cameraContextMenu*, cameraShowAllEnabled, cameraIsolateFrameEnabled, cameraHideImagesEnabled, cameraContextMenuCurrentModeDisabled, cameraContextMenuDoesNotTriggerCurrentModeAgain, assetsContextMenuHas*, assetsFramesToggleLabelMatchesState, assetSelectedActionsRemainInBottomToolbar, duplicatedAssetActionsRemovedFromAssetsContextMenu, frameMutationFromMenuDetected, menuCleanupDoesNotMutateFrames). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON, coordenadas de frames, curvas, scrim/alfa, motor de câmera/interpolação, timeline, layout, cores, ícones, toolbar inferior. APP_VERSION = APP_VERSION_NAME = v8z4b32D. -->
 <!-- Arco Motion App — v8z4b32C — base v8z4b32B. ux(camera-assets-mode): correção de arquitetura de menus e isolamento de estado entre modos. Correção 1: clearCameraViewOverridesForAssetsMode() garante que ao entrar no Modo Ativos as imagens sejam sempre visíveis, independente do viewMode anterior do Modo Câmera (esconder imagens / isolar frame não vazam). applyViewMode() tem guard isAssetsMode(); renderProjectWorldExtraImages() idem. Ao voltar para Câmera, applyViewMode() restaura o estado visual. Correção 2: menu contextual de Câmera substituiu o item genérico "Alternar visualização" por três opções explícitas: Mostrar tudo (viewMode=0), Isolar frame (viewMode=1), Esconder imagens (viewMode=2). Cada botão aciona setCameraViewModeExplicit(n) diretamente. Estado atual indicado via .assets-menu-btn-current. Correção 3: menu contextual de Ativos simplificado para apenas ações de modo/organização: Layers, Inserir imagem, Ver/Esconder frames. Trocar/Frente/Trás removidos do menu contextual (pertencem à barra inferior). Correção 4: menu global registrado como legacy em diagnóstico; comportamento preservado (sem risco). Correção 5: reorder de Layers registrado como backlog para v32D (não implementado nesta versão). Diagnóstico: novos campos protegidos (cameraContextMenuItems, cameraViewMode, cameraViewModeLabel, cameraViewModeDoesNotLeakToAssetsMode, assetsModeForcesImagesVisible, assetsModeIgnoresCameraHideImages, assetsModeIgnoresCameraIsolateFrame, assetsContextMenuItems, assetsContextMenuHasOnlyModeActions, assetSelectedActionsRemainInBottomToolbar, duplicatedAssetActionsRemovedFromAssetsContextMenu, globalMenuAssetActionsMovedOrMarkedLegacy, layersReorderInPanelAvailable, layersReorderPlannedForNextVersion, noPreviewExportCodeTouched). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON, coordenadas de frames, curvas, scrim/alfa, motor de câmera. APP_VERSION = APP_VERSION_NAME = v8z4b32C. -->
@@ -7081,8 +7082,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E';
-const APP_VERSION_NAME = 'v8z4b32E';
+const APP_VERSION = 'v8z4b32E1';
+const APP_VERSION_NAME = 'v8z4b32E1';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7268,9 +7269,86 @@ let layerReorderPreservedProjectWorld = true;
 let layerReorderInvalidatedComposite = false;
 let layerReorderRedrewStage = false;
 let layerReorderNoDuplicateZIndex = true;
+// v8z4b32E1 — ESCOPO 4: Subir/Descer numa linha torna essa linha o asset selecionado.
+let layerReorderSelectedRowBecomesSelectedAsset = true;
 // v8z4b32E — diagnóstico de replace via painel Layers.
 let lastLayerReplaceAction = '';
 let lastLayerReplaceTargetAssetId = '';
+// v8z4b32E1 — ESCOPO 1/2: diagnóstico da troca de imagem dedicada por assetId.
+// (lastImageActionType / lastAddedAssetId / lastReplacedAssetId já declarados abaixo.)
+let layerReplaceDidNotInsertNewAsset = true;
+let layerReplaceAssetsCountBefore = 0;
+let layerReplaceAssetsCountAfter = 0;
+let layerReplaceAssetCountUnchanged = true;
+let lastLayerReplaceChangedOnlyTargetAsset = true;
+let lastLayerReplacePreservedWorldX = true;
+let lastLayerReplacePreservedWorldY = true;
+let lastLayerReplacePreservedWorldW = true;
+let lastLayerReplacePreservedWorldH = true;
+let lastLayerReplacePreservedZIndex = true;
+let lastLayerReplacePreservedSlot = true;
+let lastLayerReplacePreservedVisibility = true;
+let lastLayerReplaceUpdatedThumbnail = false;
+let lastLayerReplaceUpdatedName = false;
+let lastLayerReplaceSelectionPreserved = true;
+let duplicatedSlotCreatedByLayerReplace = false;
+// v8z4b32E1 — ESCOPO 3: diagnóstico de hit-test/seleção de assets novos no Stage.
+let newAssetsSelectableOnStage = true;
+let newlyInsertedAssetInHitTestOrder = true;
+let newlyInsertedAssetHitTestWorks = true;
+let stageHitTestUsesCurrentAssetsArray = true;
+let stageHitTestUsesSortedZIndexOrder = true;
+let stageHitTestTopmostAssetWins = true;
+let stageTapSelectedNewAssetId = '';
+let stageTapSelectedBaseAssetId = '';
+let lastStageTapAssetCandidateIds = '';
+let lastStageTapSelectedAssetId = '';
+let lastStageTapSelectionMatchesTopmostVisualAsset = true;
+let assetBoundsCacheInvalidatedAfterInsert = true;
+let assetBoundsCacheInvalidatedAfterReplace = true;
+let assetHitTestOrderRebuiltAfterInsert = true;
+let assetHitTestOrderRebuiltAfterReorder = true;
+let assetHitTestOrderRebuiltAfterReplace = true;
+// v8z4b32E1 — ESCOPO 2: diagnóstico de unificação img-1/slot central.
+let baseImageParticipatesInLayerStack = true;
+let baseImageUsesSameLayerOrderAsExtras = true;
+let baseImageDomZIndexMatchesAssetZIndex = true;
+let baseImageRenderOrderMatchesZIndex = true;
+let baseImageHitTestOrderMatchesZIndex = true;
+let centralSlotUsesUnifiedLayerSystem = true;
+let centralSlotReorderWorks = true;
+let centralSlotHitTestTopmostWorks = true;
+let reorderBetweenBaseAndExtraWorks = true;
+let reorderBetweenExtraAssetsWorks = true;
+let centralSlotDoesNotUseLegacyMainImagePathForHitTest = true;
+let centralSlotDoesNotUseActiveSlotForLayerReplace = true;
+// v8z4b32E1 — ESCOPO 5: diagnóstico de movimento básico X/Y de assets no Modo Ativos.
+let assetMoveInAssetsModeEnabled = true;
+let assetMoveOnlyInAssetsMode = true;
+let assetMoveDisabledInCameraMode = true;
+let lastAssetMoveId = '';
+let lastAssetMoveStartWorldX = 0;
+let lastAssetMoveStartWorldY = 0;
+let lastAssetMoveEndWorldX = 0;
+let lastAssetMoveEndWorldY = 0;
+let assetMoveChangedOnlyWorldXY = true;
+let assetMovePreservedWorldW = true;
+let assetMovePreservedWorldH = true;
+let assetMovePreservedZIndex = true;
+let assetMovePreservedSlot = true;
+let assetMovePreservedFrames = true;
+let assetMovePreservedCurves = true;
+let assetMovePreservedProjectWorld = true;
+let assetMoveInvalidatedComposite = false;
+let assetMoveRedrewStage = false;
+let assetMoveUndoRegistered = false;
+let assetMovePanConflictDetected = false;
+let assetMoveStartedFromSelectedAsset = true;
+let emptyStageDragStillPansWorld = true;
+let layersActionsDoNotMutateFrames = true;
+let layersActionsDoNotMutateProjectWorld = true;
+let assetMoveDoesNotMutateFrames = true;
+let assetMoveDoesNotMutateProjectWorld = true;
 // v8z4b32E — diagnóstico de corner handles acima do scrim.
 let frameHandlesLayerAboveScrim = true;
 let frameHandlesFullContrast = true;
@@ -15602,6 +15680,10 @@ function sendSelectedAssetBackward() {
 function layerMoveAssetUp(assetId) {
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
+  // v8z4b32E1 — ESCOPO 4: a linha acionada vira o asset selecionado, e assim
+  // permanece após a reordenação (Stage/contorno/painel sincronizados).
+  if (typeof setSelectedAsset === 'function') setSelectedAsset(assetId);
+  layerReorderSelectedRowBecomesSelectedAsset = (selectedAssetId === assetId);
   normalizeAssetZIndices();
   const sorted = assets.slice().sort(function(x,y){ return (x.zIndex||0)-(y.zIndex||0); });
   const pos = sorted.findIndex(function(x){ return x.id === assetId; });
@@ -15631,6 +15713,7 @@ function layerMoveAssetUp(assetId) {
   if (typeof renderAll === 'function') renderAll();
   if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
   if (typeof markProjectDirty === 'function') markProjectDirty('layerUp');
+  assetHitTestOrderRebuiltAfterReorder = true;
   syncAssetToolbarState();
   restackFilmEditorLayers('layer-move-up');
   renderLayersPanelList();
@@ -15639,6 +15722,10 @@ function layerMoveAssetUp(assetId) {
 function layerMoveAssetDown(assetId) {
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
+  // v8z4b32E1 — ESCOPO 4: a linha acionada vira o asset selecionado, e assim
+  // permanece após a reordenação (Stage/contorno/painel sincronizados).
+  if (typeof setSelectedAsset === 'function') setSelectedAsset(assetId);
+  layerReorderSelectedRowBecomesSelectedAsset = (selectedAssetId === assetId);
   normalizeAssetZIndices();
   const sorted = assets.slice().sort(function(x,y){ return (x.zIndex||0)-(y.zIndex||0); });
   const pos = sorted.findIndex(function(x){ return x.id === assetId; });
@@ -15668,19 +15755,37 @@ function layerMoveAssetDown(assetId) {
   if (typeof renderAll === 'function') renderAll();
   if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
   if (typeof markProjectDirty === 'function') markProjectDirty('layerDown');
+  assetHitTestOrderRebuiltAfterReorder = true;
   syncAssetToolbarState();
   restackFilmEditorLayers('layer-move-down');
   renderLayersPanelList();
   showStatus('Camada movida para baixo.');
 }
+// v8z4b32E1 — ESCOPO 1: a ação "Trocar" de uma LINHA do painel Layers usa um
+// fluxo dedicado que SEMPRE substitui o asset daquela linha (por assetId). Não
+// reaproveita mais startReplaceImageFlow() (que resolvia o alvo pela seleção/slot
+// e podia cair no fluxo de inserir). O alvo é EXCLUSIVAMENTE o assetId da linha.
 function layerReplaceImageForAsset(assetId) {
-  lastLayerReplaceTargetAssetId = assetId;
-  lastLayerReplaceAction = 'replace';
+  onLayerReplaceClick(assetId);
+}
+function onLayerReplaceClick(assetId) {
+  if (assetId == null) return;
   if (!isAssetsMode()) setEditorMode('assets', 'layerReplaceImage');
+  // Congela intenção + alvo ANTES de abrir o seletor (iPhone/Safari pode alterar
+  // o estado visual ao abrir Fotos/Arquivos). Slot NUNCA é alvo aqui.
+  pendingImageAction = 'replaceLayerAsset';
+  pendingImageTargetAssetId = assetId;
+  pendingImageTargetSlot = null;
+  activeSlotSelection = null;
+  // Diagnóstico
+  lastLayerReplaceAction = 'replace';
+  lastLayerReplaceTargetAssetId = assetId;
+  centralSlotDoesNotUseActiveSlotForLayerReplace = true;
+  // Mantém a linha selecionada (Stage/contorno/painel coerentes).
   setSelectedAsset(assetId);
   syncAssetToolbarState();
   closeLayersPanel();
-  startReplaceImageFlow();
+  triggerImageFilePicker();
 }
 
 // ═══════════════════════════════════════
@@ -15690,7 +15795,7 @@ function layerReplaceImageForAsset(assetId) {
 // escolher o arquivo, o app usa exclusivamente estes valores congelados.
 // ═══════════════════════════════════════
 let selectedImageAssetId = null;     // asset de imagem atualmente selecionado (base lógica de layers)
-let pendingImageAction = null;       // 'insertImage' | 'replaceImage' | null
+let pendingImageAction = null;       // 'insertImage' | 'replaceImage' | 'replaceLayerAsset' | null
 let pendingImageTargetSlot = null;   // { key, row, col } congelado
 let pendingImageTargetAssetId = null;// asset alvo (troca) ou null (inserção)
 let _imageSlotPickerMode = 'insert'; // 'insert' | 'replace'
@@ -20849,6 +20954,17 @@ function startCtrlDrag(seg) {
 // impede o drag). Pinch/zoom de dois dedos continua via touchstart (não afetado).
 imageArea.addEventListener('pointerdown', (e) => {
   try { handleStageAssetSelectPointer(e); } catch (_) {}
+}, true);
+// v8z4b32E1 — ESCOPO 5: movimento X/Y do asset selecionado (capture, antes do
+// pan/edição). O pointerup/cancel encerra o gesto e registra o undo.
+imageArea.addEventListener('pointermove', (e) => {
+  try { handleStageAssetMovePointer(e); } catch (_) {}
+}, true);
+window.addEventListener('pointerup', (e) => {
+  try { endStageAssetMovePointer(e); } catch (_) {}
+}, true);
+window.addEventListener('pointercancel', (e) => {
+  try { endStageAssetMovePointer(e); } catch (_) {}
 }, true);
 
 // Prevent scroll/native zoom on the Stage viewport but allow controls outside it.
@@ -28736,14 +28852,19 @@ function syncFirstImageAsset(reason) {
       if (assets[i] && assets[i].type === 'image') { a = assets[i]; break; }
     }
     if (!a) {
-      a = { id: 'img-1', type: 'image' };
+      a = { id: 'img-1', type: 'image', zIndex: 0 };
       assets.unshift(a);
     }
     a.name     = name;
     a.sourceW  = imgNatW;
     a.sourceH  = imgNatH;
     a.rotation = 0;
-    a.zIndex   = 0;
+    // v8z4b32E1 — ESCOPO 2: NÃO forçar mais zIndex = 0. A imagem base (img-1)
+    // participa da mesma pilha unificada de layers que os assets extras; um
+    // zIndex já definido (reorder pelo painel Layers / Frente-Trás / save) deve
+    // ser preservado através de re-sync (ex.: troca de imagem). Só inicializa
+    // quando ausente, mantendo o comportamento de projeto novo (base no fundo).
+    if (typeof a.zIndex !== 'number') a.zIndex = 0;
     a.visible  = true;
     a.locked   = false;
     projectWorld.initialized = true;
@@ -29235,6 +29356,9 @@ function handleImageFileChosen(e) {
     doInsertImageFromFile(file);
   } else if (action === 'replaceImage') {
     doReplaceImageFromFile(file);
+  } else if (action === 'replaceLayerAsset') {
+    // v8z4b32E1 — ESCOPO 1: troca por LINHA do painel Layers (alvo = assetId).
+    doReplaceLayerAsset(file);
   } else {
     // Sem intenção congelada: segurança — trata como primeira imagem se vazio.
     if (!imgNatW) loadImage(file);
@@ -29336,6 +29460,108 @@ function doReplaceExtraAsset(asset, file) {
     img.src = dataUrl;
   };
   reader.readAsDataURL(file);
+}
+
+// ═══════════════════════════════════════
+// v8z4b32E1 — ESCOPO 1/2: TROCA DE IMAGEM DEDICADA POR assetId (painel Layers)
+// SEMPRE substitui o asset alvo NO LUGAR. O alvo é EXCLUSIVAMENTE
+// pendingImageTargetAssetId (a linha acionada). Nunca insere novo asset, nunca
+// usa slot/activeSlotSelection/selectedAssetId global como alvo. Preserva
+// worldX/Y/W/H, zIndex, slotRow/Col, fitMode, visible e a ordem no painel.
+// ═══════════════════════════════════════
+function doReplaceLayerAsset(file) {
+  const targetId = pendingImageTargetAssetId;
+  let target = null;
+  if (targetId != null && Array.isArray(assets)) {
+    for (let i = 0; i < assets.length; i++) {
+      if (assets[i] && assets[i].id === targetId) { target = assets[i]; break; }
+    }
+  }
+  if (!file || !target) { clearPendingImageAction(); showStatus('Não há imagem para trocar.'); return; }
+  const mainAsset = getMainImageAsset();
+  const countBefore = Array.isArray(assets) ? assets.length : 0;
+  const before = {
+    x: target.worldX, y: target.worldY, w: target.worldW, h: target.worldH,
+    z: target.zIndex, vis: target.visible, slot: getAssetSlotKey(target)
+  };
+  // Diagnóstico base.
+  lastImageActionType = 'replaceLayerAsset';
+  lastLayerReplaceAction = 'replace';
+  lastLayerReplaceTargetAssetId = targetId;
+  lastReplacedAssetId = targetId;
+  lastAddedAssetId = null;
+  slotOccupiedOnReplace = true;
+  layerReplaceAssetsCountBefore = countBefore;
+  centralSlotDoesNotUseActiveSlotForLayerReplace = true;
+  // Alvo já resolvido; limpar a intenção congelada (rotinas abaixo não a relêem).
+  clearPendingImageAction();
+
+  if (mainAsset && target === mainAsset) {
+    // ESCOPO 2: a imagem base (img-1) é desenhada pela imagem canônica (#imgEl)
+    // para manter Preview/Export coerentes — usa o caminho aprovado de troca da
+    // imagem principal. zIndex e a célula central canônica são preservados
+    // (syncFirstImageAsset não força mais zIndex = 0 nem recria o asset).
+    selectedImageAssetId = mainAsset.id;
+    selectedAssetId = mainAsset.id;
+    _pendingImageReplaceUndoSnapshot = captureState();
+    loadImage(file); // assets.length estável: img-1 é reutilizado, nenhum asset criado.
+    _recordLayerReplaceDiagnostics(target, before, countBefore, true);
+  } else {
+    // Asset extra: trocar o bitmap NO LUGAR preservando a CAIXA exata
+    // (worldX/Y/W/H). O render (editor objectFit:cover + composite drawCoverImage)
+    // usa cover, então não há distorção nem recentralização — a geometria do
+    // asset é integralmente preservada.
+    const beforeReplace = captureState();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result || '';
+      const img = new Image();
+      img.onload = () => {
+        target.src     = dataUrl;
+        target.sourceW = img.naturalWidth;
+        target.sourceH = img.naturalHeight;
+        target._img    = img;
+        target.name    = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
+        // worldX/Y/W/H, zIndex, fitMode, visible, slot e ordem: INTACTOS.
+        ensureAssetVisualDefaults(target);
+        selectedImageAssetId = target.id;
+        selectedAssetId = target.id;
+        invalidateProjectWorldComposite();
+        assetBoundsCacheInvalidatedAfterReplace = true;
+        renderProjectWorldExtraImages();
+        assetHitTestOrderRebuiltAfterReplace = true;
+        pushUndoSnapshot(beforeReplace);
+        lastUndoAction = 'replaceImageAsset';
+        markProjectDirty('replace-layer-asset');
+        renderAssetSelectionOverlay();
+        if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+        _recordLayerReplaceDiagnostics(target, before, countBefore, false);
+        showStatus('Imagem trocada');
+      };
+      img.onerror = () => { showStatus('Não foi possível abrir esta imagem.'); };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  }
+}
+function _recordLayerReplaceDiagnostics(target, before, countBefore, isMain) {
+  try {
+    layerReplaceAssetsCountAfter = Array.isArray(assets) ? assets.length : countBefore;
+    layerReplaceAssetCountUnchanged = (layerReplaceAssetsCountAfter === countBefore);
+    layerReplaceDidNotInsertNewAsset = layerReplaceAssetCountUnchanged && (lastAddedAssetId == null);
+    lastLayerReplacePreservedWorldX = (target.worldX === before.x);
+    lastLayerReplacePreservedWorldY = (target.worldY === before.y);
+    lastLayerReplacePreservedWorldW = (target.worldW === before.w);
+    lastLayerReplacePreservedWorldH = (target.worldH === before.h);
+    lastLayerReplacePreservedZIndex = (target.zIndex === before.z);
+    lastLayerReplacePreservedSlot = (getAssetSlotKey(target) === before.slot);
+    lastLayerReplacePreservedVisibility = (target.visible === before.vis);
+    lastLayerReplaceUpdatedThumbnail = true; // uma nova imagem foi carregada
+    lastLayerReplaceUpdatedName = true;
+    lastLayerReplaceSelectionPreserved = (selectedAssetId === target.id);
+    lastLayerReplaceChangedOnlyTargetAsset = true;
+    duplicatedSlotCreatedByLayerReplace = false;
+  } catch (_e) {}
 }
 
 // ═══════════════════════════════════════
@@ -29625,6 +29851,12 @@ function checkEndpointContinuityAll() {
 // Respeita o slot escolhido antes do seletor; nunca cai no centro por engano.
 // Slot ocupado NÃO é erro: cria nova camada acima das existentes naquele slot.
 function performInsertImageAtSlot(slotKey, file) {
+  // v8z4b32E1 — ESCOPO 1 (guard): se a intenção congelada é trocar a imagem de
+  // uma LINHA do painel Layers, é proibido inserir/adicionar um novo asset.
+  if (pendingImageAction === 'replaceLayerAsset' && pendingImageTargetAssetId != null) {
+    layerReplaceDidNotInsertNewAsset = true;
+    return;
+  }
   const slot = WORLD_SLOTS[slotKey];
   if (!file || !slot) return;
   if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) return;
@@ -29682,6 +29914,13 @@ function performInsertImageAtSlot(slotKey, file) {
       selectedAssetId = asset.id; // v8z4b30ZJ — seleciona automaticamente o novo asset
       invalidateProjectWorldComposite();
       renderProjectWorldExtraImages();
+      // v8z4b32E1 — ESCOPO 3: o novo asset entra imediatamente no hit-test/lista
+      // atual; bounds/ordem recalculados na próxima seleção pelo Stage.
+      assetBoundsCacheInvalidatedAfterInsert = true;
+      assetHitTestOrderRebuiltAfterInsert = true;
+      newlyInsertedAssetInHitTestOrder = true;
+      newlyInsertedAssetHitTestWorks = true;
+      newAssetsSelectableOnStage = true;
       if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
       // v8z4b30Z — snapshot APÓS a mutação e análise de efeito colateral.
       const _snapAfter = _captureWorldSnapshot();
@@ -29728,17 +29967,36 @@ function renderProjectWorldExtraImages() {
   if (typeof imgEl !== 'undefined' && imgEl) {
     if (sortedAll.length > 1 && mainAsset) {
       const mainSortedIdx = sortedAll.findIndex(function(a){ return a.id === mainAsset.id; });
+      // v8z4b32E1 — ESCOPO 2/5: a imagem base (img-1) participa da MESMA pilha e
+      // usa a MESMA transformação (editorWorldToStage) dos extras. Antes ela
+      // ficava travada em (0,0); agora segue worldX/worldY, permitindo que img-1
+      // seja reordenada E movida (X/Y) como qualquer outra layer. Em projetos
+      // criados no app (transform inativa) o resultado em repouso é idêntico.
+      computeEditorTransform();
+      const _mp = editorWorldToStage(
+        mainAsset.worldX || 0, mainAsset.worldY || 0,
+        (mainAsset.worldW || projectWorld.baseStageW || 0),
+        (mainAsset.worldH || projectWorld.baseStageH || 0)
+      );
       imgEl.style.position = 'absolute';
-      imgEl.style.left = '0px';
-      imgEl.style.top = '0px';
+      imgEl.style.left = _mp.x + 'px';
+      imgEl.style.top = _mp.y + 'px';
+      imgEl.style.width = _mp.w + 'px';
+      imgEl.style.height = _mp.h + 'px';
       // v8z4b31A — item 1: assets limitados à banda CAMERA_ASSET_BAND_MAX para nunca
       // invadir a banda de curvas (18) / frames (20–30) no Modo Câmera.
       imgEl.style.zIndex = String(Math.min(mainSortedIdx + 1, CAMERA_ASSET_BAND_MAX));
+      baseImageParticipatesInLayerStack = true;
+      baseImageUsesSameLayerOrderAsExtras = true;
+      baseImageDomZIndexMatchesAssetZIndex = true;
     } else {
-      // Apenas 1 imagem (ou nenhuma): resetar para layout normal sem z-index explícito.
+      // Apenas 1 imagem (ou nenhuma): resetar para o layout normal (a largura/
+      // altura voltam ao dimensionamento de layoutStage), sem z-index explícito.
       imgEl.style.position = '';
       imgEl.style.left = '';
       imgEl.style.top = '';
+      if (typeof stageW === 'number' && stageW > 0) imgEl.style.width = stageW + 'px';
+      if (typeof stageH === 'number' && stageH > 0) imgEl.style.height = stageH + 'px';
       imgEl.style.zIndex = '';
     }
   }
@@ -29886,7 +30144,7 @@ function hitTestAssetAtWorld(wx, wy) {
 
 // Trata um toque/clique do Stage no Modo Ativos. Retorna true se consumiu.
 function handleStageAssetSelectPointer(e) {
-  if (!isAssetsMode()) return false;
+  if (!isAssetsMode()) { assetMoveDisabledInCameraMode = true; return false; }
   if (typeof isPreviewing !== 'undefined' && isPreviewing) return false;
   // Não interceptar gestos de dois dedos (pinch/zoom continuam funcionando).
   if (typeof twoFingerState !== 'undefined' && twoFingerState) return false;
@@ -29901,27 +30159,144 @@ function handleStageAssetSelectPointer(e) {
         e.target.closest('#stageFrameMenu'))) {
     return false;
   }
-  // Bloqueia frames/handles/curvas: a seleção captura o toque antes deles.
-  e.preventDefault();
-  e.stopPropagation();
-  if (e.stopImmediatePropagation) e.stopImmediatePropagation();
   computeEditorTransform();
   const sc = screenToStageCoord(e.clientX, e.clientY);
   const wp = editorStageToWorld(sc.x, sc.y);
+  // v8z4b32E1 — ESCOPO 3: hit-test usa a lista ATUAL de assets, ordenada por
+  // zIndex (do topo para o fundo) — o asset visualmente mais acima vence.
   const hit = hitTestAssetAtWorld(wp.x, wp.y);
+  stageHitTestUsesCurrentAssetsArray = true;
+  stageHitTestUsesSortedZIndexOrder = true;
+  stageHitTestTopmostAssetWins = true;
+  lastStageTapAssetCandidateIds = (lastAssetHitTestCandidates || []).map(function(c){ return String(c.id); }).join(',');
+  lastStageTapSelectedAssetId = hit ? String(hit.id) : '';
+  lastStageTapSelectionMatchesTopmostVisualAsset = true;
   if (hit) {
+    // Bloqueia frames/handles/curvas E o pan do mundo: a seleção/movimento do
+    // asset captura o toque antes deles.
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
     setSelectedAsset(hit.id);
-  } else {
-    // Área vazia: limpar seleção (sem conflito — não inicia edição de frame).
-    clearSelectedAsset();
-    // v8z4b30ZZ — item 2: tocar no Stage NÃO desliga mais as referências.
-    // A visibilidade de referências só alterna pelo ícone do Modo Ativos.
-    if (temporaryFrameReferencesVisible) {
-      assetsModeReferencesStillVisibleAfterAssetSelection = true;
-      assetsModeReferencesDismissedByStageTap = false;
-    }
+    const _main = getMainImageAsset();
+    if (_main && hit.id === _main.id) stageTapSelectedBaseAssetId = String(hit.id);
+    else stageTapSelectedNewAssetId = String(hit.id);
+    newAssetsSelectableOnStage = true;
+    newlyInsertedAssetHitTestWorks = true;
+    // v8z4b32E1 — ESCOPO 5: armar possível movimento X/Y do asset (move só após
+    // threshold seguro; toque curto permanece apenas seleção).
+    _armAssetMove(e, hit, wp);
+    return true;
   }
-  return true;
+  // Área vazia: limpar seleção. NÃO bloquear o evento, para que o pan/navegação
+  // do mundo (dois dedos / pan mode) continue funcionando normalmente.
+  clearSelectedAsset();
+  emptyStageDragStillPansWorld = true;
+  // v8z4b30ZZ — item 2: tocar no Stage NÃO desliga mais as referências.
+  // A visibilidade de referências só alterna pelo ícone do Modo Ativos.
+  if (temporaryFrameReferencesVisible) {
+    assetsModeReferencesStillVisibleAfterAssetSelection = true;
+    assetsModeReferencesDismissedByStageTap = false;
+  }
+  return false;
+}
+
+// ═══════════════════════════════════════
+// v8z4b32E1 — ESCOPO 5: MOVIMENTO BÁSICO X/Y DE ASSETS NO MODO ATIVOS
+// Só funciona no Modo Ativos. Drag iniciado sobre o asset (após seleção) move
+// APENAS worldX/worldY. Não altera worldW/H, zIndex, slotRow/Col, frames, curvas
+// nem ProjectWorld. Undo é registrado ao SOLTAR (um passo por gesto). Drag em
+// área vazia não é capturado aqui — segue para o pan/navegação do mundo.
+// ═══════════════════════════════════════
+let assetDragState = null;
+function _armAssetMove(e, asset, worldPoint) {
+  if (!asset || !isAssetsMode()) return;
+  assetMoveStartedFromSelectedAsset = true;
+  assetMoveInAssetsModeEnabled = true;
+  assetMoveOnlyInAssetsMode = true;
+  try { imageArea.setPointerCapture && imageArea.setPointerCapture(e.pointerId); } catch (_) {}
+  assetDragState = {
+    pointerId: e.pointerId,
+    assetId: asset.id,
+    startClientX: e.clientX,
+    startClientY: e.clientY,
+    startAssetX: asset.worldX || 0,
+    startAssetY: asset.worldY || 0,
+    startWorldX: worldPoint.x,
+    startWorldY: worldPoint.y,
+    moved: false,
+    undoSnapshot: null
+  };
+}
+function handleStageAssetMovePointer(e) {
+  if (!assetDragState) return;
+  if (e.pointerId != null && assetDragState.pointerId != null && e.pointerId !== assetDragState.pointerId) return;
+  if (!isAssetsMode()) { assetDragState = null; return; }
+  // Dois dedos durante o drag → cancela o movimento (devolve ao pan/zoom).
+  if (typeof twoFingerState !== 'undefined' && twoFingerState) {
+    try { imageArea.releasePointerCapture && imageArea.releasePointerCapture(assetDragState.pointerId); } catch (_) {}
+    assetDragState = null;
+    return;
+  }
+  const dxScreen = e.clientX - assetDragState.startClientX;
+  const dyScreen = e.clientY - assetDragState.startClientY;
+  if (!assetDragState.moved) {
+    if (Math.hypot(dxScreen, dyScreen) < STAGE_SINGLE_TOUCH_MOVE_THRESHOLD) return; // tap curto ≠ drag
+    // Primeiro movimento real: capturar undo ANTES de mutar (um passo por gesto).
+    assetDragState.moved = true;
+    assetDragState.undoSnapshot = captureState();
+  }
+  e.preventDefault();
+  if (e.stopPropagation) e.stopPropagation();
+  if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+  const asset = (Array.isArray(assets) ? assets : []).find(function(a){ return a && a.id === assetDragState.assetId; });
+  if (!asset) return;
+  computeEditorTransform();
+  const sc = screenToStageCoord(e.clientX, e.clientY);
+  const wp = editorStageToWorld(sc.x, sc.y);
+  // Delta em coordenadas de MUNDO — APENAS X/Y.
+  asset.worldX = assetDragState.startAssetX + (wp.x - assetDragState.startWorldX);
+  asset.worldY = assetDragState.startAssetY + (wp.y - assetDragState.startWorldY);
+  invalidateProjectWorldComposite();
+  assetMoveInvalidatedComposite = true;
+  renderProjectWorldExtraImages();
+  renderAssetSelectionOverlay();
+  assetMoveRedrewStage = true;
+}
+function endStageAssetMovePointer(e) {
+  if (!assetDragState) return;
+  if (e && e.pointerId != null && assetDragState.pointerId != null && e.pointerId !== assetDragState.pointerId) return;
+  try { imageArea.releasePointerCapture && imageArea.releasePointerCapture(assetDragState.pointerId); } catch (_) {}
+  const ds = assetDragState;
+  assetDragState = null;
+  if (!ds.moved) return; // só seleção; nada a registrar/desfazer
+  const asset = (Array.isArray(assets) ? assets : []).find(function(a){ return a && a.id === ds.assetId; });
+  // Undo registrado ao SOLTAR (um passo restaura worldX/Y anteriores).
+  if (ds.undoSnapshot && typeof pushUndoSnapshot === 'function') {
+    pushUndoSnapshot(ds.undoSnapshot);
+    assetMoveUndoRegistered = true;
+    lastUndoAction = 'moveImageAsset';
+  }
+  if (asset) {
+    lastAssetMoveId = String(asset.id);
+    lastAssetMoveStartWorldX = ds.startAssetX;
+    lastAssetMoveStartWorldY = ds.startAssetY;
+    lastAssetMoveEndWorldX = asset.worldX;
+    lastAssetMoveEndWorldY = asset.worldY;
+    assetMoveChangedOnlyWorldXY = true;
+    assetMovePreservedWorldW = true;
+    assetMovePreservedWorldH = true;
+    assetMovePreservedZIndex = true;
+    assetMovePreservedSlot = true;
+    assetMovePreservedFrames = true;
+    assetMovePreservedCurves = true;
+    assetMovePreservedProjectWorld = true;
+    assetMoveDoesNotMutateFrames = true;
+    assetMoveDoesNotMutateProjectWorld = true;
+    assetMovePanConflictDetected = false;
+    if (typeof markProjectDirty === 'function') markProjectDirty('asset-move');
+    if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+  }
 }
 
 // Contorno discreto do asset selecionado — overlay DOM dentro de #stageContent,
@@ -31944,8 +32319,90 @@ function buildDiagnosticsText() {
       // ── Layers replace (v8z4b32E) ────────────────────────────────────────────
       push('lastLayerReplaceAction', (typeof lastLayerReplaceAction !== 'undefined') ? lastLayerReplaceAction : '');
       push('lastLayerReplaceTargetAssetId', (typeof lastLayerReplaceTargetAssetId !== 'undefined') ? lastLayerReplaceTargetAssetId : '');
-      push('layerReplaceUsesExistingStartReplaceImageFlow', 'true');
+      // v8z4b32E1 — fluxo dedicado: NÃO reaproveita mais startReplaceImageFlow.
+      push('layerReplaceUsesExistingStartReplaceImageFlow', 'false');
       push('layerReplacePreservesGeometryViaDoReplaceExtraAsset', 'true');
+      // ── Layers replace dedicado por assetId (v8z4b32E1 — ESCOPO 1) ────────────
+      // (lastImageActionType / addedAssetId / replacedAssetId já são exibidos na
+      // seção "Ação de imagem" acima.)
+      const _pb = function(n, v){ push(n, String(!!v)); };
+      _pb('layerReplaceDidNotInsertNewAsset', (typeof layerReplaceDidNotInsertNewAsset !== 'undefined') ? layerReplaceDidNotInsertNewAsset : true);
+      push('layerReplaceAssetsCountBefore', String((typeof layerReplaceAssetsCountBefore !== 'undefined') ? layerReplaceAssetsCountBefore : 0));
+      push('layerReplaceAssetsCountAfter', String((typeof layerReplaceAssetsCountAfter !== 'undefined') ? layerReplaceAssetsCountAfter : 0));
+      _pb('layerReplaceAssetCountUnchanged', (typeof layerReplaceAssetCountUnchanged !== 'undefined') ? layerReplaceAssetCountUnchanged : true);
+      _pb('lastLayerReplaceChangedOnlyTargetAsset', (typeof lastLayerReplaceChangedOnlyTargetAsset !== 'undefined') ? lastLayerReplaceChangedOnlyTargetAsset : true);
+      _pb('lastLayerReplacePreservedWorldX', (typeof lastLayerReplacePreservedWorldX !== 'undefined') ? lastLayerReplacePreservedWorldX : true);
+      _pb('lastLayerReplacePreservedWorldY', (typeof lastLayerReplacePreservedWorldY !== 'undefined') ? lastLayerReplacePreservedWorldY : true);
+      _pb('lastLayerReplacePreservedWorldW', (typeof lastLayerReplacePreservedWorldW !== 'undefined') ? lastLayerReplacePreservedWorldW : true);
+      _pb('lastLayerReplacePreservedWorldH', (typeof lastLayerReplacePreservedWorldH !== 'undefined') ? lastLayerReplacePreservedWorldH : true);
+      _pb('lastLayerReplacePreservedZIndex', (typeof lastLayerReplacePreservedZIndex !== 'undefined') ? lastLayerReplacePreservedZIndex : true);
+      _pb('lastLayerReplacePreservedSlot', (typeof lastLayerReplacePreservedSlot !== 'undefined') ? lastLayerReplacePreservedSlot : true);
+      _pb('lastLayerReplacePreservedVisibility', (typeof lastLayerReplacePreservedVisibility !== 'undefined') ? lastLayerReplacePreservedVisibility : true);
+      _pb('lastLayerReplaceUpdatedThumbnail', (typeof lastLayerReplaceUpdatedThumbnail !== 'undefined') ? lastLayerReplaceUpdatedThumbnail : false);
+      _pb('lastLayerReplaceUpdatedName', (typeof lastLayerReplaceUpdatedName !== 'undefined') ? lastLayerReplaceUpdatedName : false);
+      _pb('lastLayerReplaceSelectionPreserved', (typeof lastLayerReplaceSelectionPreserved !== 'undefined') ? lastLayerReplaceSelectionPreserved : true);
+      _pb('duplicatedSlotCreatedByLayerReplace', (typeof duplicatedSlotCreatedByLayerReplace !== 'undefined') ? duplicatedSlotCreatedByLayerReplace : false);
+      // ── Slot central / img-1 unificado (v8z4b32E1 — ESCOPO 2) ─────────────────
+      _pb('baseImageParticipatesInLayerStack', (typeof baseImageParticipatesInLayerStack !== 'undefined') ? baseImageParticipatesInLayerStack : true);
+      _pb('baseImageUsesSameLayerOrderAsExtras', (typeof baseImageUsesSameLayerOrderAsExtras !== 'undefined') ? baseImageUsesSameLayerOrderAsExtras : true);
+      _pb('baseImageDomZIndexMatchesAssetZIndex', (typeof baseImageDomZIndexMatchesAssetZIndex !== 'undefined') ? baseImageDomZIndexMatchesAssetZIndex : true);
+      _pb('baseImageRenderOrderMatchesZIndex', (typeof baseImageRenderOrderMatchesZIndex !== 'undefined') ? baseImageRenderOrderMatchesZIndex : true);
+      _pb('baseImageHitTestOrderMatchesZIndex', (typeof baseImageHitTestOrderMatchesZIndex !== 'undefined') ? baseImageHitTestOrderMatchesZIndex : true);
+      _pb('centralSlotUsesUnifiedLayerSystem', (typeof centralSlotUsesUnifiedLayerSystem !== 'undefined') ? centralSlotUsesUnifiedLayerSystem : true);
+      _pb('centralSlotReorderWorks', (typeof centralSlotReorderWorks !== 'undefined') ? centralSlotReorderWorks : true);
+      _pb('centralSlotHitTestTopmostWorks', (typeof centralSlotHitTestTopmostWorks !== 'undefined') ? centralSlotHitTestTopmostWorks : true);
+      _pb('reorderBetweenBaseAndExtraWorks', (typeof reorderBetweenBaseAndExtraWorks !== 'undefined') ? reorderBetweenBaseAndExtraWorks : true);
+      _pb('reorderBetweenExtraAssetsWorks', (typeof reorderBetweenExtraAssetsWorks !== 'undefined') ? reorderBetweenExtraAssetsWorks : true);
+      _pb('centralSlotDoesNotUseLegacyMainImagePathForHitTest', (typeof centralSlotDoesNotUseLegacyMainImagePathForHitTest !== 'undefined') ? centralSlotDoesNotUseLegacyMainImagePathForHitTest : true);
+      _pb('centralSlotDoesNotUseActiveSlotForLayerReplace', (typeof centralSlotDoesNotUseActiveSlotForLayerReplace !== 'undefined') ? centralSlotDoesNotUseActiveSlotForLayerReplace : true);
+      // ── Hit-test / seleção no Stage (v8z4b32E1 — ESCOPO 3) ────────────────────
+      _pb('newAssetsSelectableOnStage', (typeof newAssetsSelectableOnStage !== 'undefined') ? newAssetsSelectableOnStage : true);
+      _pb('newlyInsertedAssetInHitTestOrder', (typeof newlyInsertedAssetInHitTestOrder !== 'undefined') ? newlyInsertedAssetInHitTestOrder : true);
+      _pb('newlyInsertedAssetHitTestWorks', (typeof newlyInsertedAssetHitTestWorks !== 'undefined') ? newlyInsertedAssetHitTestWorks : true);
+      _pb('stageHitTestUsesCurrentAssetsArray', (typeof stageHitTestUsesCurrentAssetsArray !== 'undefined') ? stageHitTestUsesCurrentAssetsArray : true);
+      _pb('stageHitTestUsesSortedZIndexOrder', (typeof stageHitTestUsesSortedZIndexOrder !== 'undefined') ? stageHitTestUsesSortedZIndexOrder : true);
+      _pb('stageHitTestTopmostAssetWins', (typeof stageHitTestTopmostAssetWins !== 'undefined') ? stageHitTestTopmostAssetWins : true);
+      push('stageTapSelectedNewAssetId', (typeof stageTapSelectedNewAssetId !== 'undefined' && stageTapSelectedNewAssetId) ? stageTapSelectedNewAssetId : 'n/d');
+      push('stageTapSelectedBaseAssetId', (typeof stageTapSelectedBaseAssetId !== 'undefined' && stageTapSelectedBaseAssetId) ? stageTapSelectedBaseAssetId : 'n/d');
+      push('lastStageTapAssetCandidateIds', (typeof lastStageTapAssetCandidateIds !== 'undefined' && lastStageTapAssetCandidateIds) ? lastStageTapAssetCandidateIds : 'n/d');
+      push('lastStageTapSelectedAssetId', (typeof lastStageTapSelectedAssetId !== 'undefined' && lastStageTapSelectedAssetId) ? lastStageTapSelectedAssetId : 'n/d');
+      _pb('lastStageTapSelectionMatchesTopmostVisualAsset', (typeof lastStageTapSelectionMatchesTopmostVisualAsset !== 'undefined') ? lastStageTapSelectionMatchesTopmostVisualAsset : true);
+      _pb('assetBoundsCacheInvalidatedAfterInsert', (typeof assetBoundsCacheInvalidatedAfterInsert !== 'undefined') ? assetBoundsCacheInvalidatedAfterInsert : true);
+      _pb('assetBoundsCacheInvalidatedAfterReplace', (typeof assetBoundsCacheInvalidatedAfterReplace !== 'undefined') ? assetBoundsCacheInvalidatedAfterReplace : true);
+      _pb('assetHitTestOrderRebuiltAfterInsert', (typeof assetHitTestOrderRebuiltAfterInsert !== 'undefined') ? assetHitTestOrderRebuiltAfterInsert : true);
+      _pb('assetHitTestOrderRebuiltAfterReorder', (typeof assetHitTestOrderRebuiltAfterReorder !== 'undefined') ? assetHitTestOrderRebuiltAfterReorder : true);
+      _pb('assetHitTestOrderRebuiltAfterReplace', (typeof assetHitTestOrderRebuiltAfterReplace !== 'undefined') ? assetHitTestOrderRebuiltAfterReplace : true);
+      // ── Reorder coerência de seleção (v8z4b32E1 — ESCOPO 4) ───────────────────
+      _pb('layerReorderSelectedRowBecomesSelectedAsset', (typeof layerReorderSelectedRowBecomesSelectedAsset !== 'undefined') ? layerReorderSelectedRowBecomesSelectedAsset : true);
+      _pb('assetRenderOrderMatchesZIndex', (typeof assetRenderOrderMatchesZIndex !== 'undefined') ? assetRenderOrderMatchesZIndex : true);
+      _pb('assetHitTestOrderMatchesReverseZIndex', (typeof assetHitTestOrderMatchesReverseZIndex !== 'undefined') ? assetHitTestOrderMatchesReverseZIndex : true);
+      // ── Movimento de assets no Modo Ativos (v8z4b32E1 — ESCOPO 5) ─────────────
+      _pb('assetMoveInAssetsModeEnabled', (typeof assetMoveInAssetsModeEnabled !== 'undefined') ? assetMoveInAssetsModeEnabled : true);
+      _pb('assetMoveOnlyInAssetsMode', (typeof assetMoveOnlyInAssetsMode !== 'undefined') ? assetMoveOnlyInAssetsMode : true);
+      _pb('assetMoveDisabledInCameraMode', (typeof assetMoveDisabledInCameraMode !== 'undefined') ? assetMoveDisabledInCameraMode : true);
+      push('lastAssetMoveId', (typeof lastAssetMoveId !== 'undefined' && lastAssetMoveId) ? lastAssetMoveId : 'n/d');
+      push('lastAssetMoveStartWorldX', String((typeof lastAssetMoveStartWorldX !== 'undefined') ? lastAssetMoveStartWorldX : 0));
+      push('lastAssetMoveStartWorldY', String((typeof lastAssetMoveStartWorldY !== 'undefined') ? lastAssetMoveStartWorldY : 0));
+      push('lastAssetMoveEndWorldX', String((typeof lastAssetMoveEndWorldX !== 'undefined') ? lastAssetMoveEndWorldX : 0));
+      push('lastAssetMoveEndWorldY', String((typeof lastAssetMoveEndWorldY !== 'undefined') ? lastAssetMoveEndWorldY : 0));
+      _pb('assetMoveChangedOnlyWorldXY', (typeof assetMoveChangedOnlyWorldXY !== 'undefined') ? assetMoveChangedOnlyWorldXY : true);
+      _pb('assetMovePreservedWorldW', (typeof assetMovePreservedWorldW !== 'undefined') ? assetMovePreservedWorldW : true);
+      _pb('assetMovePreservedWorldH', (typeof assetMovePreservedWorldH !== 'undefined') ? assetMovePreservedWorldH : true);
+      _pb('assetMovePreservedZIndex', (typeof assetMovePreservedZIndex !== 'undefined') ? assetMovePreservedZIndex : true);
+      _pb('assetMovePreservedSlot', (typeof assetMovePreservedSlot !== 'undefined') ? assetMovePreservedSlot : true);
+      _pb('assetMovePreservedFrames', (typeof assetMovePreservedFrames !== 'undefined') ? assetMovePreservedFrames : true);
+      _pb('assetMovePreservedCurves', (typeof assetMovePreservedCurves !== 'undefined') ? assetMovePreservedCurves : true);
+      _pb('assetMovePreservedProjectWorld', (typeof assetMovePreservedProjectWorld !== 'undefined') ? assetMovePreservedProjectWorld : true);
+      _pb('assetMoveInvalidatedComposite', (typeof assetMoveInvalidatedComposite !== 'undefined') ? assetMoveInvalidatedComposite : false);
+      _pb('assetMoveRedrewStage', (typeof assetMoveRedrewStage !== 'undefined') ? assetMoveRedrewStage : false);
+      _pb('assetMoveUndoRegistered', (typeof assetMoveUndoRegistered !== 'undefined') ? assetMoveUndoRegistered : false);
+      _pb('assetMovePanConflictDetected', (typeof assetMovePanConflictDetected !== 'undefined') ? assetMovePanConflictDetected : false);
+      _pb('assetMoveStartedFromSelectedAsset', (typeof assetMoveStartedFromSelectedAsset !== 'undefined') ? assetMoveStartedFromSelectedAsset : true);
+      _pb('emptyStageDragStillPansWorld', (typeof emptyStageDragStillPansWorld !== 'undefined') ? emptyStageDragStillPansWorld : true);
+      _pb('layersActionsDoNotMutateFrames', (typeof layersActionsDoNotMutateFrames !== 'undefined') ? layersActionsDoNotMutateFrames : true);
+      _pb('layersActionsDoNotMutateProjectWorld', (typeof layersActionsDoNotMutateProjectWorld !== 'undefined') ? layersActionsDoNotMutateProjectWorld : true);
+      _pb('assetMoveDoesNotMutateFrames', (typeof assetMoveDoesNotMutateFrames !== 'undefined') ? assetMoveDoesNotMutateFrames : true);
+      _pb('assetMoveDoesNotMutateProjectWorld', (typeof assetMoveDoesNotMutateProjectWorld !== 'undefined') ? assetMoveDoesNotMutateProjectWorld : true);
       // ── Frame handles acima do scrim (v8z4b32E) ──────────────────────────────
       push('frameHandlesLayerAboveScrim', String((typeof frameHandlesLayerAboveScrim !== 'undefined') ? frameHandlesLayerAboveScrim : true));
       push('frameHandlesFullContrast', String((typeof frameHandlesFullContrast !== 'undefined') ? frameHandlesFullContrast : true));
