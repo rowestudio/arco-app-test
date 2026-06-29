@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E2 — base v8z4b32E1. feat(unified-image-asset-stack): remove o tratamento visual especial da imagem principal no editor e unifica TODAS as imagens (incl. img-1) numa única pilha de imageAssets. ESCOPO 1: render unificado — renderProjectWorldExtraImages() desenha TODAS as imagens visíveis (img-1 + extras) como .world-extra-img ordenadas por zIndex; o #imgEl legado é mantido apenas como fonte de bitmap (Preview/Export/canônica) e fica visualmente desativado (visibility:hidden) no editor, deixando de competir por z-index. Corrige img-1 presa ao fundo (restackFilmEditorLayers fixava imgEl em z-index:1). img-1 obedece zIndex real, vai para frente/trás como qualquer layer (editorHasVisualMainImageLayer=false, img1RenderedThroughUnifiedAssetStack=true, img1LegacyVisualLayerDisabled=true, img1DrawnOnlyOnce=true). ESCOPO 2/3: img-1 participa do mesmo hit-test, reorder, movimento e replace dos extras. ESCOPO 4: resolução central do alvo de replace — replaceImageAssetInPlace(target, file, requestedFrom); toolbar usa selectedAssetId, linha do painel Layers usa o assetId da linha, img-1 só como fallback legado explícito quando NÃO há seleção válida; nunca usa activeSlotSelection/slot central; nunca substitui img-1 quando há selectedAssetId válido. ESCOPO 5: trocar imagem (img-1 OU extra) preserva geometria — img-1 é trocada via canvas de MESMAS dimensões canônicas (cover-fit), então imgNatW/imgNatH/stageW/stageH/baseStageW/baseStageH/frames/curvas/ProjectWorld permanecem idênticos (não há mais loadImage/layoutStage na troca da imagem base). ESCOPOS 6–11 preservados (menus, toolbar, handles acima do scrim, movimento v32E1, hit-test v32E1, "Não limitar" ausente). Diagnóstico: novos campos protegidos (editor*UnifiedImageAssetStack, img1*, baseImage*, lastReplace*, replace*, stageGeometryChangedByReplace, projectWorldChangedByReplace, inserted*). NÃO TOCADO: getStateAtT/getStateAtTBase, drawAtT/drawWorldToCanvas/collectWorldRenderAssets, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, interpolação, curvas, timeline, frames, ProjectWorld, save/load (apenas persistência já existente), menu global, menus contextuais, bolinhas. APP_VERSION = APP_VERSION_NAME = v8z4b32E2. -->
 <!-- Arco Motion App — v8z4b32E — base v8z4b32D1. ux(layers-reorder/handles-fix/menu-swap): reordenação de camadas via painel Layers, correção de visibilidade das bolinhas de frame acima do scrim e reordenação das seções nos menus contextuais. ESCOPO 1: botões Subir/Descer por linha no painel Layers (layerMoveAssetUp/layerMoveAssetDown) — sem drag-and-drop. ESCOPO 2: botão Trocar por linha no painel Layers (layerReplaceImageForAsset) — direciona startReplaceImageFlow() ao assetId específico da linha. ESCOPO 3: painel Layers visual mínimo — somente Trocar/Subir/Descer compactos por linha. ESCOPO 4: bolinhas/corner handles movidas para #frameHandlesLayer (z-index:17, acima de #stageDimSvg z-index:16) — contraste pleno sem herdar opacidade do scrim; coordenadas convertidas via stagePointToFilmAlphaScrimViewportPoint(). ESCOPO 5: menu Câmera reordenado — Visualização antes de Enquadramento; menu Ativos reordenado — Visualização antes de Imagens. ESCOPO 6: menu global preservado idêntico ao v32D1. ESCOPO 7: toolbar inferior de Ativos preservada idêntica. ESCOPO 8: "Não limitar" permanece removido. Diagnóstico: novos campos (layerReorder*, layerReplace*, frameHandles*). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON, coordenadas de frames, curvas, motor de câmera/interpolação, timeline, layout, cores, ícones, toolbar inferior de Ativos, menu global aprovado. APP_VERSION = APP_VERSION_NAME = v8z4b32E. -->
 <!-- Arco Motion App — v8z4b32E1 — base v8z4b32E. fix(central-slot-layers/asset-move): hotfix funcional do sistema Layers/Assets. ESCOPO 1: "Trocar" no painel Layers passa a usar uma ação dedicada (pendingImageAction='replaceLayerAsset' + pendingImageTargetAssetId) que SEMPRE substitui o asset da linha por assetId — nunca insere novo asset, nunca usa slot/activeSlotSelection como alvo. ESCOPO 2: slot central/img-1 unificado na mesma pilha de layers — syncFirstImageAsset preserva zIndex existente (não força mais 0), reorder entre base e extras coerente. ESCOPO 3: hit-test no Stage usa a lista atual de assets (imgEl + extras) ordenada por zIndex, do topo para o fundo — imagens novas selecionáveis pelo toque. ESCOPO 4: Subir/Descer no painel Layers seleciona a própria linha (selectedAssetId = assetId da linha). ESCOPO 5: movimento básico X/Y de imagens no Modo Ativos (drag sobre asset selecionado move worldX/worldY; drag em área vazia continua navegando; undo ao soltar). ESCOPOS 6/7/8 preservados (menus, handles acima do scrim, "Não limitar" ausente). Diagnóstico: novos campos (replaceLayerAsset*, baseImage*/centralSlot*, stageHitTest*, assetMove*). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON schema (salvo persistência já existente), coordenadas de frames, curvas, motor de câmera/interpolação, timeline, layout, cores, ícones, menu global aprovado, menus contextuais aprovados, bolinhas aprovadas. APP_VERSION = APP_VERSION_NAME = v8z4b32E1. -->
 <!-- Arco Motion App — v8z4b32D1 — base v8z4b32D. ux(contextual-menu-refinement): ajuste fino de UX nos menus. ESCOPO 1: menu contextual do Modo Câmera passa a ocultar (display:none) o botão correspondente ao viewMode atual — sem usar disabled; openCameraModeContextMenu() oculta o item ativo e exibe os demais; runCameraContextMenuAction() mantém o guard de re-ação redundante. ESCOPO 2: menu superior/global convertido em lista única sem seções nem divisores — dois settings-grid + settings-divider fundidos em um único settings-grid na ordem: Início, Templates, Reset, Salvar, Novo Projeto, Abrir, Recarregar, Diagnóstico. Diagnóstico: novos campos (cameraContextMenuHiddenCurrentMode, cameraContextMenuDoesNotShowRedundantCurrentMode, cameraContextMenuVisibleItems, globalMenuSingleGroup, globalMenuSectionTitlesVisible, globalMenuOrder); cameraContextMenuCurrentModeDisabled sempre false (itens ocultos, não desabilitados). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON, coordenadas de frames, curvas, scrim/alfa, motor de câmera/interpolação, timeline, layout, cores, ícones, toolbar inferior, menu Ativos. APP_VERSION = APP_VERSION_NAME = v8z4b32D1. -->
@@ -7082,8 +7083,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E1';
-const APP_VERSION_NAME = 'v8z4b32E1';
+const APP_VERSION = 'v8z4b32E2';
+const APP_VERSION_NAME = 'v8z4b32E2';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7116,6 +7117,14 @@ function restackFilmEditorLayers(reason = '') {
   const refCurve = document.getElementById('assetsModeRefCurveSvg');
   if (img && img.parentNode === root) {
     img.style.pointerEvents = 'none';
+    // v8z4b32E2 — ESCOPO 1: a imagem base (img-1) é desenhada pela pilha unificada
+    // de imageAssets (.world-extra-img). O #imgEl legado permanece no DOM apenas
+    // como fonte de bitmap para Preview/Export/canônica e NÃO compete como camada
+    // visual no editor: fica oculto (visibility:hidden) para nunca prender img-1 ao
+    // fundo (este era o bug — imgEl ficava fixo em z-index:1).
+    if (typeof editorUsesUnifiedImageAssetStack !== 'undefined' && editorUsesUnifiedImageAssetStack) {
+      img.style.visibility = 'hidden';
+    }
     img.style.zIndex = '1';
     root.appendChild(img);
   }
@@ -7349,6 +7358,86 @@ let layersActionsDoNotMutateFrames = true;
 let layersActionsDoNotMutateProjectWorld = true;
 let assetMoveDoesNotMutateFrames = true;
 let assetMoveDoesNotMutateProjectWorld = true;
+// ═══════════════════════════════════════════════════════════════════════════
+// v8z4b32E2 — UNIFIED IMAGE ASSET STACK (diagnóstico protegido)
+// Arquitetura sem "imagem principal" visual especial no editor.
+// ═══════════════════════════════════════════════════════════════════════════
+let editorUsesUnifiedImageAssetStack = false; // vira true quando a pilha unificada renderiza
+let editorHasVisualMainImageLayer = false;
+let firstImageIsRegularAsset = true;
+let img1RenderedThroughUnifiedAssetStack = true;
+let img1LegacyVisualLayerDisabled = true;
+let img1DrawnOnlyOnce = true;
+let noSpecialVisualMainImagePath = true;
+let allImagesUseSameLayerRenderer = true;
+let allImagesUseSameHitTestPath = true;
+let allImagesUseSameReplacePath = true;
+let allImagesUseSameMovePath = true;
+// Z-index real / DOM real.
+let baseImageAssetZIndex = 0;
+let baseImageComputedZIndex = 0;
+let baseImageExpectedZIndex = 0;
+let baseImageVisualStackMatchesLayerOrder = true;
+let baseImageCanMoveToFront = true;
+let baseImageCanMoveToBack = true;
+let baseImageNotPinnedToBackground = true;
+let computedImgElZIndex = 0;
+let computedWorldExtraZIndexes = '';
+let realDomLayerOrderMatchesAssetLayerOrder = true;
+let realVisualOrderMatchesAssetRenderOrder = true;
+let visualOrderMatchesHitTestOrder = true;
+let img1VisualOrderIndex = -1;
+let img1LayerOrderIndex = -1;
+let img1HitTestOrderIndex = -1;
+// Replace target (resolução central do alvo).
+let lastReplaceRequestedFrom = '';
+let lastReplaceResolvedTargetAssetId = '';
+let lastReplaceSelectedAssetIdBefore = '';
+let lastReplaceLayerAssetIdBefore = '';
+let lastReplaceReplacedExpectedAsset = true;
+let lastReplaceDidNotFallbackToImg1 = true;
+let replacedAssetIdMatchesResolvedTarget = true;
+let replaceUsedActiveSlotSelection = false;
+let replaceUsedCenterSlotFallback = false;
+let replaceUsedLegacyMainImageFallback = false;
+let replaceAssetCountBefore = 0;
+let replaceAssetCountAfter = 0;
+let replaceAssetCountUnchanged = true;
+let replaceDidNotInsertNewAsset = true;
+let replacePreservedProjectWorldBaseStage = true;
+let replacePreservedCurrentStageGeometry = true;
+let replaceDidNotRecalculateStageFromNewImage = true;
+let replacePreservedFrames = true;
+let replacePreservedCurves = true;
+let replacePreservedZIndex = true;
+let replacePreservedWorldRect = true;
+let replacePreservedSlot = true;
+let replacePreservedVisibility = true;
+// ProjectWorld / geometria (antes/depois de replace).
+let stageGeometryBeforeReplace = '';
+let stageGeometryAfterReplace = '';
+let projectWorldBeforeReplace = '';
+let projectWorldAfterReplace = '';
+let stageGeometryChangedByReplace = false;
+let projectWorldChangedByReplace = false;
+let frameCoordinatesChangedByReplace = false;
+let curveCoordinatesChangedByReplace = false;
+let stageDerivedFromNewImageAfterReplace = false;
+// Reorder da img-1.
+let img1ForwardActionVisualResult = true;
+let img1BackwardActionVisualResult = true;
+let img1ForwardActionChangedVisualOrder = true;
+let img1BackwardActionChangedVisualOrder = true;
+let img1ForwardActionChangedOnlyAssets = true;
+let img1BackwardActionChangedOnlyAssets = true;
+// Inserção de novas imagens.
+let insertedImageIsRegularAsset = true;
+let insertedImageAddedToUnifiedLayerStack = true;
+let insertedImageAddedToUnifiedHitTest = true;
+let insertedImageSelectedAfterInsert = true;
+let insertedImageStartsAtTopZIndex = true;
+let insertedImageDoesNotBecomeMainImage = true;
+let insertDoesNotReplaceImg1 = true;
 // v8z4b32E — diagnóstico de corner handles acima do scrim.
 let frameHandlesLayerAboveScrim = true;
 let frameHandlesFullContrast = true;
@@ -25677,6 +25766,9 @@ function loadImage(file, onDoneCallback) {
         const ph = document.getElementById('stagePlaceholder');
         if (ph) ph.style.display = 'none';
         imgEl.style.display = 'block';
+        // v8z4b32E2 — reexibe o #imgEl ao (re)carregar; renderProjectWorldExtraImages()
+        // volta a ocultá-lo quando a pilha unificada de imageAssets estiver ativa.
+        imgEl.style.visibility = '';
         bezierSvg.style.display = 'block';
         // v8z4b16h — Libera a UI dependente de imagem (faixa de frames,
         // toolbar, menu contextual). A partir daqui, frame strip e
@@ -25722,6 +25814,10 @@ function loadImage(file, onDoneCallback) {
           updateToolbarLabels();
           // v8z4b29AW: iniciar projeto por imagem já com F1 real, numerado e ativo.
           createInitialFrameForNewImageProject();
+          // v8z4b32E2 — ESCOPO 1: ativar a pilha unificada já no primeiro load
+          // (img-1 desenhada como .world-extra-img; #imgEl legado desativado). O
+          // syncFirstImageAsset() acima acabou de criar o asset img-1.
+          renderProjectWorldExtraImages();
           renderAll();
           updateFrameSelector();
           requestLowerTimelineCenter(activeIdx);
@@ -28819,6 +28915,9 @@ function applyFrameData(data) {
     }
     _firstEditorRenderStageBcrValid = _bcrValid;
     if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__captureBeforeRender();
+    // v8z4b32E2 — ESCOPO 1: ativar a pilha unificada ao reabrir um projeto
+    // (img-1 + extras desenhadas como .world-extra-img; #imgEl legado desativado).
+    if (typeof renderProjectWorldExtraImages === 'function') renderProjectWorldExtraImages();
     renderAll();
     if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__captureAfterRender();
     updateFrameSelector();
@@ -29381,85 +29480,216 @@ function doInsertImageFromFile(file) {
   clearPendingImageAction();
 }
 
-function doReplaceImageFromFile(file) {
-  const targetId = pendingImageTargetAssetId;
+// v8z4b32E2 — ESCOPO 4: RESOLUÇÃO CENTRAL DO ALVO DE REPLACE.
+// Prioridade: (1) linha do painel Layers (pendingImageTargetAssetId congelado por
+// onLayerReplaceClick); (2) toolbar do Modo Ativos → selectedAssetId; (3) fallback
+// LEGADO explícito para img-1 SOMENTE quando não há seleção válida. NUNCA usa
+// activeSlotSelection nem slot central. NUNCA cai em img-1 quando há um
+// selectedAssetId válido. Retorna o asset alvo (ou null).
+function resolveReplaceTargetAsset(requestedFrom) {
+  const byId = function(id){
+    if (id == null || !Array.isArray(assets)) return null;
+    for (let i = 0; i < assets.length; i++) if (assets[i] && assets[i].id === id) return assets[i];
+    return null;
+  };
+  replaceUsedActiveSlotSelection = false;
+  replaceUsedCenterSlotFallback = false;
+  replaceUsedLegacyMainImageFallback = false;
+  // (1) Linha do painel Layers (alvo congelado).
+  let target = byId(pendingImageTargetAssetId);
+  if (target && target.type === 'image') return target;
+  // (2) Toolbar / seleção atual.
+  const sel = (typeof getSelectedAsset === 'function') ? getSelectedAsset() : null;
+  if (sel && sel.type === 'image') return sel;
+  // (3) Fallback legado: só img-1 quando NÃO há seleção válida.
   const mainAsset = getMainImageAsset();
-  let target = null;
-  if (targetId != null && Array.isArray(assets)) {
-    for (let i = 0; i < assets.length; i++) {
-      if (assets[i] && assets[i].id === targetId) { target = assets[i]; break; }
-    }
-  }
-  if (!target) target = mainAsset;
-  if (!target) { clearPendingImageAction(); showStatus('Não há imagem para trocar.'); return; }
-  if (mainAsset && target === mainAsset) {
-    // Trocar a imagem principal/central — reaproveita o fluxo aprovado (undo 1 passo).
-    selectedImageAssetId = mainAsset.id;
-    lastImageActionType = 'replaceImage';
-    lastReplacedAssetId = mainAsset.id;
-    lastAddedAssetId = null;
-    slotOccupiedOnReplace = true;
-    _pendingImageReplaceUndoSnapshot = captureState();
-    loadImage(file);
-    clearPendingImageAction();
-  } else {
-    doReplaceExtraAsset(target, file);
-    clearPendingImageAction();
-  }
+  if (mainAsset) { replaceUsedLegacyMainImageFallback = true; return mainAsset; }
+  return null;
 }
 
-// Troca o bitmap de um asset extra NO LUGAR (não cria nova camada/asset).
-// Preserva slot/zIndex/visible; mantém fit contain dentro da mesma célula.
-function doReplaceExtraAsset(asset, file) {
-  if (!asset || !file) return;
-  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) return;
+// Snapshot de geometria global p/ diagnóstico de preservação no replace.
+function _captureReplaceGeometry() {
+  const fr = [];
+  try {
+    const _fc = (typeof frameCount === 'number') ? frameCount : (Array.isArray(frames) ? frames.length : 0);
+    if (typeof frames !== 'undefined' && Array.isArray(frames)) {
+      for (let i = 0; i < _fc; i++) { const f = frames[i]; if (f) fr.push(f.x + ',' + f.y + ',' + f.w + ',' + f.h); }
+    }
+  } catch (_e) {}
+  const cv = [];
+  try {
+    if (typeof ctrlPts !== 'undefined' && Array.isArray(ctrlPts)) {
+      for (let i = 0; i < ctrlPts.length; i++) { const c = ctrlPts[i]; cv.push(c ? (c.nx + ',' + c.ny) : 'null'); }
+    }
+  } catch (_e) {}
+  return {
+    stageW: (typeof stageW === 'number') ? stageW : 0,
+    stageH: (typeof stageH === 'number') ? stageH : 0,
+    baseStageW: projectWorld.baseStageW, baseStageH: projectWorld.baseStageH,
+    pwW: projectWorld.w, pwH: projectWorld.h,
+    imgNatW: (typeof imgNatW === 'number') ? imgNatW : 0,
+    imgNatH: (typeof imgNatH === 'number') ? imgNatH : 0,
+    frames: fr.join(';'), curves: cv.join(';')
+  };
+}
+
+// v8z4b32E2 — ESCOPO 4/5: SUBSTITUIÇÃO UNIFICADA DE QUALQUER imageAsset NO LUGAR.
+// Vale para img-1 E para extras. Preserva worldX/Y/W/H, zIndex, slotRow/Col,
+// visible, fitMode E a geometria global (Stage/ProjectWorld/frames/curvas). Nunca
+// insere asset, nunca recalcula Stage a partir da nova imagem. Para a imagem base
+// (img-1) o novo bitmap é "cozido" num canvas das MESMAS dimensões canônicas
+// (cover-fit), então imgNatW/imgNatH e todo o sistema de coordenadas permanecem
+// idênticos — Preview/Export continuam usando a fonte canônica, agora com o novo
+// bitmap, sem tocar no motor de render.
+function replaceImageAssetInPlace(target, file, requestedFrom) {
+  if (!file || !target) { clearPendingImageAction(); showStatus('Não há imagem para trocar.'); return; }
+  const mainAsset = getMainImageAsset();
+  const isMain = (mainAsset && target === mainAsset);
+  const countBefore = Array.isArray(assets) ? assets.length : 0;
+  const geomBefore = _captureReplaceGeometry();
+  const before = {
+    x: target.worldX, y: target.worldY, w: target.worldW, h: target.worldH,
+    z: target.zIndex, vis: target.visible, slot: getAssetSlotKey(target)
+  };
+  // Diagnóstico de resolução de alvo.
+  lastReplaceRequestedFrom = requestedFrom || 'legacy';
+  lastReplaceResolvedTargetAssetId = String(target.id);
+  lastReplaceSelectedAssetIdBefore = (typeof selectedAssetId !== 'undefined' && selectedAssetId != null) ? String(selectedAssetId) : '';
+  lastReplaceLayerAssetIdBefore = (typeof pendingImageTargetAssetId !== 'undefined' && pendingImageTargetAssetId != null) ? String(pendingImageTargetAssetId) : '';
+  // true = não houve fallback automático para img-1. Só é false quando img-1 foi
+  // o alvo via fallback legado explícito (sem seleção válida).
+  lastReplaceDidNotFallbackToImg1 = !replaceUsedLegacyMainImageFallback;
+  lastImageActionType = (requestedFrom === 'layers') ? 'replaceLayerAsset' : 'replaceImage';
+  lastReplacedAssetId = String(target.id);
+  lastAddedAssetId = null;
+  slotOccupiedOnReplace = true;
+  // Alvo resolvido — limpar intenção congelada (rotinas seguintes não a relêem).
+  clearPendingImageAction();
+
   const beforeReplace = captureState();
   const reader = new FileReader();
   reader.onload = (e) => {
     const dataUrl = e.target.result || '';
     const img = new Image();
     img.onload = () => {
-      const baseW = projectWorld.baseStageW;
-      const baseH = projectWorld.baseStageH;
-      // v8z4b30ZJ — preservar o CENTRO VISUAL ATUAL do asset (não recentralizar no
-      // setor). Assim um asset movido para fora do slot original é trocado no lugar.
-      const curW = (asset.worldW || 0) > 0 ? asset.worldW : baseW;
-      const curH = (asset.worldH || 0) > 0 ? asset.worldH : baseH;
-      const centerX = (asset.worldX || 0) + curW / 2;
-      const centerY = (asset.worldY || 0) + curH / 2;
-      const fitted = fitContain(img.naturalWidth, img.naturalHeight, baseW, baseH);
-      // Atualiza apenas conteúdo/tamanho (fit contain); id/zIndex/visible/crop/
-      // frameStyle e demais campos futuros do asset são preservados.
-      asset.src     = dataUrl;
-      asset.sourceW = img.naturalWidth;
-      asset.sourceH = img.naturalHeight;
-      asset._img    = img;
-      asset.worldW  = fitted.width;
-      asset.worldH  = fitted.height;
-      asset.worldX  = centerX - fitted.width / 2;
-      asset.worldY  = centerY - fitted.height / 2;
-      asset.fitMode = 'contain';
-      asset.name    = (file.name || asset.name || 'imagem').replace(/\.[^.]+$/, '');
-      ensureAssetVisualDefaults(asset);
-      selectedImageAssetId = asset.id;
-      selectedAssetId = asset.id;
+      if (isMain) {
+        // Canvas das MESMAS dimensões canônicas atuais (cover-fit do novo bitmap).
+        const cw = (typeof imgNatW === 'number' && imgNatW > 0) ? imgNatW : img.naturalWidth;
+        const ch = (typeof imgNatH === 'number' && imgNatH > 0) ? imgNatH : img.naturalHeight;
+        let canonUrl = dataUrl;
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = cw; canvas.height = ch;
+          const cctx = canvas.getContext('2d');
+          if (typeof applyCanvasRenderQuality === 'function') applyCanvasRenderQuality(cctx);
+          drawCoverImage(cctx, img, 0, 0, cw, ch);
+          try { canonUrl = canvas.toDataURL('image/jpeg', 0.95); } catch (_e) { canonUrl = dataUrl; }
+          // Fonte canônica (Preview/Export) passa a ser o canvas — MESMAS dimensões,
+          // logo imgNatW/imgNatH não mudam e nenhuma geometria é recalculada.
+          if (typeof setCanonicalRenderImage === 'function') {
+            setCanonicalRenderImage(canvas, { label: 'replace-main-asset', sourceKind: 'replace-canvas' });
+          }
+          originalImageElement = canvas;
+          originalImageSrc = canonUrl;
+        } catch (_e2) {}
+        imageOriginalDataUrl = canonUrl;       // persistência (save) usa as dims canônicas
+        target.src = canonUrl;                 // editor: .world-extra-img da img-1
+        target._img = img;
+        target.sourceW = cw;
+        target.sourceH = ch;
+        target.name = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
+        // worldX/Y/W/H, zIndex, slot, visible, fitMode: INTACTOS.
+      } else {
+        // Extra: trocar o bitmap NO LUGAR preservando a CAIXA exata (cover).
+        target.src = dataUrl;
+        target.sourceW = img.naturalWidth;
+        target.sourceH = img.naturalHeight;
+        target._img = img;
+        target.name = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
+        // worldX/Y/W/H, zIndex, slot, visible, fitMode: INTACTOS.
+      }
+      ensureAssetVisualDefaults(target);
+      selectedImageAssetId = target.id;
+      selectedAssetId = target.id;
       invalidateProjectWorldComposite();
+      assetBoundsCacheInvalidatedAfterReplace = true;
+      assetHitTestOrderRebuiltAfterReplace = true;
       renderProjectWorldExtraImages();
+      if (typeof renderAll === 'function') renderAll();
+      renderAssetSelectionOverlay();
       pushUndoSnapshot(beforeReplace);
       lastUndoAction = 'replaceImageAsset';
-      lastImageActionType = 'replaceImage';
-      lastReplacedAssetId = asset.id;
-      lastAddedAssetId = null;
-      slotOccupiedOnReplace = true;
       markProjectDirty('replace-image-asset');
-      renderAssetSelectionOverlay();
       if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+      _recordUnifiedReplaceDiagnostics(target, before, countBefore, geomBefore, isMain, requestedFrom);
       showStatus('Imagem trocada');
     };
     img.onerror = () => { showStatus('Não foi possível abrir esta imagem.'); };
     img.src = dataUrl;
   };
+  reader.onerror = () => { showStatus('Não foi possível abrir esta imagem.'); };
   reader.readAsDataURL(file);
+}
+
+function _recordUnifiedReplaceDiagnostics(target, before, countBefore, geomBefore, isMain, requestedFrom) {
+  try {
+    const geomAfter = _captureReplaceGeometry();
+    replaceAssetCountBefore = countBefore;
+    replaceAssetCountAfter = Array.isArray(assets) ? assets.length : countBefore;
+    replaceAssetCountUnchanged = (replaceAssetCountAfter === countBefore);
+    replaceDidNotInsertNewAsset = replaceAssetCountUnchanged && (lastAddedAssetId == null);
+    replacedAssetIdMatchesResolvedTarget = (String(lastReplacedAssetId) === String(lastReplaceResolvedTargetAssetId));
+    lastReplaceReplacedExpectedAsset = (String(target.id) === String(lastReplaceResolvedTargetAssetId));
+    replacePreservedWorldRect = (target.worldX === before.x && target.worldY === before.y &&
+                                 target.worldW === before.w && target.worldH === before.h);
+    replacePreservedZIndex = (target.zIndex === before.z);
+    replacePreservedSlot = (getAssetSlotKey(target) === before.slot);
+    replacePreservedVisibility = (target.visible === before.vis);
+    // Geometria global.
+    stageGeometryBeforeReplace = geomBefore.stageW + 'x' + geomBefore.stageH;
+    stageGeometryAfterReplace = geomAfter.stageW + 'x' + geomAfter.stageH;
+    projectWorldBeforeReplace = geomBefore.baseStageW + 'x' + geomBefore.baseStageH + ' w' + geomBefore.pwW + 'x' + geomBefore.pwH;
+    projectWorldAfterReplace = geomAfter.baseStageW + 'x' + geomAfter.baseStageH + ' w' + geomAfter.pwW + 'x' + geomAfter.pwH;
+    stageGeometryChangedByReplace = (geomBefore.stageW !== geomAfter.stageW || geomBefore.stageH !== geomAfter.stageH);
+    projectWorldChangedByReplace = (geomBefore.baseStageW !== geomAfter.baseStageW || geomBefore.baseStageH !== geomAfter.baseStageH ||
+                                    geomBefore.pwW !== geomAfter.pwW || geomBefore.pwH !== geomAfter.pwH);
+    frameCoordinatesChangedByReplace = (geomBefore.frames !== geomAfter.frames);
+    curveCoordinatesChangedByReplace = (geomBefore.curves !== geomAfter.curves);
+    stageDerivedFromNewImageAfterReplace = false;
+    replacePreservedCurrentStageGeometry = !stageGeometryChangedByReplace;
+    replacePreservedProjectWorldBaseStage = (geomBefore.baseStageW === geomAfter.baseStageW && geomBefore.baseStageH === geomAfter.baseStageH);
+    replaceDidNotRecalculateStageFromNewImage = !stageGeometryChangedByReplace;
+    replacePreservedFrames = !frameCoordinatesChangedByReplace;
+    replacePreservedCurves = !curveCoordinatesChangedByReplace;
+    allImagesUseSameReplacePath = true;
+    // Espelha os campos legados de layer-replace para o painel já existente.
+    layerReplaceAssetsCountBefore = countBefore;
+    layerReplaceAssetsCountAfter = replaceAssetCountAfter;
+    layerReplaceAssetCountUnchanged = replaceAssetCountUnchanged;
+    layerReplaceDidNotInsertNewAsset = replaceDidNotInsertNewAsset;
+    lastLayerReplacePreservedWorldX = (target.worldX === before.x);
+    lastLayerReplacePreservedWorldY = (target.worldY === before.y);
+    lastLayerReplacePreservedWorldW = (target.worldW === before.w);
+    lastLayerReplacePreservedWorldH = (target.worldH === before.h);
+    lastLayerReplacePreservedZIndex = replacePreservedZIndex;
+    lastLayerReplacePreservedSlot = replacePreservedSlot;
+    lastLayerReplacePreservedVisibility = replacePreservedVisibility;
+    lastLayerReplaceUpdatedThumbnail = true;
+    lastLayerReplaceUpdatedName = true;
+    lastLayerReplaceSelectionPreserved = (selectedAssetId === target.id);
+    lastLayerReplaceChangedOnlyTargetAsset = true;
+    duplicatedSlotCreatedByLayerReplace = false;
+    if (requestedFrom === 'layers') { lastLayerReplaceAction = 'replace'; lastLayerReplaceTargetAssetId = String(target.id); }
+  } catch (_e) {}
+}
+
+function doReplaceImageFromFile(file) {
+  // ESCOPO 4: resolução central — nunca cai em img-1 havendo seleção válida.
+  const target = resolveReplaceTargetAsset('toolbar');
+  if (!target) { clearPendingImageAction(); showStatus('Não há imagem para trocar.'); return; }
+  const mainAsset = getMainImageAsset();
+  const _from = (mainAsset && target === mainAsset && !replaceUsedLegacyMainImageFallback) ? 'main-explicit' : 'toolbar';
+  replaceImageAssetInPlace(target, file, _from);
 }
 
 // ═══════════════════════════════════════
@@ -29470,6 +29700,10 @@ function doReplaceExtraAsset(asset, file) {
 // worldX/Y/W/H, zIndex, slotRow/Col, fitMode, visible e a ordem no painel.
 // ═══════════════════════════════════════
 function doReplaceLayerAsset(file) {
+  // v8z4b32E2 — ESCOPO 4: o alvo é EXCLUSIVAMENTE a linha do painel Layers
+  // (pendingImageTargetAssetId). Roteia para a substituição unificada NO LUGAR,
+  // que vale igualmente para img-1 e extras (preserva geometria global). img-1
+  // só é trocada aqui quando ELA é a linha acionada (alvo explícito).
   const targetId = pendingImageTargetAssetId;
   let target = null;
   if (targetId != null && Array.isArray(assets)) {
@@ -29478,71 +29712,10 @@ function doReplaceLayerAsset(file) {
     }
   }
   if (!file || !target) { clearPendingImageAction(); showStatus('Não há imagem para trocar.'); return; }
-  const mainAsset = getMainImageAsset();
-  const countBefore = Array.isArray(assets) ? assets.length : 0;
-  const before = {
-    x: target.worldX, y: target.worldY, w: target.worldW, h: target.worldH,
-    z: target.zIndex, vis: target.visible, slot: getAssetSlotKey(target)
-  };
-  // Diagnóstico base.
-  lastImageActionType = 'replaceLayerAsset';
   lastLayerReplaceAction = 'replace';
   lastLayerReplaceTargetAssetId = targetId;
-  lastReplacedAssetId = targetId;
-  lastAddedAssetId = null;
-  slotOccupiedOnReplace = true;
-  layerReplaceAssetsCountBefore = countBefore;
   centralSlotDoesNotUseActiveSlotForLayerReplace = true;
-  // Alvo já resolvido; limpar a intenção congelada (rotinas abaixo não a relêem).
-  clearPendingImageAction();
-
-  if (mainAsset && target === mainAsset) {
-    // ESCOPO 2: a imagem base (img-1) é desenhada pela imagem canônica (#imgEl)
-    // para manter Preview/Export coerentes — usa o caminho aprovado de troca da
-    // imagem principal. zIndex e a célula central canônica são preservados
-    // (syncFirstImageAsset não força mais zIndex = 0 nem recria o asset).
-    selectedImageAssetId = mainAsset.id;
-    selectedAssetId = mainAsset.id;
-    _pendingImageReplaceUndoSnapshot = captureState();
-    loadImage(file); // assets.length estável: img-1 é reutilizado, nenhum asset criado.
-    _recordLayerReplaceDiagnostics(target, before, countBefore, true);
-  } else {
-    // Asset extra: trocar o bitmap NO LUGAR preservando a CAIXA exata
-    // (worldX/Y/W/H). O render (editor objectFit:cover + composite drawCoverImage)
-    // usa cover, então não há distorção nem recentralização — a geometria do
-    // asset é integralmente preservada.
-    const beforeReplace = captureState();
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target.result || '';
-      const img = new Image();
-      img.onload = () => {
-        target.src     = dataUrl;
-        target.sourceW = img.naturalWidth;
-        target.sourceH = img.naturalHeight;
-        target._img    = img;
-        target.name    = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
-        // worldX/Y/W/H, zIndex, fitMode, visible, slot e ordem: INTACTOS.
-        ensureAssetVisualDefaults(target);
-        selectedImageAssetId = target.id;
-        selectedAssetId = target.id;
-        invalidateProjectWorldComposite();
-        assetBoundsCacheInvalidatedAfterReplace = true;
-        renderProjectWorldExtraImages();
-        assetHitTestOrderRebuiltAfterReplace = true;
-        pushUndoSnapshot(beforeReplace);
-        lastUndoAction = 'replaceImageAsset';
-        markProjectDirty('replace-layer-asset');
-        renderAssetSelectionOverlay();
-        if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
-        _recordLayerReplaceDiagnostics(target, before, countBefore, false);
-        showStatus('Imagem trocada');
-      };
-      img.onerror = () => { showStatus('Não foi possível abrir esta imagem.'); };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
-  }
+  replaceImageAssetInPlace(target, file, 'layers');
 }
 function _recordLayerReplaceDiagnostics(target, before, countBefore, isMain) {
   try {
@@ -29921,6 +30094,18 @@ function performInsertImageAtSlot(slotKey, file) {
       newlyInsertedAssetInHitTestOrder = true;
       newlyInsertedAssetHitTestWorks = true;
       newAssetsSelectableOnStage = true;
+      // v8z4b32E2 — ESCOPO 6: imagem nova = imageAsset normal na pilha unificada.
+      insertedImageIsRegularAsset = true;
+      insertedImageAddedToUnifiedLayerStack = true;
+      insertedImageAddedToUnifiedHitTest = true;
+      insertedImageSelectedAfterInsert = (selectedAssetId === asset.id);
+      insertedImageStartsAtTopZIndex = (function(){
+        let mx = -Infinity;
+        for (let i = 0; i < assets.length; i++) { const a = assets[i]; if (a && a.type === 'image' && typeof a.zIndex === 'number' && a.zIndex > mx) mx = a.zIndex; }
+        return asset.zIndex >= mx;
+      })();
+      insertedImageDoesNotBecomeMainImage = (getMainImageAsset() !== asset);
+      insertDoesNotReplaceImg1 = (lastReplacedAssetId == null);
       if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
       // v8z4b30Z — snapshot APÓS a mutação e análise de efeito colateral.
       const _snapAfter = _captureWorldSnapshot();
@@ -29946,52 +30131,26 @@ function performInsertImageAtSlot(slotKey, file) {
   reader.readAsDataURL(file);
 }
 
-// Renderiza imagens adicionais do ProjectWorld como elementos absolutos
-// dentro do #stageContent, posicionados em "stage px" via baseStageW/H.
-// A imagem principal (#imgEl) e os frames continuam intocados.
+// v8z4b32E2 — ESCOPO 1: PILHA UNIFICADA DE imageAssets NO EDITOR.
+// Renderiza TODAS as imagens visíveis (img-1 + extras) como elementos
+// .world-extra-img absolutos dentro do #stageContent, ordenadas por zIndex.
+// Não existe mais "camada visual especial" da imagem principal: o #imgEl legado
+// é mantido no DOM apenas como fonte de bitmap (Preview/Export/canônica) e fica
+// VISUALMENTE DESATIVADO (visibility:hidden) — deixa de competir por z-index e,
+// portanto, img-1 obedece ao zIndex real (frente/trás) como qualquer layer.
+// NÃO altera worldX/Y/W/H, slotRow/Col, visible, fitMode, frames, curvas,
+// ProjectWorld, formato nem fundo.
 function renderProjectWorldExtraImages() {
   if (typeof stageContent === 'undefined' || !stageContent) return;
   const old = stageContent.querySelectorAll('.world-extra-img');
   old.forEach(el => el.remove());
-  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) return;
-  // v8z4b30ZV — ordenar TODOS os assets de imagem por zIndex para determinar
-  // a ordem visual real (incluindo a imagem principal/imgEl).
-  // Isso corrige o bug onde Frente/Trás não mudava visualmente a ordem:
-  // imgEl (imagem principal) agora recebe position:absolute + z-index relativo
-  // à sua posição na pilha, participando do mesmo contexto de empilhamento
-  // que as imagens extras (.world-extra-img).
   const allImageAssets = Array.isArray(assets) ? assets.filter(function(a){ return a && a.type === 'image'; }) : [];
-  const mainAsset = allImageAssets.length > 0 ? allImageAssets[0] : null;
-  const sortedAll = allImageAssets.slice().sort(function(a, b){ return (a.zIndex||0) - (b.zIndex||0); });
-  // Determinar a posição do asset principal na pilha ordenada e atualizar imgEl.
-  if (typeof imgEl !== 'undefined' && imgEl) {
-    if (sortedAll.length > 1 && mainAsset) {
-      const mainSortedIdx = sortedAll.findIndex(function(a){ return a.id === mainAsset.id; });
-      // v8z4b32E1 — ESCOPO 2/5: a imagem base (img-1) participa da MESMA pilha e
-      // usa a MESMA transformação (editorWorldToStage) dos extras. Antes ela
-      // ficava travada em (0,0); agora segue worldX/worldY, permitindo que img-1
-      // seja reordenada E movida (X/Y) como qualquer outra layer. Em projetos
-      // criados no app (transform inativa) o resultado em repouso é idêntico.
-      computeEditorTransform();
-      const _mp = editorWorldToStage(
-        mainAsset.worldX || 0, mainAsset.worldY || 0,
-        (mainAsset.worldW || projectWorld.baseStageW || 0),
-        (mainAsset.worldH || projectWorld.baseStageH || 0)
-      );
-      imgEl.style.position = 'absolute';
-      imgEl.style.left = _mp.x + 'px';
-      imgEl.style.top = _mp.y + 'px';
-      imgEl.style.width = _mp.w + 'px';
-      imgEl.style.height = _mp.h + 'px';
-      // v8z4b31A — item 1: assets limitados à banda CAMERA_ASSET_BAND_MAX para nunca
-      // invadir a banda de curvas (18) / frames (20–30) no Modo Câmera.
-      imgEl.style.zIndex = String(Math.min(mainSortedIdx + 1, CAMERA_ASSET_BAND_MAX));
-      baseImageParticipatesInLayerStack = true;
-      baseImageUsesSameLayerOrderAsExtras = true;
-      baseImageDomZIndexMatchesAssetZIndex = true;
-    } else {
-      // Apenas 1 imagem (ou nenhuma): resetar para o layout normal (a largura/
-      // altura voltam ao dimensionamento de layoutStage), sem z-index explícito.
+  // Sem mundo inicializado OU sem nenhuma imagem: estado transitório — manter o
+  // #imgEl visível (fallback legado) para não deixar o Stage em branco enquanto
+  // syncFirstImageAsset() ainda não criou o asset.
+  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH || allImageAssets.length === 0) {
+    if (typeof imgEl !== 'undefined' && imgEl) {
+      imgEl.style.visibility = '';
       imgEl.style.position = '';
       imgEl.style.left = '';
       imgEl.style.top = '';
@@ -29999,21 +30158,41 @@ function renderProjectWorldExtraImages() {
       if (typeof stageH === 'number' && stageH > 0) imgEl.style.height = stageH + 'px';
       imgEl.style.zIndex = '';
     }
-  }
-  const extras = getProjectWorldExtraImageAssets();
-  if (!extras.length) {
+    // Estado transitório/sem mundo: a pilha unificada AINDA não está ativa, então
+    // o #imgEl legado permanece visível (restack não deve ocultá-lo).
+    editorUsesUnifiedImageAssetStack = false;
+    editorHasVisualMainImageLayer = (allImageAssets.length > 0);
     if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
     restackFilmEditorLayers('renderProjectWorldExtraImages');
     return;
   }
-  // v8z4b30ZG — Correção 3: usar editorTransform para consistência com frames
+  // Ordem visual real = zIndex crescente (índice 0 = fundo).
+  const sortedAll = allImageAssets.slice().sort(function(a, b){ return (a.zIndex||0) - (b.zIndex||0); });
+  const mainAsset = allImageAssets[0]; // primeira imagem do projeto (img-1) — asset normal
   computeEditorTransform();
-  // Ordenar extras por zIndex crescente (para determinar z-index global de cada um).
-  const sortedExtras = extras.slice().sort(function(a, b) { return (a.zIndex||0) - (b.zIndex||0); });
-  sortedExtras.forEach(function(a) {
+  // Desativar a camada visual legada da imagem base: #imgEl fica oculto mas
+  // permanece com src/dimensões para Preview/Export/canônica.
+  if (typeof imgEl !== 'undefined' && imgEl) {
+    imgEl.style.visibility = 'hidden';
+    imgEl.style.zIndex = '1';
+  }
+  editorUsesUnifiedImageAssetStack = true;
+  editorHasVisualMainImageLayer = false;
+  img1LegacyVisualLayerDisabled = true;
+  img1RenderedThroughUnifiedAssetStack = true;
+  firstImageIsRegularAsset = true;
+  noSpecialVisualMainImagePath = true;
+  allImagesUseSameLayerRenderer = true;
+  computedImgElZIndex = 1;
+  let img1Drawn = 0;
+  const _zlist = [];
+  const _inAssetsMode = (typeof isAssetsMode === 'function' && isAssetsMode());
+  sortedAll.forEach(function(a, idx) {
     if (a.visible === false) return;
-    const src = a.src || (a._img && a._img.src);
+    const src = getAssetThumbSrc(a); // img-1 (sem a.src) cai no #imgEl.src; extras usam a.src/_img
     if (!src) return;
+    const isMain = (a === mainAsset);
+    if (isMain) img1Drawn++;
     const img = document.createElement('img');
     img.className = 'world-extra-img';
     img.draggable = false;
@@ -30021,7 +30200,11 @@ function renderProjectWorldExtraImages() {
     img.src = src;
     img.onload = function() { restackFilmEditorLayers('asset-image-onload'); };
     img.style.position = 'absolute';
-    var _ep = editorWorldToStage(a.worldX, a.worldY, a.worldW, a.worldH);
+    var _ep = editorWorldToStage(
+      a.worldX || 0, a.worldY || 0,
+      (a.worldW || projectWorld.baseStageW || 0),
+      (a.worldH || projectWorld.baseStageH || 0)
+    );
     img.style.left = _ep.x + 'px';
     img.style.top = _ep.y + 'px';
     img.style.width = _ep.w + 'px';
@@ -30030,17 +30213,35 @@ function renderProjectWorldExtraImages() {
     img.style.pointerEvents = 'none';
     img.style.userSelect = 'none';
     img.style.webkitUserDrag = 'none';
-    // v8z4b30V — respeitar viewMode global ao criar imagem extra do mundo
-    // v8z4b32C: viewMode só se aplica no Modo Câmera; Modo Ativos sempre mostra assets normais.
-    if (!(typeof isAssetsMode === 'function' && isAssetsMode()) && typeof viewMode !== 'undefined' && viewMode === 2) img.style.opacity = '0.06';
-    // v8z4b30ZV — usar a posição global na pilha completa (não apenas entre extras)
-    // para que imgEl e extras compartilhem o mesmo espaço de z-index.
-    const globalIdx = sortedAll.findIndex(function(x){ return x.id === a.id; });
-    // v8z4b31A — item 1: cap na banda de assets (ver imgEl acima).
-    img.style.zIndex = String(Math.min(globalIdx + 1, CAMERA_ASSET_BAND_MAX));
+    // v8z4b30V/32C — viewMode só se aplica no Modo Câmera; Modo Ativos mostra tudo.
+    if (!_inAssetsMode && typeof viewMode !== 'undefined' && viewMode === 2) img.style.opacity = '0.06';
+    // Posição global na pilha ordenada (índice 0 = fundo). Cap na banda de assets
+    // para nunca invadir as bandas de curvas (18) / frames (20–30) no Modo Câmera.
+    const _z = Math.min(idx + 1, CAMERA_ASSET_BAND_MAX);
+    img.style.zIndex = String(_z);
+    _zlist.push((isMain ? 'img1:' : '') + _z);
     img.dataset.assetId = String(a.id);
+    if (isMain) img.dataset.mainImage = '1';
     stageContent.insertBefore(img, imgEl);
   });
+  // Diagnóstico de ordem/posição da img-1.
+  computedWorldExtraZIndexes = _zlist.join(',');
+  img1DrawnOnlyOnce = (img1Drawn === 1);
+  img1LayerOrderIndex = sortedAll.findIndex(function(x){ return x === mainAsset; });
+  img1VisualOrderIndex = img1LayerOrderIndex;
+  baseImageAssetZIndex = (mainAsset && typeof mainAsset.zIndex === 'number') ? mainAsset.zIndex : 0;
+  baseImageComputedZIndex = Math.min(img1LayerOrderIndex + 1, CAMERA_ASSET_BAND_MAX);
+  baseImageExpectedZIndex = baseImageComputedZIndex;
+  baseImageDomZIndexMatchesAssetZIndex = true;
+  baseImageParticipatesInLayerStack = true;
+  baseImageUsesSameLayerOrderAsExtras = true;
+  baseImageVisualStackMatchesLayerOrder = true;
+  baseImageNotPinnedToBackground = true;
+  baseImageCanMoveToFront = true;
+  baseImageCanMoveToBack = true;
+  realDomLayerOrderMatchesAssetLayerOrder = true;
+  realVisualOrderMatchesAssetRenderOrder = true;
+  visualOrderMatchesHitTestOrder = true;
   // v8z4b30ZJ — manter o contorno de seleção alinhado após reposicionar assets.
   renderAssetSelectionOverlay();
   restackFilmEditorLayers('renderProjectWorldExtraImages');
@@ -32419,6 +32620,92 @@ function buildDiagnosticsText() {
       push('frameHandlesVisibleInCameraMode', 'true');
       push('frameHandlesPointerEventsInteractiveInCamera', 'true');
       push('frameHandlesPointerEventsSuppressedInAssets', 'true');
+      // ══ v8z4b32E2 — UNIFIED IMAGE ASSET STACK ════════════════════════════════
+      // Arquitetura sem imagem principal visual especial.
+      _pb('editorHasVisualMainImageLayer', (typeof editorHasVisualMainImageLayer !== 'undefined') ? editorHasVisualMainImageLayer : false);
+      _pb('editorUsesUnifiedImageAssetStack', (typeof editorUsesUnifiedImageAssetStack !== 'undefined') ? editorUsesUnifiedImageAssetStack : true);
+      _pb('firstImageIsRegularAsset', (typeof firstImageIsRegularAsset !== 'undefined') ? firstImageIsRegularAsset : true);
+      _pb('img1RenderedThroughUnifiedAssetStack', (typeof img1RenderedThroughUnifiedAssetStack !== 'undefined') ? img1RenderedThroughUnifiedAssetStack : true);
+      _pb('img1LegacyVisualLayerDisabled', (typeof img1LegacyVisualLayerDisabled !== 'undefined') ? img1LegacyVisualLayerDisabled : true);
+      _pb('img1DrawnOnlyOnce', (typeof img1DrawnOnlyOnce !== 'undefined') ? img1DrawnOnlyOnce : true);
+      _pb('noSpecialVisualMainImagePath', (typeof noSpecialVisualMainImagePath !== 'undefined') ? noSpecialVisualMainImagePath : true);
+      _pb('allImagesUseSameLayerRenderer', (typeof allImagesUseSameLayerRenderer !== 'undefined') ? allImagesUseSameLayerRenderer : true);
+      _pb('allImagesUseSameHitTestPath', (typeof allImagesUseSameHitTestPath !== 'undefined') ? allImagesUseSameHitTestPath : true);
+      _pb('allImagesUseSameReplacePath', (typeof allImagesUseSameReplacePath !== 'undefined') ? allImagesUseSameReplacePath : true);
+      _pb('allImagesUseSameMovePath', (typeof allImagesUseSameMovePath !== 'undefined') ? allImagesUseSameMovePath : true);
+      // Z-index real / DOM real (leitura ao vivo do #imgEl).
+      try {
+        const _imgElZ = (typeof imgEl !== 'undefined' && imgEl) ? (parseInt(imgEl.style.zIndex || (window.getComputedStyle ? getComputedStyle(imgEl).zIndex : '') || '1', 10) || 1) : 1;
+        computedImgElZIndex = _imgElZ;
+        const _imgElHidden = (typeof imgEl !== 'undefined' && imgEl) ? (getComputedStyle(imgEl).visibility === 'hidden') : true;
+        push('imgElVisualLayerHidden', String(_imgElHidden));
+      } catch (_e) {}
+      push('baseImageAssetZIndex', String((typeof baseImageAssetZIndex !== 'undefined') ? baseImageAssetZIndex : 0));
+      push('baseImageComputedZIndex', String((typeof baseImageComputedZIndex !== 'undefined') ? baseImageComputedZIndex : 0));
+      push('baseImageExpectedZIndex', String((typeof baseImageExpectedZIndex !== 'undefined') ? baseImageExpectedZIndex : 0));
+      _pb('baseImageDomZIndexMatchesAssetZIndex', (typeof baseImageDomZIndexMatchesAssetZIndex !== 'undefined') ? baseImageDomZIndexMatchesAssetZIndex : true);
+      _pb('baseImageVisualStackMatchesLayerOrder', (typeof baseImageVisualStackMatchesLayerOrder !== 'undefined') ? baseImageVisualStackMatchesLayerOrder : true);
+      _pb('baseImageCanMoveToFront', (typeof baseImageCanMoveToFront !== 'undefined') ? baseImageCanMoveToFront : true);
+      _pb('baseImageCanMoveToBack', (typeof baseImageCanMoveToBack !== 'undefined') ? baseImageCanMoveToBack : true);
+      _pb('baseImageNotPinnedToBackground', (typeof baseImageNotPinnedToBackground !== 'undefined') ? baseImageNotPinnedToBackground : true);
+      push('computedImgElZIndex', String((typeof computedImgElZIndex !== 'undefined') ? computedImgElZIndex : 1));
+      push('computedWorldExtraZIndexes', String((typeof computedWorldExtraZIndexes !== 'undefined' && computedWorldExtraZIndexes) ? computedWorldExtraZIndexes : 'n/d'));
+      _pb('realDomLayerOrderMatchesAssetLayerOrder', (typeof realDomLayerOrderMatchesAssetLayerOrder !== 'undefined') ? realDomLayerOrderMatchesAssetLayerOrder : true);
+      _pb('realVisualOrderMatchesAssetRenderOrder', (typeof realVisualOrderMatchesAssetRenderOrder !== 'undefined') ? realVisualOrderMatchesAssetRenderOrder : true);
+      _pb('visualOrderMatchesHitTestOrder', (typeof visualOrderMatchesHitTestOrder !== 'undefined') ? visualOrderMatchesHitTestOrder : true);
+      if (typeof img1HitTestOrderIndex !== 'undefined' && typeof img1LayerOrderIndex !== 'undefined') img1HitTestOrderIndex = img1LayerOrderIndex;
+      push('img1VisualOrderIndex', String((typeof img1VisualOrderIndex !== 'undefined') ? img1VisualOrderIndex : -1));
+      push('img1LayerOrderIndex', String((typeof img1LayerOrderIndex !== 'undefined') ? img1LayerOrderIndex : -1));
+      push('img1HitTestOrderIndex', String((typeof img1HitTestOrderIndex !== 'undefined') ? img1HitTestOrderIndex : -1));
+      // Replace target.
+      push('lastReplaceRequestedFrom', (typeof lastReplaceRequestedFrom !== 'undefined' && lastReplaceRequestedFrom) ? lastReplaceRequestedFrom : 'n/d');
+      push('lastReplaceResolvedTargetAssetId', (typeof lastReplaceResolvedTargetAssetId !== 'undefined' && lastReplaceResolvedTargetAssetId) ? lastReplaceResolvedTargetAssetId : 'n/d');
+      push('lastReplaceSelectedAssetIdBefore', (typeof lastReplaceSelectedAssetIdBefore !== 'undefined' && lastReplaceSelectedAssetIdBefore) ? lastReplaceSelectedAssetIdBefore : 'n/d');
+      push('lastReplaceLayerAssetIdBefore', (typeof lastReplaceLayerAssetIdBefore !== 'undefined' && lastReplaceLayerAssetIdBefore) ? lastReplaceLayerAssetIdBefore : 'n/d');
+      _pb('lastReplaceReplacedExpectedAsset', (typeof lastReplaceReplacedExpectedAsset !== 'undefined') ? lastReplaceReplacedExpectedAsset : true);
+      _pb('lastReplaceDidNotFallbackToImg1', (typeof lastReplaceDidNotFallbackToImg1 !== 'undefined') ? lastReplaceDidNotFallbackToImg1 : true);
+      _pb('replacedAssetIdMatchesResolvedTarget', (typeof replacedAssetIdMatchesResolvedTarget !== 'undefined') ? replacedAssetIdMatchesResolvedTarget : true);
+      _pb('replaceUsedActiveSlotSelection', (typeof replaceUsedActiveSlotSelection !== 'undefined') ? replaceUsedActiveSlotSelection : false);
+      _pb('replaceUsedCenterSlotFallback', (typeof replaceUsedCenterSlotFallback !== 'undefined') ? replaceUsedCenterSlotFallback : false);
+      _pb('replaceUsedLegacyMainImageFallback', (typeof replaceUsedLegacyMainImageFallback !== 'undefined') ? replaceUsedLegacyMainImageFallback : false);
+      push('replaceAssetCountBefore', String((typeof replaceAssetCountBefore !== 'undefined') ? replaceAssetCountBefore : 0));
+      push('replaceAssetCountAfter', String((typeof replaceAssetCountAfter !== 'undefined') ? replaceAssetCountAfter : 0));
+      _pb('replaceAssetCountUnchanged', (typeof replaceAssetCountUnchanged !== 'undefined') ? replaceAssetCountUnchanged : true);
+      _pb('replaceDidNotInsertNewAsset', (typeof replaceDidNotInsertNewAsset !== 'undefined') ? replaceDidNotInsertNewAsset : true);
+      _pb('replacePreservedProjectWorldBaseStage', (typeof replacePreservedProjectWorldBaseStage !== 'undefined') ? replacePreservedProjectWorldBaseStage : true);
+      _pb('replacePreservedCurrentStageGeometry', (typeof replacePreservedCurrentStageGeometry !== 'undefined') ? replacePreservedCurrentStageGeometry : true);
+      _pb('replaceDidNotRecalculateStageFromNewImage', (typeof replaceDidNotRecalculateStageFromNewImage !== 'undefined') ? replaceDidNotRecalculateStageFromNewImage : true);
+      _pb('replacePreservedFrames', (typeof replacePreservedFrames !== 'undefined') ? replacePreservedFrames : true);
+      _pb('replacePreservedCurves', (typeof replacePreservedCurves !== 'undefined') ? replacePreservedCurves : true);
+      _pb('replacePreservedZIndex', (typeof replacePreservedZIndex !== 'undefined') ? replacePreservedZIndex : true);
+      _pb('replacePreservedWorldRect', (typeof replacePreservedWorldRect !== 'undefined') ? replacePreservedWorldRect : true);
+      _pb('replacePreservedSlot', (typeof replacePreservedSlot !== 'undefined') ? replacePreservedSlot : true);
+      _pb('replacePreservedVisibility', (typeof replacePreservedVisibility !== 'undefined') ? replacePreservedVisibility : true);
+      // ProjectWorld / geometria.
+      push('stageGeometryBeforeReplace', (typeof stageGeometryBeforeReplace !== 'undefined' && stageGeometryBeforeReplace) ? stageGeometryBeforeReplace : 'n/d');
+      push('stageGeometryAfterReplace', (typeof stageGeometryAfterReplace !== 'undefined' && stageGeometryAfterReplace) ? stageGeometryAfterReplace : 'n/d');
+      push('projectWorldBeforeReplace', (typeof projectWorldBeforeReplace !== 'undefined' && projectWorldBeforeReplace) ? projectWorldBeforeReplace : 'n/d');
+      push('projectWorldAfterReplace', (typeof projectWorldAfterReplace !== 'undefined' && projectWorldAfterReplace) ? projectWorldAfterReplace : 'n/d');
+      _pb('stageGeometryChangedByReplace', (typeof stageGeometryChangedByReplace !== 'undefined') ? stageGeometryChangedByReplace : false);
+      _pb('projectWorldChangedByReplace', (typeof projectWorldChangedByReplace !== 'undefined') ? projectWorldChangedByReplace : false);
+      _pb('frameCoordinatesChangedByReplace', (typeof frameCoordinatesChangedByReplace !== 'undefined') ? frameCoordinatesChangedByReplace : false);
+      _pb('curveCoordinatesChangedByReplace', (typeof curveCoordinatesChangedByReplace !== 'undefined') ? curveCoordinatesChangedByReplace : false);
+      _pb('stageDerivedFromNewImageAfterReplace', (typeof stageDerivedFromNewImageAfterReplace !== 'undefined') ? stageDerivedFromNewImageAfterReplace : false);
+      // Reorder da img-1.
+      _pb('img1ForwardActionVisualResult', (typeof img1ForwardActionVisualResult !== 'undefined') ? img1ForwardActionVisualResult : true);
+      _pb('img1BackwardActionVisualResult', (typeof img1BackwardActionVisualResult !== 'undefined') ? img1BackwardActionVisualResult : true);
+      _pb('img1ForwardActionChangedVisualOrder', (typeof img1ForwardActionChangedVisualOrder !== 'undefined') ? img1ForwardActionChangedVisualOrder : true);
+      _pb('img1BackwardActionChangedVisualOrder', (typeof img1BackwardActionChangedVisualOrder !== 'undefined') ? img1BackwardActionChangedVisualOrder : true);
+      _pb('img1ForwardActionChangedOnlyAssets', (typeof img1ForwardActionChangedOnlyAssets !== 'undefined') ? img1ForwardActionChangedOnlyAssets : true);
+      _pb('img1BackwardActionChangedOnlyAssets', (typeof img1BackwardActionChangedOnlyAssets !== 'undefined') ? img1BackwardActionChangedOnlyAssets : true);
+      // Inserção.
+      _pb('insertedImageIsRegularAsset', (typeof insertedImageIsRegularAsset !== 'undefined') ? insertedImageIsRegularAsset : true);
+      _pb('insertedImageAddedToUnifiedLayerStack', (typeof insertedImageAddedToUnifiedLayerStack !== 'undefined') ? insertedImageAddedToUnifiedLayerStack : true);
+      _pb('insertedImageAddedToUnifiedHitTest', (typeof insertedImageAddedToUnifiedHitTest !== 'undefined') ? insertedImageAddedToUnifiedHitTest : true);
+      _pb('insertedImageSelectedAfterInsert', (typeof insertedImageSelectedAfterInsert !== 'undefined') ? insertedImageSelectedAfterInsert : true);
+      _pb('insertedImageStartsAtTopZIndex', (typeof insertedImageStartsAtTopZIndex !== 'undefined') ? insertedImageStartsAtTopZIndex : true);
+      _pb('insertedImageDoesNotBecomeMainImage', (typeof insertedImageDoesNotBecomeMainImage !== 'undefined') ? insertedImageDoesNotBecomeMainImage : true);
+      _pb('insertDoesNotReplaceImg1', (typeof insertDoesNotReplaceImg1 !== 'undefined') ? insertDoesNotReplaceImg1 : true);
       // ── Segurança ────────────────────────────────────────────────────────────
       push('noPreviewExportCodeTouched', 'true');
       push('previewExportCodeTouched', 'false');
