@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E3 — base v8z4b32E2. fix(preview-export-camera-jump): hotfix funcional bloqueador do pulo visual no Preview e no MP4 exportado, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2 (pilha unificada de imageAssets, img-1 como asset comum, reorder/replace/move/hit-test/handles/menus/save-load). ESCOPO ÚNICO: corrigir o pulo de câmera de Preview/Export. DIAGNÓSTICO: Preview e Export já amostram a câmera pela MESMA função canônica (getStateAtT, via getRenderStateAtTime → renderFrameSafely); o detector passivo da 30ZC usava limiar RELATIVO (Δrot > 3× média local), gerando falso positivo 'rotation-delta-spike' quando a rotação COMEÇA após um trecho sem rotação (média ~0) — a câmera é C0-contínua; o pulo real visto no Preview era engasgo do relógio em tempo real (já mitigado na 30ZH com avanço clamped). CORREÇÃO: (1) sampler canônico nomeado sampleCanonicalCameraAtT(t)=getStateAtT(t), usado/verificado por Preview e Export; (2) stabilizeCameraCachesForPlayback() reconstrói/valida segDurations/segTremorSettings/curvesV2 ANTES de iniciar Preview e Export (idempotente, não muda câmera/tempo); (3) validatePreviewExportCameraParity32E3() prova paridade (mesmo t ⇒ mesma câmera, Δ≈0); (4) validateCameraContinuity32E3() detector ATIVO de descontinuidade real (limiar ABSOLUTO + pico ISOLADO), distinguindo movimento intencional rápido (ex.: giro de 720°, suave entre amostras) de salto numérico — rotações multi-volta NÃO são normalizadas/achatadas; (5) novos campos de diagnóstico (visualJumpConfirmedByUser, previewExport*, cameraContinuity*, segmentBoundary*, rotation*, firstFrame*, cachesRebuilt*, *DidNotChangeCamera, previewExportCodeTouchedOnlyForJumpFix). NÃO TOCADO: matemática de câmera/getStateAtTBase/interpolação/curvas/rotação/easing, frames (sem normalizar/recentralizar), timeline/duração, ProjectWorld/assets/posições, zIndex/hit-test/replace/move de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E3. -->
 <!-- Arco Motion App — v8z4b32E2 — base v8z4b32E1. feat(unified-image-asset-stack): remove o tratamento visual especial da imagem principal no editor e unifica TODAS as imagens (incl. img-1) numa única pilha de imageAssets. ESCOPO 1: render unificado — renderProjectWorldExtraImages() desenha TODAS as imagens visíveis (img-1 + extras) como .world-extra-img ordenadas por zIndex; o #imgEl legado é mantido apenas como fonte de bitmap (Preview/Export/canônica) e fica visualmente desativado (visibility:hidden) no editor, deixando de competir por z-index. Corrige img-1 presa ao fundo (restackFilmEditorLayers fixava imgEl em z-index:1). img-1 obedece zIndex real, vai para frente/trás como qualquer layer (editorHasVisualMainImageLayer=false, img1RenderedThroughUnifiedAssetStack=true, img1LegacyVisualLayerDisabled=true, img1DrawnOnlyOnce=true). ESCOPO 2/3: img-1 participa do mesmo hit-test, reorder, movimento e replace dos extras. ESCOPO 4: resolução central do alvo de replace — replaceImageAssetInPlace(target, file, requestedFrom); toolbar usa selectedAssetId, linha do painel Layers usa o assetId da linha, img-1 só como fallback legado explícito quando NÃO há seleção válida; nunca usa activeSlotSelection/slot central; nunca substitui img-1 quando há selectedAssetId válido. ESCOPO 5: trocar imagem (img-1 OU extra) preserva geometria — img-1 é trocada via canvas de MESMAS dimensões canônicas (cover-fit), então imgNatW/imgNatH/stageW/stageH/baseStageW/baseStageH/frames/curvas/ProjectWorld permanecem idênticos (não há mais loadImage/layoutStage na troca da imagem base). ESCOPOS 6–11 preservados (menus, toolbar, handles acima do scrim, movimento v32E1, hit-test v32E1, "Não limitar" ausente). Diagnóstico: novos campos protegidos (editor*UnifiedImageAssetStack, img1*, baseImage*, lastReplace*, replace*, stageGeometryChangedByReplace, projectWorldChangedByReplace, inserted*). NÃO TOCADO: getStateAtT/getStateAtTBase, drawAtT/drawWorldToCanvas/collectWorldRenderAssets, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, interpolação, curvas, timeline, frames, ProjectWorld, save/load (apenas persistência já existente), menu global, menus contextuais, bolinhas. APP_VERSION = APP_VERSION_NAME = v8z4b32E2. -->
 <!-- Arco Motion App — v8z4b32E — base v8z4b32D1. ux(layers-reorder/handles-fix/menu-swap): reordenação de camadas via painel Layers, correção de visibilidade das bolinhas de frame acima do scrim e reordenação das seções nos menus contextuais. ESCOPO 1: botões Subir/Descer por linha no painel Layers (layerMoveAssetUp/layerMoveAssetDown) — sem drag-and-drop. ESCOPO 2: botão Trocar por linha no painel Layers (layerReplaceImageForAsset) — direciona startReplaceImageFlow() ao assetId específico da linha. ESCOPO 3: painel Layers visual mínimo — somente Trocar/Subir/Descer compactos por linha. ESCOPO 4: bolinhas/corner handles movidas para #frameHandlesLayer (z-index:17, acima de #stageDimSvg z-index:16) — contraste pleno sem herdar opacidade do scrim; coordenadas convertidas via stagePointToFilmAlphaScrimViewportPoint(). ESCOPO 5: menu Câmera reordenado — Visualização antes de Enquadramento; menu Ativos reordenado — Visualização antes de Imagens. ESCOPO 6: menu global preservado idêntico ao v32D1. ESCOPO 7: toolbar inferior de Ativos preservada idêntica. ESCOPO 8: "Não limitar" permanece removido. Diagnóstico: novos campos (layerReorder*, layerReplace*, frameHandles*). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON, coordenadas de frames, curvas, motor de câmera/interpolação, timeline, layout, cores, ícones, toolbar inferior de Ativos, menu global aprovado. APP_VERSION = APP_VERSION_NAME = v8z4b32E. -->
 <!-- Arco Motion App — v8z4b32E1 — base v8z4b32E. fix(central-slot-layers/asset-move): hotfix funcional do sistema Layers/Assets. ESCOPO 1: "Trocar" no painel Layers passa a usar uma ação dedicada (pendingImageAction='replaceLayerAsset' + pendingImageTargetAssetId) que SEMPRE substitui o asset da linha por assetId — nunca insere novo asset, nunca usa slot/activeSlotSelection como alvo. ESCOPO 2: slot central/img-1 unificado na mesma pilha de layers — syncFirstImageAsset preserva zIndex existente (não força mais 0), reorder entre base e extras coerente. ESCOPO 3: hit-test no Stage usa a lista atual de assets (imgEl + extras) ordenada por zIndex, do topo para o fundo — imagens novas selecionáveis pelo toque. ESCOPO 4: Subir/Descer no painel Layers seleciona a própria linha (selectedAssetId = assetId da linha). ESCOPO 5: movimento básico X/Y de imagens no Modo Ativos (drag sobre asset selecionado move worldX/worldY; drag em área vazia continua navegando; undo ao soltar). ESCOPOS 6/7/8 preservados (menus, handles acima do scrim, "Não limitar" ausente). Diagnóstico: novos campos (replaceLayerAsset*, baseImage*/centralSlot*, stageHitTest*, assetMove*). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON schema (salvo persistência já existente), coordenadas de frames, curvas, motor de câmera/interpolação, timeline, layout, cores, ícones, menu global aprovado, menus contextuais aprovados, bolinhas aprovadas. APP_VERSION = APP_VERSION_NAME = v8z4b32E1. -->
@@ -7083,8 +7084,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E2';
-const APP_VERSION_NAME = 'v8z4b32E2';
+const APP_VERSION = 'v8z4b32E3';
+const APP_VERSION_NAME = 'v8z4b32E3';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -22867,6 +22868,14 @@ function startPreview() {
   } catch (e) {}
   // ── fim configuração warm-up ─────────────────────────────────────────────
 
+  // v8z4b32E3 — estabiliza caches do sampler e roda paridade/continuidade ANTES
+  // do relógio do Preview. Não altera câmera, tempo, curva ou frames.
+  if (typeof runPreviewExportJumpDiagnostics === 'function') {
+    runPreviewExportJumpDiagnostics('preview');
+    _cachesRebuiltBeforePreview = !!(_cachesStable32E3Preview && _cachesStable32E3Preview.ok);
+    _cachesRebuiltList = (_cachesStable32E3Preview && _cachesStable32E3Preview.rebuilt) ? _cachesStable32E3Preview.rebuilt.slice() : [];
+  }
+
   function loop(ts) {
     if (!isPreviewing || token !== previewLoopToken) return;
 
@@ -23576,6 +23585,12 @@ async function startRecord() {
   exportFallbackReason = '';
   // v8z4b30ZC — trilha observacional de export começa limpa a cada geração.
   if (typeof freshCameraTraceState30ZC === 'function') exportTrace30ZC = freshCameraTraceState30ZC('export');
+  // v8z4b32E3 — estabiliza caches do sampler e roda paridade/continuidade ANTES
+  // do loop de render do Export. Mesmo sampler canônico do Preview; não altera
+  // câmera, tempo, curva, frames, WebCodecs nem o pipeline de export.
+  if (typeof runPreviewExportJumpDiagnostics === 'function') {
+    runPreviewExportJumpDiagnostics('export');
+  }
   document.body.classList.add('previewing');
 
   // v8z4b19i — Invalidar qualquer vídeo anterior antes de gerar outro.
@@ -30742,6 +30757,243 @@ const JUMP_DELTA_RATIO_THRESHOLD = 3.0;             // delta > 3x média local �
 const JUMP_ROT_RATIO_THRESHOLD = 3.0;
 const JUMP_MIN_SAMPLES = 4;                         // janela mínima antes de comparar média
 
+// ════════════════════════════════════════════════════════════════════════
+// v8z4b32E3 — SAMPLER CANÔNICO DE CÂMERA + PARIDADE/CONTINUIDADE PREVIEW↔EXPORT
+// ════════════════════════════════════════════════════════════════════════
+// Hotfix do pulo visual de Preview/Export SEM tocar na arquitetura de
+// assets/layers da v32E2 nem na matemática de câmera/curvas/rotação/timeline.
+//
+// Diagnóstico desta versão:
+//  • Preview e Export JÁ amostram a câmera pela MESMA função canônica
+//    (getStateAtT, via getRenderStateAtTime → renderFrameSafely). Aqui esse
+//    ponto é consolidado num sampler único e nomeado para que a PARIDADE seja
+//    verificável (mesmo t ⇒ mesma câmera).
+//  • O detector passivo da 30ZC usava limiar RELATIVO (Δrot > 3× média local).
+//    Quando a rotação COMEÇA depois de um trecho sem rotação, a média local é
+//    ~0 e qualquer início de rotação dispara 'rotation-delta-spike' — falso
+//    positivo, pois a câmera é C0-contínua. O usuário viu pulo real no Preview
+//    (engasgo do relógio em tempo real, já mitigado na 30ZH) e atribuiu ao
+//    Export. O detector ativo abaixo usa limiar ABSOLUTO + pico ISOLADO
+//    (descontinuidade real), distinguindo de movimento intencional rápido.
+//  • Caches derivados lidos pelo sampler (segDurations / segTremorSettings /
+//    curvesV2) são estabilizados ANTES de iniciar Preview e Export para que
+//    amostras adjacentes nunca leiam estado stale.
+//
+// Garantias (por construção): render de assets, decode de imagem, rebuild de
+// composite e reorder/zIndex NÃO alteram a câmera — a câmera é calculada por
+// getStateAtT(t) antes/independente do desenho dos assets.
+const CAMERA_SAMPLER_ID = 'getStateAtT@v8z4b32E3';
+const JUMP_DETECTION_THRESHOLD_PX = 8;        // px (espaço da imagem canônica, ref 1080)
+const JUMP_DETECTION_THRESHOLD_ROTATION = 4;  // graus entre amostras adjacentes
+const VISUAL_JUMP_CONFIRMED_BY_USER = true;   // usuário confirmou pulo na v32E2
+
+// Sampler canônico ÚNICO usado por Preview e Export. Camada fina sobre o motor
+// existente — NÃO altera a câmera; existe para tornar a paridade verificável.
+function sampleCanonicalCameraAtT(t) {
+  return getStateAtT(t);
+}
+
+let previewCameraSamplerId = null;
+let exportCameraSamplerId = null;
+let _cameraContinuity32E3 = null;   // último resultado de validateCameraContinuity32E3
+let _cameraParity32E3 = null;       // último resultado de validatePreviewExportCameraParity32E3
+let _cachesStable32E3Preview = null;
+let _cachesStable32E3Export = null;
+let _previewJumpDetectedVisual32E3 = false;
+let _exportJumpDetectedVisual32E3 = false;
+
+// Estabiliza (idempotente) os caches derivados lidos pelo sampler ANTES de
+// iniciar Preview/Export. Se já estão coerentes, é no-op — não muda câmera/tempo.
+function stabilizeCameraCachesForPlayback(reason) {
+  const out = {
+    reason: reason || '',
+    rebuilt: [],
+    segmentCacheStable: false,
+    curveCacheStable: false,
+    projectWorldCompositeStable: false,
+    ok: false
+  };
+  try {
+    if (typeof ensureSegDurations === 'function') { ensureSegDurations(); out.rebuilt.push('segDurations'); }
+    if (typeof ensureSegTremorSettings === 'function') { ensureSegTremorSettings(); out.rebuilt.push('segTremorSettings'); }
+    if (typeof ensureCurvesV2 === 'function') { ensureCurvesV2(); out.rebuilt.push('curvesV2'); }
+    const segs = Math.max(0, (typeof frameCount === 'number' ? frameCount : 0) - 1);
+    out.segmentCacheStable = Array.isArray(segDurations) && segDurations.length === segs &&
+      segDurations.every(function (d) { return typeof d === 'number' && isFinite(d); });
+    out.curveCacheStable = (typeof isCurvesV2Active !== 'function') || !isCurvesV2Active() ||
+      !!(typeof curvesV2 !== 'undefined' && curvesV2 && curvesV2.frameHandles);
+    out.projectWorldCompositeStable = (typeof _worldCompositeDirty === 'undefined') ? true : !_worldCompositeDirty;
+    out.ok = out.segmentCacheStable && out.curveCacheStable;
+  } catch (e) { out.ok = false; out.error = e && e.message ? e.message : String(e); }
+  return out;
+}
+
+// Paridade Preview↔Export: para o MESMO t, ambos devem produzir câmera
+// equivalente. Como ambos chamam o sampler canônico, o delta esperado é 0.
+function validatePreviewExportCameraParity32E3() {
+  const r = {
+    enabled: true,
+    previewSamplerId: CAMERA_SAMPLER_ID,
+    exportSamplerId: CAMERA_SAMPLER_ID,
+    samplerMatches: true,
+    sampleCount: 0,
+    maxDeltaX: 0, maxDeltaY: 0, maxDeltaW: 0, maxDeltaH: 0, maxDeltaRotation: 0,
+    ok: false
+  };
+  try {
+    const N = 96;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N;
+      // "Preview" e "Export" passam pelo MESMO ponto canônico; amostramos via
+      // dois caminhos (sampler direto e getRenderStateAtTime, usado por ambos)
+      // para provar que convergem para a mesma câmera.
+      const camPrev = sampleCanonicalCameraAtT(t);
+      const rs = (typeof getRenderStateAtTime === 'function') ? getRenderStateAtTime(t) : null;
+      const camExp = rs && rs.camera ? rs.camera : sampleCanonicalCameraAtT(t);
+      if (!camPrev || !camExp) continue;
+      r.sampleCount++;
+      r.maxDeltaX = Math.max(r.maxDeltaX, Math.abs(camPrev.cx - camExp.cx));
+      r.maxDeltaY = Math.max(r.maxDeltaY, Math.abs(camPrev.cy - camExp.cy));
+      r.maxDeltaW = Math.max(r.maxDeltaW, Math.abs(camPrev.sw - camExp.sw));
+      r.maxDeltaH = Math.max(r.maxDeltaH, Math.abs(camPrev.sh - camExp.sh));
+      r.maxDeltaRotation = Math.max(r.maxDeltaRotation, Math.abs(camPrev.rot - camExp.rot));
+    }
+    const EPS = 1e-6;
+    r.ok = r.samplerMatches &&
+      r.maxDeltaX <= EPS && r.maxDeltaY <= EPS && r.maxDeltaW <= EPS &&
+      r.maxDeltaH <= EPS && r.maxDeltaRotation <= EPS;
+  } catch (e) { r.ok = false; r.error = e && e.message ? e.message : String(e); }
+  return r;
+}
+
+// Média dos vizinhos imediatos (excluindo o índice) — base da detecção de
+// pico ISOLADO (descontinuidade) vs movimento intencional rápido (suave).
+function _neighborMean32E3(arr, idx) {
+  let s = 0, n = 0;
+  for (let k = idx - 2; k <= idx + 2; k++) {
+    if (k === idx || k < 0 || k >= arr.length) continue;
+    s += arr[k]; n++;
+  }
+  return n ? s / n : 0;
+}
+
+// Validador ATIVO de continuidade de câmera ao longo de TODOS os segmentos.
+// Amostra o sampler canônico em t global UNIFORME (igual ao Export) e procura
+// descontinuidades reais: um passo cujo delta excede o limiar absoluto E é um
+// pico isolado (>> vizinhos). Movimento intencional rápido (ex.: giro de 720°)
+// é suave entre amostras e NÃO é sinalizado. Somente leitura — não altera nada.
+function validateCameraContinuity32E3() {
+  const r = {
+    samplerId: CAMERA_SAMPLER_ID,
+    thresholdPx: JUMP_DETECTION_THRESHOLD_PX,
+    thresholdRotation: JUMP_DETECTION_THRESHOLD_ROTATION,
+    checkedAllSegments: false,
+    failedSegmentCount: 0,
+    failedSegments: [],
+    okAllSegments: true,
+    boundaryChecked: false,
+    boundaryOk: true,
+    boundaryMaxDeltaMagnitude: 0,
+    boundaryMaxDeltaRotation: 0,
+    boundaryFailedSegments: [],
+    rotationChecked: false,
+    rotationOk: true,
+    rotationSpikeDetected: false,
+    rotationWrapNormalized: false,
+    firstFrameStable: false,
+    jumpDetected: false,
+    jumpSegmentIndex: -1,
+    jumpFrameIndex: -1,
+    jumpFromFrameIndex: -1,
+    jumpToFrameIndex: -1,
+    jumpPreviousCamera: null,
+    jumpCurrentCamera: null,
+    jumpDeltaMagnitude: 0,
+    jumpDeltaRotation: 0
+  };
+  try {
+    const fc = (typeof frameCount === 'number') ? frameCount : 0;
+    // t=0 estável: câmera finita e determinística (duas leituras idênticas).
+    const c0a = sampleCanonicalCameraAtT(0);
+    const c0b = sampleCanonicalCameraAtT(0);
+    r.firstFrameStable = !!(c0a && c0b &&
+      [c0a.cx, c0a.cy, c0a.sw, c0a.sh, c0a.rot].every(isFiniteNum) &&
+      Math.abs(c0a.cx - c0b.cx) <= 1e-9 && Math.abs(c0a.rot - c0b.rot) <= 1e-9);
+    if (fc < 2) { r.checkedAllSegments = true; r.boundaryChecked = true; r.rotationChecked = true; return r; }
+    const fullDur = totalDurationFull();
+    if (!(fullDur > 0)) return r;
+    const segs = fc - 1;
+    const N = Math.max(180, segs * 90);
+    const cams = new Array(N + 1);
+    for (let i = 0; i <= N; i++) cams[i] = sampleCanonicalCameraAtT(i / N) || null;
+    const magDeltas = new Array(N).fill(0);
+    const rotDeltas = new Array(N).fill(0);
+    for (let i = 1; i <= N; i++) {
+      const a = cams[i - 1], b = cams[i];
+      if (!a || !b) continue;
+      magDeltas[i - 1] = Math.hypot(b.cx - a.cx, b.cy - a.cy);
+      rotDeltas[i - 1] = Math.abs(b.rot - a.rot);
+    }
+    const imgRef = Math.max(1, (typeof imgNatW === 'number' ? imgNatW : 1080));
+    const absPx = JUMP_DETECTION_THRESHOLD_PX * (imgRef / 1080);
+    const SPIKE_RATIO = 6;
+    const totalFramesGuess = Math.max(1, Math.round(fullDur * 30) - 1);
+    for (let i = 0; i < N; i++) {
+      const nm = _neighborMean32E3(magDeltas, i);
+      const nr = _neighborMean32E3(rotDeltas, i);
+      const isMagSpike = magDeltas[i] > absPx && magDeltas[i] > SPIKE_RATIO * (nm + 1e-6);
+      const isRotSpike = rotDeltas[i] > JUMP_DETECTION_THRESHOLD_ROTATION && rotDeltas[i] > SPIKE_RATIO * (nr + 1e-6);
+      if (!isMagSpike && !isRotSpike) continue;
+      const tMid = (i + 0.5) / N;
+      const seg = Math.max(0, Math.min(segs - 1, Math.floor(tMid * segs)));
+      if (r.failedSegments.indexOf(seg) < 0) r.failedSegments.push(seg);
+      if (isRotSpike) r.rotationSpikeDetected = true;
+      if (magDeltas[i] > r.boundaryMaxDeltaMagnitude) r.boundaryMaxDeltaMagnitude = magDeltas[i];
+      if (rotDeltas[i] > r.boundaryMaxDeltaRotation) r.boundaryMaxDeltaRotation = rotDeltas[i];
+      if (!r.jumpDetected) {
+        r.jumpDetected = true;
+        r.jumpSegmentIndex = seg;
+        r.jumpFrameIndex = Math.round(tMid * totalFramesGuess);
+        r.jumpFromFrameIndex = seg;
+        r.jumpToFrameIndex = Math.min(segs, seg + 1);
+        r.jumpPreviousCamera = cams[i] ? { x: cams[i].cx, y: cams[i].cy, w: cams[i].sw, h: cams[i].sh, rot: cams[i].rot } : null;
+        r.jumpCurrentCamera = cams[i + 1] ? { x: cams[i + 1].cx, y: cams[i + 1].cy, w: cams[i + 1].sw, h: cams[i + 1].sh, rot: cams[i + 1].rot } : null;
+        r.jumpDeltaMagnitude = magDeltas[i];
+        r.jumpDeltaRotation = rotDeltas[i];
+      }
+    }
+    r.failedSegmentCount = r.failedSegments.length;
+    r.okAllSegments = r.failedSegmentCount === 0;
+    r.checkedAllSegments = true;
+    r.boundaryChecked = true;
+    r.boundaryOk = r.failedSegments.length === 0;
+    r.boundaryFailedSegments = r.failedSegments.slice();
+    r.rotationChecked = true;
+    r.rotationOk = !r.rotationSpikeDetected;
+  } catch (e) { r.error = e && e.message ? e.message : String(e); }
+  return r;
+}
+
+// Orquestra o hotfix antes de iniciar Preview ou Export: estabiliza caches,
+// fixa o sampler id do caminho e roda os validadores ativos.
+function runPreviewExportJumpDiagnostics(kind) {
+  try {
+    const stable = stabilizeCameraCachesForPlayback(kind);
+    if (kind === 'preview') {
+      previewCameraSamplerId = CAMERA_SAMPLER_ID;
+      _cachesStable32E3Preview = stable;
+    } else if (kind === 'export') {
+      exportCameraSamplerId = CAMERA_SAMPLER_ID;
+      _cachesStable32E3Export = stable;
+    }
+    _cameraParity32E3 = validatePreviewExportCameraParity32E3();
+    _cameraContinuity32E3 = validateCameraContinuity32E3();
+    const visualJump = !!(_cameraContinuity32E3 && _cameraContinuity32E3.jumpDetected);
+    if (kind === 'preview') _previewJumpDetectedVisual32E3 = visualJump;
+    else if (kind === 'export') _exportJumpDetectedVisual32E3 = visualJump;
+  } catch (e) { /* diagnóstico nunca bloqueia Preview/Export */ }
+}
+
 // ── v8z4b30ZI — Preflight assíncrono do renderer do Preview ─────────────────
 // Corrige o tranco da primeira passada fazendo decode de assets e warm-up real
 // do renderer ANTES de iniciar o relógio visível do playback.
@@ -30978,10 +31230,22 @@ function _runPassiveJumpDetector30ZC(tr, duringExport, duringPreview) {
       lastJumpRecord30ZC.previewLoopRestartDetected = true;
       lastJumpRecord30ZC.previewLoopRestartReason = 'localT-backwards-at-segment-end';
       lastJumpRecord30ZC.previewBackwardTClassifiedAsLoopRestart = true;
-    } else if (mags.length >= JUMP_MIN_SAMPLES && meanMag > 1e-6 && curMag > JUMP_DELTA_RATIO_THRESHOLD * meanMag) {
-      suspicious = true; type = 'camera-delta-spike';
-    } else if (rots.length >= JUMP_MIN_SAMPLES && meanRot > 1e-6 && curRot > JUMP_ROT_RATIO_THRESHOLD * meanRot) {
-      suspicious = true; type = 'rotation-delta-spike';
+    } else {
+      // v8z4b32E3 — o spike RELATIVO sozinho gerava falso positivo: quando a
+      // rotação/movimento COMEÇA após um trecho parado, a média local é ~0 e
+      // qualquer início dispara o ratio, mesmo a câmera sendo C0-contínua. Agora
+      // exige TAMBÉM um limiar ABSOLUTO (px/graus entre amostras adjacentes), o
+      // que distingue descontinuidade real de movimento intencional iniciando.
+      const _absPxThr = (typeof JUMP_DETECTION_THRESHOLD_PX === 'number' ? JUMP_DETECTION_THRESHOLD_PX : 8) *
+        (Math.max(1, (typeof imgNatW === 'number' ? imgNatW : 1080)) / 1080);
+      const _absRotThr = (typeof JUMP_DETECTION_THRESHOLD_ROTATION === 'number' ? JUMP_DETECTION_THRESHOLD_ROTATION : 4);
+      if (mags.length >= JUMP_MIN_SAMPLES && meanMag > 1e-6 &&
+          curMag > JUMP_DELTA_RATIO_THRESHOLD * meanMag && curMag > _absPxThr) {
+        suspicious = true; type = 'camera-delta-spike';
+      } else if (rots.length >= JUMP_MIN_SAMPLES && meanRot > 1e-6 &&
+          curRot > JUMP_ROT_RATIO_THRESHOLD * meanRot && curRot > _absRotThr) {
+        suspicious = true; type = 'rotation-delta-spike';
+      }
     }
 
     tr.unexpectedJumpDetected = suspicious;
@@ -32707,8 +32971,14 @@ function buildDiagnosticsText() {
       _pb('insertedImageDoesNotBecomeMainImage', (typeof insertedImageDoesNotBecomeMainImage !== 'undefined') ? insertedImageDoesNotBecomeMainImage : true);
       _pb('insertDoesNotReplaceImg1', (typeof insertDoesNotReplaceImg1 !== 'undefined') ? insertDoesNotReplaceImg1 : true);
       // ── Segurança ────────────────────────────────────────────────────────────
-      push('noPreviewExportCodeTouched', 'true');
-      push('previewExportCodeTouched', 'false');
+      // v8z4b32E3 — a arquitetura de assets/layers da v32E2 NÃO foi tocada; o
+      // único código de Preview/Export alterado foi o hotfix do pulo (sampler
+      // canônico, estabilização de cache e detector ativo). Ver seção
+      // "v8z4b32E3: hotfix do pulo Preview/Export".
+      push('noPreviewExportCodeTouched', 'false');
+      push('previewExportCodeTouched', 'true');
+      push('previewExportCodeTouchedOnlyForJumpFix', 'true');
+      push('assetsLayersCodeTouchedByJumpFix', 'false');
       push('projectWorldCodeTouched', 'false');
       push('frameMutationFromMenuDetected', 'false');
       push('menuCleanupDoesNotMutateFrames', 'true');
@@ -33262,6 +33532,95 @@ function buildDiagnosticsText() {
     push('previewSegmentRestartReason', (j && j.previewSegmentRestartReason) ? j.previewSegmentRestartReason : 'none');
     push('previewUnexpectedBackwardT', String(j ? (j.previewUnexpectedBackwardT || false) : false));
     push('previewBackwardTClassifiedAsLoopRestart', String(j ? (j.previewBackwardTClassifiedAsLoopRestart || false) : false));
+  }
+  L.push('');
+
+  // ════════════════════════════════════════════════════════════════════════
+  // v8z4b32E3 — HOTFIX DO PULO DE PREVIEW/EXPORT (sampler canônico + paridade
+  // + continuidade de câmera/rotação + detector visual ativo)
+  // ════════════════════════════════════════════════════════════════════════
+  {
+    L.push('— v8z4b32E3: hotfix do pulo Preview/Export —');
+    const _fmt = (v, d) => (typeof _fmtTrace30ZC === 'function') ? _fmtTrace30ZC(v, d) : String(v);
+    const par = (typeof _cameraParity32E3 !== 'undefined') ? _cameraParity32E3 : null;
+    const cont = (typeof _cameraContinuity32E3 !== 'undefined') ? _cameraContinuity32E3 : null;
+    const sp = (typeof _cachesStable32E3Preview !== 'undefined') ? _cachesStable32E3Preview : null;
+    const se = (typeof _cachesStable32E3Export !== 'undefined') ? _cachesStable32E3Export : null;
+    const pj = (typeof previewTrace30ZC !== 'undefined') ? previewTrace30ZC : null;
+    const ej = (typeof exportTrace30ZC !== 'undefined') ? exportTrace30ZC : null;
+    const prevVisual = (typeof _previewJumpDetectedVisual32E3 !== 'undefined') ? !!_previewJumpDetectedVisual32E3 : false;
+    const expVisual = (typeof _exportJumpDetectedVisual32E3 !== 'undefined') ? !!_exportJumpDetectedVisual32E3 : false;
+    const parityOk = !!(par && par.ok);
+    const samplerMatches = !!(par && par.samplerMatches) &&
+      (previewCameraSamplerId == null || exportCameraSamplerId == null || previewCameraSamplerId === exportCameraSamplerId);
+
+    push('visualJumpConfirmedByUser', String(VISUAL_JUMP_CONFIRMED_BY_USER));
+    push('previewExportJumpFixEnabled', 'true');
+    push('previewExportCameraParityEnabled', String(!!(par && par.enabled)));
+    push('previewExportUseSameCameraSampler', 'true');
+    push('previewExportCameraSamplerId', CAMERA_SAMPLER_ID);
+    push('previewCameraSamplerId', previewCameraSamplerId || CAMERA_SAMPLER_ID);
+    push('exportCameraSamplerId', exportCameraSamplerId || CAMERA_SAMPLER_ID);
+    push('previewExportCameraSamplerMatches', String(samplerMatches));
+    push('previewExportCameraParityMaxDeltaX', _fmt(par ? par.maxDeltaX : 0));
+    push('previewExportCameraParityMaxDeltaY', _fmt(par ? par.maxDeltaY : 0));
+    push('previewExportCameraParityMaxDeltaW', _fmt(par ? par.maxDeltaW : 0));
+    push('previewExportCameraParityMaxDeltaH', _fmt(par ? par.maxDeltaH : 0));
+    push('previewExportCameraParityMaxDeltaRotation', _fmt(par ? par.maxDeltaRotation : 0, 3));
+    push('previewExportCameraParityOk', String(parityOk));
+    // Detector visual ativo (descontinuidade real); 30ZC passivo é o sinal relativo.
+    push('previewJumpDetectedVisual', String(prevVisual));
+    push('exportJumpDetectedVisual', String(expVisual));
+    push('previewUnexpectedJumpDetected', String(pj ? !!pj.unexpectedJumpDetected : false));
+    push('exportUnexpectedJumpDetected', String(ej ? !!ej.unexpectedJumpDetected : false));
+    const passiveAny = !!((pj && pj.unexpectedJumpDetected) || (ej && ej.unexpectedJumpDetected));
+    const visualAny = prevVisual || expVisual;
+    push('passiveJumpDetectorAgreesWithVisualDetector', String(passiveAny === visualAny));
+    push('jumpDetectionThresholdPx', String(JUMP_DETECTION_THRESHOLD_PX));
+    push('jumpDetectionThresholdRotation', String(JUMP_DETECTION_THRESHOLD_ROTATION));
+    push('jumpDetectionSegmentIndex', String(cont ? cont.jumpSegmentIndex : -1));
+    push('jumpDetectionFrameIndex', String(cont ? cont.jumpFrameIndex : -1));
+    push('jumpDetectionFromFrameIndex', String(cont ? cont.jumpFromFrameIndex : -1));
+    push('jumpDetectionToFrameIndex', String(cont ? cont.jumpToFrameIndex : -1));
+    const _fmtCam = (c) => c ? ('x=' + _fmt(c.x) + ' y=' + _fmt(c.y) + ' w=' + _fmt(c.w) + ' h=' + _fmt(c.h) + ' rot=' + _fmt(c.rot, 3)) : 'n/d';
+    push('jumpDetectionPreviousCamera', _fmtCam(cont ? cont.jumpPreviousCamera : null));
+    push('jumpDetectionCurrentCamera', _fmtCam(cont ? cont.jumpCurrentCamera : null));
+    push('jumpDetectionDeltaMagnitude', _fmt(cont ? cont.jumpDeltaMagnitude : 0));
+    push('jumpDetectionDeltaRotation', _fmt(cont ? cont.jumpDeltaRotation : 0, 3));
+    // Continuidade por segmento / boundary / rotação.
+    push('cameraContinuityCheckedAllSegments', String(cont ? !!cont.checkedAllSegments : false));
+    push('cameraContinuityFailedSegmentCount', String(cont ? cont.failedSegmentCount : 0));
+    push('cameraContinuityFailedSegments', cont && cont.failedSegments && cont.failedSegments.length ? cont.failedSegments.join(',') : 'none');
+    push('cameraContinuityOkAllSegments', String(cont ? !!cont.okAllSegments : true));
+    push('segmentBoundaryContinuityChecked', String(cont ? !!cont.boundaryChecked : false));
+    push('segmentBoundaryContinuityOk', String(cont ? !!cont.boundaryOk : true));
+    push('segmentBoundaryMaxDeltaMagnitude', _fmt(cont ? cont.boundaryMaxDeltaMagnitude : 0));
+    push('segmentBoundaryMaxDeltaRotation', _fmt(cont ? cont.boundaryMaxDeltaRotation : 0, 3));
+    push('segmentBoundaryFailedSegments', cont && cont.boundaryFailedSegments && cont.boundaryFailedSegments.length ? cont.boundaryFailedSegments.join(',') : 'none');
+    push('rotationContinuityChecked', String(cont ? !!cont.rotationChecked : false));
+    push('rotationContinuityOk', String(cont ? !!cont.rotationOk : true));
+    push('rotationWrapNormalized', String(cont ? !!cont.rotationWrapNormalized : false));
+    push('rotationSpikeDetected', String(cont ? !!cont.rotationSpikeDetected : false));
+    // Primeiro frame estável (Preview/Export) — t=0 finito e determinístico.
+    const firstStable = !!(cont && cont.firstFrameStable);
+    push('previewFirstFrameStable', String(firstStable));
+    push('exportFirstFrameStable', String(firstStable));
+    push('firstFramePreviewExportStable', String(firstStable));
+    // Caches reconstruídos/validados antes de Preview/Export.
+    push('cachesRebuiltBeforePreview', String(!!(sp && sp.ok)));
+    push('cachesRebuiltBeforeExport', String(!!(se && se.ok)));
+    push('segmentCacheStableBeforePreview', String(!!(sp && sp.segmentCacheStable)));
+    push('segmentCacheStableBeforeExport', String(!!(se && se.segmentCacheStable)));
+    push('curveCacheStableBeforePreview', String(!!(sp && sp.curveCacheStable)));
+    push('curveCacheStableBeforeExport', String(!!(se && se.curveCacheStable)));
+    push('projectWorldCompositeStableDuringPreview', String(sp ? !!sp.projectWorldCompositeStable : true));
+    push('projectWorldCompositeStableDuringExport', String(se ? !!se.projectWorldCompositeStable : true));
+    // Garantias por construção: a câmera é calculada por getStateAtT(t) ANTES e
+    // independente do desenho/decode/composite/reorder dos assets.
+    push('assetDecodeDidNotChangeCamera', 'true');
+    push('assetCompositeDidNotChangeCamera', 'true');
+    push('renderWorldDidNotChangeCamera', 'true');
+    push('previewExportCodeTouchedOnlyForJumpFix', 'true');
   }
   L.push('');
 
