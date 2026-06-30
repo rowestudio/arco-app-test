@@ -1,3 +1,26 @@
+## v8z4b32E5
+
+Base confirmada antes do patch: `v8z4b32E4` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
+
+### Escopo
+- [x] Nova função pura `getAssetVisualWorldRect(asset)` — fit contain de `sourceW/H` dentro de `worldW/H`, centrado; para extras é idêntico ao `worldRect` (confirmado por teste automatizado, zero mudança de comportamento), para img-1 dá o retângulo real da imagem dentro da célula intacta.
+- [x] `renderProjectWorldExtraImages()`, `renderAssetSelectionOverlay()` e `hitTestAssetAtWorld()` passam a usar `getAssetVisualWorldRect()` em vez do `worldRect` cru.
+- [x] `target.src` de img-1 passa a ser a imagem nova crua (sem tarja cozida), igual aos extras.
+- [x] `asset.worldX/Y/W/H` do modelo (inclusive img-1), `drawAtT`/`drawAtTDirect`/`drawWorldToCanvas`/`collectWorldRenderAssets`/`getStateAtT` NÃO tocados (governança AGENTS.md — fora de Engine Sprint).
+- [x] Novo diagnóstico só-leitura `_scanLegacyBoxedAssets()`; nunca normaliza assets ao abrir o arquivo.
+
+### Validação obrigatória
+- [ ] Menu mostra "Arco Motion App v8z4b32E5" (`APP_VERSION`=`APP_VERSION_NAME`=`v8z4b32E5`).
+- [ ] Selecionar um asset extra, trocar por imagem de proporção diferente: moldura roxa abraça exatamente a imagem (sem mudança em relação à v32E4 — já estava correto).
+- [ ] Selecionar img-1, trocar por imagem de proporção bem diferente (ex.: vertical → horizontal): moldura roxa do editor encolhe para hugar a imagem real, sem sobra transparente/tarja visível na seleção.
+- [ ] Tocar na área onde antes sobrava a faixa/tarja (dentro da caixa antiga, fora da imagem real) não seleciona mais img-1.
+- [ ] Tocar dentro da imagem real de img-1 continua selecionando-a normalmente.
+- [ ] Repetir troca via toolbar e via painel Layers, em img-1 e em asset comum — mesma paridade visual.
+- [ ] Reorder de layers, movimento de assets, zIndex, frames, curvas e câmera sem regressão.
+- [ ] Rodar Preview e Exportar MP4: nenhuma imagem some/reaparece, nenhum pulo de câmera/render (paridade Preview/Export de img-1 especificamente continua usando a caixa cozida da v32E4 quando a proporção muda — limitação conhecida, documentada no CHANGELOG, requer Engine Sprint para fechar 100%).
+- [ ] Diagnóstico mostra `replaceVisualParityFixEnabled:true`, `replacedAssetDomWrapperMatchesWorldRect:true`, `replacedAssetSelectionMatchesWorldRect:true`, `replacedAssetHitTestMatchesWorldRect:true`, `img1NoTransparentInheritedBox:true`, `img1NoLetterboxFromOldBox:true`, `img1NoPillarboxFromOldBox:true`, `legacyBoxedAssetsAutoRepairedOnLoad:false`.
+- [ ] Teste em iPhone/Safari real (fechar/reabrir app, trocar imagens de proporções bem diferentes em img-1 e em asset comum, tocar na área antes transparente, Preview, Export MP4, abrir Diagnóstico).
+
 ## v8z4b32E4
 
 Base confirmada antes do patch: `v8z4b32E3` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).

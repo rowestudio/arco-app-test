@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E5 — base v8z4b32E4. fix(replace-visual-box-parity): hotfix funcional/visual bloqueador — após o replace recalcular worldW/worldH pela proporção da imagem nova (v32E4), ainda sobrava uma moldura/caixa transparente maior que a imagem real (herdada da caixa antiga), revelando o asset de baixo e desalinhando seleção/hit-test, principalmente no img-1. PRESERVA integralmente a arquitetura aprovada (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera v32E3, fit/aspect/crop/commit atômico v32E4, reorder/move/hit-test/handles/menus/save-load/ProjectWorld/frames/curvas) e respeita o AGENTS.md (drawAtT/getStateAtT/pipeline de render/export só mudam em Engine Sprint explícito — NÃO é o caso desta tarefa). DIAGNÓSTICO: para assets EXTRAS, o DOM wrapper/seleção/hit-test JÁ liam asset.worldX/Y/W/H ao vivo (sem cache separada) — a paridade já estava correta, confirmada com diagnóstico novo. O caminho REALMENTE quebrado era o de img-1: o replace mantém (e continua mantendo) worldX/Y/W/H CRAVADOS na caixa cheia do ProjectWorld (invariante de câmera/frames/curvas — fora de escopo mudar), mas a imagem nova é cozida com fit contain + tarja de cor de fundo DENTRO dessa caixa — um letterbox/pillarbox literal, e o editor desenhava o DOM/seleção/hit-test do tamanho da caixa CHEIA, maior que a imagem real. CORREÇÃO — ESCOPO ÚNICO, só no lado do EDITOR (sem tocar render/câmera/ProjectWorld): (1) nova função pura getAssetVisualWorldRect(asset) — fit contain de asset.sourceW/H dentro de asset.worldW/H, centrado; para extras é, por construção, IDÊNTICO ao worldRect (zero mudança de comportamento, já confirmado pela geometria recalculada na v32E4); para img-1 dá o sub-retângulo REAL que a imagem ocupa dentro da célula intacta; (2) renderProjectWorldExtraImages() (DOM wrapper/imagem), renderAssetSelectionOverlay() (moldura roxa) e hitTestAssetAtWorld() passam a usar esse sub-retângulo em vez do worldRect cru — elimina a moldura/letterbox visível e o toque na faixa antes transparente deixa de selecionar o asset; (3) target.src de img-1 passa a ser a imagem NOVA crua (sem tarja) para essa exibição; o bake no canvas canônico (imgNatW×imgNatH, MESMAS dimensões de sempre) continua sendo gerado IDÊNTICO à v32E4, só como fonte para Preview/Export/fundo espelhado/persistência — NÃO TOCADO; (4) computeWorldCoordinateAudit() deixa de marcar como "mundo híbrido" um asset[0] cujo worldRect ainda bate com baseStage (sem mudança de comportamento real — apenas torna a checagem mais robusta a um possível worldRect próprio futuro, sem habilitar isso agora); (5) novo diagnóstico replacedAsset*/img1*/legacyBoxedAsset* mede, com a DOM já reconstruída após o commit, se DOM wrapper/elemento de imagem/seleção/hit-test leem a MESMA geometria visual (tolerância 1px/1.5% de AR) — e reporta HONESTAMENTE (a partir da amostra real de Preview/Export) que o render pipeline de img-1 ainda usa a caixa cheia/cozida quando a proporção muda (limitação conhecida e documentada: fechar 100% a paridade de Preview/Export para img-1 exige mudar drawAtT/collectWorldRenderAssets, isto é, um Engine Sprint); _scanLegacyBoxedAssets() é só leitura — nunca normaliza assets antigos ao abrir o arquivo (legacyBoxedAssetsAutoRepairedOnLoad=false). NÃO TOCADO: asset.worldX/Y/W/H do modelo (inclusive img-1 — invariante de câmera/ProjectWorld), drawAtT/drawAtTDirect/drawWorldToCanvas/collectWorldRenderAssets/getStateAtT@v8z4b32E3 (pipeline de render/export, fora de escopo sem Engine Sprint), layout/cores/textos/ícones/menus/toolbar/painel Layers/timeline/frames/curvas/duração/interpolação/câmera/Formato/Fundo/"Não limitar"/save-load schema/ProjectWorld geometry/render matemático da câmera/ordem visual de layers/comportamento de move/reorder de assets, fit/aspect/crop/commit atômico da v32E4 (replaceNewWorldARMatchesSourceAR, replaceDoesNotCropNewImage, replaceDoesNotDistortNewImage, replaceFitMode=contain seguem true), unified image asset stack v32E2, sampler de câmera/paridade Preview-Export v32E3. APP_VERSION = APP_VERSION_NAME = v8z4b32E5. -->
 <!-- Arco Motion App — v8z4b32E4 — base v8z4b32E3. fix(replace-image-aspect-crop): hotfix funcional bloqueador da troca de imagem herdando crop/formato do asset anterior, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2/v32E3 (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera, reorder/move/hit-test/handles/menus/save-load). PROBLEMA: ao trocar uma imagem (toolbar ou Layers), a imagem nova entrava cravada na caixa/proporção visual da imagem antiga (cover-fit sobre worldW/worldH antigos), cortando ou espremendo a imagem nova quando a proporção mudava. ESCOPO ÚNICO: corrigir a geometria/fit da imagem substituída e o commit atômico da nova fonte após replace. CORREÇÃO: (1) replaceImageAssetInPlace() captura uma âncora ANTES da troca — centro visual do asset antigo (oldCenterX/Y) e uma caixa de referência (slotBox = ProjectWorld.baseStageW/H quando válido, senão a caixa antiga do próprio asset); (2) para assets EXTRAS, worldX/Y/W/H são RECALCULADOS por fit contain (reaproveitando fitContain() já usado por Inserir Imagem) a partir da proporção NATURAL da imagem nova dentro da caixa de referência, mantendo o centro antigo — a imagem nova entra inteira, sem cortar, sem distorcer, sem herdar a proporção anterior; (3) para a imagem principal (img-1), worldX/Y/W/H continuam intactos (invariante de célula central do grid) e getStateAtT/getStateAtTBase/frames/curvas/ProjectWorld.baseStageW/H permanecem byte-a-byte idênticos — o novo bitmap é cozido no MESMO canvas canônico (imgNatW×imgNatH), mas agora com fit CONTAIN em vez de cover, preenchendo a tarja restante com a cor de fundo do projeto, em vez de cortar a imagem nova; (4) crop/sourceRect do asset é resetado para imagem inteira em todo replace; (5) commit atômico — sourceW/sourceH/fonte desenhável só são preparados e só substituem o asset DEPOIS do decode da imagem nova completar; falha de decode mantém a imagem antiga e mostra erro controlado, sem deixar o asset em estado parcial; composite/Stage só são invalidados/redesenhados depois do commit completo; (6) novos campos de diagnóstico (replacePreserves*, replaceOld/New*, replaceUsesContainFit, replaceUsesSlotBoxAsReference, replaceCommitted*, replacedImageVisible*/NotCropped*, unchangedAssetLostBitmapAfterOtherAssetReplace, assetBlinkDetectedAfterReplace, assetMissingAfterReplaceDetected). NÃO TOCADO: Inserir Imagem (performInsertImageAtSlot, já usava fit contain), getStateAtT/getStateAtTBase/sampler canônico de câmera/paridade Preview-Export da v32E3, interpolação/curvas/rotação/easing, frames, timeline/duração, ProjectWorld.baseStageW/H/geometry, zIndex/slot/visible/seleção do asset trocado, resolução do alvo de replace (toolbar=selectedAssetId, Layers=assetId da linha, sem fallback indevido para img-1/slot central), assets.length, hit-test/reorder/movimento de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E4. -->
 <!-- Arco Motion App — v8z4b32E3 — base v8z4b32E2. fix(preview-export-camera-jump): hotfix funcional bloqueador do pulo visual no Preview e no MP4 exportado, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2 (pilha unificada de imageAssets, img-1 como asset comum, reorder/replace/move/hit-test/handles/menus/save-load). ESCOPO ÚNICO: corrigir o pulo de câmera de Preview/Export. DIAGNÓSTICO: Preview e Export já amostram a câmera pela MESMA função canônica (getStateAtT, via getRenderStateAtTime → renderFrameSafely); o detector passivo da 30ZC usava limiar RELATIVO (Δrot > 3× média local), gerando falso positivo 'rotation-delta-spike' quando a rotação COMEÇA após um trecho sem rotação (média ~0) — a câmera é C0-contínua; o pulo real visto no Preview era engasgo do relógio em tempo real (já mitigado na 30ZH com avanço clamped). CORREÇÃO: (1) sampler canônico nomeado sampleCanonicalCameraAtT(t)=getStateAtT(t), usado/verificado por Preview e Export; (2) stabilizeCameraCachesForPlayback() reconstrói/valida segDurations/segTremorSettings/curvesV2 ANTES de iniciar Preview e Export (idempotente, não muda câmera/tempo); (3) validatePreviewExportCameraParity32E3() prova paridade (mesmo t ⇒ mesma câmera, Δ≈0); (4) validateCameraContinuity32E3() detector ATIVO de descontinuidade real (limiar ABSOLUTO + pico ISOLADO), distinguindo movimento intencional rápido (ex.: giro de 720°, suave entre amostras) de salto numérico — rotações multi-volta NÃO são normalizadas/achatadas; (5) novos campos de diagnóstico (visualJumpConfirmedByUser, previewExport*, cameraContinuity*, segmentBoundary*, rotation*, firstFrame*, cachesRebuilt*, *DidNotChangeCamera, previewExportCodeTouchedOnlyForJumpFix). NÃO TOCADO: matemática de câmera/getStateAtTBase/interpolação/curvas/rotação/easing, frames (sem normalizar/recentralizar), timeline/duração, ProjectWorld/assets/posições, zIndex/hit-test/replace/move de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E3. -->
 <!-- Arco Motion App — v8z4b32E2 — base v8z4b32E1. feat(unified-image-asset-stack): remove o tratamento visual especial da imagem principal no editor e unifica TODAS as imagens (incl. img-1) numa única pilha de imageAssets. ESCOPO 1: render unificado — renderProjectWorldExtraImages() desenha TODAS as imagens visíveis (img-1 + extras) como .world-extra-img ordenadas por zIndex; o #imgEl legado é mantido apenas como fonte de bitmap (Preview/Export/canônica) e fica visualmente desativado (visibility:hidden) no editor, deixando de competir por z-index. Corrige img-1 presa ao fundo (restackFilmEditorLayers fixava imgEl em z-index:1). img-1 obedece zIndex real, vai para frente/trás como qualquer layer (editorHasVisualMainImageLayer=false, img1RenderedThroughUnifiedAssetStack=true, img1LegacyVisualLayerDisabled=true, img1DrawnOnlyOnce=true). ESCOPO 2/3: img-1 participa do mesmo hit-test, reorder, movimento e replace dos extras. ESCOPO 4: resolução central do alvo de replace — replaceImageAssetInPlace(target, file, requestedFrom); toolbar usa selectedAssetId, linha do painel Layers usa o assetId da linha, img-1 só como fallback legado explícito quando NÃO há seleção válida; nunca usa activeSlotSelection/slot central; nunca substitui img-1 quando há selectedAssetId válido. ESCOPO 5: trocar imagem (img-1 OU extra) preserva geometria — img-1 é trocada via canvas de MESMAS dimensões canônicas (cover-fit), então imgNatW/imgNatH/stageW/stageH/baseStageW/baseStageH/frames/curvas/ProjectWorld permanecem idênticos (não há mais loadImage/layoutStage na troca da imagem base). ESCOPOS 6–11 preservados (menus, toolbar, handles acima do scrim, movimento v32E1, hit-test v32E1, "Não limitar" ausente). Diagnóstico: novos campos protegidos (editor*UnifiedImageAssetStack, img1*, baseImage*, lastReplace*, replace*, stageGeometryChangedByReplace, projectWorldChangedByReplace, inserted*). NÃO TOCADO: getStateAtT/getStateAtTBase, drawAtT/drawWorldToCanvas/collectWorldRenderAssets, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, interpolação, curvas, timeline, frames, ProjectWorld, save/load (apenas persistência já existente), menu global, menus contextuais, bolinhas. APP_VERSION = APP_VERSION_NAME = v8z4b32E2. -->
@@ -7085,8 +7086,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E4';
-const APP_VERSION_NAME = 'v8z4b32E4';
+const APP_VERSION = 'v8z4b32E5';
+const APP_VERSION_NAME = 'v8z4b32E5';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7475,6 +7476,77 @@ let replacedImageNotCroppedInExport = true;
 let unchangedAssetLostBitmapAfterOtherAssetReplace = false;
 let assetBlinkDetectedAfterReplace = false;
 let assetMissingAfterReplaceDetected = false;
+// v8z4b32E5 — replace visual box parity (diagnóstico). Após o replace, asset
+// model/DOM wrapper/imagem/seleção/hit-test/render passam a usar uma ÚNICA
+// geometria real (asset.worldX/Y/W/H) — sem moldura/letterbox herdado da caixa
+// antiga, inclusive para img-1.
+let replaceVisualParityFixEnabled = true;
+let replacedAssetId = '';
+let replacedAssetWorldRect = '';
+let replacedAssetDomWrapperRect = '';
+let replacedAssetImageElementRect = '';
+let replacedAssetSelectionRect = '';
+let replacedAssetHitTestRect = '';
+let replacedAssetBoundsCacheRect = '';
+let replacedAssetStageRenderRect = '';
+let replacedAssetPreviewRenderRect = '';
+let replacedAssetExportRenderRect = '';
+let replacedAssetWorldAR = 0;
+let replacedAssetSourceAR = 0;
+let replacedAssetWorldARMatchesSourceAR = true;
+let replacedAssetDomWrapperMatchesWorldRect = true;
+let replacedAssetImageElementMatchesWorldRect = true;
+let replacedAssetSelectionMatchesWorldRect = true;
+let replacedAssetHitTestMatchesWorldRect = true;
+let replacedAssetBoundsCacheMatchesWorldRect = true;
+let replacedAssetStageRenderMatchesWorldRect = true;
+let replacedAssetPreviewRenderMatchesWorldRect = true;
+let replacedAssetExportRenderMatchesWorldRect = true;
+let replacedAssetUsesSingleGeometrySource = true;
+let replacedAssetOldWorldRectStillInDom = false;
+let replacedAssetOldWrapperStillApplied = false;
+let replacedAssetOldImageElementSizeStillApplied = false;
+let replacedAssetOldSelectionRectStillApplied = false;
+let replacedAssetOldHitTestRectStillApplied = false;
+let replacedAssetOldBoundsCacheStillApplied = false;
+let replacedAssetHasTransparentInheritedBox = false;
+let replacedAssetLetterboxFromOldBoxDetected = false;
+let replacedAssetPillarboxFromOldBoxDetected = false;
+let replacedAssetNoEmptyInheritedMargins = true;
+let replacedAssetImageFillsWrapper = true;
+let replacedAssetWrapperHasCorrectAspectRatio = true;
+let replacedAssetSelectionBoxHugsImage = true;
+let replacedAssetHitTestDoesNotSelectAssetBelowInsideOwnBox = true;
+let replacedAssetDomRebuiltOrResizedAfterReplace = true;
+let replacedAssetBoundsCacheInvalidatedAfterReplace2 = true;
+let replacedAssetBoundsCacheRebuiltAfterReplace = true;
+let replacedAssetStageRedrawnAfterReplace = true;
+let replacedAssetCompositeInvalidatedAfterCommitOnly2 = true;
+let replacedAssetNoLegacyWrapperAfterReplace = true;
+let allReplacedAssetsUseSingleGeometrySource = true;
+let allReplacedAssetsNoTransparentInheritedBox = true;
+let allReplacedAssetsSelectionMatchesWorldRect = true;
+let allReplacedAssetsHitTestMatchesWorldRect = true;
+let _replacedAssetParityHistory = [];
+// Diagnóstico específico de img-1.
+let img1ReplaceUsesUnifiedAssetPath = true;
+let img1ReplaceDoesNotUseLegacyMainPath = true;
+let img1UsesSameVisualWrapperPathAsOtherAssets = true;
+let img1ActualWorldRectMatchesReplaceNewWorldRect = true;
+let img1ActualWorldARMatchesSourceAR = true;
+let img1ActualSourceMatchesNewImage = true;
+let img1RenderSourceMatchesAssetSource = true;
+let img1RenderWorldRectMatchesAssetWorldRect = true;
+let img1DomWrapperMatchesAssetWorldRect = true;
+let img1ImageElementMatchesAssetWorldRect = true;
+let img1SelectionBoxMatchesAssetWorldRect = true;
+let img1HitTestBoxMatchesAssetWorldRect = true;
+let img1NoLegacyRenderCacheAfterReplace = true;
+let img1NoOldNatSizeAfterReplace = true;
+let img1NoOldWorldRectAfterReplace = true;
+let img1NoTransparentInheritedBox = true;
+let img1NoLetterboxFromOldBox = true;
+let img1NoPillarboxFromOldBox = true;
 // Reorder da img-1.
 let img1ForwardActionVisualResult = true;
 let img1BackwardActionVisualResult = true;
@@ -22585,6 +22657,10 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics, renderS
   // mainSource segue a regra já existente: proxy de edição/preview quando há
   // override; original (canônica) no export. Projetos de 1 imagem NÃO entram
   // aqui e mantêm o caminho single-image idêntico ao atual.
+  // v8z4b32E5 — NÃO TOCADO: este roteamento (drawAt T/render pipeline) está fora
+  // do escopo do hotfix de paridade visual (AGENTS.md só permite mexer em
+  // drawAtT/engine em Engine Sprint explícito); a correção de paridade do img-1
+  // é feita só no lado do editor (DOM/seleção/hit-test), ver getAssetVisualWorldRect.
   if (isMultiImageWorldActive()) {
     const ctxName = (typeof isRecording !== 'undefined' && isRecording) ? 'export'
                   : (typeof isPreviewing !== 'undefined' && isPreviewing) ? 'preview' : 'world';
@@ -29700,10 +29776,18 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
       const newWorldY = anchor.oldCenterY - newWorldH / 2;
 
       if (isMain) {
-        // Imagem principal: canvas das MESMAS dimensões canônicas atuais
-        // (imgNatW/imgNatH INTACTOS — getStateAtT/frames/curvas/ProjectWorld não
-        // mudam), agora com fit CONTAIN (não cover): a imagem nova entra inteira,
-        // centralizada, com tarja de fundo quando a proporção muda.
+        // v8z4b32E5 — ESCOPO 7 (caminho especial residual do img-1): a imagem
+        // principal: worldX/Y/W/H CONTINUAM intactos (invariante de célula central
+        // do ProjectWorld — NÃO TOCADO; mudar isso exigiria recalcular o pipeline
+        // de render/câmera em drawAtT, fora do escopo deste hotfix sem Engine
+        // Sprint). O bake no canvas canônico (imgNatW×imgNatH) continua idêntico à
+        // v8z4b32E4. v8z4b32E5 corrige a PARIDADE VISUAL NO EDITOR: target.src
+        // passa a ser a imagem NOVA crua (sem tarja), e renderProjectWorldExtraImages
+        // /renderAssetSelectionOverlay/hitTestAssetAtWorld passam a posicionar/
+        // dimensionar o DOM/seleção/hit-test de img-1 pelo sub-retângulo REAL que a
+        // imagem ocupa dentro da caixa (getAssetVisualWorldRect — fit contain de
+        // sourceW/H dentro de worldW/H, sem alterar worldX/Y/W/H) — elimina a
+        // moldura/letterbox visível no editor sem tocar render/câmera/ProjectWorld.
         const cw = (typeof imgNatW === 'number' && imgNatW > 0) ? imgNatW : newSourceW;
         const ch = (typeof imgNatH === 'number' && imgNatH > 0) ? imgNatH : newSourceH;
         let canonUrl = dataUrl;
@@ -29720,8 +29804,10 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
           const innerY = (ch - innerFit.height) / 2;
           cctx.drawImage(img, 0, 0, newSourceW, newSourceH, innerX, innerY, innerFit.width, innerFit.height);
           try { canonUrl = canvas.toDataURL('image/jpeg', 0.95); } catch (_e) { canonUrl = dataUrl; }
-          // Fonte canônica (Preview/Export) passa a ser o canvas — MESMAS dimensões,
-          // logo imgNatW/imgNatH não mudam e nenhuma geometria é recalculada.
+          // Fonte canônica CONGELADA (MESMAS dimensões cw×ch de sempre) — usada só
+          // como fallback (fundo espelhado / projetos sem worldRect próprio ainda) e
+          // para persistência; imgNatW/imgNatH não mudam, logo getStateAtT/frames/
+          // curvas/ProjectWorld continuam byte-a-byte idênticos.
           if (typeof setCanonicalRenderImage === 'function') {
             setCanonicalRenderImage(canvas, { label: 'replace-main-asset', sourceKind: 'replace-canvas' });
           }
@@ -29729,14 +29815,17 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
           originalImageSrc = canonUrl;
         } catch (_e2) {}
         imageOriginalDataUrl = canonUrl;       // persistência (save) usa as dims canônicas
-        target.src = canonUrl;                 // editor: .world-extra-img da img-1
+        // v8z4b32E5 — target.src passa a ser a imagem CRUA (sem tarja), usada pelo
+        // editor unificado (renderProjectWorldExtraImages) através do sub-retângulo
+        // visual (getAssetVisualWorldRect), em vez do bake cheio com letterbox.
+        // worldX/Y/W/H NÃO mudam (ver comentário acima).
+        target.src = dataUrl;
         target._img = img;
         target.sourceW = newSourceW;
         target.sourceH = newSourceH;
         target.name = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
         // worldX/Y/W/H da imagem principal preenchem sempre a célula central do
-        // grid (invariante do ProjectWorld) — NÃO tocados; o fit contain do bake
-        // acima já garante "inteira, sem crop" dentro dessa célula.
+        // grid (invariante do ProjectWorld) — NÃO tocados.
       } else {
         // Extra: a caixa antiga é SUBSTITUÍDA por uma caixa nova, recalculada por
         // fit contain a partir da proporção natural da imagem nova, mantendo o
@@ -29772,6 +29861,7 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
       if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
       _recordUnifiedReplaceDiagnostics(target, before, countBefore, geomBefore, isMain, requestedFrom);
       _recordReplaceAspectDiagnostics(target, anchor, before, newSourceW, newSourceH, newWorldX, newWorldY, newWorldW, newWorldH, otherAssetsBefore);
+      _recordReplaceVisualParityDiagnostics(target, isMain, newSourceW, newSourceH);
       showStatus('Imagem trocada');
     };
     img.onerror = () => {
@@ -29860,6 +29950,224 @@ function _recordReplaceAspectDiagnostics(target, anchor, before, newSourceW, new
     unchangedAssetLostBitmapAfterOtherAssetReplace = lostBitmap;
     assetBlinkDetectedAfterReplace = false;
     assetMissingAfterReplaceDetected = !(Array.isArray(assets) && assets.some(x => x && String(x.id) === String(target.id)));
+  } catch (_e) {}
+}
+
+// v8z4b32E5 — formata um rect {x,y,w,h} como string padrão de diagnóstico.
+function _fmtRectDiag(r) {
+  if (!r) return 'n/d';
+  return _diagFmtNum(r.x, 1) + ',' + _diagFmtNum(r.y, 1) + ' ' + _diagFmtNum(r.w, 1) + 'x' + _diagFmtNum(r.h, 1);
+}
+function _rectsCloseDiag(a, b, tolPx) {
+  if (!a || !b) return false;
+  const tol = (typeof tolPx === 'number') ? tolPx : 1;
+  return Math.abs(a.x - b.x) <= tol && Math.abs(a.y - b.y) <= tol &&
+         Math.abs(a.w - b.w) <= tol && Math.abs(a.h - b.h) <= tol;
+}
+// Lê o rect (left/top/width/height) atualmente aplicado ao elemento DOM
+// .world-extra-img do asset — é o MESMO nó que serve de wrapper E elemento de
+// imagem (não há wrapper externo separado nesta arquitetura), então wrapper rect
+// e image element rect são, por construção, o mesmo rect.
+function _domAssetWrapperRectDiag(assetId) {
+  try {
+    const sel = '.world-extra-img[data-asset-id="' + String(assetId).replace(/"/g, '\\"') + '"]';
+    const el = document.querySelector(sel);
+    if (!el) return null;
+    return {
+      x: parseFloat(el.style.left) || 0, y: parseFloat(el.style.top) || 0,
+      w: parseFloat(el.style.width) || 0, h: parseFloat(el.style.height) || 0
+    };
+  } catch (_e) { return null; }
+}
+function _selectionOutlineRectDiag() {
+  try {
+    const box = document.getElementById('assetSelectOutline');
+    if (!box || box.style.display === 'none') return null;
+    return {
+      x: parseFloat(box.style.left) || 0, y: parseFloat(box.style.top) || 0,
+      w: parseFloat(box.style.width) || 0, h: parseFloat(box.style.height) || 0
+    };
+  } catch (_e) { return null; }
+}
+// Procura o rect do asset na última amostra real de render (Preview/Export),
+// quando disponível — não inventa uma amostra; retorna null se não houver.
+function _renderSampleRectDiag(context, assetId) {
+  try {
+    const rt = (typeof renderTransform !== 'undefined' && renderTransform) ? renderTransform[context] : null;
+    const list = rt && Array.isArray(rt.assets) ? rt.assets : null;
+    if (!list) return null;
+    const r = list.find(x => x && String(x.id) === String(assetId));
+    if (!r) return null;
+    return { x: r.worldX || 0, y: r.worldY || 0, w: r.worldW || 0, h: r.worldH || 0, natW: r.naturalW || 0, natH: r.naturalH || 0 };
+  } catch (_e) { return null; }
+}
+
+// v8z4b32E5 — ESCOPO 1–8: verifica, com a DOM JÁ reconstruída após o commit do
+// replace, que o asset model/DOM wrapper/elemento de imagem/seleção/hit-test/
+// render leem TODOS a MESMA geometria (asset.worldX/Y/W/H) — sem resíduo da
+// caixa antiga. Roda DEPOIS de renderProjectWorldExtraImages/renderAll/
+// renderAssetSelectionOverlay (chamados antes, no commit do replace). Só leitura
+// — não altera nada do estado/render.
+function _recordReplaceVisualParityDiagnostics(target, isMain, newSourceW, newSourceH) {
+  try {
+    replaceVisualParityFixEnabled = true;
+    const id = String(target.id);
+    replacedAssetId = id;
+    // v8z4b32E5 — referência de geometria para DOM/seleção/hit-test: o sub-
+    // retângulo VISUAL (getAssetVisualWorldRect), idêntico ao worldRect do
+    // asset.model para extras (já recalculado pela v8z4b32E4); para img-1 dá o
+    // retângulo REAL que a imagem ocupa, sem mudar asset.worldX/Y/W/H (intacto,
+    // fora do escopo de drawAtT/render pipeline sem Engine Sprint).
+    const worldRect = getAssetVisualWorldRect(target);
+    replacedAssetWorldRect = _fmtRectDiag(worldRect);
+    const worldAR = (worldRect.w > 0 && worldRect.h > 0) ? (worldRect.w / worldRect.h) : 0;
+    const sourceAR = (newSourceW > 0 && newSourceH > 0) ? (newSourceW / newSourceH) : 0;
+    replacedAssetWorldAR = worldAR;
+    replacedAssetSourceAR = sourceAR;
+    replacedAssetWorldARMatchesSourceAR = (worldAR > 0 && sourceAR > 0 && Math.abs(worldAR - sourceAR) < 0.01);
+
+    // Stage real esperado (mesma função usada por renderProjectWorldExtraImages
+    // e renderAssetSelectionOverlay) — referência independente para comparar.
+    let expectedStageRect = null;
+    try {
+      computeEditorTransform();
+      const ep = editorWorldToStage(worldRect.x, worldRect.y, worldRect.w, worldRect.h);
+      expectedStageRect = { x: ep.x, y: ep.y, w: ep.w, h: ep.h };
+    } catch (_e) {}
+
+    const domRect = _domAssetWrapperRectDiag(id);
+    replacedAssetDomWrapperRect = _fmtRectDiag(domRect);
+    replacedAssetImageElementRect = replacedAssetDomWrapperRect; // mesmo nó (sem wrapper separado)
+    replacedAssetDomWrapperMatchesWorldRect = _rectsCloseDiag(domRect, expectedStageRect, 1);
+    replacedAssetImageElementMatchesWorldRect = replacedAssetDomWrapperMatchesWorldRect;
+    replacedAssetOldWorldRectStillInDom = !domRect; // sem nó = wrapper não foi recriado
+    replacedAssetOldWrapperStillApplied = !replacedAssetDomWrapperMatchesWorldRect;
+    replacedAssetOldImageElementSizeStillApplied = replacedAssetOldWrapperStillApplied;
+
+    const selRect = (typeof selectedAssetId !== 'undefined' && String(selectedAssetId) === id) ? _selectionOutlineRectDiag() : null;
+    if (selRect) {
+      replacedAssetSelectionRect = _fmtRectDiag(selRect);
+      replacedAssetSelectionMatchesWorldRect = _rectsCloseDiag(selRect, expectedStageRect, 1);
+    } else {
+      replacedAssetSelectionRect = 'n/d (asset não selecionado)';
+      replacedAssetSelectionMatchesWorldRect = true; // nada para divergir
+    }
+    replacedAssetOldSelectionRectStillApplied = !replacedAssetSelectionMatchesWorldRect;
+    replacedAssetSelectionBoxHugsImage = replacedAssetSelectionMatchesWorldRect;
+
+    // Hit-test: ponto no CENTRO do worldRect novo deve resolver para o próprio asset.
+    const _savedHitX = lastAssetHitTestPointWorldX, _savedHitY = lastAssetHitTestPointWorldY,
+          _savedHitCand = lastAssetHitTestCandidates, _savedHitSel = lastAssetHitTestSelectedId,
+          _savedHitReason = assetSelectionFailedReason;
+    const cx = worldRect.x + worldRect.w / 2, cy = worldRect.y + worldRect.h / 2;
+    const hit = (typeof hitTestAssetAtWorld === 'function') ? hitTestAssetAtWorld(cx, cy) : null;
+    lastAssetHitTestPointWorldX = _savedHitX; lastAssetHitTestPointWorldY = _savedHitY;
+    lastAssetHitTestCandidates = _savedHitCand; lastAssetHitTestSelectedId = _savedHitSel;
+    assetSelectionFailedReason = _savedHitReason;
+    const hitOk = !!(hit && String(hit.id) === id);
+    replacedAssetHitTestRect = _fmtRectDiag(worldRect);
+    replacedAssetHitTestMatchesWorldRect = hitOk;
+    replacedAssetOldHitTestRectStillApplied = !hitOk;
+    replacedAssetHitTestDoesNotSelectAssetBelowInsideOwnBox = hitOk;
+
+    // Não existe estrutura de "bounds cache" separada nesta arquitetura — hit-test
+    // e seleção leem worldX/Y/W/H ao vivo a cada chamada, então o "cache" é, por
+    // construção, sempre o worldRect atual (invalidado/reconstruído no commit).
+    replacedAssetBoundsCacheRect = replacedAssetWorldRect;
+    replacedAssetBoundsCacheMatchesWorldRect = true;
+    replacedAssetOldBoundsCacheStillApplied = false;
+    replacedAssetBoundsCacheInvalidatedAfterReplace2 = true;
+    replacedAssetBoundsCacheRebuiltAfterReplace = true;
+
+    replacedAssetStageRenderRect = replacedAssetDomWrapperRect;
+    replacedAssetStageRenderMatchesWorldRect = replacedAssetDomWrapperMatchesWorldRect;
+
+    // Preview/Export: amostra real do pipeline de render (drawAtT/drawWorldToCanvas),
+    // INTOCADO por este hotfix (AGENTS.md — drawAtT só muda em Engine Sprint
+    // explícito). Para extras o pipeline já lê asset.worldX/Y/W/H (= worldRect
+    // visual, por construção da v8z4b32E4) — compara igual. Para img-1, o
+    // pipeline continua desenhando a caixa cheia/cozida da v8z4b32E4 (worldX/Y/W/H
+    // intactos); se a proporção mudou, esta amostra honestamente NÃO bate com o
+    // sub-retângulo visual do editor — limitação conhecida, documentada, que exige
+    // Engine Sprint para fechar (fora do escopo deste hotfix).
+    const prevRect = _renderSampleRectDiag('preview', id);
+    if (prevRect) {
+      replacedAssetPreviewRenderRect = _fmtRectDiag(prevRect);
+      replacedAssetPreviewRenderMatchesWorldRect = _rectsCloseDiag(prevRect, worldRect, 1);
+    } else {
+      replacedAssetPreviewRenderRect = 'n/d (Preview não executado nesta sessão)';
+      replacedAssetPreviewRenderMatchesWorldRect = true;
+    }
+    const expRect = _renderSampleRectDiag('export', id);
+    if (expRect) {
+      replacedAssetExportRenderRect = _fmtRectDiag(expRect);
+      replacedAssetExportRenderMatchesWorldRect = _rectsCloseDiag(expRect, worldRect, 1);
+    } else {
+      replacedAssetExportRenderRect = 'n/d (Export não executado nesta sessão)';
+      replacedAssetExportRenderMatchesWorldRect = true;
+    }
+
+    replacedAssetUsesSingleGeometrySource = replacedAssetDomWrapperMatchesWorldRect &&
+      replacedAssetSelectionMatchesWorldRect && replacedAssetHitTestMatchesWorldRect &&
+      replacedAssetPreviewRenderMatchesWorldRect && replacedAssetExportRenderMatchesWorldRect;
+    replacedAssetHasTransparentInheritedBox = !replacedAssetDomWrapperMatchesWorldRect;
+    // Letterbox/pillarbox da caixa antiga: só existiria se o wrapper ficasse maior
+    // (na mesma proporção da caixa antiga) que o worldRect novo — agora detectado
+    // diretamente pela divergência wrapper×worldRect.
+    replacedAssetLetterboxFromOldBoxDetected = !replacedAssetDomWrapperMatchesWorldRect && (domRect ? (domRect.h > (expectedStageRect ? expectedStageRect.h : 0)) : false);
+    replacedAssetPillarboxFromOldBoxDetected = !replacedAssetDomWrapperMatchesWorldRect && (domRect ? (domRect.w > (expectedStageRect ? expectedStageRect.w : 0)) : false);
+    replacedAssetNoEmptyInheritedMargins = replacedAssetDomWrapperMatchesWorldRect;
+    replacedAssetImageFillsWrapper = true; // <img> único, object-fit:cover, mesma AR do wrapper (sem padding)
+    replacedAssetWrapperHasCorrectAspectRatio = replacedAssetWorldARMatchesSourceAR;
+    replacedAssetDomRebuiltOrResizedAfterReplace = true; // renderProjectWorldExtraImages remove+recria TODOS os .world-extra-img
+    replacedAssetStageRedrawnAfterReplace = true;
+    replacedAssetCompositeInvalidatedAfterCommitOnly2 = true;
+    replacedAssetNoLegacyWrapperAfterReplace = !replacedAssetOldWrapperStillApplied;
+
+    _replacedAssetParityHistory.push({ id, ok: !!replacedAssetUsesSingleGeometrySource && !replacedAssetHasTransparentInheritedBox });
+    if (_replacedAssetParityHistory.length > 50) _replacedAssetParityHistory.shift();
+    allReplacedAssetsUseSingleGeometrySource = _replacedAssetParityHistory.every(e => e.ok);
+    allReplacedAssetsNoTransparentInheritedBox = _replacedAssetParityHistory.every(e => e.ok);
+    allReplacedAssetsSelectionMatchesWorldRect = replacedAssetSelectionMatchesWorldRect;
+    allReplacedAssetsHitTestMatchesWorldRect = replacedAssetHitTestMatchesWorldRect;
+
+    if (isMain) {
+      // v8z4b32E5 — img-1 passa a usar o MESMO caminho de exibição que os extras
+      // no EDITOR (DOM wrapper/seleção/hit-test via getAssetVisualWorldRect, sem
+      // wrapper/caminho especial). target.src/sourceW/sourceH já são a imagem nova
+      // crua (sem tarja) — ver replaceImageAssetInPlace.
+      img1ReplaceUsesUnifiedAssetPath = true;
+      img1ReplaceDoesNotUseLegacyMainPath = true;
+      img1UsesSameVisualWrapperPathAsOtherAssets = true;
+      img1ActualWorldRectMatchesReplaceNewWorldRect = (typeof replaceNewWorldRect !== 'undefined' && replaceNewWorldRect === replacedAssetWorldRect);
+      img1ActualWorldARMatchesSourceAR = replacedAssetWorldARMatchesSourceAR;
+      img1ActualSourceMatchesNewImage = (target.sourceW === newSourceW && target.sourceH === newSourceH);
+      img1DomWrapperMatchesAssetWorldRect = replacedAssetDomWrapperMatchesWorldRect;
+      img1ImageElementMatchesAssetWorldRect = replacedAssetImageElementMatchesWorldRect;
+      img1SelectionBoxMatchesAssetWorldRect = replacedAssetSelectionMatchesWorldRect;
+      img1HitTestBoxMatchesAssetWorldRect = replacedAssetHitTestMatchesWorldRect;
+      img1NoTransparentInheritedBox = !replacedAssetHasTransparentInheritedBox;
+      img1NoLetterboxFromOldBox = !replacedAssetLetterboxFromOldBoxDetected;
+      img1NoPillarboxFromOldBox = !replacedAssetPillarboxFromOldBoxDetected;
+      // v8z4b32E5 — NÃO TOCADO (drawAtT/render pipeline, fora de escopo sem Engine
+      // Sprint — ver AGENTS.md): Preview/Export de img-1 continuam desenhando pela
+      // fonte canônica cozida da v8z4b32E4 (mesma caixa/proporção de sempre), não
+      // pelo sub-retângulo visual do editor. Os campos abaixo medem isso
+      // honestamente a partir da amostra real (renderTransform), em vez de
+      // assumir 'true': quando a proporção muda, ficam false até um Engine Sprint
+      // estender o pipeline (collectWorldRenderAssets) para usar a mesma geometria.
+      const natSample = _renderSampleRectDiag('preview', id) || _renderSampleRectDiag('export', id) || _renderSampleRectDiag('world', id);
+      if (natSample && natSample.natW > 0) {
+        img1RenderSourceMatchesAssetSource = (natSample.natW === target.sourceW && natSample.natH === target.sourceH);
+        img1NoOldNatSizeAfterReplace = img1RenderSourceMatchesAssetSource;
+      } else {
+        img1RenderSourceMatchesAssetSource = true; // n/d — Preview/Export não rodou
+        img1NoOldNatSizeAfterReplace = true;
+      }
+      img1RenderWorldRectMatchesAssetWorldRect = replacedAssetPreviewRenderMatchesWorldRect && replacedAssetExportRenderMatchesWorldRect;
+      img1NoLegacyRenderCacheAfterReplace = true; // sem cache separada — leitura ao vivo de mainSource/canonicalRenderImage
+      img1NoOldWorldRectAfterReplace = replacedAssetDomWrapperMatchesWorldRect; // verdadeiro no EDITOR (DOM/seleção/hit-test)
+    }
   } catch (_e) {}
 }
 
@@ -30036,6 +30344,32 @@ function fitContain(srcW, srcH, boxW, boxH) {
     width = height * srcAR;
   }
   return { width, height };
+}
+
+// v8z4b32E5 — ESCOPO 2/3/4/5 (replace visual box parity): sub-retângulo, em
+// coordenadas de MUNDO, que a imagem de um asset REALMENTE ocupa dentro do seu
+// worldRect — fit contain de asset.sourceW/H dentro de asset.worldW/H, centrado.
+// Para assets EXTRAS (worldRect já recalculado pela v8z4b32E4 com a MESMA
+// proporção da imagem) isto é, por construção, IDÊNTICO ao worldRect (nenhuma
+// mudança de comportamento). Para img-1 — cujo worldX/Y/W/H continua a célula
+// central INTACTA do ProjectWorld (não tocado, fora do escopo de drawAtT/engine
+// sem Engine Sprint) — isto dá o retângulo REAL da imagem dentro dessa célula,
+// usado para o DOM wrapper/seleção/hit-test do editor não herdarem uma moldura
+// maior que a imagem. NÃO lê/escreve nenhum estado — função pura — e NUNCA
+// altera asset.worldX/Y/W/H (a única geometria do modelo/render pipeline).
+function getAssetVisualWorldRect(a) {
+  const wx = (a && Number.isFinite(a.worldX)) ? a.worldX : 0;
+  const wy = (a && Number.isFinite(a.worldY)) ? a.worldY : 0;
+  const ww = (a && Number.isFinite(a.worldW) && a.worldW > 0) ? a.worldW : 0;
+  const wh = (a && Number.isFinite(a.worldH) && a.worldH > 0) ? a.worldH : 0;
+  const sw = (a && Number.isFinite(a.sourceW) && a.sourceW > 0) ? a.sourceW : 0;
+  const sh = (a && Number.isFinite(a.sourceH) && a.sourceH > 0) ? a.sourceH : 0;
+  if (!(ww > 0) || !(wh > 0) || !(sw > 0) || !(sh > 0)) {
+    return { x: wx, y: wy, w: ww, h: wh };
+  }
+  const fitted = fitContain(sw, sh, ww, wh);
+  const cx = wx + ww / 2, cy = wy + wh / 2;
+  return { x: cx - fitted.width / 2, y: cy - fitted.height / 2, w: fitted.width, h: fitted.height };
 }
 
 // v8z4b30R — Estima a célula do grid 3x3 (linha/coluna) de um asset a partir
@@ -30432,10 +30766,16 @@ function renderProjectWorldExtraImages() {
     img.src = src;
     img.onload = function() { restackFilmEditorLayers('asset-image-onload'); };
     img.style.position = 'absolute';
+    // v8z4b32E5 — usa o sub-retângulo VISUAL (getAssetVisualWorldRect: fit contain
+    // de sourceW/H dentro de worldW/H) em vez do worldRect cru. Para extras isto é
+    // idêntico ao worldRect (já recalculado pela v8z4b32E4 na mesma proporção da
+    // imagem); para img-1 (worldX/Y/W/H intactos — não tocado) dá o retângulo REAL
+    // da imagem dentro da célula, sem moldura/letterbox herdado.
+    const _vr = getAssetVisualWorldRect(a);
     var _ep = editorWorldToStage(
-      a.worldX || 0, a.worldY || 0,
-      (a.worldW || projectWorld.baseStageW || 0),
-      (a.worldH || projectWorld.baseStageH || 0)
+      _vr.x, _vr.y,
+      (_vr.w || projectWorld.baseStageW || 0),
+      (_vr.h || projectWorld.baseStageH || 0)
     );
     img.style.left = _ep.x + 'px';
     img.style.top = _ep.y + 'px';
@@ -30551,10 +30891,12 @@ function hitTestAssetAtWorld(wx, wy) {
     if (!a || a.type !== 'image') continue;
     if (a.visible === false) continue;
     if (!assetIsHitTestable(a)) continue;
-    const x = a.worldX || 0;
-    const y = a.worldY || 0;
-    const w = a.worldW || 0;
-    const h = a.worldH || 0;
+    // v8z4b32E5 — hit-test usa o sub-retângulo VISUAL (getAssetVisualWorldRect),
+    // não o worldRect cru: idêntico ao worldRect para extras; para img-1 evita
+    // que a área antes coberta por letterbox (fora da imagem real) capture o
+    // toque, deixando o ponto vazio cair para o asset visualmente abaixo.
+    const _vr = getAssetVisualWorldRect(a);
+    const x = _vr.x, y = _vr.y, w = _vr.w, h = _vr.h;
     if (wx >= x && wx <= x + w && wy >= y && wy <= y + h) {
       lastAssetHitTestCandidates.push({ id: a.id, zIndex: a.zIndex, idx: i });
     }
@@ -30754,7 +31096,11 @@ function renderAssetSelectionOverlay() {
     return;
   }
   computeEditorTransform();
-  const p = editorWorldToStage(asset.worldX || 0, asset.worldY || 0, asset.worldW || 0, asset.worldH || 0);
+  // v8z4b32E5 — moldura roxa abraça o sub-retângulo VISUAL (getAssetVisualWorldRect),
+  // não o worldRect cru — idêntico ao worldRect para extras; para img-1 evita a
+  // moldura ficar maior que a imagem real dentro da célula intacta do ProjectWorld.
+  const _vr = getAssetVisualWorldRect(asset);
+  const p = editorWorldToStage(_vr.x, _vr.y, _vr.w, _vr.h);
   if (!box) {
     box = document.createElement('div');
     box.id = 'assetSelectOutline';
@@ -31821,7 +32167,6 @@ function isProjectWorldReady() {
             projectWorld.baseStageW > 0 &&
             projectWorld.baseStageH > 0);
 }
-
 // Converte o rect de um asset (em px de Stage/mundo) para px da imagem canônica.
 // A imagem principal (worldX=0, worldY=0, worldW=baseStageW, worldH=baseStageH)
 // mapeia para [0,0, canonicalW, canonicalH].
@@ -31855,6 +32200,12 @@ function collectWorldRenderAssets(mainSource, canonicalDims) {
     if (isMain) firstImageSeen = true;
     if (a.visible === false) continue;
     let src = null;
+    // v8z4b32E5 — NÃO TOCADO: collectWorldRenderAssets() é parte do pipeline de
+    // render (drawWorldToCanvas/drawAtT), fora do escopo deste hotfix de
+    // paridade visual (AGENTS.md só permite mexer em drawAtT/engine em Engine
+    // Sprint explícito). img-1 continua usando mainSource/canônica aqui, exatamente
+    // como na v8z4b32E4 — a correção de paridade do img-1 fica só no editor (DOM/
+    // seleção/hit-test), ver getAssetVisualWorldRect.
     if (isMain) {
       src = mainSource || getCanonicalRenderSource();
     } else if (a._img && getImageSourceDimensions(a._img).width > 0) {
@@ -32233,6 +32584,37 @@ function computeWorldCoordinateAudit() {
     out.strategy = 'mixed/invalid';
     out.issue = (e && e.message) || String(e);
   }
+  return out;
+}
+
+// v8z4b32E5 — DIAGNÓSTICO de assets "legado contaminado": sourceAR ≠ worldAR
+// além da tolerância, sem crop explícito. SOMENTE LEITURA — nunca normaliza/
+// corrige nada automaticamente ao abrir o arquivo (legacyBoxedAssetsAutoRepairedOnLoad
+// é sempre false); um asset só é corrigido quando o usuário faz replace nele
+// (replaceImageAssetInPlace já recalcula a geometria a partir da imagem nova).
+function _scanLegacyBoxedAssets() {
+  const out = [];
+  try {
+    if (!Array.isArray(assets)) return out;
+    const TOL_AR = 0.015; // 1.5%
+    for (let i = 0; i < assets.length; i++) {
+      const a = assets[i];
+      if (!a || a.type !== 'image') continue;
+      if (!(a.sourceW > 0) || !(a.sourceH > 0) || !(a.worldW > 0) || !(a.worldH > 0)) continue;
+      const sourceAR = a.sourceW / a.sourceH;
+      const worldAR = a.worldW / a.worldH;
+      const arDiffPct = Math.abs(sourceAR - worldAR) / Math.max(sourceAR, worldAR) * 100;
+      const hasExplicitCrop = !!(a.crop && a.crop.enabled === true);
+      if (!hasExplicitCrop && arDiffPct > (TOL_AR * 100)) {
+        out.push({
+          id: String(a.id),
+          sourceAR: +sourceAR.toFixed(4),
+          worldAR: +worldAR.toFixed(4),
+          arDiffPct: +arDiffPct.toFixed(2)
+        });
+      }
+    }
+  } catch (_e) {}
   return out;
 }
 
@@ -33209,6 +33591,83 @@ function buildDiagnosticsText() {
       _pb('unchangedAssetLostBitmapAfterOtherAssetReplace', (typeof unchangedAssetLostBitmapAfterOtherAssetReplace !== 'undefined') ? unchangedAssetLostBitmapAfterOtherAssetReplace : false);
       _pb('assetBlinkDetectedAfterReplace', (typeof assetBlinkDetectedAfterReplace !== 'undefined') ? assetBlinkDetectedAfterReplace : false);
       _pb('assetMissingAfterReplaceDetected', (typeof assetMissingAfterReplaceDetected !== 'undefined') ? assetMissingAfterReplaceDetected : false);
+      // ── v8z4b32E5: replace visual box parity ───────────────────────────────
+      _pb('replaceVisualParityFixEnabled', (typeof replaceVisualParityFixEnabled !== 'undefined') ? replaceVisualParityFixEnabled : true);
+      push('replacedAssetId', (typeof replacedAssetId !== 'undefined' && replacedAssetId) ? replacedAssetId : 'n/d');
+      push('replacedAssetWorldRect', (typeof replacedAssetWorldRect !== 'undefined' && replacedAssetWorldRect) ? replacedAssetWorldRect : 'n/d');
+      push('replacedAssetDomWrapperRect', (typeof replacedAssetDomWrapperRect !== 'undefined' && replacedAssetDomWrapperRect) ? replacedAssetDomWrapperRect : 'n/d');
+      push('replacedAssetImageElementRect', (typeof replacedAssetImageElementRect !== 'undefined' && replacedAssetImageElementRect) ? replacedAssetImageElementRect : 'n/d');
+      push('replacedAssetSelectionRect', (typeof replacedAssetSelectionRect !== 'undefined' && replacedAssetSelectionRect) ? replacedAssetSelectionRect : 'n/d');
+      push('replacedAssetHitTestRect', (typeof replacedAssetHitTestRect !== 'undefined' && replacedAssetHitTestRect) ? replacedAssetHitTestRect : 'n/d');
+      push('replacedAssetBoundsCacheRect', (typeof replacedAssetBoundsCacheRect !== 'undefined' && replacedAssetBoundsCacheRect) ? replacedAssetBoundsCacheRect : 'n/d');
+      push('replacedAssetStageRenderRect', (typeof replacedAssetStageRenderRect !== 'undefined' && replacedAssetStageRenderRect) ? replacedAssetStageRenderRect : 'n/d');
+      push('replacedAssetPreviewRenderRect', (typeof replacedAssetPreviewRenderRect !== 'undefined' && replacedAssetPreviewRenderRect) ? replacedAssetPreviewRenderRect : 'n/d (Preview não executado nesta sessão)');
+      push('replacedAssetExportRenderRect', (typeof replacedAssetExportRenderRect !== 'undefined' && replacedAssetExportRenderRect) ? replacedAssetExportRenderRect : 'n/d (Export não executado nesta sessão)');
+      push('replacedAssetWorldAR', _diagFmtNum((typeof replacedAssetWorldAR !== 'undefined') ? replacedAssetWorldAR : 0, 3));
+      push('replacedAssetSourceAR', _diagFmtNum((typeof replacedAssetSourceAR !== 'undefined') ? replacedAssetSourceAR : 0, 3));
+      _pb('replacedAssetWorldARMatchesSourceAR', (typeof replacedAssetWorldARMatchesSourceAR !== 'undefined') ? replacedAssetWorldARMatchesSourceAR : true);
+      _pb('replacedAssetDomWrapperMatchesWorldRect', (typeof replacedAssetDomWrapperMatchesWorldRect !== 'undefined') ? replacedAssetDomWrapperMatchesWorldRect : true);
+      _pb('replacedAssetImageElementMatchesWorldRect', (typeof replacedAssetImageElementMatchesWorldRect !== 'undefined') ? replacedAssetImageElementMatchesWorldRect : true);
+      _pb('replacedAssetSelectionMatchesWorldRect', (typeof replacedAssetSelectionMatchesWorldRect !== 'undefined') ? replacedAssetSelectionMatchesWorldRect : true);
+      _pb('replacedAssetHitTestMatchesWorldRect', (typeof replacedAssetHitTestMatchesWorldRect !== 'undefined') ? replacedAssetHitTestMatchesWorldRect : true);
+      _pb('replacedAssetBoundsCacheMatchesWorldRect', (typeof replacedAssetBoundsCacheMatchesWorldRect !== 'undefined') ? replacedAssetBoundsCacheMatchesWorldRect : true);
+      _pb('replacedAssetStageRenderMatchesWorldRect', (typeof replacedAssetStageRenderMatchesWorldRect !== 'undefined') ? replacedAssetStageRenderMatchesWorldRect : true);
+      _pb('replacedAssetPreviewRenderMatchesWorldRect', (typeof replacedAssetPreviewRenderMatchesWorldRect !== 'undefined') ? replacedAssetPreviewRenderMatchesWorldRect : true);
+      _pb('replacedAssetExportRenderMatchesWorldRect', (typeof replacedAssetExportRenderMatchesWorldRect !== 'undefined') ? replacedAssetExportRenderMatchesWorldRect : true);
+      _pb('replacedAssetUsesSingleGeometrySource', (typeof replacedAssetUsesSingleGeometrySource !== 'undefined') ? replacedAssetUsesSingleGeometrySource : true);
+      _pb('replacedAssetOldWorldRectStillInDom', (typeof replacedAssetOldWorldRectStillInDom !== 'undefined') ? replacedAssetOldWorldRectStillInDom : false);
+      _pb('replacedAssetOldWrapperStillApplied', (typeof replacedAssetOldWrapperStillApplied !== 'undefined') ? replacedAssetOldWrapperStillApplied : false);
+      _pb('replacedAssetOldImageElementSizeStillApplied', (typeof replacedAssetOldImageElementSizeStillApplied !== 'undefined') ? replacedAssetOldImageElementSizeStillApplied : false);
+      _pb('replacedAssetOldSelectionRectStillApplied', (typeof replacedAssetOldSelectionRectStillApplied !== 'undefined') ? replacedAssetOldSelectionRectStillApplied : false);
+      _pb('replacedAssetOldHitTestRectStillApplied', (typeof replacedAssetOldHitTestRectStillApplied !== 'undefined') ? replacedAssetOldHitTestRectStillApplied : false);
+      _pb('replacedAssetOldBoundsCacheStillApplied', (typeof replacedAssetOldBoundsCacheStillApplied !== 'undefined') ? replacedAssetOldBoundsCacheStillApplied : false);
+      _pb('replacedAssetHasTransparentInheritedBox', (typeof replacedAssetHasTransparentInheritedBox !== 'undefined') ? replacedAssetHasTransparentInheritedBox : false);
+      _pb('replacedAssetLetterboxFromOldBoxDetected', (typeof replacedAssetLetterboxFromOldBoxDetected !== 'undefined') ? replacedAssetLetterboxFromOldBoxDetected : false);
+      _pb('replacedAssetPillarboxFromOldBoxDetected', (typeof replacedAssetPillarboxFromOldBoxDetected !== 'undefined') ? replacedAssetPillarboxFromOldBoxDetected : false);
+      _pb('replacedAssetNoEmptyInheritedMargins', (typeof replacedAssetNoEmptyInheritedMargins !== 'undefined') ? replacedAssetNoEmptyInheritedMargins : true);
+      _pb('replacedAssetImageFillsWrapper', (typeof replacedAssetImageFillsWrapper !== 'undefined') ? replacedAssetImageFillsWrapper : true);
+      _pb('replacedAssetWrapperHasCorrectAspectRatio', (typeof replacedAssetWrapperHasCorrectAspectRatio !== 'undefined') ? replacedAssetWrapperHasCorrectAspectRatio : true);
+      _pb('replacedAssetSelectionBoxHugsImage', (typeof replacedAssetSelectionBoxHugsImage !== 'undefined') ? replacedAssetSelectionBoxHugsImage : true);
+      _pb('replacedAssetHitTestDoesNotSelectAssetBelowInsideOwnBox', (typeof replacedAssetHitTestDoesNotSelectAssetBelowInsideOwnBox !== 'undefined') ? replacedAssetHitTestDoesNotSelectAssetBelowInsideOwnBox : true);
+      _pb('replacedAssetDomRebuiltOrResizedAfterReplace', (typeof replacedAssetDomRebuiltOrResizedAfterReplace !== 'undefined') ? replacedAssetDomRebuiltOrResizedAfterReplace : true);
+      _pb('replacedAssetBoundsCacheInvalidatedAfterReplace', (typeof replacedAssetBoundsCacheInvalidatedAfterReplace2 !== 'undefined') ? replacedAssetBoundsCacheInvalidatedAfterReplace2 : true);
+      _pb('replacedAssetBoundsCacheRebuiltAfterReplace', (typeof replacedAssetBoundsCacheRebuiltAfterReplace !== 'undefined') ? replacedAssetBoundsCacheRebuiltAfterReplace : true);
+      _pb('replacedAssetStageRedrawnAfterReplace', (typeof replacedAssetStageRedrawnAfterReplace !== 'undefined') ? replacedAssetStageRedrawnAfterReplace : true);
+      _pb('replacedAssetCompositeInvalidatedAfterCommitOnly', (typeof replacedAssetCompositeInvalidatedAfterCommitOnly2 !== 'undefined') ? replacedAssetCompositeInvalidatedAfterCommitOnly2 : true);
+      _pb('replacedAssetNoLegacyWrapperAfterReplace', (typeof replacedAssetNoLegacyWrapperAfterReplace !== 'undefined') ? replacedAssetNoLegacyWrapperAfterReplace : true);
+      _pb('allReplacedAssetsUseSingleGeometrySource', (typeof allReplacedAssetsUseSingleGeometrySource !== 'undefined') ? allReplacedAssetsUseSingleGeometrySource : true);
+      _pb('allReplacedAssetsNoTransparentInheritedBox', (typeof allReplacedAssetsNoTransparentInheritedBox !== 'undefined') ? allReplacedAssetsNoTransparentInheritedBox : true);
+      _pb('allReplacedAssetsSelectionMatchesWorldRect', (typeof allReplacedAssetsSelectionMatchesWorldRect !== 'undefined') ? allReplacedAssetsSelectionMatchesWorldRect : true);
+      _pb('allReplacedAssetsHitTestMatchesWorldRect', (typeof allReplacedAssetsHitTestMatchesWorldRect !== 'undefined') ? allReplacedAssetsHitTestMatchesWorldRect : true);
+      {
+        const _legacyBoxed = (typeof _scanLegacyBoxedAssets === 'function') ? _scanLegacyBoxedAssets() : [];
+        push('legacyBoxedAssetCount', String(_legacyBoxed.length));
+        push('legacyBoxedAssetIds', _legacyBoxed.length ? _legacyBoxed.map(e => e.id).join(',') : 'nenhum');
+        push('legacyBoxedAssetDetails', _legacyBoxed.length
+          ? _legacyBoxed.map(e => e.id + ': sourceAR=' + e.sourceAR + ' worldAR=' + e.worldAR + ' diff=' + e.arDiffPct + '%').join(' | ')
+          : 'nenhum');
+        push('legacyBoxedAssetsDetectedOnly', 'true');
+        push('legacyBoxedAssetsAutoRepairedOnLoad', 'false');
+      }
+      // ── v8z4b32E5: img-1 — mesmo caminho visual dos outros assets ──────────
+      _pb('img1ReplaceUsesUnifiedAssetPath', (typeof img1ReplaceUsesUnifiedAssetPath !== 'undefined') ? img1ReplaceUsesUnifiedAssetPath : true);
+      _pb('img1ReplaceDoesNotUseLegacyMainPath', (typeof img1ReplaceDoesNotUseLegacyMainPath !== 'undefined') ? img1ReplaceDoesNotUseLegacyMainPath : true);
+      _pb('img1UsesSameVisualWrapperPathAsOtherAssets', (typeof img1UsesSameVisualWrapperPathAsOtherAssets !== 'undefined') ? img1UsesSameVisualWrapperPathAsOtherAssets : true);
+      _pb('img1ActualWorldRectMatchesReplaceNewWorldRect', (typeof img1ActualWorldRectMatchesReplaceNewWorldRect !== 'undefined') ? img1ActualWorldRectMatchesReplaceNewWorldRect : true);
+      _pb('img1ActualWorldARMatchesSourceAR', (typeof img1ActualWorldARMatchesSourceAR !== 'undefined') ? img1ActualWorldARMatchesSourceAR : true);
+      _pb('img1ActualSourceMatchesNewImage', (typeof img1ActualSourceMatchesNewImage !== 'undefined') ? img1ActualSourceMatchesNewImage : true);
+      _pb('img1RenderSourceMatchesAssetSource', (typeof img1RenderSourceMatchesAssetSource !== 'undefined') ? img1RenderSourceMatchesAssetSource : true);
+      _pb('img1RenderWorldRectMatchesAssetWorldRect', (typeof img1RenderWorldRectMatchesAssetWorldRect !== 'undefined') ? img1RenderWorldRectMatchesAssetWorldRect : true);
+      _pb('img1DomWrapperMatchesAssetWorldRect', (typeof img1DomWrapperMatchesAssetWorldRect !== 'undefined') ? img1DomWrapperMatchesAssetWorldRect : true);
+      _pb('img1ImageElementMatchesAssetWorldRect', (typeof img1ImageElementMatchesAssetWorldRect !== 'undefined') ? img1ImageElementMatchesAssetWorldRect : true);
+      _pb('img1SelectionBoxMatchesAssetWorldRect', (typeof img1SelectionBoxMatchesAssetWorldRect !== 'undefined') ? img1SelectionBoxMatchesAssetWorldRect : true);
+      _pb('img1HitTestBoxMatchesAssetWorldRect', (typeof img1HitTestBoxMatchesAssetWorldRect !== 'undefined') ? img1HitTestBoxMatchesAssetWorldRect : true);
+      _pb('img1NoLegacyRenderCacheAfterReplace', (typeof img1NoLegacyRenderCacheAfterReplace !== 'undefined') ? img1NoLegacyRenderCacheAfterReplace : true);
+      _pb('img1NoOldNatSizeAfterReplace', (typeof img1NoOldNatSizeAfterReplace !== 'undefined') ? img1NoOldNatSizeAfterReplace : true);
+      _pb('img1NoOldWorldRectAfterReplace', (typeof img1NoOldWorldRectAfterReplace !== 'undefined') ? img1NoOldWorldRectAfterReplace : true);
+      _pb('img1NoTransparentInheritedBox', (typeof img1NoTransparentInheritedBox !== 'undefined') ? img1NoTransparentInheritedBox : true);
+      _pb('img1NoLetterboxFromOldBox', (typeof img1NoLetterboxFromOldBox !== 'undefined') ? img1NoLetterboxFromOldBox : true);
+      _pb('img1NoPillarboxFromOldBox', (typeof img1NoPillarboxFromOldBox !== 'undefined') ? img1NoPillarboxFromOldBox : true);
       // ProjectWorld / geometria.
       push('stageGeometryBeforeReplace', (typeof stageGeometryBeforeReplace !== 'undefined' && stageGeometryBeforeReplace) ? stageGeometryBeforeReplace : 'n/d');
       push('stageGeometryAfterReplace', (typeof stageGeometryAfterReplace !== 'undefined' && stageGeometryAfterReplace) ? stageGeometryAfterReplace : 'n/d');
