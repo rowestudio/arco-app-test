@@ -1,3 +1,29 @@
+## v8z4b32E4
+
+Base confirmada antes do patch: `v8z4b32E3` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
+
+### Escopo
+- [x] `replaceImageAssetInPlace()` recalcula `worldW/worldH` (assets extras) por fit contain a partir da proporção natural da imagem nova, dentro da caixa de referência (`slotBox` = `ProjectWorld.baseStageW/H`), mantendo o centro do asset anterior.
+- [x] Imagem principal (img-1): bake no canvas canônico (`imgNatW`×`imgNatH`) passa a usar fit contain (em vez de cover) — `getStateAtT`/frames/curvas/`ProjectWorld` intactos.
+- [x] `asset.crop` é resetado em todo replace (`enabled:false`, retângulo cheio).
+- [x] Commit atômico: asset só é alterado após `img.onload`; falha de decode mantém a imagem antiga.
+
+### Validação obrigatória
+- [ ] Menu mostra "Arco Motion App v8z4b32E4" (`APP_VERSION`=`APP_VERSION_NAME`=`v8z4b32E4`).
+- [ ] Inserir imagem nova continua entrando inteira, sem crop (fit contain), sem alteração de fluxo.
+- [ ] Trocar uma imagem vertical por horizontal entra inteira, sem crop, sem distorção.
+- [ ] Trocar uma imagem horizontal por vertical entra inteira, sem crop, sem distorção.
+- [ ] Trocar uma imagem quadrada por vertical/horizontal entra inteira.
+- [ ] A imagem trocada preserva o centro visual, `zIndex`, slot, `visible` e seleção do asset anterior.
+- [ ] A imagem trocada não herda crop/sourceRect/formato visual do asset anterior.
+- [ ] Replace continua mirando o asset correto (toolbar → `selectedAssetId`; Layers → `assetId` da linha); nunca cai em img-1/slot central indevidamente.
+- [ ] `assets.length` não muda no replace; img-1 continua asset normal.
+- [ ] Movimento de assets e reorder do painel Layers continuam funcionando.
+- [ ] Preview/Export camera parity preservado (sem pulos); Export usa WebCodecs; `exportSuccess:true`.
+- [ ] A imagem substituída aparece inteira no Stage, no Preview e no MP4 exportado; nenhuma outra imagem desaparece/pisca.
+- [ ] Diagnóstico mostra `replaceDoesNotInheritPreviousCrop:true`, `replaceDoesNotCropNewImage:true`, `replaceDoesNotDistortNewImage:true`, `replaceNewWorldARMatchesSourceAR:true`, `replaceRecalculatesWorldRectFromNewImageAspectRatio:true`, `replaceCenterPreserved:true`, `replaceCommittedAtomically:true`, `replacedImageVisibleInPreview:true`, `replacedImageVisibleInExport:true`, `unchangedAssetLostBitmapAfterOtherAssetReplace:false`, `assetBlinkDetectedAfterReplace:false`, `smokeTestFallback:false`.
+- [ ] Teste em iPhone/Safari real (fechar/reabrir app, trocar imagens de proporções diferentes, Preview, Export MP4).
+
 ## v8z4b31S
 
 Base confirmada antes do patch: `v8z4b31R` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
