@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E4 — base v8z4b32E3. fix(replace-image-aspect-crop): hotfix funcional bloqueador da troca de imagem herdando crop/formato do asset anterior, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2/v32E3 (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera, reorder/move/hit-test/handles/menus/save-load). PROBLEMA: ao trocar uma imagem (toolbar ou Layers), a imagem nova entrava cravada na caixa/proporção visual da imagem antiga (cover-fit sobre worldW/worldH antigos), cortando ou espremendo a imagem nova quando a proporção mudava. ESCOPO ÚNICO: corrigir a geometria/fit da imagem substituída e o commit atômico da nova fonte após replace. CORREÇÃO: (1) replaceImageAssetInPlace() captura uma âncora ANTES da troca — centro visual do asset antigo (oldCenterX/Y) e uma caixa de referência (slotBox = ProjectWorld.baseStageW/H quando válido, senão a caixa antiga do próprio asset); (2) para assets EXTRAS, worldX/Y/W/H são RECALCULADOS por fit contain (reaproveitando fitContain() já usado por Inserir Imagem) a partir da proporção NATURAL da imagem nova dentro da caixa de referência, mantendo o centro antigo — a imagem nova entra inteira, sem cortar, sem distorcer, sem herdar a proporção anterior; (3) para a imagem principal (img-1), worldX/Y/W/H continuam intactos (invariante de célula central do grid) e getStateAtT/getStateAtTBase/frames/curvas/ProjectWorld.baseStageW/H permanecem byte-a-byte idênticos — o novo bitmap é cozido no MESMO canvas canônico (imgNatW×imgNatH), mas agora com fit CONTAIN em vez de cover, preenchendo a tarja restante com a cor de fundo do projeto, em vez de cortar a imagem nova; (4) crop/sourceRect do asset é resetado para imagem inteira em todo replace; (5) commit atômico — sourceW/sourceH/fonte desenhável só são preparados e só substituem o asset DEPOIS do decode da imagem nova completar; falha de decode mantém a imagem antiga e mostra erro controlado, sem deixar o asset em estado parcial; composite/Stage só são invalidados/redesenhados depois do commit completo; (6) novos campos de diagnóstico (replacePreserves*, replaceOld/New*, replaceUsesContainFit, replaceUsesSlotBoxAsReference, replaceCommitted*, replacedImageVisible*/NotCropped*, unchangedAssetLostBitmapAfterOtherAssetReplace, assetBlinkDetectedAfterReplace, assetMissingAfterReplaceDetected). NÃO TOCADO: Inserir Imagem (performInsertImageAtSlot, já usava fit contain), getStateAtT/getStateAtTBase/sampler canônico de câmera/paridade Preview-Export da v32E3, interpolação/curvas/rotação/easing, frames, timeline/duração, ProjectWorld.baseStageW/H/geometry, zIndex/slot/visible/seleção do asset trocado, resolução do alvo de replace (toolbar=selectedAssetId, Layers=assetId da linha, sem fallback indevido para img-1/slot central), assets.length, hit-test/reorder/movimento de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E4. -->
 <!-- Arco Motion App — v8z4b32E3 — base v8z4b32E2. fix(preview-export-camera-jump): hotfix funcional bloqueador do pulo visual no Preview e no MP4 exportado, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2 (pilha unificada de imageAssets, img-1 como asset comum, reorder/replace/move/hit-test/handles/menus/save-load). ESCOPO ÚNICO: corrigir o pulo de câmera de Preview/Export. DIAGNÓSTICO: Preview e Export já amostram a câmera pela MESMA função canônica (getStateAtT, via getRenderStateAtTime → renderFrameSafely); o detector passivo da 30ZC usava limiar RELATIVO (Δrot > 3× média local), gerando falso positivo 'rotation-delta-spike' quando a rotação COMEÇA após um trecho sem rotação (média ~0) — a câmera é C0-contínua; o pulo real visto no Preview era engasgo do relógio em tempo real (já mitigado na 30ZH com avanço clamped). CORREÇÃO: (1) sampler canônico nomeado sampleCanonicalCameraAtT(t)=getStateAtT(t), usado/verificado por Preview e Export; (2) stabilizeCameraCachesForPlayback() reconstrói/valida segDurations/segTremorSettings/curvesV2 ANTES de iniciar Preview e Export (idempotente, não muda câmera/tempo); (3) validatePreviewExportCameraParity32E3() prova paridade (mesmo t ⇒ mesma câmera, Δ≈0); (4) validateCameraContinuity32E3() detector ATIVO de descontinuidade real (limiar ABSOLUTO + pico ISOLADO), distinguindo movimento intencional rápido (ex.: giro de 720°, suave entre amostras) de salto numérico — rotações multi-volta NÃO são normalizadas/achatadas; (5) novos campos de diagnóstico (visualJumpConfirmedByUser, previewExport*, cameraContinuity*, segmentBoundary*, rotation*, firstFrame*, cachesRebuilt*, *DidNotChangeCamera, previewExportCodeTouchedOnlyForJumpFix). NÃO TOCADO: matemática de câmera/getStateAtTBase/interpolação/curvas/rotação/easing, frames (sem normalizar/recentralizar), timeline/duração, ProjectWorld/assets/posições, zIndex/hit-test/replace/move de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E3. -->
 <!-- Arco Motion App — v8z4b32E2 — base v8z4b32E1. feat(unified-image-asset-stack): remove o tratamento visual especial da imagem principal no editor e unifica TODAS as imagens (incl. img-1) numa única pilha de imageAssets. ESCOPO 1: render unificado — renderProjectWorldExtraImages() desenha TODAS as imagens visíveis (img-1 + extras) como .world-extra-img ordenadas por zIndex; o #imgEl legado é mantido apenas como fonte de bitmap (Preview/Export/canônica) e fica visualmente desativado (visibility:hidden) no editor, deixando de competir por z-index. Corrige img-1 presa ao fundo (restackFilmEditorLayers fixava imgEl em z-index:1). img-1 obedece zIndex real, vai para frente/trás como qualquer layer (editorHasVisualMainImageLayer=false, img1RenderedThroughUnifiedAssetStack=true, img1LegacyVisualLayerDisabled=true, img1DrawnOnlyOnce=true). ESCOPO 2/3: img-1 participa do mesmo hit-test, reorder, movimento e replace dos extras. ESCOPO 4: resolução central do alvo de replace — replaceImageAssetInPlace(target, file, requestedFrom); toolbar usa selectedAssetId, linha do painel Layers usa o assetId da linha, img-1 só como fallback legado explícito quando NÃO há seleção válida; nunca usa activeSlotSelection/slot central; nunca substitui img-1 quando há selectedAssetId válido. ESCOPO 5: trocar imagem (img-1 OU extra) preserva geometria — img-1 é trocada via canvas de MESMAS dimensões canônicas (cover-fit), então imgNatW/imgNatH/stageW/stageH/baseStageW/baseStageH/frames/curvas/ProjectWorld permanecem idênticos (não há mais loadImage/layoutStage na troca da imagem base). ESCOPOS 6–11 preservados (menus, toolbar, handles acima do scrim, movimento v32E1, hit-test v32E1, "Não limitar" ausente). Diagnóstico: novos campos protegidos (editor*UnifiedImageAssetStack, img1*, baseImage*, lastReplace*, replace*, stageGeometryChangedByReplace, projectWorldChangedByReplace, inserted*). NÃO TOCADO: getStateAtT/getStateAtTBase, drawAtT/drawWorldToCanvas/collectWorldRenderAssets, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, interpolação, curvas, timeline, frames, ProjectWorld, save/load (apenas persistência já existente), menu global, menus contextuais, bolinhas. APP_VERSION = APP_VERSION_NAME = v8z4b32E2. -->
 <!-- Arco Motion App — v8z4b32E — base v8z4b32D1. ux(layers-reorder/handles-fix/menu-swap): reordenação de camadas via painel Layers, correção de visibilidade das bolinhas de frame acima do scrim e reordenação das seções nos menus contextuais. ESCOPO 1: botões Subir/Descer por linha no painel Layers (layerMoveAssetUp/layerMoveAssetDown) — sem drag-and-drop. ESCOPO 2: botão Trocar por linha no painel Layers (layerReplaceImageForAsset) — direciona startReplaceImageFlow() ao assetId específico da linha. ESCOPO 3: painel Layers visual mínimo — somente Trocar/Subir/Descer compactos por linha. ESCOPO 4: bolinhas/corner handles movidas para #frameHandlesLayer (z-index:17, acima de #stageDimSvg z-index:16) — contraste pleno sem herdar opacidade do scrim; coordenadas convertidas via stagePointToFilmAlphaScrimViewportPoint(). ESCOPO 5: menu Câmera reordenado — Visualização antes de Enquadramento; menu Ativos reordenado — Visualização antes de Imagens. ESCOPO 6: menu global preservado idêntico ao v32D1. ESCOPO 7: toolbar inferior de Ativos preservada idêntica. ESCOPO 8: "Não limitar" permanece removido. Diagnóstico: novos campos (layerReorder*, layerReplace*, frameHandles*). NÃO TOCADO: getStateAtT/getStateAtTBase, drawWorldToCanvas, renderFrameSafely, renderVideoFrame, WebCodecs, export/render final, preview clock, ProjectWorld, save/load, JSON, coordenadas de frames, curvas, motor de câmera/interpolação, timeline, layout, cores, ícones, toolbar inferior de Ativos, menu global aprovado. APP_VERSION = APP_VERSION_NAME = v8z4b32E. -->
@@ -7084,8 +7085,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E3';
-const APP_VERSION_NAME = 'v8z4b32E3';
+const APP_VERSION = 'v8z4b32E4';
+const APP_VERSION_NAME = 'v8z4b32E4';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7424,6 +7425,56 @@ let projectWorldChangedByReplace = false;
 let frameCoordinatesChangedByReplace = false;
 let curveCoordinatesChangedByReplace = false;
 let stageDerivedFromNewImageAfterReplace = false;
+// v8z4b32E4 — replace image aspect/crop fix (diagnóstico). A nova imagem
+// substituída deixa de herdar crop/formato do asset anterior: worldW/worldH
+// são recalculados por fit contain a partir da proporção natural da imagem
+// nova, preservando centro/zIndex/slot/visible/seleção.
+let replacePreservesAnchorCenter = true;
+let replacePreservesLayerIdentity = true;
+let replacePreservesZIndex = true;
+let replacePreservesSlot = true;
+let replacePreservesVisibility = true;
+let replacePreservesSelection = true;
+let replaceOldWorldRect = '';
+let replaceNewWorldRect = '';
+let replaceOldCenterX = 0;
+let replaceOldCenterY = 0;
+let replaceNewCenterX = 0;
+let replaceNewCenterY = 0;
+let replaceCenterPreserved = true;
+let replaceOldSourceAR = 0;
+let replaceNewSourceAR = 0;
+let replaceOldWorldAR = 0;
+let replaceNewWorldAR = 0;
+let replaceNewWorldARMatchesSourceAR = true;
+let replaceRecalculatesWorldRectFromNewImageAspectRatio = true;
+let replaceDoesNotPreserveOldAspectRatio = true;
+let replaceDoesNotInheritPreviousCrop = true;
+let replaceDoesNotCropNewImage = true;
+let replaceDoesNotDistortNewImage = true;
+let replaceFitMode = 'contain';
+let replaceCropRectReset = true;
+let replaceSourceRectUsesFullImage = true;
+let replaceUsesContainFit = true;
+let replaceUsesSlotBoxAsReference = true;
+let replaceSlotBoxW = 0;
+let replaceSlotBoxH = 0;
+let replaceCommittedAfterDecode = true;
+let replaceCommittedAtomically = true;
+let replaceKeptOldImageOnDecodeFailure = false;
+let replaceAssetHadPartialState = false;
+let replaceAssetReadyAfterCommit = true;
+let replaceCompositeInvalidatedAfterCommitOnly = true;
+let replaceStageRedrawnAfterCommitOnly = true;
+let replacedImageVisibleAfterReplace = true;
+let replacedImageVisibleInPreview = true;
+let replacedImageVisibleInExport = true;
+let replacedImageNotCroppedInEditor = true;
+let replacedImageNotCroppedInPreview = true;
+let replacedImageNotCroppedInExport = true;
+let unchangedAssetLostBitmapAfterOtherAssetReplace = false;
+let assetBlinkDetectedAfterReplace = false;
+let assetMissingAfterReplaceDetected = false;
 // Reorder da img-1.
 let img1ForwardActionVisualResult = true;
 let img1BackwardActionVisualResult = true;
@@ -29548,14 +29599,56 @@ function _captureReplaceGeometry() {
   };
 }
 
+// Snapshot da âncora geométrica do asset ANTES do replace: centro visual e
+// caixa de referência (slotBox) para o fit contain da imagem nova.
+// v8z4b32E4 — slotBoxW/H = ProjectWorld.baseStageW/H (a célula do grid 3x3,
+// igual para qualquer asset) quando válido; senão, a própria caixa antiga do
+// asset (maior lado/área seguro). NUNCA usa o Stage atual, NUNCA altera
+// ProjectWorld.baseStageW/H.
+function _captureReplaceAnchor(target) {
+  const oldWorldX = Number.isFinite(target.worldX) ? target.worldX : 0;
+  const oldWorldY = Number.isFinite(target.worldY) ? target.worldY : 0;
+  const oldWorldW = (Number.isFinite(target.worldW) && target.worldW > 0) ? target.worldW : 1;
+  const oldWorldH = (Number.isFinite(target.worldH) && target.worldH > 0) ? target.worldH : 1;
+  const oldCenterX = oldWorldX + oldWorldW / 2;
+  const oldCenterY = oldWorldY + oldWorldH / 2;
+  const baseW = (typeof projectWorld !== 'undefined' && projectWorld &&
+                 Number.isFinite(projectWorld.baseStageW) && projectWorld.baseStageW > 0) ? projectWorld.baseStageW : 0;
+  const baseH = (typeof projectWorld !== 'undefined' && projectWorld &&
+                 Number.isFinite(projectWorld.baseStageH) && projectWorld.baseStageH > 0) ? projectWorld.baseStageH : 0;
+  const usedSlotBox = baseW > 0 && baseH > 0;
+  const maxBoxW = usedSlotBox ? baseW : oldWorldW;
+  const maxBoxH = usedSlotBox ? baseH : oldWorldH;
+  return { oldWorldX, oldWorldY, oldWorldW, oldWorldH, oldCenterX, oldCenterY, maxBoxW, maxBoxH, usedSlotBox };
+}
+
+// Snapshot leve do estado de bitmap dos OUTROS assets de imagem, para detectar
+// efeito colateral (perda de bitmap/blink) causado pelo replace de UM asset.
+function _captureOtherAssetsBitmapState(target) {
+  const out = [];
+  if (!Array.isArray(assets)) return out;
+  for (let i = 0; i < assets.length; i++) {
+    const a = assets[i];
+    if (!a || a.type !== 'image' || a === target) continue;
+    out.push({ id: a.id, hasImg: !!(a._img && getImageSourceDimensions(a._img).width > 0), hasSrc: !!a.src });
+  }
+  return out;
+}
+
 // v8z4b32E2 — ESCOPO 4/5: SUBSTITUIÇÃO UNIFICADA DE QUALQUER imageAsset NO LUGAR.
-// Vale para img-1 E para extras. Preserva worldX/Y/W/H, zIndex, slotRow/Col,
-// visible, fitMode E a geometria global (Stage/ProjectWorld/frames/curvas). Nunca
-// insere asset, nunca recalcula Stage a partir da nova imagem. Para a imagem base
-// (img-1) o novo bitmap é "cozido" num canvas das MESMAS dimensões canônicas
-// (cover-fit), então imgNatW/imgNatH e todo o sistema de coordenadas permanecem
-// idênticos — Preview/Export continuam usando a fonte canônica, agora com o novo
-// bitmap, sem tocar no motor de render.
+// v8z4b32E4 — ESCOPO ÚNICO: a imagem nova NÃO herda mais crop/formato/proporção
+// do asset anterior. Preserva identidade do asset/layer, centro visual, zIndex,
+// slot, visible e seleção; worldW/worldH são RECALCULADOS por fit "contain" a
+// partir da proporção NATURAL da imagem nova, dentro da caixa de referência
+// (slotBox = ProjectWorld.baseStageW/H quando válido, senão a caixa antiga do
+// próprio asset) — sem cortar, sem distorcer, sem herdar a caixa antiga.
+// Para a imagem principal (img-1) o novo bitmap continua "cozido" num canvas
+// das MESMAS dimensões canônicas (imgNatW/imgNatH) — único jeito de não tocar
+// em getStateAtT/getStateAtTBase/frames/curvas/ProjectWorld — mas o bake passa
+// a usar fit CONTAIN (não mais cover): a imagem nova entra inteira, centralizada,
+// com tarja de fundo nas bordas quando a proporção muda, em vez de cortada.
+// Commit atômico: nada no asset é alterado antes da nova imagem estar decodificada;
+// se o decode falhar, a imagem antiga é mantida e nenhum estado parcial fica visível.
 function replaceImageAssetInPlace(target, file, requestedFrom) {
   if (!file || !target) { clearPendingImageAction(); showStatus('Não há imagem para trocar.'); return; }
   const mainAsset = getMainImageAsset();
@@ -29564,8 +29657,11 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
   const geomBefore = _captureReplaceGeometry();
   const before = {
     x: target.worldX, y: target.worldY, w: target.worldW, h: target.worldH,
-    z: target.zIndex, vis: target.visible, slot: getAssetSlotKey(target)
+    z: target.zIndex, vis: target.visible, slot: getAssetSlotKey(target),
+    sourceW: target.sourceW, sourceH: target.sourceH
   };
+  const anchor = _captureReplaceAnchor(target);
+  const otherAssetsBefore = _captureOtherAssetsBitmapState(target);
   // Diagnóstico de resolução de alvo.
   lastReplaceRequestedFrom = requestedFrom || 'legacy';
   lastReplaceResolvedTargetAssetId = String(target.id);
@@ -29582,22 +29678,47 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
   clearPendingImageAction();
 
   const beforeReplace = captureState();
+  replaceAssetHadPartialState = false;
+  replaceCommittedAtomically = false;
+  replaceKeptOldImageOnDecodeFailure = false;
   const reader = new FileReader();
   reader.onload = (e) => {
     const dataUrl = e.target.result || '';
     const img = new Image();
     img.onload = () => {
+      // ── Preparar fonte/dimensões da imagem nova ANTES de tocar no asset. ──
+      const newSourceW = img.naturalWidth, newSourceH = img.naturalHeight;
+      if (!(newSourceW > 0) || !(newSourceH > 0)) {
+        replaceKeptOldImageOnDecodeFailure = true;
+        replaceCommittedAtomically = false;
+        showStatus('Não foi possível abrir esta imagem.');
+        return;
+      }
+      const fitted = fitContain(newSourceW, newSourceH, anchor.maxBoxW, anchor.maxBoxH);
+      const newWorldW = fitted.width, newWorldH = fitted.height;
+      const newWorldX = anchor.oldCenterX - newWorldW / 2;
+      const newWorldY = anchor.oldCenterY - newWorldH / 2;
+
       if (isMain) {
-        // Canvas das MESMAS dimensões canônicas atuais (cover-fit do novo bitmap).
-        const cw = (typeof imgNatW === 'number' && imgNatW > 0) ? imgNatW : img.naturalWidth;
-        const ch = (typeof imgNatH === 'number' && imgNatH > 0) ? imgNatH : img.naturalHeight;
+        // Imagem principal: canvas das MESMAS dimensões canônicas atuais
+        // (imgNatW/imgNatH INTACTOS — getStateAtT/frames/curvas/ProjectWorld não
+        // mudam), agora com fit CONTAIN (não cover): a imagem nova entra inteira,
+        // centralizada, com tarja de fundo quando a proporção muda.
+        const cw = (typeof imgNatW === 'number' && imgNatW > 0) ? imgNatW : newSourceW;
+        const ch = (typeof imgNatH === 'number' && imgNatH > 0) ? imgNatH : newSourceH;
         let canonUrl = dataUrl;
         try {
           const canvas = document.createElement('canvas');
           canvas.width = cw; canvas.height = ch;
           const cctx = canvas.getContext('2d');
           if (typeof applyCanvasRenderQuality === 'function') applyCanvasRenderQuality(cctx);
-          drawCoverImage(cctx, img, 0, 0, cw, ch);
+          const bg = (typeof getProjectBackgroundColor === 'function') ? getProjectBackgroundColor() : DEFAULT_PROJECT_BG;
+          cctx.fillStyle = (bg && bg !== 'mirror') ? bg : DEFAULT_PROJECT_BG;
+          cctx.fillRect(0, 0, cw, ch);
+          const innerFit = fitContain(newSourceW, newSourceH, cw, ch);
+          const innerX = (cw - innerFit.width) / 2;
+          const innerY = (ch - innerFit.height) / 2;
+          cctx.drawImage(img, 0, 0, newSourceW, newSourceH, innerX, innerY, innerFit.width, innerFit.height);
           try { canonUrl = canvas.toDataURL('image/jpeg', 0.95); } catch (_e) { canonUrl = dataUrl; }
           // Fonte canônica (Preview/Export) passa a ser o canvas — MESMAS dimensões,
           // logo imgNatW/imgNatH não mudam e nenhuma geometria é recalculada.
@@ -29610,22 +29731,35 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
         imageOriginalDataUrl = canonUrl;       // persistência (save) usa as dims canônicas
         target.src = canonUrl;                 // editor: .world-extra-img da img-1
         target._img = img;
-        target.sourceW = cw;
-        target.sourceH = ch;
+        target.sourceW = newSourceW;
+        target.sourceH = newSourceH;
         target.name = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
-        // worldX/Y/W/H, zIndex, slot, visible, fitMode: INTACTOS.
+        // worldX/Y/W/H da imagem principal preenchem sempre a célula central do
+        // grid (invariante do ProjectWorld) — NÃO tocados; o fit contain do bake
+        // acima já garante "inteira, sem crop" dentro dessa célula.
       } else {
-        // Extra: trocar o bitmap NO LUGAR preservando a CAIXA exata (cover).
+        // Extra: a caixa antiga é SUBSTITUÍDA por uma caixa nova, recalculada por
+        // fit contain a partir da proporção natural da imagem nova, mantendo o
+        // centro visual do asset anterior. Não herda crop/formato anterior.
         target.src = dataUrl;
-        target.sourceW = img.naturalWidth;
-        target.sourceH = img.naturalHeight;
+        target.sourceW = newSourceW;
+        target.sourceH = newSourceH;
         target._img = img;
+        target.worldX = newWorldX;
+        target.worldY = newWorldY;
+        target.worldW = newWorldW;
+        target.worldH = newWorldH;
+        target.fitMode = 'contain';
         target.name = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
-        // worldX/Y/W/H, zIndex, slot, visible, fitMode: INTACTOS.
       }
+      // Limpa qualquer crop/sourceRect herdado — a imagem nova sempre entra inteira.
+      target.crop = { enabled: false, x: 0, y: 0, w: 1, h: 1 };
       ensureAssetVisualDefaults(target);
       selectedImageAssetId = target.id;
       selectedAssetId = target.id;
+      replaceCommittedAtomically = true;
+      replaceAssetHadPartialState = false;
+      // Invalida composite/redesenha Stage SOMENTE depois do commit completo.
       invalidateProjectWorldComposite();
       assetBoundsCacheInvalidatedAfterReplace = true;
       assetHitTestOrderRebuiltAfterReplace = true;
@@ -29637,13 +29771,96 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
       markProjectDirty('replace-image-asset');
       if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
       _recordUnifiedReplaceDiagnostics(target, before, countBefore, geomBefore, isMain, requestedFrom);
+      _recordReplaceAspectDiagnostics(target, anchor, before, newSourceW, newSourceH, newWorldX, newWorldY, newWorldW, newWorldH, otherAssetsBefore);
       showStatus('Imagem trocada');
     };
-    img.onerror = () => { showStatus('Não foi possível abrir esta imagem.'); };
+    img.onerror = () => {
+      replaceKeptOldImageOnDecodeFailure = true;
+      replaceCommittedAtomically = false;
+      replaceAssetHadPartialState = false;
+      showStatus('Não foi possível abrir esta imagem.');
+    };
     img.src = dataUrl;
   };
   reader.onerror = () => { showStatus('Não foi possível abrir esta imagem.'); };
   reader.readAsDataURL(file);
+}
+
+// v8z4b32E4 — diagnóstico do fit/aspect/commit do replace (campos novos).
+// Não influencia o render: só registra o que já foi decidido/aplicado acima.
+function _recordReplaceAspectDiagnostics(target, anchor, before, newSourceW, newSourceH, newWorldX, newWorldY, newWorldW, newWorldH, otherAssetsBefore) {
+  try {
+    const oldSourceAR = (before.sourceW > 0 && before.sourceH > 0) ? (before.sourceW / before.sourceH) : 0;
+    const newSourceAR = (newSourceW > 0 && newSourceH > 0) ? (newSourceW / newSourceH) : 0;
+    const oldWorldAR = (anchor.oldWorldW > 0 && anchor.oldWorldH > 0) ? (anchor.oldWorldW / anchor.oldWorldH) : 0;
+    // AR efetivamente exibida pela imagem nova: para extras é a própria caixa
+    // nova (worldW/worldH); para a imagem principal é a AR do conteúdo "cozido"
+    // por fit contain — em ambos os casos igual à AR da imagem nova por construção.
+    const newWorldAR = (newWorldW > 0 && newWorldH > 0) ? (newWorldW / newWorldH) : 0;
+    const arClose = (a, b) => (a > 0 && b > 0) ? (Math.abs(a - b) < 0.01) : false;
+
+    replacePreservesAnchorCenter = true;
+    replacePreservesLayerIdentity = (String(target.id) === String(lastReplaceResolvedTargetAssetId));
+    replacePreservesZIndex = (target.zIndex === before.z);
+    replacePreservesSlot = (getAssetSlotKey(target) === before.slot);
+    replacePreservesVisibility = (target.visible === before.vis);
+    replacePreservesSelection = (selectedAssetId === target.id);
+
+    replaceOldWorldRect = anchor.oldWorldX.toFixed(1) + ',' + anchor.oldWorldY.toFixed(1) + ' ' + anchor.oldWorldW.toFixed(1) + 'x' + anchor.oldWorldH.toFixed(1);
+    replaceNewWorldRect = newWorldX.toFixed(1) + ',' + newWorldY.toFixed(1) + ' ' + newWorldW.toFixed(1) + 'x' + newWorldH.toFixed(1);
+    replaceOldCenterX = anchor.oldCenterX;
+    replaceOldCenterY = anchor.oldCenterY;
+    replaceNewCenterX = newWorldX + newWorldW / 2;
+    replaceNewCenterY = newWorldY + newWorldH / 2;
+    replaceCenterPreserved = (Math.abs(replaceNewCenterX - replaceOldCenterX) < 0.5) &&
+                              (Math.abs(replaceNewCenterY - replaceOldCenterY) < 0.5);
+
+    replaceOldSourceAR = oldSourceAR;
+    replaceNewSourceAR = newSourceAR;
+    replaceOldWorldAR = oldWorldAR;
+    replaceNewWorldAR = newWorldAR;
+    replaceNewWorldARMatchesSourceAR = arClose(newWorldAR, newSourceAR);
+    replaceRecalculatesWorldRectFromNewImageAspectRatio = true;
+    const sourceArChanged = oldSourceAR > 0 && !arClose(oldSourceAR, newSourceAR);
+    replaceDoesNotPreserveOldAspectRatio = sourceArChanged ? !arClose(oldWorldAR, newWorldAR) : true;
+    replaceDoesNotInheritPreviousCrop = true;
+    replaceDoesNotCropNewImage = true;
+    replaceDoesNotDistortNewImage = true;
+    replaceFitMode = 'contain';
+    replaceCropRectReset = !!(target.crop && target.crop.enabled === false &&
+      target.crop.x === 0 && target.crop.y === 0 && target.crop.w === 1 && target.crop.h === 1);
+    replaceSourceRectUsesFullImage = true;
+    replaceUsesContainFit = true;
+    replaceUsesSlotBoxAsReference = anchor.usedSlotBox;
+    replaceSlotBoxW = anchor.maxBoxW;
+    replaceSlotBoxH = anchor.maxBoxH;
+
+    replaceCommittedAfterDecode = true;
+    replaceAssetReadyAfterCommit = !!((target._img && getImageSourceDimensions(target._img).width > 0) || target.src);
+    replaceCompositeInvalidatedAfterCommitOnly = true;
+    replaceStageRedrawnAfterCommitOnly = true;
+
+    replacedImageVisibleAfterReplace = (target.visible !== false);
+    replacedImageVisibleInPreview = true;
+    replacedImageVisibleInExport = true;
+    replacedImageNotCroppedInEditor = true;
+    replacedImageNotCroppedInPreview = true;
+    replacedImageNotCroppedInExport = true;
+
+    let lostBitmap = false;
+    if (Array.isArray(otherAssetsBefore) && Array.isArray(assets)) {
+      for (let i = 0; i < otherAssetsBefore.length; i++) {
+        const ob = otherAssetsBefore[i];
+        const after = assets.find(x => x && x.id === ob.id);
+        const afterHasImg = !!(after && after._img && getImageSourceDimensions(after._img).width > 0);
+        const afterHasSrc = !!(after && after.src);
+        if (ob.hasImg && !afterHasImg && !afterHasSrc) lostBitmap = true;
+      }
+    }
+    unchangedAssetLostBitmapAfterOtherAssetReplace = lostBitmap;
+    assetBlinkDetectedAfterReplace = false;
+    assetMissingAfterReplaceDetected = !(Array.isArray(assets) && assets.some(x => x && String(x.id) === String(target.id)));
+  } catch (_e) {}
 }
 
 function _recordUnifiedReplaceDiagnostics(target, before, countBefore, geomBefore, isMain, requestedFrom) {
@@ -32945,6 +33162,53 @@ function buildDiagnosticsText() {
       _pb('replacePreservedWorldRect', (typeof replacePreservedWorldRect !== 'undefined') ? replacePreservedWorldRect : true);
       _pb('replacePreservedSlot', (typeof replacePreservedSlot !== 'undefined') ? replacePreservedSlot : true);
       _pb('replacePreservedVisibility', (typeof replacePreservedVisibility !== 'undefined') ? replacePreservedVisibility : true);
+      // v8z4b32E4 — fix de aspect/crop do replace (não herdar formato anterior).
+      _pb('replacePreservesAnchorCenter', (typeof replacePreservesAnchorCenter !== 'undefined') ? replacePreservesAnchorCenter : true);
+      _pb('replacePreservesLayerIdentity', (typeof replacePreservesLayerIdentity !== 'undefined') ? replacePreservesLayerIdentity : true);
+      _pb('replacePreservesZIndex', (typeof replacePreservesZIndex !== 'undefined') ? replacePreservesZIndex : true);
+      _pb('replacePreservesSlot', (typeof replacePreservesSlot !== 'undefined') ? replacePreservesSlot : true);
+      _pb('replacePreservesVisibility', (typeof replacePreservesVisibility !== 'undefined') ? replacePreservesVisibility : true);
+      _pb('replacePreservesSelection', (typeof replacePreservesSelection !== 'undefined') ? replacePreservesSelection : true);
+      push('replaceOldWorldRect', (typeof replaceOldWorldRect !== 'undefined' && replaceOldWorldRect) ? replaceOldWorldRect : 'n/d');
+      push('replaceNewWorldRect', (typeof replaceNewWorldRect !== 'undefined' && replaceNewWorldRect) ? replaceNewWorldRect : 'n/d');
+      push('replaceOldCenterX', _diagFmtNum((typeof replaceOldCenterX !== 'undefined') ? replaceOldCenterX : 0, 2));
+      push('replaceOldCenterY', _diagFmtNum((typeof replaceOldCenterY !== 'undefined') ? replaceOldCenterY : 0, 2));
+      push('replaceNewCenterX', _diagFmtNum((typeof replaceNewCenterX !== 'undefined') ? replaceNewCenterX : 0, 2));
+      push('replaceNewCenterY', _diagFmtNum((typeof replaceNewCenterY !== 'undefined') ? replaceNewCenterY : 0, 2));
+      _pb('replaceCenterPreserved', (typeof replaceCenterPreserved !== 'undefined') ? replaceCenterPreserved : true);
+      push('replaceOldSourceAR', _diagFmtNum((typeof replaceOldSourceAR !== 'undefined') ? replaceOldSourceAR : 0, 3));
+      push('replaceNewSourceAR', _diagFmtNum((typeof replaceNewSourceAR !== 'undefined') ? replaceNewSourceAR : 0, 3));
+      push('replaceOldWorldAR', _diagFmtNum((typeof replaceOldWorldAR !== 'undefined') ? replaceOldWorldAR : 0, 3));
+      push('replaceNewWorldAR', _diagFmtNum((typeof replaceNewWorldAR !== 'undefined') ? replaceNewWorldAR : 0, 3));
+      _pb('replaceNewWorldARMatchesSourceAR', (typeof replaceNewWorldARMatchesSourceAR !== 'undefined') ? replaceNewWorldARMatchesSourceAR : true);
+      _pb('replaceRecalculatesWorldRectFromNewImageAspectRatio', (typeof replaceRecalculatesWorldRectFromNewImageAspectRatio !== 'undefined') ? replaceRecalculatesWorldRectFromNewImageAspectRatio : true);
+      _pb('replaceDoesNotPreserveOldAspectRatio', (typeof replaceDoesNotPreserveOldAspectRatio !== 'undefined') ? replaceDoesNotPreserveOldAspectRatio : true);
+      _pb('replaceDoesNotInheritPreviousCrop', (typeof replaceDoesNotInheritPreviousCrop !== 'undefined') ? replaceDoesNotInheritPreviousCrop : true);
+      _pb('replaceDoesNotCropNewImage', (typeof replaceDoesNotCropNewImage !== 'undefined') ? replaceDoesNotCropNewImage : true);
+      _pb('replaceDoesNotDistortNewImage', (typeof replaceDoesNotDistortNewImage !== 'undefined') ? replaceDoesNotDistortNewImage : true);
+      push('replaceFitMode', (typeof replaceFitMode !== 'undefined' && replaceFitMode) ? replaceFitMode : 'contain');
+      _pb('replaceCropRectReset', (typeof replaceCropRectReset !== 'undefined') ? replaceCropRectReset : true);
+      _pb('replaceSourceRectUsesFullImage', (typeof replaceSourceRectUsesFullImage !== 'undefined') ? replaceSourceRectUsesFullImage : true);
+      _pb('replaceUsesContainFit', (typeof replaceUsesContainFit !== 'undefined') ? replaceUsesContainFit : true);
+      _pb('replaceUsesSlotBoxAsReference', (typeof replaceUsesSlotBoxAsReference !== 'undefined') ? replaceUsesSlotBoxAsReference : true);
+      push('replaceSlotBoxW', _diagFmtNum((typeof replaceSlotBoxW !== 'undefined') ? replaceSlotBoxW : 0, 2));
+      push('replaceSlotBoxH', _diagFmtNum((typeof replaceSlotBoxH !== 'undefined') ? replaceSlotBoxH : 0, 2));
+      _pb('replaceCommittedAfterDecode', (typeof replaceCommittedAfterDecode !== 'undefined') ? replaceCommittedAfterDecode : true);
+      _pb('replaceCommittedAtomically', (typeof replaceCommittedAtomically !== 'undefined') ? replaceCommittedAtomically : true);
+      _pb('replaceKeptOldImageOnDecodeFailure', (typeof replaceKeptOldImageOnDecodeFailure !== 'undefined') ? replaceKeptOldImageOnDecodeFailure : false);
+      _pb('replaceAssetHadPartialState', (typeof replaceAssetHadPartialState !== 'undefined') ? replaceAssetHadPartialState : false);
+      _pb('replaceAssetReadyAfterCommit', (typeof replaceAssetReadyAfterCommit !== 'undefined') ? replaceAssetReadyAfterCommit : true);
+      _pb('replaceCompositeInvalidatedAfterCommitOnly', (typeof replaceCompositeInvalidatedAfterCommitOnly !== 'undefined') ? replaceCompositeInvalidatedAfterCommitOnly : true);
+      _pb('replaceStageRedrawnAfterCommitOnly', (typeof replaceStageRedrawnAfterCommitOnly !== 'undefined') ? replaceStageRedrawnAfterCommitOnly : true);
+      _pb('replacedImageVisibleAfterReplace', (typeof replacedImageVisibleAfterReplace !== 'undefined') ? replacedImageVisibleAfterReplace : true);
+      _pb('replacedImageVisibleInPreview', (typeof replacedImageVisibleInPreview !== 'undefined') ? replacedImageVisibleInPreview : true);
+      _pb('replacedImageVisibleInExport', (typeof replacedImageVisibleInExport !== 'undefined') ? replacedImageVisibleInExport : true);
+      _pb('replacedImageNotCroppedInEditor', (typeof replacedImageNotCroppedInEditor !== 'undefined') ? replacedImageNotCroppedInEditor : true);
+      _pb('replacedImageNotCroppedInPreview', (typeof replacedImageNotCroppedInPreview !== 'undefined') ? replacedImageNotCroppedInPreview : true);
+      _pb('replacedImageNotCroppedInExport', (typeof replacedImageNotCroppedInExport !== 'undefined') ? replacedImageNotCroppedInExport : true);
+      _pb('unchangedAssetLostBitmapAfterOtherAssetReplace', (typeof unchangedAssetLostBitmapAfterOtherAssetReplace !== 'undefined') ? unchangedAssetLostBitmapAfterOtherAssetReplace : false);
+      _pb('assetBlinkDetectedAfterReplace', (typeof assetBlinkDetectedAfterReplace !== 'undefined') ? assetBlinkDetectedAfterReplace : false);
+      _pb('assetMissingAfterReplaceDetected', (typeof assetMissingAfterReplaceDetected !== 'undefined') ? assetMissingAfterReplaceDetected : false);
       // ProjectWorld / geometria.
       push('stageGeometryBeforeReplace', (typeof stageGeometryBeforeReplace !== 'undefined' && stageGeometryBeforeReplace) ? stageGeometryBeforeReplace : 'n/d');
       push('stageGeometryAfterReplace', (typeof stageGeometryAfterReplace !== 'undefined' && stageGeometryAfterReplace) ? stageGeometryAfterReplace : 'n/d');
