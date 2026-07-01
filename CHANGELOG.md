@@ -1,3 +1,15 @@
+## v8z4b32E7F
+
+**editor frame sync no Modo Câmera.** Base: `v8z4b32E7E`.
+
+- Cria sincronização canônica do frame ativo no editor via `canonicalFrameIndex`, derivando `rendererFrameIndex`, timeline visual/central/mira, HUD/chips, overlay e scrim do mesmo índice.
+- `commitFilmSelection()`, seleção de frame/trecho e centralização/scroll da timeline passam a sincronizar os alvos visuais antes do redesenho de overlay, HUD, curvas e scrim.
+- `getFrameScreenGeometry(frameIndex)` deixa de contaminar o diagnóstico ancorado ao ser chamado para frames inativos; somente o frame canônico atualiza `frameAnchoredUIFrameIndex`.
+- O cutout do scrim usa a mesma geometria canônica de tela do frame (`getFrameScreenGeometry`) para centro, tamanho e rotação, evitando cálculo paralelo de centro/pan/zoom.
+- Diagnóstico E7F adiciona os campos obrigatórios de paridade entre frame ativo, timeline, HUD/chips, overlay, scrim, curvas/handles e ghost handles.
+- Preservados integralmente Preview, Export, WebCodecs, `renderSessionSnapshot`, `stableDrawable`, cache/hidratação de assets, layers, replace, salvar/carregar, menus, layout, cores, textos, ícones e fluxo aprovados da E7E.
+- `index.html`: comentário do topo, `APP_VERSION` e `APP_VERSION_NAME` atualizados para `v8z4b32E7F`.
+
 ## v8z4b32E7E
 
 **hotfix cirúrgico readiness/stableDrawable do img-1.** Base: `v8z4b32E7D`.
