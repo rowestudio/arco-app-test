@@ -1,8 +1,27 @@
+## v8z4b32E7A
+
+Base confirmada antes do patch: `v8z4b32E6` em `index.html` (`APP_VERSION` e `APP_VERSION_NAME`).
+
+### Escopo
+- [x] Preview passa a reconstruir a sessão de render após replace e a consumir o snapshot canônico de `assets[]`.
+- [x] `collectWorldRenderAssets()` passa a usar, no Preview, `drawSource`, `sourceW/H`, `worldX/Y/W/H`, `visible` e `zIndex` capturados no snapshot de sessão.
+- [x] Cache/snapshot de Preview invalidado no fluxo de troca de imagem.
+- [x] Diagnóstico do img-1 atualizado para confirmar nat/worldRect do Preview contra o asset canônico.
+
+### Validação obrigatória (manual iPhone/Safari)
+- [ ] Menu mostra "Arco Motion App v8z4b32E7A".
+- [ ] App abre limpo, sem texto técnico visível.
+- [ ] Trocar img-1 por imagem horizontal.
+- [ ] Stage mostra img-1 correto.
+- [ ] Preview mostra img-1 com o mesmo `worldRect` do asset real.
+- [ ] Export continua funcionando via WebCodecs.
+- [ ] Diagnóstico mostra os campos `img1Preview*` esperados como `true`.
+
 ## v8z4b32E6
 
 Base confirmada antes do patch: `v8z4b32E5` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
 
-### Escopo (Engine Sprint autorizado pela tarefa — paridade real de render do img-1)
+### Escopo (Engine Sprint autorizado pela tarefa — paridade de render do img-1)
 - [x] Commit canônico em `replaceImageAssetInPlace()`: para TODO asset (inclusive img-1) grava no asset real `sourceW/H`, `worldX/Y/W/H` (= `replaceNewWorldRect`, `worldAR==sourceAR`), `drawSource`, `fitMode='contain'`, crop reset, `imgReady/decodeReady`, `sourceVersion++`/`renderVersion++`/`replaceEpoch`, `e6CanonicalReplaced` — depois do decode, antes de qualquer redraw.
 - [x] `collectWorldRenderAssets()` desenha o img-1 canonicamente substituído pela fonte crua do asset + `worldRect` do asset (mesmo caminho dos extras); img-1 legado não substituído continua no `mainSource` canônico (sem regressão — validado por teste).
 - [x] `imgNatW/imgNatH` e o espaço da câmera (`getStateAtT@v8z4b32E3`/frames/curvas/`baseStageW/H`) intactos.
