@@ -1,3 +1,26 @@
+## v8z4b32E7
+
+Base confirmada antes do patch: `v8z4b32E6` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
+
+### Escopo (Engine Sprint autorizado pela tarefa — 3 hotfixes bloqueadores)
+- [x] BLOCO A: `_invalidatePreviewRenderCacheAfterReplaceE7()` zera `renderTransform.preview/export/world` e reconstrói o snapshot no commit do replace; `_recordImg1PreviewParityE7()` mede a amostra viva de Preview; re-medição no build do diagnóstico para refletir um Preview rodado após o replace.
+- [x] BLOCO B: stable drawable persistente por asset visível (`_ensureStableDrawableForAssetE7`) criado/congelado em `buildRenderSessionSnapshotE6`; `collectWorldRenderAssets` prefere a fonte estável; auditoria de pixel (`_pixelAuditKnownAssetE7`) no canvas final dentro de `drawWorldToCanvas`; consolidação em `_finalizeVisualAuditE7`.
+- [x] BLOCO C: handles IN/OUT (braços em `drawBezier`, dots/ghosts em `updateCtrlPts`) convertidos mundo→tela via `editorWorldToStage`; entrada do drag convertida tela→mundo via `editorStageToWorld`; `_recordFrameCurveGeometryParityE7` mede o delta centro-frame × âncora-curva. NO-OP em imagem única.
+- [x] Legado: `computeWorldCoordinateAudit()` valida pertencimento ao espaço ProjectWorld do asset0 (não tamanho == baseStage); `mixedWorldScaleDetected=false` para img-1 com AR própria.
+
+### Validação automatizada (Chromium headless / node --check)
+- [x] `node --check` dos 2 scripts inline: 0 erros de sintaxe.
+- [x] `APP_VERSION`=`APP_VERSION_NAME`=`v8z4b32E7`; comentário do topo atualizado.
+- [x] Conversões de Bloco C são identidade quando `_editorTransform` inativo (imagem única) → sem mudança de posição de handle/drag.
+- [x] Pixel audit envolto em try/catch; aborta silenciosamente se o canvas estiver tainted; nunca altera o retorno de `drawWorldToCanvas`.
+
+### Validação obrigatória (manual iPhone/Safari)
+- [ ] Menu mostra "Arco Motion App v8z4b32E7".
+- [ ] **Teste A (img-1):** abrir arquivo problemático; selecionar img-1; trocar por imagem horizontal → correto no Stage; rodar Preview → mesmo retângulo/source do Stage; exportar MP4 → correto; diagnóstico: `img1PreviewRendererNatMatchesAssetSource:true`, `img1PreviewRendererWorldMatchesAssetWorld:true`, `img1NoOldNatSizeInPreview:true`, `img1NoOldWorldRectInPreview:true`, `replacedAssetPreviewRenderMatchesWorldRect:true`, `replacedAssetUsesSingleGeometrySource:true`, `img1PreviewPathParityFixEnabled:true`, `img1PreviewCacheInvalidatedAfterReplace:true`.
+- [ ] **Teste B (imagem 6):** localizar `img-1781638924641-484`; Preview → não some/volta; exportar MP4 → não some/volta; diagnóstico: `knownProblemAssetPreviewDisappearedThenReappearedVisual:false`, `knownProblemAssetExportDisappearedThenReappearedVisual:false`, `knownProblemAssetDrawCallButNoPixelsDetectedPreview/Export:false`, `knownProblemAssetPreviewTransparentFrameCount:0`, `knownProblemAssetExportTransparentFrameCount:0`, `knownProblemAssetStableDrawableUsedInPreview/Export:true`, `knownProblemAssetVisualPresenceChecked:true`.
+- [ ] **Teste C (frame/curva):** Modo Câmera; selecionar frame 10; zoom/pan; editar curva → ponto/braço da curva coincide com o centro visual do frame; testar frame rotacionado; mover/rotacionar/escalar frame → curva acompanha sem offset; alternar Modo Ativos/Câmera → sem âncora stale; diagnóstico: `frameCurveAnchorDeltaPx ≤ 1`, `frameCurveAnchorParityOk:true`, `curveHandlesUseCanonicalFrameCenter:true`, `staleCurveAnchorDetected:false`.
+- [ ] Preservados: câmera/paridade Preview-Export (E3), menus, layers, ProjectWorld, timeline, WebCodecs export, assets aprovados, commit canônico do img-1 (E6); sem mudança de UI/cores/ícones/texto.
+
 ## v8z4b32E6
 
 Base confirmada antes do patch: `v8z4b32E5` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
