@@ -1,3 +1,34 @@
+## v8z4b32E6
+
+Base confirmada antes do patch: `v8z4b32E5` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
+
+### Escopo (Engine Sprint autorizado pela tarefa — paridade real de render do img-1)
+- [x] Commit canônico em `replaceImageAssetInPlace()`: para TODO asset (inclusive img-1) grava no asset real `sourceW/H`, `worldX/Y/W/H` (= `replaceNewWorldRect`, `worldAR==sourceAR`), `drawSource`, `fitMode='contain'`, crop reset, `imgReady/decodeReady`, `sourceVersion++`/`renderVersion++`/`replaceEpoch`, `e6CanonicalReplaced` — depois do decode, antes de qualquer redraw.
+- [x] `collectWorldRenderAssets()` desenha o img-1 canonicamente substituído pela fonte crua do asset + `worldRect` do asset (mesmo caminho dos extras); img-1 legado não substituído continua no `mainSource` canônico (sem regressão — validado por teste).
+- [x] `imgNatW/imgNatH` e o espaço da câmera (`getStateAtT@v8z4b32E3`/frames/curvas/`baseStageW/H`) intactos.
+- [x] `buildRenderSessionSnapshotE6()` antes de Preview/Export; acumulação por frame em `drawWorldToCanvas`; época de sessão congela decode assíncrono atrasado.
+- [x] `syncFirstImageAsset()` não sobrescreve `sourceW/H`/`worldRect` de img-1 canônico; `serializeProjectAsset()` persiste `src`/`e6CanonicalReplaced`/versões; `restoreProjectAssetsFromData()` restaura geometria/fonte canônicas do img-1. Auto-normalização de legados no load continua desligada.
+- [x] Diagnósticos novos (`e6*`/`img1*`/`renderSession*`/`knownProblem*`) lidos de `assets[]` + `renderTransform.preview/export` (não do rect temporário) — corrige o falso positivo da E5.
+
+### Validação automatizada (Chromium headless)
+- [x] App carrega sem erro de console/página; `APP_VERSION`=`APP_VERSION_NAME`=`v8z4b32E6`; `buildDiagnosticsText()` inclui os campos E6.
+- [x] `collectWorldRenderAssets`: img-1 com `e6CanonicalReplaced` usa a fonte crua do asset (não `mainSource`) e o rect mapeado do `worldRect` (AR = source).
+- [x] img-1 legado (sem flag) continua usando `mainSource` na caixa cheia (sem regressão).
+- [x] Replace real (async) de img-1 vertical→horizontal em projeto multi-imagem: `sourceW/H`=1200×800, `worldAR`==`sourceAR`==1.5, `imgNatW/H` inalterados, extra não perde bitmap.
+- [x] `serializeProjectAsset()` do img-1 substituído persiste `e6CanonicalReplaced`, `src`, `worldRect`, `sourceW/H`, `sourceVersion`.
+
+### Validação obrigatória (manual iPhone/Safari)
+- [ ] Menu mostra "Arco Motion App v8z4b32E6".
+- [ ] Abrir o arquivo problemático; selecionar img-1; trocar por imagem horizontal → aparece correto no Stage.
+- [ ] Rodar Preview → img-1 aparece (não some, não usa caixa antiga).
+- [ ] Exportar MP4 → img-1 aparece no vídeo, sem caixa antiga.
+- [ ] Trocar img-1 por imagem vertical; repetir Preview/Export; trocar img-1 via painel Layers; repetir.
+- [ ] Selecionar imagem 6 / `img-1781638924641-484` (se existir); Preview e Export → não desaparece/reaparece.
+- [ ] Trocar imagem 6; Preview/Export na mesma sessão; salvar; fechar app; reabrir; abrir projeto; Preview/Export → imagem 6 estável.
+- [ ] Trocar outro asset qualquer → img-1 e imagem 6 não perdem source/bitmap.
+- [ ] Diagnóstico mostra os valores esperados E6: `e6CanonicalReplaceFixEnabled:true`, `img1CanonicalAssetUpdatedAfterReplace:true`, `img1AssetWorldARMatchesSourceARAfterReplace:true`, `img1MissingInPreviewDetected:false`, `img1MissingInExportDetected:false`, `renderSessionSnapshotBuiltBeforePreview/Export:true`, `previewVisibleAssetsDrawnEveryFrame:true`, `exportVisibleAssetsDrawnEveryFrame:true`, `assetBlinkDetected:false`, `projectWorldCompositeStableDuringPreview/Export:true`, `knownProblemAssetStableAcrossRenderSession:true` (quando o asset existir).
+- [ ] Preservados: E5 (paridade visual do editor), menus, frames, curvas, câmera, layers, ProjectWorld, WebCodecs export.
+
 ## v8z4b32E5
 
 Base confirmada antes do patch: `v8z4b32E4` em `index.html` (`APP_VERSION`, `APP_VERSION_NAME` e comentário do topo).
