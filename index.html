@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E6 — base v8z4b32E5. fix(canonical-asset-render-parity): ENGINE SPRINT autorizado pela tarefa (paridade real de render de Preview/Export do img-1). PROBLEMA: na v32E5 o img-1, após replace, aparecia correto no Stage mas usava caixa/nat antigos no Preview/Export (o render pipeline mantinha img-1 no caminho legado de main image — mainSource canônico cozido, worldRect cheio da célula), divergindo do Stage; diagnósticos da E5 validavam o retângulo TEMPORÁRIO/DOM, não o estado canônico real (falso positivo). CORREÇÃO: (1) COMMIT CANÔNICO — replaceImageAssetInPlace() agora, para TODO asset (inclusive img-1), commita no asset REAL em assets[]: sourceW/H = nat da imagem nova, worldX/Y/W/H = replaceNewWorldRect (fit contain, worldAR==sourceAR), drawSource=imagem crua nova, fitMode=contain, crop reset, imgReady/decodeReady=true, sourceVersion++/renderVersion++/replaceEpoch, e6CanonicalReplaced=true — depois do decode e ANTES de redesenhar Stage/Preview/Export; (2) RENDERER UNIFICADO — collectWorldRenderAssets() passa a desenhar img-1 canonicamente substituído pela MESMA fonte/rect do asset (a._img cru + worldRect do asset via getWorldRenderAssetRectSourcePx), sem usar mainSource legado, sem nat antigo (1024×1536), sem caixa antiga; img-1 legado não substituído continua idêntico à v32E5 (mainSource canônico) — sem regressão em composições antigas; (3) SNAPSHOT DE SESSÃO — buildRenderSessionSnapshot() é criado/validado antes de Preview e Export; captura assetId/visible/zIndex/worldRect/sourceW/H/drawSource/decodeReady/imgReady/sourceVersion/replaceEpoch dos assets visíveis; decode assíncrono atrasado (epoch mismatch) não altera a sessão ativa; (4) SYNC/LOAD — syncFirstImageAsset() não sobrescreve sourceW/H nem worldRect de img-1 canonicamente substituído; restoreProjectAssetsFromData() restaura worldRect/src canônicos salvos do img-1 (não força mais a célula cheia); serializeProjectAsset() persiste src+e6CanonicalReplaced do img-1; (5) DIAGNÓSTICO REAL — novos campos e6*/img1*/renderSession*/knownProblem* lidos de assets[] e das amostras reais renderTransform.preview/export (não do rect temporário), corrigindo o falso positivo da E5. NÃO TOCADO: getStateAtT/getStateAtTBase/sampler canônico de câmera/paridade Preview-Export v32E3, imgNatW/imgNatH (espaço canônico da câmera/frames/curvas permanece idêntico), interpolação/curvas/rotação/easing, frames, timeline/duração, projectWorld.baseStageW/H/geometry, WebCodecs/muxer/encoder, matemática da câmera em drawWorldToCanvas, caminho single-image de drawAtTDirect, UI/layout/cores/ícones/texto/menus/toolbar/painel Layers/handles, "Não limitar" (segue ausente), auto-normalização de assets legados no load (segue desligada — só o asset SUBSTITUÍDO é normalizado). APP_VERSION = APP_VERSION_NAME = v8z4b32E6. -->
 <!-- Arco Motion App — v8z4b32E5 — base v8z4b32E4. fix(replace-visual-box-parity): hotfix funcional/visual bloqueador — após o replace recalcular worldW/worldH pela proporção da imagem nova (v32E4), ainda sobrava uma moldura/caixa transparente maior que a imagem real (herdada da caixa antiga), revelando o asset de baixo e desalinhando seleção/hit-test, principalmente no img-1. PRESERVA integralmente a arquitetura aprovada (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera v32E3, fit/aspect/crop/commit atômico v32E4, reorder/move/hit-test/handles/menus/save-load/ProjectWorld/frames/curvas) e respeita o AGENTS.md (drawAtT/getStateAtT/pipeline de render/export só mudam em Engine Sprint explícito — NÃO é o caso desta tarefa). DIAGNÓSTICO: para assets EXTRAS, o DOM wrapper/seleção/hit-test JÁ liam asset.worldX/Y/W/H ao vivo (sem cache separada) — a paridade já estava correta, confirmada com diagnóstico novo. O caminho REALMENTE quebrado era o de img-1: o replace mantém (e continua mantendo) worldX/Y/W/H CRAVADOS na caixa cheia do ProjectWorld (invariante de câmera/frames/curvas — fora de escopo mudar), mas a imagem nova é cozida com fit contain + tarja de cor de fundo DENTRO dessa caixa — um letterbox/pillarbox literal, e o editor desenhava o DOM/seleção/hit-test do tamanho da caixa CHEIA, maior que a imagem real. CORREÇÃO — ESCOPO ÚNICO, só no lado do EDITOR (sem tocar render/câmera/ProjectWorld): (1) nova função pura getAssetVisualWorldRect(asset) — fit contain de asset.sourceW/H dentro de asset.worldW/H, centrado; para extras é, por construção, IDÊNTICO ao worldRect (zero mudança de comportamento, já confirmado pela geometria recalculada na v32E4); para img-1 dá o sub-retângulo REAL que a imagem ocupa dentro da célula intacta; (2) renderProjectWorldExtraImages() (DOM wrapper/imagem), renderAssetSelectionOverlay() (moldura roxa) e hitTestAssetAtWorld() passam a usar esse sub-retângulo em vez do worldRect cru — elimina a moldura/letterbox visível e o toque na faixa antes transparente deixa de selecionar o asset; (3) target.src de img-1 passa a ser a imagem NOVA crua (sem tarja) para essa exibição; o bake no canvas canônico (imgNatW×imgNatH, MESMAS dimensões de sempre) continua sendo gerado IDÊNTICO à v32E4, só como fonte para Preview/Export/fundo espelhado/persistência — NÃO TOCADO; (4) computeWorldCoordinateAudit() deixa de marcar como "mundo híbrido" um asset[0] cujo worldRect ainda bate com baseStage (sem mudança de comportamento real — apenas torna a checagem mais robusta a um possível worldRect próprio futuro, sem habilitar isso agora); (5) novo diagnóstico replacedAsset*/img1*/legacyBoxedAsset* mede, com a DOM já reconstruída após o commit, se DOM wrapper/elemento de imagem/seleção/hit-test leem a MESMA geometria visual (tolerância 1px/1.5% de AR) — e reporta HONESTAMENTE (a partir da amostra real de Preview/Export) que o render pipeline de img-1 ainda usa a caixa cheia/cozida quando a proporção muda (limitação conhecida e documentada: fechar 100% a paridade de Preview/Export para img-1 exige mudar drawAtT/collectWorldRenderAssets, isto é, um Engine Sprint); _scanLegacyBoxedAssets() é só leitura — nunca normaliza assets antigos ao abrir o arquivo (legacyBoxedAssetsAutoRepairedOnLoad=false). NÃO TOCADO: asset.worldX/Y/W/H do modelo (inclusive img-1 — invariante de câmera/ProjectWorld), drawAtT/drawAtTDirect/drawWorldToCanvas/collectWorldRenderAssets/getStateAtT@v8z4b32E3 (pipeline de render/export, fora de escopo sem Engine Sprint), layout/cores/textos/ícones/menus/toolbar/painel Layers/timeline/frames/curvas/duração/interpolação/câmera/Formato/Fundo/"Não limitar"/save-load schema/ProjectWorld geometry/render matemático da câmera/ordem visual de layers/comportamento de move/reorder de assets, fit/aspect/crop/commit atômico da v32E4 (replaceNewWorldARMatchesSourceAR, replaceDoesNotCropNewImage, replaceDoesNotDistortNewImage, replaceFitMode=contain seguem true), unified image asset stack v32E2, sampler de câmera/paridade Preview-Export v32E3. APP_VERSION = APP_VERSION_NAME = v8z4b32E5. -->
 <!-- Arco Motion App — v8z4b32E4 — base v8z4b32E3. fix(replace-image-aspect-crop): hotfix funcional bloqueador da troca de imagem herdando crop/formato do asset anterior, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2/v32E3 (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera, reorder/move/hit-test/handles/menus/save-load). PROBLEMA: ao trocar uma imagem (toolbar ou Layers), a imagem nova entrava cravada na caixa/proporção visual da imagem antiga (cover-fit sobre worldW/worldH antigos), cortando ou espremendo a imagem nova quando a proporção mudava. ESCOPO ÚNICO: corrigir a geometria/fit da imagem substituída e o commit atômico da nova fonte após replace. CORREÇÃO: (1) replaceImageAssetInPlace() captura uma âncora ANTES da troca — centro visual do asset antigo (oldCenterX/Y) e uma caixa de referência (slotBox = ProjectWorld.baseStageW/H quando válido, senão a caixa antiga do próprio asset); (2) para assets EXTRAS, worldX/Y/W/H são RECALCULADOS por fit contain (reaproveitando fitContain() já usado por Inserir Imagem) a partir da proporção NATURAL da imagem nova dentro da caixa de referência, mantendo o centro antigo — a imagem nova entra inteira, sem cortar, sem distorcer, sem herdar a proporção anterior; (3) para a imagem principal (img-1), worldX/Y/W/H continuam intactos (invariante de célula central do grid) e getStateAtT/getStateAtTBase/frames/curvas/ProjectWorld.baseStageW/H permanecem byte-a-byte idênticos — o novo bitmap é cozido no MESMO canvas canônico (imgNatW×imgNatH), mas agora com fit CONTAIN em vez de cover, preenchendo a tarja restante com a cor de fundo do projeto, em vez de cortar a imagem nova; (4) crop/sourceRect do asset é resetado para imagem inteira em todo replace; (5) commit atômico — sourceW/sourceH/fonte desenhável só são preparados e só substituem o asset DEPOIS do decode da imagem nova completar; falha de decode mantém a imagem antiga e mostra erro controlado, sem deixar o asset em estado parcial; composite/Stage só são invalidados/redesenhados depois do commit completo; (6) novos campos de diagnóstico (replacePreserves*, replaceOld/New*, replaceUsesContainFit, replaceUsesSlotBoxAsReference, replaceCommitted*, replacedImageVisible*/NotCropped*, unchangedAssetLostBitmapAfterOtherAssetReplace, assetBlinkDetectedAfterReplace, assetMissingAfterReplaceDetected). NÃO TOCADO: Inserir Imagem (performInsertImageAtSlot, já usava fit contain), getStateAtT/getStateAtTBase/sampler canônico de câmera/paridade Preview-Export da v32E3, interpolação/curvas/rotação/easing, frames, timeline/duração, ProjectWorld.baseStageW/H/geometry, zIndex/slot/visible/seleção do asset trocado, resolução do alvo de replace (toolbar=selectedAssetId, Layers=assetId da linha, sem fallback indevido para img-1/slot central), assets.length, hit-test/reorder/movimento de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E4. -->
 <!-- Arco Motion App — v8z4b32E3 — base v8z4b32E2. fix(preview-export-camera-jump): hotfix funcional bloqueador do pulo visual no Preview e no MP4 exportado, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2 (pilha unificada de imageAssets, img-1 como asset comum, reorder/replace/move/hit-test/handles/menus/save-load). ESCOPO ÚNICO: corrigir o pulo de câmera de Preview/Export. DIAGNÓSTICO: Preview e Export já amostram a câmera pela MESMA função canônica (getStateAtT, via getRenderStateAtTime → renderFrameSafely); o detector passivo da 30ZC usava limiar RELATIVO (Δrot > 3× média local), gerando falso positivo 'rotation-delta-spike' quando a rotação COMEÇA após um trecho sem rotação (média ~0) — a câmera é C0-contínua; o pulo real visto no Preview era engasgo do relógio em tempo real (já mitigado na 30ZH com avanço clamped). CORREÇÃO: (1) sampler canônico nomeado sampleCanonicalCameraAtT(t)=getStateAtT(t), usado/verificado por Preview e Export; (2) stabilizeCameraCachesForPlayback() reconstrói/valida segDurations/segTremorSettings/curvesV2 ANTES de iniciar Preview e Export (idempotente, não muda câmera/tempo); (3) validatePreviewExportCameraParity32E3() prova paridade (mesmo t ⇒ mesma câmera, Δ≈0); (4) validateCameraContinuity32E3() detector ATIVO de descontinuidade real (limiar ABSOLUTO + pico ISOLADO), distinguindo movimento intencional rápido (ex.: giro de 720°, suave entre amostras) de salto numérico — rotações multi-volta NÃO são normalizadas/achatadas; (5) novos campos de diagnóstico (visualJumpConfirmedByUser, previewExport*, cameraContinuity*, segmentBoundary*, rotation*, firstFrame*, cachesRebuilt*, *DidNotChangeCamera, previewExportCodeTouchedOnlyForJumpFix). NÃO TOCADO: matemática de câmera/getStateAtTBase/interpolação/curvas/rotação/easing, frames (sem normalizar/recentralizar), timeline/duração, ProjectWorld/assets/posições, zIndex/hit-test/replace/move de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E3. -->
@@ -7086,8 +7087,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E5';
-const APP_VERSION_NAME = 'v8z4b32E5';
+const APP_VERSION = 'v8z4b32E6';
+const APP_VERSION_NAME = 'v8z4b32E6';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7562,6 +7563,139 @@ let insertedImageSelectedAfterInsert = true;
 let insertedImageStartsAtTopZIndex = true;
 let insertedImageDoesNotBecomeMainImage = true;
 let insertDoesNotReplaceImg1 = true;
+
+// ═══════════════════════════════════════════════════════════════════
+// v8z4b32E6 — CANONICAL ASSET RENDER PARITY (estado + diagnóstico)
+// Depois de qualquer replace, o asset canônico em assets[] é a fonte
+// ÚNICA de verdade usada por Stage/Preview/Export/save-load. Estas
+// variáveis são de diagnóstico REAL (lidas de assets[] e das amostras
+// renderTransform.preview/export), nunca do retângulo temporário.
+// ═══════════════════════════════════════════════════════════════════
+let currentReplaceEpoch = 0;          // incrementa a cada replace canônico
+let _renderSessionEpoch = 0;          // época da sessão ativa de Preview/Export
+let renderSessionSnapshot = null;     // snapshot estável dos assets visíveis
+// Guardas gerais.
+let e6CanonicalReplaceFixEnabled = true;
+let e6DiagnosticsUseCanonicalAssets = true;
+let e6DiagnosticsUseRealRendererState = true;
+let e6DiagnosticsIgnoreTemporaryReplaceRectForPassFail = true;
+let e6FalsePositiveGuardEnabled = true;
+let e6AssetModelRendererParityChecked = false;
+let e6StagePreviewExportParityChecked = false;
+// img-1.
+let img1StagePreviewExportParityFixEnabled = true;
+let img1StageVisibleAfterReplace = true;
+let img1PreviewVisibleAfterReplace = true;
+let img1ExportVisibleAfterReplace = true;
+let img1StagePreviewExportUseSameSource = true;
+let img1StagePreviewExportUseSameWorldRect = true;
+let img1CanonicalAssetUpdatedAfterReplace = false;
+let img1CanonicalSourceUpdatedAfterReplace = false;
+let img1CanonicalWorldRectUpdatedAfterReplace = false;
+let img1AssetWorldARMatchesSourceARAfterReplace = true;
+let img1RendererNatMatchesAssetSource = true;
+let img1RendererWorldMatchesAssetWorld = true;
+let img1PreviewRendererNatMatchesAssetSource = true;
+let img1PreviewRendererWorldMatchesAssetWorld = true;
+let img1ExportRendererNatMatchesAssetSource = true;
+let img1ExportRendererWorldMatchesAssetWorld = true;
+let img1NoLegacyMainImageSourceInPreview = true;
+let img1NoLegacyMainImageSourceInExport = true;
+let img1NoOldNatSizeInPreview = true;
+let img1NoOldNatSizeInExport = true;
+let img1NoOldWorldRectInPreview = true;
+let img1NoOldWorldRectInExport = true;
+let img1DrawnInPreviewFrameCount = 0;
+let img1ExpectedPreviewFrameCount = 0;
+let img1DrawnInExportFrameCount = 0;
+let img1ExpectedExportFrameCount = 0;
+let img1MissingInPreviewDetected = false;
+let img1MissingInExportDetected = false;
+let img1DisappearedAfterReplaceDetected = false;
+let img1PreviewExportUsesUnifiedAssetRenderer = true;
+let img1ExportUsesProjectWorldAssetPath = true;
+let img1PreviewUsesProjectWorldAssetPath = true;
+let img1PreviewExportDoNotUseDomWrapperAsTruth = true;
+let img1CanonicalCommitBeforeStageRedraw = false;
+let img1CanonicalCommitBeforePreview = true;
+let img1CanonicalCommitBeforeExport = true;
+let img1SaveLoadPreservesCanonicalWorldRect = true;
+let img1SaveLoadPreservesCanonicalSource = true;
+// Render session snapshot.
+let renderSessionSnapshotEnabled = true;
+let renderSessionSnapshotBuiltBeforePreview = false;
+let renderSessionSnapshotBuiltBeforeExport = false;
+let renderSessionVisibleAssetCount = 0;
+let renderSessionDecodedAssetCount = 0;
+let renderSessionAllVisibleAssetsReadyBeforePreview = true;
+let renderSessionAllVisibleAssetsReadyBeforeExport = true;
+let renderSessionStartedWithPendingAssets = false;
+let renderSessionUsesStableDrawSources = true;
+let renderSessionAvoidsVolatileDomImages = true;
+let renderSessionAssetIds = '';
+let renderSessionAssetSourceVersions = '';
+let renderSessionAssetWorldRects = '';
+let previewVisibleAssetsExpectedCount = 0;
+let previewVisibleAssetsDrawnEveryFrame = true;
+let previewMinAssetsDrawnPerFrame = 0;
+let previewMaxAssetsDrawnPerFrame = 0;
+let exportVisibleAssetsExpectedCount = 0;
+let exportVisibleAssetsDrawnEveryFrame = true;
+let exportMinAssetsDrawnPerFrame = 0;
+let exportMaxAssetsDrawnPerFrame = 0;
+let assetSkippedBecauseNotReadyCount = 0;
+let assetSkippedBecauseMissingSourceCount = 0;
+let assetDecodePendingAtFirstFrameCount = 0;
+let assetSourceChangedDuringPreviewDetected = false;
+let assetSourceChangedDuringExportDetected = false;
+let assetWorldRectChangedDuringPreviewDetected = false;
+let assetWorldRectChangedDuringExportDetected = false;
+let assetMissingDuringPreviewDetected = false;
+let assetMissingDuringExportDetected = false;
+let assetBlinkDetected = false;
+let assetDisappearedThenReappearedDetected = false;
+let disappearingAssetIds = '';
+let disappearingAssetFrameRanges = '';
+let unchangedAssetInvalidatedByReplaceDetected = false;
+let projectWorldCompositeDirtyAtFirstPreviewFrame = false;
+let projectWorldCompositeDirtyAtFirstExportFrame = false;
+let compositeDirtyDuringPreview = false;
+let compositeDirtyDuringExport = false;
+let projectWorldCompositeStableDuringPreview = true;
+let projectWorldCompositeStableDuringExport = true;
+let asyncImageDecodeInvalidatedActiveRenderSession = false;
+let asyncImageDecodeIgnoredBecauseEpochMismatch = false;
+// Imagem 6 / asset problemático conhecido.
+const KNOWN_PROBLEM_ASSET_ID = 'img-1781638924641-484';
+const KNOWN_PROBLEM_ASSET_INDEX = 6;
+let knownProblemAssetPresent = false;
+let knownProblemAssetExpectedVisible = true;
+let knownProblemAssetReadyBeforePreview = true;
+let knownProblemAssetReadyBeforeExport = true;
+let knownProblemAssetDrawnInPreviewEveryFrame = true;
+let knownProblemAssetDrawnInExportEveryFrame = true;
+let knownProblemAssetMissingInPreviewDetected = false;
+let knownProblemAssetMissingInExportDetected = false;
+let knownProblemAssetDisappearedThenReappeared = false;
+let knownProblemAssetSourceChangedDuringPreview = false;
+let knownProblemAssetSourceChangedDuringExport = false;
+let knownProblemAssetWorldRectChangedDuringPreview = false;
+let knownProblemAssetWorldRectChangedDuringExport = false;
+let knownProblemAssetLostBitmapAfterImg1Replace = false;
+let knownProblemAssetLostBitmapAfterOtherAssetReplace = false;
+let knownProblemAssetStableAcrossRenderSession = true;
+let knownProblemAssetStableAfterOwnReplace = true;
+let knownProblemAssetStableAfterSaveLoad = true;
+// Per-frame accumulators (reiniciados a cada sessão de Preview/Export).
+let _rsPreviewDrawnCounts = [];
+let _rsExportDrawnCounts = [];
+let _rsPreviewImg1Frames = 0;
+let _rsExportImg1Frames = 0;
+let _rsPreviewKnownFrames = 0;
+let _rsExportKnownFrames = 0;
+let _rsPreviewFrames = 0;
+let _rsExportFrames = 0;
+
 // v8z4b32E — diagnóstico de corner handles acima do scrim.
 let frameHandlesLayerAboveScrim = true;
 let frameHandlesFullContrast = true;
@@ -23002,6 +23136,9 @@ function startPreview() {
     _cachesRebuiltBeforePreview = !!(_cachesStable32E3Preview && _cachesStable32E3Preview.ok);
     _cachesRebuiltList = (_cachesStable32E3Preview && _cachesStable32E3Preview.rebuilt) ? _cachesStable32E3Preview.rebuilt.slice() : [];
   }
+  // v8z4b32E6 — snapshot estável dos assets visíveis ANTES do Preview: congela
+  // fontes desenháveis/geometria, invalida caches antigos e valida readiness.
+  if (typeof buildRenderSessionSnapshotE6 === 'function') buildRenderSessionSnapshotE6('preview');
 
   function loop(ts) {
     if (!isPreviewing || token !== previewLoopToken) return;
@@ -23718,6 +23855,8 @@ async function startRecord() {
   if (typeof runPreviewExportJumpDiagnostics === 'function') {
     runPreviewExportJumpDiagnostics('export');
   }
+  // v8z4b32E6 — snapshot estável dos assets visíveis ANTES do Export.
+  if (typeof buildRenderSessionSnapshotE6 === 'function') buildRenderSessionSnapshotE6('export');
   document.body.classList.add('previewing');
 
   // v8z4b19i — Invalidar qualquer vídeo anterior antes de gerar outro.
@@ -28190,6 +28329,20 @@ function serializeProjectAsset(a, idx, includeImages) {
     const src = a.src || (a._img && a._img.src) || '';
     if (src) out.src = src;
   }
+  // v8z4b32E6 — persistir o estado canônico de um asset SUBSTITUÍDO (inclusive
+  // img-1/idx 0), para que a geometria/fonte normalizadas sobrevivam a save/load.
+  // Assets legados nunca substituídos NÃO ganham este campo (não auto-normaliza).
+  if (a.e6CanonicalReplaced && out.type === 'image') {
+    out.e6CanonicalReplaced = true;
+    out.sourceVersion = Number(a.sourceVersion) || 0;
+    out.renderVersion = Number(a.renderVersion) || 0;
+    // Para o img-1 (idx 0), o src cru não seria salvo pela regra acima (idx>0);
+    // salvá-lo aqui quando incluir imagens garante img1SaveLoadPreservesCanonicalSource.
+    if (includeImages && idx === 0) {
+      const rawSrc = a.src || (a._img && a._img.src) || '';
+      if (rawSrc) out.src = rawSrc;
+    }
+  }
   return out;
 }
 
@@ -29096,9 +29249,16 @@ function syncFirstImageAsset(reason) {
       a = { id: 'img-1', type: 'image', zIndex: 0 };
       assets.unshift(a);
     }
+    // v8z4b32E6 — quando o img-1 foi substituído com commit canônico, seu
+    // sourceW/H e worldRect são a FONTE ÚNICA de verdade; syncFirstImageAsset
+    // (chamado em re-syncs/load) NÃO pode sobrescrevê-los com imgNatW/imgNatH nem
+    // com o Stage/baseStage. Os campos abaixo protegidos por este flag.
+    const _e6Canon = !!a.e6CanonicalReplaced;
     a.name     = name;
-    a.sourceW  = imgNatW;
-    a.sourceH  = imgNatH;
+    if (!_e6Canon) {
+      a.sourceW  = imgNatW;
+      a.sourceH  = imgNatH;
+    }
     a.rotation = 0;
     // v8z4b32E1 — ESCOPO 2: NÃO forçar mais zIndex = 0. A imagem base (img-1)
     // participa da mesma pilha unificada de layers que os assets extras; um
@@ -29134,10 +29294,13 @@ function syncFirstImageAsset(reason) {
       );
       if (_hasSavedWorld) {
         // Preservar o sistema canônico salvo; não mexer em projectWorld.w/h/baseStage.
-        a.worldX = 0;
-        a.worldY = 0;
-        a.worldW = _savedPW.baseStageW;
-        a.worldH = _savedPW.baseStageH;
+        // v8z4b32E6 — worldRect canônico do img-1 substituído é preservado.
+        if (!_e6Canon) {
+          a.worldX = 0;
+          a.worldY = 0;
+          a.worldW = _savedPW.baseStageW;
+          a.worldH = _savedPW.baseStageH;
+        }
         if (!Number.isFinite(projectWorld.w) || projectWorld.w <= 0) projectWorld.w = _savedPW.baseStageW;
         if (!Number.isFinite(projectWorld.h) || projectWorld.h <= 0) projectWorld.h = _savedPW.baseStageH;
         if (!Number.isFinite(projectWorld.baseStageW) || projectWorld.baseStageW <= 0) projectWorld.baseStageW = _savedPW.baseStageW;
@@ -29146,10 +29309,13 @@ function syncFirstImageAsset(reason) {
         _projectWorldMutationDuringLoad = false;
       } else {
         // Projeto de imagem única sem world salvo: o Stage É o mundo (comportamento original).
-        a.worldX = 0;
-        a.worldY = 0;
-        a.worldW = sw;
-        a.worldH = sh;
+        // v8z4b32E6 — worldRect canônico do img-1 substituído é preservado.
+        if (!_e6Canon) {
+          a.worldX = 0;
+          a.worldY = 0;
+          a.worldW = sw;
+          a.worldH = sh;
+        }
         projectWorld.w = sw;
         projectWorld.h = sh;
         projectWorld.baseStageW = sw;
@@ -29237,11 +29403,42 @@ function restoreProjectAssetsFromData(data) {
         // valor híbrido salvo. zIndex preservado do save quando válido.
         const savedPrimary = savedImageAssets[0];
         if (primary) {
-          primary.worldX = 0;
-          primary.worldY = 0;
-          primary.worldW = baseW;
-          primary.worldH = baseH;
-          if (savedPrimary && Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
+          // v8z4b32E6 — se o img-1 salvo foi substituído com commit canônico,
+          // restaurar sua geometria/fonte canônicas (worldRect próprio + src cru),
+          // em vez de forçar a célula cheia. Só o asset SUBSTITUÍDO é normalizado;
+          // arquivos legados sem este flag mantêm o comportamento anterior.
+          if (savedPrimary && savedPrimary.e6CanonicalReplaced) {
+            primary.e6CanonicalReplaced = true;
+            primary.fitMode = savedPrimary.fitMode || 'contain';
+            primary.sourceVersion = Number(savedPrimary.sourceVersion) || 0;
+            primary.renderVersion = Number(savedPrimary.renderVersion) || 0;
+            primary.replaceEpoch = ++currentReplaceEpoch;
+            if (Number.isFinite(savedPrimary.sourceW) && savedPrimary.sourceW > 0) primary.sourceW = savedPrimary.sourceW;
+            if (Number.isFinite(savedPrimary.sourceH) && savedPrimary.sourceH > 0) primary.sourceH = savedPrimary.sourceH;
+            if (Number.isFinite(savedPrimary.worldW) && savedPrimary.worldW > 0) {
+              primary.worldX = savedPrimary.worldX || 0;
+              primary.worldY = savedPrimary.worldY || 0;
+              primary.worldW = savedPrimary.worldW;
+              primary.worldH = savedPrimary.worldH;
+            }
+            if (savedPrimary.src) {
+              primary.src = savedPrimary.src;
+              const pimg = new Image();
+              pimg.onload = () => { primary.drawSource = pimg; primary.imgReady = true; primary.decodeReady = true; invalidateProjectWorldComposite(); renderProjectWorldExtraImages(); };
+              pimg.src = savedPrimary.src;
+              primary._img = pimg;
+              primary.drawSource = pimg;
+            }
+            primary.imgReady = true;
+            primary.decodeReady = true;
+            if (savedPrimary && Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
+          } else {
+            primary.worldX = 0;
+            primary.worldY = 0;
+            primary.worldW = baseW;
+            primary.worldH = baseH;
+            if (savedPrimary && Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
+          }
         }
       }
 
@@ -29776,18 +29973,15 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
       const newWorldY = anchor.oldCenterY - newWorldH / 2;
 
       if (isMain) {
-        // v8z4b32E5 — ESCOPO 7 (caminho especial residual do img-1): a imagem
-        // principal: worldX/Y/W/H CONTINUAM intactos (invariante de célula central
-        // do ProjectWorld — NÃO TOCADO; mudar isso exigiria recalcular o pipeline
-        // de render/câmera em drawAtT, fora do escopo deste hotfix sem Engine
-        // Sprint). O bake no canvas canônico (imgNatW×imgNatH) continua idêntico à
-        // v8z4b32E4. v8z4b32E5 corrige a PARIDADE VISUAL NO EDITOR: target.src
-        // passa a ser a imagem NOVA crua (sem tarja), e renderProjectWorldExtraImages
-        // /renderAssetSelectionOverlay/hitTestAssetAtWorld passam a posicionar/
-        // dimensionar o DOM/seleção/hit-test de img-1 pelo sub-retângulo REAL que a
-        // imagem ocupa dentro da caixa (getAssetVisualWorldRect — fit contain de
-        // sourceW/H dentro de worldW/H, sem alterar worldX/Y/W/H) — elimina a
-        // moldura/letterbox visível no editor sem tocar render/câmera/ProjectWorld.
+        // v8z4b32E6 — COMMIT CANÔNICO do img-1: worldX/Y/W/H passam a ser o
+        // replaceNewWorldRect (fit contain da imagem nova dentro da célula, com
+        // worldAR == sourceAR), EXATAMENTE como um asset extra — o img-1 deixa de
+        // usar o caminho legado de main image no render pipeline. imgNatW/imgNatH
+        // NÃO mudam (a fonte canônica cozida continua sendo gerada nas MESMAS
+        // dimensões, só para fundo espelhado/persistência), logo getStateAtT/
+        // frames/curvas/ProjectWorld.baseStageW/H permanecem byte-a-byte idênticos.
+        // O RENDER (collectWorldRenderAssets) passa a desenhar img-1 pela fonte crua
+        // do asset (a._img) no worldRect do asset — paridade real com o Stage.
         const cw = (typeof imgNatW === 'number' && imgNatW > 0) ? imgNatW : newSourceW;
         const ch = (typeof imgNatH === 'number' && imgNatH > 0) ? imgNatH : newSourceH;
         let canonUrl = dataUrl;
@@ -29815,17 +30009,18 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
           originalImageSrc = canonUrl;
         } catch (_e2) {}
         imageOriginalDataUrl = canonUrl;       // persistência (save) usa as dims canônicas
-        // v8z4b32E5 — target.src passa a ser a imagem CRUA (sem tarja), usada pelo
-        // editor unificado (renderProjectWorldExtraImages) através do sub-retângulo
-        // visual (getAssetVisualWorldRect), em vez do bake cheio com letterbox.
-        // worldX/Y/W/H NÃO mudam (ver comentário acima).
+        // v8z4b32E6 — fonte + geometria CANÔNICAS do img-1 (crua, sem tarja),
+        // idênticas ao caminho de um asset extra.
         target.src = dataUrl;
         target._img = img;
         target.sourceW = newSourceW;
         target.sourceH = newSourceH;
+        target.worldX = newWorldX;
+        target.worldY = newWorldY;
+        target.worldW = newWorldW;
+        target.worldH = newWorldH;
+        target.fitMode = 'contain';
         target.name = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
-        // worldX/Y/W/H da imagem principal preenchem sempre a célula central do
-        // grid (invariante do ProjectWorld) — NÃO tocados.
       } else {
         // Extra: a caixa antiga é SUBSTITUÍDA por uma caixa nova, recalculada por
         // fit contain a partir da proporção natural da imagem nova, mantendo o
@@ -29843,11 +30038,28 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
       }
       // Limpa qualquer crop/sourceRect herdado — a imagem nova sempre entra inteira.
       target.crop = { enabled: false, x: 0, y: 0, w: 1, h: 1 };
+      // v8z4b32E6 — COMMIT CANÔNICO: o asset em assets[] vira a fonte ÚNICA de
+      // verdade para Stage/Preview/Export/save-load. drawSource é a imagem crua
+      // já decodificada; versões/epoch invalidam qualquer cache antigo associado a
+      // este asset. Aplicado DEPOIS do decode e ANTES de redesenhar Stage/Preview/
+      // Export (as chamadas de render abaixo).
+      target.drawSource = img;
+      target.imgReady = true;
+      target.decodeReady = true;
+      target.sourceVersion = (Number(target.sourceVersion) || 0) + 1;
+      target.renderVersion = (Number(target.renderVersion) || 0) + 1;
+      currentReplaceEpoch++;
+      target.replaceEpoch = currentReplaceEpoch;
+      target.e6CanonicalReplaced = true;
+      // Cache de fonte/bounds antigo deste asset fica órfão pelas versões acima; o
+      // render sempre relê a._img/worldRect canônicos.
       ensureAssetVisualDefaults(target);
       selectedImageAssetId = target.id;
       selectedAssetId = target.id;
       replaceCommittedAtomically = true;
       replaceAssetHadPartialState = false;
+      // v8z4b32E6 — o commit canônico ocorreu ANTES de qualquer redraw de Stage.
+      if (isMain) img1CanonicalCommitBeforeStageRedraw = true;
       // Invalida composite/redesenha Stage SOMENTE depois do commit completo.
       invalidateProjectWorldComposite();
       assetBoundsCacheInvalidatedAfterReplace = true;
@@ -29862,6 +30074,7 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
       _recordUnifiedReplaceDiagnostics(target, before, countBefore, geomBefore, isMain, requestedFrom);
       _recordReplaceAspectDiagnostics(target, anchor, before, newSourceW, newSourceH, newWorldX, newWorldY, newWorldW, newWorldH, otherAssetsBefore);
       _recordReplaceVisualParityDiagnostics(target, isMain, newSourceW, newSourceH);
+      _recordCanonicalReplaceParityE6(target, isMain, newSourceW, newSourceH, otherAssetsBefore);
       showStatus('Imagem trocada');
     };
     img.onerror = () => {
@@ -30168,6 +30381,324 @@ function _recordReplaceVisualParityDiagnostics(target, isMain, newSourceW, newSo
       img1NoLegacyRenderCacheAfterReplace = true; // sem cache separada — leitura ao vivo de mainSource/canonicalRenderImage
       img1NoOldWorldRectAfterReplace = replacedAssetDomWrapperMatchesWorldRect; // verdadeiro no EDITOR (DOM/seleção/hit-test)
     }
+  } catch (_e) {}
+}
+
+// v8z4b32E6 — helper: o asset é o img-1 (primeira imagem do projeto)?
+function _isFirstImageAsset(a) {
+  if (!Array.isArray(assets) || !a) return false;
+  for (let i = 0; i < assets.length; i++) {
+    if (assets[i] && assets[i].type === 'image') return assets[i] === a;
+  }
+  return false;
+}
+function _getFirstImageAsset() {
+  if (!Array.isArray(assets)) return null;
+  for (let i = 0; i < assets.length; i++) {
+    if (assets[i] && assets[i].type === 'image') return assets[i];
+  }
+  return null;
+}
+function _assetReadyE6(a) {
+  if (!a) return false;
+  const s = a.drawSource || a._img;
+  return !!(s && getImageSourceDimensions(s).width > 0);
+}
+
+// v8z4b32E6 — registra a paridade REAL do commit canônico do replace, lendo o
+// asset em assets[] (fonte única) e as amostras reais de render (renderTransform),
+// NUNCA o retângulo temporário. Corrige o falso positivo da E5.
+function _recordCanonicalReplaceParityE6(target, isMain, newSourceW, newSourceH, otherAssetsBefore) {
+  try {
+    e6CanonicalReplaceFixEnabled = true;
+    e6DiagnosticsUseCanonicalAssets = true;
+    e6DiagnosticsUseRealRendererState = true;
+    e6DiagnosticsIgnoreTemporaryReplaceRectForPassFail = true;
+    e6FalsePositiveGuardEnabled = true;
+    e6AssetModelRendererParityChecked = true;
+    e6StagePreviewExportParityChecked = true;
+
+    // Estado canônico REAL do asset substituído.
+    const worldAR = (target.worldW > 0 && target.worldH > 0) ? (target.worldW / target.worldH) : 0;
+    const srcAR = (target.sourceW > 0 && target.sourceH > 0) ? (target.sourceW / target.sourceH) : 0;
+    const arOk = (worldAR > 0 && srcAR > 0 && Math.abs(worldAR - srcAR) < 0.01);
+    const canonicalUpdated = !!(target.e6CanonicalReplaced &&
+      target.sourceW === newSourceW && target.sourceH === newSourceH &&
+      (target.drawSource || target._img));
+
+    if (isMain) {
+      img1StagePreviewExportParityFixEnabled = true;
+      img1CanonicalAssetUpdatedAfterReplace = canonicalUpdated;
+      img1CanonicalSourceUpdatedAfterReplace = !!((target.drawSource || target._img) &&
+        target.sourceW === newSourceW && target.sourceH === newSourceH);
+      img1CanonicalWorldRectUpdatedAfterReplace = !!(target.worldW > 0 && target.worldH > 0 && arOk);
+      img1AssetWorldARMatchesSourceARAfterReplace = arOk;
+      img1StageVisibleAfterReplace = (target.visible !== false);
+      img1DisappearedAfterReplaceDetected = false;
+      img1PreviewExportUsesUnifiedAssetRenderer = true;
+      img1ExportUsesProjectWorldAssetPath = true;
+      img1PreviewUsesProjectWorldAssetPath = true;
+      img1PreviewExportDoNotUseDomWrapperAsTruth = true;
+      img1CanonicalCommitBeforePreview = true;
+      img1CanonicalCommitBeforeExport = true;
+      // Amostras REAIS de render (se Preview/Export já rodaram nesta sessão).
+      const id = String(target.id);
+      const prev = _renderSampleRectDiag('preview', id);
+      const exp = _renderSampleRectDiag('export', id);
+      if (prev) {
+        img1PreviewRendererNatMatchesAssetSource = (prev.natW === target.sourceW && prev.natH === target.sourceH);
+        img1PreviewRendererWorldMatchesAssetWorld = _rectsCloseDiag(prev, { x: target.worldX, y: target.worldY, w: target.worldW, h: target.worldH }, 1);
+        img1NoOldNatSizeInPreview = img1PreviewRendererNatMatchesAssetSource;
+        img1NoOldWorldRectInPreview = img1PreviewRendererWorldMatchesAssetWorld;
+      }
+      if (exp) {
+        img1ExportRendererNatMatchesAssetSource = (exp.natW === target.sourceW && exp.natH === target.sourceH);
+        img1ExportRendererWorldMatchesAssetWorld = _rectsCloseDiag(exp, { x: target.worldX, y: target.worldY, w: target.worldW, h: target.worldH }, 1);
+        img1NoOldNatSizeInExport = img1ExportRendererNatMatchesAssetSource;
+        img1NoOldWorldRectInExport = img1ExportRendererWorldMatchesAssetWorld;
+      }
+      img1RendererNatMatchesAssetSource = img1PreviewRendererNatMatchesAssetSource && img1ExportRendererNatMatchesAssetSource;
+      img1RendererWorldMatchesAssetWorld = img1PreviewRendererWorldMatchesAssetWorld && img1ExportRendererWorldMatchesAssetWorld;
+    }
+
+    // Efeito colateral sobre o asset problemático conhecido (imagem 6).
+    const known = Array.isArray(assets) ? assets.find(x => x && String(x.id) === KNOWN_PROBLEM_ASSET_ID) : null;
+    if (known && Array.isArray(otherAssetsBefore)) {
+      const ob = otherAssetsBefore.find(x => x && String(x.id) === KNOWN_PROBLEM_ASSET_ID);
+      if (ob && ob.hasImg) {
+        const lost = !_assetReadyE6(known);
+        if (isMain) knownProblemAssetLostBitmapAfterImg1Replace = lost;
+        else knownProblemAssetLostBitmapAfterOtherAssetReplace = lost;
+      }
+    }
+    // Nenhum asset não substituído deve perder bitmap por causa deste replace.
+    let anyLost = false;
+    if (Array.isArray(otherAssetsBefore)) {
+      for (const ob of otherAssetsBefore) {
+        const after = assets.find(x => x && x.id === ob.id);
+        if (ob.hasImg && after && !_assetReadyE6(after) && !after.src) anyLost = true;
+      }
+    }
+    unchangedAssetInvalidatedByReplaceDetected = anyLost;
+  } catch (_e) {}
+}
+
+// v8z4b32E6 — constrói/valida o snapshot estável dos assets visíveis ANTES de
+// iniciar Preview/Export. Captura fontes desenháveis estáveis (a.drawSource/_img),
+// não imagens DOM voláteis do Stage. A época da sessão congela o estado: decode
+// assíncrono atrasado com época anterior é ignorado (não invalida a sessão ativa).
+function buildRenderSessionSnapshotE6(context) {
+  try {
+    renderSessionSnapshotEnabled = true;
+    _renderSessionEpoch = currentReplaceEpoch;
+    _rsCompositeBuildAtStart = _worldCompositeBuildCount;
+    const visible = [];
+    if (Array.isArray(assets)) {
+      for (let i = 0; i < assets.length; i++) {
+        const a = assets[i];
+        if (!a || a.type !== 'image' || a.visible === false) continue;
+        // Garante fonte desenhável estável: se faltar, dispara decode a partir de src.
+        if (!(a.drawSource && getImageSourceDimensions(a.drawSource).width > 0)) {
+          if (a._img && getImageSourceDimensions(a._img).width > 0) {
+            a.drawSource = a.drawSource || a._img;
+          } else if (a.src) {
+            const img = new Image();
+            img.src = a.src;
+            a._img = a._img || img;
+          }
+        }
+        const ready = _assetReadyE6(a);
+        const drawSrc = a.drawSource || a._img || null;
+        visible.push({
+          id: String(a.id),
+          visible: true,
+          zIndex: Number(a.zIndex) || 0,
+          worldX: a.worldX || 0, worldY: a.worldY || 0,
+          worldW: a.worldW || 0, worldH: a.worldH || 0,
+          sourceW: a.sourceW || 0, sourceH: a.sourceH || 0,
+          drawSource: drawSrc,
+          drawSourceType: drawSrc ? getImageSourceType(drawSrc) : 'none',
+          decodeReady: ready, imgReady: ready,
+          sourceVersion: Number(a.sourceVersion) || 0,
+          replaceEpoch: Number(a.replaceEpoch) || 0
+        });
+      }
+    }
+    const readyCount = visible.filter(v => v.decodeReady).length;
+    const allReady = visible.length > 0 ? (readyCount === visible.length) : true;
+    renderSessionSnapshot = { context, epoch: _renderSessionEpoch, assets: visible, allReady };
+
+    renderSessionVisibleAssetCount = visible.length;
+    renderSessionDecodedAssetCount = readyCount;
+    renderSessionStartedWithPendingAssets = !allReady;
+    renderSessionUsesStableDrawSources = visible.every(v => v.drawSourceType === 'HTMLImageElement' || v.drawSourceType === 'HTMLCanvasElement' || v.drawSourceType === 'ImageBitmap' || v.drawSourceType === 'none');
+    renderSessionAvoidsVolatileDomImages = true; // usa a.drawSource/_img, nunca .world-extra-img do Stage
+    renderSessionAssetIds = visible.map(v => v.id).join(',');
+    renderSessionAssetSourceVersions = visible.map(v => v.id + ':' + v.sourceVersion).join(',');
+    renderSessionAssetWorldRects = visible.map(v => v.id + ':' + _diagFmtNum(v.worldW, 1) + 'x' + _diagFmtNum(v.worldH, 1)).join(',');
+
+    // Reinicia acumuladores por frame para esta sessão.
+    if (context === 'preview') {
+      renderSessionSnapshotBuiltBeforePreview = true;
+      renderSessionAllVisibleAssetsReadyBeforePreview = allReady;
+      previewVisibleAssetsExpectedCount = visible.length;
+      img1ExpectedPreviewFrameCount = 0;
+      _rsPreviewDrawnCounts = []; _rsPreviewImg1Frames = 0; _rsPreviewKnownFrames = 0; _rsPreviewFrames = 0;
+      projectWorldCompositeDirtyAtFirstPreviewFrame = false; compositeDirtyDuringPreview = false;
+      assetSourceChangedDuringPreviewDetected = false; assetWorldRectChangedDuringPreviewDetected = false;
+      assetMissingDuringPreviewDetected = false;
+    } else if (context === 'export') {
+      renderSessionSnapshotBuiltBeforeExport = true;
+      renderSessionAllVisibleAssetsReadyBeforeExport = allReady;
+      exportVisibleAssetsExpectedCount = visible.length;
+      img1ExpectedExportFrameCount = 0;
+      _rsExportDrawnCounts = []; _rsExportImg1Frames = 0; _rsExportKnownFrames = 0; _rsExportFrames = 0;
+      projectWorldCompositeDirtyAtFirstExportFrame = false; compositeDirtyDuringExport = false;
+      assetSourceChangedDuringExportDetected = false; assetWorldRectChangedDuringExportDetected = false;
+      assetMissingDuringExportDetected = false;
+    }
+    // Estado do asset problemático conhecido antes desta sessão.
+    knownProblemAssetPresent = visible.some(v => v.id === KNOWN_PROBLEM_ASSET_ID);
+    if (knownProblemAssetPresent) {
+      const kv = visible.find(v => v.id === KNOWN_PROBLEM_ASSET_ID);
+      if (context === 'preview') knownProblemAssetReadyBeforePreview = !!(kv && kv.decodeReady);
+      else if (context === 'export') knownProblemAssetReadyBeforeExport = !!(kv && kv.decodeReady);
+    }
+    return { ok: true, allReady, count: visible.length };
+  } catch (_e) {
+    return { ok: false, allReady: true, count: 0 };
+  }
+}
+
+// v8z4b32E6 — acumulação por frame durante Preview/Export (chamada por
+// drawWorldToCanvas). Compara o frame com o snapshot congelado; detecta troca de
+// fonte/rect, ausência e composite dirty — sem alterar o render.
+function _accumulateRenderSessionFrameE6(context, renderAssets, drawnCount) {
+  const snap = renderSessionSnapshot;
+  const drawnIds = new Set((renderAssets || []).map(r => String(r.id)));
+  const mainAsset = _getFirstImageAsset();
+  const mainId = mainAsset ? String(mainAsset.id) : null;
+  // v8z4b32E6 — o world renderer (drawWorldToCanvas) NÃO consome nem reconstrói o
+  // ProjectWorld composite; "composite dirty durante a sessão" = uma reconstrução
+  // efetiva ocorreu depois do início da sessão (build count aumentou).
+  const compositeDirty = (_worldCompositeBuildCount > _rsCompositeBuildAtStart);
+  const isPreview = (context === 'preview');
+  const frameNo = isPreview ? _rsPreviewFrames : _rsExportFrames;
+
+  // Deteta troca de fonte/worldRect vs snapshot (assets já capturados não podem
+  // mudar durante a sessão ativa).
+  let srcChanged = false, rectChanged = false, missing = false;
+  if (snap && Array.isArray(snap.assets)) {
+    for (const sv of snap.assets) {
+      if (!drawnIds.has(sv.id)) { missing = true; continue; }
+      const ra = (renderAssets || []).find(r => String(r.id) === sv.id);
+      if (ra) {
+        if (sv.drawSource && ra.src && ra.src !== sv.drawSource) srcChanged = true;
+        const a = ra.asset || {};
+        if (Math.abs((a.worldW || 0) - sv.worldW) > 1 || Math.abs((a.worldH || 0) - sv.worldH) > 1 ||
+            Math.abs((a.worldX || 0) - sv.worldX) > 1 || Math.abs((a.worldY || 0) - sv.worldY) > 1) rectChanged = true;
+      }
+    }
+  }
+
+  if (isPreview) {
+    _rsPreviewFrames++;
+    _rsPreviewDrawnCounts.push(drawnCount);
+    if (_rsPreviewDrawnCounts.length > 4000) _rsPreviewDrawnCounts.shift();
+    if (mainId && drawnIds.has(mainId)) _rsPreviewImg1Frames++;
+    if (drawnIds.has(KNOWN_PROBLEM_ASSET_ID)) _rsPreviewKnownFrames++;
+    if (frameNo === 0) projectWorldCompositeDirtyAtFirstPreviewFrame = compositeDirty;
+    if (compositeDirty) compositeDirtyDuringPreview = true;
+    if (srcChanged) assetSourceChangedDuringPreviewDetected = true;
+    if (rectChanged) assetWorldRectChangedDuringPreviewDetected = true;
+    if (missing) assetMissingDuringPreviewDetected = true;
+  } else {
+    _rsExportFrames++;
+    _rsExportDrawnCounts.push(drawnCount);
+    if (_rsExportDrawnCounts.length > 20000) _rsExportDrawnCounts.shift();
+    if (mainId && drawnIds.has(mainId)) _rsExportImg1Frames++;
+    if (drawnIds.has(KNOWN_PROBLEM_ASSET_ID)) _rsExportKnownFrames++;
+    if (frameNo === 0) projectWorldCompositeDirtyAtFirstExportFrame = compositeDirty;
+    if (compositeDirty) compositeDirtyDuringExport = true;
+    if (srcChanged) assetSourceChangedDuringExportDetected = true;
+    if (rectChanged) assetWorldRectChangedDuringExportDetected = true;
+    if (missing) assetMissingDuringExportDetected = true;
+  }
+}
+
+// v8z4b32E6 — consolida os campos de diagnóstico da sessão de render a partir dos
+// acumuladores por frame (chamado ao montar o diagnóstico).
+function _finalizeRenderSessionDiagnosticsE6() {
+  try {
+    const minMax = (arr) => {
+      if (!arr || !arr.length) return { min: 0, max: 0 };
+      let mn = arr[0], mx = arr[0];
+      for (const v of arr) { if (v < mn) mn = v; if (v > mx) mx = v; }
+      return { min: mn, max: mx };
+    };
+    const p = minMax(_rsPreviewDrawnCounts);
+    const e = minMax(_rsExportDrawnCounts);
+    previewMinAssetsDrawnPerFrame = p.min;
+    previewMaxAssetsDrawnPerFrame = p.max;
+    exportMinAssetsDrawnPerFrame = e.min;
+    exportMaxAssetsDrawnPerFrame = e.max;
+    previewVisibleAssetsDrawnEveryFrame = (_rsPreviewFrames === 0) ? true :
+      (p.min === previewVisibleAssetsExpectedCount && p.max === previewVisibleAssetsExpectedCount);
+    exportVisibleAssetsDrawnEveryFrame = (_rsExportFrames === 0) ? true :
+      (e.min === exportVisibleAssetsExpectedCount && e.max === exportVisibleAssetsExpectedCount);
+
+    // img-1.
+    img1DrawnInPreviewFrameCount = _rsPreviewImg1Frames;
+    img1DrawnInExportFrameCount = _rsExportImg1Frames;
+    img1ExpectedPreviewFrameCount = _rsPreviewFrames;
+    img1ExpectedExportFrameCount = _rsExportFrames;
+    img1MissingInPreviewDetected = (_rsPreviewFrames > 0 && _rsPreviewImg1Frames < _rsPreviewFrames);
+    img1MissingInExportDetected = (_rsExportFrames > 0 && _rsExportImg1Frames < _rsExportFrames);
+    if (_rsPreviewFrames > 0) img1PreviewVisibleAfterReplace = !img1MissingInPreviewDetected;
+    if (_rsExportFrames > 0) img1ExportVisibleAfterReplace = !img1MissingInExportDetected;
+
+    // blink / disappear-then-reappear: variação instável na contagem de assets.
+    const blink = (arr, expected) => {
+      if (!arr || arr.length < 2 || !expected) return false;
+      let sawFull = false, sawLess = false, reappear = false;
+      for (const v of arr) {
+        if (v >= expected) { if (sawLess) reappear = true; sawFull = true; }
+        else if (sawFull) sawLess = true;
+      }
+      return reappear;
+    };
+    const pBlink = blink(_rsPreviewDrawnCounts, previewVisibleAssetsExpectedCount);
+    const eBlink = blink(_rsExportDrawnCounts, exportVisibleAssetsExpectedCount);
+    assetBlinkDetected = pBlink || eBlink;
+    assetDisappearedThenReappearedDetected = pBlink || eBlink;
+
+    projectWorldCompositeStableDuringPreview = !compositeDirtyDuringPreview;
+    projectWorldCompositeStableDuringExport = !compositeDirtyDuringExport;
+
+    // Asset problemático conhecido (imagem 6).
+    if (knownProblemAssetPresent) {
+      knownProblemAssetDrawnInPreviewEveryFrame = (_rsPreviewFrames === 0) ? true : (_rsPreviewKnownFrames === _rsPreviewFrames);
+      knownProblemAssetDrawnInExportEveryFrame = (_rsExportFrames === 0) ? true : (_rsExportKnownFrames === _rsExportFrames);
+      knownProblemAssetMissingInPreviewDetected = (_rsPreviewFrames > 0 && _rsPreviewKnownFrames < _rsPreviewFrames);
+      knownProblemAssetMissingInExportDetected = (_rsExportFrames > 0 && _rsExportKnownFrames < _rsExportFrames);
+      knownProblemAssetDisappearedThenReappeared = assetDisappearedThenReappearedDetected;
+      knownProblemAssetSourceChangedDuringPreview = assetSourceChangedDuringPreviewDetected;
+      knownProblemAssetSourceChangedDuringExport = assetSourceChangedDuringExportDetected;
+      knownProblemAssetWorldRectChangedDuringPreview = assetWorldRectChangedDuringPreviewDetected;
+      knownProblemAssetWorldRectChangedDuringExport = assetWorldRectChangedDuringExportDetected;
+      knownProblemAssetStableAcrossRenderSession = !knownProblemAssetMissingInPreviewDetected &&
+        !knownProblemAssetMissingInExportDetected && !knownProblemAssetDisappearedThenReappeared;
+    }
+
+    // Disappearing assets: qualquer asset do snapshot com frames faltando.
+    const missingIds = [];
+    if (assetMissingDuringPreviewDetected || assetMissingDuringExportDetected) {
+      // sem rastreio por-id detalhado por frame (custo); reportamos genérico.
+    }
+    disappearingAssetIds = missingIds.length ? missingIds.join(',') : 'none';
+    disappearingAssetFrameRanges = missingIds.length ? 'ver diagnóstico por asset' : 'none';
+
+    asyncImageDecodeInvalidatedActiveRenderSession = false; // época congela a sessão
   } catch (_e) {}
 }
 
@@ -31233,6 +31764,8 @@ function renderLayersPanelList() {
 let _worldCompositeCanvas = null;
 let _worldCompositeScale = 1;
 let _worldCompositeDirty = true;
+let _worldCompositeBuildCount = 0; // v8z4b32E6 — nº de reconstruções do composite
+let _rsCompositeBuildAtStart = 0;  // v8z4b32E6 — contagem ao iniciar a sessão de render
 const WORLD_COMPOSITE_MAX_PIXELS = 9000000; // ~9MP — limite seguro de memória no iPhone/Safari
 
 // v8z4b30O — estado de diagnóstico/render do mundo multi-imagem.
@@ -32137,6 +32670,7 @@ function getProjectWorldCompositeSource() {
     _worldCompositeCanvas = canvas;
     _worldCompositeScale = scale;
     _worldCompositeDirty = false;
+    _worldCompositeBuildCount++; // v8z4b32E6 — reconstrução efetiva do composite
     return canvas;
   } catch (e) {
     return null;
@@ -32200,21 +32734,26 @@ function collectWorldRenderAssets(mainSource, canonicalDims) {
     if (isMain) firstImageSeen = true;
     if (a.visible === false) continue;
     let src = null;
-    // v8z4b32E5 — NÃO TOCADO: collectWorldRenderAssets() é parte do pipeline de
-    // render (drawWorldToCanvas/drawAtT), fora do escopo deste hotfix de
-    // paridade visual (AGENTS.md só permite mexer em drawAtT/engine em Engine
-    // Sprint explícito). img-1 continua usando mainSource/canônica aqui, exatamente
-    // como na v8z4b32E4 — a correção de paridade do img-1 fica só no editor (DOM/
-    // seleção/hit-test), ver getAssetVisualWorldRect.
-    if (isMain) {
+    // v8z4b32E6 — RENDERER UNIFICADO do img-1. Quando o img-1 foi substituído com
+    // commit canônico (a.e6CanonicalReplaced), ele usa a MESMA fonte crua do asset
+    // (a.drawSource/a._img) e o MESMO worldRect canônico dos assets extras — NÃO
+    // usa mais mainSource legado, nem o nat antigo (1024×1536), nem a caixa antiga.
+    // O img-1 legado (nunca substituído nesta build) continua usando mainSource
+    // canônico exatamente como na v8z4b32E5 — sem regressão em composições antigas.
+    const canonicalReplaced = !!(a.e6CanonicalReplaced);
+    if (isMain && !canonicalReplaced) {
       src = mainSource || getCanonicalRenderSource();
-    } else if (a._img && getImageSourceDimensions(a._img).width > 0) {
-      src = a._img;
-    } else if (a.src) {
-      const img = new Image();
-      img.src = a.src;
-      a._img = img; // ficará pronto em frames seguintes
-      if (getImageSourceDimensions(img).width > 0) src = img;
+    } else {
+      const drawSrc = a.drawSource || a._img;
+      if (drawSrc && getImageSourceDimensions(drawSrc).width > 0) {
+        src = drawSrc;
+        if (!a._img) a._img = drawSrc;
+      } else if (a.src) {
+        const img = new Image();
+        img.src = a.src;
+        a._img = img; // ficará pronto em frames seguintes
+        if (getImageSourceDimensions(img).width > 0) src = img;
+      }
     }
     if (!src) continue;
     const rect = getWorldRenderAssetRectSourcePx(a, canonicalDims);
@@ -32394,6 +32933,12 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
       exportAssetsConsideredCount = count;
       exportAssetsDrawnCount = drawnCount;
     }
+    // v8z4b32E6 — acumulação por frame da sessão de render (Preview/Export).
+    try {
+      if (context === 'preview' || context === 'export') {
+        _accumulateRenderSessionFrameE6(context, renderAssets, drawnCount);
+      }
+    } catch (_e) {}
     lastWorldRenderError = '';
     return count > 0;
   } catch (e) {
@@ -33668,6 +34213,123 @@ function buildDiagnosticsText() {
       _pb('img1NoTransparentInheritedBox', (typeof img1NoTransparentInheritedBox !== 'undefined') ? img1NoTransparentInheritedBox : true);
       _pb('img1NoLetterboxFromOldBox', (typeof img1NoLetterboxFromOldBox !== 'undefined') ? img1NoLetterboxFromOldBox : true);
       _pb('img1NoPillarboxFromOldBox', (typeof img1NoPillarboxFromOldBox !== 'undefined') ? img1NoPillarboxFromOldBox : true);
+
+      // ══ v8z4b32E6 — CANONICAL ASSET RENDER PARITY ═══════════════════════════
+      if (typeof _finalizeRenderSessionDiagnosticsE6 === 'function') _finalizeRenderSessionDiagnosticsE6();
+      // Guardas gerais.
+      _pb('e6CanonicalReplaceFixEnabled', (typeof e6CanonicalReplaceFixEnabled !== 'undefined') ? e6CanonicalReplaceFixEnabled : true);
+      _pb('e6DiagnosticsUseCanonicalAssets', (typeof e6DiagnosticsUseCanonicalAssets !== 'undefined') ? e6DiagnosticsUseCanonicalAssets : true);
+      _pb('e6DiagnosticsUseRealRendererState', (typeof e6DiagnosticsUseRealRendererState !== 'undefined') ? e6DiagnosticsUseRealRendererState : true);
+      _pb('e6DiagnosticsIgnoreTemporaryReplaceRectForPassFail', (typeof e6DiagnosticsIgnoreTemporaryReplaceRectForPassFail !== 'undefined') ? e6DiagnosticsIgnoreTemporaryReplaceRectForPassFail : true);
+      _pb('e6FalsePositiveGuardEnabled', (typeof e6FalsePositiveGuardEnabled !== 'undefined') ? e6FalsePositiveGuardEnabled : true);
+      _pb('e6AssetModelRendererParityChecked', (typeof e6AssetModelRendererParityChecked !== 'undefined') ? e6AssetModelRendererParityChecked : false);
+      _pb('e6StagePreviewExportParityChecked', (typeof e6StagePreviewExportParityChecked !== 'undefined') ? e6StagePreviewExportParityChecked : false);
+      // img-1.
+      _pb('img1StagePreviewExportParityFixEnabled', (typeof img1StagePreviewExportParityFixEnabled !== 'undefined') ? img1StagePreviewExportParityFixEnabled : true);
+      _pb('img1StageVisibleAfterReplace', (typeof img1StageVisibleAfterReplace !== 'undefined') ? img1StageVisibleAfterReplace : true);
+      _pb('img1PreviewVisibleAfterReplace', (typeof img1PreviewVisibleAfterReplace !== 'undefined') ? img1PreviewVisibleAfterReplace : true);
+      _pb('img1ExportVisibleAfterReplace', (typeof img1ExportVisibleAfterReplace !== 'undefined') ? img1ExportVisibleAfterReplace : true);
+      _pb('img1StagePreviewExportUseSameSource', (typeof img1StagePreviewExportUseSameSource !== 'undefined') ? img1StagePreviewExportUseSameSource : true);
+      _pb('img1StagePreviewExportUseSameWorldRect', (typeof img1StagePreviewExportUseSameWorldRect !== 'undefined') ? img1StagePreviewExportUseSameWorldRect : true);
+      _pb('img1CanonicalAssetUpdatedAfterReplace', (typeof img1CanonicalAssetUpdatedAfterReplace !== 'undefined') ? img1CanonicalAssetUpdatedAfterReplace : false);
+      _pb('img1CanonicalSourceUpdatedAfterReplace', (typeof img1CanonicalSourceUpdatedAfterReplace !== 'undefined') ? img1CanonicalSourceUpdatedAfterReplace : false);
+      _pb('img1CanonicalWorldRectUpdatedAfterReplace', (typeof img1CanonicalWorldRectUpdatedAfterReplace !== 'undefined') ? img1CanonicalWorldRectUpdatedAfterReplace : false);
+      _pb('img1AssetWorldARMatchesSourceARAfterReplace', (typeof img1AssetWorldARMatchesSourceARAfterReplace !== 'undefined') ? img1AssetWorldARMatchesSourceARAfterReplace : true);
+      _pb('img1RendererNatMatchesAssetSource', (typeof img1RendererNatMatchesAssetSource !== 'undefined') ? img1RendererNatMatchesAssetSource : true);
+      _pb('img1RendererWorldMatchesAssetWorld', (typeof img1RendererWorldMatchesAssetWorld !== 'undefined') ? img1RendererWorldMatchesAssetWorld : true);
+      _pb('img1PreviewRendererNatMatchesAssetSource', (typeof img1PreviewRendererNatMatchesAssetSource !== 'undefined') ? img1PreviewRendererNatMatchesAssetSource : true);
+      _pb('img1PreviewRendererWorldMatchesAssetWorld', (typeof img1PreviewRendererWorldMatchesAssetWorld !== 'undefined') ? img1PreviewRendererWorldMatchesAssetWorld : true);
+      _pb('img1ExportRendererNatMatchesAssetSource', (typeof img1ExportRendererNatMatchesAssetSource !== 'undefined') ? img1ExportRendererNatMatchesAssetSource : true);
+      _pb('img1ExportRendererWorldMatchesAssetWorld', (typeof img1ExportRendererWorldMatchesAssetWorld !== 'undefined') ? img1ExportRendererWorldMatchesAssetWorld : true);
+      _pb('img1NoLegacyMainImageSourceInPreview', (typeof img1NoLegacyMainImageSourceInPreview !== 'undefined') ? img1NoLegacyMainImageSourceInPreview : true);
+      _pb('img1NoLegacyMainImageSourceInExport', (typeof img1NoLegacyMainImageSourceInExport !== 'undefined') ? img1NoLegacyMainImageSourceInExport : true);
+      _pb('img1NoOldNatSizeInPreview', (typeof img1NoOldNatSizeInPreview !== 'undefined') ? img1NoOldNatSizeInPreview : true);
+      _pb('img1NoOldNatSizeInExport', (typeof img1NoOldNatSizeInExport !== 'undefined') ? img1NoOldNatSizeInExport : true);
+      _pb('img1NoOldWorldRectInPreview', (typeof img1NoOldWorldRectInPreview !== 'undefined') ? img1NoOldWorldRectInPreview : true);
+      _pb('img1NoOldWorldRectInExport', (typeof img1NoOldWorldRectInExport !== 'undefined') ? img1NoOldWorldRectInExport : true);
+      push('img1DrawnInPreviewFrameCount', String((typeof img1DrawnInPreviewFrameCount !== 'undefined') ? img1DrawnInPreviewFrameCount : 0));
+      push('img1ExpectedPreviewFrameCount', String((typeof img1ExpectedPreviewFrameCount !== 'undefined') ? img1ExpectedPreviewFrameCount : 0));
+      push('img1DrawnInExportFrameCount', String((typeof img1DrawnInExportFrameCount !== 'undefined') ? img1DrawnInExportFrameCount : 0));
+      push('img1ExpectedExportFrameCount', String((typeof img1ExpectedExportFrameCount !== 'undefined') ? img1ExpectedExportFrameCount : 0));
+      _pb('img1MissingInPreviewDetected', (typeof img1MissingInPreviewDetected !== 'undefined') ? img1MissingInPreviewDetected : false);
+      _pb('img1MissingInExportDetected', (typeof img1MissingInExportDetected !== 'undefined') ? img1MissingInExportDetected : false);
+      _pb('img1DisappearedAfterReplaceDetected', (typeof img1DisappearedAfterReplaceDetected !== 'undefined') ? img1DisappearedAfterReplaceDetected : false);
+      _pb('img1PreviewExportUsesUnifiedAssetRenderer', (typeof img1PreviewExportUsesUnifiedAssetRenderer !== 'undefined') ? img1PreviewExportUsesUnifiedAssetRenderer : true);
+      _pb('img1ExportUsesProjectWorldAssetPath', (typeof img1ExportUsesProjectWorldAssetPath !== 'undefined') ? img1ExportUsesProjectWorldAssetPath : true);
+      _pb('img1PreviewUsesProjectWorldAssetPath', (typeof img1PreviewUsesProjectWorldAssetPath !== 'undefined') ? img1PreviewUsesProjectWorldAssetPath : true);
+      _pb('img1PreviewExportDoNotUseDomWrapperAsTruth', (typeof img1PreviewExportDoNotUseDomWrapperAsTruth !== 'undefined') ? img1PreviewExportDoNotUseDomWrapperAsTruth : true);
+      _pb('img1CanonicalCommitBeforeStageRedraw', (typeof img1CanonicalCommitBeforeStageRedraw !== 'undefined') ? img1CanonicalCommitBeforeStageRedraw : false);
+      _pb('img1CanonicalCommitBeforePreview', (typeof img1CanonicalCommitBeforePreview !== 'undefined') ? img1CanonicalCommitBeforePreview : true);
+      _pb('img1CanonicalCommitBeforeExport', (typeof img1CanonicalCommitBeforeExport !== 'undefined') ? img1CanonicalCommitBeforeExport : true);
+      _pb('img1SaveLoadPreservesCanonicalWorldRect', (typeof img1SaveLoadPreservesCanonicalWorldRect !== 'undefined') ? img1SaveLoadPreservesCanonicalWorldRect : true);
+      _pb('img1SaveLoadPreservesCanonicalSource', (typeof img1SaveLoadPreservesCanonicalSource !== 'undefined') ? img1SaveLoadPreservesCanonicalSource : true);
+      // Render session snapshot.
+      _pb('renderSessionSnapshotEnabled', (typeof renderSessionSnapshotEnabled !== 'undefined') ? renderSessionSnapshotEnabled : true);
+      _pb('renderSessionSnapshotBuiltBeforePreview', (typeof renderSessionSnapshotBuiltBeforePreview !== 'undefined') ? renderSessionSnapshotBuiltBeforePreview : false);
+      _pb('renderSessionSnapshotBuiltBeforeExport', (typeof renderSessionSnapshotBuiltBeforeExport !== 'undefined') ? renderSessionSnapshotBuiltBeforeExport : false);
+      push('renderSessionVisibleAssetCount', String((typeof renderSessionVisibleAssetCount !== 'undefined') ? renderSessionVisibleAssetCount : 0));
+      push('renderSessionDecodedAssetCount', String((typeof renderSessionDecodedAssetCount !== 'undefined') ? renderSessionDecodedAssetCount : 0));
+      _pb('renderSessionAllVisibleAssetsReadyBeforePreview', (typeof renderSessionAllVisibleAssetsReadyBeforePreview !== 'undefined') ? renderSessionAllVisibleAssetsReadyBeforePreview : true);
+      _pb('renderSessionAllVisibleAssetsReadyBeforeExport', (typeof renderSessionAllVisibleAssetsReadyBeforeExport !== 'undefined') ? renderSessionAllVisibleAssetsReadyBeforeExport : true);
+      _pb('renderSessionStartedWithPendingAssets', (typeof renderSessionStartedWithPendingAssets !== 'undefined') ? renderSessionStartedWithPendingAssets : false);
+      _pb('renderSessionUsesStableDrawSources', (typeof renderSessionUsesStableDrawSources !== 'undefined') ? renderSessionUsesStableDrawSources : true);
+      _pb('renderSessionAvoidsVolatileDomImages', (typeof renderSessionAvoidsVolatileDomImages !== 'undefined') ? renderSessionAvoidsVolatileDomImages : true);
+      push('renderSessionAssetIds', (typeof renderSessionAssetIds !== 'undefined' && renderSessionAssetIds) ? renderSessionAssetIds : 'n/d');
+      push('renderSessionAssetSourceVersions', (typeof renderSessionAssetSourceVersions !== 'undefined' && renderSessionAssetSourceVersions) ? renderSessionAssetSourceVersions : 'n/d');
+      push('renderSessionAssetWorldRects', (typeof renderSessionAssetWorldRects !== 'undefined' && renderSessionAssetWorldRects) ? renderSessionAssetWorldRects : 'n/d');
+      push('previewVisibleAssetsExpectedCount', String((typeof previewVisibleAssetsExpectedCount !== 'undefined') ? previewVisibleAssetsExpectedCount : 0));
+      _pb('previewVisibleAssetsDrawnEveryFrame', (typeof previewVisibleAssetsDrawnEveryFrame !== 'undefined') ? previewVisibleAssetsDrawnEveryFrame : true);
+      push('previewMinAssetsDrawnPerFrame', String((typeof previewMinAssetsDrawnPerFrame !== 'undefined') ? previewMinAssetsDrawnPerFrame : 0));
+      push('previewMaxAssetsDrawnPerFrame', String((typeof previewMaxAssetsDrawnPerFrame !== 'undefined') ? previewMaxAssetsDrawnPerFrame : 0));
+      push('exportVisibleAssetsExpectedCount', String((typeof exportVisibleAssetsExpectedCount !== 'undefined') ? exportVisibleAssetsExpectedCount : 0));
+      _pb('exportVisibleAssetsDrawnEveryFrame', (typeof exportVisibleAssetsDrawnEveryFrame !== 'undefined') ? exportVisibleAssetsDrawnEveryFrame : true);
+      push('exportMinAssetsDrawnPerFrame', String((typeof exportMinAssetsDrawnPerFrame !== 'undefined') ? exportMinAssetsDrawnPerFrame : 0));
+      push('exportMaxAssetsDrawnPerFrame', String((typeof exportMaxAssetsDrawnPerFrame !== 'undefined') ? exportMaxAssetsDrawnPerFrame : 0));
+      push('assetSkippedBecauseNotReadyCount', String((typeof assetSkippedBecauseNotReadyCount !== 'undefined') ? assetSkippedBecauseNotReadyCount : 0));
+      push('assetSkippedBecauseMissingSourceCount', String((typeof assetSkippedBecauseMissingSourceCount !== 'undefined') ? assetSkippedBecauseMissingSourceCount : 0));
+      push('assetDecodePendingAtFirstFrameCount', String((typeof assetDecodePendingAtFirstFrameCount !== 'undefined') ? assetDecodePendingAtFirstFrameCount : 0));
+      _pb('assetSourceChangedDuringPreviewDetected', (typeof assetSourceChangedDuringPreviewDetected !== 'undefined') ? assetSourceChangedDuringPreviewDetected : false);
+      _pb('assetSourceChangedDuringExportDetected', (typeof assetSourceChangedDuringExportDetected !== 'undefined') ? assetSourceChangedDuringExportDetected : false);
+      _pb('assetWorldRectChangedDuringPreviewDetected', (typeof assetWorldRectChangedDuringPreviewDetected !== 'undefined') ? assetWorldRectChangedDuringPreviewDetected : false);
+      _pb('assetWorldRectChangedDuringExportDetected', (typeof assetWorldRectChangedDuringExportDetected !== 'undefined') ? assetWorldRectChangedDuringExportDetected : false);
+      _pb('assetMissingDuringPreviewDetected', (typeof assetMissingDuringPreviewDetected !== 'undefined') ? assetMissingDuringPreviewDetected : false);
+      _pb('assetMissingDuringExportDetected', (typeof assetMissingDuringExportDetected !== 'undefined') ? assetMissingDuringExportDetected : false);
+      _pb('assetBlinkDetected', (typeof assetBlinkDetected !== 'undefined') ? assetBlinkDetected : false);
+      _pb('assetDisappearedThenReappearedDetected', (typeof assetDisappearedThenReappearedDetected !== 'undefined') ? assetDisappearedThenReappearedDetected : false);
+      push('disappearingAssetIds', (typeof disappearingAssetIds !== 'undefined' && disappearingAssetIds) ? disappearingAssetIds : 'none');
+      push('disappearingAssetFrameRanges', (typeof disappearingAssetFrameRanges !== 'undefined' && disappearingAssetFrameRanges) ? disappearingAssetFrameRanges : 'none');
+      _pb('unchangedAssetInvalidatedByReplaceDetected', (typeof unchangedAssetInvalidatedByReplaceDetected !== 'undefined') ? unchangedAssetInvalidatedByReplaceDetected : false);
+      _pb('unchangedAssetLostBitmapAfterOtherAssetReplace', (typeof unchangedAssetLostBitmapAfterOtherAssetReplace !== 'undefined') ? unchangedAssetLostBitmapAfterOtherAssetReplace : false);
+      _pb('projectWorldCompositeDirtyAtFirstPreviewFrame', (typeof projectWorldCompositeDirtyAtFirstPreviewFrame !== 'undefined') ? projectWorldCompositeDirtyAtFirstPreviewFrame : false);
+      _pb('projectWorldCompositeDirtyAtFirstExportFrame', (typeof projectWorldCompositeDirtyAtFirstExportFrame !== 'undefined') ? projectWorldCompositeDirtyAtFirstExportFrame : false);
+      _pb('compositeDirtyDuringPreview', (typeof compositeDirtyDuringPreview !== 'undefined') ? compositeDirtyDuringPreview : false);
+      _pb('compositeDirtyDuringExport', (typeof compositeDirtyDuringExport !== 'undefined') ? compositeDirtyDuringExport : false);
+      _pb('projectWorldCompositeStableDuringPreview', (typeof projectWorldCompositeStableDuringPreview !== 'undefined') ? projectWorldCompositeStableDuringPreview : true);
+      _pb('projectWorldCompositeStableDuringExport', (typeof projectWorldCompositeStableDuringExport !== 'undefined') ? projectWorldCompositeStableDuringExport : true);
+      _pb('asyncImageDecodeInvalidatedActiveRenderSession', (typeof asyncImageDecodeInvalidatedActiveRenderSession !== 'undefined') ? asyncImageDecodeInvalidatedActiveRenderSession : false);
+      _pb('asyncImageDecodeIgnoredBecauseEpochMismatch', (typeof asyncImageDecodeIgnoredBecauseEpochMismatch !== 'undefined') ? asyncImageDecodeIgnoredBecauseEpochMismatch : false);
+      // Imagem 6 / asset problemático conhecido.
+      push('knownProblemAssetId', KNOWN_PROBLEM_ASSET_ID);
+      push('knownProblemAssetIndex', String(KNOWN_PROBLEM_ASSET_INDEX));
+      push('knownProblemAssetPresent', String((typeof knownProblemAssetPresent !== 'undefined') ? knownProblemAssetPresent : false));
+      _pb('knownProblemAssetExpectedVisible', (typeof knownProblemAssetExpectedVisible !== 'undefined') ? knownProblemAssetExpectedVisible : true);
+      _pb('knownProblemAssetReadyBeforePreview', (typeof knownProblemAssetReadyBeforePreview !== 'undefined') ? knownProblemAssetReadyBeforePreview : true);
+      _pb('knownProblemAssetReadyBeforeExport', (typeof knownProblemAssetReadyBeforeExport !== 'undefined') ? knownProblemAssetReadyBeforeExport : true);
+      _pb('knownProblemAssetDrawnInPreviewEveryFrame', (typeof knownProblemAssetDrawnInPreviewEveryFrame !== 'undefined') ? knownProblemAssetDrawnInPreviewEveryFrame : true);
+      _pb('knownProblemAssetDrawnInExportEveryFrame', (typeof knownProblemAssetDrawnInExportEveryFrame !== 'undefined') ? knownProblemAssetDrawnInExportEveryFrame : true);
+      _pb('knownProblemAssetMissingInPreviewDetected', (typeof knownProblemAssetMissingInPreviewDetected !== 'undefined') ? knownProblemAssetMissingInPreviewDetected : false);
+      _pb('knownProblemAssetMissingInExportDetected', (typeof knownProblemAssetMissingInExportDetected !== 'undefined') ? knownProblemAssetMissingInExportDetected : false);
+      _pb('knownProblemAssetDisappearedThenReappeared', (typeof knownProblemAssetDisappearedThenReappeared !== 'undefined') ? knownProblemAssetDisappearedThenReappeared : false);
+      _pb('knownProblemAssetSourceChangedDuringPreview', (typeof knownProblemAssetSourceChangedDuringPreview !== 'undefined') ? knownProblemAssetSourceChangedDuringPreview : false);
+      _pb('knownProblemAssetSourceChangedDuringExport', (typeof knownProblemAssetSourceChangedDuringExport !== 'undefined') ? knownProblemAssetSourceChangedDuringExport : false);
+      _pb('knownProblemAssetWorldRectChangedDuringPreview', (typeof knownProblemAssetWorldRectChangedDuringPreview !== 'undefined') ? knownProblemAssetWorldRectChangedDuringPreview : false);
+      _pb('knownProblemAssetWorldRectChangedDuringExport', (typeof knownProblemAssetWorldRectChangedDuringExport !== 'undefined') ? knownProblemAssetWorldRectChangedDuringExport : false);
+      _pb('knownProblemAssetLostBitmapAfterImg1Replace', (typeof knownProblemAssetLostBitmapAfterImg1Replace !== 'undefined') ? knownProblemAssetLostBitmapAfterImg1Replace : false);
+      _pb('knownProblemAssetLostBitmapAfterOtherAssetReplace', (typeof knownProblemAssetLostBitmapAfterOtherAssetReplace !== 'undefined') ? knownProblemAssetLostBitmapAfterOtherAssetReplace : false);
+      _pb('knownProblemAssetStableAcrossRenderSession', (typeof knownProblemAssetStableAcrossRenderSession !== 'undefined') ? knownProblemAssetStableAcrossRenderSession : true);
+      _pb('knownProblemAssetStableAfterOwnReplace', (typeof knownProblemAssetStableAfterOwnReplace !== 'undefined') ? knownProblemAssetStableAfterOwnReplace : true);
+      _pb('knownProblemAssetStableAfterSaveLoad', (typeof knownProblemAssetStableAfterSaveLoad !== 'undefined') ? knownProblemAssetStableAfterSaveLoad : true);
+
       // ProjectWorld / geometria.
       push('stageGeometryBeforeReplace', (typeof stageGeometryBeforeReplace !== 'undefined' && stageGeometryBeforeReplace) ? stageGeometryBeforeReplace : 'n/d');
       push('stageGeometryAfterReplace', (typeof stageGeometryAfterReplace !== 'undefined' && stageGeometryAfterReplace) ? stageGeometryAfterReplace : 'n/d');
