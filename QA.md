@@ -1,3 +1,28 @@
+## v8z4b32E7G
+
+Base confirmada antes do patch: `v8z4b32E7F` em `index.html` (`APP_VERSION` e `APP_VERSION_NAME`).
+
+Escopo único: corrigir geometria dos controles editáveis da curva no Modo Câmera.
+
+Checklist técnico:
+
+- [x] `getFrameHandleGeometryForTarget()` usa `getFrameScreenGeometry(frameIndex).center` como âncora visual canônica.
+- [x] Linhas dos handles partem do mesmo centro canônico usado pelo path da curva.
+- [x] Losango, ghost handles e hitbox DOM são posicionados na mesma coordenada screen.
+- [x] Drag de handle converte stage/screen para ProjectWorld antes de salvar `dx/dy`.
+- [x] Diagnóstico E7G expõe paridade de âncora/path/handle e flags de armazenamento ProjectWorld.
+- [x] Preview/Export/WebCodecs/renderSessionSnapshot/stableDrawable/assets/layers/replace/save-load/menus/layout/cores/textos/ícones/fluxo preservados.
+
+Testes manuais obrigatórios em iPhone/Safari:
+
+- [ ] Menu mostra "Arco Motion App v8z4b32E7G".
+- [ ] No Modo Câmera, a linha pontilhada nasce exatamente no centro visual do frame correspondente.
+- [ ] Losango/ponto de edição e área arrastável coincidem visualmente, sem offset.
+- [ ] Zoom/pan mantém curva, linha, âncora, losango e hitbox juntos.
+- [ ] Arrastar handle atualiza curva e controle imediatamente sem deslocamento residual.
+- [ ] Diagnóstico mostra flags E7G obrigatórias como `true`, `curveAnchorDeltaPx: 0`, `curveDashedLineStartDeltaPx: 0` e `curveHandleStoredCoordinateSpace: projectWorld`.
+- [ ] Preview e Export permanecem iguais à E7F/E7E.
+
 ## v8z4b32E7F
 
 Base confirmada antes do patch: `v8z4b32E7E` em `index.html` (`APP_VERSION` e `APP_VERSION_NAME`).

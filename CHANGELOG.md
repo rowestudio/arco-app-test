@@ -1,3 +1,14 @@
+## v8z4b32E7G
+
+**Engine Sprint — geometria canônica dos controles editáveis de curva.** Base: `v8z4b32E7F`.
+
+- `getFrameHandleGeometryForTarget()` agora posiciona losangos/ghost handles em screen coords a partir de `getFrameScreenGeometry(frameIndex).center` e transforma os handles persistidos em ProjectWorld com a mesma matriz usada pelo path da curva.
+- `getFrameHandleGeometry()` passa a usar o centro canônico do frame como origem visual das linhas pontilhadas/sólidas dos handles.
+- `applyFrameConnectedHandleEdit()` e o fallback legado de tangent drag convertem pointer stage/screen para ProjectWorld antes de salvar `curvesV2.frameHandles`, evitando armazenamento em screen space ou pan/zoom antigo.
+- Diagnóstico E7G adicionado para paridade entre âncora do path, âncora do handle, losango, hitbox, linha pontilhada, segmento selecionado e espaço de armazenamento.
+- Preservados Preview, Export, WebCodecs, `renderSessionSnapshot`, `stableDrawable`, assets/layers, replace, salvar/carregar, menus, layout, cores, textos, ícones, fluxo e lógica de câmera do vídeo.
+- `index.html`: `APP_VERSION` e `APP_VERSION_NAME` atualizados para `v8z4b32E7G`.
+
 ## v8z4b32E7F
 
 **editor frame sync no Modo Câmera.** Base: `v8z4b32E7E`.

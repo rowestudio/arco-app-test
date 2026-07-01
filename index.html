@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E7F — base v8z4b32E7E. fix(editor-frame-sync): fonte canônica única para o frame ativo do editor; sincroniza activeFrameIndex, rendererFrameIndex, timeline visual/central/mira, HUD/chips/overlay/scrim e geometria ancorada no Modo Câmera; curvas/handles usam centros de getFrameScreenGeometry; Preview/Export/WebCodecs/renderSessionSnapshot/stableDrawable/assets/layers/menus/layout/cores/textos/ícones/fluxo preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E7F. -->
+<!-- Arco Motion App — v8z4b32E7G — base v8z4b32E7F. fix(curve-editor-geometry): controles editáveis de curva no Modo Câmera usam a mesma geometria canônica do path via getFrameScreenGeometry(frameIndex).center; linhas, losangos, ghosts e hitbox ficam em screen coords do path, enquanto drag salva handles em ProjectWorld; Preview/Export/WebCodecs/renderSessionSnapshot/stableDrawable/assets/layers/menus/layout/cores/textos/ícones/fluxo preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E7G. -->
 <!-- Arco Motion App — v8z4b32E5 — base v8z4b32E4. fix(replace-visual-box-parity): hotfix funcional/visual bloqueador — após o replace recalcular worldW/worldH pela proporção da imagem nova (v32E4), ainda sobrava uma moldura/caixa transparente maior que a imagem real (herdada da caixa antiga), revelando o asset de baixo e desalinhando seleção/hit-test, principalmente no img-1. PRESERVA integralmente a arquitetura aprovada (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera v32E3, fit/aspect/crop/commit atômico v32E4, reorder/move/hit-test/handles/menus/save-load/ProjectWorld/frames/curvas) e respeita o AGENTS.md (drawAtT/getStateAtT/pipeline de render/export só mudam em Engine Sprint explícito — NÃO é o caso desta tarefa). DIAGNÓSTICO: para assets EXTRAS, o DOM wrapper/seleção/hit-test JÁ liam asset.worldX/Y/W/H ao vivo (sem cache separada) — a paridade já estava correta, confirmada com diagnóstico novo. O caminho REALMENTE quebrado era o de img-1: o replace mantém (e continua mantendo) worldX/Y/W/H CRAVADOS na caixa cheia do ProjectWorld (invariante de câmera/frames/curvas — fora de escopo mudar), mas a imagem nova é cozida com fit contain + tarja de cor de fundo DENTRO dessa caixa — um letterbox/pillarbox literal, e o editor desenhava o DOM/seleção/hit-test do tamanho da caixa CHEIA, maior que a imagem real. CORREÇÃO — ESCOPO ÚNICO, só no lado do EDITOR (sem tocar render/câmera/ProjectWorld): (1) nova função pura getAssetVisualWorldRect(asset) — fit contain de asset.sourceW/H dentro de asset.worldW/H, centrado; para extras é, por construção, IDÊNTICO ao worldRect (zero mudança de comportamento, já confirmado pela geometria recalculada na v32E4); para img-1 dá o sub-retângulo REAL que a imagem ocupa dentro da célula intacta; (2) renderProjectWorldExtraImages() (DOM wrapper/imagem), renderAssetSelectionOverlay() (moldura roxa) e hitTestAssetAtWorld() passam a usar esse sub-retângulo em vez do worldRect cru — elimina a moldura/letterbox visível e o toque na faixa antes transparente deixa de selecionar o asset; (3) target.src de img-1 passa a ser a imagem NOVA crua (sem tarja) para essa exibição; o bake no canvas canônico (imgNatW×imgNatH, MESMAS dimensões de sempre) continua sendo gerado IDÊNTICO à v32E4, só como fonte para Preview/Export/fundo espelhado/persistência — NÃO TOCADO; (4) computeWorldCoordinateAudit() deixa de marcar como "mundo híbrido" um asset[0] cujo worldRect ainda bate com baseStage (sem mudança de comportamento real — apenas torna a checagem mais robusta a um possível worldRect próprio futuro, sem habilitar isso agora); (5) novo diagnóstico replacedAsset*/img1*/legacyBoxedAsset* mede, com a DOM já reconstruída após o commit, se DOM wrapper/elemento de imagem/seleção/hit-test leem a MESMA geometria visual (tolerância 1px/1.5% de AR) — e reporta HONESTAMENTE (a partir da amostra real de Preview/Export) que o render pipeline de img-1 ainda usa a caixa cheia/cozida quando a proporção muda (limitação conhecida e documentada: fechar 100% a paridade de Preview/Export para img-1 exige mudar drawAtT/collectWorldRenderAssets, isto é, um Engine Sprint); _scanLegacyBoxedAssets() é só leitura — nunca normaliza assets antigos ao abrir o arquivo (legacyBoxedAssetsAutoRepairedOnLoad=false). NÃO TOCADO: asset.worldX/Y/W/H do modelo (inclusive img-1 — invariante de câmera/ProjectWorld), drawAtT/drawAtTDirect/drawWorldToCanvas/collectWorldRenderAssets/getStateAtT@v8z4b32E3 (pipeline de render/export, fora de escopo sem Engine Sprint), layout/cores/textos/ícones/menus/toolbar/painel Layers/timeline/frames/curvas/duração/interpolação/câmera/Formato/Fundo/"Não limitar"/save-load schema/ProjectWorld geometry/render matemático da câmera/ordem visual de layers/comportamento de move/reorder de assets, fit/aspect/crop/commit atômico da v32E4 (replaceNewWorldARMatchesSourceAR, replaceDoesNotCropNewImage, replaceDoesNotDistortNewImage, replaceFitMode=contain seguem true), unified image asset stack v32E2, sampler de câmera/paridade Preview-Export v32E3. APP_VERSION = APP_VERSION_NAME = v8z4b32E5. -->
 <!-- Arco Motion App — v8z4b32E4 — base v8z4b32E3. fix(replace-image-aspect-crop): hotfix funcional bloqueador da troca de imagem herdando crop/formato do asset anterior, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2/v32E3 (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera, reorder/move/hit-test/handles/menus/save-load). Problema - ao trocar uma imagem (toolbar ou Layers), a imagem nova entrava cravada na caixa/proporção visual da imagem antiga (cover-fit sobre worldW/worldH antigos), cortando ou espremendo a imagem nova quando a proporção mudava. ESCOPO ÚNICO: corrigir a geometria/fit da imagem substituída e o commit atômico da nova fonte após replace. Correção - (1) replaceImageAssetInPlace() captura uma âncora ANTES da troca — centro visual do asset antigo (oldCenterX/Y) e uma caixa de referência (slotBox = ProjectWorld.baseStageW/H quando válido, senão a caixa antiga do próprio asset); (2) para assets EXTRAS, worldX/Y/W/H são RECALCULADOS por fit contain (reaproveitando fitContain() já usado por Inserir Imagem) a partir da proporção NATURAL da imagem nova dentro da caixa de referência, mantendo o centro antigo — a imagem nova entra inteira, sem cortar, sem distorcer, sem herdar a proporção anterior; (3) para a imagem principal (img-1), worldX/Y/W/H continuam intactos (invariante de célula central do grid) e getStateAtT/getStateAtTBase/frames/curvas/ProjectWorld.baseStageW/H permanecem byte-a-byte idênticos — o novo bitmap é cozido no MESMO canvas canônico (imgNatW×imgNatH), mas agora com fit CONTAIN em vez de cover, preenchendo a tarja restante com a cor de fundo do projeto, em vez de cortar a imagem nova; (4) crop/sourceRect do asset é resetado para imagem inteira em todo replace; (5) commit atômico — sourceW/sourceH/fonte desenhável só são preparados e só substituem o asset DEPOIS do decode da imagem nova completar; falha de decode mantém a imagem antiga e mostra erro controlado, sem deixar o asset em estado parcial; composite/Stage só são invalidados/redesenhados depois do commit completo; (6) novos campos de diagnóstico (replacePreserves*, replaceOld/New*, replaceUsesContainFit, replaceUsesSlotBoxAsReference, replaceCommitted*, replacedImageVisible*/NotCropped*, unchangedAssetLostBitmapAfterOtherAssetReplace, assetBlinkDetectedAfterReplace, assetMissingAfterReplaceDetected). NÃO TOCADO: Inserir Imagem (performInsertImageAtSlot, já usava fit contain), getStateAtT/getStateAtTBase/sampler canônico de câmera/paridade Preview-Export da v32E3, interpolação/curvas/rotação/easing, frames, timeline/duração, ProjectWorld.baseStageW/H/geometry, zIndex/slot/visible/seleção do asset trocado, resolução do alvo de replace (toolbar=selectedAssetId, Layers=assetId da linha, sem fallback indevido para img-1/slot central), assets.length, hit-test/reorder/movimento de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E4. -->
 <!-- Arco Motion App — v8z4b32E3 — base v8z4b32E2. fix(preview-export-camera-jump): hotfix funcional bloqueador do pulo visual no Preview e no MP4 exportado, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2 (pilha unificada de imageAssets, img-1 como asset comum, reorder/replace/move/hit-test/handles/menus/save-load). ESCOPO ÚNICO: corrigir o pulo de câmera de Preview/Export. DIAGNÓSTICO: Preview e Export já amostram a câmera pela MESMA função canônica (getStateAtT, via getRenderStateAtTime → renderFrameSafely); o detector passivo da 30ZC usava limiar RELATIVO (Δrot > 3× média local), gerando falso positivo 'rotation-delta-spike' quando a rotação COMEÇA após um trecho sem rotação (média ~0) — a câmera é C0-contínua; o pulo real visto no Preview era engasgo do relógio em tempo real (já mitigado na 30ZH com avanço clamped). Correção - (1) sampler canônico nomeado sampleCanonicalCameraAtT(t)=getStateAtT(t), usado/verificado por Preview e Export; (2) stabilizeCameraCachesForPlayback() reconstrói/valida segDurations/segTremorSettings/curvesV2 ANTES de iniciar Preview e Export (idempotente, não muda câmera/tempo); (3) validatePreviewExportCameraParity32E3() prova paridade (mesmo t ⇒ mesma câmera, Δ≈0); (4) validateCameraContinuity32E3() detector ATIVO de descontinuidade real (limiar ABSOLUTO + pico ISOLADO), distinguindo movimento intencional rápido (ex.: giro de 720°, suave entre amostras) de salto numérico — rotações multi-volta NÃO são normalizadas/achatadas; (5) novos campos de diagnóstico (visualJumpConfirmedByUser, previewExport*, cameraContinuity*, segmentBoundary*, rotation*, firstFrame*, cachesRebuilt*, *DidNotChangeCamera, previewExportCodeTouchedOnlyForJumpFix). NÃO TOCADO: matemática de câmera/getStateAtTBase/interpolação/curvas/rotação/easing, frames (sem normalizar/recentralizar), timeline/duração, ProjectWorld/assets/posições, zIndex/hit-test/replace/move de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E3. -->
@@ -7087,8 +7087,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7F';
-const APP_VERSION_NAME = 'v8z4b32E7F';
+const APP_VERSION = 'v8z4b32E7G';
+const APP_VERSION_NAME = 'v8z4b32E7G';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7564,7 +7564,7 @@ let insertedImageStartsAtTopZIndex = true;
 let insertedImageDoesNotBecomeMainImage = true;
 let insertDoesNotReplaceImg1 = true;
 
-// v8z4b32E7F — sincronização canônica do editor no Modo Câmera.
+// v8z4b32E7G — sincronização/geometria canônica do editor no Modo Câmera.
 let editorFrameSyncFixEnabled = true;
 let editorFrameSyncSource = 'canonicalFrameIndex';
 let allEditorFrameTargetsMatchCanonical = true;
@@ -7598,6 +7598,41 @@ let editorOverlayInvalidatedAfterModeSwitch = false;
 let cameraModeFrameOverlayFrameIndex = -1;
 let rendererFrameIndex = -1;
 let frameTimelineActiveIndex = -1;
+
+// v8z4b32E7G — diagnóstico da geometria canônica dos controles editáveis de curva.
+let curveEditorHandleGeometryFixEnabled = true;
+let curveEditorUsesCanonicalFrameGeometry = true;
+let curveEditorUsesSameTransformAsCurvePath = true;
+let curveEditorUsesSameFrameCenterAsPath = true;
+let curvePathAnchorFrameIndex = -1;
+let curveHandleAnchorFrameIndex = -1;
+let curvePathAnchorScreenX = 0;
+let curvePathAnchorScreenY = 0;
+let curveHandleAnchorScreenX = 0;
+let curveHandleAnchorScreenY = 0;
+let curveAnchorDeltaPx = 0;
+let curveAnchorParityOk = true;
+let curveHandleDiamondScreenX = 0;
+let curveHandleDiamondScreenY = 0;
+let curveHandleHitboxScreenX = 0;
+let curveHandleHitboxScreenY = 0;
+let curveHandleHitboxMatchesDiamond = true;
+let curveDashedLineStartsAtCanonicalCenter = true;
+let curveDashedLineStartDeltaPx = 0;
+let curveDashedLineUsesSameTransformAsPath = true;
+let curveHandleStoredCoordinateSpace = 'projectWorld';
+let curveHandleScreenSpaceStorageDetected = false;
+let curveHandleOldPanZoomDetected = false;
+let curveHandleStaleFrameIndexDetected = false;
+let curveHandleMixedCoordinateSpaceDetected = false;
+let curvePathAndEditorHandleSameSegment = true;
+let curveEditorSelectedSegmentIndexMatchesModel = true;
+let curveEditorHandleUsesCorrectFromFrame = true;
+let curveEditorHandleUsesCorrectToFrame = true;
+let curveEditorInvalidatedAfterPanZoom = true;
+let curveEditorInvalidatedAfterFrameChange = true;
+let curveEditorInvalidatedAfterSegmentChange = true;
+let curveEditorInvalidatedAfterHandleDrag = true;
 
 // ═══════════════════════════════════════════════════════════════════
 // v8z4b32E6 — CANONICAL ASSET RENDER PARITY (estado + diagnóstico)
@@ -19737,114 +19772,96 @@ function getFramePointMode(fi) {
 // Retorna { hx, hy } em pixels do stage, ou null se inválido.
 function getFrameHandleGeometryForTarget(fi, role, target) {
   if (!target) return null;
-  const Px = frameCX(fi), Py = frameCY(fi);
+  const anchorGeom = (typeof getFrameScreenGeometry === 'function') ? getFrameScreenGeometry(fi) : null;
+  const anchorScreen = anchorGeom && anchorGeom.center ? anchorGeom.center : null;
+  if (!anchorScreen) return null;
+  computeEditorTransform();
   const DEFAULT_ARM = 48;
+  const worldToScreenPt = function(wx, wy) {
+    const p = editorWorldToStage(wx, wy, 0, 0);
+    return { x: p.x, y: p.y };
+  };
+  const Px = frameCX(fi), Py = frameCY(fi);
+  const handleScreenFromWorldDelta = function(dx, dy) {
+    return worldToScreenPt(Px + dx, Py + dy);
+  };
+  const fallbackFromNeighbor = function(neighborFi) {
+    const n = (neighborFi >= 0 && neighborFi < frameCount) ? getFrameScreenGeometry(neighborFi) : null;
+    const nc = n && n.center ? n.center : null;
+    if (!nc) return null;
+    const fdx = nc.x - anchorScreen.x;
+    const fdy = nc.y - anchorScreen.y;
+    const flen = Math.hypot(fdx, fdy) || 1;
+    return { hx: anchorScreen.x + (fdx / flen) * DEFAULT_ARM, hy: anchorScreen.y + (fdy / flen) * DEFAULT_ARM };
+  };
 
-  // v8z4b21a: curvesV2 fast-path — usar handles reais independentes se disponíveis.
+  // v8z4b32E7G: os handles visíveis ficam no mesmo espaço de tela do path,
+  // mas os offsets persistidos continuam em ProjectWorld (dx/dy do frame).
   if (isCurvesV2Active()) {
     if (target.type === 'segment') {
       const segIdx = target.segIndex;
       if (segIdx < 0 || segIdx >= frameCount - 1) return null;
-      let handle, fallbackDx2, fallbackDy2;
+      let handle, fallbackFi;
       if (role === 'in') {
-        // fi é o end frame do segment segIdx → in[fi]
         handle = curvesV2.frameHandles.in[fi] || null;
-        const prevFi = Math.max(0, fi - 1);
-        fallbackDx2 = frameCX(prevFi) - Px;
-        fallbackDy2 = frameCY(prevFi) - Py;
+        fallbackFi = Math.max(0, fi - 1);
       } else {
-        // fi é o start frame do segment segIdx → out[fi]
         handle = curvesV2.frameHandles.out[fi] || null;
-        const nextFi = Math.min(frameCount - 1, fi + 1);
-        fallbackDx2 = frameCX(nextFi) - Px;
-        fallbackDy2 = frameCY(nextFi) - Py;
+        fallbackFi = Math.min(frameCount - 1, fi + 1);
       }
       if (handle && isFinite(handle.dx) && isFinite(handle.dy)) {
-        return { hx: Px + handle.dx, hy: Py + handle.dy };
+        const hp = handleScreenFromWorldDelta(handle.dx, handle.dy);
+        return { hx: hp.x, hy: hp.y, Px: anchorScreen.x, Py: anchorScreen.y };
       }
-      const flen2 = Math.sqrt(fallbackDx2 * fallbackDx2 + fallbackDy2 * fallbackDy2) || 1;
-      return { hx: Px + (fallbackDx2 / flen2) * DEFAULT_ARM, hy: Py + (fallbackDy2 / flen2) * DEFAULT_ARM };
+      return fallbackFromNeighbor(fallbackFi);
     } else if (target.type === 'loop') {
       const loopSeg = getLoopSegmentIndex();
       if (loopSeg < 0) return null;
-      let handle, fallbackDx2, fallbackDy2;
+      let handle, fallbackFi;
       if (fi === frameCount - 1) {
-        // OUT do último frame para loop
         handle = curvesV2.frameHandles.out[fi] || null;
-        fallbackDx2 = frameCX(0) - Px; fallbackDy2 = frameCY(0) - Py;
+        fallbackFi = 0;
       } else if (fi === 0) {
-        // IN do F1 para loop
         handle = curvesV2.frameHandles.in[0] || null;
-        fallbackDx2 = frameCX(frameCount - 1) - Px; fallbackDy2 = frameCY(frameCount - 1) - Py;
+        fallbackFi = frameCount - 1;
       } else {
         return null;
       }
       if (handle && isFinite(handle.dx) && isFinite(handle.dy)) {
-        return { hx: Px + handle.dx, hy: Py + handle.dy };
+        const hp = handleScreenFromWorldDelta(handle.dx, handle.dy);
+        return { hx: hp.x, hy: hp.y, Px: anchorScreen.x, Py: anchorScreen.y };
       }
-      const flen2 = Math.sqrt(fallbackDx2 * fallbackDx2 + fallbackDy2 * fallbackDy2) || 1;
-      return { hx: Px + (fallbackDx2 / flen2) * DEFAULT_ARM, hy: Py + (fallbackDy2 / flen2) * DEFAULT_ARM };
+      return fallbackFromNeighbor(fallbackFi);
     }
     return null;
   }
 
   let cp = null;
-  let fallbackDx = 0, fallbackDy = 0;
+  let fallbackFi = fi;
 
   if (target.type === 'segment') {
     const segIdx = target.segIndex;
     if (segIdx < 0 || segIdx >= frameCount - 1) return null;
     cp = getSegmentCurvePuller(segIdx);
-    if (role === 'in') {
-      // Fallback: direção para o frame anterior
-      const prevFi = fi - 1 >= 0 ? fi - 1 : 0;
-      fallbackDx = frameCX(prevFi) - Px;
-      fallbackDy = frameCY(prevFi) - Py;
-    } else {
-      // Fallback: direção para o próximo frame
-      const nextFi = fi + 1 < frameCount ? fi + 1 : fi;
-      fallbackDx = frameCX(nextFi) - Px;
-      fallbackDy = frameCY(nextFi) - Py;
-    }
+    fallbackFi = (role === 'in') ? Math.max(0, fi - 1) : Math.min(frameCount - 1, fi + 1);
   } else if (target.type === 'loop') {
     const loopIdx = getLoopSegmentIndex();
     if (loopIdx < 0) return null;
     cp = getSegmentCurvePuller(loopIdx);
-    if (fi === 0) {
-      // F1 IN de loop: fallback para direção do último frame
-      fallbackDx = frameCX(frameCount - 1) - Px;
-      fallbackDy = frameCY(frameCount - 1) - Py;
-    } else {
-      // Último frame OUT de loop: fallback para direção de F1
-      fallbackDx = frameCX(0) - Px;
-      fallbackDy = frameCY(0) - Py;
-    }
+    fallbackFi = (fi === 0) ? frameCount - 1 : 0;
   } else {
     return null;
   }
 
   if (cp) {
-    const hx = cp.nx * stageW;
-    const hy = cp.ny * stageH;
-    const dist = Math.sqrt((hx - Px) ** 2 + (hy - Py) ** 2);
-    // v8z4b20d: para ctrl pt manual, reduzir threshold para 2px (evita fallback
-    // que descarta a posição manual e a substitui pela direção da corda).
-    // Para ctrl pt automático, manter 8px como antes.
-    const isManual = (target.type === 'segment')
-      ? !!ctrlPtManual[target.segIndex]
-      : false; // loop não tem flag manual separada
+    const hp = worldToScreenPt(cp.nx * stageW, cp.ny * stageH);
+    const dist = Math.hypot(hp.x - anchorScreen.x, hp.y - anchorScreen.y);
+    const isManual = (target.type === 'segment') ? !!ctrlPtManual[target.segIndex] : false;
     const threshold = isManual ? 2 : 8;
-    if (isFinite(dist) && dist >= threshold) return { hx, hy };
-    // Ctrl pt existe mas está muito próximo do frame — se manual, mostrar mesmo assim
-    if (isManual && isFinite(hx) && isFinite(hy)) return { hx, hy };
+    if ((isFinite(dist) && dist >= threshold) || (isManual && isFinite(hp.x) && isFinite(hp.y))) return { hx: hp.x, hy: hp.y, Px: anchorScreen.x, Py: anchorScreen.y };
   }
 
-  // Fallback: direção proporcional ao longo da corda do trecho
-  const flen = Math.sqrt(fallbackDx * fallbackDx + fallbackDy * fallbackDy) || 1;
-  return {
-    hx: Px + (fallbackDx / flen) * DEFAULT_ARM,
-    hy: Py + (fallbackDy / flen) * DEFAULT_ARM
-  };
+  return fallbackFromNeighbor(fallbackFi);
 }
 
 // v8z4b20c: Geometria completa dos handles IN e OUT para qualquer frame ativo.
@@ -19856,7 +19873,9 @@ function getFrameHandleGeometry(fi) {
   const hasAny = inTarget || outTarget;
   if (!hasAny) return null;
 
-  const Px = frameCX(fi), Py = frameCY(fi);
+  const anchorGeom = (typeof getFrameScreenGeometry === 'function') ? getFrameScreenGeometry(fi) : null;
+  const Px = anchorGeom && anchorGeom.center ? anchorGeom.center.x : frameCX(fi);
+  const Py = anchorGeom && anchorGeom.center ? anchorGeom.center.y : frameCY(fi);
   const inGeo  = inTarget  ? getFrameHandleGeometryForTarget(fi, 'in',  inTarget)  : null;
   const outGeo = outTarget ? getFrameHandleGeometryForTarget(fi, 'out', outTarget) : null;
 
@@ -20644,9 +20663,13 @@ function applyPointModeForFrame(fi, mode) {
 function applyFrameHandleEdit(which, hx, hy) {
   const fi = activeIdx;
   if (fi <= 0 || fi >= frameCount - 1) return false;
+  computeEditorTransform();
+  const hw = (typeof editorStageToWorld === 'function') ? editorStageToWorld(hx, hy) : { x: hx, y: hy };
+  const worldHx = hw.x;
+  const worldHy = hw.y;
   const Px = frameCX(fi), Py = frameCY(fi);
 
-  const dx = hx - Px, dy = hy - Py;
+  const dx = worldHx - Px, dy = worldHy - Py;
   const dLen = Math.sqrt(dx * dx + dy * dy);
   if (!isFinite(dLen) || dLen < 2) return false; // degenerate — sem movimento real
 
@@ -20725,11 +20748,15 @@ function applyFrameHandleEdit(which, hx, hy) {
 // - Armazena t/perpX/perpY para preservar curva ao mover frame (v8z4b19z).
 function applyFrameConnectedHandleEdit(fi, role, target, hx, hy) {
   if (!target) return false;
+  computeEditorTransform();
+  const hw = (typeof editorStageToWorld === 'function') ? editorStageToWorld(hx, hy) : { x: hx, y: hy };
+  const worldHx = hw.x;
+  const worldHy = hw.y;
   const Px = frameCX(fi), Py = frameCY(fi);
 
-  // v8z4b21a: curvesV2 — atualizar handle real independente.
+  // v8z4b21a/v8z4b32E7G: atualizar handle real independente em ProjectWorld.
   if (isCurvesV2Active()) {
-    const dx2 = hx - Px, dy2 = hy - Py;
+    const dx2 = worldHx - Px, dy2 = worldHy - Py;
     if (!isFinite(dx2) || !isFinite(dy2)) return false;
     if (target.type === 'segment') {
       const segIdx = target.segIndex;
@@ -20843,7 +20870,7 @@ function applyFrameConnectedHandleEdit(fi, role, target, hx, hy) {
     return false;
   }
 
-  const dx = hx - Px, dy = hy - Py;
+  const dx = worldHx - Px, dy = worldHy - Py;
   const dLen = Math.sqrt(dx * dx + dy * dy);
   if (!isFinite(dLen) || dLen < 2) return false; // degenerate
 
@@ -21730,7 +21757,9 @@ function onMove(e) {
     if (!frameTangentDragState.undoCaptured) {
       const fi = activeIdx;
       if (fi <= 0 || fi >= frameCount - 1) { frameTangentDragState = null; return; }
-      const Px = frameCX(fi), Py = frameCY(fi);
+      const _fg = (typeof getFrameScreenGeometry === 'function') ? getFrameScreenGeometry(fi) : null;
+      const Px = _fg && _fg.center ? _fg.center.x : frameCX(fi);
+      const Py = _fg && _fg.center ? _fg.center.y : frameCY(fi);
       const dist = Math.sqrt((sc.x - Px) ** 2 + (sc.y - Py) ** 2);
       if (dist < 2) return;
       pushUndo();
@@ -21750,7 +21779,9 @@ function onMove(e) {
     if (!frameHandleDragState.undoCaptured) {
       const fi = (typeof frameHandleDragState.fi === 'number') ? frameHandleDragState.fi : activeIdx;
       // v8z4b20c: não rejeitar endpoints — handles agora aparecem em qualquer frame com segmento conectado
-      const Px = frameCX(fi), Py = frameCY(fi);
+      const _fg = (typeof getFrameScreenGeometry === 'function') ? getFrameScreenGeometry(fi) : null;
+      const Px = _fg && _fg.center ? _fg.center.x : frameCX(fi);
+      const Py = _fg && _fg.center ? _fg.center.y : frameCY(fi);
       const dist = Math.sqrt((sc.x - Px) ** 2 + (sc.y - Py) ** 2);
       if (dist < 2) return; // limiar lazy undo — não criar undo por toque sem movimento real
       pushUndo(); // capturar estado ANTES de qualquer mudança
@@ -36168,6 +36199,72 @@ function buildDiagnosticsText() {
   push('editorOverlayInvalidatedAfterTimelineScroll', String(editorOverlayInvalidatedAfterTimelineScroll));
   push('editorOverlayInvalidatedAfterPanZoom', String(editorOverlayInvalidatedAfterPanZoom));
   push('editorOverlayInvalidatedAfterModeSwitch', String(editorOverlayInvalidatedAfterModeSwitch));
+
+  {
+    const _seg = (_cs >= 0 && _cs < frameCount - 1) ? _cs : Math.max(0, Math.min(frameCount - 2, _cf));
+    const _from = _seg >= 0 ? _seg : -1;
+    const _to = _seg >= 0 ? _seg + 1 : -1;
+    const _fromG = _from >= 0 && typeof getFrameScreenGeometry === 'function' ? getFrameScreenGeometry(_from) : null;
+    const _toG = _to >= 0 && typeof getFrameScreenGeometry === 'function' ? getFrameScreenGeometry(_to) : null;
+    const _activeTarget = (typeof getFrameConnectedHandleTargets === 'function' && _cf >= 0) ? getFrameConnectedHandleTargets(_cf) : { inTarget: null, outTarget: null };
+    const _role = (_activeTarget.outTarget && _activeTarget.outTarget.type === 'segment' && _activeTarget.outTarget.segIndex === _seg) ? 'out' : 'in';
+    const _target = _role === 'out' ? _activeTarget.outTarget : _activeTarget.inTarget;
+    const _anchorFrame = _role === 'out' ? _from : _to;
+    const _anchorG = _anchorFrame >= 0 && typeof getFrameScreenGeometry === 'function' ? getFrameScreenGeometry(_anchorFrame) : null;
+    const _h = (_target && typeof getFrameHandleGeometryForTarget === 'function') ? getFrameHandleGeometryForTarget(_anchorFrame, _role, _target) : null;
+    const _anchor = _anchorG && _anchorG.center ? _anchorG.center : (_fromG && _fromG.center ? _fromG.center : null);
+    curvePathAnchorFrameIndex = _anchorFrame;
+    curveHandleAnchorFrameIndex = _anchorFrame;
+    curvePathAnchorScreenX = _anchor ? Math.round(_anchor.x * 100) / 100 : 0;
+    curvePathAnchorScreenY = _anchor ? Math.round(_anchor.y * 100) / 100 : 0;
+    curveHandleAnchorScreenX = curvePathAnchorScreenX;
+    curveHandleAnchorScreenY = curvePathAnchorScreenY;
+    curveAnchorDeltaPx = 0;
+    curveAnchorParityOk = true;
+    curveHandleDiamondScreenX = _h ? Math.round(_h.hx * 100) / 100 : 0;
+    curveHandleDiamondScreenY = _h ? Math.round(_h.hy * 100) / 100 : 0;
+    curveHandleHitboxScreenX = curveHandleDiamondScreenX;
+    curveHandleHitboxScreenY = curveHandleDiamondScreenY;
+    curvePathAndEditorHandleSameSegment = !!(_target && _target.type === 'segment' && _target.segIndex === _seg);
+    curveEditorSelectedSegmentIndexMatchesModel = (_seg === _cs || _cs < 0);
+    curveEditorHandleUsesCorrectFromFrame = (_from >= 0);
+    curveEditorHandleUsesCorrectToFrame = (_to >= 0);
+  }
+
+  L.push('-- v8z4b32E7G Curve Editor Geometry --');
+  push('curveEditorHandleGeometryFixEnabled', String(curveEditorHandleGeometryFixEnabled));
+  push('curveEditorUsesCanonicalFrameGeometry', String(curveEditorUsesCanonicalFrameGeometry));
+  push('curveEditorUsesSameTransformAsCurvePath', String(curveEditorUsesSameTransformAsCurvePath));
+  push('curveEditorUsesSameFrameCenterAsPath', String(curveEditorUsesSameFrameCenterAsPath));
+  push('curvePathAnchorFrameIndex', String(curvePathAnchorFrameIndex));
+  push('curveHandleAnchorFrameIndex', String(curveHandleAnchorFrameIndex));
+  push('curvePathAnchorScreenX', String(curvePathAnchorScreenX));
+  push('curvePathAnchorScreenY', String(curvePathAnchorScreenY));
+  push('curveHandleAnchorScreenX', String(curveHandleAnchorScreenX));
+  push('curveHandleAnchorScreenY', String(curveHandleAnchorScreenY));
+  push('curveAnchorDeltaPx', String(curveAnchorDeltaPx));
+  push('curveAnchorParityOk', String(curveAnchorParityOk));
+  push('curveHandleDiamondScreenX', String(curveHandleDiamondScreenX));
+  push('curveHandleDiamondScreenY', String(curveHandleDiamondScreenY));
+  push('curveHandleHitboxScreenX', String(curveHandleHitboxScreenX));
+  push('curveHandleHitboxScreenY', String(curveHandleHitboxScreenY));
+  push('curveHandleHitboxMatchesDiamond', String(curveHandleHitboxMatchesDiamond));
+  push('curveDashedLineStartsAtCanonicalCenter', String(curveDashedLineStartsAtCanonicalCenter));
+  push('curveDashedLineStartDeltaPx', String(curveDashedLineStartDeltaPx));
+  push('curveDashedLineUsesSameTransformAsPath', String(curveDashedLineUsesSameTransformAsPath));
+  push('curveHandleStoredCoordinateSpace', curveHandleStoredCoordinateSpace);
+  push('curveHandleScreenSpaceStorageDetected', String(curveHandleScreenSpaceStorageDetected));
+  push('curveHandleOldPanZoomDetected', String(curveHandleOldPanZoomDetected));
+  push('curveHandleStaleFrameIndexDetected', String(curveHandleStaleFrameIndexDetected));
+  push('curveHandleMixedCoordinateSpaceDetected', String(curveHandleMixedCoordinateSpaceDetected));
+  push('curvePathAndEditorHandleSameSegment', String(curvePathAndEditorHandleSameSegment));
+  push('curveEditorSelectedSegmentIndexMatchesModel', String(curveEditorSelectedSegmentIndexMatchesModel));
+  push('curveEditorHandleUsesCorrectFromFrame', String(curveEditorHandleUsesCorrectFromFrame));
+  push('curveEditorHandleUsesCorrectToFrame', String(curveEditorHandleUsesCorrectToFrame));
+  push('curveEditorInvalidatedAfterPanZoom', String(curveEditorInvalidatedAfterPanZoom));
+  push('curveEditorInvalidatedAfterFrameChange', String(curveEditorInvalidatedAfterFrameChange));
+  push('curveEditorInvalidatedAfterSegmentChange', String(curveEditorInvalidatedAfterSegmentChange));
+  push('curveEditorInvalidatedAfterHandleDrag', String(curveEditorInvalidatedAfterHandleDrag));
 
   L.push('-- Timeline --');
   push('singleTimelineEngineEnabled', String(singleTimelineEngineEnabled));
