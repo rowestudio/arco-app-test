@@ -1,3 +1,13 @@
+## v8z4b32E7B
+
+**hotfix cirúrgico da imagem 6 no Preview/Export.** Base: `v8z4b32E7A`.
+
+- `buildRenderSessionSnapshotE6()` agora cria uma fonte raster interna estável para cada asset visível antes de Preview/Export, valida pixels reais via checksum alpha/luma e congela `drawSource`, dimensões, `sourceVersion` e `worldRect` da sessão.
+- `collectWorldRenderAssets()` continua consumindo o mesmo snapshot lógico para Preview e Export, preservando a paridade do img-1 da E7A e evitando DOM image volátil como fonte de render da sessão.
+- `_accumulateRenderSessionFrameE6()` passa a validar por frame que o asset problemático usa fonte não vazia, hash estável e não teve troca de fonte/retângulo.
+- Diagnóstico ampliado para a imagem 6 (`img-1781638924641-484`) com tipo/tamanho/hash/checksum da fonte estável, flags de uso em Preview/Export e detecção de draw blank.
+- Preservados img-1 replace/Preview/Export parity da E7A, Layers, menus, toolbar, layout, cores, textos, ícones, frames, curvas, timeline, câmera/getStateAtT, ProjectWorld geometry, formato/fundo e schema save/load.
+
 ## v8z4b32E7A
 
 **img-1 Preview canonical parity.** Base: `v8z4b32E6`.
