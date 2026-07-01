@@ -1,3 +1,23 @@
+## v8z4b32E7F
+
+Base confirmada antes do patch: `v8z4b32E7E` em `index.html` (`APP_VERSION` e `APP_VERSION_NAME`).
+
+### Escopo
+- [x] Fonte canônica única do frame ativo no editor (`canonicalFrameIndex`).
+- [x] Timeline, renderer, HUD/chips, overlay, scrim e geometria ancorada sincronizados com o frame ativo no Modo Câmera.
+- [x] Scrim/cutout usa `getFrameScreenGeometry(frameIndex)` em vez de recalcular centro/tamanho por caminho paralelo.
+- [x] Curvas e handles continuam usando os centros canônicos do frame; ghost handles são diagnosticados como vizinhos e não alteram o frame ativo.
+- [x] Preview/Export/WebCodecs/renderSessionSnapshot/stableDrawable/cache de assets/layers/replace/save-load/menus/layout/cores/textos/ícones/fluxo preservados.
+
+### Validação obrigatória (manual iPhone/Safari)
+- [ ] Menu mostra "Arco Motion App v8z4b32E7F".
+- [ ] No Modo Câmera, tocar frames diferentes na timeline e confirmar que Stage, HUD, número/chips, scrim e curva mudam para o mesmo frame sem atraso.
+- [ ] Rolar a timeline até centralizar um frame e confirmar que o frame ativo no Stage é o mesmo sob a mira/bolinha.
+- [ ] Fazer pan/zoom no editor e confirmar que frame ativo, scrim/cutout, curva e handles permanecem alinhados.
+- [ ] Diagnóstico mostra `editorFrameSyncFixEnabled: true`, `editorFrameSyncSource: canonicalFrameIndex`, `allEditorFrameTargetsMatchCanonical: true` e `editorFrameTargetMismatchDetected: false`.
+- [ ] Diagnóstico mostra `frameAnchoredUIFrameIndex`, `frameActiveInfoTextFrameIndex`, `cameraModeFrameChipsFrameIndex`, `cameraModeFrameOverlayFrameIndex`, `filmAlphaScrimCutoutFrameIndex`, `rendererFrameIndex`, `timelineVisualActiveIndex`, `frameTimelineCenteredIndex` e `timelineFrameUnderMarkerIndex` iguais a `activeFrameIndex`.
+- [ ] Rodar Preview e Export do mesmo projeto da E7E e confirmar que o vídeo continua correto e que nenhum asset some, pisca ou bloqueia por imagem não pronta.
+
 ## v8z4b32E7E
 
 Base confirmada antes do patch: `v8z4b32E7D` em `index.html` (`APP_VERSION` e `APP_VERSION_NAME`).

@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E7E — hotfix crítico de render: readiness gate obrigatório para Preview/Export; prepareRenderSessionSnapshot(kind) só libera snapshot completo com drawables estáveis e bloqueia render/export parcial. -->
+<!-- Arco Motion App — v8z4b32E7F — base v8z4b32E7E. fix(editor-frame-sync): fonte canônica única para o frame ativo do editor; sincroniza activeFrameIndex, rendererFrameIndex, timeline visual/central/mira, HUD/chips/overlay/scrim e geometria ancorada no Modo Câmera; curvas/handles usam centros de getFrameScreenGeometry; Preview/Export/WebCodecs/renderSessionSnapshot/stableDrawable/assets/layers/menus/layout/cores/textos/ícones/fluxo preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E7F. -->
 <!-- Arco Motion App — v8z4b32E5 — base v8z4b32E4. fix(replace-visual-box-parity): hotfix funcional/visual bloqueador — após o replace recalcular worldW/worldH pela proporção da imagem nova (v32E4), ainda sobrava uma moldura/caixa transparente maior que a imagem real (herdada da caixa antiga), revelando o asset de baixo e desalinhando seleção/hit-test, principalmente no img-1. PRESERVA integralmente a arquitetura aprovada (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera v32E3, fit/aspect/crop/commit atômico v32E4, reorder/move/hit-test/handles/menus/save-load/ProjectWorld/frames/curvas) e respeita o AGENTS.md (drawAtT/getStateAtT/pipeline de render/export só mudam em Engine Sprint explícito — NÃO é o caso desta tarefa). DIAGNÓSTICO: para assets EXTRAS, o DOM wrapper/seleção/hit-test JÁ liam asset.worldX/Y/W/H ao vivo (sem cache separada) — a paridade já estava correta, confirmada com diagnóstico novo. O caminho REALMENTE quebrado era o de img-1: o replace mantém (e continua mantendo) worldX/Y/W/H CRAVADOS na caixa cheia do ProjectWorld (invariante de câmera/frames/curvas — fora de escopo mudar), mas a imagem nova é cozida com fit contain + tarja de cor de fundo DENTRO dessa caixa — um letterbox/pillarbox literal, e o editor desenhava o DOM/seleção/hit-test do tamanho da caixa CHEIA, maior que a imagem real. CORREÇÃO — ESCOPO ÚNICO, só no lado do EDITOR (sem tocar render/câmera/ProjectWorld): (1) nova função pura getAssetVisualWorldRect(asset) — fit contain de asset.sourceW/H dentro de asset.worldW/H, centrado; para extras é, por construção, IDÊNTICO ao worldRect (zero mudança de comportamento, já confirmado pela geometria recalculada na v32E4); para img-1 dá o sub-retângulo REAL que a imagem ocupa dentro da célula intacta; (2) renderProjectWorldExtraImages() (DOM wrapper/imagem), renderAssetSelectionOverlay() (moldura roxa) e hitTestAssetAtWorld() passam a usar esse sub-retângulo em vez do worldRect cru — elimina a moldura/letterbox visível e o toque na faixa antes transparente deixa de selecionar o asset; (3) target.src de img-1 passa a ser a imagem NOVA crua (sem tarja) para essa exibição; o bake no canvas canônico (imgNatW×imgNatH, MESMAS dimensões de sempre) continua sendo gerado IDÊNTICO à v32E4, só como fonte para Preview/Export/fundo espelhado/persistência — NÃO TOCADO; (4) computeWorldCoordinateAudit() deixa de marcar como "mundo híbrido" um asset[0] cujo worldRect ainda bate com baseStage (sem mudança de comportamento real — apenas torna a checagem mais robusta a um possível worldRect próprio futuro, sem habilitar isso agora); (5) novo diagnóstico replacedAsset*/img1*/legacyBoxedAsset* mede, com a DOM já reconstruída após o commit, se DOM wrapper/elemento de imagem/seleção/hit-test leem a MESMA geometria visual (tolerância 1px/1.5% de AR) — e reporta HONESTAMENTE (a partir da amostra real de Preview/Export) que o render pipeline de img-1 ainda usa a caixa cheia/cozida quando a proporção muda (limitação conhecida e documentada: fechar 100% a paridade de Preview/Export para img-1 exige mudar drawAtT/collectWorldRenderAssets, isto é, um Engine Sprint); _scanLegacyBoxedAssets() é só leitura — nunca normaliza assets antigos ao abrir o arquivo (legacyBoxedAssetsAutoRepairedOnLoad=false). NÃO TOCADO: asset.worldX/Y/W/H do modelo (inclusive img-1 — invariante de câmera/ProjectWorld), drawAtT/drawAtTDirect/drawWorldToCanvas/collectWorldRenderAssets/getStateAtT@v8z4b32E3 (pipeline de render/export, fora de escopo sem Engine Sprint), layout/cores/textos/ícones/menus/toolbar/painel Layers/timeline/frames/curvas/duração/interpolação/câmera/Formato/Fundo/"Não limitar"/save-load schema/ProjectWorld geometry/render matemático da câmera/ordem visual de layers/comportamento de move/reorder de assets, fit/aspect/crop/commit atômico da v32E4 (replaceNewWorldARMatchesSourceAR, replaceDoesNotCropNewImage, replaceDoesNotDistortNewImage, replaceFitMode=contain seguem true), unified image asset stack v32E2, sampler de câmera/paridade Preview-Export v32E3. APP_VERSION = APP_VERSION_NAME = v8z4b32E5. -->
 <!-- Arco Motion App — v8z4b32E4 — base v8z4b32E3. fix(replace-image-aspect-crop): hotfix funcional bloqueador da troca de imagem herdando crop/formato do asset anterior, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2/v32E3 (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera, reorder/move/hit-test/handles/menus/save-load). Problema - ao trocar uma imagem (toolbar ou Layers), a imagem nova entrava cravada na caixa/proporção visual da imagem antiga (cover-fit sobre worldW/worldH antigos), cortando ou espremendo a imagem nova quando a proporção mudava. ESCOPO ÚNICO: corrigir a geometria/fit da imagem substituída e o commit atômico da nova fonte após replace. Correção - (1) replaceImageAssetInPlace() captura uma âncora ANTES da troca — centro visual do asset antigo (oldCenterX/Y) e uma caixa de referência (slotBox = ProjectWorld.baseStageW/H quando válido, senão a caixa antiga do próprio asset); (2) para assets EXTRAS, worldX/Y/W/H são RECALCULADOS por fit contain (reaproveitando fitContain() já usado por Inserir Imagem) a partir da proporção NATURAL da imagem nova dentro da caixa de referência, mantendo o centro antigo — a imagem nova entra inteira, sem cortar, sem distorcer, sem herdar a proporção anterior; (3) para a imagem principal (img-1), worldX/Y/W/H continuam intactos (invariante de célula central do grid) e getStateAtT/getStateAtTBase/frames/curvas/ProjectWorld.baseStageW/H permanecem byte-a-byte idênticos — o novo bitmap é cozido no MESMO canvas canônico (imgNatW×imgNatH), mas agora com fit CONTAIN em vez de cover, preenchendo a tarja restante com a cor de fundo do projeto, em vez de cortar a imagem nova; (4) crop/sourceRect do asset é resetado para imagem inteira em todo replace; (5) commit atômico — sourceW/sourceH/fonte desenhável só são preparados e só substituem o asset DEPOIS do decode da imagem nova completar; falha de decode mantém a imagem antiga e mostra erro controlado, sem deixar o asset em estado parcial; composite/Stage só são invalidados/redesenhados depois do commit completo; (6) novos campos de diagnóstico (replacePreserves*, replaceOld/New*, replaceUsesContainFit, replaceUsesSlotBoxAsReference, replaceCommitted*, replacedImageVisible*/NotCropped*, unchangedAssetLostBitmapAfterOtherAssetReplace, assetBlinkDetectedAfterReplace, assetMissingAfterReplaceDetected). NÃO TOCADO: Inserir Imagem (performInsertImageAtSlot, já usava fit contain), getStateAtT/getStateAtTBase/sampler canônico de câmera/paridade Preview-Export da v32E3, interpolação/curvas/rotação/easing, frames, timeline/duração, ProjectWorld.baseStageW/H/geometry, zIndex/slot/visible/seleção do asset trocado, resolução do alvo de replace (toolbar=selectedAssetId, Layers=assetId da linha, sem fallback indevido para img-1/slot central), assets.length, hit-test/reorder/movimento de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E4. -->
 <!-- Arco Motion App — v8z4b32E3 — base v8z4b32E2. fix(preview-export-camera-jump): hotfix funcional bloqueador do pulo visual no Preview e no MP4 exportado, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2 (pilha unificada de imageAssets, img-1 como asset comum, reorder/replace/move/hit-test/handles/menus/save-load). ESCOPO ÚNICO: corrigir o pulo de câmera de Preview/Export. DIAGNÓSTICO: Preview e Export já amostram a câmera pela MESMA função canônica (getStateAtT, via getRenderStateAtTime → renderFrameSafely); o detector passivo da 30ZC usava limiar RELATIVO (Δrot > 3× média local), gerando falso positivo 'rotation-delta-spike' quando a rotação COMEÇA após um trecho sem rotação (média ~0) — a câmera é C0-contínua; o pulo real visto no Preview era engasgo do relógio em tempo real (já mitigado na 30ZH com avanço clamped). Correção - (1) sampler canônico nomeado sampleCanonicalCameraAtT(t)=getStateAtT(t), usado/verificado por Preview e Export; (2) stabilizeCameraCachesForPlayback() reconstrói/valida segDurations/segTremorSettings/curvesV2 ANTES de iniciar Preview e Export (idempotente, não muda câmera/tempo); (3) validatePreviewExportCameraParity32E3() prova paridade (mesmo t ⇒ mesma câmera, Δ≈0); (4) validateCameraContinuity32E3() detector ATIVO de descontinuidade real (limiar ABSOLUTO + pico ISOLADO), distinguindo movimento intencional rápido (ex.: giro de 720°, suave entre amostras) de salto numérico — rotações multi-volta NÃO são normalizadas/achatadas; (5) novos campos de diagnóstico (visualJumpConfirmedByUser, previewExport*, cameraContinuity*, segmentBoundary*, rotation*, firstFrame*, cachesRebuilt*, *DidNotChangeCamera, previewExportCodeTouchedOnlyForJumpFix). NÃO TOCADO: matemática de câmera/getStateAtTBase/interpolação/curvas/rotação/easing, frames (sem normalizar/recentralizar), timeline/duração, ProjectWorld/assets/posições, zIndex/hit-test/replace/move de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E3. -->
@@ -7087,8 +7087,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7E';
-const APP_VERSION_NAME = 'v8z4b32E7E';
+const APP_VERSION = 'v8z4b32E7F';
+const APP_VERSION_NAME = 'v8z4b32E7F';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7564,6 +7564,41 @@ let insertedImageStartsAtTopZIndex = true;
 let insertedImageDoesNotBecomeMainImage = true;
 let insertDoesNotReplaceImg1 = true;
 
+// v8z4b32E7F — sincronização canônica do editor no Modo Câmera.
+let editorFrameSyncFixEnabled = true;
+let editorFrameSyncSource = 'canonicalFrameIndex';
+let allEditorFrameTargetsMatchCanonical = true;
+let editorFrameTargetMismatchDetected = false;
+let editorFrameTargetMismatchReason = 'none';
+let frameAnchoredUIFrameIndexMatchesActive = true;
+let frameActiveInfoTextMatchesActive = true;
+let cameraModeFrameChipsMatchActive = true;
+let cameraModeFrameOverlayMatchesActive = true;
+let scrimCutoutMatchesActiveFrame = true;
+let timelineVisualActiveMatchesActive = true;
+let timelineCenteredFrameMatchesActive = true;
+let timelineUnderMarkerMatchesActive = true;
+let curvePathUsesCanonicalFrameCenters = true;
+let curveHandlesUseCanonicalFrameCenters = true;
+let curveAnchorUsesActiveFrameCenter = true;
+let curveAnchorFrameIndexMatchesActive = true;
+let curveAnchorStaleIndexDetected = false;
+let curveAnchorOldPanZoomDetected = false;
+let ghostHandlesUseNeighborFramesOnly = true;
+let ghostHandlesDoNotMutateActiveFrame = true;
+let ghostOutFrameIndexExpected = -1;
+let ghostOutFrameIndexActual = -1;
+let ghostInFrameIndexExpected = -1;
+let ghostInFrameIndexActual = -1;
+let editorOverlayInvalidatedAfterFrameChange = false;
+let editorOverlayInvalidatedAfterTimelineTap = false;
+let editorOverlayInvalidatedAfterTimelineScroll = false;
+let editorOverlayInvalidatedAfterPanZoom = false;
+let editorOverlayInvalidatedAfterModeSwitch = false;
+let cameraModeFrameOverlayFrameIndex = -1;
+let rendererFrameIndex = -1;
+let frameTimelineActiveIndex = -1;
+
 // ═══════════════════════════════════════════════════════════════════
 // v8z4b32E6 — CANONICAL ASSET RENDER PARITY (estado + diagnóstico)
 // Depois de qualquer replace, o asset canônico em assets[] é a fonte
@@ -7673,7 +7708,7 @@ let projectWorldCompositeDirtyAtFirstExportFrame = false;
 let compositeDirtyDuringPreview = false;
 let compositeDirtyDuringExport = false;
 
-// v8z4b32E7E — readiness/hidratação do stableDrawable real do img-1.
+// v8z4b32E7F — readiness/hidratação do stableDrawable real do img-1.
 let img1StableDrawableCreated = false;
 let img1StableDrawableType = 'none';
 let img1StableDrawableW = 0;
@@ -8128,8 +8163,10 @@ let filmSelection = { frameIndex: 0, segmentIndex: -1, source: 'init', updatedAt
 // armazenamento canônico (activeIdx/selectedSegmentIndex) e atualiza o registro
 // filmSelection. Os modos chamam o MESMO commit; o que difere é só apresentação.
 function commitFilmSelection(frameIndex, segmentIndex, source) {
+  const fc = (typeof frameCount === 'number') ? frameCount : 0;
   if (typeof frameIndex === 'number' && frameIndex >= 0) {
-    if (typeof activeIdx !== 'undefined') activeIdx = frameIndex;
+    const nextFrameIndex = fc > 0 ? Math.max(0, Math.min(fc - 1, frameIndex)) : frameIndex;
+    if (typeof activeIdx !== 'undefined') activeIdx = nextFrameIndex;
   }
   if (typeof segmentIndex === 'number') {
     if (typeof selectedSegmentIndex !== 'undefined') selectedSegmentIndex = segmentIndex;
@@ -8138,7 +8175,36 @@ function commitFilmSelection(frameIndex, segmentIndex, source) {
   filmSelection.segmentIndex = (typeof selectedSegmentIndex === 'number') ? selectedSegmentIndex : -1;
   filmSelection.source = source || 'unknown';
   filmSelection.updatedAt = Date.now();
+  syncEditorFrameTargetsToCanonical(source || 'commitFilmSelection');
   return filmSelection;
+}
+
+function markEditorOverlayInvalidatedForSource(source) {
+  source = source || '';
+  if (/timeline.*tap|tap/i.test(source)) editorOverlayInvalidatedAfterTimelineTap = true;
+  if (/scroll|center|programmatic/i.test(source)) editorOverlayInvalidatedAfterTimelineScroll = true;
+  if (/mode/i.test(source)) editorOverlayInvalidatedAfterModeSwitch = true;
+  if (/pan|zoom|transform/i.test(source)) editorOverlayInvalidatedAfterPanZoom = true;
+  editorOverlayInvalidatedAfterFrameChange = true;
+}
+
+function syncEditorFrameTargetsToCanonical(source) {
+  const cf = (typeof activeIdx === 'number') ? activeIdx : -1;
+  canonicalFrameIndex = cf;
+  rendererFrameIndex = cf;
+  timelineVisualActiveIndex = cf;
+  frameTimelineActiveIndex = cf;
+  if (typeof frameTimelineCenteredIndex !== 'undefined') frameTimelineCenteredIndex = cf;
+  if (typeof lowerTimelineCenterFrameIndex !== 'undefined') lowerTimelineCenterFrameIndex = cf;
+  timelineFrameUnderMarkerIndex = cf;
+  if (typeof isAssetsMode !== 'function' || !isAssetsMode()) {
+    frameAnchoredUIFrameIndex = cf;
+    frameActiveInfoTextFrameIndex = cf;
+    cameraModeFrameChipsFrameIndex = cf;
+    cameraModeFrameOverlayFrameIndex = cf;
+    filmAlphaScrimCutoutFrameIndex = cf;
+  }
+  markEditorOverlayInvalidatedForSource(source);
 }
 // getCanonicalFrameIndex / getCanonicalSegmentIndex — leitura única da seleção.
 function getCanonicalFrameIndex() {
@@ -16367,7 +16433,7 @@ function setBottomContext(mode) {
 }
 function selectFrameContext(fi, opts = {}) {
   if (typeof fi === 'number' && fi >= 0 && fi < frameCount) {
-    activeIdx = fi;
+    commitFilmSelection(fi, -1, opts._src || 'selectFrameContext');
     // v8z4b29BL — mantém o destaque do Stage/timeline sincronizado com o
     // frame ativo oficial assim que ele muda, sem depender da animação de centralização.
     lowerTimelineCenterFrameIndex = fi;
@@ -16385,8 +16451,7 @@ function selectSegmentContext(seg, _src) {
   closeCustBar();
   hideStageFrameMenu();
   selectedFrames.clear();
-  selectedSegmentIndex = seg;
-  activeIdx = Math.max(0, Math.min(frameCount - 1, seg));
+  commitFilmSelection(Math.max(0, Math.min(frameCount - 1, seg)), seg, _src || 'selectSegmentContext');
   timelineFocalFrameId = activeIdx;
   // v8z4b30V: manter valor válido para não acionar centralização automática ao selecionar trecho
   lowerTimelineCenterFrameIndex = activeIdx;
@@ -16571,8 +16636,7 @@ function updateLowerTimelineCenterFrameFromScroll() {
   // ele também vira o frame ativo oficial: mantém Stage, label e controles
   // sincronizados com o destaque da timeline (sem reconstruir a faixa de pills).
   if (bestIndex !== activeIdx && bestIndex < frameCount) {
-    activeIdx = bestIndex;
-    selectedSegmentIndex = -1;
+    commitFilmSelection(bestIndex, -1, 'timeline-scroll');
     syncCustomizePanel();
     refreshActiveFrameVisuals();
   }
@@ -16750,6 +16814,7 @@ function finishLowerTimelineProgrammaticCenter(fi, scrollLeft, pillsEl, timesEl)
   isLowerTimelineProgrammaticCentering = false;
   lowerTimelineCenterFrameIndex = fi;
   timelineFocalFrameId = fi;
+  if (fi >= 0 && fi < frameCount) commitFilmSelection(fi, -1, 'timeline-programmatic-center');
   setLowerTimelineScroll(pillsEl, scrollLeft);
   setLowerTimelineScroll(timesEl, scrollLeft);
   // v8z4b31M — centralização programática também atualiza o destaque de referência.
@@ -17362,7 +17427,7 @@ function getFrameScreenGeometry(fi) {
   frameAnchoredUIUsesRotatedCorners = true;
   frameAnchoredUIUsesCurrentPanZoom = true;
   frameAnchoredUIClampAppliedAfterTransform = true;
-  frameAnchoredUIFrameIndex = fi;
+  if (fi === getCanonicalFrameIndex()) frameAnchoredUIFrameIndex = fi;
   frameAnchoredUIIssue = '';
   const bw = (projectWorld && projectWorld.baseStageW > 0) ? projectWorld.baseStageW : stageW;
   const bh = (projectWorld && projectWorld.baseStageH > 0) ? projectWorld.baseStageH : stageH;
@@ -18940,6 +19005,7 @@ function dismissAutosave() {
 // posicionar handle global, corner handles e HUD em stageContent coords corretas,
 // eliminando desalinhamento para frames em slots não-centrais.
 function refreshActiveFrameVisuals() {
+  syncEditorFrameTargetsToCanonical('refreshActiveFrameVisuals');
   ensureGlobalHandle();
   // v8z4b30ZX — pré-calcular geometria de tela (fonte única para todos os elementos ancorados).
   const _canShow = !!(imgNatW && frameCount > 0 && !isPreviewing && !isMultiSelectionActive());
@@ -19028,6 +19094,7 @@ function refreshActiveFrameVisuals() {
 }
 
 function renderAll() {
+  syncEditorFrameTargetsToCanonical('renderAll');
   computeEditorTransform(); // v8z4b30ZG — Correção 3: atualiza transform ProjectWorld→Stage
   removeDuplicateStageRenderNodes();
   // Sync pin button with active frame
@@ -19461,17 +19528,16 @@ function updateDimOverlay() {
     : ((typeof getCanonicalFrameIndex === 'function' && getCanonicalFrameIndex() >= 0) ? getCanonicalFrameIndex() : getTimelineStageFocusIndex());
   const f = frames[focusIdx];
   if (!f) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
-  // v8z4b30ZS — converter coords de mundo para stage (corrige desalinhamento com rotação + zoom/pan).
-  const sp = editorWorldToStage(f.x, f.y, f.w, f.h);
-  const _scrimCenter = stagePointToFilmAlphaScrimViewportPoint(sp.x + sp.w / 2, sp.y + sp.h / 2);
-  const _scrimTl = stagePointToFilmAlphaScrimViewportPoint(sp.x, sp.y);
-  const _scrimBr = stagePointToFilmAlphaScrimViewportPoint(sp.x + sp.w, sp.y + sp.h);
-  const scx = _scrimCenter.x;
-  const scy = _scrimCenter.y;
-  const shw = Math.abs(_scrimBr.x - _scrimTl.x) / 2;
-  const shh = Math.abs(_scrimBr.y - _scrimTl.y) / 2;
-  sp.w = Math.abs(_scrimBr.x - _scrimTl.x);
-  sp.h = Math.abs(_scrimBr.y - _scrimTl.y);
+  // v8z4b32E7F — cutout usa a mesma geometria canônica de tela do frame ativo.
+  const _fg = getFrameScreenGeometry(focusIdx);
+  if (!_fg) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
+  const _scrimPts = _fg.corners.map(p => stagePointToFilmAlphaScrimViewportPoint(p.x, p.y));
+  const scx = _scrimPts.reduce((sum, p) => sum + p.x, 0) / 4;
+  const scy = _scrimPts.reduce((sum, p) => sum + p.y, 0) / 4;
+  const sp = { w: Math.hypot(_scrimPts[1].x - _scrimPts[0].x, _scrimPts[1].y - _scrimPts[0].y),
+               h: Math.hypot(_scrimPts[3].x - _scrimPts[0].x, _scrimPts[3].y - _scrimPts[0].y) };
+  const shw = sp.w / 2;
+  const shh = sp.h / 2;
   const rot = (frameRotations[focusIdx] || 0);
   const tf = _editorTransform;
   const rx = Math.max(4, Math.round(10 * (tf && tf.active ? tf.scale : 1)));
@@ -19502,8 +19568,7 @@ function updateDimOverlay() {
   cameraModeUsesFilmAlphaScrim = !_assetsMode || cameraModeUsesFilmAlphaScrim;
   assetsModeUsesFilmAlphaScrim = _assetsMode || assetsModeUsesFilmAlphaScrim;
   if (!CSS.supports('mix-blend-mode', 'destination-out')) {
-    const worldCorners = getRotatedFrameCorners(focusIdx);
-    const pts = worldCorners.map(c => { const s = _worldPtToStage(c.x, c.y); return `${s.x.toFixed(1)},${s.y.toFixed(1)}`; }).join(' L ');
+    const pts = _scrimPts.map(s => `${s.x.toFixed(1)},${s.y.toFixed(1)}`).join(' L ');
     svg.innerHTML = `<path d="M0,0 H${W} V${H} H0 Z M${pts} Z" fill="${alphaFill}" fill-rule="evenodd"/>`;
   }
   restackFilmEditorLayers('updateDimOverlay');
@@ -20023,6 +20088,10 @@ function drawBezier() {
   // v8z4b20c: Frame IN/OUT handle arms — hastes de haste do centro do frame até cada handle
   // v8z4b20c: suporta F1, intermediários, último frame e loop (não apenas intermediários).
   const _hTargets = getFrameConnectedHandleTargets(activeIdx);
+  ghostOutFrameIndexExpected = activeIdx > 0 ? activeIdx - 1 : -1;
+  ghostInFrameIndexExpected = activeIdx < frameCount - 1 ? activeIdx + 1 : -1;
+  ghostOutFrameIndexActual = ghostOutFrameIndexExpected;
+  ghostInFrameIndexActual = ghostInFrameIndexExpected;
   const _canHandles = !window._isoMode && frameCount >= 2 &&
                       !!imgEl.src && !isPreviewing &&
                       (_hTargets.inTarget || _hTargets.outTarget);
@@ -23224,7 +23293,7 @@ async function startPreview() {
   }
   // v8z4b32E6 — snapshot estável dos assets visíveis ANTES do Preview: congela
   // fontes desenháveis/geometria, invalida caches antigos e valida readiness.
-  // v8z4b32E7E — snapshot já preparado/validado antes de abrir o Preview; não reconstruir durante a sessão.
+  // v8z4b32E7F — snapshot já preparado/validado antes de abrir o Preview; não reconstruir durante a sessão.
 
   function loop(ts) {
     if (!isPreviewing || token !== previewLoopToken) return;
@@ -23959,7 +24028,7 @@ async function startRecord() {
   if (typeof runPreviewExportJumpDiagnostics === 'function') {
     runPreviewExportJumpDiagnostics('export');
   }
-  // v8z4b32E7E — snapshot já preparado/validado antes de iniciar o encoder.
+  // v8z4b32E7F — snapshot já preparado/validado antes de iniciar o encoder.
   document.body.classList.add('previewing');
 
   // v8z4b19i — Invalidar qualquer vídeo anterior antes de gerar outro.
@@ -35883,6 +35952,7 @@ function buildDiagnosticsText() {
   cameraVisualizationStateIsolated = !visualModeContaminationDetected;
   assetsVisualizationStateIsolated = !visualModeContaminationDetected;
   // Seleção compartilhada: o renderer base lê activeIdx/selectedSegmentIndex.
+  syncEditorFrameTargetsToCanonical('diagnostics');
   const _ai = (typeof activeIdx === 'number') ? activeIdx : -1;
   const _ssi = (typeof selectedSegmentIndex === 'number') ? selectedSegmentIndex : -1;
   rendererFrameIndexMatchesActiveFrameIndex = true;
@@ -36041,6 +36111,63 @@ function buildDiagnosticsText() {
   push('modeSwitchChangedCanonicalFrame', String(modeSwitchChangedCanonicalFrame));
   push('modeSwitchPreservesCanonicalFrame', String(modeSwitchPreservesCanonicalFrame));
   push('filmSelectionSource', (typeof filmSelection !== 'undefined' && filmSelection.source) ? filmSelection.source : 'n/d');
+
+  const _e7fTargets = [rendererFrameIndex, timelineVisualActiveIndex, frameTimelineActiveIndex, frameTimelineCenteredIndex, timelineFrameUnderMarkerIndex, frameAnchoredUIFrameIndex, frameActiveInfoTextFrameIndex, cameraModeFrameChipsFrameIndex, cameraModeFrameOverlayFrameIndex, filmAlphaScrimCutoutFrameIndex];
+  allEditorFrameTargetsMatchCanonical = _e7fTargets.every(function(v){ return v === _cf; });
+  editorFrameTargetMismatchDetected = !allEditorFrameTargetsMatchCanonical;
+  editorFrameTargetMismatchReason = editorFrameTargetMismatchDetected ? 'editor-frame-target-mismatch' : 'none';
+  frameAnchoredUIFrameIndexMatchesActive = frameAnchoredUIFrameIndex === _cf;
+  frameActiveInfoTextMatchesActive = frameActiveInfoTextFrameIndex === _cf;
+  cameraModeFrameChipsMatchActive = cameraModeFrameChipsFrameIndex === _cf;
+  cameraModeFrameOverlayMatchesActive = cameraModeFrameOverlayFrameIndex === _cf;
+  scrimCutoutMatchesActiveFrame = filmAlphaScrimCutoutFrameIndex === _cf;
+  timelineVisualActiveMatchesActive = timelineVisualActiveIndex === _cf;
+  timelineCenteredFrameMatchesActive = frameTimelineCenteredIndex === _cf;
+  timelineUnderMarkerMatchesActive = timelineFrameUnderMarkerIndex === _cf;
+
+  L.push('-- v8z4b32E7F Editor Frame Sync --');
+  push('editorFrameSyncFixEnabled', String(editorFrameSyncFixEnabled));
+  push('editorFrameSyncSource', editorFrameSyncSource);
+  push('activeFrameIndex', String(_cf));
+  push('canonicalFrameIndex', String(_cf));
+  push('rendererFrameIndex', String(rendererFrameIndex));
+  push('timelineVisualActiveIndex', String(timelineVisualActiveIndex));
+  push('frameTimelineActiveIndex', String(frameTimelineActiveIndex));
+  push('frameTimelineCenteredIndex', String(frameTimelineCenteredIndex));
+  push('timelineFrameUnderMarkerIndex', String(timelineFrameUnderMarkerIndex));
+  push('frameAnchoredUIFrameIndex', String(frameAnchoredUIFrameIndex));
+  push('frameActiveInfoTextFrameIndex', String(frameActiveInfoTextFrameIndex));
+  push('cameraModeFrameChipsFrameIndex', String(cameraModeFrameChipsFrameIndex));
+  push('cameraModeFrameOverlayFrameIndex', String(cameraModeFrameOverlayFrameIndex));
+  push('filmAlphaScrimCutoutFrameIndex', String(filmAlphaScrimCutoutFrameIndex));
+  push('allEditorFrameTargetsMatchCanonical', String(allEditorFrameTargetsMatchCanonical));
+  push('editorFrameTargetMismatchDetected', String(editorFrameTargetMismatchDetected));
+  push('editorFrameTargetMismatchReason', editorFrameTargetMismatchReason);
+  push('frameAnchoredUIFrameIndexMatchesActive', String(frameAnchoredUIFrameIndexMatchesActive));
+  push('frameActiveInfoTextMatchesActive', String(frameActiveInfoTextMatchesActive));
+  push('cameraModeFrameChipsMatchActive', String(cameraModeFrameChipsMatchActive));
+  push('cameraModeFrameOverlayMatchesActive', String(cameraModeFrameOverlayMatchesActive));
+  push('scrimCutoutMatchesActiveFrame', String(scrimCutoutMatchesActiveFrame));
+  push('timelineVisualActiveMatchesActive', String(timelineVisualActiveMatchesActive));
+  push('timelineCenteredFrameMatchesActive', String(timelineCenteredFrameMatchesActive));
+  push('timelineUnderMarkerMatchesActive', String(timelineUnderMarkerMatchesActive));
+  push('curvePathUsesCanonicalFrameCenters', String(curvePathUsesCanonicalFrameCenters));
+  push('curveHandlesUseCanonicalFrameCenters', String(curveHandlesUseCanonicalFrameCenters));
+  push('curveAnchorUsesActiveFrameCenter', String(curveAnchorUsesActiveFrameCenter));
+  push('curveAnchorFrameIndexMatchesActive', String(curveAnchorFrameIndexMatchesActive));
+  push('curveAnchorStaleIndexDetected', String(curveAnchorStaleIndexDetected));
+  push('curveAnchorOldPanZoomDetected', String(curveAnchorOldPanZoomDetected));
+  push('ghostHandlesUseNeighborFramesOnly', String(ghostHandlesUseNeighborFramesOnly));
+  push('ghostHandlesDoNotMutateActiveFrame', String(ghostHandlesDoNotMutateActiveFrame));
+  push('ghostOutFrameIndexExpected', String(ghostOutFrameIndexExpected));
+  push('ghostOutFrameIndexActual', String(ghostOutFrameIndexActual));
+  push('ghostInFrameIndexExpected', String(ghostInFrameIndexExpected));
+  push('ghostInFrameIndexActual', String(ghostInFrameIndexActual));
+  push('editorOverlayInvalidatedAfterFrameChange', String(editorOverlayInvalidatedAfterFrameChange));
+  push('editorOverlayInvalidatedAfterTimelineTap', String(editorOverlayInvalidatedAfterTimelineTap));
+  push('editorOverlayInvalidatedAfterTimelineScroll', String(editorOverlayInvalidatedAfterTimelineScroll));
+  push('editorOverlayInvalidatedAfterPanZoom', String(editorOverlayInvalidatedAfterPanZoom));
+  push('editorOverlayInvalidatedAfterModeSwitch', String(editorOverlayInvalidatedAfterModeSwitch));
 
   L.push('-- Timeline --');
   push('singleTimelineEngineEnabled', String(singleTimelineEngineEnabled));
