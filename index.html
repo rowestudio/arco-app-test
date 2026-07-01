@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E7B — hotfix: imagem 6 stable raster Preview/Export. -->
+<!-- Arco Motion App — v8z4b32E7C — hotfix: snapshot imutável no Preview e paridade do renderer geral. -->
 <!-- Arco Motion App — v8z4b32E5 — base v8z4b32E4. fix(replace-visual-box-parity): hotfix funcional/visual bloqueador — após o replace recalcular worldW/worldH pela proporção da imagem nova (v32E4), ainda sobrava uma moldura/caixa transparente maior que a imagem real (herdada da caixa antiga), revelando o asset de baixo e desalinhando seleção/hit-test, principalmente no img-1. PRESERVA integralmente a arquitetura aprovada (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera v32E3, fit/aspect/crop/commit atômico v32E4, reorder/move/hit-test/handles/menus/save-load/ProjectWorld/frames/curvas) e respeita o AGENTS.md (drawAtT/getStateAtT/pipeline de render/export só mudam em Engine Sprint explícito — NÃO é o caso desta tarefa). DIAGNÓSTICO: para assets EXTRAS, o DOM wrapper/seleção/hit-test JÁ liam asset.worldX/Y/W/H ao vivo (sem cache separada) — a paridade já estava correta, confirmada com diagnóstico novo. O caminho REALMENTE quebrado era o de img-1: o replace mantém (e continua mantendo) worldX/Y/W/H CRAVADOS na caixa cheia do ProjectWorld (invariante de câmera/frames/curvas — fora de escopo mudar), mas a imagem nova é cozida com fit contain + tarja de cor de fundo DENTRO dessa caixa — um letterbox/pillarbox literal, e o editor desenhava o DOM/seleção/hit-test do tamanho da caixa CHEIA, maior que a imagem real. CORREÇÃO — ESCOPO ÚNICO, só no lado do EDITOR (sem tocar render/câmera/ProjectWorld): (1) nova função pura getAssetVisualWorldRect(asset) — fit contain de asset.sourceW/H dentro de asset.worldW/H, centrado; para extras é, por construção, IDÊNTICO ao worldRect (zero mudança de comportamento, já confirmado pela geometria recalculada na v32E4); para img-1 dá o sub-retângulo REAL que a imagem ocupa dentro da célula intacta; (2) renderProjectWorldExtraImages() (DOM wrapper/imagem), renderAssetSelectionOverlay() (moldura roxa) e hitTestAssetAtWorld() passam a usar esse sub-retângulo em vez do worldRect cru — elimina a moldura/letterbox visível e o toque na faixa antes transparente deixa de selecionar o asset; (3) target.src de img-1 passa a ser a imagem NOVA crua (sem tarja) para essa exibição; o bake no canvas canônico (imgNatW×imgNatH, MESMAS dimensões de sempre) continua sendo gerado IDÊNTICO à v32E4, só como fonte para Preview/Export/fundo espelhado/persistência — NÃO TOCADO; (4) computeWorldCoordinateAudit() deixa de marcar como "mundo híbrido" um asset[0] cujo worldRect ainda bate com baseStage (sem mudança de comportamento real — apenas torna a checagem mais robusta a um possível worldRect próprio futuro, sem habilitar isso agora); (5) novo diagnóstico replacedAsset*/img1*/legacyBoxedAsset* mede, com a DOM já reconstruída após o commit, se DOM wrapper/elemento de imagem/seleção/hit-test leem a MESMA geometria visual (tolerância 1px/1.5% de AR) — e reporta HONESTAMENTE (a partir da amostra real de Preview/Export) que o render pipeline de img-1 ainda usa a caixa cheia/cozida quando a proporção muda (limitação conhecida e documentada: fechar 100% a paridade de Preview/Export para img-1 exige mudar drawAtT/collectWorldRenderAssets, isto é, um Engine Sprint); _scanLegacyBoxedAssets() é só leitura — nunca normaliza assets antigos ao abrir o arquivo (legacyBoxedAssetsAutoRepairedOnLoad=false). NÃO TOCADO: asset.worldX/Y/W/H do modelo (inclusive img-1 — invariante de câmera/ProjectWorld), drawAtT/drawAtTDirect/drawWorldToCanvas/collectWorldRenderAssets/getStateAtT@v8z4b32E3 (pipeline de render/export, fora de escopo sem Engine Sprint), layout/cores/textos/ícones/menus/toolbar/painel Layers/timeline/frames/curvas/duração/interpolação/câmera/Formato/Fundo/"Não limitar"/save-load schema/ProjectWorld geometry/render matemático da câmera/ordem visual de layers/comportamento de move/reorder de assets, fit/aspect/crop/commit atômico da v32E4 (replaceNewWorldARMatchesSourceAR, replaceDoesNotCropNewImage, replaceDoesNotDistortNewImage, replaceFitMode=contain seguem true), unified image asset stack v32E2, sampler de câmera/paridade Preview-Export v32E3. APP_VERSION = APP_VERSION_NAME = v8z4b32E5. -->
 <!-- Arco Motion App — v8z4b32E4 — base v8z4b32E3. fix(replace-image-aspect-crop): hotfix funcional bloqueador da troca de imagem herdando crop/formato do asset anterior, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2/v32E3 (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera, reorder/move/hit-test/handles/menus/save-load). Problema - ao trocar uma imagem (toolbar ou Layers), a imagem nova entrava cravada na caixa/proporção visual da imagem antiga (cover-fit sobre worldW/worldH antigos), cortando ou espremendo a imagem nova quando a proporção mudava. ESCOPO ÚNICO: corrigir a geometria/fit da imagem substituída e o commit atômico da nova fonte após replace. Correção - (1) replaceImageAssetInPlace() captura uma âncora ANTES da troca — centro visual do asset antigo (oldCenterX/Y) e uma caixa de referência (slotBox = ProjectWorld.baseStageW/H quando válido, senão a caixa antiga do próprio asset); (2) para assets EXTRAS, worldX/Y/W/H são RECALCULADOS por fit contain (reaproveitando fitContain() já usado por Inserir Imagem) a partir da proporção NATURAL da imagem nova dentro da caixa de referência, mantendo o centro antigo — a imagem nova entra inteira, sem cortar, sem distorcer, sem herdar a proporção anterior; (3) para a imagem principal (img-1), worldX/Y/W/H continuam intactos (invariante de célula central do grid) e getStateAtT/getStateAtTBase/frames/curvas/ProjectWorld.baseStageW/H permanecem byte-a-byte idênticos — o novo bitmap é cozido no MESMO canvas canônico (imgNatW×imgNatH), mas agora com fit CONTAIN em vez de cover, preenchendo a tarja restante com a cor de fundo do projeto, em vez de cortar a imagem nova; (4) crop/sourceRect do asset é resetado para imagem inteira em todo replace; (5) commit atômico — sourceW/sourceH/fonte desenhável só são preparados e só substituem o asset DEPOIS do decode da imagem nova completar; falha de decode mantém a imagem antiga e mostra erro controlado, sem deixar o asset em estado parcial; composite/Stage só são invalidados/redesenhados depois do commit completo; (6) novos campos de diagnóstico (replacePreserves*, replaceOld/New*, replaceUsesContainFit, replaceUsesSlotBoxAsReference, replaceCommitted*, replacedImageVisible*/NotCropped*, unchangedAssetLostBitmapAfterOtherAssetReplace, assetBlinkDetectedAfterReplace, assetMissingAfterReplaceDetected). NÃO TOCADO: Inserir Imagem (performInsertImageAtSlot, já usava fit contain), getStateAtT/getStateAtTBase/sampler canônico de câmera/paridade Preview-Export da v32E3, interpolação/curvas/rotação/easing, frames, timeline/duração, ProjectWorld.baseStageW/H/geometry, zIndex/slot/visible/seleção do asset trocado, resolução do alvo de replace (toolbar=selectedAssetId, Layers=assetId da linha, sem fallback indevido para img-1/slot central), assets.length, hit-test/reorder/movimento de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E4. -->
 <!-- Arco Motion App — v8z4b32E3 — base v8z4b32E2. fix(preview-export-camera-jump): hotfix funcional bloqueador do pulo visual no Preview e no MP4 exportado, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2 (pilha unificada de imageAssets, img-1 como asset comum, reorder/replace/move/hit-test/handles/menus/save-load). ESCOPO ÚNICO: corrigir o pulo de câmera de Preview/Export. DIAGNÓSTICO: Preview e Export já amostram a câmera pela MESMA função canônica (getStateAtT, via getRenderStateAtTime → renderFrameSafely); o detector passivo da 30ZC usava limiar RELATIVO (Δrot > 3× média local), gerando falso positivo 'rotation-delta-spike' quando a rotação COMEÇA após um trecho sem rotação (média ~0) — a câmera é C0-contínua; o pulo real visto no Preview era engasgo do relógio em tempo real (já mitigado na 30ZH com avanço clamped). Correção - (1) sampler canônico nomeado sampleCanonicalCameraAtT(t)=getStateAtT(t), usado/verificado por Preview e Export; (2) stabilizeCameraCachesForPlayback() reconstrói/valida segDurations/segTremorSettings/curvesV2 ANTES de iniciar Preview e Export (idempotente, não muda câmera/tempo); (3) validatePreviewExportCameraParity32E3() prova paridade (mesmo t ⇒ mesma câmera, Δ≈0); (4) validateCameraContinuity32E3() detector ATIVO de descontinuidade real (limiar ABSOLUTO + pico ISOLADO), distinguindo movimento intencional rápido (ex.: giro de 720°, suave entre amostras) de salto numérico — rotações multi-volta NÃO são normalizadas/achatadas; (5) novos campos de diagnóstico (visualJumpConfirmedByUser, previewExport*, cameraContinuity*, segmentBoundary*, rotation*, firstFrame*, cachesRebuilt*, *DidNotChangeCamera, previewExportCodeTouchedOnlyForJumpFix). NÃO TOCADO: matemática de câmera/getStateAtTBase/interpolação/curvas/rotação/easing, frames (sem normalizar/recentralizar), timeline/duração, ProjectWorld/assets/posições, zIndex/hit-test/replace/move de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E3. -->
@@ -7087,8 +7087,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7B';
-const APP_VERSION_NAME = 'v8z4b32E7B';
+const APP_VERSION = 'v8z4b32E7C';
+const APP_VERSION_NAME = 'v8z4b32E7C';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7574,6 +7574,7 @@ let insertDoesNotReplaceImg1 = true;
 let currentReplaceEpoch = 0;          // incrementa a cada replace canônico
 let _renderSessionEpoch = 0;          // época da sessão ativa de Preview/Export
 let renderSessionSnapshot = null;     // snapshot estável dos assets visíveis
+let renderSessionActiveContext = '';   // contexto ativo do snapshot ('preview'/'export')
 // Guardas gerais.
 let e6CanonicalReplaceFixEnabled = true;
 let e6DiagnosticsUseCanonicalAssets = true;
@@ -7635,6 +7636,11 @@ let renderSessionAvoidsVolatileDomImages = true;
 let renderSessionAssetIds = '';
 let renderSessionAssetSourceVersions = '';
 let renderSessionAssetWorldRects = '';
+let renderSessionSnapshotFrozenDuringPreview = false;
+let renderSessionPreviewUsesSnapshotOnly = false;
+let renderSessionIgnoredLiveAssetMutationDuringPreview = false;
+let renderSessionDeferredLiveAssetMutationDuringPreview = false;
+let renderSessionAssetSourceVersionsStableDuringPreview = true;
 let previewVisibleAssetsExpectedCount = 0;
 let previewVisibleAssetsDrawnEveryFrame = true;
 let previewMinAssetsDrawnPerFrame = 0;
@@ -7663,6 +7669,9 @@ let compositeDirtyDuringPreview = false;
 let compositeDirtyDuringExport = false;
 let projectWorldCompositeStableDuringPreview = true;
 let projectWorldCompositeStableDuringExport = true;
+let knownProblemAssetPreviewUsesOnlySnapshotSource = false;
+let knownProblemAssetPreviewNeverReadsLiveAssetSource = false;
+let knownProblemAssetPreviewStableDrawableObjectStable = true;
 let asyncImageDecodeInvalidatedActiveRenderSession = false;
 let asyncImageDecodeIgnoredBecauseEpochMismatch = false;
 // Imagem 6 / asset problemático conhecido.
@@ -23492,6 +23501,7 @@ function resetPreviewPlaybackState() {
   pausedElapsed = 0;
   resetPreviewClock(); // v8z4b30ZH — limpa o relógio visual limitado do Preview
   previewRendererPreparedForCurrentState = false; // v8z4b30ZI — invalida preflight ao fechar Preview
+  if (renderSessionActiveContext === 'preview') renderSessionActiveContext = '';
   document.body.classList.remove('previewing');
   // Restaurar ícone/botão Play no Stage
   try { updatePlayButton(); } catch(e) {}
@@ -23665,7 +23675,12 @@ function resetPreviewAndExportStateForImageChange() {
   // v8z4b32E7A — Preview não pode reaproveitar snapshot/cache de render após
   // replace: a próxima abertura reconstrói a sessão a partir de assets[].
   try {
-    renderSessionSnapshot = null;
+    if (renderSessionActiveContext === 'preview' && renderSessionSnapshot) {
+      renderSessionIgnoredLiveAssetMutationDuringPreview = true;
+      renderSessionDeferredLiveAssetMutationDuringPreview = true;
+    } else {
+      renderSessionSnapshot = null;
+    }
     img1PreviewCacheInvalidatedAfterReplace = true;
   } catch(e) {}
   resetGeneratedVideoState();
@@ -29462,7 +29477,13 @@ function restoreProjectAssetsFromData(data) {
             if (savedPrimary.src) {
               primary.src = savedPrimary.src;
               const pimg = new Image();
-              pimg.onload = () => { primary.drawSource = pimg; primary.imgReady = true; primary.decodeReady = true; invalidateProjectWorldComposite(); renderProjectWorldExtraImages(); };
+              pimg.onload = () => {
+                if (renderSessionActiveContext === 'preview' && renderSessionSnapshot) {
+                  renderSessionDeferredLiveAssetMutationDuringPreview = true;
+                  return;
+                }
+                primary.drawSource = pimg; primary.imgReady = true; primary.decodeReady = true; invalidateProjectWorldComposite(); renderProjectWorldExtraImages();
+              };
               pimg.src = savedPrimary.src;
               primary._img = pimg;
               primary.drawSource = pimg;
@@ -30625,7 +30646,10 @@ function buildRenderSessionSnapshotE6(context) {
     assetSkippedBecauseNotReadyCount = visible.filter(v => !v.decodeReady).length;
     assetSkippedBecauseMissingSourceCount = visible.filter(v => !v.drawSource).length;
     const allReady = visible.length > 0 ? (readyCount === visible.length) : true;
+    visible.forEach(function(v){ try { Object.freeze(v); } catch (_e) {} });
     renderSessionSnapshot = { context, epoch: _renderSessionEpoch, assets: visible, allReady };
+    try { Object.freeze(renderSessionSnapshot.assets); Object.freeze(renderSessionSnapshot); } catch (_e) {}
+    renderSessionActiveContext = (context === 'preview' || context === 'export') ? context : '';
 
     renderSessionVisibleAssetCount = visible.length;
     renderSessionDecodedAssetCount = readyCount;
@@ -30639,6 +30663,11 @@ function buildRenderSessionSnapshotE6(context) {
     // Reinicia acumuladores por frame para esta sessão.
     if (context === 'preview') {
       renderSessionSnapshotBuiltBeforePreview = true;
+      renderSessionSnapshotFrozenDuringPreview = true;
+      renderSessionPreviewUsesSnapshotOnly = true;
+      renderSessionAssetSourceVersionsStableDuringPreview = true;
+      renderSessionIgnoredLiveAssetMutationDuringPreview = false;
+      renderSessionDeferredLiveAssetMutationDuringPreview = false;
       renderSessionAllVisibleAssetsReadyBeforePreview = allReady;
       previewVisibleAssetsExpectedCount = visible.length;
       img1ExpectedPreviewFrameCount = 0;
@@ -30651,6 +30680,9 @@ function buildRenderSessionSnapshotE6(context) {
       knownProblemAssetSourceVersionStableDuringPreview = true;
       knownProblemAssetWorldRectStableDuringPreview = true;
       knownProblemAssetBlankDrawDetectedInPreview = false;
+      knownProblemAssetPreviewUsesOnlySnapshotSource = true;
+      knownProblemAssetPreviewNeverReadsLiveAssetSource = true;
+      knownProblemAssetPreviewStableDrawableObjectStable = true;
     } else if (context === 'export') {
       renderSessionSnapshotBuiltBeforeExport = true;
       renderSessionAllVisibleAssetsReadyBeforeExport = allReady;
@@ -30723,10 +30755,10 @@ function _accumulateRenderSessionFrameE6(context, renderAssets, drawnCount) {
         if (Math.abs((a.worldW || 0) - sv.worldW) > 1 || Math.abs((a.worldH || 0) - sv.worldH) > 1 ||
             Math.abs((a.worldX || 0) - sv.worldX) > 1 || Math.abs((a.worldY || 0) - sv.worldY) > 1) rectChanged = true;
         if (sv.id === KNOWN_PROBLEM_ASSET_ID) {
-          const ch = _arcoChecksumDrawableE7B(ra.src);
-          knownNonEmpty = !!ch.hasPixels;
-          knownBlank = !ch.hasPixels;
-          knownHashStable = String(ch.hash || '0') === String(sv.drawablePixelHash || '0');
+          knownProblemAssetPreviewStableDrawableObjectStable = (ra.src === sv.drawSource);
+          knownNonEmpty = !!sv.drawableHasPixels && (ra.src === sv.drawSource);
+          knownBlank = !knownNonEmpty;
+          knownHashStable = (ra.src === sv.drawSource) && !!sv.drawableHasPixels;
         }
       }
     }
@@ -30838,6 +30870,7 @@ function _finalizeRenderSessionDiagnosticsE6() {
       knownProblemAssetDisappearedThenReappearedInExport = eBlink;
       knownProblemAssetDrawCalledInPreviewEveryFrame = knownProblemAssetDrawnInPreviewEveryFrame;
       knownProblemAssetDrawCalledInExportEveryFrame = knownProblemAssetDrawnInExportEveryFrame;
+      renderSessionAssetSourceVersionsStableDuringPreview = !assetSourceChangedDuringPreviewDetected;
       knownProblemAssetSourceVersionStableDuringPreview = !assetSourceChangedDuringPreviewDetected;
       knownProblemAssetSourceVersionStableDuringExport = !assetSourceChangedDuringExportDetected;
       knownProblemAssetWorldRectStableDuringPreview = !assetWorldRectChangedDuringPreviewDetected;
@@ -34474,6 +34507,11 @@ function buildDiagnosticsText() {
       _pb('renderSessionSnapshotEnabled', (typeof renderSessionSnapshotEnabled !== 'undefined') ? renderSessionSnapshotEnabled : true);
       _pb('renderSessionSnapshotBuiltBeforePreview', (typeof renderSessionSnapshotBuiltBeforePreview !== 'undefined') ? renderSessionSnapshotBuiltBeforePreview : false);
       _pb('renderSessionSnapshotBuiltBeforeExport', (typeof renderSessionSnapshotBuiltBeforeExport !== 'undefined') ? renderSessionSnapshotBuiltBeforeExport : false);
+      _pb('renderSessionSnapshotFrozenDuringPreview', (typeof renderSessionSnapshotFrozenDuringPreview !== 'undefined') ? renderSessionSnapshotFrozenDuringPreview : false);
+      _pb('renderSessionPreviewUsesSnapshotOnly', (typeof renderSessionPreviewUsesSnapshotOnly !== 'undefined') ? renderSessionPreviewUsesSnapshotOnly : false);
+      _pb('renderSessionIgnoredLiveAssetMutationDuringPreview', (typeof renderSessionIgnoredLiveAssetMutationDuringPreview !== 'undefined') ? renderSessionIgnoredLiveAssetMutationDuringPreview : false);
+      _pb('renderSessionDeferredLiveAssetMutationDuringPreview', (typeof renderSessionDeferredLiveAssetMutationDuringPreview !== 'undefined') ? renderSessionDeferredLiveAssetMutationDuringPreview : false);
+      _pb('renderSessionAssetSourceVersionsStableDuringPreview', (typeof renderSessionAssetSourceVersionsStableDuringPreview !== 'undefined') ? renderSessionAssetSourceVersionsStableDuringPreview : true);
       push('renderSessionVisibleAssetCount', String((typeof renderSessionVisibleAssetCount !== 'undefined') ? renderSessionVisibleAssetCount : 0));
       push('renderSessionDecodedAssetCount', String((typeof renderSessionDecodedAssetCount !== 'undefined') ? renderSessionDecodedAssetCount : 0));
       _pb('renderSessionAllVisibleAssetsReadyBeforePreview', (typeof renderSessionAllVisibleAssetsReadyBeforePreview !== 'undefined') ? renderSessionAllVisibleAssetsReadyBeforePreview : true);
@@ -34535,6 +34573,9 @@ function buildDiagnosticsText() {
       _pb('knownProblemAssetStableDrawableHasPixels', (typeof knownProblemAssetStableDrawableHasPixels !== 'undefined') ? knownProblemAssetStableDrawableHasPixels : false);
       _pb('knownProblemAssetStableDrawableUsedInPreview', (typeof knownProblemAssetStableDrawableUsedInPreview !== 'undefined') ? knownProblemAssetStableDrawableUsedInPreview : false);
       _pb('knownProblemAssetStableDrawableUsedInExport', (typeof knownProblemAssetStableDrawableUsedInExport !== 'undefined') ? knownProblemAssetStableDrawableUsedInExport : false);
+      _pb('knownProblemAssetPreviewUsesOnlySnapshotSource', (typeof knownProblemAssetPreviewUsesOnlySnapshotSource !== 'undefined') ? knownProblemAssetPreviewUsesOnlySnapshotSource : false);
+      _pb('knownProblemAssetPreviewNeverReadsLiveAssetSource', (typeof knownProblemAssetPreviewNeverReadsLiveAssetSource !== 'undefined') ? knownProblemAssetPreviewNeverReadsLiveAssetSource : false);
+      _pb('knownProblemAssetPreviewStableDrawableObjectStable', (typeof knownProblemAssetPreviewStableDrawableObjectStable !== 'undefined') ? knownProblemAssetPreviewStableDrawableObjectStable : true);
       _pb('knownProblemAssetDrawnInPreviewEveryFrame', (typeof knownProblemAssetDrawnInPreviewEveryFrame !== 'undefined') ? knownProblemAssetDrawnInPreviewEveryFrame : true);
       _pb('knownProblemAssetDrawnInExportEveryFrame', (typeof knownProblemAssetDrawnInExportEveryFrame !== 'undefined') ? knownProblemAssetDrawnInExportEveryFrame : true);
       _pb('knownProblemAssetDrawCalledInPreviewEveryFrame', (typeof knownProblemAssetDrawCalledInPreviewEveryFrame !== 'undefined') ? knownProblemAssetDrawCalledInPreviewEveryFrame : true);
