@@ -1,3 +1,14 @@
+## v8z4b32E7E
+
+**hotfix cirúrgico readiness/stableDrawable do img-1.** Base: `v8z4b32E7D`.
+
+- Mantém o gate obrigatório da E7D: Preview/Export só iniciam com snapshot completo e drawables válidos para todos os assets visíveis.
+- `prepareRenderSessionSnapshot(kind)` agora aguarda tentativa real de hidratação/decode antes de bloquear, canoniza `stableDrawable` no próprio asset e usa esse drawable estável no snapshot.
+- `img-1` passa a hidratar a fonte canônica do próprio asset e, em projetos legados onde a fonte carregada existe apenas no caminho principal (`canonicalRenderImage`/`imgEl`), cria uma vez um `stableDrawable` canônico no asset antes do render, sem desenhar Preview/Export diretamente do DOM.
+- Diagnóstico diferencia presença real da imagem 6 em `assets[]` de inclusão no snapshot, evitando reportar asset ausente quando o snapshot abortou antes de completar.
+- Novos campos de diagnóstico cobrem criação/uso/checksum do `stableDrawable` do img-1, preparação assíncrona da sessão, bloqueio de Preview e presença/inclusão da imagem 6.
+- Preservados câmera/getStateAtT, interpolação, curvas, frames, timeline, menus, layout, Layers, zIndex, seleção, troca de imagem, schema save/load, ProjectWorld geometry, Formato e Fundo.
+
 ## v8z4b32E7B
 
 **hotfix cirúrgico da imagem 6 no Preview/Export.** Base: `v8z4b32E7A`.

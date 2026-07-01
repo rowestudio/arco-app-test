@@ -1,3 +1,23 @@
+## v8z4b32E7E
+
+Base confirmada antes do patch: `v8z4b32E7D` em `index.html` (`APP_VERSION` e `APP_VERSION_NAME`).
+
+### Escopo
+- [x] Gate da E7D preservado: Preview/Export continuam bloqueando snapshot incompleto.
+- [x] `prepareRenderSessionSnapshot(kind)` aguarda hidratação/decode antes de decidir bloqueio.
+- [x] `img-1` cria `stableDrawable` canônico a partir do próprio asset ou fallback legado carregado, sem usar DOM como fonte direta de Preview/Export.
+- [x] Diagnóstico da imagem 6 separa presença em `assets[]` de inclusão no snapshot.
+
+### Validação obrigatória (manual iPhone/Safari)
+- [ ] Menu mostra "Arco Motion App v8z4b32E7E".
+- [ ] Abrir o projeto com 8 imagens e tocar Preview; não deve bloquear por `img-1`.
+- [ ] Confirmar visualmente que nenhuma imagem some, especialmente `img-1` e `img-1781638924641-484`.
+- [ ] Exportar MP4 e confirmar que nenhuma imagem some no vídeo.
+- [ ] Diagnóstico mostra `APP_VERSION = v8z4b32E7E`.
+- [ ] Diagnóstico mostra `renderSessionVisibleAssetCount: 8`, `renderSessionDecodedAssetCount: 8`, `renderSessionValidDrawableCount: 8`, `renderSessionSnapshotComplete: true`.
+- [ ] Diagnóstico mostra `assetBlankDrawableCount: 0`, `renderSessionAbortedBecauseAssetNotReady: false`, `img1MissingInPreviewDetected: false`, `img1MissingInExportDetected: false`.
+- [ ] Diagnóstico mostra `knownProblemAssetPresent: true`, `knownProblemAssetStableDrawableCreated: true`, `exportSuccess: true`, `exportRenderAssetCount: 8` e `exportAssetsDrawnCount: 8`.
+
 ## v8z4b32E7B
 
 Base confirmada antes do patch: `v8z4b32E7A` em `index.html` (`APP_VERSION` e `APP_VERSION_NAME`).
