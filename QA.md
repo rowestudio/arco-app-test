@@ -1,3 +1,23 @@
+## v8z4b32E7B
+
+Base confirmada antes do patch: `v8z4b32E7A` em `index.html` (`APP_VERSION` e `APP_VERSION_NAME`).
+
+### Escopo
+- [x] Snapshot de sessão antes de Preview/Export cria fontes raster internas estáveis para assets visíveis.
+- [x] Imagem 6 (`img-1781638924641-484`) valida pixels reais no drawSource por checksum alpha/luma antes da sessão.
+- [x] Preview e Export usam o mesmo snapshot lógico e não dependem de imagem DOM volátil do Stage.
+- [x] Diagnóstico passa a diferenciar draw call de drawSource efetivamente não vazio.
+- [x] Paridade do img-1 da E7A preservada.
+
+### Validação obrigatória (manual iPhone/Safari)
+- [ ] Menu mostra "Arco Motion App v8z4b32E7B".
+- [ ] Rodar Preview e confirmar visualmente que a imagem 6 não some.
+- [ ] Exportar MP4 e confirmar que a imagem 6 não some.
+- [ ] Diagnóstico mostra `APP_VERSION = v8z4b32E7B`.
+- [ ] Diagnóstico mostra `exportSuccess: true` e `exportAssetsDrawnCount: 8`.
+- [ ] Diagnóstico mostra `knownProblemAssetStableDrawableCreated: true`, `knownProblemAssetStableDrawableHasPixels: true` e blank draw false em Preview/Export.
+- [ ] Confirmar que img-1 continua correto no Preview e Export.
+
 ## v8z4b32E7A
 
 Base confirmada antes do patch: `v8z4b32E6` em `index.html` (`APP_VERSION` e `APP_VERSION_NAME`).
