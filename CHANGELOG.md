@@ -1,3 +1,12 @@
+## v8z4b32E7A
+
+**img-1 Preview canonical parity.** Base: `v8z4b32E6`.
+
+- Hotfix cirúrgico no caminho de Preview do img-1 após replace: o Preview passa a consumir o snapshot de sessão reconstruído a partir de `assets[]`, usando a fonte e geometria canônicas do asset.
+- Invalidação do snapshot/cache de Preview no fluxo de troca de imagem para impedir reuso de retângulo/fonte antigos.
+- Diagnóstico protegido para confirmar que o Preview usa o modelo canônico, o snapshot de sessão e o mesmo renderer de assets já usado pelo Export.
+- Preservados Export/WebCodecs, câmera, frames, curvas, ProjectWorld, layers, menus, layout, cores, textos, ícones e schema de save/load.
+
 ## v8z4b32E6
 
 **canonical asset render parity — Engine Sprint autorizado pela tarefa: corrige a divergência em que o img-1 aparece correto no Stage após o replace mas some/usa caixa antiga no Preview/Export; força um único estado canônico do asset (fonte + worldRect) usado por Stage, Preview, Export e save/load; corrige o falso positivo dos diagnósticos de paridade da E5; adiciona snapshot estável de render.** Base: `v8z4b32E5`.
