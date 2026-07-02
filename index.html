@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E7H — base v8z4b32E7G. fix(img1-replace-render-cache): troca de qualquer image asset, inclusive img-1, invalida stableDrawable/renderSessionSnapshot/cache antigo, cria drawable estável novo antes do commit e força Preview/Export a reconstruírem snapshot a partir de assets[] atuais, sem fallback legado para img-1 substituído. Preserva geometria canônica de curva da E7G. APP_VERSION = APP_VERSION_NAME = v8z4b32E7H. -->
+<!-- Arco Motion App — v8z4b32E7H — base v8z4b32E7G. fix(diagnostics-projectworld-replace): diagnóstico legado de coordenadas deixa de tratar img-1 com worldW/H diferente de baseStageW/H como erro; asset0MatchesWorldCoordinateSystem passa a validar coordenadas ProjectWorld finitas/positivas, allAssetsSameCoordinateSystem valida assets no mesmo espaço lógico e mixedWorldScaleDetected não é acionado por aspect ratio próprio. Diagnóstico de replace adiciona replacePreservedCenterAndRecomputedSize=true para aceitar replacePreservedWorldRect=false quando a proporção muda mas centro, AR da imagem nova, recálculo de tamanho, zIndex, slot e visibilidade são preservados. NÃO altera layout, menus, fluxo, curva/handles E7G, Preview, Export, WebCodecs, getStateAtT, drawAtT ou geometria visual. APP_VERSION = APP_VERSION_NAME = v8z4b32E7H. -->
 <!-- Arco Motion App — v8z4b32E7G — base v8z4b32E7F. fix(curve-editor-geometry): controles editáveis de curva no Modo Câmera usam a mesma geometria canônica do path via getFrameScreenGeometry(frameIndex).center; linhas, losangos, ghosts e hitbox ficam em screen coords do path, enquanto drag salva handles em ProjectWorld; Preview/Export/WebCodecs/renderSessionSnapshot/stableDrawable/assets/layers/menus/layout/cores/textos/ícones/fluxo preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E7G. -->
 <!-- Arco Motion App — v8z4b32E5 — base v8z4b32E4. fix(replace-visual-box-parity): hotfix funcional/visual bloqueador — após o replace recalcular worldW/worldH pela proporção da imagem nova (v32E4), ainda sobrava uma moldura/caixa transparente maior que a imagem real (herdada da caixa antiga), revelando o asset de baixo e desalinhando seleção/hit-test, principalmente no img-1. PRESERVA integralmente a arquitetura aprovada (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera v32E3, fit/aspect/crop/commit atômico v32E4, reorder/move/hit-test/handles/menus/save-load/ProjectWorld/frames/curvas) e respeita o AGENTS.md (drawAtT/getStateAtT/pipeline de render/export só mudam em Engine Sprint explícito — NÃO é o caso desta tarefa). DIAGNÓSTICO: para assets EXTRAS, o DOM wrapper/seleção/hit-test JÁ liam asset.worldX/Y/W/H ao vivo (sem cache separada) — a paridade já estava correta, confirmada com diagnóstico novo. O caminho REALMENTE quebrado era o de img-1: o replace mantém (e continua mantendo) worldX/Y/W/H CRAVADOS na caixa cheia do ProjectWorld (invariante de câmera/frames/curvas — fora de escopo mudar), mas a imagem nova é cozida com fit contain + tarja de cor de fundo DENTRO dessa caixa — um letterbox/pillarbox literal, e o editor desenhava o DOM/seleção/hit-test do tamanho da caixa CHEIA, maior que a imagem real. CORREÇÃO — ESCOPO ÚNICO, só no lado do EDITOR (sem tocar render/câmera/ProjectWorld): (1) nova função pura getAssetVisualWorldRect(asset) — fit contain de asset.sourceW/H dentro de asset.worldW/H, centrado; para extras é, por construção, IDÊNTICO ao worldRect (zero mudança de comportamento, já confirmado pela geometria recalculada na v32E4); para img-1 dá o sub-retângulo REAL que a imagem ocupa dentro da célula intacta; (2) renderProjectWorldExtraImages() (DOM wrapper/imagem), renderAssetSelectionOverlay() (moldura roxa) e hitTestAssetAtWorld() passam a usar esse sub-retângulo em vez do worldRect cru — elimina a moldura/letterbox visível e o toque na faixa antes transparente deixa de selecionar o asset; (3) target.src de img-1 passa a ser a imagem NOVA crua (sem tarja) para essa exibição; o bake no canvas canônico (imgNatW×imgNatH, MESMAS dimensões de sempre) continua sendo gerado IDÊNTICO à v32E4, só como fonte para Preview/Export/fundo espelhado/persistência — NÃO TOCADO; (4) computeWorldCoordinateAudit() deixa de marcar como "mundo híbrido" um asset[0] cujo worldRect ainda bate com baseStage (sem mudança de comportamento real — apenas torna a checagem mais robusta a um possível worldRect próprio futuro, sem habilitar isso agora); (5) novo diagnóstico replacedAsset*/img1*/legacyBoxedAsset* mede, com a DOM já reconstruída após o commit, se DOM wrapper/elemento de imagem/seleção/hit-test leem a MESMA geometria visual (tolerância 1px/1.5% de AR) — e reporta HONESTAMENTE (a partir da amostra real de Preview/Export) que o render pipeline de img-1 ainda usa a caixa cheia/cozida quando a proporção muda (limitação conhecida e documentada: fechar 100% a paridade de Preview/Export para img-1 exige mudar drawAtT/collectWorldRenderAssets, isto é, um Engine Sprint); _scanLegacyBoxedAssets() é só leitura — nunca normaliza assets antigos ao abrir o arquivo (legacyBoxedAssetsAutoRepairedOnLoad=false). NÃO TOCADO: asset.worldX/Y/W/H do modelo (inclusive img-1 — invariante de câmera/ProjectWorld), drawAtT/drawAtTDirect/drawWorldToCanvas/collectWorldRenderAssets/getStateAtT@v8z4b32E3 (pipeline de render/export, fora de escopo sem Engine Sprint), layout/cores/textos/ícones/menus/toolbar/painel Layers/timeline/frames/curvas/duração/interpolação/câmera/Formato/Fundo/"Não limitar"/save-load schema/ProjectWorld geometry/render matemático da câmera/ordem visual de layers/comportamento de move/reorder de assets, fit/aspect/crop/commit atômico da v32E4 (replaceNewWorldARMatchesSourceAR, replaceDoesNotCropNewImage, replaceDoesNotDistortNewImage, replaceFitMode=contain seguem true), unified image asset stack v32E2, sampler de câmera/paridade Preview-Export v32E3. APP_VERSION = APP_VERSION_NAME = v8z4b32E5. -->
 <!-- Arco Motion App — v8z4b32E4 — base v8z4b32E3. fix(replace-image-aspect-crop): hotfix funcional bloqueador da troca de imagem herdando crop/formato do asset anterior, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2/v32E3 (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera, reorder/move/hit-test/handles/menus/save-load). Problema - ao trocar uma imagem (toolbar ou Layers), a imagem nova entrava cravada na caixa/proporção visual da imagem antiga (cover-fit sobre worldW/worldH antigos), cortando ou espremendo a imagem nova quando a proporção mudava. ESCOPO ÚNICO: corrigir a geometria/fit da imagem substituída e o commit atômico da nova fonte após replace. Correção - (1) replaceImageAssetInPlace() captura uma âncora ANTES da troca — centro visual do asset antigo (oldCenterX/Y) e uma caixa de referência (slotBox = ProjectWorld.baseStageW/H quando válido, senão a caixa antiga do próprio asset); (2) para assets EXTRAS, worldX/Y/W/H são RECALCULADOS por fit contain (reaproveitando fitContain() já usado por Inserir Imagem) a partir da proporção NATURAL da imagem nova dentro da caixa de referência, mantendo o centro antigo — a imagem nova entra inteira, sem cortar, sem distorcer, sem herdar a proporção anterior; (3) para a imagem principal (img-1), worldX/Y/W/H continuam intactos (invariante de célula central do grid) e getStateAtT/getStateAtTBase/frames/curvas/ProjectWorld.baseStageW/H permanecem byte-a-byte idênticos — o novo bitmap é cozido no MESMO canvas canônico (imgNatW×imgNatH), mas agora com fit CONTAIN em vez de cover, preenchendo a tarja restante com a cor de fundo do projeto, em vez de cortar a imagem nova; (4) crop/sourceRect do asset é resetado para imagem inteira em todo replace; (5) commit atômico — sourceW/sourceH/fonte desenhável só são preparados e só substituem o asset DEPOIS do decode da imagem nova completar; falha de decode mantém a imagem antiga e mostra erro controlado, sem deixar o asset em estado parcial; composite/Stage só são invalidados/redesenhados depois do commit completo; (6) novos campos de diagnóstico (replacePreserves*, replaceOld/New*, replaceUsesContainFit, replaceUsesSlotBoxAsReference, replaceCommitted*, replacedImageVisible*/NotCropped*, unchangedAssetLostBitmapAfterOtherAssetReplace, assetBlinkDetectedAfterReplace, assetMissingAfterReplaceDetected). NÃO TOCADO: Inserir Imagem (performInsertImageAtSlot, já usava fit contain), getStateAtT/getStateAtTBase/sampler canônico de câmera/paridade Preview-Export da v32E3, interpolação/curvas/rotação/easing, frames, timeline/duração, ProjectWorld.baseStageW/H/geometry, zIndex/slot/visible/seleção do asset trocado, resolução do alvo de replace (toolbar=selectedAssetId, Layers=assetId da linha, sem fallback indevido para img-1/slot central), assets.length, hit-test/reorder/movimento de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E4. -->
@@ -7418,6 +7418,7 @@ let replacePreservedZIndex = true;
 let replacePreservedWorldRect = true;
 let replacePreservedSlot = true;
 let replacePreservedVisibility = true;
+let replacePreservedCenterAndRecomputedSize = true;
 // ProjectWorld / geometria (antes/depois de replace).
 let stageGeometryBeforeReplace = '';
 let stageGeometryAfterReplace = '';
@@ -30412,6 +30413,13 @@ function _recordReplaceAspectDiagnostics(target, anchor, before, newSourceW, new
     replaceNewWorldAR = newWorldAR;
     replaceNewWorldARMatchesSourceAR = arClose(newWorldAR, newSourceAR);
     replaceRecalculatesWorldRectFromNewImageAspectRatio = true;
+    replacePreservedCenterAndRecomputedSize = !replacePreservedWorldRect &&
+      !!replacePreservesAnchorCenter &&
+      !!replaceNewWorldARMatchesSourceAR &&
+      !!replaceRecalculatesWorldRectFromNewImageAspectRatio &&
+      !!replacePreservesZIndex &&
+      !!replacePreservesSlot &&
+      !!replacePreservesVisibility;
     const sourceArChanged = oldSourceAR > 0 && !arClose(oldSourceAR, newSourceAR);
     replaceDoesNotPreserveOldAspectRatio = sourceArChanged ? !arClose(oldWorldAR, newWorldAR) : true;
     replaceDoesNotInheritPreviousCrop = true;
@@ -33716,14 +33724,18 @@ function computeWorldCoordinateAudit() {
 
     const details = [];
 
-    // asset[0] deve casar com baseStage (worldW≈baseStageW, worldH≈baseStageH).
+    const hasValidWorldRect = (a) => !!a &&
+      Number.isFinite(a.worldX) && Number.isFinite(a.worldY) &&
+      Number.isFinite(a.worldW) && Number.isFinite(a.worldH) &&
+      a.worldW > 0 && a.worldH > 0;
+
+    // asset[0] deve usar coordenadas ProjectWorld válidas. Depois da pilha
+    // unificada de assets, img-1 pode ter worldW/H diferente de baseStageW/H
+    // por causa do aspect ratio próprio; isso NÃO indica mundo híbrido.
     if (a0) {
-      const dW = Math.abs((a0.worldW || 0) - baseW);
-      const dH = Math.abs((a0.worldH || 0) - baseH);
-      out.asset0Matches = (dW <= TOL && dH <= TOL);
+      out.asset0Matches = hasValidWorldRect(a0);
       if (!out.asset0Matches) {
-        details.push('asset0 worldW/H=' + _diagFmtNum(a0.worldW, 1) + '×' + _diagFmtNum(a0.worldH, 1) +
-                     ' ≠ baseStage=' + _diagFmtNum(baseW, 1) + '×' + _diagFmtNum(baseH, 1));
+        details.push('asset0 com coordenadas ProjectWorld inválidas');
       }
     }
 
@@ -33736,10 +33748,9 @@ function computeWorldCoordinateAudit() {
                    ' ≠ baseStage=' + _diagFmtNum(baseW, 1) + '×' + _diagFmtNum(baseH, 1));
     }
 
-    // Todos os image assets devem ter worldW/H finitos e positivos.
-    out.allAssetsSame = imgAssets.every(a => Number.isFinite(a.worldW) && Number.isFinite(a.worldH) &&
-                                              a.worldW > 0 && a.worldH > 0 &&
-                                              Number.isFinite(a.worldX) && Number.isFinite(a.worldY));
+    // Todos os image assets devem estar no mesmo espaço lógico ProjectWorld:
+    // coordenadas numéricas positivas, sem exigir dimensões iguais ao baseStage.
+    out.allAssetsSame = imgAssets.every(hasValidWorldRect);
     if (!out.allAssetsSame) details.push('um ou mais assets com world coords inválidas');
 
     // Frames/curvas: vivem no MESMO espaço de px da câmera (getStateAtT consome os
@@ -34725,6 +34736,7 @@ function buildDiagnosticsText() {
       _pb('replacePreservedCurves', (typeof replacePreservedCurves !== 'undefined') ? replacePreservedCurves : true);
       _pb('replacePreservedZIndex', (typeof replacePreservedZIndex !== 'undefined') ? replacePreservedZIndex : true);
       _pb('replacePreservedWorldRect', (typeof replacePreservedWorldRect !== 'undefined') ? replacePreservedWorldRect : true);
+      _pb('replacePreservedCenterAndRecomputedSize', (typeof replacePreservedCenterAndRecomputedSize !== 'undefined') ? replacePreservedCenterAndRecomputedSize : true);
       _pb('replacePreservedSlot', (typeof replacePreservedSlot !== 'undefined') ? replacePreservedSlot : true);
       _pb('replacePreservedVisibility', (typeof replacePreservedVisibility !== 'undefined') ? replacePreservedVisibility : true);
       // v8z4b32E4 — fix de aspect/crop do replace (não herdar formato anterior).
