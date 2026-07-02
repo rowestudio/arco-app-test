@@ -1,3 +1,24 @@
+## v8z4b32E7H
+
+Base: `v8z4b32E7G`. Nova versão: `v8z4b32E7H`.
+
+Escopo estrito: limpar falsos negativos de diagnóstico sem alterar layout, menus, fluxo, curva/handles E7G, Preview ou Export.
+
+Checklist técnico:
+
+- [x] `asset0MatchesWorldCoordinateSystem` não compara `worldW/H` com `baseStageW/H`.
+- [x] `asset0MatchesWorldCoordinateSystem` valida apenas coordenadas ProjectWorld numéricas e positivas.
+- [x] `allAssetsSameCoordinateSystem` valida todos os assets por coordenadas ProjectWorld válidas, sem exigir dimensões iguais ao baseStage.
+- [x] `replacePreservedCenterAndRecomputedSize` é exposto no diagnóstico.
+- [x] `replacePreservedWorldRect=false` é aceito quando centro, AR novo, recálculo de tamanho, zIndex, slot e visibilidade estão corretos.
+
+Testes manuais obrigatórios em iPhone/Safari:
+
+- [ ] Menu mostra "Arco Motion App v8z4b32E7H".
+- [ ] Após trocar `img-1` por imagem com outra proporção, diagnóstico mostra `worldCoordinateStrategy: preserveSavedWorld`, `worldCoordinateSystemConsistent: true`, `asset0MatchesWorldCoordinateSystem: true`, `allAssetsSameCoordinateSystem: true` e `mixedWorldScaleDetected: false`.
+- [ ] Diagnóstico de replace mostra `replacePreservedCenterAndRecomputedSize: true` quando `replacePreservedWorldRect: false` por mudança de proporção.
+- [ ] Preservar `img1StableDrawableUsedInPreview: true`, `img1StableDrawableUsedInExport: true`, contagens esperadas de Preview/Export e flags E7G de curva.
+
 ## v8z4b32E7G
 
 Base confirmada antes do patch: `v8z4b32E7F` em `index.html` (`APP_VERSION` e `APP_VERSION_NAME`).

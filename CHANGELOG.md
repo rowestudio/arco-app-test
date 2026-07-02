@@ -1,3 +1,12 @@
+## v8z4b32E7H
+
+**Correção cirúrgica de diagnósticos legados ProjectWorld/replace.** Base: `v8z4b32E7G`.
+
+- `computeWorldCoordinateAudit()` deixa de comparar `asset0.worldW/H` com `projectWorld.baseStageW/H`; agora valida coordenadas ProjectWorld finitas/positivas e mantém a checagem de escala única do `projectWorld`/render.
+- Diagnóstico de replace adiciona `replacePreservedCenterAndRecomputedSize`, permitindo `replacePreservedWorldRect=false` quando a imagem muda de proporção, desde que centro, aspect ratio novo, zIndex, slot e visibilidade estejam preservados.
+- Preservados layout, menus, fluxo, curva/handles E7G, Preview/Export, WebCodecs, `getStateAtT`, `drawAtT`, assets e render visual.
+- `index.html`: `APP_VERSION` e `APP_VERSION_NAME` permanecem em `v8z4b32E7H`.
+
 ## v8z4b32E7G
 
 **Engine Sprint — geometria canônica dos controles editáveis de curva.** Base: `v8z4b32E7F`.
