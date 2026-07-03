@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8 — base v8z4b32E7H. fix(save-load): round-trip robusto de múltiplos assets de imagem preserva metadados, sourceVersion, ProjectWorld, frames/curves, seleção válida e invalida snapshots/drawables após load. APP_VERSION = APP_VERSION_NAME = v8z4b32E8. -->
 <!-- Arco Motion App — v8z4b32E7H — base v8z4b32E7G. fix(diagnostics-projectworld-replace): diagnóstico legado de coordenadas deixa de tratar img-1 com worldW/H diferente de baseStageW/H como erro; asset0MatchesWorldCoordinateSystem passa a validar coordenadas ProjectWorld finitas/positivas, allAssetsSameCoordinateSystem valida assets no mesmo espaço lógico e mixedWorldScaleDetected não é acionado por aspect ratio próprio. Diagnóstico de replace adiciona replacePreservedCenterAndRecomputedSize=true para aceitar replacePreservedWorldRect=false quando a proporção muda mas centro, AR da imagem nova, recálculo de tamanho, zIndex, slot e visibilidade são preservados. NÃO altera layout, menus, fluxo, curva/handles E7G, Preview, Export, WebCodecs, getStateAtT, drawAtT ou geometria visual. APP_VERSION = APP_VERSION_NAME = v8z4b32E7H. -->
 <!-- Arco Motion App — v8z4b32E7G — base v8z4b32E7F. fix(curve-editor-geometry): controles editáveis de curva no Modo Câmera usam a mesma geometria canônica do path via getFrameScreenGeometry(frameIndex).center; linhas, losangos, ghosts e hitbox ficam em screen coords do path, enquanto drag salva handles em ProjectWorld; Preview/Export/WebCodecs/renderSessionSnapshot/stableDrawable/assets/layers/menus/layout/cores/textos/ícones/fluxo preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E7G. -->
 <!-- Arco Motion App — v8z4b32E5 — base v8z4b32E4. fix(replace-visual-box-parity): hotfix funcional/visual bloqueador — após o replace recalcular worldW/worldH pela proporção da imagem nova (v32E4), ainda sobrava uma moldura/caixa transparente maior que a imagem real (herdada da caixa antiga), revelando o asset de baixo e desalinhando seleção/hit-test, principalmente no img-1. PRESERVA integralmente a arquitetura aprovada (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera v32E3, fit/aspect/crop/commit atômico v32E4, reorder/move/hit-test/handles/menus/save-load/ProjectWorld/frames/curvas) e respeita o AGENTS.md (drawAtT/getStateAtT/pipeline de render/export só mudam em Engine Sprint explícito — NÃO é o caso desta tarefa). DIAGNÓSTICO: para assets EXTRAS, o DOM wrapper/seleção/hit-test JÁ liam asset.worldX/Y/W/H ao vivo (sem cache separada) — a paridade já estava correta, confirmada com diagnóstico novo. O caminho REALMENTE quebrado era o de img-1: o replace mantém (e continua mantendo) worldX/Y/W/H CRAVADOS na caixa cheia do ProjectWorld (invariante de câmera/frames/curvas — fora de escopo mudar), mas a imagem nova é cozida com fit contain + tarja de cor de fundo DENTRO dessa caixa — um letterbox/pillarbox literal, e o editor desenhava o DOM/seleção/hit-test do tamanho da caixa CHEIA, maior que a imagem real. CORREÇÃO — ESCOPO ÚNICO, só no lado do EDITOR (sem tocar render/câmera/ProjectWorld): (1) nova função pura getAssetVisualWorldRect(asset) — fit contain de asset.sourceW/H dentro de asset.worldW/H, centrado; para extras é, por construção, IDÊNTICO ao worldRect (zero mudança de comportamento, já confirmado pela geometria recalculada na v32E4); para img-1 dá o sub-retângulo REAL que a imagem ocupa dentro da célula intacta; (2) renderProjectWorldExtraImages() (DOM wrapper/imagem), renderAssetSelectionOverlay() (moldura roxa) e hitTestAssetAtWorld() passam a usar esse sub-retângulo em vez do worldRect cru — elimina a moldura/letterbox visível e o toque na faixa antes transparente deixa de selecionar o asset; (3) target.src de img-1 passa a ser a imagem NOVA crua (sem tarja) para essa exibição; o bake no canvas canônico (imgNatW×imgNatH, MESMAS dimensões de sempre) continua sendo gerado IDÊNTICO à v32E4, só como fonte para Preview/Export/fundo espelhado/persistência — NÃO TOCADO; (4) computeWorldCoordinateAudit() deixa de marcar como "mundo híbrido" um asset[0] cujo worldRect ainda bate com baseStage (sem mudança de comportamento real — apenas torna a checagem mais robusta a um possível worldRect próprio futuro, sem habilitar isso agora); (5) novo diagnóstico replacedAsset*/img1*/legacyBoxedAsset* mede, com a DOM já reconstruída após o commit, se DOM wrapper/elemento de imagem/seleção/hit-test leem a MESMA geometria visual (tolerância 1px/1.5% de AR) — e reporta HONESTAMENTE (a partir da amostra real de Preview/Export) que o render pipeline de img-1 ainda usa a caixa cheia/cozida quando a proporção muda (limitação conhecida e documentada: fechar 100% a paridade de Preview/Export para img-1 exige mudar drawAtT/collectWorldRenderAssets, isto é, um Engine Sprint); _scanLegacyBoxedAssets() é só leitura — nunca normaliza assets antigos ao abrir o arquivo (legacyBoxedAssetsAutoRepairedOnLoad=false). NÃO TOCADO: asset.worldX/Y/W/H do modelo (inclusive img-1 — invariante de câmera/ProjectWorld), drawAtT/drawAtTDirect/drawWorldToCanvas/collectWorldRenderAssets/getStateAtT@v8z4b32E3 (pipeline de render/export, fora de escopo sem Engine Sprint), layout/cores/textos/ícones/menus/toolbar/painel Layers/timeline/frames/curvas/duração/interpolação/câmera/Formato/Fundo/"Não limitar"/save-load schema/ProjectWorld geometry/render matemático da câmera/ordem visual de layers/comportamento de move/reorder de assets, fit/aspect/crop/commit atômico da v32E4 (replaceNewWorldARMatchesSourceAR, replaceDoesNotCropNewImage, replaceDoesNotDistortNewImage, replaceFitMode=contain seguem true), unified image asset stack v32E2, sampler de câmera/paridade Preview-Export v32E3. APP_VERSION = APP_VERSION_NAME = v8z4b32E5. -->
@@ -7088,8 +7089,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7H';
-const APP_VERSION_NAME = 'v8z4b32E7H';
+const APP_VERSION = 'v8z4b32E8';
+const APP_VERSION_NAME = 'v8z4b32E8';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -16418,6 +16419,27 @@ let lastSaveError = '';
 let lastLoadError = '';
 let lastSaveProjectWorldBounds = null;
 let lastLoadProjectWorldBounds = null;
+let savedAssetIds = [];
+let savedAssetSourceVersions = [];
+let savedAssetWorldRects = [];
+let savedAssetZOrder = [];
+let savedProjectWorldValid = false;
+let savedCurvesCount = 0;
+let loadedAssetIds = [];
+let loadedAssetSourceVersions = [];
+let loadedAssetWorldRects = [];
+let loadedAssetZOrder = [];
+let loadedProjectWorldValid = false;
+let loadedCurvesCount = 0;
+let saveLoadPreservesAssetSourceVersion = false;
+let saveLoadPreservesStableDrawableRebuild = false;
+let saveLoadDoesNotUseOldImg1Source = false;
+let saveLoadPreservesWorldRects = false;
+let saveLoadPreservesLayerOrder = false;
+let saveLoadPreservesFrames = false;
+let saveLoadPreservesCurves = false;
+let saveLoadPreservesProjectWorld = false;
+let saveLoadRoundTripIssue = 'none';
 
 // v8z4b30W — diagnóstico de posições de frames no ProjectWorld (frame load/save).
 let savedFramesCount = 0;
@@ -28553,37 +28575,80 @@ function serializeProjectAsset(a, idx, includeImages) {
     id: a.id,
     type: a.type || 'image',
     name: a.name || '',
-    sourceW: a.sourceW || 0,
-    sourceH: a.sourceH || 0,
-    worldX: a.worldX || 0,
-    worldY: a.worldY || 0,
-    worldW: a.worldW || 0,
-    worldH: a.worldH || 0,
-    rotation: a.rotation || 0,
-    zIndex: a.zIndex || 0,
+    sourceW: Number(a.sourceW) || 0,
+    sourceH: Number(a.sourceH) || 0,
+    sourceVersion: Number(a.sourceVersion) || 0,
+    worldX: Number(a.worldX) || 0,
+    worldY: Number(a.worldY) || 0,
+    worldW: Number(a.worldW) || 0,
+    worldH: Number(a.worldH) || 0,
+    rotation: Number(a.rotation) || 0,
+    zIndex: Number.isFinite(a.zIndex) ? a.zIndex : 0,
     visible: a.visible !== false,
     locked: !!a.locked,
     fitMode: a.fitMode || 'contain',
   };
-  if (includeImages && idx > 0 && out.type === 'image') {
-    const src = a.src || (a._img && a._img.src) || '';
+  ['slotRow','slotCol','slotBox','crop','sourceRect','frameStyle','e6CanonicalReplaced','renderVersion'].forEach(function(k) {
+    if (a[k] !== undefined) out[k] = (a[k] && typeof a[k] === 'object') ? JSON.parse(JSON.stringify(a[k])) : a[k];
+  });
+  if (includeImages && out.type === 'image') {
+    const src = a.src || (a._img && a._img.src) || (idx === 0 ? (imageOriginalDataUrl || imgEl.src || '') : '');
     if (src) out.src = src;
   }
-  // v8z4b32E6 — persistir o estado canônico de um asset SUBSTITUÍDO (inclusive
-  // img-1/idx 0), para que a geometria/fonte normalizadas sobrevivam a save/load.
-  // Assets legados nunca substituídos NÃO ganham este campo (não auto-normaliza).
-  if (a.e6CanonicalReplaced && out.type === 'image') {
-    out.e6CanonicalReplaced = true;
-    out.sourceVersion = Number(a.sourceVersion) || 0;
-    out.renderVersion = Number(a.renderVersion) || 0;
-    // Para o img-1 (idx 0), o src cru não seria salvo pela regra acima (idx>0);
-    // salvá-lo aqui quando incluir imagens garante img1SaveLoadPreservesCanonicalSource.
-    if (includeImages && idx === 0) {
-      const rawSrc = a.src || (a._img && a._img.src) || '';
-      if (rawSrc) out.src = rawSrc;
-    }
-  }
   return out;
+}
+
+function isProjectWorldDataValid(pw) {
+  return !!(pw && pw.initialized === true &&
+    Number.isFinite(Number(pw.baseStageW)) && Number(pw.baseStageW) > 0 &&
+    Number.isFinite(Number(pw.baseStageH)) && Number(pw.baseStageH) > 0);
+}
+
+function summarizeAssetWorldRects(list) {
+  return (list || []).map(function(a) {
+    return { id: String(a.id || ''), x: Number(a.worldX) || 0, y: Number(a.worldY) || 0, w: Number(a.worldW) || 0, h: Number(a.worldH) || 0 };
+  });
+}
+
+function summarizeAssetZOrder(list) {
+  return (list || []).map(function(a) { return { id: String(a.id || ''), zIndex: Number.isFinite(a.zIndex) ? a.zIndex : 0 }; });
+}
+
+function countPersistedCurves(data) {
+  if (data && data.curvesV2 && data.curvesV2.frameHandles) {
+    return Math.max(
+      Array.isArray(data.curvesV2.frameHandles.in) ? data.curvesV2.frameHandles.in.length : 0,
+      Array.isArray(data.curvesV2.frameHandles.out) ? data.curvesV2.frameHandles.out.length : 0
+    );
+  }
+  return Array.isArray(data && data.ctrlPts) ? data.ctrlPts.length : 0;
+}
+
+function refreshSaveLoadRoundTripDiagnostics() {
+  const issues = [];
+  const sameJson = function(a, b) { return JSON.stringify(a || []) === JSON.stringify(b || []); };
+  saveLoadPreservesAssetSourceVersion = sameJson(savedAssetSourceVersions, loadedAssetSourceVersions);
+  saveLoadPreservesWorldRects = sameJson(savedAssetWorldRects, loadedAssetWorldRects);
+  saveLoadPreservesLayerOrder = sameJson(savedAssetZOrder, loadedAssetZOrder);
+  saveLoadPreservesFrames = Number(savedFramesCount) === Number(loadedFramesCount);
+  saveLoadPreservesCurves = Number(savedCurvesCount) === Number(loadedCurvesCount);
+  saveLoadPreservesProjectWorld = (!!savedProjectWorldValid === !!loadedProjectWorldValid) &&
+    JSON.stringify(lastSaveProjectWorldBounds || null) === JSON.stringify(lastLoadProjectWorldBounds || null);
+  saveLoadPreservesStableDrawableRebuild = Array.isArray(assets) && assets.filter(function(a){ return a && a.type === 'image'; }).every(function(a) {
+    return a.visible === false || !!(a.stableDrawable || a.drawSource || a._img || a.src);
+  });
+  const img1 = Array.isArray(assets) ? assets.find(function(a){ return a && a.id === 'img-1'; }) : null;
+  const img1Loaded = loadedAssetSourceVersions.find(function(v){ return v.id === 'img-1'; });
+  saveLoadDoesNotUseOldImg1Source = !img1 || !img1Loaded || Number(img1.sourceVersion || 0) === Number(img1Loaded.sourceVersion || 0);
+  if (!saveLoadPreservesAssetSourceVersion) issues.push('sourceVersion');
+  if (!saveLoadPreservesStableDrawableRebuild) issues.push('stableDrawable');
+  if (!saveLoadDoesNotUseOldImg1Source) issues.push('img-1-source');
+  if (!saveLoadPreservesWorldRects) issues.push('worldRects');
+  if (!saveLoadPreservesLayerOrder) issues.push('layerOrder');
+  if (!saveLoadPreservesFrames) issues.push('frames');
+  if (!saveLoadPreservesCurves) issues.push('curves');
+  if (!saveLoadPreservesProjectWorld) issues.push('projectWorld');
+  saveLoadRoundTripIssue = issues.length ? issues.join(',') : 'none';
 }
 
 function buildProjectData(includeImages) {
@@ -28677,6 +28742,7 @@ function buildProjectData(includeImages) {
     assetsSchemaVersion: PROJECT_ASSETS_SCHEMA_VERSION,
     projectWorld: { ...projectWorld },
     assets: assets.map((a, i) => serializeProjectAsset(a, i, !!includeImages)),
+    selectedAssetId: (selectedAssetId && assets.some(a => a && a.id === selectedAssetId)) ? selectedAssetId : null,
   };
 }
 
@@ -28752,6 +28818,12 @@ function doSaveDirect(includeImage, nome) {
     lastSaveSchemaVersion = data.assetsSchemaVersion;
     lastSaveIncludesMultipleImages = savedImageAssets.length > 1;
     lastSaveProjectWorldBounds = data.projectWorld ? { ...data.projectWorld } : null;
+    savedAssetIds = savedImageAssets.map(a => String(a.id || ''));
+    savedAssetSourceVersions = savedImageAssets.map(a => ({ id: String(a.id || ''), sourceVersion: Number(a.sourceVersion) || 0 }));
+    savedAssetWorldRects = summarizeAssetWorldRects(savedImageAssets);
+    savedAssetZOrder = summarizeAssetZOrder(savedImageAssets);
+    savedProjectWorldValid = isProjectWorldDataValid(data.projectWorld);
+    savedCurvesCount = countPersistedCurves(data);
 
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -29429,6 +29501,7 @@ function applyFrameData(data) {
                                    (loadedFrameMinY !== null && loadedFrameMinY < 0);
     loadedHasFramesOutsideMainImage = _loadIsProjectWorld && frames.slice(0, frameCount).some(
       function(f){ return f.x < 0 || f.y < 0 || (f.x + f.w) > stageW || (f.y + f.h) > stageH; });
+    refreshSaveLoadRoundTripDiagnostics();
   }
 
   // v8z4b30ZG — CORREÇÃO 2: entrar no editor ANTES do render para garantir Stage visível.
@@ -29612,8 +29685,22 @@ function restoreProjectAssetsFromData(data) {
 
     const savedAssets = Array.isArray(data.assets) ? data.assets : [];
     const savedImageAssets = savedAssets.filter(a => a && a.type === 'image');
+    savedAssetsCount = savedAssets.length;
+    savedImageAssetsCount = savedImageAssets.length;
+    lastSaveIncludesMultipleImages = savedImageAssets.length > 1;
+    savedAssetIds = savedImageAssets.map(a => String(a.id || ''));
+    savedAssetSourceVersions = savedImageAssets.map(a => ({ id: String(a.id || ''), sourceVersion: Number(a.sourceVersion) || 0 }));
+    savedAssetWorldRects = summarizeAssetWorldRects(savedImageAssets);
+    savedAssetZOrder = summarizeAssetZOrder(savedImageAssets);
+    savedProjectWorldValid = isProjectWorldDataValid(data.projectWorld);
+    savedFramesCount = Number(data.frameCount) || (Array.isArray(data.framesAbs) ? data.framesAbs.length : (Array.isArray(data.framesNorm) ? data.framesNorm.length : 0));
+    savedCurvesCount = countPersistedCurves(data);
+    lastSaveProjectWorldBounds = data.projectWorld ? { ...data.projectWorld } : null;
+    if (isProjectWorldDataValid(data.projectWorld)) {
+      projectWorld = { ...projectWorld, ...data.projectWorld };
+    }
 
-    if (savedImageAssets.length > 1) {
+    if (savedImageAssets.length > 0) {
       // v8z4b30N — baseStageW/H definem a grade 3x3 usada para posicionar os
       // assets adicionais. Restaurar os valores salvos mantém worldX/Y/W/H
       // alinhados ao mundo original, independentemente do stage atual.
@@ -29675,15 +29762,27 @@ function restoreProjectAssetsFromData(data) {
               primary._img = pimg;
               primary.drawSource = pimg;
             }
+            primary.stableDrawable = null;
+            primary.stableDrawableChecksum = null;
             primary.imgReady = true;
             primary.decodeReady = true;
             if (savedPrimary && Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
           } else {
-            primary.worldX = 0;
-            primary.worldY = 0;
-            primary.worldW = baseW;
-            primary.worldH = baseH;
-            if (savedPrimary && Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
+            if (savedPrimary) {
+              primary.sourceVersion = Number(savedPrimary.sourceVersion) || Number(primary.sourceVersion) || 0;
+              if (Number.isFinite(savedPrimary.sourceW) && savedPrimary.sourceW > 0) primary.sourceW = savedPrimary.sourceW;
+              if (Number.isFinite(savedPrimary.sourceH) && savedPrimary.sourceH > 0) primary.sourceH = savedPrimary.sourceH;
+              primary.worldX = Number.isFinite(savedPrimary.worldX) ? savedPrimary.worldX : 0;
+              primary.worldY = Number.isFinite(savedPrimary.worldY) ? savedPrimary.worldY : 0;
+              primary.worldW = Number.isFinite(savedPrimary.worldW) && savedPrimary.worldW > 0 ? savedPrimary.worldW : baseW;
+              primary.worldH = Number.isFinite(savedPrimary.worldH) && savedPrimary.worldH > 0 ? savedPrimary.worldH : baseH;
+              if (Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
+            } else {
+              primary.worldX = 0;
+              primary.worldY = 0;
+              primary.worldW = baseW;
+              primary.worldH = baseH;
+            }
           }
         }
       }
@@ -29700,6 +29799,7 @@ function restoreProjectAssetsFromData(data) {
           src: sa.src,
           sourceW: sa.sourceW || 0,
           sourceH: sa.sourceH || 0,
+          sourceVersion: Number(sa.sourceVersion) || 0,
           worldX: sa.worldX || 0,
           worldY: sa.worldY || 0,
           worldW: sa.worldW || 0,
@@ -29709,6 +29809,10 @@ function restoreProjectAssetsFromData(data) {
           visible: sa.visible !== false,
           locked: !!sa.locked,
           fitMode: sa.fitMode || 'contain',
+          slotRow: sa.slotRow,
+          slotCol: sa.slotCol,
+          slotBox: sa.slotBox ? { ...sa.slotBox } : undefined,
+          sourceRect: sa.sourceRect ? { ...sa.sourceRect } : undefined,
           // v8z4b30ZJ — defaults não destrutivos; projetos antigos sem estes
           // campos (ou sem zIndex) carregam normalmente. enabled:false = sem efeito.
           crop: sa.crop || { enabled: false, x: 0, y: 0, w: 1, h: 1 },
@@ -29716,6 +29820,11 @@ function restoreProjectAssetsFromData(data) {
           _img: img
         };
         img.onload = () => {
+          asset.drawSource = img;
+          asset.imgReady = true;
+          asset.decodeReady = true;
+          asset.stableDrawable = null;
+          asset.stableDrawableChecksum = null;
           invalidateProjectWorldComposite();
           renderProjectWorldExtraImages();
         };
@@ -29731,6 +29840,18 @@ function restoreProjectAssetsFromData(data) {
     }
 
     lastLoadProjectWorldBounds = { ...projectWorld };
+    loadedAssetIds = assets.filter(a => a && a.type === 'image').map(a => String(a.id || ''));
+    loadedAssetSourceVersions = assets.filter(a => a && a.type === 'image').map(a => ({ id: String(a.id || ''), sourceVersion: Number(a.sourceVersion) || 0 }));
+    loadedAssetWorldRects = summarizeAssetWorldRects(assets.filter(a => a && a.type === 'image'));
+    loadedAssetZOrder = summarizeAssetZOrder(assets.filter(a => a && a.type === 'image'));
+    loadedProjectWorldValid = isProjectWorldDataValid(projectWorld);
+    loadedCurvesCount = countPersistedCurves(data);
+    selectedAssetId = (data.selectedAssetId && assets.some(a => a && a.id === data.selectedAssetId)) ? data.selectedAssetId : null;
+    selectedImageAssetId = selectedAssetId;
+    renderSessionSnapshot = null;
+    renderSessionSnapshotComplete = false;
+    renderSessionSnapshotUsesCurrentAssetSourceVersions = false;
+    refreshSaveLoadRoundTripDiagnostics();
     invalidateProjectWorldComposite();
     renderProjectWorldExtraImages();
     loadedAssetsCount = assets.length;
@@ -34225,10 +34346,31 @@ function buildDiagnosticsText() {
   push('lastLoadSchemaVersion', lastLoadSchemaVersion != null ? String(lastLoadSchemaVersion) : 'n/d');
   push('savedAssetsCount', String(savedAssetsCount));
   push('savedImageAssetsCount', String(savedImageAssetsCount));
+  push('savedAssetIds', savedAssetIds.length ? JSON.stringify(savedAssetIds) : '[]');
+  push('savedAssetSourceVersions', savedAssetSourceVersions.length ? JSON.stringify(savedAssetSourceVersions) : '[]');
+  push('savedAssetWorldRects', savedAssetWorldRects.length ? JSON.stringify(savedAssetWorldRects) : '[]');
+  push('savedAssetZOrder', savedAssetZOrder.length ? JSON.stringify(savedAssetZOrder) : '[]');
+  push('savedProjectWorldValid', String(savedProjectWorldValid));
+  push('savedCurvesCount', String(savedCurvesCount));
   push('loadedAssetsCount', String(loadedAssetsCount));
   push('loadedImageAssetsCount', String(loadedImageAssetsCount));
+  push('loadedAssetIds', loadedAssetIds.length ? JSON.stringify(loadedAssetIds) : '[]');
+  push('loadedAssetSourceVersions', loadedAssetSourceVersions.length ? JSON.stringify(loadedAssetSourceVersions) : '[]');
+  push('loadedAssetWorldRects', loadedAssetWorldRects.length ? JSON.stringify(loadedAssetWorldRects) : '[]');
+  push('loadedAssetZOrder', loadedAssetZOrder.length ? JSON.stringify(loadedAssetZOrder) : '[]');
+  push('loadedProjectWorldValid', String(loadedProjectWorldValid));
+  push('loadedCurvesCount', String(loadedCurvesCount));
   push('lastSaveIncludesMultipleImages', String(lastSaveIncludesMultipleImages));
   push('lastLoadRestoredMultipleImages', String(lastLoadRestoredMultipleImages));
+  push('saveLoadPreservesAssetSourceVersion', String(saveLoadPreservesAssetSourceVersion));
+  push('saveLoadPreservesStableDrawableRebuild', String(saveLoadPreservesStableDrawableRebuild));
+  push('saveLoadDoesNotUseOldImg1Source', String(saveLoadDoesNotUseOldImg1Source));
+  push('saveLoadPreservesWorldRects', String(saveLoadPreservesWorldRects));
+  push('saveLoadPreservesLayerOrder', String(saveLoadPreservesLayerOrder));
+  push('saveLoadPreservesFrames', String(saveLoadPreservesFrames));
+  push('saveLoadPreservesCurves', String(saveLoadPreservesCurves));
+  push('saveLoadPreservesProjectWorld', String(saveLoadPreservesProjectWorld));
+  push('saveLoadRoundTripIssue', saveLoadRoundTripIssue || 'none');
   push('lastSaveError', lastSaveError || 'nenhum');
   push('lastLoadError', lastLoadError || 'nenhum');
   push('projectWorld salvo (bounds)', lastSaveProjectWorldBounds ? JSON.stringify(lastSaveProjectWorldBounds) : 'n/d');
