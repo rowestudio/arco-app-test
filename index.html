@@ -950,7 +950,6 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E8D — hotfix incremental sobre v8z4b32E8C (E8C preservada, NÃO revertida). fix(img-1): isolar a identidade da fonte entre Stage, asset canônico, sourcePayload, stableDrawable, renderSessionSnapshot, Preview, Export, Save e Load, e corrigir vazamento de fonte/cache entre projetos. Introduz projectSourceEpoch/loadSessionId (incrementam a cada abertura/carga de projeto): o renderSessionSnapshot é carimbado com a época atual e RECUSADO por collectWorldRenderAssets quando a época não bate (Preview/Export nunca reaproveitam a fonte de um projeto anterior). Ao abrir/reabrir projeto, a img-1 reutilizada por syncFirstImageAsset tem suas caches voláteis de fonte (src/_img/stableDrawable/drawSource/checksum/e6CanonicalReplaced/sourceVersion) DESCARTADAS quando sua identidade não corresponde à fonte deste projeto, forçando re-hidratação a partir do payload persistente correto (imageOriginalDataUrl canônico ou savedPrimary.src). Identidade lógica da fonte = assinatura FNV do payload persistente (não pixels/dimensão): downscale/proxy do stableDrawable não muda a identidade. Diagnóstico novo de paridade de identidade (img1SourceIdentityParityOk, img1Preview/ExportMatchesStageSource, img1Saved/LoadedPayload…, previousProjectSourceLeakDetected, renderSessionSnapshotEpochMatchesCurrent, allAssetStagePreviewExportSourceParityOk). Preserva integralmente os ganhos da E8C (hidratação + payload persistente por asset; Preview/Export desenham 8 assets; WebCodecs). NÃO altera layout, cores, textos visíveis, ícones, menus, fluxo, Modo Câmera, Modo Ativos, Layers, Preview visual, Export visual, WebCodecs, getStateAtT, drawAtT, curvas, handles, ProjectWorld geometry, worldRects, zIndex/layer order, frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E8D. -->
 <!-- Arco Motion App — v8z4b32E8C — base v8z4b32E7H (E8/E8A/E8B revertidas, NÃO reaplicadas). fix(save-load): persistir e restaurar payloads de fonte renderizável para TODOS os image assets. Save garante que cada image asset salvo com imagem possua sourcePayload persistente real (data: URL) — se a.src não for um data: URL persistente, regenera a partir do drawable vivo (stableDrawable/drawSource/_img) via canvas.toDataURL; se impossível, marca savedAssetSourceIssueById e lastSaveError (não salva como "ok" silenciosamente). Load hidrata cada visible image asset a partir do payload persistente: decode aguardado + rebuild de stableDrawable + validação de pixels + associação ao asset correto, antes de declarar readiness. Readiness gate de Preview/Export exige visibleImageAssetsCount == decoded == stableDrawable e assetBlankDrawableCount == 0 (reutiliza prepareRenderSessionSnapshot/_ensureAssetDrawableReadyE7D existentes). Diagnóstico granular por asset (save + load) para localizar a fase da falha: save-missing/invalid-payload, load-missing-payload, load-payload-not-linked-to-asset, decode-failed, stableDrawable-build-failed, renderSession-rejected. img-1 permanece asset comum da pilha unificada (fonte canônica = imageBase64), sem caminho legacy/main image. NÃO altera layout, cores, textos visíveis, ícones, menus, fluxo, Modo Câmera, Modo Ativos, Layers, Preview visual, Export visual, WebCodecs, getStateAtT, drawAtT, curvas, handles, ProjectWorld geometry, worldRects, zIndex/layer order, frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E8C. -->
 <!-- Arco Motion App — v8z4b32E7H — base v8z4b32E7G. fix(diagnostics-projectworld-replace): diagnóstico legado de coordenadas deixa de tratar img-1 com worldW/H diferente de baseStageW/H como erro; asset0MatchesWorldCoordinateSystem passa a validar coordenadas ProjectWorld finitas/positivas, allAssetsSameCoordinateSystem valida assets no mesmo espaço lógico e mixedWorldScaleDetected não é acionado por aspect ratio próprio. Diagnóstico de replace adiciona replacePreservedCenterAndRecomputedSize=true para aceitar replacePreservedWorldRect=false quando a proporção muda mas centro, AR da imagem nova, recálculo de tamanho, zIndex, slot e visibilidade são preservados. NÃO altera layout, menus, fluxo, curva/handles E7G, Preview, Export, WebCodecs, getStateAtT, drawAtT ou geometria visual. APP_VERSION = APP_VERSION_NAME = v8z4b32E7H. -->
 <!-- Arco Motion App — v8z4b32E7G — base v8z4b32E7F. fix(curve-editor-geometry): controles editáveis de curva no Modo Câmera usam a mesma geometria canônica do path via getFrameScreenGeometry(frameIndex).center; linhas, losangos, ghosts e hitbox ficam em screen coords do path, enquanto drag salva handles em ProjectWorld; Preview/Export/WebCodecs/renderSessionSnapshot/stableDrawable/assets/layers/menus/layout/cores/textos/ícones/fluxo preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E7G. -->
@@ -7090,8 +7089,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8D';
-const APP_VERSION_NAME = 'v8z4b32E8D';
+const APP_VERSION = 'v8z4b32E8C';
+const APP_VERSION_NAME = 'v8z4b32E8C';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7806,76 +7805,6 @@ let previewBlockedBecauseAssetNotReady = false;
 let exportBlockedBecauseAssetNotReady = false;
 let previewUsedOldImg1Detected = false;
 let exportUsedOldImg1Detected = false;
-// ═══════════════════════════════════════════════════════════════════
-// v8z4b32E8D — ISOLAMENTO DE FONTE/CACHE ENTRE PROJETOS + IDENTIDADE DE
-// FONTE POR ASSET. projectSourceEpoch/loadSessionId incrementam a cada
-// abertura/carga de projeto; o renderSessionSnapshot é carimbado com a
-// época atual e recusado quando a época não bate (evita Preview/Export
-// reaproveitarem a fonte de um projeto anterior). A identidade lógica da
-// fonte (assinatura FNV do payload data: URL) prova que a imagem é a mesma
-// independentemente de downscale/dimensão do stableDrawable.
-// ═══════════════════════════════════════════════════════════════════
-let projectSourceEpoch = 0;              // incrementa a cada abertura/carga de projeto
-let currentLoadSessionId = 0;            // id da sessão de carga atual
-let renderSessionSnapshotProjectEpoch = -1;
-let renderSessionSnapshotLoadSessionId = -1;
-let previewSnapshotProjectEpoch = -1;
-let exportSnapshotProjectEpoch = -1;
-let staleSourceCacheClearedOnProjectOpen = false;
-let staleRenderSessionSnapshotClearedOnProjectOpen = false;
-let stalePreviewSnapshotClearedOnProjectOpen = false;
-let staleExportSnapshotClearedOnProjectOpen = false;
-let previousProjectSourceLeakDetected = false;
-let previousProjectSourceLeakAssetIds = '';
-let previousProjectSourceLeakDetails = 'none';
-// Identidade canônica da fonte da img-1 (e demais assets) por fase.
-let img1AssetSourceIdentityHash = '0';
-let img1StageSourceIdentityHash = '0';
-let img1SourcePayloadHash = '0';
-let img1StableDrawableSourceIdentityHash = '0';
-let img1RenderSessionSourceIdentityHash = '0';
-let img1PreviewSourceIdentityHash = '0';
-let img1ExportSourceIdentityHash = '0';
-let img1SavedSourcePayloadHash = '0';
-let img1LoadedSourcePayloadHash = '0';
-let img1SourceIdentityParityOk = true;
-let img1SourceIdentityMismatchReason = 'none';
-let sourceIdentityMismatchAssetIds = 'none';
-let sourceIdentityMismatchDetails = 'none';
-let sourceIdentityCheckedAfterReplace = false;
-let sourceIdentityCheckedAfterSave = false;
-let sourceIdentityCheckedAfterLoad = false;
-let sourceIdentityCheckedAfterPreview = false;
-let sourceIdentityCheckedAfterExport = false;
-// Assinatura lógica da fonte (FNV-1a) sobre o payload data: URL. Identidade da
-// imagem, não pixels. Mistura o comprimento, amostra até ~4096 pontos ao longo de
-// TODO o payload (rápido em data URLs grandes) e dobra os 64 últimos bytes — o
-// suficiente para distinguir imagens diferentes e provar que a fonte é a mesma no
-// round-trip Save/Load, sem depender de largura/altura.
-function _arcoSourceIdentityHashE8D(str) {
-  if (typeof str !== 'string' || !str) return '0';
-  const len = str.length;
-  let h = 2166136261 >>> 0;
-  h ^= (len & 0xffff); h = Math.imul(h, 16777619) >>> 0;
-  h ^= ((len >>> 16) & 0xffff); h = Math.imul(h, 16777619) >>> 0;
-  const stride = Math.max(1, Math.floor(len / 4096));
-  for (let k = 0; k < len; k += stride) { h ^= str.charCodeAt(k); h = Math.imul(h, 16777619) >>> 0; }
-  for (let k = Math.max(0, len - 64); k < len; k++) { h ^= str.charCodeAt(k); h = Math.imul(h, 16777619) >>> 0; }
-  return (h >>> 0).toString(16);
-}
-// Fonte lógica canônica (PERSISTENTE) de um image asset. Para a img-1 a fonte
-// persistente é imageOriginalDataUrl (salvo como imageBase64 e recarregado no
-// Load); para os extras é o próprio a.src (data: URL). Usar sempre o payload que
-// atravessa Save/Load garante identidade estável no round-trip.
-function _arcoAssetSourcePayloadE8D(a) {
-  if (a && _isImg1AssetE7E(a) && typeof imageOriginalDataUrl === 'string' && imageOriginalDataUrl.indexOf('data:') === 0) return imageOriginalDataUrl;
-  if (a && typeof a.src === 'string' && a.src.indexOf('data:') === 0) return a.src;
-  if (a && typeof a.src === 'string' && a.src) return a.src;
-  return '';
-}
-function _arcoAssetSourceIdentityHashE8D(a) {
-  return _arcoSourceIdentityHashE8D(_arcoAssetSourcePayloadE8D(a));
-}
 // Imagem 6 / asset problemático conhecido.
 const KNOWN_PROBLEM_ASSET_ID = 'img-1781638924641-484';
 const KNOWN_PROBLEM_ASSET_INDEX = 6;
@@ -28936,18 +28865,6 @@ function doSaveDirect(includeImage, nome) {
         : 'save-leve-omitiu-fontes (use Salvar com imagem)';
     }
 
-    // v8z4b32E8D — identidade da fonte salva da img-1. O payload persistente da
-    // img-1 é data.imageBase64 (= imageOriginalDataUrl atual). Registra o hash para
-    // provar, no round-trip, que o Save capturou a fonte ATUAL da img-1 (não uma
-    // fonte antiga) e que Save/Load preservam a mesma identidade.
-    {
-      const _img1SavePayload = (typeof data.imageBase64 === 'string' && data.imageBase64.indexOf('data:') === 0)
-        ? data.imageBase64
-        : (savedImageAssets[0] && typeof savedImageAssets[0].src === 'string' ? savedImageAssets[0].src : '');
-      img1SavedSourcePayloadHash = _arcoSourceIdentityHashE8D(_img1SavePayload);
-      sourceIdentityCheckedAfterSave = true;
-    }
-
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -29798,24 +29715,6 @@ function restoreProjectAssetsFromData(data) {
   lastLoadProjectWorldBounds = null;
 
   try {
-    // ── v8z4b32E8D — nova época de fonte/sessão de carga: isola o projeto atual
-    // de qualquer fonte/snapshot/cache do projeto anterior. Preview/Export só
-    // reaproveitam um snapshot cuja época bata com projectSourceEpoch. ──────────
-    projectSourceEpoch++;
-    currentLoadSessionId++;
-    staleRenderSessionSnapshotClearedOnProjectOpen = !!(renderSessionSnapshot);
-    stalePreviewSnapshotClearedOnProjectOpen = (previewSnapshotProjectEpoch !== -1 && previewSnapshotProjectEpoch !== projectSourceEpoch);
-    staleExportSnapshotClearedOnProjectOpen = (exportSnapshotProjectEpoch !== -1 && exportSnapshotProjectEpoch !== projectSourceEpoch);
-    renderSessionSnapshot = null;
-    renderSessionActiveContext = '';
-    renderSessionSnapshotProjectEpoch = -1;
-    renderSessionSnapshotLoadSessionId = -1;
-    previewSnapshotProjectEpoch = -1;
-    exportSnapshotProjectEpoch = -1;
-    previousProjectSourceLeakDetected = false;
-    previousProjectSourceLeakAssetIds = '';
-    previousProjectSourceLeakDetails = 'none';
-
     // O asset principal (imagem 1) já foi (re)sincronizado por syncFirstImageAsset().
     // Remove quaisquer assets extras deixados por um projeto anterior antes de
     // restaurar os assets salvos neste projeto.
@@ -29825,59 +29724,6 @@ function restoreProjectAssetsFromData(data) {
 
     const savedAssets = Array.isArray(data.assets) ? data.assets : [];
     const savedImageAssets = savedAssets.filter(a => a && a.type === 'image');
-
-    // ── v8z4b32E8D — SCRUB DE FONTE VOLÁTIL DA img-1 REUTILIZADA ──────────────
-    // syncFirstImageAsset() REUTILIZA o objeto asset da img-1 entre projetos. Se
-    // o projeto anterior substituiu a img-1, esse objeto ainda carrega src/_img/
-    // stableDrawable/drawSource da imagem anterior. O renderSessionSnapshot é
-    // reconstruído a partir do asset, logo Preview/Export herdariam a fonte do
-    // projeto anterior. Aqui descartamos as caches voláteis de fonte da img-1
-    // reutilizada quando sua identidade não corresponde à fonte que ESTE projeto
-    // vai usar (savedPrimary substituído -> src salvo; senão -> imageOriginalDataUrl
-    // canônico recém-carregado por loadImage). A geometria (worldRect/zIndex) e a
-    // hidratação E8C não são tocadas: a re-hidratação reconstrói o stableDrawable
-    // a partir da fonte correta deste projeto.
-    if (primary && _isImg1AssetE7E(primary)) {
-      const _savedPrimary = savedImageAssets.length > 0 ? savedImageAssets[0] : null;
-      const _intendedPayload = (_savedPrimary && _savedPrimary.e6CanonicalReplaced && typeof _savedPrimary.src === 'string' && _savedPrimary.src.indexOf('data:') === 0)
-        ? _savedPrimary.src
-        : ((typeof imageOriginalDataUrl === 'string' && imageOriginalDataUrl.indexOf('data:') === 0) ? imageOriginalDataUrl : '');
-      const _intendedId = _arcoSourceIdentityHashE8D(_intendedPayload);
-      const _hadDrawable = !!(primary.stableDrawable || primary.drawSource || primary._img);
-      const _oldId = primary._sourceIdentityHash ||
-        (typeof primary.src === 'string' ? _arcoSourceIdentityHashE8D(primary.src) : '0');
-      const _epochMismatch = (primary._sourceProjectEpoch != null && primary._sourceProjectEpoch !== projectSourceEpoch);
-      const _idMismatch = (_intendedId !== '0' && _oldId !== '0' && _oldId !== _intendedId);
-      if (_hadDrawable && (_idMismatch || _epochMismatch)) {
-        // Descarta a fonte/drawable herdados; a re-hidratação (E8C) reconstrói o
-        // stableDrawable a partir da fonte correta DESTE projeto (savedPrimary.src
-        // quando o img-1 salvo foi substituído; senão imageOriginalDataUrl canônico
-        // recém-carregado por loadImage). Geometria/zIndex intactos.
-        primary.src = (_savedPrimary && _savedPrimary.e6CanonicalReplaced && typeof _savedPrimary.src === 'string' && _savedPrimary.src.indexOf('data:') === 0)
-          ? _savedPrimary.src : '';
-        primary._img = null;
-        primary.stableDrawable = null;
-        primary.drawSource = null;
-        primary.stableDrawableChecksum = null;
-        primary.imageBitmap = null;
-        primary.renderReady = false;
-        primary.imgReady = false;
-        primary.decodeReady = false;
-        primary.e6CanonicalReplaced = !!(_savedPrimary && _savedPrimary.e6CanonicalReplaced);
-        primary.sourceVersion = _savedPrimary ? (Number(_savedPrimary.sourceVersion) || 0) : 0;
-        primary._sourceIdentityHash = null;
-        primary._stableDrawableSourceIdentityHash = null;
-        staleSourceCacheClearedOnProjectOpen = true;
-        // Só registramos "fonte de projeto anterior" quando a IDENTIDADE realmente
-        // difere (vazamento real corrigido). Um mero avanço de época sobre a mesma
-        // imagem não é vazamento. Corrigido na origem => não vaza para o render.
-        if (_idMismatch) {
-          previousProjectSourceLeakDetails = 'img-1 stale source ' + _oldId + ' from previous project cleared on open; current project source ' + _intendedId;
-        }
-      }
-      primary._sourceProjectEpoch = projectSourceEpoch;
-      primary._sourceLoadSessionId = currentLoadSessionId;
-    }
 
     if (savedImageAssets.length > 1) {
       // v8z4b30N — baseStageW/H definem a grade 3x3 usada para posicionar os
@@ -30057,13 +29903,6 @@ function restoreProjectAssetsFromData(data) {
         let _h = 2166136261 >>> 0;
         for (let _k = 0; _k < _pl.length; _k += 251) { _h ^= _pl.charCodeAt(_k); _h = Math.imul(_h, 16777619) >>> 0; }
         loadedAssetSourcePayloadHashById[_id] = _pl ? _h.toString(16) : '0';
-        // v8z4b32E8D — identidade da fonte carregada da img-1 pelo MESMO algoritmo
-        // de Save (_arcoSourceIdentityHashE8D sobre o payload persistente): prova
-        // que a img-1 do projeto carregado é exatamente a que foi salva.
-        if (_isImg1AssetE7E(_a)) {
-          img1LoadedSourcePayloadHash = _arcoSourceIdentityHashE8D(_pl);
-          sourceIdentityCheckedAfterLoad = true;
-        }
         loadedAssetDecodeStartedById[_id] = false;
         loadedAssetDecodeCompletedById[_id] = false;
         loadedAssetDecodeErrorById[_id] = 'none';
@@ -30723,16 +30562,6 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
       currentReplaceEpoch++;
       target.replaceEpoch = currentReplaceEpoch;
       target.e6CanonicalReplaced = true;
-      // v8z4b32E8D — carimba a identidade lógica da nova fonte no asset canônico e
-      // no stableDrawable recém-construído, e a época de projeto atual. A partir
-      // daqui, Stage/snapshot/Preview/Export/Save/Load leem a MESMA identidade — o
-      // downscale do stableDrawable não muda a identidade (é a mesma imagem).
-      target._sourceIdentityHash = _arcoAssetSourceIdentityHashE8D(target);
-      target._stableDrawableSourceIdentityHash = target._sourceIdentityHash;
-      target._sourceProjectEpoch = projectSourceEpoch;
-      target._sourceLoadSessionId = currentLoadSessionId;
-      sourceIdentityCheckedAfterReplace = true;
-      if (isMain) { img1AssetSourceIdentityHash = target._sourceIdentityHash; img1StageSourceIdentityHash = target._sourceIdentityHash; img1SourcePayloadHash = target._sourceIdentityHash; img1StableDrawableSourceIdentityHash = target._sourceIdentityHash; }
       // Cache de fonte/bounds antigo deste asset fica órfão pelas versões acima; o
       // render sempre relê a._img/worldRect canônicos.
       ensureAssetVisualDefaults(target);
@@ -31316,14 +31145,6 @@ async function _ensureAssetDrawableReadyE7D(a) {
       if (!a._img) a._img = src;
       a.stableDrawableType = stable.type || getImageSourceType(stableSrc);
       a.stableDrawableChecksum = check;
-      // v8z4b32E8D — identidade lógica da fonte carimbada no asset e no drawable,
-      // ancorada no payload PERSISTENTE (o mesmo que atravessa Save/Load). O
-      // stableDrawable pode ser um canvas reduzido; a identidade não muda porque é
-      // a mesma imagem. Época/sessão de projeto marcam a que projeto a fonte pertence.
-      a._sourceIdentityHash = _arcoAssetSourceIdentityHashE8D(a);
-      a._stableDrawableSourceIdentityHash = a._sourceIdentityHash;
-      a._sourceProjectEpoch = projectSourceEpoch;
-      a._sourceLoadSessionId = currentLoadSessionId;
       if (_isImg1AssetE7E(a)) {
         img1StableDrawableCreated = true;
         img1StableDrawableType = a.stableDrawableType;
@@ -31392,10 +31213,7 @@ async function prepareRenderSessionSnapshot(kind) {
           drawableAlphaChecksum: check.alpha || 0,
           drawableHasPixels: !!check.hasPixels,
           decodeReady: ready && !!check.hasPixels, imgReady: ready && !!check.hasPixels,
-          replaceEpoch: Number(a.replaceEpoch) || 0,
-          // v8z4b32E8D — identidade lógica da fonte propagada do asset canônico.
-          sourceIdentityHash: (a && a._sourceIdentityHash) || _arcoAssetSourceIdentityHashE8D(a),
-          sourceProjectEpoch: (a && a._sourceProjectEpoch != null) ? a._sourceProjectEpoch : projectSourceEpoch
+          replaceEpoch: Number(a.replaceEpoch) || 0
         });
       }
     const stale = visible.filter(v => {
@@ -31449,25 +31267,9 @@ async function prepareRenderSessionSnapshot(kind) {
       return { ok: false, allReady: false, count: visible.length, abortedIds: renderSessionAbortedAssetIds };
     }
     visible.forEach(function(v){ try { Object.freeze(v); } catch (_e) {} });
-    // v8z4b32E8D — carimba a época/sessão de projeto no snapshot. collectWorldRender-
-    // Assets recusa qualquer snapshot cuja época não bata com a atual (isolamento).
-    renderSessionSnapshot = { context, epoch: _renderSessionEpoch, assets: visible, allReady,
-      projectSourceEpoch: projectSourceEpoch, loadSessionId: currentLoadSessionId };
+    renderSessionSnapshot = { context, epoch: _renderSessionEpoch, assets: visible, allReady };
     try { Object.freeze(renderSessionSnapshot.assets); Object.freeze(renderSessionSnapshot); } catch (_e) {}
     renderSessionActiveContext = (context === 'preview' || context === 'export') ? context : '';
-    renderSessionSnapshotProjectEpoch = projectSourceEpoch;
-    renderSessionSnapshotLoadSessionId = currentLoadSessionId;
-    if (context === 'preview') previewSnapshotProjectEpoch = projectSourceEpoch;
-    if (context === 'export') exportSnapshotProjectEpoch = projectSourceEpoch;
-    // Identidade lógica congelada da img-1 para esta sessão.
-    {
-      const _img1Snap = visible.find(v => v.id === 'img-1');
-      if (_img1Snap) {
-        img1RenderSessionSourceIdentityHash = _img1Snap.sourceIdentityHash || '0';
-        if (context === 'preview') img1PreviewSourceIdentityHash = _img1Snap.sourceIdentityHash || '0';
-        if (context === 'export') img1ExportSourceIdentityHash = _img1Snap.sourceIdentityHash || '0';
-      }
-    }
 
     renderSessionVisibleAssetCount = visible.length;
     renderSessionDecodedAssetCount = readyCount;
@@ -31481,7 +31283,6 @@ async function prepareRenderSessionSnapshot(kind) {
     // Reinicia acumuladores por frame para esta sessão.
     if (context === 'preview') {
       renderSessionSnapshotBuiltBeforePreview = true;
-      sourceIdentityCheckedAfterPreview = true;
       renderSessionSnapshotFrozenDuringPreview = true;
       renderSessionPreviewUsesSnapshotOnly = true;
       renderSessionAssetSourceVersionsStableDuringPreview = true;
@@ -31504,7 +31305,6 @@ async function prepareRenderSessionSnapshot(kind) {
       knownProblemAssetPreviewStableDrawableObjectStable = true;
     } else if (context === 'export') {
       renderSessionSnapshotBuiltBeforeExport = true;
-      sourceIdentityCheckedAfterExport = true;
       renderSessionAllVisibleAssetsReadyBeforeExport = allReady;
       exportVisibleAssetsExpectedCount = visible.length;
       img1ExpectedExportFrameCount = 0;
@@ -33778,20 +33578,7 @@ function getWorldRenderAssetRectSourcePx(a, canonicalDims) {
 // redesenha nos frames seguintes (evita tela vazia por asset não carregado).
 function collectWorldRenderAssets(mainSource, canonicalDims, context) {
   const out = [];
-  let snap = (context === 'preview' || context === 'export') ? renderSessionSnapshot : null;
-  // v8z4b32E8D — isolamento entre projetos: um snapshot cuja época de fonte não
-  // bate com a atual pertence a um projeto anterior e NÃO pode ser reaproveitado.
-  // Descartado aqui força prepareRenderSessionSnapshot a reconstruir do projeto atual.
-  if (snap && snap.projectSourceEpoch != null && snap.projectSourceEpoch !== projectSourceEpoch) {
-    // Snapshot de época anterior descartado ANTES de desenhar — correção na origem,
-    // não vaza para o render. Registrado como stale-cleared, não como leak.
-    staleRenderSessionSnapshotClearedOnProjectOpen = true;
-    previousProjectSourceLeakDetails = 'render session snapshot epoch ' + snap.projectSourceEpoch + ' != current ' + projectSourceEpoch + ' (discarded before draw)';
-    renderSessionSnapshot = null;
-    renderSessionActiveContext = '';
-    renderSessionSnapshotProjectEpoch = -1;
-    snap = null;
-  }
+  const snap = (context === 'preview' || context === 'export') ? renderSessionSnapshot : null;
   if (snap && snap.context === context && Array.isArray(snap.assets)) {
     if (context === 'preview') {
       img1PreviewUsesRenderSessionSnapshot = true;
@@ -34740,125 +34527,6 @@ function buildDiagnosticsText() {
     push('loadedAssetsReadyForExport', String(loadedAssetsReadyForExport));
     push('saveLoadPreservesRenderReadiness', String(saveLoadPreservesRenderReadiness));
     push('saveLoadRoundTripIssue', saveLoadRoundTripIssue || 'none');
-  }
-  L.push('');
-
-  // ═══════════════════════════════════════════════════════════════════
-  // v8z4b32E8D — IDENTIDADE DE FONTE DA img-1 (Stage/Preview/Export/Save/Load)
-  // + ISOLAMENTO ENTRE PROJETOS. Identidade LÓGICA (assinatura do payload
-  // persistente), não dimensão: downscale/proxy pode diferir sem ser bug.
-  // ═══════════════════════════════════════════════════════════════════
-  {
-    const _img1 = Array.isArray(assets) ? assets.find(a => a && String(a.id) === 'img-1') : null;
-    // Igualdade tolerante: '0'/ausente => sem evidência de mismatch (não contradiz).
-    const _eq = (x, y) => (!x || x === '0' || !y || y === '0') ? true : (String(x) === String(y));
-    const _assetId = _img1 ? _arcoAssetSourceIdentityHashE8D(_img1) : '0';
-    img1AssetSourceIdentityHash = _assetId;
-    img1SourcePayloadHash = _assetId;
-    img1StageSourceIdentityHash = (_img1 && _img1._sourceIdentityHash) || _assetId;
-    img1StableDrawableSourceIdentityHash = (_img1 && _img1._stableDrawableSourceIdentityHash) || _assetId;
-    // Booleans de identidade (todas ancoradas na mesma fonte persistente).
-    const _stageMatchesAsset = _eq(img1StageSourceIdentityHash, _assetId);
-    const _payloadMatchesAsset = _eq(img1SourcePayloadHash, _assetId);
-    const _stableMatchesAsset = _eq(img1StableDrawableSourceIdentityHash, _assetId);
-    const _rsMatchesAsset = _eq(img1RenderSessionSourceIdentityHash, _assetId);
-    const _previewMatchesStage = _eq(img1PreviewSourceIdentityHash, img1StageSourceIdentityHash);
-    const _exportMatchesStage = _eq(img1ExportSourceIdentityHash, img1StageSourceIdentityHash);
-    const _savedMatchesStage = _eq(img1SavedSourcePayloadHash, img1StageSourceIdentityHash);
-    const _loadedMatchesSaved = _eq(img1LoadedSourcePayloadHash, img1SavedSourcePayloadHash);
-    const _loadedMatchesStage = _eq(img1LoadedSourcePayloadHash, img1StageSourceIdentityHash);
-    // Paridade geral: nenhum image asset visível carrega fonte de época anterior.
-    let _mismatchIds = [];
-    if (Array.isArray(assets)) {
-      for (const a of assets) {
-        if (!a || a.type !== 'image' || a.visible === false) continue;
-        if (a._sourceProjectEpoch != null && a._sourceProjectEpoch !== projectSourceEpoch) { _mismatchIds.push(String(a.id)); continue; }
-        if (a._sourceIdentityHash && a._stableDrawableSourceIdentityHash &&
-            a._sourceIdentityHash !== '0' && a._stableDrawableSourceIdentityHash !== '0' &&
-            a._sourceIdentityHash !== a._stableDrawableSourceIdentityHash) { _mismatchIds.push(String(a.id)); }
-      }
-    }
-    sourceIdentityMismatchAssetIds = _mismatchIds.length ? _mismatchIds.join(',') : 'none';
-    sourceIdentityMismatchDetails = _mismatchIds.length ? ('stale/incoherent source on: ' + _mismatchIds.join(',')) : 'none';
-    const _allParity = _mismatchIds.length === 0 && _stageMatchesAsset && _stableMatchesAsset &&
-      _rsMatchesAsset && _previewMatchesStage && _exportMatchesStage;
-    img1SourceIdentityParityOk = _stageMatchesAsset && _payloadMatchesAsset && _stableMatchesAsset &&
-      _rsMatchesAsset && _previewMatchesStage && _exportMatchesStage && _savedMatchesStage &&
-      _loadedMatchesSaved && _loadedMatchesStage;
-    img1SourceIdentityMismatchReason = img1SourceIdentityParityOk ? 'none' : (
-      !_stageMatchesAsset ? 'stage!=asset' :
-      !_stableMatchesAsset ? 'stableDrawable!=asset' :
-      !_rsMatchesAsset ? 'renderSession!=asset' :
-      !_previewMatchesStage ? 'preview!=stage' :
-      !_exportMatchesStage ? 'export!=stage' :
-      !_savedMatchesStage ? 'saved!=stage' :
-      !_loadedMatchesSaved ? 'loaded!=saved' :
-      !_loadedMatchesStage ? 'loaded!=stage' : 'other');
-
-    // ── Hashes de identidade da img-1 por fase ──
-    push('img1AssetSourceIdentityHash', img1AssetSourceIdentityHash);
-    push('img1StageSourceIdentityHash', img1StageSourceIdentityHash);
-    push('img1SourcePayloadHash', img1SourcePayloadHash);
-    push('img1StableDrawableSourceIdentityHash', img1StableDrawableSourceIdentityHash);
-    push('img1StableDrawablePixelHash', (typeof img1StableDrawablePixelHash !== 'undefined') ? img1StableDrawablePixelHash : '0');
-    push('img1RenderSessionSourceIdentityHash', img1RenderSessionSourceIdentityHash);
-    push('img1PreviewSourceIdentityHash', img1PreviewSourceIdentityHash);
-    push('img1ExportSourceIdentityHash', img1ExportSourceIdentityHash);
-    push('img1SavedSourcePayloadHash', img1SavedSourcePayloadHash);
-    push('img1LoadedSourcePayloadHash', img1LoadedSourcePayloadHash);
-    L.push('');
-    // ── Booleans de paridade da img-1 ──
-    push('img1StageMatchesAssetSource', String(_stageMatchesAsset));
-    push('img1PayloadMatchesAssetSource', String(_payloadMatchesAsset));
-    push('img1StableDrawableMatchesAssetSource', String(_stableMatchesAsset));
-    push('img1RenderSessionMatchesAssetSource', String(_rsMatchesAsset));
-    push('img1PreviewMatchesStageSource', String(_previewMatchesStage));
-    push('img1ExportMatchesStageSource', String(_exportMatchesStage));
-    push('img1SavedPayloadMatchesStageSource', String(_savedMatchesStage));
-    push('img1LoadedPayloadMatchesSavedPayload', String(_loadedMatchesSaved));
-    push('img1LoadedPayloadMatchesStageAfterLoad', String(_loadedMatchesStage));
-    push('img1NoOldSourceInStage', String(_stageMatchesAsset));
-    push('img1NoOldSourceInPreview', String(_previewMatchesStage));
-    push('img1NoOldSourceInExport', String(_exportMatchesStage));
-    push('img1NoOldSourceInSavePayload', String(_savedMatchesStage));
-    push('img1NoOldSourceAfterLoad', String(_loadedMatchesStage));
-    push('img1SourceIdentityParityOk', String(img1SourceIdentityParityOk));
-    push('img1SourceIdentityMismatchReason', img1SourceIdentityMismatchReason);
-    push('img1PreviewUsesNewSourceAfterReplace', String((typeof img1PreviewUsesNewSourceAfterReplace !== 'undefined') ? img1PreviewUsesNewSourceAfterReplace : false));
-    push('img1ExportUsesNewSourceAfterReplace', String((typeof img1ExportUsesNewSourceAfterReplace !== 'undefined') ? img1ExportUsesNewSourceAfterReplace : false));
-    L.push('');
-    // ── Isolamento entre projetos ──
-    push('currentProjectSourceEpoch', String(projectSourceEpoch));
-    push('currentLoadSessionId', String(currentLoadSessionId));
-    push('renderSessionSnapshotProjectEpoch', String(renderSessionSnapshotProjectEpoch));
-    push('renderSessionSnapshotLoadSessionId', String(renderSessionSnapshotLoadSessionId));
-    push('previewSnapshotProjectEpoch', String(previewSnapshotProjectEpoch));
-    push('exportSnapshotProjectEpoch', String(exportSnapshotProjectEpoch));
-    push('staleSourceCacheClearedOnProjectOpen', String(staleSourceCacheClearedOnProjectOpen));
-    push('staleRenderSessionSnapshotClearedOnProjectOpen', String(staleRenderSessionSnapshotClearedOnProjectOpen));
-    push('stalePreviewSnapshotClearedOnProjectOpen', String(stalePreviewSnapshotClearedOnProjectOpen));
-    push('staleExportSnapshotClearedOnProjectOpen', String(staleExportSnapshotClearedOnProjectOpen));
-    const _rsEpochMatches = (renderSessionSnapshotProjectEpoch === -1) || (renderSessionSnapshotProjectEpoch === projectSourceEpoch);
-    const _srcCacheEpochMatches = _mismatchIds.length === 0;
-    push('sourceCacheProjectEpochMatchesCurrent', String(_srcCacheEpochMatches));
-    push('renderSessionSnapshotEpochMatchesCurrent', String(_rsEpochMatches));
-    push('previewDoesNotUsePreviousProjectSource', String(!previousProjectSourceLeakDetected && _previewMatchesStage));
-    push('exportDoesNotUsePreviousProjectSource', String(!previousProjectSourceLeakDetected && _exportMatchesStage));
-    push('saveDoesNotUsePreviousProjectSource', String(!previousProjectSourceLeakDetected && _savedMatchesStage));
-    push('loadDoesNotUsePreviousProjectSource', String(!previousProjectSourceLeakDetected && _loadedMatchesStage));
-    push('previousProjectSourceLeakDetected', String(previousProjectSourceLeakDetected));
-    push('previousProjectSourceLeakAssetIds', previousProjectSourceLeakAssetIds || 'none');
-    push('previousProjectSourceLeakDetails', previousProjectSourceLeakDetails || 'none');
-    L.push('');
-    // ── Paridade geral e momentos verificados ──
-    push('allAssetStagePreviewExportSourceParityOk', String(_allParity));
-    push('sourceIdentityMismatchAssetIds', sourceIdentityMismatchAssetIds);
-    push('sourceIdentityMismatchDetails', sourceIdentityMismatchDetails);
-    push('sourceIdentityCheckedAfterReplace', String(sourceIdentityCheckedAfterReplace));
-    push('sourceIdentityCheckedAfterSave', String(sourceIdentityCheckedAfterSave));
-    push('sourceIdentityCheckedAfterLoad', String(sourceIdentityCheckedAfterLoad));
-    push('sourceIdentityCheckedAfterPreview', String(sourceIdentityCheckedAfterPreview));
-    push('sourceIdentityCheckedAfterExport', String(sourceIdentityCheckedAfterExport));
   }
   L.push('');
 
