@@ -1,3 +1,16 @@
+## v8z4b32E8D
+
+**Hotfix cirúrgico — isolamento de identidade/fonte da img-1 entre Stage, Preview, Export, Save, Load e entre projetos.** Base: `v8z4b32E8C` (preservada, não revertida).
+
+- Corrige o bug em que, após trocar a img-1, o Preview/Export continuavam usando a imagem anterior e, ao abrir/reabrir outro projeto sem fechar o Safari, o Preview herdava a imagem trocada no estado/projeto anterior.
+- Introduz `projectSourceEpoch`/`currentLoadSessionId`, incrementados a cada abertura/carga de projeto em `restoreProjectAssetsFromData()`. O `renderSessionSnapshot` é carimbado com a época atual e `collectWorldRenderAssets()` **recusa** qualquer snapshot cuja época não bata com a atual — Preview/Export nunca reaproveitam a fonte de um projeto anterior.
+- Ao abrir/reabrir projeto, a img-1 reutilizada por `syncFirstImageAsset()` tem as caches voláteis de fonte (`src`/`_img`/`stableDrawable`/`drawSource`/`stableDrawableChecksum`/`e6CanonicalReplaced`/`sourceVersion`) descartadas quando sua identidade não corresponde à fonte deste projeto, forçando re-hidratação (caminho E8C `_ensureAssetDrawableReadyE7D`) a partir do payload persistente correto (`imageOriginalDataUrl` canônico ou `savedPrimary.src`). Geometria/`worldRect`/`zIndex`/frames/curvas não são tocados.
+- Identidade lógica da fonte = assinatura FNV do payload persistente (`_arcoSourceIdentityHashE8D`), não pixels nem dimensão: o `stableDrawable` pode ser um proxy reduzido sem que a identidade mude. A img-1 é ancorada em `imageOriginalDataUrl`, o mesmo payload que atravessa Save (`imageBase64`) e Load — garantindo paridade no round-trip.
+- Diagnóstico novo por fase: `img1SourceIdentityParityOk`, `img1Preview/ExportMatchesStageSource`, `img1Saved/LoadedPayloadMatches…`, `previousProjectSourceLeakDetected`, `renderSessionSnapshotEpochMatchesCurrent`, `allAssetStagePreviewExportSourceParityOk` e afins.
+- Preserva integralmente os ganhos da E8C (hidratação por asset, payload persistente, Preview/Export com 8 assets, WebCodecs, `renderSessionSnapshotComplete`).
+- Não altera layout, cores, textos visíveis, ícones, menus, fluxo, toolbar, Modo Câmera/Ativos, Layers, Preview/Export visuais, WebCodecs, `getStateAtT`, `drawAtT`, curvas, handles, ProjectWorld geometry, `worldRects`, `zIndex`/layer order ou frames.
+- `index.html`: comentário do topo, `APP_VERSION` e `APP_VERSION_NAME` atualizados para `v8z4b32E8D`.
+
 ## v8z4b32E7H
 
 **Correção cirúrgica de diagnósticos legados ProjectWorld/replace.** Base: `v8z4b32E7G`.
