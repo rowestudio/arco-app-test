@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8C — base v8z4b32E7H (E8/E8A/E8B revertidas, NÃO reaplicadas). fix(save-load): persistir e restaurar payloads de fonte renderizável para TODOS os image assets. Save garante que cada image asset salvo com imagem possua sourcePayload persistente real (data: URL) — se a.src não for um data: URL persistente, regenera a partir do drawable vivo (stableDrawable/drawSource/_img) via canvas.toDataURL; se impossível, marca savedAssetSourceIssueById e lastSaveError (não salva como "ok" silenciosamente). Load hidrata cada visible image asset a partir do payload persistente: decode aguardado + rebuild de stableDrawable + validação de pixels + associação ao asset correto, antes de declarar readiness. Readiness gate de Preview/Export exige visibleImageAssetsCount == decoded == stableDrawable e assetBlankDrawableCount == 0 (reutiliza prepareRenderSessionSnapshot/_ensureAssetDrawableReadyE7D existentes). Diagnóstico granular por asset (save + load) para localizar a fase da falha: save-missing/invalid-payload, load-missing-payload, load-payload-not-linked-to-asset, decode-failed, stableDrawable-build-failed, renderSession-rejected. img-1 permanece asset comum da pilha unificada (fonte canônica = imageBase64), sem caminho legacy/main image. NÃO altera layout, cores, textos visíveis, ícones, menus, fluxo, Modo Câmera, Modo Ativos, Layers, Preview visual, Export visual, WebCodecs, getStateAtT, drawAtT, curvas, handles, ProjectWorld geometry, worldRects, zIndex/layer order, frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E8C. -->
 <!-- Arco Motion App — v8z4b32E7H — base v8z4b32E7G. fix(diagnostics-projectworld-replace): diagnóstico legado de coordenadas deixa de tratar img-1 com worldW/H diferente de baseStageW/H como erro; asset0MatchesWorldCoordinateSystem passa a validar coordenadas ProjectWorld finitas/positivas, allAssetsSameCoordinateSystem valida assets no mesmo espaço lógico e mixedWorldScaleDetected não é acionado por aspect ratio próprio. Diagnóstico de replace adiciona replacePreservedCenterAndRecomputedSize=true para aceitar replacePreservedWorldRect=false quando a proporção muda mas centro, AR da imagem nova, recálculo de tamanho, zIndex, slot e visibilidade são preservados. NÃO altera layout, menus, fluxo, curva/handles E7G, Preview, Export, WebCodecs, getStateAtT, drawAtT ou geometria visual. APP_VERSION = APP_VERSION_NAME = v8z4b32E7H. -->
 <!-- Arco Motion App — v8z4b32E7G — base v8z4b32E7F. fix(curve-editor-geometry): controles editáveis de curva no Modo Câmera usam a mesma geometria canônica do path via getFrameScreenGeometry(frameIndex).center; linhas, losangos, ghosts e hitbox ficam em screen coords do path, enquanto drag salva handles em ProjectWorld; Preview/Export/WebCodecs/renderSessionSnapshot/stableDrawable/assets/layers/menus/layout/cores/textos/ícones/fluxo preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E7G. -->
 <!-- Arco Motion App — v8z4b32E5 — base v8z4b32E4. fix(replace-visual-box-parity): hotfix funcional/visual bloqueador — após o replace recalcular worldW/worldH pela proporção da imagem nova (v32E4), ainda sobrava uma moldura/caixa transparente maior que a imagem real (herdada da caixa antiga), revelando o asset de baixo e desalinhando seleção/hit-test, principalmente no img-1. PRESERVA integralmente a arquitetura aprovada (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera v32E3, fit/aspect/crop/commit atômico v32E4, reorder/move/hit-test/handles/menus/save-load/ProjectWorld/frames/curvas) e respeita o AGENTS.md (drawAtT/getStateAtT/pipeline de render/export só mudam em Engine Sprint explícito — NÃO é o caso desta tarefa). DIAGNÓSTICO: para assets EXTRAS, o DOM wrapper/seleção/hit-test JÁ liam asset.worldX/Y/W/H ao vivo (sem cache separada) — a paridade já estava correta, confirmada com diagnóstico novo. O caminho REALMENTE quebrado era o de img-1: o replace mantém (e continua mantendo) worldX/Y/W/H CRAVADOS na caixa cheia do ProjectWorld (invariante de câmera/frames/curvas — fora de escopo mudar), mas a imagem nova é cozida com fit contain + tarja de cor de fundo DENTRO dessa caixa — um letterbox/pillarbox literal, e o editor desenhava o DOM/seleção/hit-test do tamanho da caixa CHEIA, maior que a imagem real. CORREÇÃO — ESCOPO ÚNICO, só no lado do EDITOR (sem tocar render/câmera/ProjectWorld): (1) nova função pura getAssetVisualWorldRect(asset) — fit contain de asset.sourceW/H dentro de asset.worldW/H, centrado; para extras é, por construção, IDÊNTICO ao worldRect (zero mudança de comportamento, já confirmado pela geometria recalculada na v32E4); para img-1 dá o sub-retângulo REAL que a imagem ocupa dentro da célula intacta; (2) renderProjectWorldExtraImages() (DOM wrapper/imagem), renderAssetSelectionOverlay() (moldura roxa) e hitTestAssetAtWorld() passam a usar esse sub-retângulo em vez do worldRect cru — elimina a moldura/letterbox visível e o toque na faixa antes transparente deixa de selecionar o asset; (3) target.src de img-1 passa a ser a imagem NOVA crua (sem tarja) para essa exibição; o bake no canvas canônico (imgNatW×imgNatH, MESMAS dimensões de sempre) continua sendo gerado IDÊNTICO à v32E4, só como fonte para Preview/Export/fundo espelhado/persistência — NÃO TOCADO; (4) computeWorldCoordinateAudit() deixa de marcar como "mundo híbrido" um asset[0] cujo worldRect ainda bate com baseStage (sem mudança de comportamento real — apenas torna a checagem mais robusta a um possível worldRect próprio futuro, sem habilitar isso agora); (5) novo diagnóstico replacedAsset*/img1*/legacyBoxedAsset* mede, com a DOM já reconstruída após o commit, se DOM wrapper/elemento de imagem/seleção/hit-test leem a MESMA geometria visual (tolerância 1px/1.5% de AR) — e reporta HONESTAMENTE (a partir da amostra real de Preview/Export) que o render pipeline de img-1 ainda usa a caixa cheia/cozida quando a proporção muda (limitação conhecida e documentada: fechar 100% a paridade de Preview/Export para img-1 exige mudar drawAtT/collectWorldRenderAssets, isto é, um Engine Sprint); _scanLegacyBoxedAssets() é só leitura — nunca normaliza assets antigos ao abrir o arquivo (legacyBoxedAssetsAutoRepairedOnLoad=false). NÃO TOCADO: asset.worldX/Y/W/H do modelo (inclusive img-1 — invariante de câmera/ProjectWorld), drawAtT/drawAtTDirect/drawWorldToCanvas/collectWorldRenderAssets/getStateAtT@v8z4b32E3 (pipeline de render/export, fora de escopo sem Engine Sprint), layout/cores/textos/ícones/menus/toolbar/painel Layers/timeline/frames/curvas/duração/interpolação/câmera/Formato/Fundo/"Não limitar"/save-load schema/ProjectWorld geometry/render matemático da câmera/ordem visual de layers/comportamento de move/reorder de assets, fit/aspect/crop/commit atômico da v32E4 (replaceNewWorldARMatchesSourceAR, replaceDoesNotCropNewImage, replaceDoesNotDistortNewImage, replaceFitMode=contain seguem true), unified image asset stack v32E2, sampler de câmera/paridade Preview-Export v32E3. APP_VERSION = APP_VERSION_NAME = v8z4b32E5. -->
@@ -7088,8 +7089,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7H';
-const APP_VERSION_NAME = 'v8z4b32E7H';
+const APP_VERSION = 'v8z4b32E8C';
+const APP_VERSION_NAME = 'v8z4b32E8C';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -16418,6 +16419,51 @@ let lastSaveError = '';
 let lastLoadError = '';
 let lastSaveProjectWorldBounds = null;
 let lastLoadProjectWorldBounds = null;
+
+// v8z4b32E8C — diagnóstico granular por asset de persistência de fonte (Save/Load).
+// Localiza a origem exata de uma falha de round-trip: Save, payload salvo, Load,
+// decode ou rebuild de stableDrawable. Somente leitura para o painel Diagnóstico —
+// não influencia render/Preview/Export/geometria.
+let savedAssetIds = [];
+let savedAssetHasPersistentSourceById = {};
+let savedAssetSourcePayloadKindById = {};
+let savedAssetSourcePayloadBytesById = {};
+let savedAssetSourcePayloadHashById = {};
+let savedAssetSourceWById = {};
+let savedAssetSourceHById = {};
+let savedAssetWorldRects = {};
+let savedAssetZOrder = {};
+let savedAssetSourceIssueById = {};
+
+let loadedAssetIds = [];
+let loadedAssetHasPersistentSourceById = {};
+let loadedAssetSourcePayloadKindById = {};
+let loadedAssetSourcePayloadBytesById = {};
+let loadedAssetSourcePayloadHashById = {};
+let loadedAssetDecodeStartedById = {};
+let loadedAssetDecodeCompletedById = {};
+let loadedAssetDecodeErrorById = {};
+let loadedAssetStableDrawableCreatedById = {};
+let loadedAssetStableDrawableWById = {};
+let loadedAssetStableDrawableHById = {};
+let loadedAssetStableDrawableHasPixelsById = {};
+let loadedAssetHydrationStatusById = {};
+let loadedAssetHydrationFailureReasonById = {};
+let loadedAssetHydrationStepById = {};
+
+let loadedAssetsHydrationStarted = false;
+let loadedAssetsHydrationCompleted = false;
+let loadedAssetsHydrationFailed = false;
+let loadedAssetsHydrationFailedIds = '';
+let loadedVisibleImageAssetsCount = 0;
+let loadedHydratedImageAssetsCount = 0;
+let loadedStableDrawableCount = 0;
+let loadedBlankDrawableCount = 0;
+let loadedBlankDrawableIds = '';
+let loadedAssetsReadyForPreview = false;
+let loadedAssetsReadyForExport = false;
+let saveLoadPreservesRenderReadiness = false;
+let saveLoadRoundTripIssue = 'none';
 
 // v8z4b30W — diagnóstico de posições de frames no ProjectWorld (frame load/save).
 let savedFramesCount = 0;
@@ -28566,7 +28612,24 @@ function serializeProjectAsset(a, idx, includeImages) {
     fitMode: a.fitMode || 'contain',
   };
   if (includeImages && idx > 0 && out.type === 'image') {
-    const src = a.src || (a._img && a._img.src) || '';
+    let src = a.src || (a._img && a._img.src) || '';
+    // v8z4b32E8C — garantir payload persistente (data: URL) por asset. Se a fonte
+    // crua não for um data: URL durável (ex.: object/blob URL transitório ou fonte
+    // ausente), regenerar a partir do drawable vivo do asset (stableDrawable/
+    // drawSource/_img) via canvas.toDataURL. No caminho normal (src já é data:),
+    // NÃO regenera — bytes ficam idênticos, sem qualquer mudança visual.
+    if (!(typeof src === 'string' && src.indexOf('data:') === 0)) {
+      try {
+        const live = a.stableDrawable || a.drawSource || a._img || null;
+        const d = live ? getImageSourceDimensions(live) : { width: 0, height: 0 };
+        if (live && d.width > 0 && d.height > 0) {
+          const cnv = document.createElement('canvas');
+          cnv.width = d.width; cnv.height = d.height;
+          const cx = cnv.getContext('2d');
+          if (cx) { cx.drawImage(live, 0, 0, d.width, d.height); src = cnv.toDataURL('image/png'); }
+        }
+      } catch (_e) {}
+    }
     if (src) out.src = src;
   }
   // v8z4b32E6 — persistir o estado canônico de um asset SUBSTITUÍDO (inclusive
@@ -28752,6 +28815,55 @@ function doSaveDirect(includeImage, nome) {
     lastSaveSchemaVersion = data.assetsSchemaVersion;
     lastSaveIncludesMultipleImages = savedImageAssets.length > 1;
     lastSaveProjectWorldBounds = data.projectWorld ? { ...data.projectWorld } : null;
+
+    // v8z4b32E8C — diagnóstico granular por asset da fonte persistente salva.
+    // Detecta HONESTAMENTE se algum image asset visível foi salvo sem payload
+    // persistente real (data: URL). O img-1 (idx 0) é coberto pelo imageBase64
+    // canônico do projeto; os extras pelo src (data: URL) de cada asset.
+    savedAssetIds = [];
+    savedAssetHasPersistentSourceById = {};
+    savedAssetSourcePayloadKindById = {};
+    savedAssetSourcePayloadBytesById = {};
+    savedAssetSourcePayloadHashById = {};
+    savedAssetSourceWById = {};
+    savedAssetSourceHById = {};
+    savedAssetWorldRects = {};
+    savedAssetZOrder = {};
+    savedAssetSourceIssueById = {};
+    let _anyMissingPersistentSave = false;
+    for (let _si = 0; _si < savedImageAssets.length; _si++) {
+      const _sa = savedImageAssets[_si];
+      const _sid = String(_sa.id != null ? _sa.id : ('idx-' + _si));
+      savedAssetIds.push(_sid);
+      let _payload = (typeof _sa.src === 'string' && _sa.src) ? _sa.src : '';
+      let _kind = 'missing';
+      if (!_payload && _si === 0 && typeof data.imageBase64 === 'string' && data.imageBase64.indexOf('data:') === 0) {
+        _payload = data.imageBase64; _kind = 'canonical-image';
+      }
+      if (_payload) _kind = (_payload.indexOf('data:') === 0) ? (_kind === 'canonical-image' ? _kind : 'dataURL') : 'non-persistent-url';
+      const _hasPersistent = !!_payload && (_payload.indexOf('data:') === 0);
+      savedAssetHasPersistentSourceById[_sid] = _hasPersistent;
+      savedAssetSourcePayloadKindById[_sid] = _kind;
+      savedAssetSourcePayloadBytesById[_sid] = _payload ? _payload.length : 0;
+      let _h = 2166136261 >>> 0;
+      for (let _k = 0; _k < _payload.length; _k += 251) { _h ^= _payload.charCodeAt(_k); _h = Math.imul(_h, 16777619) >>> 0; }
+      savedAssetSourcePayloadHashById[_sid] = _payload ? _h.toString(16) : '0';
+      savedAssetSourceWById[_sid] = _sa.sourceW || 0;
+      savedAssetSourceHById[_sid] = _sa.sourceH || 0;
+      savedAssetWorldRects[_sid] = { x: _sa.worldX || 0, y: _sa.worldY || 0, w: _sa.worldW || 0, h: _sa.worldH || 0 };
+      savedAssetZOrder[_sid] = _sa.zIndex || 0;
+      let _issue = 'none';
+      if ((_sa.visible !== false) && !_hasPersistent) {
+        _issue = _payload ? 'save-invalid-payload' : 'save-missing-payload';
+        _anyMissingPersistentSave = true;
+      }
+      savedAssetSourceIssueById[_sid] = _issue;
+    }
+    if (_anyMissingPersistentSave && !lastSaveError) {
+      lastSaveError = includeImage
+        ? 'save-missing-persistent-source'
+        : 'save-leve-omitiu-fontes (use Salvar com imagem)';
+    }
 
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -29736,6 +29848,137 @@ function restoreProjectAssetsFromData(data) {
     loadedAssetsCount = assets.length;
     loadedImageAssetsCount = getImageAssetCount();
     lastLoadRestoredMultipleImages = loadedImageAssetsCount > 1;
+
+    // v8z4b32E8C — hidratação pós-Load por asset: reconstrói a fonte renderizável e
+    // o stableDrawable de CADA image asset visível, AGUARDANDO decode, validando
+    // pixels e associando o drawable ao asset correto ANTES de declarar readiness.
+    // Reutiliza _ensureAssetDrawableReadyE7D (o MESMO caminho de Preview/Export), sem
+    // tocar geometria/worldRects/frames/curvas/ProjectWorld/zIndex. O diagnóstico
+    // granular localiza a fase exata de qualquer falha (payload, decode, stable-
+    // Drawable). NÃO é um gate: o gate real permanece em prepareRenderSessionSnapshot.
+    loadedAssetIds = [];
+    loadedAssetHasPersistentSourceById = {};
+    loadedAssetSourcePayloadKindById = {};
+    loadedAssetSourcePayloadBytesById = {};
+    loadedAssetSourcePayloadHashById = {};
+    loadedAssetDecodeStartedById = {};
+    loadedAssetDecodeCompletedById = {};
+    loadedAssetDecodeErrorById = {};
+    loadedAssetStableDrawableCreatedById = {};
+    loadedAssetStableDrawableWById = {};
+    loadedAssetStableDrawableHById = {};
+    loadedAssetStableDrawableHasPixelsById = {};
+    loadedAssetHydrationStatusById = {};
+    loadedAssetHydrationFailureReasonById = {};
+    loadedAssetHydrationStepById = {};
+    loadedAssetsHydrationStarted = true;
+    loadedAssetsHydrationCompleted = false;
+    loadedAssetsHydrationFailed = false;
+    loadedAssetsHydrationFailedIds = '';
+    loadedHydratedImageAssetsCount = 0;
+    loadedStableDrawableCount = 0;
+    loadedBlankDrawableCount = 0;
+    loadedBlankDrawableIds = '';
+    loadedAssetsReadyForPreview = false;
+    loadedAssetsReadyForExport = false;
+    saveLoadPreservesRenderReadiness = false;
+    saveLoadRoundTripIssue = 'pending';
+    {
+      const _visList = (Array.isArray(assets) ? assets.filter(a => a && a.type === 'image' && a.visible !== false) : [])
+        .slice().sort((a, b) => (Number(a.zIndex) || 0) - (Number(b.zIndex) || 0));
+      loadedVisibleImageAssetsCount = _visList.length;
+      for (let _i = 0; _i < _visList.length; _i++) {
+        const _a = _visList[_i];
+        const _id = String(_a.id != null ? _a.id : ('idx-' + _i));
+        loadedAssetIds.push(_id);
+        let _pl = (typeof _a.src === 'string' && _a.src) ? _a.src : '';
+        let _kind = 'missing';
+        if (!_pl && _isImg1AssetE7E(_a) && typeof imageOriginalDataUrl === 'string' && imageOriginalDataUrl.indexOf('data:') === 0) {
+          _pl = imageOriginalDataUrl; _kind = 'canonical-image';
+        }
+        if (_pl) _kind = (_pl.indexOf('data:') === 0) ? (_kind === 'canonical-image' ? _kind : 'dataURL') : 'non-persistent-url';
+        loadedAssetHasPersistentSourceById[_id] = !!_pl && (_pl.indexOf('data:') === 0);
+        loadedAssetSourcePayloadKindById[_id] = _kind;
+        loadedAssetSourcePayloadBytesById[_id] = _pl ? _pl.length : 0;
+        let _h = 2166136261 >>> 0;
+        for (let _k = 0; _k < _pl.length; _k += 251) { _h ^= _pl.charCodeAt(_k); _h = Math.imul(_h, 16777619) >>> 0; }
+        loadedAssetSourcePayloadHashById[_id] = _pl ? _h.toString(16) : '0';
+        loadedAssetDecodeStartedById[_id] = false;
+        loadedAssetDecodeCompletedById[_id] = false;
+        loadedAssetDecodeErrorById[_id] = 'none';
+        loadedAssetStableDrawableCreatedById[_id] = false;
+        loadedAssetStableDrawableWById[_id] = 0;
+        loadedAssetStableDrawableHById[_id] = 0;
+        loadedAssetStableDrawableHasPixelsById[_id] = false;
+        loadedAssetHydrationStatusById[_id] = 'pending';
+        loadedAssetHydrationFailureReasonById[_id] = 'none';
+        loadedAssetHydrationStepById[_id] = 'queued';
+      }
+      (async function _e8cHydrateLoadedAssets(list) {
+        try {
+          for (let _i = 0; _i < list.length; _i++) {
+            const _a = list[_i];
+            const _id = String(_a.id != null ? _a.id : ('idx-' + _i));
+            loadedAssetDecodeStartedById[_id] = true;
+            loadedAssetHydrationStepById[_id] = 'decode';
+            let _drawable = null;
+            try {
+              _drawable = await _ensureAssetDrawableReadyE7D(_a);
+            } catch (_e) {
+              loadedAssetDecodeErrorById[_id] = String((_e && _e.message) || _e || 'decode-exception');
+            }
+            const _stable = _a && _a.stableDrawable;
+            const _dim = _stable ? getImageSourceDimensions(_stable) : { width: 0, height: 0 };
+            const _check = (_a && _a.stableDrawableChecksum) || (_stable ? _arcoChecksumDrawableE7B(_stable) : { w: 0, h: 0, hasPixels: false });
+            const _hasPixels = !!(_check && _check.hasPixels);
+            const _created = !!_stable && _dim.width > 0 && _dim.height > 0;
+            loadedAssetDecodeCompletedById[_id] = !!_drawable;
+            loadedAssetStableDrawableCreatedById[_id] = _created;
+            loadedAssetStableDrawableWById[_id] = _check.w || _dim.width || 0;
+            loadedAssetStableDrawableHById[_id] = _check.h || _dim.height || 0;
+            loadedAssetStableDrawableHasPixelsById[_id] = _hasPixels;
+            if (_created && _hasPixels) {
+              loadedAssetHydrationStatusById[_id] = 'ready';
+              loadedAssetHydrationStepById[_id] = 'done';
+              loadedAssetHydrationFailureReasonById[_id] = 'none';
+            } else {
+              loadedAssetHydrationStatusById[_id] = 'failed';
+              let _reason;
+              if (!loadedAssetHasPersistentSourceById[_id]) _reason = 'load-missing-payload';
+              else if (!_drawable) _reason = 'decode-failed';
+              else if (!_created) _reason = 'stableDrawable-build-failed';
+              else _reason = 'blank-drawable';
+              loadedAssetHydrationFailureReasonById[_id] = _reason;
+              loadedAssetHydrationStepById[_id] = _reason;
+            }
+          }
+        } finally {
+          let _hyd = 0, _stab = 0; const _blank = []; const _failed = [];
+          for (const _id of loadedAssetIds) {
+            if (loadedAssetHydrationStatusById[_id] === 'ready') _hyd++;
+            if (loadedAssetStableDrawableCreatedById[_id]) _stab++;
+            if (!loadedAssetStableDrawableHasPixelsById[_id]) _blank.push(_id);
+            if (loadedAssetHydrationStatusById[_id] !== 'ready') _failed.push(_id);
+          }
+          loadedHydratedImageAssetsCount = _hyd;
+          loadedStableDrawableCount = _stab;
+          loadedBlankDrawableCount = _blank.length;
+          loadedBlankDrawableIds = _blank.length ? _blank.join(',') : '';
+          loadedAssetsHydrationFailed = _failed.length > 0;
+          loadedAssetsHydrationFailedIds = _failed.length ? _failed.join(',') : '';
+          loadedAssetsHydrationCompleted = true;
+          const _allReady = loadedVisibleImageAssetsCount > 0
+            ? (_hyd === loadedVisibleImageAssetsCount && _stab === loadedVisibleImageAssetsCount && _blank.length === 0)
+            : true;
+          loadedAssetsReadyForPreview = _allReady;
+          loadedAssetsReadyForExport = _allReady;
+          saveLoadPreservesRenderReadiness = _allReady;
+          saveLoadRoundTripIssue = _allReady ? 'none' : 'render-readiness';
+          try { invalidateProjectWorldComposite(); renderProjectWorldExtraImages(); } catch (_e) {}
+        }
+      })(_visList);
+    }
+
     if (window._arcoDebug) {
       console.info('[Arco ' + APP_VERSION + '] restoreProjectAssetsFromData:',
         { savedImageAssetsCount: savedImageAssets.length, loadedImageAssetsCount });
@@ -34233,6 +34476,58 @@ function buildDiagnosticsText() {
   push('lastLoadError', lastLoadError || 'nenhum');
   push('projectWorld salvo (bounds)', lastSaveProjectWorldBounds ? JSON.stringify(lastSaveProjectWorldBounds) : 'n/d');
   push('projectWorld carregado (bounds)', lastLoadProjectWorldBounds ? JSON.stringify(lastLoadProjectWorldBounds) : 'n/d');
+  L.push('');
+
+  // v8z4b32E8C — diagnóstico granular por asset da fonte persistente (Save/Load).
+  {
+    const _js = (o) => { try { return JSON.stringify(o); } catch (_e) { return '{}'; } };
+    // ── Save ──
+    push('savedAssetIds', savedAssetIds && savedAssetIds.length ? savedAssetIds.join(',') : 'none');
+    push('savedImageAssetsCount', String(savedImageAssetsCount));
+    push('lastSaveIncludesMultipleImages', String(lastSaveIncludesMultipleImages));
+    push('savedAssetHasPersistentSourceById', _js(savedAssetHasPersistentSourceById));
+    push('savedAssetSourcePayloadKindById', _js(savedAssetSourcePayloadKindById));
+    push('savedAssetSourcePayloadBytesById', _js(savedAssetSourcePayloadBytesById));
+    push('savedAssetSourcePayloadHashById', _js(savedAssetSourcePayloadHashById));
+    push('savedAssetSourceWById', _js(savedAssetSourceWById));
+    push('savedAssetSourceHById', _js(savedAssetSourceHById));
+    push('savedAssetWorldRects', _js(savedAssetWorldRects));
+    push('savedAssetZOrder', _js(savedAssetZOrder));
+    push('savedAssetSourceIssueById', _js(savedAssetSourceIssueById));
+    L.push('');
+    // ── Load ──
+    push('loadedAssetIds', loadedAssetIds && loadedAssetIds.length ? loadedAssetIds.join(',') : 'none');
+    push('loadedImageAssetsCount', String(loadedImageAssetsCount));
+    push('loadedAssetHasPersistentSourceById', _js(loadedAssetHasPersistentSourceById));
+    push('loadedAssetSourcePayloadKindById', _js(loadedAssetSourcePayloadKindById));
+    push('loadedAssetSourcePayloadBytesById', _js(loadedAssetSourcePayloadBytesById));
+    push('loadedAssetSourcePayloadHashById', _js(loadedAssetSourcePayloadHashById));
+    push('loadedAssetDecodeStartedById', _js(loadedAssetDecodeStartedById));
+    push('loadedAssetDecodeCompletedById', _js(loadedAssetDecodeCompletedById));
+    push('loadedAssetDecodeErrorById', _js(loadedAssetDecodeErrorById));
+    push('loadedAssetStableDrawableCreatedById', _js(loadedAssetStableDrawableCreatedById));
+    push('loadedAssetStableDrawableWById', _js(loadedAssetStableDrawableWById));
+    push('loadedAssetStableDrawableHById', _js(loadedAssetStableDrawableHById));
+    push('loadedAssetStableDrawableHasPixelsById', _js(loadedAssetStableDrawableHasPixelsById));
+    push('loadedAssetHydrationStatusById', _js(loadedAssetHydrationStatusById));
+    push('loadedAssetHydrationFailureReasonById', _js(loadedAssetHydrationFailureReasonById));
+    push('loadedAssetHydrationStepById', _js(loadedAssetHydrationStepById));
+    L.push('');
+    // ── Resumo ──
+    push('loadedAssetsHydrationStarted', String(loadedAssetsHydrationStarted));
+    push('loadedAssetsHydrationCompleted', String(loadedAssetsHydrationCompleted));
+    push('loadedAssetsHydrationFailed', String(loadedAssetsHydrationFailed));
+    push('loadedAssetsHydrationFailedIds', loadedAssetsHydrationFailedIds || 'none');
+    push('loadedVisibleImageAssetsCount', String(loadedVisibleImageAssetsCount));
+    push('loadedHydratedImageAssetsCount', String(loadedHydratedImageAssetsCount));
+    push('loadedStableDrawableCount', String(loadedStableDrawableCount));
+    push('loadedBlankDrawableCount', String(loadedBlankDrawableCount));
+    push('loadedBlankDrawableIds', loadedBlankDrawableIds || 'none');
+    push('loadedAssetsReadyForPreview', String(loadedAssetsReadyForPreview));
+    push('loadedAssetsReadyForExport', String(loadedAssetsReadyForExport));
+    push('saveLoadPreservesRenderReadiness', String(saveLoadPreservesRenderReadiness));
+    push('saveLoadRoundTripIssue', saveLoadRoundTripIssue || 'none');
+  }
   L.push('');
 
   // v8z4b30W — diagnóstico de frames no ProjectWorld (save/load).
