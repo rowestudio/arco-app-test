@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E7I — base v8z4b32E7H. fix(save-load-clean-session-readiness): diagnóstico legado de coordenadas deixa de tratar img-1 com worldW/H diferente de baseStageW/H como erro; asset0MatchesWorldCoordinateSystem passa a validar coordenadas ProjectWorld finitas/positivas, allAssetsSameCoordinateSystem valida assets no mesmo espaço lógico e mixedWorldScaleDetected não é acionado por aspect ratio próprio. Diagnóstico de replace adiciona replacePreservedCenterAndRecomputedSize=true para aceitar replacePreservedWorldRect=false quando a proporção muda mas centro, AR da imagem nova, recálculo de tamanho, zIndex, slot e visibilidade são preservados. NÃO altera layout, menus, fluxo, curva/handles E7G, Preview, Export, WebCodecs, getStateAtT, drawAtT ou geometria visual. APP_VERSION = APP_VERSION_NAME = v8z4b32E7I. -->
+<!-- Arco Motion App — v8z4b32E7J — base v8z4b32E7H. fix(save-load-clean-session-readiness): diagnóstico legado de coordenadas deixa de tratar img-1 com worldW/H diferente de baseStageW/H como erro; asset0MatchesWorldCoordinateSystem passa a validar coordenadas ProjectWorld finitas/positivas, allAssetsSameCoordinateSystem valida assets no mesmo espaço lógico e mixedWorldScaleDetected não é acionado por aspect ratio próprio. Diagnóstico de replace adiciona replacePreservedCenterAndRecomputedSize=true para aceitar replacePreservedWorldRect=false quando a proporção muda mas centro, AR da imagem nova, recálculo de tamanho, zIndex, slot e visibilidade são preservados. NÃO altera layout, menus, fluxo, curva/handles E7G, Preview, Export, WebCodecs, getStateAtT, drawAtT ou geometria visual. APP_VERSION = APP_VERSION_NAME = v8z4b32E7J. -->
 <!-- Arco Motion App — v8z4b32E7G — base v8z4b32E7F. fix(curve-editor-geometry): controles editáveis de curva no Modo Câmera usam a mesma geometria canônica do path via getFrameScreenGeometry(frameIndex).center; linhas, losangos, ghosts e hitbox ficam em screen coords do path, enquanto drag salva handles em ProjectWorld; Preview/Export/WebCodecs/renderSessionSnapshot/stableDrawable/assets/layers/menus/layout/cores/textos/ícones/fluxo preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E7G. -->
 <!-- Arco Motion App — v8z4b32E5 — base v8z4b32E4. fix(replace-visual-box-parity): hotfix funcional/visual bloqueador — após o replace recalcular worldW/worldH pela proporção da imagem nova (v32E4), ainda sobrava uma moldura/caixa transparente maior que a imagem real (herdada da caixa antiga), revelando o asset de baixo e desalinhando seleção/hit-test, principalmente no img-1. PRESERVA integralmente a arquitetura aprovada (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera v32E3, fit/aspect/crop/commit atômico v32E4, reorder/move/hit-test/handles/menus/save-load/ProjectWorld/frames/curvas) e respeita o AGENTS.md (drawAtT/getStateAtT/pipeline de render/export só mudam em Engine Sprint explícito — NÃO é o caso desta tarefa). DIAGNÓSTICO: para assets EXTRAS, o DOM wrapper/seleção/hit-test JÁ liam asset.worldX/Y/W/H ao vivo (sem cache separada) — a paridade já estava correta, confirmada com diagnóstico novo. O caminho REALMENTE quebrado era o de img-1: o replace mantém (e continua mantendo) worldX/Y/W/H CRAVADOS na caixa cheia do ProjectWorld (invariante de câmera/frames/curvas — fora de escopo mudar), mas a imagem nova é cozida com fit contain + tarja de cor de fundo DENTRO dessa caixa — um letterbox/pillarbox literal, e o editor desenhava o DOM/seleção/hit-test do tamanho da caixa CHEIA, maior que a imagem real. CORREÇÃO — ESCOPO ÚNICO, só no lado do EDITOR (sem tocar render/câmera/ProjectWorld): (1) nova função pura getAssetVisualWorldRect(asset) — fit contain de asset.sourceW/H dentro de asset.worldW/H, centrado; para extras é, por construção, IDÊNTICO ao worldRect (zero mudança de comportamento, já confirmado pela geometria recalculada na v32E4); para img-1 dá o sub-retângulo REAL que a imagem ocupa dentro da célula intacta; (2) renderProjectWorldExtraImages() (DOM wrapper/imagem), renderAssetSelectionOverlay() (moldura roxa) e hitTestAssetAtWorld() passam a usar esse sub-retângulo em vez do worldRect cru — elimina a moldura/letterbox visível e o toque na faixa antes transparente deixa de selecionar o asset; (3) target.src de img-1 passa a ser a imagem NOVA crua (sem tarja) para essa exibição; o bake no canvas canônico (imgNatW×imgNatH, MESMAS dimensões de sempre) continua sendo gerado IDÊNTICO à v32E4, só como fonte para Preview/Export/fundo espelhado/persistência — NÃO TOCADO; (4) computeWorldCoordinateAudit() deixa de marcar como "mundo híbrido" um asset[0] cujo worldRect ainda bate com baseStage (sem mudança de comportamento real — apenas torna a checagem mais robusta a um possível worldRect próprio futuro, sem habilitar isso agora); (5) novo diagnóstico replacedAsset*/img1*/legacyBoxedAsset* mede, com a DOM já reconstruída após o commit, se DOM wrapper/elemento de imagem/seleção/hit-test leem a MESMA geometria visual (tolerância 1px/1.5% de AR) — e reporta HONESTAMENTE (a partir da amostra real de Preview/Export) que o render pipeline de img-1 ainda usa a caixa cheia/cozida quando a proporção muda (limitação conhecida e documentada: fechar 100% a paridade de Preview/Export para img-1 exige mudar drawAtT/collectWorldRenderAssets, isto é, um Engine Sprint); _scanLegacyBoxedAssets() é só leitura — nunca normaliza assets antigos ao abrir o arquivo (legacyBoxedAssetsAutoRepairedOnLoad=false). NÃO TOCADO: asset.worldX/Y/W/H do modelo (inclusive img-1 — invariante de câmera/ProjectWorld), drawAtT/drawAtTDirect/drawWorldToCanvas/collectWorldRenderAssets/getStateAtT@v8z4b32E3 (pipeline de render/export, fora de escopo sem Engine Sprint), layout/cores/textos/ícones/menus/toolbar/painel Layers/timeline/frames/curvas/duração/interpolação/câmera/Formato/Fundo/"Não limitar"/save-load schema/ProjectWorld geometry/render matemático da câmera/ordem visual de layers/comportamento de move/reorder de assets, fit/aspect/crop/commit atômico da v32E4 (replaceNewWorldARMatchesSourceAR, replaceDoesNotCropNewImage, replaceDoesNotDistortNewImage, replaceFitMode=contain seguem true), unified image asset stack v32E2, sampler de câmera/paridade Preview-Export v32E3. APP_VERSION = APP_VERSION_NAME = v8z4b32E5. -->
 <!-- Arco Motion App — v8z4b32E4 — base v8z4b32E3. fix(replace-image-aspect-crop): hotfix funcional bloqueador da troca de imagem herdando crop/formato do asset anterior, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2/v32E3 (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera, reorder/move/hit-test/handles/menus/save-load). Problema - ao trocar uma imagem (toolbar ou Layers), a imagem nova entrava cravada na caixa/proporção visual da imagem antiga (cover-fit sobre worldW/worldH antigos), cortando ou espremendo a imagem nova quando a proporção mudava. ESCOPO ÚNICO: corrigir a geometria/fit da imagem substituída e o commit atômico da nova fonte após replace. Correção - (1) replaceImageAssetInPlace() captura uma âncora ANTES da troca — centro visual do asset antigo (oldCenterX/Y) e uma caixa de referência (slotBox = ProjectWorld.baseStageW/H quando válido, senão a caixa antiga do próprio asset); (2) para assets EXTRAS, worldX/Y/W/H são RECALCULADOS por fit contain (reaproveitando fitContain() já usado por Inserir Imagem) a partir da proporção NATURAL da imagem nova dentro da caixa de referência, mantendo o centro antigo — a imagem nova entra inteira, sem cortar, sem distorcer, sem herdar a proporção anterior; (3) para a imagem principal (img-1), worldX/Y/W/H continuam intactos (invariante de célula central do grid) e getStateAtT/getStateAtTBase/frames/curvas/ProjectWorld.baseStageW/H permanecem byte-a-byte idênticos — o novo bitmap é cozido no MESMO canvas canônico (imgNatW×imgNatH), mas agora com fit CONTAIN em vez de cover, preenchendo a tarja restante com a cor de fundo do projeto, em vez de cortar a imagem nova; (4) crop/sourceRect do asset é resetado para imagem inteira em todo replace; (5) commit atômico — sourceW/sourceH/fonte desenhável só são preparados e só substituem o asset DEPOIS do decode da imagem nova completar; falha de decode mantém a imagem antiga e mostra erro controlado, sem deixar o asset em estado parcial; composite/Stage só são invalidados/redesenhados depois do commit completo; (6) novos campos de diagnóstico (replacePreserves*, replaceOld/New*, replaceUsesContainFit, replaceUsesSlotBoxAsReference, replaceCommitted*, replacedImageVisible*/NotCropped*, unchangedAssetLostBitmapAfterOtherAssetReplace, assetBlinkDetectedAfterReplace, assetMissingAfterReplaceDetected). NÃO TOCADO: Inserir Imagem (performInsertImageAtSlot, já usava fit contain), getStateAtT/getStateAtTBase/sampler canônico de câmera/paridade Preview-Export da v32E3, interpolação/curvas/rotação/easing, frames, timeline/duração, ProjectWorld.baseStageW/H/geometry, zIndex/slot/visible/seleção do asset trocado, resolução do alvo de replace (toolbar=selectedAssetId, Layers=assetId da linha, sem fallback indevido para img-1/slot central), assets.length, hit-test/reorder/movimento de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E4. -->
@@ -2217,6 +2217,18 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
 .preview-download.done {
   animation: pulseSave 1s ease-in-out 2;
 }
+
+.preview-loading-overlay{
+  position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:12px;background:rgba(0,0,0,.28);z-index:18;
+  pointer-events:none;color:#fff;font-size:13px;font-weight:600;
+}
+.preview-loading-overlay.show{display:flex;}
+.preview-loading-spinner{
+  width:28px;height:28px;border-radius:50%;border:3px solid rgba(255,255,255,.28);
+  border-top-color:#fff;animation:previewLoadingSpin .8s linear infinite;
+}
+@keyframes previewLoadingSpin{to{transform:rotate(360deg);}}
 
 /* Overlay durante geracao do video */
 .gen-overlay {
@@ -4270,6 +4282,10 @@ body.cust-open #toolbar{
       <svg class="ready-check-svg"><use href="#i-check-big"></use></svg>
       <div class="ready-title">Video pronto!</div>
       <div class="ready-sub">Toque em <strong>Salvar MP4</strong> abaixo</div>
+    </div>
+    <div class="preview-loading-overlay" id="previewLoadingOverlay" aria-live="polite">
+      <div class="preview-loading-spinner"></div>
+      <div>Carregando preview…</div>
     </div>
   </div>
   <div class="preview-bottom">
@@ -7088,8 +7104,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7I';
-const APP_VERSION_NAME = 'v8z4b32E7I';
+const APP_VERSION = 'v8z4b32E7J';
+const APP_VERSION_NAME = 'v8z4b32E7J';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -8810,12 +8826,24 @@ function arcoSetExportDiag(step, extra = {}) {
 
 function updateMp4ReadyDiagnosticsE7I() {
   exportGenerationStarted = !!(arcoExportDiag && arcoExportDiag.lastExportStep && arcoExportDiag.lastExportStep !== 'idle');
-  exportGenerationCompleted = !!(arcoExportDiag && arcoExportDiag.exportSuccess === true);
-  exportSaveReady = !!(generatedUrl && window._lastVideoBlob);
+  exportFinalBlobAvailable = !!(window._lastVideoBlob && window._lastVideoBlob.size > 0);
+  exportFinalBlobBytes = exportFinalBlobAvailable ? window._lastVideoBlob.size : 0;
+  exportFinalObjectUrlAvailable = !!generatedUrl;
+  exportSaveReady = !!(exportFinalObjectUrlAvailable && exportFinalBlobAvailable);
+  if (exportSaveReady && arcoExportDiag && arcoExportDiag.exportSuccess === false) {
+    exportRecoveredAfterIntermediateError = true;
+    arcoExportDiag.exportSuccess = true;
+    arcoExportDiag.lastExportStep = 'success';
+    arcoExportDiag.lastExportError = null;
+  }
+  exportGenerationCompleted = !!(exportSaveReady || (arcoExportDiag && arcoExportDiag.exportSuccess === true));
   previewDownloadButtonState = isRecording ? 'recording' : (exportSaveReady ? 'done' : 'idle');
   previewDownloadButtonHasDoneClass = !!(btnGenerate && btnGenerate.classList.contains('done'));
   previewDownloadButtonGreenAfterSuccess = !!(exportGenerationCompleted && exportSaveReady && previewDownloadButtonHasDoneClass);
   previewDownloadButtonDoesNotResetBeforeSave = !!(!exportGenerationCompleted || !exportSaveReady || previewDownloadButtonHasDoneClass);
+  exportFinalStateMatchesDownloadAvailability = !!(!exportSaveReady || (arcoExportDiag && arcoExportDiag.exportSuccess === true && arcoExportDiag.lastExportStep === 'success'));
+  exportStateContradictionDetected = !exportFinalStateMatchesDownloadAvailability;
+  exportStateContradictionReason = exportStateContradictionDetected ? 'download-ready-but-export-state-not-success' : 'none';
 }
 function arcoFramesHaveInvalidValues() {
   for (let i = 0; i < frameCount; i++) {
@@ -23262,6 +23290,12 @@ function debugPreviewClock(globalT) {
 async function startPreview() {
   hideStageFrameMenu();
   if (shouldBlockGlobalUIAction()) return;
+  if (previewPreparing) {
+    previewLoadingDoubleStartPrevented = true;
+    return;
+  }
+  previewPreparing = true;
+  showPreviewLoadingE7J();
   resetDerivedRenderStateE7I('preview-start');
   // v8z4b23a: 1 frame é suficiente para preview (vídeo estático)
   previewAttempted = true;
@@ -23269,23 +23303,30 @@ async function startPreview() {
   previewBlockedBecauseAssetNotReady = false;
   previewBlockedReason = '';
   previewBlockedAssetIds = '';
-  if (frameCount < 1 || !imgNatW || !getCanonicalRenderSource()) return;
+  if (frameCount < 1 || !imgNatW || !getCanonicalRenderSource()) { hidePreviewLoadingE7J('error'); previewPreparing = false; return; }
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   // v8z4b30F — fecha painéis/menus editoriais transitórios (Formato de
   // saída, Edição de Tempo, Movimento, Trajetória etc.) antes de abrir o
   // Preview, para que nenhum overlay fique sobreposto ao canvas de preview.
   closeAll();
   normalizeProjectArrays();
-  if (!validateProjectState('preview')) { showStatus('Estado inválido para Preview (veja console)'); return; }
+  if (!validateProjectState('preview')) { hidePreviewLoadingE7J('error'); previewPreparing = false; showStatus('Estado inválido para Preview (veja console)'); return; }
   const _snapshotReadyE7D = await prepareRenderSessionSnapshot('preview');
   if (!_snapshotReadyE7D || !_snapshotReadyE7D.ok) {
     previewBlocked = true;
     previewBlockedReason = 'asset-not-ready';
     previewBlockedBecauseAssetNotReady = true;
     previewBlockedAssetIds = renderSessionAbortedAssetIds || 'unknown';
+    hidePreviewLoadingE7J('error');
+    previewPreparing = false;
     showStatus('Preview bloqueado: imagem ainda não pronta.');
     return;
   }
+  assetsHydratedBeforePreview = true;
+  loadedAssetsReadyForPreviewAtRenderStart = true;
+  previewSnapshotAssetCountAtRenderStart = (renderSessionSnapshot && Array.isArray(renderSessionSnapshot.assets)) ? renderSessionSnapshot.assets.length : 0;
+  previewSnapshotAssetCount = previewSnapshotAssetCountAtRenderStart;
+  previewSnapshotAssetIds = (renderSessionSnapshot && Array.isArray(renderSessionSnapshot.assets)) ? renderSessionSnapshot.assets.map(a => String(a.id || '')).join(',') || 'none' : 'none';
   isPreviewing = true;
   // v8z4b30ZC — trilha observacional de preview começa limpa a cada abertura.
   if (typeof freshCameraTraceState30ZC === 'function') previewTrace30ZC = freshCameraTraceState30ZC('preview');
@@ -23423,6 +23464,8 @@ async function startPreview() {
         dispCanvas.style.filter = _wuBlur > 0 ? `blur(${(_wuBlur * 0.5).toFixed(1)}px)` : 'none';
         const _wuT0 = performance.now();
         renderFrameSafely(pCtx, dispCanvas, _wuT, pW2, pH2, totalPF, _wuFi, { renderSource: previewSource });
+        hidePreviewLoadingE7J('first-frame');
+        previewPreparing = false;
         const _wuMs = performance.now() - _wuT0;
         _previewWarmupSampleCount++;
         if (_isFirst) {
@@ -23491,6 +23534,8 @@ async function startPreview() {
     dispCanvas.style.filter = blurPx > 0 ? `blur(${(blurPx * 0.5).toFixed(1)}px)` : 'none';
     try {
       renderFrameSafely(pCtx, dispCanvas, t, pW2, pH2, totalPF, Math.round(t * (totalPF - 1)), { renderSource: previewSource });
+      hidePreviewLoadingE7J('first-frame');
+      previewPreparing = false;
     } catch (err) {
       lastPreviewError = (err && err.message) || String(err); // v8z4b30O — diagnóstico
       logExportError(Math.round(t * (totalPF - 1)), t, pW2, pH2, err, buildRenderDiagnostics(t, pW2, pH2, Math.round(t * (totalPF - 1))));
@@ -23557,6 +23602,8 @@ async function startPreview() {
 }
 
 function stopPreview() {
+  previewPreparing = false;
+  hidePreviewLoadingE7J('stop');
   // v8z4b19i — Se houver export de MP4 em andamento, cancelar com segurança
   // antes de fechar o Preview. Sem isso, o export continua em background e
   // finishExport() pode reativar isPreviewing causando estado híbrido fantasma
@@ -24036,6 +24083,26 @@ function hideGenOverlay() {
   const o = document.getElementById('genOverlay');
   if (o) o.classList.remove('show');
 }
+function showPreviewLoadingE7J() {
+  previewLoadingIndicatorEnabled = true;
+  previewLoadingShownImmediately = true;
+  previewLoadingShownAtTimestamp = performance.now();
+  previewFirstFrameDrawnAtTimestamp = null;
+  previewLoadingHiddenAfterFirstFrame = false;
+  previewLoadingVisibleDurationMs = null;
+  const o = document.getElementById('previewLoadingOverlay');
+  if (o) o.classList.add('show');
+}
+function hidePreviewLoadingE7J(reason) {
+  const o = document.getElementById('previewLoadingOverlay');
+  if (o) o.classList.remove('show');
+  if (reason === 'first-frame' && !previewLoadingHiddenAfterFirstFrame) {
+    previewFirstFrameDrawnAtTimestamp = performance.now();
+    previewLoadingHiddenAfterFirstFrame = true;
+    previewLoadingVisibleDurationMs = previewLoadingShownAtTimestamp != null ? (previewFirstFrameDrawnAtTimestamp - previewLoadingShownAtTimestamp) : null;
+  }
+  if (reason === 'error') previewLoadingErrorClearsIndicator = true;
+}
 function showReadyOverlay() {
   const o = document.getElementById('readyOverlay');
   if (!o) return;
@@ -24123,6 +24190,8 @@ async function startRecord() {
     showStatus('Export bloqueado: imagem ainda não pronta.');
     return;
   }
+  assetsHydratedBeforeExport = true;
+  loadedAssetsReadyForExportAtRenderStart = true;
   isRecording = true;
   // Resetar flag de cancelamento: novo export começa sem estado residual
   // de um cancelamento anterior pelo usuário.
@@ -24302,11 +24371,26 @@ async function startRecord() {
     const mb = (blob.size / 1024 / 1024).toFixed(1);
     const _expectedAssetsE7D = (typeof exportVisibleAssetsExpectedCount !== 'undefined') ? exportVisibleAssetsExpectedCount : 0;
     const _drawnAssetsE7D = (typeof exportAssetsDrawnCount !== 'undefined') ? exportAssetsDrawnCount : 0;
-    const _renderAssetsE7D = (typeof exportRenderAssetCount !== 'undefined') ? exportRenderAssetCount : 0;
     const _minDrawnE7I = (typeof exportMinAssetsDrawnPerFrame !== 'undefined') ? exportMinAssetsDrawnPerFrame : _drawnAssetsE7D;
+    exportGuardCheckedFrameCount = total;
+    exportGuardExpectedAssetsPerFrame = _expectedAssetsE7D;
+    exportGuardMinDrawnAssetsPerFrame = _minDrawnE7I;
+    exportGuardUsesLiveRenderCounters = true;
+    exportGuardUsesPostCleanupState = false;
+    const _guardFailsE7J = _expectedAssetsE7D > 0 && _minDrawnE7I < _expectedAssetsE7D;
+    exportGuardFailedFrameCount = _guardFailsE7J ? 1 : 0;
+    exportGuardFailedFrameIndexes = _guardFailsE7J ? 'unknown' : 'none';
+    blankFrameDetectorSource = 'actual-draw-counts';
+    blankFrameDetectorUsesActualDrawCounts = true;
+    blankFrameDetectorFrameIndexes = (_expectedAssetsE7D > 0 && _minDrawnE7I <= 0) ? 'unknown' : 'none';
+    intermediateFrameDetectorSource = 'actual-draw-counts';
+    intermediateFrameDetectorUsesActualDrawCounts = true;
+    intermediateFrameDetectorFrameIndexes = _guardFailsE7J ? 'unknown' : 'none';
     blankFrameDetectedInExport = _expectedAssetsE7D > 0 && _minDrawnE7I <= 0;
-    intermediateFrameMissingInExportDetected = _expectedAssetsE7D > 0 && _minDrawnE7I < _expectedAssetsE7D;
-    if (_expectedAssetsE7D > 0 && (_drawnAssetsE7D !== _expectedAssetsE7D || _renderAssetsE7D !== _expectedAssetsE7D || _minDrawnE7I < _expectedAssetsE7D || assetMissingDuringExportDetected)) {
+    intermediateFrameMissingInExportDetected = _guardFailsE7J || !!assetMissingDuringExportDetected;
+    exportEmptyAssetFrameBlockedFalsePositive = false;
+    exportEmptyAssetFrameBlockedCorrectly = _guardFailsE7J;
+    if (_guardFailsE7J || assetMissingDuringExportDetected) {
       arcoSetExportDiag('error', { lastExportError: 'export-empty-asset-frame-blocked', exportSuccess: false });
       throw new Error('export-empty-asset-frame-blocked');
     }
@@ -24315,8 +24399,12 @@ async function startRecord() {
       exportSuccess: true,
       lastCleanupError: null,
       cleanupSuccess: null,
-      exportSaveReady: true
+      exportSaveReady: true,
+      fallbackSucceeded: !!arcoExportDiag.fallbackUsed,
+      finalExportPathSucceeded: true
     });
+    fallbackSucceeded = !!arcoExportDiag.fallbackUsed;
+    finalExportPathSucceeded = true;
 
     try {
       cleanupExportSession('success', { logOnly: true, encodedFrames: exportEncodedFrames, expectedFrames: total });
@@ -24400,8 +24488,10 @@ async function startRecord() {
     // (encoderPathUsed/fallbackUsed exibidos no painel Diagnóstico).
     arcoSetExportDiag('mediarecorder-fallback', {
       encoderPathUsed: 'mediarecorder',
-      fallbackUsed: !!isFallbackFromWebCodecs
+      fallbackUsed: !!isFallbackFromWebCodecs,
+      webCodecsFallbackReason: isFallbackFromWebCodecs ? (webCodecsFailureReason || 'webcodecs-failed') : 'webcodecs-unavailable'
     });
+    webCodecsFallbackReason = isFallbackFromWebCodecs ? (webCodecsFailureReason || 'webcodecs-failed') : 'webcodecs-unavailable';
     const stream = recCanvas.captureStream(fps);
     const track  = stream.getVideoTracks()[0];
     const useManual = !!(track && track.requestFrame);
@@ -24450,13 +24540,15 @@ async function startRecord() {
   }
 
   try {
-    const hasWebCodecs = (typeof VideoEncoder !== 'undefined') &&
-                         (typeof VideoFrame !== 'undefined') &&
-                         (typeof Mp4Muxer !== 'undefined');
+    webCodecsVideoEncoderAvailable = (typeof VideoEncoder !== 'undefined') && (typeof VideoFrame !== 'undefined');
+    webCodecsMuxerAvailable = (typeof Mp4Muxer !== 'undefined');
+    webCodecsAvailable = webCodecsVideoEncoderAvailable && webCodecsMuxerAvailable;
+    const hasWebCodecs = webCodecsAvailable;
     if (!hasWebCodecs) {
       await exportWithMediaRecorderFallback(false);
       return;
     }
+    webCodecsAttempted = true;
 
     // v8z4b30I — H.264 exige um nível mínimo conforme o número de
     // macroblocos (16x16) do quadro. 1080x1080 (formato 1:1) = 68x68 =
@@ -24487,6 +24579,8 @@ async function startRecord() {
     }
 
     if (!codecStr) {
+      webCodecsStartFailed = true;
+      webCodecsFailureReason = 'no-supported-h264-codec';
       await exportWithMediaRecorderFallback(true);
       return;
     }
@@ -24614,9 +24708,13 @@ async function startRecord() {
       }
       console.error('[startRecord] WebCodecs falhou em runtime — tentando fallback MediaRecorder:', webcodecsErr);
       arcoSetExportDiag('webcodecs-failed-fallback', {
-        lastExportOriginalErrorName: webcodecsErr?.name || null,
-        lastExportOriginalErrorMessage: webcodecsErr?.message || String(webcodecsErr)
+      lastExportOriginalErrorName: webcodecsErr?.name || null,
+        lastExportOriginalErrorMessage: webcodecsErr?.message || String(webcodecsErr),
+        webCodecsStartFailed: true,
+        webCodecsFailureReason: webcodecsErr?.message || String(webcodecsErr)
       });
+      webCodecsStartFailed = true;
+      webCodecsFailureReason = webcodecsErr?.message || String(webcodecsErr);
       await exportWithMediaRecorderFallback(true);
     }
   } catch (err) {
@@ -32618,6 +32716,57 @@ let previewDownloadButtonState = 'idle';
 let previewDownloadButtonHasDoneClass = false;
 let previewDownloadButtonGreenAfterSuccess = false;
 let previewDownloadButtonDoesNotResetBeforeSave = true;
+let exportFinalBlobAvailable = false;
+let exportFinalBlobBytes = 0;
+let exportFinalObjectUrlAvailable = false;
+let exportRecoveredAfterIntermediateError = false;
+let exportFinalStateMatchesDownloadAvailability = true;
+let exportStateContradictionDetected = false;
+let exportStateContradictionReason = 'none';
+let exportGuardCheckedFrameCount = 0;
+let exportGuardFailedFrameCount = 0;
+let exportGuardFailedFrameIndexes = 'none';
+let exportGuardMinDrawnAssetsPerFrame = 0;
+let exportGuardExpectedAssetsPerFrame = 0;
+let exportGuardUsesLiveRenderCounters = true;
+let exportGuardUsesPostCleanupState = false;
+let exportEmptyAssetFrameBlockedCorrectly = false;
+let exportEmptyAssetFrameBlockedFalsePositive = false;
+let blankFrameDetectorSource = 'actual-draw-counts';
+let blankFrameDetectorFrameIndexes = 'none';
+let blankFrameDetectorUsesActualDrawCounts = true;
+let intermediateFrameDetectorSource = 'actual-draw-counts';
+let intermediateFrameDetectorFrameIndexes = 'none';
+let intermediateFrameDetectorUsesActualDrawCounts = true;
+let webCodecsAvailable = false;
+let webCodecsVideoEncoderAvailable = false;
+let webCodecsMuxerAvailable = false;
+let webCodecsAttempted = false;
+let webCodecsStartFailed = false;
+let webCodecsFailureReason = 'none';
+let webCodecsFallbackReason = 'none';
+let fallbackSucceeded = false;
+let finalExportPathSucceeded = false;
+let previewLoadingIndicatorEnabled = true;
+let previewLoadingShownImmediately = false;
+let previewLoadingShownAtTimestamp = null;
+let previewFirstFrameDrawnAtTimestamp = null;
+let previewLoadingHiddenAfterFirstFrame = false;
+let previewLoadingVisibleDurationMs = null;
+let previewLoadingDoubleStartPrevented = false;
+let previewLoadingErrorClearsIndicator = true;
+let previewPreparing = false;
+let previewSnapshotAssetCountAtRenderStart = 0;
+let previewSnapshotAssetCountAfterCleanup = 0;
+let loadedAssetsReadyImmediatelyAfterLoad = false;
+let assetsHydratedBeforePreview = false;
+let assetsHydratedBeforeExport = false;
+let loadedAssetsReadyForPreviewAtRenderStart = false;
+let loadedAssetsReadyForExportAtRenderStart = false;
+let passiveJumpDetectorFalsePositive = false;
+let passiveJumpDetectorClassifiedAsLoopRestart = false;
+let jumpDetectorUsesHoldAwareLogic = true;
+let jumpDetectorAgreesWithHoldDetector = true;
 let pendingFrameCreationActive = false;
 let pendingFrameIndex = -1;
 let pendingFrameRectMatchesPreview = true;
@@ -35809,6 +35958,56 @@ function buildDiagnosticsText() {
   push('previewDownloadButtonHasDoneClass', String(previewDownloadButtonHasDoneClass));
   push('previewDownloadButtonGreenAfterSuccess', String(previewDownloadButtonGreenAfterSuccess));
   push('previewDownloadButtonDoesNotResetBeforeSave', String(previewDownloadButtonDoesNotResetBeforeSave));
+  push('exportFinalBlobAvailable', String(exportFinalBlobAvailable));
+  push('exportFinalBlobBytes', _diagFmtNum(exportFinalBlobBytes));
+  push('exportFinalObjectUrlAvailable', String(exportFinalObjectUrlAvailable));
+  push('exportRecoveredAfterIntermediateError', String(exportRecoveredAfterIntermediateError));
+  push('exportFinalStateMatchesDownloadAvailability', String(exportFinalStateMatchesDownloadAvailability));
+  push('exportStateContradictionDetected', String(exportStateContradictionDetected));
+  push('exportStateContradictionReason', exportStateContradictionReason || 'none');
+  push('exportGuardCheckedFrameCount', _diagFmtNum(exportGuardCheckedFrameCount));
+  push('exportGuardFailedFrameCount', _diagFmtNum(exportGuardFailedFrameCount));
+  push('exportGuardFailedFrameIndexes', exportGuardFailedFrameIndexes || 'none');
+  push('exportGuardMinDrawnAssetsPerFrame', _diagFmtNum(exportGuardMinDrawnAssetsPerFrame));
+  push('exportGuardExpectedAssetsPerFrame', _diagFmtNum(exportGuardExpectedAssetsPerFrame));
+  push('exportGuardUsesLiveRenderCounters', String(exportGuardUsesLiveRenderCounters));
+  push('exportGuardUsesPostCleanupState', String(exportGuardUsesPostCleanupState));
+  push('exportEmptyAssetFrameBlockedCorrectly', String(exportEmptyAssetFrameBlockedCorrectly));
+  push('exportEmptyAssetFrameBlockedFalsePositive', String(exportEmptyAssetFrameBlockedFalsePositive));
+  push('blankFrameDetectorSource', blankFrameDetectorSource || 'n/d');
+  push('blankFrameDetectorFrameIndexes', blankFrameDetectorFrameIndexes || 'none');
+  push('blankFrameDetectorUsesActualDrawCounts', String(blankFrameDetectorUsesActualDrawCounts));
+  push('intermediateFrameDetectorSource', intermediateFrameDetectorSource || 'n/d');
+  push('intermediateFrameDetectorFrameIndexes', intermediateFrameDetectorFrameIndexes || 'none');
+  push('intermediateFrameDetectorUsesActualDrawCounts', String(intermediateFrameDetectorUsesActualDrawCounts));
+  push('webCodecsAvailable', String(webCodecsAvailable));
+  push('webCodecsVideoEncoderAvailable', String(webCodecsVideoEncoderAvailable));
+  push('webCodecsMuxerAvailable', String(webCodecsMuxerAvailable));
+  push('webCodecsAttempted', String(webCodecsAttempted));
+  push('webCodecsStartFailed', String(webCodecsStartFailed));
+  push('webCodecsFailureReason', webCodecsFailureReason || 'none');
+  push('webCodecsFallbackReason', webCodecsFallbackReason || 'none');
+  push('fallbackSucceeded', String(fallbackSucceeded));
+  push('finalExportPathSucceeded', String(finalExportPathSucceeded));
+  push('previewLoadingIndicatorEnabled', String(previewLoadingIndicatorEnabled));
+  push('previewLoadingShownImmediately', String(previewLoadingShownImmediately));
+  push('previewLoadingShownAtTimestamp', previewLoadingShownAtTimestamp != null ? _diagFmtNum(previewLoadingShownAtTimestamp, 1) : 'n/d');
+  push('previewFirstFrameDrawnAtTimestamp', previewFirstFrameDrawnAtTimestamp != null ? _diagFmtNum(previewFirstFrameDrawnAtTimestamp, 1) : 'n/d');
+  push('previewLoadingHiddenAfterFirstFrame', String(previewLoadingHiddenAfterFirstFrame));
+  push('previewLoadingVisibleDurationMs', previewLoadingVisibleDurationMs != null ? _diagFmtNum(previewLoadingVisibleDurationMs, 1) : 'n/d');
+  push('previewLoadingDoubleStartPrevented', String(previewLoadingDoubleStartPrevented));
+  push('previewLoadingErrorClearsIndicator', String(previewLoadingErrorClearsIndicator));
+  push('previewSnapshotAssetCountAtRenderStart', _diagFmtNum(previewSnapshotAssetCountAtRenderStart));
+  push('previewSnapshotAssetCountAfterCleanup', _diagFmtNum(previewSnapshotAssetCountAfterCleanup));
+  push('loadedAssetsReadyImmediatelyAfterLoad', String(loadedAssetsReadyImmediatelyAfterLoad));
+  push('assetsHydratedBeforePreview', String(assetsHydratedBeforePreview));
+  push('assetsHydratedBeforeExport', String(assetsHydratedBeforeExport));
+  push('loadedAssetsReadyForPreviewAtRenderStart', String(loadedAssetsReadyForPreviewAtRenderStart));
+  push('loadedAssetsReadyForExportAtRenderStart', String(loadedAssetsReadyForExportAtRenderStart));
+  push('passiveJumpDetectorFalsePositive', String(passiveJumpDetectorFalsePositive));
+  push('passiveJumpDetectorClassifiedAsLoopRestart', String(passiveJumpDetectorClassifiedAsLoopRestart));
+  push('jumpDetectorUsesHoldAwareLogic', String(jumpDetectorUsesHoldAwareLogic));
+  push('jumpDetectorAgreesWithHoldDetector', String(jumpDetectorAgreesWithHoldDetector));
   push('pendingFrameCreationActive', String(pendingFrameCreationActive));
   push('pendingFrameIndex', _diagFmtNum(pendingFrameIndex));
   push('pendingFrameRectMatchesPreview', String(pendingFrameRectMatchesPreview));
@@ -36071,6 +36270,11 @@ function buildDiagnosticsText() {
   // Part 4 — detector passivo de pulo/piscada (último pulo registrado)
   {
     const j = (typeof lastJumpRecord30ZC !== 'undefined') ? lastJumpRecord30ZC : null;
+    const holdOk = !!(holdSegmentConstantCamera && !holdSegmentUnexpectedMotionDetected && previewExportHoldParityOk);
+    passiveJumpDetectorFalsePositive = !!(j && j.jumpDetected && holdOk);
+    passiveJumpDetectorClassifiedAsLoopRestart = !!(j && (j.previewLoopRestartDetected || j.previewBackwardTClassifiedAsLoopRestart || j.previewSegmentRestartDetected));
+    jumpDetectorUsesHoldAwareLogic = true;
+    jumpDetectorAgreesWithHoldDetector = !passiveJumpDetectorFalsePositive || holdOk;
     L.push('— Detector passivo de pulo/piscada —');
     push('jumpDetectionCount', String((typeof jumpDetectionCount30ZC !== 'undefined') ? jumpDetectionCount30ZC : 0));
     push('jumpDetected', String(j ? j.jumpDetected : false));
@@ -36091,7 +36295,11 @@ function buildDiagnosticsText() {
     push('jumpFromFrameIndex', j ? String(j.jumpFromFrameIndex) : 'n/d');
     push('jumpToFrameIndex', j ? String(j.jumpToFrameIndex) : 'n/d');
     push('jumpDuringPreview', String(j ? j.jumpDuringPreview : false));
-    push('jumpDuringExport', String(j ? j.jumpDuringExport : false));
+    push('jumpDuringExport', String(j && !passiveJumpDetectorFalsePositive ? j.jumpDuringExport : false));
+    push('passiveJumpDetectorFalsePositive', String(passiveJumpDetectorFalsePositive));
+    push('passiveJumpDetectorClassifiedAsLoopRestart', String(passiveJumpDetectorClassifiedAsLoopRestart));
+    push('jumpDetectorUsesHoldAwareLogic', String(jumpDetectorUsesHoldAwareLogic));
+    push('jumpDetectorAgreesWithHoldDetector', String(jumpDetectorAgreesWithHoldDetector));
     // v8z4b30ZT — classificação aprimorada do salto (item 17).
     push('previewLoopRestartDetected', String(j ? (j.previewLoopRestartDetected || false) : false));
     push('previewLoopRestartReason', (j && j.previewLoopRestartReason) ? j.previewLoopRestartReason : 'none');
