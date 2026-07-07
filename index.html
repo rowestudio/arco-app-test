@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E8E — base v8z4b32E7H. fix(save-load-clean-session-readiness): diagnóstico legado de coordenadas deixa de tratar img-1 com worldW/H diferente de baseStageW/H como erro; asset0MatchesWorldCoordinateSystem passa a validar coordenadas ProjectWorld finitas/positivas, allAssetsSameCoordinateSystem valida assets no mesmo espaço lógico e mixedWorldScaleDetected não é acionado por aspect ratio próprio. Diagnóstico de replace adiciona replacePreservedCenterAndRecomputedSize=true para aceitar replacePreservedWorldRect=false quando a proporção muda mas centro, AR da imagem nova, recálculo de tamanho, zIndex, slot e visibilidade são preservados. NÃO altera layout, menus, fluxo, curva/handles E7G, Preview, Export, WebCodecs, getStateAtT, drawAtT ou geometria visual. APP_VERSION = APP_VERSION_NAME = v8z4b32E8E. -->
+<!-- Arco Motion App — v8z4b32E7I — base v8z4b32E7H. fix(save-load-clean-session-readiness): diagnóstico legado de coordenadas deixa de tratar img-1 com worldW/H diferente de baseStageW/H como erro; asset0MatchesWorldCoordinateSystem passa a validar coordenadas ProjectWorld finitas/positivas, allAssetsSameCoordinateSystem valida assets no mesmo espaço lógico e mixedWorldScaleDetected não é acionado por aspect ratio próprio. Diagnóstico de replace adiciona replacePreservedCenterAndRecomputedSize=true para aceitar replacePreservedWorldRect=false quando a proporção muda mas centro, AR da imagem nova, recálculo de tamanho, zIndex, slot e visibilidade são preservados. NÃO altera layout, menus, fluxo, curva/handles E7G, Preview, Export, WebCodecs, getStateAtT, drawAtT ou geometria visual. APP_VERSION = APP_VERSION_NAME = v8z4b32E7I. -->
 <!-- Arco Motion App — v8z4b32E7G — base v8z4b32E7F. fix(curve-editor-geometry): controles editáveis de curva no Modo Câmera usam a mesma geometria canônica do path via getFrameScreenGeometry(frameIndex).center; linhas, losangos, ghosts e hitbox ficam em screen coords do path, enquanto drag salva handles em ProjectWorld; Preview/Export/WebCodecs/renderSessionSnapshot/stableDrawable/assets/layers/menus/layout/cores/textos/ícones/fluxo preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E7G. -->
 <!-- Arco Motion App — v8z4b32E5 — base v8z4b32E4. fix(replace-visual-box-parity): hotfix funcional/visual bloqueador — após o replace recalcular worldW/worldH pela proporção da imagem nova (v32E4), ainda sobrava uma moldura/caixa transparente maior que a imagem real (herdada da caixa antiga), revelando o asset de baixo e desalinhando seleção/hit-test, principalmente no img-1. PRESERVA integralmente a arquitetura aprovada (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera v32E3, fit/aspect/crop/commit atômico v32E4, reorder/move/hit-test/handles/menus/save-load/ProjectWorld/frames/curvas) e respeita o AGENTS.md (drawAtT/getStateAtT/pipeline de render/export só mudam em Engine Sprint explícito — NÃO é o caso desta tarefa). DIAGNÓSTICO: para assets EXTRAS, o DOM wrapper/seleção/hit-test JÁ liam asset.worldX/Y/W/H ao vivo (sem cache separada) — a paridade já estava correta, confirmada com diagnóstico novo. O caminho REALMENTE quebrado era o de img-1: o replace mantém (e continua mantendo) worldX/Y/W/H CRAVADOS na caixa cheia do ProjectWorld (invariante de câmera/frames/curvas — fora de escopo mudar), mas a imagem nova é cozida com fit contain + tarja de cor de fundo DENTRO dessa caixa — um letterbox/pillarbox literal, e o editor desenhava o DOM/seleção/hit-test do tamanho da caixa CHEIA, maior que a imagem real. CORREÇÃO — ESCOPO ÚNICO, só no lado do EDITOR (sem tocar render/câmera/ProjectWorld): (1) nova função pura getAssetVisualWorldRect(asset) — fit contain de asset.sourceW/H dentro de asset.worldW/H, centrado; para extras é, por construção, IDÊNTICO ao worldRect (zero mudança de comportamento, já confirmado pela geometria recalculada na v32E4); para img-1 dá o sub-retângulo REAL que a imagem ocupa dentro da célula intacta; (2) renderProjectWorldExtraImages() (DOM wrapper/imagem), renderAssetSelectionOverlay() (moldura roxa) e hitTestAssetAtWorld() passam a usar esse sub-retângulo em vez do worldRect cru — elimina a moldura/letterbox visível e o toque na faixa antes transparente deixa de selecionar o asset; (3) target.src de img-1 passa a ser a imagem NOVA crua (sem tarja) para essa exibição; o bake no canvas canônico (imgNatW×imgNatH, MESMAS dimensões de sempre) continua sendo gerado IDÊNTICO à v32E4, só como fonte para Preview/Export/fundo espelhado/persistência — NÃO TOCADO; (4) computeWorldCoordinateAudit() deixa de marcar como "mundo híbrido" um asset[0] cujo worldRect ainda bate com baseStage (sem mudança de comportamento real — apenas torna a checagem mais robusta a um possível worldRect próprio futuro, sem habilitar isso agora); (5) novo diagnóstico replacedAsset*/img1*/legacyBoxedAsset* mede, com a DOM já reconstruída após o commit, se DOM wrapper/elemento de imagem/seleção/hit-test leem a MESMA geometria visual (tolerância 1px/1.5% de AR) — e reporta HONESTAMENTE (a partir da amostra real de Preview/Export) que o render pipeline de img-1 ainda usa a caixa cheia/cozida quando a proporção muda (limitação conhecida e documentada: fechar 100% a paridade de Preview/Export para img-1 exige mudar drawAtT/collectWorldRenderAssets, isto é, um Engine Sprint); _scanLegacyBoxedAssets() é só leitura — nunca normaliza assets antigos ao abrir o arquivo (legacyBoxedAssetsAutoRepairedOnLoad=false). NÃO TOCADO: asset.worldX/Y/W/H do modelo (inclusive img-1 — invariante de câmera/ProjectWorld), drawAtT/drawAtTDirect/drawWorldToCanvas/collectWorldRenderAssets/getStateAtT@v8z4b32E3 (pipeline de render/export, fora de escopo sem Engine Sprint), layout/cores/textos/ícones/menus/toolbar/painel Layers/timeline/frames/curvas/duração/interpolação/câmera/Formato/Fundo/"Não limitar"/save-load schema/ProjectWorld geometry/render matemático da câmera/ordem visual de layers/comportamento de move/reorder de assets, fit/aspect/crop/commit atômico da v32E4 (replaceNewWorldARMatchesSourceAR, replaceDoesNotCropNewImage, replaceDoesNotDistortNewImage, replaceFitMode=contain seguem true), unified image asset stack v32E2, sampler de câmera/paridade Preview-Export v32E3. APP_VERSION = APP_VERSION_NAME = v8z4b32E5. -->
 <!-- Arco Motion App — v8z4b32E4 — base v8z4b32E3. fix(replace-image-aspect-crop): hotfix funcional bloqueador da troca de imagem herdando crop/formato do asset anterior, PRESERVANDO integralmente a arquitetura de assets/layers aprovada na v32E2/v32E3 (pilha unificada de imageAssets, img-1 como asset comum, sampler canônico de câmera, reorder/move/hit-test/handles/menus/save-load). Problema - ao trocar uma imagem (toolbar ou Layers), a imagem nova entrava cravada na caixa/proporção visual da imagem antiga (cover-fit sobre worldW/worldH antigos), cortando ou espremendo a imagem nova quando a proporção mudava. ESCOPO ÚNICO: corrigir a geometria/fit da imagem substituída e o commit atômico da nova fonte após replace. Correção - (1) replaceImageAssetInPlace() captura uma âncora ANTES da troca — centro visual do asset antigo (oldCenterX/Y) e uma caixa de referência (slotBox = ProjectWorld.baseStageW/H quando válido, senão a caixa antiga do próprio asset); (2) para assets EXTRAS, worldX/Y/W/H são RECALCULADOS por fit contain (reaproveitando fitContain() já usado por Inserir Imagem) a partir da proporção NATURAL da imagem nova dentro da caixa de referência, mantendo o centro antigo — a imagem nova entra inteira, sem cortar, sem distorcer, sem herdar a proporção anterior; (3) para a imagem principal (img-1), worldX/Y/W/H continuam intactos (invariante de célula central do grid) e getStateAtT/getStateAtTBase/frames/curvas/ProjectWorld.baseStageW/H permanecem byte-a-byte idênticos — o novo bitmap é cozido no MESMO canvas canônico (imgNatW×imgNatH), mas agora com fit CONTAIN em vez de cover, preenchendo a tarja restante com a cor de fundo do projeto, em vez de cortar a imagem nova; (4) crop/sourceRect do asset é resetado para imagem inteira em todo replace; (5) commit atômico — sourceW/sourceH/fonte desenhável só são preparados e só substituem o asset DEPOIS do decode da imagem nova completar; falha de decode mantém a imagem antiga e mostra erro controlado, sem deixar o asset em estado parcial; composite/Stage só são invalidados/redesenhados depois do commit completo; (6) novos campos de diagnóstico (replacePreserves*, replaceOld/New*, replaceUsesContainFit, replaceUsesSlotBoxAsReference, replaceCommitted*, replacedImageVisible*/NotCropped*, unchangedAssetLostBitmapAfterOtherAssetReplace, assetBlinkDetectedAfterReplace, assetMissingAfterReplaceDetected). NÃO TOCADO: Inserir Imagem (performInsertImageAtSlot, já usava fit contain), getStateAtT/getStateAtTBase/sampler canônico de câmera/paridade Preview-Export da v32E3, interpolação/curvas/rotação/easing, frames, timeline/duração, ProjectWorld.baseStageW/H/geometry, zIndex/slot/visible/seleção do asset trocado, resolução do alvo de replace (toolbar=selectedAssetId, Layers=assetId da linha, sem fallback indevido para img-1/slot central), assets.length, hit-test/reorder/movimento de assets, WebCodecs/muxer/encoder/exportUsedWorldRenderer, UI/layout/cores/ícones/texto/menus/toolbar/Layers/handles, "Não limitar" (segue ausente). APP_VERSION = APP_VERSION_NAME = v8z4b32E4. -->
@@ -7088,8 +7088,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8E';
-const APP_VERSION_NAME = 'v8z4b32E8E';
+const APP_VERSION = 'v8z4b32E7I';
+const APP_VERSION_NAME = 'v8z4b32E7I';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -8800,11 +8800,22 @@ function arcoSetExportDiag(step, extra = {}) {
     timestamp: new Date().toISOString(),
     ...extra
   };
+  try { updateMp4ReadyDiagnosticsE7I(); } catch (_e) {}
   if (step === 'error') {
     console.error('[Arco ' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '') + '][export]', step, extra);
   } else if (window._arcoDebug) {
     console.info('[Arco ' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '') + '][export]', step, extra);
   }
+}
+
+function updateMp4ReadyDiagnosticsE7I() {
+  exportGenerationStarted = !!(arcoExportDiag && arcoExportDiag.lastExportStep && arcoExportDiag.lastExportStep !== 'idle');
+  exportGenerationCompleted = !!(arcoExportDiag && arcoExportDiag.exportSuccess === true);
+  exportSaveReady = !!(generatedUrl && window._lastVideoBlob);
+  previewDownloadButtonState = isRecording ? 'recording' : (exportSaveReady ? 'done' : 'idle');
+  previewDownloadButtonHasDoneClass = !!(btnGenerate && btnGenerate.classList.contains('done'));
+  previewDownloadButtonGreenAfterSuccess = !!(exportGenerationCompleted && exportSaveReady && previewDownloadButtonHasDoneClass);
+  previewDownloadButtonDoesNotResetBeforeSave = !!(!exportGenerationCompleted || !exportSaveReady || previewDownloadButtonHasDoneClass);
 }
 function arcoFramesHaveInvalidValues() {
   for (let i = 0; i < frameCount; i++) {
@@ -22240,6 +22251,11 @@ function getRenderStateAtTime(t) {
     state.moving = frameCount > 1 && !state.paused && !state.finish;
     state.fromFrame = frameNumberLabel(Math.min(seg, frameCount - 1));
     state.toFrame = frameNumberLabel(Math.min(seg + 1, frameCount - 1));
+    if (state.paused) {
+      const holdIdx = Math.min(seg + Math.round(localT), frameCount - 1);
+      state.fromFrame = frameNumberLabel(holdIdx);
+      state.toFrame = frameNumberLabel(holdIdx);
+    }
     if (!frames[Math.min(seg, frameCount - 1)]) throw new Error('missing-from-frame');
     if (state.moving && frameCount > 1 && !frames[Math.min(seg + 1, frameCount - 1)]) throw new Error('missing-to-frame');
     if (!isFiniteNum(localT) || localT < 0 || localT > 1) throw new Error('invalid-local-t');
@@ -22711,6 +22727,7 @@ function applySegTremorLayer(state, t) {
   if (!segTremorSettings.length) return state;
   ensureSegTremorSettings();
   const info = getSegAndLocalTAtTime(t);
+  if (info && info.isPause) return state;
   // Trecho de loop herda a config do último trecho normal (igual ao blur).
   const cfg = info.isLoopSeg
     ? (segTremorSettings[Math.max(0, frameCount - 2)] || null)
@@ -23028,7 +23045,7 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics, renderS
   const firstAssetForPreview = (typeof _getFirstImageAsset === 'function') ? _getFirstImageAsset() : null;
   const previewCanonicalImg1 = !!(typeof isPreviewing !== 'undefined' && isPreviewing &&
     firstAssetForPreview && firstAssetForPreview.e6CanonicalReplaced);
-  if (isMultiImageWorldActive() || previewCanonicalImg1) {
+  if (isMultiImageWorldActive() || isProjectWorldReady() || previewCanonicalImg1) {
     const ctxName = (typeof isRecording !== 'undefined' && isRecording) ? 'export'
                   : (typeof isPreviewing !== 'undefined' && isPreviewing) ? 'preview' : 'world';
     // v8z4b30ZA — pistas de frame/segmento para a auditoria de render (diagnóstico).
@@ -23245,6 +23262,7 @@ function debugPreviewClock(globalT) {
 async function startPreview() {
   hideStageFrameMenu();
   if (shouldBlockGlobalUIAction()) return;
+  resetDerivedRenderStateE7I('preview-start');
   // v8z4b23a: 1 frame é suficiente para preview (vídeo estático)
   previewAttempted = true;
   previewBlocked = false;
@@ -24031,6 +24049,7 @@ function showReadyOverlay() {
 async function startRecord() {
   if (shouldBlockGlobalUIAction()) return;
   if (isRecording) return;
+  resetDerivedRenderStateE7I('export-start');
   // v8z4b30F — fecha painéis/menus editoriais transitórios (Formato de
   // saída, Edição de Tempo, Movimento, Trajetória etc.) antes de configurar
   // o Preview/export, para que nenhum overlay fique sobreposto ao canvas.
@@ -24284,15 +24303,19 @@ async function startRecord() {
     const _expectedAssetsE7D = (typeof exportVisibleAssetsExpectedCount !== 'undefined') ? exportVisibleAssetsExpectedCount : 0;
     const _drawnAssetsE7D = (typeof exportAssetsDrawnCount !== 'undefined') ? exportAssetsDrawnCount : 0;
     const _renderAssetsE7D = (typeof exportRenderAssetCount !== 'undefined') ? exportRenderAssetCount : 0;
-    if (_expectedAssetsE7D > 0 && (_drawnAssetsE7D !== _expectedAssetsE7D || _renderAssetsE7D !== _expectedAssetsE7D || assetMissingDuringExportDetected)) {
-      arcoSetExportDiag('error', { lastExportError: 'export-partial-render-blocked', exportSuccess: false });
-      throw new Error('export-partial-render-blocked');
+    const _minDrawnE7I = (typeof exportMinAssetsDrawnPerFrame !== 'undefined') ? exportMinAssetsDrawnPerFrame : _drawnAssetsE7D;
+    blankFrameDetectedInExport = _expectedAssetsE7D > 0 && _minDrawnE7I <= 0;
+    intermediateFrameMissingInExportDetected = _expectedAssetsE7D > 0 && _minDrawnE7I < _expectedAssetsE7D;
+    if (_expectedAssetsE7D > 0 && (_drawnAssetsE7D !== _expectedAssetsE7D || _renderAssetsE7D !== _expectedAssetsE7D || _minDrawnE7I < _expectedAssetsE7D || assetMissingDuringExportDetected)) {
+      arcoSetExportDiag('error', { lastExportError: 'export-empty-asset-frame-blocked', exportSuccess: false });
+      throw new Error('export-empty-asset-frame-blocked');
     }
     arcoSetExportDiag('success', {
       lastExportError: null,
       exportSuccess: true,
       lastCleanupError: null,
-      cleanupSuccess: null
+      cleanupSuccess: null,
+      exportSaveReady: true
     });
 
     try {
@@ -24306,6 +24329,7 @@ async function startRecord() {
       btnGenerate.classList.add('done');
       setGenerateLabel(mb + ' MB');
       btnGenerate.disabled = false;
+      updateMp4ReadyDiagnosticsE7I();
       const ptl = document.getElementById('previewTimeline');
       if (ptl) ptl.classList.remove('show');
       const ptf = document.getElementById('previewTimelineFill');
@@ -24357,6 +24381,7 @@ async function startRecord() {
       try { hideGenOverlay(); } catch(e) {}
       try { btnGenerate.classList.remove('recording'); btnGenerate.classList.add('done'); btnGenerate.disabled = false; } catch(e) {}
       try { setGenerateLabel(mb + ' MB'); } catch(e) {}
+      try { updateMp4ReadyDiagnosticsE7I(); } catch(e) {}
     }
     showStatus('Pronto ' + mb + ' MB - toque para salvar');
   }
@@ -24627,6 +24652,7 @@ async function startRecord() {
 // RESET
 // ═══════════════════════════════════════
 function resetAll() {
+  resetDerivedRenderStateE7I('new-project');
   // v8z4b23a — Caso A: projeto novo (imagem sem JSON) → voltar ao F1 assistido.
   // Verificar primeiro se já estamos no modo F1 assistido.
   if (isInsertingFrame && _isFirstFrameInsertion) {
@@ -28997,6 +29023,7 @@ function applyProjectData(data) {
   previewBlockedReason = '';
   previewBlockedAssetIds = '';
   exportBlockedBecauseAssetNotReady = false;
+  resetDerivedRenderStateE7I('load-project');
   if (Array.isArray(assets)) {
     assets.forEach(a => {
       if (a && a.type === 'image') {
@@ -31169,6 +31196,13 @@ async function prepareRenderSessionSnapshot(kind) {
     renderSessionSnapshot = { context, epoch: _renderSessionEpoch, assets: visible, allReady };
     try { Object.freeze(renderSessionSnapshot.assets); Object.freeze(renderSessionSnapshot); } catch (_e) {}
     renderSessionActiveContext = (context === 'preview' || context === 'export') ? context : '';
+    if (context === 'preview') {
+      previewSnapshotAssetCount = visible.length;
+      previewSnapshotAssetIds = visible.length ? visible.map(v => v.id).join(',') : 'none';
+    } else if (context === 'export') {
+      exportSnapshotAssetCount = visible.length;
+      exportSnapshotAssetIds = visible.length ? visible.map(v => v.id).join(',') : 'none';
+    }
 
     renderSessionVisibleAssetCount = visible.length;
     renderSessionDecodedAssetCount = readyCount;
@@ -31243,6 +31277,7 @@ async function prepareRenderSessionSnapshot(kind) {
     }
     renderSessionPreparationCompleted = true;
     renderSessionPreparationWaitMs = Math.round(((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - _prepStartedAt);
+    refreshAssetSnapshotDiagnosticsE7I();
     // Estado do asset problemático conhecido antes desta sessão.
     knownProblemAssetPresenceCheckedAgainstAssetsArray = true;
     knownProblemAssetPresenceCheckedAgainstSnapshot = true;
@@ -32546,6 +32581,100 @@ let previewAssetsConsideredCount = 0;
 let previewAssetsDrawnCount = 0;
 let exportAssetsConsideredCount = 0;
 let exportAssetsDrawnCount = 0;
+let currentAssetsCount = 0;
+let currentAssetIds = '';
+let previewSnapshotAssetCount = 0;
+let previewSnapshotAssetIds = '';
+let exportSnapshotAssetCount = 0;
+let exportSnapshotAssetIds = '';
+let currentAssetsCountMatchesPreviewSnapshot = true;
+let currentAssetsCountMatchesExportSnapshot = true;
+let previewSnapshotHasOnlyCurrentAssetIds = true;
+let exportSnapshotHasOnlyCurrentAssetIds = true;
+let staleAssetIdsInPreviewSnapshot = 'none';
+let staleAssetIdsInExportSnapshot = 'none';
+let exportAssetsConsideredCountMatchesAssetsLength = true;
+let previewAssetsConsideredCountMatchesAssetsLength = true;
+let singleImageProjectUsesUnifiedRenderer = false;
+let singleImageProjectAvoidsLegacyFallback = true;
+let blankFrameDetectedInExport = false;
+let intermediateFrameMissingInExportDetected = false;
+let holdSegmentDetected = false;
+let holdSegmentIndex = -1;
+let holdSegmentFromFrameIndex = -1;
+let holdSegmentToFrameIndex = -1;
+let holdSegmentConstantCamera = true;
+let holdSegmentCameraDeltaX = 0;
+let holdSegmentCameraDeltaY = 0;
+let holdSegmentCameraDeltaW = 0;
+let holdSegmentCameraDeltaH = 0;
+let holdSegmentCameraDeltaRotation = 0;
+let previewExportHoldParityOk = true;
+let holdSegmentUnexpectedMotionDetected = false;
+let exportGenerationStarted = false;
+let exportGenerationCompleted = false;
+let exportSaveReady = false;
+let previewDownloadButtonState = 'idle';
+let previewDownloadButtonHasDoneClass = false;
+let previewDownloadButtonGreenAfterSuccess = false;
+let previewDownloadButtonDoesNotResetBeforeSave = true;
+let pendingFrameCreationActive = false;
+let pendingFrameIndex = -1;
+let pendingFrameRectMatchesPreview = true;
+let pendingFrameAlphaCutoutMatchesPendingFrame = true;
+let pendingFrameAlphaUsesCommittedFrameDetected = false;
+let pendingFrameAlphaSeparatedDetected = true;
+let pendingFrameCommitRealignsAlpha = true;
+
+function getCurrentImageAssetIdsE7I() {
+  return Array.isArray(assets) ? assets.filter(a => a && a.type === 'image').map(a => String(a.id || '')) : [];
+}
+function refreshAssetSnapshotDiagnosticsE7I() {
+  const ids = getCurrentImageAssetIdsE7I();
+  currentAssetsCount = ids.length;
+  currentAssetIds = ids.length ? ids.join(',') : 'none';
+  const snapIds = (snap) => (snap && Array.isArray(snap.assets)) ? snap.assets.map(a => String(a.id || '')) : [];
+  const pIds = (renderSessionSnapshot && renderSessionSnapshot.context === 'preview') ? snapIds(renderSessionSnapshot) : (previewSnapshotAssetIds && previewSnapshotAssetIds !== 'none' ? previewSnapshotAssetIds.split(',').filter(Boolean) : []);
+  const eIds = (renderSessionSnapshot && renderSessionSnapshot.context === 'export') ? snapIds(renderSessionSnapshot) : (exportSnapshotAssetIds && exportSnapshotAssetIds !== 'none' ? exportSnapshotAssetIds.split(',').filter(Boolean) : []);
+  if (renderSessionSnapshot && renderSessionSnapshot.context === 'preview') {
+    previewSnapshotAssetCount = pIds.length;
+    previewSnapshotAssetIds = pIds.length ? pIds.join(',') : 'none';
+  }
+  if (renderSessionSnapshot && renderSessionSnapshot.context === 'export') {
+    exportSnapshotAssetCount = eIds.length;
+    exportSnapshotAssetIds = eIds.length ? eIds.join(',') : 'none';
+  }
+  const currentSet = new Set(ids);
+  const staleP = pIds.filter(id => !currentSet.has(id));
+  const staleE = eIds.filter(id => !currentSet.has(id));
+  staleAssetIdsInPreviewSnapshot = staleP.length ? staleP.join(',') : 'none';
+  staleAssetIdsInExportSnapshot = staleE.length ? staleE.join(',') : 'none';
+  previewSnapshotHasOnlyCurrentAssetIds = staleP.length === 0;
+  exportSnapshotHasOnlyCurrentAssetIds = staleE.length === 0;
+  currentAssetsCountMatchesPreviewSnapshot = previewSnapshotAssetCount === currentAssetsCount;
+  currentAssetsCountMatchesExportSnapshot = exportSnapshotAssetCount === currentAssetsCount;
+  previewAssetsConsideredCountMatchesAssetsLength = previewAssetsConsideredCount === currentAssetsCount;
+  exportAssetsConsideredCountMatchesAssetsLength = exportAssetsConsideredCount === currentAssetsCount;
+  singleImageProjectUsesUnifiedRenderer = currentAssetsCount === 1 && (previewRenderMode === 'projectWorld' || exportRenderMode === 'projectWorld');
+  singleImageProjectAvoidsLegacyFallback = !(currentAssetsCount === 1 && exportFallbackToSingleImage);
+}
+function resetDerivedRenderStateE7I(reason) {
+  renderWorldLastAssetCount = 0;
+  previewRenderAssetCount = 0;
+  exportRenderAssetCount = 0;
+  previewAssetsConsideredCount = 0;
+  previewAssetsDrawnCount = 0;
+  exportAssetsConsideredCount = 0;
+  exportAssetsDrawnCount = 0;
+  try { renderSessionSnapshot = null; } catch (_e) {}
+  try { if (typeof invalidateProjectWorldComposite === 'function') invalidateProjectWorldComposite(reason || 'reset-derived-state'); else _worldCompositeDirty = true; } catch (_e) {}
+  try { renderTransform.preview = null; renderTransform.export = null; } catch (_e) {}
+  previewSnapshotAssetCount = 0; previewSnapshotAssetIds = 'none';
+  exportSnapshotAssetCount = 0; exportSnapshotAssetIds = 'none';
+  blankFrameDetectedInExport = false;
+  intermediateFrameMissingInExportDetected = false;
+  refreshAssetSnapshotDiagnosticsE7I();
+}
 
 // v8z4b30Z — diagnóstico: snapshot antes/depois de addImageAsset.
 let addImageChangedExistingAssets = false;
@@ -32822,6 +32951,67 @@ function validateCameraContinuity32E3() {
   return r;
 }
 
+function validateHoldSegmentsE7I() {
+  try {
+    holdSegmentDetected = false;
+    holdSegmentIndex = -1;
+    holdSegmentFromFrameIndex = -1;
+    holdSegmentToFrameIndex = -1;
+    holdSegmentConstantCamera = true;
+    holdSegmentCameraDeltaX = 0;
+    holdSegmentCameraDeltaY = 0;
+    holdSegmentCameraDeltaW = 0;
+    holdSegmentCameraDeltaH = 0;
+    holdSegmentCameraDeltaRotation = 0;
+    previewExportHoldParityOk = true;
+    holdSegmentUnexpectedMotionDetected = false;
+    if (frameCount < 1) return;
+    const fullDur = totalDurationFull();
+    if (!(fullDur > 0)) return;
+    ensureSegDurations();
+    const getFramePause = (i) => framePauses[i] ? (framePauses[i].duration || 0) : 0;
+    let accum = 0;
+    const normalSegs = Math.max(0, frameCount - 1);
+    for (let s = 0; s <= normalSegs; s++) {
+      const fpDur = getFramePause(s);
+      if (fpDur > 0) {
+        const frameIdx = Math.min(s, Math.max(0, frameCount - 1));
+        const ts = [0, 0.5, 1].map(v => clamp01((accum + fpDur * v) / fullDur));
+        const cams = ts.map(t => sampleCanonicalCameraAtT(t)).filter(Boolean);
+        if (cams.length === 3) {
+          holdSegmentDetected = true;
+          holdSegmentIndex = s;
+          holdSegmentFromFrameIndex = frameIdx;
+          holdSegmentToFrameIndex = frameIdx;
+          holdSegmentCameraDeltaX = Math.max(Math.abs(cams[1].cx - cams[0].cx), Math.abs(cams[2].cx - cams[0].cx));
+          holdSegmentCameraDeltaY = Math.max(Math.abs(cams[1].cy - cams[0].cy), Math.abs(cams[2].cy - cams[0].cy));
+          holdSegmentCameraDeltaW = Math.max(Math.abs(cams[1].sw - cams[0].sw), Math.abs(cams[2].sw - cams[0].sw));
+          holdSegmentCameraDeltaH = Math.max(Math.abs(cams[1].sh - cams[0].sh), Math.abs(cams[2].sh - cams[0].sh));
+          holdSegmentCameraDeltaRotation = Math.max(Math.abs(cams[1].rot - cams[0].rot), Math.abs(cams[2].rot - cams[0].rot));
+          holdSegmentConstantCamera = holdSegmentCameraDeltaX <= 1e-6 && holdSegmentCameraDeltaY <= 1e-6 &&
+            holdSegmentCameraDeltaW <= 1e-6 && holdSegmentCameraDeltaH <= 1e-6 && holdSegmentCameraDeltaRotation <= 1e-6;
+          holdSegmentUnexpectedMotionDetected = !holdSegmentConstantCamera;
+          previewExportHoldParityOk = holdSegmentConstantCamera;
+          break;
+        }
+        accum += fpDur;
+      }
+      if (s < normalSegs) {
+        accum += (segDurations[s] != null ? segDurations[s] : (totalDuration() / Math.max(1, normalSegs)));
+        if (easeMode === 'pause' && pauseDuration > 0 && s < normalSegs - 1) {
+          holdSegmentDetected = true;
+          holdSegmentIndex = s;
+          holdSegmentFromFrameIndex = s + 1;
+          holdSegmentToFrameIndex = s + 1;
+          holdSegmentConstantCamera = true;
+          accum += pauseDuration;
+          break;
+        }
+      }
+    }
+  } catch (_e) {}
+}
+
 // Orquestra o hotfix antes de iniciar Preview ou Export: estabiliza caches,
 // fixa o sampler id do caminho e roda os validadores ativos.
 function runPreviewExportJumpDiagnostics(kind) {
@@ -32836,6 +33026,7 @@ function runPreviewExportJumpDiagnostics(kind) {
     }
     _cameraParity32E3 = validatePreviewExportCameraParity32E3();
     _cameraContinuity32E3 = validateCameraContinuity32E3();
+    validateHoldSegmentsE7I();
     const visualJump = !!(_cameraContinuity32E3 && _cameraContinuity32E3.jumpDetected);
     if (kind === 'preview') _previewJumpDetectedVisual32E3 = visualJump;
     else if (kind === 'export') _exportJumpDetectedVisual32E3 = visualJump;
@@ -33166,6 +33357,10 @@ function recordCameraTrace30ZC(diagnostics, t, frameIdx, renderMs) {
     tr.activeSegmentIndex = seg;
     tr.fromFrameIndex = Math.min(seg, Math.max(0, fc - 1));
     tr.toFrameIndex = Math.min(seg + 1, Math.max(0, fc - 1));
+    if (rs.paused) {
+      tr.fromFrameIndex = Math.min(seg + Math.round(Number(rs.localT) || 0), Math.max(0, fc - 1));
+      tr.toFrameIndex = tr.fromFrameIndex;
+    }
     tr.localT = rs.localT;
     tr.cameraX = cam.cx; tr.cameraY = cam.cy;
     tr.cameraW = cam.sw; tr.cameraH = cam.sh;
@@ -33479,6 +33674,13 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context) {
   const out = [];
   const snap = (context === 'preview' || context === 'export') ? renderSessionSnapshot : null;
   if (snap && snap.context === context && Array.isArray(snap.assets)) {
+    const currentIdsE7I = new Set(getCurrentImageAssetIdsE7I());
+    const staleSnapAssetsE7I = snap.assets.filter(sv => sv && !currentIdsE7I.has(String(sv.id || '')));
+    if (staleSnapAssetsE7I.length) {
+      if (context === 'preview') staleAssetIdsInPreviewSnapshot = staleSnapAssetsE7I.map(sv => String(sv.id || '')).join(',');
+      if (context === 'export') staleAssetIdsInExportSnapshot = staleSnapAssetsE7I.map(sv => String(sv.id || '')).join(',');
+      throw new Error('render-session-stale-asset-id');
+    }
     if (context === 'preview') {
       img1PreviewUsesRenderSessionSnapshot = true;
       img1PreviewSnapshotRebuiltAfterReplace = true;
@@ -33720,6 +33922,9 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
       exportUsedMainImageOnlyPath = false;
       exportAssetsConsideredCount = count;
       exportAssetsDrawnCount = drawnCount;
+      exportUsedWorldRenderer = true;
+      exportFallbackToSingleImage = false;
+      exportFallbackReason = '';
     }
     // v8z4b32E6 — acumulação por frame da sessão de render (Preview/Export).
     try {
@@ -33727,6 +33932,7 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
         _accumulateRenderSessionFrameE6(context, renderAssets, drawnCount);
       }
     } catch (_e) {}
+    try { refreshAssetSnapshotDiagnosticsE7I(); } catch (_e) {}
     lastWorldRenderError = '';
     return count > 0;
   } catch (e) {
@@ -35565,6 +35771,51 @@ function buildDiagnosticsText() {
   push('previewAssetsDrawnCount', _diagFmtNum((typeof previewAssetsDrawnCount !== 'undefined') ? previewAssetsDrawnCount : 0));
   push('exportAssetsConsideredCount', _diagFmtNum((typeof exportAssetsConsideredCount !== 'undefined') ? exportAssetsConsideredCount : 0));
   push('exportAssetsDrawnCount', _diagFmtNum((typeof exportAssetsDrawnCount !== 'undefined') ? exportAssetsDrawnCount : 0));
+  try { refreshAssetSnapshotDiagnosticsE7I(); updateMp4ReadyDiagnosticsE7I(); } catch (_e) {}
+  push('currentAssetsCount', _diagFmtNum(currentAssetsCount));
+  push('currentAssetIds', currentAssetIds || 'none');
+  push('previewSnapshotAssetCount', _diagFmtNum(previewSnapshotAssetCount));
+  push('previewSnapshotAssetIds', previewSnapshotAssetIds || 'none');
+  push('exportSnapshotAssetCount', _diagFmtNum(exportSnapshotAssetCount));
+  push('exportSnapshotAssetIds', exportSnapshotAssetIds || 'none');
+  push('currentAssetsCountMatchesPreviewSnapshot', String(currentAssetsCountMatchesPreviewSnapshot));
+  push('currentAssetsCountMatchesExportSnapshot', String(currentAssetsCountMatchesExportSnapshot));
+  push('previewSnapshotHasOnlyCurrentAssetIds', String(previewSnapshotHasOnlyCurrentAssetIds));
+  push('exportSnapshotHasOnlyCurrentAssetIds', String(exportSnapshotHasOnlyCurrentAssetIds));
+  push('staleAssetIdsInPreviewSnapshot', staleAssetIdsInPreviewSnapshot || 'none');
+  push('staleAssetIdsInExportSnapshot', staleAssetIdsInExportSnapshot || 'none');
+  push('exportAssetsConsideredCountMatchesAssetsLength', String(exportAssetsConsideredCountMatchesAssetsLength));
+  push('previewAssetsConsideredCountMatchesAssetsLength', String(previewAssetsConsideredCountMatchesAssetsLength));
+  push('singleImageProjectUsesUnifiedRenderer', String(singleImageProjectUsesUnifiedRenderer));
+  push('singleImageProjectAvoidsLegacyFallback', String(singleImageProjectAvoidsLegacyFallback));
+  push('blankFrameDetectedInExport', String(blankFrameDetectedInExport));
+  push('intermediateFrameMissingInExportDetected', String(intermediateFrameMissingInExportDetected));
+  push('holdSegmentDetected', String(holdSegmentDetected));
+  push('holdSegmentIndex', _diagFmtNum(holdSegmentIndex));
+  push('holdSegmentFromFrameIndex', _diagFmtNum(holdSegmentFromFrameIndex));
+  push('holdSegmentToFrameIndex', _diagFmtNum(holdSegmentToFrameIndex));
+  push('holdSegmentConstantCamera', String(holdSegmentConstantCamera));
+  push('holdSegmentCameraDeltaX', _diagFmtNum(holdSegmentCameraDeltaX));
+  push('holdSegmentCameraDeltaY', _diagFmtNum(holdSegmentCameraDeltaY));
+  push('holdSegmentCameraDeltaW', _diagFmtNum(holdSegmentCameraDeltaW));
+  push('holdSegmentCameraDeltaH', _diagFmtNum(holdSegmentCameraDeltaH));
+  push('holdSegmentCameraDeltaRotation', _diagFmtNum(holdSegmentCameraDeltaRotation));
+  push('previewExportHoldParityOk', String(previewExportHoldParityOk));
+  push('holdSegmentUnexpectedMotionDetected', String(holdSegmentUnexpectedMotionDetected));
+  push('exportGenerationStarted', String(exportGenerationStarted));
+  push('exportGenerationCompleted', String(exportGenerationCompleted));
+  push('exportSaveReady', String(exportSaveReady));
+  push('previewDownloadButtonState', previewDownloadButtonState || 'idle');
+  push('previewDownloadButtonHasDoneClass', String(previewDownloadButtonHasDoneClass));
+  push('previewDownloadButtonGreenAfterSuccess', String(previewDownloadButtonGreenAfterSuccess));
+  push('previewDownloadButtonDoesNotResetBeforeSave', String(previewDownloadButtonDoesNotResetBeforeSave));
+  push('pendingFrameCreationActive', String(pendingFrameCreationActive));
+  push('pendingFrameIndex', _diagFmtNum(pendingFrameIndex));
+  push('pendingFrameRectMatchesPreview', String(pendingFrameRectMatchesPreview));
+  push('pendingFrameAlphaCutoutMatchesPendingFrame', String(pendingFrameAlphaCutoutMatchesPendingFrame));
+  push('pendingFrameAlphaUsesCommittedFrameDetected', String(pendingFrameAlphaUsesCommittedFrameDetected));
+  push('pendingFrameAlphaSeparatedDetected', String(pendingFrameAlphaSeparatedDetected));
+  push('pendingFrameCommitRealignsAlpha', String(pendingFrameCommitRealignsAlpha));
   L.push('');
 
   // v8z4b30Z — diagnóstico addImageAsset: snapshot antes/depois
