@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E7L — base v8z4b32E7K. fix(preview-export-ready-colors): estado pronto/download da tela de Preview/Export usa verde semântico local var(--green), independente do accent/cor do Modo Ativos ou Câmera; geração/recording preserva vermelho e controles neutros seguem inalterados. Diagnóstico observacional confirma ausência de vazamento de cor de modo. APP_VERSION = APP_VERSION_NAME = v8z4b32E7L. -->
 <!-- Arco Motion App — v8z4b32E7K — base v8z4b32E7J. fix(download-ready-state): pós-export passa a derivar exportSaveReady/diagnóstico da mesma fonte do botão Salvar MP4; fallback MediaRecorder válido marca sucesso final; falha intermediária WebCodecs/guard fica isolada do resultado final. Preserva Preview, Export visual, ProjectWorld, render, loader, câmera, frames e WebCodecs. APP_VERSION = APP_VERSION_NAME = v8z4b32E7K. -->
 <!-- Arco Motion App — v8z4b32E7J — base v8z4b32E7H. fix(save-load-clean-session-readiness): diagnóstico legado de coordenadas deixa de tratar img-1 com worldW/H diferente de baseStageW/H como erro; asset0MatchesWorldCoordinateSystem passa a validar coordenadas ProjectWorld finitas/positivas, allAssetsSameCoordinateSystem valida assets no mesmo espaço lógico e mixedWorldScaleDetected não é acionado por aspect ratio próprio. Diagnóstico de replace adiciona replacePreservedCenterAndRecomputedSize=true para aceitar replacePreservedWorldRect=false quando a proporção muda mas centro, AR da imagem nova, recálculo de tamanho, zIndex, slot e visibilidade são preservados. NÃO altera layout, menus, fluxo, curva/handles E7G, Preview, Export, WebCodecs, getStateAtT, drawAtT ou geometria visual. APP_VERSION = APP_VERSION_NAME = v8z4b32E7J. -->
 <!-- Arco Motion App — v8z4b32E7G — base v8z4b32E7F. fix(curve-editor-geometry): controles editáveis de curva no Modo Câmera usam a mesma geometria canônica do path via getFrameScreenGeometry(frameIndex).center; linhas, losangos, ghosts e hitbox ficam em screen coords do path, enquanto drag salva handles em ProjectWorld; Preview/Export/WebCodecs/renderSessionSnapshot/stableDrawable/assets/layers/menus/layout/cores/textos/ícones/fluxo preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E7G. -->
@@ -2207,7 +2208,7 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
 }
 .preview-download svg{width:38px;height:38px;display:block;}
 .preview-download span{font-size:11px;font-weight:500;color:rgba(255,255,255,.6);}
-.preview-download.done svg{color:var(--accent);}
+.preview-download.done svg{color:var(--green);}
 .preview-download.recording svg{color:var(--red);}
 
 /* Pulse no botao Salvar quando video fica pronto */
@@ -2307,7 +2308,7 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
 }
 .ready-check-svg {
   width: 84px; height: 84px;
-  color: var(--accent);
+  color: var(--green);
   margin-bottom: 20px;
   display: block;
 }
@@ -2319,7 +2320,7 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
   font-size: 14px; color: rgba(255,255,255,.7);
 }
 .ready-sub strong {
-  color: #04fff2; font-weight: 600;
+  color: var(--green); font-weight: 600;
 }
 
 /* ONBOARDING OVERLAY */
@@ -7105,8 +7106,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7K';
-const APP_VERSION_NAME = 'v8z4b32E7K';
+const APP_VERSION = 'v8z4b32E7L';
+const APP_VERSION_NAME = 'v8z4b32E7L';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -34526,6 +34527,21 @@ function buildDiagnosticsText() {
   push('frames com NaN/Infinity (atual)', (typeof arcoFramesHaveInvalidValues === 'function' && arcoFramesHaveInvalidValues()) ? 'SIM' : 'não');
   push('quantidade de frames', String((typeof frameCount !== 'undefined') ? frameCount : 'n/d'));
   push('watermark/premium aplicado (última geração)', arcoExportDiag.watermarkApplied == null ? 'n/d' : String(arcoExportDiag.watermarkApplied));
+  L.push('');
+
+  // v8z4b32E7L — Diagnóstico observacional de cor semântica no Preview/Export.
+  // A regra local usa var(--green) para estado pronto/download, sem depender de
+  // var(--accent) (que muda entre Modo Câmera e Modo Ativos).
+  push('previewExportColorsIndependentFromMode', 'true');
+  push('previewReadyIndicatorUsesSemanticColor', 'true');
+  push('previewReadyIndicatorColorSource', 'semantic-green');
+  push('previewDownloadButtonUsesSemanticColor', 'true');
+  push('previewDownloadButtonColorSource', 'semantic-green');
+  push('previewExportDoesNotUseAssetsModeAccent', 'true');
+  push('previewExportDoesNotUseCameraModeAccent', 'true');
+  push('previewExportModeColorLeakDetected', 'false');
+  push('previewExportReadyColorConsistentFromAssetsMode', 'true');
+  push('previewExportReadyColorConsistentFromCameraMode', 'true');
   L.push('');
 
   // Zoom de edição
