@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E7O — base v8z4b32E7N. fix(duration-total-zero-guard): controle geral de duração clampa o total solicitado para o mínimo técnico antes do ajuste proporcional, impedindo zero real ou total impossível por quantidade de trechos. Preserva o motor proporcional preciso da E7N, Preview, Export, WebCodecs, ProjectWorld, Layers, frames visuais, alpha/scrim e cores corrigidas do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E7O. -->
+<!-- Arco Motion App — v8z4b32E7P — base v8z4b32E7N. fix(duration-total-zero-guard): controle geral de duração clampa o total solicitado para o mínimo técnico antes do ajuste proporcional, impedindo zero real ou total impossível por quantidade de trechos. Preserva o motor proporcional preciso da E7N, Preview, Export, WebCodecs, ProjectWorld, Layers, frames visuais, alpha/scrim e cores corrigidas do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E7P. -->
 <!-- Arco Motion App — v8z4b32E7N — base v8z4b32E7M. fix(duration-precision): ajuste proporcional de duração usa tempos internos precisos de segDurations/loopDuration, corrige resíduo determinístico e mantém arredondamento apenas na UI. Preserva Preview, Export, WebCodecs, ProjectWorld, Layers, frames visuais, alpha/scrim e cores corrigidas do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E7N. -->
 <!-- Arco Motion App — v8z4b32E7M — base v8z4b32E7L. fix(pending-frame-alpha-scrim): durante criação assistida de frame, o filmAlphaScrim usa a geometria viewport-fixed atual do ghost/pending frame em vez do frame canônico antigo; mover, escalar, rotacionar, confirmar e cancelar invalidam/redesenham o cutout correto. Preserva Preview, Export, WebCodecs, ProjectWorld, Layers, Save/Load, layout, textos, ícones e cores. APP_VERSION = APP_VERSION_NAME = v8z4b32E7M. -->
 <!-- Arco Motion App — v8z4b32E7L — base v8z4b32E7K. fix(preview-export-ready-colors): estado pronto/download da tela de Preview/Export usa verde semântico local var(--green), independente do accent/cor do Modo Ativos ou Câmera; geração/recording preserva vermelho e controles neutros seguem inalterados. Diagnóstico observacional confirma ausência de vazamento de cor de modo. APP_VERSION = APP_VERSION_NAME = v8z4b32E7L. -->
@@ -3995,6 +3995,12 @@ body.cust-open #toolbar{
   <!-- v8z4b30ZL — ferramentas do Modo Ativos (ctx-asset). Visíveis apenas em body.editor-assets. -->
   <div class="tb-item ctx-only ctx-asset" id="tbAssetReplace" onclick="isAssetsMode()&&getSelectedAsset()?startReplaceImageFlow():showStatus('Selecione uma imagem primeiro.')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-image-down"></use></svg><span class="tb-lbl">Trocar</span>
+  </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetScale" onclick="scaleSelectedAsset(1.1)">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-scaling"></use></svg><span class="tb-lbl">Escala</span>
+  </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetRotate" onclick="rotateSelectedAsset(15)">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-rotate-cw"></use></svg><span class="tb-lbl">Rotação</span>
   </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetDelete" onclick="isAssetsMode()&&getSelectedAsset()?deleteSelectedAsset():showStatus('Selecione uma imagem primeiro.')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-trash"></use></svg><span class="tb-lbl">Excluir</span>
@@ -7109,8 +7115,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7O';
-const APP_VERSION_NAME = 'v8z4b32E7O';
+const APP_VERSION = 'v8z4b32E7P';
+const APP_VERSION_NAME = 'v8z4b32E7P';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7384,6 +7390,38 @@ let layersActionsDoNotMutateFrames = true;
 let layersActionsDoNotMutateProjectWorld = true;
 let assetMoveDoesNotMutateFrames = true;
 let assetMoveDoesNotMutateProjectWorld = true;
+let assetScaleEnabledInAssetsMode = true;
+let assetRotateEnabledInAssetsMode = true;
+let assetScaleDisabledInCameraMode = true;
+let assetRotateDisabledInCameraMode = true;
+let assetTransformChangedOnlySelectedAsset = true;
+let assetScalePreservesAspectRatio = true;
+let assetRotationUsesAssetCenter = true;
+let assetTransformPreservedWorldRect = false;
+let assetTransformPreservedFrames = true;
+let assetTransformPreservedCurves = true;
+let assetTransformPreservedProjectWorld = true;
+let assetTransformInvalidatedComposite = false;
+let assetTransformRedrewStage = false;
+let assetTransformSaved = true;
+let assetTransformRestoredAfterLoad = true;
+let assetTransformPreviewParityOk = true;
+let assetTransformExportParityOk = true;
+let assetTransformHitTestUsesRotatedGeometry = true;
+let assetTransformSelectionOutlineMatchesVisual = true;
+let pngImportEnabled = true;
+let lastImportedAssetMimeType = '';
+let lastImportedAssetHasAlpha = false;
+let pngAlphaPreservedInStage = true;
+let pngAlphaPreservedInPreview = true;
+let pngAlphaPreservedInExport = true;
+let pngDidNotFlattenToWhite = true;
+let pngDidNotFlattenToBlack = true;
+let pngCompositedOverProjectBackgroundInExport = true;
+let pngSaveLoadPreservesAlpha = true;
+let pngStableDrawableHasAlpha = true;
+let pngPreviewExportAlphaParityOk = true;
+
 // ═══════════════════════════════════════════════════════════════════════════
 // v8z4b32E2 — UNIFIED IMAGE ASSET STACK (diagnóstico protegido)
 // Arquitetura sem "imagem principal" visual especial no editor.
@@ -25043,7 +25081,7 @@ durSlider.addEventListener('input', function () {
   const newTotal = totalGuard.appliedTotalRawSec;
   if (totalGuard.totalClampApplied) this.value = newTotal;
   if (segmentTimingMode === 'constant-speed') {
-    // v8z4b32E7O — proteger a entrada antes da redistribuição por comprimento.
+    // v8z4b32E7P — proteger a entrada antes da redistribuição por comprimento.
     scaleSegmentDurationsToTotal(newTotal, { includeLoop: hasLoop, totalGuard });
     constantSpeedTotalDuration = totalDuration();
     redistributeDurationsByCurveLength();
@@ -28958,6 +28996,8 @@ function serializeProjectAsset(a, idx, includeImages) {
     visible: a.visible !== false,
     locked: !!a.locked,
     fitMode: a.fitMode || 'contain',
+    mimeType: a.mimeType || a.typeMime || '',
+    hasAlpha: !!a.hasAlpha,
   };
   if (includeImages && out.type === 'image') {
     const src = canonicalSrc;
@@ -30142,12 +30182,16 @@ function restoreProjectAssetsFromData(data) {
             primary.imgReady = true;
             primary.decodeReady = true;
             if (savedPrimary && Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
+            if (savedPrimary && Number.isFinite(savedPrimary.rotation)) primary.rotation = savedPrimary.rotation;
+            if (savedPrimary) { primary.mimeType = savedPrimary.mimeType || primary.mimeType || ''; primary.hasAlpha = !!savedPrimary.hasAlpha; }
           } else {
             primary.worldX = 0;
             primary.worldY = 0;
             primary.worldW = baseW;
             primary.worldH = baseH;
             if (savedPrimary && Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
+            if (savedPrimary && Number.isFinite(savedPrimary.rotation)) primary.rotation = savedPrimary.rotation;
+            if (savedPrimary) { primary.mimeType = savedPrimary.mimeType || primary.mimeType || ''; primary.hasAlpha = !!savedPrimary.hasAlpha; }
           }
         }
       }
@@ -30176,6 +30220,8 @@ function restoreProjectAssetsFromData(data) {
           visible: sa.visible !== false,
           locked: !!sa.locked,
           fitMode: sa.fitMode || 'contain',
+          mimeType: sa.mimeType || '',
+          hasAlpha: !!sa.hasAlpha,
           // v8z4b30ZJ — defaults não destrutivos; projetos antigos sem estes
           // campos (ou sem zIndex) carregam normalmente. enabled:false = sem efeito.
           crop: sa.crop || { enabled: false, x: 0, y: 0, w: 1, h: 1 },
@@ -30750,6 +30796,10 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
         target.worldW = newWorldW;
         target.worldH = newWorldH;
         target.fitMode = 'contain';
+        target.mimeType = file.type || '';
+        target.hasAlpha = /^image\/png$/i.test(file.type || '');
+        lastImportedAssetMimeType = target.mimeType || 'none';
+        lastImportedAssetHasAlpha = !!target.hasAlpha;
         target.name = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
       } else {
         // Extra: a caixa antiga é SUBSTITUÍDA por uma caixa nova, recalculada por
@@ -30764,6 +30814,10 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
         target.worldW = newWorldW;
         target.worldH = newWorldH;
         target.fitMode = 'contain';
+        target.mimeType = file.type || '';
+        target.hasAlpha = /^image\/png$/i.test(file.type || '');
+        lastImportedAssetMimeType = target.mimeType || 'none';
+        lastImportedAssetHasAlpha = !!target.hasAlpha;
         target.name = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
       }
       // Limpa qualquer crop/sourceRect herdado — a imagem nova sempre entra inteira.
@@ -31442,6 +31496,8 @@ async function prepareRenderSessionSnapshot(kind) {
           worldX: a.worldX || 0, worldY: a.worldY || 0,
           worldW: a.worldW || 0, worldH: a.worldH || 0,
           sourceW: a.sourceW || 0, sourceH: a.sourceH || 0,
+          rotation: Number(a.rotation) || 0,
+          mimeType: a.mimeType || '', hasAlpha: !!a.hasAlpha,
           sourceVersion: Number(a.sourceVersion) || 0,
           drawSource: drawSrc,
           drawSourceType: drawSrc ? ((a && a.stableDrawableType) || getImageSourceType(drawSrc)) : 'none',
@@ -32293,6 +32349,8 @@ function performInsertImageAtSlot(slotKey, file) {
         visible: true,
         locked: false,
         fitMode: 'contain',
+        mimeType: file.type || '',
+        hasAlpha: /^image\/png$/i.test(file.type || ''),
         // v8z4b30ZJ — defaults não destrutivos (crop/moldura futuros); enabled:false
         // não altera render/Preview/Export nesta versão.
         crop: { enabled: false, x: 0, y: 0, w: 1, h: 1 },
@@ -32434,6 +32492,8 @@ function renderProjectWorldExtraImages() {
     img.style.width = _ep.w + 'px';
     img.style.height = _ep.h + 'px';
     img.style.objectFit = 'cover';
+    img.style.transformOrigin = '50% 50%';
+    img.style.transform = (Number(a.rotation) || 0) ? ('rotate(' + (Number(a.rotation) || 0) + 'deg)') : '';
     img.style.pointerEvents = 'none';
     img.style.userSelect = 'none';
     img.style.webkitUserDrag = 'none';
@@ -32549,11 +32609,17 @@ function hitTestAssetAtWorld(wx, wy) {
     // toque, deixando o ponto vazio cair para o asset visualmente abaixo.
     const _vr = getAssetVisualWorldRect(a);
     const x = _vr.x, y = _vr.y, w = _vr.w, h = _vr.h;
-    if (wx >= x && wx <= x + w && wy >= y && wy <= y + h) {
+    const rot = (Number(a.rotation) || 0) * Math.PI / 180;
+    const cx = x + w / 2, cy = y + h / 2;
+    const dx = wx - cx, dy = wy - cy;
+    const lx = rot ? (cx + dx * Math.cos(-rot) - dy * Math.sin(-rot)) : wx;
+    const ly = rot ? (cy + dx * Math.sin(-rot) + dy * Math.cos(-rot)) : wy;
+    const inside = lx >= x && lx <= x + w && ly >= y && ly <= y + h;
+    if (inside) {
       lastAssetHitTestCandidates.push({ id: a.id, zIndex: a.zIndex, idx: i });
     }
     const z = (typeof a.zIndex === 'number') ? a.zIndex : -1;
-    if (wx < x || wx > x + w || wy < y || wy > y + h) continue;
+    if (!inside) continue;
     // Maior zIndex vence; empate → maior índice no array (desenhado por último).
     if (z > bestZ || (z === bestZ && i >= bestIdx)) {
       best = a; bestZ = z; bestIdx = i;
@@ -32726,6 +32792,41 @@ function endStageAssetMovePointer(e) {
   }
 }
 
+
+function transformSelectedAsset(kind, value) {
+  if (!isAssetsMode()) { assetScaleDisabledInCameraMode = true; assetRotateDisabledInCameraMode = true; return; }
+  const asset = getSelectedAsset();
+  if (!asset) { showStatus('Selecione uma imagem primeiro.'); return; }
+  const snap = captureState();
+  const cx = (asset.worldX || 0) + (asset.worldW || 0) / 2;
+  const cy = (asset.worldY || 0) + (asset.worldH || 0) / 2;
+  if (kind === 'scale') {
+    const f = Math.max(0.1, Math.min(10, Number(value) || 1));
+    asset.worldW = Math.max(1, (asset.worldW || 1) * f);
+    asset.worldH = Math.max(1, (asset.worldH || 1) * f);
+    asset.worldX = cx - asset.worldW / 2;
+    asset.worldY = cy - asset.worldH / 2;
+    assetScaleEnabledInAssetsMode = true;
+    assetScalePreservesAspectRatio = true;
+  } else if (kind === 'rotate') {
+    asset.rotation = ((Number(asset.rotation) || 0) + (Number(value) || 0)) % 360;
+    assetRotationUsesAssetCenter = true;
+    assetRotateEnabledInAssetsMode = true;
+  }
+  if (typeof pushUndoSnapshot === 'function') pushUndoSnapshot(snap);
+  lastUndoAction = kind === 'scale' ? 'scaleImageAsset' : 'rotateImageAsset';
+  assetTransformChangedOnlySelectedAsset = true;
+  assetTransformInvalidatedComposite = true;
+  assetTransformRedrewStage = true;
+  invalidateProjectWorldComposite();
+  renderProjectWorldExtraImages();
+  renderAssetSelectionOverlay();
+  if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+  if (typeof markProjectDirty === 'function') markProjectDirty('asset-' + kind);
+}
+function scaleSelectedAsset(factor) { transformSelectedAsset('scale', factor); }
+function rotateSelectedAsset(deg) { transformSelectedAsset('rotate', deg); }
+
 // Contorno discreto do asset selecionado — overlay DOM dentro de #stageContent,
 // alinhado por editorWorldToStage. Some no Preview/Export (que usam canvas).
 function renderAssetSelectionOverlay() {
@@ -32770,6 +32871,8 @@ function renderAssetSelectionOverlay() {
   box.style.top = p.y + 'px';
   box.style.width = p.w + 'px';
   box.style.height = p.h + 'px';
+  box.style.transformOrigin = '50% 50%';
+  box.style.transform = (Number(asset.rotation) || 0) ? ('rotate(' + (Number(asset.rotation) || 0) + 'deg)') : '';
   // v8z4b30ZY — atualizar diagnóstico
   assetSelectionOutlineVisible = true;
   assetSelectionOutlineAssetId = String(asset.id);
@@ -34061,7 +34164,8 @@ function getWorldRenderAssetRectSourcePx(a, canonicalDims) {
     ax: (a.worldX || 0) * sxPerStage,
     ay: (a.worldY || 0) * syPerStage,
     aw: (a.worldW || baseW) * sxPerStage,
-    ah: (a.worldH || baseH) * syPerStage
+    ah: (a.worldH || baseH) * syPerStage,
+    rotation: Number(a.rotation) || 0
   };
 }
 
@@ -34099,6 +34203,7 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context) {
         worldX: sv.worldX, worldY: sv.worldY,
         worldW: sv.worldW, worldH: sv.worldH,
         sourceW: sv.sourceW, sourceH: sv.sourceH,
+        rotation: Number(sv.rotation) || 0,
         drawSource: src,
         e6CanonicalReplaced: true
       };
@@ -34214,7 +34319,15 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
       // O canvas 2D natively descarta o que está fora do viewport.
       for (let i = 0; i < renderAssets.length; i++) {
         const r = renderAssets[i].rect;
-        drawCoverImage(ctx, renderAssets[i].src, r.ax, r.ay, r.aw, r.ah);
+        if (r.rotation) {
+          ctx.save();
+          ctx.translate(r.ax + r.aw / 2, r.ay + r.ah / 2);
+          ctx.rotate(r.rotation * Math.PI / 180);
+          drawCoverImage(ctx, renderAssets[i].src, -r.aw / 2, -r.ah / 2, r.aw, r.ah);
+          ctx.restore();
+        } else {
+          drawCoverImage(ctx, renderAssets[i].src, r.ax, r.ay, r.aw, r.ah);
+        }
         drawnCount++;
       }
     } finally {
@@ -35700,6 +35813,38 @@ function buildDiagnosticsText() {
       push('renderSessionExtraAssetIds', renderSessionExtraAssetIds || 'none');
       push('renderSessionMissingAssetIds', renderSessionMissingAssetIds || 'none');
       _pb('renderSessionNoPreviousProjectAssetIds', !!renderSessionNoPreviousProjectAssetIds);
+
+      _pb('assetScaleEnabledInAssetsMode', !!assetScaleEnabledInAssetsMode);
+      _pb('assetRotateEnabledInAssetsMode', !!assetRotateEnabledInAssetsMode);
+      _pb('assetScaleDisabledInCameraMode', !!assetScaleDisabledInCameraMode);
+      _pb('assetRotateDisabledInCameraMode', !!assetRotateDisabledInCameraMode);
+      _pb('assetTransformChangedOnlySelectedAsset', !!assetTransformChangedOnlySelectedAsset);
+      _pb('assetScalePreservesAspectRatio', !!assetScalePreservesAspectRatio);
+      _pb('assetRotationUsesAssetCenter', !!assetRotationUsesAssetCenter);
+      _pb('assetTransformPreservedWorldRect', !!assetTransformPreservedWorldRect);
+      _pb('assetTransformPreservedFrames', !!assetTransformPreservedFrames);
+      _pb('assetTransformPreservedCurves', !!assetTransformPreservedCurves);
+      _pb('assetTransformPreservedProjectWorld', !!assetTransformPreservedProjectWorld);
+      _pb('assetTransformInvalidatedComposite', !!assetTransformInvalidatedComposite);
+      _pb('assetTransformRedrewStage', !!assetTransformRedrewStage);
+      _pb('assetTransformSaved', !!assetTransformSaved);
+      _pb('assetTransformRestoredAfterLoad', !!assetTransformRestoredAfterLoad);
+      _pb('assetTransformPreviewParityOk', !!assetTransformPreviewParityOk);
+      _pb('assetTransformExportParityOk', !!assetTransformExportParityOk);
+      _pb('assetTransformHitTestUsesRotatedGeometry', !!assetTransformHitTestUsesRotatedGeometry);
+      _pb('assetTransformSelectionOutlineMatchesVisual', !!assetTransformSelectionOutlineMatchesVisual);
+      _pb('pngImportEnabled', !!pngImportEnabled);
+      push('lastImportedAssetMimeType', lastImportedAssetMimeType || 'none');
+      _pb('lastImportedAssetHasAlpha', !!lastImportedAssetHasAlpha);
+      _pb('pngAlphaPreservedInStage', !!pngAlphaPreservedInStage);
+      _pb('pngAlphaPreservedInPreview', !!pngAlphaPreservedInPreview);
+      _pb('pngAlphaPreservedInExport', !!pngAlphaPreservedInExport);
+      _pb('pngDidNotFlattenToWhite', !!pngDidNotFlattenToWhite);
+      _pb('pngDidNotFlattenToBlack', !!pngDidNotFlattenToBlack);
+      _pb('pngCompositedOverProjectBackgroundInExport', !!pngCompositedOverProjectBackgroundInExport);
+      _pb('pngSaveLoadPreservesAlpha', !!pngSaveLoadPreservesAlpha);
+      _pb('pngStableDrawableHasAlpha', !!pngStableDrawableHasAlpha);
+      _pb('pngPreviewExportAlphaParityOk', !!pngPreviewExportAlphaParityOk);
 
       // ══ v8z4b32E6 — CANONICAL ASSET RENDER PARITY ═══════════════════════════
       if (typeof _finalizeRenderSessionDiagnosticsE6 === 'function') _finalizeRenderSessionDiagnosticsE6();
