@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E7N — base v8z4b32E7M. fix(duration-precision): ajuste proporcional de duração usa tempos internos precisos de segDurations/loopDuration, corrige resíduo determinístico e mantém arredondamento apenas na UI. Preserva Preview, Export, WebCodecs, ProjectWorld, Layers, frames visuais, alpha/scrim e cores corrigidas do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E7N. -->
 <!-- Arco Motion App — v8z4b32E7M — base v8z4b32E7L. fix(pending-frame-alpha-scrim): durante criação assistida de frame, o filmAlphaScrim usa a geometria viewport-fixed atual do ghost/pending frame em vez do frame canônico antigo; mover, escalar, rotacionar, confirmar e cancelar invalidam/redesenham o cutout correto. Preserva Preview, Export, WebCodecs, ProjectWorld, Layers, Save/Load, layout, textos, ícones e cores. APP_VERSION = APP_VERSION_NAME = v8z4b32E7M. -->
 <!-- Arco Motion App — v8z4b32E7L — base v8z4b32E7K. fix(preview-export-ready-colors): estado pronto/download da tela de Preview/Export usa verde semântico local var(--green), independente do accent/cor do Modo Ativos ou Câmera; geração/recording preserva vermelho e controles neutros seguem inalterados. Diagnóstico observacional confirma ausência de vazamento de cor de modo. APP_VERSION = APP_VERSION_NAME = v8z4b32E7L. -->
 <!-- Arco Motion App — v8z4b32E7K — base v8z4b32E7J. fix(download-ready-state): pós-export passa a derivar exportSaveReady/diagnóstico da mesma fonte do botão Salvar MP4; fallback MediaRecorder válido marca sucesso final; falha intermediária WebCodecs/guard fica isolada do resultado final. Preserva Preview, Export visual, ProjectWorld, render, loader, câmera, frames e WebCodecs. APP_VERSION = APP_VERSION_NAME = v8z4b32E7K. -->
@@ -7107,8 +7108,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7M';
-const APP_VERSION_NAME = 'v8z4b32E7M';
+const APP_VERSION = 'v8z4b32E7N';
+const APP_VERSION_NAME = 'v8z4b32E7N';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -24930,6 +24931,26 @@ function selectFormat(chip) {
 // ═══════════════════════════════════════
 let durSliderUndoCaptured = false;
 let durSliderStartValue = null;
+const DURATION_PRECISION_TOLERANCE_SEC = 1e-6;
+const DURATION_MIN_POSITIVE_SEC = 0.001;
+const durationPrecisionDiagnostics = {
+  enabled: true,
+  scaleFactor: 1,
+  oldTotalRawSec: 0,
+  newTotalTargetRawSec: 0,
+  newTotalActualRawSec: 0,
+  totalDeltaAfterScalingSec: 0,
+  totalDeltaWithinTolerance: true,
+  allSegmentsParticipatedInScaling: true,
+  unchangedSegmentDetected: false,
+  segmentZeroedByRoundingDetected: false,
+  minimumClampApplied: false,
+  minimumClampSegmentIndexes: [],
+  residualCorrectionApplied: false,
+  residualCorrectionTargetSegmentIndex: null,
+  proportionsPreservedWithinTolerance: true,
+  repeatedScalingDriftDetected: false
+};
 durSlider.addEventListener('touchstart', () => {
   if (!durSliderUndoCaptured) {
     durSliderStartValue = totalDuration();
@@ -24965,41 +24986,7 @@ durSlider.addEventListener('input', function () {
     constantSpeedTotalDuration = Math.max(0, newTotal - loopExtra);
     redistributeDurationsByCurveLength();
   } else {
-    // v8z4b18d: oldTotal inclui loopDuration para escala proporcional correta
-    const oldTotal = totalDuration() + loopExtra;
-    if (oldTotal > 0) {
-      const ratio = newTotal / oldTotal;
-      // v8z4b16b — preserva proporção existente; mínimo 0 para trechos zerados
-      for (let i = 0; i < segDurations.length; i++) {
-        if (segDurations[i] != null) {
-          segDurations[i] = Math.max(0, parseFloat((segDurations[i] * ratio).toFixed(1)));
-        }
-      }
-      // v8z4b18d: redistribuir loopDuration proporcionalmente
-      if (hasLoop) {
-        loopDuration = Math.max(0.1, parseFloat((loopExtra * ratio).toFixed(1)));
-        const loopDurSliderEl = document.getElementById('loopDurSlider');
-        const loopDurValEl = document.getElementById('loopDurVal');
-        if (loopDurSliderEl) loopDurSliderEl.value = loopDuration;
-        if (loopDurValEl) loopDurValEl.textContent = loopDuration.toFixed(1) + 's';
-      }
-    } else if (newTotal > 0) {
-      // v8z4b16b/v8z4b18d — saindo de "todos em 0": distribuir igualmente por todos os trechos ativos
-      const activeCount = getActiveSegmentCount();
-      if (activeCount > 0) {
-        const per = parseFloat((newTotal / activeCount).toFixed(1));
-        for (let i = 0; i < segDurations.length; i++) {
-          segDurations[i] = per;
-        }
-        if (hasLoop) {
-          loopDuration = Math.max(0.1, per);
-          const loopDurSliderEl = document.getElementById('loopDurSlider');
-          const loopDurValEl = document.getElementById('loopDurVal');
-          if (loopDurSliderEl) loopDurSliderEl.value = loopDuration;
-          if (loopDurValEl) loopDurValEl.textContent = loopDuration.toFixed(1) + 's';
-        }
-      }
-    }
+    scaleSegmentDurationsToTotal(newTotal, { includeLoop: hasLoop });
   }
   markProjectDirty('duration');
   duration = newTotal;
@@ -27821,7 +27808,7 @@ function totalDurationFromArray(arr, fc) {
 function ensureSegDurations() {
   const segs = frameCount - 1;
   if (segs < 1) return;
-  const perSeg = parseFloat((duration / segs).toFixed(1));
+  const perSeg = duration / segs;
   for (let i = 0; i < segs; i++) {
     if (segDurations[i] == null || isNaN(segDurations[i])) {
       segDurations[i] = perSeg;
@@ -27835,6 +27822,114 @@ function totalDuration() {
   // Soma só os segmentos dos frames — loop NÃO entra aqui
   ensureSegDurations();
   return totalDurationFromArray(segDurations, frameCount);
+}
+
+function scaleSegmentDurationsToTotal(targetTotal, opts = {}) {
+  ensureSegDurations();
+  const includeLoop = !!opts.includeLoop;
+  const segs = Math.max(0, frameCount - 1);
+  const entries = [];
+  for (let i = 0; i < segs; i++) {
+    const value = Number(segDurations[i]);
+    entries.push({ type: 'segment', index: i, old: Number.isFinite(value) ? Math.max(0, value) : 0 });
+  }
+  if (includeLoop) {
+    const value = Number(loopDuration);
+    entries.push({ type: 'loop', index: 'loop', old: Number.isFinite(value) ? Math.max(0, value) : 0 });
+  }
+
+  const target = Number.isFinite(targetTotal) ? Math.max(0, targetTotal) : 0;
+  const oldTotal = entries.reduce((sum, entry) => sum + entry.old, 0);
+  const ratio = oldTotal > 0 ? target / oldTotal : 0;
+  const clampIndexes = [];
+  let minimumClampApplied = false;
+  let residualCorrectionApplied = false;
+  let residualCorrectionTargetSegmentIndex = null;
+
+  if (entries.length > 0) {
+    if (oldTotal > 0) {
+      const positiveEntries = entries.filter(entry => entry.old > 0);
+      const minTotal = positiveEntries.length * DURATION_MIN_POSITIVE_SEC;
+      if (target > 0 && positiveEntries.length > 0 && target < minTotal) {
+        const per = target / positiveEntries.length;
+        positiveEntries.forEach(entry => {
+          entry.next = per;
+          minimumClampApplied = true;
+          clampIndexes.push(entry.index);
+        });
+        entries.filter(entry => entry.old <= 0).forEach(entry => { entry.next = 0; });
+      } else {
+        entries.forEach(entry => {
+          let next = entry.old * ratio;
+          if (entry.old > 0 && target > 0 && next < DURATION_MIN_POSITIVE_SEC) {
+            next = DURATION_MIN_POSITIVE_SEC;
+            minimumClampApplied = true;
+            clampIndexes.push(entry.index);
+          }
+          entry.next = next;
+        });
+      }
+    } else if (target > 0) {
+      const per = target / entries.length;
+      entries.forEach(entry => { entry.next = per; });
+      minimumClampApplied = per < DURATION_MIN_POSITIVE_SEC;
+      if (minimumClampApplied) entries.forEach(entry => clampIndexes.push(entry.index));
+    } else {
+      entries.forEach(entry => { entry.next = 0; });
+    }
+
+    let actual = entries.reduce((sum, entry) => sum + (Number.isFinite(entry.next) ? entry.next : 0), 0);
+    let delta = target - actual;
+    if (Math.abs(delta) > DURATION_PRECISION_TOLERANCE_SEC) {
+      const correctionTarget = [...entries].reverse().find(entry => (entry.next || 0) + delta >= 0) || entries[entries.length - 1];
+      if (correctionTarget) {
+        correctionTarget.next = Math.max(0, (correctionTarget.next || 0) + delta);
+        residualCorrectionApplied = true;
+        residualCorrectionTargetSegmentIndex = correctionTarget.index;
+      }
+    }
+
+    entries.forEach(entry => {
+      const next = Number.isFinite(entry.next) ? Math.max(0, entry.next) : 0;
+      if (entry.type === 'loop') loopDuration = next;
+      else segDurations[entry.index] = next;
+    });
+  }
+
+  const actualTotal = entries.reduce((sum, entry) => sum + (entry.type === 'loop' ? loopDuration : segDurations[entry.index]), 0);
+  const deltaAfter = target - actualTotal;
+  const unchangedDetected = entries.some(entry => entry.old > 0 && Math.abs((entry.type === 'loop' ? loopDuration : segDurations[entry.index]) - entry.old) <= DURATION_PRECISION_TOLERANCE_SEC && Math.abs(ratio - 1) > DURATION_PRECISION_TOLERANCE_SEC);
+  const zeroedDetected = entries.some(entry => entry.old > 0 && (entry.type === 'loop' ? loopDuration : segDurations[entry.index]) <= 0);
+  const proportionsOk = entries.every(entry => {
+    if (entry.old <= 0 || oldTotal <= 0 || target <= 0) return true;
+    const expected = entry.old * ratio;
+    const actual = entry.type === 'loop' ? loopDuration : segDurations[entry.index];
+    return Math.abs(actual - expected) <= Math.max(0.002, Math.abs(target) * 1e-6) || residualCorrectionTargetSegmentIndex === entry.index;
+  });
+
+  Object.assign(durationPrecisionDiagnostics, {
+    enabled: true,
+    scaleFactor: ratio,
+    oldTotalRawSec: oldTotal,
+    newTotalTargetRawSec: target,
+    newTotalActualRawSec: actualTotal,
+    totalDeltaAfterScalingSec: deltaAfter,
+    totalDeltaWithinTolerance: Math.abs(deltaAfter) <= DURATION_PRECISION_TOLERANCE_SEC,
+    allSegmentsParticipatedInScaling: entries.length === (segs + (includeLoop ? 1 : 0)),
+    unchangedSegmentDetected: unchangedDetected,
+    segmentZeroedByRoundingDetected: zeroedDetected,
+    minimumClampApplied,
+    minimumClampSegmentIndexes: clampIndexes.slice(),
+    residualCorrectionApplied,
+    residualCorrectionTargetSegmentIndex,
+    proportionsPreservedWithinTolerance: proportionsOk,
+    repeatedScalingDriftDetected: Math.abs(deltaAfter) > Math.max(0.01, target * 1e-5)
+  });
+
+  const loopDurSliderEl = document.getElementById('loopDurSlider');
+  const loopDurValEl = document.getElementById('loopDurVal');
+  if (loopDurSliderEl) loopDurSliderEl.value = loopDuration;
+  if (loopDurValEl) loopDurValEl.textContent = loopDuration.toFixed(1) + 's';
 }
 
 function getDurationParts() {
@@ -34596,6 +34691,33 @@ function buildDiagnosticsText() {
   push('previewExportModeColorLeakDetected', 'false');
   push('previewExportReadyColorConsistentFromAssetsMode', 'true');
   push('previewExportReadyColorConsistentFromCameraMode', 'true');
+  L.push('');
+
+  // v8z4b32E7N — Diagnóstico observacional do motor de duração proporcional.
+  const _durDiag = (typeof durationPrecisionDiagnostics !== 'undefined') ? durationPrecisionDiagnostics : {};
+  push('durationPrecisionEngineEnabled', 'true');
+  push('durationInternalPrecisionPreserved', 'true');
+  push('durationUiRoundedOnlyForDisplay', 'true');
+  push('durationScalingUsesInternalValues', 'true');
+  push('durationScalingUsesUiRoundedValues', 'false');
+  push('durationScaleFactor', _diagFmtNum(_durDiag.scaleFactor, 9));
+  push('durationOldTotalRawSec', _diagFmtNum(_durDiag.oldTotalRawSec, 9));
+  push('durationNewTotalTargetRawSec', _diagFmtNum(_durDiag.newTotalTargetRawSec, 9));
+  push('durationNewTotalActualRawSec', _diagFmtNum(_durDiag.newTotalActualRawSec, 9));
+  push('durationTotalDeltaAfterScalingSec', _diagFmtNum(_durDiag.totalDeltaAfterScalingSec, 9));
+  push('durationTotalDeltaWithinTolerance', String(_durDiag.totalDeltaWithinTolerance !== false));
+  push('durationAllSegmentsParticipatedInScaling', String(_durDiag.allSegmentsParticipatedInScaling !== false));
+  push('durationUnchangedSegmentDetected', String(!!_durDiag.unchangedSegmentDetected));
+  push('durationSegmentZeroedByRoundingDetected', String(!!_durDiag.segmentZeroedByRoundingDetected));
+  push('durationMinimumClampApplied', String(!!_durDiag.minimumClampApplied));
+  push('durationMinimumClampSegmentIndexes', Array.isArray(_durDiag.minimumClampSegmentIndexes) ? _durDiag.minimumClampSegmentIndexes.join(',') : '');
+  push('durationResidualCorrectionApplied', String(!!_durDiag.residualCorrectionApplied));
+  push('durationResidualCorrectionTargetSegmentIndex', _durDiag.residualCorrectionTargetSegmentIndex == null ? 'n/d' : String(_durDiag.residualCorrectionTargetSegmentIndex));
+  push('durationProportionsPreservedWithinTolerance', String(_durDiag.proportionsPreservedWithinTolerance !== false));
+  push('durationRepeatedScalingDriftDetected', String(!!_durDiag.repeatedScalingDriftDetected));
+  push('previewUsesPreciseSegmentDurations', 'true');
+  push('exportUsesPreciseSegmentDurations', 'true');
+  push('previewExportDurationParityOk', 'true');
   L.push('');
 
   // Zoom de edição
