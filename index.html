@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E7O — base v8z4b32E7N. fix(duration-total-zero-guard): controle geral de duração clampa o total solicitado para o mínimo técnico antes do ajuste proporcional, impedindo zero real ou total impossível por quantidade de trechos. Preserva o motor proporcional preciso da E7N, Preview, Export, WebCodecs, ProjectWorld, Layers, frames visuais, alpha/scrim e cores corrigidas do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E7O. -->
 <!-- Arco Motion App — v8z4b32E7N — base v8z4b32E7M. fix(duration-precision): ajuste proporcional de duração usa tempos internos precisos de segDurations/loopDuration, corrige resíduo determinístico e mantém arredondamento apenas na UI. Preserva Preview, Export, WebCodecs, ProjectWorld, Layers, frames visuais, alpha/scrim e cores corrigidas do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E7N. -->
 <!-- Arco Motion App — v8z4b32E7M — base v8z4b32E7L. fix(pending-frame-alpha-scrim): durante criação assistida de frame, o filmAlphaScrim usa a geometria viewport-fixed atual do ghost/pending frame em vez do frame canônico antigo; mover, escalar, rotacionar, confirmar e cancelar invalidam/redesenham o cutout correto. Preserva Preview, Export, WebCodecs, ProjectWorld, Layers, Save/Load, layout, textos, ícones e cores. APP_VERSION = APP_VERSION_NAME = v8z4b32E7M. -->
 <!-- Arco Motion App — v8z4b32E7L — base v8z4b32E7K. fix(preview-export-ready-colors): estado pronto/download da tela de Preview/Export usa verde semântico local var(--green), independente do accent/cor do Modo Ativos ou Câmera; geração/recording preserva vermelho e controles neutros seguem inalterados. Diagnóstico observacional confirma ausência de vazamento de cor de modo. APP_VERSION = APP_VERSION_NAME = v8z4b32E7L. -->
@@ -7108,8 +7109,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7N';
-const APP_VERSION_NAME = 'v8z4b32E7N';
+const APP_VERSION = 'v8z4b32E7O';
+const APP_VERSION_NAME = 'v8z4b32E7O';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -24933,6 +24934,8 @@ let durSliderUndoCaptured = false;
 let durSliderStartValue = null;
 const DURATION_PRECISION_TOLERANCE_SEC = 1e-6;
 const DURATION_MIN_POSITIVE_SEC = 0.001;
+const MIN_SEGMENT_DURATION_SEC = 0.1;
+const MIN_TOTAL_DURATION_SEC = DURATION_MIN_POSITIVE_SEC;
 const durationPrecisionDiagnostics = {
   enabled: true,
   scaleFactor: 1,
@@ -24949,8 +24952,65 @@ const durationPrecisionDiagnostics = {
   residualCorrectionApplied: false,
   residualCorrectionTargetSegmentIndex: null,
   proportionsPreservedWithinTolerance: true,
-  repeatedScalingDriftDetected: false
+  repeatedScalingDriftDetected: false,
+  totalZeroGuardEnabled: true,
+  requestedTotalRawSec: 0,
+  appliedTotalRawSec: 0,
+  minimumTotalRawSec: MIN_TOTAL_DURATION_SEC,
+  totalClampApplied: false,
+  totalClampReason: 'none',
+  totalNeverZero: true,
+  totalBelowMinimumBlocked: true,
+  segmentsRemainPositiveAfterClamp: true,
+  segmentZeroedByTotalClampDetected: false,
+  scalingSkippedBecauseInvalidTotal: false,
+  scalingUsesClampedTotalWhenNeeded: true
 };
+
+function getMinimumTotalDurationSec(opts = {}) {
+  const includeLoop = !!opts.includeLoop;
+  const normalSegs = Math.max(0, frameCount - 1);
+  const technicalSegments = normalSegs + (includeLoop && frameCount >= 2 ? 1 : 0);
+  if (technicalSegments > 0) return technicalSegments * MIN_SEGMENT_DURATION_SEC;
+  return MIN_TOTAL_DURATION_SEC;
+}
+
+function clampTotalDurationRequest(requestedTotalDuration, opts = {}) {
+  const raw = Number(requestedTotalDuration);
+  const minTotal = getMinimumTotalDurationSec(opts);
+  const finiteRaw = Number.isFinite(raw) ? raw : 0;
+  const safeTotal = Math.max(minTotal, finiteRaw);
+  const reason = finiteRaw <= 0 ? 'zero-requested' : (finiteRaw < minTotal ? 'below-minimum' : 'none');
+  return {
+    requestedTotalRawSec: raw,
+    appliedTotalRawSec: safeTotal,
+    minimumTotalRawSec: minTotal,
+    totalClampApplied: reason !== 'none',
+    totalClampReason: reason
+  };
+}
+
+function recordDurationTotalGuardDiagnostics(guard, entries) {
+  const list = Array.isArray(entries) ? entries : [];
+  const zeroed = list.some(entry => {
+    const value = entry && entry.type === 'loop' ? loopDuration : (entry ? segDurations[entry.index] : null);
+    return entry && entry.old > 0 && (!Number.isFinite(value) || value <= 0);
+  });
+  Object.assign(durationPrecisionDiagnostics, {
+    totalZeroGuardEnabled: true,
+    requestedTotalRawSec: guard ? guard.requestedTotalRawSec : 0,
+    appliedTotalRawSec: guard ? guard.appliedTotalRawSec : 0,
+    minimumTotalRawSec: guard ? guard.minimumTotalRawSec : getMinimumTotalDurationSec(),
+    totalClampApplied: !!(guard && guard.totalClampApplied),
+    totalClampReason: guard ? guard.totalClampReason : 'none',
+    totalNeverZero: !!(guard && guard.appliedTotalRawSec > 0),
+    totalBelowMinimumBlocked: !!(guard && guard.appliedTotalRawSec >= guard.minimumTotalRawSec),
+    segmentsRemainPositiveAfterClamp: !zeroed,
+    segmentZeroedByTotalClampDetected: zeroed,
+    scalingSkippedBecauseInvalidTotal: false,
+    scalingUsesClampedTotalWhenNeeded: true
+  });
+}
 durSlider.addEventListener('touchstart', () => {
   if (!durSliderUndoCaptured) {
     durSliderStartValue = totalDuration();
@@ -24975,18 +25035,20 @@ durSlider.addEventListener('change', () => {
 });
 
 durSlider.addEventListener('input', function () {
-  const newTotal = parseFloat(this.value);
+  const requestedTotal = parseFloat(this.value);
   ensureSegDurations();
-  // v8z4b18d: hasLoop e loopExtra para incluir N→1 na redistribuição
+  // v8z4b18d: hasLoop inclui N→1 na redistribuição quando ativo
   const hasLoop = loopEnabled && frameCount >= 2;
-  const loopExtra = hasLoop ? (loopDuration || 0) : 0;
+  const totalGuard = clampTotalDurationRequest(requestedTotal, { includeLoop: hasLoop });
+  const newTotal = totalGuard.appliedTotalRawSec;
+  if (totalGuard.totalClampApplied) this.value = newTotal;
   if (segmentTimingMode === 'constant-speed') {
-    // v8z4b17f — modo velocidade constante: atualizar total e redistribuir
-    // constantSpeedTotalDuration conta apenas segmentos normais; redistribuir subtrai loop
-    constantSpeedTotalDuration = Math.max(0, newTotal - loopExtra);
+    // v8z4b32E7O — proteger a entrada antes da redistribuição por comprimento.
+    scaleSegmentDurationsToTotal(newTotal, { includeLoop: hasLoop, totalGuard });
+    constantSpeedTotalDuration = totalDuration();
     redistributeDurationsByCurveLength();
   } else {
-    scaleSegmentDurationsToTotal(newTotal, { includeLoop: hasLoop });
+    scaleSegmentDurationsToTotal(newTotal, { includeLoop: hasLoop, totalGuard });
   }
   markProjectDirty('duration');
   duration = newTotal;
@@ -27838,7 +27900,8 @@ function scaleSegmentDurationsToTotal(targetTotal, opts = {}) {
     entries.push({ type: 'loop', index: 'loop', old: Number.isFinite(value) ? Math.max(0, value) : 0 });
   }
 
-  const target = Number.isFinite(targetTotal) ? Math.max(0, targetTotal) : 0;
+  const totalGuard = opts.totalGuard || clampTotalDurationRequest(targetTotal, { includeLoop });
+  const target = totalGuard.appliedTotalRawSec;
   const oldTotal = entries.reduce((sum, entry) => sum + entry.old, 0);
   const ratio = oldTotal > 0 ? target / oldTotal : 0;
   const clampIndexes = [];
@@ -27925,6 +27988,7 @@ function scaleSegmentDurationsToTotal(targetTotal, opts = {}) {
     proportionsPreservedWithinTolerance: proportionsOk,
     repeatedScalingDriftDetected: Math.abs(deltaAfter) > Math.max(0.01, target * 1e-5)
   });
+  recordDurationTotalGuardDiagnostics(totalGuard, entries);
 
   const loopDurSliderEl = document.getElementById('loopDurSlider');
   const loopDurValEl = document.getElementById('loopDurVal');
@@ -28790,7 +28854,9 @@ function syncDurationUI() {
   // v8z4b18d: durSlider reflete total de TODOS os trechos ativos (inclui loop)
   const durSlider = document.getElementById('durSlider');
   if (durSlider) {
-    const next = Math.min(60, moveTotal).toFixed(1);
+    const minTotal = getMinimumTotalDurationSec({ includeLoop: loopEnabled && frameCount >= 2 });
+    durSlider.min = minTotal.toFixed(3);
+    const next = Math.min(60, Math.max(minTotal, moveTotal)).toFixed(1);
     if (parseFloat(durSlider.value) !== parseFloat(next)) durSlider.value = next;
   }
   const durSegTotal = document.getElementById('durSegTotal');
@@ -34715,6 +34781,18 @@ function buildDiagnosticsText() {
   push('durationResidualCorrectionTargetSegmentIndex', _durDiag.residualCorrectionTargetSegmentIndex == null ? 'n/d' : String(_durDiag.residualCorrectionTargetSegmentIndex));
   push('durationProportionsPreservedWithinTolerance', String(_durDiag.proportionsPreservedWithinTolerance !== false));
   push('durationRepeatedScalingDriftDetected', String(!!_durDiag.repeatedScalingDriftDetected));
+  push('durationTotalZeroGuardEnabled', String(_durDiag.totalZeroGuardEnabled !== false));
+  push('durationRequestedTotalRawSec', _diagFmtNum(_durDiag.requestedTotalRawSec, 9));
+  push('durationAppliedTotalRawSec', _diagFmtNum(_durDiag.appliedTotalRawSec, 9));
+  push('durationMinimumTotalRawSec', _diagFmtNum(_durDiag.minimumTotalRawSec, 9));
+  push('durationTotalClampApplied', String(!!_durDiag.totalClampApplied));
+  push('durationTotalClampReason', _durDiag.totalClampReason || 'none');
+  push('durationTotalNeverZero', String(_durDiag.totalNeverZero !== false));
+  push('durationTotalBelowMinimumBlocked', String(_durDiag.totalBelowMinimumBlocked !== false));
+  push('durationSegmentsRemainPositiveAfterClamp', String(_durDiag.segmentsRemainPositiveAfterClamp !== false));
+  push('durationSegmentZeroedByTotalClampDetected', String(!!_durDiag.segmentZeroedByTotalClampDetected));
+  push('durationScalingSkippedBecauseInvalidTotal', String(!!_durDiag.scalingSkippedBecauseInvalidTotal));
+  push('durationScalingUsesClampedTotalWhenNeeded', String(_durDiag.scalingUsesClampedTotalWhenNeeded !== false));
   push('previewUsesPreciseSegmentDurations', 'true');
   push('exportUsesPreciseSegmentDurations', 'true');
   push('previewExportDurationParityOk', 'true');
