@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E7Q — base v8z4b32E7P. fix(preview-after-load-readiness): preparação canônica do Preview aguarda decode e stableDrawable de todos os assets visíveis restaurados antes de reconstruir snapshot/iniciar, mantendo loader e evitando bloqueio por asset pendente. Preserva Export, layout, menus, fluxo, Timeline, Frames, Curvas, ProjectWorld e geometria dos assets. APP_VERSION = APP_VERSION_NAME = v8z4b32E7Q. -->
 <!-- Arco Motion App — v8z4b32E7P — base v8z4b32E7N. fix(duration-total-zero-guard): controle geral de duração clampa o total solicitado para o mínimo técnico antes do ajuste proporcional, impedindo zero real ou total impossível por quantidade de trechos. Preserva o motor proporcional preciso da E7N, Preview, Export, WebCodecs, ProjectWorld, Layers, frames visuais, alpha/scrim e cores corrigidas do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E7P. -->
 <!-- Arco Motion App — v8z4b32E7N — base v8z4b32E7M. fix(duration-precision): ajuste proporcional de duração usa tempos internos precisos de segDurations/loopDuration, corrige resíduo determinístico e mantém arredondamento apenas na UI. Preserva Preview, Export, WebCodecs, ProjectWorld, Layers, frames visuais, alpha/scrim e cores corrigidas do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E7N. -->
 <!-- Arco Motion App — v8z4b32E7M — base v8z4b32E7L. fix(pending-frame-alpha-scrim): durante criação assistida de frame, o filmAlphaScrim usa a geometria viewport-fixed atual do ghost/pending frame em vez do frame canônico antigo; mover, escalar, rotacionar, confirmar e cancelar invalidam/redesenham o cutout correto. Preserva Preview, Export, WebCodecs, ProjectWorld, Layers, Save/Load, layout, textos, ícones e cores. APP_VERSION = APP_VERSION_NAME = v8z4b32E7M. -->
@@ -7115,8 +7116,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7P';
-const APP_VERSION_NAME = 'v8z4b32E7P';
+const APP_VERSION = 'v8z4b32E7Q';
+const APP_VERSION_NAME = 'v8z4b32E7Q';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -23414,7 +23415,7 @@ async function startPreview() {
   closeAll();
   normalizeProjectArrays();
   if (!validateProjectState('preview')) { hidePreviewLoadingE7J('error'); previewPreparing = false; showStatus('Estado inválido para Preview (veja console)'); return; }
-  const _snapshotReadyE7D = await prepareRenderSessionSnapshot('preview');
+  const _snapshotReadyE7D = await prepareCanonicalPreviewAssetsE7Q('preview');
   if (!_snapshotReadyE7D || !_snapshotReadyE7D.ok) {
     previewBlocked = true;
     previewBlockedReason = 'asset-not-ready';
@@ -23422,7 +23423,6 @@ async function startPreview() {
     previewBlockedAssetIds = renderSessionAbortedAssetIds || 'unknown';
     hidePreviewLoadingE7J('error');
     previewPreparing = false;
-    showStatus('Preview bloqueado: imagem ainda não pronta.');
     return;
   }
   assetsHydratedBeforePreview = true;
@@ -31373,14 +31373,60 @@ function _decodeDrawableSourceE7D(src) {
       const d = getImageSourceDimensions(src);
       if (d.width > 0 && d.height > 0) { resolve(src); return; }
       if (src instanceof HTMLImageElement) {
-        const done = () => resolve(getImageSourceDimensions(src).width > 0 ? src : null);
-        if (src.decode) src.decode().then(done).catch(done);
-        else { src.onload = done; src.onerror = () => resolve(null); }
+        let settled = false;
+        const done = () => {
+          if (settled) return;
+          settled = true;
+          resolve(getImageSourceDimensions(src).width > 0 ? src : null);
+        };
+        const fail = () => {
+          if (settled) return;
+          settled = true;
+          resolve(null);
+        };
+        const prevLoad = src.onload;
+        const prevError = src.onerror;
+        src.onload = ev => { try { if (typeof prevLoad === 'function') prevLoad.call(src, ev); } catch (_e) {} done(); };
+        src.onerror = ev => { try { if (typeof prevError === 'function') prevError.call(src, ev); } catch (_e) {} fail(); };
+        setTimeout(() => {
+          if (getImageSourceDimensions(src).width > 0) done();
+          else fail();
+        }, 6000);
+        if (src.decode) src.decode().then(done).catch(() => {
+          if (getImageSourceDimensions(src).width > 0) done();
+        });
         return;
       }
     } catch (_e) {}
     resolve(null);
   });
+}
+function _waitRenderAssetPreparationTickE7Q() {
+  return new Promise(resolve => {
+    try {
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => setTimeout(resolve, 0));
+        return;
+      }
+    } catch (_e) {}
+    setTimeout(resolve, 32);
+  });
+}
+async function prepareCanonicalPreviewAssetsE7Q(kind) {
+  const context = (kind === 'export') ? 'export' : 'preview';
+  const timeoutMs = context === 'preview' ? 6000 : 0;
+  const started = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  let lastResult = null;
+  do {
+    lastResult = await prepareRenderSessionSnapshot(context);
+    if (lastResult && lastResult.ok) return lastResult;
+    if (context !== 'preview') return lastResult;
+    const reason = (lastResult && lastResult.reason) || renderSessionPreparationFailedReason || '';
+    if (reason && reason !== 'asset-not-ready') return lastResult;
+    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    if ((now - started) >= timeoutMs) return lastResult;
+    await _waitRenderAssetPreparationTickE7Q();
+  } while (true);
 }
 function _isImg1AssetE7E(a) {
   return !!(a && String(a.id) === 'img-1');
