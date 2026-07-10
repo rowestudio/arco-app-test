@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E7M — base v8z4b32E7L. fix(pending-frame-alpha-scrim): durante criação assistida de frame, o filmAlphaScrim usa a geometria viewport-fixed atual do ghost/pending frame em vez do frame canônico antigo; mover, escalar, rotacionar, confirmar e cancelar invalidam/redesenham o cutout correto. Preserva Preview, Export, WebCodecs, ProjectWorld, Layers, Save/Load, layout, textos, ícones e cores. APP_VERSION = APP_VERSION_NAME = v8z4b32E7M. -->
 <!-- Arco Motion App — v8z4b32E7L — base v8z4b32E7K. fix(preview-export-ready-colors): estado pronto/download da tela de Preview/Export usa verde semântico local var(--green), independente do accent/cor do Modo Ativos ou Câmera; geração/recording preserva vermelho e controles neutros seguem inalterados. Diagnóstico observacional confirma ausência de vazamento de cor de modo. APP_VERSION = APP_VERSION_NAME = v8z4b32E7L. -->
 <!-- Arco Motion App — v8z4b32E7K — base v8z4b32E7J. fix(download-ready-state): pós-export passa a derivar exportSaveReady/diagnóstico da mesma fonte do botão Salvar MP4; fallback MediaRecorder válido marca sucesso final; falha intermediária WebCodecs/guard fica isolada do resultado final. Preserva Preview, Export visual, ProjectWorld, render, loader, câmera, frames e WebCodecs. APP_VERSION = APP_VERSION_NAME = v8z4b32E7K. -->
 <!-- Arco Motion App — v8z4b32E7J — base v8z4b32E7H. fix(save-load-clean-session-readiness): diagnóstico legado de coordenadas deixa de tratar img-1 com worldW/H diferente de baseStageW/H como erro; asset0MatchesWorldCoordinateSystem passa a validar coordenadas ProjectWorld finitas/positivas, allAssetsSameCoordinateSystem valida assets no mesmo espaço lógico e mixedWorldScaleDetected não é acionado por aspect ratio próprio. Diagnóstico de replace adiciona replacePreservedCenterAndRecomputedSize=true para aceitar replacePreservedWorldRect=false quando a proporção muda mas centro, AR da imagem nova, recálculo de tamanho, zIndex, slot e visibilidade são preservados. NÃO altera layout, menus, fluxo, curva/handles E7G, Preview, Export, WebCodecs, getStateAtT, drawAtT ou geometria visual. APP_VERSION = APP_VERSION_NAME = v8z4b32E7J. -->
@@ -7106,8 +7107,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7L';
-const APP_VERSION_NAME = 'v8z4b32E7L';
+const APP_VERSION = 'v8z4b32E7M';
+const APP_VERSION_NAME = 'v8z4b32E7M';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -17720,21 +17721,56 @@ function updateInsertionActionBarPosition() {
 function updateGhostDimOverlay() {
   const svg = document.getElementById('stageDimSvg');
   if (!svg || !ghostFrame || !stageW || !stageH || isPreviewing) return false;
+  const scrimBox = getFilmAlphaScrimViewportBox();
+  const W = scrimBox.width || stageW;
+  const H = scrimBox.height || stageH;
+  if (!W || !H) return false;
   const corners = getGhostFrameCorners();
   if (!corners.length) return false;
-  const pts = corners.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+  const scrimPts = corners.map(c => stagePointToFilmAlphaScrimViewportPoint(c.x, c.y));
+  const pts = scrimPts.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
   const maskId = 'ghostDimMask';
+  svg.style.zIndex = String(FILM_ALPHA_SCRIM_Z);
   svg.style.display = 'block';
-  svg.setAttribute('viewBox', `0 0 ${stageW} ${stageH}`);
+  svg.style.left = '0px';
+  svg.style.top = '0px';
+  svg.style.width = W + 'px';
+  svg.style.height = H + 'px';
+  svg.style.inset = '0';
+  svg.style.transform = 'none';
+  svg.style.webkitTransform = 'none';
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   svg.innerHTML = `
     <defs>
       <mask id="${maskId}" maskUnits="userSpaceOnUse">
-        <rect x="0" y="0" width="${stageW}" height="${stageH}" fill="white"/>
+        <rect x="0" y="0" width="${W}" height="${H}" fill="white"/>
         <polygon points="${pts}" fill="black"/>
       </mask>
     </defs>
-    <rect x="0" y="0" width="${stageW}" height="${stageH}" fill="rgba(0,0,0,0.38)" mask="url(#${maskId})"/>`;
+    <rect x="0" y="0" width="${W}" height="${H}" fill="rgba(0,0,0,${cameraModeAlphaValue})" mask="url(#${maskId})"/>`;
+  pendingFrameCreationActive = true;
+  pendingFrameIndex = pendingFrameInsert ? pendingFrameInsert.insertIndex : -1;
+  pendingFrameScrimUsesPendingGeometry = true;
+  pendingFrameScrimUsesCommittedGeometry = false;
+  pendingFrameAlphaCutoutMatchesPendingFrame = true;
+  pendingFrameAlphaUsesCommittedFrameDetected = false;
+  pendingFrameAlphaSeparatedDetected = false;
+  pendingFrameCommitRealignsAlpha = false;
+  pendingFrameScrimDeltaFromPendingFramePx = 0;
+  filmAlphaScrimUsesCanonicalFrameCutout = false;
+  filmAlphaScrimCutoutMatchesCanonicalFrame = false;
+  filmAlphaScrimStaleCutoutDetected = false;
+  restackFilmEditorLayers('updateGhostDimOverlay');
   return true;
+}
+
+
+function clearPendingFrameScrimDiagnostics() {
+  pendingFrameCreationActive = false;
+  pendingFrameIndex = -1;
+  pendingFrameScrimUsesPendingGeometry = false;
+  pendingFrameScrimUsesCommittedGeometry = false;
+  filmAlphaScrimUsesCanonicalFrameCutout = true;
 }
 
 function resetGhostInteraction() {
@@ -18657,6 +18693,7 @@ function cancelAssistedFrameInsertion() {
   isInsertingFrame = false;
   _isFirstFrameInsertion = false; // v8z4b23a
   document.body.classList.remove('inserting-frame');
+  clearPendingFrameScrimDiagnostics();
   // v8z4b22e: esconder barra fixa de inserção
   hideInsertionActionBar();
   if (globalHandleEl) {
@@ -18689,6 +18726,7 @@ function clearAssistedFrameInsertionTransientState() {
   isInsertingFrame = false;
   _isFirstFrameInsertion = false; // v8z4b23a
   document.body.classList.remove('inserting-frame');
+  clearPendingFrameScrimDiagnostics();
   // v8z4b22e: esconder barra fixa de inserção
   hideInsertionActionBar();
   if (globalHandleEl) {
@@ -19618,16 +19656,17 @@ function updateDimOverlay() {
   // Preview/Export, nem na pilha de assets.
   if (_assetsMode && !_assetsRefsVisible) {
     svg.style.display = 'none'; svg.innerHTML = '';
+    clearPendingFrameScrimDiagnostics();
     assetsModeReferenceVisualizationState.referenceScrimActive = false;
     return;
   }
   // v8z3e: mostrar nas vistas Normal e Isolamento; esconder apenas no Mapa/preview/sem imagem.
   if (!_assetsMode && hasPendingAssistedFrame() && updateGhostDimOverlay()) return;
-  if (!imgNatW || frameCount < 1 || viewMode === 2 || isPreviewing) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
+  if (!imgNatW || frameCount < 1 || viewMode === 2 || isPreviewing) { svg.style.display = 'none'; svg.innerHTML = ''; clearPendingFrameScrimDiagnostics(); return; }
 
   const scrimBox = getFilmAlphaScrimViewportBox();
   const W = scrimBox.width || stageW, H = scrimBox.height || stageH;
-  if (!W || !H) { svg.style.display = 'none'; svg.innerHTML = ''; return; }
+  if (!W || !H) { svg.style.display = 'none'; svg.innerHTML = ''; clearPendingFrameScrimDiagnostics(); return; }
   svg.style.left = '0px';
   svg.style.top = '0px';
   svg.style.width = W + 'px';
@@ -19717,6 +19756,11 @@ function updateDimOverlay() {
   filmAlphaScrimStaleCutoutDetected = !filmAlphaScrimCutoutMatchesCanonicalFrame;
   filmAlphaScrimStaleSlotDetected = false;
   filmAlphaScrimCutoutDeltaFromFramePx = 0;
+  pendingFrameCreationActive = false;
+  pendingFrameIndex = -1;
+  pendingFrameScrimUsesPendingGeometry = false;
+  pendingFrameScrimUsesCommittedGeometry = false;
+  filmAlphaScrimUsesCanonicalFrameCutout = true;
   cameraModeUsesFilmAlphaScrim = !_assetsMode || cameraModeUsesFilmAlphaScrim;
   assetsModeUsesFilmAlphaScrim = _assetsMode || assetsModeUsesFilmAlphaScrim;
   if (!CSS.supports('mix-blend-mode', 'destination-out')) {
@@ -32809,8 +32853,18 @@ let pendingFrameIndex = -1;
 let pendingFrameRectMatchesPreview = true;
 let pendingFrameAlphaCutoutMatchesPendingFrame = true;
 let pendingFrameAlphaUsesCommittedFrameDetected = false;
-let pendingFrameAlphaSeparatedDetected = true;
-let pendingFrameCommitRealignsAlpha = true;
+let pendingFrameScrimUsesPendingGeometry = false;
+let pendingFrameScrimUsesCommittedGeometry = false;
+let pendingFrameAlphaSeparatedDetected = false;
+let pendingFrameCommitRealignsAlpha = false;
+let pendingFrameCancelRestoresPreviousScrim = true;
+let pendingFrameScrimInvalidatedOnCreate = true;
+let pendingFrameScrimInvalidatedOnMove = true;
+let pendingFrameScrimInvalidatedOnScale = true;
+let pendingFrameScrimInvalidatedOnRotate = true;
+let pendingFrameScrimInvalidatedOnCommit = true;
+let pendingFrameScrimInvalidatedOnCancel = true;
+let pendingFrameScrimDeltaFromPendingFramePx = 0;
 
 function getCurrentImageAssetIdsE7I() {
   return Array.isArray(assets) ? assets.filter(a => a && a.type === 'image').map(a => String(a.id || '')) : [];
@@ -36071,8 +36125,18 @@ function buildDiagnosticsText() {
   push('pendingFrameRectMatchesPreview', String(pendingFrameRectMatchesPreview));
   push('pendingFrameAlphaCutoutMatchesPendingFrame', String(pendingFrameAlphaCutoutMatchesPendingFrame));
   push('pendingFrameAlphaUsesCommittedFrameDetected', String(pendingFrameAlphaUsesCommittedFrameDetected));
+  push('pendingFrameScrimUsesPendingGeometry', String(pendingFrameScrimUsesPendingGeometry));
+  push('pendingFrameScrimUsesCommittedGeometry', String(pendingFrameScrimUsesCommittedGeometry));
   push('pendingFrameAlphaSeparatedDetected', String(pendingFrameAlphaSeparatedDetected));
   push('pendingFrameCommitRealignsAlpha', String(pendingFrameCommitRealignsAlpha));
+  push('pendingFrameCancelRestoresPreviousScrim', String(pendingFrameCancelRestoresPreviousScrim));
+  push('pendingFrameScrimInvalidatedOnCreate', String(pendingFrameScrimInvalidatedOnCreate));
+  push('pendingFrameScrimInvalidatedOnMove', String(pendingFrameScrimInvalidatedOnMove));
+  push('pendingFrameScrimInvalidatedOnScale', String(pendingFrameScrimInvalidatedOnScale));
+  push('pendingFrameScrimInvalidatedOnRotate', String(pendingFrameScrimInvalidatedOnRotate));
+  push('pendingFrameScrimInvalidatedOnCommit', String(pendingFrameScrimInvalidatedOnCommit));
+  push('pendingFrameScrimInvalidatedOnCancel', String(pendingFrameScrimInvalidatedOnCancel));
+  push('pendingFrameScrimDeltaFromPendingFramePx', String(pendingFrameScrimDeltaFromPendingFramePx));
   L.push('');
 
   // v8z4b30Z — diagnóstico addImageAsset: snapshot antes/depois
