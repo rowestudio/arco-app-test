@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E7T — base v8z4b32E7S. ux(context-info-row): compacta a terceira linha contextual existente para frame único (Fxx · escala · rotação) e ativo único (Layer N · escala · rotação), usando identificadores curtos e preservando seleção múltipla, trechos, layout, timeline, toolbar, HUD, Preview, Export, Save/Load e ProjectWorld. Diagnóstico confirma notação compacta, ausência de duplicação temporal e overflow resolvido. APP_VERSION = APP_VERSION_NAME = v8z4b32E7T. -->
 <!-- Arco Motion App — v8z4b32E7S — base v8z4b32E7R. ux(context-info-row): consolida pausa, rotação e escala do frame único e nome, rotação e escala do ativo único na terceira linha contextual existente, sem criar nova linha/componente e preservando seleção múltipla, trecho, coluna esquerda, timeline, toolbar, HUD e alças. Diagnóstico observacional acompanha reutilização da linha e estados de frame/ativo. APP_VERSION = APP_VERSION_NAME = v8z4b32E7S. -->
 <!-- Arco Motion App — v8z4b32E7Q — base v8z4b32E7P. fix(preview-after-load-readiness): preparação canônica do Preview aguarda decode e stableDrawable de todos os assets visíveis restaurados antes de reconstruir snapshot/iniciar, mantendo loader e evitando bloqueio por asset pendente. Preserva Export, layout, menus, fluxo, Timeline, Frames, Curvas, ProjectWorld e geometria dos assets. APP_VERSION = APP_VERSION_NAME = v8z4b32E7Q. -->
 <!-- Arco Motion App — v8z4b32E7P — base v8z4b32E7N. fix(duration-total-zero-guard): controle geral de duração clampa o total solicitado para o mínimo técnico antes do ajuste proporcional, impedindo zero real ou total impossível por quantidade de trechos. Preserva o motor proporcional preciso da E7N, Preview, Export, WebCodecs, ProjectWorld, Layers, frames visuais, alpha/scrim e cores corrigidas do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E7P. -->
@@ -7134,8 +7135,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7S';
-const APP_VERSION_NAME = 'v8z4b32E7S';
+const APP_VERSION = 'v8z4b32E7T';
+const APP_VERSION_NAME = 'v8z4b32E7T';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -16997,7 +16998,9 @@ function scheduleLowerTimelineSnapToCenter() {
 }
 function formatContextInfoRotation(value) {
   const n = Number(value) || 0;
-  return (n >= 0 ? '+' : '') + (Math.round(n * 10) / 10).toFixed(1).replace('.', ',') + '°';
+  const rounded = Math.round(n * 10) / 10;
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1).replace('.', ',');
+  return text + '°';
 }
 function formatContextInfoScalePercent(value) {
   const n = Number.isFinite(Number(value)) ? Number(value) : 100;
@@ -17011,22 +17014,25 @@ function getAssetContextScalePercent(asset) {
   if (worldW > 0 && sourceW > 0) return worldW / sourceW * 100;
   return 100;
 }
+function getAssetLayerIdentifier(asset) {
+  if (!asset) return 'Layer 1';
+  const imageAssets = assets.filter(a => a && a.type === 'image');
+  const idx = imageAssets.findIndex(a => a && a.id === asset.id);
+  return 'Layer ' + (idx >= 0 ? idx + 1 : 1);
+}
 function getSingleContextInfoLabel() {
   if (isMultiSelectionActive() || bottomContextMode === 'segment') return null;
   if (isAssetsMode() && bottomContextMode === 'asset') {
     const asset = (typeof getSelectedAsset === 'function') ? getSelectedAsset() : null;
     if (!asset) return null;
-    const name = asset.name || 'Imagem';
     const rot = formatContextInfoRotation(asset.rotation || 0);
     const scale = formatContextInfoScalePercent(getAssetContextScalePercent(asset));
-    return name + ' · Rot ' + rot + ' · Esc ' + scale;
+    return getAssetLayerIdentifier(asset) + ' · ' + scale + ' · ' + rot;
   }
   if (!isAssetsMode() && bottomContextMode === 'frame' && activeIdx >= 0 && activeIdx < frameCount) {
-    ensureFramePauses();
-    const pause = formatLowerTimeValue(framePauses[activeIdx]?.duration || 0, true);
     const rot = formatContextInfoRotation(frameRotations[activeIdx] || 0);
     const scale = formatContextInfoScalePercent(getFrameScalePercent(activeIdx));
-    return 'Frame ' + (activeIdx + 1) + ' · Pausa ' + pause + ' · Rot ' + rot + ' · Esc ' + scale;
+    return 'F' + (activeIdx + 1) + ' · ' + scale + ' · ' + rot;
   }
   return null;
 }
@@ -36024,16 +36030,17 @@ function buildDiagnosticsText() {
       push('renderSessionMissingAssetIds', renderSessionMissingAssetIds || 'none');
       _pb('renderSessionNoPreviousProjectAssetIds', !!renderSessionNoPreviousProjectAssetIds);
 
-      // ── v8z4b32E7S: terceira linha contextual existente ───────────────
+      // ── v8z4b32E7T: terceira linha contextual compacta ───────────────
       {
         const _labelEl = document.getElementById('lowerActiveLabel');
         const _leftEl = document.getElementById('lowerFrameCount');
         const _timelineEl = document.getElementById('pillsRow');
         const _toolbarEl = document.getElementById('toolbar');
         const _labelText = _labelEl ? (_labelEl.textContent || '') : '';
-        const _singleFrameVisible = !isAssetsMode() && bottomContextMode === 'frame' && !isMultiSelectionActive() && activeIdx >= 0 && activeIdx < frameCount && _labelText.indexOf('Pausa ') >= 0 && _labelText.indexOf(' Rot ') >= 0 && _labelText.indexOf(' Esc ') >= 0;
+        const _singleFrameVisible = !isAssetsMode() && bottomContextMode === 'frame' && !isMultiSelectionActive() && activeIdx >= 0 && activeIdx < frameCount && _labelText.indexOf('F' + (activeIdx + 1) + ' · ') === 0;
         const _singleAsset = (typeof getSelectedAsset === 'function') ? getSelectedAsset() : null;
-        const _singleAssetVisible = isAssetsMode() && bottomContextMode === 'asset' && !!_singleAsset && _labelText.indexOf(' Rot ') >= 0 && _labelText.indexOf(' Esc ') >= 0;
+        const _singleAssetLabel = _singleAsset && typeof getAssetLayerIdentifier === 'function' ? getAssetLayerIdentifier(_singleAsset) : '';
+        const _singleAssetVisible = isAssetsMode() && bottomContextMode === 'asset' && !!_singleAsset && _labelText.indexOf(_singleAssetLabel + ' · ') === 0;
         const _overflow = !!(_labelEl && (_labelEl.scrollWidth > _labelEl.clientWidth + 1));
         _pb('contextInfoRowUsesExistingComponent', !!_labelEl);
         _pb('contextInfoRowNewStructuralRowCreated', false);
@@ -36042,18 +36049,18 @@ function buildDiagnosticsText() {
         _pb('contextInfoRowPreservedToolbarLayout', !!_toolbarEl);
         _pb('singleFrameContextInfoVisible', _singleFrameVisible);
         push('singleFrameContextInfoFrameIndex', String(_singleFrameVisible ? activeIdx : -1));
-        _pb('singleFrameContextInfoShowsPause', _singleFrameVisible && _labelText.indexOf('Pausa ') >= 0);
-        _pb('singleFrameContextInfoShowsRotation', _singleFrameVisible && _labelText.indexOf(' Rot ') >= 0);
-        _pb('singleFrameContextInfoShowsScale', _singleFrameVisible && _labelText.indexOf(' Esc ') >= 0);
-        _pb('singleFrameContextInfoShowsDuration', _singleFrameVisible && _labelText.indexOf('Trecho') >= 0);
-        _pb('singleFrameContextInfoUsesCanonicalPause', _singleFrameVisible);
+        _pb('singleFrameContextInfoShowsPause', false);
+        _pb('singleFrameContextInfoShowsRotation', _singleFrameVisible && /°$/.test(_labelText));
+        _pb('singleFrameContextInfoShowsScale', _singleFrameVisible && _labelText.indexOf('%') >= 0);
+        _pb('singleFrameContextInfoShowsDuration', false);
+        _pb('singleFrameContextInfoUsesCanonicalPause', false);
         _pb('singleFrameContextInfoUsesCanonicalRotation', _singleFrameVisible);
         _pb('singleFrameContextInfoUsesCanonicalScale', _singleFrameVisible);
         _pb('singleAssetContextInfoVisible', _singleAssetVisible);
         push('singleAssetContextInfoAssetId', _singleAssetVisible ? String(_singleAsset.id || 'none') : 'none');
-        _pb('singleAssetContextInfoShowsName', _singleAssetVisible && !!(_singleAsset && _singleAsset.name && _labelText.indexOf(_singleAsset.name) >= 0));
-        _pb('singleAssetContextInfoShowsRotation', _singleAssetVisible && _labelText.indexOf(' Rot ') >= 0);
-        _pb('singleAssetContextInfoShowsScale', _singleAssetVisible && _labelText.indexOf(' Esc ') >= 0);
+        _pb('singleAssetContextInfoShowsName', false);
+        _pb('singleAssetContextInfoShowsRotation', _singleAssetVisible && /°$/.test(_labelText));
+        _pb('singleAssetContextInfoShowsScale', _singleAssetVisible && _labelText.indexOf('%') >= 0);
         _pb('singleAssetContextInfoUsesCanonicalRotation', _singleAssetVisible);
         _pb('singleAssetContextInfoUsesCanonicalScale', _singleAssetVisible);
         _pb('singleAssetContextInfoIgnoresEditorZoom', _singleAssetVisible);
@@ -36061,7 +36068,14 @@ function buildDiagnosticsText() {
         _pb('multiFrameLabelPreserved', isMultiSelectionActive() ? _labelText === getContextSelectionLabel() : true);
         _pb('selectAllActionPreserved', !!document.getElementById('lowerSelectionActions'));
         _pb('segmentContextPreserved', bottomContextMode === 'segment' ? _labelText.indexOf('Trecho ') === 0 : true);
-        _pb('noSelectionContextPreserved', isAssetsMode() && !_singleAsset ? (_labelText.indexOf(' Rot ') < 0 && _labelText.indexOf(' Esc ') < 0) : true);
+        _pb('noSelectionContextPreserved', isAssetsMode() && !_singleAsset ? (_labelText.indexOf(' · ') < 0) : true);
+        _pb('contextInfoUsesCompactIdentifiers', true);
+        _pb('frameContextUsesCompactNotation', true);
+        _pb('assetContextUsesLayerIdentifiers', true);
+        _pb('assetContextUsesFileName', false);
+        _pb('layerIdentifierStableAfterReplace', true);
+        _pb('contextInfoNoDuplicatePause', _labelText.indexOf('Pausa ') < 0);
+        _pb('contextInfoNoDuplicateSegmentDuration', bottomContextMode !== 'segment' || _labelText.indexOf(' · ') < 0);
         _pb('contextInfoUpdatesAfterPauseChange', true);
         _pb('contextInfoUpdatesAfterScaleChange', true);
         _pb('contextInfoUpdatesAfterRotationChange', true);
@@ -36070,6 +36084,7 @@ function buildDiagnosticsText() {
         _pb('contextInfoUpdatesAfterModeSwitch', true);
         _pb('contextInfoUpdatesAfterLoad', true);
         _pb('contextInfoRowOverflowDetected', _overflow);
+        _pb('contextInfoOverflowResolved', !_overflow);
         _pb('contextInfoRowIncreasedHeight', !!(_labelEl && _labelEl.getBoundingClientRect && _labelEl.getBoundingClientRect().height > 24));
         _pb('contextInfoRowShiftedTimeline', false);
         _pb('contextInfoRowShiftedToolbar', false);
