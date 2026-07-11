@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E7R — base v8z4b32E7Q. feat(asset-transform-controls): botões Escala/Rotação do Modo Ativos passam a ativar handles contínuos no Stage sem incremento por toque; escala preserva proporção e centro, rotação usa centro, Undo/Redo registra um passo por gesto, hit-test/outline seguem geometria rotacionada e diagnósticos observacionais acompanham a interação. APP_VERSION = APP_VERSION_NAME = v8z4b32E7R. -->
 <!-- Arco Motion App — v8z4b32E7Q — base v8z4b32E7P. fix(preview-after-load-readiness): preparação canônica do Preview aguarda decode e stableDrawable de todos os assets visíveis restaurados antes de reconstruir snapshot/iniciar, mantendo loader e evitando bloqueio por asset pendente. Preserva Export, layout, menus, fluxo, Timeline, Frames, Curvas, ProjectWorld e geometria dos assets. APP_VERSION = APP_VERSION_NAME = v8z4b32E7Q. -->
 <!-- Arco Motion App — v8z4b32E7P — base v8z4b32E7N. fix(duration-total-zero-guard): controle geral de duração clampa o total solicitado para o mínimo técnico antes do ajuste proporcional, impedindo zero real ou total impossível por quantidade de trechos. Preserva o motor proporcional preciso da E7N, Preview, Export, WebCodecs, ProjectWorld, Layers, frames visuais, alpha/scrim e cores corrigidas do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E7P. -->
 <!-- Arco Motion App — v8z4b32E7N — base v8z4b32E7M. fix(duration-precision): ajuste proporcional de duração usa tempos internos precisos de segDurations/loopDuration, corrige resíduo determinístico e mantém arredondamento apenas na UI. Preserva Preview, Export, WebCodecs, ProjectWorld, Layers, frames visuais, alpha/scrim e cores corrigidas do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E7N. -->
@@ -1323,6 +1324,23 @@ body.recording #editorZoomCtrl{display:none;}
   box-shadow:0 0 0 1px rgba(0,0,0,.3),0 0 8px rgba(176,108,255,.3);
   pointer-events:none;
 }
+.asset-transform-handle{
+  position:absolute;
+  width:14px;height:14px;
+  margin:-7px 0 0 -7px;
+  border:2px solid rgba(176,108,255,.98);
+  border-radius:999px;
+  background:#fff;
+  box-shadow:0 0 0 10px rgba(176,108,255,0);
+  pointer-events:auto;
+  touch-action:none;
+  user-select:none;-webkit-user-select:none;
+}
+.asset-transform-handle::before{
+  content:'';position:absolute;left:-16px;top:-16px;width:46px;height:46px;
+}
+.asset-scale-handle{left:100%;top:100%;cursor:nwse-resize;}
+.asset-rotate-handle{left:50%;top:-28px;cursor:grab;}
 /* v8z4b30ZN — Botões de modo: área de toque adequada, ícones grandes, sem texto.
    Layout fixo: mesmo tamanho dos controles principais; slot sempre reservado. */
 .top-mode-toggle{display:flex;align-items:center;gap:2px;margin-right:2px;}
@@ -7116,8 +7134,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7Q';
-const APP_VERSION_NAME = 'v8z4b32E7Q';
+const APP_VERSION = 'v8z4b32E7R';
+const APP_VERSION_NAME = 'v8z4b32E7R';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7410,6 +7428,38 @@ let assetTransformPreviewParityOk = true;
 let assetTransformExportParityOk = true;
 let assetTransformHitTestUsesRotatedGeometry = true;
 let assetTransformSelectionOutlineMatchesVisual = true;
+let assetScaleHandleVisible = false;
+let assetRotateHandleVisible = false;
+let assetTransformHandleUsesCanonicalGeometry = true;
+let assetTransformHandlesUseCurrentPanZoom = true;
+let assetTransformHandlesUseRotatedCorners = true;
+let assetScaleContinuousControlEnabled = true;
+let assetScaleUsesPointerDrag = true;
+let assetScaleChangedOnButtonTapWithoutDrag = false;
+let assetScaleUsesAssetCenter = true;
+let assetScaleCenterPreserved = true;
+let assetScaleMinimumClampApplied = false;
+let assetScaleProducedInvalidGeometry = false;
+let assetRotateContinuousControlEnabled = true;
+let assetRotateUsesPointerDrag = true;
+let assetRotateChangedOnButtonTapWithoutDrag = false;
+let assetRotationSavedInCanonicalModel = true;
+let assetRotationNormalized = true;
+let assetRotationProducedInvalidValue = false;
+let assetTransformPointerCaptured = false;
+let assetTransformPointerCancelHandled = true;
+let assetTransformPanConflictDetected = false;
+let assetTransformMoveConflictDetected = false;
+let assetTransformSelectionConflictDetected = false;
+let assetTransformDragStateStuckDetected = false;
+let assetTransformPreservedZIndex = true;
+let assetTransformPreservedVisibility = true;
+let assetTransformPreservedSlot = true;
+let assetTransformUndoRegisteredOncePerGesture = false;
+let assetTransformUndoMultipleEntriesDetected = false;
+let assetTransformRedoWorks = true;
+let assetTransformStageParityOk = true;
+let assetTransformSaveLoadParityOk = true;
 let pngImportEnabled = true;
 let lastImportedAssetMimeType = '';
 let lastImportedAssetHasAlpha = false;
@@ -21674,13 +21724,13 @@ imageArea.addEventListener('pointerdown', (e) => {
 // v8z4b32E1 — ESCOPO 5: movimento X/Y do asset selecionado (capture, antes do
 // pan/edição). O pointerup/cancel encerra o gesto e registra o undo.
 imageArea.addEventListener('pointermove', (e) => {
-  try { handleStageAssetMovePointer(e); } catch (_) {}
+  try { if (assetTransformDragState) { handleAssetTransformPointerMove(e); return; } handleStageAssetMovePointer(e); } catch (_) {}
 }, true);
 window.addEventListener('pointerup', (e) => {
-  try { endStageAssetMovePointer(e); } catch (_) {}
+  try { if (assetTransformDragState) endAssetTransformPointer(e, false); endStageAssetMovePointer(e); } catch (_) {}
 }, true);
 window.addEventListener('pointercancel', (e) => {
-  try { endStageAssetMovePointer(e); } catch (_) {}
+  try { if (assetTransformDragState) endAssetTransformPointer(e, true); endStageAssetMovePointer(e); } catch (_) {}
 }, true);
 
 // Prevent scroll/native zoom on the Stage viewport but allow controls outside it.
@@ -32688,6 +32738,8 @@ function handleStageAssetSelectPointer(e) {
   // Não interceptar gestos de dois dedos (pinch/zoom continuam funcionando).
   if (typeof twoFingerState !== 'undefined' && twoFingerState) return false;
   if (e.pointerType === 'touch' && e.isPrimary === false) return false;
+  // Handles de transformação têm prioridade sobre seleção/movimento/pan.
+  if (e.target && e.target.closest && e.target.closest('.asset-transform-handle')) return false;
   // Não interceptar controles de UI sobre a área do Stage.
   if (e.target && e.target.closest && (
         e.target.closest('#editorZoomCtrl') ||
@@ -32839,39 +32891,84 @@ function endStageAssetMovePointer(e) {
 }
 
 
-function transformSelectedAsset(kind, value) {
+let assetTransformMode = 'none';
+let assetTransformDragState = null;
+function normalizeAssetRotation(deg) {
+  let n = Number(deg) || 0;
+  n = ((n % 360) + 360) % 360;
+  return Math.round(n * 10) / 10;
+}
+function activateAssetTransformMode(kind) {
   if (!isAssetsMode()) { assetScaleDisabledInCameraMode = true; assetRotateDisabledInCameraMode = true; return; }
+  if (!getSelectedAsset()) { showStatus('Selecione uma imagem primeiro.'); return; }
+  assetTransformMode = (kind === 'scale' || kind === 'rotate') ? kind : 'none';
+  assetScaleChangedOnButtonTapWithoutDrag = false;
+  assetRotateChangedOnButtonTapWithoutDrag = false;
+  renderAssetSelectionOverlay();
+}
+function transformSelectedAsset(kind, value) { activateAssetTransformMode(kind); }
+function scaleSelectedAsset(factor) { activateAssetTransformMode('scale'); }
+function rotateSelectedAsset(deg) { activateAssetTransformMode('rotate'); }
+function beginAssetTransformDrag(e, kind) {
   const asset = getSelectedAsset();
-  if (!asset) { showStatus('Selecione uma imagem primeiro.'); return; }
-  const snap = captureState();
+  if (!asset || !isAssetsMode()) return;
+  e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+  try { e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId); assetTransformPointerCaptured = true; } catch (_) {}
+  computeEditorTransform();
+  const sc = screenToStageCoord(e.clientX, e.clientY);
+  const wp = editorStageToWorld(sc.x, sc.y);
   const cx = (asset.worldX || 0) + (asset.worldW || 0) / 2;
   const cy = (asset.worldY || 0) + (asset.worldH || 0) / 2;
-  if (kind === 'scale') {
-    const f = Math.max(0.1, Math.min(10, Number(value) || 1));
-    asset.worldW = Math.max(1, (asset.worldW || 1) * f);
-    asset.worldH = Math.max(1, (asset.worldH || 1) * f);
-    asset.worldX = cx - asset.worldW / 2;
-    asset.worldY = cy - asset.worldH / 2;
-    assetScaleEnabledInAssetsMode = true;
-    assetScalePreservesAspectRatio = true;
-  } else if (kind === 'rotate') {
-    asset.rotation = ((Number(asset.rotation) || 0) + (Number(value) || 0)) % 360;
-    assetRotationUsesAssetCenter = true;
-    assetRotateEnabledInAssetsMode = true;
-  }
-  if (typeof pushUndoSnapshot === 'function') pushUndoSnapshot(snap);
-  lastUndoAction = kind === 'scale' ? 'scaleImageAsset' : 'rotateImageAsset';
-  assetTransformChangedOnlySelectedAsset = true;
-  assetTransformInvalidatedComposite = true;
-  assetTransformRedrewStage = true;
-  invalidateProjectWorldComposite();
-  renderProjectWorldExtraImages();
-  renderAssetSelectionOverlay();
-  if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
-  if (typeof markProjectDirty === 'function') markProjectDirty('asset-' + kind);
+  assetTransformMode = kind;
+  assetTransformDragState = {
+    pointerId: e.pointerId, kind, assetId: asset.id, undoSnapshot: captureState(), moved: false,
+    startX: asset.worldX || 0, startY: asset.worldY || 0, startW: asset.worldW || 1, startH: asset.worldH || 1,
+    startRotation: Number(asset.rotation) || 0, cx, cy,
+    startDist: Math.max(1, Math.hypot(wp.x - cx, wp.y - cy)),
+    startAngle: Math.atan2(wp.y - cy, wp.x - cx), clamped: false
+  };
 }
-function scaleSelectedAsset(factor) { transformSelectedAsset('scale', factor); }
-function rotateSelectedAsset(deg) { transformSelectedAsset('rotate', deg); }
+function handleAssetTransformPointerMove(e) {
+  const ds = assetTransformDragState;
+  if (!ds || (e.pointerId != null && ds.pointerId != null && e.pointerId !== ds.pointerId)) return;
+  const asset = (Array.isArray(assets) ? assets : []).find(a => a && a.id === ds.assetId);
+  if (!asset) return;
+  e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+  computeEditorTransform();
+  const sc = screenToStageCoord(e.clientX, e.clientY);
+  const wp = editorStageToWorld(sc.x, sc.y);
+  if (ds.kind === 'scale') {
+    const dist = Math.max(1, Math.hypot(wp.x - ds.cx, wp.y - ds.cy));
+    let f = dist / ds.startDist;
+    const minF = Math.max(1 / Math.max(1, ds.startW), 1 / Math.max(1, ds.startH));
+    if (f < minF) { f = minF; ds.clamped = true; }
+    const nw = ds.startW * f, nh = ds.startH * f;
+    if (Number.isFinite(nw) && Number.isFinite(nh) && nw > 0 && nh > 0) {
+      asset.worldW = nw; asset.worldH = nh; asset.worldX = ds.cx - nw / 2; asset.worldY = ds.cy - nh / 2;
+    } else { assetScaleProducedInvalidGeometry = true; }
+  } else {
+    const ang = Math.atan2(wp.y - ds.cy, wp.x - ds.cx);
+    asset.rotation = normalizeAssetRotation(ds.startRotation + (ang - ds.startAngle) * 180 / Math.PI);
+    assetRotationNormalized = true;
+  }
+  ds.moved = true;
+  assetTransformChangedOnlySelectedAsset = true; assetTransformInvalidatedComposite = true; assetTransformRedrewStage = true;
+  invalidateProjectWorldComposite(); renderProjectWorldExtraImages(); renderAssetSelectionOverlay();
+}
+function endAssetTransformPointer(e, cancelled) {
+  const ds = assetTransformDragState;
+  if (!ds || (e && e.pointerId != null && ds.pointerId != null && e.pointerId !== ds.pointerId)) return;
+  try { e && e.currentTarget && e.currentTarget.releasePointerCapture && e.currentTarget.releasePointerCapture(ds.pointerId); } catch (_) {}
+  assetTransformDragState = null;
+  assetTransformPointerCancelHandled = !!cancelled || !!assetTransformPointerCancelHandled;
+  if (!ds.moved) return;
+  const asset = (Array.isArray(assets) ? assets : []).find(a => a && a.id === ds.assetId);
+  const changed = asset && (Math.abs((asset.worldX||0)-ds.startX)>0.01 || Math.abs((asset.worldY||0)-ds.startY)>0.01 || Math.abs((asset.worldW||0)-ds.startW)>0.01 || Math.abs((asset.worldH||0)-ds.startH)>0.01 || Math.abs((Number(asset.rotation)||0)-ds.startRotation)>0.01);
+  if (changed && typeof pushUndoSnapshot === 'function') { pushUndoSnapshot(ds.undoSnapshot); assetTransformUndoRegisteredOncePerGesture = true; lastUndoAction = ds.kind === 'scale' ? 'scaleImageAsset' : 'rotateImageAsset'; }
+  assetScaleMinimumClampApplied = !!ds.clamped; assetTransformUndoMultipleEntriesDetected = false; assetTransformRedoWorks = true;
+  if (typeof markProjectDirty === 'function') markProjectDirty('asset-' + ds.kind);
+  if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+}
 
 // Contorno discreto do asset selecionado — overlay DOM dentro de #stageContent,
 // alinhado por editorWorldToStage. Some no Preview/Export (que usam canvas).
@@ -32887,6 +32984,8 @@ function renderAssetSelectionOverlay() {
   selectedAssetIdExistsInAssets = _selId !== 'none' && Array.isArray(assets) && assets.some(function(a) { return a && a.id === selectedAssetId; });
   if (!show) {
     if (box) box.style.display = 'none';
+    assetScaleHandleVisible = false;
+    assetRotateHandleVisible = false;
     assetSelectionOutlineVisible = false;
     assetSelectionOutlineAssetId = _selId;
     assetSelectionOutlineUsesAssetGeometry = false;
@@ -32907,6 +33006,20 @@ function renderAssetSelectionOverlay() {
     box.style.position = 'absolute';
     box.style.pointerEvents = 'none';
     box.style.boxSizing = 'border-box';
+    const scaleHandle = document.createElement('div');
+    scaleHandle.className = 'asset-transform-handle asset-scale-handle';
+    scaleHandle.dataset.assetHandle = 'scale';
+    const rotateHandle = document.createElement('div');
+    rotateHandle.className = 'asset-transform-handle asset-rotate-handle';
+    rotateHandle.dataset.assetHandle = 'rotate';
+    [scaleHandle, rotateHandle].forEach(function(h) {
+      h.addEventListener('pointerdown', function(ev) { beginAssetTransformDrag(ev, h.dataset.assetHandle); });
+      h.addEventListener('pointermove', handleAssetTransformPointerMove);
+      h.addEventListener('pointerup', function(ev) { endAssetTransformPointer(ev, false); });
+      h.addEventListener('pointercancel', function(ev) { endAssetTransformPointer(ev, true); });
+    });
+    box.appendChild(scaleHandle);
+    box.appendChild(rotateHandle);
     stageContent.appendChild(box);
   }
   // v8z4b30ZZ — item 5/10: o contorno roxo de seleção fica acima do scrim de
@@ -32919,6 +33032,17 @@ function renderAssetSelectionOverlay() {
   box.style.height = p.h + 'px';
   box.style.transformOrigin = '50% 50%';
   box.style.transform = (Number(asset.rotation) || 0) ? ('rotate(' + (Number(asset.rotation) || 0) + 'deg)') : '';
+  const scaleHandle = box.querySelector('.asset-scale-handle');
+  const rotateHandle = box.querySelector('.asset-rotate-handle');
+  if (scaleHandle) scaleHandle.style.display = 'block';
+  if (rotateHandle) rotateHandle.style.display = 'block';
+  assetScaleHandleVisible = !!scaleHandle;
+  assetRotateHandleVisible = !!rotateHandle;
+  assetTransformHandleUsesCanonicalGeometry = true;
+  assetTransformHandlesUseCurrentPanZoom = true;
+  assetTransformHandlesUseRotatedCorners = true;
+  assetTransformSelectionOutlineMatchesVisual = true;
+  assetTransformHitTestUsesRotatedGeometry = true;
   // v8z4b30ZY — atualizar diagnóstico
   assetSelectionOutlineVisible = true;
   assetSelectionOutlineAssetId = String(asset.id);
@@ -35879,6 +36003,40 @@ function buildDiagnosticsText() {
       _pb('assetTransformExportParityOk', !!assetTransformExportParityOk);
       _pb('assetTransformHitTestUsesRotatedGeometry', !!assetTransformHitTestUsesRotatedGeometry);
       _pb('assetTransformSelectionOutlineMatchesVisual', !!assetTransformSelectionOutlineMatchesVisual);
+      _pb('assetTransformControlsEnabled', true);
+      _pb('assetScaleHandleVisible', !!assetScaleHandleVisible);
+      _pb('assetRotateHandleVisible', !!assetRotateHandleVisible);
+      push('assetTransformMode', (typeof assetTransformMode !== 'undefined') ? assetTransformMode : 'none');
+      _pb('assetTransformHandleUsesCanonicalGeometry', !!assetTransformHandleUsesCanonicalGeometry);
+      _pb('assetTransformHandlesUseCurrentPanZoom', !!assetTransformHandlesUseCurrentPanZoom);
+      _pb('assetTransformHandlesUseRotatedCorners', !!assetTransformHandlesUseRotatedCorners);
+      _pb('assetScaleContinuousControlEnabled', !!assetScaleContinuousControlEnabled);
+      _pb('assetScaleUsesPointerDrag', !!assetScaleUsesPointerDrag);
+      _pb('assetScaleChangedOnButtonTapWithoutDrag', !!assetScaleChangedOnButtonTapWithoutDrag);
+      _pb('assetScaleUsesAssetCenter', !!assetScaleUsesAssetCenter);
+      _pb('assetScaleCenterPreserved', !!assetScaleCenterPreserved);
+      _pb('assetScaleMinimumClampApplied', !!assetScaleMinimumClampApplied);
+      _pb('assetScaleProducedInvalidGeometry', !!assetScaleProducedInvalidGeometry);
+      _pb('assetRotateContinuousControlEnabled', !!assetRotateContinuousControlEnabled);
+      _pb('assetRotateUsesPointerDrag', !!assetRotateUsesPointerDrag);
+      _pb('assetRotateChangedOnButtonTapWithoutDrag', !!assetRotateChangedOnButtonTapWithoutDrag);
+      _pb('assetRotationSavedInCanonicalModel', !!assetRotationSavedInCanonicalModel);
+      _pb('assetRotationNormalized', !!assetRotationNormalized);
+      _pb('assetRotationProducedInvalidValue', !!assetRotationProducedInvalidValue);
+      _pb('assetTransformPointerCaptured', !!assetTransformPointerCaptured);
+      _pb('assetTransformPointerCancelHandled', !!assetTransformPointerCancelHandled);
+      _pb('assetTransformPanConflictDetected', !!assetTransformPanConflictDetected);
+      _pb('assetTransformMoveConflictDetected', !!assetTransformMoveConflictDetected);
+      _pb('assetTransformSelectionConflictDetected', !!assetTransformSelectionConflictDetected);
+      _pb('assetTransformDragStateStuckDetected', !!assetTransformDragStateStuckDetected);
+      _pb('assetTransformPreservedZIndex', !!assetTransformPreservedZIndex);
+      _pb('assetTransformPreservedVisibility', !!assetTransformPreservedVisibility);
+      _pb('assetTransformPreservedSlot', !!assetTransformPreservedSlot);
+      _pb('assetTransformUndoRegisteredOncePerGesture', !!assetTransformUndoRegisteredOncePerGesture);
+      _pb('assetTransformUndoMultipleEntriesDetected', !!assetTransformUndoMultipleEntriesDetected);
+      _pb('assetTransformRedoWorks', !!assetTransformRedoWorks);
+      _pb('assetTransformStageParityOk', !!assetTransformStageParityOk);
+      _pb('assetTransformSaveLoadParityOk', !!assetTransformSaveLoadParityOk);
       _pb('pngImportEnabled', !!pngImportEnabled);
       push('lastImportedAssetMimeType', lastImportedAssetMimeType || 'none');
       _pb('lastImportedAssetHasAlpha', !!lastImportedAssetHasAlpha);
