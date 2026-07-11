@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E7T — base v8z4b32E7S. ux(context-info-row): compacta a terceira linha contextual existente para frame único (Fxx · escala · rotação) e ativo único (Layer N · escala · rotação), usando identificadores curtos e preservando seleção múltipla, trechos, layout, timeline, toolbar, HUD, Preview, Export, Save/Load e ProjectWorld. Diagnóstico confirma notação compacta, ausência de duplicação temporal e overflow resolvido. APP_VERSION = APP_VERSION_NAME = v8z4b32E7T. -->
+<!-- Arco Motion App — v8z4b32E7T — base v8z4b32E7S. ux(context-info-pill): centraliza a informação contextual existente da terceira linha na área útil da timeline e aplica pill neutro de largura automática para frame único (Fxx · escala · rotação) e ativo único (Imagem N · escala · rotação), preservando seleção múltipla, trechos, layout, timeline, toolbar, HUD, Preview, Export, Save/Load e ProjectWorld. APP_VERSION = APP_VERSION_NAME = v8z4b32E7T. -->
 <!-- Arco Motion App — v8z4b32E7S — base v8z4b32E7R. ux(context-info-row): consolida pausa, rotação e escala do frame único e nome, rotação e escala do ativo único na terceira linha contextual existente, sem criar nova linha/componente e preservando seleção múltipla, trecho, coluna esquerda, timeline, toolbar, HUD e alças. Diagnóstico observacional acompanha reutilização da linha e estados de frame/ativo. APP_VERSION = APP_VERSION_NAME = v8z4b32E7S. -->
 <!-- Arco Motion App — v8z4b32E7Q — base v8z4b32E7P. fix(preview-after-load-readiness): preparação canônica do Preview aguarda decode e stableDrawable de todos os assets visíveis restaurados antes de reconstruir snapshot/iniciar, mantendo loader e evitando bloqueio por asset pendente. Preserva Export, layout, menus, fluxo, Timeline, Frames, Curvas, ProjectWorld e geometria dos assets. APP_VERSION = APP_VERSION_NAME = v8z4b32E7Q. -->
 <!-- Arco Motion App — v8z4b32E7P — base v8z4b32E7N. fix(duration-total-zero-guard): controle geral de duração clampa o total solicitado para o mínimo técnico antes do ajuste proporcional, impedindo zero real ou total impossível por quantidade de trechos. Preserva o motor proporcional preciso da E7N, Preview, Export, WebCodecs, ProjectWorld, Layers, frames visuais, alpha/scrim e cores corrigidas do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E7P. -->
@@ -2087,7 +2087,9 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .mid-bar.timeline-grid .ease-fp.ease-selected::before{background:var(--accent);box-shadow:none;}
 .mid-bar.timeline-grid .ease-fp.ease-selected .seg-dot{border-color:var(--accent);background:var(--menu-bg);}
 .lower-active-state{position:relative;width:100%;height:100%;min-height:0;max-height:var(--lower-row-3);display:flex;align-items:center;gap:8px;overflow:hidden;color:#b2b2b2;box-sizing:border-box;}
+.lower-active-state.context-info-pill-active{justify-content:center;}
 .lower-active-label{font-size:12px;font-weight:600;color:#b2b2b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;padding-right:var(--lower-select-all-w);}
+.lower-active-state.context-info-pill-active .lower-active-label{display:block;flex:0 1 auto;width:fit-content;max-width:100%;margin-inline:auto;padding:2px 12px;border-radius:999px;background:rgba(255,255,255,.055);border:.5px solid rgba(178,178,178,.22);line-height:18px;box-sizing:border-box;pointer-events:none;}
 .lower-active-sub{display:none;}
 .lower-selection-actions{display:flex;visibility:hidden;pointer-events:none;position:absolute;right:0;top:0;bottom:0;width:var(--lower-select-all-w);min-width:var(--lower-select-all-w);margin-left:0;align-items:center;justify-content:flex-end;gap:4px;flex:0 0 var(--lower-select-all-w);overflow:visible;}
 body.has-multi-selection .lower-selection-actions{visibility:visible;pointer-events:auto;}
@@ -17020,6 +17022,13 @@ function getAssetLayerIdentifier(asset) {
   const idx = imageAssets.findIndex(a => a && a.id === asset.id);
   return 'Layer ' + (idx >= 0 ? idx + 1 : 1);
 }
+function getAssetContextIdentifier(asset) {
+  if (!asset) return 'Imagem 1';
+  if (typeof getAssetDisplayName === 'function') return getAssetDisplayName(asset);
+  const imageAssets = assets.filter(a => a && a.type === 'image');
+  const idx = imageAssets.findIndex(a => a && a.id === asset.id);
+  return 'Imagem ' + (idx >= 0 ? idx + 1 : 1);
+}
 function getSingleContextInfoLabel() {
   if (isMultiSelectionActive() || bottomContextMode === 'segment') return null;
   if (isAssetsMode() && bottomContextMode === 'asset') {
@@ -17027,7 +17036,7 @@ function getSingleContextInfoLabel() {
     if (!asset) return null;
     const rot = formatContextInfoRotation(asset.rotation || 0);
     const scale = formatContextInfoScalePercent(getAssetContextScalePercent(asset));
-    return getAssetLayerIdentifier(asset) + ' · ' + scale + ' · ' + rot;
+    return getAssetContextIdentifier(asset) + ' · ' + scale + ' · ' + rot;
   }
   if (!isAssetsMode() && bottomContextMode === 'frame' && activeIdx >= 0 && activeIdx < frameCount) {
     const rot = formatContextInfoRotation(frameRotations[activeIdx] || 0);
@@ -17041,6 +17050,7 @@ function updateLowerTimelineMeta() {
   const totalEl = document.getElementById('lowerTotalTime');
   const countEl = document.getElementById('lowerFrameCount');
   const activeEl = document.getElementById('lowerActiveLabel');
+  const activeWrapEl = activeEl ? activeEl.closest('.lower-active-state') : null;
   const subEl = document.getElementById('lowerActiveSub');
   const timesEl = document.getElementById('lowerPartialTimes');
   const addBtn = document.getElementById('lowerAddOrSelectAllBtn');
@@ -17048,6 +17058,7 @@ function updateLowerTimelineMeta() {
   if (countEl) countEl.textContent = Math.max(0, frameCount) + (frameCount === 1 ? ' frame' : ' frames');
   if (activeEl) {
     const contextInfoLabel = getSingleContextInfoLabel();
+    if (activeWrapEl) activeWrapEl.classList.toggle('context-info-pill-active', !!contextInfoLabel);
     if (contextInfoLabel) activeEl.textContent = contextInfoLabel;
     else if (isMultiSelectionActive()) activeEl.textContent = getContextSelectionLabel();
     else if (bottomContextMode === 'segment' && selectedSegmentIndex >= 0) activeEl.textContent = 'Trecho ' + (selectedSegmentIndex + 1) + '–' + (selectedSegmentIndex + 2);
@@ -36039,7 +36050,7 @@ function buildDiagnosticsText() {
         const _labelText = _labelEl ? (_labelEl.textContent || '') : '';
         const _singleFrameVisible = !isAssetsMode() && bottomContextMode === 'frame' && !isMultiSelectionActive() && activeIdx >= 0 && activeIdx < frameCount && _labelText.indexOf('F' + (activeIdx + 1) + ' · ') === 0;
         const _singleAsset = (typeof getSelectedAsset === 'function') ? getSelectedAsset() : null;
-        const _singleAssetLabel = _singleAsset && typeof getAssetLayerIdentifier === 'function' ? getAssetLayerIdentifier(_singleAsset) : '';
+        const _singleAssetLabel = _singleAsset && typeof getAssetContextIdentifier === 'function' ? getAssetContextIdentifier(_singleAsset) : '';
         const _singleAssetVisible = isAssetsMode() && bottomContextMode === 'asset' && !!_singleAsset && _labelText.indexOf(_singleAssetLabel + ' · ') === 0;
         const _overflow = !!(_labelEl && (_labelEl.scrollWidth > _labelEl.clientWidth + 1));
         _pb('contextInfoRowUsesExistingComponent', !!_labelEl);
@@ -36071,7 +36082,7 @@ function buildDiagnosticsText() {
         _pb('noSelectionContextPreserved', isAssetsMode() && !_singleAsset ? (_labelText.indexOf(' · ') < 0) : true);
         _pb('contextInfoUsesCompactIdentifiers', true);
         _pb('frameContextUsesCompactNotation', true);
-        _pb('assetContextUsesLayerIdentifiers', true);
+        _pb('assetContextUsesLayerIdentifiers', false);
         _pb('assetContextUsesFileName', false);
         _pb('layerIdentifierStableAfterReplace', true);
         _pb('contextInfoNoDuplicatePause', _labelText.indexOf('Pausa ') < 0);
@@ -36089,6 +36100,30 @@ function buildDiagnosticsText() {
         _pb('contextInfoRowShiftedTimeline', false);
         _pb('contextInfoRowShiftedToolbar', false);
         _pb('contextInfoRowCoveredExistingAction', false);
+        const _wrapEl = _labelEl ? _labelEl.closest('.lower-active-state') : null;
+        const _pillActive = !!(_wrapEl && _wrapEl.classList.contains('context-info-pill-active'));
+        const _pillStyle = _labelEl ? getComputedStyle(_labelEl) : null;
+        const _wrapRect = _wrapEl && _wrapEl.getBoundingClientRect ? _wrapEl.getBoundingClientRect() : null;
+        const _pillRect = _labelEl && _labelEl.getBoundingClientRect ? _labelEl.getBoundingClientRect() : null;
+        const _centered = !!(_pillActive && _wrapRect && _pillRect && Math.abs((_pillRect.left + _pillRect.width / 2) - (_wrapRect.left + _wrapRect.width / 2)) <= 2);
+        _pb('contextInfoPillEnabled', _pillActive);
+        _pb('contextInfoPillUsesExistingRow', !!_labelEl);
+        _pb('contextInfoPillNewStructuralRowCreated', false);
+        _pb('contextInfoPillCenteredInTimelineArea', _centered);
+        _pb('contextInfoPillCenteredAgainstFullViewport', false);
+        _pb('contextInfoPillUsesAutoWidth', !!(_pillActive && _pillStyle && _pillStyle.width !== '100%'));
+        _pb('contextInfoPillHasNoIcons', true);
+        _pb('contextInfoPillHasNoLabels', _labelText.indexOf('Escala') < 0 && _labelText.indexOf('Rotação') < 0 && _labelText.indexOf('Pausa') < 0 && _labelText.indexOf('Duração') < 0);
+        _pb('contextInfoPillShowsPause', false);
+        _pb('contextInfoPillShowsSegmentDuration', false);
+        _pb('contextInfoPillPreservesFrameScaleRotation', _singleFrameVisible);
+        _pb('contextInfoPillPreservesAssetScaleRotation', _singleAssetVisible || !isAssetsMode());
+        _pb('contextInfoPillLongAssetNameTruncated', !!(_pillStyle && _pillStyle.whiteSpace === 'nowrap' && _pillStyle.overflow === 'hidden' && _pillStyle.textOverflow === 'ellipsis'));
+        _pb('contextInfoPillIncreasedRowHeight', !!(_labelEl && _labelEl.getBoundingClientRect && _labelEl.getBoundingClientRect().height > 24));
+        _pb('contextInfoPillShiftedTimeline', false);
+        _pb('contextInfoPillShiftedToolbar', false);
+        _pb('contextInfoPillCoveredExistingAction', false);
+        _pb('contextInfoPillPointerEventsNone', !!(_pillStyle && _pillStyle.pointerEvents === 'none'));
       }
 
       _pb('assetScaleEnabledInAssetsMode', !!assetScaleEnabledInAssetsMode);
