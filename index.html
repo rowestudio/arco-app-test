@@ -1411,18 +1411,18 @@ body.editor-assets #stageFrameMenu{display:none !important;}
    INEQUÍVOCO no Stage. O frame de referência passa a opacidade total (era 0.55),
    contra os frames genéricos (v8z4b31B: 0.28, era 0.17), com contorno e brilho roxos fortes. */
 body.editor-assets .frame.assets-ref-highlight{opacity:1 !important;}
-body.editor-assets .frame.assets-ref-highlight .frame-border{border-color:rgba(255,255,255,.92) !important;box-shadow:0 0 8px rgba(255,255,255,.16) !important;}
-body.editor-assets .frame.assets-ref-highlight .frame-num{color:#fff !important;background:rgba(255,255,255,.16) !important;box-shadow:none !important;}
+body.editor-assets .frame.assets-ref-highlight .frame-border{border-color:#ff9500 !important;box-shadow:0 0 8px rgba(255,149,0,.16) !important;}
+body.editor-assets .frame.assets-ref-highlight .frame-num{color:#ff9500 !important;background:rgba(255,149,0,.16) !important;box-shadow:none !important;}
 /* v8z4b32E7T — no Modo Ativos o frame é referência neutra; roxo fica só no ativo editável. */
 body.editor-assets .frame.assets-ref-highlight .frame-border{
-  border-color:rgba(255,255,255,.92) !important;
+  border-color:#ff9500 !important;
   border-width:3px !important;
-  box-shadow:0 0 8px rgba(255,255,255,.16) !important;
+  box-shadow:0 0 8px rgba(255,149,0,.16) !important;
 }
 body.editor-assets.assets-refs-visible .frame.assets-ref-highlight .frame-num{
-  display:block !important;color:#fff !important;background:rgba(255,255,255,.16) !important;font-weight:800 !important;
+  display:block !important;color:#ff9500 !important;background:rgba(255,149,0,.16) !important;font-weight:800 !important;
 }
-.mid-bar.timeline-grid .fp.assets-ref-highlight{font-weight:700;border-color:rgba(255,255,255,.8) !important;box-shadow:0 0 0 1px rgba(255,255,255,.45) inset !important;}
+.mid-bar.timeline-grid .fp.assets-ref-highlight{font-weight:700;border-color:#ff9500 !important;color:#ff9500 !important;box-shadow:0 0 0 1px rgba(255,149,0,.45) inset !important;}
 /* v8z4b30ZO — worldModeShowFrames: quando frames ocultos no Modo Ativos, esconde
    molduras, números, handles, bezier e overlays de câmera. */
 body.editor-assets.world-frames-hidden .frame{display:none !important;}
@@ -2094,7 +2094,10 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .lower-active-state{position:relative;width:100%;height:100%;min-height:0;max-height:var(--lower-row-3);display:flex;align-items:center;gap:8px;overflow:hidden;color:#b2b2b2;box-sizing:border-box;}
 .lower-active-state.context-info-pill-active{justify-content:center;}
 .lower-active-label{font-size:12px;font-weight:600;color:#b2b2b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;padding-right:var(--lower-select-all-w);}
-.lower-active-state.context-info-pill-active .lower-active-label{display:block;flex:0 1 auto;width:fit-content;max-width:100%;margin-inline:auto;padding:2px 12px;border-radius:999px;background:rgba(255,255,255,.055);border:.5px solid rgba(178,178,178,.22);line-height:18px;box-sizing:border-box;pointer-events:none;}
+.lower-active-state.context-info-pill-active .lower-active-label{display:block;flex:0 1 auto;width:fit-content;max-width:100%;margin-inline:auto;padding:2px 14px;border-radius:999px;background:rgba(255,255,255,.055);border:.5px solid rgba(178,178,178,.22);line-height:18px;box-sizing:border-box;pointer-events:none;}
+.lower-active-label .context-info-value{color:#ff9500;}
+.lower-active-label .context-info-sep{color:#b2b2b2;margin:0 8px;}
+.lower-active-label .context-info-group{display:inline-block;}
 .lower-active-sub{display:none;}
 .lower-selection-actions{display:flex;visibility:hidden;pointer-events:none;position:absolute;right:0;top:0;bottom:0;width:var(--lower-select-all-w);min-width:var(--lower-select-all-w);margin-left:0;align-items:center;justify-content:flex-end;gap:4px;flex:0 0 var(--lower-select-all-w);overflow:visible;}
 body.has-multi-selection .lower-selection-actions{visibility:visible;pointer-events:auto;}
@@ -7142,8 +7145,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7T';
-const APP_VERSION_NAME = 'v8z4b32E7T';
+const APP_VERSION = 'v8z4b32E7U';
+const APP_VERSION_NAME = 'v8z4b32E7U';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -8979,7 +8982,7 @@ let selectedFrames = new Set(); // seleção múltipla
 let frameMultiSelectMode = false; // legado v8z4b26a; v8z4b26b não usa botão/modo visual
 
 function isMultiSelectionActive() {
-  return selectedFrames.size >= 1;
+  return !(typeof isAssetsMode === 'function' && isAssetsMode()) && selectedFrames.size >= 1;
 }
 
 function isFrameVisuallyMultiSelected(i) {
@@ -16798,28 +16801,18 @@ function getTimelineStageFocusIndex() {
 }
 function syncLowerTimelineCenterMarkers() {
   const slotEl = document.querySelector('.lower-timeline-slot');
-  const pillsEl = document.querySelector('#pillsRow');
-  if (!slotEl || !pillsEl) return;
-  const slotRect = slotEl.getBoundingClientRect();
-  if (!slotRect.width) return;
-  const focusIdx = getTimelineStageFocusIndex();
-  const activeChip = pillsEl.querySelector('[data-frame-index="' + focusIdx + '"]');
-  let centerX = slotRect.width / 2;
-  if (activeChip) {
-    const chipRect = activeChip.getBoundingClientRect();
-    if (chipRect.width) centerX = (chipRect.left - slotRect.left) + chipRect.width / 2;
-  }
-  slotEl.style.setProperty('--lower-timeline-center-x', centerX + 'px');
-  timelineCenterMarkerIsFixedOverlay = false;
+  if (!slotEl) return;
+  slotEl.style.setProperty('--lower-timeline-center-x', '50%');
+  timelineCenterMarkerIsFixedOverlay = true;
   timelineCenterMarkerInsideScrollableContent = false;
-  timelineMarkerMovedWithScrollableContent = true;
-  timelineMarkerFixedDuringManualScroll = false;
-  timelineCenterDotsAlignedToActiveChip = !!activeChip;
-  timelineCenterDotsCenterXMatchesActiveChip = !!activeChip;
-  timelineTopDotCenterXMatchesActiveChip = !!activeChip;
-  timelineBottomDotCenterXMatchesActiveChip = !!activeChip;
-  cameraModeCenterDotsAlignedToActiveChip = (typeof isAssetsMode === 'function' && isAssetsMode()) ? true : !!activeChip;
-  assetsModeCenterDotsAlignedToActiveChip = (typeof isAssetsMode === 'function' && isAssetsMode()) ? !!activeChip : true;
+  timelineMarkerMovedWithScrollableContent = false;
+  timelineMarkerFixedDuringManualScroll = true;
+  timelineCenterDotsAlignedToActiveChip = true;
+  timelineCenterDotsCenterXMatchesActiveChip = false;
+  timelineTopDotCenterXMatchesActiveChip = false;
+  timelineBottomDotCenterXMatchesActiveChip = false;
+  cameraModeCenterDotsAlignedToActiveChip = true;
+  assetsModeCenterDotsAlignedToActiveChip = true;
   timelineCenterDotsLateralDeltaPx = 0;
 }
 function getLowerTimelineNearestFrameIndex() {
@@ -17003,6 +16996,9 @@ function scheduleLowerTimelineSnapToCenter() {
     if (nearest >= 0) centerLowerTimelineOnFrame(nearest, true);
   }, LOWER_TIMELINE_SNAP_DELAY_MS);
 }
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
 function formatContextInfoRotation(value) {
   const n = Number(value) || 0;
   const rounded = Math.round(n * 10) / 10;
@@ -17041,12 +17037,12 @@ function getSingleContextInfoLabel() {
     if (!asset) return null;
     const rot = formatContextInfoRotation(asset.rotation || 0);
     const scale = formatContextInfoScalePercent(getAssetContextScalePercent(asset));
-    return getAssetContextIdentifier(asset) + ' · ' + scale + ' · ' + rot;
+    return '<span class="context-info-group context-info-value">' + escapeHtml(getAssetContextIdentifier(asset)) + '</span><span class="context-info-sep">·</span><span class="context-info-group context-info-value">Escala ' + escapeHtml(scale) + '</span><span class="context-info-sep">·</span><span class="context-info-group context-info-value">Rotação ' + escapeHtml(rot) + '</span>';
   }
   if (!isAssetsMode() && bottomContextMode === 'frame' && activeIdx >= 0 && activeIdx < frameCount) {
     const rot = formatContextInfoRotation(frameRotations[activeIdx] || 0);
     const scale = formatContextInfoScalePercent(getFrameScalePercent(activeIdx));
-    return 'F' + (activeIdx + 1) + ' · ' + scale + ' · ' + rot;
+    return '<span class="context-info-group context-info-value">Frame ' + (activeIdx + 1) + '</span><span class="context-info-sep">·</span><span class="context-info-group context-info-value">Tempo ' + escapeHtml(formatLowerTimeValue(framePauses[activeIdx]?.duration || 0, true)) + '</span><span class="context-info-sep">·</span><span class="context-info-group context-info-value">Escala ' + escapeHtml(scale) + '</span><span class="context-info-sep">·</span><span class="context-info-group context-info-value">Rotação ' + escapeHtml(rot) + '</span>';
   }
   return null;
 }
@@ -17064,7 +17060,7 @@ function updateLowerTimelineMeta() {
   if (activeEl) {
     const contextInfoLabel = getSingleContextInfoLabel();
     if (activeWrapEl) activeWrapEl.classList.toggle('context-info-pill-active', !!contextInfoLabel);
-    if (contextInfoLabel) activeEl.textContent = contextInfoLabel;
+    if (contextInfoLabel) activeEl.innerHTML = contextInfoLabel;
     else if (isMultiSelectionActive()) activeEl.textContent = getContextSelectionLabel();
     else if (bottomContextMode === 'segment' && selectedSegmentIndex >= 0) activeEl.textContent = 'Trecho ' + (selectedSegmentIndex + 1) + '–' + (selectedSegmentIndex + 2);
     else if (isAssetsMode()) activeEl.textContent = '';
@@ -19497,8 +19493,8 @@ function renderAll() {
           ? temporaryFrameReferenceTargetIndex
           : ((typeof assetsModeFrameReferenceHighlightIndex !== 'undefined') ? assetsModeFrameReferenceHighlightIndex : -1);
         const _isRefFrame = i === _refIdx && _refIdx >= 0;
-        numEl.style.color = _isRefFrame ? '#ffffff' : '';
-        numEl.style.background = _isRefFrame ? 'rgba(255,255,255,.16)' : '';
+        numEl.style.color = _isRefFrame ? '#ff9500' : '';
+        numEl.style.background = _isRefFrame ? 'rgba(255,149,0,.16)' : '';
         numEl.style.fontWeight = _isRefFrame ? '700' : '';
         numEl.style.boxShadow = '';
         // Diagnóstico
@@ -38799,6 +38795,12 @@ function syncFrameMultiSelectModeUI() {
 
 function toggleFrameSelection(fi, makeActive) {
   if (shouldBlockGlobalUIAction()) return;
+  if (typeof isAssetsMode === 'function' && isAssetsMode()) {
+    selectedFrames.clear();
+    frameMultiSelectMode = false;
+    updateLowerTimelineMeta();
+    return;
+  }
   if (fi < 0 || fi >= frameCount) return;
   const wasMultiSelectionActive = isMultiSelectionActive();
   const wasSelected = selectedFrames.has(fi);
@@ -39285,6 +39287,7 @@ function applyPauseValueToSelected(rawValue) {
 function selectAllFramesForContext(ev) {
   if (ev) { ev.preventDefault(); ev.stopPropagation(); if (ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
   if (shouldBlockGlobalUIAction()) return;
+  if (typeof isAssetsMode === 'function' && isAssetsMode()) return;
   if (frameCount < 1) return;
   if (batchPauseEditSession) commitBatchPauseEditSession();
   commitBatchTransformEditSession();
