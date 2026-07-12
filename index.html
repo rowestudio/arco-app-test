@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E7W — base v8z4b32E7V. fix(context-info-pill): restaura o prefixo F no identificador de frame e remove pausa/tempo da pill contextual da terceira linha, mantendo apenas frame, escala e rotação com separadores verticais cinza e valores laranja. APP_VERSION = APP_VERSION_NAME = v8z4b32E7W. -->
 <!-- Arco Motion App — v8z4b32E7T — base v8z4b32E7S. ux(context-info-pill): centraliza a informação contextual existente da terceira linha na área útil da timeline e aplica pill neutro de largura automática para frame único (Fxx · escala · rotação) e ativo único (Imagem N · escala · rotação), preservando seleção múltipla, trechos, layout, timeline, toolbar, HUD, Preview, Export, Save/Load e ProjectWorld. APP_VERSION = APP_VERSION_NAME = v8z4b32E7T. -->
 <!-- Arco Motion App — v8z4b32E7S — base v8z4b32E7R. ux(context-info-row): consolida pausa, rotação e escala do frame único e nome, rotação e escala do ativo único na terceira linha contextual existente, sem criar nova linha/componente e preservando seleção múltipla, trecho, coluna esquerda, timeline, toolbar, HUD e alças. Diagnóstico observacional acompanha reutilização da linha e estados de frame/ativo. APP_VERSION = APP_VERSION_NAME = v8z4b32E7S. -->
 <!-- Arco Motion App — v8z4b32E7Q — base v8z4b32E7P. fix(preview-after-load-readiness): preparação canônica do Preview aguarda decode e stableDrawable de todos os assets visíveis restaurados antes de reconstruir snapshot/iniciar, mantendo loader e evitando bloqueio por asset pendente. Preserva Export, layout, menus, fluxo, Timeline, Frames, Curvas, ProjectWorld e geometria dos assets. APP_VERSION = APP_VERSION_NAME = v8z4b32E7Q. -->
@@ -7145,8 +7146,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7V';
-const APP_VERSION_NAME = 'v8z4b32E7V';
+const APP_VERSION = 'v8z4b32E7W';
+const APP_VERSION_NAME = 'v8z4b32E7W';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -17042,7 +17043,7 @@ function getSingleContextInfoLabel() {
   if (!isAssetsMode() && bottomContextMode === 'frame' && activeIdx >= 0 && activeIdx < frameCount) {
     const rot = formatContextInfoRotation(frameRotations[activeIdx] || 0);
     const scale = formatContextInfoScalePercent(getFrameScalePercent(activeIdx));
-    return '<span class="context-info-group context-info-value">' + (activeIdx + 1) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(formatLowerTimeValue(framePauses[activeIdx]?.duration || 0, true)) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(scale) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(rot) + '</span>';
+    return '<span class="context-info-group context-info-value">F' + (activeIdx + 1) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(scale) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(rot) + '</span>';
   }
   return null;
 }
@@ -36050,7 +36051,7 @@ function buildDiagnosticsText() {
         const _timelineEl = document.getElementById('pillsRow');
         const _toolbarEl = document.getElementById('toolbar');
         const _labelText = _labelEl ? (_labelEl.textContent || '') : '';
-        const _singleFrameVisible = !isAssetsMode() && bottomContextMode === 'frame' && !isMultiSelectionActive() && activeIdx >= 0 && activeIdx < frameCount && _labelText.indexOf(String(activeIdx + 1) + ' | ') === 0;
+        const _singleFrameVisible = !isAssetsMode() && bottomContextMode === 'frame' && !isMultiSelectionActive() && activeIdx >= 0 && activeIdx < frameCount && _labelText.indexOf('F' + String(activeIdx + 1) + ' | ') === 0;
         const _singleAsset = (typeof getSelectedAsset === 'function') ? getSelectedAsset() : null;
         const _singleAssetLabel = _singleAsset && typeof getAssetContextIdentifier === 'function' ? getAssetContextIdentifier(_singleAsset) : '';
         const _singleAssetVisible = isAssetsMode() && bottomContextMode === 'asset' && !!_singleAsset && _labelText.indexOf(_singleAssetLabel + ' | ') === 0;
@@ -36062,10 +36063,10 @@ function buildDiagnosticsText() {
         _pb('contextInfoRowPreservedToolbarLayout', !!_toolbarEl);
         _pb('singleFrameContextInfoVisible', _singleFrameVisible);
         push('singleFrameContextInfoFrameIndex', String(_singleFrameVisible ? activeIdx : -1));
-        _pb('singleFrameContextInfoShowsPause', false);
+        _pb('singleFrameContextInfoShowsPause', _singleFrameVisible && _labelText.indexOf('Pausa') >= 0);
         _pb('singleFrameContextInfoShowsRotation', _singleFrameVisible && /°$/.test(_labelText));
         _pb('singleFrameContextInfoShowsScale', _singleFrameVisible && _labelText.indexOf('%') >= 0);
-        _pb('singleFrameContextInfoShowsDuration', false);
+        _pb('singleFrameContextInfoShowsDuration', _singleFrameVisible && /\d+(?:[,.]\d+)?s/.test(_labelText));
         _pb('singleFrameContextInfoUsesCanonicalPause', false);
         _pb('singleFrameContextInfoUsesCanonicalRotation', _singleFrameVisible);
         _pb('singleFrameContextInfoUsesCanonicalScale', _singleFrameVisible);
@@ -36116,13 +36117,13 @@ function buildDiagnosticsText() {
         _pb('contextInfoPillUsesAutoWidth', !!(_pillActive && _pillStyle && _pillStyle.width !== '100%'));
         _pb('contextInfoPillHasNoIcons', true);
         _pb('contextInfoPillHasNoLabels', _labelText.indexOf('Frame') < 0 && _labelText.indexOf('Tempo') < 0 && _labelText.indexOf('Escala') < 0 && _labelText.indexOf('Rotação') < 0 && _labelText.indexOf('Pausa') < 0 && _labelText.indexOf('Duração') < 0);
-        _pb('contextInfoPillShowsPause', false);
-        _pb('contextInfoPillShowsSegmentDuration', false);
-        _pb('contextInfoPillPreservesFrameScaleRotation', _singleFrameVisible);
-        _pb('contextInfoPillPreservesAssetScaleRotation', _singleAssetVisible || !isAssetsMode());
-        _pb('contextInfoPillLongAssetNameTruncated', !!(_pillStyle && _pillStyle.whiteSpace === 'nowrap' && _pillStyle.overflow === 'hidden' && _pillStyle.textOverflow === 'ellipsis'));
         const _sepEls = _labelEl ? Array.from(_labelEl.querySelectorAll('.context-info-sep')) : [];
         const _valueEls = _labelEl ? Array.from(_labelEl.querySelectorAll('.context-info-value')) : [];
+        _pb('contextInfoPillShowsPause', _labelText.indexOf('Pausa') >= 0);
+        _pb('contextInfoPillShowsSegmentDuration', /\d+(?:[,.]\d+)?s/.test(_labelText));
+        _pb('contextInfoPillPreservesFrameScaleRotation', _singleFrameVisible && _valueEls.length === 3 && /^F\d+$/.test((_valueEls[0]?.textContent || '').trim()) && ((_valueEls[1]?.textContent || '').indexOf('%') >= 0) && /°$/.test((_valueEls[2]?.textContent || '').trim()));
+        _pb('contextInfoPillPreservesAssetScaleRotation', _singleAssetVisible || !isAssetsMode());
+        _pb('contextInfoPillLongAssetNameTruncated', !!(_pillStyle && _pillStyle.whiteSpace === 'nowrap' && _pillStyle.overflow === 'hidden' && _pillStyle.textOverflow === 'ellipsis'));
         const _sepColors = _sepEls.map(el => getComputedStyle(el).color);
         const _valueColors = _valueEls.map(el => getComputedStyle(el).color);
         const _orange = 'rgb(255, 149, 0)';
@@ -36130,7 +36131,14 @@ function buildDiagnosticsText() {
         _pb('contextInfoUsesVerticalSeparators', _sepEls.length > 0 && _sepEls.every(el => (el.textContent || '').trim() === '|') && _labelText.indexOf('·') < 0);
         _pb('contextInfoSeparatorsUseGray', _sepColors.length > 0 && _sepColors.every(c => c === _gray));
         _pb('contextInfoSeparatorsUseOrange', _sepColors.some(c => c === _orange));
-        _pb('contextInfoAllValuesVisible', !_overflow && _valueEls.length >= (_singleFrameVisible ? 4 : (_singleAssetVisible ? 3 : 0)));
+        _pb('contextInfoUsesFramePrefixF', _singleFrameVisible ? /^F\d+/.test((_valueEls[0]?.textContent || '').trim()) : true);
+        _pb('contextInfoShowsPause', _labelText.indexOf('Pausa') >= 0);
+        _pb('contextInfoShowsTime', /\d+(?:[,.]\d+)?s/.test(_labelText));
+        _pb('contextInfoShowsDuration', _labelText.indexOf('Duração') >= 0 || _labelText.indexOf('duração') >= 0);
+        _pb('contextInfoShowsScale', _labelText.indexOf('%') >= 0);
+        _pb('contextInfoShowsRotation', _labelText.indexOf('°') >= 0);
+        push('contextInfoGroupCount', String(_valueEls.length));
+        _pb('contextInfoAllValuesVisible', !_overflow && _valueEls.length >= (_singleFrameVisible ? 3 : (_singleAssetVisible ? 3 : 0)));
         _pb('contextInfoEllipsisVisible', _labelText.indexOf('...') >= 0 || _labelText.indexOf('…') >= 0 || !!(_pillStyle && _pillStyle.textOverflow === 'ellipsis'));
         _pb('contextInfoValuesUseOrange', _valueColors.length > 0 && _valueColors.every(c => c === _orange));
         _pb('contextInfoPillIncreasedRowHeight', !!(_labelEl && _labelEl.getBoundingClientRect && _labelEl.getBoundingClientRect().height > 24));
