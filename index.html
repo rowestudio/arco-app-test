@@ -2094,7 +2094,7 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .lower-active-state{position:relative;width:100%;height:100%;min-height:0;max-height:var(--lower-row-3);display:flex;align-items:center;gap:8px;overflow:hidden;color:#b2b2b2;box-sizing:border-box;}
 .lower-active-state.context-info-pill-active{justify-content:center;}
 .lower-active-label{font-size:12px;font-weight:600;color:#b2b2b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto;padding-right:var(--lower-select-all-w);}
-.lower-active-state.context-info-pill-active .lower-active-label{display:block;flex:0 1 auto;width:fit-content;max-width:100%;margin-inline:auto;padding:2px 14px;border-radius:999px;background:rgba(255,255,255,.055);border:.5px solid rgba(178,178,178,.22);line-height:18px;box-sizing:border-box;pointer-events:none;}
+.lower-active-state.context-info-pill-active .lower-active-label{display:block;flex:0 1 auto;width:fit-content;max-width:100%;margin-inline:auto;padding:2px 14px;border-radius:999px;background:rgba(255,255,255,.055);border:.5px solid rgba(178,178,178,.22);line-height:18px;box-sizing:border-box;pointer-events:none;overflow:visible;text-overflow:clip;}
 .lower-active-label .context-info-value{color:#ff9500;}
 .lower-active-label .context-info-sep{color:#b2b2b2;margin:0 8px;}
 .lower-active-label .context-info-group{display:inline-block;}
@@ -7145,8 +7145,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7U';
-const APP_VERSION_NAME = 'v8z4b32E7U';
+const APP_VERSION = 'v8z4b32E7V';
+const APP_VERSION_NAME = 'v8z4b32E7V';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -17037,12 +17037,12 @@ function getSingleContextInfoLabel() {
     if (!asset) return null;
     const rot = formatContextInfoRotation(asset.rotation || 0);
     const scale = formatContextInfoScalePercent(getAssetContextScalePercent(asset));
-    return '<span class="context-info-group context-info-value">' + escapeHtml(getAssetContextIdentifier(asset)) + '</span><span class="context-info-sep">·</span><span class="context-info-group context-info-value">Escala ' + escapeHtml(scale) + '</span><span class="context-info-sep">·</span><span class="context-info-group context-info-value">Rotação ' + escapeHtml(rot) + '</span>';
+    return '<span class="context-info-group context-info-value">' + escapeHtml(getAssetContextIdentifier(asset)) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(scale) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(rot) + '</span>';
   }
   if (!isAssetsMode() && bottomContextMode === 'frame' && activeIdx >= 0 && activeIdx < frameCount) {
     const rot = formatContextInfoRotation(frameRotations[activeIdx] || 0);
     const scale = formatContextInfoScalePercent(getFrameScalePercent(activeIdx));
-    return '<span class="context-info-group context-info-value">Frame ' + (activeIdx + 1) + '</span><span class="context-info-sep">·</span><span class="context-info-group context-info-value">Tempo ' + escapeHtml(formatLowerTimeValue(framePauses[activeIdx]?.duration || 0, true)) + '</span><span class="context-info-sep">·</span><span class="context-info-group context-info-value">Escala ' + escapeHtml(scale) + '</span><span class="context-info-sep">·</span><span class="context-info-group context-info-value">Rotação ' + escapeHtml(rot) + '</span>';
+    return '<span class="context-info-group context-info-value">' + (activeIdx + 1) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(formatLowerTimeValue(framePauses[activeIdx]?.duration || 0, true)) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(scale) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(rot) + '</span>';
   }
   return null;
 }
@@ -36050,10 +36050,10 @@ function buildDiagnosticsText() {
         const _timelineEl = document.getElementById('pillsRow');
         const _toolbarEl = document.getElementById('toolbar');
         const _labelText = _labelEl ? (_labelEl.textContent || '') : '';
-        const _singleFrameVisible = !isAssetsMode() && bottomContextMode === 'frame' && !isMultiSelectionActive() && activeIdx >= 0 && activeIdx < frameCount && _labelText.indexOf('F' + (activeIdx + 1) + ' · ') === 0;
+        const _singleFrameVisible = !isAssetsMode() && bottomContextMode === 'frame' && !isMultiSelectionActive() && activeIdx >= 0 && activeIdx < frameCount && _labelText.indexOf(String(activeIdx + 1) + ' | ') === 0;
         const _singleAsset = (typeof getSelectedAsset === 'function') ? getSelectedAsset() : null;
         const _singleAssetLabel = _singleAsset && typeof getAssetContextIdentifier === 'function' ? getAssetContextIdentifier(_singleAsset) : '';
-        const _singleAssetVisible = isAssetsMode() && bottomContextMode === 'asset' && !!_singleAsset && _labelText.indexOf(_singleAssetLabel + ' · ') === 0;
+        const _singleAssetVisible = isAssetsMode() && bottomContextMode === 'asset' && !!_singleAsset && _labelText.indexOf(_singleAssetLabel + ' | ') === 0;
         const _overflow = !!(_labelEl && (_labelEl.scrollWidth > _labelEl.clientWidth + 1));
         _pb('contextInfoRowUsesExistingComponent', !!_labelEl);
         _pb('contextInfoRowNewStructuralRowCreated', false);
@@ -36081,14 +36081,14 @@ function buildDiagnosticsText() {
         _pb('multiFrameLabelPreserved', isMultiSelectionActive() ? _labelText === getContextSelectionLabel() : true);
         _pb('selectAllActionPreserved', !!document.getElementById('lowerSelectionActions'));
         _pb('segmentContextPreserved', bottomContextMode === 'segment' ? _labelText.indexOf('Trecho ') === 0 : true);
-        _pb('noSelectionContextPreserved', isAssetsMode() && !_singleAsset ? (_labelText.indexOf(' · ') < 0) : true);
+        _pb('noSelectionContextPreserved', isAssetsMode() && !_singleAsset ? (_labelText.indexOf(' | ') < 0) : true);
         _pb('contextInfoUsesCompactIdentifiers', true);
         _pb('frameContextUsesCompactNotation', true);
         _pb('assetContextUsesLayerIdentifiers', false);
         _pb('assetContextUsesFileName', false);
         _pb('layerIdentifierStableAfterReplace', true);
         _pb('contextInfoNoDuplicatePause', _labelText.indexOf('Pausa ') < 0);
-        _pb('contextInfoNoDuplicateSegmentDuration', bottomContextMode !== 'segment' || _labelText.indexOf(' · ') < 0);
+        _pb('contextInfoNoDuplicateSegmentDuration', bottomContextMode !== 'segment' || _labelText.indexOf(' | ') < 0);
         _pb('contextInfoUpdatesAfterPauseChange', true);
         _pb('contextInfoUpdatesAfterScaleChange', true);
         _pb('contextInfoUpdatesAfterRotationChange', true);
@@ -36115,12 +36115,24 @@ function buildDiagnosticsText() {
         _pb('contextInfoPillCenteredAgainstFullViewport', false);
         _pb('contextInfoPillUsesAutoWidth', !!(_pillActive && _pillStyle && _pillStyle.width !== '100%'));
         _pb('contextInfoPillHasNoIcons', true);
-        _pb('contextInfoPillHasNoLabels', _labelText.indexOf('Escala') < 0 && _labelText.indexOf('Rotação') < 0 && _labelText.indexOf('Pausa') < 0 && _labelText.indexOf('Duração') < 0);
+        _pb('contextInfoPillHasNoLabels', _labelText.indexOf('Frame') < 0 && _labelText.indexOf('Tempo') < 0 && _labelText.indexOf('Escala') < 0 && _labelText.indexOf('Rotação') < 0 && _labelText.indexOf('Pausa') < 0 && _labelText.indexOf('Duração') < 0);
         _pb('contextInfoPillShowsPause', false);
         _pb('contextInfoPillShowsSegmentDuration', false);
         _pb('contextInfoPillPreservesFrameScaleRotation', _singleFrameVisible);
         _pb('contextInfoPillPreservesAssetScaleRotation', _singleAssetVisible || !isAssetsMode());
         _pb('contextInfoPillLongAssetNameTruncated', !!(_pillStyle && _pillStyle.whiteSpace === 'nowrap' && _pillStyle.overflow === 'hidden' && _pillStyle.textOverflow === 'ellipsis'));
+        const _sepEls = _labelEl ? Array.from(_labelEl.querySelectorAll('.context-info-sep')) : [];
+        const _valueEls = _labelEl ? Array.from(_labelEl.querySelectorAll('.context-info-value')) : [];
+        const _sepColors = _sepEls.map(el => getComputedStyle(el).color);
+        const _valueColors = _valueEls.map(el => getComputedStyle(el).color);
+        const _orange = 'rgb(255, 149, 0)';
+        const _gray = 'rgb(178, 178, 178)';
+        _pb('contextInfoUsesVerticalSeparators', _sepEls.length > 0 && _sepEls.every(el => (el.textContent || '').trim() === '|') && _labelText.indexOf('·') < 0);
+        _pb('contextInfoSeparatorsUseGray', _sepColors.length > 0 && _sepColors.every(c => c === _gray));
+        _pb('contextInfoSeparatorsUseOrange', _sepColors.some(c => c === _orange));
+        _pb('contextInfoAllValuesVisible', !_overflow && _valueEls.length >= (_singleFrameVisible ? 4 : (_singleAssetVisible ? 3 : 0)));
+        _pb('contextInfoEllipsisVisible', _labelText.indexOf('...') >= 0 || _labelText.indexOf('…') >= 0 || !!(_pillStyle && _pillStyle.textOverflow === 'ellipsis'));
+        _pb('contextInfoValuesUseOrange', _valueColors.length > 0 && _valueColors.every(c => c === _orange));
         _pb('contextInfoPillIncreasedRowHeight', !!(_labelEl && _labelEl.getBoundingClientRect && _labelEl.getBoundingClientRect().height > 24));
         _pb('contextInfoPillShiftedTimeline', false);
         _pb('contextInfoPillShiftedToolbar', false);
