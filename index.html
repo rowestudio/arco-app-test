@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E7W — base v8z4b32E7V. fix(context-info-pill): restaura o prefixo F no identificador de frame e remove pausa/tempo da pill contextual da terceira linha, mantendo apenas frame, escala e rotação com separadores verticais cinza e valores laranja. APP_VERSION = APP_VERSION_NAME = v8z4b32E7W. -->
+<!-- Arco Motion App — v8z4b32E7Z — base v8z4b32E7X. feat(frame-visual-hierarchy): renderer visual compartilhado por distância ao frame de referência para frames, números, pontos centrais e curvas; Modo Câmera mantém azul apenas no frame/trecho editável e Modo Ativos usa borda neutra sem preenchimento/glow. Corrige bolinhas laranja da timeline pela geometria real do chip sob o marcador e adiciona diagnósticos hierarchyRendererEnabled/referenceFrameIndex/frameDistance/segmentDistance/timelineMarkerAligned. APP_VERSION = APP_VERSION_NAME = v8z4b32E7Z. -->
 <!-- Arco Motion App — v8z4b32E7T — base v8z4b32E7S. ux(context-info-pill): centraliza a informação contextual existente da terceira linha na área útil da timeline e aplica pill neutro de largura automática para frame único (Fxx · escala · rotação) e ativo único (Imagem N · escala · rotação), preservando seleção múltipla, trechos, layout, timeline, toolbar, HUD, Preview, Export, Save/Load e ProjectWorld. APP_VERSION = APP_VERSION_NAME = v8z4b32E7T. -->
 <!-- Arco Motion App — v8z4b32E7S — base v8z4b32E7R. ux(context-info-row): consolida pausa, rotação e escala do frame único e nome, rotação e escala do ativo único na terceira linha contextual existente, sem criar nova linha/componente e preservando seleção múltipla, trecho, coluna esquerda, timeline, toolbar, HUD e alças. Diagnóstico observacional acompanha reutilização da linha e estados de frame/ativo. APP_VERSION = APP_VERSION_NAME = v8z4b32E7S. -->
 <!-- Arco Motion App — v8z4b32E7Q — base v8z4b32E7P. fix(preview-after-load-readiness): preparação canônica do Preview aguarda decode e stableDrawable de todos os assets visíveis restaurados antes de reconstruir snapshot/iniciar, mantendo loader e evitando bloqueio por asset pendente. Preserva Export, layout, menus, fluxo, Timeline, Frames, Curvas, ProjectWorld e geometria dos assets. APP_VERSION = APP_VERSION_NAME = v8z4b32E7Q. -->
@@ -1382,7 +1382,7 @@ body.editor-assets:not(.assets-refs-visible) .frame .frame-num{display:none !imp
 /* v8z4b30ZY — frame numbers visíveis como referência quando assets-refs-visible ativo */
 body.editor-assets.assets-refs-visible .frame .frame-num{display:block !important;}
 body.editor-assets .frame .frame-crosshair{display:none !important;}
-body.editor-assets .frame .frame-center{display:none !important;}
+body.editor-assets .frame .frame-center{display:block;}
 /* v8z4b30ZL — Botão + vira roxo no Modo Ativos */
 body.editor-assets .lower-add-pill{
   background:#8b3fff;color:#fff;
@@ -7164,8 +7164,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7X';
-const APP_VERSION_NAME = 'v8z4b32E7X';
+const APP_VERSION = 'v8z4b32E7Z';
+const APP_VERSION_NAME = 'v8z4b32E7Z';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -15392,6 +15392,47 @@ function getFilmFrameGeometry(i) {
   };
 }
 
+function getVisualHierarchyReferenceFrameIndex() {
+  const fc = (typeof frameCount === 'number') ? frameCount : 0;
+  let idx = -1;
+  if (typeof isAssetsMode === 'function' && isAssetsMode()) {
+    idx = (typeof lowerTimelineCenterFrameIndex === 'number' && lowerTimelineCenterFrameIndex >= 0)
+      ? lowerTimelineCenterFrameIndex
+      : (typeof getLowerTimelineNearestFrameIndex === 'function' ? getLowerTimelineNearestFrameIndex() : -1);
+  } else {
+    idx = (typeof activeIdx === 'number') ? activeIdx : -1;
+  }
+  if (idx < 0 || idx >= fc) idx = fc > 0 ? 0 : -1;
+  return idx;
+}
+
+function getVisualHierarchyLevel(distance) {
+  const d = Math.max(0, Math.abs(Number(distance) || 0));
+  if (d === 0) return { stroke: 4.0, opacity: 1.0, numOpacity: 1.0, centerRadius: 5.2, centerOpacity: 1.0, segmentStroke: 3.4, segmentOpacity: 1.0 };
+  if (d === 1) return { stroke: 3.0, opacity: 0.80, numOpacity: 0.80, centerRadius: 4.5, centerOpacity: 0.80, segmentStroke: 2.8, segmentOpacity: 0.80 };
+  if (d === 2) return { stroke: 2.5, opacity: 0.60, numOpacity: 0.60, centerRadius: 3.9, centerOpacity: 0.60, segmentStroke: 2.4, segmentOpacity: 0.60 };
+  if (d <= 4) return { stroke: 2.0, opacity: 0.40, numOpacity: 0.40, centerRadius: 3.3, centerOpacity: 0.40, segmentStroke: 2.0, segmentOpacity: 0.40 };
+  return { stroke: 1.5, opacity: 0.24, numOpacity: 0.34, centerRadius: 2.8, centerOpacity: 0.34, segmentStroke: 1.5, segmentOpacity: 0.34 };
+}
+
+function getFrameVisualHierarchy(frameIndex, referenceFrameIndex) {
+  const ref = (typeof referenceFrameIndex === 'number') ? referenceFrameIndex : getVisualHierarchyReferenceFrameIndex();
+  const distance = Math.abs(frameIndex - ref);
+  const level = getVisualHierarchyLevel(distance);
+  level.referenceFrameIndex = ref;
+  level.frameDistance = distance;
+  return level;
+}
+
+function getSegmentVisualHierarchy(segmentIndex, referenceFrameIndex) {
+  const ref = (typeof referenceFrameIndex === 'number') ? referenceFrameIndex : getVisualHierarchyReferenceFrameIndex();
+  const distance = Math.min(Math.abs(segmentIndex - ref), Math.abs((segmentIndex + 1) - ref));
+  const level = getVisualHierarchyLevel(distance);
+  level.referenceFrameIndex = ref;
+  level.segmentDistance = distance;
+  return level;
+}
+
 // getFilmSegmentPathD(seg, ptStageFn) — FONTE ÚNICA do path (d=) de um trecho de
 // curva. Usa os MESMOS centros de frame, os MESMOS handles reais (curvePuller /
 // getCurvesV2CubicCP) e a MESMA matemática (cúbica C quando curvesV2 ativo,
@@ -15517,8 +15558,7 @@ function renderAssetsModeReferenceCurves() {
     return { x: p.x, y: p.y };
   }
   const selSeg = assetsModeSelectedSegmentIndex;
-  const refIdx = (temporaryFrameReferenceTargetIndex >= 0) ? temporaryFrameReferenceTargetIndex
-               : (assetsModeFrameReferenceHighlightIndex >= 0 ? assetsModeFrameReferenceHighlightIndex : -1);
+  const refIdx = getVisualHierarchyReferenceFrameIndex();
   // v8z4b31C — diagnóstico: curvas reais (mesma geometria do Modo Câmera).
   const _useCurvesV2 = (typeof isCurvesV2Active === 'function') && isCurvesV2Active();
   assetsModeCurveReferencesUseRealCurvePath = true;
@@ -15550,10 +15590,9 @@ function renderAssetsModeReferenceCurves() {
   for (let seg = 0; seg < frameCount - 1; seg++) {
     const a = centerStage(seg), b = centerStage(seg + 1);
     if (!a || !b) continue;
-    const isSel = seg === selSeg;
-    // v8z4b32E7X — apresentação quente suave: mesma geometria, só cor da trajetória.
-    const stroke = isSel ? 'rgba(255,149,0,0.86)' : 'rgba(255,176,64,0.54)';
-    const w = (isSel ? 3.4 : 1.8) * invZ;
+    const hv = getSegmentVisualHierarchy(seg, refIdx);
+    const stroke = '#ff9500';
+    const w = hv.segmentStroke * invZ;
     const pathRes = getFilmSegmentPathD(seg, ptStage, a, b);
     const pathD = pathRes.d;
     // v8z4b31G — capture canonical segment path for parity check
@@ -15564,17 +15603,15 @@ function renderAssetsModeReferenceCurves() {
       assetsModeCurveReferenceSimplifiedLineDetected = true;
       assetsModeCurveReferencePathMismatchReason = pathRes.reason;
     }
-    out += '<path d="' + pathD + '" stroke="' + stroke + '" stroke-width="' + w + '" fill="none" stroke-linecap="round"' + (isSel ? '' : ' opacity="0.88"') + '/>';
+    out += '<path d="' + pathD + '" stroke="' + stroke + '" stroke-width="' + w + '" opacity="' + hv.segmentOpacity + '" fill="none" stroke-linecap="round"/>';
   }
   // Pontos nos centros de frame (endpoints), com destaque para o frame/trecho ref.
   for (let i = 0; i < frameCount; i++) {
     const c = centerStage(i);
     if (!c) continue;
-    const isSegEnd = selSeg >= 0 && (i === selSeg || i === selSeg + 1);
-    const isRef = i === refIdx;
-    const r = (isSegEnd || isRef ? 5.2 : 3.4) * invZ;
-    const fill = isRef ? '#ff9500' : (isSegEnd ? 'rgba(255,176,64,0.82)' : 'rgba(255,176,64,0.58)');
-    out += '<circle cx="' + c.x + '" cy="' + c.y + '" r="' + r + '" fill="' + fill + '" stroke="rgba(0,0,0,0.35)" stroke-width="' + invZ + '"/>';
+    const hv = getFrameVisualHierarchy(i, refIdx);
+    const r = hv.centerRadius * invZ;
+    out += '<circle cx="' + c.x + '" cy="' + c.y + '" r="' + r + '" fill="#ff9500" opacity="' + hv.centerOpacity + '" stroke="rgba(0,0,0,0.35)" stroke-width="' + invZ + '"/>';
   }
   if (assetsModeCurveReferenceSimplifiedLineDetected) {
     assetsModeCurveReferencePathMatchesCamera = false;
@@ -16803,6 +16840,7 @@ let timelineBottomDotCenterXMatchesActiveChip = true;
 let cameraModeCenterDotsAlignedToActiveChip = true;
 let assetsModeCenterDotsAlignedToActiveChip = true;
 let timelineCenterDotsLateralDeltaPx = 0;
+let timelineMarkerAligned = true;
 // v8z4b30ZY — índice visual unificado: câmera usa activeIdx, ativos usa frame de referência.
 // Esta é a fonte única para a bolinha laranja (pill.active) e destaque do Stage.
 function getTimelineVisualActiveIndex() {
@@ -16825,9 +16863,14 @@ function syncLowerTimelineCenterMarkers() {
   if (!slotEl) return;
   const pillsEl = document.getElementById('pillsRow');
   const slotRect = slotEl.getBoundingClientRect ? slotEl.getBoundingClientRect() : null;
-  const pillsRect = pillsEl && pillsEl.getBoundingClientRect ? pillsEl.getBoundingClientRect() : null;
-  const centerPx = (slotRect && pillsRect && slotRect.width > 0) ? (pillsRect.left + pillsRect.width / 2 - slotRect.left) : (slotRect ? slotRect.width / 2 : 0);
+  const refIdx = (typeof lowerTimelineCenterFrameIndex === 'number' && lowerTimelineCenterFrameIndex >= 0)
+    ? lowerTimelineCenterFrameIndex
+    : (typeof getLowerTimelineNearestFrameIndex === 'function' ? getLowerTimelineNearestFrameIndex() : -1);
+  const chipEl = pillsEl && refIdx >= 0 ? pillsEl.querySelector('[data-frame-index="' + refIdx + '"]') : null;
+  const chipRect = chipEl && chipEl.getBoundingClientRect ? chipEl.getBoundingClientRect() : null;
+  const centerPx = (slotRect && chipRect) ? (chipRect.left + chipRect.width / 2 - slotRect.left) : (slotRect ? slotRect.width / 2 : 0);
   slotEl.style.setProperty('--lower-timeline-center-x', centerPx ? (centerPx + 'px') : '50%');
+  timelineMarkerAligned = !!(slotRect && chipRect);
   timelineCenterMarkerIsFixedOverlay = true;
   timelineCenterMarkerInsideScrollableContent = false;
   timelineMarkerMovedWithScrollableContent = false;
@@ -19508,24 +19551,33 @@ function renderAll() {
       const numEl = el.querySelector('.frame-num');
       const invZ = 1 / editorZoomScale;
       const _isHl = el.classList.contains('assets-ref-highlight');
+      const _refFrameIdx = getVisualHierarchyReferenceFrameIndex();
+      const _hv = getFrameVisualHierarchy(i, _refFrameIdx);
       if (borderEl) {
-        // v8z4b31B — contorno levemente mais visível para frames não selecionados
-        // (era '' vazio, deixando CSS padrão invisível; agora reforça levemente).
-        borderEl.style.borderColor = _isHl ? '' : FRAME_COLORS.distant.border;
-        borderEl.style.borderWidth = ((_isHl ? 5.0 : 4.0) * invZ) + 'px';
+        borderEl.style.borderColor = FRAME_COLORS.distant.border;
+        borderEl.style.borderWidth = (_hv.stroke * invZ) + 'px';
         borderEl.style.boxShadow = 'none';
+      }
+      el.style.opacity = _hv.opacity;
+      el.style.zIndex = String(FRAME_REFERENCE_LAYER_Z + Math.max(0, 10 - _hv.frameDistance));
+      const centerEl = el.querySelector('.frame-center');
+      if (centerEl) {
+        centerEl.style.display = 'block';
+        centerEl.style.width = (_hv.centerRadius * 2) + 'px';
+        centerEl.style.height = (_hv.centerRadius * 2) + 'px';
+        centerEl.style.opacity = _hv.centerOpacity;
+        centerEl.style.background = '#ff9500';
       }
       // Número do frame: referência visual no Modo Ativos
       if (numEl) {
         numEl.textContent = String(i + 1);
-        const _refIdx = (typeof temporaryFrameReferenceTargetIndex !== 'undefined' && temporaryFrameReferenceTargetIndex >= 0)
-          ? temporaryFrameReferenceTargetIndex
-          : ((typeof assetsModeFrameReferenceHighlightIndex !== 'undefined') ? assetsModeFrameReferenceHighlightIndex : -1);
+        const _refIdx = _refFrameIdx;
         const _isRefFrame = i === _refIdx && _refIdx >= 0;
-        numEl.style.color = _isRefFrame ? '#ff9500' : '';
-        numEl.style.background = _isRefFrame ? 'rgba(255,149,0,.16)' : '';
+        numEl.style.color = '';
+        numEl.style.background = '';
         numEl.style.fontWeight = _isRefFrame ? '700' : '';
         numEl.style.boxShadow = '';
+        numEl.style.opacity = _hv.numOpacity;
         // Diagnóstico
         if (_isRefFrame) {
           assetsModeFrameNumberHighlightIndex = i;
@@ -19540,7 +19592,7 @@ function renderAll() {
       assetsModeFrameReferenceOpacityUniform = true;
     } else {
       // Modo Câmera — lógica original de hierarquia visual
-      const stageFocusIdx = getTimelineStageFocusIndex();
+      const stageFocusIdx = getVisualHierarchyReferenceFrameIndex();
       const dist = Math.abs(i - stageFocusIdx);
       const isActive   = dist === 0;
       const isPrevAdj  = i === stageFocusIdx - 1;
@@ -19564,16 +19616,12 @@ function renderAll() {
       const selectedStageFocus = (multiSelectionActive && isSelected) || isSegmentEndpoint;
       // v8z4b31E — legibilidade do Modo Câmera: borda do frame ativo mais espessa
       // (4.0) e frames não ativos menos apagados (0.78 distantes, 0.88 adjacentes).
-      const borderW = selectedStageFocus ? (3.5 * invZ) + 'px'
-                    : showActiveStageFocus ? (4.0 * invZ) + 'px'
-                    : (3.0 * invZ) + 'px';
+      const _hv = getFrameVisualHierarchy(i, stageFocusIdx);
+      const borderW = ((_hv.stroke) * invZ) + 'px';
       const op = selectedStageFocus ? 1.0
                : multiSelectionActive ? 0.82
-               : showActiveStageFocus ? 1.0
                : isSegmentEndpoint ? 1.0
-               : bottomContextMode === 'segment' ? 0.78
-               : isAdjacent ? 0.92
-               : 0.88;
+               : _hv.opacity;
       el.style.zIndex = multiSelectionActive ? '20'
                       : (showActiveStageFocus || isSegmentEndpoint) ? '30'
                       : isAdjacent ? '25'
@@ -19600,17 +19648,22 @@ function renderAll() {
         borderEl.style.borderColor = col.border;
       }
       borderEl.style.borderWidth = borderW;
-      borderEl.style.boxShadow = selectedStageFocus
-        ? `0 0 ${12 * invZ}px rgba(0,0,0,.42), 0 0 ${10 * invZ}px rgba(255,149,0,.28)`
-        : showActiveStageFocus
-          ? `0 0 ${12 * invZ}px rgba(0,0,0,.42), 0 0 ${10 * invZ}px rgba(0,212,255,.36)`
-          : 'none';
+      borderEl.style.boxShadow = 'none';
+      const centerEl = el.querySelector('.frame-center');
+      if (centerEl) {
+        centerEl.style.display = 'block';
+        centerEl.style.width = (_hv.centerRadius * 2) + 'px';
+        centerEl.style.height = (_hv.centerRadius * 2) + 'px';
+        centerEl.style.opacity = _hv.centerOpacity;
+        centerEl.style.background = showActiveStageFocus ? '#00d4ff' : '#ff9500';
+      }
       if (numEl) {
         numEl.textContent = String(i + 1);
         numEl.style.color = selectedStageFocus ? '#ffffff' : '';
         numEl.style.background = selectedStageFocus ? 'rgba(0,0,0,.58)' : '';
         numEl.style.fontWeight = selectedStageFocus ? '800' : '';
-        numEl.style.boxShadow = selectedStageFocus ? `0 0 ${8 * invZ}px rgba(255,149,0,.45)` : '';
+        numEl.style.boxShadow = '';
+        numEl.style.opacity = _hv.numOpacity;
       }
       const rh = el.querySelector('.rot-handle');
       if (rh) rh.classList.remove('show');
@@ -20373,6 +20426,7 @@ function drawBezier() {
     const a = _getCenterCamera(seg), b = _getCenterCamera(seg + 1);
     if (!a || !b) continue;
     const active = activeSegs.has(seg);
+    const hv = getSegmentVisualHierarchy(seg, getVisualHierarchyReferenceFrameIndex());
     const segColor = active ? BLUE : INACTIVE;
 
     // v8z4b31G — getFilmSegmentPathD: MESMA fonte de path do Modo Ativos.
@@ -20385,13 +20439,8 @@ function drawBezier() {
       cameraRenderedCurvePathD = pathD;
     }
 
-    if (active) {
-      svg += `<path d="${pathD}" stroke="${segColor}" stroke-width="${3 * invZ}" fill="none" stroke-linecap="round"/>`;
-    } else if (multiSelectionActive) {
-      svg += `<path d="${pathD}" stroke="${INACTIVE}" stroke-width="${2 * invZ}" opacity="0.86" fill="none" stroke-linecap="round"/>`;
-    } else {
-      svg += `<path d="${pathD}" stroke="${INACTIVE}" stroke-width="${2 * invZ}" opacity="0.88" fill="none" stroke-linecap="round"/>`;
-    }
+    const pathOpacity = multiSelectionActive ? 0.86 : hv.segmentOpacity;
+    svg += `<path d="${pathD}" stroke="${segColor}" stroke-width="${hv.segmentStroke * invZ}" opacity="${pathOpacity}" fill="none" stroke-linecap="round"/>`;
   }
 
   // Bolinhas nos centros — usa getFilmFrameGeometry para consistência com a curva.
@@ -20399,16 +20448,8 @@ function drawBezier() {
     if (multiSelectionActive) continue;
     const c = _getCenterCamera(i);
     if (!c) continue;
-    if (bottomContextMode === 'segment' && selectedSegmentIndex >= 0) {
-      const isSegPoint = i === selectedSegmentIndex || i === selectedSegmentIndex + 1;
-      if (!isSegPoint) continue;
-      svg += `<circle cx="${c.x}" cy="${c.y}" r="${5 * invZ}" fill="${BLUE}" opacity="1" stroke="rgba(0,0,0,0.3)" stroke-width="${invZ}"/>`;
-      continue;
-    }
-    const dist = Math.abs(i - getTimelineStageFocusIndex());
-    if (dist > 1) continue;
-    const op = dist === 0 ? 1 : 0.7;
-    svg += `<circle cx="${c.x}" cy="${c.y}" r="${5 * invZ}" fill="${dist === 0 ? BLUE : INACTIVE}" opacity="${op}" stroke="rgba(0,0,0,0.3)" stroke-width="${invZ}"/>`;
+    const hv = getFrameVisualHierarchy(i, getVisualHierarchyReferenceFrameIndex());
+    svg += `<circle cx="${c.x}" cy="${c.y}" r="${hv.centerRadius * invZ}" fill="${hv.frameDistance === 0 ? BLUE : INACTIVE}" opacity="${hv.centerOpacity}" stroke="rgba(0,0,0,0.3)" stroke-width="${invZ}"/>`;
   }
 
   // Linha tracejada removida — não agrega informação
@@ -37690,6 +37731,19 @@ function buildDiagnosticsText() {
   const _ssi = (typeof selectedSegmentIndex === 'number') ? selectedSegmentIndex : -1;
   rendererFrameIndexMatchesActiveFrameIndex = true;
   rendererSegmentIndexMatchesSelectedSegmentIndex = true;
+
+  const _hierRef = (typeof getVisualHierarchyReferenceFrameIndex === 'function') ? getVisualHierarchyReferenceFrameIndex() : -1;
+  const _hierFrameDistance = (_hierRef >= 0 && typeof activeIdx === 'number') ? Math.abs(activeIdx - _hierRef) : -1;
+  const _hierSegmentDistance = (typeof selectedSegmentIndex === 'number' && selectedSegmentIndex >= 0 && _hierRef >= 0)
+    ? Math.min(Math.abs(selectedSegmentIndex - _hierRef), Math.abs(selectedSegmentIndex + 1 - _hierRef))
+    : -1;
+
+  L.push('-- Visual hierarchy --');
+  push('hierarchyRendererEnabled', 'true');
+  push('referenceFrameIndex', String(_hierRef));
+  push('frameDistance', String(_hierFrameDistance));
+  push('segmentDistance', String(_hierSegmentDistance));
+  push('timelineMarkerAligned', String((typeof timelineMarkerAligned !== 'undefined') ? timelineMarkerAligned : false));
 
   L.push('-- Arquitetura --');
   push('unifiedFilmOverlayRendererEnabled', String(unifiedFilmOverlayRendererEnabled));
