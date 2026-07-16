@@ -1,0 +1,50 @@
+name: QA Guardrails
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  qa-guardrails:
+    name: Static QA guardrails
+    runs-on: ubuntu-24.04
+    env:
+      QA_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+      QA_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      QA_PR_TITLE: ${{ github.event_name == 'pull_request' && github.event.pull_request.title || '' }}
+      QA_PR_BODY: ${{ github.event_name == 'pull_request' && github.event.pull_request.body || '' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Repository state
+        run: node scripts/qa/check-repository-state.mjs
+
+      - name: App version
+        run: node scripts/qa/check-app-version.mjs
+
+      - name: UI technical leakage
+        run: node scripts/qa/check-ui-leakage.mjs
+
+      - name: Project OS
+        run: node scripts/qa/check-project-os.mjs
+
+      - name: Markdown links
+        run: node scripts/qa/check-markdown-links.mjs
+
+      - name: QA summary
+        if: always()
+        run: node scripts/qa/generate-qa-report.mjs
