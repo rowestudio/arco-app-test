@@ -1,57 +1,16 @@
-# Codex Task 001 — Preservar curvas ao usar escala global
+# OBSOLETO — tarefa migrada para a OPS-01
 
-## Base
+Este arquivo é histórico e não deve mais ser usado como instrução operacional.
 
-```text
-index.html
-```
+Conteúdo válido migrado para:
 
-Base original recomendada:
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `REGRESSIONS.md`
+- `TEST_CASES.md`
 
-```text
-arco-v8z3u-webcodecs-rollback-clean.html
-```
+Resumo da migração: a regressão “escala global reseta curvas”, a regra de que escala não deve alterar curvas, as rotinas de reset/recriação de curva proibidas como efeito colateral e o teste preventivo foram consolidados nos documentos oficiais.
 
-## Problema
+A referência antiga a `arco-v8z3u-webcodecs-rollback-clean.html` é histórica e não autoriza criação de HTML paralelo nem mudança de base fora do fluxo atual.
 
-No Template Circular, quando o usuário aumenta ou diminui a escala de vários frames usando o ajuste Global, o app reseta as curvas.
-
-## Comportamento esperado
-
-Escala global deve alterar somente o tamanho dos frames.  
-As curvas existentes devem permanecer iguais.
-
-## Regras
-
-Não alterar motor de animação, WebCodecs, easing, edição de curva, layout, textos, ícones, cores ou fluxo aprovado.
-
-## Instrução técnica
-
-Investigar onde o ajuste global de escala dispara reconstrução de curva.
-
-Não chamar durante ajuste de escala:
-
-- `resetCtrlPts`;
-- `initCtrlPts`;
-- `applyTemplate`;
-- `autoCurve`;
-- `rebuildCurve`;
-- função equivalente de reset/recriação de curva.
-
-Curvas só podem resetar quando:
-
-- usuário aplica explicitamente novo template;
-- usuário aciona reset de curva;
-- usuário carrega outro projeto.
-
-## Validação
-
-1. Carregar imagem.
-2. Aplicar Template Circular.
-3. Editar curva manualmente.
-4. Abrir escala.
-5. Ativar Global.
-6. Alterar escala.
-7. Confirmar que a curva não se move/reset.
-8. Preview.
-9. Gerar MP4.
+Preservação de rastreabilidade: o conteúdo anterior permanece no histórico Git.

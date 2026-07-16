@@ -1,3 +1,17 @@
+# REFERÊNCIA HISTÓRICA — plano não autorizado
+
+Este arquivo preserva um plano técnico histórico da versão indicada abaixo. Ele não deve ser usado como instrução operacional ativa nem como autorização para implementar fases de curva.
+
+Regras vigentes sobre curvas, easing, escala, motor e regressões estão em:
+
+- `../AGENTS.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `REGRESSIONS.md`
+- `DEFINITION_OF_DONE.md`
+
+Qualquer evolução de curvas exige tarefa explícita, Engine Sprint aplicável, branch e PR próprios.
+
 # Plano Técnico de Implementação — Sistema de Curvas do Arco App
 **Complementa:** `audit-curve-system-v8z4b17v.md`  
 **Branch de trabalho:** `claude/curve-system-plan-fICKx`  

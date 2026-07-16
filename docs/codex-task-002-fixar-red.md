@@ -1,22 +1,13 @@
-# Codex Task 002 — Fixar ativo em vermelho
+# OBSOLETO — tarefa histórica
 
-## Problema
+Este arquivo é histórico e não deve mais ser usado como instrução operacional.
 
-Quando Fixar está ativo em algum frame, o estado visual usa luz/realce azul.
+Regras gerais válidas foram migradas para:
 
-## Comportamento esperado
+- `../AGENTS.md`
+- `PRODUCT_RULES.md`
+- `DEFINITION_OF_DONE.md`
 
-Quando Fixar estiver ativo, usar vermelho.
+O pedido específico sobre “Fixar ativo em vermelho” pertence ao histórico da tarefa original e não autoriza nova alteração visual nesta PR.
 
-## Regras
-
-Não alterar comportamento do Fixar, layout, texto, ícones, motor, curva, easing ou export.
-
-## Validação
-
-1. Carregar imagem.
-2. Selecionar frame.
-3. Ativar Fixar.
-4. Confirmar destaque vermelho.
-5. Desativar Fixar.
-6. Confirmar volta ao estado visual normal.
+Preservação de rastreabilidade: o conteúdo anterior permanece no histórico Git.

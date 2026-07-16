@@ -1,161 +1,51 @@
-# Roadmap — pós-checkpoint v8z4b25h
+# ROADMAP
 
-## Checkpoint atual
+Este roadmap organiza áreas de atenção. Ele não aprova automaticamente implementação.
 
-- **v8z4b25h** é o checkpoint funcional interno aprovado.
-- Não é release comercial.
-- Substitui v8z4b25g como checkpoint estável atual.
-- Serve como base segura para todas as evoluções listadas abaixo.
+## Bugs críticos
 
-## Sequência provável de versões
+- A confirmar por tarefa específica.
 
-| Versão           | Foco principal                                              |
-|------------------|-------------------------------------------------------------|
-| v8z4b26a         | **Implementada:** seleção múltipla de frames + aplicar modo de curva em lote |
-| v8z4b26b         | **Implementada:** remover Sel + mostrar seleção múltipla no Stage |
-| v8z4b26c         | **Implementada:** leitura visual forte da seleção múltipla no Stage |
-| v8z4b26d         | **Implementada:** separação visual entre seleção simples e seleção múltipla |
-| v8z4b26e         | **Implementada:** limpeza de marcação residual ao desselecionar frames |
-| v8z4b26f         | **Implementada:** correção de luz, moldura e caminhos na seleção múltipla |
-| v8z4b26g         | **Implementada:** remover laranja interno e overlay externo da seleção múltipla |
-| v8z4b27a         | **Implementada:** menu de seleção múltipla com Pausa, Escala, Rotação e Posição |
-| v8z4b27b         | **Implementada:** Pausa em lote com slider decimal sem incrementos fixos |
-| v8z4b27c         | **Implementada:** Pausa em lote simplificada com frames afetados e sem ações redundantes |
-| v8z4b27d         | **Implementada:** Pausa contextual direta, menu com 1 frame, Selecionar todos e Undo da cor |
-| v8z4b27e         | **Implementada:** menu contextual limpo, primeiro selecionado destacado, Pausa sem Zerar e Undo de Conter |
-| v8z4b27f         | **Implementada:** painel Pausa, Undo com painel aberto, ícones e menu rolável de frames selecionados |
-| v8z4b27g         | **Implementada:** padronização real dos menus multi-select pelo menu individual |
-| v8z4b27h         | **Implementada:** correções delta, ícones e bounds visuais do multi-select |
-| v8z4b27i         | **Implementada:** referência por seleção, reset de rotação e faixa rolável sem corte |
-| v8z5-prototype   | Protótipo visual separado da nova interface                 |
-| v8z5a            | Primeira integração real da nova interface aprovada         |
+## Regressões abertas
 
----
+- Ver catálogo em `docs/REGRESSIONS.md`.
+- Não marcar regressão como resolvida sem evidência.
+- Regressões históricas de escala/curva e sessão foram migradas de `docs/known-issues.md` para `docs/REGRESSIONS.md`; o status real de correção deve ser confirmado por tarefa específica antes de fechar qualquer item.
 
-## 1. Curvas — edição direta pela linha
+## Melhorias de UX
 
-- Permitir puxar a curva pela própria linha/segmento.
-- Criar hit area invisível maior para iPhone/Safari.
-- Preservar linha visual fina.
-- Afetar apenas o segmento correspondente.
-- Definir regra para abertura de handles quando ponto estiver em Canto.
-- Preservar Loop, Undo/Redo e zoom/pan.
-- Implementar em versão separada.
+- A confirmar por aprovação explícita de Roberto.
 
-## 2. Seleção múltipla de frames
+## Melhorias visuais
 
-**Status v8z4b27i:** painéis Pausa/Escala/Rotação multi-select usam o primeiro frame da seleção atual como referência; Selecionar todos começa pelo frame ativo; sliders de Escala/Rotação exibem valor absoluto e aplicam delta relativo; Reset individual de Rotação ressincroniza slider/texto/fill/Stage; faixa rolável reserva a coluna fixa; badges são atualizados no render após renumeração. Mantidos fora do escopo motor, Preview, MP4, JSON, curvas, zoom/pan e ghost frame.
+- A confirmar por aprovação explícita de Roberto.
+- Não alterar cor, ícone, texto, layout ou fluxo sem escopo.
 
-**Status v8z4b27h:** Rotação/Escala multi-select aplicam deltas relativos com Stage ao vivo e Undo consolidado; Selecionar todos fica separado da faixa rolável com reset de scroll; Distribuir/Mover/Alinhar usam ícones Lucide via sprite; Alinhar/Distribuir usam bounds visuais transformados para frames rotacionados. Mantidos fora do escopo motor, Preview, MP4, JSON, curvas, zoom/pan e ghost frame.
+## Novas funções autorizadas
 
-**Status v8z4b27g:** seleção simples preserva auto-center fora do contexto e usa overlay normal menos pesado (`rgba(0,0,0,0.38)`); seleção contextual usa `selectedFrames` como fonte de verdade já com 1 frame (`selectedFrames.size >= 1`), mantendo destaque laranja no Stage e na faixa. O menu principal usa `Selecionar todos` fixo à esquerda + faixa horizontal rolável com ordem espelhada do menu individual (`Pausa`, `Rotação`, `Escala`, `Mover`) e extras `Alinhar`/`Distribuir`; subpainéis mantêm `Voltar` e o alvo. Os grupos Pausa, Rotação e Escala usam o padrão visual do `custBarContent` com slider, valor e chips textuais; `Selecionar todos` não tem caixa e Alinhar/Distribuir usam símbolos Lucide; Pausa ressincroniza após Undo/Redo com painel aberto e consolida Undo apenas ao fechar/sair do painel. Seleção continua sendo estado temporário de UI e não entra no JSON; `Conter na imagem` permanece restaurado pelo Undo/Redo.
+- Nenhuma nova função autorizada por este documento.
 
-- Selecionar vários frames.
-- Destacar visualmente frames selecionados.
-- Diferenciar frame ativo de frames selecionados.
-- Aplicar modos Canto, Simétrico, Assimétrico e Desconectado em lote.
-- Registrar ação em lote como único Undo.
-- Não quebrar seleção individual nem gestos de toque.
+## Backlog futuro
 
-## 3. Aplicação em lote / global
+- Expansão de suíte de regressão.
+- Matriz de validação por ambiente.
+- Melhor rastreabilidade entre PR, versão, QA e promoção.
 
-- Diferenciar Global = todos os frames e Selecionados = frames escolhidos.
-- Preparar aplicação futura de: escala, posição, rotação, duração, pausa, modo de curva e easing.
-- Começar por ações simples e seguras.
-- Cada lote deve ser um único Undo.
+## Ideias ainda não autorizadas
 
-## 4. Exportação de imagem estática
+- Refatoração ampla do app monolítico.
+- Separação de renderer.
+- Novos fluxos de UI.
+- Serviços externos de teste.
 
-- Exportar projeto com 1 frame como crop/imagem estática.
-- Respeitar formato, posição, escala e rotação do F1.
-- Futuramente exportar imagem do instante pausado no Preview.
-- Usar renderização em resolução final.
+## Infraestrutura e QA
 
-## 5. Preview / visualização
+Infraestrutura atual ou desejada, sem implicar implementação completa nesta PR:
 
-- Sequência de frames destacada durante play.
-- Identificar trecho/frame atual.
-- Estudar pause/export still.
-- Estudar play de trecho isolado.
-
-## 6. Modo Trajeto
-
-- Retângulo/câmera caminhando no Stage.
-- Usar cálculo da animação sem entrar no Preview final.
-- Diagnóstico de movimento, curva, pausas, loop e sequência.
-
-## 7. Navegação de frames
-
-- Faixa de frames deslizante.
-- Destaque do frame central/ativo.
-- Modos: mostrar todos / próximos / selecionados.
-
-## 8. Movimento inteligente e easing
-
-- Movimento inteligente por segmento.
-- Esconder easing avançado quando Movimento Inteligente estiver ligado.
-- Mostrar controles manuais quando desligado.
-- Estudar intensidade de easing sem encher a UI de sliders.
-
-## 9. Nova interface / UI v8z5
-
-- Criar protótipo visual separado antes da integração real.
-- Não redesenhar direto dentro da v8z4b25h.
-- Usar v8z4b25h como base funcional preservada.
-- Revisar hierarquia, ícones, espaçamentos e menus.
-- Organizar: frames, curva, duração, preview, exportação, seleção múltipla e ações em lote.
-
-## 10. Múltiplas imagens / layers
-
-- Visão futura maior; não implementar agora.
-- Preferir arquitetura de Stage expandido com múltiplas imagens/layers.
-- Evitar troca simples de imagem por frame na linha atual.
-
----
-
-## Pendência visual não bloqueante (herdada de v8z4b25h)
-
-- Ícones do menu de curva estão com traço visualmente espesso demais.
-- Não bloqueia nenhuma versão da sequência acima.
-- Será revisado dentro da iteração maior de interface (UI v8z5 ou similar).
-
-
-## Próximas funções registradas em v8z4b27d — não implementadas nesta versão
-
-### Transformação direta de grupo no Stage
-
-- Mover vários frames visualmente como grupo.
-- Escalar vários frames como grupo.
-- Rotacionar vários frames como grupo.
-- Avaliar moldura/handles de grupo em versão experimental.
-- Diferenciar transformação direta no Stage dos ajustes em lote por menu.
-
-### Adicionar pausa aos selecionados
-
-- Criar painel/modo separado de `Adicionar pausa`.
-- Usuário escolhe um valor e esse valor é somado à pausa atual de cada frame selecionado.
-- Preservar diferenças existentes entre frames.
-- Registrar Undo único ao aplicar/fechar.
-
-### Undo/Redo de troca de imagem
-
-- Permitir desfazer/refazer troca de imagem.
-- Avaliar uso de memória no iPhone/Safari antes de implementar.
-- Guardar imagem anterior/nova sem estourar memória.
-
-### Velocidade constante perceptiva
-
-- Estabilizar sensação de velocidade considerando posição, escala e rotação.
-- Não depender apenas da distância entre centros.
-- Estudar deslocamento médio dos cantos do frame/câmera.
-- Testar zoom forte, rotação forte e combinação de zoom + rotação + deslocamento.
-
-## 8. Itens futuros registrados até a v8z4b27h
-
-- Play/Preview acessível com menu de seleção múltipla aberto; tratar como ajuste futuro de UX.
-- Transformação direta de grupo no Stage.
-- Edição global de frames.
-- Adicionar/Subtrair pausa aos selecionados.
-- Undo/Redo de troca de imagem.
-- Loop ida e volta/ping-pong.
-- Velocidade constante perceptiva considerando posição, escala e rotação.
+- Project OS.
+- Suíte de regressão.
+- Testes em WebKit.
+- Avaliação de Safari/iPhone real em nuvem.
+- Staging fixo antes do merge.
+- Revisão automática/adversarial de PR.
+- Fixtures para curvas manuais, escala global, Load e Export WebCodecs.

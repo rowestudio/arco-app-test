@@ -1,46 +1,16 @@
-# Regras para Codex
+# OBSOLETO — regras migradas para a OPS-01
 
-## Regra principal
+Este arquivo é histórico e não deve mais ser usado como instrução operacional.
 
-Fazer sempre a menor alteração possível.
+Conteúdo válido migrado para:
 
-## Não mexer sem pedido explícito
+- `../AGENTS.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `PRODUCT_RULES.md`
+- `REGRESSIONS.md`
+- `DEFINITION_OF_DONE.md`
 
-- Motor de animação.
-- WebCodecs/export MP4.
-- Easing de movimento.
-- Edição de curva.
-- Pausa por frame.
-- Layout.
-- Cores.
-- Textos.
-- Ícones.
-- Fluxo aprovado.
-- Estrutura visual dos painéis.
+Resumo da migração: regras de menor patch, áreas protegidas, WebCodecs como export principal, proibição de `captureStream + MediaRecorder` como export principal, curva como caminho e proteção de curvas contra ajuste de escala foram consolidadas nos documentos oficiais.
 
-## Depois de alterar
-
-A resposta deve listar:
-
-- arquivo alterado;
-- funções alteradas;
-- motivo da alteração;
-- riscos;
-- passos de teste.
-
-## Exportação
-
-O pipeline principal validado é WebCodecs.
-
-Não reintroduzir `captureStream + MediaRecorder` como export principal.
-
-## Curvas
-
-A curva visual controla o caminho.  
-A curva não deve controlar a velocidade do movimento.  
-Não reintroduzir easing na curva.
-
-## Escala global
-
-Ajuste de escala não deve resetar curvas.  
-Não chamar rotinas de reconstrução de curva ao alterar escala.
+Preservação de rastreabilidade: o conteúdo anterior permanece no histórico Git.
