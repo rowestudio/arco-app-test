@@ -190,3 +190,30 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: log.
 - Ambiente: desktop.
 - Automatizável: sim.
+
+## TC-022 — Escala global preserva curvas
+
+- Pré-condição: projeto com Template Circular ou curva manual visível.
+- Passos: editar curva manualmente, abrir escala, ativar Global e alterar escala.
+- Resultado esperado: tamanho dos frames muda, mas a curva não se move, não reseta e não é recriada.
+- Evidência: screenshot antes/depois e comparação do estado de curva.
+- Ambiente: desktop e iPhone/Safari quando aplicável.
+- Automatizável: sim.
+
+## TC-023 — Escala após Load preserva curvas
+
+- Pré-condição: projeto salvo com curva manual.
+- Passos: carregar projeto, alterar escala de frame ou escala global.
+- Resultado esperado: curva carregada permanece igual após ajuste de escala.
+- Evidência: arquivo fixture, screenshot antes/depois e comparação do estado de curva.
+- Ambiente: desktop e iPhone/Safari quando aplicável.
+- Automatizável: sim.
+
+## TC-024 — Pipeline principal de Export
+
+- Pré-condição: projeto válido para exportação.
+- Passos: revisar caminho de export e gerar MP4.
+- Resultado esperado: export principal usa WebCodecs no caminho Canvas → VideoFrame → VideoEncoder → MP4; `captureStream + MediaRecorder` não substitui o pipeline principal.
+- Evidência: inspeção estática, logs de export e arquivo gerado quando possível.
+- Ambiente: desktop/Safari conforme suporte.
+- Automatizável: parcial.

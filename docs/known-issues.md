@@ -1,21 +1,13 @@
-# Known Issues
+# OBSOLETO — issues migradas para a OPS-01
 
-## Bug — Escala global reseta curvas
+Este arquivo é histórico e não deve mais ser usado como catálogo operacional de regressões.
 
-Ao usar escala Global no Template Circular, as curvas são resetadas.
+Conteúdo válido migrado para:
 
-## Bug — Curva reseta ao alterar escala após carregar projeto
+- `REGRESSIONS.md`
+- `DECISIONS.md`
+- `ROADMAP.md`
 
-Ao carregar um projeto salvo, alterar escala de frame pode resetar a curva.
+Resumo da migração: bugs de escala/curva, observações de autosave/retomar sessão, início preto/apagado e rejeição da `v8z3t` como base foram consolidados nos documentos oficiais.
 
-## Observação — Autosave/retomar sessão
-
-Modal “Continuar de onde parou?” aparece no início, mas a restauração ainda não está confiável.
-
-## Observação — Início preto/apagado
-
-Foi observado em uma sequência específica de edição, mas não reproduzido de forma consistente em projeto limpo.
-
-## Regressão descartada — v8z3t
-
-Não usar como base. Quebrou curva/easing.
+Preservação de rastreabilidade: o conteúdo anterior permanece no histórico Git.

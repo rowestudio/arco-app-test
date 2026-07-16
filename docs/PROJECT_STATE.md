@@ -11,6 +11,7 @@
 - Repo estável/produção: `rowestudio/arco-app`.
 - HEAD auditado de produção: `626327280e3a4126fac259e205bbe0bdf3cc8719`.
 - Versão de produção: `v8z4b32E7H`.
+- Origem dos dados de produção: auditoria comparativa realizada antes da OPS-01; não revalidado nesta PR.
 
 ## Fluxo confirmado
 

@@ -11,8 +11,28 @@ Este documento registra a arquitetura existente comprovável pela base atual. N�
 - Frames definem câmera/movimento no modo Câmera/Frames.
 - Layers expõem organização, seleção, visibilidade e reordenação de assets.
 - Preview e Export dependem do estado do projeto e do renderer.
-- Export MP4 usa WebCodecs quando disponível.
+- Export MP4 usa WebCodecs como pipeline principal validado.
 - Save/Load serializa e restaura o projeto.
+
+## Export MP4
+
+O pipeline principal de exportação MP4 é WebCodecs.
+
+O caminho arquitetural consolidado é:
+
+```text
+Canvas → VideoFrame → VideoEncoder → MP4
+```
+
+Histórico preservado: `captureStream + MediaRecorder` causou trancos/perda de suavidade e não deve voltar como export principal sem decisão explícita de Roberto e PR própria. Fallbacks ou caminhos auxiliares não podem substituir silenciosamente o pipeline principal.
+
+## Curvas e movimento
+
+- A curva visual controla o caminho.
+- A curva não controla a velocidade do movimento por si só.
+- Não reintroduzir easing na curva sem autorização explícita.
+- Ajustes de escala não devem resetar, recriar ou alterar curvas existentes.
+- Rotinas de reconstrução de curva não devem ser disparadas como efeito colateral de escala.
 
 ## Relação entre pipelines
 
@@ -41,6 +61,9 @@ Qualquer divergência entre esses pipelines é tratada como risco alto.
 - Asset carregado não correspondendo ao asset visível no Stage.
 - Divergência Preview/Export.
 - Regressão em WebCodecs/export por alteração indireta.
+- Retorno acidental de `captureStream + MediaRecorder` como export principal.
+- Easing ou velocidade sendo reintroduzidos na edição de curva sem autorização.
+- Ajuste de escala resetando curvas.
 - Interações entre ProjectWorld, Layers, seleção e renderer.
 - Comportamento diferente em iPhone/Safari.
 

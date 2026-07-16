@@ -25,6 +25,7 @@
 - Evitar duplicação; quando possível, apontar para a fonte oficial.
 - `AGENTS.md` e `CLAUDE.md` devem apontar para a mesma fonte operacional.
 - Documentos obsoletos devem ser marcados como obsoletos, não apagados sem rastreabilidade.
+- Documentos históricos não podem conter instrução operacional ativa depois da consolidação; devem apontar para `AGENTS.md` e para os documentos oficiais da OPS-01.
 
 ## Anti-divergência
 
@@ -34,3 +35,9 @@ Se dois documentos disserem coisas diferentes:
 2. identifique a fonte mais específica;
 3. peça decisão quando a divergência alterar produto, produção, versão ou escopo;
 4. corrija a documentação na mesma PR quando isso estiver no escopo.
+
+## Documentos históricos e obsoletos
+
+Arquivos antigos de tarefa, auditoria, versão ou QA podem permanecer como rastreabilidade, mas não são fonte única da verdade. Quando contiverem regra ainda válida, a regra deve ser migrada para o documento oficial correspondente e o arquivo antigo deve receber aviso de obsolescência ou referência histórica.
+
+Documentos de QA versionados (`docs/QA-*.md`) são evidência histórica daquela versão, não política operacional vigente.

@@ -1,3 +1,17 @@
+# REFERÊNCIA HISTÓRICA — não operacional
+
+Este arquivo preserva uma auditoria técnica histórica da versão indicada abaixo. Ele não deve ser usado como instrução operacional ativa.
+
+Regras vigentes sobre curvas, easing, escala, motor e regressões estão em:
+
+- `../AGENTS.md`
+- `ARCHITECTURE.md`
+- `DECISIONS.md`
+- `REGRESSIONS.md`
+- `DEFINITION_OF_DONE.md`
+
+Use este arquivo apenas como evidência histórica ou material de investigação, nunca como autorização para alterar motor, `getStateAtT`, `drawAtT`, curvas, easing ou export.
+
 # Auditoria Técnica — Sistema de Curvas do Arco App
 **Versão auditada:** v8z4b17u  
 **Branch de auditoria:** `claude/audit-curve-system-eSDXi`  

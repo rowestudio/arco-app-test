@@ -1,41 +1,16 @@
-# Versionamento
+# OBSOLETO — versionamento reconciliado na OPS-01
 
-## Tags
+Este arquivo é histórico e não deve mais ser usado como instrução operacional.
 
-```text
-v8z3u-stable-candidate
-v8z3v-fix-global-scale
-v8z3w-curve-touch
-v9-ui-redesign
-```
+As regras vigentes estão em:
 
-## Branches
+- `../AGENTS.md`
+- `PROJECT_STATE.md`
+- `DEFINITION_OF_DONE.md`
+- `PROMOTION_TO_PRODUCTION.md`
 
-```text
-fix/global-scale-preserve-curves
-fix/fixar-red-active
-feature/curve-touch-area
-feature/rotation-scale-smoothing
-```
+Resumo da migração: a regra válida “não trabalhar direto na main” foi preservada como fluxo obrigatório por branch e PR. A instrução antiga de “merge” foi substituída por aprovação explícita, PR e promoção própria quando aplicável.
 
-## Commits
+As tags, nomes de branch e exemplos de commit listados anteriormente são históricos, não prescrições atuais.
 
-```text
-fix: preserve curves when scaling globally
-fix: show fixed frame indicator in red
-docs: add QA checklist
-chore: establish v8z3u baseline
-```
-
-## Regra
-
-Não trabalhar direto na `main`.
-
-Fluxo:
-
-1. Criar branch.
-2. Fazer alteração pequena.
-3. Testar.
-4. Revisar diff.
-5. Merge.
-6. Criar tag quando virar estável.
+Preservação de rastreabilidade: o conteúdo anterior permanece no histórico Git.

@@ -73,3 +73,51 @@ Formato: ID, data, decisão, contexto, consequência e status.
 - Contexto: facilitar rastreabilidade entre tarefa, versão e release.
 - Consequência: PRs documentais usam ID operacional, como `OPS-01`.
 - Status: aprovada.
+
+## DEC-010 — WebCodecs como pipeline principal de exportação
+
+- Data: data não consolidada.
+- Decisão: o pipeline principal de MP4 é WebCodecs, no caminho Canvas → VideoFrame → VideoEncoder → MP4.
+- Contexto: histórico do projeto registrou trancos com `captureStream + MediaRecorder`.
+- Consequência: `captureStream + MediaRecorder` não deve voltar como export principal sem decisão explícita e PR própria.
+- Status: aprovada.
+
+## DEC-011 — Curva controla caminho, não velocidade
+
+- Data: data não consolidada.
+- Decisão: a curva visual controla o caminho do movimento, não a velocidade.
+- Contexto: regras históricas em `docs/codex-rules.md` e tarefas de curva/escala foram consolidadas na OPS-01.
+- Consequência: não reintroduzir easing na curva sem autorização explícita.
+- Status: aprovada.
+
+## DEC-012 — Escala não deve resetar curvas
+
+- Data: data não consolidada.
+- Decisão: ajuste de escala, inclusive escala global, não deve resetar, recriar ou alterar curvas existentes.
+- Contexto: regressões históricas indicaram curva resetada ao alterar escala, especialmente após carregar projeto ou usar escala global.
+- Consequência: não chamar rotinas de reset/recriação de curva como efeito colateral de escala.
+- Status: aprovada.
+
+## DEC-013 — v8z3t rejeitada como base
+
+- Data: data não consolidada.
+- Decisão: `v8z3t` não deve ser usada como base.
+- Contexto: versão histórica descartada por regressão em curva/easing.
+- Consequência: tarefas futuras não devem partir dessa base nem reaproveitar sua lógica sem auditoria explícita.
+- Status: aprovada.
+
+## DEC-014 — Documentos antigos não são fonte operacional
+
+- Data: 2026-07-16.
+- Decisão: documentos antigos de regras, tarefas e versionamento devem ser obsoletados ou marcados como referência histórica após migração do conteúdo válido.
+- Contexto: revisão independente apontou risco de fontes paralelas de verdade.
+- Consequência: `AGENTS.md` e os documentos oficiais da OPS-01 prevalecem.
+- Status: aprovada.
+
+## DEC-015 — Merge direto não é fluxo operacional
+
+- Data: 2026-07-16.
+- Decisão: o fluxo obrigatório é branch própria, PR e aprovação; merge direto ou trabalho direto na `main` não é permitido como regra operacional.
+- Contexto: regras históricas de versionamento citavam merge de forma genérica.
+- Consequência: qualquer promoção ou merge exige PR e autorização aplicável.
+- Status: aprovada.
