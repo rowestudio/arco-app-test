@@ -12,6 +12,7 @@ Uma tarefa só está pronta quando:
 - PR foi aberta;
 - título da PR contém versão ou ID operacional;
 - nenhum texto técnico vazou para a interface;
+- guardrails automatizados, quando alterados, têm self-tests versionados positivos e negativos;
 - Preview/Export e sistemas não relacionados foram preservados;
 - compatibilidade iPhone/Safari foi considerada;
 - itens não verificáveis foram explicitados;
@@ -25,6 +26,7 @@ Uma tarefa só está pronta quando:
 - Não alterar deploy, Pages, CNAME ou produção.
 - Validar links internos dos documentos.
 - Confirmar que as regras não contradizem `AGENTS.md`.
+- Confirmar que `APP_VERSION` permanece intacta, salvo marcador explícito `APP_VERSION_EXCEPTION: <justificativa>` quando uma exceção operacional for realmente necessária.
 
 ## Para PR funcional
 
