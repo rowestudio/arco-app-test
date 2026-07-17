@@ -30,21 +30,37 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Self-tests
+        id: self-tests
+        run: node scripts/qa/run-self-tests.mjs
+
       - name: Repository state
+        id: repository-state
         run: node scripts/qa/check-repository-state.mjs
 
       - name: App version
+        id: app-version
         run: node scripts/qa/check-app-version.mjs
 
       - name: UI technical leakage
+        id: ui-leakage
         run: node scripts/qa/check-ui-leakage.mjs
 
       - name: Project OS
+        id: project-os
         run: node scripts/qa/check-project-os.mjs
 
       - name: Markdown links
+        id: markdown-links
         run: node scripts/qa/check-markdown-links.mjs
 
       - name: QA summary
         if: always()
+        env:
+          QA_SELF_TESTS_STATUS: ${{ steps.self-tests.outcome }}
+          QA_REPOSITORY_STATE_STATUS: ${{ steps.repository-state.outcome }}
+          QA_APP_VERSION_STATUS: ${{ steps.app-version.outcome }}
+          QA_UI_LEAKAGE_STATUS: ${{ steps.ui-leakage.outcome }}
+          QA_PROJECT_OS_STATUS: ${{ steps.project-os.outcome }}
+          QA_MARKDOWN_LINKS_STATUS: ${{ steps.markdown-links.outcome }}
         run: node scripts/qa/generate-qa-report.mjs

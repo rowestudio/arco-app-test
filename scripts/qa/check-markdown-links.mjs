@@ -1,7 +1,11 @@
 import path from 'node:path';
 import { fail, git, markdownLinkTargets, readText, fileExists } from './lib.mjs';
 
-const markdownFiles = git(['ls-files', '*.md']).split('\n').filter(Boolean);
+const markdownFiles = process.env.QA_MARKDOWN_FILES
+  ? process.env.QA_MARKDOWN_FILES.split(/[\n,]/).map((file) => file.trim()).filter(Boolean)
+  : git(['ls-files', '*.md']).split('\n').filter(Boolean).filter((file) => ![
+    'test-fixtures/qa-guardrails/markdown-invalid.md',
+  ].includes(file));
 const broken = [];
 
 for (const file of markdownFiles) {

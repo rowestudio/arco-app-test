@@ -11,11 +11,11 @@ export function fail(message, details = []) {
 }
 
 export function readText(file) {
-  return readFileSync(path.join(root, file), 'utf8');
+  return readFileSync(path.isAbsolute(file) ? file : path.join(root, file), 'utf8');
 }
 
 export function fileExists(file) {
-  return existsSync(path.join(root, file));
+  return existsSync(path.isAbsolute(file) ? file : path.join(root, file));
 }
 
 export function git(args, options = {}) {
@@ -36,10 +36,21 @@ export function gitMaybe(args) {
 }
 
 export function getBaseSha() {
-  if (process.env.QA_BASE_SHA) return process.env.QA_BASE_SHA;
-  const mainBase = gitMaybe(['merge-base', 'HEAD', 'origin/main']);
-  if (mainBase) return mainBase;
-  return gitMaybe(['rev-parse', 'HEAD~1']);
+  const verify = (sha, source) => {
+    if (!sha) return '';
+    const resolved = gitMaybe(['rev-parse', '--verify', `${sha}^{commit}`]);
+    if (!resolved) fail(`unable to resolve QA base SHA from ${source}.`, [`Value: ${sha}`]);
+    return resolved;
+  };
+  if (process.env.QA_BASE_SHA) return verify(process.env.QA_BASE_SHA, 'QA_BASE_SHA');
+  if (process.env.GITHUB_EVENT_NAME === 'pull_request') {
+    fail('QA_BASE_SHA is required for pull_request guardrails.');
+  }
+  const originMain = gitMaybe(['rev-parse', '--verify', 'origin/main^{commit}']);
+  if (originMain) return originMain;
+  const localMain = gitMaybe(['rev-parse', '--verify', 'main^{commit}']);
+  if (localMain) return localMain;
+  fail('unable to resolve a verifiable base SHA for workflow_dispatch/manual QA.');
 }
 
 export function getHeadSha() {
@@ -47,14 +58,20 @@ export function getHeadSha() {
 }
 
 export function changedFiles(baseSha = getBaseSha(), headSha = getHeadSha()) {
-  if (!baseSha) return [];
-  const output = gitMaybe(['diff', '--name-only', `${baseSha}...${headSha}`]);
+  if (process.env.QA_CHANGED_FILES !== undefined) {
+    return process.env.QA_CHANGED_FILES.split(/[\n,]/).map((file) => file.trim()).filter(Boolean);
+  }
+  const output = git(['diff', '--name-only', `${baseSha}...${headSha}`]);
   return output ? output.split('\n').filter(Boolean) : [];
 }
 
 export function readFromGit(ref, file) {
-  if (!ref) return '';
-  return gitMaybe(['show', `${ref}:${file}`]);
+  if (!ref) fail(`missing git ref while reading ${file}.`);
+  try {
+    return git(['show', `${ref}:${file}`]);
+  } catch {
+    fail(`unable to read ${file} from git ref ${ref}.`);
+  }
 }
 
 export function stripJsComments(source) {
@@ -154,4 +171,9 @@ export function markdownLinkTargets(text) {
     if (target) links.push(target);
   }
   return links;
+}
+
+export function parseVersionException(prText) {
+  const marker = prText.split(/\r?\n/).find((line) => /^APP_VERSION_EXCEPTION:\s*\S+/.test(line));
+  return marker ? marker.replace(/^APP_VERSION_EXCEPTION:\s*/, '').trim() : '';
 }

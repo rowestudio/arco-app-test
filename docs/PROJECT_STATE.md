@@ -21,4 +21,4 @@ Teste → aprovação de Roberto → promoção para produção.
 
 Nenhuma promoção está autorizada nesta PR.
 
-Status atual: criação do Project OS e preparação da infraestrutura de QA.
+Status atual: OPS-02 em PR de infraestrutura de QA, com guardrails estáticos, fixtures controladas e self-tests versionados. Nenhuma promoção está autorizada.

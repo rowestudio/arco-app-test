@@ -13,6 +13,8 @@ const files = changedFiles(baseSha, headSha);
 const indexChanged = files.includes('index.html') ? 'sim' : 'não';
 const baseVersion = versionFrom(readFromGit(baseSha, 'index.html'));
 const headVersion = versionFrom(readText('index.html'));
+const status = (name) => process.env[name] || 'não executado';
+const versionException = process.env.QA_VERSION_EXCEPTION_USED === 'true' ? 'sim' : 'não';
 
 const lines = [
   '## OPS-02 QA Guardrails',
@@ -22,19 +24,33 @@ const lines = [
   `- index.html alterado: ${indexChanged}`,
   `- versão base: \`${baseVersion}\``,
   `- versão head: \`${headVersion}\``,
+  `- exceção de APP_VERSION usada: ${versionException}`,
   '',
   '### Arquivos alterados',
   '',
   files.length ? files.map((file) => `- \`${file}\``).join('\n') : '- n/d',
   '',
-  '### Validações executadas',
+  '### Resultado por camada',
   '',
-  '- `git diff --check`',
-  '- estado básico do repositório',
-  '- consistência de `APP_VERSION` / `APP_VERSION_NAME`',
-  '- vazamento técnico em texto estático renderizável do `body`',
-  '- Project OS canônico',
-  '- links Markdown relativos',
+  `- self-tests: ${status('QA_SELF_TESTS_STATUS')}`,
+  `- repository state: ${status('QA_REPOSITORY_STATE_STATUS')}`,
+  `- app version: ${status('QA_APP_VERSION_STATUS')}`,
+  `- UI leakage: ${status('QA_UI_LEAKAGE_STATUS')}`,
+  `- Project OS: ${status('QA_PROJECT_OS_STATUS')}`,
+  `- Markdown links: ${status('QA_MARKDOWN_LINKS_STATUS')}`,
+  '',
+  '### Limitações',
+  '',
+  '- Heurística de UI ignora comentários, `script` e `style`, junta texto inline e separa blocos renderizáveis comuns; não substitui teste visual.',
+  '- Links Markdown validam arquivos relativos, não anchors internos.',
+  '',
+  '### NÃO EXECUTADO NESTA CAMADA',
+  '',
+  '- Safari/iPhone',
+  '- avaliação visual',
+  '- Preview',
+  '- Export',
+  '- Playwright/WebKit',
   '',
 ].join('\n');
 
