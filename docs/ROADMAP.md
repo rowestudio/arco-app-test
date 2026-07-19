@@ -42,10 +42,10 @@ Este roadmap organiza áreas de atenção. Ele não aprova automaticamente imple
 
 Infraestrutura atual ou desejada, sem implicar implementação completa nesta PR:
 
-- Project OS.
-- Guardrails estáticos de PR com self-tests e fixtures positivas/negativas.
+- Project OS: implementado.
+- Guardrails estáticos de PR com self-tests e fixtures positivas/negativas: implementados via OPS-02.
+- Smoke tests com Playwright/WebKit: próximo item planejado, ainda não autorizado.
 - Suíte de regressão funcional futura.
-- Testes em WebKit.
 - Avaliação de Safari/iPhone real em nuvem.
 - Staging fixo antes do merge.
 - Revisão automática/adversarial de PR.
