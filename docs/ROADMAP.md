@@ -44,7 +44,7 @@ Infraestrutura atual ou desejada, sem implicar implementação completa nesta PR
 
 - Project OS: implementado.
 - Guardrails estáticos de PR com self-tests e fixtures positivas/negativas: implementados via OPS-02.
-- Smoke tests com Playwright/WebKit: próximo item planejado, ainda não autorizado.
+- Smoke tests com Playwright/WebKit: em PR de implementação OPS-03.
 - Suíte de regressão funcional futura.
 - Avaliação de Safari/iPhone real em nuvem.
 - Staging fixo antes do merge.

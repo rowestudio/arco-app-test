@@ -10,6 +10,7 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: screenshot e console.
 - Ambiente: desktop e iPhone/Safari quando aplicável.
 - Automatizável: sim.
+- Cobertura OPS-03: parcial; o smoke test WebKit abre `/`, valida render inicial básico e gera screenshot, sem substituir Safari/iPhone real.
 
 ## TC-002 — Ausência de textos técnicos visíveis
 
@@ -190,6 +191,7 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: log.
 - Ambiente: desktop.
 - Automatizável: sim.
+- Cobertura OPS-03: parcial; o smoke test WebKit captura `pageerror` e `console.error` somente durante a abertura inicial, sem cobrir load, preview ou export.
 
 ## TC-022 — Escala global preserva curvas
 

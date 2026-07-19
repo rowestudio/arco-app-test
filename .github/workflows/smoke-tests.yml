@@ -1,0 +1,44 @@
+name: WebKit Smoke Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  webkit-smoke-tests:
+    name: WebKit smoke tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright WebKit
+        run: npx playwright install --with-deps webkit
+
+      - name: Run WebKit smoke tests
+        run: npx playwright test
+
+      - name: Upload smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webkit-smoke-evidence
+          if-no-files-found: warn
+          path: |
+            test-results/**/arco-motion-initial-render.png
+            playwright-report/**
+            test-results/**
