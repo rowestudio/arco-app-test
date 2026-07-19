@@ -7,7 +7,7 @@
 3. Validação estática: buscas, sintaxe, links e versionamento.
 4. Self-tests versionados dos guardrails: fixtures positivas e negativas em `test-fixtures/qa-guardrails/` executadas por `scripts/qa/run-self-tests.mjs`.
 5. Testes unitários futuros: cobrir funções puras quando forem extraídas ou estabilizadas.
-6. Playwright/WebKit futuro: automatizar fluxos críticos em motor próximo ao Safari.
+6. Playwright/WebKit OPS-03: automatizar smoke inicial em WebKit para abertura, erros de console/page e evidência de render.
 7. Screenshots e comparação visual: detectar alterações de layout e regressões visíveis.
 8. Safari/iPhone real: validar o ambiente de referência.
 9. Validação humana de Roberto: aprovação final de UX/produto.
@@ -21,6 +21,13 @@
 - Ausência de teste deve ser reportada como “não verificado”.
 - Diagnóstico interno não comprova resultado visual.
 - Não contratar nem configurar serviço externo nesta PR.
+
+## OPS-03 smoke tests WebKit iniciais
+
+- A OPS-03 adiciona uma suíte mínima automatizada com Playwright usando somente WebKit para abrir o Arco Motion servido localmente.
+- A cobertura inicial valida abertura de `/`, erros JavaScript não tratados via `pageerror`, mensagens `console.error`, presença de `.app`, `.stage` e `#topBar`, corpo não vazio e screenshot do render inicial como evidência do job.
+- WebKit automatizado em Linux não equivale ao Safari real nem ao iPhone real; continua sendo uma barreira técnica complementar.
+- Preview, Export, upload/importação, Save/Load, múltiplos assets e regressão visual comparativa ainda não são cobertos pela OPS-03.
 
 ## OPS-02 guardrails
 
