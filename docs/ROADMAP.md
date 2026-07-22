@@ -2,6 +2,8 @@
 
 Este roadmap organiza áreas de atenção. Ele não aprova automaticamente implementação.
 
+O roadmap detalhado de produto recuperado está registrado em `docs/PRODUCT_ROADMAP.md` como fonte rastreável do backlog de produto, sem autorizar implementação automática dos itens.
+
 ## Bugs críticos
 
 - A confirmar por tarefa específica.
