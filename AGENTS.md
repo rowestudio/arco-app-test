@@ -108,3 +108,12 @@ O resumo de implementação deve incluir:
 - riscos;
 - testes executados;
 - itens não verificados.
+
+## Regras operacionais do Project OS
+
+- Consulte o Project OS antes de agir.
+- Registre toda decisão relevante de produto, arquitetura, processo, QA, aprovação, regressão ou roadmap.
+- Não trate chat como fonte de verdade permanente.
+- Bloqueie PR diante de inconsistência material, ambiguidade relevante ou implementação parcial.
+- Não libere PR apenas por checks verdes sem validar aderência integral ao objetivo.
+- Não reduza silenciosamente o escopo consolidado.

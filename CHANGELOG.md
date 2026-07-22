@@ -1,3 +1,11 @@
+# v8z4b32E7Z — fix(assets): conclui paridade das alças com Frames e registra regras de revisão
+
+- `index.html`: remove os controles antigos `.asset-scale-handle` e `.asset-rotate-handle` do Ativo selecionado e mantém exatamente quatro `.asset-corner-handle` roxas, interativas, com área de toque de 44px e offset externo de 12px em relação à moldura.
+- `beginAssetTransformDrag()`, `handleAssetTransformPointerMove()` e `endAssetTransformPointer()` passam a usar o gesto de canto com decisão entre escala e rotação por predominância de distância/ângulo, espelhando o modelo aprovado dos handles de Frames no contexto de Ativos.
+- Diagnósticos de Ativos passam a observar contagem real de controles, presença de handles legados, interatividade, offset externo, modo de gesto e duplicação de controles, sem flags de sucesso baseadas apenas em independência visual.
+- Project OS: cria `docs/DECISIONS.md`, cria/atualiza `docs/APPROVAL_WORKFLOW.md` e registra as regras de revisão/liberação, fonte de verdade e ocorrência da v8z4b32E7Y em `docs/DEFINITION_OF_DONE.md`, `docs/REGRESSIONS.md`, `docs/PROJECT_STATE.md` e `AGENTS.md`.
+- `index.html`: comentário do topo, `APP_VERSION` e `APP_VERSION_NAME` atualizados para `v8z4b32E7Z`.
+
 ## v8z4b32E7Y
 
 **Correção visual de abas de seleção dos Ativos.** Base: `7de1302993ffe33ed9b20c4ebd97503a6e5ed0c3`.
