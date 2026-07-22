@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E7Y — base 7de1302993ffe33ed9b20c4ebd97503a6e5ed0c3. fix(ui): ativo selecionado no Modo Ativos mantém moldura roxa e passa a exibir quatro abas roxas puramente visuais nos cantos, independentes dos handles de Frame. APP_VERSION = APP_VERSION_NAME = v8z4b32E7Y. -->
+<!-- Arco Motion App — v8z4b32E7Z — base 1ffbc664c0e730973ae384851400fa9771442a01. fix(assets): ativo selecionado no Modo Ativos usa quatro abas roxas funcionais, externas e sem controles antigos paralelos. APP_VERSION = APP_VERSION_NAME = v8z4b32E7Z. -->
 <!-- Arco Motion App — v8z4b32E7W — base v8z4b32E7V. fix(context-info-pill): restaura o prefixo F no identificador de frame e remove pausa/tempo da pill contextual da terceira linha, mantendo apenas frame, escala e rotação com separadores verticais cinza e valores laranja. APP_VERSION = APP_VERSION_NAME = v8z4b32E7W. -->
 <!-- Arco Motion App — v8z4b32E7T — base v8z4b32E7S. ux(context-info-pill): centraliza a informação contextual existente da terceira linha na área útil da timeline e aplica pill neutro de largura automática para frame único (Fxx · escala · rotação) e ativo único (Imagem N · escala · rotação), preservando seleção múltipla, trechos, layout, timeline, toolbar, HUD, Preview, Export, Save/Load e ProjectWorld. APP_VERSION = APP_VERSION_NAME = v8z4b32E7T. -->
 <!-- Arco Motion App — v8z4b32E7S — base v8z4b32E7R. ux(context-info-row): consolida pausa, rotação e escala do frame único e nome, rotação e escala do ativo único na terceira linha contextual existente, sem criar nova linha/componente e preservando seleção múltipla, trecho, coluna esquerda, timeline, toolbar, HUD e alças. Diagnóstico observacional acompanha reutilização da linha e estados de frame/ativo. APP_VERSION = APP_VERSION_NAME = v8z4b32E7S. -->
@@ -1335,35 +1335,23 @@ body.recording #stageEyeShortcut{display:none;}
   box-shadow:0 0 0 1px rgba(0,0,0,.3),0 0 6px rgba(176,108,255,.24);
   pointer-events:none;
 }
-.asset-transform-handle{
-  position:absolute;
-  width:20px;height:20px;
-  margin:-10px 0 0 -10px;
-  border:2px solid rgba(176,108,255,.98);
-  border-radius:999px;
-  background:#fff;
-  box-shadow:0 0 0 10px rgba(176,108,255,0);
-  pointer-events:auto;
-  touch-action:none;
-  user-select:none;-webkit-user-select:none;
-}
-.asset-transform-handle::before{
-  content:'';position:absolute;left:-18px;top:-18px;width:56px;height:56px;
-}
 .asset-corner-handle{
   position:absolute;width:18px;height:18px;margin-left:-9px;margin-top:-9px;
   border-radius:50%;background:#b06cff;
   box-shadow:0 1px 5px rgba(0,0,0,.28),0 0 0 1px rgba(255,255,255,.28) inset;
-  display:none;pointer-events:none;z-index:1;
+  display:none;cursor:grab;touch-action:none;pointer-events:auto;z-index:1;
   transform:scale(var(--ez-inv,1));transform-origin:center center;
+  user-select:none;-webkit-user-select:none;
 }
 .asset-corner-handle.show{display:block;}
-.asset-corner-handle[data-asset-corner="tl"]{left:0;top:0;}
-.asset-corner-handle[data-asset-corner="tr"]{left:100%;top:0;}
-.asset-corner-handle[data-asset-corner="bl"]{left:0;top:100%;}
-.asset-corner-handle[data-asset-corner="br"]{left:100%;top:100%;}
-.asset-scale-handle{left:100%;top:100%;cursor:nwse-resize;}
-.asset-rotate-handle{left:50%;top:-32px;cursor:grab;}
+.asset-corner-handle:active{cursor:grabbing;background:#a45eff;}
+.asset-corner-handle::before{content:'';position:absolute;left:50%;top:50%;
+  width:44px;height:44px;transform:translate(-50%,-50%);
+  background:transparent;border-radius:50%;}
+.asset-corner-handle[data-asset-corner="tl"]{left:-12px;top:-12px;}
+.asset-corner-handle[data-asset-corner="tr"]{left:calc(100% + 12px);top:-12px;}
+.asset-corner-handle[data-asset-corner="bl"]{left:-12px;top:calc(100% + 12px);}
+.asset-corner-handle[data-asset-corner="br"]{left:calc(100% + 12px);top:calc(100% + 12px);}
 /* v8z4b30ZN — Botões de modo: área de toque adequada, ícones grandes, sem texto.
    Layout fixo: mesmo tamanho dos controles principais; slot sempre reservado. */
 .top-mode-toggle{display:flex;align-items:center;gap:2px;margin-right:2px;}
@@ -7177,8 +7165,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7Y';
-const APP_VERSION_NAME = 'v8z4b32E7Y';
+const APP_VERSION = 'v8z4b32E7Z';
+const APP_VERSION_NAME = 'v8z4b32E7Z';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7503,6 +7491,15 @@ let assetTransformUndoMultipleEntriesDetected = false;
 let assetTransformRedoWorks = true;
 let assetTransformStageParityOk = true;
 let assetTransformSaveLoadParityOk = true;
+let assetTransformCornerHandlesCount = 0;
+let assetTransformLegacyRotateHandlePresent = false;
+let assetTransformLegacyScaleHandlePresent = false;
+let assetTransformCornerHandlesInteractive = false;
+let assetTransformCornerHandlesOutsideBounds = false;
+let assetTransformActiveAssetId = 'none';
+let assetTransformGestureMode = 'idle';
+let assetTransformVisualHandleCount = 0;
+let assetTransformDuplicateControlsDetected = false;
 let pngImportEnabled = true;
 let lastImportedAssetMimeType = '';
 let lastImportedAssetHasAlpha = false;
@@ -18088,6 +18085,22 @@ function updateHandleCornerForFrame(i) {
   return 'br';
 }
 
+
+const CORNER_TRANSFORM_INTENT_THRESHOLD_PX = 8;
+function resolveCornerTransformMode(totalMovePx, dist, prevDist, currentAngle, initAngle) {
+  if (!(totalMovePx > CORNER_TRANSFORM_INTENT_THRESHOLD_PX)) return '';
+  const safePrevDist = Math.max(1, Number(prevDist) || 1);
+  const distDelta = Math.abs((Number(dist) || 0) - safePrevDist);
+  const angleDelta = Math.abs((Number(currentAngle) || 0) - (Number(initAngle) || 0)) * safePrevDist;
+  return distDelta >= angleDelta ? 'scale' : 'rotate';
+}
+function getIncrementalAngleDelta(currentAngle, previousAngle) {
+  let delta = (Number(currentAngle) || 0) - (Number(previousAngle) || 0);
+  if (delta > Math.PI) delta -= Math.PI * 2;
+  if (delta < -Math.PI) delta += Math.PI * 2;
+  return delta;
+}
+
 function ensureGlobalHandle() {
   if (globalHandleEl || !stage) return;
   globalHandleEl = document.createElement('div');
@@ -18179,21 +18192,14 @@ function ensureGlobalHandle() {
     // Detectar intenção nos primeiros 8px de movimento
     if (!handleDragState.mode) {
       const totalMove = Math.hypot(e.clientX - handleDragState.startX, e.clientY - handleDragState.startY);
-      if (totalMove > 8) {
-        // Comparar mudança de distância vs mudança de ângulo
-        const prevDist = Math.hypot((handleDragState.startX - sr.left) / editorZoomScale - cx, (handleDragState.startY - sr.top) / editorZoomScale - cy);
-        const distDelta = Math.abs(dist - prevDist);
-        const angleDelta = Math.abs(currentAngle - initAngle) * prevDist; // arc length
-        // Se a mudança de distância domina → escala; se ângulo domina → rotação
-        handleDragState.mode = distDelta >= angleDelta ? 'scale' : 'rotate';
-        if (handleDragState.isGhost) ghostInteraction.mode = handleDragState.mode;
-        if (!handleDragState.isGhost && !handleDragState.undoCaptured) {
-          pushUndo();
-          gestureState.mode = 'editing';
-          handleDragState.undoCaptured = true;
-        }
-      } else {
-        return;
+      const prevDist = Math.hypot((handleDragState.startX - sr.left) / editorZoomScale - cx, (handleDragState.startY - sr.top) / editorZoomScale - cy);
+      handleDragState.mode = resolveCornerTransformMode(totalMove, dist, prevDist, currentAngle, initAngle);
+      if (!handleDragState.mode) return;
+      if (handleDragState.isGhost) ghostInteraction.mode = handleDragState.mode;
+      if (!handleDragState.isGhost && !handleDragState.undoCaptured) {
+        pushUndo();
+        gestureState.mode = 'editing';
+        handleDragState.undoCaptured = true;
       }
     }
 
@@ -18225,10 +18231,8 @@ function ensureGlobalHandle() {
       if (handleDragState.isGhost && !isGhostInteractionActive('rotate')) return;
       // Acumular delta angular incrementalmente — sem normalizar, preserva voltas completas
       const prevAngle = handleDragState.lastAngle !== undefined ? handleDragState.lastAngle : initAngle;
-      let delta = currentAngle - prevAngle;
       // Corrigir salto de ±π quando cruza ±180°
-      if (delta > Math.PI)  delta -= Math.PI * 2;
-      if (delta < -Math.PI) delta += Math.PI * 2;
+      let delta = getIncrementalAngleDelta(currentAngle, prevAngle);
       handleDragState.lastAngle = currentAngle;
       handleDragState.startRot = (handleDragState.startRot || 0) + delta * 180 / Math.PI;
       let deg = Math.max(-720, Math.min(720, handleDragState.startRot));
@@ -32868,7 +32872,7 @@ function handleStageAssetSelectPointer(e) {
   if (typeof twoFingerState !== 'undefined' && twoFingerState) return false;
   if (e.pointerType === 'touch' && e.isPrimary === false) return false;
   // Handles de transformação têm prioridade sobre seleção/movimento/pan.
-  if (e.target && e.target.closest && e.target.closest('.asset-transform-handle')) return false;
+  if (e.target && e.target.closest && e.target.closest('.asset-corner-handle')) return false;
   // Não interceptar controles de UI sobre a área do Stage.
   if (e.target && e.target.closest && (
         e.target.closest('#editorZoomCtrl,#stageEyeShortcut') ||
@@ -33038,7 +33042,7 @@ function activateAssetTransformMode(kind) {
 function transformSelectedAsset(kind, value) { activateAssetTransformMode(kind); }
 function scaleSelectedAsset(factor) { activateAssetTransformMode('scale'); }
 function rotateSelectedAsset(deg) { activateAssetTransformMode('rotate'); }
-function beginAssetTransformDrag(e, kind) {
+function beginAssetTransformDrag(e, corner) {
   const asset = getSelectedAsset();
   if (!asset || !isAssetsMode()) return;
   e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation();
@@ -33048,13 +33052,14 @@ function beginAssetTransformDrag(e, kind) {
   const wp = editorStageToWorld(sc.x, sc.y);
   const cx = (asset.worldX || 0) + (asset.worldW || 0) / 2;
   const cy = (asset.worldY || 0) + (asset.worldH || 0) / 2;
-  assetTransformMode = kind;
+  assetTransformMode = 'pending';
   assetTransformDragState = {
-    pointerId: e.pointerId, kind, assetId: asset.id, undoSnapshot: captureState(), moved: false,
+    pointerId: e.pointerId, corner: corner || 'br', mode: null, assetId: asset.id, undoSnapshot: captureState(), moved: false,
+    startClientX: e.clientX, startClientY: e.clientY,
     startX: asset.worldX || 0, startY: asset.worldY || 0, startW: asset.worldW || 1, startH: asset.worldH || 1,
     startRotation: Number(asset.rotation) || 0, cx, cy,
-    startDist: Math.max(1, Math.hypot(wp.x - cx, wp.y - cy)),
-    startAngle: Math.atan2(wp.y - cy, wp.x - cx), clamped: false
+    initDist: Math.max(1, Math.hypot(wp.x - cx, wp.y - cy)),
+    initAngle: Math.atan2(wp.y - cy, wp.x - cx), clamped: false
   };
 }
 function handleAssetTransformPointerMove(e) {
@@ -33066,18 +33071,26 @@ function handleAssetTransformPointerMove(e) {
   computeEditorTransform();
   const sc = screenToStageCoord(e.clientX, e.clientY);
   const wp = editorStageToWorld(sc.x, sc.y);
-  if (ds.kind === 'scale') {
-    const dist = Math.max(1, Math.hypot(wp.x - ds.cx, wp.y - ds.cy));
-    let f = dist / ds.startDist;
+  const dx = wp.x - ds.cx, dy = wp.y - ds.cy;
+  const dist = Math.max(1, Math.hypot(dx, dy));
+  const currentAngle = Math.atan2(dy, dx);
+  if (!ds.mode) {
+    const totalMove = Math.hypot(e.clientX - ds.startClientX, e.clientY - ds.startClientY);
+    ds.mode = resolveCornerTransformMode(totalMove, dist, ds.initDist, currentAngle, ds.initAngle);
+    if (!ds.mode) return;
+    assetTransformMode = ds.mode;
+  }
+  if (ds.mode === 'scale') {
+    let f = dist / ds.initDist;
     const minF = Math.max(1 / Math.max(1, ds.startW), 1 / Math.max(1, ds.startH));
     if (f < minF) { f = minF; ds.clamped = true; }
     const nw = ds.startW * f, nh = ds.startH * f;
     if (Number.isFinite(nw) && Number.isFinite(nh) && nw > 0 && nh > 0) {
       asset.worldW = nw; asset.worldH = nh; asset.worldX = ds.cx - nw / 2; asset.worldY = ds.cy - nh / 2;
     } else { assetScaleProducedInvalidGeometry = true; }
-  } else {
-    const ang = Math.atan2(wp.y - ds.cy, wp.x - ds.cx);
-    asset.rotation = normalizeAssetRotation(ds.startRotation + (ang - ds.startAngle) * 180 / Math.PI);
+  } else if (ds.mode === 'rotate') {
+    let delta = getIncrementalAngleDelta(currentAngle, ds.initAngle);
+    asset.rotation = normalizeAssetRotation(ds.startRotation + delta * 180 / Math.PI);
     assetRotationNormalized = true;
   }
   ds.moved = true;
@@ -33089,13 +33102,14 @@ function endAssetTransformPointer(e, cancelled) {
   if (!ds || (e && e.pointerId != null && ds.pointerId != null && e.pointerId !== ds.pointerId)) return;
   try { e && e.currentTarget && e.currentTarget.releasePointerCapture && e.currentTarget.releasePointerCapture(ds.pointerId); } catch (_) {}
   assetTransformDragState = null;
+  assetTransformMode = 'idle';
   assetTransformPointerCancelHandled = !!cancelled || !!assetTransformPointerCancelHandled;
   if (!ds.moved) return;
   const asset = (Array.isArray(assets) ? assets : []).find(a => a && a.id === ds.assetId);
   const changed = asset && (Math.abs((asset.worldX||0)-ds.startX)>0.01 || Math.abs((asset.worldY||0)-ds.startY)>0.01 || Math.abs((asset.worldW||0)-ds.startW)>0.01 || Math.abs((asset.worldH||0)-ds.startH)>0.01 || Math.abs((Number(asset.rotation)||0)-ds.startRotation)>0.01);
-  if (changed && typeof pushUndoSnapshot === 'function') { pushUndoSnapshot(ds.undoSnapshot); assetTransformUndoRegisteredOncePerGesture = true; lastUndoAction = ds.kind === 'scale' ? 'scaleImageAsset' : 'rotateImageAsset'; }
+  if (changed && typeof pushUndoSnapshot === 'function') { pushUndoSnapshot(ds.undoSnapshot); assetTransformUndoRegisteredOncePerGesture = true; lastUndoAction = ds.mode === 'scale' ? 'scaleImageAsset' : 'rotateImageAsset'; }
   assetScaleMinimumClampApplied = !!ds.clamped; assetTransformUndoMultipleEntriesDetected = false; assetTransformRedoWorks = true;
-  if (typeof markProjectDirty === 'function') markProjectDirty('asset-' + ds.kind);
+  if (typeof markProjectDirty === 'function') markProjectDirty('asset-transform');
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
 }
 
@@ -33129,9 +33143,17 @@ function renderAssetSelectionOverlay() {
     assetCornerTabsAssetId = _selId;
     assetCornerTabsUseAssetGeometry = false;
     assetCornerTabsUsePurpleIdentity = true;
-    assetCornerTabsPointerEventsDisabled = true;
-    assetCornerTabsIndependentFromFrameHandles = true;
-    frameCornerHandlesUnchanged = true;
+    assetCornerTabsPointerEventsDisabled = false;
+    assetCornerTabsIndependentFromFrameHandles = false;
+    assetTransformCornerHandlesCount = assetCornerTabsCount;
+    assetTransformLegacyRotateHandlePresent = !!(box && box.querySelector('.asset-rotate-handle'));
+    assetTransformLegacyScaleHandlePresent = !!(box && box.querySelector('.asset-scale-handle'));
+    assetTransformCornerHandlesInteractive = false;
+    assetTransformCornerHandlesOutsideBounds = false;
+    assetTransformActiveAssetId = _selId;
+    assetTransformGestureMode = 'idle';
+    assetTransformVisualHandleCount = assetCornerTabsCount + ((assetTransformLegacyRotateHandlePresent ? 1 : 0) + (assetTransformLegacyScaleHandlePresent ? 1 : 0));
+    assetTransformDuplicateControlsDetected = assetTransformVisualHandleCount > 4;
     return;
   }
   computeEditorTransform();
@@ -33147,26 +33169,16 @@ function renderAssetSelectionOverlay() {
     box.style.position = 'absolute';
     box.style.pointerEvents = 'none';
     box.style.boxSizing = 'border-box';
-    const scaleHandle = document.createElement('div');
-    scaleHandle.className = 'asset-transform-handle asset-scale-handle';
-    scaleHandle.dataset.assetHandle = 'scale';
-    const rotateHandle = document.createElement('div');
-    rotateHandle.className = 'asset-transform-handle asset-rotate-handle';
-    rotateHandle.dataset.assetHandle = 'rotate';
-    [scaleHandle, rotateHandle].forEach(function(h) {
-      h.addEventListener('pointerdown', function(ev) { beginAssetTransformDrag(ev, h.dataset.assetHandle); });
-      h.addEventListener('pointermove', handleAssetTransformPointerMove);
-      h.addEventListener('pointerup', function(ev) { endAssetTransformPointer(ev, false); });
-      h.addEventListener('pointercancel', function(ev) { endAssetTransformPointer(ev, true); });
-    });
     ['tl','tr','bl','br'].forEach(function(corner) {
       const tab = document.createElement('div');
       tab.className = 'asset-corner-handle';
       tab.dataset.assetCorner = corner;
+      tab.addEventListener('pointerdown', function(ev) { beginAssetTransformDrag(ev, tab.dataset.assetCorner); });
+      tab.addEventListener('pointermove', handleAssetTransformPointerMove);
+      tab.addEventListener('pointerup', function(ev) { endAssetTransformPointer(ev, false); });
+      tab.addEventListener('pointercancel', function(ev) { endAssetTransformPointer(ev, true); });
       box.appendChild(tab);
     });
-    box.appendChild(scaleHandle);
-    box.appendChild(rotateHandle);
     stageContent.appendChild(box);
   }
   // v8z4b30ZZ — item 5/10: o contorno roxo de seleção fica acima do scrim de
@@ -33179,14 +33191,11 @@ function renderAssetSelectionOverlay() {
   box.style.height = p.h + 'px';
   box.style.transformOrigin = '50% 50%';
   box.style.transform = (Number(asset.rotation) || 0) ? ('rotate(' + (Number(asset.rotation) || 0) + 'deg)') : '';
-  const scaleHandle = box.querySelector('.asset-scale-handle');
-  const rotateHandle = box.querySelector('.asset-rotate-handle');
+  box.querySelectorAll('.asset-scale-handle,.asset-rotate-handle').forEach(function(h) { h.remove(); });
   const assetCornerTabs = box.querySelectorAll('.asset-corner-handle');
   assetCornerTabs.forEach(function(h) { h.classList.add('show'); });
-  if (scaleHandle) scaleHandle.style.display = 'block';
-  if (rotateHandle) rotateHandle.style.display = 'block';
-  assetScaleHandleVisible = !!scaleHandle;
-  assetRotateHandleVisible = !!rotateHandle;
+  assetScaleHandleVisible = false;
+  assetRotateHandleVisible = false;
   assetTransformHandleUsesCanonicalGeometry = true;
   assetTransformHandlesUseCurrentPanZoom = true;
   assetTransformHandlesUseRotatedCorners = true;
@@ -33199,8 +33208,25 @@ function renderAssetSelectionOverlay() {
   assetCornerTabsUseAssetGeometry = true;
   assetCornerTabsUsePurpleIdentity = true;
   assetCornerTabsPointerEventsDisabled = Array.prototype.every.call(assetCornerTabs, function(h) { return getComputedStyle(h).pointerEvents === 'none'; });
-  assetCornerTabsIndependentFromFrameHandles = assetCornerTabs.length === 4 && (!cornerHandleEls || Array.prototype.every.call(assetCornerTabs, function(h) { return Array.prototype.indexOf.call(cornerHandleEls, h) === -1; }));
-  frameCornerHandlesUnchanged = true;
+  assetCornerTabsIndependentFromFrameHandles = false;
+  assetTransformCornerHandlesCount = assetCornerTabs.length;
+  assetTransformLegacyRotateHandlePresent = !!box.querySelector('.asset-rotate-handle');
+  assetTransformLegacyScaleHandlePresent = !!box.querySelector('.asset-scale-handle');
+  assetTransformCornerHandlesInteractive = Array.prototype.every.call(assetCornerTabs, function(h) { return getComputedStyle(h).pointerEvents !== 'none'; });
+  const boxRect = box.getBoundingClientRect();
+  const tolerance = 0.75;
+  assetTransformCornerHandlesOutsideBounds = Array.prototype.every.call(assetCornerTabs, function(h) {
+    const c = h.dataset.assetCorner || '';
+    const r = h.getBoundingClientRect();
+    return (c === 'tl' && r.right <= boxRect.left + tolerance && r.bottom <= boxRect.top + tolerance) ||
+      (c === 'tr' && r.left >= boxRect.right - tolerance && r.bottom <= boxRect.top + tolerance) ||
+      (c === 'bl' && r.right <= boxRect.left + tolerance && r.top >= boxRect.bottom - tolerance) ||
+      (c === 'br' && r.left >= boxRect.right - tolerance && r.top >= boxRect.bottom - tolerance);
+  });
+  assetTransformVisualHandleCount = assetCornerTabs.length + box.querySelectorAll('.asset-scale-handle,.asset-rotate-handle').length;
+  assetTransformDuplicateControlsDetected = assetTransformVisualHandleCount !== 4;
+  assetTransformActiveAssetId = String(asset.id);
+  assetTransformGestureMode = assetTransformDragState ? (assetTransformDragState.mode || 'pending') : 'idle';
   // v8z4b30ZY — atualizar diagnóstico
   assetSelectionOutlineVisible = true;
   assetSelectionOutlineAssetId = String(asset.id);
@@ -35923,9 +35949,6 @@ function buildDiagnosticsText() {
       push('assetCornerTabsAssetId', (typeof assetCornerTabsAssetId !== 'undefined' && assetCornerTabsAssetId) ? assetCornerTabsAssetId : 'n/d');
       _pb('assetCornerTabsUseAssetGeometry', (typeof assetCornerTabsUseAssetGeometry !== 'undefined') ? assetCornerTabsUseAssetGeometry : false);
       _pb('assetCornerTabsUsePurpleIdentity', (typeof assetCornerTabsUsePurpleIdentity !== 'undefined') ? assetCornerTabsUsePurpleIdentity : true);
-      _pb('assetCornerTabsPointerEventsDisabled', (typeof assetCornerTabsPointerEventsDisabled !== 'undefined') ? assetCornerTabsPointerEventsDisabled : true);
-      _pb('assetCornerTabsIndependentFromFrameHandles', (typeof assetCornerTabsIndependentFromFrameHandles !== 'undefined') ? assetCornerTabsIndependentFromFrameHandles : true);
-      _pb('frameCornerHandlesUnchanged', (typeof frameCornerHandlesUnchanged !== 'undefined') ? frameCornerHandlesUnchanged : true);
       push('frameHandlesSuppressedInAssetsMode', 'true');
       push('frameHandlesVisibleInCameraMode', 'true');
       push('frameHandlesPointerEventsInteractiveInCamera', 'true');
@@ -36269,11 +36292,16 @@ function buildDiagnosticsText() {
         _pb('selectionColorSemanticConflictDetected', false);
         _pb('assetSelectionStrokeIncreased', true);
         _pb('assetSelectionStrokeUsesCanonicalGeometry', !!assetTransformSelectionOutlineMatchesVisual);
-        _pb('assetScaleHandleVisualSizeIncreased', true);
-        _pb('assetRotateHandleVisualSizeIncreased', true);
-        _pb('assetScaleHandleTouchAreaIncreased', true);
-        _pb('assetRotateHandleTouchAreaIncreased', true);
-        _pb('assetTransformHandlePositionChanged', false);
+        push('assetTransformCornerHandlesCount', String((typeof assetTransformCornerHandlesCount !== 'undefined') ? assetTransformCornerHandlesCount : 0));
+        _pb('assetTransformLegacyRotateHandlePresent', !!assetTransformLegacyRotateHandlePresent);
+        _pb('assetTransformLegacyScaleHandlePresent', !!assetTransformLegacyScaleHandlePresent);
+        _pb('assetTransformCornerHandlesInteractive', !!assetTransformCornerHandlesInteractive);
+        _pb('assetTransformCornerHandlesOutsideBounds', !!assetTransformCornerHandlesOutsideBounds);
+        push('assetTransformActiveAssetId', (typeof assetTransformActiveAssetId !== 'undefined') ? assetTransformActiveAssetId : 'none');
+        push('assetTransformGestureMode', (typeof assetTransformGestureMode !== 'undefined') ? assetTransformGestureMode : 'idle');
+        push('assetTransformVisualHandleCount', String((typeof assetTransformVisualHandleCount !== 'undefined') ? assetTransformVisualHandleCount : 0));
+        _pb('assetTransformDuplicateControlsDetected', !!assetTransformDuplicateControlsDetected);
+        _pb('assetTransformHandlePositionChanged', true);
         _pb('assetTransformGeometryChangedByVisualUpdate', false);
         _pb('contextToolbarItemsShrink', false);
         _pb('contextToolbarMinimumItemWidthApplied', true);

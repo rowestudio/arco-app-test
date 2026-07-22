@@ -31,3 +31,11 @@ Catálogo obrigatório de regressões históricas e proteções.
 | REG-025 | Autosave/retomar sessão restaura estado não confiável. | Usuário continua de estado parcial ou incorreto. | Persistência/sessão | Acionar retomada de sessão e comparar estado esperado. | Fixture de sessão/autosave. | futuro |
 | REG-026 | Início preto/apagado em sequência específica de edição. | App parece quebrado ao iniciar ou retornar. | Inicialização/render | Reproduzir sequência histórica quando documentada; observar Stage inicial. | Caso reproduzível a confirmar. | futuro |
 | REG-027 | `captureStream + MediaRecorder` volta como export principal. | Export pode voltar a apresentar trancos. | Export/MP4 | Revisar pipeline de export e logs. | Teste arquitetural/static check. | automatizável |
+
+## REG-028 — v8z4b32E7Y: transformação de Ativos incompleta
+
+- **Problema:** A tarefa solicitava levar para Ativos o mesmo sistema de transformação de Frames, mas a implementação adicionou quatro círculos puramente visuais sobre o sistema antigo.
+- **Sintomas:** cinco controles visuais; alça antiga de rotação mantida; alça antiga de escala mantida; círculos invadindo os cantos da imagem; novas abas sem interação; coexistência indevida entre sistema novo e antigo.
+- **Causa:** O escopo foi interpretado como unificação visual, e não como equivalência funcional e visual.
+- **Prevenção:** localizar a implementação de referência; comparar arquitetura e comportamento, não apenas CSS; verificar remoção do sistema substituído; bloquear merge quando o diff demonstrar coexistência ou geometria incorreta.
+- **Status:** Registrada em 2026-07-22; correção em desenvolvimento na v8z4b32E7Z.

@@ -34,3 +34,12 @@ Uma tarefa só está pronta quando:
 - Registrar testes compatíveis com a área alterada.
 - Verificar regressões relacionadas em `docs/REGRESSIONS.md`.
 - Reportar riscos e o que não foi testado.
+
+## Revisão e liberação de PR
+
+- Aderência integral ao objetivo é obrigatória.
+- Erro previsível pelo diff bloqueia merge.
+- Implementação parcial não está pronta.
+- O teste visual posterior de Roberto não transfere para ele a responsabilidade de detectar erros objetivos que já poderiam ter sido identificados na revisão.
+- A pergunta final da revisão deve ser: “A implementação entregue corresponde exatamente ao que Roberto pediu e resolve o problema até o fim?”
+- Se a resposta não for comprovadamente sim, não recomendar merge.
