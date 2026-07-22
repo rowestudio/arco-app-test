@@ -1,3 +1,13 @@
+## v8z4b32E7Y
+
+**Correção visual de abas de seleção dos Ativos.** Base: `7de1302993ffe33ed9b20c4ebd97503a6e5ed0c3`.
+
+- `renderAssetSelectionOverlay()` mantém a moldura roxa atual e adiciona quatro `.asset-corner-handle` próprios dos Ativos, um em cada canto, com geometria baseada em `getAssetVisualWorldRect(asset)` via a própria moldura.
+- As novas abas usam identidade roxa, são `pointer-events:none` e não reutilizam `cornerHandleEls`, `handleDragState`, `ensureCornerHandles()` nem o estado funcional dos Frames.
+- Diagnóstico passivo registra existência, contagem, visibilidade, asset selecionado, uso da geometria de asset, identidade roxa, pointer-events desabilitado, independência dos handles de Frame e preservação visual dos Frames.
+- Preservados Frames, handles de Frame, motores, transformações, gestos, hit-test, renderer, Preview, Export, Save/Load, Layers, Undo/Redo, ProjectWorld, timeline, menus, textos, ícones e a pendência da terceira linha de informações.
+- `index.html`: comentário do topo, `APP_VERSION` e `APP_VERSION_NAME` atualizados para `v8z4b32E7Y`.
+
 ## v8z4b32E7H
 
 **Correção cirúrgica de diagnósticos legados ProjectWorld/replace.** Base: `v8z4b32E7G`.
