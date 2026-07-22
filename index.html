@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E7Y — base 7de1302993ffe33ed9b20c4ebd97503a6e5ed0c3. fix(ui): ativo selecionado no Modo Ativos mantém moldura roxa e passa a exibir quatro abas roxas puramente visuais nos cantos, independentes dos handles de Frame. APP_VERSION = APP_VERSION_NAME = v8z4b32E7Y. -->
 <!-- Arco Motion App — v8z4b32E7W — base v8z4b32E7V. fix(context-info-pill): restaura o prefixo F no identificador de frame e remove pausa/tempo da pill contextual da terceira linha, mantendo apenas frame, escala e rotação com separadores verticais cinza e valores laranja. APP_VERSION = APP_VERSION_NAME = v8z4b32E7W. -->
 <!-- Arco Motion App — v8z4b32E7T — base v8z4b32E7S. ux(context-info-pill): centraliza a informação contextual existente da terceira linha na área útil da timeline e aplica pill neutro de largura automática para frame único (Fxx · escala · rotação) e ativo único (Imagem N · escala · rotação), preservando seleção múltipla, trechos, layout, timeline, toolbar, HUD, Preview, Export, Save/Load e ProjectWorld. APP_VERSION = APP_VERSION_NAME = v8z4b32E7T. -->
 <!-- Arco Motion App — v8z4b32E7S — base v8z4b32E7R. ux(context-info-row): consolida pausa, rotação e escala do frame único e nome, rotação e escala do ativo único na terceira linha contextual existente, sem criar nova linha/componente e preservando seleção múltipla, trecho, coluna esquerda, timeline, toolbar, HUD e alças. Diagnóstico observacional acompanha reutilização da linha e estados de frame/ativo. APP_VERSION = APP_VERSION_NAME = v8z4b32E7S. -->
@@ -1349,6 +1350,18 @@ body.recording #stageEyeShortcut{display:none;}
 .asset-transform-handle::before{
   content:'';position:absolute;left:-18px;top:-18px;width:56px;height:56px;
 }
+.asset-corner-handle{
+  position:absolute;width:18px;height:18px;margin-left:-9px;margin-top:-9px;
+  border-radius:50%;background:#b06cff;
+  box-shadow:0 1px 5px rgba(0,0,0,.28),0 0 0 1px rgba(255,255,255,.28) inset;
+  display:none;pointer-events:none;z-index:1;
+  transform:scale(var(--ez-inv,1));transform-origin:center center;
+}
+.asset-corner-handle.show{display:block;}
+.asset-corner-handle[data-asset-corner="tl"]{left:0;top:0;}
+.asset-corner-handle[data-asset-corner="tr"]{left:100%;top:0;}
+.asset-corner-handle[data-asset-corner="bl"]{left:0;top:100%;}
+.asset-corner-handle[data-asset-corner="br"]{left:100%;top:100%;}
 .asset-scale-handle{left:100%;top:100%;cursor:nwse-resize;}
 .asset-rotate-handle{left:50%;top:-32px;cursor:grab;}
 /* v8z4b30ZN — Botões de modo: área de toque adequada, ícones grandes, sem texto.
@@ -7164,8 +7177,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7X';
-const APP_VERSION_NAME = 'v8z4b32E7X';
+const APP_VERSION = 'v8z4b32E7Y';
+const APP_VERSION_NAME = 'v8z4b32E7Y';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -33099,7 +33112,10 @@ function renderAssetSelectionOverlay() {
   const _selId = (typeof selectedAssetId !== 'undefined' && selectedAssetId) ? String(selectedAssetId) : 'none';
   selectedAssetIdExistsInAssets = _selId !== 'none' && Array.isArray(assets) && assets.some(function(a) { return a && a.id === selectedAssetId; });
   if (!show) {
-    if (box) box.style.display = 'none';
+    if (box) {
+      box.style.display = 'none';
+      box.querySelectorAll('.asset-corner-handle').forEach(function(h) { h.classList.remove('show'); });
+    }
     assetScaleHandleVisible = false;
     assetRotateHandleVisible = false;
     assetSelectionOutlineVisible = false;
@@ -33107,6 +33123,15 @@ function renderAssetSelectionOverlay() {
     assetSelectionOutlineUsesAssetGeometry = false;
     assetSelectionOutlineIssue = _selId !== 'none' && !selectedAssetIdExistsInAssets ? 'asset não encontrado' : (_selId !== 'none' && !isAssetsMode() ? 'não está em Modo Ativos' : '');
     selectedAssetVisualFeedbackConsistent = _selId === 'none' || !isAssetsMode();
+    assetCornerTabsExist = !!(box && box.querySelector('.asset-corner-handle'));
+    assetCornerTabsCount = box ? box.querySelectorAll('.asset-corner-handle').length : 0;
+    assetCornerTabsVisible = false;
+    assetCornerTabsAssetId = _selId;
+    assetCornerTabsUseAssetGeometry = false;
+    assetCornerTabsUsePurpleIdentity = true;
+    assetCornerTabsPointerEventsDisabled = true;
+    assetCornerTabsIndependentFromFrameHandles = true;
+    frameCornerHandlesUnchanged = true;
     return;
   }
   computeEditorTransform();
@@ -33134,6 +33159,12 @@ function renderAssetSelectionOverlay() {
       h.addEventListener('pointerup', function(ev) { endAssetTransformPointer(ev, false); });
       h.addEventListener('pointercancel', function(ev) { endAssetTransformPointer(ev, true); });
     });
+    ['tl','tr','bl','br'].forEach(function(corner) {
+      const tab = document.createElement('div');
+      tab.className = 'asset-corner-handle';
+      tab.dataset.assetCorner = corner;
+      box.appendChild(tab);
+    });
     box.appendChild(scaleHandle);
     box.appendChild(rotateHandle);
     stageContent.appendChild(box);
@@ -33150,6 +33181,8 @@ function renderAssetSelectionOverlay() {
   box.style.transform = (Number(asset.rotation) || 0) ? ('rotate(' + (Number(asset.rotation) || 0) + 'deg)') : '';
   const scaleHandle = box.querySelector('.asset-scale-handle');
   const rotateHandle = box.querySelector('.asset-rotate-handle');
+  const assetCornerTabs = box.querySelectorAll('.asset-corner-handle');
+  assetCornerTabs.forEach(function(h) { h.classList.add('show'); });
   if (scaleHandle) scaleHandle.style.display = 'block';
   if (rotateHandle) rotateHandle.style.display = 'block';
   assetScaleHandleVisible = !!scaleHandle;
@@ -33159,6 +33192,15 @@ function renderAssetSelectionOverlay() {
   assetTransformHandlesUseRotatedCorners = true;
   assetTransformSelectionOutlineMatchesVisual = true;
   assetTransformHitTestUsesRotatedGeometry = true;
+  assetCornerTabsExist = assetCornerTabs.length > 0;
+  assetCornerTabsCount = assetCornerTabs.length;
+  assetCornerTabsVisible = assetCornerTabs.length === 4 && box.style.display !== 'none';
+  assetCornerTabsAssetId = String(asset.id);
+  assetCornerTabsUseAssetGeometry = true;
+  assetCornerTabsUsePurpleIdentity = true;
+  assetCornerTabsPointerEventsDisabled = Array.prototype.every.call(assetCornerTabs, function(h) { return getComputedStyle(h).pointerEvents === 'none'; });
+  assetCornerTabsIndependentFromFrameHandles = assetCornerTabs.length === 4 && (!cornerHandleEls || Array.prototype.every.call(assetCornerTabs, function(h) { return Array.prototype.indexOf.call(cornerHandleEls, h) === -1; }));
+  frameCornerHandlesUnchanged = true;
   // v8z4b30ZY — atualizar diagnóstico
   assetSelectionOutlineVisible = true;
   assetSelectionOutlineAssetId = String(asset.id);
@@ -35875,6 +35917,15 @@ function buildDiagnosticsText() {
       } catch (_e) { push('frameHandlesLayerExists', 'error'); }
       push('frameHandlesNotDimmedByAlphaScrim', 'true');
       push('frameHandlesDoNotInheritReferenceOpacity', 'true');
+      _pb('assetCornerTabsExist', (typeof assetCornerTabsExist !== 'undefined') ? assetCornerTabsExist : false);
+      push('assetCornerTabsCount', String((typeof assetCornerTabsCount !== 'undefined') ? assetCornerTabsCount : 0));
+      _pb('assetCornerTabsVisible', (typeof assetCornerTabsVisible !== 'undefined') ? assetCornerTabsVisible : false);
+      push('assetCornerTabsAssetId', (typeof assetCornerTabsAssetId !== 'undefined' && assetCornerTabsAssetId) ? assetCornerTabsAssetId : 'n/d');
+      _pb('assetCornerTabsUseAssetGeometry', (typeof assetCornerTabsUseAssetGeometry !== 'undefined') ? assetCornerTabsUseAssetGeometry : false);
+      _pb('assetCornerTabsUsePurpleIdentity', (typeof assetCornerTabsUsePurpleIdentity !== 'undefined') ? assetCornerTabsUsePurpleIdentity : true);
+      _pb('assetCornerTabsPointerEventsDisabled', (typeof assetCornerTabsPointerEventsDisabled !== 'undefined') ? assetCornerTabsPointerEventsDisabled : true);
+      _pb('assetCornerTabsIndependentFromFrameHandles', (typeof assetCornerTabsIndependentFromFrameHandles !== 'undefined') ? assetCornerTabsIndependentFromFrameHandles : true);
+      _pb('frameCornerHandlesUnchanged', (typeof frameCornerHandlesUnchanged !== 'undefined') ? frameCornerHandlesUnchanged : true);
       push('frameHandlesSuppressedInAssetsMode', 'true');
       push('frameHandlesVisibleInCameraMode', 'true');
       push('frameHandlesPointerEventsInteractiveInCamera', 'true');
