@@ -6,6 +6,13 @@
 - Project OS: cria `docs/DECISIONS.md`, cria/atualiza `docs/APPROVAL_WORKFLOW.md` e registra as regras de revisão/liberação, fonte de verdade e ocorrência da v8z4b32E7Y em `docs/DEFINITION_OF_DONE.md`, `docs/REGRESSIONS.md`, `docs/PROJECT_STATE.md` e `AGENTS.md`.
 - `index.html`: comentário do topo, `APP_VERSION` e `APP_VERSION_NAME` atualizados para `v8z4b32E7Z`.
 
+
+## v8z4b32E7Z — ajuste pós-revisão da PR #450
+
+- `index.html`: o algoritmo de intenção dos handles de canto foi extraído para `resolveCornerTransformMode()` e usado tanto pelo sistema aprovado dos Frames quanto pelos Ativos, sem alterar o comportamento visual dos Frames.
+- `index.html`: diagnósticos declaratórios de paridade/rotação/zoom/frame intacto foram removidos; a posição externa das abas de Ativos agora é verificada por `getBoundingClientRect()` contra a moldura, com tolerância subpixel de 0,75px.
+- `docs/APPROVAL_WORKFLOW.md`: esclarece que o teste publicado em iPhone/Safari real ocorre depois do merge aprovado na `main` do repositório de teste, não antes da decisão de merge da PR.
+
 ## v8z4b32E7Y
 
 **Correção visual de abas de seleção dos Ativos.** Base: `7de1302993ffe33ed9b20c4ebd97503a6e5ed0c3`.

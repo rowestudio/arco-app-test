@@ -7496,13 +7496,10 @@ let assetTransformLegacyRotateHandlePresent = false;
 let assetTransformLegacyScaleHandlePresent = false;
 let assetTransformCornerHandlesInteractive = false;
 let assetTransformCornerHandlesOutsideBounds = false;
-let assetTransformUsesFrameInteractionModel = false;
 let assetTransformActiveAssetId = 'none';
 let assetTransformGestureMode = 'idle';
 let assetTransformVisualHandleCount = 0;
 let assetTransformDuplicateControlsDetected = false;
-let assetTransformGeometryTracksRotation = false;
-let assetTransformGeometryTracksZoom = false;
 let pngImportEnabled = true;
 let lastImportedAssetMimeType = '';
 let lastImportedAssetHasAlpha = false;
@@ -18088,6 +18085,22 @@ function updateHandleCornerForFrame(i) {
   return 'br';
 }
 
+
+const CORNER_TRANSFORM_INTENT_THRESHOLD_PX = 8;
+function resolveCornerTransformMode(totalMovePx, dist, prevDist, currentAngle, initAngle) {
+  if (!(totalMovePx > CORNER_TRANSFORM_INTENT_THRESHOLD_PX)) return '';
+  const safePrevDist = Math.max(1, Number(prevDist) || 1);
+  const distDelta = Math.abs((Number(dist) || 0) - safePrevDist);
+  const angleDelta = Math.abs((Number(currentAngle) || 0) - (Number(initAngle) || 0)) * safePrevDist;
+  return distDelta >= angleDelta ? 'scale' : 'rotate';
+}
+function getIncrementalAngleDelta(currentAngle, previousAngle) {
+  let delta = (Number(currentAngle) || 0) - (Number(previousAngle) || 0);
+  if (delta > Math.PI) delta -= Math.PI * 2;
+  if (delta < -Math.PI) delta += Math.PI * 2;
+  return delta;
+}
+
 function ensureGlobalHandle() {
   if (globalHandleEl || !stage) return;
   globalHandleEl = document.createElement('div');
@@ -18179,21 +18192,14 @@ function ensureGlobalHandle() {
     // Detectar intenção nos primeiros 8px de movimento
     if (!handleDragState.mode) {
       const totalMove = Math.hypot(e.clientX - handleDragState.startX, e.clientY - handleDragState.startY);
-      if (totalMove > 8) {
-        // Comparar mudança de distância vs mudança de ângulo
-        const prevDist = Math.hypot((handleDragState.startX - sr.left) / editorZoomScale - cx, (handleDragState.startY - sr.top) / editorZoomScale - cy);
-        const distDelta = Math.abs(dist - prevDist);
-        const angleDelta = Math.abs(currentAngle - initAngle) * prevDist; // arc length
-        // Se a mudança de distância domina → escala; se ângulo domina → rotação
-        handleDragState.mode = distDelta >= angleDelta ? 'scale' : 'rotate';
-        if (handleDragState.isGhost) ghostInteraction.mode = handleDragState.mode;
-        if (!handleDragState.isGhost && !handleDragState.undoCaptured) {
-          pushUndo();
-          gestureState.mode = 'editing';
-          handleDragState.undoCaptured = true;
-        }
-      } else {
-        return;
+      const prevDist = Math.hypot((handleDragState.startX - sr.left) / editorZoomScale - cx, (handleDragState.startY - sr.top) / editorZoomScale - cy);
+      handleDragState.mode = resolveCornerTransformMode(totalMove, dist, prevDist, currentAngle, initAngle);
+      if (!handleDragState.mode) return;
+      if (handleDragState.isGhost) ghostInteraction.mode = handleDragState.mode;
+      if (!handleDragState.isGhost && !handleDragState.undoCaptured) {
+        pushUndo();
+        gestureState.mode = 'editing';
+        handleDragState.undoCaptured = true;
       }
     }
 
@@ -18225,10 +18231,8 @@ function ensureGlobalHandle() {
       if (handleDragState.isGhost && !isGhostInteractionActive('rotate')) return;
       // Acumular delta angular incrementalmente — sem normalizar, preserva voltas completas
       const prevAngle = handleDragState.lastAngle !== undefined ? handleDragState.lastAngle : initAngle;
-      let delta = currentAngle - prevAngle;
       // Corrigir salto de ±π quando cruza ±180°
-      if (delta > Math.PI)  delta -= Math.PI * 2;
-      if (delta < -Math.PI) delta += Math.PI * 2;
+      let delta = getIncrementalAngleDelta(currentAngle, prevAngle);
       handleDragState.lastAngle = currentAngle;
       handleDragState.startRot = (handleDragState.startRot || 0) + delta * 180 / Math.PI;
       let deg = Math.max(-720, Math.min(720, handleDragState.startRot));
@@ -33072,10 +33076,8 @@ function handleAssetTransformPointerMove(e) {
   const currentAngle = Math.atan2(dy, dx);
   if (!ds.mode) {
     const totalMove = Math.hypot(e.clientX - ds.startClientX, e.clientY - ds.startClientY);
-    if (totalMove <= 8) return;
-    const distDelta = Math.abs(dist - ds.initDist);
-    const angleDelta = Math.abs(currentAngle - ds.initAngle) * ds.initDist;
-    ds.mode = distDelta >= angleDelta ? 'scale' : 'rotate';
+    ds.mode = resolveCornerTransformMode(totalMove, dist, ds.initDist, currentAngle, ds.initAngle);
+    if (!ds.mode) return;
     assetTransformMode = ds.mode;
   }
   if (ds.mode === 'scale') {
@@ -33087,9 +33089,7 @@ function handleAssetTransformPointerMove(e) {
       asset.worldW = nw; asset.worldH = nh; asset.worldX = ds.cx - nw / 2; asset.worldY = ds.cy - nh / 2;
     } else { assetScaleProducedInvalidGeometry = true; }
   } else if (ds.mode === 'rotate') {
-    let delta = currentAngle - ds.initAngle;
-    if (delta > Math.PI) delta -= Math.PI * 2;
-    if (delta < -Math.PI) delta += Math.PI * 2;
+    let delta = getIncrementalAngleDelta(currentAngle, ds.initAngle);
     asset.rotation = normalizeAssetRotation(ds.startRotation + delta * 180 / Math.PI);
     assetRotationNormalized = true;
   }
@@ -33150,14 +33150,10 @@ function renderAssetSelectionOverlay() {
     assetTransformLegacyScaleHandlePresent = !!(box && box.querySelector('.asset-scale-handle'));
     assetTransformCornerHandlesInteractive = false;
     assetTransformCornerHandlesOutsideBounds = false;
-    assetTransformUsesFrameInteractionModel = false;
     assetTransformActiveAssetId = _selId;
     assetTransformGestureMode = 'idle';
     assetTransformVisualHandleCount = assetCornerTabsCount + ((assetTransformLegacyRotateHandlePresent ? 1 : 0) + (assetTransformLegacyScaleHandlePresent ? 1 : 0));
     assetTransformDuplicateControlsDetected = assetTransformVisualHandleCount > 4;
-    assetTransformGeometryTracksRotation = false;
-    assetTransformGeometryTracksZoom = false;
-    frameCornerHandlesUnchanged = true;
     return;
   }
   computeEditorTransform();
@@ -33217,23 +33213,20 @@ function renderAssetSelectionOverlay() {
   assetTransformLegacyRotateHandlePresent = !!box.querySelector('.asset-rotate-handle');
   assetTransformLegacyScaleHandlePresent = !!box.querySelector('.asset-scale-handle');
   assetTransformCornerHandlesInteractive = Array.prototype.every.call(assetCornerTabs, function(h) { return getComputedStyle(h).pointerEvents !== 'none'; });
+  const boxRect = box.getBoundingClientRect();
+  const tolerance = 0.75;
   assetTransformCornerHandlesOutsideBounds = Array.prototype.every.call(assetCornerTabs, function(h) {
     const c = h.dataset.assetCorner || '';
-    const x = h.offsetLeft;
-    const y = h.offsetTop;
-    return (c === 'tl' && x <= -12 && y <= -12) ||
-      (c === 'tr' && x >= p.w + 12 && y <= -12) ||
-      (c === 'bl' && x <= -12 && y >= p.h + 12) ||
-      (c === 'br' && x >= p.w + 12 && y >= p.h + 12);
+    const r = h.getBoundingClientRect();
+    return (c === 'tl' && r.right <= boxRect.left + tolerance && r.bottom <= boxRect.top + tolerance) ||
+      (c === 'tr' && r.left >= boxRect.right - tolerance && r.bottom <= boxRect.top + tolerance) ||
+      (c === 'bl' && r.right <= boxRect.left + tolerance && r.top >= boxRect.bottom - tolerance) ||
+      (c === 'br' && r.left >= boxRect.right - tolerance && r.top >= boxRect.bottom - tolerance);
   });
   assetTransformVisualHandleCount = assetCornerTabs.length + box.querySelectorAll('.asset-scale-handle,.asset-rotate-handle').length;
   assetTransformDuplicateControlsDetected = assetTransformVisualHandleCount !== 4;
-  assetTransformUsesFrameInteractionModel = true;
   assetTransformActiveAssetId = String(asset.id);
   assetTransformGestureMode = assetTransformDragState ? (assetTransformDragState.mode || 'pending') : 'idle';
-  assetTransformGeometryTracksRotation = true;
-  assetTransformGeometryTracksZoom = true;
-  frameCornerHandlesUnchanged = true;
   // v8z4b30ZY — atualizar diagnóstico
   assetSelectionOutlineVisible = true;
   assetSelectionOutlineAssetId = String(asset.id);
@@ -35956,7 +35949,6 @@ function buildDiagnosticsText() {
       push('assetCornerTabsAssetId', (typeof assetCornerTabsAssetId !== 'undefined' && assetCornerTabsAssetId) ? assetCornerTabsAssetId : 'n/d');
       _pb('assetCornerTabsUseAssetGeometry', (typeof assetCornerTabsUseAssetGeometry !== 'undefined') ? assetCornerTabsUseAssetGeometry : false);
       _pb('assetCornerTabsUsePurpleIdentity', (typeof assetCornerTabsUsePurpleIdentity !== 'undefined') ? assetCornerTabsUsePurpleIdentity : true);
-      _pb('frameCornerHandlesUnchanged', (typeof frameCornerHandlesUnchanged !== 'undefined') ? frameCornerHandlesUnchanged : true);
       push('frameHandlesSuppressedInAssetsMode', 'true');
       push('frameHandlesVisibleInCameraMode', 'true');
       push('frameHandlesPointerEventsInteractiveInCamera', 'true');
@@ -36305,13 +36297,10 @@ function buildDiagnosticsText() {
         _pb('assetTransformLegacyScaleHandlePresent', !!assetTransformLegacyScaleHandlePresent);
         _pb('assetTransformCornerHandlesInteractive', !!assetTransformCornerHandlesInteractive);
         _pb('assetTransformCornerHandlesOutsideBounds', !!assetTransformCornerHandlesOutsideBounds);
-        _pb('assetTransformUsesFrameInteractionModel', !!assetTransformUsesFrameInteractionModel);
         push('assetTransformActiveAssetId', (typeof assetTransformActiveAssetId !== 'undefined') ? assetTransformActiveAssetId : 'none');
         push('assetTransformGestureMode', (typeof assetTransformGestureMode !== 'undefined') ? assetTransformGestureMode : 'idle');
         push('assetTransformVisualHandleCount', String((typeof assetTransformVisualHandleCount !== 'undefined') ? assetTransformVisualHandleCount : 0));
         _pb('assetTransformDuplicateControlsDetected', !!assetTransformDuplicateControlsDetected);
-        _pb('assetTransformGeometryTracksRotation', !!assetTransformGeometryTracksRotation);
-        _pb('assetTransformGeometryTracksZoom', !!assetTransformGeometryTracksZoom);
         _pb('assetTransformHandlePositionChanged', true);
         _pb('assetTransformGeometryChangedByVisualUpdate', false);
         _pb('contextToolbarItemsShrink', false);
