@@ -1,3 +1,12 @@
+# v8z4b32E8B — fix(assets): sincroniza seleção canônica entre Stage, Layers e contexto
+
+- `selectedAssetId` passa a ser a única identidade canônica; `selectAssetById()` valida o ID real e mantém `selectedImageAssetId` somente como alias legado derivado.
+- Stage, linhas de Layers, faixa contextual, toolbar, contorno e ações de reorder passam a resolver e expor o mesmo `asset.id` real.
+- Layers usa `data-asset-id`, preserva o ID após reconstrução/reorder e rola a linha selecionada para a área visível ao abrir o painel.
+- Diagnósticos observacionais comparam IDs reais do modelo e do DOM e registram preservação da seleção após reorder.
+- Adicionado guardrail com fixture de múltiplos assets e reorder; nomenclatura “Imagem N” permanece inalterada.
+- Validação visual final permanece pendente após merge/publicação na `main` de teste, em iPhone/Safari real por Roberto.
+
 # v8z4b32E8A — fix(ui): remove pills informativos redundantes dos Frames no Stage
 
 - `index.html`: remove na origem o `#frameHud`, sua criação DOM, estilos, atualização e posicionamento junto ao Frame no Stage; não há elemento oculto ou componente substituto.
