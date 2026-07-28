@@ -57,3 +57,11 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Como detectar:** selecionar assets sobrepostos no Stage e por Layers; comparar hit-test, seleção canônica, contorno, contexto, toolbar e linha destacada; repetir após Frente/Trás, setas, fechamento/reabertura e Undo/Redo.
 - **Teste preventivo:** `node scripts/qa/check-canonical-asset-selection.mjs` usa fixture com múltiplos assets e reorder; WebKit e validação real em iPhone/Safari complementam a proteção.
 - **Status:** proteção técnica adicionada na `v8z4b32E8B`; validação publicada em iPhone/Safari permanece pendente.
+
+## REG-031 — Render session exige fonte viva apesar de stableDrawable válido
+
+- **Problema:** Preview/Export podem abortar com `asset-not-ready` quando uma fonte DOM perde prontidão no Safari, embora o asset ainda possua raster estável válido.
+- **Causa:** a preparação antiga submetia também o `stableDrawable` ao caminho genérico de decode e exigia `decodeReady` e drawable válido simultaneamente; isso permitia a condição contraditória de 9 drawables válidos, 8 decodes e sessão abortada.
+- **Prevenção:** aplicar uma única precedência para Preview/Export (`stableDrawable` válido, fonte viva, fonte persistente), tentar recovery uma vez com timeout, nunca omitir asset visível e descartar snapshot parcial/liberar locks após falha.
+- **Teste preventivo:** `node scripts/qa/check-render-session-readiness-recovery.mjs` cobre 9/9, recovery, falha/retry e reprova omissão 8/9.
+- **Status:** proteção técnica adicionada na `v8z4b32E8C`; teste do projeto real em iPhone/Safari permanece pendente.

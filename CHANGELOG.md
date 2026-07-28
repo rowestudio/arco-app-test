@@ -1,3 +1,12 @@
+# v8z4b32E8C — fix(render): recupera readiness da render session
+
+- Preview e Export passam a preparar cada asset visível pela mesma rotina compartilhada e pela precedência `stableDrawable` válido → fonte viva → fonte persistente reidratada.
+- Um `stableDrawable` com dimensões, pixels e versão compatíveis é suficiente mesmo quando a fonte DOM viva perdeu `complete`, dimensões naturais ou decode no Safari.
+- Ausência/invalidez do drawable dispara uma tentativa controlada de reidratação (timeout de 6 s) e reconstrução antes de falha definitiva; nenhum asset visível é omitido e snapshots parciais são descartados.
+- Falhas liberam locks, loading e controles para permitir retry sem reload; diagnósticos observam fonte final, recovery, inclusão e contagem por frame do asset `img-1781622678250-715`.
+- Guardrail dedicado cobre fixture de 9 assets, precedência estável, recovery persistente, falha irrecuperável/retry e reprovação de 8/9.
+- Aprovação visual permanece pendente de publicação e validação no projeto real em iPhone/Safari.
+
 # v8z4b32E8B — fix(assets): sincroniza seleção canônica entre Stage, Layers e contexto
 
 - `selectedAssetId` passa a ser a única identidade canônica; `selectAssetById()` valida o ID real e mantém `selectedImageAssetId` somente como alias legado derivado.

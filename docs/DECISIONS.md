@@ -185,3 +185,11 @@ Formato: ID, data, decisão, contexto, consequência e status.
 - **Contexto:** escritas diretas e observações posicionais permitiam divergência real ou aparente entre componentes após seleção e reorder.
 - **Consequência:** nenhuma posição de array, linha, `zIndex`, slot ou rótulo “Imagem N” pode servir como identidade de seleção; reconstruções devem reencontrar o mesmo `asset.id`.
 - **Status:** ativa na `v8z4b32E8B`, com aprovação visual pendente em iPhone/Safari real.
+
+## DEC-2026-07-28-02 — Precedência de fontes estáveis na render session
+
+- **Data:** 2026-07-28.
+- **Decisão:** Preview e Export usam a mesma rotina de readiness por asset. Um `stableDrawable` com dimensões, pixels e versão de fonte compatíveis é suficiente; a fonte viva não precisa estar simultaneamente pronta. Sem drawable válido, a rotina tenta fonte viva e depois fonte persistente recuperável antes de falhar.
+- **Contexto:** fontes DOM são voláteis no Safari/iPhone e não devem invalidar um raster já congelado e comprovadamente desenhável.
+- **Consequência:** snapshots de render armazenam apenas fontes estáveis verificadas, nunca pulam assets visíveis e são descartados integralmente se qualquer asset permanecer irrecuperável.
+- **Status:** ativa na `v8z4b32E8C`, com validação real em iPhone/Safari pendente.
