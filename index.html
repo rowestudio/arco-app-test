@@ -14924,22 +14924,42 @@ function editorStageToWorld(sx, sy) {
 }
 let assets = []; // { id, type:'image', layerSequence, layerName, layerNameSource, originalFileName, ... }
 let nextLayerSequence = 1;
+const deletedLayerSequences = new Set();
+let deletedLayerSequenceReused = false;
+let layerIdentityPreservedAfterReorder = true;
+let layerIdentityPreservedAfterSaveLoad = true;
 
 function isPositiveLayerSequence(value) {
   return Number.isInteger(value) && value > 0;
 }
+function isValidLayerName(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
 function allocateNextLayerSequence() {
   if (!isPositiveLayerSequence(nextLayerSequence)) nextLayerSequence = 1;
-  return nextLayerSequence++;
+  const sequence = nextLayerSequence++;
+  if (deletedLayerSequences.has(sequence)) deletedLayerSequenceReused = true;
+  return sequence;
 }
 function assignPersistentLayerIdentity(asset, originalFileName) {
   if (!asset || asset.type !== 'image') return asset;
   if (!isPositiveLayerSequence(asset.layerSequence)) asset.layerSequence = allocateNextLayerSequence();
-  asset.layerName = `Camada ${asset.layerSequence}`;
-  asset.layerNameSource = 'automatic';
+  if (!isValidLayerName(asset.layerName)) asset.layerName = `Camada ${asset.layerSequence}`;
+  if (!isValidLayerName(asset.layerNameSource)) asset.layerNameSource = 'automatic';
   if (typeof originalFileName === 'string' && originalFileName.trim()) asset.originalFileName = originalFileName.trim();
   else if (typeof asset.originalFileName !== 'string') asset.originalFileName = '';
   return asset;
+}
+function captureLayerIdentityByAssetId(list) {
+  const identities = {};
+  (Array.isArray(list) ? list : []).forEach(asset => {
+    if (asset && asset.type === 'image') identities[String(asset.id)] = `${asset.layerSequence}|${asset.layerName}|${asset.layerNameSource}`;
+  });
+  return identities;
+}
+function layerIdentitySnapshotEquals(before, list) {
+  const after = captureLayerIdentityByAssetId(list);
+  return Object.keys(before || {}).every(id => after[id] === before[id]);
 }
 function migratePersistentLayerIdentities(imageAssets, persistedNextSequence) {
   const list = Array.isArray(imageAssets) ? imageAssets.filter(a => a && a.type === 'image') : [];
@@ -16400,6 +16420,7 @@ function deleteSelectedAsset() {
   // Remove o elemento DOM extra (imagens extras têm .world-extra-img).
   const domEl = document.querySelector('.world-extra-img[data-asset-id="' + selId + '"]');
   if (domEl) domEl.remove();
+  if (isPositiveLayerSequence(sel.layerSequence)) deletedLayerSequences.add(sel.layerSequence);
   assets.splice(idx, 1);
   clearSelectedAsset();
   // v8z4b30ZY — invalidar composite e redesenhar Stage imediatamente
@@ -16429,6 +16450,7 @@ function normalizeAssetZIndices() {
 // v8z4b30ZL (fix v8z4b30ZM, fix v8z4b30ZO, fix v8z4b30ZU) — traz o asset selecionado uma posição para frente.
 function bringSelectedAssetForward() {
   const selectedIdBeforeReorder = selectedAssetId == null ? null : String(selectedAssetId);
+  const layerIdentityBeforeReorder = captureLayerIdentityByAssetId(assets);
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para trazer à frente.'); return; }
@@ -16470,12 +16492,14 @@ function bringSelectedAssetForward() {
   restackFilmEditorLayers('asset-reorder');
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
   selectedAssetPreservedAfterReorder = selectedIdBeforeReorder === String(selectedAssetId);
+  layerIdentityPreservedAfterReorder = layerIdentityPreservedAfterReorder && layerIdentitySnapshotEquals(layerIdentityBeforeReorder, assets);
   updateCanonicalAssetSelectionDiagnostics();
   showStatus('Imagem movida para frente.');
 }
 // v8z4b30ZL (fix v8z4b30ZM, fix v8z4b30ZO, fix v8z4b30ZU) — envia o asset selecionado uma posição para trás.
 function sendSelectedAssetBackward() {
   const selectedIdBeforeReorder = selectedAssetId == null ? null : String(selectedAssetId);
+  const layerIdentityBeforeReorder = captureLayerIdentityByAssetId(assets);
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para enviar para trás.'); return; }
@@ -16517,12 +16541,14 @@ function sendSelectedAssetBackward() {
   restackFilmEditorLayers('asset-reorder');
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
   selectedAssetPreservedAfterReorder = selectedIdBeforeReorder === String(selectedAssetId);
+  layerIdentityPreservedAfterReorder = layerIdentityPreservedAfterReorder && layerIdentitySnapshotEquals(layerIdentityBeforeReorder, assets);
   updateCanonicalAssetSelectionDiagnostics();
   showStatus('Imagem movida para trás.');
 }
 // v8z4b32E — reordenação de camadas via painel Layers (sem drag-and-drop).
 function layerMoveAssetUp(assetId) {
   const selectedIdBeforeReorder = String(assetId);
+  const layerIdentityBeforeReorder = captureLayerIdentityByAssetId(assets);
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
@@ -16564,12 +16590,14 @@ function layerMoveAssetUp(assetId) {
   restackFilmEditorLayers('layer-move-up');
   renderLayersPanelList();
   selectedAssetPreservedAfterReorder = selectedIdBeforeReorder === String(selectedAssetId);
+  layerIdentityPreservedAfterReorder = layerIdentityPreservedAfterReorder && layerIdentitySnapshotEquals(layerIdentityBeforeReorder, assets);
   scrollSelectedLayerIntoView();
   updateCanonicalAssetSelectionDiagnostics();
   showStatus('Camada movida para cima.');
 }
 function layerMoveAssetDown(assetId) {
   const selectedIdBeforeReorder = String(assetId);
+  const layerIdentityBeforeReorder = captureLayerIdentityByAssetId(assets);
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
@@ -16611,6 +16639,7 @@ function layerMoveAssetDown(assetId) {
   restackFilmEditorLayers('layer-move-down');
   renderLayersPanelList();
   selectedAssetPreservedAfterReorder = selectedIdBeforeReorder === String(selectedAssetId);
+  layerIdentityPreservedAfterReorder = layerIdentityPreservedAfterReorder && layerIdentitySnapshotEquals(layerIdentityBeforeReorder, assets);
   scrollSelectedLayerIntoView();
   updateCanonicalAssetSelectionDiagnostics();
   showStatus('Camada movida para baixo.');
@@ -26566,6 +26595,10 @@ function clearCurrentProjectForNewFile() {
   // v8z4b30D — limpa o modelo interno preparatório (será reespelhado ao carregar imagem).
   if (Array.isArray(assets)) assets.length = 0;
   nextLayerSequence = 1;
+  deletedLayerSequences.clear();
+  deletedLayerSequenceReused = false;
+  layerIdentityPreservedAfterReorder = true;
+  layerIdentityPreservedAfterSaveLoad = true;
   if (Array.isArray(views)) views.length = 0;
   if (projectWorld) {
     projectWorld.initialized = false;
@@ -29630,6 +29663,9 @@ function dataUrlToFile(dataUrl, fallbackName) {
 }
 
 function applyProjectData(data) {
+  deletedLayerSequences.clear();
+  deletedLayerSequenceReused = false;
+  layerIdentityPreservedAfterSaveLoad = true;
   const token = ++loadSessionToken;
   loadSessionStarted = true;
   loadSessionCompleted = false;
@@ -30510,6 +30546,10 @@ function restoreProjectAssetsFromData(data) {
     }
 
     migratePersistentLayerIdentities(assets, nextLayerSequence);
+    const savedIdentityById = captureLayerIdentityByAssetId(savedImageAssets);
+    layerIdentityPreservedAfterSaveLoad = assets.filter(a => a && a.type === 'image').every(a =>
+      savedIdentityById[String(a.id)] === captureLayerIdentityByAssetId([a])[String(a.id)]
+    );
     lastLoadProjectWorldBounds = { ...projectWorld };
     invalidateProjectWorldComposite();
     renderProjectWorldExtraImages();
@@ -33458,9 +33498,7 @@ function toggleLayersPanel() {
 }
 // Nome automático persistente: pertence ao asset e independe da ordem visual.
 function getAssetDisplayName(asset) {
-  if (!asset) return 'Camada 1';
-  assignPersistentLayerIdentity(asset);
-  return asset.layerName;
+  return asset && isValidLayerName(asset.layerName) ? asset.layerName : '';
 }
 function renderLayersPanelList() {
   const list = document.getElementById('layersList');
@@ -35564,6 +35602,17 @@ function buildDiagnosticsText() {
   const _viewsArr  = (typeof views  !== 'undefined' && Array.isArray(views))  ? views  : [];
   push('assets.length', String(_assetsArr.length));
   push('imageAssetsCount', String((typeof getImageAssetCount === 'function') ? getImageAssetCount() : 'n/d'));
+  const _layerAssets = _assetsArr.filter(a => a && a.type === 'image');
+  const _layerSequences = _layerAssets.map(a => a.layerSequence).filter(isPositiveLayerSequence);
+  const _layerSequenceSet = new Set(_layerSequences);
+  push('persistentLayerNamesEnabled', String(_layerAssets.every(a => isPositiveLayerSequence(a.layerSequence) && isValidLayerName(a.layerName))));
+  push('nextLayerSequence', String(nextLayerSequence));
+  push('maxExistingLayerSequence', String(_layerSequences.length ? Math.max.apply(null, _layerSequences) : 0));
+  push('layerSequenceDuplicateDetected', String(_layerSequenceSet.size !== _layerSequences.length));
+  push('layerIdentityByAssetId', JSON.stringify(captureLayerIdentityByAssetId(_layerAssets)));
+  push('deletedLayerSequenceReused', String(deletedLayerSequenceReused));
+  push('layerIdentityPreservedAfterReorder', String(layerIdentityPreservedAfterReorder));
+  push('layerIdentityPreservedAfterSaveLoad', String(layerIdentityPreservedAfterSaveLoad));
   // v8z4b30N — lista todos os assets de imagem (não apenas o asset[0]).
   // v8z4b30O — inclui visible e zIndex por asset.
   let _imgAssetIdx = 0;
