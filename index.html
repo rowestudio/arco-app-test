@@ -7152,8 +7152,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8A';
-const APP_VERSION_NAME = 'v8z4b32E8A';
+const APP_VERSION = 'v8z4b32E8B';
+const APP_VERSION_NAME = 'v8z4b32E8B';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -14943,18 +14943,30 @@ let assetsModeIgnoresCameraIsolateFrame   = false;
 function isCameraMode() { return editorMode !== 'assets'; }
 function isAssetsMode() { return editorMode === 'assets'; }
 
+let lastStageHitTestSelectedAssetId = null;
+let lastLayersRowSelectedAssetId = null;
+let lastReorderTargetAssetId = null;
+let selectedAssetPreservedAfterReorder = true;
+
 function getSelectedAsset() {
   if (selectedAssetId == null || !Array.isArray(assets)) return null;
-  for (let i = 0; i < assets.length; i++) {
-    if (assets[i] && assets[i].id === selectedAssetId) return assets[i];
-  }
-  return null;
+  return assets.find(function(asset) {
+    return asset && String(asset.id) === String(selectedAssetId);
+  }) || null;
 }
-function setSelectedAsset(assetId) {
-  selectedAssetId = (assetId == null) ? null : assetId;
-  // Mantém o estado legado de troca alinhado ao asset selecionado.
+// Única entrada de seleção: selectedAssetId é a identidade canônica. O alias
+// selectedImageAssetId existe apenas para compatibilidade com o fluxo legado de
+// troca de imagem e sempre deriva desta seleção, nunca funciona em paralelo.
+function selectAssetById(assetId, source) {
+  const requestedId = assetId == null ? null : String(assetId);
+  const asset = requestedId == null || !Array.isArray(assets) ? null : assets.find(function(candidate) {
+    return candidate && String(candidate.id) === requestedId;
+  });
+  selectedAssetId = asset ? asset.id : null;
   selectedImageAssetId = selectedAssetId;
-  ensureAssetVisualDefaults(getSelectedAsset());
+  if (source === 'stage') lastStageHitTestSelectedAssetId = selectedAssetId;
+  if (source === 'layers') lastLayersRowSelectedAssetId = selectedAssetId;
+  ensureAssetVisualDefaults(asset || null);
   // v8z4b30ZZ — item 2: referências de frames/trechos/curvas no Modo Ativos são
   // PERSISTENTES. Selecionar um asset NÃO desliga mais as referências — elas só
   // ligam/desligam pelo ícone do Modo Ativos. Mantém-se a camada visível para que
@@ -14969,15 +14981,11 @@ function setSelectedAsset(assetId) {
   if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
   if (typeof updateLowerTimelineMeta === 'function') updateLowerTimelineMeta();
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+  updateCanonicalAssetSelectionDiagnostics();
+  return asset || null;
 }
-function clearSelectedAsset() {
-  selectedAssetId = null;
-  selectedImageAssetId = null; // v8z4b30ZP — mantém legado em sincronia
-  renderAssetSelectionOverlay();
-  renderAssetsContextBar();
-  if (typeof updateLowerTimelineMeta === 'function') updateLowerTimelineMeta();
-  if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
-}
+function setSelectedAsset(assetId, source) { return selectAssetById(assetId, source || 'legacy'); }
+function clearSelectedAsset(source) { return selectAssetById(null, source || 'clear'); }
 
 // v8z4b30ZJ — defaults não destrutivos para tratar o asset como caixa visual
 // futura (crop/moldura). Com enabled:false NÃO alteram aparência/Preview/Export.
@@ -16256,17 +16264,21 @@ function isToolbarVisualStateConsistent() {
 // v8z4b30ZL (fix v8z4b30ZQ) — atualiza estado visual das ferramentas de asset na 4ª linha.
 // Trocar/Excluir exigem asset selecionado; Frente/Trás seguem a posição na pilha.
 function syncAssetToolbarState() {
-  const hasSel = isAssetsMode() && !!getSelectedAsset();
+  const toolbarAsset = isAssetsMode() ? getSelectedAsset() : null;
+  const hasSel = !!toolbarAsset;
+  const toolbarAssetId = toolbarAsset ? String(toolbarAsset.id) : '';
   ['tbAssetReplace','tbAssetDelete'].forEach(function(id) {
     const el = document.getElementById(id);
     if (!el) return;
     el.classList.toggle('asset-tool-disabled', !hasSel);
+    el.dataset.assetId = toolbarAssetId;
   });
   const z = getAssetZOrderInfo();
   const fwd = document.getElementById('tbAssetForward');
-  if (fwd) fwd.classList.toggle('asset-tool-disabled', !z.canForward);
+  if (fwd) { fwd.classList.toggle('asset-tool-disabled', !z.canForward); fwd.dataset.assetId = toolbarAssetId; }
   const bkw = document.getElementById('tbAssetBackward');
-  if (bkw) bkw.classList.toggle('asset-tool-disabled', !z.canBackward);
+  if (bkw) { bkw.classList.toggle('asset-tool-disabled', !z.canBackward); bkw.dataset.assetId = toolbarAssetId; }
+  updateCanonicalAssetSelectionDiagnostics();
 }
 // v8z4b30ZK — barra contextual legada (agora sempre oculta; substituída pelo toolbar).
 function renderAssetsContextBar() {
@@ -16330,6 +16342,8 @@ function normalizeAssetZIndices() {
 }
 // v8z4b30ZL (fix v8z4b30ZM, fix v8z4b30ZO, fix v8z4b30ZU) — traz o asset selecionado uma posição para frente.
 function bringSelectedAssetForward() {
+  const selectedIdBeforeReorder = selectedAssetId == null ? null : String(selectedAssetId);
+  lastReorderTargetAssetId = selectedIdBeforeReorder;
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para trazer à frente.'); return; }
   normalizeAssetZIndices();
@@ -16369,10 +16383,14 @@ function bringSelectedAssetForward() {
   syncAssetToolbarState();
   restackFilmEditorLayers('asset-reorder');
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+  selectedAssetPreservedAfterReorder = selectedIdBeforeReorder === String(selectedAssetId);
+  updateCanonicalAssetSelectionDiagnostics();
   showStatus('Imagem movida para frente.');
 }
 // v8z4b30ZL (fix v8z4b30ZM, fix v8z4b30ZO, fix v8z4b30ZU) — envia o asset selecionado uma posição para trás.
 function sendSelectedAssetBackward() {
+  const selectedIdBeforeReorder = selectedAssetId == null ? null : String(selectedAssetId);
+  lastReorderTargetAssetId = selectedIdBeforeReorder;
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para enviar para trás.'); return; }
   normalizeAssetZIndices();
@@ -16412,15 +16430,19 @@ function sendSelectedAssetBackward() {
   syncAssetToolbarState();
   restackFilmEditorLayers('asset-reorder');
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+  selectedAssetPreservedAfterReorder = selectedIdBeforeReorder === String(selectedAssetId);
+  updateCanonicalAssetSelectionDiagnostics();
   showStatus('Imagem movida para trás.');
 }
 // v8z4b32E — reordenação de camadas via painel Layers (sem drag-and-drop).
 function layerMoveAssetUp(assetId) {
+  const selectedIdBeforeReorder = String(assetId);
+  lastReorderTargetAssetId = selectedIdBeforeReorder;
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
   // v8z4b32E1 — ESCOPO 4: a linha acionada vira o asset selecionado, e assim
   // permanece após a reordenação (Stage/contorno/painel sincronizados).
-  if (typeof setSelectedAsset === 'function') setSelectedAsset(assetId);
+  if (typeof selectAssetById === 'function') selectAssetById(assetId, 'layers');
   layerReorderSelectedRowBecomesSelectedAsset = (selectedAssetId === assetId);
   normalizeAssetZIndices();
   const sorted = assets.slice().sort(function(x,y){ return (x.zIndex||0)-(y.zIndex||0); });
@@ -16455,14 +16477,19 @@ function layerMoveAssetUp(assetId) {
   syncAssetToolbarState();
   restackFilmEditorLayers('layer-move-up');
   renderLayersPanelList();
+  selectedAssetPreservedAfterReorder = selectedIdBeforeReorder === String(selectedAssetId);
+  scrollSelectedLayerIntoView();
+  updateCanonicalAssetSelectionDiagnostics();
   showStatus('Camada movida para cima.');
 }
 function layerMoveAssetDown(assetId) {
+  const selectedIdBeforeReorder = String(assetId);
+  lastReorderTargetAssetId = selectedIdBeforeReorder;
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
   // v8z4b32E1 — ESCOPO 4: a linha acionada vira o asset selecionado, e assim
   // permanece após a reordenação (Stage/contorno/painel sincronizados).
-  if (typeof setSelectedAsset === 'function') setSelectedAsset(assetId);
+  if (typeof selectAssetById === 'function') selectAssetById(assetId, 'layers');
   layerReorderSelectedRowBecomesSelectedAsset = (selectedAssetId === assetId);
   normalizeAssetZIndices();
   const sorted = assets.slice().sort(function(x,y){ return (x.zIndex||0)-(y.zIndex||0); });
@@ -16497,6 +16524,9 @@ function layerMoveAssetDown(assetId) {
   syncAssetToolbarState();
   restackFilmEditorLayers('layer-move-down');
   renderLayersPanelList();
+  selectedAssetPreservedAfterReorder = selectedIdBeforeReorder === String(selectedAssetId);
+  scrollSelectedLayerIntoView();
+  updateCanonicalAssetSelectionDiagnostics();
   showStatus('Camada movida para baixo.');
 }
 // v8z4b32E1 — ESCOPO 1: a ação "Trocar" de uma LINHA do painel Layers usa um
@@ -17062,6 +17092,8 @@ function updateLowerTimelineMeta() {
   if (totalEl) totalEl.textContent = formatLowerTimeValue(getComputedTimelineDuration(), true);
   if (countEl) countEl.textContent = Math.max(0, frameCount) + (frameCount === 1 ? ' frame' : ' frames');
   if (activeEl) {
+    const contextAsset = isAssetsMode() && bottomContextMode === 'asset' ? getSelectedAsset() : null;
+    activeEl.dataset.assetId = contextAsset ? String(contextAsset.id) : '';
     const contextInfoLabel = getSingleContextInfoLabel();
     if (activeWrapEl) activeWrapEl.classList.toggle('context-info-pill-active', !!contextInfoLabel);
     if (contextInfoLabel) activeEl.innerHTML = contextInfoLabel;
@@ -29517,7 +29549,7 @@ function applyProjectData(data) {
   framePauses.length = 0;
   // v8z4b30ZK — ao carregar projeto, a seleção de asset NÃO é restaurada (estado só
   // de memória) e o editor volta ao Modo Câmera (padrão), preservando o fluxo atual.
-  selectedAssetId = null;
+  clearSelectedAsset('loadProject');
   setEditorMode('camera', 'loadProject');
   if (data.hasImage && isValidImageBase64(data.imageBase64)) {
     try {
@@ -30631,8 +30663,7 @@ function freezeReplaceTarget(t) {
   pendingImageAction = 'replaceImage';
   pendingImageTargetSlot = { key: t.slotKey, row: slot.row, col: slot.col };
   pendingImageTargetAssetId = (t.asset && t.asset.id != null) ? t.asset.id : null;
-  selectedImageAssetId = pendingImageTargetAssetId;
-  selectedAssetId = pendingImageTargetAssetId; // v8z4b30ZJ — alinhar seleção de asset
+  selectAssetById(pendingImageTargetAssetId, 'replaceTarget');
   activeSlotSelection = t.slotKey;
 }
 
@@ -30958,8 +30989,7 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
       // Cache de fonte/bounds antigo deste asset fica órfão pelas versões acima; o
       // render sempre relê a._img/worldRect canônicos.
       ensureAssetVisualDefaults(target);
-      selectedImageAssetId = target.id;
-      selectedAssetId = target.id;
+      selectAssetById(target.id, 'replaceCommit');
       replaceCommittedAtomically = true;
       replaceAssetHadPartialState = false;
       // v8z4b32E6 — o commit canônico ocorreu ANTES de qualquer redraw de Stage.
@@ -32506,8 +32536,7 @@ function performInsertImageAtSlot(slotKey, file) {
       };
       assets.push(asset);
       activeSlotSelection = slotKey;
-      selectedImageAssetId = asset.id;
-      selectedAssetId = asset.id; // v8z4b30ZJ — seleciona automaticamente o novo asset
+      selectAssetById(asset.id, 'insertCommit');
       invalidateProjectWorldComposite();
       renderProjectWorldExtraImages();
       // v8z4b32E1 — ESCOPO 3: o novo asset entra imediatamente no hit-test/lista
@@ -32819,7 +32848,7 @@ function handleStageAssetSelectPointer(e) {
     e.preventDefault();
     e.stopPropagation();
     if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-    setSelectedAsset(hit.id);
+    selectAssetById(hit.id, 'stage');
     const _main = getMainImageAsset();
     if (_main && hit.id === _main.id) stageTapSelectedBaseAssetId = String(hit.id);
     else stageTapSelectedNewAssetId = String(hit.id);
@@ -33103,6 +33132,7 @@ function renderAssetSelectionOverlay() {
   // referência (mas abaixo dos frames de câmera), permanecendo sempre legível.
   box.style.zIndex = String(ASSET_SELECT_OUTLINE_Z);
   box.style.display = 'block';
+  box.dataset.assetId = String(asset.id);
   box.style.left = p.x + 'px';
   box.style.top = p.y + 'px';
   box.style.width = p.w + 'px';
@@ -33154,6 +33184,63 @@ function renderAssetSelectionOverlay() {
   restackFilmEditorLayers('renderAssetSelectionOverlay');
 }
 
+// Diagnóstico observacional: todos os IDs abaixo são lidos do modelo ou do DOM.
+let canonicalSelectedAssetId = null;
+let canonicalSelectedAssetExists = false;
+let stageSelectedAssetId = null;
+let layersHighlightedAssetId = null;
+let contextInfoAssetId = null;
+let toolbarTargetAssetId = null;
+let selectedAssetIdsAllMatch = true;
+let selectedAssetMismatchDetected = false;
+let selectedAssetMismatchReason = 'none';
+let layersSelectedRowVisible = false;
+let layersSelectedRowMatchesCanonical = true;
+let selectionOutlineAssetId = null;
+let selectionOutlineMatchesCanonicalAsset = true;
+let selectionOutlineGeometryMatchesCanonicalAsset = true;
+
+function _canonicalSelectionDomId(element) {
+  return element && element.dataset && element.dataset.assetId ? String(element.dataset.assetId) : null;
+}
+function updateCanonicalAssetSelectionDiagnostics() {
+  const selected = getSelectedAsset();
+  canonicalSelectedAssetId = selected ? String(selected.id) : null;
+  canonicalSelectedAssetExists = !!selected;
+  stageSelectedAssetId = canonicalSelectedAssetId;
+  const highlightedRows = Array.from(document.querySelectorAll('#layersList .layers-item.selected'));
+  layersHighlightedAssetId = highlightedRows.length === 1 ? _canonicalSelectionDomId(highlightedRows[0]) : null;
+  contextInfoAssetId = _canonicalSelectionDomId(document.getElementById('lowerActiveLabel'));
+  toolbarTargetAssetId = _canonicalSelectionDomId(document.getElementById('tbAssetForward'));
+  const outline = document.getElementById('assetSelectOutline');
+  selectionOutlineAssetId = outline && outline.style.display !== 'none' ? _canonicalSelectionDomId(outline) : null;
+  const panel = document.getElementById('layersPanel');
+  const panelOpen = !!(panel && panel.classList.contains('show'));
+  const row = highlightedRows[0] || null;
+  layersSelectedRowVisible = !panelOpen || !row || (row.getBoundingClientRect().bottom > 0 && row.getBoundingClientRect().top < window.innerHeight);
+  layersSelectedRowMatchesCanonical = canonicalSelectedAssetId == null ? highlightedRows.length === 0 : layersHighlightedAssetId === canonicalSelectedAssetId;
+  selectionOutlineMatchesCanonicalAsset = canonicalSelectedAssetId == null ? selectionOutlineAssetId == null : (!isAssetsMode() || selectionOutlineAssetId === canonicalSelectedAssetId);
+  selectionOutlineGeometryMatchesCanonicalAsset = !selected || !isAssetsMode() || (typeof assetSelectionOutlineUsesAssetGeometry !== 'undefined' && assetSelectionOutlineUsesAssetGeometry === true && selectionOutlineAssetId === canonicalSelectedAssetId);
+  const applicable = [layersHighlightedAssetId, contextInfoAssetId, toolbarTargetAssetId, selectionOutlineAssetId].filter(function(id) { return id != null; });
+  selectedAssetIdsAllMatch = canonicalSelectedAssetId == null ? applicable.length === 0 : applicable.every(function(id) { return id === canonicalSelectedAssetId; });
+  selectedAssetMismatchDetected = !selectedAssetIdsAllMatch || !layersSelectedRowMatchesCanonical || !selectionOutlineMatchesCanonicalAsset || !selectionOutlineGeometryMatchesCanonicalAsset;
+  const reasons = [];
+  if (!canonicalSelectedAssetExists && selectedAssetId != null) reasons.push('canonical id missing from assets');
+  if (!layersSelectedRowMatchesCanonical) reasons.push('Layers highlighted id differs');
+  if (contextInfoAssetId != null && contextInfoAssetId !== canonicalSelectedAssetId) reasons.push('context id differs');
+  if (toolbarTargetAssetId != null && toolbarTargetAssetId !== canonicalSelectedAssetId) reasons.push('toolbar id differs');
+  if (!selectionOutlineMatchesCanonicalAsset) reasons.push('outline id differs');
+  if (!selectionOutlineGeometryMatchesCanonicalAsset) reasons.push('outline geometry differs');
+  selectedAssetMismatchReason = reasons.join('; ') || 'none';
+}
+function scrollSelectedLayerIntoView() {
+  const panel = document.getElementById('layersPanel');
+  if (!panel || !panel.classList.contains('show') || selectedAssetId == null) return;
+  const row = Array.from(document.querySelectorAll('#layersList .layers-item')).find(function(item) {
+    return _canonicalSelectionDomId(item) === String(selectedAssetId);
+  });
+  if (row && typeof row.scrollIntoView === 'function') row.scrollIntoView({ block: 'nearest' });
+}
 // ── Painel básico de Layers ──────────────────────────────────────────────
 function openLayersPanel() {
   const panel = document.getElementById('layersPanel');
@@ -33161,6 +33248,8 @@ function openLayersPanel() {
   renderLayersPanelList();
   panel.classList.add('show');
   panel.setAttribute('aria-hidden', 'false');
+  scrollSelectedLayerIntoView();
+  updateCanonicalAssetSelectionDiagnostics();
 }
 function closeLayersPanel() {
   const panel = document.getElementById('layersPanel');
@@ -33197,7 +33286,8 @@ function renderLayersPanelList() {
   // v8z4b32E — per-row buttons: Subir / Descer / Trocar
   sorted.forEach((a, i) => {
     const item = document.createElement('div');
-    item.className = 'layers-item' + (a.id === selectedAssetId ? ' selected' : '');
+    item.className = 'layers-item' + (String(a.id) === String(selectedAssetId) ? ' selected' : '');
+    item.dataset.assetId = String(a.id);
     const thumbWrap = document.createElement('div');
     thumbWrap.className = 'layers-thumb';
     const src = getAssetThumbSrc(a);
@@ -33212,12 +33302,9 @@ function renderLayersPanelList() {
     // Toque na thumb/nome seleciona o asset
     const _selAsset = function() {
       if (!isAssetsMode()) setEditorMode('assets', 'layersPanelSelect');
-      setSelectedAsset(a.id);
-      syncAssetToolbarState();
-      renderLayersPanelList();
+      selectAssetById(a.id, 'layers');
     };
-    thumbWrap.addEventListener('click', _selAsset);
-    label.addEventListener('click', _selAsset);
+    item.addEventListener('click', _selAsset);
     // Botão Subir (aumenta zIndex → visual frente); sorted é decrescente, i=0 é o topo
     const btnUp = document.createElement('button');
     btnUp.type = 'button';
@@ -33251,6 +33338,7 @@ function renderLayersPanelList() {
     item.appendChild(acts);
     list.appendChild(item);
   });
+  updateCanonicalAssetSelectionDiagnostics();
 }
 
 // ─── Mundo composto (canvas) — fonte de render para Stage/Preview/Export ───
@@ -35485,6 +35573,25 @@ function buildDiagnosticsText() {
     const _selId = (typeof selectedAssetId !== 'undefined') ? selectedAssetId : null;
     const _isAssets = (typeof isAssetsMode === 'function') ? isAssetsMode() : false;
     push('toolbarContext', _isAssets ? 'asset' : 'frame');
+    updateCanonicalAssetSelectionDiagnostics();
+    push('canonicalSelectedAssetId', canonicalSelectedAssetId || 'none');
+    push('canonicalSelectedAssetExists', String(canonicalSelectedAssetExists));
+    push('stageSelectedAssetId', stageSelectedAssetId || 'none');
+    push('layersHighlightedAssetId', layersHighlightedAssetId || 'none');
+    push('contextInfoAssetId', contextInfoAssetId || 'none');
+    push('toolbarTargetAssetId', toolbarTargetAssetId || 'none');
+    push('lastStageHitTestSelectedAssetId', lastStageHitTestSelectedAssetId || 'none');
+    push('lastLayersRowSelectedAssetId', lastLayersRowSelectedAssetId || 'none');
+    push('lastReorderTargetAssetId', lastReorderTargetAssetId || 'none');
+    push('selectedAssetIdsAllMatch', String(selectedAssetIdsAllMatch));
+    push('selectedAssetMismatchDetected', String(selectedAssetMismatchDetected));
+    push('selectedAssetMismatchReason', selectedAssetMismatchReason);
+    push('selectedAssetPreservedAfterReorder', String(selectedAssetPreservedAfterReorder));
+    push('layersSelectedRowVisible', String(layersSelectedRowVisible));
+    push('layersSelectedRowMatchesCanonical', String(layersSelectedRowMatchesCanonical));
+    push('selectionOutlineAssetId', selectionOutlineAssetId || 'none');
+    push('selectionOutlineMatchesCanonicalAsset', String(selectionOutlineMatchesCanonicalAsset));
+    push('selectionOutlineGeometryMatchesCanonicalAsset', String(selectionOutlineGeometryMatchesCanonicalAsset));
     push('selectedImageAssetId', (typeof selectedImageAssetId !== 'undefined' && selectedImageAssetId) ? String(selectedImageAssetId) : 'n/d');
     push('selectedAssetId', _selId ? String(_selId) : 'n/d');
     push('selectedAsset.zIndex', _selA ? String(_selA.zIndex != null ? _selA.zIndex : 'n/d') : 'n/d');

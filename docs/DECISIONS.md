@@ -177,3 +177,11 @@ Formato: ID, data, decisão, contexto, consequência e status.
 - **Sistemas/documentos afetados:** `docs/REGRESSIONS.md`, `docs/PROJECT_STATE.md`, `docs/APPROVAL_WORKFLOW.md`.
 - **Status:** Ativa.
 - **PR relacionada:** v8z4b32E7Z.
+
+## DEC-2026-07-28-01 — Identidade canônica de seleção de Ativos
+
+- **Data:** 2026-07-28.
+- **Decisão:** `selectedAssetId` é a única identidade canônica do Ativo selecionado. Stage, Layers, contexto, toolbar, contorno e reorder devem resolver o objeto exclusivamente por esse ID; aliases legados só podem derivar dele.
+- **Contexto:** escritas diretas e observações posicionais permitiam divergência real ou aparente entre componentes após seleção e reorder.
+- **Consequência:** nenhuma posição de array, linha, `zIndex`, slot ou rótulo “Imagem N” pode servir como identidade de seleção; reconstruções devem reencontrar o mesmo `asset.id`.
+- **Status:** ativa na `v8z4b32E8B`, com aprovação visual pendente em iPhone/Safari real.

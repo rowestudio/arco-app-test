@@ -183,6 +183,19 @@ expectCase(results, 'Project OS missing CLAUDE fails', 'check-project-os.mjs', 1
   cwd: createProjectOsFixture(false),
 });
 
+expectCase(results, 'Canonical asset selection fixture passes', 'check-canonical-asset-selection.mjs', 0, {
+  env: {
+    QA_CANONICAL_MODEL_ONLY: '1',
+    QA_CANONICAL_SELECTION_FIXTURE: path.join(fixtures, 'canonical-asset-selection-valid.json'),
+  },
+});
+expectCase(results, 'Canonical asset selection missing id fails', 'check-canonical-asset-selection.mjs', 1, {
+  env: {
+    QA_CANONICAL_MODEL_ONLY: '1',
+    QA_CANONICAL_SELECTION_FIXTURE: path.join(fixtures, 'canonical-asset-selection-invalid.json'),
+  },
+});
+
 const repositoryStateValid = createRepositoryStateFixture(false);
 expectCase(results, 'Repository state minimal fixture passes', 'check-repository-state.mjs', 0, {
   cwd: repositoryStateValid.dir,

@@ -48,3 +48,12 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Como detectar:** inspecionar o DOM do Stage após render, troca de modo, pan/zoom, seleção, Load e Undo/Redo; a contagem do HUD deve permanecer zero enquanto a faixa contextual da timeline continua presente e visível quando aplicável.
 - **Teste preventivo:** `node scripts/qa/check-frame-stage-info-pills.mjs` valida a ausência do componente na origem e a preservação dos componentes DOM funcionais.
 - **Status:** proteção automatizada adicionada na `v8z4b32E8A`; validação visual publicada em iPhone/Safari permanece pendente.
+
+## REG-030 — Seleção de Ativo diverge entre Stage, Layers, contexto e reorder
+
+- **Problema:** componentes do editor podem apontar para identidades diferentes ou aparentar divergência ao selecionar/reordenar Ativos, fazendo destaque, contorno, contexto ou ações atuarem fora do `asset.id` tocado.
+- **Causa:** entradas históricas escreviam diretamente em estados paralelos, as linhas de Layers não expunham `data-asset-id` real e a reconstrução da lista não possuía uma auditoria comum por ID; a nomenclatura posicional também podia exibir números distintos para o mesmo asset entre lista ordenada por `zIndex` e contexto baseado no array.
+- **Prevenção:** resolver seleção somente por `selectedAssetId` através de `selectAssetById()`, manter aliases derivados, marcar e reencontrar linhas por `data-asset-id`, preservar o ID durante reorder e comparar modelo/DOM por IDs reais.
+- **Como detectar:** selecionar assets sobrepostos no Stage e por Layers; comparar hit-test, seleção canônica, contorno, contexto, toolbar e linha destacada; repetir após Frente/Trás, setas, fechamento/reabertura e Undo/Redo.
+- **Teste preventivo:** `node scripts/qa/check-canonical-asset-selection.mjs` usa fixture com múltiplos assets e reorder; WebKit e validação real em iPhone/Safari complementam a proteção.
+- **Status:** proteção técnica adicionada na `v8z4b32E8B`; validação publicada em iPhone/Safari permanece pendente.
