@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Última atualização documental: 2026-07-19.
+Última atualização documental: 2026-07-28.
 
 ## Estado auditado
 
@@ -34,3 +34,12 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - Decisão: não reverter imediatamente a PR #449, pois a implementação é incompleta e visualmente reprovada, mas estável e aproveitável para correção sobre a main atual.
 - `v8z4b32E7Z` passa a ser a correção em desenvolvimento para concluir a paridade funcional e visual das alças de Ativos com o modelo aprovado dos Frames e registrar as novas decisões operacionais no Project OS.
 - Pendente após merge/publicação: validação visual em iPhone/Safari real antes de considerar a versão aprovada por Roberto.
+
+
+## Atualização 2026-07-28 — v8z4b32E8A em PR
+
+- Base confirmada: `main` no HEAD `6df20c42b6a5192dba2279c0dfff71bd0a1f5ea0`, versão `v8z4b32E7Z`.
+- A `v8z4b32E8A` remove na origem o HUD informativo redundante preso aos Frames no Stage, preservando a faixa informativa existente acima da timeline e os elementos funcionais dos Frames.
+- Classificação: ajuste visual cirúrgico de UI, sem alteração de Preview, Export, renderer, ProjectWorld, Save/Load, timeline ou motor de Frames.
+- Estado: PR técnica em preparação no repositório de teste; nenhuma promoção para produção autorizada.
+- Aprovação visual final: pendente de merge, publicação na `main` de teste e validação de Roberto em iPhone/Safari real.

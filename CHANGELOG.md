@@ -1,3 +1,12 @@
+# v8z4b32E8A — fix(ui): remove pills informativos redundantes dos Frames no Stage
+
+- `index.html`: remove na origem o `#frameHud`, sua criação DOM, estilos, atualização e posicionamento junto ao Frame no Stage; não há elemento oculto ou componente substituto.
+- `index.html`: preserva a faixa contextual real `#lowerActiveLabel` acima da timeline, além de número, contorno, quatro alças, curvas, scrim e seleção dos Frames.
+- `index.html`: substitui diagnósticos antigos do HUD por observações do DOM real para ausência/contagem/visibilidade do pill no Stage e presença da faixa contextual, número e alças preservados.
+- `scripts/qa/check-frame-stage-info-pills.mjs`: adiciona guardrail estático/DOM contra recriação do HUD e contra remoção dos elementos funcionais preservados.
+- `index.html`: `APP_VERSION` e `APP_VERSION_NAME` atualizados para `v8z4b32E8A`.
+- Validação visual final permanece pendente após merge/publicação na `main` de teste, em iPhone/Safari real por Roberto.
+
 # v8z4b32E7Z — fix(assets): conclui paridade das alças com Frames e registra regras de revisão
 
 - `index.html`: remove os controles antigos `.asset-scale-handle` e `.asset-rotate-handle` do Ativo selecionado e mantém exatamente quatro `.asset-corner-handle` roxas, interativas, com área de toque de 44px e offset externo de 12px em relação à moldura.

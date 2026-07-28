@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8A — base v8z4b32E7Z. fix(ui): remove da origem o HUD informativo preso ao Frame no Stage, preservando a faixa contextual existente acima da timeline, número, contorno, alças, curvas, scrim e seleção. APP_VERSION = APP_VERSION_NAME = v8z4b32E8A. -->
 <!-- Arco Motion App — v8z4b32E7Z — base 1ffbc664c0e730973ae384851400fa9771442a01. fix(assets): ativo selecionado no Modo Ativos usa quatro abas roxas funcionais, externas e sem controles antigos paralelos. APP_VERSION = APP_VERSION_NAME = v8z4b32E7Z. -->
 <!-- Arco Motion App — v8z4b32E7W — base v8z4b32E7V. fix(context-info-pill): restaura o prefixo F no identificador de frame e remove pausa/tempo da pill contextual da terceira linha, mantendo apenas frame, escala e rotação com separadores verticais cinza e valores laranja. APP_VERSION = APP_VERSION_NAME = v8z4b32E7W. -->
 <!-- Arco Motion App — v8z4b32E7T — base v8z4b32E7S. ux(context-info-pill): centraliza a informação contextual existente da terceira linha na área útil da timeline e aplica pill neutro de largura automática para frame único (Fxx · escala · rotação) e ativo único (Imagem N · escala · rotação), preservando seleção múltipla, trechos, layout, timeline, toolbar, HUD, Preview, Export, Save/Load e ProjectWorld. APP_VERSION = APP_VERSION_NAME = v8z4b32E7T. -->
@@ -1414,7 +1415,6 @@ body.editor-assets .mid-bar.timeline-grid .fp.active.selected{
 }
 /* v8z4b30ZO — Handles de câmera/frame ocultos no Modo Ativos (evita "vazamento" visual). */
 body.editor-assets .corner-handle,
-body.editor-assets #frameHud,
 body.editor-assets #stageFrameMenu{display:none !important;}
 /* v8z4b30ZW — destaque de referência intencional no Modo Ativos.
    v8z4b31A — item 2: o frame/trecho selecionado no painel inferior precisa ficar
@@ -1645,7 +1645,7 @@ body.recording #stageDimSvg{display:none !important;}
   transform:translate(-50%,-140%) scale(var(--ez-inv,1));display:none;
   border:1px solid rgba(255,255,255,.15);
 }
-/* v8z4b29BB — angle-indicator oculto: ângulo já exibido no frameHud */
+/* Indicador angular legado permanece oculto; a informação contextual fica na faixa da timeline. */
 .angle-indicator.show{display:none;}
 .global-handle{
   position:absolute;left:0;top:0;width:45px;height:45px;margin-left:-22px;margin-top:-22px;
@@ -1681,19 +1681,6 @@ body.recording #stageDimSvg{display:none !important;}
 #frameHandlesLayer .corner-handle{pointer-events:auto;}
 body.editor-assets #frameHandlesLayer{display:none;}
 body.previewing #frameHandlesLayer,body.recording #frameHandlesLayer{display:none !important;}
-
-/* v8z4b29BC — HUD visor/câmera: faixa mais próxima e compacta, alinhada às abas superiores */
-#frameHud{
-  position:absolute;left:0;top:0;
-  background:rgba(60,60,60,.52);color:#fff;
-  font-size:11px;font-weight:500;
-  padding:2px 10px;border-radius:2px;
-  white-space:nowrap;pointer-events:none;z-index:68;
-  display:none;letter-spacing:.4px;
-  transform:translate(-50%,calc(-100% - 6px)) scale(var(--ez-inv,1));
-  transform-origin:50% 100%;
-}
-#frameHud.show{display:flex;align-items:center;gap:16px;}
 
 /* v8z4b29AY — mira central fina e discreta no frame ativo */
 /* v8z4b29BC — mira escala com o frame (clamp via --stage-frame-ui-scale, 0.58–1) */
@@ -7165,8 +7152,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E7Z';
-const APP_VERSION_NAME = 'v8z4b32E7Z';
+const APP_VERSION = 'v8z4b32E8A';
+const APP_VERSION_NAME = 'v8z4b32E8A';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -7257,7 +7244,7 @@ function restackFilmEditorLayers(reason = '') {
     root.appendChild(refCurve);
   }
   if (isCamera) {
-    ['.corner-handle','.global-handle','.frame-in-handle','.frame-out-handle','.ctrl-pt','#frameHud','#stageFrameMenu'].forEach(function(sel) {
+    ['.corner-handle','.global-handle','.frame-in-handle','.frame-out-handle','.ctrl-pt','#stageFrameMenu'].forEach(function(sel) {
       root.querySelectorAll(sel).forEach(function(el) { root.appendChild(el); });
     });
   }
@@ -7325,11 +7312,6 @@ let assetHitTestOrderMatchesReverseZIndex = true;
 let assetsModeContextMenuRemoved = true;
 let assetsModeIconTapTogglesFrameReferences = true;
 let assetsModeTimelineFrameTapLocalizesReference = true;
-// v8z4b30ZV — diagnóstico de abas/chips do frame ativo no Modo Câmera.
-let cameraModeFrameChipsAligned = true;
-let cameraModeFrameChipsFrameIndex = -1;
-let cameraModeFrameChipsAnchorUsesRotatedFrameGeometry = true;
-let cameraModeFrameChipsClampAppliedAfterTransform = true;
 // v8z4b30ZX — diagnóstico de geometria unificada de frame ancorado no editor.
 let frameAnchoredUIUsesSingleGeometrySource = false;
 let frameAnchoredUIScreenGeometryValid = false;
@@ -7723,8 +7705,6 @@ let allEditorFrameTargetsMatchCanonical = true;
 let editorFrameTargetMismatchDetected = false;
 let editorFrameTargetMismatchReason = 'none';
 let frameAnchoredUIFrameIndexMatchesActive = true;
-let frameActiveInfoTextMatchesActive = true;
-let cameraModeFrameChipsMatchActive = true;
 let cameraModeFrameOverlayMatchesActive = true;
 let scrimCutoutMatchesActiveFrame = true;
 let timelineVisualActiveMatchesActive = true;
@@ -8085,10 +8065,6 @@ let assetsModeFrameReferenceOpacityUniform = false;
 let assetsModeFrameNumberReferenceVisible = false;
 let assetsModeFrameNumberHighlightIndex = -1;
 let assetsModeFrameNumberUsesAnchoredGeometry = false;
-let frameActiveInfoTextVisible = false;
-let frameActiveInfoTextFrameIndex = -1;
-let frameActiveInfoTextUsesAnchoredGeometry = false;
-let frameActiveInfoTextSuppressedReason = '';
 let frameAnchoredUIDiagnosticTargetIndex = -1;
 let frameAnchoredUIDiagnosticMode = '';
 let frameAnchoredUIDiagnosticUsesReferenceFrame = false;
@@ -8336,7 +8312,6 @@ let frameCenterMatchesRotatedRectCenter = true;
 let frameCenterDeltaFromRectCenterPx = 0;
 let frameHandlesUseSameGeometryAsFrame = true;
 let frameLabelsUseSameGeometryAsFrame = true;
-let frameHudUsesSameGeometryAsFrame = true;
 // Curve geometry
 let curvePathUsesSameFrameCentersAsRects = true;
 let curvePathUsesSameHandlesAcrossModes = true;
@@ -8443,8 +8418,6 @@ function syncEditorFrameTargetsToCanonical(source) {
   timelineFrameUnderMarkerIndex = cf;
   if (typeof isAssetsMode !== 'function' || !isAssetsMode()) {
     frameAnchoredUIFrameIndex = cf;
-    frameActiveInfoTextFrameIndex = cf;
-    cameraModeFrameChipsFrameIndex = cf;
     cameraModeFrameOverlayFrameIndex = cf;
     filmAlphaScrimCutoutFrameIndex = cf;
   }
@@ -15756,9 +15729,7 @@ function clearFrameEditingVisualsForAssetsMode(reason) {
     if (outHandle) outHandle.style.display = 'none';
     // v8z4b30ZU — ocultar também o backdrop de referências (entrando em Ativos sem referências ativas)
     hideAssetsModeFrameReferenceBackdrop();
-    // Ocultar HUD de frame e menu contextual de frame no Stage
-    const frameHud = document.getElementById('frameHud');
-    if (frameHud) frameHud.style.display = 'none';
+    // Ocultar menu contextual de frame no Stage.
     const stageFrameMenu = document.getElementById('stageFrameMenu');
     if (stageFrameMenu) stageFrameMenu.style.display = 'none';
     // v8z4b30ZW — limpar inline opacity e classe 'active' dos frames ao entrar em Modo Ativos.
@@ -16048,11 +16019,6 @@ function setEditorMode(mode, source) {
       // para que showStageFrameMenu() possa mostrar o menu via CSS .show
       const _stfm = document.getElementById('stageFrameMenu');
       if (_stfm) _stfm.style.display = '';
-      // v8z4b30ZY — limpar inline style do frameHud (setado por clearFrameEditingVisualsForAssetsMode).
-      // Sem limpar, 'display:none' persiste no Modo Câmera e impede #frameHud.show{display:flex}.
-      const _fhud = document.getElementById('frameHud');
-      if (_fhud) _fhud.style.display = '';
-      if (typeof frameHudEl !== 'undefined' && frameHudEl) frameHudEl.style.display = '';
       // v8z4b30ZY — remover classe assets-refs-visible ao sair do Modo Ativos
       if (document.body) document.body.classList.remove('assets-refs-visible');
       // v8z4b30ZY — restaurar diagnóstico de hierarquia
@@ -16582,7 +16548,6 @@ let globalHandleEl = null;
 let handleDragState = null;
 let handleCornerByFrame = Array(MAX_FRAMES).fill('br');
 let cornerHandleEls = null; // v8z4b29AX: 4 círculos nos cantos do frame ativo
-let frameHudEl = null;      // v8z4b29AX: HUD visor/câmera
 
 // v8z4b28a — Preview em resolução final do formato, ainda limitado a <= 1280px
 // pelo próprio exportDims para manter iPhone/Safari dentro de um backing store seguro.
@@ -18035,7 +18000,6 @@ function updateGhostTransformHandle() {
     globalHandleEl.classList.remove('show');
     globalHandleEl.classList.remove('ghost-transform');
   }
-  if (frameHudEl) frameHudEl.classList.remove('show');
   if (!isInsertingFrame || !ghostFrame || !imgNatW || isPreviewing) return;
   // Posicionar as 4 abas nos cantos do ghost frame (mesma UI do frame ativo)
   ensureCornerHandles();
@@ -18378,34 +18342,6 @@ function ensureCornerHandles() {
 
     return el;
   });
-}
-
-function ensureFrameHud() {
-  if (frameHudEl || !stage) return;
-  frameHudEl = document.createElement('div');
-  frameHudEl.id = 'frameHud';
-  stageAppendChild(frameHudEl);
-}
-
-function updateFrameHud(fi) {
-  if (!frameHudEl || !frames[fi]) return;
-  const f     = frames[fi];
-  const pause = framePauses[fi] ? (framePauses[fi].duration || 0) : 0;
-  const rot   = frameRotations[fi] || 0;
-  const refW  = baseFrameW > 0 ? baseFrameW : (stageW * 0.55 || 1);
-  const scPct = Math.round(f.w / refW * 100);
-  const rotStr = rot.toFixed(1) + '°';
-  frameHudEl.innerHTML = '<span>' + pause.toFixed(1) + 's</span><span>' + rotStr + '</span><span>' + scPct + '%</span>';
-  // v8z4b30ZX — usar fonte única de geometria (getFrameScreenGeometry) para ancoragem
-  // consistente em stageContent coords, inclusive para frames em slots não-centrais.
-  const geom = getFrameScreenGeometry(fi);
-  const anchor = geom ? geom.chipAnchor : { x: f.x + f.w / 2, y: f.y };
-  cameraModeFrameChipsAligned = true;
-  cameraModeFrameChipsFrameIndex = fi;
-  frameHudEl.style.left = anchor.x + 'px';
-  frameHudEl.style.top  = anchor.y + 'px';
-  frameHudEl.classList.add('show');
-  stageAppendChild(frameHudEl);
 }
 
 // ═══════════════════════════════════════
@@ -19384,11 +19320,11 @@ function dismissAutosave() {
   if (window._restorePromptEl) window._restorePromptEl.remove();
 }
 
-// v8z4b29BL — alças/cantos/HUD do frame ativo, extraído de renderAll para
+// v8z4b29BL — alças e cantos do frame ativo, extraídos de renderAll para
 // poder ser reaplicado ao trocar o frame ativo via scrub da timeline sem
 // reconstruir a faixa de pills (evita perder a posição de scroll).
 // v8z4b30ZX — usa getFrameScreenGeometry() como fonte única de geometria para
-// posicionar handle global, corner handles e HUD em stageContent coords corretas,
+// posicionar handle global e corner handles em stageContent coords corretas,
 // eliminando desalinhamento para frames em slots não-centrais.
 function refreshActiveFrameVisuals() {
   syncEditorFrameTargetsToCanonical('refreshActiveFrameVisuals');
@@ -19415,10 +19351,9 @@ function refreshActiveFrameVisuals() {
     globalHandleEl.classList.remove('ghost-transform');
   }
 
-  // v8z4b29AY — corner handles + HUD (círculos fora da borda do frame)
+  // v8z4b29AY — corner handles (círculos fora da borda do frame)
   // v8z4b29AZ — durante inserção ghost, abas são gerenciadas por updateGhostTransformHandle
   ensureCornerHandles();
-  ensureFrameHud();
   const _showCorners = _canShow && !isInsertingFrame;
   if (cornerHandleEls) {
     const _CORNER_OUT = 12; // px para fora da borda em stageContent coords
@@ -19448,21 +19383,6 @@ function refreshActiveFrameVisuals() {
   // v8z4b29AZ: durante inserção, garantir que as abas do ghost estejam posicionadas
   if (isInsertingFrame && ghostFrame) {
     updateGhostTransformHandle();
-  }
-  if (frameHudEl) {
-    if (_showCorners) {
-      updateFrameHud(activeIdx);
-      // v8z4b30ZY — diagnóstico de texto de informação do frame ativo
-      frameActiveInfoTextVisible = true;
-      frameActiveInfoTextFrameIndex = activeIdx;
-      frameActiveInfoTextUsesAnchoredGeometry = true;
-      frameActiveInfoTextSuppressedReason = '';
-    } else {
-      frameHudEl.classList.remove('show');
-      frameActiveInfoTextVisible = false;
-      frameActiveInfoTextFrameIndex = -1;
-      frameActiveInfoTextSuppressedReason = !_canShow ? 'canShow=false' : (isInsertingFrame ? 'isInsertingFrame' : 'unknown');
-    }
   }
   // v8z4b30ZY — diagnóstico de target de geometria ancorada
   frameAnchoredUIDiagnosticMode = (typeof isAssetsMode === 'function' && isAssetsMode()) ? 'assets' : 'camera';
@@ -20530,7 +20450,6 @@ function updateCtrlPts() {
   if (typeof isAssetsMode === 'function' && isAssetsMode()) {
     if (globalHandleEl) globalHandleEl.style.display = 'none';
     if (cornerHandleEls) cornerHandleEls.forEach(function(el) { el.classList.remove('show'); });
-    if (frameHudEl) frameHudEl.classList.remove('show');
     const _gi = document.getElementById('frame_ghost_in');
     const _go = document.getElementById('frame_ghost_out');
     if (_gi) { _gi.style.display = 'none'; delete _gi.dataset.arcoFi; }
@@ -20555,9 +20474,8 @@ function updateCtrlPts() {
   ghostHandlesSuppressedBecauseAssetsMode = false;
   const multiSelectionActive = isMultiSelectionActive();
   if (globalHandleEl) globalHandleEl.style.display = multiSelectionActive ? 'none' : '';
-  // v8z4b29AX: esconder corners e HUD durante seleção múltipla
+  // v8z4b29AX: esconder corners durante seleção múltipla
   if (cornerHandleEls && multiSelectionActive) cornerHandleEls.forEach(el => el.classList.remove('show'));
-  if (frameHudEl && multiSelectionActive) frameHudEl.classList.remove('show');
 
   // v8z3e: na vista de isolamento, esconder segmentos e pontos de curva.
   if (window._isoMode) {
@@ -35710,10 +35628,6 @@ function buildDiagnosticsText() {
     push('assetRenderOrderMatchesZIndex', String((typeof assetRenderOrderMatchesZIndex !== 'undefined') ? assetRenderOrderMatchesZIndex : false));
     push('assetHitTestOrderMatchesReverseZIndex', String((typeof assetHitTestOrderMatchesReverseZIndex !== 'undefined') ? assetHitTestOrderMatchesReverseZIndex : false));
     // v8z4b30ZV — alinhamento de chips/HUD do frame ativo no Modo Câmera.
-    push('cameraModeFrameChipsAligned', String((typeof cameraModeFrameChipsAligned !== 'undefined') ? cameraModeFrameChipsAligned : false));
-    push('cameraModeFrameChipsFrameIndex', String((typeof cameraModeFrameChipsFrameIndex !== 'undefined') ? cameraModeFrameChipsFrameIndex : -1));
-    push('cameraModeFrameChipsAnchorUsesRotatedFrameGeometry', String((typeof cameraModeFrameChipsAnchorUsesRotatedFrameGeometry !== 'undefined') ? cameraModeFrameChipsAnchorUsesRotatedFrameGeometry : false));
-    push('cameraModeFrameChipsClampAppliedAfterTransform', String((typeof cameraModeFrameChipsClampAppliedAfterTransform !== 'undefined') ? cameraModeFrameChipsClampAppliedAfterTransform : false));
     // v8z4b30ZX — geometria unificada de frame ancorado.
     push('frameAnchoredUIUsesSingleGeometrySource', String((typeof frameAnchoredUIUsesSingleGeometrySource !== 'undefined') ? frameAnchoredUIUsesSingleGeometrySource : false));
     push('frameAnchoredUIScreenGeometryValid', String((typeof frameAnchoredUIScreenGeometryValid !== 'undefined') ? frameAnchoredUIScreenGeometryValid : false));
@@ -36823,16 +36737,6 @@ function buildDiagnosticsText() {
     // Item 8 — destaque único no Modo Ativos.
     push('assetsModeOnlyOneFrameReferenceHighlighted', String((typeof assetsModeOnlyOneFrameReferenceHighlighted !== 'undefined') ? assetsModeOnlyOneFrameReferenceHighlighted : true));
     push('assetsModeInheritedTimelineHighlightCleared', String((typeof assetsModeInheritedTimelineHighlightCleared !== 'undefined') ? assetsModeInheritedTimelineHighlightCleared : false));
-    // Item 9 — texto de informação do frame ativo no Modo Câmera.
-    L.push('  — v8z4b30ZZ: info do frame ativo (Modo Câmera) —');
-    {
-      const _hud = document.getElementById('frameHud');
-      const _hudVisible = !!(!_isAssets && _hud && _hud.classList.contains('show') && _hud.style.display !== 'none');
-      push('frameActiveInfoTextVisible', String(_hudVisible));
-      push('frameActiveInfoTextFrameIndex', String(!_isAssets && (typeof activeIdx !== 'undefined') ? activeIdx : -1));
-      push('frameActiveInfoTextUsesAnchoredGeometry', String(!_isAssets)); // updateFrameHud via editorWorldToStage
-      push('frameActiveInfoTextSuppressedReason', _isAssets ? 'modo-ativos (referência apenas)' : 'nenhum');
-    }
     // Item 10 — seleção/delete/undo/redo de assets.
     L.push('  — v8z4b30ZZ: seleção/delete/undo de assets —');
     push('assetSelectionOutlineVisible', String((typeof assetSelectionOutlineVisible !== 'undefined') ? assetSelectionOutlineVisible : false));
@@ -37579,17 +37483,26 @@ function buildDiagnosticsText() {
   push('bodyHasAssetsRefsVisible', String(!!(document.body && document.body.classList.contains('assets-refs-visible'))));
 
   L.push('');
-  L.push('═══ v8z4b30ZY — Texto de Informação do Frame ═══');
-  push('frameActiveInfoTextVisible', String((typeof frameActiveInfoTextVisible !== 'undefined') ? frameActiveInfoTextVisible : false));
-  push('frameActiveInfoTextFrameIndex', String((typeof frameActiveInfoTextFrameIndex !== 'undefined') ? frameActiveInfoTextFrameIndex : -1));
-  push('frameActiveInfoTextUsesAnchoredGeometry', String((typeof frameActiveInfoTextUsesAnchoredGeometry !== 'undefined') ? frameActiveInfoTextUsesAnchoredGeometry : false));
-  push('frameActiveInfoTextSuppressedReason', (typeof frameActiveInfoTextSuppressedReason !== 'undefined' && frameActiveInfoTextSuppressedReason) ? frameActiveInfoTextSuppressedReason : 'n/a');
-  // Live check: HUD element visible
+  L.push('═══ v8z4b32E8A — Informação de Frame no Stage e Timeline ═══');
   {
-    const _hudEl = document.getElementById('frameHud');
-    const _hudShow = _hudEl && _hudEl.classList.contains('show') && _hudEl.style.display !== 'none';
-    push('frameHudLiveVisible', String(!!_hudShow));
-    push('frameHudInlineDisplay', _hudEl ? (_hudEl.style.display || 'não definido') : 'elemento ausente');
+    const _stagePills = Array.from(document.querySelectorAll('#frameHud'));
+    const _stagePillsVisible = _stagePills.filter(function(el) {
+      const style = window.getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+    });
+    const _timelineInfo = document.getElementById('lowerActiveLabel');
+    const _timelineStyle = _timelineInfo ? window.getComputedStyle(_timelineInfo) : null;
+    const _timelineRect = _timelineInfo ? _timelineInfo.getBoundingClientRect() : null;
+    const _timelineApplicable = !!(_timelineInfo && (_timelineInfo.textContent || '').trim());
+    const _timelineVisible = !!(_timelineInfo && _timelineStyle && _timelineRect && _timelineStyle.display !== 'none' && _timelineStyle.visibility !== 'hidden' && _timelineRect.width > 0 && _timelineRect.height > 0);
+    push('frameStageInfoPillExists', String(_stagePills.length > 0));
+    push('frameStageInfoPillVisible', String(_stagePillsVisible.length > 0));
+    push('frameStageInfoPillCount', String(_stagePills.length));
+    push('timelineContextInfoRowExists', String(!!_timelineInfo));
+    push('timelineContextInfoRowVisibleWhenApplicable', String(!_timelineApplicable || _timelineVisible));
+    push('frameNumberVisualPreserved', String(document.querySelectorAll('.frame .frame-num').length > 0));
+    push('frameHandlesPreserved', String(document.querySelectorAll('.corner-handle').length === 4));
   }
 
   L.push('');
@@ -37786,7 +37699,6 @@ function buildDiagnosticsText() {
   push('frameCenterDeltaFromRectCenterPx', String(frameCenterDeltaFromRectCenterPx));
   push('frameHandlesUseSameGeometryAsFrame', String(frameHandlesUseSameGeometryAsFrame));
   push('frameLabelsUseSameGeometryAsFrame', String(frameLabelsUseSameGeometryAsFrame));
-  push('frameHudUsesSameGeometryAsFrame', String(frameHudUsesSameGeometryAsFrame));
 
   L.push('-- Curve geometry --');
   push('curvePathUsesSameFrameCentersAsRects', String(curvePathUsesSameFrameCentersAsRects));
@@ -37924,13 +37836,11 @@ function buildDiagnosticsText() {
   push('modeSwitchPreservesCanonicalFrame', String(modeSwitchPreservesCanonicalFrame));
   push('filmSelectionSource', (typeof filmSelection !== 'undefined' && filmSelection.source) ? filmSelection.source : 'n/d');
 
-  const _e7fTargets = [rendererFrameIndex, timelineVisualActiveIndex, frameTimelineActiveIndex, frameTimelineCenteredIndex, timelineFrameUnderMarkerIndex, frameAnchoredUIFrameIndex, frameActiveInfoTextFrameIndex, cameraModeFrameChipsFrameIndex, cameraModeFrameOverlayFrameIndex, filmAlphaScrimCutoutFrameIndex];
+  const _e7fTargets = [rendererFrameIndex, timelineVisualActiveIndex, frameTimelineActiveIndex, frameTimelineCenteredIndex, timelineFrameUnderMarkerIndex, frameAnchoredUIFrameIndex, cameraModeFrameOverlayFrameIndex, filmAlphaScrimCutoutFrameIndex];
   allEditorFrameTargetsMatchCanonical = _e7fTargets.every(function(v){ return v === _cf; });
   editorFrameTargetMismatchDetected = !allEditorFrameTargetsMatchCanonical;
   editorFrameTargetMismatchReason = editorFrameTargetMismatchDetected ? 'editor-frame-target-mismatch' : 'none';
   frameAnchoredUIFrameIndexMatchesActive = frameAnchoredUIFrameIndex === _cf;
-  frameActiveInfoTextMatchesActive = frameActiveInfoTextFrameIndex === _cf;
-  cameraModeFrameChipsMatchActive = cameraModeFrameChipsFrameIndex === _cf;
   cameraModeFrameOverlayMatchesActive = cameraModeFrameOverlayFrameIndex === _cf;
   scrimCutoutMatchesActiveFrame = filmAlphaScrimCutoutFrameIndex === _cf;
   timelineVisualActiveMatchesActive = timelineVisualActiveIndex === _cf;
@@ -37948,16 +37858,12 @@ function buildDiagnosticsText() {
   push('frameTimelineCenteredIndex', String(frameTimelineCenteredIndex));
   push('timelineFrameUnderMarkerIndex', String(timelineFrameUnderMarkerIndex));
   push('frameAnchoredUIFrameIndex', String(frameAnchoredUIFrameIndex));
-  push('frameActiveInfoTextFrameIndex', String(frameActiveInfoTextFrameIndex));
-  push('cameraModeFrameChipsFrameIndex', String(cameraModeFrameChipsFrameIndex));
   push('cameraModeFrameOverlayFrameIndex', String(cameraModeFrameOverlayFrameIndex));
   push('filmAlphaScrimCutoutFrameIndex', String(filmAlphaScrimCutoutFrameIndex));
   push('allEditorFrameTargetsMatchCanonical', String(allEditorFrameTargetsMatchCanonical));
   push('editorFrameTargetMismatchDetected', String(editorFrameTargetMismatchDetected));
   push('editorFrameTargetMismatchReason', editorFrameTargetMismatchReason);
   push('frameAnchoredUIFrameIndexMatchesActive', String(frameAnchoredUIFrameIndexMatchesActive));
-  push('frameActiveInfoTextMatchesActive', String(frameActiveInfoTextMatchesActive));
-  push('cameraModeFrameChipsMatchActive', String(cameraModeFrameChipsMatchActive));
   push('cameraModeFrameOverlayMatchesActive', String(cameraModeFrameOverlayMatchesActive));
   push('scrimCutoutMatchesActiveFrame', String(scrimCutoutMatchesActiveFrame));
   push('timelineVisualActiveMatchesActive', String(timelineVisualActiveMatchesActive));

@@ -39,3 +39,12 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Causa:** O escopo foi interpretado como unificação visual, e não como equivalência funcional e visual.
 - **Prevenção:** localizar a implementação de referência; comparar arquitetura e comportamento, não apenas CSS; verificar remoção do sistema substituído; bloquear merge quando o diff demonstrar coexistência ou geometria incorreta.
 - **Status:** Registrada em 2026-07-22; correção em desenvolvimento na v8z4b32E7Z.
+
+
+## REG-029 — Pills informativos redundantes reaparecem junto aos Frames no Stage
+
+- **Problema:** O HUD preso ao Frame duplica escala, rotação e tempo/pausa já apresentados na faixa informativa acima da timeline e polui o Stage.
+- **Prevenção:** não criar markup ou DOM dinâmico para `#frameHud`; preservar `#lowerActiveLabel`, número, contorno, quatro alças, curvas, scrim e seleção dos Frames.
+- **Como detectar:** inspecionar o DOM do Stage após render, troca de modo, pan/zoom, seleção, Load e Undo/Redo; a contagem do HUD deve permanecer zero enquanto a faixa contextual da timeline continua presente e visível quando aplicável.
+- **Teste preventivo:** `node scripts/qa/check-frame-stage-info-pills.mjs` valida a ausência do componente na origem e a preservação dos componentes DOM funcionais.
+- **Status:** proteção automatizada adicionada na `v8z4b32E8A`; validação visual publicada em iPhone/Safari permanece pendente.
