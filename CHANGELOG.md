@@ -1,3 +1,12 @@
+# v8z4b32E8D — feat(layers): cria nomes sequenciais persistentes para camadas
+
+- Cada image asset recebe uma identidade nominal canônica com `layerSequence`, `layerName`, `layerNameSource` e `originalFileName` no momento da criação ou migração.
+- O projeto persiste `nextLayerSequence`; exclusão não faz o contador recuar e reorder altera somente ordem/`zIndex`.
+- O painel Layers e a faixa contextual exibem `Camada N` a partir do asset, sem derivar o número da posição atual.
+- Save/Load e Undo/Redo preservam a identidade; projetos antigos são migrados de forma determinística pela ordem canônica salva.
+- Guardrail dedicado cobre persistência na origem, estabilidade após reorder e não reutilização após exclusão.
+- Validação visual final permanece pendente de publicação e teste em iPhone/Safari real.
+
 # v8z4b32E8C — fix(render): recupera readiness da render session
 
 - Preview e Export passam a preparar cada asset visível pela mesma rotina compartilhada e pela precedência `stableDrawable` válido → fonte viva → fonte persistente reidratada.

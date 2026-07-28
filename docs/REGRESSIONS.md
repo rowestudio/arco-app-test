@@ -65,3 +65,12 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Prevenção:** aplicar uma única precedência para Preview/Export (`stableDrawable` válido, fonte viva, fonte persistente), tentar recovery uma vez com timeout, nunca omitir asset visível e descartar snapshot parcial/liberar locks após falha.
 - **Teste preventivo:** `node scripts/qa/check-render-session-readiness-recovery.mjs` cobre 9/9, recovery, falha/retry e reprova omissão 8/9.
 - **Status:** proteção técnica adicionada na `v8z4b32E8C`; teste do projeto real em iPhone/Safari permanece pendente.
+
+
+## REG-032 — Nome da camada muda após reorder ou reutiliza número excluído
+
+- **Problema:** o título derivado da posição no array/`zIndex` muda após reorder e pode atribuir novamente um número já eliminado.
+- **Prevenção:** manter `layerSequence` imutável por asset, `layerName` persistente e `nextLayerSequence` monotônico no estado do projeto; reorder só altera posição/`zIndex`.
+- **Como detectar:** criar três camadas, reordenar, excluir a segunda, criar outra e executar Save/Load; os nomes originais devem permanecer e a nova deve ser `Camada 4`.
+- **Teste preventivo:** `node scripts/qa/check-persistent-layer-identities.mjs`.
+- **Status:** proteção técnica adicionada na `v8z4b32E8D`; validação publicada em iPhone/Safari permanece pendente.

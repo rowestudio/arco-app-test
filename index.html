@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8D — base v8z4b32E8C. feat(layers): adiciona identidade nominal persistente Camada N aos image assets, contador nextLayerSequence monotônico, migração determinística e persistência Save/Load; reorder altera apenas posição/zIndex. APP_VERSION = APP_VERSION_NAME = v8z4b32E8D. -->
 <!-- Arco Motion App — v8z4b32E8C — base v8z4b32E8B. fix(render): Preview/Export compartilham readiness stableDrawable > fonte viva > recovery persistente, sem exigir decode redundante nem omitir asset visível; falha descarta snapshot parcial e libera loading/locks para retry. APP_VERSION = APP_VERSION_NAME = v8z4b32E8C. -->
 <!-- Arco Motion App — v8z4b32E8A — base v8z4b32E7Z. fix(ui): remove da origem o HUD informativo preso ao Frame no Stage, preservando a faixa contextual existente acima da timeline, número, contorno, alças, curvas, scrim e seleção. APP_VERSION = APP_VERSION_NAME = v8z4b32E8A. -->
 <!-- Arco Motion App — v8z4b32E7Z — base 1ffbc664c0e730973ae384851400fa9771442a01. fix(assets): ativo selecionado no Modo Ativos usa quatro abas roxas funcionais, externas e sem controles antigos paralelos. APP_VERSION = APP_VERSION_NAME = v8z4b32E7Z. -->
@@ -7153,8 +7154,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8C';
-const APP_VERSION_NAME = 'v8z4b32E8C';
+const APP_VERSION = 'v8z4b32E8D';
+const APP_VERSION_NAME = 'v8z4b32E8D';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -14488,6 +14489,7 @@ function captureState() {
     // "adicionar nova imagem" e "substituir imagem atual" pelo mecanismo
     // de undo já existente.
     assets: assets.map(a => ({...a})),
+    nextLayerSequence,
     projectWorld: {...projectWorld},
     imageSnapshot: {
       imgNatW, imgNatH,
@@ -14686,6 +14688,7 @@ function restoreState(state) {
   if (Array.isArray(state.assets)) {
     assets.length = 0;
     state.assets.forEach(a => assets.push({...a}));
+    migratePersistentLayerIdentities(assets, Math.max(nextLayerSequence, state.nextLayerSequence || 1));
   }
   if (state.projectWorld) {
     Object.assign(projectWorld, state.projectWorld);
@@ -14919,7 +14922,64 @@ function editorStageToWorld(sx, sy) {
     y: (sy - tf.offsetY) / tf.scale
   };
 }
-let assets = []; // { id, type:'image', name, sourceW, sourceH, worldX, worldY, worldW, worldH, rotation, zIndex, visible, locked }
+let assets = []; // { id, type:'image', layerSequence, layerName, layerNameSource, originalFileName, ... }
+let nextLayerSequence = 1;
+const deletedLayerSequences = new Set();
+let deletedLayerSequenceReused = false;
+let layerIdentityPreservedAfterReorder = true;
+let layerIdentityPreservedAfterSaveLoad = true;
+
+function isPositiveLayerSequence(value) {
+  return Number.isInteger(value) && value > 0;
+}
+function isValidLayerName(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+function allocateNextLayerSequence() {
+  if (!isPositiveLayerSequence(nextLayerSequence)) nextLayerSequence = 1;
+  const sequence = nextLayerSequence++;
+  if (deletedLayerSequences.has(sequence)) deletedLayerSequenceReused = true;
+  return sequence;
+}
+function assignPersistentLayerIdentity(asset, originalFileName) {
+  if (!asset || asset.type !== 'image') return asset;
+  if (!isPositiveLayerSequence(asset.layerSequence)) asset.layerSequence = allocateNextLayerSequence();
+  if (!isValidLayerName(asset.layerName)) asset.layerName = `Camada ${asset.layerSequence}`;
+  if (!isValidLayerName(asset.layerNameSource)) asset.layerNameSource = 'automatic';
+  if (typeof originalFileName === 'string' && originalFileName.trim()) asset.originalFileName = originalFileName.trim();
+  else if (typeof asset.originalFileName !== 'string') asset.originalFileName = '';
+  return asset;
+}
+function captureLayerIdentityByAssetId(list) {
+  const identities = {};
+  (Array.isArray(list) ? list : []).forEach(asset => {
+    if (asset && asset.type === 'image') identities[String(asset.id)] = `${asset.layerSequence}|${asset.layerName}|${asset.layerNameSource}`;
+  });
+  return identities;
+}
+function layerIdentitySnapshotEquals(before, list) {
+  const after = captureLayerIdentityByAssetId(list);
+  return Object.keys(before || {}).every(id => after[id] === before[id]);
+}
+function migratePersistentLayerIdentities(imageAssets, persistedNextSequence) {
+  const list = Array.isArray(imageAssets) ? imageAssets.filter(a => a && a.type === 'image') : [];
+  const used = new Set();
+  let highest = 0;
+  list.forEach(asset => {
+    const sequence = asset.layerSequence;
+    if (isPositiveLayerSequence(sequence) && !used.has(sequence)) {
+      used.add(sequence);
+      highest = Math.max(highest, sequence);
+    } else {
+      asset.layerSequence = null;
+    }
+  });
+  nextLayerSequence = Math.max(isPositiveLayerSequence(persistedNextSequence) ? persistedNextSequence : 1, highest + 1);
+  list.forEach(asset => assignPersistentLayerIdentity(asset));
+  const maxAssigned = list.reduce((max, asset) => Math.max(max, asset.layerSequence || 0), 0);
+  nextLayerSequence = Math.max(nextLayerSequence, maxAssigned + 1);
+  return list;
+}
 let views = [];  // { id, type, name, x, y, w, h, zoom }
 let _pendingNewImageInput = null; // input file aguardando escolha na action sheet "Usar nova imagem"
 let _pendingImageReplaceUndoSnapshot = null; // v8z4b30P — snapshot pré-substituição p/ undo de "Substituir imagem atual"
@@ -16360,6 +16420,7 @@ function deleteSelectedAsset() {
   // Remove o elemento DOM extra (imagens extras têm .world-extra-img).
   const domEl = document.querySelector('.world-extra-img[data-asset-id="' + selId + '"]');
   if (domEl) domEl.remove();
+  if (isPositiveLayerSequence(sel.layerSequence)) deletedLayerSequences.add(sel.layerSequence);
   assets.splice(idx, 1);
   clearSelectedAsset();
   // v8z4b30ZY — invalidar composite e redesenhar Stage imediatamente
@@ -16389,6 +16450,7 @@ function normalizeAssetZIndices() {
 // v8z4b30ZL (fix v8z4b30ZM, fix v8z4b30ZO, fix v8z4b30ZU) — traz o asset selecionado uma posição para frente.
 function bringSelectedAssetForward() {
   const selectedIdBeforeReorder = selectedAssetId == null ? null : String(selectedAssetId);
+  const layerIdentityBeforeReorder = captureLayerIdentityByAssetId(assets);
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para trazer à frente.'); return; }
@@ -16430,12 +16492,14 @@ function bringSelectedAssetForward() {
   restackFilmEditorLayers('asset-reorder');
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
   selectedAssetPreservedAfterReorder = selectedIdBeforeReorder === String(selectedAssetId);
+  layerIdentityPreservedAfterReorder = layerIdentityPreservedAfterReorder && layerIdentitySnapshotEquals(layerIdentityBeforeReorder, assets);
   updateCanonicalAssetSelectionDiagnostics();
   showStatus('Imagem movida para frente.');
 }
 // v8z4b30ZL (fix v8z4b30ZM, fix v8z4b30ZO, fix v8z4b30ZU) — envia o asset selecionado uma posição para trás.
 function sendSelectedAssetBackward() {
   const selectedIdBeforeReorder = selectedAssetId == null ? null : String(selectedAssetId);
+  const layerIdentityBeforeReorder = captureLayerIdentityByAssetId(assets);
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para enviar para trás.'); return; }
@@ -16477,12 +16541,14 @@ function sendSelectedAssetBackward() {
   restackFilmEditorLayers('asset-reorder');
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
   selectedAssetPreservedAfterReorder = selectedIdBeforeReorder === String(selectedAssetId);
+  layerIdentityPreservedAfterReorder = layerIdentityPreservedAfterReorder && layerIdentitySnapshotEquals(layerIdentityBeforeReorder, assets);
   updateCanonicalAssetSelectionDiagnostics();
   showStatus('Imagem movida para trás.');
 }
 // v8z4b32E — reordenação de camadas via painel Layers (sem drag-and-drop).
 function layerMoveAssetUp(assetId) {
   const selectedIdBeforeReorder = String(assetId);
+  const layerIdentityBeforeReorder = captureLayerIdentityByAssetId(assets);
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
@@ -16524,12 +16590,14 @@ function layerMoveAssetUp(assetId) {
   restackFilmEditorLayers('layer-move-up');
   renderLayersPanelList();
   selectedAssetPreservedAfterReorder = selectedIdBeforeReorder === String(selectedAssetId);
+  layerIdentityPreservedAfterReorder = layerIdentityPreservedAfterReorder && layerIdentitySnapshotEquals(layerIdentityBeforeReorder, assets);
   scrollSelectedLayerIntoView();
   updateCanonicalAssetSelectionDiagnostics();
   showStatus('Camada movida para cima.');
 }
 function layerMoveAssetDown(assetId) {
   const selectedIdBeforeReorder = String(assetId);
+  const layerIdentityBeforeReorder = captureLayerIdentityByAssetId(assets);
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
@@ -16571,6 +16639,7 @@ function layerMoveAssetDown(assetId) {
   restackFilmEditorLayers('layer-move-down');
   renderLayersPanelList();
   selectedAssetPreservedAfterReorder = selectedIdBeforeReorder === String(selectedAssetId);
+  layerIdentityPreservedAfterReorder = layerIdentityPreservedAfterReorder && layerIdentitySnapshotEquals(layerIdentityBeforeReorder, assets);
   scrollSelectedLayerIntoView();
   updateCanonicalAssetSelectionDiagnostics();
   showStatus('Camada movida para baixo.');
@@ -17100,11 +17169,11 @@ function getAssetLayerIdentifier(asset) {
   return 'Layer ' + (idx >= 0 ? idx + 1 : 1);
 }
 function getAssetContextIdentifier(asset) {
-  if (!asset) return 'Imagem 1';
+  if (!asset) return 'Camada 1';
   if (typeof getAssetDisplayName === 'function') return getAssetDisplayName(asset);
   const imageAssets = assets.filter(a => a && a.type === 'image');
   const idx = imageAssets.findIndex(a => a && a.id === asset.id);
-  return 'Imagem ' + (idx >= 0 ? idx + 1 : 1);
+  return asset.layerName || ('Camada ' + (idx >= 0 ? idx + 1 : 1));
 }
 function getSingleContextInfoLabel() {
   if (isMultiSelectionActive() || bottomContextMode === 'segment') return null;
@@ -26525,6 +26594,11 @@ function clearCurrentProjectForNewFile() {
   syncBgColorUI();
   // v8z4b30D — limpa o modelo interno preparatório (será reespelhado ao carregar imagem).
   if (Array.isArray(assets)) assets.length = 0;
+  nextLayerSequence = 1;
+  deletedLayerSequences.clear();
+  deletedLayerSequenceReused = false;
+  layerIdentityPreservedAfterReorder = true;
+  layerIdentityPreservedAfterSaveLoad = true;
   if (Array.isArray(views)) views.length = 0;
   if (projectWorld) {
     projectWorld.initialized = false;
@@ -26645,6 +26719,7 @@ function finishNewProjectImageLoad(file, dataUrl, tmp) {
       isEmbeddedBase64: false
     });
     if (file.name) {
+      window._originalImageFileName = file.name;
       window._imageBaseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_\-]/g, '_').toLowerCase();
     }
     // v8z4b29BI — imagem válida carregada: fecha o painel Novo Projeto, sai
@@ -26728,6 +26803,7 @@ function loadImage(file, onDoneCallback) {
   const isEmbeddedBase64 = sourceKind === 'imageBase64';
   // Guardar nome da imagem para uso no nome do arquivo de projeto
   if (file.name) {
+    window._originalImageFileName = file.name;
     const base = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_\-]/g, '_').toLowerCase();
     window._imageBaseName = base;
   }
@@ -29187,6 +29263,10 @@ function serializeProjectAsset(a, idx, includeImages) {
     id: a.id,
     type: a.type || 'image',
     name: a.name || '',
+    layerSequence: a.layerSequence,
+    layerName: a.layerName || `Camada ${a.layerSequence}`,
+    layerNameSource: a.layerNameSource || 'automatic',
+    originalFileName: a.originalFileName || '',
     sourceW: a.sourceW || 0,
     sourceH: a.sourceH || 0,
     worldX: a.worldX || 0,
@@ -29347,6 +29427,7 @@ function buildProjectData(includeImages) {
     curvesV2: isCurvesV2Active() ? cloneCurvesV2(curvesV2) : null,
     // v8z4b30R — ProjectWorld e todos os image assets (múltiplas imagens).
     assetsSchemaVersion: PROJECT_ASSETS_SCHEMA_VERSION,
+    nextLayerSequence,
     projectWorld: { ...projectWorld },
     assets: assets.map((a, i) => serializeProjectAsset(a, i, !!includeImages)),
   };
@@ -29582,6 +29663,9 @@ function dataUrlToFile(dataUrl, fallbackName) {
 }
 
 function applyProjectData(data) {
+  deletedLayerSequences.clear();
+  deletedLayerSequenceReused = false;
+  layerIdentityPreservedAfterSaveLoad = true;
   const token = ++loadSessionToken;
   loadSessionStarted = true;
   loadSessionCompleted = false;
@@ -30190,6 +30274,7 @@ function syncFirstImageAsset(reason) {
     }
     if (!a) {
       a = { id: 'img-1', type: 'image', zIndex: 0 };
+      assignPersistentLayerIdentity(a, window._originalImageFileName);
       assets.unshift(a);
     }
     // v8z4b32E6 — quando o img-1 foi substituído com commit canônico, seu
@@ -30198,6 +30283,7 @@ function syncFirstImageAsset(reason) {
     // com o Stage/baseStage. Os campos abaixo protegidos por este flag.
     const _e6Canon = !!a.e6CanonicalReplaced;
     a.name     = name;
+    assignPersistentLayerIdentity(a, window._originalImageFileName);
     if (!_e6Canon) {
       a.sourceW  = imgNatW;
       a.sourceH  = imgNatH;
@@ -30315,8 +30401,16 @@ function restoreProjectAssetsFromData(data) {
 
     const savedAssets = Array.isArray(data.assets) ? data.assets : [];
     const savedImageAssets = savedAssets.filter(a => a && a.type === 'image');
+    migratePersistentLayerIdentities(savedImageAssets, data.nextLayerSequence);
 
     if (savedImageAssets.length > 0) {
+      const savedPrimaryIdentity = savedImageAssets[0];
+      if (primary && savedPrimaryIdentity) {
+        primary.layerSequence = savedPrimaryIdentity.layerSequence;
+        primary.layerName = savedPrimaryIdentity.layerName;
+        primary.layerNameSource = savedPrimaryIdentity.layerNameSource;
+        primary.originalFileName = savedPrimaryIdentity.originalFileName || '';
+      }
       // v8z4b30N — baseStageW/H definem a grade 3x3 usada para posicionar os
       // assets adicionais. Restaurar os valores salvos mantém worldX/Y/W/H
       // alinhados ao mundo original, independentemente do stage atual.
@@ -30409,6 +30503,10 @@ function restoreProjectAssetsFromData(data) {
           id: sa.id || ('img-' + Date.now() + '-' + Math.floor(Math.random() * 1000) + '-' + i),
           type: 'image',
           name: sa.name || '',
+          layerSequence: sa.layerSequence,
+          layerName: sa.layerName,
+          layerNameSource: sa.layerNameSource,
+          originalFileName: sa.originalFileName || '',
           src: saSrc,
           sourcePayload: sa.sourcePayload || null,
           sourceW: sa.sourceW || 0,
@@ -30447,6 +30545,11 @@ function restoreProjectAssetsFromData(data) {
       }
     }
 
+    migratePersistentLayerIdentities(assets, nextLayerSequence);
+    const savedIdentityById = captureLayerIdentityByAssetId(savedImageAssets);
+    layerIdentityPreservedAfterSaveLoad = assets.filter(a => a && a.type === 'image').every(a =>
+      savedIdentityById[String(a.id)] === captureLayerIdentityByAssetId([a])[String(a.id)]
+    );
     lastLoadProjectWorldBounds = { ...projectWorld };
     invalidateProjectWorldComposite();
     renderProjectWorldExtraImages();
@@ -31002,6 +31105,7 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
         lastImportedAssetMimeType = target.mimeType || 'none';
         lastImportedAssetHasAlpha = !!target.hasAlpha;
         target.name = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
+        if (file.name) target.originalFileName = file.name;
       } else {
         // Extra: a caixa antiga é SUBSTITUÍDA por uma caixa nova, recalculada por
         // fit contain a partir da proporção natural da imagem nova, mantendo o
@@ -31020,6 +31124,7 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
         lastImportedAssetMimeType = target.mimeType || 'none';
         lastImportedAssetHasAlpha = !!target.hasAlpha;
         target.name = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
+        if (file.name) target.originalFileName = file.name;
       }
       // Limpa qualquer crop/sourceRect herdado — a imagem nova sempre entra inteira.
       target.crop = { enabled: false, x: 0, y: 0, w: 1, h: 1 };
@@ -32661,6 +32766,7 @@ function performInsertImageAtSlot(slotKey, file) {
         frameStyle: { enabled: false, strokeColor: '#ffffff', strokeWidth: 0, radius: 0, padding: 0, shadow: false },
         _img: img
       };
+      assignPersistentLayerIdentity(asset, file.name || '');
       assets.push(asset);
       activeSlotSelection = slotKey;
       selectAssetById(asset.id, 'insertCommit');
@@ -33390,11 +33496,9 @@ function toggleLayersPanel() {
   if (panel.classList.contains('show')) closeLayersPanel();
   else openLayersPanel();
 }
-// Nome automático estável: "Imagem 1", "Imagem 2", ... pela ordem dos assets.
+// Nome automático persistente: pertence ao asset e independe da ordem visual.
 function getAssetDisplayName(asset) {
-  const imgs = getSelectableImageAssets();
-  const idx = imgs.indexOf(asset);
-  return 'Imagem ' + (idx >= 0 ? idx + 1 : imgs.length + 1);
+  return asset && isValidLayerName(asset.layerName) ? asset.layerName : '';
 }
 function renderLayersPanelList() {
   const list = document.getElementById('layersList');
@@ -33425,7 +33529,7 @@ function renderLayersPanelList() {
     }
     const label = document.createElement('div');
     label.className = 'layers-name';
-    label.textContent = 'Imagem ' + (i + 1);
+    label.textContent = getAssetDisplayName(a);
     // Toque na thumb/nome seleciona o asset
     const _selAsset = function() {
       if (!isAssetsMode()) setEditorMode('assets', 'layersPanelSelect');
@@ -35498,6 +35602,17 @@ function buildDiagnosticsText() {
   const _viewsArr  = (typeof views  !== 'undefined' && Array.isArray(views))  ? views  : [];
   push('assets.length', String(_assetsArr.length));
   push('imageAssetsCount', String((typeof getImageAssetCount === 'function') ? getImageAssetCount() : 'n/d'));
+  const _layerAssets = _assetsArr.filter(a => a && a.type === 'image');
+  const _layerSequences = _layerAssets.map(a => a.layerSequence).filter(isPositiveLayerSequence);
+  const _layerSequenceSet = new Set(_layerSequences);
+  push('persistentLayerNamesEnabled', String(_layerAssets.every(a => isPositiveLayerSequence(a.layerSequence) && isValidLayerName(a.layerName))));
+  push('nextLayerSequence', String(nextLayerSequence));
+  push('maxExistingLayerSequence', String(_layerSequences.length ? Math.max.apply(null, _layerSequences) : 0));
+  push('layerSequenceDuplicateDetected', String(_layerSequenceSet.size !== _layerSequences.length));
+  push('layerIdentityByAssetId', JSON.stringify(captureLayerIdentityByAssetId(_layerAssets)));
+  push('deletedLayerSequenceReused', String(deletedLayerSequenceReused));
+  push('layerIdentityPreservedAfterReorder', String(layerIdentityPreservedAfterReorder));
+  push('layerIdentityPreservedAfterSaveLoad', String(layerIdentityPreservedAfterSaveLoad));
   // v8z4b30N — lista todos os assets de imagem (não apenas o asset[0]).
   // v8z4b30O — inclui visible e zIndex por asset.
   let _imgAssetIdx = 0;
