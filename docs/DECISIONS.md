@@ -193,3 +193,12 @@ Formato: ID, data, decisão, contexto, consequência e status.
 - **Contexto:** fontes DOM são voláteis no Safari/iPhone e não devem invalidar um raster já congelado e comprovadamente desenhável.
 - **Consequência:** snapshots de render armazenam apenas fontes estáveis verificadas, nunca pulam assets visíveis e são descartados integralmente se qualquer asset permanecer irrecuperável.
 - **Status:** ativa na `v8z4b32E8C`, com validação real em iPhone/Safari pendente.
+
+
+## DEC-2026-07-28-03 — Identidade nominal persistente de Layers
+
+- **Data:** 2026-07-28.
+- **Decisão:** cada image asset recebe uma única sequência positiva e imutável, exibida como `Camada N`; reorder não renomeia, exclusão não libera o número e `nextLayerSequence` nunca recua.
+- **Contexto:** nomes posicionais derivados de array ou `zIndex` mudavam a identidade aparente do mesmo asset após reorder.
+- **Consequência:** criação e migração passam pela rotina canônica de identidade; Save/Load persiste identidade e contador; `originalFileName` é preservado sem virar título principal.
+- **Status:** ativa na `v8z4b32E8D`, com validação real em iPhone/Safari pendente.
