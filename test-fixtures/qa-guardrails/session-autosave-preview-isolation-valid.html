@@ -1,0 +1,15 @@
+<script>
+let previewPreparing=false,isPreviewing=false,isRecording=false,exportPreparing=false;
+function isSessionAutosaveBlockedByPlayback(){return !!(previewPreparing || isPreviewing || isRecording || exportPreparing)}
+function suspendSessionAutosaveForPlayback(){}
+function resumeDeferredSessionAutosaveAfterPlayback(){}
+function deferSessionAutosaveBecausePlayback(){}
+function buildCompleteSessionProjectData(){return {}}
+function sessionPayloadChecksum(){return ''}
+async function putSessionCheckpoint(checkpoint,mandatoryFlush,epoch){if(!mandatoryFlush&&isSessionAutosaveBlockedByPlayback()){deferSessionAutosaveBecausePlayback(checkpoint.revision, epoch, 'blocked-before-indexeddb');return}}
+async function writeSessionAutosave(revision, epoch, mandatoryFlush = false, reason = ''){if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) return;const data = buildCompleteSessionProjectData();if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) return;const payload = JSON.stringify(data);if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) return;const checksum = sessionPayloadChecksum(payload);if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) return;await putSessionCheckpoint({revision,epoch,payload,checksum},mandatoryFlush)}
+function flushSessionAutosave(){writeSessionAutosave(revision, _sessionAutosaveEpoch, true, 'safety-flush')}
+function startPreview(){suspendSessionAutosaveForPlayback('preview-start');previewPreparing = true;}
+function stopPreview(){resumeDeferredSessionAutosaveAfterPlayback();}
+document.addEventListener('visibilitychange',()=>{});window.addEventListener('pagehide', flushSessionAutosave);
+</script>

@@ -88,3 +88,9 @@ Estados usados neste documento:
 - [Pesquisa] Essa distância pode ser animável e deve manter paridade entre Stage, Preview, Export e Save/Load.
 - [Pesquisa] Motion Take: gravar movimento virtual da câmera por toque, arrasto, pinch e rotação, convertendo-o em frames editáveis.
 - [Pesquisa] Captura por acelerômetro/AR do iPhone, possivelmente como produto complementar.
+
+## 10. Escolha explícita ao encontrar checkpoint de sessão
+
+- [Futuro, posterior à E8G] Ao encontrar checkpoint válido na abertura, perguntar explicitamente “Restaurar sessão” ou “Começar do início”.
+- A restauração silenciosa atual não é o comportamento final aprovado.
+- A interface e seu fluxo pertencem a uma versão funcional separada; não são implementados na `v8z4b32E8G`.

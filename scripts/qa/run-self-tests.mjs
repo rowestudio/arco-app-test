@@ -214,6 +214,16 @@ expectCase(results, 'Session autosave/restore incomplete fixture fails', 'check-
   env: { QA_SESSION_AUTOSAVE_HTML: path.join(fixtures, 'session-autosave-invalid.html') },
 });
 expectCase(results, 'Session autosave New Project race is discarded', 'test-session-autosave-race.mjs', 0);
+expectCase(results, 'Session autosave/Preview implementation passes', 'check-session-autosave-preview-isolation.mjs', 0, {
+  env: { QA_SESSION_PREVIEW_HTML: path.join(repoRoot, 'index.html') },
+});
+expectCase(results, 'Session autosave/Preview valid fixture passes', 'check-session-autosave-preview-isolation.mjs', 0, {
+  env: { QA_SESSION_PREVIEW_HTML: path.join(fixtures, 'session-autosave-preview-isolation-valid.html') },
+});
+expectCase(results, 'Session autosave/Preview anti-patterns fail', 'check-session-autosave-preview-isolation.mjs', 1, {
+  env: { QA_SESSION_PREVIEW_HTML: path.join(fixtures, 'session-autosave-preview-isolation-invalid.html') },
+});
+expectCase(results, 'Session autosave/Preview race behavior passes', 'test-session-autosave-preview-isolation.mjs', 0);
 
 expectCase(results, 'Preview first-frame warm-up valid fixture passes', 'check-preview-first-frame-warmup.mjs', 0, {
   env: { QA_PREVIEW_WARMUP_HTML: path.join(fixtures, 'preview-first-frame-warmup-valid.html') },

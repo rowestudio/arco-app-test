@@ -247,3 +247,12 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: comparação do projeto, diagnósticos de token/retry e observação do Preview.
 - Ambiente: iPhone/Safari real obrigatório.
 - Automatizável: parcial.
+
+## TC-028 — Isolamento Session Autosave × Preview/Export
+
+- Pré-condição: projeto com checkpoint grande; fake timers/harness disponível para evidência automatizada.
+- Passos: (1) editar e abrir Preview antes de 700 ms; (2) abrir/fechar Preview sem editar; (3) acumular várias mutações; (4) ocultar/disparar `pagehide` durante Preview; (5) repetir durante Export; (6) executar Session Restore, Novo Projeto e Load manual.
+- Resultado esperado: nenhum build/write normal durante playback; após fechar, exatamente um checkpoint da revisão mais recente; Play não altera revisão; flush de segurança persiste; token, epoch e precedência de Restore/Novo Projeto/Load permanecem.
+- Evidência: `node scripts/qa/check-session-autosave-preview-isolation.mjs`, `node scripts/qa/test-session-autosave-preview-isolation.mjs` e diagnósticos `sessionAutosave*`.
+- Ambiente: harness Node; WebKit CI; iPhone/Safari real obrigatório com projetos de 4 e 9 ativos para aprovação visual.
+- Automatizável: parcial; concorrência lógica automatizada, percepção visual real pendente.
