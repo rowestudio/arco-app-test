@@ -60,5 +60,36 @@ if (!/const completedHandleDrag = handleDragState;[\s\S]*completedHandleDrag\.mo
 if (!/if\s*\(completedHandleDrag\.isGhost\)\s*\{[\s\S]*?\}\s*else\s*\{[\s\S]*?markProjectDirty\(['"]frame-transform['"]\)/.test(handleSource)) {
   fail('Frame dirty marking is not isolated from the ghost transformation branch.');
 }
+if (!/if \(isPreviewing[\s\S]*?handleDragState = \{[\s\S]*?startRot: frameRotations\[fi\] \|\| 0,[\s\S]*?initialRot: frameRotations\[fi\] \|\| 0,/.test(handleSource)) {
+  fail('ensureGlobalHandle real state does not preserve immutable initialRot.');
+}
+
+const cornerStart = html.indexOf('function ensureCornerHandles()');
+const cornerEnd = html.indexOf('// ═══════════════════════════════════════', cornerStart);
+const cornerSource = cornerStart >= 0 ? html.slice(cornerStart, cornerEnd >= 0 ? cornerEnd : undefined) : '';
+if (!cornerSource) fail('ensureCornerHandles not found.');
+if ((cornerSource.match(/initialRot: frameRotations\[fi\] \|\| 0/g) || []).length !== 1) {
+  fail('ensureCornerHandles real state must preserve initialRot exactly once and exclude the ghost state.');
+}
+if (!/if \(isInsertingFrame \|\| isPreviewing[\s\S]*?handleDragState = \{[\s\S]*?startRot: frameRotations\[fi\] \|\| 0,[\s\S]*?initialRot: frameRotations\[fi\] \|\| 0,/.test(cornerSource)) {
+  fail('cornerHandle real state does not preserve immutable initialRot.');
+}
+if (!/globalHandleEl\.dispatchEvent\(new PointerEvent\(['"]pointermove['"]/.test(cornerSource) ||
+    !/globalHandleEl\.dispatchEvent\(new PointerEvent\(['"]pointerup['"]/.test(cornerSource)) {
+  fail('cornerHandle does not forward move/completion to globalHandleEl.');
+}
+
+if (!/recCanvas com dimensões inválidas[\s\S]*?isRecording = false;[\s\S]*?resumeDeferredSessionAutosaveAfterPlayback\(\);[\s\S]*?return;/.test(html)) {
+  fail('invalid recCanvas exit does not resume a deferred checkpoint after recording stops.');
+}
+if (!/catch \(cleanupErr\)[\s\S]*?isRecording = false;[\s\S]*?resumeDeferredSessionAutosaveAfterPlayback\(\);/.test(html)) {
+  fail('finishExport cleanup error does not attempt deferred checkpoint resumption.');
+}
+if (!/function resetPreviewAndExportStateForImageChange\(\)[\s\S]*?isRecording = false;[\s\S]*?exportPreparing = false;[\s\S]*?resumeDeferredSessionAutosaveAfterPlayback\(\);/.test(html)) {
+  fail('image-change playback/export reset does not attempt deferred checkpoint resumption.');
+}
+if (!/function resetAll\(\)[\s\S]*?isRecording = false;[\s\S]*?exportPreparing = false;[\s\S]*?resumeDeferredSessionAutosaveAfterPlayback\(\);[\s\S]*?if \(!imgNatW\) return;/.test(html)) {
+  fail('project reset can return after recording stops without attempting deferred checkpoint resumption.');
+}
 
 console.log('Session autosave/Preview isolation guardrail passed.');

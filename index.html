@@ -18472,6 +18472,7 @@ function ensureCornerHandles() {
         startX: e.clientX, startY: e.clientY,
         startW: frames[fi].w, startH: frames[fi].h,
         startRot: frameRotations[fi] || 0,
+        initialRot: frameRotations[fi] || 0,
         cx, cy,
         initDist: Math.max(1, Math.hypot(hp.x - cx, hp.y - cy)),
         initAngle: Math.atan2(hp.y - cy, hp.x - cx),
@@ -24330,6 +24331,7 @@ function resetPreviewAndExportStateForImageChange() {
   // finishExport() não complete um vídeo gerado a partir de um projeto já alterado.
   if (isRecording) exportCancelledFlag = true;
   isRecording = false;
+  exportPreparing = false;
   document.body.classList.remove('previewing');
   const ps = document.getElementById('previewScreen');
   const tl = document.getElementById('previewTimeline');
@@ -24358,6 +24360,7 @@ function resetPreviewAndExportStateForImageChange() {
     img1PreviewCacheInvalidatedAfterReplace = true;
   } catch(e) {}
   resetGeneratedVideoState();
+  resumeDeferredSessionAutosaveAfterPlayback();
 }
 
 function sanitizeCtrlPtsAfterImageChange() {
@@ -24687,6 +24690,7 @@ async function startRecord() {
     const ps0 = document.getElementById('previewScreen');
     if (ps0) ps0.classList.remove('show');
     showStatus('Erro ao preparar export.');
+    resumeDeferredSessionAutosaveAfterPlayback();
     return;
   }
   arcoSetExportDiag('canvas-setup', { exportW: W, exportH: H });
@@ -24899,6 +24903,7 @@ async function startRecord() {
       try { btnGenerate.classList.remove('recording'); btnGenerate.classList.add('done'); btnGenerate.disabled = false; } catch(e) {}
       try { setGenerateLabel(mb + ' MB'); } catch(e) {}
       try { updateMp4ReadyDiagnosticsE7I(); } catch(e) {}
+      resumeDeferredSessionAutosaveAfterPlayback();
     }
     showStatus('Pronto ' + mb + ' MB - toque para salvar');
   }
@@ -25191,6 +25196,8 @@ function resetAll() {
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   if (isPreviewing) stopPreview();
   isRecording = false;
+  exportPreparing = false;
+  resumeDeferredSessionAutosaveAfterPlayback();
   if (!imgNatW) return;
   resetGeneratedVideoState();
 

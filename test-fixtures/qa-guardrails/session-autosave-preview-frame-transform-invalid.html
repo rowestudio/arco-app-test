@@ -12,16 +12,31 @@ function flushSessionAutosave(){writeSessionAutosave(revision, _sessionAutosaveE
 function startPreview(){suspendSessionAutosaveForPlayback('preview-start');previewPreparing = true;}
 function stopPreview(){resumeDeferredSessionAutosaveAfterPlayback();}
 function ensureGlobalHandle(){
+  if (isPreviewing) return;
+  handleDragState = { fi, startW: frames[fi].w, startRot: frameRotations[fi] || 0, initialRot: frameRotations[fi] || 0, mode: null, undoCaptured: false };
   frames[fi].w = nw; frames[fi].h = nh; frameRotations[fi] = deg;
   const endHandle = e => {
     const completedHandleDrag = handleDragState;
     if (completedHandleDrag.isGhost) { renderGhostFrame(); }
     else {
       const frameTransformChanged = completedHandleDrag.mode === 'scale' ? frames[completedHandleDrag.fi].w !== completedHandleDrag.startW : completedHandleDrag.mode === 'rotate' ? frameRotations[completedHandleDrag.fi] !== completedHandleDrag.initialRot : false;
-      if (completedHandleDrag.undoCaptured && frameTransformChanged) renderAll();
+      if (completedHandleDrag.undoCaptured && frameTransformChanged) markProjectDirty('frame-transform');
     }
     handleDragState = null;
   };
 }
+function ensureCornerHandles(){
+  if (isInsertingFrame && ghostFrame) handleDragState = { isGhost: true, startRot: ghostFrame.rotation || 0 };
+  if (isInsertingFrame || isPreviewing) return;
+  handleDragState = { fi, startW: frames[fi].w, startRot: frameRotations[fi] || 0, mode: null, undoCaptured: false };
+  globalHandleEl.dispatchEvent(new PointerEvent('pointermove'));
+  globalHandleEl.dispatchEvent(new PointerEvent('pointerup'));
+}
+function startRecord(){
+  if (!recCanvasValid) { console.warn('recCanvas com dimensões inválidas'); isRecording = false; resumeDeferredSessionAutosaveAfterPlayback(); return; }
+}
+function finishExport(){try { restoreUi(); } catch (cleanupErr) { isRecording = false; resumeDeferredSessionAutosaveAfterPlayback(); }}
+function resetPreviewAndExportStateForImageChange(){isRecording = false;exportPreparing = false;resumeDeferredSessionAutosaveAfterPlayback();}
+function resetAll(){isRecording = false;exportPreparing = false;resumeDeferredSessionAutosaveAfterPlayback();if (!imgNatW) return;}
 document.addEventListener('visibilitychange',()=>{});window.addEventListener('pagehide', flushSessionAutosave);
 </script>
