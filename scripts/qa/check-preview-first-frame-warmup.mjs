@@ -25,6 +25,13 @@ for (const field of ['ok', 'initialFrameRenderAttempted', 'initialFrameRendered'
 }
 if (!prepare.includes('return result;')) fail('preflight renderer does not return its structured result.');
 if (finalRenderAt < 0) fail('explicit canonical final render at t=0 is missing.');
+const beforeFinalRender = prepare.slice(0, finalRenderAt);
+if (/result\.(?:ok|initialFrameRendered|initialFrameCommittedBeforeClock)\s*=\s*true/.test(beforeFinalRender)) {
+  fail('success/render/commit is inferred before the final t=0 render (including cached prepared flags).');
+}
+if (/previewRendererPreparedForCurrentState[\s\S]*return result;/.test(beforeFinalRender)) {
+  fail('prepared-state flag creates an early return before the proven final render path.');
+}
 if (compositorAwaitAt < 0) fail('no compositor requestAnimationFrame is awaited after final t=0 render.');
 if (preparedAt < 0) fail('renderer is marked prepared before render success/compositor wait.');
 if (!prepare.slice(finalRenderAt, compositorAwaitAt).includes('result.initialFrameRendered = true;')) fail('final render success is not recorded from the successful render call.');
