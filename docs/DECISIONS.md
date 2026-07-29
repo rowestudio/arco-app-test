@@ -219,3 +219,11 @@ Formato: ID, data, decisão, contexto, consequência e status.
 - **Contexto:** concluir o warm-up apenas por término da função, sem confirmação posterior ao desenho final, permitia uma travada perceptível no Safari.
 - **Consequência:** falha ou cancelamento não marca warm-up concluído, não agenda playback, mantém Export fora do caminho e libera tentativa posterior.
 - **Status:** ativa tecnicamente na `v8z4b32E8F`, com aprovação visual pendente em iPhone/Safari real.
+
+## DEC-2026-07-29-03 — Session Autosave normal é isolado de playback/export
+
+- **Data:** 2026-07-29.
+- **Decisão:** Session Autosave normal nunca executa build integral, serialização, checksum ou escrita durante preparação/reprodução do Preview ou Export; Play não é mutação do projeto.
+- **Contexto:** o `pointerup` global do Play podia vencer o debounce durante a reprodução e executar checkpoint de dezenas de megabytes no thread principal.
+- **Consequência:** revisão pendente é preservada e retomada uma única vez após a saída completa; `visibilitychange hidden` e `pagehide` continuam autorizados a ultrapassar a barreira como flush prioritário de segurança.
+- **Status:** ativa tecnicamente na `v8z4b32E8G`, com validação real em iPhone/Safari pendente.

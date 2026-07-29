@@ -6,8 +6,8 @@
 
 - Repo de desenvolvimento/teste: `rowestudio/arco-app-test`.
 - Branch base: `main`.
-- HEAD auditado do teste: `5d4ebf0b3af48501f61c33c6a20eee67617c3458`.
-- Versão corrente do teste: `v8z4b32E7X`.
+- HEAD auditado do teste: `9d81fcf0ede89806debc3a42761c846edb642613`.
+- Versão corrente do teste: `v8z4b32E8F` (base da E8G em desenvolvimento).
 - Repo estável/produção: `rowestudio/arco-app`.
 - HEAD auditado de produção: `626327280e3a4126fac259e205bbe0bdf3cc8719`.
 - Versão de produção: `v8z4b32E7H`.
@@ -83,3 +83,10 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - A `v8z4b32E8F` limita-se ao preflight/warm-up do Preview: o relógio e o loop só são liberados após render canônico bem-sucedido de `t=0` e ciclos posteriores de composição, com falha/cancelamento liberando retry.
 - Export, WebCodecs, câmera, sampler, matemática do renderer, Save/Load e Session Autosave/Restore permanecem fora do diff funcional.
 - Estado: correção em PR no repositório de teste; aprovação visual permanece pendente de merge/publicação e validação por Roberto em iPhone/Safari real. Nenhuma promoção para produção está autorizada.
+
+## Atualização 2026-07-29 — v8z4b32E8F mergeada e v8z4b32E8G em desenvolvimento
+
+- A PR #456 (`v8z4b32E8F`) foi mergeada na `main` de teste no commit `9d81fcf0ede89806debc3a42761c846edb642613`.
+- Roberto reprovou visualmente a E8F: a pequena travada inicial persistiu tanto no projeto com 9 ativos (~69 MB por checkpoint) quanto no projeto com 4 ativos (~53 MB).
+- Os diagnósticos comprovaram que o primeiro frame `t=0` foi renderizado e composto antes do relógio; essa hipótese fica encerrada como causa da travada observada.
+- A `v8z4b32E8G` isola Session Autosave de Preview/Export, removendo o disparo global por `pointerup` e adiando checkpoint pendente sem perda de revisão. A aprovação visual continua pendente de publicação e teste de Roberto em iPhone/Safari real.

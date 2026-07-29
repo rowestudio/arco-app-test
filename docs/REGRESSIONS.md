@@ -82,4 +82,12 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Impacto:** pequena travada perceptível no início do Preview em iPhone/Safari, embora o MP4 exportado permanecesse fluido.
 - **Prevenção:** exigir resultado estruturado, render canônico final bem-sucedido em `t=0`, ciclos posteriores de `requestAnimationFrame`, validação de token após cada espera e somente então liberar loading, relógio e loop.
 - **Teste preventivo:** `node scripts/qa/check-preview-first-frame-warmup.mjs`, com fixtures positiva e negativa integradas a `node scripts/qa/run-self-tests.mjs`; repetição publicada em iPhone/Safari real continua obrigatória.
-- **Status:** proteção técnica adicionada na `v8z4b32E8F`; aprovação visual publicada permanece pendente.
+- **Status:** proteção técnica adicionada na `v8z4b32E8F`, mas Roberto confirmou em projetos de 4 e 9 ativos que ela não resolveu a travada visual; regressão não resolvida.
+
+## REG-034 — Session Autosave pesado concorre com Preview/Export
+
+- **Problema:** o `pointerup` global agenda checkpoint inclusive ao tocar Play; após 700 ms, build integral, serialização, checksum e IndexedDB podem competir no thread principal com o início do Preview.
+- **Impacto:** pequena travada inicial perceptível no iPhone/Safari com checkpoints de dezenas de megabytes, apesar de assets prontos e primeiro frame confirmado antes do relógio.
+- **Prevenção:** mutações usam disparadores explícitos, inclusive transformação pelos controles reais, Reset realmente aplicado, troca real de formato e comandos de Frames; Play, toque sem transformação, Reset sem diferença e formato já ativo não criam revisão; barreira central adia autosave normal durante Preview/Export e retoma uma única revisão pendente após saída completa; flush de ocultação/saída permanece prioritário.
+- **Teste preventivo:** `node scripts/qa/check-session-autosave-preview-isolation.mjs` e `node scripts/qa/test-session-autosave-preview-isolation.mjs`, além do teste publicado em iPhone/Safari real com 4 e 9 ativos.
+- **Status:** proteção técnica implementada na `v8z4b32E8G`; confirmação visual por Roberto permanece pendente, portanto a travada não é declarada resolvida.

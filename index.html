@@ -7156,8 +7156,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8F';
-const APP_VERSION_NAME = 'v8z4b32E8F';
+const APP_VERSION = 'v8z4b32E8G';
+const APP_VERSION_NAME = 'v8z4b32E8G';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -18280,6 +18280,7 @@ function ensureGlobalHandle() {
       startW: frames[fi].w,
       startH: frames[fi].h,
       startRot: frameRotations[fi] || 0,
+      initialRot: frameRotations[fi] || 0,
       cx, cy,
       initDist: Math.max(1, Math.hypot(hp.x - cx, hp.y - cy)),
       initAngle: Math.atan2(hp.y - cy, hp.x - cx),
@@ -18370,17 +18371,27 @@ function ensureGlobalHandle() {
   const endHandle = e => {
     if (handleDragState) {
       if (handleDragState.pointerId != null && e?.pointerId != null && e.pointerId !== handleDragState.pointerId) return;
+      const completedHandleDrag = handleDragState;
       try { globalHandleEl.releasePointerCapture?.(e.pointerId); } catch(err) {}
       hideAngleIndicator();
-      if (handleDragState.isGhost) {
+      if (completedHandleDrag.isGhost) {
         renderGhostFrame();
         resetGhostInteraction();
         resumeGhostFloatSoon();
       } else {
         // Sempre recalcular o melhor canto após soltar — sem memória
-        handleCornerByFrame[handleDragState.fi] = 'br'; // reset para preferência padrão
-        updateHandleCornerForFrame(handleDragState.fi);
+        handleCornerByFrame[completedHandleDrag.fi] = 'br'; // reset para preferência padrão
+        updateHandleCornerForFrame(completedHandleDrag.fi);
         renderAll();
+        const transformedFrame = frames[completedHandleDrag.fi];
+        const frameTransformChanged = completedHandleDrag.mode === 'scale'
+          ? !!transformedFrame && Math.abs(transformedFrame.w - completedHandleDrag.startW) > 0.01
+          : completedHandleDrag.mode === 'rotate'
+            ? Math.abs((frameRotations[completedHandleDrag.fi] || 0) - completedHandleDrag.initialRot) > 0.01
+            : false;
+        if (completedHandleDrag.undoCaptured && frameTransformChanged) {
+          markProjectDirty('frame-transform');
+        }
       }
     }
     handleDragState = null;
@@ -18461,6 +18472,7 @@ function ensureCornerHandles() {
         startX: e.clientX, startY: e.clientY,
         startW: frames[fi].w, startH: frames[fi].h,
         startRot: frameRotations[fi] || 0,
+        initialRot: frameRotations[fi] || 0,
         cx, cy,
         initDist: Math.max(1, Math.hypot(hp.x - cx, hp.y - cy)),
         initAngle: Math.atan2(hp.y - cy, hp.x - cx),
@@ -18813,6 +18825,7 @@ function addFrame() {
   normalizeProjectArrays();
   validateProjectState('after-add-frame');
   maybeRedistributeByCurveLength(); // v8z4b17f
+  markProjectDirty('add-frame');
   showStatus('Frame F' + frameCount + ' adicionado · +' + segDurations[seg].toFixed(1) + 's');
 }
 
@@ -19371,6 +19384,7 @@ function removeLastFrame() {
   normalizeProjectArrays();
   validateProjectState('after-remove-frame');
   maybeRedistributeByCurveLength(); // v8z4b17f
+  markProjectDirty('remove-frame');
   showStatus('Frame F' + (frameCount + 1) + ' removido');
 }
 
@@ -23621,6 +23635,15 @@ async function startPreview() {
     previewLoadingDoubleStartPrevented = true;
     return;
   }
+  _sessionAutosaveRevisionAtPreviewStart = _sessionAutosaveQueuedRevision;
+  sessionAutosaveBuildCountDuringLastPreview = 0;
+  sessionAutosaveWriteCountDuringLastPreview = 0;
+  sessionAutosaveStartedDuringPreview = false;
+  sessionAutosaveCompletedDuringPreview = false;
+  sessionAutosaveTriggeredByPlayPointerUp = false;
+  sessionAutosaveRevisionChangedByPreviewOnly = false;
+  sessionAutosaveResumedAfterPreview = false;
+  suspendSessionAutosaveForPlayback('preview-start');
   previewPreparing = true;
   previewStartLockActive = true;
   previewStartLockClearedAfterError = false;
@@ -23633,14 +23656,14 @@ async function startPreview() {
   previewBlockedBecauseAssetNotReady = false;
   previewBlockedReason = '';
   previewBlockedAssetIds = '';
-  if (frameCount < 1 || !imgNatW || !_visibleRenderAssetsSortedE7D().length) { hidePreviewLoadingE7J('error'); previewPreparing = false; previewStartLockActive = false; previewStartLockClearedAfterError = true; previewRetryAvailable = true; return; }
+  if (frameCount < 1 || !imgNatW || !_visibleRenderAssetsSortedE7D().length) { hidePreviewLoadingE7J('error'); previewPreparing = false; previewStartLockActive = false; previewStartLockClearedAfterError = true; previewRetryAvailable = true; resumeDeferredSessionAutosaveAfterPlayback(); return; }
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   // v8z4b30F — fecha painéis/menus editoriais transitórios (Formato de
   // saída, Edição de Tempo, Movimento, Trajetória etc.) antes de abrir o
   // Preview, para que nenhum overlay fique sobreposto ao canvas de preview.
   closeAll();
   normalizeProjectArrays();
-  if (!validateProjectState('preview')) { hidePreviewLoadingE7J('error'); previewPreparing = false; previewStartLockActive = false; previewStartLockClearedAfterError = true; previewRetryAvailable = true; showStatus('Estado inválido para Preview (veja console)'); return; }
+  if (!validateProjectState('preview')) { hidePreviewLoadingE7J('error'); previewPreparing = false; previewStartLockActive = false; previewStartLockClearedAfterError = true; previewRetryAvailable = true; showStatus('Estado inválido para Preview (veja console)'); resumeDeferredSessionAutosaveAfterPlayback(); return; }
   const _snapshotReadyE7D = await prepareCanonicalPreviewAssetsE7Q('preview');
   if (!_snapshotReadyE7D || !_snapshotReadyE7D.ok) {
     previewBlocked = true;
@@ -23652,6 +23675,7 @@ async function startPreview() {
     previewStartLockActive = false;
     previewStartLockClearedAfterError = true;
     previewRetryAvailable = true;
+    resumeDeferredSessionAutosaveAfterPlayback();
     return;
   }
   assetsHydratedBeforePreview = true;
@@ -23955,6 +23979,7 @@ async function startPreview() {
       hidePreviewLoadingE7J('error');
       ++previewLoopToken; // invalida qualquer callback antigo antes de voltar ao Stage
       resetPreviewPlaybackState();
+      resumeDeferredSessionAutosaveAfterPlayback();
       return;
     }
     // O relógio limitado só é reancorado depois do commit comprovado de t=0.
@@ -23989,6 +24014,8 @@ function stopPreview() {
   } else {
     resetPreviewUiState();
   }
+  sessionAutosaveRevisionChangedByPreviewOnly = _sessionAutosaveQueuedRevision !== _sessionAutosaveRevisionAtPreviewStart;
+  resumeDeferredSessionAutosaveAfterPlayback();
 }
 
 function togglePreviewPlayback() {
@@ -24215,6 +24242,7 @@ function cancelMp4ExportAndResetState(reason) {
   try { hideGenOverlay(); } catch(e) {}
   // 7. Restaurar ícone Play/Pause no Stage.
   try { updatePlayButton(); } catch(e) {}
+  resumeDeferredSessionAutosaveAfterPlayback();
 }
 
 // v8z4b19o — resetPreviewUiState(): garante que o Preview não deixe play/pause
@@ -24305,6 +24333,7 @@ function resetPreviewAndExportStateForImageChange() {
   // finishExport() não complete um vídeo gerado a partir de um projeto já alterado.
   if (isRecording) exportCancelledFlag = true;
   isRecording = false;
+  exportPreparing = false;
   document.body.classList.remove('previewing');
   const ps = document.getElementById('previewScreen');
   const tl = document.getElementById('previewTimeline');
@@ -24333,6 +24362,7 @@ function resetPreviewAndExportStateForImageChange() {
     img1PreviewCacheInvalidatedAfterReplace = true;
   } catch(e) {}
   resetGeneratedVideoState();
+  resumeDeferredSessionAutosaveAfterPlayback();
 }
 
 function sanitizeCtrlPtsAfterImageChange() {
@@ -24501,6 +24531,7 @@ function showReadyOverlay() {
 async function startRecord() {
   if (shouldBlockGlobalUIAction()) return;
   if (isRecording || exportPreparing) return;
+  suspendSessionAutosaveForPlayback('export-start');
   exportPreparing = true;
   exportRetryAttemptCount++;
   resetDerivedRenderStateE7I('export-start');
@@ -24545,21 +24576,21 @@ async function startRecord() {
     console.warn('[startRecord] imagem base/canônica não carregada', { imgNatW, imgNatH, complete: imgEl && imgEl.complete, canonical: recordSourceDims });
     arcoSetExportDiag('error', { lastExportError: 'imagem base/canônica não carregada' });
     showStatus('Imagem ainda não carregada. Tente novamente em instantes.');
-    exportPreparing = false; exportRetryAvailable = true; return;
+    exportPreparing = false; exportRetryAvailable = true; resumeDeferredSessionAutosaveAfterPlayback(); return;
   }
   const dims0 = exportDims[currentRatio];
   if (!dims0 || !(dims0[0] > 0) || !(dims0[1] > 0)) {
     console.warn('[startRecord] dimensões de export inválidas', { currentRatio, dims0 });
     arcoSetExportDiag('error', { lastExportError: 'dimensões de export inválidas para ' + currentRatio });
     showStatus('Proporção de export inválida.');
-    exportPreparing = false; exportRetryAvailable = true; return;
+    exportPreparing = false; exportRetryAvailable = true; resumeDeferredSessionAutosaveAfterPlayback(); return;
   }
   const durationSec0 = getComputedTimelineDuration();
   if (!Number.isFinite(durationSec0) || durationSec0 <= 0) {
     console.warn('[startRecord] duração total inválida — abortando export', { durationSec0 });
     arcoSetExportDiag('error', { lastExportError: 'duração total inválida (' + durationSec0 + ')' });
     showStatus('Duração total inválida — ajuste os trechos e tente novamente.');
-    exportPreparing = false; exportRetryAvailable = true; return;
+    exportPreparing = false; exportRetryAvailable = true; resumeDeferredSessionAutosaveAfterPlayback(); return;
   }
   // v8z4b19i — Parar Preview (animação de playback) ANTES de setar isRecording=true.
   // Ordem crítica: se stopPreview() for chamado após isRecording=true, o novo
@@ -24578,6 +24609,7 @@ async function startRecord() {
     exportPreparing = false;
     exportRetryAvailable = true;
     cleanupExportSession('render-preparation-failed');
+    resumeDeferredSessionAutosaveAfterPlayback();
     return;
   }
   assetsHydratedBeforeExport = true;
@@ -24660,6 +24692,7 @@ async function startRecord() {
     const ps0 = document.getElementById('previewScreen');
     if (ps0) ps0.classList.remove('show');
     showStatus('Erro ao preparar export.');
+    resumeDeferredSessionAutosaveAfterPlayback();
     return;
   }
   arcoSetExportDiag('canvas-setup', { exportW: W, exportH: H });
@@ -24872,6 +24905,7 @@ async function startRecord() {
       try { btnGenerate.classList.remove('recording'); btnGenerate.classList.add('done'); btnGenerate.disabled = false; } catch(e) {}
       try { setGenerateLabel(mb + ' MB'); } catch(e) {}
       try { updateMp4ReadyDiagnosticsE7I(); } catch(e) {}
+      resumeDeferredSessionAutosaveAfterPlayback();
     }
     showStatus('Pronto ' + mb + ' MB - toque para salvar');
   }
@@ -25164,8 +25198,11 @@ function resetAll() {
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   if (isPreviewing) stopPreview();
   isRecording = false;
+  exportPreparing = false;
+  resumeDeferredSessionAutosaveAfterPlayback();
   if (!imgNatW) return;
   resetGeneratedVideoState();
+  const stateBeforeProjectReset = captureState();
 
   // v8z4b23a — Caso A: projeto nasceu de imagem nova → Reset volta ao F1 assistido.
   if (_projectNewFromImage) {
@@ -25192,6 +25229,9 @@ function resetAll() {
       updateToolbarLabels();
       captureProjectResetBaseline('reset-new-image-f1');
     }
+    if (!projectStateEquals(stateBeforeProjectReset, captureState())) {
+      markProjectDirty('project-reset');
+    }
     showStatus('Resetado');
     return;
   }
@@ -25215,6 +25255,7 @@ function resetAll() {
   syncCustomizePanel();
   syncBlurUI();
   updateToolbarLabels();
+  markProjectDirty('project-reset');
   showStatus('Resetado');
 }
 
@@ -25222,11 +25263,13 @@ function resetAll() {
 // FORMAT CHANGE
 // ═══════════════════════════════════════
 function selectFormat(chip) {
+  const nextRatio = chip.dataset.ratio;
+  const formatChanged = nextRatio !== currentRatio;
   document.querySelectorAll('#formatChips .fmt-row').forEach(c => c.classList.remove('active'));
   chip.classList.add('active');
-  if (!imgNatW) return;
+  if (!imgNatW || !formatChanged) return;
   pushUndo();
-  currentRatio = chip.dataset.ratio;
+  currentRatio = nextRatio;
   setupPreviewCanvas();
   const ar = ratioMap[currentRatio];
   for (let i = 0; i < frameCount; i++) {
@@ -25247,6 +25290,8 @@ function selectFormat(chip) {
     frames[i] = { ...f, x: cx - nw/2, y: cy - nh/2, w: nw, h: nh };
     clampFrame(i);
   }
+  normalizeProjectArrays();
+  markProjectDirty('format-change');
   renderAll();
   updateToolbarLabels();
   showStatus('Formato: ' + currentRatio);
@@ -27695,6 +27740,7 @@ function toggleFrameLock() {
   const lockLabel = document.querySelector('#stageFrameLockBtn span');
   if (lockLabel) lockLabel.textContent = locked ? 'Desfixar' : 'Fixar';
   renderAll();
+  markProjectDirty('frame-lock');
   showStatus(locked ? 'Frame travado' : 'Frame liberado');
 }
 
@@ -27791,6 +27837,7 @@ function deleteActiveFrame() {
   updateFrameSelector();
   refreshBreakdownIfOpen();
   maybeRedistributeByCurveLength(); // v8z4b17p — Bug B: redistribuir se constant-speed
+  markProjectDirty('delete-frame');
   showStatus('Frame deletado');
 }
 
@@ -28211,6 +28258,7 @@ function invertFrames() {
     setTimeout(() => { btn.style.color = ''; }, 400);
   }
   renderAll();
+  markProjectDirty('invert-frames');
   showStatus('Sentido invertido');
 }
 
@@ -29505,7 +29553,69 @@ let _sessionAutosaveTimer = null;
 let _sessionAutosaveEpoch = 0;
 let _sessionAutosaveQueuedRevision = 0;
 let _sessionAutosaveCommittedRevision = 0;
+let _sessionAutosaveDeferredBecausePlayback = false;
+let _sessionAutosaveDeferredRevision = 0;
+let _sessionAutosaveDeferredEpoch = 0;
+let _sessionAutosaveDeferredReason = '';
+let _sessionAutosaveDeferredAt = null;
+let _sessionAutosaveWriteInFlight = false;
+let sessionAutosaveLastTriggerReason = '';
+let sessionAutosaveLastScheduledAt = null;
+let sessionAutosaveBuildStartedAt = null;
+let sessionAutosaveBuildCompletedAt = null;
+let sessionAutosaveBuildProjectDataMs = 0;
+let sessionAutosaveStringifyMs = 0;
+let sessionAutosaveChecksumMs = 0;
+let sessionAutosaveIndexedDbWriteMs = 0;
+let sessionAutosaveTotalMs = 0;
+let sessionAutosaveResumedAfterPreview = false;
+let sessionAutosaveStartedDuringPreview = false;
+let sessionAutosaveCompletedDuringPreview = false;
+let sessionAutosaveTriggeredByPlayPointerUp = false;
+let sessionAutosaveRevisionChangedByPreviewOnly = false;
+let sessionAutosaveBuildCountDuringLastPreview = 0;
+let sessionAutosaveWriteCountDuringLastPreview = 0;
+let _sessionAutosaveRevisionAtPreviewStart = 0;
 let _sessionRestoreOperationToken = 0;
+
+function isSessionAutosaveBlockedByPlayback() {
+  return !!(previewPreparing || isPreviewing || isRecording || exportPreparing);
+}
+function deferSessionAutosaveBecausePlayback(revision, epoch, reason) {
+  if (revision <= _sessionAutosaveCommittedRevision) return;
+  _sessionAutosaveDeferredBecausePlayback = true;
+  _sessionAutosaveDeferredRevision = Math.max(_sessionAutosaveDeferredRevision, revision);
+  _sessionAutosaveDeferredEpoch = epoch;
+  _sessionAutosaveDeferredReason = reason || sessionAutosaveLastTriggerReason || 'playback';
+  _sessionAutosaveDeferredAt = Date.now();
+}
+function suspendSessionAutosaveForPlayback(reason) {
+  if (_sessionAutosaveTimer) {
+    clearTimeout(_sessionAutosaveTimer);
+    _sessionAutosaveTimer = null;
+  }
+  if (_sessionAutosaveQueuedRevision > _sessionAutosaveCommittedRevision) {
+    deferSessionAutosaveBecausePlayback(_sessionAutosaveQueuedRevision, _sessionAutosaveEpoch, reason);
+  }
+}
+function resumeDeferredSessionAutosaveAfterPlayback() {
+  if (isSessionAutosaveBlockedByPlayback() || !_sessionAutosaveDeferredBecausePlayback) return;
+  if (_sessionAutosaveDeferredEpoch !== _sessionAutosaveEpoch ||
+      _sessionAutosaveQueuedRevision <= _sessionAutosaveCommittedRevision) {
+    _sessionAutosaveDeferredBecausePlayback = false;
+    return;
+  }
+  if (_sessionAutosaveTimer || _sessionAutosaveWriteInFlight) return;
+  const revision = _sessionAutosaveQueuedRevision;
+  const epoch = _sessionAutosaveEpoch;
+  sessionAutosaveResumedAfterPreview = true;
+  sessionAutosaveLastScheduledAt = Date.now();
+  _sessionAutosaveTimer = setTimeout(() => {
+    _sessionAutosaveTimer = null;
+    writeSessionAutosave(revision, epoch, false, _sessionAutosaveDeferredReason);
+  }, SESSION_AUTOSAVE_DEBOUNCE_MS);
+  _sessionAutosaveDeferredBecausePlayback = false;
+}
 
 function invalidateSessionRestore(reason) {
   _sessionRestoreOperationToken++;
@@ -29554,7 +29664,7 @@ function buildCompleteSessionProjectData() {
   data.assetsImagesIncluded = true;
   return data;
 }
-async function putSessionCheckpoint(checkpoint) {
+async function putSessionCheckpoint(checkpoint, mandatoryFlush, epoch) {
   const db = await openSessionAutosaveDb();
   try {
     return await new Promise((resolve, reject) => {
@@ -29563,6 +29673,10 @@ async function putSessionCheckpoint(checkpoint) {
       const currentRequest = store.get(SESSION_AUTOSAVE_KEY);
       let written = false;
       currentRequest.onsuccess = () => {
+        if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) {
+          deferSessionAutosaveBecausePlayback(checkpoint.revision, epoch, 'blocked-before-indexeddb');
+          return;
+        }
         const current = currentRequest.result;
         if (!current || Number(current.revision) <= checkpoint.revision) {
           store.put(checkpoint, SESSION_AUTOSAVE_KEY);
@@ -29576,15 +29690,37 @@ async function putSessionCheckpoint(checkpoint) {
     });
   } finally { db.close(); }
 }
-async function writeSessionAutosave(revision, epoch) {
+async function writeSessionAutosave(revision, epoch, mandatoryFlush = false, reason = '') {
+  const totalStartedAt = performance.now();
   try {
     if (epoch !== _sessionAutosaveEpoch || revision < _sessionAutosaveQueuedRevision || !hasImageLoaded()) return false;
+    if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) {
+      deferSessionAutosaveBecausePlayback(revision, epoch, reason);
+      return false;
+    }
+    _sessionAutosaveWriteInFlight = true;
+    sessionAutosaveStartedDuringPreview = sessionAutosaveStartedDuringPreview || isSessionAutosaveBlockedByPlayback();
+    sessionAutosaveBuildStartedAt = Date.now();
+    const buildStartedAt = performance.now();
     const data = buildCompleteSessionProjectData();
+    sessionAutosaveBuildProjectDataMs = performance.now() - buildStartedAt;
+    sessionAutosaveBuildCompletedAt = Date.now();
+    if (isPreviewing || previewPreparing) sessionAutosaveBuildCountDuringLastPreview++;
     if (!isCompleteSessionProjectData(data)) throw new Error('session-checkpoint-incomplete');
+    if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) { deferSessionAutosaveBecausePlayback(revision, epoch, reason); return false; }
+    const stringifyStartedAt = performance.now();
     const payload = JSON.stringify(data);
+    sessionAutosaveStringifyMs = performance.now() - stringifyStartedAt;
     if (epoch !== _sessionAutosaveEpoch || revision < _sessionAutosaveQueuedRevision) return false;
-    const checkpoint = { schema: SESSION_AUTOSAVE_SCHEMA, complete: true, revision, payload, checksum: sessionPayloadChecksum(payload), savedAt: Date.now() };
-    const written = await putSessionCheckpoint(checkpoint);
+    if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) { deferSessionAutosaveBecausePlayback(revision, epoch, reason); return false; }
+    const checksumStartedAt = performance.now();
+    const checksum = sessionPayloadChecksum(payload);
+    sessionAutosaveChecksumMs = performance.now() - checksumStartedAt;
+    const checkpoint = { schema: SESSION_AUTOSAVE_SCHEMA, complete: true, revision, payload, checksum, savedAt: Date.now() };
+    if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) { deferSessionAutosaveBecausePlayback(revision, epoch, reason); return false; }
+    const writeStartedAt = performance.now();
+    const written = await putSessionCheckpoint(checkpoint, mandatoryFlush, epoch);
+    sessionAutosaveIndexedDbWriteMs = performance.now() - writeStartedAt;
     if (!written) return false;
     if (epoch !== _sessionAutosaveEpoch || revision < _sessionAutosaveQueuedRevision) return false;
     _sessionAutosaveCommittedRevision = revision;
@@ -29592,25 +29728,40 @@ async function writeSessionAutosave(revision, epoch) {
     sessionAutosavePayloadBytes = new Blob([payload]).size;
     sessionAutosaveCompleted = true;
     sessionAutosaveFailed = false;
+    sessionAutosaveCompletedDuringPreview = sessionAutosaveCompletedDuringPreview || isSessionAutosaveBlockedByPlayback();
+    if (isPreviewing || previewPreparing) sessionAutosaveWriteCountDuringLastPreview++;
     return true;
   } catch (error) {
     sessionAutosaveFailed = true;
     console.error('[Arco ' + APP_VERSION + '][session-autosave] checkpoint preservado após falha', error);
     return false;
+  } finally {
+    sessionAutosaveTotalMs = performance.now() - totalStartedAt;
+    _sessionAutosaveWriteInFlight = false;
+    if (_sessionAutosaveDeferredBecausePlayback && !isSessionAutosaveBlockedByPlayback()) {
+      setTimeout(resumeDeferredSessionAutosaveAfterPlayback, 0);
+    }
   }
 }
 function scheduleSessionAutosave(reason, immediate = false) {
   if (!sessionAutosaveEnabled || !hasImageLoaded() || appMode !== 'editor') return;
   const revision = ++_sessionAutosaveQueuedRevision;
   const epoch = _sessionAutosaveEpoch;
+  sessionAutosaveLastTriggerReason = reason || '';
+  sessionAutosaveLastScheduledAt = Date.now();
   clearTimeout(_sessionAutosaveTimer);
-  _sessionAutosaveTimer = setTimeout(() => writeSessionAutosave(revision, epoch), immediate ? 0 : SESSION_AUTOSAVE_DEBOUNCE_MS);
+  if (isSessionAutosaveBlockedByPlayback()) {
+    _sessionAutosaveTimer = null;
+    deferSessionAutosaveBecausePlayback(revision, epoch, reason);
+    return;
+  }
+  _sessionAutosaveTimer = setTimeout(() => { _sessionAutosaveTimer = null; writeSessionAutosave(revision, epoch, false, reason); }, immediate ? 0 : SESSION_AUTOSAVE_DEBOUNCE_MS);
 }
 function flushSessionAutosave() {
   if (!sessionAutosaveEnabled || !hasImageLoaded() || appMode !== 'editor') return;
   clearTimeout(_sessionAutosaveTimer);
   const revision = ++_sessionAutosaveQueuedRevision;
-  writeSessionAutosave(revision, _sessionAutosaveEpoch);
+  writeSessionAutosave(revision, _sessionAutosaveEpoch, true, 'safety-flush');
 }
 async function clearSessionAutosave() {
   invalidateSessionRestore('new-project');
@@ -29702,7 +29853,6 @@ function sessionAutosaveOnProjectApplied(origin, data) {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSessionAutosave(); });
 window.addEventListener('pagehide', flushSessionAutosave);
 document.addEventListener('change', () => scheduleSessionAutosave('editor-change'), true);
-document.addEventListener('pointerup', () => scheduleSessionAutosave('editor-pointerup'), true);
 
 let _pendingSaveIncludeImage = false;
 
@@ -35707,6 +35857,28 @@ function buildDiagnosticsText() {
   push('sessionAutosaveFailed', String(sessionAutosaveFailed));
   push('sessionAutosaveRevision', String(sessionAutosaveRevision));
   push('sessionAutosavePayloadBytes', String(sessionAutosavePayloadBytes));
+  push('sessionAutosaveLastTriggerReason', sessionAutosaveLastTriggerReason || 'none');
+  push('sessionAutosaveLastScheduledAt', sessionAutosaveLastScheduledAt == null ? 'n/d' : String(sessionAutosaveLastScheduledAt));
+  push('sessionAutosaveBuildStartedAt', sessionAutosaveBuildStartedAt == null ? 'n/d' : String(sessionAutosaveBuildStartedAt));
+  push('sessionAutosaveBuildCompletedAt', sessionAutosaveBuildCompletedAt == null ? 'n/d' : String(sessionAutosaveBuildCompletedAt));
+  push('sessionAutosaveBuildProjectDataMs', String(sessionAutosaveBuildProjectDataMs));
+  push('sessionAutosaveStringifyMs', String(sessionAutosaveStringifyMs));
+  push('sessionAutosaveChecksumMs', String(sessionAutosaveChecksumMs));
+  push('sessionAutosaveIndexedDbWriteMs', String(sessionAutosaveIndexedDbWriteMs));
+  push('sessionAutosaveTotalMs', String(sessionAutosaveTotalMs));
+  push('sessionAutosaveWriteInFlight', String(_sessionAutosaveWriteInFlight));
+  push('sessionAutosaveBlockedByPlayback', String(isSessionAutosaveBlockedByPlayback()));
+  push('sessionAutosaveDeferredBecausePlayback', String(_sessionAutosaveDeferredBecausePlayback));
+  push('sessionAutosaveDeferredRevision', String(_sessionAutosaveDeferredRevision));
+  push('sessionAutosaveDeferredReason', _sessionAutosaveDeferredReason || 'none');
+  push('sessionAutosaveDeferredAt', _sessionAutosaveDeferredAt == null ? 'n/d' : String(_sessionAutosaveDeferredAt));
+  push('sessionAutosaveResumedAfterPreview', String(sessionAutosaveResumedAfterPreview));
+  push('sessionAutosaveStartedDuringPreview', String(sessionAutosaveStartedDuringPreview));
+  push('sessionAutosaveCompletedDuringPreview', String(sessionAutosaveCompletedDuringPreview));
+  push('sessionAutosaveTriggeredByPlayPointerUp', String(sessionAutosaveTriggeredByPlayPointerUp));
+  push('sessionAutosaveRevisionChangedByPreviewOnly', String(sessionAutosaveRevisionChangedByPreviewOnly));
+  push('sessionAutosaveBuildCountDuringLastPreview', String(sessionAutosaveBuildCountDuringLastPreview));
+  push('sessionAutosaveWriteCountDuringLastPreview', String(sessionAutosaveWriteCountDuringLastPreview));
   push('sessionRestoreAttempted', String(sessionRestoreAttempted));
   push('sessionRestoreCompleted', String(sessionRestoreCompleted));
   push('sessionRestoreFailed', String(sessionRestoreFailed));

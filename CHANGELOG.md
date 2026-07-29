@@ -1,3 +1,15 @@
+# v8z4b32E8G — fix(session): impede autosave durante Preview
+
+- Remove o agendamento indiscriminado de Session Autosave no `document.pointerup`; Play não é mutação e não cria revisão/checkpoint.
+- Uma barreira central impede build, serialização, checksum e escrita normal em IndexedDB durante preparação/reprodução do Preview e Export.
+- Revisões pendentes são preservadas com epoch/motivo, adiadas ao iniciar playback e reagendadas uma única vez após a saída completa; `visibilitychange hidden` e `pagehide` mantêm flush prioritário.
+- Diagnósticos observacionais e guardrail/harness automatizado cobrem isolamento, retomada, consolidação de revisões, flush de segurança e precedência de Novo Projeto/Load manual.
+- A conclusão da escala/rotação de um Frame pela alça global marca exatamente uma revisão de Session Autosave quando houve transformação real; toque simples e transformação ghost não criam revisão.
+- Os quatro controles reais de canto preservam a rotação inicial imutável, e saídas completas por erro de preparação/cleanup do Export, troca de imagem ou reset retomam checkpoint adiado quando a barreira de playback já terminou.
+- Reset cria revisão somente depois de aplicar um baseline realmente diferente; troca de formato ignora o formato já ativo e persiste uma única revisão após normalizar os Frames. A auditoria também tornou explícitos os disparadores de adicionar/remover/excluir/inverter/fixar Frames.
+- Renderer, sampler, warm-up, relógio, WebCodecs, conteúdo/schema do checkpoint e Session Restore permanecem inalterados.
+- A eliminação perceptível da travada permanece pendente de validação publicada por Roberto em iPhone/Safari real com projetos de 4 e 9 ativos.
+
 # v8z4b32E8F — fix(preview): confirma o primeiro frame antes do relógio
 
 - O preflight do Preview agora retorna resultado estruturado e só confirma o warm-up após o renderer canônico desenhar `t=0` sem erro e dois ciclos posteriores de `requestAnimationFrame` ocorrerem.
