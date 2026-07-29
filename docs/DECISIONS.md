@@ -209,4 +209,13 @@ Formato: ID, data, decisão, contexto, consequência e status.
 - **Decisão:** Session Autosave é independente do Save/Load manual, reutiliza `buildProjectData(true)` e `applyProjectData()`, e mantém em IndexedDB somente o último checkpoint completo com checksum e revisão monotônica.
 - **Contexto:** reload, descarte de página pelo iOS/Safari e retorno posterior não podem depender do Save manual nem aceitar reconstrução parcial.
 - **Consequência:** assets são pré-hidratados antes de qualquer aplicação; falha preserva o checkpoint anterior; Load manual invalida callbacks anteriores e se torna a sessão corrente; Novo Projeto limpa a sessão anterior antes de gravar a nova.
-- **Status:** ativa na `v8z4b32E8E`, com validação final em iPhone/Safari real pendente.
+- **Status:** ativa na `v8z4b32E8E`; Session Autosave, Session Restore, preservação de ProjectWorld e Save/Load foram validados por Roberto em iPhone/Safari real.
+
+
+## DEC-2026-07-29-02 — Relógio do Preview depende do commit do primeiro frame
+
+- **Data:** 2026-07-29.
+- **Decisão:** em uma nova abertura do Preview, o relógio visual e o loop de playback só podem iniciar depois que o renderer canônico concluir o desenho final de `t=0` sem erro e o preflight aguardar os ciclos posteriores de composição definidos, preservando os guards de token/fechamento.
+- **Contexto:** concluir o warm-up apenas por término da função, sem confirmação posterior ao desenho final, permitia uma travada perceptível no Safari.
+- **Consequência:** falha ou cancelamento não marca warm-up concluído, não agenda playback, mantém Export fora do caminho e libera tentativa posterior.
+- **Status:** ativa tecnicamente na `v8z4b32E8F`, com aprovação visual pendente em iPhone/Safari real.

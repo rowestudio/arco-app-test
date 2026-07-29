@@ -215,6 +215,13 @@ expectCase(results, 'Session autosave/restore incomplete fixture fails', 'check-
 });
 expectCase(results, 'Session autosave New Project race is discarded', 'test-session-autosave-race.mjs', 0);
 
+expectCase(results, 'Preview first-frame warm-up valid fixture passes', 'check-preview-first-frame-warmup.mjs', 0, {
+  env: { QA_PREVIEW_WARMUP_HTML: path.join(fixtures, 'preview-first-frame-warmup-valid.html') },
+});
+expectCase(results, 'Preview first-frame warm-up anti-patterns fail', 'check-preview-first-frame-warmup.mjs', 1, {
+  env: { QA_PREVIEW_WARMUP_HTML: path.join(fixtures, 'preview-first-frame-warmup-invalid.html') },
+});
+
 const passed = results.filter((result) => result.passed).length;
 console.log(`QA guardrail self-tests: ${passed}/${results.length} expectations confirmed.`);
 for (const result of results) {

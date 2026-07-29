@@ -1,3 +1,11 @@
+# v8z4b32E8F — fix(preview): confirma o primeiro frame antes do relógio
+
+- O preflight do Preview agora retorna resultado estruturado e só confirma o warm-up após o renderer canônico desenhar `t=0` sem erro e dois ciclos posteriores de `requestAnimationFrame` ocorrerem.
+- Loading, relógio limitado e agendamento do loop permanecem bloqueados até essa confirmação; falha ou cancelamento por token libera nova tentativa sem estado híbrido.
+- Diagnósticos registram tentativa, render, composição, ordem do commit/relógio, cancelamento e erro sem expor texto técnico na interface principal.
+- Export, WebCodecs, sampler, câmera, matemática do renderer, Session Autosave/Restore e interface permanecem inalterados.
+- Aprovação visual permanece pendente de merge/publicação e teste de Roberto em iPhone/Safari real.
+
 # v8z4b32E8D — feat(layers): cria nomes sequenciais persistentes para camadas
 
 - Cada image asset recebe uma identidade nominal canônica com `layerSequence`, `layerName`, `layerNameSource` e `originalFileName` no momento da criação ou migração.
