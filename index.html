@@ -18825,6 +18825,7 @@ function addFrame() {
   normalizeProjectArrays();
   validateProjectState('after-add-frame');
   maybeRedistributeByCurveLength(); // v8z4b17f
+  markProjectDirty('add-frame');
   showStatus('Frame F' + frameCount + ' adicionado · +' + segDurations[seg].toFixed(1) + 's');
 }
 
@@ -19383,6 +19384,7 @@ function removeLastFrame() {
   normalizeProjectArrays();
   validateProjectState('after-remove-frame');
   maybeRedistributeByCurveLength(); // v8z4b17f
+  markProjectDirty('remove-frame');
   showStatus('Frame F' + (frameCount + 1) + ' removido');
 }
 
@@ -25200,6 +25202,7 @@ function resetAll() {
   resumeDeferredSessionAutosaveAfterPlayback();
   if (!imgNatW) return;
   resetGeneratedVideoState();
+  const stateBeforeProjectReset = captureState();
 
   // v8z4b23a — Caso A: projeto nasceu de imagem nova → Reset volta ao F1 assistido.
   if (_projectNewFromImage) {
@@ -25226,6 +25229,9 @@ function resetAll() {
       updateToolbarLabels();
       captureProjectResetBaseline('reset-new-image-f1');
     }
+    if (!projectStateEquals(stateBeforeProjectReset, captureState())) {
+      markProjectDirty('project-reset');
+    }
     showStatus('Resetado');
     return;
   }
@@ -25249,6 +25255,7 @@ function resetAll() {
   syncCustomizePanel();
   syncBlurUI();
   updateToolbarLabels();
+  markProjectDirty('project-reset');
   showStatus('Resetado');
 }
 
@@ -25256,11 +25263,13 @@ function resetAll() {
 // FORMAT CHANGE
 // ═══════════════════════════════════════
 function selectFormat(chip) {
+  const nextRatio = chip.dataset.ratio;
+  const formatChanged = nextRatio !== currentRatio;
   document.querySelectorAll('#formatChips .fmt-row').forEach(c => c.classList.remove('active'));
   chip.classList.add('active');
-  if (!imgNatW) return;
+  if (!imgNatW || !formatChanged) return;
   pushUndo();
-  currentRatio = chip.dataset.ratio;
+  currentRatio = nextRatio;
   setupPreviewCanvas();
   const ar = ratioMap[currentRatio];
   for (let i = 0; i < frameCount; i++) {
@@ -25281,6 +25290,8 @@ function selectFormat(chip) {
     frames[i] = { ...f, x: cx - nw/2, y: cy - nh/2, w: nw, h: nh };
     clampFrame(i);
   }
+  normalizeProjectArrays();
+  markProjectDirty('format-change');
   renderAll();
   updateToolbarLabels();
   showStatus('Formato: ' + currentRatio);
@@ -27729,6 +27740,7 @@ function toggleFrameLock() {
   const lockLabel = document.querySelector('#stageFrameLockBtn span');
   if (lockLabel) lockLabel.textContent = locked ? 'Desfixar' : 'Fixar';
   renderAll();
+  markProjectDirty('frame-lock');
   showStatus(locked ? 'Frame travado' : 'Frame liberado');
 }
 
@@ -27825,6 +27837,7 @@ function deleteActiveFrame() {
   updateFrameSelector();
   refreshBreakdownIfOpen();
   maybeRedistributeByCurveLength(); // v8z4b17p — Bug B: redistribuir se constant-speed
+  markProjectDirty('delete-frame');
   showStatus('Frame deletado');
 }
 
@@ -28245,6 +28258,7 @@ function invertFrames() {
     setTimeout(() => { btn.style.color = ''; }, 400);
   }
   renderAll();
+  markProjectDirty('invert-frames');
   showStatus('Sentido invertido');
 }
 

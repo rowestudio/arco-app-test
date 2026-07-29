@@ -6,6 +6,7 @@
 - Diagnósticos observacionais e guardrail/harness automatizado cobrem isolamento, retomada, consolidação de revisões, flush de segurança e precedência de Novo Projeto/Load manual.
 - A conclusão da escala/rotação de um Frame pela alça global marca exatamente uma revisão de Session Autosave quando houve transformação real; toque simples e transformação ghost não criam revisão.
 - Os quatro controles reais de canto preservam a rotação inicial imutável, e saídas completas por erro de preparação/cleanup do Export, troca de imagem ou reset retomam checkpoint adiado quando a barreira de playback já terminou.
+- Reset cria revisão somente depois de aplicar um baseline realmente diferente; troca de formato ignora o formato já ativo e persiste uma única revisão após normalizar os Frames. A auditoria também tornou explícitos os disparadores de adicionar/remover/excluir/inverter/fixar Frames.
 - Renderer, sampler, warm-up, relógio, WebCodecs, conteúdo/schema do checkpoint e Session Restore permanecem inalterados.
 - A eliminação perceptível da travada permanece pendente de validação publicada por Roberto em iPhone/Safari real com projetos de 4 e 9 ativos.
 

@@ -92,4 +92,43 @@ if (!/function resetAll\(\)[\s\S]*?isRecording = false;[\s\S]*?exportPreparing =
   fail('project reset can return after recording stops without attempting deferred checkpoint resumption.');
 }
 
+const resetStart = html.indexOf('function resetAll()');
+const resetEnd = html.indexOf('// ═══════════════════════════════════════\n// FORMAT CHANGE', resetStart);
+const resetSource = resetStart >= 0 ? html.slice(resetStart, resetEnd >= 0 ? resetEnd : undefined) : '';
+if (!/const stateBeforeProjectReset = captureState\(\);[\s\S]*?if \(_projectNewFromImage\)[\s\S]*?(?:restoreState|createInitialFrameForNewImageProject)[\s\S]*?if \(!projectStateEquals\(stateBeforeProjectReset, captureState\(\)\)\)[\s\S]*?markProjectDirty\(['"]project-reset['"]\)/.test(resetSource)) {
+  fail('new-image Reset does not mark dirty only after a real baseline application.');
+}
+if (!/const prevState = captureState\(\);[\s\S]*?if \(projectStateEquals\(prevState, projectResetBaseline\)\)[\s\S]*?return;[\s\S]*?restoreState\(cloneProjectStateSnapshot\(projectResetBaseline\)\);[\s\S]*?normalizeProjectArrays\(\);[\s\S]*?markProjectDirty\(['"]project-reset['"]\)/.test(resetSource)) {
+  fail('loaded-project Reset does not mark dirty after normalized baseline restoration.');
+}
+
+const formatStart = html.indexOf('function selectFormat(chip)');
+const formatEnd = html.indexOf('// ═══════════════════════════════════════\n// DURATION', formatStart);
+const formatSource = formatStart >= 0 ? html.slice(formatStart, formatEnd >= 0 ? formatEnd : undefined) : '';
+if (!/const nextRatio = chip\.dataset\.ratio;[\s\S]*?const formatChanged = nextRatio !== currentRatio;[\s\S]*?if \(!imgNatW \|\| !formatChanged\) return;[\s\S]*?pushUndo\(\);[\s\S]*?currentRatio = nextRatio;[\s\S]*?normalizeProjectArrays\(\);[\s\S]*?markProjectDirty\(['"]format-change['"]\)/.test(formatSource)) {
+  fail('selectFormat does not gate Undo/dirty on a real change after normalized state application.');
+}
+if ((formatSource.match(/markProjectDirty\(['"]format-change['"]\)/g) || []).length !== 1) {
+  fail('selectFormat must contain exactly one format-change dirty trigger.');
+}
+
+for (const [trigger, label] of [
+  ["markProjectDirty('template')", 'templates'],
+  ["markProjectDirty('add-frame')", 'add Frame'],
+  ["markProjectDirty('remove-frame')", 'remove last Frame'],
+  ["markProjectDirty('delete-frame')", 'delete selected Frame'],
+  ["markProjectDirty('invert-frames')", 'invert Frames'],
+  ["markProjectDirty('loop-toggle')", 'loop'],
+  ["markProjectDirty('frame-lock')", 'Frame lock'],
+  ["markProjectDirty('background-color')", 'background color'],
+  ["markProjectDirty('movement-easing-mode')", 'movement mode'],
+  ["markProjectDirty('reset-all-curves')", 'curve reset'],
+  ["markProjectDirty('frame-pause-reset-all')", 'pause reset'],
+  ["markProjectDirty('deleteAsset')", 'asset deletion'],
+  ["markProjectDirty('replace-image-asset')", 'asset replacement'],
+  ["markProjectDirty('add-image-asset')", 'asset insertion'],
+  ["markProjectDirty('layerUp')", 'Layer order up'],
+  ["markProjectDirty('layerDown')", 'Layer order down'],
+]) requireText(trigger, `${label} explicit persistence trigger`);
+
 console.log('Session autosave/Preview isolation guardrail passed.');

@@ -229,6 +229,12 @@ expectCase(results, 'Frame transform dirty completion passes', 'check-session-au
 expectCase(results, 'Frame transform without dirty completion fails', 'check-session-autosave-preview-isolation.mjs', 1, {
   env: { QA_SESSION_PREVIEW_HTML: path.join(fixtures, 'session-autosave-preview-frame-transform-invalid.html') },
 });
+expectCase(results, 'Persistent Reset/Format commands pass', 'check-session-autosave-preview-isolation.mjs', 0, {
+  env: { QA_SESSION_PREVIEW_HTML: path.join(fixtures, 'session-autosave-persistent-commands-valid.html') },
+});
+expectCase(results, 'Persistent Reset/Format without dirty fail', 'check-session-autosave-preview-isolation.mjs', 1, {
+  env: { QA_SESSION_PREVIEW_HTML: path.join(fixtures, 'session-autosave-persistent-commands-invalid.html') },
+});
 expectCase(results, 'Session autosave/Preview race behavior passes', 'test-session-autosave-preview-isolation.mjs', 0);
 
 expectCase(results, 'Preview first-frame warm-up valid fixture passes', 'check-preview-first-frame-warmup.mjs', 0, {

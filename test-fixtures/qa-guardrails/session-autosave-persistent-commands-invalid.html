@@ -28,7 +28,7 @@ function ensureGlobalHandle(){
 function ensureCornerHandles(){
   if (isInsertingFrame && ghostFrame) handleDragState = { isGhost: true, startRot: ghostFrame.rotation || 0 };
   if (isInsertingFrame || isPreviewing) return;
-  handleDragState = { fi, startW: frames[fi].w, startRot: frameRotations[fi] || 0, mode: null, undoCaptured: false };
+  handleDragState = { fi, startW: frames[fi].w, startRot: frameRotations[fi] || 0, initialRot: frameRotations[fi] || 0, mode: null, undoCaptured: false };
   globalHandleEl.dispatchEvent(new PointerEvent('pointermove'));
   globalHandleEl.dispatchEvent(new PointerEvent('pointerup'));
 }
@@ -40,13 +40,13 @@ function resetPreviewAndExportStateForImageChange(){isRecording = false;exportPr
 function resetAll(){
   isRecording = false; exportPreparing = false; resumeDeferredSessionAutosaveAfterPlayback(); if (!imgNatW) return;
   const stateBeforeProjectReset = captureState();
-  if (_projectNewFromImage) { restoreState(projectResetBaseline); if (!projectStateEquals(stateBeforeProjectReset, captureState())) markProjectDirty('project-reset'); return; }
+  if (_projectNewFromImage) { restoreState(projectResetBaseline); if (!projectStateEquals(stateBeforeProjectReset, captureState())) renderAll(); return; }
   const prevState = captureState(); if (projectStateEquals(prevState, projectResetBaseline)) return;
-  restoreState(cloneProjectStateSnapshot(projectResetBaseline)); normalizeProjectArrays(); markProjectDirty('project-reset');
+  restoreState(cloneProjectStateSnapshot(projectResetBaseline)); normalizeProjectArrays(); renderAll();
 }
 function selectFormat(chip){
   const nextRatio = chip.dataset.ratio; const formatChanged = nextRatio !== currentRatio;
-  if (!imgNatW || !formatChanged) return; pushUndo(); currentRatio = nextRatio; frames = normalizeFrames(); normalizeProjectArrays(); markProjectDirty('format-change');
+  if (!imgNatW || !formatChanged) return; pushUndo(); currentRatio = nextRatio; frames = normalizeFrames(); normalizeProjectArrays(); renderAll();
 }
 function auditedPersistentCommands(){
   markProjectDirty('template'); markProjectDirty('add-frame'); markProjectDirty('remove-frame'); markProjectDirty('delete-frame'); markProjectDirty('invert-frames'); markProjectDirty('loop-toggle'); markProjectDirty('frame-lock'); markProjectDirty('background-color'); markProjectDirty('movement-easing-mode'); markProjectDirty('reset-all-curves'); markProjectDirty('frame-pause-reset-all'); markProjectDirty('deleteAsset'); markProjectDirty('replace-image-asset'); markProjectDirty('add-image-asset'); markProjectDirty('layerUp'); markProjectDirty('layerDown');

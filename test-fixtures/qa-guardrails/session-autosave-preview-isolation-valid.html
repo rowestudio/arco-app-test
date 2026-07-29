@@ -37,6 +37,19 @@ function startRecord(){
 }
 function finishExport(){try { restoreUi(); } catch (cleanupErr) { isRecording = false; resumeDeferredSessionAutosaveAfterPlayback(); }}
 function resetPreviewAndExportStateForImageChange(){isRecording = false;exportPreparing = false;resumeDeferredSessionAutosaveAfterPlayback();}
-function resetAll(){isRecording = false;exportPreparing = false;resumeDeferredSessionAutosaveAfterPlayback();if (!imgNatW) return;}
+function resetAll(){
+  isRecording = false; exportPreparing = false; resumeDeferredSessionAutosaveAfterPlayback(); if (!imgNatW) return;
+  const stateBeforeProjectReset = captureState();
+  if (_projectNewFromImage) { restoreState(projectResetBaseline); if (!projectStateEquals(stateBeforeProjectReset, captureState())) markProjectDirty('project-reset'); return; }
+  const prevState = captureState(); if (projectStateEquals(prevState, projectResetBaseline)) return;
+  restoreState(cloneProjectStateSnapshot(projectResetBaseline)); normalizeProjectArrays(); markProjectDirty('project-reset');
+}
+function selectFormat(chip){
+  const nextRatio = chip.dataset.ratio; const formatChanged = nextRatio !== currentRatio;
+  if (!imgNatW || !formatChanged) return; pushUndo(); currentRatio = nextRatio; frames = normalizeFrames(); normalizeProjectArrays(); markProjectDirty('format-change');
+}
+function auditedPersistentCommands(){
+  markProjectDirty('template'); markProjectDirty('add-frame'); markProjectDirty('remove-frame'); markProjectDirty('delete-frame'); markProjectDirty('invert-frames'); markProjectDirty('loop-toggle'); markProjectDirty('frame-lock'); markProjectDirty('background-color'); markProjectDirty('movement-easing-mode'); markProjectDirty('reset-all-curves'); markProjectDirty('frame-pause-reset-all'); markProjectDirty('deleteAsset'); markProjectDirty('replace-image-asset'); markProjectDirty('add-image-asset'); markProjectDirty('layerUp'); markProjectDirty('layerDown');
+}
 document.addEventListener('visibilitychange',()=>{});window.addEventListener('pagehide', flushSessionAutosave);
 </script>

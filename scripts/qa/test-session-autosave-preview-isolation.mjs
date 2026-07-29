@@ -38,6 +38,13 @@ class PlaybackExitHarness {
   cleanupError(){this.recording=false;this.resume();}
 }
 
+class PersistentCommandHarness {
+  revision=0; checkpoint=null; state={ratio:'9:16',value:'edited'}; baseline={ratio:'9:16',value:'baseline'};
+  save(){this.checkpoint=structuredClone(this.state);}
+  reset(){if(JSON.stringify(this.state)===JSON.stringify(this.baseline))return;this.state=structuredClone(this.baseline);this.revision++;}
+  selectFormat(nextRatio){if(nextRatio===this.state.ratio)return;this.state.ratio=nextRatio;this.revision++;}
+}
+
 // Caso 1: mutação antes do debounce é adiada e salva uma vez após fechar.
 let h=new Harness();h.mutate();h.begin();h.tick();assert.equal(h.builds,0);h.end();h.tick();assert.deepEqual([h.writes,h.committed],[1,1]);
 // Caso 2: Play sem mutação não cria revisão nem escrita.
@@ -66,4 +73,8 @@ let x=new PlaybackExitHarness();x.invalidCanvas();x.resume();assert.deepEqual([x
 x=new PlaybackExitHarness();x.cleanupError();x.resume();assert.equal(x.resumes,1);
 x=new PlaybackExitHarness();x.preview=true;x.cleanupError();assert.deepEqual([x.resumes,x.deferred],[0,true]);
 
-console.log('Session autosave/Preview behavioral harness passed: 17/17 cases.');
+// Reset persiste o baseline final; formato idêntico não cria Undo/revisão adicional.
+let p=new PersistentCommandHarness();p.save();const resetRevision=p.revision;p.reset();p.save();assert.equal(p.revision,resetRevision+1);assert.deepEqual(p.checkpoint,p.baseline);
+p=new PersistentCommandHarness();const formatRevision=p.revision;p.selectFormat('1:1');assert.equal(p.revision,formatRevision+1);p.selectFormat('1:1');assert.equal(p.revision,formatRevision+1);
+
+console.log('Session autosave/Preview behavioral harness passed: 19/19 cases.');
