@@ -15,6 +15,10 @@ for (const [fragment, label] of [
   ["window.addEventListener('pagehide', flushSessionAutosave);", 'pagehide flush'],
   ["sessionAutosaveOnProjectApplied(loadOptions.origin || 'manual-load', data);", 'manual load precedence hook'],
   ["const sessionClearPromise = clearSessionAutosave();", 'new project session clear'],
+  ["invalidateSessionRestore('new-project');", 'new project restore invalidation'],
+  ["invalidateSessionRestore('manual-load');", 'manual load restore invalidation'],
+  ["const restoreToken = invalidateSessionRestore('session-restore-start');", 'restore operation token capture'],
+  ['if (!isCurrentSessionRestore(restoreToken)) return;', 'restore token comparisons'],
   ["Promise.resolve(sessionClearPromise).finally(() => scheduleSessionAutosave('new-project-created', true));", 'new project checkpoint replacement'],
 ]) requireSource(fragment, label);
 
@@ -30,5 +34,6 @@ for (const name of requiredDiagnostics) requireSource(`push('${name}'`, `diagnos
 
 if (/localStorage\.(?:setItem|getItem)\([^\n]*session/i.test(html)) fail('session persistence fell back to localStorage.');
 if (!html.includes("revision < _sessionAutosaveQueuedRevision")) fail('stale revision write guard not found.');
+if ((html.match(/isCurrentSessionRestore\(restoreToken\)/g) || []).length < 4) fail('restore token is not checked at every asynchronous boundary.');
 
 console.log('Session autosave/restore guardrail passed.');

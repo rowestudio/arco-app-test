@@ -213,6 +213,7 @@ expectCase(results, 'Session autosave/restore implementation passes', 'check-ses
 expectCase(results, 'Session autosave/restore incomplete fixture fails', 'check-session-autosave-restore.mjs', 1, {
   env: { QA_SESSION_AUTOSAVE_HTML: path.join(fixtures, 'session-autosave-invalid.html') },
 });
+expectCase(results, 'Session autosave New Project race is discarded', 'test-session-autosave-race.mjs', 0);
 
 const passed = results.filter((result) => result.passed).length;
 console.log(`QA guardrail self-tests: ${passed}/${results.length} expectations confirmed.`);
