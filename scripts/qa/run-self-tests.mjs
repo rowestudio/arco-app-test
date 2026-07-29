@@ -207,6 +207,14 @@ expectCase(results, 'Repository state tracked .DS_Store fails', 'check-repositor
   env: { QA_BASE_SHA: repositoryStateInvalid.sha, QA_HEAD_SHA: repositoryStateInvalid.sha },
 });
 
+expectCase(results, 'Session autosave/restore implementation passes', 'check-session-autosave-restore.mjs', 0, {
+  env: { QA_SESSION_AUTOSAVE_HTML: path.join(repoRoot, 'index.html') },
+});
+expectCase(results, 'Session autosave/restore incomplete fixture fails', 'check-session-autosave-restore.mjs', 1, {
+  env: { QA_SESSION_AUTOSAVE_HTML: path.join(fixtures, 'session-autosave-invalid.html') },
+});
+expectCase(results, 'Session autosave New Project race is discarded', 'test-session-autosave-race.mjs', 0);
+
 const passed = results.filter((result) => result.passed).length;
 console.log(`QA guardrail self-tests: ${passed}/${results.length} expectations confirmed.`);
 for (const result of results) {

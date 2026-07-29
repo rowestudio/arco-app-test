@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8E — base v8z4b32E8D. feat(session): persiste checkpoint canônico completo em IndexedDB com debounce, flush, checksum e revisão; pré-hidrata todos os assets antes da restauração automática; Load manual prevalece e Novo Projeto substitui a sessão anterior. APP_VERSION = APP_VERSION_NAME = v8z4b32E8E. -->
 <!-- Arco Motion App — v8z4b32E8D — base v8z4b32E8C. feat(layers): adiciona identidade nominal persistente Camada N aos image assets, contador nextLayerSequence monotônico, migração determinística e persistência Save/Load; reorder altera apenas posição/zIndex. APP_VERSION = APP_VERSION_NAME = v8z4b32E8D. -->
 <!-- Arco Motion App — v8z4b32E8C — base v8z4b32E8B. fix(render): Preview/Export compartilham readiness stableDrawable > fonte viva > recovery persistente, sem exigir decode redundante nem omitir asset visível; falha descarta snapshot parcial e libera loading/locks para retry. APP_VERSION = APP_VERSION_NAME = v8z4b32E8C. -->
 <!-- Arco Motion App — v8z4b32E8A — base v8z4b32E7Z. fix(ui): remove da origem o HUD informativo preso ao Frame no Stage, preservando a faixa contextual existente acima da timeline, número, contorno, alças, curvas, scrim e seleção. APP_VERSION = APP_VERSION_NAME = v8z4b32E8A. -->
@@ -7154,8 +7155,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8D';
-const APP_VERSION_NAME = 'v8z4b32E8D';
+const APP_VERSION = 'v8z4b32E8E';
+const APP_VERSION_NAME = 'v8z4b32E8E';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -24195,6 +24196,7 @@ function markProjectDirty(reason) {
   // ou manter overlays/canvas de uma geração anterior.
   if (isRecording) return;
   clearGeneratedMp4(reason);
+  scheduleSessionAutosave(reason);
 }
 
 function hardResetCanvas(ctx, canvas, fillColor) {
@@ -26356,10 +26358,11 @@ function renderFramePauseRows() {
 
 // Listener do slider de duração do loop
 document.addEventListener('DOMContentLoaded', () => {
-  // v8z4b29BG — reload = launcher. Nunca restaura Stage, projeto anterior,
-  // imagem ou frames automaticamente.
+  // O launcher permanece a base visual enquanto um checkpoint completo é
+  // validado e pré-hidratado; somente então o pipeline oficial restaura o editor.
   setAppMode('launcher');
   showStartLauncher();
+  restoreLastSessionAutosave();
   const loopSlider = document.getElementById('loopDurSlider');
   if (loopSlider) {
     loopSlider.addEventListener('input', function() {
@@ -26734,6 +26737,7 @@ function finishNewProjectImageLoad(file, dataUrl, tmp) {
     imgEl.style.display = 'block';
     bezierSvg.style.display = 'block';
     document.body.classList.remove('no-image');
+    const sessionClearPromise = clearSessionAutosave();
     clearCurrentProjectForNewFile();
     layoutStage();
     syncFirstImageAsset('new-project-image'); // v8z4b30D — modelo preparatório
@@ -26765,6 +26769,7 @@ function finishNewProjectImageLoad(file, dataUrl, tmp) {
       updateFrameSelector();
       requestLowerTimelineCenter(activeIdx);
       updateToolbarLabels();
+      Promise.resolve(sessionClearPromise).finally(() => scheduleSessionAutosave('new-project-created', true));
     });
   };
   imgEl.onerror = () => showNewProjectImageError();
@@ -29433,6 +29438,231 @@ function buildProjectData(includeImages) {
   };
 }
 
+// ─── SESSION AUTOSAVE / RESTORE — v8z4b32E8E ──────────────────────────────────
+// Camada independente do download Save/Load. O payload vem exclusivamente do
+// serializador canônico acima e volta pelo pipeline oficial applyProjectData().
+const SESSION_AUTOSAVE_DB = 'arco-motion-session';
+const SESSION_AUTOSAVE_STORE = 'checkpoints';
+const SESSION_AUTOSAVE_KEY = 'current';
+const SESSION_AUTOSAVE_SCHEMA = 1;
+const SESSION_AUTOSAVE_DEBOUNCE_MS = 700;
+let sessionAutosaveEnabled = typeof indexedDB !== 'undefined';
+let sessionAutosaveCompleted = false;
+let sessionAutosaveFailed = false;
+let sessionAutosaveRevision = 0;
+let sessionAutosavePayloadBytes = 0;
+let sessionRestoreAttempted = false;
+let sessionRestoreCompleted = false;
+let sessionRestoreFailed = false;
+let sessionRestoreAssetCount = 0;
+let sessionRestoreHydratedAssetCount = 0;
+let sessionRestoreLayerIdentitiesPreserved = true;
+let sessionRestoreProjectWorldRestored = false;
+let sessionRestoreNoPartialState = true;
+let sessionRestoreDidNotOverrideManualLoad = true;
+let _sessionAutosaveTimer = null;
+let _sessionAutosaveEpoch = 0;
+let _sessionAutosaveQueuedRevision = 0;
+let _sessionAutosaveCommittedRevision = 0;
+let _sessionRestoreOperationToken = 0;
+
+function invalidateSessionRestore(reason) {
+  _sessionRestoreOperationToken++;
+  return _sessionRestoreOperationToken;
+}
+function isCurrentSessionRestore(token) {
+  return token === _sessionRestoreOperationToken;
+}
+
+function openSessionAutosaveDb() {
+  return new Promise((resolve, reject) => {
+    if (!sessionAutosaveEnabled) { reject(new Error('indexeddb-unavailable')); return; }
+    const request = indexedDB.open(SESSION_AUTOSAVE_DB, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(SESSION_AUTOSAVE_STORE)) {
+        request.result.createObjectStore(SESSION_AUTOSAVE_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('indexeddb-open-failed'));
+  });
+}
+function sessionPayloadChecksum(payloadText) {
+  let hash = 2166136261 >>> 0;
+  for (let i = 0; i < payloadText.length; i++) {
+    hash ^= payloadText.charCodeAt(i);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return hash.toString(16).padStart(8, '0');
+}
+function isCompleteSessionProjectData(data) {
+  const imageAssets = Array.isArray(data && data.assets) ? data.assets.filter(a => a && a.type === 'image') : [];
+  if (!data || data.assetsImagesIncluded !== true || !data.hasImage || !isValidImageBase64(data.imageBase64)) return false;
+  if (!data.projectWorld || data.projectWorld.initialized !== true || !Array.isArray(data.framesNorm) || data.framesNorm.length !== data.frameCount) return false;
+  if (!Number.isInteger(data.nextLayerSequence) || data.nextLayerSequence < 1 || imageAssets.length < 1) return false;
+  return imageAssets.every((asset, index) => {
+    const src = index === 0 ? (asset.src || data.imageBase64) : _assetPersistentSourceE8E(asset);
+    return asset.id && Number.isInteger(asset.layerSequence) && asset.layerSequence > 0 &&
+      typeof asset.layerName === 'string' && asset.layerName.length > 0 && isValidImageBase64(src);
+  });
+}
+function buildCompleteSessionProjectData() {
+  const data = buildProjectData(true);
+  data.imageBase64 = imageOriginalDataUrl || imgEl.src || '';
+  data.hasImage = isValidImageBase64(data.imageBase64);
+  data.assetsImagesIncluded = true;
+  return data;
+}
+async function putSessionCheckpoint(checkpoint) {
+  const db = await openSessionAutosaveDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(SESSION_AUTOSAVE_STORE, 'readwrite');
+      const store = tx.objectStore(SESSION_AUTOSAVE_STORE);
+      const currentRequest = store.get(SESSION_AUTOSAVE_KEY);
+      let written = false;
+      currentRequest.onsuccess = () => {
+        const current = currentRequest.result;
+        if (!current || Number(current.revision) <= checkpoint.revision) {
+          store.put(checkpoint, SESSION_AUTOSAVE_KEY);
+          written = true;
+        }
+      };
+      currentRequest.onerror = () => reject(currentRequest.error || new Error('indexeddb-read-before-write-failed'));
+      tx.oncomplete = () => resolve(written);
+      tx.onerror = () => reject(tx.error || new Error('indexeddb-write-failed'));
+      tx.onabort = () => reject(tx.error || new Error('indexeddb-write-aborted'));
+    });
+  } finally { db.close(); }
+}
+async function writeSessionAutosave(revision, epoch) {
+  try {
+    if (epoch !== _sessionAutosaveEpoch || revision < _sessionAutosaveQueuedRevision || !hasImageLoaded()) return false;
+    const data = buildCompleteSessionProjectData();
+    if (!isCompleteSessionProjectData(data)) throw new Error('session-checkpoint-incomplete');
+    const payload = JSON.stringify(data);
+    if (epoch !== _sessionAutosaveEpoch || revision < _sessionAutosaveQueuedRevision) return false;
+    const checkpoint = { schema: SESSION_AUTOSAVE_SCHEMA, complete: true, revision, payload, checksum: sessionPayloadChecksum(payload), savedAt: Date.now() };
+    const written = await putSessionCheckpoint(checkpoint);
+    if (!written) return false;
+    if (epoch !== _sessionAutosaveEpoch || revision < _sessionAutosaveQueuedRevision) return false;
+    _sessionAutosaveCommittedRevision = revision;
+    sessionAutosaveRevision = revision;
+    sessionAutosavePayloadBytes = new Blob([payload]).size;
+    sessionAutosaveCompleted = true;
+    sessionAutosaveFailed = false;
+    return true;
+  } catch (error) {
+    sessionAutosaveFailed = true;
+    console.error('[Arco ' + APP_VERSION + '][session-autosave] checkpoint preservado após falha', error);
+    return false;
+  }
+}
+function scheduleSessionAutosave(reason, immediate = false) {
+  if (!sessionAutosaveEnabled || !hasImageLoaded() || appMode !== 'editor') return;
+  const revision = ++_sessionAutosaveQueuedRevision;
+  const epoch = _sessionAutosaveEpoch;
+  clearTimeout(_sessionAutosaveTimer);
+  _sessionAutosaveTimer = setTimeout(() => writeSessionAutosave(revision, epoch), immediate ? 0 : SESSION_AUTOSAVE_DEBOUNCE_MS);
+}
+function flushSessionAutosave() {
+  if (!sessionAutosaveEnabled || !hasImageLoaded() || appMode !== 'editor') return;
+  clearTimeout(_sessionAutosaveTimer);
+  const revision = ++_sessionAutosaveQueuedRevision;
+  writeSessionAutosave(revision, _sessionAutosaveEpoch);
+}
+async function clearSessionAutosave() {
+  invalidateSessionRestore('new-project');
+  clearTimeout(_sessionAutosaveTimer);
+  _sessionAutosaveEpoch++;
+  _sessionAutosaveQueuedRevision++;
+  try {
+    const db = await openSessionAutosaveDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(SESSION_AUTOSAVE_STORE, 'readwrite');
+      tx.objectStore(SESSION_AUTOSAVE_STORE).delete(SESSION_AUTOSAVE_KEY);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error || new Error('indexeddb-delete-failed'));
+    });
+    db.close();
+  } catch (error) {
+    sessionAutosaveFailed = true;
+    console.error('[Arco ' + APP_VERSION + '][session-autosave] falha ao limpar sessão', error);
+  }
+}
+async function readSessionCheckpoint() {
+  const db = await openSessionAutosaveDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(SESSION_AUTOSAVE_STORE, 'readonly');
+      const request = tx.objectStore(SESSION_AUTOSAVE_STORE).get(SESSION_AUTOSAVE_KEY);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error || new Error('indexeddb-read-failed'));
+    });
+  } finally { db.close(); }
+}
+function hydrateSessionImage(src) {
+  return new Promise((resolve, reject) => {
+    if (!isValidImageBase64(src)) { reject(new Error('session-asset-source-invalid')); return; }
+    const image = new Image();
+    image.onload = () => image.naturalWidth > 0 && image.naturalHeight > 0 ? resolve(image) : reject(new Error('session-asset-blank'));
+    image.onerror = () => reject(new Error('session-asset-decode-failed'));
+    image.src = src;
+  });
+}
+async function prehydrateCompleteSession(data) {
+  const imageAssets = data.assets.filter(a => a && a.type === 'image');
+  const sources = imageAssets.map((asset, index) => index === 0 ? (asset.src || data.imageBase64) : _assetPersistentSourceE8E(asset));
+  const hydrated = await Promise.all(sources.map(hydrateSessionImage));
+  return hydrated.length;
+}
+async function restoreLastSessionAutosave() {
+  if (!sessionAutosaveEnabled) return;
+  sessionRestoreAttempted = true;
+  const restoreToken = invalidateSessionRestore('session-restore-start');
+  try {
+    const checkpoint = await readSessionCheckpoint();
+    if (!isCurrentSessionRestore(restoreToken)) return;
+    if (!checkpoint) return;
+    if (checkpoint.schema !== SESSION_AUTOSAVE_SCHEMA || checkpoint.complete !== true || typeof checkpoint.payload !== 'string' || checkpoint.checksum !== sessionPayloadChecksum(checkpoint.payload)) throw new Error('session-checkpoint-invalid');
+    const data = JSON.parse(checkpoint.payload);
+    if (!isCompleteSessionProjectData(data)) throw new Error('session-project-incomplete');
+    if (!isCurrentSessionRestore(restoreToken)) return;
+    sessionRestoreAssetCount = data.assets.filter(a => a && a.type === 'image').length;
+    sessionRestoreHydratedAssetCount = await prehydrateCompleteSession(data);
+    if (!isCurrentSessionRestore(restoreToken)) { sessionRestoreDidNotOverrideManualLoad = true; return; }
+    sessionAutosaveRevision = Number(checkpoint.revision) || 0;
+    _sessionAutosaveQueuedRevision = Math.max(_sessionAutosaveQueuedRevision, sessionAutosaveRevision);
+    _sessionAutosaveCommittedRevision = sessionAutosaveRevision;
+    if (!isCurrentSessionRestore(restoreToken)) return;
+    applyProjectData(data, { origin: 'session-autosave' });
+  } catch (error) {
+    sessionRestoreFailed = true;
+    sessionRestoreNoPartialState = !hasImageLoaded();
+    console.error('[Arco ' + APP_VERSION + '][session-restore] checkpoint rejeitado sem aplicar estado parcial', error);
+  }
+}
+function sessionAutosaveOnProjectApplied(origin, data) {
+  if (origin === 'session-autosave') {
+    const restoredAssets = assets.filter(a => a && a.type === 'image');
+    const savedIdentities = captureLayerIdentityByAssetId((data.assets || []).filter(a => a && a.type === 'image'));
+    sessionRestoreLayerIdentitiesPreserved = restoredAssets.every(a => savedIdentities[String(a.id)] === captureLayerIdentityByAssetId([a])[String(a.id)]);
+    sessionRestoreProjectWorldRestored = !!(data.projectWorld && projectWorld.initialized && projectWorld.baseStageW === data.projectWorld.baseStageW && projectWorld.baseStageH === data.projectWorld.baseStageH);
+    sessionRestoreNoPartialState = sessionRestoreHydratedAssetCount === sessionRestoreAssetCount && restoredAssets.length === sessionRestoreAssetCount;
+    sessionRestoreCompleted = sessionRestoreNoPartialState && sessionRestoreLayerIdentitiesPreserved && sessionRestoreProjectWorldRestored;
+    sessionRestoreFailed = !sessionRestoreCompleted;
+    return;
+  }
+  _sessionAutosaveEpoch++;
+  sessionRestoreDidNotOverrideManualLoad = true;
+  scheduleSessionAutosave('manual-load', true);
+}
+
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSessionAutosave(); });
+window.addEventListener('pagehide', flushSessionAutosave);
+document.addEventListener('change', () => scheduleSessionAutosave('editor-change'), true);
+document.addEventListener('pointerup', () => scheduleSessionAutosave('editor-pointerup'), true);
+
 let _pendingSaveIncludeImage = false;
 
 function openSaveModal(includeImage) {
@@ -29603,6 +29833,7 @@ function loadProjectFromJson() {
   if (shouldBlockGlobalUIAction()) return;
   const ta = document.getElementById('jsonPasteInput');
   if (!ta || !ta.value.trim()) { showStatus('Cole o JSON primeiro'); return; }
+  invalidateSessionRestore('manual-load');
   try {
     const data = JSON.parse(ta.value.trim());
     if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__captureRawParsedJson(data); // v8z4b30ZE diag
@@ -29624,6 +29855,7 @@ function loadProjectTrigger() {
 function loadProjectFromFile(e) {
   const file = e.target.files[0];
   if (!file) return;
+  invalidateSessionRestore('manual-load');
   const reader = new FileReader();
   reader.onload = evt => {
     try {
@@ -29662,7 +29894,9 @@ function dataUrlToFile(dataUrl, fallbackName) {
   return new File([bytes], `${fallbackName || 'projeto'}.${ext}`, { type: mime });
 }
 
-function applyProjectData(data) {
+function applyProjectData(data, loadOptions = {}) {
+  const loadOrigin = loadOptions.origin || 'manual-load';
+  if (loadOrigin !== 'session-autosave') invalidateSessionRestore('manual-load');
   deletedLayerSequences.clear();
   deletedLayerSequenceReused = false;
   layerIdentityPreservedAfterSaveLoad = true;
@@ -29715,13 +29949,13 @@ function applyProjectData(data) {
         ? data.projectWorld : null;
       loadImage(file, () => {
         if (token !== loadSessionToken) { loadSessionIgnoredStaleCallbacksCount++; loadSessionAborted = true; return; }
-        _pendingProjectWorldToPreserve = null; applyFrameData(data);
+        _pendingProjectWorldToPreserve = null; applyFrameData(data, { origin: loadOrigin });
       });
       showStatus('Carregando projeto com imagem…');
       return;
     } catch(err) {
       console.warn('[Arco] Falha ao preparar imageBase64 original — carregando projeto sem imagem', err);
-      applyProjectData({ ...data, hasImage: false, imageBase64: null });
+      applyProjectData({ ...data, hasImage: false, imageBase64: null }, { origin: loadOrigin });
       return;
     }
   }
@@ -29744,7 +29978,7 @@ function applyProjectData(data) {
     showStatus('Projeto carregado — selecione a imagem para continuar');
     return;
   }
-  applyFrameData(data);
+  applyFrameData(data, { origin: loadOrigin });
 }
 
 // ─── Legacy Project Migration — v8z4b17s ──────────────────────────────────────
@@ -29889,7 +30123,7 @@ function normalizeImportedFramePauses(projectData, frameCount) {
   return result;
 }
 
-function applyFrameData(data) {
+function applyFrameData(data, loadOptions = {}) {
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   clearFrameMultiSelectState();
   if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__capturePhase('beforeProjectApply'); // v8z4b30ZE diag
@@ -30253,6 +30487,7 @@ function applyFrameData(data) {
       showStatus('Projeto carregado!');
       checkWatermarkWarning();
     }
+    sessionAutosaveOnProjectApplied(loadOptions.origin || 'manual-load', data);
   })(3);
 }
 
@@ -35344,6 +35579,23 @@ function computeGhostHandleAudit() {
 function buildDiagnosticsText() {
   const L = [];
   const push = (k, v) => L.push(k + ': ' + v);
+
+  // v8z4b32E8E — diagnóstico técnico somente no painel protegido.
+  push('sessionAutosaveEnabled', String(sessionAutosaveEnabled));
+  push('sessionAutosaveCompleted', String(sessionAutosaveCompleted));
+  push('sessionAutosaveFailed', String(sessionAutosaveFailed));
+  push('sessionAutosaveRevision', String(sessionAutosaveRevision));
+  push('sessionAutosavePayloadBytes', String(sessionAutosavePayloadBytes));
+  push('sessionRestoreAttempted', String(sessionRestoreAttempted));
+  push('sessionRestoreCompleted', String(sessionRestoreCompleted));
+  push('sessionRestoreFailed', String(sessionRestoreFailed));
+  push('sessionRestoreAssetCount', String(sessionRestoreAssetCount));
+  push('sessionRestoreHydratedAssetCount', String(sessionRestoreHydratedAssetCount));
+  push('sessionRestoreLayerIdentitiesPreserved', String(sessionRestoreLayerIdentitiesPreserved));
+  push('sessionRestoreProjectWorldRestored', String(sessionRestoreProjectWorldRestored));
+  push('sessionRestoreNoPartialState', String(sessionRestoreNoPartialState));
+  push('sessionRestoreDidNotOverrideManualLoad', String(sessionRestoreDidNotOverrideManualLoad));
+  L.push('');
 
   // Versão
   push('APP_VERSION', (typeof APP_VERSION !== 'undefined') ? APP_VERSION : 'n/d');

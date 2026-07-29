@@ -69,3 +69,10 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - A `v8z4b32E8D` atribui a cada image asset um nome `Camada N` persistente e independente de posição/`zIndex`, com contador monotônico salvo no projeto.
 - Projetos antigos recebem migração determinística e não destrutiva; Save/Load, exclusão, reorder e seleção canônica preservam a identidade por asset.
 - Aprovação visual final permanece pendente de merge/publicação e validação em iPhone/Safari real por Roberto. Nenhuma promoção para produção está autorizada.
+
+## Atualização 2026-07-29 — v8z4b32E8E em PR
+
+- Base confirmada: `main` no HEAD `56d4ff6ea16c517803b43990e0e6cde7da8834fb`, versão `v8z4b32E8D`.
+- A `v8z4b32E8E` adiciona Session Autosave/Restore independente em IndexedDB, usando o modelo canônico completo e o pipeline oficial de hidratação, com checkpoint atômico, checksum, revisão e proteção contra callbacks antigos.
+- Load manual passa a definir a nova sessão corrente; Novo Projeto elimina o checkpoint anterior; restauração só ocorre após validação integral e pré-hidratação de todos os assets.
+- Preview, Export, renderer e interface não foram alterados. Aprovação final permanece pendente de validação por Roberto em iPhone/Safari real. Nenhuma promoção para produção está autorizada.

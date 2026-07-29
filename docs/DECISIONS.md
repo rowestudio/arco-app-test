@@ -202,3 +202,11 @@ Formato: ID, data, decisão, contexto, consequência e status.
 - **Contexto:** nomes posicionais derivados de array ou `zIndex` mudavam a identidade aparente do mesmo asset após reorder.
 - **Consequência:** criação e migração passam pela rotina canônica de identidade; Save/Load persiste identidade e contador; `originalFileName` é preservado sem virar título principal.
 - **Status:** ativa na `v8z4b32E8D`, com validação real em iPhone/Safari pendente.
+
+## DEC-2026-07-29-01 — Checkpoint integral de sessão em IndexedDB
+
+- **Data:** 2026-07-29.
+- **Decisão:** Session Autosave é independente do Save/Load manual, reutiliza `buildProjectData(true)` e `applyProjectData()`, e mantém em IndexedDB somente o último checkpoint completo com checksum e revisão monotônica.
+- **Contexto:** reload, descarte de página pelo iOS/Safari e retorno posterior não podem depender do Save manual nem aceitar reconstrução parcial.
+- **Consequência:** assets são pré-hidratados antes de qualquer aplicação; falha preserva o checkpoint anterior; Load manual invalida callbacks anteriores e se torna a sessão corrente; Novo Projeto limpa a sessão anterior antes de gravar a nova.
+- **Status:** ativa na `v8z4b32E8E`, com validação final em iPhone/Safari real pendente.

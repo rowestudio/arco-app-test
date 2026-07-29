@@ -219,3 +219,12 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: inspeção estática, logs de export e arquivo gerado quando possível.
 - Ambiente: desktop/Safari conforme suporte.
 - Automatizável: parcial.
+
+## TC-025 — Session Autosave/Restore integral
+
+- Pré-condição: projeto complexo com múltiplas imagens, Layers persistentes, transformações, frames, curvas e tempos.
+- Passos: editar; aguardar debounce; recarregar/descartar a página; reabrir; comparar estado; executar Preview e Export; fazer Load manual de outro projeto e recarregar; criar Novo Projeto e recarregar.
+- Resultado esperado: somente checkpoint completo e íntegro é restaurado; todos os assets hidratam; identidades e `nextLayerSequence` permanecem; Load manual vira a sessão corrente; Novo Projeto elimina a sessão anterior.
+- Evidência: diagnósticos Session Autosave/Restore, comparação do projeto e execução de Preview/Export.
+- Ambiente: WebKit automatizado e iPhone/Safari real obrigatório para aprovação final.
+- Automatizável: parcial; guardrail estático cobre arquitetura, integridade e precedência, mas o ciclo real permanece obrigatório.
