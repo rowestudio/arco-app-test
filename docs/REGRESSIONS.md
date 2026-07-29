@@ -74,3 +74,12 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Como detectar:** criar três camadas, reordenar, excluir a segunda, criar outra e executar Save/Load; os nomes originais devem permanecer e a nova deve ser `Camada 4`.
 - **Teste preventivo:** `node scripts/qa/check-persistent-layer-identities.mjs`.
 - **Status:** proteção técnica adicionada na `v8z4b32E8D`; validação publicada em iPhone/Safari permanece pendente.
+
+
+## REG-033 — Preview inicia relógio antes da confirmação visual do primeiro frame
+
+- **Problema:** o warm-up podia desenhar `t=0` e retornar imediatamente, sem aguardar composição posterior; erros eram absorvidos e o chamador marcava conclusão/agendava playback sem prova estruturada.
+- **Impacto:** pequena travada perceptível no início do Preview em iPhone/Safari, embora o MP4 exportado permanecesse fluido.
+- **Prevenção:** exigir resultado estruturado, render canônico final bem-sucedido em `t=0`, ciclos posteriores de `requestAnimationFrame`, validação de token após cada espera e somente então liberar loading, relógio e loop.
+- **Teste preventivo:** `node scripts/qa/check-preview-first-frame-warmup.mjs`, com fixtures positiva e negativa integradas a `node scripts/qa/run-self-tests.mjs`; repetição publicada em iPhone/Safari real continua obrigatória.
+- **Status:** proteção técnica adicionada na `v8z4b32E8F`; aprovação visual publicada permanece pendente.

@@ -228,3 +228,22 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: diagnósticos Session Autosave/Restore, comparação do projeto e execução de Preview/Export.
 - Ambiente: WebKit automatizado e iPhone/Safari real obrigatório para aprovação final.
 - Automatizável: parcial; guardrail estático cobre arquitetura, integridade e precedência, mas o ciclo real permanece obrigatório.
+
+
+## TC-026 — Primeiro frame do Preview confirmado antes do relógio
+
+- Pré-condição: projeto simples válido no início da timeline.
+- Passos: abrir o Preview; observar os primeiros segundos; fechar; repetir a abertura pelo menos três vezes.
+- Resultado esperado: `t=0` é renderizado e composto antes do relógio/loop, loading só desaparece após a confirmação e não há travada inicial perceptível.
+- Evidência: diagnósticos de ordem do warm-up e vídeo/observação das repetições.
+- Ambiente: iPhone/Safari real obrigatório para aprovação visual; guardrail estático como evidência técnica complementar.
+- Automatizável: parcial.
+
+## TC-027 — Primeiro frame após Session Restore
+
+- Pré-condição: projeto complexo restaurado por Session Restore, com múltiplos assets, frames e camadas íntegros.
+- Passos: iniciar o Preview imediatamente após a restauração; fechar e reabrir três vezes; durante outra tentativa, fechar rapidamente no loading e abrir novamente.
+- Resultado esperado: todos os assets permanecem visíveis; não há travada inicial; cancelamento invalida callbacks antigos e libera nova tentativa sem reload.
+- Evidência: comparação do projeto, diagnósticos de token/retry e observação do Preview.
+- Ambiente: iPhone/Safari real obrigatório.
+- Automatizável: parcial.

@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Última atualização documental: 2026-07-28.
+Última atualização documental: 2026-07-29.
 
 ## Estado auditado
 
@@ -70,9 +70,16 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - Projetos antigos recebem migração determinística e não destrutiva; Save/Load, exclusão, reorder e seleção canônica preservam a identidade por asset.
 - Aprovação visual final permanece pendente de merge/publicação e validação em iPhone/Safari real por Roberto. Nenhuma promoção para produção está autorizada.
 
-## Atualização 2026-07-29 — v8z4b32E8E em PR
+## Atualização 2026-07-29 — v8z4b32E8E mergeada e validada
 
-- Base confirmada: `main` no HEAD `56d4ff6ea16c517803b43990e0e6cde7da8834fb`, versão `v8z4b32E8D`.
-- A `v8z4b32E8E` adiciona Session Autosave/Restore independente em IndexedDB, usando o modelo canônico completo e o pipeline oficial de hidratação, com checkpoint atômico, checksum, revisão e proteção contra callbacks antigos.
-- Load manual passa a definir a nova sessão corrente; Novo Projeto elimina o checkpoint anterior; restauração só ocorre após validação integral e pré-hidratação de todos os assets.
-- Preview, Export, renderer e interface não foram alterados. Aprovação final permanece pendente de validação por Roberto em iPhone/Safari real. Nenhuma promoção para produção está autorizada.
+- A PR #455 foi mergeada na `main` de teste no commit `bed53f960427f18d128d50922daf10d435fa6cdc`, versão `v8z4b32E8E`.
+- Roberto aprovou em iPhone/Safari real Session Autosave, Session Restore, preservação de ProjectWorld e Save/Load.
+- Export foi aprovado e permanece fluido; o MP4 não apresenta a pequena travada observada exclusivamente no início do Preview.
+- A pendência isolada confirmada em projetos diferentes é a pequena travada perceptível no primeiro início do Preview.
+
+## Atualização 2026-07-29 — v8z4b32E8F em PR
+
+- Base de conteúdo confirmada no commit da `main` informado para a tarefa, `bed53f960427f18d128d50922daf10d435fa6cdc`, versão `v8z4b32E8E`; o clone não possuía referência local `main`, mas o `HEAD` de trabalho correspondia exatamente ao commit obrigatório.
+- A `v8z4b32E8F` limita-se ao preflight/warm-up do Preview: o relógio e o loop só são liberados após render canônico bem-sucedido de `t=0` e ciclos posteriores de composição, com falha/cancelamento liberando retry.
+- Export, WebCodecs, câmera, sampler, matemática do renderer, Save/Load e Session Autosave/Restore permanecem fora do diff funcional.
+- Estado: correção em PR no repositório de teste; aprovação visual permanece pendente de merge/publicação e validação por Roberto em iPhone/Safari real. Nenhuma promoção para produção está autorizada.

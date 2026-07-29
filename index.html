@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8F — base v8z4b32E8E. fix(preview): confirma render e composição do primeiro frame t=0 antes de liberar loading, relógio e loop visível; falha/cancelamento libera retry sem alterar Export ou matemática do renderer. APP_VERSION = APP_VERSION_NAME = v8z4b32E8F. -->
 <!-- Arco Motion App — v8z4b32E8E — base v8z4b32E8D. feat(session): persiste checkpoint canônico completo em IndexedDB com debounce, flush, checksum e revisão; pré-hidrata todos os assets antes da restauração automática; Load manual prevalece e Novo Projeto substitui a sessão anterior. APP_VERSION = APP_VERSION_NAME = v8z4b32E8E. -->
 <!-- Arco Motion App — v8z4b32E8D — base v8z4b32E8C. feat(layers): adiciona identidade nominal persistente Camada N aos image assets, contador nextLayerSequence monotônico, migração determinística e persistência Save/Load; reorder altera apenas posição/zIndex. APP_VERSION = APP_VERSION_NAME = v8z4b32E8D. -->
 <!-- Arco Motion App — v8z4b32E8C — base v8z4b32E8B. fix(render): Preview/Export compartilham readiness stableDrawable > fonte viva > recovery persistente, sem exigir decode redundante nem omitir asset visível; falha descarta snapshot parcial e libera loading/locks para retry. APP_VERSION = APP_VERSION_NAME = v8z4b32E8C. -->
@@ -7155,8 +7156,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8E';
-const APP_VERSION_NAME = 'v8z4b32E8E';
+const APP_VERSION = 'v8z4b32E8F';
+const APP_VERSION_NAME = 'v8z4b32E8F';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -23727,6 +23728,17 @@ async function startPreview() {
   _previewWarmupCompleted = false;
   _previewStartedAfterWarmup = false;
   _previewClockStartedBeforeWarmup = false;
+  _previewWarmupResult = null;
+  _previewWarmupCancelledByToken = false;
+  _previewWarmupErrorCaught = false;
+  _previewWarmupFinalRenderMs = null;
+  _previewClockStarted = false;
+  _previewClockStartedAt = null;
+  _previewInitialFrameCommittedAt = null;
+  _previewClockStartedAfterInitialFrameCommit = false;
+  _previewClockStartedBeforeInitialFrameCommit = false;
+  _previewLoadingHiddenAfterInitialFrameCommit = false;
+  _previewLoopScheduledAfterInitialFrameCommit = false;
   _previewWarmupFrameCount = 0;
   _previewWarmupSampleCount = 0;
   _previewWarmupRenderedInitialFrame = false;
@@ -23844,6 +23856,10 @@ async function startPreview() {
 
     if (!animStart) {
       animStart = ts;
+      _previewClockStarted = true;
+      _previewClockStartedAt = performance.now();
+      _previewClockStartedAfterInitialFrameCommit = _previewInitialFrameCommittedAt != null && _previewClockStartedAt >= _previewInitialFrameCommittedAt;
+      _previewClockStartedBeforeInitialFrameCommit = !_previewClockStartedAfterInitialFrameCommit;
       if (!_previewWarmupCompleted) _previewClockStartedBeforeWarmup = true;
     }
     const rafDelta = previewPerfStats.lastTs ? ts - previewPerfStats.lastTs : PREVIEW_TARGET_FRAME_MS;
@@ -23920,16 +23936,41 @@ async function startPreview() {
   }
   // v8z4b30ZI — preflight assíncrono: decode de assets + warm-up real antes do relógio visível.
   (async function _previewPreflightAndStartZI() {
-    await _preparePreviewRendererZI(pCtx, dispCanvas, pW2, pH2, totalPF, previewSource, _warmupSeg2T);
+    const warmupResult = await _preparePreviewRendererZI(
+      pCtx, dispCanvas, pW2, pH2, totalPF, previewSource, _warmupSeg2T, token
+    );
+    _previewWarmupResult = warmupResult;
+    _previewWarmupSampleCount = warmupResult.warmupSamplesRendered;
+    _previewWarmupFrameCount = warmupResult.warmupSamplesAttempted;
+    _previewWarmupRenderedInitialFrame = warmupResult.initialFrameRendered;
     if (!isPreviewing || token !== previewLoopToken) return; // guard: usuário fechou antes do preflight terminar
-    // Preflight concluído: marcar warm-up do loop como feito (skip fase in-loop)
+    if (!warmupResult.ok || !warmupResult.initialFrameRendered ||
+        !warmupResult.initialFrameCommittedBeforeClock) {
+      _previewWarmupCompleted = false;
+      _previewStartedAfterWarmup = false;
+      previewRendererPreparedForCurrentState = false;
+      previewPreparing = false;
+      previewStartLockActive = false;
+      previewRetryAvailable = true;
+      hidePreviewLoadingE7J('error');
+      ++previewLoopToken; // invalida qualquer callback antigo antes de voltar ao Stage
+      resetPreviewPlaybackState();
+      return;
+    }
+    // O relógio limitado só é reancorado depois do commit comprovado de t=0.
     _warmupLeft = 0;
     _previewWarmupCompleted = true;
     _previewStartedAfterWarmup = true;
-    if (!_previewWarmupEndedAt) {
-      _previewWarmupEndedAt = performance.now();
-      _previewWarmupDurationMs = _previewWarmupEndedAt - (_previewWarmupStartedAt || _previewWarmupEndedAt);
-    }
+    _previewWarmupEndedAt = performance.now();
+    _previewWarmupDurationMs = _previewWarmupEndedAt - (_previewWarmupStartedAt || _previewWarmupEndedAt);
+    resetPreviewClock();
+    animStart = null;
+    previewLastNow = null;
+    _previewLoadingHiddenAfterInitialFrameCommit = !!_previewInitialFrameCommittedAt;
+    hidePreviewLoadingE7J('first-frame');
+    previewPreparing = false;
+    previewStartLockActive = false;
+    _previewLoopScheduledAfterInitialFrameCommit = !!_previewInitialFrameCommittedAt;
     animFrame = requestAnimationFrame(loop);
   })();
 }
@@ -34409,25 +34450,95 @@ function _buildPreviewWarmupTimesZI(warmupSeg2T) {
   return _ts.map(function(v) { return Math.max(0, Math.min(1, v)); });
 }
 
-async function _preparePreviewRendererZI(pCtx, dispCanvas, pW2, pH2, totalPF, previewSrc, warmupSeg2T) {
-  if (previewRendererPreparedForCurrentState) return;
-  await _decodePreviewAssetsBestEffort();
-  const _times = _buildPreviewWarmupTimesZI(warmupSeg2T);
-  for (let _i = 0; _i < _times.length; _i++) {
-    try {
-      const _t = _times[_i];
-      const _fi = Math.round(_t * Math.max(1, totalPF - 1));
-      renderFrameSafely(pCtx, dispCanvas, _t, pW2, pH2, totalPF, _fi, { renderSource: previewSrc });
-    } catch (_e) { /* warm-up nunca propaga */ }
+async function _preparePreviewRendererZI(pCtx, dispCanvas, pW2, pH2, totalPF, previewSrc, warmupSeg2T, token) {
+  const result = {
+    ok: false,
+    initialFrameRenderAttempted: false,
+    initialFrameRendered: false,
+    initialFrameCommittedBeforeClock: false,
+    warmupSamplesAttempted: 0,
+    warmupSamplesRendered: 0,
+    compositorFramesAwaited: 0,
+    failureReason: '',
+    renderError: null
+  };
+  const cancelled = function() { return !isPreviewing || token !== previewLoopToken; };
+  if (previewRendererPreparedForCurrentState) {
+    result.ok = true;
+    result.initialFrameRenderAttempted = true;
+    result.initialFrameRendered = true;
+    result.initialFrameCommittedBeforeClock = true;
+    return result;
   }
-  // Dá chance ao Safari de efetivar composição/render antes do play visível.
-  await _nextAnimFrameAsync();
-  await _nextAnimFrameAsync();
-  // Volta para t=0 antes do relógio visível começar.
   try {
-    renderFrameSafely(pCtx, dispCanvas, 0, pW2, pH2, totalPF, 0, { renderSource: previewSrc });
-  } catch (_e) {}
-  previewRendererPreparedForCurrentState = true;
+    await _decodePreviewAssetsBestEffort();
+    if (cancelled()) {
+      result.failureReason = 'cancelled-by-token';
+      _previewWarmupCancelledByToken = true;
+      return result;
+    }
+    const _times = _buildPreviewWarmupTimesZI(warmupSeg2T);
+    for (let _i = 0; _i < _times.length; _i++) {
+      if (cancelled()) {
+        result.failureReason = 'cancelled-by-token';
+        _previewWarmupCancelledByToken = true;
+        return result;
+      }
+      result.warmupSamplesAttempted++;
+      try {
+        const _t = _times[_i];
+        const _fi = Math.round(_t * Math.max(1, totalPF - 1));
+        renderFrameSafely(pCtx, dispCanvas, _t, pW2, pH2, totalPF, _fi, { renderSource: previewSrc });
+        result.warmupSamplesRendered++;
+      } catch (_sampleError) {
+        result.renderError = (_sampleError && _sampleError.message) || String(_sampleError);
+        _previewWarmupErrorCaught = true;
+      }
+    }
+    if (cancelled()) {
+      result.failureReason = 'cancelled-by-token';
+      _previewWarmupCancelledByToken = true;
+      return result;
+    }
+    // O último desenho antes do playback usa o renderer canônico exatamente em t=0.
+    result.initialFrameRenderAttempted = true;
+    const _finalRenderStartedAt = performance.now();
+    try {
+      renderFrameSafely(pCtx, dispCanvas, 0, pW2, pH2, totalPF, 0, { renderSource: previewSrc });
+      result.initialFrameRendered = true;
+      _previewWarmupFinalRenderMs = performance.now() - _finalRenderStartedAt;
+    } catch (_renderError) {
+      _previewWarmupErrorCaught = true;
+      result.failureReason = 'initial-frame-render-failed';
+      result.renderError = (_renderError && _renderError.message) || String(_renderError);
+      return result;
+    }
+    // Safari recebe dois ciclos de composição posteriores ao desenho final.
+    await _nextAnimFrameAsync();
+    result.compositorFramesAwaited++;
+    if (cancelled()) {
+      result.failureReason = 'cancelled-by-token';
+      _previewWarmupCancelledByToken = true;
+      return result;
+    }
+    await _nextAnimFrameAsync();
+    result.compositorFramesAwaited++;
+    if (cancelled()) {
+      result.failureReason = 'cancelled-by-token';
+      _previewWarmupCancelledByToken = true;
+      return result;
+    }
+    result.initialFrameCommittedBeforeClock = true;
+    _previewInitialFrameCommittedAt = performance.now();
+    previewRendererPreparedForCurrentState = true;
+    result.ok = true;
+    return result;
+  } catch (_error) {
+    result.failureReason = result.failureReason || 'warmup-error';
+    result.renderError = (_error && _error.message) || String(_error);
+    _previewWarmupErrorCaught = true;
+    return result;
+  }
 }
 // ── fim v8z4b30ZI ────────────────────────────────────────────────────────────
 
@@ -34522,6 +34633,23 @@ let _previewWarmupAssetBoundsReady = false;
 let _previewWarmupSkippedReason = '';
 let _previewStartedAfterWarmup = false;
 let _previewClockStartedBeforeWarmup = false;
+let _previewWarmupResult = null;
+let _previewWarmupCancelledByToken = false;
+let _previewWarmupErrorCaught = false;
+let _previewWarmupFinalRenderMs = null;
+let _previewClockStarted = false;
+let _previewClockStartedAt = null;
+let _previewInitialFrameCommittedAt = null;
+let _previewClockStartedAfterInitialFrameCommit = false;
+let _previewClockStartedBeforeInitialFrameCommit = false;
+let _previewLoadingHiddenAfterInitialFrameCommit = false;
+let _previewLoopScheduledAfterInitialFrameCommit = false;
+const exportPipelineChanged = false;
+const cameraSamplerChanged = false;
+const cameraMathChanged = false;
+const previewRendererMathChanged = false;
+const sessionAutosaveChanged = false;
+const sessionRestoreChanged = false;
 
 // Estado de cache antes/depois do warm-up
 let _derivedStateDirtyBeforeWarmup = null;
@@ -38030,6 +38158,30 @@ function buildDiagnosticsText() {
     push('previewWarmupSkippedReason', _previewWarmupSkippedReason || 'none');
     push('previewStartedAfterWarmup', String(_previewStartedAfterWarmup));
     push('previewClockStartedBeforeWarmup', String(_previewClockStartedBeforeWarmup));
+    push('previewWarmupResult', _previewWarmupResult ? JSON.stringify(_previewWarmupResult) : 'n/d');
+    push('previewWarmupInitialFrameRenderAttempted', String(!!(_previewWarmupResult && _previewWarmupResult.initialFrameRenderAttempted)));
+    push('previewWarmupInitialFrameRendered', String(!!(_previewWarmupResult && _previewWarmupResult.initialFrameRendered)));
+    push('previewWarmupInitialFrameCommitted', String(!!(_previewWarmupResult && _previewWarmupResult.initialFrameCommittedBeforeClock)));
+    push('previewWarmupCompositorFramesAwaited', String(_previewWarmupResult ? _previewWarmupResult.compositorFramesAwaited : 0));
+    push('previewWarmupFinalRenderT', _previewWarmupResult && _previewWarmupResult.initialFrameRenderAttempted ? '0' : 'n/d');
+    push('previewWarmupFinalRenderMs', _previewWarmupFinalRenderMs != null ? _diagFmtNum(_previewWarmupFinalRenderMs, 2) + 'ms' : 'n/d');
+    push('previewWarmupFailureReason', _previewWarmupResult && _previewWarmupResult.failureReason ? _previewWarmupResult.failureReason : 'none');
+    push('previewClockStarted', String(_previewClockStarted));
+    push('previewClockStartedAt', _previewClockStartedAt != null ? _diagFmtNum(_previewClockStartedAt, 1) : 'n/d');
+    push('previewInitialFrameCommittedAt', _previewInitialFrameCommittedAt != null ? _diagFmtNum(_previewInitialFrameCommittedAt, 1) : 'n/d');
+    push('previewClockStartedAfterInitialFrameCommit', String(_previewClockStartedAfterInitialFrameCommit));
+    push('previewClockStartedBeforeInitialFrameCommit', String(_previewClockStartedBeforeInitialFrameCommit));
+    push('previewLoadingHiddenAfterInitialFrameCommit', String(_previewLoadingHiddenAfterInitialFrameCommit));
+    push('previewLoopScheduledAfterInitialFrameCommit', String(_previewLoopScheduledAfterInitialFrameCommit));
+    push('previewWarmupCancelledByToken', String(_previewWarmupCancelledByToken));
+    push('previewWarmupErrorCaught', String(_previewWarmupErrorCaught));
+    push('exportWarmupApplied', String(exportWarmupApplied));
+    push('exportPipelineChanged', String(exportPipelineChanged));
+    push('cameraSamplerChanged', String(cameraSamplerChanged));
+    push('cameraMathChanged', String(cameraMathChanged));
+    push('previewRendererMathChanged', String(previewRendererMathChanged));
+    push('sessionAutosaveChanged', String(sessionAutosaveChanged));
+    push('sessionRestoreChanged', String(sessionRestoreChanged));
     L.push('');
     L.push('— Cache antes/depois do warm-up (v8z4b30ZD) —');
     push('derivedStateDirtyBeforeWarmup', _derivedStateDirtyBeforeWarmup != null ? String(_derivedStateDirtyBeforeWarmup) : 'n/d');
