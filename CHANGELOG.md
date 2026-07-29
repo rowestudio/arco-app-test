@@ -4,6 +4,7 @@
 - Uma barreira central impede build, serialização, checksum e escrita normal em IndexedDB durante preparação/reprodução do Preview e Export.
 - Revisões pendentes são preservadas com epoch/motivo, adiadas ao iniciar playback e reagendadas uma única vez após a saída completa; `visibilitychange hidden` e `pagehide` mantêm flush prioritário.
 - Diagnósticos observacionais e guardrail/harness automatizado cobrem isolamento, retomada, consolidação de revisões, flush de segurança e precedência de Novo Projeto/Load manual.
+- A conclusão da escala/rotação de um Frame pela alça global marca exatamente uma revisão de Session Autosave quando houve transformação real; toque simples e transformação ghost não criam revisão.
 - Renderer, sampler, warm-up, relógio, WebCodecs, conteúdo/schema do checkpoint e Session Restore permanecem inalterados.
 - A eliminação perceptível da travada permanece pendente de validação publicada por Roberto em iPhone/Safari real com projetos de 4 e 9 ativos.
 

@@ -18280,6 +18280,7 @@ function ensureGlobalHandle() {
       startW: frames[fi].w,
       startH: frames[fi].h,
       startRot: frameRotations[fi] || 0,
+      initialRot: frameRotations[fi] || 0,
       cx, cy,
       initDist: Math.max(1, Math.hypot(hp.x - cx, hp.y - cy)),
       initAngle: Math.atan2(hp.y - cy, hp.x - cx),
@@ -18370,17 +18371,27 @@ function ensureGlobalHandle() {
   const endHandle = e => {
     if (handleDragState) {
       if (handleDragState.pointerId != null && e?.pointerId != null && e.pointerId !== handleDragState.pointerId) return;
+      const completedHandleDrag = handleDragState;
       try { globalHandleEl.releasePointerCapture?.(e.pointerId); } catch(err) {}
       hideAngleIndicator();
-      if (handleDragState.isGhost) {
+      if (completedHandleDrag.isGhost) {
         renderGhostFrame();
         resetGhostInteraction();
         resumeGhostFloatSoon();
       } else {
         // Sempre recalcular o melhor canto após soltar — sem memória
-        handleCornerByFrame[handleDragState.fi] = 'br'; // reset para preferência padrão
-        updateHandleCornerForFrame(handleDragState.fi);
+        handleCornerByFrame[completedHandleDrag.fi] = 'br'; // reset para preferência padrão
+        updateHandleCornerForFrame(completedHandleDrag.fi);
         renderAll();
+        const transformedFrame = frames[completedHandleDrag.fi];
+        const frameTransformChanged = completedHandleDrag.mode === 'scale'
+          ? !!transformedFrame && Math.abs(transformedFrame.w - completedHandleDrag.startW) > 0.01
+          : completedHandleDrag.mode === 'rotate'
+            ? Math.abs((frameRotations[completedHandleDrag.fi] || 0) - completedHandleDrag.initialRot) > 0.01
+            : false;
+        if (completedHandleDrag.undoCaptured && frameTransformChanged) {
+          markProjectDirty('frame-transform');
+        }
       }
     }
     handleDragState = null;

@@ -88,6 +88,6 @@ Catálogo obrigatório de regressões históricas e proteções.
 
 - **Problema:** o `pointerup` global agenda checkpoint inclusive ao tocar Play; após 700 ms, build integral, serialização, checksum e IndexedDB podem competir no thread principal com o início do Preview.
 - **Impacto:** pequena travada inicial perceptível no iPhone/Safari com checkpoints de dezenas de megabytes, apesar de assets prontos e primeiro frame confirmado antes do relógio.
-- **Prevenção:** mutações usam disparadores explícitos; Play não cria revisão; barreira central adia autosave normal durante Preview/Export e retoma uma única revisão pendente após a saída; flush de ocultação/saída permanece prioritário.
+- **Prevenção:** mutações usam disparadores explícitos, inclusive a conclusão de escala/rotação real pela alça global de Frame; Play e toque sem transformação não criam revisão; barreira central adia autosave normal durante Preview/Export e retoma uma única revisão pendente após a saída; flush de ocultação/saída permanece prioritário.
 - **Teste preventivo:** `node scripts/qa/check-session-autosave-preview-isolation.mjs` e `node scripts/qa/test-session-autosave-preview-isolation.mjs`, além do teste publicado em iPhone/Safari real com 4 e 9 ativos.
 - **Status:** proteção técnica implementada na `v8z4b32E8G`; confirmação visual por Roberto permanece pendente, portanto a travada não é declarada resolvida.

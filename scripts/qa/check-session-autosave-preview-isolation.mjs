@@ -41,4 +41,24 @@ if (/function startPreview\(\)[\s\S]{0,500}(?:scheduleSessionAutosave|markProjec
   fail('opening Preview mutates the autosave revision.');
 }
 
+const handleStart = html.indexOf('function ensureGlobalHandle()');
+const handleEnd = html.indexOf('// ═══════════════════════════════════════', handleStart);
+const handleSource = handleStart >= 0 ? html.slice(handleStart, handleEnd >= 0 ? handleEnd : undefined) : '';
+if (!handleSource || !handleSource.includes('const endHandle = e =>')) {
+  fail('Frame transform completion handler not found.');
+}
+if (!/frames\[fi\]\.w\s*=|frames\[fi\]\.h\s*=|frameRotations\[fi\]\s*=/.test(handleSource)) {
+  fail('Frame transform mutations not found in ensureGlobalHandle.');
+}
+const dirtyCalls = handleSource.match(/markProjectDirty\(['"]frame-transform['"]\)/g) || [];
+if (dirtyCalls.length !== 1) {
+  fail('Frame transform must mark the project dirty exactly once in endHandle.');
+}
+if (!/const completedHandleDrag = handleDragState;[\s\S]*completedHandleDrag\.mode === ['"]scale['"][\s\S]*completedHandleDrag\.mode === ['"]rotate['"][\s\S]*completedHandleDrag\.undoCaptured && frameTransformChanged[\s\S]*markProjectDirty\(['"]frame-transform['"]\)/.test(handleSource)) {
+  fail('endHandle does not preserve state and gate dirty marking on a completed, changed scale/rotate gesture.');
+}
+if (!/if\s*\(completedHandleDrag\.isGhost\)\s*\{[\s\S]*?\}\s*else\s*\{[\s\S]*?markProjectDirty\(['"]frame-transform['"]\)/.test(handleSource)) {
+  fail('Frame dirty marking is not isolated from the ghost transformation branch.');
+}
+
 console.log('Session autosave/Preview isolation guardrail passed.');
