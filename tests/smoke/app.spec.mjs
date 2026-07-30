@@ -54,7 +54,9 @@ async function installControlledAsyncGate(page, functionName) {
     window[gateKey] = { original, release };
     window[functionName] = async (...args) => {
       await pending;
-      return original(...args);
+      const result = await original(...args);
+      window[gateKey].lastResult = result;
+      return result;
     };
   }, { functionName, gateKey });
   return {
@@ -69,6 +71,9 @@ async function installControlledAsyncGate(page, functionName) {
         window[functionName] = control.original;
         delete window[gateKey];
       }, { functionName, gateKey });
+    },
+    async result() {
+      return page.evaluate((key) => window[key]?.lastResult, gateKey);
     },
   };
 }
@@ -207,10 +212,73 @@ test('startup E8I com checkpoint real pergunta, bloqueia dismissal e só então 
     await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
     await expect(dialog).toBeHidden();
     await expect(page.locator('#startupRecoveryBusy')).toBeHidden();
+    await expect.poll(() => restoreGate.result()).toBe(true);
+    const restoreState = await page.evaluate(() => ({
+      sessionRestoreCompleted,
+      sessionRestoreFailed,
+      sessionRestoreAppliedSuccessfully,
+      sessionRestoreTokenCurrent,
+      sessionRestoreNoPartialState,
+      sessionRestoreAssetCount,
+      sessionRestoreHydratedAssetCount,
+      restoredAssetCount: assets.filter((asset) => asset && asset.type === 'image').length,
+      sessionRestoreLayerIdentitiesPreserved,
+      sessionRestoreProjectWorldRestored,
+      appMode,
+      imageLoaded: hasImageLoaded(),
+      startupRecoveryEditorOpened,
+      startupRecoveryRestoreCompleted,
+      startupRecoveryRestoreFailed,
+      startupRecoveryOperationInProgress,
+    }));
+    expect(restoreState).toMatchObject({
+      sessionRestoreCompleted: true,
+      sessionRestoreFailed: false,
+      sessionRestoreAppliedSuccessfully: true,
+      sessionRestoreTokenCurrent: true,
+      sessionRestoreNoPartialState: true,
+      sessionRestoreLayerIdentitiesPreserved: true,
+      sessionRestoreProjectWorldRestored: true,
+      appMode: 'editor',
+      imageLoaded: true,
+      startupRecoveryEditorOpened: true,
+      startupRecoveryRestoreCompleted: true,
+      startupRecoveryRestoreFailed: false,
+      startupRecoveryOperationInProgress: false,
+    });
+    expect(restoreState.sessionRestoreHydratedAssetCount).toBe(restoreState.sessionRestoreAssetCount);
+    expect(restoreState.restoredAssetCount).toBe(restoreState.sessionRestoreAssetCount);
   } finally {
     await restoreGate.restore();
   }
   expect(fatalErrors).toEqual([]);
+});
+
+test('startup E8I mantém recuperação disponível após falha operacional real', async ({ page }) => {
+  await seedRealSessionCheckpoint(page);
+  await reloadForStartup(page);
+  const dialog = page.getByRole('dialog', { name: 'Continuar sessão anterior?' });
+  await expect(dialog).toBeVisible();
+  await page.evaluate(() => {
+    window.__arcoE8iFailedRestoreOriginal = window.restoreLastSessionAutosave;
+    window.restoreLastSessionAutosave = async () => false;
+  });
+  try {
+    await dialog.getByText('Continuar de onde parei', { exact: true }).click();
+    await expect(dialog).toBeVisible();
+    await expect(page.locator('#startupRecoveryError')).toContainText('Não foi possível recuperar a sessão.');
+    await expect(page.locator('#startupRecoveryBusy')).toBeHidden();
+    await expect(page.locator('#startupRecoveryContinueButton')).toBeEnabled();
+    await expect(page.locator('#startupRecoveryDiscardButton')).toBeEnabled();
+    await expect(page.locator('body')).toHaveClass(/mode-launcher/);
+    expect(await sessionCheckpointExists(page)).toBe(true);
+    await expect.poll(() => page.evaluate(() => startupRecoveryOperationInProgress)).toBe(false);
+  } finally {
+    await page.evaluate(() => {
+      window.restoreLastSessionAutosave = window.__arcoE8iFailedRestoreOriginal;
+      delete window.__arcoE8iFailedRestoreOriginal;
+    });
+  }
 });
 
 test('startup E8I descarta checkpoint real e ele não reaparece', async ({ page }) => {

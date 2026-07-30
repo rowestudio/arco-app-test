@@ -29606,6 +29606,8 @@ let sessionAutosavePayloadBytes = 0;
 let sessionRestoreAttempted = false;
 let sessionRestoreCompleted = false;
 let sessionRestoreFailed = false;
+let sessionRestoreAppliedSuccessfully = false;
+let sessionRestoreTokenCurrent = false;
 let sessionRestoreAssetCount = 0;
 let sessionRestoreHydratedAssetCount = 0;
 let sessionRestoreLayerIdentitiesPreserved = true;
@@ -30327,6 +30329,8 @@ async function restoreLastSessionAutosave(knownCheckpoint = null) {
   sessionRestoreAttempted = true;
   sessionRestoreCompleted = false;
   sessionRestoreFailed = false;
+  sessionRestoreAppliedSuccessfully = false;
+  sessionRestoreTokenCurrent = false;
   const restoreToken = invalidateSessionRestore('session-restore-start');
   try {
     const checkpoint = knownCheckpoint || await readSessionCheckpoint();
@@ -30343,8 +30347,18 @@ async function restoreLastSessionAutosave(knownCheckpoint = null) {
     _sessionAutosaveQueuedRevision = Math.max(_sessionAutosaveQueuedRevision, sessionAutosaveRevision);
     _sessionAutosaveCommittedRevision = sessionAutosaveRevision;
     if (!isCurrentSessionRestore(restoreToken)) return false;
-    applyProjectData(data, { origin: 'session-autosave' });
-    return sessionRestoreCompleted === true;
+    const applicationCompleted = await new Promise((resolve) => {
+      applyProjectData(data, { origin: 'session-autosave', onApplied: resolve });
+    });
+    const restoredAssetCount = assets.filter(a => a && a.type === 'image').length;
+    sessionRestoreTokenCurrent = isCurrentSessionRestore(restoreToken);
+    sessionRestoreAppliedSuccessfully = applicationCompleted === true && sessionRestoreTokenCurrent &&
+      sessionRestoreHydratedAssetCount === sessionRestoreAssetCount &&
+      restoredAssetCount === sessionRestoreAssetCount && sessionRestoreNoPartialState === true &&
+      appMode === 'editor' && hasImageLoaded();
+    sessionRestoreCompleted = sessionRestoreAppliedSuccessfully;
+    sessionRestoreFailed = !sessionRestoreAppliedSuccessfully;
+    return sessionRestoreAppliedSuccessfully;
   } catch (error) {
     sessionRestoreFailed = true;
     sessionRestoreNoPartialState = !hasImageLoaded();
@@ -30667,14 +30681,19 @@ function applyProjectData(data, loadOptions = {}) {
         Number.isFinite(data.projectWorld.baseStageH) && data.projectWorld.baseStageH > 0)
         ? data.projectWorld : null;
       loadImage(file, () => {
-        if (token !== loadSessionToken) { loadSessionIgnoredStaleCallbacksCount++; loadSessionAborted = true; return; }
-        _pendingProjectWorldToPreserve = null; applyFrameData(data, { origin: loadOrigin });
+        if (token !== loadSessionToken) {
+          loadSessionIgnoredStaleCallbacksCount++;
+          loadSessionAborted = true;
+          if (typeof loadOptions.onApplied === 'function') loadOptions.onApplied(false);
+          return;
+        }
+        _pendingProjectWorldToPreserve = null; applyFrameData(data, loadOptions);
       });
       showStatus('Carregando projeto com imagem…');
       return;
     } catch(err) {
       console.warn('[Arco] Falha ao preparar imageBase64 original — carregando projeto sem imagem', err);
-      applyProjectData({ ...data, hasImage: false, imageBase64: null }, { origin: loadOrigin });
+      applyProjectData({ ...data, hasImage: false, imageBase64: null }, loadOptions);
       return;
     }
   }
@@ -31207,6 +31226,7 @@ function applyFrameData(data, loadOptions = {}) {
       checkWatermarkWarning();
     }
     sessionAutosaveOnProjectApplied(loadOptions.origin || 'manual-load', data);
+    if (typeof loadOptions.onApplied === 'function') loadOptions.onApplied(true);
   })(3);
 }
 
@@ -36409,6 +36429,8 @@ function buildDiagnosticsText() {
   push('sessionAutosaveWriteCountDuringLastPreview', String(sessionAutosaveWriteCountDuringLastPreview));
   push('sessionRestoreAttempted', String(sessionRestoreAttempted));
   push('sessionRestoreCompleted', String(sessionRestoreCompleted));
+  push('sessionRestoreAppliedSuccessfully', String(sessionRestoreAppliedSuccessfully));
+  push('sessionRestoreTokenCurrent', String(sessionRestoreTokenCurrent));
   push('sessionRestoreFailed', String(sessionRestoreFailed));
   push('sessionRestoreAssetCount', String(sessionRestoreAssetCount));
   push('sessionRestoreHydratedAssetCount', String(sessionRestoreHydratedAssetCount));
