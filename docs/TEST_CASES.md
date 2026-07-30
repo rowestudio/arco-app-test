@@ -256,3 +256,12 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: `node scripts/qa/check-session-autosave-preview-isolation.mjs`, `node scripts/qa/test-session-autosave-preview-isolation.mjs` e diagnósticos `sessionAutosave*`.
 - Ambiente: harness Node; WebKit CI; iPhone/Safari real obrigatório com projetos de 4 e 9 ativos para aprovação visual.
 - Automatizável: parcial; concorrência lógica automatizada, percepção visual real pendente.
+
+## TC-029 — Escolha de recarga e intenção de startup de uso único
+
+- Pré-condição: launcher sem checkpoint e projeto complexo com checkpoint grande disponíveis em execuções separadas.
+- Passos: abrir Recarregar pelo launcher e pelo menu; cancelar por X, toque fora e Escape; restaurar imediatamente após uma mutação; repetir com dois toques; reiniciar do zero; fechar e reabrir o PWA; simular falhas de escrita e exclusão no IndexedDB.
+- Resultado esperado: nenhuma recarga ocorre sem escolha; restore preserva a última revisão completa; clean abre o launcher e a sessão antiga não reaparece; operações duplicadas são bloqueadas; falhas mantêm a tela atual e permitem nova tentativa; arquivos manuais não são alterados.
+- Evidência: diagnósticos `reload*`, comparação integral do projeto, console sem erro fatal, ausência de tela branca/HTML bruto e arquivo JSON manual ainda acessível.
+- Ambiente: WebKit automatizado e iPhone/Safari/PWA instalado obrigatório para aprovação final.
+- Automatizável: parcial; guardrail estático cobre a sequência arquitetural e WebKit cobre o modal, mas IndexedDB/PWA e preservação visual integral exigem teste real.

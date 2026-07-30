@@ -90,3 +90,10 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - Roberto reprovou visualmente a E8F: a pequena travada inicial persistiu tanto no projeto com 9 ativos (~69 MB por checkpoint) quanto no projeto com 4 ativos (~53 MB).
 - Os diagnósticos comprovaram que o primeiro frame `t=0` foi renderizado e composto antes do relógio; essa hipótese fica encerrada como causa da travada observada.
 - A `v8z4b32E8G` isola Session Autosave de Preview/Export, removendo o disparo global por `pointerup` e adiando checkpoint pendente sem perda de revisão. A aprovação visual continua pendente de publicação e teste de Roberto em iPhone/Safari real.
+
+## Atualização 2026-07-29 — v8z4b32E8G mergeada e v8z4b32E8H em desenvolvimento
+
+- Base confirmada no merge commit da PR #457, `e76ad1987f267d6f7a63df6529b2e8c6c6abbad0`, versão `v8z4b32E8G`.
+- A `v8z4b32E8H` substitui a recarga direta por uma escolha explícita entre concluir o checkpoint e restaurá-lo ou apagar somente a sessão automática e abrir o launcher limpo.
+- As duas operações aguardam IndexedDB, são mutuamente exclusivas e usam intenção de startup isolada e de uso único; falhas mantêm a abertura atual sem recarga silenciosa.
+- Preview, Export, WebCodecs, renderer, Save/Load manual, schema do projeto, Frames, Layers e ProjectWorld permanecem fora do diff funcional. Validação em iPhone/Safari/PWA real continua obrigatória.

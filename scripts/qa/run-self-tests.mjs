@@ -237,6 +237,16 @@ expectCase(results, 'Persistent Reset/Format without dirty fail', 'check-session
 });
 expectCase(results, 'Session autosave/Preview race behavior passes', 'test-session-autosave-preview-isolation.mjs', 0);
 
+expectCase(results, 'Reload session choice implementation passes', 'check-reload-session-choice.mjs', 0, {
+  env: { QA_RELOAD_CHOICE_HTML: path.join(repoRoot, 'index.html') },
+});
+expectCase(results, 'Reload session choice valid fixture passes', 'check-reload-session-choice.mjs', 0, {
+  env: { QA_RELOAD_CHOICE_HTML: path.join(fixtures, 'reload-session-choice-valid.html') },
+});
+expectCase(results, 'Reload direct onclick and unawaited flush fail', 'check-reload-session-choice.mjs', 1, {
+  env: { QA_RELOAD_CHOICE_HTML: path.join(fixtures, 'reload-session-choice-invalid.html') },
+});
+
 expectCase(results, 'Preview first-frame warm-up valid fixture passes', 'check-preview-first-frame-warmup.mjs', 0, {
   env: { QA_PREVIEW_WARMUP_HTML: path.join(fixtures, 'preview-first-frame-warmup-valid.html') },
 });

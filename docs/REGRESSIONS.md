@@ -91,3 +91,11 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Prevenção:** mutações usam disparadores explícitos, inclusive transformação pelos controles reais, Reset realmente aplicado, troca real de formato e comandos de Frames; Play, toque sem transformação, Reset sem diferença e formato já ativo não criam revisão; barreira central adia autosave normal durante Preview/Export e retoma uma única revisão pendente após saída completa; flush de ocultação/saída permanece prioritário.
 - **Teste preventivo:** `node scripts/qa/check-session-autosave-preview-isolation.mjs` e `node scripts/qa/test-session-autosave-preview-isolation.mjs`, além do teste publicado em iPhone/Safari real com 4 e 9 ativos.
 - **Status:** proteção técnica implementada na `v8z4b32E8G`; confirmação visual por Roberto permanece pendente, portanto a travada não é declarada resolvida.
+
+## REG-035 — Recarregar perde a última revisão ou restaura sessão sem escolha
+
+- **Problema:** a recarga direta pode iniciar antes da conclusão do checkpoint, deixar o PWA sem camada visual estável e restaurar silenciosamente uma sessão que o usuário pretendia abandonar.
+- **Prevenção:** todo comando Recarregar usa um controlador único; restaurar aguarda o flush da revisão mais recente, reiniciar do zero aguarda o clear, e somente então grava uma intenção de startup de uso único e recarrega.
+- **Como detectar:** verificar ausência de `location.reload()` em `onclick`, escolha explícita, bloqueio de toque duplicado, tratamento das falhas de escrita/exclusão e consumo único das intenções `restore`/`clean`.
+- **Teste preventivo:** `node scripts/qa/check-reload-session-choice.mjs`, self-tests positivo/negativo e WebKit Smoke Tests; persistência integral e comportamento PWA exigem iPhone/Safari real.
+- **Status:** proteção técnica adicionada na `v8z4b32E8H`; validação real pendente.
