@@ -53,3 +53,27 @@ test('Recarregar abre escolha explícita e pode ser cancelado sem recarga', asyn
   await expect(dialog).toBeHidden();
   await expect(page.getByText('Arco Motion App', { exact: true })).toBeVisible();
 });
+
+test('Reiniciar do zero sem projeto recarrega e reapresenta o launcher limpo', async ({ page }) => {
+  const pageErrors = [];
+  const consoleErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message || String(error)));
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
+
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await page.getByRole('button', { name: 'Recarregar', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Como deseja recarregar?' });
+  await expect(dialog).toBeVisible();
+
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30_000 }),
+    dialog.getByText('Reiniciar do zero', { exact: true }).click(),
+  ]);
+
+  await expect(page.getByText('Arco Motion App', { exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Como deseja recarregar?' })).toBeHidden();
+  const capturedErrors = [...pageErrors.map((error) => `pageerror: ${error}`), ...consoleErrors.map((error) => `console.error: ${error}`)];
+  expect(capturedErrors, `erro JS capturado no reinício limpo:\n${capturedErrors.join('\n')}`).toEqual([]);
+});

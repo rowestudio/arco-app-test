@@ -15,7 +15,8 @@ for (const [fragment, label] of [
   ['const cleared = await clearSessionAutosave();', 'awaited checkpoint clear'],
   ["sessionStorage.setItem(RELOAD_STARTUP_INTENT_KEY, intent);", 'isolated startup intent write'],
   ['const reloadStartupIntent = consumeReloadStartupIntent();', 'startup intent consumption'],
-  ["if (reloadStartupIntent === 'clean')", 'clean startup restore bypass'],
+  ['applyReloadStartupIntent(reloadStartupIntent);', 'startup intent routing'],
+  ["if (intent === 'clean')", 'clean startup restore bypass'],
   ["executeReloadAfterCompletedOperation('restore');", 'restore reload after completion'],
   ["executeReloadAfterCompletedOperation('clean');", 'clean reload after completion'],
   ['setReloadRestartingVisible(true);', 'stable restarting layer'],
@@ -27,8 +28,8 @@ for (const name of [
   'reloadSessionFlushCompleted', 'reloadSessionFlushFailed', 'reloadSessionCheckpointClearAttempted',
   'reloadSessionCheckpointCleared', 'reloadSessionCheckpointClearFailed', 'reloadStartupIntentWritten',
   'reloadStartupIntentConsumed', 'reloadExpectedRestore', 'reloadExpectedCleanLauncher',
-  'reloadRestoreCompleted', 'reloadOpenedCleanLauncher', 'reloadRawHtmlDetected',
-  'reloadWhiteScreenDetected',
+  'reloadRestoreCompleted', 'reloadOpenedCleanLauncher', 'reloadRestartingLayerShown',
+  'reloadStartupUiReady', 'reloadStartupLauncherVisible', 'reloadStartupEditorRestored',
 ]) requireSource(`push('${name}'`, `protected diagnostic ${name}`);
 
 if (/onclick\s*=\s*["'][^"']*(?:window\.)?location\.reload\s*\(/i.test(html)) {

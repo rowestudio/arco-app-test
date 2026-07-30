@@ -26487,13 +26487,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setAppMode('launcher');
   showStartLauncher();
   const reloadStartupIntent = consumeReloadStartupIntent();
-  if (reloadStartupIntent === 'clean') {
-    reloadExpectedCleanLauncher = true;
-    reloadOpenedCleanLauncher = true;
-  } else {
-    reloadExpectedRestore = reloadStartupIntent === 'restore';
-    restoreLastSessionAutosave();
-  }
+  applyReloadStartupIntent(reloadStartupIntent);
   const loopSlider = document.getElementById('loopDurSlider');
   if (loopSlider) {
     loopSlider.addEventListener('input', function() {
@@ -29640,8 +29634,10 @@ let reloadExpectedRestore = false;
 let reloadExpectedCleanLauncher = false;
 let reloadRestoreCompleted = false;
 let reloadOpenedCleanLauncher = false;
-let reloadRawHtmlDetected = false;
-let reloadWhiteScreenDetected = false;
+let reloadRestartingLayerShown = false;
+let reloadStartupUiReady = false;
+let reloadStartupLauncherVisible = false;
+let reloadStartupEditorRestored = false;
 let _reloadChoiceAvailabilityToken = 0;
 const _sessionAutosaveActiveWrites = new Set();
 let _sessionAutosaveSuppressSafetyFlush = false;
@@ -29908,6 +29904,8 @@ function setReloadRestartingVisible(visible) {
   if (!layer) return;
   layer.classList.toggle('show', visible);
   layer.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  reloadRestartingLayerShown = !!(visible && layer.classList.contains('show') &&
+    layer.getAttribute('aria-hidden') === 'false' && window.getComputedStyle(layer).display !== 'none');
 }
 function showReloadChoiceError(message) {
   const error = document.getElementById('reloadChoiceError');
@@ -29965,6 +29963,34 @@ function consumeReloadStartupIntent() {
     return intent;
   }
   return null;
+}
+function isReloadStartupElementVisible(element) {
+  if (!element || element.getAttribute('aria-hidden') === 'true') return false;
+  const style = window.getComputedStyle(element);
+  return style.display !== 'none' && style.visibility !== 'hidden';
+}
+function updateReloadStartupUiDiagnostics(intent) {
+  if (intent === 'clean') {
+    reloadStartupLauncherVisible = appMode === 'launcher' && isReloadStartupElementVisible(startLauncher);
+    reloadOpenedCleanLauncher = reloadStartupLauncherVisible;
+    reloadStartupUiReady = reloadStartupLauncherVisible;
+    return;
+  }
+  if (intent === 'restore') {
+    reloadStartupEditorRestored = sessionRestoreCompleted && appMode === 'editor' &&
+      hasImageLoaded() && !isReloadStartupElementVisible(startLauncher);
+    reloadRestoreCompleted = reloadStartupEditorRestored;
+    reloadStartupUiReady = reloadStartupEditorRestored;
+  }
+}
+function applyReloadStartupIntent(intent) {
+  if (intent === 'clean') {
+    reloadExpectedCleanLauncher = true;
+    updateReloadStartupUiDiagnostics('clean');
+    return;
+  }
+  reloadExpectedRestore = intent === 'restore';
+  restoreLastSessionAutosave();
 }
 function writeReloadStartupIntent(intent) {
   try {
@@ -30103,7 +30129,7 @@ function sessionAutosaveOnProjectApplied(origin, data) {
     sessionRestoreNoPartialState = sessionRestoreHydratedAssetCount === sessionRestoreAssetCount && restoredAssets.length === sessionRestoreAssetCount;
     sessionRestoreCompleted = sessionRestoreNoPartialState && sessionRestoreLayerIdentitiesPreserved && sessionRestoreProjectWorldRestored;
     sessionRestoreFailed = !sessionRestoreCompleted;
-    reloadRestoreCompleted = reloadExpectedRestore && sessionRestoreCompleted;
+    if (reloadExpectedRestore) updateReloadStartupUiDiagnostics('restore');
     return;
   }
   _sessionAutosaveEpoch++;
@@ -36166,8 +36192,10 @@ function buildDiagnosticsText() {
   push('reloadExpectedCleanLauncher', String(reloadExpectedCleanLauncher));
   push('reloadRestoreCompleted', String(reloadRestoreCompleted));
   push('reloadOpenedCleanLauncher', String(reloadOpenedCleanLauncher));
-  push('reloadRawHtmlDetected', String(reloadRawHtmlDetected));
-  push('reloadWhiteScreenDetected', String(reloadWhiteScreenDetected));
+  push('reloadRestartingLayerShown', String(reloadRestartingLayerShown));
+  push('reloadStartupUiReady', String(reloadStartupUiReady));
+  push('reloadStartupLauncherVisible', String(reloadStartupLauncherVisible));
+  push('reloadStartupEditorRestored', String(reloadStartupEditorRestored));
   L.push('');
 
   // Versão

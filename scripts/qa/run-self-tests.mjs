@@ -246,6 +246,7 @@ expectCase(results, 'Reload session choice valid fixture passes', 'check-reload-
 expectCase(results, 'Reload direct onclick and unawaited flush fail', 'check-reload-session-choice.mjs', 1, {
   env: { QA_RELOAD_CHOICE_HTML: path.join(fixtures, 'reload-session-choice-invalid.html') },
 });
+expectCase(results, 'Reload session choice asynchronous behavior passes', 'test-reload-session-choice.mjs', 0);
 
 expectCase(results, 'Preview first-frame warm-up valid fixture passes', 'check-preview-first-frame-warmup.mjs', 0, {
   env: { QA_PREVIEW_WARMUP_HTML: path.join(fixtures, 'preview-first-frame-warmup-valid.html') },
