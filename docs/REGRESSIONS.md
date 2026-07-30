@@ -108,5 +108,5 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Prevenção:** sem intenção explícita da E8H, inspecionar e validar o checkpoint sem hidratação/aplicação; checkpoint válido abre modal próprio e não fechável, e somente a escolha aceita inicia restore ou clear aguardável.
 - **Exceção:** intenções `restore` e `clean` consumidas pelo fluxo Recarregar da E8H mantêm prioridade e não mostram a pergunta de startup.
 - **Como detectar:** confirmar launcher estável antes da escolha, nenhuma chamada antecipada de restore/hidratação/aplicação, exclusão concluída antes de confirmar launcher limpo e retomada da mesma instância sem novo diálogo.
-- **Teste preventivo:** `node scripts/qa/check-startup-session-choice.mjs`, `node scripts/qa/test-startup-session-choice.mjs`, WebKit e teste real em iPhone/Safari/PWA.
+- **Teste preventivo:** `node scripts/qa/check-startup-session-choice.mjs`, harness `node scripts/qa/test-startup-session-choice.mjs` executando os controladores reais extraídos do app, WebKit com checkpoint real no IndexedDB e teste real em iPhone/Safari/PWA.
 - **Status:** proteção técnica adicionada na `v8z4b32E8I`; validação publicada em iPhone/Safari/PWA pendente.

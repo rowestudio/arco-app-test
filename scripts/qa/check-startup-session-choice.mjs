@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 
 const html = readFileSync(process.env.QA_STARTUP_SESSION_HTML || 'index.html', 'utf8');
+const behavioralHarness = readFileSync('scripts/qa/test-startup-session-choice.mjs', 'utf8');
+const webkitSmoke = readFileSync('tests/smoke/app.spec.mjs', 'utf8');
 const fail = (message) => { throw new Error(`Startup session choice guardrail failed: ${message}`); };
 const requireSource = (fragment, label) => { if (!html.includes(fragment)) fail(`${label} not found.`); };
 
@@ -11,6 +13,8 @@ for (const [fragment, label] of [
   ['Recupera o projeto no estado em que você deixou.', 'continue helper'],
   ['Começar novo projeto', 'discard action'],
   ['Descarta a sessão automática anterior e volta ao início.', 'discard helper'],
+  ['Recuperando sessão…', 'continue busy feedback'],
+  ['Preparando novo projeto…', 'discard busy feedback'],
   ['async function inspectStartupSessionCheckpoint()', 'checkpoint inspection'],
   ['function openStartupRecoveryDialog(checkpoint)', 'dedicated dialog controller'],
   ['function closeStartupRecoveryDialog(choice)', 'choice-only close controller'],
@@ -22,8 +26,10 @@ for (const [fragment, label] of [
   ["if (reloadStartupIntent === 'restore' || reloadStartupIntent === 'clean')", 'explicit E8H priority'],
   ['await applyReloadStartupIntent(reloadStartupIntent);', 'explicit E8H routing'],
   ['openStartupRecoveryDialog(inspection.checkpoint);', 'dialog after valid inspection'],
-  ['const restored = await restoreLastSessionAutosave(_startupRecoveryCheckpoint);', 'restore after continue choice'],
 ]) requireSource(fragment, label);
+if (!/(?:const\s+)?restored\s*=\s*await restoreLastSessionAutosave\(_startupRecoveryCheckpoint\)/.test(html)) {
+  fail('restore after continue choice not found.');
+}
 
 for (const name of [
   'startupRecoveryCheckpointInspectionAttempted', 'startupRecoveryCheckpointFound',
@@ -39,6 +45,8 @@ for (const name of [
   'startupRecoveryBypassReason', 'startupRecoveryExplicitReloadIntent',
   'startupRecoverySameLiveInstanceResume', 'startupRecoveryNoCheckpoint',
   'startupRecoveryInvalidCheckpointHandledSafely',
+  'startupRecoveryBusyVisible', 'startupRecoveryBusyAction',
+  'startupRecoveryBusyClearedAfterFailure', 'startupRecoveryBusyClearedAfterSuccess',
 ]) requireSource(`push('${name}'`, `protected diagnostic ${name}`);
 
 const dialogMatch = html.match(/<div id="startupRecoveryDialog"[\s\S]*?<\/div>\s*<\/div>/);
@@ -53,5 +61,17 @@ if (/function handleNormalAppStartup\([\s\S]*?\n}\s*function consumeReloadStartu
 }
 const discardController = html.match(/async function discardPreviousSessionAndOpenLauncher\([\s\S]*?async function handleNormalAppStartup/);
 if (!discardController || !/await clearSessionAutosave\(\)/.test(discardController[0])) fail('startup discard does not await checkpoint clear.');
+if (behavioralHarness.includes('createController(')) fail('behavioral harness reimplements a parallel startup controller.');
+for (const name of ['inspectStartupSessionCheckpoint', 'setStartupRecoveryBusy', 'showStartupRecoveryError',
+  'openStartupRecoveryDialog', 'closeStartupRecoveryDialog', 'returnStartupRecoveryToLauncher',
+  'continuePreviousSession', 'discardPreviousSessionAndOpenLauncher', 'handleNormalAppStartup',
+  'consumeReloadStartupIntent', 'applyReloadStartupIntent']) {
+  if (!behavioralHarness.includes(`extractFunction('${name}')`)) fail(`behavioral harness does not execute real ${name}.`);
+}
+if (webkitSmoke.includes('openStartupRecoveryDialog({ complete: true })')) fail('WebKit opens the recovery modal directly instead of exercising startup.');
+for (const fragment of ['indexedDB.deleteDatabase', 'SESSION_AUTOSAVE_STORE', 'SESSION_AUTOSAVE_KEY',
+  'SESSION_AUTOSAVE_SCHEMA', 'sessionPayloadChecksum(payload)', 'isCompleteSessionProjectData(data)']) {
+  if (!webkitSmoke.includes(fragment)) fail(`WebKit real checkpoint coverage missing ${fragment}.`);
+}
 
 console.log('Startup session choice guardrail passed.');
