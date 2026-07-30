@@ -44,6 +44,51 @@ function captureFatalErrors(page) {
   return errors;
 }
 
+async function installControlledAsyncGate(page, functionName) {
+  const gateKey = `__arcoE8iGate_${functionName}`;
+  await page.evaluate(({ functionName, gateKey }) => {
+    const original = window[functionName];
+    if (typeof original !== 'function') throw new Error(`função indisponível: ${functionName}`);
+    let release;
+    const pending = new Promise((resolve) => { release = resolve; });
+    window[gateKey] = { original, release };
+    window[functionName] = async (...args) => {
+      await pending;
+      return original(...args);
+    };
+  }, { functionName, gateKey });
+  return {
+    async release() {
+      await page.evaluate((key) => window[key]?.release(), gateKey);
+    },
+    async restore() {
+      await page.evaluate(({ functionName, gateKey }) => {
+        const control = window[gateKey];
+        if (!control) return;
+        control.release();
+        window[functionName] = control.original;
+        delete window[gateKey];
+      }, { functionName, gateKey });
+    },
+  };
+}
+
+async function sessionCheckpointExists(page) {
+  return page.evaluate(async () => {
+    const db = await openSessionAutosaveDb();
+    try {
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(SESSION_AUTOSAVE_STORE, 'readonly');
+        const request = tx.objectStore(SESSION_AUTOSAVE_STORE).get(SESSION_AUTOSAVE_KEY);
+        request.onsuccess = () => resolve(!!request.result);
+        request.onerror = () => reject(request.error);
+      });
+    } finally {
+      db.close();
+    }
+  });
+}
+
 test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', async ({ page }, testInfo) => {
   const pageErrors = [];
   const consoleErrors = [];
@@ -148,10 +193,23 @@ test('startup E8I com checkpoint real pergunta, bloqueia dismissal e só então 
   await page.screenshot({ path: screenshotPath, fullPage: true });
   await testInfo.attach('arco-motion-startup-recovery-choice', { path: screenshotPath, contentType: 'image/png' });
 
-  await dialog.getByText('Continuar de onde parei', { exact: true }).click();
-  await expect(page.locator('#startupRecoveryBusy')).toContainText('Recuperando sessão…');
-  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
-  await expect(dialog).toBeHidden();
+  const restoreGate = await installControlledAsyncGate(page, 'restoreLastSessionAutosave');
+  try {
+    await dialog.getByText('Continuar de onde parei', { exact: true }).click();
+    await expect(page.locator('#startupRecoveryBusy')).toBeVisible();
+    await expect(page.locator('#startupRecoveryBusy')).toContainText('Recuperando sessão…');
+    await expect(page.locator('#startupRecoveryContinueButton')).toBeDisabled();
+    await expect(page.locator('#startupRecoveryDiscardButton')).toBeDisabled();
+    await expect(dialog).toBeVisible();
+    await expect(page.locator('body')).toHaveClass(/mode-launcher/);
+
+    await restoreGate.release();
+    await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+    await expect(dialog).toBeHidden();
+    await expect(page.locator('#startupRecoveryBusy')).toBeHidden();
+  } finally {
+    await restoreGate.restore();
+  }
   expect(fatalErrors).toEqual([]);
 });
 
@@ -160,10 +218,24 @@ test('startup E8I descarta checkpoint real e ele não reaparece', async ({ page 
   await reloadForStartup(page);
   const dialog = page.getByRole('dialog', { name: 'Continuar sessão anterior?' });
   await expect(dialog).toBeVisible();
-  await dialog.getByText('Começar novo projeto', { exact: true }).click();
-  await expect(page.locator('#startupRecoveryBusy')).toContainText('Preparando novo projeto…');
-  await expect(dialog).toBeHidden({ timeout: 30_000 });
-  await expect(page.locator('body')).toHaveClass(/mode-launcher/);
+  const clearGate = await installControlledAsyncGate(page, 'clearSessionAutosave');
+  try {
+    await dialog.getByText('Começar novo projeto', { exact: true }).click();
+    await expect(page.locator('#startupRecoveryBusy')).toBeVisible();
+    await expect(page.locator('#startupRecoveryBusy')).toContainText('Preparando novo projeto…');
+    await expect(page.locator('#startupRecoveryContinueButton')).toBeDisabled();
+    await expect(page.locator('#startupRecoveryDiscardButton')).toBeDisabled();
+    await expect(dialog).toBeVisible();
+    expect(await sessionCheckpointExists(page)).toBe(true);
+
+    await clearGate.release();
+    await expect(dialog).toBeHidden({ timeout: 30_000 });
+    await expect(page.locator('body')).toHaveClass(/mode-launcher/);
+    await expect(page.locator('#startupRecoveryBusy')).toBeHidden();
+    expect(await sessionCheckpointExists(page)).toBe(false);
+  } finally {
+    await clearGate.restore();
+  }
   await reloadForStartup(page);
   await expect(page.getByRole('dialog', { name: 'Continuar sessão anterior?' })).toBeHidden();
   await expect(page.locator('body')).toHaveClass(/mode-launcher/);
