@@ -77,3 +77,21 @@ test('Reiniciar do zero sem projeto recarrega e reapresenta o launcher limpo', a
   const capturedErrors = [...pageErrors.map((error) => `pageerror: ${error}`), ...consoleErrors.map((error) => `console.error: ${error}`)];
   expect(capturedErrors, `erro JS capturado no reinício limpo:\n${capturedErrors.join('\n')}`).toEqual([]);
 });
+
+test('recuperação de startup mantém launcher bloqueado e exige uma das duas escolhas', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await expect(page.getByRole('dialog', { name: 'Continuar sessão anterior?' })).toBeHidden();
+
+  await page.evaluate(() => openStartupRecoveryDialog({ complete: true }));
+  const dialog = page.getByRole('dialog', { name: 'Continuar sessão anterior?' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText('Encontramos um projeto que estava aberto anteriormente.', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Continuar de onde parei', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Começar novo projeto', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button')).toHaveCount(2);
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeVisible();
+  await page.locator('#startupRecoveryDialog').click({ position: { x: 2, y: 2 } });
+  await expect(dialog).toBeVisible();
+});

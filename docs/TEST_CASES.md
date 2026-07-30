@@ -265,3 +265,12 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: `node scripts/qa/test-reload-session-choice.mjs`, diagnósticos observáveis `reload*`, comparação integral do projeto, console sem erro fatal, inspeção visual de tela branca/HTML bruto e arquivo JSON manual ainda acessível.
 - Ambiente: WebKit automatizado e iPhone/Safari/PWA instalado obrigatório para aprovação final.
 - Automatizável: parcial; guardrail estático cobre a sequência arquitetural e WebKit cobre o modal, mas IndexedDB/PWA e preservação visual integral exigem teste real.
+
+## TC-030 — Escolha de recuperação na abertura normal
+
+- Pré-condição: execuções separadas sem checkpoint, com checkpoint íntegro, com checkpoint corrompido e com intenções explícitas `restore`/`clean` da E8H.
+- Passos: abrir nova instância; observar launcher antes da escolha; testar Continuar, Começar novo projeto, falhas e toques concorrentes; recarregar após descarte; alternar para outro app e voltar com a mesma instância viva.
+- Resultado esperado: somente checkpoint válido sem intenção E8H abre o modal; nenhuma hidratação/aplicação acontece antes da escolha; restore e clear executam uma vez e são mutuamente exclusivos; falhas permitem retry sem destruir o checkpoint; mesma instância viva não pergunta novamente.
+- Evidência: `node scripts/qa/check-startup-session-choice.mjs`, `node scripts/qa/test-startup-session-choice.mjs`, WebKit sem erro fatal e validação publicada em iPhone/Safari/PWA.
+- Ambiente: harness Node, WebKit automatizado e iPhone/Safari/PWA real obrigatório para aprovação final.
+- Automatizável: parcial; encerramento real do processo, persistência grande, arquivos manuais, Preview e Export exigem validação no aparelho.

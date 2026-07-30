@@ -227,3 +227,11 @@ Formato: ID, data, decisão, contexto, consequência e status.
 - **Contexto:** o `pointerup` global do Play podia vencer o debounce durante a reprodução e executar checkpoint de dezenas de megabytes no thread principal.
 - **Consequência:** revisão pendente é preservada e retomada uma única vez após a saída completa; `visibilitychange hidden` e `pagehide` continuam autorizados a ultrapassar a barreira como flush prioritário de segurança.
 - **Status:** ativa tecnicamente na `v8z4b32E8G`, com validação real em iPhone/Safari pendente.
+
+## DEC-2026-07-30-01 — Recuperação de sessão exige escolha na abertura normal
+
+- **Data:** 2026-07-30.
+- **Decisão:** uma nova instância da página sem intenção explícita de Recarregar só pode restaurar um checkpoint automático válido depois que o usuário escolher “Continuar de onde parei”; a alternativa descarta somente esse checkpoint e mantém o launcher normal.
+- **Contexto:** a abertura normal restaurava silenciosamente a sessão anterior, sem permitir que o usuário optasse por iniciar outro fluxo pelo launcher.
+- **Consequência:** a inspeção inicial valida schema, completude, payload, checksum, JSON e estrutura mínima sem hidratar ou aplicar o projeto; intenções `restore` e `clean` da E8H mantêm prioridade e nunca abrem a pergunta novamente.
+- **Status:** ativa tecnicamente na `v8z4b32E8I`; validação real em iPhone/Safari/PWA permanece obrigatória.
