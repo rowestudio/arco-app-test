@@ -23,7 +23,8 @@ for (const [text, label] of [
   ['const checksum = sessionPayloadChecksum(payload);', 'checksum remains enabled'],
 ]) requireText(text, label);
 
-const writeStart = html.indexOf('async function writeSessionAutosave(');
+const trackedWriteStart = html.indexOf('async function performSessionAutosaveWrite(');
+const writeStart = trackedWriteStart >= 0 ? trackedWriteStart : html.indexOf('async function writeSessionAutosave(');
 const build = html.indexOf('const data = buildCompleteSessionProjectData();', writeStart);
 const barrier = html.indexOf('if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback())', writeStart);
 const stringify = html.indexOf('const payload = JSON.stringify(data);', writeStart);

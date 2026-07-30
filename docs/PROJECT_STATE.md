@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Última atualização documental: 2026-07-29.
+Última atualização documental: 2026-07-30.
 
 ## Estado auditado
 
@@ -89,4 +89,16 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - A PR #456 (`v8z4b32E8F`) foi mergeada na `main` de teste no commit `9d81fcf0ede89806debc3a42761c846edb642613`.
 - Roberto reprovou visualmente a E8F: a pequena travada inicial persistiu tanto no projeto com 9 ativos (~69 MB por checkpoint) quanto no projeto com 4 ativos (~53 MB).
 - Os diagnósticos comprovaram que o primeiro frame `t=0` foi renderizado e composto antes do relógio; essa hipótese fica encerrada como causa da travada observada.
-- A `v8z4b32E8G` isola Session Autosave de Preview/Export, removendo o disparo global por `pointerup` e adiando checkpoint pendente sem perda de revisão. A aprovação visual continua pendente de publicação e teste de Roberto em iPhone/Safari real.
+- A `v8z4b32E8G` isola Session Autosave de Preview/Export, removendo o disparo global por `pointerup` e adiando checkpoint pendente sem perda de revisão.
+
+## Atualização 2026-07-30 — v8z4b32E8G aprovada em observação no teste publicado
+
+- No primeiro teste publicado da E8G no iPhone/Safari/PWA, Roberto confirmou Preview sem a travada inicial e Session Autosave funcionando normalmente; após fechar completamente e reabrir o PWA, o último projeto foi restaurado normalmente.
+- A E8G fica aprovada em observação no repositório de teste. Repetições com projetos de tamanhos diferentes continuam recomendadas e nenhuma promoção para produção está autorizada.
+
+## Atualização 2026-07-29 — v8z4b32E8G mergeada e v8z4b32E8H em desenvolvimento
+
+- Base confirmada no merge commit da PR #457, `e76ad1987f267d6f7a63df6529b2e8c6c6abbad0`, versão `v8z4b32E8G`.
+- A `v8z4b32E8H` substitui a recarga direta por uma escolha explícita entre concluir o checkpoint e restaurá-lo ou apagar somente a sessão automática e abrir o launcher limpo.
+- As duas operações aguardam IndexedDB, são mutuamente exclusivas e usam intenção de startup isolada e de uso único; falhas mantêm a abertura atual sem recarga silenciosa.
+- Preview, Export, WebCodecs, renderer, Save/Load manual, schema do projeto, Frames, Layers e ProjectWorld permanecem fora do diff funcional. Validação em iPhone/Safari/PWA real continua obrigatória.

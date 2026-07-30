@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8H — base v8z4b32E8G. fix(reload): oferece restauração aguardável da sessão ou reinício limpo, com intenção de startup de uso único e tratamento de falhas. APP_VERSION = APP_VERSION_NAME = v8z4b32E8H. -->
 <!-- Arco Motion App — v8z4b32E8F — base v8z4b32E8E. fix(preview): confirma render e composição do primeiro frame t=0 antes de liberar loading, relógio e loop visível; falha/cancelamento libera retry sem alterar Export ou matemática do renderer. APP_VERSION = APP_VERSION_NAME = v8z4b32E8F. -->
 <!-- Arco Motion App — v8z4b32E8E — base v8z4b32E8D. feat(session): persiste checkpoint canônico completo em IndexedDB com debounce, flush, checksum e revisão; pré-hidrata todos os assets antes da restauração automática; Load manual prevalece e Novo Projeto substitui a sessão anterior. APP_VERSION = APP_VERSION_NAME = v8z4b32E8E. -->
 <!-- Arco Motion App — v8z4b32E8D — base v8z4b32E8C. feat(layers): adiciona identidade nominal persistente Camada N aos image assets, contador nextLayerSequence monotônico, migração determinística e persistência Save/Load; reorder altera apenas posição/zIndex. APP_VERSION = APP_VERSION_NAME = v8z4b32E8D. -->
@@ -1287,6 +1288,23 @@ body.recording #stageEyeShortcut{display:none;}
   cursor:default;
   -webkit-user-select:text;user-select:text;
 }
+/* v8z4b32E8H — escolha explícita do único fluxo de recarga. */
+.reload-choice-backdrop{position:fixed;inset:0;z-index:2147482000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.68);box-sizing:border-box;}
+.reload-choice-backdrop.show{display:flex;}
+.reload-choice-card{position:relative;width:min(100%,400px);padding:22px 18px 18px;border:1px solid rgba(255,255,255,.12);border-radius:20px;background:var(--surface);box-shadow:0 20px 60px rgba(0,0,0,.6);box-sizing:border-box;}
+.reload-choice-close{position:absolute;top:9px;right:9px;width:36px;height:36px;border:0;border-radius:999px;background:transparent;color:var(--text1);font-size:22px;line-height:1;cursor:pointer;touch-action:manipulation;}
+.reload-choice-title{padding-right:34px;margin-bottom:16px;color:var(--text1);font-size:19px;font-weight:800;line-height:1.25;}
+.reload-choice-actions{display:flex;flex-direction:column;gap:10px;}
+.reload-choice-action{width:100%;padding:14px;text-align:left;border:1px solid var(--border2);border-radius:14px;background:var(--surface2);color:var(--text1);cursor:pointer;touch-action:manipulation;box-sizing:border-box;}
+.reload-choice-action:disabled{opacity:.42;cursor:default;}
+.reload-choice-action-title{display:block;font-size:15px;font-weight:750;line-height:1.25;}
+.reload-choice-action-help{display:block;margin-top:4px;color:var(--text3);font-size:12px;line-height:1.35;}
+.reload-choice-error{display:none;margin-top:12px;color:var(--text2);font-size:13px;line-height:1.4;}
+.reload-restarting-layer{position:fixed;inset:0;z-index:2147482500;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:var(--bg);color:var(--text1);font-size:16px;font-weight:700;}
+.reload-restarting-layer.show{display:flex;}
+.reload-restarting-layer img{width:min(180px,48vw);height:auto;}
+.reload-restarting-spinner{width:26px;height:26px;border:3px solid rgba(255,255,255,.24);border-top-color:var(--text1);border-radius:50%;animation:reload-spin .8s linear infinite;}
+@keyframes reload-spin{to{transform:rotate(360deg);}}
 /* v8z4b30C — Painel de Diagnóstico técnico (overlay textual, discreto, rolável). */
 #diagnosticsPanel{
   position:fixed;
@@ -4258,7 +4276,7 @@ body.cust-open #toolbar{
       <div class="settings-row" onclick="requestOpenProjectFlow();closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-folder-open"></use></svg><span>Abrir</span>
       </div>
-      <div class="settings-row" onclick="window.location.reload()">
+      <div class="settings-row" onclick="openReloadChoiceDialog();closeSettingsSheet()">
         <svg viewBox="0 0 24 24"><use href="#i-reload"></use></svg><span>Recarregar</span>
       </div>
       <div class="settings-row" id="diagnosticsMenuItem" onclick="handleDiagnosticsMenuClick(event)">
@@ -4275,6 +4293,29 @@ body.cust-open #toolbar{
     </div>
     <div class="settings-version">Arco Motion App <span id="appVersionText">v8z4b31S</span></div>
   </div>
+</div>
+
+<div id="reloadChoiceDialog" class="reload-choice-backdrop" role="dialog" aria-modal="true" aria-labelledby="reloadChoiceTitle" aria-hidden="true">
+  <div class="reload-choice-card">
+    <button id="reloadChoiceClose" class="reload-choice-close" type="button" aria-label="Fechar">×</button>
+    <div id="reloadChoiceTitle" class="reload-choice-title">Como deseja recarregar?</div>
+    <div class="reload-choice-actions">
+      <button id="reloadRestoreButton" class="reload-choice-action" type="button">
+        <span class="reload-choice-action-title">Reiniciar e restaurar sessão</span>
+        <span class="reload-choice-action-help">Reabre o projeto no estado atual.</span>
+      </button>
+      <button id="reloadCleanButton" class="reload-choice-action" type="button">
+        <span class="reload-choice-action-title">Reiniciar do zero</span>
+        <span class="reload-choice-action-help">Limpa a sessão automática e volta ao início.</span>
+      </button>
+    </div>
+    <div id="reloadChoiceError" class="reload-choice-error" role="status"></div>
+  </div>
+</div>
+<div id="reloadRestartingLayer" class="reload-restarting-layer" aria-live="polite" aria-hidden="true">
+  <img src="assets/brand/arco-logo-white.svg" alt="Arco Motion">
+  <div class="reload-restarting-spinner" aria-hidden="true"></div>
+  <div>Reiniciando…</div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
 <div id="diagnosticsPanel" role="dialog" aria-label="Diagnóstico técnico" aria-hidden="true">
@@ -7156,8 +7197,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8G';
-const APP_VERSION_NAME = 'v8z4b32E8G';
+const APP_VERSION = 'v8z4b32E8H';
+const APP_VERSION_NAME = 'v8z4b32E8H';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -8824,11 +8865,8 @@ function launcherOpenProject() {
   loadProjectTrigger();
 }
 
-// v8z4b29BH — Recarregar a partir do launcher: reload seguro da página.
-// Não abre Stage, não cria projeto e não tenta restaurar projeto anterior;
-// ao recarregar, o app sempre volta para o launcher (DOMContentLoaded).
 function launcherReloadApp() {
-  location.reload();
+  openReloadChoiceDialog();
 }
 
 function canSaveProject() {
@@ -26448,7 +26486,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // validado e pré-hidratado; somente então o pipeline oficial restaura o editor.
   setAppMode('launcher');
   showStartLauncher();
-  restoreLastSessionAutosave();
+  const reloadStartupIntent = consumeReloadStartupIntent();
+  applyReloadStartupIntent(reloadStartupIntent);
   const loopSlider = document.getElementById('loopDurSlider');
   if (loopSlider) {
     loopSlider.addEventListener('input', function() {
@@ -29577,6 +29616,31 @@ let sessionAutosaveBuildCountDuringLastPreview = 0;
 let sessionAutosaveWriteCountDuringLastPreview = 0;
 let _sessionAutosaveRevisionAtPreviewStart = 0;
 let _sessionRestoreOperationToken = 0;
+const RELOAD_STARTUP_INTENT_KEY = 'arco-motion-reload-intent';
+let reloadChoiceDialogOpened = false;
+let reloadChoiceDialogCancelled = false;
+let reloadChoiceSelected = 'none';
+let reloadOperationInProgress = false;
+let reloadDuplicateActionBlocked = false;
+let reloadSessionFlushAttempted = false;
+let reloadSessionFlushCompleted = false;
+let reloadSessionFlushFailed = false;
+let reloadSessionCheckpointClearAttempted = false;
+let reloadSessionCheckpointCleared = false;
+let reloadSessionCheckpointClearFailed = false;
+let reloadStartupIntentWritten = false;
+let reloadStartupIntentConsumed = false;
+let reloadExpectedRestore = false;
+let reloadExpectedCleanLauncher = false;
+let reloadRestoreCompleted = false;
+let reloadOpenedCleanLauncher = false;
+let reloadRestartingLayerShown = false;
+let reloadStartupUiReady = false;
+let reloadStartupLauncherVisible = false;
+let reloadStartupEditorRestored = false;
+let _reloadChoiceAvailabilityToken = 0;
+const _sessionAutosaveActiveWrites = new Set();
+let _sessionAutosaveSuppressSafetyFlush = false;
 
 function isSessionAutosaveBlockedByPlayback() {
   return !!(previewPreparing || isPreviewing || isRecording || exportPreparing);
@@ -29690,7 +29754,7 @@ async function putSessionCheckpoint(checkpoint, mandatoryFlush, epoch) {
     });
   } finally { db.close(); }
 }
-async function writeSessionAutosave(revision, epoch, mandatoryFlush = false, reason = '') {
+async function performSessionAutosaveWrite(revision, epoch, mandatoryFlush = false, reason = '') {
   const totalStartedAt = performance.now();
   try {
     if (epoch !== _sessionAutosaveEpoch || revision < _sessionAutosaveQueuedRevision || !hasImageLoaded()) return false;
@@ -29743,6 +29807,12 @@ async function writeSessionAutosave(revision, epoch, mandatoryFlush = false, rea
     }
   }
 }
+function writeSessionAutosave(revision, epoch, mandatoryFlush = false, reason = '') {
+  const operation = performSessionAutosaveWrite(revision, epoch, mandatoryFlush, reason);
+  _sessionAutosaveActiveWrites.add(operation);
+  operation.finally(() => _sessionAutosaveActiveWrites.delete(operation));
+  return operation;
+}
 function scheduleSessionAutosave(reason, immediate = false) {
   if (!sessionAutosaveEnabled || !hasImageLoaded() || appMode !== 'editor') return;
   const revision = ++_sessionAutosaveQueuedRevision;
@@ -29758,16 +29828,53 @@ function scheduleSessionAutosave(reason, immediate = false) {
   _sessionAutosaveTimer = setTimeout(() => { _sessionAutosaveTimer = null; writeSessionAutosave(revision, epoch, false, reason); }, immediate ? 0 : SESSION_AUTOSAVE_DEBOUNCE_MS);
 }
 function flushSessionAutosave() {
+  if (_sessionAutosaveSuppressSafetyFlush) return;
   if (!sessionAutosaveEnabled || !hasImageLoaded() || appMode !== 'editor') return;
   clearTimeout(_sessionAutosaveTimer);
   const revision = ++_sessionAutosaveQueuedRevision;
   writeSessionAutosave(revision, _sessionAutosaveEpoch, true, 'safety-flush');
 }
+async function flushSessionAutosaveForReload() {
+  reloadSessionFlushAttempted = true;
+  if (!sessionAutosaveEnabled) {
+    reloadSessionFlushFailed = true;
+    return false;
+  }
+  if (!hasImageLoaded() || appMode !== 'editor') {
+    try {
+      const checkpoint = await readSessionCheckpoint();
+      reloadSessionFlushCompleted = !!(checkpoint && checkpoint.schema === SESSION_AUTOSAVE_SCHEMA &&
+        checkpoint.complete === true && typeof checkpoint.payload === 'string' &&
+        checkpoint.checksum === sessionPayloadChecksum(checkpoint.payload) &&
+        isCompleteSessionProjectData(JSON.parse(checkpoint.payload)));
+    } catch (_error) {
+      reloadSessionFlushCompleted = false;
+    }
+    reloadSessionFlushFailed = !reloadSessionFlushCompleted;
+    return reloadSessionFlushCompleted;
+  }
+  clearTimeout(_sessionAutosaveTimer);
+  _sessionAutosaveTimer = null;
+  if (_sessionAutosaveActiveWrites.size) {
+    await Promise.allSettled(Array.from(_sessionAutosaveActiveWrites));
+  }
+  const revision = ++_sessionAutosaveQueuedRevision;
+  const completed = await writeSessionAutosave(revision, _sessionAutosaveEpoch, true, 'reload-restore');
+  reloadSessionFlushCompleted = completed === true && _sessionAutosaveCommittedRevision >= revision;
+  reloadSessionFlushFailed = !reloadSessionFlushCompleted;
+  return reloadSessionFlushCompleted;
+}
 async function clearSessionAutosave() {
   invalidateSessionRestore('new-project');
   clearTimeout(_sessionAutosaveTimer);
+  _sessionAutosaveTimer = null;
   _sessionAutosaveEpoch++;
   _sessionAutosaveQueuedRevision++;
+  _sessionAutosaveDeferredBecausePlayback = false;
+  _sessionAutosaveDeferredRevision = 0;
+  if (_sessionAutosaveActiveWrites.size) {
+    await Promise.allSettled(Array.from(_sessionAutosaveActiveWrites));
+  }
   try {
     const db = await openSessionAutosaveDb();
     await new Promise((resolve, reject) => {
@@ -29777,11 +29884,190 @@ async function clearSessionAutosave() {
       tx.onerror = () => reject(tx.error || new Error('indexeddb-delete-failed'));
     });
     db.close();
+    return true;
   } catch (error) {
     sessionAutosaveFailed = true;
     console.error('[Arco ' + APP_VERSION + '][session-autosave] falha ao limpar sessão', error);
+    return false;
   }
 }
+function setReloadChoiceBusy(busy) {
+  const restoreButton = document.getElementById('reloadRestoreButton');
+  const cleanButton = document.getElementById('reloadCleanButton');
+  const closeButton = document.getElementById('reloadChoiceClose');
+  if (restoreButton) restoreButton.disabled = busy || restoreButton.dataset.available !== 'true';
+  if (cleanButton) cleanButton.disabled = busy;
+  if (closeButton) closeButton.disabled = busy;
+}
+function setReloadRestartingVisible(visible) {
+  const layer = document.getElementById('reloadRestartingLayer');
+  if (!layer) return;
+  layer.classList.toggle('show', visible);
+  layer.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  reloadRestartingLayerShown = !!(visible && layer.classList.contains('show') &&
+    layer.getAttribute('aria-hidden') === 'false' && window.getComputedStyle(layer).display !== 'none');
+}
+function showReloadChoiceError(message) {
+  const error = document.getElementById('reloadChoiceError');
+  if (!error) return;
+  error.textContent = message || '';
+  error.style.display = message ? 'block' : 'none';
+}
+async function openReloadChoiceDialog() {
+  if (reloadOperationInProgress) {
+    reloadDuplicateActionBlocked = true;
+    return;
+  }
+  const dialog = document.getElementById('reloadChoiceDialog');
+  const restoreButton = document.getElementById('reloadRestoreButton');
+  if (!dialog || !restoreButton) return;
+  reloadChoiceDialogOpened = true;
+  reloadChoiceDialogCancelled = false;
+  reloadChoiceSelected = 'none';
+  showReloadChoiceError('');
+  dialog.classList.add('show');
+  dialog.setAttribute('aria-hidden', 'false');
+  const availabilityToken = ++_reloadChoiceAvailabilityToken;
+  restoreButton.dataset.available = hasOpenProjectToProtect() ? 'true' : 'false';
+  setReloadChoiceBusy(false);
+  if (!hasOpenProjectToProtect()) {
+    try {
+      const checkpoint = await readSessionCheckpoint();
+      if (availabilityToken !== _reloadChoiceAvailabilityToken || !dialog.classList.contains('show')) return;
+      restoreButton.dataset.available = checkpoint && checkpoint.complete === true ? 'true' : 'false';
+    } catch (_error) {
+      restoreButton.dataset.available = 'false';
+    }
+    setReloadChoiceBusy(false);
+  }
+}
+function closeReloadChoiceDialog(cancelled = true) {
+  if (reloadOperationInProgress) return;
+  const dialog = document.getElementById('reloadChoiceDialog');
+  if (!dialog) return;
+  _reloadChoiceAvailabilityToken++;
+  dialog.classList.remove('show');
+  dialog.setAttribute('aria-hidden', 'true');
+  if (cancelled) reloadChoiceDialogCancelled = true;
+}
+function consumeReloadStartupIntent() {
+  let intent = null;
+  try {
+    intent = sessionStorage.getItem(RELOAD_STARTUP_INTENT_KEY);
+    sessionStorage.removeItem(RELOAD_STARTUP_INTENT_KEY);
+  } catch (_error) {
+    intent = null;
+  }
+  if (intent === 'restore' || intent === 'clean') {
+    reloadStartupIntentConsumed = true;
+    return intent;
+  }
+  return null;
+}
+function isReloadStartupElementVisible(element) {
+  if (!element || element.getAttribute('aria-hidden') === 'true') return false;
+  const style = window.getComputedStyle(element);
+  return style.display !== 'none' && style.visibility !== 'hidden';
+}
+function updateReloadStartupUiDiagnostics(intent) {
+  if (intent === 'clean') {
+    reloadStartupLauncherVisible = appMode === 'launcher' && isReloadStartupElementVisible(startLauncher);
+    reloadOpenedCleanLauncher = reloadStartupLauncherVisible;
+    reloadStartupUiReady = reloadStartupLauncherVisible;
+    return;
+  }
+  if (intent === 'restore') {
+    reloadStartupEditorRestored = sessionRestoreCompleted && appMode === 'editor' &&
+      hasImageLoaded() && !isReloadStartupElementVisible(startLauncher);
+    reloadRestoreCompleted = reloadStartupEditorRestored;
+    reloadStartupUiReady = reloadStartupEditorRestored;
+  }
+}
+function applyReloadStartupIntent(intent) {
+  if (intent === 'clean') {
+    reloadExpectedCleanLauncher = true;
+    updateReloadStartupUiDiagnostics('clean');
+    return;
+  }
+  reloadExpectedRestore = intent === 'restore';
+  restoreLastSessionAutosave();
+}
+function writeReloadStartupIntent(intent) {
+  try {
+    sessionStorage.setItem(RELOAD_STARTUP_INTENT_KEY, intent);
+    reloadStartupIntentWritten = sessionStorage.getItem(RELOAD_STARTUP_INTENT_KEY) === intent;
+    return reloadStartupIntentWritten;
+  } catch (_error) {
+    reloadStartupIntentWritten = false;
+    return false;
+  }
+}
+function finishReloadOperationWithError(message) {
+  try { sessionStorage.removeItem(RELOAD_STARTUP_INTENT_KEY); } catch (_error) {}
+  reloadOperationInProgress = false;
+  _sessionAutosaveSuppressSafetyFlush = false;
+  setReloadRestartingVisible(false);
+  setReloadChoiceBusy(false);
+  showReloadChoiceError(message);
+}
+function executeReloadAfterCompletedOperation(intent) {
+  if (!writeReloadStartupIntent(intent)) {
+    finishReloadOperationWithError('Não foi possível preparar a reinicialização. Tente novamente.');
+    return;
+  }
+  try {
+    window.location.reload();
+  } catch (_error) {
+    finishReloadOperationWithError('Não foi possível reiniciar o aplicativo. Tente novamente.');
+  }
+}
+async function reloadAndRestoreSession() {
+  if (reloadOperationInProgress) {
+    reloadDuplicateActionBlocked = true;
+    return;
+  }
+  reloadOperationInProgress = true;
+  _sessionAutosaveSuppressSafetyFlush = true;
+  reloadChoiceSelected = 'restore';
+  setReloadChoiceBusy(true);
+  setReloadRestartingVisible(true);
+  const completed = await flushSessionAutosaveForReload();
+  if (!completed) {
+    finishReloadOperationWithError('Não foi possível proteger a sessão. O projeto continua aberto.');
+    return;
+  }
+  executeReloadAfterCompletedOperation('restore');
+}
+async function reloadFromCleanState() {
+  if (reloadOperationInProgress) {
+    reloadDuplicateActionBlocked = true;
+    return;
+  }
+  reloadOperationInProgress = true;
+  _sessionAutosaveSuppressSafetyFlush = true;
+  reloadChoiceSelected = 'clean';
+  reloadSessionCheckpointClearAttempted = true;
+  setReloadChoiceBusy(true);
+  setReloadRestartingVisible(true);
+  invalidateSessionRestore('reload-clean');
+  const cleared = await clearSessionAutosave();
+  reloadSessionCheckpointCleared = cleared === true;
+  reloadSessionCheckpointClearFailed = !reloadSessionCheckpointCleared;
+  if (!cleared) {
+    finishReloadOperationWithError('Não foi possível limpar a sessão automática. Tente novamente ou cancele.');
+    return;
+  }
+  executeReloadAfterCompletedOperation('clean');
+}
+document.getElementById('reloadRestoreButton')?.addEventListener('click', reloadAndRestoreSession);
+document.getElementById('reloadCleanButton')?.addEventListener('click', reloadFromCleanState);
+document.getElementById('reloadChoiceClose')?.addEventListener('click', () => closeReloadChoiceDialog(true));
+document.getElementById('reloadChoiceDialog')?.addEventListener('click', (event) => {
+  if (event.target === event.currentTarget) closeReloadChoiceDialog(true);
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeReloadChoiceDialog(true);
+});
 async function readSessionCheckpoint() {
   const db = await openSessionAutosaveDb();
   try {
@@ -29843,6 +30129,7 @@ function sessionAutosaveOnProjectApplied(origin, data) {
     sessionRestoreNoPartialState = sessionRestoreHydratedAssetCount === sessionRestoreAssetCount && restoredAssets.length === sessionRestoreAssetCount;
     sessionRestoreCompleted = sessionRestoreNoPartialState && sessionRestoreLayerIdentitiesPreserved && sessionRestoreProjectWorldRestored;
     sessionRestoreFailed = !sessionRestoreCompleted;
+    if (reloadExpectedRestore) updateReloadStartupUiDiagnostics('restore');
     return;
   }
   _sessionAutosaveEpoch++;
@@ -35888,6 +36175,27 @@ function buildDiagnosticsText() {
   push('sessionRestoreProjectWorldRestored', String(sessionRestoreProjectWorldRestored));
   push('sessionRestoreNoPartialState', String(sessionRestoreNoPartialState));
   push('sessionRestoreDidNotOverrideManualLoad', String(sessionRestoreDidNotOverrideManualLoad));
+  push('reloadChoiceDialogOpened', String(reloadChoiceDialogOpened));
+  push('reloadChoiceDialogCancelled', String(reloadChoiceDialogCancelled));
+  push('reloadChoiceSelected', reloadChoiceSelected || 'none');
+  push('reloadOperationInProgress', String(reloadOperationInProgress));
+  push('reloadDuplicateActionBlocked', String(reloadDuplicateActionBlocked));
+  push('reloadSessionFlushAttempted', String(reloadSessionFlushAttempted));
+  push('reloadSessionFlushCompleted', String(reloadSessionFlushCompleted));
+  push('reloadSessionFlushFailed', String(reloadSessionFlushFailed));
+  push('reloadSessionCheckpointClearAttempted', String(reloadSessionCheckpointClearAttempted));
+  push('reloadSessionCheckpointCleared', String(reloadSessionCheckpointCleared));
+  push('reloadSessionCheckpointClearFailed', String(reloadSessionCheckpointClearFailed));
+  push('reloadStartupIntentWritten', String(reloadStartupIntentWritten));
+  push('reloadStartupIntentConsumed', String(reloadStartupIntentConsumed));
+  push('reloadExpectedRestore', String(reloadExpectedRestore));
+  push('reloadExpectedCleanLauncher', String(reloadExpectedCleanLauncher));
+  push('reloadRestoreCompleted', String(reloadRestoreCompleted));
+  push('reloadOpenedCleanLauncher', String(reloadOpenedCleanLauncher));
+  push('reloadRestartingLayerShown', String(reloadRestartingLayerShown));
+  push('reloadStartupUiReady', String(reloadStartupUiReady));
+  push('reloadStartupLauncherVisible', String(reloadStartupLauncherVisible));
+  push('reloadStartupEditorRestored', String(reloadStartupEditorRestored));
   L.push('');
 
   // Versão
