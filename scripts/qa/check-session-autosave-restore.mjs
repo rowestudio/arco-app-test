@@ -10,7 +10,7 @@ for (const [fragment, label] of [
   ['data.assetsImagesIncluded = true;', 'complete asset checkpoint marker'],
   ['isCompleteSessionProjectData(data)', 'complete checkpoint validation'],
   ['checkpoint.checksum !== sessionPayloadChecksum(checkpoint.payload)', 'checkpoint integrity validation'],
-  ["applyProjectData(data, { origin: 'session-autosave' });", 'official hydration pipeline reuse'],
+  ["applyProjectData(data, { origin: 'session-autosave', onApplied: resolve });", 'awaitable official hydration pipeline reuse'],
   ["document.addEventListener('visibilitychange'", 'visibility flush'],
   ["window.addEventListener('pagehide', flushSessionAutosave);", 'pagehide flush'],
   ["sessionAutosaveOnProjectApplied(loadOptions.origin || 'manual-load', data);", 'manual load precedence hook'],
@@ -25,7 +25,7 @@ for (const [fragment, label] of [
 const requiredDiagnostics = [
   'sessionAutosaveEnabled', 'sessionAutosaveCompleted', 'sessionAutosaveFailed',
   'sessionAutosaveRevision', 'sessionAutosavePayloadBytes', 'sessionRestoreAttempted',
-  'sessionRestoreCompleted', 'sessionRestoreFailed', 'sessionRestoreAssetCount',
+  'sessionRestoreCompleted', 'sessionRestoreFailed', 'sessionRestoreAppliedSuccessfully', 'sessionRestoreTokenCurrent', 'sessionRestoreAssetCount',
   'sessionRestoreHydratedAssetCount', 'sessionRestoreLayerIdentitiesPreserved',
   'sessionRestoreProjectWorldRestored', 'sessionRestoreNoPartialState',
   'sessionRestoreDidNotOverrideManualLoad',

@@ -99,4 +99,14 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Prevenção:** todo comando Recarregar usa um controlador único; restaurar aguarda o flush da revisão mais recente, reiniciar do zero aguarda o clear, e somente então grava uma intenção de startup de uso único e recarrega.
 - **Como detectar:** verificar ausência de `location.reload()` em `onclick`, escolha explícita, bloqueio de toque duplicado, tratamento das falhas de escrita/exclusão e consumo único das intenções `restore`/`clean`.
 - **Teste preventivo:** `node scripts/qa/check-reload-session-choice.mjs`, `node scripts/qa/test-reload-session-choice.mjs`, self-tests positivo/negativo e WebKit Smoke Tests; persistência integral e comportamento PWA exigem iPhone/Safari real.
-- **Status:** proteção técnica adicionada na `v8z4b32E8H`; validação real pendente.
+- **Evidência publicada:** Roberto aprovou restaurar sessão e reiniciar do zero na E8H em iPhone/Safari/PWA; tela branca/HTML bruto não foi reproduzido e Preview, Export e Save/Load foram preservados.
+- **Status:** validada no repositório de teste na `v8z4b32E8H`. Nenhuma promoção para produção está autorizada.
+
+## REG-036 — Abertura normal restaura checkpoint sem escolha
+
+- **Problema:** uma nova instância do aplicativo restaura silenciosamente a sessão automática anterior antes de o usuário decidir se quer retomá-la.
+- **Prevenção:** sem intenção explícita da E8H, inspecionar e validar o checkpoint sem hidratação/aplicação; checkpoint válido abre modal próprio e não fechável, e somente a escolha aceita inicia restore ou clear aguardável.
+- **Exceção:** intenções `restore` e `clean` consumidas pelo fluxo Recarregar da E8H mantêm prioridade e não mostram a pergunta de startup.
+- **Como detectar:** confirmar launcher estável antes da escolha, nenhuma chamada antecipada de restore/hidratação/aplicação, exclusão concluída antes de confirmar launcher limpo e retomada da mesma instância sem novo diálogo.
+- **Teste preventivo:** `node scripts/qa/check-startup-session-choice.mjs`, harness `node scripts/qa/test-startup-session-choice.mjs` executando os controladores reais extraídos do app, WebKit com checkpoint real no IndexedDB e teste real em iPhone/Safari/PWA.
+- **Status:** proteção técnica adicionada na `v8z4b32E8I`; validação publicada em iPhone/Safari/PWA pendente.

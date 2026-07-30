@@ -102,3 +102,13 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - A `v8z4b32E8H` substitui a recarga direta por uma escolha explícita entre concluir o checkpoint e restaurá-lo ou apagar somente a sessão automática e abrir o launcher limpo.
 - As duas operações aguardam IndexedDB, são mutuamente exclusivas e usam intenção de startup isolada e de uso único; falhas mantêm a abertura atual sem recarga silenciosa.
 - Preview, Export, WebCodecs, renderer, Save/Load manual, schema do projeto, Frames, Layers e ProjectWorld permanecem fora do diff funcional. Validação em iPhone/Safari/PWA real continua obrigatória.
+
+## Atualização 2026-07-30 — v8z4b32E8H aprovada e v8z4b32E8I em desenvolvimento
+
+- A PR #458 foi mergeada na `main` de teste no commit `0d8edd33f4d4e236eb3f7a894cdb700db8785c6c`, versão `v8z4b32E8H`.
+- Roberto aprovou no teste publicado em iPhone/Safari/PWA os dois caminhos de Recarregar: restaurar sessão e reiniciar do zero. Tela branca/HTML bruto não foi reproduzido, e Preview, Export e Save/Load permaneceram preservados.
+- A `v8z4b32E8I` altera somente a abertura normal: sem intenção explícita da E8H e com checkpoint automático completamente válido, o launcher pergunta se deve continuar a sessão anterior ou descartar somente o checkpoint e permanecer no início.
+- As intenções explícitas `restore` e `clean` da E8H continuam prioritárias e não abrem uma segunda pergunta. Nenhuma promoção para produção está autorizada.
+- O relato isolado sobre intenção escala × rotação de Frames ocorreu em um arquivo específico, não voltou a ser reproduzido e permanece em observação; não integra o escopo da E8I e não autoriza alteração ou PR de Frames nesta versão.
+- A revisão da PR #459 substitui o harness paralelo por execução em `vm` dos controladores reais do `index.html`, cobre startup e IndexedDB reais no smoke WebKit e adiciona feedback visual aguardável dentro do modal durante restore/clear, sem novo bump de versão ou mudança na arquitetura funcional.
+- A revisão funcional seguinte identificou a causa exata do falso negativo da recuperação: `applyProjectData()` inicia a carga assíncrona da imagem e retornava antes de `applyFrameData()` concluir, portanto `restoreLastSessionAutosave()` consultava `sessionRestoreCompleted` ainda em `false`, mesmo com o editor sendo aplicado logo depois. O restore agora aguarda o callback final da aplicação, separa sucesso operacional das métricas observacionais de paridade e mantém rollback recuperável em falha; a validação automatizada em WebKit permanece responsabilidade do workflow e a validação em iPhone/Safari/PWA real continua pendente.
