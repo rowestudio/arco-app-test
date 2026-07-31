@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8J — base v8z4b32E8I. feat(assets): separa inserção múltipla da troca unitária, prepara o lote integralmente e oferece Empilhar/Horizontal/Vertical com commit, Undo e autosave únicos ou rollback completo. APP_VERSION = APP_VERSION_NAME = v8z4b32E8J. -->
 <!-- Arco Motion App — v8z4b32E8I — base v8z4b32E8H. feat(session): pergunta se deve recuperar um checkpoint válido na abertura normal, sem alterar as intenções explícitas de Recarregar. APP_VERSION = APP_VERSION_NAME = v8z4b32E8I. -->
 <!-- Arco Motion App — v8z4b32E8H — base v8z4b32E8G. fix(reload): oferece restauração aguardável da sessão ou reinício limpo, com intenção de startup de uso único e tratamento de falhas. APP_VERSION = APP_VERSION_NAME = v8z4b32E8H. -->
 <!-- Arco Motion App — v8z4b32E8F — base v8z4b32E8E. fix(preview): confirma render e composição do primeiro frame t=0 antes de liberar loading, relógio e loop visível; falha/cancelamento libera retry sem alterar Export ou matemática do renderer. APP_VERSION = APP_VERSION_NAME = v8z4b32E8F. -->
@@ -4379,6 +4380,24 @@ body.cust-open #toolbar{
 <!-- v8z4b30U — input de imagem do editor (Inserir/Trocar) em nível de topo, fora de
      qualquer container display:none, para que .click() funcione no iPhone/Safari. -->
 <input type="file" id="fileInput2" accept="image/*" style="display:none;">
+<input type="file" id="multiImageInsertInput" accept="image/*" multiple style="display:none;">
+
+<div id="multiImageLayoutSheet" role="dialog" aria-modal="true" aria-labelledby="multiImageLayoutTitle"
+     style="display:none;position:fixed;inset:0;z-index:340;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom);"
+     onclick="if(event.target===this)closeMultiImageLayoutSheet('backdrop')">
+  <div style="position:relative;width:min(100%,430px);background:var(--menu-bg);border-radius:20px 20px 0 0;padding:22px 20px 18px;">
+    <button type="button" class="panel-close-check" aria-label="Fechar" onclick="closeMultiImageLayoutSheet('close')">×</button>
+    <div id="multiImageLayoutTitle" style="font-size:18px;font-weight:700;padding-right:42px;">Inserir 2 imagens</div>
+    <div style="font-size:14px;color:var(--text2);margin:8px 0 16px;">Como deseja organizar as imagens no Stage?</div>
+    <div id="multiImageLayoutActions" style="display:grid;gap:9px;">
+      <button type="button" class="slot-pick-btn" onclick="commitPendingMultiImageInsert('stack')">Empilhar no centro</button>
+      <button type="button" class="slot-pick-btn" onclick="commitPendingMultiImageInsert('horizontal')">Distribuir na horizontal</button>
+      <button type="button" class="slot-pick-btn" onclick="commitPendingMultiImageInsert('vertical')">Distribuir na vertical</button>
+      <button type="button" class="slot-pick-btn" onclick="closeMultiImageLayoutSheet('cancel')">Cancelar</button>
+    </div>
+    <div id="multiImageLayoutBusy" role="status" aria-live="polite" style="display:none;padding:18px 0 4px;text-align:center;font-weight:600;"></div>
+  </div>
+</div>
 
 <!-- PREVIEW SCREEN -->
 <div class="preview-screen" id="previewScreen">
@@ -7223,8 +7242,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8I';
-const APP_VERSION_NAME = 'v8z4b32E8I';
+const APP_VERSION = 'v8z4b32E8J';
+const APP_VERSION_NAME = 'v8z4b32E8J';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -14760,6 +14779,13 @@ function restoreState(state) {
     Object.assign(projectWorld, state.projectWorld);
   }
   const imgSnap = state.imageSnapshot;
+  if (imgSnap && !(imgSnap.imgNatW > 0)) {
+    imgNatW = 0; imgNatH = 0;
+    originalImageElement = null; originalImageSrc = ''; editorImageSrc = ''; imageOriginalDataUrl = '';
+    canonicalRenderImage = null; canonicalRenderImageKind = '';
+    if (imgEl) { imgEl.removeAttribute('src'); imgEl.style.display = 'none'; imgEl.style.visibility = ''; }
+    document.body.classList.add('no-image');
+  }
   if (imgSnap && imgSnap.editorImageSrc && imgSnap.editorImageSrc !== editorImageSrc) {
     imgNatW = imgSnap.imgNatW;
     imgNatH = imgSnap.imgNatH;
@@ -21627,6 +21653,18 @@ function clampEditorPan() {
   editorPanY = Math.max(minPanY, Math.min(maxPanY, editorPanY));
 }
 
+function centerEditorViewportOnAsset(assetId) {
+  const asset = Array.isArray(assets) ? assets.find(a => a && a.type === 'image' && a.id === assetId) : null;
+  if (!asset || !stageW || !stageH) return false;
+  computeEditorTransform();
+  const rect = editorWorldToStage(asset.worldX || 0, asset.worldY || 0, asset.worldW || 0, asset.worldH || 0);
+  editorPanX = stageW / 2 - (rect.x + rect.w / 2) * editorZoomScale;
+  editorPanY = stageH / 2 - (rect.y + rect.h / 2) * editorZoomScale;
+  clampEditorPan();
+  applyEditorZoom();
+  return Number.isFinite(editorPanX) && Number.isFinite(editorPanY);
+}
+
 
 function refreshEditorViewVisualOverlays() {
   if (!stageW || !stageH) return;
@@ -26947,8 +26985,21 @@ function loadNewProjectImage(file) {
 // ═══════════════════════════════════════
 // LOAD IMAGE
 // ═══════════════════════════════════════
-function loadImage(file, onDoneCallback) {
-  if (!file) return;
+function loadImage(file, onDoneCallback, onErrorCallback) {
+  const completionOptions = (onErrorCallback && typeof onErrorCallback === 'object') ? onErrorCallback : { onError: onErrorCallback };
+  const shouldCancelLoad = () => typeof completionOptions.isCancelled === 'function' && completionOptions.isCancelled();
+  let loadCompletionSettled = false;
+  const notifyLoadError = error => {
+    if (loadCompletionSettled) return;
+    loadCompletionSettled = true;
+    if (typeof completionOptions.onError === 'function') completionOptions.onError(error instanceof Error ? error : new Error(String(error || 'image-load-failed')));
+  };
+  const notifyLoadSuccess = () => {
+    if (loadCompletionSettled) return;
+    loadCompletionSettled = true;
+    if (typeof onDoneCallback === 'function') onDoneCallback();
+  };
+  if (!file) { notifyLoadError(new Error('image-file-missing')); return; }
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   resetPreviewAndExportStateForImageChange();
   resetCanonicalRenderImage('image-change');
@@ -26964,7 +27015,9 @@ function loadImage(file, onDoneCallback) {
   const isFirstLoad = !imgNatW;
   const hasCallback = typeof onDoneCallback === 'function';
   const reader = new FileReader();
+  reader.onerror = () => notifyLoadError(reader.error || new Error('image-read-failed'));
   reader.onload = e => {
+    if (shouldCancelLoad()) { notifyLoadError(new Error('image-load-cancelled')); return; }
     imageOriginalDataUrl = e.target.result || '';
     imagePipelineMeta = {
       ...imagePipelineMeta,
@@ -26979,8 +27032,10 @@ function loadImage(file, onDoneCallback) {
       _pendingImageReplaceUndoSnapshot = null;
       lastImageDecodeError = 'tmp.onerror (load-image)';
       debugImagePipeline('load-image-decode-error');
+      notifyLoadError(new Error('image-decode-failed'));
     };
     tmp.onload = () => {
+      if (shouldCancelLoad()) { tmp.src = ''; notifyLoadError(new Error('image-load-cancelled')); return; }
       imgNatW = tmp.naturalWidth;
       imgNatH = tmp.naturalHeight;
       // v8z4b30M — Tarefa 1: original preservada para export; proxy reduzido
@@ -26991,6 +27046,7 @@ function loadImage(file, onDoneCallback) {
       editorImageElement = imgEl;
       editorImageSrc = editorProxyDataUrl || tmp.src;
       imgEl.onload = () => {
+        if (shouldCancelLoad()) { imgEl.removeAttribute('src'); notifyLoadError(new Error('image-load-cancelled')); return; }
         const imgDims = getImageSourceDimensions(imgEl);
         if (!hasEditorProxy && imgDims.width && imgDims.height && (imgDims.width !== imgNatW || imgDims.height !== imgNatH)) {
           console.warn('[ImagePipeline] natural-size-discrepancy', {
@@ -27025,7 +27081,7 @@ function loadImage(file, onDoneCallback) {
           layoutStage();
           syncFirstImageAsset('load-with-callback'); // v8z4b30D — modelo preparatório
           setupPreviewCanvas();
-          onDoneCallback();
+          notifyLoadSuccess();
           return;
         }
 
@@ -27122,6 +27178,7 @@ function loadImage(file, onDoneCallback) {
         _pendingImageReplaceUndoSnapshot = null;
         lastImageDecodeError = 'imgEl.onerror (load-image, editorImageSrc)';
         debugImagePipeline('load-image-editor-decode-error');
+        notifyLoadError(new Error('image-application-failed'));
       };
       imgEl.src = editorImageSrc;
     };
@@ -27132,6 +27189,7 @@ function loadImage(file, onDoneCallback) {
 
 document.getElementById('fileInput').addEventListener('change',  handleNewImageSelection);
 document.getElementById('fileInput2').addEventListener('change', handleImageFileChosen);
+document.getElementById('multiImageInsertInput').addEventListener('change', handleMultiImageInsertChosen);
 document.getElementById('newProjectImageInput').addEventListener('change', e => loadNewProjectImage(e.target.files[0]));
 
 // ═══════════════════════════════════════
@@ -29438,7 +29496,7 @@ function serializeProjectAsset(a, idx, includeImages) {
     mimeType: a.mimeType || a.typeMime || '',
     hasAlpha: !!a.hasAlpha,
   };
-  if (includeImages && out.type === 'image') {
+  if (includeImages && out.type === 'image' && idx > 0) {
     const src = canonicalSrc;
     if (src) out.src = src;
     if (src && /^data:image\//.test(src)) {
@@ -29466,6 +29524,12 @@ function _assetPersistentSourceE8E(a) {
   if (!a) return '';
   if (a.sourcePayload && a.sourcePayload.kind === 'dataUrl' && a.sourcePayload.dataUrl) return a.sourcePayload.dataUrl;
   return a.src || a.persistentSrc || (a._img && a._img.src) || (a.drawSource && a.drawSource.src) || '';
+}
+function _persistentSourceKindE8J(src) {
+  if (!src) return 'empty';
+  if (/^data:/i.test(src)) return 'data';
+  if (/^blob:/i.test(src)) return 'blob';
+  return 'other';
 }
 function _diagSourceHashE8E(src) {
   const s = String(src || '');
@@ -29585,6 +29649,7 @@ function buildProjectData(includeImages) {
     // v8z4b30R — ProjectWorld e todos os image assets (múltiplas imagens).
     assetsSchemaVersion: PROJECT_ASSETS_SCHEMA_VERSION,
     nextLayerSequence,
+    selectedAssetId: selectedAssetId || null,
     projectWorld: { ...projectWorld },
     assets: assets.map((a, i) => serializeProjectAsset(a, i, !!includeImages)),
   };
@@ -30628,6 +30693,20 @@ function dataUrlToFile(dataUrl, fallbackName) {
 }
 
 function applyProjectData(data, loadOptions = {}) {
+  return new Promise(resolve => {
+    const externalOnApplied = loadOptions.onApplied;
+    let completed = false;
+    const complete = ok => {
+      if (completed) return;
+      completed = true;
+      if (typeof externalOnApplied === 'function') externalOnApplied(ok === true);
+      resolve(ok === true);
+    };
+    applyProjectDataInternal(data, { ...loadOptions, onApplied: complete });
+  });
+}
+
+function applyProjectDataInternal(data, loadOptions = {}) {
   const loadOrigin = loadOptions.origin || 'manual-load';
   if (loadOrigin !== 'session-autosave') invalidateSessionRestore('manual-load');
   deletedLayerSequences.clear();
@@ -30688,7 +30767,11 @@ function applyProjectData(data, loadOptions = {}) {
           return;
         }
         _pendingProjectWorldToPreserve = null; applyFrameData(data, loadOptions);
-      });
+      }, { onError: () => {
+        _pendingProjectWorldToPreserve = null;
+        loadSessionAborted = true;
+        if (typeof loadOptions.onApplied === 'function') loadOptions.onApplied(false);
+      }});
       showStatus('Carregando projeto com imagem…');
       return;
     } catch(err) {
@@ -31409,11 +31492,40 @@ function restoreProjectAssetsFromData(data) {
         // asset principal sempre preenche a célula central do grid 3x3).
         projectWorld.w = baseW;
         projectWorld.h = baseH;
-        // Asset principal (img-1): forçar para a célula canônica central, em vez de
-        // manter o tamanho do Stage atual aplicado por syncFirstImageAsset() ou um
-        // valor híbrido salvo. zIndex preservado do save quando válido.
+        // Asset principal (img-1): reaplicar o retângulo serializado depois de
+        // syncFirstImageAsset(), que só fornece o drawable e pode inicializar a
+        // geometria como imagem nova. Save/Load e Session Restore preservam o
+        // posicionamento livre do lote, inclusive coordenadas negativas.
         const savedPrimary = savedImageAssets[0];
         if (primary) {
+          if (savedPrimary) {
+            if (Number.isFinite(savedPrimary.worldX)) primary.worldX = savedPrimary.worldX;
+            if (Number.isFinite(savedPrimary.worldY)) primary.worldY = savedPrimary.worldY;
+            if (Number.isFinite(savedPrimary.worldW) && savedPrimary.worldW > 0) primary.worldW = savedPrimary.worldW;
+            if (Number.isFinite(savedPrimary.worldH) && savedPrimary.worldH > 0) primary.worldH = savedPrimary.worldH;
+            if (Number.isFinite(savedPrimary.rotation)) primary.rotation = savedPrimary.rotation;
+            if (Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
+            primary.mimeType = savedPrimary.mimeType || primary.mimeType || '';
+            primary.hasAlpha = !!savedPrimary.hasAlpha;
+            const primaryPersistentSrc = _assetPersistentSourceE8E(savedPrimary) ||
+              (isValidImageBase64(data.imageBase64) ? data.imageBase64 : '');
+            if (primaryPersistentSrc) {
+              primary.src = primaryPersistentSrc;
+              primary.sourcePayload = /^data:image\//i.test(primaryPersistentSrc)
+                ? { kind: 'dataUrl', dataUrl: primaryPersistentSrc, bytes: primaryPersistentSrc.length }
+                : null;
+            }
+            const primaryDrawable = originalImageElement && getImageSourceDimensions(originalImageElement).width > 0
+              ? originalImageElement
+              : (canonicalRenderImage || imgEl);
+            if (primaryDrawable && getImageSourceDimensions(primaryDrawable).width > 0) {
+              primary._img = primaryDrawable;
+              primary.drawSource = primaryDrawable;
+              primary.imgReady = true;
+              primary.decodeReady = true;
+            }
+            recordMultiImageLoadedSourceDiagnostics(primary, primaryDrawable);
+          }
           // v8z4b32E6 — se o img-1 salvo foi substituído com commit canônico,
           // restaurar sua geometria/fonte canônicas (worldRect próprio + src cru),
           // em vez de forçar a célula cheia. Só o asset SUBSTITUÍDO é normalizado;
@@ -31426,12 +31538,6 @@ function restoreProjectAssetsFromData(data) {
             primary.replaceEpoch = ++currentReplaceEpoch;
             if (Number.isFinite(savedPrimary.sourceW) && savedPrimary.sourceW > 0) primary.sourceW = savedPrimary.sourceW;
             if (Number.isFinite(savedPrimary.sourceH) && savedPrimary.sourceH > 0) primary.sourceH = savedPrimary.sourceH;
-            if (Number.isFinite(savedPrimary.worldW) && savedPrimary.worldW > 0) {
-              primary.worldX = savedPrimary.worldX || 0;
-              primary.worldY = savedPrimary.worldY || 0;
-              primary.worldW = savedPrimary.worldW;
-              primary.worldH = savedPrimary.worldH;
-            }
             const primarySavedSrc = _assetPersistentSourceE8E(savedPrimary);
             if (primarySavedSrc) {
               primary.src = primarySavedSrc;
@@ -31451,17 +31557,6 @@ function restoreProjectAssetsFromData(data) {
             }
             primary.imgReady = true;
             primary.decodeReady = true;
-            if (savedPrimary && Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
-            if (savedPrimary && Number.isFinite(savedPrimary.rotation)) primary.rotation = savedPrimary.rotation;
-            if (savedPrimary) { primary.mimeType = savedPrimary.mimeType || primary.mimeType || ''; primary.hasAlpha = !!savedPrimary.hasAlpha; }
-          } else {
-            primary.worldX = 0;
-            primary.worldY = 0;
-            primary.worldW = baseW;
-            primary.worldH = baseH;
-            if (savedPrimary && Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
-            if (savedPrimary && Number.isFinite(savedPrimary.rotation)) primary.rotation = savedPrimary.rotation;
-            if (savedPrimary) { primary.mimeType = savedPrimary.mimeType || primary.mimeType || ''; primary.hasAlpha = !!savedPrimary.hasAlpha; }
           }
         }
       }
@@ -31506,6 +31601,7 @@ function restoreProjectAssetsFromData(data) {
           if (token !== loadSessionToken) { loadSessionIgnoredStaleCallbacksCount++; loadSessionIgnoredStaleCallbackAssetIds = [loadSessionIgnoredStaleCallbackAssetIds, asset.id].filter(Boolean).join(','); return; }
           invalidateProjectWorldComposite();
           renderProjectWorldExtraImages();
+          recordMultiImageLoadedSourceDiagnostics(asset, img);
         };
         img.onerror = () => {
           if (token !== loadSessionToken) { loadSessionIgnoredStaleCallbacksCount++; loadSessionIgnoredStaleCallbackAssetIds = [loadSessionIgnoredStaleCallbackAssetIds, asset.id].filter(Boolean).join(','); return; }
@@ -31520,6 +31616,9 @@ function restoreProjectAssetsFromData(data) {
     }
 
     migratePersistentLayerIdentities(assets, nextLayerSequence);
+    if (data.selectedAssetId && assets.some(a => a && a.id === data.selectedAssetId)) {
+      selectAssetById(data.selectedAssetId, 'projectLoadRestoreSelection');
+    }
     const savedIdentityById = captureLayerIdentityByAssetId(savedImageAssets);
     layerIdentityPreservedAfterSaveLoad = assets.filter(a => a && a.type === 'image').every(a =>
       savedIdentityById[String(a.id)] === captureLayerIdentityByAssetId([a])[String(a.id)]
@@ -31746,6 +31845,12 @@ function triggerImageFilePicker() {
   try { fi.value = ''; } catch (_) {}
   fi.click();
 }
+function triggerMultiImageInsertPicker() {
+  const fi = document.getElementById('multiImageInsertInput');
+  if (!fi) return;
+  try { fi.value = ''; } catch (_) {}
+  fi.click();
+}
 
 // ── Ação 1: INSERIR IMAGEM ──────────────────────────────────────────────
 function startInsertImageFlow() {
@@ -31758,7 +31863,7 @@ function startInsertImageFlow() {
     pendingImageTargetSlot = { key: 'center', row: 0, col: 0 };
     pendingImageTargetAssetId = null;
     activeSlotSelection = 'center';
-    triggerImageFilePicker();
+    triggerMultiImageInsertPicker();
     return;
   }
   // Plano: adicionar imagem extra é Plus/Premium (liberado em teste interno por featureAccess).
@@ -31832,28 +31937,318 @@ function pickImageSlot(slotKey) {
     activeSlotSelection = slotKey;
   }
   closeImageSlotPicker();
-  triggerImageFilePicker();
+  if (pendingImageAction === 'insertImage') triggerMultiImageInsertPicker();
+  else triggerImageFilePicker();
 }
 
-// Arquivo escolhido (após intenção+alvo congelados) — dispara Inserir ou Trocar.
+// Arquivo unitário escolhido — fluxo aprovado de Trocar imagem e demais ações unitárias.
 function handleImageFileChosen(e) {
   const input = e && e.target;
   const file = input && input.files && input.files[0];
   if (!file) { clearPendingImageAction(); return; }
   const action = pendingImageAction;
-  if (action === 'insertImage') {
-    doInsertImageFromFile(file);
-  } else if (action === 'replaceImage') {
-    doReplaceImageFromFile(file);
-  } else if (action === 'replaceLayerAsset') {
-    // v8z4b32E1 — ESCOPO 1: troca por LINHA do painel Layers (alvo = assetId).
-    doReplaceLayerAsset(file);
-  } else {
-    // Sem intenção congelada: segurança — trata como primeira imagem se vazio.
-    if (!imgNatW) loadImage(file);
-  }
+  if (action === 'replaceImage') doReplaceImageFromFile(file);
+  else if (action === 'replaceLayerAsset') doReplaceLayerAsset(file);
+  else if (action === 'insertImage') doInsertImageFromFile(file);
+  else if (!imgNatW) loadImage(file);
   if (input) { try { input.value = ''; } catch (_) {} }
 }
+
+let pendingMultiImageFiles = null;
+let multiImageInsertBusy = false;
+let multiImageInsertSelectedCount = 0;
+let multiImageInsertPreparedCount = 0;
+let multiImageInsertCommittedCount = 0;
+let multiImageInsertLayout = '';
+let multiImageInsertCancelled = false;
+let multiImageInsertPreparationFailed = false;
+let multiImageInsertCommitFailed = false;
+let multiImageInsertRollbackRequired = false;
+let multiImageInsertRollbackCompleted = false;
+let multiImageInsertTemporariesReleased = 0;
+let multiImageInsertHistoryCreated = false;
+let multiImageInsertAutosavesScheduled = 0;
+let multiImageInsertFinalSelectedAssetId = '';
+let multiImageInsertAlphaCount = 0;
+let multiImageLoadedSourceKind = 'empty';
+let multiImageLoadedSourceDurable = false;
+let multiImageLoadedDrawableReady = false;
+let multiImageLoadedDrawableWidth = 0;
+let multiImageLoadedDrawableHeight = 0;
+let multiImageLoadedAlphaPixelPreserved = false;
+let multiImageStaleBlobDetected = false;
+
+function recordMultiImageLoadedSourceDiagnostics(asset, drawable) {
+  const src = _assetPersistentSourceE8E(asset);
+  const dims = getImageSourceDimensions(drawable || (asset && (asset.drawSource || asset._img)));
+  multiImageLoadedSourceKind = _persistentSourceKindE8J(src);
+  multiImageLoadedSourceDurable = multiImageLoadedSourceKind === 'data';
+  multiImageLoadedDrawableWidth = Number(dims.width) || 0;
+  multiImageLoadedDrawableHeight = Number(dims.height) || 0;
+  multiImageLoadedDrawableReady = multiImageLoadedDrawableWidth > 0 && multiImageLoadedDrawableHeight > 0;
+  multiImageStaleBlobDetected = multiImageLoadedSourceKind === 'blob' && !multiImageLoadedDrawableReady;
+  multiImageLoadedAlphaPixelPreserved = false;
+  if (asset && asset.hasAlpha && multiImageLoadedDrawableReady && drawable) {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ff00ff'; ctx.fillRect(0, 0, 1, 1); ctx.drawImage(drawable, 0, 0, 1, 1);
+      const pixel = ctx.getImageData(0, 0, 1, 1).data;
+      multiImageLoadedAlphaPixelPreserved = pixel[0] === 255 && pixel[1] === 0 && pixel[2] === 255 && pixel[3] === 255;
+    } catch (_) {}
+  }
+}
+
+function resetMultiImageInsertDiagnostics(selectedCount) {
+  multiImageInsertSelectedCount = selectedCount || 0;
+  multiImageInsertPreparedCount = 0;
+  multiImageInsertCommittedCount = 0;
+  multiImageInsertLayout = '';
+  multiImageInsertCancelled = false;
+  multiImageInsertPreparationFailed = false;
+  multiImageInsertCommitFailed = false;
+  multiImageInsertRollbackRequired = false;
+  multiImageInsertRollbackCompleted = false;
+  multiImageInsertTemporariesReleased = 0;
+  multiImageInsertHistoryCreated = false;
+  multiImageInsertAutosavesScheduled = 0;
+  multiImageInsertFinalSelectedAssetId = '';
+  multiImageInsertAlphaCount = 0;
+}
+function releasePreparedMultiImages(prepared) {
+  (prepared || []).forEach(item => {
+    if (item && item.image) { try { item.image.src = ''; } catch (_) {} item.image = null; }
+    if (item) { item.dataUrl = ''; item.file = null; }
+    multiImageInsertTemporariesReleased++;
+  });
+}
+function clearPendingMultiImageInsert() {
+  pendingMultiImageFiles = null;
+  const input = document.getElementById('multiImageInsertInput');
+  if (input) { try { input.value = ''; } catch (_) {} }
+}
+function openMultiImageLayoutSheet(files) {
+  if (multiImageInsertBusy) return;
+  pendingMultiImageFiles = Array.from(files || []);
+  const sheet = document.getElementById('multiImageLayoutSheet');
+  const title = document.getElementById('multiImageLayoutTitle');
+  if (title) title.textContent = `Inserir ${pendingMultiImageFiles.length} imagens`;
+  if (sheet) sheet.style.display = 'flex';
+}
+function closeMultiImageLayoutSheet(reason) {
+  if (multiImageInsertBusy) return false;
+  const sheet = document.getElementById('multiImageLayoutSheet');
+  if (sheet) sheet.style.display = 'none';
+  multiImageInsertCancelled = true;
+  clearPendingMultiImageInsert();
+  clearPendingImageAction();
+  return true;
+}
+function handleMultiImageInsertChosen(e) {
+  const input = e && e.target;
+  const files = input && input.files ? Array.from(input.files) : [];
+  if (!files.length) { clearPendingImageAction(); return; }
+  resetMultiImageInsertDiagnostics(files.length);
+  if (files.length === 1) {
+    const file = files[0];
+    if (input) { try { input.value = ''; } catch (_) {} }
+    doInsertImageFromFile(file);
+    return;
+  }
+  openMultiImageLayoutSheet(files);
+}
+async function readSupportedImageKind(file) {
+  if (!file || typeof file.slice !== 'function') return null;
+  try {
+    const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+    if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+        bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a) return 'image/png';
+    if (bytes.length >= 12 && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' &&
+        String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP') return 'image/webp';
+  } catch (_) {}
+  return null;
+}
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error || new Error('file-read-failed'));
+    reader.onload = () => resolve(reader.result || '');
+    reader.readAsDataURL(file);
+  });
+}
+function decodePreparedImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onerror = () => { image.src = ''; reject(new Error('image-decode-failed')); };
+    image.onload = () => image.naturalWidth > 0 && image.naturalHeight > 0 ? resolve(image) : reject(new Error('image-dimensions-invalid'));
+    image.src = dataUrl;
+  });
+}
+async function prepareMultiImageFiles(files) {
+  const prepared = [];
+  try {
+    for (const file of Array.from(files || [])) {
+      const kind = await readSupportedImageKind(file);
+      if (!kind) throw new Error('unsupported-image');
+      const dataUrl = await readFileAsDataUrl(file);
+      const image = await decodePreparedImage(dataUrl);
+      prepared.push({ file, kind, dataUrl, image, width: image.naturalWidth, height: image.naturalHeight, hasAlpha: kind === 'image/png' });
+      multiImageInsertPreparedCount = prepared.length;
+    }
+    return prepared;
+  } catch (error) {
+    multiImageInsertPreparationFailed = true;
+    releasePreparedMultiImages(prepared);
+    throw error;
+  }
+}
+function getMultiImageVisibleCenter() {
+  computeEditorTransform();
+  return editorStageToWorld((stageW || projectWorld.baseStageW || 1) / 2, (stageH || projectWorld.baseStageH || 1) / 2);
+}
+function calculateMultiImageLayout(prepared, layout, center, baseW, baseH) {
+  const gap = Math.max(24, Math.min(64, Math.min(baseW, baseH) * 0.08));
+  const sizes = prepared.map(item => fitContain(item.width, item.height, baseW, baseH));
+  const positions = [];
+  if (layout === 'horizontal') {
+    const total = sizes.reduce((sum, size) => sum + size.width, 0) + gap * Math.max(0, sizes.length - 1);
+    let x = center.x - total / 2;
+    sizes.forEach(size => { positions.push({ x, y: center.y - size.height / 2, w: size.width, h: size.height }); x += size.width + gap; });
+  } else if (layout === 'vertical') {
+    const total = sizes.reduce((sum, size) => sum + size.height, 0) + gap * Math.max(0, sizes.length - 1);
+    let y = center.y - total / 2;
+    sizes.forEach(size => { positions.push({ x: center.x - size.width / 2, y, w: size.width, h: size.height }); y += size.height + gap; });
+  } else {
+    const step = Math.max(8, Math.min(18, Math.min(baseW, baseH) * 0.025));
+    const middle = (sizes.length - 1) / 2;
+    sizes.forEach((size, index) => {
+      const offset = (index - middle) * step;
+      positions.push({ x: center.x - size.width / 2 + offset, y: center.y - size.height / 2 + offset, w: size.width, h: size.height });
+    });
+  }
+  return positions;
+}
+function loadMainImageForMultiInsert(file) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const control = { cancelled: false };
+    const finish = (error, asset) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      if (error) reject(error); else resolve(asset);
+    };
+    const timeoutId = setTimeout(() => {
+      control.cancelled = true;
+      finish(new Error('main-image-load-timeout'));
+    }, 30000);
+    loadImage(file, () => {
+      if (settled || control.cancelled) return;
+      try {
+        createInitialFrameForNewImageProject();
+        renderProjectWorldExtraImages(); renderAll(); updateFrameSelector(); updateToolbarLabels();
+        const mainAsset = getMainImageAsset();
+        if (!mainAsset) throw new Error('main-image-asset-missing');
+        finish(null, mainAsset);
+      } catch (error) { finish(error); }
+    }, {
+      isCancelled: () => control.cancelled,
+      onError: error => finish(error instanceof Error ? error : new Error('main-image-load-failed'))
+    });
+  });
+}
+function createPreparedImageAsset(item, rect, zIndex) {
+  let assetId = '';
+  do { assetId = 'img-' + Date.now() + '-' + Math.floor(Math.random() * 1000000); }
+  while (assets.some(asset => asset && asset.id === assetId));
+  const asset = {
+    id: assetId, type: 'image',
+    name: (item.file.name || 'imagem').replace(/\.[^.]+$/, ''), src: item.dataUrl,
+    sourceW: item.width, sourceH: item.height, worldX: rect.x, worldY: rect.y, worldW: rect.w, worldH: rect.h,
+    rotation: 0, zIndex, visible: true, locked: false, fitMode: 'contain', mimeType: item.kind, hasAlpha: item.hasAlpha,
+    crop: { enabled:false,x:0,y:0,w:1,h:1 }, frameStyle: { enabled:false,strokeColor:'#ffffff',strokeWidth:0,radius:0,padding:0,shadow:false }, _img: item.image
+  };
+  assignPersistentLayerIdentity(asset, item.file.name || '');
+  return asset;
+}
+function snapshotMultiImageTransaction() {
+  return { state: captureState(), undo: undoStack.slice(), redo: redoStack.slice(), nextLayerSequence,
+    queuedRevision: _sessionAutosaveQueuedRevision, selectedAssetId, wasEmpty: !imgNatW };
+}
+function rollbackMultiImageTransaction(snapshot) {
+  multiImageInsertRollbackRequired = true;
+  clearTimeout(_sessionAutosaveTimer); _sessionAutosaveTimer = null;
+  _sessionAutosaveQueuedRevision = snapshot.queuedRevision;
+  undoStack.length = 0; snapshot.undo.forEach(item => undoStack.push(item));
+  redoStack.length = 0; snapshot.redo.forEach(item => redoStack.push(item));
+  if (snapshot.wasEmpty) clearCurrentProjectForNewFile(); else restoreState(snapshot.state);
+  nextLayerSequence = snapshot.nextLayerSequence;
+  if (snapshot.selectedAssetId) selectAssetById(snapshot.selectedAssetId, 'multiInsertRollback'); else clearSelectedAsset();
+  multiImageInsertRollbackCompleted = true;
+}
+async function commitPendingMultiImageInsert(layout) {
+  if (multiImageInsertBusy || !pendingMultiImageFiles || pendingMultiImageFiles.length < 2) return false;
+  multiImageInsertBusy = true; multiImageInsertLayout = layout;
+  const files = pendingMultiImageFiles.slice();
+  const actions = document.getElementById('multiImageLayoutActions');
+  const busy = document.getElementById('multiImageLayoutBusy');
+  if (actions) actions.style.display = 'none';
+  if (busy) { busy.style.display = 'block'; busy.textContent = `Preparando ${files.length} imagens…`; }
+  let prepared = [];
+  let snapshot = null;
+  try {
+    prepared = await prepareMultiImageFiles(files);
+    snapshot = snapshotMultiImageTransaction();
+    const wasEmpty = snapshot.wasEmpty;
+    let firstAsset = null;
+    if (wasEmpty) firstAsset = await loadMainImageForMultiInsert(prepared[0].file);
+    const baseW = projectWorld.baseStageW || stageW;
+    const baseH = projectWorld.baseStageH || stageH;
+    const center = getMultiImageVisibleCenter();
+    const positions = calculateMultiImageLayout(prepared, layout, center, baseW, baseH);
+    let maxZ = assets.reduce((max, asset) => Math.max(max, Number(asset && asset.zIndex) || 0), 0);
+    const committed = [];
+    for (let i = 0; i < prepared.length; i++) {
+      let asset;
+      if (wasEmpty && i === 0) {
+        asset = firstAsset;
+        Object.assign(asset, { worldX:positions[i].x, worldY:positions[i].y, worldW:positions[i].w, worldH:positions[i].h, zIndex:++maxZ, mimeType:prepared[i].kind, hasAlpha:prepared[i].hasAlpha });
+      } else {
+        asset = createPreparedImageAsset(prepared[i], positions[i], ++maxZ);
+        assets.push(asset);
+      }
+      committed.push(asset);
+      multiImageInsertCommittedCount = committed.length;
+    }
+    const finalAsset = committed[committed.length - 1];
+    selectAssetById(finalAsset.id, 'multiInsertCommit');
+    multiImageInsertFinalSelectedAssetId = finalAsset.id;
+    multiImageInsertAlphaCount = committed.filter(asset => asset.hasAlpha).length;
+    invalidateProjectWorldComposite(); renderProjectWorldExtraImages(); renderLayersPanelList(); renderAll(); clampEditorPan();
+    pushUndoSnapshot(snapshot.state); lastUndoAction = 'addImageAsset'; multiImageInsertHistoryCreated = undoStack.length === snapshot.undo.length + 1;
+    markProjectDirty('add-image-assets'); multiImageInsertAutosavesScheduled = _sessionAutosaveQueuedRevision - snapshot.queuedRevision;
+    clearPendingMultiImageInsert();
+    const sheet = document.getElementById('multiImageLayoutSheet'); if (sheet) sheet.style.display = 'none';
+    showStatus(`${committed.length} imagens inseridas`);
+    return true;
+  } catch (error) {
+    if (snapshot) { multiImageInsertCommitFailed = true; rollbackMultiImageTransaction(snapshot); }
+    else multiImageInsertPreparationFailed = true;
+    showStatus('Não foi possível preparar todas as imagens. Nenhuma alteração foi feita.');
+    return false;
+  } finally {
+    releasePreparedMultiImages(prepared.filter(item => !assets.some(asset => asset && asset._img === item.image)));
+    clearPendingMultiImageInsert();
+    multiImageInsertBusy = false;
+    if (actions) actions.style.display = 'grid';
+    if (busy) { busy.style.display = 'none'; busy.textContent = ''; }
+  }
+}
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && document.getElementById('multiImageLayoutSheet')?.style.display === 'flex') closeMultiImageLayoutSheet('escape');
+});
 
 function doInsertImageFromFile(file) {
   const slotKey = (pendingImageTargetSlot && pendingImageTargetSlot.key) || 'center';
@@ -33680,16 +34075,18 @@ function checkEndpointContinuityAll() {
 // v8z4b30U — INSERE uma nova imagem (novo asset/layer) no slot CONGELADO.
 // Respeita o slot escolhido antes do seletor; nunca cai no centro por engano.
 // Slot ocupado NÃO é erro: cria nova camada acima das existentes naquele slot.
-function performInsertImageAtSlot(slotKey, file) {
+function performInsertImageAtSlot(slotKey, file, options) {
+  options = options || {};
+  return new Promise(function(resolve) {
   // v8z4b32E1 — ESCOPO 1 (guard): se a intenção congelada é trocar a imagem de
   // uma LINHA do painel Layers, é proibido inserir/adicionar um novo asset.
   if (pendingImageAction === 'replaceLayerAsset' && pendingImageTargetAssetId != null) {
     layerReplaceDidNotInsertNewAsset = true;
-    return;
+    resolve(false); return;
   }
   const slot = WORLD_SLOTS[slotKey];
-  if (!file || !slot) return;
-  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) return;
+  if (!file || !slot) { resolve(false); return; }
+  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) { resolve(false); return; }
   const occupiedBefore = !!findTopAssetInSlot(slotKey);
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -33732,8 +34129,8 @@ function performInsertImageAtSlot(slotKey, file) {
         visible: true,
         locked: false,
         fitMode: 'contain',
-        mimeType: file.type || '',
-        hasAlpha: /^image\/png$/i.test(file.type || ''),
+        mimeType: options.mimeType || file.type || '',
+        hasAlpha: /^image\/png$/i.test(options.mimeType || file.type || ''),
         // v8z4b30ZJ — defaults não destrutivos (crop/moldura futuros); enabled:false
         // não altera render/Preview/Export nesta versão.
         crop: { enabled: false, x: 0, y: 0, w: 1, h: 1 },
@@ -33771,23 +34168,28 @@ function performInsertImageAtSlot(slotKey, file) {
       _analyzeAddImageMutation(_snapBefore, _snapAfter, asset.id);
       // Verificar continuidade de endpoints após add.
       checkEndpointContinuityAll();
-      pushUndoSnapshot(beforeAddAsset);
-      lastUndoAction = 'addImageAsset';
+      if (!options.deferHistory) {
+        pushUndoSnapshot(beforeAddAsset);
+        lastUndoAction = 'addImageAsset';
+      }
       lastImageActionType = 'insertImage';
       lastAddedAssetId = asset.id;
       lastReplacedAssetId = null;
       slotOccupiedOnInsert = occupiedBefore;
-      markProjectDirty('add-image-asset');
+      if (!options.deferHistory) markProjectDirty('add-image-asset');
       if (window._arcoDebug) {
         console.info('[Arco ' + APP_VERSION + '] asset inserido no mundo:', { id: asset.id, slot: slotKey, occupiedBefore, zIndex: newZ,
           addImageOnlyAddedNewAsset, addImageUnexpectedMutationDetected, addImageUnexpectedMutationDetails });
       }
-      showStatus('Imagem inserida');
+      if (!options.deferFeedback) showStatus('Imagem inserida');
+      resolve(true);
     };
-    img.onerror = () => { showStatus('Não foi possível abrir esta imagem.'); };
+    img.onerror = () => { if (!options.deferFeedback) showStatus('Não foi possível abrir esta imagem.'); resolve(false); };
     img.src = dataUrl;
   };
+  reader.onerror = () => { if (!options.deferFeedback) showStatus('Não foi possível abrir esta imagem.'); resolve(false); };
   reader.readAsDataURL(file);
+  });
 }
 
 // v8z4b32E2 — ESCOPO 1: PILHA UNIFICADA DE imageAssets NO EDITOR.
@@ -36751,6 +37153,27 @@ function buildDiagnosticsText() {
   const _layerSequences = _layerAssets.map(a => a.layerSequence).filter(isPositiveLayerSequence);
   const _layerSequenceSet = new Set(_layerSequences);
   push('persistentLayerNamesEnabled', String(_layerAssets.every(a => isPositiveLayerSequence(a.layerSequence) && isValidLayerName(a.layerName))));
+  push('multiImageInsert selectedCount', String(multiImageInsertSelectedCount));
+  push('multiImageInsert preparedCount', String(multiImageInsertPreparedCount));
+  push('multiImageInsert committedCount', String(multiImageInsertCommittedCount));
+  push('multiImageInsert layout', multiImageInsertLayout || 'n/d');
+  push('multiImageInsert cancelled', String(multiImageInsertCancelled));
+  push('multiImageInsert preparationFailed', String(multiImageInsertPreparationFailed));
+  push('multiImageInsert commitFailed', String(multiImageInsertCommitFailed));
+  push('multiImageInsert rollbackRequired', String(multiImageInsertRollbackRequired));
+  push('multiImageInsert rollbackCompleted', String(multiImageInsertRollbackCompleted));
+  push('multiImageInsert temporariesReleased', String(multiImageInsertTemporariesReleased));
+  push('multiImageInsert historyCreated', String(multiImageInsertHistoryCreated));
+  push('multiImageInsert autosavesScheduled', String(multiImageInsertAutosavesScheduled));
+  push('multiImageInsert finalSelectedAssetId', multiImageInsertFinalSelectedAssetId || 'n/d');
+  push('multiImageInsert alphaCount', String(multiImageInsertAlphaCount));
+  push('multiImageLoadedSourceKind', multiImageLoadedSourceKind);
+  push('multiImageLoadedSourceDurable', String(multiImageLoadedSourceDurable));
+  push('multiImageLoadedDrawableReady', String(multiImageLoadedDrawableReady));
+  push('multiImageLoadedDrawableWidth', String(multiImageLoadedDrawableWidth));
+  push('multiImageLoadedDrawableHeight', String(multiImageLoadedDrawableHeight));
+  push('multiImageLoadedAlphaPixelPreserved', String(multiImageLoadedAlphaPixelPreserved));
+  push('multiImageStaleBlobDetected', String(multiImageStaleBlobDetected));
   push('nextLayerSequence', String(nextLayerSequence));
   push('maxExistingLayerSequence', String(_layerSequences.length ? Math.max.apply(null, _layerSequences) : 0));
   push('layerSequenceDuplicateDetected', String(_layerSequenceSet.size !== _layerSequences.length));
