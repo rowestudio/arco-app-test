@@ -274,3 +274,12 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: `node scripts/qa/check-startup-session-choice.mjs`, `node scripts/qa/test-startup-session-choice.mjs` sobre funções reais extraídas do app, WebKit com IndexedDB/schema/store/chave/checksum reais, feedback “Recuperando sessão…”/“Preparando novo projeto…” e validação publicada em iPhone/Safari/PWA.
 - Ambiente: harness Node, WebKit automatizado e iPhone/Safari/PWA real obrigatório para aprovação final.
 - Automatizável: parcial; encerramento real do processo, persistência grande, arquivos manuais, Preview e Export exigem validação no aparelho.
+
+## TC-031 — Inserção de várias imagens em uma operação
+
+- Pré-condição: editor aberto com um projeto e Inserir imagem disponível.
+- Passos: escolher um slot; selecionar em conjunto JPEG, PNG transparente, WebP e um arquivo inválido; observar Stage/Layers; executar Undo e Redo.
+- Resultado esperado: formatos válidos entram na ordem selecionada, distribuídos a partir do slot escolhido, mantendo alpha do PNG, nomes `Camada N`, seleção e z-order; o inválido não cria asset; Undo/Redo trata o lote válido como uma operação.
+- Evidência: `node scripts/qa/test-multi-image-insert.mjs`, contagem e inspeção de Stage/Layers.
+- Ambiente: harness Node e iPhone/Safari real obrigatório para aprovação final.
+- Automatizável: parcial; validação de assinatura, organização e guardas de histórico são automatizadas, picker/decodes reais e resultado visual exigem aparelho.

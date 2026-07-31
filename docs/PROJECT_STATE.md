@@ -112,3 +112,10 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - O relato isolado sobre intenção escala × rotação de Frames ocorreu em um arquivo específico, não voltou a ser reproduzido e permanece em observação; não integra o escopo da E8I e não autoriza alteração ou PR de Frames nesta versão.
 - A revisão da PR #459 substitui o harness paralelo por execução em `vm` dos controladores reais do `index.html`, cobre startup e IndexedDB reais no smoke WebKit e adiciona feedback visual aguardável dentro do modal durante restore/clear, sem novo bump de versão ou mudança na arquitetura funcional.
 - A revisão funcional seguinte identificou a causa exata do falso negativo da recuperação: `applyProjectData()` inicia a carga assíncrona da imagem e retornava antes de `applyFrameData()` concluir, portanto `restoreLastSessionAutosave()` consultava `sessionRestoreCompleted` ainda em `false`, mesmo com o editor sendo aplicado logo depois. O restore agora aguarda o callback final da aplicação, separa sucesso operacional das métricas observacionais de paridade e mantém rollback recuperável em falha; a validação automatizada em WebKit permanece responsabilidade do workflow e a validação em iPhone/Safari/PWA real continua pendente.
+
+## Atualização 2026-07-31 — v8z4b32E8J em desenvolvimento
+
+- Base confirmada na `main` atual, merge commit da PR #459 `8b3af38a544c186405c4e1dbcb3713c1735e6a15`, versão `v8z4b32E8I`.
+- A `v8z4b32E8J` permite selecionar vários JPEG, PNG e WebP em uma única abertura do seletor de Inserir imagem, valida a assinatura dos arquivos antes do decode e distribui as novas camadas a partir do slot escolhido.
+- O lote preserva a ordem de seleção, nomes persistentes e seleção canônica, cria um único passo de Undo e ignora arquivos inválidos sem deixar assets parciais.
+- Preview, Export, WebCodecs, renderer, Frames, curvas, timing, Save/Load e Session Autosave/Restore permanecem fora do diff funcional. Validação em iPhone/Safari real continua obrigatória.

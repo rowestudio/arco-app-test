@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8J — base v8z4b32E8I. feat(assets): permite selecionar JPEG, PNG e WebP em lote ao inserir, valida a assinatura em memória, distribui as novas camadas a partir do slot escolhido e registra a operação como um único Undo. APP_VERSION = APP_VERSION_NAME = v8z4b32E8J. -->
 <!-- Arco Motion App — v8z4b32E8I — base v8z4b32E8H. feat(session): pergunta se deve recuperar um checkpoint válido na abertura normal, sem alterar as intenções explícitas de Recarregar. APP_VERSION = APP_VERSION_NAME = v8z4b32E8I. -->
 <!-- Arco Motion App — v8z4b32E8H — base v8z4b32E8G. fix(reload): oferece restauração aguardável da sessão ou reinício limpo, com intenção de startup de uso único e tratamento de falhas. APP_VERSION = APP_VERSION_NAME = v8z4b32E8H. -->
 <!-- Arco Motion App — v8z4b32E8F — base v8z4b32E8E. fix(preview): confirma render e composição do primeiro frame t=0 antes de liberar loading, relógio e loop visível; falha/cancelamento libera retry sem alterar Export ou matemática do renderer. APP_VERSION = APP_VERSION_NAME = v8z4b32E8F. -->
@@ -4378,7 +4379,7 @@ body.cust-open #toolbar{
 <input type="file" id="newProjectImageInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
 <!-- v8z4b30U — input de imagem do editor (Inserir/Trocar) em nível de topo, fora de
      qualquer container display:none, para que .click() funcione no iPhone/Safari. -->
-<input type="file" id="fileInput2" accept="image/*" style="display:none;">
+<input type="file" id="fileInput2" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
 
 <!-- PREVIEW SCREEN -->
 <div class="preview-screen" id="previewScreen">
@@ -7223,8 +7224,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8I';
-const APP_VERSION_NAME = 'v8z4b32E8I';
+const APP_VERSION = 'v8z4b32E8J';
+const APP_VERSION_NAME = 'v8z4b32E8J';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -31836,13 +31837,14 @@ function pickImageSlot(slotKey) {
 }
 
 // Arquivo escolhido (após intenção+alvo congelados) — dispara Inserir ou Trocar.
-function handleImageFileChosen(e) {
+async function handleImageFileChosen(e) {
   const input = e && e.target;
-  const file = input && input.files && input.files[0];
+  const files = input && input.files ? Array.from(input.files) : [];
+  const file = files[0];
   if (!file) { clearPendingImageAction(); return; }
   const action = pendingImageAction;
   if (action === 'insertImage') {
-    doInsertImageFromFile(file);
+    await doInsertImagesFromFiles(files);
   } else if (action === 'replaceImage') {
     doReplaceImageFromFile(file);
   } else if (action === 'replaceLayerAsset') {
@@ -31853,6 +31855,75 @@ function handleImageFileChosen(e) {
     if (!imgNatW) loadImage(file);
   }
   if (input) { try { input.value = ''; } catch (_) {} }
+}
+
+async function readSupportedImageKind(file) {
+  if (!file || typeof file.slice !== 'function') return null;
+  try {
+    const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+    if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+        bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a) return 'image/png';
+    if (bytes.length >= 12 && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' &&
+        String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP') return 'image/webp';
+  } catch (_) {}
+  return null;
+}
+
+function getInitialInsertSlotKeys(anchorKey, count) {
+  const anchor = WORLD_SLOTS[anchorKey] || WORLD_SLOTS.center;
+  return Object.keys(WORLD_SLOTS).sort(function(a, b) {
+    const sa = WORLD_SLOTS[a], sb = WORLD_SLOTS[b];
+    const da = Math.abs(sa.row - anchor.row) + Math.abs(sa.col - anchor.col);
+    const db = Math.abs(sb.row - anchor.row) + Math.abs(sb.col - anchor.col);
+    if (da !== db) return da - db;
+    const oa = (sa.row + 1) * 3 + (sa.col + 1);
+    const ob = (sb.row + 1) * 3 + (sb.col + 1);
+    return oa - ob;
+  }).slice(0, Math.max(0, count));
+}
+
+async function doInsertImagesFromFiles(files) {
+  const selected = Array.from(files || []);
+  const anchorKey = (pendingImageTargetSlot && pendingImageTargetSlot.key) || 'center';
+  clearPendingImageAction();
+  if (!selected.length) return;
+  const valid = [];
+  for (const file of selected) {
+    const kind = await readSupportedImageKind(file);
+    if (kind) valid.push({ file, kind });
+  }
+  if (!valid.length) {
+    showStatus('Não foi possível abrir estas imagens.');
+    return;
+  }
+  if (!imgNatW) {
+    // O launcher continua responsável pela primeira imagem; este caminho é uma
+    // proteção para chamadas programáticas sem projeto aberto.
+    loadImage(valid[0].file);
+    showStatus(valid.length === 1 ? 'Imagem inserida' : 'Abra o editor para inserir várias imagens.');
+    return;
+  }
+  const slots = getInitialInsertSlotKeys(anchorKey, valid.length);
+  const beforeBatch = captureState();
+  let inserted = 0;
+  for (let i = 0; i < valid.length; i++) {
+    const slotKey = slots[i] || anchorKey;
+    const ok = await performInsertImageAtSlot(slotKey, valid[i].file, {
+      mimeType: valid[i].kind,
+      deferHistory: true,
+      deferFeedback: true
+    });
+    if (ok) inserted++;
+  }
+  if (inserted) {
+    pushUndoSnapshot(beforeBatch);
+    lastUndoAction = 'addImageAsset';
+    markProjectDirty('add-image-assets');
+    showStatus(inserted === 1 ? 'Imagem inserida' : inserted + ' imagens inseridas');
+  } else {
+    showStatus('Não foi possível abrir estas imagens.');
+  }
 }
 
 function doInsertImageFromFile(file) {
@@ -33680,16 +33751,18 @@ function checkEndpointContinuityAll() {
 // v8z4b30U — INSERE uma nova imagem (novo asset/layer) no slot CONGELADO.
 // Respeita o slot escolhido antes do seletor; nunca cai no centro por engano.
 // Slot ocupado NÃO é erro: cria nova camada acima das existentes naquele slot.
-function performInsertImageAtSlot(slotKey, file) {
+function performInsertImageAtSlot(slotKey, file, options) {
+  options = options || {};
+  return new Promise(function(resolve) {
   // v8z4b32E1 — ESCOPO 1 (guard): se a intenção congelada é trocar a imagem de
   // uma LINHA do painel Layers, é proibido inserir/adicionar um novo asset.
   if (pendingImageAction === 'replaceLayerAsset' && pendingImageTargetAssetId != null) {
     layerReplaceDidNotInsertNewAsset = true;
-    return;
+    resolve(false); return;
   }
   const slot = WORLD_SLOTS[slotKey];
-  if (!file || !slot) return;
-  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) return;
+  if (!file || !slot) { resolve(false); return; }
+  if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH) { resolve(false); return; }
   const occupiedBefore = !!findTopAssetInSlot(slotKey);
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -33732,8 +33805,8 @@ function performInsertImageAtSlot(slotKey, file) {
         visible: true,
         locked: false,
         fitMode: 'contain',
-        mimeType: file.type || '',
-        hasAlpha: /^image\/png$/i.test(file.type || ''),
+        mimeType: options.mimeType || file.type || '',
+        hasAlpha: /^image\/png$/i.test(options.mimeType || file.type || ''),
         // v8z4b30ZJ — defaults não destrutivos (crop/moldura futuros); enabled:false
         // não altera render/Preview/Export nesta versão.
         crop: { enabled: false, x: 0, y: 0, w: 1, h: 1 },
@@ -33771,23 +33844,28 @@ function performInsertImageAtSlot(slotKey, file) {
       _analyzeAddImageMutation(_snapBefore, _snapAfter, asset.id);
       // Verificar continuidade de endpoints após add.
       checkEndpointContinuityAll();
-      pushUndoSnapshot(beforeAddAsset);
-      lastUndoAction = 'addImageAsset';
+      if (!options.deferHistory) {
+        pushUndoSnapshot(beforeAddAsset);
+        lastUndoAction = 'addImageAsset';
+      }
       lastImageActionType = 'insertImage';
       lastAddedAssetId = asset.id;
       lastReplacedAssetId = null;
       slotOccupiedOnInsert = occupiedBefore;
-      markProjectDirty('add-image-asset');
+      if (!options.deferHistory) markProjectDirty('add-image-asset');
       if (window._arcoDebug) {
         console.info('[Arco ' + APP_VERSION + '] asset inserido no mundo:', { id: asset.id, slot: slotKey, occupiedBefore, zIndex: newZ,
           addImageOnlyAddedNewAsset, addImageUnexpectedMutationDetected, addImageUnexpectedMutationDetails });
       }
-      showStatus('Imagem inserida');
+      if (!options.deferFeedback) showStatus('Imagem inserida');
+      resolve(true);
     };
-    img.onerror = () => { showStatus('Não foi possível abrir esta imagem.'); };
+    img.onerror = () => { if (!options.deferFeedback) showStatus('Não foi possível abrir esta imagem.'); resolve(false); };
     img.src = dataUrl;
   };
+  reader.onerror = () => { if (!options.deferFeedback) showStatus('Não foi possível abrir esta imagem.'); resolve(false); };
   reader.readAsDataURL(file);
+  });
 }
 
 // v8z4b32E2 — ESCOPO 1: PILHA UNIFICADA DE imageAssets NO EDITOR.
