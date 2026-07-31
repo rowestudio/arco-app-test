@@ -31985,6 +31985,7 @@ let multiImagePlacementSnapshotRestored = false;
 let multiImagePlacementFinalCommittedCount = 0;
 let multiImagePlacementHistoryEntriesCreated = 0;
 let multiImagePlacementAutosavesScheduled = 0;
+let multiImagePlacementAutosavesBeforeCommit = 0;
 let multiImagePlacementTemporaryResourcesReleased = 0;
 let multiImagePlacementPointerCaptureStuck = false;
 let multiImagePlacementGestureConflictDetected = false;
@@ -32045,6 +32046,7 @@ function resetMultiImageInsertDiagnostics(selectedCount) {
   multiImagePlacementFinalCommittedCount = 0;
   multiImagePlacementHistoryEntriesCreated = 0;
   multiImagePlacementAutosavesScheduled = 0;
+  multiImagePlacementAutosavesBeforeCommit = 0;
   multiImagePlacementTemporaryResourcesReleased = 0;
   multiImagePlacementPointerCaptureStuck = false;
   multiImagePlacementGestureConflictDetected = false;
@@ -32198,13 +32200,17 @@ function stableMultiImageValue(value) {
     return current;
   });
 }
-function getMultiImagePlacementFingerprint() {
+function getMultiImagePlacementCanonicalFingerprint() {
   return stableMultiImageValue({
     assets, selectedAssetId, nextLayerSequence,
     frames: frames.slice(0, frameCount), frameCount,
-    curvesV2, projectWorld,
-    undoStack, redoStack,
-    queuedRevision: _sessionAutosaveQueuedRevision
+    curvesV2, projectWorld
+  });
+}
+function getMultiImagePlacementFingerprint() {
+  return stableMultiImageValue({
+    canonical:getMultiImagePlacementCanonicalFingerprint(),
+    undoStack, redoStack
   });
 }
 function positionPendingMultiImageElement(element, rect) {
@@ -32251,11 +32257,12 @@ async function beginMultiImagePlacement(files) {
     prepared = await prepareMultiImageFiles(files);
     if (!prepared.length) throw new Error('prepared-images-empty');
     const snapshot = snapshotMultiImageTransaction();
-    const fingerprint = getMultiImagePlacementFingerprint();
+    const fingerprint = getMultiImagePlacementCanonicalFingerprint();
+    const rollbackFingerprint = getMultiImagePlacementFingerprint();
     multiImagePlacementCanonicalAssetCountBefore = assets.length;
     pendingMultiImagePlacement = { active:true, preparedImages:prepared, placements:[], currentIndex:0,
-      currentRect:makePendingMultiImageRect(prepared[0]), snapshotBefore:snapshot, fingerprint,
-      gesture:null, navigationGesture:null, emptyStageGesture:null, currentElement:null };
+      currentRect:makePendingMultiImageRect(prepared[0]), snapshotBefore:snapshot, fingerprint, rollbackFingerprint,
+      gesture:null, navigationGesture:null, emptyStageGesture:null, currentElement:null, autosavesScheduled:0 };
     clearPendingMultiImageInsert();
     renderPendingMultiImagePlacement();
     return true;
@@ -32345,7 +32352,7 @@ function handlePendingMultiImageTouchNavigation(event) {
   }
 }
 function auditPendingMultiImageIsolation(state) {
-  const now=getMultiImagePlacementFingerprint(), before=state.fingerprint;
+  const now=getMultiImagePlacementCanonicalFingerprint(), before=state.fingerprint;
   const changed = now !== before;
   multiImagePlacementCanonicalMutationBeforeFinalCommit ||= changed;
   const beforeState = state.snapshotBefore.state;
@@ -32360,16 +32367,17 @@ function cancelPendingMultiImagePlacement() {
   multiImagePlacementCancelled=true; multiImagePlacementCancelStepIndex=state.currentIndex;
   const snapshot=state.snapshotBefore;
   closePendingMultiImagePlacementVisuals(); pendingMultiImagePlacement=null;
-  if (getMultiImagePlacementFingerprint() !== state.fingerprint) rollbackMultiImageTransaction(snapshot);
-  multiImagePlacementSnapshotRestored = getMultiImagePlacementFingerprint() === state.fingerprint;
+  if (getMultiImagePlacementFingerprint() !== state.rollbackFingerprint) rollbackMultiImageTransaction(snapshot);
+  multiImagePlacementSnapshotRestored = getMultiImagePlacementFingerprint() === state.rollbackFingerprint;
   multiImagePlacementTemporaryResourcesReleased += state.preparedImages.length;
   releasePreparedMultiImages(state.preparedImages); clearPendingMultiImageInsert();
   return true;
 }
 function confirmPendingMultiImagePlacement() {
   const state=pendingMultiImagePlacement;
-  if (!state || state.gesture || !state.currentRect) return false;
+  if (!state || state.gesture || state.navigationGesture || isPinching || !state.currentRect) return false;
   auditPendingMultiImageIsolation(state);
+  multiImagePlacementAutosavesBeforeCommit = state.autosavesScheduled;
   state.placements.push({...state.currentRect}); state.currentIndex++;
   if (state.currentElement) {
     state.currentElement.classList.remove('current');
@@ -32382,12 +32390,19 @@ function confirmPendingMultiImagePlacement() {
   }
   return commitPendingMultiImagePlacement();
 }
+function scheduleMultiImagePlacementAutosave(state) {
+  const before = _sessionAutosaveQueuedRevision;
+  markProjectDirty('add-image-assets');
+  const scheduled = Math.max(0, _sessionAutosaveQueuedRevision - before);
+  state.autosavesScheduled += scheduled;
+  return scheduled;
+}
 async function commitPendingMultiImagePlacement() {
   const state=pendingMultiImagePlacement;
   if (!state || state.placements.length!==state.preparedImages.length || state.placements.some(r=>!r||![r.x,r.y,r.w,r.h].every(Number.isFinite))) return false;
   auditPendingMultiImageIsolation(state);
   if (multiImagePlacementCanonicalMutationBeforeFinalCommit || multiImagePlacementFrameStateChanged || multiImagePlacementCurveStateChanged || multiImagePlacementProjectWorldChangedBeforeCommit) return cancelPendingMultiImagePlacement();
-  const snapshot=state.snapshotBefore, undoBefore=undoStack.length, autosaveBefore=_sessionAutosaveQueuedRevision;
+  const snapshot=state.snapshotBefore, undoBefore=undoStack.length;
   try {
     let firstAsset = null;
     if (snapshot.wasEmpty) firstAsset = await loadMainImageForMultiImagePlacement(state.preparedImages[0]);
@@ -32406,13 +32421,16 @@ async function commitPendingMultiImagePlacement() {
         const asset=createPreparedImageAsset(item,state.placements[i],++maxZ);
         assets.push(asset); committed.push(asset);
       }
+      if (Number(window.__ARCO_TEST_MULTI_IMAGE_COMMIT_FAIL_AFTER__) === committed.length) {
+        throw new TypeError('multi-image-test-commit-failure');
+      }
     });
     const finalAsset=committed[committed.length-1]; selectAssetById(finalAsset.id,'multiImagePlacementCommit');
     invalidateProjectWorldComposite(); renderProjectWorldExtraImages(); renderLayersPanelList(); renderAll();
-    pushUndoSnapshot(snapshot.state); lastUndoAction='addImageAsset'; markProjectDirty('add-image-assets');
+    pushUndoSnapshot(snapshot.state); lastUndoAction='addImageAsset'; scheduleMultiImagePlacementAutosave(state);
     multiImagePlacementFinalCommittedCount=committed.length;
     multiImagePlacementHistoryEntriesCreated=undoStack.length-undoBefore;
-    multiImagePlacementAutosavesScheduled=_sessionAutosaveQueuedRevision-autosaveBefore;
+    multiImagePlacementAutosavesScheduled=state.autosavesScheduled;
     const discarded = snapshot.wasEmpty ? [state.preparedImages[0]] : [];
     releasePreparedMultiImages(discarded);
     multiImagePlacementTemporaryResourcesReleased=discarded.length;
@@ -32428,7 +32446,7 @@ async function commitPendingMultiImagePlacement() {
     rollbackMultiImageTransaction(snapshot);
     closePendingMultiImagePlacementVisuals(); pendingMultiImagePlacement=null;
     releasePreparedMultiImages(state.preparedImages.filter(item => !assets.some(asset => asset?._img===item.image || asset?.drawSource===item.image)));
-    multiImagePlacementSnapshotRestored=getMultiImagePlacementFingerprint()===state.fingerprint;
+    multiImagePlacementSnapshotRestored=getMultiImagePlacementFingerprint()===state.rollbackFingerprint;
     showStatus('Não foi possível adicionar as imagens. O projeto foi restaurado.');
     return false;
   }
@@ -37382,6 +37400,7 @@ function buildDiagnosticsText() {
   push('multiImagePlacementFinalCommittedCount', String(multiImagePlacementFinalCommittedCount));
   push('multiImagePlacementHistoryEntriesCreated', String(multiImagePlacementHistoryEntriesCreated));
   push('multiImagePlacementAutosavesScheduled', String(multiImagePlacementAutosavesScheduled));
+  push('multiImagePlacementAutosavesBeforeCommit', String(multiImagePlacementAutosavesBeforeCommit));
   push('multiImagePlacementTemporaryResourcesReleased', String(multiImagePlacementTemporaryResourcesReleased));
   push('multiImagePlacementPointerCaptureStuck', String(multiImagePlacementPointerCaptureStuck));
   push('multiImagePlacementGestureConflictDetected', String(multiImagePlacementGestureConflictDetected));

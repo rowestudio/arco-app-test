@@ -131,6 +131,14 @@ async function sessionCheckpointExists(page) {
   });
 }
 
+async function waitForSessionAutosaveQuiescent(page) {
+  await expect.poll(() => page.evaluate(() => ({
+    timerIdle: _sessionAutosaveTimer === null,
+    writeIdle: !_sessionAutosaveWriteInFlight,
+    caughtUp: _sessionAutosaveQueuedRevision <= _sessionAutosaveCommittedRevision,
+  })), { timeout: 30_000 }).toEqual({ timerIdle:true, writeIdle:true, caughtUp:true });
+}
+
 test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', async ({ page }, testInfo) => {
   const pageErrors = [];
   const consoleErrors = [];
@@ -388,6 +396,8 @@ test('E8K: Inserir imagens abre picker direto e posiciona lote sem mutação can
   await page.goto('/',{waitUntil:'domcontentloaded'}); await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
   await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30000});
+  await expect.poll(() => page.evaluate(() => loadSessionCompleted), { timeout:30_000 }).toBe(true);
+  await waitForSessionAutosaveQuiescent(page);
   const before=await page.evaluate(()=>({assets:assets.length,undo:undoStack.length,revision:_sessionAutosaveQueuedRevision}));
   await chooseMultiImages(page,3);
   await expect(page.locator('#multiImagePlacementHud')).toBeVisible({timeout:15000});
@@ -397,6 +407,7 @@ test('E8K: Inserir imagens abre picker direto e posiciona lote sem mutação can
   await expect(page.locator('#multiImagePlacementCounter')).toHaveText('Imagem 2 de 3');
   await page.locator('#multiImagePlacementConfirm').click();
   await expect(page.locator('#multiImagePlacementCounter')).toHaveText('Imagem 3 de 3');
+  expect(await page.evaluate(()=>multiImagePlacementAutosavesBeforeCommit)).toBe(0);
   expect(await page.evaluate(()=>assets.length)).toBe(before.assets);
   await page.locator('#multiImagePlacementConfirm').click();
   await expect(page.locator('#multiImagePlacementHud')).toBeHidden();
@@ -540,8 +551,33 @@ test('E8K: Cancelar na primeira e na última etapa restaura snapshot profundo', 
   for(const confirmations of [0,2]){await openEmptyEditorForE8J(page);const before=await page.evaluate(()=>getMultiImagePlacementFingerprint());await chooseMultiImages(page,3);for(let i=0;i<confirmations;i++)await page.locator('#multiImagePlacementConfirm').click();await page.locator('#multiImagePlacementCancel').click();expect(await page.evaluate(()=>getMultiImagePlacementFingerprint())).toBe(before);expect(await page.evaluate(()=>multiImagePlacementSnapshotRestored)).toBe(true)}
 });
 
-test('E8K: falha forçada no commit faz rollback sem parcial', async ({ page }) => {
-  await openEmptyEditorForE8J(page);await page.evaluate(()=>{window.__originalAssignIdentity=assignPersistentLayerIdentity;window.assignPersistentLayerIdentity=()=>{throw new TypeError('webkit-forced-commit')}});const before=await page.evaluate(()=>getMultiImagePlacementFingerprint());await chooseMultiImages(page,2);await page.locator('#multiImagePlacementConfirm').click();await page.locator('#multiImagePlacementConfirm').click();await expect.poll(()=>page.evaluate(()=>multiImagePlacementLastErrorType)).toBe('TypeError');expect(await page.evaluate(()=>getMultiImagePlacementFingerprint())).toBe(before);expect(await page.evaluate(()=>assets.length)).toBe(0);
+test('E8K: falha forçada no commit faz rollback profundo sem parcial', async ({ page }) => {
+  await page.goto('/',{waitUntil:'domcontentloaded'}); await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30000});
+  await expect.poll(()=>page.evaluate(()=>loadSessionCompleted),{timeout:30000}).toBe(true);
+  await waitForSessionAutosaveQuiescent(page);
+  const before=await page.evaluate(()=>({
+    fingerprint:getMultiImagePlacementFingerprint(), revision:_sessionAutosaveQueuedRevision,
+    selectedAssetId,nextLayerSequence,assets:stableMultiImageValue(assets),frames:stableMultiImageValue(frames.slice(0,frameCount)),
+    curves:stableMultiImageValue(curvesV2),world:stableMultiImageValue(projectWorld),undo:stableMultiImageValue(undoStack),redo:stableMultiImageValue(redoStack),
+    canonicalSources:assets.map(a=>_assetPersistentSourceE8E(a)),
+  }));
+  try {
+    await page.evaluate(()=>{window.__ARCO_TEST_MULTI_IMAGE_COMMIT_FAIL_AFTER__=1});
+    await chooseMultiImages(page,2); await page.locator('#multiImagePlacementConfirm').click(); await page.locator('#multiImagePlacementConfirm').click();
+    await expect.poll(()=>page.evaluate(()=>multiImagePlacementLastErrorType)).toBe('TypeError');
+    const after=await page.evaluate(()=>({
+      fingerprint:getMultiImagePlacementFingerprint(), revision:_sessionAutosaveQueuedRevision,
+      selectedAssetId,nextLayerSequence,assets:stableMultiImageValue(assets),frames:stableMultiImageValue(frames.slice(0,frameCount)),
+      curves:stableMultiImageValue(curvesV2),world:stableMultiImageValue(projectWorld),undo:stableMultiImageValue(undoStack),redo:stableMultiImageValue(redoStack),
+      canonicalSources:assets.map(a=>_assetPersistentSourceE8E(a)),pending:document.querySelectorAll('.pending-multi-image').length,
+      hud:document.getElementById('multiImagePlacementHud').classList.contains('show'),restored:multiImagePlacementSnapshotRestored,
+    }));
+    expect(after).toEqual({...before,pending:0,hud:false,restored:true});
+  } finally {
+    await page.evaluate(()=>{delete window.__ARCO_TEST_MULTI_IMAGE_COMMIT_FAIL_AFTER__});
+  }
 });
 
 test('E8K: Layers só recebe lote no commit; Undo e Redo são integrais', async ({ page }) => {
@@ -560,5 +596,15 @@ test('E8K: pinch mantém zoom do Stage e bloqueia confirmação durante o gesto'
 });
 
 test('E8K: criação provisória de Frame permanece cancelável e confirmável', async ({ page }) => {
-  await createE8JBatch(page);const before=await page.evaluate(()=>frameCount);await page.evaluate(()=>addFrame());await expect(page.locator('.ghost-frame')).toBeVisible();await page.locator('#insertionCancelBtn').click();expect(await page.evaluate(()=>frameCount)).toBe(before);await page.evaluate(()=>addFrame());await expect(page.locator('.ghost-frame')).toBeVisible();await page.locator('#insertionConfirmBtn').click();expect(await page.evaluate(()=>frameCount)).toBe(before+1);
+  await createE8JBatch(page);
+  const preparation=await page.evaluate(()=>{
+    setEditorMode('camera','webkit-e8k-frame-regression');
+    return {mode:editorMode,frameCount,activeFrameIndex:activeIdx,insertionMode:insertFrameMode,pendingMultiImagePlacement:!!pendingMultiImagePlacement,bodyClass:document.body.className};
+  });
+  expect(preparation.mode).toBe('camera');expect(preparation.pendingMultiImagePlacement).toBe(false);
+  const before=preparation.frameCount;
+  await page.evaluate(()=>insertFrameAfterActive());await expect(page.locator('.ghost-frame')).toBeVisible();
+  await page.locator('#insertionCancelBtn').click();expect(await page.evaluate(()=>frameCount)).toBe(before);
+  await page.evaluate(()=>insertFrameAfterActive());await expect(page.locator('.ghost-frame')).toBeVisible();
+  await page.locator('#insertionConfirmBtn').click();expect(await page.evaluate(()=>frameCount)).toBe(before+1);
 });
