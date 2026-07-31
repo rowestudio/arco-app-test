@@ -1,8 +1,6 @@
-import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-const html=readFileSync(new URL('../../index.html',import.meta.url),'utf8');
-assert.ok(!html.includes('function loadMainImageForMultiInsert('),'o posicionamento não pode aplicar a imagem principal antes do commit final');
-assert.ok(html.includes('prepared = await prepareMultiImageFiles(files);'));
-assert.ok(html.indexOf('prepared = await prepareMultiImageFiles(files);') < html.indexOf('pendingMultiImagePlacement = {'));
-assert.ok(html.includes('if (state.currentIndex < state.preparedImages.length)'));
-console.log('Multi-image preparation-before-placement contract passed.');
+import assert from 'node:assert/strict';import{readFileSync}from'node:fs';import vm from'node:vm';
+const html=readFileSync(new URL('../../index.html',import.meta.url),'utf8');function fn(n){let a=html.indexOf(`function ${n}(`);assert.notEqual(a,-1);const b=html.indexOf('{',a);let d=0;for(let i=b;i<html.length;i++){if(html[i]==='{')d++;else if(html[i]==='}'&&!--d)return html.slice(a,i+1)}}
+const source=fn('loadMainImageForMultiImagePlacement');const context=vm.createContext({Error});vm.runInContext(`let completion,initial=0,renders=0;const main={id:'main'};function loadImage(file,ok,options){completion={ok,options}}function createInitialFrameForNewImageProject(){initial++}function renderProjectWorldExtraImages(){renders++}function renderAll(){renders++}function updateFrameSelector(){renders++}function updateToolbarLabels(){renders++}function getMainImageAsset(){return main}${source}`,context);
+let p=vm.runInContext(`loadMainImageForMultiImagePlacement({file:{name:'a.png'}})`,context);vm.runInContext('completion.ok()',context);assert.equal((await p).id,'main');assert.equal(vm.runInContext('initial',context),1);
+p=vm.runInContext(`loadMainImageForMultiImagePlacement({file:{name:'bad.png'}})`,context);vm.runInContext(`completion.options.onError(new Error('decode'))`,context);await assert.rejects(p,/decode/);assert.equal(vm.runInContext('initial',context),1);
+console.log('Multi-image main-image atomic load tests passed.');

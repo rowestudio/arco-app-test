@@ -126,3 +126,9 @@ Catálogo obrigatório de regressões históricas e proteções.
 - O commit final cria um único passo de Undo e agenda uma única revisão de Session Autosave.
 - Criação de Frames é referência visual somente e não pode receber alterações funcionais ou identidade roxa.
 - Validação visual real em iPhone/Safari/PWA continua pendente.
+
+### Revisão P1 da E8K
+
+- Prevenção adicional: os helpers de snapshot, criação de asset e rollback devem ter exatamente uma definição executável e cobertura comportamental; verificações somente textuais não são evidência funcional.
+- O alvo de pointer capture da imagem provisória não pode ser removido durante `pointermove`; Cancelar e `pointercancel` devem liberar captura e limpar o gesto.
+- O isolamento transacional compara assets completos, seleção, sequência de Layers, Frames, curvas, ProjectWorld, Undo/Redo e revisão de Session Autosave.

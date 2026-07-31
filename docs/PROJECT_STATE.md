@@ -128,3 +128,10 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - A `v8z4b32E8K` substitui essas duas escolhas pelo posicionamento provisório sequencial de cada imagem e só aplica o lote ao modelo canônico na confirmação final.
 - A criação provisória de Frames foi usada exclusivamente como referência de gramática visual e interação; o controlador e o motor de Frames não foram alterados.
 - A validação visual publicada em iPhone/Safari/PWA permanece pendente; nenhuma aprovação visual ou promoção para produção está declarada.
+
+### Revisão P1 da PR #462
+
+- A revisão restaura os helpers transacionais removidos na primeira implementação E8K, amplia o snapshot de isolamento para o estado canônico integral e mantém estável o elemento que detém pointer capture durante o arraste.
+- O gate Plus/Premium e o caminho atômico de projeto vazio foram preservados; erros de decode e de implementação passam a ser diferenciados nos diagnósticos.
+- O harness Node voltou a executar os controladores reais, e o smoke WebKit E8K voltou a cobrir fluxo unitário/múltiplo, gestos, rollback, Undo/Redo, Save/Load, Session Restore, alpha, Frames, E8H e E8I.
+- A versão permanece em desenvolvimento e a validação visual publicada em iPhone/Safari/PWA continua pendente.
