@@ -114,6 +114,6 @@ Catálogo obrigatório de regressões históricas e proteções.
 ## REG-037 — Inserção múltipla cria lote parcial, desordenado ou com histórico fragmentado
 
 - **Problema prevenido:** callbacks de leitura/decode podem concluir fora de ordem, arquivos que apenas declaram um MIME de imagem podem ser inválidos e um Undo por arquivo torna a ação em lote inconsistente.
-- **Prevenção:** validar assinaturas JPEG/PNG/WebP antes do decode, processar sequencialmente na ordem recebida, distribuir por slots determinísticos e consolidar o lote válido em um único snapshot de Undo e uma única revisão de sessão.
+- **Prevenção:** validar assinaturas JPEG/PNG/WebP antes do decode, processar sequencialmente na ordem recebida, exigir escolha de layout sem WORLD_SLOTS e consolidar o lote completo em um único snapshot de Undo e uma única revisão de sessão.
 - **Teste preventivo:** `node scripts/qa/test-multi-image-insert.mjs`, com fixtures Base64/buffers exclusivamente em memória.
 - **Status:** proteção técnica adicionada na `v8z4b32E8J`; seleção pelo picker e comportamento visual em iPhone/Safari real permanecem pendentes.

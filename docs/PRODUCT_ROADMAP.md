@@ -94,3 +94,13 @@ Estados usados neste documento:
 - [Futuro, posterior à E8G] Ao encontrar checkpoint válido na abertura, perguntar explicitamente “Restaurar sessão” ou “Começar do início”.
 - A restauração silenciosa atual não é o comportamento final aprovado.
 - A interface e seu fluxo pertencem a uma versão funcional separada; não são implementados na `v8z4b32E8G`.
+
+## Lousas — item futuro, não implementado
+
+Uma Lousa é uma área de trabalho delimitada dentro do próprio Stage/ProjectWorld. Pode ter orientação horizontal ou vertical e serve para organizar espacialmente o trabalho. Não é, por definição, uma nova cena, um novo Stage ou um projeto separado.
+
+Lousas permanecem somente como item futuro. A quantidade de Lousas, exportação individual, relação com cenas, relação com câmera, encaixe, duplicação, templates, navegação e formatos de saída ainda não estão definidos e não integram a `v8z4b32E8J`.
+
+## v8z4b32E8J — inserção múltipla em desenvolvimento
+
+A inserção múltipla com escolha entre empilhar, distribuir horizontalmente ou distribuir verticalmente está em desenvolvimento no repositório de teste. A aprovação permanece pendente de execução automatizada compatível e teste real em iPhone/Safari/PWA.

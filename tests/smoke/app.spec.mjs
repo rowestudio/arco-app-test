@@ -44,6 +44,24 @@ function captureFatalErrors(page) {
   return errors;
 }
 
+const transparentPngBuffer = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+XwVQAAAAAElFTkSuQmCC',
+  'base64',
+);
+const imagePayload = (name) => ({ name, mimeType: 'image/png', buffer: transparentPngBuffer });
+
+async function openEmptyEditorForE8J(page) {
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await clearStartupStorage(page);
+  await page.evaluate(() => setAppMode('editor'));
+}
+
+async function chooseMultiImages(page, count = 3) {
+  await page.locator('#multiImageInsertInput').setInputFiles(
+    Array.from({ length: count }, (_, index) => imagePayload(`imagem-${index + 1}.png`)),
+  );
+}
+
 async function installControlledAsyncGate(page, functionName) {
   const gateKey = `__arcoE8iGate_${functionName}`;
   await page.evaluate(({ functionName, gateKey }) => {
@@ -344,4 +362,92 @@ test('intenção E8H clean mantém launcher sem pergunta E8I', async ({ page }) 
   await expect(page.locator('body')).toHaveClass(/mode-launcher/);
   await expect(page.getByRole('dialog', { name: 'Continuar sessão anterior?' })).toBeHidden();
   await expect.poll(() => page.evaluate(() => startupRecoveryBypassReason)).toBe('explicit-reload-clean');
+});
+
+test('E8J: uma imagem usa fluxo unitário sem folha múltipla', async ({ page }) => {
+  const fatalErrors = captureFatalErrors(page);
+  await openEmptyEditorForE8J(page);
+  await chooseMultiImages(page, 1);
+  await expect(page.locator('#multiImageLayoutSheet')).toBeHidden();
+  await expect.poll(() => page.evaluate(() => assets.filter(a => a?.type === 'image').length), { timeout: 15_000 }).toBe(1);
+  expect(fatalErrors).toEqual([]);
+});
+
+test('E8J: três imagens abrem folha sem mutar e Cancelar preserva projeto', async ({ page }) => {
+  await openEmptyEditorForE8J(page);
+  const before = await page.evaluate(() => ({ assets: assets.length, undo: undoStack.length, revision: _sessionAutosaveQueuedRevision, sequence: nextLayerSequence }));
+  await chooseMultiImages(page, 3);
+  const dialog = page.getByRole('dialog', { name: 'Inserir 3 imagens' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText('Como deseja organizar as imagens no Stage?', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => ({ assets: assets.length, undo: undoStack.length, revision: _sessionAutosaveQueuedRevision, sequence: nextLayerSequence }))).toEqual(before);
+  await dialog.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(dialog).toBeHidden();
+  expect(await page.evaluate(() => ({ assets: assets.length, undo: undoStack.length, revision: _sessionAutosaveQueuedRevision, sequence: nextLayerSequence }))).toEqual(before);
+});
+
+for (const [button, layout] of [
+  ['Empilhar no centro', 'stack'],
+  ['Distribuir na horizontal', 'horizontal'],
+  ['Distribuir na vertical', 'vertical'],
+]) {
+  test(`E8J: ${button} faz commit atômico no projeto vazio`, async ({ page }) => {
+    const fatalErrors = captureFatalErrors(page);
+    await openEmptyEditorForE8J(page);
+    await chooseMultiImages(page, 3);
+    const dialog = page.getByRole('dialog', { name: 'Inserir 3 imagens' });
+    await dialog.getByRole('button', { name: button }).click();
+    await expect(dialog.getByText('Preparando 3 imagens…', { exact: true })).toBeVisible();
+    await expect(dialog).toBeHidden({ timeout: 20_000 });
+    const state = await page.evaluate(() => ({
+      count: assets.filter(a => a?.type === 'image').length,
+      layout: multiImageInsertLayout,
+      committed: multiImageInsertCommittedCount,
+      selected: selectedAssetId,
+      last: assets.filter(a => a?.type === 'image').at(-1)?.id,
+      sequences: assets.filter(a => a?.type === 'image').map(a => a.layerSequence),
+      alpha: multiImageInsertAlphaCount,
+      undo: undoStack.length,
+      autosaves: multiImageInsertAutosavesScheduled,
+      bounds: getWorldViewBoundsWorld(),
+    }));
+    expect(state).toMatchObject({ count: 3, layout, committed: 3, alpha: 3, undo: 1, autosaves: 1 });
+    expect(state.selected).toBe(state.last);
+    expect(state.sequences).toEqual([1, 2, 3]);
+    expect(state.bounds.w).toBeGreaterThan(0); expect(state.bounds.h).toBeGreaterThan(0);
+    expect(fatalErrors).toEqual([]);
+  });
+}
+
+test('E8J: arquivo inválido intermediário não deixa commit parcial', async ({ page }) => {
+  await openEmptyEditorForE8J(page);
+  await page.locator('#multiImageInsertInput').setInputFiles([
+    imagePayload('valida-1.png'),
+    { name: 'invalida.png', mimeType: 'image/png', buffer: Buffer.from('arquivo-invalido') },
+    imagePayload('valida-2.png'),
+  ]);
+  const dialog = page.getByRole('dialog', { name: 'Inserir 3 imagens' });
+  await dialog.getByRole('button', { name: 'Empilhar no centro' }).click();
+  await expect.poll(() => page.evaluate(() => multiImageInsertPreparationFailed), { timeout: 15_000 }).toBe(true);
+  expect(await page.evaluate(() => ({ assets: assets.length, undo: undoStack.length, revision: _sessionAutosaveQueuedRevision, committed: multiImageInsertCommittedCount })))
+    .toEqual({ assets: 0, undo: 0, revision: 0, committed: 0 });
+});
+
+test('E8J: lote existente tem Undo/Redo único e Trocar imagem segue unitário', async ({ page }) => {
+  await openEmptyEditorForE8J(page);
+  await chooseMultiImages(page, 1);
+  await expect.poll(() => page.evaluate(() => assets.length), { timeout: 15_000 }).toBe(1);
+  await page.evaluate(() => { pendingImageAction = 'insertImage'; pendingImageTargetSlot = { key: 'center', row: 0, col: 0 }; });
+  await chooseMultiImages(page, 3);
+  await page.getByRole('dialog', { name: 'Inserir 3 imagens' }).getByRole('button', { name: 'Distribuir na horizontal' }).click();
+  await expect.poll(() => page.evaluate(() => assets.length), { timeout: 20_000 }).toBe(4);
+  await page.evaluate(() => undo());
+  await expect.poll(() => page.evaluate(() => assets.length)).toBe(1);
+  await page.evaluate(() => redo());
+  await expect.poll(() => page.evaluate(() => assets.length)).toBe(4);
+  const inputContract = await page.evaluate(() => ({ unitMultiple: document.getElementById('fileInput2').multiple, multiMultiple: document.getElementById('multiImageInsertInput').multiple }));
+  expect(inputContract).toEqual({ unitMultiple: false, multiMultiple: true });
+  await page.evaluate(() => { pendingImageAction = 'replaceImage'; pendingImageTargetAssetId = assets[0].id; selectAssetById(assets[0].id, 'webkit-replace'); });
+  await page.locator('#fileInput2').setInputFiles(imagePayload('troca.png'));
+  await expect.poll(() => page.evaluate(() => lastImageActionType), { timeout: 15_000 }).toBe('replaceImage');
 });

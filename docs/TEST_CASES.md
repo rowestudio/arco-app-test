@@ -278,8 +278,12 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 ## TC-031 — Inserção de várias imagens em uma operação
 
 - Pré-condição: editor aberto com um projeto e Inserir imagem disponível.
-- Passos: escolher um slot; selecionar em conjunto JPEG, PNG transparente, WebP e um arquivo inválido; observar Stage/Layers; executar Undo e Redo.
-- Resultado esperado: formatos válidos entram na ordem selecionada, distribuídos a partir do slot escolhido, mantendo alpha do PNG, nomes `Camada N`, seleção e z-order; o inválido não cria asset; Undo/Redo trata o lote válido como uma operação.
+- Passos: selecionar em conjunto JPEG, PNG transparente, WebP e um arquivo inválido; escolher Empilhar, Horizontal e Vertical em execuções separadas; observar Stage/Layers; executar Undo e Redo.
+- Resultado esperado: formatos válidos entram na ordem selecionada, organizados conforme Empilhar/Horizontal/Vertical, mantendo alpha do PNG, nomes `Camada N`, seleção e z-order; o inválido não cria asset; Undo/Redo trata o lote válido como uma operação.
 - Evidência: `node scripts/qa/test-multi-image-insert.mjs`, contagem e inspeção de Stage/Layers.
 - Ambiente: harness Node e iPhone/Safari real obrigatório para aprovação final.
 - Automatizável: parcial; validação de assinatura, organização e guardas de histórico são automatizadas, picker/decodes reais e resultado visual exigem aparelho.
+
+### Cobertura automatizada E8J
+
+O harness Node executa os controladores reais extraídos de `index.html` com mocks somente das dependências e cobre 30 cenários funcionais. O smoke WebKit contém 7 testes E8J adicionais (17 testes Playwright após expansão dinâmica dos três layouts), usando buffers em memória; a execução local permanece condicionada à disponibilidade do binário WebKit.

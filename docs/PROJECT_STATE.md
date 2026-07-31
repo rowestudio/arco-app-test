@@ -116,6 +116,6 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 ## Atualização 2026-07-31 — v8z4b32E8J em desenvolvimento
 
 - Base confirmada na `main` atual, merge commit da PR #459 `8b3af38a544c186405c4e1dbcb3713c1735e6a15`, versão `v8z4b32E8I`.
-- A `v8z4b32E8J` permite selecionar vários JPEG, PNG e WebP em uma única abertura do seletor de Inserir imagem, valida a assinatura dos arquivos antes do decode e distribui as novas camadas a partir do slot escolhido.
-- O lote preserva a ordem de seleção, nomes persistentes e seleção canônica, cria um único passo de Undo e ignora arquivos inválidos sem deixar assets parciais.
+- A `v8z4b32E8J` permite selecionar vários JPEG, PNG e WebP em uma única abertura do seletor de Inserir imagem, valida a assinatura dos arquivos antes do decode e abre uma escolha explícita entre empilhar, distribuir horizontalmente ou distribuir verticalmente antes de qualquer mutação.
+- O lote prepara todos os arquivos antes do commit, preserva ordem, nomes persistentes e seleção canônica, e aplica rollback do snapshot integral diante de falha; Cancelar e falha de preparação não alteram o projeto.
 - Preview, Export, WebCodecs, renderer, Frames, curvas, timing, Save/Load e Session Autosave/Restore permanecem fora do diff funcional. Validação em iPhone/Safari real continua obrigatória.
