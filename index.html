@@ -21661,8 +21661,8 @@ function centerEditorViewportOnAsset(assetId) {
   editorPanX = stageW / 2 - (rect.x + rect.w / 2) * editorZoomScale;
   editorPanY = stageH / 2 - (rect.y + rect.h / 2) * editorZoomScale;
   clampEditorPan();
-  applyEditorTransform();
-  return true;
+  applyEditorZoom();
+  return Number.isFinite(editorPanX) && Number.isFinite(editorPanY);
 }
 
 
@@ -30687,6 +30687,20 @@ function dataUrlToFile(dataUrl, fallbackName) {
 }
 
 function applyProjectData(data, loadOptions = {}) {
+  return new Promise(resolve => {
+    const externalOnApplied = loadOptions.onApplied;
+    let completed = false;
+    const complete = ok => {
+      if (completed) return;
+      completed = true;
+      if (typeof externalOnApplied === 'function') externalOnApplied(ok === true);
+      resolve(ok === true);
+    };
+    applyProjectDataInternal(data, { ...loadOptions, onApplied: complete });
+  });
+}
+
+function applyProjectDataInternal(data, loadOptions = {}) {
   const loadOrigin = loadOptions.origin || 'manual-load';
   if (loadOrigin !== 'session-autosave') invalidateSessionRestore('manual-load');
   deletedLayerSequences.clear();
@@ -30747,7 +30761,11 @@ function applyProjectData(data, loadOptions = {}) {
           return;
         }
         _pendingProjectWorldToPreserve = null; applyFrameData(data, loadOptions);
-      });
+      }, { onError: () => {
+        _pendingProjectWorldToPreserve = null;
+        loadSessionAborted = true;
+        if (typeof loadOptions.onApplied === 'function') loadOptions.onApplied(false);
+      }});
       showStatus('Carregando projeto com imagem…');
       return;
     } catch(err) {
@@ -31468,11 +31486,22 @@ function restoreProjectAssetsFromData(data) {
         // asset principal sempre preenche a célula central do grid 3x3).
         projectWorld.w = baseW;
         projectWorld.h = baseH;
-        // Asset principal (img-1): forçar para a célula canônica central, em vez de
-        // manter o tamanho do Stage atual aplicado por syncFirstImageAsset() ou um
-        // valor híbrido salvo. zIndex preservado do save quando válido.
+        // Asset principal (img-1): reaplicar o retângulo serializado depois de
+        // syncFirstImageAsset(), que só fornece o drawable e pode inicializar a
+        // geometria como imagem nova. Save/Load e Session Restore preservam o
+        // posicionamento livre do lote, inclusive coordenadas negativas.
         const savedPrimary = savedImageAssets[0];
         if (primary) {
+          if (savedPrimary) {
+            if (Number.isFinite(savedPrimary.worldX)) primary.worldX = savedPrimary.worldX;
+            if (Number.isFinite(savedPrimary.worldY)) primary.worldY = savedPrimary.worldY;
+            if (Number.isFinite(savedPrimary.worldW) && savedPrimary.worldW > 0) primary.worldW = savedPrimary.worldW;
+            if (Number.isFinite(savedPrimary.worldH) && savedPrimary.worldH > 0) primary.worldH = savedPrimary.worldH;
+            if (Number.isFinite(savedPrimary.rotation)) primary.rotation = savedPrimary.rotation;
+            if (Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
+            primary.mimeType = savedPrimary.mimeType || primary.mimeType || '';
+            primary.hasAlpha = !!savedPrimary.hasAlpha;
+          }
           // v8z4b32E6 — se o img-1 salvo foi substituído com commit canônico,
           // restaurar sua geometria/fonte canônicas (worldRect próprio + src cru),
           // em vez de forçar a célula cheia. Só o asset SUBSTITUÍDO é normalizado;
@@ -31485,12 +31514,6 @@ function restoreProjectAssetsFromData(data) {
             primary.replaceEpoch = ++currentReplaceEpoch;
             if (Number.isFinite(savedPrimary.sourceW) && savedPrimary.sourceW > 0) primary.sourceW = savedPrimary.sourceW;
             if (Number.isFinite(savedPrimary.sourceH) && savedPrimary.sourceH > 0) primary.sourceH = savedPrimary.sourceH;
-            if (Number.isFinite(savedPrimary.worldW) && savedPrimary.worldW > 0) {
-              primary.worldX = savedPrimary.worldX || 0;
-              primary.worldY = savedPrimary.worldY || 0;
-              primary.worldW = savedPrimary.worldW;
-              primary.worldH = savedPrimary.worldH;
-            }
             const primarySavedSrc = _assetPersistentSourceE8E(savedPrimary);
             if (primarySavedSrc) {
               primary.src = primarySavedSrc;
@@ -31510,17 +31533,6 @@ function restoreProjectAssetsFromData(data) {
             }
             primary.imgReady = true;
             primary.decodeReady = true;
-            if (savedPrimary && Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
-            if (savedPrimary && Number.isFinite(savedPrimary.rotation)) primary.rotation = savedPrimary.rotation;
-            if (savedPrimary) { primary.mimeType = savedPrimary.mimeType || primary.mimeType || ''; primary.hasAlpha = !!savedPrimary.hasAlpha; }
-          } else {
-            primary.worldX = 0;
-            primary.worldY = 0;
-            primary.worldW = baseW;
-            primary.worldH = baseH;
-            if (savedPrimary && Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
-            if (savedPrimary && Number.isFinite(savedPrimary.rotation)) primary.rotation = savedPrimary.rotation;
-            if (savedPrimary) { primary.mimeType = savedPrimary.mimeType || primary.mimeType || ''; primary.hasAlpha = !!savedPrimary.hasAlpha; }
           }
         }
       }

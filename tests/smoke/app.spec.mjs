@@ -504,14 +504,12 @@ test('E8J: Save/Load real preserva lote, seleção, ProjectWorld e transparênci
   const fatalErrors = captureFatalErrors(page);
   await createE8JBatch(page, 'Distribuir na horizontal');
   const before = await captureE8JProjectState(page);
-  const serialized = await page.evaluate(() => buildProjectData(true));
+  const serialized = await page.evaluate(() => buildCompleteSessionProjectData());
   expect(serialized.assets).toHaveLength(3);
   await page.evaluate(async data => {
     clearCurrentProjectForNewFile();
-    await new Promise((resolve, reject) => applyProjectData(data, {
-      origin: 'webkit-e8j-save-load',
-      onApplied: ok => ok ? resolve() : reject(new Error('applyProjectData-failed')),
-    }));
+    const applied = await applyProjectData(data, { origin: 'webkit-e8j-save-load' });
+    if (!applied) throw new Error('applyProjectData-failed');
   }, serialized);
   await expect.poll(() => page.evaluate(() => loadSessionCompleted), { timeout: 20_000 }).toBe(true);
   const after = await captureE8JProjectState(page);
