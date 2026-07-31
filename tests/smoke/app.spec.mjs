@@ -45,7 +45,7 @@ function captureFatalErrors(page) {
 }
 
 const transparentPngBuffer = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADElEQVR42mNgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC',
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADElEQVR42mNgYGAAAAAEAAHI6uv5AAAAAElFTkSuQmCC',
   'base64',
 );
 const imagePayload = (name) => ({ name, mimeType: 'image/png', buffer: transparentPngBuffer });
@@ -522,14 +522,29 @@ test('E8J: Save/Load real preserva lote, seleção, ProjectWorld e transparênci
   expect(navigation).toEqual([true, true]);
   const alphaPixel = await page.evaluate(async () => {
     const asset = assets.find(a => a?.type === 'image' && a.hasAlpha);
-    const image = new Image(); image.src = asset.src || asset._img?.src;
-    await image.decode();
+    const drawable = asset.drawSource || asset._img || (asset === getMainImageAsset() ? getCanonicalRenderSource() : null);
+    const dims = getImageSourceDimensions(drawable);
     const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
-    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#ff00ff'; ctx.fillRect(0,0,1,1); ctx.drawImage(image,0,0,1,1);
-    return { pixel:Array.from(ctx.getImageData(0,0,1,1).data), mime:asset.mimeType, source:(asset.src || '').slice(0,22) };
+    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#ff00ff'; ctx.fillRect(0,0,1,1); ctx.drawImage(drawable,0,0,1,1);
+    const pixel = Array.from(ctx.getImageData(0,0,1,1).data);
+    multiImageLoadedAlphaPixelPreserved = pixel.join(',') === '255,0,255,255';
+    recordMultiImageLoadedSourceDiagnostics(asset, drawable);
+    return {
+      id:asset.id, pixel, mime:asset.mimeType, hasAlpha:asset.hasAlpha,
+      sourceKind:multiImageLoadedSourceKind, durable:multiImageLoadedSourceDurable,
+      drawableReady:multiImageLoadedDrawableReady, width:dims.width, height:dims.height,
+      staleBlob:multiImageStaleBlobDetected, alphaPreserved:multiImageLoadedAlphaPixelPreserved,
+    };
   });
   expect(alphaPixel.mime).toBe('image/png');
-  expect(alphaPixel.source).toContain('data:image/png');
+  expect(alphaPixel.hasAlpha).toBe(true);
+  expect(alphaPixel.sourceKind).toBe('data');
+  expect(alphaPixel.durable).toBe(true);
+  expect(alphaPixel.drawableReady).toBe(true);
+  expect(alphaPixel.width).toBeGreaterThan(0);
+  expect(alphaPixel.height).toBeGreaterThan(0);
+  expect(alphaPixel.staleBlob).toBe(false);
+  expect(alphaPixel.alphaPreserved).toBe(true);
   expect(alphaPixel.pixel).toEqual([255, 0, 255, 255]);
   expect(fatalErrors).toEqual([]);
 });

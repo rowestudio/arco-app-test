@@ -29496,7 +29496,7 @@ function serializeProjectAsset(a, idx, includeImages) {
     mimeType: a.mimeType || a.typeMime || '',
     hasAlpha: !!a.hasAlpha,
   };
-  if (includeImages && out.type === 'image') {
+  if (includeImages && out.type === 'image' && idx > 0) {
     const src = canonicalSrc;
     if (src) out.src = src;
     if (src && /^data:image\//.test(src)) {
@@ -29524,6 +29524,12 @@ function _assetPersistentSourceE8E(a) {
   if (!a) return '';
   if (a.sourcePayload && a.sourcePayload.kind === 'dataUrl' && a.sourcePayload.dataUrl) return a.sourcePayload.dataUrl;
   return a.src || a.persistentSrc || (a._img && a._img.src) || (a.drawSource && a.drawSource.src) || '';
+}
+function _persistentSourceKindE8J(src) {
+  if (!src) return 'empty';
+  if (/^data:/i.test(src)) return 'data';
+  if (/^blob:/i.test(src)) return 'blob';
+  return 'other';
 }
 function _diagSourceHashE8E(src) {
   const s = String(src || '');
@@ -31501,6 +31507,24 @@ function restoreProjectAssetsFromData(data) {
             if (Number.isFinite(savedPrimary.zIndex)) primary.zIndex = savedPrimary.zIndex;
             primary.mimeType = savedPrimary.mimeType || primary.mimeType || '';
             primary.hasAlpha = !!savedPrimary.hasAlpha;
+            const primaryPersistentSrc = _assetPersistentSourceE8E(savedPrimary) ||
+              (isValidImageBase64(data.imageBase64) ? data.imageBase64 : '');
+            if (primaryPersistentSrc) {
+              primary.src = primaryPersistentSrc;
+              primary.sourcePayload = /^data:image\//i.test(primaryPersistentSrc)
+                ? { kind: 'dataUrl', dataUrl: primaryPersistentSrc, bytes: primaryPersistentSrc.length }
+                : null;
+            }
+            const primaryDrawable = originalImageElement && getImageSourceDimensions(originalImageElement).width > 0
+              ? originalImageElement
+              : (canonicalRenderImage || imgEl);
+            if (primaryDrawable && getImageSourceDimensions(primaryDrawable).width > 0) {
+              primary._img = primaryDrawable;
+              primary.drawSource = primaryDrawable;
+              primary.imgReady = true;
+              primary.decodeReady = true;
+            }
+            recordMultiImageLoadedSourceDiagnostics(primary, primaryDrawable);
           }
           // v8z4b32E6 — se o img-1 salvo foi substituído com commit canônico,
           // restaurar sua geometria/fonte canônicas (worldRect próprio + src cru),
@@ -31577,6 +31601,7 @@ function restoreProjectAssetsFromData(data) {
           if (token !== loadSessionToken) { loadSessionIgnoredStaleCallbacksCount++; loadSessionIgnoredStaleCallbackAssetIds = [loadSessionIgnoredStaleCallbackAssetIds, asset.id].filter(Boolean).join(','); return; }
           invalidateProjectWorldComposite();
           renderProjectWorldExtraImages();
+          recordMultiImageLoadedSourceDiagnostics(asset, img);
         };
         img.onerror = () => {
           if (token !== loadSessionToken) { loadSessionIgnoredStaleCallbacksCount++; loadSessionIgnoredStaleCallbackAssetIds = [loadSessionIgnoredStaleCallbackAssetIds, asset.id].filter(Boolean).join(','); return; }
@@ -31945,6 +31970,35 @@ let multiImageInsertHistoryCreated = false;
 let multiImageInsertAutosavesScheduled = 0;
 let multiImageInsertFinalSelectedAssetId = '';
 let multiImageInsertAlphaCount = 0;
+let multiImageLoadedSourceKind = 'empty';
+let multiImageLoadedSourceDurable = false;
+let multiImageLoadedDrawableReady = false;
+let multiImageLoadedDrawableWidth = 0;
+let multiImageLoadedDrawableHeight = 0;
+let multiImageLoadedAlphaPixelPreserved = false;
+let multiImageStaleBlobDetected = false;
+
+function recordMultiImageLoadedSourceDiagnostics(asset, drawable) {
+  const src = _assetPersistentSourceE8E(asset);
+  const dims = getImageSourceDimensions(drawable || (asset && (asset.drawSource || asset._img)));
+  multiImageLoadedSourceKind = _persistentSourceKindE8J(src);
+  multiImageLoadedSourceDurable = multiImageLoadedSourceKind === 'data';
+  multiImageLoadedDrawableWidth = Number(dims.width) || 0;
+  multiImageLoadedDrawableHeight = Number(dims.height) || 0;
+  multiImageLoadedDrawableReady = multiImageLoadedDrawableWidth > 0 && multiImageLoadedDrawableHeight > 0;
+  multiImageStaleBlobDetected = multiImageLoadedSourceKind === 'blob' && !multiImageLoadedDrawableReady;
+  multiImageLoadedAlphaPixelPreserved = false;
+  if (asset && asset.hasAlpha && multiImageLoadedDrawableReady && drawable) {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ff00ff'; ctx.fillRect(0, 0, 1, 1); ctx.drawImage(drawable, 0, 0, 1, 1);
+      const pixel = ctx.getImageData(0, 0, 1, 1).data;
+      multiImageLoadedAlphaPixelPreserved = pixel[0] === 255 && pixel[1] === 0 && pixel[2] === 255 && pixel[3] === 255;
+    } catch (_) {}
+  }
+}
 
 function resetMultiImageInsertDiagnostics(selectedCount) {
   multiImageInsertSelectedCount = selectedCount || 0;
@@ -37113,6 +37167,13 @@ function buildDiagnosticsText() {
   push('multiImageInsert autosavesScheduled', String(multiImageInsertAutosavesScheduled));
   push('multiImageInsert finalSelectedAssetId', multiImageInsertFinalSelectedAssetId || 'n/d');
   push('multiImageInsert alphaCount', String(multiImageInsertAlphaCount));
+  push('multiImageLoadedSourceKind', multiImageLoadedSourceKind);
+  push('multiImageLoadedSourceDurable', String(multiImageLoadedSourceDurable));
+  push('multiImageLoadedDrawableReady', String(multiImageLoadedDrawableReady));
+  push('multiImageLoadedDrawableWidth', String(multiImageLoadedDrawableWidth));
+  push('multiImageLoadedDrawableHeight', String(multiImageLoadedDrawableHeight));
+  push('multiImageLoadedAlphaPixelPreserved', String(multiImageLoadedAlphaPixelPreserved));
+  push('multiImageStaleBlobDetected', String(multiImageStaleBlobDetected));
   push('nextLayerSequence', String(nextLayerSequence));
   push('maxExistingLayerSequence', String(_layerSequences.length ? Math.max.apply(null, _layerSequences) : 0));
   push('layerSequenceDuplicateDetected', String(_layerSequenceSet.size !== _layerSequences.length));
