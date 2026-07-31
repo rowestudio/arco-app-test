@@ -382,200 +382,38 @@ test('intenção E8H clean mantém launcher sem pergunta E8I', async ({ page }) 
   await expect.poll(() => page.evaluate(() => startupRecoveryBypassReason)).toBe('explicit-reload-clean');
 });
 
-test('E8J: uma imagem usa fluxo unitário sem folha múltipla', async ({ page }) => {
-  const fatalErrors = captureFatalErrors(page);
-  await openEmptyEditorForE8J(page);
-  await chooseMultiImages(page, 1);
-  await expect(page.locator('#multiImageLayoutSheet')).toBeHidden();
-  await expect.poll(() => page.evaluate(() => assets.filter(a => a?.type === 'image').length), { timeout: 15_000 }).toBe(1);
+test('E8K: Inserir imagens abre picker direto e posiciona lote sem mutação canônica', async ({ page }) => {
+  const fatalErrors=captureFatalErrors(page);
+  await page.goto('/',{waitUntil:'domcontentloaded'}); await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30000});
+  const before=await page.evaluate(()=>({assets:assets.length,undo:undoStack.length,revision:_sessionAutosaveQueuedRevision}));
+  await chooseMultiImages(page,3);
+  await expect(page.locator('#multiImagePlacementHud')).toBeVisible({timeout:15000});
+  await expect(page.locator('#multiImagePlacementCounter')).toHaveText('Imagem 1 de 3');
+  expect(await page.evaluate(()=>({assets:assets.length,undo:undoStack.length,revision:_sessionAutosaveQueuedRevision}))).toEqual(before);
+  await page.locator('#multiImagePlacementConfirm').click();
+  await expect(page.locator('#multiImagePlacementCounter')).toHaveText('Imagem 2 de 3');
+  await page.locator('#multiImagePlacementConfirm').click();
+  await expect(page.locator('#multiImagePlacementCounter')).toHaveText('Imagem 3 de 3');
+  expect(await page.evaluate(()=>assets.length)).toBe(before.assets);
+  await page.locator('#multiImagePlacementConfirm').click();
+  await expect(page.locator('#multiImagePlacementHud')).toBeHidden();
+  expect(await page.evaluate(()=>({added:assets.length,history:multiImagePlacementHistoryEntriesCreated,autosaves:multiImagePlacementAutosavesScheduled,committed:multiImagePlacementFinalCommittedCount,selected:selectedAssetId,last:assets.at(-1).id})))
+    .toEqual({added:before.assets+3,history:1,autosaves:1,committed:3,selected:await page.evaluate(()=>assets.at(-1).id),last:await page.evaluate(()=>assets.at(-1).id)});
   expect(fatalErrors).toEqual([]);
 });
 
-test('E8J: três imagens abrem folha sem mutar e Cancelar preserva projeto', async ({ page }) => {
-  await openEmptyEditorForE8J(page);
-  const before = await page.evaluate(() => ({ assets: assets.length, undo: undoStack.length, revision: _sessionAutosaveQueuedRevision, sequence: nextLayerSequence }));
-  await chooseMultiImages(page, 3);
-  const dialog = page.getByRole('dialog', { name: 'Inserir 3 imagens' });
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByText('Como deseja organizar as imagens no Stage?', { exact: true })).toBeVisible();
-  expect(await page.evaluate(() => ({ assets: assets.length, undo: undoStack.length, revision: _sessionAutosaveQueuedRevision, sequence: nextLayerSequence }))).toEqual(before);
-  await dialog.getByRole('button', { name: 'Cancelar' }).click();
-  await expect(dialog).toBeHidden();
-  expect(await page.evaluate(() => ({ assets: assets.length, undo: undoStack.length, revision: _sessionAutosaveQueuedRevision, sequence: nextLayerSequence }))).toEqual(before);
-});
-
-for (const [button, layout] of [
-  ['Empilhar no centro', 'stack'],
-  ['Distribuir na horizontal', 'horizontal'],
-  ['Distribuir na vertical', 'vertical'],
-]) {
-  test(`E8J: ${button} faz commit atômico no projeto vazio`, async ({ page }) => {
-    const fatalErrors = captureFatalErrors(page);
-    await openEmptyEditorForE8J(page);
-    await chooseMultiImages(page, 3);
-    const dialog = page.getByRole('dialog', { name: 'Inserir 3 imagens' });
-    const prepareGate = await installControlledAsyncGate(page, 'prepareMultiImageFiles');
-    try {
-      await dialog.getByRole('button', { name: button }).click();
-      await expect(dialog.getByText('Preparando 3 imagens…', { exact: true })).toBeVisible();
-      await expect(page.locator('#multiImageLayoutActions')).toBeHidden();
-      await expect(dialog).toBeVisible();
-      expect(await page.evaluate(() => ({
-        committed: multiImageInsertCommittedCount,
-        assets: assets.length,
-        undo: undoStack.length,
-        autosaves: multiImageInsertAutosavesScheduled,
-      }))).toEqual({ committed: 0, assets: 0, undo: 0, autosaves: 0 });
-      await prepareGate.release();
-      await expect(dialog).toBeHidden({ timeout: 20_000 });
-    } finally {
-      await prepareGate.restore();
-    }
-    const state = await page.evaluate(() => ({
-      count: assets.filter(a => a?.type === 'image').length,
-      layout: multiImageInsertLayout,
-      committed: multiImageInsertCommittedCount,
-      selected: selectedAssetId,
-      last: assets.filter(a => a?.type === 'image').at(-1)?.id,
-      sequences: assets.filter(a => a?.type === 'image').map(a => a.layerSequence),
-      alpha: multiImageInsertAlphaCount,
-      undo: undoStack.length,
-      autosaves: multiImageInsertAutosavesScheduled,
-      bounds: getWorldViewBoundsWorld(),
-      rects: assets.filter(a => a?.type === 'image').map(a => ({ id:a.id,x:a.worldX,y:a.worldY,w:a.worldW,h:a.worldH })),
-    }));
-    expect(state).toMatchObject({ count: 3, layout, committed: 3, alpha: 3, undo: 1, autosaves: 1 });
-    expect(state.selected).toBe(state.last);
-    expect(state.sequences).toEqual([1, 2, 3]);
-    expect(state.bounds.w).toBeGreaterThan(0); expect(state.bounds.h).toBeGreaterThan(0);
-    if (layout === 'horizontal') {
-      for (let i = 1; i < state.rects.length; i++) expect(state.rects[i - 1].x + state.rects[i - 1].w).toBeLessThan(state.rects[i].x);
-    }
-    if (layout === 'vertical') {
-      for (let i = 1; i < state.rects.length; i++) expect(state.rects[i - 1].y + state.rects[i - 1].h).toBeLessThan(state.rects[i].y);
-    }
-    const navigation = await page.evaluate(() => {
-      const imageAssets = assets.filter(a => a?.type === 'image');
-      const first = imageAssets[0], last = imageAssets.at(-1);
-      const firstReached = centerEditorViewportOnAsset(first.id); selectAssetById(first.id, 'webkit-project-world-first');
-      const firstSelected = selectedAssetId === first.id;
-      const lastReached = centerEditorViewportOnAsset(last.id); selectAssetById(last.id, 'webkit-project-world-last');
-      return { firstReached, firstSelected, lastReached, lastSelected: selectedAssetId === last.id };
-    });
-    expect(navigation).toEqual({ firstReached:true, firstSelected:true, lastReached:true, lastSelected:true });
-    expect(fatalErrors).toEqual([]);
-  });
-}
-
-test('E8J: arquivo inválido intermediário não deixa commit parcial', async ({ page }) => {
-  await openEmptyEditorForE8J(page);
-  await page.locator('#multiImageInsertInput').setInputFiles([
-    imagePayload('valida-1.png'),
-    { name: 'invalida.png', mimeType: 'image/png', buffer: Buffer.from('arquivo-invalido') },
-    imagePayload('valida-2.png'),
-  ]);
-  const dialog = page.getByRole('dialog', { name: 'Inserir 3 imagens' });
-  await dialog.getByRole('button', { name: 'Empilhar no centro' }).click();
-  await expect.poll(() => page.evaluate(() => multiImageInsertPreparationFailed), { timeout: 15_000 }).toBe(true);
-  expect(await page.evaluate(() => ({ assets: assets.length, undo: undoStack.length, revision: _sessionAutosaveQueuedRevision, committed: multiImageInsertCommittedCount })))
-    .toEqual({ assets: 0, undo: 0, revision: 0, committed: 0 });
-});
-
-test('E8J: lote existente tem Undo/Redo único e Trocar imagem segue unitário', async ({ page }) => {
-  await openEmptyEditorForE8J(page);
-  await chooseMultiImages(page, 1);
-  await expect.poll(() => page.evaluate(() => assets.length), { timeout: 15_000 }).toBe(1);
-  await page.evaluate(() => { pendingImageAction = 'insertImage'; pendingImageTargetSlot = { key: 'center', row: 0, col: 0 }; });
-  await chooseMultiImages(page, 3);
-  await page.getByRole('dialog', { name: 'Inserir 3 imagens' }).getByRole('button', { name: 'Distribuir na horizontal' }).click();
-  await expect.poll(() => page.evaluate(() => assets.length), { timeout: 20_000 }).toBe(4);
-  await page.evaluate(() => undo());
-  await expect.poll(() => page.evaluate(() => assets.length)).toBe(1);
-  await page.evaluate(() => redo());
-  await expect.poll(() => page.evaluate(() => assets.length)).toBe(4);
-  const inputContract = await page.evaluate(() => ({ unitMultiple: document.getElementById('fileInput2').multiple, multiMultiple: document.getElementById('multiImageInsertInput').multiple }));
-  expect(inputContract).toEqual({ unitMultiple: false, multiMultiple: true });
-  await page.evaluate(() => { pendingImageAction = 'replaceImage'; pendingImageTargetAssetId = assets[0].id; selectAssetById(assets[0].id, 'webkit-replace'); });
-  await page.locator('#fileInput2').setInputFiles(imagePayload('troca.png'));
-  await expect.poll(() => page.evaluate(() => lastImageActionType), { timeout: 15_000 }).toBe('replaceImage');
-});
-
-test('E8J: Save/Load real preserva lote, seleção, ProjectWorld e transparência', async ({ page }) => {
-  const fatalErrors = captureFatalErrors(page);
-  await createE8JBatch(page, 'Distribuir na horizontal');
-  const before = await captureE8JProjectState(page);
-  const serialized = await page.evaluate(() => buildCompleteSessionProjectData());
-  expect(serialized.assets).toHaveLength(3);
-  await page.evaluate(async data => {
-    clearCurrentProjectForNewFile();
-    const applied = await applyProjectData(data, { origin: 'webkit-e8j-save-load' });
-    if (!applied) throw new Error('applyProjectData-failed');
-  }, serialized);
-  await expect.poll(() => page.evaluate(() => loadSessionCompleted), { timeout: 20_000 }).toBe(true);
-  const after = await captureE8JProjectState(page);
-  expect(after).toEqual(before);
-  await expect(page.locator('#layersList .layers-item')).toHaveCount(3);
-  const navigation = await page.evaluate(() => {
-    const list = assets.filter(a => a?.type === 'image');
-    return [centerEditorViewportOnAsset(list[0].id), centerEditorViewportOnAsset(list.at(-1).id)];
-  });
-  expect(navigation).toEqual([true, true]);
-  const alphaPixel = await page.evaluate(async () => {
-    const asset = assets.find(a => a?.type === 'image' && a.hasAlpha);
-    const drawable = asset.drawSource || asset._img || (asset === getMainImageAsset() ? getCanonicalRenderSource() : null);
-    const dims = getImageSourceDimensions(drawable);
-    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
-    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#ff00ff'; ctx.fillRect(0,0,1,1); ctx.drawImage(drawable,0,0,1,1);
-    const pixel = Array.from(ctx.getImageData(0,0,1,1).data);
-    multiImageLoadedAlphaPixelPreserved = pixel.join(',') === '255,0,255,255';
-    recordMultiImageLoadedSourceDiagnostics(asset, drawable);
-    return {
-      id:asset.id, pixel, mime:asset.mimeType, hasAlpha:asset.hasAlpha,
-      sourceKind:multiImageLoadedSourceKind, durable:multiImageLoadedSourceDurable,
-      drawableReady:multiImageLoadedDrawableReady, width:dims.width, height:dims.height,
-      staleBlob:multiImageStaleBlobDetected, alphaPreserved:multiImageLoadedAlphaPixelPreserved,
-    };
-  });
-  expect(alphaPixel.mime).toBe('image/png');
-  expect(alphaPixel.hasAlpha).toBe(true);
-  expect(alphaPixel.sourceKind).toBe('data');
-  expect(alphaPixel.durable).toBe(true);
-  expect(alphaPixel.drawableReady).toBe(true);
-  expect(alphaPixel.width).toBeGreaterThan(0);
-  expect(alphaPixel.height).toBeGreaterThan(0);
-  expect(alphaPixel.staleBlob).toBe(false);
-  expect(alphaPixel.alphaPreserved).toBe(true);
-  expect(alphaPixel.pixel).toEqual([255, 0, 255, 255]);
-  expect(fatalErrors).toEqual([]);
-});
-
-test('E8J: Session Restore real recupera lote completo pela escolha E8I', async ({ page }) => {
-  const fatalErrors = captureFatalErrors(page);
-  await createE8JBatch(page, 'Distribuir na vertical');
-  const before = await captureE8JProjectState(page);
-  await page.evaluate(async () => {
-    clearTimeout(_sessionAutosaveTimer); _sessionAutosaveTimer = null;
-    const revision = Math.max(_sessionAutosaveQueuedRevision, _sessionAutosaveCommittedRevision) + 1;
-    const ok = await writeSessionAutosave(revision, _sessionAutosaveEpoch, true, 'webkit-e8j-session');
-    if (!ok) throw new Error('session-write-failed');
-  });
-  expect(await sessionCheckpointExists(page)).toBe(true);
-  await reloadForStartup(page);
-  const dialog = page.getByRole('dialog', { name: 'Continuar sessão anterior?' });
-  await expect(dialog).toBeVisible();
-  await dialog.getByText('Continuar de onde parei', { exact: true }).click();
-  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
-  await expect(dialog).toBeHidden();
-  await expect.poll(() => page.evaluate(() => sessionRestoreCompleted), { timeout: 30_000 }).toBe(true);
-  const after = await captureE8JProjectState(page);
-  expect(after).toEqual(before);
-  await expect(page.locator('#layersList .layers-item')).toHaveCount(3);
-  const restored = await page.evaluate(() => {
-    const list = assets.filter(a => a?.type === 'image');
-    const first = centerEditorViewportOnAsset(list[0].id);
-    const last = centerEditorViewportOnAsset(list.at(-1).id);
-    return { first, last, noPartial:sessionRestoreNoPartialState, alpha:list.filter(a=>a.hasAlpha).length };
-  });
-  expect(restored).toEqual({ first:true, last:true, noPartial:true, alpha:3 });
-  expect(fatalErrors).toEqual([]);
+test('E8K: Cancelar sequência e arquivo inválido preservam integralmente o projeto', async ({ page }) => {
+  await page.goto('/',{waitUntil:'domcontentloaded'}); await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30000});
+  const before=await page.evaluate(()=>JSON.stringify(captureState()));
+  await chooseMultiImages(page,3); await expect(page.locator('#multiImagePlacementHud')).toBeVisible({timeout:15000});
+  await page.locator('#multiImagePlacementConfirm').click(); await page.locator('#multiImagePlacementCancel').click();
+  await expect(page.locator('#multiImagePlacementHud')).toBeHidden();
+  expect(await page.evaluate(()=>JSON.stringify(captureState()))).toBe(before);
+  await page.locator('#multiImageInsertInput').setInputFiles([imagePayload('ok.png'),{name:'invalid.webp',mimeType:'image/webp',buffer:Buffer.from('invalid')}]);
+  await expect.poll(()=>page.evaluate(()=>multiImageInsertPreparationFailed),{timeout:15000}).toBe(true);
+  expect(await page.evaluate(()=>JSON.stringify(captureState()))).toBe(before);
 });

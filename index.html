@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E8J — base v8z4b32E8I. feat(assets): separa inserção múltipla da troca unitária, prepara o lote integralmente e oferece Empilhar/Horizontal/Vertical com commit, Undo e autosave únicos ou rollback completo. APP_VERSION = APP_VERSION_NAME = v8z4b32E8J. -->
+<!-- Arco Motion App — v8z4b32E8K — base v8z4b32E8J. fix(assets): inserção de imagens com preparação integral, posicionamento provisório sequencial e commit, Undo e autosave únicos. APP_VERSION = APP_VERSION_NAME = v8z4b32E8K. -->
 <!-- Arco Motion App — v8z4b32E8I — base v8z4b32E8H. feat(session): pergunta se deve recuperar um checkpoint válido na abertura normal, sem alterar as intenções explícitas de Recarregar. APP_VERSION = APP_VERSION_NAME = v8z4b32E8I. -->
 <!-- Arco Motion App — v8z4b32E8H — base v8z4b32E8G. fix(reload): oferece restauração aguardável da sessão ou reinício limpo, com intenção de startup de uso único e tratamento de falhas. APP_VERSION = APP_VERSION_NAME = v8z4b32E8H. -->
 <!-- Arco Motion App — v8z4b32E8F — base v8z4b32E8E. fix(preview): confirma render e composição do primeiro frame t=0 antes de liberar loading, relógio e loop visível; falha/cancelamento libera retry sem alterar Export ou matemática do renderer. APP_VERSION = APP_VERSION_NAME = v8z4b32E8F. -->
@@ -1640,6 +1640,15 @@ body.inserting-frame .frame-out-handle{pointer-events:none !important;}
 .ins-bar-btn svg{width:22px;height:22px;display:block;stroke-width:3;}
 .ins-bar-btn.ok{background:var(--accent);color:#000;}
 .ins-bar-btn.cancel{background:#ff9500;color:#000;}
+#multiImagePlacementHud{position:fixed;left:50%;bottom:calc(10px + var(--safe-bottom));transform:translateX(-50%);z-index:340;display:none;min-width:230px;text-align:center;pointer-events:none}
+#multiImagePlacementHud.show{display:block}
+#multiImagePlacementHint,#multiImagePlacementCounter{display:inline-block;background:var(--menu-bg);padding:5px 9px;color:var(--text1);font-size:12px;font-weight:650}
+#multiImagePlacementHint{border-radius:9px 0 0 9px}#multiImagePlacementCounter{border-radius:0 9px 9px 0;color:var(--text2)}
+.multi-image-placement-actions{display:flex;justify-content:center;gap:10px;margin-top:9px;pointer-events:auto}
+.multi-image-placement-actions button{min-height:46px;padding:0 17px;border:0;border-radius:999px;font-weight:700;color:#fff;box-shadow:0 3px 14px rgba(0,0,0,.42)}
+#multiImagePlacementCancel{background:#ff9500;color:#000}#multiImagePlacementConfirm{background:#8b3fff}#multiImagePlacementConfirm:disabled{opacity:.42}
+.pending-multi-image{position:absolute;box-sizing:border-box;object-fit:contain;transform-origin:center;pointer-events:none;border:2px dashed #8b3fff;border-radius:10px;z-index:85}
+.pending-multi-image.current{opacity:.55;pointer-events:auto;touch-action:none}.pending-multi-image.placed{opacity:1}
 /* Overlay escuro fora do frame selecionado — SVG com recorte */
 #stageDimSvg{position:absolute;inset:0;pointer-events:none;z-index:16;display:none;}
 body.previewing #stageDimSvg,
@@ -4380,22 +4389,13 @@ body.cust-open #toolbar{
 <!-- v8z4b30U — input de imagem do editor (Inserir/Trocar) em nível de topo, fora de
      qualquer container display:none, para que .click() funcione no iPhone/Safari. -->
 <input type="file" id="fileInput2" accept="image/*" style="display:none;">
-<input type="file" id="multiImageInsertInput" accept="image/*" multiple style="display:none;">
-
-<div id="multiImageLayoutSheet" role="dialog" aria-modal="true" aria-labelledby="multiImageLayoutTitle"
-     style="display:none;position:fixed;inset:0;z-index:340;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom);"
-     onclick="if(event.target===this)closeMultiImageLayoutSheet('backdrop')">
-  <div style="position:relative;width:min(100%,430px);background:var(--menu-bg);border-radius:20px 20px 0 0;padding:22px 20px 18px;">
-    <button type="button" class="panel-close-check" aria-label="Fechar" onclick="closeMultiImageLayoutSheet('close')">×</button>
-    <div id="multiImageLayoutTitle" style="font-size:18px;font-weight:700;padding-right:42px;">Inserir 2 imagens</div>
-    <div style="font-size:14px;color:var(--text2);margin:8px 0 16px;">Como deseja organizar as imagens no Stage?</div>
-    <div id="multiImageLayoutActions" style="display:grid;gap:9px;">
-      <button type="button" class="slot-pick-btn" onclick="commitPendingMultiImageInsert('stack')">Empilhar no centro</button>
-      <button type="button" class="slot-pick-btn" onclick="commitPendingMultiImageInsert('horizontal')">Distribuir na horizontal</button>
-      <button type="button" class="slot-pick-btn" onclick="commitPendingMultiImageInsert('vertical')">Distribuir na vertical</button>
-      <button type="button" class="slot-pick-btn" onclick="closeMultiImageLayoutSheet('cancel')">Cancelar</button>
-    </div>
-    <div id="multiImageLayoutBusy" role="status" aria-live="polite" style="display:none;padding:18px 0 4px;text-align:center;font-weight:600;"></div>
+<input type="file" id="multiImageInsertInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
+<div id="multiImagePlacementHud" aria-live="polite" aria-hidden="true">
+  <div id="multiImagePlacementHint">Arraste para posicionar</div>
+  <div id="multiImagePlacementCounter">Imagem 1 de 1</div>
+  <div class="multi-image-placement-actions">
+    <button id="multiImagePlacementCancel" type="button">Cancelar</button>
+    <button id="multiImagePlacementConfirm" type="button">Adicionar imagem</button>
   </div>
 </div>
 
@@ -4741,7 +4741,7 @@ body.cust-open #toolbar{
     <span class="assets-menu-section-label">Imagens</span>
     <button type="button" class="assets-menu-btn" onclick="runAssetsContextMenuAction('insert')">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-up"></use></svg>
-      Inserir imagem
+      Inserir imagens
     </button>
     <button type="button" class="assets-menu-btn" onclick="runAssetsContextMenuAction('layers')">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-layers"></use></svg>
@@ -7242,8 +7242,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8J';
-const APP_VERSION_NAME = 'v8z4b32E8J';
+const APP_VERSION = 'v8z4b32E8K';
+const APP_VERSION_NAME = 'v8z4b32E8K';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -31857,22 +31857,13 @@ function startInsertImageFlow() {
   closeSettingsSheet();
   closeAll();
   clearPendingImageAction();
-  // Projeto vazio: inserir = carregar a imagem principal (centro), sem seletor de slot.
-  if (!imgNatW) {
-    pendingImageAction = 'insertImage';
-    pendingImageTargetSlot = { key: 'center', row: 0, col: 0 };
-    pendingImageTargetAssetId = null;
-    activeSlotSelection = 'center';
-    triggerMultiImageInsertPicker();
-    return;
-  }
-  // Plano: adicionar imagem extra é Plus/Premium (liberado em teste interno por featureAccess).
-  if (!canAddImageAsset()) {
-    openMultipleImagesPlusModal();
-    return;
-  }
-  // Já existe imagem: escolher o slot ANTES de abrir Fotos/Arquivos.
-  openImageSlotPicker('insert');
+  resetMultiImageInsertDiagnostics(0);
+  multiImagePlacementFlowStarted++;
+  const picker = document.getElementById('multiImageInsertInput');
+  const slotWasVisible = document.getElementById('imageSlotPickerSheet')?.style.display === 'flex';
+  triggerMultiImageInsertPicker();
+  multiImagePlacementPickerOpenedDirectly = !!picker;
+  multiImagePlacementLegacySlotChooserOpened = slotWasVisible || document.getElementById('imageSlotPickerSheet')?.style.display === 'flex';
 }
 
 // ── Ação 2: TROCAR IMAGEM ───────────────────────────────────────────────
@@ -31977,6 +31968,25 @@ let multiImageLoadedDrawableWidth = 0;
 let multiImageLoadedDrawableHeight = 0;
 let multiImageLoadedAlphaPixelPreserved = false;
 let multiImageStaleBlobDetected = false;
+let pendingMultiImagePlacement = null;
+let multiImagePlacementFlowStarted = 0;
+let multiImagePlacementPickerOpenedDirectly = false;
+let multiImagePlacementLegacySlotChooserOpened = false;
+let multiImagePlacementLayoutSheetOpened = false;
+let multiImagePlacementCanonicalAssetCountBefore = 0;
+let multiImagePlacementCanonicalMutationBeforeFinalCommit = false;
+let multiImagePlacementCancelled = false;
+let multiImagePlacementCancelStepIndex = -1;
+let multiImagePlacementSnapshotRestored = false;
+let multiImagePlacementFinalCommittedCount = 0;
+let multiImagePlacementHistoryEntriesCreated = 0;
+let multiImagePlacementAutosavesScheduled = 0;
+let multiImagePlacementTemporaryResourcesReleased = 0;
+let multiImagePlacementPointerCaptureStuck = false;
+let multiImagePlacementGestureConflictDetected = false;
+let multiImagePlacementFrameStateChanged = false;
+let multiImagePlacementCurveStateChanged = false;
+let multiImagePlacementProjectWorldChangedBeforeCommit = false;
 
 function recordMultiImageLoadedSourceDiagnostics(asset, drawable) {
   const src = _assetPersistentSourceE8E(asset);
@@ -32015,6 +32025,22 @@ function resetMultiImageInsertDiagnostics(selectedCount) {
   multiImageInsertAutosavesScheduled = 0;
   multiImageInsertFinalSelectedAssetId = '';
   multiImageInsertAlphaCount = 0;
+  multiImagePlacementPickerOpenedDirectly = false;
+  multiImagePlacementLegacySlotChooserOpened = false;
+  multiImagePlacementLayoutSheetOpened = false;
+  multiImagePlacementCanonicalMutationBeforeFinalCommit = false;
+  multiImagePlacementCancelled = false;
+  multiImagePlacementCancelStepIndex = -1;
+  multiImagePlacementSnapshotRestored = false;
+  multiImagePlacementFinalCommittedCount = 0;
+  multiImagePlacementHistoryEntriesCreated = 0;
+  multiImagePlacementAutosavesScheduled = 0;
+  multiImagePlacementTemporaryResourcesReleased = 0;
+  multiImagePlacementPointerCaptureStuck = false;
+  multiImagePlacementGestureConflictDetected = false;
+  multiImagePlacementFrameStateChanged = false;
+  multiImagePlacementCurveStateChanged = false;
+  multiImagePlacementProjectWorldChangedBeforeCommit = false;
 }
 function releasePreparedMultiImages(prepared) {
   (prepared || []).forEach(item => {
@@ -32028,35 +32054,12 @@ function clearPendingMultiImageInsert() {
   const input = document.getElementById('multiImageInsertInput');
   if (input) { try { input.value = ''; } catch (_) {} }
 }
-function openMultiImageLayoutSheet(files) {
-  if (multiImageInsertBusy) return;
-  pendingMultiImageFiles = Array.from(files || []);
-  const sheet = document.getElementById('multiImageLayoutSheet');
-  const title = document.getElementById('multiImageLayoutTitle');
-  if (title) title.textContent = `Inserir ${pendingMultiImageFiles.length} imagens`;
-  if (sheet) sheet.style.display = 'flex';
-}
-function closeMultiImageLayoutSheet(reason) {
-  if (multiImageInsertBusy) return false;
-  const sheet = document.getElementById('multiImageLayoutSheet');
-  if (sheet) sheet.style.display = 'none';
-  multiImageInsertCancelled = true;
-  clearPendingMultiImageInsert();
-  clearPendingImageAction();
-  return true;
-}
 function handleMultiImageInsertChosen(e) {
   const input = e && e.target;
   const files = input && input.files ? Array.from(input.files) : [];
-  if (!files.length) { clearPendingImageAction(); return; }
-  resetMultiImageInsertDiagnostics(files.length);
-  if (files.length === 1) {
-    const file = files[0];
-    if (input) { try { input.value = ''; } catch (_) {} }
-    doInsertImageFromFile(file);
-    return;
-  }
-  openMultiImageLayoutSheet(files);
+  if (!files.length) { clearPendingMultiImageInsert(); return; }
+  multiImageInsertSelectedCount = files.length;
+  beginMultiImagePlacement(files);
 }
 async function readSupportedImageKind(file) {
   if (!file || typeof file.slice !== 'function') return null;
@@ -32108,147 +32111,171 @@ function getMultiImageVisibleCenter() {
   computeEditorTransform();
   return editorStageToWorld((stageW || projectWorld.baseStageW || 1) / 2, (stageH || projectWorld.baseStageH || 1) / 2);
 }
-function calculateMultiImageLayout(prepared, layout, center, baseW, baseH) {
-  const gap = Math.max(24, Math.min(64, Math.min(baseW, baseH) * 0.08));
-  const sizes = prepared.map(item => fitContain(item.width, item.height, baseW, baseH));
-  const positions = [];
-  if (layout === 'horizontal') {
-    const total = sizes.reduce((sum, size) => sum + size.width, 0) + gap * Math.max(0, sizes.length - 1);
-    let x = center.x - total / 2;
-    sizes.forEach(size => { positions.push({ x, y: center.y - size.height / 2, w: size.width, h: size.height }); x += size.width + gap; });
-  } else if (layout === 'vertical') {
-    const total = sizes.reduce((sum, size) => sum + size.height, 0) + gap * Math.max(0, sizes.length - 1);
-    let y = center.y - total / 2;
-    sizes.forEach(size => { positions.push({ x: center.x - size.width / 2, y, w: size.width, h: size.height }); y += size.height + gap; });
-  } else {
-    const step = Math.max(8, Math.min(18, Math.min(baseW, baseH) * 0.025));
-    const middle = (sizes.length - 1) / 2;
-    sizes.forEach((size, index) => {
-      const offset = (index - middle) * step;
-      positions.push({ x: center.x - size.width / 2 + offset, y: center.y - size.height / 2 + offset, w: size.width, h: size.height });
-    });
-  }
-  return positions;
-}
-function loadMainImageForMultiInsert(file) {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const control = { cancelled: false };
-    const finish = (error, asset) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeoutId);
-      if (error) reject(error); else resolve(asset);
-    };
-    const timeoutId = setTimeout(() => {
-      control.cancelled = true;
-      finish(new Error('main-image-load-timeout'));
-    }, 30000);
-    loadImage(file, () => {
-      if (settled || control.cancelled) return;
-      try {
-        createInitialFrameForNewImageProject();
-        renderProjectWorldExtraImages(); renderAll(); updateFrameSelector(); updateToolbarLabels();
-        const mainAsset = getMainImageAsset();
-        if (!mainAsset) throw new Error('main-image-asset-missing');
-        finish(null, mainAsset);
-      } catch (error) { finish(error); }
-    }, {
-      isCancelled: () => control.cancelled,
-      onError: error => finish(error instanceof Error ? error : new Error('main-image-load-failed'))
-    });
-  });
-}
-function createPreparedImageAsset(item, rect, zIndex) {
-  let assetId = '';
-  do { assetId = 'img-' + Date.now() + '-' + Math.floor(Math.random() * 1000000); }
-  while (assets.some(asset => asset && asset.id === assetId));
-  const asset = {
-    id: assetId, type: 'image',
-    name: (item.file.name || 'imagem').replace(/\.[^.]+$/, ''), src: item.dataUrl,
-    sourceW: item.width, sourceH: item.height, worldX: rect.x, worldY: rect.y, worldW: rect.w, worldH: rect.h,
-    rotation: 0, zIndex, visible: true, locked: false, fitMode: 'contain', mimeType: item.kind, hasAlpha: item.hasAlpha,
-    crop: { enabled:false,x:0,y:0,w:1,h:1 }, frameStyle: { enabled:false,strokeColor:'#ffffff',strokeWidth:0,radius:0,padding:0,shadow:false }, _img: item.image
+function getMultiImagePlacementFingerprint() {
+  return {
+    assets: assets.length,
+    frames: JSON.stringify(frames.slice(0, frameCount)),
+    curves: JSON.stringify(curvesV2),
+    world: JSON.stringify(projectWorld)
   };
-  assignPersistentLayerIdentity(asset, item.file.name || '');
-  return asset;
 }
-function snapshotMultiImageTransaction() {
-  return { state: captureState(), undo: undoStack.slice(), redo: redoStack.slice(), nextLayerSequence,
-    queuedRevision: _sessionAutosaveQueuedRevision, selectedAssetId, wasEmpty: !imgNatW };
+function renderPendingMultiImagePlacement() {
+  if (!pendingMultiImagePlacement) return;
+  stageContent.querySelectorAll('.pending-multi-image').forEach(el => el.remove());
+  computeEditorTransform();
+  const placed = pendingMultiImagePlacement.placements;
+  const visible = placed.concat(pendingMultiImagePlacement.currentRect ? [pendingMultiImagePlacement.currentRect] : []);
+  visible.forEach((rect, index) => {
+    const item = pendingMultiImagePlacement.preparedImages[index];
+    const pos = editorWorldToStage(rect.x, rect.y, rect.w, rect.h);
+    const el = document.createElement('img');
+    el.className = 'pending-multi-image ' + (index < placed.length ? 'placed' : 'current');
+    el.src = item.dataUrl; el.alt = ''; el.draggable = false;
+    Object.assign(el.style, { left:pos.x+'px', top:pos.y+'px', width:pos.w+'px', height:pos.h+'px' });
+    if (index === placed.length) el.addEventListener('pointerdown', startPendingMultiImageDrag);
+    stageContent.insertBefore(el, imgEl);
+  });
+  const hud = document.getElementById('multiImagePlacementHud');
+  hud?.classList.add('show'); hud?.setAttribute('aria-hidden','false');
+  const count = document.getElementById('multiImagePlacementCounter');
+  if (count) count.textContent = `Imagem ${pendingMultiImagePlacement.currentIndex + 1} de ${pendingMultiImagePlacement.preparedImages.length}`;
+  const confirm = document.getElementById('multiImagePlacementConfirm');
+  if (confirm) confirm.disabled = !!pendingMultiImagePlacement.gesture;
 }
-function rollbackMultiImageTransaction(snapshot) {
-  multiImageInsertRollbackRequired = true;
-  clearTimeout(_sessionAutosaveTimer); _sessionAutosaveTimer = null;
-  _sessionAutosaveQueuedRevision = snapshot.queuedRevision;
-  undoStack.length = 0; snapshot.undo.forEach(item => undoStack.push(item));
-  redoStack.length = 0; snapshot.redo.forEach(item => redoStack.push(item));
-  if (snapshot.wasEmpty) clearCurrentProjectForNewFile(); else restoreState(snapshot.state);
-  nextLayerSequence = snapshot.nextLayerSequence;
-  if (snapshot.selectedAssetId) selectAssetById(snapshot.selectedAssetId, 'multiInsertRollback'); else clearSelectedAsset();
-  multiImageInsertRollbackCompleted = true;
+function makePendingMultiImageRect(item) {
+  const baseW = projectWorld.baseStageW || stageW;
+  const baseH = projectWorld.baseStageH || stageH;
+  const size = fitContain(item.width, item.height, baseW, baseH);
+  const center = getMultiImageVisibleCenter();
+  return { x:center.x-size.width/2, y:center.y-size.height/2, w:size.width, h:size.height };
 }
-async function commitPendingMultiImageInsert(layout) {
-  if (multiImageInsertBusy || !pendingMultiImageFiles || pendingMultiImageFiles.length < 2) return false;
-  multiImageInsertBusy = true; multiImageInsertLayout = layout;
-  const files = pendingMultiImageFiles.slice();
-  const actions = document.getElementById('multiImageLayoutActions');
-  const busy = document.getElementById('multiImageLayoutBusy');
-  if (actions) actions.style.display = 'none';
-  if (busy) { busy.style.display = 'block'; busy.textContent = `Preparando ${files.length} imagens…`; }
+async function beginMultiImagePlacement(files) {
+  if (multiImageInsertBusy || pendingMultiImagePlacement) return false;
+  multiImageInsertBusy = true;
   let prepared = [];
-  let snapshot = null;
   try {
     prepared = await prepareMultiImageFiles(files);
-    snapshot = snapshotMultiImageTransaction();
-    const wasEmpty = snapshot.wasEmpty;
-    let firstAsset = null;
-    if (wasEmpty) firstAsset = await loadMainImageForMultiInsert(prepared[0].file);
-    const baseW = projectWorld.baseStageW || stageW;
-    const baseH = projectWorld.baseStageH || stageH;
-    const center = getMultiImageVisibleCenter();
-    const positions = calculateMultiImageLayout(prepared, layout, center, baseW, baseH);
-    let maxZ = assets.reduce((max, asset) => Math.max(max, Number(asset && asset.zIndex) || 0), 0);
-    const committed = [];
-    for (let i = 0; i < prepared.length; i++) {
-      let asset;
-      if (wasEmpty && i === 0) {
-        asset = firstAsset;
-        Object.assign(asset, { worldX:positions[i].x, worldY:positions[i].y, worldW:positions[i].w, worldH:positions[i].h, zIndex:++maxZ, mimeType:prepared[i].kind, hasAlpha:prepared[i].hasAlpha });
-      } else {
-        asset = createPreparedImageAsset(prepared[i], positions[i], ++maxZ);
-        assets.push(asset);
-      }
-      committed.push(asset);
-      multiImageInsertCommittedCount = committed.length;
-    }
-    const finalAsset = committed[committed.length - 1];
-    selectAssetById(finalAsset.id, 'multiInsertCommit');
-    multiImageInsertFinalSelectedAssetId = finalAsset.id;
-    multiImageInsertAlphaCount = committed.filter(asset => asset.hasAlpha).length;
-    invalidateProjectWorldComposite(); renderProjectWorldExtraImages(); renderLayersPanelList(); renderAll(); clampEditorPan();
-    pushUndoSnapshot(snapshot.state); lastUndoAction = 'addImageAsset'; multiImageInsertHistoryCreated = undoStack.length === snapshot.undo.length + 1;
-    markProjectDirty('add-image-assets'); multiImageInsertAutosavesScheduled = _sessionAutosaveQueuedRevision - snapshot.queuedRevision;
+    if (!prepared.length || !imgNatW) throw new Error('editor-image-required');
+    const snapshot = snapshotMultiImageTransaction();
+    const fingerprint = getMultiImagePlacementFingerprint();
+    multiImagePlacementCanonicalAssetCountBefore = assets.length;
+    pendingMultiImagePlacement = { active:true, preparedImages:prepared, placements:[], currentIndex:0,
+      currentRect:makePendingMultiImageRect(prepared[0]), snapshotBefore:snapshot, fingerprint, gesture:null, emptyStageGesture:null };
     clearPendingMultiImageInsert();
-    const sheet = document.getElementById('multiImageLayoutSheet'); if (sheet) sheet.style.display = 'none';
-    showStatus(`${committed.length} imagens inseridas`);
+    renderPendingMultiImagePlacement();
     return true;
-  } catch (error) {
-    if (snapshot) { multiImageInsertCommitFailed = true; rollbackMultiImageTransaction(snapshot); }
-    else multiImageInsertPreparationFailed = true;
+  } catch (_) {
+    releasePreparedMultiImages(prepared);
     showStatus('Não foi possível preparar todas as imagens. Nenhuma alteração foi feita.');
-    return false;
-  } finally {
-    releasePreparedMultiImages(prepared.filter(item => !assets.some(asset => asset && asset._img === item.image)));
     clearPendingMultiImageInsert();
-    multiImageInsertBusy = false;
-    if (actions) actions.style.display = 'grid';
-    if (busy) { busy.style.display = 'none'; busy.textContent = ''; }
-  }
+    return false;
+  } finally { multiImageInsertBusy = false; }
 }
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && document.getElementById('multiImageLayoutSheet')?.style.display === 'flex') closeMultiImageLayoutSheet('escape');
-});
+function setPendingMultiImageGesture(active) {
+  if (!pendingMultiImagePlacement) return;
+  pendingMultiImagePlacement.gesture = active;
+  const button = document.getElementById('multiImagePlacementConfirm');
+  if (button) button.disabled = !!active;
+}
+function startPendingMultiImageDrag(event) {
+  if (!pendingMultiImagePlacement || pendingMultiImagePlacement.gesture) return;
+  event.preventDefault(); event.stopPropagation();
+  const point = editorStageToWorld(...Object.values(screenToStageCoord(event.clientX,event.clientY)));
+  const rect = pendingMultiImagePlacement.currentRect;
+  setPendingMultiImageGesture({ pointerId:event.pointerId, target:event.currentTarget, dx:point.x-rect.x, dy:point.y-rect.y });
+  event.currentTarget.setPointerCapture?.(event.pointerId);
+}
+function movePendingMultiImageDrag(event) {
+  const state = pendingMultiImagePlacement;
+  const gesture = state && state.gesture;
+  if (!gesture || gesture.pointerId !== event.pointerId) return;
+  event.preventDefault();
+  const sc = screenToStageCoord(event.clientX,event.clientY); const point = editorStageToWorld(sc.x,sc.y);
+  state.currentRect.x = point.x-gesture.dx; state.currentRect.y = point.y-gesture.dy;
+  renderPendingMultiImagePlacement();
+}
+function endPendingMultiImageDrag(event) {
+  const state = pendingMultiImagePlacement; const gesture = state && state.gesture;
+  if (!gesture || gesture.pointerId !== event.pointerId) return;
+  try { if (gesture.target.hasPointerCapture?.(event.pointerId)) gesture.target.releasePointerCapture(event.pointerId); } catch (_) { multiImagePlacementPointerCaptureStuck = true; }
+  multiImagePlacementPointerCaptureStuck ||= !!gesture.target.hasPointerCapture?.(event.pointerId);
+  setPendingMultiImageGesture(null); renderPendingMultiImagePlacement();
+}
+function handlePendingMultiImageStageDown(event) {
+  if (!pendingMultiImagePlacement || event.target.closest?.('.pending-multi-image,#multiImagePlacementHud')) return;
+  pendingMultiImagePlacement.emptyStageGesture = { id:event.pointerId, x:event.clientX, y:event.clientY };
+}
+function handlePendingMultiImageStageUp(event) {
+  const state = pendingMultiImagePlacement; const tap = state && state.emptyStageGesture;
+  if (!tap || tap.id !== event.pointerId) return;
+  state.emptyStageGesture = null;
+  if (Math.hypot(event.clientX-tap.x,event.clientY-tap.y) > 8) return;
+  const sc=screenToStageCoord(event.clientX,event.clientY), point=editorStageToWorld(sc.x,sc.y), rect=state.currentRect;
+  rect.x=point.x-rect.w/2; rect.y=point.y-rect.h/2; renderPendingMultiImagePlacement();
+}
+function closePendingMultiImagePlacementVisuals() {
+  stageContent.querySelectorAll('.pending-multi-image').forEach(el => el.remove());
+  const hud=document.getElementById('multiImagePlacementHud'); hud?.classList.remove('show'); hud?.setAttribute('aria-hidden','true');
+}
+function auditPendingMultiImageIsolation(state) {
+  const now=getMultiImagePlacementFingerprint(), before=state.fingerprint;
+  multiImagePlacementCanonicalMutationBeforeFinalCommit ||= now.assets!==before.assets;
+  multiImagePlacementFrameStateChanged ||= now.frames!==before.frames;
+  multiImagePlacementCurveStateChanged ||= now.curves!==before.curves;
+  multiImagePlacementProjectWorldChangedBeforeCommit ||= now.world!==before.world;
+}
+function cancelPendingMultiImagePlacement() {
+  const state=pendingMultiImagePlacement; if (!state) return false;
+  auditPendingMultiImageIsolation(state);
+  multiImagePlacementCancelled=true; multiImagePlacementCancelStepIndex=state.currentIndex;
+  const snapshot=state.snapshotBefore;
+  closePendingMultiImagePlacementVisuals(); pendingMultiImagePlacement=null;
+  if (multiImagePlacementCanonicalMutationBeforeFinalCommit) rollbackMultiImageTransaction(snapshot);
+  multiImagePlacementSnapshotRestored = getMultiImagePlacementFingerprint().assets === snapshot.state.assets.length;
+  multiImagePlacementTemporaryResourcesReleased += state.preparedImages.length;
+  releasePreparedMultiImages(state.preparedImages); clearPendingMultiImageInsert();
+  return true;
+}
+function confirmPendingMultiImagePlacement() {
+  const state=pendingMultiImagePlacement;
+  if (!state || state.gesture || !state.currentRect) return false;
+  auditPendingMultiImageIsolation(state);
+  state.placements.push({...state.currentRect}); state.currentIndex++;
+  if (state.currentIndex < state.preparedImages.length) {
+    state.currentRect=makePendingMultiImageRect(state.preparedImages[state.currentIndex]); renderPendingMultiImagePlacement(); return true;
+  }
+  return commitPendingMultiImagePlacement();
+}
+function commitPendingMultiImagePlacement() {
+  const state=pendingMultiImagePlacement;
+  if (!state || state.placements.length!==state.preparedImages.length || state.placements.some(r=>!r||![r.x,r.y,r.w,r.h].every(Number.isFinite))) return false;
+  auditPendingMultiImageIsolation(state);
+  if (multiImagePlacementCanonicalMutationBeforeFinalCommit || multiImagePlacementFrameStateChanged || multiImagePlacementCurveStateChanged || multiImagePlacementProjectWorldChangedBeforeCommit) return cancelPendingMultiImagePlacement();
+  const snapshot=state.snapshotBefore, undoBefore=undoStack.length, autosaveBefore=_sessionAutosaveQueuedRevision;
+  try {
+    let maxZ=assets.reduce((m,a)=>Math.max(m,Number(a?.zIndex)||0),0);
+    const committed=state.preparedImages.map((item,i)=>createPreparedImageAsset(item,state.placements[i],++maxZ));
+    assets.push(...committed);
+    const finalAsset=committed[committed.length-1]; selectAssetById(finalAsset.id,'multiImagePlacementCommit');
+    invalidateProjectWorldComposite(); renderProjectWorldExtraImages(); renderLayersPanelList(); renderAll();
+    pushUndoSnapshot(snapshot.state); lastUndoAction='addImageAsset'; markProjectDirty('add-image-assets');
+    multiImagePlacementFinalCommittedCount=committed.length;
+    multiImagePlacementHistoryEntriesCreated=undoStack.length-undoBefore;
+    multiImagePlacementAutosavesScheduled=_sessionAutosaveQueuedRevision-autosaveBefore;
+    multiImagePlacementTemporaryResourcesReleased=state.preparedImages.length;
+    multiImageInsertCommittedCount=committed.length; multiImageInsertFinalSelectedAssetId=finalAsset.id;
+    closePendingMultiImagePlacementVisuals(); pendingMultiImagePlacement=null; clearPendingMultiImageInsert();
+    showStatus(`${committed.length} ${committed.length===1?'imagem inserida':'imagens inseridas'}`);
+    return true;
+  } catch (_) { rollbackMultiImageTransaction(snapshot); cancelPendingMultiImagePlacement(); return false; }
+}
+document.getElementById('multiImagePlacementCancel')?.addEventListener('click', cancelPendingMultiImagePlacement);
+document.getElementById('multiImagePlacementConfirm')?.addEventListener('click', confirmPendingMultiImagePlacement);
+document.addEventListener('pointermove', movePendingMultiImageDrag, {passive:false});
+document.addEventListener('pointerup', endPendingMultiImageDrag); document.addEventListener('pointercancel', endPendingMultiImageDrag);
+imageArea.addEventListener('pointerdown', handlePendingMultiImageStageDown, true);
+imageArea.addEventListener('pointerup', handlePendingMultiImageStageUp, true);
+document.addEventListener('keydown', event => { if(event.key==='Escape' && pendingMultiImagePlacement) cancelPendingMultiImagePlacement(); });
 
 function doInsertImageFromFile(file) {
   const slotKey = (pendingImageTargetSlot && pendingImageTargetSlot.key) || 'center';
@@ -37167,6 +37194,31 @@ function buildDiagnosticsText() {
   push('multiImageInsert autosavesScheduled', String(multiImageInsertAutosavesScheduled));
   push('multiImageInsert finalSelectedAssetId', multiImageInsertFinalSelectedAssetId || 'n/d');
   push('multiImageInsert alphaCount', String(multiImageInsertAlphaCount));
+  push('multiImagePlacementFlowStarted', String(multiImagePlacementFlowStarted));
+  push('multiImagePlacementPickerOpenedDirectly', String(multiImagePlacementPickerOpenedDirectly));
+  push('multiImagePlacementLegacySlotChooserOpened', String(multiImagePlacementLegacySlotChooserOpened));
+  push('multiImagePlacementLayoutSheetOpened', String(multiImagePlacementLayoutSheetOpened));
+  push('multiImagePlacementSelectedCount', String(multiImageInsertSelectedCount));
+  push('multiImagePlacementPreparedCount', String(multiImageInsertPreparedCount));
+  push('multiImagePlacementCurrentIndex', String(pendingMultiImagePlacement?.currentIndex ?? -1));
+  push('multiImagePlacementCurrentAssetName', pendingMultiImagePlacement?.preparedImages[pendingMultiImagePlacement.currentIndex]?.file?.name || 'n/d');
+  push('multiImagePlacementConfirmedDraftCount', String(pendingMultiImagePlacement?.placements.length || 0));
+  push('multiImagePlacementPendingPreviewCount', String(document.querySelectorAll('.pending-multi-image').length));
+  push('multiImagePlacementCanonicalAssetCountBefore', String(multiImagePlacementCanonicalAssetCountBefore));
+  push('multiImagePlacementCanonicalAssetCountDuring', String(_assetsArr.length));
+  push('multiImagePlacementCanonicalMutationBeforeFinalCommit', String(multiImagePlacementCanonicalMutationBeforeFinalCommit));
+  push('multiImagePlacementCancelled', String(multiImagePlacementCancelled));
+  push('multiImagePlacementCancelStepIndex', String(multiImagePlacementCancelStepIndex));
+  push('multiImagePlacementSnapshotRestored', String(multiImagePlacementSnapshotRestored));
+  push('multiImagePlacementFinalCommittedCount', String(multiImagePlacementFinalCommittedCount));
+  push('multiImagePlacementHistoryEntriesCreated', String(multiImagePlacementHistoryEntriesCreated));
+  push('multiImagePlacementAutosavesScheduled', String(multiImagePlacementAutosavesScheduled));
+  push('multiImagePlacementTemporaryResourcesReleased', String(multiImagePlacementTemporaryResourcesReleased));
+  push('multiImagePlacementPointerCaptureStuck', String(multiImagePlacementPointerCaptureStuck));
+  push('multiImagePlacementGestureConflictDetected', String(multiImagePlacementGestureConflictDetected));
+  push('multiImagePlacementFrameStateChanged', String(multiImagePlacementFrameStateChanged));
+  push('multiImagePlacementCurveStateChanged', String(multiImagePlacementCurveStateChanged));
+  push('multiImagePlacementProjectWorldChangedBeforeCommit', String(multiImagePlacementProjectWorldChangedBeforeCommit));
   push('multiImageLoadedSourceKind', multiImageLoadedSourceKind);
   push('multiImageLoadedSourceDurable', String(multiImageLoadedSourceDurable));
   push('multiImageLoadedDrawableReady', String(multiImageLoadedDrawableReady));
