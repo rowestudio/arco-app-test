@@ -11,6 +11,10 @@ Estados usados neste documento:
 
 ## 1. Mundo, câmera e Stage
 
+- [E8J] Inserir imagem aceita seleção única ou múltipla; lotes recebem organização inicial empilhada, horizontal ou vertical. Trocar imagem continua estritamente unitário e não se torna operação de lote.
+- [Futuro] **Lousas:** uma Lousa é uma área de trabalho delimitada dentro do próprio Stage/ProjectWorld. Pode ter orientação horizontal ou vertical e serve para organizar espacialmente o trabalho. Não é, por definição, uma nova cena, um novo Stage ou um projeto separado.
+- A E8J apenas registra o conceito de Lousas, sem implementá-lo e sem definir ainda quantidade, exportação individual, relação com cenas ou câmera, encaixe de Ativos, templates, duplicação, navegação ou formatos de saída.
+
 - [Em evolução] O Arco é um mundo visual navegável por câmera, não apenas uma foto com zoom.
 - [Em evolução] Stage, trilho/curvas, frames, câmera, tempos e export devem formar o mesmo sistema.
 - [Futuro] Edição direta de curva no Stage, com alças maiores, suavização de ângulos e adição de frame sobre curva existente.
@@ -91,6 +95,6 @@ Estados usados neste documento:
 
 ## 10. Escolha explícita ao encontrar checkpoint de sessão
 
-- [Futuro, posterior à E8G] Ao encontrar checkpoint válido na abertura, perguntar explicitamente “Restaurar sessão” ou “Começar do início”.
-- A restauração silenciosa atual não é o comportamento final aprovado.
-- A interface e seu fluxo pertencem a uma versão funcional separada; não são implementados na `v8z4b32E8G`.
+- [Implementado e validado na E8I] Ao encontrar checkpoint válido na abertura, há escolha explícita para continuar a sessão ou começar novo projeto.
+- A restauração silenciosa anterior foi substituída pela escolha explícita aprovada.
+- A implementação foi publicada e validada em iPhone/Safari/PWA na `v8z4b32E8I`; o item não permanece como funcionalidade futura pendente.

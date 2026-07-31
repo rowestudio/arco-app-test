@@ -259,6 +259,11 @@ expectCase(results, 'Startup session choice anti-patterns fail', 'check-startup-
 });
 expectCase(results, 'Startup session choice behavioral cases pass', 'test-startup-session-choice.mjs', 0);
 
+expectCase(results, 'Multi-asset insert implementation passes', 'check-multi-asset-insert.mjs', 0, {
+  env: { QA_MULTI_ASSET_INSERT_HTML: path.join(repoRoot, 'index.html') },
+});
+expectCase(results, 'Multi-asset insert behavioral cases pass', 'test-multi-asset-insert.mjs', 0);
+
 expectCase(results, 'Preview first-frame warm-up valid fixture passes', 'check-preview-first-frame-warmup.mjs', 0, {
   env: { QA_PREVIEW_WARMUP_HTML: path.join(fixtures, 'preview-first-frame-warmup-valid.html') },
 });

@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8J — base v8z4b32E8I. feat(assets): Inserir imagem aceita seleção múltipla com preparação atômica e organização inicial empilhada, horizontal ou vertical; Trocar imagem permanece unitário. APP_VERSION = APP_VERSION_NAME = v8z4b32E8J. -->
 <!-- Arco Motion App — v8z4b32E8I — base v8z4b32E8H. feat(session): pergunta se deve recuperar um checkpoint válido na abertura normal, sem alterar as intenções explícitas de Recarregar. APP_VERSION = APP_VERSION_NAME = v8z4b32E8I. -->
 <!-- Arco Motion App — v8z4b32E8H — base v8z4b32E8G. fix(reload): oferece restauração aguardável da sessão ou reinício limpo, com intenção de startup de uso único e tratamento de falhas. APP_VERSION = APP_VERSION_NAME = v8z4b32E8H. -->
 <!-- Arco Motion App — v8z4b32E8F — base v8z4b32E8E. fix(preview): confirma render e composição do primeiro frame t=0 antes de liberar loading, relógio e loop visível; falha/cancelamento libera retry sem alterar Export ou matemática do renderer. APP_VERSION = APP_VERSION_NAME = v8z4b32E8F. -->
@@ -4379,6 +4380,22 @@ body.cust-open #toolbar{
 <!-- v8z4b30U — input de imagem do editor (Inserir/Trocar) em nível de topo, fora de
      qualquer container display:none, para que .click() funcione no iPhone/Safari. -->
 <input type="file" id="fileInput2" accept="image/*" style="display:none;">
+<input type="file" id="multiImageInsertInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
+
+<div id="multiAssetInsertDialog" role="dialog" aria-modal="true" aria-labelledby="multiAssetInsertTitle" style="display:none;position:fixed;inset:0;z-index:326;align-items:center;justify-content:center;background:rgba(0,0,0,.55);" onclick="if(event.target===this)cancelMultiAssetInsert()">
+  <div style="background:var(--surface);border-radius:22px;padding:24px 22px 20px;width:min(92vw,440px);max-height:min(90vh,640px);overflow-y:auto;box-shadow:0 8px 48px rgba(0,0,0,.5);position:relative;box-sizing:border-box;">
+    <button id="multiAssetInsertClose" type="button" onclick="cancelMultiAssetInsert()" class="panel-close-check" aria-label="Fechar" style="position:absolute;top:14px;right:14px;"><svg viewBox="0 0 24 24"><use href="#i-close"></use></svg></button>
+    <div id="multiAssetInsertTitle" style="font-size:20px;font-weight:800;color:var(--text1);margin-bottom:6px;letter-spacing:-.3px;margin-right:44px;"></div>
+    <div style="font-size:13px;color:var(--text3);line-height:1.4;margin-bottom:18px;">Como deseja organizar as imagens no Stage?</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="assets-menu-btn multi-asset-layout-action" type="button" onclick="confirmMultiAssetInsert('stack')"><span><strong>Empilhar no centro</strong><small style="display:block;color:var(--text3);font-weight:400;margin-top:3px;">Insere as imagens no centro atual, com leve deslocamento entre as camadas.</small></span></button>
+      <button class="assets-menu-btn multi-asset-layout-action" type="button" onclick="confirmMultiAssetInsert('horizontal')"><span><strong>Distribuir na horizontal</strong><small style="display:block;color:var(--text3);font-weight:400;margin-top:3px;">Organiza as imagens lado a lado, a partir do centro atual.</small></span></button>
+      <button class="assets-menu-btn multi-asset-layout-action" type="button" onclick="confirmMultiAssetInsert('vertical')"><span><strong>Distribuir na vertical</strong><small style="display:block;color:var(--text3);font-weight:400;margin-top:3px;">Organiza as imagens uma abaixo da outra, a partir do centro atual.</small></span></button>
+    </div>
+    <div id="multiAssetInsertBusy" role="status" aria-live="polite" style="display:none;font-size:14px;color:var(--text2);padding:14px 2px 4px;"></div>
+    <button id="multiAssetInsertCancel" type="button" onclick="cancelMultiAssetInsert()" style="width:100%;padding:12px;margin-top:8px;border-radius:14px;border:none;background:transparent;font-size:14px;font-weight:500;color:var(--text3);cursor:pointer;">Cancelar</button>
+  </div>
+</div>
 
 <!-- PREVIEW SCREEN -->
 <div class="preview-screen" id="previewScreen">
@@ -7223,8 +7240,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8I';
-const APP_VERSION_NAME = 'v8z4b32E8I';
+const APP_VERSION = 'v8z4b32E8J';
+const APP_VERSION_NAME = 'v8z4b32E8J';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -16745,6 +16762,26 @@ function onLayerReplaceClick(assetId) {
 // ═══════════════════════════════════════
 let selectedImageAssetId = null;     // asset de imagem atualmente selecionado (base lógica de layers)
 let pendingImageAction = null;       // 'insertImage' | 'replaceImage' | 'replaceLayerAsset' | null
+let pendingMultiAssetInsertFiles = [];
+let multiAssetInsertStartedAt = 0;
+let multiAssetInsertAttempted = false;
+let multiAssetInsertSelectedCount = 0;
+let multiAssetInsertPreparedCount = 0;
+let multiAssetInsertFailedCount = 0;
+let multiAssetInsertCommittedCount = 0;
+let multiAssetInsertCancelled = false;
+let multiAssetInsertLayout = 'none';
+let multiAssetInsertInProgress = false;
+let multiAssetInsertDuplicateActionBlocked = false;
+let multiAssetInsertAtomicCommit = false;
+let multiAssetInsertRollbackCompleted = false;
+let multiAssetInsertHistoryTransactionCreated = false;
+let multiAssetInsertAutosaveScheduledCount = 0;
+let multiAssetInsertFinalSelectedAssetId = null;
+let multiAssetInsertAlphaAssetCount = 0;
+let multiAssetInsertTemporaryResourcesReleased = false;
+let multiAssetInsertDurationMs = 0;
+let multiAssetInsertFailureReason = '';
 let pendingImageTargetSlot = null;   // { key, row, col } congelado
 let pendingImageTargetAssetId = null;// asset alvo (troca) ou null (inserção)
 let _imageSlotPickerMode = 'insert'; // 'insert' | 'replace'
@@ -27132,6 +27169,7 @@ function loadImage(file, onDoneCallback) {
 
 document.getElementById('fileInput').addEventListener('change',  handleNewImageSelection);
 document.getElementById('fileInput2').addEventListener('change', handleImageFileChosen);
+document.getElementById('multiImageInsertInput').addEventListener('change', handleMultiImageInsertSelection);
 document.getElementById('newProjectImageInput').addEventListener('change', e => loadNewProjectImage(e.target.files[0]));
 
 // ═══════════════════════════════════════
@@ -31746,6 +31784,12 @@ function triggerImageFilePicker() {
   try { fi.value = ''; } catch (_) {}
   fi.click();
 }
+function triggerMultiImageFilePicker() {
+  const input = document.getElementById('multiImageInsertInput');
+  if (!input) return;
+  try { input.value = ''; } catch (_) {}
+  input.click();
+}
 
 // ── Ação 1: INSERIR IMAGEM ──────────────────────────────────────────────
 function startInsertImageFlow() {
@@ -31758,7 +31802,7 @@ function startInsertImageFlow() {
     pendingImageTargetSlot = { key: 'center', row: 0, col: 0 };
     pendingImageTargetAssetId = null;
     activeSlotSelection = 'center';
-    triggerImageFilePicker();
+    triggerMultiImageFilePicker();
     return;
   }
   // Plano: adicionar imagem extra é Plus/Premium (liberado em teste interno por featureAccess).
@@ -31832,7 +31876,8 @@ function pickImageSlot(slotKey) {
     activeSlotSelection = slotKey;
   }
   closeImageSlotPicker();
-  triggerImageFilePicker();
+  if (pendingImageAction === 'insertImage') triggerMultiImageFilePicker();
+  else triggerImageFilePicker();
 }
 
 // Arquivo escolhido (após intenção+alvo congelados) — dispara Inserir ou Trocar.
@@ -31853,6 +31898,233 @@ function handleImageFileChosen(e) {
     if (!imgNatW) loadImage(file);
   }
   if (input) { try { input.value = ''; } catch (_) {} }
+}
+
+function releaseMultiAssetInsertTemporaryResources(prepared) {
+  (prepared || []).forEach(function(item) {
+    if (item && item.img && !item.committed) {
+      try { item.img.src = ''; } catch (_) {}
+    }
+  });
+  pendingMultiAssetInsertFiles = [];
+  multiAssetInsertTemporaryResourcesReleased = true;
+}
+
+function setMultiAssetInsertBusy(busy, count) {
+  multiAssetInsertInProgress = !!busy;
+  const dialog = document.getElementById('multiAssetInsertDialog');
+  const busyEl = document.getElementById('multiAssetInsertBusy');
+  if (dialog) dialog.setAttribute('aria-busy', busy ? 'true' : 'false');
+  if (busyEl) {
+    busyEl.style.display = busy ? 'block' : 'none';
+    busyEl.textContent = busy ? `Preparando ${count} imagens…` : '';
+  }
+  document.querySelectorAll('.multi-asset-layout-action').forEach(function(button) { button.disabled = !!busy; });
+  const cancel = document.getElementById('multiAssetInsertCancel');
+  const close = document.getElementById('multiAssetInsertClose');
+  if (cancel) cancel.disabled = !!busy;
+  if (close) close.disabled = !!busy;
+}
+
+function handleMultiImageInsertSelection(event) {
+  const input = event && event.target;
+  const files = Array.from(input && input.files ? input.files : []);
+  if (input) { try { input.value = ''; } catch (_) {} }
+  if (!files.length) { clearPendingImageAction(); return; }
+  multiAssetInsertAttempted = true;
+  multiAssetInsertSelectedCount = files.length;
+  multiAssetInsertStartedAt = Date.now();
+  multiAssetInsertLayout = files.length === 1 ? 'single' : 'none';
+  if (files.length === 1) {
+    doInsertImageFromFile(files[0]);
+    return;
+  }
+  pendingMultiAssetInsertFiles = files.slice();
+  multiAssetInsertCancelled = false;
+  multiAssetInsertTemporaryResourcesReleased = false;
+  const title = document.getElementById('multiAssetInsertTitle');
+  const dialog = document.getElementById('multiAssetInsertDialog');
+  if (title) title.textContent = `Inserir ${files.length} imagens`;
+  if (dialog) dialog.style.display = 'flex';
+}
+
+function cancelMultiAssetInsert() {
+  if (multiAssetInsertInProgress) {
+    multiAssetInsertDuplicateActionBlocked = true;
+    return false;
+  }
+  const hadSelection = pendingMultiAssetInsertFiles.length > 0;
+  const dialog = document.getElementById('multiAssetInsertDialog');
+  if (dialog) dialog.style.display = 'none';
+  if (hadSelection) {
+    multiAssetInsertCancelled = true;
+    multiAssetInsertLayout = 'none';
+    multiAssetInsertDurationMs = Date.now() - multiAssetInsertStartedAt;
+  }
+  releaseMultiAssetInsertTemporaryResources([]);
+  clearPendingImageAction();
+  return true;
+}
+
+function readMultiAssetInsertFile(file) {
+  return new Promise(function(resolve, reject) {
+    if (!file || !/^image\/(jpeg|png|webp)$/i.test(file.type || '')) {
+      reject(new Error('unsupported-type'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = function() { reject(new Error('read-failed')); };
+    reader.onload = function(event) {
+      const dataUrl = event.target && event.target.result;
+      if (typeof dataUrl !== 'string' || !dataUrl) { reject(new Error('read-empty')); return; }
+      const img = new Image();
+      img.onerror = function() { try { img.src = ''; } catch (_) {} reject(new Error('decode-failed')); };
+      img.onload = function() {
+        if (!(img.naturalWidth > 0) || !(img.naturalHeight > 0)) { reject(new Error('invalid-dimensions')); return; }
+        resolve({ file, dataUrl, img, width: img.naturalWidth, height: img.naturalHeight, committed: false });
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function prepareMultiAssetInsertFiles(files) {
+  const prepared = [];
+  for (let index = 0; index < files.length; index++) {
+    prepared.push(await readMultiAssetInsertFile(files[index]));
+    multiAssetInsertPreparedCount = prepared.length;
+  }
+  return prepared;
+}
+
+function getMultiAssetInsertAnchor() {
+  const stageRect = stage.getBoundingClientRect();
+  const center = screenToStageCoord(stageRect.left + stageRect.width / 2, stageRect.top + stageRect.height / 2);
+  return editorStageToWorld(center.x, center.y);
+}
+
+function computeMultiAssetInsertRects(prepared, layout, anchor) {
+  const baseW = projectWorld.baseStageW;
+  const baseH = projectWorld.baseStageH;
+  const fitted = prepared.map(function(item) { return fitContain(item.width, item.height, baseW, baseH); });
+  const gap = Math.max(24, Math.min(72, Math.min(baseW, baseH) * 0.08));
+  if (layout === 'stack') {
+    const offset = Math.max(8, Math.min(28, Math.min(baseW, baseH) * 0.025));
+    return fitted.map(function(size, index) {
+      return { x: anchor.x - size.width / 2 + offset * index, y: anchor.y - size.height / 2 + offset * index, w: size.width, h: size.height };
+    });
+  }
+  const horizontal = layout === 'horizontal';
+  const total = fitted.reduce(function(sum, size) { return sum + (horizontal ? size.width : size.height); }, 0) + gap * (fitted.length - 1);
+  let cursor = (horizontal ? anchor.x : anchor.y) - total / 2;
+  return fitted.map(function(size) {
+    const rect = horizontal
+      ? { x: cursor, y: anchor.y - size.height / 2, w: size.width, h: size.height }
+      : { x: anchor.x - size.width / 2, y: cursor, w: size.width, h: size.height };
+    cursor += (horizontal ? size.width : size.height) + gap;
+    return rect;
+  });
+}
+
+function commitMultiAssetInsert(prepared, layout) {
+  const before = captureState();
+  const selectedBefore = selectedAssetId;
+  const undoLengthBefore = undoStack.length;
+  const redoBefore = redoStack.slice();
+  const anchor = getMultiAssetInsertAnchor();
+  const rects = computeMultiAssetInsertRects(prepared, layout, anchor);
+  let maxZ = assets.reduce(function(max, asset) { return Math.max(max, Number(asset && asset.zIndex) || 0); }, 0);
+  const firstSequence = nextLayerSequence;
+  const created = prepared.map(function(item, index) {
+    const rect = rects[index];
+    const sequence = firstSequence + index;
+    return {
+      id: 'img-' + Date.now() + '-' + index + '-' + Math.floor(Math.random() * 1000), type: 'image',
+      name: (item.file.name || 'imagem').replace(/\.[^.]+$/, ''), src: item.dataUrl,
+      sourceW: item.width, sourceH: item.height, worldX: rect.x, worldY: rect.y, worldW: rect.w, worldH: rect.h,
+      rotation: 0, zIndex: ++maxZ, visible: true, locked: false, fitMode: 'contain', mimeType: item.file.type || '',
+      hasAlpha: /^image\/png$/i.test(item.file.type || ''), layerSequence: sequence, layerName: `Camada ${sequence}`,
+      layerNameSource: 'automatic', originalFileName: item.file.name || '', crop: { enabled:false,x:0,y:0,w:1,h:1 },
+      frameStyle: { enabled:false,strokeColor:'#ffffff',strokeWidth:0,radius:0,padding:0,shadow:false }, _img: item.img
+    };
+  });
+  const top = created[created.length - 1];
+  try {
+    assets.push.apply(assets, created);
+    nextLayerSequence = firstSequence + created.length;
+    created.forEach(function(asset, index) { prepared[index].committed = true; });
+    selectAssetById(top.id, 'multiInsertCommit');
+    invalidateProjectWorldComposite();
+    renderProjectWorldExtraImages();
+    if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+    pushUndoSnapshot(before);
+    lastUndoAction = 'addImageAssetBatch';
+    lastImageActionType = 'insertImage';
+    lastAddedAssetId = top.id;
+    markProjectDirty('add-image-asset-batch');
+  } catch (error) {
+    const ids = new Set(created.map(function(asset) { return asset.id; }));
+    for (let index = assets.length - 1; index >= 0; index--) if (ids.has(assets[index] && assets[index].id)) assets.splice(index, 1);
+    nextLayerSequence = firstSequence;
+    undoStack.length = undoLengthBefore;
+    redoStack.length = 0;
+    redoStack.push.apply(redoStack, redoBefore);
+    created.forEach(function(asset, index) { prepared[index].committed = false; });
+    if (selectedBefore == null) clearSelectedAsset(); else selectAssetById(selectedBefore, 'multiInsertRollback');
+    invalidateProjectWorldComposite();
+    renderProjectWorldExtraImages();
+    if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+    throw error;
+  }
+  multiAssetInsertAutosaveScheduledCount = 1;
+  multiAssetInsertCommittedCount = created.length;
+  multiAssetInsertAtomicCommit = true;
+  multiAssetInsertHistoryTransactionCreated = true;
+  multiAssetInsertFinalSelectedAssetId = selectedAssetId;
+  multiAssetInsertAlphaAssetCount = created.filter(function(asset) { return asset.hasAlpha; }).length;
+  return created;
+}
+
+document.addEventListener('keydown', function(event) {
+  const dialog = document.getElementById('multiAssetInsertDialog');
+  if (event.key === 'Escape' && dialog && dialog.style.display === 'flex') {
+    event.preventDefault();
+    cancelMultiAssetInsert();
+  }
+});
+
+async function confirmMultiAssetInsert(layout) {
+  if (multiAssetInsertInProgress) { multiAssetInsertDuplicateActionBlocked = true; return false; }
+  if (!['stack', 'horizontal', 'vertical'].includes(layout) || pendingMultiAssetInsertFiles.length < 2) return false;
+  const files = pendingMultiAssetInsertFiles.slice();
+  multiAssetInsertLayout = layout;
+  multiAssetInsertPreparedCount = 0;
+  multiAssetInsertFailedCount = 0;
+  multiAssetInsertFailureReason = '';
+  multiAssetInsertRollbackCompleted = false;
+  setMultiAssetInsertBusy(true, files.length);
+  let prepared = [];
+  try {
+    prepared = await prepareMultiAssetInsertFiles(files);
+    commitMultiAssetInsert(prepared, layout);
+    releaseMultiAssetInsertTemporaryResources(prepared);
+    const dialog = document.getElementById('multiAssetInsertDialog');
+    if (dialog) dialog.style.display = 'none';
+    clearPendingImageAction();
+    showStatus(`${files.length} imagens inseridas`);
+    return true;
+  } catch (error) {
+    multiAssetInsertFailedCount = Math.max(1, files.length - multiAssetInsertPreparedCount);
+    multiAssetInsertFailureReason = error && error.message ? error.message : 'prepare-failed';
+    multiAssetInsertRollbackCompleted = true;
+    releaseMultiAssetInsertTemporaryResources(prepared);
+    showStatus('Não foi possível preparar todas as imagens. Nenhuma alteração foi feita.');
+    return false;
+  } finally {
+    multiAssetInsertDurationMs = Date.now() - multiAssetInsertStartedAt;
+    setMultiAssetInsertBusy(false, files.length);
+  }
 }
 
 function doInsertImageFromFile(file) {
@@ -36493,6 +36765,24 @@ function buildDiagnosticsText() {
   // Versão
   push('APP_VERSION', (typeof APP_VERSION !== 'undefined') ? APP_VERSION : 'n/d');
   push('APP_VERSION_NAME', (typeof APP_VERSION_NAME !== 'undefined') ? APP_VERSION_NAME : 'n/d');
+  push('multiAssetInsertAttempted', String(multiAssetInsertAttempted));
+  push('multiAssetInsertSelectedCount', String(multiAssetInsertSelectedCount));
+  push('multiAssetInsertPreparedCount', String(multiAssetInsertPreparedCount));
+  push('multiAssetInsertFailedCount', String(multiAssetInsertFailedCount));
+  push('multiAssetInsertCommittedCount', String(multiAssetInsertCommittedCount));
+  push('multiAssetInsertCancelled', String(multiAssetInsertCancelled));
+  push('multiAssetInsertLayout', multiAssetInsertLayout);
+  push('multiAssetInsertInProgress', String(multiAssetInsertInProgress));
+  push('multiAssetInsertDuplicateActionBlocked', String(multiAssetInsertDuplicateActionBlocked));
+  push('multiAssetInsertAtomicCommit', String(multiAssetInsertAtomicCommit));
+  push('multiAssetInsertRollbackCompleted', String(multiAssetInsertRollbackCompleted));
+  push('multiAssetInsertHistoryTransactionCreated', String(multiAssetInsertHistoryTransactionCreated));
+  push('multiAssetInsertAutosaveScheduledCount', String(multiAssetInsertAutosaveScheduledCount));
+  push('multiAssetInsertFinalSelectedAssetId', multiAssetInsertFinalSelectedAssetId == null ? 'n/d' : String(multiAssetInsertFinalSelectedAssetId));
+  push('multiAssetInsertAlphaAssetCount', String(multiAssetInsertAlphaAssetCount));
+  push('multiAssetInsertTemporaryResourcesReleased', String(multiAssetInsertTemporaryResourcesReleased));
+  push('multiAssetInsertDurationMs', String(multiAssetInsertDurationMs));
+  push('multiAssetInsertFailureReason', multiAssetInsertFailureReason || 'nenhum');
   L.push('— timestamp: ' + new Date().toISOString());
   L.push('');
 

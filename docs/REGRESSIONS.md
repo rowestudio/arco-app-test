@@ -109,4 +109,10 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Exceção:** intenções `restore` e `clean` consumidas pelo fluxo Recarregar da E8H mantêm prioridade e não mostram a pergunta de startup.
 - **Como detectar:** confirmar launcher estável antes da escolha, nenhuma chamada antecipada de restore/hidratação/aplicação, exclusão concluída antes de confirmar launcher limpo e retomada da mesma instância sem novo diálogo.
 - **Teste preventivo:** `node scripts/qa/check-startup-session-choice.mjs`, harness `node scripts/qa/test-startup-session-choice.mjs` executando os controladores reais extraídos do app, WebKit com checkpoint real no IndexedDB e teste real em iPhone/Safari/PWA.
-- **Status:** proteção técnica adicionada na `v8z4b32E8I`; validação publicada em iPhone/Safari/PWA pendente.
+- **Evidência publicada:** Roberto validou que a abertura não restaurou silenciosamente; continuar/restaurar e descartar/começar novo projeto foram aprovados, e a retomada da mesma instância permaneceu correta.
+- **Status:** validada no teste publicado da `v8z4b32E8I`. Nenhuma promoção para produção está autorizada.
+
+## Observação encerrada — escala × rotação de Frames
+
+- O comportamento foi relatado em um arquivo isolado, não voltou a ser reproduzido e o funcionamento normal foi confirmado por Roberto.
+- Não é regressão ativa, não autoriza alteração de Frames nesta versão e somente deve ser reaberto diante de reprodução consistente.
