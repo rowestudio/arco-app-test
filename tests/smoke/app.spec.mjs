@@ -135,8 +135,9 @@ async function waitForSessionAutosaveQuiescent(page) {
   await expect.poll(() => page.evaluate(() => ({
     timerIdle: _sessionAutosaveTimer === null,
     writeIdle: !_sessionAutosaveWriteInFlight,
+    activeWritesIdle: _sessionAutosaveActiveWrites.size === 0,
     caughtUp: _sessionAutosaveQueuedRevision <= _sessionAutosaveCommittedRevision,
-  })), { timeout: 30_000 }).toEqual({ timerIdle:true, writeIdle:true, caughtUp:true });
+  })), { timeout: 30_000 }).toEqual({ timerIdle:true, writeIdle:true, activeWritesIdle:true, caughtUp:true });
 }
 
 test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', async ({ page }, testInfo) => {
@@ -561,7 +562,7 @@ test('E8K: falha forçada no commit faz rollback profundo sem parcial', async ({
     fingerprint:getMultiImagePlacementFingerprint(), revision:_sessionAutosaveQueuedRevision,
     selectedAssetId,nextLayerSequence,assets:stableMultiImageValue(assets),frames:stableMultiImageValue(frames.slice(0,frameCount)),
     curves:stableMultiImageValue(curvesV2),world:stableMultiImageValue(projectWorld),undo:stableMultiImageValue(undoStack),redo:stableMultiImageValue(redoStack),
-    canonicalSources:assets.map(a=>_assetPersistentSourceE8E(a)),
+    canonicalSources:assets.map(a=>{const src=_assetPersistentSourceE8E(a),dims=getImageSourceDimensions(a.drawSource||a._img);return{kind:_persistentSourceKindE8J(src),length:src.length,hash:_diagSourceHashE8E(src),width:dims.width,height:dims.height}}),
   }));
   try {
     await page.evaluate(()=>{window.__ARCO_TEST_MULTI_IMAGE_COMMIT_FAIL_AFTER__=1});
@@ -571,7 +572,7 @@ test('E8K: falha forçada no commit faz rollback profundo sem parcial', async ({
       fingerprint:getMultiImagePlacementFingerprint(), revision:_sessionAutosaveQueuedRevision,
       selectedAssetId,nextLayerSequence,assets:stableMultiImageValue(assets),frames:stableMultiImageValue(frames.slice(0,frameCount)),
       curves:stableMultiImageValue(curvesV2),world:stableMultiImageValue(projectWorld),undo:stableMultiImageValue(undoStack),redo:stableMultiImageValue(redoStack),
-      canonicalSources:assets.map(a=>_assetPersistentSourceE8E(a)),pending:document.querySelectorAll('.pending-multi-image').length,
+      canonicalSources:assets.map(a=>{const src=_assetPersistentSourceE8E(a),dims=getImageSourceDimensions(a.drawSource||a._img);return{kind:_persistentSourceKindE8J(src),length:src.length,hash:_diagSourceHashE8E(src),width:dims.width,height:dims.height}}),pending:document.querySelectorAll('.pending-multi-image').length,
       hud:document.getElementById('multiImagePlacementHud').classList.contains('show'),restored:multiImagePlacementSnapshotRestored,
     }));
     expect(after).toEqual({...before,pending:0,hud:false,restored:true});
@@ -604,7 +605,7 @@ test('E8K: criação provisória de Frame permanece cancelável e confirmável',
   expect(preparation.mode).toBe('camera');expect(preparation.pendingMultiImagePlacement).toBe(false);
   const before=preparation.frameCount;
   await page.evaluate(()=>insertFrameAfterActive());await expect(page.locator('.ghost-frame')).toBeVisible();
-  await page.locator('#insertionCancelBtn').click();expect(await page.evaluate(()=>frameCount)).toBe(before);
+  await page.locator('#insertionCancelBtn').dispatchEvent('pointerdown',{pointerId:701,pointerType:'touch',isPrimary:true});expect(await page.evaluate(()=>frameCount)).toBe(before);
   await page.evaluate(()=>insertFrameAfterActive());await expect(page.locator('.ghost-frame')).toBeVisible();
-  await page.locator('#insertionConfirmBtn').click();expect(await page.evaluate(()=>frameCount)).toBe(before+1);
+  await page.locator('#insertionConfirmBtn').dispatchEvent('pointerdown',{pointerId:702,pointerType:'touch',isPrimary:true});expect(await page.evaluate(()=>frameCount)).toBe(before+1);
 });
