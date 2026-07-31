@@ -286,4 +286,4 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 
 ### Cobertura automatizada E8J
 
-O harness Node executa os controladores reais extraídos de `index.html` com mocks somente das dependências e cobre 30 cenários funcionais. O smoke WebKit contém 7 testes E8J adicionais (17 testes Playwright após expansão dinâmica dos três layouts), usando buffers em memória; a execução local permanece condicionada à disponibilidade do binário WebKit.
+O harness Node executa os controladores reais extraídos de `index.html` com mocks somente das dependências e cobre 30 cenários funcionais. O smoke WebKit contém 9 testes E8J adicionais (19 testes Playwright após expansão dinâmica dos três layouts), usando buffers em memória; a execução local permanece condicionada à disponibilidade do binário WebKit.

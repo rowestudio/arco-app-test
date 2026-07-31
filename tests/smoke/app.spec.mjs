@@ -45,7 +45,7 @@ function captureFatalErrors(page) {
 }
 
 const transparentPngBuffer = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+XwVQAAAAAElFTkSuQmCC',
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADElEQVR42mNgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC',
   'base64',
 );
 const imagePayload = (name) => ({ name, mimeType: 'image/png', buffer: transparentPngBuffer });
@@ -60,6 +60,24 @@ async function chooseMultiImages(page, count = 3) {
   await page.locator('#multiImageInsertInput').setInputFiles(
     Array.from({ length: count }, (_, index) => imagePayload(`imagem-${index + 1}.png`)),
   );
+}
+
+async function createE8JBatch(page, layoutButton = 'Distribuir na horizontal') {
+  await openEmptyEditorForE8J(page);
+  await chooseMultiImages(page, 3);
+  await page.getByRole('dialog', { name: 'Inserir 3 imagens' }).getByRole('button', { name: layoutButton }).click();
+  await expect.poll(() => page.evaluate(() => multiImageInsertCommittedCount), { timeout: 20_000 }).toBe(3);
+}
+
+async function captureE8JProjectState(page) {
+  return page.evaluate(() => ({
+    assets: assets.filter(a => a?.type === 'image').map(a => ({
+      id:a.id, layerSequence:a.layerSequence, layerName:a.layerName, worldX:a.worldX, worldY:a.worldY,
+      worldW:a.worldW, worldH:a.worldH, zIndex:a.zIndex, mimeType:a.mimeType, hasAlpha:a.hasAlpha,
+    })),
+    selectedAssetId,
+    projectWorld: { ...projectWorld },
+  }));
 }
 
 async function installControlledAsyncGate(page, functionName) {
@@ -396,9 +414,23 @@ for (const [button, layout] of [
     await openEmptyEditorForE8J(page);
     await chooseMultiImages(page, 3);
     const dialog = page.getByRole('dialog', { name: 'Inserir 3 imagens' });
-    await dialog.getByRole('button', { name: button }).click();
-    await expect(dialog.getByText('Preparando 3 imagens…', { exact: true })).toBeVisible();
-    await expect(dialog).toBeHidden({ timeout: 20_000 });
+    const prepareGate = await installControlledAsyncGate(page, 'prepareMultiImageFiles');
+    try {
+      await dialog.getByRole('button', { name: button }).click();
+      await expect(dialog.getByText('Preparando 3 imagens…', { exact: true })).toBeVisible();
+      await expect(page.locator('#multiImageLayoutActions')).toBeHidden();
+      await expect(dialog).toBeVisible();
+      expect(await page.evaluate(() => ({
+        committed: multiImageInsertCommittedCount,
+        assets: assets.length,
+        undo: undoStack.length,
+        autosaves: multiImageInsertAutosavesScheduled,
+      }))).toEqual({ committed: 0, assets: 0, undo: 0, autosaves: 0 });
+      await prepareGate.release();
+      await expect(dialog).toBeHidden({ timeout: 20_000 });
+    } finally {
+      await prepareGate.restore();
+    }
     const state = await page.evaluate(() => ({
       count: assets.filter(a => a?.type === 'image').length,
       layout: multiImageInsertLayout,
@@ -410,11 +442,27 @@ for (const [button, layout] of [
       undo: undoStack.length,
       autosaves: multiImageInsertAutosavesScheduled,
       bounds: getWorldViewBoundsWorld(),
+      rects: assets.filter(a => a?.type === 'image').map(a => ({ id:a.id,x:a.worldX,y:a.worldY,w:a.worldW,h:a.worldH })),
     }));
     expect(state).toMatchObject({ count: 3, layout, committed: 3, alpha: 3, undo: 1, autosaves: 1 });
     expect(state.selected).toBe(state.last);
     expect(state.sequences).toEqual([1, 2, 3]);
     expect(state.bounds.w).toBeGreaterThan(0); expect(state.bounds.h).toBeGreaterThan(0);
+    if (layout === 'horizontal') {
+      for (let i = 1; i < state.rects.length; i++) expect(state.rects[i - 1].x + state.rects[i - 1].w).toBeLessThan(state.rects[i].x);
+    }
+    if (layout === 'vertical') {
+      for (let i = 1; i < state.rects.length; i++) expect(state.rects[i - 1].y + state.rects[i - 1].h).toBeLessThan(state.rects[i].y);
+    }
+    const navigation = await page.evaluate(() => {
+      const imageAssets = assets.filter(a => a?.type === 'image');
+      const first = imageAssets[0], last = imageAssets.at(-1);
+      const firstReached = centerEditorViewportOnAsset(first.id); selectAssetById(first.id, 'webkit-project-world-first');
+      const firstSelected = selectedAssetId === first.id;
+      const lastReached = centerEditorViewportOnAsset(last.id); selectAssetById(last.id, 'webkit-project-world-last');
+      return { firstReached, firstSelected, lastReached, lastSelected: selectedAssetId === last.id };
+    });
+    expect(navigation).toEqual({ firstReached:true, firstSelected:true, lastReached:true, lastSelected:true });
     expect(fatalErrors).toEqual([]);
   });
 }
@@ -450,4 +498,71 @@ test('E8J: lote existente tem Undo/Redo único e Trocar imagem segue unitário',
   await page.evaluate(() => { pendingImageAction = 'replaceImage'; pendingImageTargetAssetId = assets[0].id; selectAssetById(assets[0].id, 'webkit-replace'); });
   await page.locator('#fileInput2').setInputFiles(imagePayload('troca.png'));
   await expect.poll(() => page.evaluate(() => lastImageActionType), { timeout: 15_000 }).toBe('replaceImage');
+});
+
+test('E8J: Save/Load real preserva lote, seleção, ProjectWorld e transparência', async ({ page }) => {
+  const fatalErrors = captureFatalErrors(page);
+  await createE8JBatch(page, 'Distribuir na horizontal');
+  const before = await captureE8JProjectState(page);
+  const serialized = await page.evaluate(() => buildProjectData(true));
+  expect(serialized.assets).toHaveLength(3);
+  await page.evaluate(async data => {
+    clearCurrentProjectForNewFile();
+    await new Promise((resolve, reject) => applyProjectData(data, {
+      origin: 'webkit-e8j-save-load',
+      onApplied: ok => ok ? resolve() : reject(new Error('applyProjectData-failed')),
+    }));
+  }, serialized);
+  await expect.poll(() => page.evaluate(() => loadSessionCompleted), { timeout: 20_000 }).toBe(true);
+  const after = await captureE8JProjectState(page);
+  expect(after).toEqual(before);
+  await expect(page.locator('#layersList .layers-item')).toHaveCount(3);
+  const navigation = await page.evaluate(() => {
+    const list = assets.filter(a => a?.type === 'image');
+    return [centerEditorViewportOnAsset(list[0].id), centerEditorViewportOnAsset(list.at(-1).id)];
+  });
+  expect(navigation).toEqual([true, true]);
+  const alphaPixel = await page.evaluate(async () => {
+    const asset = assets.find(a => a?.type === 'image' && a.hasAlpha);
+    const image = new Image(); image.src = asset.src || asset._img?.src;
+    await image.decode();
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#ff00ff'; ctx.fillRect(0,0,1,1); ctx.drawImage(image,0,0,1,1);
+    return { pixel:Array.from(ctx.getImageData(0,0,1,1).data), mime:asset.mimeType, source:(asset.src || '').slice(0,22) };
+  });
+  expect(alphaPixel.mime).toBe('image/png');
+  expect(alphaPixel.source).toContain('data:image/png');
+  expect(alphaPixel.pixel).toEqual([255, 0, 255, 255]);
+  expect(fatalErrors).toEqual([]);
+});
+
+test('E8J: Session Restore real recupera lote completo pela escolha E8I', async ({ page }) => {
+  const fatalErrors = captureFatalErrors(page);
+  await createE8JBatch(page, 'Distribuir na vertical');
+  const before = await captureE8JProjectState(page);
+  await page.evaluate(async () => {
+    clearTimeout(_sessionAutosaveTimer); _sessionAutosaveTimer = null;
+    const revision = Math.max(_sessionAutosaveQueuedRevision, _sessionAutosaveCommittedRevision) + 1;
+    const ok = await writeSessionAutosave(revision, _sessionAutosaveEpoch, true, 'webkit-e8j-session');
+    if (!ok) throw new Error('session-write-failed');
+  });
+  expect(await sessionCheckpointExists(page)).toBe(true);
+  await reloadForStartup(page);
+  const dialog = page.getByRole('dialog', { name: 'Continuar sessão anterior?' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByText('Continuar de onde parei', { exact: true }).click();
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await expect(dialog).toBeHidden();
+  await expect.poll(() => page.evaluate(() => sessionRestoreCompleted), { timeout: 30_000 }).toBe(true);
+  const after = await captureE8JProjectState(page);
+  expect(after).toEqual(before);
+  await expect(page.locator('#layersList .layers-item')).toHaveCount(3);
+  const restored = await page.evaluate(() => {
+    const list = assets.filter(a => a?.type === 'image');
+    const first = centerEditorViewportOnAsset(list[0].id);
+    const last = centerEditorViewportOnAsset(list.at(-1).id);
+    return { first, last, noPartial:sessionRestoreNoPartialState, alpha:list.filter(a=>a.hasAlpha).length };
+  });
+  expect(restored).toEqual({ first:true, last:true, noPartial:true, alpha:3 });
+  expect(fatalErrors).toEqual([]);
 });

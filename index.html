@@ -21653,6 +21653,18 @@ function clampEditorPan() {
   editorPanY = Math.max(minPanY, Math.min(maxPanY, editorPanY));
 }
 
+function centerEditorViewportOnAsset(assetId) {
+  const asset = Array.isArray(assets) ? assets.find(a => a && a.type === 'image' && a.id === assetId) : null;
+  if (!asset || !stageW || !stageH) return false;
+  computeEditorTransform();
+  const rect = editorWorldToStage(asset.worldX || 0, asset.worldY || 0, asset.worldW || 0, asset.worldH || 0);
+  editorPanX = stageW / 2 - (rect.x + rect.w / 2) * editorZoomScale;
+  editorPanY = stageH / 2 - (rect.y + rect.h / 2) * editorZoomScale;
+  clampEditorPan();
+  applyEditorTransform();
+  return true;
+}
+
 
 function refreshEditorViewVisualOverlays() {
   if (!stageW || !stageH) return;
@@ -26973,8 +26985,21 @@ function loadNewProjectImage(file) {
 // ═══════════════════════════════════════
 // LOAD IMAGE
 // ═══════════════════════════════════════
-function loadImage(file, onDoneCallback) {
-  if (!file) return;
+function loadImage(file, onDoneCallback, onErrorCallback) {
+  const completionOptions = (onErrorCallback && typeof onErrorCallback === 'object') ? onErrorCallback : { onError: onErrorCallback };
+  const shouldCancelLoad = () => typeof completionOptions.isCancelled === 'function' && completionOptions.isCancelled();
+  let loadCompletionSettled = false;
+  const notifyLoadError = error => {
+    if (loadCompletionSettled) return;
+    loadCompletionSettled = true;
+    if (typeof completionOptions.onError === 'function') completionOptions.onError(error instanceof Error ? error : new Error(String(error || 'image-load-failed')));
+  };
+  const notifyLoadSuccess = () => {
+    if (loadCompletionSettled) return;
+    loadCompletionSettled = true;
+    if (typeof onDoneCallback === 'function') onDoneCallback();
+  };
+  if (!file) { notifyLoadError(new Error('image-file-missing')); return; }
   if (isInsertingFrame) cancelAssistedFrameInsertion();
   resetPreviewAndExportStateForImageChange();
   resetCanonicalRenderImage('image-change');
@@ -26990,7 +27015,9 @@ function loadImage(file, onDoneCallback) {
   const isFirstLoad = !imgNatW;
   const hasCallback = typeof onDoneCallback === 'function';
   const reader = new FileReader();
+  reader.onerror = () => notifyLoadError(reader.error || new Error('image-read-failed'));
   reader.onload = e => {
+    if (shouldCancelLoad()) { notifyLoadError(new Error('image-load-cancelled')); return; }
     imageOriginalDataUrl = e.target.result || '';
     imagePipelineMeta = {
       ...imagePipelineMeta,
@@ -27005,8 +27032,10 @@ function loadImage(file, onDoneCallback) {
       _pendingImageReplaceUndoSnapshot = null;
       lastImageDecodeError = 'tmp.onerror (load-image)';
       debugImagePipeline('load-image-decode-error');
+      notifyLoadError(new Error('image-decode-failed'));
     };
     tmp.onload = () => {
+      if (shouldCancelLoad()) { tmp.src = ''; notifyLoadError(new Error('image-load-cancelled')); return; }
       imgNatW = tmp.naturalWidth;
       imgNatH = tmp.naturalHeight;
       // v8z4b30M — Tarefa 1: original preservada para export; proxy reduzido
@@ -27017,6 +27046,7 @@ function loadImage(file, onDoneCallback) {
       editorImageElement = imgEl;
       editorImageSrc = editorProxyDataUrl || tmp.src;
       imgEl.onload = () => {
+        if (shouldCancelLoad()) { imgEl.removeAttribute('src'); notifyLoadError(new Error('image-load-cancelled')); return; }
         const imgDims = getImageSourceDimensions(imgEl);
         if (!hasEditorProxy && imgDims.width && imgDims.height && (imgDims.width !== imgNatW || imgDims.height !== imgNatH)) {
           console.warn('[ImagePipeline] natural-size-discrepancy', {
@@ -27051,7 +27081,7 @@ function loadImage(file, onDoneCallback) {
           layoutStage();
           syncFirstImageAsset('load-with-callback'); // v8z4b30D — modelo preparatório
           setupPreviewCanvas();
-          onDoneCallback();
+          notifyLoadSuccess();
           return;
         }
 
@@ -27148,6 +27178,7 @@ function loadImage(file, onDoneCallback) {
         _pendingImageReplaceUndoSnapshot = null;
         lastImageDecodeError = 'imgEl.onerror (load-image, editorImageSrc)';
         debugImagePipeline('load-image-editor-decode-error');
+        notifyLoadError(new Error('image-application-failed'));
       };
       imgEl.src = editorImageSrc;
     };
@@ -29612,6 +29643,7 @@ function buildProjectData(includeImages) {
     // v8z4b30R — ProjectWorld e todos os image assets (múltiplas imagens).
     assetsSchemaVersion: PROJECT_ASSETS_SCHEMA_VERSION,
     nextLayerSequence,
+    selectedAssetId: selectedAssetId || null,
     projectWorld: { ...projectWorld },
     assets: assets.map((a, i) => serializeProjectAsset(a, i, !!includeImages)),
   };
@@ -31547,6 +31579,9 @@ function restoreProjectAssetsFromData(data) {
     }
 
     migratePersistentLayerIdentities(assets, nextLayerSequence);
+    if (data.selectedAssetId && assets.some(a => a && a.id === data.selectedAssetId)) {
+      selectAssetById(data.selectedAssetId, 'projectLoadRestoreSelection');
+    }
     const savedIdentityById = captureLayerIdentityByAssetId(savedImageAssets);
     layerIdentityPreservedAfterSaveLoad = assets.filter(a => a && a.type === 'image').every(a =>
       savedIdentityById[String(a.id)] === captureLayerIdentityByAssetId([a])[String(a.id)]
@@ -32031,15 +32066,31 @@ function calculateMultiImageLayout(prepared, layout, center, baseW, baseH) {
 }
 function loadMainImageForMultiInsert(file) {
   return new Promise((resolve, reject) => {
-    const previousError = lastImageDecodeError;
+    let settled = false;
+    const control = { cancelled: false };
+    const finish = (error, asset) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      if (error) reject(error); else resolve(asset);
+    };
+    const timeoutId = setTimeout(() => {
+      control.cancelled = true;
+      finish(new Error('main-image-load-timeout'));
+    }, 30000);
     loadImage(file, () => {
+      if (settled || control.cancelled) return;
       try {
         createInitialFrameForNewImageProject();
         renderProjectWorldExtraImages(); renderAll(); updateFrameSelector(); updateToolbarLabels();
-        resolve(getMainImageAsset());
-      } catch (error) { reject(error); }
+        const mainAsset = getMainImageAsset();
+        if (!mainAsset) throw new Error('main-image-asset-missing');
+        finish(null, mainAsset);
+      } catch (error) { finish(error); }
+    }, {
+      isCancelled: () => control.cancelled,
+      onError: error => finish(error instanceof Error ? error : new Error('main-image-load-failed'))
     });
-    setTimeout(() => { if (!imgNatW && lastImageDecodeError !== previousError) reject(new Error('main-image-load-failed')); }, 1000);
   });
 }
 function createPreparedImageAsset(item, rect, zIndex) {

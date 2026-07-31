@@ -267,6 +267,7 @@ expectCase(results, 'Preview first-frame warm-up anti-patterns fail', 'check-pre
 });
 
 expectCase(results, 'Multi-image functional controllers pass', 'test-multi-image-insert.mjs', 0);
+expectCase(results, 'Multi-image main load completion passes', 'test-multi-image-main-load.mjs', 0);
 
 const passed = results.filter((result) => result.passed).length;
 console.log(`QA guardrail self-tests: ${passed}/${results.length} expectations confirmed.`);

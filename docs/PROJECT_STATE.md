@@ -118,4 +118,5 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - Base confirmada na `main` atual, merge commit da PR #459 `8b3af38a544c186405c4e1dbcb3713c1735e6a15`, versão `v8z4b32E8I`.
 - A `v8z4b32E8J` permite selecionar vários JPEG, PNG e WebP em uma única abertura do seletor de Inserir imagem, valida a assinatura dos arquivos antes do decode e abre uma escolha explícita entre empilhar, distribuir horizontalmente ou distribuir verticalmente antes de qualquer mutação.
 - O lote prepara todos os arquivos antes do commit, preserva ordem, nomes persistentes e seleção canônica, e aplica rollback do snapshot integral diante de falha; Cancelar e falha de preparação não alteram o projeto.
-- Preview, Export, WebCodecs, renderer, Frames, curvas, timing, Save/Load e Session Autosave/Restore permanecem fora do diff funcional. Validação em iPhone/Safari real continua obrigatória.
+- A revisão final adiciona conclusão exclusiva ao carregamento da imagem principal (sucesso, erro real, cancelamento e timeout de segurança), gate determinístico do busy no WebKit, round-trips reais de Save/Load e Session Restore e navegação canônica dos extremos do layout.
+- Preview, Export, WebCodecs, renderer, Frames, curvas e timing permanecem fora do diff funcional. Validação em iPhone/Safari real continua obrigatória.
