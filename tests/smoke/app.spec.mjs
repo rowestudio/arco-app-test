@@ -601,7 +601,29 @@ test('E8K: Layers só recebe lote no commit; Undo e Redo são integrais', async 
 });
 
 test('E8K: previews pendentes não entram no renderer e Trocar continua unitário', async ({ page }) => {
-  await createE8JBatch(page);const canonical=await page.evaluate(()=>assets.length);await chooseMultiImages(page,2);expect(await page.evaluate(()=>({assets:assets.length,render:buildCompleteSessionProjectData().assets.length,pending:document.querySelectorAll('.pending-multi-image').length}))).toEqual({assets:canonical,render:canonical,pending:1});await page.locator('#multiImagePlacementCancel').click();const target=await page.evaluate(()=>assets[0].id);await page.evaluate(id=>{selectAssetById(id,'webkit-unit-replace');freezeReplaceTarget({asset:assets[0],slotKey:getAssetSlotKey(assets[0])||'center'})},target);await page.locator('#fileInput2').setInputFiles(imagePayload('troca.png'));await expect.poll(()=>page.evaluate(()=>lastImageActionType),{timeout:15000}).toBe('replaceImage');expect(await page.evaluate(()=>assets.length)).toBe(canonical);
+  await createE8JBatch(page);
+  const canonical=await page.evaluate(()=>assets.length);
+  await page.evaluate(() => startInsertImageFlow());
+  await chooseMultiImages(page,2);
+  await expect(page.locator('#multiImagePlacementHud')).toBeVisible({timeout:15000});
+  await expect.poll(()=>page.evaluate(()=>({
+    active:!!pendingMultiImagePlacement?.active,
+    index:pendingMultiImagePlacement?.currentIndex,
+    pending:document.querySelectorAll('.pending-multi-image').length,
+  }))).toEqual({active:true,index:0,pending:1});
+  expect(await page.evaluate(()=>({
+    assets:assets.length,
+    render:buildCompleteSessionProjectData().assets.length,
+    pending:document.querySelectorAll('.pending-multi-image').length,
+  }))).toEqual({assets:canonical,render:canonical,pending:1});
+  await page.locator('#multiImagePlacementCancel').click();
+  await expect(page.locator('#multiImagePlacementHud')).toBeHidden();
+  await expect(page.locator('.pending-multi-image')).toHaveCount(0);
+  const target=await page.evaluate(()=>assets[0].id);
+  await page.evaluate(id=>{selectAssetById(id,'webkit-unit-replace');freezeReplaceTarget({asset:assets[0],slotKey:getAssetSlotKey(assets[0])||'center'})},target);
+  await page.locator('#fileInput2').setInputFiles(imagePayload('troca.png'));
+  await expect.poll(()=>page.evaluate(()=>lastImageActionType),{timeout:15000}).toBe('replaceImage');
+  expect(await page.evaluate(()=>assets.length)).toBe(canonical);
 });
 
 test('E8K: pinch mantém zoom do Stage e bloqueia confirmação durante o gesto', async ({ page }) => {
