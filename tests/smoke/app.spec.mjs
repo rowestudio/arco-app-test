@@ -399,7 +399,9 @@ test('E8K: Inserir imagens abre picker direto e posiciona lote sem mutação can
   await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30000});
   await expect.poll(() => page.evaluate(() => loadSessionCompleted), { timeout:30_000 }).toBe(true);
   await waitForSessionAutosaveQuiescent(page);
+  await page.evaluate(() => recordMultiImagePlacementAutosaveEvent('webkit-after-load-quiescence'));
   const before=await page.evaluate(()=>({assets:assets.length,undo:undoStack.length,revision:_sessionAutosaveQueuedRevision}));
+  await page.evaluate(() => recordMultiImagePlacementAutosaveEvent('webkit-before-set-input-files'));
   await chooseMultiImages(page,3);
   await expect(page.locator('#multiImagePlacementHud')).toBeVisible({timeout:15000});
   await expect(page.locator('#multiImagePlacementCounter')).toHaveText('Imagem 1 de 3');
@@ -410,10 +412,14 @@ test('E8K: Inserir imagens abre picker direto e posiciona lote sem mutação can
   await expect(page.locator('#multiImagePlacementCounter')).toHaveText('Imagem 3 de 3');
   expect(await page.evaluate(()=>multiImagePlacementAutosavesBeforeCommit)).toBe(0);
   expect(await page.evaluate(()=>assets.length)).toBe(before.assets);
+  expect(await page.evaluate(()=>multiImagePlacementAutosaveTrace.filter(entry=>entry.point==='autosave-scheduled'))).toEqual([]);
   await page.locator('#multiImagePlacementConfirm').click();
   await expect(page.locator('#multiImagePlacementHud')).toBeHidden();
   expect(await page.evaluate(()=>({added:assets.length,history:multiImagePlacementHistoryEntriesCreated,autosaves:multiImagePlacementAutosavesScheduled,committed:multiImagePlacementFinalCommittedCount,selected:selectedAssetId,last:assets.at(-1).id})))
     .toEqual({added:before.assets+3,history:1,autosaves:1,committed:3,selected:await page.evaluate(()=>assets.at(-1).id),last:await page.evaluate(()=>assets.at(-1).id)});
+  expect(await page.evaluate(()=>multiImagePlacementAutosaveTrace.filter(entry=>entry.point==='autosave-scheduled').map(entry=>({reason:entry.reason,before:entry.revisionBefore,after:entry.revisionAfter,phase:entry.phase})))).toEqual([
+    {reason:'add-image-assets',before:before.revision,after:before.revision+1,phase:'committing'},
+  ]);
   expect(fatalErrors).toEqual([]);
 });
 

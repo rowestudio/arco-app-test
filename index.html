@@ -24366,6 +24366,7 @@ function markProjectDirty(reason) {
   // Sem isso, o botão pode tentar baixar/compartilhar um blob antigo
   // ou manter overlays/canvas de uma geração anterior.
   if (isRecording) return;
+  recordMultiImagePlacementAutosaveEvent?.('mark-project-dirty', reason, 'markProjectDirty');
   clearGeneratedMp4(reason);
   scheduleSessionAutosave(reason);
 }
@@ -29936,7 +29937,9 @@ function writeSessionAutosave(revision, epoch, mandatoryFlush = false, reason = 
 }
 function scheduleSessionAutosave(reason, immediate = false) {
   if (!sessionAutosaveEnabled || !hasImageLoaded() || appMode !== 'editor') return;
+  const revisionBefore = _sessionAutosaveQueuedRevision;
   const revision = ++_sessionAutosaveQueuedRevision;
+  recordMultiImagePlacementAutosaveEvent?.('autosave-scheduled', reason, 'scheduleSessionAutosave', revisionBefore, revision);
   const epoch = _sessionAutosaveEpoch;
   sessionAutosaveLastTriggerReason = reason || '';
   sessionAutosaveLastScheduledAt = Date.now();
@@ -30459,7 +30462,13 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 window.addEventListener('pagehide', flushSessionAutosave);
-document.addEventListener('change', () => scheduleSessionAutosave('editor-change'), true);
+document.addEventListener('change', event => {
+  if (event.target?.id === 'multiImageInsertInput') {
+    recordMultiImagePlacementAutosaveEvent?.('picker-change-suppressed', 'editor-change', 'document-change');
+    return;
+  }
+  scheduleSessionAutosave('editor-change');
+}, true);
 
 let _pendingSaveIncludeImage = false;
 
@@ -31998,6 +32007,22 @@ let multiImagePlacementPickerTriggerCalls = 0;
 let multiImagePlacementPickerChanges = 0;
 let multiImagePlacementPickerCancellations = 0;
 let multiImagePlacementHudVisible = false;
+let multiImagePlacementPhase = 'idle';
+let multiImagePlacementAutosaveTrace = [];
+
+function recordMultiImagePlacementAutosaveEvent(point, reason = '', caller = '', revisionBefore, revisionAfter) {
+  const before = Number.isFinite(revisionBefore) ? revisionBefore : _sessionAutosaveQueuedRevision;
+  const after = Number.isFinite(revisionAfter) ? revisionAfter : _sessionAutosaveQueuedRevision;
+  const stack = String(new Error().stack || '').split('\n').slice(2, 5).map(line => line.trim()).join(' <- ');
+  multiImagePlacementAutosaveTrace.push({ point, reason:String(reason || ''), phase:multiImagePlacementPhase,
+    revisionBefore:before, revisionAfter:after, caller:String(caller || ''), stack });
+  if (multiImagePlacementAutosaveTrace.length > 200) multiImagePlacementAutosaveTrace.splice(0, multiImagePlacementAutosaveTrace.length - 200);
+}
+
+function setMultiImagePlacementPhase(phase, point = phase) {
+  multiImagePlacementPhase = phase;
+  recordMultiImagePlacementAutosaveEvent(point);
+}
 
 function recordMultiImageLoadedSourceDiagnostics(asset, drawable) {
   const src = _assetPersistentSourceE8E(asset);
@@ -32058,6 +32083,9 @@ function resetMultiImageInsertDiagnostics(selectedCount) {
   multiImagePlacementPickerChanges = 0;
   multiImagePlacementPickerCancellations = 0;
   multiImagePlacementHudVisible = false;
+  multiImagePlacementPhase = 'picker-open';
+  multiImagePlacementAutosaveTrace = [];
+  recordMultiImagePlacementAutosaveEvent('flow-reset');
 }
 function releasePreparedMultiImages(prepared) {
   (prepared || []).forEach(item => {
@@ -32074,10 +32102,17 @@ function clearPendingMultiImageInsert() {
 function handleMultiImageInsertChosen(e) {
   const input = e && e.target;
   const files = input && input.files ? Array.from(input.files) : [];
+  setMultiImagePlacementPhase('picker-change', 'handle-chosen-entry');
   multiImagePlacementPickerChanges++;
-  if (!files.length) { multiImagePlacementPickerCancellations++; clearPendingMultiImageInsert(); return; }
+  if (!files.length) { multiImagePlacementPickerCancellations++; clearPendingMultiImageInsert(); setMultiImagePlacementPhase('idle', 'picker-cancelled'); return; }
   multiImageInsertSelectedCount = files.length;
-  beginMultiImagePlacement(files);
+  const transactionBaseline = {
+    snapshot:snapshotMultiImageTransaction(),
+    fingerprint:getMultiImagePlacementCanonicalFingerprint(),
+    rollbackFingerprint:getMultiImagePlacementFingerprint()
+  };
+  recordMultiImagePlacementAutosaveEvent('snapshot-created');
+  beginMultiImagePlacement(files, transactionBaseline);
 }
 async function readSupportedImageKind(file) {
   if (!file || typeof file.slice !== 'function') return null;
@@ -32157,8 +32192,10 @@ function snapshotMultiImageTransaction() {
 function rollbackMultiImageTransaction(snapshot) {
   if (!snapshot) throw new TypeError('multi-image-snapshot-missing');
   multiImageInsertRollbackRequired = true;
-  clearTimeout(_sessionAutosaveTimer); _sessionAutosaveTimer = null;
-  _sessionAutosaveQueuedRevision = snapshot.queuedRevision;
+  const autosaveQuiescent = _sessionAutosaveTimer === null && !_sessionAutosaveWriteInFlight && _sessionAutosaveActiveWrites.size === 0;
+  if (autosaveQuiescent && _sessionAutosaveCommittedRevision <= snapshot.queuedRevision) {
+    _sessionAutosaveQueuedRevision = snapshot.queuedRevision;
+  }
   undoStack.length = 0; snapshot.undo.forEach(item => undoStack.push(item));
   redoStack.length = 0; snapshot.redo.forEach(item => redoStack.push(item));
   if (snapshot.wasEmpty) clearCurrentProjectForNewFile(); else restoreState(snapshot.state);
@@ -32249,22 +32286,28 @@ function makePendingMultiImageRect(item) {
   const center = getMultiImageVisibleCenter();
   return { x:center.x-size.width/2, y:center.y-size.height/2, w:size.width, h:size.height };
 }
-async function beginMultiImagePlacement(files) {
+async function beginMultiImagePlacement(files, transactionBaseline = null) {
   if (multiImageInsertBusy || pendingMultiImagePlacement) return false;
   multiImageInsertBusy = true;
   let prepared = [];
   try {
+    const baseline = transactionBaseline || {
+      snapshot:snapshotMultiImageTransaction(),
+      fingerprint:getMultiImagePlacementCanonicalFingerprint(),
+      rollbackFingerprint:getMultiImagePlacementFingerprint()
+    };
+    if (!transactionBaseline) recordMultiImagePlacementAutosaveEvent('snapshot-created');
+    setMultiImagePlacementPhase('preparing', 'prepare-before');
     prepared = await prepareMultiImageFiles(files);
+    recordMultiImagePlacementAutosaveEvent('prepare-after');
     if (!prepared.length) throw new Error('prepared-images-empty');
-    const snapshot = snapshotMultiImageTransaction();
-    const fingerprint = getMultiImagePlacementCanonicalFingerprint();
-    const rollbackFingerprint = getMultiImagePlacementFingerprint();
     multiImagePlacementCanonicalAssetCountBefore = assets.length;
     pendingMultiImagePlacement = { active:true, preparedImages:prepared, placements:[], currentIndex:0,
-      currentRect:makePendingMultiImageRect(prepared[0]), snapshotBefore:snapshot, fingerprint, rollbackFingerprint,
+      currentRect:makePendingMultiImageRect(prepared[0]), snapshotBefore:baseline.snapshot, fingerprint:baseline.fingerprint, rollbackFingerprint:baseline.rollbackFingerprint,
       gesture:null, navigationGesture:null, emptyStageGesture:null, currentElement:null, autosavesScheduled:0 };
     clearPendingMultiImageInsert();
     renderPendingMultiImagePlacement();
+    setMultiImagePlacementPhase('positioning', 'hud-opened');
     return true;
   } catch (error) {
     multiImagePlacementLastErrorType = error?.name || typeof error;
@@ -32273,6 +32316,7 @@ async function beginMultiImagePlacement(files) {
     releasePreparedMultiImages(prepared);
     showStatus('Não foi possível preparar todas as imagens. Nenhuma alteração foi feita.');
     clearPendingMultiImageInsert();
+    setMultiImagePlacementPhase('idle', 'prepare-failed');
     return false;
   } finally { multiImageInsertBusy = false; }
 }
@@ -32371,12 +32415,14 @@ function cancelPendingMultiImagePlacement() {
   multiImagePlacementSnapshotRestored = getMultiImagePlacementFingerprint() === state.rollbackFingerprint;
   multiImagePlacementTemporaryResourcesReleased += state.preparedImages.length;
   releasePreparedMultiImages(state.preparedImages); clearPendingMultiImageInsert();
+  setMultiImagePlacementPhase('idle', 'placement-cancelled');
   return true;
 }
 function confirmPendingMultiImagePlacement() {
   const state=pendingMultiImagePlacement;
   if (!state || state.gesture || state.navigationGesture || isPinching || !state.currentRect) return false;
   auditPendingMultiImageIsolation(state);
+  recordMultiImagePlacementAutosaveEvent('draft-confirmed-' + state.currentIndex);
   multiImagePlacementAutosavesBeforeCommit = state.autosavesScheduled;
   state.placements.push({...state.currentRect}); state.currentIndex++;
   if (state.currentElement) {
@@ -32403,6 +32449,7 @@ async function commitPendingMultiImagePlacement() {
   auditPendingMultiImageIsolation(state);
   if (multiImagePlacementCanonicalMutationBeforeFinalCommit || multiImagePlacementFrameStateChanged || multiImagePlacementCurveStateChanged || multiImagePlacementProjectWorldChangedBeforeCommit) return cancelPendingMultiImagePlacement();
   const snapshot=state.snapshotBefore, undoBefore=undoStack.length;
+  setMultiImagePlacementPhase('committing', 'commit-started');
   try {
     let firstAsset = null;
     if (snapshot.wasEmpty) firstAsset = await loadMainImageForMultiImagePlacement(state.preparedImages[0]);
@@ -32431,12 +32478,14 @@ async function commitPendingMultiImagePlacement() {
     multiImagePlacementFinalCommittedCount=committed.length;
     multiImagePlacementHistoryEntriesCreated=undoStack.length-undoBefore;
     multiImagePlacementAutosavesScheduled=state.autosavesScheduled;
+    recordMultiImagePlacementAutosaveEvent('commit-autosave-scheduled');
     const discarded = snapshot.wasEmpty ? [state.preparedImages[0]] : [];
     releasePreparedMultiImages(discarded);
     multiImagePlacementTemporaryResourcesReleased=discarded.length;
     multiImageInsertCommittedCount=committed.length; multiImageInsertFinalSelectedAssetId=finalAsset.id;
     closePendingMultiImagePlacementVisuals(); pendingMultiImagePlacement=null; clearPendingMultiImageInsert();
     showStatus(`${committed.length} ${committed.length===1?'imagem inserida':'imagens inseridas'}`);
+    setMultiImagePlacementPhase('idle', 'commit-finished');
     return true;
   } catch (error) {
     multiImagePlacementLastErrorType=error?.name || typeof error;
@@ -32448,6 +32497,7 @@ async function commitPendingMultiImagePlacement() {
     releasePreparedMultiImages(state.preparedImages.filter(item => !assets.some(asset => asset?._img===item.image || asset?.drawSource===item.image)));
     multiImagePlacementSnapshotRestored=getMultiImagePlacementFingerprint()===state.rollbackFingerprint;
     showStatus('Não foi possível adicionar as imagens. O projeto foi restaurado.');
+    setMultiImagePlacementPhase('idle', 'commit-rolled-back');
     return false;
   }
 }
