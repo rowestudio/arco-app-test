@@ -120,3 +120,18 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - O lote prepara todos os arquivos antes do commit, preserva ordem, nomes persistentes e seleção canônica, e aplica rollback do snapshot integral diante de falha; Cancelar e falha de preparação não alteram o projeto.
 - A revisão final adiciona conclusão exclusiva ao carregamento da imagem principal (sucesso, erro real, cancelamento e timeout de segurança), gate determinístico do busy no WebKit, round-trips reais de Save/Load e Session Restore e navegação canônica dos extremos do layout.
 - Preview, Export, WebCodecs, renderer, Frames, curvas e timing permanecem fora do diff funcional. Validação em iPhone/Safari real continua obrigatória.
+
+## Atualização 2026-07-31 — v8z4b32E8K em desenvolvimento
+
+- Base confirmada no merge commit da PR #461, `06b817cffc0c52b047a376006212cc1eed1e01e1`, versão `v8z4b32E8J`.
+- A E8J permaneceu tecnicamente funcional, mas não foi aprovada visualmente por duplicar decisões espaciais (slot antes da Fototeca e layout automático depois dela).
+- A `v8z4b32E8K` substitui essas duas escolhas pelo posicionamento provisório sequencial de cada imagem e só aplica o lote ao modelo canônico na confirmação final.
+- A criação provisória de Frames foi usada exclusivamente como referência de gramática visual e interação; o controlador e o motor de Frames não foram alterados.
+- A validação visual publicada em iPhone/Safari/PWA permanece pendente; nenhuma aprovação visual ou promoção para produção está declarada.
+
+### Revisão P1 da PR #462
+
+- A revisão restaura os helpers transacionais removidos na primeira implementação E8K, amplia o snapshot de isolamento para o estado canônico integral e mantém estável o elemento que detém pointer capture durante o arraste.
+- O gate Plus/Premium e o caminho atômico de projeto vazio foram preservados; erros de decode e de implementação passam a ser diferenciados nos diagnósticos.
+- O harness Node voltou a executar os controladores reais, e o smoke WebKit E8K voltou a cobrir fluxo unitário/múltiplo, gestos, rollback, Undo/Redo, Save/Load, Session Restore, alpha, Frames, E8H e E8I.
+- A versão permanece em desenvolvimento e a validação visual publicada em iPhone/Safari/PWA continua pendente.

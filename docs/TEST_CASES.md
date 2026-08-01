@@ -275,15 +275,15 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Ambiente: harness Node, WebKit automatizado e iPhone/Safari/PWA real obrigatório para aprovação final.
 - Automatizável: parcial; encerramento real do processo, persistência grande, arquivos manuais, Preview e Export exigem validação no aparelho.
 
-## TC-031 — Inserção de várias imagens em uma operação
+## TC-031 — Inserção sequencial de uma ou várias imagens
 
-- Pré-condição: editor aberto com um projeto e Inserir imagem disponível.
-- Passos: selecionar em conjunto JPEG, PNG transparente, WebP e um arquivo inválido; escolher Empilhar, Horizontal e Vertical em execuções separadas; observar Stage/Layers; executar Undo e Redo.
-- Resultado esperado: formatos válidos entram na ordem selecionada, organizados conforme Empilhar/Horizontal/Vertical, mantendo alpha do PNG, nomes `Camada N`, seleção e z-order; o inválido não cria asset; Undo/Redo trata o lote válido como uma operação.
-- Evidência: `node scripts/qa/test-multi-image-insert.mjs`, contagem e inspeção de Stage/Layers.
-- Ambiente: harness Node e iPhone/Safari real obrigatório para aprovação final.
-- Automatizável: parcial; validação de assinatura, organização e guardas de histórico são automatizadas, picker/decodes reais e resultado visual exigem aparelho.
+- Pré-condição: editor aberto com projeto e comando Inserir imagens disponível.
+- Passos: abrir o comando; selecionar JPEG, PNG transparente e WebP; posicionar cada preview por toque e arraste; confirmar; repetir cancelando na primeira e em etapa intermediária; repetir com arquivo inválido no lote; executar Undo e Redo.
+- Resultado esperado: Fototeca abre diretamente, sem slot ou layout automático; toda preparação termina antes do primeiro preview; previews ficam fora do modelo canônico; Cancelar preserva integralmente projeto/histórico/autosave; confirmação final preserva ordem, geometria, nomes, alpha e zIndex em um único Undo e um único Autosave; Redo restaura todo o lote.
+- Evidência: `node scripts/qa/test-multi-image-insert.mjs`, diagnósticos `multiImagePlacement*`, contagem Stage/Layers e smoke WebKit mobile.
+- Ambiente: harness Node, WebKit automatizado e iPhone/Safari/PWA real obrigatório para aprovação visual.
+- Automatizável: parcial; assinatura, fluxo transacional e contratos são automatizáveis, enquanto gestos e resultado visual exigem WebKit e aparelho real.
 
-### Cobertura automatizada E8J
+### Cobertura automatizada E8K
 
-O harness Node executa os controladores reais extraídos de `index.html` com mocks somente das dependências e cobre 30 cenários funcionais. O smoke WebKit contém 9 testes E8J adicionais (19 testes Playwright após expansão dinâmica dos três layouts), usando buffers em memória; a execução local permanece condicionada à disponibilidade do binário WebKit.
+Os self-tests verificam abertura direta, ausência da UI legada, preparação integral, isolamento canônico, sequência, cancelamento e commit único. O smoke WebKit mobile cobre sequência 1/3–3/3, cancelamento intermediário e arquivo inválido; a execução local depende do binário WebKit.
