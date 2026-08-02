@@ -128,6 +128,13 @@ const APP_VERSION_NAME = 'v1A';
 
 const results = [];
 
+expectCase(results, 'Asset insert dialog valid fixture passes', 'check-asset-insert-dialog.mjs', 0, {
+  env: { QA_ASSET_INSERT_HTML: path.join(fixtures, 'asset-insert-dialog-valid.html') },
+});
+expectCase(results, 'Asset insert dialog direct picker fails', 'check-asset-insert-dialog.mjs', 1, {
+  env: { QA_ASSET_INSERT_HTML: path.join(fixtures, 'asset-insert-dialog-invalid.html') },
+});
+
 const uiCases = [
   ['UI clean HTML passes', 'html-clean.html', 0],
   ['UI visible PROMPT fails', 'html-visible-prompt.html', 1],

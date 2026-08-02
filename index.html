@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E8J — base v8z4b32E8I. feat(assets): separa inserção múltipla da troca unitária, prepara o lote integralmente e oferece Empilhar/Horizontal/Vertical com commit, Undo e autosave únicos ou rollback completo. APP_VERSION = APP_VERSION_NAME = v8z4b32E8J. -->
+<!-- Arco Motion App — v8z4b32E8L — base v8z4b32E8J. ux(assets): a ação Inserir imagem abre um modal explícito no Modo Ativos antes da Fototeca; confirmar mantém o pipeline transacional E8J e cancelar não altera o projeto. APP_VERSION = APP_VERSION_NAME = v8z4b32E8L. -->
 <!-- Arco Motion App — v8z4b32E8I — base v8z4b32E8H. feat(session): pergunta se deve recuperar um checkpoint válido na abertura normal, sem alterar as intenções explícitas de Recarregar. APP_VERSION = APP_VERSION_NAME = v8z4b32E8I. -->
 <!-- Arco Motion App — v8z4b32E8H — base v8z4b32E8G. fix(reload): oferece restauração aguardável da sessão ou reinício limpo, com intenção de startup de uso único e tratamento de falhas. APP_VERSION = APP_VERSION_NAME = v8z4b32E8H. -->
 <!-- Arco Motion App — v8z4b32E8F — base v8z4b32E8E. fix(preview): confirma render e composição do primeiro frame t=0 antes de liberar loading, relógio e loop visível; falha/cancelamento libera retry sem alterar Export ou matemática do renderer. APP_VERSION = APP_VERSION_NAME = v8z4b32E8F. -->
@@ -1488,6 +1488,8 @@ body.editor-assets.recording .frame{display:none !important;}
 /* v8z4b30ZO — assetsAddMenu: modal central de ações no Modo Ativos (inserir/trocar). */
 #assetsAddMenu{position:fixed;inset:0;z-index:330;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
 #assetsAddMenu.open{display:flex;}
+#assetInsertDialog{position:fixed;inset:0;z-index:340;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
+#assetInsertDialog.open{display:flex;}
 /* v8z4b30ZT — assetsModeMenu: modal de opções do Modo Ativos (segundo toque no ícone). */
 #assetsModeMenu{position:fixed;inset:0;z-index:331;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
 /* v8z4b32B — menus contextuais de modo (segundo toque no botão de modo já ativo).
@@ -4382,6 +4384,21 @@ body.cust-open #toolbar{
 <input type="file" id="fileInput2" accept="image/*" style="display:none;">
 <input type="file" id="multiImageInsertInput" accept="image/*" multiple style="display:none;">
 
+<div id="assetInsertDialog" role="dialog" aria-modal="true" aria-labelledby="assetInsertDialogTitle" aria-describedby="assetInsertDialogDescription" aria-hidden="true" onclick="if(event.target===this)closeAssetInsertDialog()">
+  <div class="assets-menu-inner">
+    <button type="button" onclick="closeAssetInsertDialog()" class="panel-close-check" aria-label="Fechar">
+      <svg viewBox="0 0 24 24"><use href="#i-close"></use></svg>
+    </button>
+    <div id="assetInsertDialogTitle" class="assets-menu-title">Inserir imagem</div>
+    <div id="assetInsertDialogDescription" class="assets-menu-desc">Selecione uma ou várias imagens.</div>
+    <button id="assetInsertDialogChoose" type="button" class="assets-menu-btn" onclick="confirmAssetInsertDialog()">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-up"></use></svg>
+      Escolher imagens
+    </button>
+    <button type="button" class="assets-menu-cancel" onclick="closeAssetInsertDialog()">Cancelar</button>
+  </div>
+</div>
+
 <div id="multiImageLayoutSheet" role="dialog" aria-modal="true" aria-labelledby="multiImageLayoutTitle"
      style="display:none;position:fixed;inset:0;z-index:340;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom);"
      onclick="if(event.target===this)closeMultiImageLayoutSheet('backdrop')">
@@ -7242,8 +7259,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8J';
-const APP_VERSION_NAME = 'v8z4b32E8J';
+const APP_VERSION = 'v8z4b32E8L';
+const APP_VERSION_NAME = 'v8z4b32E8L';
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -31852,27 +31869,45 @@ function triggerMultiImageInsertPicker() {
   fi.click();
 }
 
+function openAssetInsertDialog() {
+  const dialog = document.getElementById('assetInsertDialog');
+  if (!dialog) return false;
+  dialog.classList.add('open');
+  dialog.setAttribute('aria-hidden', 'false');
+  return true;
+}
+function closeAssetInsertDialog() {
+  const dialog = document.getElementById('assetInsertDialog');
+  if (dialog) {
+    dialog.classList.remove('open');
+    dialog.setAttribute('aria-hidden', 'true');
+  }
+  clearPendingImageAction();
+}
+function confirmAssetInsertDialog() {
+  const dialog = document.getElementById('assetInsertDialog');
+  if (dialog) {
+    dialog.classList.remove('open');
+    dialog.setAttribute('aria-hidden', 'true');
+  }
+  pendingImageAction = 'insertImage';
+  pendingImageTargetSlot = { key: 'center', row: 0, col: 0 };
+  pendingImageTargetAssetId = null;
+  activeSlotSelection = 'center';
+  triggerMultiImageInsertPicker();
+}
+
 // ── Ação 1: INSERIR IMAGEM ──────────────────────────────────────────────
 function startInsertImageFlow() {
   closeSettingsSheet();
   closeAll();
   clearPendingImageAction();
-  // Projeto vazio: inserir = carregar a imagem principal (centro), sem seletor de slot.
-  if (!imgNatW) {
-    pendingImageAction = 'insertImage';
-    pendingImageTargetSlot = { key: 'center', row: 0, col: 0 };
-    pendingImageTargetAssetId = null;
-    activeSlotSelection = 'center';
-    triggerMultiImageInsertPicker();
-    return;
-  }
   // Plano: adicionar imagem extra é Plus/Premium (liberado em teste interno por featureAccess).
-  if (!canAddImageAsset()) {
+  if (imgNatW && !canAddImageAsset()) {
     openMultipleImagesPlusModal();
     return;
   }
-  // Já existe imagem: escolher o slot ANTES de abrir Fotos/Arquivos.
-  openImageSlotPicker('insert');
+  openAssetInsertDialog();
 }
 
 // ── Ação 2: TROCAR IMAGEM ───────────────────────────────────────────────

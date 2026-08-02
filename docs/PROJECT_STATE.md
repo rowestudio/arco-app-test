@@ -120,3 +120,10 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - O lote prepara todos os arquivos antes do commit, preserva ordem, nomes persistentes e seleção canônica, e aplica rollback do snapshot integral diante de falha; Cancelar e falha de preparação não alteram o projeto.
 - A revisão final adiciona conclusão exclusiva ao carregamento da imagem principal (sucesso, erro real, cancelamento e timeout de segurança), gate determinístico do busy no WebKit, round-trips reais de Save/Load e Session Restore e navegação canônica dos extremos do layout.
 - Preview, Export, WebCodecs, renderer, Frames, curvas e timing permanecem fora do diff funcional. Validação em iPhone/Safari real continua obrigatória.
+
+## Atualização 2026-08-01 — v8z4b32E8L em desenvolvimento
+
+- Base confirmada na `main` atual após a reversão da E8K, commit `27eeb1318f6a4205704a7a86e2baa14f4b3cac7b`, versão `v8z4b32E8J`.
+- A ação Inserir imagem no Modo Ativos passa por um modal explícito antes de abrir a Fototeca; Cancelar fecha o modal sem mutar projeto, histórico ou autosave.
+- A confirmação conserva o seletor múltiplo e o pipeline transacional da E8J. Trocar imagem, Frames, Preview, Export, Save/Load e Session Restore permanecem fora do diff funcional.
+- A validação visual em iPhone/Safari/PWA real permanece obrigatória. Nenhuma promoção para produção está autorizada.

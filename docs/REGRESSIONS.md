@@ -117,3 +117,11 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Prevenção:** validar assinaturas JPEG/PNG/WebP antes do decode, processar sequencialmente na ordem recebida, exigir escolha de layout sem WORLD_SLOTS e consolidar o lote completo em um único snapshot de Undo e uma única revisão de sessão.
 - **Teste preventivo:** `node scripts/qa/test-multi-image-insert.mjs`, com fixtures Base64/buffers exclusivamente em memória.
 - **Status:** proteção técnica adicionada na `v8z4b32E8J`; seleção pelo picker e comportamento visual em iPhone/Safari real permanecem pendentes.
+
+## REG-038 — Inserção de Ativos abre a Fototeca sem confirmação contextual
+
+- **Problema prevenido:** o comando Inserir imagem pode abandonar o contexto do editor diretamente para a Fototeca, sem uma etapa explícita e cancelável no Modo Ativos.
+- **Prevenção:** `startInsertImageFlow()` abre exclusivamente `#assetInsertDialog`; somente a ação Escolher imagens, executada por gesto do usuário, abre `#multiImageInsertInput`.
+- **Como detectar:** abrir Inserir imagem pelo botão + e pelo menu contextual; confirmar que o modal aparece antes do picker e que X, Cancelar e backdrop não alteram projeto, Undo/Redo ou autosave.
+- **Teste preventivo:** `node scripts/qa/check-asset-insert-dialog.mjs` e smoke WebKit mobile.
+- **Status:** proteção técnica adicionada na `v8z4b32E8L`; validação publicada em iPhone/Safari/PWA real permanece pendente.

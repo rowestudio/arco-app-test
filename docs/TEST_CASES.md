@@ -287,3 +287,12 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 ### Cobertura automatizada E8J
 
 O harness Node executa os controladores reais extraídos de `index.html` com mocks somente das dependências e cobre 30 cenários funcionais. O smoke WebKit contém 9 testes E8J adicionais (19 testes Playwright após expansão dinâmica dos três layouts), usando buffers em memória; a execução local permanece condicionada à disponibilidade do binário WebKit.
+
+## TC-032 — Modal de inserção no Modo Ativos
+
+- Pré-condição: editor aberto no Modo Ativos, com inserção disponível.
+- Passos: acionar Inserir imagem pelo botão + e pelo menu contextual; cancelar por X, botão Cancelar e backdrop; abrir novamente e escolher imagens.
+- Resultado esperado: o modal sempre antecede a Fototeca; cancelar não altera projeto/histórico/autosave; Escolher imagens abre o input múltiplo pelo gesto corrente e o processamento posterior permanece no pipeline E8J.
+- Evidência: `node scripts/qa/check-asset-insert-dialog.mjs`, smoke WebKit e screenshot do modal.
+- Ambiente: inspeção estática, WebKit automatizado e iPhone/Safari/PWA real obrigatório para aprovação visual.
+- Automatizável: parcial; contrato e roteamento são estáticos, enquanto picker e comportamento PWA exigem aparelho real.
