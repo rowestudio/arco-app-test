@@ -128,10 +128,10 @@ const APP_VERSION_NAME = 'v1A';
 
 const results = [];
 
-expectCase(results, 'Asset insert dialog valid fixture passes', 'check-asset-insert-dialog.mjs', 0, {
+expectCase(results, 'Asset insertion mode valid fixture passes', 'check-asset-insert-dialog.mjs', 0, {
   env: { QA_ASSET_INSERT_HTML: path.join(fixtures, 'asset-insert-dialog-valid.html') },
 });
-expectCase(results, 'Asset insert dialog direct picker fails', 'check-asset-insert-dialog.mjs', 1, {
+expectCase(results, 'Asset insertion premature mutation fails', 'check-asset-insert-dialog.mjs', 1, {
   env: { QA_ASSET_INSERT_HTML: path.join(fixtures, 'asset-insert-dialog-invalid.html') },
 });
 

@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E8L — base v8z4b32E8J. ux(assets): a ação Inserir imagem abre um modal explícito no Modo Ativos antes da Fototeca; confirmar mantém o pipeline transacional E8J e cancelar não altera o projeto. APP_VERSION = APP_VERSION_NAME = v8z4b32E8L. -->
+<!-- Arco Motion App — v8z4b32E8L — base v8z4b32E8J. fix(assets): seleção múltipla abre inserção modal no Stage, transforma um provisório por vez e confirma o lote atomicamente. APP_VERSION = APP_VERSION_NAME = v8z4b32E8L. -->
 <!-- Arco Motion App — v8z4b32E8I — base v8z4b32E8H. feat(session): pergunta se deve recuperar um checkpoint válido na abertura normal, sem alterar as intenções explícitas de Recarregar. APP_VERSION = APP_VERSION_NAME = v8z4b32E8I. -->
 <!-- Arco Motion App — v8z4b32E8H — base v8z4b32E8G. fix(reload): oferece restauração aguardável da sessão ou reinício limpo, com intenção de startup de uso único e tratamento de falhas. APP_VERSION = APP_VERSION_NAME = v8z4b32E8H. -->
 <!-- Arco Motion App — v8z4b32E8F — base v8z4b32E8E. fix(preview): confirma render e composição do primeiro frame t=0 antes de liberar loading, relógio e loop visível; falha/cancelamento libera retry sem alterar Export ou matemática do renderer. APP_VERSION = APP_VERSION_NAME = v8z4b32E8F. -->
@@ -1488,8 +1488,14 @@ body.editor-assets.recording .frame{display:none !important;}
 /* v8z4b30ZO — assetsAddMenu: modal central de ações no Modo Ativos (inserir/trocar). */
 #assetsAddMenu{position:fixed;inset:0;z-index:330;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
 #assetsAddMenu.open{display:flex;}
-#assetInsertDialog{position:fixed;inset:0;z-index:340;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
-#assetInsertDialog.open{display:flex;}
+#assetInsertionControls{position:absolute;inset:0;z-index:1200;display:none;pointer-events:none;}
+#assetInsertionControls.open{display:block;}
+#assetInsertionInstruction{position:absolute;top:12px;left:50%;transform:translateX(-50%);padding:7px 12px;border-radius:14px;background:rgba(18,18,22,.88);color:var(--text1);font-size:12px;font-weight:600;white-space:nowrap;}
+#assetInsertionActions{position:absolute;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:10px;pointer-events:auto;}
+#assetInsertionActions button{min-width:88px;padding:11px 18px;border:1px solid var(--border2);border-radius:14px;background:var(--surface);color:var(--text1);font-size:14px;font-weight:700;}
+#assetInsertionActions .confirm{background:var(--accent);color:#fff;border-color:var(--accent);}
+#assetInsertionDraft{position:absolute;z-index:1199;box-sizing:border-box;border:3px solid rgba(176,108,255,.98);border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.3);touch-action:none;transform-origin:50% 50%;}
+#assetInsertionDraft img{display:block;width:100%;height:100%;pointer-events:none;user-select:none;-webkit-user-drag:none;}
 /* v8z4b30ZT — assetsModeMenu: modal de opções do Modo Ativos (segundo toque no ícone). */
 #assetsModeMenu{position:fixed;inset:0;z-index:331;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
 /* v8z4b32B — menus contextuais de modo (segundo toque no botão de modo já ativo).
@@ -3896,6 +3902,14 @@ body.cust-open #toolbar{
 
 <!-- IMAGE AREA -->
 <div class="image-area" id="imageArea">
+<div id="assetInsertionControls" role="dialog" aria-modal="true" aria-label="Inserção de ativos" aria-hidden="true">
+  <div id="assetInsertionInstruction">Ajuste a imagem e confirme <span id="assetInsertionCounter"></span></div>
+  <div id="assetInsertionActions">
+    <button type="button" onclick="cancelAssetInsertionMode()">Cancelar</button>
+    <button type="button" class="confirm" onclick="confirmAssetInsertionDraft()">OK</button>
+  </div>
+</div>
+
   <div class="stage" id="stage">
     <div class="stage-content" id="stageContent">
       <img id="imgEl" style="display:none;" draggable="false">
@@ -4384,37 +4398,6 @@ body.cust-open #toolbar{
 <input type="file" id="fileInput2" accept="image/*" style="display:none;">
 <input type="file" id="multiImageInsertInput" accept="image/*" multiple style="display:none;">
 
-<div id="assetInsertDialog" role="dialog" aria-modal="true" aria-labelledby="assetInsertDialogTitle" aria-describedby="assetInsertDialogDescription" aria-hidden="true" onclick="if(event.target===this)closeAssetInsertDialog()">
-  <div class="assets-menu-inner">
-    <button type="button" onclick="closeAssetInsertDialog()" class="panel-close-check" aria-label="Fechar">
-      <svg viewBox="0 0 24 24"><use href="#i-close"></use></svg>
-    </button>
-    <div id="assetInsertDialogTitle" class="assets-menu-title">Inserir imagem</div>
-    <div id="assetInsertDialogDescription" class="assets-menu-desc">Selecione uma ou várias imagens.</div>
-    <button id="assetInsertDialogChoose" type="button" class="assets-menu-btn" onclick="confirmAssetInsertDialog()">
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-up"></use></svg>
-      Escolher imagens
-    </button>
-    <button type="button" class="assets-menu-cancel" onclick="closeAssetInsertDialog()">Cancelar</button>
-  </div>
-</div>
-
-<div id="multiImageLayoutSheet" role="dialog" aria-modal="true" aria-labelledby="multiImageLayoutTitle"
-     style="display:none;position:fixed;inset:0;z-index:340;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom);"
-     onclick="if(event.target===this)closeMultiImageLayoutSheet('backdrop')">
-  <div style="position:relative;width:min(100%,430px);background:var(--menu-bg);border-radius:20px 20px 0 0;padding:22px 20px 18px;">
-    <button type="button" class="panel-close-check" aria-label="Fechar" onclick="closeMultiImageLayoutSheet('close')">×</button>
-    <div id="multiImageLayoutTitle" style="font-size:18px;font-weight:700;padding-right:42px;">Inserir 2 imagens</div>
-    <div style="font-size:14px;color:var(--text2);margin:8px 0 16px;">Como deseja organizar as imagens no Stage?</div>
-    <div id="multiImageLayoutActions" style="display:grid;gap:9px;">
-      <button type="button" class="slot-pick-btn" onclick="commitPendingMultiImageInsert('stack')">Empilhar no centro</button>
-      <button type="button" class="slot-pick-btn" onclick="commitPendingMultiImageInsert('horizontal')">Distribuir na horizontal</button>
-      <button type="button" class="slot-pick-btn" onclick="commitPendingMultiImageInsert('vertical')">Distribuir na vertical</button>
-      <button type="button" class="slot-pick-btn" onclick="closeMultiImageLayoutSheet('cancel')">Cancelar</button>
-    </div>
-    <div id="multiImageLayoutBusy" role="status" aria-live="polite" style="display:none;padding:18px 0 4px;text-align:center;font-weight:600;"></div>
-  </div>
-</div>
 
 <!-- PREVIEW SCREEN -->
 <div class="preview-screen" id="previewScreen">
@@ -31869,34 +31852,6 @@ function triggerMultiImageInsertPicker() {
   fi.click();
 }
 
-function openAssetInsertDialog() {
-  const dialog = document.getElementById('assetInsertDialog');
-  if (!dialog) return false;
-  dialog.classList.add('open');
-  dialog.setAttribute('aria-hidden', 'false');
-  return true;
-}
-function closeAssetInsertDialog() {
-  const dialog = document.getElementById('assetInsertDialog');
-  if (dialog) {
-    dialog.classList.remove('open');
-    dialog.setAttribute('aria-hidden', 'true');
-  }
-  clearPendingImageAction();
-}
-function confirmAssetInsertDialog() {
-  const dialog = document.getElementById('assetInsertDialog');
-  if (dialog) {
-    dialog.classList.remove('open');
-    dialog.setAttribute('aria-hidden', 'true');
-  }
-  pendingImageAction = 'insertImage';
-  pendingImageTargetSlot = { key: 'center', row: 0, col: 0 };
-  pendingImageTargetAssetId = null;
-  activeSlotSelection = 'center';
-  triggerMultiImageInsertPicker();
-}
-
 // ── Ação 1: INSERIR IMAGEM ──────────────────────────────────────────────
 function startInsertImageFlow() {
   closeSettingsSheet();
@@ -31907,7 +31862,9 @@ function startInsertImageFlow() {
     openMultipleImagesPlusModal();
     return;
   }
-  openAssetInsertDialog();
+  pendingImageAction = 'insertImage';
+  pendingImageTargetAssetId = null;
+  triggerMultiImageInsertPicker();
 }
 
 // ── Ação 2: TROCAR IMAGEM ───────────────────────────────────────────────
@@ -32063,35 +32020,13 @@ function clearPendingMultiImageInsert() {
   const input = document.getElementById('multiImageInsertInput');
   if (input) { try { input.value = ''; } catch (_) {} }
 }
-function openMultiImageLayoutSheet(files) {
-  if (multiImageInsertBusy) return;
-  pendingMultiImageFiles = Array.from(files || []);
-  const sheet = document.getElementById('multiImageLayoutSheet');
-  const title = document.getElementById('multiImageLayoutTitle');
-  if (title) title.textContent = `Inserir ${pendingMultiImageFiles.length} imagens`;
-  if (sheet) sheet.style.display = 'flex';
-}
-function closeMultiImageLayoutSheet(reason) {
-  if (multiImageInsertBusy) return false;
-  const sheet = document.getElementById('multiImageLayoutSheet');
-  if (sheet) sheet.style.display = 'none';
-  multiImageInsertCancelled = true;
-  clearPendingMultiImageInsert();
-  clearPendingImageAction();
-  return true;
-}
 function handleMultiImageInsertChosen(e) {
   const input = e && e.target;
   const files = input && input.files ? Array.from(input.files) : [];
+  if (input) { try { input.value = ''; } catch (_) {} }
   if (!files.length) { clearPendingImageAction(); return; }
   resetMultiImageInsertDiagnostics(files.length);
-  if (files.length === 1) {
-    const file = files[0];
-    if (input) { try { input.value = ''; } catch (_) {} }
-    doInsertImageFromFile(file);
-    return;
-  }
-  openMultiImageLayoutSheet(files);
+  beginAssetInsertionMode(files);
 }
 async function readSupportedImageKind(file) {
   if (!file || typeof file.slice !== 'function') return null;
@@ -32208,6 +32143,8 @@ function createPreparedImageAsset(item, rect, zIndex) {
   assignPersistentLayerIdentity(asset, item.file.name || '');
   return asset;
 }
+let assetInsertionMode = null;
+let assetInsertionOutsideNoticeTimer = null;
 function snapshotMultiImageTransaction() {
   return { state: captureState(), undo: undoStack.slice(), redo: redoStack.slice(), nextLayerSequence,
     queuedRevision: _sessionAutosaveQueuedRevision, selectedAssetId, wasEmpty: !imgNatW };
@@ -32223,67 +32160,125 @@ function rollbackMultiImageTransaction(snapshot) {
   if (snapshot.selectedAssetId) selectAssetById(snapshot.selectedAssetId, 'multiInsertRollback'); else clearSelectedAsset();
   multiImageInsertRollbackCompleted = true;
 }
-async function commitPendingMultiImageInsert(layout) {
-  if (multiImageInsertBusy || !pendingMultiImageFiles || pendingMultiImageFiles.length < 2) return false;
-  multiImageInsertBusy = true; multiImageInsertLayout = layout;
-  const files = pendingMultiImageFiles.slice();
-  const actions = document.getElementById('multiImageLayoutActions');
-  const busy = document.getElementById('multiImageLayoutBusy');
-  if (actions) actions.style.display = 'none';
-  if (busy) { busy.style.display = 'block'; busy.textContent = `Preparando ${files.length} imagens…`; }
-  let prepared = [];
-  let snapshot = null;
+async function beginAssetInsertionMode(files) {
+  if (multiImageInsertBusy || assetInsertionMode) return false;
+  multiImageInsertBusy = true;
   try {
-    prepared = await prepareMultiImageFiles(files);
-    snapshot = snapshotMultiImageTransaction();
-    const wasEmpty = snapshot.wasEmpty;
-    let firstAsset = null;
-    if (wasEmpty) firstAsset = await loadMainImageForMultiInsert(prepared[0].file);
-    const baseW = projectWorld.baseStageW || stageW;
-    const baseH = projectWorld.baseStageH || stageH;
+    const prepared = await prepareMultiImageFiles(files);
+    const baseW = projectWorld.baseStageW || stageW || prepared[0].width;
+    const baseH = projectWorld.baseStageH || stageH || prepared[0].height;
     const center = getMultiImageVisibleCenter();
-    const positions = calculateMultiImageLayout(prepared, layout, center, baseW, baseH);
-    let maxZ = assets.reduce((max, asset) => Math.max(max, Number(asset && asset.zIndex) || 0), 0);
-    const committed = [];
-    for (let i = 0; i < prepared.length; i++) {
-      let asset;
-      if (wasEmpty && i === 0) {
-        asset = firstAsset;
-        Object.assign(asset, { worldX:positions[i].x, worldY:positions[i].y, worldW:positions[i].w, worldH:positions[i].h, zIndex:++maxZ, mimeType:prepared[i].kind, hasAlpha:prepared[i].hasAlpha });
-      } else {
-        asset = createPreparedImageAsset(prepared[i], positions[i], ++maxZ);
-        assets.push(asset);
-      }
-      committed.push(asset);
-      multiImageInsertCommittedCount = committed.length;
-    }
-    const finalAsset = committed[committed.length - 1];
-    selectAssetById(finalAsset.id, 'multiInsertCommit');
-    multiImageInsertFinalSelectedAssetId = finalAsset.id;
-    multiImageInsertAlphaCount = committed.filter(asset => asset.hasAlpha).length;
-    invalidateProjectWorldComposite(); renderProjectWorldExtraImages(); renderLayersPanelList(); renderAll(); clampEditorPan();
-    pushUndoSnapshot(snapshot.state); lastUndoAction = 'addImageAsset'; multiImageInsertHistoryCreated = undoStack.length === snapshot.undo.length + 1;
-    markProjectDirty('add-image-assets'); multiImageInsertAutosavesScheduled = _sessionAutosaveQueuedRevision - snapshot.queuedRevision;
-    clearPendingMultiImageInsert();
-    const sheet = document.getElementById('multiImageLayoutSheet'); if (sheet) sheet.style.display = 'none';
-    showStatus(`${committed.length} imagens inseridas`);
+    assetInsertionMode = {
+      prepared, index: 0, confirmed: [], snapshot: snapshotMultiImageTransaction(),
+      draft: null, baseW, baseH, center, gesture: null
+    };
+    showAssetInsertionDraft(0);
     return true;
-  } catch (error) {
-    if (snapshot) { multiImageInsertCommitFailed = true; rollbackMultiImageTransaction(snapshot); }
-    else multiImageInsertPreparationFailed = true;
+  } catch (_) {
     showStatus('Não foi possível preparar todas as imagens. Nenhuma alteração foi feita.');
+    clearPendingImageAction();
     return false;
-  } finally {
-    releasePreparedMultiImages(prepared.filter(item => !assets.some(asset => asset && asset._img === item.image)));
-    clearPendingMultiImageInsert();
-    multiImageInsertBusy = false;
-    if (actions) actions.style.display = 'grid';
-    if (busy) { busy.style.display = 'none'; busy.textContent = ''; }
-  }
+  } finally { multiImageInsertBusy = false; }
 }
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && document.getElementById('multiImageLayoutSheet')?.style.display === 'flex') closeMultiImageLayoutSheet('escape');
-});
+function createInitialAssetInsertionRect(item) {
+  const mode = assetInsertionMode;
+  const size = fitContain(item.width, item.height, mode.baseW, mode.baseH);
+  return { x:mode.center.x-size.width/2, y:mode.center.y-size.height/2, w:size.width, h:size.height, rotation:0 };
+}
+function showAssetInsertionDraft(index) {
+  const mode = assetInsertionMode; if (!mode) return;
+  mode.index = index;
+  mode.draft = createInitialAssetInsertionRect(mode.prepared[index]);
+  let draft = document.getElementById('assetInsertionDraft');
+  if (!draft) {
+    draft = document.createElement('div'); draft.id = 'assetInsertionDraft';
+    const image = document.createElement('img'); image.alt = ''; draft.appendChild(image);
+    ['tl','tr','bl','br'].forEach(corner => {
+      const tab = document.createElement('div'); tab.className = 'asset-corner-handle show'; tab.dataset.assetCorner = corner;
+      tab.addEventListener('pointerdown', e => beginAssetInsertionTransform(e, corner));
+      tab.addEventListener('pointermove', moveAssetInsertionTransform);
+      tab.addEventListener('pointerup', endAssetInsertionTransform);
+      tab.addEventListener('pointercancel', endAssetInsertionTransform);
+      draft.appendChild(tab);
+    });
+    draft.addEventListener('pointerdown', beginAssetInsertionMove);
+    draft.addEventListener('pointermove', moveAssetInsertionDraft);
+    draft.addEventListener('pointerup', endAssetInsertionMove);
+    draft.addEventListener('pointercancel', endAssetInsertionMove);
+    stageContent.appendChild(draft);
+  }
+  draft.querySelector('img').src = mode.prepared[index].dataUrl;
+  const controls = document.getElementById('assetInsertionControls');
+  controls && controls.classList.add('open'); controls && controls.setAttribute('aria-hidden','false');
+  const counter = document.getElementById('assetInsertionCounter'); if (counter) counter.textContent = `${index+1}/${mode.prepared.length}`;
+  renderAssetInsertionDraft();
+}
+function renderAssetInsertionDraft() {
+  const mode=assetInsertionMode, el=document.getElementById('assetInsertionDraft'); if(!mode||!el)return;
+  computeEditorTransform(); const d=mode.draft, p=editorWorldToStage(d.x,d.y,d.w,d.h);
+  Object.assign(el.style,{display:'block',left:p.x+'px',top:p.y+'px',width:p.w+'px',height:p.h+'px',transform:`rotate(${d.rotation||0}deg)`});
+}
+function assetInsertionWorldPoint(e) { computeEditorTransform(); const sc=screenToStageCoord(e.clientX,e.clientY); return editorStageToWorld(sc.x,sc.y); }
+function beginAssetInsertionMove(e) {
+  if (!assetInsertionMode || e.target.closest('.asset-corner-handle')) return;
+  e.preventDefault(); e.stopPropagation(); const d=assetInsertionMode.draft, wp=assetInsertionWorldPoint(e);
+  try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+  assetInsertionMode.gesture={type:'move',pointerId:e.pointerId,startWorldX:wp.x,startWorldY:wp.y,startX:d.x,startY:d.y};
+}
+function moveAssetInsertionDraft(e) { const m=assetInsertionMode,g=m&&m.gesture;if(!g||g.type!=='move'||g.pointerId!==e.pointerId)return;e.preventDefault();const wp=assetInsertionWorldPoint(e);m.draft.x=g.startX+wp.x-g.startWorldX;m.draft.y=g.startY+wp.y-g.startWorldY;renderAssetInsertionDraft(); }
+function endAssetInsertionMove(e) { const m=assetInsertionMode;if(m&&m.gesture&&m.gesture.type==='move'&&m.gesture.pointerId===e.pointerId)m.gesture=null; }
+function beginAssetInsertionTransform(e, corner) {
+  const m=assetInsertionMode;if(!m)return;e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+  try{e.currentTarget.setPointerCapture(e.pointerId)}catch(_){} const d=m.draft,wp=assetInsertionWorldPoint(e),cx=d.x+d.w/2,cy=d.y+d.h/2;
+  m.gesture={type:'transform',pointerId:e.pointerId,corner,mode:null,startClientX:e.clientX,startClientY:e.clientY,startX:d.x,startY:d.y,startW:d.w,startH:d.h,startRotation:d.rotation||0,cx,cy,initDist:Math.max(1,Math.hypot(wp.x-cx,wp.y-cy)),initAngle:Math.atan2(wp.y-cy,wp.x-cx)};
+}
+function moveAssetInsertionTransform(e) {
+  const m=assetInsertionMode,g=m&&m.gesture;if(!g||g.type!=='transform'||g.pointerId!==e.pointerId)return;e.preventDefault();e.stopPropagation();
+  const wp=assetInsertionWorldPoint(e),dx=wp.x-g.cx,dy=wp.y-g.cy,dist=Math.max(1,Math.hypot(dx,dy)),angle=Math.atan2(dy,dx);
+  if(!g.mode){g.mode=resolveCornerTransformMode(Math.hypot(e.clientX-g.startClientX,e.clientY-g.startClientY),dist,g.initDist,angle,g.initAngle);if(!g.mode)return;}
+  if(g.mode==='scale'){const f=Math.max(Math.max(1/g.startW,1/g.startH),dist/g.initDist),w=g.startW*f,h=g.startH*f;m.draft.w=w;m.draft.h=h;m.draft.x=g.cx-w/2;m.draft.y=g.cy-h/2;}
+  else m.draft.rotation=normalizeAssetRotation(g.startRotation+getIncrementalAngleDelta(angle,g.initAngle)*180/Math.PI);
+  renderAssetInsertionDraft();
+}
+function endAssetInsertionTransform(e){const m=assetInsertionMode;if(m&&m.gesture&&m.gesture.type==='transform'&&m.gesture.pointerId===e.pointerId)m.gesture=null;}
+function confirmAssetInsertionDraft() {
+  const m=assetInsertionMode;if(!m||m.gesture)return false;
+  m.confirmed.push({...m.draft});
+  if(m.index+1<m.prepared.length){showAssetInsertionDraft(m.index+1);return true;}
+  return commitPendingMultiImageInsert();
+}
+function closeAssetInsertionUi() {
+  const controls=document.getElementById('assetInsertionControls');controls&&controls.classList.remove('open');controls&&controls.setAttribute('aria-hidden','true');
+  const draft=document.getElementById('assetInsertionDraft');if(draft)draft.remove();
+}
+function cancelAssetInsertionMode() {
+  const m=assetInsertionMode;if(!m)return false;
+  releasePreparedMultiImages(m.prepared); closeAssetInsertionUi(); assetInsertionMode=null; multiImageInsertCancelled=true; clearPendingImageAction(); return true;
+}
+function notifyBlockedAssetInsertionInteraction(){showStatus('Confirme ou cancele a inserção atual para continuar.');clearTimeout(assetInsertionOutsideNoticeTimer);assetInsertionOutsideNoticeTimer=setTimeout(()=>{},1400);}
+function blockOutsideAssetInsertionInteraction(event){
+  if(!assetInsertionMode)return;const target=event.target;if(target&&target.closest&&target.closest('#assetInsertionControls,#assetInsertionDraft'))return;
+  event.preventDefault();event.stopPropagation();if(event.stopImmediatePropagation)event.stopImmediatePropagation();notifyBlockedAssetInsertionInteraction();
+}
+document.addEventListener('pointerdown',blockOutsideAssetInsertionInteraction,true);
+document.addEventListener('click',blockOutsideAssetInsertionInteraction,true);
+async function commitPendingMultiImageInsert() {
+  const mode=assetInsertionMode;if(!mode||mode.confirmed.length!==mode.prepared.length||multiImageInsertBusy)return false;
+  multiImageInsertBusy=true;const {prepared,confirmed,snapshot}=mode;let committed=[];
+  try {
+    let firstAsset=null;if(snapshot.wasEmpty)firstAsset=await loadMainImageForMultiInsert(prepared[0].file);
+    let maxZ=assets.reduce((max,a)=>Math.max(max,Number(a&&a.zIndex)||0),0);
+    for(let i=0;i<prepared.length;i++){
+      let asset;if(snapshot.wasEmpty&&i===0){asset=firstAsset;Object.assign(asset,{worldX:confirmed[i].x,worldY:confirmed[i].y,worldW:confirmed[i].w,worldH:confirmed[i].h,rotation:confirmed[i].rotation,zIndex:++maxZ,mimeType:prepared[i].kind,hasAlpha:prepared[i].hasAlpha});}
+      else{asset=createPreparedImageAsset(prepared[i],confirmed[i],++maxZ);asset.rotation=confirmed[i].rotation;assets.push(asset);}committed.push(asset);
+    }
+    const finalAsset=committed[committed.length-1];selectAssetById(finalAsset.id,'multiInsertCommit');multiImageInsertFinalSelectedAssetId=finalAsset.id;multiImageInsertCommittedCount=committed.length;multiImageInsertAlphaCount=committed.filter(a=>a.hasAlpha).length;
+    invalidateProjectWorldComposite();renderProjectWorldExtraImages();renderLayersPanelList();renderAll();clampEditorPan();pushUndoSnapshot(snapshot.state);lastUndoAction='addImageAsset';multiImageInsertHistoryCreated=undoStack.length===snapshot.undo.length+1;markProjectDirty('add-image-assets');multiImageInsertAutosavesScheduled=_sessionAutosaveQueuedRevision-snapshot.queuedRevision;
+    closeAssetInsertionUi();assetInsertionMode=null;clearPendingImageAction();showStatus(`${committed.length} ${committed.length===1?'imagem inserida':'imagens inseridas'}`);return true;
+  }catch(error){multiImageInsertCommitFailed=true;rollbackMultiImageTransaction(snapshot);closeAssetInsertionUi();assetInsertionMode=null;showStatus('Não foi possível inserir as imagens. Nenhuma alteração foi feita.');return false;}
+  finally{releasePreparedMultiImages(prepared.filter(item=>!assets.some(asset=>asset&&asset._img===item.image)));multiImageInsertBusy=false;}
+}
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&assetInsertionMode){event.preventDefault();notifyBlockedAssetInsertionInteraction();}});
 
 function doInsertImageFromFile(file) {
   const slotKey = (pendingImageTargetSlot && pendingImageTargetSlot.key) || 'center';

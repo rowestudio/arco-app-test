@@ -277,22 +277,18 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 
 ## TC-031 — Inserção de várias imagens em uma operação
 
-- Pré-condição: editor aberto com um projeto e Inserir imagem disponível.
-- Passos: selecionar em conjunto JPEG, PNG transparente, WebP e um arquivo inválido; escolher Empilhar, Horizontal e Vertical em execuções separadas; observar Stage/Layers; executar Undo e Redo.
-- Resultado esperado: formatos válidos entram na ordem selecionada, organizados conforme Empilhar/Horizontal/Vertical, mantendo alpha do PNG, nomes `Camada N`, seleção e z-order; o inválido não cria asset; Undo/Redo trata o lote válido como uma operação.
+- Pré-condição: editor aberto no Modo Ativos com Inserir imagens disponível.
+- Passos: selecionar em conjunto JPEG, PNG transparente e WebP; para cada provisório, mover, escalar, rotacionar e tocar OK; repetir cancelando em etapas diferentes; ao final executar Undo e Redo.
+- Resultado esperado: o lote é preparado antes da primeira exibição; somente um provisório aparece por vez; nenhum provisório entra em `assets`; o último OK insere todas na ordem e geometria confirmadas com Undo/autosave únicos; Cancelar restaura integralmente o estado anterior.
 - Evidência: `node scripts/qa/test-multi-image-insert.mjs`, contagem e inspeção de Stage/Layers.
-- Ambiente: harness Node e iPhone/Safari real obrigatório para aprovação final.
-- Automatizável: parcial; validação de assinatura, organização e guardas de histórico são automatizadas, picker/decodes reais e resultado visual exigem aparelho.
+- Ambiente: harness Node e iPhone/Safari/PWA real obrigatório para aprovação final.
+- Automatizável: parcial; contratos transacionais e controladores são automatizados, enquanto gestos, picker, alpha e resultado visual exigem aparelho.
 
-### Cobertura automatizada E8J
-
-O harness Node executa os controladores reais extraídos de `index.html` com mocks somente das dependências e cobre 30 cenários funcionais. O smoke WebKit contém 9 testes E8J adicionais (19 testes Playwright após expansão dinâmica dos três layouts), usando buffers em memória; a execução local permanece condicionada à disponibilidade do binário WebKit.
-
-## TC-032 — Modal de inserção no Modo Ativos
+## TC-032 — Modo de Inserção de Ativos no Stage
 
 - Pré-condição: editor aberto no Modo Ativos, com inserção disponível.
-- Passos: acionar Inserir imagem pelo botão + e pelo menu contextual; cancelar por X, botão Cancelar e backdrop; abrir novamente e escolher imagens.
-- Resultado esperado: o modal sempre antecede a Fototeca; cancelar não altera projeto/histórico/autosave; Escolher imagens abre o input múltiplo pelo gesto corrente e o processamento posterior permanece no pipeline E8J.
-- Evidência: `node scripts/qa/check-asset-insert-dialog.mjs`, smoke WebKit e screenshot do modal.
+- Passos: acionar Inserir imagens; escolher arquivos; testar movimento e as quatro abas para escala/rotação; tocar fora e em toolbar/menus/Layers/Frames; confirmar sequencialmente; repetir cancelando.
+- Resultado esperado: a Fototeca abre sem diálogo intermediário; o Stage mantém apenas instrução curta, contador, OK e Cancelar; ações externas não executam e mostram “Confirme ou cancele a inserção atual para continuar.”; último OK faz commit atômico; Cancelar não cria Undo/autosave nem altera seleção/projeto.
+- Evidência: `node scripts/qa/check-asset-insert-dialog.mjs`, `node scripts/qa/test-multi-image-insert.mjs` e smoke WebKit.
 - Ambiente: inspeção estática, WebKit automatizado e iPhone/Safari/PWA real obrigatório para aprovação visual.
-- Automatizável: parcial; contrato e roteamento são estáticos, enquanto picker e comportamento PWA exigem aparelho real.
+- Automatizável: parcial; modalidade/transação são cobertas estaticamente, enquanto gestos e comportamento PWA exigem aparelho real.

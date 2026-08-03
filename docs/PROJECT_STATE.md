@@ -121,9 +121,10 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - A revisão final adiciona conclusão exclusiva ao carregamento da imagem principal (sucesso, erro real, cancelamento e timeout de segurança), gate determinístico do busy no WebKit, round-trips reais de Save/Load e Session Restore e navegação canônica dos extremos do layout.
 - Preview, Export, WebCodecs, renderer, Frames, curvas e timing permanecem fora do diff funcional. Validação em iPhone/Safari real continua obrigatória.
 
-## Atualização 2026-08-01 — v8z4b32E8L em desenvolvimento
+## Atualização 2026-08-03 — v8z4b32E8L em revisão
 
-- Base confirmada na `main` atual após a reversão da E8K, commit `27eeb1318f6a4205704a7a86e2baa14f4b3cac7b`, versão `v8z4b32E8J`.
-- A ação Inserir imagem no Modo Ativos passa por um modal explícito antes de abrir a Fototeca; Cancelar fecha o modal sem mutar projeto, histórico ou autosave.
-- A confirmação conserva o seletor múltiplo e o pipeline transacional da E8J. Trocar imagem, Frames, Preview, Export, Save/Load e Session Restore permanecem fora do diff funcional.
-- A validação visual em iPhone/Safari/PWA real permanece obrigatória. Nenhuma promoção para produção está autorizada.
+- Base confirmada na `main` da PR #465, commit `27eeb1318f6a4205704a7a86e2baa14f4b3cac7b`, versão `v8z4b32E8J`.
+- Inserir imagens abre diretamente a Fototeca e, após preparar integralmente o lote, inicia um modo modal dentro do Stage com um único provisório por vez, movimento, escala, rotação e quatro abas de Ativos.
+- Durante o modo, interações externas são bloqueadas; OK preserva a geometria e avança, e o último OK faz commit atômico com Undo/autosave únicos. Cancelar libera provisórios sem mutar projeto, seleção, histórico ou autosave.
+- O provisório não entra em `assets` nem usa `selectedAssetId`; opções Empilhar/Horizontal/Vertical e o diálogo pré-Fototeca foram removidos.
+- Preview, Export, WebCodecs, Frames, curvas, timing e Save/Load permanecem fora do diff funcional. Validação visual em iPhone/Safari/PWA real continua obrigatória. Nenhuma promoção para produção está autorizada.

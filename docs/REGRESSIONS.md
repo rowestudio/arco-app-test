@@ -118,10 +118,10 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Teste preventivo:** `node scripts/qa/test-multi-image-insert.mjs`, com fixtures Base64/buffers exclusivamente em memória.
 - **Status:** proteção técnica adicionada na `v8z4b32E8J`; seleção pelo picker e comportamento visual em iPhone/Safari real permanecem pendentes.
 
-## REG-038 — Inserção de Ativos abre a Fototeca sem confirmação contextual
+## REG-038 — Inserção modal muta o projeto antes da confirmação final
 
-- **Problema prevenido:** o comando Inserir imagem pode abandonar o contexto do editor diretamente para a Fototeca, sem uma etapa explícita e cancelável no Modo Ativos.
-- **Prevenção:** `startInsertImageFlow()` abre exclusivamente `#assetInsertDialog`; somente a ação Escolher imagens, executada por gesto do usuário, abre `#multiImageInsertInput`.
-- **Como detectar:** abrir Inserir imagem pelo botão + e pelo menu contextual; confirmar que o modal aparece antes do picker e que X, Cancelar e backdrop não alteram projeto, Undo/Redo ou autosave.
-- **Teste preventivo:** `node scripts/qa/check-asset-insert-dialog.mjs` e smoke WebKit mobile.
-- **Status:** proteção técnica adicionada na `v8z4b32E8L`; validação publicada em iPhone/Safari/PWA real permanece pendente.
+- **Problema prevenido:** arquivos selecionados podem entrar imediatamente em `assets`, fragmentar Undo/autosave ou permitir interação com o restante do editor enquanto o lote ainda está sendo ajustado.
+- **Prevenção:** preparar todo o lote antes do modo; manter um provisório independente de `assets`/`selectedAssetId`; bloquear controles externos; confirmar cada geometria e realizar somente no último OK um commit atômico com Undo e autosave únicos.
+- **Como detectar:** selecionar uma ou várias imagens, mover/escalar/rotacionar cada provisório, tentar usar menus/toolbar/Layers/Frames e testar Cancelar em cada etapa; comparar projeto, seleção, Undo e revisão de autosave antes/depois.
+- **Teste preventivo:** `node scripts/qa/check-asset-insert-dialog.mjs`, `node scripts/qa/test-multi-image-insert.mjs` e smoke WebKit mobile.
+- **Status:** proteção técnica revisada na `v8z4b32E8L`; validação publicada em iPhone/Safari/PWA real permanece pendente.
