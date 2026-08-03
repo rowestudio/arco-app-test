@@ -1,109 +1,50 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-
-const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
-function extractFunction(name) {
-  const marker = `function ${name}(`;
-  let start = html.indexOf(marker);
-  assert.notEqual(start, -1, `${name} deve existir no app real`);
-  if (html.slice(Math.max(0, start - 6), start) === 'async ') start -= 6;
-  const brace = html.indexOf('{', start); let depth = 0;
-  for (let i = brace; i < html.length; i++) {
-    if (html[i] === '{') depth++;
-    else if (html[i] === '}' && --depth === 0) return html.slice(start, i + 1);
-  }
-  throw new Error(`fim de ${name} não encontrado`);
-}
-const elements = Object.fromEntries(['multiImageInsertInput','multiImageLayoutSheet','multiImageLayoutTitle','multiImageLayoutActions','multiImageLayoutBusy'].map(id => [id, {
-  id, style:{ display:'none' }, textContent:'', value:'', files:[], addEventListener(){}, removeAttribute(){}, setAttribute(){}
-}]));
-const context = vm.createContext({ console, Uint8Array, String, Math, Array, Error, setTimeout, clearTimeout,
-  document:{ getElementById:id=>elements[id] || null, addEventListener(){} }, window:{} });
-const functions = [
-  'resetMultiImageInsertDiagnostics','releasePreparedMultiImages','clearPendingMultiImageInsert','openMultiImageLayoutSheet',
-  'closeMultiImageLayoutSheet','handleMultiImageInsertChosen','calculateMultiImageLayout','createPreparedImageAsset',
-  'snapshotMultiImageTransaction','rollbackMultiImageTransaction','commitPendingMultiImageInsert'
-].map(extractFunction).join('\n');
+const html=readFileSync(new URL('../../index.html',import.meta.url),'utf8');
+function fn(name){let a=html.indexOf(`function ${name}(`);assert.notEqual(a,-1,`${name} ausente`);if(html.slice(a-6,a)==='async ')a-=6;const b=html.indexOf('{',a);let d=0;for(let i=b;i<html.length;i++){if(html[i]==='{')d++;else if(html[i]==='}'&&!--d)return html.slice(a,i+1)}throw Error(name)}
+const names=['recordMultiImagePlacementAutosaveEvent','setMultiImagePlacementPhase','resetMultiImageInsertDiagnostics','releasePreparedMultiImages','clearPendingMultiImageInsert','createPreparedImageAsset','snapshotMultiImageTransaction','rollbackMultiImageTransaction','stableMultiImageValue','getMultiImagePlacementCanonicalFingerprint','getMultiImagePlacementFingerprint','positionPendingMultiImageElement','renderPendingMultiImagePlacement','makePendingMultiImageRect','beginMultiImagePlacement','setPendingMultiImageGesture','getPendingOppositeCorner','startPendingMultiImageTransform','movePendingMultiImageDrag','endPendingMultiImageDrag','blockPendingMultiImageExternalInteraction','closePendingMultiImagePlacementVisuals','auditPendingMultiImageIsolation','cancelPendingMultiImagePlacement','confirmPendingMultiImagePlacement','scheduleMultiImagePlacementAutosave','commitPendingMultiImagePlacement'];
+const classList=()=>{const s=new Set();return{add:x=>s.add(x),remove:x=>s.delete(x),contains:x=>s.has(x)}};
+const elements={multiImageInsertInput:{value:''},multiImagePlacementHud:{classList:classList(),setAttribute(){}},multiImagePlacementCounter:{textContent:''},multiImagePlacementConfirm:{disabled:false}};
+const stageContent={children:[],querySelectorAll(sel){return sel==='.pending-multi-image'?this.children:[]},insertBefore(el){this.children.push(el)}};
+const document={body:{classList:classList()},getElementById:id=>elements[id]||null,createElement(){return{style:{},dataset:{},className:'',classList:classList(),addEventListener(){},appendChild(child){(this.children||(this.children=[])).push(child)},setPointerCapture(){},hasPointerCapture(){return false},releasePointerCapture(){},replaceWith(node){const i=stageContent.children.indexOf(this);if(i>=0)stageContent.children[i]=node},cloneNode(){return{...this,classList:classList(),style:{...this.style}}},remove(){stageContent.children=stageContent.children.filter(x=>x!==this)}}},querySelectorAll(){return[]}};
+const context=vm.createContext({console,document,stageContent,imgEl:{},window:{},getComputedStyle:()=>({display:'block'}),Math,JSON,WeakSet,TypeError,Error,setTimeout,clearTimeout,structuredClone});
 vm.runInContext(`
-let pendingMultiImageFiles=null,multiImageInsertBusy=false,multiImageInsertSelectedCount=0,multiImageInsertPreparedCount=0,
-multiImageInsertCommittedCount=0,multiImageInsertLayout='',multiImageInsertCancelled=false,multiImageInsertPreparationFailed=false,
-multiImageInsertCommitFailed=false,multiImageInsertRollbackRequired=false,multiImageInsertRollbackCompleted=false,
-multiImageInsertTemporariesReleased=0,multiImageInsertHistoryCreated=false,multiImageInsertAutosavesScheduled=0,
-multiImageInsertFinalSelectedAssetId='',multiImageInsertAlphaCount=0,pendingImageAction='insertImage',selectedAssetId=null,
-nextLayerSequence=1,_sessionAutosaveQueuedRevision=0,_sessionAutosaveTimer=null,imgNatW=100,stageW=300,stageH=500,lastUndoAction='';
-let assets=[],undoStack=[],redoStack=[],projectWorld={baseStageW:300,baseStageH:500},failCommit=false,statuses=[],singleCalls=0;
-const fitContain=(w,h,bw,bh)=>{const s=Math.min(bw/w,bh/h);return {width:w*s,height:h*s}};
-const computeEditorTransform=()=>{}; const editorStageToWorld=(x,y)=>({x,y}); const getMultiImageVisibleCenter=()=>({x:150,y:250}); const clearPendingImageAction=()=>{pendingImageAction=null};
-const doInsertImageFromFile=()=>{singleCalls++}; const captureState=()=>({assets:assets.map(a=>({...a})),nextLayerSequence,imgNatW});
-const restoreState=s=>{assets=s.assets.map(a=>({...a}));nextLayerSequence=s.nextLayerSequence;imgNatW=s.imgNatW};
-const clearCurrentProjectForNewFile=()=>{assets=[];nextLayerSequence=1;imgNatW=0;undoStack=[];redoStack=[]};
-const clearSelectedAsset=()=>{selectedAssetId=null}; const selectAssetById=id=>{selectedAssetId=id};
-const assignPersistentLayerIdentity=(a,name)=>{if(failCommit)throw new Error('commit');a.layerSequence=nextLayerSequence++;a.layerName='Camada '+a.layerSequence;a.originalFileName=name;return a};
-const invalidateProjectWorldComposite=()=>{},renderProjectWorldExtraImages=()=>{},renderLayersPanelList=()=>{},renderAll=()=>{},clampEditorPan=()=>{};
-const pushUndoSnapshot=s=>{undoStack.push(s);redoStack=[]}; const markProjectDirty=()=>{_sessionAutosaveQueuedRevision++};
-const showStatus=s=>statuses.push(s); const getMainImageAsset=()=>assets[0]||null;
-let preparedFactory=files=>files.map((file,i)=>({file,kind:file.kind||'image/jpeg',dataUrl:'data:'+i,image:{src:'data:'+i},width:file.width||100,height:file.height||80,hasAlpha:file.kind==='image/png'}));
-let prepareMultiImageFiles=async files=>preparedFactory(files);
-let loadMainImageForMultiInsert=async file=>{imgNatW=100;const a={id:'main',type:'image',zIndex:1,layerSequence:nextLayerSequence++,worldW:100,worldH:80};assets.push(a);return a};
-${functions}
-`, context);
-const run = code => vm.runInContext(code, context);
-const files = [{name:'a.jpg',width:120,height:80},{name:'b.png',kind:'image/png',width:80,height:120},{name:'c.webp',kind:'image/webp',width:100,height:100}];
-context.files = files;
-
-// Unitário: projeto existente e vazio continuam no pipeline oficial, sem modal.
-run(`imgNatW=100;handleMultiImageInsertChosen({target:{files:[files[0]],value:'x'}})`); assert.equal(run('singleCalls'),1); assert.equal(elements.multiImageLayoutSheet.style.display,'none');
-run(`imgNatW=0;pendingImageAction='insertImage';handleMultiImageInsertChosen({target:{files:[files[0]],value:'x'}})`); assert.equal(run('singleCalls'),2);
-
-// Modal: nenhuma mutação, título real, cancelamentos e zero histórico/autosave.
-run(`resetMultiImageInsertDiagnostics(files.length);imgNatW=100;assets=[{id:'old',type:'image',zIndex:1}];undoStack=[];_sessionAutosaveQueuedRevision=0;handleMultiImageInsertChosen({target:{files,value:'x'}})`);
-assert.equal(elements.multiImageLayoutSheet.style.display,'flex'); assert.equal(elements.multiImageLayoutTitle.textContent,'Inserir 3 imagens'); assert.equal(run('assets.length'),1);
-run(`closeMultiImageLayoutSheet('cancel')`); assert.equal(run('assets.length'),1); assert.equal(run('undoStack.length'),0); assert.equal(run('_sessionAutosaveQueuedRevision'),0); assert.equal(run('pendingMultiImageFiles'),null);
-
-// Layouts reais: ordem, ausência de sobreposição horizontal/vertical e pilha compacta.
-for (const layout of ['stack','horizontal','vertical']) {
-  context.layout=layout;
-  const p=run(`calculateMultiImageLayout(preparedFactory(files),layout,{x:0,y:0},300,500)`);
-  assert.equal(p.length,3);
-  if(layout==='horizontal') assert.ok(p[0].x+p[0].w < p[1].x && p[1].x+p[1].w < p[2].x);
-  if(layout==='vertical') assert.ok(p[0].y+p[0].h < p[1].y && p[1].y+p[1].h < p[2].y);
-  if(layout==='stack') assert.ok(Math.abs(p[2].x-p[0].x)<40 && p[0].x!==p[1].x);
-}
-
-// Projeto existente: commit completo, IDs/sequence/z consecutivos, último selecionado, Undo/Redo e autosave únicos.
-run(`imgNatW=100;assets=[{id:'old',type:'image',zIndex:5,layerSequence:1}];nextLayerSequence=2;undoStack=[];redoStack=[];_sessionAutosaveQueuedRevision=0;pendingMultiImageFiles=files;multiImageInsertBusy=false;failCommit=false`);
-assert.equal(await run(`commitPendingMultiImageInsert('horizontal')`),true);
-assert.equal(run('assets.length'),4); assert.deepEqual(Array.from(run('assets.slice(1).map(a=>a.layerSequence)')),[2,3,4]);
-assert.deepEqual(Array.from(run('assets.slice(1).map(a=>a.zIndex)')),[6,7,8]); assert.equal(run('new Set(assets.map(a=>a.id)).size'),4);
-assert.equal(run('selectedAssetId'),run('assets[3].id')); assert.equal(run('undoStack.length'),1); assert.equal(run('_sessionAutosaveQueuedRevision'),1);
-assert.equal(run('multiImageInsertAlphaCount'),1); assert.equal(run('multiImageInsertAutosavesScheduled'),1);
-run(`redoStack.push(captureState());restoreState(undoStack.pop())`); assert.equal(run('assets.length'),1);
-run(`undoStack.push(captureState());restoreState(redoStack.pop())`); assert.equal(run('assets.length'),4);
-
-// Projeto vazio: primeira vira principal, restantes ativos, todos no layout e última selecionada.
-run(`imgNatW=0;assets=[];nextLayerSequence=1;undoStack=[];redoStack=[];_sessionAutosaveQueuedRevision=0;pendingMultiImageFiles=files;multiImageInsertBusy=false`);
-assert.equal(await run(`commitPendingMultiImageInsert('vertical')`),true); assert.equal(run('assets[0].id'),'main'); assert.equal(run('assets.length'),3); assert.equal(run('selectedAssetId'),run('assets[2].id'));
-
-// Falha no primeiro/segundo decode: zero commit/autosave e temporários anteriores liberados.
-for (const validBefore of [0,1]) {
-  context.validBefore=validBefore;
-  run(`resetMultiImageInsertDiagnostics(files.length);imgNatW=100;assets=[{id:'old',type:'image',zIndex:1}];undoStack=[];_sessionAutosaveQueuedRevision=0;pendingMultiImageFiles=files;multiImageInsertBusy=false;
-    prepareMultiImageFiles=async fs=>{const p=preparedFactory(fs).slice(0,validBefore);multiImageInsertPreparedCount=p.length;releasePreparedMultiImages(p);throw new Error('decode')}`);
-  assert.equal(await run(`commitPendingMultiImageInsert('stack')`),false); assert.equal(run('assets.length'),1); assert.equal(run('undoStack.length'),0); assert.equal(run('_sessionAutosaveQueuedRevision'),0); assert.equal(run('multiImageInsertTemporariesReleased'),validBefore);
-}
-
-// Falha no commit: rollback integral, sem histórico/autosave parcial; toque duplicado bloqueado.
-run(`prepareMultiImageFiles=async fs=>preparedFactory(fs);imgNatW=100;assets=[{id:'old',type:'image',zIndex:1,layerSequence:1}];nextLayerSequence=2;undoStack=[];redoStack=[];_sessionAutosaveQueuedRevision=0;pendingMultiImageFiles=files;multiImageInsertBusy=false;failCommit=true`);
-assert.equal(await run(`commitPendingMultiImageInsert('stack')`),false); assert.equal(run('assets.length'),1); assert.equal(run('nextLayerSequence'),2); assert.equal(run('undoStack.length'),0); assert.equal(run('_sessionAutosaveQueuedRevision'),0); assert.equal(run('multiImageInsertRollbackCompleted'),true);
-run(`multiImageInsertBusy=true;pendingMultiImageFiles=files`); assert.equal(await run(`commitPendingMultiImageInsert('stack')`),false); run(`multiImageInsertBusy=false;failCommit=false`);
-
-// Compatibilidade observável de Save/Load, ProjectWorld e Session Restore usa o snapshot canônico do lote.
-run(`assets=[{id:'saved',type:'image',worldX:-50,worldY:20,worldW:100,worldH:80,layerSequence:7}];nextLayerSequence=8;const saved=captureState();assets=[];nextLayerSequence=1;restoreState(saved)`);
-assert.equal(run('assets[0].id'),'saved'); assert.equal(run('assets[0].worldX'),-50); assert.equal(run('nextLayerSequence'),8);
-assert.equal(run('multiImageInsertBusy'),false);
-
-// Contrato DOM: inputs separados; Trocar permanece unitário.
-const unit=html.match(/<input type="file" id="fileInput2"[^>]*>/)?.[0]||''; const multi=html.match(/<input type="file" id="multiImageInsertInput"[^>]*>/)?.[0]||'';
-assert.ok(unit.includes('accept="image/*"')); assert.ok(!unit.includes('multiple')); assert.ok(multi.includes('multiple'));
-console.log('Multi-image functional controller tests passed (30 scenarios).');
+let assets=[],frames=[{x:1}],frameCount=1,curvesV2={frameHandles:{}},projectWorld={initialized:true,baseStageW:300,baseStageH:500},selectedAssetId='old',nextLayerSequence=2,undoStack=[],redoStack=[],_sessionAutosaveQueuedRevision=0,_sessionAutosaveCommittedRevision=0,_sessionAutosaveTimer=null,_sessionAutosaveWriteInFlight=false,_sessionAutosaveActiveWrites=new Set(),imgNatW=100,stageW=300,stageH=500,isPinching=false,gestureState={mode:'idle'},lastUndoAction='';
+let pendingImageAction='insertImage',pendingImageTargetSlot=null,pendingImageTargetAssetId=null;let pendingMultiImagePlacement=null,multiImageInsertBusy=false,pendingMultiImageFiles=null,multiImageInsertSelectedCount=0,multiImageInsertPreparedCount=0,multiImageInsertCommittedCount=0,multiImageInsertLayout='',multiImageInsertCancelled=false,multiImageInsertPreparationFailed=false,multiImageInsertCommitFailed=false,multiImageInsertRollbackRequired=false,multiImageInsertRollbackCompleted=false,multiImageInsertTemporariesReleased=0,multiImageInsertHistoryCreated=false,multiImageInsertAutosavesScheduled=0,multiImageInsertFinalSelectedAssetId='',multiImageInsertAlphaCount=0;
+let multiImagePlacementPickerOpenedDirectly=false,multiImagePlacementLegacySlotChooserOpened=false,multiImagePlacementLayoutSheetOpened=false,multiImagePlacementCanonicalAssetCountBefore=0,multiImagePlacementCanonicalMutationBeforeFinalCommit=false,multiImagePlacementCancelled=false,multiImagePlacementCancelStepIndex=-1,multiImagePlacementSnapshotRestored=false,multiImagePlacementFinalCommittedCount=0,multiImagePlacementHistoryEntriesCreated=0,multiImagePlacementAutosavesScheduled=0,multiImagePlacementAutosavesBeforeCommit=0,multiImagePlacementTemporaryResourcesReleased=0,multiImagePlacementPointerCaptureStuck=false,multiImagePlacementGestureConflictDetected=false,multiImagePlacementFrameStateChanged=false,multiImagePlacementCurveStateChanged=false,multiImagePlacementProjectWorldChangedBeforeCommit=false,multiImagePlacementLastErrorType='',multiImagePlacementLastErrorMessage='',multiImagePlacementPickerChanges=0,multiImagePlacementPickerCancellations=0,multiImagePlacementHudVisible=false;
+let multiImagePlacementPhase='idle',multiImagePlacementAutosaveTrace=[],multiImagePlacementAutosaveTraceEnabled=false;
+const startPendingMultiImageDrag=()=>{}; const screenToStageCoord=(x,y)=>({x,y}); const normalizeAssetRotation=d=>((d%360)+360)%360; const getIncrementalAngleDelta=(a,b)=>a-b; const resolveCornerTransformMode=(m,d,p,a,i)=>m>8?(Math.abs(d-p)>=Math.abs(a-i)*Math.max(1,p)?'scale':'rotate'):''; const getImageSourceDimensions=x=>({width:x?.width||1,height:x?.height||1}); const computeEditorTransform=()=>{}; const editorWorldToStage=(x,y,w,h)=>({x,y,w,h}); const editorStageToWorld=(x,y)=>({x,y}); const getMultiImageVisibleCenter=()=>({x:150,y:250}); const fitContain=(w,h,bw,bh)=>{const q=Math.min(bw/w,bh/h);return{width:w*q,height:h*q}};
+let failIdentity=false; function assignPersistentLayerIdentity(a,n){if(failIdentity)throw new TypeError('forced-commit');a.layerSequence=nextLayerSequence++;a.layerName='Camada '+a.layerSequence;a.originalFileName=n}
+const clone=x=>structuredClone(x); function captureState(){return{assets:assets.map(a=>({...a})),frames:clone(frames),curvesV2:clone(curvesV2),projectWorld:{...projectWorld},nextLayerSequence}}
+function restoreState(s){assets=s.assets.map(a=>({...a}));frames=clone(s.frames);curvesV2=clone(s.curvesV2);projectWorld={...s.projectWorld};nextLayerSequence=s.nextLayerSequence}
+function clearCurrentProjectForNewFile(){assets=[];frames=[];frameCount=0;projectWorld={initialized:false,baseStageW:0,baseStageH:0};imgNatW=0;selectedAssetId=null}
+const selectAssetById=id=>selectedAssetId=id,clearSelectedAsset=()=>selectedAssetId=null; const invalidateProjectWorldComposite=()=>{},renderProjectWorldExtraImages=()=>{},renderLayersPanelList=()=>{},renderAll=()=>{}; const pushUndoSnapshot=s=>{undoStack.push(s);redoStack=[]}; const markProjectDirty=()=>_sessionAutosaveQueuedRevision++; let lastStatus=''; const showStatus=s=>lastStatus=s;
+let preparedFactory=files=>files.map((file,i)=>({file,kind:file.kind||'image/png',dataUrl:'data:'+i,image:{src:'data:'+i,width:10,height:10},width:file.width||100,height:file.height||80,hasAlpha:(file.kind||'image/png')==='image/png'})); let prepareMultiImageFiles=async files=>{const p=preparedFactory(files);multiImageInsertPreparedCount=p.length;return p}; let loadMainImageForMultiImagePlacement=async item=>{imgNatW=100;projectWorld={initialized:true,baseStageW:300,baseStageH:500};const a={id:'main',type:'image',zIndex:0,_img:{src:item.dataUrl}};assets=[a];return a};
+${names.map(fn).join('\n')}
+`,context);
+const run=x=>vm.runInContext(x,context);context.files=[{name:'a.png'},{name:'b.png'},{name:'c.png'}];
+// Preparação -> snapshot -> HUD, sem mutação canônica.
+assert.equal(await run('beginMultiImagePlacement(files)'),true);assert.equal(run('pendingMultiImagePlacement.preparedImages.length'),3);assert.equal(elements.multiImagePlacementCounter.textContent,'1/3');assert.equal(run('assets.length'),0);assert.equal(run('undoStack.length'),0);
+assert.equal(run('_sessionAutosaveQueuedRevision'),0);assert.equal(run("multiImagePlacementAutosaveTrace.filter(e=>e.point==='autosave-scheduled').length"),0);
+// O provisório real expõe quatro abas e reutiliza os controladores de escala/rotação sem tocar no modelo.
+assert.equal(run('pendingMultiImagePlacement.currentElement.children.filter(x=>x.className.includes(\"asset-corner-handle\")).length'),4);
+const widthBefore=run('pendingMultiImagePlacement.currentRect.w');run(`(()=>{const h=pendingMultiImagePlacement.currentElement.children[1];startPendingMultiImageTransform({preventDefault(){},stopPropagation(){},pointerId:7,currentTarget:h,clientX:0,clientY:130});movePendingMultiImageDrag({preventDefault(){},stopPropagation(){},stopImmediatePropagation(){},pointerId:7,clientX:-80,clientY:50});endPendingMultiImageDrag({pointerId:7})})()`);assert.ok(run('pendingMultiImagePlacement.currentRect.w')>widthBefore);assert.equal(run('assets.length'),0);
+run(`blockPendingMultiImageExternalInteraction({target:{closest(){return null}},preventDefault(){this.prevented=true},stopPropagation(){},stopImmediatePropagation(){}})`);assert.equal(run('lastStatus'),'Confirme ou cancele a inserção atual para continuar.');assert.equal(run('pendingMultiImagePlacement.currentIndex'),0);
+run("multiImagePlacementAutosaveTraceEnabled=true;recordMultiImagePlacementAutosaveEvent('gate-open');multiImagePlacementAutosaveTraceEnabled=false;recordMultiImagePlacementAutosaveEvent('gate-closed')");assert.equal(run('multiImagePlacementAutosaveTrace.length'),1);
+// Cancelamento intermediário restaura assets, seleção, sequência, histórico e revisão.
+run('pendingMultiImagePlacement.placements.push({...pendingMultiImagePlacement.currentRect});pendingMultiImagePlacement.currentIndex=1');assert.equal(run('cancelPendingMultiImagePlacement()'),true);assert.equal(run('multiImagePlacementSnapshotRestored'),true);assert.equal(run('undoStack.length'),0);assert.equal(run('_sessionAutosaveQueuedRevision'),0);
+// Projeto existente: três confirmações e commit real produzem assets, Undo/Autosave únicos e ordem/zIndex.
+run("assets=[{id:'old',type:'image',zIndex:4,layerSequence:1}];selectedAssetId='old';nextLayerSequence=2;frames=[{x:1}];frameCount=1;projectWorld={initialized:true,baseStageW:300,baseStageH:500};undoStack=[];redoStack=[];_sessionAutosaveQueuedRevision=0");
+assert.equal(await run('beginMultiImagePlacement(files)'),true);assert.equal(await run('confirmPendingMultiImagePlacement()'),true);assert.equal(await run('confirmPendingMultiImagePlacement()'),true);assert.equal(await run('confirmPendingMultiImagePlacement()'),true);
+assert.equal(run('assets.length'),4);assert.deepEqual(Array.from(run('assets.slice(1).map(a=>a.zIndex)')),[5,6,7]);assert.equal(run('selectedAssetId'),run('assets.at(-1).id'));assert.equal(run('undoStack.length'),1);assert.equal(run('_sessionAutosaveQueuedRevision'),1);assert.equal(run('multiImagePlacementHistoryEntriesCreated'),1);assert.equal(run('multiImagePlacementAutosavesScheduled'),1);
+// Projeto vazio: a primeira imagem vira principal somente no commit e o lote permanece atômico.
+run("assets=[];selectedAssetId=null;nextLayerSequence=1;undoStack=[];redoStack=[];_sessionAutosaveQueuedRevision=0;imgNatW=0;stageW=0;stageH=0;projectWorld={initialized:false,baseStageW:0,baseStageH:0};frames=[];frameCount=0");assert.equal(await run('beginMultiImagePlacement(files)'),true);assert.equal(run('assets.length'),0);await run('confirmPendingMultiImagePlacement()');await run('confirmPendingMultiImagePlacement()');assert.equal(await run('confirmPendingMultiImagePlacement()'),true);assert.equal(run('assets[0].id'),'main');assert.equal(run('assets.length'),3);assert.equal(run('undoStack.length'),1);assert.equal(run('_sessionAutosaveQueuedRevision'),1);
+// Falha de commit: rollback profundo, nenhum parcial e erro de programação observável.
+run("assets=[{id:'old',type:'image',zIndex:1,layerSequence:1}];selectedAssetId='old';nextLayerSequence=2;undoStack=[];redoStack=[];_sessionAutosaveQueuedRevision=0;failIdentity=false;window.__ARCO_TEST_MULTI_IMAGE_COMMIT_FAIL_AFTER__=1");const before=run('getMultiImagePlacementFingerprint()');assert.equal(await run('beginMultiImagePlacement(files)'),true);await run('confirmPendingMultiImagePlacement()');await run('confirmPendingMultiImagePlacement()');assert.equal(await run('confirmPendingMultiImagePlacement()'),false);assert.equal(run('getMultiImagePlacementFingerprint()'),before);assert.equal(run('multiImagePlacementLastErrorType'),'TypeError');assert.equal(run('assets.length'),1);assert.equal(run('undoStack.length'),0);assert.equal(run('_sessionAutosaveQueuedRevision'),0);
+// Falha de decode impede HUD e mutação parcial.
+run("window.__ARCO_TEST_MULTI_IMAGE_COMMIT_FAIL_AFTER__=0;failIdentity=false;prepareMultiImageFiles=async()=>{multiImageInsertPreparationFailed=true;throw new Error('image-decode-failed')}");const decodeBefore=run('getMultiImagePlacementFingerprint()');assert.equal(await run('beginMultiImagePlacement(files)'),false);assert.equal(run('getMultiImagePlacementFingerprint()'),decodeBefore);assert.equal(run('multiImagePlacementLastErrorMessage'),'image-decode-failed');
+// Contratos complementares: gate e ausência da UI legada.
+const start=html.slice(html.indexOf('function startInsertImageFlow()'),html.indexOf('// ── Ação 2:',html.indexOf('function startInsertImageFlow()')));assert.ok(start.includes('canAddImageAsset()')&&start.includes('openMultipleImagesPlusModal()'));assert.equal((html.match(/function snapshotMultiImageTransaction\(/g)||[]).length,1);assert.equal((html.match(/function createPreparedImageAsset\(/g)||[]).length,1);assert.equal((html.match(/function rollbackMultiImageTransaction\(/g)||[]).length,1);assert.ok(!html.includes('id="multiImageLayoutSheet"'));
+assert.ok(html.includes("event.target?.id === 'multiImageInsertInput'"));
+console.log('Multi-image functional controller tests passed.');

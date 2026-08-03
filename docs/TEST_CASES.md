@@ -287,3 +287,13 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 ### Cobertura automatizada E8J
 
 O harness Node executa os controladores reais extraídos de `index.html` com mocks somente das dependências e cobre 30 cenários funcionais. O smoke WebKit contém 9 testes E8J adicionais (19 testes Playwright após expansão dinâmica dos três layouts), usando buffers em memória; a execução local permanece condicionada à disponibilidade do binário WebKit.
+
+## TC-032 — Inserção modal sequencial de Ativos
+
+- Pré-condição: Modo Ativos em projeto vazio ou existente, opcionalmente com outro ativo selecionado.
+- Passos: acionar Inserir imagens; selecionar um ou vários JPEG/PNG/WebP; em cada provisório mover, escalar e rotacionar pelas quatro abas; confirmar etapas com `OK`; repetir cancelando na primeira, intermediária e última etapa; durante o fluxo tentar Stage vazio, outro ativo, toolbar, Layers, Frames, menus, Preview e Export; executar Undo/Redo após o commit; repetir com falha de decode e de commit.
+- Resultado esperado: uma imagem provisória por vez e nenhuma mutação canônica antes do último `OK`; ações externas apenas exibem “Confirme ou cancele a inserção atual para continuar.”; Cancelar restaura integralmente o estado anterior; último `OK` insere o lote na ordem original, preserva PNG alpha, nomes e `layerSequence`, seleciona o último asset e gera exatamente um Undo e uma revisão de Session Autosave.
+- Preservações: Trocar imagem unitário, Save/Load, Session Restore, Preview e Export permanecem funcionais fora do modo modal.
+- Evidência: `node scripts/qa/test-multi-image-insert.mjs`, `node scripts/qa/test-multi-image-main-load.mjs`, smoke WebKit e inspeção do diff protegido.
+- Ambiente: harness Node e WebKit automatizado; iPhone/Safari real obrigatório para aprovação final e ainda pendente.
+- Automatizável: parcial; controladores e transação são automatizados, enquanto picker/Fototeca e qualidade gestual final exigem aparelho real.
