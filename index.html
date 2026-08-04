@@ -1640,7 +1640,7 @@ body.inserting-frame .frame-out-handle{pointer-events:none !important;}
 .ins-bar-btn svg{width:22px;height:22px;display:block;stroke-width:3;}
 .ins-bar-btn.ok{background:var(--accent);color:#000;}
 .ins-bar-btn.cancel{background:#ff9500;color:#000;}
-#multiImagePlacementHud{position:absolute;left:50%;bottom:max(8px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:110;display:none;width:min(230px,calc(100% - 16px));text-align:center;pointer-events:none}
+#multiImagePlacementHud{position:absolute;left:50%;bottom:max(8px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:2000;display:none;width:min(230px,calc(100% - 16px));text-align:center;pointer-events:none}
 #multiImagePlacementHud.show{display:block}
 #multiImagePlacementHint,#multiImagePlacementCounter{display:inline-block;background:var(--menu-bg);padding:5px 9px;color:var(--text1);font-size:12px;font-weight:650}
 #multiImagePlacementHint{border-radius:9px 0 0 9px}#multiImagePlacementCounter{border-radius:0 9px 9px 0;color:var(--text2)}
@@ -8925,6 +8925,10 @@ function hasPendingAssistedFrame() {
 }
 
 function shouldBlockGlobalUIAction() {
+  if (typeof pendingMultiImagePlacement !== 'undefined' && pendingMultiImagePlacement) {
+    showStatus('Confirme ou cancele a inserção atual para continuar.');
+    return true;
+  }
   if (!hasPendingAssistedFrame()) return false;
   showStatus('Confirme ou cancele o frame atual.');
   return true;
@@ -15225,14 +15229,17 @@ function handleAssetsModeBtn(ev) { handleModeButtonTap('assets', ev); }
 
 // v8z4b32B — abre o menu contextual do modo indicado. Roteador único.
 function openModeContextMenu(targetMode) {
+  if (shouldBlockGlobalUIAction()) return false;
   if (targetMode === 'assets') openAssetsModeContextMenu();
   else openCameraModeContextMenu();
+  return true;
 }
 
 // ── Menu contextual do Modo Câmera ────────────────────────────────────────
 // v8z4b32D1: oculta (display:none) o botão do viewMode atual — sem disabled.
 // Exibe apenas as opções que representam uma transição disponível.
 function openCameraModeContextMenu() {
+  if (shouldBlockGlobalUIAction()) return false;
   if (!isCameraMode()) return;
   const menu = document.getElementById('cameraModeContextMenu');
   if (!menu) return;
@@ -15292,6 +15299,7 @@ function getAssetsFramesToggleLabel() {
   return visible ? 'Esconder frames' : 'Mostrar frames';
 }
 function openAssetsModeContextMenu() {
+  if (shouldBlockGlobalUIAction()) return false;
   if (!isAssetsMode()) return;
   const menu = document.getElementById('assetsModeContextMenu');
   if (!menu) return;
@@ -15309,6 +15317,7 @@ function closeAssetsModeContextMenu() {
   if (menu) menu.classList.remove('open');
 }
 function runAssetsContextMenuAction(action) {
+  if (shouldBlockGlobalUIAction()) return false;
   lastModeContextMenuAction = 'assets:' + action;
   if (action === 'layers') {
     closeAssetsModeContextMenu();
@@ -15981,12 +15990,14 @@ function clearFrameEditingVisualsForAssetsMode(reason) {
 // v8z4b30ZO — abre o menu contextual de ações de imagem no Modo Ativos.
 // v8z4b30ZT — restrito a imagens/assets; frame visibility movido para #assetsModeMenu.
 function openAssetsAddMenu() {
+  if (shouldBlockGlobalUIAction()) return false;
   const menu = document.getElementById('assetsAddMenu');
   if (!menu) return;
   const hasSel = !!getSelectedAsset();
   const replaceBtn = document.getElementById('assetsMenuReplaceBtn');
   if (replaceBtn) replaceBtn.style.display = hasSel ? 'flex' : 'none';
   menu.classList.add('open');
+  return true;
 }
 function closeAssetsAddMenu() {
   const menu = document.getElementById('assetsAddMenu');
@@ -15996,12 +16007,14 @@ function closeAssetsAddMenu() {
 // v8z4b30ZT — menu de opções do Modo Ativos (segundo toque no ícone de Ativos).
 // Contém visualização de referências de frames e Localizar frame — NOT em botão "+".
 function openAssetsModeMenu() {
+  if (shouldBlockGlobalUIAction()) return false;
   if (!isAssetsMode()) return;
   const menu = document.getElementById('assetsModeMenu');
   if (!menu) return;
   const lbl = document.getElementById('assetsModeMenuFramesLabel');
   if (lbl) lbl.textContent = worldModeShowFrames ? 'Ocultar referências de frames' : 'Mostrar referências de frames';
   menu.style.display = 'flex';
+  return true;
 }
 function closeAssetsModeMenu() {
   const menu = document.getElementById('assetsModeMenu');
@@ -31869,6 +31882,8 @@ function triggerMultiImageInsertPicker() {
 function startInsertImageFlow() {
   closeSettingsSheet();
   closeAll();
+  closeProModal();
+  closeLayersPanel();
   clearPendingImageAction();
   if (imgNatW && !canAddImageAsset()) {
     openMultipleImagesPlusModal();
@@ -32115,6 +32130,7 @@ function handleMultiImageInsertChosen(e) {
     setMultiImagePlacementPhase('idle', 'picker-cancelled'); multiImagePlacementAutosaveTraceEnabled = false;
     return;
   }
+  prepareMultiImagePlacementModalEnvironment();
   multiImageInsertSelectedCount = files.length;
   const transactionBaseline = {
     snapshot:snapshotMultiImageTransaction(),
@@ -32267,6 +32283,31 @@ function positionPendingMultiImageElement(element, rect) {
   Object.assign(element.style, { left:pos.x+'px', top:pos.y+'px', width:pos.w+'px', height:pos.h+'px',
     transform:'rotate(' + normalizeAssetRotation(rect.rotation || 0) + 'deg)' });
 }
+function prepareMultiImagePlacementModalEnvironment() {
+  closeProModal();
+  closeLayersPanel();
+  closeCameraModeContextMenu();
+  closeAssetsModeContextMenu();
+  closeAssetsAddMenu();
+  closeSettingsSheet();
+}
+function preparePendingMultiImageStage(item) {
+  const stageRect = stage?.getBoundingClientRect?.() || { width:0, height:0 };
+  if (stageRect.width > 0 && stageRect.height > 0) return { temporary:false, width:stageRect.width, height:stageRect.height };
+  const areaRect = imageArea?.getBoundingClientRect?.() || { width:0, height:0 };
+  const availableW = Math.max(160, (Number(areaRect.width) || window.innerWidth || 320) - 16);
+  const availableH = Math.max(160, (Number(areaRect.height) || window.innerHeight || 480) - 16);
+  const sourceW = Math.max(1, Number(item?.width) || 1);
+  const sourceH = Math.max(1, Number(item?.height) || 1);
+  const fitted = fitContain(sourceW, sourceH, availableW, availableH);
+  const width = Math.max(160, Math.min(availableW, fitted.width));
+  const height = Math.max(160, Math.min(availableH, fitted.height));
+  const previous = { width:stage.style.width, height:stage.style.height };
+  stage.style.width = width + 'px';
+  stage.style.height = height + 'px';
+  stage.classList.add('multi-image-provisional-stage');
+  return { temporary:true, width, height, previous };
+}
 function renderPendingMultiImagePlacement() {
   const state = pendingMultiImagePlacement;
   if (!state) return;
@@ -32277,13 +32318,15 @@ function renderPendingMultiImagePlacement() {
     element.dataset.pendingIndex = String(state.currentIndex);
     const image = document.createElement('img');
     image.src = item.dataUrl; image.alt = ''; image.draggable = false;
-    image.addEventListener('pointerdown', startPendingMultiImageDrag);
+    element.addEventListener('pointerdown', startPendingMultiImageDrag);
+    element.addEventListener('lostpointercapture', endPendingMultiImageDrag);
     element.appendChild(image);
     ['tl','tr','bl','br'].forEach(corner => {
       const handle = document.createElement('div');
       handle.className = 'asset-corner-handle show';
       handle.dataset.assetCorner = corner;
       handle.addEventListener('pointerdown', startPendingMultiImageTransform);
+      handle.addEventListener('lostpointercapture', endPendingMultiImageDrag);
       element.appendChild(handle);
     });
     stageContent.insertBefore(element, imgEl);
@@ -32299,11 +32342,11 @@ function renderPendingMultiImagePlacement() {
   if (confirm) confirm.disabled = !!(state.gesture || state.navigationGesture || isPinching);
 }
 
-function makePendingMultiImageRect(item) {
-  const baseW = projectWorld.baseStageW || stageW || item.width;
-  const baseH = projectWorld.baseStageH || stageH || item.height;
+function makePendingMultiImageRect(item, provisionalStage) {
+  const baseW = projectWorld.baseStageW || stageW || provisionalStage?.width || item.width;
+  const baseH = projectWorld.baseStageH || stageH || provisionalStage?.height || item.height;
   const size = fitContain(item.width, item.height, baseW, baseH);
-  const center = getMultiImageVisibleCenter();
+  const center = (projectWorld.baseStageW || stageW) ? getMultiImageVisibleCenter() : { x:baseW/2, y:baseH/2 };
   return { x:center.x-size.width/2, y:center.y-size.height/2, w:size.width, h:size.height, rotation:0 };
 }
 async function beginMultiImagePlacement(files, transactionBaseline = null) {
@@ -32321,10 +32364,12 @@ async function beginMultiImagePlacement(files, transactionBaseline = null) {
     prepared = await prepareMultiImageFiles(files);
     recordMultiImagePlacementAutosaveEvent('prepare-after');
     if (!prepared.length) throw new Error('prepared-images-empty');
+    if (!transactionBaseline) prepareMultiImagePlacementModalEnvironment();
+    const provisionalStage = preparePendingMultiImageStage(prepared[0]);
     multiImagePlacementCanonicalAssetCountBefore = assets.length;
     pendingMultiImagePlacement = { active:true, preparedImages:prepared, placements:[], currentIndex:0,
-      currentRect:makePendingMultiImageRect(prepared[0]), snapshotBefore:baseline.snapshot, fingerprint:baseline.fingerprint, rollbackFingerprint:baseline.rollbackFingerprint,
-      gesture:null, navigationGesture:null, emptyStageGesture:null, currentElement:null, autosavesScheduled:0 };
+      currentRect:makePendingMultiImageRect(prepared[0], provisionalStage), snapshotBefore:baseline.snapshot, fingerprint:baseline.fingerprint, rollbackFingerprint:baseline.rollbackFingerprint,
+      gesture:null, navigationGesture:null, emptyStageGesture:null, currentElement:null, autosavesScheduled:0, provisionalStage };
     clearPendingMultiImageInsert();
     pendingImageAction = null; pendingImageTargetSlot = null; pendingImageTargetAssetId = null;
     document.body?.classList?.add('multi-image-placement-active');
@@ -32428,6 +32473,14 @@ function closePendingMultiImagePlacementVisuals() {
     multiImagePlacementPointerCaptureStuck ||= !!gesture.target.hasPointerCapture?.(gesture.pointerId);
   }
   stageContent.querySelectorAll('.pending-multi-image').forEach(el => el.remove());
+  const provisionalStage = pendingMultiImagePlacement?.provisionalStage;
+  if (provisionalStage?.temporary) {
+    if (!imgNatW) {
+      stage.style.width = provisionalStage.previous?.width || '';
+      stage.style.height = provisionalStage.previous?.height || '';
+    }
+    stage.classList.remove('multi-image-provisional-stage');
+  }
   document.body?.classList?.remove('multi-image-placement-active');
   const hud=document.getElementById('multiImagePlacementHud'); hud?.classList.remove('show'); hud?.setAttribute('aria-hidden','true');
 }
@@ -32483,7 +32536,7 @@ function confirmPendingMultiImagePlacement() {
     state.currentElement = null;
   }
   if (state.currentIndex < state.preparedImages.length) {
-    state.currentRect=makePendingMultiImageRect(state.preparedImages[state.currentIndex]); renderPendingMultiImagePlacement(); return true;
+    state.currentRect=makePendingMultiImageRect(state.preparedImages[state.currentIndex], state.provisionalStage); renderPendingMultiImagePlacement(); return true;
   }
   return commitPendingMultiImagePlacement();
 }
@@ -35177,6 +35230,7 @@ function scrollSelectedLayerIntoView() {
 }
 // ── Painel básico de Layers ──────────────────────────────────────────────
 function openLayersPanel() {
+  if (shouldBlockGlobalUIAction()) return false;
   const panel = document.getElementById('layersPanel');
   if (!panel) return;
   renderLayersPanelList();
@@ -35184,6 +35238,7 @@ function openLayersPanel() {
   panel.setAttribute('aria-hidden', 'false');
   scrollSelectedLayerIntoView();
   updateCanonicalAssetSelectionDiagnostics();
+  return true;
 }
 function closeLayersPanel() {
   const panel = document.getElementById('layersPanel');
@@ -36832,6 +36887,7 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
 // MONETIZAÇÃO — FREE / PRO
 // ═══════════════════════════════════════
 function checkWatermarkWarning() {
+  if (typeof pendingMultiImagePlacement !== 'undefined' && pendingMultiImagePlacement) return;
   // Dispara uma vez por sessão quando frameCount passa para 3
   if (isProMode || proModalShown || frameCount < 4) return;
   proModalShown = true;
