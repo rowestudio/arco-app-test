@@ -703,15 +703,33 @@ test('E8M: falha forçada no commit faz rollback profundo sem parcial', async ({
 });
 
 test('E8M: Layers só recebe lote no commit; Undo e Redo são integrais', async ({ page }) => {
-  await openEmptyEditorForE8J(page);await chooseMultiImages(page,3);
-  expect(await page.evaluate(()=>openLayersPanel())).toBe(false);
-  await expect(page.locator('#layersPanel')).toBeHidden();
-  await expect(page.locator('#statusBar')).toContainText('Confirme ou cancele a inserção atual para continuar.');
-  for(let i=0;i<3;i++)await page.locator('#multiImagePlacementConfirm').click();
-  expect(await page.evaluate(()=>openLayersPanel())).toBe(true);
-  await expect(page.locator('#layersPanel')).toBeVisible();
-  await expect(page.locator('#layersList .layers-item')).toHaveCount(3);
-  await page.evaluate(()=>closeLayersPanel());await page.evaluate(()=>undo());await expect.poll(()=>page.evaluate(()=>assets.length)).toBe(0);await page.evaluate(()=>redo());await expect.poll(()=>page.evaluate(()=>assets.length)).toBe(3);
+  await openEmptyEditorForE8J(page);
+  const prepareGate=await installControlledAsyncGate(page,'prepareMultiImageFiles');
+  try {
+    await chooseMultiImages(page,3);
+    await expect.poll(()=>page.evaluate(()=>multiImageInsertionTransactionPhase)).toBe('preparing');
+    const blocked=await page.evaluate(async()=>{
+      const selectionBefore=selectedAssetId;
+      const layers=openLayersPanel();
+      const menu=openAssetsModeContextMenu();
+      const insert=startInsertImageFlow();
+      togglePlay();
+      await startRecord();
+      selectAssetById('blocked-selection','stage');
+      return {layers,menu,insert,selectionPreserved:selectedAssetId===selectionBefore,preview:isPreviewing,recording:isRecording,exportPreparing};
+    });
+    expect(blocked).toEqual({layers:false,menu:false,insert:false,selectionPreserved:true,preview:false,recording:false,exportPreparing:false});
+    await expect(page.locator('#layersPanel')).toBeHidden();
+    await expect(page.locator('#assetsModeContextMenu')).not.toHaveClass(/open/);
+    await expect(page.locator('#statusBar')).toContainText('Confirme ou cancele a inserção atual para continuar.');
+    await prepareGate.release();
+    await expect(page.locator('#multiImagePlacementHud')).toBeVisible({timeout:15000});
+    for(let i=0;i<3;i++)await page.locator('#multiImagePlacementConfirm').click();
+    expect(await page.evaluate(()=>openLayersPanel())).toBe(true);
+    await expect(page.locator('#layersPanel')).toBeVisible();
+    await expect(page.locator('#layersList .layers-item')).toHaveCount(3);
+    await page.evaluate(()=>closeLayersPanel());await page.evaluate(()=>undo());await expect.poll(()=>page.evaluate(()=>assets.length)).toBe(0);await page.evaluate(()=>redo());await expect.poll(()=>page.evaluate(()=>assets.length)).toBe(3);
+  } finally { await prepareGate.restore(); }
 });
 
 test('E8M: previews pendentes não entram no renderer e Trocar continua unitário', async ({ page }) => {

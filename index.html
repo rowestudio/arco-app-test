@@ -8925,7 +8925,7 @@ function hasPendingAssistedFrame() {
 }
 
 function shouldBlockGlobalUIAction() {
-  if (typeof pendingMultiImagePlacement !== 'undefined' && pendingMultiImagePlacement) {
+  if (typeof isMultiImageInsertionTransactionActive === 'function' && isMultiImageInsertionTransactionActive()) {
     showStatus('Confirme ou cancele a inserção atual para continuar.');
     return true;
   }
@@ -15162,6 +15162,11 @@ function getSelectedAsset() {
 // selectedImageAssetId existe apenas para compatibilidade com o fluxo legado de
 // troca de imagem e sempre deriva desta seleção, nunca funciona em paralelo.
 function selectAssetById(assetId, source) {
+  const insertionInternal = source === 'multiImagePlacementCommit' || source === 'multiImagePlacementRollback';
+  if (!insertionInternal && typeof isMultiImageInsertionTransactionActive === 'function' && isMultiImageInsertionTransactionActive()) {
+    showStatus('Confirme ou cancele a inserção atual para continuar.');
+    return null;
+  }
   const requestedId = assetId == null ? null : String(assetId);
   const asset = requestedId == null || !Array.isArray(assets) ? null : assets.find(function(candidate) {
     return candidate && String(candidate.id) === requestedId;
@@ -31870,6 +31875,10 @@ function triggerImageFilePicker() {
   fi.click();
 }
 function triggerMultiImageInsertPicker() {
+  if (isMultiImageInsertionTransactionActive()) {
+    showStatus('Confirme ou cancele a inserção atual para continuar.');
+    return false;
+  }
   const fi = document.getElementById('multiImageInsertInput');
   if (!fi) return false;
   try { fi.value = ''; } catch (_) {}
@@ -31880,6 +31889,10 @@ function triggerMultiImageInsertPicker() {
 
 // ── Ação 1: INSERIR IMAGEM ──────────────────────────────────────────────
 function startInsertImageFlow() {
+  if (isMultiImageInsertionTransactionActive()) {
+    showStatus('Confirme ou cancele a inserção atual para continuar.');
+    return false;
+  }
   closeSettingsSheet();
   closeAll();
   closeProModal();
@@ -31902,6 +31915,10 @@ function startInsertImageFlow() {
 // não sobre o setor/slot. Sem asset selecionado e com várias imagens: aviso
 // discreto + painel de Layers (sem troca automática por slot/setor).
 function startReplaceImageFlow() {
+  if (isMultiImageInsertionTransactionActive()) {
+    showStatus('Confirme ou cancele a inserção atual para continuar.');
+    return false;
+  }
   closeSettingsSheet();
   closeAll();
   clearPendingImageAction();
@@ -32028,6 +32045,15 @@ let multiImagePlacementHudVisible = false;
 let multiImagePlacementPhase = 'idle';
 let multiImagePlacementAutosaveTrace = [];
 let multiImagePlacementAutosaveTraceEnabled = false;
+let multiImageInsertionTransactionPhase = 'idle';
+
+function isMultiImageInsertionTransactionActive() {
+  return multiImageInsertionTransactionPhase !== 'idle';
+}
+function setMultiImageInsertionTransactionPhase(phase) {
+  multiImageInsertionTransactionPhase = phase || 'idle';
+  return multiImageInsertionTransactionPhase;
+}
 
 function recordMultiImagePlacementAutosaveEvent(point, reason = '', caller = '', revisionBefore, revisionAfter) {
   if (!multiImagePlacementAutosaveTraceEnabled) return;
@@ -32130,7 +32156,13 @@ function handleMultiImageInsertChosen(e) {
     setMultiImagePlacementPhase('idle', 'picker-cancelled'); multiImagePlacementAutosaveTraceEnabled = false;
     return;
   }
+  if (isMultiImageInsertionTransactionActive()) {
+    showStatus('Confirme ou cancele a inserção atual para continuar.');
+    if (input) { try { input.value = ''; } catch (_) {} }
+    return;
+  }
   prepareMultiImagePlacementModalEnvironment();
+  setMultiImageInsertionTransactionPhase('picker-change');
   multiImageInsertSelectedCount = files.length;
   const transactionBaseline = {
     snapshot:snapshotMultiImageTransaction(),
@@ -32138,6 +32170,7 @@ function handleMultiImageInsertChosen(e) {
     rollbackFingerprint:getMultiImagePlacementFingerprint()
   };
   recordMultiImagePlacementAutosaveEvent('snapshot-created');
+  setMultiImageInsertionTransactionPhase('preparing');
   beginMultiImagePlacement(files, transactionBaseline);
 }
 async function readSupportedImageKind(file) {
@@ -32227,7 +32260,7 @@ function rollbackMultiImageTransaction(snapshot) {
   if (snapshot.wasEmpty) clearCurrentProjectForNewFile(); else restoreState(snapshot.state);
   nextLayerSequence = snapshot.nextLayerSequence;
   if (snapshot.selectedAssetId) selectAssetById(snapshot.selectedAssetId, 'multiImagePlacementRollback');
-  else clearSelectedAsset();
+  else clearSelectedAsset('multiImagePlacementRollback');
   multiImageInsertRollbackCompleted = true;
 }
 function loadMainImageForMultiImagePlacement(item) {
@@ -32351,6 +32384,11 @@ function makePendingMultiImageRect(item, provisionalStage) {
 }
 async function beginMultiImagePlacement(files, transactionBaseline = null) {
   if (multiImageInsertBusy || pendingMultiImagePlacement) return false;
+  const ownsTransaction = !isMultiImageInsertionTransactionActive();
+  if (ownsTransaction) {
+    prepareMultiImagePlacementModalEnvironment();
+    setMultiImageInsertionTransactionPhase('preparing');
+  }
   multiImageInsertBusy = true;
   let prepared = [];
   try {
@@ -32374,6 +32412,7 @@ async function beginMultiImagePlacement(files, transactionBaseline = null) {
     pendingImageAction = null; pendingImageTargetSlot = null; pendingImageTargetAssetId = null;
     document.body?.classList?.add('multi-image-placement-active');
     renderPendingMultiImagePlacement();
+    setMultiImageInsertionTransactionPhase('positioning');
     setMultiImagePlacementPhase('positioning', 'hud-opened');
     return true;
   } catch (error) {
@@ -32383,6 +32422,7 @@ async function beginMultiImagePlacement(files, transactionBaseline = null) {
     releasePreparedMultiImages(prepared);
     showStatus('Não foi possível preparar todas as imagens. Nenhuma alteração foi feita.');
     clearPendingMultiImageInsert();
+    setMultiImageInsertionTransactionPhase('idle');
     setMultiImagePlacementPhase('idle', 'prepare-failed');
     multiImagePlacementAutosaveTraceEnabled = false;
     return false;
@@ -32407,13 +32447,16 @@ function finishPendingMultiImageGestureFromCaptureLoss(gesture, reason) {
   if (!state || !gesture || state.gesture !== gesture) return false;
   stopPendingMultiImageCaptureMonitor();
   gesture.captureAcquired = false;
+  gesture.captureLost = true;
   multiImagePlacementPointerCaptureStuck = false;
   setPendingMultiImageGesture(null);
   return true;
 }
 function startPendingMultiImageCaptureMonitor(gesture) {
   stopPendingMultiImageCaptureMonitor();
-  if (!gesture || gesture.captureAcquired !== true) return false;
+  if (!gesture || gesture.captureUnsupported === true || gesture.captureRequested !== true) return false;
+  if (gesture.captureAcquired === true) gesture.captureObserved = true;
+  gesture.captureObservationFrames = 0;
   pendingMultiImageCaptureMonitoredGesture = gesture;
   const checkCapture = () => {
     if (pendingMultiImageCaptureMonitoredGesture === gesture) pendingMultiImageCaptureMonitorRaf = 0;
@@ -32428,14 +32471,43 @@ function startPendingMultiImageCaptureMonitor(gesture) {
     }
     let captured = false;
     try { captured = !!gesture.target?.hasPointerCapture?.(gesture.pointerId); } catch (_) {}
-    if (gesture.captureAcquired === true && !captured) {
+    if (captured) {
+      gesture.captureObserved = true;
+      gesture.captureAcquired = true;
+      gesture.captureObservationFrames = 0;
+    } else if (gesture.captureObserved === true) {
       finishPendingMultiImageGestureFromCaptureLoss(gesture, 'capture-monitor');
       return;
+    } else {
+      gesture.captureObservationFrames++;
+      if (gesture.captureObservationFrames >= 4) {
+        gesture.captureUnsupported = true;
+        pendingMultiImageCaptureMonitoredGesture = null;
+        return;
+      }
     }
     pendingMultiImageCaptureMonitorRaf = requestAnimationFrame(checkCapture);
   };
   pendingMultiImageCaptureMonitorRaf = requestAnimationFrame(checkCapture);
   return true;
+}
+function requestPendingMultiImagePointerCapture(gesture) {
+  if (!gesture || !gesture.target) return false;
+  gesture.captureRequested = typeof gesture.target.setPointerCapture === 'function';
+  gesture.captureObserved = false;
+  gesture.captureLost = false;
+  gesture.captureUnsupported = !gesture.captureRequested || typeof gesture.target.hasPointerCapture !== 'function';
+  gesture.captureAcquired = false;
+  if (!gesture.captureUnsupported) {
+    try { gesture.target.setPointerCapture(gesture.pointerId); }
+    catch (_) { gesture.captureUnsupported = true; }
+  }
+  if (!gesture.captureUnsupported) {
+    try { gesture.captureObserved = gesture.captureAcquired = !!gesture.target.hasPointerCapture(gesture.pointerId); }
+    catch (_) { gesture.captureUnsupported = true; }
+  }
+  startPendingMultiImageCaptureMonitor(gesture);
+  return gesture.captureRequested;
 }
 function startPendingMultiImageDrag(event) {
   if (!pendingMultiImagePlacement || pendingMultiImagePlacement.gesture) return;
@@ -32445,9 +32517,7 @@ function startPendingMultiImageDrag(event) {
   const point = editorStageToWorld(stagePoint.x, stagePoint.y);
   const rect = pendingMultiImagePlacement.currentRect;
   setPendingMultiImageGesture({ mode:'move', pointerId:event.pointerId, target:event.currentTarget, dx:point.x-rect.x, dy:point.y-rect.y });
-  event.currentTarget.setPointerCapture?.(event.pointerId);
-  pendingMultiImagePlacement.gesture.captureAcquired = !!event.currentTarget.hasPointerCapture?.(event.pointerId);
-  startPendingMultiImageCaptureMonitor(pendingMultiImagePlacement.gesture);
+  requestPendingMultiImagePointerCapture(pendingMultiImagePlacement.gesture);
 }
 function getPendingOppositeCorner(rect, corner) {
   const x = corner.endsWith('r') ? rect.x : rect.x + rect.w;
@@ -32466,9 +32536,7 @@ function startPendingMultiImageTransform(event) {
     startClientX:event.clientX, startClientY:event.clientY, startRect:{...rect},
     initDist:Math.max(1,Math.hypot(dx,dy)), initAngle:Math.atan2(dy,dx) };
   setPendingMultiImageGesture(gesture);
-  event.currentTarget.setPointerCapture?.(event.pointerId);
-  gesture.captureAcquired = !!event.currentTarget.hasPointerCapture?.(event.pointerId);
-  startPendingMultiImageCaptureMonitor(gesture);
+  requestPendingMultiImagePointerCapture(gesture);
 }
 function movePendingMultiImageDrag(event) {
   const state = pendingMultiImagePlacement;
@@ -32513,7 +32581,8 @@ function handlePendingMultiImageLostPointerCapture(event) {
   return finishPendingMultiImageGestureFromCaptureLoss(gesture, 'lostpointercapture');
 }
 function blockPendingMultiImageExternalInteraction(event) {
-  if (!pendingMultiImagePlacement || event.target.closest?.('.pending-multi-image,#multiImagePlacementHud')) return;
+  if (!isMultiImageInsertionTransactionActive()) return;
+  if (pendingMultiImagePlacement && event.target.closest?.('.pending-multi-image,#multiImagePlacementHud')) return;
   event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation?.();
   showStatus('Confirme ou cancele a inserção atual para continuar.');
 }
@@ -32568,6 +32637,7 @@ function auditPendingMultiImageIsolation(state) {
 }
 function cancelPendingMultiImagePlacement() {
   const state=pendingMultiImagePlacement; if (!state) return false;
+  setMultiImageInsertionTransactionPhase('rolling-back');
   auditPendingMultiImageIsolation(state);
   multiImagePlacementCancelled=true; multiImagePlacementCancelStepIndex=state.currentIndex;
   const snapshot=state.snapshotBefore;
@@ -32577,6 +32647,7 @@ function cancelPendingMultiImagePlacement() {
   multiImagePlacementTemporaryResourcesReleased += state.preparedImages.length;
   releasePreparedMultiImages(state.preparedImages); clearPendingMultiImageInsert();
   setMultiImagePlacementPhase('idle', 'placement-cancelled');
+  setMultiImageInsertionTransactionPhase('idle');
   multiImagePlacementAutosaveTraceEnabled = false;
   return true;
 }
@@ -32610,6 +32681,7 @@ async function commitPendingMultiImagePlacement() {
   auditPendingMultiImageIsolation(state);
   if (multiImagePlacementCanonicalMutationBeforeFinalCommit || multiImagePlacementFrameStateChanged || multiImagePlacementCurveStateChanged || multiImagePlacementProjectWorldChangedBeforeCommit) return cancelPendingMultiImagePlacement();
   const snapshot=state.snapshotBefore, undoBefore=undoStack.length;
+  setMultiImageInsertionTransactionPhase('committing');
   setMultiImagePlacementPhase('committing', 'commit-started');
   try {
     let firstAsset = null;
@@ -32649,12 +32721,14 @@ async function commitPendingMultiImagePlacement() {
     closePendingMultiImagePlacementVisuals(); pendingMultiImagePlacement=null; clearPendingMultiImageInsert();
     showStatus(`${committed.length} ${committed.length===1?'imagem inserida':'imagens inseridas'}`);
     setMultiImagePlacementPhase('idle', 'commit-finished');
+    setMultiImageInsertionTransactionPhase('idle');
     multiImagePlacementAutosaveTraceEnabled = false;
     return true;
   } catch (error) {
     multiImagePlacementLastErrorType=error?.name || typeof error;
     multiImagePlacementLastErrorMessage=error?.message || String(error);
     multiImageInsertCommitFailed=true;
+    setMultiImageInsertionTransactionPhase('rolling-back');
     console.error('[MultiImagePlacement commit]',multiImagePlacementLastErrorType,multiImagePlacementLastErrorMessage);
     rollbackMultiImageTransaction(snapshot);
     closePendingMultiImagePlacementVisuals(); pendingMultiImagePlacement=null;
@@ -32662,6 +32736,7 @@ async function commitPendingMultiImagePlacement() {
     multiImagePlacementSnapshotRestored=getMultiImagePlacementFingerprint()===state.rollbackFingerprint;
     showStatus('Não foi possível adicionar as imagens. O projeto foi restaurado.');
     setMultiImagePlacementPhase('idle', 'commit-rolled-back');
+    setMultiImageInsertionTransactionPhase('idle');
     multiImagePlacementAutosaveTraceEnabled = false;
     return false;
   }
@@ -32680,7 +32755,7 @@ imageArea.addEventListener('touchcancel', cancelPendingMultiImageNavigation, tru
 document.addEventListener('pointerdown', blockPendingMultiImageExternalInteraction, true);
 document.addEventListener('click', blockPendingMultiImageExternalInteraction, true);
 document.addEventListener('keydown', event => {
-  if (!pendingMultiImagePlacement) return;
+  if (!isMultiImageInsertionTransactionActive()) return;
   event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation?.();
   showStatus('Confirme ou cancele a inserção atual para continuar.');
 }, true);
