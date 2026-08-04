@@ -1640,7 +1640,7 @@ body.inserting-frame .frame-out-handle{pointer-events:none !important;}
 .ins-bar-btn svg{width:22px;height:22px;display:block;stroke-width:3;}
 .ins-bar-btn.ok{background:var(--accent);color:#000;}
 .ins-bar-btn.cancel{background:#ff9500;color:#000;}
-#multiImagePlacementHud{position:fixed;left:50%;bottom:calc(10px + var(--safe-bottom));transform:translateX(-50%);z-index:340;display:none;min-width:230px;text-align:center;pointer-events:none}
+#multiImagePlacementHud{position:absolute;left:50%;bottom:max(8px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:110;display:none;width:min(230px,calc(100% - 16px));text-align:center;pointer-events:none}
 #multiImagePlacementHud.show{display:block}
 #multiImagePlacementHint,#multiImagePlacementCounter{display:inline-block;background:var(--menu-bg);padding:5px 9px;color:var(--text1);font-size:12px;font-weight:650}
 #multiImagePlacementHint{border-radius:9px 0 0 9px}#multiImagePlacementCounter{border-radius:0 9px 9px 0;color:var(--text2)}
@@ -3915,6 +3915,14 @@ body.cust-open #toolbar{
         <div class="preview-timeline-fill" id="previewTimelineFill"></div>
       </div>
     </div>
+    <div id="multiImagePlacementHud" aria-live="polite" aria-hidden="true">
+      <div id="multiImagePlacementHint">Ajuste a imagem</div>
+      <div id="multiImagePlacementCounter">1/1</div>
+      <div class="multi-image-placement-actions">
+        <button id="multiImagePlacementCancel" type="button">Cancelar</button>
+        <button id="multiImagePlacementConfirm" type="button">OK</button>
+      </div>
+    </div>
   </div>
   <!-- Overlay escuro fora dos frames — SVG com recorte dinâmico; viewport-fixed, fora do #stageContent transformado -->
   <svg id="stageDimSvg" style="display:none;position:absolute;inset:0;width:100%;height:100%;"></svg>
@@ -4392,14 +4400,6 @@ body.cust-open #toolbar{
      qualquer container display:none, para que .click() funcione no iPhone/Safari. -->
 <input type="file" id="fileInput2" accept="image/*" style="display:none;">
 <input type="file" id="multiImageInsertInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
-<div id="multiImagePlacementHud" aria-live="polite" aria-hidden="true">
-  <div id="multiImagePlacementHint">Ajuste a imagem</div>
-  <div id="multiImagePlacementCounter">1/1</div>
-  <div class="multi-image-placement-actions">
-    <button id="multiImagePlacementCancel" type="button">Cancelar</button>
-    <button id="multiImagePlacementConfirm" type="button">OK</button>
-  </div>
-</div>
 
 <!-- PREVIEW SCREEN -->
 <div class="preview-screen" id="previewScreen">
@@ -31870,7 +31870,7 @@ function startInsertImageFlow() {
   closeSettingsSheet();
   closeAll();
   clearPendingImageAction();
-  if (!canAddImageAsset()) {
+  if (imgNatW && !canAddImageAsset()) {
     openMultipleImagesPlusModal();
     return;
   }
@@ -32397,7 +32397,7 @@ function movePendingMultiImageDrag(event) {
       const factor=Math.max(1/Math.max(1,gesture.startRect.w),1/Math.max(1,gesture.startRect.h),dist/gesture.initDist);
       const w=gesture.startRect.w*factor, h=gesture.startRect.h*factor;
       state.currentRect.w=w; state.currentRect.h=h;
-      state.currentRect.x=gesture.corner.endsWith('r')?gesture.anchor.x-w:gesture.anchor.x;
+      state.currentRect.x=gesture.corner.endsWith('r')?gesture.anchor.x:gesture.anchor.x-w;
       state.currentRect.y=gesture.corner.startsWith('t')?gesture.anchor.y-h:gesture.anchor.y;
     } else {
       state.currentRect.rotation=normalizeAssetRotation((gesture.startRect.rotation||0)+getIncrementalAngleDelta(angle,gesture.initAngle)*180/Math.PI);
