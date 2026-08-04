@@ -32319,14 +32319,14 @@ function renderPendingMultiImagePlacement() {
     const image = document.createElement('img');
     image.src = item.dataUrl; image.alt = ''; image.draggable = false;
     element.addEventListener('pointerdown', startPendingMultiImageDrag);
-    element.addEventListener('lostpointercapture', endPendingMultiImageDrag);
+    element.addEventListener('lostpointercapture', handlePendingMultiImageLostPointerCapture);
     element.appendChild(image);
     ['tl','tr','bl','br'].forEach(corner => {
       const handle = document.createElement('div');
       handle.className = 'asset-corner-handle show';
       handle.dataset.assetCorner = corner;
       handle.addEventListener('pointerdown', startPendingMultiImageTransform);
-      handle.addEventListener('lostpointercapture', endPendingMultiImageDrag);
+      handle.addEventListener('lostpointercapture', handlePendingMultiImageLostPointerCapture);
       element.appendChild(handle);
     });
     stageContent.insertBefore(element, imgEl);
@@ -32456,6 +32456,18 @@ function endPendingMultiImageDrag(event) {
   try { if (gesture.target.hasPointerCapture?.(event.pointerId)) gesture.target.releasePointerCapture(event.pointerId); } catch (_) { multiImagePlacementPointerCaptureStuck = true; }
   multiImagePlacementPointerCaptureStuck ||= !!gesture.target.hasPointerCapture?.(event.pointerId);
   setPendingMultiImageGesture(null);
+}
+function handlePendingMultiImageLostPointerCapture(event) {
+  const state = pendingMultiImagePlacement;
+  const gesture = state && state.gesture;
+  if (!gesture) return false;
+  const targetMatches = event?.currentTarget === gesture.target;
+  const pointerMatches = event?.pointerId != null && gesture.pointerId != null && event.pointerId === gesture.pointerId;
+  if (!targetMatches && !pointerMatches) return false;
+  gesture.captureAcquired = false;
+  multiImagePlacementPointerCaptureStuck = !!gesture.target?.hasPointerCapture?.(gesture.pointerId);
+  setPendingMultiImageGesture(null);
+  return true;
 }
 function blockPendingMultiImageExternalInteraction(event) {
   if (!pendingMultiImagePlacement || event.target.closest?.('.pending-multi-image,#multiImagePlacementHud')) return;
