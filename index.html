@@ -32352,14 +32352,20 @@ function renderPendingMultiImagePlacement() {
     const image = document.createElement('img');
     image.src = item.dataUrl; image.alt = ''; image.draggable = false;
     element.addEventListener('pointerdown', startPendingMultiImageDrag);
+    element.addEventListener('gotpointercapture', handlePendingMultiImageGotPointerCapture);
     element.addEventListener('lostpointercapture', handlePendingMultiImageLostPointerCapture);
+    element.addEventListener('pointermove', observePendingMultiImagePointerCapture);
+    element.addEventListener('pointerrawupdate', observePendingMultiImagePointerCapture);
     element.appendChild(image);
     ['tl','tr','bl','br'].forEach(corner => {
       const handle = document.createElement('div');
       handle.className = 'asset-corner-handle show';
       handle.dataset.assetCorner = corner;
       handle.addEventListener('pointerdown', startPendingMultiImageTransform);
+      handle.addEventListener('gotpointercapture', handlePendingMultiImageGotPointerCapture);
       handle.addEventListener('lostpointercapture', handlePendingMultiImageLostPointerCapture);
+      handle.addEventListener('pointermove', observePendingMultiImagePointerCapture);
+      handle.addEventListener('pointerrawupdate', observePendingMultiImagePointerCapture);
       element.appendChild(handle);
     });
     stageContent.insertBefore(element, imgEl);
@@ -32371,8 +32377,7 @@ function renderPendingMultiImagePlacement() {
   multiImagePlacementHudVisible = !!(hud && hud.classList.contains('show') && getComputedStyle(hud).display !== 'none');
   const count = document.getElementById('multiImagePlacementCounter');
   if (count) count.textContent = `${state.currentIndex + 1}/${state.preparedImages.length}`;
-  const confirm = document.getElementById('multiImagePlacementConfirm');
-  if (confirm) confirm.disabled = !!(state.gesture || state.navigationGesture || isPinching);
+  updatePendingMultiImageConfirmationState();
 }
 
 function makePendingMultiImageRect(item, provisionalStage) {
@@ -32432,11 +32437,39 @@ function setPendingMultiImageGesture(active) {
   if (!pendingMultiImagePlacement) return;
   if (pendingMultiImagePlacement.gesture !== active) stopPendingMultiImageCaptureMonitor();
   pendingMultiImagePlacement.gesture = active;
+  updatePendingMultiImageConfirmationState();
+}
+function isPendingMultiImageConfirmationBlocked() {
+  const state = pendingMultiImagePlacement;
+  return !!(state && (state.gesture || state.navigationGesture || isPinching || multiImageInsertionTransactionPhase === 'committing' || multiImageInsertionTransactionPhase === 'rolling-back'));
+}
+function updatePendingMultiImageConfirmationState() {
   const button = document.getElementById('multiImagePlacementConfirm');
-  if (button) button.disabled = !!(active || pendingMultiImagePlacement.navigationGesture || isPinching);
+  if (button) button.disabled = isPendingMultiImageConfirmationBlocked();
+  updatePendingMultiImageGestureDiagnostics();
 }
 let pendingMultiImageCaptureMonitorRaf = 0;
 let pendingMultiImageCaptureMonitoredGesture = null;
+let multiImagePlacementGestureDiagnostics = {};
+function updatePendingMultiImageGestureDiagnostics(reason = '') {
+  const state = pendingMultiImagePlacement;
+  const gesture = state?.gesture || null;
+  let captured = false;
+  try { captured = !!gesture?.target?.hasPointerCapture?.(gesture.pointerId); } catch (_) {}
+  multiImagePlacementGestureDiagnostics = {
+    pointerId:gesture?.pointerId ?? null,
+    target:gesture?.target?.className || gesture?.target?.tagName || null,
+    captureRequested:!!gesture?.captureRequested,
+    captureObserved:!!gesture?.captureObserved,
+    hasPointerCapture:captured,
+    monitoredFrames:gesture?.captureObservationFrames || 0,
+    finishReason:reason || gesture?.finishReason || '',
+    gestureActive:!!gesture,
+    navigationGesture:!!state?.navigationGesture,
+    isPinching:!!isPinching,
+    confirmDisabled:!!document.getElementById('multiImagePlacementConfirm')?.disabled
+  };
+}
 function stopPendingMultiImageCaptureMonitor() {
   if (pendingMultiImageCaptureMonitorRaf) cancelAnimationFrame(pendingMultiImageCaptureMonitorRaf);
   pendingMultiImageCaptureMonitorRaf = 0;
@@ -32448,15 +32481,17 @@ function finishPendingMultiImageGestureFromCaptureLoss(gesture, reason) {
   stopPendingMultiImageCaptureMonitor();
   gesture.captureAcquired = false;
   gesture.captureLost = true;
+  gesture.finishReason = reason;
   multiImagePlacementPointerCaptureStuck = false;
   setPendingMultiImageGesture(null);
+  updatePendingMultiImageGestureDiagnostics(reason);
   return true;
 }
 function startPendingMultiImageCaptureMonitor(gesture) {
   stopPendingMultiImageCaptureMonitor();
   if (!gesture || gesture.captureUnsupported === true || gesture.captureRequested !== true) return false;
   if (gesture.captureAcquired === true) gesture.captureObserved = true;
-  gesture.captureObservationFrames = 0;
+  gesture.captureObservationFrames = gesture.captureObservationFrames || 0;
   pendingMultiImageCaptureMonitoredGesture = gesture;
   const checkCapture = () => {
     if (pendingMultiImageCaptureMonitoredGesture === gesture) pendingMultiImageCaptureMonitorRaf = 0;
@@ -32471,25 +32506,40 @@ function startPendingMultiImageCaptureMonitor(gesture) {
     }
     let captured = false;
     try { captured = !!gesture.target?.hasPointerCapture?.(gesture.pointerId); } catch (_) {}
+    gesture.captureObservationFrames++;
     if (captured) {
       gesture.captureObserved = true;
       gesture.captureAcquired = true;
-      gesture.captureObservationFrames = 0;
     } else if (gesture.captureObserved === true) {
       finishPendingMultiImageGestureFromCaptureLoss(gesture, 'capture-monitor');
       return;
-    } else {
-      gesture.captureObservationFrames++;
-      if (gesture.captureObservationFrames >= 4) {
-        gesture.captureUnsupported = true;
-        pendingMultiImageCaptureMonitoredGesture = null;
-        return;
-      }
+    } else if ((gesture.pointerButtons || 0) === 0 && gesture.captureObservationFrames - (gesture.lastPointerActivityFrame || 0) >= 30) {
+      finishPendingMultiImageGestureFromCaptureLoss(gesture, 'orphaned-capture-request');
+      return;
     }
+    updatePendingMultiImageGestureDiagnostics();
     pendingMultiImageCaptureMonitorRaf = requestAnimationFrame(checkCapture);
   };
   pendingMultiImageCaptureMonitorRaf = requestAnimationFrame(checkCapture);
   return true;
+}
+function observePendingMultiImagePointerCapture(event) {
+  const gesture = pendingMultiImagePlacement?.gesture;
+  if (!gesture || event?.pointerId !== gesture.pointerId || event?.currentTarget !== gesture.target) return false;
+  gesture.pointerButtons = event.buttons || 0;
+  gesture.lastPointerActivityFrame = gesture.captureObservationFrames || 0;
+  let captured = false;
+  try { captured = !!gesture.target.hasPointerCapture?.(gesture.pointerId); } catch (_) {}
+  if (captured) {
+    gesture.captureObserved = true;
+    gesture.captureAcquired = true;
+    gesture.captureUnsupported = false;
+    updatePendingMultiImageGestureDiagnostics();
+  }
+  return captured;
+}
+function handlePendingMultiImageGotPointerCapture(event) {
+  return observePendingMultiImagePointerCapture(event);
 }
 function requestPendingMultiImagePointerCapture(gesture) {
   if (!gesture || !gesture.target) return false;
@@ -32516,7 +32566,7 @@ function startPendingMultiImageDrag(event) {
   const stagePoint = screenToStageCoord(event.clientX,event.clientY);
   const point = editorStageToWorld(stagePoint.x, stagePoint.y);
   const rect = pendingMultiImagePlacement.currentRect;
-  setPendingMultiImageGesture({ mode:'move', pointerId:event.pointerId, target:event.currentTarget, dx:point.x-rect.x, dy:point.y-rect.y });
+  setPendingMultiImageGesture({ mode:'move', pointerId:event.pointerId, pointerButtons:event.buttons || 0, lastPointerActivityFrame:0, target:event.currentTarget, dx:point.x-rect.x, dy:point.y-rect.y });
   requestPendingMultiImagePointerCapture(pendingMultiImagePlacement.gesture);
 }
 function getPendingOppositeCorner(rect, corner) {
@@ -32532,7 +32582,7 @@ function startPendingMultiImageTransform(event) {
   const sc = screenToStageCoord(event.clientX,event.clientY), point = editorStageToWorld(sc.x,sc.y);
   const anchor = getPendingOppositeCorner(rect, corner);
   const dx = point.x-anchor.x, dy = point.y-anchor.y;
-  const gesture = { mode:'transform', intent:'', pointerId:event.pointerId, target:event.currentTarget, corner, anchor,
+  const gesture = { mode:'transform', intent:'', pointerId:event.pointerId, pointerButtons:event.buttons || 0, lastPointerActivityFrame:0, target:event.currentTarget, corner, anchor,
     startClientX:event.clientX, startClientY:event.clientY, startRect:{...rect},
     initDist:Math.max(1,Math.hypot(dx,dy)), initAngle:Math.atan2(dy,dx) };
   setPendingMultiImageGesture(gesture);
@@ -32542,6 +32592,9 @@ function movePendingMultiImageDrag(event) {
   const state = pendingMultiImagePlacement;
   const gesture = state && state.gesture;
   if (!gesture || gesture.pointerId !== event.pointerId) return;
+  gesture.pointerButtons = event.buttons || 0;
+  gesture.lastPointerActivityFrame = gesture.captureObservationFrames || 0;
+  if (event.currentTarget === gesture.target) observePendingMultiImagePointerCapture(event);
   event.preventDefault();
   const sc = screenToStageCoord(event.clientX,event.clientY); const point = editorStageToWorld(sc.x,sc.y);
   if (gesture.mode === 'move') {
@@ -32569,7 +32622,9 @@ function endPendingMultiImageDrag(event) {
   stopPendingMultiImageCaptureMonitor();
   try { if (gesture.target.hasPointerCapture?.(event.pointerId)) gesture.target.releasePointerCapture(event.pointerId); } catch (_) { multiImagePlacementPointerCaptureStuck = true; }
   multiImagePlacementPointerCaptureStuck ||= !!gesture.target.hasPointerCapture?.(event.pointerId);
+  gesture.finishReason = event.type || 'pointer-end';
   setPendingMultiImageGesture(null);
+  updatePendingMultiImageGestureDiagnostics(gesture.finishReason);
 }
 function handlePendingMultiImageLostPointerCapture(event) {
   const state = pendingMultiImagePlacement;
