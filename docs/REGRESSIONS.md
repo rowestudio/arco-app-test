@@ -117,3 +117,11 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Prevenção:** validar assinaturas JPEG/PNG/WebP antes do decode, processar sequencialmente na ordem recebida, exigir escolha de layout sem WORLD_SLOTS e consolidar o lote completo em um único snapshot de Undo e uma única revisão de sessão.
 - **Teste preventivo:** `node scripts/qa/test-multi-image-insert.mjs`, com fixtures Base64/buffers exclusivamente em memória.
 - **Status:** proteção técnica adicionada na `v8z4b32E8J`; seleção pelo picker e comportamento visual em iPhone/Safari real permanecem pendentes.
+
+## REG-038 — Inserção sequencial perde modalidade ou confirma parcialmente
+
+- **Problema prevenido:** seleção canônica anterior continuar editável, toque externo cancelar o fluxo, imagens provisórias entrarem antecipadamente em `assets` ou confirmações intermediárias fragmentarem Undo e Session Autosave.
+- **Prevenção:** lote integralmente preparado antes da edição; estado provisório separado do projeto; somente uma imagem e quatro abas funcionais por etapa; interações externas bloqueadas com orientação explícita; somente `OK` avança e o último `OK` executa o commit atômico.
+- **Rollback:** cancelamento ou falha restaura projeto, seleção, Undo, Redo, `nextLayerSequence` e revisão agendada, além de liberar gestos, pointer capture e recursos temporários.
+- **Teste preventivo:** `node scripts/qa/test-multi-image-insert.mjs` executa controladores reais extraídos de `index.html`; smoke WebKit cobre o fluxo integrado quando o ambiente disponibiliza o navegador.
+- **Status:** proteção técnica adicionada na `v8z4b32E8M`; validação visual e gestual em iPhone/Safari real permanece pendente.
