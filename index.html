@@ -32435,11 +32435,7 @@ async function beginMultiImagePlacement(files, transactionBaseline = null) {
 }
 function setPendingMultiImageGesture(active) {
   if (!pendingMultiImagePlacement) return;
-  const previous = pendingMultiImagePlacement.gesture;
-  if (previous !== active) {
-    stopPendingMultiImageCaptureMonitor();
-    restorePendingMultiImageReleasePointerCapture(previous);
-  }
+  if (pendingMultiImagePlacement.gesture !== active) stopPendingMultiImageCaptureMonitor();
   pendingMultiImagePlacement.gesture = active;
   updatePendingMultiImageConfirmationState();
 }
@@ -32454,6 +32450,7 @@ function updatePendingMultiImageConfirmationState() {
 }
 let pendingMultiImageCaptureMonitorRaf = 0;
 let pendingMultiImageCaptureMonitoredGesture = null;
+let pendingMultiImageCaptureMonitorToken = 0;
 let multiImagePlacementGestureDiagnostics = {};
 function updatePendingMultiImageGestureDiagnostics(reason = '') {
   const state = pendingMultiImagePlacement;
@@ -32464,7 +32461,9 @@ function updatePendingMultiImageGestureDiagnostics(reason = '') {
     pointerId:gesture?.pointerId ?? null,
     target:gesture?.target?.className || gesture?.target?.tagName || null,
     captureRequested:!!gesture?.captureRequested,
+    captureRequestAccepted:!!gesture?.captureRequestAccepted,
     captureObserved:!!gesture?.captureObserved,
+    captureMicrotaskChecked:!!gesture?.captureMicrotaskChecked,
     hasPointerCapture:captured,
     monitoredFrames:gesture?.captureObservationFrames || 0,
     finishReason:reason || gesture?.finishReason || '',
@@ -32478,25 +32477,14 @@ function stopPendingMultiImageCaptureMonitor() {
   if (pendingMultiImageCaptureMonitorRaf) cancelAnimationFrame(pendingMultiImageCaptureMonitorRaf);
   pendingMultiImageCaptureMonitorRaf = 0;
   pendingMultiImageCaptureMonitoredGesture = null;
-}
-function restorePendingMultiImageReleasePointerCapture(gesture) {
-  if (!gesture?.releasePointerCaptureWrapped || !gesture.target) return false;
-  const target = gesture.target;
-  if (target.releasePointerCapture === gesture.releasePointerCaptureWrapper) {
-    if (gesture.releasePointerCaptureHadOwn) target.releasePointerCapture = gesture.releasePointerCaptureOriginal;
-    else { try { delete target.releasePointerCapture; } catch (_) { target.releasePointerCapture = gesture.releasePointerCaptureOriginal; } }
-  }
-  gesture.releasePointerCaptureWrapped = false;
-  gesture.releasePointerCaptureWrapper = null;
-  return true;
+  pendingMultiImageCaptureMonitorToken++;
 }
 function finishPendingMultiImageGesture(gesture, reason) {
   const state = pendingMultiImagePlacement;
   if (!state || !gesture || state.gesture !== gesture) return false;
   stopPendingMultiImageCaptureMonitor();
-  restorePendingMultiImageReleasePointerCapture(gesture);
   gesture.captureAcquired = false;
-  gesture.captureLost = reason === 'lostpointercapture' || reason === 'capture-monitor' || reason === 'explicit-release';
+  gesture.captureLost = reason === 'lostpointercapture' || reason === 'capture-monitor' || reason === 'capture-released-before-observation';
   gesture.finishReason = reason;
   multiImagePlacementPointerCaptureStuck = false;
   setPendingMultiImageGesture(null);
@@ -32506,26 +32494,26 @@ function finishPendingMultiImageGesture(gesture, reason) {
 function finishPendingMultiImageGestureFromCaptureLoss(gesture, reason) {
   return finishPendingMultiImageGesture(gesture, reason);
 }
-function installPendingMultiImageReleasePointerCaptureGuard(gesture) {
-  const target = gesture?.target;
-  if (!target || typeof target.releasePointerCapture !== 'function' || gesture.releasePointerCaptureWrapped) return false;
-  const original = target.releasePointerCapture;
-  const hadOwn = Object.prototype.hasOwnProperty.call(target, 'releasePointerCapture');
-  const wrapper = function(pointerId, ...args) {
-    const result = original.call(this, pointerId, ...args);
-    if (pointerId === gesture.pointerId && pendingMultiImagePlacement?.gesture === gesture && !gesture.internalReleaseInProgress) {
-      let captured = true;
-      try { captured = !!target.hasPointerCapture?.(pointerId); } catch (_) { captured = true; }
-      if (!captured) finishPendingMultiImageGesture(gesture, 'explicit-release');
-      else updatePendingMultiImageGestureDiagnostics();
-    }
-    return result;
-  };
-  gesture.releasePointerCaptureOriginal = original;
-  gesture.releasePointerCaptureHadOwn = hadOwn;
-  gesture.releasePointerCaptureWrapper = wrapper;
-  gesture.releasePointerCaptureWrapped = true;
-  target.releasePointerCapture = wrapper;
+function samplePendingMultiImagePointerCapture(gesture) {
+  let captured = false;
+  try { captured = !!gesture?.target?.hasPointerCapture?.(gesture.pointerId); } catch (_) {}
+  if (captured) {
+    gesture.captureObserved = true;
+    gesture.captureAcquired = true;
+    gesture.captureUnsupported = false;
+  }
+  return captured;
+}
+function schedulePendingMultiImageCaptureMicrotask(gesture) {
+  if (!gesture?.captureRequestAccepted) return false;
+  const token = gesture.captureMonitorToken;
+  Promise.resolve().then(() => {
+    const state = pendingMultiImagePlacement;
+    if (!state || state.gesture !== gesture || gesture.captureMonitorToken !== token || pendingMultiImageCaptureMonitoredGesture !== gesture) return;
+    gesture.captureMicrotaskChecked = true;
+    samplePendingMultiImagePointerCapture(gesture);
+    updatePendingMultiImageGestureDiagnostics();
+  });
   return true;
 }
 function startPendingMultiImageCaptureMonitor(gesture) {
@@ -32533,7 +32521,9 @@ function startPendingMultiImageCaptureMonitor(gesture) {
   if (!gesture || gesture.captureUnsupported === true || gesture.captureRequested !== true) return false;
   if (gesture.captureAcquired === true) gesture.captureObserved = true;
   gesture.captureObservationFrames = gesture.captureObservationFrames || 0;
+  gesture.captureMonitorToken = ++pendingMultiImageCaptureMonitorToken;
   pendingMultiImageCaptureMonitoredGesture = gesture;
+  schedulePendingMultiImageCaptureMicrotask(gesture);
   const checkCapture = () => {
     if (pendingMultiImageCaptureMonitoredGesture === gesture) pendingMultiImageCaptureMonitorRaf = 0;
     const state = pendingMultiImagePlacement;
@@ -32542,23 +32532,25 @@ function startPendingMultiImageCaptureMonitor(gesture) {
       return;
     }
     if (gesture.target?.isConnected === false) {
-      finishPendingMultiImageGestureFromCaptureLoss(gesture, 'target-disconnected');
+      finishPendingMultiImageGesture(gesture, 'target-disconnected');
       return;
     }
-    let captured = false;
-    try { captured = !!gesture.target?.hasPointerCapture?.(gesture.pointerId); } catch (_) {}
+    const captured = samplePendingMultiImagePointerCapture(gesture);
     gesture.captureObservationFrames++;
     if (captured) {
-      gesture.captureObserved = true;
-      gesture.captureAcquired = true;
+      updatePendingMultiImageGestureDiagnostics();
     } else if (gesture.captureObserved === true) {
-      finishPendingMultiImageGestureFromCaptureLoss(gesture, 'capture-monitor');
+      finishPendingMultiImageGesture(gesture, 'capture-monitor');
+      return;
+    } else if (gesture.captureRequestAccepted === true && gesture.captureMicrotaskChecked === true && gesture.captureObservationFrames > 1) {
+      finishPendingMultiImageGesture(gesture, 'capture-released-before-observation');
       return;
     } else if ((gesture.pointerButtons || 0) === 0 && gesture.captureObservationFrames - (gesture.lastPointerActivityFrame || 0) >= 30) {
-      finishPendingMultiImageGestureFromCaptureLoss(gesture, 'orphaned-capture-request');
+      finishPendingMultiImageGesture(gesture, 'orphaned-capture-request');
       return;
+    } else {
+      updatePendingMultiImageGestureDiagnostics();
     }
-    updatePendingMultiImageGestureDiagnostics();
     pendingMultiImageCaptureMonitorRaf = requestAnimationFrame(checkCapture);
   };
   pendingMultiImageCaptureMonitorRaf = requestAnimationFrame(checkCapture);
@@ -32569,14 +32561,8 @@ function observePendingMultiImagePointerCapture(event) {
   if (!gesture || event?.pointerId !== gesture.pointerId || event?.currentTarget !== gesture.target) return false;
   gesture.pointerButtons = event.buttons || 0;
   gesture.lastPointerActivityFrame = gesture.captureObservationFrames || 0;
-  let captured = false;
-  try { captured = !!gesture.target.hasPointerCapture?.(gesture.pointerId); } catch (_) {}
-  if (captured) {
-    gesture.captureObserved = true;
-    gesture.captureAcquired = true;
-    gesture.captureUnsupported = false;
-    updatePendingMultiImageGestureDiagnostics();
-  }
+  const captured = samplePendingMultiImagePointerCapture(gesture);
+  if (captured) updatePendingMultiImageGestureDiagnostics();
   return captured;
 }
 function handlePendingMultiImageGotPointerCapture(event) {
@@ -32585,17 +32571,18 @@ function handlePendingMultiImageGotPointerCapture(event) {
 function requestPendingMultiImagePointerCapture(gesture) {
   if (!gesture || !gesture.target) return false;
   gesture.captureRequested = typeof gesture.target.setPointerCapture === 'function';
+  gesture.captureRequestAccepted = false;
   gesture.captureObserved = false;
   gesture.captureLost = false;
+  gesture.captureMicrotaskChecked = false;
   gesture.captureUnsupported = !gesture.captureRequested || typeof gesture.target.hasPointerCapture !== 'function';
   gesture.captureAcquired = false;
   if (!gesture.captureUnsupported) {
-    try { gesture.target.setPointerCapture(gesture.pointerId); }
-    catch (_) { gesture.captureUnsupported = true; }
-  }
-  if (!gesture.captureUnsupported) installPendingMultiImageReleasePointerCaptureGuard(gesture);
-  if (!gesture.captureUnsupported) {
-    try { gesture.captureObserved = gesture.captureAcquired = !!gesture.target.hasPointerCapture(gesture.pointerId); }
+    try {
+      gesture.target.setPointerCapture(gesture.pointerId);
+      gesture.captureRequestAccepted = true;
+      gesture.captureUnsupported = false;
+    }
     catch (_) { gesture.captureUnsupported = true; }
   }
   startPendingMultiImageCaptureMonitor(gesture);

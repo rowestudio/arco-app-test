@@ -664,9 +664,10 @@ test('E8M: OK acompanha escala, rotação, pinch e perda de pointer capture reai
   await ghost.dispatchEvent('pointerdown',{pointerId:73,clientX:ghostBox.x+ghostBox.width/2,clientY:ghostBox.y+ghostBox.height/2,pointerType:'touch',isPrimary:true});
   await expect(ok).toBeDisabled();
   expect(await page.evaluate(()=>({pointerId:multiImagePlacementGestureDiagnostics.pointerId,active:multiImagePlacementGestureDiagnostics.gestureActive,disabled:multiImagePlacementGestureDiagnostics.confirmDisabled}))).toEqual({pointerId:73,active:true,disabled:true});
-  await ghost.evaluate((element,pointerId)=>element.hasPointerCapture(pointerId)&&element.releasePointerCapture(pointerId),73);
+  await expect.poll(() => ghost.evaluate((element,pointerId)=>element.hasPointerCapture(pointerId),73)).toBe(true);
+  await ghost.evaluate((element,pointerId)=>element.releasePointerCapture(pointerId),73);
   await expect(ok).toBeEnabled();
-  expect(await page.evaluate(()=>({gesture:pendingMultiImagePlacement.gesture,stuck:multiImagePlacementPointerCaptureStuck,count:document.querySelectorAll('.pending-multi-image.current').length,reason:multiImagePlacementGestureDiagnostics.finishReason}))).toEqual({gesture:null,stuck:false,count:1,reason:expect.stringMatching(/^(lostpointercapture|capture-monitor|orphaned-capture-request|explicit-release)$/)});
+  expect(await page.evaluate(()=>({gesture:pendingMultiImagePlacement.gesture,stuck:multiImagePlacementPointerCaptureStuck,count:document.querySelectorAll('.pending-multi-image.current').length,reason:multiImagePlacementGestureDiagnostics.finishReason}))).toEqual({gesture:null,stuck:false,count:1,reason:expect.stringMatching(/^(lostpointercapture|capture-monitor|capture-released-before-observation|orphaned-capture-request)$/)});
 });
 
 test('E8M: Cancelar na primeira e na última etapa restaura snapshot profundo', async ({ page }) => {
