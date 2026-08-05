@@ -32604,18 +32604,21 @@ function handlePendingMultiImageGotPointerCapture(event) {
 }
 function requestPendingMultiImagePointerCapture(gesture) {
   if (!gesture || !gesture.target) return false;
-  gesture.captureRequested = typeof gesture.target.setPointerCapture === 'function';
+  const canRequestCapture = typeof gesture.target.setPointerCapture === 'function';
+  const canObserveCapture = typeof gesture.target.hasPointerCapture === 'function';
+  gesture.captureRequested = false;
   gesture.captureRequestAccepted = false;
   gesture.captureObserved = false;
   gesture.captureLost = false;
   gesture.captureMicrotaskChecked = false;
-  gesture.captureUnsupported = !gesture.captureRequested || typeof gesture.target.hasPointerCapture !== 'function';
+  gesture.captureUnsupported = !canRequestCapture || !canObserveCapture;
   gesture.captureAcquired = false;
-  if (!gesture.captureUnsupported) {
+  if (canRequestCapture) {
+    gesture.captureRequested = true;
     try {
       gesture.target.setPointerCapture(gesture.pointerId);
       gesture.captureRequestAccepted = true;
-      gesture.captureUnsupported = false;
+      gesture.captureUnsupported = !canObserveCapture;
     }
     catch (_) { gesture.captureUnsupported = true; }
   }
