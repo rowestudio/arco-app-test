@@ -636,12 +636,15 @@ test('E8M: OK acompanha escala, rotação, pinch e perda de pointer capture reai
   const ok=page.locator('#multiImagePlacementConfirm');
   const handle=page.locator('.pending-multi-image.current .asset-corner-handle[data-asset-corner="br"]');
   const box=await handle.boundingBox();
+  const centerBeforeScale=await page.evaluate(()=>({x:pendingMultiImagePlacement.currentRect.x+pendingMultiImagePlacement.currentRect.w/2,y:pendingMultiImagePlacement.currentRect.y+pendingMultiImagePlacement.currentRect.h/2}));
   await handle.dispatchEvent('pointerdown',{pointerId:71,clientX:box.x+box.width/2,clientY:box.y+box.height/2,pointerType:'touch',isPrimary:true});
   await expect(ok).toBeDisabled();
   await handle.dispatchEvent('pointermove',{pointerId:71,clientX:box.x+box.width/2+45,clientY:box.y+box.height/2+45,pointerType:'touch',isPrimary:true});
   await expect(ok).toBeDisabled();
   await handle.dispatchEvent('pointerup',{pointerId:71,clientX:box.x+box.width/2+45,clientY:box.y+box.height/2+45,pointerType:'touch',isPrimary:true});
   await expect(ok).toBeEnabled();
+  const centerAfterScale=await page.evaluate(()=>({x:pendingMultiImagePlacement.currentRect.x+pendingMultiImagePlacement.currentRect.w/2,y:pendingMultiImagePlacement.currentRect.y+pendingMultiImagePlacement.currentRect.h/2}));
+  expect(Math.abs(centerAfterScale.x-centerBeforeScale.x)).toBeLessThan(0.001);expect(Math.abs(centerAfterScale.y-centerBeforeScale.y)).toBeLessThan(0.001);
 
   const rotatedBefore=await page.evaluate(()=>pendingMultiImagePlacement.currentRect.rotation);
   const rotatedHandleBox=await handle.boundingBox(); const rotatedGhostBox=await page.locator('.pending-multi-image.current').boundingBox();
