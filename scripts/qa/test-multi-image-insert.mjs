@@ -29,7 +29,7 @@ ${names.map(fn).join('\n')}
 `,context);
 const run=x=>vm.runInContext(x,context);const tick=()=>new Promise(resolve=>setImmediate(resolve));context.files=[{name:'a.png'},{name:'b.png'},{name:'c.png'}];
 // Preparação -> snapshot -> HUD, sem mutação canônica.
-assert.equal(await run('beginMultiImagePlacement(files)'),true);assert.equal(run('pendingMultiImagePlacement.preparedImages.length'),3);assert.equal(elements.multiImagePlacementCounter.textContent,'1/3');assert.equal(run('assets.length'),0);assert.equal(run('undoStack.length'),0);
+assert.equal(await run('beginMultiImagePlacement(files)'),true);assert.equal(run('pendingMultiImagePlacement.preparedImages.length'),3);assert.equal(elements.multiImagePlacementCounter.textContent,'1/3');assert.equal(elements.multiImagePlacementConfirm.disabled,false);assert.equal(run('multiImageInsertionTransactionPhase'),'editing');assert.equal(run('assets.length'),0);assert.equal(run('undoStack.length'),0);
 assert.equal(run('_sessionAutosaveQueuedRevision'),0);assert.equal(run("multiImagePlacementAutosaveTrace.filter(e=>e.point==='autosave-scheduled').length"),0);
 // O provisório real expõe quatro abas. Cada escala preserva o centro, inclusive após rotação.
 assert.equal(run('pendingMultiImagePlacement.currentElement.children.filter(x=>x.className.includes("asset-corner-handle")).length'),4);

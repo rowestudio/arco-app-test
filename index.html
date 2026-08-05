@@ -32445,9 +32445,9 @@ async function beginMultiImagePlacement(files, transactionBaseline = null) {
     clearPendingMultiImageInsert();
     pendingImageAction = null; pendingImageTargetSlot = null; pendingImageTargetAssetId = null;
     document.body?.classList?.add('multi-image-placement-active');
-    renderPendingMultiImagePlacement();
     setMultiImageInsertionTransactionPhase('editing');
     setMultiImagePlacementPhase('editing', 'hud-opened');
+    renderPendingMultiImagePlacement();
     return true;
   } catch (error) {
     multiImagePlacementLastErrorType = error?.name || typeof error;
@@ -32492,8 +32492,13 @@ function updatePendingMultiImageGestureDiagnostics(reason = '') {
     captureRequested:!!gesture?.captureRequested,
     captureRequestAccepted:!!gesture?.captureRequestAccepted,
     captureObserved:!!gesture?.captureObserved,
+    captureUnsupported:!!gesture?.captureUnsupported,
     captureMicrotaskChecked:!!gesture?.captureMicrotaskChecked,
     hasPointerCapture:captured,
+    confirmationBlocked:typeof isPendingMultiImageConfirmationBlocked === 'function' ? isPendingMultiImageConfirmationBlocked() : false,
+    insertionPhase:multiImageInsertionTransactionPhase,
+    committing:!!state?.committing,
+    rollingBack:multiImageInsertionTransactionPhase === 'rolling-back',
     monitoredFrames:gesture?.captureObservationFrames || 0,
     finishReason:reason || gesture?.finishReason || '',
     gestureActive:!!gesture,

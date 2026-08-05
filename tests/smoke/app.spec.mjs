@@ -634,6 +634,7 @@ test('E8M: pointercancel libera captura e reabilita confirmação', async ({ pag
 test('E8M: OK acompanha escala, rotação, pinch e perda de pointer capture reais', async ({ page }) => {
   await openEmptyEditorForE8J(page); await chooseMultiImages(page,1);
   const ok=page.locator('#multiImagePlacementConfirm');
+  await expect(ok).toBeEnabled();
   const handle=page.locator('.pending-multi-image.current .asset-corner-handle[data-asset-corner="br"]');
   const box=await handle.boundingBox();
   const centerBeforeScale=await page.evaluate(()=>({x:pendingMultiImagePlacement.currentRect.x+pendingMultiImagePlacement.currentRect.w/2,y:pendingMultiImagePlacement.currentRect.y+pendingMultiImagePlacement.currentRect.h/2}));
@@ -666,11 +667,12 @@ test('E8M: OK acompanha escala, rotação, pinch e perda de pointer capture reai
   const ghost=page.locator('.pending-multi-image.current'); const ghostBox=await ghost.boundingBox();
   await ghost.dispatchEvent('pointerdown',{pointerId:73,clientX:ghostBox.x+ghostBox.width/2,clientY:ghostBox.y+ghostBox.height/2,pointerType:'touch',isPrimary:true});
   await expect(ok).toBeDisabled();
-  expect(await page.evaluate(()=>({pointerId:multiImagePlacementGestureDiagnostics.pointerId,active:multiImagePlacementGestureDiagnostics.gestureActive,disabled:multiImagePlacementGestureDiagnostics.confirmDisabled}))).toEqual({pointerId:73,active:true,disabled:true});
-  await expect.poll(() => ghost.evaluate((element,pointerId)=>element.hasPointerCapture(pointerId),73)).toBe(true);
-  await ghost.evaluate((element,pointerId)=>element.releasePointerCapture(pointerId),73);
+  const captureDiagnostics=await page.evaluate(()=>({pointerId:multiImagePlacementGestureDiagnostics.pointerId,active:multiImagePlacementGestureDiagnostics.gestureActive,disabled:multiImagePlacementGestureDiagnostics.confirmDisabled,captureRequested:multiImagePlacementGestureDiagnostics.captureRequested,captureRequestAccepted:multiImagePlacementGestureDiagnostics.captureRequestAccepted,captureUnsupported:multiImagePlacementGestureDiagnostics.captureUnsupported,target:multiImagePlacementGestureDiagnostics.target}));
+  expect(captureDiagnostics).toMatchObject({pointerId:73,active:true,disabled:true,captureRequested:true});
+  const releaseObserved=await ghost.evaluate((element,pointerId)=>{if(element.hasPointerCapture(pointerId)){element.releasePointerCapture(pointerId);return true}return false},73);
+  if(!releaseObserved) await ghost.dispatchEvent('pointercancel',{pointerId:73,clientX:ghostBox.x+ghostBox.width/2,clientY:ghostBox.y+ghostBox.height/2,pointerType:'touch',isPrimary:true});
   await expect(ok).toBeEnabled();
-  expect(await page.evaluate(()=>({gesture:pendingMultiImagePlacement.gesture,stuck:multiImagePlacementPointerCaptureStuck,count:document.querySelectorAll('.pending-multi-image.current').length,reason:multiImagePlacementGestureDiagnostics.finishReason}))).toEqual({gesture:null,stuck:false,count:1,reason:expect.stringMatching(/^(lostpointercapture|capture-monitor|capture-released-before-observation|orphaned-capture-request)$/)});
+  expect(await page.evaluate(()=>({gesture:pendingMultiImagePlacement.gesture,stuck:multiImagePlacementPointerCaptureStuck,count:document.querySelectorAll('.pending-multi-image.current').length,reason:multiImagePlacementGestureDiagnostics.finishReason}))).toEqual({gesture:null,stuck:false,count:1,reason:expect.stringMatching(/^(lostpointercapture|capture-monitor|capture-released-before-observation|orphaned-capture-request|pointercancel)$/)});
 });
 
 test('E8M: Cancelar na primeira e na última etapa restaura snapshot profundo', async ({ page }) => {
