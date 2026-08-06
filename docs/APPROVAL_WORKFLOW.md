@@ -2,7 +2,7 @@
 
 Fluxo mínimo de aprovação para PRs no repositório de teste.
 
-1. **Checks automatizados:** executar os checks compatíveis com o escopo, incluindo guardrails do Project OS, versão, vazamento de UI, links Markdown, smoke tests e validações específicas quando existirem.
+1. **Checks automatizados:** executar os checks compatíveis com o escopo, incluindo guardrails do Project OS, versão, vazamento de UI, links Markdown, smoke tests e validações específicas quando existirem. A evidência deve corresponder ao HEAD SHA atual da PR; resultado de SHA anterior não libera SHA novo.
 2. **Revisão técnica:** revisar o diff, arquitetura, listeners, estado, undo/redo, z-index, geometria e preservação das áreas protegidas.
 3. **Revisão de aderência ao objetivo:** confirmar que a implementação corresponde integralmente ao que Roberto pediu, sem interpretação reduzida, sistema paralelo indevido ou coexistência entre solução antiga e nova.
 4. **Decisão de merge:** recomendar merge somente quando checks e revisão técnica/produto comprovarem que a PR está completa. Checks verdes sem aderência integral não liberam merge.

@@ -1,0 +1,201 @@
+name: Mobile CI Watchdog
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-ci-watchdog
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Detect missing PR checks
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+      checks: write
+    outputs:
+      has_work: ${{ steps.plan.outputs.has_work }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Check out watchdog source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Detect missing current-HEAD checks
+        id: plan
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci/mobile-ci-watchdog.mjs plan
+
+  run-missing-checks:
+    name: ${{ matrix.suite_name }} for PR #${{ matrix.pr_number }}
+    needs: plan
+    if: needs.plan.outputs.has_work == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    concurrency:
+      group: mobile-ci-watchdog-${{ matrix.pr_number }}-${{ matrix.suite_id }}-${{ matrix.head_sha }}
+      cancel-in-progress: false
+    env:
+      QA_BASE_SHA: ${{ matrix.base_sha }}
+      QA_HEAD_SHA: ${{ matrix.head_sha }}
+      QA_PR_TITLE: ''
+      QA_PR_BODY: ''
+    steps:
+      - name: Log watchdog decision
+        run: |
+          echo "PR #${{ matrix.pr_number }}"
+          echo "Base: ${{ matrix.base_ref }}"
+          echo "Head branch: ${{ matrix.head_ref }}"
+          echo "Head SHA: ${{ matrix.head_sha }}"
+          echo "Suite: ${{ matrix.suite_name }}"
+          echo "Check run: ${{ matrix.check_run_id }}"
+
+      - name: Check out watchdog source
+        uses: actions/checkout@v4
+        with:
+          path: watchdog-source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Check out exact PR HEAD
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.head_sha }}
+          path: pr-source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Capture trusted Node path
+        id: trusted-node
+        run: echo "node_path=$(command -v node)" >> "$GITHUB_OUTPUT"
+
+      - name: QA self-tests
+        if: matrix.suite_id == 'qa-guardrails'
+        id: self-tests
+        working-directory: pr-source
+        run: node scripts/qa/run-self-tests.mjs
+
+      - name: Repository state
+        if: matrix.suite_id == 'qa-guardrails'
+        id: repository-state
+        working-directory: pr-source
+        run: node scripts/qa/check-repository-state.mjs
+
+      - name: App version
+        if: matrix.suite_id == 'qa-guardrails'
+        id: app-version
+        working-directory: pr-source
+        run: node scripts/qa/check-app-version.mjs
+
+      - name: UI technical leakage
+        if: matrix.suite_id == 'qa-guardrails'
+        id: ui-leakage
+        working-directory: pr-source
+        run: node scripts/qa/check-ui-leakage.mjs
+
+      - name: Project OS
+        if: matrix.suite_id == 'qa-guardrails'
+        id: project-os
+        working-directory: pr-source
+        run: node scripts/qa/check-project-os.mjs
+
+      - name: Markdown links
+        if: matrix.suite_id == 'qa-guardrails'
+        id: markdown-links
+        working-directory: pr-source
+        run: node scripts/qa/check-markdown-links.mjs
+
+      - name: QA summary
+        if: always() && matrix.suite_id == 'qa-guardrails'
+        working-directory: pr-source
+        env:
+          QA_SELF_TESTS_STATUS: ${{ steps.self-tests.outcome }}
+          QA_REPOSITORY_STATE_STATUS: ${{ steps.repository-state.outcome }}
+          QA_APP_VERSION_STATUS: ${{ steps.app-version.outcome }}
+          QA_UI_LEAKAGE_STATUS: ${{ steps.ui-leakage.outcome }}
+          QA_PROJECT_OS_STATUS: ${{ steps.project-os.outcome }}
+          QA_MARKDOWN_LINKS_STATUS: ${{ steps.markdown-links.outcome }}
+        run: node scripts/qa/generate-qa-report.mjs
+
+      - name: Install dependencies
+        if: matrix.suite_id == 'webkit-smoke-tests'
+        working-directory: pr-source
+        run: npm ci
+
+      - name: Install Playwright WebKit
+        if: matrix.suite_id == 'webkit-smoke-tests'
+        working-directory: pr-source
+        run: npx playwright install --with-deps webkit
+
+      - name: Run WebKit smoke tests
+        if: matrix.suite_id == 'webkit-smoke-tests'
+        working-directory: pr-source
+        run: npx playwright test
+
+      - name: Upload smoke evidence
+        if: always() && matrix.suite_id == 'webkit-smoke-tests'
+        uses: actions/upload-artifact@v4
+        with:
+          name: webkit-smoke-evidence-pr-${{ matrix.pr_number }}-${{ matrix.head_sha }}
+          if-no-files-found: warn
+          path: |
+            pr-source/test-results/**/arco-motion-initial-render.png
+            pr-source/playwright-report/**
+            pr-source/test-results/**
+
+      - name: Restore watchdog finalizer source
+        if: always()
+        uses: actions/checkout@v4
+        with:
+          path: watchdog-finalizer
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Finalize PR HEAD check run
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          WATCHDOG_CHECK_RUN_ID: ${{ matrix.check_run_id }}
+          WATCHDOG_PR_NUMBER: ${{ matrix.pr_number }}
+          WATCHDOG_HEAD_SHA: ${{ matrix.head_sha }}
+          WATCHDOG_SUITE_NAME: ${{ matrix.suite_name }}
+          WATCHDOG_JOB_STATUS: ${{ job.status }}
+          TRUSTED_NODE: ${{ steps.trusted-node.outputs.node_path }}
+        run: |
+          env -i \
+            PATH="/usr/bin:/bin" \
+            GITHUB_TOKEN="$GITHUB_TOKEN" \
+            GITHUB_REPOSITORY="$GITHUB_REPOSITORY" \
+            WATCHDOG_CHECK_RUN_ID="$WATCHDOG_CHECK_RUN_ID" \
+            WATCHDOG_PR_NUMBER="$WATCHDOG_PR_NUMBER" \
+            WATCHDOG_HEAD_SHA="$WATCHDOG_HEAD_SHA" \
+            WATCHDOG_SUITE_NAME="$WATCHDOG_SUITE_NAME" \
+            WATCHDOG_JOB_STATUS="$WATCHDOG_JOB_STATUS" \
+            "$TRUSTED_NODE" watchdog-finalizer/scripts/ci/mobile-ci-watchdog.mjs finalize

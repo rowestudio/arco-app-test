@@ -11,6 +11,7 @@ Uma tarefa só está pronta quando:
 - regressões relacionadas foram verificadas;
 - PR foi aberta;
 - título da PR contém versão ou ID operacional;
+- checks obrigatórios, quando aplicáveis, pertencem ao HEAD SHA atual da PR;
 - nenhum texto técnico vazou para a interface;
 - guardrails automatizados, quando alterados, têm self-tests versionados positivos e negativos;
 - Preview/Export e sistemas não relacionados foram preservados;
@@ -27,6 +28,15 @@ Uma tarefa só está pronta quando:
 - Validar links internos dos documentos.
 - Confirmar que as regras não contradizem `AGENTS.md`.
 - Confirmar que `APP_VERSION` permanece intacta, salvo marcador explícito `APP_VERSION_EXCEPTION: <justificativa>` quando uma exceção operacional for realmente necessária.
+
+## Para PR operacional de CI/CD
+
+- Não alterar código funcional do aplicativo.
+- Não alterar `APP_VERSION` nem `APP_VERSION_NAME`.
+- Documentar permissões, frequência, concorrência, política de SHA e recuperação.
+- Provar por self-test que a automação executa suítes ausentes, evita duplicidade no mesmo SHA e volta a executar quando o SHA muda.
+- Não considerar válido check de SHA anterior.
+- Não exigir token pessoal, desktop local ou execução manual recorrente.
 
 ## Para PR funcional
 

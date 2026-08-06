@@ -21,6 +21,7 @@
 - Ausência de teste deve ser reportada como “não verificado”.
 - Diagnóstico interno não comprova resultado visual.
 - Não contratar nem configurar serviço externo nesta PR.
+- Checks de PR devem validar o HEAD SHA atual. Resultado de SHA anterior não libera SHA novo.
 
 ## OPS-03 smoke tests WebKit iniciais
 
@@ -28,6 +29,16 @@
 - A cobertura inicial valida abertura de `/`, erros JavaScript não tratados via `pageerror`, mensagens `console.error`, presença de `.app`, `.stage` e `#topBar`, corpo não vazio e screenshot do render inicial como evidência do job.
 - WebKit automatizado em Linux não equivale ao Safari real nem ao iPhone real; continua sendo uma barreira técnica complementar.
 - Preview, Export, upload/importação, Save/Load, múltiplos assets e regressão visual comparativa ainda não são cobertos pela OPS-03.
+
+## OPS-04 Mobile CI Watchdog
+
+- A OPS-04 adiciona o workflow `Mobile CI Watchdog` para restaurar o fluxo mobile-first quando os eventos normais de PR não criarem checks no SHA atual.
+- Frequência: `schedule` a cada 30 minutos, mais `workflow_dispatch` administrativo. Essa periodicidade evita varredura excessiva e ainda reduz a dependência de desktop/terminal.
+- Política de duplicidade: antes de executar, o watchdog consulta workflow runs dos arquivos originais e check-runs explícitos do próprio watchdog. Qualquer execução `queued`, `in_progress` ou `completed` para a mesma suíte e o mesmo SHA impede nova execução.
+- Política de SHA: a unidade de validação é o HEAD SHA corrente da PR. Mudança de SHA torna as suítes elegíveis novamente; resultado de SHA anterior não conta.
+- Política de segurança: drafts e forks são ignorados; o código da PR é testado em checkout separado, sem credenciais persistidas. Metadados e finalização rodam a partir do código do watchdog da `main`.
+- Evidência: cada execução ausente gera check-run `QA Guardrails` ou `WebKit Smoke Tests` no SHA da PR, com PR, branch, SHA planejado, SHA corrente e conclusão.
+- Recuperação: se o watchdog falhar, executar manualmente `Mobile CI Watchdog` como ação administrativa e investigar o log. Não criar commit vazio, não simular aprovação e não exigir token pessoal de Roberto.
 
 ## OPS-02 guardrails
 
