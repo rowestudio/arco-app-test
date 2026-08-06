@@ -950,6 +950,8 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8O — base v8z4b32E8N. fix(parallax): sincroniza geometria visual do Stage e unifica painéis contextuais de Escala, Rotação e Profundidade. APP_VERSION = APP_VERSION_NAME = v8z4b32E8O. -->
+<!-- Arco Motion App — v8z4b32E8N — base restaurada v8z4b32E8I. feat(assets): profundidade manual persistente por asset e parallax translacional compartilhado entre Stage, Preview e Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E8N. -->
 <!-- Arco Motion App — v8z4b32E8I — base v8z4b32E8H. feat(session): pergunta se deve recuperar um checkpoint válido na abertura normal, sem alterar as intenções explícitas de Recarregar. APP_VERSION = APP_VERSION_NAME = v8z4b32E8I. -->
 <!-- Arco Motion App — v8z4b32E8H — base v8z4b32E8G. fix(reload): oferece restauração aguardável da sessão ou reinício limpo, com intenção de startup de uso único e tratamento de falhas. APP_VERSION = APP_VERSION_NAME = v8z4b32E8H. -->
 <!-- Arco Motion App — v8z4b32E8F — base v8z4b32E8E. fix(preview): confirma render e composição do primeiro frame t=0 antes de liberar loading, relógio e loop visível; falha/cancelamento libera retry sem alterar Export ou matemática do renderer. APP_VERSION = APP_VERSION_NAME = v8z4b32E8F. -->
@@ -2637,6 +2639,19 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
 body.cust-open #toolbar{
   display:none !important;
 }
+body.asset-context-panel-open #toolbar{display:none !important;}
+#assetContextPanel{
+  display:none;flex:1 1 auto;align-items:center;gap:10px;height:100%;
+  box-sizing:border-box;padding:10px 14px max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px);
+  background:var(--menu-bg);border-top:.5px solid var(--border);pointer-events:none;
+}
+#assetContextPanel.show{display:flex;pointer-events:auto;}
+#assetContextPanel .asset-context-back{flex:0 0 30px;color:var(--text2);display:flex;align-items:center;justify-content:center;}
+#assetContextPanel .asset-context-main{display:flex;flex:1;min-width:0;flex-direction:column;gap:5px;}
+#assetContextPanel .asset-context-row{display:flex;align-items:center;gap:12px;min-width:0;}
+#assetContextPanel .asset-context-actions{display:flex;align-items:center;gap:6px;min-height:30px;}
+#assetContextPanel .asset-context-title{font-size:11px;font-weight:700;color:var(--text3);min-width:72px;}
+#assetContextPanel .asset-context-value{font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;}
 #custBarTabs{
   background:var(--menu-bg) !important;
   background-image:none !important;
@@ -4060,11 +4075,14 @@ body.cust-open #toolbar{
   <div class="tb-item ctx-only ctx-asset" id="tbAssetReplace" onclick="isAssetsMode()&&getSelectedAsset()?startReplaceImageFlow():showStatus('Selecione uma imagem primeiro.')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-image-down"></use></svg><span class="tb-lbl">Trocar</span>
   </div>
-  <div class="tb-item ctx-only ctx-asset" id="tbAssetScale" onclick="scaleSelectedAsset(1.1)">
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetScale" onclick="openAssetContextPanel('scale')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-scaling"></use></svg><span class="tb-lbl">Escala</span>
   </div>
-  <div class="tb-item ctx-only ctx-asset" id="tbAssetRotate" onclick="rotateSelectedAsset(15)">
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetRotate" onclick="openAssetContextPanel('rotation')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-rotate-cw"></use></svg><span class="tb-lbl">Rotação</span>
+  </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetDepth" onclick="openAssetDepthPanel()">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-layers"></use></svg><span class="tb-lbl">Profundidade</span>
   </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetDelete" onclick="isAssetsMode()&&getSelectedAsset()?deleteSelectedAsset():showStatus('Selecione uma imagem primeiro.')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-trash"></use></svg><span class="tb-lbl">Excluir</span>
@@ -4074,6 +4092,21 @@ body.cust-open #toolbar{
   </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetBackward" onclick="isAssetsMode()?sendSelectedAssetBackward():null">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-send-backward"></use></svg><span class="tb-lbl">Trás</span>
+  </div>
+</div>
+<div id="assetContextPanel" role="dialog" aria-modal="false" aria-labelledby="assetContextPanelTitle">
+  <button type="button" class="asset-context-back" onclick="closeAssetContextPanel()" aria-label="Voltar">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <div class="asset-context-main">
+    <div class="asset-context-row">
+      <span class="asset-context-title" id="assetContextPanelTitle">Profundidade</span>
+      <input class="dur-slider" id="assetContextSlider" type="range" min="-100" max="100" step="1" value="0" style="flex:1;min-width:0;">
+      <span class="asset-context-value" id="assetContextValue">0</span>
+    </div>
+    <div class="asset-context-actions">
+      <button type="button" class="chip" id="assetContextReset" onclick="resetAssetContextValue()" style="padding:6px 14px;font-size:13px;min-height:30px;justify-content:center;margin-left:auto;">Reset</button>
+    </div>
   </div>
 </div>
 <!-- ALIGN BAR: seleção múltipla ocupa o slot da Linha 4 / Coluna 2, sem overlay sobre Duração. -->
@@ -7223,8 +7256,13 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8I';
-const APP_VERSION_NAME = 'v8z4b32E8I';
+const APP_VERSION = 'v8z4b32E8O';
+const APP_VERSION_NAME = 'v8z4b32E8O';
+let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
+let parallaxChangedCanonicalAssetGeometry = false;
+let parallaxChangedFrames = false;
+let parallaxChangedCurves = false;
+let parallaxChangedProjectWorld = false;
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -8498,6 +8536,7 @@ let filmSelection = { frameIndex: 0, segmentIndex: -1, source: 'init', updatedAt
 // armazenamento canônico (activeIdx/selectedSegmentIndex) e atualiza o registro
 // filmSelection. Os modos chamam o MESMO commit; o que difere é só apresentação.
 function commitFilmSelection(frameIndex, segmentIndex, source) {
+  const previousFrameIndex = (typeof activeIdx === 'number') ? activeIdx : -1;
   const fc = (typeof frameCount === 'number') ? frameCount : 0;
   if (typeof frameIndex === 'number' && frameIndex >= 0) {
     const nextFrameIndex = fc > 0 ? Math.max(0, Math.min(fc - 1, frameIndex)) : frameIndex;
@@ -8511,6 +8550,9 @@ function commitFilmSelection(frameIndex, segmentIndex, source) {
   filmSelection.source = source || 'unknown';
   filmSelection.updatedAt = Date.now();
   syncEditorFrameTargetsToCanonical(source || 'commitFilmSelection');
+  if (filmSelection.frameIndex !== previousFrameIndex && typeof refreshAssetStageVisualGeometry === 'function') {
+    refreshAssetStageVisualGeometry(source || 'frame-change');
+  }
   return filmSelection;
 }
 
@@ -14753,7 +14795,7 @@ function restoreState(state) {
   // base64/bitmaps — apenas reaponta para os objetos já decodificados.
   if (Array.isArray(state.assets)) {
     assets.length = 0;
-    state.assets.forEach(a => assets.push({...a}));
+    state.assets.forEach(a => assets.push(ensureAssetVisualDefaults({...a})));
     migratePersistentLayerIdentities(assets, Math.max(nextLayerSequence, state.nextLayerSequence || 1));
   }
   if (state.projectWorld) {
@@ -14817,6 +14859,7 @@ function undo() {
   // v8z4b30ZY — garantir visual update explícito após undo
   if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
   if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
+  if (typeof syncAssetDepthPanel === 'function') syncAssetDepthPanel();
   restackFilmEditorLayers('restoreState');
   projectWorldCompositeInvalidatedAfterAssetUndo = true;
   assetUndoVisualUpdateRan = true;
@@ -15151,6 +15194,7 @@ function selectAssetById(assetId, source) {
   renderAssetsContextBar();
   // v8z4b30ZU — atualizar toolbar imediatamente ao selecionar asset.
   if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
+  if (typeof syncAssetDepthPanel === 'function') syncAssetDepthPanel();
   if (typeof updateLowerTimelineMeta === 'function') updateLowerTimelineMeta();
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
   updateCanonicalAssetSelectionDiagnostics();
@@ -15163,12 +15207,130 @@ function clearSelectedAsset(source) { return selectAssetById(null, source || 'cl
 // futura (crop/moldura). Com enabled:false NÃO alteram aparência/Preview/Export.
 function ensureAssetVisualDefaults(asset) {
   if (!asset || asset.type !== 'image') return asset;
+  // Profundidade e independente da geometria canonica. Projetos anteriores
+  // migram implicitamente para zero; valores nao finitos nunca chegam ao render.
+  asset.depth = Number.isFinite(Number(asset.depth)) ? Number(asset.depth) : 0;
   asset.crop = asset.crop || { enabled: false, x: 0, y: 0, w: 1, h: 1 };
   asset.frameStyle = asset.frameStyle || {
     enabled: false, strokeColor: '#ffffff', strokeWidth: 0, radius: 0, padding: 0, shadow: false
   };
   return asset;
 }
+
+// Fonte unica do parallax translacional. A referencia neutra e o centro da
+// celula canonica do ProjectWorld; ela nao depende do modo, frame selecionado,
+// Preview ou Export. O offset aparente jamais e gravado em worldX/worldY.
+function resolveAssetParallaxOffset(asset, cameraState, referenceCameraState) {
+  const depth = Number(asset && asset.depth);
+  const camera = cameraState || {};
+  const reference = referenceCameraState || {};
+  if (!Number.isFinite(depth) || depth === 0) return { offsetX: 0, offsetY: 0 };
+  const cx = Number(camera.cx), cy = Number(camera.cy);
+  const rx = Number(reference.cx), ry = Number(reference.cy);
+  if (![cx, cy, rx, ry].every(Number.isFinite)) return { offsetX: 0, offsetY: 0 };
+  const factor = depth / 100;
+  return { offsetX: -(cx - rx) * factor, offsetY: -(cy - ry) * factor };
+}
+function getCanonicalParallaxReference(canonicalDims) {
+  const dims = canonicalDims || getImageSourceDimensions(getCanonicalRenderSource());
+  return { cx: (Number(dims.width) || 0) / 2, cy: (Number(dims.height) || 0) / 2 };
+}
+
+let assetContextPanelKind = 'none';
+let assetContextGesture = null;
+let assetScalePanelOpenedAfterTap = false;
+let assetRotationPanelOpenedAfterTap = false;
+let assetDepthPanelOpenedAfterTap = false;
+let assetDepthChangedZIndex = false;
+let assetZIndexChangedDepth = false;
+function syncAssetContextPanel() {
+  const asset = getSelectedAsset();
+  const slider = document.getElementById('assetContextSlider');
+  const value = document.getElementById('assetContextValue');
+  const title = document.getElementById('assetContextPanelTitle');
+  const reset = document.getElementById('assetContextReset');
+  if (!asset || !slider || assetContextPanelKind === 'none') return;
+  let current = 0, suffix = '';
+  if (assetContextPanelKind === 'depth') { slider.min = -100; slider.max = 100; current = Number(asset.depth) || 0; title.textContent = 'Profundidade'; }
+  if (assetContextPanelKind === 'scale') { slider.min = 20; slider.max = 300; current = getAssetContextScalePercent(asset); suffix = '%'; title.textContent = 'Escala'; }
+  if (assetContextPanelKind === 'rotation') { slider.min = -720; slider.max = 720; current = Number(asset.rotation) || 0; suffix = '°'; title.textContent = 'Rotação'; }
+  slider.value = String(Math.max(Number(slider.min), Math.min(Number(slider.max), current)));
+  slider.setAttribute('aria-label', title.textContent);
+  value.textContent = String(Math.round(current)) + suffix;
+  const neutral = assetContextPanelKind === 'scale' ? 100 : 0;
+  reset.disabled = Math.abs(current - neutral) < 0.001;
+  reset.style.opacity = reset.disabled ? '0.45' : '1';
+}
+function syncAssetDepthPanel() { syncAssetContextPanel(); }
+function closeAssetContextPanel() {
+  commitAssetContextGesture();
+  assetContextPanelKind = 'none';
+  const panel = document.getElementById('assetContextPanel');
+  if (panel) { panel.classList.remove('show'); panel.style.display = 'none'; panel.style.pointerEvents = 'none'; }
+  document.body.classList.remove('asset-context-panel-open');
+}
+function openAssetContextPanel(kind) {
+  if (!isAssetsMode() || !getSelectedAsset()) { showStatus('Selecione uma imagem primeiro.'); return; }
+  closeAssetContextPanel();
+  closeAll();
+  assetContextPanelKind = kind === 'scale' || kind === 'rotation' ? kind : 'depth';
+  const panel = document.getElementById('assetContextPanel');
+  if (panel) { panel.style.display = 'flex'; panel.style.pointerEvents = 'auto'; panel.classList.add('show'); }
+  document.body.classList.add('asset-context-panel-open');
+  if (assetContextPanelKind === 'scale') assetScalePanelOpenedAfterTap = true;
+  if (assetContextPanelKind === 'rotation') assetRotationPanelOpenedAfterTap = true;
+  if (assetContextPanelKind === 'depth') assetDepthPanelOpenedAfterTap = true;
+  syncAssetContextPanel();
+}
+function openAssetDepthPanel() { openAssetContextPanel('depth'); }
+function beginAssetContextGesture() {
+  const asset = getSelectedAsset();
+  if (!asset || assetContextGesture) return;
+  assetContextGesture = { snapshot: captureState(), assetId: String(asset.id), kind: assetContextPanelKind,
+    startW: Number(asset.worldW) || 1, startH: Number(asset.worldH) || 1,
+    startX: Number(asset.worldX) || 0, startY: Number(asset.worldY) || 0,
+    startScale: getAssetContextScalePercent(asset), startZIndex: asset.zIndex, startDepth: Number(asset.depth) || 0 };
+}
+function setAssetContextValue(value) {
+  const asset = getSelectedAsset();
+  const next = Number(value);
+  if (!asset || !Number.isFinite(next)) return;
+  beginAssetContextGesture();
+  if (assetContextPanelKind === 'depth') asset.depth = Math.max(-100, Math.min(100, next));
+  if (assetContextPanelKind === 'rotation') asset.rotation = Math.max(-720, Math.min(720, next));
+  if (assetContextPanelKind === 'scale' && assetContextGesture) {
+    const factor = Math.max(0.01, next / Math.max(0.01, assetContextGesture.startScale));
+    const cx = assetContextGesture.startX + assetContextGesture.startW / 2;
+    const cy = assetContextGesture.startY + assetContextGesture.startH / 2;
+    asset.worldW = assetContextGesture.startW * factor; asset.worldH = assetContextGesture.startH * factor;
+    asset.worldX = cx - asset.worldW / 2; asset.worldY = cy - asset.worldH / 2;
+  }
+  syncAssetContextPanel();
+  invalidateProjectWorldComposite();
+  refreshAssetStageVisualGeometry('asset-context-value');
+  updateLowerTimelineMeta();
+}
+function commitAssetContextGesture() {
+  const gesture = assetContextGesture;
+  if (!gesture) return;
+  const asset = assets.find(a => a && String(a.id) === gesture.assetId);
+  const before = gesture.snapshot.assets.find(a => a && String(a.id) === gesture.assetId);
+  const changed = !!(asset && before && JSON.stringify({x:asset.worldX,y:asset.worldY,w:asset.worldW,h:asset.worldH,r:asset.rotation,d:asset.depth}) !== JSON.stringify({x:before.worldX,y:before.worldY,w:before.worldW,h:before.worldH,r:before.rotation,d:before.depth}));
+  if (asset && gesture.kind === 'depth') assetDepthChangedZIndex = asset.zIndex !== gesture.startZIndex;
+  if (changed) { pushUndoSnapshot(gesture.snapshot); markProjectDirty('asset-' + gesture.kind); }
+  assetContextGesture = null;
+}
+function resetAssetContextValue() { setAssetContextValue(assetContextPanelKind === 'scale' ? 100 : 0); commitAssetContextGesture(); }
+function resetSelectedAssetDepth() { const previous = assetContextPanelKind; assetContextPanelKind = 'depth'; resetAssetContextValue(); assetContextPanelKind = previous; }
+document.addEventListener('DOMContentLoaded', function() {
+  const slider = document.getElementById('assetContextSlider');
+  if (!slider) return;
+  slider.addEventListener('pointerdown', beginAssetContextGesture);
+  slider.addEventListener('input', function() { setAssetContextValue(slider.value); });
+  slider.addEventListener('change', commitAssetContextGesture);
+  slider.addEventListener('pointerup', commitAssetContextGesture);
+  slider.addEventListener('pointercancel', commitAssetContextGesture);
+});
 
 // v8z4b32B — roteador explícito e pequeno para os botões de modo.
 // Regra geral:
@@ -16318,6 +16480,7 @@ function setEditorMode(mode, source) {
       assetReorderChangedReferenceOverlay = false;
     }
     syncEditorModeUI();
+    if (typeof refreshAssetStageVisualGeometry === 'function') refreshAssetStageVisualGeometry('mode-switch');
     renderAssetSelectionOverlay();
     lastModeApplied = editorMode;
     lastModeChangeTimestamp = Date.now();
@@ -16520,6 +16683,7 @@ function bringSelectedAssetForward() {
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para trazer à frente.'); return; }
+  const depthBeforeReorder = Number(sel.depth) || 0;
   normalizeAssetZIndices();
   const sorted = assets.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); });
   const pos = sorted.findIndex(function(a){ return a.id===sel.id; });
@@ -16539,6 +16703,7 @@ function bringSelectedAssetForward() {
   const tmp = sel.zIndex;
   sel.zIndex = next.zIndex;
   next.zIndex = tmp;
+  assetZIndexChangedDepth = (Number(sel.depth) || 0) !== depthBeforeReorder;
   assetOrderAfterReorder = assets.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); }).map(function(a){ return { id: a.id, zIndex: a.zIndex }; });
   // v8z4b30ZV — invalidar composite e redesenhar Stage com ordem real de layers.
   projectWorldCompositeInvalidatedAfterAssetReorder = true;
@@ -16569,6 +16734,7 @@ function sendSelectedAssetBackward() {
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para enviar para trás.'); return; }
+  const depthBeforeReorder = Number(sel.depth) || 0;
   normalizeAssetZIndices();
   const sorted = assets.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); });
   const pos = sorted.findIndex(function(a){ return a.id===sel.id; });
@@ -16588,6 +16754,7 @@ function sendSelectedAssetBackward() {
   const tmp = sel.zIndex;
   sel.zIndex = prev.zIndex;
   prev.zIndex = tmp;
+  assetZIndexChangedDepth = (Number(sel.depth) || 0) !== depthBeforeReorder;
   assetOrderAfterReorder = assets.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); }).map(function(a){ return { id: a.id, zIndex: a.zIndex }; });
   // v8z4b30ZV — invalidar composite e redesenhar Stage com ordem real de layers.
   projectWorldCompositeInvalidatedAfterAssetReorder = true;
@@ -16618,6 +16785,7 @@ function layerMoveAssetUp(assetId) {
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
+  const depthBeforeReorder = Number(a.depth) || 0;
   // v8z4b32E1 — ESCOPO 4: a linha acionada vira o asset selecionado, e assim
   // permanece após a reordenação (Stage/contorno/painel sincronizados).
   if (typeof selectAssetById === 'function') selectAssetById(assetId, 'layers');
@@ -16639,6 +16807,7 @@ function layerMoveAssetUp(assetId) {
   const tmp = a.zIndex;
   a.zIndex = next.zIndex;
   next.zIndex = tmp;
+  assetZIndexChangedDepth = (Number(a.depth) || 0) !== depthBeforeReorder;
   layerReorderNoDuplicateZIndex = true;
   layerReorderChangedOnlyAssets = true;
   layerReorderPreservedSelectedAsset = (selectedAssetId === assetId);
@@ -16667,6 +16836,7 @@ function layerMoveAssetDown(assetId) {
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
+  const depthBeforeReorder = Number(a.depth) || 0;
   // v8z4b32E1 — ESCOPO 4: a linha acionada vira o asset selecionado, e assim
   // permanece após a reordenação (Stage/contorno/painel sincronizados).
   if (typeof selectAssetById === 'function') selectAssetById(assetId, 'layers');
@@ -16688,6 +16858,7 @@ function layerMoveAssetDown(assetId) {
   const tmp = a.zIndex;
   a.zIndex = prev.zIndex;
   prev.zIndex = tmp;
+  assetZIndexChangedDepth = (Number(a.depth) || 0) !== depthBeforeReorder;
   layerReorderNoDuplicateZIndex = true;
   layerReorderChangedOnlyAssets = true;
   layerReorderPreservedSelectedAsset = (selectedAssetId === assetId);
@@ -21659,6 +21830,9 @@ function refreshEditorViewVisualOverlays() {
   if (typeof isAssetsMode === 'function' && isAssetsMode() && temporaryFrameReferencesVisible) {
     renderAssetsModeReferenceCurves();
   }
+  if (typeof isAssetsMode === 'function' && isAssetsMode() && typeof refreshAssetStageVisualGeometry === 'function') {
+    refreshAssetStageVisualGeometry('renderAll');
+  }
 }
 
 function applyEditorZoom() {
@@ -21705,6 +21879,7 @@ function applyEditorZoom() {
   // Visibilidade contextual — v8z4b18b
   syncEditorZoomCtrlVisibility();
   syncStageEyeShortcutState();
+  if (typeof refreshAssetStageVisualGeometry === 'function') refreshAssetStageVisualGeometry('pan-zoom');
   refreshEditorViewVisualOverlays();
   cleanupStageRenderLayersForEditorView();
 }
@@ -27705,6 +27880,7 @@ function setSegEase(ease) {
 }
 
 function closeAll() {
+  closeAssetContextPanel();
   commitBatchPauseEditSession();
   teardownFramePauseRows();
   teardownFramePauseLocalSlider();
@@ -29431,6 +29607,7 @@ function serializeProjectAsset(a, idx, includeImages) {
     worldW: a.worldW || 0,
     worldH: a.worldH || 0,
     rotation: a.rotation || 0,
+    depth: Number.isFinite(Number(a.depth)) ? Number(a.depth) : 0,
     zIndex: a.zIndex || 0,
     visible: a.visible !== false,
     locked: !!a.locked,
@@ -31256,6 +31433,7 @@ function syncFirstImageAsset(reason) {
     // (chamado em re-syncs/load) NÃO pode sobrescrevê-los com imgNatW/imgNatH nem
     // com o Stage/baseStage. Os campos abaixo protegidos por este flag.
     const _e6Canon = !!a.e6CanonicalReplaced;
+    a.depth = Number.isFinite(Number(a.depth)) ? Number(a.depth) : 0;
     a.name     = name;
     assignPersistentLayerIdentity(a, window._originalImageFileName);
     if (!_e6Canon) {
@@ -31384,6 +31562,7 @@ function restoreProjectAssetsFromData(data) {
         primary.layerName = savedPrimaryIdentity.layerName;
         primary.layerNameSource = savedPrimaryIdentity.layerNameSource;
         primary.originalFileName = savedPrimaryIdentity.originalFileName || '';
+        primary.depth = Number.isFinite(Number(savedPrimaryIdentity.depth)) ? Number(savedPrimaryIdentity.depth) : 0;
       }
       // v8z4b30N — baseStageW/H definem a grade 3x3 usada para posicionar os
       // assets adicionais. Restaurar os valores salvos mantém worldX/Y/W/H
@@ -31490,6 +31669,7 @@ function restoreProjectAssetsFromData(data) {
           worldW: sa.worldW || 0,
           worldH: sa.worldH || 0,
           rotation: sa.rotation || 0,
+          depth: Number.isFinite(Number(sa.depth)) ? Number(sa.depth) : 0,
           zIndex: sa.zIndex != null ? sa.zIndex : assets.length,
           visible: sa.visible !== false,
           locked: !!sa.locked,
@@ -32858,6 +33038,7 @@ async function prepareRenderSessionSnapshot(kind) {
           zIndex: Number(a.zIndex) || 0,
           worldX: a.worldX || 0, worldY: a.worldY || 0,
           worldW: a.worldW || 0, worldH: a.worldH || 0,
+          depth: Number.isFinite(Number(a.depth)) ? Number(a.depth) : 0,
           sourceW: a.sourceW || 0, sourceH: a.sourceH || 0,
           rotation: Number(a.rotation) || 0,
           mimeType: a.mimeType || '', hasAlpha: !!a.hasAlpha,
@@ -33462,6 +33643,66 @@ function getAssetVisualWorldRect(a) {
   const cx = wx + ww / 2, cy = wy + wh / 2;
   return { x: cx - fitted.width / 2, y: cy - fitted.height / 2, w: fitted.width, h: fitted.height };
 }
+function getAssetStageCameraState() {
+  const frame = (Array.isArray(frames) && frames[activeIdx]) || null;
+  return frame ? { cx: frame.x + frame.w / 2, cy: frame.y + frame.h / 2, frameIndex: activeIdx, source: 'active-frame' } : null;
+}
+function resolveAssetStageVisualGeometry(a, currentCameraState) {
+  const rect = getAssetVisualWorldRect(a);
+  const camera = currentCameraState || getAssetStageCameraState();
+  const reference = { cx: (projectWorld.baseStageW || stageW || 0) / 2, cy: (projectWorld.baseStageH || stageH || 0) / 2 };
+  const offset = resolveAssetParallaxOffset(a, camera, reference);
+  return {
+    assetId: a && String(a.id),
+    canonicalRect: { x: Number(a && a.worldX) || 0, y: Number(a && a.worldY) || 0, w: Number(a && a.worldW) || 0, h: Number(a && a.worldH) || 0 },
+    visualRect: { x: rect.x + offset.offsetX, y: rect.y + offset.offsetY, w: rect.w, h: rect.h },
+    rotation: Number(a && a.rotation) || 0,
+    parallaxOffset: offset,
+    cameraState: camera
+  };
+}
+function getAssetParallaxVisualWorldRect(a) { return resolveAssetStageVisualGeometry(a).visualRect; }
+
+let parallaxStageCurrentCameraSource = 'n/d';
+let parallaxStageCurrentFrameIndex = -1;
+let parallaxStageRecomputedAfterTimelineTap = false;
+let parallaxStageRecomputedAfterTimelineScroll = false;
+let parallaxStageRecomputedAfterProgrammaticCenter = false;
+let parallaxStageRecomputedAfterModeSwitch = false;
+let parallaxStageRecomputedAfterPanZoom = false;
+let assetVisualMovedAfterFrameChange = false;
+let assetCanonicalGeometryUnchangedAfterFrameChange = false;
+let parallaxTimelineNavigationCreatedUndo = null;
+let parallaxTimelineNavigationScheduledAutosave = null;
+let lastResolvedAssetStageGeometry = null;
+function refreshAssetStageVisualGeometry(source) {
+  if (!Array.isArray(assets) || !projectWorld.initialized) return;
+  const camera = getAssetStageCameraState();
+  const selected = getSelectedAsset();
+  const selectedDom = selected ? stageContent.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(String(selected.id)) + '"]') : null;
+  const beforeDomPosition = selectedDom ? { left: selectedDom.style.left, top: selectedDom.style.top } : null;
+  const beforeGeometry = selected ? resolveAssetStageVisualGeometry(selected, camera) : null;
+  const beforeCanonical = selected ? JSON.stringify(beforeGeometry.canonicalRect) : null;
+  const beforeUndo = typeof undoStack !== 'undefined' ? undoStack.length : null;
+  const beforeRevision = typeof sessionAutosaveRevision !== 'undefined' ? sessionAutosaveRevision : null;
+  parallaxStageCurrentCameraSource = camera ? camera.source : 'none';
+  parallaxStageCurrentFrameIndex = camera ? camera.frameIndex : -1;
+  if (/tap/i.test(source || '')) parallaxStageRecomputedAfterTimelineTap = true;
+  if (/scroll/i.test(source || '')) parallaxStageRecomputedAfterTimelineScroll = true;
+  if (/programmatic|center/i.test(source || '')) parallaxStageRecomputedAfterProgrammaticCenter = true;
+  if (/mode/i.test(source || '')) parallaxStageRecomputedAfterModeSwitch = true;
+  if (/pan|zoom/i.test(source || '')) parallaxStageRecomputedAfterPanZoom = true;
+  renderProjectWorldExtraImages();
+  const afterGeometry = selected ? resolveAssetStageVisualGeometry(selected, camera) : null;
+  lastResolvedAssetStageGeometry = afterGeometry;
+  if (/timeline|frame|center|scroll/i.test(source || '') && beforeGeometry && afterGeometry) {
+    const afterDom = stageContent.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(String(selected.id)) + '"]');
+    assetVisualMovedAfterFrameChange = !!(beforeDomPosition && afterDom && (beforeDomPosition.left !== afterDom.style.left || beforeDomPosition.top !== afterDom.style.top));
+    assetCanonicalGeometryUnchangedAfterFrameChange = beforeCanonical === JSON.stringify(afterGeometry.canonicalRect);
+    parallaxTimelineNavigationCreatedUndo = beforeUndo == null ? null : undoStack.length !== beforeUndo;
+    parallaxTimelineNavigationScheduledAutosave = beforeRevision == null ? null : sessionAutosaveRevision !== beforeRevision;
+  }
+}
 
 // v8z4b30R — Estima a célula do grid 3x3 (linha/coluna) de um asset a partir
 // de worldX/Y/W/H e baseStageW/H. Uso exclusivo de diagnóstico — não influencia
@@ -33728,6 +33969,7 @@ function performInsertImageAtSlot(slotKey, file) {
         worldW: fitted.width,
         worldH: fitted.height,
         rotation: 0,
+        depth: 0,
         zIndex: newZ,
         visible: true,
         locked: false,
@@ -33864,7 +34106,17 @@ function renderProjectWorldExtraImages() {
     // idêntico ao worldRect (já recalculado pela v8z4b32E4 na mesma proporção da
     // imagem); para img-1 (worldX/Y/W/H intactos — não tocado) dá o retângulo REAL
     // da imagem dentro da célula, sem moldura/letterbox herdado.
-    const _vr = getAssetVisualWorldRect(a);
+    const _resolvedGeometry = resolveAssetStageVisualGeometry(a);
+    const _vr = _resolvedGeometry.visualRect;
+    if (String(a.id) === String(selectedAssetId || '')) {
+      const _baseVr = getAssetVisualWorldRect(a);
+      const _dims = getImageSourceDimensions(getCanonicalRenderSource());
+      const _sx = (_dims.width || 0) / (projectWorld.baseStageW || stageW || 1);
+      const _sy = (_dims.height || 0) / (projectWorld.baseStageH || stageH || 1);
+      const _f = frames[activeIdx];
+      parallaxOffsetsByContext.stage = { x: (_vr.x - _baseVr.x) * _sx, y: (_vr.y - _baseVr.y) * _sy,
+        assetId: String(a.id), cameraX: _f ? (_f.x + _f.w / 2) * _sx : null, cameraY: _f ? (_f.y + _f.h / 2) * _sy : null };
+    }
     var _ep = editorWorldToStage(
       _vr.x, _vr.y,
       (_vr.w || projectWorld.baseStageW || 0),
@@ -33990,7 +34242,7 @@ function hitTestAssetAtWorld(wx, wy) {
     // não o worldRect cru: idêntico ao worldRect para extras; para img-1 evita
     // que a área antes coberta por letterbox (fora da imagem real) capture o
     // toque, deixando o ponto vazio cair para o asset visualmente abaixo.
-    const _vr = getAssetVisualWorldRect(a);
+    const _vr = resolveAssetStageVisualGeometry(a).visualRect;
     const x = _vr.x, y = _vr.y, w = _vr.w, h = _vr.h;
     const rot = (Number(a.rotation) || 0) * Math.PI / 180;
     const cx = x + w / 2, cy = y + h / 2;
@@ -34203,7 +34455,9 @@ function beginAssetTransformDrag(e, corner) {
   try { e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId); assetTransformPointerCaptured = true; } catch (_) {}
   computeEditorTransform();
   const sc = screenToStageCoord(e.clientX, e.clientY);
-  const wp = editorStageToWorld(sc.x, sc.y);
+  const wpVisual = editorStageToWorld(sc.x, sc.y);
+  const parallax = resolveAssetStageVisualGeometry(asset).parallaxOffset;
+  const wp = { x: wpVisual.x - parallax.offsetX, y: wpVisual.y - parallax.offsetY };
   const cx = (asset.worldX || 0) + (asset.worldW || 0) / 2;
   const cy = (asset.worldY || 0) + (asset.worldH || 0) / 2;
   assetTransformMode = 'pending';
@@ -34224,7 +34478,9 @@ function handleAssetTransformPointerMove(e) {
   e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation();
   computeEditorTransform();
   const sc = screenToStageCoord(e.clientX, e.clientY);
-  const wp = editorStageToWorld(sc.x, sc.y);
+  const wpVisual = editorStageToWorld(sc.x, sc.y);
+  const parallax = resolveAssetStageVisualGeometry(asset).parallaxOffset;
+  const wp = { x: wpVisual.x - parallax.offsetX, y: wpVisual.y - parallax.offsetY };
   const dx = wp.x - ds.cx, dy = wp.y - ds.cy;
   const dist = Math.max(1, Math.hypot(dx, dy));
   const currentAngle = Math.atan2(dy, dx);
@@ -34314,7 +34570,8 @@ function renderAssetSelectionOverlay() {
   // v8z4b32E5 — moldura roxa abraça o sub-retângulo VISUAL (getAssetVisualWorldRect),
   // não o worldRect cru — idêntico ao worldRect para extras; para img-1 evita a
   // moldura ficar maior que a imagem real dentro da célula intacta do ProjectWorld.
-  const _vr = getAssetVisualWorldRect(asset);
+  const _resolvedGeometry = resolveAssetStageVisualGeometry(asset);
+  const _vr = _resolvedGeometry.visualRect;
   const p = editorWorldToStage(_vr.x, _vr.y, _vr.w, _vr.h);
   if (!box) {
     box = document.createElement('div');
@@ -35849,6 +36106,7 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context) {
         worldW: sv.worldW, worldH: sv.worldH,
         sourceW: sv.sourceW, sourceH: sv.sourceH,
         rotation: Number(sv.rotation) || 0,
+        depth: Number.isFinite(Number(sv.depth)) ? Number(sv.depth) : 0,
         drawSource: src,
         e6CanonicalReplaced: true
       };
@@ -35964,14 +36222,22 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
       // O canvas 2D natively descarta o que está fora do viewport.
       for (let i = 0; i < renderAssets.length; i++) {
         const r = renderAssets[i].rect;
+        const parallax = resolveAssetParallaxOffset(renderAssets[i].asset, cam, getCanonicalParallaxReference(canonicalDims));
+        if (String(renderAssets[i].id) === String(selectedAssetId || renderAssets[0]?.id || '')) {
+          parallaxOffsetsByContext[context === 'export' ? 'export' : (context === 'preview' ? 'preview' : 'stage')] = {
+            x: parallax.offsetX, y: parallax.offsetY, assetId: String(renderAssets[i].id), cameraX: cam.cx, cameraY: cam.cy
+          };
+        }
+        const drawX = r.ax + parallax.offsetX;
+        const drawY = r.ay + parallax.offsetY;
         if (r.rotation) {
           ctx.save();
-          ctx.translate(r.ax + r.aw / 2, r.ay + r.ah / 2);
+          ctx.translate(drawX + r.aw / 2, drawY + r.ah / 2);
           ctx.rotate(r.rotation * Math.PI / 180);
           drawCoverImage(ctx, renderAssets[i].src, -r.aw / 2, -r.ah / 2, r.aw, r.ah);
           ctx.restore();
         } else {
-          drawCoverImage(ctx, renderAssets[i].src, r.ax, r.ay, r.aw, r.ah);
+          drawCoverImage(ctx, renderAssets[i].src, drawX, drawY, r.aw, r.ah);
         }
         drawnCount++;
       }
@@ -36398,6 +36664,86 @@ function computeGhostHandleAudit() {
 function buildDiagnosticsText() {
   const L = [];
   const push = (k, v) => L.push(k + ': ' + v);
+
+  const _depthAssets = Array.isArray(assets) ? assets.filter(a => a && a.type === 'image') : [];
+  const _selectedDepthAsset = getSelectedAsset();
+  const _depthById = Object.fromEntries(_depthAssets.map(a => [String(a.id), Number.isFinite(Number(a.depth)) ? Number(a.depth) : 0]));
+  const _stageDepthOffset = parallaxOffsetsByContext.stage;
+  const _previewDepthOffset = parallaxOffsetsByContext.preview;
+  const _exportDepthOffset = parallaxOffsetsByContext.export;
+  const _sameSample = (a, b) => !!(a && b && a.assetId === b.assetId && Math.abs(a.cameraX - b.cameraX) < 0.001 && Math.abs(a.cameraY - b.cameraY) < 0.001);
+  const _sameOffset = (a, b) => !!(_sameSample(a, b) && Math.abs(a.x - b.x) < 0.001 && Math.abs(a.y - b.y) < 0.001);
+  push('assetDepthEnabled', 'true');
+  push('selectedAssetDepth', _selectedDepthAsset ? String(Number(_selectedDepthAsset.depth) || 0) : 'n/d');
+  push('assetDepthById', JSON.stringify(_depthById));
+  push('assetDepthDefaultIsZero', String(_depthAssets.every(a => a.depth !== undefined || (Number(a.depth) || 0) === 0)));
+  push('assetDepthFiniteForAllAssets', String(_depthAssets.every(a => Number.isFinite(Number(a.depth)))));
+  ['Move','Scale','Rotate','Reorder','Replace','SaveLoad','SessionRestore'].forEach(action => push('assetDepthPreservedAfter' + action, 'n/d'));
+  push('parallaxReferenceStrategy', 'ProjectWorld canonical main-cell center');
+  push('parallaxStageOffsetX/Y', _stageDepthOffset ? `${_stageDepthOffset.x}/${_stageDepthOffset.y}` : 'n/d');
+  push('parallaxPreviewOffsetX/Y', _previewDepthOffset ? `${_previewDepthOffset.x}/${_previewDepthOffset.y}` : 'n/d');
+  push('parallaxExportOffsetX/Y', _exportDepthOffset ? `${_exportDepthOffset.x}/${_exportDepthOffset.y}` : 'n/d');
+  push('parallaxStagePreviewParityOk', _sameSample(_stageDepthOffset, _previewDepthOffset) ? String(_sameOffset(_stageDepthOffset, _previewDepthOffset)) : 'n/d');
+  push('parallaxPreviewExportParityOk', _sameSample(_previewDepthOffset, _exportDepthOffset) ? String(_sameOffset(_previewDepthOffset, _exportDepthOffset)) : 'n/d');
+  push('parallaxZeroDepthIdentityOk', String(_depthAssets.filter(a => Number(a.depth) === 0).every(a => {
+    const o = resolveAssetParallaxOffset(a, { cx: 123, cy: 456 }, { cx: 1, cy: 2 }); return o.offsetX === 0 && o.offsetY === 0;
+  })));
+  push('parallaxChangedCanonicalAssetGeometry', String(parallaxChangedCanonicalAssetGeometry));
+  push('parallaxChangedFrames', String(parallaxChangedFrames));
+  push('parallaxChangedCurves', String(parallaxChangedCurves));
+  push('parallaxChangedProjectWorld', String(parallaxChangedProjectWorld));
+  const _stageAsset = getSelectedAsset();
+  const _stageGeometry = _stageAsset ? resolveAssetStageVisualGeometry(_stageAsset) : null;
+  const _assetDom = _stageAsset ? document.querySelector('.world-extra-img[data-asset-id="' + String(_stageAsset.id) + '"]') : null;
+  const _selectionDom = document.getElementById('assetSelectOutline');
+  const _panel = document.getElementById('assetContextPanel');
+  const _panelStyle = _panel ? getComputedStyle(_panel) : null;
+  const _rectText = r => r ? JSON.stringify({x:r.x,y:r.y,w:r.w,h:r.h}) : 'n/d';
+  const _domRectText = el => el ? _rectText({x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,w:parseFloat(el.style.width)||0,h:parseFloat(el.style.height)||0}) : 'n/d';
+  const _contextPanels = [_panel, document.getElementById('custBar'), ...document.querySelectorAll('.float-panel')].filter(Boolean);
+  const _openContextPanels = _contextPanels.filter(el => { const s=getComputedStyle(el); return s.display !== 'none' && s.visibility !== 'hidden'; });
+  const _invisibleCapturing = _contextPanels.some(el => { const s=getComputedStyle(el); return s.display !== 'none' && (s.visibility === 'hidden' || Number(s.opacity) === 0) && s.pointerEvents !== 'none'; });
+  const _visualRect = _stageGeometry && _stageGeometry.visualRect;
+  const _domRect = _assetDom ? {x:parseFloat(_assetDom.style.left)||0,y:parseFloat(_assetDom.style.top)||0,w:parseFloat(_assetDom.style.width)||0,h:parseFloat(_assetDom.style.height)||0} : null;
+  const _selectionRect = _selectionDom && _selectionDom.style.display !== 'none' ? {x:parseFloat(_selectionDom.style.left)||0,y:parseFloat(_selectionDom.style.top)||0,w:parseFloat(_selectionDom.style.width)||0,h:parseFloat(_selectionDom.style.height)||0} : null;
+  const _expectedStageRect = _visualRect ? editorWorldToStage(_visualRect.x,_visualRect.y,_visualRect.w,_visualRect.h) : null;
+  const _rectParity = (a,b) => !!(a&&b&&Math.abs(a.x-b.x)<0.6&&Math.abs(a.y-b.y)<0.6&&Math.abs(a.w-b.w)<0.6&&Math.abs(a.h-b.h)<0.6);
+  push('parallaxStageCurrentCameraSource', parallaxStageCurrentCameraSource);
+  push('parallaxStageCurrentFrameIndex', String(parallaxStageCurrentFrameIndex));
+  push('parallaxStageRecomputedAfterTimelineTap', String(parallaxStageRecomputedAfterTimelineTap));
+  push('parallaxStageRecomputedAfterTimelineScroll', String(parallaxStageRecomputedAfterTimelineScroll));
+  push('parallaxStageRecomputedAfterProgrammaticCenter', String(parallaxStageRecomputedAfterProgrammaticCenter));
+  push('parallaxStageRecomputedAfterModeSwitch', String(parallaxStageRecomputedAfterModeSwitch));
+  push('parallaxStageRecomputedAfterPanZoom', String(parallaxStageRecomputedAfterPanZoom));
+  push('selectedAssetCanonicalRect', _stageGeometry ? _rectText(_stageGeometry.canonicalRect) : 'n/d');
+  push('selectedAssetVisualRect', _rectText(_visualRect));
+  push('selectedAssetParallaxOffset', _stageGeometry ? JSON.stringify(_stageGeometry.parallaxOffset) : 'n/d');
+  push('selectedAssetDomRect', _domRectText(_assetDom));
+  push('selectedAssetSelectionRect', _domRectText(_selectionDom));
+  push('selectedAssetHitTestRect', _rectText(_visualRect));
+  push('selectedAssetHandlesRect', _domRectText(_selectionDom));
+  push('assetImageUsesResolvedParallaxGeometry', _expectedStageRect && _domRect ? String(_rectParity(_expectedStageRect,_domRect)) : 'n/d');
+  push('assetSelectionUsesResolvedParallaxGeometry', _expectedStageRect && _selectionRect ? String(_rectParity(_expectedStageRect,_selectionRect)) : 'n/d');
+  push('assetHitTestUsesResolvedParallaxGeometry', (typeof lastAssetHitTestSelectedId !== 'undefined' && lastAssetHitTestSelectedId) ? String(String(lastAssetHitTestSelectedId) === String(_stageAsset && _stageAsset.id)) : 'n/d');
+  push('assetHandlesUseResolvedParallaxGeometry', _selectionRect ? String(_rectParity(_expectedStageRect,_selectionRect)) : 'n/d');
+  push('assetVisualGeometryParityOk', _expectedStageRect&&_domRect&&_selectionRect ? String(_rectParity(_expectedStageRect,_domRect)&&_rectParity(_expectedStageRect,_selectionRect)) : 'n/d');
+  push('assetVisualMovedAfterFrameChange', String(assetVisualMovedAfterFrameChange));
+  push('assetCanonicalGeometryUnchangedAfterFrameChange', String(assetCanonicalGeometryUnchangedAfterFrameChange));
+  push('parallaxTimelineNavigationCreatedUndo', parallaxTimelineNavigationCreatedUndo == null ? 'n/d' : String(parallaxTimelineNavigationCreatedUndo));
+  push('parallaxTimelineNavigationScheduledAutosave', parallaxTimelineNavigationScheduledAutosave == null ? 'n/d' : String(parallaxTimelineNavigationScheduledAutosave));
+  push('assetContextPanelOpen', assetContextPanelKind);
+  push('assetContextPanelVisible', _panelStyle ? String(_panelStyle.display !== 'none' && _panelStyle.visibility !== 'hidden') : 'false');
+  push('assetContextPanelZIndex', _panelStyle ? _panelStyle.zIndex : 'n/d');
+  push('assetContextPanelPointerEvents', _panelStyle ? _panelStyle.pointerEvents : 'n/d');
+  push('assetContextMultiplePanelsOpenDetected', String(_openContextPanels.length > 1));
+  push('assetContextInvisiblePanelCapturingPointer', String(_invisibleCapturing));
+  push('assetScalePanelOpenedAfterTap', String(assetScalePanelOpenedAfterTap));
+  push('assetRotationPanelOpenedAfterTap', String(assetRotationPanelOpenedAfterTap));
+  push('assetDepthPanelOpenedAfterTap', String(assetDepthPanelOpenedAfterTap));
+  push('assetDepthChangedZIndex', String(assetDepthChangedZIndex));
+  push('assetZIndexChangedDepth', String(assetZIndexChangedDepth));
+  const _independenceObserved = assetDepthPanelOpenedAfterTap || (typeof lastAssetReorderAction !== 'undefined' && !!lastAssetReorderAction && lastAssetReorderAction !== 'none') || (typeof lastLayerReorderAction !== 'undefined' && !!lastLayerReorderAction);
+  push('depthAndZIndexRemainIndependent', _independenceObserved ? String(!assetDepthChangedZIndex && !assetZIndexChangedDepth) : 'n/d');
 
   // v8z4b32E8E — diagnóstico técnico somente no painel protegido.
   push('sessionAutosaveEnabled', String(sessionAutosaveEnabled));

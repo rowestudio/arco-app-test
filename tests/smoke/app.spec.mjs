@@ -345,3 +345,88 @@ test('intenção E8H clean mantém launcher sem pergunta E8I', async ({ page }) 
   await expect(page.getByRole('dialog', { name: 'Continuar sessão anterior?' })).toBeHidden();
   await expect.poll(() => page.evaluate(() => startupRecoveryBypassReason)).toBe('explicit-reload-clean');
 });
+
+test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await page.evaluate(() => {
+    setEditorMode('assets', 'webkit-e8o');
+    const asset = assets.find((candidate) => candidate && candidate.type === 'image');
+    selectAssetById(asset.id, 'webkit-e8o');
+    asset.depth = 50;
+    if (frameCount < 2) {
+      frames[1] = { ...frames[0], x: frames[0].x + 80, y: frames[0].y + 40 };
+      frameRotations[1] = frameRotations[0] || 0;
+      frameCount = 2;
+    }
+    commitFilmSelection(0, -1, 'webkit-e8o-start');
+    refreshAssetStageVisualGeometry('webkit-e8o-start');
+  });
+
+  await page.locator('#tbAssetScale').click();
+  await expect(page.locator('#assetContextPanel')).toBeVisible();
+  await expect(page.locator('#assetContextPanelTitle')).toHaveText('Escala');
+  await page.locator('#tbAssetRotate').evaluate((el) => el.click());
+  await expect(page.locator('#assetContextPanelTitle')).toHaveText('Rotação');
+  await page.locator('#tbAssetDepth').evaluate((el) => el.click());
+  await expect(page.locator('#assetContextPanelTitle')).toHaveText('Profundidade');
+
+  const transformResult = await page.evaluate(() => {
+    let asset = getSelectedAsset();
+    const zIndex = asset.zIndex;
+    const undoStart = undoStack.length;
+    setAssetContextValue(60); commitAssetContextGesture();
+    const depthUndoCount = undoStack.length - undoStart;
+    const undoBeforeReset = undoStack.length;
+    resetAssetContextValue();
+    const resetUndoCount = undoStack.length - undoBeforeReset;
+    const depthAfterReset = asset.depth;
+    undo(); const depthAfterUndo = getSelectedAsset().depth; redo();
+    asset = getSelectedAsset();
+    openAssetContextPanel('scale');
+    const widthBefore = asset.worldW;
+    setAssetContextValue(Math.min(300, getAssetContextScalePercent(asset) + 10)); commitAssetContextGesture();
+    openAssetContextPanel('rotation');
+    const rotationBefore = asset.rotation;
+    setAssetContextValue(rotationBefore + 10); commitAssetContextGesture();
+    return { depthUndoCount, resetUndoCount, depthAfterReset, depthAfterUndo,
+      zIndexUnchanged: asset.zIndex === zIndex, scaled: asset.worldW !== widthBefore,
+      rotated: asset.rotation !== rotationBefore };
+  });
+  expect(transformResult.depthUndoCount).toBe(1);
+  expect(transformResult.resetUndoCount).toBe(1);
+  expect(transformResult.depthAfterReset).toBe(0);
+  expect(transformResult.depthAfterUndo).toBe(60);
+  expect(transformResult.zIndexUnchanged).toBe(true);
+  expect(transformResult.scaled).toBe(true);
+  expect(transformResult.rotated).toBe(true);
+
+  const result = await page.evaluate(() => {
+    closeAssetContextPanel();
+    const asset = getSelectedAsset();
+    const imageBefore = document.querySelector(`.world-extra-img[data-asset-id="${asset.id}"]`).getBoundingClientRect();
+    const selectionBefore = document.getElementById('assetSelectOutline').getBoundingClientRect();
+    const canonicalBefore = { x: asset.worldX, y: asset.worldY };
+    const undoBefore = undoStack.length;
+    const revisionBefore = sessionAutosaveRevision;
+    commitFilmSelection(1, -1, 'timeline-tap-webkit-e8o');
+    const imageAfter = document.querySelector(`.world-extra-img[data-asset-id="${asset.id}"]`).getBoundingClientRect();
+    const selectionAfter = document.getElementById('assetSelectOutline').getBoundingClientRect();
+    return {
+      imageDelta: { x: imageAfter.x - imageBefore.x, y: imageAfter.y - imageBefore.y },
+      selectionDelta: { x: selectionAfter.x - selectionBefore.x, y: selectionAfter.y - selectionBefore.y },
+      canonicalUnchanged: asset.worldX === canonicalBefore.x && asset.worldY === canonicalBefore.y,
+      undoUnchanged: undoStack.length === undoBefore,
+      autosaveUnchanged: sessionAutosaveRevision === revisionBefore,
+      hiddenPanelPointerEvents: getComputedStyle(document.getElementById('assetContextPanel')).pointerEvents,
+    };
+  });
+  expect(result.imageDelta.x).toBeCloseTo(result.selectionDelta.x, 1);
+  expect(result.imageDelta.y).toBeCloseTo(result.selectionDelta.y, 1);
+  expect(result.canonicalUnchanged).toBe(true);
+  expect(result.undoUnchanged).toBe(true);
+  expect(result.autosaveUnchanged).toBe(true);
+  expect(result.hiddenPanelPointerEvents).toBe('none');
+});

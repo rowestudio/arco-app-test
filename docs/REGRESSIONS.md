@@ -110,3 +110,19 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Como detectar:** confirmar launcher estável antes da escolha, nenhuma chamada antecipada de restore/hidratação/aplicação, exclusão concluída antes de confirmar launcher limpo e retomada da mesma instância sem novo diálogo.
 - **Teste preventivo:** `node scripts/qa/check-startup-session-choice.mjs`, harness `node scripts/qa/test-startup-session-choice.mjs` executando os controladores reais extraídos do app, WebKit com checkpoint real no IndexedDB e teste real em iPhone/Safari/PWA.
 - **Status:** proteção técnica adicionada na `v8z4b32E8I`; validação publicada em iPhone/Safari/PWA pendente.
+
+## REG-037 — Parallax move seleção, mas não a imagem do Stage
+
+- **Problema:** ao trocar o frame de referência no Modo Ativos, seleção/alças recalculam o offset de profundidade enquanto o elemento DOM da imagem conserva a posição anterior.
+- **Prevenção:** imagem, seleção, alças e hit-test derivam exclusivamente de `resolveAssetStageVisualGeometry()`, e toda mudança observável da câmera do editor invalida e reaplica essa geometria sem alterar o modelo.
+- **Como detectar:** comparar o delta do retângulo DOM da imagem e do contorno ao navegar entre frames com `depth != 0`; `worldX/worldY`, Undo e revisão de autosave devem permanecer inalterados.
+- **Teste preventivo:** smoke WebKit E8O em `tests/smoke/app.spec.mjs`, diagnósticos `assetVisualGeometry*` e teste publicado em iPhone/Safari real.
+- **Status:** proteção técnica adicionada na `v8z4b32E8O`; validação publicada pendente.
+
+## REG-038 — Painel contextual oculto intercepta transformação de asset
+
+- **Problema:** Escala/Rotação não abrem na região visível ou um painel anterior permanece invisível capturando toque.
+- **Prevenção:** controlador contextual único mantém somente Escala, Rotação ou Profundidade aberto; painel fechado usa `display:none` e `pointer-events:none`.
+- **Como detectar:** alternar os três botões e verificar título, visibilidade, interação e ausência de painel oculto capturando eventos.
+- **Teste preventivo:** smoke WebKit E8O e validação táctil em iPhone/Safari real.
+- **Status:** proteção técnica adicionada na `v8z4b32E8O`; validação publicada pendente.
