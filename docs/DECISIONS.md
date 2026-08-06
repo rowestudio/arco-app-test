@@ -235,3 +235,10 @@ Formato: ID, data, decisão, contexto, consequência e status.
 - **Contexto:** a abertura normal restaurava silenciosamente a sessão anterior, sem permitir que o usuário optasse por iniciar outro fluxo pelo launcher.
 - **Consequência:** a inspeção inicial valida schema, completude, payload, checksum, JSON e estrutura mínima sem hidratar ou aplicar o projeto; intenções `restore` e `clean` da E8H mantêm prioridade e nunca abrem a pergunta novamente.
 - **Status:** ativa tecnicamente na `v8z4b32E8I`; validação real em iPhone/Safari/PWA permanece obrigatória.
+## DEC-2026-08-06-01 — Profundidade de asset não altera geometria canônica
+
+- **Data:** 2026-08-06.
+- **Decisão:** `depth` é propriedade finita e persistente de cada image asset, com padrão zero; seu efeito 2.5D inicial é somente um offset translacional calculado por helper compartilhado depois da câmera e antes do desenho.
+- **Referência neutra:** centro da célula principal canônica do ProjectWorld. O offset aparente nunca é escrito em `worldX`, `worldY`, `worldW`, `worldH`, `rotation`, Frames, curvas ou ProjectWorld.
+- **Compatibilidade futura:** grupos de Frames, templates e blocos continuam operando sobre câmera, Frames, curvas e tempo; aplicar, importar ou duplicar esses grupos não deve zerar nem reescrever a profundidade independente dos assets.
+- **Status:** ativa tecnicamente na `v8z4b32E8N`; paridade visual e aprovação em iPhone/Safari real permanecem pendentes.

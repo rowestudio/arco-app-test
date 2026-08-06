@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8N — base restaurada v8z4b32E8I. feat(assets): profundidade manual persistente por asset e parallax translacional compartilhado entre Stage, Preview e Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E8N. -->
 <!-- Arco Motion App — v8z4b32E8I — base v8z4b32E8H. feat(session): pergunta se deve recuperar um checkpoint válido na abertura normal, sem alterar as intenções explícitas de Recarregar. APP_VERSION = APP_VERSION_NAME = v8z4b32E8I. -->
 <!-- Arco Motion App — v8z4b32E8H — base v8z4b32E8G. fix(reload): oferece restauração aguardável da sessão ou reinício limpo, com intenção de startup de uso único e tratamento de falhas. APP_VERSION = APP_VERSION_NAME = v8z4b32E8H. -->
 <!-- Arco Motion App — v8z4b32E8F — base v8z4b32E8E. fix(preview): confirma render e composição do primeiro frame t=0 antes de liberar loading, relógio e loop visível; falha/cancelamento libera retry sem alterar Export ou matemática do renderer. APP_VERSION = APP_VERSION_NAME = v8z4b32E8F. -->
@@ -4066,6 +4067,9 @@ body.cust-open #toolbar{
   <div class="tb-item ctx-only ctx-asset" id="tbAssetRotate" onclick="rotateSelectedAsset(15)">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-rotate-cw"></use></svg><span class="tb-lbl">Rotação</span>
   </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetDepth" onclick="openAssetDepthPanel()">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-layers"></use></svg><span class="tb-lbl">Profundidade</span>
+  </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetDelete" onclick="isAssetsMode()&&getSelectedAsset()?deleteSelectedAsset():showStatus('Selecione uma imagem primeiro.')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-trash"></use></svg><span class="tb-lbl">Excluir</span>
   </div>
@@ -5277,6 +5281,16 @@ body.cust-open #toolbar{
     <span id="smoothNum" style="font-size:14px;font-weight:700;color:var(--accent);min-width:40px;text-align:right;">0%</span>
   </div>
   <p style="font-size:11px;color:var(--text3);margin-top:8px;">0% = Bézier puro · 100% = passagem totalmente suave</p>
+</div>
+
+<div class="float-panel" id="assetDepthPanel" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="assetDepthTitle">
+  <div class="panel-handle" onclick="closeAssetDepthPanel()"></div>
+  <div class="panel-title" id="assetDepthTitle">Profundidade</div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+    <input class="dur-slider" id="assetDepthSlider" type="range" min="-100" max="100" step="1" value="0" aria-label="Profundidade" style="flex:1;">
+    <span id="assetDepthValue" style="font-size:14px;font-weight:700;color:var(--accent);min-width:38px;text-align:right;">0</span>
+  </div>
+  <button type="button" class="fmt-row" style="width:100%;" onclick="resetSelectedAssetDepth()">Voltar a 0</button>
 </div>
 
 <!-- PANEL: Cor de fundo -->
@@ -7223,8 +7237,13 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8I';
-const APP_VERSION_NAME = 'v8z4b32E8I';
+const APP_VERSION = 'v8z4b32E8N';
+const APP_VERSION_NAME = 'v8z4b32E8N';
+let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
+let parallaxChangedCanonicalAssetGeometry = false;
+let parallaxChangedFrames = false;
+let parallaxChangedCurves = false;
+let parallaxChangedProjectWorld = false;
 const WATERMARK_TEXT = 'arcomotion.app';
 
 const appVersionTextEl = document.getElementById('appVersionText');
@@ -14753,7 +14772,7 @@ function restoreState(state) {
   // base64/bitmaps — apenas reaponta para os objetos já decodificados.
   if (Array.isArray(state.assets)) {
     assets.length = 0;
-    state.assets.forEach(a => assets.push({...a}));
+    state.assets.forEach(a => assets.push(ensureAssetVisualDefaults({...a})));
     migratePersistentLayerIdentities(assets, Math.max(nextLayerSequence, state.nextLayerSequence || 1));
   }
   if (state.projectWorld) {
@@ -14817,6 +14836,7 @@ function undo() {
   // v8z4b30ZY — garantir visual update explícito após undo
   if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
   if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
+  if (typeof syncAssetDepthPanel === 'function') syncAssetDepthPanel();
   restackFilmEditorLayers('restoreState');
   projectWorldCompositeInvalidatedAfterAssetUndo = true;
   assetUndoVisualUpdateRan = true;
@@ -15151,6 +15171,7 @@ function selectAssetById(assetId, source) {
   renderAssetsContextBar();
   // v8z4b30ZU — atualizar toolbar imediatamente ao selecionar asset.
   if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
+  if (typeof syncAssetDepthPanel === 'function') syncAssetDepthPanel();
   if (typeof updateLowerTimelineMeta === 'function') updateLowerTimelineMeta();
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
   updateCanonicalAssetSelectionDiagnostics();
@@ -15163,12 +15184,92 @@ function clearSelectedAsset(source) { return selectAssetById(null, source || 'cl
 // futura (crop/moldura). Com enabled:false NÃO alteram aparência/Preview/Export.
 function ensureAssetVisualDefaults(asset) {
   if (!asset || asset.type !== 'image') return asset;
+  // Profundidade e independente da geometria canonica. Projetos anteriores
+  // migram implicitamente para zero; valores nao finitos nunca chegam ao render.
+  asset.depth = Number.isFinite(Number(asset.depth)) ? Number(asset.depth) : 0;
   asset.crop = asset.crop || { enabled: false, x: 0, y: 0, w: 1, h: 1 };
   asset.frameStyle = asset.frameStyle || {
     enabled: false, strokeColor: '#ffffff', strokeWidth: 0, radius: 0, padding: 0, shadow: false
   };
   return asset;
 }
+
+// Fonte unica do parallax translacional. A referencia neutra e o centro da
+// celula canonica do ProjectWorld; ela nao depende do modo, frame selecionado,
+// Preview ou Export. O offset aparente jamais e gravado em worldX/worldY.
+function resolveAssetParallaxOffset(asset, cameraState, referenceCameraState) {
+  const depth = Number(asset && asset.depth);
+  const camera = cameraState || {};
+  const reference = referenceCameraState || {};
+  if (!Number.isFinite(depth) || depth === 0) return { offsetX: 0, offsetY: 0 };
+  const cx = Number(camera.cx), cy = Number(camera.cy);
+  const rx = Number(reference.cx), ry = Number(reference.cy);
+  if (![cx, cy, rx, ry].every(Number.isFinite)) return { offsetX: 0, offsetY: 0 };
+  const factor = depth / 100;
+  return { offsetX: -(cx - rx) * factor, offsetY: -(cy - ry) * factor };
+}
+function getCanonicalParallaxReference(canonicalDims) {
+  const dims = canonicalDims || getImageSourceDimensions(getCanonicalRenderSource());
+  return { cx: (Number(dims.width) || 0) / 2, cy: (Number(dims.height) || 0) / 2 };
+}
+
+let assetDepthGestureSnapshot = null;
+let assetDepthGestureAssetId = null;
+function syncAssetDepthPanel() {
+  const asset = getSelectedAsset();
+  const slider = document.getElementById('assetDepthSlider');
+  const value = document.getElementById('assetDepthValue');
+  const depth = asset ? Math.max(-100, Math.min(100, Number(asset.depth) || 0)) : 0;
+  if (slider) slider.value = String(depth);
+  if (value) value.textContent = String(Math.round(depth));
+}
+function openAssetDepthPanel() {
+  if (!isAssetsMode() || !getSelectedAsset()) { showStatus('Selecione uma imagem primeiro.'); return; }
+  closeAll();
+  const panel = document.getElementById('assetDepthPanel');
+  if (panel) { panel.style.display = 'block'; panel.classList.add('show'); }
+  syncAssetDepthPanel();
+}
+function closeAssetDepthPanel() {
+  commitAssetDepthGesture();
+  const panel = document.getElementById('assetDepthPanel');
+  if (panel) { panel.style.display = 'none'; panel.classList.remove('show'); }
+}
+function beginAssetDepthGesture() {
+  const asset = getSelectedAsset();
+  if (!asset || assetDepthGestureSnapshot) return;
+  assetDepthGestureSnapshot = captureState();
+  assetDepthGestureAssetId = String(asset.id);
+}
+function setSelectedAssetDepth(value) {
+  const asset = getSelectedAsset();
+  const depth = Math.max(-100, Math.min(100, Number(value)));
+  if (!asset || !Number.isFinite(depth)) return;
+  beginAssetDepthGesture();
+  asset.depth = depth;
+  syncAssetDepthPanel();
+  invalidateProjectWorldComposite();
+  renderProjectWorldExtraImages();
+}
+function commitAssetDepthGesture() {
+  if (!assetDepthGestureSnapshot) return;
+  const asset = assets.find(a => a && String(a.id) === assetDepthGestureAssetId);
+  const before = assetDepthGestureSnapshot.assets.find(a => a && String(a.id) === assetDepthGestureAssetId);
+  const changed = !!(asset && before && Number(asset.depth || 0) !== Number(before.depth || 0));
+  if (changed) { pushUndoSnapshot(assetDepthGestureSnapshot); markProjectDirty('asset-depth'); }
+  assetDepthGestureSnapshot = null;
+  assetDepthGestureAssetId = null;
+}
+function resetSelectedAssetDepth() { setSelectedAssetDepth(0); commitAssetDepthGesture(); }
+document.addEventListener('DOMContentLoaded', function() {
+  const slider = document.getElementById('assetDepthSlider');
+  if (!slider) return;
+  slider.addEventListener('pointerdown', beginAssetDepthGesture);
+  slider.addEventListener('input', function() { setSelectedAssetDepth(slider.value); });
+  slider.addEventListener('change', commitAssetDepthGesture);
+  slider.addEventListener('pointerup', commitAssetDepthGesture);
+  slider.addEventListener('pointercancel', commitAssetDepthGesture);
+});
 
 // v8z4b32B — roteador explícito e pequeno para os botões de modo.
 // Regra geral:
@@ -29431,6 +29532,7 @@ function serializeProjectAsset(a, idx, includeImages) {
     worldW: a.worldW || 0,
     worldH: a.worldH || 0,
     rotation: a.rotation || 0,
+    depth: Number.isFinite(Number(a.depth)) ? Number(a.depth) : 0,
     zIndex: a.zIndex || 0,
     visible: a.visible !== false,
     locked: !!a.locked,
@@ -31256,6 +31358,7 @@ function syncFirstImageAsset(reason) {
     // (chamado em re-syncs/load) NÃO pode sobrescrevê-los com imgNatW/imgNatH nem
     // com o Stage/baseStage. Os campos abaixo protegidos por este flag.
     const _e6Canon = !!a.e6CanonicalReplaced;
+    a.depth = Number.isFinite(Number(a.depth)) ? Number(a.depth) : 0;
     a.name     = name;
     assignPersistentLayerIdentity(a, window._originalImageFileName);
     if (!_e6Canon) {
@@ -31384,6 +31487,7 @@ function restoreProjectAssetsFromData(data) {
         primary.layerName = savedPrimaryIdentity.layerName;
         primary.layerNameSource = savedPrimaryIdentity.layerNameSource;
         primary.originalFileName = savedPrimaryIdentity.originalFileName || '';
+        primary.depth = Number.isFinite(Number(savedPrimaryIdentity.depth)) ? Number(savedPrimaryIdentity.depth) : 0;
       }
       // v8z4b30N — baseStageW/H definem a grade 3x3 usada para posicionar os
       // assets adicionais. Restaurar os valores salvos mantém worldX/Y/W/H
@@ -31490,6 +31594,7 @@ function restoreProjectAssetsFromData(data) {
           worldW: sa.worldW || 0,
           worldH: sa.worldH || 0,
           rotation: sa.rotation || 0,
+          depth: Number.isFinite(Number(sa.depth)) ? Number(sa.depth) : 0,
           zIndex: sa.zIndex != null ? sa.zIndex : assets.length,
           visible: sa.visible !== false,
           locked: !!sa.locked,
@@ -32858,6 +32963,7 @@ async function prepareRenderSessionSnapshot(kind) {
           zIndex: Number(a.zIndex) || 0,
           worldX: a.worldX || 0, worldY: a.worldY || 0,
           worldW: a.worldW || 0, worldH: a.worldH || 0,
+          depth: Number.isFinite(Number(a.depth)) ? Number(a.depth) : 0,
           sourceW: a.sourceW || 0, sourceH: a.sourceH || 0,
           rotation: Number(a.rotation) || 0,
           mimeType: a.mimeType || '', hasAlpha: !!a.hasAlpha,
@@ -33462,6 +33568,14 @@ function getAssetVisualWorldRect(a) {
   const cx = wx + ww / 2, cy = wy + wh / 2;
   return { x: cx - fitted.width / 2, y: cy - fitted.height / 2, w: fitted.width, h: fitted.height };
 }
+function getAssetParallaxVisualWorldRect(a) {
+  const rect = getAssetVisualWorldRect(a);
+  const frame = (Array.isArray(frames) && frames[activeIdx]) || null;
+  const camera = frame ? { cx: frame.x + frame.w / 2, cy: frame.y + frame.h / 2 } : null;
+  const reference = { cx: (projectWorld.baseStageW || stageW || 0) / 2, cy: (projectWorld.baseStageH || stageH || 0) / 2 };
+  const offset = resolveAssetParallaxOffset(a, camera, reference);
+  return { x: rect.x + offset.offsetX, y: rect.y + offset.offsetY, w: rect.w, h: rect.h };
+}
 
 // v8z4b30R — Estima a célula do grid 3x3 (linha/coluna) de um asset a partir
 // de worldX/Y/W/H e baseStageW/H. Uso exclusivo de diagnóstico — não influencia
@@ -33728,6 +33842,7 @@ function performInsertImageAtSlot(slotKey, file) {
         worldW: fitted.width,
         worldH: fitted.height,
         rotation: 0,
+        depth: 0,
         zIndex: newZ,
         visible: true,
         locked: false,
@@ -33864,7 +33979,16 @@ function renderProjectWorldExtraImages() {
     // idêntico ao worldRect (já recalculado pela v8z4b32E4 na mesma proporção da
     // imagem); para img-1 (worldX/Y/W/H intactos — não tocado) dá o retângulo REAL
     // da imagem dentro da célula, sem moldura/letterbox herdado.
-    const _vr = getAssetVisualWorldRect(a);
+    const _vr = getAssetParallaxVisualWorldRect(a);
+    if (String(a.id) === String(selectedAssetId || '')) {
+      const _baseVr = getAssetVisualWorldRect(a);
+      const _dims = getImageSourceDimensions(getCanonicalRenderSource());
+      const _sx = (_dims.width || 0) / (projectWorld.baseStageW || stageW || 1);
+      const _sy = (_dims.height || 0) / (projectWorld.baseStageH || stageH || 1);
+      const _f = frames[activeIdx];
+      parallaxOffsetsByContext.stage = { x: (_vr.x - _baseVr.x) * _sx, y: (_vr.y - _baseVr.y) * _sy,
+        assetId: String(a.id), cameraX: _f ? (_f.x + _f.w / 2) * _sx : null, cameraY: _f ? (_f.y + _f.h / 2) * _sy : null };
+    }
     var _ep = editorWorldToStage(
       _vr.x, _vr.y,
       (_vr.w || projectWorld.baseStageW || 0),
@@ -33990,7 +34114,7 @@ function hitTestAssetAtWorld(wx, wy) {
     // não o worldRect cru: idêntico ao worldRect para extras; para img-1 evita
     // que a área antes coberta por letterbox (fora da imagem real) capture o
     // toque, deixando o ponto vazio cair para o asset visualmente abaixo.
-    const _vr = getAssetVisualWorldRect(a);
+    const _vr = getAssetParallaxVisualWorldRect(a);
     const x = _vr.x, y = _vr.y, w = _vr.w, h = _vr.h;
     const rot = (Number(a.rotation) || 0) * Math.PI / 180;
     const cx = x + w / 2, cy = y + h / 2;
@@ -34314,7 +34438,7 @@ function renderAssetSelectionOverlay() {
   // v8z4b32E5 — moldura roxa abraça o sub-retângulo VISUAL (getAssetVisualWorldRect),
   // não o worldRect cru — idêntico ao worldRect para extras; para img-1 evita a
   // moldura ficar maior que a imagem real dentro da célula intacta do ProjectWorld.
-  const _vr = getAssetVisualWorldRect(asset);
+  const _vr = getAssetParallaxVisualWorldRect(asset);
   const p = editorWorldToStage(_vr.x, _vr.y, _vr.w, _vr.h);
   if (!box) {
     box = document.createElement('div');
@@ -35849,6 +35973,7 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context) {
         worldW: sv.worldW, worldH: sv.worldH,
         sourceW: sv.sourceW, sourceH: sv.sourceH,
         rotation: Number(sv.rotation) || 0,
+        depth: Number.isFinite(Number(sv.depth)) ? Number(sv.depth) : 0,
         drawSource: src,
         e6CanonicalReplaced: true
       };
@@ -35964,14 +36089,22 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
       // O canvas 2D natively descarta o que está fora do viewport.
       for (let i = 0; i < renderAssets.length; i++) {
         const r = renderAssets[i].rect;
+        const parallax = resolveAssetParallaxOffset(renderAssets[i].asset, cam, getCanonicalParallaxReference(canonicalDims));
+        if (String(renderAssets[i].id) === String(selectedAssetId || renderAssets[0]?.id || '')) {
+          parallaxOffsetsByContext[context === 'export' ? 'export' : (context === 'preview' ? 'preview' : 'stage')] = {
+            x: parallax.offsetX, y: parallax.offsetY, assetId: String(renderAssets[i].id), cameraX: cam.cx, cameraY: cam.cy
+          };
+        }
+        const drawX = r.ax + parallax.offsetX;
+        const drawY = r.ay + parallax.offsetY;
         if (r.rotation) {
           ctx.save();
-          ctx.translate(r.ax + r.aw / 2, r.ay + r.ah / 2);
+          ctx.translate(drawX + r.aw / 2, drawY + r.ah / 2);
           ctx.rotate(r.rotation * Math.PI / 180);
           drawCoverImage(ctx, renderAssets[i].src, -r.aw / 2, -r.ah / 2, r.aw, r.ah);
           ctx.restore();
         } else {
-          drawCoverImage(ctx, renderAssets[i].src, r.ax, r.ay, r.aw, r.ah);
+          drawCoverImage(ctx, renderAssets[i].src, drawX, drawY, r.aw, r.ah);
         }
         drawnCount++;
       }
@@ -36398,6 +36531,34 @@ function computeGhostHandleAudit() {
 function buildDiagnosticsText() {
   const L = [];
   const push = (k, v) => L.push(k + ': ' + v);
+
+  const _depthAssets = Array.isArray(assets) ? assets.filter(a => a && a.type === 'image') : [];
+  const _selectedDepthAsset = getSelectedAsset();
+  const _depthById = Object.fromEntries(_depthAssets.map(a => [String(a.id), Number.isFinite(Number(a.depth)) ? Number(a.depth) : 0]));
+  const _stageDepthOffset = parallaxOffsetsByContext.stage;
+  const _previewDepthOffset = parallaxOffsetsByContext.preview;
+  const _exportDepthOffset = parallaxOffsetsByContext.export;
+  const _sameSample = (a, b) => !!(a && b && a.assetId === b.assetId && Math.abs(a.cameraX - b.cameraX) < 0.001 && Math.abs(a.cameraY - b.cameraY) < 0.001);
+  const _sameOffset = (a, b) => !!(_sameSample(a, b) && Math.abs(a.x - b.x) < 0.001 && Math.abs(a.y - b.y) < 0.001);
+  push('assetDepthEnabled', 'true');
+  push('selectedAssetDepth', _selectedDepthAsset ? String(Number(_selectedDepthAsset.depth) || 0) : 'n/d');
+  push('assetDepthById', JSON.stringify(_depthById));
+  push('assetDepthDefaultIsZero', String(_depthAssets.every(a => a.depth !== undefined || (Number(a.depth) || 0) === 0)));
+  push('assetDepthFiniteForAllAssets', String(_depthAssets.every(a => Number.isFinite(Number(a.depth)))));
+  ['Move','Scale','Rotate','Reorder','Replace','SaveLoad','SessionRestore'].forEach(action => push('assetDepthPreservedAfter' + action, 'n/d'));
+  push('parallaxReferenceStrategy', 'ProjectWorld canonical main-cell center');
+  push('parallaxStageOffsetX/Y', _stageDepthOffset ? `${_stageDepthOffset.x}/${_stageDepthOffset.y}` : 'n/d');
+  push('parallaxPreviewOffsetX/Y', _previewDepthOffset ? `${_previewDepthOffset.x}/${_previewDepthOffset.y}` : 'n/d');
+  push('parallaxExportOffsetX/Y', _exportDepthOffset ? `${_exportDepthOffset.x}/${_exportDepthOffset.y}` : 'n/d');
+  push('parallaxStagePreviewParityOk', _sameSample(_stageDepthOffset, _previewDepthOffset) ? String(_sameOffset(_stageDepthOffset, _previewDepthOffset)) : 'n/d');
+  push('parallaxPreviewExportParityOk', _sameSample(_previewDepthOffset, _exportDepthOffset) ? String(_sameOffset(_previewDepthOffset, _exportDepthOffset)) : 'n/d');
+  push('parallaxZeroDepthIdentityOk', String(_depthAssets.filter(a => Number(a.depth) === 0).every(a => {
+    const o = resolveAssetParallaxOffset(a, { cx: 123, cy: 456 }, { cx: 1, cy: 2 }); return o.offsetX === 0 && o.offsetY === 0;
+  })));
+  push('parallaxChangedCanonicalAssetGeometry', String(parallaxChangedCanonicalAssetGeometry));
+  push('parallaxChangedFrames', String(parallaxChangedFrames));
+  push('parallaxChangedCurves', String(parallaxChangedCurves));
+  push('parallaxChangedProjectWorld', String(parallaxChangedProjectWorld));
 
   // v8z4b32E8E — diagnóstico técnico somente no painel protegido.
   push('sessionAutosaveEnabled', String(sessionAutosaveEnabled));
