@@ -2,6 +2,14 @@
 
 Última atualização documental: 2026-07-30.
 
+## Atualização 2026-08-06 — v8z4b32E8N em PR
+
+- Base funcional restaurada: `v8z4b32E8I`, após as reversões das PRs #467 e #461 no repositório de teste.
+- A `v8z4b32E8N` adiciona `depth` finito, persistente e independente à imagem, com padrão zero e controle contextual de -100 a +100 no Modo Ativos.
+- O parallax inicial é exclusivamente translacional e usa um helper compartilhado no momento do render; não grava o deslocamento aparente em `worldX`, `worldY`, Frames, curvas ou ProjectWorld.
+- A referência neutra é o centro da célula principal canônica do ProjectWorld, estável entre Stage, Preview, Export, Save/Load e Session Restore.
+- Estado: implementação técnica em PR; QA automatizado e teste visual publicado em iPhone/Safari real permanecem pendentes. O recurso não está aprovado e nenhuma promoção para produção está autorizada.
+
 ## Estado auditado
 
 - Repo de desenvolvimento/teste: `rowestudio/arco-app-test`.
