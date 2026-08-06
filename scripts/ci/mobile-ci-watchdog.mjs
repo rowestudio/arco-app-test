@@ -34,6 +34,8 @@ export function planWatchdog({ prs, workflowRuns = [], checkRuns = [], repositor
   const decisions = [];
 
   for (const pr of prs) {
+    const prTitle = pr.title || '';
+    const prBody = pr.body || '';
     const base = pr.baseRefName || pr.base?.ref;
     const headSha = pr.headSha || pr.head?.sha;
     const headRef = pr.headRefName || pr.head?.ref;
@@ -99,6 +101,8 @@ export function planWatchdog({ prs, workflowRuns = [], checkRuns = [], repositor
         base_sha: baseSha,
         head_ref: headRef,
         head_sha: headSha,
+        pr_title: prTitle,
+        pr_body: prBody,
       });
     }
   }
@@ -222,6 +226,8 @@ async function planLive() {
   const pulls = await listOpenPullRequests(repository);
   const prPlans = pulls.map((pr) => ({
     number: pr.number,
+    title: pr.title || '',
+    body: pr.body || '',
     draft: pr.draft,
     baseRefName: pr.base?.ref,
     baseSha: pr.base?.sha,
@@ -250,6 +256,28 @@ async function planLive() {
   console.log(matrix);
 }
 
+export function buildFinalCheckRunUpdate({ suiteName, prNumber, plannedHeadSha, currentHeadSha, jobStatus }) {
+  const stale = currentHeadSha !== plannedHeadSha;
+  const conclusion = stale
+    ? 'neutral'
+    : (jobStatus === 'success' ? 'success' : (jobStatus === 'cancelled' ? 'cancelled' : 'failure'));
+  const title = stale ? `${suiteName} skipped stale SHA` : `${suiteName} ${conclusion}`;
+  const summary = [
+    `PR #${prNumber}`,
+    `planned SHA: ${plannedHeadSha}`,
+    `current PR SHA: ${currentHeadSha}`,
+    `job status: ${jobStatus}`,
+    stale ? 'The PR HEAD changed during execution. This result does not validate the new SHA.' : 'The suite finished for the planned PR HEAD SHA.',
+  ].join('\n');
+
+  return {
+    status: 'completed',
+    completed_at: new Date().toISOString(),
+    conclusion,
+    output: { title, summary },
+  };
+}
+
 async function finalizeLive() {
   const repository = process.env.GITHUB_REPOSITORY;
   const checkRunId = process.env.WATCHDOG_CHECK_RUN_ID;
@@ -261,28 +289,20 @@ async function finalizeLive() {
 
   const pr = await githubRequest(`/repos/${repository}/pulls/${prNumber}`);
   const currentHeadSha = pr.head?.sha;
-  const stale = currentHeadSha !== headSha;
-  const conclusion = stale ? 'neutral' : (jobStatus === 'success' ? 'success' : 'failure');
-  const title = stale ? `${suiteName} skipped stale SHA` : `${suiteName} ${conclusion}`;
-  const summary = [
-    `PR #${prNumber}`,
-    `planned SHA: ${headSha}`,
-    `current PR SHA: ${currentHeadSha}`,
-    `job status: ${jobStatus}`,
-    stale ? 'The PR HEAD changed during execution. This result does not validate the new SHA.' : `The suite finished for the planned PR HEAD SHA.`,
-  ].join('\n');
+  const update = buildFinalCheckRunUpdate({
+    suiteName,
+    prNumber,
+    plannedHeadSha: headSha,
+    currentHeadSha,
+    jobStatus,
+  });
 
   await githubRequest(`/repos/${repository}/check-runs/${checkRunId}`, {
     method: 'PATCH',
-    body: JSON.stringify({
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      conclusion,
-      output: { title, summary },
-    }),
+    body: JSON.stringify(update),
   });
-  console.log(`Finalized check run ${checkRunId} for PR #${prNumber}: ${conclusion}`);
-  if (stale) console.log(`Detected SHA change during execution: planned ${headSha}, current ${currentHeadSha}`);
+  console.log(`Finalized check run ${checkRunId} for PR #${prNumber}: ${update.conclusion}`);
+  if (update.conclusion === 'neutral') console.log(`Detected SHA change during execution: planned ${headSha}, current ${currentHeadSha}`);
 }
 
 function planFixture(file) {

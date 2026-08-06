@@ -117,6 +117,7 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Problema:** PRs abertas ou atualizadas por fluxo móvel, Codex remoto, GitHub App ou automação podem ficar sem `QA Guardrails` e `WebKit Smoke Tests` associados ao HEAD atual, mesmo com os workflows normais presentes.
 - **Impacto:** Roberto passa a depender de desktop, terminal, GitHub CLI, token pessoal ou execução manual na aba Actions para obter checks obrigatórios.
 - **Prevenção:** `Mobile CI Watchdog` varre PRs abertas contra `main`, ignora drafts e forks, compara o HEAD SHA atual com workflow runs e check-runs já existentes, e executa somente as suítes ausentes para o SHA corrente.
+- **Metadados obrigatórios:** o watchdog deve transportar `title` e `body` reais da PR para `QA_PR_TITLE` e `QA_PR_BODY`; strings vazias quebram a validação de versão de PRs funcionais recuperadas pelo watchdog.
 - **Como detectar:** PR aberta contra `main` cujo HEAD SHA não possua evidência de `QA Guardrails` ou `WebKit Smoke Tests`; resultado de SHA anterior não conta.
 - **Teste preventivo:** `node scripts/ci/test-mobile-ci-watchdog.mjs`, integrado a `node scripts/qa/run-self-tests.mjs`, cobre ausência inicial, não duplicidade no mesmo SHA, novo SHA, resultado antigo e execução em andamento.
 - **Status:** proteção OPS-04 em PR.
