@@ -4615,7 +4615,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
 </div>
 
 <!-- MODAL: Aviso Pro (3+ frames) -->
-<div id="proModal" style="display:none;position:fixed;inset:0;z-index:210;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom);">
+<div id="proModal" role="dialog" aria-modal="true" aria-hidden="true" inert style="display:none;pointer-events:none;position:fixed;inset:0;z-index:210;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom);">
   <div style="background:var(--surface);border-radius:22px 22px 0 0;padding:28px 22px 32px;width:100%;max-width:480px;box-shadow:0 -4px 32px rgba(0,0,0,.35);">
     <div style="width:36px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 20px;"></div>
     <div style="font-size:22px;font-weight:800;color:var(--text1);margin-bottom:10px;letter-spacing:-.3px;">Projeto com 4+ frames</div>
@@ -16323,6 +16323,7 @@ function setEditorMode(mode, source) {
   setModeLastBlockedReason = 'none';
   setModeLastError = 'none';
   try {
+    if (typeof closeAll === 'function') closeAll();
     const changed = (editorMode !== next);
     // v8z4b31D — capturar activeIdx antes da troca para diagnóstico de persistência.
     activeFrameIndexBeforeModeSwitch = (typeof activeIdx === 'number') ? activeIdx : -1;
@@ -27881,6 +27882,7 @@ function setSegEase(ease) {
 
 function closeAll() {
   closeAssetContextPanel();
+  closeProModal();
   commitBatchPauseEditSession();
   teardownFramePauseRows();
   teardownFramePauseLocalSlider();
@@ -36375,12 +36377,21 @@ function checkWatermarkWarning() {
   if (isProMode || proModalShown || frameCount < 4) return;
   proModalShown = true;
   const modal = document.getElementById('proModal');
-  if (modal) modal.style.display = 'flex';
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.style.pointerEvents = 'auto';
+    modal.setAttribute('aria-hidden', 'false');
+    try { modal.inert = false; } catch (_e) { modal.removeAttribute('inert'); }
+  }
 }
 
 function closeProModal() {
   const modal = document.getElementById('proModal');
-  if (modal) modal.style.display = 'none';
+  if (!modal) return;
+  modal.style.display = 'none';
+  modal.style.pointerEvents = 'none';
+  modal.setAttribute('aria-hidden', 'true');
+  try { modal.inert = true; } catch (_e) { modal.setAttribute('inert', ''); }
 }
 
 function showProInfo() {
@@ -36698,11 +36709,43 @@ function buildDiagnosticsText() {
   const _selectionDom = document.getElementById('assetSelectOutline');
   const _panel = document.getElementById('assetContextPanel');
   const _panelStyle = _panel ? getComputedStyle(_panel) : null;
+  const _proModal = document.getElementById('proModal');
+  const _proModalStyle = _proModal ? getComputedStyle(_proModal) : null;
+  const _assetToolbarScale = document.getElementById('tbAssetScale');
+  const _custBar = document.getElementById('custBar');
+  const _settingsSheet = document.getElementById('settingsSheet');
+  const _custBarIsContextual = !!(document.body && document.body.classList.contains('cust-open'));
   const _rectText = r => r ? JSON.stringify({x:r.x,y:r.y,w:r.w,h:r.h}) : 'n/d';
   const _domRectText = el => el ? _rectText({x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,w:parseFloat(el.style.width)||0,h:parseFloat(el.style.height)||0}) : 'n/d';
-  const _contextPanels = [_panel, document.getElementById('custBar'), ...document.querySelectorAll('.float-panel')].filter(Boolean);
-  const _openContextPanels = _contextPanels.filter(el => { const s=getComputedStyle(el); return s.display !== 'none' && s.visibility !== 'hidden'; });
+  const _panelIsInteractive = el => {
+    if (!el) return false;
+    const s = getComputedStyle(el);
+    return s.display !== 'none' && s.visibility !== 'hidden' && Number(s.opacity || 1) !== 0 && s.pointerEvents !== 'none';
+  };
+  const _floatPanels = Array.from(document.querySelectorAll('.float-panel'));
+  const _contextPanels = [_proModal, _panel, _custBar, _settingsSheet, ..._floatPanels].filter(Boolean);
+  const _panelCountsAsOpen = el => {
+    if (!_panelIsInteractive(el)) return false;
+    if (el === _proModal) return el.getAttribute('aria-hidden') !== 'true';
+    if (el === _panel) return el.classList.contains('show') && assetContextPanelKind !== 'none';
+    if (el === _custBar) return _custBarIsContextual;
+    if (el === _settingsSheet) return el.classList.contains('show');
+    if (el.classList && el.classList.contains('float-panel')) return el.classList.contains('show');
+    return false;
+  };
+  const _openContextPanels = _contextPanels.filter(_panelCountsAsOpen);
   const _invisibleCapturing = _contextPanels.some(el => { const s=getComputedStyle(el); return s.display !== 'none' && (s.visibility === 'hidden' || Number(s.opacity) === 0) && s.pointerEvents !== 'none'; });
+  const _assetPanelInterceptsToolbar = el => {
+    if (!el || !_assetToolbarScale || typeof document.elementFromPoint !== 'function') return false;
+    const r = _assetToolbarScale.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    const hit = document.elementFromPoint(x, y);
+    return !!(hit && (hit === el || el.contains(hit)));
+  };
+  const _interactiveContextPanels = _openContextPanels;
+  const _proModalInterceptsAssetToolbar = _assetPanelInterceptsToolbar(_proModal);
+  const _hiddenAssetPanelInterceptDetected = _contextPanels.some(el => !_panelIsInteractive(el) && _assetPanelInterceptsToolbar(el));
   const _visualRect = _stageGeometry && _stageGeometry.visualRect;
   const _domRect = _assetDom ? {x:parseFloat(_assetDom.style.left)||0,y:parseFloat(_assetDom.style.top)||0,w:parseFloat(_assetDom.style.width)||0,h:parseFloat(_assetDom.style.height)||0} : null;
   const _selectionRect = _selectionDom && _selectionDom.style.display !== 'none' ? {x:parseFloat(_selectionDom.style.left)||0,y:parseFloat(_selectionDom.style.top)||0,w:parseFloat(_selectionDom.style.width)||0,h:parseFloat(_selectionDom.style.height)||0} : null;
@@ -36732,6 +36775,13 @@ function buildDiagnosticsText() {
   push('parallaxTimelineNavigationCreatedUndo', parallaxTimelineNavigationCreatedUndo == null ? 'n/d' : String(parallaxTimelineNavigationCreatedUndo));
   push('parallaxTimelineNavigationScheduledAutosave', parallaxTimelineNavigationScheduledAutosave == null ? 'n/d' : String(parallaxTimelineNavigationScheduledAutosave));
   push('assetContextPanelOpen', assetContextPanelKind);
+  push('proModalOpen', _proModalStyle ? String(_proModal.getAttribute('aria-hidden') !== 'true' && _proModalStyle.display !== 'none') : 'false');
+  push('proModalVisible', _proModalStyle ? String(_proModalStyle.display !== 'none' && _proModalStyle.visibility !== 'hidden' && Number(_proModalStyle.opacity || 1) !== 0) : 'false');
+  push('proModalPointerEvents', _proModalStyle ? _proModalStyle.pointerEvents : 'n/d');
+  push('proModalInterceptsAssetToolbar', String(_proModalInterceptsAssetToolbar));
+  push('assetContextPanelMode', assetContextPanelKind);
+  push('assetContextPanelsExclusive', String(_interactiveContextPanels.length <= 1));
+  push('hiddenAssetPanelInterceptDetected', String(_hiddenAssetPanelInterceptDetected));
   push('assetContextPanelVisible', _panelStyle ? String(_panelStyle.display !== 'none' && _panelStyle.visibility !== 'hidden') : 'false');
   push('assetContextPanelZIndex', _panelStyle ? _panelStyle.zIndex : 'n/d');
   push('assetContextPanelPointerEvents', _panelStyle ? _panelStyle.pointerEvents : 'n/d');

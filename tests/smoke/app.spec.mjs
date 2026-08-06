@@ -368,9 +368,33 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   await page.locator('#tbAssetScale').click();
   await expect(page.locator('#assetContextPanel')).toBeVisible();
   await expect(page.locator('#assetContextPanelTitle')).toHaveText('Escala');
-  await page.locator('#tbAssetRotate').evaluate((el) => el.click());
+  await expect.poll(() => page.evaluate(() => ({
+    proModalDoesNotInterceptAssetToolbar: buildDiagnosticsText().includes('proModalInterceptsAssetToolbar: false'),
+    hiddenAssetPanelDoesNotIntercept: buildDiagnosticsText().includes('hiddenAssetPanelInterceptDetected: false'),
+    assetContextPanelsAreExclusive: buildDiagnosticsText().includes('assetContextPanelsExclusive: true'),
+    assetContextPanelMode: assetContextPanelKind
+  }))).toEqual({
+    proModalDoesNotInterceptAssetToolbar: true,
+    hiddenAssetPanelDoesNotIntercept: true,
+    assetContextPanelsAreExclusive: true,
+    assetContextPanelMode: 'scale'
+  });
+  await page.locator('#assetContextPanel .asset-context-back').click();
+  await expect(page.locator('#assetContextPanel')).toBeHidden();
+  await expect(page.locator('#tbAssetRotate')).toBeVisible();
+  await page.locator('#tbAssetRotate').click();
   await expect(page.locator('#assetContextPanelTitle')).toHaveText('Rotação');
-  await page.locator('#tbAssetDepth').evaluate((el) => el.click());
+  await expect.poll(() => page.evaluate(() => assetContextPanelKind)).toBe('rotation');
+  await page.locator('#assetContextPanel .asset-context-back').click();
+  await expect(page.locator('#assetContextPanel')).toBeHidden();
+  await expect(page.locator('#tbAssetDepth')).toBeVisible();
+  await page.locator('#tbAssetDepth').click();
+  await expect(page.locator('#assetContextPanelTitle')).toHaveText('Profundidade');
+  await expect.poll(() => page.evaluate(() => assetContextPanelKind)).toBe('depth');
+  await page.locator('#assetContextPanel .asset-context-back').click();
+  await expect(page.locator('#assetContextPanel')).toBeHidden();
+  await expect(page.locator('#tbAssetScale')).toBeVisible();
+  await page.locator('#tbAssetDepth').click();
   await expect(page.locator('#assetContextPanelTitle')).toHaveText('Profundidade');
 
   const transformResult = await page.evaluate(() => {
