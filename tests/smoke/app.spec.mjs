@@ -368,6 +368,31 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   await page.locator('#tbAssetScale').click();
   await expect(page.locator('#assetContextPanel')).toBeVisible();
   await expect(page.locator('#assetContextPanelTitle')).toHaveText('Escala');
+  const openPanelLayout = await page.evaluate(() => {
+    const panel = document.getElementById('assetContextPanel').getBoundingClientRect();
+    const slot = document.getElementById('lowerContextSlot').getBoundingClientRect();
+    const normalToolbar = getComputedStyle(document.getElementById('toolbar'));
+    const backButton = getComputedStyle(document.querySelector('#assetContextPanel .asset-context-back'));
+    const lowerLeftControl = document.querySelector('.lower-global-duration').getBoundingClientRect();
+    return {
+      bodyState: document.body.classList.contains('asset-context-panel-open'),
+      toolbarDisplay: normalToolbar.display,
+      backButtonBackground: backButton.backgroundColor,
+      backButtonBorderStyle: backButton.borderStyle,
+      slotSpansBothColumns: slot.left <= lowerLeftControl.left + 1 && slot.right >= lowerLeftControl.right - 1,
+      panelUsesSlotWidth: Math.abs(panel.left - slot.left) <= 1 && Math.abs(panel.right - slot.right) <= 1,
+      panelCoversNormalLeftControl: panel.left <= lowerLeftControl.left + 1 && panel.right >= lowerLeftControl.right - 1
+    };
+  });
+  expect(openPanelLayout).toEqual({
+    bodyState: true,
+    toolbarDisplay: 'none',
+    backButtonBackground: 'rgba(0, 0, 0, 0)',
+    backButtonBorderStyle: 'none',
+    slotSpansBothColumns: true,
+    panelUsesSlotWidth: true,
+    panelCoversNormalLeftControl: true
+  });
   await expect.poll(() => page.evaluate(() => ({
     proModalDoesNotInterceptAssetToolbar: buildDiagnosticsText().includes('proModalInterceptsAssetToolbar: false'),
     hiddenAssetPanelDoesNotIntercept: buildDiagnosticsText().includes('hiddenAssetPanelInterceptDetected: false'),
@@ -484,6 +509,11 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   await page.locator('#assetContextPanel .asset-context-back').click();
   await expect(page.locator('#assetContextPanel')).toBeHidden();
   await expect(page.locator('#tbAssetRotate')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => ({
+    bodyState: document.body.classList.contains('asset-context-panel-open'),
+    panelPointerEvents: getComputedStyle(document.getElementById('assetContextPanel')).pointerEvents,
+    toolbarDisplay: getComputedStyle(document.getElementById('toolbar')).display
+  }))).toEqual({ bodyState: false, panelPointerEvents: 'none', toolbarDisplay: 'flex' });
   await page.locator('#tbAssetRotate').click();
   await expect(page.locator('#assetContextPanelTitle')).toHaveText('Rotação');
   await expect.poll(() => page.evaluate(() => assetContextPanelKind)).toBe('rotation');

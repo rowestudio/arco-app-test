@@ -2,6 +2,14 @@
 
 Última atualização documental: 2026-07-30.
 
+## Atualização 2026-08-07 — v8z4b32E8P em PR
+
+- Base confirmada: `main` após o merge da `v8z4b32E8O`, no commit `ea4b8f7`.
+- A `v8z4b32E8P` corrige exclusivamente a ocupação estrutural dos painéis contextuais de Escala, Rotação e Profundidade no Modo Ativos.
+- Causa: o painel ocultava `#toolbar`, mas permanecia restrito à célula direita da quarta linha de `#lowerContextSlot`; a célula esquerda `.lower-global-duration` (botão Edição) continuava no grid, enquanto o próprio botão `.asset-context-back` conservava a aparência branca nativa de `<button>`, formando o quadrado residual mostrado na referência.
+- Correção: o estado `asset-context-panel-open` passa a reutilizar no `#lowerContextSlot` a mesma expansão `grid-column: 1 / 3` e `grid-row: 3 / 5` do painel contextual expandido de Frames, substituindo a faixa normal; a seta reutiliza o tratamento neutro aprovado de `#custBarBack`, sem alterar os controles ou a matemática de transformação.
+- Estado: correção em PR; validação visual publicada em iPhone/Safari real permanece obrigatória. Nenhuma promoção para produção está autorizada.
+
 ## Atualização 2026-08-06 — v8z4b32E8O em PR
 
 - A `v8z4b32E8N` teve o conceito e o motor de parallax manual aprovados em teste visual no iPhone/Safari; permaneceu uma regressão de integração do Stage, em que o contorno acompanhava a câmera mas a imagem DOM não era recalculada na navegação da timeline.
