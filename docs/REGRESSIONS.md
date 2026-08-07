@@ -137,3 +137,11 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Como detectar:** PR aberta contra `main` cujo HEAD SHA não possua evidência de `QA Guardrails` ou `WebKit Smoke Tests`; resultado de SHA anterior não conta.
 - **Teste preventivo:** `node scripts/ci/test-mobile-ci-watchdog.mjs`, integrado a `node scripts/qa/run-self-tests.mjs`, cobre ausência inicial, não duplicidade no mesmo SHA, novo SHA, resultado antigo e execução em andamento.
 - **Status:** proteção OPS-04 em PR.
+
+## REG-040 — Painel contextual de Ativo concorre com controle da toolbar inferior
+
+- **Problema:** Escala, Rotação ou Profundidade abre somente na célula direita da faixa inferior enquanto o botão Edição da coluna esquerda permanece visível como um quadrado branco e comprime o painel.
+- **Causa:** `asset-context-panel-open` ocultava apenas `#toolbar`; diferentemente de `cust-expanded` dos Frames, não expandia `#lowerContextSlot` pelas duas colunas e pelas duas linhas contextuais do grid. Além disso, `.asset-context-back` não neutralizava o estilo nativo do elemento `<button>`.
+- **Prevenção:** o painel contextual de Ativo deve reutilizar a expansão estrutural do slot dos Frames, ocultar a toolbar normal e, fechado, usar `display:none` e `pointer-events:none`.
+- **Teste preventivo:** smoke WebKit verifica ocupação das duas colunas, largura painel/slot, toolbar normal ausente no estado aberto e restauração sem interceptação após a seta Voltar.
+- **Status:** proteção técnica adicionada na `v8z4b32E8P`; validação publicada em iPhone/Safari real permanece pendente.
