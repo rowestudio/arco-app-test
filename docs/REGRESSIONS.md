@@ -145,3 +145,10 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Prevenção:** o painel contextual de Ativo deve reutilizar a expansão estrutural do slot dos Frames, ocultar a toolbar normal e, fechado, usar `display:none` e `pointer-events:none`.
 - **Teste preventivo:** smoke WebKit verifica ocupação das duas colunas, largura painel/slot, toolbar normal ausente no estado aberto e restauração sem interceptação após a seta Voltar.
 - **Status:** proteção técnica adicionada na `v8z4b32E8P`; validação publicada em iPhone/Safari real permanece pendente.
+
+## REG-041 — Painel contextual persistente, ações sem alvo e identidade visual regressiva
+
+- **Problema:** painéis podiam sobreviver à troca de modo, ações de Ativo permaneciam acionáveis sem seleção, a toolbar residual continuava renderizada sob o painel, o ponto central usava medição paralela e Preview/Export pronto voltava ao verde.
+- **Prevenção:** fechar os dois controladores contextuais no roteador central antes da troca; derivar todas as ações individuais de `getSelectedAsset()`; retirar a toolbar normal do estado visual aberto; compartilhar o eixo X canônico da faixa rolável; usar token ciano local de Preview/Export independente de `--accent` e `--green`.
+- **Teste preventivo:** smoke WebKit em viewport mobile cobre exclusividade do painel, ausência de título/resíduo, disabled sem seleção, troca de modo, delta geométrico zero e token de Preview/Export.
+- **Status:** proteção técnica adicionada na `v8z4b32E8Q`; validação visual em iPhone/Safari real permanece obrigatória.

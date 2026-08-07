@@ -1,5 +1,13 @@
 # DECISIONS
 
+## 2026-08-07 — Painéis contextuais e identidade de Preview/Export na v8z4b32E8Q
+
+- Frames e Ativos usam uma apresentação compartilhada de bottom sheet compacto na faixa inferior, sem animação ou handle de arraste nesta versão.
+- Painéis são propriedade do modo e nunca atravessam uma troca Câmera/Frames ↔ Ativos.
+- Ações individuais de Ativo dependem da resolução canônica de `selectedAssetId`; sem asset existente, permanecem visíveis e desabilitadas.
+- O ponto central da timeline e a centralização dos chips compartilham o eixo X da faixa rolável como fonte geométrica única.
+- Preview/Export pronto possui token ciano local e não deriva de verde semântico nem do accent do modo.
+
 Formato: ID, data, decisão, contexto, consequência e status.
 
 ## DEC-001 — Dois modos do app

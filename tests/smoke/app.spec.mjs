@@ -367,7 +367,8 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
 
   await page.locator('#tbAssetScale').click();
   await expect(page.locator('#assetContextPanel')).toBeVisible();
-  await expect(page.locator('#assetContextPanelTitle')).toHaveText('Escala');
+  await expect(page.locator('#assetContextPanel .asset-context-title')).toHaveCount(0);
+  await expect(page.locator('#assetContextSlider')).toHaveAttribute('aria-label', 'Escala do ativo');
   const openPanelLayout = await page.evaluate(() => {
     const panel = document.getElementById('assetContextPanel').getBoundingClientRect();
     const slot = document.getElementById('lowerContextSlot').getBoundingClientRect();
@@ -515,19 +516,19 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
     toolbarDisplay: getComputedStyle(document.getElementById('toolbar')).display
   }))).toEqual({ bodyState: false, panelPointerEvents: 'none', toolbarDisplay: 'flex' });
   await page.locator('#tbAssetRotate').click();
-  await expect(page.locator('#assetContextPanelTitle')).toHaveText('Rotação');
+  await expect(page.locator('#assetContextSlider')).toHaveAttribute('aria-label', 'Rotação do ativo');
   await expect.poll(() => page.evaluate(() => assetContextPanelKind)).toBe('rotation');
   await page.locator('#assetContextPanel .asset-context-back').click();
   await expect(page.locator('#assetContextPanel')).toBeHidden();
   await expect(page.locator('#tbAssetDepth')).toBeVisible();
   await page.locator('#tbAssetDepth').click();
-  await expect(page.locator('#assetContextPanelTitle')).toHaveText('Profundidade');
+  await expect(page.locator('#assetContextSlider')).toHaveAttribute('aria-label', 'Profundidade do ativo');
   await expect.poll(() => page.evaluate(() => assetContextPanelKind)).toBe('depth');
   await page.locator('#assetContextPanel .asset-context-back').click();
   await expect(page.locator('#assetContextPanel')).toBeHidden();
   await expect(page.locator('#tbAssetScale')).toBeVisible();
   await page.locator('#tbAssetDepth').click();
-  await expect(page.locator('#assetContextPanelTitle')).toHaveText('Profundidade');
+  await expect(page.locator('#assetContextSlider')).toHaveAttribute('aria-label', 'Profundidade do ativo');
 
   const transformResult = await page.evaluate(() => {
     let asset = getSelectedAsset();
@@ -626,4 +627,42 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   expect(result.undoUnchanged).toBe(true);
   expect(result.autosaveUnchanged).toBe(true);
   expect(result.hiddenPanelPointerEvents).toBe('none');
+
+  const uiStateResult = await page.evaluate(() => {
+    const asset = getSelectedAsset();
+    openAssetContextPanel('rotation');
+    const beforeStep = asset.rotation;
+    stepAssetContextRotation(5);
+    const rotationStep = asset.rotation - beforeStep;
+    setEditorMode('camera', 'webkit-e8q-mode-switch');
+    const assetPanelClosedInCamera = assetContextPanelKind === 'none' && !document.body.classList.contains('asset-context-panel-open');
+    openCustBar();
+    switchCustTab('scale');
+    setEditorMode('assets', 'webkit-e8q-mode-switch');
+    const framePanelClosedInAssets = !document.body.classList.contains('cust-expanded') && !document.body.classList.contains('cust-open');
+    clearSelectedAsset('webkit-e8q-no-selection');
+    syncAssetToolbarState();
+    const actionIds = ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetDelete','tbAssetForward','tbAssetBackward'];
+    const disabledWithoutSelection = actionIds.every(id => document.getElementById(id).classList.contains('asset-tool-disabled'));
+    openAssetContextPanel('scale');
+    const blockedWithoutSelection = assetContextPanelKind === 'none';
+    selectAssetById(asset.id, 'webkit-e8q-restore-selection');
+    updateFrameSelector();
+    centerLowerTimelineOnFrame(Math.min(1, frameCount - 1), false);
+    syncLowerTimelineCenterMarkers();
+    const axisX = getLowerTimelineCanonicalAxisX();
+    const slot = document.querySelector('.lower-timeline-slot');
+    const slotRect = slot.getBoundingClientRect();
+    const markerX = slotRect.left + parseFloat(getComputedStyle(slot).getPropertyValue('--lower-timeline-center-x'));
+    const readyColor = getComputedStyle(document.documentElement).getPropertyValue('--preview-ready-color').trim();
+    return { rotationStep, assetPanelClosedInCamera, framePanelClosedInAssets, disabledWithoutSelection,
+      blockedWithoutSelection, centerDelta: Math.abs(markerX - axisX), readyColor };
+  });
+  expect(uiStateResult.rotationStep).toBe(5);
+  expect(uiStateResult.assetPanelClosedInCamera).toBe(true);
+  expect(uiStateResult.framePanelClosedInAssets).toBe(true);
+  expect(uiStateResult.disabledWithoutSelection).toBe(true);
+  expect(uiStateResult.blockedWithoutSelection).toBe(true);
+  expect(uiStateResult.centerDelta).toBeLessThan(0.01);
+  expect(uiStateResult.readyColor).toBe('#04fff2');
 });

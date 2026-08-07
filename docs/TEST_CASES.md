@@ -274,3 +274,21 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: `node scripts/qa/check-startup-session-choice.mjs`, `node scripts/qa/test-startup-session-choice.mjs` sobre funções reais extraídas do app, WebKit com IndexedDB/schema/store/chave/checksum reais, feedback “Recuperando sessão…”/“Preparando novo projeto…” e validação publicada em iPhone/Safari/PWA.
 - Ambiente: harness Node, WebKit automatizado e iPhone/Safari/PWA real obrigatório para aprovação final.
 - Automatizável: parcial; encerramento real do processo, persistência grande, arquivos manuais, Preview e Export exigem validação no aparelho.
+
+## TC-031 — Painéis contextuais, seleção de Ativo e troca de modo
+
+- Pré-condição: projeto com Frames e ao menos um asset; viewport de 390 px.
+- Passos: abrir cada slider de Frame; selecionar asset e abrir Escala/Rotação/Profundidade; voltar; limpar seleção; tentar as ações; abrir painel em um modo e trocar para o outro.
+- Resultado esperado: bottom sheet full-width sem resíduo ou título de Ativo; Rotação contém slider, valor, -5°, +5° e Reset; ações ficam disabled sem alvo; nenhum painel abre sem seleção; troca de modo fecha o painel anterior.
+- Evidência: smoke WebKit, inspeção DOM/estilos e screenshots em iPhone/Safari real.
+- Ambiente: WebKit automatizado e iPhone/Safari real obrigatório para aprovação visual.
+- Automatizável: parcial.
+
+## TC-032 — Eixo central da timeline e identidade pronta de Preview/Export
+
+- Pré-condição: projeto com primeiro, intermediário e último frame; Preview/Export disponível.
+- Passos: navegar por tap, scroll e centralização programática nos dois modos; medir ponto e eixo fixo; gerar MP4 a partir dos dois modos.
+- Resultado esperado: delta horizontal do ponto igual a zero; check, texto e download prontos em ciano próprio, sem verde legado ou vazamento roxo/ciano do modo; download funcional preservado.
+- Evidência: medidas DOM, smoke WebKit e validação real do MP4 no iPhone/Safari.
+- Ambiente: viewport 390 px, WebKit automatizado e iPhone/Safari real.
+- Automatizável: parcial.
