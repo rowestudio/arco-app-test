@@ -243,7 +243,16 @@ Formato: ID, data, decisão, contexto, consequência e status.
 - **Compatibilidade futura:** grupos de Frames, templates e blocos continuam operando sobre câmera, Frames, curvas e tempo; aplicar, importar ou duplicar esses grupos não deve zerar nem reescrever a profundidade independente dos assets.
 - **Status:** ativa tecnicamente na `v8z4b32E8N`; paridade visual e aprovação em iPhone/Safari real permanecem pendentes.
 
-## DEC-2026-08-06-02 — OPS-04 Mobile CI Watchdog
+## DEC-2026-08-06-02 — Profundidade e ordem de camada são independentes
+
+- **Data:** 2026-08-06.
+- **Decisão:** `zIndex` define exclusivamente sobreposição/ordem visual e `depth` define exclusivamente intensidade e direção da resposta aparente à câmera; alterar um campo nunca ordena, limita, classifica ou corrige o outro.
+- **Integração do Stage:** imagem DOM, seleção, quatro alças e hit-test derivam da mesma geometria visual resolvida a partir da geometria canônica mais o offset temporário de parallax.
+- **Painéis:** Escala, Rotação e Profundidade compartilham a região e as métricas contextuais existentes, com somente um painel interativo por vez.
+- **Compatibilidade futura:** grupos de frames e templates continuam livres para reutilizar câmera/Frames/curvas/tempo sem alterar profundidade ou ordem dos assets.
+- **Status:** ativa tecnicamente na `v8z4b32E8O`; validação visual publicada em iPhone/Safari real pendente.
+
+## DEC-2026-08-06-03 — OPS-04 Mobile CI Watchdog
 
 - **Data:** 2026-08-06.
 - **Decisão:** PRs abertas contra `main` devem receber validação automática de `QA Guardrails` e `WebKit Smoke Tests` para o HEAD SHA atual mesmo quando o evento original `pull_request` não criar checks. A OPS-04 usa um watchdog agendado e manual administrativo para detectar suítes ausentes por SHA e publicar check-runs explícitos no SHA correto.

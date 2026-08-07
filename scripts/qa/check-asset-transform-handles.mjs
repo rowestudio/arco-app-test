@@ -9,8 +9,9 @@ function requireIncludes(fragment, label) {
   if (!html.includes(fragment)) fail(`${label} not found.`);
 }
 
-requireIncludes("const APP_VERSION = 'v8z4b32E8D';", 'APP_VERSION v8z4b32E8D');
-requireIncludes("const APP_VERSION_NAME = 'v8z4b32E8D';", 'APP_VERSION_NAME v8z4b32E8D');
+const appVersion = html.match(/const APP_VERSION = '([^']+)';/)?.[1];
+const appVersionName = html.match(/const APP_VERSION_NAME = '([^']+)';/)?.[1];
+if (!appVersion || appVersion !== appVersionName) fail('APP_VERSION and APP_VERSION_NAME must exist and match.');
 
 if (/\.asset-transform-handle\s*\{/.test(html)) fail('legacy .asset-transform-handle CSS rule is still present.');
 if (/\.asset-scale-handle\s*\{/.test(html)) fail('legacy .asset-scale-handle CSS rule is still present.');
