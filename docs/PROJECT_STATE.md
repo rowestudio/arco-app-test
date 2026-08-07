@@ -2,6 +2,15 @@
 
 Última atualização documental: 2026-07-30.
 
+## Atualização 2026-08-07 — v8z4b32E8Q em PR
+
+- Base confirmada: `main` após o merge da PR #474, versão funcional `v8z4b32E8P`.
+- A `v8z4b32E8Q` consolida Frames e Ativos na mesma apresentação de bottom sheet contextual compacto, com largura total, superfície própria, cantos superiores arredondados e substituição estrutural da toolbar normal.
+- A troca entre Câmera/Frames e Ativos fecha o painel do modo anterior; ações individuais de Ativo exigem `selectedAssetId` canônico válido e nenhum painel de Ativo abre sem alvo.
+- O ponto laranja da timeline deriva do mesmo eixo geométrico canônico da faixa rolável usado para centralização, sem offset compensatório.
+- O estado pronto de Preview/Export volta a usar o ciano fixo aprovado do Arco, independente da cor do modo, sem mudança no renderer, WebCodecs ou download.
+- Aprovação visual final permanece pendente de publicação e validação em iPhone/Safari real. Nenhuma promoção para produção está autorizada.
+
 ## Atualização 2026-08-07 — v8z4b32E8P em PR
 
 - Base confirmada: `main` após o merge da `v8z4b32E8O`, no commit `ea4b8f7`.

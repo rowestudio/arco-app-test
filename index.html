@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8Q — base v8z4b32E8P. fix(ui): consolida a superfície e o estado dos painéis contextuais, centraliza o ponto da timeline pela mesma geometria da faixa e restaura o ciano do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E8Q. -->
 <!-- Arco Motion App — v8z4b32E8P — base v8z4b32E8O. fix(assets): painéis contextuais de Escala, Rotação e Profundidade substituem toda a faixa inferior, como o painel expandido de Frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E8P. -->
 <!-- Arco Motion App — v8z4b32E8O — base v8z4b32E8N. fix(parallax): sincroniza geometria visual do Stage e unifica painéis contextuais de Escala, Rotação e Profundidade. APP_VERSION = APP_VERSION_NAME = v8z4b32E8O. -->
 <!-- Arco Motion App — v8z4b32E8N — base restaurada v8z4b32E8I. feat(assets): profundidade manual persistente por asset e parallax translacional compartilhado entre Stage, Preview e Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E8N. -->
@@ -1101,6 +1102,8 @@
   --border:#38383a; --border2:#545456;
   --text:#fff; --text2:#ebebf5; --text3:#aeaeb2;
   --accent:#04fff2; --red:#ff375f; --yellow:#ffd60a; --green:#30d158;
+  --preview-ready-color:#04fff2;
+  --context-sheet-bg:#292b2f;
   --r:12px; --safe-bottom:env(safe-area-inset-bottom,0px);
   /* v8z4b29BW — tons dedicados a botões de ação e campos editáveis,
      levemente mais claros que o fundo do painel (--surface2/--bg, ambos
@@ -2165,12 +2168,16 @@ body.cust-open .mid-bar.timeline-grid #toolbar,
 body.cust-open .mid-bar.timeline-grid #alignBar{display:none !important;}
 body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !important;}
 body.cust-expanded #lowerContextSlot,
-body.asset-context-panel-open #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;padding:0;z-index:14;background:var(--menu-bg);overflow:visible;}
-body.cust-expanded .mid-bar.timeline-grid #custBar{height:100% !important;max-height:100% !important;background:var(--menu-bg) !important;pointer-events:auto;}
+body.asset-context-panel-open #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;padding:0;z-index:14;background:var(--context-sheet-bg);border-radius:16px 16px 0 0;overflow:visible;}
+body.cust-expanded .mid-bar.timeline-grid #custBar{height:100% !important;max-height:100% !important;background:var(--context-sheet-bg) !important;border-radius:16px 16px 0 0;pointer-events:auto;}
 body.cust-expanded .mid-bar.timeline-grid #custBarContent{height:100%;min-height:100%;padding:8px 8px 6px 6px !important;box-sizing:border-box;overflow-x:auto !important;overflow-y:visible !important;}
 body.cust-expanded #lowerFrameCount,
 body.cust-expanded .lower-active-state,
 body.cust-expanded .lower-selection-actions,
+body.asset-context-panel-open #lowerFrameCount,
+body.asset-context-panel-open .lower-active-state,
+body.asset-context-panel-open .lower-selection-actions,
+body.asset-context-panel-open .lower-global-duration,
 body.align-submenu-open #lowerFrameCount,
 body.align-submenu-open .lower-active-state,
 body.align-submenu-open .lower-selection-actions{visibility:hidden;}
@@ -2271,7 +2278,7 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
 }
 .preview-download svg{width:38px;height:38px;display:block;}
 .preview-download span{font-size:11px;font-weight:500;color:rgba(255,255,255,.6);}
-.preview-download.done svg{color:var(--green);}
+.preview-download.done svg,.preview-download.done span{color:var(--preview-ready-color);}
 .preview-download.recording svg{color:var(--red);}
 
 /* Pulse no botao Salvar quando video fica pronto */
@@ -2371,7 +2378,7 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
 }
 .ready-check-svg {
   width: 84px; height: 84px;
-  color: var(--green);
+  color: var(--preview-ready-color);
   margin-bottom: 20px;
   display: block;
 }
@@ -2383,7 +2390,7 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
   font-size: 14px; color: rgba(255,255,255,.7);
 }
 .ready-sub strong {
-  color: var(--green); font-weight: 600;
+  color: var(--preview-ready-color); font-weight: 600;
 }
 
 /* ONBOARDING OVERLAY */
@@ -2645,7 +2652,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
 #assetContextPanel{
   display:none;flex:1 1 auto;align-items:center;gap:10px;height:100%;
   box-sizing:border-box;padding:10px 14px max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px);
-  background:var(--menu-bg);border-top:.5px solid var(--border);pointer-events:none;
+  background:var(--context-sheet-bg);border-top:.5px solid rgba(255,255,255,.12);border-radius:16px 16px 0 0;pointer-events:none;
 }
 #assetContextPanel.show{display:flex;pointer-events:auto;}
 #assetContextPanel .asset-context-back{
@@ -2658,8 +2665,9 @@ body.asset-context-panel-open #toolbar{display:none !important;}
 #assetContextPanel .asset-context-main{display:flex;flex:1;min-width:0;flex-direction:column;gap:5px;}
 #assetContextPanel .asset-context-row{display:flex;align-items:center;gap:12px;min-width:0;}
 #assetContextPanel .asset-context-actions{display:flex;align-items:center;gap:6px;min-height:30px;}
-#assetContextPanel .asset-context-title{font-size:11px;font-weight:700;color:var(--text3);min-width:72px;}
 #assetContextPanel .asset-context-value{font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;}
+#assetContextPanel .asset-context-step{display:none;}
+#assetContextPanel[data-kind="rotation"] .asset-context-step{display:inline-flex;}
 #custBarTabs{
   background:var(--menu-bg) !important;
   background-image:none !important;
@@ -4102,17 +4110,18 @@ body.asset-context-panel-open #toolbar{display:none !important;}
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-send-backward"></use></svg><span class="tb-lbl">Trás</span>
   </div>
 </div>
-<div id="assetContextPanel" role="dialog" aria-modal="false" aria-labelledby="assetContextPanelTitle">
+<div id="assetContextPanel" role="dialog" aria-modal="false" aria-label="Ajuste do ativo">
   <button type="button" class="asset-context-back" onclick="closeAssetContextPanel()" aria-label="Voltar">
     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="15 18 9 12 15 6"/></svg>
   </button>
   <div class="asset-context-main">
     <div class="asset-context-row">
-      <span class="asset-context-title" id="assetContextPanelTitle">Profundidade</span>
       <input class="dur-slider" id="assetContextSlider" type="range" min="-100" max="100" step="1" value="0" style="flex:1;min-width:0;">
       <span class="asset-context-value" id="assetContextValue">0</span>
     </div>
     <div class="asset-context-actions">
+      <button type="button" class="chip asset-context-step" onclick="stepAssetContextRotation(-5)">-5°</button>
+      <button type="button" class="chip asset-context-step" onclick="stepAssetContextRotation(5)">+5°</button>
       <button type="button" class="chip" id="assetContextReset" onclick="resetAssetContextValue()" style="padding:6px 14px;font-size:13px;min-height:30px;justify-content:center;margin-left:auto;">Reset</button>
     </div>
   </div>
@@ -7264,8 +7273,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8P';
-const APP_VERSION_NAME = 'v8z4b32E8P';
+const APP_VERSION = 'v8z4b32E8Q';
+const APP_VERSION_NAME = 'v8z4b32E8Q';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let parallaxChangedCanonicalAssetGeometry = false;
 let parallaxChangedFrames = false;
@@ -15261,17 +15270,15 @@ function syncAssetContextPanel() {
   const asset = getSelectedAsset();
   const slider = document.getElementById('assetContextSlider');
   const value = document.getElementById('assetContextValue');
-  const title = document.getElementById('assetContextPanelTitle');
   const reset = document.getElementById('assetContextReset');
   if (!asset || !slider || assetContextPanelKind === 'none') return;
   let current = 0, suffix = '';
-  if (assetContextPanelKind === 'depth') { slider.min = -100; slider.max = 100; current = Number(asset.depth) || 0; title.textContent = 'Profundidade'; }
+  if (assetContextPanelKind === 'depth') { slider.min = -100; slider.max = 100; current = Number(asset.depth) || 0; }
   if (assetContextPanelKind === 'scale') {
     slider.min = Math.min(20, Math.floor(getAssetContextScalePercent(asset)));
     slider.max = Math.max(300, Math.ceil(getAssetContextScalePercent(asset)));
     current = getAssetContextScalePercent(asset);
     suffix = '%';
-    title.textContent = 'Escala';
     const baseline = getAssetScaleBaselineWorldSize(asset);
     const visualRect = (typeof getAssetVisualWorldRect === 'function') ? getAssetVisualWorldRect(asset) : asset;
     assetScaleBaselineValid = !!(baseline && baseline.valid);
@@ -15280,9 +15287,10 @@ function syncAssetContextPanel() {
       Math.abs((baseline.width * current / 100) - (Number(visualRect.w) || 0)) < 0.01 &&
       Math.abs((baseline.height * current / 100) - (Number(visualRect.h) || 0)) < 0.01);
   }
-  if (assetContextPanelKind === 'rotation') { slider.min = -720; slider.max = 720; current = Number(asset.rotation) || 0; suffix = '°'; title.textContent = 'Rotação'; }
+  if (assetContextPanelKind === 'rotation') { slider.min = -720; slider.max = 720; current = Number(asset.rotation) || 0; suffix = '°'; }
   slider.value = String(Math.max(Number(slider.min), Math.min(Number(slider.max), current)));
-  slider.setAttribute('aria-label', title.textContent);
+  const contextLabel = assetContextPanelKind === 'scale' ? 'Escala' : assetContextPanelKind === 'rotation' ? 'Rotação' : 'Profundidade';
+  slider.setAttribute('aria-label', contextLabel + ' do ativo');
   value.textContent = String(Math.round(current)) + suffix;
   const neutral = assetContextPanelKind === 'scale' ? 100 : 0;
   reset.disabled = Math.abs(current - neutral) < 0.001;
@@ -15302,7 +15310,7 @@ function openAssetContextPanel(kind) {
   closeAll();
   assetContextPanelKind = kind === 'scale' || kind === 'rotation' ? kind : 'depth';
   const panel = document.getElementById('assetContextPanel');
-  if (panel) { panel.style.display = 'flex'; panel.style.pointerEvents = 'auto'; panel.classList.add('show'); }
+  if (panel) { panel.style.display = 'flex'; panel.style.pointerEvents = 'auto'; panel.dataset.kind = assetContextPanelKind; panel.classList.add('show'); }
   document.body.classList.add('asset-context-panel-open');
   if (assetContextPanelKind === 'scale') assetScalePanelOpenedAfterTap = true;
   if (assetContextPanelKind === 'rotation') assetRotationPanelOpenedAfterTap = true;
@@ -15310,6 +15318,12 @@ function openAssetContextPanel(kind) {
   syncAssetContextPanel();
 }
 function openAssetDepthPanel() { openAssetContextPanel('depth'); }
+function stepAssetContextRotation(delta) {
+  const asset = getSelectedAsset();
+  if (assetContextPanelKind !== 'rotation' || !asset) return;
+  setAssetContextValue((Number(asset.rotation) || 0) + Number(delta || 0));
+  commitAssetContextGesture();
+}
 function beginAssetContextGesture() {
   const asset = getSelectedAsset();
   if (!asset || assetContextGesture) return;
@@ -16381,8 +16395,14 @@ function setEditorMode(mode, source) {
   setModeLastBlockedReason = 'none';
   setModeLastError = 'none';
   try {
-    if (typeof closeAll === 'function') closeAll();
     const changed = (editorMode !== next);
+    if (changed) {
+      // Painéis pertencem ao alvo do modo em que foram abertos. Fechá-los antes
+      // da troca impede que Escala/Rotação homônimas sejam reaproveitadas.
+      if (typeof closeAssetContextPanel === 'function') closeAssetContextPanel();
+      if (typeof closeCustBar === 'function') closeCustBar();
+    }
+    if (typeof closeAll === 'function') closeAll();
     // v8z4b31D — capturar activeIdx antes da troca para diagnóstico de persistência.
     activeFrameIndexBeforeModeSwitch = (typeof activeIdx === 'number') ? activeIdx : -1;
     editorMode = next;
@@ -16661,7 +16681,7 @@ function syncAssetToolbarState() {
   const toolbarAsset = isAssetsMode() ? getSelectedAsset() : null;
   const hasSel = !!toolbarAsset;
   const toolbarAssetId = toolbarAsset ? String(toolbarAsset.id) : '';
-  ['tbAssetReplace','tbAssetDelete'].forEach(function(id) {
+  ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetDelete'].forEach(function(id) {
     const el = document.getElementById(id);
     if (!el) return;
     el.classList.toggle('asset-tool-disabled', !hasSel);
@@ -17236,25 +17256,34 @@ function getTimelineStageFocusIndex() {
   }
   return activeIdx;
 }
+// A faixa rolável é a fonte geométrica canônica tanto do snap quanto da mira.
+function getLowerTimelineCanonicalAxisX() {
+  const pillsEl = document.getElementById('pillsRow');
+  if (!pillsEl || !pillsEl.getBoundingClientRect) return null;
+  const rect = pillsEl.getBoundingClientRect();
+  return rect.left + rect.width / 2;
+}
 function syncLowerTimelineCenterMarkers() {
   const slotEl = document.querySelector('.lower-timeline-slot');
   if (!slotEl) return;
-  const pillsEl = document.getElementById('pillsRow');
   const slotRect = slotEl.getBoundingClientRect ? slotEl.getBoundingClientRect() : null;
-  const pillsRect = pillsEl && pillsEl.getBoundingClientRect ? pillsEl.getBoundingClientRect() : null;
-  const centerPx = (slotRect && pillsRect && slotRect.width > 0) ? (pillsRect.left + pillsRect.width / 2 - slotRect.left) : (slotRect ? slotRect.width / 2 : 0);
+  const canonicalAxisX = getLowerTimelineCanonicalAxisX();
+  const centerPx = (slotRect && Number.isFinite(canonicalAxisX)) ? (canonicalAxisX - slotRect.left) : (slotRect ? slotRect.width / 2 : 0);
   slotEl.style.setProperty('--lower-timeline-center-x', centerPx ? (centerPx + 'px') : '50%');
   timelineCenterMarkerIsFixedOverlay = true;
   timelineCenterMarkerInsideScrollableContent = false;
   timelineMarkerMovedWithScrollableContent = false;
   timelineMarkerFixedDuringManualScroll = true;
   timelineCenterDotsAlignedToActiveChip = true;
-  timelineCenterDotsCenterXMatchesActiveChip = false;
-  timelineTopDotCenterXMatchesActiveChip = false;
-  timelineBottomDotCenterXMatchesActiveChip = false;
+  const activeChip = document.querySelector('#pillsRow .fp.active');
+  const activeRect = activeChip && activeChip.getBoundingClientRect ? activeChip.getBoundingClientRect() : null;
+  timelineCenterDotsLateralDeltaPx = activeRect && Number.isFinite(canonicalAxisX)
+    ? Math.round((activeRect.left + activeRect.width / 2 - canonicalAxisX) * 100) / 100 : 0;
+  timelineCenterDotsCenterXMatchesActiveChip = Math.abs(timelineCenterDotsLateralDeltaPx) < 0.5;
+  timelineTopDotCenterXMatchesActiveChip = timelineCenterDotsCenterXMatchesActiveChip;
+  timelineBottomDotCenterXMatchesActiveChip = timelineCenterDotsCenterXMatchesActiveChip;
   cameraModeCenterDotsAlignedToActiveChip = true;
   assetsModeCenterDotsAlignedToActiveChip = true;
-  timelineCenterDotsLateralDeltaPx = 0;
 }
 function getLowerTimelineNearestFrameIndex() {
   const pillsEl = document.getElementById('pillsRow');
@@ -36920,6 +36949,27 @@ function buildDiagnosticsText() {
   push('assetContextPanelVisible', _panelStyle ? String(_panelStyle.display !== 'none' && _panelStyle.visibility !== 'hidden') : 'false');
   push('assetContextPanelZIndex', _panelStyle ? _panelStyle.zIndex : 'n/d');
   push('assetContextPanelPointerEvents', _panelStyle ? _panelStyle.pointerEvents : 'n/d');
+  const _slot = document.getElementById('lowerContextSlot');
+  const _slotRect = _slot && _slot.getBoundingClientRect();
+  const _panelRect = _panel && _panel.getBoundingClientRect();
+  const _custStyle = _custBar ? getComputedStyle(_custBar) : null;
+  const _assetActions = ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetDelete','tbAssetForward','tbAssetBackward']
+    .map(id => document.getElementById(id)).filter(Boolean);
+  const _hasCanonicalAsset = !!getSelectedAsset();
+  push('contextPanelPresentationSharedBetweenModes', String(!!(_panelStyle && _custStyle &&
+    _panelStyle.backgroundColor === _custStyle.backgroundColor &&
+    parseFloat(_panelStyle.borderTopLeftRadius) === parseFloat(_custStyle.borderTopLeftRadius))));
+  push('contextPanelFullWidth', String(!!(_slotRect && _panelRect && Math.abs(_slotRect.left-_panelRect.left)<1 && Math.abs(_slotRect.right-_panelRect.right)<1)));
+  push('contextPanelResidualUiVisible', String(!!(document.body.classList.contains('asset-context-panel-open') && _assetActions.some(el => el.getClientRects().length > 0))));
+  push('contextPanelBottomSheetSurfaceActive', String(!!(_panelStyle && _panelStyle.backgroundColor !== getComputedStyle(document.body).backgroundColor)));
+  push('contextPanelTopCornersRounded', String(!!(_panelStyle && parseFloat(_panelStyle.borderTopLeftRadius)>0 && parseFloat(_panelStyle.borderTopRightRadius)>0)));
+  push('assetContextTitleVisible', String(!!document.querySelector('#assetContextPanel .asset-context-title')));
+  push('assetActionsRequireSelection', String(_assetActions.every(el => _hasCanonicalAsset || el.classList.contains('asset-tool-disabled'))));
+  push('assetActionEnabledWithoutSelectionDetected', String(!_hasCanonicalAsset && _assetActions.some(el => !el.classList.contains('asset-tool-disabled'))));
+  push('assetContextOpenedWithoutSelectionDetected', String(!_hasCanonicalAsset && assetContextPanelKind !== 'none'));
+  push('modeSwitchClosesPreviousContextPanel', String(!(isAssetsMode() && document.body.classList.contains('cust-expanded')) && !(!isAssetsMode() && assetContextPanelKind !== 'none')));
+  push('staleFrameContextPanelVisibleInAssetsMode', String(isAssetsMode() && document.body.classList.contains('cust-expanded')));
+  push('staleAssetContextPanelVisibleInCameraMode', String(!isAssetsMode() && assetContextPanelKind !== 'none'));
   push('assetContextMultiplePanelsOpenDetected', String(_openContextPanels.length > 1));
   push('assetContextInvisiblePanelCapturingPointer', String(_invisibleCapturing));
   push('assetScalePanelOpenedAfterTap', String(assetScalePanelOpenedAfterTap));
@@ -40553,6 +40603,17 @@ function buildDiagnosticsText() {
   push('cameraModeCenterDotsAlignedToActiveChip', String(cameraModeCenterDotsAlignedToActiveChip));
   push('assetsModeCenterDotsAlignedToActiveChip', String(assetsModeCenterDotsAlignedToActiveChip));
   push('timelineCenterDotsLateralDeltaPx', String(timelineCenterDotsLateralDeltaPx));
+  const _timelineSlot = document.querySelector('.lower-timeline-slot');
+  const _timelineSlotRect = _timelineSlot && _timelineSlot.getBoundingClientRect();
+  const _canonicalTimelineAxis = getLowerTimelineCanonicalAxisX();
+  const _markerLocalX = _timelineSlot ? parseFloat(getComputedStyle(_timelineSlot).getPropertyValue('--lower-timeline-center-x')) : NaN;
+  const _markerViewportX = _timelineSlotRect && Number.isFinite(_markerLocalX) ? _timelineSlotRect.left + _markerLocalX : NaN;
+  push('timelineCenterDotUsesCanonicalAxis', String(Number.isFinite(_markerViewportX) && Number.isFinite(_canonicalTimelineAxis) && Math.abs(_markerViewportX-_canonicalTimelineAxis)<0.01));
+  push('timelineCenterDotDeltaPx', String(timelineCenterDotsLateralDeltaPx));
+  const _readyColor = getComputedStyle(document.documentElement).getPropertyValue('--preview-ready-color').trim().toLowerCase();
+  push('previewReadyUsesApprovedArcoColor', String(_readyColor === '#04fff2'));
+  push('previewReadyUsesLegacySemanticGreen', String(_readyColor === '#30d158'));
+  push('previewExportModeColorLeakDetected', String(_readyColor !== '#04fff2'));
   push('stageEyeShortcutVisible', String(!!(document.getElementById('stageEyeShortcut') && getComputedStyle(document.getElementById('stageEyeShortcut')).display !== 'none')));
   push('stageEyeShortcutModeAware', 'true');
   push('stageEyeShortcutUsesExistingVisualizationModes', 'true');

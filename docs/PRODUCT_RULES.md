@@ -11,6 +11,9 @@
 - Save/Load, Layers, ProjectWorld, seleção e renderer devem ser preservados quando não forem escopo.
 - iPhone/Safari é a referência real.
 - Nenhuma mudança colateral é aceitável.
+- Frames e Ativos compartilham a linguagem de bottom sheet contextual; a troca de modo sempre fecha o painel pertencente ao modo anterior.
+- Ações individuais e painéis contextuais de Ativos exigem seleção canônica válida e permanecem desabilitados sem `selectedAssetId` existente.
+- Preview/Export pronto usa a identidade ciano própria do Arco, sem herdar cor de modo nem verde semântico legado.
 
 ## Regras de revisão
 
