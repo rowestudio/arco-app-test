@@ -45,6 +45,7 @@ A arquitetura aprovada preserva um renderer único/canônico para evitar diverg�
 - Cada tarefa deve usar branch própria.
 - Mudanças devem entrar por PR.
 - Produção (`rowestudio/arco-app`) só muda após aprovação explícita de Roberto.
+- O fluxo operacional é mobile-first: PRs abertas ou atualizadas por Codex remoto, GitHub App ou usuário humano devem receber evidência automática dos checks obrigatórios sem depender de desktop, terminal local, token pessoal ou execução manual recorrente.
 
 ## Papéis
 

@@ -6,9 +6,22 @@
 
 - A `v8z4b32E8N` teve o conceito e o motor de parallax manual aprovados em teste visual no iPhone/Safari; permaneceu uma regressão de integração do Stage, em que o contorno acompanhava a câmera mas a imagem DOM não era recalculada na navegação da timeline.
 - A `v8z4b32E8O` consolida uma geometria visual única para imagem, seleção, alças e hit-test do Stage e restaura painéis contextuais exclusivos de Escala, Rotação e Profundidade na região inferior existente.
+- Revisão P1: o controle contextual de escala passa a medir 100% contra o baseline fitted canônico em coordenadas do ProjectWorld, não contra pixels naturais da fonte.
+- Revisão P1: o Stage recalcula imediatamente a geometria visual derivada de parallax quando a câmera/frame ativo muda sua geometria sem troca de índice.
 - `depth` permanece resposta aparente ao movimento da câmera e `zIndex` permanece ordem de sobreposição; nenhum deles deriva ou reescreve o outro.
 - A compatibilidade futura permanece: grupos de frames operam sobre câmera, Frames, curvas e tempo sem reescrever profundidade dos assets.
 - Estado: correção em PR; QA WebKit e validação visual publicada em iPhone/Safari real permanecem obrigatórios. A E8O não está aprovada e nenhuma promoção para produção está autorizada.
+
+## Atualização 2026-08-06 — OPS-04 em PR
+
+- A OPS-04 restaura o fluxo operacional mobile-first de CI para PRs abertas contra `main` quando eventos `pull_request` não associam automaticamente `QA Guardrails` e `WebKit Smoke Tests` ao HEAD atual.
+- Arquitetura escolhida: workflow `Mobile CI Watchdog` em `schedule` moderado e `workflow_dispatch` administrativo, detectando PRs abertas, HEAD SHA corrente e evidência já existente por SHA antes de criar check-runs explícitos via Checks API.
+- O watchdog preserva os workflows normais `QA Guardrails` e `WebKit Smoke Tests`; quando eles já existem para o SHA, a OPS-04 não duplica execução. Quando faltam, executa os comandos originais no checkout exato do HEAD da PR e finaliza check-runs no mesmo SHA.
+- Revisão bloqueante antes do merge: o watchdog transporta `title` e `body` reais da PR na matriz e define `QA_PR_TITLE`/`QA_PR_BODY` a partir desses metadados, preservando texto multilinha e caracteres especiais para `check-app-version.mjs`.
+- Frequência: a cada 30 minutos, com `concurrency` global do workflow e concorrência por PR/suíte/SHA para evitar duplicidade. Novo SHA é elegível para nova validação; resultado de SHA anterior não libera SHA novo.
+- Segurança: metadados e finalização usam `contents: read`, `pull-requests: read`, `actions: read` e `checks: write` apenas onde necessário. Checkouts usam `persist-credentials: false`; forks e repositórios externos são ignorados pela automação.
+- Recuperação: se o watchdog falhar, executar manualmente `Mobile CI Watchdog` pela aba Actions como ação administrativa; se a Checks API estiver indisponível, a falha fica visível no próprio workflow e não deve ser simulada como sucesso.
+- Classificação: infraestrutura crítica de CI/CD, sem alteração funcional do Arco Motion App e sem alteração de `APP_VERSION` ou `APP_VERSION_NAME`.
 
 ## Atualização 2026-08-06 — v8z4b32E8N em PR
 

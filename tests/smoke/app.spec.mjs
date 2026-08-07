@@ -379,6 +379,108 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
     assetContextPanelsAreExclusive: true,
     assetContextPanelMode: 'scale'
   });
+
+  const scaleResult = await page.evaluate(() => {
+    const asset = getSelectedAsset();
+    const baseline = getAssetScaleBaselineWorldSize(asset);
+    const cx = (asset.worldX || 0) + (asset.worldW || 0) / 2;
+    const cy = (asset.worldY || 0) + (asset.worldH || 0) / 2;
+    asset.worldW = baseline.width;
+    asset.worldH = baseline.height;
+    asset.worldX = cx - baseline.width / 2;
+    asset.worldY = cy - baseline.height / 2;
+    asset.rotation = 17;
+    asset.depth = 42;
+    invalidateProjectWorldComposite();
+    refreshAssetStageVisualGeometry('webkit-e8o-scale-baseline');
+    openAssetContextPanel('scale');
+    const slider = document.getElementById('assetContextSlider');
+    const before = {
+      pct: getAssetContextScalePercent(asset),
+      sliderValue: Number(slider.value),
+      cx: asset.worldX + asset.worldW / 2,
+      cy: asset.worldY + asset.worldH / 2,
+      ratio: asset.worldW / asset.worldH,
+      rotation: asset.rotation,
+      depth: asset.depth,
+      zIndex: asset.zIndex,
+      visible: asset.visible,
+      slotRow: asset.slotRow,
+      slotCol: asset.slotCol,
+      id: asset.id
+    };
+    setAssetContextValue(before.pct + 1);
+    const firstMove = {
+      pct: getAssetContextScalePercent(asset),
+      jumpDetected: assetScaleFirstDragJumpDetected,
+      widthDelta: Math.abs(asset.worldW - baseline.width)
+    };
+    commitAssetContextGesture();
+    openAssetContextPanel('scale');
+    setAssetContextValue(150);
+    commitAssetContextGesture();
+    openAssetContextPanel('scale');
+    setAssetContextValue(80);
+    commitAssetContextGesture();
+    openAssetContextPanel('scale');
+    resetAssetContextValue();
+    const afterReset = {
+      pct: getAssetContextScalePercent(asset),
+      w: asset.worldW,
+      h: asset.worldH,
+      cx: asset.worldX + asset.worldW / 2,
+      cy: asset.worldY + asset.worldH / 2,
+      ratio: asset.worldW / asset.worldH,
+      rotation: asset.rotation,
+      depth: asset.depth,
+      zIndex: asset.zIndex,
+      visible: asset.visible,
+      slotRow: asset.slotRow,
+      slotCol: asset.slotCol,
+      id: asset.id,
+      baselineValid: assetScaleBaselineValid,
+      usesCanonicalBaseline: assetScaleUsesCanonicalBaseline,
+      initialMatchesVisual: assetScaleInitialValueMatchesVisualGeometry,
+      resetReturns100: assetScaleResetReturnsCanonical100Percent,
+      resetMatchesBaseline: assetScaleResetGeometryMatchesBaseline
+    };
+    undo();
+    const afterUndoPct = getAssetContextScalePercent(getSelectedAsset());
+    redo();
+    const afterRedoPct = getAssetContextScalePercent(getSelectedAsset());
+    const project = buildProjectData(true);
+    const saved = project.assets.find(candidate => candidate && candidate.id === asset.id);
+    return { baseline, before, firstMove, afterReset, afterUndoPct, afterRedoPct,
+      savedWorldW: saved && saved.worldW, savedWorldH: saved && saved.worldH };
+  });
+  expect(scaleResult.baseline.valid).toBe(true);
+  expect(scaleResult.before.pct).toBeCloseTo(100, 3);
+  expect(scaleResult.before.sliderValue).toBeCloseTo(100, 3);
+  expect(scaleResult.firstMove.pct).toBeCloseTo(101, 3);
+  expect(scaleResult.firstMove.jumpDetected).toBe(false);
+  expect(scaleResult.firstMove.widthDelta).toBeLessThan(scaleResult.baseline.width * 0.02);
+  expect(scaleResult.afterReset.pct).toBeCloseTo(100, 3);
+  expect(scaleResult.afterReset.w).toBeCloseTo(scaleResult.baseline.width, 3);
+  expect(scaleResult.afterReset.h).toBeCloseTo(scaleResult.baseline.height, 3);
+  expect(scaleResult.afterReset.cx).toBeCloseTo(scaleResult.before.cx, 3);
+  expect(scaleResult.afterReset.cy).toBeCloseTo(scaleResult.before.cy, 3);
+  expect(scaleResult.afterReset.ratio).toBeCloseTo(scaleResult.before.ratio, 6);
+  expect(scaleResult.afterReset.rotation).toBe(scaleResult.before.rotation);
+  expect(scaleResult.afterReset.depth).toBe(scaleResult.before.depth);
+  expect(scaleResult.afterReset.zIndex).toBe(scaleResult.before.zIndex);
+  expect(scaleResult.afterReset.visible).toBe(scaleResult.before.visible);
+  expect(scaleResult.afterReset.slotRow).toBe(scaleResult.before.slotRow);
+  expect(scaleResult.afterReset.slotCol).toBe(scaleResult.before.slotCol);
+  expect(scaleResult.afterReset.id).toBe(scaleResult.before.id);
+  expect(scaleResult.afterReset.baselineValid).toBe(true);
+  expect(scaleResult.afterReset.usesCanonicalBaseline).toBe(true);
+  expect(scaleResult.afterReset.initialMatchesVisual).toBe(true);
+  expect(scaleResult.afterReset.resetReturns100).toBe(true);
+  expect(scaleResult.afterReset.resetMatchesBaseline).toBe(true);
+  expect(scaleResult.afterUndoPct).toBeCloseTo(80, 3);
+  expect(scaleResult.afterRedoPct).toBeCloseTo(100, 3);
+  expect(scaleResult.savedWorldW).toBeCloseTo(scaleResult.baseline.width, 3);
+  expect(scaleResult.savedWorldH).toBeCloseTo(scaleResult.baseline.height, 3);
   await page.locator('#assetContextPanel .asset-context-back').click();
   await expect(page.locator('#assetContextPanel')).toBeHidden();
   await expect(page.locator('#tbAssetRotate')).toBeVisible();
@@ -426,6 +528,47 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   expect(transformResult.zIndexUnchanged).toBe(true);
   expect(transformResult.scaled).toBe(true);
   expect(transformResult.rotated).toBe(true);
+
+  const activeFrameGeometryResult = await page.evaluate(() => {
+    closeAssetContextPanel();
+    commitFilmSelection(0, -1, 'webkit-e8o-active-frame-geometry-start');
+    const asset = getSelectedAsset();
+    asset.depth = 50;
+    refreshAssetStageVisualGeometry('webkit-e8o-active-frame-geometry-start');
+    const imageBefore = document.querySelector(`.world-extra-img[data-asset-id="${asset.id}"]`).getBoundingClientRect();
+    const selectionBefore = document.getElementById('assetSelectOutline').getBoundingClientRect();
+    const canonicalBefore = { x: asset.worldX, y: asset.worldY, w: asset.worldW, h: asset.worldH, rotation: asset.rotation };
+    const frameIndexBefore = activeIdx;
+    frames[activeIdx].x += 24;
+    frames[activeIdx].y += 12;
+    frames[activeIdx].w *= 1.02;
+    frameRotations[activeIdx] = (frameRotations[activeIdx] || 0) + 5;
+    renderAll();
+    const imageAfter = document.querySelector(`.world-extra-img[data-asset-id="${asset.id}"]`).getBoundingClientRect();
+    const selectionAfter = document.getElementById('assetSelectOutline').getBoundingClientRect();
+    return {
+      sameFrameIndex: activeIdx === frameIndexBefore,
+      imageDelta: { x: imageAfter.x - imageBefore.x, y: imageAfter.y - imageBefore.y },
+      selectionDelta: { x: selectionAfter.x - selectionBefore.x, y: selectionAfter.y - selectionBefore.y },
+      canonicalUnchanged: asset.worldX === canonicalBefore.x && asset.worldY === canonicalBefore.y &&
+        asset.worldW === canonicalBefore.w && asset.worldH === canonicalBefore.h && asset.rotation === canonicalBefore.rotation,
+      updatedAfterGeometryChange: parallaxStageUpdatesAfterActiveFrameGeometryChange,
+      requiresFrameIndexChange: parallaxStageRefreshRequiresFrameIndexChange,
+      requiresModeSwitch: parallaxStageRefreshRequiresModeSwitch,
+      requiresTimelineRetap: parallaxStageRefreshRequiresTimelineRetap,
+      cameraMatchesCanonical: parallaxStageCameraStateMatchesCanonicalReference
+    };
+  });
+  expect(activeFrameGeometryResult.sameFrameIndex).toBe(true);
+  expect(Math.abs(activeFrameGeometryResult.imageDelta.x) + Math.abs(activeFrameGeometryResult.imageDelta.y)).toBeGreaterThan(0);
+  expect(activeFrameGeometryResult.imageDelta.x).toBeCloseTo(activeFrameGeometryResult.selectionDelta.x, 1);
+  expect(activeFrameGeometryResult.imageDelta.y).toBeCloseTo(activeFrameGeometryResult.selectionDelta.y, 1);
+  expect(activeFrameGeometryResult.canonicalUnchanged).toBe(true);
+  expect(activeFrameGeometryResult.updatedAfterGeometryChange).toBe(true);
+  expect(activeFrameGeometryResult.requiresFrameIndexChange).toBe(false);
+  expect(activeFrameGeometryResult.requiresModeSwitch).toBe(false);
+  expect(activeFrameGeometryResult.requiresTimelineRetap).toBe(false);
+  expect(activeFrameGeometryResult.cameraMatchesCanonical).toBe(true);
 
   const result = await page.evaluate(() => {
     closeAssetContextPanel();

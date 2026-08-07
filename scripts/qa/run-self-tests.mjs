@@ -8,6 +8,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 const node = process.execPath;
 const fixtures = path.join(repoRoot, 'test-fixtures/qa-guardrails');
 const scripts = path.join(repoRoot, 'scripts/qa');
+const ciScripts = path.join(repoRoot, 'scripts/ci');
 const baseSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
 const baseVersionFixture = path.join(fixtures, 'version-valid.html');
 
@@ -38,6 +39,26 @@ function expectCase(results, name, script, expectedCode, options = {}) {
   if (!passed) {
     console.error(`Self-test failed: ${name}`);
     console.error(`Expected exit ${expectedCode}, got ${result.code}`);
+    if (result.stdout) console.error(result.stdout.trim());
+    if (result.stderr) console.error(result.stderr.trim());
+  }
+}
+
+function expectCiCase(results, name, script, expectedCode, options = {}) {
+  const result = spawnSync(node, [path.join(ciScripts, script)], {
+    cwd: options.cwd || repoRoot,
+    env: {
+      ...process.env,
+      ...options.env,
+    },
+    encoding: 'utf8',
+  });
+  const actualCode = result.status ?? 1;
+  const passed = actualCode === expectedCode;
+  results.push({ name, expectedCode, actualCode, passed });
+  if (!passed) {
+    console.error(`Self-test failed: ${name}`);
+    console.error(`Expected exit ${expectedCode}, got ${actualCode}`);
     if (result.stdout) console.error(result.stdout.trim());
     if (result.stderr) console.error(result.stderr.trim());
   }
@@ -265,6 +286,8 @@ expectCase(results, 'Preview first-frame warm-up valid fixture passes', 'check-p
 expectCase(results, 'Preview first-frame warm-up anti-patterns fail', 'check-preview-first-frame-warmup.mjs', 1, {
   env: { QA_PREVIEW_WARMUP_HTML: path.join(fixtures, 'preview-first-frame-warmup-invalid.html') },
 });
+
+expectCiCase(results, 'Mobile CI watchdog planning behavior passes', 'test-mobile-ci-watchdog.mjs', 0);
 
 const passed = results.filter((result) => result.passed).length;
 console.log(`QA guardrail self-tests: ${passed}/${results.length} expectations confirmed.`);

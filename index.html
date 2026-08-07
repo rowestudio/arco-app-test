@@ -15243,6 +15243,12 @@ let assetRotationPanelOpenedAfterTap = false;
 let assetDepthPanelOpenedAfterTap = false;
 let assetDepthChangedZIndex = false;
 let assetZIndexChangedDepth = false;
+let assetScaleBaselineValid = null;
+let assetScaleUsesCanonicalBaseline = null;
+let assetScaleInitialValueMatchesVisualGeometry = null;
+let assetScaleFirstDragJumpDetected = null;
+let assetScaleResetReturnsCanonical100Percent = null;
+let assetScaleResetGeometryMatchesBaseline = null;
 function syncAssetContextPanel() {
   const asset = getSelectedAsset();
   const slider = document.getElementById('assetContextSlider');
@@ -15252,7 +15258,20 @@ function syncAssetContextPanel() {
   if (!asset || !slider || assetContextPanelKind === 'none') return;
   let current = 0, suffix = '';
   if (assetContextPanelKind === 'depth') { slider.min = -100; slider.max = 100; current = Number(asset.depth) || 0; title.textContent = 'Profundidade'; }
-  if (assetContextPanelKind === 'scale') { slider.min = 20; slider.max = 300; current = getAssetContextScalePercent(asset); suffix = '%'; title.textContent = 'Escala'; }
+  if (assetContextPanelKind === 'scale') {
+    slider.min = Math.min(20, Math.floor(getAssetContextScalePercent(asset)));
+    slider.max = Math.max(300, Math.ceil(getAssetContextScalePercent(asset)));
+    current = getAssetContextScalePercent(asset);
+    suffix = '%';
+    title.textContent = 'Escala';
+    const baseline = getAssetScaleBaselineWorldSize(asset);
+    const visualRect = (typeof getAssetVisualWorldRect === 'function') ? getAssetVisualWorldRect(asset) : asset;
+    assetScaleBaselineValid = !!(baseline && baseline.valid);
+    assetScaleUsesCanonicalBaseline = !!(baseline && baseline.valid && baseline.reference === 'project-world-fitted-main-cell');
+    assetScaleInitialValueMatchesVisualGeometry = !!(baseline && visualRect && baseline.width > 0 && baseline.height > 0 &&
+      Math.abs((baseline.width * current / 100) - (Number(visualRect.w) || 0)) < 0.01 &&
+      Math.abs((baseline.height * current / 100) - (Number(visualRect.h) || 0)) < 0.01);
+  }
   if (assetContextPanelKind === 'rotation') { slider.min = -720; slider.max = 720; current = Number(asset.rotation) || 0; suffix = '°'; title.textContent = 'Rotação'; }
   slider.value = String(Math.max(Number(slider.min), Math.min(Number(slider.max), current)));
   slider.setAttribute('aria-label', title.textContent);
@@ -15286,10 +15305,16 @@ function openAssetDepthPanel() { openAssetContextPanel('depth'); }
 function beginAssetContextGesture() {
   const asset = getSelectedAsset();
   if (!asset || assetContextGesture) return;
+  const baseline = getAssetScaleBaselineWorldSize(asset);
+  const visualRect = (typeof getAssetVisualWorldRect === 'function') ? getAssetVisualWorldRect(asset) : asset;
   assetContextGesture = { snapshot: captureState(), assetId: String(asset.id), kind: assetContextPanelKind,
     startW: Number(asset.worldW) || 1, startH: Number(asset.worldH) || 1,
     startX: Number(asset.worldX) || 0, startY: Number(asset.worldY) || 0,
-    startScale: getAssetContextScalePercent(asset), startZIndex: asset.zIndex, startDepth: Number(asset.depth) || 0 };
+    startScale: getAssetContextScalePercent(asset), startZIndex: asset.zIndex, startDepth: Number(asset.depth) || 0,
+    scaleBaselineW: baseline.width, scaleBaselineH: baseline.height, scaleBaselineValid: baseline.valid,
+    startVisualW: Number(visualRect && visualRect.w) || Number(asset.worldW) || 1,
+    startVisualH: Number(visualRect && visualRect.h) || Number(asset.worldH) || 1,
+    firstScaleInputChecked: false };
 }
 function setAssetContextValue(value) {
   const asset = getSelectedAsset();
@@ -15299,11 +15324,24 @@ function setAssetContextValue(value) {
   if (assetContextPanelKind === 'depth') asset.depth = Math.max(-100, Math.min(100, next));
   if (assetContextPanelKind === 'rotation') asset.rotation = Math.max(-720, Math.min(720, next));
   if (assetContextPanelKind === 'scale' && assetContextGesture) {
-    const factor = Math.max(0.01, next / Math.max(0.01, assetContextGesture.startScale));
+    const clampedPct = Math.max(0.01, next);
+    const factor = clampedPct / 100;
     const cx = assetContextGesture.startX + assetContextGesture.startW / 2;
     const cy = assetContextGesture.startY + assetContextGesture.startH / 2;
-    asset.worldW = assetContextGesture.startW * factor; asset.worldH = assetContextGesture.startH * factor;
+    const baselineW = Number(assetContextGesture.scaleBaselineW) || assetContextGesture.startVisualW;
+    const baselineH = Number(assetContextGesture.scaleBaselineH) || assetContextGesture.startVisualH;
+    const nextW = baselineW * factor;
+    const nextH = baselineH * factor;
+    if (!assetContextGesture.firstScaleInputChecked) {
+      const requestedDelta = Math.abs(clampedPct - assetContextGesture.startScale);
+      const visualDelta = Math.abs(nextW - assetContextGesture.startVisualW);
+      assetScaleFirstDragJumpDetected = requestedDelta <= 1.5 && visualDelta > Math.max(6, baselineW * 0.05);
+      assetContextGesture.firstScaleInputChecked = true;
+    }
+    asset.worldW = nextW; asset.worldH = nextH;
     asset.worldX = cx - asset.worldW / 2; asset.worldY = cy - asset.worldH / 2;
+    assetScaleBaselineValid = !!assetContextGesture.scaleBaselineValid;
+    assetScaleUsesCanonicalBaseline = !!assetContextGesture.scaleBaselineValid;
   }
   syncAssetContextPanel();
   invalidateProjectWorldComposite();
@@ -15320,7 +15358,19 @@ function commitAssetContextGesture() {
   if (changed) { pushUndoSnapshot(gesture.snapshot); markProjectDirty('asset-' + gesture.kind); }
   assetContextGesture = null;
 }
-function resetAssetContextValue() { setAssetContextValue(assetContextPanelKind === 'scale' ? 100 : 0); commitAssetContextGesture(); }
+function resetAssetContextValue() {
+  setAssetContextValue(assetContextPanelKind === 'scale' ? 100 : 0);
+  if (assetContextPanelKind === 'scale') {
+    const asset = getSelectedAsset();
+    const baseline = getAssetScaleBaselineWorldSize(asset);
+    const visualRect = asset ? getAssetVisualWorldRect(asset) : null;
+    assetScaleResetReturnsCanonical100Percent = !!(asset && Math.abs(getAssetContextScalePercent(asset) - 100) < 0.001);
+    assetScaleResetGeometryMatchesBaseline = !!(baseline && visualRect &&
+      Math.abs((Number(visualRect.w) || 0) - baseline.width) < 0.01 &&
+      Math.abs((Number(visualRect.h) || 0) - baseline.height) < 0.01);
+  }
+  commitAssetContextGesture();
+}
 function resetSelectedAssetDepth() { const previous = assetContextPanelKind; assetContextPanelKind = 'depth'; resetAssetContextValue(); assetContextPanelKind = previous; }
 document.addEventListener('DOMContentLoaded', function() {
   const slider = document.getElementById('assetContextSlider');
@@ -17392,12 +17442,34 @@ function formatContextInfoScalePercent(value) {
   const n = Number.isFinite(Number(value)) ? Number(value) : 100;
   return Math.round(n) + '%';
 }
+function getAssetScaleBaselineWorldSize(asset) {
+  const sourceW = Number(asset && asset.sourceW) || 0;
+  const sourceH = Number(asset && asset.sourceH) || 0;
+  const boxW = Number(projectWorld && projectWorld.baseStageW) || Number(stageW) || 0;
+  const boxH = Number(projectWorld && projectWorld.baseStageH) || Number(stageH) || 0;
+  if (sourceW > 0 && sourceH > 0 && boxW > 0 && boxH > 0 && typeof fitContain === 'function') {
+    const fitted = fitContain(sourceW, sourceH, boxW, boxH);
+    return {
+      width: fitted.width,
+      height: fitted.height,
+      valid: fitted.width > 0 && fitted.height > 0,
+      reference: 'project-world-fitted-main-cell'
+    };
+  }
+  const visualRect = asset && typeof getAssetVisualWorldRect === 'function' ? getAssetVisualWorldRect(asset) : asset;
+  return {
+    width: Number(visualRect && visualRect.w) || Number(asset && asset.worldW) || 1,
+    height: Number(visualRect && visualRect.h) || Number(asset && asset.worldH) || 1,
+    valid: false,
+    reference: 'current-asset-geometry-fallback'
+  };
+}
 function getAssetContextScalePercent(asset) {
   if (!asset) return 100;
   const visualRect = (typeof getAssetVisualWorldRect === 'function') ? getAssetVisualWorldRect(asset) : asset;
+  const baseline = getAssetScaleBaselineWorldSize(asset);
   const worldW = Number(visualRect && visualRect.w) || Number(asset.worldW) || 0;
-  const sourceW = Number(asset.sourceW) || 0;
-  if (worldW > 0 && sourceW > 0) return worldW / sourceW * 100;
+  if (worldW > 0 && baseline.width > 0) return worldW / baseline.width * 100;
   return 100;
 }
 function getAssetLayerIdentifier(asset) {
@@ -19984,6 +20056,9 @@ function renderAll() {
 
   // v8z4b30ZJ — manter o contorno de seleção alinhado ao novo transform/Stage.
   renderAssetSelectionOverlay();
+  if (typeof refreshAssetStageVisualGeometry === 'function') {
+    refreshAssetStageVisualGeometry('active-frame-geometry-change');
+  }
 }
 
 // ═══════════════════════════════════════
@@ -33647,7 +33722,17 @@ function getAssetVisualWorldRect(a) {
 }
 function getAssetStageCameraState() {
   const frame = (Array.isArray(frames) && frames[activeIdx]) || null;
-  return frame ? { cx: frame.x + frame.w / 2, cy: frame.y + frame.h / 2, frameIndex: activeIdx, source: 'active-frame' } : null;
+  return frame ? {
+    x: frame.x,
+    y: frame.y,
+    w: frame.w,
+    h: frame.h,
+    rotation: (Array.isArray(frameRotations) ? (Number(frameRotations[activeIdx]) || 0) : 0),
+    cx: frame.x + frame.w / 2,
+    cy: frame.y + frame.h / 2,
+    frameIndex: activeIdx,
+    source: 'active-frame'
+  } : null;
 }
 function resolveAssetStageVisualGeometry(a, currentCameraState) {
   const rect = getAssetVisualWorldRect(a);
@@ -33677,9 +33762,33 @@ let assetCanonicalGeometryUnchangedAfterFrameChange = false;
 let parallaxTimelineNavigationCreatedUndo = null;
 let parallaxTimelineNavigationScheduledAutosave = null;
 let lastResolvedAssetStageGeometry = null;
+let parallaxStageLastCameraSignature = '';
+let parallaxStageUpdatesAfterActiveFrameGeometryChange = null;
+let parallaxStageRefreshRequiresFrameIndexChange = null;
+let parallaxStageRefreshRequiresModeSwitch = null;
+let parallaxStageRefreshRequiresTimelineRetap = null;
+let parallaxStageCameraStateMatchesCanonicalReference = null;
+function getAssetStageCameraSignature(camera) {
+  if (!camera) return 'none';
+  return [
+    camera.frameIndex,
+    camera.x,
+    camera.y,
+    camera.w,
+    camera.h,
+    camera.rotation,
+    camera.cx,
+    camera.cy
+  ].map(function(value) {
+    return Number.isFinite(Number(value)) ? (Math.round(Number(value) * 1000) / 1000) : String(value);
+  }).join('|');
+}
 function refreshAssetStageVisualGeometry(source) {
   if (!Array.isArray(assets) || !projectWorld.initialized) return;
   const camera = getAssetStageCameraState();
+  const cameraSignature = getAssetStageCameraSignature(camera);
+  const previousSignature = parallaxStageLastCameraSignature;
+  const previousFrameIndex = parallaxStageCurrentFrameIndex;
   const selected = getSelectedAsset();
   const selectedDom = selected ? stageContent.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(String(selected.id)) + '"]') : null;
   const beforeDomPosition = selectedDom ? { left: selectedDom.style.left, top: selectedDom.style.top } : null;
@@ -33697,6 +33806,19 @@ function refreshAssetStageVisualGeometry(source) {
   renderProjectWorldExtraImages();
   const afterGeometry = selected ? resolveAssetStageVisualGeometry(selected, camera) : null;
   lastResolvedAssetStageGeometry = afterGeometry;
+  parallaxStageLastCameraSignature = cameraSignature;
+  parallaxStageCameraStateMatchesCanonicalReference = !!(camera && Array.isArray(frames) && frames[camera.frameIndex] &&
+    Math.abs(camera.cx - (frames[camera.frameIndex].x + frames[camera.frameIndex].w / 2)) < 0.001 &&
+    Math.abs(camera.cy - (frames[camera.frameIndex].y + frames[camera.frameIndex].h / 2)) < 0.001);
+  if (previousSignature && previousSignature !== cameraSignature) {
+    const sameFrame = previousFrameIndex === (camera ? camera.frameIndex : -1);
+    if (sameFrame) {
+      parallaxStageUpdatesAfterActiveFrameGeometryChange = true;
+      parallaxStageRefreshRequiresFrameIndexChange = false;
+      parallaxStageRefreshRequiresModeSwitch = false;
+      parallaxStageRefreshRequiresTimelineRetap = false;
+    }
+  }
   if (/timeline|frame|center|scroll/i.test(source || '') && beforeGeometry && afterGeometry) {
     const afterDom = stageContent.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(String(selected.id)) + '"]');
     assetVisualMovedAfterFrameChange = !!(beforeDomPosition && afterDom && (beforeDomPosition.left !== afterDom.style.left || beforeDomPosition.top !== afterDom.style.top));
@@ -36758,6 +36880,11 @@ function buildDiagnosticsText() {
   push('parallaxStageRecomputedAfterProgrammaticCenter', String(parallaxStageRecomputedAfterProgrammaticCenter));
   push('parallaxStageRecomputedAfterModeSwitch', String(parallaxStageRecomputedAfterModeSwitch));
   push('parallaxStageRecomputedAfterPanZoom', String(parallaxStageRecomputedAfterPanZoom));
+  push('parallaxStageUpdatesAfterActiveFrameGeometryChange', parallaxStageUpdatesAfterActiveFrameGeometryChange == null ? 'n/d' : String(parallaxStageUpdatesAfterActiveFrameGeometryChange));
+  push('parallaxStageRefreshRequiresFrameIndexChange', parallaxStageRefreshRequiresFrameIndexChange == null ? 'n/d' : String(parallaxStageRefreshRequiresFrameIndexChange));
+  push('parallaxStageRefreshRequiresModeSwitch', parallaxStageRefreshRequiresModeSwitch == null ? 'n/d' : String(parallaxStageRefreshRequiresModeSwitch));
+  push('parallaxStageRefreshRequiresTimelineRetap', parallaxStageRefreshRequiresTimelineRetap == null ? 'n/d' : String(parallaxStageRefreshRequiresTimelineRetap));
+  push('parallaxStageCameraStateMatchesCanonicalReference', parallaxStageCameraStateMatchesCanonicalReference == null ? 'n/d' : String(parallaxStageCameraStateMatchesCanonicalReference));
   push('selectedAssetCanonicalRect', _stageGeometry ? _rectText(_stageGeometry.canonicalRect) : 'n/d');
   push('selectedAssetVisualRect', _rectText(_visualRect));
   push('selectedAssetParallaxOffset', _stageGeometry ? JSON.stringify(_stageGeometry.parallaxOffset) : 'n/d');
@@ -36788,6 +36915,12 @@ function buildDiagnosticsText() {
   push('assetContextMultiplePanelsOpenDetected', String(_openContextPanels.length > 1));
   push('assetContextInvisiblePanelCapturingPointer', String(_invisibleCapturing));
   push('assetScalePanelOpenedAfterTap', String(assetScalePanelOpenedAfterTap));
+  push('assetScaleBaselineValid', assetScaleBaselineValid == null ? 'n/d' : String(assetScaleBaselineValid));
+  push('assetScaleUsesCanonicalBaseline', assetScaleUsesCanonicalBaseline == null ? 'n/d' : String(assetScaleUsesCanonicalBaseline));
+  push('assetScaleInitialValueMatchesVisualGeometry', assetScaleInitialValueMatchesVisualGeometry == null ? 'n/d' : String(assetScaleInitialValueMatchesVisualGeometry));
+  push('assetScaleFirstDragJumpDetected', assetScaleFirstDragJumpDetected == null ? 'n/d' : String(assetScaleFirstDragJumpDetected));
+  push('assetScaleResetReturnsCanonical100Percent', assetScaleResetReturnsCanonical100Percent == null ? 'n/d' : String(assetScaleResetReturnsCanonical100Percent));
+  push('assetScaleResetGeometryMatchesBaseline', assetScaleResetGeometryMatchesBaseline == null ? 'n/d' : String(assetScaleResetGeometryMatchesBaseline));
   push('assetRotationPanelOpenedAfterTap', String(assetRotationPanelOpenedAfterTap));
   push('assetDepthPanelOpenedAfterTap', String(assetDepthPanelOpenedAfterTap));
   push('assetDepthChangedZIndex', String(assetDepthChangedZIndex));
