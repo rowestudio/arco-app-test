@@ -242,3 +242,14 @@ Formato: ID, data, decisão, contexto, consequência e status.
 - **Referência neutra:** centro da célula principal canônica do ProjectWorld. O offset aparente nunca é escrito em `worldX`, `worldY`, `worldW`, `worldH`, `rotation`, Frames, curvas ou ProjectWorld.
 - **Compatibilidade futura:** grupos de Frames, templates e blocos continuam operando sobre câmera, Frames, curvas e tempo; aplicar, importar ou duplicar esses grupos não deve zerar nem reescrever a profundidade independente dos assets.
 - **Status:** ativa tecnicamente na `v8z4b32E8N`; paridade visual e aprovação em iPhone/Safari real permanecem pendentes.
+
+## DEC-2026-08-06-02 — OPS-04 Mobile CI Watchdog
+
+- **Data:** 2026-08-06.
+- **Decisão:** PRs abertas contra `main` devem receber validação automática de `QA Guardrails` e `WebKit Smoke Tests` para o HEAD SHA atual mesmo quando o evento original `pull_request` não criar checks. A OPS-04 usa um watchdog agendado e manual administrativo para detectar suítes ausentes por SHA e publicar check-runs explícitos no SHA correto.
+- **Contexto:** o fluxo principal de Roberto é mobile-first; depender de desktop, terminal, GitHub CLI, token pessoal ou execução manual recorrente na aba Actions não é aceitável como solução permanente.
+- **Arquitetura:** o workflow `Mobile CI Watchdog` roda na `main`, lê metadados de PRs abertas contra `main`, ignora drafts e forks, consulta workflow runs e check-runs existentes, cria check-runs somente para suítes ausentes e executa os comandos originais no checkout exato do HEAD SHA planejado.
+- **Concorrência e frequência:** execução a cada 30 minutos, `workflow_dispatch` administrativo, `concurrency` global do watchdog e `concurrency` por PR/suíte/SHA. Um check existente em `queued`, `in_progress` ou `completed` evita duplicidade no mesmo SHA; mudança de SHA permite nova execução.
+- **Segurança:** permissões padrão `contents: read`; o planejamento usa `pull-requests: read`, `actions: read` e `checks: write`; a execução usa `contents: read`, `pull-requests: read` e `checks: write` somente para finalizar o check-run. O código testado fica em `pr-source`, o código do watchdog em `watchdog-source`, ambos com `persist-credentials: false`, e a finalização roda a partir do watchdog da `main`.
+- **Limitações:** forks e branches externas são ignorados por segurança; WebKit automatizado em Linux segue sem substituir Safari/iPhone real; falha da Checks API deve aparecer como falha real do workflow, nunca como aprovação simulada.
+- **Status:** ativa em OPS-04, sem alteração funcional do aplicativo e sem alteração de versão.

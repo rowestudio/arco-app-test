@@ -31,6 +31,7 @@ Catálogo obrigatório de regressões históricas e proteções.
 | REG-025 | Autosave/retomar sessão restaura estado não confiável. | Usuário continua de estado parcial ou incorreto. | Persistência/sessão | Acionar retomada de sessão e comparar estado esperado, inclusive Novo Projeto durante pré-hidratação lenta. | `node scripts/qa/check-session-autosave-restore.mjs` + `node scripts/qa/test-session-autosave-race.mjs`; teste real iPhone/Safari. | automatizado parcial; Safari real pendente |
 | REG-026 | Início preto/apagado em sequência específica de edição. | App parece quebrado ao iniciar ou retornar. | Inicialização/render | Reproduzir sequência histórica quando documentada; observar Stage inicial. | Caso reproduzível a confirmar. | futuro |
 | REG-027 | `captureStream + MediaRecorder` volta como export principal. | Export pode voltar a apresentar trancos. | Export/MP4 | Revisar pipeline de export e logs. | Teste arquitetural/static check. | automatizável |
+| REG-039 | PR mobile/remota fica sem checks obrigatórios no HEAD atual. | Bloqueia ou fragiliza o fluxo mobile-first e pode deixar SHA novo sem validação automática. | CI/CD | Comparar PR aberta contra `main`, HEAD SHA atual e execuções/check-runs de `QA Guardrails` e `WebKit Smoke Tests` para esse SHA. | `Mobile CI Watchdog` + `node scripts/ci/test-mobile-ci-watchdog.mjs`. | automatizado |
 
 ## REG-028 — v8z4b32E7Y: transformação de Ativos incompleta
 
@@ -110,3 +111,13 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Como detectar:** confirmar launcher estável antes da escolha, nenhuma chamada antecipada de restore/hidratação/aplicação, exclusão concluída antes de confirmar launcher limpo e retomada da mesma instância sem novo diálogo.
 - **Teste preventivo:** `node scripts/qa/check-startup-session-choice.mjs`, harness `node scripts/qa/test-startup-session-choice.mjs` executando os controladores reais extraídos do app, WebKit com checkpoint real no IndexedDB e teste real em iPhone/Safari/PWA.
 - **Status:** proteção técnica adicionada na `v8z4b32E8I`; validação publicada em iPhone/Safari/PWA pendente.
+
+## REG-039 — Checks obrigatórios ausentes em PR mobile/remota
+
+- **Problema:** PRs abertas ou atualizadas por fluxo móvel, Codex remoto, GitHub App ou automação podem ficar sem `QA Guardrails` e `WebKit Smoke Tests` associados ao HEAD atual, mesmo com os workflows normais presentes.
+- **Impacto:** Roberto passa a depender de desktop, terminal, GitHub CLI, token pessoal ou execução manual na aba Actions para obter checks obrigatórios.
+- **Prevenção:** `Mobile CI Watchdog` varre PRs abertas contra `main`, ignora drafts e forks, compara o HEAD SHA atual com workflow runs e check-runs já existentes, e executa somente as suítes ausentes para o SHA corrente.
+- **Metadados obrigatórios:** o watchdog deve transportar `title` e `body` reais da PR para `QA_PR_TITLE` e `QA_PR_BODY`; strings vazias quebram a validação de versão de PRs funcionais recuperadas pelo watchdog.
+- **Como detectar:** PR aberta contra `main` cujo HEAD SHA não possua evidência de `QA Guardrails` ou `WebKit Smoke Tests`; resultado de SHA anterior não conta.
+- **Teste preventivo:** `node scripts/ci/test-mobile-ci-watchdog.mjs`, integrado a `node scripts/qa/run-self-tests.mjs`, cobre ausência inicial, não duplicidade no mesmo SHA, novo SHA, resultado antigo e execução em andamento.
+- **Status:** proteção OPS-04 em PR.
