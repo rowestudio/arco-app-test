@@ -565,6 +565,11 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
   await page.evaluate(() => openAssetContextPanel('rotation'));
   const assetRotation = await measureControls(page, '#assetContextRotationPlus', '#assetContextReset');
 
+  await testInfo.attach('asset-frame-control-metrics.json', {
+    body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation }, null, 2)),
+    contentType: 'application/json',
+  });
+
   for (const [frameMetrics, assetMetrics] of [[frameScale, assetScale], [frameRotation, assetRotation]]) {
     expect(Math.abs(frameMetrics.step.height - assetMetrics.step.height)).toBeLessThan(1);
     expect(Math.abs(frameMetrics.step.width - assetMetrics.step.width)).toBeLessThan(1);
@@ -581,6 +586,7 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
     expect(frameMetrics.step.borderRadius).toBe(assetMetrics.step.borderRadius);
     expect(frameMetrics.step.boxSizing).toBe(assetMetrics.step.boxSizing);
     expect(frameMetrics.step.appearance).toBe(assetMetrics.step.appearance);
+    expect(frameMetrics.step.webkitAppearance).toBe(assetMetrics.step.webkitAppearance);
     expect(frameMetrics.step.display).toBe(assetMetrics.step.display);
     expect(frameMetrics.step.alignItems).toBe(assetMetrics.step.alignItems);
     expect(frameMetrics.step.marginBlock).toBe(assetMetrics.step.marginBlock);
