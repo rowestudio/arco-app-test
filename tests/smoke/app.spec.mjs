@@ -139,9 +139,18 @@ test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Re
     const project = buildProjectData(true);
     const base = project.assets.find((asset) => asset && asset.type === 'image');
     if (!base) throw new Error('fixture não forneceu image asset base para o cenário E8S');
-    const svgSource = (label, fill) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="${fill}"/><text x="4" y="34" font-size="10" fill="white">${label}</text></svg>`
-    )}`;
+    const rasterSource = (label, fill) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = fill;
+      ctx.fillRect(0, 0, 64, 64);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '10px sans-serif';
+      ctx.fillText(label, 4, 34);
+      return canvas.toDataURL('image/png');
+    };
     const makeAsset = (id, layerSequence, zIndex, source, offsetX) => ({
       ...base,
       id,
@@ -157,9 +166,9 @@ test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Re
       sourcePayload: { kind: 'dataUrl', dataUrl: source }
     });
     project.assets = [
-      makeAsset('img-1', 901, 1, svgSource('CONTROL-A', '#333333'), 0),
-      makeAsset('e8s-target-b', 902, 2, svgSource('TARGET-A', '#7a1e1e'), 48),
-      makeAsset('e8s-control-c', 903, 3, svgSource('CONTROL-C', '#1e3a7a'), 96)
+      makeAsset('img-1', 901, 1, rasterSource('CONTROL-A', '#333333'), 0),
+      makeAsset('e8s-target-b', 902, 2, rasterSource('TARGET-A', '#7a1e1e'), 48),
+      makeAsset('e8s-control-c', 903, 3, rasterSource('CONTROL-C', '#1e3a7a'), 96)
     ];
     project.nextLayerSequence = 904;
     const ok = await new Promise((resolve) => applyProjectData(project, { origin: 'webkit-e8s-multilayer-setup', onApplied: resolve }));
