@@ -525,13 +525,23 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
     return {
       step: {
         width: stepRect.width, height: stepRect.height, top: stepRect.top,
+        computedHeight: stepStyle.height, minHeight: stepStyle.minHeight, maxHeight: stepStyle.maxHeight,
         minWidth: stepStyle.minWidth, paddingInline: `${stepStyle.paddingLeft} ${stepStyle.paddingRight}`,
         paddingBlock: `${stepStyle.paddingTop} ${stepStyle.paddingBottom}`,
         fontSize: stepStyle.fontSize, fontWeight: stepStyle.fontWeight,
-        borderRadius: stepStyle.borderRadius,
+        lineHeight: stepStyle.lineHeight, borderRadius: stepStyle.borderRadius,
+        borderBlock: `${stepStyle.borderTopWidth} ${stepStyle.borderBottomWidth}`,
+        boxSizing: stepStyle.boxSizing, appearance: stepStyle.appearance,
+        webkitAppearance: stepStyle.webkitAppearance, display: stepStyle.display,
+        alignItems: stepStyle.alignItems,
+        marginBlock: `${stepStyle.marginTop} ${stepStyle.marginBottom}`,
       },
       reset: { width: resetRect.width, height: resetRect.height, top: resetRect.top,
-        fontSize: resetStyle.fontSize, borderRadius: resetStyle.borderRadius },
+        minHeight: resetStyle.minHeight,
+        paddingInline: `${resetStyle.paddingLeft} ${resetStyle.paddingRight}`,
+        paddingBlock: `${resetStyle.paddingTop} ${resetStyle.paddingBottom}`,
+        fontSize: resetStyle.fontSize, borderRadius: resetStyle.borderRadius,
+        boxSizing: resetStyle.boxSizing },
       gap: getComputedStyle(row).gap,
       relativeTop: stepRect.top - row.getBoundingClientRect().top,
       resetRelativeTop: resetRect.top - row.getBoundingClientRect().top,
@@ -558,15 +568,31 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
   for (const [frameMetrics, assetMetrics] of [[frameScale, assetScale], [frameRotation, assetRotation]]) {
     expect(Math.abs(frameMetrics.step.height - assetMetrics.step.height)).toBeLessThan(1);
     expect(Math.abs(frameMetrics.step.width - assetMetrics.step.width)).toBeLessThan(1);
+    expect(frameMetrics.step.computedHeight).toBe(assetMetrics.step.computedHeight);
+    expect(frameMetrics.step.minHeight).toBe(assetMetrics.step.minHeight);
+    expect(frameMetrics.step.maxHeight).toBe(assetMetrics.step.maxHeight);
     expect(frameMetrics.step.minWidth).toBe(assetMetrics.step.minWidth);
     expect(frameMetrics.step.paddingInline).toBe(assetMetrics.step.paddingInline);
     expect(frameMetrics.step.paddingBlock).toBe(assetMetrics.step.paddingBlock);
     expect(frameMetrics.step.fontSize).toBe(assetMetrics.step.fontSize);
     expect(frameMetrics.step.fontWeight).toBe(assetMetrics.step.fontWeight);
+    expect(frameMetrics.step.lineHeight).toBe(assetMetrics.step.lineHeight);
+    expect(frameMetrics.step.borderBlock).toBe(assetMetrics.step.borderBlock);
     expect(frameMetrics.step.borderRadius).toBe(assetMetrics.step.borderRadius);
+    expect(frameMetrics.step.boxSizing).toBe(assetMetrics.step.boxSizing);
+    expect(frameMetrics.step.appearance).toBe(assetMetrics.step.appearance);
+    expect(frameMetrics.step.display).toBe(assetMetrics.step.display);
+    expect(frameMetrics.step.alignItems).toBe(assetMetrics.step.alignItems);
+    expect(frameMetrics.step.marginBlock).toBe(assetMetrics.step.marginBlock);
     expect(frameMetrics.gap).toBe(assetMetrics.gap);
     expect(Math.abs(frameMetrics.reset.height - assetMetrics.reset.height)).toBeLessThan(1);
     expect(Math.abs(frameMetrics.reset.width - assetMetrics.reset.width)).toBeLessThan(1);
+    expect(frameMetrics.reset.minHeight).toBe(assetMetrics.reset.minHeight);
+    expect(frameMetrics.reset.paddingInline).toBe(assetMetrics.reset.paddingInline);
+    expect(frameMetrics.reset.paddingBlock).toBe(assetMetrics.reset.paddingBlock);
+    expect(frameMetrics.reset.fontSize).toBe(assetMetrics.reset.fontSize);
+    expect(frameMetrics.reset.borderRadius).toBe(assetMetrics.reset.borderRadius);
+    expect(frameMetrics.reset.boxSizing).toBe(assetMetrics.reset.boxSizing);
     expect(Math.abs(frameMetrics.relativeTop - assetMetrics.relativeTop)).toBeLessThan(1);
     expect(Math.abs(frameMetrics.resetRelativeTop - assetMetrics.resetRelativeTop)).toBeLessThan(1);
     expect(assetMetrics.overflow).toBeLessThanOrEqual(0);
