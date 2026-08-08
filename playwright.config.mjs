@@ -7,7 +7,6 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  grepInvert: /replace preserva a fonte canônica em Save\/Load, Session Restore e Undo\/Redo/,
   reporter: [['html', { outputFolder: 'playwright-report', open: 'never' }], ['list']],
   use: {
     baseURL,
