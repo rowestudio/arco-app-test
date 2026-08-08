@@ -507,6 +507,106 @@ test('intenção E8H clean mantém launcher sem pergunta E8I', async ({ page }) 
   await expect.poll(() => page.evaluate(() => startupRecoveryBypassReason)).toBe('explicit-reload-clean');
 });
 
+test('E8T mantém paridade geométrica entre controles contextuais de Frames e Ativos', async ({ page }, testInfo) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+
+  const measureControls = (page, stepSelector, resetSelector) => page.evaluate(({ stepSelector, resetSelector }) => {
+    const step = document.querySelector(stepSelector);
+    const reset = document.querySelector(resetSelector);
+    const row = step?.parentElement;
+    if (!step || !reset || !row) throw new Error('controles contextuais não encontrados');
+    const stepRect = step.getBoundingClientRect();
+    const resetRect = reset.getBoundingClientRect();
+    const stepStyle = getComputedStyle(step);
+    const resetStyle = getComputedStyle(reset);
+    return {
+      step: {
+        width: stepRect.width, height: stepRect.height, top: stepRect.top,
+        computedHeight: stepStyle.height, minHeight: stepStyle.minHeight, maxHeight: stepStyle.maxHeight,
+        minWidth: stepStyle.minWidth, paddingInline: `${stepStyle.paddingLeft} ${stepStyle.paddingRight}`,
+        paddingBlock: `${stepStyle.paddingTop} ${stepStyle.paddingBottom}`,
+        fontSize: stepStyle.fontSize, fontWeight: stepStyle.fontWeight,
+        lineHeight: stepStyle.lineHeight, borderRadius: stepStyle.borderRadius,
+        borderBlock: `${stepStyle.borderTopWidth} ${stepStyle.borderBottomWidth}`,
+        boxSizing: stepStyle.boxSizing, appearance: stepStyle.appearance,
+        webkitAppearance: stepStyle.webkitAppearance, display: stepStyle.display,
+        alignItems: stepStyle.alignItems,
+        marginBlock: `${stepStyle.marginTop} ${stepStyle.marginBottom}`,
+      },
+      reset: { width: resetRect.width, height: resetRect.height, top: resetRect.top,
+        minHeight: resetStyle.minHeight,
+        paddingInline: `${resetStyle.paddingLeft} ${resetStyle.paddingRight}`,
+        paddingBlock: `${resetStyle.paddingTop} ${resetStyle.paddingBottom}`,
+        fontSize: resetStyle.fontSize, borderRadius: resetStyle.borderRadius,
+        boxSizing: resetStyle.boxSizing },
+      gap: getComputedStyle(row).gap,
+      relativeTop: stepRect.top - row.getBoundingClientRect().top,
+      resetRelativeTop: resetRect.top - row.getBoundingClientRect().top,
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  }, { stepSelector, resetSelector });
+
+  await page.evaluate(() => { setEditorMode('camera', 'webkit-e8t-frame'); openCustBar(); switchCustTab('scale'); });
+  const frameScale = await measureControls(page, '#custTabScale .chip:nth-child(2)', '#custTabScale .chip:last-child');
+  await page.evaluate(() => switchCustTab('rot'));
+  const frameRotation = await measureControls(page, '#custTabRot .chip:nth-child(2)', '#custTabRot .chip:last-child');
+
+  await page.evaluate(() => {
+    closeCustBar();
+    setEditorMode('assets', 'webkit-e8t-asset');
+    const asset = assets.find((candidate) => candidate?.type === 'image');
+    selectAssetById(asset.id, 'webkit-e8t-asset');
+    openAssetContextPanel('scale');
+  });
+  const assetScale = await measureControls(page, '#assetContextScalePlus', '#assetContextReset');
+  await page.evaluate(() => openAssetContextPanel('rotation'));
+  const assetRotation = await measureControls(page, '#assetContextRotationPlus', '#assetContextReset');
+
+  await testInfo.attach('asset-frame-control-metrics.json', {
+    body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation }, null, 2)),
+    contentType: 'application/json',
+  });
+
+  for (const [frameMetrics, assetMetrics] of [[frameScale, assetScale], [frameRotation, assetRotation]]) {
+    expect(Math.abs(frameMetrics.step.height - assetMetrics.step.height)).toBeLessThan(1);
+    expect(Math.abs(frameMetrics.step.width - assetMetrics.step.width)).toBeLessThan(1);
+    expect(frameMetrics.step.computedHeight).toBe(assetMetrics.step.computedHeight);
+    expect(frameMetrics.step.minHeight).toBe(assetMetrics.step.minHeight);
+    expect(frameMetrics.step.maxHeight).toBe(assetMetrics.step.maxHeight);
+    expect(frameMetrics.step.minWidth).toBe(assetMetrics.step.minWidth);
+    expect(frameMetrics.step.paddingInline).toBe(assetMetrics.step.paddingInline);
+    expect(frameMetrics.step.paddingBlock).toBe(assetMetrics.step.paddingBlock);
+    expect(frameMetrics.step.fontSize).toBe(assetMetrics.step.fontSize);
+    expect(frameMetrics.step.fontWeight).toBe(assetMetrics.step.fontWeight);
+    expect(frameMetrics.step.lineHeight).toBe(assetMetrics.step.lineHeight);
+    expect(frameMetrics.step.borderBlock).toBe(assetMetrics.step.borderBlock);
+    expect(frameMetrics.step.borderRadius).toBe(assetMetrics.step.borderRadius);
+    expect(frameMetrics.step.boxSizing).toBe(assetMetrics.step.boxSizing);
+    expect(frameMetrics.step.appearance).toBe(assetMetrics.step.appearance);
+    expect(frameMetrics.step.webkitAppearance).toBe(assetMetrics.step.webkitAppearance);
+    expect(frameMetrics.step.display).toBe(assetMetrics.step.display);
+    expect(frameMetrics.step.alignItems).toBe(assetMetrics.step.alignItems);
+    expect(frameMetrics.step.marginBlock).toBe(assetMetrics.step.marginBlock);
+    expect(frameMetrics.gap).toBe(assetMetrics.gap);
+    expect(Math.abs(frameMetrics.reset.height - assetMetrics.reset.height)).toBeLessThan(1);
+    expect(Math.abs(frameMetrics.reset.width - assetMetrics.reset.width)).toBeLessThan(1);
+    expect(frameMetrics.reset.minHeight).toBe(assetMetrics.reset.minHeight);
+    expect(frameMetrics.reset.paddingInline).toBe(assetMetrics.reset.paddingInline);
+    expect(frameMetrics.reset.paddingBlock).toBe(assetMetrics.reset.paddingBlock);
+    expect(frameMetrics.reset.fontSize).toBe(assetMetrics.reset.fontSize);
+    expect(frameMetrics.reset.borderRadius).toBe(assetMetrics.reset.borderRadius);
+    expect(frameMetrics.reset.boxSizing).toBe(assetMetrics.reset.boxSizing);
+    expect(Math.abs(frameMetrics.relativeTop - assetMetrics.relativeTop)).toBeLessThan(1);
+    expect(Math.abs(frameMetrics.resetRelativeTop - assetMetrics.resetRelativeTop)).toBeLessThan(1);
+    expect(assetMetrics.overflow).toBeLessThanOrEqual(0);
+  }
+
+  await page.screenshot({ path: testInfo.outputPath('asset-frame-control-parity.png'), fullPage: true });
+});
+
 test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
   await clearStartupStorage(page);
