@@ -15,6 +15,24 @@
 - Ações individuais e painéis contextuais de Ativos exigem seleção canônica válida e permanecem desabilitados sem `selectedAssetId` existente.
 - Preview/Export pronto usa a identidade ciano própria do Arco, sem herdar cor de modo nem verde semântico legado.
 
+## Regra global — não existe verde na UI aprovada do Arco
+
+- Verde não faz parte da identidade cromática atualmente aprovada da interface do Arco Motion App.
+- Nenhum elemento de chrome/UI produzido pelo próprio Arco pode ser criado, restaurado ou alterado para verde sem autorização explícita de Roberto.
+- A regra é global e inclui botões, ícones, checks, indicadores, textos, labels, bordas, backgrounds, menus, painéis, sliders, controles, estados selecionados, estados de sucesso, estados “pronto”, timeline, Layers, Stage UI, Preview, Export, mensagens e feedback visual do aplicativo.
+
+### Estados semânticos e Preview/Export
+
+- Não assumir convenções genéricas como verde = sucesso, pronto, confirmação ou download concluído. O Arco não deve receber uma cor por convenção genérica de design system quando essa cor não pertence à identidade aprovada do produto.
+- O estado pronto de Preview/Export continua usando o ciano próprio aprovado do Arco.
+- A existência histórica ou técnica de tokens ou nomes como `green`, `semantic-green`, `--green` ou equivalentes não constitui decisão de produto e não autoriza sua renderização na interface. Legado técnico, diagnóstico ou interpretação de agente também não concede essa autoridade.
+
+### Chrome do Arco e conteúdo do usuário
+
+- A ausência de verde aplica-se ao chrome/interface produzida pelo Arco; ela não proíbe verde no conteúdo do usuário.
+- Fotografias, ilustrações, vídeos, imagens, SVGs e outros assets podem conter qualquer cor, inclusive verde. Pixels pertencentes ao conteúdo do usuário não devem ser confundidos com a identidade cromática da UI.
+- Verde só poderá passar a fazer parte da interface mediante decisão futura explícita de Roberto; nenhum agente pode inferir essa autorização.
+
 ## Regras de revisão
 
 - Não inventar novas decisões de produto.

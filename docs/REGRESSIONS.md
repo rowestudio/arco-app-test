@@ -151,4 +151,13 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Problema:** painéis podiam sobreviver à troca de modo, ações de Ativo permaneciam acionáveis sem seleção, a toolbar residual continuava renderizada sob o painel, o ponto central usava medição paralela e Preview/Export pronto voltava ao verde.
 - **Prevenção:** fechar os dois controladores contextuais no roteador central antes da troca; derivar todas as ações individuais de `getSelectedAsset()`; retirar a toolbar normal do estado visual aberto; compartilhar o eixo X canônico da faixa rolável; usar token ciano local de Preview/Export independente de `--accent` e `--green`.
 - **Teste preventivo:** smoke WebKit em viewport mobile cobre exclusividade do painel, ausência de título/resíduo, disabled sem seleção, troca de modo, delta geométrico zero e token de Preview/Export.
-- **Status:** proteção técnica adicionada na `v8z4b32E8Q`; validação visual em iPhone/Safari real permanece obrigatória.
+- **Status:** proteção técnica adicionada e validada visualmente por Roberto em iPhone/Safari real na `v8z4b32E8Q`.
+
+## REG-042 — Verde reaparece na interface do Arco
+
+- **Problema:** elemento produzido pela interface do Arco passa a utilizar verde, apesar de verde não fazer parte da identidade cromática aprovada. A regressão pode surgir por token CSS legado, variável denominada `green`, estado genérico de sucesso/pronto, biblioteca, convenção semântica, reaproveitamento de código histórico, diagnóstico antigo ou interpretação incorreta da documentação.
+- **Impacto:** regressão direta da identidade visual aprovada e risco de propagação de uma regra cromática inexistente para novos elementos.
+- **Prevenção:** consultar `PRODUCT_RULES.md` antes de alterar cores; preservar as cores aprovadas; não mapear sucesso/pronto automaticamente para verde; não usar nomes técnicos históricos como autoridade de produto; manter Preview/Export pronto no ciano aprovado; exigir autorização explícita de Roberto para qualquer introdução futura de verde.
+- **Como detectar:** inspecionar os elementos produzidos pela própria UI do Arco nos principais estados da aplicação e verificar se algum utiliza verde, excluindo da análise os pixels pertencentes aos assets/conteúdo do usuário.
+- **Teste preventivo:** validação visual em iPhone/Safari real. Smoke/WebKit e inspeção de estilos podem servir como proteção complementar quando houver abordagem confiável e específica para o chrome do aplicativo. Não criar detector genérico de pixels verdes que possa confundir conteúdo do usuário com UI.
+- **Status:** regra consolidada após aprovação visual da `v8z4b32E8Q`.

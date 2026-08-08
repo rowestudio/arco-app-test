@@ -292,3 +292,12 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: medidas DOM, smoke WebKit e validação real do MP4 no iPhone/Safari.
 - Ambiente: viewport 390 px, WebKit automatizado e iPhone/Safari real.
 - Automatizável: parcial.
+
+## TC-033 — Ausência de verde na interface do Arco
+
+- Pré-condição: app aberto com projeto válido; conteúdo do usuário claramente distinguível do chrome/interface do aplicativo.
+- Passos: (1) abrir o app; (2) navegar pelo launcher/editor quando aplicável; (3) alternar entre Câmera/Frames e Ativos; (4) selecionar Ativos; (5) abrir Layers; (6) abrir painéis contextuais; (7) navegar na timeline; (8) observar sliders, botões e controles; (9) abrir Preview; (10) chegar ao estado pronto de Preview/Export; (11) observar checks, textos, ícones, botões de download e feedbacks próprios do aplicativo.
+- Resultado esperado: nenhum elemento produzido pela própria interface do Arco é exibido em verde; Preview/Export pronto usa o ciano aprovado. Imagens ou outros assets do usuário podem conter verde e não constituem falha.
+- Evidência: screenshots, inspeção visual, inspeção de estilos computados quando útil e validação publicada em iPhone/Safari real.
+- Ambiente: iPhone/Safari real como referência de produto; WebKit automatizado apenas como evidência complementar.
+- Automatizável: parcial/futuro. Não implementar heurística cromática genérica suscetível a falsos positivos em assets do usuário.
