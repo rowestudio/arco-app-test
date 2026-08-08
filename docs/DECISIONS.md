@@ -1,5 +1,14 @@
 # DECISIONS
 
+## DEC-2026-08-08-01 — Fonte persistente canônica de image asset substituído
+
+- **Data:** 2026-08-08.
+- **Decisão:** após leitura, decode e preparação válida do drawable, o replace do mesmo `asset.id` atualiza atomicamente `src`, `persistentSrc` e `sourcePayload` para a mesma data URL. Save e Session Autosave serializam essa identidade persistente; drawables e caches permanecem fontes de render, não fontes de verdade do projeto.
+- **Contexto:** `sourcePayload` antigo podia sobreviver ao replace e vencer `src` novo no resolvedor compartilhado de persistência.
+- **Consequência:** projetos substituídos anteriores à E8S usam `src` do commit canônico como migração quando o flag canônico existe; novos commits mantêm todas as representações persistentes iguais. Undo/Redo restaura e persiste a fonte do estado corrente.
+- **Status:** ativa; validação publicada em iPhone/Safari pendente.
+- **Versão relacionada:** `v8z4b32E8S`.
+
 ## 2026-08-07 — Painéis contextuais e identidade de Preview/Export na v8z4b32E8Q
 
 - Frames e Ativos usam uma apresentação compartilhada de bottom sheet compacto na faixa inferior, sem animação ou handle de arraste nesta versão.

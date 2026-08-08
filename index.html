@@ -7278,8 +7278,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8R';
-const APP_VERSION_NAME = 'v8z4b32E8R';
+const APP_VERSION = 'v8z4b32E8S';
+const APP_VERSION_NAME = 'v8z4b32E8S';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let parallaxChangedCanonicalAssetGeometry = false;
 let parallaxChangedFrames = false;
@@ -8115,6 +8115,18 @@ let saveSessionMissingSourceAssetIds = '';
 let saveSessionSourcePayloadKindById = '';
 let saveSessionSourcePayloadBytesById = '';
 let saveSessionSourcePayloadHashById = '';
+let replaceSourceHashBefore = '0';
+let replaceSourceHashAfter = '0';
+let manualSaveSerializedSourceHash = '0';
+let manualLoadRestoredSourceHash = '0';
+let sessionAutosaveSerializedSourceHash = '0';
+let sessionRestoreRestoredSourceHash = '0';
+let replacedSourceChangedFromPrevious = false;
+let manualSaveUsesReplacedSource = false;
+let manualLoadRestoresReplacedSource = false;
+let sessionAutosaveUsesReplacedSource = false;
+let sessionRestoreRestoresReplacedSource = false;
+let replacedSourceDiagnosticAssetId = '';
 let loadSessionToken = 0;
 let loadSessionStarted = false;
 let loadSessionCompleted = false;
@@ -14875,8 +14887,10 @@ function undo() {
   assetUndoVisualUpdateRan = false;
   projectWorldCompositeInvalidatedAfterAssetUndo = false;
   stageRedrawnAfterAssetUndo = false;
+  const sourceHashesBeforeHistory = new Map(assets.filter(a => a && a.type === 'image').map(a => [String(a.id), _diagSourceHashE8E(_assetPersistentSourceE8E(a))]));
   redoStack.push(captureState());
   restoreState(undoStack.pop());
+  const imageSourceChangedByUndo = assets.some(a => a && a.type === 'image' && sourceHashesBeforeHistory.get(String(a.id)) !== _diagSourceHashE8E(_assetPersistentSourceE8E(a)));
   resyncOpenAlignSubmenuAfterHistory();
   // v8z4b30ZY — garantir visual update explícito após undo
   if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
@@ -14886,6 +14900,7 @@ function undo() {
   projectWorldCompositeInvalidatedAfterAssetUndo = true;
   assetUndoVisualUpdateRan = true;
   stageRedrawnAfterAssetUndo = true;
+  if (imageSourceChangedByUndo) markProjectDirty('undo-image-source');
   showStatus('Desfeito');
 }
 
@@ -14909,8 +14924,10 @@ function redo() {
   // Snapshot do estado NÃO-asset antes do redo (para detectar se só assets mudaram).
   let _nonAssetBefore = '';
   try { _nonAssetBefore = JSON.stringify(cloneProjectStateSnapshot(captureState())); } catch (e) {}
+  const sourceHashesBeforeHistory = new Map(assets.filter(a => a && a.type === 'image').map(a => [String(a.id), _diagSourceHashE8E(_assetPersistentSourceE8E(a))]));
   undoStack.push(captureState());
   restoreState(redoStack.pop());
+  const imageSourceChangedByRedo = assets.some(a => a && a.type === 'image' && sourceHashesBeforeHistory.get(String(a.id)) !== _diagSourceHashE8E(_assetPersistentSourceE8E(a)));
   resyncOpenAlignSubmenuAfterHistory();
   // v8z4b30ZY — garantir visual update explícito após redo
   if (typeof renderAssetSelectionOverlay === 'function') renderAssetSelectionOverlay();
@@ -14937,6 +14954,7 @@ function redo() {
   projectWorldCompositeInvalidatedAfterAssetRedo = true;
   stageRedrawnAfterAssetRedo = true;
   assetRedoVisualUpdateRan = true;
+  if (imageSourceChangedByRedo) markProjectDirty('redo-image-source');
   showStatus('Refeito');
 }
 
@@ -29716,8 +29734,7 @@ function syncRatioUI() {
 // "src" (data URL). A imagem principal (idx 0) é coberta por data.imageBase64
 // (já existente), evitando duplicar o mesmo bitmap dentro do JSON.
 function serializeProjectAsset(a, idx, includeImages) {
-  const canonicalSrc = (a.sourcePayload && a.sourcePayload.kind === 'dataUrl' && a.sourcePayload.dataUrl) ||
-    a.src || a.persistentSrc || (a.drawSource && a.drawSource.src) || (a._img && a._img.src) || '';
+  const canonicalSrc = _assetPersistentSourceE8E(a);
   const out = {
     id: a.id,
     type: a.type || 'image',
@@ -29767,8 +29784,12 @@ function serializeProjectAsset(a, idx, includeImages) {
 
 function _assetPersistentSourceE8E(a) {
   if (!a) return '';
+  // E8S: assets substituídos anteriores à correção podem ter src=B enquanto o
+  // sourcePayload legado ainda contém A. O src do commit canônico vence somente
+  // nesse caso de migração; commits E8S mantêm src/persistentSrc/payload iguais.
+  if (a.e6CanonicalReplaced && a.src) return a.src;
   if (a.sourcePayload && a.sourcePayload.kind === 'dataUrl' && a.sourcePayload.dataUrl) return a.sourcePayload.dataUrl;
-  return a.src || a.persistentSrc || (a._img && a._img.src) || (a.drawSource && a.drawSource.src) || '';
+  return a.persistentSrc || a.src || (a._img && a._img.src) || (a.drawSource && a.drawSource.src) || '';
 }
 function _diagSourceHashE8E(src) {
   const s = String(src || '');
@@ -29796,6 +29817,24 @@ function _recordSaveSessionDiagnosticsE8E(data) {
   saveSessionSourcePayloadKindById = kinds.join(',');
   saveSessionSourcePayloadBytesById = bytes.join(',');
   saveSessionSourcePayloadHashById = hashes.join(',');
+}
+function _recordReplacedSourceBoundaryE8S(kind, projectAssets) {
+  if (!replacedSourceDiagnosticAssetId || !Array.isArray(projectAssets)) return;
+  const asset = projectAssets.find(a => a && String(a.id) === replacedSourceDiagnosticAssetId);
+  const hash = asset ? _diagSourceHashE8E(_assetPersistentSourceE8E(asset)) : '0';
+  if (kind === 'manual-save') {
+    manualSaveSerializedSourceHash = hash;
+    manualSaveUsesReplacedSource = hash !== '0' && hash === replaceSourceHashAfter;
+  } else if (kind === 'manual-load') {
+    manualLoadRestoredSourceHash = hash;
+    manualLoadRestoresReplacedSource = hash !== '0' && hash === replaceSourceHashAfter;
+  } else if (kind === 'session-autosave') {
+    sessionAutosaveSerializedSourceHash = hash;
+    sessionAutosaveUsesReplacedSource = hash !== '0' && hash === replaceSourceHashAfter;
+  } else if (kind === 'session-restore') {
+    sessionRestoreRestoredSourceHash = hash;
+    sessionRestoreRestoresReplacedSource = hash !== '0' && hash === replaceSourceHashAfter;
+  }
 }
 
 function buildProjectData(includeImages) {
@@ -30085,6 +30124,7 @@ function buildCompleteSessionProjectData() {
   data.imageBase64 = imageOriginalDataUrl || imgEl.src || '';
   data.hasImage = isValidImageBase64(data.imageBase64);
   data.assetsImagesIncluded = true;
+  _recordReplacedSourceBoundaryE8S('session-autosave', data.assets);
   return data;
 }
 async function putSessionCheckpoint(checkpoint, mandatoryFlush, epoch) {
@@ -30681,9 +30721,11 @@ function sessionAutosaveOnProjectApplied(origin, data) {
     sessionRestoreNoPartialState = sessionRestoreHydratedAssetCount === sessionRestoreAssetCount && restoredAssets.length === sessionRestoreAssetCount;
     sessionRestoreCompleted = sessionRestoreNoPartialState && sessionRestoreLayerIdentitiesPreserved && sessionRestoreProjectWorldRestored;
     sessionRestoreFailed = !sessionRestoreCompleted;
+    _recordReplacedSourceBoundaryE8S('session-restore', restoredAssets);
     if (reloadExpectedRestore) updateReloadStartupUiDiagnostics('restore');
     return;
   }
+  _recordReplacedSourceBoundaryE8S('manual-load', assets);
   _sessionAutosaveEpoch++;
   sessionRestoreDidNotOverrideManualLoad = true;
   scheduleSessionAutosave('manual-load', true);
@@ -30748,6 +30790,7 @@ function doSaveDirect(includeImage, nome) {
   lastSaveError = '';
   try {
     const data = buildProjectData(includeImage);
+    _recordReplacedSourceBoundaryE8S('manual-save', data.assets);
     _recordSaveSessionDiagnosticsE8E(data);
     // v8z4b18r: log de diagnóstico — verifica pausas no momento do save.
     const nonzeroPauses = (data.framePauses || []).filter(p => (p?.duration || 0) > 0).length;
@@ -31740,6 +31783,10 @@ function restoreProjectAssetsFromData(data) {
             const primarySavedSrc = _assetPersistentSourceE8E(savedPrimary);
             if (primarySavedSrc) {
               primary.src = primarySavedSrc;
+              primary.persistentSrc = primarySavedSrc;
+              primary.sourcePayload = /^data:image\//i.test(primarySavedSrc)
+                ? { kind: 'dataUrl', dataUrl: primarySavedSrc, bytes: primarySavedSrc.length }
+                : null;
               const pimg = new Image();
               const token = loadSessionToken;
               pimg.onload = () => {
@@ -31787,6 +31834,7 @@ function restoreProjectAssetsFromData(data) {
           layerNameSource: sa.layerNameSource,
           originalFileName: sa.originalFileName || '',
           src: saSrc,
+          persistentSrc: saSrc,
           sourcePayload: sa.sourcePayload || null,
           sourceW: sa.sourceW || 0,
           sourceH: sa.sourceH || 0,
@@ -32293,6 +32341,7 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
     stableDrawable: target.stableDrawable || null,
     stableDrawableHash: (target.stableDrawableChecksum && target.stableDrawableChecksum.hash) || (target.stableDrawable ? _arcoChecksumDrawableE7B(target.stableDrawable).hash : '0')
   };
+  replaceSourceHashBefore = _diagSourceHashE8E(_assetPersistentSourceE8E(target));
   const anchor = _captureReplaceAnchor(target);
   const otherAssetsBefore = _captureOtherAssetsBitmapState(target);
   // Diagnóstico de resolução de alvo.
@@ -32331,6 +32380,19 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
       const newWorldW = fitted.width, newWorldH = fitted.height;
       const newWorldX = anchor.oldCenterX - newWorldW / 2;
       const newWorldY = anchor.oldCenterY - newWorldH / 2;
+
+      // Preparar e validar o drawable antes de qualquer escrita no asset/global.
+      // Assim um canvas sem pixels não deixa src B coexistindo com persistência A.
+      const preparedTarget = { ...target, src: dataUrl, _img: img, sourceW: newSourceW, sourceH: newSourceH };
+      const newStable = _arcoCreateStableDrawableE7B(preparedTarget, img);
+      const newStableSrc = newStable.src || img;
+      const newStableCheck = newStable.checksum || _arcoChecksumDrawableE7B(newStableSrc);
+      if (!newStableSrc || !newStableCheck.hasPixels) {
+        replaceKeptOldImageOnDecodeFailure = true;
+        replaceCommittedAtomically = false;
+        showStatus('Não foi possível preparar esta imagem.');
+        return;
+      }
 
       if (isMain) {
         // v8z4b32E6 — commit canônico do img-1: worldX/Y/W/H passam a ser o
@@ -32409,15 +32471,6 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
       // Limpa qualquer crop/sourceRect herdado — a imagem nova sempre entra inteira.
       target.crop = { enabled: false, x: 0, y: 0, w: 1, h: 1 };
       // v8z4b32E7H — o replace não pode preservar drawable/cache da fonte anterior.
-      const newStable = _arcoCreateStableDrawableE7B(target, img);
-      const newStableSrc = newStable.src || img;
-      const newStableCheck = newStable.checksum || _arcoChecksumDrawableE7B(newStableSrc);
-      if (!newStableSrc || !newStableCheck.hasPixels) {
-        replaceKeptOldImageOnDecodeFailure = true;
-        replaceCommittedAtomically = false;
-        showStatus('Não foi possível preparar esta imagem.');
-        return;
-      }
       const oldStableDrawable = target.stableDrawable || null;
       target.stableDrawable = null;
       target.imageBitmap = null;
@@ -32440,6 +32493,15 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
       currentReplaceEpoch++;
       target.replaceEpoch = currentReplaceEpoch;
       target.e6CanonicalReplaced = true;
+      // E8S: a fonte decodificada nova substitui, no mesmo commit, todas as
+      // representações persistentes do asset. Nenhum payload A pode coexistir
+      // com o drawable/src B e voltar a vencer Save ou Session Autosave.
+      target.persistentSrc = dataUrl;
+      target.sourcePayload = { kind: 'dataUrl', dataUrl, bytes: dataUrl.length };
+      replacedSourceDiagnosticAssetId = String(target.id);
+      replaceSourceHashAfter = _diagSourceHashE8E(_assetPersistentSourceE8E(target));
+      replacedSourceChangedFromPrevious = replaceSourceHashBefore !== '0' &&
+        replaceSourceHashAfter !== '0' && replaceSourceHashBefore !== replaceSourceHashAfter;
       // Cache de fonte/bounds antigo deste asset fica órfão pelas versões acima; o
       // render sempre relê a._img/worldRect canônicos.
       ensureAssetVisualDefaults(target);
@@ -38155,6 +38217,17 @@ function buildDiagnosticsText() {
       push('saveSessionSourcePayloadKindById', saveSessionSourcePayloadKindById || 'none');
       push('saveSessionSourcePayloadBytesById', saveSessionSourcePayloadBytesById || 'none');
       push('saveSessionSourcePayloadHashById', saveSessionSourcePayloadHashById || 'none');
+      push('replaceSourceHashBefore', replaceSourceHashBefore || '0');
+      push('replaceSourceHashAfter', replaceSourceHashAfter || '0');
+      push('manualSaveSerializedSourceHash', manualSaveSerializedSourceHash || '0');
+      push('manualLoadRestoredSourceHash', manualLoadRestoredSourceHash || '0');
+      push('sessionAutosaveSerializedSourceHash', sessionAutosaveSerializedSourceHash || '0');
+      push('sessionRestoreRestoredSourceHash', sessionRestoreRestoredSourceHash || '0');
+      _pb('replacedSourceChangedFromPrevious', !!replacedSourceChangedFromPrevious);
+      _pb('manualSaveUsesReplacedSource', !!manualSaveUsesReplacedSource);
+      _pb('manualLoadRestoresReplacedSource', !!manualLoadRestoresReplacedSource);
+      _pb('sessionAutosaveUsesReplacedSource', !!sessionAutosaveUsesReplacedSource);
+      _pb('sessionRestoreRestoresReplacedSource', !!sessionRestoreRestoresReplacedSource);
       push('loadSessionToken', String(loadSessionToken || 0));
       _pb('loadSessionStarted', !!loadSessionStarted);
       _pb('loadSessionCompleted', !!loadSessionCompleted);
