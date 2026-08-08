@@ -2,6 +2,14 @@
 
 Última atualização documental: 2026-08-08.
 
+## Atualização 2026-08-08 — v8z4b32E8S em PR
+
+- A PR #477 / `v8z4b32E8R` foi mergeada na `main` de teste no commit `a14be4ea50c1597223377d24a74ace4cd7190849`.
+- Durante o teste publicado foi confirmado um P1 preexistente de integridade: após `Trocar imagem`, um image asset podia voltar à fonte anterior em Save → Load ou Session Autosave → Session Restore, apesar de a imagem nova estar visível e existir um payload persistente.
+- Causa confirmada: o commit de replace atualizava `src` e drawables para a fonte nova, mas preservava `sourcePayload` antigo; o resolvedor de persistência dava precedência a esse payload stale.
+- A `v8z4b32E8S` torna `src`, `persistentSrc` e `sourcePayload` um commit persistente único da fonte substituída e valida por fingerprint as fronteiras de Save/Load e Session Autosave/Restore.
+- Estado: correção em PR. A E8S não está aprovada antes de merge autorizado, publicação e teste do projeto grande real em iPhone/Safari por Roberto. Nenhuma promoção para produção está autorizada.
+
 ## Atualização 2026-08-08 — v8z4b32E8R em PR
 
 - Base confirmada: `main` no commit `ec06c7f5533327763352370832c14641aebb1317`, versão `v8z4b32E8Q`.

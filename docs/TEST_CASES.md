@@ -310,3 +310,12 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: estado real do asset, contagem de Undo, revisão de Session Autosave, DOM/estilos computados, screenshot WebKit e validação publicada em iPhone/Safari real.
 - Ambiente: WebKit automatizado e iPhone/Safari real obrigatório para aprovação visual.
 - Automatizável: sim para DOM/estado/Undo/Redo/autosave; toque, espaçamento e Safe Area exigem validação real complementar.
+
+## TC-035 — Fonte substituída persiste em arquivo e sessão
+
+- Pré-condição: projeto com pelo menos três image assets, Frames/curvas e ProjectWorld definidos; asset alvo identificado por `asset.id`/identidade de camada; fontes A e B com fingerprints distintos.
+- Passos: substituir somente o alvo A → B; comparar modelo canônico; executar Save → Load pelo pipeline oficial; aguardar hidratação; executar Autosave no IndexedDB real → Session Restore; executar Undo (A), Redo (B), salvar novamente e aguardar callbacks assíncronos.
+- Resultado esperado: quantidade e fontes dos demais assets permanecem; `id`, `layerSequence`, `layerName`, `zIndex`, slot, visibilidade, Frames, curvas e ProjectWorld não mudam; fingerprint B aparece no modelo, payload manual, Load, checkpoint e Session Restore; Undo persiste A e Redo persiste B; callback stale não restaura A; PNG mantém alpha quando usado.
+- Evidência: `tests/smoke/app.spec.mjs`, fingerprints protegidos do Diagnóstico e inspeção do checkpoint real. Existência/tamanho de payload ou conclusão do load, sem igualdade de fingerprint, não é evidência suficiente.
+- Ambiente: WebKit automatizado e iPhone/Safari real com projeto grande multiasset obrigatório para aprovação final.
+- Automatizável: sim para round-trips e invariantes; validação publicada real permanece obrigatória.

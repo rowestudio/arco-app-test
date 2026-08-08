@@ -128,6 +128,113 @@ test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', asyn
   expect(capturedErrors, `erro JS capturado durante a abertura:\n${capturedErrors.join('\n')}`).toEqual([]);
 });
 
+test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Redo', async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await expect.poll(() => page.evaluate(() => assets.filter(a => a && a.type === 'image').length), { timeout: 30_000 }).toBeGreaterThanOrEqual(3);
+
+  const replaced = await page.evaluate(async () => {
+    const images = assets.filter(a => a && a.type === 'image');
+    const target = images[1];
+    const identity = ({ id, layerSequence, layerName, zIndex, slotRow, slotCol, visible }) =>
+      ({ id, layerSequence, layerName, zIndex, slotRow, slotCol, visible });
+    const before = {
+      count: images.length,
+      sourceHash: _diagSourceHashE8E(_assetPersistentSourceE8E(target)),
+      identity: identity(target),
+      otherHashes: images.filter(a => a !== target).map(a => [a.id, _diagSourceHashE8E(_assetPersistentSourceE8E(a))]),
+      frames: JSON.stringify(frames), curves: JSON.stringify({ ctrlPts, curvesV2 }), world: JSON.stringify(projectWorld)
+    };
+    const canvas = document.createElement('canvas');
+    canvas.width = 640; canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 640, 480);
+    ctx.fillStyle = '#d32f2f'; ctx.fillRect(32, 24, 576, 432);
+    ctx.fillStyle = '#1565c0'; ctx.fillRect(160, 120, 320, 240);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const file = new File([blob], 'source-b-alpha.png', { type: 'image/png' });
+    selectAssetById(target.id, 'webkit-e8s');
+    replaceCommittedAtomically = false;
+    replaceImageAssetInPlace(target, file, 'webkit-e8s');
+    await new Promise((resolve, reject) => {
+      const started = Date.now();
+      const timer = setInterval(() => {
+        if (replaceCommittedAtomically) { clearInterval(timer); resolve(); }
+        else if (Date.now() - started > 20_000) { clearInterval(timer); reject(new Error('replace timeout')); }
+      }, 25);
+    });
+    const afterHash = _diagSourceHashE8E(_assetPersistentSourceE8E(target));
+    const manual = buildProjectData(true);
+    _recordReplacedSourceBoundaryE8S('manual-save', manual.assets);
+    const savedTarget = manual.assets.find(a => a.id === target.id);
+    const after = {
+      sourceHash: afterHash, identity: identity(target), canonicalFieldsAgree:
+        target.src === target.persistentSrc && target.src === target.sourcePayload.dataUrl,
+      alpha: target.hasAlpha,
+      savedHash: _diagSourceHashE8E(_assetPersistentSourceE8E(savedTarget)),
+      otherHashes: assets.filter(a => a !== target && a.type === 'image').map(a => [a.id, _diagSourceHashE8E(_assetPersistentSourceE8E(a))]),
+      frames: JSON.stringify(frames), curves: JSON.stringify({ ctrlPts, curvesV2 }), world: JSON.stringify(projectWorld)
+    };
+    undo();
+    const undoHash = _diagSourceHashE8E(_assetPersistentSourceE8E(assets.find(a => a.id === target.id)));
+    redo();
+    const redoHash = _diagSourceHashE8E(_assetPersistentSourceE8E(assets.find(a => a.id === target.id)));
+    return { before, after, undoHash, redoHash, manual };
+  });
+
+  expect(replaced.before.sourceHash).not.toBe(replaced.after.sourceHash);
+  expect(replaced.after.canonicalFieldsAgree).toBe(true);
+  expect(replaced.after.savedHash).toBe(replaced.after.sourceHash);
+  expect(replaced.undoHash).toBe(replaced.before.sourceHash);
+  expect(replaced.redoHash).toBe(replaced.after.sourceHash);
+  expect(replaced.after.identity).toEqual(replaced.before.identity);
+  expect(replaced.after.otherHashes).toEqual(replaced.before.otherHashes);
+  expect(replaced.after.frames).toBe(replaced.before.frames);
+  expect(replaced.after.curves).toBe(replaced.before.curves);
+  expect(replaced.after.world).toBe(replaced.before.world);
+  expect(replaced.after.alpha).toBe(true);
+
+  const manualLoad = await page.evaluate(async (manual) => {
+    const id = replacedSourceDiagnosticAssetId;
+    const ok = await new Promise(resolve => applyProjectData(manual, { origin: 'manual-load', onApplied: resolve }));
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const asset = assets.find(a => a.id === id);
+    return { ok, hash: _diagSourceHashE8E(_assetPersistentSourceE8E(asset)), count: assets.filter(a => a.type === 'image').length };
+  }, replaced.manual);
+  expect(manualLoad.ok).toBe(true);
+  expect(manualLoad.hash).toBe(replaced.after.sourceHash);
+  expect(manualLoad.count).toBe(replaced.before.count);
+
+  const session = await page.evaluate(async () => {
+    clearTimeout(_sessionAutosaveTimer);
+    const revision = ++_sessionAutosaveQueuedRevision;
+    const written = await writeSessionAutosave(revision, _sessionAutosaveEpoch, true, 'webkit-e8s');
+    const checkpoint = await readSessionCheckpoint();
+    const saved = JSON.parse(checkpoint.payload);
+    const savedAsset = saved.assets.find(a => a.id === replacedSourceDiagnosticAssetId);
+    const checkpointHash = _diagSourceHashE8E(_assetPersistentSourceE8E(savedAsset));
+    const restored = await restoreLastSessionAutosave(checkpoint);
+    await new Promise(resolve => setTimeout(resolve, 150));
+    const asset = assets.find(a => a.id === replacedSourceDiagnosticAssetId);
+    return { written, restored, checkpointHash, restoredHash: _diagSourceHashE8E(_assetPersistentSourceE8E(asset)),
+      diagnostics: { sessionAutosaveSerializedSourceHash, sessionRestoreRestoredSourceHash,
+        sessionAutosaveUsesReplacedSource, sessionRestoreRestoresReplacedSource } };
+  });
+  expect(session.written).toBe(true);
+  expect(session.restored).toBe(true);
+  expect(session.checkpointHash).toBe(replaced.after.sourceHash);
+  expect(session.restoredHash).toBe(replaced.after.sourceHash);
+  expect(session.diagnostics).toEqual({
+    sessionAutosaveSerializedSourceHash: replaced.after.sourceHash,
+    sessionRestoreRestoredSourceHash: replaced.after.sourceHash,
+    sessionAutosaveUsesReplacedSource: true,
+    sessionRestoreRestoresReplacedSource: true
+  });
+});
+
 test('Recarregar abre escolha explícita e pode ser cancelado sem recarga', async ({ page }, testInfo) => {
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
   await page.getByRole('button', { name: 'Recarregar', exact: true }).click();
