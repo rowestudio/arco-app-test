@@ -135,23 +135,12 @@ test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Re
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
   await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
 
-  const syntheticSetup = await page.evaluate(async () => {
-    const project = buildProjectData(true);
-    const base = project.assets.find((asset) => asset && asset.type === 'image');
+  const syntheticSetup = await page.evaluate(() => {
+    const base = assets.find((asset) => asset && asset.type === 'image');
     if (!base) throw new Error('fixture não forneceu image asset base para o cenário E8S');
-    const rasterSource = (label, fill) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 64;
-      canvas.height = 64;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = fill;
-      ctx.fillRect(0, 0, 64, 64);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '10px sans-serif';
-      ctx.fillText(label, 4, 34);
-      return canvas.toDataURL('image/png');
-    };
-    const makeAsset = (id, layerSequence, zIndex, source, offsetX) => ({
+    const source = _assetPersistentSourceE8E(base);
+    if (!source) throw new Error('asset base sem fonte persistente para o cenário E8S');
+    const makeAsset = (id, layerSequence, zIndex, offsetX) => ({
       ...base,
       id,
       name: id,
@@ -159,22 +148,21 @@ test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Re
       layerName: `Camada ${layerSequence}`,
       zIndex,
       worldX: (Number(base.worldX) || 0) + offsetX,
-      sourceW: 64,
-      sourceH: 64,
       src: source,
       persistentSrc: source,
-      sourcePayload: { kind: 'dataUrl', dataUrl: source }
+      sourcePayload: { kind: 'dataUrl', dataUrl: source, bytes: source.length },
+      _img: base._img,
+      drawSource: base.drawSource,
+      stableDrawable: base.stableDrawable
     });
-    project.assets = [
-      makeAsset('img-1', 901, 1, rasterSource('CONTROL-A', '#333333'), 0),
-      makeAsset('e8s-target-b', 902, 2, rasterSource('TARGET-A', '#7a1e1e'), 48),
-      makeAsset('e8s-control-c', 903, 3, rasterSource('CONTROL-C', '#1e3a7a'), 96)
-    ];
-    project.nextLayerSequence = 904;
-    const ok = await new Promise((resolve) => applyProjectData(project, { origin: 'webkit-e8s-multilayer-setup', onApplied: resolve }));
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    const baseControl = makeAsset('img-1', 901, 1, 0);
+    const target = makeAsset('e8s-target-b', 902, 2, 48);
+    const control = makeAsset('e8s-control-c', 903, 3, 96);
+    assets.splice(0, assets.length, baseControl, target, control);
+    invalidateProjectWorldComposite();
+    renderAll();
     return {
-      ok,
+      ok: true,
       ids: assets.filter((asset) => asset && asset.type === 'image').map((asset) => asset.id),
       targetReady: !!assets.find((asset) => asset && asset.id === 'e8s-target-b')
     };
