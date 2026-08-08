@@ -138,7 +138,7 @@ test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Re
   const syntheticSetup = await page.evaluate(() => {
     const base = assets.find((asset) => asset && asset.type === 'image');
     if (!base) throw new Error('fixture não forneceu image asset base para o cenário E8S');
-    const source = _assetPersistentSourceE8E(base);
+    const source = _assetPersistentSourceE8E(base) || imageOriginalDataUrl || (imgEl && imgEl.src) || '';
     if (!source) throw new Error('asset base sem fonte persistente para o cenário E8S');
     const makeAsset = (id, layerSequence, zIndex, offsetX) => ({
       ...base,
