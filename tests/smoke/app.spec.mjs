@@ -242,15 +242,22 @@ test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Re
   expect(replaced.after.world).toBe(replaced.before.world);
   expect(replaced.after.alpha).toBe(true);
 
-  const manualLoad = await page.evaluate(async (manualJson) => {
-    const manual = JSON.parse(manualJson);
-    const id = replacedSourceDiagnosticAssetId;
-    const ok = await new Promise(resolve => applyProjectData(manual, { origin: 'manual-load', onApplied: resolve }));
-    await new Promise(resolve => setTimeout(resolve, 100));
-    const asset = assets.find(a => a.id === id);
-    return { ok, hash: _diagSourceHashE8E(_assetPersistentSourceE8E(asset)), count: assets.filter(a => a.type === 'image').length };
-  }, replaced.manualJson);
-  expect(manualLoad.ok).toBe(true);
+  await page.locator('#projectFileInput').setInputFiles({
+    name: 'e8s-manual-roundtrip.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(replaced.manualJson, 'utf8')
+  });
+  await expect.poll(() => page.evaluate(() => {
+    const asset = assets.find(a => a && a.id === 'e8s-target-b');
+    return asset ? _diagSourceHashE8E(_assetPersistentSourceE8E(asset)) : '';
+  }), { timeout: 30_000 }).toBe(replaced.after.sourceHash);
+  const manualLoad = await page.evaluate(() => {
+    const asset = assets.find(a => a && a.id === 'e8s-target-b');
+    return {
+      hash: asset ? _diagSourceHashE8E(_assetPersistentSourceE8E(asset)) : '',
+      count: assets.filter(a => a && a.type === 'image').length
+    };
+  });
   expect(manualLoad.hash).toBe(replaced.after.sourceHash);
   expect(manualLoad.count).toBe(replaced.before.count);
 
