@@ -36,11 +36,12 @@ Estados usados neste documento:
 - [Futuro] Inserir imagem e substituir imagem devem ser ações distintas.
 - [Futuro] PNG com alpha, WebP, SVG, texto, stickers e elementos gráficos.
 - [Futuro] GIFs animados e Lottie como ativos.
-- [Futuro] Texto editável: títulos, legendas, logos e overlays.
+- [Futuro] Texto editável: títulos, legendas, logos, overlays e quadros com largura ajustável, quebra automática e fundo/transparência.
 - [Futuro] Crop, máscaras/molduras, bordas e controles independentes por ativo.
 - [Futuro] Distorção, inclinação e “achatamento” de ativos.
 - [Futuro] Visibilidade temporal: ativo sempre visível, por intervalo de frames ou por tempo.
-- [Futuro] Efeitos por ativo, começando por sombra configurável.
+- [Futuro] Efeitos e comportamentos por ativo, começando por sombra configurável e presets simples como fade, pulsar, flutuar, girar lento e surgir com escala.
+- [Pesquisa] Detalhamento incremental de quadros de texto, presença temporal por frames e comportamentos matemáticos em `docs/PROPOSAL_TEXT_BOXES_AND_ASSET_TIMING.md`.
 
 ## 4. Layers
 

@@ -1,5 +1,16 @@
 # DECISIONS
 
+## DEC-2026-08-08-02 — Registrar texto, presença temporal e comportamento de ativos como proposta futura incremental
+
+- **Data:** 2026-08-08.
+- **Assunto:** backlog futuro de quadros de texto e ativos.
+- **Classificação:** produto / planejamento / documentação.
+- **Decisão:** registrar como direção futura, ainda sem autorização de implementação, que quadros de texto devem evoluir como ativos reais do projeto, com largura ajustável, quebra automática, fundo/transparência e participação em ProjectWorld, Layers, Save/Load, Preview e Export. Registrar também que presença temporal de ativos deve ser tratada separadamente de animação, com preferência inicial por intervalos baseados em frames.
+- **Contexto:** Roberto apontou a importância de texto para o propósito do Arco e a necessidade de controlar quando ativos aparecem ou somem, evitando dessincronização quando o controle depender somente de tempo absoluto.
+- **Consequência:** futuras PRs devem começar por escopos pequenos: primeiro quadro de texto estático e confiável; depois presença temporal por frames; depois fade in/fade out; depois presets matemáticos simples. Timeline avançada, keyframes manuais e editor complexo permanecem fora de escopo até nova decisão explícita.
+- **Status:** proposta documental registrada; não implementada; não autoriza roadmap automático.
+- **Documento relacionado:** `docs/PROPOSAL_TEXT_BOXES_AND_ASSET_TIMING.md`.
+
 ## DEC-2026-08-08-01 — Fonte persistente canônica de image asset substituído
 
 - **Data:** 2026-08-08.
