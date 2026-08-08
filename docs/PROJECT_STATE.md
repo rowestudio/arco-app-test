@@ -2,13 +2,14 @@
 
 Última atualização documental: 2026-08-08.
 
-## Atualização 2026-08-08 — v8z4b32E8S em PR
+## Atualização 2026-08-08 — v8z4b32E8S mergeada e aprovada visualmente
 
-- A PR #477 / `v8z4b32E8R` foi mergeada na `main` de teste no commit `a14be4ea50c1597223377d24a74ace4cd7190849`.
-- Durante o teste publicado foi confirmado um P1 preexistente de integridade: após `Trocar imagem`, um image asset podia voltar à fonte anterior em Save → Load ou Session Autosave → Session Restore, apesar de a imagem nova estar visível e existir um payload persistente.
-- Causa confirmada: o commit de replace atualizava `src` e drawables para a fonte nova, mas preservava `sourcePayload` antigo; o resolvedor de persistência dava precedência a esse payload stale.
-- A `v8z4b32E8S` torna `src`, `persistentSrc` e `sourcePayload` um commit persistente único da fonte substituída e valida por fingerprint as fronteiras de Save/Load e Session Autosave/Restore.
-- Estado: correção em PR. A E8S não está aprovada antes de merge autorizado, publicação e teste do projeto grande real em iPhone/Safari por Roberto. Nenhuma promoção para produção está autorizada.
+- A PR #478 foi mergeada na `main` de teste em 2026-08-08, no commit `18a03dadf13c40e34454181accda99f3b1189437`; a baseline de teste resultante é `v8z4b32E8S`.
+- Roberto testou e aprovou visualmente a build publicada em iPhone/Safari real, no viewport 390 × 797, DPR 3, usando um projeto real com 9 image assets e 10 frames.
+- O P1 que motivou a versão está resolvido na baseline de teste: após `Trocar imagem`, a fonte nova não regride para a fonte anterior em Save → Load nem em Session Autosave → Session Restore.
+- O teste real confirmou Session Restore completo: `sessionRestoreCompleted = true`; `sessionRestoreAppliedSuccessfully = true`; `sessionRestoreAssetCount = 9`; `sessionRestoreHydratedAssetCount = 9`; `sessionRestoreLayerIdentitiesPreserved = true`; `sessionRestoreProjectWorldRestored = true`; `sessionRestoreNoPartialState = true`; `loadedAssetsCount = 9`; `loadedImageAssetsCount = 9`; `loadedHydratedImageAssetsCount = 9`; `loadedStableDrawableCount = 9`; `loadedBlankDrawableCount = 0`; `saveLoadRoundTripIssue = none`.
+- A E8S passa a ser a baseline funcional visualmente aprovada corrente do repositório de teste.
+- A aprovação da baseline de teste não autoriza promoção automática para produção. `rowestudio/arco-app` permanece dependente de decisão explícita de Roberto e PR separada.
 
 ## Atualização 2026-08-07 — v8z4b32E8Q mergeada e aprovada visualmente
 

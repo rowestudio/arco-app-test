@@ -318,4 +318,4 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Resultado esperado: quantidade e fontes dos demais assets permanecem; `id`, `layerSequence`, `layerName`, `zIndex`, slot, visibilidade, Frames, curvas e ProjectWorld não mudam; fingerprint B aparece no modelo, payload manual, Load, checkpoint e Session Restore; Undo persiste A e Redo persiste B; callback stale não restaura A; PNG mantém alpha quando usado.
 - Evidência: `tests/smoke/app.spec.mjs`, fingerprints protegidos do Diagnóstico e inspeção do checkpoint real. Existência/tamanho de payload ou conclusão do load, sem igualdade de fingerprint, não é evidência suficiente.
 - Ambiente: WebKit automatizado e iPhone/Safari real com projeto grande multiasset obrigatório para aprovação final.
-- Automatizável: sim para round-trips e invariantes; validação publicada real permanece obrigatória.
+- Automatizável: sim para round-trips e invariantes; validação publicada real da E8S aprovada por Roberto em 2026-08-08.
