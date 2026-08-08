@@ -10,14 +10,6 @@
 - A `v8z4b32E8S` torna `src`, `persistentSrc` e `sourcePayload` um commit persistente único da fonte substituída e valida por fingerprint as fronteiras de Save/Load e Session Autosave/Restore.
 - Estado: correção em PR. A E8S não está aprovada antes de merge autorizado, publicação e teste do projeto grande real em iPhone/Safari por Roberto. Nenhuma promoção para produção está autorizada.
 
-## Atualização 2026-08-08 — v8z4b32E8R em PR
-
-- Base confirmada: `main` no commit `ec06c7f5533327763352370832c14641aebb1317`, versão `v8z4b32E8Q`.
-- A `v8z4b32E8R` corrige exclusivamente a omissão localizada dos botões auxiliares `−5%` e `+5%` no painel Escala de Ativos.
-- Cada botão soma ou subtrai exatamente cinco pontos percentuais da escala resolvida pelo baseline fitted canônico e reutiliza o caminho de mutação, Undo e Session Autosave do slider existente.
-- Rotação preserva seus steps exclusivos `-5°`/`+5°`; Profundidade permanece sem steps. Nenhuma cor verde foi adicionada.
-- Estado: correção em PR; aprovação visual permanece pendente de merge autorizado, publicação na base de teste e validação de Roberto em iPhone/Safari real. Nenhuma promoção para produção está autorizada.
-
 ## Atualização 2026-08-07 — v8z4b32E8Q mergeada e aprovada visualmente
 
 - A PR #475 foi mergeada na `main` do repositório de teste no commit `cfef63c74ff90d50d472884d79f3a8a47597362c`.
