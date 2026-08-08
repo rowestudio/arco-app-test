@@ -305,9 +305,9 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 ## TC-034 — Steps exclusivos dos painéis contextuais de Ativos
 
 - Pré-condição: projeto com ao menos um asset selecionável no Modo Ativos; viewport de 390 px.
-- Passos: selecionar o asset; abrir Escala e aplicar `+5%`/`−5%`; validar slider e valor; executar Undo/Redo; aplicar `+5%` duas vezes e Reset; alternar Escala → Rotação → Profundidade → Escala; fechar e reabrir; limpar a seleção e tentar abrir Escala.
-- Resultado esperado: Escala exibe somente `−5%`/`+5%`, com delta aditivo exato de cinco pontos percentuais, uma alteração lógica por toque, sincronização imediata e Reset em 100%; Rotação exibe somente `-5°`/`+5°`; Profundidade não exibe steps; a troca por `data-kind` não deixa painel ou handler residual; sem seleção o painel não abre.
-- Evidência: estado real do asset, contagem de Undo, revisão de Session Autosave, DOM/estilos computados, screenshot WebKit e validação publicada em iPhone/Safari real.
+- Passos: medir no DOM os steps e Reset de Frames em Escala/Rotação; selecionar o asset e repetir as medidas nos painéis equivalentes; aplicar `+5%`/`−5%` e `+5°`/`−5°`; validar slider e valor; executar Undo/Redo; aplicar `+5%` duas vezes e Reset; alternar Escala → Rotação → Profundidade → Escala; fechar e reabrir; limpar a seleção e tentar abrir Escala.
+- Resultado esperado: Escala exibe somente `−5%`/`+5%`, com delta aditivo exato de cinco pontos percentuais, uma alteração lógica por toque, sincronização imediata e Reset em 100%; Rotação exibe somente `-5°`/`+5°`, com delta exato de cinco graus; os steps e Reset de Ativos repetem altura, largura/min-width, padding, tipografia, raio, gap e posição vertical dos equivalentes de Frames com tolerância subpixel menor que 1 px; Profundidade não exibe steps; não há overflow em 390 px; a troca por `data-kind` não deixa painel ou handler residual; sem seleção o painel não abre.
+- Evidência: estado real do asset, contagem de Undo, revisão de Session Autosave, `getBoundingClientRect()`, estilos computados, screenshot WebKit e validação publicada em iPhone/Safari real.
 - Ambiente: WebKit automatizado e iPhone/Safari real obrigatório para aprovação visual.
 - Automatizável: sim para DOM/estado/Undo/Redo/autosave; toque, espaçamento e Safe Area exigem validação real complementar.
 

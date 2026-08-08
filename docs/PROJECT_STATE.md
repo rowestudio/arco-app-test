@@ -2,6 +2,12 @@
 
 Última atualização documental: 2026-08-08.
 
+## Atualização 2026-08-08 — v8z4b32E8T em PR
+
+- Base confirmada: `main` após o merge da PR #479, no commit `2defcfd2462a23ffc8bf3289a2db19009632ec55`, baseline aprovada `v8z4b32E8S`.
+- A `v8z4b32E8T` faz os steps e o Reset dos painéis contextuais de Escala e Rotação de Ativos reutilizarem as métricas CSS canônicas dos controles equivalentes de Frames, preservando a identidade roxa dos Ativos e a ciano dos Frames.
+- Matemática, handlers, slider, Profundidade, Frames, Preview/Export e persistência permanecem fora do diff funcional. WebKit automatizado em viewport de 390 px protege geometria, overflow, deltas, Undo/Redo/Reset e exclusividade dos modos; aprovação visual publicada em iPhone/Safari real permanece com Roberto.
+
 ## Atualização 2026-08-08 — v8z4b32E8S mergeada e aprovada visualmente
 
 - A PR #478 foi mergeada na `main` de teste em 2026-08-08, no commit `18a03dadf13c40e34454181accda99f3b1189437`; a baseline de teste resultante é `v8z4b32E8S`.
