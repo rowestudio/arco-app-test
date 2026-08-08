@@ -517,30 +517,68 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
     resetAssetContextValue();
     const undoBefore = undoStack.length;
     const revisionBefore = sessionAutosaveRevision;
-    return { start: getAssetContextScalePercent(asset), undoBefore, revisionBefore };
+    const baseline = getAssetScaleBaselineWorldSize(asset);
+    return { start: getAssetContextScalePercent(asset), undoBefore, revisionBefore,
+      queuedRevisionBefore: _sessionAutosaveQueuedRevision,
+      baselineW: baseline.width, baselineH: baseline.height };
   });
   await page.locator('#assetContextScalePlus').click();
   await expect(page.locator('#assetContextValue')).toHaveText('105%');
   await expect(page.locator('#assetContextSlider')).toHaveValue('105');
   const afterPlus = await page.evaluate(() => ({
     percent: getAssetContextScalePercent(getSelectedAsset()), undoCount: undoStack.length,
-    revision: sessionAutosaveRevision
+    queuedRevision: _sessionAutosaveQueuedRevision,
+    scheduledAt: sessionAutosaveLastScheduledAt,
+    triggerReason: sessionAutosaveLastTriggerReason
   }));
   expect(afterPlus.percent - scaleStepResult.start).toBeCloseTo(5, 3);
   expect(afterPlus.undoCount - scaleStepResult.undoBefore).toBe(1);
-  expect(afterPlus.revision).toBeGreaterThan(scaleStepResult.revisionBefore);
+  expect(afterPlus.queuedRevision).toBeGreaterThan(scaleStepResult.queuedRevisionBefore);
+  expect(afterPlus.scheduledAt).not.toBeNull();
+  expect(afterPlus.triggerReason).toBe('asset-scale');
+  await expect.poll(() => page.evaluate(() => sessionAutosaveRevision), { timeout: 30_000 })
+    .toBeGreaterThanOrEqual(afterPlus.queuedRevision);
+  expect(await page.evaluate(() => sessionAutosaveRevision)).toBeGreaterThan(scaleStepResult.revisionBefore);
   await page.evaluate(() => undo());
-  await expect(page.locator('#assetContextValue')).toHaveText('100%');
+  const afterPlusUndo = await page.evaluate(() => {
+    const asset = getSelectedAsset();
+    return { percent: getAssetContextScalePercent(asset), worldW: asset.worldW, worldH: asset.worldH,
+      slider: Number(document.getElementById('assetContextSlider').value),
+      value: document.getElementById('assetContextValue').textContent,
+      kind: assetContextPanelKind };
+  });
+  expect(afterPlusUndo.percent).toBeCloseTo(100, 3);
+  expect(afterPlusUndo.worldW).toBeCloseTo(scaleStepResult.baselineW, 3);
+  expect(afterPlusUndo.worldH).toBeCloseTo(scaleStepResult.baselineH, 3);
+  expect(afterPlusUndo.slider).toBeCloseTo(100, 3);
+  expect(afterPlusUndo.value).toBe('100%');
+  expect(afterPlusUndo.kind).toBe('scale');
   await page.evaluate(() => redo());
-  await expect(page.locator('#assetContextValue')).toHaveText('105%');
+  const afterPlusRedo = await page.evaluate(() => {
+    const asset = getSelectedAsset();
+    return { percent: getAssetContextScalePercent(asset), worldW: asset.worldW, worldH: asset.worldH,
+      slider: Number(document.getElementById('assetContextSlider').value),
+      value: document.getElementById('assetContextValue').textContent,
+      kind: assetContextPanelKind };
+  });
+  expect(afterPlusRedo.percent).toBeCloseTo(105, 3);
+  expect(afterPlusRedo.worldW).toBeCloseTo(scaleStepResult.baselineW * 1.05, 3);
+  expect(afterPlusRedo.worldH).toBeCloseTo(scaleStepResult.baselineH * 1.05, 3);
+  expect(afterPlusRedo.slider).toBeCloseTo(105, 3);
+  expect(afterPlusRedo.value).toBe('105%');
+  expect(afterPlusRedo.kind).toBe('scale');
   const undoBeforeMinus = await page.evaluate(() => undoStack.length);
   await page.locator('#assetContextScaleMinus').click();
   await expect(page.locator('#assetContextValue')).toHaveText('100%');
   await expect(page.locator('#assetContextSlider')).toHaveValue('100');
   expect(await page.evaluate(() => undoStack.length)).toBe(undoBeforeMinus + 1);
   await page.evaluate(() => undo());
+  await expect.poll(() => page.evaluate(() => getAssetContextScalePercent(getSelectedAsset()))).toBeCloseTo(105, 3);
+  await expect(page.locator('#assetContextSlider')).toHaveValue('105');
   await expect(page.locator('#assetContextValue')).toHaveText('105%');
   await page.evaluate(() => redo());
+  await expect.poll(() => page.evaluate(() => getAssetContextScalePercent(getSelectedAsset()))).toBeCloseTo(100, 3);
+  await expect(page.locator('#assetContextSlider')).toHaveValue('100');
   await expect(page.locator('#assetContextValue')).toHaveText('100%');
   await page.locator('#assetContextScalePlus').click();
   await page.locator('#assetContextScalePlus').click();
@@ -559,6 +597,7 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   await expect(page.locator('#assetContextSlider')).toHaveAttribute('aria-label', 'Rotação do ativo');
   await expect.poll(() => page.evaluate(() => assetContextPanelKind)).toBe('rotation');
   await expect(page.locator('#assetContextRotationMinus')).toBeVisible();
+  await expect(page.locator('#assetContextRotationMinus')).toHaveText('-5°');
   await expect(page.locator('#assetContextRotationPlus')).toBeVisible();
   await expect(page.locator('#assetContextScaleMinus')).toBeHidden();
   await expect(page.locator('#assetContextScalePlus')).toBeHidden();
