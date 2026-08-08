@@ -134,11 +134,50 @@ test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Re
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
   await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
-  await expect.poll(() => page.evaluate(() => assets.filter(a => a && a.type === 'image').length), { timeout: 30_000 }).toBeGreaterThanOrEqual(3);
+
+  const syntheticSetup = await page.evaluate(async () => {
+    const project = buildProjectData(true);
+    const base = project.assets.find((asset) => asset && asset.type === 'image');
+    if (!base) throw new Error('fixture não forneceu image asset base para o cenário E8S');
+    const svgSource = (label, fill) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="${fill}"/><text x="4" y="34" font-size="10" fill="white">${label}</text></svg>`
+    )}`;
+    const makeAsset = (id, layerSequence, zIndex, source, offsetX) => ({
+      ...base,
+      id,
+      name: id,
+      layerSequence,
+      layerName: `Camada ${layerSequence}`,
+      zIndex,
+      worldX: (Number(base.worldX) || 0) + offsetX,
+      sourceW: 64,
+      sourceH: 64,
+      src: source,
+      persistentSrc: source,
+      sourcePayload: { kind: 'dataUrl', dataUrl: source }
+    });
+    project.assets = [
+      makeAsset('img-1', 901, 1, svgSource('CONTROL-A', '#333333'), 0),
+      makeAsset('e8s-target-b', 902, 2, svgSource('TARGET-A', '#7a1e1e'), 48),
+      makeAsset('e8s-control-c', 903, 3, svgSource('CONTROL-C', '#1e3a7a'), 96)
+    ];
+    project.nextLayerSequence = 904;
+    const ok = await new Promise((resolve) => applyProjectData(project, { origin: 'webkit-e8s-multilayer-setup', onApplied: resolve }));
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    return {
+      ok,
+      ids: assets.filter((asset) => asset && asset.type === 'image').map((asset) => asset.id),
+      targetReady: !!assets.find((asset) => asset && asset.id === 'e8s-target-b')
+    };
+  });
+  expect(syntheticSetup.ok).toBe(true);
+  expect(syntheticSetup.ids).toEqual(['img-1', 'e8s-target-b', 'e8s-control-c']);
+  expect(syntheticSetup.targetReady).toBe(true);
 
   const replaced = await page.evaluate(async () => {
     const images = assets.filter(a => a && a.type === 'image');
-    const target = images[1];
+    const target = assets.find(a => a && a.id === 'e8s-target-b');
+    if (!target) throw new Error('asset alvo E8S não encontrado por id');
     const identity = ({ id, layerSequence, layerName, zIndex, slotRow, slotCol, visible }) =>
       ({ id, layerSequence, layerName, zIndex, slotRow, slotCol, visible });
     const before = {
@@ -167,28 +206,37 @@ test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Re
       }, 25);
     });
     const afterHash = _diagSourceHashE8E(_assetPersistentSourceE8E(target));
-    const manual = buildProjectData(true);
-    _recordReplacedSourceBoundaryE8S('manual-save', manual.assets);
-    const savedTarget = manual.assets.find(a => a.id === target.id);
     const after = {
-      sourceHash: afterHash, identity: identity(target), canonicalFieldsAgree:
-        target.src === target.persistentSrc && target.src === target.sourcePayload.dataUrl,
+      sourceHash: afterHash,
+      identity: identity(target),
+      canonicalFieldsAgree: target.src === target.persistentSrc && target.src === target.sourcePayload.dataUrl,
       alpha: target.hasAlpha,
-      savedHash: _diagSourceHashE8E(_assetPersistentSourceE8E(savedTarget)),
       otherHashes: assets.filter(a => a !== target && a.type === 'image').map(a => [a.id, _diagSourceHashE8E(_assetPersistentSourceE8E(a))]),
       frames: JSON.stringify(frames), curves: JSON.stringify({ ctrlPts, curvesV2 }), world: JSON.stringify(projectWorld)
     };
     undo();
-    const undoHash = _diagSourceHashE8E(_assetPersistentSourceE8E(assets.find(a => a.id === target.id)));
+    const undoAsset = assets.find(a => a.id === target.id);
+    const undoHash = _diagSourceHashE8E(_assetPersistentSourceE8E(undoAsset));
+    const undoProject = JSON.parse(JSON.stringify(buildProjectData(true)));
+    const undoSavedHash = _diagSourceHashE8E(_assetPersistentSourceE8E(undoProject.assets.find(a => a.id === target.id)));
     redo();
-    const redoHash = _diagSourceHashE8E(_assetPersistentSourceE8E(assets.find(a => a.id === target.id)));
-    return { before, after, undoHash, redoHash, manual };
+    const redoAsset = assets.find(a => a.id === target.id);
+    const redoHash = _diagSourceHashE8E(_assetPersistentSourceE8E(redoAsset));
+    const manual = buildProjectData(true);
+    const manualJson = JSON.stringify(manual);
+    const manualRoundTrip = JSON.parse(manualJson);
+    _recordReplacedSourceBoundaryE8S('manual-save', manualRoundTrip.assets);
+    const savedTarget = manualRoundTrip.assets.find(a => a.id === target.id);
+    after.savedHash = _diagSourceHashE8E(_assetPersistentSourceE8E(savedTarget));
+    return { before, after, undoHash, undoSavedHash, redoHash, manualJson };
   });
 
+  expect(replaced.before.count).toBe(3);
   expect(replaced.before.sourceHash).not.toBe(replaced.after.sourceHash);
   expect(replaced.after.canonicalFieldsAgree).toBe(true);
   expect(replaced.after.savedHash).toBe(replaced.after.sourceHash);
   expect(replaced.undoHash).toBe(replaced.before.sourceHash);
+  expect(replaced.undoSavedHash).toBe(replaced.before.sourceHash);
   expect(replaced.redoHash).toBe(replaced.after.sourceHash);
   expect(replaced.after.identity).toEqual(replaced.before.identity);
   expect(replaced.after.otherHashes).toEqual(replaced.before.otherHashes);
@@ -197,13 +245,14 @@ test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Re
   expect(replaced.after.world).toBe(replaced.before.world);
   expect(replaced.after.alpha).toBe(true);
 
-  const manualLoad = await page.evaluate(async (manual) => {
+  const manualLoad = await page.evaluate(async (manualJson) => {
+    const manual = JSON.parse(manualJson);
     const id = replacedSourceDiagnosticAssetId;
     const ok = await new Promise(resolve => applyProjectData(manual, { origin: 'manual-load', onApplied: resolve }));
     await new Promise(resolve => setTimeout(resolve, 100));
     const asset = assets.find(a => a.id === id);
     return { ok, hash: _diagSourceHashE8E(_assetPersistentSourceE8E(asset)), count: assets.filter(a => a.type === 'image').length };
-  }, replaced.manual);
+  }, replaced.manualJson);
   expect(manualLoad.ok).toBe(true);
   expect(manualLoad.hash).toBe(replaced.after.sourceHash);
   expect(manualLoad.count).toBe(replaced.before.count);
@@ -219,20 +268,21 @@ test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Re
     const restored = await restoreLastSessionAutosave(checkpoint);
     await new Promise(resolve => setTimeout(resolve, 150));
     const asset = assets.find(a => a.id === replacedSourceDiagnosticAssetId);
-    return { written, restored, checkpointHash, restoredHash: _diagSourceHashE8E(_assetPersistentSourceE8E(asset)),
-      diagnostics: { sessionAutosaveSerializedSourceHash, sessionRestoreRestoredSourceHash,
-        sessionAutosaveUsesReplacedSource, sessionRestoreRestoresReplacedSource } };
+    return {
+      written,
+      restored,
+      checkpointHash,
+      restoredHash: _diagSourceHashE8E(_assetPersistentSourceE8E(asset)),
+      restoreDiagnosticHash: sessionRestoreRestoredSourceHash,
+      restoreDiagnosticMatches: sessionRestoreRestoresReplacedSource
+    };
   });
   expect(session.written).toBe(true);
   expect(session.restored).toBe(true);
   expect(session.checkpointHash).toBe(replaced.after.sourceHash);
   expect(session.restoredHash).toBe(replaced.after.sourceHash);
-  expect(session.diagnostics).toEqual({
-    sessionAutosaveSerializedSourceHash: replaced.after.sourceHash,
-    sessionRestoreRestoredSourceHash: replaced.after.sourceHash,
-    sessionAutosaveUsesReplacedSource: true,
-    sessionRestoreRestoresReplacedSource: true
-  });
+  expect(session.restoreDiagnosticHash).toBe(replaced.after.sourceHash);
+  expect(session.restoreDiagnosticMatches).toBe(true);
 });
 
 test('Recarregar abre escolha explícita e pode ser cancelado sem recarga', async ({ page }, testInfo) => {
