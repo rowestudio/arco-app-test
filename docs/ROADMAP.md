@@ -32,6 +32,9 @@ O roadmap detalhado de produto recuperado está registrado em `docs/PRODUCT_ROAD
 - Expansão de suíte de regressão.
 - Matriz de validação por ambiente.
 - Melhor rastreabilidade entre PR, versão, QA e promoção.
+- Quadros de texto como ativos reais do projeto, com largura ajustável, quebra automática, transparência e evolução incremental de estilo.
+- Presença temporal por ativo, preferencialmente baseada em intervalos de frames, antes de animações complexas.
+- Presets simples de comportamento por ativo, separados da presença temporal.
 
 ## Ideias ainda não autorizadas
 
@@ -39,6 +42,7 @@ O roadmap detalhado de produto recuperado está registrado em `docs/PRODUCT_ROAD
 - Separação de renderer.
 - Novos fluxos de UI.
 - Serviços externos de teste.
+- Timeline avançada, keyframes manuais por ativo ou editor complexo de animação antes de proposta e autorização próprias.
 
 ## Infraestrutura e QA
 
