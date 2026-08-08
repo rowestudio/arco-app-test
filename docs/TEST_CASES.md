@@ -301,3 +301,12 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: screenshots, inspeção visual, inspeção de estilos computados quando útil e validação publicada em iPhone/Safari real.
 - Ambiente: iPhone/Safari real como referência de produto; WebKit automatizado apenas como evidência complementar.
 - Automatizável: parcial/futuro. Não implementar heurística cromática genérica suscetível a falsos positivos em assets do usuário.
+
+## TC-034 — Steps exclusivos dos painéis contextuais de Ativos
+
+- Pré-condição: projeto com ao menos um asset selecionável no Modo Ativos; viewport de 390 px.
+- Passos: selecionar o asset; abrir Escala e aplicar `+5%`/`−5%`; validar slider e valor; executar Undo/Redo; aplicar `+5%` duas vezes e Reset; alternar Escala → Rotação → Profundidade → Escala; fechar e reabrir; limpar a seleção e tentar abrir Escala.
+- Resultado esperado: Escala exibe somente `−5%`/`+5%`, com delta aditivo exato de cinco pontos percentuais, uma alteração lógica por toque, sincronização imediata e Reset em 100%; Rotação exibe somente `-5°`/`+5°`; Profundidade não exibe steps; a troca por `data-kind` não deixa painel ou handler residual; sem seleção o painel não abre.
+- Evidência: estado real do asset, contagem de Undo, revisão de Session Autosave, DOM/estilos computados, screenshot WebKit e validação publicada em iPhone/Safari real.
+- Ambiente: WebKit automatizado e iPhone/Safari real obrigatório para aprovação visual.
+- Automatizável: sim para DOM/estado/Undo/Redo/autosave; toque, espaçamento e Safe Area exigem validação real complementar.
