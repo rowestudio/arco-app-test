@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8R — base v8z4b32E8Q. fix(assets): restaura os passos aditivos −5%/+5% da Escala de Ativos pelo caminho canônico existente. APP_VERSION = APP_VERSION_NAME = v8z4b32E8R. -->
 <!-- Arco Motion App — v8z4b32E8Q — base v8z4b32E8P. fix(ui): consolida a superfície e o estado dos painéis contextuais, centraliza o ponto da timeline pela mesma geometria da faixa e restaura o ciano do Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E8Q. -->
 <!-- Arco Motion App — v8z4b32E8P — base v8z4b32E8O. fix(assets): painéis contextuais de Escala, Rotação e Profundidade substituem toda a faixa inferior, como o painel expandido de Frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E8P. -->
 <!-- Arco Motion App — v8z4b32E8O — base v8z4b32E8N. fix(parallax): sincroniza geometria visual do Stage e unifica painéis contextuais de Escala, Rotação e Profundidade. APP_VERSION = APP_VERSION_NAME = v8z4b32E8O. -->
@@ -2666,8 +2667,10 @@ body.asset-context-panel-open #toolbar{display:none !important;}
 #assetContextPanel .asset-context-row{display:flex;align-items:center;gap:12px;min-width:0;}
 #assetContextPanel .asset-context-actions{display:flex;align-items:center;gap:6px;min-height:30px;}
 #assetContextPanel .asset-context-value{font-size:14px;font-weight:700;color:var(--accent);min-width:52px;text-align:right;}
-#assetContextPanel .asset-context-step{display:none;}
-#assetContextPanel[data-kind="rotation"] .asset-context-step{display:inline-flex;}
+#assetContextPanel .asset-context-scale-step,
+#assetContextPanel .asset-context-rotation-step{display:none;}
+#assetContextPanel[data-kind="scale"] .asset-context-scale-step,
+#assetContextPanel[data-kind="rotation"] .asset-context-rotation-step{display:inline-flex;}
 #custBarTabs{
   background:var(--menu-bg) !important;
   background-image:none !important;
@@ -4120,8 +4123,10 @@ body.asset-context-panel-open #toolbar{display:none !important;}
       <span class="asset-context-value" id="assetContextValue">0</span>
     </div>
     <div class="asset-context-actions">
-      <button type="button" class="chip asset-context-step" onclick="stepAssetContextRotation(-5)">-5°</button>
-      <button type="button" class="chip asset-context-step" onclick="stepAssetContextRotation(5)">+5°</button>
+      <button type="button" class="chip asset-context-scale-step" id="assetContextScaleMinus" onclick="stepAssetContextScale(-5)">−5%</button>
+      <button type="button" class="chip asset-context-scale-step" id="assetContextScalePlus" onclick="stepAssetContextScale(5)">+5%</button>
+      <button type="button" class="chip asset-context-rotation-step" id="assetContextRotationMinus" onclick="stepAssetContextRotation(-5)">−5°</button>
+      <button type="button" class="chip asset-context-rotation-step" id="assetContextRotationPlus" onclick="stepAssetContextRotation(5)">+5°</button>
       <button type="button" class="chip" id="assetContextReset" onclick="resetAssetContextValue()" style="padding:6px 14px;font-size:13px;min-height:30px;justify-content:center;margin-left:auto;">Reset</button>
     </div>
   </div>
@@ -7273,8 +7278,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8Q';
-const APP_VERSION_NAME = 'v8z4b32E8Q';
+const APP_VERSION = 'v8z4b32E8R';
+const APP_VERSION_NAME = 'v8z4b32E8R';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let parallaxChangedCanonicalAssetGeometry = false;
 let parallaxChangedFrames = false;
@@ -15318,6 +15323,12 @@ function openAssetContextPanel(kind) {
   syncAssetContextPanel();
 }
 function openAssetDepthPanel() { openAssetContextPanel('depth'); }
+function stepAssetContextScale(deltaPercent) {
+  const asset = getSelectedAsset();
+  if (assetContextPanelKind !== 'scale' || !asset) return;
+  setAssetContextValue(getAssetContextScalePercent(asset) + Number(deltaPercent || 0));
+  commitAssetContextGesture();
+}
 function stepAssetContextRotation(delta) {
   const asset = getSelectedAsset();
   if (assetContextPanelKind !== 'rotation' || !asset) return;

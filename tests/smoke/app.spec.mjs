@@ -369,6 +369,10 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   await expect(page.locator('#assetContextPanel')).toBeVisible();
   await expect(page.locator('#assetContextPanel .asset-context-title')).toHaveCount(0);
   await expect(page.locator('#assetContextSlider')).toHaveAttribute('aria-label', 'Escala do ativo');
+  await expect(page.locator('#assetContextScaleMinus')).toBeVisible();
+  await expect(page.locator('#assetContextScalePlus')).toBeVisible();
+  await expect(page.locator('#assetContextRotationMinus')).toBeHidden();
+  await expect(page.locator('#assetContextRotationPlus')).toBeHidden();
   const openPanelLayout = await page.evaluate(() => {
     const panel = document.getElementById('assetContextPanel').getBoundingClientRect();
     const slot = document.getElementById('lowerContextSlot').getBoundingClientRect();
@@ -507,6 +511,42 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   expect(scaleResult.afterRedoPct).toBeCloseTo(100, 3);
   expect(scaleResult.savedWorldW).toBeCloseTo(scaleResult.baseline.width, 3);
   expect(scaleResult.savedWorldH).toBeCloseTo(scaleResult.baseline.height, 3);
+  const scaleStepResult = await page.evaluate(() => {
+    const asset = getSelectedAsset();
+    openAssetContextPanel('scale');
+    resetAssetContextValue();
+    const undoBefore = undoStack.length;
+    const revisionBefore = sessionAutosaveRevision;
+    return { start: getAssetContextScalePercent(asset), undoBefore, revisionBefore };
+  });
+  await page.locator('#assetContextScalePlus').click();
+  await expect(page.locator('#assetContextValue')).toHaveText('105%');
+  await expect(page.locator('#assetContextSlider')).toHaveValue('105');
+  const afterPlus = await page.evaluate(() => ({
+    percent: getAssetContextScalePercent(getSelectedAsset()), undoCount: undoStack.length,
+    revision: sessionAutosaveRevision
+  }));
+  expect(afterPlus.percent - scaleStepResult.start).toBeCloseTo(5, 3);
+  expect(afterPlus.undoCount - scaleStepResult.undoBefore).toBe(1);
+  expect(afterPlus.revision).toBeGreaterThan(scaleStepResult.revisionBefore);
+  await page.evaluate(() => undo());
+  await expect(page.locator('#assetContextValue')).toHaveText('100%');
+  await page.evaluate(() => redo());
+  await expect(page.locator('#assetContextValue')).toHaveText('105%');
+  const undoBeforeMinus = await page.evaluate(() => undoStack.length);
+  await page.locator('#assetContextScaleMinus').click();
+  await expect(page.locator('#assetContextValue')).toHaveText('100%');
+  await expect(page.locator('#assetContextSlider')).toHaveValue('100');
+  expect(await page.evaluate(() => undoStack.length)).toBe(undoBeforeMinus + 1);
+  await page.evaluate(() => undo());
+  await expect(page.locator('#assetContextValue')).toHaveText('105%');
+  await page.evaluate(() => redo());
+  await expect(page.locator('#assetContextValue')).toHaveText('100%');
+  await page.locator('#assetContextScalePlus').click();
+  await page.locator('#assetContextScalePlus').click();
+  await expect(page.locator('#assetContextValue')).toHaveText('110%');
+  await page.locator('#assetContextReset').click();
+  await expect(page.locator('#assetContextValue')).toHaveText('100%');
   await page.locator('#assetContextPanel .asset-context-back').click();
   await expect(page.locator('#assetContextPanel')).toBeHidden();
   await expect(page.locator('#tbAssetRotate')).toBeVisible();
@@ -518,15 +558,28 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   await page.locator('#tbAssetRotate').click();
   await expect(page.locator('#assetContextSlider')).toHaveAttribute('aria-label', 'Rotação do ativo');
   await expect.poll(() => page.evaluate(() => assetContextPanelKind)).toBe('rotation');
+  await expect(page.locator('#assetContextRotationMinus')).toBeVisible();
+  await expect(page.locator('#assetContextRotationPlus')).toBeVisible();
+  await expect(page.locator('#assetContextScaleMinus')).toBeHidden();
+  await expect(page.locator('#assetContextScalePlus')).toBeHidden();
   await page.locator('#assetContextPanel .asset-context-back').click();
   await expect(page.locator('#assetContextPanel')).toBeHidden();
   await expect(page.locator('#tbAssetDepth')).toBeVisible();
   await page.locator('#tbAssetDepth').click();
   await expect(page.locator('#assetContextSlider')).toHaveAttribute('aria-label', 'Profundidade do ativo');
   await expect.poll(() => page.evaluate(() => assetContextPanelKind)).toBe('depth');
+  await expect(page.locator('#assetContextScaleMinus')).toBeHidden();
+  await expect(page.locator('#assetContextScalePlus')).toBeHidden();
+  await expect(page.locator('#assetContextRotationMinus')).toBeHidden();
+  await expect(page.locator('#assetContextRotationPlus')).toBeHidden();
   await page.locator('#assetContextPanel .asset-context-back').click();
   await expect(page.locator('#assetContextPanel')).toBeHidden();
   await expect(page.locator('#tbAssetScale')).toBeVisible();
+  await page.locator('#tbAssetScale').click();
+  await expect(page.locator('#assetContextScaleMinus')).toBeVisible();
+  await expect(page.locator('#assetContextRotationMinus')).toBeHidden();
+  await page.locator('#assetContextPanel .asset-context-back').click();
+  await expect(page.locator('#assetContextPanel')).toBeHidden();
   await page.locator('#tbAssetDepth').click();
   await expect(page.locator('#assetContextSlider')).toHaveAttribute('aria-label', 'Profundidade do ativo');
 

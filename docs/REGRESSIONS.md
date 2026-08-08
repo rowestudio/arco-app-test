@@ -32,6 +32,7 @@ Catálogo obrigatório de regressões históricas e proteções.
 | REG-026 | Início preto/apagado em sequência específica de edição. | App parece quebrado ao iniciar ou retornar. | Inicialização/render | Reproduzir sequência histórica quando documentada; observar Stage inicial. | Caso reproduzível a confirmar. | futuro |
 | REG-027 | `captureStream + MediaRecorder` volta como export principal. | Export pode voltar a apresentar trancos. | Export/MP4 | Revisar pipeline de export e logs. | Teste arquitetural/static check. | automatizável |
 | REG-039 | PR mobile/remota fica sem checks obrigatórios no HEAD atual. | Bloqueia ou fragiliza o fluxo mobile-first e pode deixar SHA novo sem validação automática. | CI/CD | Comparar PR aberta contra `main`, HEAD SHA atual e execuções/check-runs de `QA Guardrails` e `WebKit Smoke Tests` para esse SHA. | `Mobile CI Watchdog` + `node scripts/ci/test-mobile-ci-watchdog.mjs`. | automatizado |
+| REG-040 | Escala de Ativos perde os botões auxiliares `−5%`/`+5%`. | Impede ajustes aditivos rápidos e quebra a paridade aprovada com a Escala de Frames. | Ativos/Escala/UI | Selecionar um asset e alternar Escala → Rotação → Profundidade → Escala, verificando controles visíveis por `data-kind` e o delta real. | Smoke WebKit deve validar DOM, delta de cinco pontos percentuais, sincronização, Reset, Undo/Redo e exclusividade por `data-kind`. | automatizado; Safari real pendente |
 
 ## REG-028 — v8z4b32E7Y: transformação de Ativos incompleta
 
