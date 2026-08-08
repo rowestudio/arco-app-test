@@ -1,15 +1,18 @@
 # PROJECT_STATE
 
-Última atualização documental: 2026-07-30.
+Última atualização documental: 2026-08-07.
 
-## Atualização 2026-08-07 — v8z4b32E8Q em PR
+## Atualização 2026-08-07 — v8z4b32E8Q mergeada e aprovada visualmente
 
-- Base confirmada: `main` após o merge da PR #474, versão funcional `v8z4b32E8P`.
+- A PR #475 foi mergeada na `main` do repositório de teste no commit `cfef63c74ff90d50d472884d79f3a8a47597362c`.
+- A versão atual da base de teste é `v8z4b32E8Q`.
 - A `v8z4b32E8Q` consolida Frames e Ativos na mesma apresentação de bottom sheet contextual compacto, com largura total, superfície própria, cantos superiores arredondados e substituição estrutural da toolbar normal.
 - A troca entre Câmera/Frames e Ativos fecha o painel do modo anterior; ações individuais de Ativo exigem `selectedAssetId` canônico válido e nenhum painel de Ativo abre sem alvo.
 - O ponto laranja da timeline deriva do mesmo eixo geométrico canônico da faixa rolável usado para centralização, sem offset compensatório.
 - O estado pronto de Preview/Export volta a usar o ciano fixo aprovado do Arco, independente da cor do modo, sem mudança no renderer, WebCodecs ou download.
-- Aprovação visual final permanece pendente de publicação e validação em iPhone/Safari real. Nenhuma promoção para produção está autorizada.
+- Roberto testou a build publicada em iPhone/Safari real e aprovou visualmente a `v8z4b32E8Q`, que passa a ser a baseline funcional visualmente aprovada corrente do repositório de teste.
+- Após essa aprovação, Roberto identificou uma omissão localizada no painel Escala de Ativos: a implementação atual exibe slider, valor e Reset, mas os botões auxiliares de ajuste esperados não estão presentes. Essa pendência pequena e isolada será analisada e especificada em tarefa funcional posterior; ela não está resolvida, não reprova a `v8z4b32E8Q`, não invalida as demais correções aprovadas e não integra esta consolidação documental.
+- A aprovação da baseline de teste não autoriza promoção automática para `rowestudio/arco-app`. Produção continua exigindo decisão explícita de Roberto e PR de promoção separada.
 
 ## Atualização 2026-08-07 — v8z4b32E8P em PR
 

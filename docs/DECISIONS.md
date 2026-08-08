@@ -10,6 +10,18 @@
 
 Formato: ID, data, decisão, contexto, consequência e status.
 
+## DEC-2026-08-07-01 — Verde não pertence à identidade atual da interface
+
+- **Data:** 2026-08-07.
+- **Assunto:** identidade cromática da interface.
+- **Classificação:** produto / UX / identidade visual.
+- **Decisão:** a interface atualmente aprovada do Arco Motion App não utiliza verde como cor de UI. Verde não deve ser introduzido por convenção semântica genérica, design system externo, estados de sucesso ou conclusão, código legado, tokens CSS históricos, diagnósticos, nomes internos ou interpretação do agente. O estado pronto de Preview/Export usa o ciano aprovado próprio do Arco.
+- **Exceção:** conteúdo importado pelo usuário não está sujeito a essa restrição cromática.
+- **Contexto:** a `v8z4b32E8Q` corrigiu uma regressão na qual o estado de Preview/Export havia retornado ao verde por interpretação incorreta da semântica de sucesso. A regra passa a ser global para impedir recorrência em outros componentes.
+- **Consequência:** toda mudança futura de UI deve preservar essa identidade; qualquer introdução futura de verde exige aprovação explícita de Roberto.
+- **Status:** aprovada.
+- **Versão relacionada:** `v8z4b32E8Q`.
+
 ## DEC-001 — Dois modos do app
 
 - Data: data não consolidada.
