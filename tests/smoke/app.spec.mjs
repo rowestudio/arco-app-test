@@ -507,7 +507,7 @@ test('intenção E8H clean mantém launcher sem pergunta E8I', async ({ page }) 
   await expect.poll(() => page.evaluate(() => startupRecoveryBypassReason)).toBe('explicit-reload-clean');
 });
 
-test('E8T mantém paridade geométrica entre controles contextuais de Frames e Ativos', async ({ page }, testInfo) => {
+test('E8U compacta controles e mantém paridade e superfície contextual contínua', async ({ page }, testInfo) => {
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
@@ -517,11 +517,37 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
     const step = document.querySelector(stepSelector);
     const reset = document.querySelector(resetSelector);
     const row = step?.parentElement;
-    if (!step || !reset || !row) throw new Error('controles contextuais não encontrados');
+    const sliderRow = row?.previousElementSibling;
+    const slider = sliderRow?.querySelector('input[type="range"]');
+    const stack = row?.parentElement;
+    if (!step || !reset || !row || !slider || !sliderRow || !stack) throw new Error('controles contextuais não encontrados');
     const stepRect = step.getBoundingClientRect();
     const resetRect = reset.getBoundingClientRect();
+    const sliderRect = slider.getBoundingClientRect();
+    const sliderRowRect = sliderRow.getBoundingClientRect();
+    const controlsRowRect = row.getBoundingClientRect();
+    const stackRect = stack.getBoundingClientRect();
     const stepStyle = getComputedStyle(step);
     const resetStyle = getComputedStyle(reset);
+    const measuredStyle = (element) => {
+      const style = getComputedStyle(element);
+      return {
+        display: style.display, flexDirection: style.flexDirection,
+        justifyContent: style.justifyContent, alignItems: style.alignItems,
+        gap: style.gap, rowGap: style.rowGap, columnGap: style.columnGap,
+        height: style.height,
+        minHeight: style.minHeight, paddingBlock: `${style.paddingTop} ${style.paddingBottom}`,
+        paddingTop: style.paddingTop, paddingBottom: style.paddingBottom,
+        marginBlock: `${style.marginTop} ${style.marginBottom}`,
+        marginTop: style.marginTop, marginBottom: style.marginBottom,
+        borderTopWidth: style.borderTopWidth, borderBottomWidth: style.borderBottomWidth,
+        lineHeight: style.lineHeight, boxSizing: style.boxSizing,
+        flex: style.flex, flexGrow: style.flexGrow,
+        verticalAlign: style.verticalAlign, alignSelf: style.alignSelf,
+        appearance: style.appearance, webkitAppearance: style.webkitAppearance,
+        position: style.position, top: style.top, transform: style.transform,
+      };
+    };
     return {
       step: {
         width: stepRect.width, height: stepRect.height, top: stepRect.top,
@@ -543,6 +569,18 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
         fontSize: resetStyle.fontSize, borderRadius: resetStyle.borderRadius,
         boxSizing: resetStyle.boxSizing },
       gap: getComputedStyle(row).gap,
+      sliderRect: {
+        top: sliderRect.top, bottom: sliderRect.bottom, height: sliderRect.height,
+        left: sliderRect.left, right: sliderRect.right,
+        offsetTop: sliderRect.top - sliderRowRect.top,
+        offsetBottom: sliderRowRect.bottom - sliderRect.bottom,
+      },
+      stack: { top: stackRect.top, bottom: stackRect.bottom, height: stackRect.height },
+      sliderRow: { top: sliderRowRect.top, bottom: sliderRowRect.bottom, height: sliderRowRect.height },
+      controlsRow: { top: controlsRowRect.top, bottom: controlsRowRect.bottom, height: controlsRowRect.height },
+      sliderToControlsGap: controlsRowRect.top - sliderRect.bottom,
+      rowToControlsGap: controlsRowRect.top - sliderRowRect.bottom,
+      computed: { slider: measuredStyle(slider), sliderRow: measuredStyle(sliderRow), controlsRow: measuredStyle(row), stack: measuredStyle(stack) },
       relativeTop: stepRect.top - row.getBoundingClientRect().top,
       resetRelativeTop: resetRect.top - row.getBoundingClientRect().top,
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -551,8 +589,54 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
 
   await page.evaluate(() => { setEditorMode('camera', 'webkit-e8t-frame'); openCustBar(); switchCustTab('scale'); });
   const frameScale = await measureControls(page, '#custTabScale .chip:nth-child(2)', '#custTabScale .chip:last-child');
+  const frameScaleTabDisplays = await page.evaluate(() => ({
+    scale: getComputedStyle(document.getElementById('custTabScale')).display,
+    rotation: getComputedStyle(document.getElementById('custTabRot')).display,
+  }));
+  const hitArea = await page.evaluate(() => {
+    const slider = document.getElementById('scaleSlider');
+    const pill = document.querySelector('#custTabScale .context-small-control:nth-child(2)');
+    const sliderRect = slider.getBoundingClientRect();
+    const pillRect = pill.getBoundingClientRect();
+    const owner = (x, y) => {
+      const element = document.elementFromPoint(x, y);
+      return {
+        id: element?.id || '',
+        isSlider: element === slider || element?.closest?.('input[type="range"]') === slider,
+        isPill: element === pill || element?.closest?.('.context-small-control') === pill,
+      };
+    };
+    return {
+      abovePill: owner(pillRect.left + pillRect.width / 2, pillRect.top - 1),
+      sliderCenter: owner(sliderRect.left + sliderRect.width / 2, sliderRect.top + sliderRect.height / 2),
+      pillCenter: owner(pillRect.left + pillRect.width / 2, pillRect.top + pillRect.height / 2),
+      sliderRect: { left: sliderRect.left, right: sliderRect.right, top: sliderRect.top, bottom: sliderRect.bottom },
+      pillRect: { left: pillRect.left, right: pillRect.right, top: pillRect.top, bottom: pillRect.bottom },
+    };
+  });
+  const frameSliderBox = await page.locator('#scaleSlider').boundingBox();
+  if (!frameSliderBox) throw new Error('slider de Escala de Frames sem geometria');
+  const sliderValueBeforeDrag = await page.locator('#scaleSlider').inputValue();
+  await page.mouse.move(frameSliderBox.x + frameSliderBox.width / 2, frameSliderBox.y + frameSliderBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(frameSliderBox.x + frameSliderBox.width * 0.7, frameSliderBox.y + frameSliderBox.height / 2, { steps: 4 });
+  await page.mouse.up();
+  await expect(page.locator('#scaleSlider')).not.toHaveValue(sliderValueBeforeDrag);
+  await page.evaluate(() => resetScale());
+  await page.locator('#custTabScale .context-small-control').first().click();
+  await expect(page.locator('#scaleSlider')).toHaveValue('95');
+  await page.evaluate(() => resetScale());
+  const frameSurface = await page.evaluate(() => ({
+    accent: getComputedStyle(document.body).getPropertyValue('--accent').trim(),
+    sheet: getComputedStyle(document.getElementById('lowerContextSlot')).backgroundColor,
+    footer: getComputedStyle(document.getElementById('midBar')).backgroundColor,
+  }));
   await page.evaluate(() => switchCustTab('rot'));
   const frameRotation = await measureControls(page, '#custTabRot .chip:nth-child(2)', '#custTabRot .chip:last-child');
+  const frameRotationTabDisplays = await page.evaluate(() => ({
+    scale: getComputedStyle(document.getElementById('custTabScale')).display,
+    rotation: getComputedStyle(document.getElementById('custTabRot')).display,
+  }));
 
   await page.evaluate(() => {
     closeCustBar();
@@ -562,11 +646,38 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
     openAssetContextPanel('scale');
   });
   const assetScale = await measureControls(page, '#assetContextScalePlus', '#assetContextReset');
+  const assetSurface = await page.evaluate(() => ({
+    accent: getComputedStyle(document.body).getPropertyValue('--accent').trim(),
+    sheet: getComputedStyle(document.getElementById('assetContextPanel')).backgroundColor,
+    footer: getComputedStyle(document.getElementById('midBar')).backgroundColor,
+  }));
   await page.evaluate(() => openAssetContextPanel('rotation'));
   const assetRotation = await measureControls(page, '#assetContextRotationPlus', '#assetContextReset');
 
+  const logContextMetrics = (label, metrics) => {
+    console.log(`${label}:\n${JSON.stringify({
+      stack: { ...metrics.stack, computed: metrics.computed.stack },
+      range: { ...metrics.sliderRect, computed: metrics.computed.slider },
+      sliderRow: { ...metrics.sliderRow, computed: metrics.computed.sliderRow },
+      controlsRow: { ...metrics.controlsRow, computed: metrics.computed.controlsRow },
+      rowToControlsGap: metrics.rowToControlsGap,
+      sliderToControlsGap: metrics.sliderToControlsGap,
+    }, null, 2)}`);
+  };
+  logContextMetrics('FRAME SCALE', frameScale);
+  logContextMetrics('ASSET SCALE', assetScale);
+  logContextMetrics('FRAME ROTATION', frameRotation);
+  logContextMetrics('ASSET ROTATION', assetRotation);
+
+  expect(frameScale.computed.stack.display).toBe('flex');
+  expect(frameRotation.computed.stack.display).toBe('flex');
+  expect(assetScale.computed.stack.display).toBe('flex');
+  expect(assetRotation.computed.stack.display).toBe('flex');
+  expect(frameScaleTabDisplays).toEqual({ scale: 'flex', rotation: 'none' });
+  expect(frameRotationTabDisplays).toEqual({ scale: 'none', rotation: 'flex' });
+
   await testInfo.attach('asset-frame-control-metrics.json', {
-    body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation }, null, 2)),
+    body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation, frameSurface, assetSurface, hitArea }, null, 2)),
     contentType: 'application/json',
   });
 
@@ -591,6 +702,14 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
     expect(frameMetrics.step.alignItems).toBe(assetMetrics.step.alignItems);
     expect(frameMetrics.step.marginBlock).toBe(assetMetrics.step.marginBlock);
     expect(frameMetrics.gap).toBe(assetMetrics.gap);
+    expect(Math.abs(frameMetrics.sliderRect.height - assetMetrics.sliderRect.height)).toBeLessThan(1);
+    expect(frameMetrics.computed.slider.height).toBe(assetMetrics.computed.slider.height);
+    expect(frameMetrics.computed.slider.height).toBe('4px');
+    expect(Math.abs(frameMetrics.sliderRow.height - assetMetrics.sliderRow.height)).toBeLessThan(1);
+    expect(Math.abs(frameMetrics.rowToControlsGap - assetMetrics.rowToControlsGap)).toBeLessThan(1);
+    expect(Math.abs(frameMetrics.sliderToControlsGap - assetMetrics.sliderToControlsGap)).toBeLessThan(1);
+    expect(frameMetrics.step.height).toBeLessThanOrEqual(28);
+    expect(frameMetrics.step.paddingBlock).toBe('2px 2px');
     expect(Math.abs(frameMetrics.reset.height - assetMetrics.reset.height)).toBeLessThan(1);
     expect(Math.abs(frameMetrics.reset.width - assetMetrics.reset.width)).toBeLessThan(1);
     expect(frameMetrics.reset.minHeight).toBe(assetMetrics.reset.minHeight);
@@ -603,6 +722,16 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
     expect(Math.abs(frameMetrics.resetRelativeTop - assetMetrics.resetRelativeTop)).toBeLessThan(1);
     expect(assetMetrics.overflow).toBeLessThanOrEqual(0);
   }
+
+  expect(frameSurface.sheet).toBe(frameSurface.footer);
+  expect(assetSurface.sheet).toBe(assetSurface.footer);
+  expect(frameSurface.accent).toBe('#04fff2');
+  expect(assetSurface.accent).toBe('#8b3fff');
+  expect(hitArea.abovePill.isSlider).toBe(true);
+  expect(hitArea.abovePill.isPill).toBe(false);
+  expect(hitArea.sliderCenter.isSlider).toBe(true);
+  expect(hitArea.sliderCenter.isPill).toBe(false);
+  expect(hitArea.pillCenter.isPill).toBe(true);
 
   await page.screenshot({ path: testInfo.outputPath('asset-frame-control-parity.png'), fullPage: true });
 });

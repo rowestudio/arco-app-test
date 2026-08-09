@@ -2,6 +2,13 @@
 
 Última atualização documental: 2026-08-08.
 
+## Atualização 2026-08-09 — v8z4b32E8U em PR
+
+- Base confirmada: merge da PR #481 na `main` de teste, commit `53546d1`, versão `v8z4b32E8T`.
+- A `v8z4b32E8U` compacta a primitiva geométrica compartilhada de `−5`/`+5` e Reset em Frames e Ativos, reduz a distância para o slider e consolida a superfície neutra contextual até a safe-area.
+- A hierarquia aprovada preserva o fundo principal como neutro mais escuro, usa superfície contextual discretamente mais clara e controles cerca de 10–20% mais claros que ela, sem alterar os acentos ciano/roxo.
+- Não há alteração de handlers, matemática, transformação, profundidade/parallax, Stage, timeline, Preview ou Export. Aprovação visual final permanece dependente de publicação na `main` de teste e validação de Roberto em iPhone/Safari real.
+
 ## Atualização 2026-08-08 — v8z4b32E8T em PR
 
 - Base confirmada: `main` após o merge da PR #479, no commit `2defcfd2462a23ffc8bf3289a2db19009632ec55`, baseline aprovada `v8z4b32E8S`.

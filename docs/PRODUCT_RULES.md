@@ -1,5 +1,14 @@
 # PRODUCT_RULES
 
+## Superfícies neutras dos painéis contextuais
+
+- O fundo principal usa o neutro mais escuro da interface.
+- O bottom sheet contextual usa um neutro discretamente mais claro que o fundo principal.
+- Pills e controles pequenos usam um neutro aproximadamente 10–20% visualmente mais claro que a superfície contextual.
+- Quando aberto, o bottom sheet forma uma superfície única até a borda inferior e a safe-area, sem faixa residual do fundo principal.
+- Frames e Ativos compartilham a mesma geometria e densidade compacta nos controles contextuais `−5`/`+5` e Reset.
+- “Cor da interface”, nesta hierarquia neutra, não substitui os acentos funcionais: Frames permanecem ciano e Ativos permanecem roxo.
+
 ## Regras aprovadas de produto e UX
 
 - Alterar somente o que foi solicitado.
