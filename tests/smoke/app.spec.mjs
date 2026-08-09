@@ -517,12 +517,26 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
     const step = document.querySelector(stepSelector);
     const reset = document.querySelector(resetSelector);
     const row = step?.parentElement;
-    const slider = row?.previousElementSibling?.querySelector('input[type="range"]');
-    if (!step || !reset || !row) throw new Error('controles contextuais não encontrados');
+    const sliderRow = row?.previousElementSibling;
+    const slider = sliderRow?.querySelector('input[type="range"]');
+    const stack = row?.parentElement;
+    if (!step || !reset || !row || !slider || !sliderRow || !stack) throw new Error('controles contextuais não encontrados');
     const stepRect = step.getBoundingClientRect();
     const resetRect = reset.getBoundingClientRect();
+    const sliderRect = slider.getBoundingClientRect();
+    const sliderRowRect = sliderRow.getBoundingClientRect();
+    const controlsRowRect = row.getBoundingClientRect();
     const stepStyle = getComputedStyle(step);
     const resetStyle = getComputedStyle(reset);
+    const measuredStyle = (element) => {
+      const style = getComputedStyle(element);
+      return {
+        display: style.display, alignItems: style.alignItems, height: style.height,
+        minHeight: style.minHeight, paddingBlock: `${style.paddingTop} ${style.paddingBottom}`,
+        marginBlock: `${style.marginTop} ${style.marginBottom}`, lineHeight: style.lineHeight,
+        rowGap: style.rowGap, boxSizing: style.boxSizing,
+      };
+    };
     return {
       step: {
         width: stepRect.width, height: stepRect.height, top: stepRect.top,
@@ -544,7 +558,12 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
         fontSize: resetStyle.fontSize, borderRadius: resetStyle.borderRadius,
         boxSizing: resetStyle.boxSizing },
       gap: getComputedStyle(row).gap,
-      sliderToControlsGap: slider ? stepRect.top - slider.getBoundingClientRect().bottom : null,
+      sliderRect: { top: sliderRect.top, bottom: sliderRect.bottom, height: sliderRect.height },
+      sliderRow: { top: sliderRowRect.top, bottom: sliderRowRect.bottom, height: sliderRowRect.height },
+      controlsRow: { top: controlsRowRect.top, bottom: controlsRowRect.bottom, height: controlsRowRect.height },
+      sliderToControlsGap: controlsRowRect.top - sliderRect.bottom,
+      rowToControlsGap: controlsRowRect.top - sliderRowRect.bottom,
+      computed: { slider: measuredStyle(slider), sliderRow: measuredStyle(sliderRow), controlsRow: measuredStyle(row), stack: measuredStyle(stack) },
       relativeTop: stepRect.top - row.getBoundingClientRect().top,
       resetRelativeTop: resetRect.top - row.getBoundingClientRect().top,
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -636,6 +655,8 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
     expect(frameMetrics.step.alignItems).toBe(assetMetrics.step.alignItems);
     expect(frameMetrics.step.marginBlock).toBe(assetMetrics.step.marginBlock);
     expect(frameMetrics.gap).toBe(assetMetrics.gap);
+    expect(Math.abs(frameMetrics.sliderRow.height - assetMetrics.sliderRow.height)).toBeLessThan(1);
+    expect(Math.abs(frameMetrics.rowToControlsGap - assetMetrics.rowToControlsGap)).toBeLessThan(1);
     expect(Math.abs(frameMetrics.sliderToControlsGap - assetMetrics.sliderToControlsGap)).toBeLessThan(1);
     expect(frameMetrics.step.height).toBeLessThanOrEqual(28);
     expect(frameMetrics.step.paddingBlock).toBe('2px 2px');
