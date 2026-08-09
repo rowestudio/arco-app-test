@@ -580,6 +580,10 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
 
   await page.evaluate(() => { setEditorMode('camera', 'webkit-e8t-frame'); openCustBar(); switchCustTab('scale'); });
   const frameScale = await measureControls(page, '#custTabScale .chip:nth-child(2)', '#custTabScale .chip:last-child');
+  const frameScaleTabDisplays = await page.evaluate(() => ({
+    scale: getComputedStyle(document.getElementById('custTabScale')).display,
+    rotation: getComputedStyle(document.getElementById('custTabRot')).display,
+  }));
   const hitArea = await page.evaluate(() => {
     const slider = document.getElementById('scaleSlider');
     const pill = document.querySelector('#custTabScale .context-small-control:nth-child(2)');
@@ -620,6 +624,10 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   }));
   await page.evaluate(() => switchCustTab('rot'));
   const frameRotation = await measureControls(page, '#custTabRot .chip:nth-child(2)', '#custTabRot .chip:last-child');
+  const frameRotationTabDisplays = await page.evaluate(() => ({
+    scale: getComputedStyle(document.getElementById('custTabScale')).display,
+    rotation: getComputedStyle(document.getElementById('custTabRot')).display,
+  }));
 
   await page.evaluate(() => {
     closeCustBar();
@@ -650,6 +658,13 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   logContextMetrics('ASSET SCALE', assetScale);
   logContextMetrics('FRAME ROTATION', frameRotation);
   logContextMetrics('ASSET ROTATION', assetRotation);
+
+  expect(frameScale.computed.stack.display).toBe('flex');
+  expect(frameRotation.computed.stack.display).toBe('flex');
+  expect(assetScale.computed.stack.display).toBe('flex');
+  expect(assetRotation.computed.stack.display).toBe('flex');
+  expect(frameScaleTabDisplays).toEqual({ scale: 'flex', rotation: 'none' });
+  expect(frameRotationTabDisplays).toEqual({ scale: 'none', rotation: 'flex' });
 
   await testInfo.attach('asset-frame-control-metrics.json', {
     body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation, frameSurface, assetSurface, hitArea }, null, 2)),
