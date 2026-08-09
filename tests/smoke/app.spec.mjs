@@ -526,15 +526,22 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
     const sliderRect = slider.getBoundingClientRect();
     const sliderRowRect = sliderRow.getBoundingClientRect();
     const controlsRowRect = row.getBoundingClientRect();
+    const stackRect = stack.getBoundingClientRect();
     const stepStyle = getComputedStyle(step);
     const resetStyle = getComputedStyle(reset);
     const measuredStyle = (element) => {
       const style = getComputedStyle(element);
       return {
-        display: style.display, alignItems: style.alignItems, height: style.height,
+        display: style.display, flexDirection: style.flexDirection,
+        justifyContent: style.justifyContent, alignItems: style.alignItems,
+        gap: style.gap, rowGap: style.rowGap, columnGap: style.columnGap,
+        height: style.height,
         minHeight: style.minHeight, paddingBlock: `${style.paddingTop} ${style.paddingBottom}`,
-        marginBlock: `${style.marginTop} ${style.marginBottom}`, lineHeight: style.lineHeight,
-        rowGap: style.rowGap, boxSizing: style.boxSizing,
+        paddingTop: style.paddingTop, paddingBottom: style.paddingBottom,
+        marginBlock: `${style.marginTop} ${style.marginBottom}`,
+        marginTop: style.marginTop, marginBottom: style.marginBottom,
+        lineHeight: style.lineHeight, boxSizing: style.boxSizing,
+        flex: style.flex, flexGrow: style.flexGrow,
       };
     };
     return {
@@ -559,6 +566,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
         boxSizing: resetStyle.boxSizing },
       gap: getComputedStyle(row).gap,
       sliderRect: { top: sliderRect.top, bottom: sliderRect.bottom, height: sliderRect.height },
+      stack: { top: stackRect.top, bottom: stackRect.bottom, height: stackRect.height },
       sliderRow: { top: sliderRowRect.top, bottom: sliderRowRect.bottom, height: sliderRowRect.height },
       controlsRow: { top: controlsRowRect.top, bottom: controlsRowRect.bottom, height: controlsRowRect.height },
       sliderToControlsGap: controlsRowRect.top - sliderRect.bottom,
@@ -628,6 +636,20 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   }));
   await page.evaluate(() => openAssetContextPanel('rotation'));
   const assetRotation = await measureControls(page, '#assetContextRotationPlus', '#assetContextReset');
+
+  const logContextMetrics = (label, metrics) => {
+    console.log(`${label}:\n${JSON.stringify({
+      stack: { ...metrics.stack, computed: metrics.computed.stack },
+      sliderRow: { ...metrics.sliderRow, computed: metrics.computed.sliderRow },
+      controlsRow: { ...metrics.controlsRow, computed: metrics.computed.controlsRow },
+      rowToControlsGap: metrics.rowToControlsGap,
+      sliderToControlsGap: metrics.sliderToControlsGap,
+    }, null, 2)}`);
+  };
+  logContextMetrics('FRAME SCALE', frameScale);
+  logContextMetrics('ASSET SCALE', assetScale);
+  logContextMetrics('FRAME ROTATION', frameRotation);
+  logContextMetrics('ASSET ROTATION', assetRotation);
 
   await testInfo.attach('asset-frame-control-metrics.json', {
     body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation, frameSurface, assetSurface, hitArea }, null, 2)),
