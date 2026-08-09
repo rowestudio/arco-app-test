@@ -553,6 +553,39 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
 
   await page.evaluate(() => { setEditorMode('camera', 'webkit-e8t-frame'); openCustBar(); switchCustTab('scale'); });
   const frameScale = await measureControls(page, '#custTabScale .chip:nth-child(2)', '#custTabScale .chip:last-child');
+  const hitArea = await page.evaluate(() => {
+    const slider = document.getElementById('scaleSlider');
+    const pill = document.querySelector('#custTabScale .context-small-control:nth-child(2)');
+    const sliderRect = slider.getBoundingClientRect();
+    const pillRect = pill.getBoundingClientRect();
+    const owner = (x, y) => {
+      const element = document.elementFromPoint(x, y);
+      return {
+        id: element?.id || '',
+        isSlider: element === slider || element?.closest?.('input[type="range"]') === slider,
+        isPill: element === pill || element?.closest?.('.context-small-control') === pill,
+      };
+    };
+    return {
+      abovePill: owner(pillRect.left + pillRect.width / 2, pillRect.top - 1),
+      sliderCenter: owner(sliderRect.left + sliderRect.width / 2, sliderRect.top + sliderRect.height / 2),
+      pillCenter: owner(pillRect.left + pillRect.width / 2, pillRect.top + pillRect.height / 2),
+      sliderRect: { left: sliderRect.left, right: sliderRect.right, top: sliderRect.top, bottom: sliderRect.bottom },
+      pillRect: { left: pillRect.left, right: pillRect.right, top: pillRect.top, bottom: pillRect.bottom },
+    };
+  });
+  const frameSliderBox = await page.locator('#scaleSlider').boundingBox();
+  if (!frameSliderBox) throw new Error('slider de Escala de Frames sem geometria');
+  const sliderValueBeforeDrag = await page.locator('#scaleSlider').inputValue();
+  await page.mouse.move(frameSliderBox.x + frameSliderBox.width / 2, frameSliderBox.y + frameSliderBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(frameSliderBox.x + frameSliderBox.width * 0.7, frameSliderBox.y + frameSliderBox.height / 2, { steps: 4 });
+  await page.mouse.up();
+  await expect(page.locator('#scaleSlider')).not.toHaveValue(sliderValueBeforeDrag);
+  await page.evaluate(() => resetScale());
+  await page.locator('#custTabScale .context-small-control').first().click();
+  await expect(page.locator('#scaleSlider')).toHaveValue('95');
+  await page.evaluate(() => resetScale());
   const frameSurface = await page.evaluate(() => ({
     accent: getComputedStyle(document.body).getPropertyValue('--accent').trim(),
     sheet: getComputedStyle(document.getElementById('lowerContextSlot')).backgroundColor,
@@ -578,7 +611,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   const assetRotation = await measureControls(page, '#assetContextRotationPlus', '#assetContextReset');
 
   await testInfo.attach('asset-frame-control-metrics.json', {
-    body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation, frameSurface, assetSurface }, null, 2)),
+    body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation, frameSurface, assetSurface, hitArea }, null, 2)),
     contentType: 'application/json',
   });
 
@@ -623,6 +656,11 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   expect(assetSurface.sheet).toBe(assetSurface.footer);
   expect(frameSurface.accent).toBe('#04fff2');
   expect(assetSurface.accent).toBe('#8b3fff');
+  expect(hitArea.abovePill.isSlider).toBe(true);
+  expect(hitArea.abovePill.isPill).toBe(false);
+  expect(hitArea.sliderCenter.isSlider).toBe(true);
+  expect(hitArea.sliderCenter.isPill).toBe(false);
+  expect(hitArea.pillCenter.isPill).toBe(true);
 
   await page.screenshot({ path: testInfo.outputPath('asset-frame-control-parity.png'), fullPage: true });
 });
