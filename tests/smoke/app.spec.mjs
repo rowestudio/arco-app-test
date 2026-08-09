@@ -540,8 +540,12 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
         paddingTop: style.paddingTop, paddingBottom: style.paddingBottom,
         marginBlock: `${style.marginTop} ${style.marginBottom}`,
         marginTop: style.marginTop, marginBottom: style.marginBottom,
+        borderTopWidth: style.borderTopWidth, borderBottomWidth: style.borderBottomWidth,
         lineHeight: style.lineHeight, boxSizing: style.boxSizing,
         flex: style.flex, flexGrow: style.flexGrow,
+        verticalAlign: style.verticalAlign, alignSelf: style.alignSelf,
+        appearance: style.appearance, webkitAppearance: style.webkitAppearance,
+        position: style.position, top: style.top, transform: style.transform,
       };
     };
     return {
@@ -565,7 +569,12 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
         fontSize: resetStyle.fontSize, borderRadius: resetStyle.borderRadius,
         boxSizing: resetStyle.boxSizing },
       gap: getComputedStyle(row).gap,
-      sliderRect: { top: sliderRect.top, bottom: sliderRect.bottom, height: sliderRect.height },
+      sliderRect: {
+        top: sliderRect.top, bottom: sliderRect.bottom, height: sliderRect.height,
+        left: sliderRect.left, right: sliderRect.right,
+        offsetTop: sliderRect.top - sliderRowRect.top,
+        offsetBottom: sliderRowRect.bottom - sliderRect.bottom,
+      },
       stack: { top: stackRect.top, bottom: stackRect.bottom, height: stackRect.height },
       sliderRow: { top: sliderRowRect.top, bottom: sliderRowRect.bottom, height: sliderRowRect.height },
       controlsRow: { top: controlsRowRect.top, bottom: controlsRowRect.bottom, height: controlsRowRect.height },
@@ -648,6 +657,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   const logContextMetrics = (label, metrics) => {
     console.log(`${label}:\n${JSON.stringify({
       stack: { ...metrics.stack, computed: metrics.computed.stack },
+      range: { ...metrics.sliderRect, computed: metrics.computed.slider },
       sliderRow: { ...metrics.sliderRow, computed: metrics.computed.sliderRow },
       controlsRow: { ...metrics.controlsRow, computed: metrics.computed.controlsRow },
       rowToControlsGap: metrics.rowToControlsGap,
@@ -692,6 +702,9 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
     expect(frameMetrics.step.alignItems).toBe(assetMetrics.step.alignItems);
     expect(frameMetrics.step.marginBlock).toBe(assetMetrics.step.marginBlock);
     expect(frameMetrics.gap).toBe(assetMetrics.gap);
+    expect(Math.abs(frameMetrics.sliderRect.height - assetMetrics.sliderRect.height)).toBeLessThan(1);
+    expect(frameMetrics.computed.slider.height).toBe(assetMetrics.computed.slider.height);
+    expect(frameMetrics.computed.slider.height).toBe('4px');
     expect(Math.abs(frameMetrics.sliderRow.height - assetMetrics.sliderRow.height)).toBeLessThan(1);
     expect(Math.abs(frameMetrics.rowToControlsGap - assetMetrics.rowToControlsGap)).toBeLessThan(1);
     expect(Math.abs(frameMetrics.sliderToControlsGap - assetMetrics.sliderToControlsGap)).toBeLessThan(1);
