@@ -38,6 +38,7 @@ Estados usados neste documento:
 - [Futuro] GIFs animados e Lottie como ativos.
 - [Futuro] Texto editável: títulos, legendas, logos, overlays e quadros com largura ajustável, quebra automática e fundo/transparência.
 - [Futuro] Crop, máscaras/molduras, bordas e controles independentes por ativo.
+- [Futuro] Colar ativos diretamente no projeto.
 - [Futuro] Distorção, inclinação e “achatamento” de ativos.
 - [Futuro] Visibilidade temporal: ativo sempre visível, por intervalo de frames ou por tempo.
 - [Futuro] Efeitos e comportamentos por ativo, começando por sombra configurável e presets simples como fade, pulsar, flutuar, girar lento e surgir com escala.
@@ -50,6 +51,8 @@ Estados usados neste documento:
 - [Regra] Frames, curvas e HUD não entram na pilha visual dos ativos.
 
 ## 5. Grupos e blocos reutilizáveis
+
+- [Regra de prioridade] Após formatos, a prioridade indicada é grupos de frames; este registro não autoriza implementação.
 
 - [Futuro] Grupo de frames com cor/identidade própria.
 - [Futuro] Editar grupo no Stage ou editar um frame individual dentro dele.
@@ -85,13 +88,13 @@ Estados usados neste documento:
 
 ## 9. Profundidade e captura
 
-- [Pesquisa] Profundidade 2.5D/parallax por ativo: primeiro plano acelera, fundo desacelera, com distância relativa à câmera.
-- [Pesquisa] Essa distância pode ser animável e deve manter paridade entre Stage, Preview, Export e Save/Load.
+- [Em evolução] Profundidade básica/parallax translacional por ativo já existe, com distância relativa à câmera e paridade canônica entre Stage, Preview, Export e persistência.
+- [Futuro] Vista Profundidade 0 / vista absoluta no Modo Ativos, separada do controle de profundidade já existente.
+- [Pesquisa] Evolução da distância para comportamento animável, preservando paridade entre Stage, Preview, Export e Save/Load.
 - [Pesquisa] Motion Take: gravar movimento virtual da câmera por toque, arrasto, pinch e rotação, convertendo-o em frames editáveis.
 - [Pesquisa] Captura por acelerômetro/AR do iPhone, possivelmente como produto complementar.
 
 ## 10. Escolha explícita ao encontrar checkpoint de sessão
 
-- [Futuro, posterior à E8G] Ao encontrar checkpoint válido na abertura, perguntar explicitamente “Restaurar sessão” ou “Começar do início”.
-- A restauração silenciosa atual não é o comportamento final aprovado.
-- A interface e seu fluxo pertencem a uma versão funcional separada; não são implementados na `v8z4b32E8G`.
+- [Em evolução] O checkpoint de abertura/restauração e a escolha explícita entre recuperar a sessão ou começar do início já foram implementados.
+- Evoluções futuras desse fluxo exigem tarefa própria e não fazem parte da `v8z4b32E8U`.

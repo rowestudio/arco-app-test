@@ -35,6 +35,9 @@ O roadmap detalhado de produto recuperado está registrado em `docs/PRODUCT_ROAD
 - Quadros de texto como ativos reais do projeto, com largura ajustável, quebra automática, transparência e evolução incremental de estilo.
 - Presença temporal por ativo, preferencialmente baseada em intervalos de frames, antes de animações complexas.
 - Presets simples de comportamento por ativo, separados da presença temporal.
+- Colar ativos diretamente no projeto.
+- Vista Profundidade 0 / vista absoluta no Modo Ativos, separada da profundidade/parallax básico já implementado.
+- Formatos e, na sequência de prioridade indicada, grupos de frames; este registro não autoriza implementação.
 
 ## Ideias ainda não autorizadas
 

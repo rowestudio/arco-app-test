@@ -1,5 +1,15 @@
 # DECISIONS
 
+## DEC-2026-08-09-01 — Hierarquia neutra e densidade dos bottom sheets contextuais
+
+- **Data:** 2026-08-09.
+- **Assunto:** superfícies e controles contextuais de Frames e Ativos.
+- **Classificação:** produto / UI / QA visual.
+- **Decisão:** manter o fundo principal no neutro mais escuro; usar no bottom sheet um neutro discretamente mais claro; usar nos pills um neutro aproximadamente 10–20% mais claro que a superfície; prolongar a superfície aberta até a borda inferior/safe-area; e compartilhar entre Frames e Ativos a mesma geometria contextual compacta.
+- **Preservação:** “cor da interface” neste sistema significa somente superfícies neutras e não autoriza substituir ciano de Frames, roxo de Ativos ou outros acentos funcionais.
+- **Consequência:** divergência geométrica entre modos, faixa escura sob painel aberto ou mudança colateral dos acentos bloqueia aprovação.
+- **Status:** regra aplicada tecnicamente na `v8z4b32E8U`; aprovação visual publicada em iPhone/Safari real permanece pendente.
+
 ## DEC-2026-08-08-02 — Registrar texto, presença temporal e comportamento de ativos como proposta futura incremental
 
 - **Data:** 2026-08-08.

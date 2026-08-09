@@ -319,3 +319,12 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: `tests/smoke/app.spec.mjs`, fingerprints protegidos do Diagnóstico e inspeção do checkpoint real. Existência/tamanho de payload ou conclusão do load, sem igualdade de fingerprint, não é evidência suficiente.
 - Ambiente: WebKit automatizado e iPhone/Safari real com projeto grande multiasset obrigatório para aprovação final.
 - Automatizável: sim para round-trips e invariantes; validação publicada real da E8S aprovada por Roberto em 2026-08-08.
+
+## TC-036 — Densidade e continuidade dos bottom sheets contextuais
+
+- Pré-condição: projeto com Frame e asset selecionáveis; viewport 390 × 797.
+- Passos: abrir Escala e Rotação em Frames e Ativos; medir steps, Reset e distância entre slider e linha de controles; verificar overflow; comparar o background do painel com a região até a borda inferior; fechar e reabrir cada painel.
+- Resultado esperado: todos os controles compartilham altura máxima de 28 px, padding, tipografia, raio e alinhamento; a distância slider→controles é idêntica com tolerância subpixel; não há overflow; painel e rodapé usam a mesma superfície; Frames preserva ciano `#04fff2`, Ativos preserva roxo `#8b3fff`; abertura, fechamento, `−5`/`+5` e Reset continuam funcionais.
+- Evidência: retângulos e estilos computados, screenshot WebKit complementar e teste publicado em iPhone/Safari real.
+- Ambiente: WebKit automatizado em 390 × 797 e iPhone/Safari real.
+- Automatizável: sim, exceto aprovação visual final e percepção da safe-area no aparelho real.

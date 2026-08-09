@@ -507,7 +507,7 @@ test('intenção E8H clean mantém launcher sem pergunta E8I', async ({ page }) 
   await expect.poll(() => page.evaluate(() => startupRecoveryBypassReason)).toBe('explicit-reload-clean');
 });
 
-test('E8T mantém paridade geométrica entre controles contextuais de Frames e Ativos', async ({ page }, testInfo) => {
+test('E8U compacta controles e mantém paridade e superfície contextual contínua', async ({ page }, testInfo) => {
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
@@ -517,6 +517,7 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
     const step = document.querySelector(stepSelector);
     const reset = document.querySelector(resetSelector);
     const row = step?.parentElement;
+    const slider = row?.previousElementSibling?.querySelector('input[type="range"]');
     if (!step || !reset || !row) throw new Error('controles contextuais não encontrados');
     const stepRect = step.getBoundingClientRect();
     const resetRect = reset.getBoundingClientRect();
@@ -543,6 +544,7 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
         fontSize: resetStyle.fontSize, borderRadius: resetStyle.borderRadius,
         boxSizing: resetStyle.boxSizing },
       gap: getComputedStyle(row).gap,
+      sliderToControlsGap: slider ? stepRect.top - slider.getBoundingClientRect().bottom : null,
       relativeTop: stepRect.top - row.getBoundingClientRect().top,
       resetRelativeTop: resetRect.top - row.getBoundingClientRect().top,
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -551,6 +553,11 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
 
   await page.evaluate(() => { setEditorMode('camera', 'webkit-e8t-frame'); openCustBar(); switchCustTab('scale'); });
   const frameScale = await measureControls(page, '#custTabScale .chip:nth-child(2)', '#custTabScale .chip:last-child');
+  const frameSurface = await page.evaluate(() => ({
+    accent: getComputedStyle(document.body).getPropertyValue('--accent').trim(),
+    sheet: getComputedStyle(document.getElementById('lowerContextSlot')).backgroundColor,
+    footer: getComputedStyle(document.getElementById('midBar')).backgroundColor,
+  }));
   await page.evaluate(() => switchCustTab('rot'));
   const frameRotation = await measureControls(page, '#custTabRot .chip:nth-child(2)', '#custTabRot .chip:last-child');
 
@@ -562,11 +569,16 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
     openAssetContextPanel('scale');
   });
   const assetScale = await measureControls(page, '#assetContextScalePlus', '#assetContextReset');
+  const assetSurface = await page.evaluate(() => ({
+    accent: getComputedStyle(document.body).getPropertyValue('--accent').trim(),
+    sheet: getComputedStyle(document.getElementById('assetContextPanel')).backgroundColor,
+    footer: getComputedStyle(document.getElementById('midBar')).backgroundColor,
+  }));
   await page.evaluate(() => openAssetContextPanel('rotation'));
   const assetRotation = await measureControls(page, '#assetContextRotationPlus', '#assetContextReset');
 
   await testInfo.attach('asset-frame-control-metrics.json', {
-    body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation }, null, 2)),
+    body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation, frameSurface, assetSurface }, null, 2)),
     contentType: 'application/json',
   });
 
@@ -591,6 +603,9 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
     expect(frameMetrics.step.alignItems).toBe(assetMetrics.step.alignItems);
     expect(frameMetrics.step.marginBlock).toBe(assetMetrics.step.marginBlock);
     expect(frameMetrics.gap).toBe(assetMetrics.gap);
+    expect(Math.abs(frameMetrics.sliderToControlsGap - assetMetrics.sliderToControlsGap)).toBeLessThan(1);
+    expect(frameMetrics.step.height).toBeLessThanOrEqual(28);
+    expect(frameMetrics.step.paddingBlock).toBe('2px 2px');
     expect(Math.abs(frameMetrics.reset.height - assetMetrics.reset.height)).toBeLessThan(1);
     expect(Math.abs(frameMetrics.reset.width - assetMetrics.reset.width)).toBeLessThan(1);
     expect(frameMetrics.reset.minHeight).toBe(assetMetrics.reset.minHeight);
@@ -603,6 +618,11 @@ test('E8T mantém paridade geométrica entre controles contextuais de Frames e A
     expect(Math.abs(frameMetrics.resetRelativeTop - assetMetrics.resetRelativeTop)).toBeLessThan(1);
     expect(assetMetrics.overflow).toBeLessThanOrEqual(0);
   }
+
+  expect(frameSurface.sheet).toBe(frameSurface.footer);
+  expect(assetSurface.sheet).toBe(assetSurface.footer);
+  expect(frameSurface.accent).toBe('#04fff2');
+  expect(assetSurface.accent).toBe('#8b3fff');
 
   await page.screenshot({ path: testInfo.outputPath('asset-frame-control-parity.png'), fullPage: true });
 });
