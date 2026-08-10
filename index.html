@@ -2141,7 +2141,8 @@ body.has-multi-selection .lower-selection-actions{visibility:visible;pointer-eve
 .lower-selection-action:active{background:transparent;}
 .lower-selection-action svg{width:21px;height:21px;display:block;order:2;flex:0 0 auto;color:#fff;stroke:#fff;}
 .lower-selection-action span{order:1;color:#b2b2b2;white-space:nowrap;overflow:visible;text-overflow:clip;}
-.mid-bar.timeline-grid #lowerContextSlot{width:100%;height:100%;align-items:stretch;justify-content:flex-start;box-sizing:border-box;}
+.mid-bar.timeline-grid #lowerContextSheetShell{width:100%;height:100%;align-items:stretch;justify-content:flex-start;box-sizing:border-box;}
+.mid-bar.timeline-grid #lowerContextSlot{display:flex;width:100%;height:100%;align-items:stretch;justify-content:flex-start;box-sizing:border-box;}
 .mid-bar.timeline-grid .toolbar{display:flex;width:100%;height:100%;padding:0;border-top:0;background:transparent;align-items:stretch;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}
 .mid-bar.timeline-grid .toolbar.show{display:flex;}
 .mid-bar.timeline-grid .toolbar::-webkit-scrollbar{display:none;}
@@ -2171,8 +2172,10 @@ body.has-multi-selection .mid-bar.timeline-grid #toolbar{display:none;}
 body.cust-open .mid-bar.timeline-grid #toolbar,
 body.cust-open .mid-bar.timeline-grid #alignBar{display:none !important;}
 body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !important;}
+body.cust-expanded #lowerContextSheetShell,
+body.asset-context-panel-open #lowerContextSheetShell{grid-column:1 / 3;grid-row:3 / 5;width:auto;height:auto;align-items:flex-start;padding:0;z-index:14;background:var(--context-sheet-bg);border-radius:16px 16px 0 0;overflow:visible;}
 body.cust-expanded #lowerContextSlot,
-body.asset-context-panel-open #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;width:auto;height:auto;align-items:flex-start;padding:0;z-index:14;background:var(--context-sheet-bg);border-radius:16px 16px 0 0;overflow:visible;}
+body.asset-context-panel-open #lowerContextSlot{height:var(--lower-context-panel-h);align-items:flex-start;padding:0;background:transparent;overflow:visible;}
 body.cust-expanded .mid-bar.timeline-grid,
 body.asset-context-panel-open .mid-bar.timeline-grid{
   grid-template-rows:var(--lower-row-1) var(--lower-row-2) var(--lower-row-3) 1fr;
@@ -4078,7 +4081,8 @@ body.asset-context-panel-open #toolbar{display:none !important;}
       <svg viewBox="0 0 24 24"><use href="#i-director-chair"></use></svg><span>Edição</span>
     </button>
   </div>
-  <div class="lower-cell lower-main" id="lowerContextSlot">
+  <div class="lower-cell lower-main" id="lowerContextSheetShell">
+  <div id="lowerContextSlot">
 <!-- BOTTOM TOOLBAR -->
 <div class="toolbar show contextual-toolbar" id="toolbar">
   <div class="tb-item ctx-only ctx-common" onclick="openPanel('Duration')">
@@ -4126,6 +4130,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetBackward" onclick="isAssetsMode()?sendSelectedAssetBackward():null">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-send-backward"></use></svg><span class="tb-lbl">Trás</span>
+  </div>
   </div>
 </div>
 <div id="assetContextPanel" role="dialog" aria-modal="false" aria-label="Ajuste do ativo">
@@ -4316,6 +4321,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
 </div>
 
   </div>
+</div>
 </div>
 
 
@@ -37040,8 +37046,10 @@ function buildDiagnosticsText() {
   push('assetContextPanelPointerEvents', _panelStyle ? _panelStyle.pointerEvents : 'n/d');
   const _slot = document.getElementById('lowerContextSlot');
   const _slotRect = _slot && _slot.getBoundingClientRect();
+  const _contextSheetShell = document.getElementById('lowerContextSheetShell');
+  const _contextSheetShellRect = _contextSheetShell && _contextSheetShell.getBoundingClientRect();
   const _panelRect = _panel && _panel.getBoundingClientRect();
-  const _slotStyle = _slot ? getComputedStyle(_slot) : null;
+  const _slotStyle = _contextSheetShell ? getComputedStyle(_contextSheetShell) : null;
   const _midBar = document.getElementById('midBar');
   const _midBarStyle = _midBar ? getComputedStyle(_midBar) : null;
   const _bodyStyle = getComputedStyle(document.body);
@@ -37049,7 +37057,7 @@ function buildDiagnosticsText() {
   const _contextSheetOpen = document.body.classList.contains('cust-expanded') || document.body.classList.contains('asset-context-panel-open');
   const _contextSheetPanelRect = document.body.classList.contains('asset-context-panel-open') ? _panelRect : _custRect;
   const _contextSheetParentChain = [];
-  for (let _ancestor = _slot; _ancestor; _ancestor = _ancestor.parentElement) {
+  for (let _ancestor = _contextSheetShell; _ancestor; _ancestor = _ancestor.parentElement) {
     const _ancestorRect = _ancestor.getBoundingClientRect();
     _contextSheetParentChain.push({
       selector: _ancestor.id ? '#' + _ancestor.id : _ancestor === document.body ? 'body' : _ancestor === document.documentElement ? 'html' : _ancestor.tagName.toLowerCase() + (typeof _ancestor.className === 'string' && _ancestor.className.trim() ? '.' + _ancestor.className.trim().split(/\s+/).join('.') : ''),
@@ -37057,14 +37065,14 @@ function buildDiagnosticsText() {
       left: _ancestorRect.left, right: _ancestorRect.right, width: _ancestorRect.width
     });
   }
-  const _contextSheetBottomMatchesViewport = !!(_slotRect && Math.abs(_slotRect.bottom-window.innerHeight)<1);
-  const _contextSheetBottomDelta = _slotRect ? Math.abs(_slotRect.bottom-window.innerHeight) : NaN;
+  const _contextSheetBottomMatchesViewport = !!(_contextSheetShellRect && Math.abs(_contextSheetShellRect.bottom-window.innerHeight)<1);
+  const _contextSheetBottomDelta = _contextSheetShellRect ? Math.abs(_contextSheetShellRect.bottom-window.innerHeight) : NaN;
   const _contextSheetHasCanonicalSurface = !!(_slotStyle && _slotStyle.backgroundColor === 'rgb(67, 66, 71)');
   const _contextSheetUsesBodyBackgroundHack = !!(_contextSheetOpen && _bodyStyle.backgroundColor === 'rgb(67, 66, 71)');
   const _contextSheetUsesTimelineBackgroundHack = !!(_contextSheetOpen && _midBarStyle && _midBarStyle.backgroundColor === 'rgb(67, 66, 71)');
   const _contextSheetPanelUsesSlotWidth = !!(_slotRect && _contextSheetPanelRect && Math.abs(_slotRect.left-_contextSheetPanelRect.left)<1 && Math.abs(_slotRect.right-_contextSheetPanelRect.right)<1);
   const _contextSheetSafeAreaAppliedCount = _contextSheetOpen && _contextSheetBottomMatchesViewport && _midBarStyle && parseFloat(_midBarStyle.paddingBottom) === 0 ? 1 : 0;
-  const _contextSheetGridUnusedBlockSpace = _midBar && _slotRect ? Math.max(0, _midBar.getBoundingClientRect().bottom-_slotRect.bottom) : NaN;
+  const _contextSheetGridUnusedBlockSpace = _midBar && _contextSheetShellRect ? Math.max(0, _midBar.getBoundingClientRect().bottom-_contextSheetShellRect.bottom) : NaN;
   const _contextSheetUsesSingleSurface = !!(_contextSheetOpen && _contextSheetBottomMatchesViewport && _contextSheetHasCanonicalSurface && _contextSheetPanelUsesSlotWidth && !_contextSheetUsesBodyBackgroundHack && !_contextSheetUsesTimelineBackgroundHack);
   const _custStyle = _custBar ? getComputedStyle(_custBar) : null;
   const _assetActions = ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetDelete','tbAssetForward','tbAssetBackward']
@@ -37077,14 +37085,14 @@ function buildDiagnosticsText() {
   push('contextPanelResidualUiVisible', String(!!(document.body.classList.contains('asset-context-panel-open') && _assetActions.some(el => el.getClientRects().length > 0))));
   push('contextPanelBottomSheetSurfaceActive', String(!!(_panelStyle && _panelStyle.backgroundColor !== getComputedStyle(document.body).backgroundColor)));
   push('contextPanelTopCornersRounded', String(!!(_panelStyle && parseFloat(_panelStyle.borderTopLeftRadius)>0 && parseFloat(_panelStyle.borderTopRightRadius)>0)));
-  push('contextSheetShellSelector', '#lowerContextSlot');
+  push('contextSheetShellSelector', '#lowerContextSheetShell');
   push('contextSheetShellParentChain', JSON.stringify(_contextSheetParentChain));
-  push('contextSheetShellTop', _slotRect ? String(_slotRect.top) : 'n/d');
-  push('contextSheetShellBottom', _slotRect ? String(_slotRect.bottom) : 'n/d');
+  push('contextSheetShellTop', _contextSheetShellRect ? String(_contextSheetShellRect.top) : 'n/d');
+  push('contextSheetShellBottom', _contextSheetShellRect ? String(_contextSheetShellRect.bottom) : 'n/d');
   push('contextSheetViewportBottom', String(window.innerHeight));
   push('contextSheetBottomDelta', Number.isFinite(_contextSheetBottomDelta) ? String(_contextSheetBottomDelta) : 'n/d');
-  push('contextSheetShellHeight', _slotRect ? String(_slotRect.height) : 'n/d');
-  push('contextSheetShellWidth', _slotRect ? String(_slotRect.width) : 'n/d');
+  push('contextSheetShellHeight', _contextSheetShellRect ? String(_contextSheetShellRect.height) : 'n/d');
+  push('contextSheetShellWidth', _contextSheetShellRect ? String(_contextSheetShellRect.width) : 'n/d');
   push('contextSheetPanelWidth', _contextSheetPanelRect ? String(_contextSheetPanelRect.width) : 'n/d');
   push('contextSheetSlotWidth', _slotRect ? String(_slotRect.width) : 'n/d');
   push('contextSheetPanelUsesSlotWidth', String(_contextSheetPanelUsesSlotWidth));

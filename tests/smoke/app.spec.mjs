@@ -47,10 +47,12 @@ function captureFatalErrors(page) {
 async function sampleContextSheetToViewportBottom(page) {
   return page.evaluate(() => {
     const slot = document.getElementById('lowerContextSlot');
-    const rect = slot.getBoundingClientRect();
+    const shell = document.getElementById('lowerContextSheetShell');
+    const rect = shell.getBoundingClientRect();
+    const slotRect = slot.getBoundingClientRect();
     const controls = [...slot.querySelectorAll('.context-control-actions')].find((element) => element.getClientRects().length > 0);
     const controlsRect = controls?.getBoundingClientRect();
-    const shellStyle = getComputedStyle(slot);
+    const shellStyle = getComputedStyle(shell);
     const timelineStyle = getComputedStyle(document.getElementById('midBar'));
     const bodyStyle = getComputedStyle(document.body);
     const panel = document.body.classList.contains('asset-context-panel-open')
@@ -58,7 +60,7 @@ async function sampleContextSheetToViewportBottom(page) {
       : document.getElementById('custBar');
     const panelRect = panel.getBoundingClientRect();
     const parentChain = [];
-    for (let ancestor = slot; ancestor; ancestor = ancestor.parentElement) {
+    for (let ancestor = shell; ancestor; ancestor = ancestor.parentElement) {
       const ancestorRect = ancestor.getBoundingClientRect();
       parentChain.push({
         selector: ancestor.id ? `#${ancestor.id}` : ancestor === document.body ? 'body' : ancestor === document.documentElement ? 'html' : ancestor.tagName.toLowerCase(),
@@ -87,8 +89,9 @@ async function sampleContextSheetToViewportBottom(page) {
     return {
       rect: { top: rect.top, bottom: rect.bottom, height: rect.height, left: rect.left, right: rect.right, width: rect.width },
       viewportBottom: window.innerHeight,
-      shellSelector: '#lowerContextSlot',
+      shellSelector: '#lowerContextSheetShell',
       shellBackground: shellStyle.backgroundColor,
+      slotRect: { left: slotRect.left, right: slotRect.right, width: slotRect.width },
       panelRect: { left: panelRect.left, right: panelRect.right, width: panelRect.width },
       parentChain,
       bodyBackground: bodyStyle.backgroundColor,
@@ -790,11 +793,11 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   expect(assetSurface.sheet).toBe('rgb(67, 66, 71)');
   for (const surface of [frameViewportSurface, frameRotationViewportSurface, assetViewportSurface, assetRotationViewportSurface, assetDepthViewportSurface]) {
     expect(Math.abs(surface.rect.bottom - surface.viewportBottom)).toBeLessThan(1);
-    expect(surface.shellSelector).toBe('#lowerContextSlot');
+    expect(surface.shellSelector).toBe('#lowerContextSheetShell');
     expect(surface.shellBackground).toBe('rgb(67, 66, 71)');
-    expect(Math.abs(surface.panelRect.left - surface.rect.left)).toBeLessThan(1);
-    expect(Math.abs(surface.panelRect.right - surface.rect.right)).toBeLessThan(1);
-    expect(Math.abs(surface.panelRect.width - surface.rect.width)).toBeLessThan(1);
+    expect(Math.abs(surface.panelRect.left - surface.slotRect.left)).toBeLessThan(1);
+    expect(Math.abs(surface.panelRect.right - surface.slotRect.right)).toBeLessThan(1);
+    expect(Math.abs(surface.panelRect.width - surface.slotRect.width)).toBeLessThan(1);
     expect(surface.bodyBackground).toBe('rgb(60, 60, 60)');
     expect(surface.timelineBackground).toBe('rgb(60, 60, 60)');
     expect(surface.samples.map(({ color }) => color)).toEqual(Array(6).fill('rgb(67, 66, 71)'));
@@ -813,7 +816,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
 
   const contextSheetDiagnostics = await page.evaluate(() => buildDiagnosticsText());
   for (const expected of [
-    'contextSheetShellSelector: #lowerContextSlot',
+    'contextSheetShellSelector: #lowerContextSheetShell',
     'contextSheetPanelUsesSlotWidth: true',
     'contextSheetShellBackground: rgb(67, 66, 71)',
     'contextSheetSafeAreaAppliedCount: 1',
