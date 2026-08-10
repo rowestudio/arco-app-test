@@ -53,6 +53,19 @@ async function sampleContextSheetToViewportBottom(page) {
     const shellStyle = getComputedStyle(slot);
     const timelineStyle = getComputedStyle(document.getElementById('midBar'));
     const bodyStyle = getComputedStyle(document.body);
+    const panel = document.body.classList.contains('asset-context-panel-open')
+      ? document.getElementById('assetContextPanel')
+      : document.getElementById('custBar');
+    const panelRect = panel.getBoundingClientRect();
+    const parentChain = [];
+    for (let ancestor = slot; ancestor; ancestor = ancestor.parentElement) {
+      const ancestorRect = ancestor.getBoundingClientRect();
+      parentChain.push({
+        selector: ancestor.id ? `#${ancestor.id}` : ancestor === document.body ? 'body' : ancestor === document.documentElement ? 'html' : ancestor.tagName.toLowerCase(),
+        top: ancestorRect.top, bottom: ancestorRect.bottom, height: ancestorRect.height,
+        left: ancestorRect.left, right: ancestorRect.right, width: ancestorRect.width,
+      });
+    }
     const x = Math.round(rect.left + rect.width / 2);
     const resolveBackground = (element) => {
       let current = element;
@@ -72,10 +85,12 @@ async function sampleContextSheetToViewportBottom(page) {
       ['viewport-edge', x, window.innerHeight - 2],
     ];
     return {
-      rect: { top: rect.top, bottom: rect.bottom, height: rect.height },
+      rect: { top: rect.top, bottom: rect.bottom, height: rect.height, left: rect.left, right: rect.right, width: rect.width },
       viewportBottom: window.innerHeight,
       shellSelector: '#lowerContextSlot',
       shellBackground: shellStyle.backgroundColor,
+      panelRect: { left: panelRect.left, right: panelRect.right, width: panelRect.width },
+      parentChain,
       bodyBackground: bodyStyle.backgroundColor,
       timelineBackground: timelineStyle.backgroundColor,
       samples: points.map(([point, sampleX, y]) => {
@@ -773,6 +788,9 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
     expect(Math.abs(surface.rect.bottom - surface.viewportBottom)).toBeLessThan(1);
     expect(surface.shellSelector).toBe('#lowerContextSlot');
     expect(surface.shellBackground).toBe('rgb(67, 66, 71)');
+    expect(Math.abs(surface.panelRect.left - surface.rect.left)).toBeLessThan(1);
+    expect(Math.abs(surface.panelRect.right - surface.rect.right)).toBeLessThan(1);
+    expect(Math.abs(surface.panelRect.width - surface.rect.width)).toBeLessThan(1);
     expect(surface.bodyBackground).toBe('rgb(60, 60, 60)');
     expect(surface.timelineBackground).toBe('rgb(60, 60, 60)');
     expect(surface.samples.map(({ color }) => color)).toEqual(Array(6).fill('rgb(67, 66, 71)'));
@@ -792,8 +810,12 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   const contextSheetDiagnostics = await page.evaluate(() => buildDiagnosticsText());
   for (const expected of [
     'contextSheetShellSelector: #lowerContextSlot',
+    'contextSheetPanelUsesSlotWidth: true',
     'contextSheetShellBackground: rgb(67, 66, 71)',
+    'contextSheetSafeAreaAppliedCount: 1',
     'contextSheetUsesSingleSurface: true',
+    'contextSheetUsesBodyHack: false',
+    'contextSheetUsesTimelineHack: false',
     'contextSheetUsesBodyBackgroundHack: false',
     'contextSheetUsesTimelineBackgroundHack: false',
     'contextSheetSafeAreaIntegrated: true',

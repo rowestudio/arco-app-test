@@ -2175,12 +2175,13 @@ body.cust-expanded #lowerContextSlot,
 body.asset-context-panel-open #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;align-items:flex-start;padding:0;z-index:14;background:var(--context-sheet-bg);border-radius:16px 16px 0 0;overflow:visible;}
 body.cust-expanded .mid-bar.timeline-grid,
 body.asset-context-panel-open .mid-bar.timeline-grid{
-  grid-template-rows:var(--lower-row-1) var(--lower-row-2) var(--lower-row-3) minmax(var(--lower-row-4),1fr);
+  grid-template-rows:var(--lower-row-1) var(--lower-row-2) var(--lower-row-3) minmax(var(--lower-row-4),auto);
+  align-content:stretch;
   padding-bottom:0;
 }
 body.cust-expanded .mid-bar.timeline-grid #custBar{height:var(--lower-context-panel-h) !important;max-height:var(--lower-context-panel-h) !important;background:transparent !important;border-radius:16px 16px 0 0;pointer-events:auto;}
 body.cust-expanded .mid-bar.timeline-grid #custBarContent{height:100%;min-height:100%;padding:8px 8px 6px 6px !important;box-sizing:border-box;overflow-x:auto !important;overflow-y:visible !important;}
-body.asset-context-panel-open #assetContextPanel{flex:0 0 auto;height:var(--lower-context-panel-h);background:transparent;}
+body.asset-context-panel-open #assetContextPanel{flex:0 0 auto;width:100%;height:var(--lower-context-panel-h);background:transparent;}
 body.cust-expanded #lowerFrameCount,
 body.cust-expanded .lower-active-state,
 body.cust-expanded .lower-selection-actions,
@@ -37045,12 +37046,26 @@ function buildDiagnosticsText() {
   const _midBar = document.getElementById('midBar');
   const _midBarStyle = _midBar ? getComputedStyle(_midBar) : null;
   const _bodyStyle = getComputedStyle(document.body);
+  const _custRect = _custBar && _custBar.getBoundingClientRect();
   const _contextSheetOpen = document.body.classList.contains('cust-expanded') || document.body.classList.contains('asset-context-panel-open');
+  const _contextSheetPanelRect = document.body.classList.contains('asset-context-panel-open') ? _panelRect : _custRect;
+  const _contextSheetParentChain = [];
+  for (let _ancestor = _slot; _ancestor; _ancestor = _ancestor.parentElement) {
+    const _ancestorRect = _ancestor.getBoundingClientRect();
+    _contextSheetParentChain.push({
+      selector: _ancestor.id ? '#' + _ancestor.id : _ancestor === document.body ? 'body' : _ancestor === document.documentElement ? 'html' : _ancestor.tagName.toLowerCase() + (typeof _ancestor.className === 'string' && _ancestor.className.trim() ? '.' + _ancestor.className.trim().split(/\s+/).join('.') : ''),
+      top: _ancestorRect.top, bottom: _ancestorRect.bottom, height: _ancestorRect.height,
+      left: _ancestorRect.left, right: _ancestorRect.right, width: _ancestorRect.width
+    });
+  }
   const _contextSheetBottomMatchesViewport = !!(_slotRect && Math.abs(_slotRect.bottom-window.innerHeight)<1);
+  const _contextSheetBottomDelta = _slotRect ? Math.abs(_slotRect.bottom-window.innerHeight) : NaN;
   const _contextSheetHasCanonicalSurface = !!(_slotStyle && _slotStyle.backgroundColor === 'rgb(67, 66, 71)');
   const _contextSheetUsesBodyBackgroundHack = !!(_contextSheetOpen && _bodyStyle.backgroundColor === 'rgb(67, 66, 71)');
   const _contextSheetUsesTimelineBackgroundHack = !!(_contextSheetOpen && _midBarStyle && _midBarStyle.backgroundColor === 'rgb(67, 66, 71)');
-  const _contextSheetUsesSingleSurface = !!(_contextSheetOpen && _contextSheetBottomMatchesViewport && _contextSheetHasCanonicalSurface && !_contextSheetUsesBodyBackgroundHack && !_contextSheetUsesTimelineBackgroundHack);
+  const _contextSheetPanelUsesSlotWidth = !!(_slotRect && _contextSheetPanelRect && Math.abs(_slotRect.left-_contextSheetPanelRect.left)<1 && Math.abs(_slotRect.right-_contextSheetPanelRect.right)<1);
+  const _contextSheetSafeAreaAppliedCount = _contextSheetOpen && _contextSheetBottomMatchesViewport && _midBarStyle && parseFloat(_midBarStyle.paddingBottom) === 0 ? 1 : 0;
+  const _contextSheetUsesSingleSurface = !!(_contextSheetOpen && _contextSheetBottomMatchesViewport && _contextSheetHasCanonicalSurface && _contextSheetPanelUsesSlotWidth && !_contextSheetUsesBodyBackgroundHack && !_contextSheetUsesTimelineBackgroundHack);
   const _custStyle = _custBar ? getComputedStyle(_custBar) : null;
   const _assetActions = ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetDelete','tbAssetForward','tbAssetBackward']
     .map(id => document.getElementById(id)).filter(Boolean);
@@ -37063,11 +37078,21 @@ function buildDiagnosticsText() {
   push('contextPanelBottomSheetSurfaceActive', String(!!(_panelStyle && _panelStyle.backgroundColor !== getComputedStyle(document.body).backgroundColor)));
   push('contextPanelTopCornersRounded', String(!!(_panelStyle && parseFloat(_panelStyle.borderTopLeftRadius)>0 && parseFloat(_panelStyle.borderTopRightRadius)>0)));
   push('contextSheetShellSelector', '#lowerContextSlot');
+  push('contextSheetShellParentChain', JSON.stringify(_contextSheetParentChain));
   push('contextSheetShellTop', _slotRect ? String(_slotRect.top) : 'n/d');
   push('contextSheetShellBottom', _slotRect ? String(_slotRect.bottom) : 'n/d');
+  push('contextSheetViewportBottom', String(window.innerHeight));
+  push('contextSheetBottomDelta', Number.isFinite(_contextSheetBottomDelta) ? String(_contextSheetBottomDelta) : 'n/d');
   push('contextSheetShellHeight', _slotRect ? String(_slotRect.height) : 'n/d');
+  push('contextSheetShellWidth', _slotRect ? String(_slotRect.width) : 'n/d');
+  push('contextSheetPanelWidth', _contextSheetPanelRect ? String(_contextSheetPanelRect.width) : 'n/d');
+  push('contextSheetSlotWidth', _slotRect ? String(_slotRect.width) : 'n/d');
+  push('contextSheetPanelUsesSlotWidth', String(_contextSheetPanelUsesSlotWidth));
   push('contextSheetShellBackground', _slotStyle ? _slotStyle.backgroundColor : 'n/d');
+  push('contextSheetSafeAreaAppliedCount', String(_contextSheetSafeAreaAppliedCount));
   push('contextSheetUsesSingleSurface', String(_contextSheetUsesSingleSurface));
+  push('contextSheetUsesBodyHack', String(_contextSheetUsesBodyBackgroundHack));
+  push('contextSheetUsesTimelineHack', String(_contextSheetUsesTimelineBackgroundHack));
   push('contextSheetUsesBodyBackgroundHack', String(_contextSheetUsesBodyBackgroundHack));
   push('contextSheetUsesTimelineBackgroundHack', String(_contextSheetUsesTimelineBackgroundHack));
   push('contextSheetSafeAreaIntegrated', String(_contextSheetOpen && _contextSheetBottomMatchesViewport));
