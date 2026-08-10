@@ -14,7 +14,7 @@ Estados usados neste documento:
 - [Em evolução] O Arco é um mundo visual navegável por câmera, não apenas uma foto com zoom.
 - [Em evolução] Stage, trilho/curvas, frames, câmera, tempos e export devem formar o mesmo sistema.
 - [Futuro] Edição direta de curva no Stage, com alças maiores, suavização de ângulos e adição de frame sobre curva existente.
-- [Futuro] Ferramenta de caminho/caneta para criar frames a partir de toques.
+- [Futuro] Ferramenta de desenho contínuo de trajetória com dedo/pointer no Stage, acessível futuramente pelo menu associado ao botão `+` de Frames: a partir do frame ativo, o gesto será interpretado automaticamente e convertido na menor quantidade razoável de Frames comuns e editáveis, inseridos sequencialmente depois dele, sem criar um Frame por amostra nem expor controles técnicos de suavização. UI, nome e parâmetros matemáticos permanecem a confirmar em estudo/protótipo próprio.
 - [Futuro] Ajustes por frame de posição, escala, rotação, foco/zoom e duração.
 - [Futuro] Randomização controlada de posição, escala, rotação e duração, para seleção ou todos os frames.
 - [Futuro] Distribuição proporcional horizontal/vertical de frames.
@@ -35,7 +35,10 @@ Estados usados neste documento:
 - [Em evolução] Múltiplos ativos, seleção direta, troca de imagem, ordem e preservação de composição.
 - [Futuro] Inserir imagem e substituir imagem devem ser ações distintas.
 - [Futuro] PNG com alpha, WebP, SVG, texto, stickers e elementos gráficos.
-- [Futuro] GIFs animados e Lottie como ativos.
+- [Futuro] Movimento próprio por ativo no mesmo tempo global do projeto, independente dos Frames da câmera e de `depth`/parallax: Motion Path editável e transformações progressivas de posição X/Y, escala, rotação e opacidade, sem vincular automaticamente keyframes do ativo aos Frames da câmera.
+- [Futuro] Efeitos temporais compatíveis por ativo, incluindo possibilidades incrementais de entrada/aparecimento, saída/desaparecimento, fade e blur, sujeitos a aprovação e tarefas futuras independentes.
+- [Futuro] Animated Assets — ativos cuja fonte visual possui animação interna própria — incluindo GIFs animados e Lottie como possibilidades futuras/pesquisa. Esse suporte é subordinado ao sistema mais amplo de animação por ativo, não o bloqueia nem determina sua arquitetura, e poderá permanecer em pesquisa se o custo ou a complexidade em iPhone/Safari forem excessivos.
+- [Regra] Movimento próprio do ativo, câmera e profundidade permanecem componentes conceitualmente independentes: um ativo pode se mover enquanto a câmera percorre Frames, o parallax continua atuando e outros ativos mantêm estados próprios; todos convergem apenas na composição do renderer canônico, preservando Stage = Preview = Export.
 - [Futuro] Texto editável: títulos, legendas, logos, overlays e quadros com largura ajustável, quebra automática e fundo/transparência.
 - [Futuro] Crop, máscaras/molduras, bordas e controles independentes por ativo.
 - [Futuro] Colar ativos diretamente no projeto.
@@ -43,6 +46,7 @@ Estados usados neste documento:
 - [Futuro] Visibilidade temporal: ativo sempre visível, por intervalo de frames ou por tempo.
 - [Futuro] Efeitos e comportamentos por ativo, começando por sombra configurável e presets simples como fade, pulsar, flutuar, girar lento e surgir com escala.
 - [Pesquisa] Detalhamento incremental de quadros de texto, presença temporal por frames e comportamentos matemáticos em `docs/PROPOSAL_TEXT_BOXES_AND_ASSET_TIMING.md`.
+- [Pesquisa] Proposta de desenho livre de trajetória e movimento independente por ativo em `docs/PROPOSAL_FREEHAND_PATH_AND_ASSET_MOTION.md`; o registro não autoriza implementação.
 
 ## 4. Layers
 
