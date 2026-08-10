@@ -821,6 +821,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
     'contextSheetShellBackground: rgb(67, 66, 71)',
     'contextSheetSafeAreaAppliedCount: 1',
     'contextSheetGridUnusedBlockSpace: 0',
+    'contextSheetImplicitRowCount: 0',
     'contextSheetUsesSingleSurface: true',
     'contextSheetUsesBodyHack: false',
     'contextSheetUsesTimelineHack: false',
@@ -856,6 +857,13 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
     refreshAssetStageVisualGeometry('webkit-e8o-start');
   });
 
+  const normalLowerLayout = await page.evaluate(() => {
+    const durationCell = document.getElementById('lowerGlobalDurationCell');
+    const rect = durationCell.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, width: rect.width, display: getComputedStyle(durationCell).display };
+  });
+  expect(normalLowerLayout.display).toBe('flex');
+  expect(normalLowerLayout.width).toBeGreaterThan(0);
   await page.locator('#tbAssetScale').click();
   await expect(page.locator('#assetContextPanel')).toBeVisible();
   await expect(page.locator('#assetContextPanel .asset-context-title')).toHaveCount(0);
@@ -864,27 +872,35 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   await expect(page.locator('#assetContextScalePlus')).toBeVisible();
   await expect(page.locator('#assetContextRotationMinus')).toBeHidden();
   await expect(page.locator('#assetContextRotationPlus')).toBeHidden();
-  const openPanelLayout = await page.evaluate(() => {
+  const openPanelLayout = await page.evaluate((normalDurationRect) => {
     const panel = document.getElementById('assetContextPanel').getBoundingClientRect();
     const slot = document.getElementById('lowerContextSlot').getBoundingClientRect();
     const normalToolbar = getComputedStyle(document.getElementById('toolbar'));
     const backButton = getComputedStyle(document.querySelector('#assetContextPanel .asset-context-back'));
-    const lowerLeftControl = document.querySelector('.lower-global-duration').getBoundingClientRect();
+    const durationCellDisplay = getComputedStyle(document.getElementById('lowerGlobalDurationCell')).display;
+    const activeStateCellDisplay = getComputedStyle(document.getElementById('lowerActiveStateCell')).display;
+    const frameCountDisplay = getComputedStyle(document.getElementById('lowerFrameCount')).display;
     return {
       bodyState: document.body.classList.contains('asset-context-panel-open'),
       toolbarDisplay: normalToolbar.display,
       backButtonBackground: backButton.backgroundColor,
       backButtonBorderStyle: backButton.borderStyle,
-      slotSpansBothColumns: slot.left <= lowerLeftControl.left + 1 && slot.right >= lowerLeftControl.right - 1,
+      durationCellDisplay,
+      activeStateCellDisplay,
+      frameCountDisplay,
+      slotSpansBothColumns: slot.left <= normalDurationRect.left + 1 && slot.right >= normalDurationRect.right - 1,
       panelUsesSlotWidth: Math.abs(panel.left - slot.left) <= 1 && Math.abs(panel.right - slot.right) <= 1,
-      panelCoversNormalLeftControl: panel.left <= lowerLeftControl.left + 1 && panel.right >= lowerLeftControl.right - 1
+      panelCoversNormalLeftControl: panel.left <= normalDurationRect.left + 1 && panel.right >= normalDurationRect.right - 1
     };
-  });
+  }, normalLowerLayout);
   expect(openPanelLayout).toEqual({
     bodyState: true,
     toolbarDisplay: 'none',
     backButtonBackground: 'rgba(0, 0, 0, 0)',
     backButtonBorderStyle: 'none',
+    durationCellDisplay: 'none',
+    activeStateCellDisplay: 'none',
+    frameCountDisplay: 'none',
     slotSpansBothColumns: true,
     panelUsesSlotWidth: true,
     panelCoversNormalLeftControl: true
@@ -1082,8 +1098,12 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   await expect.poll(() => page.evaluate(() => ({
     bodyState: document.body.classList.contains('asset-context-panel-open'),
     panelPointerEvents: getComputedStyle(document.getElementById('assetContextPanel')).pointerEvents,
-    toolbarDisplay: getComputedStyle(document.getElementById('toolbar')).display
-  }))).toEqual({ bodyState: false, panelPointerEvents: 'none', toolbarDisplay: 'flex' });
+    toolbarDisplay: getComputedStyle(document.getElementById('toolbar')).display,
+    durationCellDisplay: getComputedStyle(document.getElementById('lowerGlobalDurationCell')).display,
+    activeStateCellDisplay: getComputedStyle(document.getElementById('lowerActiveStateCell')).display,
+    frameCountDisplay: getComputedStyle(document.getElementById('lowerFrameCount')).display,
+    durationCellHasGeometry: document.getElementById('lowerGlobalDurationCell').getBoundingClientRect().width > 0
+  }))).toEqual({ bodyState: false, panelPointerEvents: 'none', toolbarDisplay: 'flex', durationCellDisplay: 'flex', activeStateCellDisplay: 'flex', frameCountDisplay: 'flex', durationCellHasGeometry: true });
   await page.locator('#tbAssetRotate').click();
   await expect(page.locator('#assetContextSlider')).toHaveAttribute('aria-label', 'Rotação do ativo');
   await expect.poll(() => page.evaluate(() => assetContextPanelKind)).toBe('rotation');
