@@ -695,6 +695,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
     scale: getComputedStyle(document.getElementById('custTabScale')).display,
     rotation: getComputedStyle(document.getElementById('custTabRot')).display,
   }));
+  const frameRotationViewportSurface = await sampleContextSheetToViewportBottom(page);
 
   await page.evaluate(() => {
     closeCustBar();
@@ -712,6 +713,9 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   const assetViewportSurface = await sampleContextSheetToViewportBottom(page);
   await page.evaluate(() => openAssetContextPanel('rotation'));
   const assetRotation = await measureControls(page, '#assetContextRotationPlus', '#assetContextReset');
+  const assetRotationViewportSurface = await sampleContextSheetToViewportBottom(page);
+  await page.evaluate(() => openAssetContextPanel('depth'));
+  const assetDepthViewportSurface = await sampleContextSheetToViewportBottom(page);
 
   const logContextMetrics = (label, metrics) => {
     console.log(`${label}:\n${JSON.stringify({
@@ -736,7 +740,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   expect(frameRotationTabDisplays).toEqual({ scale: 'none', rotation: 'flex' });
 
   await testInfo.attach('asset-frame-control-metrics.json', {
-    body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation, frameSurface, assetSurface, frameViewportSurface, assetViewportSurface, hitArea }, null, 2)),
+    body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation, frameSurface, assetSurface, frameViewportSurface, frameRotationViewportSurface, assetViewportSurface, assetRotationViewportSurface, assetDepthViewportSurface, hitArea }, null, 2)),
     contentType: 'application/json',
   });
 
@@ -784,7 +788,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
 
   expect(frameSurface.sheet).toBe('rgb(67, 66, 71)');
   expect(assetSurface.sheet).toBe('rgb(67, 66, 71)');
-  for (const surface of [frameViewportSurface, assetViewportSurface]) {
+  for (const surface of [frameViewportSurface, frameRotationViewportSurface, assetViewportSurface, assetRotationViewportSurface, assetDepthViewportSurface]) {
     expect(Math.abs(surface.rect.bottom - surface.viewportBottom)).toBeLessThan(1);
     expect(surface.shellSelector).toBe('#lowerContextSlot');
     expect(surface.shellBackground).toBe('rgb(67, 66, 71)');
@@ -813,6 +817,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
     'contextSheetPanelUsesSlotWidth: true',
     'contextSheetShellBackground: rgb(67, 66, 71)',
     'contextSheetSafeAreaAppliedCount: 1',
+    'contextSheetGridUnusedBlockSpace: 0',
     'contextSheetUsesSingleSurface: true',
     'contextSheetUsesBodyHack: false',
     'contextSheetUsesTimelineHack: false',
