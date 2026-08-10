@@ -2,6 +2,13 @@
 
 Última atualização documental: 2026-08-08.
 
+## Atualização 2026-08-10 — v8z4b32E8V em desenvolvimento
+
+- Roberto aprovou visualmente em iPhone/Safari real a geometria e a compactação da `v8z4b32E8U`, incluindo pills `−5`/`+5`, Reset, densidade, distância slider → controles e paridade Frames × Ativos.
+- Roberto reprovou visualmente na `v8z4b32E8U` as superfícies neutras e a interrupção da superfície do bottom sheet antes da borda inferior.
+- A `v8z4b32E8V` corrige exclusivamente essa continuidade no container contextual real e adota os valores canônicos: fundo principal `#3C3C3C`, superfície contextual `#434247` e controles neutros `#505054`. Esses tokens não autorizam mudanças nos acentos funcionais ciano/roxo.
+- Estado: correção em desenvolvimento no repositório de teste; a aprovação visual final permanece dependente de merge/publicação e validação de Roberto em iPhone/Safari real. Nenhuma promoção para produção está autorizada.
+
 ## Atualização 2026-08-09 — v8z4b32E8U em PR
 
 - Base confirmada: merge da PR #481 na `main` de teste, commit `53546d1`, versão `v8z4b32E8T`.
