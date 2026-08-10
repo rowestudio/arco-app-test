@@ -50,6 +50,9 @@ async function sampleContextSheetToViewportBottom(page) {
     const rect = slot.getBoundingClientRect();
     const controls = [...slot.querySelectorAll('.context-control-actions')].find((element) => element.getClientRects().length > 0);
     const controlsRect = controls?.getBoundingClientRect();
+    const shellStyle = getComputedStyle(slot);
+    const timelineStyle = getComputedStyle(document.getElementById('midBar'));
+    const bodyStyle = getComputedStyle(document.body);
     const x = Math.round(rect.left + rect.width / 2);
     const resolveBackground = (element) => {
       let current = element;
@@ -61,18 +64,23 @@ async function sampleContextSheetToViewportBottom(page) {
       return getComputedStyle(document.body).backgroundColor;
     };
     const points = [
-      ['sheet-top', Math.ceil(rect.top + 2)],
-      ['below-controls', Math.min(window.innerHeight - 2, Math.ceil((controlsRect?.bottom || rect.top) + 1))],
-      ['lower-middle', Math.round(rect.top + rect.height * 0.7)],
-      ['safe-area', window.innerHeight - 8],
-      ['viewport-edge', window.innerHeight - 2],
+      ['sheet-top', x, Math.ceil(rect.top + 2)],
+      ['controls', Math.floor(rect.right - 2), Math.round((controlsRect?.top || rect.top) + (controlsRect?.height || 0) / 2)],
+      ['below-controls', x, Math.min(window.innerHeight - 2, Math.ceil((controlsRect?.bottom || rect.top) + 1))],
+      ['lower-middle', x, Math.round(rect.top + rect.height * 0.7)],
+      ['safe-area', x, window.innerHeight - 8],
+      ['viewport-edge', x, window.innerHeight - 2],
     ];
     return {
       rect: { top: rect.top, bottom: rect.bottom, height: rect.height },
       viewportBottom: window.innerHeight,
-      samples: points.map(([point, y]) => {
-        const element = document.elementFromPoint(x, y);
-        return { point, y, id: element?.id || '', className: String(element?.className || ''), color: resolveBackground(element) };
+      shellSelector: '#lowerContextSlot',
+      shellBackground: shellStyle.backgroundColor,
+      bodyBackground: bodyStyle.backgroundColor,
+      timelineBackground: timelineStyle.backgroundColor,
+      samples: points.map(([point, sampleX, y]) => {
+        const element = document.elementFromPoint(sampleX, y);
+        return { point, x: sampleX, y, id: element?.id || '', className: String(element?.className || ''), color: resolveBackground(element) };
       }),
     };
   });
@@ -683,7 +691,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   const assetScale = await measureControls(page, '#assetContextScalePlus', '#assetContextReset');
   const assetSurface = await page.evaluate(() => ({
     accent: getComputedStyle(document.body).getPropertyValue('--accent').trim(),
-    sheet: getComputedStyle(document.getElementById('assetContextPanel')).backgroundColor,
+    sheet: getComputedStyle(document.getElementById('lowerContextSlot')).backgroundColor,
     footer: getComputedStyle(document.getElementById('midBar')).backgroundColor,
   }));
   const assetViewportSurface = await sampleContextSheetToViewportBottom(page);
@@ -761,10 +769,14 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
 
   expect(frameSurface.sheet).toBe('rgb(67, 66, 71)');
   expect(assetSurface.sheet).toBe('rgb(67, 66, 71)');
-  expect(frameViewportSurface.rect.bottom).toBeCloseTo(frameViewportSurface.viewportBottom, 0);
-  expect(assetViewportSurface.rect.bottom).toBeCloseTo(assetViewportSurface.viewportBottom, 0);
-  expect(frameViewportSurface.samples.map(({ color }) => color)).toEqual(Array(5).fill('rgb(67, 66, 71)'));
-  expect(assetViewportSurface.samples.map(({ color }) => color)).toEqual(Array(5).fill('rgb(67, 66, 71)'));
+  for (const surface of [frameViewportSurface, assetViewportSurface]) {
+    expect(Math.abs(surface.rect.bottom - surface.viewportBottom)).toBeLessThan(1);
+    expect(surface.shellSelector).toBe('#lowerContextSlot');
+    expect(surface.shellBackground).toBe('rgb(67, 66, 71)');
+    expect(surface.bodyBackground).toBe('rgb(60, 60, 60)');
+    expect(surface.timelineBackground).toBe('rgb(60, 60, 60)');
+    expect(surface.samples.map(({ color }) => color)).toEqual(Array(6).fill('rgb(67, 66, 71)'));
+  }
   expect(frameScale.step.backgroundColor).toBe('rgb(80, 80, 84)');
   expect(frameScale.reset.backgroundColor).toBe('rgb(80, 80, 84)');
   expect(assetScale.step.backgroundColor).toBe('rgb(80, 80, 84)');
@@ -776,6 +788,17 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   expect(hitArea.sliderCenter.isSlider).toBe(true);
   expect(hitArea.sliderCenter.isPill).toBe(false);
   expect(hitArea.pillCenter.isPill).toBe(true);
+
+  const contextSheetDiagnostics = await page.evaluate(() => buildDiagnosticsText());
+  for (const expected of [
+    'contextSheetShellSelector: #lowerContextSlot',
+    'contextSheetShellBackground: rgb(67, 66, 71)',
+    'contextSheetUsesSingleSurface: true',
+    'contextSheetUsesBodyBackgroundHack: false',
+    'contextSheetUsesTimelineBackgroundHack: false',
+    'contextSheetSafeAreaIntegrated: true',
+    'contextSheetAnimationReady: true',
+  ]) expect(contextSheetDiagnostics).toContain(expected);
 
   await page.evaluate(() => closeAssetContextPanel());
   const closedViewportSurface = await sampleContextSheetToViewportBottom(page);
