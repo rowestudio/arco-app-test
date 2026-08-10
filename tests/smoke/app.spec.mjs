@@ -688,7 +688,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   await page.evaluate(() => resetScale());
   const frameSurface = await page.evaluate(() => ({
     accent: getComputedStyle(document.body).getPropertyValue('--accent').trim(),
-    sheet: getComputedStyle(document.getElementById('lowerContextSlot')).backgroundColor,
+    sheet: getComputedStyle(document.getElementById('lowerContextSheetShell')).backgroundColor,
     footer: getComputedStyle(document.getElementById('midBar')).backgroundColor,
   }));
   const frameViewportSurface = await sampleContextSheetToViewportBottom(page);
@@ -710,7 +710,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   const assetScale = await measureControls(page, '#assetContextScalePlus', '#assetContextReset');
   const assetSurface = await page.evaluate(() => ({
     accent: getComputedStyle(document.body).getPropertyValue('--accent').trim(),
-    sheet: getComputedStyle(document.getElementById('lowerContextSlot')).backgroundColor,
+    sheet: getComputedStyle(document.getElementById('lowerContextSheetShell')).backgroundColor,
     footer: getComputedStyle(document.getElementById('midBar')).backgroundColor,
   }));
   const assetViewportSurface = await sampleContextSheetToViewportBottom(page);
