@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8V — base v8z4b32E8U. fix(ui): aplica os neutros canônicos e prolonga o container contextual real até a borda inferior/safe-area, preservando a geometria compacta. APP_VERSION = APP_VERSION_NAME = v8z4b32E8V. -->
 <!-- Arco Motion App — v8z4b32E8U — base v8z4b32E8T. fix(ui): compacta a primitiva compartilhada dos controles contextuais e mantém a superfície neutra contínua até a safe-area. APP_VERSION = APP_VERSION_NAME = v8z4b32E8U. -->
 <!-- Arco Motion App — v8z4b32E8T — base v8z4b32E8S. fix(ui): iguala as métricas dos steps e Reset contextuais de Ativos às métricas canônicas dos controles equivalentes de Frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E8T. -->
 <!-- Arco Motion App — v8z4b32E8R — base v8z4b32E8Q. fix(assets): restaura os passos aditivos −5%/+5% da Escala de Ativos pelo caminho canônico existente. APP_VERSION = APP_VERSION_NAME = v8z4b32E8R. -->
@@ -1101,12 +1102,12 @@
 <title>Arco Motion App</title>
 <style>
 :root {
-  --bg:#3c3c3b; --menu-bg:#3c3c3b; --surface:#3c3c3b; --surface2:#3c3c3b; --surface3:#545456;
+  --bg:#3c3c3c; --menu-bg:#3c3c3c; --surface:#3c3c3c; --surface2:#3c3c3c; --surface3:#545456;
   --border:#38383a; --border2:#545456;
   --text:#fff; --text2:#ebebf5; --text3:#aeaeb2;
   --accent:#04fff2; --red:#ff375f; --yellow:#ffd60a; --green:#30d158;
   --preview-ready-color:#04fff2;
-  --context-sheet-bg:var(--surface-filter); --context-control-bg:#505054;
+  --context-sheet-bg:#434247; --context-control-bg:#505054;
   --r:12px; --safe-bottom:env(safe-area-inset-bottom,0px);
   /* v8z4b29BW — tons dedicados a botões de ação e campos editáveis,
      levemente mais claros que o fundo do painel (--surface2/--bg, ambos
@@ -2140,7 +2141,8 @@ body.has-multi-selection .lower-selection-actions{visibility:visible;pointer-eve
 .lower-selection-action:active{background:transparent;}
 .lower-selection-action svg{width:21px;height:21px;display:block;order:2;flex:0 0 auto;color:#fff;stroke:#fff;}
 .lower-selection-action span{order:1;color:#b2b2b2;white-space:nowrap;overflow:visible;text-overflow:clip;}
-.mid-bar.timeline-grid #lowerContextSlot{width:100%;height:100%;align-items:stretch;justify-content:flex-start;box-sizing:border-box;}
+.mid-bar.timeline-grid #lowerContextSheetShell{align-self:stretch;align-items:stretch;justify-content:flex-start;box-sizing:border-box;}
+.mid-bar.timeline-grid #lowerContextSlot{display:flex;width:100%;height:100%;align-items:stretch;justify-content:flex-start;box-sizing:border-box;}
 .mid-bar.timeline-grid .toolbar{display:flex;width:100%;height:100%;padding:0;border-top:0;background:transparent;align-items:stretch;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}
 .mid-bar.timeline-grid .toolbar.show{display:flex;}
 .mid-bar.timeline-grid .toolbar::-webkit-scrollbar{display:none;}
@@ -2170,19 +2172,24 @@ body.has-multi-selection .mid-bar.timeline-grid #toolbar{display:none;}
 body.cust-open .mid-bar.timeline-grid #toolbar,
 body.cust-open .mid-bar.timeline-grid #alignBar{display:none !important;}
 body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !important;}
+body.cust-expanded #lowerContextSheetShell,
+body.asset-context-panel-open #lowerContextSheetShell{grid-column:1 / 3;grid-row:3 / 5;align-items:flex-start;padding:0;z-index:14;background:var(--context-sheet-bg);border-radius:16px 16px 0 0;overflow:visible;}
 body.cust-expanded #lowerContextSlot,
-body.asset-context-panel-open #lowerContextSlot{grid-column:1 / 3;grid-row:3 / 5;padding:0;z-index:14;background:var(--context-sheet-bg);border-radius:16px 16px 0 0;overflow:visible;}
+body.asset-context-panel-open #lowerContextSlot{height:var(--lower-context-panel-h);align-items:flex-start;padding:0;background:transparent;overflow:visible;}
 body.cust-expanded .mid-bar.timeline-grid,
-body.asset-context-panel-open .mid-bar.timeline-grid{background:var(--context-sheet-bg);}
-body.cust-expanded .mid-bar.timeline-grid #custBar{height:100% !important;max-height:100% !important;background:var(--context-sheet-bg) !important;border-radius:16px 16px 0 0;pointer-events:auto;}
+body.asset-context-panel-open .mid-bar.timeline-grid{
+  grid-template-rows:var(--lower-row-1) var(--lower-row-2) var(--lower-row-3) 1fr;
+  padding-bottom:0;
+}
+body.cust-expanded .mid-bar.timeline-grid #custBar{height:var(--lower-context-panel-h) !important;max-height:var(--lower-context-panel-h) !important;background:transparent !important;border-radius:16px 16px 0 0;pointer-events:auto;}
 body.cust-expanded .mid-bar.timeline-grid #custBarContent{height:100%;min-height:100%;padding:8px 8px 6px 6px !important;box-sizing:border-box;overflow-x:auto !important;overflow-y:visible !important;}
+body.asset-context-panel-open #assetContextPanel{flex:1 1 auto;height:var(--lower-context-panel-h);background:transparent;}
 body.cust-expanded #lowerFrameCount,
-body.cust-expanded .lower-active-state,
-body.cust-expanded .lower-selection-actions,
+body.cust-expanded #lowerActiveStateCell,
+body.cust-expanded #lowerGlobalDurationCell,
 body.asset-context-panel-open #lowerFrameCount,
-body.asset-context-panel-open .lower-active-state,
-body.asset-context-panel-open .lower-selection-actions,
-body.asset-context-panel-open .lower-global-duration,
+body.asset-context-panel-open #lowerActiveStateCell,
+body.asset-context-panel-open #lowerGlobalDurationCell{display:none;}
 body.align-submenu-open #lowerFrameCount,
 body.align-submenu-open .lower-active-state,
 body.align-submenu-open .lower-selection-actions{visibility:hidden;}
@@ -4066,14 +4073,15 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <div class="lower-cell lower-main lower-timeline-slot"><div class="mid-pills" id="pillsRow" data-role="timeline-pills" style="flex:1;overflow-x:auto;align-items:center;gap:7px;padding:0 8px;display:flex;"></div></div>
 
   <div class="lower-cell lower-left lower-frame-count" id="lowerFrameCount">0F</div>
-  <div class="lower-cell lower-main"><div class="lower-active-state"><span class="lower-active-label" id="lowerActiveLabel">F1</span><span class="lower-active-sub" id="lowerActiveSub"></span><span class="lower-selection-actions" id="lowerSelectionActions"><button type="button" class="lower-selection-action" onpointerdown="event.stopPropagation();" onclick="selectAllFramesForContext(event)" title="Selecionar todos" aria-label="Selecionar todos"><span>Selecionar todos</span><svg viewBox="0 0 24 24"><use href="#i-list-check"></use></svg></button></span></div></div>
+  <div class="lower-cell lower-main" id="lowerActiveStateCell"><div class="lower-active-state"><span class="lower-active-label" id="lowerActiveLabel">F1</span><span class="lower-active-sub" id="lowerActiveSub"></span><span class="lower-selection-actions" id="lowerSelectionActions"><button type="button" class="lower-selection-action" onpointerdown="event.stopPropagation();" onclick="selectAllFramesForContext(event)" title="Selecionar todos" aria-label="Selecionar todos"><span>Selecionar todos</span><svg viewBox="0 0 24 24"><use href="#i-list-check"></use></svg></button></span></div></div>
 
-  <div class="lower-cell lower-left">
+  <div class="lower-cell lower-left" id="lowerGlobalDurationCell">
     <button class="lower-global-duration" type="button" onclick="openPanel('Duration')" title="Duração geral" aria-label="Duração geral">
       <svg viewBox="0 0 24 24"><use href="#i-director-chair"></use></svg><span>Edição</span>
     </button>
   </div>
-  <div class="lower-cell lower-main" id="lowerContextSlot">
+  <div class="lower-cell lower-main" id="lowerContextSheetShell">
+  <div id="lowerContextSlot">
 <!-- BOTTOM TOOLBAR -->
 <div class="toolbar show contextual-toolbar" id="toolbar">
   <div class="tb-item ctx-only ctx-common" onclick="openPanel('Duration')">
@@ -4122,7 +4130,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <div class="tb-item ctx-only ctx-asset" id="tbAssetBackward" onclick="isAssetsMode()?sendSelectedAssetBackward():null">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-send-backward"></use></svg><span class="tb-lbl">Trás</span>
   </div>
-</div>
+  </div>
 <div id="assetContextPanel" role="dialog" aria-modal="false" aria-label="Ajuste do ativo">
   <button type="button" class="asset-context-back" onclick="closeAssetContextPanel()" aria-label="Voltar">
     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="15 18 9 12 15 6"/></svg>
@@ -4311,6 +4319,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
 </div>
 
   </div>
+</div>
 </div>
 
 
@@ -7288,8 +7297,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8U';
-const APP_VERSION_NAME = 'v8z4b32E8U';
+const APP_VERSION = 'v8z4b32E8V';
+const APP_VERSION_NAME = 'v8z4b32E8V';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let parallaxChangedCanonicalAssetGeometry = false;
 let parallaxChangedFrames = false;
@@ -37035,7 +37044,37 @@ function buildDiagnosticsText() {
   push('assetContextPanelPointerEvents', _panelStyle ? _panelStyle.pointerEvents : 'n/d');
   const _slot = document.getElementById('lowerContextSlot');
   const _slotRect = _slot && _slot.getBoundingClientRect();
+  const _contextSheetShell = document.getElementById('lowerContextSheetShell');
+  const _contextSheetShellRect = _contextSheetShell && _contextSheetShell.getBoundingClientRect();
   const _panelRect = _panel && _panel.getBoundingClientRect();
+  const _slotStyle = _contextSheetShell ? getComputedStyle(_contextSheetShell) : null;
+  const _midBar = document.getElementById('midBar');
+  const _midBarStyle = _midBar ? getComputedStyle(_midBar) : null;
+  const _bodyStyle = getComputedStyle(document.body);
+  const _custRect = _custBar && _custBar.getBoundingClientRect();
+  const _contextSheetOpen = document.body.classList.contains('cust-expanded') || document.body.classList.contains('asset-context-panel-open');
+  const _contextSheetPanelRect = document.body.classList.contains('asset-context-panel-open') ? _panelRect : _custRect;
+  const _contextSheetParentChain = [];
+  for (let _ancestor = _contextSheetShell; _ancestor; _ancestor = _ancestor.parentElement) {
+    const _ancestorRect = _ancestor.getBoundingClientRect();
+    _contextSheetParentChain.push({
+      selector: _ancestor.id ? '#' + _ancestor.id : _ancestor === document.body ? 'body' : _ancestor === document.documentElement ? 'html' : _ancestor.tagName.toLowerCase() + (typeof _ancestor.className === 'string' && _ancestor.className.trim() ? '.' + _ancestor.className.trim().split(/\s+/).join('.') : ''),
+      top: _ancestorRect.top, bottom: _ancestorRect.bottom, height: _ancestorRect.height,
+      left: _ancestorRect.left, right: _ancestorRect.right, width: _ancestorRect.width
+    });
+  }
+  const _contextSheetBottomMatchesViewport = !!(_contextSheetShellRect && Math.abs(_contextSheetShellRect.bottom-window.innerHeight)<1);
+  const _contextSheetBottomDelta = _contextSheetShellRect ? Math.abs(_contextSheetShellRect.bottom-window.innerHeight) : NaN;
+  const _contextSheetHasCanonicalSurface = !!(_slotStyle && _slotStyle.backgroundColor === 'rgb(67, 66, 71)');
+  const _contextSheetUsesBodyBackgroundHack = !!(_contextSheetOpen && _bodyStyle.backgroundColor === 'rgb(67, 66, 71)');
+  const _contextSheetUsesTimelineBackgroundHack = !!(_contextSheetOpen && _midBarStyle && _midBarStyle.backgroundColor === 'rgb(67, 66, 71)');
+  const _contextSheetPanelUsesSlotWidth = !!(_slotRect && _contextSheetPanelRect && Math.abs(_slotRect.left-_contextSheetPanelRect.left)<1 && Math.abs(_slotRect.right-_contextSheetPanelRect.right)<1);
+  const _contextSheetSafeAreaAppliedCount = _contextSheetOpen && _contextSheetBottomMatchesViewport && _midBarStyle && parseFloat(_midBarStyle.paddingBottom) === 0 ? 1 : 0;
+  const _contextSheetGridUnusedBlockSpace = _midBar && _contextSheetShellRect ? Math.max(0, _midBar.getBoundingClientRect().bottom-_contextSheetShellRect.bottom) : NaN;
+  const _contextSheetGridComputedRows = _midBarStyle ? _midBarStyle.gridTemplateRows.trim().split(/\s+/).filter(Boolean) : [];
+  const _contextSheetGridExplicitTrackCount = 4;
+  const _contextSheetImplicitRowCount = Math.max(0, _contextSheetGridComputedRows.length-_contextSheetGridExplicitTrackCount);
+  const _contextSheetUsesSingleSurface = !!(_contextSheetOpen && _contextSheetBottomMatchesViewport && _contextSheetHasCanonicalSurface && _contextSheetPanelUsesSlotWidth && !_contextSheetUsesBodyBackgroundHack && !_contextSheetUsesTimelineBackgroundHack);
   const _custStyle = _custBar ? getComputedStyle(_custBar) : null;
   const _assetActions = ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetDelete','tbAssetForward','tbAssetBackward']
     .map(id => document.getElementById(id)).filter(Boolean);
@@ -37047,6 +37086,33 @@ function buildDiagnosticsText() {
   push('contextPanelResidualUiVisible', String(!!(document.body.classList.contains('asset-context-panel-open') && _assetActions.some(el => el.getClientRects().length > 0))));
   push('contextPanelBottomSheetSurfaceActive', String(!!(_panelStyle && _panelStyle.backgroundColor !== getComputedStyle(document.body).backgroundColor)));
   push('contextPanelTopCornersRounded', String(!!(_panelStyle && parseFloat(_panelStyle.borderTopLeftRadius)>0 && parseFloat(_panelStyle.borderTopRightRadius)>0)));
+  push('contextSheetShellSelector', '#lowerContextSheetShell');
+  push('contextSheetShellParentChain', JSON.stringify(_contextSheetParentChain));
+  push('contextSheetShellTop', _contextSheetShellRect ? String(_contextSheetShellRect.top) : 'n/d');
+  push('contextSheetShellBottom', _contextSheetShellRect ? String(_contextSheetShellRect.bottom) : 'n/d');
+  push('contextSheetViewportBottom', String(window.innerHeight));
+  push('contextSheetBottomDelta', Number.isFinite(_contextSheetBottomDelta) ? String(_contextSheetBottomDelta) : 'n/d');
+  push('contextSheetShellHeight', _contextSheetShellRect ? String(_contextSheetShellRect.height) : 'n/d');
+  push('contextSheetShellWidth', _contextSheetShellRect ? String(_contextSheetShellRect.width) : 'n/d');
+  push('contextSheetPanelWidth', _contextSheetPanelRect ? String(_contextSheetPanelRect.width) : 'n/d');
+  push('contextSheetSlotWidth', _slotRect ? String(_slotRect.width) : 'n/d');
+  push('contextSheetPanelUsesSlotWidth', String(_contextSheetPanelUsesSlotWidth));
+  push('contextSheetShellBackground', _slotStyle ? _slotStyle.backgroundColor : 'n/d');
+  push('contextSheetSafeAreaAppliedCount', String(_contextSheetSafeAreaAppliedCount));
+  push('contextSheetGridTemplateRows', _midBarStyle ? _midBarStyle.gridTemplateRows : 'n/d');
+  push('contextSheetGridComputedRows', JSON.stringify(_contextSheetGridComputedRows));
+  push('contextSheetGridExplicitTrackCount', String(_contextSheetGridExplicitTrackCount));
+  push('contextSheetImplicitRowCount', String(_contextSheetImplicitRowCount));
+  push('contextSheetGridAlignContent', _midBarStyle ? _midBarStyle.alignContent : 'n/d');
+  push('contextSheetGridPaddingBottom', _midBarStyle ? _midBarStyle.paddingBottom : 'n/d');
+  push('contextSheetGridUnusedBlockSpace', Number.isFinite(_contextSheetGridUnusedBlockSpace) ? String(_contextSheetGridUnusedBlockSpace) : 'n/d');
+  push('contextSheetUsesSingleSurface', String(_contextSheetUsesSingleSurface));
+  push('contextSheetUsesBodyHack', String(_contextSheetUsesBodyBackgroundHack));
+  push('contextSheetUsesTimelineHack', String(_contextSheetUsesTimelineBackgroundHack));
+  push('contextSheetUsesBodyBackgroundHack', String(_contextSheetUsesBodyBackgroundHack));
+  push('contextSheetUsesTimelineBackgroundHack', String(_contextSheetUsesTimelineBackgroundHack));
+  push('contextSheetSafeAreaIntegrated', String(_contextSheetOpen && _contextSheetBottomMatchesViewport));
+  push('contextSheetAnimationReady', String(_contextSheetUsesSingleSurface));
   push('assetContextTitleVisible', String(!!document.querySelector('#assetContextPanel .asset-context-title')));
   push('assetActionsRequireSelection', String(_assetActions.every(el => _hasCanonicalAsset || el.classList.contains('asset-tool-disabled'))));
   push('assetActionEnabledWithoutSelectionDetected', String(!_hasCanonicalAsset && _assetActions.some(el => !el.classList.contains('asset-tool-disabled'))));

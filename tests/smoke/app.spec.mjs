@@ -44,6 +44,66 @@ function captureFatalErrors(page) {
   return errors;
 }
 
+async function sampleContextSheetToViewportBottom(page) {
+  return page.evaluate(() => {
+    const slot = document.getElementById('lowerContextSlot');
+    const shell = document.getElementById('lowerContextSheetShell');
+    const rect = shell.getBoundingClientRect();
+    const slotRect = slot.getBoundingClientRect();
+    const controls = [...slot.querySelectorAll('.context-control-actions')].find((element) => element.getClientRects().length > 0);
+    const controlsRect = controls?.getBoundingClientRect();
+    const shellStyle = getComputedStyle(shell);
+    const timelineStyle = getComputedStyle(document.getElementById('midBar'));
+    const bodyStyle = getComputedStyle(document.body);
+    const panel = document.body.classList.contains('asset-context-panel-open')
+      ? document.getElementById('assetContextPanel')
+      : document.getElementById('custBar');
+    const panelRect = panel.getBoundingClientRect();
+    const parentChain = [];
+    for (let ancestor = shell; ancestor; ancestor = ancestor.parentElement) {
+      const ancestorRect = ancestor.getBoundingClientRect();
+      parentChain.push({
+        selector: ancestor.id ? `#${ancestor.id}` : ancestor === document.body ? 'body' : ancestor === document.documentElement ? 'html' : ancestor.tagName.toLowerCase(),
+        top: ancestorRect.top, bottom: ancestorRect.bottom, height: ancestorRect.height,
+        left: ancestorRect.left, right: ancestorRect.right, width: ancestorRect.width,
+      });
+    }
+    const x = Math.round(rect.left + rect.width / 2);
+    const resolveBackground = (element) => {
+      let current = element;
+      while (current) {
+        const color = getComputedStyle(current).backgroundColor;
+        if (color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent') return color;
+        current = current.parentElement;
+      }
+      return getComputedStyle(document.body).backgroundColor;
+    };
+    const points = [
+      ['sheet-top', x, Math.ceil(rect.top + 2)],
+      ['controls', Math.floor(rect.right - 2), Math.round((controlsRect?.top || rect.top) + (controlsRect?.height || 0) / 2)],
+      ['below-controls', x, Math.min(window.innerHeight - 2, Math.ceil((controlsRect?.bottom || rect.top) + 1))],
+      ['lower-middle', x, Math.round(rect.top + rect.height * 0.7)],
+      ['safe-area', x, window.innerHeight - 8],
+      ['viewport-edge', x, window.innerHeight - 2],
+    ];
+    return {
+      rect: { top: rect.top, bottom: rect.bottom, height: rect.height, left: rect.left, right: rect.right, width: rect.width },
+      viewportBottom: window.innerHeight,
+      shellSelector: '#lowerContextSheetShell',
+      shellBackground: shellStyle.backgroundColor,
+      slotRect: { left: slotRect.left, right: slotRect.right, width: slotRect.width },
+      panelRect: { left: panelRect.left, right: panelRect.right, width: panelRect.width },
+      parentChain,
+      bodyBackground: bodyStyle.backgroundColor,
+      timelineBackground: timelineStyle.backgroundColor,
+      samples: points.map(([point, sampleX, y]) => {
+        const element = document.elementFromPoint(sampleX, y);
+        return { point, x: sampleX, y, id: element?.id || '', className: String(element?.className || ''), color: resolveBackground(element) };
+      }),
+    };
+  });
+}
+
 async function installControlledAsyncGate(page, functionName) {
   const gateKey = `__arcoE8iGate_${functionName}`;
   await page.evaluate(({ functionName, gateKey }) => {
@@ -559,7 +619,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
         borderBlock: `${stepStyle.borderTopWidth} ${stepStyle.borderBottomWidth}`,
         boxSizing: stepStyle.boxSizing, appearance: stepStyle.appearance,
         webkitAppearance: stepStyle.webkitAppearance, display: stepStyle.display,
-        alignItems: stepStyle.alignItems,
+        alignItems: stepStyle.alignItems, backgroundColor: stepStyle.backgroundColor,
         marginBlock: `${stepStyle.marginTop} ${stepStyle.marginBottom}`,
       },
       reset: { width: resetRect.width, height: resetRect.height, top: resetRect.top,
@@ -567,7 +627,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
         paddingInline: `${resetStyle.paddingLeft} ${resetStyle.paddingRight}`,
         paddingBlock: `${resetStyle.paddingTop} ${resetStyle.paddingBottom}`,
         fontSize: resetStyle.fontSize, borderRadius: resetStyle.borderRadius,
-        boxSizing: resetStyle.boxSizing },
+        boxSizing: resetStyle.boxSizing, backgroundColor: resetStyle.backgroundColor },
       gap: getComputedStyle(row).gap,
       sliderRect: {
         top: sliderRect.top, bottom: sliderRect.bottom, height: sliderRect.height,
@@ -628,15 +688,17 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   await page.evaluate(() => resetScale());
   const frameSurface = await page.evaluate(() => ({
     accent: getComputedStyle(document.body).getPropertyValue('--accent').trim(),
-    sheet: getComputedStyle(document.getElementById('lowerContextSlot')).backgroundColor,
+    sheet: getComputedStyle(document.getElementById('lowerContextSheetShell')).backgroundColor,
     footer: getComputedStyle(document.getElementById('midBar')).backgroundColor,
   }));
+  const frameViewportSurface = await sampleContextSheetToViewportBottom(page);
   await page.evaluate(() => switchCustTab('rot'));
   const frameRotation = await measureControls(page, '#custTabRot .chip:nth-child(2)', '#custTabRot .chip:last-child');
   const frameRotationTabDisplays = await page.evaluate(() => ({
     scale: getComputedStyle(document.getElementById('custTabScale')).display,
     rotation: getComputedStyle(document.getElementById('custTabRot')).display,
   }));
+  const frameRotationViewportSurface = await sampleContextSheetToViewportBottom(page);
 
   await page.evaluate(() => {
     closeCustBar();
@@ -648,11 +710,15 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   const assetScale = await measureControls(page, '#assetContextScalePlus', '#assetContextReset');
   const assetSurface = await page.evaluate(() => ({
     accent: getComputedStyle(document.body).getPropertyValue('--accent').trim(),
-    sheet: getComputedStyle(document.getElementById('assetContextPanel')).backgroundColor,
+    sheet: getComputedStyle(document.getElementById('lowerContextSheetShell')).backgroundColor,
     footer: getComputedStyle(document.getElementById('midBar')).backgroundColor,
   }));
+  const assetViewportSurface = await sampleContextSheetToViewportBottom(page);
   await page.evaluate(() => openAssetContextPanel('rotation'));
   const assetRotation = await measureControls(page, '#assetContextRotationPlus', '#assetContextReset');
+  const assetRotationViewportSurface = await sampleContextSheetToViewportBottom(page);
+  await page.evaluate(() => openAssetContextPanel('depth'));
+  const assetDepthViewportSurface = await sampleContextSheetToViewportBottom(page);
 
   const logContextMetrics = (label, metrics) => {
     console.log(`${label}:\n${JSON.stringify({
@@ -677,7 +743,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   expect(frameRotationTabDisplays).toEqual({ scale: 'none', rotation: 'flex' });
 
   await testInfo.attach('asset-frame-control-metrics.json', {
-    body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation, frameSurface, assetSurface, hitArea }, null, 2)),
+    body: Buffer.from(JSON.stringify({ frameScale, assetScale, frameRotation, assetRotation, frameSurface, assetSurface, frameViewportSurface, frameRotationViewportSurface, assetViewportSurface, assetRotationViewportSurface, assetDepthViewportSurface, hitArea }, null, 2)),
     contentType: 'application/json',
   });
 
@@ -723,8 +789,23 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
     expect(assetMetrics.overflow).toBeLessThanOrEqual(0);
   }
 
-  expect(frameSurface.sheet).toBe(frameSurface.footer);
-  expect(assetSurface.sheet).toBe(assetSurface.footer);
+  expect(frameSurface.sheet).toBe('rgb(67, 66, 71)');
+  expect(assetSurface.sheet).toBe('rgb(67, 66, 71)');
+  for (const surface of [frameViewportSurface, frameRotationViewportSurface, assetViewportSurface, assetRotationViewportSurface, assetDepthViewportSurface]) {
+    expect(Math.abs(surface.rect.bottom - surface.viewportBottom)).toBeLessThan(1);
+    expect(surface.shellSelector).toBe('#lowerContextSheetShell');
+    expect(surface.shellBackground).toBe('rgb(67, 66, 71)');
+    expect(Math.abs(surface.panelRect.left - surface.slotRect.left)).toBeLessThan(1);
+    expect(Math.abs(surface.panelRect.right - surface.slotRect.right)).toBeLessThan(1);
+    expect(Math.abs(surface.panelRect.width - surface.slotRect.width)).toBeLessThan(1);
+    expect(surface.bodyBackground).toBe('rgb(60, 60, 60)');
+    expect(surface.timelineBackground).toBe('rgb(60, 60, 60)');
+    expect(surface.samples.map(({ color }) => color)).toEqual(Array(6).fill('rgb(67, 66, 71)'));
+  }
+  expect(frameScale.step.backgroundColor).toBe('rgb(80, 80, 84)');
+  expect(frameScale.reset.backgroundColor).toBe('rgb(80, 80, 84)');
+  expect(assetScale.step.backgroundColor).toBe('rgb(80, 80, 84)');
+  expect(assetScale.reset.backgroundColor).toBe('rgb(80, 80, 84)');
   expect(frameSurface.accent).toBe('#04fff2');
   expect(assetSurface.accent).toBe('#8b3fff');
   expect(hitArea.abovePill.isSlider).toBe(true);
@@ -732,6 +813,27 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   expect(hitArea.sliderCenter.isSlider).toBe(true);
   expect(hitArea.sliderCenter.isPill).toBe(false);
   expect(hitArea.pillCenter.isPill).toBe(true);
+
+  const contextSheetDiagnostics = await page.evaluate(() => buildDiagnosticsText());
+  for (const expected of [
+    'contextSheetShellSelector: #lowerContextSheetShell',
+    'contextSheetPanelUsesSlotWidth: true',
+    'contextSheetShellBackground: rgb(67, 66, 71)',
+    'contextSheetSafeAreaAppliedCount: 1',
+    'contextSheetGridUnusedBlockSpace: 0',
+    'contextSheetImplicitRowCount: 0',
+    'contextSheetUsesSingleSurface: true',
+    'contextSheetUsesBodyHack: false',
+    'contextSheetUsesTimelineHack: false',
+    'contextSheetUsesBodyBackgroundHack: false',
+    'contextSheetUsesTimelineBackgroundHack: false',
+    'contextSheetSafeAreaIntegrated: true',
+    'contextSheetAnimationReady: true',
+  ]) expect(contextSheetDiagnostics).toContain(expected);
+
+  await page.evaluate(() => closeAssetContextPanel());
+  const closedViewportSurface = await sampleContextSheetToViewportBottom(page);
+  expect(closedViewportSurface.samples.at(-1)?.color).toBe('rgb(60, 60, 60)');
 
   await page.screenshot({ path: testInfo.outputPath('asset-frame-control-parity.png'), fullPage: true });
 });
@@ -755,6 +857,13 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
     refreshAssetStageVisualGeometry('webkit-e8o-start');
   });
 
+  const normalLowerLayout = await page.evaluate(() => {
+    const durationCell = document.getElementById('lowerGlobalDurationCell');
+    const rect = durationCell.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, width: rect.width, display: getComputedStyle(durationCell).display };
+  });
+  expect(normalLowerLayout.display).toBe('flex');
+  expect(normalLowerLayout.width).toBeGreaterThan(0);
   await page.locator('#tbAssetScale').click();
   await expect(page.locator('#assetContextPanel')).toBeVisible();
   await expect(page.locator('#assetContextPanel .asset-context-title')).toHaveCount(0);
@@ -763,27 +872,35 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   await expect(page.locator('#assetContextScalePlus')).toBeVisible();
   await expect(page.locator('#assetContextRotationMinus')).toBeHidden();
   await expect(page.locator('#assetContextRotationPlus')).toBeHidden();
-  const openPanelLayout = await page.evaluate(() => {
+  const openPanelLayout = await page.evaluate((normalDurationRect) => {
     const panel = document.getElementById('assetContextPanel').getBoundingClientRect();
     const slot = document.getElementById('lowerContextSlot').getBoundingClientRect();
     const normalToolbar = getComputedStyle(document.getElementById('toolbar'));
     const backButton = getComputedStyle(document.querySelector('#assetContextPanel .asset-context-back'));
-    const lowerLeftControl = document.querySelector('.lower-global-duration').getBoundingClientRect();
+    const durationCellDisplay = getComputedStyle(document.getElementById('lowerGlobalDurationCell')).display;
+    const activeStateCellDisplay = getComputedStyle(document.getElementById('lowerActiveStateCell')).display;
+    const frameCountDisplay = getComputedStyle(document.getElementById('lowerFrameCount')).display;
     return {
       bodyState: document.body.classList.contains('asset-context-panel-open'),
       toolbarDisplay: normalToolbar.display,
       backButtonBackground: backButton.backgroundColor,
       backButtonBorderStyle: backButton.borderStyle,
-      slotSpansBothColumns: slot.left <= lowerLeftControl.left + 1 && slot.right >= lowerLeftControl.right - 1,
+      durationCellDisplay,
+      activeStateCellDisplay,
+      frameCountDisplay,
+      slotSpansBothColumns: slot.left <= normalDurationRect.left + 1 && slot.right >= normalDurationRect.right - 1,
       panelUsesSlotWidth: Math.abs(panel.left - slot.left) <= 1 && Math.abs(panel.right - slot.right) <= 1,
-      panelCoversNormalLeftControl: panel.left <= lowerLeftControl.left + 1 && panel.right >= lowerLeftControl.right - 1
+      panelCoversNormalLeftControl: panel.left <= normalDurationRect.left + 1 && panel.right >= normalDurationRect.right - 1
     };
-  });
+  }, normalLowerLayout);
   expect(openPanelLayout).toEqual({
     bodyState: true,
     toolbarDisplay: 'none',
     backButtonBackground: 'rgba(0, 0, 0, 0)',
     backButtonBorderStyle: 'none',
+    durationCellDisplay: 'none',
+    activeStateCellDisplay: 'none',
+    frameCountDisplay: 'none',
     slotSpansBothColumns: true,
     panelUsesSlotWidth: true,
     panelCoversNormalLeftControl: true
@@ -981,8 +1098,12 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   await expect.poll(() => page.evaluate(() => ({
     bodyState: document.body.classList.contains('asset-context-panel-open'),
     panelPointerEvents: getComputedStyle(document.getElementById('assetContextPanel')).pointerEvents,
-    toolbarDisplay: getComputedStyle(document.getElementById('toolbar')).display
-  }))).toEqual({ bodyState: false, panelPointerEvents: 'none', toolbarDisplay: 'flex' });
+    toolbarDisplay: getComputedStyle(document.getElementById('toolbar')).display,
+    durationCellDisplay: getComputedStyle(document.getElementById('lowerGlobalDurationCell')).display,
+    activeStateCellDisplay: getComputedStyle(document.getElementById('lowerActiveStateCell')).display,
+    frameCountDisplay: getComputedStyle(document.getElementById('lowerFrameCount')).display,
+    durationCellHasGeometry: document.getElementById('lowerGlobalDurationCell').getBoundingClientRect().width > 0
+  }))).toEqual({ bodyState: false, panelPointerEvents: 'none', toolbarDisplay: 'flex', durationCellDisplay: 'flex', activeStateCellDisplay: 'flex', frameCountDisplay: 'flex', durationCellHasGeometry: true });
   await page.locator('#tbAssetRotate').click();
   await expect(page.locator('#assetContextSlider')).toHaveAttribute('aria-label', 'Rotação do ativo');
   await expect.poll(() => page.evaluate(() => assetContextPanelKind)).toBe('rotation');
