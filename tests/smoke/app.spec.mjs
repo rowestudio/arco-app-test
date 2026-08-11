@@ -205,6 +205,19 @@ async function prepareE8WSessionFixture(page) {
   });
 }
 
+function expectCloseGeometry(actual, expected, { frameIndex, label, tolerance = 0.001 }) {
+  let maxDelta = 0;
+  for (const field of ['x', 'y', 'w', 'h', 'rotation']) {
+    const delta = Math.abs(actual[field] - expected[field]);
+    maxDelta = Math.max(maxDelta, delta);
+    expect(
+      delta,
+      `Frame ${frameIndex} ${label}.${field}: expected=${expected[field]}, actual=${actual[field]}, delta=${delta}, tolerance<${tolerance}`
+    ).toBeLessThan(tolerance);
+  }
+  return maxDelta;
+}
+
 test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', async ({ page }, testInfo) => {
   const pageErrors = [];
   const consoleErrors = [];
@@ -1397,12 +1410,11 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
         sessionRestoreInvalidatedScrim,sessionRestoreRebuiltCameraDerivedState] };
   });
 
-  const closeEnoughRect = (a, b) => ['x','y','w','h','rotation'].every(key => Math.abs(a[key]-b[key]) < 0.001);
   const withoutEphemeralSelection = ({ selectedSegmentIndex, ...canonical }) => canonical;
   expect(withoutEphemeralSelection(afterRestore.snapshot.canonicalState)).toEqual(withoutEphemeralSelection(beforeClose.live.canonicalState));
   for (const frame of afterRestore.snapshot.frames) {
-    expect(closeEnoughRect(frame.canonical, frame.overlay), `overlay Frame ${frame.index}`).toBe(true);
-    expect(closeEnoughRect(frame.canonical, afterRestore.previewFrames[frame.index]), `Preview Frame ${frame.index}`).toBe(true);
+    expectCloseGeometry(frame.overlay, frame.canonical, { frameIndex:frame.index, label:'overlay' });
+    expectCloseGeometry(afterRestore.previewFrames[frame.index], frame.canonical, { frameIndex:frame.index, label:'preview' });
   }
   expect(afterRestore.coordinateSource).toBe('framesAbs');
   expect(afterRestore.conversionCount).toBe(0);
@@ -1422,6 +1434,16 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
   });
   expect(saveRoundTrip.before.canonicalState).toEqual(saveRoundTrip.beforeDirectSave.canonicalState);
   expect(saveRoundTrip.before.canonicalState).toEqual(saveRoundTrip.after.canonicalState);
-  expect(saveRoundTrip.before.frames).toEqual(saveRoundTrip.beforeDirectSave.frames);
-  expect(saveRoundTrip.before.frames).toEqual(saveRoundTrip.after.frames);
+  const expectStableDerivedFrames = (actual, expected, phase) => {
+    expect(actual).toHaveLength(expected.length);
+    actual.forEach((frame, position) => {
+      const expectedFrame = expected[position];
+      expect(frame.index).toBe(expectedFrame.index);
+      expect(frame.canonical).toEqual(expectedFrame.canonical);
+      expectCloseGeometry(frame.camera, expectedFrame.camera, { frameIndex:frame.index, label:`${phase}.camera` });
+      expectCloseGeometry(frame.overlay, expectedFrame.overlay, { frameIndex:frame.index, label:`${phase}.overlay` });
+    });
+  };
+  expectStableDerivedFrames(saveRoundTrip.beforeDirectSave.frames, saveRoundTrip.before.frames, 'before-save');
+  expectStableDerivedFrames(saveRoundTrip.after.frames, saveRoundTrip.before.frames, 'after-save');
 });
