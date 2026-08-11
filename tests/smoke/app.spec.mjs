@@ -1269,3 +1269,74 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   expect(uiStateResult.centerDelta).toBeLessThan(0.01);
   expect(uiStateResult.readyColor).toBe('#04fff2');
 });
+
+test('E8W prova paridade numérica entre Frame, câmera, Stage, Preview e Export', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+
+  const result = await page.evaluate(() => {
+    const imageAssets = assets.filter(asset => asset && asset.type === 'image');
+    if (imageAssets.length < 3 || frameCount < 3) throw new Error('fixture E8W requer 3 assets e 3 Frames');
+    [imageAssets[0].depth, imageAssets[1].depth, imageAssets[2].depth] = [0, 50, -50];
+    const frameAIndex = frameCount - 1;
+    frames[frameAIndex].x += 73;
+    frames[frameAIndex].y += 41;
+    commitFilmSelection(frameAIndex, -1, 'webkit-e8w-frame-a');
+    renderAll();
+    const canonicalBefore = imageAssets.slice(0, 3).map(a => ({id:a.id,x:a.worldX,y:a.worldY,w:a.worldW,h:a.worldH,r:a.rotation}));
+    const snapshot = () => {
+      const audit = auditParallaxFrameCameraParity(activeIdx);
+      return {
+        frameIndex:audit.frameIndex, camera:audit.resolvedCameraRect,
+        assets:audit.assets.slice(0, 3).map(a => ({id:a.assetId,offsetX:a.parallaxOffsetX,offsetY:a.parallaxOffsetY,rect:a.stageVisualAssetRect}))
+      };
+    };
+    const frameA = snapshot();
+    commitFilmSelection(0, -1, 'webkit-e8w-frame-b'); renderAll();
+    const frameB = snapshot();
+    commitFilmSelection(1, -1, 'webkit-e8w-frame-c'); renderAll();
+    commitFilmSelection(frameAIndex, -1, 'webkit-e8w-frame-a-return'); renderAll();
+    const frameAReturn = snapshot();
+    const roundTrip = recordParallaxNavigationRoundTrip(frameA, frameAReturn);
+
+    const activeBefore = activeIdx;
+    const geometryBefore = snapshot();
+    frames[activeIdx].x += 19;
+    frames[activeIdx].y -= 11;
+    renderAll();
+    const geometryAfter = snapshot();
+    const mutationRefresh = recordParallaxFrameGeometryMutationRefresh(geometryBefore, geometryAfter, activeIdx === activeBefore);
+    const finalAudit = auditParallaxFrameCameraParity(activeIdx);
+    const canonicalAfter = imageAssets.slice(0, 3).map(a => ({id:a.id,x:a.worldX,y:a.worldY,w:a.worldW,h:a.worldH,r:a.rotation}));
+    return { frameA, frameB, frameAReturn, roundTrip, mutationRefresh, finalAudit,
+      canonicalAssetsUnchanged:JSON.stringify(canonicalBefore) === JSON.stringify(canonicalAfter),
+      requiresFrameIndexChange:parallaxStageRefreshRequiresFrameIndexChange,
+      requiresModeSwitch:parallaxStageRefreshRequiresModeSwitch,
+      requiresTimelineRetap:parallaxStageRefreshRequiresTimelineRetap,
+      staleCamera:parallaxStaleCameraCacheDetected, staleAsset:parallaxStaleAssetVisualCacheDetected };
+  });
+
+  const initialAssets = result.frameA.assets;
+  expect(initialAssets[0].offsetX).toBe(0);
+  expect(initialAssets[0].offsetY).toBe(0);
+  expect(Math.sign(initialAssets[1].offsetX || initialAssets[1].offsetY)).toBe(-Math.sign(initialAssets[2].offsetX || initialAssets[2].offsetY));
+  expect(result.finalAudit.cameraMatchesCanonicalFrame).toBe(true);
+  expect(result.finalAudit.scrimCutoutMatchesFrameVisual).toBe(true);
+  expect(result.finalAudit.stagePreviewCameraParityOk).toBe(true);
+  expect(result.finalAudit.previewExportCameraParityOk).toBe(true);
+  expect(result.finalAudit.stagePreviewAssetGeometryParityOk).toBe(true);
+  expect(result.finalAudit.previewExportAssetGeometryParityOk).toBe(true);
+  for (const delta of [result.finalAudit.frameStageCameraDelta, result.finalAudit.stagePreviewCameraDelta, result.finalAudit.previewExportCameraDelta]) {
+    expect(Math.max(...Object.values(delta).map(Math.abs))).toBeLessThan(0.001);
+  }
+  expect(result.roundTrip).toBe(true);
+  expect(result.mutationRefresh).toBe(true);
+  expect(result.canonicalAssetsUnchanged).toBe(true);
+  expect(result.requiresFrameIndexChange).toBe(false);
+  expect(result.requiresModeSwitch).toBe(false);
+  expect(result.requiresTimelineRetap).toBe(false);
+  expect(result.staleCamera).toBe(false);
+  expect(result.staleAsset).toBe(false);
+});

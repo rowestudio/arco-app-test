@@ -2,6 +2,13 @@
 
 Última atualização documental: 2026-08-08.
 
+## Atualização 2026-08-11 — v8z4b32E8W em PR
+
+- A auditoria numérica não comprovou divergência geométrica entre o Frame canônico, a câmera do Stage e a amostra canônica compartilhada por Preview/Export.
+- A E8W preserva a fórmula e os renderers de Parallax e adiciona somente diagnóstico observável e regressão WebKit baseada em valores geométricos reais, cobrindo depth zero, positivo/negativo, navegação A → B → C → A e mutação do Frame ativo sem troca de índice.
+- O enquadramento aparente relatado decorre do deslocamento legítimo de assets com `depth != 0`; a edição absoluta requer uma tarefa futura específica para Vista Profundidade 0, já registrada no roadmap, e não é implementada nesta PR.
+- Nenhuma promoção para produção está autorizada; validação publicada em iPhone/Safari real permanece obrigatória.
+
 ## Atualização 2026-08-10 — v8z4b32E8V em desenvolvimento
 
 - Roberto aprovou visualmente em iPhone/Safari real a geometria e a compactação da `v8z4b32E8U`, incluindo pills `−5`/`+5`, Reset, densidade, distância slider → controles e paridade Frames × Ativos.

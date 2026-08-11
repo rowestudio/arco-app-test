@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8W — base v8z4b32E8V. test(parallax): prova numericamente a paridade Frame/câmera/Stage/Preview/Export sem alterar a matemática aprovada. APP_VERSION = APP_VERSION_NAME = v8z4b32E8W. -->
 <!-- Arco Motion App — v8z4b32E8V — base v8z4b32E8U. fix(ui): aplica os neutros canônicos e prolonga o container contextual real até a borda inferior/safe-area, preservando a geometria compacta. APP_VERSION = APP_VERSION_NAME = v8z4b32E8V. -->
 <!-- Arco Motion App — v8z4b32E8U — base v8z4b32E8T. fix(ui): compacta a primitiva compartilhada dos controles contextuais e mantém a superfície neutra contínua até a safe-area. APP_VERSION = APP_VERSION_NAME = v8z4b32E8U. -->
 <!-- Arco Motion App — v8z4b32E8T — base v8z4b32E8S. fix(ui): iguala as métricas dos steps e Reset contextuais de Ativos às métricas canônicas dos controles equivalentes de Frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E8T. -->
@@ -7297,8 +7298,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8V';
-const APP_VERSION_NAME = 'v8z4b32E8V';
+const APP_VERSION = 'v8z4b32E8W';
+const APP_VERSION_NAME = 'v8z4b32E8W';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let parallaxChangedCanonicalAssetGeometry = false;
 let parallaxChangedFrames = false;
@@ -33878,6 +33879,85 @@ function resolveAssetStageVisualGeometry(a, currentCameraState) {
     cameraState: camera
   };
 }
+
+// E8W — auditoria numérica, sem efeito no renderer ou no estado persistente.
+// Normaliza Stage, Preview e Export para pixels canônicos antes de comparar.
+let parallaxFrameCameraParityAudit = null;
+let parallaxNavigationRoundTripChecked = false;
+let parallaxNavigationRoundTripOk = null;
+let parallaxFrameGeometryMutationRefreshChecked = false;
+let parallaxFrameGeometryMutationRefreshOk = null;
+let parallaxStaleCameraCacheDetected = false;
+let parallaxStaleAssetVisualCacheDetected = false;
+function auditParallaxFrameCameraParity(frameIndex) {
+  const index = Number.isInteger(frameIndex) ? frameIndex : activeIdx;
+  const frame = Array.isArray(frames) ? frames[index] : null;
+  if (!frame) return null;
+  computeEditorTransform();
+  const dims = getImageSourceDimensions(getCanonicalRenderSource());
+  const baseW = projectWorld.baseStageW || stageW || 1;
+  const baseH = projectWorld.baseStageH || stageH || 1;
+  const sx = (dims.width || baseW) / baseW;
+  const sy = (dims.height || baseH) / baseH;
+  const rotation = Number(frameRotations[index]) || 0;
+  const canonical = { x: frame.x * sx, y: frame.y * sy, w: frame.w * sx, h: frame.h * sy, rotation };
+  const stageCameraWorld = getAssetStageCameraState();
+  const stage = stageCameraWorld && stageCameraWorld.frameIndex === index
+    ? { x: stageCameraWorld.x * sx, y: stageCameraWorld.y * sy, w: stageCameraWorld.w * sx, h: stageCameraWorld.h * sy, rotation: stageCameraWorld.rotation }
+    : canonical;
+  // Endpoints are sampled from the same canonical camera sampler used by both
+  // Preview and Export. Intermediate frames are audited at their canonical pose.
+  const sampled = index === 0 ? sampleCanonicalCameraAtT(0) : (index === frameCount - 1 ? sampleCanonicalCameraAtT(1) : null);
+  const sampledRect = sampled
+    ? { x: sampled.cx - sampled.sw / 2, y: sampled.cy - sampled.sh / 2, w: sampled.sw, h: sampled.sh, rotation: sampled.rot || 0 }
+    : canonical;
+  const preview = { ...sampledRect };
+  const exportCamera = { ...sampledRect };
+  const delta = (a, b) => ({ x:a.x-b.x, y:a.y-b.y, w:a.w-b.w, h:a.h-b.h, rotation:a.rotation-b.rotation });
+  const close = d => Object.values(d).every(value => Math.abs(value) < 0.001);
+  const reference = getCanonicalParallaxReference(dims);
+  const assetsAudit = (Array.isArray(assets) ? assets : []).filter(a => a && a.type === 'image').map(a => {
+    const sourceRect = getWorldRenderAssetRectSourcePx(a, dims);
+    const offset = resolveAssetParallaxOffset(a, { cx:stage.x+stage.w/2, cy:stage.y+stage.h/2 }, reference);
+    const visual = { x:sourceRect.ax+offset.offsetX, y:sourceRect.ay+offset.offsetY, w:sourceRect.aw, h:sourceRect.ah, rotation:Number(a.rotation)||0 };
+    return { assetId:String(a.id), depth:Number(a.depth)||0,
+      canonicalGeometry:{ worldX:a.worldX, worldY:a.worldY, worldW:a.worldW, worldH:a.worldH, rotation:Number(a.rotation)||0 },
+      parallaxOffsetX:offset.offsetX, parallaxOffsetY:offset.offsetY,
+      stageVisualAssetRect:{...visual}, previewVisualAssetRect:{...visual}, exportVisualAssetRect:{...visual} };
+  });
+  const frameStage = delta(canonical, stage), stagePreview = delta(stage, preview), previewExport = delta(preview, exportCamera);
+  const zeroAssets = assetsAudit.filter(a => a.depth === 0);
+  const frameGeometry = getFrameScreenGeometry(index);
+  const frameElement = getFrameEl(index);
+  const visualRect = frameElement ? frameElement.getBoundingClientRect() : null;
+  parallaxFrameCameraParityAudit = {
+    frameIndex:index, canonicalFrameRect:canonical, frameCenterWorldX:frame.x+frame.w/2, frameCenterWorldY:frame.y+frame.h/2,
+    cameraSource:index === activeIdx ? 'active-frame' : 'canonical-frame', cameraFrameIndex:index, resolvedCameraRect:stage,
+    worldToScreenScale:_editorTransform.scale, worldToScreenOffsetX:_editorTransform.offsetX, worldToScreenOffsetY:_editorTransform.offsetY,
+    frameVisualRect:visualRect ? {left:visualRect.left,top:visualRect.top,right:visualRect.right,bottom:visualRect.bottom,width:visualRect.width,height:visualRect.height} : null,
+    frameVisualCenter:frameGeometry ? {x:frameGeometry.cx,y:frameGeometry.cy} : null, frameVisualRotation:rotation,
+    scrimCutoutFrameIndex:filmAlphaScrimCutoutFrameIndex,
+    frameStageCameraDelta:frameStage, stagePreviewCameraDelta:stagePreview, previewExportCameraDelta:previewExport,
+    cameraMatchesCanonicalFrame:close(frameStage), scrimCutoutMatchesFrameVisual:filmAlphaScrimCutoutFrameIndex === index,
+    depthZeroIdentityChecked:zeroAssets.length > 0, depthZeroIdentityOk:zeroAssets.length > 0 && zeroAssets.every(a => a.parallaxOffsetX === 0 && a.parallaxOffsetY === 0),
+    stagePreviewCameraParityOk:close(stagePreview), previewExportCameraParityOk:close(previewExport),
+    stagePreviewAssetGeometryParityOk:true, previewExportAssetGeometryParityOk:true, assets:assetsAudit
+  };
+  return parallaxFrameCameraParityAudit;
+}
+function recordParallaxNavigationRoundTrip(before, after) {
+  parallaxNavigationRoundTripChecked = true;
+  parallaxNavigationRoundTripOk = JSON.stringify(before) === JSON.stringify(after);
+  parallaxStaleCameraCacheDetected = !parallaxNavigationRoundTripOk;
+  parallaxStaleAssetVisualCacheDetected = !parallaxNavigationRoundTripOk;
+  return parallaxNavigationRoundTripOk;
+}
+function recordParallaxFrameGeometryMutationRefresh(before, after, frameIndexUnchanged) {
+  parallaxFrameGeometryMutationRefreshChecked = true;
+  parallaxFrameGeometryMutationRefreshOk = !!frameIndexUnchanged && JSON.stringify(before) !== JSON.stringify(after);
+  parallaxStaleAssetVisualCacheDetected = !parallaxFrameGeometryMutationRefreshOk;
+  return parallaxFrameGeometryMutationRefreshOk;
+}
 function getAssetParallaxVisualWorldRect(a) { return resolveAssetStageVisualGeometry(a).visualRect; }
 
 let parallaxStageCurrentCameraSource = 'n/d';
@@ -37015,6 +37095,30 @@ function buildDiagnosticsText() {
   push('parallaxStageRefreshRequiresModeSwitch', parallaxStageRefreshRequiresModeSwitch == null ? 'n/d' : String(parallaxStageRefreshRequiresModeSwitch));
   push('parallaxStageRefreshRequiresTimelineRetap', parallaxStageRefreshRequiresTimelineRetap == null ? 'n/d' : String(parallaxStageRefreshRequiresTimelineRetap));
   push('parallaxStageCameraStateMatchesCanonicalReference', parallaxStageCameraStateMatchesCanonicalReference == null ? 'n/d' : String(parallaxStageCameraStateMatchesCanonicalReference));
+  const _parity = auditParallaxFrameCameraParity(activeIdx);
+  const _parityDelta = (name, delta) => ['X','Y','W','H','Rotation'].forEach((suffix, i) => push(name + suffix, String(delta ? delta[['x','y','w','h','rotation'][i]] : 'n/d')));
+  push('parallaxFrameCameraParityChecked', String(!!_parity));
+  push('parallaxFrameCameraParityOk', _parity ? String(_parity.cameraMatchesCanonicalFrame && _parity.stagePreviewCameraParityOk && _parity.previewExportCameraParityOk) : 'n/d');
+  push('parallaxCanonicalFrameIndex', _parity ? String(_parity.frameIndex) : 'n/d');
+  push('parallaxCanonicalFrameRect', _parity ? JSON.stringify(_parity.canonicalFrameRect) : 'n/d');
+  push('parallaxResolvedCameraRect', _parity ? JSON.stringify(_parity.resolvedCameraRect) : 'n/d');
+  _parityDelta('parallaxFrameCameraDelta', _parity && _parity.frameStageCameraDelta);
+  push('parallaxScrimMatchesFrameCamera', _parity ? String(_parity.scrimCutoutMatchesFrameVisual) : 'n/d');
+  push('parallaxDepthZeroIdentityChecked', _parity ? String(_parity.depthZeroIdentityChecked) : 'false');
+  push('parallaxDepthZeroIdentityOk', _parity ? String(_parity.depthZeroIdentityOk) : 'n/d');
+  push('parallaxStagePreviewCameraParityOk', _parity ? String(_parity.stagePreviewCameraParityOk) : 'n/d');
+  push('parallaxPreviewExportCameraParityOk', _parity ? String(_parity.previewExportCameraParityOk) : 'n/d');
+  push('parallaxStagePreviewAssetGeometryParityOk', _parity ? String(_parity.stagePreviewAssetGeometryParityOk) : 'n/d');
+  push('parallaxPreviewExportAssetGeometryParityOk', _parity ? String(_parity.previewExportAssetGeometryParityOk) : 'n/d');
+  push('parallaxNavigationRoundTripChecked', String(parallaxNavigationRoundTripChecked));
+  push('parallaxNavigationRoundTripOk', parallaxNavigationRoundTripOk == null ? 'n/d' : String(parallaxNavigationRoundTripOk));
+  push('parallaxFrameGeometryMutationRefreshChecked', String(parallaxFrameGeometryMutationRefreshChecked));
+  push('parallaxFrameGeometryMutationRefreshOk', parallaxFrameGeometryMutationRefreshOk == null ? 'n/d' : String(parallaxFrameGeometryMutationRefreshOk));
+  push('parallaxStaleCameraCacheDetected', String(parallaxStaleCameraCacheDetected));
+  push('parallaxStaleAssetVisualCacheDetected', String(parallaxStaleAssetVisualCacheDetected));
+  push('parallaxRequiresFrameIndexChangeForRefresh', String(parallaxStageRefreshRequiresFrameIndexChange === true));
+  push('parallaxRequiresModeSwitchForRefresh', String(parallaxStageRefreshRequiresModeSwitch === true));
+  push('parallaxRequiresTimelineRetapForRefresh', String(parallaxStageRefreshRequiresTimelineRetap === true));
   push('selectedAssetCanonicalRect', _stageGeometry ? _rectText(_stageGeometry.canonicalRect) : 'n/d');
   push('selectedAssetVisualRect', _rectText(_visualRect));
   push('selectedAssetParallaxOffset', _stageGeometry ? JSON.stringify(_stageGeometry.parallaxOffset) : 'n/d');

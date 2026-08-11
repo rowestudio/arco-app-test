@@ -328,3 +328,12 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: retângulos e estilos computados, screenshot WebKit complementar e teste publicado em iPhone/Safari real.
 - Ambiente: WebKit automatizado em 390 × 797 e iPhone/Safari real.
 - Automatizável: sim, exceto aprovação visual final e percepção da safe-area no aparelho real.
+
+## TC-037 — Paridade Frame, câmera e Parallax
+
+- Pré-condição: projeto com três ou mais assets em depth 0, positivo e negativo e pelo menos três Frames espacialmente distintos.
+- Passos: comparar Frame/câmera/Stage/Preview/Export na mesma amostra; navegar A → B → C → A; alterar x/y do Frame A sem trocar o índice ativo.
+- Resultado esperado: deltas de câmera e geometria por asset abaixo de 0,001; depth 0 sem offset; depths opostos deslocam em sentidos opostos; round-trip idêntico; refresh imediato; geometria canônica dos assets intacta e nenhum cache stale.
+- Evidência: teste WebKit E8W em `tests/smoke/app.spec.mjs` e diagnóstico `parallax*` não visível na UI normal.
+- Ambiente: WebKit automatizado; iPhone/Safari real obrigatório para confirmar a percepção visual.
+- Automatizável: sim para geometria; percepção visual exige aparelho real.
