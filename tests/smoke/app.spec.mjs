@@ -377,6 +377,22 @@ test('E8X cobre TC-038 por criação, transformação, persistência e renderer 
   const afterSession = await page.evaluate((id) => { const text=assets.find(a=>String(a.id)===id); return text?serializeProjectAsset(text,0,false):null; }, String(confirmed.text.id));
   expect(afterSession).toEqual(beforeRoundTrip.text);
 
+  // A prova física exige composição visível: o reorder anterior deixou o texto
+  // deliberadamente atrás da imagem opaca. Primeiro comprova essa ordem e depois
+  // usa a ação real de Layers para trazê-lo à frente, sem contornar o renderer.
+  const previewComposition = await page.evaluate((id) => {
+    setEditorMode('assets','webkit-e8x-preview-composition'); selectAssetById(id,'layers');
+    const text=assets.find(a=>String(a.id)===id), beforeZ=text.zIndex, textRect={x:text.worldX,y:text.worldY,w:text.worldW,h:text.worldH};
+    const coveringImages=assets.filter(a=>a&&a.type==='image'&&(Number(a.zIndex)||0)>(Number(text.zIndex)||0)).filter(a=>{
+      const r=resolveAssetStageVisualGeometry(a).visualRect;
+      return r.x<=textRect.x&&r.y<=textRect.y&&r.x+r.w>=textRect.x+textRect.w&&r.y+r.h>=textRect.y+textRect.h;
+    }).map(a=>String(a.id));
+    while (getAssetZOrderInfo().canForward) bringSelectedAssetForward();
+    return {coveringImages,beforeZ,visibleText:serializeProjectAsset(text,0,false),maxZ:Math.max(...assets.map(a=>Number(a.zIndex)||0))};
+  }, String(confirmed.text.id));
+  expect(previewComposition.coveringImages.length, 'o zero anterior deve ser explicado por oclusão real de zIndex').toBeGreaterThan(0);
+  expect(previewComposition.visibleText.zIndex).toBe(previewComposition.maxZ);
+
   // Preview real: snapshot contém o mesmo texto e pixels na caixa canônica apresentam a cor escolhida.
   await page.evaluate(() => startPreview());
   await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000});
@@ -397,7 +413,7 @@ test('E8X cobre TC-038 por criação, transformação, persistência e renderer 
     for(let i=0;i<pixels.length;i+=4) if(Math.abs(pixels[i]-base[i])+Math.abs(pixels[i+1]-base[i+1])+Math.abs(pixels[i+2]-base[i+2])+Math.abs(pixels[i+3]-base[i+3])>20) changed++;
     return {snapshot:originalSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,textRenderAudit,colored,changed,canvas:[canvas.width,canvas.height]};
   }, String(confirmed.text.id));
-  expect(previewProof.snapshot).toMatchObject({id:confirmed.text.id,text:beforeRoundTrip.text.text,color:'#ff3366',zIndex:beforeRoundTrip.text.zIndex});
+  expect(previewProof.snapshot).toMatchObject({id:confirmed.text.id,text:previewComposition.visibleText.text,color:'#ff3366',zIndex:previewComposition.visibleText.zIndex});
   expect(previewProof.textRenderAudit).toMatchObject({id:confirmed.text.id,drawn:true,intersectsCamera:true});
   expect(previewProof.textRenderAudit.screenW).toBeGreaterThan(0); expect(previewProof.textRenderAudit.screenH).toBeGreaterThan(0);
   expect(previewProof.canvas[0]).toBeGreaterThan(0); expect(previewProof.colored).toBeGreaterThan(0); expect(previewProof.changed).toBeGreaterThan(0);
@@ -407,7 +423,7 @@ test('E8X cobre TC-038 por criação, transformação, persistência e renderer 
   await page.evaluate(() => { loopEnabled=false; for(let i=0;i<segDurations.length;i++) segDurations[i]=0.1; startRecord(); });
   await expect.poll(() => page.evaluate(() => exportGenerationCompleted || arcoExportDiag.exportSuccess===true),{timeout:120_000}).toBe(true);
   const exportProof = await page.evaluate((id) => ({blob:exportFinalBlobBytes,snapshot:renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,success:arcoExportDiag.exportSuccess}), String(confirmed.text.id));
-  expect(exportProof.success).toBe(true); expect(exportProof.blob).toBeGreaterThan(0); expect(exportProof.snapshot).toMatchObject({text:beforeRoundTrip.text.text,color:'#ff3366',zIndex:beforeRoundTrip.text.zIndex});
+  expect(exportProof.success).toBe(true); expect(exportProof.blob).toBeGreaterThan(0); expect(exportProof.snapshot).toMatchObject({text:previewComposition.visibleText.text,color:'#ff3366',zIndex:previewComposition.visibleText.zIndex});
 });
 
 test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Redo', async ({ page }) => {
