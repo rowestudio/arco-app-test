@@ -2,6 +2,14 @@
 
 Última atualização documental: 2026-08-08.
 
+## Atualização 2026-08-11 — v8z4b32E8W em PR
+
+- A reprodução real após Session Restore comprovou uma regressão de sistema de coordenadas, não de Parallax: Frames do ProjectWorld permaneciam em `baseStageW/baseStageH`, enquanto o sampler da câmera ainda os convertia por `stageW/stageH`, dimensões CSS variáveis do viewport.
+- O foco do campo de nome no fluxo Salvar pode redimensionar o viewport no iPhone; o listener global de `resize` então reescalava e gravava novamente todos os Frames do ProjectWorld, fazendo o overlay “pular” para a geometria que a câmera já mostrava.
+- A E8W torna `projectWorld.baseStageW/baseStageH` a dimensão canônica compartilhada por câmera, `framesNorm` e Restore, e faz resize de ProjectWorld alterar apenas o viewport/render. A fórmula de Parallax, os renderers, ProjectWorld persistido e o fluxo manual de Save permanecem preservados.
+- O teste E8W executa Manual Load → checkpoint real → reload/startup recovery → Preview nos waypoints de todos os Frames → Save com resize, comparando modelo, payload, overlay e câmera por valores reais.
+- Nenhuma promoção para produção está autorizada; validação publicada em iPhone/Safari real permanece obrigatória.
+
 ## Atualização 2026-08-10 — v8z4b32E8V em desenvolvimento
 
 - Roberto aprovou visualmente em iPhone/Safari real a geometria e a compactação da `v8z4b32E8U`, incluindo pills `−5`/`+5`, Reset, densidade, distância slider → controles e paridade Frames × Ativos.

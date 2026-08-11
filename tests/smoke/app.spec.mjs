@@ -154,6 +154,70 @@ async function sessionCheckpointExists(page) {
   });
 }
 
+async function prepareE8WSessionFixture(page) {
+  return page.evaluate(async () => {
+    const baseAsset = assets.find(asset => asset && asset.type === 'image');
+    if (!baseAsset) throw new Error('fixture E8W sem image asset base');
+    const source = _assetPersistentSourceE8E(baseAsset) || imageOriginalDataUrl || imgEl?.src || '';
+    if (!isValidImageBase64(source)) throw new Error('fixture E8W sem fonte persistente válida');
+
+    const slots = ['middle-left', 'middle-right'];
+    let slotIndex = 0;
+    while (assets.filter(asset => asset && asset.type === 'image').length < 3) {
+      const file = dataUrlToFile(source, `e8w-asset-${slotIndex + 2}`);
+      pendingImageAction = 'insertImage';
+      pendingImageTargetAssetId = null;
+      performInsertImageAtSlot(slots[slotIndex], file);
+      slotIndex++;
+      await new Promise((resolve, reject) => {
+        const started = Date.now();
+        const expectedCount = slotIndex + 1;
+        const timer = setInterval(() => {
+          if (assets.filter(asset => asset && asset.type === 'image').length >= expectedCount) {
+            clearInterval(timer); resolve();
+          } else if (Date.now() - started > 20_000) {
+            clearInterval(timer); reject(new Error(`timeout ao inserir image asset E8W ${expectedCount}`));
+          }
+        }, 25);
+      });
+    }
+
+    while (frameCount < 3) {
+      const previous = frames[frameCount - 1] || { x:0, y:0, w:projectWorld.baseStageW * 0.5, h:projectWorld.baseStageH * 0.5 };
+      frames.push({ ...previous, x:previous.x + 37 * frameCount, y:previous.y + 23 * frameCount });
+      frameRotations.push((frameRotations[frameCount - 1] || 0) + 5);
+      frameLocked.push(false);
+      frameCount++;
+      createFrameDOM(frameCount - 1);
+    }
+    ensureSegmentArraysIntegrity();
+    ensureFramePauses();
+
+    const imageAssets = assets.filter(asset => asset && asset.type === 'image');
+    await Promise.all(imageAssets.map((asset, index) => {
+      const assetSource = index === 0 ? (asset.src || source) : _assetPersistentSourceE8E(asset);
+      return hydrateSessionImage(assetSource);
+    }));
+    invalidateProjectWorldComposite();
+    renderProjectWorldExtraImages();
+    renderAll();
+    return { frameCount, imageAssetsCount:imageAssets.length, hydratedImageAssetsCount:imageAssets.length };
+  });
+}
+
+function expectCloseGeometry(actual, expected, { frameIndex, label, tolerance = 0.001 }) {
+  let maxDelta = 0;
+  for (const field of ['x', 'y', 'w', 'h', 'rotation']) {
+    const delta = Math.abs(actual[field] - expected[field]);
+    maxDelta = Math.max(maxDelta, delta);
+    expect(
+      delta,
+      `Frame ${frameIndex} ${label}.${field}: expected=${expected[field]}, actual=${actual[field]}, delta=${delta}, tolerance<${tolerance}`
+    ).toBeLessThan(tolerance);
+  }
+  return maxDelta;
+}
+
 test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', async ({ page }, testInfo) => {
   const pageErrors = [];
   const consoleErrors = [];
@@ -1268,4 +1332,118 @@ test('E8O mantém imagem, seleção e painéis de asset sincronizados no Stage',
   expect(uiStateResult.blockedWithoutSelection).toBe(true);
   expect(uiStateResult.centerDelta).toBeLessThan(0.01);
   expect(uiStateResult.readyColor).toBe('#04fff2');
+});
+
+test('E8W Session Restore preserva todos os Frames e Save não sincroniza geometria', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+
+  const fixtureState = await prepareE8WSessionFixture(page);
+  expect(fixtureState.frameCount).toBeGreaterThanOrEqual(3);
+  expect(fixtureState.imageAssetsCount).toBeGreaterThanOrEqual(3);
+  expect(fixtureState.hydratedImageAssetsCount).toBe(fixtureState.imageAssetsCount);
+
+  const beforeClose = await page.evaluate(async () => {
+    if (frameCount < 3 || assets.filter(a => a && a.type === 'image').length < 3) {
+      throw new Error('fixture E8W requer 3 assets e 3 Frames');
+    }
+    // Waypoints determinísticos: t=i/(N-1) corresponde exatamente ao Frame i.
+    loopEnabled = false; finishMode = 'none'; easeAmount = 0;
+    segDurations.length = 0;
+    for (let i = 0; i < frameCount - 1; i++) segDurations.push(1);
+    framePauses.length = 0;
+    for (let i = 0; i < frameCount; i++) framePauses.push({ duration: 0 });
+    segTremorSettings.length = 0;
+    for (let i = 0; i < frameCount - 1; i++) segTremorSettings.push({ mode:'off', enabled:false, intensity:0, frequency:1 });
+    projectShake = { enabled:false, intensity:0, frequency:1 };
+    renderAll();
+    const live = captureSessionFrameParitySnapshot();
+    clearTimeout(_sessionAutosaveTimer);
+    const revision = ++_sessionAutosaveQueuedRevision;
+    const written = await writeSessionAutosave(revision, _sessionAutosaveEpoch, true, 'webkit-e8w-roundtrip');
+    const checkpoint = await readSessionCheckpoint();
+    const payload = JSON.parse(checkpoint.payload);
+    return { live, written, checkpoint: {
+      framesAbs:payload.framesAbs, framesNorm:payload.framesNorm,
+      frameRotations:payload.frameRotations, projectWorld:payload.projectWorld,
+      curvesV2:payload.curvesV2, ctrlPts:payload.ctrlPts, segDurations:payload.segDurations,
+      assets:payload.assets.filter(a=>a&&a.type==='image').map(a=>({id:String(a.id),worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,rotation:Number(a.rotation)||0,depth:Number(a.depth)||0})),
+      activeIdx:payload.activeIdx
+    }};
+  });
+  expect(beforeClose.written).toBe(true);
+  expect(beforeClose.checkpoint.framesAbs).toEqual(beforeClose.live.canonicalState.framesAbs);
+  expect(beforeClose.checkpoint.framesNorm).toEqual(beforeClose.live.canonicalState.framesNorm);
+  expect(beforeClose.checkpoint.projectWorld).toMatchObject(beforeClose.live.canonicalState.projectWorld);
+  expect(beforeClose.checkpoint.curvesV2).toEqual(beforeClose.live.canonicalState.curvesV2);
+  expect(beforeClose.checkpoint.assets).toEqual(beforeClose.live.canonicalState.assets);
+  expect(beforeClose.checkpoint.activeIdx).toBe(beforeClose.live.canonicalState.activeFrameIndex);
+
+  // Simula a mudança de viewport do Safari entre encerramento e nova abertura.
+  await page.setViewportSize({ width: 390, height: 700 });
+  await reloadForStartup(page);
+  const dialog = page.getByRole('dialog', { name: 'Continuar sessão anterior?' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByText('Continuar de onde parei', { exact: true }).click();
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await expect.poll(() => page.evaluate(() => sessionRestoreAppliedSuccessfully)).toBe(true);
+
+  const afterRestore = await page.evaluate(() => {
+    const snapshot = captureSessionFrameParitySnapshot();
+    const dims = getCanonicalFrameCoordinateDimensions();
+    const sx = imgNatW / dims.width, sy = imgNatH / dims.height;
+    const previewFrames = frames.slice(0, frameCount).map((frame, index) => {
+      const renderState = getRenderStateAtTime(frameCount === 1 ? 0 : index / (frameCount - 1));
+      if (!renderState.ok) throw new Error(`Preview Frame ${index}: ${renderState.reason}`);
+      const camera = renderState.camera;
+      return { index, x:(camera.cx-camera.sw/2)/sx, y:(camera.cy-camera.sh/2)/sy,
+        w:camera.sw/sx, h:camera.sh/sy, rotation:camera.rot||0 };
+    });
+    return { snapshot, previewFrames, sequence:sessionRestoreSequence.map(entry=>entry.step),
+      coordinateSource:sessionRestoreFrameCoordinateSource,
+      conversionCount:sessionRestoreNormToAbsConversionCount,
+      doubleConversion:sessionRestoreDoubleFrameConversionDetected,
+      invalidated:[sessionRestoreInvalidatedSegmentCache,sessionRestoreInvalidatedCurveCache,
+        sessionRestoreInvalidatedPreviewCache,sessionRestoreInvalidatedFrameOverlay,
+        sessionRestoreInvalidatedScrim,sessionRestoreRebuiltCameraDerivedState] };
+  });
+
+  const withoutEphemeralSelection = ({ selectedSegmentIndex, ...canonical }) => canonical;
+  expect(withoutEphemeralSelection(afterRestore.snapshot.canonicalState)).toEqual(withoutEphemeralSelection(beforeClose.live.canonicalState));
+  for (const frame of afterRestore.snapshot.frames) {
+    expectCloseGeometry(frame.overlay, frame.canonical, { frameIndex:frame.index, label:'overlay' });
+    expectCloseGeometry(afterRestore.previewFrames[frame.index], frame.canonical, { frameIndex:frame.index, label:'preview' });
+  }
+  expect(afterRestore.coordinateSource).toBe('framesAbs');
+  expect(afterRestore.conversionCount).toBe(0);
+  expect(afterRestore.doubleConversion).toBe(false);
+  expect(afterRestore.invalidated.every(Boolean)).toBe(true);
+  expect(afterRestore.sequence).toContain('final-overlay-scrim-camera-rebuilt');
+
+  const saveRoundTrip = await page.evaluate(() => {
+    const before = captureSessionFrameParitySnapshot();
+    openSaveModal(false);
+    // No iPhone, foco do input altera o visual viewport e dispara resize.
+    window.dispatchEvent(new Event('resize'));
+    const beforeDirectSave = captureSessionFrameParitySnapshot();
+    confirmSaveModal(false);
+    const after = captureSessionFrameParitySnapshot();
+    return { before, beforeDirectSave, after };
+  });
+  expect(saveRoundTrip.before.canonicalState).toEqual(saveRoundTrip.beforeDirectSave.canonicalState);
+  expect(saveRoundTrip.before.canonicalState).toEqual(saveRoundTrip.after.canonicalState);
+  const expectStableDerivedFrames = (actual, expected, phase) => {
+    expect(actual).toHaveLength(expected.length);
+    actual.forEach((frame, position) => {
+      const expectedFrame = expected[position];
+      expect(frame.index).toBe(expectedFrame.index);
+      expect(frame.canonical).toEqual(expectedFrame.canonical);
+      expectCloseGeometry(frame.camera, expectedFrame.camera, { frameIndex:frame.index, label:`${phase}.camera` });
+      expectCloseGeometry(frame.overlay, expectedFrame.overlay, { frameIndex:frame.index, label:`${phase}.overlay` });
+    });
+  };
+  expectStableDerivedFrames(saveRoundTrip.beforeDirectSave.frames, saveRoundTrip.before.frames, 'before-save');
+  expectStableDerivedFrames(saveRoundTrip.after.frames, saveRoundTrip.before.frames, 'after-save');
 });

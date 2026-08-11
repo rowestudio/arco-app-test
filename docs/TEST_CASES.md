@@ -328,3 +328,12 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: retângulos e estilos computados, screenshot WebKit complementar e teste publicado em iPhone/Safari real.
 - Ambiente: WebKit automatizado em 390 × 797 e iPhone/Safari real.
 - Automatizável: sim, exceto aprovação visual final e percepção da safe-area no aparelho real.
+
+## TC-037 — Session Restore preserva paridade Frame/câmera
+
+- Pré-condição: projeto ProjectWorld com três ou mais assets e três ou mais Frames, checkpoint IndexedDB real e viewport mobile variável.
+- Passos: Manual Load; estabilizar; persistir checkpoint; alterar altura do viewport; reload; Continuar sessão; comparar todos os Frames; amostrar Preview em cada waypoint; abrir Save, disparar resize equivalente ao teclado do iPhone e concluir o Save.
+- Resultado esperado: checkpoint corresponde ao estado vivo; estado canônico pós-Restore é idêntico ao pré-fechamento; overlays e câmera coincidem com cada Frame com tolerância menor que 0,001; conversão Norm→Abs ocorre no máximo uma vez; Save/resize não altera modelo, overlays, câmera, curvas ou ProjectWorld.
+- Evidência: teste WebKit E8W em `tests/smoke/app.spec.mjs` e sequência diagnóstica `restoreStep*`.
+- Ambiente: WebKit automatizado; iPhone/Safari real obrigatório para validar fechamento/reabertura, teclado e visual viewport.
+- Automatizável: sim para estado/geometria; ciclo real de processo e percepção visual exigem aparelho real.
