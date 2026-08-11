@@ -252,6 +252,31 @@ test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', asyn
   expect(capturedErrors, `erro JS capturado durante a abertura:\n${capturedErrors.join('\n')}`).toEqual([]);
 });
 
+test('E8X cria/cancela text asset canônico e preserva resize, Layers e JSON', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await page.evaluate(() => setEditorMode('assets', 'webkit-e8x'));
+  await page.evaluate(() => startTextCreation());
+  await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
+  await page.locator('#textCreationInput').fill('Arco Motion com quebra automática de linha');
+  await page.locator('#textCreationColor').evaluate((el) => { el.value='#ff3366'; el.dispatchEvent(new Event('input',{bubbles:true})); });
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await page.getByRole('button', { name:'OK', exact:true }).click();
+  const confirmed = await page.evaluate(() => {
+    const text=assets.find(a=>a&&a.type==='text'), data=buildProjectData(true);
+    return { count:assets.filter(a=>a&&a.type==='text').length, text:{...text}, saved:data.assets.find(a=>a&&a.type==='text'),
+      selected:selectedAssetId, layer:document.querySelector(`#layersList [data-asset-id="${text.id}"]`)?.textContent||'',
+      resize:[textCreationKeyboardResizeChangedProjectWorld,textCreationKeyboardResizeChangedFrames,textCreationKeyboardResizeChangedExistingAssets] };
+  });
+  expect(confirmed.count).toBe(1); expect(confirmed.text.text).toContain('Arco Motion'); expect(confirmed.text.color).toBe('#ff3366');
+  expect(confirmed.text.boxWidth).toBeGreaterThan(100); expect(confirmed.saved).toMatchObject({type:'text',text:confirmed.text.text,color:'#ff3366'});
+  expect(confirmed.selected).toBe(confirmed.text.id); expect(confirmed.layer).toContain('Texto'); expect(confirmed.resize).toEqual([false,false,false]);
+  await page.evaluate(() => startTextCreation()); await page.locator('#textCreationInput').fill('Descartar'); await page.getByRole('button',{name:'Cancelar',exact:true}).click();
+  await expect.poll(() => page.evaluate(() => assets.filter(a=>a&&a.type==='text').length)).toBe(1);
+});
+
 test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Redo', async ({ page }) => {
   test.setTimeout(180_000);
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });

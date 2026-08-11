@@ -2,6 +2,13 @@
 
 Última atualização documental: 2026-08-08.
 
+## Atualização 2026-08-11 — v8z4b32E8X em desenvolvimento
+
+- A primeira etapa de Texto introduz `type: "text"` como ativo canônico editável, com criação por `+`, cor, largura/quebra automática e confirmação/cancelamento.
+- O mesmo estado textual participa da pilha de Layers, seleção e transformações genéricas, Save/Load, checkpoint de sessão e composição Canvas compartilhada por Preview/Export; drafts não entram em persistência.
+- Resize de teclado durante a criação é apenas auditado e não recalcula Frames, ProjectWorld ou ativos confirmados.
+- A aprovação final continua dependente de publicação e validação por Roberto em iPhone/Safari real; nenhuma promoção está autorizada.
+
 ## Atualização 2026-08-11 — v8z4b32E8W em PR
 
 - A reprodução real após Session Restore comprovou uma regressão de sistema de coordenadas, não de Parallax: Frames do ProjectWorld permaneciam em `baseStageW/baseStageH`, enquanto o sampler da câmera ainda os convertia por `stageW/stageH`, dimensões CSS variáveis do viewport.

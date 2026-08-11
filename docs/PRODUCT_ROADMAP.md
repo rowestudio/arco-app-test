@@ -28,6 +28,7 @@ Estados usados neste documento:
 - [Futuro] Preview deve mostrar a passagem real pelos frames e trechos.
 - [Futuro] Durante o Preview, o frame ativo deve acompanhar a reprodução; tocar num frame deve permitir pausar/pular para edição.
 - [Futuro] Durações por trecho, pausas por frame, loop e comportamento final configurável.
+- [Futuro] Intensidade de easing por segmento: permitir ajustar localmente quanto a chegada/saída acelera, desacelera ou amortece, com possibilidade posterior de aplicação global, sem exigir editor técnico de curva e preservando `Constante` como ausência de easing temporal. Este registro não autoriza implementação.
 - [Futuro] Passeio de Frames no modo Ativos/Stage como referência visual da câmera.
 
 ## 3. Ativos e composição
