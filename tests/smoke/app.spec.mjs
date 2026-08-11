@@ -252,29 +252,128 @@ test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', asyn
   expect(capturedErrors, `erro JS capturado durante a abertura:\n${capturedErrors.join('\n')}`).toEqual([]);
 });
 
-test('E8X cria/cancela text asset canônico e preserva resize, Layers e JSON', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
+test('E8X cobre TC-038 por criação, transformação, persistência e renderer reais', async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
   await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
   await page.evaluate(() => setEditorMode('assets', 'webkit-e8x'));
+
+  const baseline = await page.evaluate(() => ({
+    projectWorld: structuredClone(projectWorld),
+    frames: structuredClone(frames.slice(0, frameCount)),
+    assets: assets.map(a => ({ id:a.id, type:a.type, worldX:a.worldX, worldY:a.worldY, worldW:a.worldW, worldH:a.worldH, rotation:a.rotation, zIndex:a.zIndex })),
+  }));
+
+  // Cancelar exercita o fluxo real e não pode deixar asset, Layer, Undo ou mutação canônica.
   await page.evaluate(() => startTextCreation());
   await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
-  await page.locator('#textCreationInput').fill('Arco Motion com quebra automática de linha');
+  await page.locator('#textCreationInput').fill('Este draft deve ser descartado');
+  await page.setViewportSize({ width:390, height:620 });
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await page.setViewportSize({ width:390, height:844 });
+  await page.getByRole('button', { name:'Cancelar', exact:true }).click();
+  const cancelled = await page.evaluate(() => ({
+    projectWorld:structuredClone(projectWorld), frames:structuredClone(frames.slice(0,frameCount)),
+    assets:assets.map(a=>({id:a.id,type:a.type,worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,rotation:a.rotation,zIndex:a.zIndex})),
+    textCount:assets.filter(a=>a&&a.type==='text').length, pending:pendingTextDraft,
+  }));
+  expect(cancelled).toMatchObject({ projectWorld:baseline.projectWorld, frames:baseline.frames, assets:baseline.assets, textCount:0, pending:null });
+
+  // OK cria exatamente um asset; texto longo força wrap sem Enter e a cor vem do controle real.
+  await page.evaluate(() => startTextCreation());
+  await page.locator('#textCreationInput').fill('Arco Motion texto longo para comprovar quebra automática dentro do quadro canônico');
   await page.locator('#textCreationColor').evaluate((el) => { el.value='#ff3366'; el.dispatchEvent(new Event('input',{bubbles:true})); });
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
   await page.getByRole('button', { name:'OK', exact:true }).click();
   const confirmed = await page.evaluate(() => {
     const text=assets.find(a=>a&&a.type==='text'), data=buildProjectData(true);
-    return { count:assets.filter(a=>a&&a.type==='text').length, text:{...text}, saved:data.assets.find(a=>a&&a.type==='text'),
-      selected:selectedAssetId, layer:document.querySelector(`#layersList [data-asset-id="${text.id}"]`)?.textContent||'',
+    const canvas=document.createElement('canvas'), ctx=canvas.getContext('2d'); ctx.font=`${text.fontWeight} ${text.fontSize}px ${text.fontFamily}`;
+    return { count:assets.filter(a=>a&&a.type==='text').length, text:{...text}, saved:data.assets.find(a=>a&&a.type==='text'), lines:wrapTextLines(ctx,text.text,text.boxWidth),
+      selected:selectedAssetId, outline:document.getElementById('assetSelectOutline')?.dataset.assetId||'',
       resize:[textCreationKeyboardResizeChangedProjectWorld,textCreationKeyboardResizeChangedFrames,textCreationKeyboardResizeChangedExistingAssets] };
   });
-  expect(confirmed.count).toBe(1); expect(confirmed.text.text).toContain('Arco Motion'); expect(confirmed.text.color).toBe('#ff3366');
+  expect(confirmed.count).toBe(1); expect(confirmed.text.text).toContain('Arco Motion'); expect(confirmed.text.color).toBe('#ff3366'); expect(confirmed.lines.length).toBeGreaterThan(1);
   expect(confirmed.text.boxWidth).toBeGreaterThan(100); expect(confirmed.saved).toMatchObject({type:'text',text:confirmed.text.text,color:'#ff3366'});
-  expect(confirmed.selected).toBe(confirmed.text.id); expect(confirmed.layer).toContain('Texto'); expect(confirmed.resize).toEqual([false,false,false]);
-  await page.evaluate(() => startTextCreation()); await page.locator('#textCreationInput').fill('Descartar'); await page.getByRole('button',{name:'Cancelar',exact:true}).click();
-  await expect.poll(() => page.evaluate(() => assets.filter(a=>a&&a.type==='text').length)).toBe(1);
+  expect(confirmed.selected).toBe(confirmed.text.id); expect(confirmed.outline).toBe(confirmed.text.id); expect(confirmed.resize).toEqual([false,false,false]);
+
+  // Seleção/hit-test e movimento usam os handlers reais do Stage.
+  const moved = await page.evaluate(() => {
+    const text=assets.find(a=>a&&a.type==='text'), before={x:text.worldX,y:text.worldY,w:text.worldW,h:text.worldH};
+    const center=editorWorldToStage(text.worldX+text.worldW/2,text.worldY+text.worldH/2,0,0), rect=stageContent.getBoundingClientRect();
+    const event=(x,y)=>({clientX:rect.left+center.x*editorZoomScale+x,clientY:rect.top+center.y*editorZoomScale+y,pointerId:81,pointerType:'touch',isPrimary:true,target:stageContent,preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}});
+    handleStageAssetSelectPointer(event(0,0)); handleStageAssetMovePointer(event(36,24)); endStageAssetMovePointer(event(36,24));
+    return {id:text.id,selected:selectedAssetId,before,after:{x:text.worldX,y:text.worldY,w:text.worldW,h:text.worldH},hit:hitTestAssetAtWorld(text.worldX+text.worldW/2,text.worldY+text.worldH/2)?.id};
+  });
+  expect(moved.selected).toBe(moved.id); expect(moved.hit).toBe(moved.id); expect(moved.after.x).not.toBeCloseTo(moved.before.x); expect(moved.after.y).not.toBeCloseTo(moved.before.y);
+  expect(moved.after.w).toBeCloseTo(moved.before.w); expect(moved.after.h).toBeCloseTo(moved.before.h);
+
+  // Escala e rotação percorrem a infraestrutura real das quatro alças.
+  const transformed = await page.evaluate(() => {
+    const text=assets.find(a=>a&&a.type==='text'), fakeTarget={setPointerCapture(){},releasePointerCapture(){}};
+    const point=(angle,radius,id)=>{ computeEditorTransform(); const c=editorWorldToStage(text.worldX+text.worldW/2,text.worldY+text.worldH/2,0,0), sr=stageContent.getBoundingClientRect(); return {clientX:sr.left+c.x*editorZoomScale+Math.cos(angle)*radius,clientY:sr.top+c.y*editorZoomScale+Math.sin(angle)*radius,pointerId:id,currentTarget:fakeTarget,preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}}; };
+    const before={w:text.worldW,h:text.worldH,fontSize:text.fontSize,rotation:text.rotation};
+    beginAssetTransformDrag(point(0,80,82),'br'); handleAssetTransformPointerMove(point(0,135,82)); endAssetTransformPointer(point(0,135,82),false);
+    const scaled={w:text.worldW,h:text.worldH,fontSize:text.fontSize};
+    beginAssetTransformDrag(point(0,100,83),'br'); handleAssetTransformPointerMove(point(Math.PI/3,100,83)); endAssetTransformPointer(point(Math.PI/3,100,83),false);
+    return {before,scaled,after:{w:text.worldW,h:text.worldH,fontSize:text.fontSize,rotation:text.rotation}};
+  });
+  expect(transformed.scaled.w).toBeGreaterThan(transformed.before.w); expect(transformed.scaled.fontSize).toBeGreaterThan(transformed.before.fontSize); expect(transformed.after.rotation).not.toBe(transformed.before.rotation);
+
+  // Layers executa reorder real texto↔imagem e prova ordem no modelo e no DOM.
+  const reordered = await page.evaluate(() => {
+    const text=assets.find(a=>a&&a.type==='text'), before=text.zIndex; layerMoveAssetDown(text.id); renderLayersPanelList();
+    const order=assets.slice().sort((a,b)=>(a.zIndex||0)-(b.zIndex||0)).map(a=>String(a.id));
+    const dom=[...document.querySelectorAll('#layersList .layers-item')].map(el=>el.dataset.assetId);
+    return {id:String(text.id),before,after:text.zIndex,order,dom,imageIds:assets.filter(a=>a&&a.type==='image').map(a=>String(a.id))};
+  });
+  expect(reordered.after).not.toBe(reordered.before); expect(reordered.order).toContain(reordered.id); expect(reordered.imageIds.some(id=>reordered.order.indexOf(id)>reordered.order.indexOf(reordered.id))).toBe(true);
+  expect(reordered.dom).toEqual([...reordered.order].reverse());
+
+  // Save/Load real pelo pipeline canônico, preservando integralmente o asset transformado.
+  const beforeRoundTrip = await page.evaluate(() => { const text=assets.find(a=>a&&a.type==='text'); return {data:buildProjectData(true),text:serializeProjectAsset(text,0,false)}; });
+  await page.evaluate((data) => new Promise(resolve => applyProjectData(data,{origin:'manual-load',onApplied:resolve})), beforeRoundTrip.data);
+  const afterLoad = await page.evaluate((id) => { const text=assets.find(a=>String(a.id)===id); return {text:serializeProjectAsset(text,0,false),count:assets.filter(a=>a&&a.type==='text').length}; }, String(confirmed.text.id));
+  expect(afterLoad.count).toBe(1); expect(afterLoad.text).toEqual(beforeRoundTrip.text);
+
+  // Checkpoint real em IndexedDB + reload + escolha real de Continuar sessão.
+  await page.evaluate(async () => {
+    scheduleSessionAutosave('e8x-smoke',true);
+    flushSessionAutosave();
+    while (_sessionAutosaveActiveWrites.size) await Promise.all([..._sessionAutosaveActiveWrites]);
+  });
+  await expect.poll(() => sessionCheckpointExists(page), {timeout:30_000}).toBe(true);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await expect(page.getByRole('dialog',{name:'Continuar sessão anterior?'})).toBeVisible();
+  await page.getByText('Continuar de onde parei',{exact:true}).click();
+  await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30_000});
+  const afterSession = await page.evaluate((id) => { const text=assets.find(a=>String(a.id)===id); return text?serializeProjectAsset(text,0,false):null; }, String(confirmed.text.id));
+  expect(afterSession).toEqual(beforeRoundTrip.text);
+
+  // Preview real: snapshot contém o mesmo texto e pixels na caixa canônica apresentam a cor escolhida.
+  await page.evaluate(() => startPreview());
+  await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000});
+  await expect.poll(() => page.evaluate(() => previewLoadingHiddenAfterFirstFrame),{timeout:30_000}).toBe(true);
+  const previewProof = await page.evaluate((id) => {
+    const text=assets.find(a=>String(a.id)===id), canvas=document.getElementById('previewDisplayCanvas'), ctx=canvas.getContext('2d'), pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+    let colored=0; for(let i=0;i<pixels.length;i+=4) if(pixels[i]>pixels[i+1]*1.35&&pixels[i]>pixels[i+2]*1.15&&pixels[i+3]>100) colored++;
+    const originalSnapshot=renderSessionSnapshot, noText=document.createElement('canvas'); noText.width=canvas.width; noText.height=canvas.height;
+    const rt=renderTransform.preview, cam={cx:rt.cameraX,cy:rt.cameraY,sw:rt.cameraW,sh:rt.cameraH,rot:rt.cameraRotation};
+    renderSessionSnapshot={...originalSnapshot,textAssets:[]}; drawWorldToCanvas(noText.getContext('2d'),cam,noText.width,noText.height,{context:'preview'}); renderSessionSnapshot=originalSnapshot;
+    const base=noText.getContext('2d').getImageData(0,0,noText.width,noText.height).data; let changed=0;
+    for(let i=0;i<pixels.length;i+=4) if(Math.abs(pixels[i]-base[i])+Math.abs(pixels[i+1]-base[i+1])+Math.abs(pixels[i+2]-base[i+2])+Math.abs(pixels[i+3]-base[i+3])>20) changed++;
+    return {snapshot:originalSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,colored,changed,canvas:[canvas.width,canvas.height]};
+  }, String(confirmed.text.id));
+  expect(previewProof.snapshot).toMatchObject({id:confirmed.text.id,text:beforeRoundTrip.text.text,color:'#ff3366',zIndex:beforeRoundTrip.text.zIndex});
+  expect(previewProof.canvas[0]).toBeGreaterThan(0); expect(previewProof.colored).toBeGreaterThan(0); expect(previewProof.changed).toBeGreaterThan(0);
+  await page.evaluate(() => stopPreview());
+
+  // Export real (timeline curta para o smoke) deve gerar blob e congelar o mesmo text asset no snapshot.
+  await page.evaluate(() => { loopEnabled=false; for(let i=0;i<segDurations.length;i++) segDurations[i]=0.1; startRecord(); });
+  await expect.poll(() => page.evaluate(() => exportGenerationCompleted || arcoExportDiag.exportSuccess===true),{timeout:120_000}).toBe(true);
+  const exportProof = await page.evaluate((id) => ({blob:exportFinalBlobBytes,snapshot:renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,success:arcoExportDiag.exportSuccess}), String(confirmed.text.id));
+  expect(exportProof.success).toBe(true); expect(exportProof.blob).toBeGreaterThan(0); expect(exportProof.snapshot).toMatchObject({text:beforeRoundTrip.text.text,color:'#ff3366',zIndex:beforeRoundTrip.text.zIndex});
 });
 
 test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Redo', async ({ page }) => {

@@ -35089,6 +35089,8 @@ function beginAssetTransformDrag(e, corner) {
     pointerId: e.pointerId, corner: corner || 'br', mode: null, assetId: asset.id, undoSnapshot: captureState(), moved: false,
     startClientX: e.clientX, startClientY: e.clientY,
     startX: asset.worldX || 0, startY: asset.worldY || 0, startW: asset.worldW || 1, startH: asset.worldH || 1,
+    startBoxWidth: asset.type === 'text' ? (Number(asset.boxWidth) || Number(asset.worldW) || 1) : null,
+    startFontSize: asset.type === 'text' ? (Number(asset.fontSize) || 36) : null,
     startRotation: Number(asset.rotation) || 0, cx, cy,
     initDist: Math.max(1, Math.hypot(wp.x - cx, wp.y - cy)),
     initAngle: Math.atan2(wp.y - cy, wp.x - cx), clamped: false
@@ -35121,6 +35123,12 @@ function handleAssetTransformPointerMove(e) {
     const nw = ds.startW * f, nh = ds.startH * f;
     if (Number.isFinite(nw) && Number.isFinite(nh) && nw > 0 && nh > 0) {
       asset.worldW = nw; asset.worldH = nh; asset.worldX = ds.cx - nw / 2; asset.worldY = ds.cy - nh / 2;
+      if (asset.type === 'text') {
+        asset.boxWidth = ds.startBoxWidth * f;
+        asset.fontSize = ds.startFontSize * f;
+        measureTextAsset(asset);
+        asset.worldY = ds.cy - asset.worldH / 2;
+      }
     } else { assetScaleProducedInvalidGeometry = true; }
   } else if (ds.mode === 'rotate') {
     let delta = getIncrementalAngleDelta(currentAngle, ds.initAngle);
