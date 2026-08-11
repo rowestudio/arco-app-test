@@ -4,9 +4,10 @@
 
 ## Atualização 2026-08-11 — v8z4b32E8W em PR
 
-- A auditoria numérica não comprovou divergência geométrica entre o Frame canônico, a câmera do Stage e a amostra canônica compartilhada por Preview/Export.
-- A E8W preserva a fórmula e os renderers de Parallax e adiciona somente diagnóstico observável e regressão WebKit baseada em valores geométricos reais, cobrindo depth zero, positivo/negativo, navegação A → B → C → A e mutação do Frame ativo sem troca de índice.
-- O enquadramento aparente relatado decorre do deslocamento legítimo de assets com `depth != 0`; a edição absoluta requer uma tarefa futura específica para Vista Profundidade 0, já registrada no roadmap, e não é implementada nesta PR.
+- A reprodução real após Session Restore comprovou uma regressão de sistema de coordenadas, não de Parallax: Frames do ProjectWorld permaneciam em `baseStageW/baseStageH`, enquanto o sampler da câmera ainda os convertia por `stageW/stageH`, dimensões CSS variáveis do viewport.
+- O foco do campo de nome no fluxo Salvar pode redimensionar o viewport no iPhone; o listener global de `resize` então reescalava e gravava novamente todos os Frames do ProjectWorld, fazendo o overlay “pular” para a geometria que a câmera já mostrava.
+- A E8W torna `projectWorld.baseStageW/baseStageH` a dimensão canônica compartilhada por câmera, `framesNorm` e Restore, e faz resize de ProjectWorld alterar apenas o viewport/render. A fórmula de Parallax, os renderers, ProjectWorld persistido e o fluxo manual de Save permanecem preservados.
+- O teste E8W executa Manual Load → checkpoint real → reload/startup recovery → Preview nos waypoints de todos os Frames → Save com resize, comparando modelo, payload, overlay e câmera por valores reais.
 - Nenhuma promoção para produção está autorizada; validação publicada em iPhone/Safari real permanece obrigatória.
 
 ## Atualização 2026-08-10 — v8z4b32E8V em desenvolvimento

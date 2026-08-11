@@ -329,11 +329,11 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Ambiente: WebKit automatizado em 390 × 797 e iPhone/Safari real.
 - Automatizável: sim, exceto aprovação visual final e percepção da safe-area no aparelho real.
 
-## TC-037 — Paridade Frame, câmera e Parallax
+## TC-037 — Session Restore preserva paridade Frame/câmera
 
-- Pré-condição: projeto com três ou mais assets em depth 0, positivo e negativo e pelo menos três Frames espacialmente distintos.
-- Passos: comparar Frame/câmera/Stage/Preview/Export na mesma amostra; navegar A → B → C → A; alterar x/y do Frame A sem trocar o índice ativo.
-- Resultado esperado: deltas de câmera e geometria por asset abaixo de 0,001; depth 0 sem offset; depths opostos deslocam em sentidos opostos; round-trip idêntico; refresh imediato; geometria canônica dos assets intacta e nenhum cache stale.
-- Evidência: teste WebKit E8W em `tests/smoke/app.spec.mjs` e diagnóstico `parallax*` não visível na UI normal.
-- Ambiente: WebKit automatizado; iPhone/Safari real obrigatório para confirmar a percepção visual.
-- Automatizável: sim para geometria; percepção visual exige aparelho real.
+- Pré-condição: projeto ProjectWorld com três ou mais assets e três ou mais Frames, checkpoint IndexedDB real e viewport mobile variável.
+- Passos: Manual Load; estabilizar; persistir checkpoint; alterar altura do viewport; reload; Continuar sessão; comparar todos os Frames; amostrar Preview em cada waypoint; abrir Save, disparar resize equivalente ao teclado do iPhone e concluir o Save.
+- Resultado esperado: checkpoint corresponde ao estado vivo; estado canônico pós-Restore é idêntico ao pré-fechamento; overlays e câmera coincidem com cada Frame com tolerância menor que 0,001; conversão Norm→Abs ocorre no máximo uma vez; Save/resize não altera modelo, overlays, câmera, curvas ou ProjectWorld.
+- Evidência: teste WebKit E8W em `tests/smoke/app.spec.mjs` e sequência diagnóstica `restoreStep*`.
+- Ambiente: WebKit automatizado; iPhone/Safari real obrigatório para validar fechamento/reabertura, teclado e visual viewport.
+- Automatizável: sim para estado/geometria; ciclo real de processo e percepção visual exigem aparelho real.

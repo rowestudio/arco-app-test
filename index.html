@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E8W — base v8z4b32E8V. test(parallax): prova numericamente a paridade Frame/câmera/Stage/Preview/Export sem alterar a matemática aprovada. APP_VERSION = APP_VERSION_NAME = v8z4b32E8W. -->
+<!-- Arco Motion App — v8z4b32E8W — base v8z4b32E8V. fix(session-restore): câmera e serialização usam baseStage canônico do ProjectWorld; resize do viewport não reescala Frames persistidos. APP_VERSION = APP_VERSION_NAME = v8z4b32E8W. -->
 <!-- Arco Motion App — v8z4b32E8V — base v8z4b32E8U. fix(ui): aplica os neutros canônicos e prolonga o container contextual real até a borda inferior/safe-area, preservando a geometria compacta. APP_VERSION = APP_VERSION_NAME = v8z4b32E8V. -->
 <!-- Arco Motion App — v8z4b32E8U — base v8z4b32E8T. fix(ui): compacta a primitiva compartilhada dos controles contextuais e mantém a superfície neutra contínua até a safe-area. APP_VERSION = APP_VERSION_NAME = v8z4b32E8U. -->
 <!-- Arco Motion App — v8z4b32E8T — base v8z4b32E8S. fix(ui): iguala as métricas dos steps e Reset contextuais de Ativos às métricas canônicas dos controles equivalentes de Frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E8T. -->
@@ -14588,11 +14588,12 @@ const undoStack = [];
 const redoStack = [];
 
 function captureState() {
+  const frameSpace = getCanonicalFrameCoordinateDimensions();
   const framesNorm = frames.slice(0, frameCount).map(f => ({
-    nx: f.x / (stageW || 1),
-    ny: f.y / (stageH || 1),
-    nw: f.w / (stageW || 1),
-    nh: f.h / (stageH || 1),
+    nx: f.x / frameSpace.width,
+    ny: f.y / frameSpace.height,
+    nw: f.w / frameSpace.width,
+    nh: f.h / frameSpace.height,
     pointMode: f.pointMode || POINT_MODE_DEFAULT
   }));
   const imageAR = imgNatW && imgNatH ? imgNatW / imgNatH : null;
@@ -18128,8 +18129,27 @@ function layoutStage() {
   restackFilmEditorLayers('layoutStage');
 }
 
+// E8W — Frames de projetos ProjectWorld vivem no sistema canônico persistido,
+// não no tamanho CSS corrente do Stage. O Stage é apenas o viewport do editor.
+function getCanonicalFrameCoordinateDimensions() {
+  const worldW = Number(projectWorld && projectWorld.baseStageW);
+  const worldH = Number(projectWorld && projectWorld.baseStageH);
+  if (projectWorld && projectWorld.initialized && worldW > 0 && worldH > 0) {
+    return { width: worldW, height: worldH, source: 'projectWorld.baseStage' };
+  }
+  return { width: Math.max(1, Number(stageW) || 1), height: Math.max(1, Number(stageH) || 1), source: 'stage' };
+}
+
 window.addEventListener('resize', () => {
   if (!imgNatW) return;
+  // Em ProjectWorld, resize (inclusive teclado do Save no iPhone) só muda o
+  // viewport. Reescalar frames aqui corrompia a geometria canônica e fazia o
+  // overlay "pular" ao abrir Salvar após um Session Restore.
+  if (projectWorld && projectWorld.initialized && projectWorld.baseStageW > 0 && projectWorld.baseStageH > 0) {
+    layoutStage();
+    renderAll();
+    return;
+  }
   // Save normalized frame positions
   const saved = frames.map(f => ({
     cx: (f.x + f.w/2) / stageW,
@@ -23551,8 +23571,9 @@ function applySegTremorLayer(state, t) {
 }
 
 function getStateAtTBase(t) {
-  const scaleX = imgNatW / stageW;
-  const scaleY = imgNatH / stageH;
+  const frameSpace = getCanonicalFrameCoordinateDimensions();
+  const scaleX = imgNatW / frameSpace.width;
+  const scaleY = imgNatH / frameSpace.height;
   // v8z4b23a: guard para 0 frames (modo F1 assistido) — retorna centro da imagem
   if (frameCount < 1 || !frames[0]) {
     const hw = imgNatW > 0 ? imgNatW / 2 : 0;
@@ -23670,10 +23691,10 @@ function getStateAtTBase(t) {
   // v8z4b18y: acesso via curvePuller helper — lida com trechos normais e loop
   // getSegmentCurvePuller retorna loopCtrlPt para seg de loop, ctrlPts[seg] para normal.
   const cp = getSegmentCurvePuller(seg) || {
-    nx: (frameCX(seg % frameCount) / stageW + frameCX((seg + 1) % frameCount) / stageW) / 2,
-    ny: (frameCY(seg % frameCount) / stageH + frameCY((seg + 1) % frameCount) / stageH) / 2
+    nx: (frameCX(seg % frameCount) / frameSpace.width + frameCX((seg + 1) % frameCount) / frameSpace.width) / 2,
+    ny: (frameCY(seg % frameCount) / frameSpace.height + frameCY((seg + 1) % frameCount) / frameSpace.height) / 2
   };
-  const cpx = cp.nx * stageW, cpy = cp.ny * stageH;
+  const cpx = cp.nx * frameSpace.width, cpy = cp.ny * frameSpace.height;
 
   // Blend Catmull-Rom with Bézier control point influence
   // Catmull-Rom interpolation
@@ -29866,9 +29887,10 @@ function buildProjectData(includeImages) {
   // entradas antes de serializar (corrige segBlurSettings curto como o bug reportado).
   ensureSegmentArraysIntegrity();
   ensureProjectShake(); // v8z4b29BO — normaliza o Tremor Global antes de serializar.
+  const frameSpace = getCanonicalFrameCoordinateDimensions();
   const framesNorm = frames.slice(0, frameCount).map(f => ({
-    nx: f.x / stageW, ny: f.y / stageH,
-    nw: f.w / stageW, nh: f.h / stageH
+    nx: f.x / frameSpace.width, ny: f.y / frameSpace.height,
+    nw: f.w / frameSpace.width, nh: f.h / frameSpace.height
   }));
   // v8z4b30W — para ProjectWorld com múltiplas imagens, salvar também coordenadas
   // absolutas do mundo. Garante que nx/ny negativos (frames em slots laterais) não
@@ -29976,6 +29998,23 @@ let sessionRestoreLayerIdentitiesPreserved = true;
 let sessionRestoreProjectWorldRestored = false;
 let sessionRestoreNoPartialState = true;
 let sessionRestoreDidNotOverrideManualLoad = true;
+let sessionRestoreSequence = [];
+let sessionRestoreNormToAbsConversionCount = 0;
+let sessionRestoreFrameCoordinateSource = 'none';
+let sessionRestoreDoubleFrameConversionDetected = false;
+let sessionRestoreInvalidatedSegmentCache = false;
+let sessionRestoreInvalidatedCurveCache = false;
+let sessionRestoreInvalidatedPreviewCache = false;
+let sessionRestoreInvalidatedFrameOverlay = false;
+let sessionRestoreInvalidatedScrim = false;
+let sessionRestoreRebuiltCameraDerivedState = false;
+let sessionPreCloseCanonicalStateHash = 'n/d';
+let sessionCheckpointCanonicalStateHash = 'n/d';
+let sessionPostRestoreCanonicalStateHash = 'n/d';
+let sessionCheckpointMatchesLiveCanonicalState = null;
+function recordSessionRestoreStep(step) {
+  sessionRestoreSequence.push({ index: sessionRestoreSequence.length + 1, step, at: performance.now() });
+}
 let _sessionAutosaveTimer = null;
 let _sessionAutosaveEpoch = 0;
 let _sessionAutosaveQueuedRevision = 0;
@@ -30186,6 +30225,8 @@ async function performSessionAutosaveWrite(revision, epoch, mandatoryFlush = fal
     sessionAutosaveBuildStartedAt = Date.now();
     const buildStartedAt = performance.now();
     const data = buildCompleteSessionProjectData();
+    const liveParitySnapshot = captureSessionFrameParitySnapshot();
+    sessionPreCloseCanonicalStateHash = liveParitySnapshot.canonicalStateHash;
     sessionAutosaveBuildProjectDataMs = performance.now() - buildStartedAt;
     sessionAutosaveBuildCompletedAt = Date.now();
     if (isPreviewing || previewPreparing) sessionAutosaveBuildCountDuringLastPreview++;
@@ -30193,6 +30234,10 @@ async function performSessionAutosaveWrite(revision, epoch, mandatoryFlush = fal
     if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) { deferSessionAutosaveBecausePlayback(revision, epoch, reason); return false; }
     const stringifyStartedAt = performance.now();
     const payload = JSON.stringify(data);
+    sessionCheckpointCanonicalStateHash = sessionPayloadChecksum(payload);
+    sessionCheckpointMatchesLiveCanonicalState = data.framesAbs
+      ? JSON.stringify(data.framesAbs) === JSON.stringify(liveParitySnapshot.canonicalState.framesAbs)
+      : JSON.stringify(data.framesNorm) === JSON.stringify(liveParitySnapshot.canonicalState.framesNorm);
     sessionAutosaveStringifyMs = performance.now() - stringifyStartedAt;
     if (epoch !== _sessionAutosaveEpoch || revision < _sessionAutosaveQueuedRevision) return false;
     if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) { deferSessionAutosaveBecausePlayback(revision, epoch, reason); return false; }
@@ -30694,6 +30739,17 @@ async function restoreLastSessionAutosave(knownCheckpoint = null) {
   sessionRestoreFailed = false;
   sessionRestoreAppliedSuccessfully = false;
   sessionRestoreTokenCurrent = false;
+  sessionRestoreSequence = [];
+  sessionRestoreNormToAbsConversionCount = 0;
+  sessionRestoreFrameCoordinateSource = 'none';
+  sessionRestoreDoubleFrameConversionDetected = false;
+  sessionRestoreInvalidatedSegmentCache = false;
+  sessionRestoreInvalidatedCurveCache = false;
+  sessionRestoreInvalidatedPreviewCache = false;
+  sessionRestoreInvalidatedFrameOverlay = false;
+  sessionRestoreInvalidatedScrim = false;
+  sessionRestoreRebuiltCameraDerivedState = false;
+  if (typeof recordSessionRestoreStep === 'function') recordSessionRestoreStep('checkpoint-read-start');
   const restoreToken = invalidateSessionRestore('session-restore-start');
   try {
     const checkpoint = knownCheckpoint || await readSessionCheckpoint();
@@ -30701,18 +30757,22 @@ async function restoreLastSessionAutosave(knownCheckpoint = null) {
     if (!checkpoint) return false;
     if (checkpoint.schema !== SESSION_AUTOSAVE_SCHEMA || checkpoint.complete !== true || typeof checkpoint.payload !== 'string' || checkpoint.checksum !== sessionPayloadChecksum(checkpoint.payload)) throw new Error('session-checkpoint-invalid');
     const data = JSON.parse(checkpoint.payload);
+    if (typeof recordSessionRestoreStep === 'function') recordSessionRestoreStep('checkpoint-validated');
     if (!isCompleteSessionProjectData(data)) throw new Error('session-project-incomplete');
     if (!isCurrentSessionRestore(restoreToken)) return;
     sessionRestoreAssetCount = data.assets.filter(a => a && a.type === 'image').length;
     sessionRestoreHydratedAssetCount = await prehydrateCompleteSession(data);
+    if (typeof recordSessionRestoreStep === 'function') recordSessionRestoreStep('assets-prehydrated');
     if (!isCurrentSessionRestore(restoreToken)) { sessionRestoreDidNotOverrideManualLoad = true; return false; }
     sessionAutosaveRevision = Number(checkpoint.revision) || 0;
     _sessionAutosaveQueuedRevision = Math.max(_sessionAutosaveQueuedRevision, sessionAutosaveRevision);
     _sessionAutosaveCommittedRevision = sessionAutosaveRevision;
     if (!isCurrentSessionRestore(restoreToken)) return false;
     const applicationCompleted = await new Promise((resolve) => {
+      if (typeof recordSessionRestoreStep === 'function') recordSessionRestoreStep('project-apply-start');
       applyProjectData(data, { origin: 'session-autosave', onApplied: resolve });
     });
+    if (typeof recordSessionRestoreStep === 'function') recordSessionRestoreStep('project-apply-complete');
     const restoredAssetCount = assets.filter(a => a && a.type === 'image').length;
     sessionRestoreTokenCurrent = isCurrentSessionRestore(restoreToken);
     sessionRestoreAppliedSuccessfully = applicationCompleted === true && sessionRestoreTokenCurrent &&
@@ -30741,6 +30801,7 @@ function sessionAutosaveOnProjectApplied(origin, data) {
     sessionRestoreNoPartialState = sessionRestoreHydratedAssetCount === sessionRestoreAssetCount && restoredAssets.length === sessionRestoreAssetCount;
     sessionRestoreCompleted = sessionRestoreNoPartialState && sessionRestoreLayerIdentitiesPreserved && sessionRestoreProjectWorldRestored;
     sessionRestoreFailed = !sessionRestoreCompleted;
+    sessionPostRestoreCanonicalStateHash = captureSessionFrameParitySnapshot().canonicalStateHash;
     _recordReplacedSourceBoundaryE8S('session-restore', restoredAssets);
     if (reloadExpectedRestore) updateReloadStartupUiDiagnostics('restore');
     return;
@@ -30995,6 +31056,7 @@ function dataUrlToFile(dataUrl, fallbackName) {
 
 function applyProjectData(data, loadOptions = {}) {
   const loadOrigin = loadOptions.origin || 'manual-load';
+  if (loadOrigin === 'session-autosave') if (typeof recordSessionRestoreStep === 'function') recordSessionRestoreStep('derived-render-state-invalidated');
   if (loadOrigin !== 'session-autosave') invalidateSessionRestore('manual-load');
   deletedLayerSequences.clear();
   deletedLayerSequenceReused = false;
@@ -31017,6 +31079,11 @@ function applyProjectData(data, loadOptions = {}) {
   previewBlockedAssetIds = '';
   exportBlockedBecauseAssetNotReady = false;
   resetDerivedRenderStateE7I('load-project');
+  if (loadOrigin === 'session-autosave') {
+    sessionRestoreInvalidatedSegmentCache = true;
+    sessionRestoreInvalidatedCurveCache = true;
+    sessionRestoreInvalidatedPreviewCache = true;
+  }
   if (Array.isArray(assets)) {
     assets.forEach(a => {
       if (a && a.type === 'image') {
@@ -31323,6 +31390,10 @@ function applyFrameData(data, loadOptions = {}) {
 
   // Se o arquivo tem framesAbs (salvo por v8z4b30W com ProjectWorld), usar direto.
   if (data.framesAbs && Array.isArray(data.framesAbs) && data.framesAbs.length > 0 && _loadIsProjectWorld) {
+    if (loadOptions.origin === 'session-autosave') {
+      sessionRestoreFrameCoordinateSource = 'framesAbs';
+      if (typeof recordSessionRestoreStep === 'function') recordSessionRestoreStep('frames-absolute-restored');
+    }
     const rawSnap = data.framesAbs.slice(0, 20).map(function(f){ return {rawX: f.x, rawY: f.y, rawW: f.w, rawH: f.h, rawRotation: f.rotation || 0}; });
     data.framesAbs.forEach(function(f){ frames.push({x: f.x, y: f.y, w: f.w, h: f.h}); });
     const resSnap = frames.slice(0, 20).map(function(f, i){
@@ -31334,20 +31405,28 @@ function applyFrameData(data, loadOptions = {}) {
     _frameLoadRestoredSnapshots = resSnap;
     framesRawLoadedCount = data.framesAbs.length;
   } else if (data.framesNorm && imgNatW) {
+    if (loadOptions.origin === 'session-autosave') {
+      sessionRestoreFrameCoordinateSource = 'framesNorm';
+      sessionRestoreNormToAbsConversionCount++;
+      sessionRestoreDoubleFrameConversionDetected = sessionRestoreNormToAbsConversionCount > 1;
+      if (typeof recordSessionRestoreStep === 'function') recordSessionRestoreStep('frames-normalized-converted-once');
+    }
+    const normalizedFrameSpaceW = (_loadIsProjectWorld && Number(data.projectWorld.baseStageW) > 0) ? Number(data.projectWorld.baseStageW) : stageW;
+    const normalizedFrameSpaceH = (_loadIsProjectWorld && Number(data.projectWorld.baseStageH) > 0) ? Number(data.projectWorld.baseStageH) : stageH;
     // v8z4b30W — snapshot raw a partir de framesNorm (converte para coords absolutas esperadas)
     const _rawSnap = data.framesNorm.slice(0, 20).map(function(f){
-      return {rawX: f.nx * stageW, rawY: f.ny * stageH, rawW: f.nw * stageW, rawH: f.nh * stageH, rawRotation: 0};
+      return {rawX: f.nx * normalizedFrameSpaceW, rawY: f.ny * normalizedFrameSpaceH, rawW: f.nw * normalizedFrameSpaceW, rawH: f.nh * normalizedFrameSpaceH, rawRotation: 0};
     });
     _frameLoadRawSnapshots = _rawSnap;
     framesRawLoadedCount = data.framesNorm.length;
 
     const ar = ratioMap[currentRatio];
     data.framesNorm.forEach(function(f) {
-      let fw = f.nw * stageW;
+      let fw = f.nw * normalizedFrameSpaceW;
       let fh = fw / ar;
-      if (fh > stageH * 0.95) { fh = stageH * 0.95; fw = fh * ar; }
-      const cx = f.nx * stageW + f.nw * stageW / 2;
-      const cy = f.ny * stageH + f.nh * stageH / 2;
+      if (!_loadSkipClamp && fh > normalizedFrameSpaceH * 0.95) { fh = normalizedFrameSpaceH * 0.95; fw = fh * ar; }
+      const cx = f.nx * normalizedFrameSpaceW + f.nw * normalizedFrameSpaceW / 2;
+      const cy = f.ny * normalizedFrameSpaceH + f.nh * normalizedFrameSpaceH / 2;
       var fx, fy;
       if (_loadSkipClamp) {
         // v8z4b30W — ProjectWorld: preservar coordenadas absolutas sem clamping.
@@ -31579,6 +31658,12 @@ function applyFrameData(data, loadOptions = {}) {
     // (img-1 + extras desenhadas como .world-extra-img; #imgEl legado desativado).
     if (typeof renderProjectWorldExtraImages === 'function') renderProjectWorldExtraImages();
     renderAll();
+    if (loadOptions.origin === 'session-autosave') {
+      sessionRestoreInvalidatedFrameOverlay = true;
+      sessionRestoreInvalidatedScrim = true;
+      sessionRestoreRebuiltCameraDerivedState = true;
+      if (typeof recordSessionRestoreStep === 'function') recordSessionRestoreStep('final-overlay-scrim-camera-rebuilt');
+    }
     if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__captureAfterRender();
     updateFrameSelector();
     requestLowerTimelineCenter(activeIdx);
@@ -33915,15 +34000,19 @@ function auditParallaxFrameCameraParity(frameIndex) {
   const exportCamera = { ...sampledRect };
   const delta = (a, b) => ({ x:a.x-b.x, y:a.y-b.y, w:a.w-b.w, h:a.h-b.h, rotation:a.rotation-b.rotation });
   const close = d => Object.values(d).every(value => Math.abs(value) < 0.001);
+  const closeRect = (a,b) => ['x','y','w','h','rotation'].every(key => Math.abs(a[key]-b[key]) < 0.001);
   const reference = getCanonicalParallaxReference(dims);
   const assetsAudit = (Array.isArray(assets) ? assets : []).filter(a => a && a.type === 'image').map(a => {
     const sourceRect = getWorldRenderAssetRectSourcePx(a, dims);
-    const offset = resolveAssetParallaxOffset(a, { cx:stage.x+stage.w/2, cy:stage.y+stage.h/2 }, reference);
-    const visual = { x:sourceRect.ax+offset.offsetX, y:sourceRect.ay+offset.offsetY, w:sourceRect.aw, h:sourceRect.ah, rotation:Number(a.rotation)||0 };
+    const resolveVisual = cameraRect => {
+      const offset = resolveAssetParallaxOffset(a, { cx:cameraRect.x+cameraRect.w/2, cy:cameraRect.y+cameraRect.h/2 }, reference);
+      return { rect:{x:sourceRect.ax+offset.offsetX,y:sourceRect.ay+offset.offsetY,w:sourceRect.aw,h:sourceRect.ah,rotation:Number(a.rotation)||0}, offset };
+    };
+    const stageVisual = resolveVisual(stage), previewVisual = resolveVisual(preview), exportVisual = resolveVisual(exportCamera);
     return { assetId:String(a.id), depth:Number(a.depth)||0,
       canonicalGeometry:{ worldX:a.worldX, worldY:a.worldY, worldW:a.worldW, worldH:a.worldH, rotation:Number(a.rotation)||0 },
-      parallaxOffsetX:offset.offsetX, parallaxOffsetY:offset.offsetY,
-      stageVisualAssetRect:{...visual}, previewVisualAssetRect:{...visual}, exportVisualAssetRect:{...visual} };
+      parallaxOffsetX:stageVisual.offset.offsetX, parallaxOffsetY:stageVisual.offset.offsetY,
+      stageVisualAssetRect:stageVisual.rect, previewVisualAssetRect:previewVisual.rect, exportVisualAssetRect:exportVisual.rect };
   });
   const frameStage = delta(canonical, stage), stagePreview = delta(stage, preview), previewExport = delta(preview, exportCamera);
   const zeroAssets = assetsAudit.filter(a => a.depth === 0);
@@ -33941,7 +34030,8 @@ function auditParallaxFrameCameraParity(frameIndex) {
     cameraMatchesCanonicalFrame:close(frameStage), scrimCutoutMatchesFrameVisual:filmAlphaScrimCutoutFrameIndex === index,
     depthZeroIdentityChecked:zeroAssets.length > 0, depthZeroIdentityOk:zeroAssets.length > 0 && zeroAssets.every(a => a.parallaxOffsetX === 0 && a.parallaxOffsetY === 0),
     stagePreviewCameraParityOk:close(stagePreview), previewExportCameraParityOk:close(previewExport),
-    stagePreviewAssetGeometryParityOk:true, previewExportAssetGeometryParityOk:true, assets:assetsAudit
+    stagePreviewAssetGeometryParityOk:assetsAudit.every(a=>closeRect(a.stageVisualAssetRect,a.previewVisualAssetRect)),
+    previewExportAssetGeometryParityOk:assetsAudit.every(a=>closeRect(a.previewVisualAssetRect,a.exportVisualAssetRect)), assets:assetsAudit
   };
   return parallaxFrameCameraParityAudit;
 }
@@ -33957,6 +34047,43 @@ function recordParallaxFrameGeometryMutationRefresh(before, after, frameIndexUnc
   parallaxFrameGeometryMutationRefreshOk = !!frameIndexUnchanged && JSON.stringify(before) !== JSON.stringify(after);
   parallaxStaleAssetVisualCacheDetected = !parallaxFrameGeometryMutationRefreshOk;
   return parallaxFrameGeometryMutationRefreshOk;
+}
+function captureSessionFrameParitySnapshot() {
+  computeEditorTransform();
+  const frameSpace = getCanonicalFrameCoordinateDimensions();
+  const naturalScaleX = (Number(imgNatW) || frameSpace.width) / frameSpace.width;
+  const naturalScaleY = (Number(imgNatH) || frameSpace.height) / frameSpace.height;
+  const tf = _editorTransform;
+  const screenScale = tf.active ? tf.scale : 1;
+  const screenOffsetX = tf.active ? tf.offsetX : 0;
+  const screenOffsetY = tf.active ? tf.offsetY : 0;
+  const frameStates = frames.slice(0, frameCount).map((frame, index) => {
+    const canonical = { x:frame.x, y:frame.y, w:frame.w, h:frame.h, rotation:Number(frameRotations[index])||0 };
+    const camera = { x:frame.x*naturalScaleX, y:frame.y*naturalScaleY, w:frame.w*naturalScaleX, h:frame.h*naturalScaleY, rotation:canonical.rotation };
+    const el = getFrameEl(index);
+    const overlay = el ? {
+      x:(parseFloat(el.style.left)-screenOffsetX)/screenScale,
+      y:(parseFloat(el.style.top)-screenOffsetY)/screenScale,
+      w:parseFloat(el.style.width)/screenScale,
+      h:parseFloat(el.style.height)/screenScale,
+      rotation:canonical.rotation
+    } : null;
+    return { index, canonical, camera, overlay };
+  });
+  const canonicalState = {
+    framesAbs:frames.slice(0,frameCount).map((f,i)=>({x:f.x,y:f.y,w:f.w,h:f.h,rotation:Number(frameRotations[i])||0})),
+    framesNorm:frames.slice(0,frameCount).map(f=>({nx:f.x/frameSpace.width,ny:f.y/frameSpace.height,nw:f.w/frameSpace.width,nh:f.h/frameSpace.height})),
+    activeFrameIndex:activeIdx, selectedSegmentIndex,
+    projectWorld:{x:projectWorld.x,y:projectWorld.y,w:projectWorld.w,h:projectWorld.h,baseStageW:projectWorld.baseStageW,baseStageH:projectWorld.baseStageH},
+    curvesV2:cloneCurvesV2(curvesV2), ctrlPts:ctrlPts.map(p=>p?{...p}:null), segDurations:[...segDurations],
+    assets:assets.filter(a=>a&&a.type==='image').map(a=>({id:String(a.id),worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,rotation:Number(a.rotation)||0,depth:Number(a.depth)||0}))
+  };
+  return {
+    canonicalState, canonicalStateHash:sessionPayloadChecksum(JSON.stringify(canonicalState)), frames:frameStates,
+    frameCoordinateSource:frameSpace.source, stageDimensions:{w:stageW,h:stageH},
+    timelineCenteredFrame:lowerTimelineCenterFrameIndex, rendererFrameIndex,
+    scrimCutoutFrameIndex:filmAlphaScrimCutoutFrameIndex
+  };
 }
 function getAssetParallaxVisualWorldRect(a) { return resolveAssetStageVisualGeometry(a).visualRect; }
 
@@ -37279,6 +37406,20 @@ function buildDiagnosticsText() {
   push('sessionRestoreProjectWorldRestored', String(sessionRestoreProjectWorldRestored));
   push('sessionRestoreNoPartialState', String(sessionRestoreNoPartialState));
   push('sessionRestoreDidNotOverrideManualLoad', String(sessionRestoreDidNotOverrideManualLoad));
+  push('sessionPreCloseCanonicalStateHash', sessionPreCloseCanonicalStateHash);
+  push('sessionCheckpointCanonicalStateHash', sessionCheckpointCanonicalStateHash);
+  push('sessionPostRestoreCanonicalStateHash', sessionPostRestoreCanonicalStateHash);
+  push('sessionCheckpointMatchesLiveCanonicalState', sessionCheckpointMatchesLiveCanonicalState == null ? 'n/d' : String(sessionCheckpointMatchesLiveCanonicalState));
+  push('sessionRestoreFrameCoordinateSource', sessionRestoreFrameCoordinateSource);
+  push('sessionRestoreNormToAbsConversionCount', String(sessionRestoreNormToAbsConversionCount));
+  push('sessionRestoreDoubleFrameConversionDetected', String(sessionRestoreDoubleFrameConversionDetected));
+  push('sessionRestoreInvalidatedSegmentCache', String(sessionRestoreInvalidatedSegmentCache));
+  push('sessionRestoreInvalidatedCurveCache', String(sessionRestoreInvalidatedCurveCache));
+  push('sessionRestoreInvalidatedPreviewCache', String(sessionRestoreInvalidatedPreviewCache));
+  push('sessionRestoreInvalidatedFrameOverlay', String(sessionRestoreInvalidatedFrameOverlay));
+  push('sessionRestoreInvalidatedScrim', String(sessionRestoreInvalidatedScrim));
+  push('sessionRestoreRebuiltCameraDerivedState', String(sessionRestoreRebuiltCameraDerivedState));
+  sessionRestoreSequence.forEach(entry => push('restoreStep' + String(entry.index).padStart(2, '0'), entry.step));
   push('reloadChoiceDialogOpened', String(reloadChoiceDialogOpened));
   push('reloadChoiceDialogCancelled', String(reloadChoiceDialogCancelled));
   push('reloadChoiceSelected', reloadChoiceSelected || 'none');
