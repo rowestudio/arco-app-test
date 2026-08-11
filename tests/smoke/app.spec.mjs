@@ -331,11 +331,33 @@ test('E8X cobre TC-038 por criação, transformação, persistência e renderer 
   expect(reordered.after).not.toBe(reordered.before); expect(reordered.order).toContain(reordered.id); expect(reordered.imageIds.some(id=>reordered.order.indexOf(id)>reordered.order.indexOf(reordered.id))).toBe(true);
   expect(reordered.dom).toEqual([...reordered.order].reverse());
 
-  // Save/Load real pelo pipeline canônico, preservando integralmente o asset transformado.
-  const beforeRoundTrip = await page.evaluate(() => { const text=assets.find(a=>a&&a.type==='text'); return {data:buildProjectData(true),text:serializeProjectAsset(text,0,false)}; });
-  await page.evaluate((data) => new Promise(resolve => applyProjectData(data,{origin:'manual-load',onApplied:resolve})), beforeRoundTrip.data);
-  const afterLoad = await page.evaluate((id) => { const text=assets.find(a=>String(a.id)===id); return {text:serializeProjectAsset(text,0,false),count:assets.filter(a=>a&&a.type==='text').length}; }, String(confirmed.text.id));
-  expect(afterLoad.count).toBe(1); expect(afterLoad.text).toEqual(beforeRoundTrip.text);
+  // Save/Load real pelos fluxos públicos canônicos: download completo e file input.
+  const beforeRoundTrip = await page.evaluate(() => {
+    const text=assets.find(a=>a&&a.type==='text');
+    const projectAsset = a => ({id:String(a.id),type:a.type,layerSequence:a.layerSequence,layerName:a.layerName,
+      worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,rotation:Number(a.rotation)||0,
+      zIndex:Number(a.zIndex)||0,visible:a.visible!==false,boxWidth:a.type==='text'?a.boxWidth:null,
+      text:a.type==='text'?a.text:null,color:a.type==='text'?a.color:null,fontSize:a.type==='text'?a.fontSize:null});
+    return {text:serializeProjectAsset(text,0,false),assets:assets.map(projectAsset),frames:structuredClone(frames.slice(0,frameCount)),projectWorld:structuredClone(projectWorld)};
+  });
+  const downloadPromise = page.waitForEvent('download');
+  await page.evaluate(() => doSaveDirect(true,'e8x-text-round-trip'));
+  const savedProjectDownload = await downloadPromise;
+  const savedProjectPath = await savedProjectDownload.path();
+  expect(savedProjectPath, 'Save completo não produziu arquivo para o Manual Load').toBeTruthy();
+  await page.locator('#projectFileInput').setInputFiles(savedProjectPath);
+  await expect.poll(() => page.evaluate(() => loadSessionCompleted), {timeout:30_000}).toBe(true);
+  const afterLoad = await page.evaluate((id) => {
+    const text=assets.find(a=>String(a.id)===id);
+    const projectAsset = a => ({id:String(a.id),type:a.type,layerSequence:a.layerSequence,layerName:a.layerName,
+      worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,rotation:Number(a.rotation)||0,
+      zIndex:Number(a.zIndex)||0,visible:a.visible!==false,boxWidth:a.type==='text'?a.boxWidth:null,
+      text:a.type==='text'?a.text:null,color:a.type==='text'?a.color:null,fontSize:a.type==='text'?a.fontSize:null});
+    return {text:text?serializeProjectAsset(text,0,false):null,count:assets.filter(a=>a&&a.type==='text').length,
+      assets:assets.map(projectAsset),frames:structuredClone(frames.slice(0,frameCount)),projectWorld:structuredClone(projectWorld),lastLoadError};
+  }, String(confirmed.text.id));
+  expect(afterLoad.lastLoadError).toBe(''); expect(afterLoad.count).toBe(1); expect(afterLoad.text).toEqual(beforeRoundTrip.text);
+  expect(afterLoad.assets).toEqual(beforeRoundTrip.assets); expect(afterLoad.frames).toEqual(beforeRoundTrip.frames); expect(afterLoad.projectWorld).toEqual(beforeRoundTrip.projectWorld);
 
   // Checkpoint real em IndexedDB + reload + escolha real de Continuar sessão.
   await page.evaluate(async () => {
