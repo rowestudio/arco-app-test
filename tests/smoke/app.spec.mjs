@@ -303,7 +303,11 @@ test('E8X cobre TC-038 por criação, transformação, persistência e renderer 
     const text=assets.find(a=>a&&a.type==='text'), before={x:text.worldX,y:text.worldY,w:text.worldW,h:text.worldH};
     const center=editorWorldToStage(text.worldX+text.worldW/2,text.worldY+text.worldH/2,0,0), rect=stageContent.getBoundingClientRect();
     const event=(x,y)=>({clientX:rect.left+center.x*editorZoomScale+x,clientY:rect.top+center.y*editorZoomScale+y,pointerId:81,pointerType:'touch',isPrimary:true,target:stageContent,preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}});
-    handleStageAssetSelectPointer(event(0,0)); handleStageAssetMovePointer(event(36,24)); endStageAssetMovePointer(event(36,24));
+    const firstFrame=frames[0], target=editorWorldToStage(firstFrame.x+firstFrame.w/2,firstFrame.y+firstFrame.h/2,0,0);
+    let dx=(target.x-center.x)*editorZoomScale, dy=(target.y-center.y)*editorZoomScale;
+    if (Math.abs(dx)<18) dx+=dx<0?-18:18;
+    if (Math.abs(dy)<18) dy+=dy<0?-18:18;
+    handleStageAssetSelectPointer(event(0,0)); handleStageAssetMovePointer(event(dx,dy)); endStageAssetMovePointer(event(dx,dy));
     return {id:text.id,selected:selectedAssetId,before,after:{x:text.worldX,y:text.worldY,w:text.worldW,h:text.worldH},hit:hitTestAssetAtWorld(text.worldX+text.worldW/2,text.worldY+text.worldH/2)?.id};
   });
   expect(moved.selected).toBe(moved.id); expect(moved.hit).toBe(moved.id); expect(moved.after.x).not.toBeCloseTo(moved.before.x); expect(moved.after.y).not.toBeCloseTo(moved.before.y);
@@ -378,16 +382,24 @@ test('E8X cobre TC-038 por criação, transformação, persistência e renderer 
   await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000});
   await expect.poll(() => page.evaluate(() => previewLoadingHiddenAfterFirstFrame),{timeout:30_000}).toBe(true);
   const previewProof = await page.evaluate((id) => {
-    const text=assets.find(a=>String(a.id)===id), canvas=document.getElementById('previewDisplayCanvas'), ctx=canvas.getContext('2d'), pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+    if (animFrame) togglePreviewPlayback();
+    const text=assets.find(a=>String(a.id)===id), canvas=document.getElementById('previewDisplayCanvas'), ctx=canvas.getContext('2d');
+    const durationSec=getComputedTimelineDuration(), totalPF=Math.max(1,Math.round(durationSec*25)), previewSource=getPreviewRenderSource();
+    renderFrameSafely(ctx,canvas,0,canvas.width,canvas.height,totalPF,0,{renderSource:previewSource});
+    const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;
     let colored=0; for(let i=0;i<pixels.length;i+=4) if(pixels[i]>pixels[i+1]*1.35&&pixels[i]>pixels[i+2]*1.15&&pixels[i+3]>100) colored++;
+    const textRenderAudit=renderTransform.preview?.assets?.find(a=>String(a.id)===id)||null;
     const originalSnapshot=renderSessionSnapshot, noText=document.createElement('canvas'); noText.width=canvas.width; noText.height=canvas.height;
-    const rt=renderTransform.preview, cam={cx:rt.cameraX,cy:rt.cameraY,sw:rt.cameraW,sh:rt.cameraH,rot:rt.cameraRotation};
-    renderSessionSnapshot={...originalSnapshot,textAssets:[]}; drawWorldToCanvas(noText.getContext('2d'),cam,noText.width,noText.height,{context:'preview'}); renderSessionSnapshot=originalSnapshot;
+    renderSessionSnapshot={...originalSnapshot,textAssets:[]};
+    renderFrameSafely(noText.getContext('2d'),noText,0,noText.width,noText.height,totalPF,0,{renderSource:previewSource});
+    renderSessionSnapshot=originalSnapshot;
     const base=noText.getContext('2d').getImageData(0,0,noText.width,noText.height).data; let changed=0;
     for(let i=0;i<pixels.length;i+=4) if(Math.abs(pixels[i]-base[i])+Math.abs(pixels[i+1]-base[i+1])+Math.abs(pixels[i+2]-base[i+2])+Math.abs(pixels[i+3]-base[i+3])>20) changed++;
-    return {snapshot:originalSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,colored,changed,canvas:[canvas.width,canvas.height]};
+    return {snapshot:originalSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,textRenderAudit,colored,changed,canvas:[canvas.width,canvas.height]};
   }, String(confirmed.text.id));
   expect(previewProof.snapshot).toMatchObject({id:confirmed.text.id,text:beforeRoundTrip.text.text,color:'#ff3366',zIndex:beforeRoundTrip.text.zIndex});
+  expect(previewProof.textRenderAudit).toMatchObject({id:confirmed.text.id,drawn:true,intersectsCamera:true});
+  expect(previewProof.textRenderAudit.screenW).toBeGreaterThan(0); expect(previewProof.textRenderAudit.screenH).toBeGreaterThan(0);
   expect(previewProof.canvas[0]).toBeGreaterThan(0); expect(previewProof.colored).toBeGreaterThan(0); expect(previewProof.changed).toBeGreaterThan(0);
   await page.evaluate(() => stopPreview());
 
