@@ -154,6 +154,57 @@ async function sessionCheckpointExists(page) {
   });
 }
 
+async function prepareE8WSessionFixture(page) {
+  return page.evaluate(async () => {
+    const baseAsset = assets.find(asset => asset && asset.type === 'image');
+    if (!baseAsset) throw new Error('fixture E8W sem image asset base');
+    const source = _assetPersistentSourceE8E(baseAsset) || imageOriginalDataUrl || imgEl?.src || '';
+    if (!isValidImageBase64(source)) throw new Error('fixture E8W sem fonte persistente válida');
+
+    const slots = ['middle-left', 'middle-right'];
+    let slotIndex = 0;
+    while (assets.filter(asset => asset && asset.type === 'image').length < 3) {
+      const file = dataUrlToFile(source, `e8w-asset-${slotIndex + 2}`);
+      pendingImageAction = 'insertImage';
+      pendingImageTargetAssetId = null;
+      performInsertImageAtSlot(slots[slotIndex], file);
+      slotIndex++;
+      await new Promise((resolve, reject) => {
+        const started = Date.now();
+        const expectedCount = slotIndex + 1;
+        const timer = setInterval(() => {
+          if (assets.filter(asset => asset && asset.type === 'image').length >= expectedCount) {
+            clearInterval(timer); resolve();
+          } else if (Date.now() - started > 20_000) {
+            clearInterval(timer); reject(new Error(`timeout ao inserir image asset E8W ${expectedCount}`));
+          }
+        }, 25);
+      });
+    }
+
+    while (frameCount < 3) {
+      const previous = frames[frameCount - 1] || { x:0, y:0, w:projectWorld.baseStageW * 0.5, h:projectWorld.baseStageH * 0.5 };
+      frames.push({ ...previous, x:previous.x + 37 * frameCount, y:previous.y + 23 * frameCount });
+      frameRotations.push((frameRotations[frameCount - 1] || 0) + 5);
+      frameLocked.push(false);
+      frameCount++;
+      createFrameDOM(frameCount - 1);
+    }
+    ensureSegmentArraysIntegrity();
+    ensureFramePauses();
+
+    const imageAssets = assets.filter(asset => asset && asset.type === 'image');
+    await Promise.all(imageAssets.map((asset, index) => {
+      const assetSource = index === 0 ? (asset.src || source) : _assetPersistentSourceE8E(asset);
+      return hydrateSessionImage(assetSource);
+    }));
+    invalidateProjectWorldComposite();
+    renderProjectWorldExtraImages();
+    renderAll();
+    return { frameCount, imageAssetsCount:imageAssets.length, hydratedImageAssetsCount:imageAssets.length };
+  });
+}
+
 test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', async ({ page }, testInfo) => {
   const pageErrors = [];
   const consoleErrors = [];
@@ -1275,6 +1326,11 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
   await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+
+  const fixtureState = await prepareE8WSessionFixture(page);
+  expect(fixtureState.frameCount).toBeGreaterThanOrEqual(3);
+  expect(fixtureState.imageAssetsCount).toBeGreaterThanOrEqual(3);
+  expect(fixtureState.hydratedImageAssetsCount).toBe(fixtureState.imageAssetsCount);
 
   const beforeClose = await page.evaluate(async () => {
     if (frameCount < 3 || assets.filter(a => a && a.type === 'image').length < 3) {
