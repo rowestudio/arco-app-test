@@ -1,13 +1,12 @@
 import { defineConfig } from '@playwright/test';
 
-const baseURL = process.env.E8X_BASE_URL || 'http://127.0.0.1:4173';
-const diagnosticWithoutArtifacts = process.env.E8X_DIAG_NO_ARTIFACTS === '1';
+const baseURL = 'http://127.0.0.1:4173';
 
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   reporter: [['html', { outputFolder: 'playwright-report', open: 'never' }], ['list']],
   use: {
     baseURL,
@@ -15,17 +14,15 @@ export default defineConfig({
     deviceScaleFactor: 3,
     isMobile: true,
     hasTouch: true,
-    screenshot: diagnosticWithoutArtifacts ? 'off' : 'only-on-failure',
-    trace: diagnosticWithoutArtifacts ? 'off' : 'retain-on-failure',
-    video: diagnosticWithoutArtifacts ? 'off' : 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',
+    video: 'off',
   },
   projects: [
-    {
-      name: 'webkit-mobile-smoke',
-      use: { browserName: 'webkit' },
-    },
+    { name:'webkit-mobile-smoke', testIgnore:/export\.spec\.mjs$/, use:{browserName:'webkit'} },
+    { name:'chrome-export', testMatch:/export\.spec\.mjs$/, use:{browserName:'chromium',channel:'chrome'} },
   ],
-  webServer: process.env.E8X_EXTERNAL_SERVER === '1' ? undefined : {
+  webServer: {
     command: 'node scripts/test/serve-static.mjs',
     url: baseURL,
     reuseExistingServer: !process.env.CI,

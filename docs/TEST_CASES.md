@@ -345,3 +345,9 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: teste WebKit E8W em `tests/smoke/app.spec.mjs` e sequência diagnóstica `restoreStep*`.
 - Ambiente: WebKit automatizado; iPhone/Safari real obrigatório para validar fechamento/reabertura, teclado e visual viewport.
 - Automatizável: sim para estado/geometria; ciclo real de processo e percepção visual exigem aparelho real.
+
+### TC-038 — divisão permanente de gates E8X
+
+- WebKit/Linux: criação, cancelamento, whitespace, transformações, Layers, Save/Load, Session Restore, ProjectWorld/Frames e Preview/composição por pixels.
+- Chrome estável: preflight nativo `avc1.42001f` 720×1280/30 fps/10 Mbps/prefer-hardware e Export real, tanto somente imagem quanto imagem + Text Asset, exigindo MP4 não vazio.
+- Nenhum dos gates usa skip, retry ou mock; Safari/iPhone publicado permanece aprovação manual obrigatória.

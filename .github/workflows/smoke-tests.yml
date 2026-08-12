@@ -1,70 +1,58 @@
-name: WebKit Smoke Tests
+name: Browser Smoke Tests
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   webkit-smoke-tests:
-    name: WebKit smoke tests
-    runs-on: ubuntu-latest
-
+    name: WebKit Smoke Tests
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright WebKit
-        run: npx playwright install --with-deps webkit
-
-      - name: Run WebKit smoke tests
-        run: npx playwright test --retries=0
-
-      - name: Upload HEAD smoke evidence
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - name: Run WebKit functional smoke through Preview
+        run: npx playwright test --project=webkit-mobile-smoke --workers=1 --retries=0
+      - name: Upload WebKit evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: webkit-smoke-evidence-head
+          name: webkit-functional-evidence
           if-no-files-found: warn
           path: |
             playwright-report/**
             test-results/**
 
-      - name: Run image-only Export against exact main base
-        if: always()
-        shell: bash
-        env:
-          E8X_MAIN_CONTROL: '1'
-          E8X_EXTERNAL_SERVER: '1'
-          E8X_BASE_URL: http://127.0.0.1:4174
+  chrome-real-export:
+    name: Real Export Smoke (Chrome)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Log Chrome export environment
         run: |
-          rm -rf playwright-report test-results
-          git worktree add --detach /tmp/arco-main 583ba179b715796b2a2b9d1b202ef40a52a9089b
-          (cd /tmp/arco-main && ARCO_TEST_PORT=4174 node scripts/test/serve-static.mjs) &
-          server_pid=$!
-          trap 'kill "$server_pid" 2>/dev/null || true; git worktree remove --force /tmp/arco-main' EXIT
-          for attempt in {1..30}; do curl --fail --silent http://127.0.0.1:4174/ >/dev/null && break; sleep 1; done
-          npx playwright test tests/smoke/app.spec.mjs --project=webkit-mobile-smoke --grep "E8X-BOUNDARY MAIN image-only Export" --workers=1 --retries=0
-
-      - name: Upload main control evidence
+          google-chrome --version
+          npx playwright --version
+          uname -a
+          echo "SHA=$GITHUB_SHA"
+      - name: Run real H.264 Export smoke
+        run: npx playwright test --project=chrome-export --workers=1 --retries=0
+      - name: Upload Chrome Export evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: webkit-smoke-evidence-main-control
-          if-no-files-found: warn
+          name: chrome-real-export-evidence
+          if-no-files-found: error
           path: |
-            test-results/**/arco-motion-initial-render.png
             playwright-report/**
             test-results/**

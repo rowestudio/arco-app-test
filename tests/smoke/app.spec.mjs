@@ -252,85 +252,13 @@ test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', asyn
   expect(capturedErrors, `erro JS capturado durante a abertura:\n${capturedErrors.join('\n')}`).toEqual([]);
 });
 
-function installE8XDiagnostics(page, scenario) {
-  let lastMark='listener-installed';
-  const emit=(mark,detail='')=>{ lastMark=`[E8X-BOUNDARY] scenario=${scenario} time=${new Date().toISOString()} mark=${mark}${detail?` ${detail}`:''}`; console.log(lastMark); };
-  page.on('console',message=>{ const text=message.text(); if(text.includes('[E8X-BOUNDARY]')){lastMark=text;console.log(text);} });
-  page.on('pageerror',error=>emit('pageerror',JSON.stringify(error.message)));
-  page.on('crash',()=>emit('page-crash',`last=${JSON.stringify(lastMark)}`));
-  page.on('close',()=>emit('page-close',`last=${JSON.stringify(lastMark)}`));
-  return emit;
-}
-
-async function installE8XBoundaryInstrumentation(page, scenario) {
-  await page.evaluate((scenarioName)=>{
-    const log=(mark,data={})=>console.log(`[E8X-BOUNDARY] scenario=${scenarioName} time=${new Date().toISOString()} mark=${mark} data=${JSON.stringify(data)}`);
-    const wrap=(owner,name)=>{ const original=owner?.[name]; if(typeof original!=='function'){log(`${name}-unavailable`);return;} owner[name]=function(...args){log(`${name}-before`,{args});try{const result=original.apply(this,args);if(result&&typeof result.then==='function')return result.then(value=>{log(`${name}-after`);return value;},error=>{log(`${name}-throw`,{name:error.name,message:error.message});throw error;});log(`${name}-after`);return result;}catch(error){log(`${name}-throw`,{name:error.name,message:error.message});throw error;}}; };
-    wrap(window,'hardResetCanvas'); wrap(window,'debugImagePipeline'); wrap(window,'showStatus'); wrap(window,'createImageBitmap');
-    const dimension=(name)=>{const descriptor=Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype,name);if(!descriptor?.set)return;Object.defineProperty(HTMLCanvasElement.prototype,name,{...descriptor,set(value){if(this.id==='recCanvas')log(`recCanvas-${name}-before`,{value,current:this[name]});descriptor.set.call(this,value);if(this.id==='recCanvas')log(`recCanvas-${name}-after`,{value:this[name]});}});};
-    dimension('width'); dimension('height');
-    if(typeof VideoEncoder!=='undefined'){
-      const Native=VideoEncoder;
-      const nativeIsConfigSupported=Native.isConfigSupported.bind(Native);
-      let supportQueryActive=false;
-      const wrappedSupported=async config=>{
-        if(supportQueryActive){const error=new Error('E8X diagnostic isConfigSupported reentry');log('isConfigSupported-reentry',{config});throw error;}
-        supportQueryActive=true; log('isConfigSupported-before',{config});
-        try{const value=await nativeIsConfigSupported(config);log('isConfigSupported-after',{supported:value.supported,config:value.config});return value;}
-        catch(error){log('isConfigSupported-throw',{name:error.name,message:error.message});throw error;}
-        finally{supportQueryActive=false;}
-      };
-      window.VideoEncoder=new Proxy(Native,{
-        get(Target,key,receiver){if(key==='isConfigSupported')return wrappedSupported;return Reflect.get(Target,key,receiver);},
-        construct(Target,args,newTarget){log('VideoEncoder-construct-before');const instance=Reflect.construct(Target,args,newTarget);log('VideoEncoder-construct-after');return new Proxy(instance,{get(target,key){const value=target[key];if(typeof value!=='function')return value;return function(...methodArgs){if(['configure','encode','flush','close'].includes(String(key)))log(`VideoEncoder-${String(key)}-before`,{args:methodArgs});const result=value.apply(target,methodArgs);if(result&&typeof result.then==='function')return result.then(v=>{log(`VideoEncoder-${String(key)}-after`);return v;});if(['configure','encode','close'].includes(String(key)))log(`VideoEncoder-${String(key)}-after`);return result;};}});}
-      });
-    }
-    log('instrumentation-ready',{secure:isSecureContext,VideoEncoder:typeof VideoEncoder,VideoFrame:typeof VideoFrame,MediaRecorder:typeof MediaRecorder,captureStream:typeof HTMLCanvasElement.prototype.captureStream});
-  },scenario);
-}
-
-const nativeAvcProbes=[
-  ['42001f-hardware',{codec:'avc1.42001f',hardwareAcceleration:'prefer-hardware'}],
-  ['42001f-default',{codec:'avc1.42001f'}],
-  ['42001f-software',{codec:'avc1.42001f',hardwareAcceleration:'prefer-software'}],
-  ['42E01E-hardware',{codec:'avc1.42E01E',hardwareAcceleration:'prefer-hardware'}],
-  ['4D401F-hardware',{codec:'avc1.4D401F',hardwareAcceleration:'prefer-hardware'}],
-];
-for(const [name,partial] of nativeAvcProbes){
-  test(`E8X-BOUNDARY native ${name}`,async({page})=>{const mark=installE8XDiagnostics(page,`native-${name}`);await page.goto('/');mark('probe-call',JSON.stringify(partial));const result=await page.evaluate(async config=>({secure:isSecureContext,VideoEncoder:typeof VideoEncoder,VideoFrame:typeof VideoFrame,result:await VideoEncoder.isConfigSupported({...config,width:720,height:1280,framerate:30,bitrate:10_000_000})}),partial);mark('probe-return',JSON.stringify(result));expect(result.result).toHaveProperty('supported');});
-}
-
-async function prepareBoundaryExport(page,scenario,withText){
-  const mark=installE8XDiagnostics(page,scenario);await page.goto('/',{waitUntil:'domcontentloaded'});await clearStartupStorage(page);await page.locator('#projectFileInput').setInputFiles(projectFixture);await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30_000});
-  expect(await page.evaluate(()=>assets.filter(a=>a?.type==='text').length)).toBe(0);
-  if(withText){await page.evaluate(()=>{setEditorMode('assets','boundary');startTextCreation();});await page.locator('#textCreationInput').fill('Arco Motion');await page.getByRole('button',{name:'OK',exact:true}).click();}
-  await installE8XBoundaryInstrumentation(page,scenario);mark('export-control-ready',`withText=${withText}`);return mark;
-}
-async function runBoundaryExport(page,scenario){
-  await page.evaluate(()=>{loopEnabled=false;for(let i=0;i<segDurations.length;i++)segDurations[i]=0.1;startRecord();});
-  await expect.poll(()=>page.evaluate(()=>exportGenerationCompleted||arcoExportDiag.exportSuccess===true),{timeout:120_000}).toBe(true);
-  const proof=await page.evaluate(()=>({success:arcoExportDiag.exportSuccess,blob:exportFinalBlobBytes,size:[recCanvas.width,recCanvas.height],texts:renderSessionSnapshot?.textAssets?.length||0}));
-  console.log(`[E8X-BOUNDARY] scenario=${scenario} mark=export-proof data=${JSON.stringify(proof)}`);expect(proof).toMatchObject({success:true,size:[720,1280]});expect(proof.blob).toBeGreaterThan(0);return proof;
-}
-test('E8X-BOUNDARY HEAD image-only Export',async({page})=>{test.setTimeout(180_000);await prepareBoundaryExport(page,'head-image-only',false);const proof=await runBoundaryExport(page,'head-image-only');expect(proof.texts).toBe(0);});
-test('E8X-BOUNDARY HEAD image-plus-text Export',async({page})=>{test.setTimeout(180_000);await prepareBoundaryExport(page,'head-image-text',true);const proof=await runBoundaryExport(page,'head-image-text');expect(proof.texts).toBe(1);});
-test('E8X-BOUNDARY MAIN image-only Export',async({page})=>{test.skip(process.env.E8X_MAIN_CONTROL!=='1','executado somente contra checkout temporário da main');test.setTimeout(180_000);await prepareBoundaryExport(page,'main-image-only',false);const proof=await runBoundaryExport(page,'main-image-only');expect(proof.texts).toBe(0);});
-
-test('E8X-DIAG E — fluxo completo TC-038 por criação, transformação, persistência e renderer reais', async ({ page }) => {
+test('E8X WebKit gate — TC-038 até Preview e composição real', async ({ page }) => {
   test.setTimeout(240_000);
-  const e8xMark=installE8XDiagnostics(page,'E'); e8xMark('full-flow-start');
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
   await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
   await page.evaluate(() => setEditorMode('assets', 'webkit-e8x'));
-  await page.evaluate(() => {
-    window.__e8xDiag={scenario:'E',renderFrames:0};
-    const exportDiag=window.arcoSetExportDiag;
-    if(typeof exportDiag==='function') window.arcoSetExportDiag=function(...args){ console.log(`[E8X-DIAG] scenario=E time=${new Date().toISOString()} mark=export-diag-change data=${JSON.stringify(args)}`); return exportDiag.apply(this,args); };
-    const render=window.renderFrameSafely;
-    if(typeof render==='function') window.renderFrameSafely=function(...args){ window.__e8xDiag.renderFrames++; if(window.__e8xDiag.renderFrames===1) console.log(`[E8X-DIAG] scenario=E time=${new Date().toISOString()} mark=first-frame-start`); const value=render.apply(this,args); if(window.__e8xDiag.renderFrames===1) console.log(`[E8X-DIAG] scenario=E time=${new Date().toISOString()} mark=first-frame-complete`); return value; };
-  });
 
   const baseline = await page.evaluate(() => ({
     projectWorld: structuredClone(projectWorld),
@@ -410,6 +338,25 @@ test('E8X-DIAG E — fluxo completo TC-038 por criação, transformação, persi
   }, String(confirmed.text.id));
   expect(panelScaled.after.w).toBeGreaterThan(panelScaled.before.w); expect(panelScaled.after.boxWidth).toBeCloseTo(panelScaled.after.w);
   expect(panelScaled.after.cx).toBeCloseTo(panelScaled.before.cx); expect(panelScaled.after.cy).toBeCloseTo(panelScaled.before.cy);
+
+  // Undo/Redo preserva a geometria canônica produzida pelo painel.
+  const undoRedo = await page.evaluate((id) => {
+    const geometry=()=>{const a=assets.find(item=>String(item.id)===id);return {worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,boxWidth:a.boxWidth,fontSize:a.fontSize};};
+    const committed=geometry(); undo(); const undone=geometry(); redo(); const redone=geometry(); return {committed,undone,redone};
+  }, String(confirmed.text.id));
+  expect(undoRedo.undone.worldW).not.toBeCloseTo(undoRedo.committed.worldW); expect(undoRedo.redone).toEqual(undoRedo.committed);
+
+  // Visibilidade controla desenho, não a topologia persistida do mundo.
+  const visibility = await page.evaluate((id) => {
+    const text=assets.find(a=>String(a.id)===id), world=structuredClone(projectWorld), frameState=structuredClone(frames.slice(0,frameCount));
+    const multiBefore=isMultiImageWorldActive(); text.visible=false; renderProjectWorldExtraImages();
+    const hidden={multi:isMultiImageWorldActive(),world:structuredClone(projectWorld),frames:structuredClone(frames.slice(0,frameCount))};
+    text.visible=true; renderProjectWorldExtraImages();
+    return {multiBefore,hidden,shown:{world:structuredClone(projectWorld),frames:structuredClone(frames.slice(0,frameCount))},world,frameState};
+  }, String(confirmed.text.id));
+  expect(visibility.multiBefore).toBe(true); expect(visibility.hidden.multi).toBe(true);
+  expect(visibility.hidden.world).toEqual(visibility.world); expect(visibility.hidden.frames).toEqual(visibility.frameState);
+  expect(visibility.shown.world).toEqual(visibility.world); expect(visibility.shown.frames).toEqual(visibility.frameState);
 
   // Layers executa reorder real texto↔imagem e prova ordem no modelo e no DOM.
   const reordered = await page.evaluate(() => {
@@ -531,13 +478,8 @@ test('E8X-DIAG E — fluxo completo TC-038 por criação, transformação, persi
   expect(previewProof.canvas[0]).toBeGreaterThan(0); expect(previewProof.colored).toBeGreaterThan(0); expect(previewProof.changed).toBeGreaterThan(0);
   await page.evaluate(() => { stopPreview(); const canvas=document.getElementById('previewDisplayCanvas'); canvas.width=1; canvas.height=1; });
 
-  // Export real (timeline curta para o smoke) deve gerar blob e congelar o mesmo text asset no snapshot.
-  e8xMark('full-flow-export-start');
-  await page.evaluate(() => { loopEnabled=false; for(let i=0;i<segDurations.length;i++) segDurations[i]=0.1; startRecord(); });
-  await expect.poll(() => page.evaluate(() => exportGenerationCompleted || arcoExportDiag.exportSuccess===true),{timeout:120_000}).toBe(true);
-  const exportProof = await page.evaluate((id) => ({blob:exportFinalBlobBytes,snapshot:renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,success:arcoExportDiag.exportSuccess}), String(confirmed.text.id));
-  expect(exportProof.success).toBe(true); expect(exportProof.blob).toBeGreaterThan(0); expect(exportProof.snapshot).toMatchObject({text:previewComposition.visibleText.text,color:'#ff3366',zIndex:previewComposition.visibleText.zIndex});
-  e8xMark('full-flow-export-complete',`blob=${exportProof.blob}`);
+  // Export H.264 é validado separadamente pelo gate Chrome estável.
+
 });
 
 test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Redo', async ({ page }) => {

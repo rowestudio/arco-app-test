@@ -312,3 +312,7 @@ Formato: ID, data, decisão, contexto, consequência e status.
 - **Segurança:** permissões padrão `contents: read`; o planejamento usa `pull-requests: read`, `actions: read` e `checks: write`; a execução usa `contents: read`, `pull-requests: read` e `checks: write` somente para finalizar o check-run. O código testado fica em `pr-source`, o código do watchdog em `watchdog-source`, ambos com `persist-credentials: false`, e a finalização roda a partir do watchdog da `main`.
 - **Limitações:** forks e branches externas são ignorados por segurança; WebKit automatizado em Linux segue sem substituir Safari/iPhone real; falha da Checks API deve aparecer como falha real do workflow, nunca como aprovação simulada.
 - **Status:** ativa em OPS-04, sem alteração funcional do aplicativo e sem alteração de versão.
+
+## 2026-08-12 — Gates permanentes por capacidade nativa do navegador
+
+Decisão: manter WebKit/Linux como gate funcional de Text Asset até Preview/composição e usar Google Chrome estável como gate do Export WebCodecs/H.264 real. O split não altera o produto nem reduz o TC-038: isola uma limitação nativa reproduzida também na `main`, enquanto preserva a exigência de validação posterior em iPhone/Safari real.
