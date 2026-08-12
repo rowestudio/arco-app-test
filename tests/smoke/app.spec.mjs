@@ -377,20 +377,44 @@ test('E8X cobre TC-038 por criação, transformação, persistência e renderer 
   const afterSession = await page.evaluate((id) => { const text=assets.find(a=>String(a.id)===id); return text?serializeProjectAsset(text,0,false):null; }, String(confirmed.text.id));
   expect(afterSession).toEqual(beforeRoundTrip.text);
 
-  // A prova física exige composição visível: o reorder anterior deixou o texto
-  // deliberadamente atrás da imagem opaca. Primeiro comprova essa ordem e depois
-  // usa a ação real de Layers para trazê-lo à frente, sem contornar o renderer.
+  // Prova física da composição anterior: texto atrás da imagem opaca deve ser
+  // equivalente, em pixels finais, ao mesmo frame sem o Text Asset.
+  const previewCompositionBefore = await page.evaluate((id) => {
+    setEditorMode('assets','webkit-e8x-preview-composition'); selectAssetById(id,'layers');
+    const text=assets.find(a=>String(a.id)===id);
+    return {textZBefore:text.zIndex,maxZBefore:Math.max(...assets.map(a=>Number(a.zIndex)||0))};
+  }, String(confirmed.text.id));
+  expect(previewCompositionBefore.textZBefore).toBeLessThan(previewCompositionBefore.maxZBefore);
+  await page.evaluate(() => startPreview());
+  await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000});
+  await expect.poll(() => page.evaluate(() => previewLoadingHiddenAfterFirstFrame),{timeout:30_000}).toBe(true);
+  const occludedProof = await page.evaluate(() => {
+    if (animFrame) togglePreviewPlayback();
+    const canvas=document.getElementById('previewDisplayCanvas'), durationSec=getComputedTimelineDuration();
+    const totalPF=Math.max(1,Math.round(durationSec*25)), previewSource=getPreviewRenderSource(), originalSnapshot=renderSessionSnapshot;
+    renderFrameSafely(canvas.getContext('2d'),canvas,0,canvas.width,canvas.height,totalPF,0,{renderSource:previewSource});
+    const withText=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+    const noText=document.createElement('canvas'); noText.width=canvas.width; noText.height=canvas.height;
+    renderSessionSnapshot={...originalSnapshot,textAssets:[]};
+    renderFrameSafely(noText.getContext('2d'),noText,0,noText.width,noText.height,totalPF,0,{renderSource:previewSource});
+    renderSessionSnapshot=originalSnapshot;
+    const withoutText=noText.getContext('2d').getImageData(0,0,noText.width,noText.height).data; let beforeChanged=0,beforeColored=0;
+    for(let i=0;i<withText.length;i+=4){
+      if(Math.abs(withText[i]-withoutText[i])+Math.abs(withText[i+1]-withoutText[i+1])+Math.abs(withText[i+2]-withoutText[i+2])+Math.abs(withText[i+3]-withoutText[i+3])>20) beforeChanged++;
+      if(withText[i]>withText[i+1]*1.35&&withText[i]>withText[i+2]*1.15&&withText[i+3]>100) beforeColored++;
+    }
+    return {beforeChanged,beforeColored};
+  });
+  expect(occludedProof.beforeChanged).toBe(0);
+  await page.evaluate(() => stopPreview());
+
+  // Reorder real: trazer o mesmo texto até maxZ deve tornar sua contribuição física visível.
   const previewComposition = await page.evaluate((id) => {
     setEditorMode('assets','webkit-e8x-preview-composition'); selectAssetById(id,'layers');
-    const text=assets.find(a=>String(a.id)===id), beforeZ=text.zIndex, textRect={x:text.worldX,y:text.worldY,w:text.worldW,h:text.worldH};
-    const coveringImages=assets.filter(a=>a&&a.type==='image'&&(Number(a.zIndex)||0)>(Number(text.zIndex)||0)).filter(a=>{
-      const r=resolveAssetStageVisualGeometry(a).visualRect;
-      return r.x<=textRect.x&&r.y<=textRect.y&&r.x+r.w>=textRect.x+textRect.w&&r.y+r.h>=textRect.y+textRect.h;
-    }).map(a=>String(a.id));
+    const text=assets.find(a=>String(a.id)===id);
     while (getAssetZOrderInfo().canForward) bringSelectedAssetForward();
-    return {coveringImages,beforeZ,visibleText:serializeProjectAsset(text,0,false),maxZ:Math.max(...assets.map(a=>Number(a.zIndex)||0))};
+    return {visibleText:serializeProjectAsset(text,0,false),maxZ:Math.max(...assets.map(a=>Number(a.zIndex)||0))};
   }, String(confirmed.text.id));
-  expect(previewComposition.coveringImages.length, 'o zero anterior deve ser explicado por oclusão real de zIndex').toBeGreaterThan(0);
   expect(previewComposition.visibleText.zIndex).toBe(previewComposition.maxZ);
 
   // Preview real: snapshot contém o mesmo texto e pixels na caixa canônica apresentam a cor escolhida.
