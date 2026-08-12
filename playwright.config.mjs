@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 const baseURL = 'http://127.0.0.1:4173';
+const diagnosticWithoutArtifacts = process.env.E8X_DIAG_NO_ARTIFACTS === '1';
 
 export default defineConfig({
   testDir: './tests',
@@ -14,9 +15,9 @@ export default defineConfig({
     deviceScaleFactor: 3,
     isMobile: true,
     hasTouch: true,
-    screenshot: 'only-on-failure',
-    trace: 'retain-on-failure',
-    video: 'retain-on-failure',
+    screenshot: diagnosticWithoutArtifacts ? 'off' : 'only-on-failure',
+    trace: diagnosticWithoutArtifacts ? 'off' : 'retain-on-failure',
+    video: diagnosticWithoutArtifacts ? 'off' : 'retain-on-failure',
   },
   projects: [
     {

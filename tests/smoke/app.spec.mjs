@@ -252,13 +252,142 @@ test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', asyn
   expect(capturedErrors, `erro JS capturado durante a abertura:\n${capturedErrors.join('\n')}`).toEqual([]);
 });
 
-test('E8X cobre TC-038 por criação, transformação, persistência e renderer reais', async ({ page }) => {
+function installE8XDiagnostics(page, scenario) {
+  let lastMark = 'listener-installed';
+  const emit = (kind, detail) => {
+    const line = `[E8X-DIAG] scenario=${scenario} time=${new Date().toISOString()} mark=${kind}${detail ? ` ${detail}` : ''}`;
+    lastMark = line;
+    console.log(line);
+  };
+  page.on('console', message => {
+    const text = message.text();
+    if (text.includes('[E8X-DIAG]')) { lastMark = text; console.log(text); }
+  });
+  page.on('pageerror', error => emit('pageerror', JSON.stringify(error.message)));
+  page.on('crash', () => emit('page-crash', `last=${JSON.stringify(lastMark)}`));
+  page.on('close', () => emit('page-close', `last=${JSON.stringify(lastMark)}`));
+  return emit;
+}
+
+async function prepareE8XDiagnosticPage(page, scenario) {
+  const mark = installE8XDiagnostics(page, scenario);
+  mark('page-setup-start');
+  await page.goto('/', { waitUntil:'domcontentloaded', timeout:30_000 });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout:30_000 });
+  await page.evaluate((scenarioName) => {
+    const log = (mark, data={}) => console.log(`[E8X-DIAG] scenario=${scenarioName} time=${new Date().toISOString()} mark=${mark} data=${JSON.stringify(data)}`);
+    window.__e8xDiag = { scenario:scenarioName, renderFrames:0, lastMark:'instrumented' };
+    const wrap = (name, before, after) => {
+      const original = window[name];
+      if (typeof original !== 'function') { log(`${name}-unavailable`); return; }
+      window[name] = function(...args) {
+        before && before(args);
+        const result = original.apply(this,args);
+        if (result && typeof result.then === 'function') return result.then(value => { after && after(value); return value; });
+        after && after(result); return result;
+      };
+    };
+    wrap('arcoSetExportDiag', args => log('export-diag-change',{args,lastExportStep:window.arcoExportDiag?.lastExportStep}));
+    wrap('prepareRenderSessionSnapshot', () => log('snapshot-prepare-start'), value => log('snapshot-prepare-complete',{assets:value?.assets?.length,textAssets:value?.textAssets?.length}));
+    wrap('renderFrameSafely', args => {
+      window.__e8xDiag.renderFrames++;
+      if (window.__e8xDiag.renderFrames === 1) log('first-frame-start',{canvas:[args[1]?.width,args[1]?.height]});
+    }, () => { if (window.__e8xDiag.renderFrames === 1) log('first-frame-complete'); });
+    if (typeof window.createImageBitmap === 'function') wrap('createImageBitmap', () => log('createImageBitmap-start'), () => log('createImageBitmap-complete'));
+    log('instrumentation-ready',{VideoEncoder:typeof VideoEncoder,VideoFrame:typeof VideoFrame,MediaRecorder:typeof MediaRecorder,captureStream:typeof HTMLCanvasElement.prototype.captureStream});
+  }, scenario);
+  await page.evaluate(() => setEditorMode('assets','e8x-diagnostic'));
+  await page.evaluate(() => startTextCreation());
+  await page.locator('#textCreationInput').fill('A  B\tC\nD diagnóstico E8X');
+  await page.locator('#textCreationColor').evaluate(el => { el.value='#ff3366'; el.dispatchEvent(new Event('input',{bubbles:true})); });
+  await page.getByRole('button',{name:'OK',exact:true}).click();
+  const textId = await page.evaluate(() => assets.find(asset => asset?.type === 'text')?.id);
+  expect(textId).toBeTruthy();
+  mark('text-created', `id=${textId}`);
+  return { mark, textId:String(textId) };
+}
+
+async function runE8XRealExport(page, scenario, textId) {
+  const before = await page.evaluate((id) => {
+    const text=assets.find(asset=>String(asset.id)===id);
+    loopEnabled=false; for(let i=0;i<segDurations.length;i++) segDurations[i]=0.1;
+    const duration=getComputedTimelineDuration();
+    window.__e8xDiag ||= {scenario:'unknown',renderFrames:0};
+    const exportSurface=document.getElementById('exportCanvas')||document.getElementById('previewDisplayCanvas');
+    console.log(`[E8X-DIAG] scenario=${window.__e8xDiag.scenario} time=${new Date().toISOString()} mark=export-start data=${JSON.stringify({duration,expectedFrames:Math.max(1,Math.round(duration*25)),assets:assets.length,text:{id:text.id,worldX:text.worldX,worldY:text.worldY,worldW:text.worldW,worldH:text.worldH,rotation:text.rotation},canvas:[exportSurface?.width,exportSurface?.height]})}`);
+    startRecord();
+    console.log(`[E8X-DIAG] scenario=${window.__e8xDiag.scenario} time=${new Date().toISOString()} mark=startRecord-returned`);
+    return {duration};
+  }, textId);
+  let previousStep='';
+  await expect.poll(async () => {
+    const state=await page.evaluate(() => ({done:exportGenerationCompleted||arcoExportDiag.exportSuccess===true,step:arcoExportDiag.lastExportStep||'',error:arcoExportDiag.lastExportError||'',frames:window.__e8xDiag?.renderFrames||0}));
+    if(state.step!==previousStep){ previousStep=state.step; console.log(`[E8X-DIAG] scenario=${scenario} time=${new Date().toISOString()} mark=export-step step=${state.step} frames=${state.frames} error=${JSON.stringify(state.error)}`); }
+    return state.done;
+  },{timeout:120_000}).toBe(true);
+  const proof=await page.evaluate((id)=>({blob:exportFinalBlobBytes,success:arcoExportDiag.exportSuccess,step:arcoExportDiag.lastExportStep,snapshot:renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id)||null}),textId);
+  console.log(`[E8X-DIAG] scenario=${scenario} time=${new Date().toISOString()} mark=export-complete blob=${proof.blob} step=${proof.step}`);
+  expect(proof.success).toBe(true); expect(proof.blob).toBeGreaterThan(0); expect(proof.snapshot?.id).toBe(textId);
+  return {before,proof};
+}
+
+async function runE8XPreview(page, scenario, pixelAudit) {
+  console.log(`[E8X-DIAG] scenario=${scenario} time=${new Date().toISOString()} mark=preview-start pixels=${pixelAudit}`);
+  await page.evaluate(() => startPreview());
+  await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000});
+  await expect.poll(() => page.evaluate(() => previewLoadingHiddenAfterFirstFrame),{timeout:30_000}).toBe(true);
+  if(pixelAudit) {
+    const pixels=await page.evaluate(() => {
+      if(animFrame) togglePreviewPlayback();
+      const canvas=document.getElementById('previewDisplayCanvas'),ctx=canvas.getContext('2d');
+      const data=ctx.getImageData(0,0,canvas.width,canvas.height).data; let colored=0;
+      for(let i=0;i<data.length;i+=4) if(data[i]>data[i+1]*1.35&&data[i]>data[i+2]*1.15&&data[i+3]>100) colored++;
+      return {colored,width:canvas.width,height:canvas.height,bytes:data.byteLength};
+    });
+    console.log(`[E8X-DIAG] scenario=${scenario} time=${new Date().toISOString()} mark=pixel-audit-complete data=${JSON.stringify(pixels)}`);
+  }
+  await page.evaluate(() => { stopPreview(); const canvas=document.getElementById('previewDisplayCanvas'); canvas.width=1; canvas.height=1; });
+  console.log(`[E8X-DIAG] scenario=${scenario} time=${new Date().toISOString()} mark=preview-cleanup-complete`);
+}
+
+test('E8X-DIAG A — Export isolado', async ({page}) => {
+  test.setTimeout(180_000); const {textId}=await prepareE8XDiagnosticPage(page,'A'); await runE8XRealExport(page,'A',textId);
+});
+
+test('E8X-DIAG B — persistência antes do Export', async ({page}) => {
+  test.setTimeout(210_000); const {textId}=await prepareE8XDiagnosticPage(page,'B');
+  const download=page.waitForEvent('download'); await page.evaluate(()=>doSaveDirect(true,'e8x-diag-b')); const saved=await download; await page.locator('#projectFileInput').setInputFiles(await saved.path());
+  await expect.poll(()=>page.evaluate(()=>loadSessionCompleted),{timeout:30_000}).toBe(true);
+  await page.evaluate(async()=>{ scheduleSessionAutosave('e8x-diag-b',true); flushSessionAutosave(); while(_sessionAutosaveActiveWrites.size) await Promise.all([..._sessionAutosaveActiveWrites]); });
+  await page.reload({waitUntil:'domcontentloaded'}); await expect(page.getByRole('dialog',{name:'Continuar sessão anterior?'})).toBeVisible(); await page.getByText('Continuar de onde parei',{exact:true}).click();
+  await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30_000}); await page.evaluate(()=>{ window.__e8xDiag={scenario:'B',renderFrames:0}; }); await runE8XRealExport(page,'B',textId);
+});
+
+test('E8X-DIAG C — Preview antes do Export', async ({page}) => {
+  test.setTimeout(210_000); const {textId}=await prepareE8XDiagnosticPage(page,'C'); await runE8XPreview(page,'C',false); await runE8XRealExport(page,'C',textId);
+});
+
+test('E8X-DIAG D — pixels antes do Export', async ({page}) => {
+  test.setTimeout(210_000); const {textId}=await prepareE8XDiagnosticPage(page,'D'); await runE8XPreview(page,'D',true); await runE8XRealExport(page,'D',textId);
+});
+
+test('E8X-DIAG E — fluxo completo TC-038 por criação, transformação, persistência e renderer reais', async ({ page }) => {
   test.setTimeout(240_000);
+  const e8xMark=installE8XDiagnostics(page,'E'); e8xMark('full-flow-start');
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
   await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
   await page.evaluate(() => setEditorMode('assets', 'webkit-e8x'));
+  await page.evaluate(() => {
+    window.__e8xDiag={scenario:'E',renderFrames:0};
+    const exportDiag=window.arcoSetExportDiag;
+    if(typeof exportDiag==='function') window.arcoSetExportDiag=function(...args){ console.log(`[E8X-DIAG] scenario=E time=${new Date().toISOString()} mark=export-diag-change data=${JSON.stringify(args)}`); return exportDiag.apply(this,args); };
+    const render=window.renderFrameSafely;
+    if(typeof render==='function') window.renderFrameSafely=function(...args){ window.__e8xDiag.renderFrames++; if(window.__e8xDiag.renderFrames===1) console.log(`[E8X-DIAG] scenario=E time=${new Date().toISOString()} mark=first-frame-start`); const value=render.apply(this,args); if(window.__e8xDiag.renderFrames===1) console.log(`[E8X-DIAG] scenario=E time=${new Date().toISOString()} mark=first-frame-complete`); return value; };
+  });
 
   const baseline = await page.evaluate(() => ({
     projectWorld: structuredClone(projectWorld),
@@ -460,10 +589,12 @@ test('E8X cobre TC-038 por criação, transformação, persistência e renderer 
   await page.evaluate(() => { stopPreview(); const canvas=document.getElementById('previewDisplayCanvas'); canvas.width=1; canvas.height=1; });
 
   // Export real (timeline curta para o smoke) deve gerar blob e congelar o mesmo text asset no snapshot.
+  e8xMark('full-flow-export-start');
   await page.evaluate(() => { loopEnabled=false; for(let i=0;i<segDurations.length;i++) segDurations[i]=0.1; startRecord(); });
   await expect.poll(() => page.evaluate(() => exportGenerationCompleted || arcoExportDiag.exportSuccess===true),{timeout:120_000}).toBe(true);
   const exportProof = await page.evaluate((id) => ({blob:exportFinalBlobBytes,snapshot:renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,success:arcoExportDiag.exportSuccess}), String(confirmed.text.id));
   expect(exportProof.success).toBe(true); expect(exportProof.blob).toBeGreaterThan(0); expect(exportProof.snapshot).toMatchObject({text:previewComposition.visibleText.text,color:'#ff3366',zIndex:previewComposition.visibleText.zIndex});
+  e8xMark('full-flow-export-complete',`blob=${exportProof.blob}`);
 });
 
 test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Redo', async ({ page }) => {
