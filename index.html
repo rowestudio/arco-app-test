@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E8X — base v8z4b32E8W. feat(text): texto editável nasce como ativo canônico e participa de Layers, transformação, persistência e renderer compartilhado. APP_VERSION = APP_VERSION_NAME = v8z4b32E8X. -->
 <!-- Arco Motion App — v8z4b32E8W — base v8z4b32E8V. fix(session-restore): câmera e serialização usam baseStage canônico do ProjectWorld; resize do viewport não reescala Frames persistidos. APP_VERSION = APP_VERSION_NAME = v8z4b32E8W. -->
 <!-- Arco Motion App — v8z4b32E8V — base v8z4b32E8U. fix(ui): aplica os neutros canônicos e prolonga o container contextual real até a borda inferior/safe-area, preservando a geometria compacta. APP_VERSION = APP_VERSION_NAME = v8z4b32E8V. -->
 <!-- Arco Motion App — v8z4b32E8U — base v8z4b32E8T. fix(ui): compacta a primitiva compartilhada dos controles contextuais e mantém a superfície neutra contínua até a safe-area. APP_VERSION = APP_VERSION_NAME = v8z4b32E8U. -->
@@ -1498,6 +1499,13 @@ body.editor-assets.recording .frame{display:none !important;}
 /* v8z4b30ZO — assetsAddMenu: modal central de ações no Modo Ativos (inserir/trocar). */
 #assetsAddMenu{position:fixed;inset:0;z-index:330;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
 #assetsAddMenu.open{display:flex;}
+#textCreationSheet{position:fixed;inset:0;z-index:335;display:none;align-items:flex-end;justify-content:center;background:transparent;pointer-events:none;}
+#textCreationSheet.open{display:flex;}
+.text-creation-inner{pointer-events:auto;width:100%;max-width:480px;box-sizing:border-box;padding:14px 18px calc(14px + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;background:var(--surface);box-shadow:0 -5px 30px rgba(0,0,0,.35);}
+.text-creation-input{display:block;width:100%;min-height:48px;box-sizing:border-box;resize:none;border:1px solid var(--border2);border-radius:12px;padding:12px;background:var(--surface2);color:var(--text1);font:400 16px/1.35 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;outline:none;}
+.text-creation-row{display:flex;align-items:center;gap:10px;margin-top:10px;}.text-creation-row label{font-size:13px;color:var(--text2);}.text-creation-color{width:42px;height:34px;border:0;background:transparent;padding:0;}
+.text-creation-actions{display:flex;gap:8px;margin-top:12px;}.text-creation-actions button{flex:1;padding:11px;border-radius:12px;font-size:14px;font-weight:700;}.text-creation-cancel{border:1px solid var(--border2);background:var(--surface2);color:var(--text2);}.text-creation-ok{border:0;background:var(--accent);color:#000;}
+.world-text-asset{position:absolute;white-space:pre-wrap;tab-size:4;overflow-wrap:anywhere;pointer-events:none;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;font-weight:400;transform-origin:50% 50%;}
 /* v8z4b30ZT — assetsModeMenu: modal de opções do Modo Ativos (segundo toque no ícone). */
 #assetsModeMenu{position:fixed;inset:0;z-index:331;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
 /* v8z4b32B — menus contextuais de modo (segundo toque no botão de modo já ativo).
@@ -4765,11 +4773,24 @@ body.asset-context-panel-open #toolbar{display:none !important;}
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image"></use></svg>
       Nova imagem
     </button>
+    <button id="assetsMenuTextBtn" type="button" class="assets-menu-btn" onclick="closeAssetsAddMenu();startTextCreation();">
+      <span aria-hidden="true" style="width:24px;text-align:center;font-size:21px;font-weight:700;">T</span>
+      Texto
+    </button>
     <button id="assetsMenuReplaceBtn" type="button" class="assets-menu-btn" style="display:none;" onclick="closeAssetsAddMenu();startReplaceImageFlow();">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-down"></use></svg>
       Trocar imagem
     </button>
     <button type="button" class="assets-menu-cancel" onclick="closeAssetsAddMenu()">Cancelar</button>
+  </div>
+</div>
+
+<div id="textCreationSheet" role="dialog" aria-modal="true" aria-labelledby="textCreationTitle" aria-hidden="true">
+  <div class="text-creation-inner">
+    <div id="textCreationTitle" class="assets-menu-title">Texto</div>
+    <textarea id="textCreationInput" class="text-creation-input" placeholder="Texto..." maxlength="2000" rows="2"></textarea>
+    <div class="text-creation-row"><label for="textCreationColor">Cor do texto</label><input id="textCreationColor" class="text-creation-color" type="color" value="#ffffff"></div>
+    <div class="text-creation-actions"><button id="textCreationCancel" class="text-creation-cancel" type="button" onclick="cancelTextCreation()">Cancelar</button><button id="textCreationOk" class="text-creation-ok" type="button" onclick="confirmTextCreation()">OK</button></div>
   </div>
 </div>
 
@@ -7298,8 +7319,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8W';
-const APP_VERSION_NAME = 'v8z4b32E8W';
+const APP_VERSION = 'v8z4b32E8X';
+const APP_VERSION_NAME = 'v8z4b32E8X';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let parallaxChangedCanonicalAssetGeometry = false;
 let parallaxChangedFrames = false;
@@ -15113,9 +15134,9 @@ function allocateNextLayerSequence() {
   return sequence;
 }
 function assignPersistentLayerIdentity(asset, originalFileName) {
-  if (!asset || asset.type !== 'image') return asset;
+  if (!asset || (asset.type !== 'image' && asset.type !== 'text')) return asset;
   if (!isPositiveLayerSequence(asset.layerSequence)) asset.layerSequence = allocateNextLayerSequence();
-  if (!isValidLayerName(asset.layerName)) asset.layerName = `Camada ${asset.layerSequence}`;
+  if (!isValidLayerName(asset.layerName)) asset.layerName = asset.type === 'text' ? `Texto ${asset.layerSequence}` : `Camada ${asset.layerSequence}`;
   if (!isValidLayerName(asset.layerNameSource)) asset.layerNameSource = 'automatic';
   if (typeof originalFileName === 'string' && originalFileName.trim()) asset.originalFileName = originalFileName.trim();
   else if (typeof asset.originalFileName !== 'string') asset.originalFileName = '';
@@ -15124,7 +15145,7 @@ function assignPersistentLayerIdentity(asset, originalFileName) {
 function captureLayerIdentityByAssetId(list) {
   const identities = {};
   (Array.isArray(list) ? list : []).forEach(asset => {
-    if (asset && asset.type === 'image') identities[String(asset.id)] = `${asset.layerSequence}|${asset.layerName}|${asset.layerNameSource}`;
+    if (asset && (asset.type === 'image' || asset.type === 'text')) identities[String(asset.id)] = `${asset.layerSequence}|${asset.layerName}|${asset.layerNameSource}`;
   });
   return identities;
 }
@@ -15133,7 +15154,7 @@ function layerIdentitySnapshotEquals(before, list) {
   return Object.keys(before || {}).every(id => after[id] === before[id]);
 }
 function migratePersistentLayerIdentities(imageAssets, persistedNextSequence) {
-  const list = Array.isArray(imageAssets) ? imageAssets.filter(a => a && a.type === 'image') : [];
+  const list = Array.isArray(imageAssets) ? imageAssets.filter(a => a && (a.type === 'image' || a.type === 'text')) : [];
   const used = new Set();
   let highest = 0;
   list.forEach(asset => {
@@ -15268,7 +15289,7 @@ function clearSelectedAsset(source) { return selectAssetById(null, source || 'cl
 // v8z4b30ZJ — defaults não destrutivos para tratar o asset como caixa visual
 // futura (crop/moldura). Com enabled:false NÃO alteram aparência/Preview/Export.
 function ensureAssetVisualDefaults(asset) {
-  if (!asset || asset.type !== 'image') return asset;
+  if (!asset || (asset.type !== 'image' && asset.type !== 'text')) return asset;
   // Profundidade e independente da geometria canonica. Projetos anteriores
   // migram implicitamente para zero; valores nao finitos nunca chegam ao render.
   asset.depth = Number.isFinite(Number(asset.depth)) ? Number(asset.depth) : 0;
@@ -15278,6 +15299,116 @@ function ensureAssetVisualDefaults(asset) {
   };
   return asset;
 }
+
+const TEXT_ASSET_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+const TEXT_ASSET_DEFAULT_COLOR = '#ffffff';
+let pendingTextDraft = null;
+let textCreationBaseline = null;
+let textAssetStageRendered = false;
+let textAssetPreviewRendered = false;
+let textAssetExportRendered = false;
+let textAssetSaveLoadParityOk = true;
+let textAssetSessionRestoreParityOk = true;
+let textCreationKeyboardResizeChangedProjectWorld = false;
+let textCreationKeyboardResizeChangedFrames = false;
+let textCreationKeyboardResizeChangedExistingAssets = false;
+
+function normalizeTextAsset(asset) {
+  if (!asset || asset.type !== 'text') return asset;
+  asset.text = typeof asset.text === 'string' ? asset.text : '';
+  asset.color = /^#[0-9a-f]{6}$/i.test(asset.color || '') ? asset.color : TEXT_ASSET_DEFAULT_COLOR;
+  // worldW é a largura canônica transformável; boxWidth a acompanha e nunca
+  // pode restaurar silenciosamente uma geometria anterior.
+  asset.worldW = Math.max(20, Number(asset.worldW) || Number(asset.boxWidth) || 220);
+  asset.boxWidth = asset.worldW;
+  asset.fontSize = Math.max(8, Number(asset.fontSize) || 36);
+  asset.textBaseBoxWidth = Math.max(20, Number(asset.textBaseBoxWidth) || asset.worldW);
+  asset.textBaseFontSize = Math.max(8, Number(asset.textBaseFontSize) || asset.fontSize);
+  asset.lineHeight = Math.max(1, Number(asset.lineHeight) || 1.2);
+  asset.textAlign = asset.textAlign || 'center';
+  asset.fontFamily = TEXT_ASSET_FONT_FAMILY;
+  asset.fontWeight = 400;
+  asset.depth = 0;
+  asset.visible = asset.visible !== false;
+  asset.rotation = Number(asset.rotation) || 0;
+  return asset;
+}
+function wrapTextLines(ctx, text, maxWidth) {
+  const lines = [];
+  String(text || '').split('\n').forEach(paragraph => {
+    const words = paragraph.match(/[^\S\n]+|[^\s]+/g) || [];
+    if (!words.length) { lines.push(''); return; }
+    let line = '';
+    words.forEach(word => {
+      const preservedWord = word.replace(/\t/g, '    ');
+      let candidate = line + preservedWord;
+      if (line && ctx.measureText(candidate).width > maxWidth) { lines.push(line); line = word; }
+      else line = candidate;
+      line = line.replace(/\t/g, '    ');
+      while (ctx.measureText(line).width > maxWidth && line.length > 1) {
+        let cut = line.length - 1;
+        while (cut > 1 && ctx.measureText(line.slice(0, cut)).width > maxWidth) cut--;
+        lines.push(line.slice(0, cut)); line = line.slice(cut);
+      }
+    });
+    lines.push(line);
+  });
+  return lines.length ? lines : [''];
+}
+function measureTextAsset(asset) {
+  normalizeTextAsset(asset);
+  const canvas = measureTextAsset.canvas || (measureTextAsset.canvas = document.createElement('canvas'));
+  const ctx = canvas.getContext('2d');
+  ctx.font = `${asset.fontWeight} ${asset.fontSize}px ${asset.fontFamily}`;
+  const lines = wrapTextLines(ctx, asset.text || '', asset.boxWidth);
+  const height = Math.max(asset.fontSize * asset.lineHeight, lines.length * asset.fontSize * asset.lineHeight);
+  asset.worldH = height;
+  return { lines, width: asset.boxWidth, height };
+}
+function createPendingTextAsset() {
+  const baseW = projectWorld.baseStageW || stageW || 360;
+  const baseH = projectWorld.baseStageH || stageH || 640;
+  const boxWidth = Math.max(120, Math.min(baseW * 0.72, 320));
+  const fontSize = Math.max(22, Math.min(42, baseW * 0.1));
+  const asset = normalizeTextAsset({ id:'text-draft-' + Date.now(), type:'text', text:'', color:TEXT_ASSET_DEFAULT_COLOR,
+    worldX:(baseW-boxWidth)/2, worldY:baseH/2-fontSize, worldW:boxWidth, boxWidth, worldH:fontSize*1.2,
+    rotation:0, zIndex:Math.max(0, ...assets.map(a => Number(a && a.zIndex)||0))+1, visible:true,
+    fontSize, textBaseBoxWidth:boxWidth, textBaseFontSize:fontSize, lineHeight:1.2, textAlign:'center', depth:0 });
+  return asset;
+}
+function startTextCreation() {
+  if (!isAssetsMode() || pendingTextDraft) return;
+  textCreationBaseline = { projectWorld:JSON.stringify(projectWorld), frames:JSON.stringify(frames.slice(0, frameCount)), assets:JSON.stringify(assets.map(a=>({id:a.id,worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,zIndex:a.zIndex}))) };
+  pendingTextDraft = createPendingTextAsset();
+  const sheet = document.getElementById('textCreationSheet'), input = document.getElementById('textCreationInput'), color = document.getElementById('textCreationColor');
+  input.value = ''; color.value = pendingTextDraft.color;
+  sheet.classList.add('open'); sheet.setAttribute('aria-hidden','false');
+  renderProjectWorldExtraImages();
+  requestAnimationFrame(() => { input.focus({preventScroll:true}); input.setSelectionRange(0,0); });
+}
+function auditTextCreationCanonicalState() {
+  if (!textCreationBaseline) return;
+  textCreationKeyboardResizeChangedProjectWorld ||= JSON.stringify(projectWorld) !== textCreationBaseline.projectWorld;
+  textCreationKeyboardResizeChangedFrames ||= JSON.stringify(frames.slice(0, frameCount)) !== textCreationBaseline.frames;
+  textCreationKeyboardResizeChangedExistingAssets ||= JSON.stringify(assets.map(a=>({id:a.id,worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,zIndex:a.zIndex}))) !== textCreationBaseline.assets;
+}
+function closeTextCreationSheet() { const sheet=document.getElementById('textCreationSheet'); sheet.classList.remove('open'); sheet.setAttribute('aria-hidden','true'); document.getElementById('textCreationInput').blur(); }
+function cancelTextCreation() { if (!pendingTextDraft) return; auditTextCreationCanonicalState(); pendingTextDraft=null; textCreationBaseline=null; closeTextCreationSheet(); renderProjectWorldExtraImages(); }
+function confirmTextCreation() {
+  if (!pendingTextDraft) return;
+  const value = document.getElementById('textCreationInput').value;
+  if (!value.trim()) { showStatus('Digite um texto para continuar.'); return; }
+  auditTextCreationCanonicalState();
+  if (typeof captureState === 'function' && typeof pushUndoSnapshot === 'function') pushUndoSnapshot(captureState());
+  pendingTextDraft.text = value; pendingTextDraft.id = 'text-' + Date.now() + '-' + Math.floor(Math.random()*1000);
+  assignPersistentLayerIdentity(pendingTextDraft); measureTextAsset(pendingTextDraft);
+  const confirmed = pendingTextDraft; assets.push(confirmed); pendingTextDraft=null; textCreationBaseline=null;
+  closeTextCreationSheet(); normalizeAssetZIndices(); selectAssetById(confirmed.id, 'text-create'); renderProjectWorldExtraImages(); renderLayersPanelList();
+  if (typeof invalidateProjectWorldComposite === 'function') invalidateProjectWorldComposite();
+  if (typeof markProjectDirty === 'function') markProjectDirty('addTextAsset');
+}
+document.addEventListener('input', function(ev) { if (!pendingTextDraft) return; if (ev.target.id==='textCreationInput') pendingTextDraft.text=ev.target.value; if(ev.target.id==='textCreationColor') pendingTextDraft.color=ev.target.value; measureTextAsset(pendingTextDraft); renderProjectWorldExtraImages(); });
+window.addEventListener('resize', function(){ if(pendingTextDraft) auditTextCreationCanonicalState(); });
 
 // Fonte unica do parallax translacional. A referencia neutra e o centro da
 // celula canonica do ProjectWorld; ela nao depende do modo, frame selecionado,
@@ -15382,6 +15513,8 @@ function beginAssetContextGesture() {
   const visualRect = (typeof getAssetVisualWorldRect === 'function') ? getAssetVisualWorldRect(asset) : asset;
   assetContextGesture = { snapshot: captureState(), assetId: String(asset.id), kind: assetContextPanelKind,
     startW: Number(asset.worldW) || 1, startH: Number(asset.worldH) || 1,
+    startBoxWidth: asset.type === 'text' ? Number(asset.boxWidth) || Number(asset.worldW) || 1 : null,
+    startFontSize: asset.type === 'text' ? Number(asset.fontSize) || 36 : null,
     startX: Number(asset.worldX) || 0, startY: Number(asset.worldY) || 0,
     startScale: getAssetContextScalePercent(asset), startZIndex: asset.zIndex, startDepth: Number(asset.depth) || 0,
     scaleBaselineW: baseline.width, scaleBaselineH: baseline.height, scaleBaselineValid: baseline.valid,
@@ -15412,6 +15545,11 @@ function setAssetContextValue(value) {
       assetContextGesture.firstScaleInputChecked = true;
     }
     asset.worldW = nextW; asset.worldH = nextH;
+    if (asset.type === 'text') {
+      asset.boxWidth = nextW;
+      asset.fontSize = (Number(asset.textBaseFontSize) || assetContextGesture.startFontSize) * factor;
+      measureTextAsset(asset);
+    }
     asset.worldX = cx - asset.worldW / 2; asset.worldY = cy - asset.worldH / 2;
     assetScaleBaselineValid = !!assetContextGesture.scaleBaselineValid;
     assetScaleUsesCanonicalBaseline = !!assetContextGesture.scaleBaselineValid;
@@ -17531,6 +17669,12 @@ function formatContextInfoScalePercent(value) {
   return Math.round(n) + '%';
 }
 function getAssetScaleBaselineWorldSize(asset) {
+  if (asset && asset.type === 'text') {
+    const width = Number(asset.textBaseBoxWidth) || Number(asset.boxWidth) || Number(asset.worldW) || 1;
+    const fontSize = Number(asset.textBaseFontSize) || Number(asset.fontSize) || 36;
+    const scale = fontSize > 0 ? (Number(asset.fontSize) || fontSize) / fontSize : 1;
+    return { width, height:(Number(asset.worldH) || 1) / Math.max(scale, 0.0001), valid:true, reference:'text-canonical-baseline' };
+  }
   const sourceW = Number(asset && asset.sourceW) || 0;
   const sourceH = Number(asset && asset.sourceH) || 0;
   const boxW = Number(projectWorld && projectWorld.baseStageW) || Number(stageW) || 0;
@@ -29775,6 +29919,15 @@ function syncRatioUI() {
 // "src" (data URL). A imagem principal (idx 0) é coberta por data.imageBase64
 // (já existente), evitando duplicar o mesmo bitmap dentro do JSON.
 function serializeProjectAsset(a, idx, includeImages) {
+  if (a && a.type === 'text') {
+    normalizeTextAsset(a); measureTextAsset(a);
+    return { id:a.id, type:'text', name:a.name||'', layerSequence:a.layerSequence, layerName:a.layerName,
+      layerNameSource:a.layerNameSource||'automatic', text:a.text, color:a.color, worldX:a.worldX, worldY:a.worldY,
+      worldW:a.worldW, worldH:a.worldH, boxWidth:a.boxWidth, rotation:a.rotation||0, depth:0, zIndex:a.zIndex||0,
+      visible:a.visible!==false, locked:!!a.locked, textAlign:a.textAlign, fontSize:a.fontSize, lineHeight:a.lineHeight,
+      textBaseBoxWidth:a.textBaseBoxWidth, textBaseFontSize:a.textBaseFontSize,
+      fontFamily:TEXT_ASSET_FONT_FAMILY, fontWeight:400 };
+  }
   const canonicalSrc = _assetPersistentSourceE8E(a);
   const out = {
     id: a.id,
@@ -30800,6 +30953,9 @@ function sessionAutosaveOnProjectApplied(origin, data) {
     sessionRestoreProjectWorldRestored = !!(data.projectWorld && projectWorld.initialized && projectWorld.baseStageW === data.projectWorld.baseStageW && projectWorld.baseStageH === data.projectWorld.baseStageH);
     sessionRestoreNoPartialState = sessionRestoreHydratedAssetCount === sessionRestoreAssetCount && restoredAssets.length === sessionRestoreAssetCount;
     sessionRestoreCompleted = sessionRestoreNoPartialState && sessionRestoreLayerIdentitiesPreserved && sessionRestoreProjectWorldRestored;
+    const savedTextAssets=(data.assets||[]).filter(a=>a&&a.type==='text').map(a=>serializeProjectAsset(a,0,false));
+    const restoredTextAssets=assets.filter(a=>a&&a.type==='text').map(a=>serializeProjectAsset(a,0,false));
+    textAssetSessionRestoreParityOk=JSON.stringify(savedTextAssets)===JSON.stringify(restoredTextAssets);
     sessionRestoreFailed = !sessionRestoreCompleted;
     sessionPostRestoreCanonicalStateHash = captureSessionFrameParitySnapshot().canonicalStateHash;
     _recordReplacedSourceBoundaryE8S('session-restore', restoredAssets);
@@ -30807,6 +30963,9 @@ function sessionAutosaveOnProjectApplied(origin, data) {
     return;
   }
   _recordReplacedSourceBoundaryE8S('manual-load', assets);
+  const savedTextAssets=(data.assets||[]).filter(a=>a&&a.type==='text').map(a=>serializeProjectAsset(a,0,false));
+  const restoredTextAssets=assets.filter(a=>a&&a.type==='text').map(a=>serializeProjectAsset(a,0,false));
+  textAssetSaveLoadParityOk=JSON.stringify(savedTextAssets)===JSON.stringify(restoredTextAssets);
   _sessionAutosaveEpoch++;
   sessionRestoreDidNotOverrideManualLoad = true;
   scheduleSessionAutosave('manual-load', true);
@@ -31827,7 +31986,7 @@ function restoreProjectAssetsFromData(data) {
 
     const savedAssets = Array.isArray(data.assets) ? data.assets : [];
     const savedImageAssets = savedAssets.filter(a => a && a.type === 'image');
-    migratePersistentLayerIdentities(savedImageAssets, data.nextLayerSequence);
+    migratePersistentLayerIdentities(savedAssets, data.nextLayerSequence);
 
     if (savedImageAssets.length > 0) {
       const savedPrimaryIdentity = savedImageAssets[0];
@@ -31973,12 +32132,24 @@ function restoreProjectAssetsFromData(data) {
         img.src = saSrc;
         assets.push(asset);
       }
+      savedAssets.filter(a => a && a.type === 'text').forEach(function(sa) {
+        const textAsset = normalizeTextAsset({ id:sa.id||('text-'+Date.now()+'-'+Math.floor(Math.random()*1000)), type:'text',
+          name:sa.name||'', layerSequence:sa.layerSequence, layerName:sa.layerName, layerNameSource:sa.layerNameSource||'automatic',
+          text:sa.text||'', color:sa.color, worldX:Number(sa.worldX)||0, worldY:Number(sa.worldY)||0,
+          worldW:Number(sa.worldW)||Number(sa.boxWidth)||220, worldH:Number(sa.worldH)||0, boxWidth:Number(sa.worldW)||Number(sa.boxWidth)||220,
+          rotation:Number(sa.rotation)||0, depth:0, zIndex:Number(sa.zIndex)||0, visible:sa.visible!==false, locked:!!sa.locked,
+          textAlign:sa.textAlign||'center', fontSize:Number(sa.fontSize)||36, lineHeight:Number(sa.lineHeight)||1.2,
+          textBaseBoxWidth:Number(sa.textBaseBoxWidth)||Number(sa.worldW)||Number(sa.boxWidth)||220,
+          textBaseFontSize:Number(sa.textBaseFontSize)||Number(sa.fontSize)||36 });
+        assignPersistentLayerIdentity(textAsset); measureTextAsset(textAsset); assets.push(textAsset);
+      });
       if (missingImageSrc) {
         showStatus('Projeto carregado sem todas as imagens adicionais (não foram salvas neste arquivo).');
       }
     }
 
     migratePersistentLayerIdentities(assets, nextLayerSequence);
+    assets.filter(a=>a&&a.type==='text').forEach(a=>assignPersistentLayerIdentity(a));
     const savedIdentityById = captureLayerIdentityByAssetId(savedImageAssets);
     layerIdentityPreservedAfterSaveLoad = assets.filter(a => a && a.type === 'image').every(a =>
       savedIdentityById[String(a.id)] === captureLayerIdentityByAssetId([a])[String(a.id)]
@@ -33426,7 +33597,8 @@ async function prepareRenderSessionSnapshot(kind) {
       return { ok: false, allReady: false, count: visible.length, abortedIds: renderSessionAbortedAssetIds };
     }
     visible.forEach(function(v){ try { Object.freeze(v); } catch (_e) {} });
-    renderSessionSnapshot = { context, epoch: _renderSessionEpoch, assets: visible, allReady };
+    const textAssets = (Array.isArray(assets) ? assets : []).filter(a=>a&&a.type==='text'&&a.visible!==false).map(a=>Object.freeze({...serializeProjectAsset(a,0,false)}));
+    renderSessionSnapshot = { context, epoch: _renderSessionEpoch, assets: visible, textAssets:Object.freeze(textAssets), allReady };
     try { Object.freeze(renderSessionSnapshot.assets); Object.freeze(renderSessionSnapshot); } catch (_e) {}
     renderSessionActiveContext = (context === 'preview' || context === 'export') ? context : '';
     if (context === 'preview') {
@@ -34504,7 +34676,7 @@ function performInsertImageAtSlot(slotKey, file) {
 // ProjectWorld, formato nem fundo.
 function renderProjectWorldExtraImages() {
   if (typeof stageContent === 'undefined' || !stageContent) return;
-  const old = stageContent.querySelectorAll('.world-extra-img');
+  const old = stageContent.querySelectorAll('.world-extra-img,.world-text-asset');
   old.forEach(el => el.remove());
   const allImageAssets = Array.isArray(assets) ? assets.filter(function(a){ return a && a.type === 'image'; }) : [];
   // Sem mundo inicializado OU sem nenhuma imagem: estado transitório — manter o
@@ -34528,7 +34700,11 @@ function renderProjectWorldExtraImages() {
     restackFilmEditorLayers('renderProjectWorldExtraImages');
     return;
   }
-  // Ordem visual real = zIndex crescente (índice 0 = fundo).
+  // Ranking único de composição para imagens e textos (índice 0 = fundo).
+  const visualAssets = assets.filter(a => a && (a.type === 'image' || a.type === 'text'))
+    .concat(pendingTextDraft ? [pendingTextDraft] : [])
+    .sort((a,b)=>(a.zIndex||0)-(b.zIndex||0));
+  const compositionRankById = new Map(visualAssets.map((asset, index) => [String(asset.id), index + 1]));
   const sortedAll = allImageAssets.slice().sort(function(a, b){ return (a.zIndex||0) - (b.zIndex||0); });
   const mainAsset = allImageAssets[0]; // primeira imagem do projeto (img-1) — asset normal
   computeEditorTransform();
@@ -34549,7 +34725,7 @@ function renderProjectWorldExtraImages() {
   let img1Drawn = 0;
   const _zlist = [];
   const _inAssetsMode = (typeof isAssetsMode === 'function' && isAssetsMode());
-  sortedAll.forEach(function(a, idx) {
+  sortedAll.forEach(function(a) {
     if (a.visible === false) return;
     const src = getAssetThumbSrc(a); // img-1 (sem a.src) cai no #imgEl.src; extras usam a.src/_img
     if (!src) return;
@@ -34597,12 +34773,22 @@ function renderProjectWorldExtraImages() {
     if (!_inAssetsMode && typeof viewMode !== 'undefined' && viewMode === 2) img.style.opacity = '0.06';
     // Posição global na pilha ordenada (índice 0 = fundo). Cap na banda de assets
     // para nunca invadir as bandas de curvas (18) / frames (20–30) no Modo Câmera.
-    const _z = Math.min(idx + 1, CAMERA_ASSET_BAND_MAX);
+    const _z = Math.min(compositionRankById.get(String(a.id)) || 1, CAMERA_ASSET_BAND_MAX);
     img.style.zIndex = String(_z);
     _zlist.push((isMain ? 'img1:' : '') + _z);
     img.dataset.assetId = String(a.id);
     if (isMain) img.dataset.mainImage = '1';
     stageContent.insertBefore(img, imgEl);
+  });
+  visualAssets.forEach(function(a) {
+    if (a.type !== 'text' || a.visible === false) return;
+    const m = measureTextAsset(a), p = editorWorldToStage(a.worldX, a.worldY, a.boxWidth, m.height);
+    const el = document.createElement('div'); el.className='world-text-asset'; el.dataset.assetId=String(a.id);
+    el.textContent = a.text || (a === pendingTextDraft ? 'Texto...' : '');
+    el.style.left=p.x+'px'; el.style.top=p.y+'px'; el.style.width=p.w+'px'; el.style.minHeight=p.h+'px';
+    el.style.color=a.color; el.style.fontFamily=a.fontFamily; el.style.fontWeight=String(a.fontWeight); el.style.fontSize=(a.fontSize*_editorTransform.scale)+'px'; el.style.lineHeight=String(a.lineHeight); el.style.textAlign=a.textAlign;
+    el.style.transform=(Number(a.rotation)||0)?`rotate(${Number(a.rotation)}deg)`:''; el.style.zIndex=String(Math.min(compositionRankById.get(String(a.id))||1,CAMERA_ASSET_BAND_MAX));
+    stageContent.insertBefore(el,imgEl); textAssetStageRendered = textAssetStageRendered || a !== pendingTextDraft;
   });
   // Diagnóstico de ordem/posição da img-1.
   computedWorldExtraZIndexes = _zlist.join(',');
@@ -34639,13 +34825,14 @@ function getSelectableImageAssets() {
   if (!Array.isArray(assets)) return out;
   for (let i = 0; i < assets.length; i++) {
     const a = assets[i];
-    if (!a || a.type !== 'image') continue;
+    if (!a || (a.type !== 'image' && a.type !== 'text')) continue;
     out.push(a);
   }
   return out;
 }
 function assetHasLoadedImage(a) {
   if (!a) return false;
+  if (a.type === 'text') return true;
   if (a.src) return true;
   if (a._img && (a._img.src || a._img.complete)) return true;
   // Asset principal (img-1) usa o #imgEl; considerar carregado se há imagem principal.
@@ -34664,12 +34851,13 @@ function getAssetThumbSrc(a) {
 // Aprimorado para aceitar assets com src salvo (carregados de arquivo anterior)
 // mesmo que _img ainda não tenha carregado, e assets com geometria válida.
 function assetIsHitTestable(a) {
-  if (!a || a.type !== 'image') return false;
+  if (!a || (a.type !== 'image' && a.type !== 'text')) return false;
   if (a.visible === false) return false;
   const w = a.worldW || 0;
   const h = a.worldH || 0;
   if (w <= 0 || h <= 0) return false;
   // Tem src salvo = asset carregado de arquivo ou inserido nesta sessão
+  if (a.type === 'text') return true;
   if (a.src) return true;
   // Tem imagem interna carregada
   if (a._img && (a._img.src || a._img.complete)) return true;
@@ -34696,7 +34884,7 @@ function hitTestAssetAtWorld(wx, wy) {
   let best = null, bestZ = -Infinity, bestIdx = -1;
   for (let i = 0; i < assets.length; i++) {
     const a = assets[i];
-    if (!a || a.type !== 'image') continue;
+    if (!a || (a.type !== 'image' && a.type !== 'text')) continue;
     if (a.visible === false) continue;
     if (!assetIsHitTestable(a)) continue;
     // v8z4b32E5 — hit-test usa o sub-retângulo VISUAL (getAssetVisualWorldRect),
@@ -34926,6 +35114,8 @@ function beginAssetTransformDrag(e, corner) {
     pointerId: e.pointerId, corner: corner || 'br', mode: null, assetId: asset.id, undoSnapshot: captureState(), moved: false,
     startClientX: e.clientX, startClientY: e.clientY,
     startX: asset.worldX || 0, startY: asset.worldY || 0, startW: asset.worldW || 1, startH: asset.worldH || 1,
+    startBoxWidth: asset.type === 'text' ? (Number(asset.boxWidth) || Number(asset.worldW) || 1) : null,
+    startFontSize: asset.type === 'text' ? (Number(asset.fontSize) || 36) : null,
     startRotation: Number(asset.rotation) || 0, cx, cy,
     initDist: Math.max(1, Math.hypot(wp.x - cx, wp.y - cy)),
     initAngle: Math.atan2(wp.y - cy, wp.x - cx), clamped: false
@@ -34958,6 +35148,12 @@ function handleAssetTransformPointerMove(e) {
     const nw = ds.startW * f, nh = ds.startH * f;
     if (Number.isFinite(nw) && Number.isFinite(nh) && nw > 0 && nh > 0) {
       asset.worldW = nw; asset.worldH = nh; asset.worldX = ds.cx - nw / 2; asset.worldY = ds.cy - nh / 2;
+      if (asset.type === 'text') {
+        asset.boxWidth = ds.startBoxWidth * f;
+        asset.fontSize = ds.startFontSize * f;
+        measureTextAsset(asset);
+        asset.worldY = ds.cy - asset.worldH / 2;
+      }
     } else { assetScaleProducedInvalidGeometry = true; }
   } else if (ds.mode === 'rotate') {
     let delta = getIncrementalAngleDelta(currentAngle, ds.initAngle);
@@ -35202,7 +35398,7 @@ function renderLayersPanelList() {
   if (!sorted.length) {
     const empty = document.createElement('div');
     empty.className = 'layers-empty';
-    empty.textContent = 'Nenhuma imagem ainda.';
+    empty.textContent = 'Nenhum ativo ainda.';
     list.appendChild(empty);
     return;
   }
@@ -35218,7 +35414,7 @@ function renderLayersPanelList() {
       const im = document.createElement('img');
       im.src = src; im.alt = ''; im.draggable = false;
       thumbWrap.appendChild(im);
-    }
+    } else if (a.type === 'text') { thumbWrap.textContent = 'T'; thumbWrap.style.display='grid'; thumbWrap.style.placeItems='center'; thumbWrap.style.color=a.color; thumbWrap.style.fontWeight='700'; }
     const label = document.createElement('div');
     label.className = 'layers-name';
     label.textContent = getAssetDisplayName(a);
@@ -35255,7 +35451,7 @@ function renderLayersPanelList() {
     acts.className = 'layers-actions';
     acts.appendChild(btnUp);
     acts.appendChild(btnDown);
-    acts.appendChild(btnReplace);
+    if (a.type === 'image') acts.appendChild(btnReplace);
     item.appendChild(thumbWrap);
     item.appendChild(label);
     item.appendChild(acts);
@@ -36500,7 +36696,7 @@ function getProjectWorldCompositeSource() {
 // exatamente igual ao atual (resultado visual idêntico).
 // ═══════════════════════════════════════
 function isMultiImageWorldActive() {
-  return getImageAssetCount() >= 2 &&
+  return (Array.isArray(assets) ? assets.filter(a=>a&&(a.type==='image'||a.type==='text')).length : 0) >= 2 &&
          projectWorld.initialized &&
          projectWorld.baseStageW > 0 &&
          projectWorld.baseStageH > 0;
@@ -36575,6 +36771,7 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context) {
       if (!(rect.aw > 0) || !(rect.ah > 0)) { throw new Error('render-session-invalid-rect:' + sv.id); }
       out.push({ src, rect, zIndex: Number(sv.zIndex) || 0, id: sv.id, asset: a });
     }
+    (snap.textAssets || []).forEach(sv => { const a=normalizeTextAsset({...sv}); out.push({src:null,rect:getWorldRenderAssetRectSourcePx(a,canonicalDims),zIndex:Number(a.zIndex)||0,id:a.id,asset:a,type:'text'}); });
     out.sort((p, q) => p.zIndex - q.zIndex);
     if (context === 'preview') {
       img1PreviewPathParityFixEnabled = true;
@@ -36589,7 +36786,8 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context) {
   let firstImageSeen = false;
   for (let i = 0; i < assets.length; i++) {
     const a = assets[i];
-    if (!a || a.type !== 'image') continue;
+    if (!a || (a.type !== 'image' && a.type !== 'text')) continue;
+    if (a.type === 'text') { if(a.visible!==false){ const ta=normalizeTextAsset(a); measureTextAsset(ta); out.push({src:null,rect:getWorldRenderAssetRectSourcePx(ta,canonicalDims),zIndex:Number(ta.zIndex)||0,id:ta.id,asset:ta,type:'text'}); } continue; }
     const isMain = !firstImageSeen;
     if (isMain) firstImageSeen = true;
     if (a.visible === false) continue;
@@ -36691,7 +36889,14 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
         }
         const drawX = r.ax + parallax.offsetX;
         const drawY = r.ay + parallax.offsetY;
-        if (r.rotation) {
+        if (renderAssets[i].type === 'text' || renderAssets[i].asset.type === 'text') {
+          const ta=normalizeTextAsset(renderAssets[i].asset), scaleX=(canonicalDims.width||1)/(projectWorld.baseStageW||1);
+          ctx.save(); ctx.translate(drawX+r.aw/2,drawY+r.ah/2); ctx.rotate((r.rotation||0)*Math.PI/180);
+          ctx.font=`${ta.fontWeight} ${ta.fontSize*scaleX}px ${ta.fontFamily}`; ctx.fillStyle=ta.color; ctx.textBaseline='top'; ctx.textAlign=ta.textAlign;
+          const lines=wrapTextLines(ctx,ta.text,r.aw), lh=ta.fontSize*ta.lineHeight*scaleX, tx=ta.textAlign==='left'?-r.aw/2:(ta.textAlign==='right'?r.aw/2:0);
+          lines.forEach((line,li)=>ctx.fillText(line,tx,-r.ah/2+li*lh)); ctx.restore();
+          if(context==='preview') textAssetPreviewRendered=true; if(context==='export') textAssetExportRendered=true;
+        } else if (r.rotation) {
           ctx.save();
           ctx.translate(drawX + r.aw / 2, drawY + r.ah / 2);
           ctx.rotate(r.rotation * Math.PI / 180);
@@ -37475,6 +37680,28 @@ function buildDiagnosticsText() {
   // Versão
   push('APP_VERSION', (typeof APP_VERSION !== 'undefined') ? APP_VERSION : 'n/d');
   push('APP_VERSION_NAME', (typeof APP_VERSION_NAME !== 'undefined') ? APP_VERSION_NAME : 'n/d');
+  const _textAssets = Array.isArray(assets) ? assets.filter(a=>a&&a.type==='text') : [];
+  const _selectedText = getSelectedAsset && getSelectedAsset();
+  push('textAssetsEnabled', 'true');
+  push('textAssetCount', _textAssets.length);
+  push('selectedTextAssetId', _selectedText&&_selectedText.type==='text'?_selectedText.id:'none');
+  push('pendingTextCreationActive', String(!!pendingTextDraft));
+  push('pendingTextDraftLength', pendingTextDraft?pendingTextDraft.text.length:0);
+  push('pendingTextColor', pendingTextDraft?pendingTextDraft.color:'none');
+  push('textAssetIds', _textAssets.map(a=>a.id).join(',')||'none');
+  push('textAssetLayerOrder', _textAssets.slice().sort((a,b)=>(a.zIndex||0)-(b.zIndex||0)).map(a=>a.id).join(',')||'none');
+  push('textAssetStageRendered', String(textAssetStageRendered));
+  push('textAssetPreviewRendered', String(textAssetPreviewRendered));
+  push('textAssetExportRendered', String(textAssetExportRendered));
+  push('textAssetStagePreviewParityOk', String(!_textAssets.length||(textAssetStageRendered&&textAssetPreviewRendered)));
+  push('textAssetPreviewExportParityOk', String(!_textAssets.length||(textAssetPreviewRendered&&textAssetExportRendered)));
+  push('textAssetSaveLoadParityOk', String(textAssetSaveLoadParityOk));
+  push('textAssetSessionRestoreParityOk', String(textAssetSessionRestoreParityOk));
+  push('textAssetHitTestUsesCanonicalGeometry', 'true');
+  push('textAssetTransformUsesCanonicalGeometry', 'true');
+  push('textCreationKeyboardResizeChangedProjectWorld', String(textCreationKeyboardResizeChangedProjectWorld));
+  push('textCreationKeyboardResizeChangedFrames', String(textCreationKeyboardResizeChangedFrames));
+  push('textCreationKeyboardResizeChangedExistingAssets', String(textCreationKeyboardResizeChangedExistingAssets));
   L.push('— timestamp: ' + new Date().toISOString());
   L.push('');
 

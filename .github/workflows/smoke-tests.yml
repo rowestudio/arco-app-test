@@ -1,44 +1,62 @@
-name: WebKit Smoke Tests
+name: Browser Smoke Tests
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   webkit-smoke-tests:
-    name: WebKit smoke tests
-    runs-on: ubuntu-latest
-
+    name: WebKit Smoke Tests
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright WebKit
-        run: npx playwright install --with-deps webkit
-
-      - name: Run WebKit smoke tests
-        run: npx playwright test
-
-      - name: Upload smoke evidence
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - name: Run WebKit functional smoke through Preview
+        run: npx playwright test --project=webkit-mobile-smoke --workers=1 --retries=0
+      - name: Upload WebKit evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: webkit-smoke-evidence
+          name: webkit-functional-evidence
           if-no-files-found: warn
           path: |
-            test-results/**/arco-motion-initial-render.png
+            playwright-report/**
+            test-results/**
+
+  webkit-macos-real-export:
+    name: Real Export Smoke (WebKit macOS)
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install webkit
+      - name: Log WebKit macOS export environment
+        run: |
+          sw_vers
+          uname -m
+          npx playwright --version
+          npx playwright install --dry-run webkit
+          echo "MERGE_SHA=$GITHUB_SHA"
+          echo "PR_HEAD_SHA=${{ github.event.pull_request.head.sha }}"
+      - name: Run real H.264 Export smoke
+        run: npx playwright test tests/smoke/export.spec.mjs --project=webkit-macos-export --workers=1 --retries=0
+      - name: Upload WebKit macOS Export evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webkit-macos-real-export-evidence
+          if-no-files-found: error
+          path: |
             playwright-report/**
             test-results/**

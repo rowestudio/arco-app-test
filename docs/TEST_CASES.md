@@ -1,5 +1,13 @@
 # TEST_CASES
 
+## TC-038 — Criação e persistência de Text Asset
+
+- Pré-condição: projeto com imagem aberto no Modo Ativos.
+- Passos: criar e cancelar drafts; confirmar texto com cor e quebra automática; mover/escalar/rotacionar/reordenar; executar Save/Load, Session Restore, Preview e Export; repetir criação com resize do teclado.
+- Resultado esperado: somente OK cria uma layer, o texto permanece canônico/editável e Stage/Preview/Export mantêm conteúdo, cor, geometria e zIndex; Cancelar não muta o projeto; resize não altera Frames, ProjectWorld ou ativos anteriores.
+- Evidência: smoke WebKit E8X, JSON/checkpoint, amostras Canvas e validação publicada em iPhone/Safari real.
+- Ambiente: WebKit automatizado e iPhone/Safari real obrigatório para aprovação final.
+
 Formato: pré-condição, passos, resultado esperado, evidência, ambiente e automatizável.
 
 ## TC-001 — Abertura do app
@@ -337,3 +345,9 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: teste WebKit E8W em `tests/smoke/app.spec.mjs` e sequência diagnóstica `restoreStep*`.
 - Ambiente: WebKit automatizado; iPhone/Safari real obrigatório para validar fechamento/reabertura, teclado e visual viewport.
 - Automatizável: sim para estado/geometria; ciclo real de processo e percepção visual exigem aparelho real.
+
+### TC-038 — divisão permanente de gates E8X
+
+- WebKit/Linux: criação, cancelamento, whitespace, transformações, Layers, Save/Load, Session Restore, ProjectWorld/Frames e Preview/composição por pixels.
+- WebKit/macOS: preflight nativo sequencial `avc1.42001f`, `avc1.42E01E`, `avc1.4D401F` em 720×1280/30 fps/10 Mbps/prefer-hardware e Export WebCodecs real, somente imagem e imagem + Text Asset, exigindo MP4 não vazio. Chrome 150/Linux foi avaliado e rejeitado por retornar H.264 não suportado.
+- Nenhum dos gates usa skip, retry ou mock; Safari/iPhone publicado permanece aprovação manual obrigatória.

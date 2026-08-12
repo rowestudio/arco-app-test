@@ -2,6 +2,13 @@
 
 Última atualização documental: 2026-08-08.
 
+## Atualização 2026-08-11 — v8z4b32E8X em desenvolvimento
+
+- A primeira etapa de Texto introduz `type: "text"` como ativo canônico editável, com criação por `+`, cor, largura/quebra automática e confirmação/cancelamento.
+- O mesmo estado textual participa da pilha de Layers, seleção e transformações genéricas, Save/Load, checkpoint de sessão e composição Canvas compartilhada por Preview/Export; drafts não entram em persistência.
+- Resize de teclado durante a criação é apenas auditado e não recalcula Frames, ProjectWorld ou ativos confirmados.
+- A aprovação final continua dependente de publicação e validação por Roberto em iPhone/Safari real; nenhuma promoção está autorizada.
+
 ## Atualização 2026-08-11 — v8z4b32E8W em PR
 
 - A reprodução real após Session Restore comprovou uma regressão de sistema de coordenadas, não de Parallax: Frames do ProjectWorld permaneciam em `baseStageW/baseStageH`, enquanto o sampler da câmera ainda os convertia por `stageW/stageH`, dimensões CSS variáveis do viewport.
@@ -198,3 +205,7 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 - O relato isolado sobre intenção escala × rotação de Frames ocorreu em um arquivo específico, não voltou a ser reproduzido e permanece em observação; não integra o escopo da E8I e não autoriza alteração ou PR de Frames nesta versão.
 - A revisão da PR #459 substitui o harness paralelo por execução em `vm` dos controladores reais do `index.html`, cobre startup e IndexedDB reais no smoke WebKit e adiciona feedback visual aguardável dentro do modal durante restore/clear, sem novo bump de versão ou mudança na arquitetura funcional.
 - A revisão funcional seguinte identificou a causa exata do falso negativo da recuperação: `applyProjectData()` inicia a carga assíncrona da imagem e retornava antes de `applyFrameData()` concluir, portanto `restoreLastSessionAutosave()` consultava `sessionRestoreCompleted` ainda em `false`, mesmo com o editor sendo aplicado logo depois. O restore agora aguarda o callback final da aplicação, separa sucesso operacional das métricas observacionais de paridade e mantém rollback recuperável em falha; a validação automatizada em WebKit permanece responsabilidade do workflow e a validação em iPhone/Safari/PWA real continua pendente.
+
+## QA E8X — split de navegador
+
+A cobertura permanente separa capacidade funcional de Text Asset (WebKit/Linux até Preview real) da capacidade nativa de Export H.264 (WebKit/macOS). Chrome 150/Linux foi rejeitado como gate por retornar H.264 não suportado. O crash da consulta H.264 foi reproduzido na `main` sem texto; portanto, não é tratado como regressão funcional E8X. Aprovação em iPhone/Safari real permanece pendente e obrigatória.

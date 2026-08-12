@@ -6,7 +6,7 @@ export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   reporter: [['html', { outputFolder: 'playwright-report', open: 'never' }], ['list']],
   use: {
     baseURL,
@@ -16,13 +16,11 @@ export default defineConfig({
     hasTouch: true,
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
-    video: 'retain-on-failure',
+    video: 'off',
   },
   projects: [
-    {
-      name: 'webkit-mobile-smoke',
-      use: { browserName: 'webkit' },
-    },
+    { name:'webkit-mobile-smoke', testIgnore:/export\.spec\.mjs$/, use:{browserName:'webkit'} },
+    { name:'webkit-macos-export', testMatch:/export\.spec\.mjs$/, use:{browserName:'webkit'} },
   ],
   webServer: {
     command: 'node scripts/test/serve-static.mjs',

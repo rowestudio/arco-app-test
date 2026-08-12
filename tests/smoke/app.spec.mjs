@@ -252,6 +252,236 @@ test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', asyn
   expect(capturedErrors, `erro JS capturado durante a abertura:\n${capturedErrors.join('\n')}`).toEqual([]);
 });
 
+test('E8X WebKit gate — TC-038 até Preview e composição real', async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await page.evaluate(() => setEditorMode('assets', 'webkit-e8x'));
+
+  const baseline = await page.evaluate(() => ({
+    projectWorld: structuredClone(projectWorld),
+    frames: structuredClone(frames.slice(0, frameCount)),
+    assets: assets.map(a => ({ id:a.id, type:a.type, worldX:a.worldX, worldY:a.worldY, worldW:a.worldW, worldH:a.worldH, rotation:a.rotation, zIndex:a.zIndex })),
+  }));
+
+  // Cancelar exercita o fluxo real e não pode deixar asset, Layer, Undo ou mutação canônica.
+  await page.evaluate(() => startTextCreation());
+  await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
+  await page.locator('#textCreationInput').fill('Este draft deve ser descartado');
+  await page.setViewportSize({ width:390, height:620 });
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await page.setViewportSize({ width:390, height:844 });
+  await page.getByRole('button', { name:'Cancelar', exact:true }).click();
+  const cancelled = await page.evaluate(() => ({
+    projectWorld:structuredClone(projectWorld), frames:structuredClone(frames.slice(0,frameCount)),
+    assets:assets.map(a=>({id:a.id,type:a.type,worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,rotation:a.rotation,zIndex:a.zIndex})),
+    textCount:assets.filter(a=>a&&a.type==='text').length, pending:pendingTextDraft,
+  }));
+  expect(cancelled).toMatchObject({ projectWorld:baseline.projectWorld, frames:baseline.frames, assets:baseline.assets, textCount:0, pending:null });
+
+  // OK cria exatamente um asset; whitespace canônico e wrap automático não podem divergir do Stage.
+  const canonicalText = 'A  B\tC\nD texto longo para comprovar quebra automática dentro do quadro canônico';
+  await page.evaluate(() => startTextCreation());
+  await page.locator('#textCreationInput').fill(canonicalText);
+  await page.locator('#textCreationColor').evaluate((el) => { el.value='#ff3366'; el.dispatchEvent(new Event('input',{bubbles:true})); });
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await page.getByRole('button', { name:'OK', exact:true }).click();
+  const confirmed = await page.evaluate(() => {
+    const text=assets.find(a=>a&&a.type==='text'), data=buildProjectData(true);
+    const canvas=document.createElement('canvas'), ctx=canvas.getContext('2d'); ctx.font=`${text.fontWeight} ${text.fontSize}px ${text.fontFamily}`;
+    return { count:assets.filter(a=>a&&a.type==='text').length, text:{...text}, saved:data.assets.find(a=>a&&a.type==='text'), lines:wrapTextLines(ctx,text.text,text.boxWidth),
+      selected:selectedAssetId, outline:document.getElementById('assetSelectOutline')?.dataset.assetId||'',
+      resize:[textCreationKeyboardResizeChangedProjectWorld,textCreationKeyboardResizeChangedFrames,textCreationKeyboardResizeChangedExistingAssets] };
+  });
+  expect(confirmed.count).toBe(1); expect(confirmed.text.text).toBe(canonicalText); expect(confirmed.text.color).toBe('#ff3366'); expect(confirmed.lines.length).toBeGreaterThan(1);
+  expect(confirmed.lines[0]).toContain('A  B    C');
+  await expect(page.locator(`.world-text-asset[data-asset-id="${confirmed.text.id}"]`)).toHaveText(canonicalText);
+  expect(confirmed.text.boxWidth).toBeGreaterThan(100); expect(confirmed.saved).toMatchObject({type:'text',text:confirmed.text.text,color:'#ff3366'});
+  expect(confirmed.selected).toBe(confirmed.text.id); expect(confirmed.outline).toBe(confirmed.text.id); expect(confirmed.resize).toEqual([false,false,false]);
+
+  // Seleção/hit-test e movimento usam os handlers reais do Stage.
+  const moved = await page.evaluate(() => {
+    const text=assets.find(a=>a&&a.type==='text'), before={x:text.worldX,y:text.worldY,w:text.worldW,h:text.worldH};
+    const center=editorWorldToStage(text.worldX+text.worldW/2,text.worldY+text.worldH/2,0,0), rect=stageContent.getBoundingClientRect();
+    const event=(x,y)=>({clientX:rect.left+center.x*editorZoomScale+x,clientY:rect.top+center.y*editorZoomScale+y,pointerId:81,pointerType:'touch',isPrimary:true,target:stageContent,preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}});
+    const firstFrame=frames[0], target=editorWorldToStage(firstFrame.x+firstFrame.w/2,firstFrame.y+firstFrame.h/2,0,0);
+    let dx=(target.x-center.x)*editorZoomScale, dy=(target.y-center.y)*editorZoomScale;
+    if (Math.abs(dx)<18) dx+=dx<0?-18:18;
+    if (Math.abs(dy)<18) dy+=dy<0?-18:18;
+    handleStageAssetSelectPointer(event(0,0)); handleStageAssetMovePointer(event(dx,dy)); endStageAssetMovePointer(event(dx,dy));
+    return {id:text.id,selected:selectedAssetId,before,after:{x:text.worldX,y:text.worldY,w:text.worldW,h:text.worldH},hit:hitTestAssetAtWorld(text.worldX+text.worldW/2,text.worldY+text.worldH/2)?.id};
+  });
+  expect(moved.selected).toBe(moved.id); expect(moved.hit).toBe(moved.id); expect(moved.after.x).not.toBeCloseTo(moved.before.x); expect(moved.after.y).not.toBeCloseTo(moved.before.y);
+  expect(moved.after.w).toBeCloseTo(moved.before.w); expect(moved.after.h).toBeCloseTo(moved.before.h);
+
+  // Escala e rotação percorrem a infraestrutura real das quatro alças.
+  const transformed = await page.evaluate(() => {
+    const text=assets.find(a=>a&&a.type==='text'), fakeTarget={setPointerCapture(){},releasePointerCapture(){}};
+    const point=(angle,radius,id)=>{ computeEditorTransform(); const c=editorWorldToStage(text.worldX+text.worldW/2,text.worldY+text.worldH/2,0,0), sr=stageContent.getBoundingClientRect(); return {clientX:sr.left+c.x*editorZoomScale+Math.cos(angle)*radius,clientY:sr.top+c.y*editorZoomScale+Math.sin(angle)*radius,pointerId:id,currentTarget:fakeTarget,preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}}; };
+    const before={x:text.worldX,y:text.worldY,w:text.worldW,h:text.worldH,boxWidth:text.boxWidth,fontSize:text.fontSize,rotation:text.rotation,cx:text.worldX+text.worldW/2,cy:text.worldY+text.worldH/2};
+    beginAssetTransformDrag(point(0,80,82),'br'); handleAssetTransformPointerMove(point(0,135,82)); endAssetTransformPointer(point(0,135,82),false);
+    const scaled={x:text.worldX,y:text.worldY,w:text.worldW,h:text.worldH,boxWidth:text.boxWidth,fontSize:text.fontSize,cx:text.worldX+text.worldW/2,cy:text.worldY+text.worldH/2};
+    beginAssetTransformDrag(point(0,100,83),'br'); handleAssetTransformPointerMove(point(Math.PI/3,100,83)); endAssetTransformPointer(point(Math.PI/3,100,83),false);
+    return {before,scaled,after:{w:text.worldW,h:text.worldH,fontSize:text.fontSize,rotation:text.rotation}};
+  });
+  expect(transformed.scaled.w).toBeGreaterThan(transformed.before.w); expect(transformed.scaled.fontSize).toBeGreaterThan(transformed.before.fontSize); expect(transformed.after.rotation).not.toBe(transformed.before.rotation);
+  expect(transformed.scaled.boxWidth).toBeCloseTo(transformed.scaled.w); expect(transformed.scaled.cx).toBeCloseTo(transformed.before.cx); expect(transformed.scaled.cy).toBeCloseTo(transformed.before.cy);
+
+  // O painel de Escala usa a mesma largura canônica e também preserva o centro.
+  const panelScaled = await page.evaluate((id) => {
+    selectAssetById(id,'layers'); const text=assets.find(a=>String(a.id)===id);
+    const before={w:text.worldW,cx:text.worldX+text.worldW/2,cy:text.worldY+text.worldH/2};
+    openAssetContextPanel('scale'); setAssetContextValue(getAssetContextScalePercent(text)+20); commitAssetContextGesture();
+    return {before,after:{w:text.worldW,boxWidth:text.boxWidth,cx:text.worldX+text.worldW/2,cy:text.worldY+text.worldH/2}};
+  }, String(confirmed.text.id));
+  expect(panelScaled.after.w).toBeGreaterThan(panelScaled.before.w); expect(panelScaled.after.boxWidth).toBeCloseTo(panelScaled.after.w);
+  expect(panelScaled.after.cx).toBeCloseTo(panelScaled.before.cx); expect(panelScaled.after.cy).toBeCloseTo(panelScaled.before.cy);
+
+  // Undo/Redo preserva a geometria canônica produzida pelo painel.
+  const undoRedo = await page.evaluate((id) => {
+    const geometry=()=>{const a=assets.find(item=>String(item.id)===id);return {worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,boxWidth:a.boxWidth,fontSize:a.fontSize};};
+    const committed=geometry(); undo(); const undone=geometry(); redo(); const redone=geometry(); return {committed,undone,redone};
+  }, String(confirmed.text.id));
+  expect(undoRedo.undone.worldW).not.toBeCloseTo(undoRedo.committed.worldW); expect(undoRedo.redone).toEqual(undoRedo.committed);
+
+  // Visibilidade controla desenho, não a topologia persistida do mundo.
+  const visibility = await page.evaluate((id) => {
+    const text=assets.find(a=>String(a.id)===id), world=structuredClone(projectWorld), frameState=structuredClone(frames.slice(0,frameCount));
+    const multiBefore=isMultiImageWorldActive(); text.visible=false; renderProjectWorldExtraImages();
+    const hidden={multi:isMultiImageWorldActive(),world:structuredClone(projectWorld),frames:structuredClone(frames.slice(0,frameCount))};
+    text.visible=true; renderProjectWorldExtraImages();
+    return {multiBefore,hidden,shown:{world:structuredClone(projectWorld),frames:structuredClone(frames.slice(0,frameCount))},world,frameState};
+  }, String(confirmed.text.id));
+  expect(visibility.multiBefore).toBe(true); expect(visibility.hidden.multi).toBe(true);
+  expect(visibility.hidden.world).toEqual(visibility.world); expect(visibility.hidden.frames).toEqual(visibility.frameState);
+  expect(visibility.shown.world).toEqual(visibility.world); expect(visibility.shown.frames).toEqual(visibility.frameState);
+
+  // Layers executa reorder real texto↔imagem e prova ordem no modelo e no DOM.
+  const reordered = await page.evaluate(() => {
+    const text=assets.find(a=>a&&a.type==='text'), before=text.zIndex; layerMoveAssetDown(text.id); renderLayersPanelList();
+    const order=assets.slice().sort((a,b)=>(a.zIndex||0)-(b.zIndex||0)).map(a=>String(a.id));
+    const dom=[...document.querySelectorAll('#layersList .layers-item')].map(el=>el.dataset.assetId);
+    return {id:String(text.id),before,after:text.zIndex,order,dom,imageIds:assets.filter(a=>a&&a.type==='image').map(a=>String(a.id))};
+  });
+  expect(reordered.after).not.toBe(reordered.before); expect(reordered.order).toContain(reordered.id); expect(reordered.imageIds.some(id=>reordered.order.indexOf(id)>reordered.order.indexOf(reordered.id))).toBe(true);
+  expect(reordered.dom).toEqual([...reordered.order].reverse());
+
+  // Save/Load real pelos fluxos públicos canônicos: download completo e file input.
+  const beforeRoundTrip = await page.evaluate(() => {
+    const text=assets.find(a=>a&&a.type==='text');
+    const projectAsset = a => ({id:String(a.id),type:a.type,layerSequence:a.layerSequence,layerName:a.layerName,
+      worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,rotation:Number(a.rotation)||0,
+      zIndex:Number(a.zIndex)||0,visible:a.visible!==false,boxWidth:a.type==='text'?a.boxWidth:null,
+      text:a.type==='text'?a.text:null,color:a.type==='text'?a.color:null,fontSize:a.type==='text'?a.fontSize:null});
+    return {text:serializeProjectAsset(text,0,false),assets:assets.map(projectAsset),frames:structuredClone(frames.slice(0,frameCount)),projectWorld:structuredClone(projectWorld)};
+  });
+  const downloadPromise = page.waitForEvent('download');
+  await page.evaluate(() => doSaveDirect(true,'e8x-text-round-trip'));
+  const savedProjectDownload = await downloadPromise;
+  const savedProjectPath = await savedProjectDownload.path();
+  expect(savedProjectPath, 'Save completo não produziu arquivo para o Manual Load').toBeTruthy();
+  await page.locator('#projectFileInput').setInputFiles(savedProjectPath);
+  await expect.poll(() => page.evaluate(() => loadSessionCompleted), {timeout:30_000}).toBe(true);
+  const afterLoad = await page.evaluate((id) => {
+    const text=assets.find(a=>String(a.id)===id);
+    const projectAsset = a => ({id:String(a.id),type:a.type,layerSequence:a.layerSequence,layerName:a.layerName,
+      worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,rotation:Number(a.rotation)||0,
+      zIndex:Number(a.zIndex)||0,visible:a.visible!==false,boxWidth:a.type==='text'?a.boxWidth:null,
+      text:a.type==='text'?a.text:null,color:a.type==='text'?a.color:null,fontSize:a.type==='text'?a.fontSize:null});
+    return {text:text?serializeProjectAsset(text,0,false):null,count:assets.filter(a=>a&&a.type==='text').length,
+      assets:assets.map(projectAsset),frames:structuredClone(frames.slice(0,frameCount)),projectWorld:structuredClone(projectWorld),lastLoadError};
+  }, String(confirmed.text.id));
+  expect(afterLoad.lastLoadError).toBe(''); expect(afterLoad.count).toBe(1); expect(afterLoad.text).toEqual(beforeRoundTrip.text);
+  expect(afterLoad.assets).toEqual(beforeRoundTrip.assets); expect(afterLoad.frames).toEqual(beforeRoundTrip.frames); expect(afterLoad.projectWorld).toEqual(beforeRoundTrip.projectWorld);
+
+  // Checkpoint real em IndexedDB + reload + escolha real de Continuar sessão.
+  await page.evaluate(async () => {
+    scheduleSessionAutosave('e8x-smoke',true);
+    flushSessionAutosave();
+    while (_sessionAutosaveActiveWrites.size) await Promise.all([..._sessionAutosaveActiveWrites]);
+  });
+  await expect.poll(() => sessionCheckpointExists(page), {timeout:30_000}).toBe(true);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await expect(page.getByRole('dialog',{name:'Continuar sessão anterior?'})).toBeVisible();
+  await page.getByText('Continuar de onde parei',{exact:true}).click();
+  await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30_000});
+  const afterSession = await page.evaluate((id) => { const text=assets.find(a=>String(a.id)===id); return text?serializeProjectAsset(text,0,false):null; }, String(confirmed.text.id));
+  expect(afterSession).toEqual(beforeRoundTrip.text);
+
+  // Prova física da composição anterior: texto atrás da imagem opaca deve ser
+  // equivalente, em pixels finais, ao mesmo frame sem o Text Asset.
+  const previewCompositionBefore = await page.evaluate((id) => {
+    setEditorMode('assets','webkit-e8x-preview-composition'); selectAssetById(id,'layers');
+    const text=assets.find(a=>String(a.id)===id);
+    return {textZBefore:text.zIndex,maxZBefore:Math.max(...assets.map(a=>Number(a.zIndex)||0))};
+  }, String(confirmed.text.id));
+  expect(previewCompositionBefore.textZBefore).toBeLessThan(previewCompositionBefore.maxZBefore);
+  await page.evaluate(() => startPreview());
+  await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000});
+  await expect.poll(() => page.evaluate(() => previewLoadingHiddenAfterFirstFrame),{timeout:30_000}).toBe(true);
+  const occludedProof = await page.evaluate(() => {
+    if (animFrame) togglePreviewPlayback();
+    const canvas=document.getElementById('previewDisplayCanvas'), durationSec=getComputedTimelineDuration();
+    const totalPF=Math.max(1,Math.round(durationSec*25)), previewSource=getPreviewRenderSource(), originalSnapshot=renderSessionSnapshot;
+    renderFrameSafely(canvas.getContext('2d'),canvas,0,canvas.width,canvas.height,totalPF,0,{renderSource:previewSource});
+    const withText=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+    const noText=document.createElement('canvas'); noText.width=canvas.width; noText.height=canvas.height;
+    renderSessionSnapshot={...originalSnapshot,textAssets:[]};
+    renderFrameSafely(noText.getContext('2d'),noText,0,noText.width,noText.height,totalPF,0,{renderSource:previewSource});
+    renderSessionSnapshot=originalSnapshot;
+    const withoutText=noText.getContext('2d').getImageData(0,0,noText.width,noText.height).data; let beforeChanged=0,beforeColored=0;
+    for(let i=0;i<withText.length;i+=4){
+      if(Math.abs(withText[i]-withoutText[i])+Math.abs(withText[i+1]-withoutText[i+1])+Math.abs(withText[i+2]-withoutText[i+2])+Math.abs(withText[i+3]-withoutText[i+3])>20) beforeChanged++;
+      if(withText[i]>withText[i+1]*1.35&&withText[i]>withText[i+2]*1.15&&withText[i+3]>100) beforeColored++;
+    }
+    noText.width=1; noText.height=1;
+    return {beforeChanged,beforeColored};
+  });
+  expect(occludedProof.beforeChanged).toBe(0);
+  await page.evaluate(() => { stopPreview(); const canvas=document.getElementById('previewDisplayCanvas'); canvas.width=1; canvas.height=1; });
+
+  // Reorder real: trazer o mesmo texto até maxZ deve tornar sua contribuição física visível.
+  const previewComposition = await page.evaluate((id) => {
+    setEditorMode('assets','webkit-e8x-preview-composition'); selectAssetById(id,'layers');
+    const text=assets.find(a=>String(a.id)===id);
+    while (getAssetZOrderInfo().canForward) bringSelectedAssetForward();
+    return {visibleText:serializeProjectAsset(text,0,false),maxZ:Math.max(...assets.map(a=>Number(a.zIndex)||0))};
+  }, String(confirmed.text.id));
+  expect(previewComposition.visibleText.zIndex).toBe(previewComposition.maxZ);
+
+  // Preview real: snapshot contém o mesmo texto e pixels na caixa canônica apresentam a cor escolhida.
+  await page.evaluate(() => startPreview());
+  await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000});
+  await expect.poll(() => page.evaluate(() => previewLoadingHiddenAfterFirstFrame),{timeout:30_000}).toBe(true);
+  const previewProof = await page.evaluate((id) => {
+    if (animFrame) togglePreviewPlayback();
+    const text=assets.find(a=>String(a.id)===id), canvas=document.getElementById('previewDisplayCanvas'), ctx=canvas.getContext('2d');
+    const durationSec=getComputedTimelineDuration(), totalPF=Math.max(1,Math.round(durationSec*25)), previewSource=getPreviewRenderSource();
+    renderFrameSafely(ctx,canvas,0,canvas.width,canvas.height,totalPF,0,{renderSource:previewSource});
+    const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+    let colored=0; for(let i=0;i<pixels.length;i+=4) if(pixels[i]>pixels[i+1]*1.35&&pixels[i]>pixels[i+2]*1.15&&pixels[i+3]>100) colored++;
+    const textRenderAudit=renderTransform.preview?.assets?.find(a=>String(a.id)===id)||null;
+    const originalSnapshot=renderSessionSnapshot, noText=document.createElement('canvas'); noText.width=canvas.width; noText.height=canvas.height;
+    renderSessionSnapshot={...originalSnapshot,textAssets:[]};
+    renderFrameSafely(noText.getContext('2d'),noText,0,noText.width,noText.height,totalPF,0,{renderSource:previewSource});
+    renderSessionSnapshot=originalSnapshot;
+    const base=noText.getContext('2d').getImageData(0,0,noText.width,noText.height).data; let changed=0;
+    for(let i=0;i<pixels.length;i+=4) if(Math.abs(pixels[i]-base[i])+Math.abs(pixels[i+1]-base[i+1])+Math.abs(pixels[i+2]-base[i+2])+Math.abs(pixels[i+3]-base[i+3])>20) changed++;
+    const canvasSize=[canvas.width,canvas.height]; noText.width=1; noText.height=1;
+    return {snapshot:originalSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,textRenderAudit,colored,changed,canvas:canvasSize};
+  }, String(confirmed.text.id));
+  expect(previewProof.snapshot).toMatchObject({id:confirmed.text.id,text:previewComposition.visibleText.text,color:'#ff3366',zIndex:previewComposition.visibleText.zIndex});
+  expect(previewProof.textRenderAudit).toMatchObject({id:confirmed.text.id,drawn:true,intersectsCamera:true});
+  expect(previewProof.textRenderAudit.screenW).toBeGreaterThan(0); expect(previewProof.textRenderAudit.screenH).toBeGreaterThan(0);
+  expect(previewProof.canvas[0]).toBeGreaterThan(0); expect(previewProof.colored).toBeGreaterThan(0); expect(previewProof.changed).toBeGreaterThan(0);
+  await page.evaluate(() => { stopPreview(); const canvas=document.getElementById('previewDisplayCanvas'); canvas.width=1; canvas.height=1; });
+
+  // Export H.264 é validado separadamente pelo gate Chrome estável.
+
+});
+
 test('replace preserva a fonte canônica em Save/Load, Session Restore e Undo/Redo', async ({ page }) => {
   test.setTimeout(180_000);
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
