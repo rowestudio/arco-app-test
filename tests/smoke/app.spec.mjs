@@ -271,9 +271,19 @@ async function installE8XBoundaryInstrumentation(page, scenario) {
     dimension('width'); dimension('height');
     if(typeof VideoEncoder!=='undefined'){
       const Native=VideoEncoder;
-      const wrappedSupported=async config=>{log('isConfigSupported-before',{config});try{const value=await Native.isConfigSupported(config);log('isConfigSupported-after',{supported:value.supported,config:value.config});return value;}catch(error){log('isConfigSupported-throw',{name:error.name,message:error.message});throw error;}};
-      window.VideoEncoder=new Proxy(Native,{construct(Target,args,newTarget){log('VideoEncoder-construct-before');const instance=Reflect.construct(Target,args,newTarget);log('VideoEncoder-construct-after');return new Proxy(instance,{get(target,key){const value=target[key];if(typeof value!=='function')return value;return function(...methodArgs){if(['configure','encode','flush','close'].includes(String(key)))log(`VideoEncoder-${String(key)}-before`,{args:methodArgs});const result=value.apply(target,methodArgs);if(result&&typeof result.then==='function')return result.then(v=>{log(`VideoEncoder-${String(key)}-after`);return v;});if(['configure','encode','close'].includes(String(key)))log(`VideoEncoder-${String(key)}-after`);return result;};}});}});
-      window.VideoEncoder.isConfigSupported=wrappedSupported;
+      const nativeIsConfigSupported=Native.isConfigSupported.bind(Native);
+      let supportQueryActive=false;
+      const wrappedSupported=async config=>{
+        if(supportQueryActive){const error=new Error('E8X diagnostic isConfigSupported reentry');log('isConfigSupported-reentry',{config});throw error;}
+        supportQueryActive=true; log('isConfigSupported-before',{config});
+        try{const value=await nativeIsConfigSupported(config);log('isConfigSupported-after',{supported:value.supported,config:value.config});return value;}
+        catch(error){log('isConfigSupported-throw',{name:error.name,message:error.message});throw error;}
+        finally{supportQueryActive=false;}
+      };
+      window.VideoEncoder=new Proxy(Native,{
+        get(Target,key,receiver){if(key==='isConfigSupported')return wrappedSupported;return Reflect.get(Target,key,receiver);},
+        construct(Target,args,newTarget){log('VideoEncoder-construct-before');const instance=Reflect.construct(Target,args,newTarget);log('VideoEncoder-construct-after');return new Proxy(instance,{get(target,key){const value=target[key];if(typeof value!=='function')return value;return function(...methodArgs){if(['configure','encode','flush','close'].includes(String(key)))log(`VideoEncoder-${String(key)}-before`,{args:methodArgs});const result=value.apply(target,methodArgs);if(result&&typeof result.then==='function')return result.then(v=>{log(`VideoEncoder-${String(key)}-after`);return v;});if(['configure','encode','close'].includes(String(key)))log(`VideoEncoder-${String(key)}-after`);return result;};}});}
+      });
     }
     log('instrumentation-ready',{secure:isSecureContext,VideoEncoder:typeof VideoEncoder,VideoFrame:typeof VideoFrame,MediaRecorder:typeof MediaRecorder,captureStream:typeof HTMLCanvasElement.prototype.captureStream});
   },scenario);

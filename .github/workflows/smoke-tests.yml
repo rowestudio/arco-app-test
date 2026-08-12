@@ -32,6 +32,16 @@ jobs:
       - name: Run WebKit smoke tests
         run: npx playwright test --retries=0
 
+      - name: Upload HEAD smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webkit-smoke-evidence-head
+          if-no-files-found: warn
+          path: |
+            playwright-report/**
+            test-results/**
+
       - name: Run image-only Export against exact main base
         if: always()
         shell: bash
@@ -40,6 +50,7 @@ jobs:
           E8X_EXTERNAL_SERVER: '1'
           E8X_BASE_URL: http://127.0.0.1:4174
         run: |
+          rm -rf playwright-report test-results
           git worktree add --detach /tmp/arco-main 583ba179b715796b2a2b9d1b202ef40a52a9089b
           (cd /tmp/arco-main && ARCO_TEST_PORT=4174 node scripts/test/serve-static.mjs) &
           server_pid=$!
@@ -47,11 +58,11 @@ jobs:
           for attempt in {1..30}; do curl --fail --silent http://127.0.0.1:4174/ >/dev/null && break; sleep 1; done
           npx playwright test tests/smoke/app.spec.mjs --project=webkit-mobile-smoke --grep "E8X-BOUNDARY MAIN image-only Export" --workers=1 --retries=0
 
-      - name: Upload smoke evidence
+      - name: Upload main control evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: webkit-smoke-evidence
+          name: webkit-smoke-evidence-main-control
           if-no-files-found: warn
           path: |
             test-results/**/arco-motion-initial-render.png
