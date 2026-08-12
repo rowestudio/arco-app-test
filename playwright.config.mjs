@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
-const baseURL = 'http://127.0.0.1:4173';
+const baseURL = process.env.E8X_BASE_URL || 'http://127.0.0.1:4173';
 const diagnosticWithoutArtifacts = process.env.E8X_DIAG_NO_ARTIFACTS === '1';
 
 export default defineConfig({
@@ -25,7 +25,7 @@ export default defineConfig({
       use: { browserName: 'webkit' },
     },
   ],
-  webServer: {
+  webServer: process.env.E8X_EXTERNAL_SERVER === '1' ? undefined : {
     command: 'node scripts/test/serve-static.mjs',
     url: baseURL,
     reuseExistingServer: !process.env.CI,

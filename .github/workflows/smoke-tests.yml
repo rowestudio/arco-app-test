@@ -15,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -32,11 +32,20 @@ jobs:
       - name: Run WebKit smoke tests
         run: npx playwright test --retries=0
 
-      - name: Run E8X scenario E without artifacts
+      - name: Run image-only Export against exact main base
         if: always()
+        shell: bash
         env:
-          E8X_DIAG_NO_ARTIFACTS: '1'
-        run: npx playwright test tests/smoke/app.spec.mjs --project=webkit-mobile-smoke --grep "E8X-DIAG E —" --workers=1 --retries=0
+          E8X_MAIN_CONTROL: '1'
+          E8X_EXTERNAL_SERVER: '1'
+          E8X_BASE_URL: http://127.0.0.1:4174
+        run: |
+          git worktree add --detach /tmp/arco-main 583ba179b715796b2a2b9d1b202ef40a52a9089b
+          (cd /tmp/arco-main && ARCO_TEST_PORT=4174 node scripts/test/serve-static.mjs) &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; git worktree remove --force /tmp/arco-main' EXIT
+          for attempt in {1..30}; do curl --fail --silent http://127.0.0.1:4174/ >/dev/null && break; sleep 1; done
+          npx playwright test tests/smoke/app.spec.mjs --project=webkit-mobile-smoke --grep "E8X-BOUNDARY MAIN image-only Export" --workers=1 --retries=0
 
       - name: Upload smoke evidence
         if: always()

@@ -253,125 +253,58 @@ test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', asyn
 });
 
 function installE8XDiagnostics(page, scenario) {
-  let lastMark = 'listener-installed';
-  const emit = (kind, detail) => {
-    const line = `[E8X-DIAG] scenario=${scenario} time=${new Date().toISOString()} mark=${kind}${detail ? ` ${detail}` : ''}`;
-    lastMark = line;
-    console.log(line);
-  };
-  page.on('console', message => {
-    const text = message.text();
-    if (text.includes('[E8X-DIAG]')) { lastMark = text; console.log(text); }
-  });
-  page.on('pageerror', error => emit('pageerror', JSON.stringify(error.message)));
-  page.on('crash', () => emit('page-crash', `last=${JSON.stringify(lastMark)}`));
-  page.on('close', () => emit('page-close', `last=${JSON.stringify(lastMark)}`));
+  let lastMark='listener-installed';
+  const emit=(mark,detail='')=>{ lastMark=`[E8X-BOUNDARY] scenario=${scenario} time=${new Date().toISOString()} mark=${mark}${detail?` ${detail}`:''}`; console.log(lastMark); };
+  page.on('console',message=>{ const text=message.text(); if(text.includes('[E8X-BOUNDARY]')){lastMark=text;console.log(text);} });
+  page.on('pageerror',error=>emit('pageerror',JSON.stringify(error.message)));
+  page.on('crash',()=>emit('page-crash',`last=${JSON.stringify(lastMark)}`));
+  page.on('close',()=>emit('page-close',`last=${JSON.stringify(lastMark)}`));
   return emit;
 }
 
-async function prepareE8XDiagnosticPage(page, scenario) {
-  const mark = installE8XDiagnostics(page, scenario);
-  mark('page-setup-start');
-  await page.goto('/', { waitUntil:'domcontentloaded', timeout:30_000 });
-  await clearStartupStorage(page);
-  await page.locator('#projectFileInput').setInputFiles(projectFixture);
-  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout:30_000 });
-  await page.evaluate((scenarioName) => {
-    const log = (mark, data={}) => console.log(`[E8X-DIAG] scenario=${scenarioName} time=${new Date().toISOString()} mark=${mark} data=${JSON.stringify(data)}`);
-    window.__e8xDiag = { scenario:scenarioName, renderFrames:0, lastMark:'instrumented' };
-    const wrap = (name, before, after) => {
-      const original = window[name];
-      if (typeof original !== 'function') { log(`${name}-unavailable`); return; }
-      window[name] = function(...args) {
-        before && before(args);
-        const result = original.apply(this,args);
-        if (result && typeof result.then === 'function') return result.then(value => { after && after(value); return value; });
-        after && after(result); return result;
-      };
-    };
-    wrap('arcoSetExportDiag', args => log('export-diag-change',{args,lastExportStep:window.arcoExportDiag?.lastExportStep}));
-    wrap('prepareRenderSessionSnapshot', () => log('snapshot-prepare-start'), value => log('snapshot-prepare-complete',{assets:value?.assets?.length,textAssets:value?.textAssets?.length}));
-    wrap('renderFrameSafely', args => {
-      window.__e8xDiag.renderFrames++;
-      if (window.__e8xDiag.renderFrames === 1) log('first-frame-start',{canvas:[args[1]?.width,args[1]?.height]});
-    }, () => { if (window.__e8xDiag.renderFrames === 1) log('first-frame-complete'); });
-    if (typeof window.createImageBitmap === 'function') wrap('createImageBitmap', () => log('createImageBitmap-start'), () => log('createImageBitmap-complete'));
-    log('instrumentation-ready',{VideoEncoder:typeof VideoEncoder,VideoFrame:typeof VideoFrame,MediaRecorder:typeof MediaRecorder,captureStream:typeof HTMLCanvasElement.prototype.captureStream});
-  }, scenario);
-  await page.evaluate(() => setEditorMode('assets','e8x-diagnostic'));
-  await page.evaluate(() => startTextCreation());
-  await page.locator('#textCreationInput').fill('A  B\tC\nD diagnóstico E8X');
-  await page.locator('#textCreationColor').evaluate(el => { el.value='#ff3366'; el.dispatchEvent(new Event('input',{bubbles:true})); });
-  await page.getByRole('button',{name:'OK',exact:true}).click();
-  const textId = await page.evaluate(() => assets.find(asset => asset?.type === 'text')?.id);
-  expect(textId).toBeTruthy();
-  mark('text-created', `id=${textId}`);
-  return { mark, textId:String(textId) };
+async function installE8XBoundaryInstrumentation(page, scenario) {
+  await page.evaluate((scenarioName)=>{
+    const log=(mark,data={})=>console.log(`[E8X-BOUNDARY] scenario=${scenarioName} time=${new Date().toISOString()} mark=${mark} data=${JSON.stringify(data)}`);
+    const wrap=(owner,name)=>{ const original=owner?.[name]; if(typeof original!=='function'){log(`${name}-unavailable`);return;} owner[name]=function(...args){log(`${name}-before`,{args});try{const result=original.apply(this,args);if(result&&typeof result.then==='function')return result.then(value=>{log(`${name}-after`);return value;},error=>{log(`${name}-throw`,{name:error.name,message:error.message});throw error;});log(`${name}-after`);return result;}catch(error){log(`${name}-throw`,{name:error.name,message:error.message});throw error;}}; };
+    wrap(window,'hardResetCanvas'); wrap(window,'debugImagePipeline'); wrap(window,'showStatus'); wrap(window,'createImageBitmap');
+    const dimension=(name)=>{const descriptor=Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype,name);if(!descriptor?.set)return;Object.defineProperty(HTMLCanvasElement.prototype,name,{...descriptor,set(value){if(this.id==='recCanvas')log(`recCanvas-${name}-before`,{value,current:this[name]});descriptor.set.call(this,value);if(this.id==='recCanvas')log(`recCanvas-${name}-after`,{value:this[name]});}});};
+    dimension('width'); dimension('height');
+    if(typeof VideoEncoder!=='undefined'){
+      const Native=VideoEncoder;
+      const wrappedSupported=async config=>{log('isConfigSupported-before',{config});try{const value=await Native.isConfigSupported(config);log('isConfigSupported-after',{supported:value.supported,config:value.config});return value;}catch(error){log('isConfigSupported-throw',{name:error.name,message:error.message});throw error;}};
+      window.VideoEncoder=new Proxy(Native,{construct(Target,args,newTarget){log('VideoEncoder-construct-before');const instance=Reflect.construct(Target,args,newTarget);log('VideoEncoder-construct-after');return new Proxy(instance,{get(target,key){const value=target[key];if(typeof value!=='function')return value;return function(...methodArgs){if(['configure','encode','flush','close'].includes(String(key)))log(`VideoEncoder-${String(key)}-before`,{args:methodArgs});const result=value.apply(target,methodArgs);if(result&&typeof result.then==='function')return result.then(v=>{log(`VideoEncoder-${String(key)}-after`);return v;});if(['configure','encode','close'].includes(String(key)))log(`VideoEncoder-${String(key)}-after`);return result;};}});}});
+      window.VideoEncoder.isConfigSupported=wrappedSupported;
+    }
+    log('instrumentation-ready',{secure:isSecureContext,VideoEncoder:typeof VideoEncoder,VideoFrame:typeof VideoFrame,MediaRecorder:typeof MediaRecorder,captureStream:typeof HTMLCanvasElement.prototype.captureStream});
+  },scenario);
 }
 
-async function runE8XRealExport(page, scenario, textId) {
-  const before = await page.evaluate((id) => {
-    const text=assets.find(asset=>String(asset.id)===id);
-    loopEnabled=false; for(let i=0;i<segDurations.length;i++) segDurations[i]=0.1;
-    const duration=getComputedTimelineDuration();
-    window.__e8xDiag ||= {scenario:'unknown',renderFrames:0};
-    const exportSurface=document.getElementById('exportCanvas')||document.getElementById('previewDisplayCanvas');
-    console.log(`[E8X-DIAG] scenario=${window.__e8xDiag.scenario} time=${new Date().toISOString()} mark=export-start data=${JSON.stringify({duration,expectedFrames:Math.max(1,Math.round(duration*25)),assets:assets.length,text:{id:text.id,worldX:text.worldX,worldY:text.worldY,worldW:text.worldW,worldH:text.worldH,rotation:text.rotation},canvas:[exportSurface?.width,exportSurface?.height]})}`);
-    startRecord();
-    console.log(`[E8X-DIAG] scenario=${window.__e8xDiag.scenario} time=${new Date().toISOString()} mark=startRecord-returned`);
-    return {duration};
-  }, textId);
-  let previousStep='';
-  await expect.poll(async () => {
-    const state=await page.evaluate(() => ({done:exportGenerationCompleted||arcoExportDiag.exportSuccess===true,step:arcoExportDiag.lastExportStep||'',error:arcoExportDiag.lastExportError||'',frames:window.__e8xDiag?.renderFrames||0}));
-    if(state.step!==previousStep){ previousStep=state.step; console.log(`[E8X-DIAG] scenario=${scenario} time=${new Date().toISOString()} mark=export-step step=${state.step} frames=${state.frames} error=${JSON.stringify(state.error)}`); }
-    return state.done;
-  },{timeout:120_000}).toBe(true);
-  const proof=await page.evaluate((id)=>({blob:exportFinalBlobBytes,success:arcoExportDiag.exportSuccess,step:arcoExportDiag.lastExportStep,snapshot:renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id)||null}),textId);
-  console.log(`[E8X-DIAG] scenario=${scenario} time=${new Date().toISOString()} mark=export-complete blob=${proof.blob} step=${proof.step}`);
-  expect(proof.success).toBe(true); expect(proof.blob).toBeGreaterThan(0); expect(proof.snapshot?.id).toBe(textId);
-  return {before,proof};
+const nativeAvcProbes=[
+  ['42001f-hardware',{codec:'avc1.42001f',hardwareAcceleration:'prefer-hardware'}],
+  ['42001f-default',{codec:'avc1.42001f'}],
+  ['42001f-software',{codec:'avc1.42001f',hardwareAcceleration:'prefer-software'}],
+  ['42E01E-hardware',{codec:'avc1.42E01E',hardwareAcceleration:'prefer-hardware'}],
+  ['4D401F-hardware',{codec:'avc1.4D401F',hardwareAcceleration:'prefer-hardware'}],
+];
+for(const [name,partial] of nativeAvcProbes){
+  test(`E8X-BOUNDARY native ${name}`,async({page})=>{const mark=installE8XDiagnostics(page,`native-${name}`);await page.goto('/');mark('probe-call',JSON.stringify(partial));const result=await page.evaluate(async config=>({secure:isSecureContext,VideoEncoder:typeof VideoEncoder,VideoFrame:typeof VideoFrame,result:await VideoEncoder.isConfigSupported({...config,width:720,height:1280,framerate:30,bitrate:10_000_000})}),partial);mark('probe-return',JSON.stringify(result));expect(result.result).toHaveProperty('supported');});
 }
 
-async function runE8XPreview(page, scenario, pixelAudit) {
-  console.log(`[E8X-DIAG] scenario=${scenario} time=${new Date().toISOString()} mark=preview-start pixels=${pixelAudit}`);
-  await page.evaluate(() => startPreview());
-  await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000});
-  await expect.poll(() => page.evaluate(() => previewLoadingHiddenAfterFirstFrame),{timeout:30_000}).toBe(true);
-  if(pixelAudit) {
-    const pixels=await page.evaluate(() => {
-      if(animFrame) togglePreviewPlayback();
-      const canvas=document.getElementById('previewDisplayCanvas'),ctx=canvas.getContext('2d');
-      const data=ctx.getImageData(0,0,canvas.width,canvas.height).data; let colored=0;
-      for(let i=0;i<data.length;i+=4) if(data[i]>data[i+1]*1.35&&data[i]>data[i+2]*1.15&&data[i+3]>100) colored++;
-      return {colored,width:canvas.width,height:canvas.height,bytes:data.byteLength};
-    });
-    console.log(`[E8X-DIAG] scenario=${scenario} time=${new Date().toISOString()} mark=pixel-audit-complete data=${JSON.stringify(pixels)}`);
-  }
-  await page.evaluate(() => { stopPreview(); const canvas=document.getElementById('previewDisplayCanvas'); canvas.width=1; canvas.height=1; });
-  console.log(`[E8X-DIAG] scenario=${scenario} time=${new Date().toISOString()} mark=preview-cleanup-complete`);
+async function prepareBoundaryExport(page,scenario,withText){
+  const mark=installE8XDiagnostics(page,scenario);await page.goto('/',{waitUntil:'domcontentloaded'});await clearStartupStorage(page);await page.locator('#projectFileInput').setInputFiles(projectFixture);await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30_000});
+  expect(await page.evaluate(()=>assets.filter(a=>a?.type==='text').length)).toBe(0);
+  if(withText){await page.evaluate(()=>{setEditorMode('assets','boundary');startTextCreation();});await page.locator('#textCreationInput').fill('Arco Motion');await page.getByRole('button',{name:'OK',exact:true}).click();}
+  await installE8XBoundaryInstrumentation(page,scenario);mark('export-control-ready',`withText=${withText}`);return mark;
 }
-
-test('E8X-DIAG A — Export isolado', async ({page}) => {
-  test.setTimeout(180_000); const {textId}=await prepareE8XDiagnosticPage(page,'A'); await runE8XRealExport(page,'A',textId);
-});
-
-test('E8X-DIAG B — persistência antes do Export', async ({page}) => {
-  test.setTimeout(210_000); const {textId}=await prepareE8XDiagnosticPage(page,'B');
-  const download=page.waitForEvent('download'); await page.evaluate(()=>doSaveDirect(true,'e8x-diag-b')); const saved=await download; await page.locator('#projectFileInput').setInputFiles(await saved.path());
-  await expect.poll(()=>page.evaluate(()=>loadSessionCompleted),{timeout:30_000}).toBe(true);
-  await page.evaluate(async()=>{ scheduleSessionAutosave('e8x-diag-b',true); flushSessionAutosave(); while(_sessionAutosaveActiveWrites.size) await Promise.all([..._sessionAutosaveActiveWrites]); });
-  await page.reload({waitUntil:'domcontentloaded'}); await expect(page.getByRole('dialog',{name:'Continuar sessão anterior?'})).toBeVisible(); await page.getByText('Continuar de onde parei',{exact:true}).click();
-  await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30_000}); await page.evaluate(()=>{ window.__e8xDiag={scenario:'B',renderFrames:0}; }); await runE8XRealExport(page,'B',textId);
-});
-
-test('E8X-DIAG C — Preview antes do Export', async ({page}) => {
-  test.setTimeout(210_000); const {textId}=await prepareE8XDiagnosticPage(page,'C'); await runE8XPreview(page,'C',false); await runE8XRealExport(page,'C',textId);
-});
-
-test('E8X-DIAG D — pixels antes do Export', async ({page}) => {
-  test.setTimeout(210_000); const {textId}=await prepareE8XDiagnosticPage(page,'D'); await runE8XPreview(page,'D',true); await runE8XRealExport(page,'D',textId);
-});
+async function runBoundaryExport(page,scenario){
+  await page.evaluate(()=>{loopEnabled=false;for(let i=0;i<segDurations.length;i++)segDurations[i]=0.1;startRecord();});
+  await expect.poll(()=>page.evaluate(()=>exportGenerationCompleted||arcoExportDiag.exportSuccess===true),{timeout:120_000}).toBe(true);
+  const proof=await page.evaluate(()=>({success:arcoExportDiag.exportSuccess,blob:exportFinalBlobBytes,size:[recCanvas.width,recCanvas.height],texts:renderSessionSnapshot?.textAssets?.length||0}));
+  console.log(`[E8X-BOUNDARY] scenario=${scenario} mark=export-proof data=${JSON.stringify(proof)}`);expect(proof).toMatchObject({success:true,size:[720,1280]});expect(proof.blob).toBeGreaterThan(0);return proof;
+}
+test('E8X-BOUNDARY HEAD image-only Export',async({page})=>{test.setTimeout(180_000);await prepareBoundaryExport(page,'head-image-only',false);const proof=await runBoundaryExport(page,'head-image-only');expect(proof.texts).toBe(0);});
+test('E8X-BOUNDARY HEAD image-plus-text Export',async({page})=>{test.setTimeout(180_000);await prepareBoundaryExport(page,'head-image-text',true);const proof=await runBoundaryExport(page,'head-image-text');expect(proof.texts).toBe(1);});
+test('E8X-BOUNDARY MAIN image-only Export',async({page})=>{test.skip(process.env.E8X_MAIN_CONTROL!=='1','executado somente contra checkout temporário da main');test.setTimeout(180_000);await prepareBoundaryExport(page,'main-image-only',false);const proof=await runBoundaryExport(page,'main-image-only');expect(proof.texts).toBe(0);});
 
 test('E8X-DIAG E — fluxo completo TC-038 por criação, transformação, persistência e renderer reais', async ({ page }) => {
   test.setTimeout(240_000);
