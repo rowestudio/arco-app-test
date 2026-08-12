@@ -281,9 +281,10 @@ test('E8X cobre TC-038 por criação, transformação, persistência e renderer 
   }));
   expect(cancelled).toMatchObject({ projectWorld:baseline.projectWorld, frames:baseline.frames, assets:baseline.assets, textCount:0, pending:null });
 
-  // OK cria exatamente um asset; texto longo força wrap sem Enter e a cor vem do controle real.
+  // OK cria exatamente um asset; whitespace canônico e wrap automático não podem divergir do Stage.
+  const canonicalText = 'A  B\tC\nD texto longo para comprovar quebra automática dentro do quadro canônico';
   await page.evaluate(() => startTextCreation());
-  await page.locator('#textCreationInput').fill('Arco Motion texto longo para comprovar quebra automática dentro do quadro canônico');
+  await page.locator('#textCreationInput').fill(canonicalText);
   await page.locator('#textCreationColor').evaluate((el) => { el.value='#ff3366'; el.dispatchEvent(new Event('input',{bubbles:true})); });
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
   await page.getByRole('button', { name:'OK', exact:true }).click();
@@ -294,7 +295,9 @@ test('E8X cobre TC-038 por criação, transformação, persistência e renderer 
       selected:selectedAssetId, outline:document.getElementById('assetSelectOutline')?.dataset.assetId||'',
       resize:[textCreationKeyboardResizeChangedProjectWorld,textCreationKeyboardResizeChangedFrames,textCreationKeyboardResizeChangedExistingAssets] };
   });
-  expect(confirmed.count).toBe(1); expect(confirmed.text.text).toContain('Arco Motion'); expect(confirmed.text.color).toBe('#ff3366'); expect(confirmed.lines.length).toBeGreaterThan(1);
+  expect(confirmed.count).toBe(1); expect(confirmed.text.text).toBe(canonicalText); expect(confirmed.text.color).toBe('#ff3366'); expect(confirmed.lines.length).toBeGreaterThan(1);
+  expect(confirmed.lines[0]).toContain('A  B    C');
+  await expect(page.locator(`.world-text-asset[data-asset-id="${confirmed.text.id}"]`)).toHaveText(canonicalText);
   expect(confirmed.text.boxWidth).toBeGreaterThan(100); expect(confirmed.saved).toMatchObject({type:'text',text:confirmed.text.text,color:'#ff3366'});
   expect(confirmed.selected).toBe(confirmed.text.id); expect(confirmed.outline).toBe(confirmed.text.id); expect(confirmed.resize).toEqual([false,false,false]);
 
@@ -317,13 +320,24 @@ test('E8X cobre TC-038 por criação, transformação, persistência e renderer 
   const transformed = await page.evaluate(() => {
     const text=assets.find(a=>a&&a.type==='text'), fakeTarget={setPointerCapture(){},releasePointerCapture(){}};
     const point=(angle,radius,id)=>{ computeEditorTransform(); const c=editorWorldToStage(text.worldX+text.worldW/2,text.worldY+text.worldH/2,0,0), sr=stageContent.getBoundingClientRect(); return {clientX:sr.left+c.x*editorZoomScale+Math.cos(angle)*radius,clientY:sr.top+c.y*editorZoomScale+Math.sin(angle)*radius,pointerId:id,currentTarget:fakeTarget,preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}}; };
-    const before={w:text.worldW,h:text.worldH,fontSize:text.fontSize,rotation:text.rotation};
+    const before={x:text.worldX,y:text.worldY,w:text.worldW,h:text.worldH,boxWidth:text.boxWidth,fontSize:text.fontSize,rotation:text.rotation,cx:text.worldX+text.worldW/2,cy:text.worldY+text.worldH/2};
     beginAssetTransformDrag(point(0,80,82),'br'); handleAssetTransformPointerMove(point(0,135,82)); endAssetTransformPointer(point(0,135,82),false);
-    const scaled={w:text.worldW,h:text.worldH,fontSize:text.fontSize};
+    const scaled={x:text.worldX,y:text.worldY,w:text.worldW,h:text.worldH,boxWidth:text.boxWidth,fontSize:text.fontSize,cx:text.worldX+text.worldW/2,cy:text.worldY+text.worldH/2};
     beginAssetTransformDrag(point(0,100,83),'br'); handleAssetTransformPointerMove(point(Math.PI/3,100,83)); endAssetTransformPointer(point(Math.PI/3,100,83),false);
     return {before,scaled,after:{w:text.worldW,h:text.worldH,fontSize:text.fontSize,rotation:text.rotation}};
   });
   expect(transformed.scaled.w).toBeGreaterThan(transformed.before.w); expect(transformed.scaled.fontSize).toBeGreaterThan(transformed.before.fontSize); expect(transformed.after.rotation).not.toBe(transformed.before.rotation);
+  expect(transformed.scaled.boxWidth).toBeCloseTo(transformed.scaled.w); expect(transformed.scaled.cx).toBeCloseTo(transformed.before.cx); expect(transformed.scaled.cy).toBeCloseTo(transformed.before.cy);
+
+  // O painel de Escala usa a mesma largura canônica e também preserva o centro.
+  const panelScaled = await page.evaluate((id) => {
+    selectAssetById(id,'layers'); const text=assets.find(a=>String(a.id)===id);
+    const before={w:text.worldW,cx:text.worldX+text.worldW/2,cy:text.worldY+text.worldH/2};
+    openAssetContextPanel('scale'); setAssetContextValue(getAssetContextScalePercent(text)+20); commitAssetContextGesture();
+    return {before,after:{w:text.worldW,boxWidth:text.boxWidth,cx:text.worldX+text.worldW/2,cy:text.worldY+text.worldH/2}};
+  }, String(confirmed.text.id));
+  expect(panelScaled.after.w).toBeGreaterThan(panelScaled.before.w); expect(panelScaled.after.boxWidth).toBeCloseTo(panelScaled.after.w);
+  expect(panelScaled.after.cx).toBeCloseTo(panelScaled.before.cx); expect(panelScaled.after.cy).toBeCloseTo(panelScaled.before.cy);
 
   // Layers executa reorder real texto↔imagem e prova ordem no modelo e no DOM.
   const reordered = await page.evaluate(() => {
@@ -403,10 +417,11 @@ test('E8X cobre TC-038 por criação, transformação, persistência e renderer 
       if(Math.abs(withText[i]-withoutText[i])+Math.abs(withText[i+1]-withoutText[i+1])+Math.abs(withText[i+2]-withoutText[i+2])+Math.abs(withText[i+3]-withoutText[i+3])>20) beforeChanged++;
       if(withText[i]>withText[i+1]*1.35&&withText[i]>withText[i+2]*1.15&&withText[i+3]>100) beforeColored++;
     }
+    noText.width=1; noText.height=1;
     return {beforeChanged,beforeColored};
   });
   expect(occludedProof.beforeChanged).toBe(0);
-  await page.evaluate(() => stopPreview());
+  await page.evaluate(() => { stopPreview(); const canvas=document.getElementById('previewDisplayCanvas'); canvas.width=1; canvas.height=1; });
 
   // Reorder real: trazer o mesmo texto até maxZ deve tornar sua contribuição física visível.
   const previewComposition = await page.evaluate((id) => {
@@ -435,13 +450,14 @@ test('E8X cobre TC-038 por criação, transformação, persistência e renderer 
     renderSessionSnapshot=originalSnapshot;
     const base=noText.getContext('2d').getImageData(0,0,noText.width,noText.height).data; let changed=0;
     for(let i=0;i<pixels.length;i+=4) if(Math.abs(pixels[i]-base[i])+Math.abs(pixels[i+1]-base[i+1])+Math.abs(pixels[i+2]-base[i+2])+Math.abs(pixels[i+3]-base[i+3])>20) changed++;
-    return {snapshot:originalSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,textRenderAudit,colored,changed,canvas:[canvas.width,canvas.height]};
+    const canvasSize=[canvas.width,canvas.height]; noText.width=1; noText.height=1;
+    return {snapshot:originalSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,textRenderAudit,colored,changed,canvas:canvasSize};
   }, String(confirmed.text.id));
   expect(previewProof.snapshot).toMatchObject({id:confirmed.text.id,text:previewComposition.visibleText.text,color:'#ff3366',zIndex:previewComposition.visibleText.zIndex});
   expect(previewProof.textRenderAudit).toMatchObject({id:confirmed.text.id,drawn:true,intersectsCamera:true});
   expect(previewProof.textRenderAudit.screenW).toBeGreaterThan(0); expect(previewProof.textRenderAudit.screenH).toBeGreaterThan(0);
   expect(previewProof.canvas[0]).toBeGreaterThan(0); expect(previewProof.colored).toBeGreaterThan(0); expect(previewProof.changed).toBeGreaterThan(0);
-  await page.evaluate(() => stopPreview());
+  await page.evaluate(() => { stopPreview(); const canvas=document.getElementById('previewDisplayCanvas'); canvas.width=1; canvas.height=1; });
 
   // Export real (timeline curta para o smoke) deve gerar blob e congelar o mesmo text asset no snapshot.
   await page.evaluate(() => { loopEnabled=false; for(let i=0;i<segDurations.length;i++) segDurations[i]=0.1; startRecord(); });
