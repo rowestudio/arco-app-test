@@ -59,6 +59,6 @@
 ## Gates de navegador para Text Asset e Export H.264 (E8X)
 
 - O gate WebKit/Linux valida o TC-038 até o Preview real, incluindo composição por pixels; ele não declara o Export validado nesse ambiente.
-- O gate `Real Export Smoke (Chrome)` usa o Google Chrome estável do runner para validar o WebCodecs/H.264 real, com preflight nativo e MP4 não vazio, nos controles imagem e imagem + Text Asset.
-- A separação existe porque `VideoEncoder.isConfigSupported()` encerrou o WebKit/Linux também na base `main`, sem Text Asset. Isso não equivale a aprovação Safari.
+- O Google Chrome 150/Linux foi avaliado e rejeitado como gate porque retornou `supported: false` para a configuração H.264 real. O gate `Real Export Smoke (WebKit macOS)` valida WebCodecs/H.264 real, com preflight dos três candidatos canônicos e MP4 não vazio.
+- A separação existe porque `VideoEncoder.isConfigSupported()` encerrou o WebKit/Linux também na base `main`, sem Text Asset. Playwright WebKit/macOS também não equivale a aprovação Safari.
 - A validação publicada em iPhone/Safari real continua obrigatória após eventual merge.

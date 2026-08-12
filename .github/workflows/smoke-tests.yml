@@ -29,9 +29,10 @@ jobs:
             playwright-report/**
             test-results/**
 
-  chrome-real-export:
-    name: Real Export Smoke (Chrome)
-    runs-on: ubuntu-24.04
+  webkit-macos-real-export:
+    name: Real Export Smoke (WebKit macOS)
+    runs-on: macos-15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,19 +40,22 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Log Chrome export environment
+      - run: npx playwright install webkit
+      - name: Log WebKit macOS export environment
         run: |
-          google-chrome --version
+          sw_vers
+          uname -m
           npx playwright --version
-          uname -a
-          echo "SHA=$GITHUB_SHA"
+          npx playwright install --dry-run webkit
+          echo "MERGE_SHA=$GITHUB_SHA"
+          echo "PR_HEAD_SHA=${{ github.event.pull_request.head.sha }}"
       - name: Run real H.264 Export smoke
-        run: npx playwright test --project=chrome-export --workers=1 --retries=0
-      - name: Upload Chrome Export evidence
+        run: npx playwright test tests/smoke/export.spec.mjs --project=webkit-macos-export --workers=1 --retries=0
+      - name: Upload WebKit macOS Export evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chrome-real-export-evidence
+          name: webkit-macos-real-export-evidence
           if-no-files-found: error
           path: |
             playwright-report/**

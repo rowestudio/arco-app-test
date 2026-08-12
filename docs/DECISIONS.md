@@ -315,4 +315,4 @@ Formato: ID, data, decisão, contexto, consequência e status.
 
 ## 2026-08-12 — Gates permanentes por capacidade nativa do navegador
 
-Decisão: manter WebKit/Linux como gate funcional de Text Asset até Preview/composição e usar Google Chrome estável como gate do Export WebCodecs/H.264 real. O split não altera o produto nem reduz o TC-038: isola uma limitação nativa reproduzida também na `main`, enquanto preserva a exigência de validação posterior em iPhone/Safari real.
+Decisão: manter WebKit/Linux como gate funcional de Text Asset até Preview/composição e usar WebKit/macOS como gate do Export WebCodecs/H.264 real; Chrome 150/Linux foi rejeitado após retornar H.264 não suportado. O split não altera o produto nem reduz o TC-038: isola uma limitação nativa reproduzida também na `main`, enquanto preserva a exigência de validação posterior em iPhone/Safari real.

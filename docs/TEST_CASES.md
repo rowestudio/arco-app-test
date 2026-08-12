@@ -349,5 +349,5 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 ### TC-038 — divisão permanente de gates E8X
 
 - WebKit/Linux: criação, cancelamento, whitespace, transformações, Layers, Save/Load, Session Restore, ProjectWorld/Frames e Preview/composição por pixels.
-- Chrome estável: preflight nativo `avc1.42001f` 720×1280/30 fps/10 Mbps/prefer-hardware e Export real, tanto somente imagem quanto imagem + Text Asset, exigindo MP4 não vazio.
+- WebKit/macOS: preflight nativo sequencial `avc1.42001f`, `avc1.42E01E`, `avc1.4D401F` em 720×1280/30 fps/10 Mbps/prefer-hardware e Export WebCodecs real, somente imagem e imagem + Text Asset, exigindo MP4 não vazio. Chrome 150/Linux foi avaliado e rejeitado por retornar H.264 não suportado.
 - Nenhum dos gates usa skip, retry ou mock; Safari/iPhone publicado permanece aprovação manual obrigatória.

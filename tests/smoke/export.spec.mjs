@@ -2,10 +2,12 @@ import { expect, test } from '@playwright/test';
 import path from 'node:path';
 
 const projectFixture = path.resolve('samples/arquivo 8vo imagem.json');
-const h264Config = { codec:'avc1.42001f', width:720, height:1280, framerate:30, bitrate:10_000_000, hardwareAcceleration:'prefer-hardware' };
+const h264Candidates = ['avc1.42001f','avc1.42E01E','avc1.4D401F'];
+const h264Base = { width:720, height:1280, framerate:30, bitrate:10_000_000, hardwareAcceleration:'prefer-hardware' };
 
 async function openProject(page) {
   const errors=[];
+  page.on('crash', () => errors.push('page crash'));
   page.on('pageerror', error => errors.push(error.message || String(error)));
   await page.goto('/', { waitUntil:'domcontentloaded', timeout:30_000 });
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
@@ -14,14 +16,22 @@ async function openProject(page) {
 }
 
 async function requireNativeH264(page) {
-  const result = await page.evaluate(async config => {
-    if (typeof VideoEncoder === 'undefined') throw new Error('VideoEncoder indisponível no Google Chrome estável');
-    return Promise.race([
-      VideoEncoder.isConfigSupported(config),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('VideoEncoder.isConfigSupported não resolveu em 10 s')), 10_000)),
-    ]);
-  }, h264Config);
-  expect(result.supported, `H.264 não suportado: ${JSON.stringify(result.config)}`).toBe(true);
+  const results = await page.evaluate(async ({candidates,base}) => {
+    if (typeof VideoEncoder === 'undefined') throw new Error('VideoEncoder indisponível no WebKit/macOS');
+    const attempts=[];
+    for(const codec of candidates) {
+      const config={codec,...base};
+      try {
+        const result=await Promise.race([VideoEncoder.isConfigSupported(config),new Promise((_,reject)=>setTimeout(()=>reject(new Error(`timeout H.264 ${codec}`)),10_000))]);
+        attempts.push({codec,supported:result.supported,config:result.config});
+        if(result.supported) return {selected:codec,attempts};
+      } catch(error) { attempts.push({codec,error:`${error.name}: ${error.message}`}); }
+    }
+    return {selected:null,attempts};
+  }, {candidates:h264Candidates,base:h264Base});
+  console.log(`H.264 preflight: ${JSON.stringify(results)}`);
+  expect(results.selected, `Nenhum candidato H.264 suportado: ${JSON.stringify(results.attempts)}`).toBeTruthy();
+  return results.selected;
 }
 
 async function exportRealMp4(page, testInfo, name) {
@@ -29,23 +39,25 @@ async function exportRealMp4(page, testInfo, name) {
   await expect.poll(() => page.evaluate(() => exportGenerationCompleted || arcoExportDiag.exportSuccess === true), { timeout:120_000 }).toBe(true);
   const proof = await page.evaluate(async () => {
     const blob=window._lastVideoBlob;
-    return { success:arcoExportDiag.exportSuccess===true, bytes:blob?.size||0, type:blob?.type||'', canvas:[recCanvas.width,recCanvas.height], data:blob?Array.from(new Uint8Array(await blob.arrayBuffer())):[] };
+    const data=blob?new Uint8Array(await blob.arrayBuffer()):new Uint8Array();
+    const signature=String.fromCharCode(...data.slice(4,8));
+    return { success:arcoExportDiag.exportSuccess===true, completed:exportGenerationCompleted===true, encoderPath:arcoExportDiag.encoderPathUsed, fallback:arcoExportDiag.fallbackUsed, ext:window._lastVideoExt, bytes:blob?.size||0, type:blob?.type||'', canvas:[recCanvas.width,recCanvas.height], signature, data:Array.from(data) };
   });
-  expect(proof).toMatchObject({success:true,canvas:[720,1280]});
-  expect(proof.bytes).toBeGreaterThan(0); expect(proof.type).toBe('video/mp4');
+  expect(proof).toMatchObject({success:true,completed:true,encoderPath:'webcodecs',fallback:false,ext:'mp4',canvas:[720,1280],type:'video/mp4',signature:'ftyp'});
+  expect(proof.bytes).toBeGreaterThan(0);
   await testInfo.attach(`${name}.mp4`, { body:Buffer.from(proof.data), contentType:'video/mp4' });
   return proof;
 }
 
-test('Chrome real Export — controle somente imagem', async ({page}, testInfo) => {
+test('WebKit macOS real Export — controle somente imagem', async ({page}, testInfo) => {
   test.setTimeout(180_000); const errors=await openProject(page); await requireNativeH264(page);
   expect(await page.evaluate(() => assets.filter(a=>a?.type==='text').length)).toBe(0);
   await exportRealMp4(page,testInfo,'image-only'); expect(errors).toEqual([]);
 });
 
-test('Chrome real Export — imagem com Text Asset E8X', async ({page}, testInfo) => {
+test('WebKit macOS real Export — imagem com Text Asset E8X', async ({page}, testInfo) => {
   test.setTimeout(180_000); const errors=await openProject(page); await requireNativeH264(page);
-  await page.evaluate(() => { setEditorMode('assets','chrome-export'); startTextCreation(); });
+  await page.evaluate(() => { setEditorMode('assets','webkit-macos-export'); startTextCreation(); });
   const content='A  B\tC\nD'; await page.locator('#textCreationInput').fill(content);
   await page.locator('#textCreationColor').evaluate(el=>{el.value='#ff3366';el.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.getByRole('button',{name:'OK',exact:true}).click();

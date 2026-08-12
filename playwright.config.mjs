@@ -20,7 +20,7 @@ export default defineConfig({
   },
   projects: [
     { name:'webkit-mobile-smoke', testIgnore:/export\.spec\.mjs$/, use:{browserName:'webkit'} },
-    { name:'chrome-export', testMatch:/export\.spec\.mjs$/, use:{browserName:'chromium',channel:'chrome'} },
+    { name:'webkit-macos-export', testMatch:/export\.spec\.mjs$/, use:{browserName:'webkit'} },
   ],
   webServer: {
     command: 'node scripts/test/serve-static.mjs',
