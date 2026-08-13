@@ -950,7 +950,6 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E8Z — base v8z4b32E8Y. fix(text-editor): bloqueia autosave de draft e gestos atrás do sheet, preservando tabs acessíveis e fluxo público. APP_VERSION = APP_VERSION_NAME = v8z4b32E8Z. -->
 <!-- Arco Motion App — v8z4b32E8Y — base v8z4b32E8X. feat(text): editor tipográfico reutilizável para criação e reedição por toolbar e duplo toque. APP_VERSION = APP_VERSION_NAME = v8z4b32E8Y. -->
 <!-- Arco Motion App — v8z4b32E8X — base v8z4b32E8W. feat(text): texto editável nasce como ativo canônico e participa de Layers, transformação, persistência e renderer compartilhado. APP_VERSION = APP_VERSION_NAME = v8z4b32E8X. -->
 <!-- Arco Motion App — v8z4b32E8W — base v8z4b32E8V. fix(session-restore): câmera e serialização usam baseStage canônico do ProjectWorld; resize do viewport não reescala Frames persistidos. APP_VERSION = APP_VERSION_NAME = v8z4b32E8W. -->
@@ -7327,8 +7326,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8Z';
-const APP_VERSION_NAME = 'v8z4b32E8Z';
+const APP_VERSION = 'v8z4b32E8Y';
+const APP_VERSION_NAME = 'v8z4b32E8Y';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let parallaxChangedCanonicalAssetGeometry = false;
 let parallaxChangedFrames = false;
@@ -14937,8 +14936,9 @@ function undo() {
   assetUndoVisualUpdateRan = false;
   projectWorldCompositeInvalidatedAfterAssetUndo = false;
   stageRedrawnAfterAssetUndo = false;
+  const stateBeforeHistory = captureState();
   const sourceHashesBeforeHistory = new Map(assets.filter(a => a && a.type === 'image').map(a => [String(a.id), _diagSourceHashE8E(_assetPersistentSourceE8E(a))]));
-  redoStack.push(captureState());
+  redoStack.push(stateBeforeHistory);
   restoreState(undoStack.pop());
   const imageSourceChangedByUndo = assets.some(a => a && a.type === 'image' && sourceHashesBeforeHistory.get(String(a.id)) !== _diagSourceHashE8E(_assetPersistentSourceE8E(a)));
   resyncOpenAlignSubmenuAfterHistory();
@@ -14950,7 +14950,8 @@ function undo() {
   projectWorldCompositeInvalidatedAfterAssetUndo = true;
   assetUndoVisualUpdateRan = true;
   stageRedrawnAfterAssetUndo = true;
-  if (imageSourceChangedByUndo) markProjectDirty('undo-image-source');
+  const canonicalStateChangedByUndo = !projectStateEquals(stateBeforeHistory, captureState());
+  if (canonicalStateChangedByUndo) markProjectDirty(imageSourceChangedByUndo ? 'undo-image-source' : 'undo-project-state');
   showStatus('Desfeito');
 }
 
@@ -14974,8 +14975,9 @@ function redo() {
   // Snapshot do estado NÃO-asset antes do redo (para detectar se só assets mudaram).
   let _nonAssetBefore = '';
   try { _nonAssetBefore = JSON.stringify(cloneProjectStateSnapshot(captureState())); } catch (e) {}
+  const stateBeforeHistory = captureState();
   const sourceHashesBeforeHistory = new Map(assets.filter(a => a && a.type === 'image').map(a => [String(a.id), _diagSourceHashE8E(_assetPersistentSourceE8E(a))]));
-  undoStack.push(captureState());
+  undoStack.push(stateBeforeHistory);
   restoreState(redoStack.pop());
   const imageSourceChangedByRedo = assets.some(a => a && a.type === 'image' && sourceHashesBeforeHistory.get(String(a.id)) !== _diagSourceHashE8E(_assetPersistentSourceE8E(a)));
   resyncOpenAlignSubmenuAfterHistory();
@@ -15004,7 +15006,8 @@ function redo() {
   projectWorldCompositeInvalidatedAfterAssetRedo = true;
   stageRedrawnAfterAssetRedo = true;
   assetRedoVisualUpdateRan = true;
-  if (imageSourceChangedByRedo) markProjectDirty('redo-image-source');
+  const canonicalStateChangedByRedo = !projectStateEquals(stateBeforeHistory, captureState());
+  if (canonicalStateChangedByRedo) markProjectDirty(imageSourceChangedByRedo ? 'redo-image-source' : 'redo-project-state');
   showStatus('Refeito');
 }
 
@@ -22431,7 +22434,7 @@ window.addEventListener('pointerup', (e) => {
   try { if (assetTransformDragState) endAssetTransformPointer(e, false); endStageAssetMovePointer(e); } catch (_) {}
 }, true);
 window.addEventListener('pointercancel', (e) => {
-  try { if (assetTransformDragState) endAssetTransformPointer(e, true); endStageAssetMovePointer(e); } catch (_) {}
+  try { if (assetTransformDragState) endAssetTransformPointer(e, true); endStageAssetMovePointer(e, true); } catch (_) {}
 }, true);
 
 // Prevent scroll/native zoom on the Stage viewport but allow controls outside it.
@@ -34997,12 +35000,17 @@ function handleStageAssetMovePointer(e) {
   renderAssetSelectionOverlay();
   assetMoveRedrewStage = true;
 }
-function endStageAssetMovePointer(e) {
+function endStageAssetMovePointer(e, cancelled = false) {
   if (!assetDragState) return;
   if (e && e.pointerId != null && assetDragState.pointerId != null && e.pointerId !== assetDragState.pointerId) return;
   try { imageArea.releasePointerCapture && imageArea.releasePointerCapture(assetDragState.pointerId); } catch (_) {}
   const ds = assetDragState;
   assetDragState = null;
+  if (cancelled) {
+    lastCompletedTextTap = null;
+    if (ds.moved && ds.undoSnapshot) restoreState(ds.undoSnapshot);
+    return;
+  }
   if (!ds.moved) {
     if (ds.assetType === 'text' && isAssetsMode() && !pendingTextDraft && !(typeof twoFingerState !== 'undefined' && twoFingerState)) {
       const now=Date.now(), previous=lastCompletedTextTap, close=previous&&String(previous.assetId)===String(ds.assetId)&&now-previous.time<=TEXT_DOUBLE_TAP_MS&&Math.hypot(ds.startClientX-previous.x,ds.startClientY-previous.y)<=TEXT_DOUBLE_TAP_DISTANCE;

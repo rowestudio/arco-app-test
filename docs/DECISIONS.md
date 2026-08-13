@@ -332,4 +332,10 @@ Decisão: manter WebKit/Linux como gate funcional de Text Asset até Preview/com
 - **Decisão:** o sheet tipográfico é uma superfície modal de ponteiro/toque; a área externa não conclui nem cancela e não encaminha gestos ao Stage. A rolagem horizontal interna permanece explícita por `touch-action: pan-x`.
 - **Autosave:** enquanto `pendingTextDraft` existir, qualquer `change` originado em `#textCreationSheet` é ignorado pelo listener global. Somente o commit canônico alterado chama `markProjectDirty()` uma vez.
 - **QA:** as ferramentas continuam semanticamente `role="tab"`; testes devem localizá-las como tabs e exercitar seleção, toolbar e dois taps pelo fluxo público.
-- **Status:** correção bloqueante da PR #488, versão E8Z; validação WebKit e iPhone/Safari continua obrigatória.
+- **Status:** correção bloqueante incorporada à E8Y na PR #488; validação WebKit e iPhone/Safari continua obrigatória.
+
+## DEC-2026-08-13-03 — Histórico canônico sempre persiste e tap cancelado não conclui
+
+- **Decisão:** Undo/Redo que alterem o snapshot canônico agendam exatamente uma revisão normal de Session Autosave, independentemente de alteração em fonte de imagem. `pointercancel` não é `pointerup`: limpa o candidato de duplo tap, desfaz movimento parcial sem histórico e encerra o estado de gesto.
+- **Escopo:** correção bloqueante dentro da E8Y/PR #488, sem nova versão e sem alteração do modelo de câmera, Frames, curvas ou ProjectWorld.
+- **Evidência exigida:** checkpoint IndexedDB real após Undo/Redo de tipografia e sequência pointerdown → pointercancel → tap único no WebKit funcional.

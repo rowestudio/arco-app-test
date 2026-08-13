@@ -1678,11 +1678,11 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
   expectStableDerivedFrames(saveRoundTrip.after.frames, saveRoundTrip.before.frames, 'after-save');
 });
 
-test('E8Z — editor tipográfico usa fluxo público, isola draft e bloqueia o Stage', async ({ page }, testInfo) => {
+test('E8Y — editor tipográfico usa fluxo público, isola draft e bloqueia o Stage', async ({ page }, testInfo) => {
   test.setTimeout(180_000);
   await page.setViewportSize({width:390,height:797}); await page.goto('/',{waitUntil:'domcontentloaded'}); await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture); await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30_000});
-  await page.evaluate(()=>setEditorMode('assets','webkit-e8z'));
+  await page.evaluate(()=>setEditorMode('assets','webkit-e8y'));
   await page.evaluate(()=>startTextCreation()); await page.locator('#textCreationInput').fill('Linha 1\nLinha 2');
   await expect(page.locator('[data-text-tool]')).toHaveText(['Texto','Fonte','Cor','Estilo','Alinhar']);
   await expect(page.locator('[data-text-panel] input[type="range"], [data-text-panel] [name*="width"], [data-text-panel] [id*="width"]')).toHaveCount(0);
@@ -1709,14 +1709,23 @@ test('E8Z — editor tipográfico usa fluxo público, isola draft e bloqueia o S
   expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}))).toEqual({undo:cancelBefore.undo,rev:cancelBefore.rev});
   expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),String(id))).toEqual(cancelBefore.canonical);
 
+  // Pointercancel nunca conta como tap concluído; um único tap posterior mantém o editor fechado.
+  await page.evaluate(({x,y})=>{const target=document.elementFromPoint(x,y);target.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:x,clientY:y,pointerId:901,pointerType:'touch',isPrimary:true}));target.dispatchEvent(new PointerEvent('pointercancel',{bubbles:true,clientX:x,clientY:y,pointerId:901,pointerType:'touch',isPrimary:true}));},{x:textPoint.x,y:textPoint.y});
+  await page.touchscreen.tap(textPoint.x,textPoint.y); await expect(page.locator('#textCreationSheet')).not.toHaveClass(/open/);
+  expect(await page.evaluate(()=>({drag:assetDragState,tap:lastCompletedTextTap}))).toMatchObject({drag:null});
+
   // Dois taps reais abrem texto; drag, imagem e vazio não abrem.
-  await page.touchscreen.tap(textPoint.x,textPoint.y); await page.waitForTimeout(60); await page.touchscreen.tap(textPoint.x,textPoint.y);
+  await page.waitForTimeout(380); await page.touchscreen.tap(textPoint.x,textPoint.y); await page.waitForTimeout(60); await page.touchscreen.tap(textPoint.x,textPoint.y);
   await expect(page.locator('#textCreationSheet')).toHaveClass(/open/); expect(await page.evaluate(()=>textEditorOpenSource)).toBe('double-tap'); await page.getByRole('button',{name:'Cancelar',exact:true}).click();
   await page.mouse.move(textPoint.x,textPoint.y); await page.mouse.down(); await page.mouse.move(textPoint.x+45,textPoint.y+30,{steps:4}); await page.mouse.up(); await expect(page.locator('#textCreationSheet')).not.toHaveClass(/open/);
-  const imageBox=await page.locator('.world-extra-img').first().boundingBox(); expect(imageBox).toBeTruthy(); const imagePoint={x:imageBox.x+imageBox.width/2,y:imageBox.y+imageBox.height/2};
-  await page.touchscreen.tap(imagePoint.x,imagePoint.y); await page.waitForTimeout(60); await page.touchscreen.tap(imagePoint.x,imagePoint.y); await expect(page.locator('#textCreationSheet')).not.toHaveClass(/open/); await expect(page.locator('#tbAssetReplace .tb-lbl')).toHaveText('Trocar');
+  const imagePoint=await page.evaluate(()=>{computeEditorTransform();const images=assets.filter(a=>a?.type==='image'&&a.visible!==false).sort((a,b)=>(b.zIndex||0)-(a.zIndex||0));for(const image of images){const r=resolveAssetStageVisualGeometry(image).visualRect;for(let gy=1;gy<10;gy++)for(let gx=1;gx<10;gx++){const wx=r.x+r.w*gx/10,wy=r.y+r.h*gy/10,hit=hitTestAssetAtWorld(wx,wy);if(hit?.type==='image'&&String(hit.id)===String(image.id)){const p=editorWorldToStage(wx,wy,0,0),sr=stageContent.getBoundingClientRect();return{x:sr.left+p.x*editorZoomScale,y:sr.top+p.y*editorZoomScale,id:String(image.id)}}}}throw new Error('nenhum ponto de imagem livre de Text Assets encontrado')});
+  await page.touchscreen.tap(imagePoint.x,imagePoint.y); await page.waitForTimeout(60); await page.touchscreen.tap(imagePoint.x,imagePoint.y); await expect(page.locator('#textCreationSheet')).not.toHaveClass(/open/); expect(await page.evaluate(()=>String(selectedAssetId))).toBe(imagePoint.id); await expect(page.locator('#tbAssetReplace .tb-lbl')).toHaveText('Trocar');
   const area=await page.locator('#imageArea').boundingBox(); await page.touchscreen.tap(area.x+4,area.y+4); await page.waitForTimeout(60); await page.touchscreen.tap(area.x+4,area.y+4); await expect(page.locator('#textCreationSheet')).not.toHaveClass(/open/);
-  await page.evaluate(()=>setEditorMode('camera','e8z-camera-regression')); await page.locator('#stage').dblclick({position:{x:20,y:20}}); expect(await page.evaluate(()=>pointModeMenuVisible)).toBe(true); await page.evaluate(()=>{closePointModeMenu();setEditorMode('assets','e8z-edit')});
+  await page.evaluate(()=>setEditorMode('camera','e8y-camera-regression')); await page.locator('#stage').dblclick({position:{x:20,y:20}}); expect(await page.evaluate(()=>pointModeMenuVisible)).toBe(true); await page.evaluate(()=>{closePointModeMenu();setEditorMode('assets','e8y-edit')});
+
+  // O drag anterior tem histórico próprio; Undo tipográfico deve preservar sua geometria.
+  const postDrag=await page.evaluate(id=>({canonical:serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),undo:undoStack.length}),String(id));
+  expect(postDrag.canonical.worldX===cancelBefore.canonical.worldX&&postDrag.canonical.worldY===cancelBefore.canonical.worldY).toBe(false);
 
   // Re-seleciona publicamente e confirma uma sessão como exatamente um Undo/revisão.
   const movedTextBox=await page.locator(`.world-text-asset[data-asset-id="${id}"]`).boundingBox(); await page.touchscreen.tap(movedTextBox.x+movedTextBox.width/2,movedTextBox.y+movedTextBox.height/2); await page.locator('#tbAssetReplace').click();
@@ -1725,11 +1734,15 @@ test('E8Z — editor tipográfico usa fluxo público, isola draft e bloqueia o S
   await page.getByRole('tab',{name:'Estilo',exact:true}).click(); await page.getByRole('button',{name:'Estilo Negrito + itálico',exact:true}).click(); await page.getByRole('tab',{name:'Alinhar',exact:true}).click(); await page.getByRole('button',{name:'Alinhar Direita',exact:true}).click();
   const blockedBefore=await page.evaluate(()=>({zoom:editorZoomScale,panX:editorPanX,panY:editorPanY,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld)}));
   await page.touchscreen.tap(10,10); await page.touchscreen.tap(40,40); const blockedAfter=await page.evaluate(()=>({zoom:editorZoomScale,panX:editorPanX,panY:editorPanY,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld)})); expect(blockedAfter).toEqual(blockedBefore); await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
-  await page.screenshot({path:testInfo.outputPath('e8z-text-editor-390x797.png')}); await page.getByRole('button',{name:'Concluir',exact:true}).click();
+  await page.screenshot({path:testInfo.outputPath('e8y-text-editor-390x797.png')}); await page.getByRole('button',{name:'Concluir',exact:true}).click();
   const committed=await page.evaluate(id=>({asset:serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),id:selectedAssetId,count:assets.length,undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}),String(id));
   expect(committed).toMatchObject({id,count:commitBefore.count,undo:commitBefore.undo+1,rev:commitBefore.rev+1,asset:{id:String(id),text:'Editado\ncom Enter',color:'#3366ff',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right'}});
-  await page.evaluate(()=>undo()); expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),String(id))).toEqual(cancelBefore.canonical);
-  await page.evaluate(()=>redo()); expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),String(id))).toEqual(committed.asset);
+  await page.waitForTimeout(800); await page.evaluate(async()=>{while(_sessionAutosaveActiveWrites.size)await Promise.all([..._sessionAutosaveActiveWrites])});
+  const committedCheckpoint=await page.evaluate(async id=>{const cp=await readSessionCheckpoint();return JSON.parse(cp.payload).assets.find(a=>String(a.id)===id)},String(id)); expect(committedCheckpoint).toMatchObject(committed.asset);
+  const undoRevision=await page.evaluate(()=>_sessionAutosaveQueuedRevision); await page.evaluate(()=>undo()); expect(await page.evaluate(()=>_sessionAutosaveQueuedRevision)).toBe(undoRevision+1); expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),String(id))).toEqual(postDrag.canonical);
+  await page.waitForTimeout(800); await page.evaluate(async()=>{while(_sessionAutosaveActiveWrites.size)await Promise.all([..._sessionAutosaveActiveWrites])}); const undoneCheckpoint=await page.evaluate(async id=>{const cp=await readSessionCheckpoint();return JSON.parse(cp.payload).assets.find(a=>String(a.id)===id)},String(id)); expect(undoneCheckpoint).toMatchObject(postDrag.canonical);
+  const redoRevision=await page.evaluate(()=>_sessionAutosaveQueuedRevision); await page.evaluate(()=>redo()); expect(await page.evaluate(()=>_sessionAutosaveQueuedRevision)).toBe(redoRevision+1); expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),String(id))).toEqual(committed.asset);
+  await page.waitForTimeout(800); await page.evaluate(async()=>{while(_sessionAutosaveActiveWrites.size)await Promise.all([..._sessionAutosaveActiveWrites])}); const redoneCheckpoint=await page.evaluate(async id=>{const cp=await readSessionCheckpoint();return JSON.parse(cp.payload).assets.find(a=>String(a.id)===id)},String(id)); expect(redoneCheckpoint).toMatchObject(committed.asset);
 
   // Concluir sem alteração pelo botão público não cria histórico nem revisão.
   const finalTextBox=await page.locator(`.world-text-asset[data-asset-id="${id}"]`).boundingBox(); await page.touchscreen.tap(finalTextBox.x+finalTextBox.width/2,finalTextBox.y+finalTextBox.height/2); await page.locator('#tbAssetReplace').click();

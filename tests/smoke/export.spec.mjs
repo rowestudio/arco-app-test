@@ -55,7 +55,7 @@ test('WebKit macOS real Export — controle somente imagem', async ({page}, test
   await exportRealMp4(page,testInfo,'image-only'); expect(errors).toEqual([]);
 });
 
-test('WebKit macOS real Export — imagem com Text Asset E8Z editado', async ({page}, testInfo) => {
+test('WebKit macOS real Export — imagem com Text Asset E8Y editado', async ({page}, testInfo) => {
   test.setTimeout(180_000); const errors=await openProject(page); await requireNativeH264(page);
   await page.evaluate(() => { setEditorMode('assets','webkit-macos-export'); startTextCreation(); });
   const content='A  B\tC\nD'; await page.locator('#textCreationInput').fill(content);
@@ -71,7 +71,7 @@ test('WebKit macOS real Export — imagem com Text Asset E8Z editado', async ({p
     return {text:serializeProjectAsset(text,0,false),frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld),order:assets.slice().sort((a,b)=>a.zIndex-b.zIndex).map(a=>String(a.id))};
   });
   expect(before.text).toMatchObject({text:content,color:'#ff3366',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right',rotation:18}); expect(before.text.boxWidth).toBeCloseTo(before.text.worldW);
-  await exportRealMp4(page,testInfo,'image-text-e8z');
+  await exportRealMp4(page,testInfo,'image-text-e8y');
   const after=await page.evaluate(id=>({text:renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id),frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld),order:assets.slice().sort((a,b)=>a.zIndex-b.zIndex).map(a=>String(a.id))}),String(before.text.id));
   expect(after.text).toMatchObject({id:before.text.id,text:content,color:'#ff3366',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right',worldX:before.text.worldX,worldY:before.text.worldY,worldW:before.text.worldW,rotation:18,zIndex:before.text.zIndex});
   expect(after.frames).toEqual(before.frames); expect(after.world).toEqual(before.world); expect(after.order).toEqual(before.order); expect(errors).toEqual([]);

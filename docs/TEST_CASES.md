@@ -360,9 +360,15 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Evidência: `tests/smoke/app.spec.mjs`, `tests/smoke/export.spec.mjs`, screenshot WebKit e checklist publicado em iPhone/Safari.
 - Ambiente: WebKit automatizado; gate H.264 em WebKit/macOS; iPhone/Safari real obrigatório para aprovação final.
 
-## TC-040 — Isolamento modal e de autosave do draft E8Z
+## TC-040 — Isolamento modal e de autosave do draft na E8Y
 
 - Pré-condição: Text Asset confirmado, Modo Ativos, editor fechado e contagens reais de Undo/revisão conhecidas.
 - Passos: abrir por toolbar; alterar textarea/cor, trocar tabs e cancelar; repetir com commit; repetir sem alteração; abrir e tentar taps/gestos fora do painel; abrir por dois taps reais, testar drag, imagem, vazio e `dblclick` no Modo Câmera.
 - Resultado esperado: Cancelar e no-op mantêm `undoStack` e `_sessionAutosaveQueuedRevision`; commit alterado incrementa ambos exatamente uma vez; payload/checkpoint/snapshot nunca recebem o draft; sheet bloqueia Stage; tabs conservam `role="tab"`; apenas dois taps concluídos no mesmo texto abrem o editor.
-- Evidência: gate E8Z em `tests/smoke/app.spec.mjs`, gate de Export real em `tests/smoke/export.spec.mjs` e screenshot 390 × 797.
+- Evidência: gate E8Y em `tests/smoke/app.spec.mjs`, gate de Export real em `tests/smoke/export.spec.mjs` e screenshot 390 × 797.
+
+## TC-041 — Persistência de histórico textual e cancelamento de ponteiro
+
+- Confirmar edição tipográfica, aguardar o checkpoint real, executar Undo e Redo e, após cada ação, exigir exatamente uma revisão e payload IndexedDB correspondente ao estado visível; o Undo deve preservar a geometria pós-drag anterior.
+- Executar pointerdown/pointercancel em texto seguido de um tap válido dentro de 360 ms: o editor permanece fechado, não há Undo/autosave e o estado de gesto termina limpo; somente dois taps concluídos abrem.
+- Para imagem sobreposta, localizar por amostragem um ponto visual cujo hit-test canônico retorne a imagem; dois taps nesse ponto selecionam a imagem, mantêm **Trocar** e não abrem texto.
