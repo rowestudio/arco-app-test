@@ -109,3 +109,9 @@ Estados usados neste documento:
 - [Implementado em E8Y] Reedição tipográfica por toolbar e duplo toque, com fontes locais limitadas, cor, peso/itálico e alinhamento.
 - [Futuro] Fundo e padding são propriedades da caixa de texto, sem placeholder inativo na interface atual.
 - [Futuro] Presença temporal é função geral e compartilhada por imagens e textos: define **quando** o ativo aparece; animação define **como** aparece ou se comporta.
+
+## Após E8Z — evolução de texto e interface
+
+- Futuro: padding customizável e estilos de caixa por linha, sem declará-los implementados na E8Z.
+- Futuro separado: presença temporal geral dos ativos; animação continua conceito e entrega distinta.
+- A revisão geral tentará primeiro melhorar superfícies e estados ativos. O roxo atual tem pouco contraste em títulos, fontes e ícones; se ainda insuficiente, a própria cor de destaque deverá ser revista. Isso não bloqueia a E8Z.

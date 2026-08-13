@@ -134,3 +134,7 @@ Não iniciar por timeline avançada, keyframes manuais, editor de curvas por ati
 - Round-trip Save/Load com texto preservado.
 - Sem alteração colateral de imagem, Frames, curvas, Preview, Export, Layers ou ProjectWorld fora do escopo.
 - Testes automatizados compatíveis e validação visual publicada em iPhone/Safari real antes de aprovação final da função.
+
+## Marco funcional E8Z
+
+A E8Z implementa somente a caixa `block` com fundo sólido opcional, opacidade independente e padding canônico fixo (`0.50em`/`0.30em`). Padding ajustável e fundo por linha continuam futuros. Presença temporal permanece uma função geral de ativos e animação permanece separada da presença.

@@ -55,3 +55,9 @@
 - Um toque em texto apenas seleciona; **Editar** na toolbar e dois taps concluídos no mesmo Text Asset abrem o editor.
 - O editor reutiliza o mesmo draft para criação e reedição e oferece Texto, Fonte, Cor, Estilo e Alinhar; Enter preserva quebra manual.
 - Esta etapa não oferece largura manual, fundo, padding, presença temporal ou animação. Draft não participa de Preview, Export, Save/Load ou Session Autosave.
+
+## Caixa de texto canônica — E8Z
+
+- Text Assets usam `boxStyle: "block"`; o fundo nasce desligado e, quando ligado, envolve todas as linhas sem alterar a largura de composição (`boxWidth`).
+- Cor e opacidade do fundo são independentes dos glifos. Padding fixo canônico é `0.50em` horizontal e `0.30em` vertical e deve persistir mesmo sem controle visível.
+- Padding customizável e fundo por linha são evoluções futuras. Presença temporal é função geral dos ativos e não se confunde com animação.
