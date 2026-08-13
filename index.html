@@ -14783,7 +14783,12 @@ function captureHistoryCanonicalFingerprint(state) {
       textAlign:['left','center','right'].includes(a.textAlign)?a.textAlign:'center', fontSize:Number(a.fontSize)||36,
       lineHeight:Number(a.lineHeight)||1.2, boxWidth:Number(a.boxWidth)||Number(a.worldW)||220,
       textBaseBoxWidth:Number(a.textBaseBoxWidth)||Number(a.boxWidth)||Number(a.worldW)||220,
-      textBaseFontSize:Number(a.textBaseFontSize)||Number(a.fontSize)||36
+      textBaseFontSize:Number(a.textBaseFontSize)||Number(a.fontSize)||36,
+      boxStyle:'block', boxBackgroundEnabled:a.boxBackgroundEnabled===true,
+      boxBackgroundColor:/^#[0-9a-f]{6}$/i.test(a.boxBackgroundColor||'')?a.boxBackgroundColor.toLowerCase():'#000000',
+      boxBackgroundOpacity:Math.min(1,Math.max(0,Number.isFinite(Number(a.boxBackgroundOpacity))?Number(a.boxBackgroundOpacity):.70)),
+      boxPaddingXEm:Number.isFinite(Number(a.boxPaddingXEm))&&Number(a.boxPaddingXEm)>0?Number(a.boxPaddingXEm):.50,
+      boxPaddingYEm:Number.isFinite(Number(a.boxPaddingYEm))&&Number(a.boxPaddingYEm)>0?Number(a.boxPaddingYEm):.30
     };
     return {...common,
       sourceW:Number(a.sourceW)||0, sourceH:Number(a.sourceH)||0, fitMode:a.fitMode||'contain', mimeType:a.mimeType||a.typeMime||'',
@@ -15361,7 +15366,9 @@ const TEXT_ASSET_FONT_FAMILY = TEXT_ASSET_FONTS.system.family;
 const TEXT_ASSET_DEFAULT_COLOR = '#ffffff';
 function hexToRgba(hex,alpha){const n=parseInt(String(hex).slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${Math.min(1,Math.max(0,Number(alpha)||0))})`}
 let pendingTextDraft = null, textCreationBaseline = null, textEditorMode = null, textEditorTargetAssetId = null, textEditorOpenSource = null, textEditorActiveTool = 'text', textEditorOriginalAsset = null;
-let textAssetStageRendered=false,textAssetPreviewRendered=false,textAssetExportRendered=false,textAssetSaveLoadParityOk=true,textAssetSessionRestoreParityOk=true;
+let textAssetStageRendered=false,textAssetPreviewRendered=false,textAssetExportRendered=false,textAssetSaveLoadParityOk=null,textAssetSessionRestoreParityOk=null;
+let textBoxStageSnapshot=null,textBoxPreviewSnapshot=null,textBoxExportSnapshot=null,textBoxOpacityDoesNotAffectGlyphs=null,textBoxLegacyMigrationOk=null;
+function captureTextBoxRenderSnapshot(a){if(!a||a.type!=='text')return null;normalizeTextAsset(a);const m=measureTextAsset({...a});return{id:String(a.id),boxStyle:a.boxStyle,enabled:a.boxBackgroundEnabled,color:a.boxBackgroundColor,opacity:a.boxBackgroundOpacity,boxWidth:a.boxWidth,worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,paddingX:m.paddingX,paddingY:m.paddingY,text:a.text,colorText:a.color,fontSize:a.fontSize,rotation:a.rotation}}
 let textCreationKeyboardResizeChangedProjectWorld=false,textCreationKeyboardResizeChangedFrames=false,textCreationKeyboardResizeChangedExistingAssets=false;
 let textEditorConfirmed=false,textEditorCancelled=false,textEditorCommitChangedOnlyTarget=false,textEditorUndoEntriesCreated=0,textEditorAutosaveRevisionsCreated=0,textEditorDoubleTapDetected=false,textEditorSingleTapOpenedKeyboard=false,textEditorDraftPersistedDetected=false;
 let textEditorStagePreviewExportParityOk=false,textEditorSaveLoadParityOk=false,textEditorSessionRestoreParityOk=false;
@@ -15386,8 +15393,8 @@ function renderTextEditorOptions(){const font=document.getElementById('textEdito
  font.innerHTML=Object.entries(TEXT_ASSET_FONTS).map(([k,v])=>`<button type="button" class="text-editor-option${pendingTextDraft.fontKey===k?' active':''}" aria-label="Fonte ${v.label}" onclick="updateTextDraft('fontKey','${k}')">${v.label}</button>`).join('');
  const styles=[['Normal',400,'normal'],['Negrito',700,'normal'],['Itálico',400,'italic'],['Negrito + itálico',700,'italic']];style.innerHTML=styles.map(([l,w,i])=>`<button type="button" class="text-editor-option${pendingTextDraft.fontWeight===w&&pendingTextDraft.fontStyle===i?' active':''}" aria-label="Estilo ${l}" onclick="updateTextStyle(${w},'${i}')">${l}</button>`).join('');
  align.innerHTML=[['Esquerda','left'],['Centro','center'],['Direita','right']].map(([l,v])=>`<button type="button" class="text-editor-option${pendingTextDraft.textAlign===v?' active':''}" aria-label="Alinhar ${l}" onclick="updateTextDraft('textAlign','${v}')">${l}</button>`).join(''); const toggle=document.getElementById('textBoxBackgroundToggle'),boxColor=document.getElementById('textBoxBackgroundColor'),opacity=document.getElementById('textBoxBackgroundOpacity'),value=document.getElementById('textBoxBackgroundOpacityValue'); toggle.classList.toggle('active',pendingTextDraft.boxBackgroundEnabled);toggle.setAttribute('aria-pressed',String(pendingTextDraft.boxBackgroundEnabled));boxColor.value=pendingTextDraft.boxBackgroundColor;opacity.value=String(Math.round(pendingTextDraft.boxBackgroundOpacity*100));value.textContent=opacity.value+'%'}
-function measureTextEditorDraft(){if(!pendingTextDraft)return;const cx=textEditorMode==='edit'?pendingTextDraft.worldX+pendingTextDraft.worldW/2:null,cy=textEditorMode==='edit'?pendingTextDraft.worldY+pendingTextDraft.worldH/2:null;measureTextAsset(pendingTextDraft);if(cx!=null)pendingTextDraft.worldX=cx-pendingTextDraft.worldW/2;if(cy!=null)pendingTextDraft.worldY=cy-pendingTextDraft.worldH/2;textEditorDraftPersistedDetected=assets.some(a=>a===pendingTextDraft||String(a&&a.id)===String(pendingTextDraft.id)&&textEditorMode==='create')}
-function updateTextDraft(field,value){if(!pendingTextDraft)return;pendingTextDraft[field]=value;normalizeTextAsset(pendingTextDraft);measureTextEditorDraft();renderTextEditorOptions();renderProjectWorldExtraImages()}
+function measureTextEditorDraft(options){if(!pendingTextDraft)return;const preserveCenter=!!(options&&options.preserveCenter)||textEditorMode==='edit',cx=preserveCenter?pendingTextDraft.worldX+pendingTextDraft.worldW/2:null,cy=preserveCenter?pendingTextDraft.worldY+pendingTextDraft.worldH/2:null;measureTextAsset(pendingTextDraft);if(cx!=null)pendingTextDraft.worldX=cx-pendingTextDraft.worldW/2;if(cy!=null)pendingTextDraft.worldY=cy-pendingTextDraft.worldH/2;textEditorDraftPersistedDetected=assets.some(a=>a===pendingTextDraft||String(a&&a.id)===String(pendingTextDraft.id)&&textEditorMode==='create')}
+function updateTextDraft(field,value){if(!pendingTextDraft)return;pendingTextDraft[field]=value;normalizeTextAsset(pendingTextDraft);measureTextEditorDraft({preserveCenter:field==='boxBackgroundEnabled'});renderTextEditorOptions();renderProjectWorldExtraImages()}
 function updateTextStyle(weight,style){if(!pendingTextDraft)return;pendingTextDraft.fontWeight=weight;pendingTextDraft.fontStyle=style;updateTextDraft('fontWeight',weight)}
 function openTextEditor(mode,target,source){if(!isAssetsMode()||pendingTextDraft)return;if(mode==='edit'&&(!target||target.type!=='text'))return;textEditorMode=mode;textEditorTargetAssetId=target?String(target.id):null;textEditorOpenSource=source||'create';textEditorOriginalAsset=target?structuredClone(serializeProjectAsset(target,0,false)):null;
  textCreationBaseline={projectWorld:JSON.stringify(projectWorld),frames:JSON.stringify(frames.slice(0,frameCount)),assets:JSON.stringify(assets.map(a=>serializeProjectAsset(a,0,false)))};pendingTextDraft=target?normalizeTextAsset(structuredClone(target)):createPendingTextAsset();pendingTextDraft.id=target?target.id:pendingTextDraft.id;
@@ -15401,7 +15408,7 @@ function cancelTextCreation(){if(!pendingTextDraft)return;auditTextCreationCanon
 function confirmTextCreation(){if(!pendingTextDraft)return;const value=document.getElementById('textCreationInput').value;if(!value.trim()){showStatus('Digite um texto para continuar.');setTextEditorTool('text');return}pendingTextDraft.text=value;normalizeTextAsset(pendingTextDraft);measureTextAsset(pendingTextDraft);auditTextCreationCanonicalState();
  if(textEditorMode==='edit'){const target=assets.find(a=>a&&String(a.id)===textEditorTargetAssetId);if(!target){resetTextEditor();return}const changed=JSON.stringify(textEditorDraftFields(target))!==JSON.stringify(textEditorDraftFields(pendingTextDraft));if(!changed){resetTextEditor();return}const before=captureState(),oldCenterX=target.worldX+target.worldW/2,oldCenterY=target.worldY+target.worldH/2;Object.assign(target,textEditorDraftFields(pendingTextDraft));normalizeTextAsset(target);measureTextAsset(target);target.worldX=oldCenterX-target.worldW/2;target.worldY=oldCenterY-target.worldH/2;pushUndoSnapshot(before);textEditorUndoEntriesCreated++;lastUndoAction='editTextAsset';textEditorCommitChangedOnlyTarget=true;markProjectDirty('editTextAsset');textEditorAutosaveRevisionsCreated++;textEditorConfirmed=true;const id=target.id;resetTextEditor();selectAssetById(id,'text-edit');renderLayersPanelList();invalidateProjectWorldComposite();return}
  const before=captureState();pendingTextDraft.id='text-'+Date.now()+'-'+Math.floor(Math.random()*1000);assignPersistentLayerIdentity(pendingTextDraft);const confirmed=pendingTextDraft;assets.push(confirmed);pushUndoSnapshot(before);textEditorUndoEntriesCreated++;normalizeAssetZIndices();const id=confirmed.id;resetTextEditor();selectAssetById(id,'text-create');renderLayersPanelList();invalidateProjectWorldComposite();markProjectDirty('addTextAsset');textEditorAutosaveRevisionsCreated++;textEditorConfirmed=true}
-document.addEventListener('input',ev=>{if(!pendingTextDraft)return;if(ev.target.id==='textCreationInput')pendingTextDraft.text=ev.target.value;if(ev.target.id==='textCreationColor')pendingTextDraft.color=ev.target.value;if(ev.target.id==='textBoxBackgroundColor')pendingTextDraft.boxBackgroundColor=ev.target.value;if(ev.target.id==='textBoxBackgroundOpacity')pendingTextDraft.boxBackgroundOpacity=Number(ev.target.value)/100;normalizeTextAsset(pendingTextDraft);measureTextEditorDraft();renderProjectWorldExtraImages()});window.addEventListener('resize',()=>{if(pendingTextDraft)auditTextCreationCanonicalState()});
+document.addEventListener('input',ev=>{if(!pendingTextDraft)return;if(ev.target.id==='textCreationInput')pendingTextDraft.text=ev.target.value;if(ev.target.id==='textCreationColor')pendingTextDraft.color=ev.target.value;if(ev.target.id==='textBoxBackgroundColor')pendingTextDraft.boxBackgroundColor=ev.target.value;if(ev.target.id==='textBoxBackgroundOpacity'){pendingTextDraft.boxBackgroundOpacity=Number(ev.target.value)/100;document.getElementById('textBoxBackgroundOpacityValue').textContent=ev.target.value+'%'}normalizeTextAsset(pendingTextDraft);measureTextEditorDraft();renderProjectWorldExtraImages()});window.addEventListener('resize',()=>{if(pendingTextDraft)auditTextCreationCanonicalState()});
 
 // Fonte unica do parallax translacional. A referencia neutra e o centro da
 // celula canonica do ProjectWorld; ela nao depende do modo, frame selecionado,
@@ -15451,8 +15458,11 @@ function syncAssetContextPanel() {
     const baseline = getAssetScaleBaselineWorldSize(asset);
     const visualRect = (typeof getAssetVisualWorldRect === 'function') ? getAssetVisualWorldRect(asset) : asset;
     assetScaleBaselineValid = !!(baseline && baseline.valid);
-    assetScaleUsesCanonicalBaseline = !!(baseline && baseline.valid && baseline.reference === 'project-world-fitted-main-cell');
-    assetScaleInitialValueMatchesVisualGeometry = !!(baseline && visualRect && baseline.width > 0 && baseline.height > 0 &&
+    assetScaleUsesCanonicalBaseline = !!(baseline && baseline.valid && (baseline.reference === 'project-world-fitted-main-cell' || baseline.reference === 'text-canonical-content-baseline'));
+    if(asset.type==='text'){
+      const factor=current/100,measured=measureTextAsset({...asset,boxWidth:baseline.contentWidth*factor,fontSize:baseline.fontSize*factor});
+      assetScaleInitialValueMatchesVisualGeometry=!!(visualRect&&Math.abs(measured.width+measured.paddingX*2-(Number(visualRect.w)||0))<0.01&&Math.abs(measured.height-(Number(visualRect.h)||0))<0.01);
+    }else assetScaleInitialValueMatchesVisualGeometry = !!(baseline && visualRect && baseline.width > 0 && baseline.height > 0 &&
       Math.abs((baseline.width * current / 100) - (Number(visualRect.w) || 0)) < 0.01 &&
       Math.abs((baseline.height * current / 100) - (Number(visualRect.h) || 0)) < 0.01);
   }
@@ -15531,18 +15541,19 @@ function setAssetContextValue(value) {
     const baselineH = Number(assetContextGesture.scaleBaselineH) || assetContextGesture.startVisualH;
     const nextW = baselineW * factor;
     const nextH = baselineH * factor;
+    const requestedTextMeasure=asset.type==='text'?measureTextAsset({...asset,boxWidth:(Number(asset.textBaseBoxWidth)||assetContextGesture.startBoxWidth)*factor,fontSize:(Number(asset.textBaseFontSize)||assetContextGesture.startFontSize)*factor}):null;
+    const requestedVisualW=requestedTextMeasure?requestedTextMeasure.width+2*requestedTextMeasure.paddingX:nextW;
     if (!assetContextGesture.firstScaleInputChecked) {
       const requestedDelta = Math.abs(clampedPct - assetContextGesture.startScale);
-      const visualDelta = Math.abs(nextW - assetContextGesture.startVisualW);
+      const visualDelta = Math.abs(requestedVisualW - assetContextGesture.startVisualW);
       assetScaleFirstDragJumpDetected = requestedDelta <= 1.5 && visualDelta > Math.max(6, baselineW * 0.05);
       assetContextGesture.firstScaleInputChecked = true;
     }
-    asset.worldW = nextW; asset.worldH = nextH;
     if (asset.type === 'text') {
-      asset.boxWidth = nextW;
+      asset.boxWidth = (Number(asset.textBaseBoxWidth) || assetContextGesture.startBoxWidth) * factor;
       asset.fontSize = (Number(asset.textBaseFontSize) || assetContextGesture.startFontSize) * factor;
       measureTextAsset(asset);
-    }
+    } else { asset.worldW = nextW; asset.worldH = nextH; }
     asset.worldX = cx - asset.worldW / 2; asset.worldY = cy - asset.worldH / 2;
     assetScaleBaselineValid = !!assetContextGesture.scaleBaselineValid;
     assetScaleUsesCanonicalBaseline = !!assetContextGesture.scaleBaselineValid;
@@ -15569,9 +15580,10 @@ function resetAssetContextValue() {
     const baseline = getAssetScaleBaselineWorldSize(asset);
     const visualRect = asset ? getAssetVisualWorldRect(asset) : null;
     assetScaleResetReturnsCanonical100Percent = !!(asset && Math.abs(getAssetContextScalePercent(asset) - 100) < 0.001);
+    const resetExpected=asset&&asset.type==='text'?measureTextAsset({...asset,boxWidth:baseline.contentWidth,fontSize:baseline.fontSize}):baseline;
     assetScaleResetGeometryMatchesBaseline = !!(baseline && visualRect &&
-      Math.abs((Number(visualRect.w) || 0) - baseline.width) < 0.01 &&
-      Math.abs((Number(visualRect.h) || 0) - baseline.height) < 0.01);
+      Math.abs((Number(visualRect.w) || 0) - (resetExpected.width+(resetExpected.paddingX||0)*2)) < 0.01 &&
+      Math.abs((Number(visualRect.h) || 0) - resetExpected.height) < 0.01);
   }
   commitAssetContextGesture();
 }
@@ -17667,8 +17679,8 @@ function getAssetScaleBaselineWorldSize(asset) {
   if (asset && asset.type === 'text') {
     const width = Number(asset.textBaseBoxWidth) || Number(asset.boxWidth) || Number(asset.worldW) || 1;
     const fontSize = Number(asset.textBaseFontSize) || Number(asset.fontSize) || 36;
-    const scale = fontSize > 0 ? (Number(asset.fontSize) || fontSize) / fontSize : 1;
-    return { width, height:(Number(asset.worldH) || 1) / Math.max(scale, 0.0001), valid:true, reference:'text-canonical-baseline' };
+    const measured = measureTextAsset({...asset, boxWidth:width, fontSize});
+    return { width, height:measured.height, contentWidth:width, fontSize, valid:true, reference:'text-canonical-content-baseline' };
   }
   const sourceW = Number(asset && asset.sourceW) || 0;
   const sourceH = Number(asset && asset.sourceH) || 0;
@@ -17693,6 +17705,10 @@ function getAssetScaleBaselineWorldSize(asset) {
 }
 function getAssetContextScalePercent(asset) {
   if (!asset) return 100;
+  if (asset.type === 'text') {
+    const baselineWidth=Number(asset.textBaseBoxWidth)||Number(asset.boxWidth)||1;
+    return baselineWidth>0?(Number(asset.boxWidth)||baselineWidth)/baselineWidth*100:100;
+  }
   const visualRect = (typeof getAssetVisualWorldRect === 'function') ? getAssetVisualWorldRect(asset) : asset;
   const baseline = getAssetScaleBaselineWorldSize(asset);
   const worldW = Number(visualRect && visualRect.w) || Number(asset.worldW) || 0;
@@ -32131,6 +32147,7 @@ function restoreProjectAssetsFromData(data) {
         assets.push(asset);
       }
       savedAssets.filter(a => a && a.type === 'text').forEach(function(sa) {
+        const legacyTextBox=!Object.prototype.hasOwnProperty.call(sa,'boxBackgroundEnabled'),legacyGeometry=legacyTextBox?{x:Number(sa.worldX)||0,y:Number(sa.worldY)||0,w:Number(sa.worldW)||Number(sa.boxWidth)||220,h:Number(sa.worldH)||0}:null;
         const textAsset = normalizeTextAsset({ id:sa.id||('text-'+Date.now()+'-'+Math.floor(Math.random()*1000)), type:'text',
           name:sa.name||'', layerSequence:sa.layerSequence, layerName:sa.layerName, layerNameSource:sa.layerNameSource||'automatic',
           text:sa.text||'', color:sa.color, worldX:Number(sa.worldX)||0, worldY:Number(sa.worldY)||0,
@@ -32140,6 +32157,7 @@ function restoreProjectAssetsFromData(data) {
           textBaseBoxWidth:Number(sa.textBaseBoxWidth)||Number(sa.worldW)||Number(sa.boxWidth)||220,
           textBaseFontSize:Number(sa.textBaseFontSize)||Number(sa.fontSize)||36, boxStyle:sa.boxStyle, boxBackgroundEnabled:sa.boxBackgroundEnabled, boxBackgroundColor:sa.boxBackgroundColor, boxBackgroundOpacity:sa.boxBackgroundOpacity, boxPaddingXEm:sa.boxPaddingXEm, boxPaddingYEm:sa.boxPaddingYEm });
         assignPersistentLayerIdentity(textAsset); measureTextAsset(textAsset); assets.push(textAsset);
+        if(legacyTextBox)textBoxLegacyMigrationOk=textAsset.boxBackgroundEnabled===false&&Math.abs(textAsset.worldX-legacyGeometry.x)<.001&&Math.abs(textAsset.worldY-legacyGeometry.y)<.001&&Math.abs(textAsset.worldW-legacyGeometry.w)<.001&&(!legacyGeometry.h||Math.abs(textAsset.worldH-legacyGeometry.h)<.001);
       });
       if (missingImageSrc) {
         showStatus('Projeto carregado sem todas as imagens adicionais (não foram salvas neste arquivo).');
@@ -34787,6 +34805,7 @@ function renderProjectWorldExtraImages() {
     el.style.color=a.color; el.style.fontFamily=a.fontFamily; el.style.fontWeight=String(a.fontWeight); el.style.fontStyle=a.fontStyle; el.style.fontSize=(a.fontSize*_editorTransform.scale)+'px'; el.style.lineHeight=String(a.lineHeight); el.style.textAlign=a.textAlign;
     el.style.transform=(Number(a.rotation)||0)?`rotate(${Number(a.rotation)}deg)`:''; el.style.zIndex=String(Math.min(compositionRankById.get(String(a.id))||1,CAMERA_ASSET_BAND_MAX));
     stageContent.insertBefore(el,imgEl); textAssetStageRendered = textAssetStageRendered || a !== pendingTextDraft;
+    if(a!==pendingTextDraft){textBoxStageSnapshot=captureTextBoxRenderSnapshot(a);const computed=getComputedStyle(el),alphaMatch=!a.boxBackgroundEnabled||Math.abs((Number(computed.backgroundColor.match(/[\d.]+(?=\))/)?.[0])||1)-a.boxBackgroundOpacity)<.011;textBoxOpacityDoesNotAffectGlyphs=computed.opacity==='1'&&alphaMatch}
   });
   // Diagnóstico de ordem/posição da img-1.
   computedWorldExtraZIndexes = _zlist.join(',');
@@ -35167,7 +35186,7 @@ function handleAssetTransformPointerMove(e) {
         asset.boxWidth = ds.startBoxWidth * f;
         asset.fontSize = ds.startFontSize * f;
         measureTextAsset(asset);
-        asset.worldY = ds.cy - asset.worldH / 2;
+        asset.worldX = ds.cx - asset.worldW / 2; asset.worldY = ds.cy - asset.worldH / 2;
       }
     } else { assetScaleProducedInvalidGeometry = true; }
   } else if (ds.mode === 'rotate') {
@@ -36918,7 +36937,7 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
           ctx.font=`${ta.fontStyle} ${ta.fontWeight} ${ta.fontSize*scaleX}px ${ta.fontFamily}`; ctx.fillStyle=ta.color; ctx.globalAlpha=1; ctx.textBaseline='top'; ctx.textAlign=ta.textAlign;
           const lines=wrapTextLines(ctx,ta.text,contentW), lh=ta.fontSize*ta.lineHeight*scaleX, tx=ta.textAlign==='left'?-contentW/2:(ta.textAlign==='right'?contentW/2:0);
           lines.forEach((line,li)=>ctx.fillText(line,tx,-r.ah/2+paddingY+li*lh)); ctx.restore();
-          if(context==='preview') textAssetPreviewRendered=true; if(context==='export') textAssetExportRendered=true;
+          if(context==='preview'){textAssetPreviewRendered=true;textBoxPreviewSnapshot=captureTextBoxRenderSnapshot(ta)} if(context==='export'){textAssetExportRendered=true;textBoxExportSnapshot=captureTextBoxRenderSnapshot(ta)}
         } else if (r.rotation) {
           ctx.save();
           ctx.translate(drawX + r.aw / 2, drawY + r.ah / 2);
@@ -37709,7 +37728,7 @@ function buildDiagnosticsText() {
   push('textAssetCount', _textAssets.length);
   push('selectedTextAssetId', _selectedText&&_selectedText.type==='text'?_selectedText.id:'none');
   push('pendingTextCreationActive', String(!!pendingTextDraft));
-  push('textEditorOpen', String(!!pendingTextDraft)); push('textEditorMode', textEditorMode||'none'); push('textEditorTargetAssetId', textEditorTargetAssetId||'none'); push('textEditorOpenSource', textEditorOpenSource||'none'); push('textEditorActiveTool', textEditorActiveTool); push('textEditorDraftDirty', String(!!(pendingTextDraft&&textEditorOriginalAsset&&JSON.stringify(textEditorDraftFields(pendingTextDraft))!==JSON.stringify(textEditorDraftFields(textEditorOriginalAsset))))); push('textEditorConfirmed', String(textEditorConfirmed)); push('textEditorCancelled', String(textEditorCancelled)); push('textEditorCommitChangedOnlyTarget', String(textEditorCommitChangedOnlyTarget)); push('textEditorUndoEntriesCreated', String(textEditorUndoEntriesCreated)); push('textEditorAutosaveRevisionsCreated', String(textEditorAutosaveRevisionsCreated)); push('textEditorDoubleTapDetected', String(textEditorDoubleTapDetected)); push('textEditorSingleTapOpenedKeyboard', String(textEditorSingleTapOpenedKeyboard)); push('textEditorDraftPersistedDetected', String(textEditorDraftPersistedDetected)); textEditorStagePreviewExportParityOk=!!(textAssetStageRendered&&textAssetPreviewRendered&&textAssetExportRendered); textEditorSaveLoadParityOk=!!textAssetSaveLoadParityOk; textEditorSessionRestoreParityOk=!!textAssetSessionRestoreParityOk; push('textEditorStagePreviewExportParityOk', String(textEditorStagePreviewExportParityOk)); push('textEditorSaveLoadParityOk', String(textEditorSaveLoadParityOk)); push('textEditorSessionRestoreParityOk', String(textEditorSessionRestoreParityOk)); const selectedTextBox=(getSelectedAsset&&getSelectedAsset()?.type==='text')?getSelectedAsset():null; push('textBoxBackgroundEnabled',selectedTextBox?String(selectedTextBox.boxBackgroundEnabled):'n/d'); push('selectedTextBoxStyle',selectedTextBox?.boxStyle||'n/d'); push('selectedTextBoxBackgroundColor',selectedTextBox?.boxBackgroundColor||'n/d'); push('selectedTextBoxBackgroundOpacity',selectedTextBox?String(selectedTextBox.boxBackgroundOpacity):'n/d'); push('selectedTextBoxPaddingXEm',selectedTextBox?String(selectedTextBox.boxPaddingXEm):'n/d'); push('selectedTextBoxPaddingYEm',selectedTextBox?String(selectedTextBox.boxPaddingYEm):'n/d'); const selectedTextEl=selectedTextBox?document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(String(selectedTextBox.id))}"]`):null; push('textBoxOuterGeometryMatchesSelection',selectedTextEl&&selectedAssetId===selectedTextBox.id?'true':'n/d'); push('textBoxOpacityDoesNotAffectGlyphs',selectedTextEl?String(getComputedStyle(selectedTextEl).opacity==='1'):'n/d'); push('textBoxStagePreviewParityOk',textAssetPreviewRendered?String(textAssetStageRendered):'n/d'); push('textBoxPreviewExportParityOk',textAssetPreviewRendered&&textAssetExportRendered?'true':'n/d'); push('textBoxSaveLoadParityOk',textAssetSaveLoadParityOk?'true':'n/d'); push('textBoxSessionRestoreParityOk',textAssetSessionRestoreParityOk?'true':'n/d'); push('textBoxLegacyMigrationOk','n/d');
+  push('textEditorOpen', String(!!pendingTextDraft)); push('textEditorMode', textEditorMode||'none'); push('textEditorTargetAssetId', textEditorTargetAssetId||'none'); push('textEditorOpenSource', textEditorOpenSource||'none'); push('textEditorActiveTool', textEditorActiveTool); push('textEditorDraftDirty', String(!!(pendingTextDraft&&textEditorOriginalAsset&&JSON.stringify(textEditorDraftFields(pendingTextDraft))!==JSON.stringify(textEditorDraftFields(textEditorOriginalAsset))))); push('textEditorConfirmed', String(textEditorConfirmed)); push('textEditorCancelled', String(textEditorCancelled)); push('textEditorCommitChangedOnlyTarget', String(textEditorCommitChangedOnlyTarget)); push('textEditorUndoEntriesCreated', String(textEditorUndoEntriesCreated)); push('textEditorAutosaveRevisionsCreated', String(textEditorAutosaveRevisionsCreated)); push('textEditorDoubleTapDetected', String(textEditorDoubleTapDetected)); push('textEditorSingleTapOpenedKeyboard', String(textEditorSingleTapOpenedKeyboard)); push('textEditorDraftPersistedDetected', String(textEditorDraftPersistedDetected)); textEditorStagePreviewExportParityOk=!!(textAssetStageRendered&&textAssetPreviewRendered&&textAssetExportRendered); textEditorSaveLoadParityOk=!!textAssetSaveLoadParityOk; textEditorSessionRestoreParityOk=!!textAssetSessionRestoreParityOk; push('textEditorStagePreviewExportParityOk', String(textEditorStagePreviewExportParityOk)); push('textEditorSaveLoadParityOk', String(textEditorSaveLoadParityOk)); push('textEditorSessionRestoreParityOk', String(textEditorSessionRestoreParityOk)); const selectedTextBox=(getSelectedAsset&&getSelectedAsset()?.type==='text')?getSelectedAsset():null; push('textBoxBackgroundEnabled',selectedTextBox?String(selectedTextBox.boxBackgroundEnabled):'n/d'); push('selectedTextBoxStyle',selectedTextBox?.boxStyle||'n/d'); push('selectedTextBoxBackgroundColor',selectedTextBox?.boxBackgroundColor||'n/d'); push('selectedTextBoxBackgroundOpacity',selectedTextBox?String(selectedTextBox.boxBackgroundOpacity):'n/d'); push('selectedTextBoxPaddingXEm',selectedTextBox?String(selectedTextBox.boxPaddingXEm):'n/d'); push('selectedTextBoxPaddingYEm',selectedTextBox?String(selectedTextBox.boxPaddingYEm):'n/d'); const selectedTextEl=selectedTextBox?document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(String(selectedTextBox.id))}"]`):null,selectionEl=document.getElementById('assetSelectOutline'); let outerGeometry=null;if(selectedTextEl&&selectionEl&&String(selectedAssetId)===String(selectedTextBox.id)){const a=selectedTextEl.getBoundingClientRect(),b=selectionEl.getBoundingClientRect(),center=hitTestAssetAtWorld(selectedTextBox.worldX+selectedTextBox.worldW/2,selectedTextBox.worldY+selectedTextBox.worldH/2);outerGeometry=Math.abs(a.left-b.left)<1&&Math.abs(a.top-b.top)<1&&Math.abs(a.width-b.width)<1&&Math.abs(a.height-b.height)<1&&String(center?.id)===String(selectedTextBox.id)} push('textBoxOuterGeometryMatchesSelection',outerGeometry==null?'n/d':String(outerGeometry)); push('textBoxOpacityDoesNotAffectGlyphs',textBoxOpacityDoesNotAffectGlyphs==null?'n/d':String(textBoxOpacityDoesNotAffectGlyphs)); push('textBoxStagePreviewParityOk',textBoxStageSnapshot&&textBoxPreviewSnapshot?String(JSON.stringify(textBoxStageSnapshot)===JSON.stringify(textBoxPreviewSnapshot)):'n/d'); push('textBoxPreviewExportParityOk',textBoxPreviewSnapshot&&textBoxExportSnapshot?String(JSON.stringify(textBoxPreviewSnapshot)===JSON.stringify(textBoxExportSnapshot)):'n/d'); push('textBoxSaveLoadParityOk',textAssetSaveLoadParityOk==null?'n/d':String(textAssetSaveLoadParityOk)); push('textBoxSessionRestoreParityOk',textAssetSessionRestoreParityOk==null?'n/d':String(textAssetSessionRestoreParityOk)); push('textBoxLegacyMigrationOk',textBoxLegacyMigrationOk==null?'n/d':String(textBoxLegacyMigrationOk));
   push('pendingTextDraftLength', pendingTextDraft?pendingTextDraft.text.length:0);
   push('pendingTextColor', pendingTextDraft?pendingTextDraft.color:'none');
   push('textAssetIds', _textAssets.map(a=>a.id).join(',')||'none');

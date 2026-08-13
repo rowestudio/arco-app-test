@@ -381,3 +381,7 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 ## TC-043 — Fundo canônico da caixa de texto E8Z
 
 Criar texto multilinha pelo fluxo público; confirmar fundo desligado; editar em **Caixa**, ativar `#112233` a 65% e concluir. Exigir modelo `block`, paddings `0.50em`/`0.30em`, wrapping e centro preservados, retângulo externo em seleção/hit-test, glifos opacos, exatamente um Undo/autosave, Undo/Redo, Cancelar/no-op, Save/Load, checkpoint/Restore e paridade Stage/Preview/Export. Projeto E8Y sem campos deve permanecer sem fundo e sem mudança geométrica. Em 390 × 797 não pode haver overflow; teclado não altera ProjectWorld, Frames ou outros ativos. O gate H.264 real inclui imagem, texto multilinha, fundo, opacidade e rotação, sem mocks.
+
+### TC-043 — revisão bloqueante da PR #489
+
+A cobertura permanente também exige ativação/desativação durante criação com centro e wrapping invariantes, rótulo imediato em 0/65/100%, escala pública em 100→105→100, slider/Reset, alça e rotação, além de mudanças isoladas de cor e opacidade com Undo/Redo e payload IndexedDB real correspondente.

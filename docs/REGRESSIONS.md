@@ -171,3 +171,8 @@ Catálogo obrigatório de regressões históricas e proteções.
 - Projetos E8Y sem campos de caixa migram com fundo desligado e geometria visual anterior.
 - Ativar fundo não pode alterar wrapping ou centro; seleção/hit-test devem usar o retângulo externo.
 - A opacidade do fundo não pode reduzir a opacidade dos glifos; draft não pode alcançar persistência, Preview ou Export.
+
+## E8Z — P1 de escala e histórico da caixa
+
+- Percentual, slider, steps, Reset e alças devem escalar `boxWidth` e `fontSize` pelo baseline de conteúdo; nunca atribuir largura externa diretamente a `boxWidth`.
+- Cor, opacidade, estilo e paddings da caixa integram o fingerprint canônico, para que Undo/Redo agendem checkpoints reais mesmo quando somente a caixa muda.

@@ -350,3 +350,7 @@ Decisão: manter WebKit/Linux como gate funcional de Text Asset até Preview/com
 ## 2026-08-13 — E8Z: geometria externa da caixa de texto
 
 Decisão: `boxWidth` continua sendo a largura de conteúdo/wrapping; com fundo ativo, `worldW/worldH` representam conteúdo mais padding simétrico e `worldX/worldY` o canto externo, preservando o centro na edição. Stage, Preview e Export derivam o fundo do mesmo ativo canônico; opacidade é aplicada somente ao preenchimento.
+
+## 2026-08-13 — correção P1 da escala E8Z
+
+A escala de Text Assets é calculada exclusivamente pelas grandezas canônicas de conteúdo (`textBaseBoxWidth`/`textBaseFontSize`). `measureTextAsset()` continua como único responsável por derivar o retângulo externo e o padding, evitando duplicação; o centro anterior é restaurado depois da medição.
