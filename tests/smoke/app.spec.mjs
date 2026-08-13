@@ -1812,7 +1812,7 @@ test('E9A — profundidade de Text Asset persiste no modelo, redraw, histórico 
   const textId = await page.evaluate(() => String(assets.find(asset => asset?.type === 'text').id));
   const baseline = await page.evaluate(id => {
     const current = assets.find(candidate => String(candidate?.id) === id);
-    return { zIndex: current.zIndex, frames: structuredClone(frames.slice(0, frameCount)), curves: structuredClone(curves), world: structuredClone(projectWorld), undo: undoStack.length, revision: _sessionAutosaveQueuedRevision };
+    return { zIndex: current.zIndex, frames: structuredClone(frames.slice(0, frameCount)), curves: JSON.stringify({ ctrlPts, curvesV2 }), world: structuredClone(projectWorld), undo: undoStack.length, revision: _sessionAutosaveQueuedRevision };
   }, textId);
 
   await page.locator('#tbAssetDepth').click();
@@ -1823,7 +1823,7 @@ test('E9A — profundidade de Text Asset persiste no modelo, redraw, histórico 
     const current = assets.find(candidate => String(candidate?.id) === id);
     measureTextAsset(current); renderProjectWorldExtraImages(); renderAssetSelectionOverlay(); syncAssetContextPanel();
     const refreshed = assets.find(candidate => String(candidate?.id) === id);
-    return { depth: refreshed.depth, serialized: serializeProjectAsset(refreshed, 0, false).depth, zIndex: refreshed.zIndex, panel: Number(document.getElementById('assetContextSlider').value), undo: undoStack.length, revision: _sessionAutosaveQueuedRevision, frames: structuredClone(frames.slice(0, frameCount)), curves: structuredClone(curves), world: structuredClone(projectWorld) };
+    return { depth: refreshed.depth, serialized: serializeProjectAsset(refreshed, 0, false).depth, zIndex: refreshed.zIndex, panel: Number(document.getElementById('assetContextSlider').value), undo: undoStack.length, revision: _sessionAutosaveQueuedRevision, frames: structuredClone(frames.slice(0, frameCount)), curves: JSON.stringify({ ctrlPts, curvesV2 }), world: structuredClone(projectWorld) };
   }, textId);
   expect(positive).toMatchObject({ depth: 42, serialized: 42, panel: 42, zIndex: baseline.zIndex, undo: baseline.undo + 1, revision: baseline.revision + 1, frames: baseline.frames, curves: baseline.curves, world: baseline.world });
 
