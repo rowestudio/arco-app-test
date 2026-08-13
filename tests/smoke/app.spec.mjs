@@ -1799,6 +1799,12 @@ test('E9A — profundidade de Text Asset persiste no modelo, redraw, histórico 
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
   await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const proModal = page.locator('#proModal');
+  if (await proModal.isVisible()) {
+    await page.getByRole('button', { name: 'Dispensar', exact: true }).click();
+    await expect(proModal).toBeHidden();
+    await expect(proModal).toHaveAttribute('aria-hidden', 'true');
+  }
   await page.locator('#modeAssetsBtn').click();
   await page.evaluate(() => startTextCreation());
   await page.locator('#textCreationInput').fill('Profundidade E9A');
