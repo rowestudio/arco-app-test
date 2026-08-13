@@ -325,3 +325,11 @@ Decisão: manter WebKit/Linux como gate funcional de Text Asset até Preview/com
 - **Interação:** um toque seleciona, a ação primária adaptativa exibe Editar para texto/Trocar para imagem, e dois taps concluídos no mesmo texto abrem o editor sem transformar o asset.
 - **Futuro:** fundo e padding pertencem à caixa; presença temporal pertence ao sistema geral de ativos e define quando aparecem, separadamente de animação, que define como aparecem ou se comportam.
 - **Status:** implementada tecnicamente na E8Y; validação real em iPhone/Safari pendente.
+
+## DEC-2026-08-13-02 — Modalidade e autosave do editor de texto
+
+- **Data:** 2026-08-13.
+- **Decisão:** o sheet tipográfico é uma superfície modal de ponteiro/toque; a área externa não conclui nem cancela e não encaminha gestos ao Stage. A rolagem horizontal interna permanece explícita por `touch-action: pan-x`.
+- **Autosave:** enquanto `pendingTextDraft` existir, qualquer `change` originado em `#textCreationSheet` é ignorado pelo listener global. Somente o commit canônico alterado chama `markProjectDirty()` uma vez.
+- **QA:** as ferramentas continuam semanticamente `role="tab"`; testes devem localizá-las como tabs e exercitar seleção, toolbar e dois taps pelo fluxo público.
+- **Status:** correção bloqueante da PR #488, versão E8Z; validação WebKit e iPhone/Safari continua obrigatória.

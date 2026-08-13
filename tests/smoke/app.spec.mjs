@@ -1678,33 +1678,61 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
   expectStableDerivedFrames(saveRoundTrip.after.frames, saveRoundTrip.before.frames, 'after-save');
 });
 
-test('E8Y — editor tipográfico reutilizável, toolbar adaptativa e commit atômico', async ({ page }, testInfo) => {
-  test.setTimeout(120_000);
+test('E8Z — editor tipográfico usa fluxo público, isola draft e bloqueia o Stage', async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
   await page.setViewportSize({width:390,height:797}); await page.goto('/',{waitUntil:'domcontentloaded'}); await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture); await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30_000});
-  await page.evaluate(()=>setEditorMode('assets','webkit-e8y'));
+  await page.evaluate(()=>setEditorMode('assets','webkit-e8z'));
   await page.evaluate(()=>startTextCreation()); await page.locator('#textCreationInput').fill('Linha 1\nLinha 2');
   await expect(page.locator('[data-text-tool]')).toHaveText(['Texto','Fonte','Cor','Estilo','Alinhar']);
   await expect(page.locator('[data-text-panel] input[type="range"], [data-text-panel] [name*="width"], [data-text-panel] [id*="width"]')).toHaveCount(0);
   await page.getByRole('button',{name:'Concluir',exact:true}).click();
   const id=await page.evaluate(()=>assets.find(a=>a?.type==='text').id);
-  await page.evaluate(id=>{selectAssetById(id,'e8y-single-tap');syncAssetToolbarState()},id);
-  await expect(page.locator('#tbAssetReplace .tb-lbl')).toHaveText('Editar'); await expect(page.locator('#textCreationSheet')).not.toHaveClass(/open/);
-  expect(await page.evaluate(()=>textEditorSingleTapOpenedKeyboard)).toBe(false);
-  const imageId=await page.evaluate(()=>assets.find(a=>a?.type==='image').id); await page.evaluate(id=>{selectAssetById(id,'e8y-image');syncAssetToolbarState()},imageId); await expect(page.locator('#tbAssetReplace .tb-lbl')).toHaveText('Trocar');
-  await page.evaluate(id=>{selectAssetById(id,'e8y-text');syncAssetToolbarState();runAssetPrimaryAction()},id); await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
-  await expect(page.locator('#textCreationInput')).toHaveValue('Linha 1\nLinha 2'); const canonicalBefore=await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),id);
-  await page.locator('#textCreationInput').fill('Rascunho cancelado'); await page.getByRole('button',{name:'Fonte',exact:true}).click(); await page.getByRole('button',{name:'Fonte Mono',exact:true}).click(); await page.getByRole('button',{name:'Cancelar',exact:true}).click();
-  expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),id)).toEqual(canonicalBefore);
-  const counters=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,count:assets.length}));
-  await page.evaluate(id=>startTextAssetEditing(assets.find(a=>String(a.id)===id),'toolbar'),id); await page.locator('#textCreationInput').fill('Editado\ncom Enter');
-  await page.getByRole('button',{name:'Fonte',exact:true}).click(); await page.getByRole('button',{name:'Fonte Serifada',exact:true}).click(); await page.getByRole('button',{name:'Cor',exact:true}).click(); await page.locator('#textCreationColor').evaluate(el=>{el.value='#3366ff';el.dispatchEvent(new Event('input',{bubbles:true}))});
-  await page.getByRole('button',{name:'Estilo',exact:true}).click(); await page.getByRole('button',{name:'Negrito + itálico',exact:true}).click(); await page.getByRole('button',{name:'Alinhar',exact:true}).click(); await page.getByRole('button',{name:'Direita',exact:true}).click();
-  await page.screenshot({path:testInfo.outputPath('e8y-text-editor-390x797.png')}); await page.getByRole('button',{name:'Concluir',exact:true}).click();
-  const committed=await page.evaluate(id=>({asset:serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),id:selectedAssetId,count:assets.length,undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}),id);
-  expect(committed).toMatchObject({id,count:counters.count,undo:counters.undo+1,rev:counters.rev+1,asset:{id,text:'Editado\ncom Enter',color:'#3366ff',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right'}});
-  await page.evaluate(()=>undo()); expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),id)).toEqual(canonicalBefore);
-  await page.evaluate(()=>redo()); expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),id)).toEqual(committed.asset);
-  const noChange=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision})); await page.evaluate(id=>startTextAssetEditing(assets.find(a=>String(a.id)===id),'toolbar'),id); await page.getByRole('button',{name:'Concluir',exact:true}).click(); expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}))).toEqual(noChange);
+  const textBox=await page.locator(`.world-text-asset[data-asset-id="${id}"]`).boundingBox();
+  expect(textBox).toBeTruthy(); const textPoint={x:textBox.x+textBox.width/2,y:textBox.y+textBox.height/2};
+
+  // Um tap real apenas seleciona; não abre sheet nem teclado.
+  await page.touchscreen.tap(textPoint.x,textPoint.y);
+  expect(await page.evaluate(()=>selectedAssetId)).toBe(id);
+  await expect(page.locator('#textCreationSheet')).not.toHaveClass(/open/);
+  expect(await page.evaluate(()=>document.activeElement?.id)).not.toBe('textCreationInput');
+  await expect(page.locator('#tbAssetReplace .tb-lbl')).toHaveText('Editar');
+
+  // O botão público da toolbar abre o editor; Cancelar não cria Undo/autosave nem persiste draft.
+  const cancelBefore=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,checkpoint:buildProjectData(true),canonical:serializeProjectAsset(assets.find(a=>String(a.id)===String(selectedAssetId)),0,false)}));
+  await page.locator('#tbAssetReplace').click(); await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
+  await expect(page.locator('#textCreationInput')).toHaveValue('Linha 1\nLinha 2');
+  await page.locator('#textCreationInput').fill('Rascunho cancelado'); await page.getByRole('tab',{name:'Fonte',exact:true}).click(); await page.getByRole('button',{name:'Fonte Mono',exact:true}).click();
+  const draftIsolation=await page.evaluate(id=>({saved:buildProjectData(true).assets.find(a=>String(a.id)===id),snapshot:renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,canonical:serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false)}),String(id));
+  expect(draftIsolation.saved).toEqual(cancelBefore.canonical); expect(draftIsolation.canonical).toEqual(cancelBefore.canonical); expect(draftIsolation.snapshot?.text).not.toBe('Rascunho cancelado');
+  await page.getByRole('button',{name:'Cancelar',exact:true}).click();
+  expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}))).toEqual({undo:cancelBefore.undo,rev:cancelBefore.rev});
+  expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),String(id))).toEqual(cancelBefore.canonical);
+
+  // Dois taps reais abrem texto; drag, imagem e vazio não abrem.
+  await page.touchscreen.tap(textPoint.x,textPoint.y); await page.waitForTimeout(60); await page.touchscreen.tap(textPoint.x,textPoint.y);
+  await expect(page.locator('#textCreationSheet')).toHaveClass(/open/); expect(await page.evaluate(()=>textEditorOpenSource)).toBe('double-tap'); await page.getByRole('button',{name:'Cancelar',exact:true}).click();
+  await page.mouse.move(textPoint.x,textPoint.y); await page.mouse.down(); await page.mouse.move(textPoint.x+45,textPoint.y+30,{steps:4}); await page.mouse.up(); await expect(page.locator('#textCreationSheet')).not.toHaveClass(/open/);
+  const imageBox=await page.locator('.world-extra-img').first().boundingBox(); expect(imageBox).toBeTruthy(); const imagePoint={x:imageBox.x+imageBox.width/2,y:imageBox.y+imageBox.height/2};
+  await page.touchscreen.tap(imagePoint.x,imagePoint.y); await page.waitForTimeout(60); await page.touchscreen.tap(imagePoint.x,imagePoint.y); await expect(page.locator('#textCreationSheet')).not.toHaveClass(/open/); await expect(page.locator('#tbAssetReplace .tb-lbl')).toHaveText('Trocar');
+  const area=await page.locator('#imageArea').boundingBox(); await page.touchscreen.tap(area.x+4,area.y+4); await page.waitForTimeout(60); await page.touchscreen.tap(area.x+4,area.y+4); await expect(page.locator('#textCreationSheet')).not.toHaveClass(/open/);
+  await page.evaluate(()=>setEditorMode('camera','e8z-camera-regression')); await page.locator('#stage').dblclick({position:{x:20,y:20}}); expect(await page.evaluate(()=>pointModeMenuVisible)).toBe(true); await page.evaluate(()=>{closePointModeMenu();setEditorMode('assets','e8z-edit')});
+
+  // Re-seleciona publicamente e confirma uma sessão como exatamente um Undo/revisão.
+  const movedTextBox=await page.locator(`.world-text-asset[data-asset-id="${id}"]`).boundingBox(); await page.touchscreen.tap(movedTextBox.x+movedTextBox.width/2,movedTextBox.y+movedTextBox.height/2); await page.locator('#tbAssetReplace').click();
+  const commitBefore=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,count:assets.length}));
+  await page.locator('#textCreationInput').fill('Editado\ncom Enter'); await page.getByRole('tab',{name:'Fonte',exact:true}).click(); await page.getByRole('button',{name:'Fonte Serifada',exact:true}).click(); await page.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textCreationColor').evaluate(el=>{el.value='#3366ff';el.dispatchEvent(new Event('input',{bubbles:true}))});
+  await page.getByRole('tab',{name:'Estilo',exact:true}).click(); await page.getByRole('button',{name:'Estilo Negrito + itálico',exact:true}).click(); await page.getByRole('tab',{name:'Alinhar',exact:true}).click(); await page.getByRole('button',{name:'Alinhar Direita',exact:true}).click();
+  const blockedBefore=await page.evaluate(()=>({zoom:editorZoomScale,panX:editorPanX,panY:editorPanY,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld)}));
+  await page.touchscreen.tap(10,10); await page.touchscreen.tap(40,40); const blockedAfter=await page.evaluate(()=>({zoom:editorZoomScale,panX:editorPanX,panY:editorPanY,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld)})); expect(blockedAfter).toEqual(blockedBefore); await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
+  await page.screenshot({path:testInfo.outputPath('e8z-text-editor-390x797.png')}); await page.getByRole('button',{name:'Concluir',exact:true}).click();
+  const committed=await page.evaluate(id=>({asset:serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),id:selectedAssetId,count:assets.length,undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}),String(id));
+  expect(committed).toMatchObject({id,count:commitBefore.count,undo:commitBefore.undo+1,rev:commitBefore.rev+1,asset:{id:String(id),text:'Editado\ncom Enter',color:'#3366ff',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right'}});
+  await page.evaluate(()=>undo()); expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),String(id))).toEqual(cancelBefore.canonical);
+  await page.evaluate(()=>redo()); expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),String(id))).toEqual(committed.asset);
+
+  // Concluir sem alteração pelo botão público não cria histórico nem revisão.
+  const finalTextBox=await page.locator(`.world-text-asset[data-asset-id="${id}"]`).boundingBox(); await page.touchscreen.tap(finalTextBox.x+finalTextBox.width/2,finalTextBox.y+finalTextBox.height/2); await page.locator('#tbAssetReplace').click();
+  const noChange=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision})); await page.getByRole('button',{name:'Concluir',exact:true}).click(); expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}))).toEqual(noChange);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=390)).toBe(true);
 });

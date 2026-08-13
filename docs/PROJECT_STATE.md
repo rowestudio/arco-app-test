@@ -215,3 +215,10 @@ A cobertura permanente separa capacidade funcional de Text Asset (WebKit/Linux a
 - O Text Asset da E8X passa a usar um editor tipográfico único nos modos `create` e `edit`, aberto por **Editar** na toolbar contextual ou por dois taps concluídos no mesmo texto.
 - O draft isolado substitui visualmente o alvo somente no Stage; Cancelar descarta a sessão e Concluir atualiza o mesmo asset com um único Undo e uma única revisão de Session Autosave apenas quando há mudança.
 - `fontKey`, família resolvida, `fontWeight`, `fontStyle` e `textAlign` são normalizados, persistidos e compartilhados por Stage, Preview e Export. Aprovação final permanece dependente de publicação e validação por Roberto em iPhone/Safari real.
+
+## Atualização 2026-08-13 — v8z4b32E8Z na PR #488
+
+- A revisão bloqueante da E8Y mantém as tabs semânticas e corrige os locators Playwright para `role="tab"`.
+- Eventos `change` originados no editor enquanto há draft deixam de criar revisão de Session Autosave; os testes comparam `undoStack`, `_sessionAutosaveQueuedRevision`, payload canônico e snapshot real em Cancelar, commit alterado e commit sem alteração.
+- `#textCreationSheet` passa a capturar ponteiros e toque em toda a viewport, mantendo o Stage visível e os controles/rolagem horizontal internos operáveis, sem permitir pan, zoom ou edição atrás do sheet.
+- Esta revisão atualiza somente a PR #488; produção e merge continuam não autorizados.

@@ -359,3 +359,10 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Resultado esperado: um toque não abre teclado; imagem mantém Trocar; draft aparece apenas no Stage; Cancelar não muda estado/revisão; commit altera o mesmo ID com exatamente um Undo/autosave; tipografia normalizada é idêntica em persistência e renderers; não há largura manual, overflow ou verde no chrome.
 - Evidência: `tests/smoke/app.spec.mjs`, `tests/smoke/export.spec.mjs`, screenshot WebKit e checklist publicado em iPhone/Safari.
 - Ambiente: WebKit automatizado; gate H.264 em WebKit/macOS; iPhone/Safari real obrigatório para aprovação final.
+
+## TC-040 — Isolamento modal e de autosave do draft E8Z
+
+- Pré-condição: Text Asset confirmado, Modo Ativos, editor fechado e contagens reais de Undo/revisão conhecidas.
+- Passos: abrir por toolbar; alterar textarea/cor, trocar tabs e cancelar; repetir com commit; repetir sem alteração; abrir e tentar taps/gestos fora do painel; abrir por dois taps reais, testar drag, imagem, vazio e `dblclick` no Modo Câmera.
+- Resultado esperado: Cancelar e no-op mantêm `undoStack` e `_sessionAutosaveQueuedRevision`; commit alterado incrementa ambos exatamente uma vez; payload/checkpoint/snapshot nunca recebem o draft; sheet bloqueia Stage; tabs conservam `role="tab"`; apenas dois taps concluídos no mesmo texto abrem o editor.
+- Evidência: gate E8Z em `tests/smoke/app.spec.mjs`, gate de Export real em `tests/smoke/export.spec.mjs` e screenshot 390 × 797.
