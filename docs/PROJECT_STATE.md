@@ -234,3 +234,9 @@ A cobertura permanente separa capacidade funcional de Text Asset (WebKit/Linux a
 - A comparação de Undo/Redo deixa de reutilizar o snapshot reduzido de Reset e passa a usar fingerprint canônico dedicado, incluindo assets, tipografia, ProjectWorld, ordem e identidade de Layers, sem DOM/bitmaps/caches.
 - Cancelamento de escala e rotação restaura o snapshot inicial e termina sem Undo ou Session Autosave, como já ocorria no cancelamento de movimento/tap.
 - O gate lê e aplica o checkpoint IndexedDB real após Undo e Redo, comprovando paridade do estado restaurado, e mantém a versão E8Y da PR #488.
+
+## Ajuste final do gate funcional E8Y
+
+- O teste de transformação cancelada readquire o Text Asset por `id` após cada `restoreState()`, evitando observar uma referência stale removida de `assets`.
+- Checkpoints de Undo e Redo são capturados antes de qualquer restore; o Redo roda com a pilha íntegra, e somente depois ambos os checkpoints são aplicados e validados com retorno de sucesso.
+- Movimento parcial cancelado também percorre listeners reais de pointer e comprova geometria, histórico, revisão e estados de gesto intactos.
