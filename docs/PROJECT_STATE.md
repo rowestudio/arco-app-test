@@ -209,3 +209,9 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 ## QA E8X — split de navegador
 
 A cobertura permanente separa capacidade funcional de Text Asset (WebKit/Linux até Preview real) da capacidade nativa de Export H.264 (WebKit/macOS). Chrome 150/Linux foi rejeitado como gate por retornar H.264 não suportado. O crash da consulta H.264 foi reproduzido na `main` sem texto; portanto, não é tratado como regressão funcional E8X. Aprovação em iPhone/Safari real permanece pendente e obrigatória.
+
+## Atualização 2026-08-13 — v8z4b32E8Y em desenvolvimento
+
+- O Text Asset da E8X passa a usar um editor tipográfico único nos modos `create` e `edit`, aberto por **Editar** na toolbar contextual ou por dois taps concluídos no mesmo texto.
+- O draft isolado substitui visualmente o alvo somente no Stage; Cancelar descarta a sessão e Concluir atualiza o mesmo asset com um único Undo e uma única revisão de Session Autosave apenas quando há mudança.
+- `fontKey`, família resolvida, `fontWeight`, `fontStyle` e `textAlign` são normalizados, persistidos e compartilhados por Stage, Preview e Export. Aprovação final permanece dependente de publicação e validação por Roberto em iPhone/Safari real.

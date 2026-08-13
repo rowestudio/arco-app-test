@@ -14,7 +14,7 @@ Este registro é apenas documental. Qualquer implementação futura precisa de t
 
 - Texto deve ser tratado como um objeto visual do projeto, não como texto solto da interface.
 - O quadro de texto deve participar de ProjectWorld, Layers, seleção, Preview, Export e Save/Load.
-- A largura do quadro deve controlar a quebra automática de linha, sem exigir `Enter` manual.
+- Nesta etapa não há controle manual de largura: a geometria canônica existente continua responsável pelo wrapping, e `Enter` cria e preserva quebra manual.
 - Presença temporal e animação são conceitos diferentes.
 - Presença temporal define quando o ativo aparece.
 - Animação define como o ativo se comporta enquanto está presente.
@@ -26,9 +26,9 @@ Este registro é apenas documental. Qualquer implementação futura precisa de t
 Um quadro de texto futuro deve poder armazenar, no mínimo:
 
 - conteúdo textual;
-- largura do quadro;
-- altura derivada ou ajustável;
-- quebra automática de linha;
+- largura canônica existente, sem controle manual nesta etapa;
+- altura derivada;
+- quebra automática compatível e quebra manual por `Enter`;
 - cor do texto;
 - fundo com transparência;
 - padding interno;
@@ -98,11 +98,12 @@ Não iniciar por timeline avançada, keyframes manuais, editor de curvas por ati
 1. Criar quadro de texto estático como ativo/layer real, com largura e quebra automática.
 2. Persistir o quadro de texto em Save/Load e Session Restore.
 3. Garantir paridade do texto em Stage, Preview e Export.
-4. Adicionar controles básicos de estilo: fonte limitada, tamanho, cor, alinhamento, fundo/transparência e padding.
-5. Adicionar presença temporal genérica por ativo: sempre visível ou visível entre frames.
-6. Adicionar fade in/fade out baseado no intervalo de presença.
-7. Adicionar presets matemáticos simples por ativo.
-8. Avaliar necessidade de timeline/keyframes avançados somente depois da validação dos passos anteriores.
+4. Adicionar controles básicos de estilo: fonte local limitada, cor, peso/itálico e alinhamento (concluído na E8Y).
+5. Evoluir fundo/transparência e padding como propriedades futuras da caixa de texto.
+6. Adicionar presença temporal genérica e compartilhada por imagens e textos: sempre visível ou visível entre frames.
+7. Adicionar fade in/fade out baseado no intervalo de presença.
+8. Adicionar presets matemáticos simples por ativo.
+9. Avaliar necessidade de timeline/keyframes avançados somente depois da validação dos passos anteriores.
 
 ## Fora de escopo nesta proposta documental
 
@@ -128,7 +129,7 @@ Não iniciar por timeline avançada, keyframes manuais, editor de curvas por ati
 
 - Uma única capacidade por PR.
 - Texto como ativo real do projeto.
-- Largura do quadro controlando quebra automática.
+- Geometria canônica preservando quebra automática e `Enter` preservando quebra manual, sem controle de largura nesta etapa.
 - Paridade entre Stage, Preview e Export.
 - Round-trip Save/Load com texto preservado.
 - Sem alteração colateral de imagem, Frames, curvas, Preview, Export, Layers ou ProjectWorld fora do escopo.

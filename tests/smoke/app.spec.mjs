@@ -287,7 +287,7 @@ test('E8X WebKit gate — TC-038 até Preview e composição real', async ({ pag
   await page.locator('#textCreationInput').fill(canonicalText);
   await page.locator('#textCreationColor').evaluate((el) => { el.value='#ff3366'; el.dispatchEvent(new Event('input',{bubbles:true})); });
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
-  await page.getByRole('button', { name:'OK', exact:true }).click();
+  await page.getByRole('button', { name:'Concluir', exact:true }).click();
   const confirmed = await page.evaluate(() => {
     const text=assets.find(a=>a&&a.type==='text'), data=buildProjectData(true);
     const canvas=document.createElement('canvas'), ctx=canvas.getContext('2d'); ctx.font=`${text.fontWeight} ${text.fontSize}px ${text.fontFamily}`;
@@ -1676,4 +1676,35 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
   };
   expectStableDerivedFrames(saveRoundTrip.beforeDirectSave.frames, saveRoundTrip.before.frames, 'before-save');
   expectStableDerivedFrames(saveRoundTrip.after.frames, saveRoundTrip.before.frames, 'after-save');
+});
+
+test('E8Y — editor tipográfico reutilizável, toolbar adaptativa e commit atômico', async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({width:390,height:797}); await page.goto('/',{waitUntil:'domcontentloaded'}); await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture); await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30_000});
+  await page.evaluate(()=>setEditorMode('assets','webkit-e8y'));
+  await page.evaluate(()=>startTextCreation()); await page.locator('#textCreationInput').fill('Linha 1\nLinha 2');
+  await expect(page.locator('[data-text-tool]')).toHaveText(['Texto','Fonte','Cor','Estilo','Alinhar']);
+  await expect(page.locator('[data-text-panel] input[type="range"], [data-text-panel] [name*="width"], [data-text-panel] [id*="width"]')).toHaveCount(0);
+  await page.getByRole('button',{name:'Concluir',exact:true}).click();
+  const id=await page.evaluate(()=>assets.find(a=>a?.type==='text').id);
+  await page.evaluate(id=>{selectAssetById(id,'e8y-single-tap');syncAssetToolbarState()},id);
+  await expect(page.locator('#tbAssetReplace .tb-lbl')).toHaveText('Editar'); await expect(page.locator('#textCreationSheet')).not.toHaveClass(/open/);
+  expect(await page.evaluate(()=>textEditorSingleTapOpenedKeyboard)).toBe(false);
+  const imageId=await page.evaluate(()=>assets.find(a=>a?.type==='image').id); await page.evaluate(id=>{selectAssetById(id,'e8y-image');syncAssetToolbarState()},imageId); await expect(page.locator('#tbAssetReplace .tb-lbl')).toHaveText('Trocar');
+  await page.evaluate(id=>{selectAssetById(id,'e8y-text');syncAssetToolbarState();runAssetPrimaryAction()},id); await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
+  await expect(page.locator('#textCreationInput')).toHaveValue('Linha 1\nLinha 2'); const canonicalBefore=await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),id);
+  await page.locator('#textCreationInput').fill('Rascunho cancelado'); await page.getByRole('button',{name:'Fonte',exact:true}).click(); await page.getByRole('button',{name:'Fonte Mono',exact:true}).click(); await page.getByRole('button',{name:'Cancelar',exact:true}).click();
+  expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),id)).toEqual(canonicalBefore);
+  const counters=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,count:assets.length}));
+  await page.evaluate(id=>startTextAssetEditing(assets.find(a=>String(a.id)===id),'toolbar'),id); await page.locator('#textCreationInput').fill('Editado\ncom Enter');
+  await page.getByRole('button',{name:'Fonte',exact:true}).click(); await page.getByRole('button',{name:'Fonte Serifada',exact:true}).click(); await page.getByRole('button',{name:'Cor',exact:true}).click(); await page.locator('#textCreationColor').evaluate(el=>{el.value='#3366ff';el.dispatchEvent(new Event('input',{bubbles:true}))});
+  await page.getByRole('button',{name:'Estilo',exact:true}).click(); await page.getByRole('button',{name:'Negrito + itálico',exact:true}).click(); await page.getByRole('button',{name:'Alinhar',exact:true}).click(); await page.getByRole('button',{name:'Direita',exact:true}).click();
+  await page.screenshot({path:testInfo.outputPath('e8y-text-editor-390x797.png')}); await page.getByRole('button',{name:'Concluir',exact:true}).click();
+  const committed=await page.evaluate(id=>({asset:serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),id:selectedAssetId,count:assets.length,undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}),id);
+  expect(committed).toMatchObject({id,count:counters.count,undo:counters.undo+1,rev:counters.rev+1,asset:{id,text:'Editado\ncom Enter',color:'#3366ff',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right'}});
+  await page.evaluate(()=>undo()); expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),id)).toEqual(canonicalBefore);
+  await page.evaluate(()=>redo()); expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),id)).toEqual(committed.asset);
+  const noChange=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision})); await page.evaluate(id=>startTextAssetEditing(assets.find(a=>String(a.id)===id),'toolbar'),id); await page.getByRole('button',{name:'Concluir',exact:true}).click(); expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}))).toEqual(noChange);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=390)).toBe(true);
 });

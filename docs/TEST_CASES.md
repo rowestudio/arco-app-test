@@ -351,3 +351,11 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - WebKit/Linux: criação, cancelamento, whitespace, transformações, Layers, Save/Load, Session Restore, ProjectWorld/Frames e Preview/composição por pixels.
 - WebKit/macOS: preflight nativo sequencial `avc1.42001f`, `avc1.42E01E`, `avc1.4D401F` em 720×1280/30 fps/10 Mbps/prefer-hardware e Export WebCodecs real, somente imagem e imagem + Text Asset, exigindo MP4 não vazio. Chrome 150/Linux foi avaliado e rejeitado por retornar H.264 não suportado.
 - Nenhum dos gates usa skip, retry ou mock; Safari/iPhone publicado permanece aprovação manual obrigatória.
+
+## TC-039 — Editor tipográfico e reedição de Text Assets E8Y
+
+- Pré-condição: projeto com image asset e Text Asset; Modo Ativos; viewport 390 × 797.
+- Passos: selecionar com um toque; abrir por Editar e por dois taps; testar Texto/Fonte/Cor/Estilo/Alinhar, Enter, Cancelar, Concluir, Concluir sem mudança, drag, Undo/Redo, Save/Load, Session Restore, Preview e Export MP4 real.
+- Resultado esperado: um toque não abre teclado; imagem mantém Trocar; draft aparece apenas no Stage; Cancelar não muda estado/revisão; commit altera o mesmo ID com exatamente um Undo/autosave; tipografia normalizada é idêntica em persistência e renderers; não há largura manual, overflow ou verde no chrome.
+- Evidência: `tests/smoke/app.spec.mjs`, `tests/smoke/export.spec.mjs`, screenshot WebKit e checklist publicado em iPhone/Safari.
+- Ambiente: WebKit automatizado; gate H.264 em WebKit/macOS; iPhone/Safari real obrigatório para aprovação final.
