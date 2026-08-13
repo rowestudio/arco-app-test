@@ -377,3 +377,7 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 
 - Uma edição somente tipográfica deve diferir no fingerprint, fazer Undo/Redo agendar uma revisão cada e sobreviver à aplicação real dos respectivos checkpoints IndexedDB.
 - `pointercancel` durante escala, rotação, movimento ou tap restaura o estado inicial, mantém Undo/revisão, fecha todos os estados de gesto e não abre o editor.
+
+## TC-043 — Fundo canônico da caixa de texto E8Z
+
+Criar texto multilinha pelo fluxo público; confirmar fundo desligado; editar em **Caixa**, ativar `#112233` a 65% e concluir. Exigir modelo `block`, paddings `0.50em`/`0.30em`, wrapping e centro preservados, retângulo externo em seleção/hit-test, glifos opacos, exatamente um Undo/autosave, Undo/Redo, Cancelar/no-op, Save/Load, checkpoint/Restore e paridade Stage/Preview/Export. Projeto E8Y sem campos deve permanecer sem fundo e sem mudança geométrica. Em 390 × 797 não pode haver overflow; teclado não altera ProjectWorld, Frames ou outros ativos. O gate H.264 real inclui imagem, texto multilinha, fundo, opacidade e rotação, sem mocks.

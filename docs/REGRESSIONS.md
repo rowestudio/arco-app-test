@@ -165,3 +165,9 @@ Catálogo obrigatório de regressões históricas e proteções.
 - **Como detectar:** inspecionar os elementos produzidos pela própria UI do Arco nos principais estados da aplicação e verificar se algum utiliza verde, excluindo da análise os pixels pertencentes aos assets/conteúdo do usuário.
 - **Teste preventivo:** validação visual em iPhone/Safari real. Smoke/WebKit e inspeção de estilos podem servir como proteção complementar quando houver abordagem confiável e específica para o chrome do aplicativo. Não criar detector genérico de pixels verdes que possa confundir conteúdo do usuário com UI.
 - **Status:** regra consolidada após aprovação visual da `v8z4b32E8Q`.
+
+## E8Z — proteções da caixa de texto
+
+- Projetos E8Y sem campos de caixa migram com fundo desligado e geometria visual anterior.
+- Ativar fundo não pode alterar wrapping ou centro; seleção/hit-test devem usar o retângulo externo.
+- A opacidade do fundo não pode reduzir a opacidade dos glifos; draft não pode alcançar persistência, Preview ou Export.

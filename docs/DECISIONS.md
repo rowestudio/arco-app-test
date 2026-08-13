@@ -346,3 +346,7 @@ Decisão: manter WebKit/Linux como gate funcional de Text Asset até Preview/com
 - **Exclusões:** DOM, `HTMLImageElement`, `ImageBitmap`, caches, drawables e diagnóstico não participam do fingerprint.
 - **Cancelamento:** escala/rotação canceladas restauram o snapshot pré-gesto e não entram no histórico ou Session Autosave.
 - **Escopo:** bloqueador da mesma E8Y na PR #488, sem bump e sem alterar `projectStateEquals()` usado por Reset e outros fluxos.
+
+## 2026-08-13 — E8Z: geometria externa da caixa de texto
+
+Decisão: `boxWidth` continua sendo a largura de conteúdo/wrapping; com fundo ativo, `worldW/worldH` representam conteúdo mais padding simétrico e `worldX/worldY` o canto externo, preservando o centro na edição. Stage, Preview e Export derivam o fundo do mesmo ativo canônico; opacidade é aplicada somente ao preenchimento.

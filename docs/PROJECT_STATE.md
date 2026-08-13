@@ -245,3 +245,9 @@ A cobertura permanente separa capacidade funcional de Text Asset (WebKit/Linux a
 
 - O teste respeita o comportamento existente de Load/Restore voltar ao Modo Câmera e limpar seleção: reentra publicamente em Ativos, readquire o DOM do Text Asset restaurado, toca para selecionar e só então valida **Editar** e o commit sem alteração.
 - Nenhum comportamento de Session Restore, modo ou seleção foi alterado no produto para acomodar o teste.
+
+## Atualização 2026-08-13 — v8z4b32E8Z em desenvolvimento
+
+- A E8Z adiciona ao Text Asset a caixa canônica `block`, com fundo sólido opcional, opacidade independente e padding fixo em `em`, preservando wrapping e centro ao alternar o fundo.
+- Stage e o compositor Canvas compartilhado por Preview/Export usam o mesmo modelo persistido. Padding customizável, estilos por linha, presença temporal e animação permanecem futuros e separados.
+- A revisão geral de interface/contraste permanece tarefa separada e não bloqueia esta entrega funcional.
