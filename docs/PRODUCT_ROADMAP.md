@@ -103,3 +103,9 @@ Estados usados neste documento:
 
 - [Em evolução] O checkpoint de abertura/restauração e a escolha explícita entre recuperar a sessão ou começar do início já foram implementados.
 - Evoluções futuras desse fluxo exigem tarefa própria e não fazem parte da `v8z4b32E8U`.
+
+## 11. Evolução de Text Assets
+
+- [Implementado em E8Y] Reedição tipográfica por toolbar e duplo toque, com fontes locais limitadas, cor, peso/itálico e alinhamento.
+- [Futuro] Fundo e padding são propriedades da caixa de texto, sem placeholder inativo na interface atual.
+- [Futuro] Presença temporal é função geral e compartilhada por imagens e textos: define **quando** o ativo aparece; animação define **como** aparece ou se comporta.

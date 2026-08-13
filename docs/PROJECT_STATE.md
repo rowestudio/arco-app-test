@@ -209,3 +209,39 @@ OPS documental v8z4b32E7X incorporou ao Project OS o backlog de produto recupera
 ## QA E8X — split de navegador
 
 A cobertura permanente separa capacidade funcional de Text Asset (WebKit/Linux até Preview real) da capacidade nativa de Export H.264 (WebKit/macOS). Chrome 150/Linux foi rejeitado como gate por retornar H.264 não suportado. O crash da consulta H.264 foi reproduzido na `main` sem texto; portanto, não é tratado como regressão funcional E8X. Aprovação em iPhone/Safari real permanece pendente e obrigatória.
+
+## Atualização 2026-08-13 — v8z4b32E8Y em desenvolvimento
+
+- O Text Asset da E8X passa a usar um editor tipográfico único nos modos `create` e `edit`, aberto por **Editar** na toolbar contextual ou por dois taps concluídos no mesmo texto.
+- O draft isolado substitui visualmente o alvo somente no Stage; Cancelar descarta a sessão e Concluir atualiza o mesmo asset com um único Undo e uma única revisão de Session Autosave apenas quando há mudança.
+- `fontKey`, família resolvida, `fontWeight`, `fontStyle` e `textAlign` são normalizados, persistidos e compartilhados por Stage, Preview e Export. Aprovação final permanece dependente de publicação e validação por Roberto em iPhone/Safari real.
+
+## Revisão bloqueante 2026-08-13 — v8z4b32E8Y na PR #488
+
+- A mesma versão E8Y mantém as tabs semânticas e corrige os locators Playwright para `role="tab"`.
+- Eventos `change` originados no editor enquanto há draft deixam de criar revisão de Session Autosave; os testes comparam `undoStack`, `_sessionAutosaveQueuedRevision`, payload canônico e snapshot real em Cancelar, commit alterado e commit sem alteração.
+- `#textCreationSheet` passa a capturar ponteiros e toque em toda a viewport, mantendo o Stage visível e os controles/rolagem horizontal internos operáveis, sem permitir pan, zoom ou edição atrás do sheet.
+- Esta revisão atualiza somente a PR #488; produção e merge continuam não autorizados.
+
+## Revisão final de bloqueadores da v8z4b32E8Y na PR #488
+
+- Undo e Redo passam a comparar o snapshot canônico completo antes/depois da restauração e agendam uma revisão de Session Autosave para toda mudança real, mantendo o diagnóstico específico de fonte de imagem sem usá-lo como condição exclusiva.
+- `pointercancel` encerra o gesto de asset como cancelado, limpa o tap pendente, restaura um movimento parcial sem histórico e nunca participa da contagem de dois taps concluídos.
+- O gate funcional escolhe um ponto de imagem confirmado por `hitTestAssetAtWorld()` e compara o Undo tipográfico com o estado pós-drag, preservando a entrada de movimento anterior.
+
+## Correção do gate WebKit 15/16 na v8z4b32E8Y
+
+- A comparação de Undo/Redo deixa de reutilizar o snapshot reduzido de Reset e passa a usar fingerprint canônico dedicado, incluindo assets, tipografia, ProjectWorld, ordem e identidade de Layers, sem DOM/bitmaps/caches.
+- Cancelamento de escala e rotação restaura o snapshot inicial e termina sem Undo ou Session Autosave, como já ocorria no cancelamento de movimento/tap.
+- O gate lê e aplica o checkpoint IndexedDB real após Undo e Redo, comprovando paridade do estado restaurado, e mantém a versão E8Y da PR #488.
+
+## Ajuste final do gate funcional E8Y
+
+- O teste de transformação cancelada readquire o Text Asset por `id` após cada `restoreState()`, evitando observar uma referência stale removida de `assets`.
+- Checkpoints de Undo e Redo são capturados antes de qualquer restore; o Redo roda com a pilha íntegra, e somente depois ambos os checkpoints são aplicados e validados com retorno de sucesso.
+- Movimento parcial cancelado também percorre listeners reais de pointer e comprova geometria, histórico, revisão e estados de gesto intactos.
+
+## Ajuste pós-Session Restore no gate E8Y
+
+- O teste respeita o comportamento existente de Load/Restore voltar ao Modo Câmera e limpar seleção: reentra publicamente em Ativos, readquire o DOM do Text Asset restaurado, toca para selecionar e só então valida **Editar** e o commit sem alteração.
+- Nenhum comportamento de Session Restore, modo ou seleção foi alterado no produto para acomodar o teste.

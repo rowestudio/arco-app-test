@@ -49,3 +49,9 @@
 - Não trocar comportamento aprovado por simplificação técnica.
 - Não usar diagnóstico interno como substituto de validação visual.
 - Não permitir texto técnico renderizado no app.
+
+## Editor tipográfico de Text Assets
+
+- Um toque em texto apenas seleciona; **Editar** na toolbar e dois taps concluídos no mesmo Text Asset abrem o editor.
+- O editor reutiliza o mesmo draft para criação e reedição e oferece Texto, Fonte, Cor, Estilo e Alinhar; Enter preserva quebra manual.
+- Esta etapa não oferece largura manual, fundo, padding, presença temporal ou animação. Draft não participa de Preview, Export, Save/Load ou Session Autosave.

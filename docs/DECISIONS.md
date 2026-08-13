@@ -316,3 +316,33 @@ Formato: ID, data, decisão, contexto, consequência e status.
 ## 2026-08-12 — Gates permanentes por capacidade nativa do navegador
 
 Decisão: manter WebKit/Linux como gate funcional de Text Asset até Preview/composição e usar WebKit/macOS como gate do Export WebCodecs/H.264 real; Chrome 150/Linux foi rejeitado após retornar H.264 não suportado. O split não altera o produto nem reduz o TC-038: isola uma limitação nativa reproduzida também na `main`, enquanto preserva a exigência de validação posterior em iPhone/Safari real.
+
+## DEC-2026-08-13-01 — Draft isolado e tipografia canônica de Text Assets
+
+- **Data:** 2026-08-13.
+- **Decisão:** criação e reedição usam um controlador com draft isolado. No Stage o draft substitui visualmente o alvo; Preview, Export e persistência consomem somente o asset confirmado. Concluir sem mudança não cria Undo ou autosave.
+- **Tipografia:** `fontKey` usa whitelist local de cinco stacks seguras; peso, estilo e alinhamento usam whitelists. E8X sem `fontKey` migra para Sistema.
+- **Interação:** um toque seleciona, a ação primária adaptativa exibe Editar para texto/Trocar para imagem, e dois taps concluídos no mesmo texto abrem o editor sem transformar o asset.
+- **Futuro:** fundo e padding pertencem à caixa; presença temporal pertence ao sistema geral de ativos e define quando aparecem, separadamente de animação, que define como aparecem ou se comportam.
+- **Status:** implementada tecnicamente na E8Y; validação real em iPhone/Safari pendente.
+
+## DEC-2026-08-13-02 — Modalidade e autosave do editor de texto
+
+- **Data:** 2026-08-13.
+- **Decisão:** o sheet tipográfico é uma superfície modal de ponteiro/toque; a área externa não conclui nem cancela e não encaminha gestos ao Stage. A rolagem horizontal interna permanece explícita por `touch-action: pan-x`.
+- **Autosave:** enquanto `pendingTextDraft` existir, qualquer `change` originado em `#textCreationSheet` é ignorado pelo listener global. Somente o commit canônico alterado chama `markProjectDirty()` uma vez.
+- **QA:** as ferramentas continuam semanticamente `role="tab"`; testes devem localizá-las como tabs e exercitar seleção, toolbar e dois taps pelo fluxo público.
+- **Status:** correção bloqueante incorporada à E8Y na PR #488; validação WebKit e iPhone/Safari continua obrigatória.
+
+## DEC-2026-08-13-03 — Histórico canônico sempre persiste e tap cancelado não conclui
+
+- **Decisão:** Undo/Redo que alterem o snapshot canônico agendam exatamente uma revisão normal de Session Autosave, independentemente de alteração em fonte de imagem. `pointercancel` não é `pointerup`: limpa o candidato de duplo tap, desfaz movimento parcial sem histórico e encerra o estado de gesto.
+- **Escopo:** correção bloqueante dentro da E8Y/PR #488, sem nova versão e sem alteração do modelo de câmera, Frames, curvas ou ProjectWorld.
+- **Evidência exigida:** checkpoint IndexedDB real após Undo/Redo de tipografia e sequência pointerdown → pointercancel → tap único no WebKit funcional.
+
+## DEC-2026-08-13-04 — Fingerprint canônico dedicado ao histórico
+
+- **Decisão:** Undo/Redo usam comparação própria composta pelo snapshot de animação existente, `projectWorld`, `nextLayerSequence` e representação persistível ordenada dos assets, incluindo tipografia e fingerprint da fonte de imagem.
+- **Exclusões:** DOM, `HTMLImageElement`, `ImageBitmap`, caches, drawables e diagnóstico não participam do fingerprint.
+- **Cancelamento:** escala/rotação canceladas restauram o snapshot pré-gesto e não entram no histórico ou Session Autosave.
+- **Escopo:** bloqueador da mesma E8Y na PR #488, sem bump e sem alterar `projectStateEquals()` usado por Reset e outros fluxos.

@@ -351,3 +351,29 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - WebKit/Linux: criação, cancelamento, whitespace, transformações, Layers, Save/Load, Session Restore, ProjectWorld/Frames e Preview/composição por pixels.
 - WebKit/macOS: preflight nativo sequencial `avc1.42001f`, `avc1.42E01E`, `avc1.4D401F` em 720×1280/30 fps/10 Mbps/prefer-hardware e Export WebCodecs real, somente imagem e imagem + Text Asset, exigindo MP4 não vazio. Chrome 150/Linux foi avaliado e rejeitado por retornar H.264 não suportado.
 - Nenhum dos gates usa skip, retry ou mock; Safari/iPhone publicado permanece aprovação manual obrigatória.
+
+## TC-039 — Editor tipográfico e reedição de Text Assets E8Y
+
+- Pré-condição: projeto com image asset e Text Asset; Modo Ativos; viewport 390 × 797.
+- Passos: selecionar com um toque; abrir por Editar e por dois taps; testar Texto/Fonte/Cor/Estilo/Alinhar, Enter, Cancelar, Concluir, Concluir sem mudança, drag, Undo/Redo, Save/Load, Session Restore, Preview e Export MP4 real.
+- Resultado esperado: um toque não abre teclado; imagem mantém Trocar; draft aparece apenas no Stage; Cancelar não muda estado/revisão; commit altera o mesmo ID com exatamente um Undo/autosave; tipografia normalizada é idêntica em persistência e renderers; não há largura manual, overflow ou verde no chrome.
+- Evidência: `tests/smoke/app.spec.mjs`, `tests/smoke/export.spec.mjs`, screenshot WebKit e checklist publicado em iPhone/Safari.
+- Ambiente: WebKit automatizado; gate H.264 em WebKit/macOS; iPhone/Safari real obrigatório para aprovação final.
+
+## TC-040 — Isolamento modal e de autosave do draft na E8Y
+
+- Pré-condição: Text Asset confirmado, Modo Ativos, editor fechado e contagens reais de Undo/revisão conhecidas.
+- Passos: abrir por toolbar; alterar textarea/cor, trocar tabs e cancelar; repetir com commit; repetir sem alteração; abrir e tentar taps/gestos fora do painel; abrir por dois taps reais, testar drag, imagem, vazio e `dblclick` no Modo Câmera.
+- Resultado esperado: Cancelar e no-op mantêm `undoStack` e `_sessionAutosaveQueuedRevision`; commit alterado incrementa ambos exatamente uma vez; payload/checkpoint/snapshot nunca recebem o draft; sheet bloqueia Stage; tabs conservam `role="tab"`; apenas dois taps concluídos no mesmo texto abrem o editor.
+- Evidência: gate E8Y em `tests/smoke/app.spec.mjs`, gate de Export real em `tests/smoke/export.spec.mjs` e screenshot 390 × 797.
+
+## TC-041 — Persistência de histórico textual e cancelamento de ponteiro
+
+- Confirmar edição tipográfica, aguardar o checkpoint real, executar Undo e Redo e, após cada ação, exigir exatamente uma revisão e payload IndexedDB correspondente ao estado visível; o Undo deve preservar a geometria pós-drag anterior.
+- Executar pointerdown/pointercancel em texto seguido de um tap válido dentro de 360 ms: o editor permanece fechado, não há Undo/autosave e o estado de gesto termina limpo; somente dois taps concluídos abrem.
+- Para imagem sobreposta, localizar por amostragem um ponto visual cujo hit-test canônico retorne a imagem; dois taps nesse ponto selecionam a imagem, mantêm **Trocar** e não abrem texto.
+
+## TC-042 — Fingerprint de histórico e cancelamento de transformações
+
+- Uma edição somente tipográfica deve diferir no fingerprint, fazer Undo/Redo agendar uma revisão cada e sobreviver à aplicação real dos respectivos checkpoints IndexedDB.
+- `pointercancel` durante escala, rotação, movimento ou tap restaura o estado inicial, mantém Undo/revisão, fecha todos os estados de gesto e não abre o editor.
