@@ -1754,8 +1754,14 @@ test('E8Y — editor tipográfico usa fluxo público, isola draft e bloqueia o S
   const restoredUndo=await page.evaluate(async()=>await restoreLastSessionAutosave(window.__e8yCheckpointUndo)); expect(restoredUndo).toBe(true); expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),String(id))).toEqual(postDrag.canonical);
   const restoredRedo=await page.evaluate(async()=>await restoreLastSessionAutosave(window.__e8yCheckpointRedo)); expect(restoredRedo).toBe(true); expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),String(id))).toEqual(committed.asset);
 
+  // Session Restore volta ao Modo Câmera e limpa seleção; reentra e seleciona pelo fluxo público.
+  await page.locator('#modeAssetsBtn').click(); await expect(page.locator('body')).toHaveClass(/editor-assets/); await expect(page.locator('#modeAssetsBtn')).toHaveClass(/active/);
+  expect(await page.evaluate(id=>!!assets.find(a=>String(a.id)===id&&a.type==='text'),String(id))).toBe(true);
+  const finalTextBox=await page.locator(`.world-text-asset[data-asset-id="${id}"]`).boundingBox(); expect(finalTextBox).toBeTruthy(); await page.touchscreen.tap(finalTextBox.x+finalTextBox.width/2,finalTextBox.y+finalTextBox.height/2);
+  expect(await page.evaluate(()=>String(selectedAssetId))).toBe(String(id)); await expect(page.locator('#tbAssetReplace')).toBeVisible(); await expect(page.locator('#tbAssetReplace')).not.toHaveClass(/asset-tool-disabled/); await expect(page.locator('#tbAssetReplace .tb-lbl')).toHaveText('Editar');
+
   // Concluir sem alteração pelo botão público não cria histórico nem revisão.
-  const finalTextBox=await page.locator(`.world-text-asset[data-asset-id="${id}"]`).boundingBox(); await page.touchscreen.tap(finalTextBox.x+finalTextBox.width/2,finalTextBox.y+finalTextBox.height/2); await page.locator('#tbAssetReplace').click();
+  await page.locator('#tbAssetReplace').click(); await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
   const noChange=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision})); await page.getByRole('button',{name:'Concluir',exact:true}).click(); expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}))).toEqual(noChange);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=390)).toBe(true);
 });

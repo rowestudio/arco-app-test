@@ -240,3 +240,8 @@ A cobertura permanente separa capacidade funcional de Text Asset (WebKit/Linux a
 - O teste de transformação cancelada readquire o Text Asset por `id` após cada `restoreState()`, evitando observar uma referência stale removida de `assets`.
 - Checkpoints de Undo e Redo são capturados antes de qualquer restore; o Redo roda com a pilha íntegra, e somente depois ambos os checkpoints são aplicados e validados com retorno de sucesso.
 - Movimento parcial cancelado também percorre listeners reais de pointer e comprova geometria, histórico, revisão e estados de gesto intactos.
+
+## Ajuste pós-Session Restore no gate E8Y
+
+- O teste respeita o comportamento existente de Load/Restore voltar ao Modo Câmera e limpar seleção: reentra publicamente em Ativos, readquire o DOM do Text Asset restaurado, toca para selecionar e só então valida **Editar** e o commit sem alteração.
+- Nenhum comportamento de Session Restore, modo ou seleção foi alterado no produto para acomodar o teste.
