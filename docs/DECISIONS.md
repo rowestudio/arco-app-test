@@ -339,3 +339,10 @@ Decisão: manter WebKit/Linux como gate funcional de Text Asset até Preview/com
 - **Decisão:** Undo/Redo que alterem o snapshot canônico agendam exatamente uma revisão normal de Session Autosave, independentemente de alteração em fonte de imagem. `pointercancel` não é `pointerup`: limpa o candidato de duplo tap, desfaz movimento parcial sem histórico e encerra o estado de gesto.
 - **Escopo:** correção bloqueante dentro da E8Y/PR #488, sem nova versão e sem alteração do modelo de câmera, Frames, curvas ou ProjectWorld.
 - **Evidência exigida:** checkpoint IndexedDB real após Undo/Redo de tipografia e sequência pointerdown → pointercancel → tap único no WebKit funcional.
+
+## DEC-2026-08-13-04 — Fingerprint canônico dedicado ao histórico
+
+- **Decisão:** Undo/Redo usam comparação própria composta pelo snapshot de animação existente, `projectWorld`, `nextLayerSequence` e representação persistível ordenada dos assets, incluindo tipografia e fingerprint da fonte de imagem.
+- **Exclusões:** DOM, `HTMLImageElement`, `ImageBitmap`, caches, drawables e diagnóstico não participam do fingerprint.
+- **Cancelamento:** escala/rotação canceladas restauram o snapshot pré-gesto e não entram no histórico ou Session Autosave.
+- **Escopo:** bloqueador da mesma E8Y na PR #488, sem bump e sem alterar `projectStateEquals()` usado por Reset e outros fluxos.

@@ -372,3 +372,8 @@ Formato: pré-condição, passos, resultado esperado, evidência, ambiente e aut
 - Confirmar edição tipográfica, aguardar o checkpoint real, executar Undo e Redo e, após cada ação, exigir exatamente uma revisão e payload IndexedDB correspondente ao estado visível; o Undo deve preservar a geometria pós-drag anterior.
 - Executar pointerdown/pointercancel em texto seguido de um tap válido dentro de 360 ms: o editor permanece fechado, não há Undo/autosave e o estado de gesto termina limpo; somente dois taps concluídos abrem.
 - Para imagem sobreposta, localizar por amostragem um ponto visual cujo hit-test canônico retorne a imagem; dois taps nesse ponto selecionam a imagem, mantêm **Trocar** e não abrem texto.
+
+## TC-042 — Fingerprint de histórico e cancelamento de transformações
+
+- Uma edição somente tipográfica deve diferir no fingerprint, fazer Undo/Redo agendar uma revisão cada e sobreviver à aplicação real dos respectivos checkpoints IndexedDB.
+- `pointercancel` durante escala, rotação, movimento ou tap restaura o estado inicial, mantém Undo/revisão, fecha todos os estados de gesto e não abre o editor.

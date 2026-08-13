@@ -228,3 +228,9 @@ A cobertura permanente separa capacidade funcional de Text Asset (WebKit/Linux a
 - Undo e Redo passam a comparar o snapshot canônico completo antes/depois da restauração e agendam uma revisão de Session Autosave para toda mudança real, mantendo o diagnóstico específico de fonte de imagem sem usá-lo como condição exclusiva.
 - `pointercancel` encerra o gesto de asset como cancelado, limpa o tap pendente, restaura um movimento parcial sem histórico e nunca participa da contagem de dois taps concluídos.
 - O gate funcional escolhe um ponto de imagem confirmado por `hitTestAssetAtWorld()` e compara o Undo tipográfico com o estado pós-drag, preservando a entrada de movimento anterior.
+
+## Correção do gate WebKit 15/16 na v8z4b32E8Y
+
+- A comparação de Undo/Redo deixa de reutilizar o snapshot reduzido de Reset e passa a usar fingerprint canônico dedicado, incluindo assets, tipografia, ProjectWorld, ordem e identidade de Layers, sem DOM/bitmaps/caches.
+- Cancelamento de escala e rotação restaura o snapshot inicial e termina sem Undo ou Session Autosave, como já ocorria no cancelamento de movimento/tap.
+- O gate lê e aplica o checkpoint IndexedDB real após Undo e Redo, comprovando paridade do estado restaurado, e mantém a versão E8Y da PR #488.

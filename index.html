@@ -14762,6 +14762,44 @@ function projectStateEquals(a, b) {
   }
 }
 
+// Comparação dedicada ao histórico: inclui o estado de animação existente e o
+// modelo canônico persistível de assets/ProjectWorld, sem DOM, bitmaps ou caches.
+function captureHistoryCanonicalFingerprint(state) {
+  if (!state) return null;
+  const canonicalAsset = function(a) {
+    if (!a) return null;
+    const common = {
+      id:a.id, type:a.type||'image', name:a.name||'', layerSequence:a.layerSequence,
+      layerName:a.layerName||'', layerNameSource:a.layerNameSource||'automatic', originalFileName:a.originalFileName||'',
+      worldX:Number(a.worldX)||0, worldY:Number(a.worldY)||0, worldW:Number(a.worldW)||0, worldH:Number(a.worldH)||0,
+      rotation:Number(a.rotation)||0, depth:Number.isFinite(Number(a.depth))?Number(a.depth):0, zIndex:Number(a.zIndex)||0,
+      visible:a.visible!==false, locked:!!a.locked, crop:a.crop?{...a.crop}:null, frameStyle:a.frameStyle?{...a.frameStyle}:null
+    };
+    if (a.type === 'text') return {...common,
+      text:typeof a.text==='string'?a.text:'', color:a.color, fontKey:a.fontKey||'system', fontFamily:a.fontFamily||TEXT_ASSET_FONT_FAMILY,
+      fontWeight:Number(a.fontWeight)===700?700:400, fontStyle:a.fontStyle==='italic'?'italic':'normal',
+      textAlign:['left','center','right'].includes(a.textAlign)?a.textAlign:'center', fontSize:Number(a.fontSize)||36,
+      lineHeight:Number(a.lineHeight)||1.2, boxWidth:Number(a.boxWidth)||Number(a.worldW)||220,
+      textBaseBoxWidth:Number(a.textBaseBoxWidth)||Number(a.boxWidth)||Number(a.worldW)||220,
+      textBaseFontSize:Number(a.textBaseFontSize)||Number(a.fontSize)||36
+    };
+    return {...common,
+      sourceW:Number(a.sourceW)||0, sourceH:Number(a.sourceH)||0, fitMode:a.fitMode||'contain', mimeType:a.mimeType||a.typeMime||'',
+      hasAlpha:!!a.hasAlpha, slotRow:Number(a.slotRow)||0, slotCol:Number(a.slotCol)||0, e6CanonicalReplaced:!!a.e6CanonicalReplaced,
+      sourceFingerprint:_diagSourceHashE8E(_assetPersistentSourceE8E(a))
+    };
+  };
+  return {
+    project:cloneProjectStateSnapshot(state), projectWorld:state.projectWorld?{...state.projectWorld}:null,
+    nextLayerSequence:Number(state.nextLayerSequence)||1, assets:(state.assets||[]).map(canonicalAsset)
+  };
+}
+function historyCanonicalStateEquals(a, b) {
+  if (!a || !b) return false;
+  try { return JSON.stringify(captureHistoryCanonicalFingerprint(a)) === JSON.stringify(captureHistoryCanonicalFingerprint(b)); }
+  catch (_) { return false; }
+}
+
 function restoreState(state) {
   frames.length = 0;
   state.frames.forEach(f => frames.push({...f}));
@@ -14950,7 +14988,7 @@ function undo() {
   projectWorldCompositeInvalidatedAfterAssetUndo = true;
   assetUndoVisualUpdateRan = true;
   stageRedrawnAfterAssetUndo = true;
-  const canonicalStateChangedByUndo = !projectStateEquals(stateBeforeHistory, captureState());
+  const canonicalStateChangedByUndo = !historyCanonicalStateEquals(stateBeforeHistory, captureState());
   if (canonicalStateChangedByUndo) markProjectDirty(imageSourceChangedByUndo ? 'undo-image-source' : 'undo-project-state');
   showStatus('Desfeito');
 }
@@ -15006,7 +15044,7 @@ function redo() {
   projectWorldCompositeInvalidatedAfterAssetRedo = true;
   stageRedrawnAfterAssetRedo = true;
   assetRedoVisualUpdateRan = true;
-  const canonicalStateChangedByRedo = !projectStateEquals(stateBeforeHistory, captureState());
+  const canonicalStateChangedByRedo = !historyCanonicalStateEquals(stateBeforeHistory, captureState());
   if (canonicalStateChangedByRedo) markProjectDirty(imageSourceChangedByRedo ? 'redo-image-source' : 'redo-project-state');
   showStatus('Refeito');
 }
@@ -35142,6 +35180,12 @@ function endAssetTransformPointer(e, cancelled) {
   assetTransformDragState = null;
   assetTransformMode = 'idle';
   assetTransformPointerCancelHandled = !!cancelled || !!assetTransformPointerCancelHandled;
+  if (cancelled) {
+    if (ds.moved && ds.undoSnapshot) restoreState(ds.undoSnapshot);
+    invalidateProjectWorldComposite(); renderProjectWorldExtraImages(); renderAssetSelectionOverlay(); updateLowerTimelineMeta();
+    if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
+    return;
+  }
   if (!ds.moved) return;
   const asset = (Array.isArray(assets) ? assets : []).find(a => a && a.id === ds.assetId);
   const changed = asset && (Math.abs((asset.worldX||0)-ds.startX)>0.01 || Math.abs((asset.worldY||0)-ds.startY)>0.01 || Math.abs((asset.worldW||0)-ds.startW)>0.01 || Math.abs((asset.worldH||0)-ds.startH)>0.01 || Math.abs((Number(asset.rotation)||0)-ds.startRotation)>0.01);
