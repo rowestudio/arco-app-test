@@ -13,6 +13,26 @@ async function clearStartupStorage(page) {
   });
 }
 
+// Pan real do viewport em contexto hasTouch/isMobile, sem simulação de gesto. Em
+// WebKit não é possível construir Touch/TouchEvent por script ("Illegal constructor"),
+// então o gesto real de dois dedos — único que move o viewport no Modo Ativos, já que
+// um arrasto de um dedo sobre um asset é capturado pela seleção — não é simulável.
+// page.mouse também não dirige o handler de pan (baseado em pointer events) no WebKit
+// mobile. Aplicamos então o MESMO efeito de câmera que o handler de pan executa em cada
+// movimento (editorPanX/Y += delta; clampEditorPan(); applyEditorZoom(); cf.
+// index.html), movendo o viewport de verdade e mantendo intacta a verificação
+// expectParity(panned) sob a câmera deslocada.
+async function panEditorViewport(page, dxFrac, dyFrac) {
+  const box = await page.locator('#imageArea').boundingBox();
+  if (!box) throw new Error('#imageArea sem geometria para o pan');
+  await page.evaluate(({ dx, dy }) => {
+    editorPanX += dx;
+    editorPanY += dy;
+    clampEditorPan();
+    applyEditorZoom();
+  }, { dx: box.width * dxFrac, dy: box.height * dyFrac });
+}
+
 async function seedRealSessionCheckpoint(page) {
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
   await clearStartupStorage(page);
@@ -1855,4 +1875,116 @@ test('E9A — profundidade de Text Asset persiste no modelo, redraw, histórico 
     return { positive: normalize(17.5), negative: normalize(-8), missing: normalize(undefined), nan: normalize(NaN), infinity: normalize(Infinity), negativeInfinity: normalize(-Infinity), invalid: normalize('invalid'), imageUnchanged: image.depth === imageDepth };
   }, textId);
   expect(finiteRules).toEqual({ positive: 17.5, negative: -8, missing: 0, nan: 0, infinity: 0, negativeInfinity: 0, invalid: 0, imageUnchanged: true });
+});
+
+test('E9B — Text Asset acompanha seleção na paralaxe do Stage', async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const proModal = page.locator('#proModal');
+  if (await proModal.isVisible()) await page.getByRole('button', { name: 'Dispensar', exact: true }).click();
+  await page.locator('#modeAssetsBtn').click();
+  await page.evaluate(() => startTextCreation());
+  await page.locator('#textCreationInput').fill('R');
+  await page.getByRole('tab', { name: 'Caixa', exact: true }).click();
+  await page.locator('#textBoxBackgroundToggle').click();
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  const textId = await page.evaluate(() => String(getSelectedAsset().id));
+  const autosaveState = () => page.evaluate(() => ({ queued:_sessionAutosaveQueuedRevision, committed:sessionAutosaveRevision, timer:!!_sessionAutosaveTimer, active:_sessionAutosaveActiveWrites.size, inFlight:_sessionAutosaveWriteInFlight }));
+  const waitAutosave = async (expectedRevision, expectedDepth) => {
+    await expect.poll(async () => (await autosaveState()).committed, {timeout:30_000}).toBe(expectedRevision);
+    await expect.poll(async () => { const state=await autosaveState(); return !state.timer&&!state.active&&!state.inFlight; }, {timeout:30_000}).toBe(true);
+    const checkpoint=await page.evaluate(async id=>{const stored=await readSessionCheckpoint(),data=stored&&JSON.parse(stored.payload),asset=data?.assets?.find(candidate=>String(candidate.id)===id);return{revision:stored?.revision,depth:asset?.depth}},textId);
+    expect(checkpoint).toEqual({revision:expectedRevision,depth:expectedDepth});
+  };
+  const rects = async () => page.evaluate(id => {
+    const asset = assets.find(candidate => String(candidate.id) === id);
+    const text = document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(id)}"]`);
+    const selection = document.getElementById('assetSelectOutline');
+    const read = element => { const rect = element.getBoundingClientRect(); return { x: rect.x, y: rect.y, w: rect.width, h: rect.height }; };
+    const selectionStyle=getComputedStyle(selection),handles=Object.fromEntries([...selection.querySelectorAll('.asset-corner-handle')].map(element => { const rect=element.getBoundingClientRect(),style=getComputedStyle(element); return [element.dataset.assetCorner,{x:rect.x+rect.width/2,y:rect.y+rect.height/2,left:parseFloat(style.left),top:parseFloat(style.top)}]; }));
+    return { id:String(asset.id), canonical: { worldX:asset.worldX, worldY:asset.worldY, worldW:asset.worldW, worldH:asset.worldH, boxWidth:asset.boxWidth, fontSize:asset.fontSize, rotation:asset.rotation, zIndex:asset.zIndex, frames:JSON.stringify(frames.slice(0,frameCount)), curves:JSON.stringify({ctrlPts,curvesV2}), world:JSON.stringify(projectWorld) }, depth:asset.depth, text:read(text), selection:read(selection), selectionBorder:{left:parseFloat(selectionStyle.borderLeftWidth),top:parseFloat(selectionStyle.borderTopWidth)},zoom:editorZoomScale, handles, background:getComputedStyle(text).backgroundColor, undo:undoStack.length, queued:_sessionAutosaveQueuedRevision, committed:sessionAutosaveRevision };
+  }, textId);
+  const expectParity = snapshot => {
+    const close=(a,b,tolerance=1)=>expect(Math.abs(a-b)).toBeLessThan(tolerance);
+    close(snapshot.text.x,snapshot.selection.x); close(snapshot.text.y,snapshot.selection.y); close(snapshot.text.w,snapshot.selection.w); close(snapshot.text.h,snapshot.selection.h);
+    expect(Object.keys(snapshot.handles).sort()).toEqual(['bl','br','tl','tr']);
+    for(const corner of Object.keys(snapshot.handles)){const handle=snapshot.handles[corner],expectedX=snapshot.selection.x+(snapshot.selectionBorder.left+handle.left)*snapshot.zoom,expectedY=snapshot.selection.y+(snapshot.selectionBorder.top+handle.top)*snapshot.zoom;close(handle.x,expectedX,.75);close(handle.y,expectedY,.75);}
+    const offsets={tl:{x:snapshot.handles.tl.x-snapshot.selection.x,y:snapshot.handles.tl.y-snapshot.selection.y},tr:{x:snapshot.handles.tr.x-(snapshot.selection.x+snapshot.selection.w),y:snapshot.handles.tr.y-snapshot.selection.y},bl:{x:snapshot.handles.bl.x-snapshot.selection.x,y:snapshot.handles.bl.y-(snapshot.selection.y+snapshot.selection.h)},br:{x:snapshot.handles.br.x-(snapshot.selection.x+snapshot.selection.w),y:snapshot.handles.br.y-(snapshot.selection.y+snapshot.selection.h)}};
+    expect(offsets.tl.x).toBeLessThan(0);expect(offsets.tl.y).toBeLessThan(0);expect(offsets.tr.x).toBeGreaterThan(0);expect(offsets.tr.y).toBeLessThan(0);expect(offsets.bl.x).toBeLessThan(0);expect(offsets.bl.y).toBeGreaterThan(0);expect(offsets.br.x).toBeGreaterThan(0);expect(offsets.br.y).toBeGreaterThan(0);
+    expect(snapshot.background).not.toBe('rgba(0, 0, 0, 0)');
+  };
+  const expectVisualDelta = (from,to) => { const dx=to.text.x-from.text.x,dy=to.text.y-from.text.y; expect(Math.hypot(dx,dy)).toBeGreaterThan(.5); for(const corner of Object.keys(to.handles)){expect(to.handles[corner].x-from.handles[corner].x).toBeCloseTo(dx,1);expect(to.handles[corner].y-from.handles[corner].y).toBeCloseTo(dy,1);} };
+  const setDepth = async (value, previous) => {
+    await page.locator('#assetContextSlider').fill(String(value));
+    await page.locator('#assetContextSlider').dispatchEvent('change');
+    await expect(page.locator('#assetContextValue')).toHaveText(String(value));
+    const queued=await page.evaluate(()=>_sessionAutosaveQueuedRevision); expect(queued).toBe(previous.queued+1);
+    await waitAutosave(queued,value);
+  };
+  const creationQueued=await page.evaluate(()=>_sessionAutosaveQueuedRevision); await waitAutosave(creationQueued,0);
+  const before = await rects();
+  expect(before.depth).toBe(0); expectParity(before);
+  await page.locator('#tbAssetDepth').click();
+  await setDepth(42,before);
+  const after = await rects();
+  expect(after.depth).toBe(42);
+  expect(after.canonical).toEqual(before.canonical);
+  expect(after.undo).toBe(before.undo+1); expect(after.queued).toBe(before.queued+1); expect(after.committed).toBe(before.committed+1);
+  expectVisualDelta(before,after);
+  expectParity(after);
+  const diagnostics=await page.evaluate(()=>Object.fromEntries(buildDiagnosticsText().split('\n').filter(line=>line.includes(': ')).map(line=>{const i=line.indexOf(': ');return[line.slice(0,i),line.slice(i+2)]})));
+  expect(diagnostics).toMatchObject({selectedAssetStageDomKind:'text',assetImageUsesResolvedParallaxGeometry:'n/d',textAssetStageUsesResolvedParallaxGeometry:'true',textAssetDomSelectionParityOk:'true',textAssetMovedWithDepthOnStage:'true',textAssetCanonicalGeometryUnchangedByParallax:'true'});
+  const diagnosticTextRect=JSON.parse(diagnostics.selectedTextAssetDomRect);expect(Number.isFinite(diagnosticTextRect.h)).toBe(true);expect(diagnosticTextRect.h).toBeGreaterThan(0);
+  await page.getByRole('button',{name:'Voltar'}).click(); await page.locator('#tbAssetDepth').click();
+  await expect(page.locator('#assetContextSlider')).toHaveValue('42');
+  await setDepth(-37,after);
+  const negative=await rects(); expect(negative.depth).toBe(-37); expect(negative.canonical).toEqual(before.canonical); expect(negative.undo).toBe(after.undo+1); expect(negative.queued).toBe(after.queued+1); expect(negative.committed).toBe(after.committed+1); expectParity(negative);
+  expectVisualDelta(after,negative);
+  await page.getByRole('button',{name:'Voltar'}).click(); await page.locator('#tbAssetDepth').click(); await expect(page.locator('#assetContextSlider')).toHaveValue('-37'); await page.getByRole('button',{name:'Voltar'}).click();
+
+  // O hit-test público acompanha a área deslocada e abandona a faixa exclusiva da posição antiga.
+  const exclusive=(inside,outside)=>{if(inside.x<outside.x)return{x:(inside.x+outside.x)/2,y:inside.y+inside.h/2};if(inside.x+inside.w>outside.x+outside.w)return{x:(inside.x+inside.w+outside.x+outside.w)/2,y:inside.y+inside.h/2};if(inside.y<outside.y)return{x:inside.x+inside.w/2,y:(inside.y+outside.y)/2};if(inside.y+inside.h>outside.y+outside.h)return{x:inside.x+inside.w/2,y:(inside.y+inside.h+outside.y+outside.h)/2};};
+  const shiftedPoint=exclusive(negative.text,before.text),oldPoint=exclusive(before.text,negative.text); expect(shiftedPoint).toBeTruthy(); expect(oldPoint).toBeTruthy();
+  const imagePoint=await page.evaluate(id=>{const image=[...document.querySelectorAll('.world-extra-img')].find(el=>el.dataset.assetId!==id),r=image.getBoundingClientRect();return{x:r.left+4,y:r.top+4}},textId);
+  await page.touchscreen.tap(imagePoint.x,imagePoint.y); expect(await page.evaluate(()=>getSelectedAsset()?.type)).toBe('image');
+  await page.touchscreen.tap(shiftedPoint.x,shiftedPoint.y); expect(await page.evaluate(()=>String(selectedAssetId))).toBe(textId);
+  await page.touchscreen.tap(imagePoint.x,imagePoint.y); await page.touchscreen.tap(oldPoint.x,oldPoint.y); expect(await page.evaluate(()=>String(selectedAssetId||''))).not.toBe(textId);
+  await page.touchscreen.tap(shiftedPoint.x,shiftedPoint.y); expect(await page.evaluate(()=>String(selectedAssetId))).toBe(textId); expectParity(await rects());
+
+  // Undo/Redo públicos restauram valor e geometria sem passos intermediários.
+  const historyBeforeUndo=await rects(); await page.locator('#topBtnUndo').click(); await waitAutosave(historyBeforeUndo.queued+1,42); const undone=await rects(); expect(undone.depth).toBe(42); expectParity(undone); expect(undone.queued).toBe(historyBeforeUndo.queued+1);expect(undone.committed).toBe(historyBeforeUndo.committed+1);
+  await page.locator('#topBtnRedo').click(); await waitAutosave(undone.queued+1,-37); const redone=await rects(); expect(redone.depth).toBe(-37); expectParity(redone); expect(redone.queued).toBe(undone.queued+1);expect(redone.committed).toBe(undone.committed+1);
+
+  // Trocas públicas de seleção/modo/frame e zoom apenas recalculam o Stage.
+  const navigationBaseline=await rects();
+  await page.touchscreen.tap(imagePoint.x,imagePoint.y); await page.touchscreen.tap(shiftedPoint.x,shiftedPoint.y);
+  await page.locator('#modeCameraBtn').click(); await page.locator('#modeAssetsBtn').click();
+  const pills=page.locator('#pillsRow [data-frame-index]'); if(await pills.count()>1){await pills.nth(1).click();expectParity(await rects());await pills.nth(0).click();}
+  await page.locator('#ezBtnPlus').click(); expectParity(await rects());
+  await page.locator('#ezBtnPan').click(); const panBefore=await page.evaluate(()=>({x:editorPanX,y:editorPanY})); await panEditorViewport(page,.15,.12); const panAfter=await page.evaluate(()=>({x:editorPanX,y:editorPanY}));expect(panAfter).not.toEqual(panBefore);const panned=await rects();expectParity(panned);expect(panned.depth).toBe(-37);expect(panned.canonical).toEqual(navigationBaseline.canonical);
+  const pannedImagePoint=await page.evaluate(id=>{const image=[...document.querySelectorAll('.world-extra-img')].find(el=>el.dataset.assetId!==id),r=image.getBoundingClientRect();return{x:r.left+4,y:r.top+4}},textId),pannedText=await page.locator(`.world-text-asset[data-asset-id="${textId}"]`).boundingBox();await page.locator('#ezBtnPan').click();await page.touchscreen.tap(pannedImagePoint.x,pannedImagePoint.y);await page.touchscreen.tap(pannedText.x+pannedText.width/2,pannedText.y+pannedText.height/2);expect(await page.evaluate(()=>String(selectedAssetId))).toBe(textId);
+  await page.locator('#ezLabel').click();
+  await page.evaluate(()=>{renderProjectWorldExtraImages();renderAssetSelectionOverlay()});
+  const navigated=await rects(); expect(navigated.depth).toBe(-37); expect(navigated.canonical).toEqual(navigationBaseline.canonical); expect(navigated.undo).toBe(navigationBaseline.undo); expect(navigated.queued).toBe(navigationBaseline.queued); expect(navigated.committed).toBe(navigationBaseline.committed); expectParity(navigated); expect(await autosaveState()).toMatchObject({queued:navigationBaseline.queued,committed:navigationBaseline.committed,timer:false,active:0,inFlight:false});
+
+  // Manual Save/Load real: download canônico, file input e inspeção intermediária antes do Restore.
+  const downloadPromise=page.waitForEvent('download');await page.evaluate(()=>doSaveDirect(true,'e9b-text-parallax'));const download=await downloadPromise,savedPath=await download.path();expect(savedPath).toBeTruthy();
+  await page.locator('#projectFileInput').setInputFiles(savedPath);await expect.poll(()=>page.evaluate(()=>loadSessionCompleted),{timeout:30_000}).toBe(true);expect(await page.evaluate(()=>lastLoadError)).toBe('');
+  await page.locator('#modeAssetsBtn').click();let loadedText=await page.locator(`.world-text-asset[data-asset-id="${textId}"]`).boundingBox();await page.touchscreen.tap(loadedText.x+loadedText.width/2,loadedText.y+loadedText.height/2);const afterManualLoad=await rects();expect(afterManualLoad.depth).toBe(-37);expect(afterManualLoad.canonical).toEqual(navigationBaseline.canonical);expectParity(afterManualLoad);
+  let postLoadDiagnostics=await page.evaluate(()=>buildDiagnosticsText());expect(postLoadDiagnostics).toContain('textAssetStageUsesResolvedParallaxGeometry: true');expect(postLoadDiagnostics).toContain('textAssetDomSelectionParityOk: true');expect(postLoadDiagnostics).toContain('textAssetMovedWithDepthOnStage: n/d');
+
+  // Checkpoint IndexedDB real + reload + botão público Continuar.
+  await page.evaluate(async()=>{scheduleSessionAutosave('e9b-session-restore',true);await flushSessionAutosave();while(_sessionAutosaveActiveWrites.size)await Promise.all([..._sessionAutosaveActiveWrites])});await expect.poll(()=>sessionCheckpointExists(page),{timeout:30_000}).toBe(true);
+  await page.reload({waitUntil:'domcontentloaded'});await expect(page.getByRole('dialog',{name:'Continuar sessão anterior?'})).toBeVisible();await page.getByText('Continuar de onde parei',{exact:true}).click();await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30_000});await expect.poll(()=>page.evaluate(()=>sessionRestoreCompleted),{timeout:30_000}).toBe(true);
+  expect(await page.evaluate(()=>({ok:sessionRestoreAppliedSuccessfully,partial:sessionRestoreNoPartialState}))).toEqual({ok:true,partial:true});if(await proModal.isVisible())await page.getByRole('button',{name:'Dispensar',exact:true}).click();await page.locator('#modeAssetsBtn').click();loadedText=await page.locator(`.world-text-asset[data-asset-id="${textId}"]`).boundingBox();await page.touchscreen.tap(loadedText.x+loadedText.width/2,loadedText.y+loadedText.height/2);const afterSession=await rects();expect(afterSession.id).toBe(textId);expect(afterSession.depth).toBe(-37);expect(afterSession.canonical).toEqual(navigationBaseline.canonical);expectParity(afterSession);
+  postLoadDiagnostics=await page.evaluate(()=>buildDiagnosticsText());expect(postLoadDiagnostics).toContain('textAssetStageUsesResolvedParallaxGeometry: true');expect(postLoadDiagnostics).toContain('textAssetDomSelectionParityOk: true');expect(postLoadDiagnostics).toContain('textAssetMovedWithDepthOnStage: n/d');
+
+  // Preview canônico preserva texto/fundo/depth e não leva overlays do editor.
+  await page.evaluate(()=>startPreview());await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000});await expect.poll(()=>page.evaluate(()=>previewLoadingHiddenAfterFirstFrame),{timeout:30_000}).toBe(true);
+  const previewProof=await page.evaluate(id=>{if(animFrame)togglePreviewPlayback();const snapshot=renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id),audit=renderTransform.preview?.assets?.find(a=>String(a.id)===id),screen=document.getElementById('previewScreen'),overlay=document.getElementById('assetSelectOutline'),handles=document.querySelectorAll('.asset-corner-handle.show');return{snapshot,audit,overlayInsidePreview:!!(overlay&&screen.contains(overlay)),handlesInsidePreview:[...handles].some(h=>screen.contains(h)),loading:previewLoadingHiddenAfterFirstFrame}},textId);
+  expect(previewProof.snapshot).toMatchObject({id:textId,depth:-37,boxBackgroundEnabled:true});expect(previewProof.audit).toMatchObject({id:textId,drawn:true,intersectsCamera:true});expect(previewProof).toMatchObject({overlayInsidePreview:false,handlesInsidePreview:false,loading:true});await page.evaluate(()=>stopPreview());await expect(page.locator('body')).toHaveClass(/mode-editor/);
 });

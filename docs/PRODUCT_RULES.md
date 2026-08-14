@@ -1,5 +1,11 @@
 # PRODUCT_RULES
 
+## Regra E9B — geometria visual de Text Assets no Stage
+
+- Após a medição canônica da caixa, glifos e fundo, seleção, quatro abas e hit-test devem consumir a mesma `visualRect` de `resolveAssetStageVisualGeometry`.
+- Paralaxe é geometria visual derivada: nunca altera `worldX/worldY/worldW/worldH`, `boxWidth`, Frames, curvas ou ProjectWorld.
+- Não se admite compensação CSS, fórmula paralela nem mudança nos renderers de Preview/Export para corrigir a paridade do Stage.
+
 ## Profundidade de Text Assets — v8z4b32E9A
 
 - Text Assets novos nascem com `depth = 0`; projetos legados sem valor e valores ausentes, inválidos ou não finitos migram para zero.

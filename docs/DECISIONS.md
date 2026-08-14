@@ -1,5 +1,12 @@
 # DECISIONS
 
+## 2026-08-14 — E9B reutiliza o resolvedor visual do Stage para texto
+
+- **Decisão:** após `measureTextAsset`, o ramo DOM textual usa `resolveAssetStageVisualGeometry` e converte sua `visualRect`, assim como imagens, seleção, abas e hit-test.
+- **Razão:** eliminar a divergência sem duplicar a fórmula de paralaxe ou persistir um offset aparente.
+- **Preservado:** elemento único para glifos e fundo, rotação, escala, padding, background, zIndex, geometria canônica, Frames, curvas, ProjectWorld, Preview e Export.
+- **Risco controlado:** ordem medição → resolução é obrigatória para que largura e altura canônicas estejam atuais.
+
 ## DEC-E9A — `asset.depth` é a fonte canônica também para Text Assets
 
 - **Decisão:** aplicar ao texto a regra finita já usada por imagens: preservar `Number(depth)` quando finito e migrar ausência ou valor inválido para zero em normalização, serialização e hidratação.

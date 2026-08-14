@@ -115,3 +115,12 @@ Estados usados neste documento:
 - Futuro: padding customizável e estilos de caixa por linha, sem declará-los implementados na E8Z.
 - Futuro separado: presença temporal geral dos ativos; animação continua conceito e entrega distinta.
 - A revisão geral tentará primeiro melhorar superfícies e estados ativos. O roxo atual tem pouco contraste em títulos, fontes e ícones; se ainda insuficiente, a própria cor de destaque deverá ser revista. Isso não bloqueia a E8Z.
+
+## E9C — evolução visual e dimensional da caixa de texto (backlog; não implementado na E9B)
+
+- Largura automática ajustada ao conteúdo: a caixa cresce conforme a maior linha até um limite seguro dentro do Stage e, depois desse limite, aplica quebra automática; Enter continua criando quebras manuais.
+- Texto curto, como “R”, deve produzir caixa curta proporcional ao glifo e ao padding.
+- Adicionar controle ajustável de raio das quinas.
+- Preparar, em tarefa própria, arquitetura para futura borda da caixa — ativação, cor e espessura — sem controle, renderização, propriedades canônicas ou campos visíveis antecipados na E9B.
+- Investigar e ampliar o limite de escala dos Text Assets para fontes maiores, preservando geometria finita, proporção, hit-test, Preview, Export e persistência.
+- O limite exato de escala será definido somente após análise específica da E9C; esta etapa não inventa valor nem autoriza implementação automática.

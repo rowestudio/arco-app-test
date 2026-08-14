@@ -1,5 +1,12 @@
 # REGRESSIONS
 
+## REG-E9B — Paralaxe separa Text Asset de sua seleção no Stage
+
+- **Relato:** no iPhone/Safari, a paralaxe movia seleção e abas do Text Asset, mas deixava glifos e fundo fixos no Stage.
+- **Causa:** o DOM `.world-text-asset` convertia a geometria canônica diretamente, ao contrário dos demais consumidores da geometria visual resolvida.
+- **Proteção:** medir o texto antes da resolução e converter somente `resolvedGeometry.visualRect`; teste TC-045 compara DOM, seleção, deslocamento e modelo canônico.
+- **Status:** correção automatizada na E9B; validação final em iPhone/Safari físico pendente. Produção e promoção não autorizadas.
+
 ## REG-E9A — Profundidade de Text Asset apagada
 
 - **Relato:** no iPhone/Safari, uma profundidade não zero escolhida no painel público retornava a zero.
@@ -184,3 +191,22 @@ Catálogo obrigatório de regressões históricas e proteções.
 
 - Percentual, slider, steps, Reset e alças devem escalar `boxWidth` e `fontSize` pelo baseline de conteúdo; nunca atribuir largura externa diretamente a `boxWidth`.
 - Cor, opacidade, estilo e paddings da caixa integram o fingerprint canônico, para que Undo/Redo agendem checkpoints reais mesmo quando somente a caixa muda.
+
+## REG-047 — Simulação de gesto por `page.mouse` em projeto hasTouch/isMobile
+
+- **Problema:** os projetos Playwright de smoke (`playwright.config.mjs`) rodam com `isMobile:true` e `hasTouch:true`. Em WebKit mobile com `hasTouch`, `page.mouse.*` não dispara `pointerdown → pointermove` com captura de forma confiável, então qualquer passo que simule arrasto por mouse sobre um handler baseado em pointer events + `setPointerCapture` (pan do editor, alças de transformação de asset) não move nada. Além disso, no Modo Ativos um arrasto de um dedo sobre um asset é capturado pela seleção/movimento do asset (`handleStageAssetSelectPointer` → `stopImmediatePropagation`), nunca pelo pan; o gesto real que move o viewport nesse modo é o de **dois dedos** (navegação nativa por toque).
+- **Impacto real detectado:** o teste `E9B` falhava na pré-condição `expect(panAfter).not.toEqual(panBefore)` (WebKit Smoke Tests) porque o pan por mouse nunca ocorria; as 17 asserções de paridade anteriores passavam.
+- **Limitação decisiva do WebKit:** em WebKit/Safari não é possível construir `Touch`/`TouchEvent` por script (`TypeError: Illegal constructor`), então o gesto real de **dois dedos** — o único que move o viewport no Modo Ativos, já que um arrasto de um dedo sobre um asset é capturado pela seleção — não é simulável no smoke WebKit. Uma primeira tentativa com `new Touch()`/`new TouchEvent()` passou em Chromium mas falhou no check `WebKit Smoke Tests` exatamente por isso.
+- **Correção do teste (sem tocar no app, aprovada por Roberto):** o passo de pan usa o helper `panEditorViewport()`, que aplica em `page.evaluate` o **mesmo efeito de câmera que o handler de pan do app executa** (`editorPanX/Y += delta; clampEditorPan(); applyEditorZoom();`, cf. `index.html`). O viewport é deslocado de verdade e re-renderizado pelo mesmo caminho; apenas o gatilho passa de gesto para código. Preserva integralmente `expectParity(panned)`, `depth` e `canonical`. Verificado em Chromium (`hasTouch`): pan real (`editorPanX/Y` mudam e sobrevivem ao clamp), paridade texto↔seleção mantida, `editorZoomScale` estável, seleção preservada e `_sessionAutosaveQueuedRevision` inalterado (operação apenas de câmera).
+- **Prevenção:** em projeto `hasTouch`/`isMobile`, nunca simular gesto por `page.mouse` (não dirige handlers baseados em pointer events no WebKit mobile) nem por `new Touch()/new TouchEvent()` (proibido no WebKit). Para tocar/selecionar use `page.touchscreen.tap`; para efeitos que só um gesto multi-touch produziria e que o WebKit não deixa sintetizar, aplicar diretamente o efeito de estado equivalente do app (mesmo caminho de código), mantendo as asserções de verificação. Toda asserção de arrasto deve checar a mudança real esperada (delta), para não passar de forma vazia quando o input não dispara.
+- **Casos duvidosos registrados (não corrigidos — decisão de Roberto pendente):**
+  - `tests/smoke/app.spec.mjs:1735` (E8Z): arrasto por `page.mouse` numa asserção **negativa** (arrasto não deve abrir o editor de texto); pode passar de forma vazia se o mouse não dispara. Converter para toque real exige avaliar efeitos colaterais (mover asset/pan).
+  - `tests/smoke/app.spec.mjs:1779` (E8Z P1): arrasto por `page.mouse` na alça de canto de asset (`beginAssetTransformDrag`, mesma classe pointer + `setPointerCapture`). As asserções checam apenas invariantes (`worldW≈boxWidth+2·paddingX`) e centro **inalterado**, sem exigir que a escala tenha realmente crescido — passa de forma vazia se o arrasto não dispara. Endurecer exige input por toque **e** asserção de delta real.
+- **Caso seguro (sem ação):** `tests/smoke/app.spec.mjs:974` arrasta o `#scaleSlider` (`<input type="range">` nativo, tratado pelo próprio navegador) e afirma mudança de valor; passa de forma legítima.
+
+## E9B — fragilidade latente: paridade glifos↔seleção depende da ORDEM DE CHAMADA do ciclo de render
+
+- **Observação (registro apenas — não corrigir agora):** `renderAssetSelectionOverlay()` lê `worldW/worldH` do Text Asset via `resolveAssetStageVisualGeometry()` → `getAssetVisualWorldRect()`, **sem** chamar `measureTextAsset()`. A geometria correta depende de `renderProjectWorldExtraImages()` (que chama `measureTextAsset(a)`) ter rodado antes no mesmo ciclo. Hoje a paridade glifos↔seleção é garantida pela ORDEM DE CHAMADA, não por um contrato explícito.
+- **Risco:** se alguém reordenar o ciclo de render no futuro, o Text Asset pode desalinhar (seleção/alças usando `worldW/worldH` desatualizados) sem causa aparente.
+- **Endurecimento possível (backlog):** o overlay medir antes de resolver a geometria, ou centralizar a medição do Text Asset num único ponto que ambos os caminhos consumam.
+- **Status:** somente registrado; nenhuma alteração de código de aplicação nesta passada.

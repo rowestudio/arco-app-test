@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9B — base v8z4b32E9A. fix(text): alinha o DOM de Text Assets à geometria visual resolvida de paralaxe usada por seleção, alças e hit-test no Stage, sem persistir o deslocamento aparente nem alterar Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E9B. -->
 <!-- Arco Motion App — v8z4b32E9A — base v8z4b32E8Z. hotfix(text): preserva profundidade canônica finita na normalização, serialização e hidratação, sem alterar fórmula de parallax, UI ou renderer. APP_VERSION = APP_VERSION_NAME = v8z4b32E9A. -->
 <!-- Arco Motion App — v8z4b32E8Y — base v8z4b32E8X. feat(text): editor tipográfico reutilizável para criação e reedição por toolbar e duplo toque. APP_VERSION = APP_VERSION_NAME = v8z4b32E8Y. -->
 <!-- Arco Motion App — v8z4b32E8X — base v8z4b32E8W. feat(text): texto editável nasce como ativo canônico e participa de Layers, transformação, persistência e renderer compartilhado. APP_VERSION = APP_VERSION_NAME = v8z4b32E8X. -->
@@ -7328,9 +7329,10 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9A';
-const APP_VERSION_NAME = 'v8z4b32E9A';
+const APP_VERSION = 'v8z4b32E9B';
+const APP_VERSION_NAME = 'v8z4b32E9B';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
+let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
 let parallaxChangedFrames = false;
 let parallaxChangedCurves = false;
@@ -15529,6 +15531,10 @@ function setAssetContextValue(value) {
   const asset = getSelectedAsset();
   const next = Number(value);
   if (!asset || !Number.isFinite(next)) return;
+  const observedTextDom = asset.type === 'text' && assetContextPanelKind === 'depth'
+    ? stageContent.querySelector('.world-text-asset[data-asset-id="' + CSS.escape(String(asset.id)) + '"]') : null;
+  const observedBeforeRect = observedTextDom ? observedTextDom.getBoundingClientRect() : null;
+  const observedCanonicalBefore = observedTextDom ? JSON.stringify({ x:asset.worldX, y:asset.worldY, w:asset.worldW, h:asset.worldH, boxWidth:asset.boxWidth }) : null;
   beginAssetContextGesture();
   if (assetContextPanelKind === 'depth') asset.depth = Math.max(-100, Math.min(100, next));
   if (assetContextPanelKind === 'rotation') asset.rotation = Math.max(-720, Math.min(720, next));
@@ -15561,6 +15567,18 @@ function setAssetContextValue(value) {
   syncAssetContextPanel();
   invalidateProjectWorldComposite();
   refreshAssetStageVisualGeometry('asset-context-value');
+  if (observedBeforeRect) {
+    const afterTextDom = stageContent.querySelector('.world-text-asset[data-asset-id="' + CSS.escape(String(asset.id)) + '"]');
+    const afterRect = afterTextDom && afterTextDom.getBoundingClientRect();
+    textAssetStageMovementObservation = afterRect ? {
+      assetId: String(asset.id), depth: Number(asset.depth) || 0,
+      domElement: afterTextDom,
+      beforeRect: { x:observedBeforeRect.x, y:observedBeforeRect.y, w:observedBeforeRect.width, h:observedBeforeRect.height },
+      afterRect: { x:afterRect.x, y:afterRect.y, w:afterRect.width, h:afterRect.height },
+      moved: Math.hypot(afterRect.x - observedBeforeRect.x, afterRect.y - observedBeforeRect.y) > 0.001,
+      canonicalUnchanged: observedCanonicalBefore === JSON.stringify({ x:asset.worldX, y:asset.worldY, w:asset.worldW, h:asset.worldH, boxWidth:asset.boxWidth })
+    } : null;
+  }
   updateLowerTimelineMeta();
 }
 function commitAssetContextGesture() {
@@ -34317,7 +34335,7 @@ function refreshAssetStageVisualGeometry(source) {
   const previousSignature = parallaxStageLastCameraSignature;
   const previousFrameIndex = parallaxStageCurrentFrameIndex;
   const selected = getSelectedAsset();
-  const selectedDom = selected ? stageContent.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(String(selected.id)) + '"]') : null;
+  const selectedDom = selected ? stageContent.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(String(selected.id)) + '"],.world-text-asset[data-asset-id="' + CSS.escape(String(selected.id)) + '"]') : null;
   const beforeDomPosition = selectedDom ? { left: selectedDom.style.left, top: selectedDom.style.top } : null;
   const beforeGeometry = selected ? resolveAssetStageVisualGeometry(selected, camera) : null;
   const beforeCanonical = selected ? JSON.stringify(beforeGeometry.canonicalRect) : null;
@@ -34347,7 +34365,7 @@ function refreshAssetStageVisualGeometry(source) {
     }
   }
   if (/timeline|frame|center|scroll/i.test(source || '') && beforeGeometry && afterGeometry) {
-    const afterDom = stageContent.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(String(selected.id)) + '"]');
+    const afterDom = stageContent.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(String(selected.id)) + '"],.world-text-asset[data-asset-id="' + CSS.escape(String(selected.id)) + '"]');
     assetVisualMovedAfterFrameChange = !!(beforeDomPosition && afterDom && (beforeDomPosition.left !== afterDom.style.left || beforeDomPosition.top !== afterDom.style.top));
     assetCanonicalGeometryUnchangedAfterFrameChange = beforeCanonical === JSON.stringify(afterGeometry.canonicalRect);
     parallaxTimelineNavigationCreatedUndo = beforeUndo == null ? null : undoStack.length !== beforeUndo;
@@ -34743,6 +34761,16 @@ function renderProjectWorldExtraImages() {
   let img1Drawn = 0;
   const _zlist = [];
   const _inAssetsMode = (typeof isAssetsMode === 'function' && isAssetsMode());
+  const recordSelectedStageParallaxOffset = function(a, visualRect) {
+    if (String(a.id) !== String(selectedAssetId || '')) return;
+    const baseVisualRect = getAssetVisualWorldRect(a);
+    const dims = getImageSourceDimensions(getCanonicalRenderSource());
+    const sx = (dims.width || 0) / (projectWorld.baseStageW || stageW || 1);
+    const sy = (dims.height || 0) / (projectWorld.baseStageH || stageH || 1);
+    const frame = frames[activeIdx];
+    parallaxOffsetsByContext.stage = { x: (visualRect.x - baseVisualRect.x) * sx, y: (visualRect.y - baseVisualRect.y) * sy,
+      assetId: String(a.id), cameraX: frame ? (frame.x + frame.w / 2) * sx : null, cameraY: frame ? (frame.y + frame.h / 2) * sy : null };
+  };
   sortedAll.forEach(function(a) {
     if (a.visible === false) return;
     const src = getAssetThumbSrc(a); // img-1 (sem a.src) cai no #imgEl.src; extras usam a.src/_img
@@ -34763,15 +34791,7 @@ function renderProjectWorldExtraImages() {
     // da imagem dentro da célula, sem moldura/letterbox herdado.
     const _resolvedGeometry = resolveAssetStageVisualGeometry(a);
     const _vr = _resolvedGeometry.visualRect;
-    if (String(a.id) === String(selectedAssetId || '')) {
-      const _baseVr = getAssetVisualWorldRect(a);
-      const _dims = getImageSourceDimensions(getCanonicalRenderSource());
-      const _sx = (_dims.width || 0) / (projectWorld.baseStageW || stageW || 1);
-      const _sy = (_dims.height || 0) / (projectWorld.baseStageH || stageH || 1);
-      const _f = frames[activeIdx];
-      parallaxOffsetsByContext.stage = { x: (_vr.x - _baseVr.x) * _sx, y: (_vr.y - _baseVr.y) * _sy,
-        assetId: String(a.id), cameraX: _f ? (_f.x + _f.w / 2) * _sx : null, cameraY: _f ? (_f.y + _f.h / 2) * _sy : null };
-    }
+    recordSelectedStageParallaxOffset(a, _vr);
     var _ep = editorWorldToStage(
       _vr.x, _vr.y,
       (_vr.w || projectWorld.baseStageW || 0),
@@ -34800,7 +34820,11 @@ function renderProjectWorldExtraImages() {
   });
   visualAssets.forEach(function(a) {
     if (a.type !== 'text' || a.visible === false) return;
-    const m = measureTextAsset(a), p = editorWorldToStage(a.worldX, a.worldY, a.worldW, a.worldH);
+    const m = measureTextAsset(a);
+    const resolvedGeometry = resolveAssetStageVisualGeometry(a);
+    const visualRect = resolvedGeometry.visualRect;
+    recordSelectedStageParallaxOffset(a, visualRect);
+    const p = editorWorldToStage(visualRect.x, visualRect.y, visualRect.w, visualRect.h);
     const el = document.createElement('div'); el.className='world-text-asset'; el.dataset.assetId=String(a.id);
     el.textContent = a.text || (a === pendingTextDraft ? 'Texto...' : '');
     el.style.left=p.x+'px'; el.style.top=p.y+'px'; el.style.width=p.w+'px'; el.style.minHeight=p.h+'px'; el.style.padding=(m.paddingY*_editorTransform.scale)+'px '+(m.paddingX*_editorTransform.scale)+'px'; el.style.backgroundColor=a.boxBackgroundEnabled?hexToRgba(a.boxBackgroundColor,a.boxBackgroundOpacity):'transparent';
@@ -37413,7 +37437,7 @@ function buildDiagnosticsText() {
   push('parallaxChangedProjectWorld', String(parallaxChangedProjectWorld));
   const _stageAsset = getSelectedAsset();
   const _stageGeometry = _stageAsset ? resolveAssetStageVisualGeometry(_stageAsset) : null;
-  const _assetDom = _stageAsset ? document.querySelector('.world-extra-img[data-asset-id="' + String(_stageAsset.id) + '"]') : null;
+  const _assetDom = _stageAsset ? document.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(String(_stageAsset.id)) + '"],.world-text-asset[data-asset-id="' + CSS.escape(String(_stageAsset.id)) + '"]') : null;
   const _selectionDom = document.getElementById('assetSelectOutline');
   const _panel = document.getElementById('assetContextPanel');
   const _panelStyle = _panel ? getComputedStyle(_panel) : null;
@@ -37424,7 +37448,17 @@ function buildDiagnosticsText() {
   const _settingsSheet = document.getElementById('settingsSheet');
   const _custBarIsContextual = !!(document.body && document.body.classList.contains('cust-open'));
   const _rectText = r => r ? JSON.stringify({x:r.x,y:r.y,w:r.w,h:r.h}) : 'n/d';
-  const _domRectText = el => el ? _rectText({x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,w:parseFloat(el.style.width)||0,h:parseFloat(el.style.height)||0}) : 'n/d';
+  const _readStageCssRect = el => {
+    if (!el) return null;
+    const declared = (primary, fallback) => {
+      const value = parseFloat(primary);
+      if (Number.isFinite(value)) return value;
+      const fallbackValue = parseFloat(fallback);
+      return Number.isFinite(fallbackValue) ? fallbackValue : 0;
+    };
+    return { x:declared(el.style.left), y:declared(el.style.top), w:declared(el.style.width,el.style.minWidth), h:declared(el.style.height,el.style.minHeight) };
+  };
+  const _domRectText = el => _rectText(_readStageCssRect(el));
   const _panelIsInteractive = el => {
     if (!el) return false;
     const s = getComputedStyle(el);
@@ -37455,10 +37489,19 @@ function buildDiagnosticsText() {
   const _proModalInterceptsAssetToolbar = _assetPanelInterceptsToolbar(_proModal);
   const _hiddenAssetPanelInterceptDetected = _contextPanels.some(el => !_panelIsInteractive(el) && _assetPanelInterceptsToolbar(el));
   const _visualRect = _stageGeometry && _stageGeometry.visualRect;
-  const _domRect = _assetDom ? {x:parseFloat(_assetDom.style.left)||0,y:parseFloat(_assetDom.style.top)||0,w:parseFloat(_assetDom.style.width)||0,h:parseFloat(_assetDom.style.height)||0} : null;
-  const _selectionRect = _selectionDom && _selectionDom.style.display !== 'none' ? {x:parseFloat(_selectionDom.style.left)||0,y:parseFloat(_selectionDom.style.top)||0,w:parseFloat(_selectionDom.style.width)||0,h:parseFloat(_selectionDom.style.height)||0} : null;
+  const _domRect = _readStageCssRect(_assetDom);
+  const _selectionRect = _selectionDom && _selectionDom.style.display !== 'none' ? _readStageCssRect(_selectionDom) : null;
   const _expectedStageRect = _visualRect ? editorWorldToStage(_visualRect.x,_visualRect.y,_visualRect.w,_visualRect.h) : null;
   const _rectParity = (a,b) => !!(a&&b&&Math.abs(a.x-b.x)<0.6&&Math.abs(a.y-b.y)<0.6&&Math.abs(a.w-b.w)<0.6&&Math.abs(a.h-b.h)<0.6);
+  const _selectedStageDomKind = _assetDom ? (_assetDom.classList.contains('world-text-asset') ? 'text' : 'image') : 'n/d';
+  const _selectedTextStage = _stageAsset && _stageAsset.type === 'text';
+  const _textResolvedGeometryParity = _selectedTextStage && _expectedStageRect && _domRect ? _rectParity(_expectedStageRect, _domRect) : null;
+  const _textDomSelectionParity = _selectedTextStage && _domRect && _selectionRect ? _rectParity(_domRect, _selectionRect) : null;
+  const _textMovementObserved = _selectedTextStage && textAssetStageMovementObservation &&
+    textAssetStageMovementObservation.assetId === String(_stageAsset.id) && textAssetStageMovementObservation.depth === (Number(_stageAsset.depth) || 0) &&
+    textAssetStageMovementObservation.domElement === _assetDom && _assetDom && _assetDom.isConnected;
+  const _textMovedWithDepth = _textMovementObserved ? textAssetStageMovementObservation.moved : null;
+  const _textCanonicalUnchanged = _textMovementObserved ? textAssetStageMovementObservation.canonicalUnchanged : null;
   push('parallaxStageCurrentCameraSource', parallaxStageCurrentCameraSource);
   push('parallaxStageCurrentFrameIndex', String(parallaxStageCurrentFrameIndex));
   push('parallaxStageRecomputedAfterTimelineTap', String(parallaxStageRecomputedAfterTimelineTap));
@@ -37502,7 +37545,14 @@ function buildDiagnosticsText() {
   push('selectedAssetSelectionRect', _domRectText(_selectionDom));
   push('selectedAssetHitTestRect', _rectText(_visualRect));
   push('selectedAssetHandlesRect', _domRectText(_selectionDom));
-  push('assetImageUsesResolvedParallaxGeometry', _expectedStageRect && _domRect ? String(_rectParity(_expectedStageRect,_domRect)) : 'n/d');
+  push('selectedAssetStageDomKind', _selectedStageDomKind);
+  push('selectedTextAssetDomRect', _selectedTextStage ? _domRectText(_assetDom) : 'n/d');
+  push('selectedTextAssetSelectionRect', _selectedTextStage ? _domRectText(_selectionDom) : 'n/d');
+  push('textAssetStageUsesResolvedParallaxGeometry', _textResolvedGeometryParity == null ? 'n/d' : String(_textResolvedGeometryParity));
+  push('textAssetDomSelectionParityOk', _textDomSelectionParity == null ? 'n/d' : String(_textDomSelectionParity));
+  push('textAssetMovedWithDepthOnStage', _textMovedWithDepth == null ? 'n/d' : String(_textMovedWithDepth));
+  push('textAssetCanonicalGeometryUnchangedByParallax', _textCanonicalUnchanged == null ? 'n/d' : String(_textCanonicalUnchanged));
+  push('assetImageUsesResolvedParallaxGeometry', _stageAsset && _stageAsset.type === 'image' && _expectedStageRect && _domRect ? String(_rectParity(_expectedStageRect,_domRect)) : 'n/d');
   push('assetSelectionUsesResolvedParallaxGeometry', _expectedStageRect && _selectionRect ? String(_rectParity(_expectedStageRect,_selectionRect)) : 'n/d');
   push('assetHitTestUsesResolvedParallaxGeometry', (typeof lastAssetHitTestSelectedId !== 'undefined' && lastAssetHitTestSelectedId) ? String(String(lastAssetHitTestSelectedId) === String(_stageAsset && _stageAsset.id)) : 'n/d');
   push('assetHandlesUseResolvedParallaxGeometry', _selectionRect ? String(_rectParity(_expectedStageRect,_selectionRect)) : 'n/d');

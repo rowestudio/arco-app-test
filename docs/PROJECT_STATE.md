@@ -1,5 +1,14 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-14 — v8z4b32E9B em PR
+
+- Roberto identificou em iPhone/Safari que, com `depth` finito, seleção, abas e hit-test acompanhavam a paralaxe, mas glifos e fundo do Text Asset permaneciam na posição canônica no Stage.
+- Causa raiz: o ramo DOM de texto media a caixa e convertia diretamente `worldX/worldY/worldW/worldH`, enquanto imagens e overlays consumiam `resolveAssetStageVisualGeometry().visualRect`.
+- A E9B mede primeiro o texto e posiciona seu único elemento DOM pela geometria visual resolvida existente. O offset aparente não é gravado em geometria, Frames, curvas ou ProjectWorld; Preview e Export permanecem inalterados.
+- O teste automatizado E9B define cobertura para profundidades positivas e negativas, DOM/seleção/alças/hit-test, histórico, navegação e persistência; sua execução local permanece bloqueada pela ausência do WebKit no ambiente. A validação final em iPhone/Safari físico permanece pendente e nenhuma promoção para produção está autorizada.
+- Revisão corretiva do gate WebKit: 17 testes passaram e o E9B parou no baseline porque a expectativa das abas ignorava os 3 px de borda do contorno. O teste passa a calcular centros pela origem interna, bordas e posições CSS reais, sem alterar o produto, e amplia a evidência de autosave concluído/checkpoint, pan, Manual Save/Load, Continuar sessão e Preview; a execução integral do novo HEAD permanece obrigatória.
+- No HEAD `6c57e4a`, a paridade visual direta já passava, mas o diagnóstico lia somente `style.height`; como o Text Asset declara `style.minHeight`, auditava altura zero e gerava falso negativo. A leitura declarativa passa a compartilhar fallback `height → minHeight` (e `width → minWidth`) no mesmo espaço CSS do Stage, mantendo renderer e tolerâncias intactos; os checks do novo HEAD ainda devem ser executados.
+
 Última atualização documental: 2026-08-08.
 
 ## Atualização 2026-08-13 — v8z4b32E9A em hotfix
