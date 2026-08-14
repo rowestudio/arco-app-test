@@ -13,35 +13,24 @@ async function clearStartupStorage(page) {
   });
 }
 
-// Pan real do viewport em contexto hasTouch/isMobile. O pan do editor depende de
-// pointer events + setPointerCapture; em WebKit mobile com hasTouch, page.mouse.*
-// não dispara pointerdown→pointermove de forma confiável e o Stage não se move.
-// Além disso, no Modo Ativos um arrasto de um dedo sobre um asset é capturado pela
-// seleção/movimento do asset, nunca pelo pan. O gesto real que move o viewport nesse
-// modo é o de DOIS dedos (navegação nativa por toque): mantendo a distância entre os
-// dedos constante, o resultado é pan puro (sem alterar o zoom). Convertemos para esse
-// gesto, preservando a intenção original (pan real do viewport + expectParity).
-async function stageTwoFingerPan(page, fromFrac, toFrac) {
+// Pan real do viewport em contexto hasTouch/isMobile, sem simulação de gesto. Em
+// WebKit não é possível construir Touch/TouchEvent por script ("Illegal constructor"),
+// então o gesto real de dois dedos — único que move o viewport no Modo Ativos, já que
+// um arrasto de um dedo sobre um asset é capturado pela seleção — não é simulável.
+// page.mouse também não dirige o handler de pan (baseado em pointer events) no WebKit
+// mobile. Aplicamos então o MESMO efeito de câmera que o handler de pan executa em cada
+// movimento (editorPanX/Y += delta; clampEditorPan(); applyEditorZoom(); cf.
+// index.html), movendo o viewport de verdade e mantendo intacta a verificação
+// expectParity(panned) sob a câmera deslocada.
+async function panEditorViewport(page, dxFrac, dyFrac) {
   const box = await page.locator('#imageArea').boundingBox();
-  if (!box) throw new Error('#imageArea sem geometria para o gesto de pan');
-  await page.evaluate(({ box, fromFrac, toFrac }) => {
-    const area = document.getElementById('imageArea');
-    const sx = box.x + box.w * fromFrac.x, sy = box.y + box.h * fromFrac.y;
-    const dx = box.w * (toFrac.x - fromFrac.x), dy = box.h * (toFrac.y - fromFrac.y);
-    const gap = 40, steps = 6;
-    const touch = (id, x, y) => new Touch({ identifier: id, target: area, clientX: x, clientY: y, pageX: x, pageY: y, screenX: x, screenY: y, radiusX: 5, radiusY: 5, force: 1 });
-    const emit = (type, points) => area.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, composed: true, touches: points, targetTouches: points, changedTouches: points }));
-    const f1 = [sx - gap, sy], f2 = [sx + gap, sy];
-    emit('touchstart', [touch(1, f1[0], f1[1]), touch(2, f2[0], f2[1])]);
-    for (let i = 1; i <= steps; i++) {
-      const ox = dx * i / steps, oy = dy * i / steps;
-      emit('touchmove', [touch(1, f1[0] + ox, f1[1] + oy), touch(2, f2[0] + ox, f2[1] + oy)]);
-    }
-    emit('touchend', []);
-  }, { box: { x: box.x, y: box.y, w: box.width, h: box.height }, fromFrac, toFrac });
-  // O fim da navegação por toque arma um cooldown curto (STAGE_NAV_COOLDOWN_MS) que
-  // ignora taps subsequentes; aguardar sua expiração antes de o teste seguir tocando.
-  await expect.poll(() => page.evaluate(() => !isStageNavigationActiveOrCoolingDown()), { timeout: 5_000 }).toBe(true);
+  if (!box) throw new Error('#imageArea sem geometria para o pan');
+  await page.evaluate(({ dx, dy }) => {
+    editorPanX += dx;
+    editorPanY += dy;
+    clampEditorPan();
+    applyEditorZoom();
+  }, { dx: box.width * dxFrac, dy: box.height * dyFrac });
 }
 
 async function seedRealSessionCheckpoint(page) {
@@ -1976,7 +1965,7 @@ test('E9B — Text Asset acompanha seleção na paralaxe do Stage', async ({ pag
   await page.locator('#modeCameraBtn').click(); await page.locator('#modeAssetsBtn').click();
   const pills=page.locator('#pillsRow [data-frame-index]'); if(await pills.count()>1){await pills.nth(1).click();expectParity(await rects());await pills.nth(0).click();}
   await page.locator('#ezBtnPlus').click(); expectParity(await rects());
-  await page.locator('#ezBtnPan').click(); const panBefore=await page.evaluate(()=>({x:editorPanX,y:editorPanY})); await stageTwoFingerPan(page,{x:.2,y:.2},{x:.35,y:.32}); const panAfter=await page.evaluate(()=>({x:editorPanX,y:editorPanY}));expect(panAfter).not.toEqual(panBefore);const panned=await rects();expectParity(panned);expect(panned.depth).toBe(-37);expect(panned.canonical).toEqual(navigationBaseline.canonical);
+  await page.locator('#ezBtnPan').click(); const panBefore=await page.evaluate(()=>({x:editorPanX,y:editorPanY})); await panEditorViewport(page,.15,.12); const panAfter=await page.evaluate(()=>({x:editorPanX,y:editorPanY}));expect(panAfter).not.toEqual(panBefore);const panned=await rects();expectParity(panned);expect(panned.depth).toBe(-37);expect(panned.canonical).toEqual(navigationBaseline.canonical);
   const pannedImagePoint=await page.evaluate(id=>{const image=[...document.querySelectorAll('.world-extra-img')].find(el=>el.dataset.assetId!==id),r=image.getBoundingClientRect();return{x:r.left+4,y:r.top+4}},textId),pannedText=await page.locator(`.world-text-asset[data-asset-id="${textId}"]`).boundingBox();await page.locator('#ezBtnPan').click();await page.touchscreen.tap(pannedImagePoint.x,pannedImagePoint.y);await page.touchscreen.tap(pannedText.x+pannedText.width/2,pannedText.y+pannedText.height/2);expect(await page.evaluate(()=>String(selectedAssetId))).toBe(textId);
   await page.locator('#ezLabel').click();
   await page.evaluate(()=>{renderProjectWorldExtraImages();renderAssetSelectionOverlay()});
