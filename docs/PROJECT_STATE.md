@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-14 — v8z4b32E9B em PR
+
+- Roberto identificou em iPhone/Safari que, com `depth` finito, seleção, abas e hit-test acompanhavam a paralaxe, mas glifos e fundo do Text Asset permaneciam na posição canônica no Stage.
+- Causa raiz: o ramo DOM de texto media a caixa e convertia diretamente `worldX/worldY/worldW/worldH`, enquanto imagens e overlays consumiam `resolveAssetStageVisualGeometry().visualRect`.
+- A E9B mede primeiro o texto e posiciona seu único elemento DOM pela geometria visual resolvida existente. O offset aparente não é gravado em geometria, Frames, curvas ou ProjectWorld; Preview e Export permanecem inalterados.
+- O teste automatizado E9B protege a paridade DOM/seleção e a imutabilidade canônica. A validação final em iPhone/Safari físico permanece pendente e nenhuma promoção para produção está autorizada.
+
 Última atualização documental: 2026-08-08.
 
 ## Atualização 2026-08-13 — v8z4b32E9A em hotfix

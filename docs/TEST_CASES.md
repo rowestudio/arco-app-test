@@ -1,5 +1,13 @@
 # TEST_CASES
 
+## TC-045 — paridade de paralaxe do Text Asset no Stage (E9B)
+
+- Em viewport 390 × 797, abrir projeto com imagem e Frames, dispensar o modal Pro, entrar em Ativos, criar texto com fundo e manter a seleção.
+- Aplicar profundidades `+42` e `-37` pelo controle público; exigir deslocamento real e idêntico de glifos, fundo, seleção e quatro abas, hit-test no centro deslocado e ausência de captura na posição antiga.
+- Exigir tolerância DOM/seleção menor que 1 px, exatamente um Undo/revisão por gesto confirmado e nenhum Undo/autosave por redraw, troca de modo/frame, pan ou zoom.
+- Exigir geometria, `boxWidth`, zIndex, Frames, curvas e ProjectWorld canônicos invariantes; Undo/Redo, Preview, Export H.264 real, Save/Load e Session Restore devem preservar a paridade.
+- Evidência automatizada inicial: `tests/smoke/app.spec.mjs`. Validação visual final em iPhone/Safari físico permanece obrigatória e nenhuma promoção está autorizada.
+
 ## TC-044 — Persistência da Profundidade em Text Assets E9A
 
 - Criar e selecionar texto pelo fluxo público; no painel Profundidade confirmar `42` e `-37`, exigindo igualdade no modelo, slider e payload serializado após medição, redraw, reconstrução do Stage e sincronização.

@@ -1856,3 +1856,40 @@ test('E9A — profundidade de Text Asset persiste no modelo, redraw, histórico 
   }, textId);
   expect(finiteRules).toEqual({ positive: 17.5, negative: -8, missing: 0, nan: 0, infinity: 0, negativeInfinity: 0, invalid: 0, imageUnchanged: true });
 });
+
+test('E9B — Text Asset acompanha seleção na paralaxe do Stage', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const proModal = page.locator('#proModal');
+  if (await proModal.isVisible()) await page.getByRole('button', { name: 'Dispensar', exact: true }).click();
+  await page.locator('#modeAssetsBtn').click();
+  await page.evaluate(() => startTextCreation());
+  await page.locator('#textCreationInput').fill('Paralaxe E9B');
+  await page.getByRole('tab', { name: 'Caixa', exact: true }).click();
+  await page.locator('#textBoxBackgroundToggle').click();
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  const textId = await page.evaluate(() => String(getSelectedAsset().id));
+  const rects = async () => page.evaluate(id => {
+    const asset = assets.find(candidate => String(candidate.id) === id);
+    const text = document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(id)}"]`);
+    const selection = document.getElementById('assetSelectOutline');
+    const read = element => { const rect = element.getBoundingClientRect(); return { x: rect.x, y: rect.y, w: rect.width, h: rect.height }; };
+    return { canonical: { worldX: asset.worldX, worldY: asset.worldY, worldW: asset.worldW, worldH: asset.worldH, boxWidth: asset.boxWidth }, depth: asset.depth, text: read(text), selection: read(selection) };
+  }, textId);
+  const before = await rects();
+  await page.locator('#tbAssetDepth').click();
+  await page.locator('#assetContextSlider').fill('42');
+  await page.locator('#assetContextSlider').dispatchEvent('change');
+  const after = await rects();
+  expect(after.depth).toBe(42);
+  expect(after.canonical).toEqual(before.canonical);
+  expect(Math.hypot(after.text.x - before.text.x, after.text.y - before.text.y)).toBeGreaterThan(0.5);
+  expect(Math.abs(after.text.x - after.selection.x)).toBeLessThan(1);
+  expect(Math.abs(after.text.y - after.selection.y)).toBeLessThan(1);
+  expect(Math.abs(after.text.w - after.selection.w)).toBeLessThan(1);
+  expect(Math.abs(after.text.h - after.selection.h)).toBeLessThan(1);
+});

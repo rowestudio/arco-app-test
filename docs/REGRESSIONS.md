@@ -1,5 +1,12 @@
 # REGRESSIONS
 
+## REG-E9B — Paralaxe separa Text Asset de sua seleção no Stage
+
+- **Relato:** no iPhone/Safari, a paralaxe movia seleção e abas do Text Asset, mas deixava glifos e fundo fixos no Stage.
+- **Causa:** o DOM `.world-text-asset` convertia a geometria canônica diretamente, ao contrário dos demais consumidores da geometria visual resolvida.
+- **Proteção:** medir o texto antes da resolução e converter somente `resolvedGeometry.visualRect`; teste TC-045 compara DOM, seleção, deslocamento e modelo canônico.
+- **Status:** correção automatizada na E9B; validação final em iPhone/Safari físico pendente. Produção e promoção não autorizadas.
+
 ## REG-E9A — Profundidade de Text Asset apagada
 
 - **Relato:** no iPhone/Safari, uma profundidade não zero escolhida no painel público retornava a zero.
