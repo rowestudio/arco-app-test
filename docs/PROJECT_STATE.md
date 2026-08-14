@@ -2,6 +2,13 @@
 
 Última atualização documental: 2026-08-08.
 
+## Atualização 2026-08-13 — v8z4b32E9A em hotfix
+
+- Relato em iPhone/Safari: a Profundidade escolhida para um Text Asset voltava a zero após medição/redraw e não sobrevivia a Save/Load ou Session Restore.
+- A causa raiz eram três limites destrutivos exclusivos de texto: normalização, serialização e hidratação gravavam zero. A E9A preserva qualquer número finito e usa zero somente como fallback legado ou inválido.
+- `depth` permanece independente de `zIndex` e afeta apenas o parallax aparente; geometria canônica, Frames, curvas e ProjectWorld não são regravados. Fórmula de parallax, UI e renderer não mudam.
+- Cobertura automatizada protege o controle público, Stage/Preview/Export, Undo/Redo, Save/Load e Session Restore. A validação final publicada em iPhone/Safari real permanece pendente e nenhuma promoção está autorizada.
+
 ## Atualização 2026-08-11 — v8z4b32E8X em desenvolvimento
 
 - A primeira etapa de Texto introduz `type: "text"` como ativo canônico editável, com criação por `+`, cor, largura/quebra automática e confirmação/cancelamento.

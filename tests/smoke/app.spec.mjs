@@ -1791,3 +1791,68 @@ test('E8Z — editor tipográfico e caixa usam fluxo público, isolam draft e bl
   const stableAfterBoxOnly=await page.evaluate(id=>{const a=serializeProjectAsset(assets.find(x=>String(x.id)===id),0,false);return{text:a.text,worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld),layers:assets.map(x=>[String(x.id),x.zIndex,x.layerSequence])}},String(id)); expect(stableAfterBoxOnly).toEqual(stableBeforeBoxOnly);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=390)).toBe(true);
 });
+
+test('E9A — profundidade de Text Asset persiste no modelo, redraw, histórico e payload', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const proModal = page.locator('#proModal');
+  if (await proModal.isVisible()) {
+    await page.getByRole('button', { name: 'Dispensar', exact: true }).click();
+    await expect(proModal).toBeHidden();
+    await expect(proModal).toHaveAttribute('aria-hidden', 'true');
+  }
+  await page.locator('#modeAssetsBtn').click();
+  await page.evaluate(() => startTextCreation());
+  await page.locator('#textCreationInput').fill('Profundidade E9A');
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  const textId = await page.evaluate(() => String(assets.find(asset => asset?.type === 'text').id));
+  const baseline = await page.evaluate(id => {
+    const current = assets.find(candidate => String(candidate?.id) === id);
+    return { zIndex: current.zIndex, frames: structuredClone(frames.slice(0, frameCount)), curves: JSON.stringify({ ctrlPts, curvesV2 }), world: structuredClone(projectWorld), undo: undoStack.length, revision: _sessionAutosaveQueuedRevision };
+  }, textId);
+
+  await page.locator('#tbAssetDepth').click();
+  await page.locator('#assetContextSlider').fill('42');
+  await page.locator('#assetContextSlider').dispatchEvent('change');
+  await expect(page.locator('#assetContextValue')).toHaveText('42');
+  const positive = await page.evaluate(id => {
+    const current = assets.find(candidate => String(candidate?.id) === id);
+    measureTextAsset(current); renderProjectWorldExtraImages(); renderAssetSelectionOverlay(); syncAssetContextPanel();
+    const refreshed = assets.find(candidate => String(candidate?.id) === id);
+    return { depth: refreshed.depth, serialized: serializeProjectAsset(refreshed, 0, false).depth, zIndex: refreshed.zIndex, panel: Number(document.getElementById('assetContextSlider').value), undo: undoStack.length, revision: _sessionAutosaveQueuedRevision, frames: structuredClone(frames.slice(0, frameCount)), curves: JSON.stringify({ ctrlPts, curvesV2 }), world: structuredClone(projectWorld) };
+  }, textId);
+  expect(positive).toMatchObject({ depth: 42, serialized: 42, panel: 42, zIndex: baseline.zIndex, undo: baseline.undo + 1, revision: baseline.revision + 1, frames: baseline.frames, curves: baseline.curves, world: baseline.world });
+
+  await page.evaluate(() => undo());
+  expect(await page.evaluate(id => assets.find(candidate => String(candidate?.id) === id).depth, textId)).toBe(0);
+  await page.evaluate(() => redo());
+  expect(await page.evaluate(id => assets.find(candidate => String(candidate?.id) === id).depth, textId)).toBe(42);
+  await page.locator('#assetContextSlider').fill('-37');
+  await page.locator('#assetContextSlider').dispatchEvent('change');
+  await expect(page.locator('#assetContextValue')).toHaveText('-37');
+  expect(await page.evaluate(id => { const current = assets.find(candidate => String(candidate?.id) === id); return { depth: current.depth, serialized: serializeProjectAsset(current, 0, false).depth, zIndex: current.zIndex }; }, textId)).toEqual({ depth: -37, serialized: -37, zIndex: baseline.zIndex });
+
+  const roundTrip = await page.evaluate(async id => {
+    const payload = buildProjectData(true), saved = payload.assets.find(candidate => String(candidate?.id) === id);
+    await new Promise((resolve, reject) => applyProjectData(payload, { origin: 'manual-load', onApplied: ok => ok ? resolve() : reject(new Error('Manual Load E9A falhou')) }));
+    const loaded = assets.find(candidate => String(candidate?.id) === id);
+    const checkpointPayload = JSON.stringify(buildCompleteSessionProjectData());
+    const checkpoint = { schema: SESSION_AUTOSAVE_SCHEMA, complete: true, revision: 1001, payload: checkpointPayload, checksum: sessionPayloadChecksum(checkpointPayload), savedAt: Date.now() };
+    const restored = await restoreLastSessionAutosave(checkpoint);
+    const session = assets.find(candidate => String(candidate?.id) === id);
+    return { savedDepth: saved.depth, loadedDepth: loaded.depth, restored, sessionDepth: session.depth };
+  }, textId);
+  expect(roundTrip).toEqual({ savedDepth: -37, loadedDepth: -37, restored: true, sessionDepth: -37 });
+
+  const finiteRules = await page.evaluate(id => {
+    const current = assets.find(candidate => String(candidate?.id) === id), image = assets.find(candidate => candidate?.type === 'image');
+    const normalize = value => { current.depth = value; normalizeTextAsset(current); return current.depth; };
+    const imageDepth = image.depth;
+    return { positive: normalize(17.5), negative: normalize(-8), missing: normalize(undefined), nan: normalize(NaN), infinity: normalize(Infinity), negativeInfinity: normalize(-Infinity), invalid: normalize('invalid'), imageUnchanged: image.depth === imageDepth };
+  }, textId);
+  expect(finiteRules).toEqual({ positive: 17.5, negative: -8, missing: 0, nan: 0, infinity: 0, negativeInfinity: 0, invalid: 0, imageUnchanged: true });
+});

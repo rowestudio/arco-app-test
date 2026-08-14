@@ -1,5 +1,12 @@
 # PRODUCT_RULES
 
+## Profundidade de Text Assets — v8z4b32E9A
+
+- Text Assets novos nascem com `depth = 0`; projetos legados sem valor e valores ausentes, inválidos ou não finitos migram para zero.
+- Normalização, serialização e hidratação preservam todo valor finito sem clamp adicional. O controle público continua responsável pelo intervalo de -100 a 100.
+- `depth` controla somente profundidade/parallax aparente e `zIndex` somente sobreposição. Um não pode alterar o outro, nem gravar geometria derivada em Frames, curvas ou ProjectWorld.
+- Stage, Preview, Export, Undo/Redo, Save/Load e Session Restore devem consumir a mesma profundidade canônica.
+
 ## Superfícies neutras dos painéis contextuais
 
 - O fundo principal usa o neutro mais escuro da interface.

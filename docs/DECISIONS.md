@@ -1,5 +1,12 @@
 # DECISIONS
 
+## DEC-E9A — `asset.depth` é a fonte canônica também para Text Assets
+
+- **Decisão:** aplicar ao texto a regra finita já usada por imagens: preservar `Number(depth)` quando finito e migrar ausência ou valor inválido para zero em normalização, serialização e hidratação.
+- **Motivo:** compensações, caches ou reaplicações pós-render esconderiam a perda de estado sem corrigir Save/Load e Session Restore.
+- **Consequências:** não há clamp nesses limites; o slider público mantém -100..100. `depth` e `zIndex` continuam independentes, sem alteração na fórmula de parallax, UI, renderer, WebCodecs ou geometria canônica.
+- **Validação:** gates públicos de Stage, Preview, Export, Undo/Redo, Save/Load e sessão; iPhone/Safari real permanece obrigatório e pendente.
+
 ## DEC-2026-08-09-01 — Hierarquia neutra e densidade dos bottom sheets contextuais
 
 - **Data:** 2026-08-09.

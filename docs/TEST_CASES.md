@@ -1,5 +1,14 @@
 # TEST_CASES
 
+## TC-044 — Persistência da Profundidade em Text Assets E9A
+
+- Criar e selecionar texto pelo fluxo público; no painel Profundidade confirmar `42` e `-37`, exigindo igualdade no modelo, slider e payload serializado após medição, redraw, reconstrução do Stage e sincronização.
+- Mover, escalar, rotacionar, trocar frame/timeline e modo, e reordenar camada sem perder `depth`; alterar profundidade não muda `zIndex`, Frames, curvas ou ProjectWorld.
+- Cada gesto confirmado cria exatamente um Undo e uma revisão de Session Autosave; Undo/Redo reencontram o asset por ID e restauram os valores. Redraw/Preview/sincronização sem mutação não criam revisão.
+- Manual Save/Load e checkpoint IndexedDB/Session Restore preservam profundidade, rotação, ordem e geometria canônica. Ausência, `NaN`, infinitos e inválidos viram zero; finitos positivos/negativos sobrevivem; imagens não regridem.
+- Com câmera deslocada, Stage, Preview e Export mantêm paridade de parallax, hit-test/contorno/alças e não persistem geometria aparente. O Export H.264 real inclui Text Asset com `depth = 42`, sem omissões ou overlays.
+- Ambiente: WebKit automatizado e gate H.264 real no macOS; validação publicada final em iPhone/Safari real pendente.
+
 ## TC-038 — Criação e persistência de Text Asset
 
 - Pré-condição: projeto com imagem aberto no Modo Ativos.

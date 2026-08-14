@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E8Z — base v8z4b32E8Y. feat(text): caixa block com fundo, opacidade independente e padding canônico. APP_VERSION = APP_VERSION_NAME = v8z4b32E8Z. -->
+<!-- Arco Motion App — v8z4b32E9A — base v8z4b32E8Z. hotfix(text): preserva profundidade canônica finita na normalização, serialização e hidratação, sem alterar fórmula de parallax, UI ou renderer. APP_VERSION = APP_VERSION_NAME = v8z4b32E9A. -->
 <!-- Arco Motion App — v8z4b32E8Y — base v8z4b32E8X. feat(text): editor tipográfico reutilizável para criação e reedição por toolbar e duplo toque. APP_VERSION = APP_VERSION_NAME = v8z4b32E8Y. -->
 <!-- Arco Motion App — v8z4b32E8X — base v8z4b32E8W. feat(text): texto editável nasce como ativo canônico e participa de Layers, transformação, persistência e renderer compartilhado. APP_VERSION = APP_VERSION_NAME = v8z4b32E8X. -->
 <!-- Arco Motion App — v8z4b32E8W — base v8z4b32E8V. fix(session-restore): câmera e serialização usam baseStage canônico do ProjectWorld; resize do viewport não reescala Frames persistidos. APP_VERSION = APP_VERSION_NAME = v8z4b32E8W. -->
@@ -7328,8 +7328,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E8Z';
-const APP_VERSION_NAME = 'v8z4b32E8Z';
+const APP_VERSION = 'v8z4b32E9A';
+const APP_VERSION_NAME = 'v8z4b32E9A';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let parallaxChangedCanonicalAssetGeometry = false;
 let parallaxChangedFrames = false;
@@ -15382,7 +15382,7 @@ function normalizeTextAsset(asset) {
   asset.boxPaddingXEm=Number.isFinite(Number(asset.boxPaddingXEm))&&Number(asset.boxPaddingXEm)>0?Number(asset.boxPaddingXEm):.50; asset.boxPaddingYEm=Number.isFinite(Number(asset.boxPaddingYEm))&&Number(asset.boxPaddingYEm)>0?Number(asset.boxPaddingYEm):.30;
   const px=asset.boxBackgroundEnabled?asset.fontSize*asset.boxPaddingXEm:0; asset.worldW=Math.max(20,Number(asset.worldW)||Number(asset.boxWidth)||220); asset.boxWidth=Math.max(20,Number(asset.boxWidth)||(asset.worldW-2*px)||220);
   asset.textBaseBoxWidth=Math.max(20,Number(asset.textBaseBoxWidth)||asset.worldW); asset.textBaseFontSize=Math.max(8,Number(asset.textBaseFontSize)||asset.fontSize); asset.lineHeight=Math.max(1,Number(asset.lineHeight)||1.2);
-  asset.depth=0; asset.visible=asset.visible!==false; asset.rotation=Number(asset.rotation)||0; return asset;
+  asset.depth=Number.isFinite(Number(asset.depth))?Number(asset.depth):0; asset.visible=asset.visible!==false; asset.rotation=Number(asset.rotation)||0; return asset;
 }
 function wrapTextLines(ctx,text,maxWidth){const lines=[];String(text||'').split('\n').forEach(paragraph=>{const words=paragraph.match(/[^\S\n]+|[^\s]+/g)||[];if(!words.length){lines.push('');return}let line='';words.forEach(word=>{const w=word.replace(/\t/g,'    ');let candidate=line+w;if(line&&ctx.measureText(candidate).width>maxWidth){lines.push(line);line=w}else line=candidate;while(ctx.measureText(line).width>maxWidth&&line.length>1){let cut=line.length-1;while(cut>1&&ctx.measureText(line.slice(0,cut)).width>maxWidth)cut--;lines.push(line.slice(0,cut));line=line.slice(cut)}});lines.push(line)});return lines.length?lines:['']}
 function measureTextAsset(asset){normalizeTextAsset(asset);const canvas=measureTextAsset.canvas||(measureTextAsset.canvas=document.createElement('canvas')),ctx=canvas.getContext('2d');ctx.font=`${asset.fontStyle} ${asset.fontWeight} ${asset.fontSize}px ${asset.fontFamily}`;const lines=wrapTextLines(ctx,asset.text||'',asset.boxWidth),contentHeight=Math.max(asset.fontSize*asset.lineHeight,lines.length*asset.fontSize*asset.lineHeight),paddingX=asset.boxBackgroundEnabled?asset.fontSize*asset.boxPaddingXEm:0,paddingY=asset.boxBackgroundEnabled?asset.fontSize*asset.boxPaddingYEm:0;asset.worldW=asset.boxWidth+paddingX*2;asset.worldH=contentHeight+paddingY*2;return{lines,width:asset.boxWidth,height:asset.worldH,contentHeight,paddingX,paddingY}}
@@ -29934,7 +29934,7 @@ function serializeProjectAsset(a, idx, includeImages) {
     normalizeTextAsset(a); measureTextAsset(a);
     return { id:a.id, type:'text', name:a.name||'', layerSequence:a.layerSequence, layerName:a.layerName,
       layerNameSource:a.layerNameSource||'automatic', text:a.text, color:a.color, worldX:a.worldX, worldY:a.worldY,
-      worldW:a.worldW, worldH:a.worldH, boxWidth:a.boxWidth, rotation:a.rotation||0, depth:0, zIndex:a.zIndex||0,
+      worldW:a.worldW, worldH:a.worldH, boxWidth:a.boxWidth, rotation:a.rotation||0, depth:Number.isFinite(Number(a.depth))?Number(a.depth):0, zIndex:a.zIndex||0,
       visible:a.visible!==false, locked:!!a.locked, textAlign:a.textAlign, fontSize:a.fontSize, lineHeight:a.lineHeight,
       textBaseBoxWidth:a.textBaseBoxWidth, textBaseFontSize:a.textBaseFontSize, boxStyle:a.boxStyle, boxBackgroundEnabled:a.boxBackgroundEnabled, boxBackgroundColor:a.boxBackgroundColor, boxBackgroundOpacity:a.boxBackgroundOpacity, boxPaddingXEm:a.boxPaddingXEm, boxPaddingYEm:a.boxPaddingYEm,
       fontKey:a.fontKey, fontFamily:a.fontFamily, fontWeight:a.fontWeight, fontStyle:a.fontStyle, textAlign:a.textAlign };
@@ -30992,6 +30992,8 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', flushSessionAutosave);
 document.addEventListener('change', (event) => {
   if (pendingTextDraft && event.target && event.target.closest && event.target.closest('#textCreationSheet')) return;
+  // O slider contextual possui commit, Undo e autosave próprios em commitAssetContextGesture.
+  if (event.target && event.target.id === 'assetContextSlider') return;
   scheduleSessionAutosave('editor-change');
 }, true);
 
@@ -31322,7 +31324,7 @@ function applyProjectData(data, loadOptions = {}) {
     showStatus('Projeto carregado — selecione a imagem para continuar');
     return;
   }
-  applyFrameData(data, { origin: loadOrigin });
+  applyFrameData(data, { ...loadOptions, origin: loadOrigin });
 }
 
 // ─── Legacy Project Migration — v8z4b17s ──────────────────────────────────────
@@ -32152,7 +32154,7 @@ function restoreProjectAssetsFromData(data) {
           name:sa.name||'', layerSequence:sa.layerSequence, layerName:sa.layerName, layerNameSource:sa.layerNameSource||'automatic',
           text:sa.text||'', color:sa.color, worldX:Number(sa.worldX)||0, worldY:Number(sa.worldY)||0,
           worldW:Number(sa.worldW)||Number(sa.boxWidth)||220, worldH:Number(sa.worldH)||0, boxWidth:Number(sa.boxWidth)||Number(sa.worldW)||220,
-          rotation:Number(sa.rotation)||0, depth:0, zIndex:Number(sa.zIndex)||0, visible:sa.visible!==false, locked:!!sa.locked,
+          rotation:Number(sa.rotation)||0, depth:Number.isFinite(Number(sa.depth))?Number(sa.depth):0, zIndex:Number(sa.zIndex)||0, visible:sa.visible!==false, locked:!!sa.locked,
           textAlign:sa.textAlign, fontKey:sa.fontKey, fontWeight:sa.fontWeight, fontStyle:sa.fontStyle, fontSize:Number(sa.fontSize)||36, lineHeight:Number(sa.lineHeight)||1.2,
           textBaseBoxWidth:Number(sa.textBaseBoxWidth)||Number(sa.worldW)||Number(sa.boxWidth)||220,
           textBaseFontSize:Number(sa.textBaseFontSize)||Number(sa.fontSize)||36, boxStyle:sa.boxStyle, boxBackgroundEnabled:sa.boxBackgroundEnabled, boxBackgroundColor:sa.boxBackgroundColor, boxBackgroundOpacity:sa.boxBackgroundOpacity, boxPaddingXEm:sa.boxPaddingXEm, boxPaddingYEm:sa.boxPaddingYEm });

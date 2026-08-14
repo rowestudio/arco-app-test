@@ -1,5 +1,13 @@
 # REGRESSIONS
 
+## REG-E9A — Profundidade de Text Asset apagada
+
+- **Relato:** no iPhone/Safari, uma profundidade não zero escolhida no painel público retornava a zero.
+- **Causa raiz:** `normalizeTextAsset`, o ramo textual de `serializeProjectAsset` e a reconstrução por `savedAssets` substituíam o valor por zero.
+- **Correção:** os três limites preservam `Number(asset.depth)` quando finito e usam zero para legado/inválido; texto novo continua começando em zero.
+- **Proteção:** testar valores positivos/negativos, redraw/Stage, Preview/Export, histórico, arquivo manual e checkpoint/restauração, mantendo `zIndex`, Frames, curvas e ProjectWorld.
+- **Estado:** automação adicionada; validação final em iPhone/Safari real pendente.
+
 Catálogo obrigatório de regressões históricas e proteções.
 
 | ID | Descrição | Impacto | Área | Como detectar | Teste preventivo desejado | Status do teste |
