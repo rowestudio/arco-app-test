@@ -191,3 +191,21 @@ Catálogo obrigatório de regressões históricas e proteções.
 
 - Percentual, slider, steps, Reset e alças devem escalar `boxWidth` e `fontSize` pelo baseline de conteúdo; nunca atribuir largura externa diretamente a `boxWidth`.
 - Cor, opacidade, estilo e paddings da caixa integram o fingerprint canônico, para que Undo/Redo agendem checkpoints reais mesmo quando somente a caixa muda.
+
+## REG-047 — Simulação de gesto por `page.mouse` em projeto hasTouch/isMobile
+
+- **Problema:** os projetos Playwright de smoke (`playwright.config.mjs`) rodam com `isMobile:true` e `hasTouch:true`. Em WebKit mobile com `hasTouch`, `page.mouse.*` não dispara `pointerdown → pointermove` com captura de forma confiável, então qualquer passo que simule arrasto por mouse sobre um handler baseado em pointer events + `setPointerCapture` (pan do editor, alças de transformação de asset) não move nada. Além disso, no Modo Ativos um arrasto de um dedo sobre um asset é capturado pela seleção/movimento do asset (`handleStageAssetSelectPointer` → `stopImmediatePropagation`), nunca pelo pan; o gesto real que move o viewport nesse modo é o de **dois dedos** (navegação nativa por toque).
+- **Impacto real detectado:** o teste `E9B` falhava na pré-condição `expect(panAfter).not.toEqual(panBefore)` (WebKit Smoke Tests) porque o pan por mouse nunca ocorria; as 17 asserções de paridade anteriores passavam.
+- **Correção do teste (sem tocar no app):** o passo de pan usa agora o helper `stageTwoFingerPan()` (dispatch nativo de `TouchEvent` com dois toques, distância constante = pan puro sem alterar o zoom), preservando a intenção original — pan real do viewport seguido de `expectParity(panned)`. Verificado localmente em Chromium (`hasTouch`): pan real (`editorPanX/Y` mudam), paridade texto↔seleção mantida, `editorZoomScale` estável, seleção preservada e nenhum Session Autosave disparado (operação apenas de câmera).
+- **Prevenção:** em projeto `hasTouch`/`isMobile`, simular gesto sempre por toque (`page.touchscreen` / `TouchEvent`) ou por pointer com `pointerType:'touch'`; nunca por `page.mouse`. Toda asserção de arrasto deve verificar a mudança real esperada (delta positivo), para não passar de forma vazia quando o input não dispara.
+- **Casos duvidosos registrados (não corrigidos — decisão de Roberto pendente):**
+  - `tests/smoke/app.spec.mjs:1735` (E8Z): arrasto por `page.mouse` numa asserção **negativa** (arrasto não deve abrir o editor de texto); pode passar de forma vazia se o mouse não dispara. Converter para toque real exige avaliar efeitos colaterais (mover asset/pan).
+  - `tests/smoke/app.spec.mjs:1779` (E8Z P1): arrasto por `page.mouse` na alça de canto de asset (`beginAssetTransformDrag`, mesma classe pointer + `setPointerCapture`). As asserções checam apenas invariantes (`worldW≈boxWidth+2·paddingX`) e centro **inalterado**, sem exigir que a escala tenha realmente crescido — passa de forma vazia se o arrasto não dispara. Endurecer exige input por toque **e** asserção de delta real.
+- **Caso seguro (sem ação):** `tests/smoke/app.spec.mjs:974` arrasta o `#scaleSlider` (`<input type="range">` nativo, tratado pelo próprio navegador) e afirma mudança de valor; passa de forma legítima.
+
+## E9B — fragilidade latente: paridade glifos↔seleção depende da ORDEM DE CHAMADA do ciclo de render
+
+- **Observação (registro apenas — não corrigir agora):** `renderAssetSelectionOverlay()` lê `worldW/worldH` do Text Asset via `resolveAssetStageVisualGeometry()` → `getAssetVisualWorldRect()`, **sem** chamar `measureTextAsset()`. A geometria correta depende de `renderProjectWorldExtraImages()` (que chama `measureTextAsset(a)`) ter rodado antes no mesmo ciclo. Hoje a paridade glifos↔seleção é garantida pela ORDEM DE CHAMADA, não por um contrato explícito.
+- **Risco:** se alguém reordenar o ciclo de render no futuro, o Text Asset pode desalinhar (seleção/alças usando `worldW/worldH` desatualizados) sem causa aparente.
+- **Endurecimento possível (backlog):** o overlay medir antes de resolver a geometria, ou centralizar a medição do Text Asset num único ponto que ambos os caminhos consumam.
+- **Status:** somente registrado; nenhuma alteração de código de aplicação nesta passada.
