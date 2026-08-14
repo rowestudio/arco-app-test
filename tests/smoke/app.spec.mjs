@@ -1793,7 +1793,7 @@ test('E8Z — editor tipográfico e caixa usam fluxo público, isolam draft e bl
 });
 
 test('E9A — profundidade de Text Asset persiste no modelo, redraw, histórico e payload', async ({ page }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(120_000);
   await page.setViewportSize({ width: 390, height: 797 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
@@ -1918,6 +1918,7 @@ test('E9B — Text Asset acompanha seleção na paralaxe do Stage', async ({ pag
   expectParity(after);
   const diagnostics=await page.evaluate(()=>Object.fromEntries(buildDiagnosticsText().split('\n').filter(line=>line.includes(': ')).map(line=>{const i=line.indexOf(': ');return[line.slice(0,i),line.slice(i+2)]})));
   expect(diagnostics).toMatchObject({selectedAssetStageDomKind:'text',assetImageUsesResolvedParallaxGeometry:'n/d',textAssetStageUsesResolvedParallaxGeometry:'true',textAssetDomSelectionParityOk:'true',textAssetMovedWithDepthOnStage:'true',textAssetCanonicalGeometryUnchangedByParallax:'true'});
+  const diagnosticTextRect=JSON.parse(diagnostics.selectedTextAssetDomRect);expect(Number.isFinite(diagnosticTextRect.h)).toBe(true);expect(diagnosticTextRect.h).toBeGreaterThan(0);
   await page.getByRole('button',{name:'Voltar'}).click(); await page.locator('#tbAssetDepth').click();
   await expect(page.locator('#assetContextSlider')).toHaveValue('42');
   await setDepth(-37,after);

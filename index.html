@@ -37448,7 +37448,17 @@ function buildDiagnosticsText() {
   const _settingsSheet = document.getElementById('settingsSheet');
   const _custBarIsContextual = !!(document.body && document.body.classList.contains('cust-open'));
   const _rectText = r => r ? JSON.stringify({x:r.x,y:r.y,w:r.w,h:r.h}) : 'n/d';
-  const _domRectText = el => el ? _rectText({x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,w:parseFloat(el.style.width)||0,h:parseFloat(el.style.height)||0}) : 'n/d';
+  const _readStageCssRect = el => {
+    if (!el) return null;
+    const declared = (primary, fallback) => {
+      const value = parseFloat(primary);
+      if (Number.isFinite(value)) return value;
+      const fallbackValue = parseFloat(fallback);
+      return Number.isFinite(fallbackValue) ? fallbackValue : 0;
+    };
+    return { x:declared(el.style.left), y:declared(el.style.top), w:declared(el.style.width,el.style.minWidth), h:declared(el.style.height,el.style.minHeight) };
+  };
+  const _domRectText = el => _rectText(_readStageCssRect(el));
   const _panelIsInteractive = el => {
     if (!el) return false;
     const s = getComputedStyle(el);
@@ -37479,8 +37489,8 @@ function buildDiagnosticsText() {
   const _proModalInterceptsAssetToolbar = _assetPanelInterceptsToolbar(_proModal);
   const _hiddenAssetPanelInterceptDetected = _contextPanels.some(el => !_panelIsInteractive(el) && _assetPanelInterceptsToolbar(el));
   const _visualRect = _stageGeometry && _stageGeometry.visualRect;
-  const _domRect = _assetDom ? {x:parseFloat(_assetDom.style.left)||0,y:parseFloat(_assetDom.style.top)||0,w:parseFloat(_assetDom.style.width)||0,h:parseFloat(_assetDom.style.height)||0} : null;
-  const _selectionRect = _selectionDom && _selectionDom.style.display !== 'none' ? {x:parseFloat(_selectionDom.style.left)||0,y:parseFloat(_selectionDom.style.top)||0,w:parseFloat(_selectionDom.style.width)||0,h:parseFloat(_selectionDom.style.height)||0} : null;
+  const _domRect = _readStageCssRect(_assetDom);
+  const _selectionRect = _selectionDom && _selectionDom.style.display !== 'none' ? _readStageCssRect(_selectionDom) : null;
   const _expectedStageRect = _visualRect ? editorWorldToStage(_visualRect.x,_visualRect.y,_visualRect.w,_visualRect.h) : null;
   const _rectParity = (a,b) => !!(a&&b&&Math.abs(a.x-b.x)<0.6&&Math.abs(a.y-b.y)<0.6&&Math.abs(a.w-b.w)<0.6&&Math.abs(a.h-b.h)<0.6);
   const _selectedStageDomKind = _assetDom ? (_assetDom.classList.contains('world-text-asset') ? 'text' : 'image') : 'n/d';
