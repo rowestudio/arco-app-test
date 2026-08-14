@@ -1868,28 +1868,78 @@ test('E9B — Text Asset acompanha seleção na paralaxe do Stage', async ({ pag
   if (await proModal.isVisible()) await page.getByRole('button', { name: 'Dispensar', exact: true }).click();
   await page.locator('#modeAssetsBtn').click();
   await page.evaluate(() => startTextCreation());
-  await page.locator('#textCreationInput').fill('Paralaxe E9B');
+  await page.locator('#textCreationInput').fill('R');
   await page.getByRole('tab', { name: 'Caixa', exact: true }).click();
   await page.locator('#textBoxBackgroundToggle').click();
   await page.getByRole('button', { name: 'Concluir', exact: true }).click();
   const textId = await page.evaluate(() => String(getSelectedAsset().id));
+  const waitAutosave = () => page.evaluate(async () => { while (_sessionAutosaveActiveWrites.size) await Promise.all([..._sessionAutosaveActiveWrites]); });
   const rects = async () => page.evaluate(id => {
     const asset = assets.find(candidate => String(candidate.id) === id);
     const text = document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(id)}"]`);
     const selection = document.getElementById('assetSelectOutline');
     const read = element => { const rect = element.getBoundingClientRect(); return { x: rect.x, y: rect.y, w: rect.width, h: rect.height }; };
-    return { canonical: { worldX: asset.worldX, worldY: asset.worldY, worldW: asset.worldW, worldH: asset.worldH, boxWidth: asset.boxWidth }, depth: asset.depth, text: read(text), selection: read(selection) };
+    const handles = Object.fromEntries([...selection.querySelectorAll('.asset-corner-handle')].map(element => { const rect=element.getBoundingClientRect(); return [element.dataset.assetCorner,{x:rect.x+rect.width/2,y:rect.y+rect.height/2}]; }));
+    return { id:String(asset.id), canonical: { worldX:asset.worldX, worldY:asset.worldY, worldW:asset.worldW, worldH:asset.worldH, boxWidth:asset.boxWidth, fontSize:asset.fontSize, rotation:asset.rotation, zIndex:asset.zIndex, frames:JSON.stringify(frames.slice(0,frameCount)), curves:JSON.stringify({ctrlPts,curvesV2}), world:JSON.stringify(projectWorld) }, depth:asset.depth, text:read(text), selection:read(selection), handles, background:getComputedStyle(text).backgroundColor, undo:undoStack.length, revision:_sessionAutosaveQueuedRevision };
   }, textId);
+  const expectParity = snapshot => {
+    const close=(a,b,tolerance=1)=>expect(Math.abs(a-b)).toBeLessThan(tolerance);
+    close(snapshot.text.x,snapshot.selection.x); close(snapshot.text.y,snapshot.selection.y); close(snapshot.text.w,snapshot.selection.w); close(snapshot.text.h,snapshot.selection.h);
+    const corners={tl:{x:snapshot.selection.x-12,y:snapshot.selection.y-12},tr:{x:snapshot.selection.x+snapshot.selection.w+12,y:snapshot.selection.y-12},bl:{x:snapshot.selection.x-12,y:snapshot.selection.y+snapshot.selection.h+12},br:{x:snapshot.selection.x+snapshot.selection.w+12,y:snapshot.selection.y+snapshot.selection.h+12}};
+    expect(Object.keys(snapshot.handles).sort()).toEqual(['bl','br','tl','tr']);
+    for(const corner of Object.keys(corners)){close(snapshot.handles[corner].x,corners[corner].x,1.5);close(snapshot.handles[corner].y,corners[corner].y,1.5);}
+    expect(snapshot.background).not.toBe('rgba(0, 0, 0, 0)');
+  };
+  const setDepth = async value => {
+    await page.locator('#assetContextSlider').fill(String(value));
+    await page.locator('#assetContextSlider').dispatchEvent('change');
+    await expect(page.locator('#assetContextValue')).toHaveText(String(value));
+    await waitAutosave();
+  };
   const before = await rects();
+  expect(before.depth).toBe(0); expectParity(before);
   await page.locator('#tbAssetDepth').click();
-  await page.locator('#assetContextSlider').fill('42');
-  await page.locator('#assetContextSlider').dispatchEvent('change');
+  await setDepth(42);
   const after = await rects();
   expect(after.depth).toBe(42);
   expect(after.canonical).toEqual(before.canonical);
+  expect(after.undo).toBe(before.undo+1); expect(after.revision).toBe(before.revision+1);
   expect(Math.hypot(after.text.x - before.text.x, after.text.y - before.text.y)).toBeGreaterThan(0.5);
-  expect(Math.abs(after.text.x - after.selection.x)).toBeLessThan(1);
-  expect(Math.abs(after.text.y - after.selection.y)).toBeLessThan(1);
-  expect(Math.abs(after.text.w - after.selection.w)).toBeLessThan(1);
-  expect(Math.abs(after.text.h - after.selection.h)).toBeLessThan(1);
+  expectParity(after);
+  const diagnostics=await page.evaluate(()=>Object.fromEntries(buildDiagnosticsText().split('\n').filter(line=>line.includes(': ')).map(line=>{const i=line.indexOf(': ');return[line.slice(0,i),line.slice(i+2)]})));
+  expect(diagnostics).toMatchObject({selectedAssetStageDomKind:'text',assetImageUsesResolvedParallaxGeometry:'n/d',textAssetStageUsesResolvedParallaxGeometry:'true',textAssetDomSelectionParityOk:'true',textAssetMovedWithDepthOnStage:'true',textAssetCanonicalGeometryUnchangedByParallax:'true'});
+  await page.getByRole('button',{name:'Voltar'}).click(); await page.locator('#tbAssetDepth').click();
+  await expect(page.locator('#assetContextSlider')).toHaveValue('42');
+  await setDepth(-37);
+  const negative=await rects(); expect(negative.depth).toBe(-37); expect(negative.canonical).toEqual(before.canonical); expect(negative.undo).toBe(after.undo+1); expect(negative.revision).toBe(after.revision+1); expectParity(negative);
+  expect(Math.hypot(negative.text.x-after.text.x,negative.text.y-after.text.y)).toBeGreaterThan(.5);
+  await page.getByRole('button',{name:'Voltar'}).click(); await page.locator('#tbAssetDepth').click(); await expect(page.locator('#assetContextSlider')).toHaveValue('-37'); await page.getByRole('button',{name:'Voltar'}).click();
+
+  // O hit-test público acompanha a área deslocada e abandona a faixa exclusiva da posição antiga.
+  const exclusive=(inside,outside)=>{const candidates=[{x:inside.x+2,y:inside.y+inside.h/2},{x:inside.x+inside.w-2,y:inside.y+inside.h/2},{x:inside.x+inside.w/2,y:inside.y+2},{x:inside.x+inside.w/2,y:inside.y+inside.h-2}];return candidates.find(p=>p.x<outside.x||p.x>outside.x+outside.w||p.y<outside.y||p.y>outside.y+outside.h)};
+  const shiftedPoint=exclusive(negative.text,before.text),oldPoint=exclusive(before.text,negative.text); expect(shiftedPoint).toBeTruthy(); expect(oldPoint).toBeTruthy();
+  const imagePoint=await page.evaluate(id=>{const image=[...document.querySelectorAll('.world-extra-img')].find(el=>el.dataset.assetId!==id),r=image.getBoundingClientRect();return{x:r.left+4,y:r.top+4}},textId);
+  await page.touchscreen.tap(imagePoint.x,imagePoint.y); expect(await page.evaluate(()=>getSelectedAsset()?.type)).toBe('image');
+  await page.touchscreen.tap(shiftedPoint.x,shiftedPoint.y); expect(await page.evaluate(()=>String(selectedAssetId))).toBe(textId);
+  await page.touchscreen.tap(imagePoint.x,imagePoint.y); await page.touchscreen.tap(oldPoint.x,oldPoint.y); expect(await page.evaluate(()=>String(selectedAssetId||''))).not.toBe(textId);
+  await page.touchscreen.tap(shiftedPoint.x,shiftedPoint.y); expect(await page.evaluate(()=>String(selectedAssetId))).toBe(textId); expectParity(await rects());
+
+  // Undo/Redo públicos restauram valor e geometria sem passos intermediários.
+  const historyBeforeUndo=await rects(); await page.locator('#topBtnUndo').click(); await waitAutosave(); const undone=await rects(); expect(undone.depth).toBe(42); expectParity(undone); expect(undone.revision).toBe(historyBeforeUndo.revision+1);
+  await page.locator('#topBtnRedo').click(); await waitAutosave(); const redone=await rects(); expect(redone.depth).toBe(-37); expectParity(redone); expect(redone.revision).toBe(undone.revision+1);
+
+  // Trocas públicas de seleção/modo/frame e zoom apenas recalculam o Stage.
+  const navigationBaseline=await rects();
+  await page.touchscreen.tap(imagePoint.x,imagePoint.y); await page.touchscreen.tap(shiftedPoint.x,shiftedPoint.y);
+  await page.locator('#modeCameraBtn').click(); await page.locator('#modeAssetsBtn').click();
+  const pills=page.locator('#pillsRow [data-frame-index]'); if(await pills.count()>1){await pills.nth(1).click();expectParity(await rects());await pills.nth(0).click();}
+  await page.locator('#ezBtnPlus').click(); expectParity(await rects()); await page.locator('#ezBtnMinus').click();
+  await page.evaluate(()=>{renderProjectWorldExtraImages();renderAssetSelectionOverlay()});
+  const navigated=await rects(); expect(navigated.depth).toBe(-37); expect(navigated.canonical).toEqual(navigationBaseline.canonical); expect(navigated.undo).toBe(navigationBaseline.undo); expect(navigated.revision).toBe(navigationBaseline.revision); expectParity(navigated);
+
+  // Manual Load e Session Restore reutilizam os caminhos existentes e já nascem alinhados.
+  const persisted=await page.evaluate(async id=>{const payload=buildProjectData(true);await new Promise((resolve,reject)=>applyProjectData(payload,{origin:'manual-load',onApplied:ok=>ok?resolve():reject(new Error('Manual Load E9B falhou'))}));const loaded=assets.find(a=>String(a.id)===id);const sessionPayload=JSON.stringify(buildCompleteSessionProjectData()),checkpoint={schema:SESSION_AUTOSAVE_SCHEMA,complete:true,revision:2002,payload:sessionPayload,checksum:sessionPayloadChecksum(sessionPayload),savedAt:Date.now()};const restored=await restoreLastSessionAutosave(checkpoint);return{restored,id:String(assets.find(a=>String(a.id)===id)?.id),depth:assets.find(a=>String(a.id)===id)?.depth,loadedDepth:loaded.depth}},textId);
+  expect(persisted).toEqual({restored:true,id:textId,depth:-37,loadedDepth:-37});
+  await page.locator('#modeAssetsBtn').click();
+  const restoredText=await page.locator(`.world-text-asset[data-asset-id="${textId}"]`).boundingBox(); await page.touchscreen.tap(restoredText.x+restoredText.width/2,restoredText.y+restoredText.height/2); expectParity(await rects());
 });
