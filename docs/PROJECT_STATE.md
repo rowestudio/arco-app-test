@@ -1,5 +1,14 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-15 — v8z4b32E9C em PR
+
+- Item 1 de 4 da série de Text Asset (auto-largura → border-radius → borda com opacidade → opacidade de ativo global). Cada item é PR própria e sequencial; os itens 2–4 não foram adiantados.
+- Relato de Roberto: digitar um único caractere deixava a caixa enorme e vazia. A E9C torna a largura da caixa derivada do conteúdo (a LINHA MAIS LONGA, quebra apenas por Enter) como modo padrão do texto NOVO; o padding canônico 0.50em/0.30em da E8Z continua aplicado sobre a largura calculada.
+- Modo opcional de LARGURA FIXA (override manual) reintroduz a quebra automática dentro de uma largura travada, útil para storytelling. A alternância é um toggle claro no editor tipográfico (aba **Alinhar**), com slider de largura no modo fixo. A opção de alça de largura no Stage foi descartada por conflitar com o invariante aprovado de exatamente quatro alças (REG-028) do sistema de transformação de Ativos.
+- A largura é derivada exclusivamente em `measureTextAsset`, mantendo a cadeia `measureTextAsset → resolveAssetStageVisualGeometry → visualRect` estabilizada pela E9A/E9B; nenhum offset aparente é gravado em geometria, Frames, curvas ou ProjectWorld. Depth/parallax translacional e Preview/Export permanecem inalterados.
+- `boxWidthMode` (e o valor travado no modo fixo) persiste em Undo/Redo, Save/Load e Session Restore; projetos legados sem o campo migram para `fixed`, preservando a geometria confirmada anterior.
+- Cobertura automatizada E9C em `tests/smoke/app.spec.mjs` cobre caractere único, múltiplas linhas com a largura seguindo a mais longa, alternância auto/fixo com persistência em Undo/Redo e Save/Load, e paridade glifos/fundo/seleção sob profundidade não-zero (padrão `expectHugsSelection`). A execução local do gate em WebKit permanece bloqueada pela ausência do WebKit; verificação equivalente foi executada em Chromium `hasTouch`. Validação final em iPhone/Safari real permanece pendente e nenhuma promoção para produção está autorizada.
+
 ## Atualização 2026-08-14 — v8z4b32E9B em PR
 
 - Roberto identificou em iPhone/Safari que, com `depth` finito, seleção, abas e hit-test acompanhavam a paralaxe, mas glifos e fundo do Text Asset permaneciam na posição canônica no Stage.
