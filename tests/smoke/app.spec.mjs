@@ -1792,6 +1792,10 @@ test('E8Z — editor tipográfico e caixa usam fluxo público, isolam draft e bl
   const noChange=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision})); await page.getByRole('button',{name:'Concluir',exact:true}).click(); expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}))).toEqual(noChange);
 
   // Escala pública usa baseline de conteúdo: painel não salta, steps são exatos e Reset recompõe o retângulo externo uma única vez.
+  // v8z4b32E9C — a escala ARITMÉTICA exata de boxWidth (× fator) é contrato do modo de LARGURA FIXA. O modo auto (padrão desde a E9C)
+  // deriva boxWidth de measureText, que não é perfeitamente linear na fontSize; a cobertura de auto-largura vive no gate E9C. Fixa a
+  // largura sem histórico para validar aqui o contrato aritmético do modo fixo.
+  await page.evaluate(id=>{const a=assets.find(x=>String(x.id)===id);a.boxWidthMode='fixed';measureTextAsset(a);renderProjectWorldExtraImages();renderAssetSelectionOverlay();},String(id));
   const scale100=await page.evaluate(id=>{const a=assets.find(x=>String(x.id)===id),m=measureTextAsset(a);return{cx:a.worldX+a.worldW/2,cy:a.worldY+a.worldH/2,pct:getAssetContextScalePercent(a),boxWidth:a.boxWidth,worldW:a.worldW,paddingX:m.paddingX}},String(id));
   await page.locator('#tbAssetScale').click(); await expect(page.locator('#assetContextValue')).toHaveText('100%'); expect(await page.evaluate(id=>serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),String(id))).toMatchObject({boxWidth:scale100.boxWidth,worldW:scale100.worldW});
   await page.locator('#assetContextScalePlus').click(); await expect(page.locator('#assetContextValue')).toHaveText('105%'); let scaled=await page.evaluate(id=>{const a=assets.find(x=>String(x.id)===id),m=measureTextAsset(a);return{pct:getAssetContextScalePercent(a),cx:a.worldX+a.worldW/2,cy:a.worldY+a.worldH/2,boxWidth:a.boxWidth,worldW:a.worldW,paddingX:m.paddingX}},String(id)); expect(scaled.pct).toBeCloseTo(105);expect(scaled.boxWidth).toBeCloseTo(scale100.boxWidth*1.05);expect(scaled.worldW).toBeCloseTo(scaled.boxWidth+2*scaled.paddingX);expect(scaled.cx).toBeCloseTo(scale100.cx);expect(scaled.cy).toBeCloseTo(scale100.cy);
@@ -1987,4 +1991,133 @@ test('E9B — Text Asset acompanha seleção na paralaxe do Stage', async ({ pag
   await page.evaluate(()=>startPreview());await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000});await expect.poll(()=>page.evaluate(()=>previewLoadingHiddenAfterFirstFrame),{timeout:30_000}).toBe(true);
   const previewProof=await page.evaluate(id=>{if(animFrame)togglePreviewPlayback();const snapshot=renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id),audit=renderTransform.preview?.assets?.find(a=>String(a.id)===id),screen=document.getElementById('previewScreen'),overlay=document.getElementById('assetSelectOutline'),handles=document.querySelectorAll('.asset-corner-handle.show');return{snapshot,audit,overlayInsidePreview:!!(overlay&&screen.contains(overlay)),handlesInsidePreview:[...handles].some(h=>screen.contains(h)),loading:previewLoadingHiddenAfterFirstFrame}},textId);
   expect(previewProof.snapshot).toMatchObject({id:textId,depth:-37,boxBackgroundEnabled:true});expect(previewProof.audit).toMatchObject({id:textId,drawn:true,intersectsCamera:true});expect(previewProof).toMatchObject({overlayInsidePreview:false,handlesInsidePreview:false,loading:true});await page.evaluate(()=>stopPreview());await expect(page.locator('body')).toHaveClass(/mode-editor/);
+});
+
+test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob depth', async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const proModal = page.locator('#proModal');
+  if (await proModal.isVisible()) await page.getByRole('button', { name: 'Dispensar', exact: true }).click();
+  await page.locator('#modeAssetsBtn').click();
+
+  // Largura natural (linha mais longa) medida com o MESMO ctx/fonte do asset.
+  const naturalWidth = (id, text) => page.evaluate(({ id, text }) => {
+    const a = assets.find(x => String(x.id) === id);
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.font = `${a.fontStyle} ${a.fontWeight} ${a.fontSize}px ${a.fontFamily}`;
+    return Math.max(...String(text).split('\n').map(line => ctx.measureText(line.replace(/\t/g, '    ')).width));
+  }, { id, text });
+  const geom = id => page.evaluate(id => {
+    const a = assets.find(x => String(x.id) === id);
+    const textEl = document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(id)}"]`);
+    const selection = document.getElementById('assetSelectOutline');
+    const read = el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+    return {
+      mode: a.boxWidthMode, boxWidth: a.boxWidth, worldW: a.worldW, worldH: a.worldH, fontSize: a.fontSize, textBaseFontSize: a.textBaseFontSize,
+      text: textEl ? read(textEl) : null, selection: selection && selection.style.display !== 'none' ? read(selection) : null,
+    };
+  }, id);
+  const expectHugsSelection = g => {
+    expect(g.text).toBeTruthy(); expect(g.selection).toBeTruthy();
+    for (const k of ['x', 'y', 'w', 'h']) expect(Math.abs(g.text[k] - g.selection[k])).toBeLessThan(1.2);
+  };
+
+  // (a) Um único caractere NÃO gera caixa vazia: a largura abraça o glifo.
+  await page.evaluate(() => startTextCreation());
+  await page.locator('#textCreationInput').fill('R');
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  const textId = await page.evaluate(() => String(getSelectedAsset().id));
+  const defaultCreateWidth = await page.evaluate(() => { const b = projectWorld.baseStageW || stageW || 360; return Math.max(120, Math.min(b * 0.72, 320)); });
+  let g = await geom(textId);
+  expect(g.mode).toBe('auto');
+  const rNatural = await naturalWidth(textId, 'R');
+  expect(Math.abs(g.boxWidth - rNatural)).toBeLessThan(0.5);
+  expect(g.boxWidth).toBeLessThan(defaultCreateWidth * 0.6); // não é mais uma caixa gigante e vazia
+  expect(g.worldW).toBeLessThan(defaultCreateWidth * 0.6);
+  expectHugsSelection(g);
+
+  // (b) Múltiplas linhas de larguras diferentes: a caixa acompanha a MAIS LONGA.
+  const multiline = 'R\nLinha bem mais larga que a primeira';
+  await page.evaluate(id => startTextAssetEditing(assets.find(a => String(a.id) === id)), textId);
+  await page.locator('#textCreationInput').fill(multiline);
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  g = await geom(textId);
+  expect(g.mode).toBe('auto');
+  const longest = await naturalWidth(textId, multiline);
+  expect(Math.abs(g.boxWidth - longest)).toBeLessThan(0.5);
+  const singleLineH = await page.evaluate(id => { const a = assets.find(x => String(x.id) === id); return a.fontSize * a.lineHeight; }, textId);
+  expect(g.worldH).toBeGreaterThan(singleLineH * 1.8); // duas linhas contidas na mesma largura
+  expectHugsSelection(g);
+  const autoWorldH = g.worldH;
+
+  // (c) Modo fixo (override manual): trava largura menor e força quebra automática.
+  await page.evaluate(id => startTextAssetEditing(assets.find(a => String(a.id) === id)), textId);
+  await page.getByRole('tab', { name: 'Alinhar', exact: true }).click();
+  await page.locator('#textWidthAutoToggle').click();
+  await expect(page.locator('#textWidthFixed')).toBeEnabled();
+  await page.locator('#textWidthFixed').fill('130');
+  await page.locator('#textWidthFixed').dispatchEvent('input');
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  const undoBaseline = await page.evaluate(() => undoStack.length);
+  g = await geom(textId);
+  expect(g.mode).toBe('fixed');
+  expect(Math.abs(g.boxWidth - 130)).toBeLessThan(1.5);
+  expect(g.worldW).toBeLessThan(longest); // quebra dentro da largura travada
+  expect(g.worldH).toBeGreaterThan(autoWorldH); // mais linhas por causa da quebra
+  expectHugsSelection(g);
+
+  // (c) Persistência do modo em Undo/Redo.
+  await page.locator('#topBtnUndo').click();
+  await expect.poll(() => page.evaluate(id => assets.find(a => String(a.id) === id).boxWidthMode, textId)).toBe('auto');
+  await page.locator('#topBtnRedo').click();
+  await expect.poll(() => page.evaluate(id => assets.find(a => String(a.id) === id).boxWidthMode, textId)).toBe('fixed');
+  expect(await page.evaluate(id => Math.abs(assets.find(a => String(a.id) === id).boxWidth - 130) < 1.5, textId)).toBe(true);
+
+  // (c) Persistência do modo/valor em Save/Load real.
+  const downloadPromise = page.waitForEvent('download');
+  await page.evaluate(() => doSaveDirect(true, 'e9c-text-auto-width'));
+  const download = await downloadPromise; const savedPath = await download.path(); expect(savedPath).toBeTruthy();
+  const serialized = await page.evaluate(id => serializeProjectAsset(assets.find(a => String(a.id) === id), 0, false), textId);
+  expect(serialized.boxWidthMode).toBe('fixed');
+  await page.locator('#projectFileInput').setInputFiles(savedPath);
+  await expect.poll(() => page.evaluate(() => loadSessionCompleted), { timeout: 30_000 }).toBe(true);
+  expect(await page.evaluate(() => lastLoadError)).toBe('');
+  const loaded = await page.evaluate(id => { const a = assets.find(x => String(x.id) === id); return { mode: a.boxWidthMode, boxWidth: a.boxWidth }; }, textId);
+  expect(loaded.mode).toBe('fixed');
+  expect(Math.abs(loaded.boxWidth - 130)).toBeLessThan(1.5);
+
+  // Volta ao modo auto para a checagem de paridade sob depth com largura dinâmica.
+  await page.locator('#modeAssetsBtn').click();
+  let box = await page.locator(`.world-text-asset[data-asset-id="${textId}"]`).boundingBox();
+  await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+  expect(await page.evaluate(() => String(selectedAssetId))).toBe(textId);
+  await page.evaluate(id => startTextAssetEditing(assets.find(a => String(a.id) === id)), textId);
+  await page.getByRole('tab', { name: 'Alinhar', exact: true }).click();
+  await page.locator('#textWidthAutoToggle').click(); // fixed -> auto
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  expect(await page.evaluate(id => assets.find(a => String(a.id) === id).boxWidthMode, textId)).toBe('auto');
+
+  // (d) Paridade glifos/fundo/seleção sob depth != 0, com a largura dinâmica.
+  // O texto já está selecionado após o commit acima (ainda em Modo Ativos); não
+  // reabrir o menu contextual do botão Ativos.
+  expect(await page.evaluate(() => String(selectedAssetId))).toBe(textId);
+  const setDepth = async value => {
+    await page.locator('#tbAssetDepth').click();
+    await page.locator('#assetContextSlider').fill(String(value));
+    await page.locator('#assetContextSlider').dispatchEvent('change');
+    await expect(page.locator('#assetContextValue')).toHaveText(String(value));
+    await page.getByRole('button', { name: 'Voltar' }).click();
+  };
+  for (const depth of [42, -37]) {
+    await setDepth(depth);
+    g = await geom(textId);
+    expect(await page.evaluate(id => assets.find(a => String(a.id) === id).depth, textId)).toBe(depth);
+    expectHugsSelection(g); // glifos (DOM) e seleção/alças permanecem alinhados sob parallax
+  }
+  const diagnostics = await page.evaluate(() => Object.fromEntries(buildDiagnosticsText().split('\n').filter(l => l.includes(': ')).map(l => { const i = l.indexOf(': '); return [l.slice(0, i), l.slice(i + 2)]; })));
+  expect(diagnostics).toMatchObject({ selectedTextBoxWidthMode: 'auto', textAssetStageUsesResolvedParallaxGeometry: 'true', textAssetDomSelectionParityOk: 'true' });
 });

@@ -402,3 +402,10 @@ Criar texto multilinha pelo fluxo público; confirmar fundo desligado; editar em
 ### TC-043 — revisão bloqueante da PR #489
 
 A cobertura permanente também exige ativação/desativação durante criação com centro e wrapping invariantes, rótulo imediato em 0/65/100%, escala pública em 100→105→100, slider/Reset, alça e rotação, além de mudanças isoladas de cor e opacidade com Undo/Redo e payload IndexedDB real correspondente.
+
+## TC-046 — Auto-largura do Text Asset e modo fixo opcional (E9C)
+
+- Pré-condição: Modo Ativos, editor tipográfico disponível, fixture real carregada.
+- Passos: (a) criar texto de um único caractere pelo fluxo público; (b) editar para múltiplas linhas de larguras diferentes; (c) em **Alinhar**, alternar para **Largura fixa**, travar uma largura menor pelo slider e concluir; executar Undo/Redo e Save/Load; voltar para **Largura automática**; (d) aplicar profundidade não-zero (positiva e negativa) pelo painel público.
+- Resultado esperado: (a) a caixa abraça o glifo (largura ≈ largura natural + 1 px), sem caixa vazia gigante, com paridade DOM↔seleção; (b) a largura acompanha a LINHA MAIS LONGA e as linhas ficam contidas na mesma largura, com altura de múltiplas linhas; (c) o modo passa a `fixed`, a largura travada quebra o texto dentro dela, e `boxWidthMode`/valor sobrevivem a Undo/Redo e Save/Load; (d) sob profundidade não-zero, glifos, fundo e seleção/alças permanecem alinhados (mesma cadeia `measureTextAsset → resolveAssetStageVisualGeometry → visualRect` da E9A/E9B) e a geometria canônica não é reescrita pela paralaxe.
+- Evidência: gate E9C em `tests/smoke/app.spec.mjs` (WebKit Smoke Tests). Execução local do gate em WebKit permanece bloqueada pela ausência do WebKit no ambiente; verificação equivalente executada em Chromium `hasTouch`. Validação final em iPhone/Safari real permanece pendente.

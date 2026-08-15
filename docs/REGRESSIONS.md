@@ -1,5 +1,12 @@
 # REGRESSIONS
 
+## E9C — proteções da auto-largura do Text Asset
+
+- O modo padrão de texto NOVO é `boxWidthMode:'auto'` (largura derivada da linha mais longa, quebra só por Enter). Projetos legados/E9x sem o campo migram para `'fixed'`, preservando a geometria confirmada anterior — `measureTextAsset` em modo fixo é idêntico ao comportamento pré-E9C.
+- A largura só é derivada em `measureTextAsset`; `normalizeTextAsset`, serialização, `canonicalAsset`, hidratação e `restoreState` apenas preservam o campo. A geometria continua sendo escrita na ordem `measureTextAsset → resolveAssetStageVisualGeometry → visualRect` (E9A/E9B): a auto-largura não pode reintroduzir divergência glifos/fundo/seleção nem escrever offset de paralaxe em `worldX/worldY`.
+- `boxWidthMode` (e, no modo fixo, `boxWidth`/`textBaseBoxWidth`) integram os campos de commit do editor e o fingerprint canônico de histórico, para que a alternância de modo agende Undo/Redo e Session Autosave reais e sobreviva a Save/Load e Session Restore.
+- Depth/parallax translacional e Preview/Export permanecem inalterados; a nova largura apenas fornece `worldW/worldH` para `resolveAssetStageVisualGeometry` consumir. Escala% de texto continua `boxWidth/textBaseBoxWidth`: como a largura natural é linear na fonte, o baseline é resincronizado no modo auto e a mudança de largura fixa preserva a proporção de escala.
+
 ## REG-E9B — Paralaxe separa Text Asset de sua seleção no Stage
 
 - **Relato:** no iPhone/Safari, a paralaxe movia seleção e abas do Text Asset, mas deixava glifos e fundo fixos no Stage.
