@@ -1,3 +1,21 @@
+## Checklist de validação de release — v8z4b32E9C (iPhone/Safari real)
+
+Candidata de promoção. Validação física em iPhone/Safari real **pendente**; itens manuais iniciam desmarcados e só podem ser marcados após verificação no aparelho real por Roberto.
+
+- [ ] Menu/versão mostra `v8z4b32E9C`.
+- [ ] Criação e edição de Text Asset.
+- [ ] Digitar um único caractere (ex. "R") mantém a caixa ajustada ao conteúdo, sem caixa enorme e vazia.
+- [ ] Largura fixa opcional (toggle + slider) controla a quebra automática quando ativada.
+- [ ] Profundidade positiva e negativa com texto, fundo, seleção e abas movendo juntos no Stage.
+- [ ] Save/Load e Session Restore preservam o estado do projeto.
+- [ ] Preview.
+- [ ] Exportação MP4 (WebCodecs/H.264) e reprodução do vídeo resultante.
+- [ ] Projeto com múltiplas imagens, Layers e Trocar imagem.
+- [ ] UI sem texto técnico visível e sem verde no chrome do Arco.
+- [ ] Logos e ícone carregando corretamente.
+
+Evidência automática já comprovada (não substitui a validação física): no HEAD da PR #492, a `v8z4b32E9C` teve QA Guardrails verde, WebKit funcional 19/19 e Real Export H.264 2/2 com `avc1.42001f`. A validação física em iPhone/Safari real permanece pendente e não está concluída.
+
 ## v8z4b32E7H
 
 Base: `v8z4b32E7G`. Nova versão: `v8z4b32E7H`.

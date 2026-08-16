@@ -1,3 +1,15 @@
+# v8z4b32E9C — candidata de promoção
+
+Consolidação da `v8z4b32E9C` (mergeada pela PR #492) como candidata de promoção de teste para produção. Resumo dos blocos relevantes desde a `v8z4b32E7H`:
+
+- **Save/Load, Session Restore e preparação de Preview/Export:** estabilização do round-trip de projeto, recuperação de readiness da render session, isolamento do autosave durante Preview/Export e confirmação do primeiro frame antes do relógio.
+- **UI contextual de Frames/Ativos e transformação de assets:** apresentação unificada em bottom sheet contextual, seleção canônica sincronizada entre Stage/Layers/contexto e paridade das alças de transformação de Ativos com as de Frames.
+- **Profundidade/paralaxe:** `depth` finito, persistente e independente do `zIndex`, com parallax translacional aplicado apenas no render (sem regravar geometria, Frames, curvas ou ProjectWorld).
+- **Text Assets:** criação e edição de texto como ativo canônico, fundo, profundidade persistente, paridade visual de glifos/fundo/seleção no Stage sob profundidade não-zero e auto-largura ajustada ao conteúdo (com modo de largura fixa opcional).
+- **Ícone e logos:** atualização recente de `apple-touch-icon` (PR #493 e #494) e dos logos SVG do Arco (PR #495).
+
+Promoção para produção e validação final em iPhone/Safari real permanecem pendentes; nenhuma promoção está autorizada.
+
 # v8z4b32E8G — fix(session): impede autosave durante Preview
 
 - Remove o agendamento indiscriminado de Session Autosave no `document.pointerup`; Play não é mutação e não cria revisão/checkpoint.
