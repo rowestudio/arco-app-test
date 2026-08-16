@@ -10,7 +10,7 @@
 - O plano aprovado de entrega é uma série de três PRs funcionais antes de qualquer promoção — (1) Texto, (2) Camadas e Profundidade, (3) Engine Sprint de Movimento inteligente/easing — seguida de revisão integrada no iPhone/Safari. O registro canônico está em `docs/PRE_PROMOTION_RELEASE_PLAN.md`; a sequência também consta em `docs/ROADMAP.md`.
 - A promoção para produção permanece **bloqueada** e depende da conclusão dessa série, dos testes obrigatórios e de autorização explícita de Roberto. Nenhuma promoção foi executada.
 - Produção (`rowestudio/arco-app`) permanece em `v8z4b32E7H`, commit `626327280e3a4126fac259e205bbe0bdf3cc8719`, fora do escopo desta série. O registro operacional da candidata futura está em `docs/PROMOTION_TO_PRODUCTION.md`.
-- A validação física em iPhone/Safari das versões E9B e E9C ainda **não** foi realizada; a evidência disponível é automática (checks de CI no HEAD da PR #492) e está registrada em `QA.md`.
+- Houve testes físicos **parciais** em iPhone/Safari real das versões E9B/E9C — foi esse teste parcial que revelou a regressão aberta de texto vertical registrada em `docs/REGRESSIONS.md`. A validação **completa** de release ainda **não** foi concluída nem aprovada; a evidência automática (checks de CI no HEAD da PR #492) está registrada em `QA.md` como complementar, não substituta.
 - Regressão aberta relevante para a série: um Text Asset novo pode aparecer vertical, letra a letra, no Stage/Preview sem edição (registrada em `docs/REGRESSIONS.md`, causa a demonstrar).
 
 ## Atualização 2026-08-15 — v8z4b32E9C mergeada (PR #492)

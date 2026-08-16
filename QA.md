@@ -1,6 +1,6 @@
 ## Checklist de validação de release — v8z4b32E9C (iPhone/Safari real)
 
-Base auditada da série pré-promoção (`v8z4b32E9C`), **não** uma promoção liberada — a promoção permanece bloqueada até a série completa e a aprovação de Roberto (ver `docs/PRE_PROMOTION_RELEASE_PLAN.md`). Validação física em iPhone/Safari real **pendente**; itens manuais iniciam desmarcados e só podem ser marcados após verificação no aparelho real por Roberto.
+Base auditada da série pré-promoção (`v8z4b32E9C`), **não** uma promoção liberada — a promoção permanece bloqueada até a série completa e a aprovação de Roberto (ver `docs/PRE_PROMOTION_RELEASE_PLAN.md`). Houve testes físicos **parciais** em iPhone/Safari real das versões E9B/E9C, que revelaram a regressão aberta de texto vertical (`docs/REGRESSIONS.md`); a validação **completa** desta checklist de release ainda **não** foi concluída nem aprovada. Itens manuais iniciam desmarcados e só podem ser marcados após verificação completa no aparelho real por Roberto.
 
 - [ ] Menu/versão mostra `v8z4b32E9C`.
 - [ ] Criação e edição de Text Asset.
@@ -18,7 +18,7 @@ Nota sobre o alvo futuro (não validar aqui): o redesign da PR funcional de Text
 
 Regressão aberta relacionada (não validar como resolvida aqui): um Text Asset novo pode aparecer vertical, letra a letra, no Stage/Preview, com causa ainda não demonstrada. Registro em `docs/REGRESSIONS.md`; correção e validação pertencem à PR funcional de Texto.
 
-Evidência automática já comprovada (não substitui a validação física): no HEAD da PR #492, a `v8z4b32E9C` teve QA Guardrails verde, WebKit funcional 19/19 e Real Export H.264 2/2 com `avc1.42001f`. A validação física em iPhone/Safari real permanece pendente e não está concluída.
+Evidência automática já comprovada (não substitui a validação física completa): no HEAD da PR #492, a `v8z4b32E9C` teve QA Guardrails verde, WebKit funcional 19/19 e Real Export H.264 2/2 com `avc1.42001f`. A validação física **completa** desta checklist de release em iPhone/Safari real permanece pendente e não está concluída nem aprovada.
 
 ## v8z4b32E7H
 
