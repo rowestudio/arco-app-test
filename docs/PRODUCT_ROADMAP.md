@@ -20,6 +20,7 @@ Estados usados neste documento:
 - [Futuro] Distribuição proporcional horizontal/vertical de frames.
 - [Futuro] Preservar curvas ao aplicar escala global ou templates.
 - [Futuro] Movimento contínuo de rotação entre frames, inclusive voltas completas.
+- [Futuro] Os modos Câmera/Frames e Ativos devem se tornar abas visuais reais, com diferenciação sutil de tom/fundo, sem alterar o comportamento. Backlog registrado pela série pré-promoção (`docs/PRE_PROMOTION_RELEASE_PLAN.md`); não implementar essa mudança visual nesta série.
 
 ## 2. Frames, trechos e reprodução
 

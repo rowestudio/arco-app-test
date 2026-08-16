@@ -1,6 +1,6 @@
 ## Checklist de validação de release — v8z4b32E9C (iPhone/Safari real)
 
-Candidata de promoção. Validação física em iPhone/Safari real **pendente**; itens manuais iniciam desmarcados e só podem ser marcados após verificação no aparelho real por Roberto.
+Base auditada da série pré-promoção (`v8z4b32E9C`), **não** uma promoção liberada — a promoção permanece bloqueada até a série completa e a aprovação de Roberto (ver `docs/PRE_PROMOTION_RELEASE_PLAN.md`). Validação física em iPhone/Safari real **pendente**; itens manuais iniciam desmarcados e só podem ser marcados após verificação no aparelho real por Roberto.
 
 - [ ] Menu/versão mostra `v8z4b32E9C`.
 - [ ] Criação e edição de Text Asset.

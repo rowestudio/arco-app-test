@@ -31,19 +31,25 @@ Regras antigas de tags, branches e commits em `docs/versioning.md` foram obsolet
 - PR documental não altera `APP_VERSION`;
 - promoção para produção exige aprovação explícita de Roberto, branch e PR próprios.
 
-## Candidata de release pendente — v8z4b32E9C
+## Candidata de release pendente — série pré-promoção
 
-Status atual: **candidata de release ainda pendente**. Registro para promoção futura, sem aprovação:
+Status atual: **não há promoção autorizada**. A `v8z4b32E9C` é a **base auditada** da série pré-promoção, **não** uma promoção liberada. O plano canônico está em `docs/PRE_PROMOTION_RELEASE_PLAN.md`.
+
+- A candidata real de produção **não** é o HEAD atual: será o HEAD posterior à série completa de PRs funcionais aprovadas — (1) Texto, (2) Camadas e Profundidade, (3) Engine Sprint de Movimento inteligente/easing — mais a revisão integrada no iPhone/Safari e a documentação coerente.
+- Nenhuma promoção pode ocorrer antes dessa série completa, dos testes obrigatórios e da aprovação explícita de Roberto.
+
+Registro do estado corrente (referência, sem aprovação):
 
 - Repo fonte: `rowestudio/arco-app-test`.
-- Commit fonte: `8f1b2686ae6cc99bb716b200a79d04281cd968d7` (HEAD atual da `main` de teste).
-- Versão fonte: `v8z4b32E9C`.
+- Commit fonte (base auditada atual, **não** a fonte final de promoção): `8f1b2686ae6cc99bb716b200a79d04281cd968d7`.
+- Versão fonte atual: `v8z4b32E9C`.
 - Repo destino: `rowestudio/arco-app`.
 - Commit destino atual: `626327280e3a4126fac259e205bbe0bdf3cc8719` (produção em `v8z4b32E7H`).
-- Status: aguardando validação de release no iPhone/Safari real e aprovação explícita de Roberto.
+- Status: bloqueada. Aguardando a série pré-promoção completa, validação de release no iPhone/Safari real e aprovação explícita de Roberto.
 
-Definições para a futura PR de produção desta candidata:
+Definições para a futura PR de produção (quando autorizada):
 
+- A fonte deverá ser o HEAD que contenha a série completa aprovada, não a base auditada `v8z4b32E9C` isoladamente.
 - Deve sincronizar `index.html` e todos os assets efetivamente referenciados em runtime, mantendo-os byte-idênticos à fonte aprovada.
 - **Não** deve copiar automaticamente para produção a infraestrutura exclusiva de teste: Playwright, `scripts/qa`, `test-fixtures`, arquivos de pacote (`package.json`/`package-lock.json`) e workflows de CI.
 

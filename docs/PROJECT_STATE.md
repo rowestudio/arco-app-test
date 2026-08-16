@@ -1,14 +1,17 @@
 # PROJECT_STATE
 
-## Atualização 2026-08-16 — v8z4b32E9C consolidada como candidata de promoção
+## Atualização 2026-08-16 — v8z4b32E9C é a base auditada da série pré-promoção
 
 - HEAD atual da `main` de teste: `8f1b2686ae6cc99bb716b200a79d04281cd968d7`; `APP_VERSION` e `APP_VERSION_NAME` permanecem `v8z4b32E9C`.
 - A `v8z4b32E9C` foi mergeada na `main` de teste pela PR #492. A `main` atual inclui também, após esse merge:
   - PR #493 e PR #494: atualização de `assets/icons/apple-touch-icon.png`;
   - PR #495: atualização dos logos SVG do Arco (`assets/brand/arco-logo.svg`, `assets/brand/arco-logo-white.svg`, `assets/brand/arco-logo-symbol.svg`).
-- Produção (`rowestudio/arco-app`) permanece em `v8z4b32E7H`, commit `626327280e3a4126fac259e205bbe0bdf3cc8719`. Nenhuma promoção foi executada nesta consolidação.
-- A candidata de promoção de teste para produção é a versão `v8z4b32E9C` da `main` de teste. O registro da candidata pendente está em `docs/PROMOTION_TO_PRODUCTION.md`.
-- A promoção **não** está aprovada: aguarda validação de release no iPhone/Safari real e aprovação explícita de Roberto. A validação física em iPhone/Safari das versões E9B e E9C ainda **não** foi realizada; a evidência disponível é automática (checks de CI no HEAD da PR #492) e está registrada em `QA.md`.
+- A `v8z4b32E9C` é a **base auditada** desta série, **não** uma promoção liberada. A candidata real de produção será o HEAD posterior à série completa de PRs funcionais, à documentação coerente e à validação completa no iPhone/Safari por Roberto.
+- O plano aprovado de entrega é uma série de três PRs funcionais antes de qualquer promoção — (1) Texto, (2) Camadas e Profundidade, (3) Engine Sprint de Movimento inteligente/easing — seguida de revisão integrada no iPhone/Safari. O registro canônico está em `docs/PRE_PROMOTION_RELEASE_PLAN.md`; a sequência também consta em `docs/ROADMAP.md`.
+- A promoção para produção permanece **bloqueada** e depende da conclusão dessa série, dos testes obrigatórios e de autorização explícita de Roberto. Nenhuma promoção foi executada.
+- Produção (`rowestudio/arco-app`) permanece em `v8z4b32E7H`, commit `626327280e3a4126fac259e205bbe0bdf3cc8719`, fora do escopo desta série. O registro operacional da candidata futura está em `docs/PROMOTION_TO_PRODUCTION.md`.
+- A validação física em iPhone/Safari das versões E9B e E9C ainda **não** foi realizada; a evidência disponível é automática (checks de CI no HEAD da PR #492) e está registrada em `QA.md`.
+- Regressão aberta relevante para a série: um Text Asset novo pode aparecer vertical, letra a letra, no Stage/Preview sem edição (registrada em `docs/REGRESSIONS.md`, causa a demonstrar).
 
 ## Atualização 2026-08-15 — v8z4b32E9C mergeada (PR #492)
 

@@ -1,6 +1,6 @@
-# v8z4b32E9C — candidata de promoção
+# v8z4b32E9C — base auditada da série pré-promoção
 
-Consolidação da `v8z4b32E9C` (mergeada pela PR #492) como candidata de promoção de teste para produção. Resumo dos blocos relevantes desde a `v8z4b32E7H`:
+Consolidação da `v8z4b32E9C` (mergeada pela PR #492) como **base auditada** da série pré-promoção — **não** uma promoção liberada. A candidata real de produção será o HEAD posterior à série completa de PRs funcionais (Texto → Camadas/Profundidade → Engine Sprint), à revisão integrada no iPhone/Safari e à aprovação explícita de Roberto (plano em `docs/PRE_PROMOTION_RELEASE_PLAN.md`). Resumo dos blocos relevantes desde a `v8z4b32E7H`:
 
 - **Save/Load, Session Restore e preparação de Preview/Export:** estabilização do round-trip de projeto, recuperação de readiness da render session, isolamento do autosave durante Preview/Export e confirmação do primeiro frame antes do relógio.
 - **UI contextual de Frames/Ativos e transformação de assets:** apresentação unificada em bottom sheet contextual, seleção canônica sincronizada entre Stage/Layers/contexto e paridade das alças de transformação de Ativos com as de Frames.
@@ -8,7 +8,7 @@ Consolidação da `v8z4b32E9C` (mergeada pela PR #492) como candidata de promoç
 - **Text Assets:** criação e edição de texto como ativo canônico, fundo, profundidade persistente, paridade visual de glifos/fundo/seleção no Stage sob profundidade não-zero e auto-largura ajustada ao conteúdo (com modo de largura fixa opcional).
 - **Ícone e logos:** atualização recente de `apple-touch-icon` (PR #493 e #494) e dos logos SVG do Arco (PR #495).
 
-Promoção para produção e validação final em iPhone/Safari real permanecem pendentes; nenhuma promoção está autorizada.
+Promoção para produção e validação final em iPhone/Safari real permanecem pendentes; a promoção está bloqueada até a conclusão da série pré-promoção. Nenhuma promoção está autorizada.
 
 # v8z4b32E8G — fix(session): impede autosave durante Preview
 
