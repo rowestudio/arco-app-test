@@ -5,8 +5,10 @@ Consolidação da `v8z4b32E9C` (mergeada pela PR #492) como **base auditada** da
 - **Save/Load, Session Restore e preparação de Preview/Export:** estabilização do round-trip de projeto, recuperação de readiness da render session, isolamento do autosave durante Preview/Export e confirmação do primeiro frame antes do relógio.
 - **UI contextual de Frames/Ativos e transformação de assets:** apresentação unificada em bottom sheet contextual, seleção canônica sincronizada entre Stage/Layers/contexto e paridade das alças de transformação de Ativos com as de Frames.
 - **Profundidade/paralaxe:** `depth` finito, persistente e independente do `zIndex`, com parallax translacional aplicado apenas no render (sem regravar geometria, Frames, curvas ou ProjectWorld).
-- **Text Assets:** criação e edição de texto como ativo canônico, fundo, profundidade persistente, paridade visual de glifos/fundo/seleção no Stage sob profundidade não-zero e auto-largura ajustada ao conteúdo (com modo de largura fixa opcional).
+- **Text Assets:** criação e edição de texto como ativo canônico, fundo e profundidade persistente. A E9C introduziu **no código** o modo de auto-largura ajustada ao conteúdo e o modo de largura fixa opcional, além do tratamento de paridade de glifos/fundo/seleção sob profundidade não-zero. **Estado visual não integralmente validado** — ver regressão aberta abaixo.
 - **Ícone e logos:** atualização recente de `apple-touch-icon` (PR #493 e #494) e dos logos SVG do Arco (PR #495).
+
+**Regressão aberta (relato visual em iPhone/Safari prevalece sobre intenção/diagnóstico interno):** após a E9C, a validação visual revelou que um Text Asset novo pode aparecer vertical, letra a letra, no Stage/Preview, e o caso de uma única letra pode manter geometria incorreta. A causa técnica ainda **não** foi demonstrada. Por isso, este bloco é **base auditada** da série e **não** deve ser apresentado como comportamento visual integralmente validado. A regressão está aberta e será tratada na PR funcional de Texto (ver `docs/REGRESSIONS.md` e `docs/PRE_PROMOTION_RELEASE_PLAN.md`).
 
 Promoção para produção e validação final em iPhone/Safari real permanecem pendentes; a promoção está bloqueada até a conclusão da série pré-promoção. Nenhuma promoção está autorizada.
 
