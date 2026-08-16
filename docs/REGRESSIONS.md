@@ -3,14 +3,14 @@
 ## REG-047 — Text Asset novo pode quebrar verticalmente no Safari (E9D)
 
 - **Relato real:** texto recém-criado podia aparecer letra a letra no Stage/Preview; uma letra podia conservar caixa excessiva.
-- **Causa demonstrada no código:** o modo Auto gravava a largura Canvas exatamente no limite natural, mas o Stage DOM aplicava a mesma largura sob `overflow-wrap:anywhere`; diferenças de arredondamento subpixel entre Canvas e layout de fonte no Safari podiam exceder esse limite e acionar quebra por caractere.
-- **Correção E9D:** reserva geométrica canônica de 1 px em `measureTextAsset`, compartilhada pela caixa/seleção/hit-test e pelos snapshots de Preview/Export, além do gate público E9D. Não é compensação visual de CSS.
+- **Hipótese técnica sob validação:** o modo Auto gravava a largura Canvas exatamente no limite natural, enquanto o Stage DOM aplicava essa largura sob `overflow-wrap:anywhere`. Divergência subpixel Canvas × layout DOM/Safari é compatível com o sintoma, mas não é declarada causa comprovada sem reprodução pública A/B no WebKit ou iPhone.
+- **Correção adotada na E9D:** reserva geométrica canônica de 1 px em `measureTextAsset`, compartilhada pela caixa/seleção/hit-test e pelos snapshots de Preview/Export. A E9D-R1 exige evidência pública de `R` e `Texto` horizontal no Stage/Preview e no H.264 real; não é compensação visual de CSS.
 - **Estado:** cobertura automatizada implementada; a regressão continua **pendente de validação visual final em iPhone/Safari real** e só deve ser encerrada após os checks do HEAD e essa validação.
 
 ## REG-2026-08-16 — Text Asset novo aparece vertical no Stage/Preview (ABERTA)
 
 - **Relato:** no iPhone/Safari, um Text Asset novo pode aparecer vertical, letra a letra, no Stage ou no Preview, sem edição. O caso de uma única letra também não pode resultar em caixa excessivamente larga.
-- **Causa/correção:** demonstradas e registradas em REG-047; a E9D adiciona a reserva geométrica canônica e o gate público correspondente.
+- **Causa/correção:** o relato é confirmado; a hipótese Canvas × DOM permanece sob validação. A reserva canônica de 1 px é a correção adotada e o gate público correspondente é registrado em REG-047.
 - **Status:** implementação automatizada em PR, ainda aberta até checks do HEAD e validação visual final no iPhone/Safari real. Produção e promoção não autorizadas.
 - **Documento relacionado:** `docs/PRE_PROMOTION_RELEASE_PLAN.md` (item 2 — PR de Texto).
 

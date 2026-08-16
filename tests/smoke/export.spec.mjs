@@ -55,24 +55,22 @@ test('WebKit macOS real Export — controle somente imagem', async ({page}, test
   await exportRealMp4(page,testInfo,'image-only'); expect(errors).toEqual([]);
 });
 
-test('WebKit macOS real Export — imagem com Text Asset E9A com caixa e profundidade', async ({page}, testInfo) => {
+test('WebKit macOS real Export — imagem com Text Asset E9D horizontal, caixa e profundidade', async ({page}, testInfo) => {
   test.setTimeout(180_000); const errors=await openProject(page); await requireNativeH264(page);
-  await page.evaluate(() => { setEditorMode('assets','webkit-macos-export'); startTextCreation(); });
-  const content='A  B\tC\nD'; await page.locator('#textCreationInput').fill(content);
+  await page.locator('#modeAssetsBtn').click(); await expect(page.locator('body')).toHaveClass(/editor-assets/); await page.locator('#lowerAddOrSelectAllBtn').click(); await page.locator('#assetsMenuTextBtn').click();
+  const content='Texto'; await page.locator('#textCreationInput').fill(content);
   await page.locator('#textCreationColor').evaluate(el=>{el.value='#ff3366';el.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.getByRole('tab',{name:'Fonte',exact:true}).click(); await page.getByRole('button',{name:'Fonte Serifada',exact:true}).click();
   await page.getByRole('tab',{name:'Estilo',exact:true}).click(); await page.getByRole('button',{name:'Estilo Negrito + itálico',exact:true}).click();
   await page.getByRole('tab',{name:'Texto',exact:true}).click(); await page.getByRole('button',{name:'Alinhar Direita',exact:true}).click();
+  await page.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#112233';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.locator('#textBoxBackgroundOpacity').fill('65');
   await page.getByRole('button',{name:'Confirmar',exact:true}).click();
-  const before=await page.evaluate(() => {
-    const text=assets.find(a=>a?.type==='text'), cx=text.worldX+text.worldW/2, cy=text.worldY+text.worldH/2;
-    text.boxWidth=text.worldW*=1.2; text.fontSize*=1.2; measureTextAsset(text); text.worldX=cx-text.worldW/2; text.worldY=cy-text.worldH/2; text.rotation=18; text.depth=42; text.boxBackgroundEnabled=true; text.boxBackgroundColor='#112233'; text.boxBackgroundOpacity=.65; measureTextAsset(text); text.worldX=cx-text.worldW/2; text.worldY=cy-text.worldH/2;
-    while(getAssetZOrderInfo().canForward) bringSelectedAssetForward();
-    return {text:serializeProjectAsset(text,0,false),frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld),order:assets.slice().sort((a,b)=>a.zIndex-b.zIndex).map(a=>String(a.id))};
-  });
-  expect(before.text).toMatchObject({text:content,color:'#ff3366',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right',rotation:18,depth:42,boxStyle:'block',boxBackgroundEnabled:true,boxBackgroundColor:'#112233',boxBackgroundOpacity:.65}); expect(before.text.worldW).toBeGreaterThan(before.text.boxWidth);
-  await exportRealMp4(page,testInfo,'image-text-e8z');
+  const stage=await page.locator('.world-text-asset').filter({hasText:'Texto'}).boundingBox(); expect(stage.width).toBeGreaterThan(stage.height);
+  await page.locator('#tbAssetDepth').click(); await page.locator('#assetContextSlider').fill('42'); await page.locator('#assetContextSlider').dispatchEvent('change'); await page.getByRole('button',{name:'Voltar'}).click();
+  const before=await page.evaluate(() => {const text=getSelectedAsset(),m=measureTextAsset({...text});return{text:serializeProjectAsset(text,0,false),lines:m.lines,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld),order:assets.slice().sort((a,b)=>a.zIndex-b.zIndex).map(a=>String(a.id))}});
+  expect(before.text).toMatchObject({text:content,color:'#ff3366',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right',depth:42,boxStyle:'block',boxBackgroundEnabled:true,boxBackgroundColor:'#112233',boxBackgroundOpacity:.65}); expect(before.lines).toEqual(['Texto']); expect(before.text.worldW).toBeGreaterThan(before.text.boxWidth);
+  await exportRealMp4(page,testInfo,'image-text-e9d');
   const after=await page.evaluate(id=>({text:renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id),frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld),order:assets.slice().sort((a,b)=>a.zIndex-b.zIndex).map(a=>String(a.id))}),String(before.text.id));
-  expect(after.text).toMatchObject({id:before.text.id,text:content,color:'#ff3366',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right',worldX:before.text.worldX,worldY:before.text.worldY,worldW:before.text.worldW,rotation:18,depth:42,zIndex:before.text.zIndex});
+  expect(after.text).toMatchObject({id:before.text.id,text:content,color:'#ff3366',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right',worldX:before.text.worldX,worldY:before.text.worldY,worldW:before.text.worldW,depth:42,zIndex:before.text.zIndex});
   expect(after.frames).toEqual(before.frames); expect(after.world).toEqual(before.world); expect(after.order).toEqual(before.order); expect(errors).toEqual([]);
 });

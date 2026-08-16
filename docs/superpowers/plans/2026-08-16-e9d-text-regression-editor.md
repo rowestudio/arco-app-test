@@ -5,7 +5,7 @@ Este plano operacional complementa, sem substituir, `docs/PRE_PROMOTION_RELEASE_
 ## Base, classe e limites
 
 - Base local confirmada: `02919cba11738d32f0609df1e3d4b641af9a51a7`, `v8z4b32E9C`.
-- A consulta remota ao GitHub foi tentada antes da edição, mas o ambiente recusou autenticação/conexão; a limitação deve constar na PR.
+- HEAD remoto auditado da PR #497 antes da E9D-R1: `b4c177970568b3d354fcd262fad036f3c0153258`.
 - Classe: correção de regressão de Text Asset + melhoria visual localizada; risco médio.
 - Dentro do escopo: geometria/medição textual, draft, editor tipográfico, seleção/hit-test/alças, persistência textual e testes Stage/Preview/Export.
 - Fora do escopo: Camadas/Profundidade, Movimento inteligente, easing/timing/duração, escala máxima, raio/borda/opacidade global, Frames/Ativos, ProjectWorld e refatorações amplas.
@@ -13,10 +13,10 @@ Este plano operacional complementa, sem substituir, `docs/PRE_PROMOTION_RELEASE_
 ## Causa a demonstrar antes do produto
 
 - [ ] Reproduzir pelos controles públicos `R` e `Texto` recém-criados.
-- [x] Capturar em cada limite `text`, `boxWidthMode`, largura natural, `boxWidth`, linhas e retângulo Stage.
-- [x] Comparar Stage DOM com Preview/Export Canvas e com Text Asset confirmado correto.
-- [x] Fazer o teste E9D falhar antes da implementação.
-- [x] Registrar a causa comprovada, sem atribuí-la a CSS ou renderer sem evidência.
+- [ ] Capturar em cada limite `text`, `boxWidthMode`, largura natural, `boxWidth`, linhas e retângulo Stage.
+- [ ] Comparar Stage DOM com Preview/Export Canvas e com Text Asset confirmado correto.
+- [ ] Fazer o teste E9D falhar antes da implementação.
+- [ ] Registrar a causa comprovada, sem atribuí-la a CSS ou renderer sem evidência.
 
 ## Tarefas verificáveis
 
@@ -27,7 +27,7 @@ Este plano operacional complementa, sem substituir, `docs/PRE_PROMOTION_RELEASE_
 5. [x] Atualizar `APP_VERSION` e `APP_VERSION_NAME` juntos para `v8z4b32E9D`.
 6. [x] Atualizar somente `PROJECT_STATE`, `REGRESSIONS`, `TEST_CASES` e, se houver decisão nova, `DECISIONS`.
 7. [ ] Executar gate isolado, suítes compatíveis, self-tests, Project OS, links, leakage e `git diff --check`.
-8. [ ] Registrar arquivos/funções reais, riscos e itens não verificados na PR.
+8. [ ] Registrar arquivos/funções reais, riscos, comandos/resultados e itens não verificados na PR #497.
 
 ## Arquivos reais previstos/alterados
 
@@ -50,3 +50,18 @@ Este plano operacional complementa, sem substituir, `docs/PRE_PROMOTION_RELEASE_
 - [ ] Sheet bloqueia toque/pan/zoom atrás, rola internamente e respeita Home Bar/safe area.
 - [ ] Undo/Redo, Save/Load e fechar/reabrir sessão preservam apenas estado confirmado.
 
+
+## Evidência E9D-R1
+
+- Implementação preparada: seletor do tablist escopado à sheet; criação pública de `R` e `Texto`; prova DOM/Canvas no Stage/Preview; draft, histórico, fundo, depth, hit-test e quatro alças; H.264 E9D pelo fluxo público.
+- Resultados locais E9D-R1 no HEAD final:
+  - `node scripts/qa/run-self-tests.mjs`: passou, 47/47.
+  - `node scripts/qa/check-app-version.mjs` com metadados da PR: passou em `v8z4b32E9D`.
+  - `node scripts/qa/check-ui-leakage.mjs`: passou.
+  - `node scripts/qa/check-project-os.mjs`: passou.
+  - `node scripts/qa/check-markdown-links.mjs`: passou para 132 arquivos.
+  - `git diff --check 02919cba11738d32f0609df1e3d4b641af9a51a7...HEAD` e `git diff --check`: passaram.
+  - gate E9D WebKit local: não executou porque o binário WebKit não existe no ambiente; o comando terminou com falha de `browserType.launch`.
+  - `node scripts/qa/check-repository-state.mjs`: passou após a correção da terminação do plano.
+  - suíte WebKit funcional e export H.264 local: comandos executados, mas não iniciaram testes porque o mesmo binário WebKit não existe no ambiente.
+- Os checkboxes de reprodução/causa e da tarefa 7 permanecem abertos até WebKit/CI e iPhone produzirem a evidência exigida.
