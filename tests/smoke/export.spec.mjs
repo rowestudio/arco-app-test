@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
+import { dismissProModalIfVisible } from './ui-helpers.mjs';
 
 const projectFixture = path.resolve('samples/arquivo 8vo imagem.json');
 const h264Candidates = ['avc1.42001f','avc1.42E01E','avc1.4D401F'];
@@ -57,6 +58,7 @@ test('WebKit macOS real Export — controle somente imagem', async ({page}, test
 
 test('WebKit macOS real Export — imagem com Text Asset E9D horizontal, caixa e profundidade', async ({page}, testInfo) => {
   test.setTimeout(180_000); const errors=await openProject(page); await requireNativeH264(page);
+  await dismissProModalIfVisible(page);
   await page.locator('#modeAssetsBtn').click(); await expect(page.locator('body')).toHaveClass(/editor-assets/); await page.locator('#lowerAddOrSelectAllBtn').click(); await page.locator('#assetsMenuTextBtn').click();
   const content='Texto'; await page.locator('#textCreationInput').fill(content);
   await page.locator('#textCreationColor').evaluate(el=>{el.value='#ff3366';el.dispatchEvent(new Event('input',{bubbles:true}));});

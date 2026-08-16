@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
+import { dismissProModalIfVisible } from './ui-helpers.mjs';
 
 const projectFixture = path.resolve('samples/arquivo 8vo imagem.json');
 
@@ -2125,6 +2126,7 @@ test('E9D — criação pública horizontal e editor tipográfico preserva draft
   test.setTimeout(180_000);
   await page.setViewportSize({ width:390, height:797 }); await page.goto('/', { waitUntil:'domcontentloaded' }); await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture); await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout:30_000 });
+  await dismissProModalIfVisible(page);
   await page.locator('#modeAssetsBtn').click(); await expect(page.locator('body')).toHaveClass(/editor-assets/);
   const sheet=page.locator('#textCreationSheet'), openPublicTextCreation=async()=>{await page.locator('#lowerAddOrSelectAllBtn').click();await expect(page.locator('#assetsAddMenu')).toHaveClass(/open/);await page.locator('#assetsMenuTextBtn').click();await expect(sheet).toHaveClass(/open/)};
   const confirm=()=>sheet.getByRole('button',{name:'Confirmar',exact:true}).click();
