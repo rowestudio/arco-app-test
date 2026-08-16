@@ -62,8 +62,8 @@ test('WebKit macOS real Export — imagem com Text Asset E9A com caixa e profund
   await page.locator('#textCreationColor').evaluate(el=>{el.value='#ff3366';el.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.getByRole('tab',{name:'Fonte',exact:true}).click(); await page.getByRole('button',{name:'Fonte Serifada',exact:true}).click();
   await page.getByRole('tab',{name:'Estilo',exact:true}).click(); await page.getByRole('button',{name:'Estilo Negrito + itálico',exact:true}).click();
-  await page.getByRole('tab',{name:'Alinhar',exact:true}).click(); await page.getByRole('button',{name:'Alinhar Direita',exact:true}).click();
-  await page.getByRole('button',{name:'Concluir',exact:true}).click();
+  await page.getByRole('tab',{name:'Texto',exact:true}).click(); await page.getByRole('button',{name:'Alinhar Direita',exact:true}).click();
+  await page.getByRole('button',{name:'Confirmar',exact:true}).click();
   const before=await page.evaluate(() => {
     const text=assets.find(a=>a?.type==='text'), cx=text.worldX+text.worldW/2, cy=text.worldY+text.worldH/2;
     text.boxWidth=text.worldW*=1.2; text.fontSize*=1.2; measureTextAsset(text); text.worldX=cx-text.worldW/2; text.worldY=cy-text.worldH/2; text.rotation=18; text.depth=42; text.boxBackgroundEnabled=true; text.boxBackgroundColor='#112233'; text.boxBackgroundOpacity=.65; measureTextAsset(text); text.worldX=cx-text.worldW/2; text.worldY=cy-text.worldH/2;

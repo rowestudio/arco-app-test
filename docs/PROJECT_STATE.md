@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-16 — v8z4b32E9D em PR (Texto)
+
+- Base da tarefa: `02919cba11738d32f0609df1e3d4b641af9a51a7`, `v8z4b32E9C`; a confirmação remota foi tentada antes da edição, mas GitHub/CLI estavam inacessíveis no ambiente.
+- A E9D corrige no limite canônico de medição a divergência subpixel Canvas 2D × layout DOM/Safari: a largura Auto antes era exatamente a largura de `measureText`, enquanto o Stage usava `overflow-wrap:anywhere`; arredondamento oposto podia tornar a caixa menor que a linha e quebrá-la letra a letra. `measureTextAsset` passa a reservar 1 px CSS na largura de conteúdo, usado pela geometria comum, não por CSS cosmético.
+- O editor passa a usar quatro abas reais (`Texto`, `Fonte`, `Cor`, `Estilo`), ícones acessíveis `×`/`✓`, alinhamentos e Auto/Fixa + stepper em Texto, fundo em Cor e alça que minimiza sem confirmar nem persistir. O draft vivo reabre pelo fluxo Editar; confirmação preserva o ID.
+- Cobertura automatizada E9D foi adicionada. Validação visual final no iPhone/Safari e checks remotos do HEAD permanecem obrigatórios; produção não foi tocada e nenhuma promoção está autorizada.
+
 ## Atualização 2026-08-16 — v8z4b32E9C é a base auditada da série pré-promoção
 
 - HEAD atual da `main` de teste: `8f1b2686ae6cc99bb716b200a79d04281cd968d7`; `APP_VERSION` e `APP_VERSION_NAME` permanecem `v8z4b32E9C`.

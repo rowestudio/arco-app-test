@@ -1,5 +1,9 @@
 # DECISIONS
 
+## 2026-08-16 — DEC-Text-E9D: tolerância de 1 px pertence à geometria canônica
+
+A proteção contra divergência subpixel Canvas/DOM não será aplicada como largura mínima ou override visual no Stage. O modo Auto soma 1 px CSS à maior linha dentro de `measureTextAsset`; assim Stage, seleção, hit-test, Preview e Export consomem a mesma geometria. O valor não altera o padding aprovado nem a migração não destrutiva de projetos legados em modo Fixa.
+
 ## DEC-2026-08-16-01 — Separar Texto, Camadas/Profundidade e Engine Sprint em PRs próprias
 
 - **Data:** 2026-08-16.
