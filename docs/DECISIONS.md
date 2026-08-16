@@ -1,5 +1,16 @@
 # DECISIONS
 
+## DEC-2026-08-16-01 — Separar Texto, Camadas/Profundidade e Engine Sprint em PRs próprias
+
+- **Data:** 2026-08-16.
+- **Assunto:** estratégia de entrega da série pré-promoção a partir da base auditada `v8z4b32E9C`.
+- **Classificação:** processo / planejamento / QA.
+- **Decisão:** entregar a evolução em PRs funcionais separadas e sequenciais — (1) Texto, (2) Camadas e Profundidade, (3) Engine Sprint de Movimento inteligente e intensidade de easing — seguidas de revisão integrada no iPhone/Safari, em vez de uma única PR grande. O Engine Sprint não pode ser misturado às duas PRs anteriores.
+- **Razão:** redução de risco — escopos menores permitem revisão de diff, QA e validação visual focados por área, isolam regressões e mantêm `Stage = Preview = Export` e a separação motor/UI sem alteração colateral.
+- **Consequência:** cada PR funcional parte do HEAD remoto atualizado, recebe nova versão com `APP_VERSION === APP_VERSION_NAME`, passa pelos checks obrigatórios do HEAD atual e não libera promoção por si só. A candidata real de produção é o HEAD posterior à série completa, à documentação coerente e à aprovação explícita de Roberto.
+- **Status:** plano documental aprovado e registrado; não autoriza implementação automática dos itens.
+- **Documento relacionado:** `docs/PRE_PROMOTION_RELEASE_PLAN.md`.
+
 ## 2026-08-14 — E9B reutiliza o resolvedor visual do Stage para texto
 
 - **Decisão:** após `measureTextAsset`, o ramo DOM textual usa `resolveAssetStageVisualGeometry` e converte sua `visualRect`, assim como imagens, seleção, abas e hit-test.

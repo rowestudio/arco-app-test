@@ -1,3 +1,17 @@
+# v8z4b32E9C — base auditada da série pré-promoção
+
+Consolidação da `v8z4b32E9C` (mergeada pela PR #492) como **base auditada** da série pré-promoção — **não** uma promoção liberada. A candidata real de produção será o HEAD posterior à série completa de PRs funcionais (Texto → Camadas/Profundidade → Engine Sprint), à revisão integrada no iPhone/Safari e à aprovação explícita de Roberto (plano em `docs/PRE_PROMOTION_RELEASE_PLAN.md`). Resumo dos blocos relevantes desde a `v8z4b32E7H`:
+
+- **Save/Load, Session Restore e preparação de Preview/Export:** estabilização do round-trip de projeto, recuperação de readiness da render session, isolamento do autosave durante Preview/Export e confirmação do primeiro frame antes do relógio.
+- **UI contextual de Frames/Ativos e transformação de assets:** apresentação unificada em bottom sheet contextual, seleção canônica sincronizada entre Stage/Layers/contexto e paridade das alças de transformação de Ativos com as de Frames.
+- **Profundidade/paralaxe:** `depth` finito, persistente e independente do `zIndex`, com parallax translacional aplicado apenas no render (sem regravar geometria, Frames, curvas ou ProjectWorld).
+- **Text Assets:** criação e edição de texto como ativo canônico, fundo e profundidade persistente. A E9C introduziu **no código** o modo de auto-largura ajustada ao conteúdo e o modo de largura fixa opcional, além do tratamento de paridade de glifos/fundo/seleção sob profundidade não-zero. **Estado visual não integralmente validado** — ver regressão aberta abaixo.
+- **Ícone e logos:** atualização recente de `apple-touch-icon` (PR #493 e #494) e dos logos SVG do Arco (PR #495).
+
+**Regressão aberta (relato visual em iPhone/Safari prevalece sobre intenção/diagnóstico interno):** após a E9C, a validação visual revelou que um Text Asset novo pode aparecer vertical, letra a letra, no Stage/Preview, e o caso de uma única letra pode manter geometria incorreta. A causa técnica ainda **não** foi demonstrada. Por isso, este bloco é **base auditada** da série e **não** deve ser apresentado como comportamento visual integralmente validado. A regressão está aberta e será tratada na PR funcional de Texto (ver `docs/REGRESSIONS.md` e `docs/PRE_PROMOTION_RELEASE_PLAN.md`).
+
+Promoção para produção e validação final em iPhone/Safari real permanecem pendentes; a promoção está bloqueada até a conclusão da série pré-promoção. Nenhuma promoção está autorizada.
+
 # v8z4b32E8G — fix(session): impede autosave durante Preview
 
 - Remove o agendamento indiscriminado de Session Autosave no `document.pointerup`; Play não é mutação e não cria revisão/checkpoint.

@@ -1,6 +1,19 @@
 # PROJECT_STATE
 
-## Atualização 2026-08-15 — v8z4b32E9C em PR
+## Atualização 2026-08-16 — v8z4b32E9C é a base auditada da série pré-promoção
+
+- HEAD atual da `main` de teste: `8f1b2686ae6cc99bb716b200a79d04281cd968d7`; `APP_VERSION` e `APP_VERSION_NAME` permanecem `v8z4b32E9C`.
+- A `v8z4b32E9C` foi mergeada na `main` de teste pela PR #492. A `main` atual inclui também, após esse merge:
+  - PR #493 e PR #494: atualização de `assets/icons/apple-touch-icon.png`;
+  - PR #495: atualização dos logos SVG do Arco (`assets/brand/arco-logo.svg`, `assets/brand/arco-logo-white.svg`, `assets/brand/arco-logo-symbol.svg`).
+- A `v8z4b32E9C` é a **base auditada** desta série, **não** uma promoção liberada. A candidata real de produção será o HEAD posterior à série completa de PRs funcionais, à documentação coerente e à validação completa no iPhone/Safari por Roberto.
+- O plano aprovado de entrega é uma série de três PRs funcionais antes de qualquer promoção — (1) Texto, (2) Camadas e Profundidade, (3) Engine Sprint de Movimento inteligente/easing — seguida de revisão integrada no iPhone/Safari. O registro canônico está em `docs/PRE_PROMOTION_RELEASE_PLAN.md`; a sequência também consta em `docs/ROADMAP.md`.
+- A promoção para produção permanece **bloqueada** e depende da conclusão dessa série, dos testes obrigatórios e de autorização explícita de Roberto. Nenhuma promoção foi executada.
+- Produção (`rowestudio/arco-app`) permanece em `v8z4b32E7H`, commit `626327280e3a4126fac259e205bbe0bdf3cc8719`, fora do escopo desta série. O registro operacional da candidata futura está em `docs/PROMOTION_TO_PRODUCTION.md`.
+- Houve testes físicos **parciais** em iPhone/Safari real das versões E9B/E9C — foi esse teste parcial que revelou a regressão aberta de texto vertical registrada em `docs/REGRESSIONS.md`. A validação **completa** de release ainda **não** foi concluída nem aprovada; a evidência automática (checks de CI no HEAD da PR #492) está registrada em `QA.md` como complementar, não substituta.
+- Regressão aberta relevante para a série: um Text Asset novo pode aparecer vertical, letra a letra, no Stage/Preview sem edição (registrada em `docs/REGRESSIONS.md`, causa a demonstrar).
+
+## Atualização 2026-08-15 — v8z4b32E9C mergeada (PR #492)
 
 - Item 1 de 4 da série de Text Asset (auto-largura → border-radius → borda com opacidade → opacidade de ativo global). Cada item é PR própria e sequencial; os itens 2–4 não foram adiantados.
 - Relato de Roberto: digitar um único caractere deixava a caixa enorme e vazia. A E9C torna a largura da caixa derivada do conteúdo (a LINHA MAIS LONGA, quebra apenas por Enter) como modo padrão do texto NOVO; o padding canônico 0.50em/0.30em da E8Z continua aplicado sobre a largura calculada.

@@ -1,5 +1,13 @@
 # REGRESSIONS
 
+## REG-2026-08-16 — Text Asset novo aparece vertical no Stage/Preview (ABERTA)
+
+- **Relato:** no iPhone/Safari, um Text Asset novo pode aparecer vertical, letra a letra, no Stage ou no Preview, sem edição. O caso de uma única letra também não pode resultar em caixa excessivamente larga.
+- **Causa:** ainda **não** demonstrada. Não registrar causa presumida antes de reprodução e evidência.
+- **Correção:** ainda **não** definida; será tratada na PR funcional de Texto da série pré-promoção.
+- **Status:** aberta / pendente. Bloqueia a candidata de produção enquanto não for reproduzida, corrigida e validada. Produção e promoção não autorizadas.
+- **Documento relacionado:** `docs/PRE_PROMOTION_RELEASE_PLAN.md` (item 2 — PR de Texto).
+
 ## E9C — proteções da auto-largura do Text Asset
 
 - O modo padrão de texto NOVO é `boxWidthMode:'auto'` (largura derivada da linha mais longa, quebra só por Enter). Projetos legados/E9x sem o campo migram para `'fixed'`, preservando a geometria confirmada anterior — `measureTextAsset` em modo fixo é idêntico ao comportamento pré-E9C.

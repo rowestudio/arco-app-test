@@ -1,3 +1,25 @@
+## Checklist de validação de release — v8z4b32E9C (iPhone/Safari real)
+
+Base auditada da série pré-promoção (`v8z4b32E9C`), **não** uma promoção liberada — a promoção permanece bloqueada até a série completa e a aprovação de Roberto (ver `docs/PRE_PROMOTION_RELEASE_PLAN.md`). Houve testes físicos **parciais** em iPhone/Safari real das versões E9B/E9C, que revelaram a regressão aberta de texto vertical (`docs/REGRESSIONS.md`); a validação **completa** desta checklist de release ainda **não** foi concluída nem aprovada. Itens manuais iniciam desmarcados e só podem ser marcados após verificação completa no aparelho real por Roberto.
+
+- [ ] Menu/versão mostra `v8z4b32E9C`.
+- [ ] Criação e edição de Text Asset.
+- [ ] Digitar um único caractere (ex. "R") mantém a caixa ajustada ao conteúdo, sem caixa enorme e vazia.
+- [ ] Largura fixa opcional (comportamento atual da base E9C: toggle + slider) controla a quebra automática quando ativada.
+- [ ] Profundidade positiva e negativa com texto, fundo, seleção e abas movendo juntos no Stage.
+- [ ] Save/Load e Session Restore preservam o estado do projeto.
+- [ ] Preview.
+- [ ] Exportação MP4 (WebCodecs/H.264) e reprodução do vídeo resultante.
+- [ ] Projeto com múltiplas imagens, Layers e Trocar imagem.
+- [ ] UI sem texto técnico visível e sem verde no chrome do Arco.
+- [ ] Logos e ícone carregando corretamente.
+
+Nota sobre o alvo futuro (não validar aqui): o redesign da PR funcional de Texto substituirá o controle atual de largura fixa (toggle + slider) por `Auto | Fixa` com stepper compacto `− / valor / +`, e **não** haverá menu deslizante horizontal na aba `Texto`. Isso é alvo futuro do plano (`docs/PRE_PROMOTION_RELEASE_PLAN.md`) e **não** deve ser marcado como validado nesta checklist da E9C atual.
+
+Regressão aberta relacionada (não validar como resolvida aqui): um Text Asset novo pode aparecer vertical, letra a letra, no Stage/Preview, com causa ainda não demonstrada. Registro em `docs/REGRESSIONS.md`; correção e validação pertencem à PR funcional de Texto.
+
+Evidência automática já comprovada (não substitui a validação física completa): no HEAD da PR #492, a `v8z4b32E9C` teve QA Guardrails verde, WebKit funcional 19/19 e Real Export H.264 2/2 com `avc1.42001f`. A validação física **completa** desta checklist de release em iPhone/Safari real permanece pendente e não está concluída nem aprovada.
+
 ## v8z4b32E7H
 
 Base: `v8z4b32E7G`. Nova versão: `v8z4b32E7H`.

@@ -4,6 +4,19 @@ Este roadmap organiza áreas de atenção. Ele não aprova automaticamente imple
 
 O roadmap detalhado de produto recuperado está registrado em `docs/PRODUCT_ROADMAP.md` como fonte rastreável do backlog de produto, sem autorizar implementação automática dos itens.
 
+## Série pré-promoção (ordem aprovada)
+
+A partir da base auditada `v8z4b32E9C`, a entrega segue uma sequência de PRs separadas, sem uma PR única e gigante. O registro canônico do plano está em `docs/PRE_PROMOTION_RELEASE_PLAN.md`. Ordem:
+
+1. PR funcional de Texto (correção de regressão + melhoria visual localizada).
+2. PR funcional de Camadas e Profundidade (nova função de interface + correção visual de controle existente).
+3. Engine Sprint funcional de Movimento inteligente e intensidade de easing (isolado; não misturar às anteriores).
+4. Revisão integrada no iPhone/Safari.
+5. PR documental de readiness, se ainda necessária.
+6. PR separada de promoção para `rowestudio/arco-app`, somente com autorização explícita de Roberto.
+
+Cada PR funcional parte do HEAD remoto atualizado da `main` de teste, recebe nova versão com `APP_VERSION === APP_VERSION_NAME`, passa por revisão do HEAD atual, QA Guardrails, Browser Smoke Tests, WebKit funcional e export H.264 real, e não libera promoção por si só. Este roadmap organiza a ordem; a autorização de implementação de cada item segue as regras de escopo e aprovação vigentes.
+
 ## Bugs críticos
 
 - A confirmar por tarefa específica.
