@@ -1,5 +1,13 @@
 # TEST_CASES
 
+## TC-047 — Regressão e editor tipográfico E9D
+
+- Criar publicamente `R` e `Texto`; exigir ID do draft preservado na confirmação, uma camada, modo Auto, uma linha horizontal e largura natural + 1 px canônico.
+- Em Auto, Enter cria linhas explícitas e a maior define a largura; em Fixa, o stepper altera a largura e força wrap automático. Verificar esquerda/centro/direita.
+- Editar, alterar e tocar a alça: sheet fecha, draft permanece apenas em memória, Undo/autosave/payload confirmado não mudam; Editar reabre o mesmo draft. `×` restaura o original; `✓` alterado gera exatamente um Undo/revisão no mesmo ID.
+- Verificar Save/Load, Session Restore, fundo + depth, seleção/hit-test/quatro alças, toque simples, dois taps, teclado e paridade Stage/Preview/Export/H.264.
+- Ambiente: WebKit automatizado e iPhone/Safari real obrigatório para aprovação visual final.
+
 ## TC-045 — paridade de paralaxe do Text Asset no Stage (E9B)
 
 - Em viewport 390 × 797, abrir projeto com imagem e Frames, dispensar o modal Pro, entrar em Ativos, criar texto com fundo e manter a seleção.

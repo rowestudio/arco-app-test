@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-16 — v8z4b32E9D em PR (Texto)
+
+- Base funcional: `02919cba11738d32f0609df1e3d4b641af9a51a7`, `v8z4b32E9C`; HEAD remoto auditado da PR #497 antes da revisão E9D-R1: `b4c177970568b3d354fcd262fad036f3c0153258`.
+- O relato visual de texto vertical no iPhone/Safari é real. A E9D adota no limite canônico de medição uma reserva de 1 px entre a largura retornada por `measureText` e a caixa consumida pelo Stage. A hipótese causal de divergência subpixel Canvas × DOM/Safari só será classificada como validada após o gate público WebKit e a validação física oferecerem evidência A/B compatível.
+- O editor passa a usar quatro abas reais (`Texto`, `Fonte`, `Cor`, `Estilo`), ícones acessíveis `×`/`✓`, alinhamentos e Auto/Fixa + stepper em Texto, fundo em Cor e alça que minimiza sem confirmar nem persistir. O draft vivo reabre pelo fluxo Editar; confirmação preserva o ID.
+- A E9D-R1 corrige o escopo do tablist, remove o listener morto do slider eliminado e amplia o gate público para `R`/`Texto`, Stage, Preview, draft, histórico, fundo, depth, hit-test e quatro alças; o gate H.264 passa a criar `Texto` pelo fluxo E9D. Resultados efetivos constam no plano. Validação visual final no iPhone/Safari permanece obrigatória; produção não foi tocada e nenhuma promoção está autorizada.
+
 ## Atualização 2026-08-16 — v8z4b32E9C é a base auditada da série pré-promoção
 
 - HEAD atual da `main` de teste: `8f1b2686ae6cc99bb716b200a79d04281cd968d7`; `APP_VERSION` e `APP_VERSION_NAME` permanecem `v8z4b32E9C`.

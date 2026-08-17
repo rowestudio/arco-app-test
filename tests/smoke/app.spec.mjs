@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
+import { dismissProModalIfVisible } from './ui-helpers.mjs';
 
 const projectFixture = path.resolve('samples/arquivo 8vo imagem.json');
 
@@ -307,7 +308,7 @@ test('E8X WebKit gate — TC-038 até Preview e composição real', async ({ pag
   await page.locator('#textCreationInput').fill(canonicalText);
   await page.locator('#textCreationColor').evaluate((el) => { el.value='#ff3366'; el.dispatchEvent(new Event('input',{bubbles:true})); });
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
-  await page.getByRole('button', { name:'Concluir', exact:true }).click();
+  await page.getByRole('button', { name:'Confirmar', exact:true }).click();
   const confirmed = await page.evaluate(() => {
     const text=assets.find(a=>a&&a.type==='text'), data=buildProjectData(true);
     const canvas=document.createElement('canvas'), ctx=canvas.getContext('2d'); ctx.font=`${text.fontWeight} ${text.fontSize}px ${text.fontFamily}`;
@@ -1704,16 +1705,16 @@ test('E8Z — editor tipográfico e caixa usam fluxo público, isolam draft e bl
   await page.locator('#projectFileInput').setInputFiles(projectFixture); await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30_000});
   await page.evaluate(()=>setEditorMode('assets','webkit-e8y'));
   await page.evaluate(()=>startTextCreation()); await page.locator('#textCreationInput').fill('Linha 1\nLinha 2');
-  await expect(page.locator('[data-text-tool]')).toHaveText(['Texto','Fonte','Cor','Estilo','Alinhar','Caixa']);
-  await expect(page.locator('[data-text-panel] [name*="width"], [data-text-panel] [id*="width"], [data-text-panel] [name*="padding"], [data-text-panel] [id*="padding"]')).toHaveCount(0);
+  await expect(page.locator('[data-text-tool]')).toHaveText(['Texto','Fonte','Cor','Estilo']);
+  await expect(page.locator('[data-text-panel] input[type="range"][aria-label*="Largura"]')).toHaveCount(0);
   const creationWithoutBox=await page.evaluate(()=>{const m=measureTextAsset(pendingTextDraft);return{enabled:pendingTextDraft.boxBackgroundEnabled,cx:pendingTextDraft.worldX+pendingTextDraft.worldW/2,cy:pendingTextDraft.worldY+pendingTextDraft.worldH/2,boxWidth:pendingTextDraft.boxWidth,lines:m.lines,geometry:serializeProjectAsset(pendingTextDraft,0,false)}});
   expect(creationWithoutBox.enabled).toBe(false);
-  await page.getByRole('tab',{name:'Caixa',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click();
+  await page.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click();
   const creationWithBox=await page.evaluate(()=>{const m=measureTextAsset(pendingTextDraft);return{cx:pendingTextDraft.worldX+pendingTextDraft.worldW/2,cy:pendingTextDraft.worldY+pendingTextDraft.worldH/2,boxWidth:pendingTextDraft.boxWidth,lines:m.lines,worldW:pendingTextDraft.worldW,paddingX:m.paddingX}});
   expect(creationWithBox.cx).toBeCloseTo(creationWithoutBox.cx); expect(creationWithBox.cy).toBeCloseTo(creationWithoutBox.cy); expect(creationWithBox.boxWidth).toBe(creationWithoutBox.boxWidth); expect(creationWithBox.lines).toEqual(creationWithoutBox.lines); expect(creationWithBox.worldW).toBeCloseTo(creationWithBox.boxWidth+2*creationWithBox.paddingX);
   for(const [opacity,label] of [['65','65%'],['0','0%'],['100','100%']]){await page.locator('#textBoxBackgroundOpacity').fill(opacity);await expect(page.locator('#textBoxBackgroundOpacityValue')).toHaveText(label)}
   await page.locator('#textBoxBackgroundToggle').click(); const creationRestored=await page.evaluate(()=>({cx:pendingTextDraft.worldX+pendingTextDraft.worldW/2,cy:pendingTextDraft.worldY+pendingTextDraft.worldH/2,boxWidth:pendingTextDraft.boxWidth,worldW:pendingTextDraft.worldW,worldH:pendingTextDraft.worldH})); expect(creationRestored).toMatchObject({cx:creationWithoutBox.cx,cy:creationWithoutBox.cy,boxWidth:creationWithoutBox.boxWidth,worldW:creationWithoutBox.geometry.worldW,worldH:creationWithoutBox.geometry.worldH});
-  await page.getByRole('button',{name:'Concluir',exact:true}).click();
+  await page.getByRole('button',{name:'Confirmar',exact:true}).click();
   const id=await page.evaluate(()=>assets.find(a=>a?.type==='text').id);
   const textBox=await page.locator(`.world-text-asset[data-asset-id="${id}"]`).boundingBox();
   expect(textBox).toBeTruthy(); const textPoint={x:textBox.x+textBox.width/2,y:textBox.y+textBox.height/2};
@@ -1766,10 +1767,10 @@ test('E8Z — editor tipográfico e caixa usam fluxo público, isolam draft e bl
   const movedTextBox=await page.locator(`.world-text-asset[data-asset-id="${id}"]`).boundingBox(); await page.touchscreen.tap(movedTextBox.x+movedTextBox.width/2,movedTextBox.y+movedTextBox.height/2); await page.locator('#tbAssetReplace').click();
   const commitBefore=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,count:assets.length}));
   await page.locator('#textCreationInput').fill('Editado\ncom Enter'); await page.getByRole('tab',{name:'Fonte',exact:true}).click(); await page.getByRole('button',{name:'Fonte Serifada',exact:true}).click(); await page.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textCreationColor').evaluate(el=>{el.value='#3366ff';el.dispatchEvent(new Event('input',{bubbles:true}))});
-  await page.getByRole('tab',{name:'Estilo',exact:true}).click(); await page.getByRole('button',{name:'Estilo Negrito + itálico',exact:true}).click(); await page.getByRole('tab',{name:'Alinhar',exact:true}).click(); await page.getByRole('button',{name:'Alinhar Direita',exact:true}).click(); await page.getByRole('tab',{name:'Caixa',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#112233';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.locator('#textBoxBackgroundOpacity').fill('65');
+  await page.getByRole('tab',{name:'Estilo',exact:true}).click(); await page.getByRole('button',{name:'Estilo Negrito + itálico',exact:true}).click(); await page.getByRole('tab',{name:'Texto',exact:true}).click(); await page.getByRole('button',{name:'Alinhar Direita',exact:true}).click(); await page.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#112233';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.locator('#textBoxBackgroundOpacity').fill('65');
   const blockedBefore=await page.evaluate(()=>({zoom:editorZoomScale,panX:editorPanX,panY:editorPanY,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld)}));
   await page.touchscreen.tap(10,10); await page.touchscreen.tap(40,40); const blockedAfter=await page.evaluate(()=>({zoom:editorZoomScale,panX:editorPanX,panY:editorPanY,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld)})); expect(blockedAfter).toEqual(blockedBefore); await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
-  await page.screenshot({path:testInfo.outputPath('e8z-text-editor-390x797.png')}); await page.getByRole('button',{name:'Concluir',exact:true}).click();
+  await page.screenshot({path:testInfo.outputPath('e8z-text-editor-390x797.png')}); await page.getByRole('button',{name:'Confirmar',exact:true}).click();
   const committed=await page.evaluate(id=>({asset:serializeProjectAsset(assets.find(a=>String(a.id)===id),0,false),id:selectedAssetId,count:assets.length,undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}),String(id));
   expect(committed).toMatchObject({id,count:commitBefore.count,undo:commitBefore.undo+1,rev:commitBefore.rev+1,asset:{id:String(id),text:'Editado\ncom Enter',color:'#3366ff',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right',boxStyle:'block',boxBackgroundEnabled:true,boxBackgroundColor:'#112233',boxBackgroundOpacity:.65,boxPaddingXEm:.5,boxPaddingYEm:.3}});
   await page.waitForTimeout(800); await page.evaluate(async()=>{while(_sessionAutosaveActiveWrites.size)await Promise.all([..._sessionAutosaveActiveWrites])});
@@ -1789,7 +1790,7 @@ test('E8Z — editor tipográfico e caixa usam fluxo público, isolam draft e bl
 
   // Concluir sem alteração pelo botão público não cria histórico nem revisão.
   await page.locator('#tbAssetReplace').click(); await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
-  const noChange=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision})); await page.getByRole('button',{name:'Concluir',exact:true}).click(); expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}))).toEqual(noChange);
+  const noChange=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision})); await page.getByRole('button',{name:'Confirmar',exact:true}).click(); expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision}))).toEqual(noChange);
 
   // Escala pública usa baseline de conteúdo: painel não salta, steps são exatos e Reset recompõe o retângulo externo uma única vez.
   // v8z4b32E9C — a escala ARITMÉTICA exata de boxWidth (× fator) é contrato do modo de LARGURA FIXA. O modo auto (padrão desde a E9C)
@@ -1806,10 +1807,10 @@ test('E8Z — editor tipográfico e caixa usam fluxo público, isolam draft e bl
   // Alterações exclusivas da caixa entram no fingerprint e geram checkpoints reais em Undo/Redo.
   const waitCheckpoint=async()=>{await page.waitForTimeout(800);await page.evaluate(async()=>{while(_sessionAutosaveActiveWrites.size)await Promise.all([..._sessionAutosaveActiveWrites])})};
   const stableBeforeBoxOnly=await page.evaluate(id=>{const a=serializeProjectAsset(assets.find(x=>String(x.id)===id),0,false);return{text:a.text,worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld),layers:assets.map(x=>[String(x.id),x.zIndex,x.layerSequence])}},String(id));
-  await page.locator('#tbAssetReplace').click(); await page.getByRole('tab',{name:'Caixa',exact:true}).click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#445566';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.getByRole('button',{name:'Concluir',exact:true}).click();
+  await page.locator('#tbAssetReplace').click(); await page.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#445566';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.getByRole('button',{name:'Confirmar',exact:true}).click();
   const colorRevision=await page.evaluate(()=>_sessionAutosaveQueuedRevision); await page.evaluate(()=>undo()); expect(await page.evaluate(()=>_sessionAutosaveQueuedRevision)).toBe(colorRevision+1); await waitCheckpoint(); expect(await page.evaluate(async id=>JSON.parse((await readSessionCheckpoint()).payload).assets.find(a=>String(a.id)===id).boxBackgroundColor,String(id))).toBe('#112233');
   const colorRedoRevision=await page.evaluate(()=>_sessionAutosaveQueuedRevision); await page.evaluate(()=>redo()); expect(await page.evaluate(()=>_sessionAutosaveQueuedRevision)).toBe(colorRedoRevision+1); await waitCheckpoint(); expect(await page.evaluate(async id=>JSON.parse((await readSessionCheckpoint()).payload).assets.find(a=>String(a.id)===id).boxBackgroundColor,String(id))).toBe('#445566');
-  await page.locator('#tbAssetReplace').click(); await page.getByRole('tab',{name:'Caixa',exact:true}).click(); await page.locator('#textBoxBackgroundOpacity').fill('35'); await expect(page.locator('#textBoxBackgroundOpacityValue')).toHaveText('35%'); await page.getByRole('button',{name:'Concluir',exact:true}).click();
+  await page.locator('#tbAssetReplace').click(); await page.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textBoxBackgroundOpacity').fill('35'); await expect(page.locator('#textBoxBackgroundOpacityValue')).toHaveText('35%'); await page.getByRole('button',{name:'Confirmar',exact:true}).click();
   const opacityRevision=await page.evaluate(()=>_sessionAutosaveQueuedRevision); await page.evaluate(()=>undo()); expect(await page.evaluate(()=>_sessionAutosaveQueuedRevision)).toBe(opacityRevision+1); await waitCheckpoint(); expect(await page.evaluate(async id=>JSON.parse((await readSessionCheckpoint()).payload).assets.find(a=>String(a.id)===id).boxBackgroundOpacity,String(id))).toBe(.65);
   const opacityRedoRevision=await page.evaluate(()=>_sessionAutosaveQueuedRevision); await page.evaluate(()=>redo()); expect(await page.evaluate(()=>_sessionAutosaveQueuedRevision)).toBe(opacityRedoRevision+1); await waitCheckpoint(); expect(await page.evaluate(async id=>JSON.parse((await readSessionCheckpoint()).payload).assets.find(a=>String(a.id)===id).boxBackgroundOpacity,String(id))).toBe(.35);
   const stableAfterBoxOnly=await page.evaluate(id=>{const a=serializeProjectAsset(assets.find(x=>String(x.id)===id),0,false);return{text:a.text,worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld),layers:assets.map(x=>[String(x.id),x.zIndex,x.layerSequence])}},String(id)); expect(stableAfterBoxOnly).toEqual(stableBeforeBoxOnly);
@@ -1832,7 +1833,7 @@ test('E9A — profundidade de Text Asset persiste no modelo, redraw, histórico 
   await page.locator('#modeAssetsBtn').click();
   await page.evaluate(() => startTextCreation());
   await page.locator('#textCreationInput').fill('Profundidade E9A');
-  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
   const textId = await page.evaluate(() => String(assets.find(asset => asset?.type === 'text').id));
   const baseline = await page.evaluate(id => {
     const current = assets.find(candidate => String(candidate?.id) === id);
@@ -1893,9 +1894,9 @@ test('E9B — Text Asset acompanha seleção na paralaxe do Stage', async ({ pag
   await page.locator('#modeAssetsBtn').click();
   await page.evaluate(() => startTextCreation());
   await page.locator('#textCreationInput').fill('R');
-  await page.getByRole('tab', { name: 'Caixa', exact: true }).click();
+  await page.getByRole('tab', { name: 'Cor', exact: true }).click();
   await page.locator('#textBoxBackgroundToggle').click();
-  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
   const textId = await page.evaluate(() => String(getSelectedAsset().id));
   const autosaveState = () => page.evaluate(() => ({ queued:_sessionAutosaveQueuedRevision, committed:sessionAutosaveRevision, timer:!!_sessionAutosaveTimer, active:_sessionAutosaveActiveWrites.size, inFlight:_sessionAutosaveWriteInFlight }));
   const waitAutosave = async (expectedRevision, expectedDepth) => {
@@ -2029,13 +2030,13 @@ test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob dep
   // (a) Um único caractere NÃO gera caixa vazia: a largura abraça o glifo.
   await page.evaluate(() => startTextCreation());
   await page.locator('#textCreationInput').fill('R');
-  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
   const textId = await page.evaluate(() => String(getSelectedAsset().id));
   const defaultCreateWidth = await page.evaluate(() => { const b = projectWorld.baseStageW || stageW || 360; return Math.max(120, Math.min(b * 0.72, 320)); });
   let g = await geom(textId);
   expect(g.mode).toBe('auto');
   const rNatural = await naturalWidth(textId, 'R');
-  expect(Math.abs(g.boxWidth - rNatural)).toBeLessThan(0.5);
+  expect(Math.abs(g.boxWidth - (rNatural + 1))).toBeLessThan(0.5);
   expect(g.boxWidth).toBeLessThan(defaultCreateWidth * 0.6); // não é mais uma caixa gigante e vazia
   expect(g.worldW).toBeLessThan(defaultCreateWidth * 0.6);
   expectHugsSelection(g);
@@ -2044,11 +2045,11 @@ test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob dep
   const multiline = 'R\nLinha bem mais larga que a primeira';
   await page.evaluate(id => startTextAssetEditing(assets.find(a => String(a.id) === id)), textId);
   await page.locator('#textCreationInput').fill(multiline);
-  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
   g = await geom(textId);
   expect(g.mode).toBe('auto');
   const longest = await naturalWidth(textId, multiline);
-  expect(Math.abs(g.boxWidth - longest)).toBeLessThan(0.5);
+  expect(Math.abs(g.boxWidth - (longest + 1))).toBeLessThan(0.5);
   const singleLineH = await page.evaluate(id => { const a = assets.find(x => String(x.id) === id); return a.fontSize * a.lineHeight; }, textId);
   expect(g.worldH).toBeGreaterThan(singleLineH * 1.8); // duas linhas contidas na mesma largura
   expectHugsSelection(g);
@@ -2056,12 +2057,11 @@ test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob dep
 
   // (c) Modo fixo (override manual): trava largura menor e força quebra automática.
   await page.evaluate(id => startTextAssetEditing(assets.find(a => String(a.id) === id)), textId);
-  await page.getByRole('tab', { name: 'Alinhar', exact: true }).click();
-  await page.locator('#textWidthAutoToggle').click();
-  await expect(page.locator('#textWidthFixed')).toBeEnabled();
-  await page.locator('#textWidthFixed').fill('130');
-  await page.locator('#textWidthFixed').dispatchEvent('input');
-  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  await page.getByRole('tab', { name: 'Texto', exact: true }).click();
+  await page.locator('#textWidthFixedMode').click();
+  await expect(page.locator('#textWidthFixedStepper')).toBeVisible();
+  await page.evaluate(() => setTextDraftFixedWidth(130));
+  await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
   const undoBaseline = await page.evaluate(() => undoStack.length);
   g = await geom(textId);
   expect(g.mode).toBe('fixed');
@@ -2096,9 +2096,9 @@ test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob dep
   await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
   expect(await page.evaluate(() => String(selectedAssetId))).toBe(textId);
   await page.evaluate(id => startTextAssetEditing(assets.find(a => String(a.id) === id)), textId);
-  await page.getByRole('tab', { name: 'Alinhar', exact: true }).click();
-  await page.locator('#textWidthAutoToggle').click(); // fixed -> auto
-  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  await page.getByRole('tab', { name: 'Texto', exact: true }).click();
+  await page.locator('#textWidthAuto').click(); // fixed -> auto
+  await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
   expect(await page.evaluate(id => assets.find(a => String(a.id) === id).boxWidthMode, textId)).toBe('auto');
 
   // (d) Paridade glifos/fundo/seleção sob depth != 0, com a largura dinâmica.
@@ -2120,4 +2120,56 @@ test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob dep
   }
   const diagnostics = await page.evaluate(() => Object.fromEntries(buildDiagnosticsText().split('\n').filter(l => l.includes(': ')).map(l => { const i = l.indexOf(': '); return [l.slice(0, i), l.slice(i + 2)]; })));
   expect(diagnostics).toMatchObject({ selectedTextBoxWidthMode: 'auto', textAssetStageUsesResolvedParallaxGeometry: 'true', textAssetDomSelectionParityOk: 'true' });
+});
+
+test('E9D — criação pública horizontal e editor tipográfico preserva draft minimizado', async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width:390, height:797 }); await page.goto('/', { waitUntil:'domcontentloaded' }); await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture); await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout:30_000 });
+  await dismissProModalIfVisible(page);
+  await page.locator('#modeAssetsBtn').click(); await expect(page.locator('body')).toHaveClass(/editor-assets/);
+  const sheet=page.locator('#textCreationSheet'), openPublicTextCreation=async()=>{await page.locator('#lowerAddOrSelectAllBtn').click();await expect(page.locator('#assetsAddMenu')).toHaveClass(/open/);await page.locator('#assetsMenuTextBtn').click();await expect(sheet).toHaveClass(/open/)};
+  const confirm=()=>sheet.getByRole('button',{name:'Confirmar',exact:true}).click();
+
+  // A criação percorre apenas controles públicos. O tablist é o da sheet, não
+  // outras abas existentes no aplicativo.
+  await openPublicTextCreation();
+  await expect(sheet.getByRole('tablist',{name:'Ferramentas de texto'}).getByRole('tab')).toHaveText(['Texto','Fonte','Cor','Estilo']);
+  await expect(sheet.getByRole('button',{name:'Cancelar',exact:true})).toHaveText('×'); await expect(sheet.getByRole('button',{name:'Confirmar',exact:true})).toHaveText('✓');
+  await page.locator('#textCreationInput').fill('R'); const rDraftId=await page.evaluate(()=>pendingTextDraft.id); await confirm();
+  const rProof=await page.evaluate(id=>{const a=assets.find(x=>String(x.id)===id),m=measureTextAsset({...a}),el=document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(id)}"]`),rect=el.getBoundingClientRect(),natural=measureTextNaturalWidth(measureTextAsset.canvas.getContext('2d'),a.text);return{id:a.id,text:a.text,mode:a.boxWidthMode,lines:m.lines,natural,boxWidth:a.boxWidth,worldW:a.worldW,paddingX:m.paddingX,rect:{w:rect.width,h:rect.height},count:assets.filter(x=>x?.type==='text').length}},String(rDraftId));
+  expect(rProof).toMatchObject({id:rDraftId,text:'R',mode:'auto',lines:['R'],count:1}); expect(rProof.boxWidth).toBeCloseTo(rProof.natural+1); expect(rProof.worldW).toBeCloseTo(rProof.boxWidth+2*rProof.paddingX); expect(rProof.rect.w).toBeGreaterThan(0);
+
+  // O relato real usa “Texto”: prova uma linha no modelo e um retângulo DOM
+  // horizontal, com fundo/padding habilitados pelo editor público.
+  await openPublicTextCreation(); await page.locator('#textCreationInput').fill('Texto'); await sheet.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#112233';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.locator('#textBoxBackgroundOpacity').fill('65');
+  const textDraftId=await page.evaluate(()=>pendingTextDraft.id); await confirm();
+  const stageProof=await page.evaluate(id=>{const a=assets.find(x=>String(x.id)===id),m=measureTextAsset({...a}),el=document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(id)}"]`),outline=document.getElementById('assetSelectOutline'),r=el.getBoundingClientRect(),o=outline.getBoundingClientRect();return{asset:serializeProjectAsset(a,0,false),lines:m.lines,paddingX:m.paddingX,domText:el.textContent,rect:{x:r.x,y:r.y,w:r.width,h:r.height},outline:{x:o.x,y:o.y,w:o.width,h:o.height},implicitColumn:r.height>r.width}} ,String(textDraftId));
+  expect(stageProof.asset).toMatchObject({id:textDraftId,text:'Texto',boxWidthMode:'auto',boxBackgroundEnabled:true,boxBackgroundColor:'#112233',boxBackgroundOpacity:.65}); expect(stageProof.lines).toEqual(['Texto']); expect(stageProof.domText).toBe('Texto'); expect(stageProof.implicitColumn).toBe(false); expect(stageProof.asset.worldW).toBeCloseTo(stageProof.asset.boxWidth+2*stageProof.paddingX);
+  for(const k of ['x','y','w','h'])expect(Math.abs(stageProof.rect[k]-stageProof.outline[k])).toBeLessThan(1.2);
+
+  // Auto/Fixa, stepper e os três alinhamentos operam no draft. Minimizar não
+  // altera canônico, histórico, autosave nem payload persistível.
+  await page.locator('#tbAssetReplace').click(); const before=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,canonical:serializeProjectAsset(getSelectedAsset(),0,false),payload:buildProjectData(true)}));
+  for(const alignment of ['Esquerda','Centro','Direita'])await sheet.getByRole('button',{name:`Alinhar ${alignment}`,exact:true}).click(); await sheet.getByRole('button',{name:'Largura fixa',exact:true}).click(); await expect(page.locator('#textWidthFixedStepper')).toBeVisible(); const widthBefore=await page.locator('#textWidthFixedValue').textContent(); await sheet.getByRole('button',{name:'Aumentar largura fixa',exact:true}).click(); await expect(page.locator('#textWidthFixedValue')).not.toHaveText(widthBefore);
+  await page.locator('#textCreationInput').fill('Texto draft'); const liveDraft=await page.evaluate(()=>textEditorDraftFields(pendingTextDraft)); await sheet.getByRole('button',{name:'Minimizar editor de texto',exact:true}).click(); await expect(sheet).not.toHaveClass(/open/);
+  expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,canonical:serializeProjectAsset(getSelectedAsset(),0,false),payload:buildProjectData(true),draft:!!pendingTextDraft}))).toEqual({...before,draft:true});
+  await page.locator('#tbAssetReplace').click(); await expect(page.locator('#textCreationInput')).toHaveValue('Texto draft'); expect(await page.evaluate(()=>textEditorDraftFields(pendingTextDraft))).toEqual(liveDraft); await sheet.getByRole('button',{name:'Cancelar',exact:true}).click();
+  expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,canonical:serializeProjectAsset(getSelectedAsset(),0,false),payload:buildProjectData(true)}))).toEqual(before);
+
+  // Uma mudança confirmada gera exatamente um Undo/revisão e preserva ID.
+  await page.locator('#tbAssetReplace').click(); const commitBefore=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,count:assets.length,id:String(getSelectedAsset().id)})); await sheet.getByRole('button',{name:'Alinhar Esquerda',exact:true}).click(); await confirm();
+  expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,count:assets.length,id:String(getSelectedAsset().id),align:getSelectedAsset().textAlign}))).toEqual({...commitBefore,undo:commitBefore.undo+1,rev:commitBefore.rev+1,align:'left'});
+
+  // Depth público: DOM/fundo, hit-test, seleção e quatro alças continuam juntos.
+  await page.locator('#tbAssetDepth').click(); await page.locator('#assetContextSlider').fill('42'); await page.locator('#assetContextSlider').dispatchEvent('change'); await page.getByRole('button',{name:'Voltar'}).click();
+  const geometry=await page.evaluate(id=>{const a=assets.find(x=>String(x.id)===id),el=document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(id)}"]`),outline=document.getElementById('assetSelectOutline'),r=el.getBoundingClientRect(),o=outline.getBoundingClientRect(),visual=resolveAssetStageVisualGeometry(a).visualRect,hit=hitTestAssetAtWorld(visual.x+visual.w/2,visual.y+visual.h/2);return{depth:a.depth,background:getComputedStyle(el).backgroundColor,delta:[r.x-o.x,r.y-o.y,r.width-o.width,r.height-o.height],hit:String(hit?.id||''),handles:document.querySelectorAll('.asset-corner-handle.show').length}},String(textDraftId));
+  expect(geometry.depth).toBe(42); expect(geometry.background).not.toBe('rgba(0, 0, 0, 0)'); expect(geometry.delta.every(v=>Math.abs(v)<1.2)).toBe(true); expect(geometry.hit).toBe(String(textDraftId)); expect(geometry.handles).toBe(4);
+
+  // Preview aberto publicamente: observar somente o primeiro frame real já
+  // comprometido. Não reamostrar t=0 nem mutar o snapshot do renderer durante
+  // a asserção, pois isso não representa necessariamente o frame exibido.
+  await page.locator('#topBtnPreview').click(); await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000}); await expect.poll(()=>page.evaluate(()=>previewLoadingHiddenAfterFirstFrame),{timeout:30_000}).toBe(true);
+  const previewProof=await page.evaluate(id=>({snap:renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,audit:renderTransform.preview?.assets?.find(a=>String(a.id)===id)||null}),String(textDraftId));
+  expect(previewProof.snap).toMatchObject({id:textDraftId,text:'Texto',worldW:stageProof.asset.worldW,worldH:stageProof.asset.worldH,depth:42}); expect(previewProof.audit).toMatchObject({id:textDraftId,drawn:true,intersectsCamera:true}); expect(previewProof.audit.screenW).toBeGreaterThan(previewProof.audit.screenH); await page.locator('#previewScreen .close-btn').click();
 });

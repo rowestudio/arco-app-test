@@ -1,11 +1,17 @@
 # REGRESSIONS
 
+## REG-047 — Text Asset novo pode quebrar verticalmente no Safari (E9D)
+
+- **Relato real:** texto recém-criado podia aparecer letra a letra no Stage/Preview; uma letra podia conservar caixa excessiva.
+- **Hipótese técnica sob validação:** o modo Auto gravava a largura Canvas exatamente no limite natural, enquanto o Stage DOM aplicava essa largura sob `overflow-wrap:anywhere`. Divergência subpixel Canvas × layout DOM/Safari é compatível com o sintoma, mas não é declarada causa comprovada sem reprodução pública A/B no WebKit ou iPhone.
+- **Correção adotada na E9D:** reserva geométrica canônica de 1 px em `measureTextAsset`, compartilhada pela caixa/seleção/hit-test e pelos snapshots de Preview/Export. A E9D-R1 exige evidência pública de `R` e `Texto` horizontal no Stage/Preview e no H.264 real; não é compensação visual de CSS.
+- **Estado:** cobertura automatizada implementada; a regressão continua **pendente de validação visual final em iPhone/Safari real** e só deve ser encerrada após os checks do HEAD e essa validação.
+
 ## REG-2026-08-16 — Text Asset novo aparece vertical no Stage/Preview (ABERTA)
 
 - **Relato:** no iPhone/Safari, um Text Asset novo pode aparecer vertical, letra a letra, no Stage ou no Preview, sem edição. O caso de uma única letra também não pode resultar em caixa excessivamente larga.
-- **Causa:** ainda **não** demonstrada. Não registrar causa presumida antes de reprodução e evidência.
-- **Correção:** ainda **não** definida; será tratada na PR funcional de Texto da série pré-promoção.
-- **Status:** aberta / pendente. Bloqueia a candidata de produção enquanto não for reproduzida, corrigida e validada. Produção e promoção não autorizadas.
+- **Causa/correção:** o relato é confirmado; a hipótese Canvas × DOM permanece sob validação. A reserva canônica de 1 px é a correção adotada e o gate público correspondente é registrado em REG-047.
+- **Status:** implementação automatizada em PR, ainda aberta até checks do HEAD e validação visual final no iPhone/Safari real. Produção e promoção não autorizadas.
 - **Documento relacionado:** `docs/PRE_PROMOTION_RELEASE_PLAN.md` (item 2 — PR de Texto).
 
 ## E9C — proteções da auto-largura do Text Asset
