@@ -66,8 +66,52 @@
 ## Editor tipográfico de Text Assets
 
 - Um toque em texto apenas seleciona; **Editar** na toolbar e dois taps concluídos no mesmo Text Asset abrem o editor.
-- O editor reutiliza o mesmo draft para criação e reedição e oferece Texto, Fonte, Cor, Estilo e Alinhar; Enter preserva quebra manual.
-- Esta etapa não oferece largura manual, fundo, padding, presença temporal ou animação. Draft não participa de Preview, Export, Save/Load ou Session Autosave.
+
+### Estrutura do editor
+
+- O editor reutiliza o mesmo draft para criação e reedição.
+- As únicas abas principais são `Texto`, `Fonte`, `Cor` e `Estilo`.
+- Não existe mais aba principal separada `Alinhar`.
+
+### Aba Texto
+
+- Contém o campo de escrita e, abaixo dele, os alinhamentos esquerda, centro e direita.
+- Contém a escolha `Auto | Fixa`; no modo `Fixa`, um stepper compacto `− / valor / +` define a largura.
+- Enter continua criando quebra explícita de linha; o modo `Fixa` permite quebra automática dentro da largura escolhida.
+- Não existe menu horizontal deslizante de controles na aba `Texto`.
+
+### Aba Fonte
+
+- Concentra a seleção tipográfica.
+
+### Aba Cor
+
+- Concentra cor do texto, ativação do fundo, cor do fundo e opacidade do fundo.
+- A borda não é declarada como implementada nesta etapa.
+
+### Aba Estilo
+
+- Preserva os controles tipográficos pertinentes, incluindo peso e itálico.
+
+### Cabeçalho e draft
+
+- O editor possui `×` para cancelar, `✓` para confirmar e alça superior para minimizar.
+- `×` descarta as alterações do draft, restaura o estado confirmado e não confirma alteração.
+- Minimizar pela alça fecha a sheet e mantém o draft vivo somente em memória: não confirma, não cria entrada de Undo, não cria revisão de Session Autosave e permite reabrir o mesmo draft pelo fluxo de **Editar**.
+- `✓` preserva o mesmo ID do Text Asset; havendo mudança real, produz exatamente uma entrada de Undo e uma revisão de autosave; sem mudança, não cria checkpoint artificial.
+
+### Persistência do draft
+
+- Enquanto não confirmado, o draft não participa de Preview, Export, Save/Load nem Session Autosave.
+
+### Caixa de texto
+
+- Preserva as regras E8Z: `boxStyle: "block"`, fundo desligado por padrão e, quando ativado, envolvendo a caixa.
+- Padding horizontal canônico `0.50em` e padding vertical canônico `0.30em`; padding ainda não é customizável nesta etapa.
+
+### Trabalho futuro explícito
+
+- Continuam futuros e não devem ser declarados implementados: raio de canto ajustável, borda, cor da borda, opacidade da borda, espessura da borda, opacidade geral do ativo, presença temporal e animação.
 
 ## Caixa de texto canônica — E8Z
 
