@@ -1113,8 +1113,10 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
     expect(Math.abs(surface.panelRect.left - surface.slotRect.left)).toBeLessThan(1);
     expect(Math.abs(surface.panelRect.right - surface.slotRect.right)).toBeLessThan(1);
     expect(Math.abs(surface.panelRect.width - surface.slotRect.width)).toBeLessThan(1);
-    expect(surface.bodyBackground).toBe('rgb(60, 60, 60)');
-    expect(surface.timelineBackground).toBe('rgb(60, 60, 60)');
+    // v8z4b32E9F — paleta de UI aprovada: chrome principal passou de #3c3c3c para #24262B.
+    // As superfícies contextuais (#434247) e controles não foram redesenhados nesta rodada.
+    expect(surface.bodyBackground).toBe('rgb(36, 38, 43)');
+    expect(surface.timelineBackground).toBe('rgb(36, 38, 43)');
     expect(surface.samples.map(({ color }) => color)).toEqual(Array(6).fill('rgb(67, 66, 71)'));
   }
   expect(frameScale.step.backgroundColor).toBe('rgb(80, 80, 84)');
@@ -1122,7 +1124,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   expect(assetScale.step.backgroundColor).toBe('rgb(80, 80, 84)');
   expect(assetScale.reset.backgroundColor).toBe('rgb(80, 80, 84)');
   expect(frameSurface.accent).toBe('#04fff2');
-  expect(assetSurface.accent).toBe('#8b3fff');
+  expect(assetSurface.accent).toBe('#FF6B8A'); // v8z4b32E9F — Ativos migrou de roxo para coral
   expect(hitArea.abovePill.isSlider).toBe(true);
   expect(hitArea.abovePill.isPill).toBe(false);
   expect(hitArea.sliderCenter.isSlider).toBe(true);
@@ -1148,7 +1150,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
 
   await page.evaluate(() => closeAssetContextPanel());
   const closedViewportSurface = await sampleContextSheetToViewportBottom(page);
-  expect(closedViewportSurface.samples.at(-1)?.color).toBe('rgb(60, 60, 60)');
+  expect(closedViewportSurface.samples.at(-1)?.color).toBe('rgb(36, 38, 43)'); // v8z4b32E9F — chrome #24262B
 
   await page.screenshot({ path: testInfo.outputPath('asset-frame-control-parity.png'), fullPage: true });
 });
