@@ -2173,3 +2173,263 @@ test('E9D — criação pública horizontal e editor tipográfico preserva draft
   const previewProof=await page.evaluate(id=>({snap:renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,audit:renderTransform.preview?.assets?.find(a=>String(a.id)===id)||null}),String(textDraftId));
   expect(previewProof.snap).toMatchObject({id:textDraftId,text:'Texto',worldW:stageProof.asset.worldW,worldH:stageProof.asset.worldH,depth:42}); expect(previewProof.audit).toMatchObject({id:textDraftId,drawn:true,intersectsCamera:true}); expect(previewProof.audit.screenW).toBeGreaterThan(previewProof.audit.screenH); await page.locator('#previewScreen .close-btn').click();
 });
+
+// v8z4b32E9E — gate de CENTRALIZAÇÃO. Um NOVO Text Asset deve nascer centralizado
+// na VISTA ATUAL do Stage (centro capturado em coords de World pela cadeia canônica
+// computeEditorTransform → screenToStageCoord → editorStageToWorld), antes do resize
+// do teclado. Editar um asset existente nunca o recentraliza. Este gate FALHA na main
+// pré-E9E, que centraliza no centro da célula base do ProjectWorld.
+test('E9E — novo Text Asset nasce no centro da vista atual (pan/zoom) e editar não recentraliza', async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width:390, height:797 });
+  await page.goto('/', { waitUntil:'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout:30_000 });
+  await dismissProModalIfVisible(page);
+  await page.locator('#modeAssetsBtn').click();
+  await expect(page.locator('body')).toHaveClass(/editor-assets/);
+
+  const sheet = page.locator('#textCreationSheet');
+  const startCreate = async () => { await page.evaluate(() => startTextCreation()); await expect(sheet).toHaveClass(/open/); };
+  const cancel = () => sheet.getByRole('button', { name:'Cancelar', exact:true }).click();
+  const confirm = () => sheet.getByRole('button', { name:'Confirmar', exact:true }).click();
+  // Referência independente: centro da vista corrente em World calculado pela MESMA
+  // cadeia canônica pré-existente (computeEditorTransform → screenToStageCoord →
+  // editorStageToWorld). Não depende do helper novo, então o gate demonstra o defeito
+  // real de centralização na main pré-E9E (draft nasce no centro base, não na vista).
+  const viewCenter = () => page.evaluate(() => { computeEditorTransform(); const sr=stage.getBoundingClientRect(); const sc=screenToStageCoord(sr.left+sr.width/2, sr.top+sr.height/2); return editorStageToWorld(sc.x, sc.y); });
+  const baseDims = () => page.evaluate(() => ({ w:(Number(projectWorld.baseStageW)||Number(stageW)||0), h:(Number(projectWorld.baseStageH)||Number(stageH)||0) }));
+  const draftCenter = () => page.evaluate(() => ({ x:pendingTextDraft.worldX+pendingTextDraft.worldW/2, y:pendingTextDraft.worldY+pendingTextDraft.worldH/2 }));
+  const resetView = () => page.evaluate(() => { editorPanX=0; editorPanY=0; editorZoomScale=1; clampEditorPan(); applyEditorZoom(); });
+  const TOL = 1.0;
+  const dims = await baseDims();
+  const baseCenter = { x:dims.w/2, y:dims.h/2 };
+  // Deslocamento mínimo (em World) que separa a vista corrente do centro base.
+  const OFFSET = Math.max(6, Math.min(dims.w, dims.h) * 0.05);
+
+  // Caso A — vista padrão: sem pan, o centro da vista coincide com o centro base;
+  // o draft nasce nesse centro.
+  await resetView();
+  const cA = await viewCenter();
+  expect(Math.hypot(cA.x - baseCenter.x, cA.y - baseCenter.y)).toBeLessThan(TOL);
+  await startCreate();
+  const dA = await draftCenter();
+  expect(Math.abs(dA.x - cA.x)).toBeLessThan(TOL);
+  expect(Math.abs(dA.y - cA.y)).toBeLessThan(TOL);
+  await cancel();
+
+  // Caso B — vista deslocada por pan: o draft nasce na região enquadrada e NÃO no
+  // centro base do ProjectWorld (reprova o comportamento pré-E9E).
+  await resetView();
+  await panEditorViewport(page, -0.28, -0.22);
+  const cB = await viewCenter();
+  expect(Math.hypot(cB.x - baseCenter.x, cB.y - baseCenter.y)).toBeGreaterThan(OFFSET);
+  await startCreate();
+  const dB = await draftCenter();
+  expect(Math.abs(dB.x - cB.x)).toBeLessThan(TOL);
+  expect(Math.abs(dB.y - cB.y)).toBeLessThan(TOL);
+  expect(Math.hypot(dB.x - baseCenter.x, dB.y - baseCenter.y)).toBeGreaterThan(OFFSET);
+  await cancel();
+
+  // Caso C — zoom diferente do padrão: continua nascendo no centro da vista corrente.
+  await resetView();
+  await page.evaluate(() => { editorZoomScale=1.8; clampEditorPan(); applyEditorZoom(); });
+  await panEditorViewport(page, 0.18, 0.14);
+  const cC = await viewCenter();
+  await startCreate();
+  const dC = await draftCenter();
+  expect(Math.abs(dC.x - cC.x)).toBeLessThan(TOL);
+  expect(Math.abs(dC.y - cC.y)).toBeLessThan(TOL);
+  await cancel();
+
+  // Caso D — o centro é capturado ANTES do resize do teclado; um resize posterior
+  // não recalcula o ponto inicial do draft.
+  await resetView();
+  await panEditorViewport(page, -0.24, 0.2);
+  const cD = await viewCenter();
+  await startCreate();
+  const dDbefore = await draftCenter();
+  expect(Math.abs(dDbefore.x - cD.x)).toBeLessThan(TOL);
+  expect(Math.abs(dDbefore.y - cD.y)).toBeLessThan(TOL);
+  await page.setViewportSize({ width:390, height:560 });
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  const dDafter = await draftCenter();
+  expect(Math.abs(dDafter.x - dDbefore.x)).toBeLessThan(TOL);
+  expect(Math.abs(dDafter.y - dDbefore.y)).toBeLessThan(TOL);
+  await cancel();
+  await page.setViewportSize({ width:390, height:797 });
+
+  // Caso E — editar um Text Asset confirmado FORA do centro nunca o recentraliza.
+  await resetView();
+  await startCreate();
+  await page.locator('#textCreationInput').fill('Fixo');
+  await confirm();
+  const editId = await page.evaluate(() => String(getSelectedAsset().id));
+  const offCenter = await page.evaluate(id => { const a=assets.find(x=>String(x.id)===id); a.worldX=12; a.worldY=16; measureTextAsset(a); renderProjectWorldExtraImages(); renderAssetSelectionOverlay(); return { x:a.worldX+a.worldW/2, y:a.worldY+a.worldH/2 }; }, editId);
+  const viewCenterE = await viewCenter();
+  await page.locator('#tbAssetReplace').click();
+  await expect(sheet).toHaveClass(/open/);
+  await page.locator('#textCreationInput').fill('Fixo editado');
+  await confirm();
+  const afterEdit = await page.evaluate(id => { const a=assets.find(x=>String(x.id)===id); return { x:a.worldX+a.worldW/2, y:a.worldY+a.worldH/2 }; }, editId);
+  expect(Math.abs(afterEdit.x - offCenter.x)).toBeLessThan(2);
+  expect(Math.abs(afterEdit.y - offCenter.y)).toBeLessThan(2);
+  // Prova explícita de que não saltou para o centro da vista.
+  expect(Math.hypot(afterEdit.x - viewCenterE.x, afterEdit.y - viewCenterE.y)).toBeGreaterThan(OFFSET);
+});
+
+// v8z4b32E9E — gate de WYSIWYG ao vivo. pendingTextDraft é a fonte única da verdade
+// visual enquanto o editor está ativo: cada mudança no painel deve atualizar
+// imediatamente o Stage, o fundo, a seleção e as quatro alças. A cada operação o gate
+// exige panelState == pendingTextDraft e a coincidência da geometria do DOM textual,
+// do fundo, do retângulo de seleção e das alças. FALHA na main pré-E9E, onde a seleção
+// não acompanha o draft (updateTextDraft/input não re-renderizam a seleção e a seleção
+// consome o estado confirmado, não o draft).
+test('E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo draft', async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width:390, height:797 });
+  await page.goto('/', { waitUntil:'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout:30_000 });
+  await dismissProModalIfVisible(page);
+  await page.locator('#modeAssetsBtn').click();
+  await expect(page.locator('body')).toHaveClass(/editor-assets/);
+
+  const sheet = page.locator('#textCreationSheet');
+  const confirm = () => sheet.getByRole('button', { name:'Confirmar', exact:true }).click();
+
+  // Lê, num único ponto, o draft, o estado público dos controles e a geometria real
+  // do Stage (DOM textual, fundo, retângulo de seleção e quatro alças).
+  const probe = () => page.evaluate(() => {
+    const d = pendingTextDraft;
+    const draft = { text:d.text, textAlign:d.textAlign, fontKey:d.fontKey, fontWeight:d.fontWeight, fontStyle:d.fontStyle, color:String(d.color).toLowerCase(), boxWidthMode:d.boxWidthMode, boxWidth:Math.round(Number(d.boxWidth)||0), bgEnabled:!!d.boxBackgroundEnabled, bgColor:String(d.boxBackgroundColor).toLowerCase(), bgOpacity:Math.round(Number(d.boxBackgroundOpacity)*100) };
+    const alignActive = document.querySelector('#textEditorAlignOptions .text-editor-option.active');
+    const alignLabel = alignActive ? alignActive.getAttribute('aria-label') : '';
+    const alignFromPanel = alignLabel==='Alinhar Esquerda' ? 'left' : alignLabel==='Alinhar Direita' ? 'right' : alignLabel==='Alinhar Centro' ? 'center' : '';
+    const fontActive = document.querySelector('#textEditorFontOptions .text-editor-option.active');
+    const styleActive = document.querySelector('#textEditorStyleOptions .text-editor-option.active');
+    const panel = {
+      text: document.getElementById('textCreationInput').value,
+      align: alignFromPanel,
+      fontLabel: fontActive ? fontActive.textContent : '',
+      styleLabel: styleActive ? styleActive.textContent : '',
+      color: String(document.getElementById('textCreationColor').value).toLowerCase(),
+      widthMode: document.getElementById('textWidthAuto').classList.contains('active') ? 'auto' : (document.getElementById('textWidthFixedMode').classList.contains('active') ? 'fixed' : 'none'),
+      widthValue: Math.round(parseFloat(document.getElementById('textWidthFixedValue').textContent)||0),
+      bgPressed: document.getElementById('textBoxBackgroundToggle').getAttribute('aria-pressed'),
+      bgColor: String(document.getElementById('textBoxBackgroundColor').value).toLowerCase(),
+      bgOpacity: Math.round(parseFloat(document.getElementById('textBoxBackgroundOpacity').value)||0),
+    };
+    const expectedFontLabel = (TEXT_ASSET_FONTS[d.fontKey]||{}).label || '';
+    const textEl = document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(String(d.id))}"]`);
+    const selEl = document.getElementById('assetSelectOutline');
+    const read = el => { if(!el) return { present:false, x:0, y:0, w:0, h:0 }; const r=el.getBoundingClientRect(); return { present:true, x:r.x, y:r.y, w:r.width, h:r.height }; };
+    const selVisible = !!(selEl && getComputedStyle(selEl).display !== 'none');
+    const handles = selEl ? [...selEl.querySelectorAll('.asset-corner-handle.show')].map(h => { const r=h.getBoundingClientRect(); return { c:h.dataset.assetCorner, cx:r.x+r.width/2, cy:r.y+r.height/2 }; }) : [];
+    const visual = resolveAssetStageVisualGeometry(d).visualRect;
+    const expectedStage = editorWorldToStage(visual.x, visual.y, visual.w, visual.h);
+    return { draft, panel, expectedFontLabel, text:read(textEl), sel:read(selEl), selVisible, handles, background:textEl?getComputedStyle(textEl).backgroundColor:'', worldRect:{w:d.worldW,h:d.worldH,cx:d.worldX+d.worldW/2,cy:d.worldY+d.worldH/2} };
+  });
+
+  // Verificação canônica em cada operação. Não testa só existência de DOM: compara
+  // estado do painel vs draft e geometrias reais (Stage textual == seleção == fundo).
+  const check = async (label, expectBg) => {
+    const s = await probe();
+    // panelState == pendingTextDraft
+    expect(s.panel.text, `${label}: input == draft.text`).toBe(s.draft.text);
+    expect(s.panel.align, `${label}: alinhamento do painel == draft.textAlign`).toBe(s.draft.textAlign);
+    expect(s.panel.fontLabel, `${label}: fonte ativa == draft.fontKey`).toBe(s.expectedFontLabel);
+    expect(s.panel.widthMode, `${label}: modo de largura == draft.boxWidthMode`).toBe(s.draft.boxWidthMode);
+    if (s.draft.boxWidthMode==='fixed') expect(s.panel.widthValue, `${label}: valor de largura fixa == draft.boxWidth`).toBe(s.draft.boxWidth);
+    expect(s.panel.bgPressed, `${label}: toggle de fundo == draft.bgEnabled`).toBe(String(s.draft.bgEnabled));
+    expect(s.panel.bgColor, `${label}: cor do fundo == draft.bgColor`).toBe(s.draft.bgColor);
+    expect(s.panel.bgOpacity, `${label}: opacidade do fundo == draft.bgOpacity`).toBe(s.draft.bgOpacity);
+    expect(s.panel.color, `${label}: cor do texto == draft.color`).toBe(s.draft.color);
+    // draftGeometry == StageGeometry == selectionGeometry (retângulos de tela coincidem)
+    expect(s.text.present, `${label}: DOM textual do draft presente`).toBe(true);
+    expect(s.selVisible, `${label}: seleção visível acompanhando o draft`).toBe(true);
+    for (const k of ['x','y','w','h']) expect(Math.abs(s.text[k]-s.sel[k]), `${label}: text.${k} == selection.${k}`).toBeLessThan(1.2);
+    // As quatro alças acompanham os cantos da seleção do draft (offset externo
+    // canônico de 12 px: cada alça fica logo do lado de fora do seu canto).
+    expect(s.handles.map(h=>h.c).sort(), `${label}: exatamente quatro alças`).toEqual(['bl','br','tl','tr']);
+    const hm = Object.fromEntries(s.handles.map(h=>[h.c,h]));
+    const near = v => Math.abs(v) < 24; // 12px offset + área de toque/zoom
+    expect(hm.tl.cx-s.sel.x, `${label}: alça tl fora à esquerda`).toBeLessThan(0); expect(hm.tl.cy-s.sel.y, `${label}: alça tl fora acima`).toBeLessThan(0);
+    expect(hm.tr.cx-(s.sel.x+s.sel.w), `${label}: alça tr fora à direita`).toBeGreaterThan(0); expect(hm.tr.cy-s.sel.y, `${label}: alça tr fora acima`).toBeLessThan(0);
+    expect(hm.bl.cx-s.sel.x, `${label}: alça bl fora à esquerda`).toBeLessThan(0); expect(hm.bl.cy-(s.sel.y+s.sel.h), `${label}: alça bl fora abaixo`).toBeGreaterThan(0);
+    expect(hm.br.cx-(s.sel.x+s.sel.w), `${label}: alça br fora à direita`).toBeGreaterThan(0); expect(hm.br.cy-(s.sel.y+s.sel.h), `${label}: alça br fora abaixo`).toBeGreaterThan(0);
+    expect(near(hm.tl.cx-s.sel.x)&&near(hm.tl.cy-s.sel.y)&&near(hm.tr.cx-(s.sel.x+s.sel.w))&&near(hm.tr.cy-s.sel.y)&&near(hm.bl.cx-s.sel.x)&&near(hm.bl.cy-(s.sel.y+s.sel.h))&&near(hm.br.cx-(s.sel.x+s.sel.w))&&near(hm.br.cy-(s.sel.y+s.sel.h)), `${label}: alças coladas nos cantos`).toBe(true);
+    // backgroundGeometry == expectedVisualRect (o fundo é o próprio retângulo textual).
+    if (expectBg) expect(s.background, `${label}: fundo ativo`).not.toBe('rgba(0, 0, 0, 0)');
+    else expect(s.background, `${label}: fundo desligado`).toBe('rgba(0, 0, 0, 0)');
+    return s;
+  };
+
+  // 1. criar Texto
+  await page.evaluate(() => startTextCreation());
+  await expect(sheet).toHaveClass(/open/);
+  await page.locator('#textCreationInput').fill('Oi');
+  await check('01 criar+digitar curto', false);
+  // 2/3. texto mais longo (mantido abaixo da largura base para a etapa de largura fixa
+  // exercitar o stepper sem esbarrar no clamp de exibição maxW herdado da E9D).
+  await page.locator('#textCreationInput').fill('Texto maior');
+  await check('03 texto longo', false);
+  // 4. alinhamento
+  await sheet.getByRole('tab', { name:'Texto', exact:true }).click();
+  await sheet.getByRole('button', { name:'Alinhar Direita', exact:true }).click();
+  await check('04 alinhar direita', false);
+  // 5. alternar Auto/Fixa
+  await sheet.getByRole('button', { name:'Largura fixa', exact:true }).click();
+  await expect(page.locator('#textWidthFixedStepper')).toBeVisible();
+  await check('05 largura fixa', false);
+  // 6. modificar largura fixa
+  await sheet.getByRole('button', { name:'Aumentar largura fixa', exact:true }).click();
+  await check('06 aumentar largura', false);
+  // 7. alterar fonte
+  await sheet.getByRole('tab', { name:'Fonte', exact:true }).click();
+  const fontButtons = sheet.locator('#textEditorFontOptions .text-editor-option');
+  await fontButtons.nth((await fontButtons.count())-1).click();
+  await check('07 fonte', false);
+  // 8. peso/itálico
+  await sheet.getByRole('tab', { name:'Estilo', exact:true }).click();
+  await sheet.getByRole('button', { name:'Estilo Negrito + itálico', exact:true }).click();
+  await check('08 peso/itálico', false);
+  // 9. cor do texto
+  await sheet.getByRole('tab', { name:'Cor', exact:true }).click();
+  await page.locator('#textCreationColor').evaluate(el=>{el.value='#ff8800';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await check('09 cor do texto', false);
+  // 10. ativar fundo
+  await page.locator('#textBoxBackgroundToggle').click();
+  await check('10 fundo ligado', true);
+  // 11. cor do fundo
+  await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#113355';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await check('11 cor do fundo', true);
+  // 12. opacidade do fundo
+  await page.locator('#textBoxBackgroundOpacity').fill('40');
+  await check('12 opacidade do fundo', true);
+  // 13. minimizar
+  const beforeMin = await probe();
+  await sheet.getByRole('button', { name:'Minimizar editor de texto', exact:true }).click();
+  await expect(sheet).not.toHaveClass(/open/);
+  expect(await page.evaluate(()=>!!pendingTextDraft)).toBe(true);
+  // 14. reabrir — nenhuma propriedade volta ao estado anterior
+  await page.evaluate(() => startTextCreation());
+  await expect(sheet).toHaveClass(/open/);
+  const afterReopen = await check('14 reabrir', true);
+  expect(afterReopen.draft).toEqual(beforeMin.draft);
+  // 15. confirmar — sem salto visual: o asset confirmado mantém a geometria do draft.
+  const draftId = await page.evaluate(()=>String(pendingTextDraft.id));
+  const beforeConfirm = await probe();
+  await confirm();
+  const confirmed = await page.evaluate(id => { const a=assets.find(x=>String(x.id)===id); const el=document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(id)}"]`); const r=el.getBoundingClientRect(); const o=document.getElementById('assetSelectOutline').getBoundingClientRect(); return { text:a.text, align:a.textAlign, bg:a.boxBackgroundEnabled, worldW:a.worldW, worldH:a.worldH, rect:{x:r.x,y:r.y,w:r.width,h:r.height}, outline:{x:o.x,y:o.y,w:o.width,h:o.height} }; }, draftId);
+  expect(confirmed.text).toBe(beforeConfirm.draft.text);
+  expect(confirmed.align).toBe(beforeConfirm.draft.textAlign);
+  expect(confirmed.bg).toBe(true);
+  expect(Math.abs(confirmed.worldW-beforeConfirm.worldRect.w)).toBeLessThan(0.01);
+  expect(Math.abs(confirmed.worldH-beforeConfirm.worldRect.h)).toBeLessThan(0.01);
+  for (const k of ['x','y','w','h']) expect(Math.abs(confirmed.rect[k]-confirmed.outline[k])).toBeLessThan(1.2);
+  // Sem salto no momento da confirmação: o retângulo confirmado coincide com o do draft.
+  for (const k of ['x','y','w','h']) expect(Math.abs(confirmed.rect[k]-beforeConfirm.text[k])).toBeLessThan(1.2);
+});

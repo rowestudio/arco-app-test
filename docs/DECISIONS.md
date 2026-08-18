@@ -1,5 +1,16 @@
 # DECISIONS
 
+## 2026-08-18 — DEC-Text-E9E: criação na vista atual e WYSIWYG reutilizam a cadeia canônica
+
+- **Data:** 2026-08-18.
+- **Assunto:** estabilização funcional do editor de Text Asset pós-E9D (posição inicial + sincronização WYSIWYG).
+- **Classificação:** correção funcional localizada; risco médio (geometria e draft de Text Asset), sem redesign nem alteração de arquitetura.
+- **Decisão:** (1) o NOVO Text Asset nasce centralizado na VISTA ATUAL do Stage, com o centro capturado em World pela transformação canônica já existente (`computeEditorTransform → screenToStageCoord → editorStageToWorld`, encapsulada em `getEditorViewCenterWorld()`), ANTES de abrir/focar a sheet e ANTES do resize do teclado; a geometria REAL medida do draft é usada para o centro coincidir com o da vista, com fallback ao centro da célula base quando não há vista válida. Editar asset existente nunca recentraliza. (2) Enquanto o editor está ativo, `pendingTextDraft` é a fonte única da verdade visual: `renderAssetSelectionOverlay` consome a geometria viva do draft e os pontos de mutação do painel (`updateTextDraft`, listener de `input`, abertura do editor) re-renderizam a seleção junto do Stage.
+- **Razão:** o ponto de criação centralizava no centro da célula base do ProjectWorld, ignorando a vista corrente sob pan/zoom; e a seleção/alças consumiam o estado confirmado, não o draft, divergindo do painel durante a edição. A correção é mínima e na origem, sem fórmula de câmera paralela, sem `window.innerWidth/innerHeight` como sistema canônico, sem compensação CSS e sem mexer no ProjectWorld/Preview/Export; sem polling, timers ou render duplicado.
+- **Consequência:** gates automatizados E9E (centralização Casos A–E e WYSIWYG) falham na main pré-E9E e passam após a correção; E8Z/E9A/E9C/E9D preservados. `APP_VERSION === APP_VERSION_NAME === v8z4b32E9E`. O redesign E9F e as alças laterais E9G permanecem plano futuro não implementado.
+- **Status:** implementado em PR no repositório de teste; validação visual final em iPhone/Safari real pendente; nenhuma promoção autorizada.
+- **Documento relacionado:** `docs/PRE_PROMOTION_RELEASE_PLAN.md`, `docs/PRODUCT_RULES.md`, `docs/REGRESSIONS.md` (REG-048/REG-049), `docs/TEST_CASES.md` (TC-048).
+
 ## 2026-08-16 — DEC-Text-E9D: tolerância de 1 px pertence à geometria canônica
 
 A reserva adotada para o limite Canvas/DOM não será aplicada como largura mínima ou override visual no Stage. Esta decisão não classifica divergência subpixel como causa comprovada antes de reprodução pública A/B no WebKit ou iPhone. O modo Auto soma 1 px CSS à maior linha dentro de `measureTextAsset`; assim Stage, seleção, hit-test, Preview e Export consomem a mesma geometria. O valor não altera o padding aprovado nem a migração não destrutiva de projetos legados em modo Fixa.

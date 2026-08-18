@@ -1,5 +1,16 @@
 # PRODUCT_RULES
 
+## Regras E9E — criação na vista atual e WYSIWYG ao vivo (implementadas)
+
+Regras aprovadas e já IMPLEMENTADAS nesta E9E:
+
+1. Um NOVO Text Asset nasce centralizado na VISTA ATUAL do Stage, com o centro capturado antes do resize do teclado virtual. O centro é obtido em coordenadas de World pela transformação canônica existente (`computeEditorTransform → screenToStageCoord → editorStageToWorld`); não se usa o centro da célula base do ProjectWorld quando a vista corrente enquadra outra região, nem `window.innerWidth/innerHeight` como sistema canônico, nem fórmula de câmera paralela, nem compensação CSS, nem mudança no ProjectWorld.
+2. Editar um Text Asset já existente nunca o recentraliza; a edição preserva a posição/centro confirmados.
+3. Enquanto o editor de texto está ativo, `pendingTextDraft` é a fonte única da verdade VISUAL do Text Asset em edição.
+4. Painel, Stage, fundo, seleção e as quatro alças refletem imediatamente o mesmo `pendingTextDraft`: toda propriedade alterada no painel atualiza na hora o Stage (glifos e fundo), o contorno de seleção e as quatro alças, mantendo hit-test coerente, sem persistir o draft prematuramente.
+
+Estas regras não antecipam o redesign visual/iconográfico (E9F) nem a manipulação direta de largura por alças laterais (E9G), registrados apenas como plano futuro em `docs/PRE_PROMOTION_RELEASE_PLAN.md` e `docs/ROADMAP.md`.
+
 ## Regra E9B — geometria visual de Text Assets no Stage
 
 - Após a medição canônica da caixa, glifos e fundo, seleção, quatro abas e hit-test devem consumir a mesma `visualRect` de `resolveAssetStageVisualGeometry`.

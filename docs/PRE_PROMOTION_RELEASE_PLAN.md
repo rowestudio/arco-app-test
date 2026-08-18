@@ -60,6 +60,20 @@ Classificação: correção de regressão + melhoria visual localizada.
 - Raio de canto, borda, cor/opacidade/espessura de borda e opacidade geral do ativo permanecem trabalho futuro explícito.
 - A interface não pode fingir que uma borda foi entregue antes de ela existir no renderer.
 
+### Sequência aprovada da rodada de Texto
+
+A PR de Texto foi subdividida na seguinte sequência aprovada. Registrar como plano; apenas o que está marcado como implementado é comportamento atual.
+
+- **E9D — mergeada** (PR #497): reserva de 1 px canônico contra a quebra vertical no Safari e reorganização do editor em `Texto | Fonte | Cor | Estilo`, com draft minimizável e confirmação no mesmo ID.
+- **E9E — estabilização funcional (esta PR): posição + WYSIWYG.** (1) NOVO Text Asset nasce centralizado na VISTA ATUAL do Stage, com o centro capturado antes do resize do teclado pela transformação canônica existente; editar asset existente não recentraliza. (2) `pendingTextDraft` é a fonte única da verdade visual enquanto o editor está ativo; painel, Stage, fundo, seleção e quatro alças refletem imediatamente o mesmo draft. UI E9D preservada; nenhum redesign visual antecipado.
+- **E9F — revisão visual/iconográfica do editor de Texto (FUTURA, NÃO implementada nesta PR).** Decisões já aprovadas, apenas registradas:
+  - editor tipográfico neutro/iconográfico; estados internos não precisam herdar a cor do espaço Ativos;
+  - nova paleta aprovada para a rodada visual: fundo principal `#24262B`, sheet `#303238`, controles `#393C43`, Ativos `#FF6B8A`; Frames mantém seu ciano atual;
+  - a aplicação global dessa filosofia aos demais painéis fica para revisão visual posterior.
+  Não implementar E9F nesta PR (sem novo editor iconográfico, sem faixa horizontal de ícones, sem remover as tabs `Texto/Fonte/Cor/Estilo` nem o título, sem nova paleta).
+- **E9G — manipulação direta futura da largura da caixa no Stage (FUTURA, NÃO implementada nesta PR).** Proposta aprovada de largura direta no Stage por alças laterais específicas de Text Asset; exige revisão explícita da proteção REG-028/exatamente quatro alças antes da implementação. Não implementar nesta PR.
+- Somente depois dessa rodada de Texto avançar para **Camadas e Profundidade** e, em seguida, para o **Engine Sprint** de Movimento inteligente/easing.
+
 ## 3. PR de Camadas e Profundidade
 
 Classificação: nova função de interface + correção visual de controle existente.
