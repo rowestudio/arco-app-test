@@ -1989,6 +1989,13 @@ test('E9B — Text Asset acompanha seleção na paralaxe do Stage', async ({ pag
   postLoadDiagnostics=await page.evaluate(()=>buildDiagnosticsText());expect(postLoadDiagnostics).toContain('textAssetStageUsesResolvedParallaxGeometry: true');expect(postLoadDiagnostics).toContain('textAssetDomSelectionParityOk: true');expect(postLoadDiagnostics).toContain('textAssetMovedWithDepthOnStage: n/d');
 
   // Preview canônico preserva texto/fundo/depth e não leva overlays do editor.
+  // v8z4b32E9E — desde a E9E o novo Text Asset nasce no centro da VISTA ATUAL (nesta
+  // vista padrão, o centro da célula base), que pode não coincidir com a câmera do
+  // frame 0. Como intersectsCamera é medido pelo retângulo CANÔNICO do texto contra a
+  // câmera de t=0, posicionamos o texto no centro dessa câmera (frame 0) para tornar a
+  // asserção de intersecção determinística, sem alterar depth, fundo ou a paridade já
+  // verificada acima.
+  await page.evaluate(id=>{const a=assets.find(x=>String(x.id)===id),f=frames[0];a.worldX=(f.x+f.w/2)-a.worldW/2;a.worldY=(f.y+f.h/2)-a.worldH/2;renderProjectWorldExtraImages();renderAssetSelectionOverlay();},textId);
   await page.evaluate(()=>startPreview());await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000});await expect.poll(()=>page.evaluate(()=>previewLoadingHiddenAfterFirstFrame),{timeout:30_000}).toBe(true);
   const previewProof=await page.evaluate(id=>{if(animFrame)togglePreviewPlayback();const snapshot=renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id),audit=renderTransform.preview?.assets?.find(a=>String(a.id)===id),screen=document.getElementById('previewScreen'),overlay=document.getElementById('assetSelectOutline'),handles=document.querySelectorAll('.asset-corner-handle.show');return{snapshot,audit,overlayInsidePreview:!!(overlay&&screen.contains(overlay)),handlesInsidePreview:[...handles].some(h=>screen.contains(h)),loading:previewLoadingHiddenAfterFirstFrame}},textId);
   expect(previewProof.snapshot).toMatchObject({id:textId,depth:-37,boxBackgroundEnabled:true});expect(previewProof.audit).toMatchObject({id:textId,drawn:true,intersectsCamera:true});expect(previewProof).toMatchObject({overlayInsidePreview:false,handlesInsidePreview:false,loading:true});await page.evaluate(()=>stopPreview());await expect(page.locator('body')).toHaveClass(/mode-editor/);
