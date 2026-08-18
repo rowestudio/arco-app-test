@@ -2633,6 +2633,9 @@ test('E9F — editor de texto iconográfico neutro: rail, paleta, coral, gestos 
   p = await liveProbe(); expect(p.align).toBe('right'); expect(p.domAlign).toBe('right'); expect(p.handles).toEqual(['bl','br','tl','tr']);
   // Cor do texto
   await railTool('Cor do texto').click();
+  // Sem caption/label textual visível redundante além do seletor; aria-label mantido.
+  expect((await sheet.locator('[data-text-panel="color"]').evaluate(el => el.textContent)).trim()).toBe('');
+  expect(await page.locator('#textCreationColor').getAttribute('aria-label')).toBe('Cor do texto');
   await page.locator('#textCreationColor').evaluate(el=>{el.value='#ff8800';el.dispatchEvent(new Event('input',{bubbles:true}));});
   p = await liveProbe(); expect(p.color).toBe('#ff8800');
   // Retornar a uma propriedade mostra o valor atual do draft.
@@ -2693,8 +2696,23 @@ test('E9F — editor de texto iconográfico neutro: rail, paleta, coral, gestos 
   expect(handleAudit.all).toEqual(['bl','br','tl','tr']);
   expect(handleAudit.sideHandles).toBe(0);
 
-  // ---------- I) MINIMIZAR POR GESTO VERTICAL ----------
+  // ---------- I) MINIMIZAR POR GESTO VERTICAL preservando a propriedade ativa ----------
+  // Abre uma propriedade DIFERENTE de 'text' antes de minimizar; ao reabrir o MESMO
+  // draft, a propriedade ativa da rail (item ativo + painel visível) deve ser
+  // preservada — continuidade da sessão de edição, sem forçar 'Editar texto'.
+  await railTool('Fundo da caixa').click();
+  const editorRailState = () => page.evaluate(() => ({
+    tool: textEditorActiveTool,
+    activeRail: [...document.querySelectorAll('.text-rail-item.active')].map(b => b.getAttribute('data-text-tool')),
+    ariaSelected: [...document.querySelectorAll('.text-rail-item[aria-selected="true"]')].map(b => b.getAttribute('data-text-tool')),
+    visiblePanels: [...document.querySelectorAll('.text-editor-panel')].filter(p => getComputedStyle(p).display !== 'none').map(p => p.getAttribute('data-text-panel')),
+  }));
   const draftBeforeMin = await page.evaluate(() => ({ id:String(pendingTextDraft.id), fields:textEditorDraftFields(pendingTextDraft), undo:undoStack.length, rev:_sessionAutosaveQueuedRevision }));
+  const railBeforeMin = await editorRailState();
+  expect(railBeforeMin.tool).toBe('background');            // propriedade ativa != 'text'
+  expect(railBeforeMin.activeRail).toEqual(['background']); // exatamente um item ativo
+  expect(railBeforeMin.ariaSelected).toEqual(['background']);
+  expect(railBeforeMin.visiblePanels).toEqual(['background']); // exatamente um painel visível
   // Arrasto vertical para baixo sobre a ALÇA superior (pointer events reais na alça).
   await page.evaluate(() => {
     const el = document.getElementById('textCreationDrag'); const r = el.getBoundingClientRect();
@@ -2710,10 +2728,17 @@ test('E9F — editor de texto iconográfico neutro: rail, paleta, coral, gestos 
   expect(draftAfterMin.fields).toEqual(draftBeforeMin.fields);
   expect(draftAfterMin.undo).toBe(draftBeforeMin.undo);   // minimizar não cria Undo
   expect(draftAfterMin.rev).toBe(draftBeforeMin.rev);     // nem revisão de autosave
-  // Reabrir restaura exatamente o mesmo draft/ID.
+  // Reabrir restaura exatamente o mesmo draft/ID E a MESMA propriedade ativa.
   await page.evaluate(() => startTextCreation());
   await expect(sheet).toHaveClass(/open/);
-  expect(await page.evaluate(() => ({ id:String(pendingTextDraft.id), fields:textEditorDraftFields(pendingTextDraft) }))).toEqual({ id:draftBeforeMin.id, fields:draftBeforeMin.fields });
+  const reopened = await page.evaluate(() => ({ id:String(pendingTextDraft.id), fields:textEditorDraftFields(pendingTextDraft), undo:undoStack.length, rev:_sessionAutosaveQueuedRevision }));
+  expect(reopened).toEqual({ id:draftBeforeMin.id, fields:draftBeforeMin.fields, undo:draftBeforeMin.undo, rev:draftBeforeMin.rev });
+  const railAfterReopen = await editorRailState();
+  expect(railAfterReopen.tool).toBe(railBeforeMin.tool);            // mesma propriedade ativa (não 'text')
+  expect(railAfterReopen.tool).not.toBe('text');
+  expect(railAfterReopen.activeRail).toEqual(railBeforeMin.activeRail);       // um item ativo, o mesmo
+  expect(railAfterReopen.ariaSelected).toEqual(railBeforeMin.ariaSelected);
+  expect(railAfterReopen.visiblePanels).toEqual(railBeforeMin.visiblePanels); // um painel visível, o mesmo
 
   // ---------- J) CONFLITO DE GESTOS ----------
   // Swipe horizontal sobre a rail desloca a rail e NÃO minimiza a sheet.
