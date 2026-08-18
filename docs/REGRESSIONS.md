@@ -13,7 +13,7 @@
 - **Correção E9E:** o novo Text Asset nasce centralizado na VISTA ATUAL. O centro da vista é capturado em World pela cadeia canônica existente (`computeEditorTransform → screenToStageCoord → editorStageToWorld`, via `getEditorViewCenterWorld()`) ANTES de abrir/focar a sheet e ANTES do resize do teclado; a geometria REAL medida do draft é usada para fazer o centro geométrico coincidir com o centro da vista. Sem vista válida, cai no centro da célula base (comportamento pré-E9E). Editar asset existente nunca recentraliza.
 - **Prevenção:** não usar `baseStageW/baseStageH` como substituto da vista atual; não usar `window.innerWidth/innerHeight` como coordenada canônica; não criar matemática paralela de Stage/World; não mover ProjectWorld/câmera para simular centralização.
 - **Teste preventivo:** `tests/smoke/app.spec.mjs` gate `E9E — novo Text Asset nasce no centro da vista atual` (Casos A–E). Falha na main pré-E9E e passa após a correção.
-- **Status:** proteção automatizada adicionada na `v8z4b32E9E`; validação visual final em iPhone/Safari real permanece pendente. Nenhuma promoção autorizada.
+- **Status:** proteção automatizada adicionada na `v8z4b32E9E`; `v8z4b32E9E` mergeada pela PR #498 e validada fisicamente por Roberto em iPhone/Safari na build publicada em 2026-08-18 — centralização na vista atual, inclusive após pan/zoom, aprovada e sintoma considerado resolvido na build publicada. Proteção preventiva mantida; nenhuma promoção para produção autorizada.
 
 ## REG-049 — Painel e Stage divergem durante a edição de texto (WYSIWYG) (E9E)
 
@@ -22,7 +22,7 @@
 - **Correção E9E (mínima na origem):** enquanto o editor está ativo, `renderAssetSelectionOverlay` consome a geometria viva de `pendingTextDraft` (medindo o draft antes de resolver a geometria) e `updateTextDraft`/`input`/abertura do editor passam a re-renderizar a seleção. Sem polling, timers arbitrários ou render duplicado.
 - **Prevenção:** toda mudança de propriedade do draft deve atualizar imediatamente Stage, fundo, seleção e as quatro alças a partir da mesma fonte (`pendingTextDraft`); a seleção não pode consumir o estado confirmado durante uma sessão de edição.
 - **Teste preventivo:** `tests/smoke/app.spec.mjs` gate `E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo draft`. Falha na main pré-E9E e passa após a correção.
-- **Status:** proteção automatizada adicionada na `v8z4b32E9E`; validação visual final em iPhone/Safari real permanece pendente. Nenhuma promoção autorizada.
+- **Status:** proteção automatizada adicionada na `v8z4b32E9E`; `v8z4b32E9E` mergeada pela PR #498 e validada fisicamente por Roberto em iPhone/Safari na build publicada em 2026-08-18 — WYSIWYG ao vivo, painel/Stage/fundo/seleção/quatro alças, minimizar/reabrir e confirmação sem salto aprovados; sintoma considerado resolvido na build publicada. Proteção preventiva mantida; nenhuma promoção para produção autorizada.
 
 ## REG-047 — Text Asset novo pode quebrar verticalmente no Safari (E9D)
 
