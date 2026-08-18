@@ -2337,7 +2337,19 @@ test('E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo
     const handles = selEl ? [...selEl.querySelectorAll('.asset-corner-handle.show')].map(h => { const r=h.getBoundingClientRect(); return { c:h.dataset.assetCorner, cx:r.x+r.width/2, cy:r.y+r.height/2 }; }) : [];
     const visual = resolveAssetStageVisualGeometry(d).visualRect;
     const expectedStage = editorWorldToStage(visual.x, visual.y, visual.w, visual.h);
-    return { draft, panel, expectedFontLabel, text:read(textEl), sel:read(selEl), selVisible, handles, background:textEl?getComputedStyle(textEl).backgroundColor:'', worldRect:{w:d.worldW,h:d.worldH,cx:d.worldX+d.worldW/2,cy:d.worldY+d.worldH/2} };
+    // Estilos COMPUTADOS do Text Asset renderizado no Stage — prova que o Stage
+    // representa o MESMO pendingTextDraft para as propriedades visuais, não só a
+    // geometria. Normalização RGB/família só no teste, sem tocar o produto.
+    const parseNums = str => { const m = String(str).match(/-?\d+(?:\.\d+)?/g); return m ? m.map(Number) : []; };
+    const hexRGB = hex => { const n = parseInt(String(hex).slice(1), 16); return [ (n>>16)&255, (n>>8)&255, n&255 ]; };
+    const normFam = s => String(s).replace(/["']/g, '').replace(/\s+/g, '').toLowerCase();
+    const cs = textEl ? getComputedStyle(textEl) : null;
+    const computed = cs ? { textAlign: cs.textAlign, fontWeight: cs.fontWeight, fontStyle: cs.fontStyle, color: parseNums(cs.color).slice(0,3), fontFamily: normFam(cs.fontFamily), bg: parseNums(cs.backgroundColor) } : null;
+    const expectedColor = hexRGB(d.color);
+    const expectedFontFamily = normFam((TEXT_ASSET_FONTS[d.fontKey]||{}).family || '');
+    const expectedBgRGB = hexRGB(d.boxBackgroundColor);
+    const expectedStyleLabel = d.fontWeight === 700 ? (d.fontStyle === 'italic' ? 'Negrito + itálico' : 'Negrito') : (d.fontStyle === 'italic' ? 'Itálico' : 'Normal');
+    return { draft, panel, expectedFontLabel, text:read(textEl), sel:read(selEl), selVisible, handles, background:textEl?getComputedStyle(textEl).backgroundColor:'', worldRect:{w:d.worldW,h:d.worldH,cx:d.worldX+d.worldW/2,cy:d.worldY+d.worldH/2}, computed, expectedColor, expectedFontFamily, expectedBgRGB, expectedStyleLabel };
   });
 
   // Verificação canônica em cada operação. Não testa só existência de DOM: compara
@@ -2371,6 +2383,34 @@ test('E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo
     // backgroundGeometry == expectedVisualRect (o fundo é o próprio retângulo textual).
     if (expectBg) expect(s.background, `${label}: fundo ativo`).not.toBe('rgba(0, 0, 0, 0)');
     else expect(s.background, `${label}: fundo desligado`).toBe('rgba(0, 0, 0, 0)');
+    // Cadeia completa das propriedades VISUAIS: controle → pendingTextDraft →
+    // estilos COMPUTADOS do DOM real do Stage. Prova que o Stage representa o draft.
+    const c = s.computed;
+    expect(c, `${label}: estilos computados do Stage disponíveis`).not.toBeNull();
+    // 1. text-align
+    expect(c.textAlign, `${label}: computed text-align == draft.textAlign`).toBe(s.draft.textAlign);
+    // 2. font-weight (semântico: normal=400, bold=700)
+    const computedWeight = c.fontWeight === 'normal' ? 400 : c.fontWeight === 'bold' ? 700 : parseInt(c.fontWeight, 10);
+    expect(computedWeight, `${label}: computed font-weight == draft.fontWeight`).toBe(s.draft.fontWeight);
+    // 3. font-style
+    expect(c.fontStyle, `${label}: computed font-style == draft.fontStyle`).toBe(s.draft.fontStyle);
+    // 4. color (RGB canônico do draft, normalizado apenas no teste)
+    expect(c.color.length, `${label}: cor computada em RGB`).toBe(3);
+    for (let i = 0; i < 3; i++) expect(Math.abs(c.color[i] - s.expectedColor[i]), `${label}: cor computada canal ${i} == draft.color`).toBeLessThanOrEqual(1);
+    // 5. família da fonte (robusta a aspas/fallbacks, sem enfraquecer o contrato)
+    expect(c.fontFamily, `${label}: família computada == fonte selecionada (fontKey)`).toBe(s.expectedFontFamily);
+    // 7. estado do painel Estilo == peso + itálico do draft (não só presença de .active)
+    expect(s.panel.styleLabel, `${label}: painel Estilo ativo == peso+itálico do draft`).toBe(s.expectedStyleLabel);
+    // 6. background computado
+    if (expectBg) {
+      expect(c.bg.length, `${label}: fundo computado com canais RGB(A)`).toBeGreaterThanOrEqual(3);
+      for (let i = 0; i < 3; i++) expect(Math.abs(c.bg[i] - s.expectedBgRGB[i]), `${label}: fundo computado canal ${i} == draft.boxBackgroundColor`).toBeLessThanOrEqual(1);
+      const computedAlpha = c.bg.length >= 4 ? c.bg[3] : 1;
+      expect(Math.abs(computedAlpha - (s.draft.bgOpacity / 100)), `${label}: alpha do fundo == draft.boxBackgroundOpacity`).toBeLessThan(0.02);
+    } else {
+      const computedAlpha = c.bg.length >= 4 ? c.bg[3] : 0;
+      expect(computedAlpha, `${label}: fundo efetivo transparente quando desligado`).toBe(0);
+    }
     return s;
   };
 
