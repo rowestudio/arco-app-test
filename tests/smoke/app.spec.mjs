@@ -1705,11 +1705,17 @@ test('E8Z — editor tipográfico e caixa usam fluxo público, isolam draft e bl
   await page.locator('#projectFileInput').setInputFiles(projectFixture); await expect(page.locator('body')).toHaveClass(/mode-editor/,{timeout:30_000});
   await page.evaluate(()=>setEditorMode('assets','webkit-e8y'));
   await page.evaluate(()=>startTextCreation()); await page.locator('#textCreationInput').fill('Linha 1\nLinha 2');
-  await expect(page.locator('[data-text-tool]')).toHaveText(['Texto','Fonte','Cor','Estilo']);
+  // v8z4b32E9F — a navegação principal do editor passou a ser uma rail iconográfica:
+  // sete propriedades por ícone, sem label textual visível, com aria-label acessível.
+  const e9fRail = await page.locator('#textCreationSheet [data-text-tool]').evaluateAll(els => els.map(e => ({ label: e.getAttribute('aria-label'), text: e.textContent.trim() })));
+  expect(e9fRail).toEqual([
+    { label:'Editar texto', text:'' }, { label:'Fonte', text:'' }, { label:'Estilo', text:'' },
+    { label:'Alinhamento', text:'' }, { label:'Cor do texto', text:'' }, { label:'Fundo da caixa', text:'' }, { label:'Largura da caixa', text:'' },
+  ]);
   await expect(page.locator('[data-text-panel] input[type="range"][aria-label*="Largura"]')).toHaveCount(0);
   const creationWithoutBox=await page.evaluate(()=>{const m=measureTextAsset(pendingTextDraft);return{enabled:pendingTextDraft.boxBackgroundEnabled,cx:pendingTextDraft.worldX+pendingTextDraft.worldW/2,cy:pendingTextDraft.worldY+pendingTextDraft.worldH/2,boxWidth:pendingTextDraft.boxWidth,lines:m.lines,geometry:serializeProjectAsset(pendingTextDraft,0,false)}});
   expect(creationWithoutBox.enabled).toBe(false);
-  await page.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click();
+  await page.getByRole('tab',{name:'Fundo da caixa',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click();
   const creationWithBox=await page.evaluate(()=>{const m=measureTextAsset(pendingTextDraft);return{cx:pendingTextDraft.worldX+pendingTextDraft.worldW/2,cy:pendingTextDraft.worldY+pendingTextDraft.worldH/2,boxWidth:pendingTextDraft.boxWidth,lines:m.lines,worldW:pendingTextDraft.worldW,paddingX:m.paddingX}});
   expect(creationWithBox.cx).toBeCloseTo(creationWithoutBox.cx); expect(creationWithBox.cy).toBeCloseTo(creationWithoutBox.cy); expect(creationWithBox.boxWidth).toBe(creationWithoutBox.boxWidth); expect(creationWithBox.lines).toEqual(creationWithoutBox.lines); expect(creationWithBox.worldW).toBeCloseTo(creationWithBox.boxWidth+2*creationWithBox.paddingX);
   for(const [opacity,label] of [['65','65%'],['0','0%'],['100','100%']]){await page.locator('#textBoxBackgroundOpacity').fill(opacity);await expect(page.locator('#textBoxBackgroundOpacityValue')).toHaveText(label)}
@@ -1766,8 +1772,8 @@ test('E8Z — editor tipográfico e caixa usam fluxo público, isolam draft e bl
   // Re-seleciona publicamente e confirma uma sessão como exatamente um Undo/revisão.
   const movedTextBox=await page.locator(`.world-text-asset[data-asset-id="${id}"]`).boundingBox(); await page.touchscreen.tap(movedTextBox.x+movedTextBox.width/2,movedTextBox.y+movedTextBox.height/2); await page.locator('#tbAssetReplace').click();
   const commitBefore=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,count:assets.length}));
-  await page.locator('#textCreationInput').fill('Editado\ncom Enter'); await page.getByRole('tab',{name:'Fonte',exact:true}).click(); await page.getByRole('button',{name:'Fonte Serifada',exact:true}).click(); await page.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textCreationColor').evaluate(el=>{el.value='#3366ff';el.dispatchEvent(new Event('input',{bubbles:true}))});
-  await page.getByRole('tab',{name:'Estilo',exact:true}).click(); await page.getByRole('button',{name:'Estilo Negrito + itálico',exact:true}).click(); await page.getByRole('tab',{name:'Texto',exact:true}).click(); await page.getByRole('button',{name:'Alinhar Direita',exact:true}).click(); await page.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#112233';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.locator('#textBoxBackgroundOpacity').fill('65');
+  await page.locator('#textCreationInput').fill('Editado\ncom Enter'); await page.getByRole('tab',{name:'Fonte',exact:true}).click(); await page.getByRole('button',{name:'Fonte Serifada',exact:true}).click(); await page.getByRole('tab',{name:'Cor do texto',exact:true}).click(); await page.locator('#textCreationColor').evaluate(el=>{el.value='#3366ff';el.dispatchEvent(new Event('input',{bubbles:true}))});
+  await page.getByRole('tab',{name:'Estilo',exact:true}).click(); await page.getByRole('button',{name:'Estilo Negrito + itálico',exact:true}).click(); await page.getByRole('tab',{name:'Alinhamento',exact:true}).click(); await page.getByRole('button',{name:'Alinhar Direita',exact:true}).click(); await page.getByRole('tab',{name:'Fundo da caixa',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#112233';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.locator('#textBoxBackgroundOpacity').fill('65');
   const blockedBefore=await page.evaluate(()=>({zoom:editorZoomScale,panX:editorPanX,panY:editorPanY,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld)}));
   await page.touchscreen.tap(10,10); await page.touchscreen.tap(40,40); const blockedAfter=await page.evaluate(()=>({zoom:editorZoomScale,panX:editorPanX,panY:editorPanY,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld)})); expect(blockedAfter).toEqual(blockedBefore); await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
   await page.screenshot({path:testInfo.outputPath('e8z-text-editor-390x797.png')}); await page.getByRole('button',{name:'Confirmar',exact:true}).click();
@@ -1807,10 +1813,10 @@ test('E8Z — editor tipográfico e caixa usam fluxo público, isolam draft e bl
   // Alterações exclusivas da caixa entram no fingerprint e geram checkpoints reais em Undo/Redo.
   const waitCheckpoint=async()=>{await page.waitForTimeout(800);await page.evaluate(async()=>{while(_sessionAutosaveActiveWrites.size)await Promise.all([..._sessionAutosaveActiveWrites])})};
   const stableBeforeBoxOnly=await page.evaluate(id=>{const a=serializeProjectAsset(assets.find(x=>String(x.id)===id),0,false);return{text:a.text,worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld),layers:assets.map(x=>[String(x.id),x.zIndex,x.layerSequence])}},String(id));
-  await page.locator('#tbAssetReplace').click(); await page.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#445566';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.getByRole('button',{name:'Confirmar',exact:true}).click();
+  await page.locator('#tbAssetReplace').click(); await page.getByRole('tab',{name:'Fundo da caixa',exact:true}).click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#445566';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.getByRole('button',{name:'Confirmar',exact:true}).click();
   const colorRevision=await page.evaluate(()=>_sessionAutosaveQueuedRevision); await page.evaluate(()=>undo()); expect(await page.evaluate(()=>_sessionAutosaveQueuedRevision)).toBe(colorRevision+1); await waitCheckpoint(); expect(await page.evaluate(async id=>JSON.parse((await readSessionCheckpoint()).payload).assets.find(a=>String(a.id)===id).boxBackgroundColor,String(id))).toBe('#112233');
   const colorRedoRevision=await page.evaluate(()=>_sessionAutosaveQueuedRevision); await page.evaluate(()=>redo()); expect(await page.evaluate(()=>_sessionAutosaveQueuedRevision)).toBe(colorRedoRevision+1); await waitCheckpoint(); expect(await page.evaluate(async id=>JSON.parse((await readSessionCheckpoint()).payload).assets.find(a=>String(a.id)===id).boxBackgroundColor,String(id))).toBe('#445566');
-  await page.locator('#tbAssetReplace').click(); await page.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textBoxBackgroundOpacity').fill('35'); await expect(page.locator('#textBoxBackgroundOpacityValue')).toHaveText('35%'); await page.getByRole('button',{name:'Confirmar',exact:true}).click();
+  await page.locator('#tbAssetReplace').click(); await page.getByRole('tab',{name:'Fundo da caixa',exact:true}).click(); await page.locator('#textBoxBackgroundOpacity').fill('35'); await expect(page.locator('#textBoxBackgroundOpacityValue')).toHaveText('35%'); await page.getByRole('button',{name:'Confirmar',exact:true}).click();
   const opacityRevision=await page.evaluate(()=>_sessionAutosaveQueuedRevision); await page.evaluate(()=>undo()); expect(await page.evaluate(()=>_sessionAutosaveQueuedRevision)).toBe(opacityRevision+1); await waitCheckpoint(); expect(await page.evaluate(async id=>JSON.parse((await readSessionCheckpoint()).payload).assets.find(a=>String(a.id)===id).boxBackgroundOpacity,String(id))).toBe(.65);
   const opacityRedoRevision=await page.evaluate(()=>_sessionAutosaveQueuedRevision); await page.evaluate(()=>redo()); expect(await page.evaluate(()=>_sessionAutosaveQueuedRevision)).toBe(opacityRedoRevision+1); await waitCheckpoint(); expect(await page.evaluate(async id=>JSON.parse((await readSessionCheckpoint()).payload).assets.find(a=>String(a.id)===id).boxBackgroundOpacity,String(id))).toBe(.35);
   const stableAfterBoxOnly=await page.evaluate(id=>{const a=serializeProjectAsset(assets.find(x=>String(x.id)===id),0,false);return{text:a.text,worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld),layers:assets.map(x=>[String(x.id),x.zIndex,x.layerSequence])}},String(id)); expect(stableAfterBoxOnly).toEqual(stableBeforeBoxOnly);
@@ -1894,7 +1900,7 @@ test('E9B — Text Asset acompanha seleção na paralaxe do Stage', async ({ pag
   await page.locator('#modeAssetsBtn').click();
   await page.evaluate(() => startTextCreation());
   await page.locator('#textCreationInput').fill('R');
-  await page.getByRole('tab', { name: 'Cor', exact: true }).click();
+  await page.getByRole('tab', { name: 'Fundo da caixa', exact: true }).click();
   await page.locator('#textBoxBackgroundToggle').click();
   await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
   const textId = await page.evaluate(() => String(getSelectedAsset().id));
@@ -2064,7 +2070,7 @@ test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob dep
 
   // (c) Modo fixo (override manual): trava largura menor e força quebra automática.
   await page.evaluate(id => startTextAssetEditing(assets.find(a => String(a.id) === id)), textId);
-  await page.getByRole('tab', { name: 'Texto', exact: true }).click();
+  await page.getByRole('tab', { name: 'Largura da caixa', exact: true }).click();
   await page.locator('#textWidthFixedMode').click();
   await expect(page.locator('#textWidthFixedStepper')).toBeVisible();
   await page.evaluate(() => setTextDraftFixedWidth(130));
@@ -2103,7 +2109,7 @@ test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob dep
   await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
   expect(await page.evaluate(() => String(selectedAssetId))).toBe(textId);
   await page.evaluate(id => startTextAssetEditing(assets.find(a => String(a.id) === id)), textId);
-  await page.getByRole('tab', { name: 'Texto', exact: true }).click();
+  await page.getByRole('tab', { name: 'Largura da caixa', exact: true }).click();
   await page.locator('#textWidthAuto').click(); // fixed -> auto
   await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
   expect(await page.evaluate(id => assets.find(a => String(a.id) === id).boxWidthMode, textId)).toBe('auto');
@@ -2141,7 +2147,10 @@ test('E9D — criação pública horizontal e editor tipográfico preserva draft
   // A criação percorre apenas controles públicos. O tablist é o da sheet, não
   // outras abas existentes no aplicativo.
   await openPublicTextCreation();
-  await expect(sheet.getByRole('tablist',{name:'Ferramentas de texto'}).getByRole('tab')).toHaveText(['Texto','Fonte','Cor','Estilo']);
+  const e9dRailTabs = sheet.getByRole('tablist',{name:'Propriedades do texto'}).getByRole('tab');
+  await expect(e9dRailTabs).toHaveText(['','','','','','','']); // rail iconográfica: nenhum label textual
+  await expect(e9dRailTabs).toHaveCount(7);
+  expect(await e9dRailTabs.evaluateAll(els=>els.map(e=>e.getAttribute('aria-label')))).toEqual(['Editar texto','Fonte','Estilo','Alinhamento','Cor do texto','Fundo da caixa','Largura da caixa']);
   await expect(sheet.getByRole('button',{name:'Cancelar',exact:true})).toHaveText('×'); await expect(sheet.getByRole('button',{name:'Confirmar',exact:true})).toHaveText('✓');
   await page.locator('#textCreationInput').fill('R'); const rDraftId=await page.evaluate(()=>pendingTextDraft.id); await confirm();
   const rProof=await page.evaluate(id=>{const a=assets.find(x=>String(x.id)===id),m=measureTextAsset({...a}),el=document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(id)}"]`),rect=el.getBoundingClientRect(),natural=measureTextNaturalWidth(measureTextAsset.canvas.getContext('2d'),a.text);return{id:a.id,text:a.text,mode:a.boxWidthMode,lines:m.lines,natural,boxWidth:a.boxWidth,worldW:a.worldW,paddingX:m.paddingX,rect:{w:rect.width,h:rect.height},count:assets.filter(x=>x?.type==='text').length}},String(rDraftId));
@@ -2149,7 +2158,7 @@ test('E9D — criação pública horizontal e editor tipográfico preserva draft
 
   // O relato real usa “Texto”: prova uma linha no modelo e um retângulo DOM
   // horizontal, com fundo/padding habilitados pelo editor público.
-  await openPublicTextCreation(); await page.locator('#textCreationInput').fill('Texto'); await sheet.getByRole('tab',{name:'Cor',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#112233';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.locator('#textBoxBackgroundOpacity').fill('65');
+  await openPublicTextCreation(); await page.locator('#textCreationInput').fill('Texto'); await sheet.getByRole('tab',{name:'Fundo da caixa',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#112233';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.locator('#textBoxBackgroundOpacity').fill('65');
   const textDraftId=await page.evaluate(()=>pendingTextDraft.id); await confirm();
   const stageProof=await page.evaluate(id=>{const a=assets.find(x=>String(x.id)===id),m=measureTextAsset({...a}),el=document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(id)}"]`),outline=document.getElementById('assetSelectOutline'),r=el.getBoundingClientRect(),o=outline.getBoundingClientRect();return{asset:serializeProjectAsset(a,0,false),lines:m.lines,paddingX:m.paddingX,domText:el.textContent,rect:{x:r.x,y:r.y,w:r.width,h:r.height},outline:{x:o.x,y:o.y,w:o.width,h:o.height},implicitColumn:r.height>r.width}} ,String(textDraftId));
   expect(stageProof.asset).toMatchObject({id:textDraftId,text:'Texto',boxWidthMode:'auto',boxBackgroundEnabled:true,boxBackgroundColor:'#112233',boxBackgroundOpacity:.65}); expect(stageProof.lines).toEqual(['Texto']); expect(stageProof.domText).toBe('Texto'); expect(stageProof.implicitColumn).toBe(false); expect(stageProof.asset.worldW).toBeCloseTo(stageProof.asset.boxWidth+2*stageProof.paddingX);
@@ -2158,14 +2167,16 @@ test('E9D — criação pública horizontal e editor tipográfico preserva draft
   // Auto/Fixa, stepper e os três alinhamentos operam no draft. Minimizar não
   // altera canônico, histórico, autosave nem payload persistível.
   await page.locator('#tbAssetReplace').click(); const before=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,canonical:serializeProjectAsset(getSelectedAsset(),0,false),payload:buildProjectData(true)}));
-  for(const alignment of ['Esquerda','Centro','Direita'])await sheet.getByRole('button',{name:`Alinhar ${alignment}`,exact:true}).click(); await sheet.getByRole('button',{name:'Largura fixa',exact:true}).click(); await expect(page.locator('#textWidthFixedStepper')).toBeVisible(); const widthBefore=await page.locator('#textWidthFixedValue').textContent(); await sheet.getByRole('button',{name:'Aumentar largura fixa',exact:true}).click(); await expect(page.locator('#textWidthFixedValue')).not.toHaveText(widthBefore);
-  await page.locator('#textCreationInput').fill('Texto draft'); const liveDraft=await page.evaluate(()=>textEditorDraftFields(pendingTextDraft)); await sheet.getByRole('button',{name:'Minimizar editor de texto',exact:true}).click(); await expect(sheet).not.toHaveClass(/open/);
+  await sheet.getByRole('tab',{name:'Alinhamento',exact:true}).click();
+  for(const alignment of ['Esquerda','Centro','Direita'])await sheet.getByRole('button',{name:`Alinhar ${alignment}`,exact:true}).click();
+  await sheet.getByRole('tab',{name:'Largura da caixa',exact:true}).click(); await sheet.getByRole('button',{name:'Largura fixa',exact:true}).click(); await expect(page.locator('#textWidthFixedStepper')).toBeVisible(); const widthBefore=await page.locator('#textWidthFixedValue').textContent(); await sheet.getByRole('button',{name:'Aumentar largura fixa',exact:true}).click(); await expect(page.locator('#textWidthFixedValue')).not.toHaveText(widthBefore);
+  await sheet.getByRole('tab',{name:'Editar texto',exact:true}).click(); await page.locator('#textCreationInput').fill('Texto draft'); const liveDraft=await page.evaluate(()=>textEditorDraftFields(pendingTextDraft)); await sheet.getByRole('button',{name:'Minimizar editor de texto',exact:true}).click(); await expect(sheet).not.toHaveClass(/open/);
   expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,canonical:serializeProjectAsset(getSelectedAsset(),0,false),payload:buildProjectData(true),draft:!!pendingTextDraft}))).toEqual({...before,draft:true});
   await page.locator('#tbAssetReplace').click(); await expect(page.locator('#textCreationInput')).toHaveValue('Texto draft'); expect(await page.evaluate(()=>textEditorDraftFields(pendingTextDraft))).toEqual(liveDraft); await sheet.getByRole('button',{name:'Cancelar',exact:true}).click();
   expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,canonical:serializeProjectAsset(getSelectedAsset(),0,false),payload:buildProjectData(true)}))).toEqual(before);
 
   // Uma mudança confirmada gera exatamente um Undo/revisão e preserva ID.
-  await page.locator('#tbAssetReplace').click(); const commitBefore=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,count:assets.length,id:String(getSelectedAsset().id)})); await sheet.getByRole('button',{name:'Alinhar Esquerda',exact:true}).click(); await confirm();
+  await page.locator('#tbAssetReplace').click(); const commitBefore=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,count:assets.length,id:String(getSelectedAsset().id)})); await sheet.getByRole('tab',{name:'Alinhamento',exact:true}).click(); await sheet.getByRole('button',{name:'Alinhar Esquerda',exact:true}).click(); await confirm();
   expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,count:assets.length,id:String(getSelectedAsset().id),align:getSelectedAsset().textAlign}))).toEqual({...commitBefore,undo:commitBefore.undo+1,rev:commitBefore.rev+1,align:'left'});
 
   // Depth público: DOM/fundo, hit-test, seleção e quatro alças continuam juntos.
@@ -2423,11 +2434,12 @@ test('E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo
   // exercitar o stepper sem esbarrar no clamp de exibição maxW herdado da E9D).
   await page.locator('#textCreationInput').fill('Texto maior');
   await check('03 texto longo', false);
-  // 4. alinhamento
-  await sheet.getByRole('tab', { name:'Texto', exact:true }).click();
+  // 4. alinhamento (agora sob o ícone Alinhamento da rail)
+  await sheet.getByRole('tab', { name:'Alinhamento', exact:true }).click();
   await sheet.getByRole('button', { name:'Alinhar Direita', exact:true }).click();
   await check('04 alinhar direita', false);
-  // 5. alternar Auto/Fixa
+  // 5. alternar Auto/Fixa (agora sob o ícone Largura da caixa da rail)
+  await sheet.getByRole('tab', { name:'Largura da caixa', exact:true }).click();
   await sheet.getByRole('button', { name:'Largura fixa', exact:true }).click();
   await expect(page.locator('#textWidthFixedStepper')).toBeVisible();
   await check('05 largura fixa', false);
@@ -2443,11 +2455,12 @@ test('E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo
   await sheet.getByRole('tab', { name:'Estilo', exact:true }).click();
   await sheet.getByRole('button', { name:'Estilo Negrito + itálico', exact:true }).click();
   await check('08 peso/itálico', false);
-  // 9. cor do texto
-  await sheet.getByRole('tab', { name:'Cor', exact:true }).click();
+  // 9. cor do texto (propriedade própria: apenas os glifos)
+  await sheet.getByRole('tab', { name:'Cor do texto', exact:true }).click();
   await page.locator('#textCreationColor').evaluate(el=>{el.value='#ff8800';el.dispatchEvent(new Event('input',{bubbles:true}));});
   await check('09 cor do texto', false);
-  // 10. ativar fundo
+  // 10. ativar fundo (propriedade própria e separada da cor do texto)
+  await sheet.getByRole('tab', { name:'Fundo da caixa', exact:true }).click();
   await page.locator('#textBoxBackgroundToggle').click();
   await check('10 fundo ligado', true);
   // 11. cor do fundo
@@ -2479,4 +2492,252 @@ test('E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo
   for (const k of ['x','y','w','h']) expect(Math.abs(confirmed.rect[k]-confirmed.outline[k])).toBeLessThan(1.2);
   // Sem salto no momento da confirmação: o retângulo confirmado coincide com o do draft.
   for (const k of ['x','y','w','h']) expect(Math.abs(confirmed.rect[k]-beforeConfirm.text[k])).toBeLessThan(1.2);
+});
+
+// v8z4b32E9F — gate da rail iconográfica neutra do editor de Text Asset. Cobre a
+// substituição das tabs textuais por ícones (sem label visível), o estado ativo
+// neutro invertido (branco + símbolo escuro, nunca coral/ciano/verde), a paleta de
+// UI aprovada, o coral #FF6B8A dos Ativos com o ciano dos Frames preservado, a
+// navegação por propriedade refletindo pendingTextDraft ao vivo, alinhamento e fundo
+// iconográficos/separados, largura Auto/Fixa, minimizar por gesto vertical (sem
+// conflito com o swipe horizontal da rail nem com o slider) e as quatro alças.
+test('E9F — editor de texto iconográfico neutro: rail, paleta, coral, gestos e draft', async ({ page }, testInfo) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width:390, height:797 });
+  await page.goto('/', { waitUntil:'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout:30_000 });
+  await dismissProModalIfVisible(page);
+  await page.locator('#modeAssetsBtn').click();
+  await expect(page.locator('body')).toHaveClass(/editor-assets/);
+
+  const sheet = page.locator('#textCreationSheet');
+  const railTabs = sheet.getByRole('tablist',{name:'Propriedades do texto'}).getByRole('tab');
+  const railTool = label => sheet.getByRole('tab',{name:label,exact:true});
+  const confirm = () => sheet.getByRole('button',{name:'Confirmar',exact:true}).click();
+  const cancel = () => sheet.getByRole('button',{name:'Cancelar',exact:true}).click();
+  const rgb = s => (String(s).match(/-?\d+(?:\.\d+)?/g)||[]).map(Number);
+  const CORAL=[255,107,138], CYAN=[4,255,242], GREEN=[48,209,88];
+  const near = (a,b,t=2) => a.length>=3 && b.length>=3 && Math.abs(a[0]-b[0])<=t && Math.abs(a[1]-b[1])<=t && Math.abs(a[2]-b[2])<=t;
+  const TOOLS = [
+    ['Editar texto','text'],['Fonte','font'],['Estilo','style'],['Alinhamento','align'],
+    ['Cor do texto','color'],['Fundo da caixa','background'],['Largura da caixa','width'],
+  ];
+
+  // ---------- A) RAIL ICONOGRÁFICA ----------
+  await page.evaluate(() => startTextCreation());
+  await expect(sheet).toHaveClass(/open/);
+  // Nenhuma tab textual principal: a rail só tem ícones, sem texto visível.
+  await expect(railTabs).toHaveCount(7);
+  await expect(railTabs).toHaveText(['','','','','','','']);
+  expect(await railTabs.evaluateAll(els => els.map(e => e.getAttribute('aria-label'))))
+    .toEqual(TOOLS.map(t => t[0]));
+  // Nenhuma label textual "Texto/Fonte/Cor/Estilo" sob os ícones.
+  expect(await sheet.locator('.text-rail-item').evaluateAll(els => els.map(e => e.textContent.trim()).join('')))
+    .toBe('');
+  // Cada ícone tem um SVG (sem emoji/caractere improvisado).
+  expect(await sheet.locator('.text-rail-item svg.text-rail-icon').count()).toBe(7);
+  // Rail em uma única linha, sem wrap, com overflow horizontal disponível.
+  const railLayout = await sheet.locator('.text-editor-rail').evaluate(el => ({
+    flexWrap: getComputedStyle(el).flexWrap, scrollW: el.scrollWidth, clientW: el.clientWidth, top0: el.getBoundingClientRect().top,
+  }));
+  expect(railLayout.flexWrap).toBe('nowrap');
+  expect(railLayout.scrollW).toBeGreaterThan(railLayout.clientW); // conteúdo excede: rola horizontalmente
+  // Todos os ícones em uma linha só (mesmo topo) — não criou segunda linha.
+  const railTops = await sheet.locator('.text-rail-item').evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().top)));
+  expect(new Set(railTops).size).toBe(1);
+  // Exatamente um item ativo e tocar em cada ícone mostra SOMENTE o painel dele.
+  for (const [label, panel] of TOOLS) {
+    await railTool(label).click();
+    await expect(sheet.locator('.text-rail-item.active')).toHaveCount(1);
+    const state = await sheet.evaluate(p => ({
+      activeTool: (document.querySelector('.text-rail-item.active')||{}).getAttribute?.('data-text-tool'),
+      openPanels: [...document.querySelectorAll('.text-editor-panel')].filter(x => getComputedStyle(x).display !== 'none').map(x => x.getAttribute('data-text-panel')),
+    }), panel);
+    expect(state.activeTool).toBe(panel);
+    expect(state.openPanels).toEqual([panel]);
+    expect(await railTool(label).getAttribute('aria-selected')).toBe('true');
+  }
+
+  // ---------- B) ESTADO ATIVO NEUTRO ----------
+  await railTool('Editar texto').click();
+  await page.screenshot({ path: testInfo.outputPath('e9f-rail-texto-390x797.png') }); // rail iconográfica com item ativo (Texto)
+  const activeStyle = await sheet.locator('.text-rail-item.active').evaluate(el => ({ bg: getComputedStyle(el).backgroundColor, color: getComputedStyle(el).color, icon: getComputedStyle(el.querySelector('.text-rail-icon')).color }));
+  const inactiveStyle = await sheet.locator('.text-rail-item:not(.active)').first().evaluate(el => ({ bg: getComputedStyle(el).backgroundColor, color: getComputedStyle(el).color }));
+  const aBg = rgb(activeStyle.bg), aIcon = rgb(activeStyle.icon), iBg = rgb(inactiveStyle.bg);
+  expect(aBg.slice(0,3)).toEqual([255,255,255]);                 // superfície branca
+  expect(aIcon[0]+aIcon[1]+aIcon[2]).toBeLessThan(150);          // símbolo escuro
+  expect(iBg.slice(0,3)).not.toEqual([255,255,255]);             // inativo neutro escuro
+  expect(iBg[0]+iBg[1]+iBg[2]).toBeLessThan(360);
+  for (const c of [aBg, aIcon]) { expect(near(c,CORAL)).toBe(false); expect(near(c,CYAN)).toBe(false); expect(near(c,GREEN)).toBe(false); }
+
+  // ---------- C) SUPERFÍCIES (paleta aprovada) ----------
+  const surfaces = await page.evaluate(() => ({
+    sheet: getComputedStyle(document.querySelector('.text-creation-inner')).backgroundColor,
+    field: getComputedStyle(document.getElementById('textCreationInput')).backgroundColor,
+    chrome: getComputedStyle(document.getElementById('topBar')).backgroundColor,
+  }));
+  expect(rgb(surfaces.sheet).slice(0,3)).toEqual([48,50,56]);    // sheet #303238
+  expect(rgb(surfaces.field).slice(0,3)).toEqual([57,60,67]);    // campo #393C43
+  expect(rgb(surfaces.field).slice(0,3)).not.toEqual(rgb(surfaces.sheet).slice(0,3)); // campo != sheet
+  expect(rgb(surfaces.chrome).slice(0,3)).toEqual([36,38,43]);   // chrome/UI principal #24262B (não é DEFAULT_PROJECT_BG)
+
+  // ---------- D) ATIVOS coral / Frames ciano ----------
+  const accents = await page.evaluate(() => ({
+    assets: getComputedStyle(document.body).getPropertyValue('--accent').trim().toLowerCase(),
+    frames: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim().toLowerCase(),
+    projectBg: (typeof DEFAULT_PROJECT_BG !== 'undefined') ? DEFAULT_PROJECT_BG : null,
+  }));
+  expect(accents.assets).toBe('#ff6b8a');   // token de Ativos = coral #FF6B8A
+  expect(accents.frames).toBe('#04fff2');   // Frames preservam o ciano existente
+  expect(accents.projectBg).toBe('#3c3c3b'); // DEFAULT_PROJECT_BG intacto (não virou UI)
+
+  // ---------- E) NAVEGAÇÃO DE PROPRIEDADES reflete pendingTextDraft ao vivo ----------
+  await railTool('Editar texto').click();
+  await page.locator('#textCreationInput').fill('Arco');
+  const liveProbe = () => page.evaluate(() => {
+    const d = pendingTextDraft;
+    const el = document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(String(d.id))}"]`);
+    const sel = document.getElementById('assetSelectOutline');
+    const handles = sel ? [...sel.querySelectorAll('.asset-corner-handle.show')].map(h => h.dataset.assetCorner).sort() : [];
+    return { text:d.text, align:d.textAlign, fontKey:d.fontKey, weight:d.fontWeight, style:d.fontStyle, color:String(d.color).toLowerCase(), mode:d.boxWidthMode, bg:!!d.boxBackgroundEnabled,
+      domText: el ? el.textContent : null, domAlign: el ? getComputedStyle(el).textAlign : null, selVisible: !!(sel && getComputedStyle(sel).display !== 'none'), handles };
+  });
+  let p0 = await liveProbe();
+  expect(p0.domText).toBe('Arco'); expect(p0.selVisible).toBe(true); expect(p0.handles).toEqual(['bl','br','tl','tr']);
+  // Fonte
+  await railTool('Fonte').click();
+  await page.screenshot({ path: testInfo.outputPath('e9f-rail-fonte-390x797.png') });
+  const fontOpts = sheet.locator('#textEditorFontOptions .text-editor-option');
+  await fontOpts.nth((await fontOpts.count())-1).click();
+  let p = await liveProbe(); expect(p.fontKey).not.toBe(p0.fontKey); expect(p.selVisible).toBe(true); expect(p.handles).toEqual(['bl','br','tl','tr']);
+  // Estilo
+  await railTool('Estilo').click();
+  await sheet.getByRole('button',{name:'Estilo Negrito',exact:true}).click();
+  p = await liveProbe(); expect(p.weight).toBe(700);
+  // Alinhamento — reflete no Stage imediatamente
+  await railTool('Alinhamento').click();
+  await page.screenshot({ path: testInfo.outputPath('e9f-rail-alinhamento-390x797.png') });
+  await sheet.getByRole('button',{name:'Alinhar Direita',exact:true}).click();
+  p = await liveProbe(); expect(p.align).toBe('right'); expect(p.domAlign).toBe('right'); expect(p.handles).toEqual(['bl','br','tl','tr']);
+  // Cor do texto
+  await railTool('Cor do texto').click();
+  await page.locator('#textCreationColor').evaluate(el=>{el.value='#ff8800';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  p = await liveProbe(); expect(p.color).toBe('#ff8800');
+  // Retornar a uma propriedade mostra o valor atual do draft.
+  await railTool('Alinhamento').click();
+  expect(await sheet.locator('#textEditorAlignOptions .text-editor-option.active').getAttribute('aria-label')).toBe('Alinhar Direita');
+
+  // ---------- F) ALINHAMENTO iconográfico (sem grandes labels textuais) ----------
+  const alignBtns = await sheet.locator('#textEditorAlignOptions .text-editor-option').evaluateAll(els => els.map(e => ({ label:e.getAttribute('aria-label'), text:e.textContent.trim(), svg:e.querySelectorAll('svg').length })));
+  expect(alignBtns.map(b=>b.label)).toEqual(['Alinhar Esquerda','Alinhar Centro','Alinhar Direita']);
+  expect(alignBtns.every(b => b.text === '' && b.svg === 1)).toBe(true); // ícones, não "Esquerda/Centro/Direita"
+  await sheet.getByRole('button',{name:'Alinhar Centro',exact:true}).click();
+  expect(await page.evaluate(()=>pendingTextDraft.textAlign)).toBe('center');
+
+  // ---------- G) FUNDO agrupa enable/cor/opacidade e não reduz opacidade dos glifos ----------
+  await railTool('Fundo da caixa').click();
+  const bgPanel = sheet.locator('[data-text-panel="background"]');
+  for (const id of ['#textBoxBackgroundToggle','#textBoxBackgroundColor','#textBoxBackgroundOpacity','#textBoxBackgroundOpacityValue'])
+    expect(await bgPanel.locator(id).count(), `${id} dentro do painel de Fundo`).toBe(1);
+  await page.locator('#textBoxBackgroundToggle').click(); // liga fundo
+  await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#113355';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await page.locator('#textBoxBackgroundOpacity').fill('40');
+  await expect(page.locator('#textBoxBackgroundOpacityValue')).toHaveText('40%');
+  await page.screenshot({ path: testInfo.outputPath('e9f-rail-fundo-390x797.png') }); // opacidade dentro do painel de Fundo
+  const bgProof = await page.evaluate(() => {
+    const d = pendingTextDraft; const el = document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(String(d.id))}"]`);
+    const cs = getComputedStyle(el); const nums = s => (String(s).match(/-?\d+(?:\.\d+)?/g)||[]).map(Number);
+    return { glyphAlpha: (nums(cs.color)[3] ?? 1), bgAlpha: (nums(cs.backgroundColor)[3] ?? 1), bgOpacity: d.boxBackgroundOpacity };
+  });
+  expect(bgProof.bgOpacity).toBeCloseTo(0.4, 5);
+  expect(Math.abs(bgProof.bgAlpha - 0.4)).toBeLessThan(0.02); // opacidade pertence ao FUNDO
+  expect(bgProof.glyphAlpha).toBe(1);                          // e NÃO reduz a opacidade dos glifos
+
+  // ---------- H) LARGURA Auto/Fixa (E9C intacta) ----------
+  await railTool('Largura da caixa').click();
+  const widthPanel = sheet.locator('[data-text-panel="width"]');
+  expect(await widthPanel.locator('#textWidthAuto').count()).toBe(1);
+  expect(await widthPanel.locator('#textWidthFixedMode').count()).toBe(1);
+  await expect(page.locator('#textWidthFixedStepper')).toBeHidden(); // stepper só no modo Fixa
+  await page.locator('#textWidthFixedMode').click();
+  await expect(page.locator('#textWidthFixedStepper')).toBeVisible();
+  expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('fixed');
+  const wBefore = await page.locator('#textWidthFixedValue').textContent();
+  await sheet.getByRole('button',{name:'Aumentar largura fixa',exact:true}).click();
+  await expect(page.locator('#textWidthFixedValue')).not.toHaveText(wBefore);
+  await page.locator('#textWidthAuto').click();
+  await expect(page.locator('#textWidthFixedStepper')).toBeHidden();
+  expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('auto');
+
+  // ---------- L) QUATRO ALÇAS (nenhuma alça lateral E9G) ----------
+  const handleAudit = await page.evaluate(() => {
+    const sel = document.getElementById('assetSelectOutline');
+    const shown = [...sel.querySelectorAll('.asset-corner-handle.show')].map(h => h.dataset.assetCorner).sort();
+    const all = [...document.querySelectorAll('.asset-corner-handle')].map(h => h.dataset.assetCorner).sort();
+    const sideHandles = [...document.querySelectorAll('.asset-side-handle,.asset-width-handle,[data-asset-side]')].length;
+    return { shown, all, sideHandles };
+  });
+  expect(handleAudit.shown).toEqual(['bl','br','tl','tr']);
+  expect(handleAudit.all).toEqual(['bl','br','tl','tr']);
+  expect(handleAudit.sideHandles).toBe(0);
+
+  // ---------- I) MINIMIZAR POR GESTO VERTICAL ----------
+  const draftBeforeMin = await page.evaluate(() => ({ id:String(pendingTextDraft.id), fields:textEditorDraftFields(pendingTextDraft), undo:undoStack.length, rev:_sessionAutosaveQueuedRevision }));
+  // Arrasto vertical para baixo sobre a ALÇA superior (pointer events reais na alça).
+  await page.evaluate(() => {
+    const el = document.getElementById('textCreationDrag'); const r = el.getBoundingClientRect();
+    const x = r.left + r.width/2, y = r.top + r.height/2;
+    el.dispatchEvent(new PointerEvent('pointerdown', { clientX:x, clientY:y, bubbles:true, pointerId:1 }));
+    window.dispatchEvent(new PointerEvent('pointermove', { clientX:x, clientY:y+60, bubbles:true, pointerId:1 }));
+    window.dispatchEvent(new PointerEvent('pointerup', { clientX:x, clientY:y+60, bubbles:true, pointerId:1 }));
+  });
+  await expect(sheet).not.toHaveClass(/open/);
+  const draftAfterMin = await page.evaluate(() => ({ exists:!!pendingTextDraft, id:pendingTextDraft?String(pendingTextDraft.id):null, fields:pendingTextDraft?textEditorDraftFields(pendingTextDraft):null, undo:undoStack.length, rev:_sessionAutosaveQueuedRevision }));
+  expect(draftAfterMin.exists).toBe(true);
+  expect(draftAfterMin.id).toBe(draftBeforeMin.id);
+  expect(draftAfterMin.fields).toEqual(draftBeforeMin.fields);
+  expect(draftAfterMin.undo).toBe(draftBeforeMin.undo);   // minimizar não cria Undo
+  expect(draftAfterMin.rev).toBe(draftBeforeMin.rev);     // nem revisão de autosave
+  // Reabrir restaura exatamente o mesmo draft/ID.
+  await page.evaluate(() => startTextCreation());
+  await expect(sheet).toHaveClass(/open/);
+  expect(await page.evaluate(() => ({ id:String(pendingTextDraft.id), fields:textEditorDraftFields(pendingTextDraft) }))).toEqual({ id:draftBeforeMin.id, fields:draftBeforeMin.fields });
+
+  // ---------- J) CONFLITO DE GESTOS ----------
+  // Swipe horizontal sobre a rail desloca a rail e NÃO minimiza a sheet.
+  const rail = sheet.locator('.text-editor-rail');
+  await rail.evaluate(el => { el.scrollLeft = 40; el.dispatchEvent(new PointerEvent('pointerdown',{clientX:el.getBoundingClientRect().left+30,clientY:el.getBoundingClientRect().top+20,bubbles:true,pointerId:2})); window.dispatchEvent(new PointerEvent('pointermove',{clientX:el.getBoundingClientRect().left-40,clientY:el.getBoundingClientRect().top+20,bubbles:true,pointerId:2})); window.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:2})); });
+  expect(await rail.evaluate(el => el.scrollLeft)).toBeGreaterThan(0); // rail deslocou horizontalmente
+  await expect(sheet).toHaveClass(/open/);                             // sheet NÃO minimizou
+  expect(await page.evaluate(()=>!!pendingTextDraft)).toBe(true);      // draft permanece
+  // Interagir com o slider de opacidade: funciona e não arrasta a sheet.
+  await railTool('Fundo da caixa').click();
+  const slider = page.locator('#textBoxBackgroundOpacity');
+  await slider.evaluate(el => { el.dispatchEvent(new PointerEvent('pointerdown',{clientX:el.getBoundingClientRect().left+5,clientY:el.getBoundingClientRect().top+5,bubbles:true,pointerId:3})); window.dispatchEvent(new PointerEvent('pointermove',{clientX:el.getBoundingClientRect().left+5,clientY:el.getBoundingClientRect().top+40,bubbles:true,pointerId:3})); window.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:3})); });
+  await expect(sheet).toHaveClass(/open/);                             // slider não arrasta a sheet
+  await slider.fill('55'); await expect(page.locator('#textBoxBackgroundOpacityValue')).toHaveText('55%');
+
+  // ---------- K) CANCELAR / CONFIRMAR ----------
+  // Cancelar: descarta o draft sem confirmar (zero commit, sem resíduo, mesmo ID some do draft).
+  const beforeCancel = await page.evaluate(() => ({ undo:undoStack.length, rev:_sessionAutosaveQueuedRevision, count:assets.length }));
+  await cancel();
+  await expect(sheet).not.toHaveClass(/open/);
+  expect(await page.evaluate(() => ({ draft:!!pendingTextDraft, undo:undoStack.length, rev:_sessionAutosaveQueuedRevision, count:assets.length }))).toEqual({ draft:false, ...beforeCancel });
+  // Confirmar: estado visível = estado persistido; mesmo ID; exatamente 1 Undo e 1 revisão.
+  await page.evaluate(() => startTextCreation());
+  await expect(sheet).toHaveClass(/open/);
+  await page.locator('#textCreationInput').fill('Confirmado');
+  const commitBefore = await page.evaluate(() => ({ id:String(pendingTextDraft.id), undo:undoStack.length, rev:_sessionAutosaveQueuedRevision, count:assets.length }));
+  await confirm();
+  await expect(sheet).not.toHaveClass(/open/);
+  const commitAfter = await page.evaluate(id => { const a = assets.find(x => String(x.id)===id); const el = document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(id)}"]`); const o = document.getElementById('assetSelectOutline'); const r = el.getBoundingClientRect(), ob = o.getBoundingClientRect(); return { exists:!!a, text:a?a.text:null, id:String(getSelectedAsset().id), undo:undoStack.length, rev:_sessionAutosaveQueuedRevision, count:assets.length, parity:['x','y','width','height'].every(k => Math.abs(r[k]-ob[k])<1.2) }; }, commitBefore.id);
+  expect(commitAfter.exists).toBe(true);
+  expect(commitAfter.text).toBe('Confirmado');
+  expect(commitAfter.id).toBe(commitBefore.id);           // mesmo ID
+  expect(commitAfter.count).toBe(commitBefore.count + 1);
+  expect(commitAfter.undo).toBe(commitBefore.undo + 1);   // exatamente 1 Undo
+  expect(commitAfter.rev).toBe(commitBefore.rev + 1);     // e 1 revisão de autosave
+  expect(commitAfter.parity).toBe(true);                  // estado visível == persistido (seleção sobre o asset)
 });

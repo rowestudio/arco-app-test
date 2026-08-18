@@ -1,5 +1,23 @@
 # TEST_CASES
 
+## TC-049 — Editor de Text Asset iconográfico neutro (E9F)
+
+Gate `tests/smoke/app.spec.mjs`, `E9F — editor de texto iconográfico neutro: rail, paleta, coral, gestos e draft`, viewport iPhone 390 × 797:
+
+- **A) Rail iconográfica:** nenhuma tab textual principal; rail com 7 tabs sem texto visível e `aria-label` na ordem editar texto/fonte/estilo/alinhamento/cor do texto/fundo da caixa/largura da caixa; cada item tem SVG; rail em uma única linha (mesmo topo, `flex-wrap:nowrap`) com overflow horizontal disponível (`scrollWidth > clientWidth`); exatamente um item ativo; tocar em cada ícone mostra SOMENTE o painel correspondente.
+- **B) Estado ativo neutro:** por `computedStyle`, item ativo com superfície branca e ícone escuro; item inativo neutro escuro; ativo NÃO usa `#FF6B8A`/ciano/verde.
+- **C) Superfícies:** sheet `#303238`; campo de texto `#393C43` e diferente da sheet; chrome/UI principal `#24262B` (via `#topBar`, não `DEFAULT_PROJECT_BG`).
+- **D) Ativos/Frames:** `--accent` de `body.editor-assets` = `#ff6b8a`; `--accent` de `:root` (Frames) = `#04fff2`; `DEFAULT_PROJECT_BG` = `#3c3c3b` intacto.
+- **E) Navegação de propriedades:** percorrer texto→fonte→estilo→alinhamento→cor→fundo→largura; cada alteração reflete no `pendingTextDraft` e no Stage imediatamente; seleção/quatro alças acompanham; retornar ao painel mostra o valor atual do draft.
+- **F) Alinhamento:** três controles iconográficos com `aria-label` (Alinhar Esquerda/Centro/Direita), sem texto visível; alterar reflete em `textAlign`.
+- **G) Fundo:** enable + cor + opacidade + percent no MESMO painel; alterar a opacidade do fundo não reduz a opacidade dos glifos (alpha do texto permanece 1).
+- **H) Largura:** Auto e Fixa acessíveis; stepper visível somente no modo Fixa; alternância e stepper funcionam (E9C intacta).
+- **I) Minimizar por gesto:** arrasto vertical para baixo sobre a alça (`#textCreationDrag`, via pointer events reais) minimiza; `pendingTextDraft` persiste com mesmo ID e campos idênticos; Undo e revisão de autosave inalterados; reabrir restaura exatamente o draft.
+- **J) Conflito de gestos:** swipe horizontal sobre a rail desloca a rail e NÃO minimiza (draft permanece); o slider de opacidade funciona e não arrasta a sheet.
+- **K) Cancelar/Confirmar:** Cancelar descarta o draft sem commit/Undo/autosave; Confirmar mantém o mesmo ID, cria exatamente 1 Undo e 1 revisão e o estado visível coincide com o persistido.
+- **L) Quatro alças:** exatamente `tl/tr/bl/br`; nenhuma alça lateral E9G.
+- **Ambiente:** WebKit é o gate obrigatório (checks do HEAD final); verificação equivalente local executada em Chromium `hasTouch` com binário do ambiente. E9F, E8Z, E9A, E9C, E9D e E9E passam nessa verificação; E9B depende de um gesto multi-touch de seleção imagem×texto que não reproduz em Chromium (falha idêntica na base pré-E9F) e deve ser validado no WebKit CI. Validação visual final em iPhone/Safari real permanece obrigatória; nenhuma promoção autorizada.
+
 ## TC-048 — Centralização na vista atual e WYSIWYG ao vivo (E9E)
 
 - Gate de centralização (`tests/smoke/app.spec.mjs`, `E9E — novo Text Asset nasce no centro da vista atual`):

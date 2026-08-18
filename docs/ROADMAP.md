@@ -10,9 +10,9 @@ A partir da base auditada `v8z4b32E9C`, a entrega segue uma sequência de PRs se
 
 1. PR funcional de Texto (correção de regressão + melhoria visual localizada), subdividida na rodada de Texto:
    - **E9D — mergeada** (PR #497): reserva de 1 px canônico e editor `Texto | Fonte | Cor | Estilo`.
-   - **E9E — estabilização funcional:** posição (novo texto nasce no centro da vista atual, antes do resize do teclado; editar não recentraliza) + WYSIWYG ao vivo (`pendingTextDraft` é a fonte única da verdade visual; painel, Stage, fundo, seleção e alças refletem o mesmo draft imediatamente).
-   - **E9F — revisão visual/iconográfica do editor de Texto: FUTURA, NÃO implementada nesta PR** (editor iconográfico neutro; nova paleta `#24262B`/`#303238`/`#393C43`/Ativos `#FF6B8A`, Frames mantém ciano).
-   - **E9G — manipulação direta da largura da caixa no Stage por alças laterais: FUTURA, NÃO implementada nesta PR** (exige revisão explícita de REG-028/exatamente quatro alças antes da implementação).
+   - **E9E — mergeada e aprovada fisicamente** (PR #498, merge commit `4254ed370ecee64b7f98d411fe6994b8c4538ba5`): posição (novo texto nasce no centro da vista atual, antes do resize do teclado; editar não recentraliza) + WYSIWYG ao vivo (`pendingTextDraft` é a fonte única da verdade visual; painel, Stage, fundo, seleção e alças refletem o mesmo draft imediatamente). Testada e aprovada por Roberto em iPhone/Safari na build publicada em 2026-08-18 nos itens do seu escopo.
+   - **E9F — revisão visual/iconográfica do editor de Texto: EM PR** (editor iconográfico neutro; rail horizontal de ícones sem label, item ativo branco+símbolo escuro; alinhamento iconográfico; cor do texto e fundo separados com opacidade dentro do Fundo; largura Auto/Fixa mantida; minimizar por gesto vertical; paleta `#24262B`/`#303238`/`#393C43`/divisor `~#4A4D55`; Ativos `#FF6B8A`, Frames mantém ciano `#04fff2`; `DEFAULT_PROJECT_BG` intacto). Não antecipa E9G.
+   - **E9G — manipulação direta da largura da caixa no Stage por alças laterais: FUTURA, NÃO implementada** (exige revisão explícita de REG-028/exatamente quatro alças antes da implementação).
 2. PR funcional de Camadas e Profundidade (nova função de interface + correção visual de controle existente).
 3. Engine Sprint funcional de Movimento inteligente e intensidade de easing (isolado; não misturar às anteriores).
 4. Revisão integrada no iPhone/Safari.

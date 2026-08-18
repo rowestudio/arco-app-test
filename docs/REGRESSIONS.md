@@ -1,5 +1,12 @@
 # REGRESSIONS
 
+## REG-050 — Editor de Text Asset regride para tabs textuais ou seleção interna colorida (E9F)
+
+- **Risco:** o editor de Text Asset voltar a exibir tabs textuais principais (`Texto/Fonte/Cor/Estilo`) ou label sob os ícones; usar coral/ciano/verde como estado ativo INTERNO do editor; deixar alinhamento/largura permanentemente sob o textarea; misturar cor do texto com fundo; a opacidade poder ser confundida com opacidade dos glifos/ativo; o swipe horizontal da rail minimizar a sheet; o slider arrastar a sheet; minimizar criar Undo/autosave; ou a paleta de UI alterar `DEFAULT_PROJECT_BG`.
+- **Prevenção:** rail iconográfica com `aria-label` e sem texto visível; item ativo com contraste neutro invertido (branco + símbolo escuro); alinhamento iconográfico próprio; cor do texto e fundo separados, com opacidade dentro do painel de Fundo; largura Auto/Fixa sob o ícone Largura; minimizar por gesto vertical da alça (mesma semântica `minimizeTextEditor`), independente do scroll horizontal da rail e do slider; tokens de UI (`#24262B`/`#303238`/`#393C43`/`~#4A4D55`) separados de `DEFAULT_PROJECT_BG`; Ativos `#FF6B8A`, Frames ciano `#04fff2`.
+- **Teste preventivo:** `tests/smoke/app.spec.mjs` gate `E9F — editor de texto iconográfico neutro` (seções A–L) e TC-049.
+- **Status:** proteção automatizada adicionada na `v8z4b32E9F`; validação visual final em iPhone/Safari real pendente. Nenhuma promoção autorizada.
+
 ## REG-048 — Novo Text Asset não nasce na vista atual (E9E)
 
 - **Relato/causa:** o ponto de criação (`createPendingTextAsset`) centralizava o novo Text Asset no centro da célula base do ProjectWorld (`(baseW-boxWidth)/2`, `baseH/2-fontSize`), mesmo quando a vista corrente do Stage enquadrava outra região (pan/zoom). Além disso, a largura placeholder inicial fazia o draft vazio nascer visivelmente fora do centro até na vista padrão.
@@ -22,14 +29,14 @@
 - **Relato real:** texto recém-criado podia aparecer letra a letra no Stage/Preview; uma letra podia conservar caixa excessiva.
 - **Hipótese técnica sob validação:** o modo Auto gravava a largura Canvas exatamente no limite natural, enquanto o Stage DOM aplicava essa largura sob `overflow-wrap:anywhere`. Divergência subpixel Canvas × layout DOM/Safari é compatível com o sintoma, mas não é declarada causa comprovada sem reprodução pública A/B no WebKit ou iPhone.
 - **Correção adotada na E9D:** reserva geométrica canônica de 1 px em `measureTextAsset`, compartilhada pela caixa/seleção/hit-test e pelos snapshots de Preview/Export. A E9D-R1 exige evidência pública de `R` e `Texto` horizontal no Stage/Preview e no H.264 real; não é compensação visual de CSS.
-- **Estado:** cobertura automatizada implementada; a regressão continua **pendente de validação visual final em iPhone/Safari real** e só deve ser encerrada após os checks do HEAD e essa validação.
+- **Estado (atualizado 2026-08-18):** a v8z4b32E9E foi mergeada (PR #498, merge commit `4254ed370ecee64b7f98d411fe6994b8c4538ba5`) e **testada fisicamente por Roberto em iPhone/Safari na build publicada, com o texto horizontal preservado** e o sintoma de quebra vertical **validado como resolvido** na build publicada em 2026-08-18. A hipótese técnica de divergência subpixel Canvas × DOM/Safari **permanece hipótese**, não comprovada como causa única — a reserva de 1 px é a correção adotada e o sintoma não reapareceu no teste físico. Manter atenção em regressões futuras; nenhuma promoção autorizada.
 
-## REG-2026-08-16 — Text Asset novo aparece vertical no Stage/Preview (ABERTA)
+## REG-2026-08-16 — Text Asset novo aparece vertical no Stage/Preview (VALIDADA RESOLVIDA na build publicada)
 
-- **Relato:** no iPhone/Safari, um Text Asset novo pode aparecer vertical, letra a letra, no Stage ou no Preview, sem edição. O caso de uma única letra também não pode resultar em caixa excessivamente larga.
-- **Causa/correção:** o relato é confirmado; a hipótese Canvas × DOM permanece sob validação. A reserva canônica de 1 px é a correção adotada e o gate público correspondente é registrado em REG-047.
-- **Status:** implementação automatizada em PR, ainda aberta até checks do HEAD e validação visual final no iPhone/Safari real. Produção e promoção não autorizadas.
-- **Documento relacionado:** `docs/PRE_PROMOTION_RELEASE_PLAN.md` (item 2 — PR de Texto).
+- **Relato:** no iPhone/Safari, um Text Asset novo podia aparecer vertical, letra a letra, no Stage ou no Preview, sem edição. O caso de uma única letra também não pode resultar em caixa excessivamente larga.
+- **Causa/correção:** o relato foi confirmado; a reserva canônica de 1 px (E9D) é a correção adotada e o gate público correspondente é registrado em REG-047. A hipótese Canvas × DOM **permanece hipótese**, não elevada a causa comprovada.
+- **Status (atualizado 2026-08-18):** com a v8z4b32E9E mergeada (PR #498, merge commit `4254ed370ecee64b7f98d411fe6994b8c4538ba5`) e testada fisicamente por Roberto em iPhone/Safari na build publicada em 2026-08-18, o **texto horizontal foi preservado e o sintoma foi validado como resolvido** na build publicada. Encerrada como resolvida por validação física; reabrir apenas se o sintoma reaparecer. A E9F (revisão iconográfica) não altera geometria, wrap nem a reserva de 1 px. Produção e promoção não autorizadas.
+- **Documento relacionado:** `docs/PRE_PROMOTION_RELEASE_PLAN.md` (item 2 — PR de Texto), REG-047.
 
 ## E9C — proteções da auto-largura do Text Asset
 

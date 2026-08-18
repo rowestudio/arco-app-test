@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9F — base v8z4b32E9E. feat(ui): editor de Text Asset adota rail horizontal ICONOGRÁFICA neutra no lugar das tabs textuais Texto|Fonte|Cor|Estilo. Sete propriedades por ícone (sem label visível, com aria-label): editar texto, fonte, estilo, alinhamento, cor do texto, fundo da caixa, largura da caixa; a rail rola horizontalmente em uma única linha. Item ativo usa contraste NEUTRO invertido (superfície branca + símbolo escuro), nunca coral/ciano/verde. Alinhamento sai do corpo permanente do Texto e vira controle iconográfico próprio; Cor do texto e Fundo da caixa ficam semanticamente separados; a opacidade fica inequivocamente DENTRO do painel de Fundo. Largura mantém Auto/Fixa + stepper (E9C intacta) sob o ícone Largura, sem antecipar alças laterais (E9G). Arrastar a alça superior para baixo minimiza (mesma semântica minimizeTextEditor: preserva pendingTextDraft, zero Undo, zero autosave, mesmo ID); × cancela e ✓ confirma. Paleta neutra aprovada aplicada aos tokens de UI (chrome #24262B, sheet #303238, campo #393C43, divisor ~#4A4D55) sem tocar DEFAULT_PROJECT_BG. Identidade do workspace Ativos migra de roxo para coral #FF6B8A (token --accent + contorno/alças/pill/botão +); Frames preservam o ciano existente #04fff2. WYSIWYG E9E, quatro alças, criação na vista atual e draft preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F. -->
 <!-- Arco Motion App — v8z4b32E9E — base v8z4b32E9D. fix(text): NOVO Text Asset nasce centralizado na VISTA ATUAL do Stage (centro capturado em coords de World pela cadeia canônica computeEditorTransform → screenToStageCoord → editorStageToWorld, antes do resize do teclado); editar asset existente nunca recentraliza. WYSIWYG ao vivo: pendingTextDraft é a fonte única da verdade visual — toda mudança de painel atualiza imediatamente Stage, fundo, seleção e as quatro alças (updateTextDraft e o listener de input passam a re-renderizar a seleção; a seleção/alças consomem a geometria viva do draft). Sem fórmula paralela de câmera, sem offset artificial, sem alterar ProjectWorld/Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E9E. -->
 <!-- Arco Motion App — v8z4b32E9D — base v8z4b32E9C. fix(text): reserva 1 px canônico contra divergência subpixel Canvas/DOM no Safari e reorganiza o editor em Texto/Fonte/Cor/Estilo, com draft minimizável e confirmação no mesmo ID. APP_VERSION = APP_VERSION_NAME = v8z4b32E9D. -->
 <!-- Arco Motion App — v8z4b32E9C — base v8z4b32E9B. feat(text): Text Asset ganha largura auto-ajustada ao conteúdo (linha mais longa) como padrão, com modo de largura fixa opcional (toggle no editor + slider de largura) para controlar a quebra automática. Geometria derivada em measureTextAsset/normalizeTextAsset (mesma cadeia measure→resolveAssetStageVisualGeometry→visualRect da E9A/E9B), boxWidthMode persistido em Undo/Redo, Save/Load e Session Restore; Preview/Export e parallax translacional inalterados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9C. -->
@@ -1110,8 +1111,11 @@
 <title>Arco Motion App</title>
 <style>
 :root {
-  --bg:#3c3c3c; --menu-bg:#3c3c3c; --surface:#3c3c3c; --surface2:#3c3c3c; --surface3:#545456;
-  --border:#38383a; --border2:#545456;
+  /* v8z4b32E9F — paleta neutra aprovada da UI: chrome principal #24262B, bottom
+     sheets #303238, campos/pills/controles internos #393C43, divisores ~#4A4D55.
+     Estes tokens são UI/chrome e NÃO tocam DEFAULT_PROJECT_BG (conteúdo/render). */
+  --bg:#24262B; --menu-bg:#24262B; --surface:#303238; --surface2:#393C43; --surface3:#4a4d55;
+  --border:#38383a; --border2:#4a4d55;
   --text:#fff; --text2:#ebebf5; --text3:#aeaeb2;
   --accent:#04fff2; --red:#ff375f; --yellow:#ffd60a; --green:#30d158;
   --preview-ready-color:#04fff2;
@@ -1376,14 +1380,14 @@ body.recording #stageEyeShortcut{display:none;}
 /* v8z4b30ZK — contorno discreto do asset selecionado (apenas editor), na cor do
    Modo Ativos (roxo). NUNCA aparece em Preview/Export (que renderizam por canvas). */
 .asset-select-outline{
-  border:3px solid rgba(176,108,255,.98);
+  border:3px solid rgba(255,107,138,.98);
   border-radius:3px;
-  box-shadow:0 0 0 1px rgba(0,0,0,.3),0 0 6px rgba(176,108,255,.24);
+  box-shadow:0 0 0 1px rgba(0,0,0,.3),0 0 6px rgba(255,107,138,.24);
   pointer-events:none;
 }
 .asset-corner-handle{
   position:absolute;width:18px;height:18px;margin-left:-9px;margin-top:-9px;
-  border-radius:50%;background:#b06cff;
+  border-radius:50%;background:#ff6b8a;
   box-shadow:0 1px 5px rgba(0,0,0,.28),0 0 0 1px rgba(255,255,255,.28) inset;
   display:none;cursor:grab;touch-action:none;pointer-events:auto;z-index:1;
   transform:scale(var(--ez-inv,1));transform-origin:center center;
@@ -1412,7 +1416,7 @@ body.recording #stageEyeShortcut{display:none;}
 .top-mode-toggle .mode-btn svg{width:22px;height:22px;flex-shrink:0;}
 .mode-pill-label{display:none;}
 .top-mode-toggle .mode-cam.active{color:var(--accent);background:rgba(4,255,242,.12);}
-.top-mode-toggle .mode-assets.active{color:#b06cff;background:rgba(176,108,255,.15);}
+.top-mode-toggle .mode-assets.active{color:#FF6B8A;background:rgba(255,107,138,.15);}
 .top-mode-toggle .mode-btn:active{background:rgba(255,255,255,.08);}
 /* v8z4b30ZK — Modo Ativos: frames/curvas viram referência e NÃO capturam
    toque (handles/curvas não respondem). O toque no Stage passa a selecionar assets.
@@ -1432,8 +1436,8 @@ body.editor-assets .frame .frame-crosshair{display:none !important;}
 body.editor-assets .frame .frame-center{display:none !important;}
 /* v8z4b30ZL — Botão + vira roxo no Modo Ativos */
 body.editor-assets .lower-add-pill{
-  background:#8b3fff;color:#fff;
-  box-shadow:0 0 0 1px rgba(255,255,255,.14) inset,0 0 14px rgba(139,63,255,.28);
+  background:#FF6B8A;color:#fff;
+  box-shadow:0 0 0 1px rgba(255,255,255,.14) inset,0 0 14px rgba(255,107,138,.28);
 }
 /* v8z4b30ZL — 4ª linha: ferramentas de asset no Modo Ativos */
 #toolbar.contextual-toolbar .ctx-asset{display:none;}
@@ -1447,10 +1451,10 @@ body.editor-assets #toolbar.contextual-toolbar .ctx-common{display:none !importa
 .tb-item.ctx-asset.asset-tool-disabled{opacity:.35;pointer-events:none;}
 /* v8z4b30ZM — Cor de destaque global roxa no Modo Ativos/Mundo: sobrescreve --accent
    para que Play, timeline, outline de seleção e todos os var(--accent) fiquem roxos. */
-body.editor-assets{--accent:#8b3fff;}
+body.editor-assets{--accent:#FF6B8A;}
 /* v8z4b30ZM — Substituir cores de destaque hardcoded que não seguem var(--accent). */
-body.editor-assets #topBtnPreview:active{background:#7230cc;}
-body.editor-assets .mid-play.active{background:rgba(139,63,255,.12);}
+body.editor-assets #topBtnPreview:active{background:#e0506f;}
+body.editor-assets .mid-play.active{background:rgba(255,107,138,.12);}
 body.editor-assets .mid-bar.timeline-grid .fp.active,
 body.editor-assets .mid-bar.timeline-grid .fp.active.selected{
   border-color:rgba(255,255,255,.9);
@@ -1509,11 +1513,33 @@ body.editor-assets.recording .frame{display:none !important;}
 #textCreationSheet.open{display:flex;}
 .text-creation-inner{pointer-events:auto;touch-action:manipulation;width:100%;max-width:480px;max-height:min(52vh,430px);box-sizing:border-box;padding:0 18px calc(14px + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;background:var(--surface);box-shadow:0 -5px 30px rgba(0,0,0,.35);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
 .text-editor-drag{display:block;width:52px;height:24px;margin:0 auto;border:0;background:transparent;position:relative}.text-editor-drag:after{content:"";position:absolute;left:8px;right:8px;top:10px;height:4px;border-radius:3px;background:var(--border2)}
-.text-editor-header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;min-height:50px}.text-editor-title{text-align:center;font-size:15px;font-weight:700}.text-editor-header button{min-height:44px;border:0;background:transparent;font-size:14px;font-weight:700}.text-creation-cancel{color:var(--text2);text-align:left}.text-creation-ok{color:var(--accent);text-align:right}
-.text-editor-tools{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border2);margin-bottom:10px}.text-editor-tool{min-width:0;min-height:42px;padding:8px 4px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--text2);font-size:13px;font-weight:700}.text-editor-tool.active{border-bottom-color:var(--accent);color:var(--accent)}
-.text-editor-panel{display:none;min-height:58px;padding:2px 0 8px}.text-editor-panel.active{display:block}.text-creation-input{display:block;width:100%;min-height:58px;box-sizing:border-box;resize:none;border:1px solid var(--border2);border-radius:12px;padding:12px;background:var(--surface2);color:var(--text1);font:400 16px/1.35 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;outline:none;}
-.text-editor-options{display:flex;touch-action:pan-x;gap:8px;overflow-x:auto;padding:2px 0}.text-editor-option{flex:0 0 auto;min-height:44px;padding:9px 13px;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);color:var(--text2);font-size:13px}.text-editor-option.active{border-color:var(--accent);color:var(--accent)}.text-creation-color{width:54px;height:44px;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);padding:4px}.text-box-controls{display:flex;align-items:center;gap:10px;min-height:44px}.text-box-toggle{min-height:44px;padding:9px 13px;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);color:var(--text2);font-size:13px}.text-box-toggle.active{border-color:var(--accent);color:var(--accent)}.text-box-opacity{min-width:100px;flex:1;accent-color:var(--accent)}.text-box-opacity-value{min-width:42px;color:var(--text2);font-size:13px;text-align:right}
-.text-editor-align{justify-content:center;margin-top:8px}.text-width-mode{display:grid;grid-template-columns:1fr 1fr;margin-top:8px;border-bottom:1px solid var(--border2)}.text-width-mode button{min-height:40px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--text2);font-weight:700}.text-width-mode button.active{color:var(--accent);border-bottom-color:var(--accent)}.text-width-stepper{display:flex;align-items:center;justify-content:center;gap:0;margin-top:8px}.text-width-stepper[hidden]{display:none}.text-width-stepper button,.text-width-stepper output{display:grid;place-items:center;min-width:44px;height:36px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1)}.text-width-stepper button:first-child{border-radius:10px 0 0 10px}.text-width-stepper button:last-child{border-radius:0 10px 10px 0}.text-width-stepper output{min-width:70px;border-left:0;border-right:0;font-size:13px}
+.text-editor-header{display:flex;align-items:center;justify-content:space-between;min-height:50px}.text-editor-header button{min-height:44px;min-width:44px;border:0;background:transparent;font-size:20px;font-weight:700;line-height:1}.text-creation-cancel{color:var(--text2);text-align:left}.text-creation-ok{color:var(--accent);text-align:right}
+/* v8z4b32E9F — rail horizontal ICONOGRÁFICA. Uma linha, scroll horizontal nativo,
+   sem quebra, sem scrollbar intrusiva, touch targets adequados. Item ATIVO usa
+   contraste NEUTRO invertido (superfície branca + símbolo escuro); item inativo usa
+   superfície neutra escura + símbolo claro. Nunca coral/ciano/verde como estado ativo. */
+.text-editor-rail{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;touch-action:pan-x;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;padding:2px 0 10px;margin-bottom:10px;border-bottom:1px solid var(--border2)}
+.text-editor-rail::-webkit-scrollbar{display:none;width:0;height:0}
+.text-rail-item{flex:0 0 auto;display:grid;place-items:center;width:46px;height:46px;padding:0;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);color:var(--text2)}
+.text-rail-item.active{background:#ffffff;border-color:#ffffff;color:#24262B}
+.text-rail-icon{width:22px;height:22px;display:block;pointer-events:none;color:currentColor}
+.text-editor-panel{display:none;min-height:58px;padding:2px 0 8px}.text-editor-panel.active{display:block}.text-creation-input{display:block;width:100%;min-height:74px;box-sizing:border-box;resize:none;border:1px solid var(--border2);border-radius:12px;padding:12px;background:var(--surface2);color:var(--text1);font:400 16px/1.35 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;outline:none;}
+.text-editor-options{display:flex;touch-action:pan-x;gap:8px;overflow-x:auto;padding:2px 0}.text-editor-option{flex:0 0 auto;min-height:44px;padding:9px 13px;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);color:var(--text2);font-size:13px}
+/* v8z4b32E9F — seleção INTERNA do editor usa branco+símbolo escuro (neutro invertido),
+   nunca o acento coral/ciano do workspace. */
+.text-editor-option.active{background:#ffffff;border-color:#ffffff;color:#24262B}
+.text-align-option{flex:0 0 auto;display:grid;place-items:center;width:52px;height:44px;padding:0}.text-align-option svg{width:22px;height:22px;display:block;color:currentColor}
+.text-creation-color{width:54px;height:44px;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);padding:4px}
+.text-color-row{display:flex;align-items:center;gap:12px;min-height:44px}.text-color-caption{color:var(--text2);font-size:13px}
+/* v8z4b32E9F — painel de FUNDO agrupa ligar/desligar, cor e opacidade sob a mesma
+   hierarquia; o slider de opacidade fica fisicamente dentro deste painel. */
+.text-bg-panel{display:flex;flex-direction:column;gap:12px;padding:2px 0}.text-bg-row{display:flex;align-items:center;gap:12px;min-height:44px}
+.text-box-toggle{display:grid;place-items:center;width:46px;height:44px;padding:0;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);color:var(--text2)}.text-box-toggle svg{width:22px;height:22px;display:block;color:currentColor}.text-box-toggle.active{background:#ffffff;border-color:#ffffff;color:#24262B}
+.text-bg-opacity-row{display:flex;align-items:center;gap:10px;min-height:44px}.text-bg-opacity-icon{width:20px;height:20px;flex:0 0 auto;color:var(--text2)}
+.text-box-opacity{min-width:100px;flex:1;accent-color:var(--text2)}.text-box-opacity-value{min-width:42px;color:var(--text2);font-size:13px;text-align:right}
+.text-editor-align{justify-content:center;margin-top:2px;gap:12px}
+.text-width-mode{display:flex;gap:8px;margin-top:2px}.text-width-mode button{flex:1;display:grid;place-items:center;min-height:46px;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);color:var(--text2)}.text-width-mode button svg{width:24px;height:24px;display:block;color:currentColor}.text-width-mode button.active{background:#ffffff;border-color:#ffffff;color:#24262B}
+.text-width-stepper{display:flex;align-items:center;justify-content:center;gap:0;margin-top:12px}.text-width-stepper[hidden]{display:none}.text-width-stepper button,.text-width-stepper output{display:grid;place-items:center;min-width:44px;height:40px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1)}.text-width-stepper button:first-child{border-radius:10px 0 0 10px}.text-width-stepper button:last-child{border-radius:0 10px 10px 0}.text-width-stepper output{min-width:70px;border-left:0;border-right:0;font-size:13px}
 .world-text-asset{position:absolute;white-space:pre-wrap;tab-size:4;overflow-wrap:anywhere;pointer-events:none;box-sizing:border-box;transform-origin:50% 50%;}
 /* v8z4b30ZT — assetsModeMenu: modal de opções do Modo Ativos (segundo toque no ícone). */
 #assetsModeMenu{position:fixed;inset:0;z-index:331;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
@@ -3915,6 +3941,45 @@ body.asset-context-panel-open #toolbar{display:none !important;}
     <polyline points="15 14 20 9 15 4"/>
     <path d="M4 20v-7a4 4 0 0 1 4-4h12"/>
   </symbol>
+  <!-- v8z4b32E9F — ícones do editor de texto iconográfico (linguagem Lucide já usada no app). -->
+  <symbol id="i-text-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 20h9"/>
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+  </symbol>
+  <symbol id="i-font" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 7V4h16v3"/>
+    <path d="M9 20h6"/>
+    <path d="M12 4v16"/>
+  </symbol>
+  <symbol id="i-text-style" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="19" x2="10" y1="4" y2="4"/>
+    <line x1="14" x2="5" y1="20" y2="20"/>
+    <line x1="15" x2="9" y1="4" y2="20"/>
+  </symbol>
+  <symbol id="i-align-text-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 6H3"/><path d="M15 12H3"/><path d="M17 18H3"/>
+  </symbol>
+  <symbol id="i-align-text-center" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 6H3"/><path d="M17 12H7"/><path d="M19 18H5"/>
+  </symbol>
+  <symbol id="i-align-text-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 6H3"/><path d="M21 12H9"/><path d="M21 18H7"/>
+  </symbol>
+  <symbol id="i-text-color" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m6 16 6-12 6 12"/><path d="M8 12h8"/><path d="M4 20h16"/>
+  </symbol>
+  <symbol id="i-text-width" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 12h20"/><path d="m6 8-4 4 4 4"/><path d="m18 8 4 4-4 4"/>
+  </symbol>
+  <symbol id="i-width-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="8" height="8" rx="1"/><path d="M2 12h3"/><path d="m5 9-3 3 3 3"/><path d="M22 12h-3"/><path d="m19 9 3 3-3 3"/>
+  </symbol>
+  <symbol id="i-width-fixed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="8" width="18" height="8" rx="1"/><path d="M7 5v14"/><path d="M17 5v14"/>
+  </symbol>
+  <symbol id="i-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"/>
+  </symbol>
 </svg>
 <div class="app">
 
@@ -4794,17 +4859,24 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   </div>
 </div>
 
-<div id="textCreationSheet" role="dialog" aria-modal="true" aria-labelledby="textCreationTitle" aria-hidden="true">
+<!-- v8z4b32E9F — editor de Text Asset com rail horizontal ICONOGRÁFICA neutra.
+     As propriedades principais são ícones sem label visível (aria-label acessível);
+     a rail rola horizontalmente; item ativo = superfície branca + símbolo escuro.
+     × cancela, ✓ confirma, arrastar a alça para baixo minimiza (draft E9E preservado). -->
+<div id="textCreationSheet" role="dialog" aria-modal="true" aria-label="Editor de texto" aria-hidden="true">
   <div class="text-creation-inner">
-    <button class="text-editor-drag" type="button" aria-label="Minimizar editor de texto" onclick="minimizeTextEditor()"></button>
-    <div class="text-editor-header"><button id="textCreationCancel" class="text-creation-cancel" type="button" aria-label="Cancelar" onclick="cancelTextCreation()">×</button><div id="textCreationTitle" class="text-editor-title">Texto</div><button id="textCreationOk" class="text-creation-ok" type="button" aria-label="Confirmar" onclick="confirmTextCreation()">✓</button></div>
-    <div class="text-editor-tools" role="tablist" aria-label="Ferramentas de texto">
-      <button class="text-editor-tool active" type="button" role="tab" aria-selected="true" data-text-tool="text" onclick="setTextEditorTool('text')">Texto</button><button class="text-editor-tool" type="button" role="tab" aria-selected="false" data-text-tool="font" onclick="setTextEditorTool('font')">Fonte</button><button class="text-editor-tool" type="button" role="tab" aria-selected="false" data-text-tool="color" onclick="setTextEditorTool('color')">Cor</button><button class="text-editor-tool" type="button" role="tab" aria-selected="false" data-text-tool="style" onclick="setTextEditorTool('style')">Estilo</button>
+    <button id="textCreationDrag" class="text-editor-drag" type="button" aria-label="Minimizar editor de texto" onclick="minimizeTextEditor()"></button>
+    <div class="text-editor-header"><button id="textCreationCancel" class="text-creation-cancel" type="button" aria-label="Cancelar" onclick="cancelTextCreation()">×</button><button id="textCreationOk" class="text-creation-ok" type="button" aria-label="Confirmar" onclick="confirmTextCreation()">✓</button></div>
+    <div class="text-editor-rail" role="tablist" aria-label="Propriedades do texto">
+      <button class="text-rail-item active" type="button" role="tab" aria-selected="true" data-text-tool="text" aria-label="Editar texto" onclick="setTextEditorTool('text')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text-edit"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="font" aria-label="Fonte" onclick="setTextEditorTool('font')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-font"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="style" aria-label="Estilo" onclick="setTextEditorTool('style')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text-style"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="align" aria-label="Alinhamento" onclick="setTextEditorTool('align')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-text-center"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="color" aria-label="Cor do texto" onclick="setTextEditorTool('color')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text-color"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="background" aria-label="Fundo da caixa" onclick="setTextEditorTool('background')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bg"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="width" aria-label="Largura da caixa" onclick="setTextEditorTool('width')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text-width"></use></svg></button>
     </div>
-    <div class="text-editor-panel active" data-text-panel="text"><textarea id="textCreationInput" class="text-creation-input" aria-label="Conteúdo do texto" placeholder="Texto..." maxlength="2000" rows="2"></textarea><div class="text-editor-options text-editor-align" id="textEditorAlignOptions"></div><div class="text-width-mode" role="group" aria-label="Largura da caixa"><button id="textWidthAuto" type="button" onclick="setTextWidthMode('auto')">Auto</button><button id="textWidthFixedMode" type="button" aria-label="Largura fixa" onclick="setTextWidthMode('fixed')">Fixa</button></div><div id="textWidthFixedStepper" class="text-width-stepper" hidden><button type="button" aria-label="Diminuir largura fixa" onclick="stepTextDraftFixedWidth(-10)">−</button><output id="textWidthFixedValue">220</output><button type="button" aria-label="Aumentar largura fixa" onclick="stepTextDraftFixedWidth(10)">+</button></div></div>
+    <div class="text-editor-panel active" data-text-panel="text"><textarea id="textCreationInput" class="text-creation-input" aria-label="Conteúdo do texto" placeholder="Texto..." maxlength="2000" rows="2"></textarea></div>
     <div class="text-editor-panel" data-text-panel="font"><div class="text-editor-options" id="textEditorFontOptions"></div></div>
-    <div class="text-editor-panel" data-text-panel="color"><div class="text-box-controls"><input id="textCreationColor" aria-label="Cor do texto" class="text-creation-color" type="color" value="#ffffff"><button id="textBoxBackgroundToggle" class="text-box-toggle" type="button" aria-pressed="false" onclick="updateTextDraft('boxBackgroundEnabled',!pendingTextDraft.boxBackgroundEnabled)">Fundo</button><input id="textBoxBackgroundColor" class="text-creation-color" type="color" value="#000000" aria-label="Cor do fundo"><input id="textBoxBackgroundOpacity" class="text-box-opacity" type="range" min="0" max="100" step="1" value="70" aria-label="Opacidade do fundo"><span id="textBoxBackgroundOpacityValue" class="text-box-opacity-value">70%</span></div></div>
     <div class="text-editor-panel" data-text-panel="style"><div class="text-editor-options" id="textEditorStyleOptions"></div></div>
+    <div class="text-editor-panel" data-text-panel="align"><div class="text-editor-options text-editor-align" id="textEditorAlignOptions" role="group" aria-label="Alinhamento do texto"></div></div>
+    <div class="text-editor-panel" data-text-panel="color"><div class="text-color-row"><input id="textCreationColor" aria-label="Cor do texto" class="text-creation-color" type="color" value="#ffffff"><span class="text-color-caption">Cor dos glifos</span></div></div>
+    <div class="text-editor-panel" data-text-panel="background"><div class="text-bg-panel" role="group" aria-label="Fundo da caixa"><div class="text-bg-row"><button id="textBoxBackgroundToggle" class="text-box-toggle" type="button" aria-pressed="false" aria-label="Ligar/desligar fundo da caixa" onclick="updateTextDraft('boxBackgroundEnabled',!pendingTextDraft.boxBackgroundEnabled)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bg"></use></svg></button><input id="textBoxBackgroundColor" class="text-creation-color" type="color" value="#000000" aria-label="Cor do fundo"></div><div class="text-bg-opacity-row"><svg class="text-bg-opacity-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-opacity"></use></svg><input id="textBoxBackgroundOpacity" class="text-box-opacity" type="range" min="0" max="100" step="1" value="70" aria-label="Opacidade do fundo"><span id="textBoxBackgroundOpacityValue" class="text-box-opacity-value">70%</span></div></div></div>
+    <div class="text-editor-panel" data-text-panel="width"><div class="text-width-mode" role="group" aria-label="Largura da caixa"><button id="textWidthAuto" type="button" aria-label="Ajustar largura ao conteúdo" onclick="setTextWidthMode('auto')"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-width-auto"></use></svg></button><button id="textWidthFixedMode" type="button" aria-label="Largura fixa" onclick="setTextWidthMode('fixed')"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-width-fixed"></use></svg></button></div><div id="textWidthFixedStepper" class="text-width-stepper" hidden><button type="button" aria-label="Diminuir largura fixa" onclick="stepTextDraftFixedWidth(-10)">−</button><output id="textWidthFixedValue">220</output><button type="button" aria-label="Aumentar largura fixa" onclick="stepTextDraftFixedWidth(10)">+</button></div></div>
   </div>
 </div>
 
@@ -7333,8 +7405,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9E';
-const APP_VERSION_NAME = 'v8z4b32E9E';
+const APP_VERSION = 'v8z4b32E9F';
+const APP_VERSION_NAME = 'v8z4b32E9F';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -15448,11 +15520,15 @@ function createPendingTextAsset(centerWorld){const baseW=projectWorld.baseStageW
  asset.worldX=cx-asset.worldW/2;asset.worldY=cy-asset.worldH/2;
  return asset}
 function textEditorDraftFields(a){return {text:a.text,color:a.color,fontKey:a.fontKey,fontWeight:a.fontWeight,fontStyle:a.fontStyle,textAlign:a.textAlign,boxStyle:a.boxStyle,boxBackgroundEnabled:a.boxBackgroundEnabled,boxBackgroundColor:a.boxBackgroundColor,boxBackgroundOpacity:a.boxBackgroundOpacity,boxPaddingXEm:a.boxPaddingXEm,boxPaddingYEm:a.boxPaddingYEm,boxWidthMode:a.boxWidthMode==='auto'?'auto':'fixed',boxWidth:a.boxWidthMode==='fixed'?(Number(a.boxWidth)||0):null,textBaseBoxWidth:a.boxWidthMode==='fixed'?(Number(a.textBaseBoxWidth)||0):null}}
-function setTextEditorTool(tool){if(!['text','font','color','style'].includes(tool))return;textEditorActiveTool=tool;document.querySelectorAll('[data-text-tool]').forEach(b=>{const on=b.dataset.textTool===tool;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on))});document.querySelectorAll('[data-text-panel]').forEach(p=>p.classList.toggle('active',p.dataset.textPanel===tool));if(tool==='text')requestAnimationFrame(()=>document.getElementById('textCreationInput').focus({preventScroll:true}))}
+// v8z4b32E9F — a navegação passou a ser uma rail horizontal iconográfica com sete
+// propriedades (texto, fonte, estilo, alinhamento, cor, fundo, largura). A semântica
+// tablist/tab é mantida internamente; apenas um item fica ativo por vez e cada painel
+// correspondente é exibido abaixo da rail.
+function setTextEditorTool(tool){if(!['text','font','style','align','color','background','width'].includes(tool))return;textEditorActiveTool=tool;document.querySelectorAll('[data-text-tool]').forEach(b=>{const on=b.dataset.textTool===tool;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on))});document.querySelectorAll('[data-text-panel]').forEach(p=>p.classList.toggle('active',p.dataset.textPanel===tool));if(tool==='text')requestAnimationFrame(()=>document.getElementById('textCreationInput').focus({preventScroll:true}))}
 function renderTextEditorOptions(){const font=document.getElementById('textEditorFontOptions'),style=document.getElementById('textEditorStyleOptions'),align=document.getElementById('textEditorAlignOptions');if(!pendingTextDraft)return;
  font.innerHTML=Object.entries(TEXT_ASSET_FONTS).map(([k,v])=>`<button type="button" class="text-editor-option${pendingTextDraft.fontKey===k?' active':''}" aria-label="Fonte ${v.label}" onclick="updateTextDraft('fontKey','${k}')">${v.label}</button>`).join('');
  const styles=[['Normal',400,'normal'],['Negrito',700,'normal'],['Itálico',400,'italic'],['Negrito + itálico',700,'italic']];style.innerHTML=styles.map(([l,w,i])=>`<button type="button" class="text-editor-option${pendingTextDraft.fontWeight===w&&pendingTextDraft.fontStyle===i?' active':''}" aria-label="Estilo ${l}" onclick="updateTextStyle(${w},'${i}')">${l}</button>`).join('');
- align.innerHTML=[['Esquerda','left'],['Centro','center'],['Direita','right']].map(([l,v])=>`<button type="button" class="text-editor-option${pendingTextDraft.textAlign===v?' active':''}" aria-label="Alinhar ${l}" onclick="updateTextDraft('textAlign','${v}')">${l}</button>`).join(''); const toggle=document.getElementById('textBoxBackgroundToggle'),boxColor=document.getElementById('textBoxBackgroundColor'),opacity=document.getElementById('textBoxBackgroundOpacity'),value=document.getElementById('textBoxBackgroundOpacityValue'); toggle.classList.toggle('active',pendingTextDraft.boxBackgroundEnabled);toggle.setAttribute('aria-pressed',String(pendingTextDraft.boxBackgroundEnabled));boxColor.value=pendingTextDraft.boxBackgroundColor;opacity.value=String(Math.round(pendingTextDraft.boxBackgroundOpacity*100));value.textContent=opacity.value+'%';
+ align.innerHTML=[['Esquerda','left','i-align-text-left'],['Centro','center','i-align-text-center'],['Direita','right','i-align-text-right']].map(([l,v,ic])=>`<button type="button" class="text-editor-option text-align-option${pendingTextDraft.textAlign===v?' active':''}" aria-label="Alinhar ${l}" onclick="updateTextDraft('textAlign','${v}')"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#${ic}"></use></svg></button>`).join(''); const toggle=document.getElementById('textBoxBackgroundToggle'),boxColor=document.getElementById('textBoxBackgroundColor'),opacity=document.getElementById('textBoxBackgroundOpacity'),value=document.getElementById('textBoxBackgroundOpacityValue'); toggle.classList.toggle('active',pendingTextDraft.boxBackgroundEnabled);toggle.setAttribute('aria-pressed',String(pendingTextDraft.boxBackgroundEnabled));boxColor.value=pendingTextDraft.boxBackgroundColor;opacity.value=String(Math.round(pendingTextDraft.boxBackgroundOpacity*100));value.textContent=opacity.value+'%';
  const autoButton=document.getElementById('textWidthAuto'),fixedButton=document.getElementById('textWidthFixedMode'),stepper=document.getElementById('textWidthFixedStepper'),widthValue=document.getElementById('textWidthFixedValue');
  if(autoButton&&fixedButton&&stepper&&widthValue){const auto=pendingTextDraft.boxWidthMode!=='fixed',maxW=Math.max(80,Math.ceil(Number(projectWorld.baseStageW)||Number(stageW)||600)),curW=Math.round(Math.max(40,Math.min(maxW,Number(pendingTextDraft.boxWidth)||220)));autoButton.classList.toggle('active',auto);fixedButton.classList.toggle('active',!auto);autoButton.setAttribute('aria-pressed',String(auto));fixedButton.setAttribute('aria-pressed',String(!auto));stepper.hidden=auto;widthValue.textContent=String(curW)}}
 // v8z4b32E9C — alterna o Text Asset entre largura automática (abraça o conteúdo,
@@ -15467,7 +15543,7 @@ function setTextDraftFixedWidth(value){if(!pendingTextDraft||pendingTextDraft.bo
 function measureTextEditorDraft(options){if(!pendingTextDraft)return;const preserveCenter=!!(options&&options.preserveCenter)||textEditorMode==='edit'||pendingTextDraft.boxWidthMode==='auto',cx=preserveCenter?pendingTextDraft.worldX+pendingTextDraft.worldW/2:null,cy=preserveCenter?pendingTextDraft.worldY+pendingTextDraft.worldH/2:null;measureTextAsset(pendingTextDraft);if(cx!=null)pendingTextDraft.worldX=cx-pendingTextDraft.worldW/2;if(cy!=null)pendingTextDraft.worldY=cy-pendingTextDraft.worldH/2;textEditorDraftPersistedDetected=assets.some(a=>a===pendingTextDraft||String(a&&a.id)===String(pendingTextDraft.id)&&textEditorMode==='create')}
 function updateTextDraft(field,value){if(!pendingTextDraft)return;pendingTextDraft[field]=value;normalizeTextAsset(pendingTextDraft);measureTextEditorDraft({preserveCenter:field==='boxBackgroundEnabled'});renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay()}
 function updateTextStyle(weight,style){if(!pendingTextDraft)return;pendingTextDraft.fontWeight=weight;pendingTextDraft.fontStyle=style;updateTextDraft('fontWeight',weight)}
-function openTextEditor(mode,target,source){if(!isAssetsMode())return;if(pendingTextDraft){const sameEdit=mode==='edit'&&target&&String(target.id)===String(textEditorTargetAssetId),sameCreate=mode==='create'&&textEditorMode==='create';if(!sameEdit&&!sameCreate)return;const sheet=document.getElementById('textCreationSheet');sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay();requestAnimationFrame(()=>document.getElementById('textCreationInput').focus({preventScroll:true}));return}if(mode==='edit'&&(!target||target.type!=='text'))return;textEditorMode=mode;textEditorTargetAssetId=target?String(target.id):null;textEditorOpenSource=source||'create';textEditorOriginalAsset=target?structuredClone(serializeProjectAsset(target,0,false)):null;
+function openTextEditor(mode,target,source){if(!isAssetsMode())return;if(pendingTextDraft){const sameEdit=mode==='edit'&&target&&String(target.id)===String(textEditorTargetAssetId),sameCreate=mode==='create'&&textEditorMode==='create';if(!sameEdit&&!sameCreate)return;const sheet=document.getElementById('textCreationSheet');sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');setTextEditorTool('text');renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay();requestAnimationFrame(()=>document.getElementById('textCreationInput').focus({preventScroll:true}));return}if(mode==='edit'&&(!target||target.type!=='text'))return;textEditorMode=mode;textEditorTargetAssetId=target?String(target.id):null;textEditorOpenSource=source||'create';textEditorOriginalAsset=target?structuredClone(serializeProjectAsset(target,0,false)):null;
  // v8z4b32E9E — captura o centro da VISTA ATUAL ANTES de abrir/focar a sheet e
  // ANTES de qualquer resize do teclado virtual. Editar asset existente NUNCA
  // recentraliza (só a criação usa createPendingTextAsset com o centro da vista).
@@ -15485,6 +15561,23 @@ function confirmTextCreation(){if(!pendingTextDraft)return;const value=document.
  if(textEditorMode==='edit'){const target=assets.find(a=>a&&String(a.id)===textEditorTargetAssetId);if(!target){resetTextEditor();return}const changed=JSON.stringify(textEditorDraftFields(target))!==JSON.stringify(textEditorDraftFields(pendingTextDraft));if(!changed){resetTextEditor();return}const before=captureState(),oldCenterX=target.worldX+target.worldW/2,oldCenterY=target.worldY+target.worldH/2;Object.assign(target,textEditorDraftFields(pendingTextDraft));normalizeTextAsset(target);measureTextAsset(target);target.worldX=oldCenterX-target.worldW/2;target.worldY=oldCenterY-target.worldH/2;pushUndoSnapshot(before);textEditorUndoEntriesCreated++;lastUndoAction='editTextAsset';textEditorCommitChangedOnlyTarget=true;markProjectDirty('editTextAsset');textEditorAutosaveRevisionsCreated++;textEditorConfirmed=true;const id=target.id;resetTextEditor();selectAssetById(id,'text-edit');renderLayersPanelList();invalidateProjectWorldComposite();return}
  const before=captureState();assignPersistentLayerIdentity(pendingTextDraft);const confirmed=pendingTextDraft;assets.push(confirmed);pushUndoSnapshot(before);textEditorUndoEntriesCreated++;normalizeAssetZIndices();const id=confirmed.id;resetTextEditor();selectAssetById(id,'text-create');renderLayersPanelList();invalidateProjectWorldComposite();markProjectDirty('addTextAsset');textEditorAutosaveRevisionsCreated++;textEditorConfirmed=true}
 document.addEventListener('input',ev=>{if(!pendingTextDraft)return;if(ev.target.id==='textCreationInput')pendingTextDraft.text=ev.target.value;if(ev.target.id==='textCreationColor')pendingTextDraft.color=ev.target.value;if(ev.target.id==='textBoxBackgroundColor')pendingTextDraft.boxBackgroundColor=ev.target.value;if(ev.target.id==='textBoxBackgroundOpacity'){pendingTextDraft.boxBackgroundOpacity=Number(ev.target.value)/100;document.getElementById('textBoxBackgroundOpacityValue').textContent=ev.target.value+'%'}normalizeTextAsset(pendingTextDraft);measureTextEditorDraft();renderProjectWorldExtraImages();renderAssetSelectionOverlay()});window.addEventListener('resize',()=>{if(pendingTextDraft)auditTextCreationCanonicalState()});
+// v8z4b32E9F — gesto vertical de recolhimento pela ALÇA/topo da sheet. Arrastar a
+// alça para baixo o suficiente chama a MESMA semântica minimizeTextEditor()
+// (preserva pendingTextDraft, zero Undo, zero autosave, mesmo ID). O gesto é
+// exclusivo da alça: não há conflito com o scroll horizontal da rail, o slider de
+// opacidade, o stepper, o textarea, a rolagem de fontes nem o Stage. Não é um botão
+// separado "Fechar/Minimizar" — a alça horizontal já existente ganha o gesto.
+(function(){
+  const drag=document.getElementById('textCreationDrag');if(!drag)return;
+  let startY=0,startX=0,dragging=false,fired=false;
+  const THRESHOLD=36;
+  const cleanup=()=>{dragging=false;window.removeEventListener('pointermove',onMove);window.removeEventListener('pointerup',onEnd);window.removeEventListener('pointercancel',onEnd);};
+  function onMove(e){if(!dragging||fired)return;const dy=e.clientY-startY,dx=e.clientX-startX;
+    // Só recolhe em arrasto predominantemente vertical para baixo; swipe horizontal é ignorado.
+    if(dy>=THRESHOLD&&dy>Math.abs(dx)){fired=true;e.preventDefault&&e.preventDefault();cleanup();if(pendingTextDraft)minimizeTextEditor();}}
+  function onEnd(){cleanup();}
+  drag.addEventListener('pointerdown',e=>{if(!pendingTextDraft)return;startY=e.clientY;startX=e.clientX;dragging=true;fired=false;window.addEventListener('pointermove',onMove,{passive:false});window.addEventListener('pointerup',onEnd);window.addEventListener('pointercancel',onEnd);});
+})();
 
 // Fonte unica do parallax translacional. A referencia neutra e o centro da
 // celula canonica do ProjectWorld; ela nao depende do modo, frame selecionado,
