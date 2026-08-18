@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9E — base v8z4b32E9D. fix(text): NOVO Text Asset nasce centralizado na VISTA ATUAL do Stage (centro capturado em coords de World pela cadeia canônica computeEditorTransform → screenToStageCoord → editorStageToWorld, antes do resize do teclado); editar asset existente nunca recentraliza. WYSIWYG ao vivo: pendingTextDraft é a fonte única da verdade visual — toda mudança de painel atualiza imediatamente Stage, fundo, seleção e as quatro alças (updateTextDraft e o listener de input passam a re-renderizar a seleção; a seleção/alças consomem a geometria viva do draft). Sem fórmula paralela de câmera, sem offset artificial, sem alterar ProjectWorld/Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E9E. -->
 <!-- Arco Motion App — v8z4b32E9D — base v8z4b32E9C. fix(text): reserva 1 px canônico contra divergência subpixel Canvas/DOM no Safari e reorganiza o editor em Texto/Fonte/Cor/Estilo, com draft minimizável e confirmação no mesmo ID. APP_VERSION = APP_VERSION_NAME = v8z4b32E9D. -->
 <!-- Arco Motion App — v8z4b32E9C — base v8z4b32E9B. feat(text): Text Asset ganha largura auto-ajustada ao conteúdo (linha mais longa) como padrão, com modo de largura fixa opcional (toggle no editor + slider de largura) para controlar a quebra automática. Geometria derivada em measureTextAsset/normalizeTextAsset (mesma cadeia measure→resolveAssetStageVisualGeometry→visualRect da E9A/E9B), boxWidthMode persistido em Undo/Redo, Save/Load e Session Restore; Preview/Export e parallax translacional inalterados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9C. -->
 <!-- Arco Motion App — v8z4b32E9B — base v8z4b32E9A. fix(text): alinha o DOM de Text Assets à geometria visual resolvida de paralaxe usada por seleção, alças e hit-test no Stage, sem persistir o deslocamento aparente nem alterar Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E9B. -->
@@ -7332,8 +7333,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9D';
-const APP_VERSION_NAME = 'v8z4b32E9D';
+const APP_VERSION = 'v8z4b32E9E';
+const APP_VERSION_NAME = 'v8z4b32E9E';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -15175,6 +15176,25 @@ function editorStageToWorld(sx, sy) {
     y: (sy - tf.offsetY) / tf.scale
   };
 }
+// v8z4b32E9E — centro da VISTA ATUAL do Stage em coordenadas de World.
+// Reutiliza a transformação canônica existente (computeEditorTransform →
+// screenToStageCoord → editorStageToWorld, a mesma cadeia inversa do hit-test de
+// seleção de assets), sem criar fórmula de câmera paralela, sem usar
+// window.innerWidth/innerHeight como sistema canônico e sem compensação CSS.
+// O centro visível é o centro do container de recorte #stage (viewport), que
+// reflete pan/zoom de navegação; screenToStageCoord já divide pelo zoom e desconta
+// o pan via getBoundingClientRect de #stageContent. Deve ser chamado ANTES de abrir
+// a sheet de texto e ANTES do resize do teclado virtual do iPhone/Safari.
+function getEditorViewCenterWorld() {
+  if (typeof stage === 'undefined' || !stage || typeof screenToStageCoord !== 'function') return null;
+  computeEditorTransform();
+  var sr = stage.getBoundingClientRect();
+  if (!(sr.width > 0) || !(sr.height > 0)) return null;
+  var sc = screenToStageCoord(sr.left + sr.width / 2, sr.top + sr.height / 2);
+  var world = editorStageToWorld(sc.x, sc.y);
+  if (!world || !Number.isFinite(world.x) || !Number.isFinite(world.y)) return null;
+  return { x: world.x, y: world.y };
+}
 let assets = []; // { id, type:'image', layerSequence, layerName, layerNameSource, originalFileName, ... }
 let nextLayerSequence = 1;
 const deletedLayerSequences = new Set();
@@ -15415,7 +15435,18 @@ function measureTextAsset(asset){normalizeTextAsset(asset);const canvas=measureT
     if(asset.fontSize>0&&Number.isFinite(Number(asset.textBaseFontSize))&&Number(asset.textBaseFontSize)>0)asset.textBaseBoxWidth=Math.max(20,asset.boxWidth*(Number(asset.textBaseFontSize)/asset.fontSize));
   }
   const lines=wrapTextLines(ctx,asset.text||'',asset.boxWidth),contentHeight=Math.max(asset.fontSize*asset.lineHeight,lines.length*asset.fontSize*asset.lineHeight),paddingX=asset.boxBackgroundEnabled?asset.fontSize*asset.boxPaddingXEm:0,paddingY=asset.boxBackgroundEnabled?asset.fontSize*asset.boxPaddingYEm:0;asset.worldW=asset.boxWidth+paddingX*2;asset.worldH=contentHeight+paddingY*2;return{lines,width:asset.boxWidth,height:asset.worldH,contentHeight,paddingX,paddingY}}
-function createPendingTextAsset(){const baseW=projectWorld.baseStageW||stageW||360,baseH=projectWorld.baseStageH||stageH||640,boxWidth=Math.max(120,Math.min(baseW*.72,320)),fontSize=Math.max(22,Math.min(42,baseW*.1));return normalizeTextAsset({id:'text-'+Date.now()+'-'+Math.floor(Math.random()*1000),type:'text',text:'',color:TEXT_ASSET_DEFAULT_COLOR,fontKey:'system',fontWeight:400,fontStyle:'normal',worldX:(baseW-boxWidth)/2,worldY:baseH/2-fontSize,worldW:boxWidth,boxWidth,worldH:fontSize*1.2,rotation:0,zIndex:Math.max(0,...assets.map(a=>Number(a&&a.zIndex)||0))+1,visible:true,fontSize,textBaseBoxWidth:boxWidth,textBaseFontSize:fontSize,lineHeight:1.2,textAlign:'center',depth:0,boxWidthMode:'auto'})}
+function createPendingTextAsset(centerWorld){const baseW=projectWorld.baseStageW||stageW||360,baseH=projectWorld.baseStageH||stageH||640,boxWidth=Math.max(120,Math.min(baseW*.72,320)),fontSize=Math.max(22,Math.min(42,baseW*.1));
+ const asset=normalizeTextAsset({id:'text-'+Date.now()+'-'+Math.floor(Math.random()*1000),type:'text',text:'',color:TEXT_ASSET_DEFAULT_COLOR,fontKey:'system',fontWeight:400,fontStyle:'normal',worldX:0,worldY:0,worldW:boxWidth,boxWidth,worldH:fontSize*1.2,rotation:0,zIndex:Math.max(0,...assets.map(a=>Number(a&&a.zIndex)||0))+1,visible:true,fontSize,textBaseBoxWidth:boxWidth,textBaseFontSize:fontSize,lineHeight:1.2,textAlign:'center',depth:0,boxWidthMode:'auto'});
+ // v8z4b32E9E — o novo Text Asset nasce centralizado na VISTA ATUAL do Stage:
+ // mede a geometria REAL do draft e faz seu centro geométrico coincidir com
+ // centerWorld (centro da vista corrente em World, capturado antes do resize do
+ // teclado). Sem vista válida, cai no centro da célula base do ProjectWorld
+ // (comportamento pré-E9E). Nenhum offset visual artificial é introduzido.
+ measureTextAsset(asset);
+ const hasView=centerWorld&&Number.isFinite(centerWorld.x)&&Number.isFinite(centerWorld.y);
+ const cx=hasView?centerWorld.x:baseW/2,cy=hasView?centerWorld.y:baseH/2;
+ asset.worldX=cx-asset.worldW/2;asset.worldY=cy-asset.worldH/2;
+ return asset}
 function textEditorDraftFields(a){return {text:a.text,color:a.color,fontKey:a.fontKey,fontWeight:a.fontWeight,fontStyle:a.fontStyle,textAlign:a.textAlign,boxStyle:a.boxStyle,boxBackgroundEnabled:a.boxBackgroundEnabled,boxBackgroundColor:a.boxBackgroundColor,boxBackgroundOpacity:a.boxBackgroundOpacity,boxPaddingXEm:a.boxPaddingXEm,boxPaddingYEm:a.boxPaddingYEm,boxWidthMode:a.boxWidthMode==='auto'?'auto':'fixed',boxWidth:a.boxWidthMode==='fixed'?(Number(a.boxWidth)||0):null,textBaseBoxWidth:a.boxWidthMode==='fixed'?(Number(a.textBaseBoxWidth)||0):null}}
 function setTextEditorTool(tool){if(!['text','font','color','style'].includes(tool))return;textEditorActiveTool=tool;document.querySelectorAll('[data-text-tool]').forEach(b=>{const on=b.dataset.textTool===tool;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on))});document.querySelectorAll('[data-text-panel]').forEach(p=>p.classList.toggle('active',p.dataset.textPanel===tool));if(tool==='text')requestAnimationFrame(()=>document.getElementById('textCreationInput').focus({preventScroll:true}))}
 function renderTextEditorOptions(){const font=document.getElementById('textEditorFontOptions'),style=document.getElementById('textEditorStyleOptions'),align=document.getElementById('textEditorAlignOptions');if(!pendingTextDraft)return;
@@ -15434,11 +15465,15 @@ function setTextDraftFixedWidth(value){if(!pendingTextDraft||pendingTextDraft.bo
  // Mudar a largura da caixa NÃO é "escala" de texto: mantém escala% preservando a proporção do baseline.
  if(old>0)pendingTextDraft.textBaseBoxWidth=Math.max(20,oldBase*(v/old));measureTextEditorDraft({preserveCenter:true});const label=document.getElementById('textWidthFixedValue');if(label)label.textContent=String(Math.round(v));renderProjectWorldExtraImages();renderAssetSelectionOverlay()}
 function measureTextEditorDraft(options){if(!pendingTextDraft)return;const preserveCenter=!!(options&&options.preserveCenter)||textEditorMode==='edit'||pendingTextDraft.boxWidthMode==='auto',cx=preserveCenter?pendingTextDraft.worldX+pendingTextDraft.worldW/2:null,cy=preserveCenter?pendingTextDraft.worldY+pendingTextDraft.worldH/2:null;measureTextAsset(pendingTextDraft);if(cx!=null)pendingTextDraft.worldX=cx-pendingTextDraft.worldW/2;if(cy!=null)pendingTextDraft.worldY=cy-pendingTextDraft.worldH/2;textEditorDraftPersistedDetected=assets.some(a=>a===pendingTextDraft||String(a&&a.id)===String(pendingTextDraft.id)&&textEditorMode==='create')}
-function updateTextDraft(field,value){if(!pendingTextDraft)return;pendingTextDraft[field]=value;normalizeTextAsset(pendingTextDraft);measureTextEditorDraft({preserveCenter:field==='boxBackgroundEnabled'});renderTextEditorOptions();renderProjectWorldExtraImages()}
+function updateTextDraft(field,value){if(!pendingTextDraft)return;pendingTextDraft[field]=value;normalizeTextAsset(pendingTextDraft);measureTextEditorDraft({preserveCenter:field==='boxBackgroundEnabled'});renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay()}
 function updateTextStyle(weight,style){if(!pendingTextDraft)return;pendingTextDraft.fontWeight=weight;pendingTextDraft.fontStyle=style;updateTextDraft('fontWeight',weight)}
-function openTextEditor(mode,target,source){if(!isAssetsMode())return;if(pendingTextDraft){const sameEdit=mode==='edit'&&target&&String(target.id)===String(textEditorTargetAssetId),sameCreate=mode==='create'&&textEditorMode==='create';if(!sameEdit&&!sameCreate)return;const sheet=document.getElementById('textCreationSheet');sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');renderTextEditorOptions();requestAnimationFrame(()=>document.getElementById('textCreationInput').focus({preventScroll:true}));return}if(mode==='edit'&&(!target||target.type!=='text'))return;textEditorMode=mode;textEditorTargetAssetId=target?String(target.id):null;textEditorOpenSource=source||'create';textEditorOriginalAsset=target?structuredClone(serializeProjectAsset(target,0,false)):null;
- textCreationBaseline={projectWorld:JSON.stringify(projectWorld),frames:JSON.stringify(frames.slice(0,frameCount)),assets:JSON.stringify(assets.map(a=>serializeProjectAsset(a,0,false)))};pendingTextDraft=target?normalizeTextAsset(structuredClone(target)):createPendingTextAsset();pendingTextDraft.id=target?target.id:pendingTextDraft.id;
- const input=document.getElementById('textCreationInput'),color=document.getElementById('textCreationColor'),sheet=document.getElementById('textCreationSheet');input.value=pendingTextDraft.text;color.value=pendingTextDraft.color;sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');setTextEditorTool('text');renderTextEditorOptions();renderProjectWorldExtraImages();requestAnimationFrame(()=>{input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length)})}
+function openTextEditor(mode,target,source){if(!isAssetsMode())return;if(pendingTextDraft){const sameEdit=mode==='edit'&&target&&String(target.id)===String(textEditorTargetAssetId),sameCreate=mode==='create'&&textEditorMode==='create';if(!sameEdit&&!sameCreate)return;const sheet=document.getElementById('textCreationSheet');sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay();requestAnimationFrame(()=>document.getElementById('textCreationInput').focus({preventScroll:true}));return}if(mode==='edit'&&(!target||target.type!=='text'))return;textEditorMode=mode;textEditorTargetAssetId=target?String(target.id):null;textEditorOpenSource=source||'create';textEditorOriginalAsset=target?structuredClone(serializeProjectAsset(target,0,false)):null;
+ // v8z4b32E9E — captura o centro da VISTA ATUAL ANTES de abrir/focar a sheet e
+ // ANTES de qualquer resize do teclado virtual. Editar asset existente NUNCA
+ // recentraliza (só a criação usa createPendingTextAsset com o centro da vista).
+ const createViewCenter=(mode==='create')?getEditorViewCenterWorld():null;
+ textCreationBaseline={projectWorld:JSON.stringify(projectWorld),frames:JSON.stringify(frames.slice(0,frameCount)),assets:JSON.stringify(assets.map(a=>serializeProjectAsset(a,0,false)))};pendingTextDraft=target?normalizeTextAsset(structuredClone(target)):createPendingTextAsset(createViewCenter);pendingTextDraft.id=target?target.id:pendingTextDraft.id;
+ const input=document.getElementById('textCreationInput'),color=document.getElementById('textCreationColor'),sheet=document.getElementById('textCreationSheet');input.value=pendingTextDraft.text;color.value=pendingTextDraft.color;sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');setTextEditorTool('text');renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay();requestAnimationFrame(()=>{input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length)})}
 function startTextCreation(){openTextEditor('create',null,'add-menu')}
 function startTextAssetEditing(asset,source){asset=asset||getSelectedAsset();if(asset&&asset.type==='text')openTextEditor('edit',asset,source||'toolbar')}
 function auditTextCreationCanonicalState(){if(!textCreationBaseline)return;textCreationKeyboardResizeChangedProjectWorld||=JSON.stringify(projectWorld)!==textCreationBaseline.projectWorld;textCreationKeyboardResizeChangedFrames||=JSON.stringify(frames.slice(0,frameCount))!==textCreationBaseline.frames;textCreationKeyboardResizeChangedExistingAssets||=JSON.stringify(assets.map(a=>serializeProjectAsset(a,0,false)))!==textCreationBaseline.assets}
@@ -15449,7 +15484,7 @@ function cancelTextCreation(){if(!pendingTextDraft)return;auditTextCreationCanon
 function confirmTextCreation(){if(!pendingTextDraft)return;const value=document.getElementById('textCreationInput').value;if(!value.trim()){showStatus('Digite um texto para continuar.');setTextEditorTool('text');return}pendingTextDraft.text=value;normalizeTextAsset(pendingTextDraft);measureTextAsset(pendingTextDraft);auditTextCreationCanonicalState();
  if(textEditorMode==='edit'){const target=assets.find(a=>a&&String(a.id)===textEditorTargetAssetId);if(!target){resetTextEditor();return}const changed=JSON.stringify(textEditorDraftFields(target))!==JSON.stringify(textEditorDraftFields(pendingTextDraft));if(!changed){resetTextEditor();return}const before=captureState(),oldCenterX=target.worldX+target.worldW/2,oldCenterY=target.worldY+target.worldH/2;Object.assign(target,textEditorDraftFields(pendingTextDraft));normalizeTextAsset(target);measureTextAsset(target);target.worldX=oldCenterX-target.worldW/2;target.worldY=oldCenterY-target.worldH/2;pushUndoSnapshot(before);textEditorUndoEntriesCreated++;lastUndoAction='editTextAsset';textEditorCommitChangedOnlyTarget=true;markProjectDirty('editTextAsset');textEditorAutosaveRevisionsCreated++;textEditorConfirmed=true;const id=target.id;resetTextEditor();selectAssetById(id,'text-edit');renderLayersPanelList();invalidateProjectWorldComposite();return}
  const before=captureState();assignPersistentLayerIdentity(pendingTextDraft);const confirmed=pendingTextDraft;assets.push(confirmed);pushUndoSnapshot(before);textEditorUndoEntriesCreated++;normalizeAssetZIndices();const id=confirmed.id;resetTextEditor();selectAssetById(id,'text-create');renderLayersPanelList();invalidateProjectWorldComposite();markProjectDirty('addTextAsset');textEditorAutosaveRevisionsCreated++;textEditorConfirmed=true}
-document.addEventListener('input',ev=>{if(!pendingTextDraft)return;if(ev.target.id==='textCreationInput')pendingTextDraft.text=ev.target.value;if(ev.target.id==='textCreationColor')pendingTextDraft.color=ev.target.value;if(ev.target.id==='textBoxBackgroundColor')pendingTextDraft.boxBackgroundColor=ev.target.value;if(ev.target.id==='textBoxBackgroundOpacity'){pendingTextDraft.boxBackgroundOpacity=Number(ev.target.value)/100;document.getElementById('textBoxBackgroundOpacityValue').textContent=ev.target.value+'%'}normalizeTextAsset(pendingTextDraft);measureTextEditorDraft();renderProjectWorldExtraImages()});window.addEventListener('resize',()=>{if(pendingTextDraft)auditTextCreationCanonicalState()});
+document.addEventListener('input',ev=>{if(!pendingTextDraft)return;if(ev.target.id==='textCreationInput')pendingTextDraft.text=ev.target.value;if(ev.target.id==='textCreationColor')pendingTextDraft.color=ev.target.value;if(ev.target.id==='textBoxBackgroundColor')pendingTextDraft.boxBackgroundColor=ev.target.value;if(ev.target.id==='textBoxBackgroundOpacity'){pendingTextDraft.boxBackgroundOpacity=Number(ev.target.value)/100;document.getElementById('textBoxBackgroundOpacityValue').textContent=ev.target.value+'%'}normalizeTextAsset(pendingTextDraft);measureTextEditorDraft();renderProjectWorldExtraImages();renderAssetSelectionOverlay()});window.addEventListener('resize',()=>{if(pendingTextDraft)auditTextCreationCanonicalState()});
 
 // Fonte unica do parallax translacional. A referencia neutra e o centro da
 // celula canonica do ProjectWorld; ela nao depende do modo, frame selecionado,
@@ -35290,7 +35325,14 @@ function endAssetTransformPointer(e, cancelled) {
 function renderAssetSelectionOverlay() {
   if (typeof stageContent === 'undefined' || !stageContent) return;
   let box = document.getElementById('assetSelectOutline');
-  const asset = getSelectedAsset();
+  // v8z4b32E9E — enquanto o editor de texto está ativo, pendingTextDraft é a fonte
+  // única da verdade VISUAL: a seleção e as quatro alças acompanham a geometria
+  // VIVA do draft (criação ou edição), não o estado confirmado ainda não persistido.
+  // A medição é feita aqui para o draft, garantindo geometria correta independente
+  // da ordem de chamada do ciclo de render.
+  const _draftActive = !!(pendingTextDraft && (textEditorMode === 'create' || textEditorMode === 'edit'));
+  const asset = _draftActive ? pendingTextDraft : getSelectedAsset();
+  if (_draftActive && asset && asset.type === 'text') measureTextAsset(asset);
   const show = isAssetsMode() && asset &&
                (typeof isPreviewing === 'undefined' || !isPreviewing) &&
                assetHasLoadedImage(asset) && asset.visible !== false;

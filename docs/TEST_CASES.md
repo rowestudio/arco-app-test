@@ -1,5 +1,20 @@
 # TEST_CASES
 
+## TC-048 — Centralização na vista atual e WYSIWYG ao vivo (E9E)
+
+- Gate de centralização (`tests/smoke/app.spec.mjs`, `E9E — novo Text Asset nasce no centro da vista atual`):
+  - Caso A (vista padrão): sem pan/zoom, o centro da vista coincide com o centro base e o draft nasce nesse centro.
+  - Caso B (vista deslocada por pan): o centro da vista difere claramente do centro base; o draft nasce na região enquadrada e NÃO no centro base — reprova o comportamento pré-E9E.
+  - Caso C (zoom diferente): com zoom ≠ 1 e pan, o draft continua nascendo no centro da vista corrente.
+  - Caso D (teclado): o centro é capturado ANTES do resize; reduzir a viewport (simulando o teclado) e disparar `resize` não recalcula o ponto inicial do draft.
+  - Caso E (editar existente): posicionar um Text Asset confirmado fora do centro, editar o conteúdo e confirmar não recentraliza — o centro permanece e não salta para o centro da vista.
+  - A vista de referência é medida pela MESMA cadeia canônica pré-existente (`computeEditorTransform → screenToStageCoord → editorStageToWorld`), independente do helper novo.
+- Gate de WYSIWYG ao vivo (`E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo draft`):
+  - Cenário determinístico único percorrendo: criar, digitar curto, texto mais longo, alinhamento, Auto/Fixa, largura fixa, fonte, peso/itálico, cor do texto, ligar fundo, cor do fundo, opacidade, minimizar, reabrir e confirmar.
+  - Em cada operação exige `panelState == pendingTextDraft` (campo, alinhamento, fonte, modo/valor de largura, fundo/cor/opacidade e cor do texto) e a coincidência das geometrias reais: DOM textual == retângulo de seleção, exatamente quatro alças coladas nos cantos e fundo acompanhando o estado do draft.
+  - Minimizar mantém o draft vivo; reabrir restaura exatamente o mesmo draft; confirmar não causa salto (o retângulo confirmado coincide com o do draft imediatamente anterior).
+- Ambiente: WebKit automatizado (verificação equivalente executada em Chromium `hasTouch` com binário local, pois o WebKit não está disponível no ambiente); validação visual final em iPhone/Safari real permanece obrigatória e nenhuma promoção está autorizada.
+
 ## TC-047 — Regressão e editor tipográfico E9D
 
 - Criar publicamente `R` e `Texto`; exigir ID do draft preservado na confirmação, uma camada, modo Auto, uma linha horizontal e largura natural + 1 px canônico.
