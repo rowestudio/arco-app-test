@@ -1,5 +1,13 @@
 # REGRESSIONS
 
+## REG-051 — Sheet/teclado podem ocultar o Text Asset ao editar texto existente (E9F1)
+
+- **Relato factual (teste físico da E9F em iPhone/Safari):** ao editar um Text Asset existente, a bottom sheet do editor e/ou o teclado virtual do Safari podem ocupar a região onde o texto está no Stage, de modo que o usuário deixa de enxergar o que está editando. Descrição factual do sintoma; nenhuma causa foi inventada além da ocupação de área pela sheet/teclado.
+- **Correção E9F1:** ao abrir o editor em `mode==='edit'`, a VISTA do editor é localizada por **pan de navegação canônico** (`computeEditorTransform → editorWorldToStage`, `editorPanX/Y`, `clampEditorPan`, `applyEditorZoom`; função `ensureTextEditorTargetVisible()`), mantendo o centro visual do texto dentro da área de Stage visível acima da sheet, calculada a partir da geometria REAL (`stage`, `#textCreationSheet`, `visualViewport`/teclado) com deadzone anti-jitter. **Não** move o asset (`worldX/worldY/worldW/worldH`, `rotation`, `depth`, `zIndex`), **não** altera Frames/curvas/ProjectWorld, **não** cria Undo nem agenda autosave, **não** altera o hash canônico e **preserva o zoom**. Reexecuta após abrir, após a estabilização do layout e a cada `resize` relevante de `visualViewport`.
+- **Prevenção:** nunca "centralizar" o texto movendo `worldX/worldY`; nunca mutar Frames/ProjectWorld para localizar o texto; nunca criar Undo/autosave por localização de viewport; não duplicar matemática de câmera; a criação de novo texto (E9E) permanece intocada.
+- **Teste preventivo:** `tests/smoke/app.spec.mjs` gate `E9F1 —` (Teste 7): captura a geometria canônica/Frames/ProjectWorld/Undo/autosave antes da edição, abre o editor, localiza a vista e exige o texto dentro da área visível acima da sheet com a geometria canônica byte/valor-equivalente; repete após reduzir a altura disponível (simulando o teclado) exigindo visibilidade sem jitter.
+- **Status:** proteção automatizada adicionada na `v8z4b32E9F1`; validação visual final em iPhone/Safari real pendente. Nenhuma promoção autorizada.
+
 ## REG-050 — Editor de Text Asset regride para tabs textuais ou seleção interna colorida (E9F)
 
 - **Risco:** o editor de Text Asset voltar a exibir tabs textuais principais (`Texto/Fonte/Cor/Estilo`) ou label sob os ícones; usar coral/ciano/verde como estado ativo INTERNO do editor; deixar alinhamento/largura permanentemente sob o textarea; misturar cor do texto com fundo; a opacidade poder ser confundida com opacidade dos glifos/ativo; o swipe horizontal da rail minimizar a sheet; o slider arrastar a sheet; minimizar criar Undo/autosave; ou a paleta de UI alterar `DEFAULT_PROJECT_BG`.

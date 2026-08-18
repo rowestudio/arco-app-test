@@ -8,7 +8,8 @@ Versionado por data. Última atualização: 2026-08-18.
 
 - **E9D — mergeada** (PR #497).
 - **E9E — mergeada e aprovada fisicamente** (PR #498, merge commit `4254ed370ecee64b7f98d411fe6994b8c4538ba5`; teste físico de Roberto em iPhone/Safari em 2026-08-18).
-- **E9F — em PR / revisão visual iconográfica** (editor de Texto iconográfico neutro + paleta de UI aprovada + Ativos coral).
+- **E9F — mergeada** (PR #499, merge commit `82131049e52974a1922206c92bf573b9d2c78ff5`). Testada fisicamente por Roberto em iPhone/Safari: estrutura geral aprovada e maioria das funções operando, mas **NÃO aprovada visualmente como encerrada**. (Nota: a instrução da E9F1 citou o merge commit `7e3978…`, inexistente no git; a fonte oficial mostra `82131049…`.)
+- **E9F1 — em PR / refino visual/funcional localizado** (cabeçalho compacto; ícone de Estilo B+I; ícone de Alinhamento dinâmico; paleta rápida de Cor do texto e de Fundo reutilizando a constante única `PROJECT_BG_NEUTRALS` + botão `+`; Fundo com "Sem cor/Transparente" e opacidade condicional; localização do VIEWPORT ao editar existente sem tocar geometria/Frames/ProjectWorld/Undo/autosave; Largura = Auto compacto + slider step 5). Não antecipa E9G.
 - **E9G — FUTURA** (alças laterais de largura no Stage; exige revisão de REG-028).
 - **Camadas/Profundidade — não iniciada.**
 - **Engine Sprint — não iniciado.**
