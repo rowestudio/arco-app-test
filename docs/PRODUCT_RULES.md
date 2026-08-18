@@ -9,7 +9,36 @@ Regras aprovadas e já IMPLEMENTADAS nesta E9E:
 3. Enquanto o editor de texto está ativo, `pendingTextDraft` é a fonte única da verdade VISUAL do Text Asset em edição.
 4. Painel, Stage, fundo, seleção e as quatro alças refletem imediatamente o mesmo `pendingTextDraft`: toda propriedade alterada no painel atualiza na hora o Stage (glifos e fundo), o contorno de seleção e as quatro alças, mantendo hit-test coerente, sem persistir o draft prematuramente.
 
-Estas regras não antecipam o redesign visual/iconográfico (E9F) nem a manipulação direta de largura por alças laterais (E9G), registrados apenas como plano futuro em `docs/PRE_PROMOTION_RELEASE_PLAN.md` e `docs/ROADMAP.md`.
+Estas regras não antecipam a manipulação direta de largura por alças laterais (E9G), registrada apenas como plano futuro em `docs/PRE_PROMOTION_RELEASE_PLAN.md` e `docs/ROADMAP.md`.
+
+## Regra E9F — editor de Text Asset iconográfico neutro (implementada)
+
+Comportamento aprovado e IMPLEMENTADO na v8z4b32E9F (substitui a apresentação em tabs textuais da E9D/E9E; toda a base funcional E9E é preservada):
+
+1. O editor de Text Asset usa uma **rail horizontal iconográfica**: as propriedades principais são representadas por ÍCONES, não por labels. Nenhum nome de propriedade aparece visualmente na rail; a semântica acessível `tablist/tab` é mantida internamente com `aria-label` correto em cada item. Sem emoji e sem caracteres improvisados; os ícones seguem o sistema SVG já usado no app.
+2. A rail permanece em uma única linha, rola horizontalmente (scroll de toque nativo, sem scrollbar intrusiva, sem segunda linha, sem comprimir os ícones) e tem sempre **exatamente um item ativo**.
+3. Ordem das propriedades: **texto, fonte, estilo, alinhamento, cor do texto, fundo da caixa, largura da caixa**. `aria-label`: “Editar texto”, “Fonte”, “Estilo”, “Alinhamento”, “Cor do texto”, “Fundo da caixa”, “Largura da caixa”.
+4. A seleção INTERNA do editor usa **contraste neutro invertido: superfície branca + símbolo escuro** no item ativo; item inativo usa superfície neutra escura + símbolo claro. O editor interno **não herda o coral de Ativos nem o ciano de Frames** para os seus estados de seleção; nunca usa verde.
+5. **Alinhamento** deixa de ocupar espaço permanente sob o textarea e vira controle iconográfico próprio (esquerda/centro/direita, com `aria-label`, sem grandes botões “Esquerda/Centro/Direita”).
+6. **Cor do texto** (glifos) e **Fundo da caixa** são propriedades separadas e inequívocas. O painel de Fundo agrupa **somente** ligar/desligar fundo, cor do fundo e opacidade do fundo, com o slider de opacidade e o valor percentual **fisicamente dentro** do painel de Fundo; a opacidade nunca pode ser confundida com opacidade dos glifos ou do ativo inteiro.
+7. **Largura da caixa** mantém Auto/Fixa e, no modo Fixa, o stepper numérico (funcionalidade E9C intacta) sob o ícone Largura; E9F apenas muda ONDE e COMO esses controles aparecem. `boxWidth`, `boxWidthMode`, algoritmo de wrap, reserva +1 px (E9D), `textBaseBoxWidth`, escala do texto e persistência não mudam.
+8. O textarea de conteúdo é visualmente distinto da sheet (superfície própria), sem depender de borda pesada.
+9. A sheet mantém a pequena alça horizontal, sem título redundante “Texto”. **Arrastar a alça/topo para baixo minimiza** (mesma semântica `minimizeTextEditor`: preserva `pendingTextDraft`, zero Undo, zero autosave, mesmo ID, reabre restaurando exatamente o draft). Não existe botão separado escrito “Fechar/Minimizar”. `×` cancela e ✓ confirma — três ações com semânticas distintas. O gesto vertical da alça é independente do scroll horizontal da rail e do slider de opacidade; swipe horizontal não minimiza e o slider não arrasta a sheet.
+10. A sheet é content-aware: cresce apenas o necessário, preservando o máximo razoável do Stage, com overflow interno quando o conteúdo é grande — sem modal full-screen.
+11. Toda a base E9E permanece intacta: novo texto no centro da vista atual, editar existente não recentraliza, `pendingTextDraft` como fonte única da verdade visual, WYSIWYG imediato (glifo/fundo/seleção/quatro alças), minimizar/reabrir, confirmar sem salto, cancelar corretamente, exatamente 1 Undo + 1 autosave quando há alteração confirmada e zero enquanto é somente draft.
+
+## Paleta de UI aprovada (v8z4b32E9F)
+
+- UI/chrome principal: `#24262B`.
+- Bottom sheets: `#303238`.
+- Campos, pills e controles internos: `#393C43`.
+- Divisores/bordas discretas: `~#4A4D55`.
+- Acento do workspace **Ativos: `#FF6B8A`** (coral).
+- Acento do workspace **Frames: ciano existente `#04fff2`** (preservado exatamente).
+
+**PROJECT BACKGROUND não é UI background.** `#24262B` é fundo/chrome da INTERFACE. `DEFAULT_PROJECT_BG` (`#3c3c3b`), `currentProjectBg`, `getProjectBackgroundColor()`, `renderBgUsed` e o background que entra em Preview/Export são conteúdo/render e NÃO mudam por causa desta paleta.
+
+**Princípio visual (registrado):** as cores de Frames/Ativos identificam o workspace; elas não constituem automaticamente a cor interna dos painéis. Na E9F essa linguagem neutra é aplicada SOMENTE ao editor de Texto; a migração dos demais painéis (Settings, Frames, etc.) fica como revisão visual futura e não foi feita agora.
 
 ## Regra E9B — geometria visual de Text Assets no Stage
 
@@ -31,7 +60,7 @@ Estas regras não antecipam o redesign visual/iconográfico (E9F) nem a manipula
 - Pills e controles pequenos usam um neutro aproximadamente 10–20% visualmente mais claro que a superfície contextual.
 - Quando aberto, o bottom sheet forma uma superfície única até a borda inferior e a safe-area, sem faixa residual do fundo principal.
 - Frames e Ativos compartilham a mesma geometria e densidade compacta nos controles contextuais `−5`/`+5` e Reset.
-- “Cor da interface”, nesta hierarquia neutra, não substitui os acentos funcionais: Frames permanecem ciano e Ativos permanecem roxo.
+- “Cor da interface”, nesta hierarquia neutra, não substitui os acentos funcionais: Frames permanecem ciano (`#04fff2`) e Ativos usam o coral aprovado (`#FF6B8A`, antes roxo). A migração global dos demais painéis para a linguagem neutra da E9F fica registrada como revisão visual futura.
 
 ## Regras aprovadas de produto e UX
 
@@ -78,31 +107,40 @@ Estas regras não antecipam o redesign visual/iconográfico (E9F) nem a manipula
 
 - Um toque em texto apenas seleciona; **Editar** na toolbar e dois taps concluídos no mesmo Text Asset abrem o editor.
 
-### Estrutura do editor
+### Estrutura do editor (v8z4b32E9F — rail iconográfica)
 
 - O editor reutiliza o mesmo draft para criação e reedição.
-- As únicas abas principais são `Texto`, `Fonte`, `Cor` e `Estilo`.
-- Não existe mais aba principal separada `Alinhar`.
+- A navegação principal é a **rail horizontal iconográfica** descrita em “Regra E9F — editor de Text Asset iconográfico neutro (implementada)”. Não existem mais tabs textuais `Texto | Fonte | Cor | Estilo`; a semântica `tablist/tab` é mantida internamente com `aria-label`, sem label visível.
+- Ordem das propriedades: texto, fonte, estilo, alinhamento, cor do texto, fundo da caixa, largura da caixa. Cada propriedade abre seu painel abaixo da rail; a sheet cresce apenas o necessário.
 
-### Aba Texto
+### Propriedade: Editar texto
 
-- Contém o campo de escrita e, abaixo dele, os alinhamentos esquerda, centro e direita.
-- Contém a escolha `Auto | Fixa`; no modo `Fixa`, um stepper compacto `− / valor / +` define a largura.
-- Enter continua criando quebra explícita de linha; o modo `Fixa` permite quebra automática dentro da largura escolhida.
-- Não existe menu horizontal deslizante de controles na aba `Texto`.
+- Mostra essencialmente o campo de escrita (textarea), com superfície própria distinta da sheet. Enter continua criando quebra explícita de linha.
+- Alinhamento e largura NÃO ficam permanentemente sob o textarea; cada um tem sua própria propriedade na rail.
 
-### Aba Fonte
+### Propriedade: Fonte
 
-- Concentra a seleção tipográfica.
+- Concentra a seleção tipográfica; os nomes das fontes podem permanecer visíveis (são conteúdo/opções, não a navegação principal).
 
-### Aba Cor
+### Propriedade: Estilo
 
-- Concentra cor do texto, ativação do fundo, cor do fundo e opacidade do fundo.
-- A borda não é declarada como implementada nesta etapa.
+- Preserva os controles tipográficos pertinentes, incluindo peso e itálico; apenas a apresentação foi reorganizada.
 
-### Aba Estilo
+### Propriedade: Alinhamento
 
-- Preserva os controles tipográficos pertinentes, incluindo peso e itálico.
+- Controles iconográficos esquerda/centro/direita, com `aria-label`; sem grandes botões textuais.
+
+### Propriedade: Cor do texto
+
+- Seletor de cor dos glifos, separado do fundo da caixa.
+
+### Propriedade: Fundo da caixa
+
+- Agrupa **somente** ligar/desligar fundo, cor do fundo e opacidade do fundo, com o slider de opacidade e o valor percentual **fisicamente dentro** deste painel. A opacidade pertence ao FUNDO e não reduz a opacidade dos glifos nem do ativo inteiro. A borda não é declarada como implementada nesta etapa.
+
+### Propriedade: Largura da caixa
+
+- Mantém Auto/Fixa e, no modo Fixa, o stepper numérico (funcionalidade E9C intacta). E9G (alças laterais de largura no Stage) NÃO pertence a esta etapa.
 
 ### Cabeçalho e draft
 

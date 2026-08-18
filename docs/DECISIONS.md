@@ -1,5 +1,18 @@
 # DECISIONS
 
+## 2026-08-18 — DEC-Text-E9F: editor de Text Asset iconográfico neutro + paleta de UI aprovada
+
+- **Data:** 2026-08-18.
+- **Assunto:** revisão visual e de interação localizada no editor de Text Asset (rail iconográfica neutra) + adoção da paleta de UI aprovada e do coral de Ativos, sobre a base funcional aprovada E9E.
+- **Classificação:** revisão visual/interação localizada; risco médio (apresentação e navegação do editor). NÃO altera modelo canônico do Text Asset, geometria, renderer, Preview/Export, persistência, Stage↔World nem as quatro alças.
+- **Fato histórico registrado:** a v8z4b32E9E foi mergeada pela PR #498 (merge commit `4254ed370ecee64b7f98d411fe6994b8c4538ba5`) e testada fisicamente por Roberto em iPhone/Safari na build publicada, aprovada visual/funcionalmente nos itens do seu escopo em 2026-08-18.
+- **Decisão:** (1) substituir as tabs textuais `Texto | Fonte | Cor | Estilo` por uma **rail horizontal iconográfica** de sete propriedades (texto, fonte, estilo, alinhamento, cor do texto, fundo da caixa, largura da caixa), sem label textual visível, com `aria-label` e semântica `tablist/tab` preservada; item ativo com **contraste neutro invertido (branco + símbolo escuro)**, nunca coral/ciano/verde. (2) Alinhamento vira controle iconográfico próprio; cor do texto e fundo da caixa ficam separados, com a opacidade dentro do painel de Fundo; largura Auto/Fixa + stepper mantidos (E9C intacta). (3) Minimizar por **gesto vertical da alça** (mesma semântica `minimizeTextEditor`), independente do swipe horizontal da rail e do slider; × cancela, ✓ confirma. (4) Adotar a paleta de UI aprovada nos tokens neutros (chrome `#24262B`, sheet `#303238`, controles `#393C43`, divisor `~#4A4D55`) e migrar a identidade **Ativos de roxo para coral `#FF6B8A`** (token `--accent` + contorno/alças/pill/botão +), preservando o **ciano `#04fff2` de Frames**.
+- **Razão:** referência de produto aprovada por Roberto no teste; simplifica a navegação, separa semanticamente cor do texto e fundo, e mantém o Stage o mais visível possível.
+- **Restrições respeitadas:** `DEFAULT_PROJECT_BG` (`#3c3c3b`) e o background que entra em Preview/Export NÃO foram alterados; nenhum outro painel (Settings, Frames, demais Ativos) foi redesenhado (migração global fica futura); E9G não foi antecipada (exatamente quatro alças); sem biblioteca externa de ícones (SVG novos no mesmo sistema Lucide já usado).
+- **Consequência:** novo gate E9F em `tests/smoke/app.spec.mjs` (rail, estado ativo neutro, superfícies, coral/ciano, navegação por propriedade, alinhamento iconográfico, fundo com opacidade isolada, largura Auto/Fixa, minimizar por gesto, independência swipe×drag, cancelar/confirmar, quatro alças). Gates E8Z/E9A/E9C/E9D/E9E adaptados apenas na navegação (tabs → ícones), sem enfraquecer asserções. `APP_VERSION === APP_VERSION_NAME === v8z4b32E9F`.
+- **Status:** implementado em PR no repositório de teste; execução local em WebKit bloqueada (verificação equivalente em Chromium `hasTouch`; E9B depende de gesto multi-touch que não reproduz em Chromium e falha igual na base — validar no WebKit CI); validação visual final em iPhone/Safari real pendente; nenhuma promoção autorizada.
+- **Documento relacionado:** `docs/PRE_PROMOTION_RELEASE_PLAN.md`, `docs/PRODUCT_RULES.md`, `docs/ROADMAP.md`, `docs/TEST_CASES.md` (TC-049), `docs/PROJECT_STATE.md`.
+
 ## 2026-08-18 — DEC-Text-E9E: criação na vista atual e WYSIWYG reutilizam a cadeia canônica
 
 - **Data:** 2026-08-18.

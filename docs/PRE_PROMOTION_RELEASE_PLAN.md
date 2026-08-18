@@ -2,7 +2,18 @@
 
 Registro canônico da base auditada `v8z4b32E9C` e do plano aprovado de PRs funcionais que devem ocorrer **antes** de qualquer promoção para produção. Este documento é a fonte de verdade do plano pré-promoção; qualquer LLM, Codex ou desenvolvedor deve conseguir entender a sequência sem depender de conversa externa.
 
-Versionado por data. Última atualização: 2026-08-16.
+Versionado por data. Última atualização: 2026-08-18.
+
+## Estado correto após a rodada de Texto (2026-08-18)
+
+- **E9D — mergeada** (PR #497).
+- **E9E — mergeada e aprovada fisicamente** (PR #498, merge commit `4254ed370ecee64b7f98d411fe6994b8c4538ba5`; teste físico de Roberto em iPhone/Safari em 2026-08-18).
+- **E9F — em PR / revisão visual iconográfica** (editor de Texto iconográfico neutro + paleta de UI aprovada + Ativos coral).
+- **E9G — FUTURA** (alças laterais de largura no Stage; exige revisão de REG-028).
+- **Camadas/Profundidade — não iniciada.**
+- **Engine Sprint — não iniciado.**
+
+Nenhuma etapa avança automaticamente; nenhuma promoção está autorizada.
 
 ## Estado de referência
 
@@ -65,13 +76,14 @@ Classificação: correção de regressão + melhoria visual localizada.
 A PR de Texto foi subdividida na seguinte sequência aprovada. Registrar como plano; apenas o que está marcado como implementado é comportamento atual.
 
 - **E9D — mergeada** (PR #497): reserva de 1 px canônico contra a quebra vertical no Safari e reorganização do editor em `Texto | Fonte | Cor | Estilo`, com draft minimizável e confirmação no mesmo ID.
-- **E9E — estabilização funcional (esta PR): posição + WYSIWYG.** (1) NOVO Text Asset nasce centralizado na VISTA ATUAL do Stage, com o centro capturado antes do resize do teclado pela transformação canônica existente; editar asset existente não recentraliza. (2) `pendingTextDraft` é a fonte única da verdade visual enquanto o editor está ativo; painel, Stage, fundo, seleção e quatro alças refletem imediatamente o mesmo draft. UI E9D preservada; nenhum redesign visual antecipado.
-- **E9F — revisão visual/iconográfica do editor de Texto (FUTURA, NÃO implementada nesta PR).** Decisões já aprovadas, apenas registradas:
-  - editor tipográfico neutro/iconográfico; estados internos não precisam herdar a cor do espaço Ativos;
-  - nova paleta aprovada para a rodada visual: fundo principal `#24262B`, sheet `#303238`, controles `#393C43`, Ativos `#FF6B8A`; Frames mantém seu ciano atual;
-  - a aplicação global dessa filosofia aos demais painéis fica para revisão visual posterior.
-  Não implementar E9F nesta PR (sem novo editor iconográfico, sem faixa horizontal de ícones, sem remover as tabs `Texto/Fonte/Cor/Estilo` nem o título, sem nova paleta).
-- **E9G — manipulação direta futura da largura da caixa no Stage (FUTURA, NÃO implementada nesta PR).** Proposta aprovada de largura direta no Stage por alças laterais específicas de Text Asset; exige revisão explícita da proteção REG-028/exatamente quatro alças antes da implementação. Não implementar nesta PR.
+- **E9E — mergeada e aprovada fisicamente** (PR #498, merge commit `4254ed370ecee64b7f98d411fe6994b8c4538ba5`): posição + WYSIWYG. (1) NOVO Text Asset nasce centralizado na VISTA ATUAL do Stage, com o centro capturado antes do resize do teclado pela transformação canônica existente; editar asset existente não recentraliza. (2) `pendingTextDraft` é a fonte única da verdade visual enquanto o editor está ativo; painel, Stage, fundo, seleção e quatro alças refletem imediatamente o mesmo draft. **Testada e aprovada por Roberto em iPhone/Safari na build publicada em 2026-08-18** nos itens do seu escopo. É a base funcional aprovada da E9F.
+- **E9F — revisão visual/iconográfica do editor de Texto (EM PR — esta rodada).** Editor iconográfico neutro implementado sobre a E9E:
+  - rail horizontal de ícones sem label textual visível (semântica `tablist/tab` interna com `aria-label`); item ativo usa contraste neutro invertido (branco + símbolo escuro), nunca coral/ciano/verde; estados internos não herdam a cor do espaço Ativos;
+  - ordem: texto, fonte, estilo, alinhamento, cor do texto, fundo da caixa, largura da caixa; alinhamento iconográfico próprio; cor do texto e fundo separados, com a opacidade dentro do painel de Fundo; largura Auto/Fixa + stepper mantida (E9C intacta); minimizar por gesto vertical da alça; × cancela, ✓ confirma;
+  - paleta aprovada aplicada aos tokens de UI: chrome `#24262B`, sheet `#303238`, controles `#393C43`, divisor `~#4A4D55`; **Ativos `#FF6B8A`**, Frames mantém o ciano existente `#04fff2`; `DEFAULT_PROJECT_BG` (`#3c3c3b`) intacto;
+  - a aplicação global dessa filosofia neutra aos demais painéis fica para revisão visual posterior (não feita nesta PR);
+  - não antecipa E9G (nenhuma alça lateral; exatamente quatro alças preservadas).
+- **E9G — manipulação direta futura da largura da caixa no Stage (FUTURA, NÃO implementada).** Proposta aprovada de largura direta no Stage por alças laterais específicas de Text Asset; exige revisão explícita da proteção REG-028/exatamente quatro alças antes da implementação. Não implementar nesta PR.
 - Somente depois dessa rodada de Texto avançar para **Camadas e Profundidade** e, em seguida, para o **Engine Sprint** de Movimento inteligente/easing.
 
 ## 3. PR de Camadas e Profundidade
