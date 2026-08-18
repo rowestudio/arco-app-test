@@ -2190,8 +2190,16 @@ test('E9D — criação pública horizontal e editor tipográfico preserva draft
   // comprometido. Não reamostrar t=0 nem mutar o snapshot do renderer durante
   // a asserção, pois isso não representa necessariamente o frame exibido.
   await page.locator('#topBtnPreview').click(); await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000}); await expect.poll(()=>page.evaluate(()=>previewLoadingHiddenAfterFirstFrame),{timeout:30_000}).toBe(true);
-  const previewProof=await page.evaluate(id=>({snap:renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,audit:renderTransform.preview?.assets?.find(a=>String(a.id)===id)||null}),String(textDraftId));
-  expect(previewProof.snap).toMatchObject({id:textDraftId,text:'Texto',worldW:stageProof.asset.worldW,worldH:stageProof.asset.worldH,depth:42}); expect(previewProof.audit).toMatchObject({id:textDraftId,drawn:true,intersectsCamera:true}); expect(previewProof.audit.screenW).toBeGreaterThan(previewProof.audit.screenH); await page.locator('#previewScreen .close-btn').click();
+  // O snapshot COMPROMETIDO do renderer é estável e é verificado diretamente. A
+  // auditoria (`renderTransform.preview`) reflete o frame VIVO do Preview, que anima
+  // (câmera + parallax de depth); uma leitura única pode cair num frame em que o
+  // glifo já saiu do enquadramento. Poll até observar o Text Asset desenhado e
+  // enquadrado no Preview real — sem reamostrar t=0 nem mutar o snapshot do renderer;
+  // as asserções funcionais (drawn, enquadrado, horizontal) são preservadas.
+  const previewSnap=await page.evaluate(id=>renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id)||null,String(textDraftId));
+  expect(previewSnap).toMatchObject({id:textDraftId,text:'Texto',worldW:stageProof.asset.worldW,worldH:stageProof.asset.worldH,depth:42});
+  await expect.poll(()=>page.evaluate(id=>{const a=renderTransform.preview?.assets?.find(x=>String(x.id)===id);return a?{id:String(a.id),drawn:!!a.drawn,intersectsCamera:!!a.intersectsCamera,landscape:a.screenW>a.screenH}:null;},String(textDraftId)),{timeout:30_000}).toEqual({id:textDraftId,drawn:true,intersectsCamera:true,landscape:true});
+  await page.locator('#previewScreen .close-btn').click();
 });
 
 // v8z4b32E9E — gate de CENTRALIZAÇÃO. Um NOVO Text Asset deve nascer centralizado
