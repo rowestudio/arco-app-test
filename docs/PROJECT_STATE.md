@@ -1,5 +1,15 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-19 — OPS-06 (documental): três regressões ABERTAS registradas + continuidade do Project OS
+
+- **OPS-06 é documental/operacional** (governança do Project OS): formaliza a regra Conversation Delta → Project OS e a auditoria de handoff, e registra pendências reais ainda não formalizadas. **Nenhuma mudança funcional**; `APP_VERSION = APP_VERSION_NAME = v8z4b32E9F1` intacta; `index.html` e produção intocados.
+- **Três bugs ABERTOS e ainda NÃO corrigidos** (relato físico; causa a investigar; não implementados) — registrados individualmente em `docs/REGRESSIONS.md`:
+  - **REG-052** — fill visual dos sliders (especialmente em Ativos) não corresponde à posição do thumb e pode avançar além dele.
+  - **REG-053** — painel de transformação com multi-seleção de Frames pode ser cortado/desaparecer e remover o botão Voltar (iPhone/Safari).
+  - **REG-054** — transformação de multi-seleção de Frames afeta apenas um Frame (exceto com Global ativo); o esperado é afetar todos os Frames selecionados, sem exigir Global.
+- Essas regressões abertas devem ser consideradas antes de avançar a próxima frente; **Roberto decide a ordem efetiva** (ver `docs/ROADMAP.md`).
+- Ambiguidades documentais corrigidas nesta OPS-06 (sem alterar produto): Layers e Profundidade/parallax são sistemas **já existentes**, e a próxima frente é **readequação de interface + revisão visual** do controle existente, não criação do zero; a proposta histórica de “painel de Layers permanente” foi marcada como **superada**; o fill de Profundidade passa a ser descrito com o coral vigente de Ativos `#FF6B8A`, sem reintroduzir o roxo antigo.
+
 ## Atualização 2026-08-19 — v8z4b32E9F1 mergeada, publicada e APROVADA fisicamente (Texto — refino visual/funcional encerrado)
 
 - **PR #500 mergeada** na `main` de teste em 2026-08-19: "v8z4b32E9F1 — fix(text): refina editor, cores, viewport e largura". **Merge commit da PR #500:** `6739dbc018f335ad6b1faead6de4f4469e5ebf78`.

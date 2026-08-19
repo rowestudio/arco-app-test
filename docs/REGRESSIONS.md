@@ -1,5 +1,36 @@
 # REGRESSIONS
 
+> Bugs abertos recém-relatados (OPS-06, 2026-08-19): **REG-052**, **REG-053** e **REG-054** estão **ABERTOS** e ainda **não corrigidos**. Registrados a partir de relato físico; causa a investigar; não implementados nesta PR documental.
+
+## REG-052 — Fill visual dos sliders não corresponde à posição do thumb (ABERTO)
+
+- **Relato físico (OPS-06):** em sliders de Escala e controles semelhantes observados no app, especialmente no workspace **Ativos**, a parte colorida/fill da track não corresponde corretamente à posição real do thumb e pode avançar além dele.
+- **Comportamento esperado:** o fill termina exatamente na posição visual correspondente ao valor/thumb; valor matemático e thumb permanecem coerentes; Ativos usa o acento coral vigente `#FF6B8A`; **não** alterar valor, limites ou matemática apenas para corrigir aparência.
+- **Classificação:** regressão visual / controle de UI.
+- **Causa:** a investigar (não presumir causa). Nenhuma solução declarada.
+- **Status:** **ABERTO** — não corrigido. Relatado em 2026-08-19 (OPS-06); registro documental, sem implementação nesta PR.
+
+## REG-053 — Painel de transformação com multi-seleção é cortado (ABERTO)
+
+- **Relato físico (OPS-06):** com 2 ou mais Frames selecionados, ao entrar em Rotação ou ajuste equivalente por slider, o painel pode ficar parcialmente cortado/desaparecer e pode inclusive remover o botão **Voltar** da área visível.
+- **Comportamento esperado:** o painel permanece integralmente utilizável no viewport de referência; **Voltar** permanece disponível; o conteúdo não pode ficar inacessível por clipping/safe-area/overflow; preservar Stage e seleção.
+- **Classificação:** regressão de UI/interação em iPhone/Safari.
+- **Causa:** a investigar (não presumir causa). Nenhuma solução declarada.
+- **Status:** **ABERTO** — não corrigido. Relatado em 2026-08-19 (OPS-06); registro documental, sem implementação nesta PR.
+
+## REG-054 — Transformação de multi-seleção afeta apenas um Frame (ABERTO)
+
+- **Relato funcional (OPS-06):** com 2+ Frames selecionados, Posição, Escala e Rotação devem afetar todos os Frames atualmente selecionados. Hoje, conforme relato físico, somente um Frame é alterado, exceto quando **Global** está ativo — comportamento incorreto.
+- **Regra esperada:**
+  - um Frame selecionado → altera esse Frame;
+  - vários Frames selecionados → a operação afeta todos os selecionados;
+  - “Selecionar todos” sem Global → afeta todos porque todos estão selecionados;
+  - **Global** é um modo distinto e **não** é requisito para aplicar transformação à seleção atual, nem pode ser usado como workaround obrigatório para multi-seleção;
+  - a operação em lote deve preservar a semântica existente de Undo consolidado quando aplicável.
+- **Classificação:** regressão funcional relevante de seleção múltipla de Frames.
+- **Causa:** a investigar (não presumir causa). Nenhuma solução declarada.
+- **Status:** **ABERTO** — não corrigido. Relatado em 2026-08-19 (OPS-06); registro documental, sem implementação nesta PR.
+
 ## REG-051 — Sheet/teclado podem ocultar o Text Asset ao editar texto existente (E9F1)
 
 - **Relato factual (teste físico da E9F em iPhone/Safari):** ao editar um Text Asset existente, a bottom sheet do editor e/ou o teclado virtual do Safari podem ocupar a região onde o texto está no Stage, de modo que o usuário deixa de enxergar o que está editando. Descrição factual do sintoma; nenhuma causa foi inventada além da ocupação de área pela sheet/teclado.

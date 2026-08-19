@@ -11,7 +11,7 @@ Versionado por data. Última atualização: 2026-08-19.
 - **E9F — mergeada** (PR #499, merge commit `82131049e52974a1922206c92bf573b9d2c78ff5`). Testada fisicamente por Roberto em iPhone/Safari: estrutura geral aprovada e maioria das funções operando, mas **NÃO aprovada visualmente como encerrada**. (Nota: a instrução da E9F1 citou o merge commit `7e3978…`, inexistente no git; a fonte oficial mostra `82131049…`.)
 - **E9F1 — MERGEADA, PUBLICADA e APROVADA fisicamente** (PR #500, merge commit `6739dbc018f335ad6b1faead6de4f4469e5ebf78`; build publicada e testada por Roberto em iPhone/Safari, **aprovada em 2026-08-19**). Refino visual/funcional localizado: cabeçalho compacto; ícone de Estilo B+I; ícone de Alinhamento dinâmico; paleta rápida de Cor do texto e de Fundo reutilizando a constante única `PROJECT_BG_NEUTRALS` + botão `+`; Fundo com "Sem cor/Transparente" e opacidade condicional; localização do VIEWPORT ao editar existente sem tocar geometria/Frames/ProjectWorld/Undo/autosave; Largura = Auto compacto + slider step 5. Não antecipa E9G. Rodada corretiva E9F1 encerrada.
 - **E9G — FUTURA** (alças laterais de largura no Stage; exige revisão de REG-028).
-- **Camadas/Profundidade — não iniciada.**
+- **Camadas e Profundidade JÁ EXISTEM; a readequação da interface de Layers existente + a revisão visual do controle de Profundidade existente — não iniciada.** O app já possui múltiplos assets/Layers (seleção, visibilidade, ordenação, identidades persistentes) e profundidade/parallax básico; esta frente **não** cria Layers nem Profundidade do zero, e sim readequa a interface e revisa o controle já existentes.
 - **Engine Sprint — não iniciado.**
 
 Nenhuma etapa avança automaticamente; nenhuma promoção está autorizada.
@@ -89,9 +89,9 @@ A PR de Texto foi subdividida na seguinte sequência aprovada. Registrar como pl
 
 ## 3. PR de Camadas e Profundidade
 
-Classificação: nova função de interface + correção visual de controle existente.
+Classificação: **readequação da interface de Layers existente + revisão visual do controle de Profundidade existente.** Layers (múltiplos assets, seleção, visibilidade, ordenação e identidades persistentes) e Profundidade/parallax básico **já existem**; esta frente readequa a interface de acesso/organização e revisa visualmente o controle já implementado — **não** cria Layers nem Profundidade do zero.
 
-### Desenho aprovado — Camadas
+### Desenho aprovado — Camadas (readequação da interface existente)
 
 - No Modo Ativos, haverá um affordance compacto no Stage que representa a camada selecionada e oferece expandir.
 - Ele **não** reutiliza o ícone de visualização/referências já existente.
@@ -105,13 +105,13 @@ Classificação: nova função de interface + correção visual de controle exis
 - A entrada `Camadas` deixa o menu inferior de Ativos.
 - Painel e affordance **não** entram em Preview nem Export e **não** alteram ProjectWorld.
 
-### Desenho aprovado — controle de Profundidade
+### Desenho aprovado — revisão visual do controle de Profundidade existente
 
 - Intervalo público contínuo de `−100` a `+100`, sem snap pelas marcas.
 - Rótulos de referência `−100`, `0`, `+100`.
 - Quatro subdivisões de cada lado: `−80`, `−60`, `−40`, `−20`, `+20`, `+40`, `+60`, `+80`.
 - Marco zero visível.
-- Preenchimento roxo bidirecional do zero até o thumb, tanto para valor negativo quanto positivo.
+- Preenchimento bidirecional do zero até o thumb, tanto para valor negativo quanto positivo, no acento vigente do workspace Ativos **coral `#FF6B8A`**. (Sincronização documental com a identidade já aprovada da E9F; o roxo antigo de Ativos **não** deve ser reintroduzido — ver `docs/PRODUCT_RULES.md`.)
 - Controles `−5`, `+5` e Reset para zero.
 - `depth` continua independente de `zIndex`.
 - Valores finitos continuam persistindo.

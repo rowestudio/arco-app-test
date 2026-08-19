@@ -53,7 +53,8 @@ Estados usados neste documento:
 
 ## 4. Layers
 
-- [Futuro] Painel de Layers permanente na lateral/sobre o Stage, visível durante o trabalho.
+- [Em evolução] Layers já existe: o app possui múltiplos assets/Layers com seleção, visibilidade, ordenação e identidades persistentes. A frente aprovada é **readequação da interface de Layers existente**, não criação do zero (ver `docs/PRE_PROMOTION_RELEASE_PLAN.md`).
+- [SUPERADA] ~~Painel de Layers permanente na lateral/sobre o Stage, visível durante o trabalho.~~ Formulação histórica **superada** pela decisão mais recente do `docs/PRE_PROMOTION_RELEASE_PLAN.md`: affordance compacto no Stage + **sheet parcial** de Camadas abrindo de baixo, com o Stage permanecendo visível (não um painel permanente na lateral/sobre o Stage). Preservada aqui para rastreabilidade histórica; não implementar a formulação superada.
 - [Futuro] O painel deve permitir ver, selecionar, ordenar, ocultar e trocar ativos sem sair do contexto do Stage.
 - [Regra] Frames, curvas e HUD não entram na pilha visual dos ativos.
 
