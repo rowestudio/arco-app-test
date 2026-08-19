@@ -47,6 +47,10 @@ jobs:
     needs: plan
     if: needs.plan.outputs.has_work == 'true'
     runs-on: ubuntu-24.04
+    # Bounded recovery, coherent with the main Browser Smoke job cap (25m in
+    # smoke-tests.yml). A hung WebKit install can never keep the recovery job — or the
+    # PR check it finalizes — pending for hours.
+    timeout-minutes: 25
     permissions:
       contents: read
       pull-requests: read
@@ -149,15 +153,20 @@ jobs:
         working-directory: pr-source
         run: npm ci
 
-      - name: Install Playwright WebKit
+      - name: Install Playwright WebKit (bounded)
         if: matrix.suite_id == 'webkit-smoke-tests'
         working-directory: pr-source
-        run: npx playwright install --with-deps webkit
+        # Same bounded install as the main Browser Smoke workflow: portable coreutils
+        # `timeout`, exit 124 on hang (real failure, never a masked PASS), no retry loop.
+        run: timeout 12m npx playwright install --with-deps webkit
 
       - name: Run WebKit smoke tests
         if: matrix.suite_id == 'webkit-smoke-tests'
         working-directory: pr-source
-        run: npx playwright test
+        # Canonical WebKit functional gate, identical to smoke-tests.yml. The watchdog
+        # must recover the exact same suite, never a generic `npx playwright test` that
+        # would also pull in the macOS-only export project.
+        run: npx playwright test --project=webkit-mobile-smoke --workers=1 --retries=0
 
       - name: Upload smoke evidence
         if: always() && matrix.suite_id == 'webkit-smoke-tests'
