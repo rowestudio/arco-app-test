@@ -121,3 +121,57 @@ Ao revisar, re-revisar, verificar ou determinar merge-readiness de uma PR do Arc
 - Bloqueie PR diante de inconsistência material, ambiguidade relevante ou implementação parcial.
 - Não libere PR apenas por checks verdes sem validar aderência integral ao objetivo.
 - Não reduza silenciosamente o escopo consolidado.
+
+## Conversation Delta → Project OS (persistência obrigatória)
+
+Regra central: **nenhuma pendência relevante pode existir somente no chat.** O chat é
+contexto temporário; o repositório (GitHub/main + Project OS) é a memória permanente
+do projeto.
+
+Qualquer informação relevante assumida durante uma sessão/conversa deve ser
+persistida no Project OS assim que se tornar uma decisão ou pendência relevante,
+**sem depender do encerramento do chat**. Isso inclui, no mínimo:
+
+- bug descoberto;
+- regressão observada;
+- comportamento incorreto ainda sem causa;
+- item explicitamente deixado para depois (“ficou para depois” também exige registro);
+- nova pendência;
+- decisão de produto ou de UX;
+- alternativa rejeitada quando relevante para evitar repetição;
+- aprovação ou reprovação física/visual;
+- item futuro ou pesquisa futura aprovados para roadmap;
+- mudança de prioridade;
+- incompatibilidade entre documentação e estado real;
+- decisão de não implementar algo;
+- risco conhecido que deva ser retomado depois.
+
+Cada tipo vai ao documento temático correspondente conforme o mapa em
+`docs/DOCUMENTATION_MAINTENANCE.md` (seção “Conversation Delta / Handoff”). Não
+duplicar o conteúdo integral entre documentos; usar referência cruzada.
+
+## Auditoria de encerramento / handoff (obrigatória)
+
+Antes de produzir um handoff de troca de chat, o agente deve comparar o delta da
+conversa com o Project OS e conferir se todas as informações relevantes já estão
+persistidas. Essa auditoria é obrigatória e não é opcional.
+
+O handoff deve registrar, no mínimo:
+
+1. main/SHA verificado naquele momento;
+2. versão funcional corrente;
+3. PRs recentes relevantes;
+4. estado funcional aprovado;
+5. testes físicos realizados;
+6. regressões e bugs ainda abertos;
+7. decisões de produto/UX tomadas;
+8. itens futuros/pesquisa aprovados;
+9. pendências ainda sem implementação;
+10. inconsistências documentais identificadas;
+11. próxima ação exata.
+
+O handoff **não substitui** o Project OS. Se durante a auditoria existir informação
+relevante somente no chat, o agente deve registrá-la no Project OS antes de considerar
+a sessão encerrada; quando não for possível editar imediatamente, marcar explicitamente
+**“PENDENTE DE REGISTRO NO PROJECT OS”** e tratar isso como bloqueador operacional da
+próxima etapa.

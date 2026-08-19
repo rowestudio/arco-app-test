@@ -1,5 +1,15 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-19 — OPS-06 (documental): três regressões ABERTAS registradas + continuidade do Project OS
+
+- **OPS-06 é documental/operacional** (governança do Project OS): formaliza a regra Conversation Delta → Project OS e a auditoria de handoff, e registra pendências reais ainda não formalizadas. **Nenhuma mudança funcional**; `APP_VERSION = APP_VERSION_NAME = v8z4b32E9F1` intacta; `index.html` e produção intocados.
+- **Três bugs ABERTOS e ainda NÃO corrigidos** (relato físico; causa a investigar; não implementados) — registrados individualmente em `docs/REGRESSIONS.md`:
+  - **REG-052** — fill visual dos sliders (especialmente em Ativos) não corresponde à posição do thumb e pode avançar além dele.
+  - **REG-053** — painel de transformação com multi-seleção de Frames pode ser cortado/desaparecer e remover o botão Voltar (iPhone/Safari).
+  - **REG-054** — transformação de multi-seleção de Frames afeta apenas um Frame (exceto com Global ativo); o esperado é afetar todos os Frames selecionados, sem exigir Global.
+- Essas regressões abertas devem ser consideradas antes de avançar a próxima frente; **Roberto decide a ordem efetiva** (ver `docs/ROADMAP.md`).
+- Ambiguidades documentais corrigidas nesta OPS-06 (sem alterar produto): Layers e Profundidade/parallax são sistemas **já existentes**, e a próxima frente é **readequação de interface + revisão visual** do controle existente, não criação do zero; a proposta histórica de “painel de Layers permanente” foi marcada como **superada**; o fill de Profundidade passa a ser descrito com o coral vigente de Ativos `#FF6B8A`, sem reintroduzir o roxo antigo.
+
 ## Atualização 2026-08-19 — v8z4b32E9F1 mergeada, publicada e APROVADA fisicamente (Texto — refino visual/funcional encerrado)
 
 - **PR #500 mergeada** na `main` de teste em 2026-08-19: "v8z4b32E9F1 — fix(text): refina editor, cores, viewport e largura". **Merge commit da PR #500:** `6739dbc018f335ad6b1faead6de4f4469e5ebf78`.
@@ -7,7 +17,7 @@
 - **Teste físico:** Roberto testou a build publicada em **iPhone/Safari** e **APROVOU visual/funcionalmente** a E9F1 nos itens do seu escopo em **2026-08-19**. O relato visual de Roberto é a referência final de aprovação. Diagnóstico físico confirmou, entre outros: `exportSuccess = true`, `encoderPathUsed = webcodecs`, `fallbackUsed = false`, resolução de exportação `720 × 1280`, `textAssetCount = 2`, paridades de editor/box/asset entre Stage↔Preview↔Export e Session Restore `true`, opacidade da caixa não afeta glifos, `assetTransformCornerHandlesCount = 4`, paridade de câmera Preview↔Export e sem salto visual detectado em Preview/Export.
 - **Export real:** executado com sucesso via **WebCodecs** (sem fallback), `APP_VERSION = APP_VERSION_NAME = v8z4b32E9F1`.
 - **Encerramento:** a **rodada corretiva E9F1 está encerrada**; a E9F1 é a versão corrente aprovada do repositório de teste.
-- **Produção NÃO alterada:** `rowestudio/arco-app` permanece intocada; **nenhuma promoção autorizada**. E9G continua FUTURA/não implementada; Camadas/Profundidade e Engine Sprint não iniciados.
+- **Produção NÃO alterada:** `rowestudio/arco-app` permanece intocada; **nenhuma promoção autorizada**. E9G continua FUTURA/não implementada; a readequação da interface de Layers existente + revisão visual do controle de Profundidade existente não foi iniciada (Layers e Profundidade/parallax básico JÁ EXISTEM, não serão criados do zero); Engine Sprint não iniciado.
 - O histórico E9F/E9F1 anterior é preservado abaixo e permanece rastreável.
 
 ## Atualização 2026-08-18 — v8z4b32E9F1 em PR (Texto — refino visual/funcional pós-teste físico da E9F)

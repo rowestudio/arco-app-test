@@ -17,7 +17,8 @@ Uma tarefa só está pronta quando:
 - Preview/Export e sistemas não relacionados foram preservados;
 - compatibilidade iPhone/Safari foi considerada;
 - itens não verificáveis foram explicitados;
-- o agente não afirmou mais do que conseguiu comprovar.
+- o agente não afirmou mais do que conseguiu comprovar;
+- as decisões, regressões, aprovações/reprovações e pendências relevantes surgidas na tarefa/sessão foram persistidas no Project OS: uma tarefa/sessão **não está documentalmente encerrada** enquanto qualquer item relevante permanecer somente no chat (regra Conversation Delta → Project OS de `AGENTS.md`).
 
 ## Para PR documental
 

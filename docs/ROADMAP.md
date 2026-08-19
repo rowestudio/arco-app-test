@@ -14,7 +14,7 @@ A partir da base auditada `v8z4b32E9C`, a entrega segue uma sequência de PRs se
    - **E9F — revisão visual/iconográfica do editor de Texto: MERGEADA** (PR #499, merge commit `82131049e52974a1922206c92bf573b9d2c78ff5`). Estrutura geral aprovada no teste físico de Roberto em iPhone/Safari, porém não aprovada como encerrada.
    - **E9F1 — refino visual/funcional localizado do editor de Texto: MERGEADA e APROVADA fisicamente em 2026-08-19** (PR #500, merge commit `6739dbc018f335ad6b1faead6de4f4469e5ebf78`; build publicada e testada por Roberto em iPhone/Safari). Cabeçalho compacto; ícone de Estilo B+I; ícone de Alinhamento dinâmico; paleta rápida de Cor do texto e Fundo reutilizando a constante única `PROJECT_BG_NEUTRALS` + botão `+`; Fundo "Sem cor/Transparente" com opacidade condicional; localização do VIEWPORT ao editar existente sem mover o asset nem tocar Frames/ProjectWorld/Undo/autosave; Largura Auto compacto + slider step 5. Não antecipa E9G.
    - **E9G — manipulação direta da largura da caixa no Stage por alças laterais: FUTURA, NÃO implementada** (exige revisão explícita de REG-028/exatamente quatro alças antes da implementação).
-2. PR funcional de Camadas e Profundidade (nova função de interface + correção visual de controle existente).
+2. PR funcional de readequação da interface de Layers existente + revisão visual do controle de Profundidade existente. Layers (múltiplos assets, seleção, visibilidade, ordenação, identidades persistentes) e Profundidade/parallax básico **JÁ EXISTEM** e não serão criados do zero; esta frente readequa a interface de acesso/organização e revisa visualmente o controle já implementado.
 3. Engine Sprint funcional de Movimento inteligente e intensidade de easing (isolado; não misturar às anteriores).
 4. Revisão integrada no iPhone/Safari.
 5. PR documental de readiness, se ainda necessária.
@@ -31,6 +31,7 @@ Cada PR funcional parte do HEAD remoto atualizado da `main` de teste, recebe nov
 - Ver catálogo em `docs/REGRESSIONS.md`.
 - Não marcar regressão como resolvida sem evidência.
 - Regressões históricas de escala/curva e sessão foram migradas de `docs/known-issues.md` para `docs/REGRESSIONS.md`; o status real de correção deve ser confirmado por tarefa específica antes de fechar qualquer item.
+- Regressões abertas recém-relatadas devem ser consideradas antes de avançar a próxima frente. Estão ABERTAS no momento (OPS-06): **REG-052** (fill dos sliders), **REG-053** (painel de transformação cortado em multi-seleção) e **REG-054** (transformação de multi-seleção afeta apenas um Frame). Este roadmap não altera automaticamente a ordem por causa delas: **Roberto decide a ordem efetiva** entre corrigir essas regressões e avançar a série pré-promoção.
 
 ## Melhorias de UX
 
