@@ -1,5 +1,21 @@
 # DECISIONS
 
+## DEC-2026-08-19-01 — OPS-05: WebKit/Linux bounded e Watchdog resiliente (healthy/stale/terminal + aplicabilidade)
+
+- **Data:** 2026-08-19.
+- **Assunto:** resiliência operacional de CI para o gate funcional WebKit/Linux e para o Mobile CI Watchdog. Exclusivamente CI/QA/infraestrutura; sem alteração funcional do Arco Motion, sem UI, renderer, Preview/Export, `index.html`, `APP_VERSION` ou `APP_VERSION_NAME`.
+- **Classificação:** infraestrutura crítica de CI/CD; sem bump de versão e sem promoção.
+- **Contexto:** em execução recente do `Browser Smoke Tests`, o job `WebKit Smoke Tests` (Ubuntu) ficou preso em `npx playwright install --with-deps webkit` sem alcançar a suíte funcional, enquanto o `Real Export Smoke (WebKit macOS)` concluiu normalmente. Diagnóstico: incidente de infraestrutura/instalação do Playwright WebKit no runner Linux, não regressão de produto.
+- **Decisão A — timeout WebKit/Linux:** `smoke-tests.yml` ganha `timeout-minutes: 25` no job WebKit e `timeout 12m` (coreutils, portátil em ubuntu-24.04) no passo de instalação. Estouro encerra com exit code real (124), nunca convertendo erro em PASS; sem loop.
+- **Decisão B — Browser Smoke só quando runtime:** `paths-ignore` conservador (`docs/**`, `.agents/**`, `.claude/**`, `**/*.md`, `*.md`); o GitHub só pula quando TODOS os paths casam. Qualquer arquivo runtime/teste/workflow/package/desconhecido mantém a suíte. `qa-guardrails.yml` não recebe `paths-ignore`: QA continua obrigatório.
+- **Decisão C — aplicabilidade no Watchdog:** `mobile-ci-watchdog.mjs` obtém a lista real de arquivos alterados por PR (GitHub API, paginada, read-only, `GITHUB_TOKEN` do workflow) e aplica `isWebKitSuiteApplicable()`. PR non-runtime-only → WebKit NOT APPLICABLE (skip explícito, sem check artificial, sem Playwright). Lista indisponível → aplicável por segurança.
+- **Decisão D — estados distintos e paridade:** o planejamento diferencia `success`, `terminal-failure`, `active-fresh`, `active-stale`, `missing` e `not-applicable` (precedência `success` > `active-fresh` > `terminal-failure` > `active-stale` > `missing`). `in_progress` deixa de ser saudável para sempre: `STALE_ACTIVE_MS = 60 min` (>2x o cap de 25 min do job) libera recuperação de runs velhos; timestamp ausente é conservador (`active-fresh`, sem inventar stale); `now` é injetável para testes determinísticos. Falha terminal não vira `missing` nem gera loop automático. O watchdog roda o gate canônico `npx playwright test --project=webkit-mobile-smoke --workers=1 --retries=0`, com instalação `timeout 12m` e job `timeout-minutes: 25`.
+- **Política de SHA preservada:** HEAD SHA corrente é a unidade de validação; evidência de SHA anterior não libera SHA novo; mudança de SHA reabre as suítes aplicáveis; `buildFinalCheckRunUpdate()` mantém `neutral` na troca de SHA, sem aprovação simulada. `smoke-tests.yml` recebe `concurrency` por PR com `cancel-in-progress: true` (novo commit supersede o run por-SHA anterior e libera runner de instalação travada); watchdog mantém `cancel-in-progress: false`.
+- **Permissões:** inalteradas — `contents: read`, `pull-requests: read`, `actions: read`, `checks: write` só onde já necessário; sem token pessoal e sem secret novo.
+- **Consequência:** self-tests em `scripts/ci/test-mobile-ci-watchdog.mjs` cobrem os 16 casos (sem checks, documental, Skill/agente, index.html, teste, package, workflow, arquivo desconhecido, lista indisponível, success, falha terminal, in_progress recente, in_progress stale, troca de SHA, timestamp ausente, draft/fork) com fronteira temporal determinística.
+- **Status:** implementado em PR operacional própria a partir da `main` pós-#502; validação real produzida na própria PR; nenhum merge e nenhuma promoção autorizada.
+- **Documento relacionado:** `docs/QA_STRATEGY.md`, `docs/PROJECT_STATE.md`, `.github/workflows/smoke-tests.yml`, `.github/workflows/mobile-ci-watchdog.yml`, `scripts/ci/mobile-ci-watchdog.mjs`, `scripts/ci/test-mobile-ci-watchdog.mjs`.
+
 ## 2026-08-18 — DEC-Text-E9F1: refino visual/funcional localizado do editor de Texto após teste físico da E9F
 
 - **Data:** 2026-08-18.

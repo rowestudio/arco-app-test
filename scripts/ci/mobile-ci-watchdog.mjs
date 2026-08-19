@@ -3,6 +3,26 @@
 import { appendFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+// Canonical WebKit functional gate command, identical to the Browser Smoke workflow
+// (.github/workflows/smoke-tests.yml). The watchdog recovery must run exactly this
+// suite, never a broader generic `npx playwright test` that would also pull in the
+// macOS-only export project.
+const WEBKIT_FUNCTIONAL_COMMAND = 'npx playwright test --project=webkit-mobile-smoke --workers=1 --retries=0';
+
+// The WebKit/Linux install is bounded with a portable coreutils `timeout` so a hung
+// download can never leave a PR check pending for hours. 12 minutes is comfortably
+// above the normal install (~2-4 min) while staying well under the job cap.
+const WEBKIT_INSTALL_COMMAND = 'timeout 12m npx playwright install --with-deps webkit';
+
+// A queued/in_progress run older than this is treated as stale and no longer blocks
+// recovery. The WebKit/Linux job caps at 25 minutes (`timeout-minutes` in
+// smoke-tests.yml); 60 minutes is >2x that cap plus generous queue margin, so a
+// healthy run always reaches a terminal state (success/failure) before it could be
+// misclassified as stale.
+export const STALE_ACTIVE_MS = 60 * 60 * 1000;
+
+const ACTIVE_STATUSES = ['queued', 'in_progress', 'waiting', 'requested', 'pending'];
+
 const suites = [
   {
     id: 'qa-guardrails',
@@ -14,12 +34,80 @@ const suites = [
     id: 'webkit-smoke-tests',
     name: 'WebKit Smoke Tests',
     workflow: 'smoke-tests.yml',
-    command: 'npm ci && npx playwright install --with-deps webkit && npx playwright test',
+    command: `npm ci && ${WEBKIT_INSTALL_COMMAND} && ${WEBKIT_FUNCTIONAL_COMMAND}`,
   },
 ];
 
-function stableRuns(runs = []) {
-  return runs.filter((run) => ['queued', 'in_progress', 'completed', 'waiting', 'requested', 'pending'].includes(run.status));
+// Non-runtime allowlist. Mirrors the conservative `paths-ignore` filter in
+// .github/workflows/smoke-tests.yml. A file is non-runtime only when it is
+// unambiguously documentation, project policy, or agent instructions:
+//   - anything under docs/
+//   - anything under .agents/ or .claude/
+//   - any Markdown file (root or nested), e.g. AGENTS.md, CLAUDE.md, README.md
+// Any other path (index.html, runtime assets, package/lock, Playwright config,
+// tests/**, .github/workflows/**, scripts/**, or an unrecognized file) is runtime
+// and keeps the WebKit suite applicable.
+function isNonRuntimeFile(file) {
+  if (typeof file !== 'string' || file.length === 0) return false;
+  if (file.startsWith('docs/')) return true;
+  if (file.startsWith('.agents/')) return true;
+  if (file.startsWith('.claude/')) return true;
+  if (/\.md$/i.test(file)) return true;
+  return false;
+}
+
+// WebKit is applicable unless the PR is proven to touch only non-runtime files.
+// When the changed-file list cannot be obtained (null/undefined) or is empty/ambiguous,
+// WebKit stays applicable for safety — a documental skip must be positively proven.
+export function isWebKitSuiteApplicable(changedFiles) {
+  if (!Array.isArray(changedFiles) || changedFiles.length === 0) return true;
+  return !changedFiles.every((file) => isNonRuntimeFile(file));
+}
+
+function suiteApplicable(suite, pr) {
+  if (suite.id === 'webkit-smoke-tests') return isWebKitSuiteApplicable(pr.changedFiles);
+  return true;
+}
+
+// Classify a single run for the current HEAD SHA into one of:
+//   success | terminal-failure | active-fresh | active-stale
+// Only completed and recognized active statuses reach this function.
+function classifyRun(run, { now, staleThresholdMs }) {
+  if (run.status === 'completed') {
+    return run.conclusion === 'success' ? 'success' : 'terminal-failure';
+  }
+  // Active status. Decide fresh vs stale from the run timestamp.
+  const startedAt = run.startedAt ? Date.parse(run.startedAt) : NaN;
+  if (Number.isFinite(startedAt)) {
+    const age = now - startedAt;
+    if (age > staleThresholdMs) return 'active-stale';
+    return 'active-fresh';
+  }
+  // Missing/unparseable timestamp: never invent staleness — treat as an active
+  // fresh run so duplicate protection still applies conservatively.
+  return 'active-fresh';
+}
+
+// Aggregate the runs for one suite/SHA into a single state with explicit precedence:
+//   success > active-fresh > terminal-failure > active-stale > missing
+// Precedence rationale:
+//   - a completed success satisfies the SHA;
+//   - a fresh active run means recovery would only duplicate work;
+//   - a terminal failure is a definitive negative result that must NOT trigger an
+//     automatic rerun loop (it requires deliberate investigation/re-run);
+//   - only a purely stale active run (no success, no fresh retry, no terminal result)
+//     unblocks recovery, alongside a genuinely missing suite.
+function classifySuiteState(runs, opts) {
+  const recognized = runs.filter((run) => (
+    run.status === 'completed' || ACTIVE_STATUSES.includes(run.status)
+  ));
+  if (!recognized.length) return 'missing';
+  const categories = recognized.map((run) => classifyRun(run, opts));
+  if (categories.includes('success')) return 'success';
+  if (categories.includes('active-fresh')) return 'active-fresh';
+  if (categories.includes('terminal-failure')) return 'terminal-failure';
+  if (categories.includes('active-stale')) return 'active-stale';
+  return 'missing';
 }
 
 function statusLabel(runs = []) {
@@ -29,9 +117,17 @@ function statusLabel(runs = []) {
     .join(', ');
 }
 
-export function planWatchdog({ prs, workflowRuns = [], checkRuns = [], repository }) {
+export function planWatchdog({
+  prs,
+  workflowRuns = [],
+  checkRuns = [],
+  repository,
+  now = Date.now(),
+  staleThresholdMs = STALE_ACTIVE_MS,
+}) {
   const include = [];
   const decisions = [];
+  const opts = { now, staleThresholdMs };
 
   for (const pr of prs) {
     const prTitle = pr.title || '';
@@ -44,54 +140,68 @@ export function planWatchdog({ prs, workflowRuns = [], checkRuns = [], repositor
     const prNumber = pr.number;
 
     if (base !== 'main') {
-      decisions.push({ pr: prNumber, decision: 'skip', reason: `base is ${base}`, headSha });
+      decisions.push({ pr: prNumber, decision: 'skip', classification: 'ineligible', reason: `base is ${base}`, headSha });
       continue;
     }
     if (pr.draft) {
-      decisions.push({ pr: prNumber, decision: 'skip', reason: 'draft PR', headSha });
+      decisions.push({ pr: prNumber, decision: 'skip', classification: 'ineligible', reason: 'draft PR', headSha });
       continue;
     }
     if (repository && headRepo !== repository) {
-      decisions.push({ pr: prNumber, decision: 'skip', reason: `external head repository ${headRepo}`, headSha });
+      decisions.push({ pr: prNumber, decision: 'skip', classification: 'ineligible', reason: `external head repository ${headRepo}`, headSha });
       continue;
     }
     if (!headSha) {
-      decisions.push({ pr: prNumber, decision: 'skip', reason: 'missing head SHA', headSha });
+      decisions.push({ pr: prNumber, decision: 'skip', classification: 'ineligible', reason: 'missing head SHA', headSha });
       continue;
     }
 
     for (const suite of suites) {
-      const existingWorkflowRuns = stableRuns(workflowRuns.filter((run) => (
-        run.headSha === headSha && run.workflow === suite.workflow
-      ))).map((run) => ({ ...run, source: suite.workflow }));
-      const existingCheckRuns = stableRuns(checkRuns.filter((run) => (
-        run.headSha === headSha && run.name === suite.name
-      ))).map((run) => ({ ...run, source: suite.name }));
-      const existing = [...existingWorkflowRuns, ...existingCheckRuns];
-      const status = statusLabel(existing);
+      const decisionBase = { pr: prNumber, suite: suite.name, headSha, base, headRef };
 
-      if (existing.length) {
+      if (!suiteApplicable(suite, pr)) {
         decisions.push({
-          pr: prNumber,
-          suite: suite.name,
+          ...decisionBase,
           decision: 'skip',
-          reason: `already has ${status}`,
-          headSha,
-          base,
-          headRef,
+          classification: 'not-applicable',
+          reason: 'not applicable: non-runtime-only PR',
         });
         continue;
       }
 
-      decisions.push({
-        pr: prNumber,
-        suite: suite.name,
-        decision: 'run',
-        reason: 'missing for current head SHA',
-        headSha,
-        base,
-        headRef,
-      });
+      const existingWorkflowRuns = workflowRuns
+        .filter((run) => run.headSha === headSha && run.workflow === suite.workflow)
+        .map((run) => ({ ...run, source: suite.workflow }));
+      const existingCheckRuns = checkRuns
+        .filter((run) => run.headSha === headSha && run.name === suite.name)
+        .map((run) => ({ ...run, source: suite.name }));
+      const existing = [...existingWorkflowRuns, ...existingCheckRuns];
+      const state = classifySuiteState(existing, opts);
+      const label = statusLabel(existing);
+
+      if (state === 'success') {
+        decisions.push({ ...decisionBase, decision: 'skip', classification: 'success', reason: `completed success for current HEAD SHA (${label})` });
+        continue;
+      }
+      if (state === 'active-fresh') {
+        decisions.push({ ...decisionBase, decision: 'skip', classification: 'active-fresh', reason: `active run within freshness window (${label})` });
+        continue;
+      }
+      if (state === 'terminal-failure') {
+        decisions.push({
+          ...decisionBase,
+          decision: 'skip',
+          classification: 'terminal-failure',
+          terminal: true,
+          reason: `terminal negative result exists; deliberate re-run required, no automatic rerun loop (${label})`,
+        });
+        continue;
+      }
+
+      const reason = state === 'active-stale'
+        ? `active run exceeded stale threshold (${Math.round(staleThresholdMs / 60000)}m); recovering (${label})`
+        : 'missing for current head SHA';
+      decisions.push({ ...decisionBase, decision: 'run', classification: state, reason });
       include.push({
         suite_id: suite.id,
         suite_name: suite.name,
@@ -145,6 +255,20 @@ async function listOpenPullRequests(repository) {
   }
 }
 
+// Read-only collection of the real changed-file list for a PR, with pagination.
+// Uses the workflow GITHUB_TOKEN (no personal token). On any failure the caller keeps
+// changedFiles null so the WebKit suite stays applicable for safety.
+async function listChangedFiles(repository, prNumber) {
+  const files = [];
+  let page = 1;
+  while (true) {
+    const batch = await githubRequest(`/repos/${repository}/pulls/${prNumber}/files?per_page=100&page=${page}`);
+    for (const file of batch) files.push(file.filename);
+    if (batch.length < 100) return files;
+    page += 1;
+  }
+}
+
 async function listWorkflowRuns(repository, prPlans) {
   const runs = [];
   const seen = new Set();
@@ -160,6 +284,7 @@ async function listWorkflowRuns(repository, prPlans) {
           headSha: run.head_sha,
           status: run.status,
           conclusion: run.conclusion,
+          startedAt: run.run_started_at || run.created_at,
           htmlUrl: run.html_url,
         });
       }
@@ -181,6 +306,7 @@ async function listCheckRuns(repository, prPlans) {
         headSha: plan.head_sha,
         status: run.status,
         conclusion: run.conclusion,
+        startedAt: run.started_at,
         htmlUrl: run.html_url,
       });
     }
@@ -224,23 +350,38 @@ function writeGithubOutput(values) {
 async function planLive() {
   const repository = process.env.GITHUB_REPOSITORY;
   const pulls = await listOpenPullRequests(repository);
-  const prPlans = pulls.map((pr) => ({
-    number: pr.number,
-    title: pr.title || '',
-    body: pr.body || '',
-    draft: pr.draft,
-    baseRefName: pr.base?.ref,
-    baseSha: pr.base?.sha,
-    headRefName: pr.head?.ref,
-    headSha: pr.head?.sha,
-    headRepoFullName: pr.head?.repo?.full_name,
-  }));
-  const workflowRuns = await listWorkflowRuns(repository, prPlans);
-  const checkRuns = await listCheckRuns(repository, prPlans);
+  const prPlans = [];
+  for (const pr of pulls) {
+    let changedFiles = null;
+    try {
+      changedFiles = await listChangedFiles(repository, pr.number);
+    } catch (error) {
+      console.log(`PR #${pr.number}: could not list changed files (${error.message}); WebKit stays applicable for safety.`);
+      changedFiles = null;
+    }
+    prPlans.push({
+      number: pr.number,
+      title: pr.title || '',
+      body: pr.body || '',
+      draft: pr.draft,
+      baseRefName: pr.base?.ref,
+      baseSha: pr.base?.sha,
+      headRefName: pr.head?.ref,
+      headSha: pr.head?.sha,
+      headRepoFullName: pr.head?.repo?.full_name,
+      changedFiles,
+    });
+  }
+  // Reuse the head SHA plans for run/check lookups.
+  const lookupPlans = prPlans
+    .filter((pr) => pr.headSha)
+    .map((pr) => ({ head_sha: pr.headSha }));
+  const workflowRuns = await listWorkflowRuns(repository, lookupPlans);
+  const checkRuns = await listCheckRuns(repository, lookupPlans);
   const plan = planWatchdog({ prs: prPlans, workflowRuns, checkRuns, repository });
 
   for (const decision of plan.decisions) {
-    console.log(`PR #${decision.pr} ${decision.suite || ''} ${decision.headSha || ''}: ${decision.decision} - ${decision.reason}`);
+    console.log(`PR #${decision.pr} ${decision.suite || ''} ${decision.headSha || ''}: ${decision.decision} [${decision.classification || 'n/a'}] - ${decision.reason}`);
   }
 
   for (const item of plan.include) {

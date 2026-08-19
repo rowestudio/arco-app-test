@@ -173,6 +173,14 @@
 - Recuperação: se o watchdog falhar, executar manualmente `Mobile CI Watchdog` pela aba Actions como ação administrativa; se a Checks API estiver indisponível, a falha fica visível no próprio workflow e não deve ser simulada como sucesso.
 - Classificação: infraestrutura crítica de CI/CD, sem alteração funcional do Arco Motion App e sem alteração de `APP_VERSION` ou `APP_VERSION_NAME`.
 
+## Atualização 2026-08-19 — OPS-05 em PR (WebKit/Linux bounded + Watchdog resiliente)
+
+- A OPS-05 corrige o incidente em que o job `WebKit Smoke Tests` (Ubuntu) ficava preso em `npx playwright install --with-deps webkit` sem alcançar a suíte funcional, enquanto o `Real Export Smoke (WebKit macOS)` concluía normalmente — incidente de infraestrutura/instalação, não regressão de produto.
+- Execução bounded no Linux: `smoke-tests.yml` recebe `timeout-minutes: 25` no job WebKit e `timeout 12m` na instalação; estouro encerra com exit code real, nunca convertendo erro em PASS.
+- Aplicabilidade conservadora: Browser Smoke é pulado apenas quando TODOS os arquivos alterados são non-runtime (`docs/**`, `.agents/**`, `.claude/**`, Markdown); qualquer runtime/teste/workflow/package/desconhecido mantém a suíte. `QA Guardrails` continua obrigatório.
+- Watchdog resiliente: distingue `success`, `terminal-failure`, `active-fresh`, `active-stale`, `missing` e `not-applicable`; `in_progress` não é saudável para sempre (`STALE_ACTIVE_MS = 60 min`, coerente com o cap de 25 min); falha terminal não vira loop de rerun; a suíte WebKit do watchdog é o gate canônico `--project=webkit-mobile-smoke --workers=1 --retries=0`. Política de SHA preservada.
+- Classificação: infraestrutura de CI/CD, sem alteração funcional do Arco Motion App e sem alteração de `APP_VERSION` ou `APP_VERSION_NAME`. Detalhes em `docs/QA_STRATEGY.md` e `docs/DECISIONS.md` (DEC-2026-08-19-01).
+
 ## Atualização 2026-08-06 — v8z4b32E8N em PR
 
 - Base funcional restaurada: `v8z4b32E8I`, após as reversões das PRs #467 e #461 no repositório de teste.

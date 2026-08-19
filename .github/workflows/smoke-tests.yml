@@ -3,12 +3,38 @@ name: Browser Smoke Tests
 on:
   pull_request:
     branches: [main]
+    # Conservative non-runtime allowlist. Browser Smoke is skipped only when EVERY
+    # changed file is unambiguously documentation, project policy, or agent
+    # instructions. GitHub skips a workflow only when ALL changed paths match
+    # paths-ignore, so any runtime file (index.html, assets, package/lock,
+    # playwright config, tests/**, .github/workflows/**, scripts/**, or an
+    # unrecognized path) keeps the suite applicable. This mirrors
+    # isWebKitSuiteApplicable() in scripts/ci/mobile-ci-watchdog.mjs.
+    paths-ignore:
+      - 'docs/**'
+      - '.agents/**'
+      - '.claude/**'
+      - '**/*.md'
+      - '*.md'
   workflow_dispatch:
+
+# A new commit on a PR supersedes the previous commit's Browser Smoke run: checks are
+# per-SHA, so the old-SHA run can never validate the new HEAD. Cancelling it also frees
+# the runner if a WebKit install hung on the superseded commit. The group is keyed per
+# PR (or ref), so distinct PRs never cancel each other.
+concurrency:
+  group: browser-smoke-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   webkit-smoke-tests:
     name: WebKit Smoke Tests
     runs-on: ubuntu-24.04
+    # Bounded execution for WebKit/Linux so a hung install/download can never leave a
+    # PR pending for hours. Normal runs (npm ci + WebKit install + functional smoke)
+    # complete in a handful of minutes; 25 minutes is comfortably above that while
+    # remaining tens-of-minutes, not hours. The macOS export job uses its own 20m cap.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,7 +42,12 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps webkit
+      # Portable coreutils `timeout` bounds the WebKit install specifically. On a hang
+      # it exits 124 (non-zero), so the step FAILS with a real diagnostic — a bounded
+      # install never turns an error into a PASS. Exit status is preserved and there is
+      # no retry loop.
+      - name: Install Playwright WebKit (bounded)
+        run: timeout 12m npx playwright install --with-deps webkit
       - name: Run WebKit functional smoke through Preview
         run: npx playwright test --project=webkit-mobile-smoke --workers=1 --retries=0
       - name: Upload WebKit evidence
