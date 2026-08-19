@@ -1,5 +1,18 @@
 # DECISIONS
 
+## 2026-08-18 — DEC-Text-E9F1: refino visual/funcional localizado do editor de Texto após teste físico da E9F
+
+- **Data:** 2026-08-18.
+- **Assunto:** correção visual/funcional LOCALIZADA do Text Asset Editor, decorrente do teste físico da E9F publicada em iPhone/Safari, sobre a base E9F (PR #499).
+- **Classificação:** correção visual/funcional localizada; risco médio. NÃO altera a geometria canônica do Text Asset, o renderer, Preview/Export, persistência, Frames, curvas, ProjectWorld nem as quatro alças.
+- **Fato histórico registrado:** a v8z4b32E9F foi mergeada pela **PR #499** (merge commit real observado no git: `82131049e52974a1922206c92bf573b9d2c78ff5`) e testada fisicamente por Roberto em iPhone/Safari; a estrutura geral foi aprovada e a maioria das funções operou, mas a E9F **não** foi aprovada como encerrada. **Incompatibilidade registrada (AGENTS.md):** a instrução da tarefa citou o merge commit `7e3978208976281dfe57d9832e5cb3b9626ecda2`, inexistente neste repositório; adotou-se a fonte oficial (git) `82131049…` como base após reavaliação.
+- **Decisão:** implementar exclusivamente (A) cabeçalho compacto preservando × e ✓; (B) ícone de Estilo B+I; (C) ícone de Alinhamento dinâmico refletindo `textAlign`; (D/E) paleta rápida de Cor do texto reutilizando a constante única `PROJECT_BG_NEUTRALS` + botão `+`; (F/G/H) Fundo com ícone de preenchimento, estado padrão "Sem cor/Transparente" sem slider, escolher cor liga o fundo e revela o alfa (que afeta só `boxBackgroundOpacity`); (J) localização do VIEWPORT ao editar existente por pan canônico, sem tocar geometria/Frames/ProjectWorld/Undo/autosave; (L/M/N) Largura = Auto compacto + slider (step 5), slider entra em fixed no mesmo gesto e Auto restaura auto.
+- **Razão:** aplicar os apontamentos do teste físico de Roberto sem redesenhar o editor aprovado; separar semanticamente cor/fundo, comunicar melhor Estilo/Fundo, tornar a largura mais compacta e manter o texto visível durante a edição.
+- **Restrições respeitadas:** `DEFAULT_PROJECT_BG` intacto; o menu de Fundo do PROJETO não foi redesenhado (apenas passou a consumir a constante única, eliminando duplicação de listas); E9G não antecipada (quatro alças); nenhum schema persistente novo de histórico de cores; sem biblioteca de ícones (SVGs novos no mesmo sistema). Criação de novo texto (E9E) inalterada.
+- **Consequência:** novo gate `E9F1 —` (Testes 1–11) em `tests/smoke/app.spec.mjs`; gates E8Z/E9C/E9D/E9E/E9F adaptados à nova UI sem enfraquecer asserções; `getTextEditorE9F1Diagnostics()` adicionado; `APP_VERSION === APP_VERSION_NAME === v8z4b32E9F1`.
+- **Status:** implementado em PR no repositório de teste; execução local em WebKit bloqueada (verificação equivalente em Chromium `hasTouch`: E9F1/E8Z/E9C/E9D/E9E/E9F passam; E9B e o 404 do smoke inicial são limitações do ambiente Chromium, idênticas na base, a validar no WebKit CI); validação visual final em iPhone/Safari real pendente; nenhuma promoção autorizada.
+- **Documento relacionado:** `docs/PRODUCT_RULES.md` (Regra E9F1), `docs/REGRESSIONS.md` (REG-051), `docs/TEST_CASES.md` (TC-050), `docs/PROJECT_STATE.md`, `docs/PRE_PROMOTION_RELEASE_PLAN.md`, `docs/ROADMAP.md`, `docs/PRODUCT_ROADMAP.md`.
+
 ## 2026-08-18 — DEC-Text-E9F: editor de Text Asset iconográfico neutro + paleta de UI aprovada
 
 - **Data:** 2026-08-18.

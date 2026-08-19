@@ -1,5 +1,22 @@
 # TEST_CASES
 
+## TC-050 — Refino do editor de Text Asset (E9F1)
+
+Gate `tests/smoke/app.spec.mjs`, `E9F1 — refino do editor de texto: cabeçalho compacto, ícones, paletas, viewport e largura`, viewport iPhone 390 × 797, Testes 1–11:
+
+- **1) Cabeçalho compacto:** × e ✓ presentes; gaps reais (`getBoundingClientRect`) alça→ações e ações→rail compactos e sem sobreposição; alça e linha de ações com altura compacta (catch da regressão do vazio da E9F); touch targets ≥ 44 px; diagnósticos coerentes com as medidas.
+- **2) Ícone de Estilo:** ferramenta Estilo presente, `aria-label="Estilo"`, ícone `#i-text-bold-italic` (não o antigo `#i-text-style`), símbolo com composição B+I (≥ 4 traços), sem label textual na rail.
+- **3) Alinhamento dinâmico:** novo texto center → rail `align-text-center`; selecionar Esquerda/Direita atualiza `pendingTextDraft.textAlign`, o `textAlign` computado no Stage e o ícone da rail; voltar a Centro restaura `align-text-center`.
+- **4) Quick palette de texto:** múltiplos swatches incluindo preto/branco e um cinza existente; botão `+` (`aria-label` "Escolher outra cor do texto"); selecionar preset encadeia controle → `pendingTextDraft.color` → computed color do Stage; exatamente um swatch atual selecionado; picker completo acessível.
+- **5) Fundo transparente:** novo texto com `boxBackgroundEnabled===false`, swatch "Sem cor/Transparente" selecionado (`aria-label` "Sem cor", `title` "Transparente") e slider de opacidade oculto; ícone da rail `#i-box-fill`; escolher cor → `enabled===true`, cor aplicada, slider visível; mudar alpha → alpha do fundo muda e opacidade dos glifos permanece 1; voltar a "Sem cor" → fundo some, slider some, texto inalterado, glifos intactos.
+- **6) Fundo e texto compartilham presets:** a constante única `PROJECT_BG_NEUTRALS` existe; os swatches do Fundo do PROJETO derivam dela; os neutros de Cor do texto e de Fundo da caixa são exatamente essa lista; as três não são cópias independentes.
+- **7) Viewport ao editar existente:** captura geometria canônica (`worldX/worldY/worldW/worldH/rotation/depth/zIndex`), Frames, ProjectWorld, Undo e revisão de autosave; leva o texto para perto do rodapé por pan; abre a edição e localiza a vista; exige o texto (e a seleção) dentro da área visível acima da sheet, geometria canônica byte/valor-equivalente, Frames/ProjectWorld/Undo/autosave iguais e zoom preservado; reduz a altura disponível (teclado) e reexige visibilidade sem jitter (segunda chamada não altera o pan).
+- **8) Create mode não regrediu (E9E):** com pan aplicado, novo texto nasce no centro da vista atual (`getEditorViewCenterWorld`), distinto do centro da célula base.
+- **9) Largura Auto + slider:** exatamente um botão de modo (Auto), slider (step 5) e valor; sem botão Fixa nem stepper −/+; estado inicial Auto ativo; mover o slider → `fixed`, `boxWidth` muda, Auto perde ativo, Stage/ seleção/quatro alças acompanham; tocar Auto → `auto`, ativo, medição canônica, sem salto de centro; diagnósticos de ativação de fixed e restauração de auto coerentes.
+- **10) E9G não vazou:** exatamente quatro alças `tl/tr/bl/br`; nenhuma alça lateral.
+- **11) Cancel/Confirm/Minimize:** minimizar por gesto preserva draft, ID e propriedade ativa com zero Undo/autosave; Cancel descarta sem commit/Undo/autosave; Confirm cria exatamente 1 Undo + 1 revisão, mesmo ID e sem salto (seleção sobre o asset).
+- **Ambiente:** WebKit é o gate obrigatório (checks do HEAD final); verificação equivalente local executada em **Chromium `hasTouch`** — E9F1, E8Z, E9C, E9D, E9E e E9F passam; E9B depende de gesto multi-touch imagem×texto não reproduzível em Chromium (falha idêntica na base) e o smoke inicial registra um 404 de recurso de rede também presente na base; ambos validam no WebKit CI. Validação visual final em iPhone/Safari real permanece obrigatória; nenhuma promoção autorizada.
+
 ## TC-049 — Editor de Text Asset iconográfico neutro (E9F)
 
 Gate `tests/smoke/app.spec.mjs`, `E9F — editor de texto iconográfico neutro: rail, paleta, coral, gestos e draft`, viewport iPhone 390 × 797:

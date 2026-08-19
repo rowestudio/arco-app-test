@@ -42,6 +42,7 @@ Estados usados neste documento:
 - [Futuro] Animated Assets — ativos cuja fonte visual possui animação interna própria — incluindo GIFs animados e Lottie como possibilidades futuras/pesquisa. Esse suporte é subordinado ao sistema mais amplo de animação por ativo, não o bloqueia nem determina sua arquitetura, e poderá permanecer em pesquisa se o custo ou a complexidade em iPhone/Safari forem excessivos.
 - [Regra] Movimento próprio do ativo, câmera e profundidade permanecem componentes conceitualmente independentes: um ativo pode se mover enquanto a câmera percorre Frames, o parallax continua atuando e outros ativos mantêm estados próprios; todos convergem apenas na composição do renderer canônico, preservando Stage = Preview = Export.
 - [Futuro] Texto editável: títulos, legendas, logos, overlays e quadros com largura ajustável, quebra automática e fundo/transparência.
+- [Pesquisa] Project Background transparente + estudo de formatos/exportadores capazes de preservar canal alpha. Registro de POSSIBILIDADE FUTURA apenas (não implementado na E9F1). Não se afirma que o MP4 atual suporta alpha, nem que GIF ou HTML transparentes serão implementados; trata-se de investigação futura de formatos compatíveis, sujeita a tarefa e aprovação próprias.
 - [Futuro] Crop, máscaras/molduras, bordas e controles independentes por ativo.
 - [Futuro] Colar ativos diretamente no projeto.
 - [Futuro] Distorção, inclinação e “achatamento” de ativos.

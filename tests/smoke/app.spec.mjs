@@ -34,6 +34,20 @@ async function panEditorViewport(page, dxFrac, dyFrac) {
   }, { dx: box.width * dxFrac, dy: box.height * dyFrac });
 }
 
+// v8z4b32E9F1 — helpers da nova UI do editor de Texto (paleta de Fundo por swatches +
+// slider de largura). Escolher uma cor de Fundo já LIGA o fundo (auto-enable) e revela
+// o slider de opacidade; "Sem cor / Transparente" desliga. Mover o slider de largura
+// entra em 'fixed' no mesmo gesto. Adaptam os gates E8Z–E9F sem enfraquecer asserções.
+async function enableTextBoxColor(page, color) {
+  await page.locator('#textBoxBackgroundColor').evaluate((el, c) => { el.value = c; el.dispatchEvent(new Event('input', { bubbles: true })); }, color);
+}
+async function disableTextBox(page) {
+  await page.locator('#textBgSwatches [data-swatch-none]').click();
+}
+async function setTextFixedWidthSlider(page, value) {
+  await page.locator('#textWidthSlider').evaluate((el, v) => { el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); }, value);
+}
+
 async function seedRealSessionCheckpoint(page) {
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
   await clearStartupStorage(page);
@@ -1714,14 +1728,21 @@ test('E8Z — editor tipográfico e caixa usam fluxo público, isolam draft e bl
     { label:'Editar texto', text:'' }, { label:'Fonte', text:'' }, { label:'Estilo', text:'' },
     { label:'Alinhamento', text:'' }, { label:'Cor do texto', text:'' }, { label:'Fundo da caixa', text:'' }, { label:'Largura da caixa', text:'' },
   ]);
-  await expect(page.locator('[data-text-panel] input[type="range"][aria-label*="Largura"]')).toHaveCount(0);
+  // v8z4b32E9F1 — o controle de largura (Auto + slider) vive no PAINEL de Largura, não
+  // sob o textarea: nenhum range de largura no painel de conteúdo; o slider fica no seu painel.
+  await expect(page.locator('[data-text-panel="text"] input[type="range"]')).toHaveCount(0);
+  await expect(page.locator('[data-text-panel="width"] #textWidthSlider')).toHaveCount(1);
   const creationWithoutBox=await page.evaluate(()=>{const m=measureTextAsset(pendingTextDraft);return{enabled:pendingTextDraft.boxBackgroundEnabled,cx:pendingTextDraft.worldX+pendingTextDraft.worldW/2,cy:pendingTextDraft.worldY+pendingTextDraft.worldH/2,boxWidth:pendingTextDraft.boxWidth,lines:m.lines,geometry:serializeProjectAsset(pendingTextDraft,0,false)}});
   expect(creationWithoutBox.enabled).toBe(false);
-  await page.getByRole('tab',{name:'Fundo da caixa',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click();
-  const creationWithBox=await page.evaluate(()=>{const m=measureTextAsset(pendingTextDraft);return{cx:pendingTextDraft.worldX+pendingTextDraft.worldW/2,cy:pendingTextDraft.worldY+pendingTextDraft.worldH/2,boxWidth:pendingTextDraft.boxWidth,lines:m.lines,worldW:pendingTextDraft.worldW,paddingX:m.paddingX}});
-  expect(creationWithBox.cx).toBeCloseTo(creationWithoutBox.cx); expect(creationWithBox.cy).toBeCloseTo(creationWithoutBox.cy); expect(creationWithBox.boxWidth).toBe(creationWithoutBox.boxWidth); expect(creationWithBox.lines).toEqual(creationWithoutBox.lines); expect(creationWithBox.worldW).toBeCloseTo(creationWithBox.boxWidth+2*creationWithBox.paddingX);
+  // v8z4b32E9F1 — ligar o fundo escolhendo uma cor (auto-enable) preserva wrapping e centro.
+  await page.getByRole('tab',{name:'Fundo da caixa',exact:true}).click(); await enableTextBoxColor(page,'#000000');
+  const creationWithBox=await page.evaluate(()=>{const m=measureTextAsset(pendingTextDraft);return{enabled:pendingTextDraft.boxBackgroundEnabled,cx:pendingTextDraft.worldX+pendingTextDraft.worldW/2,cy:pendingTextDraft.worldY+pendingTextDraft.worldH/2,boxWidth:pendingTextDraft.boxWidth,lines:m.lines,worldW:pendingTextDraft.worldW,paddingX:m.paddingX}});
+  expect(creationWithBox.enabled).toBe(true); expect(creationWithBox.cx).toBeCloseTo(creationWithoutBox.cx); expect(creationWithBox.cy).toBeCloseTo(creationWithoutBox.cy); expect(creationWithBox.boxWidth).toBe(creationWithoutBox.boxWidth); expect(creationWithBox.lines).toEqual(creationWithoutBox.lines); expect(creationWithBox.worldW).toBeCloseTo(creationWithBox.boxWidth+2*creationWithBox.paddingX);
+  // Slider de opacidade só existe (e funciona) com o fundo ligado.
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeVisible();
   for(const [opacity,label] of [['65','65%'],['0','0%'],['100','100%']]){await page.locator('#textBoxBackgroundOpacity').fill(opacity);await expect(page.locator('#textBoxBackgroundOpacityValue')).toHaveText(label)}
-  await page.locator('#textBoxBackgroundToggle').click(); const creationRestored=await page.evaluate(()=>({cx:pendingTextDraft.worldX+pendingTextDraft.worldW/2,cy:pendingTextDraft.worldY+pendingTextDraft.worldH/2,boxWidth:pendingTextDraft.boxWidth,worldW:pendingTextDraft.worldW,worldH:pendingTextDraft.worldH})); expect(creationRestored).toMatchObject({cx:creationWithoutBox.cx,cy:creationWithoutBox.cy,boxWidth:creationWithoutBox.boxWidth,worldW:creationWithoutBox.geometry.worldW,worldH:creationWithoutBox.geometry.worldH});
+  // "Sem cor / Transparente" desliga o fundo, esconde o slider e restaura a geometria.
+  await disableTextBox(page); await expect(page.locator('#textEditorBgOpacityWrap')).toBeHidden(); const creationRestored=await page.evaluate(()=>({enabled:pendingTextDraft.boxBackgroundEnabled,cx:pendingTextDraft.worldX+pendingTextDraft.worldW/2,cy:pendingTextDraft.worldY+pendingTextDraft.worldH/2,boxWidth:pendingTextDraft.boxWidth,worldW:pendingTextDraft.worldW,worldH:pendingTextDraft.worldH})); expect(creationRestored).toMatchObject({enabled:false,cx:creationWithoutBox.cx,cy:creationWithoutBox.cy,boxWidth:creationWithoutBox.boxWidth,worldW:creationWithoutBox.geometry.worldW,worldH:creationWithoutBox.geometry.worldH});
   await page.getByRole('button',{name:'Confirmar',exact:true}).click();
   const id=await page.evaluate(()=>assets.find(a=>a?.type==='text').id);
   const textBox=await page.locator(`.world-text-asset[data-asset-id="${id}"]`).boundingBox();
@@ -1775,7 +1796,7 @@ test('E8Z — editor tipográfico e caixa usam fluxo público, isolam draft e bl
   const movedTextBox=await page.locator(`.world-text-asset[data-asset-id="${id}"]`).boundingBox(); await page.touchscreen.tap(movedTextBox.x+movedTextBox.width/2,movedTextBox.y+movedTextBox.height/2); await page.locator('#tbAssetReplace').click();
   const commitBefore=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,count:assets.length}));
   await page.locator('#textCreationInput').fill('Editado\ncom Enter'); await page.getByRole('tab',{name:'Fonte',exact:true}).click(); await page.getByRole('button',{name:'Fonte Serifada',exact:true}).click(); await page.getByRole('tab',{name:'Cor do texto',exact:true}).click(); await page.locator('#textCreationColor').evaluate(el=>{el.value='#3366ff';el.dispatchEvent(new Event('input',{bubbles:true}))});
-  await page.getByRole('tab',{name:'Estilo',exact:true}).click(); await page.getByRole('button',{name:'Estilo Negrito + itálico',exact:true}).click(); await page.getByRole('tab',{name:'Alinhamento',exact:true}).click(); await page.getByRole('button',{name:'Alinhar Direita',exact:true}).click(); await page.getByRole('tab',{name:'Fundo da caixa',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#112233';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.locator('#textBoxBackgroundOpacity').fill('65');
+  await page.getByRole('tab',{name:'Estilo',exact:true}).click(); await page.getByRole('button',{name:'Estilo Negrito + itálico',exact:true}).click(); await page.getByRole('tab',{name:'Alinhamento',exact:true}).click(); await page.getByRole('button',{name:'Alinhar Direita',exact:true}).click(); await page.getByRole('tab',{name:'Fundo da caixa',exact:true}).click(); await enableTextBoxColor(page,'#112233'); await page.locator('#textBoxBackgroundOpacity').fill('65');
   const blockedBefore=await page.evaluate(()=>({zoom:editorZoomScale,panX:editorPanX,panY:editorPanY,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld)}));
   await page.touchscreen.tap(10,10); await page.touchscreen.tap(40,40); const blockedAfter=await page.evaluate(()=>({zoom:editorZoomScale,panX:editorPanX,panY:editorPanY,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld)})); expect(blockedAfter).toEqual(blockedBefore); await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
   await page.screenshot({path:testInfo.outputPath('e8z-text-editor-390x797.png')}); await page.getByRole('button',{name:'Confirmar',exact:true}).click();
@@ -1903,7 +1924,7 @@ test('E9B — Text Asset acompanha seleção na paralaxe do Stage', async ({ pag
   await page.evaluate(() => startTextCreation());
   await page.locator('#textCreationInput').fill('R');
   await page.getByRole('tab', { name: 'Fundo da caixa', exact: true }).click();
-  await page.locator('#textBoxBackgroundToggle').click();
+  await enableTextBoxColor(page, '#000000');
   await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
   const textId = await page.evaluate(() => String(getSelectedAsset().id));
   const autosaveState = () => page.evaluate(() => ({ queued:_sessionAutosaveQueuedRevision, committed:sessionAutosaveRevision, timer:!!_sessionAutosaveTimer, active:_sessionAutosaveActiveWrites.size, inFlight:_sessionAutosaveWriteInFlight }));
@@ -2073,9 +2094,10 @@ test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob dep
   // (c) Modo fixo (override manual): trava largura menor e força quebra automática.
   await page.evaluate(id => startTextAssetEditing(assets.find(a => String(a.id) === id)), textId);
   await page.getByRole('tab', { name: 'Largura da caixa', exact: true }).click();
-  await page.locator('#textWidthFixedMode').click();
-  await expect(page.locator('#textWidthFixedStepper')).toBeVisible();
-  await page.evaluate(() => setTextDraftFixedWidth(130));
+  // v8z4b32E9F1 — mover o slider entra em 'fixed' no mesmo gesto (sem botão "Fixa"); o botão Auto perde o estado ativo.
+  await setTextFixedWidthSlider(page, 130);
+  expect(await page.evaluate(() => pendingTextDraft.boxWidthMode)).toBe('fixed');
+  await expect(page.locator('#textWidthAuto')).not.toHaveClass(/active/);
   await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
   const undoBaseline = await page.evaluate(() => undoStack.length);
   g = await geom(textId);
@@ -2160,7 +2182,7 @@ test('E9D — criação pública horizontal e editor tipográfico preserva draft
 
   // O relato real usa “Texto”: prova uma linha no modelo e um retângulo DOM
   // horizontal, com fundo/padding habilitados pelo editor público.
-  await openPublicTextCreation(); await page.locator('#textCreationInput').fill('Texto'); await sheet.getByRole('tab',{name:'Fundo da caixa',exact:true}).click(); await page.locator('#textBoxBackgroundToggle').click(); await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#112233';el.dispatchEvent(new Event('input',{bubbles:true}))}); await page.locator('#textBoxBackgroundOpacity').fill('65');
+  await openPublicTextCreation(); await page.locator('#textCreationInput').fill('Texto'); await sheet.getByRole('tab',{name:'Fundo da caixa',exact:true}).click(); await enableTextBoxColor(page,'#112233'); await page.locator('#textBoxBackgroundOpacity').fill('65');
   const textDraftId=await page.evaluate(()=>pendingTextDraft.id); await confirm();
   const stageProof=await page.evaluate(id=>{const a=assets.find(x=>String(x.id)===id),m=measureTextAsset({...a}),el=document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(id)}"]`),outline=document.getElementById('assetSelectOutline'),r=el.getBoundingClientRect(),o=outline.getBoundingClientRect();return{asset:serializeProjectAsset(a,0,false),lines:m.lines,paddingX:m.paddingX,domText:el.textContent,rect:{x:r.x,y:r.y,w:r.width,h:r.height},outline:{x:o.x,y:o.y,w:o.width,h:o.height},implicitColumn:r.height>r.width}} ,String(textDraftId));
   expect(stageProof.asset).toMatchObject({id:textDraftId,text:'Texto',boxWidthMode:'auto',boxBackgroundEnabled:true,boxBackgroundColor:'#112233',boxBackgroundOpacity:.65}); expect(stageProof.lines).toEqual(['Texto']); expect(stageProof.domText).toBe('Texto'); expect(stageProof.implicitColumn).toBe(false); expect(stageProof.asset.worldW).toBeCloseTo(stageProof.asset.boxWidth+2*stageProof.paddingX);
@@ -2171,7 +2193,8 @@ test('E9D — criação pública horizontal e editor tipográfico preserva draft
   await page.locator('#tbAssetReplace').click(); const before=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,canonical:serializeProjectAsset(getSelectedAsset(),0,false),payload:buildProjectData(true)}));
   await sheet.getByRole('tab',{name:'Alinhamento',exact:true}).click();
   for(const alignment of ['Esquerda','Centro','Direita'])await sheet.getByRole('button',{name:`Alinhar ${alignment}`,exact:true}).click();
-  await sheet.getByRole('tab',{name:'Largura da caixa',exact:true}).click(); await sheet.getByRole('button',{name:'Largura fixa',exact:true}).click(); await expect(page.locator('#textWidthFixedStepper')).toBeVisible(); const widthBefore=await page.locator('#textWidthFixedValue').textContent(); await sheet.getByRole('button',{name:'Aumentar largura fixa',exact:true}).click(); await expect(page.locator('#textWidthFixedValue')).not.toHaveText(widthBefore);
+  // v8z4b32E9F1 — Auto + slider: mover o slider entra em fixed e altera o valor; sem botão "Fixa" nem stepper −/+.
+  await sheet.getByRole('tab',{name:'Largura da caixa',exact:true}).click(); const widthBefore=await page.locator('#textWidthValue').textContent(); await setTextFixedWidthSlider(page,265); expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('fixed'); await expect(page.locator('#textWidthValue')).not.toHaveText(widthBefore);
   await sheet.getByRole('tab',{name:'Editar texto',exact:true}).click(); await page.locator('#textCreationInput').fill('Texto draft'); const liveDraft=await page.evaluate(()=>textEditorDraftFields(pendingTextDraft)); await sheet.getByRole('button',{name:'Minimizar editor de texto',exact:true}).click(); await expect(sheet).not.toHaveClass(/open/);
   expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,canonical:serializeProjectAsset(getSelectedAsset(),0,false),payload:buildProjectData(true),draft:!!pendingTextDraft}))).toEqual({...before,draft:true});
   await page.locator('#tbAssetReplace').click(); await expect(page.locator('#textCreationInput')).toHaveValue('Texto draft'); expect(await page.evaluate(()=>textEditorDraftFields(pendingTextDraft))).toEqual(liveDraft); await sheet.getByRole('button',{name:'Cancelar',exact:true}).click();
@@ -2344,9 +2367,12 @@ test('E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo
       fontLabel: fontActive ? fontActive.textContent : '',
       styleLabel: styleActive ? styleActive.textContent : '',
       color: String(document.getElementById('textCreationColor').value).toLowerCase(),
-      widthMode: document.getElementById('textWidthAuto').classList.contains('active') ? 'auto' : (document.getElementById('textWidthFixedMode').classList.contains('active') ? 'fixed' : 'none'),
-      widthValue: Math.round(parseFloat(document.getElementById('textWidthFixedValue').textContent)||0),
-      bgPressed: document.getElementById('textBoxBackgroundToggle').getAttribute('aria-pressed'),
+      // v8z4b32E9F1 — modo derivado do único botão Auto (ativo=auto, senão fixed);
+      // valor do slider em #textWidthValue; "fundo ligado" reflete pela visibilidade do
+      // slider de opacidade (só existe com fundo ligado).
+      widthMode: document.getElementById('textWidthAuto').classList.contains('active') ? 'auto' : 'fixed',
+      widthValue: Math.round(parseFloat(document.getElementById('textWidthValue').textContent)||0),
+      bgPressed: String(!document.getElementById('textEditorBgOpacityWrap').hidden),
       bgColor: String(document.getElementById('textBoxBackgroundColor').value).toLowerCase(),
       bgOpacity: Math.round(parseFloat(document.getElementById('textBoxBackgroundOpacity').value)||0),
     };
@@ -2448,13 +2474,13 @@ test('E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo
   await sheet.getByRole('tab', { name:'Alinhamento', exact:true }).click();
   await sheet.getByRole('button', { name:'Alinhar Direita', exact:true }).click();
   await check('04 alinhar direita', false);
-  // 5. alternar Auto/Fixa (agora sob o ícone Largura da caixa da rail)
+  // 5. Auto → Fixa pelo slider (v8z4b32E9F1): mover o slider entra em fixed no mesmo gesto.
   await sheet.getByRole('tab', { name:'Largura da caixa', exact:true }).click();
-  await sheet.getByRole('button', { name:'Largura fixa', exact:true }).click();
-  await expect(page.locator('#textWidthFixedStepper')).toBeVisible();
+  await setTextFixedWidthSlider(page, 150);
+  expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('fixed');
   await check('05 largura fixa', false);
-  // 6. modificar largura fixa
-  await sheet.getByRole('button', { name:'Aumentar largura fixa', exact:true }).click();
+  // 6. modificar largura fixa (novo valor pelo slider)
+  await setTextFixedWidthSlider(page, 180);
   await check('06 aumentar largura', false);
   // 7. alterar fonte
   await sheet.getByRole('tab', { name:'Fonte', exact:true }).click();
@@ -2469,9 +2495,9 @@ test('E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo
   await sheet.getByRole('tab', { name:'Cor do texto', exact:true }).click();
   await page.locator('#textCreationColor').evaluate(el=>{el.value='#ff8800';el.dispatchEvent(new Event('input',{bubbles:true}));});
   await check('09 cor do texto', false);
-  // 10. ativar fundo (propriedade própria e separada da cor do texto)
+  // 10. ativar fundo (v8z4b32E9F1: escolher uma cor liga o fundo e revela a opacidade)
   await sheet.getByRole('tab', { name:'Fundo da caixa', exact:true }).click();
-  await page.locator('#textBoxBackgroundToggle').click();
+  await enableTextBoxColor(page, '#000000');
   await check('10 fundo ligado', true);
   // 11. cor do fundo
   await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#113355';el.dispatchEvent(new Event('input',{bubbles:true}));});
@@ -2631,10 +2657,12 @@ test('E9F — editor de texto iconográfico neutro: rail, paleta, coral, gestos 
   await page.screenshot({ path: testInfo.outputPath('e9f-rail-alinhamento-390x797.png') });
   await sheet.getByRole('button',{name:'Alinhar Direita',exact:true}).click();
   p = await liveProbe(); expect(p.align).toBe('right'); expect(p.domAlign).toBe('right'); expect(p.handles).toEqual(['bl','br','tl','tr']);
-  // Cor do texto
+  // Cor do texto — v8z4b32E9F1: paleta rápida de swatches + botão + (picker completo).
   await railTool('Cor do texto').click();
-  // Sem caption/label textual visível redundante além do seletor; aria-label mantido.
-  expect((await sheet.locator('[data-text-panel="color"]').evaluate(el => el.textContent)).trim()).toBe('');
+  // Único texto visível no painel é o "+" do botão de picker; os swatches não têm texto.
+  expect((await sheet.locator('[data-text-panel="color"]').evaluate(el => el.textContent)).trim()).toBe('+');
+  expect(await sheet.locator('#textColorSwatches .text-swatch').count()).toBeGreaterThan(1);
+  expect(await sheet.locator('#textColorSwatches .text-swatch-add').getAttribute('aria-label')).toBe('Escolher outra cor do texto');
   expect(await page.locator('#textCreationColor').getAttribute('aria-label')).toBe('Cor do texto');
   await page.locator('#textCreationColor').evaluate(el=>{el.value='#ff8800';el.dispatchEvent(new Event('input',{bubbles:true}));});
   p = await liveProbe(); expect(p.color).toBe('#ff8800');
@@ -2652,10 +2680,14 @@ test('E9F — editor de texto iconográfico neutro: rail, paleta, coral, gestos 
   // ---------- G) FUNDO agrupa enable/cor/opacidade e não reduz opacidade dos glifos ----------
   await railTool('Fundo da caixa').click();
   const bgPanel = sheet.locator('[data-text-panel="background"]');
-  for (const id of ['#textBoxBackgroundToggle','#textBoxBackgroundColor','#textBoxBackgroundOpacity','#textBoxBackgroundOpacityValue'])
+  for (const id of ['#textBgSwatches','#textBoxBackgroundColor','#textEditorBgOpacityWrap','#textBoxBackgroundOpacity','#textBoxBackgroundOpacityValue'])
     expect(await bgPanel.locator(id).count(), `${id} dentro do painel de Fundo`).toBe(1);
-  await page.locator('#textBoxBackgroundToggle').click(); // liga fundo
-  await page.locator('#textBoxBackgroundColor').evaluate(el=>{el.value='#113355';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  // v8z4b32E9F1 — padrão "Sem cor / Transparente": sem slider de opacidade.
+  expect(await bgPanel.locator('[data-swatch-none]').getAttribute('aria-pressed')).toBe('true');
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeHidden();
+  // Escolher uma cor liga o fundo e revela o slider (opacidade dentro do painel de Fundo).
+  await enableTextBoxColor(page, '#113355');
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeVisible();
   await page.locator('#textBoxBackgroundOpacity').fill('40');
   await expect(page.locator('#textBoxBackgroundOpacityValue')).toHaveText('40%');
   await page.screenshot({ path: testInfo.outputPath('e9f-rail-fundo-390x797.png') }); // opacidade dentro do painel de Fundo
@@ -2668,21 +2700,22 @@ test('E9F — editor de texto iconográfico neutro: rail, paleta, coral, gestos 
   expect(Math.abs(bgProof.bgAlpha - 0.4)).toBeLessThan(0.02); // opacidade pertence ao FUNDO
   expect(bgProof.glyphAlpha).toBe(1);                          // e NÃO reduz a opacidade dos glifos
 
-  // ---------- H) LARGURA Auto/Fixa (E9C intacta) ----------
+  // ---------- H) LARGURA Auto + slider (v8z4b32E9F1; E9C intacta por baixo) ----------
   await railTool('Largura da caixa').click();
   const widthPanel = sheet.locator('[data-text-panel="width"]');
-  expect(await widthPanel.locator('#textWidthAuto').count()).toBe(1);
-  expect(await widthPanel.locator('#textWidthFixedMode').count()).toBe(1);
-  await expect(page.locator('#textWidthFixedStepper')).toBeHidden(); // stepper só no modo Fixa
-  await page.locator('#textWidthFixedMode').click();
-  await expect(page.locator('#textWidthFixedStepper')).toBeVisible();
+  expect(await widthPanel.locator('#textWidthAuto').count()).toBe(1);       // único botão de modo: Auto
+  expect(await widthPanel.locator('#textWidthSlider').count()).toBe(1);     // slider de largura
+  expect(await widthPanel.locator('#textWidthFixedMode').count()).toBe(0);  // sem botão "Fixa"
+  expect(await widthPanel.locator('#textWidthFixedStepper').count()).toBe(0); // sem stepper −/+
+  await expect(page.locator('#textWidthAuto')).toHaveClass(/active/);        // começa em Auto
+  const wBefore = await page.locator('#textWidthValue').textContent();
+  await setTextFixedWidthSlider(page, 170);                                  // mover o slider entra em fixed no mesmo gesto
   expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('fixed');
-  const wBefore = await page.locator('#textWidthFixedValue').textContent();
-  await sheet.getByRole('button',{name:'Aumentar largura fixa',exact:true}).click();
-  await expect(page.locator('#textWidthFixedValue')).not.toHaveText(wBefore);
-  await page.locator('#textWidthAuto').click();
-  await expect(page.locator('#textWidthFixedStepper')).toBeHidden();
+  await expect(page.locator('#textWidthAuto')).not.toHaveClass(/active/);
+  await expect(page.locator('#textWidthValue')).not.toHaveText(wBefore);
+  await page.locator('#textWidthAuto').click();                             // Auto volta para auto
   expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('auto');
+  await expect(page.locator('#textWidthAuto')).toHaveClass(/active/);
 
   // ---------- L) QUATRO ALÇAS (nenhuma alça lateral E9G) ----------
   const handleAudit = await page.evaluate(() => {
@@ -2775,4 +2808,370 @@ test('E9F — editor de texto iconográfico neutro: rail, paleta, coral, gestos 
   expect(commitAfter.undo).toBe(commitBefore.undo + 1);   // exatamente 1 Undo
   expect(commitAfter.rev).toBe(commitBefore.rev + 1);     // e 1 revisão de autosave
   expect(commitAfter.parity).toBe(true);                  // estado visível == persistido (seleção sobre o asset)
+});
+
+test('E9F1 — refino do editor de texto: cabeçalho compacto, ícones, paletas, viewport e largura', async ({ page }, testInfo) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width:390, height:797 });
+  await page.goto('/', { waitUntil:'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout:30_000 });
+  await dismissProModalIfVisible(page);
+  await page.locator('#modeAssetsBtn').click();
+  await expect(page.locator('body')).toHaveClass(/editor-assets/);
+
+  const sheet = page.locator('#textCreationSheet');
+  const railTool = label => sheet.getByRole('tab',{name:label,exact:true});
+  const rgb = s => (String(s).match(/-?\d+(?:\.\d+)?/g)||[]).map(Number);
+  const CORAL=[255,107,138], CYAN=[4,255,242], GREEN=[48,209,88];
+  const near = (a,b,t=3) => a.length>=3 && b.length>=3 && Math.abs(a[0]-b[0])<=t && Math.abs(a[1]-b[1])<=t && Math.abs(a[2]-b[2])<=t;
+  const draftAlignHref = () => page.locator('#textAlignRailIcon').getAttribute('href');
+  const draftColor = () => page.evaluate(()=>String(pendingTextDraft.color).toLowerCase());
+  const stageComputed = prop => page.evaluate(p=>{const el=document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(String(pendingTextDraft.id))}"]`);return el?getComputedStyle(el)[p]:null;}, prop);
+
+  // =========================================================================
+  // TESTE 1 — CABEÇALHO COMPACTO (× e ✓ presentes; alça próxima da linha de ações;
+  // linha de ações próxima da rail; sem linha vazia; touch targets preservados).
+  // =========================================================================
+  await page.evaluate(() => startTextCreation());
+  await expect(sheet).toHaveClass(/open/);
+  await expect(sheet.getByRole('button',{name:'Cancelar',exact:true})).toBeVisible(); // ×
+  await expect(sheet.getByRole('button',{name:'Confirmar',exact:true})).toBeVisible(); // ✓
+  const header = await page.evaluate(() => {
+    const q = s => document.querySelector(s);
+    const rc = el => { const b = el.getBoundingClientRect(); return { top:b.top, bottom:b.bottom, height:b.height }; };
+    const drag = rc(q('#textCreationSheet .text-editor-drag'));
+    const hdr = rc(q('#textCreationSheet .text-editor-header'));
+    const rail = rc(q('#textCreationSheet .text-editor-rail'));
+    const cancel = q('#textCreationCancel').getBoundingClientRect();
+    const confirm = q('#textCreationOk').getBoundingClientRect();
+    return {
+      handleToActions: +(hdr.top - drag.bottom).toFixed(2),
+      actionsToRail: +(rail.top - hdr.bottom).toFixed(2),
+      dragH: drag.height, headerH: hdr.height, cancelH: cancel.height, confirmH: confirm.height,
+      overlapHeaderRail: hdr.bottom > rail.top + 0.5,
+      diag: getTextEditorE9F1Diagnostics(),
+    };
+  });
+  // Gaps compactos e coerentes, sem grande área vazia (nem sobreposição).
+  expect(header.handleToActions).toBeLessThanOrEqual(14);
+  expect(header.handleToActions).toBeGreaterThanOrEqual(-1);
+  expect(header.actionsToRail).toBeLessThanOrEqual(14);
+  expect(header.actionsToRail).toBeGreaterThanOrEqual(-1);
+  expect(header.overlapHeaderRail).toBe(false);
+  // Alça compacta e linha de ações compacta (catch de regressão do vazio herdado da E9F).
+  expect(header.dragH).toBeLessThanOrEqual(22);
+  expect(header.headerH).toBeLessThanOrEqual(48);
+  // Touch targets preservados (≥44px seguro para iPhone).
+  expect(header.cancelH).toBeGreaterThanOrEqual(43.5);
+  expect(header.confirmH).toBeGreaterThanOrEqual(43.5);
+  // Diagnóstico coerente com as medidas reais.
+  expect(header.diag.textEditorCompactHeaderEnabled).toBe(true);
+  expect(header.diag.textEditorHandleToActionsGapPx).toBeLessThanOrEqual(14);
+  expect(header.diag.textEditorActionsToToolRailGapPx).toBeLessThanOrEqual(14);
+  await page.screenshot({ path: testInfo.outputPath('e9f1-cabecalho-compacto-390x797.png') });
+
+  // Conteúdo para as checagens de Stage.
+  await railTool('Editar texto').click();
+  await page.locator('#textCreationInput').fill('Arco teste');
+
+  // =========================================================================
+  // TESTE 2 — ÍCONE DE ESTILO representa Bold + Italic (não é mais o "I" isolado).
+  // =========================================================================
+  const styleTab = railTool('Estilo');
+  await expect(styleTab).toHaveAttribute('aria-label','Estilo');
+  const styleHref = await styleTab.locator('use').getAttribute('href');
+  expect(styleHref).toBe('#i-text-bold-italic');
+  expect(styleHref).not.toBe('#i-text-style');           // não é o antigo "I" itálico
+  expect((await styleTab.textContent()).trim()).toBe(''); // sem label textual na rail
+  const styleSymbol = await page.evaluate(() => { const s = document.getElementById('i-text-bold-italic'); return s ? s.querySelectorAll('path,line,rect').length : 0; });
+  expect(styleSymbol).toBeGreaterThanOrEqual(4);          // composição B + I, não um traço só
+
+  // =========================================================================
+  // TESTE 3 — ALINHAMENTO DINÂMICO: ícone da rail acompanha left/center/right.
+  // =========================================================================
+  await railTool('Alinhamento').click();
+  expect(await page.evaluate(()=>pendingTextDraft.textAlign)).toBe('center'); // default center
+  expect(await draftAlignHref()).toBe('#i-align-text-center');
+  await sheet.getByRole('button',{name:'Alinhar Esquerda',exact:true}).click();
+  expect(await page.evaluate(()=>pendingTextDraft.textAlign)).toBe('left');
+  expect(await stageComputed('textAlign')).toBe('left');
+  expect(await draftAlignHref()).toBe('#i-align-text-left');
+  await sheet.getByRole('button',{name:'Alinhar Direita',exact:true}).click();
+  expect(await page.evaluate(()=>pendingTextDraft.textAlign)).toBe('right');
+  expect(await stageComputed('textAlign')).toBe('right');
+  expect(await draftAlignHref()).toBe('#i-align-text-right');
+  await sheet.getByRole('button',{name:'Alinhar Centro',exact:true}).click();
+  expect(await draftAlignHref()).toBe('#i-align-text-center');
+
+  // =========================================================================
+  // TESTE 4 — QUICK PALETTE DE TEXTO (swatches neutros + preto/branco + botão +).
+  // =========================================================================
+  await railTool('Cor do texto').click();
+  const textSwatchColors = await sheet.locator('#textColorSwatches .text-swatch[data-swatch-color]').evaluateAll(els=>els.map(e=>(e.dataset.swatchColor||'').toLowerCase()));
+  expect(textSwatchColors.length).toBeGreaterThan(2);
+  expect(textSwatchColors).toContain('#000000'); // preto
+  expect(textSwatchColors).toContain('#ffffff'); // branco
+  expect(textSwatchColors).toContain('#808080'); // cinza existente
+  await expect(sheet.locator('#textColorSwatches .text-swatch-add')).toHaveCount(1); // botão +
+  expect(await sheet.locator('#textColorSwatches .text-swatch-add').getAttribute('aria-label')).toBe('Escolher outra cor do texto');
+  expect(await page.locator('#textCreationColor').count()).toBe(1); // picker completo acessível
+  // Selecionar um preset: controle → pendingTextDraft.color → computed color do Stage.
+  await sheet.locator('#textColorSwatches .text-swatch[data-swatch-color="#000000"]').click();
+  expect(await draftColor()).toBe('#000000');
+  expect(rgb(await stageComputed('color')).slice(0,3)).toEqual([0,0,0]);
+  expect(await sheet.locator('#textColorSwatches .text-swatch.active').count()).toBe(1); // um swatch atual selecionado
+  await sheet.locator('#textColorSwatches .text-swatch[data-swatch-color="#ffffff"]').click();
+  expect(await draftColor()).toBe('#ffffff');
+  expect(await sheet.locator('#textColorSwatches .text-swatch.active').count()).toBe(1);
+
+  // =========================================================================
+  // TESTE 5 — FUNDO TRANSPARENTE (Sem cor padrão → cor → alpha → Sem cor).
+  // =========================================================================
+  await railTool('Fundo da caixa').click();
+  // Ícone de Fundo na rail é inequívoco de preenchimento (não a paleta genérica).
+  expect(await railTool('Fundo da caixa').locator('use').getAttribute('href')).toBe('#i-box-fill');
+  expect(await page.evaluate(()=>!!pendingTextDraft.boxBackgroundEnabled)).toBe(false); // padrão
+  const noneBtn = () => sheet.locator('#textBgSwatches [data-swatch-none]');
+  expect(await noneBtn().getAttribute('aria-pressed')).toBe('true');   // Sem cor selecionado
+  expect(await noneBtn().getAttribute('aria-label')).toBe('Sem cor');
+  expect(await noneBtn().getAttribute('title')).toBe('Transparente');
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeHidden();  // slider NÃO visível
+  // Selecionar uma cor → enabled true, cor aplicada, slider visível.
+  await sheet.locator('#textBgSwatches .text-swatch[data-swatch-color="#333333"]').click();
+  expect(await page.evaluate(()=>!!pendingTextDraft.boxBackgroundEnabled)).toBe(true);
+  expect(await page.evaluate(()=>String(pendingTextDraft.boxBackgroundColor).toLowerCase())).toBe('#333333');
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeVisible();
+  await expect(sheet.locator('#textBgSwatches [data-swatch-none]')).toHaveAttribute('aria-pressed','false');
+  // Mudar alpha: background alpha muda; glyph computed opacity/cor não é reduzido.
+  await page.locator('#textBoxBackgroundOpacity').fill('40');
+  await expect(page.locator('#textBoxBackgroundOpacityValue')).toHaveText('40%');
+  const alphaProof = await page.evaluate(() => {
+    const el = document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(String(pendingTextDraft.id))}"]`);
+    const cs = getComputedStyle(el); const nums = s => (String(s).match(/-?\d+(?:\.\d+)?/g)||[]).map(Number);
+    return { glyphAlpha:(nums(cs.color)[3] ?? 1), bgAlpha:(nums(cs.backgroundColor)[3] ?? 1), bgOpacity: pendingTextDraft.boxBackgroundOpacity };
+  });
+  expect(alphaProof.bgOpacity).toBeCloseTo(0.4, 5);
+  expect(Math.abs(alphaProof.bgAlpha - 0.4)).toBeLessThan(0.02); // alfa pertence ao FUNDO
+  expect(alphaProof.glyphAlpha).toBe(1);                         // glifos intactos
+  // Selecionar Sem cor novamente → fundo desaparece; slider some; texto inalterado.
+  const textBeforeNoColor = await page.evaluate(()=>pendingTextDraft.text);
+  await sheet.locator('#textBgSwatches [data-swatch-none]').click();
+  expect(await page.evaluate(()=>!!pendingTextDraft.boxBackgroundEnabled)).toBe(false);
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeHidden();
+  expect(await page.evaluate(()=>pendingTextDraft.text)).toBe(textBeforeNoColor);
+  expect(await page.evaluate(() => { const el = document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(String(pendingTextDraft.id))}"]`); const nums = s => (String(s).match(/-?\d+(?:\.\d+)?/g)||[]).map(Number); return (nums(getComputedStyle(el).color)[3] ?? 1); })).toBe(1);
+
+  // =========================================================================
+  // TESTE 6 — FUNDO E TEXTO COMPARTILHAM PRESETS (mesma constante única).
+  // =========================================================================
+  const palettes = await page.evaluate(() => ({
+    constColors: (typeof PROJECT_BG_NEUTRALS !== 'undefined') ? PROJECT_BG_NEUTRALS.map(n => String(n.value).toLowerCase()) : null,
+    projectSwatches: [...document.querySelectorAll('#bgSwatches .bg-swatch')].map(e => (e.dataset.color||'').toLowerCase()),
+    textSwatches: [...document.querySelectorAll('#textColorSwatches .text-swatch[data-swatch-color]')].map(e => (e.dataset.swatchColor||'').toLowerCase()),
+    bgSwatches: [...document.querySelectorAll('#textBgSwatches .text-swatch[data-swatch-color]')].map(e => (e.dataset.swatchColor||'').toLowerCase()),
+  }));
+  expect(palettes.constColors).not.toBeNull();          // abstração única existe
+  const neutrals = palettes.constColors;
+  expect(palettes.projectSwatches).toEqual(neutrals);   // Fundo do projeto deriva da constante
+  const textNeutrals = palettes.textSwatches.filter(c => neutrals.includes(c));
+  const bgNeutrals = palettes.bgSwatches.filter(c => neutrals.includes(c));
+  expect(textNeutrals).toEqual(neutrals);               // Cor do texto usa os mesmos neutros
+  expect(bgNeutrals).toEqual(neutrals);                 // Fundo da caixa usa os mesmos neutros
+  // Não são três listas independentes copiadas: as três derivam da mesma fonte.
+  expect(new Set([JSON.stringify(palettes.projectSwatches), JSON.stringify(textNeutrals), JSON.stringify(bgNeutrals)]).size).toBe(1);
+
+  // Fecha o draft de exploração sem confirmar.
+  await sheet.getByRole('button',{name:'Cancelar',exact:true}).click();
+  await expect(sheet).not.toHaveClass(/open/);
+
+  // =========================================================================
+  // TESTE 7 — VIEWPORT AO EDITAR TEXTO EXISTENTE (localiza a VISTA, não o asset).
+  // =========================================================================
+  // Cria e confirma um texto.
+  await page.evaluate(() => startTextCreation());
+  await page.locator('#textCreationInput').fill('Rodape');
+  await sheet.getByRole('button',{name:'Confirmar',exact:true}).click();
+  await expect(sheet).not.toHaveClass(/open/);
+  const editedId = await page.evaluate(() => String(getSelectedAsset().id));
+  // Leva o texto para perto da região inferior do Stage (pan de navegação; não move o asset).
+  await panEditorViewport(page, 0, 0.36);
+  // Geometria canônica + Frames + ProjectWorld + histórico ANTES da edição.
+  const beforeEdit = await page.evaluate(id => {
+    const a = assets.find(x => String(x.id) === id);
+    return {
+      canonical: JSON.stringify(serializeProjectAsset(a, 0, false)),
+      geom: { worldX:a.worldX, worldY:a.worldY, worldW:a.worldW, worldH:a.worldH, rotation:a.rotation, depth:a.depth, zIndex:a.zIndex },
+      frames: JSON.stringify(frames.slice(0, frameCount)),
+      world: JSON.stringify(projectWorld),
+      undo: undoStack.length, rev: _sessionAutosaveQueuedRevision,
+      panX: editorPanX, panY: editorPanY, zoom: editorZoomScale,
+    };
+  }, editedId);
+  // Abre a edição do texto existente e localiza a VISTA.
+  await page.evaluate(id => startTextAssetEditing(assets.find(a => String(a.id) === id)), editedId);
+  await expect(sheet).toHaveClass(/open/);
+  await page.waitForTimeout(120);
+  const localized = await page.evaluate(() => { ensureTextEditorTargetVisible(); const c = _textEditTargetScreenCenter(); const r = getTextEditorAvailableStageRect(); return { c, r, zoom: editorZoomScale, diag: getTextEditorE9F1Diagnostics() }; });
+  // O texto fica dentro da área realmente visível acima da sheet.
+  expect(localized.r && localized.r.valid).toBeTruthy();
+  expect(localized.c.x).toBeGreaterThanOrEqual(localized.r.left);
+  expect(localized.c.x).toBeLessThanOrEqual(localized.r.right);
+  expect(localized.c.y).toBeGreaterThanOrEqual(localized.r.top);
+  expect(localized.c.y).toBeLessThanOrEqual(localized.r.bottom);
+  expect(localized.diag.textEditorEditViewportLocalizationRan).toBe(true);
+  expect(localized.diag.textEditorEditTargetVisibleAboveSheet).toBe(true);
+  expect(localized.zoom).toBeCloseTo(beforeEdit.zoom, 6); // preserva o zoom (só pan)
+  await page.screenshot({ path: testInfo.outputPath('e9f1-viewport-edit-390x797.png') });
+  // Geometria canônica / Frames / ProjectWorld / Undo / autosave INALTERADOS.
+  const duringEdit = await page.evaluate(id => {
+    const a = assets.find(x => String(x.id) === id);
+    return { canonical: JSON.stringify(serializeProjectAsset(a, 0, false)), frames: JSON.stringify(frames.slice(0, frameCount)), world: JSON.stringify(projectWorld), undo: undoStack.length, rev: _sessionAutosaveQueuedRevision };
+  }, editedId);
+  expect(duringEdit.canonical).toBe(beforeEdit.canonical); // byte/valor equivalente
+  expect(duringEdit.frames).toBe(beforeEdit.frames);
+  expect(duringEdit.world).toBe(beforeEdit.world);
+  expect(duringEdit.undo).toBe(beforeEdit.undo);           // sem Undo por localização
+  expect(duringEdit.rev).toBe(beforeEdit.rev);             // sem autosave por localização
+  expect(localized.diag.textEditorViewportLocalizationChangedCanonicalTextGeometry).toBe(false);
+  expect(localized.diag.textEditorViewportLocalizationChangedFrames).toBe(false);
+  expect(localized.diag.textEditorViewportLocalizationChangedProjectWorld).toBe(false);
+  expect(localized.diag.textEditorViewportLocalizationCreatedUndo).toBe(false);
+  expect(localized.diag.textEditorViewportLocalizationScheduledAutosave).toBe(false);
+  // Altera a altura disponível (simula o teclado) e recalcula — continua visível, sem jitter.
+  await page.setViewportSize({ width:390, height:560 });
+  await page.waitForTimeout(120);
+  const afterResize = await page.evaluate(() => {
+    ensureTextEditorTargetVisible();
+    const panA = { x: editorPanX, y: editorPanY };
+    // segunda chamada não deve mexer no pan (deadzone anti-jitter)
+    ensureTextEditorTargetVisible();
+    const panB = { x: editorPanX, y: editorPanY };
+    const c = _textEditTargetScreenCenter(); const r = getTextEditorAvailableStageRect();
+    return { c, r, panA, panB };
+  });
+  expect(afterResize.r && afterResize.r.valid).toBeTruthy();
+  expect(afterResize.c.y).toBeGreaterThanOrEqual(afterResize.r.top);
+  expect(afterResize.c.y).toBeLessThanOrEqual(afterResize.r.bottom);
+  expect(Math.abs(afterResize.panB.x - afterResize.panA.x)).toBeLessThan(0.01); // sem jitter
+  expect(Math.abs(afterResize.panB.y - afterResize.panA.y)).toBeLessThan(0.01);
+  // Geometria canônica ainda intacta após o resize.
+  expect(await page.evaluate(id => JSON.stringify(serializeProjectAsset(assets.find(x => String(x.id) === id), 0, false)), editedId)).toBe(beforeEdit.canonical);
+  await page.evaluate(() => cancelTextCreation());
+  await page.setViewportSize({ width:390, height:797 });
+
+  // =========================================================================
+  // TESTE 8 — CREATE MODE NÃO REGREDIU (E9E: novo texto nasce no centro da vista).
+  // =========================================================================
+  await panEditorViewport(page, 0.18, -0.12);
+  const createProof = await page.evaluate(() => {
+    const viewCenter = getEditorViewCenterWorld();
+    startTextCreation();
+    const c = { x: pendingTextDraft.worldX + pendingTextDraft.worldW/2, y: pendingTextDraft.worldY + pendingTextDraft.worldH/2 };
+    const base = { x: (projectWorld.baseStageW||0)/2, y: (projectWorld.baseStageH||0)/2 };
+    return { viewCenter, c, base };
+  });
+  expect(Math.abs(createProof.c.x - createProof.viewCenter.x)).toBeLessThan(2); // nasce no centro da vista
+  expect(Math.abs(createProof.c.y - createProof.viewCenter.y)).toBeLessThan(2);
+  // Com pan aplicado, o centro da vista difere do centro da célula base (não regrediu para o base).
+  expect(Math.hypot(createProof.viewCenter.x - createProof.base.x, createProof.viewCenter.y - createProof.base.y)).toBeGreaterThan(2);
+
+  // =========================================================================
+  // TESTE 9 — LARGURA AUTO + SLIDER (step 5; slider entra em fixed; Auto volta).
+  // =========================================================================
+  await page.locator('#textCreationInput').fill('Largura teste');
+  await railTool('Largura da caixa').click();
+  const widthPanel = sheet.locator('[data-text-panel="width"]');
+  expect(await widthPanel.getByRole('button',{name:'Ajustar largura automaticamente',exact:true}).count()).toBe(1); // único botão de modo
+  expect(await widthPanel.locator('#textWidthSlider').count()).toBe(1);
+  expect(await widthPanel.locator('#textWidthValue').count()).toBe(1);
+  expect(await widthPanel.locator('#textWidthFixedMode').count()).toBe(0); // sem botão Fixa
+  expect(await widthPanel.locator('#textWidthFixedStepper').count()).toBe(0); // sem −/+
+  expect(await page.locator('#textWidthSlider').getAttribute('step')).toBe('5');
+  // Estado inicial Auto.
+  expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('auto');
+  await expect(page.locator('#textWidthAuto')).toHaveClass(/active/);
+  // Mover o slider → fixed, boxWidth muda, Auto perde ativo, seleção e quatro alças acompanham.
+  const widthBefore = await page.evaluate(()=>Math.round(pendingTextDraft.boxWidth));
+  await setTextFixedWidthSlider(page, 165);
+  expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('fixed');
+  await expect(page.locator('#textWidthAuto')).not.toHaveClass(/active/);
+  const fixedState = await page.evaluate(() => {
+    const d = pendingTextDraft; const el = document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(String(d.id))}"]`);
+    const sel = document.getElementById('assetSelectOutline');
+    const r = el.getBoundingClientRect(), sr = sel.getBoundingClientRect();
+    const handles = [...sel.querySelectorAll('.asset-corner-handle.show')].map(h=>h.dataset.assetCorner).sort();
+    return { boxWidth: Math.round(d.boxWidth), parity:['x','y','width','height'].every(k=>Math.abs(r[k]-sr[k])<1.4), handles };
+  });
+  expect(fixedState.boxWidth).not.toBe(widthBefore);      // boxWidth muda
+  expect(fixedState.boxWidth).toBe(165);
+  expect(fixedState.parity).toBe(true);                   // seleção acompanha (Stage reflow)
+  expect(fixedState.handles).toEqual(['bl','br','tl','tr']); // quatro alças acompanham
+  expect((await page.locator('#textWidthValue').textContent()).trim()).toBe('165');
+  // Diagnóstico: slider ativou fixed.
+  expect((await page.evaluate(()=>getTextEditorE9F1Diagnostics())).textEditorWidthSliderActivatedFixedMode).toBe(true);
+  // Tocar Auto → auto, ativo, medição automática canônica, sem salto indevido de centro.
+  const centerBeforeAuto = await page.evaluate(()=>({x:pendingTextDraft.worldX+pendingTextDraft.worldW/2,y:pendingTextDraft.worldY+pendingTextDraft.worldH/2}));
+  await page.locator('#textWidthAuto').click();
+  expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('auto');
+  await expect(page.locator('#textWidthAuto')).toHaveClass(/active/);
+  const centerAfterAuto = await page.evaluate(()=>({x:pendingTextDraft.worldX+pendingTextDraft.worldW/2,y:pendingTextDraft.worldY+pendingTextDraft.worldH/2}));
+  expect(Math.abs(centerAfterAuto.x - centerBeforeAuto.x)).toBeLessThan(1.5);
+  expect(Math.abs(centerAfterAuto.y - centerBeforeAuto.y)).toBeLessThan(1.5);
+  const autoDiag = await page.evaluate(()=>getTextEditorE9F1Diagnostics());
+  expect(autoDiag.textEditorWidthAutoButtonRestoredAutoMode).toBe(true);
+  expect(autoDiag.textEditorWidthHasFixedButton).toBe(false);
+  expect(autoDiag.textEditorWidthHasPlusMinusStepper).toBe(false);
+
+  // =========================================================================
+  // TESTE 10 — E9G NÃO VAZOU: exatamente quatro alças, nenhuma lateral.
+  // =========================================================================
+  const handleAudit = await page.evaluate(() => {
+    const sel = document.getElementById('assetSelectOutline');
+    return {
+      shown: [...sel.querySelectorAll('.asset-corner-handle.show')].map(h=>h.dataset.assetCorner).sort(),
+      all: [...document.querySelectorAll('.asset-corner-handle')].map(h=>h.dataset.assetCorner).sort(),
+      side: [...document.querySelectorAll('.asset-side-handle,.asset-width-handle,[data-asset-side]')].length,
+    };
+  });
+  expect(handleAudit.shown).toEqual(['bl','br','tl','tr']);
+  expect(handleAudit.all).toEqual(['bl','br','tl','tr']);
+  expect(handleAudit.side).toBe(0);
+
+  // =========================================================================
+  // TESTE 11 — CANCEL / CONFIRM / MINIMIZE (proteção E9F/E9E reexecutada).
+  // =========================================================================
+  // Minimizar por gesto preserva draft + propriedade ativa; zero Undo/autosave.
+  const beforeMin = await page.evaluate(() => ({ id:String(pendingTextDraft.id), fields:textEditorDraftFields(pendingTextDraft), undo:undoStack.length, rev:_sessionAutosaveQueuedRevision, tool:textEditorActiveTool }));
+  await page.evaluate(() => {
+    const el = document.getElementById('textCreationDrag'); const r = el.getBoundingClientRect();
+    const x = r.left + r.width/2, y = r.top + r.height/2;
+    el.dispatchEvent(new PointerEvent('pointerdown',{clientX:x,clientY:y,bubbles:true,pointerId:1}));
+    window.dispatchEvent(new PointerEvent('pointermove',{clientX:x,clientY:y+60,bubbles:true,pointerId:1}));
+    window.dispatchEvent(new PointerEvent('pointerup',{clientX:x,clientY:y+60,bubbles:true,pointerId:1}));
+  });
+  await expect(sheet).not.toHaveClass(/open/);
+  const afterMin = await page.evaluate(() => ({ exists:!!pendingTextDraft, id:pendingTextDraft?String(pendingTextDraft.id):null, fields:pendingTextDraft?textEditorDraftFields(pendingTextDraft):null, undo:undoStack.length, rev:_sessionAutosaveQueuedRevision, tool:textEditorActiveTool }));
+  expect(afterMin).toEqual({ exists:true, id:beforeMin.id, fields:beforeMin.fields, undo:beforeMin.undo, rev:beforeMin.rev, tool:beforeMin.tool });
+  // Cancel restaura confirmado (descarta o draft; zero commit/Undo/autosave).
+  const beforeCancel = await page.evaluate(() => ({ undo:undoStack.length, rev:_sessionAutosaveQueuedRevision, count:assets.length }));
+  await page.evaluate(() => startTextCreation());
+  await expect(sheet).toHaveClass(/open/);
+  await page.evaluate(() => cancelTextCreation());
+  await expect(sheet).not.toHaveClass(/open/);
+  expect(await page.evaluate(() => ({ draft:!!pendingTextDraft, undo:undoStack.length, rev:_sessionAutosaveQueuedRevision, count:assets.length }))).toEqual({ draft:false, ...beforeCancel });
+  // Confirm cria exatamente 1 Undo + 1 autosave; mesmo asset ID; sem jump.
+  await page.evaluate(() => startTextCreation());
+  await page.locator('#textCreationInput').fill('Final E9F1');
+  const commitBefore = await page.evaluate(() => ({ id:String(pendingTextDraft.id), undo:undoStack.length, rev:_sessionAutosaveQueuedRevision, count:assets.length }));
+  await sheet.getByRole('button',{name:'Confirmar',exact:true}).click();
+  await expect(sheet).not.toHaveClass(/open/);
+  const commitAfter = await page.evaluate(id => { const a = assets.find(x => String(x.id)===id); const el = document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(id)}"]`); const o = document.getElementById('assetSelectOutline'); const r = el.getBoundingClientRect(), ob = o.getBoundingClientRect(); return { exists:!!a, id:String(getSelectedAsset().id), undo:undoStack.length, rev:_sessionAutosaveQueuedRevision, count:assets.length, parity:['x','y','width','height'].every(k => Math.abs(r[k]-ob[k])<1.3) }; }, commitBefore.id);
+  expect(commitAfter.exists).toBe(true);
+  expect(commitAfter.id).toBe(commitBefore.id);
+  expect(commitAfter.count).toBe(commitBefore.count + 1);
+  expect(commitAfter.undo).toBe(commitBefore.undo + 1);
+  expect(commitAfter.rev).toBe(commitBefore.rev + 1);
+  expect(commitAfter.parity).toBe(true);
 });

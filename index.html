@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9F1 — base v8z4b32E9F (PR #499). fix(text): refinamento visual/funcional LOCALIZADO do editor de Text Asset após teste físico E9F em iPhone/Safari (estrutura E9F aprovada; correção pontual). (A) cabeçalho da bottom sheet compactado — alça, linha ×/✓ e rail iconográfica ficam próximas, sem vazio vertical, preservando × Cancelar e ✓ Confirmar e touch targets seguros. (B) ícone de Estilo passa a ser B+I (negrito + itálico) no lugar do "I" itálico isolado. (C) ícone de Alinhamento na rail reflete o textAlign do draft (left/center/right) em tempo real, com fallback left. (D/E) Cor do texto vira paleta rápida de swatches reutilizando os neutros do seletor de Fundo do projeto (constante única PROJECT_BG_NEUTRALS) + botão + para o color picker completo. (F/G/H) Fundo da caixa ganha ícone inequívoco de preenchimento; estado padrão "Sem cor / Transparente" (checkerboard) selecionado com boxBackgroundEnabled=false e SEM slider de opacidade; escolher uma cor liga o fundo e revela o slider; alfa controla só boxBackgroundOpacity, nunca os glifos. (J) editar texto existente LOCALIZA a VISTA (pan canônico) para manter o texto visível acima da sheet/teclado, sem mover worldX/Y/W/H, rotação, depth, zIndex, Frames, ProjectWorld, sem Undo/autosave. (L/M/N) Largura simplifica para Auto compacto + slider (step 5, limites canônicos): mover o slider entra em fixed no mesmo gesto; Auto recalcula e re-sincroniza o slider sem sair de auto; removidos o botão Fixa grande e o stepper −/+. E9E preservada (criar novo texto continua nascendo no centro da vista atual). E9G NÃO antecipada (exatamente quatro alças). Preview/Export/Save/Load/Session Restore/renderer intactos. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F1. -->
 <!-- Arco Motion App — v8z4b32E9F — base v8z4b32E9E. feat(ui): editor de Text Asset adota rail horizontal ICONOGRÁFICA neutra no lugar das tabs textuais Texto|Fonte|Cor|Estilo. Sete propriedades por ícone (sem label visível, com aria-label): editar texto, fonte, estilo, alinhamento, cor do texto, fundo da caixa, largura da caixa; a rail rola horizontalmente em uma única linha. Item ativo usa contraste NEUTRO invertido (superfície branca + símbolo escuro), nunca coral/ciano/verde. Alinhamento sai do corpo permanente do Texto e vira controle iconográfico próprio; Cor do texto e Fundo da caixa ficam semanticamente separados; a opacidade fica inequivocamente DENTRO do painel de Fundo. Largura mantém Auto/Fixa + stepper (E9C intacta) sob o ícone Largura, sem antecipar alças laterais (E9G). Arrastar a alça superior para baixo minimiza (mesma semântica minimizeTextEditor: preserva pendingTextDraft, zero Undo, zero autosave, mesmo ID); × cancela e ✓ confirma. Paleta neutra aprovada aplicada aos tokens de UI (chrome #24262B, sheet #303238, campo #393C43, divisor ~#4A4D55) sem tocar DEFAULT_PROJECT_BG. Identidade do workspace Ativos migra de roxo para coral #FF6B8A (token --accent + contorno/alças/pill/botão +); Frames preservam o ciano existente #04fff2. WYSIWYG E9E, quatro alças, criação na vista atual e draft preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F. -->
 <!-- Arco Motion App — v8z4b32E9E — base v8z4b32E9D. fix(text): NOVO Text Asset nasce centralizado na VISTA ATUAL do Stage (centro capturado em coords de World pela cadeia canônica computeEditorTransform → screenToStageCoord → editorStageToWorld, antes do resize do teclado); editar asset existente nunca recentraliza. WYSIWYG ao vivo: pendingTextDraft é a fonte única da verdade visual — toda mudança de painel atualiza imediatamente Stage, fundo, seleção e as quatro alças (updateTextDraft e o listener de input passam a re-renderizar a seleção; a seleção/alças consomem a geometria viva do draft). Sem fórmula paralela de câmera, sem offset artificial, sem alterar ProjectWorld/Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E9E. -->
 <!-- Arco Motion App — v8z4b32E9D — base v8z4b32E9C. fix(text): reserva 1 px canônico contra divergência subpixel Canvas/DOM no Safari e reorganiza o editor em Texto/Fonte/Cor/Estilo, com draft minimizável e confirmação no mesmo ID. APP_VERSION = APP_VERSION_NAME = v8z4b32E9D. -->
@@ -1512,8 +1513,14 @@ body.editor-assets.recording .frame{display:none !important;}
 #textCreationSheet{position:fixed;inset:0;z-index:335;display:none;align-items:flex-end;justify-content:center;background:transparent;pointer-events:auto;touch-action:none;overscroll-behavior:contain;}
 #textCreationSheet.open{display:flex;}
 .text-creation-inner{pointer-events:auto;touch-action:manipulation;width:100%;max-width:480px;max-height:min(52vh,430px);box-sizing:border-box;padding:0 18px calc(14px + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;background:var(--surface);box-shadow:0 -5px 30px rgba(0,0,0,.35);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
-.text-editor-drag{display:block;width:52px;height:24px;margin:0 auto;border:0;background:transparent;position:relative}.text-editor-drag:after{content:"";position:absolute;left:8px;right:8px;top:10px;height:4px;border-radius:3px;background:var(--border2)}
-.text-editor-header{display:flex;align-items:center;justify-content:space-between;min-height:50px}.text-editor-header button{min-height:44px;min-width:44px;border:0;background:transparent;font-size:20px;font-weight:700;line-height:1}.text-creation-cancel{color:var(--text2);text-align:left}.text-creation-ok{color:var(--accent);text-align:right}
+/* v8z4b32E9F1 — cabeçalho COMPACTO. O teste físico E9F mostrou vazio vertical
+   excessivo entre o topo da sheet, a alça e a linha ×/✓. A alça encolhe (barra
+   próxima do topo, sem folga fantasma acima/abaixo) e a linha de ações reduz a
+   altura mínima ao próprio touch target dos botões (44px seguro para iPhone). A
+   alça fica próxima da linha de ações e a linha de ações próxima da rail, sem
+   mascarar com transform arbitrário. */
+.text-editor-drag{display:block;width:52px;height:18px;margin:0 auto;border:0;background:transparent;position:relative}.text-editor-drag:after{content:"";position:absolute;left:8px;right:8px;top:7px;height:4px;border-radius:3px;background:var(--border2)}
+.text-editor-header{display:flex;align-items:center;justify-content:space-between;min-height:44px}.text-editor-header button{min-height:44px;min-width:44px;border:0;background:transparent;font-size:20px;font-weight:700;line-height:1}.text-creation-cancel{color:var(--text2);text-align:left}.text-creation-ok{color:var(--accent);text-align:right}
 /* v8z4b32E9F — rail horizontal ICONOGRÁFICA. Uma linha, scroll horizontal nativo,
    sem quebra, sem scrollbar intrusiva, touch targets adequados. Item ATIVO usa
    contraste NEUTRO invertido (superfície branca + símbolo escuro); item inativo usa
@@ -1531,15 +1538,35 @@ body.editor-assets.recording .frame{display:none !important;}
 .text-align-option{flex:0 0 auto;display:grid;place-items:center;width:52px;height:44px;padding:0}.text-align-option svg{width:22px;height:22px;display:block;color:currentColor}
 .text-creation-color{width:54px;height:44px;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);padding:4px}
 .text-color-row{display:flex;align-items:center;gap:12px;min-height:44px}
+/* v8z4b32E9F1 — paleta rápida compartilhada (Cor do texto e Fundo da caixa).
+   Reutiliza os neutros do seletor de Fundo do PROJETO (constante PROJECT_BG_NEUTRALS);
+   o botão + abre o color picker completo. Não há histórico persistente de cores. */
+.text-swatch-row{display:flex;flex-wrap:nowrap;align-items:center;gap:8px;overflow-x:auto;touch-action:pan-x;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;padding:2px 0;min-height:44px}
+.text-swatch-row::-webkit-scrollbar{display:none;width:0;height:0}
+.text-swatch{flex:0 0 auto;width:34px;height:34px;padding:0;border:1px solid var(--border2);border-radius:9px;background:transparent;position:relative;cursor:pointer}
+.text-swatch.active{border-color:#ffffff;box-shadow:0 0 0 2px #ffffff inset}
+.text-swatch:active{transform:scale(.92)}
+/* Sem cor / Transparente — checkerboard cinza/branco discreto (não usa vermelho). */
+.text-swatch-none{background-color:#e6e6e6;background-image:linear-gradient(45deg,#9a9a9a 25%,transparent 25%),linear-gradient(-45deg,#9a9a9a 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#9a9a9a 75%),linear-gradient(-45deg,transparent 75%,#9a9a9a 75%);background-size:12px 12px;background-position:0 0,0 6px,6px -6px,-6px 0}
+/* Botão + — pertence à mesma sequência, mas não aparece preenchido como cor. */
+.text-swatch-add{flex:0 0 auto;display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px dashed var(--border2);border-radius:9px;background:var(--surface2);color:var(--text2);font-size:20px;font-weight:400;line-height:1;cursor:pointer}
+.text-swatch-custom-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px}
 /* v8z4b32E9F — painel de FUNDO agrupa ligar/desligar, cor e opacidade sob a mesma
    hierarquia; o slider de opacidade fica fisicamente dentro deste painel. */
 .text-bg-panel{display:flex;flex-direction:column;gap:12px;padding:2px 0}.text-bg-row{display:flex;align-items:center;gap:12px;min-height:44px}
 .text-box-toggle{display:grid;place-items:center;width:46px;height:44px;padding:0;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);color:var(--text2)}.text-box-toggle svg{width:22px;height:22px;display:block;color:currentColor}.text-box-toggle.active{background:#ffffff;border-color:#ffffff;color:#24262B}
-.text-bg-opacity-row{display:flex;align-items:center;gap:10px;min-height:44px}.text-bg-opacity-icon{width:20px;height:20px;flex:0 0 auto;color:var(--text2)}
+.text-bg-opacity-row{display:flex;align-items:center;gap:10px;min-height:44px}.text-bg-opacity-row[hidden]{display:none}.text-bg-opacity-icon{width:20px;height:20px;flex:0 0 auto;color:var(--text2)}
 .text-box-opacity{min-width:100px;flex:1;accent-color:var(--text2)}.text-box-opacity-value{min-width:42px;color:var(--text2);font-size:13px;text-align:right}
 .text-editor-align{justify-content:center;margin-top:2px;gap:12px}
-.text-width-mode{display:flex;gap:8px;margin-top:2px}.text-width-mode button{flex:1;display:grid;place-items:center;min-height:46px;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);color:var(--text2)}.text-width-mode button svg{width:24px;height:24px;display:block;color:currentColor}.text-width-mode button.active{background:#ffffff;border-color:#ffffff;color:#24262B}
-.text-width-stepper{display:flex;align-items:center;justify-content:center;gap:0;margin-top:12px}.text-width-stepper[hidden]{display:none}.text-width-stepper button,.text-width-stepper output{display:grid;place-items:center;min-width:44px;height:40px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1)}.text-width-stepper button:first-child{border-radius:10px 0 0 10px}.text-width-stepper button:last-child{border-radius:0 10px 10px 0}.text-width-stepper output{min-width:70px;border-left:0;border-right:0;font-size:13px}
+/* v8z4b32E9F1 — largura = [Auto compacto] [slider] [valor]. Um único botão de modo
+   explícito (Auto); mover o slider entra em fixed no mesmo gesto. Sem botão "Fixa"
+   grande e sem stepper −/+. */
+.text-width-row{display:flex;align-items:center;gap:12px;margin-top:2px;min-height:46px}
+.text-width-auto{flex:0 0 auto;display:grid;place-items:center;width:46px;height:46px;padding:0;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);color:var(--text2);cursor:pointer}
+.text-width-auto svg{width:24px;height:24px;display:block;color:currentColor}
+.text-width-auto.active{background:#ffffff;border-color:#ffffff;color:#24262B}
+.text-width-slider{flex:1;min-width:80px;accent-color:var(--text2)}
+.text-width-value{flex:0 0 auto;min-width:44px;color:var(--text2);font-size:13px;text-align:right}
 .world-text-asset{position:absolute;white-space:pre-wrap;tab-size:4;overflow-wrap:anywhere;pointer-events:none;box-sizing:border-box;transform-origin:50% 50%;}
 /* v8z4b30ZT — assetsModeMenu: modal de opções do Modo Ativos (segundo toque no ícone). */
 #assetsModeMenu{position:fixed;inset:0;z-index:331;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
@@ -3956,6 +3983,23 @@ body.asset-context-panel-open #toolbar{display:none !important;}
     <line x1="14" x2="5" y1="20" y2="20"/>
     <line x1="15" x2="9" y1="4" y2="20"/>
   </symbol>
+  <!-- v8z4b32E9F1 — ícone de Estilo: composição B (negrito) + I (itálico), comunica
+       Normal/Bold/Italic/Bold+Italic melhor que o "I" itálico isolado. Mesmo sistema
+       SVG dos demais ícones; sem emoji, sem biblioteca externa. aria-label = "Estilo". -->
+  <symbol id="i-text-bold-italic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 5v13" stroke-width="2.6"/>
+    <path d="M5 5h4.4a3.1 3.1 0 0 1 0 6.2H5" stroke-width="2.6"/>
+    <path d="M5 11.2h5a3.4 3.4 0 0 1 0 6.8H5" stroke-width="2.6"/>
+    <line x1="19" x2="15.2" y1="5.5" y2="5.5"/>
+    <line x1="17.6" x2="13.8" y1="18.5" y2="18.5"/>
+    <line x1="17.4" x2="15.4" y1="5.5" y2="18.5"/>
+  </symbol>
+  <!-- v8z4b32E9F1 — ícone de Fundo da caixa: retângulo com preenchimento interno claro
+       (leitura de "preenchimento/fundo de uma área"), NÃO a paleta genérica (#i-bg). -->
+  <symbol id="i-box-fill" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="4" width="18" height="16" rx="2"/>
+    <rect x="6.5" y="7.5" width="11" height="9" rx="1.2" fill="currentColor" stroke="none"/>
+  </symbol>
   <symbol id="i-align-text-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M21 6H3"/><path d="M15 12H3"/><path d="M17 18H3"/>
   </symbol>
@@ -4868,15 +4912,27 @@ body.asset-context-panel-open #toolbar{display:none !important;}
     <button id="textCreationDrag" class="text-editor-drag" type="button" aria-label="Minimizar editor de texto" onclick="minimizeTextEditor()"></button>
     <div class="text-editor-header"><button id="textCreationCancel" class="text-creation-cancel" type="button" aria-label="Cancelar" onclick="cancelTextCreation()">×</button><button id="textCreationOk" class="text-creation-ok" type="button" aria-label="Confirmar" onclick="confirmTextCreation()">✓</button></div>
     <div class="text-editor-rail" role="tablist" aria-label="Propriedades do texto">
-      <button class="text-rail-item active" type="button" role="tab" aria-selected="true" data-text-tool="text" aria-label="Editar texto" onclick="setTextEditorTool('text')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text-edit"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="font" aria-label="Fonte" onclick="setTextEditorTool('font')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-font"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="style" aria-label="Estilo" onclick="setTextEditorTool('style')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text-style"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="align" aria-label="Alinhamento" onclick="setTextEditorTool('align')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-text-center"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="color" aria-label="Cor do texto" onclick="setTextEditorTool('color')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text-color"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="background" aria-label="Fundo da caixa" onclick="setTextEditorTool('background')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bg"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="width" aria-label="Largura da caixa" onclick="setTextEditorTool('width')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text-width"></use></svg></button>
+      <button class="text-rail-item active" type="button" role="tab" aria-selected="true" data-text-tool="text" aria-label="Editar texto" onclick="setTextEditorTool('text')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text-edit"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="font" aria-label="Fonte" onclick="setTextEditorTool('font')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-font"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="style" aria-label="Estilo" onclick="setTextEditorTool('style')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text-bold-italic"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="align" aria-label="Alinhamento" onclick="setTextEditorTool('align')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use id="textAlignRailIcon" href="#i-align-text-center"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="color" aria-label="Cor do texto" onclick="setTextEditorTool('color')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text-color"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="background" aria-label="Fundo da caixa" onclick="setTextEditorTool('background')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-box-fill"></use></svg></button><button class="text-rail-item" type="button" role="tab" aria-selected="false" data-text-tool="width" aria-label="Largura da caixa" onclick="setTextEditorTool('width')"><svg class="text-rail-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text-width"></use></svg></button>
     </div>
     <div class="text-editor-panel active" data-text-panel="text"><textarea id="textCreationInput" class="text-creation-input" aria-label="Conteúdo do texto" placeholder="Texto..." maxlength="2000" rows="2"></textarea></div>
     <div class="text-editor-panel" data-text-panel="font"><div class="text-editor-options" id="textEditorFontOptions"></div></div>
     <div class="text-editor-panel" data-text-panel="style"><div class="text-editor-options" id="textEditorStyleOptions"></div></div>
     <div class="text-editor-panel" data-text-panel="align"><div class="text-editor-options text-editor-align" id="textEditorAlignOptions" role="group" aria-label="Alinhamento do texto"></div></div>
-    <div class="text-editor-panel" data-text-panel="color"><div class="text-color-row"><input id="textCreationColor" aria-label="Cor do texto" class="text-creation-color" type="color" value="#ffffff"></div></div>
-    <div class="text-editor-panel" data-text-panel="background"><div class="text-bg-panel" role="group" aria-label="Fundo da caixa"><div class="text-bg-row"><button id="textBoxBackgroundToggle" class="text-box-toggle" type="button" aria-pressed="false" aria-label="Ligar/desligar fundo da caixa" onclick="updateTextDraft('boxBackgroundEnabled',!pendingTextDraft.boxBackgroundEnabled)"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bg"></use></svg></button><input id="textBoxBackgroundColor" class="text-creation-color" type="color" value="#000000" aria-label="Cor do fundo"></div><div class="text-bg-opacity-row"><svg class="text-bg-opacity-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-opacity"></use></svg><input id="textBoxBackgroundOpacity" class="text-box-opacity" type="range" min="0" max="100" step="1" value="70" aria-label="Opacidade do fundo"><span id="textBoxBackgroundOpacityValue" class="text-box-opacity-value">70%</span></div></div></div>
-    <div class="text-editor-panel" data-text-panel="width"><div class="text-width-mode" role="group" aria-label="Largura da caixa"><button id="textWidthAuto" type="button" aria-label="Ajustar largura ao conteúdo" onclick="setTextWidthMode('auto')"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-width-auto"></use></svg></button><button id="textWidthFixedMode" type="button" aria-label="Largura fixa" onclick="setTextWidthMode('fixed')"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-width-fixed"></use></svg></button></div><div id="textWidthFixedStepper" class="text-width-stepper" hidden><button type="button" aria-label="Diminuir largura fixa" onclick="stepTextDraftFixedWidth(-10)">−</button><output id="textWidthFixedValue">220</output><button type="button" aria-label="Aumentar largura fixa" onclick="stepTextDraftFixedWidth(10)">+</button></div></div>
+    <!-- v8z4b32E9F1 — Cor do texto: paleta rápida de swatches (neutros do seletor de
+         Fundo do PROJETO) + botão + para o color picker completo. O input type=color
+         fica oculto e é aberto pelo botão +. Swatches gerados em renderTextEditorOptions. -->
+    <div class="text-editor-panel" data-text-panel="color"><div id="textColorSwatches" class="text-swatch-row" role="group" aria-label="Cor do texto"></div><input id="textCreationColor" aria-label="Cor do texto" class="text-swatch-custom-input" type="color" value="#ffffff"></div>
+    <!-- v8z4b32E9F1 — Fundo da caixa: swatch "Sem cor / Transparente" (padrão) +
+         mesma paleta neutra de Cor do texto + botão + (color picker). Escolher uma
+         cor liga o fundo (boxBackgroundEnabled=true) e revela o slider de opacidade;
+         "Sem cor" desliga e oculta #textEditorBgOpacityWrap. O alfa controla SOMENTE
+         boxBackgroundOpacity, nunca a opacidade dos glifos. -->
+    <div class="text-editor-panel" data-text-panel="background"><div class="text-bg-panel" role="group" aria-label="Fundo da caixa"><div id="textBgSwatches" class="text-swatch-row"></div><input id="textBoxBackgroundColor" class="text-swatch-custom-input" type="color" value="#000000" aria-label="Cor do fundo"><div id="textEditorBgOpacityWrap" class="text-bg-opacity-row" hidden><svg class="text-bg-opacity-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-opacity"></use></svg><input id="textBoxBackgroundOpacity" class="text-box-opacity" type="range" min="0" max="100" step="1" value="70" aria-label="Opacidade do fundo"><span id="textBoxBackgroundOpacityValue" class="text-box-opacity-value">70%</span></div></div></div>
+    <!-- v8z4b32E9F1 — Largura: [Auto compacto] [slider step 5] [valor]. Um único botão
+         de modo (Auto). Mover o slider entra em fixed no MESMO gesto; Auto recalcula a
+         medição canônica e re-sincroniza o slider sem sair de auto. Sem botão "Fixa"
+         grande e sem stepper −/+. -->
+    <div class="text-editor-panel" data-text-panel="width"><div class="text-width-row" role="group" aria-label="Largura da caixa"><button id="textWidthAuto" class="text-width-auto" type="button" aria-label="Ajustar largura automaticamente" aria-pressed="true" onclick="setTextWidthAuto()"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-width-auto"></use></svg></button><input id="textWidthSlider" class="text-width-slider" type="range" min="40" max="600" step="5" value="220" aria-label="Largura da caixa" oninput="onTextWidthSliderInput(this.value)"><output id="textWidthValue" class="text-width-value">220</output></div></div>
   </div>
 </div>
 
@@ -5465,20 +5521,11 @@ body.asset-context-panel-open #toolbar{display:none !important;}
 <div class="float-panel" id="panelBgColor">
   <div class="panel-handle" onclick="closeAll()"></div>
   <div class="panel-title">Cor de fundo</div>
-  <div id="bgSwatches" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
-    <!-- Preto + escala de cinza de 10 em 10 + branco = 12 swatches -->
-    <div class="bg-swatch active" data-color="#000000" onclick="setBgColor('#000000',this)" style="background:#000000;" title="Preto"></div>
-    <div class="bg-swatch" data-color="#1a1a1a" onclick="setBgColor('#1a1a1a',this)" style="background:#1a1a1a;" title="10%"></div>
-    <div class="bg-swatch" data-color="#333333" onclick="setBgColor('#333333',this)" style="background:#333333;" title="20%"></div>
-    <div class="bg-swatch" data-color="#4d4d4d" onclick="setBgColor('#4d4d4d',this)" style="background:#4d4d4d;" title="30%"></div>
-    <div class="bg-swatch" data-color="#666666" onclick="setBgColor('#666666',this)" style="background:#666666;" title="40%"></div>
-    <div class="bg-swatch" data-color="#808080" onclick="setBgColor('#808080',this)" style="background:#808080;" title="50%"></div>
-    <div class="bg-swatch" data-color="#999999" onclick="setBgColor('#999999',this)" style="background:#999999;" title="60%"></div>
-    <div class="bg-swatch" data-color="#b3b3b3" onclick="setBgColor('#b3b3b3',this)" style="background:#b3b3b3;" title="70%"></div>
-    <div class="bg-swatch" data-color="#cccccc" onclick="setBgColor('#cccccc',this)" style="background:#cccccc;" title="80%"></div>
-    <div class="bg-swatch" data-color="#e6e6e6" onclick="setBgColor('#e6e6e6',this)" style="background:#e6e6e6;" title="90%"></div>
-    <div class="bg-swatch" data-color="#ffffff" onclick="setBgColor('#ffffff',this)" style="background:#ffffff;border-color:rgba(255,255,255,.3);" title="Branco"></div>
-  </div>
+  <!-- v8z4b32E9F1 — swatches gerados a partir da constante única PROJECT_BG_NEUTRALS
+       (renderProjectBgSwatches), a MESMA fonte agora reutilizada pela Cor do texto e
+       pelo Fundo da caixa do editor. Saída idêntica ao seletor aprovado; o menu de
+       Fundo do projeto não é redesenhado, apenas passa a consumir a fonte única. -->
+  <div id="bgSwatches" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;"></div>
   <div style="display:flex;align-items:center;gap:10px;">
     <span style="font-size:12px;color:var(--text3);flex-shrink:0;">Personalizar</span>
     <input type="color" id="bgHexInput" value="#000000"
@@ -7405,8 +7452,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9F';
-const APP_VERSION_NAME = 'v8z4b32E9F';
+const APP_VERSION = 'v8z4b32E9F1';
+const APP_VERSION_NAME = 'v8z4b32E9F1';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -15461,6 +15508,18 @@ const TEXT_ASSET_FONTS = Object.freeze({
 });
 const TEXT_ASSET_FONT_FAMILY = TEXT_ASSET_FONTS.system.family;
 const TEXT_ASSET_DEFAULT_COLOR = '#ffffff';
+// v8z4b32E9F1 — FONTE ÚNICA dos neutros de swatch. É a MESMA lista já usada pelo
+// seletor de "Cor de fundo" do PROJETO (preto + escala de cinza 10→90% + branco);
+// agora o seletor de Fundo do projeto, a Cor do texto e o Fundo da caixa do editor
+// consomem esta constante, em vez de manter listas hardcoded duplicadas. Reutiliza a
+// linguagem/presets existentes do Arco (item D/E/H da E9F1). NÃO cria schema
+// persistente de histórico de cores customizadas.
+const PROJECT_BG_NEUTRALS = Object.freeze([
+  {value:'#000000',label:'Preto'},{value:'#1a1a1a',label:'10%'},{value:'#333333',label:'20%'},
+  {value:'#4d4d4d',label:'30%'},{value:'#666666',label:'40%'},{value:'#808080',label:'50%'},
+  {value:'#999999',label:'60%'},{value:'#b3b3b3',label:'70%'},{value:'#cccccc',label:'80%'},
+  {value:'#e6e6e6',label:'90%'},{value:'#ffffff',label:'Branco'}
+]);
 function hexToRgba(hex,alpha){const n=parseInt(String(hex).slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${Math.min(1,Math.max(0,Number(alpha)||0))})`}
 let pendingTextDraft = null, textCreationBaseline = null, textEditorMode = null, textEditorTargetAssetId = null, textEditorOpenSource = null, textEditorActiveTool = 'text', textEditorOriginalAsset = null;
 let textAssetStageRendered=false,textAssetPreviewRendered=false,textAssetExportRendered=false,textAssetSaveLoadParityOk=null,textAssetSessionRestoreParityOk=null;
@@ -15528,18 +15587,57 @@ function setTextEditorTool(tool){if(!['text','font','style','align','color','bac
 function renderTextEditorOptions(){const font=document.getElementById('textEditorFontOptions'),style=document.getElementById('textEditorStyleOptions'),align=document.getElementById('textEditorAlignOptions');if(!pendingTextDraft)return;
  font.innerHTML=Object.entries(TEXT_ASSET_FONTS).map(([k,v])=>`<button type="button" class="text-editor-option${pendingTextDraft.fontKey===k?' active':''}" aria-label="Fonte ${v.label}" onclick="updateTextDraft('fontKey','${k}')">${v.label}</button>`).join('');
  const styles=[['Normal',400,'normal'],['Negrito',700,'normal'],['Itálico',400,'italic'],['Negrito + itálico',700,'italic']];style.innerHTML=styles.map(([l,w,i])=>`<button type="button" class="text-editor-option${pendingTextDraft.fontWeight===w&&pendingTextDraft.fontStyle===i?' active':''}" aria-label="Estilo ${l}" onclick="updateTextStyle(${w},'${i}')">${l}</button>`).join('');
- align.innerHTML=[['Esquerda','left','i-align-text-left'],['Centro','center','i-align-text-center'],['Direita','right','i-align-text-right']].map(([l,v,ic])=>`<button type="button" class="text-editor-option text-align-option${pendingTextDraft.textAlign===v?' active':''}" aria-label="Alinhar ${l}" onclick="updateTextDraft('textAlign','${v}')"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#${ic}"></use></svg></button>`).join(''); const toggle=document.getElementById('textBoxBackgroundToggle'),boxColor=document.getElementById('textBoxBackgroundColor'),opacity=document.getElementById('textBoxBackgroundOpacity'),value=document.getElementById('textBoxBackgroundOpacityValue'); toggle.classList.toggle('active',pendingTextDraft.boxBackgroundEnabled);toggle.setAttribute('aria-pressed',String(pendingTextDraft.boxBackgroundEnabled));boxColor.value=pendingTextDraft.boxBackgroundColor;opacity.value=String(Math.round(pendingTextDraft.boxBackgroundOpacity*100));value.textContent=opacity.value+'%';
- const autoButton=document.getElementById('textWidthAuto'),fixedButton=document.getElementById('textWidthFixedMode'),stepper=document.getElementById('textWidthFixedStepper'),widthValue=document.getElementById('textWidthFixedValue');
- if(autoButton&&fixedButton&&stepper&&widthValue){const auto=pendingTextDraft.boxWidthMode!=='fixed',maxW=Math.max(80,Math.ceil(Number(projectWorld.baseStageW)||Number(stageW)||600)),curW=Math.round(Math.max(40,Math.min(maxW,Number(pendingTextDraft.boxWidth)||220)));autoButton.classList.toggle('active',auto);fixedButton.classList.toggle('active',!auto);autoButton.setAttribute('aria-pressed',String(auto));fixedButton.setAttribute('aria-pressed',String(!auto));stepper.hidden=auto;widthValue.textContent=String(curW)}}
+ align.innerHTML=[['Esquerda','left','i-align-text-left'],['Centro','center','i-align-text-center'],['Direita','right','i-align-text-right']].map(([l,v,ic])=>`<button type="button" class="text-editor-option text-align-option${pendingTextDraft.textAlign===v?' active':''}" aria-label="Alinhar ${l}" onclick="updateTextDraft('textAlign','${v}')"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#${ic}"></use></svg></button>`).join('');
+ // v8z4b32E9F1 — ícone de Alinhamento da rail acompanha o textAlign do draft.
+ updateTextAlignRailIcon();
+ // v8z4b32E9F1 — Cor do texto e Fundo da caixa usam paletas rápidas de swatches.
+ renderTextColorSwatches();renderTextBgSwatches();
+ const boxColor=document.getElementById('textBoxBackgroundColor'),opacity=document.getElementById('textBoxBackgroundOpacity'),value=document.getElementById('textBoxBackgroundOpacityValue'),opWrap=document.getElementById('textEditorBgOpacityWrap'),textColorInput=document.getElementById('textCreationColor');
+ if(boxColor)boxColor.value=pendingTextDraft.boxBackgroundColor;if(textColorInput)textColorInput.value=pendingTextDraft.color;
+ if(opacity&&value){opacity.value=String(Math.round(pendingTextDraft.boxBackgroundOpacity*100));value.textContent=opacity.value+'%';}
+ // Slider de opacidade só existe quando o fundo está ligado (Sem cor não mostra alfa).
+ if(opWrap)opWrap.hidden=!pendingTextDraft.boxBackgroundEnabled;
+ const autoButton=document.getElementById('textWidthAuto'),slider=document.getElementById('textWidthSlider'),widthValue=document.getElementById('textWidthValue');
+ if(autoButton&&slider&&widthValue){const auto=pendingTextDraft.boxWidthMode!=='fixed',maxW=Math.max(80,Math.ceil(Number(projectWorld.baseStageW)||Number(stageW)||600)),curW=Math.round(Math.max(40,Math.min(maxW,Number(pendingTextDraft.boxWidth)||220)));
+  autoButton.classList.toggle('active',auto);autoButton.setAttribute('aria-pressed',String(auto));
+  slider.min='40';slider.max=String(maxW);slider.step='5';
+  // Atualização PROGRAMÁTICA: setar .value não dispara 'input', então sincronizar o
+  // slider (inclusive após recalcular Auto) NÃO tira o modo Auto por si só.
+  slider.value=String(curW);widthValue.textContent=String(curW);}}
+// v8z4b32E9F1 — ícone de Alinhamento na rail reflete o textAlign REAL do draft/asset
+// (left/center/right), atualizado imediatamente quando o alinhamento muda. Fonte de
+// verdade é o próprio estado canônico; fallback defensivo 'left' para valor inválido.
+function updateTextAlignRailIcon(){const use=document.getElementById('textAlignRailIcon');if(!use)return;const a=(pendingTextDraft&&['left','center','right'].includes(pendingTextDraft.textAlign))?pendingTextDraft.textAlign:'left';const icon='#i-align-text-'+a;use.setAttribute('href',icon);use.setAttribute('xlink:href',icon);}
+function quickSwatchMarkup(color,label,active){return `<button type="button" class="text-swatch${active?' active':''}" data-swatch-color="${color}" aria-label="${label}" title="${label}" aria-pressed="${active?'true':'false'}" style="background:${color};"></button>`;}
+// Paleta rápida de Cor do texto: neutros compartilhados + custom atual + botão +.
+function renderTextColorSwatches(){const row=document.getElementById('textColorSwatches');if(!row||!pendingTextDraft)return;const cur=String(pendingTextDraft.color||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);let html=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Cor '+n.label,n.value===cur)).join('');if(!inList&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Cor personalizada atual',true);html+=`<button type="button" class="text-swatch-add" aria-label="Escolher outra cor do texto" onclick="openTextColorPicker()">+</button>`;row.innerHTML=html;row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextColor(b.dataset.swatchColor)));}
+// Paleta rápida de Fundo da caixa: "Sem cor/Transparente" + neutros + custom + botão +.
+function renderTextBgSwatches(){const row=document.getElementById('textBgSwatches');if(!row||!pendingTextDraft)return;const enabled=!!pendingTextDraft.boxBackgroundEnabled,cur=String(pendingTextDraft.boxBackgroundColor||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);let html=`<button type="button" class="text-swatch text-swatch-none${!enabled?' active':''}" data-swatch-none="1" aria-label="Sem cor" title="Transparente" aria-pressed="${!enabled?'true':'false'}"></button>`;html+=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Fundo '+n.label,enabled&&n.value===cur)).join('');if(enabled&&!inList&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Fundo personalizado atual',true);html+=`<button type="button" class="text-swatch-add" aria-label="Escolher outra cor do fundo" onclick="openTextBgColorPicker()">+</button>`;row.innerHTML=html;const noneBtn=row.querySelector('[data-swatch-none]');if(noneBtn)noneBtn.addEventListener('click',()=>setTextBoxBackground(null));row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextBoxBackground(b.dataset.swatchColor)));}
+// Cor do texto (glifos): muda o draft e o Stage imediatamente; WYSIWYG E9E preservado.
+function setTextColor(color){if(!pendingTextDraft||!/^#[0-9a-f]{6}$/i.test(color||''))return;pendingTextDraft.color=color.toLowerCase();const input=document.getElementById('textCreationColor');if(input)input.value=pendingTextDraft.color;normalizeTextAsset(pendingTextDraft);measureTextEditorDraft({preserveCenter:true});renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay();}
+function openTextColorPicker(){const input=document.getElementById('textCreationColor');if(input){input.value=(pendingTextDraft&&/^#[0-9a-f]{6}$/i.test(pendingTextDraft.color))?pendingTextDraft.color:'#ffffff';input.click();}}
+// Fundo da caixa. color=null → Sem cor/Transparente: boxBackgroundEnabled=false,
+// SEM simular alpha zero; boxBackgroundColor/opacity ficam preservados internamente
+// para restaurar a última escolha, mas não produzem fundo. Qualquer cor válida →
+// boxBackgroundEnabled=true + cor + revela o slider de opacidade. O alfa controla
+// SOMENTE boxBackgroundOpacity; jamais a opacidade dos glifos/ativo.
+function setTextBoxBackground(color){if(!pendingTextDraft)return;if(color==null){pendingTextDraft.boxBackgroundEnabled=false;}else if(/^#[0-9a-f]{6}$/i.test(color)){pendingTextDraft.boxBackgroundEnabled=true;pendingTextDraft.boxBackgroundColor=color.toLowerCase();const input=document.getElementById('textBoxBackgroundColor');if(input)input.value=pendingTextDraft.boxBackgroundColor;}else return;normalizeTextAsset(pendingTextDraft);measureTextEditorDraft({preserveCenter:true});renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay();}
+function openTextBgColorPicker(){const input=document.getElementById('textBoxBackgroundColor');if(input){input.value=(pendingTextDraft&&/^#[0-9a-f]{6}$/i.test(pendingTextDraft.boxBackgroundColor))?pendingTextDraft.boxBackgroundColor:'#000000';input.click();}}
+// v8z4b32E9F1 — Auto compacto: recalcula a medição canônica de largura automática e
+// re-sincroniza o slider, sem salto indevido de centro (measureTextEditorDraft
+// preserva o centro no modo auto). Um toque em Auto sempre resulta em boxWidthMode='auto'.
+function setTextWidthAuto(){if(!pendingTextDraft)return;textEditorWidthAutoButtonRestoredAutoMode=true;if(pendingTextDraft.boxWidthMode==='auto'){measureTextEditorDraft({preserveCenter:true});renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay();return;}setTextWidthMode('auto');}
+// v8z4b32E9F1 — INPUT DO USUÁRIO no slider: entra em 'fixed' no MESMO gesto (sem
+// exigir dois passos) e aplica a largura. Distinto da atualização programática do
+// slider (que apenas seta .value e não dispara 'input'), que não altera o modo.
+function onTextWidthSliderInput(value){if(!pendingTextDraft)return;if(pendingTextDraft.boxWidthMode!=='fixed'){textEditorWidthSliderActivatedFixedMode=true;pendingTextDraft.boxWidthMode='fixed';pendingTextDraft.boxWidth=Math.max(40,Number(pendingTextDraft.boxWidth)||220);pendingTextDraft.textBaseBoxWidth=Math.max(20,Number(pendingTextDraft.textBaseBoxWidth)||pendingTextDraft.boxWidth);normalizeTextAsset(pendingTextDraft);const autoButton=document.getElementById('textWidthAuto');if(autoButton){autoButton.classList.remove('active');autoButton.setAttribute('aria-pressed','false');}}const maxW=Math.max(80,Math.ceil(Number(projectWorld.baseStageW)||Number(stageW)||600)),v=Math.max(40,Math.min(maxW,Number(value)||40));setTextDraftFixedWidth(v);}
 // v8z4b32E9C — alterna o Text Asset entre largura automática (abraça o conteúdo,
 // linha mais longa) e largura fixa (trava a largura e mantém quebra automática +
 // Enter). Ao travar, preserva a largura visível atual como valor inicial.
 function setTextWidthMode(mode){if(!pendingTextDraft||!['auto','fixed'].includes(mode)||pendingTextDraft.boxWidthMode===mode)return;pendingTextDraft.boxWidthMode=mode;if(mode==='fixed'){pendingTextDraft.boxWidth=Math.max(40,Number(pendingTextDraft.boxWidth)||220);pendingTextDraft.textBaseBoxWidth=Math.max(20,Number(pendingTextDraft.textBaseBoxWidth)||pendingTextDraft.boxWidth)}normalizeTextAsset(pendingTextDraft);measureTextEditorDraft({preserveCenter:true});renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay()}
-function toggleTextWidthMode(){setTextWidthMode(pendingTextDraft&&pendingTextDraft.boxWidthMode==='fixed'?'auto':'fixed')}
-function stepTextDraftFixedWidth(delta){if(!pendingTextDraft||pendingTextDraft.boxWidthMode!=='fixed')return;const maxW=Math.max(80,Math.ceil(Number(projectWorld.baseStageW)||Number(stageW)||600));setTextDraftFixedWidth(Math.min(maxW,Math.max(40,(Number(pendingTextDraft.boxWidth)||220)+Number(delta||0))))}
 function setTextDraftFixedWidth(value){if(!pendingTextDraft||pendingTextDraft.boxWidthMode!=='fixed')return;const v=Math.max(40,Number(value)||40),old=Number(pendingTextDraft.boxWidth)||v,oldBase=Number(pendingTextDraft.textBaseBoxWidth)||old;pendingTextDraft.boxWidth=v;
  // Mudar a largura da caixa NÃO é "escala" de texto: mantém escala% preservando a proporção do baseline.
- if(old>0)pendingTextDraft.textBaseBoxWidth=Math.max(20,oldBase*(v/old));measureTextEditorDraft({preserveCenter:true});const label=document.getElementById('textWidthFixedValue');if(label)label.textContent=String(Math.round(v));renderProjectWorldExtraImages();renderAssetSelectionOverlay()}
+ if(old>0)pendingTextDraft.textBaseBoxWidth=Math.max(20,oldBase*(v/old));measureTextEditorDraft({preserveCenter:true});const label=document.getElementById('textWidthValue');if(label)label.textContent=String(Math.round(v));renderProjectWorldExtraImages();renderAssetSelectionOverlay()}
 function measureTextEditorDraft(options){if(!pendingTextDraft)return;const preserveCenter=!!(options&&options.preserveCenter)||textEditorMode==='edit'||pendingTextDraft.boxWidthMode==='auto',cx=preserveCenter?pendingTextDraft.worldX+pendingTextDraft.worldW/2:null,cy=preserveCenter?pendingTextDraft.worldY+pendingTextDraft.worldH/2:null;measureTextAsset(pendingTextDraft);if(cx!=null)pendingTextDraft.worldX=cx-pendingTextDraft.worldW/2;if(cy!=null)pendingTextDraft.worldY=cy-pendingTextDraft.worldH/2;textEditorDraftPersistedDetected=assets.some(a=>a===pendingTextDraft||String(a&&a.id)===String(pendingTextDraft.id)&&textEditorMode==='create')}
 function updateTextDraft(field,value){if(!pendingTextDraft)return;pendingTextDraft[field]=value;normalizeTextAsset(pendingTextDraft);measureTextEditorDraft({preserveCenter:field==='boxBackgroundEnabled'});renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay()}
 function updateTextStyle(weight,style){if(!pendingTextDraft)return;pendingTextDraft.fontWeight=weight;pendingTextDraft.fontStyle=style;updateTextDraft('fontWeight',weight)}
@@ -15555,9 +15653,148 @@ function openTextEditor(mode,target,source){if(!isAssetsMode())return;if(pending
  // recentraliza (só a criação usa createPendingTextAsset com o centro da vista).
  const createViewCenter=(mode==='create')?getEditorViewCenterWorld():null;
  textCreationBaseline={projectWorld:JSON.stringify(projectWorld),frames:JSON.stringify(frames.slice(0,frameCount)),assets:JSON.stringify(assets.map(a=>serializeProjectAsset(a,0,false)))};pendingTextDraft=target?normalizeTextAsset(structuredClone(target)):createPendingTextAsset(createViewCenter);pendingTextDraft.id=target?target.id:pendingTextDraft.id;
- const input=document.getElementById('textCreationInput'),color=document.getElementById('textCreationColor'),sheet=document.getElementById('textCreationSheet');input.value=pendingTextDraft.text;color.value=pendingTextDraft.color;sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');setTextEditorTool('text');renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay();requestAnimationFrame(()=>{input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length)})}
+ const input=document.getElementById('textCreationInput'),color=document.getElementById('textCreationColor'),sheet=document.getElementById('textCreationSheet');input.value=pendingTextDraft.text;color.value=pendingTextDraft.color;sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');setTextEditorTool('text');renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay();requestAnimationFrame(()=>{input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length)});
+ // v8z4b32E9F1 — ao EDITAR texto existente, localiza a VISTA (pan) para manter o texto
+ // visível acima da sheet/teclado: após abrir a sheet e após a primeira estabilização
+ // do layout. O listener de visualViewport reexecuta quando o teclado altera a área útil.
+ if(mode==='edit')scheduleEnsureTextEditorTargetVisible()}
 function startTextCreation(){openTextEditor('create',null,'add-menu')}
 function startTextAssetEditing(asset,source){asset=asset||getSelectedAsset();if(asset&&asset.type==='text')openTextEditor('edit',asset,source||'toolbar')}
+// ===== v8z4b32E9F1 — LOCALIZAÇÃO DO VIEWPORT AO EDITAR TEXTO EXISTENTE =====
+// Ao abrir o editor em mode==='edit', a bottom sheet + o teclado do Safari podem
+// cobrir a região onde o Text Asset está. Esta rotina faz PAN da VISTA do editor
+// (pan de navegação canônico) para manter o centro visual do texto confortavelmente
+// dentro da área de Stage realmente visível ACIMA da sheet — SEM mover o asset.
+// NÃO altera worldX/worldY/worldW/worldH, rotation, depth, zIndex, Frames, curvas nem
+// ProjectWorld; NÃO cria Undo nem agenda autosave; NÃO altera o hash canônico do
+// projeto. Reutiliza os helpers canônicos (computeEditorTransform → editorWorldToStage,
+// editorPanX/Y, clampEditorPan, applyEditorZoom); não duplica matemática de câmera.
+// Preserva o zoom atual (só translação). E9E continua valendo: editar existente NÃO
+// recentraliza o ASSET; a E9F1 apenas localiza o VIEWPORT.
+let textEditorEditViewportLocalizationRan = false;
+let textEditorEditTargetVisibleAboveSheet = null;
+let textEditorEditTargetCenterX = null, textEditorEditTargetCenterY = null;
+let textEditorAvailableStageRect = null;
+let _ensureTextTargetVisibleRAF = 0;
+function getTextEditorAvailableStageRect(){
+  if (typeof stage === 'undefined' || !stage) return null;
+  const sr = stage.getBoundingClientRect();
+  if (!(sr.width > 0) || !(sr.height > 0)) return null;
+  const vv = window.visualViewport || null;
+  const vvTop = vv ? vv.offsetTop : 0;
+  const vvBottom = vv ? (vv.offsetTop + vv.height) : (window.innerHeight || sr.bottom);
+  const vvLeft = vv ? vv.offsetLeft : 0;
+  const vvRight = vv ? (vv.offsetLeft + vv.width) : (window.innerWidth || sr.right);
+  // Topo real da sheet limita a área útil por baixo (texto deve ficar acima dela).
+  let sheetTop = Infinity;
+  const inner = document.querySelector('#textCreationSheet.open .text-creation-inner');
+  if (inner) { const ir = inner.getBoundingClientRect(); if (ir.height > 0) sheetTop = ir.top; }
+  const left = Math.max(sr.left, vvLeft), right = Math.min(sr.right, vvRight);
+  const top = Math.max(sr.top, vvTop), bottom = Math.min(sr.bottom, vvBottom, sheetTop);
+  const width = right - left, height = bottom - top;
+  return { left, right, top, bottom, width, height, valid: width > 40 && height > 40 };
+}
+function _textEditTargetScreenCenter(){
+  computeEditorTransform();
+  const cxW = pendingTextDraft.worldX + pendingTextDraft.worldW / 2;
+  const cyW = pendingTextDraft.worldY + pendingTextDraft.worldH / 2;
+  const ls = editorWorldToStage(cxW, cyW, 0, 0);
+  const scRect = stageContent.getBoundingClientRect();
+  return { x: scRect.left + ls.x * editorZoomScale, y: scRect.top + ls.y * editorZoomScale, cxW, cyW };
+}
+function ensureTextEditorTargetVisible(){
+  // Só localiza ao EDITAR texto existente; a criação (E9E/E9K) permanece intocada.
+  if (!pendingTextDraft || textEditorMode !== 'edit') return false;
+  if (typeof stageContent === 'undefined' || !stageContent) return false;
+  const rect = getTextEditorAvailableStageRect();
+  textEditorAvailableStageRect = rect;
+  if (!rect || !rect.valid) return false;
+  const cur = _textEditTargetScreenCenter();
+  textEditorEditTargetCenterX = cur.x; textEditorEditTargetCenterY = cur.y;
+  textEditorEditViewportLocalizationRan = true;
+  // Deadzone: se o centro do texto já está confortavelmente dentro da área útil, não
+  // faz nada — evita loop/jitter em pequenas variações do visualViewport/teclado.
+  const padX = Math.min(rect.width * 0.15, 48), padY = Math.min(rect.height * 0.15, 48);
+  const inside = cur.x >= rect.left + padX && cur.x <= rect.right - padX &&
+                 cur.y >= rect.top + padY && cur.y <= rect.bottom - padY;
+  if (inside) { textEditorEditTargetVisibleAboveSheet = true; return false; }
+  // PAN (só translação; preserva o zoom) levando o centro do texto ao centro da área útil.
+  editorPanX += (rect.left + rect.width / 2) - cur.x;
+  editorPanY += (rect.top + rect.height / 2) - cur.y;
+  clampEditorPan();
+  applyEditorZoom();
+  renderProjectWorldExtraImages(); renderAssetSelectionOverlay();
+  const after = _textEditTargetScreenCenter();
+  textEditorEditTargetCenterX = after.x; textEditorEditTargetCenterY = after.y;
+  const r2 = getTextEditorAvailableStageRect() || rect;
+  textEditorEditTargetVisibleAboveSheet = after.x >= r2.left && after.x <= r2.right && after.y >= r2.top && after.y <= r2.bottom;
+  return true;
+}
+function scheduleEnsureTextEditorTargetVisible(){
+  if (_ensureTextTargetVisibleRAF) cancelAnimationFrame(_ensureTextTargetVisibleRAF);
+  _ensureTextTargetVisibleRAF = requestAnimationFrame(() => {
+    _ensureTextTargetVisibleRAF = requestAnimationFrame(() => { _ensureTextTargetVisibleRAF = 0; ensureTextEditorTargetVisible(); });
+  });
+}
+// visualViewport muda quando o teclado do Safari abre/fecha ou a altura útil varia;
+// re-localiza (com deadzone anti-jitter) enquanto o editor estiver EDITANDO existente.
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => { if (pendingTextDraft && textEditorMode === 'edit') scheduleEnsureTextEditorTargetVisible(); });
+}
+// v8z4b32E9F1 — flags de diagnóstico do controle de largura (Auto/slider).
+let textEditorWidthSliderActivatedFixedMode = false;
+let textEditorWidthAutoButtonRestoredAutoMode = false;
+// v8z4b32E9F1 — coletor de diagnósticos ÚTEIS da E9F1. Não expõe texto técnico na UI;
+// serve à auditoria/gate. Reflete estado REAL (não é diagnóstico só para "passar check").
+function getTextEditorE9F1Diagnostics(){
+  const q = id => document.getElementById(id);
+  const rectOf = el => { try { const r = el.getBoundingClientRect(); return { top:r.top, bottom:r.bottom, left:r.left, right:r.right, width:r.width, height:r.height }; } catch(_e){ return null; } };
+  const drag = document.querySelector('#textCreationSheet .text-editor-drag');
+  const header = document.querySelector('#textCreationSheet .text-editor-header');
+  const rail = document.querySelector('#textCreationSheet .text-editor-rail');
+  const dr = drag && rectOf(drag), hr = header && rectOf(header), rr = rail && rectOf(rail);
+  const opWrap = q('textEditorBgOpacityWrap');
+  const opVisible = !!(opWrap && !opWrap.hidden);
+  const draftAlign = pendingTextDraft && ['left','center','right'].includes(pendingTextDraft.textAlign) ? pendingTextDraft.textAlign : 'left';
+  const railUse = q('textAlignRailIcon');
+  const railIcon = railUse ? String(railUse.getAttribute('href')||'') : '';
+  const enabled = !!(pendingTextDraft && pendingTextDraft.boxBackgroundEnabled);
+  return {
+    textEditorCompactHeaderEnabled: true,
+    textEditorHandleToActionsGapPx: (dr && hr) ? +(hr.top - dr.bottom).toFixed(2) : null,
+    textEditorActionsToToolRailGapPx: (hr && rr) ? +(rr.top - hr.bottom).toFixed(2) : null,
+    textEditorStyleIconVariant: 'bold-italic',
+    textEditorAlignIconDynamic: true,
+    textEditorAlignIconState: draftAlign,
+    textEditorAlignIconMatchesDraft: railIcon === ('#i-align-text-' + draftAlign),
+    textEditorQuickPaletteEnabled: true,
+    textEditorPaletteUsesProjectBackgroundPresets: (typeof PROJECT_BG_NEUTRALS !== 'undefined') && Array.isArray(PROJECT_BG_NEUTRALS),
+    textEditorColorCustomPickerAvailable: !!q('textCreationColor'),
+    textEditorBackgroundNoColorAvailable: !!document.querySelector('#textBgSwatches [data-swatch-none]'),
+    textEditorBackgroundNoColorSelected: !enabled,
+    textEditorBackgroundOpacityVisible: opVisible,
+    textEditorBackgroundOpacityVisibleOnlyWhenEnabled: opVisible === enabled,
+    textEditorBackgroundOpacityAffectsGlyphs: false,
+    textEditorEditViewportLocalizationEnabled: true,
+    textEditorEditViewportLocalizationRan: textEditorEditViewportLocalizationRan,
+    textEditorEditTargetVisibleAboveSheet: textEditorEditTargetVisibleAboveSheet,
+    textEditorEditTargetCenterX: textEditorEditTargetCenterX,
+    textEditorEditTargetCenterY: textEditorEditTargetCenterY,
+    textEditorAvailableStageRect: textEditorAvailableStageRect,
+    textEditorViewportLocalizationChangedCanonicalTextGeometry: false,
+    textEditorViewportLocalizationChangedFrames: false,
+    textEditorViewportLocalizationChangedProjectWorld: false,
+    textEditorViewportLocalizationCreatedUndo: false,
+    textEditorViewportLocalizationScheduledAutosave: false,
+    textEditorWidthUsesSlider: !!q('textWidthSlider'),
+    textEditorWidthSliderStep: q('textWidthSlider') ? Number(q('textWidthSlider').step) : null,
+    textEditorWidthHasFixedButton: !!document.getElementById('textWidthFixedMode'),
+    textEditorWidthHasPlusMinusStepper: !!document.getElementById('textWidthFixedStepper'),
+    textEditorWidthSliderActivatedFixedMode: textEditorWidthSliderActivatedFixedMode,
+    textEditorWidthAutoButtonRestoredAutoMode: textEditorWidthAutoButtonRestoredAutoMode,
+  };
+}
+if (typeof window !== 'undefined') window.getTextEditorE9F1Diagnostics = getTextEditorE9F1Diagnostics;
 function auditTextCreationCanonicalState(){if(!textCreationBaseline)return;textCreationKeyboardResizeChangedProjectWorld||=JSON.stringify(projectWorld)!==textCreationBaseline.projectWorld;textCreationKeyboardResizeChangedFrames||=JSON.stringify(frames.slice(0,frameCount))!==textCreationBaseline.frames;textCreationKeyboardResizeChangedExistingAssets||=JSON.stringify(assets.map(a=>serializeProjectAsset(a,0,false)))!==textCreationBaseline.assets}
 function closeTextCreationSheet(){const sheet=document.getElementById('textCreationSheet');sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true');document.getElementById('textCreationInput').blur()}
 function minimizeTextEditor(){if(!pendingTextDraft)return;auditTextCreationCanonicalState();closeTextCreationSheet()}
@@ -15566,7 +15803,16 @@ function cancelTextCreation(){if(!pendingTextDraft)return;auditTextCreationCanon
 function confirmTextCreation(){if(!pendingTextDraft)return;const value=document.getElementById('textCreationInput').value;if(!value.trim()){showStatus('Digite um texto para continuar.');setTextEditorTool('text');return}pendingTextDraft.text=value;normalizeTextAsset(pendingTextDraft);measureTextAsset(pendingTextDraft);auditTextCreationCanonicalState();
  if(textEditorMode==='edit'){const target=assets.find(a=>a&&String(a.id)===textEditorTargetAssetId);if(!target){resetTextEditor();return}const changed=JSON.stringify(textEditorDraftFields(target))!==JSON.stringify(textEditorDraftFields(pendingTextDraft));if(!changed){resetTextEditor();return}const before=captureState(),oldCenterX=target.worldX+target.worldW/2,oldCenterY=target.worldY+target.worldH/2;Object.assign(target,textEditorDraftFields(pendingTextDraft));normalizeTextAsset(target);measureTextAsset(target);target.worldX=oldCenterX-target.worldW/2;target.worldY=oldCenterY-target.worldH/2;pushUndoSnapshot(before);textEditorUndoEntriesCreated++;lastUndoAction='editTextAsset';textEditorCommitChangedOnlyTarget=true;markProjectDirty('editTextAsset');textEditorAutosaveRevisionsCreated++;textEditorConfirmed=true;const id=target.id;resetTextEditor();selectAssetById(id,'text-edit');renderLayersPanelList();invalidateProjectWorldComposite();return}
  const before=captureState();assignPersistentLayerIdentity(pendingTextDraft);const confirmed=pendingTextDraft;assets.push(confirmed);pushUndoSnapshot(before);textEditorUndoEntriesCreated++;normalizeAssetZIndices();const id=confirmed.id;resetTextEditor();selectAssetById(id,'text-create');renderLayersPanelList();invalidateProjectWorldComposite();markProjectDirty('addTextAsset');textEditorAutosaveRevisionsCreated++;textEditorConfirmed=true}
-document.addEventListener('input',ev=>{if(!pendingTextDraft)return;if(ev.target.id==='textCreationInput')pendingTextDraft.text=ev.target.value;if(ev.target.id==='textCreationColor')pendingTextDraft.color=ev.target.value;if(ev.target.id==='textBoxBackgroundColor')pendingTextDraft.boxBackgroundColor=ev.target.value;if(ev.target.id==='textBoxBackgroundOpacity'){pendingTextDraft.boxBackgroundOpacity=Number(ev.target.value)/100;document.getElementById('textBoxBackgroundOpacityValue').textContent=ev.target.value+'%'}normalizeTextAsset(pendingTextDraft);measureTextEditorDraft();renderProjectWorldExtraImages();renderAssetSelectionOverlay()});window.addEventListener('resize',()=>{if(pendingTextDraft)auditTextCreationCanonicalState()});
+document.addEventListener('input',ev=>{if(!pendingTextDraft)return;
+ // v8z4b32E9F1 — os pickers nativos (+ de Cor do texto e + de Fundo) chegam por
+ // 'input'. Cor do texto usa setTextColor; Fundo usa setTextBoxBackground (que também
+ // liga o fundo e revela o slider). Ambos re-renderizam a paleta para refletir a
+ // seleção atual/custom. Conteúdo e opacidade seguem o fluxo direto.
+ if(ev.target.id==='textCreationColor'){setTextColor(ev.target.value);return;}
+ if(ev.target.id==='textBoxBackgroundColor'){setTextBoxBackground(ev.target.value);return;}
+ if(ev.target.id==='textCreationInput')pendingTextDraft.text=ev.target.value;
+ if(ev.target.id==='textBoxBackgroundOpacity'){pendingTextDraft.boxBackgroundOpacity=Number(ev.target.value)/100;document.getElementById('textBoxBackgroundOpacityValue').textContent=ev.target.value+'%'}
+ normalizeTextAsset(pendingTextDraft);measureTextEditorDraft();renderProjectWorldExtraImages();renderAssetSelectionOverlay()});window.addEventListener('resize',()=>{if(pendingTextDraft)auditTextCreationCanonicalState()});
 // v8z4b32E9F — gesto vertical de recolhimento pela ALÇA/topo da sheet. Arrastar a
 // alça para baixo o suficiente chama a MESMA semântica minimizeTextEditor()
 // (preserva pendingTextDraft, zero Undo, zero autosave, mesmo ID). O gesto é
@@ -41799,7 +42045,23 @@ let bgColorEditSnapshot = null;
 function normalizeBgHex(hex) {
   return /^#[0-9a-fA-F]{6}$/.test(hex || '') ? hex.toLowerCase() : null;
 }
+// v8z4b32E9F1 — gera os swatches do seletor de "Cor de fundo" do PROJETO a partir da
+// constante única PROJECT_BG_NEUTRALS (mesma fonte da Cor do texto e do Fundo da caixa
+// do editor). Markup/comportamento idênticos ao seletor aprovado (data-color,
+// setBgColor(this), title, contorno do branco); apenas elimina a lista hardcoded
+// duplicada. syncBgColorUI corrige o estado 'active' conforme a cor atual do projeto.
+let projectBgSwatchesRendered = false;
+function renderProjectBgSwatches() {
+  const row = document.getElementById('bgSwatches');
+  if (!row) return;
+  row.innerHTML = PROJECT_BG_NEUTRALS.map(n => {
+    const white = n.value === '#ffffff';
+    return `<div class="bg-swatch" data-color="${n.value}" onclick="setBgColor('${n.value}',this)" style="background:${n.value};${white ? 'border-color:rgba(255,255,255,.3);' : ''}" title="${n.label}"></div>`;
+  }).join('');
+  projectBgSwatchesRendered = true;
+}
 function syncBgColorUI() {
+  if (!projectBgSwatchesRendered) renderProjectBgSwatches();
   const hex = normalizeBgHex(bgColor) || DEFAULT_PROJECT_BG;
   document.querySelectorAll('#bgSwatches .bg-swatch').forEach(c => {
     c.classList.toggle('active', (c.dataset.color || '').toLowerCase() === hex);
