@@ -2,14 +2,14 @@
 
 Registro canônico da base auditada `v8z4b32E9C` e do plano aprovado de PRs funcionais que devem ocorrer **antes** de qualquer promoção para produção. Este documento é a fonte de verdade do plano pré-promoção; qualquer LLM, Codex ou desenvolvedor deve conseguir entender a sequência sem depender de conversa externa.
 
-Versionado por data. Última atualização: 2026-08-18.
+Versionado por data. Última atualização: 2026-08-19.
 
-## Estado correto após a rodada de Texto (2026-08-18)
+## Estado correto após a rodada de Texto (2026-08-19)
 
 - **E9D — mergeada** (PR #497).
 - **E9E — mergeada e aprovada fisicamente** (PR #498, merge commit `4254ed370ecee64b7f98d411fe6994b8c4538ba5`; teste físico de Roberto em iPhone/Safari em 2026-08-18).
 - **E9F — mergeada** (PR #499, merge commit `82131049e52974a1922206c92bf573b9d2c78ff5`). Testada fisicamente por Roberto em iPhone/Safari: estrutura geral aprovada e maioria das funções operando, mas **NÃO aprovada visualmente como encerrada**. (Nota: a instrução da E9F1 citou o merge commit `7e3978…`, inexistente no git; a fonte oficial mostra `82131049…`.)
-- **E9F1 — em PR / refino visual/funcional localizado** (cabeçalho compacto; ícone de Estilo B+I; ícone de Alinhamento dinâmico; paleta rápida de Cor do texto e de Fundo reutilizando a constante única `PROJECT_BG_NEUTRALS` + botão `+`; Fundo com "Sem cor/Transparente" e opacidade condicional; localização do VIEWPORT ao editar existente sem tocar geometria/Frames/ProjectWorld/Undo/autosave; Largura = Auto compacto + slider step 5). Não antecipa E9G.
+- **E9F1 — MERGEADA, PUBLICADA e APROVADA fisicamente** (PR #500, merge commit `6739dbc018f335ad6b1faead6de4f4469e5ebf78`; build publicada e testada por Roberto em iPhone/Safari, **aprovada em 2026-08-19**). Refino visual/funcional localizado: cabeçalho compacto; ícone de Estilo B+I; ícone de Alinhamento dinâmico; paleta rápida de Cor do texto e de Fundo reutilizando a constante única `PROJECT_BG_NEUTRALS` + botão `+`; Fundo com "Sem cor/Transparente" e opacidade condicional; localização do VIEWPORT ao editar existente sem tocar geometria/Frames/ProjectWorld/Undo/autosave; Largura = Auto compacto + slider step 5. Não antecipa E9G. Rodada corretiva E9F1 encerrada.
 - **E9G — FUTURA** (alças laterais de largura no Stage; exige revisão de REG-028).
 - **Camadas/Profundidade — não iniciada.**
 - **Engine Sprint — não iniciado.**
@@ -78,7 +78,7 @@ A PR de Texto foi subdividida na seguinte sequência aprovada. Registrar como pl
 
 - **E9D — mergeada** (PR #497): reserva de 1 px canônico contra a quebra vertical no Safari e reorganização do editor em `Texto | Fonte | Cor | Estilo`, com draft minimizável e confirmação no mesmo ID.
 - **E9E — mergeada e aprovada fisicamente** (PR #498, merge commit `4254ed370ecee64b7f98d411fe6994b8c4538ba5`): posição + WYSIWYG. (1) NOVO Text Asset nasce centralizado na VISTA ATUAL do Stage, com o centro capturado antes do resize do teclado pela transformação canônica existente; editar asset existente não recentraliza. (2) `pendingTextDraft` é a fonte única da verdade visual enquanto o editor está ativo; painel, Stage, fundo, seleção e quatro alças refletem imediatamente o mesmo draft. **Testada e aprovada por Roberto em iPhone/Safari na build publicada em 2026-08-18** nos itens do seu escopo. É a base funcional aprovada da E9F.
-- **E9F — revisão visual/iconográfica do editor de Texto (EM PR — esta rodada).** Editor iconográfico neutro implementado sobre a E9E:
+- **E9F — revisão visual/iconográfica do editor de Texto: MERGEADA** (PR #499, merge commit `82131049e52974a1922206c92bf573b9d2c78ff5`; estrutura geral aprovada no teste físico, porém não encerrada — refinada pela E9F1). Editor iconográfico neutro implementado sobre a E9E:
   - rail horizontal de ícones sem label textual visível (semântica `tablist/tab` interna com `aria-label`); item ativo usa contraste neutro invertido (branco + símbolo escuro), nunca coral/ciano/verde; estados internos não herdam a cor do espaço Ativos;
   - ordem: texto, fonte, estilo, alinhamento, cor do texto, fundo da caixa, largura da caixa; alinhamento iconográfico próprio; cor do texto e fundo separados, com a opacidade dentro do painel de Fundo; largura Auto/Fixa + stepper mantida (E9C intacta); minimizar por gesto vertical da alça; × cancela, ✓ confirma;
   - paleta aprovada aplicada aos tokens de UI: chrome `#24262B`, sheet `#303238`, controles `#393C43`, divisor `~#4A4D55`; **Ativos `#FF6B8A`**, Frames mantém o ciano existente `#04fff2`; `DEFAULT_PROJECT_BG` (`#3c3c3b`) intacto;
