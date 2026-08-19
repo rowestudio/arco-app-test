@@ -1,5 +1,15 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-19 — v8z4b32E9F1 mergeada, publicada e APROVADA fisicamente (Texto — refino visual/funcional encerrado)
+
+- **PR #500 mergeada** na `main` de teste em 2026-08-19: "v8z4b32E9F1 — fix(text): refina editor, cores, viewport e largura". **Merge commit:** `6739dbc018f335ad6b1faead6de4f4469e5ebf78` (HEAD atual confirmado de `origin/main`).
+- **Build publicada:** a `v8z4b32E9F1` foi publicada no repositório de teste.
+- **Teste físico:** Roberto testou a build publicada em **iPhone/Safari** e **APROVOU visual/funcionalmente** a E9F1 nos itens do seu escopo em **2026-08-19**. O relato visual de Roberto é a referência final de aprovação. Diagnóstico físico confirmou, entre outros: `exportSuccess = true`, `encoderPathUsed = webcodecs`, `fallbackUsed = false`, resolução de exportação `720 × 1280`, `textAssetCount = 2`, paridades de editor/box/asset entre Stage↔Preview↔Export e Session Restore `true`, opacidade da caixa não afeta glifos, `assetTransformCornerHandlesCount = 4`, paridade de câmera Preview↔Export e sem salto visual detectado em Preview/Export.
+- **Export real:** executado com sucesso via **WebCodecs** (sem fallback), `APP_VERSION = APP_VERSION_NAME = v8z4b32E9F1`.
+- **Encerramento:** a **rodada corretiva E9F1 está encerrada**; a E9F1 é a versão corrente aprovada do repositório de teste.
+- **Produção NÃO alterada:** `rowestudio/arco-app` permanece intocada; **nenhuma promoção autorizada**. E9G continua FUTURA/não implementada; Camadas/Profundidade e Engine Sprint não iniciados.
+- O histórico E9F/E9F1 anterior é preservado abaixo e permanece rastreável.
+
 ## Atualização 2026-08-18 — v8z4b32E9F1 em PR (Texto — refino visual/funcional pós-teste físico da E9F)
 
 - **Base confirmada:** `origin/main` do repo de teste no merge da **PR #499 / v8z4b32E9F**, commit **`82131049e52974a1922206c92bf573b9d2c78ff5`** (mensagem "Merge pull request #499 from rowestudio/claude/v8z4b32e9f-text-editor-p5f6w4"). `git fetch origin` foi executado. **Incompatibilidade registrada (AGENTS.md):** a instrução da tarefa citava o merge commit `7e3978208976281dfe57d9832e5cb3b9626ecda2`, que **não existe** neste repositório; a fonte oficial (git) mostra `82131049…` como o merge real da PR #499 (v8z4b32E9F). Como o conteúdo corresponde exatamente ao esperado (merge da PR #499 / v8z4b32E9F), a nova base foi reavaliada e adotada. Não há PR aberta concorrente para o mesmo escopo. Branch de trabalho própria (`claude/v8z4b32e9f1-text-ui-refinement-z044xq`); nenhum merge/promoção.
