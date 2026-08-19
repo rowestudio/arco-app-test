@@ -28,7 +28,7 @@ Nenhuma etapa avança automaticamente; nenhuma promoção está autorizada.
 Não haverá uma PR única e gigante. A ordem aprovada é:
 
 1. **PR funcional de Texto.**
-2. **PR funcional de Camadas e Profundidade.**
+2. **PR funcional de readequação da interface de Layers existente + revisão visual do controle de Profundidade existente** (Layers e Profundidade/parallax básico JÁ EXISTEM; não criar do zero — ver item 3).
 3. **Engine Sprint funcional de Movimento inteligente e intensidade de easing.**
 4. **Revisão integrada no iPhone/Safari.**
 5. **PR documental de readiness**, se ainda necessária.
@@ -85,7 +85,7 @@ A PR de Texto foi subdividida na seguinte sequência aprovada. Registrar como pl
   - a aplicação global dessa filosofia neutra aos demais painéis fica para revisão visual posterior (não feita nesta PR);
   - não antecipa E9G (nenhuma alça lateral; exatamente quatro alças preservadas).
 - **E9G — manipulação direta futura da largura da caixa no Stage (FUTURA, NÃO implementada).** Proposta aprovada de largura direta no Stage por alças laterais específicas de Text Asset; exige revisão explícita da proteção REG-028/exatamente quatro alças antes da implementação. Não implementar nesta PR.
-- Somente depois dessa rodada de Texto avançar para **Camadas e Profundidade** e, em seguida, para o **Engine Sprint** de Movimento inteligente/easing.
+- Somente depois dessa rodada de Texto avançar para a **readequação da interface de Layers existente + revisão visual do controle de Profundidade existente** (item 3; sistemas já existentes, não criados do zero) e, em seguida, para o **Engine Sprint** de Movimento inteligente/easing.
 
 ## 3. PR de Camadas e Profundidade
 

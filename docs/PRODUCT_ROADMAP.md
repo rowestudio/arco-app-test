@@ -8,6 +8,7 @@ Estados usados neste documento:
 - Futuro
 - Pesquisa
 - Regra
+- Superada — decisão/formulação histórica preservada para rastreabilidade, mas que não deve mais ser implementada.
 
 ## 1. Mundo, câmera e Stage
 

@@ -17,7 +17,7 @@
 - **Teste físico:** Roberto testou a build publicada em **iPhone/Safari** e **APROVOU visual/funcionalmente** a E9F1 nos itens do seu escopo em **2026-08-19**. O relato visual de Roberto é a referência final de aprovação. Diagnóstico físico confirmou, entre outros: `exportSuccess = true`, `encoderPathUsed = webcodecs`, `fallbackUsed = false`, resolução de exportação `720 × 1280`, `textAssetCount = 2`, paridades de editor/box/asset entre Stage↔Preview↔Export e Session Restore `true`, opacidade da caixa não afeta glifos, `assetTransformCornerHandlesCount = 4`, paridade de câmera Preview↔Export e sem salto visual detectado em Preview/Export.
 - **Export real:** executado com sucesso via **WebCodecs** (sem fallback), `APP_VERSION = APP_VERSION_NAME = v8z4b32E9F1`.
 - **Encerramento:** a **rodada corretiva E9F1 está encerrada**; a E9F1 é a versão corrente aprovada do repositório de teste.
-- **Produção NÃO alterada:** `rowestudio/arco-app` permanece intocada; **nenhuma promoção autorizada**. E9G continua FUTURA/não implementada; Camadas/Profundidade e Engine Sprint não iniciados.
+- **Produção NÃO alterada:** `rowestudio/arco-app` permanece intocada; **nenhuma promoção autorizada**. E9G continua FUTURA/não implementada; a readequação da interface de Layers existente + revisão visual do controle de Profundidade existente não foi iniciada (Layers e Profundidade/parallax básico JÁ EXISTEM, não serão criados do zero); Engine Sprint não iniciado.
 - O histórico E9F/E9F1 anterior é preservado abaixo e permanece rastreável.
 
 ## Atualização 2026-08-18 — v8z4b32E9F1 em PR (Texto — refino visual/funcional pós-teste físico da E9F)
