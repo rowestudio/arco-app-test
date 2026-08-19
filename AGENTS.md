@@ -109,6 +109,10 @@ O resumo de implementação deve incluir:
 - testes executados;
 - itens não verificados.
 
+## Revisão de PR
+
+Ao revisar, re-revisar, verificar ou determinar merge-readiness de uma PR do Arco Motion, use a Skill `arco-pr-review` (fonte canônica em `.agents/skills/arco-pr-review/`).
+
 ## Regras operacionais do Project OS
 
 - Consulte o Project OS antes de agir.
