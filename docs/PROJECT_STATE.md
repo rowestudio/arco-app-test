@@ -2,7 +2,7 @@
 
 ## Atualização 2026-08-19 — v8z4b32E9F1 mergeada, publicada e APROVADA fisicamente (Texto — refino visual/funcional encerrado)
 
-- **PR #500 mergeada** na `main` de teste em 2026-08-19: "v8z4b32E9F1 — fix(text): refina editor, cores, viewport e largura". **Merge commit:** `6739dbc018f335ad6b1faead6de4f4469e5ebf78` (HEAD atual confirmado de `origin/main`).
+- **PR #500 mergeada** na `main` de teste em 2026-08-19: "v8z4b32E9F1 — fix(text): refina editor, cores, viewport e largura". **Merge commit da PR #500:** `6739dbc018f335ad6b1faead6de4f4469e5ebf78`.
 - **Build publicada:** a `v8z4b32E9F1` foi publicada no repositório de teste.
 - **Teste físico:** Roberto testou a build publicada em **iPhone/Safari** e **APROVOU visual/funcionalmente** a E9F1 nos itens do seu escopo em **2026-08-19**. O relato visual de Roberto é a referência final de aprovação. Diagnóstico físico confirmou, entre outros: `exportSuccess = true`, `encoderPathUsed = webcodecs`, `fallbackUsed = false`, resolução de exportação `720 × 1280`, `textAssetCount = 2`, paridades de editor/box/asset entre Stage↔Preview↔Export e Session Restore `true`, opacidade da caixa não afeta glifos, `assetTransformCornerHandlesCount = 4`, paridade de câmera Preview↔Export e sem salto visual detectado em Preview/Export.
 - **Export real:** executado com sucesso via **WebCodecs** (sem fallback), `APP_VERSION = APP_VERSION_NAME = v8z4b32E9F1`.
