@@ -3442,9 +3442,15 @@ test('REG-054 — multi-seleção de Frames aplica Posição/Escala/Rotação a 
 
 // v8z4b32E9F3 — gate de REG-053. Com 2+ Frames selecionados, o painel de
 // transformação (Rotação/Escala/Mover/Pausa) precisa ser INVARIANTE à ORDEM das
-// ações: (A) selecionar F1+F2 e SÓ DEPOIS abrir o painel deve terminar no MESMO
-// estado visual/funcional que (B) abrir o painel normal em F1 e SÓ DEPOIS
-// selecionar F1+F2. Causa comprovada na base pré-correção: o ancestral
+// ações: (A) selecionar F1+F2 pelo fluxo público e SÓ DEPOIS tocar no controle
+// público real do grupo (botão do #alignBarActions) deve terminar no MESMO
+// estado visual/funcional que (B) tocar no controle público real do grupo na
+// toolbar normal (#toolbar .ctx-frame) com F1 e SÓ DEPOIS selecionar F1+F2 pelo
+// fluxo público. Os DOIS painéis são abertos pelos MESMOS elementos interativos
+// que o usuário toca de verdade — nenhuma chamada direta a openAlignSubmenu(),
+// openCustBar() ou switchCustTab() estabelece o estado principal do teste;
+// essas funções só aparecem indiretamente, disparadas pelos handlers reais dos
+// botões clicados. Causa comprovada na base pré-correção: o ancestral
 // #lowerContextSheetShell só ganha a expansão estrutural (grid-row 3/5,
 // overflow:visible) para os estados cust-expanded/asset-context-panel-open;
 // em align-submenu-open ele herdava overflow:hidden de .lower-cell e ficava
@@ -3474,7 +3480,23 @@ test('REG-053 — painel de transformação em multi-seleção é invariante à 
     await pill(i).dispatchEvent('pointerup').catch(() => {});
   };
   const clickPillToggle = async (i) => { await pill(i).click(); };
+  // Auxiliar de limpeza entre iterações (não é a interação testada: apenas
+  // garante estado inicial normal — sem painel expandido, sem multi-seleção —
+  // antes de cada fluxo público).
   const reset = () => page.evaluate(() => { closeAlignSubmenu(); clearMultiSelect(); closeCustBar(); });
+
+  // Controle público real da barra de multi-seleção (#alignBarActions), visível
+  // somente com has-multi-selection e sem cust-open: o mesmo botão que o
+  // usuário toca para abrir Rotação/Escala/Mover/Pausa em 2+ Frames.
+  const tapAlignBarButton = async (label) => {
+    await page.locator('#alignBarActions button.ab-tab').filter({ hasText: label }).click();
+  };
+  // Controle público real da toolbar normal de Frame único (#toolbar .ctx-frame),
+  // visível em body.bottom-context-frame: o mesmo botão que o usuário toca para
+  // abrir o painel normal de Rotação/Escala/Mover/Pausa em 1 Frame.
+  const tapToolbarFrameButton = async (label) => {
+    await page.locator('#toolbar .tb-item.ctx-frame').filter({ hasText: label }).click();
+  };
 
   // Estado DOM/CSS real do painel contextual inferior, via buildDiagnosticsText()
   // (mesmo coletor observacional do Diagnóstico) + getBoundingClientRect() dos
@@ -3540,48 +3562,55 @@ test('REG-053 — painel de transformação em multi-seleção é invariante à 
     expect(near(a.panelRect.right, b.panelRect.right)).toBe(true);
   };
 
-  // Grupos testados: Rotação, Escala, Mover/Posição e Pausa (mesmo shell inferior).
+  // Grupos testados: Rotação, Escala, Mover e Pausa (mesmo shell inferior). O
+  // rótulo é o texto visível do botão público tocado tanto na barra de
+  // multi-seleção (#alignBarActions) quanto na toolbar normal (#toolbar
+  // .ctx-frame) — os dois caminhos usam exatamente o mesmo texto por grupo.
   const groups = [
-    { align: 'rotation', cust: 'rot' },
-    { align: 'scale', cust: 'scale' },
-    { align: 'move', cust: 'pos' },
-    { align: 'pause', cust: 'framepause' },
+    { align: 'rotation', cust: 'rot', label: 'Rotação' },
+    { align: 'scale', cust: 'scale', label: 'Escala' },
+    { align: 'move', cust: 'pos', label: 'Mover' },
+    { align: 'pause', cust: 'framepause', label: 'Pausa' },
   ];
 
-  for (const { align, cust } of groups) {
-    // ── FLUXO A: selecionar F1+F2 PRIMEIRO, depois abrir o painel ──
+  for (const { align, cust, label } of groups) {
+    // ── FLUXO A: selecionar F1+F2 pelo fluxo público PRIMEIRO, depois tocar no
+    // controle público real do grupo na barra de multi-seleção ──
     await reset();
-    await page.evaluate(() => { activeIdx = 0; });
-    await longPressPill(0);
+    await page.evaluate(() => { activeIdx = 0; }); // setup auxiliar: não é a interação testada
+    await longPressPill(0); // fluxo público: long-press real na pill
     expect(await page.evaluate(() => isMultiSelectionActive())).toBe(true);
-    await clickPillToggle(1);
-    await page.evaluate((g) => openAlignSubmenu(g), align);
+    await clickPillToggle(1); // fluxo público: toque real na pill
+    await tapAlignBarButton(label); // fluxo público: toque real no botão do grupo
     await page.waitForTimeout(60);
     const stateA = await measure();
-    expectPanelHealthy(stateA, `Fluxo A (${align})`);
+    expectPanelHealthy(stateA, `Fluxo A (${label})`);
     expect(stateA.selected).toEqual([0, 1]);
     expect(stateA.diag.lowerContextTransitionSource).toBe('multi-select');
     expect(stateA.diag.lowerContextVisiblePanel).toBe('alignBarSubmenu');
+    expect(stateA.diag.lowerContextLastOpenedGroup).toBe(align);
 
-    // ── FLUXO B: abrir o painel normal em F1 PRIMEIRO, mantê-lo aberto, e SÓ
-    // DEPOIS selecionar F1+F2 (o painel já aberto permanece; alignBar nunca fica
-    // visível enquanto cust-open estiver ativo) ──
+    // ── FLUXO B: tocar no controle público real do grupo na toolbar normal com
+    // F1 PRIMEIRO (painel normal abre pelo caminho real), mantê-lo aberto, e SÓ
+    // DEPOIS selecionar F1+F2 pelo fluxo público ──
     await reset();
-    await page.evaluate((t) => { activeIdx = 0; openCustBar(); switchCustTab(t); }, cust);
+    await page.evaluate(() => { activeIdx = 0; }); // setup auxiliar: não é a interação testada
+    await tapToolbarFrameButton(label); // fluxo público: toque real no botão do grupo
     await page.waitForTimeout(60);
-    await longPressPill(0);
+    await longPressPill(0); // fluxo público: long-press real na pill
     expect(await page.evaluate(() => isMultiSelectionActive())).toBe(true);
-    await clickPillToggle(1);
+    await clickPillToggle(1); // fluxo público: toque real na pill
     await page.waitForTimeout(60);
     const stateB = await measure();
-    expectPanelHealthy(stateB, `Fluxo B (${align})`);
+    expectPanelHealthy(stateB, `Fluxo B (${label})`);
     expect(stateB.selected).toEqual([0, 1]);
     expect(stateB.diag.lowerContextTransitionSource).toBe('single-frame');
     expect(stateB.diag.lowerContextVisiblePanel).toBe('custBarContent');
+    expect(stateB.diag.lowerContextLastOpenedGroup).toBe(cust);
 
     // MESMA seleção + MESMA transformação, ordens diferentes → apresentação
     // final geometricamente equivalente (invariante à ordem das ações).
-    expectEquivalentPresentation(stateA, stateB, `A×B (${align})`);
+    expectEquivalentPresentation(stateA, stateB, `A×B (${label})`);
   }
 
   await reset();
