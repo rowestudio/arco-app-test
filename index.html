@@ -28859,6 +28859,32 @@ function deleteActiveFrame() {
 }
 
 // Slider de escala no painel Customize
+// v8z4b32E9F2 — REG-054: sessão do gesto do slider de Escala. O estado final dos
+// alvos depende do DESLOCAMENTO LÍQUIDO do slider (valor final − valor inicial da
+// sessão), NÃO da quantidade de eventos 'input' emitidos pelo browser durante o
+// drag (Safari/iPhone emitem muitos). refPct = escala exibida no slider (do Frame
+// ativo, clampeada como em syncCustomizePanel) no início do gesto; snap[i] guarda a
+// escala e o centro de cada alvo no início. Cada input recalcula a partir dos
+// snapshots + deslocamento, sem reaplicar delta sobre alvos já modificados. Reutiliza
+// pushUndo/undoStack (1 Undo por gesto). Matemática/limites/centro/aspect/delta iguais.
+let scaleSliderSession = null;
+function beginScaleSliderSession() {
+  if (scaleSliderSession) return scaleSliderSession;
+  const targets = getNormalTransformTargets();
+  if (!targets.length) return null;
+  const refW = baseFrameW > 0 ? baseFrameW : stageW * 0.55;
+  const snap = {};
+  targets.forEach(i => {
+    const f = frames[i];
+    snap[i] = { pct: Math.round(f.w / refW * 100), cx: f.x + f.w / 2, cy: f.y + f.h / 2 };
+  });
+  const activeF = frames[activeIdx];
+  const refPct = Math.max(20, Math.min(300, activeF ? Math.round(activeF.w / refW * 100) : 100));
+  pushUndo();
+  scaleSliderSession = { refPct, refW, targets, snap };
+  return scaleSliderSession;
+}
+function endScaleSliderSession() { scaleSliderSession = null; }
 function initScaleSlider() {
   const slider = document.getElementById('scaleSlider');
   const num    = document.getElementById('scaleNum');
@@ -28868,77 +28894,37 @@ function initScaleSlider() {
   const newSlider = slider.cloneNode(true);
   slider.parentNode.replaceChild(newSlider, slider);
 
-  // Guardar cx/cy no momento em que o usuário COMEÇA a arrastar
-  // Guardar cx/cy no estado atual do frame ANTES de qualquer mudança
-  let origCX = frames[activeIdx] ? frames[activeIdx].x + frames[activeIdx].w / 2 : null;
-  let origCY = frames[activeIdx] ? frames[activeIdx].y + frames[activeIdx].h / 2 : null;
-
-  let scaleUndoCaptured = false;
-  newSlider.addEventListener('mousedown', () => {
-    // v8z4b32E9F2 — REG-054: captura de Undo pela MESMA semântica de alvos
-    // efetivos do handler de input (getNormalTransformTargets). Zero alvos
-    // editáveis → sem Undo. Não altera matemática/limites/centro/aspect/delta.
-    if (!getNormalTransformTargets().length) return;
-    if (!scaleUndoCaptured) { pushUndo(); scaleUndoCaptured = true; }
-    const f = frames[activeIdx]; if (!f) return;
-    origCX = f.x + f.w / 2;
-    origCY = f.y + f.h / 2;
-  });
-  newSlider.addEventListener('touchstart', () => {
-    // v8z4b32E9F2 — REG-054: captura de Undo pela MESMA semântica de alvos
-    // efetivos do handler de input (getNormalTransformTargets). Zero alvos
-    // editáveis → sem Undo. Não altera matemática/limites/centro/aspect/delta.
-    if (!getNormalTransformTargets().length) return;
-    if (!scaleUndoCaptured) { pushUndo(); scaleUndoCaptured = true; }
-    const f = frames[activeIdx]; if (!f) return;
-    origCX = f.x + f.w / 2;
-    origCY = f.y + f.h / 2;
-  }, {passive:true});
+  newSlider.addEventListener('mousedown', beginScaleSliderSession);
+  newSlider.addEventListener('touchstart', beginScaleSliderSession, {passive:true});
 
   newSlider.addEventListener('input', function() {
-    const f = frames[activeIdx]; if (!f) return;
+    const session = beginScaleSliderSession();
+    if (!session) return;
     const pct = parseInt(this.value);
+    const disp = pct - session.refPct;   // deslocamento líquido do slider na sessão
     const ar  = ratioMap[currentRatio];
-    const refW = baseFrameW > 0 ? baseFrameW : stageW * 0.55;
-    // v8z4b16j — Remove clamp ao stageW*0.98 (cap visual da imagem):
-    // o slider de Escala agora permite extrapolar o limite da imagem,
-    // alinhando com o comportamento livre dos botões −5%/+5%. Quando
-    // "Conter na imagem" estiver ativo, clampFrame() abaixo ainda limita
-    // a expansão; no modo livre (default), o frame pode crescer além
-    // dos limites visuais da imagem.
-    const newW = Math.max(40, refW * pct / 100);
-    const newH = newW / ar;
-    const applyToFrame = (i) => {
-      const fi = frames[i]; if (!fi) return;
-      const cx = i === activeIdx ? (origCX !== null ? origCX : fi.x + fi.w/2) : fi.x + fi.w/2;
-      const cy = i === activeIdx ? (origCY !== null ? origCY : fi.y + fi.h/2) : fi.y + fi.h/2;
-      // v8z4b32E9F2 — REG-054: quando o alvo não é o Frame ativo (Global ou
-      // multi-seleção), aplica o MESMO delta percentual relativo à escala própria
-      // de cada Frame, preservando as proporções relativas em vez de igualar.
-      const thisPct = i !== activeIdx ? Math.round(fi.w / refW * 100) + (pct - Math.round(f.w / refW * 100)) : pct;
-      const tW = Math.max(40, refW * thisPct / 100);
+    const refW = session.refW;
+    // v8z4b16j — Escala pode extrapolar o limite visual da imagem; clampFrame()
+    // abaixo ainda limita quando "Conter na imagem" está ativo.
+    session.targets.forEach(i => {
+      if (frameLocked[i] || !frames[i]) return;
+      const s = session.snap[i];
+      // Mesmo deslocamento percentual sobre a escala PRÓPRIA de cada alvo no início do
+      // gesto → preserva proporções relativas e centro individual, sem acúmulo entre eventos.
+      const tW = Math.max(40, refW * (s.pct + disp) / 100);
       const tH = tW / ar;
-      frames[i] = { x: cx - tW/2, y: cy - tH/2, w: tW, h: tH };
+      frames[i] = { x: s.cx - tW/2, y: s.cy - tH/2, w: tW, h: tH };
       clampFrame(i);
       syncCtrlPtsForFrame(i);
-    };
-    getNormalTransformTargets().forEach(applyToFrame);
+    });
     const numEl = document.getElementById('scaleNum');
     if (numEl) numEl.textContent = pct + '%';
     renderAll();
   });
 
-  newSlider.addEventListener('mouseup',  () => {
-    const f = frames[activeIdx];
-    origCX = f ? f.x + f.w / 2 : null;
-    origCY = f ? f.y + f.h / 2 : null;
-  });
-  newSlider.addEventListener('change', () => { scaleUndoCaptured = false; });
-  newSlider.addEventListener('touchend', () => {
-    const f = frames[activeIdx];
-    origCX = f ? f.x + f.w / 2 : null;
-    origCY = f ? f.y + f.h / 2 : null;
-  });
+  newSlider.addEventListener('mouseup', endScaleSliderSession);
+  newSlider.addEventListener('change', endScaleSliderSession);
+  newSlider.addEventListener('touchend', endScaleSliderSession);
 }
 
 let mapaMode = false; // mantido por compat
@@ -43573,34 +43559,42 @@ function updateToolbarLabels() {
 const rotSlider = document.getElementById('rotSlider');
 const rotNum    = document.getElementById('rotNum');
 
-rotSlider.addEventListener('input', function() {
+// v8z4b32E9F2 — REG-054: sessão do gesto do slider de Rotação. O estado final dos
+// alvos depende do DESLOCAMENTO LÍQUIDO do slider (valor final − valor inicial da
+// sessão), NÃO da quantidade de eventos 'input' emitidos pelo browser durante o drag.
+// Sem isso, quando activeIdx NÃO pertence aos alvos, o delta era recalculado contra
+// um baseline congelado (rotação de activeIdx) e reaplicado sobre alvos já modificados,
+// acumulando indevidamente (+10 +20 +30 = +60° em vez de +30°). refVal = rotação de
+// activeIdx (baseline exibido) no início; snap[i] = rotação de cada alvo no início.
+// Reutiliza pushUndo/undoStack (1 Undo por gesto); a captura de Undo usa a MESMA
+// semântica de alvos efetivos (getNormalTransformTargets) — zero alvos → sem Undo.
+let rotSliderSession = null;
+function beginRotSliderSession() {
+  if (rotSliderSession) return rotSliderSession;
   const targets = getNormalTransformTargets();
-  if (!targets.length) return;
-  const val = parseFloat(this.value);
-  // Delta relativo à rotação do Frame ativo (valor exibido no slider). Aplicado
-  // a cada alvo sobre a sua própria rotação → preserva rotações independentes.
-  // No caso de alvo único (Frame ativo), equivale a definir o valor absoluto.
-  const delta = val - (frameRotations[activeIdx] || 0);
-  targets.forEach(i => {
-    frameRotations[i] = Math.max(-720, Math.min(720, (frameRotations[i] || 0) + delta));
+  if (!targets.length) return null;
+  const snap = {};
+  targets.forEach(i => { snap[i] = frameRotations[i] || 0; });
+  pushUndo();
+  rotSliderSession = { refVal: frameRotations[activeIdx] || 0, targets, snap };
+  return rotSliderSession;
+}
+function endRotSliderSession() { rotSliderSession = null; }
+rotSlider.addEventListener('input', function() {
+  const session = beginRotSliderSession();
+  if (!session) return;
+  const disp = (parseFloat(this.value) || 0) - session.refVal;   // deslocamento líquido
+  session.targets.forEach(i => {
+    if (frameLocked[i] || !frames[i]) return;
+    frameRotations[i] = Math.max(-720, Math.min(720, (session.snap[i] || 0) + disp));
   });
   clampFrame(activeIdx);
-  if (rotNum) rotNum.textContent = (frameRotations[activeIdx] >= 0 ? '+' : '') + frameRotations[activeIdx].toFixed(1) + '°';
+  if (rotNum) rotNum.textContent = ((frameRotations[activeIdx] || 0) >= 0 ? '+' : '') + (frameRotations[activeIdx] || 0).toFixed(1) + '°';
   renderAll();
 });
-let rotUndoCaptured = false;
-const captureRotUndo = () => {
-  // v8z4b32E9F2 — REG-054: a captura de Undo usa a MESMA semântica de alvos
-  // efetivos do handler de input (getNormalTransformTargets), não activeIdx.
-  // activeIdx pode estar travado ou fora da seleção enquanto Frames selecionados
-  // e destravados serão realmente alterados — capturar por activeIdx abortaria
-  // o snapshot e produziria mutação sem Undo. Zero alvos editáveis → sem Undo.
-  if (!getNormalTransformTargets().length) return;
-  if (!rotUndoCaptured) { pushUndo(); rotUndoCaptured = true; }
-};
-rotSlider.addEventListener('touchstart', captureRotUndo, {passive:true});
-rotSlider.addEventListener('mousedown', captureRotUndo);
-rotSlider.addEventListener('change', () => { rotUndoCaptured = false; });
+rotSlider.addEventListener('touchstart', beginRotSliderSession, {passive:true});
+rotSlider.addEventListener('mousedown', beginRotSliderSession);
+rotSlider.addEventListener('change', endRotSliderSession);
 
 function nudgeRotation(delta, reset=false) {
   // v8z4b32E9F2 — REG-054: +/−° aplicam o mesmo delta aos alvos normais

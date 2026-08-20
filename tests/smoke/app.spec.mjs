@@ -3341,39 +3341,43 @@ test('REG-054 — multi-seleção de Frames aplica Posição/Escala/Rotação a 
   await page.evaluate(() => { frameLocked[1] = false; });
   expect(after.allFinite).toBe(true);
 
-  // ── Captura de Undo por alvos efetivos (não por activeIdx) ──
+  // ── Captura de Undo + gesto contínuo multi-input por alvos efetivos ──
   // Cenário-armadilha: activeIdx = F1 TRAVADO e fora dos alvos; F2 e F3 selecionados e
-  // destravados; F4 não selecionado; Global desligado. O gesto REAL do slider de Rotação
-  // (mousedown → input → change, incluindo o capturador de Undo real) deve alterar F2 e F3,
-  // capturar EXATAMENTE 1 Undo e NUNCA produzir mutação sem snapshot. Falha na base pré-fix
-  // (o capturador abortava por frameLocked[activeIdx] enquanto o input mutava F2/F3).
+  // destravados; F4 não selecionado; Global desligado. O gesto REAL do slider dispara
+  // VÁRIOS eventos 'input' durante um drag (como Safari/iPhone): mousedown → input(+10)
+  // → input(+20) → input(+30) → change. O estado final deve depender do DESLOCAMENTO
+  // LÍQUIDO do slider (+30), NÃO da soma dos deltas intermediários (+60), capturar
+  // EXATAMENTE 1 Undo e nunca mutar sem snapshot. Falha no HEAD anterior 960cd02
+  // (rotação/escala acumulavam entre eventos quando activeIdx não era alvo).
   expect(frameCount0).toBeGreaterThanOrEqual(4);
-  const dragRot = async (deltaDeg) => page.evaluate((d) => {
+  // Drag REAL contínuo: mousedown → um 'input' por valor NET (relativo ao baseline exibido) → change.
+  const dragRotSteps = async (netSteps) => page.evaluate((steps) => {
     const s = document.getElementById('rotSlider');
-    s.dispatchEvent(new Event('mousedown'));                 // captura de Undo (gesto real)
-    s.value = String((frameRotations[activeIdx] || 0) + d);
-    s.dispatchEvent(new Event('input'));                     // mutação real
-    s.dispatchEvent(new Event('change'));                    // fim do gesto
-  }, deltaDeg);
-  const dragScale = async (deltaPct) => page.evaluate((d) => {
+    const base = frameRotations[activeIdx] || 0;
+    s.dispatchEvent(new Event('mousedown'));
+    for (const n of steps) { s.value = String(base + n); s.dispatchEvent(new Event('input')); }
+    s.dispatchEvent(new Event('change'));
+  }, netSteps);
+  const dragScaleSteps = async (netSteps) => page.evaluate((steps) => {
     initScaleSlider();
     const s = document.getElementById('scaleSlider');
+    const base = Math.round(parseFloat(s.value));
     s.dispatchEvent(new Event('mousedown'));
-    s.value = String(Math.round(parseFloat(s.value)) + d);
-    s.dispatchEvent(new Event('input'));
+    for (const n of steps) { s.value = String(base + n); s.dispatchEvent(new Event('input')); }
     s.dispatchEvent(new Event('change'));
-  }, deltaPct);
+  }, netSteps);
 
   await page.evaluate(() => { clearMultiSelect(); activeIdx = 0; openCustBar(); frameLocked[0] = true; });
   await longPressPill(1); await clickPillToggle(2);
   expect(await page.evaluate(() => Array.from(selectedFrames).sort((a,b)=>a-b))).toEqual([1,2]);
+  // F1 (activeIdx) é 0° na fixture, travado e FORA dos alvos → baseline congelado seria a armadilha.
   await ensureGlobalOff('rot');
   before = await snap();
-  await dragRot(18);
+  await dragRotSteps([10, 20, 30]);   // drag contínuo, deslocamento líquido +30°
   after = await snap();
-  expect(after.undo).toBe(before.undo + 1);                 // exatamente 1 Undo para o gesto
-  expect(near(after.rot[1] - before.rot[1], 18)).toBe(true); // F2 muda
-  expect(near(after.rot[2] - before.rot[2], 18)).toBe(true); // F3 muda
+  expect(after.undo).toBe(before.undo + 1);                  // exatamente 1 Undo para o gesto
+  expect(near(after.rot[1] - before.rot[1], 30)).toBe(true); // F2 = +30° (NÃO +60°)
+  expect(near(after.rot[2] - before.rot[2], 30)).toBe(true); // F3 = +30°
   expect(near(after.rot[0], before.rot[0])).toBe(true);      // F1 travado NÃO muda
   expect(near(after.rot[3], before.rot[3])).toBe(true);      // F4 não selecionado NÃO muda
   expect(after.selected).toEqual([1,2]);                     // seleção permanece
@@ -3384,21 +3388,36 @@ test('REG-054 — multi-seleção de Frames aplica Posição/Escala/Rotação a 
   expect(near(undo1.rot[2], before.rot[2])).toBe(true);      // Undo restaura F3
   await page.evaluate(() => { if (typeof redo === 'function') redo(); });
   let redo1 = await snap();
-  expect(near(redo1.rot[1], after.rot[1])).toBe(true);       // Redo reaplica F2
+  expect(near(redo1.rot[1], after.rot[1])).toBe(true);       // Redo reaplica F2 (estado final)
   expect(near(redo1.rot[2], after.rot[2])).toBe(true);       // Redo reaplica F3
+  // Equivalência: um gesto DIRETO (1 input +30) leva ao MESMO estado que o multi-input.
+  await page.evaluate(() => undo());
+  before = await snap();
+  await dragRotSteps([30]);
+  const rotDirect = await snap();
+  expect(near(rotDirect.rot[1], redo1.rot[1])).toBe(true);
+  expect(near(rotDirect.rot[2], redo1.rot[2])).toBe(true);
+  await page.evaluate(() => undo());   // volta ao estado pré-rotação
 
-  // Escala no mesmo cenário-armadilha (a captura de Undo da Escala foi harmonizada ao
-  // mesmo princípio de alvos efetivos): F2/F3 mudam, F1(travado)/F4 não, 1 Undo consolidado.
+  // Escala no mesmo cenário-armadilha e mesma propriedade (deslocamento líquido, não acúmulo):
   await ensureGlobalOff('scale');
   before = await snap();
-  await dragScale(25);
+  await dragScaleSteps([10, 20, 30]);  // drag contínuo, deslocamento líquido +30%
   after = await snap();
   expect(after.undo).toBe(before.undo + 1);
   expect(after.frames[1].w).toBeGreaterThan(before.frames[1].w + 0.01);
   expect(after.frames[2].w).toBeGreaterThan(before.frames[2].w + 0.01);
-  expect(near(after.frames[0].w, before.frames[0].w)).toBe(true);
-  expect(near(after.frames[3].w, before.frames[3].w)).toBe(true);
+  expect(near(after.frames[0].w, before.frames[0].w)).toBe(true);   // F1 travado intacto
+  expect(near(after.frames[3].w, before.frames[3].w)).toBe(true);   // F4 intacto
   expect(after.selected).toEqual([1,2]);
+  // Equivalência Escala: multi-input vs 1 input direto → mesma largura final (tolerância numérica).
+  await page.evaluate(() => undo());
+  await ensureGlobalOff('scale');
+  await dragScaleSteps([30]);
+  const scaleDirect = await snap();
+  expect(near(scaleDirect.frames[1].w, after.frames[1].w, 0.6)).toBe(true);
+  expect(near(scaleDirect.frames[2].w, after.frames[2].w, 0.6)).toBe(true);
+  await page.evaluate(() => undo());   // volta ao estado pré-escala
 
   // ── Zero alvos editáveis: nenhum estado muda, nenhum Undo é criado ──
   // activeIdx = F1 travado, sem seleção, Global desligado.
@@ -3406,13 +3425,13 @@ test('REG-054 — multi-seleção de Frames aplica Posição/Escala/Rotação a 
   expect(await page.evaluate(() => isMultiSelectionActive())).toBe(false);
   await ensureGlobalOff('rot');
   before = await snap();
-  await dragRot(18);
+  await dragRotSteps([10, 20, 30]);
   after = await snap();
   expect(after.undo).toBe(before.undo);                      // nenhum Undo
   expect(after.rot).toEqual(before.rot);                     // rotação inalterada
   await ensureGlobalOff('scale');
   before = await snap();
-  await dragScale(25);
+  await dragScaleSteps([10, 20, 30]);
   after = await snap();
   expect(after.undo).toBe(before.undo);                      // nenhum Undo
   expect(after.frames.map(f => f.w)).toEqual(before.frames.map(f => f.w)); // escala inalterada
