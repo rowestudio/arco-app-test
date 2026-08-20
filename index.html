@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9F3 — base v8z4b32E9F2 (PR #505). fix(frames/REG-053): estabiliza a apresentação do painel de transformação em multi-seleção de Frames, tornando-a INVARIANTE à ordem das ações. Causa comprovada por reprodução na main: o ancestral #lowerContextSheetShell (e #lowerContextSlot) só ganhava a expansão estrutural de grid (grid-row 3/5, overflow:visible) para os estados cust-expanded/asset-context-panel-open (painel normal de Frame único); no estado align-submenu-open (Rotação/Escala/Mover/Pausa em multi-seleção) o mesmo ancestral permanecia confinado à Linha 4 (46px) com overflow:hidden herdado de .lower-cell, cortando visualmente a parte superior de #alignBarSubmenu — inclusive o botão Voltar — sempre que a multi-seleção era feita ANTES de abrir o painel (selecionar F1+F2 → abrir Rotação quebrava; abrir Rotação em F1 → selecionar F1+F2 não quebrava, porque o custBar já aberto permanece visível e #alignBar fica display:none enquanto cust-open estiver ativo). Correção estrutural mínima: as mesmas regras de expansão do ancestral (grid-column/grid-row, overflow:visible, grid-template-rows, ocultação das células residuais da Linha 3) passam a valer também para body.align-submenu-open; #alignBarSubmenu deixa de depender do deslocamento horizontal negativo pensado para o ancestral estreito (agora full-width, como o custBar) e passa a ancorar pelo topo (paridade com o gap inferior do custBar). Nenhuma segunda apresentação paralela foi criada; a mesma primitiva geométrica do custBar passou a ser reaproveitada pelo alignBar. Diagnóstico observacional novo (sem texto técnico na UI): multiSelectionActive, multiSelectionCount, lowerContextVisiblePanel, alignBarVisible, alignBarSubmenuVisible, custBarVisible, custBarContentVisible, bodyHasMultiSelection, bodyHasAlignSubmenuOpen, bodyHasCustOpen, bodyHasCustExpanded, lowerContextTransitionSource, lowerContextLastOpenedGroup, lowerContextCompetingPanelsDetected, lowerContextClippingDetected. NÃO tocado: REG-052 (fill dos sliders), REG-055 (botões + dos color pickers), matemática/targets da transformação (getNormalTransformTargets, REG-054), Undo/Redo, Preview/Export/renderer/getStateAtT/drawAtT, curvas/easing/timing, ProjectWorld, Save/Load, Layers, Text Assets, Stage, timeline estrutural, cores/ícones/textos, produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F3. -->
 <!-- Arco Motion App — v8z4b32E9F2 — base v8z4b32E9F1 (PR #500). fix(frames/REG-054): correção da resolução de alvos dos controles PÚBLICOS de Posição/Escala/Rotação do menu contextual de Frame (custBar). Com 2+ Frames selecionados, os controles normais (nudgePos, setPosFromInput, slider de Escala, nudgeScale, slider de Rotação, nudgeRotation) afetavam APENAS o Frame ativo, exceto quando Global estava ligado — a multi-seleção não era respeitada. Introduzida a resolução única getNormalTransformTargets() (precedência: Global → todos elegíveis; multi-seleção → exatamente os Frames selecionados; senão → Frame ativo). O mesmo delta é aplicado a todos os alvos, preservando distâncias relativas (Posição), proporções/centro individual (Escala) e rotações independentes (Rotação); Frames fora da seleção não mudam; Frames travados preservam a regra de lock; o gesto de slider mantém 1 Undo consolidado (batchTransformEditSession/undoStack inalterados). Global permanece um modo distinto e NÃO é requisito para a multi-seleção. NÃO tocado: infraestrutura de batch/alignBar, REG-052 (fill dos sliders), REG-053 (painel cortado), Preview/Export/renderer/getStateAtT/drawAtT, curvas/easing/timing, ProjectWorld, Save/Load, Layers, Text Assets, produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F2. -->
 <!-- Arco Motion App — v8z4b32E9F1 — base v8z4b32E9F (PR #499). fix(text): refinamento visual/funcional LOCALIZADO do editor de Text Asset após teste físico E9F em iPhone/Safari (estrutura E9F aprovada; correção pontual). (A) cabeçalho da bottom sheet compactado — alça, linha ×/✓ e rail iconográfica ficam próximas, sem vazio vertical, preservando × Cancelar e ✓ Confirmar e touch targets seguros. (B) ícone de Estilo passa a ser B+I (negrito + itálico) no lugar do "I" itálico isolado. (C) ícone de Alinhamento na rail reflete o textAlign do draft (left/center/right) em tempo real, com fallback left. (D/E) Cor do texto vira paleta rápida de swatches reutilizando os neutros do seletor de Fundo do projeto (constante única PROJECT_BG_NEUTRALS) + botão + para o color picker completo. (F/G/H) Fundo da caixa ganha ícone inequívoco de preenchimento; estado padrão "Sem cor / Transparente" (checkerboard) selecionado com boxBackgroundEnabled=false e SEM slider de opacidade; escolher uma cor liga o fundo e revela o slider; alfa controla só boxBackgroundOpacity, nunca os glifos. (J) editar texto existente LOCALIZA a VISTA (pan canônico) para manter o texto visível acima da sheet/teclado, sem mover worldX/Y/W/H, rotação, depth, zIndex, Frames, ProjectWorld, sem Undo/autosave. (L/M/N) Largura simplifica para Auto compacto + slider (step 5, limites canônicos): mover o slider entra em fixed no mesmo gesto; Auto recalcula e re-sincroniza o slider sem sair de auto; removidos o botão Fixa grande e o stepper −/+. E9E preservada (criar novo texto continua nascendo no centro da vista atual). E9G NÃO antecipada (exatamente quatro alças). Preview/Export/Save/Load/Session Restore/renderer intactos. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F1. -->
 <!-- Arco Motion App — v8z4b32E9F — base v8z4b32E9E. feat(ui): editor de Text Asset adota rail horizontal ICONOGRÁFICA neutra no lugar das tabs textuais Texto|Fonte|Cor|Estilo. Sete propriedades por ícone (sem label visível, com aria-label): editar texto, fonte, estilo, alinhamento, cor do texto, fundo da caixa, largura da caixa; a rail rola horizontalmente em uma única linha. Item ativo usa contraste NEUTRO invertido (superfície branca + símbolo escuro), nunca coral/ciano/verde. Alinhamento sai do corpo permanente do Texto e vira controle iconográfico próprio; Cor do texto e Fundo da caixa ficam semanticamente separados; a opacidade fica inequivocamente DENTRO do painel de Fundo. Largura mantém Auto/Fixa + stepper (E9C intacta) sob o ícone Largura, sem antecipar alças laterais (E9G). Arrastar a alça superior para baixo minimiza (mesma semântica minimizeTextEditor: preserva pendingTextDraft, zero Undo, zero autosave, mesmo ID); × cancela e ✓ confirma. Paleta neutra aprovada aplicada aos tokens de UI (chrome #24262B, sheet #303238, campo #393C43, divisor ~#4A4D55) sem tocar DEFAULT_PROJECT_BG. Identidade do workspace Ativos migra de roxo para coral #FF6B8A (token --accent + contorno/alças/pill/botão +); Frames preservam o ciano existente #04fff2. WYSIWYG E9E, quatro alças, criação na vista atual e draft preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F. -->
@@ -2238,18 +2239,21 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{flex:0 0 68
 .mid-bar.timeline-grid #alignBarSubmenu{height:100% !important;overflow-x:auto !important;overflow-y:hidden !important;padding:0 !important;align-items:stretch;}
 body.align-submenu-open #lowerContextSlot{overflow:visible;z-index:8;}
 .mid-bar.timeline-grid #alignBar.align-submenu-open{position:relative !important;overflow:visible !important;z-index:10 !important;}
-.mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu{position:absolute;left:calc(-1 * (var(--lower-left-w) + 5px));right:0;bottom:0;height:var(--lower-context-panel-h) !important;min-height:var(--lower-context-panel-h);z-index:12;background:var(--menu-bg);border-top:.5px solid rgba(178,178,178,.32);box-shadow:0 -8px 18px rgba(0,0,0,.22);overflow-x:auto !important;overflow-y:visible !important;padding:8px 8px 6px 6px !important;box-sizing:border-box;pointer-events:auto;}
+.mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu{position:absolute;left:0;right:0;top:0;height:var(--lower-context-panel-h) !important;min-height:var(--lower-context-panel-h);z-index:12;background:var(--menu-bg);border-top:.5px solid rgba(178,178,178,.32);box-shadow:0 -8px 18px rgba(0,0,0,.22);overflow-x:auto !important;overflow-y:visible !important;padding:8px 8px 6px 6px !important;box-sizing:border-box;pointer-events:auto;}
 .mid-bar.timeline-grid #alignBar.align-submenu-open #alignBarSubmenu .ab-content{justify-content:center;}
 body.has-multi-selection .mid-bar.timeline-grid #toolbar{display:none;}
 body.cust-open .mid-bar.timeline-grid #toolbar,
 body.cust-open .mid-bar.timeline-grid #alignBar{display:none !important;}
 body:not(.has-multi-selection) .mid-bar.timeline-grid #alignBar{display:none !important;}
 body.cust-expanded #lowerContextSheetShell,
-body.asset-context-panel-open #lowerContextSheetShell{grid-column:1 / 3;grid-row:3 / 5;align-items:flex-start;padding:0;z-index:14;background:var(--context-sheet-bg);border-radius:16px 16px 0 0;overflow:visible;}
+body.asset-context-panel-open #lowerContextSheetShell,
+body.align-submenu-open #lowerContextSheetShell{grid-column:1 / 3;grid-row:3 / 5;align-items:flex-start;padding:0;z-index:14;background:var(--context-sheet-bg);border-radius:16px 16px 0 0;overflow:visible;}
 body.cust-expanded #lowerContextSlot,
-body.asset-context-panel-open #lowerContextSlot{height:var(--lower-context-panel-h);align-items:flex-start;padding:0;background:transparent;overflow:visible;}
+body.asset-context-panel-open #lowerContextSlot,
+body.align-submenu-open #lowerContextSlot{height:var(--lower-context-panel-h);align-items:flex-start;padding:0;background:transparent;overflow:visible;}
 body.cust-expanded .mid-bar.timeline-grid,
-body.asset-context-panel-open .mid-bar.timeline-grid{
+body.asset-context-panel-open .mid-bar.timeline-grid,
+body.align-submenu-open .mid-bar.timeline-grid{
   grid-template-rows:var(--lower-row-1) var(--lower-row-2) var(--lower-row-3) 1fr;
   padding-bottom:0;
 }
@@ -2261,10 +2265,10 @@ body.cust-expanded #lowerActiveStateCell,
 body.cust-expanded #lowerGlobalDurationCell,
 body.asset-context-panel-open #lowerFrameCount,
 body.asset-context-panel-open #lowerActiveStateCell,
-body.asset-context-panel-open #lowerGlobalDurationCell{display:none;}
+body.asset-context-panel-open #lowerGlobalDurationCell,
 body.align-submenu-open #lowerFrameCount,
-body.align-submenu-open .lower-active-state,
-body.align-submenu-open .lower-selection-actions{visibility:hidden;}
+body.align-submenu-open #lowerActiveStateCell,
+body.align-submenu-open #lowerGlobalDurationCell{display:none;}
 
 .mid-bar.timeline-grid #custBar{width:100%;height:100% !important;max-height:100% !important;min-height:0 !important;border-top:0 !important;background:transparent !important;box-shadow:none !important;overflow:visible !important;z-index:auto;flex-shrink:1 !important;}
 .mid-bar.timeline-grid #custBar.compact-mode{height:100% !important;max-height:100% !important;}
@@ -7453,8 +7457,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9F2';
-const APP_VERSION_NAME = 'v8z4b32E9F2';
+const APP_VERSION = 'v8z4b32E9F3';
+const APP_VERSION_NAME = 'v8z4b32E9F3';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -38063,6 +38067,58 @@ function buildDiagnosticsText() {
   push('contextSheetUsesTimelineBackgroundHack', String(_contextSheetUsesTimelineBackgroundHack));
   push('contextSheetSafeAreaIntegrated', String(_contextSheetOpen && _contextSheetBottomMatchesViewport));
   push('contextSheetAnimationReady', String(_contextSheetUsesSingleSurface));
+  // v8z4b32E9F3 — REG-053: observabilidade do painel contextual inferior em
+  // multi-seleção (alignBarSubmenu) vs frame único (custBarContent), sem texto
+  // técnico exposto na UI normal — apenas campos do relatório de Diagnóstico.
+  const _alignBarEl = document.getElementById('alignBar');
+  const _alignBarSubmenuEl = document.getElementById('alignBarSubmenu');
+  const _custBarEl = document.getElementById('custBar');
+  const _custBarContentEl = document.getElementById('custBarContent');
+  const _toolbarEl = document.getElementById('toolbar');
+  const _lowerCtxVisRect = (el) => {
+    if (!el) return null;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none') return null;
+    const r = el.getBoundingClientRect();
+    return (r.width > 0.5 && r.height > 0.5) ? r : null;
+  };
+  const _alignBarSubmenuRect = _lowerCtxVisRect(_alignBarSubmenuEl);
+  const _custBarContentRect = _lowerCtxVisRect(_custBarContentEl);
+  const _alignBarVisible = !!_lowerCtxVisRect(_alignBarEl);
+  const _custBarVisible = !!_lowerCtxVisRect(_custBarEl);
+  const _toolbarVisible = !!_lowerCtxVisRect(_toolbarEl);
+  const _lowerCtxVisiblePanelName = _alignBarSubmenuRect ? 'alignBarSubmenu'
+    : _custBarContentRect ? 'custBarContent'
+    : (_alignBarVisible ? 'alignBarPrimary' : (_toolbarVisible ? 'toolbar' : 'none'));
+  const _lowerCtxCompetingPanelsDetected = !!(_alignBarSubmenuRect && _custBarContentRect);
+  const _lowerCtxClippingAncestors = [_slot, _contextSheetShell, _midBar].filter(Boolean);
+  const _lowerCtxDetectClipping = (rect) => {
+    if (!rect) return false;
+    return _lowerCtxClippingAncestors.some(anc => {
+      const ancCs = getComputedStyle(anc);
+      if (ancCs.overflowX !== 'hidden' && ancCs.overflowY !== 'hidden') return false;
+      const ar = anc.getBoundingClientRect();
+      const TOL = 1;
+      return rect.top < ar.top - TOL || rect.bottom > ar.bottom + TOL ||
+        rect.left < ar.left - TOL || rect.right > ar.right + TOL;
+    });
+  };
+  const _lowerCtxClippingDetected = _lowerCtxDetectClipping(_alignBarSubmenuRect) || _lowerCtxDetectClipping(_custBarContentRect);
+  push('multiSelectionActive', String(typeof isMultiSelectionActive === 'function' ? isMultiSelectionActive() : false));
+  push('multiSelectionCount', String(typeof selectedFrames !== 'undefined' && selectedFrames ? selectedFrames.size : 0));
+  push('lowerContextVisiblePanel', _lowerCtxVisiblePanelName);
+  push('alignBarVisible', String(_alignBarVisible));
+  push('alignBarSubmenuVisible', String(!!_alignBarSubmenuRect));
+  push('custBarVisible', String(_custBarVisible));
+  push('custBarContentVisible', String(!!_custBarContentRect));
+  push('bodyHasMultiSelection', String(document.body.classList.contains('has-multi-selection')));
+  push('bodyHasAlignSubmenuOpen', String(document.body.classList.contains('align-submenu-open')));
+  push('bodyHasCustOpen', String(document.body.classList.contains('cust-open')));
+  push('bodyHasCustExpanded', String(document.body.classList.contains('cust-expanded')));
+  push('lowerContextTransitionSource', typeof lowerContextTransitionSource !== 'undefined' ? lowerContextTransitionSource : 'n/d');
+  push('lowerContextLastOpenedGroup', (typeof lowerContextLastOpenedGroup !== 'undefined' && lowerContextLastOpenedGroup) ? lowerContextLastOpenedGroup : 'n/d');
+  push('lowerContextCompetingPanelsDetected', String(_lowerCtxCompetingPanelsDetected));
+  push('lowerContextClippingDetected', String(_lowerCtxClippingDetected));
   push('assetContextTitleVisible', String(!!document.querySelector('#assetContextPanel .asset-context-title')));
   push('assetActionsRequireSelection', String(_assetActions.every(el => _hasCanonicalAsset || el.classList.contains('asset-tool-disabled'))));
   push('assetActionEnabledWithoutSelectionDetected', String(!_hasCanonicalAsset && _assetActions.some(el => !el.classList.contains('asset-tool-disabled'))));
@@ -42359,6 +42415,10 @@ function rebuildSmoothCurvesByAngleBisector() {
 }
 
 let alignBarActiveGroup = null;
+// v8z4b32E9F3 — observabilidade REG-053: registra a última origem/grupo do painel
+// contextual inferior (não afeta geometria, seleção nem transformação).
+let lowerContextTransitionSource = 'none';
+let lowerContextLastOpenedGroup = null;
 let batchPauseEditSession = null;
 let batchTransformEditSession = null;
 let batchTransformRenderRaf = 0;
@@ -42699,6 +42759,8 @@ function selectAllFramesForContext(ev) {
 
 function openAlignSubmenu(group, keepExisting) {
   if (shouldBlockGlobalUIAction()) return;
+  lowerContextTransitionSource = 'multi-select';
+  lowerContextLastOpenedGroup = group;
   if (alignBarActiveGroup === 'pause' && group !== 'pause') commitBatchPauseEditSession();
   if ((alignBarActiveGroup === 'scale' || alignBarActiveGroup === 'rotation') && alignBarActiveGroup !== group) commitBatchTransformEditSession();
   const p = document.getElementById('alignBarPrimary');
@@ -43132,6 +43194,8 @@ function closeCustBar() {
 
 function switchCustTab(tab) {
   resetCustGlobalLocks();
+  lowerContextTransitionSource = 'single-frame';
+  lowerContextLastOpenedGroup = tab;
   const bar = document.getElementById('custBar');
   // v8z4b15x — Tocar em qualquer ícone (incluindo o ativo) sai do modo
   // compacto e abre o ajuste daquela função. O caminho oficial de voltar

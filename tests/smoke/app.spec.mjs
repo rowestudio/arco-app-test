@@ -3439,3 +3439,151 @@ test('REG-054 — multi-seleção de Frames aplica Posição/Escala/Rotação a 
 
   expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
 });
+
+// v8z4b32E9F3 — gate de REG-053. Com 2+ Frames selecionados, o painel de
+// transformação (Rotação/Escala/Mover/Pausa) precisa ser INVARIANTE à ORDEM das
+// ações: (A) selecionar F1+F2 e SÓ DEPOIS abrir o painel deve terminar no MESMO
+// estado visual/funcional que (B) abrir o painel normal em F1 e SÓ DEPOIS
+// selecionar F1+F2. Causa comprovada na base pré-correção: o ancestral
+// #lowerContextSheetShell só ganha a expansão estrutural (grid-row 3/5,
+// overflow:visible) para os estados cust-expanded/asset-context-panel-open;
+// em align-submenu-open ele herdava overflow:hidden de .lower-cell e ficava
+// confinado à Linha 4 (46px), cortando a parte superior de #alignBarSubmenu
+// (inclusive o botão Voltar). Correção: a mesma expansão de grid já usada por
+// cust-expanded passa a valer também para align-submenu-open (sem tocar
+// REG-052, REG-054 nem a matemática de transformação). Viewport obrigatório
+// 390×797. Este gate FALHA na base pré-correção (Fluxo A corta o painel /
+// esconde Voltar) e passa após a correção.
+test('REG-053 — painel de transformação em multi-seleção é invariante à ordem das ações (390×797)', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = captureFatalErrors(page);
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const frameCount0 = await page.evaluate(() => frameCount);
+  expect(frameCount0).toBeGreaterThanOrEqual(2);
+
+  const pill = (i) => page.locator(`#pillsRow .fp[data-frame-index="${i}"]`);
+  const longPressPill = async (i) => {
+    await pill(i).dispatchEvent('pointerdown');
+    await page.waitForTimeout(520); // > 420ms do timer de long-press
+    await pill(i).dispatchEvent('pointerup').catch(() => {});
+  };
+  const clickPillToggle = async (i) => { await pill(i).click(); };
+  const reset = () => page.evaluate(() => { closeAlignSubmenu(); clearMultiSelect(); closeCustBar(); });
+
+  // Estado DOM/CSS real do painel contextual inferior, via buildDiagnosticsText()
+  // (mesmo coletor observacional do Diagnóstico) + getBoundingClientRect() dos
+  // elementos exigidos pela tarefa.
+  const measure = () => page.evaluate(() => {
+    const rectOf = (sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none') return null;
+      const r = el.getBoundingClientRect();
+      if (r.width < 0.5 || r.height < 0.5) return null;
+      return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
+    };
+    const diag = Object.fromEntries(buildDiagnosticsText().split('\n').filter(l => l.includes(': ')).map(l => { const i = l.indexOf(': '); return [l.slice(0, i), l.slice(i + 2)]; }));
+    const panelSelector = { alignBarSubmenu: '#alignBarSubmenu', custBarContent: '#custBarContent' }[diag.lowerContextVisiblePanel] || null;
+    const backSelector = { alignBarSubmenu: '#alignBarBack', custBarContent: '#custBarBack' }[diag.lowerContextVisiblePanel] || null;
+    return {
+      diag,
+      selected: Array.from(selectedFrames).sort((a, b) => a - b),
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      panelRect: panelSelector ? rectOf(panelSelector) : null,
+      backRect: backSelector ? rectOf(backSelector) : null,
+      pillsRect: rectOf('#pillsRow'),
+      slotRect: rectOf('#lowerContextSlot'),
+      lowerContextSlotRect: rectOf('#lowerContextSlot'),
+      lowerContextSheetShellRect: rectOf('#lowerContextSheetShell'),
+      alignBarRect: rectOf('#alignBar'),
+      alignBarSubmenuRect: rectOf('#alignBarSubmenu'),
+      custBarRect: rectOf('#custBar'),
+      custBarContentRect: rectOf('#custBarContent'),
+    };
+  });
+
+  // Critérios de aceite (seção 9/13 da tarefa REG-053), aplicados a UM estado capturado.
+  const expectPanelHealthy = (state, label) => {
+    expect(state.diag.lowerContextVisiblePanel, `${label}: submenu real deve estar visível`).toMatch(/^(alignBarSubmenu|custBarContent)$/);
+    expect(state.diag.lowerContextCompetingPanelsDetected, `${label}: nenhum painel concorrente pode interceptar pointer`).toBe('false');
+    expect(state.diag.lowerContextClippingDetected, `${label}: nenhuma área essencial pode ser cortada por overflow`).toBe('false');
+    expect(state.panelRect, `${label}: painel real precisa ter geometria renderizada`).not.toBeNull();
+    const v = state.viewport, p = state.panelRect;
+    // Bounding rect do painel dentro da área permitida (viewport), com tolerância de 1px.
+    expect(p.top).toBeGreaterThanOrEqual(-1);
+    expect(p.left).toBeGreaterThanOrEqual(-1);
+    expect(p.right).toBeLessThanOrEqual(v.width + 1);
+    expect(p.bottom).toBeLessThanOrEqual(v.height + 1);
+    // Não invade a régua de pills/timeline.
+    expect(p.top, `${label}: painel não pode invadir #pillsRow`).toBeGreaterThanOrEqual(state.pillsRect.bottom - 1);
+    // Botão Voltar existe e está inteiramente dentro do viewport.
+    expect(state.backRect, `${label}: botão Voltar precisa estar visível`).not.toBeNull();
+    expect(state.backRect.top).toBeGreaterThanOrEqual(-1);
+    expect(state.backRect.left).toBeGreaterThanOrEqual(-1);
+    expect(state.backRect.right).toBeLessThanOrEqual(v.width + 1);
+    expect(state.backRect.bottom).toBeLessThanOrEqual(v.height + 1);
+  };
+
+  const near = (a, b, tol = 2) => Math.abs(a - b) <= tol;
+  const expectEquivalentPresentation = (a, b, label) => {
+    expect(a.selected, `${label}: mesma seleção em ambos os fluxos`).toEqual(b.selected);
+    expect(near(a.panelRect.top, b.panelRect.top)).toBe(true);
+    expect(near(a.panelRect.bottom, b.panelRect.bottom)).toBe(true);
+    expect(near(a.panelRect.left, b.panelRect.left)).toBe(true);
+    expect(near(a.panelRect.right, b.panelRect.right)).toBe(true);
+  };
+
+  // Grupos testados: Rotação, Escala, Mover/Posição e Pausa (mesmo shell inferior).
+  const groups = [
+    { align: 'rotation', cust: 'rot' },
+    { align: 'scale', cust: 'scale' },
+    { align: 'move', cust: 'pos' },
+    { align: 'pause', cust: 'framepause' },
+  ];
+
+  for (const { align, cust } of groups) {
+    // ── FLUXO A: selecionar F1+F2 PRIMEIRO, depois abrir o painel ──
+    await reset();
+    await page.evaluate(() => { activeIdx = 0; });
+    await longPressPill(0);
+    expect(await page.evaluate(() => isMultiSelectionActive())).toBe(true);
+    await clickPillToggle(1);
+    await page.evaluate((g) => openAlignSubmenu(g), align);
+    await page.waitForTimeout(60);
+    const stateA = await measure();
+    expectPanelHealthy(stateA, `Fluxo A (${align})`);
+    expect(stateA.selected).toEqual([0, 1]);
+    expect(stateA.diag.lowerContextTransitionSource).toBe('multi-select');
+    expect(stateA.diag.lowerContextVisiblePanel).toBe('alignBarSubmenu');
+
+    // ── FLUXO B: abrir o painel normal em F1 PRIMEIRO, mantê-lo aberto, e SÓ
+    // DEPOIS selecionar F1+F2 (o painel já aberto permanece; alignBar nunca fica
+    // visível enquanto cust-open estiver ativo) ──
+    await reset();
+    await page.evaluate((t) => { activeIdx = 0; openCustBar(); switchCustTab(t); }, cust);
+    await page.waitForTimeout(60);
+    await longPressPill(0);
+    expect(await page.evaluate(() => isMultiSelectionActive())).toBe(true);
+    await clickPillToggle(1);
+    await page.waitForTimeout(60);
+    const stateB = await measure();
+    expectPanelHealthy(stateB, `Fluxo B (${align})`);
+    expect(stateB.selected).toEqual([0, 1]);
+    expect(stateB.diag.lowerContextTransitionSource).toBe('single-frame');
+    expect(stateB.diag.lowerContextVisiblePanel).toBe('custBarContent');
+
+    // MESMA seleção + MESMA transformação, ordens diferentes → apresentação
+    // final geometricamente equivalente (invariante à ordem das ações).
+    expectEquivalentPresentation(stateA, stateB, `A×B (${align})`);
+  }
+
+  await reset();
+  expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
+});

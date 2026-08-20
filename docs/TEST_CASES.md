@@ -1,5 +1,23 @@
 # TEST_CASES
 
+## TC-052 — Painel de transformação em multi-seleção é invariante à ordem das ações (REG-053)
+
+Gate `tests/smoke/app.spec.mjs`, `REG-053 — painel de transformação em multi-seleção é invariante à ordem das ações (390×797)`, viewport iPhone **390 × 797** (obrigatório para esta regressão). Fluxo público: seleção por long-press/toque nas pills; grupos testados: Rotação, Escala, Mover/Posição e Pausa (mesmo shell inferior). Falha na base pré-`v8z4b32E9F3` e passa após a correção.
+
+- **FLUXO A (quebra na base):** sem painel expandido, selecionar F1+F2 (`toggleFrameSelection` via long-press + toque) e SÓ DEPOIS abrir o grupo (`openAlignSubmenu(group)`).
+- **FLUXO B (não quebra na base):** abrir o painel normal do grupo em F1 (`openCustBar(); switchCustTab(tab)`), mantê-lo aberto, e SÓ DEPOIS selecionar F1+F2.
+- **Critérios de aceite aplicados a CADA estado (A e B), para CADA grupo:**
+  - o submenu real reportado por `lowerContextVisiblePanel` (via `buildDiagnosticsText()`) está entre `alignBarSubmenu`/`custBarContent` (nunca `none`/`toolbar`/`alignBarPrimary`);
+  - `lowerContextCompetingPanelsDetected === 'false'` (nenhum painel concorrente intercepta pointer);
+  - `lowerContextClippingDetected === 'false'` (nenhuma área é cortada por overflow de um ancestral);
+  - o `getBoundingClientRect()` do painel real está inteiramente dentro do viewport (390×797) e não invade `#pillsRow`;
+  - o botão Voltar (`#alignBarBack` ou `#custBarBack`, conforme o painel ativo) está visível e inteiramente dentro do viewport.
+- **Equivalência A×B:** mesma seleção final (`[F1,F2]`) nos dois fluxos; o retângulo real do painel (`#alignBarSubmenu` em A, `#custBarContent` em B) é geometricamente equivalente entre A e B (tolerância de 2 px em top/bottom/left/right) — MESMA seleção + MESMA transformação + ORDEM diferente ⇒ MESMA apresentação.
+- **Causa comprovada por reprodução direta na main:** `#lowerContextSheetShell`/`#lowerContextSlot` só recebiam a expansão estrutural de grid (linhas 3/5, `overflow:visible`) para `cust-expanded`/`asset-context-panel-open`; em `align-submenu-open` permaneciam confinados à Linha 4 (46px) com `overflow:hidden` herdado de `.lower-cell`, cortando a parte superior de `#alignBarSubmenu` (inclusive Voltar) sempre que a multi-seleção precedia a abertura do painel.
+- **Correção:** a mesma expansão estrutural do ancestral (já usada e aprovada pelo custBar desde a série E8U–E8V) passa a valer também para `body.align-submenu-open`; `#alignBarSubmenu` deixa de depender do deslocamento horizontal pensado para um ancestral estreito (agora full-width) e ancora pelo topo, com paridade de gap em relação ao custBar. Nenhuma segunda apresentação paralela foi criada.
+- **Não altera:** REG-052 (fill dos sliders), REG-054 (targets/matemática de Posição/Escala/Rotação em multi-seleção, gate TC-051 continua passando), Undo/Redo, Preview/Export, Stage, timeline.
+- **Ambiente:** WebKit é o gate obrigatório (checks do HEAD final); verificação equivalente local executada em **Chromium `hasTouch`** (passa; falha comprovadamente na CSS pré-correção, validando que o gate detecta a regressão real). Validação física obrigatória em iPhone/Safari **pendente** (Roberto), repetindo Rotação/Escala/Posição/Pausa nos dois fluxos A e B.
+
 ## TC-051 — Multi-seleção de Frames aplica Posição/Escala/Rotação a todos os selecionados (REG-054)
 
 Gate `tests/smoke/app.spec.mjs`, `REG-054 — multi-seleção de Frames aplica Posição/Escala/Rotação a todos os selecionados sem Global`, viewport iPhone 390 × 844. Fluxo público: seleção por long-press/toque nas pills; controles públicos do menu contextual de Frame (custBar). Falha na `v8z4b32E9F1` (só o Frame ativo muda) e passa na `v8z4b32E9F2`.
