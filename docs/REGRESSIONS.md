@@ -1,6 +1,15 @@
 # REGRESSIONS
 
-> Bugs abertos recém-relatados (OPS-06, 2026-08-19): **REG-052**, **REG-053** e **REG-054** estão **ABERTOS** e ainda **não corrigidos**. Registrados a partir de relato físico; causa a investigar; não implementados nesta PR documental.
+> Bugs abertos recém-relatados (OPS-06, 2026-08-19): **REG-052** e **REG-053** permanecem **ABERTOS** e **não corrigidos**. **REG-054** teve a **correção implementada/automatizada na `v8z4b32E9F2`** (validação física pendente). **REG-055** (2026-08-20) é um bug novo e independente, registrado **ABERTO** e **não corrigido nesta PR**.
+
+## REG-055 — Botões “+” das paletas de cor do Text Asset não abrem o color picker nativo (ABERTO)
+
+- **Relato físico (Roberto, 2026-08-20, iPhone/Safari):** no editor de Text Asset, os botões **“+”** das paletas de **Cor do texto** e de **Fundo da caixa** não estão abrindo o seletor de cores nativo ao serem tocados.
+- **Comportamento esperado:** tocar no “+” de **Cor do texto** abre o color picker nativo correspondente; tocar no “+” de **Fundo da caixa** abre o color picker nativo correspondente; a escolha resultante continua usando o fluxo E9F1 já implementado; no **Fundo da caixa**, escolher uma cor continua habilitando o fundo e preservando a regra de opacidade **somente do fundo**.
+- **Classificação:** regressão funcional de UI de cor (Text Asset, E9F1).
+- **Causa:** a investigar (não presumir causa). Nenhuma solução declarada.
+- **Independência:** separado de REG-054 (multi-seleção de Frames, corrigida na `v8z4b32E9F2`), de REG-053 (painel cortado da multi-seleção) e de REG-052 (fill visual dos sliders).
+- **Status:** **ABERTO** — **não corrigido nesta PR** `v8z4b32E9F2`. Registro documental; nenhum handler, input ou UI de cor foi alterado por causa dele nesta PR. A investigar e corrigir em PR própria futura.
 
 ## REG-052 — Fill visual dos sliders não corresponde à posição do thumb (ABERTO)
 
@@ -18,7 +27,7 @@
 - **Causa:** a investigar (não presumir causa). Nenhuma solução declarada.
 - **Status:** **ABERTO** — não corrigido. Relatado em 2026-08-19 (OPS-06); registro documental, sem implementação nesta PR.
 
-## REG-054 — Transformação de multi-seleção afeta apenas um Frame (ABERTO)
+## REG-054 — Transformação de multi-seleção afeta apenas um Frame (correção implementada/automatizada; validação física pendente)
 
 - **Relato funcional (OPS-06):** com 2+ Frames selecionados, Posição, Escala e Rotação devem afetar todos os Frames atualmente selecionados. Hoje, conforme relato físico, somente um Frame é alterado, exceto quando **Global** está ativo — comportamento incorreto.
 - **Regra esperada:**
@@ -28,8 +37,10 @@
   - **Global** é um modo distinto e **não** é requisito para aplicar transformação à seleção atual, nem pode ser usado como workaround obrigatório para multi-seleção;
   - a operação em lote deve preservar a semântica existente de Undo consolidado quando aplicável.
 - **Classificação:** regressão funcional relevante de seleção múltipla de Frames.
-- **Causa:** a investigar (não presumir causa). Nenhuma solução declarada.
-- **Status:** **ABERTO** — não corrigido. Relatado em 2026-08-19 (OPS-06); registro documental, sem implementação nesta PR.
+- **Causa comprovada (reprodução determinística na `v8z4b32E9F1`, fluxo público):** o menu contextual de Frame (custBar) coexiste com a barra de multi-seleção (alignBar). A infraestrutura de batch/alignBar (`getContextSelectionTargets`, `beginBatchTransformEditSession`/`applyBatchTransformDelta`/`commit…`, `alignFrames`) já resolvia corretamente todos os Frames selecionados. O defeito estava nos controles **normais** do custBar — `nudgePos`, `setPosFromInput`, o `input` do `scaleSlider`, `nudgeScale`, o `input` do `rotSlider` e `nudgeRotation` — que resolviam o alvo como `if (isCustLocked()) { todos } else { activeIdx }`, **sem consultar a seleção múltipla**. Com `selectedFrames=[F1,F2]`, `activeIdx=F1` e Global desligado, Posição/Escala/Rotação alteravam somente `activeIdx` (F2 permanecia byte/valor-equivalente); com Global ligado alteravam todos — daí o sintoma "só funciona com Global". Ponto exato em que a seleção deixava de ser respeitada: a ausência de um ramo de multi-seleção nessas seis rotas de UI.
+- **Correção (v8z4b32E9F2, na origem da resolução de targets):** introduzida a função única `getNormalTransformTargets()` com precedência **Global (todos elegíveis) → multi-seleção (exatamente os Frames selecionados) → Frame ativo**; Frames travados nunca entram no conjunto. As seis rotas passam a aplicar o **mesmo delta** já usado pelo modo Global aos alvos resolvidos, preservando distâncias relativas (Posição), proporção/centro individual e escala relativa (Escala) e rotações independentes (Rotação). Nenhum sistema de batch paralelo foi criado; a infraestrutura de Undo consolidado (`batchTransformEditSession`/`pushUndo` por gesto) e Preview/Export permanecem intactos. Global segue sendo modo distinto e não é requisito para a multi-seleção.
+- **Teste preventivo:** `tests/smoke/app.spec.mjs` gate `REG-054 — multi-seleção de Frames aplica Posição/Escala/Rotação a todos os selecionados sem Global` (Casos A/A'/C/D/E + Frame travado + Undo/Redo consolidado + finitude + persistência no modelo real). Falha na `v8z4b32E9F1` (só o ativo muda) e passa após a correção.
+- **Status:** **correção implementada e automatizada** na `v8z4b32E9F2` (PR própria). Validação física **pendente** — Roberto testará a build publicada em iPhone/Safari (2 Frames → Posição/Escala/Rotação em ambos, Undo/Redo, terceiro Frame intacto, Selecionar todos sem Global, Global separado, Preview, Export). REG-054 só pode ser marcada resolvida após esse teste físico. Nenhuma promoção autorizada.
 
 ## REG-051 — Sheet/teclado podem ocultar o Text Asset ao editar texto existente (E9F1)
 

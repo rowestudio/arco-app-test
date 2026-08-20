@@ -1,5 +1,20 @@
 # TEST_CASES
 
+## TC-051 — Multi-seleção de Frames aplica Posição/Escala/Rotação a todos os selecionados (REG-054)
+
+Gate `tests/smoke/app.spec.mjs`, `REG-054 — multi-seleção de Frames aplica Posição/Escala/Rotação a todos os selecionados sem Global`, viewport iPhone 390 × 844. Fluxo público: seleção por long-press/toque nas pills; controles públicos do menu contextual de Frame (custBar). Falha na `v8z4b32E9F1` (só o Frame ativo muda) e passa na `v8z4b32E9F2`.
+
+- **Caso A — dois Frames (F1,F2) selecionados, F3 fora, Global desligado:**
+  - **Posição** (`nudgePos`) aplica o **mesmo delta** a F1 e F2 (distâncias relativas preservadas); F3 intacto; seleção permanece `[F1,F2]`; Global permanece desligado.
+  - **Escala** (`nudgeScale`) aumenta a largura de F1 e F2 (delta percentual relativo à própria escala, sem igualar); F3 intacto; seleção mantida.
+  - **Rotação** (`nudgeRotation`) aplica o mesmo delta a F1 e F2; F3 intacto; seleção mantida; todos os valores finitos.
+- **Caso A' — Undo/Redo consolidado:** uma sessão contínua de drag do slider de Escala produz **exatamente 1 Undo**; Undo restaura AMBOS os Frames; Redo reaplica AMBOS. Limpar a seleção não altera a geometria (mutação vive no modelo real consumido por Preview/Export, não em overlay de seleção).
+- **Caso D — seleção simples (sem multi-seleção):** só o Frame ativo muda; demais intactos (não regride).
+- **Caso E — Global ligado:** afeta todos os Frames elegíveis (semântica global preservada; distinta da multi-seleção).
+- **Caso C — “Selecionar todos” sem Global:** todos os Frames entram na seleção e recebem a transformação sem Global.
+- **Frame travado:** com F2 travado na seleção `{F1,F2,F3}`, F1 e F3 mudam e F2 (travado) permanece intacto — regra de lock preservada.
+- **Ambiente:** WebKit é o gate obrigatório (checks do HEAD final); verificação equivalente local executada em **Chromium `hasTouch`** (passa). Validação física obrigatória em iPhone/Safari **pendente** (Roberto).
+
 ## TC-050 — Refino do editor de Text Asset (E9F1)
 
 Gate `tests/smoke/app.spec.mjs`, `E9F1 — refino do editor de texto: cabeçalho compacto, ícones, paletas, viewport e largura`, viewport iPhone 390 × 797, Testes 1–11:

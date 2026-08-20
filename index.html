@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9F2 — base v8z4b32E9F1 (PR #500). fix(frames/REG-054): correção da resolução de alvos dos controles PÚBLICOS de Posição/Escala/Rotação do menu contextual de Frame (custBar). Com 2+ Frames selecionados, os controles normais (nudgePos, setPosFromInput, slider de Escala, nudgeScale, slider de Rotação, nudgeRotation) afetavam APENAS o Frame ativo, exceto quando Global estava ligado — a multi-seleção não era respeitada. Introduzida a resolução única getNormalTransformTargets() (precedência: Global → todos elegíveis; multi-seleção → exatamente os Frames selecionados; senão → Frame ativo). O mesmo delta é aplicado a todos os alvos, preservando distâncias relativas (Posição), proporções/centro individual (Escala) e rotações independentes (Rotação); Frames fora da seleção não mudam; Frames travados preservam a regra de lock; o gesto de slider mantém 1 Undo consolidado (batchTransformEditSession/undoStack inalterados). Global permanece um modo distinto e NÃO é requisito para a multi-seleção. NÃO tocado: infraestrutura de batch/alignBar, REG-052 (fill dos sliders), REG-053 (painel cortado), Preview/Export/renderer/getStateAtT/drawAtT, curvas/easing/timing, ProjectWorld, Save/Load, Layers, Text Assets, produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F2. -->
 <!-- Arco Motion App — v8z4b32E9F1 — base v8z4b32E9F (PR #499). fix(text): refinamento visual/funcional LOCALIZADO do editor de Text Asset após teste físico E9F em iPhone/Safari (estrutura E9F aprovada; correção pontual). (A) cabeçalho da bottom sheet compactado — alça, linha ×/✓ e rail iconográfica ficam próximas, sem vazio vertical, preservando × Cancelar e ✓ Confirmar e touch targets seguros. (B) ícone de Estilo passa a ser B+I (negrito + itálico) no lugar do "I" itálico isolado. (C) ícone de Alinhamento na rail reflete o textAlign do draft (left/center/right) em tempo real, com fallback left. (D/E) Cor do texto vira paleta rápida de swatches reutilizando os neutros do seletor de Fundo do projeto (constante única PROJECT_BG_NEUTRALS) + botão + para o color picker completo. (F/G/H) Fundo da caixa ganha ícone inequívoco de preenchimento; estado padrão "Sem cor / Transparente" (checkerboard) selecionado com boxBackgroundEnabled=false e SEM slider de opacidade; escolher uma cor liga o fundo e revela o slider; alfa controla só boxBackgroundOpacity, nunca os glifos. (J) editar texto existente LOCALIZA a VISTA (pan canônico) para manter o texto visível acima da sheet/teclado, sem mover worldX/Y/W/H, rotação, depth, zIndex, Frames, ProjectWorld, sem Undo/autosave. (L/M/N) Largura simplifica para Auto compacto + slider (step 5, limites canônicos): mover o slider entra em fixed no mesmo gesto; Auto recalcula e re-sincroniza o slider sem sair de auto; removidos o botão Fixa grande e o stepper −/+. E9E preservada (criar novo texto continua nascendo no centro da vista atual). E9G NÃO antecipada (exatamente quatro alças). Preview/Export/Save/Load/Session Restore/renderer intactos. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F1. -->
 <!-- Arco Motion App — v8z4b32E9F — base v8z4b32E9E. feat(ui): editor de Text Asset adota rail horizontal ICONOGRÁFICA neutra no lugar das tabs textuais Texto|Fonte|Cor|Estilo. Sete propriedades por ícone (sem label visível, com aria-label): editar texto, fonte, estilo, alinhamento, cor do texto, fundo da caixa, largura da caixa; a rail rola horizontalmente em uma única linha. Item ativo usa contraste NEUTRO invertido (superfície branca + símbolo escuro), nunca coral/ciano/verde. Alinhamento sai do corpo permanente do Texto e vira controle iconográfico próprio; Cor do texto e Fundo da caixa ficam semanticamente separados; a opacidade fica inequivocamente DENTRO do painel de Fundo. Largura mantém Auto/Fixa + stepper (E9C intacta) sob o ícone Largura, sem antecipar alças laterais (E9G). Arrastar a alça superior para baixo minimiza (mesma semântica minimizeTextEditor: preserva pendingTextDraft, zero Undo, zero autosave, mesmo ID); × cancela e ✓ confirma. Paleta neutra aprovada aplicada aos tokens de UI (chrome #24262B, sheet #303238, campo #393C43, divisor ~#4A4D55) sem tocar DEFAULT_PROJECT_BG. Identidade do workspace Ativos migra de roxo para coral #FF6B8A (token --accent + contorno/alças/pill/botão +); Frames preservam o ciano existente #04fff2. WYSIWYG E9E, quatro alças, criação na vista atual e draft preservados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F. -->
 <!-- Arco Motion App — v8z4b32E9E — base v8z4b32E9D. fix(text): NOVO Text Asset nasce centralizado na VISTA ATUAL do Stage (centro capturado em coords de World pela cadeia canônica computeEditorTransform → screenToStageCoord → editorStageToWorld, antes do resize do teclado); editar asset existente nunca recentraliza. WYSIWYG ao vivo: pendingTextDraft é a fonte única da verdade visual — toda mudança de painel atualiza imediatamente Stage, fundo, seleção e as quatro alças (updateTextDraft e o listener de input passam a re-renderizar a seleção; a seleção/alças consomem a geometria viva do draft). Sem fórmula paralela de câmera, sem offset artificial, sem alterar ProjectWorld/Preview/Export. APP_VERSION = APP_VERSION_NAME = v8z4b32E9E. -->
@@ -7452,8 +7453,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9F1';
-const APP_VERSION_NAME = 'v8z4b32E9F1';
+const APP_VERSION = 'v8z4b32E9F2';
+const APP_VERSION_NAME = 'v8z4b32E9F2';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -28903,18 +28904,17 @@ function initScaleSlider() {
       const fi = frames[i]; if (!fi) return;
       const cx = i === activeIdx ? (origCX !== null ? origCX : fi.x + fi.w/2) : fi.x + fi.w/2;
       const cy = i === activeIdx ? (origCY !== null ? origCY : fi.y + fi.h/2) : fi.y + fi.h/2;
-      const thisPct = isCustLocked() && i !== activeIdx ? Math.round(fi.w / refW * 100) + (pct - Math.round(f.w / refW * 100)) : pct;
+      // v8z4b32E9F2 — REG-054: quando o alvo não é o Frame ativo (Global ou
+      // multi-seleção), aplica o MESMO delta percentual relativo à escala própria
+      // de cada Frame, preservando as proporções relativas em vez de igualar.
+      const thisPct = i !== activeIdx ? Math.round(fi.w / refW * 100) + (pct - Math.round(f.w / refW * 100)) : pct;
       const tW = Math.max(40, refW * thisPct / 100);
       const tH = tW / ar;
       frames[i] = { x: cx - tW/2, y: cy - tH/2, w: tW, h: tH };
       clampFrame(i);
       syncCtrlPtsForFrame(i);
     };
-    if (isCustLocked()) {
-      for (let i = 0; i < frameCount; i++) if (!frameLocked[i]) applyToFrame(i);
-    } else {
-      applyToFrame(activeIdx);
-    }
+    getNormalTransformTargets().forEach(applyToFrame);
     const numEl = document.getElementById('scaleNum');
     if (numEl) numEl.textContent = pct + '%';
     renderAll();
@@ -43000,40 +43000,65 @@ function isCustLocked() {
   return custGlobalLock[getCurTab()] || false;
 }
 
+// v8z4b32E9F2 — REG-054: resolução única de alvos para os controles do custBar
+// (caminho "normal" de Posição/Escala/Rotação). Precedência:
+//   1. Global ligado (isCustLocked) → todos os Frames elegíveis (semântica global existente);
+//   2. multi-seleção ativa → exatamente os Frames da seleção corrente (sem exigir Global);
+//   3. caso contrário → somente o Frame ativo.
+// Frames travados nunca entram no conjunto. Isto NÃO altera a matemática de delta
+// de cada controle — apenas QUAIS Frames recebem o mesmo delta, corrigindo na origem
+// a resolução de targets sem criar um sistema paralelo de transformação.
+function getNormalTransformTargets() {
+  if (isCustLocked()) {
+    const out = [];
+    for (let i = 0; i < frameCount; i++) if (frames[i] && !frameLocked[i]) out.push(i);
+    return out;
+  }
+  if (isMultiSelectionActive()) {
+    return getContextSelectionTargets(false);
+  }
+  return (activeIdx >= 0 && activeIdx < frameCount && frames[activeIdx] && !frameLocked[activeIdx]) ? [activeIdx] : [];
+}
+
 function nudgePos(dx, dy) {
-  if (frameLocked[activeIdx]) return;
+  const targets = getNormalTransformTargets();
+  if (!targets.length) return;
   pushUndo();
   const scaleX = imgNatW / stageW;
   const scaleY = imgNatH / stageH;
   // dx/dy em pixels da imagem natural
   const dxStage = dx / scaleX;
   const dyStage = dy / scaleY;
-  const applyToFrame = (i) => {
+  // Mesmo delta a todos os alvos → preserva as distâncias relativas.
+  targets.forEach(i => {
     frames[i].x += dxStage;
     frames[i].y += dyStage;
-  };
-  if (isCustLocked()) {
-    for (let i = 0; i < frameCount; i++) if (!frameLocked[i]) applyToFrame(i);
-  } else {
-    applyToFrame(activeIdx);
-  }
+  });
   syncCustomizePanel();
   renderAll();
 }
 
 function setPosFromInput() {
-  if (frameLocked[activeIdx]) return;
+  const targets = getNormalTransformTargets();
+  if (!targets.length) return;
   const px = parseFloat(document.getElementById('posXInput')?.value);
   const py = parseFloat(document.getElementById('posYInput')?.value);
   if (isNaN(px) || isNaN(py) || !imgNatW) return;
   pushUndo();
   const scaleX = imgNatW / stageW;
   const scaleY = imgNatH / stageH;
-  const f = frames[activeIdx];
-  const newCX = px / scaleX;
-  const newCY = py / scaleY;
-  frames[activeIdx].x = newCX - f.w / 2;
-  frames[activeIdx].y = newCY - f.h / 2;
+  // A entrada absoluta espelha a posição do Frame ativo (exibida no painel).
+  // Aplicamos o MESMO delta (centro pedido − centro atual do ativo) a todos os
+  // alvos, preservando as distâncias relativas em vez de colapsar todos no mesmo ponto.
+  const ref = frames[activeIdx] || frames[targets[0]];
+  const curCX = ref.x + ref.w / 2;
+  const curCY = ref.y + ref.h / 2;
+  const ddx = (px / scaleX) - curCX;
+  const ddy = (py / scaleY) - curCY;
+  targets.forEach(i => {
+    frames[i].x += ddx;
+    frames[i].y += ddy;
+  });
   renderAll();
 }
 
@@ -43483,10 +43508,13 @@ function resetScale() {
 }
 
 function nudgeScale(delta) {
-  if (frameLocked[activeIdx]) return;
+  const targets = getNormalTransformTargets();
+  if (!targets.length) return;
   pushUndo();
   const refW = baseFrameW > 0 ? baseFrameW : stageW * 0.55;
   const ar = ratioMap[currentRatio];
+  // Cada alvo recebe o mesmo delta percentual sobre a sua própria escala,
+  // preservando o centro individual e as proporções relativas.
   const applyToFrame = (i) => {
     const f = frames[i]; if (!f) return;
     const pct = Math.max(20, Math.min(300, Math.round(f.w / refW * 100) + delta));
@@ -43495,11 +43523,7 @@ function nudgeScale(delta) {
     frames[i] = { x: cx - nw/2, y: cy - nw/ar/2, w: nw, h: nw/ar };
     clampFrame(i);
   };
-  if (isCustLocked()) {
-    for (let i = 0; i < frameCount; i++) if (!frameLocked[i]) applyToFrame(i);
-  } else {
-    applyToFrame(activeIdx);
-  }
+  targets.forEach(applyToFrame);
   syncCustomizePanel();
   renderAll();
 }
@@ -43542,17 +43566,16 @@ const rotSlider = document.getElementById('rotSlider');
 const rotNum    = document.getElementById('rotNum');
 
 rotSlider.addEventListener('input', function() {
-  if (frameLocked[activeIdx]) return;
+  const targets = getNormalTransformTargets();
+  if (!targets.length) return;
   const val = parseFloat(this.value);
+  // Delta relativo à rotação do Frame ativo (valor exibido no slider). Aplicado
+  // a cada alvo sobre a sua própria rotação → preserva rotações independentes.
+  // No caso de alvo único (Frame ativo), equivale a definir o valor absoluto.
   const delta = val - (frameRotations[activeIdx] || 0);
-  if (isCustLocked()) {
-    for (let i = 0; i < frameCount; i++) {
-      if (frameLocked[i]) continue;
-      frameRotations[i] = Math.max(-720, Math.min(720, (frameRotations[i] || 0) + delta));
-    }
-  } else {
-    frameRotations[activeIdx] = val;
-  }
+  targets.forEach(i => {
+    frameRotations[i] = Math.max(-720, Math.min(720, (frameRotations[i] || 0) + delta));
+  });
   clampFrame(activeIdx);
   if (rotNum) rotNum.textContent = (frameRotations[activeIdx] >= 0 ? '+' : '') + frameRotations[activeIdx].toFixed(1) + '°';
   renderAll();
@@ -43567,17 +43590,22 @@ rotSlider.addEventListener('mousedown', captureRotUndo);
 rotSlider.addEventListener('change', () => { rotUndoCaptured = false; });
 
 function nudgeRotation(delta, reset=false) {
-  if (frameLocked[activeIdx]) return;
+  // v8z4b32E9F2 — REG-054: +/−° aplicam o mesmo delta aos alvos normais
+  // (Global → todos elegíveis; multi-seleção → selecionados; senão → ativo).
+  // "Reset" é uma ação explícita de zerar: na multi-seleção zera todos os
+  // Frames selecionados (igual ao Reset do menu em lote); em Global e na
+  // seleção simples preserva a regra existente de zerar somente o Frame ativo.
+  const targets = reset
+    ? ((isMultiSelectionActive() && !isCustLocked())
+        ? getContextSelectionTargets(false)
+        : [activeIdx].filter(i => i >= 0 && i < frameCount && frames[i] && !frameLocked[i]))
+    : getNormalTransformTargets();
+  if (!targets.length) return;
   pushUndo();
-  const applyToFrame = (i) => {
+  targets.forEach(i => {
     const next = reset ? 0 : Math.max(-720, Math.min(720, (frameRotations[i] || 0) + delta));
     frameRotations[i] = Math.round(next * 10) / 10;
-  };
-  if (isCustLocked() && !reset) {
-    for (let i = 0; i < frameCount; i++) if (!frameLocked[i]) applyToFrame(i);
-  } else {
-    applyToFrame(activeIdx);
-  }
+  });
   clampFrame(activeIdx);
   syncSingleRotationControl(true);
 }

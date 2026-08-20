@@ -1,5 +1,16 @@
 # DECISIONS
 
+## DEC-2026-08-20-01 — REG-054: semântica única de alvos dos controles normais de transformação de Frame
+
+- **Data:** 2026-08-20. **Versão:** `v8z4b32E9F2` (PR própria).
+- **Assunto:** resolução de alvos (Posição/Escala/Rotação) dos controles PÚBLICOS do menu contextual de Frame (custBar) quando há multi-seleção.
+- **Classificação:** correção funcional de regressão (REG-054). Sem Engine/curvas/timing; sem Preview/Export; sem layout/CSS; sem produção.
+- **Decisão:** os seis controles normais do custBar (`nudgePos`, `setPosFromInput`, `input` do `scaleSlider`, `nudgeScale`, `input` do `rotSlider`, `nudgeRotation`) passam a resolver o conjunto-alvo por uma função única `getNormalTransformTargets()` com **precedência inequívoca**: (1) **Global ligado** (`isCustLocked`) → todos os Frames elegíveis; (2) **multi-seleção ativa** → exatamente os Frames de `selectedFrames`; (3) caso contrário → apenas o **Frame ativo**. Frames travados nunca entram no conjunto. O **mesmo delta** já usado pelo modo Global é aplicado aos alvos, preservando distâncias relativas (Posição), proporção/centro individual e escala relativa (Escala) e rotações independentes (Rotação). "Reset" de rotação zera todos os selecionados na multi-seleção e preserva a regra existente (só o ativo) em Global/seleção simples.
+- **Razão:** o defeito estava na resolução `Global ? todos : activeIdx` dessas rotas, que ignorava a seleção múltipla; a correção é **na origem** da resolução de targets, sem criar um sistema de batch paralelo (a infraestrutura alignBar/`getContextSelectionTargets`/`batchTransformEditSession` já era correta e permanece intacta). Global continua sendo modo distinto e não é requisito da multi-seleção.
+- **Alternativa rejeitada:** copiar valores para os demais Frames após o gesto (hack pós-gesto) — rejeitada por não corrigir a causa e violar a preservação de proporções/rotações independentes e do Undo consolidado.
+- **Status:** ativa; implementada e automatizada (gate `REG-054`), **validação física pendente** (iPhone/Safari, Roberto). Nenhuma promoção autorizada.
+- **Documento relacionado:** `docs/REGRESSIONS.md` (REG-054), `docs/TEST_CASES.md` (TC-051), `docs/PROJECT_STATE.md`.
+
 ## DEC-2026-08-19-02 — OPS-06: Conversation Delta → Project OS, auditoria de handoff e sincronização documental
 
 - **Data:** 2026-08-19.
