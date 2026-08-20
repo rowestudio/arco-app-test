@@ -3341,5 +3341,82 @@ test('REG-054 — multi-seleção de Frames aplica Posição/Escala/Rotação a 
   await page.evaluate(() => { frameLocked[1] = false; });
   expect(after.allFinite).toBe(true);
 
+  // ── Captura de Undo por alvos efetivos (não por activeIdx) ──
+  // Cenário-armadilha: activeIdx = F1 TRAVADO e fora dos alvos; F2 e F3 selecionados e
+  // destravados; F4 não selecionado; Global desligado. O gesto REAL do slider de Rotação
+  // (mousedown → input → change, incluindo o capturador de Undo real) deve alterar F2 e F3,
+  // capturar EXATAMENTE 1 Undo e NUNCA produzir mutação sem snapshot. Falha na base pré-fix
+  // (o capturador abortava por frameLocked[activeIdx] enquanto o input mutava F2/F3).
+  expect(frameCount0).toBeGreaterThanOrEqual(4);
+  const dragRot = async (deltaDeg) => page.evaluate((d) => {
+    const s = document.getElementById('rotSlider');
+    s.dispatchEvent(new Event('mousedown'));                 // captura de Undo (gesto real)
+    s.value = String((frameRotations[activeIdx] || 0) + d);
+    s.dispatchEvent(new Event('input'));                     // mutação real
+    s.dispatchEvent(new Event('change'));                    // fim do gesto
+  }, deltaDeg);
+  const dragScale = async (deltaPct) => page.evaluate((d) => {
+    initScaleSlider();
+    const s = document.getElementById('scaleSlider');
+    s.dispatchEvent(new Event('mousedown'));
+    s.value = String(Math.round(parseFloat(s.value)) + d);
+    s.dispatchEvent(new Event('input'));
+    s.dispatchEvent(new Event('change'));
+  }, deltaPct);
+
+  await page.evaluate(() => { clearMultiSelect(); activeIdx = 0; openCustBar(); frameLocked[0] = true; });
+  await longPressPill(1); await clickPillToggle(2);
+  expect(await page.evaluate(() => Array.from(selectedFrames).sort((a,b)=>a-b))).toEqual([1,2]);
+  await ensureGlobalOff('rot');
+  before = await snap();
+  await dragRot(18);
+  after = await snap();
+  expect(after.undo).toBe(before.undo + 1);                 // exatamente 1 Undo para o gesto
+  expect(near(after.rot[1] - before.rot[1], 18)).toBe(true); // F2 muda
+  expect(near(after.rot[2] - before.rot[2], 18)).toBe(true); // F3 muda
+  expect(near(after.rot[0], before.rot[0])).toBe(true);      // F1 travado NÃO muda
+  expect(near(after.rot[3], before.rot[3])).toBe(true);      // F4 não selecionado NÃO muda
+  expect(after.selected).toEqual([1,2]);                     // seleção permanece
+  expect(after.allFinite).toBe(true);
+  await page.evaluate(() => undo());
+  let undo1 = await snap();
+  expect(near(undo1.rot[1], before.rot[1])).toBe(true);      // Undo restaura F2
+  expect(near(undo1.rot[2], before.rot[2])).toBe(true);      // Undo restaura F3
+  await page.evaluate(() => { if (typeof redo === 'function') redo(); });
+  let redo1 = await snap();
+  expect(near(redo1.rot[1], after.rot[1])).toBe(true);       // Redo reaplica F2
+  expect(near(redo1.rot[2], after.rot[2])).toBe(true);       // Redo reaplica F3
+
+  // Escala no mesmo cenário-armadilha (a captura de Undo da Escala foi harmonizada ao
+  // mesmo princípio de alvos efetivos): F2/F3 mudam, F1(travado)/F4 não, 1 Undo consolidado.
+  await ensureGlobalOff('scale');
+  before = await snap();
+  await dragScale(25);
+  after = await snap();
+  expect(after.undo).toBe(before.undo + 1);
+  expect(after.frames[1].w).toBeGreaterThan(before.frames[1].w + 0.01);
+  expect(after.frames[2].w).toBeGreaterThan(before.frames[2].w + 0.01);
+  expect(near(after.frames[0].w, before.frames[0].w)).toBe(true);
+  expect(near(after.frames[3].w, before.frames[3].w)).toBe(true);
+  expect(after.selected).toEqual([1,2]);
+
+  // ── Zero alvos editáveis: nenhum estado muda, nenhum Undo é criado ──
+  // activeIdx = F1 travado, sem seleção, Global desligado.
+  await page.evaluate(() => { clearMultiSelect(); activeIdx = 0; openCustBar(); });
+  expect(await page.evaluate(() => isMultiSelectionActive())).toBe(false);
+  await ensureGlobalOff('rot');
+  before = await snap();
+  await dragRot(18);
+  after = await snap();
+  expect(after.undo).toBe(before.undo);                      // nenhum Undo
+  expect(after.rot).toEqual(before.rot);                     // rotação inalterada
+  await ensureGlobalOff('scale');
+  before = await snap();
+  await dragScale(25);
+  after = await snap();
+  expect(after.undo).toBe(before.undo);                      // nenhum Undo
+  expect(after.frames.map(f => f.w)).toEqual(before.frames.map(f => f.w)); // escala inalterada
+  await page.evaluate(() => { frameLocked[0] = false; });
+
   expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
 });

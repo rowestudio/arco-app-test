@@ -28875,12 +28875,20 @@ function initScaleSlider() {
 
   let scaleUndoCaptured = false;
   newSlider.addEventListener('mousedown', () => {
+    // v8z4b32E9F2 — REG-054: captura de Undo pela MESMA semântica de alvos
+    // efetivos do handler de input (getNormalTransformTargets). Zero alvos
+    // editáveis → sem Undo. Não altera matemática/limites/centro/aspect/delta.
+    if (!getNormalTransformTargets().length) return;
     if (!scaleUndoCaptured) { pushUndo(); scaleUndoCaptured = true; }
     const f = frames[activeIdx]; if (!f) return;
     origCX = f.x + f.w / 2;
     origCY = f.y + f.h / 2;
   });
   newSlider.addEventListener('touchstart', () => {
+    // v8z4b32E9F2 — REG-054: captura de Undo pela MESMA semântica de alvos
+    // efetivos do handler de input (getNormalTransformTargets). Zero alvos
+    // editáveis → sem Undo. Não altera matemática/limites/centro/aspect/delta.
+    if (!getNormalTransformTargets().length) return;
     if (!scaleUndoCaptured) { pushUndo(); scaleUndoCaptured = true; }
     const f = frames[activeIdx]; if (!f) return;
     origCX = f.x + f.w / 2;
@@ -43582,7 +43590,12 @@ rotSlider.addEventListener('input', function() {
 });
 let rotUndoCaptured = false;
 const captureRotUndo = () => {
-  if (frameLocked[activeIdx]) return;
+  // v8z4b32E9F2 — REG-054: a captura de Undo usa a MESMA semântica de alvos
+  // efetivos do handler de input (getNormalTransformTargets), não activeIdx.
+  // activeIdx pode estar travado ou fora da seleção enquanto Frames selecionados
+  // e destravados serão realmente alterados — capturar por activeIdx abortaria
+  // o snapshot e produziria mutação sem Undo. Zero alvos editáveis → sem Undo.
+  if (!getNormalTransformTargets().length) return;
   if (!rotUndoCaptured) { pushUndo(); rotUndoCaptured = true; }
 };
 rotSlider.addEventListener('touchstart', captureRotUndo, {passive:true});

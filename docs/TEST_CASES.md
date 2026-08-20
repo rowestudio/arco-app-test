@@ -9,6 +9,8 @@ Gate `tests/smoke/app.spec.mjs`, `REG-054 — multi-seleção de Frames aplica P
   - **Escala** (`nudgeScale`) aumenta a largura de F1 e F2 (delta percentual relativo à própria escala, sem igualar); F3 intacto; seleção mantida.
   - **Rotação** (`nudgeRotation`) aplica o mesmo delta a F1 e F2; F3 intacto; seleção mantida; todos os valores finitos.
 - **Caso A' — Undo/Redo consolidado:** uma sessão contínua de drag do slider de Escala produz **exatamente 1 Undo**; Undo restaura AMBOS os Frames; Redo reaplica AMBOS. Limpar a seleção não altera a geometria (mutação vive no modelo real consumido por Preview/Export, não em overlay de seleção).
+- **Captura de Undo por alvos efetivos (revisão PR #505):** cenário-armadilha com `activeIdx=F1` **travado** e fora da seleção, F2/F3 selecionados/destravados, F4 fora, Global desligado. O gesto REAL do slider (mousedown → input → change, incluindo o capturador de Undo real) de **Rotação** e de **Escala** altera F2 e F3, mantém F1(travado)/F4 intactos, captura **exatamente 1 Undo** que restaura F2/F3 (Redo reaplica) e preserva a seleção. Protege contra "mutação sem snapshot de Undo" quando o capturador dependia só de `activeIdx`.
+- **Zero alvos editáveis:** `activeIdx=F1` travado, sem seleção, Global desligado — o gesto de Rotação/Escala **não altera nada e não cria Undo**.
 - **Caso D — seleção simples (sem multi-seleção):** só o Frame ativo muda; demais intactos (não regride).
 - **Caso E — Global ligado:** afeta todos os Frames elegíveis (semântica global preservada; distinta da multi-seleção).
 - **Caso C — “Selecionar todos” sem Global:** todos os Frames entram na seleção e recebem a transformação sem Global.
