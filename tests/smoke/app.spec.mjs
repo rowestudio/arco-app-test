@@ -3616,3 +3616,220 @@ test('REG-053 — painel de transformação em multi-seleção é invariante à 
   await reset();
   expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
 });
+
+// =========================================================================
+// E9F4 — REG-055: painel compartilhado de customização de cor + paleta pessoal
+// persistente (Fundo do projeto, Cor do texto, Fundo da caixa).
+// =========================================================================
+test('E9F4 — REG-055: painel compartilhado de customização de cor e paleta pessoal persistente', async ({ page }, testInfo) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  await page.locator('#modeAssetsBtn').click();
+  await expect(page.locator('body')).toHaveClass(/editor-assets/);
+
+  const customPanel = page.locator('#customColorPanel');
+  const sheet = page.locator('#textCreationSheet');
+  const railTool = label => sheet.getByRole('tab', { name: label, exact: true });
+  const hexInput = page.locator('#customColorHexInput');
+  const confirmBtn = page.locator('#customColorConfirmBtn');
+  const cancelBtn = page.locator('#customColorPanel .text-creation-cancel');
+  const openProjectBgPanel = async () => {
+    await page.locator('#modeAssetsBtn').click(); // já em Ativos: 2º toque abre o menu do modo (fluxo público)
+    await page.getByRole('button', { name: 'Fundo', exact: true }).click(); // runAssetsContextMenuAction('background') -> openPanel('BgColor')
+    await expect(page.locator('#panelBgColor')).toHaveClass(/show/);
+  };
+  const typeHex = async value => { await hexInput.fill(value); await hexInput.dispatchEvent('input'); };
+
+  // =========================================================================
+  // TESTE 1 — Projeto: "+" abre a customização; neutros continuam presentes;
+  // o antigo quadrado cinza de "Personalizar" não existe mais como trigger.
+  // =========================================================================
+  await openProjectBgPanel();
+  const projectNeutrals = await page.locator('#bgSwatches .bg-swatch').evaluateAll(els => els.map(e => (e.dataset.color || '').toLowerCase()));
+  expect(projectNeutrals.length).toBe(11); // PROJECT_BG_NEUTRALS intacta, sem duplicação
+  expect(await page.locator('#bgHexInput').count()).toBe(0); // quadrado cinza antigo removido
+  expect(await page.locator('#bgHexText').count()).toBe(0);
+  const projectPlus = page.locator('#bgSwatches .bg-swatch-add');
+  await expect(projectPlus).toHaveCount(1);
+  await expect(projectPlus).toBeVisible();
+  await projectPlus.click();
+  await expect(customPanel).toHaveClass(/show/);
+  expect(await page.evaluate(() => customColorPanelContext)).toBe('project-background');
+  expect(await page.evaluate(() => customColorPanelOpen)).toBe(true);
+  expect(await page.evaluate(() => undoStack.length)).toBe(0); // abrir não cria Undo
+
+  // =========================================================================
+  // TESTE 5 — hexadecimal inválido: não aplica, não persiste, não cria swatch,
+  // painel permanece íntegro (confirmar continua desabilitado/no-op).
+  // =========================================================================
+  const bgBeforeInvalid = await page.evaluate(() => bgColor);
+  await typeHex('nope-not-a-color');
+  expect(await page.evaluate(() => customColorHexValid)).toBe(false);
+  await expect(confirmBtn).toBeDisabled();
+  expect(await page.evaluate(() => bgColor)).toBe(bgBeforeInvalid);
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(0);
+
+  // =========================================================================
+  // TESTE 11 — cancelar: digitar valor válido sem confirmar e cancelar não
+  // aplica, não persiste e não cria swatch fantasma.
+  // =========================================================================
+  await typeHex('#3355ff');
+  expect(await page.evaluate(() => customColorHexValid)).toBe(true);
+  await cancelBtn.click();
+  await expect(customPanel).not.toHaveClass(/show/);
+  expect(await page.evaluate(() => bgColor)).toBe(bgBeforeInvalid); // não aplicou
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(0); // não salvou
+  expect(await page.locator('#bgSwatches .bg-swatch-custom').count()).toBe(0); // sem swatch fantasma
+  expect(await page.evaluate(() => undoStack.length)).toBe(0); // sem Undo por navegação/cancelamento
+  await expect(page.locator('#panelBgColor')).toHaveClass(/show/); // painel de origem permanece aberto
+
+  // =========================================================================
+  // TESTE 4/12 — hexadecimal válido: aplica pelo caminho CANÔNICO
+  // (setBgColor/getProjectBackgroundColor), persiste na paleta pessoal e cria
+  // swatch reutilizável; DEFAULT_PROJECT_BG não muda; Undo é criado pelo
+  // fluxo canônico normal (mesmo de um swatch neutro).
+  // =========================================================================
+  const undoBeforeConfirm = await page.evaluate(() => undoStack.length);
+  await projectPlus.click();
+  await typeHex('#3355FF'); // maiúsculo — normalização deve reduzir para minúsculo
+  await expect(confirmBtn).toBeEnabled();
+  await confirmBtn.click();
+  await expect(customPanel).not.toHaveClass(/show/); // setBgColor -> closeAll()
+  expect(await page.evaluate(() => bgColor)).toBe('#3355ff');
+  expect(await page.evaluate(() => getProjectBackgroundColor())).toBe('#3355ff');
+  expect(await page.evaluate(() => DEFAULT_PROJECT_BG)).toBe('#3c3c3b'); // intocado
+  expect(await page.evaluate(() => customColorPalette)).toEqual(['#3355ff']);
+  expect(await page.evaluate(() => undoStack.length)).toBeGreaterThan(undoBeforeConfirm);
+
+  await openProjectBgPanel();
+  const projectCustomSwatch = page.locator('#bgSwatches .bg-swatch-custom[data-custom-color="#3355ff"]');
+  await expect(projectCustomSwatch).toHaveCount(1);
+  await expect(projectCustomSwatch).toHaveClass(/active/);
+
+  // =========================================================================
+  // TESTE 9 — deduplicação: confirmar a MESMA cor com grafia diferente (sem
+  // "#", minúsculo) não cria uma segunda entrada na paleta.
+  // =========================================================================
+  await projectPlus.click();
+  await typeHex('3355ff');
+  await confirmBtn.click();
+  expect(await page.evaluate(() => customColorPalette)).toEqual(['#3355ff']);
+  expect(await page.evaluate(() => customColorDuplicatePrevented)).toBe(true);
+
+  // =========================================================================
+  // TESTE 15 — a paleta pessoal NÃO é serializada no projeto (Save/Load schema).
+  // O valor de bgColor pode legitimamente coincidir com uma cor da paleta (é a
+  // cor de fundo ESCOLHIDA do projeto); o que não pode existir é a LISTA da
+  // paleta pessoal como campo do schema do projeto.
+  // =========================================================================
+  const savedProject = await page.evaluate(() => buildProjectData(true));
+  expect(savedProject.customColorPalette).toBeUndefined();
+  expect(savedProject.userCustomColors).toBeUndefined();
+  expect(savedProject.customColors).toBeUndefined();
+  expect(Object.keys(savedProject).some(k => /customcolor/i.test(k))).toBe(false);
+
+  // =========================================================================
+  // TESTE 2/3/8/13/14 — Texto e Fundo da caixa: "+" abre a MESMA experiência
+  // compartilhada; a cor criada no Fundo do projeto já aparece como swatch
+  // personalizado nos dois contextos de texto (paleta compartilhada).
+  // =========================================================================
+  await page.evaluate(() => startTextCreation());
+  await expect(sheet).toHaveClass(/open/);
+  await page.locator('#textCreationInput').fill('Arco REG-055');
+
+  await railTool('Cor do texto').click();
+  await expect(sheet.locator('#textColorSwatches .text-swatch[data-swatch-color="#3355ff"]')).toHaveCount(1);
+  await sheet.locator('#textColorSwatches .text-swatch-add').click();
+  await expect(customPanel).toHaveClass(/show/);
+  expect(await page.evaluate(() => customColorPanelContext)).toBe('text-color');
+  const boxColorBefore = await page.evaluate(() => pendingTextDraft.boxBackgroundColor);
+  const boxEnabledBefore = await page.evaluate(() => pendingTextDraft.boxBackgroundEnabled);
+  await typeHex('#00aa66');
+  await confirmBtn.click();
+  await expect(customPanel).not.toHaveClass(/show/);
+  expect(await page.evaluate(() => pendingTextDraft.color)).toBe('#00aa66'); // só os glifos
+  expect(await page.evaluate(() => pendingTextDraft.boxBackgroundColor)).toBe(boxColorBefore); // fundo intacto
+  expect(await page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(boxEnabledBefore); // fundo intacto
+  expect(await page.evaluate(() => customColorPalette)).toEqual(['#3355ff', '#00aa66']);
+  const stageColor = await page.evaluate(() => { const el = document.querySelector(`.world-text-asset[data-asset-id="${CSS.escape(String(pendingTextDraft.id))}"]`); const cs = getComputedStyle(el); const n = (String(cs.color).match(/\d+/g) || []).map(Number); return n; });
+  expect(stageColor.slice(0, 3)).toEqual([0, 170, 102]); // WYSIWYG imediato
+
+  await railTool('Fundo da caixa').click();
+  await expect(sheet.locator('#textBgSwatches .text-swatch[data-swatch-color="#3355ff"]')).toHaveCount(1); // paleta compartilhada
+  await expect(sheet.locator('#textBgSwatches .text-swatch[data-swatch-color="#00aa66"]')).toHaveCount(1);
+  await sheet.locator('#textBgSwatches [data-swatch-none]').click(); // garante estado inicial Sem cor
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeHidden();
+  await sheet.locator('#textBgSwatches .text-swatch-add').click();
+  await expect(customPanel).toHaveClass(/show/);
+  expect(await page.evaluate(() => customColorPanelContext)).toBe('text-box-background');
+  await typeHex('#224466');
+  await confirmBtn.click();
+  await expect(customPanel).not.toHaveClass(/show/);
+  expect(await page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(true); // liga o fundo
+  expect(await page.evaluate(() => pendingTextDraft.boxBackgroundColor)).toBe('#224466');
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeVisible(); // opacidade só do fundo
+  expect(await page.evaluate(() => customColorPalette)).toEqual(['#3355ff', '#00aa66', '#224466']);
+  // "Sem cor" volta a desabilitar o fundo, glifos permanecem intactos.
+  await sheet.locator('#textBgSwatches [data-swatch-none]').click();
+  expect(await page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(false);
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeHidden();
+  expect(await page.evaluate(() => pendingTextDraft.color)).toBe('#00aa66'); // glifos intactos
+
+  // Sem Undo/autosave por abrir o painel ou salvar na paleta pessoal — só a
+  // confirmação normal do editor (✓) cria Undo/autosave para o Text Asset.
+  expect(await page.evaluate(() => textEditorUndoEntriesCreated)).toBe(0);
+  await sheet.getByRole('button', { name: 'Cancelar', exact: true }).click(); // descarta o rascunho de exploração
+  await expect(sheet).not.toHaveClass(/open/);
+
+  // =========================================================================
+  // TESTE 10 — storage corrompido: entradas inválidas são ignoradas sem
+  // quebrar o app; neutros built-in continuam disponíveis.
+  // =========================================================================
+  await page.evaluate(() => localStorage.setItem('arco_user_custom_colors_v1', '["#not-a-color", "#3355ff", "#3355FF", 42, null, {}]'));
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  const corruptState = await page.evaluate(() => ({
+    palette: customColorPalette,
+    storageAvailable: customColorPaletteStorageAvailable,
+    dropped: customColorInvalidStoredEntriesDropped,
+    neutrals: (typeof PROJECT_BG_NEUTRALS !== 'undefined') ? PROJECT_BG_NEUTRALS.length : 0,
+  }));
+  expect(corruptState.palette).toEqual(['#3355ff']); // válida preservada, dedup aplicado, resto ignorado
+  expect(corruptState.storageAvailable).toBe(true); // JSON parseou; só entradas inválidas foram descartadas
+  expect(corruptState.dropped).toBeGreaterThan(0);
+  expect(corruptState.neutrals).toBe(11); // neutros built-in continuam disponíveis
+  await expect(page.locator('#projectFileInput')).toBeAttached(); // app iniciou normalmente, sem travar
+
+  // JSON totalmente malformado: também não quebra o app; storage indisponível é
+  // reportado no diagnóstico, mas os neutros built-in continuam de pé.
+  await page.evaluate(() => localStorage.setItem('arco_user_custom_colors_v1', '{not valid json'));
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  const malformedState = await page.evaluate(() => ({
+    palette: customColorPalette,
+    storageAvailable: customColorPaletteStorageAvailable,
+    neutrals: (typeof PROJECT_BG_NEUTRALS !== 'undefined') ? PROJECT_BG_NEUTRALS.length : 0,
+  }));
+  expect(malformedState.palette).toEqual([]);
+  expect(malformedState.storageAvailable).toBe(false);
+  expect(malformedState.neutrals).toBe(11);
+
+  // =========================================================================
+  // TESTE 6/7 — persistência: sobrevive a reload e a abrir outro projeto
+  // (a paleta é preferência local do navegador, independente do projeto).
+  // =========================================================================
+  await page.evaluate(() => localStorage.setItem('arco_user_custom_colors_v1', JSON.stringify(['#3355ff', '#00aa66', '#224466'])));
+  await clearStartupStorage(page); // sem checkpoint pendente: evita modal de retomada de sessão no boot
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  expect(await page.evaluate(() => customColorPalette)).toEqual(['#3355ff', '#00aa66', '#224466']); // sobrevive ao reload
+  await page.locator('#projectFileInput').setInputFiles(projectFixture); // abre um projeto "novo" (nova instância de estado)
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  expect(await page.evaluate(() => customColorPalette)).toEqual(['#3355ff', '#00aa66', '#224466']); // não depende do projeto anterior/atual
+  await dismissProModalIfVisible(page);
+  await page.locator('#modeAssetsBtn').click();
+  await openProjectBgPanel();
+  await expect(page.locator('#bgSwatches .bg-swatch-custom')).toHaveCount(3); // paleta reaparece nos três contextos
+});
