@@ -2662,8 +2662,11 @@ test('E9F — editor de texto iconográfico neutro: rail, paleta, coral, gestos 
   // Único texto visível no painel é o "+" do botão de picker; os swatches não têm texto.
   expect((await sheet.locator('[data-text-panel="color"]').evaluate(el => el.textContent)).trim()).toBe('+');
   expect(await sheet.locator('#textColorSwatches .text-swatch').count()).toBeGreaterThan(1);
-  expect(await sheet.locator('#textColorSwatches .text-swatch-add').getAttribute('aria-label')).toBe('Escolher outra cor do texto');
-  expect(await page.locator('#textCreationColor').getAttribute('aria-label')).toBe('Cor do texto');
+  // v8z4b32E9F5-R1 — o "+" visual é puramente decorativo (aria-hidden); o PRÓPRIO
+  // input nativo, agora sobreposto sobre a área do "+" (alvo real de toque),
+  // carrega o aria-label acessível.
+  expect(await sheet.locator('#textColorSwatches .text-swatch-add').getAttribute('aria-hidden')).toBe('true');
+  expect(await page.locator('#textCreationColor').getAttribute('aria-label')).toBe('Escolher outra cor do texto');
   await page.locator('#textCreationColor').evaluate(el=>{el.value='#ff8800';el.dispatchEvent(new Event('input',{bubbles:true}));});
   p = await liveProbe(); expect(p.color).toBe('#ff8800');
   // Retornar a uma propriedade mostra o valor atual do draft.
@@ -2914,8 +2917,11 @@ test('E9F1 — refino do editor de texto: cabeçalho compacto, ícones, paletas,
   expect(textSwatchColors).toContain('#000000'); // preto
   expect(textSwatchColors).toContain('#ffffff'); // branco
   expect(textSwatchColors).toContain('#808080'); // cinza existente
-  await expect(sheet.locator('#textColorSwatches .text-swatch-add')).toHaveCount(1); // botão +
-  expect(await sheet.locator('#textColorSwatches .text-swatch-add').getAttribute('aria-label')).toBe('Escolher outra cor do texto');
+  await expect(sheet.locator('#textColorSwatches .text-swatch-add')).toHaveCount(1); // botão + (decorativo, aria-hidden)
+  // v8z4b32E9F5-R1 — o PRÓPRIO input nativo, sobreposto sobre a área do "+" (alvo
+  // real de toque), carrega o aria-label acessível.
+  expect(await sheet.locator('#textColorSwatches .text-swatch-add').getAttribute('aria-hidden')).toBe('true');
+  expect(await page.locator('#textCreationColor').getAttribute('aria-label')).toBe('Escolher outra cor do texto');
   expect(await page.locator('#textCreationColor').count()).toBe(1); // picker completo acessível
   // Selecionar um preset: controle → pendingTextDraft.color → computed color do Stage.
   await sheet.locator('#textColorSwatches .text-swatch[data-swatch-color="#000000"]').click();
@@ -3617,21 +3623,30 @@ test('REG-053 — painel de transformação em multi-seleção é invariante à 
   expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
 });
 
-// v8z4b32E9F5 — gate de REG-055. A v8z4b32E9F4 (PR #507) substituiu o fluxo de
-// seleção de cor EXISTENTE (Fundo do projeto, Cor do texto, Fundo da caixa) por um
-// painel intermediário próprio do Arco (#customColorPanel); foi mergeada e REPROVADA
-// fisicamente por Roberto em iPhone/Safari, e revertida integralmente pela PR #508.
-// A correção correta (E9F5) PRESERVA os três pickers/fluxos já existentes
-// (beginBgColorEdit/commitBgColorEdit/setBgColor/setBgColorHex/onBgHexText;
-// openTextColorPicker(); openTextBgColorPicker()) e acrescenta, SEM criar nenhum
-// painel/modal/sheet novo: (1) campo HEX inline no MESMO painel de cada contexto;
-// (2) "+" que continua sendo uma AÇÃO que abre o MESMO input[type=color] nativo já
-// existente; (3) uma paleta pessoal de cores customizadas, browser-local, persistente
-// e COMPARTILHADA pelos três contextos, nunca incluída no projeto salvo. Este gate usa
-// somente o fluxo público real (os mesmos elementos que o usuário toca) e falha na
-// base pré-E9F5 (sem HEX inline em Cor do texto/Fundo da caixa, sem paleta pessoal
-// persistente, sem infraestrutura customColorPalette/arco_user_custom_colors_v1).
-test('REG-055 — picker completo preservado, HEX inline e paleta pessoal persistente e compartilhada', async ({ page }) => {
+// v8z4b32E9F5-R1 — gate de REG-055 (reescrito após revisão da PR #509). A v8z4b32E9F4
+// (PR #507) substituiu o fluxo de seleção de cor EXISTENTE por um painel próprio do
+// Arco (#customColorPanel); mergeada, REPROVADA fisicamente por Roberto e revertida
+// pela PR #508. A primeira rodada da E9F5 corrigiu a arquitetura de painel, mas
+// manteve o MECANISMO DE ATIVAÇÃO que já era a causa física de REG-055: os três "+"
+// eram botões que chamavam input.click() sobre um input[type=color] 1×1,
+// off-screen (left:-9999px) e pointer-events:none — provar que .click() foi CHAMADO
+// não prova que o TOQUE do usuário chega ao picker nativo no iPhone/Safari. A
+// correção (E9F5-R1) faz do próprio input nativo o ALVO REAL do toque: o input
+// (nunca clonado) é reposicionado a cada render sobre a área do "+" via
+// .color-trigger-wrap (position:absolute, inset:0, pointer-events:auto), com o
+// botão visual por baixo em pointer-events:none. Este gate prova ESTRUTURALMENTE
+// (bounding rect do input == bounding rect do "+", não 1×1, não fora da tela,
+// pointer-events != none, e document.elementFromPoint no centro do "+" resolve
+// para o próprio input) que o toque chega ao input nativo nos três contextos —
+// não apenas que JavaScript conseguiu chamar .click(). Também exercita input/change
+// REAIS no input[type=color] de cada contexto (picker) além do HEX inline, e cobre
+// HEX inválido também em Fundo da caixa. A abertura efetiva da UI nativa do
+// Safari/iOS (roda/espectro/conta-gotas) permanece validação física pós-merge —
+// este gate não pode nem tenta simular a UI do sistema operacional. Fluxo 100%
+// público (só o disparo de eventos DOM reais nos próprios inputs nativos substitui
+// o toque físico, já que um agente headless não pode pilotar o picker do SO). Falha
+// na base pré-R1 (inputs 1×1/off-screen/pointer-events:none) e passa após a correção.
+test('REG-055 — "+" aciona diretamente o input[type=color] nativo (alvo real de toque), HEX inline e paleta pessoal persistente e compartilhada', async ({ page }) => {
   test.setTimeout(180_000);
   const errors = captureFatalErrors(page);
   await page.setViewportSize({ width: 390, height: 797 });
@@ -3647,6 +3662,16 @@ test('REG-055 — picker completo preservado, HEX inline e paleta pessoal persis
 
   // ── Helpers de fluxo público real ─────────────────────────────────────────
   const bgPanel = page.locator('#panelBgColor');
+  // .float-panel anima a entrada com transform/transition de 300ms (translateY);
+  // medir geometria/elementFromPoint ANTES da transição terminar captura a
+  // posição intermediária (fora do viewport), não a posição real de repouso —
+  // por isso aguardamos o transform estabilizar em translateY(0) antes de medir.
+  const waitForFloatPanelSettled = (panelId) => page.waitForFunction((id) => {
+    const el = document.getElementById(id);
+    if (!el) return false;
+    const t = getComputedStyle(el).transform;
+    return t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)';
+  }, panelId, { timeout: 5_000 });
   const openBgPanel = async () => {
     await page.locator('#modeAssetsBtn').click(); // 1º toque: entra em Modo Ativos
     await expect(page.locator('body')).toHaveClass(/editor-assets/);
@@ -3654,31 +3679,73 @@ test('REG-055 — picker completo preservado, HEX inline e paleta pessoal persis
     await expect(page.locator('#assetsModeContextMenu')).toHaveClass(/open/);
     await page.locator('#assetsModeContextMenu .assets-menu-btn').filter({ hasText: 'Fundo' }).click();
     await expect(bgPanel).toHaveClass(/show/);
+    await waitForFloatPanelSettled('panelBgColor');
   };
-  // Espiona clique real no input[type=color] nativo (mesmo elemento já existente),
-  // provando que o "+" aciona ESSE input em vez de qualquer painel/modal próprio.
-  const spyClick = (selector) => page.evaluate((sel) => {
-    window.__spyClicks = window.__spyClicks || {};
-    window.__spyClicks[sel] = 0;
-    const el = document.querySelector(sel);
-    if (el) el.addEventListener('click', () => { window.__spyClicks[sel]++; }, { once: true });
-  }, selector);
-  const spyCount = (selector) => page.evaluate((sel) => (window.__spyClicks && window.__spyClicks[sel]) || 0, selector);
-  const dispatchInput = (locator, value) => locator.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, value);
+  // Foca ANTES de mudar o valor, replicando a ordem real do gesto do usuário
+  // (pointerdown/focus → escolha → change) — necessário para beginBgColorEdit()
+  // (onfocus) capturar o snapshot de Undo antes da mudança, exatamente como no
+  // fluxo público real.
+  const dispatchInput = async (locator, value) => {
+    await locator.focus();
+    await locator.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, value);
+  };
   const dispatchChange = (locator) => locator.evaluate((el) => { el.dispatchEvent(new Event('change', { bubbles: true })); });
+  // BLOQUEADOR 1/2 — prova ESTRUTURAL de que o próprio input[type=color] nativo,
+  // e não o botão "+" visual, é o alvo real do toque: geometria do input cobre
+  // exatamente a área do wrapper do "+" (não 1×1, não fora da tela), o input é
+  // interativo (pointer-events computado != none), e o ponto central tocável do
+  // "+" resolve, via elementFromPoint, para o próprio input — nunca para o botão
+  // visual (pointer-events:none) nem para qualquer painel/modal.
+  const assertNativeColorTriggerIsRealTouchTarget = async (wrapSelector, inputSelector, label) => {
+    // As linhas de swatches rolam horizontalmente (overflow-x:auto) e o "+" fica
+    // por último; um usuário real rola a linha até o "+" ficar visível antes de
+    // tocar. Reproduzimos o mesmo gesto público antes de medir a geometria.
+    await page.locator(wrapSelector).scrollIntoViewIfNeeded();
+    const result = await page.evaluate(({ wrapSelector, inputSelector }) => {
+      const wrap = document.querySelector(wrapSelector);
+      const input = document.querySelector(inputSelector);
+      if (!wrap || !input) return { ok: false };
+      const w = wrap.getBoundingClientRect();
+      const i = input.getBoundingClientRect();
+      const cx = w.left + w.width / 2, cy = w.top + w.height / 2;
+      const hit = document.elementFromPoint(cx, cy);
+      return {
+        ok: true,
+        inputIsChildOfWrap: wrap.contains(input),
+        wrapRect: { x: w.left, y: w.top, w: w.width, h: w.height },
+        inputRect: { x: i.left, y: i.top, w: i.width, h: i.height },
+        inputType: input.type,
+        pointerEvents: getComputedStyle(input).pointerEvents,
+        hitIsInput: hit === input,
+        hitTag: hit ? hit.tagName : null,
+        hitId: hit ? hit.id : null,
+      };
+    }, { wrapSelector, inputSelector });
+    expect(result.ok, `${label}: wrapper e input nativo devem existir no DOM`).toBe(true);
+    expect(result.inputType, `${label}: alvo precisa ser input[type=color]`).toBe('color');
+    expect(result.inputIsChildOfWrap, `${label}: o input nativo precisa estar dentro do wrapper do "+"`).toBe(true);
+    expect(result.inputRect.w, `${label}: input não pode ser 1×1`).toBeGreaterThan(20);
+    expect(result.inputRect.h, `${label}: input não pode ser 1×1`).toBeGreaterThan(20);
+    expect(result.inputRect.x, `${label}: input não pode estar deslocado para fora da tela`).toBeGreaterThan(-1);
+    expect(result.inputRect.y, `${label}: input não pode estar deslocado para fora da tela`).toBeGreaterThan(-1);
+    expect(Math.abs(result.inputRect.x - result.wrapRect.x), `${label}: input deve cobrir a MESMA área do "+"`).toBeLessThan(1.5);
+    expect(Math.abs(result.inputRect.y - result.wrapRect.y), `${label}`).toBeLessThan(1.5);
+    expect(Math.abs(result.inputRect.w - result.wrapRect.w), `${label}`).toBeLessThan(1.5);
+    expect(Math.abs(result.inputRect.h - result.wrapRect.h), `${label}`).toBeLessThan(1.5);
+    expect(result.pointerEvents, `${label}: input precisa ser interativo (pointer-events != none)`).not.toBe('none');
+    expect(result.hitTag, `${label}: o ponto central tocável do "+" deve resolver para um <input>`).toBe('INPUT');
+    expect(result.hitIsInput, `${label}: o ponto central tocável do "+" deve resolver exatamente para o input nativo (não para o botão visual nem outro elemento)`).toBe(true);
+  };
 
-  // ── TESTE A — Fundo do projeto: presets, HEX inline, "+" aciona o picker nativo ──
+  // ── TESTE A — Fundo do projeto: presets, HEX inline, "+" = input nativo real ──
   await openBgPanel();
   expect(await bgPanel.locator('#bgSwatches .bg-swatch').count()).toBeGreaterThan(0);
   await expect(bgPanel.locator('#bgHexText')).toBeVisible();
-  const bgAddBtn = bgPanel.locator('#bgSwatches .bg-swatch-add');
-  await expect(bgAddBtn).toBeVisible();
+  await expect(bgPanel.locator('#bgSwatches .color-trigger-wrap')).toBeVisible();
   const paletteBeforeBgPlus = await page.evaluate(() => customColorPalette.length);
-  await spyClick('#bgHexInput');
-  await bgAddBtn.click();
-  expect(await spyCount('#bgHexInput')).toBe(1);
+  await assertNativeColorTriggerIsRealTouchTarget('#bgSwatches .color-trigger-wrap', '#bgHexInput', 'Fundo do projeto');
   expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
-  // Abrir o picker por si só (sem escolha efetiva) não muda a paleta — TESTE K.
+  // Só existir o input não muda a paleta por si só — TESTE K (nenhuma escolha efetiva).
   expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBeforeBgPlus);
 
   // TESTE F — HEX inválido não aplica nem salva.
@@ -3700,12 +3767,17 @@ test('REG-055 — picker completo preservado, HEX inline e paleta pessoal persis
   expect(await page.evaluate(() => lastCustomColorSource)).toBe('hex');
   expect(await page.evaluate(() => lastCustomColorContext)).toBe('bg');
 
-  // TESTE D — escolha pelo picker nativo real (input[type=color]) aplica e salva.
+  // TESTE D (Fundo do projeto, via PICKER) — despachar input/change reais no
+  // PRÓPRIO input[type=color] nativo aplica a cor, mantém Undo/dirty e salva na
+  // paleta com source=picker/context=bg.
+  const undoBeforeBgPicker = await page.evaluate(() => undoStack.length);
   await dispatchInput(bgPanel.locator('#bgHexInput'), '#123456');
   await dispatchChange(bgPanel.locator('#bgHexInput'));
   await expect.poll(() => page.evaluate(() => bgColor)).toBe('#123456');
   expect(await page.evaluate(() => customColorPalette)).toContain('#123456');
   expect(await page.evaluate(() => lastCustomColorSource)).toBe('picker');
+  expect(await page.evaluate(() => lastCustomColorContext)).toBe('bg');
+  expect(await page.evaluate(() => undoStack.length)).toBe(undoBeforeBgPicker + 1);
 
   // TESTE I — deduplicação: mesma cor em maiúsculas/minúsculas/sem "#" é uma única entrada lógica.
   const paletteCountBeforeDup = await page.evaluate(() => customColorPalette.length);
@@ -3720,7 +3792,7 @@ test('REG-055 — picker completo preservado, HEX inline e paleta pessoal persis
   await bgPanel.locator('#bgSwatches .bg-swatch[data-color]').first().click();
   await expect(bgPanel).not.toHaveClass(/show/);
 
-  // ── TESTE B — Cor do texto: HEX inline, "+" aciona openTextColorPicker() ──
+  // ── TESTE B — Cor do texto: HEX inline, "+" = input nativo real ──
   const sheet = page.locator('#textCreationSheet');
   await page.locator('#lowerAddOrSelectAllBtn').click();
   await expect(page.locator('#assetsAddMenu')).toHaveClass(/open/);
@@ -3730,12 +3802,9 @@ test('REG-055 — picker completo preservado, HEX inline e paleta pessoal persis
   await sheet.getByRole('tab', { name: 'Cor do texto', exact: true }).click();
   expect(await sheet.locator('#textColorSwatches .text-swatch').count()).toBeGreaterThan(0);
   await expect(page.locator('#textColorHexText')).toBeVisible();
-  const textColorAddBtn = sheet.locator('#textColorSwatches .text-swatch-add');
-  await expect(textColorAddBtn).toBeVisible();
+  await expect(sheet.locator('#textColorSwatches .color-trigger-wrap')).toBeVisible();
   const paletteBeforeTextPlus = await page.evaluate(() => customColorPalette.length);
-  await spyClick('#textCreationColor');
-  await textColorAddBtn.click();
-  expect(await spyCount('#textCreationColor')).toBe(1);
+  await assertNativeColorTriggerIsRealTouchTarget('#textColorSwatches .color-trigger-wrap', '#textCreationColor', 'Cor do texto');
   expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
   expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBeforeTextPlus);
 
@@ -3756,18 +3825,27 @@ test('REG-055 — picker completo preservado, HEX inline e paleta pessoal persis
   await dispatchChange(page.locator('#textColorHexText'));
   expect(await page.evaluate(() => ({ color: pendingTextDraft.color, palette: [...customColorPalette] }))).toEqual(textColorBeforeInvalid);
 
-  // ── TESTE C — Fundo da caixa: "Sem cor" preservado, HEX inline, "+" aciona openTextBgColorPicker() ──
+  // TESTE D (Cor do texto, via PICKER) — despachar input/change reais no PRÓPRIO
+  // #textCreationColor muda pendingTextDraft.color, afeta SOMENTE os glifos (Fundo
+  // da caixa intocado) e salva na paleta com source=picker/context=text-color.
+  const boxBgBeforeTextPicker = await page.evaluate(() => ({ enabled: pendingTextDraft.boxBackgroundEnabled, color: pendingTextDraft.boxBackgroundColor }));
+  await dispatchInput(page.locator('#textCreationColor'), '#a1b2c3');
+  await dispatchChange(page.locator('#textCreationColor'));
+  await expect.poll(() => page.evaluate(() => pendingTextDraft.color)).toBe('#a1b2c3');
+  expect(await page.evaluate(() => customColorPalette)).toContain('#a1b2c3');
+  expect(await page.evaluate(() => lastCustomColorSource)).toBe('picker');
+  expect(await page.evaluate(() => lastCustomColorContext)).toBe('text-color');
+  expect(await page.evaluate(() => ({ enabled: pendingTextDraft.boxBackgroundEnabled, color: pendingTextDraft.boxBackgroundColor }))).toEqual(boxBgBeforeTextPicker);
+
+  // ── TESTE C — Fundo da caixa: "Sem cor" preservado, HEX inline, "+" = input nativo real ──
   await sheet.getByRole('tab', { name: 'Fundo da caixa', exact: true }).click();
   await expect(sheet.locator('#textBgSwatches [data-swatch-none]')).toHaveClass(/active/);
   expect(await page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(false);
   await expect(page.locator('#textEditorBgOpacityWrap')).toBeHidden();
   await expect(page.locator('#textBoxBackgroundHexText')).toBeVisible();
-  const boxAddBtn = sheet.locator('#textBgSwatches .text-swatch-add');
-  await expect(boxAddBtn).toBeVisible();
+  await expect(sheet.locator('#textBgSwatches .color-trigger-wrap')).toBeVisible();
   const paletteBeforeBoxPlus = await page.evaluate(() => customColorPalette.length);
-  await spyClick('#textBoxBackgroundColor');
-  await boxAddBtn.click();
-  expect(await spyCount('#textBoxBackgroundColor')).toBe(1);
+  await assertNativeColorTriggerIsRealTouchTarget('#textBgSwatches .color-trigger-wrap', '#textBoxBackgroundColor', 'Fundo da caixa');
   expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
   expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBeforeBoxPlus);
 
@@ -3775,19 +3853,44 @@ test('REG-055 — picker completo preservado, HEX inline e paleta pessoal persis
   expect(await sheet.locator('#textBgSwatches [data-swatch-color="#ff6b8a"]').count()).toBeGreaterThan(0);
   expect(await sheet.locator('#textBgSwatches [data-swatch-color="#00aabb"]').count()).toBeGreaterThan(0);
 
-  // Escolher cor por HEX habilita o fundo e revela a opacidade (regra E9F1 preservada).
-  await dispatchInput(page.locator('#textBoxBackgroundHexText'), '#334455');
+  // HEX inválido no Fundo da caixa: não muda boxBackgroundEnabled, não muda
+  // boxBackgroundColor, não salva, não cria swatch.
+  const boxBeforeInvalid = await page.evaluate(() => ({ enabled: pendingTextDraft.boxBackgroundEnabled, color: pendingTextDraft.boxBackgroundColor, palette: [...customColorPalette] }));
+  await dispatchInput(page.locator('#textBoxBackgroundHexText'), 'nothex');
+  await dispatchChange(page.locator('#textBoxBackgroundHexText'));
+  expect(await page.evaluate(() => ({ enabled: pendingTextDraft.boxBackgroundEnabled, color: pendingTextDraft.boxBackgroundColor, palette: [...customColorPalette] }))).toEqual(boxBeforeInvalid);
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeHidden();
+
+  // HEX válido no Fundo da caixa: aplica, habilita o fundo, salva, normaliza,
+  // revela a opacidade — preservando a regra "alfa só do fundo" (E9F1).
+  await dispatchInput(page.locator('#textBoxBackgroundHexText'), '334455');
   await dispatchChange(page.locator('#textBoxBackgroundHexText'));
   await expect.poll(() => page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(true);
   expect(await page.evaluate(() => pendingTextDraft.boxBackgroundColor)).toBe('#334455');
   await expect(page.locator('#textEditorBgOpacityWrap')).toBeVisible();
   expect(await page.evaluate(() => customColorPalette)).toContain('#334455');
+  expect(await page.evaluate(() => lastCustomColorSource)).toBe('hex');
+  expect(await page.evaluate(() => lastCustomColorContext)).toBe('text-box-background');
 
   // "Sem cor" continua desligando o fundo e ocultando a opacidade; glifos preservados.
   await sheet.locator('#textBgSwatches [data-swatch-none]').click();
   await expect.poll(() => page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(false);
   await expect(page.locator('#textEditorBgOpacityWrap')).toBeHidden();
-  expect(await page.evaluate(() => pendingTextDraft.color)).toBe('#00aabb');
+  expect(await page.evaluate(() => pendingTextDraft.color)).toBe('#a1b2c3');
+
+  // TESTE D (Fundo da caixa, via PICKER) — despachar input/change reais no PRÓPRIO
+  // #textBoxBackgroundColor habilita o fundo, aplica a cor, revela a opacidade,
+  // preserva os glifos e salva na paleta com source=picker/context=text-box-background.
+  const glyphColorBeforeBoxPicker = await page.evaluate(() => pendingTextDraft.color);
+  await dispatchInput(page.locator('#textBoxBackgroundColor'), '#556677');
+  await dispatchChange(page.locator('#textBoxBackgroundColor'));
+  await expect.poll(() => page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(true);
+  expect(await page.evaluate(() => pendingTextDraft.boxBackgroundColor)).toBe('#556677');
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeVisible();
+  expect(await page.evaluate(() => pendingTextDraft.color)).toBe(glyphColorBeforeBoxPicker);
+  expect(await page.evaluate(() => customColorPalette)).toContain('#556677');
+  expect(await page.evaluate(() => lastCustomColorSource)).toBe('picker');
+  expect(await page.evaluate(() => lastCustomColorContext)).toBe('text-box-background');
 
   // Cancelar descarta o draft (nenhum Text Asset chega a ser criado nesta PR de teste).
   await sheet.getByRole('button', { name: 'Cancelar', exact: true }).click();
@@ -3795,7 +3898,7 @@ test('REG-055 — picker completo preservado, HEX inline e paleta pessoal persis
 
   // ── TESTE J — a paleta pessoal NUNCA entra no projeto salvo ──
   const payload = await page.evaluate(() => JSON.stringify(buildProjectData(true)));
-  for (const needle of ['ff6b8a', '00aabb', '334455', 'arco_user_custom_colors', 'customColorPalette']) {
+  for (const needle of ['ff6b8a', '00aabb', 'a1b2c3', '334455', '556677', 'arco_user_custom_colors', 'customColorPalette']) {
     expect(payload.toLowerCase().includes(needle.toLowerCase()), `payload não deve conter "${needle}"`).toBe(false);
   }
 

@@ -1,6 +1,6 @@
 # PRODUCT_RULES
 
-## Regra canônica dos seletores de cor (REG-055, implementada na v8z4b32E9F5)
+## Regra canônica dos seletores de cor (REG-055, implementada na v8z4b32E9F5, mecanismo de ativação corrigido na v8z4b32E9F5-R1)
 
 Arquitetura definitiva de produto para os três seletores de cor do app (Fundo do
 projeto, Cor do texto, Fundo da caixa), esclarecida por Roberto após a tentativa
@@ -15,13 +15,19 @@ fisicamente e revertida pela PR #508 (ver `docs/REGRESSIONS.md`, REG-055):
    tela. Formato canônico `#RRGGBB`; aceita entrada com ou sem `#`, normalizada;
    sem suporte a alpha hexadecimal. Entrada inválida não aplica, não salva e não
    cria swatch; não expõe mensagem técnica.
-3. **O "+" é uma AÇÃO, não um swatch e não um atalho para HEX ou painel.** Nos três
-   painéis, "+" significa exclusivamente abrir o `input[type=color]` nativo/picker
-   completo já existente daquele contexto (`openBgColorPicker()`,
-   `openTextColorPicker()`, `openTextBgColorPicker()`). O Arco não implementa roda,
-   espectro ou conta-gotas próprios; a responsabilidade do app é só disparar
-   corretamente o picker do sistema/browser, preservando toda a capacidade que ele
-   expuser (incluindo conta-gotas no Safari/iOS quando disponível).
+3. **O "+" é uma AÇÃO, não um swatch e não um atalho para HEX ou painel — e precisa
+   ser o ALVO FÍSICO REAL do toque.** Nos três painéis, "+" significa exclusivamente
+   o `input[type=color]` nativo/picker completo já existente daquele contexto. Não
+   basta que um botão dispare `input.click()` por JavaScript sobre um input
+   escondido (1×1 px, fora da tela, `pointer-events:none`) — REG-055 é evidência
+   física de que esse padrão de indireção não chega a abrir o picker de forma
+   confiável no iPhone/Safari. O próprio input nativo deve ocupar fisicamente a
+   área de toque do "+" (visualmente invisível, mas geometricamente presente e
+   interativo — `pointer-events:auto`), recebendo o toque do usuário diretamente.
+   O Arco não implementa roda, espectro ou conta-gotas próprios; a
+   responsabilidade do app é só garantir que o TOQUE chegue ao input nativo,
+   preservando toda a capacidade que o picker do sistema/browser expuser
+   (incluindo conta-gotas no Safari/iOS quando disponível).
 4. **Paleta pessoal de cores customizadas, browser-local e persistente**,
    compartilhada pelos três contextos (Fundo do projeto, Cor do texto, Fundo da
    caixa). Uma cor entra na paleta somente quando confirmada por escolha EFETIVA no
