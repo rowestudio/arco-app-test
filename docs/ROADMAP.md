@@ -31,7 +31,12 @@ Cada PR funcional parte do HEAD remoto atualizado da `main` de teste, recebe nov
 - Ver catálogo em `docs/REGRESSIONS.md`.
 - Não marcar regressão como resolvida sem evidência.
 - Regressões históricas de escala/curva e sessão foram migradas de `docs/known-issues.md` para `docs/REGRESSIONS.md`; o status real de correção deve ser confirmado por tarefa específica antes de fechar qualquer item.
-- Regressões abertas recém-relatadas devem ser consideradas antes de avançar a próxima frente. Estão ABERTAS no momento: **REG-052** (fill dos sliders) e **REG-055** (botões "+" dos color pickers do Text Asset). **REG-053** (painel de transformação cortado em multi-seleção) e **REG-054** (transformação de multi-seleção afeta apenas um Frame) tiveram correção implementada/automatizada (`v8z4b32E9F3` e `v8z4b32E9F2`, respectivamente), com validação física pendente — ver `docs/REGRESSIONS.md`. Este roadmap não altera automaticamente a ordem por causa delas: **Roberto decide a ordem efetiva** entre validar/fechar essas regressões e avançar a série pré-promoção.
+- Regressões abertas recém-relatadas devem ser consideradas antes de avançar a próxima frente. Status individual atual (ver `docs/REGRESSIONS.md` para o detalhe de cada uma):
+  - **REG-052** (fill dos sliders) — **ABERTA**, não corrigida.
+  - **REG-053** (painel de transformação cortado em multi-seleção) — **RESOLVIDA fisicamente na `v8z4b32E9F3`** (Roberto validou em iPhone/Safari).
+  - **REG-054** (transformação de multi-seleção afeta apenas um Frame) — correção implementada/automatizada na `v8z4b32E9F2`, validação física **PARCIAL** (Rotação em dois Frames confirmada; demais itens do checklist ainda pendentes).
+  - **REG-055** (picker completo/HEX inline/paleta pessoal dos seletores de cor) — correção corretiva implementada/automatizada na `v8z4b32E9F5`, validação física **pendente**. A tentativa intermediária `v8z4b32E9F4`/PR #507 foi mergeada, reprovada fisicamente por Roberto e revertida integralmente pela PR #508; a `v8z4b32E9F5` é a correção corretiva.
+  Este roadmap não altera automaticamente a ordem por causa delas: **Roberto decide a ordem efetiva** entre validar/fechar essas regressões e avançar a série pré-promoção.
 
 ## Melhorias de UX
 
