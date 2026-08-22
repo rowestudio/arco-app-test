@@ -1,53 +1,5 @@
 # PRODUCT_RULES
 
-## Regra canônica dos seletores de cor (REG-055, implementada na v8z4b32E9F5; mecanismo de ativação corrigido na v8z4b32E9F5-R1; estabilidade do DOM corrigida na v8z4b32E9F5-R2)
-
-Arquitetura definitiva de produto para os três seletores de cor do app (Fundo do
-projeto, Cor do texto, Fundo da caixa), esclarecida por Roberto após a tentativa
-`v8z4b32E9F4` (painel intermediário próprio) ter sido mergeada e REPROVADA
-fisicamente e revertida pela PR #508 (ver `docs/REGRESSIONS.md`, REG-055):
-
-1. **O painel de cor já existente é a superfície principal.** Não existe e não pode
-   ser criada nenhuma etapa/painel/modal/sheet intermediário entre o usuário e a
-   escolha de cor. É expressamente proibido recriar `#customColorPanel` ou qualquer
-   equivalente funcional.
-2. **O HEX é INLINE**, no mesmo painel onde o usuário já está — nunca uma segunda
-   tela. Formato canônico `#RRGGBB`; aceita entrada com ou sem `#`, normalizada;
-   sem suporte a alpha hexadecimal. Entrada inválida não aplica, não salva e não
-   cria swatch; não expõe mensagem técnica.
-3. **O "+" é uma AÇÃO, não um swatch e não um atalho para HEX ou painel — e precisa
-   ser o ALVO FÍSICO REAL do toque.** Nos três painéis, "+" significa exclusivamente
-   o `input[type=color]` nativo/picker completo já existente daquele contexto. Não
-   basta que um botão dispare `input.click()` por JavaScript sobre um input
-   escondido (1×1 px, fora da tela, `pointer-events:none`) — REG-055 é evidência
-   física de que esse padrão de indireção não chega a abrir o picker de forma
-   confiável no iPhone/Safari. O próprio input nativo deve ocupar fisicamente a
-   área de toque do "+" (visualmente invisível, mas geometricamente presente e
-   interativo — `pointer-events:auto`), recebendo o toque do usuário diretamente.
-   O Arco não implementa roda, espectro ou conta-gotas próprios; a
-   responsabilidade do app é só garantir que o TOQUE chegue ao input nativo,
-   preservando toda a capacidade que o picker do sistema/browser expuser
-   (incluindo conta-gotas no Safari/iOS quando disponível). O `input[type=color]`
-   e seu wrapper de sobreposição devem ser declarados **uma única vez, de forma
-   estática**, e nunca removidos/recriados/reparentados em resposta aos SEUS
-   PRÓPRIOS eventos (`input`/`change`) — reconstruir o DOM ao redor do input a
-   cada evento do picker pode interromper a interação em andamento no
-   iPhone/Safari; somente os swatches ao redor (presets/paleta pessoal) podem
-   ser regenerados a cada mudança. Como o input passa a ser o elemento
-   interativo real, o `aria-label` acessível do "+" pertence a ele — não ao
-   botão decorativo por baixo (`aria-hidden`).
-4. **Paleta pessoal de cores customizadas, browser-local e persistente**,
-   compartilhada pelos três contextos (Fundo do projeto, Cor do texto, Fundo da
-   caixa). Uma cor entra na paleta somente quando confirmada por escolha EFETIVA no
-   picker nativo (evento `change`) ou por HEX inline válido efetivamente aplicado —
-   nunca por abrir o picker sem escolher, por foco ou por digitação incompleta.
-5. **A paleta vive fora do projeto.** Não é propriedade do projeto, do Text Asset,
-   de Session Restore, do ProjectWorld nem de sync de conta/cloud; nunca é lida por
-   `buildProjectData`/Save/Load/Session Restore/serialização de asset. O projeto
-   continua salvando somente a cor efetivamente utilizada, como já fazia.
-6. **Sem sync/cloud.** A paleta é local ao browser/dispositivo; não há
-   sincronização entre contas ou dispositivos nesta regra.
-
 ## Regras E9E — criação na vista atual e WYSIWYG ao vivo (implementadas)
 
 Regras aprovadas e já IMPLEMENTADAS nesta E9E:
@@ -82,8 +34,7 @@ Comportamento aprovado e IMPLEMENTADO na v8z4b32E9F1 (correção localizada sobr
 1. **Cabeçalho compacto:** a alça horizontal, a linha de ações (× Cancelar / ✓ Confirmar) e a rail iconográfica ficam próximas, sem vazio vertical fantasma. `×` e `✓` permanecem ambos presentes; os touch targets dos botões não descem abaixo de um tamanho seguro para iPhone (≥ 44 px). A compactação é estrutural (padding/margin/altura), não um `transform` visual arbitrário.
 2. **Ícone de Estilo:** representação combinada **B (negrito) + I (itálico)** (`#i-text-bold-italic`), comunicando Normal/Bold/Italic/Bold+Italic; não é mais o "I" itálico isolado. Sem emoji, sem biblioteca de ícones. `aria-label` = "Estilo".
 3. **Ícone de Alinhamento dinâmico:** o ícone da propriedade Alinhamento na rail reflete o `textAlign` do `pendingTextDraft`/asset (`left`→align-left, `center`→align-center, `right`→align-right), atualizado imediatamente. Fonte de verdade é o próprio estado canônico do draft (sem segundo estado só para o ícone); fallback defensivo `align-left`. Os três controles iconográficos permanecem no painel de Alinhamento.
-4. **Paleta rápida compartilhada:** Cor do texto e Fundo da caixa usam sequências compactas de swatches que **reutilizam a mesma constante única** `PROJECT_BG_NEUTRALS` (preto + escala de cinza 10→90% + branco), a mesma fonte agora consumida também pelo seletor de "Cor de fundo" do PROJETO. Não existem listas de neutros hardcoded duplicadas. Cada paleta termina com um `input[type=color]` nativo persistente sobreposto a um botão `+` decorativo (não preenchido como cor) — o próprio input é o alvo real do toque, com `aria-label` "Escolher outra cor do texto" / "Escolher outra cor do fundo" (ver regra canônica dos seletores de cor, abaixo). O menu de Fundo do PROJETO **não** foi redesenhado.
-   **SUPERADO pela v8z4b32E9F5 apenas neste ponto:** esta regra E9F1, na origem, descrevia "não há schema persistente novo de histórico de cores; o custom atual vive apenas em estado de UI/sessão". A E9F5 acrescenta exatamente essa persistência — uma paleta pessoal de cores customizadas (`customColorPalette`), browser-local (`localStorage`), persistente entre reloads/projetos e **compartilhada** pelos três contextos (Fundo do projeto, Cor do texto, Fundo da caixa) — sem reabrir REG-055 nem alterar o restante desta regra E9F1 (rail, cabeçalho, ícones, "Sem cor"/opacidade, largura). Ver a regra canônica dos seletores de cor e `docs/REGRESSIONS.md` (REG-055).
+4. **Paleta rápida compartilhada:** Cor do texto e Fundo da caixa usam sequências compactas de swatches que **reutilizam a mesma constante única** `PROJECT_BG_NEUTRALS` (preto + escala de cinza 10→90% + branco), a mesma fonte agora consumida também pelo seletor de "Cor de fundo" do PROJETO. Não existem listas de neutros hardcoded duplicadas. Cada paleta termina com um botão `+` compacto (não preenchido como cor) que abre o color picker nativo — `aria-label` "Escolher outra cor do texto" / "Escolher outra cor do fundo". Não há schema persistente novo de histórico de cores; o custom atual vive apenas em estado de UI/sessão e o valor final continua salvo no próprio Text Asset. O menu de Fundo do PROJETO **não** foi redesenhado.
 5. **Fundo da caixa — ícone e estado transparente:** o ícone da propriedade Fundo é inequívoco de preenchimento (`#i-box-fill`), não a paleta genérica. O estado padrão é **"Sem cor / Transparente"** (swatch com checkerboard cinza/branco discreto; `aria-label` "Sem cor", `title`/acessibilidade "Transparente") com `boxBackgroundEnabled = false` e **sem** o slider de opacidade (`#textEditorBgOpacityWrap` oculto). Não se simula preto/branco com alpha zero. `boxBackgroundColor`/`boxBackgroundOpacity` são preservados internamente para restaurar a última escolha, mas não produzem fundo enquanto `enabled=false`.
 6. **Fundo da caixa — escolher cor:** selecionar qualquer cor (swatch neutro, custom atual ou `+`) faz `boxBackgroundEnabled = true`, grava `boxBackgroundColor`, renderiza WYSIWYG imediatamente e **então** mostra o slider de opacidade. Voltar a "Sem cor" remove o fundo imediatamente e oculta o slider, sem alterar a opacidade dos glifos. O alfa controla **somente** `boxBackgroundOpacity`; nunca opacidade de glifo, de ativo, seleção ou alças.
 7. **Localização do viewport ao editar existente:** ao abrir o editor em `mode==='edit'`, a VISTA do editor é reposicionada por **pan de navegação canônico** (`computeEditorTransform → editorWorldToStage`, `editorPanX/Y`, `clampEditorPan`, `applyEditorZoom`) para manter o centro visual do Text Asset dentro da área de Stage realmente visível acima da sheet/teclado. A operação **não** move o asset (`worldX/worldY/worldW/worldH`, `rotation`, `depth`, `zIndex` inalterados), **não** altera Frames, curvas nem ProjectWorld, **não** dispara Undo nem agenda autosave, **não** altera o hash canônico e **preserva o zoom** (só translação, sem zoom automático agressivo). Usa a geometria REAL (`stage`, `#textCreationSheet`, `visualViewport`/teclado do Safari) com deadzone anti-jitter e reexecuta após abrir, após a estabilização do layout e a cada `resize` relevante de `visualViewport`. A E9E continua valendo: editar existente **não** recentraliza o ASSET; a E9F1 apenas localiza o VIEWPORT.
