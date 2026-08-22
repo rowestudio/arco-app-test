@@ -1,19 +1,5 @@
 # DECISIONS
 
-## DEC-2026-08-21-01 — REG-055: paleta pessoal de cores persistente e compartilhada, separada do projeto
-
-- **Data:** 2026-08-21. **Versão:** `v8z4b32E9F4` (PR própria).
-- **Assunto:** clarificação de produto sobre o botão `+` das paletas de cor (REG-055) e nova arquitetura de customização de cor.
-- **Classificação:** aprimoramento funcional de UX + correção/clarificação de regressão. Sem Engine/curvas/timing/Preview/Export/produção.
-- **Decisão A — clarificação da REG-055:** a interpretação original ("`+` deveria abrir o color picker nativo") é **substituída** pela decisão explícita de Roberto (2026-08-21): *"O seletor de cor deve salvar as cores customizadas pelo usuário."* `+` significa adicionar/personalizar cor; abre um painel de customização com preview, campo hexadecimal e confirmação explícita; um `input[type=color]` nativo isolado não é solução final (pode auxiliar internamente, mas não substitui o painel).
-- **Decisão B — paleta pessoal persistente e compartilhada:** existe uma paleta (`customColorPalette`) de cores customizadas confirmadas pelo usuário, persistida em `localStorage['arco_user_custom_colors_v1']` (reaproveitando o padrão defensivo try/catch já usado por `AUTOSAVE_KEY`/hints de modo — não havia mecanismo de "preferência do usuário" dedicado antes desta PR), **compartilhada** entre Cor de Fundo do projeto, Cor do texto e Fundo da caixa. Normalização única (`#rrggbb` minúsculo, aceita entrada com/sem `#`), deduplicação por valor normalizado, e nenhum swatch redundante quando a cor coincide com um neutro built-in de `PROJECT_BG_NEUTRALS`.
-- **Decisão C — separação de dados:** a paleta pessoal é preferência **local do navegador**, sem sync/nuvem/conta, e **não integra** o projeto — não entra em `buildProjectData`, Save/Load, Session Restore ou ProjectWorld. Uma cor estar na paleta pessoal não altera o significado do valor salvo no projeto (ex.: `bgColor`) nem cria um segundo estado canônico para as propriedades de cor.
-- **Decisão D — painel único, não três:** um único componente compartilhado (`#customColorPanel`) atende os três contextos, reaproveitando a identidade visual já existente (estrutura do seletor de Fundo do projeto + cabeçalho ×/✓ do editor de Text Asset) em vez de três painéis independentes; cada contexto continua aplicando a cor pelo seu caminho canônico já existente e inalterado (`setBgColor`/`setTextColor`/`setTextBoxBackground`).
-- **Razão:** eliminar a ambiguidade do relato original, evitar arquitetura paralela de estado de cor, e dar ao usuário uma paleta de cores customizadas reutilizável entre os três seletores compatíveis, sem acoplar essa preferência ao ciclo de vida do projeto.
-- **Alternativas rejeitadas:** (1) manter apenas o `input[type=color]` nativo como solução final — rejeitada por não atender ao pedido de produto (preview, hex, confirmação, persistência); (2) três paletas independentes por contexto — rejeitada por criar dados divergentes para o mesmo conceito de "cores customizadas do usuário"; (3) persistir a paleta dentro do schema do projeto — rejeitada porque é preferência do usuário, não dado do projeto, e poluiria Save/Load/Session Restore.
-- **Status:** ativa; implementada e automatizada (gate `E9F4`), **validação física pendente** (iPhone/Safari, Roberto).
-- **Documento relacionado:** `docs/REGRESSIONS.md` (REG-055), `docs/PRODUCT_RULES.md` (Regra E9F4), `docs/TEST_CASES.md` (TC-053), `docs/PROJECT_STATE.md`.
-
 ## DEC-2026-08-20-01 — REG-054: semântica única de alvos dos controles normais de transformação de Frame
 
 - **Data:** 2026-08-20. **Versão:** `v8z4b32E9F2` (PR própria).

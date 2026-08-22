@@ -950,7 +950,6 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E9F4 — base v8z4b32E9F3 (PR #506). feat(colors/REG-055): unifica a customização de cor de Fundo do projeto, Cor do texto e Fundo da caixa em um único painel compartilhado (#customColorPanel), reaproveitando a identidade visual já existente (estrutura .float-panel/panel-handle/panel-title do seletor de Fundo do projeto + cabeçalho ×/✓ já aprovado no editor de Text Asset) em vez de três painéis independentes. O antigo trigger "Personalizar" do Fundo do projeto (quadrado cinza input[type=color] + campo hexadecimal sempre visíveis) foi substituído pelo botão "+" inequívoco (.bg-swatch-add), ao final da mesma linha de swatches — coerente com os botões "+" já existentes de Cor do texto/Fundo da caixa (E9F1), que passam a abrir esta MESMA experiência em vez de clicar um input[type=color] nativo oculto. Clarificação de produto de Roberto (2026-08-21) sobre REG-055: o relato original ("+ deveria abrir o color picker nativo") foi superado — "+" significa adicionar/personalizar cor, com preview, campo hexadecimal (aceita com/sem "#", maiúsculas/minúsculas equivalentes, normalizado para #rrggbb único) e confirmação explícita (✓); cancelar (×/alça) descarta sem aplicar, sem persistir e sem criar swatch. Cor confirmada válida entra em uma PALETA PESSOAL PERSISTENTE (customColorPalette, chave localStorage arco_user_custom_colors_v1, mesmo padrão try/catch defensivo já usado por AUTOSAVE_KEY/hints de modo), compartilhada pelos três contextos, sobrevive a reload e a trocar de projeto, com deduplicação por valor normalizado (não duplica por maiúsculas/minúsculas/"#") e sem gerar swatch redundante quando a cor coincide com um neutro built-in de PROJECT_BG_NEUTRALS; entradas inválidas/corrompidas no storage são ignoradas sem quebrar o app e os neutros built-in continuam disponíveis mesmo se a preferência não puder ser carregada. A paleta pessoal é preferência local do navegador — NÃO entra no JSON do projeto, Save/Load, Session Restore, ProjectWorld nem Text Asset, e não implica sync/nuvem/conta. Cada contexto aplica a cor pelo caminho canônico já existente e inalterado: Fundo do projeto via setBgColor (Undo/dirty/Preview-restart preservados; DEFAULT_PROJECT_BG intocado); Cor do texto via setTextColor (altera somente os glifos do pendingTextDraft, WYSIWYG imediato, sem Undo prematuro); Fundo da caixa via setTextBoxBackground (liga boxBackgroundEnabled, revela a opacidade já existente, que continua afetando somente o fundo). REG-052 (fill dos sliders), REG-053, REG-054, motor/curvas/timing, Preview/Export/renderer, ProjectWorld, Save/Load, Layers e produção não foram tocados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F4. -->
 <!-- Arco Motion App — v8z4b32E9F3 — base v8z4b32E9F2 (PR #505). fix(frames/REG-053): estabiliza a apresentação do painel de transformação em multi-seleção de Frames, tornando-a INVARIANTE à ordem das ações. Causa comprovada por reprodução na main: o ancestral #lowerContextSheetShell (e #lowerContextSlot) só ganhava a expansão estrutural de grid (grid-row 3/5, overflow:visible) para os estados cust-expanded/asset-context-panel-open (painel normal de Frame único); no estado align-submenu-open (Rotação/Escala/Mover/Pausa em multi-seleção) o mesmo ancestral permanecia confinado à Linha 4 (46px) com overflow:hidden herdado de .lower-cell, cortando visualmente a parte superior de #alignBarSubmenu — inclusive o botão Voltar — sempre que a multi-seleção era feita ANTES de abrir o painel (selecionar F1+F2 → abrir Rotação quebrava; abrir Rotação em F1 → selecionar F1+F2 não quebrava, porque o custBar já aberto permanece visível e #alignBar fica display:none enquanto cust-open estiver ativo). Correção estrutural mínima: as mesmas regras de expansão do ancestral (grid-column/grid-row, overflow:visible, grid-template-rows, ocultação das células residuais da Linha 3) passam a valer também para body.align-submenu-open; #alignBarSubmenu deixa de depender do deslocamento horizontal negativo pensado para o ancestral estreito (agora full-width, como o custBar) e passa a ancorar pelo topo (paridade com o gap inferior do custBar). Nenhuma segunda apresentação paralela foi criada; a mesma primitiva geométrica do custBar passou a ser reaproveitada pelo alignBar. Diagnóstico observacional novo (sem texto técnico na UI): multiSelectionActive, multiSelectionCount, lowerContextVisiblePanel, alignBarVisible, alignBarSubmenuVisible, custBarVisible, custBarContentVisible, bodyHasMultiSelection, bodyHasAlignSubmenuOpen, bodyHasCustOpen, bodyHasCustExpanded, lowerContextTransitionSource, lowerContextLastOpenedGroup, lowerContextCompetingPanelsDetected, lowerContextClippingDetected. NÃO tocado: REG-052 (fill dos sliders), REG-055 (botões + dos color pickers), matemática/targets da transformação (getNormalTransformTargets, REG-054), Undo/Redo, Preview/Export/renderer/getStateAtT/drawAtT, curvas/easing/timing, ProjectWorld, Save/Load, Layers, Text Assets, Stage, timeline estrutural, cores/ícones/textos, produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F3. -->
 <!-- Arco Motion App — v8z4b32E9F2 — base v8z4b32E9F1 (PR #500). fix(frames/REG-054): correção da resolução de alvos dos controles PÚBLICOS de Posição/Escala/Rotação do menu contextual de Frame (custBar). Com 2+ Frames selecionados, os controles normais (nudgePos, setPosFromInput, slider de Escala, nudgeScale, slider de Rotação, nudgeRotation) afetavam APENAS o Frame ativo, exceto quando Global estava ligado — a multi-seleção não era respeitada. Introduzida a resolução única getNormalTransformTargets() (precedência: Global → todos elegíveis; multi-seleção → exatamente os Frames selecionados; senão → Frame ativo). O mesmo delta é aplicado a todos os alvos, preservando distâncias relativas (Posição), proporções/centro individual (Escala) e rotações independentes (Rotação); Frames fora da seleção não mudam; Frames travados preservam a regra de lock; o gesto de slider mantém 1 Undo consolidado (batchTransformEditSession/undoStack inalterados). Global permanece um modo distinto e NÃO é requisito para a multi-seleção. NÃO tocado: infraestrutura de batch/alignBar, REG-052 (fill dos sliders), REG-053 (painel cortado), Preview/Export/renderer/getStateAtT/drawAtT, curvas/easing/timing, ProjectWorld, Save/Load, Layers, Text Assets, produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F2. -->
 <!-- Arco Motion App — v8z4b32E9F1 — base v8z4b32E9F (PR #499). fix(text): refinamento visual/funcional LOCALIZADO do editor de Text Asset após teste físico E9F em iPhone/Safari (estrutura E9F aprovada; correção pontual). (A) cabeçalho da bottom sheet compactado — alça, linha ×/✓ e rail iconográfica ficam próximas, sem vazio vertical, preservando × Cancelar e ✓ Confirmar e touch targets seguros. (B) ícone de Estilo passa a ser B+I (negrito + itálico) no lugar do "I" itálico isolado. (C) ícone de Alinhamento na rail reflete o textAlign do draft (left/center/right) em tempo real, com fallback left. (D/E) Cor do texto vira paleta rápida de swatches reutilizando os neutros do seletor de Fundo do projeto (constante única PROJECT_BG_NEUTRALS) + botão + para o color picker completo. (F/G/H) Fundo da caixa ganha ícone inequívoco de preenchimento; estado padrão "Sem cor / Transparente" (checkerboard) selecionado com boxBackgroundEnabled=false e SEM slider de opacidade; escolher uma cor liga o fundo e revela o slider; alfa controla só boxBackgroundOpacity, nunca os glifos. (J) editar texto existente LOCALIZA a VISTA (pan canônico) para manter o texto visível acima da sheet/teclado, sem mover worldX/Y/W/H, rotação, depth, zIndex, Frames, ProjectWorld, sem Undo/autosave. (L/M/N) Largura simplifica para Auto compacto + slider (step 5, limites canônicos): mover o slider entra em fixed no mesmo gesto; Auto recalcula e re-sincroniza o slider sem sair de auto; removidos o botão Fixa grande e o stepper −/+. E9E preservada (criar novo texto continua nascendo no centro da vista atual). E9G NÃO antecipada (exatamente quatro alças). Preview/Export/Save/Load/Session Restore/renderer intactos. APP_VERSION = APP_VERSION_NAME = v8z4b32E9F1. -->
@@ -2540,29 +2539,14 @@ body.bottom-context-segment .mid-bar.timeline-grid .toolbar.contextual-toolbar{g
 .overlay-bg.show{display:block;}
 .overlay-bg.light{background:rgba(0,0,0,.18);}
 
-.bg-swatch, .bg-swatch-custom{
+.bg-swatch{
   width:40px;height:40px;border-radius:8px;cursor:pointer;flex-shrink:0;
   border:2.5px solid rgba(255,255,255,.12);
   -webkit-user-select:none;user-select:none;
   transition:border-color .15s;
 }
-.bg-swatch.active, .bg-swatch-custom.active{border-color:var(--accent);}
-.bg-swatch:active, .bg-swatch-custom:active{transform:scale(.9);}
-/* v8z4b32E9F4 (REG-055) — botão "+" do seletor de Fundo do PROJETO, coerente com
-   .text-swatch-add já usado por Cor do texto/Fundo da caixa. Classe própria (não
-   ".bg-swatch") para nunca ser confundido com um swatch de cor salva. */
-.bg-swatch-add{
-  width:40px;height:40px;border-radius:8px;flex-shrink:0;cursor:pointer;
-  border:1.5px dashed rgba(255,255,255,.3);background:transparent;
-  color:rgba(255,255,255,.7);font-size:20px;font-weight:400;line-height:1;
-  display:grid;place-items:center;-webkit-user-select:none;user-select:none;
-}
-.bg-swatch-add:active{transform:scale(.9);}
-/* v8z4b32E9F4 (REG-055) — painel compartilhado de customização de cor precisa
-   aparecer acima tanto dos .float-panel comuns (z-index:200) quanto da sheet do
-   editor de Text Asset (#textCreationSheet, z-index:335), já que é aberto a partir
-   de qualquer um dos três contextos. */
-#customColorPanel{z-index:400;}
+.bg-swatch.active{border-color:var(--accent);}
+.bg-swatch:active{transform:scale(.9);}
 
 .cust-tab{flex:1;text-align:center;padding:10px 0 8px;cursor:pointer;-webkit-user-select:none;user-select:none;background:transparent;border:none;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;}
@@ -5545,44 +5529,19 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <!-- v8z4b32E9F1 — swatches gerados a partir da constante única PROJECT_BG_NEUTRALS
        (renderProjectBgSwatches), a MESMA fonte agora reutilizada pela Cor do texto e
        pelo Fundo da caixa do editor. Saída idêntica ao seletor aprovado; o menu de
-       Fundo do projeto não é redesenhado, apenas passa a consumir a fonte única.
-       v8z4b32E9F4 (REG-055) — o antigo trigger "Personalizar" (quadrado cinza
-       input[type=color] + campo hexadecimal sempre visíveis) foi substituído pelo
-       botão "+" inequívoco, ao final da mesma linha de swatches — [neutros][paleta
-       pessoal][+] — coerente com Cor do texto e Fundo da caixa. O "+" abre o painel
-       compartilhado de customização (openCustomColorPanel), com preview, campo
-       hexadecimal e confirmação explícita; a cor confirmada entra na MESMA paleta
-       pessoal persistente reutilizada pelos três contextos. O restante da
-       identidade visual do painel (título, swatches, descrição) é preservado. -->
+       Fundo do projeto não é redesenhado, apenas passa a consumir a fonte única. -->
   <div id="bgSwatches" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;"></div>
-  <p style="font-size:11px;color:var(--text3);margin-top:0;">Aparece onde a imagem não cobre o frame.</p>
-</div>
-
-<!-- PANEL: Personalizar cor (compartilhado — REG-055/E9F4). Um único painel, montado
-     uma vez, reaproveitado pelos três contextos compatíveis (Fundo do projeto, Cor do
-     texto, Fundo da caixa) em vez de três painéis independentes. Reaproveita a
-     identidade visual já existente: estrutura de .float-panel/panel-handle/panel-title
-     do painel de Cor de fundo do projeto + o cabeçalho ×/✓ (text-editor-header) já
-     aprovado no editor de Text Asset. Contexto de origem em customColorPanelContext;
-     abrir não aplica nada, digitar sem confirmar não aplica nem salva, cancelar
-     descarta sem criar swatch/Undo/autosave. Confirmar aplica a cor pelo caminho
-     CANÔNICO de cada contexto (setBgColor/setTextColor/setTextBoxBackground) e adiciona
-     a cor à paleta pessoal persistente (customColorPalette). -->
-<div class="float-panel" id="customColorPanel" role="dialog" aria-modal="true" aria-label="Personalizar cor">
-  <div class="panel-handle" onclick="cancelCustomColorPanel()"></div>
-  <div class="text-editor-header">
-    <button type="button" class="text-creation-cancel" aria-label="Cancelar personalização de cor" onclick="cancelCustomColorPanel()">×</button>
-    <button id="customColorConfirmBtn" type="button" class="text-creation-ok" aria-label="Aplicar cor personalizada" onclick="confirmCustomColorPanel()" disabled style="opacity:.35;">✓</button>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="font-size:12px;color:var(--text3);flex-shrink:0;">Personalizar</span>
+    <input type="color" id="bgHexInput" value="#000000"
+      style="width:44px;height:36px;border:none;background:none;cursor:pointer;padding:0;border-radius:8px;overflow:hidden;flex-shrink:0;"
+      onpointerdown="beginBgColorEdit()" onfocus="beginBgColorEdit()" oninput="setBgColorHex(this.value)" onchange="commitBgColorEdit(this.value)">
+    <input type="text" id="bgHexText" value="#000000" maxlength="7"
+      style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;
+             padding:8px 12px;font-size:14px;color:var(--text);font-family:monospace;"
+      onfocus="beginBgColorEdit()" oninput="onBgHexText(this.value)" onchange="commitBgColorEdit(this.value)">
   </div>
-  <div class="panel-title">Personalizar cor</div>
-  <div style="display:flex;align-items:center;gap:12px;margin:2px 0 10px;">
-    <div id="customColorPreview" aria-hidden="true" style="width:44px;height:44px;border-radius:10px;flex-shrink:0;border:2px solid rgba(255,255,255,.15);background:#000000;"></div>
-    <input id="customColorHexInput" type="text" maxlength="7" autocapitalize="off" autocorrect="off" spellcheck="false"
-      aria-label="Código hexadecimal da cor" placeholder="#RRGGBB"
-      style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:15px;color:var(--text);font-family:monospace;"
-      oninput="onCustomColorHexInput(this.value)">
-  </div>
-  <p id="customColorHint" style="font-size:11px;color:var(--text3);min-height:14px;margin:0;">Digite um código hexadecimal válido, por exemplo #FF6B8A.</p>
+  <p style="font-size:11px;color:var(--text3);margin-top:12px;">Aparece onde a imagem não cobre o frame.</p>
 </div>
 
 <!-- PANEL: Customize Frame (3 abas inline, não sobrepõe stage) -->
@@ -7498,8 +7457,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9F4';
-const APP_VERSION_NAME = 'v8z4b32E9F4';
+const APP_VERSION = 'v8z4b32E9F3';
+const APP_VERSION_NAME = 'v8z4b32E9F3';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -15558,69 +15517,14 @@ const TEXT_ASSET_DEFAULT_COLOR = '#ffffff';
 // seletor de "Cor de fundo" do PROJETO (preto + escala de cinza 10→90% + branco);
 // agora o seletor de Fundo do projeto, a Cor do texto e o Fundo da caixa do editor
 // consomem esta constante, em vez de manter listas hardcoded duplicadas. Reutiliza a
-// linguagem/presets existentes do Arco (item D/E/H da E9F1).
+// linguagem/presets existentes do Arco (item D/E/H da E9F1). NÃO cria schema
+// persistente de histórico de cores customizadas.
 const PROJECT_BG_NEUTRALS = Object.freeze([
   {value:'#000000',label:'Preto'},{value:'#1a1a1a',label:'10%'},{value:'#333333',label:'20%'},
   {value:'#4d4d4d',label:'30%'},{value:'#666666',label:'40%'},{value:'#808080',label:'50%'},
   {value:'#999999',label:'60%'},{value:'#b3b3b3',label:'70%'},{value:'#cccccc',label:'80%'},
   {value:'#e6e6e6',label:'90%'},{value:'#ffffff',label:'Branco'}
 ]);
-// v8z4b32E9F4 — REG-055: paleta pessoal de cores customizadas, PERSISTENTE no
-// navegador (mesma infraestrutura já usada pelo app para preferências locais —
-// localStorage com try/catch defensivo, como AUTOSAVE_KEY/hasSeenCameraModeHint) e
-// COMPARTILHADA entre os três seletores compatíveis (Fundo do projeto, Cor do texto,
-// Fundo da caixa). NÃO integra o projeto (Save/Load/Session Restore/ProjectWorld);
-// é preferência local do usuário, sem sync/nuvem. Chave versionada e namespaced.
-const CUSTOM_COLOR_PALETTE_KEY = 'arco_user_custom_colors_v1';
-let customColorPaletteStorageAvailable = true;
-let customColorInvalidStoredEntriesDropped = 0;
-let customColorDuplicatePrevented = false;
-let customColorPanelOpen = false;
-let customColorPanelContext = null;
-let customColorHexValid = false;
-// Normaliza para uma representação canônica única (#rrggbb minúsculo). Aceita
-// entrada com ou sem "#"; maiúsculas/minúsculas são equivalentes. Entrada inválida
-// retorna null — nunca aplica, nunca persiste, nunca cria swatch.
-function normalizeCustomColorHex(value){
-  let raw = String(value == null ? '' : value).trim();
-  if (!raw) return null;
-  if (raw[0] !== '#') raw = '#' + raw;
-  return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw.toLowerCase() : null;
-}
-function loadCustomColorPalette(){
-  try{
-    const raw = localStorage.getItem(CUSTOM_COLOR_PALETTE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) { customColorInvalidStoredEntriesDropped++; return []; }
-    const seen = new Set(), out = [];
-    parsed.forEach(entry=>{
-      const hex = normalizeCustomColorHex(typeof entry === 'string' ? entry : (entry && entry.value));
-      if (!hex || seen.has(hex)) { customColorInvalidStoredEntriesDropped++; return; }
-      seen.add(hex); out.push(hex);
-    });
-    return out;
-  } catch(e){ customColorPaletteStorageAvailable = false; return []; }
-}
-function persistCustomColorPalette(){
-  try{ localStorage.setItem(CUSTOM_COLOR_PALETTE_KEY, JSON.stringify(customColorPalette)); }
-  catch(e){ customColorPaletteStorageAvailable = false; }
-}
-let customColorPalette = loadCustomColorPalette();
-// Adiciona uma cor válida à paleta pessoal (dedup por valor normalizado; cores que
-// coincidem com um neutro built-in não geram swatch redundante). Não é chamada por
-// digitação ou cancelamento — somente pela confirmação explícita do painel.
-function addCustomColorToPalette(hex){
-  const norm = normalizeCustomColorHex(hex);
-  if (!norm) return false;
-  if (PROJECT_BG_NEUTRALS.some(n=>n.value===norm) || customColorPalette.includes(norm)) {
-    customColorDuplicatePrevented = true;
-    return false;
-  }
-  customColorPalette.push(norm);
-  persistCustomColorPalette();
-  return true;
-}
 function hexToRgba(hex,alpha){const n=parseInt(String(hex).slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${Math.min(1,Math.max(0,Number(alpha)||0))})`}
 let pendingTextDraft = null, textCreationBaseline = null, textEditorMode = null, textEditorTargetAssetId = null, textEditorOpenSource = null, textEditorActiveTool = 'text', textEditorOriginalAsset = null;
 let textAssetStageRendered=false,textAssetPreviewRendered=false,textAssetExportRendered=false,textAssetSaveLoadParityOk=null,textAssetSessionRestoreParityOk=null;
@@ -15710,21 +15614,20 @@ function renderTextEditorOptions(){const font=document.getElementById('textEdito
 // verdade é o próprio estado canônico; fallback defensivo 'left' para valor inválido.
 function updateTextAlignRailIcon(){const use=document.getElementById('textAlignRailIcon');if(!use)return;const a=(pendingTextDraft&&['left','center','right'].includes(pendingTextDraft.textAlign))?pendingTextDraft.textAlign:'left';const icon='#i-align-text-'+a;use.setAttribute('href',icon);use.setAttribute('xlink:href',icon);}
 function quickSwatchMarkup(color,label,active){return `<button type="button" class="text-swatch${active?' active':''}" data-swatch-color="${color}" aria-label="${label}" title="${label}" aria-pressed="${active?'true':'false'}" style="background:${color};"></button>`;}
-// Paleta rápida de Cor do texto: neutros compartilhados + paleta pessoal persistente
-// (REG-055/E9F4, compartilhada com Fundo do projeto e Fundo da caixa) + botão + que
-// abre o painel compartilhado de customização (openCustomColorPanel).
-function renderTextColorSwatches(){const row=document.getElementById('textColorSwatches');if(!row||!pendingTextDraft)return;const cur=String(pendingTextDraft.color||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);let html=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Cor '+n.label,n.value===cur)).join('');html+=customColorPalette.map(hex=>quickSwatchMarkup(hex,'Cor personalizada '+hex,hex===cur)).join('');if(!inList&&!customColorPalette.includes(cur)&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Cor personalizada atual',true);html+=`<button type="button" class="text-swatch-add" aria-label="Escolher outra cor do texto" onclick="openCustomColorPanel('text-color')">+</button>`;row.innerHTML=html;row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextColor(b.dataset.swatchColor)));}
-// Paleta rápida de Fundo da caixa: "Sem cor/Transparente" + neutros + paleta pessoal
-// persistente compartilhada + botão + que abre o painel compartilhado de customização.
-function renderTextBgSwatches(){const row=document.getElementById('textBgSwatches');if(!row||!pendingTextDraft)return;const enabled=!!pendingTextDraft.boxBackgroundEnabled,cur=String(pendingTextDraft.boxBackgroundColor||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);let html=`<button type="button" class="text-swatch text-swatch-none${!enabled?' active':''}" data-swatch-none="1" aria-label="Sem cor" title="Transparente" aria-pressed="${!enabled?'true':'false'}"></button>`;html+=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Fundo '+n.label,enabled&&n.value===cur)).join('');html+=customColorPalette.map(hex=>quickSwatchMarkup(hex,'Fundo personalizado '+hex,enabled&&hex===cur)).join('');if(enabled&&!inList&&!customColorPalette.includes(cur)&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Fundo personalizado atual',true);html+=`<button type="button" class="text-swatch-add" aria-label="Escolher outra cor do fundo" onclick="openCustomColorPanel('text-box-background')">+</button>`;row.innerHTML=html;const noneBtn=row.querySelector('[data-swatch-none]');if(noneBtn)noneBtn.addEventListener('click',()=>setTextBoxBackground(null));row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextBoxBackground(b.dataset.swatchColor)));}
+// Paleta rápida de Cor do texto: neutros compartilhados + custom atual + botão +.
+function renderTextColorSwatches(){const row=document.getElementById('textColorSwatches');if(!row||!pendingTextDraft)return;const cur=String(pendingTextDraft.color||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);let html=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Cor '+n.label,n.value===cur)).join('');if(!inList&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Cor personalizada atual',true);html+=`<button type="button" class="text-swatch-add" aria-label="Escolher outra cor do texto" onclick="openTextColorPicker()">+</button>`;row.innerHTML=html;row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextColor(b.dataset.swatchColor)));}
+// Paleta rápida de Fundo da caixa: "Sem cor/Transparente" + neutros + custom + botão +.
+function renderTextBgSwatches(){const row=document.getElementById('textBgSwatches');if(!row||!pendingTextDraft)return;const enabled=!!pendingTextDraft.boxBackgroundEnabled,cur=String(pendingTextDraft.boxBackgroundColor||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);let html=`<button type="button" class="text-swatch text-swatch-none${!enabled?' active':''}" data-swatch-none="1" aria-label="Sem cor" title="Transparente" aria-pressed="${!enabled?'true':'false'}"></button>`;html+=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Fundo '+n.label,enabled&&n.value===cur)).join('');if(enabled&&!inList&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Fundo personalizado atual',true);html+=`<button type="button" class="text-swatch-add" aria-label="Escolher outra cor do fundo" onclick="openTextBgColorPicker()">+</button>`;row.innerHTML=html;const noneBtn=row.querySelector('[data-swatch-none]');if(noneBtn)noneBtn.addEventListener('click',()=>setTextBoxBackground(null));row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextBoxBackground(b.dataset.swatchColor)));}
 // Cor do texto (glifos): muda o draft e o Stage imediatamente; WYSIWYG E9E preservado.
 function setTextColor(color){if(!pendingTextDraft||!/^#[0-9a-f]{6}$/i.test(color||''))return;pendingTextDraft.color=color.toLowerCase();const input=document.getElementById('textCreationColor');if(input)input.value=pendingTextDraft.color;normalizeTextAsset(pendingTextDraft);measureTextEditorDraft({preserveCenter:true});renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay();}
+function openTextColorPicker(){const input=document.getElementById('textCreationColor');if(input){input.value=(pendingTextDraft&&/^#[0-9a-f]{6}$/i.test(pendingTextDraft.color))?pendingTextDraft.color:'#ffffff';input.click();}}
 // Fundo da caixa. color=null → Sem cor/Transparente: boxBackgroundEnabled=false,
 // SEM simular alpha zero; boxBackgroundColor/opacity ficam preservados internamente
 // para restaurar a última escolha, mas não produzem fundo. Qualquer cor válida →
 // boxBackgroundEnabled=true + cor + revela o slider de opacidade. O alfa controla
 // SOMENTE boxBackgroundOpacity; jamais a opacidade dos glifos/ativo.
 function setTextBoxBackground(color){if(!pendingTextDraft)return;if(color==null){pendingTextDraft.boxBackgroundEnabled=false;}else if(/^#[0-9a-f]{6}$/i.test(color)){pendingTextDraft.boxBackgroundEnabled=true;pendingTextDraft.boxBackgroundColor=color.toLowerCase();const input=document.getElementById('textBoxBackgroundColor');if(input)input.value=pendingTextDraft.boxBackgroundColor;}else return;normalizeTextAsset(pendingTextDraft);measureTextEditorDraft({preserveCenter:true});renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay();}
+function openTextBgColorPicker(){const input=document.getElementById('textBoxBackgroundColor');if(input){input.value=(pendingTextDraft&&/^#[0-9a-f]{6}$/i.test(pendingTextDraft.boxBackgroundColor))?pendingTextDraft.boxBackgroundColor:'#000000';input.click();}}
 // v8z4b32E9F1 — Auto compacto: recalcula a medição canônica de largura automática e
 // re-sincroniza o slider, sem salto indevido de centro (measureTextEditorDraft
 // preserva o centro no modo auto). Um toque em Auto sempre resulta em boxWidthMode='auto'.
@@ -17760,9 +17663,8 @@ const MAX_SAFE_SOURCE_ZOOM = 64;
 const DEFAULT_PROJECT_BG = '#3c3c3b';
 let bgColor       = DEFAULT_PROJECT_BG;
 // v8z4b30Q — true somente quando o usuário escolheu explicitamente uma cor de
-// fundo pelo menu "Cor de fundo" (setBgColor, inclusive via o painel de
-// customização/REG-055) para o projeto atual. Projeto novo/reset nasce com
-// false; permite diferenciar
+// fundo pelo menu "Cor de fundo" (setBgColor/commitBgColorEdit/etc.) para o
+// projeto atual. Projeto novo/reset nasce com false; permite diferenciar
 // "preto escolhido pelo usuário" de "preto herdado de inicialização antiga".
 let bgColorUserSet = false;
 let containFrames = false;
@@ -38386,17 +38288,6 @@ function buildDiagnosticsText() {
   push('exportBgUsed', exportBgUsed || 'n/d');
   L.push('');
 
-  // v8z4b32E9F4 — REG-055: painel compartilhado de customização de cor e paleta
-  // pessoal persistente. Diagnóstico observacional, não visível na UI normal.
-  push('customColorPanelOpen', String(customColorPanelOpen));
-  push('customColorContext', customColorPanelContext || 'none');
-  push('customColorHexValid', String(customColorHexValid));
-  push('customColorPaletteStorageAvailable', String(customColorPaletteStorageAvailable));
-  push('customColorPaletteCount', String(customColorPalette.length));
-  push('customColorDuplicatePrevented', String(customColorDuplicatePrevented));
-  push('customColorInvalidStoredEntriesDropped', String(customColorInvalidStoredEntriesDropped));
-  L.push('');
-
   // Área de imagem (#imageArea)
   let areaW = 'n/d', areaH = 'n/d';
   try {
@@ -42200,6 +42091,7 @@ function triggerImageLoad() {
 // ═══════════════════════════════════════
 // BG COLOR
 // ═══════════════════════════════════════
+let bgColorEditSnapshot = null;
 function normalizeBgHex(hex) {
   return /^#[0-9a-fA-F]{6}$/.test(hex || '') ? hex.toLowerCase() : null;
 }
@@ -42208,24 +42100,14 @@ function normalizeBgHex(hex) {
 // do editor). Markup/comportamento idênticos ao seletor aprovado (data-color,
 // setBgColor(this), title, contorno do branco); apenas elimina a lista hardcoded
 // duplicada. syncBgColorUI corrige o estado 'active' conforme a cor atual do projeto.
-// v8z4b32E9F4 (REG-055) — a linha de swatches passa a incluir também a paleta pessoal
-// persistente (customColorPalette, compartilhada com Cor do texto/Fundo da caixa) com
-// classe própria .bg-swatch-custom (nunca ".bg-swatch", para não afetar a lista de
-// neutros), seguida do botão "+" (.bg-swatch-add) que abre o painel compartilhado de
-// customização — substitui o antigo trigger "Personalizar" (quadrado cinza).
 let projectBgSwatchesRendered = false;
 function renderProjectBgSwatches() {
   const row = document.getElementById('bgSwatches');
   if (!row) return;
-  let html = PROJECT_BG_NEUTRALS.map(n => {
+  row.innerHTML = PROJECT_BG_NEUTRALS.map(n => {
     const white = n.value === '#ffffff';
     return `<div class="bg-swatch" data-color="${n.value}" onclick="setBgColor('${n.value}',this)" style="background:${n.value};${white ? 'border-color:rgba(255,255,255,.3);' : ''}" title="${n.label}"></div>`;
   }).join('');
-  html += customColorPalette.map(hex =>
-    `<div class="bg-swatch-custom" data-custom-color="${hex}" onclick="setBgColor('${hex}',this)" style="background:${hex};" title="${hex}"></div>`
-  ).join('');
-  html += `<button type="button" class="bg-swatch-add" aria-label="Adicionar cor personalizada ao fundo do projeto" onclick="openCustomColorPanel('project-background')">+</button>`;
-  row.innerHTML = html;
   projectBgSwatchesRendered = true;
 }
 function syncBgColorUI() {
@@ -42234,9 +42116,10 @@ function syncBgColorUI() {
   document.querySelectorAll('#bgSwatches .bg-swatch').forEach(c => {
     c.classList.toggle('active', (c.dataset.color || '').toLowerCase() === hex);
   });
-  document.querySelectorAll('#bgSwatches .bg-swatch-custom').forEach(c => {
-    c.classList.toggle('active', (c.dataset.customColor || '').toLowerCase() === hex);
-  });
+  const hi = document.getElementById('bgHexInput');
+  const ht = document.getElementById('bgHexText');
+  if (hi) hi.value = hex;
+  if (ht) ht.value = hex;
 }
 function applyBgColorValue(hex, el) {
   const next = normalizeBgHex(hex);
@@ -42250,6 +42133,22 @@ function applyBgColorValue(hex, el) {
   if (el) el.classList.add('active');
   return true;
 }
+function beginBgColorEdit() {
+  if (shouldBlockGlobalUIAction()) return;
+  if (!bgColorEditSnapshot) bgColorEditSnapshot = captureState();
+}
+function commitBgColorEdit(hex) {
+  if (shouldBlockGlobalUIAction()) return;
+  const before = bgColorEditSnapshot || captureState();
+  bgColorEditSnapshot = null;
+  if (hex) applyBgColorValue(hex);
+  if (!projectStateEquals(before, captureState())) {
+    pushUndoSnapshot(before);
+    markProjectDirty('background-color');
+    if (isPreviewing) { stopPreview(); startPreview(); }
+    showStatus('Fundo: ' + bgColor);
+  }
+}
 function setBgColor(hex, el) {
   if (shouldBlockGlobalUIAction()) return;
   const before = captureState();
@@ -42262,82 +42161,11 @@ function setBgColor(hex, el) {
   closeAll();
   showStatus('Fundo: ' + bgColor);
 }
-
-// ═══════════════════════════════════════
-// CUSTOM COLOR PANEL (compartilhado — REG-055/E9F4)
-// ═══════════════════════════════════════
-// Painel único reaproveitado pelos três contextos compatíveis. Abrir não aplica
-// nada; digitar valida/mostra preview sem aplicar nem persistir; cancelar descarta
-// sem efeito colateral; confirmar aplica pelo caminho CANÔNICO do contexto de
-// origem (mesma função já usada pelos swatches normais) e só então adiciona a cor
-// à paleta pessoal persistente. Sem sistema de estado paralelo: reaproveita
-// setBgColor/setTextColor/setTextBoxBackground exatamente como um swatch normal.
-const CUSTOM_COLOR_CONTEXTS = Object.freeze(['project-background', 'text-color', 'text-box-background']);
-function currentColorForCustomContext(ctx) {
-  if (ctx === 'project-background') return normalizeBgHex(bgColor) || DEFAULT_PROJECT_BG;
-  if (ctx === 'text-color') return (pendingTextDraft && /^#[0-9a-f]{6}$/i.test(pendingTextDraft.color || '')) ? pendingTextDraft.color : TEXT_ASSET_DEFAULT_COLOR;
-  if (ctx === 'text-box-background') return (pendingTextDraft && /^#[0-9a-f]{6}$/i.test(pendingTextDraft.boxBackgroundColor || '')) ? pendingTextDraft.boxBackgroundColor : '#000000';
-  return '#000000';
+function setBgColorHex(hex) {
+  if (applyBgColorValue(hex)) showStatus('Fundo: ' + bgColor);
 }
-function openCustomColorPanel(context) {
-  if (!CUSTOM_COLOR_CONTEXTS.includes(context)) return;
-  customColorPanelContext = context;
-  customColorPanelOpen = true;
-  const seed = currentColorForCustomContext(context);
-  const input = document.getElementById('customColorHexInput');
-  if (input) input.value = seed;
-  onCustomColorHexInput(seed);
-  const panel = document.getElementById('customColorPanel');
-  if (panel) panel.classList.add('show');
-}
-function closeCustomColorPanel() {
-  const panel = document.getElementById('customColorPanel');
-  if (panel) panel.classList.remove('show');
-  customColorPanelOpen = false;
-}
-function cancelCustomColorPanel() {
-  // Nada foi aplicado nem persistido enquanto o painel estava aberto — cancelar é
-  // só fechar. Sem swatch fantasma, sem Undo, sem autosave.
-  closeCustomColorPanel();
-}
-function onCustomColorHexInput(value) {
-  const norm = normalizeCustomColorHex(value);
-  customColorHexValid = !!norm;
-  const preview = document.getElementById('customColorPreview');
-  const confirmBtn = document.getElementById('customColorConfirmBtn');
-  const hint = document.getElementById('customColorHint');
-  if (norm) {
-    if (preview) preview.style.background = norm;
-    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.style.opacity = '1'; }
-    if (hint) hint.textContent = 'Toque em ✓ para aplicar esta cor.';
-  } else {
-    if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.style.opacity = '.35'; }
-    if (hint) hint.textContent = 'Digite um código hexadecimal válido, por exemplo #FF6B8A.';
-  }
-}
-function confirmCustomColorPanel() {
-  const input = document.getElementById('customColorHexInput');
-  const norm = normalizeCustomColorHex(input ? input.value : '');
-  customColorHexValid = !!norm;
-  if (!norm) {
-    // Inválido: não aplica, não persiste, não cria swatch, não quebra o painel.
-    const hint = document.getElementById('customColorHint');
-    if (hint) hint.textContent = 'Código inválido. Use #RRGGBB (ex. #FF6B8A).';
-    return;
-  }
-  const ctx = customColorPanelContext;
-  if (ctx === 'project-background') setBgColor(norm, null);
-  else if (ctx === 'text-color') setTextColor(norm);
-  else if (ctx === 'text-box-background') setTextBoxBackground(norm);
-  else return;
-  addCustomColorToPalette(norm);
-  // A paleta é COMPARTILHADA — refaz todas as paletas rápidas atualmente
-  // montadas no DOM (não só a do contexto que acabou de confirmar), para que a
-  // nova cor apareça imediatamente em Fundo do projeto/Cor do texto/Fundo da
-  // caixa, sem depender de uma mutação futura para forçar o re-render.
-  if (projectBgSwatchesRendered) { renderProjectBgSwatches(); syncBgColorUI(); }
-  if (pendingTextDraft) { renderTextColorSwatches(); renderTextBgSwatches(); }
-  closeCustomColorPanel();
+function onBgHexText(val) {
+  applyBgColorValue(val);
 }
 
 // ═══════════════════════════════════════
