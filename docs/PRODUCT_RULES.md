@@ -1,5 +1,21 @@
 # PRODUCT_RULES
 
+## Regra canônica — picker de cor do Arco vs. paleta pessoal (E9F6, REG-055; implementada)
+
+Existem DUAS coisas distintas que não podem ser confundidas de novo (essa confusão gerou duas reprovações físicas — E9F4/PR #507 e E9F5/PR #509 — antes desta regra ser fixada):
+
+1. **PICKER NATIVO DO SISTEMA.** O botão "+" do painel do Arco (Fundo do projeto, Cor do texto, Fundo da caixa) abre o `input[type=color]` nativo COMPLETO do Safari/iOS — roda/espectro/sliders/conta-gotas pertencem ao sistema operacional. O Arco não cria painel/modal/sheet/roda/espectro/conta-gotas próprio para escolher cor.
+2. **PALETA PESSOAL DO ARCO.** `customColorPalette`: browser-local, persistente entre reload e entre projetos, compartilhada pelos três contextos, fora do projeto/Save/Load/Session Restore/Text Asset, sem sync/cloud.
+
+Regras de evento (a causa raiz exata da runaway palette física da E9F5):
+
+- Eventos produzidos pelo picker nativo enquanto o usuário movimenta RGB/roda/espectro/sliders — inclusive MÚLTIPLOS eventos `input`/`change` durante um único gesto contínuo, padrão real do WebKit/iOS — podem continuar alterando/aplicando a cor corrente ao contexto (preview/aplicação), mas NUNCA chamam `addCustomColorToPalette`, NUNCA persistem swatch pessoal e NUNCA aumentam a contagem da paleta. "Aplicar cor" ≠ "salvar cor pessoal".
+- O "+" que aparece DENTRO da interface nativa de cores do iOS pertence ao sistema operacional: o Arco não intercepta, não tenta detectar, não tenta espelhar e não cria swatch próprio por causa dele. Se o iOS salvar essa cor em sua própria coleção nativa, isso permanece responsabilidade do iOS — o JavaScript do Arco não pode prometer que sabe quando esse "+" interno foi pressionado.
+- O campo HEX inline (presente nos três contextos — Fundo do projeto, Cor do texto, Fundo da caixa) aceita entrada completa `#RRGGBB` com ou sem "#", normalizando internamente. Enquanto o usuário digita, pode atualizar preview/aplicação quando houver valor completo válido, mas NÃO persiste nenhum estado intermediário. Somente no COMMIT real do campo (Enter, `change`/blur apropriado) uma cor válida completa é aplicada e adicionada EXATAMENTE UMA VEZ à paleta pessoal — editar vários caracteres numa única edição não produz vários swatches, e confirmar a mesma cor de novo não duplica (deduplicação contra presets e contra a própria paleta).
+- Não existe limite arbitrário de quantidade de cores pessoais nesta regra. O painel que exibe a paleta (Fundo do projeto) NUNCA pode crescer indefinidamente até empurrar alça/título/HEX/fechamento para fora do viewport — a área de SWATCHES é a única parte que pode ganhar rolagem interna própria; layout visual/grid dos swatches é preservado, sem inventar altura fixa desacoplada do viewport. As linhas de Cor do texto/Fundo da caixa já rolam horizontalmente e por isso não sofrem desse crescimento vertical.
+- A chave de storage legada `arco_user_custom_colors_v1` (usada pela E9F5, contaminável pelo bug físico de runaway) é tratada como sempre inválida: removida defensivamente na inicialização, nunca migrada/importada, mesmo com centenas de entradas, corrompida, vazia ou com storage bloqueado — falha de storage nunca impede o app de abrir. A paleta corrigida usa chave nova `arco_user_custom_colors_v2`.
+- Gestão de coleção (remover cor, favoritos, reordenação, sync) está fora do escopo desta regra e não deve ser implementada sem pedido explícito.
+
 ## Regras E9E — criação na vista atual e WYSIWYG ao vivo (implementadas)
 
 Regras aprovadas e já IMPLEMENTADAS nesta E9E:

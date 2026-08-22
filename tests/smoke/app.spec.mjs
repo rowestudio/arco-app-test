@@ -2662,8 +2662,11 @@ test('E9F — editor de texto iconográfico neutro: rail, paleta, coral, gestos 
   // Único texto visível no painel é o "+" do botão de picker; os swatches não têm texto.
   expect((await sheet.locator('[data-text-panel="color"]').evaluate(el => el.textContent)).trim()).toBe('+');
   expect(await sheet.locator('#textColorSwatches .text-swatch').count()).toBeGreaterThan(1);
-  expect(await sheet.locator('#textColorSwatches .text-swatch-add').getAttribute('aria-label')).toBe('Escolher outra cor do texto');
-  expect(await page.locator('#textCreationColor').getAttribute('aria-label')).toBe('Cor do texto');
+  // v8z4b32E9F6 — REG-055: o "+" visual é puramente decorativo (aria-hidden); o
+  // PRÓPRIO input nativo, sobreposto sobre a área do "+" (alvo real de toque via
+  // .color-trigger-wrap), carrega o aria-label acessível.
+  expect(await sheet.locator('#textColorSwatches .text-swatch-add').getAttribute('aria-hidden')).toBe('true');
+  expect(await page.locator('#textCreationColor').getAttribute('aria-label')).toBe('Escolher outra cor do texto');
   await page.locator('#textCreationColor').evaluate(el=>{el.value='#ff8800';el.dispatchEvent(new Event('input',{bubbles:true}));});
   p = await liveProbe(); expect(p.color).toBe('#ff8800');
   // Retornar a uma propriedade mostra o valor atual do draft.
@@ -2914,8 +2917,11 @@ test('E9F1 — refino do editor de texto: cabeçalho compacto, ícones, paletas,
   expect(textSwatchColors).toContain('#000000'); // preto
   expect(textSwatchColors).toContain('#ffffff'); // branco
   expect(textSwatchColors).toContain('#808080'); // cinza existente
-  await expect(sheet.locator('#textColorSwatches .text-swatch-add')).toHaveCount(1); // botão +
-  expect(await sheet.locator('#textColorSwatches .text-swatch-add').getAttribute('aria-label')).toBe('Escolher outra cor do texto');
+  await expect(sheet.locator('#textColorSwatches .text-swatch-add')).toHaveCount(1); // botão + (decorativo, aria-hidden)
+  // v8z4b32E9F6 — REG-055: o PRÓPRIO input nativo, sobreposto sobre a área do "+"
+  // (alvo real de toque), carrega o aria-label acessível.
+  expect(await sheet.locator('#textColorSwatches .text-swatch-add').getAttribute('aria-hidden')).toBe('true');
+  expect(await page.locator('#textCreationColor').getAttribute('aria-label')).toBe('Escolher outra cor do texto');
   expect(await page.locator('#textCreationColor').count()).toBe(1); // picker completo acessível
   // Selecionar um preset: controle → pendingTextDraft.color → computed color do Stage.
   await sheet.locator('#textColorSwatches .text-swatch[data-swatch-color="#000000"]').click();
@@ -3614,5 +3620,335 @@ test('REG-053 — painel de transformação em multi-seleção é invariante à 
   }
 
   await reset();
+  expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
+});
+
+// v8z4b32E9F6 — gate de REG-055 (nova tentativa após duas reprovações físicas: E9F4/
+// PR #507 — painel próprio, reprovado — e E9F5/PR #509 — picker nativo restaurado,
+// MAS runaway palette física: mover roda/espectro/sliders no picker nativo do
+// iPhone/Safari criava e persistia centenas de swatches intermediários, o painel
+// crescia sem limite e a contaminação sobrevivia a reiniciar o app). Causa raiz
+// comprovada na leitura do código revertido: os três "+" chamavam
+// addCustomColorToPalette diretamente no 'change' do input[type=color] nativo,
+// assumindo 'change' == "usuário confirmou uma cor pessoal" — falso no picker nativo
+// do WebKit/iOS, que dispara múltiplos eventos durante um único gesto contínuo.
+//
+// Este gate prova que, na E9F6: (1) NENHUM evento input/change do picker nativo dos
+// três contextos — mesmo simulando uma sessão longa de arraste com 20+ valores
+// diferentes e múltiplos 'change' — persiste uma única cor na paleta pessoal
+// (REG-055A); (2) o picker continua livre para aplicar/pré-visualizar a cor corrente
+// (Undo/dirty do Fundo do projeto preservados); (3) o campo HEX inline dos três
+// contextos aplica em tempo real durante a digitação SEM salvar nenhum estado
+// intermediário, e salva EXATAMENTE 1 cor por commit efetivo (Enter/blur), com
+// deduplicação; (4) a chave antiga arco_user_custom_colors_v1 (usada pela E9F5,
+// contaminável pelo bug físico) é descartada defensivamente na inicialização, mesmo
+// contendo centenas de entradas — nunca migrada/importada — e a paleta corrigida usa
+// a chave nova v2, persistente e fora do payload do projeto. Fluxo 100% público: os
+// pickers nativos do SO (roda/espectro/conta-gotas do iPhone/Safari) não são
+// pilotáveis por um agente headless — a abertura efetiva da UI nativa permanece
+// validação física pós-merge; este gate substitui o toque físico por eventos DOM
+// reais (input/change) nos próprios inputs nativos, provando a REGRA DE EVENTOS que
+// causou o bug físico, não a abertura da UI do sistema operacional.
+test('REG-055 — picker nativo não alimenta a paleta pessoal (runaway), HEX inline salva exatamente 1 cor por commit, v1 contaminada é descartada', async ({ page }) => {
+  test.setTimeout(180_000);
+  const errors = captureFatalErrors(page);
+
+  // ── Contaminação simulada da E9F5: 200 cores "intermediárias de drag" em v1 ──
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => {
+    const fake = [];
+    for (let i = 0; i < 200; i++) fake.push('#' + (i.toString(16).padStart(6, '0')));
+    localStorage.setItem('arco_user_custom_colors_v1', JSON.stringify(fake));
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+
+  // v1 removida/ignorada; v2 inicia limpa; app continua funcional mesmo com a
+  // contaminação presente ao carregar.
+  expect(await page.evaluate(() => localStorage.getItem('arco_user_custom_colors_v1'))).toBeNull();
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(0);
+  expect(await page.evaluate(() => customColorLegacyV1Purged)).toBe(true);
+
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  // Nenhuma das 200 cores da v1 aparece; painel de tamanho normal (sem swatches
+  // pessoais contaminados ainda).
+  expect(await page.evaluate(() => customColorPalette)).toEqual([]);
+  expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
+
+  const dispatchInput = (locator, value) => locator.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, value);
+  const dispatchChange = (locator) => locator.evaluate((el) => { el.dispatchEvent(new Event('change', { bubbles: true })); });
+  // Reproduz o padrão físico do drag contínuo no picker nativo do WebKit: uma
+  // sequência de 'input' (cada frame do arraste) seguida de MÚLTIPLOS 'change'
+  // intercalados — exatamente o padrão que a E9F5 tratava incorretamente como
+  // "usuário confirmou uma cor pessoal" a cada 'change'.
+  const simulateDragSession = async (locator, baseHex) => {
+    // Foca ANTES de mudar o valor, replicando a ordem real do gesto do usuário
+    // (pointerdown/focus → arraste → change) — necessário para beginBgColorEdit()
+    // (onfocus, no Fundo do projeto) capturar o snapshot de Undo ANTES da mudança,
+    // exatamente como no fluxo público real.
+    await locator.focus();
+    const values = [];
+    for (let i = 0; i < 20; i++) values.push('#' + ((baseHex + i * 4919) % 0xffffff).toString(16).padStart(6, '0'));
+    for (let i = 0; i < values.length; i++) {
+      await dispatchInput(locator, values[i]);
+      if (i % 4 === 0) await dispatchChange(locator); // 'change' intercalado, não só ao final
+    }
+    await dispatchChange(locator); // change final do gesto (soltar o dedo)
+    return values[values.length - 1];
+  };
+
+  // ── TESTE A — Fundo do projeto: runaway do picker nativo ──
+  await page.locator('#modeAssetsBtn').click();
+  await expect(page.locator('body')).toHaveClass(/editor-assets/);
+  await page.locator('#modeAssetsBtn').click();
+  await expect(page.locator('#assetsModeContextMenu')).toHaveClass(/open/);
+  await page.locator('#assetsModeContextMenu .assets-menu-btn').filter({ hasText: 'Fundo' }).click();
+  const bgPanel = page.locator('#panelBgColor');
+  await expect(bgPanel).toHaveClass(/show/);
+  await page.waitForFunction(() => {
+    const t = getComputedStyle(document.getElementById('panelBgColor')).transform;
+    return t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)';
+  }, { timeout: 5_000 });
+
+  let paletteBefore = await page.evaluate(() => customColorPalette.length);
+  const undoBefore = await page.evaluate(() => undoStack.length);
+  const lastBgDragValue = await simulateDragSession(bgPanel.locator('#bgHexInput'), 0x102030);
+  // A paleta pessoal NÃO cresceu — nenhum dos 20 valores intermediários nem os
+  // 'change' intercalados foram persistidos (REG-055A).
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore);
+  // O picker continua aplicando a cor normalmente (preview/aplicação real
+  // preservados) e o commit funcional cria Undo/dirty como antes.
+  await expect.poll(() => page.evaluate(() => bgColor)).toBe(lastBgDragValue);
+  expect(await page.evaluate(() => undoStack.length)).toBeGreaterThan(undoBefore);
+
+  // HEX inválido não aplica nem salva.
+  const bgBeforeInvalid = await page.evaluate(() => ({ bg: bgColor, palette: [...customColorPalette] }));
+  await dispatchInput(bgPanel.locator('#bgHexText'), 'zzzzzz');
+  await dispatchChange(bgPanel.locator('#bgHexText'));
+  expect(await page.evaluate(() => ({ bg: bgColor, palette: [...customColorPalette] }))).toEqual(bgBeforeInvalid);
+
+  // Edição PROGRESSIVA do HEX (#1 → #12 → … → #123456): cada caractere digitado
+  // dispara 'input'; nenhum estado intermediário incompleto é persistido.
+  const progressiveBg = '#123456';
+  for (let i = 1; i <= progressiveBg.length; i++) {
+    await dispatchInput(bgPanel.locator('#bgHexText'), progressiveBg.slice(0, i));
+  }
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore);
+  // Só o COMMIT (change/blur/Enter) com HEX completo e válido salva — exatamente +1.
+  await dispatchChange(bgPanel.locator('#bgHexText'));
+  await expect.poll(() => page.evaluate(() => bgColor)).toBe('#123456');
+  expect(await page.evaluate(() => customColorPalette)).toContain('#123456');
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore + 1);
+
+  // Confirmar a MESMA cor de novo (com/sem "#", maiúsculas) → +0, deduplicação.
+  const countAfterFirstCommit = await page.evaluate(() => customColorPalette.length);
+  await dispatchInput(bgPanel.locator('#bgHexText'), '123456');
+  await dispatchChange(bgPanel.locator('#bgHexText'));
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(countAfterFirstCommit);
+  expect(await page.evaluate(() => customColorDuplicatePrevented)).toBe(true);
+
+  // Editar de uma cor válida para outra por HEX: só a cor final confirmada entra.
+  await dispatchInput(bgPanel.locator('#bgHexText'), '#87a46b');
+  await dispatchChange(bgPanel.locator('#bgHexText'));
+  expect(await page.evaluate(() => customColorPalette)).toContain('#87a46b');
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(countAfterFirstCommit + 1);
+
+  // Volta o Fundo do projeto a um preset canônico — a cor pessoal permanece salva na
+  // paleta mesmo sem ser a cor efetivamente usada pelo projeto (usado pelo teste de
+  // escopo abaixo: a paleta é browser-local, fora do payload do projeto salvo).
+  await bgPanel.locator('#bgSwatches .bg-swatch[data-color]').first().click();
+  await expect(bgPanel).not.toHaveClass(/show/);
+
+  // ── TESTE B — Cor do texto: runaway + HEX inline ──
+  const sheet = page.locator('#textCreationSheet');
+  await page.locator('#lowerAddOrSelectAllBtn').click();
+  await expect(page.locator('#assetsAddMenu')).toHaveClass(/open/);
+  await page.locator('#assetsMenuTextBtn').click();
+  await expect(sheet).toHaveClass(/open/);
+  await page.locator('#textCreationInput').fill('REG055');
+  await sheet.getByRole('tab', { name: 'Cor do texto', exact: true }).click();
+  await expect(sheet.locator('#textColorSwatches .color-trigger-wrap')).toBeVisible();
+  await expect(page.locator('#textColorHexText')).toBeVisible();
+
+  paletteBefore = await page.evaluate(() => customColorPalette.length);
+  const lastTextColorDragValue = await simulateDragSession(page.locator('#textCreationColor'), 0x203040);
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore);
+  await expect.poll(() => page.evaluate(() => pendingTextDraft.color)).toBe(lastTextColorDragValue);
+  // Fundo da caixa não é afetado pela Cor do texto (glifos/fundo permanecem separados).
+  expect(await page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(false);
+
+  const progressiveTextColor = '#654321';
+  for (let i = 1; i <= progressiveTextColor.length; i++) await dispatchInput(page.locator('#textColorHexText'), progressiveTextColor.slice(0, i));
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore);
+  await dispatchChange(page.locator('#textColorHexText'));
+  await expect.poll(() => page.evaluate(() => pendingTextDraft.color)).toBe(progressiveTextColor);
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore + 1);
+
+  // ── TESTE C — Fundo da caixa: runaway + HEX inline + "Sem cor" preservado ──
+  await sheet.getByRole('tab', { name: 'Fundo da caixa', exact: true }).click();
+  await expect(sheet.locator('#textBgSwatches [data-swatch-none]')).toHaveClass(/active/);
+  expect(await page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(false);
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeHidden();
+  await expect(sheet.locator('#textBgSwatches .color-trigger-wrap')).toBeVisible();
+  await expect(page.locator('#textBoxBackgroundHexText')).toBeVisible();
+
+  paletteBefore = await page.evaluate(() => customColorPalette.length);
+  const glyphColorBeforeBoxDrag = await page.evaluate(() => pendingTextDraft.color);
+  const lastBoxDragValue = await simulateDragSession(page.locator('#textBoxBackgroundColor'), 0x304050);
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore);
+  await expect.poll(() => page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(true);
+  expect(await page.evaluate(() => pendingTextDraft.boxBackgroundColor)).toBe(lastBoxDragValue);
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeVisible();
+  // A cor dos glifos não muda por causa do drag no Fundo da caixa.
+  expect(await page.evaluate(() => pendingTextDraft.color)).toBe(glyphColorBeforeBoxDrag);
+
+  const progressiveTextBox = '#abcdef';
+  for (let i = 1; i <= progressiveTextBox.length; i++) await dispatchInput(page.locator('#textBoxBackgroundHexText'), progressiveTextBox.slice(0, i));
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore);
+  await dispatchChange(page.locator('#textBoxBackgroundHexText'));
+  await expect.poll(() => page.evaluate(() => pendingTextDraft.boxBackgroundColor)).toBe(progressiveTextBox);
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore + 1);
+
+  // "Sem cor" continua funcionando após todo o exercício de runaway/HEX.
+  await sheet.locator('#textBgSwatches [data-swatch-none]').click();
+  await expect.poll(() => page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(false);
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeHidden();
+
+  await sheet.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(sheet).not.toHaveClass(/open/);
+
+  // ── TESTE — a paleta pessoal NUNCA entra no projeto salvo ──
+  const payload = await page.evaluate(() => JSON.stringify(buildProjectData(true)));
+  for (const needle of ['87a46b', 'arco_user_custom_colors', 'customColorPalette']) {
+    expect(payload.toLowerCase().includes(needle.toLowerCase()), `payload não deve conter "${needle}"`).toBe(false);
+  }
+
+  // ── TESTE — persistência: sobrevive a um novo carregamento (chave v2, não v1) ──
+  const paletteBeforeReload = await page.evaluate(() => [...customColorPalette].sort());
+  expect(paletteBeforeReload.length).toBeGreaterThan(0);
+  expect(await page.evaluate(() => localStorage.getItem('arco_user_custom_colors_v1'))).toBeNull();
+  expect(await page.evaluate(() => !!localStorage.getItem('arco_user_custom_colors_v2'))).toBe(true);
+  await clearStartupStorage(page);
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await expect(page.locator('#startupRecoveryDialog')).toBeHidden();
+  const paletteAfterReload = await page.evaluate(() => [...customColorPalette].sort());
+  expect(paletteAfterReload).toEqual(paletteBeforeReload);
+  // Nenhuma das 200 cores de contaminação da v1 ressuscitou.
+  expect(paletteAfterReload.length).toBeLessThan(20);
+
+  expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
+  expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
+});
+
+// v8z4b32E9F6 — gate de REG-055B/contenção: com uma paleta pessoal volumosa (100+
+// cores, seguindo o cenário físico que quebrou a E9F5), o painel de Fundo do
+// projeto — a única superfície das três cujos swatches crescem verticalmente
+// (flex-wrap; as linhas de texto já rolam horizontalmente e não crescem em altura)
+// — precisa permanecer inteiramente contido no viewport do iPhone: alça, título,
+// campo HEX e texto de rodapé sempre alcançáveis, com rolagem interna própria
+// apenas na área de swatches. Reproduz o sintoma físico B da E9F5 (painel crescia
+// até controles/fechamento ficarem inacessíveis) e prova que não volta a acontecer.
+test('REG-055 — painel de Fundo do projeto permanece contido em 390×797 com paleta pessoal volumosa (100+ cores)', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = captureFatalErrors(page);
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => {
+    const colors = [];
+    for (let i = 0; i < 120; i++) colors.push('#' + (((i * 65537) % 0xffffff)).toString(16).padStart(6, '0'));
+    localStorage.setItem('arco_user_custom_colors_v2', JSON.stringify(colors));
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  expect(await page.evaluate(() => customColorPalette.length)).toBeGreaterThanOrEqual(100);
+
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  await page.locator('#modeAssetsBtn').click();
+  await expect(page.locator('body')).toHaveClass(/editor-assets/);
+  await page.locator('#modeAssetsBtn').click();
+  await expect(page.locator('#assetsModeContextMenu')).toHaveClass(/open/);
+  await page.locator('#assetsModeContextMenu .assets-menu-btn').filter({ hasText: 'Fundo' }).click();
+  const bgPanel = page.locator('#panelBgColor');
+  await expect(bgPanel).toHaveClass(/show/);
+  await page.waitForFunction(() => {
+    const t = getComputedStyle(document.getElementById('panelBgColor')).transform;
+    return t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)';
+  }, { timeout: 5_000 });
+
+  expect(await bgPanel.locator('#bgSwatches .bg-swatch').count()).toBeGreaterThanOrEqual(100);
+
+  const geometry = await page.evaluate(() => {
+    const vh = window.innerHeight;
+    const panel = document.getElementById('panelBgColor').getBoundingClientRect();
+    const handle = document.querySelector('#panelBgColor .panel-handle').getBoundingClientRect();
+    const title = document.querySelector('#panelBgColor .panel-title').getBoundingClientRect();
+    const hexInput = document.getElementById('bgHexInput').getBoundingClientRect();
+    const hexText = document.getElementById('bgHexText').getBoundingClientRect();
+    const swatches = document.getElementById('bgSwatches');
+    const sw = swatches.getBoundingClientRect();
+    return {
+      vh,
+      panelTop: panel.top, panelBottom: panel.bottom,
+      handleTop: handle.top, handleBottom: handle.bottom,
+      titleTop: title.top, titleBottom: title.bottom,
+      hexInputTop: hexInput.top, hexInputBottom: hexInput.bottom,
+      hexTextTop: hexText.top, hexTextBottom: hexText.bottom,
+      swatchesTop: sw.top, swatchesBottom: sw.bottom, swatchesHeight: sw.height,
+      swatchesScrollHeight: swatches.scrollHeight,
+      swatchesClientHeight: swatches.clientHeight,
+    };
+  });
+  // O painel inteiro permanece dentro do viewport (nunca é empurrado para cima e
+  // para fora da área visível pelo crescimento da paleta pessoal).
+  expect(geometry.panelTop).toBeGreaterThanOrEqual(-1);
+  expect(geometry.panelBottom).toBeLessThanOrEqual(geometry.vh + 1);
+  // Alça, título e os dois campos de HEX (nativo + texto) permanecem alcançáveis
+  // dentro do viewport — nenhum foi empurrado para fora pelo crescimento da paleta.
+  for (const [label, top, bottom] of [
+    ['alça', geometry.handleTop, geometry.handleBottom],
+    ['título', geometry.titleTop, geometry.titleBottom],
+    ['HEX nativo', geometry.hexInputTop, geometry.hexInputBottom],
+    ['HEX texto', geometry.hexTextTop, geometry.hexTextBottom],
+  ]) {
+    expect(top, `${label}: topo fora do viewport`).toBeGreaterThanOrEqual(-1);
+    expect(bottom, `${label}: base fora do viewport`).toBeLessThanOrEqual(geometry.vh + 1);
+  }
+  // A área de SWATCHES (só ela) tem conteúdo maior que sua própria altura visível —
+  // ou seja, existe overflow real contido internamente, não um painel que cresceu
+  // para acomodar tudo.
+  expect(geometry.swatchesScrollHeight).toBeGreaterThan(geometry.swatchesClientHeight);
+  // A altura VISÍVEL da área de swatches é bem menor que a altura total do viewport
+  // (a paleta não "engoliu" o painel inteiro).
+  expect(geometry.swatchesHeight).toBeLessThan(geometry.vh * 0.5);
+
+  // É possível chegar do primeiro ao último swatch rolando internamente a área.
+  const lastSwatchReached = await page.evaluate(() => {
+    const swatches = document.getElementById('bgSwatches');
+    const all = [...swatches.querySelectorAll('.bg-swatch')];
+    const last = all[all.length - 1];
+    last.scrollIntoView({ block: 'nearest' });
+    const sw = swatches.getBoundingClientRect(), lr = last.getBoundingClientRect();
+    return lr.top >= sw.top - 1 && lr.bottom <= sw.bottom + 1;
+  });
+  expect(lastSwatchReached).toBe(true);
+
+  // Fechar o painel continua funcionando normalmente após o exercício de volume.
+  await bgPanel.locator('.panel-handle').click();
+  await expect(bgPanel).not.toHaveClass(/show/);
+
+  // Stage/layout externo não fica preso: outro painel abre normalmente em seguida.
+  await page.locator('#modeAssetsBtn').click();
+  await expect(page.locator('#assetsModeContextMenu')).toHaveClass(/open/);
+  await page.locator('#assetsModeContextMenu .panel-close-check[aria-label="Fechar"]').click();
+  await expect(page.locator('#assetsModeContextMenu')).not.toHaveClass(/open/);
+
   expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
 });

@@ -1,15 +1,40 @@
 # REGRESSIONS
 
-> Atualização 2026-08-20 (`v8z4b32E9F3`): **REG-053** teve a **correção implementada/automatizada** (validação física pendente). **REG-052** permanece **ABERTO** e **não corrigido**. **REG-054** teve a **correção implementada/automatizada na `v8z4b32E9F2`** (validação física pendente). **REG-055** (2026-08-20) é um bug novo e independente, registrado **ABERTO** e **não corrigido**.
+> Atualização 2026-08-22 (`v8z4b32E9F6`): **REG-055** teve **correção implementada/automatizada** em nova tentativa após DUAS reprovações físicas anteriores (E9F4/PR #507 — painel próprio, revertida pela #508; E9F5/PR #509 — runaway palette, revertida pela #510). Validação física **pendente**. **REG-053** e **REG-054** seguem com correção implementada/automatizada e validação física pendente. **REG-052** permanece **ABERTO** e **não corrigido**.
 
-## REG-055 — Botões “+” das paletas de cor do Text Asset não abrem o color picker nativo (ABERTO)
+## REG-055 — Picker de cor do Arco (correção implementada/automatizada na `v8z4b32E9F6`; validação física pendente)
 
-- **Relato físico (Roberto, 2026-08-20, iPhone/Safari):** no editor de Text Asset, os botões **“+”** das paletas de **Cor do texto** e de **Fundo da caixa** não estão abrindo o seletor de cores nativo ao serem tocados.
-- **Comportamento esperado:** tocar no “+” de **Cor do texto** abre o color picker nativo correspondente; tocar no “+” de **Fundo da caixa** abre o color picker nativo correspondente; a escolha resultante continua usando o fluxo E9F1 já implementado; no **Fundo da caixa**, escolher uma cor continua habilitando o fundo e preservando a regra de opacidade **somente do fundo**.
-- **Classificação:** regressão funcional de UI de cor (Text Asset, E9F1).
-- **Causa:** a investigar (não presumir causa). Nenhuma solução declarada.
-- **Independência:** separado de REG-054 (multi-seleção de Frames, corrigida na `v8z4b32E9F2`), de REG-053 (painel cortado da multi-seleção) e de REG-052 (fill visual dos sliders).
-- **Status:** **ABERTO** — **não corrigido nesta PR** `v8z4b32E9F2`. Registro documental; nenhum handler, input ou UI de cor foi alterado por causa dele nesta PR. A investigar e corrigir em PR própria futura.
+- **Relato físico original (Roberto, 2026-08-20, iPhone/Safari):** no editor de Text Asset, os botões **“+”** das paletas de **Cor do texto** e de **Fundo da caixa** não abriam o seletor de cores nativo ao serem tocados.
+- **Causa raiz original (E9F4/E9F5):** o padrão `button → JavaScript .click() → input[type=color] 1×1/off-screen/pointer-events:none` não entrega o toque real do usuário ao picker nativo do Safari/iOS — `.click()` programático sendo chamado não prova que o SISTEMA operacional recebeu um toque físico legítimo o suficiente para abrir sua própria UI.
+
+### Tentativa 1 — E9F4 / PR #507 (REJEITADA e revertida pela PR #508)
+
+- Substituiu o fluxo de seleção de cor EXISTENTE por um painel intermediário próprio do Arco (`#customColorPanel`).
+- Mergeada e **REPROVADA fisicamente por Roberto** em iPhone/Safari (painel próprio não aceito como solução).
+- Revertida integralmente pela PR #508; `main` retornou byte a byte ao tree funcional `v8z4b32E9F3` anterior.
+
+### Tentativa 2 — E9F5 / PR #509 (REJEITADA e revertida pela PR #510)
+
+- Restaurou o picker nativo (sem painel próprio); após revisão R1/R2, o `input[type=color]` nativo tornou-se um touch target real e estável (`.color-trigger-wrap`: input absolutamente posicionado sobre o "+" visual, nunca `.click()` em input off-screen) — essa parte **funcionou fisicamente**: o picker abriu e operou.
+- **Falhas físicas confirmadas (Roberto, iPhone/Safari, build publicada `v8z4b32E9F5`):**
+  - **REG-055A — runaway palette:** ao mover sliders/roda/espectro do picker nativo, CADA valor intermediário do arraste era persistido como swatch próprio na paleta pessoal.
+  - **REG-055B — unbounded palette:** a coleção de swatches fazia o painel (`#bgSwatches`, `flex-wrap`) crescer verticalmente sem limite, até controles e o fechamento do painel ficarem inacessíveis.
+  - **REG-055C — persistent contamination:** as cores intermediárias eram salvas em `localStorage['arco_user_custom_colors_v1']`; reiniciar o app não removia os dados.
+- **Causa raiz comprovada (leitura do código revertido, PR #509):** os três `onchange` do `input[type=color]` nativo chamavam `addCustomColorToPalette(this.value,'picker',…)` diretamente, tratando `'change'` como sinônimo de "usuário confirmou uma cor pessoal". Falso no picker nativo do WebKit/iOS: um único gesto contínuo em roda/espectro/sliders dispara MÚLTIPLOS eventos `input`/`change` — cada um virava um swatch persistido.
+- Revertida integralmente pela PR #510; `main` retornou byte a byte ao tree funcional `v8z4b32E9F3`.
+- **Sintomas A/B/C acima são subitens da PRÓPRIA REG-055** (não REGs numeradas independentes).
+
+### Tentativa 3 — E9F6 (correção implementada/automatizada; validação física pendente)
+
+- **Regra de produto definitiva:** "aplicar cor" (preview/uso corrente do picker) e "salvar cor pessoal" (entrar em `customColorPalette`) são operações DISTINTAS. Nenhum evento `input`/`change` do picker nativo dos três contextos (Fundo do projeto/`#bgHexInput`, Cor do texto/`#textCreationColor`, Fundo da caixa/`#textBoxBackgroundColor`) chama `addCustomColorToPalette` — por mais eventos que o WebKit dispare durante um arraste contínuo. O picker continua aplicando/pré-visualizando a cor corrente normalmente (`setBgColorHex`/`commitBgColorEdit`/`setTextColor`/`setTextBoxBackground`), com Undo/dirty preservados no Fundo do projeto.
+- **Único ponto de entrada na paleta pessoal:** o campo HEX inline (`#bgHexText` já existia; `#textColorHexText`/`#textBoxBackgroundHexText` novos nesta versão) confirmado (Enter/blur com `#RRGGBB` válido, com/sem "#"). Durante a digitação, aplica live-preview a cada entrada COMPLETA e válida, sem salvar nenhum estado intermediário; o COMMIT salva exatamente 1 cor, com deduplicação (contra presets e contra a própria paleta).
+- **Ativação Safari-safe do "+" de Cor do texto/Fundo da caixa:** reaproveita da #509-R2 (única parte comprovadamente útil da E9F5) a primitiva `.color-trigger-wrap` — "+" visual `pointer-events:none` sobreposto pelo MESMO `input[type=color]` nativo (nunca clonado/recriado), declarados uma única vez no HTML como último filho ESTÁTICO da linha de swatches; as funções de render só substituem os swatches dinâmicos ao redor via `insertAdjacentHTML('beforebegin', …)`, nunca tocando wrapper/input, nem durante os próprios eventos do picker. Sem `.click()` programático, sem input 1×1/off-screen. Fundo do projeto já usava um `input[type=color]` real e visível (nunca 1×1/off-screen, nunca `.click()`) — preservado sem alteração estrutural.
+- **Recovery da v1 contaminada (REG-055C):** não existe forma confiável de distinguir, dentro de `arco_user_custom_colors_v1`, um swatch intencional de um valor intermediário de arraste — por isso TODO o conteúdo de v1 é tratado como contaminado e NUNCA migrado/importado; a chave é removida defensivamente na inicialização (mesmo corrompida, vazia, com centenas de entradas, ou com `localStorage` bloqueado — falha de storage nunca impede o app de abrir). A paleta corrigida usa chave NOVA, `arco_user_custom_colors_v2`.
+- **Contenção do painel (REG-055B):** `#bgSwatches` (Fundo do projeto) usa `flex-wrap` e crescia verticalmente sem limite; ganhou altura máxima (`min(30vh,200px)`) + rolagem interna própria — alça/título/HEX/rodapé do `#panelBgColor` permanecem sempre alcançáveis, sem limite arbitrário de quantidade de cores. As linhas de texto (`.text-swatch-row`, Cor do texto/Fundo da caixa) já rolavam HORIZONTALMENTE (`flex-wrap:nowrap;overflow-x:auto`) e por isso nunca cresciam a altura do painel — nenhuma mudança estrutural adicional foi necessária ali.
+- **"+" interno do iOS:** o Arco não intercepta, não detecta e não espelha o "+" que aparece dentro da própria UI nativa de cores do sistema; se o iOS salvar essa cor em sua própria coleção nativa, é responsabilidade do iOS, não observável pelo JavaScript do Arco.
+- **Teste preventivo:** `tests/smoke/app.spec.mjs`, gates `REG-055 — picker nativo não alimenta a paleta pessoal (runaway), HEX inline salva exatamente 1 cor por commit, v1 contaminada é descartada` e `REG-055 — painel de Fundo do projeto permanece contido em 390×797 com paleta pessoal volumosa (100+ cores)` (ver `docs/TEST_CASES.md`). Verificação equivalente em **Chromium `hasTouch`** confirmou que o primeiro gate falha comprovadamente contra o código revertido da E9F5 (`git worktree` no commit `3c64bdb`, tip da PR #509): a paleta pessoal cresce de 200 para 206 entradas durante a sessão simulada de arraste (6 eventos `change` intercalados/final), reproduzindo exatamente REG-055A; e falha também na ausência do purge de v1 (REG-055C). Ambos os gates passam na `v8z4b32E9F6`.
+- **Não altera:** REG-052 (fill dos sliders), REG-053 (painel de multi-seleção), REG-054 (targets de transformação), Undo/Redo genérico, Preview/Export/renderer/Engine/curvas/easing/timing, ProjectWorld, Save/Load, Layers, timeline, produção.
+- **Status:** **correção implementada e automatizada** na `v8z4b32E9F6` (PR própria). Validação física **pendente** — Roberto testará a build publicada em iPhone/Safari repetindo os cinco pontos do protocolo físico do ticket (picker sem criar swatches, HEX criando exatamente um, reload preservando, contaminação antiga não reaparecendo, volume de cores reais não quebrando o painel). REG-055 só será marcada resolvida integralmente após esse teste físico. Nenhuma promoção autorizada.
 
 ## REG-052 — Fill visual dos sliders não corresponde à posição do thumb (ABERTO)
 
