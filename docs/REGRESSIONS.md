@@ -1,15 +1,45 @@
 # REGRESSIONS
 
+> Atualização 2026-08-21 (`v8z4b32E9F5`): **REG-055** recebeu a clarificação final de produto de Roberto e a **correção corretiva implementada/automatizada** nesta PR, após a tentativa `v8z4b32E9F4`/PR #507 ter sido **mergeada e REPROVADA fisicamente** por substituir o fluxo de seleção de cor existente por um painel intermediário próprio do Arco, e revertida integralmente pela PR #508. Validação física da build publicada `v8z4b32E9F5` **pendente**. **REG-053** e **REG-054** permanecem com correção implementada/automatizada (validação física pendente, sem alteração nesta PR). **REG-052** permanece **ABERTO** e **não corrigido**.
+>
 > Atualização 2026-08-20 (`v8z4b32E9F3`): **REG-053** teve a **correção implementada/automatizada** (validação física pendente). **REG-052** permanece **ABERTO** e **não corrigido**. **REG-054** teve a **correção implementada/automatizada na `v8z4b32E9F2`** (validação física pendente). **REG-055** (2026-08-20) é um bug novo e independente, registrado **ABERTO** e **não corrigido**.
 
-## REG-055 — Botões “+” das paletas de cor do Text Asset não abrem o color picker nativo (ABERTO)
+## REG-055 — Botões “+” das paletas de cor do Text Asset não abrem o color picker nativo (correção corretiva implementada/automatizada na `v8z4b32E9F5`; validação física pendente)
 
-- **Relato físico (Roberto, 2026-08-20, iPhone/Safari):** no editor de Text Asset, os botões **“+”** das paletas de **Cor do texto** e de **Fundo da caixa** não estão abrindo o seletor de cores nativo ao serem tocados.
-- **Comportamento esperado:** tocar no “+” de **Cor do texto** abre o color picker nativo correspondente; tocar no “+” de **Fundo da caixa** abre o color picker nativo correspondente; a escolha resultante continua usando o fluxo E9F1 já implementado; no **Fundo da caixa**, escolher uma cor continua habilitando o fundo e preservando a regra de opacidade **somente do fundo**.
+- **Relato físico original (Roberto, 2026-08-20, iPhone/Safari):** no editor de Text Asset, os botões **“+”** das paletas de **Cor do texto** e de **Fundo da caixa** não estavam abrindo o seletor de cores nativo ao serem tocados.
+- **Comportamento esperado (original):** tocar no “+” de **Cor do texto** abre o color picker nativo correspondente; tocar no “+” de **Fundo da caixa** abre o color picker nativo correspondente; a escolha resultante continua usando o fluxo E9F1 já implementado; no **Fundo da caixa**, escolher uma cor continua habilitando o fundo e preservando a regra de opacidade **somente do fundo**.
 - **Classificação:** regressão funcional de UI de cor (Text Asset, E9F1).
-- **Causa:** a investigar (não presumir causa). Nenhuma solução declarada.
 - **Independência:** separado de REG-054 (multi-seleção de Frames, corrigida na `v8z4b32E9F2`), de REG-053 (painel cortado da multi-seleção) e de REG-052 (fill visual dos sliders).
-- **Status:** **ABERTO** — **não corrigido nesta PR** `v8z4b32E9F2`. Registro documental; nenhum handler, input ou UI de cor foi alterado por causa dele nesta PR. A investigar e corrigir em PR própria futura.
+
+### Tentativa E9F4 / PR #507 — REPROVADA fisicamente
+
+- A `v8z4b32E9F4` implementou um novo painel próprio do Arco (`#customColorPanel`), moveu a entrada hexadecimal para dentro dele e fez os três botões “+” (Fundo do projeto, Cor do texto, Fundo da caixa) abrirem esse painel em vez do `input[type=color]` nativo existente.
+- A PR #507 foi **mergeada** na `main` de teste (merge commit `b650084`).
+- **Roberto testou fisicamente em iPhone/Safari e REPROVOU** a experiência: a intenção nunca foi substituir o seletor completo existente nem criar um segundo painel de customização — a E9F4 reduziu o fluxo de seleção de cor (roda/espectro/conta-gotas do sistema) a um campo HEX isolado num painel novo.
+- **Causa da reprovação:** arquitetura de painel intermediário indevida, contrária à regra de produto de preservar o picker completo existente.
+- A PR #508 **reverteu integralmente** a #507 (commit `46cd45e`, merge `28a0b58`), restaurando byte a byte o tree funcional `v8z4b32E9F3` anterior.
+- **A `v8z4b32E9F4` NÃO é solução válida de REG-055.**
+
+### Clarificação final de produto de Roberto — 2026-08-21
+
+- Os “+” devem abrir o picker completo **já existente** (o mesmo `input[type=color]` nativo), nunca um painel/modal/sheet novo criado pelo Arco.
+- Roda/espectro e conta-gotas do sistema/browser (quando expostos pelo Safari/iOS) devem ser preservados; o Arco não implementa um color picker, roda, espectro ou conta-gotas próprio.
+- O HEX pertence **INLINE** ao painel de cor onde o usuário já está (Fundo do projeto, Cor do texto, Fundo da caixa) — não é uma etapa nem um painel separado.
+- Não deve existir segundo painel de customização criado pelo Arco entre o “+” e o picker nativo.
+- Cores customizadas escolhidas pelo picker nativo ou pelo campo HEX devem ser salvas numa **paleta pessoal persistente**, browser-local, **compartilhada** pelos três contextos, fora do projeto (nunca em Save/Load/Session Restore/Text Asset).
+
+### Correção corretiva (`v8z4b32E9F5`)
+
+- **Preserva integralmente** os três fluxos/pickers já existentes: `beginBgColorEdit`/`commitBgColorEdit`/`setBgColor`/`setBgColorHex`/`onBgHexText` (Fundo do projeto, `#panelBgColor`/`#bgSwatches`/`#bgHexInput`/`#bgHexText`), `openTextColorPicker()`/`#textCreationColor` (Cor do texto) e `openTextBgColorPicker()`/`#textBoxBackgroundColor` (Fundo da caixa). Nenhum desses caminhos foi substituído; nenhum `#customColorPanel` ou equivalente funcional foi recriado.
+- Em cada um dos três painéis, o “+” continua sendo uma **AÇÃO** que aciona o mesmo `input[type=color]` nativo já existente — inclusive um novo `openBgColorPicker()` para o Fundo do projeto, que segue exatamente o mesmo padrão já aprovado de `openTextColorPicker()`/`openTextBgColorPicker()` (semeia o valor atual e chama `.click()`).
+- O quadrado visível de picker do Fundo do projeto (`#bgHexInput`) passa a ficar oculto pelo mesmo mecanismo (`.text-swatch-custom-input`) já usado pelos inputs nativos de Cor do texto/Fundo da caixa; o botão “+” visível (`.bg-swatch-add`) é quem aciona o picker — o input nativo em si nunca foi removido.
+- Campo HEX inline acrescentado no MESMO painel de **Cor do texto** (`#textColorHexText`) e de **Fundo da caixa** (`#textBoxBackgroundHexText`); o Fundo do projeto já tinha `#bgHexText` desde antes da E9F4, preservado sem mudança de comportamento. Nenhum HEX abre segunda tela.
+- Validador único `normalizeColorHex` (aceita `#RRGGBB`, `RRGGBB` e variações de maiúsculas/minúsculas, sem suporte a alpha) reaproveitado pelos três contextos; `normalizeBgHex` passa a delegar para ele em vez de manter um validador próprio.
+- Paleta pessoal persistente `customColorPalette`, armazenada em `localStorage` sob a chave `arco_user_custom_colors_v1`, com normalização/dedup/descarte defensivo de entradas inválidas ou storage bloqueado/corrompido. Compartilhada pelos três contextos; nunca lida por `buildProjectData`/Save/Load/Session Restore/serialização de Text Asset. Uma cor só entra na paleta por escolha **efetiva** (evento `change` do picker nativo ou HEX inline válido efetivamente aplicado); cancelar o picker ou abandonar HEX incompleto/inválido nunca cria swatch.
+- Diagnóstico observacional novo (sem texto técnico na UI): `customColorPaletteStorageAvailable`, `customColorPaletteCount`, `customColorDuplicatePrevented`, `customColorInvalidStoredEntriesDropped`, `lastCustomColorSource`, `lastCustomColorContext`.
+- **Não altera:** REG-052 (fill dos sliders), a matemática/targets de REG-054, a correção estrutural de REG-053, `boxBackgroundEnabled`/opacidade do Fundo da caixa (preservados integralmente), Undo/Redo, Preview/Export/renderer, ProjectWorld, Layers, Save/Load, timeline, produção.
+- **Teste preventivo:** `tests/smoke/app.spec.mjs`, gate `REG-055 — picker completo preservado, HEX inline e paleta pessoal persistente e compartilhada` (ver `docs/TEST_CASES.md`). Usa o fluxo público real (mesmos elementos tocados pelo usuário) nos três painéis; assert explícito de ausência de `#customColorPanel`.
+- **Status:** correção implementada e automatizada na `v8z4b32E9F5` (PR própria). Validação física **pendente** — Roberto testará a build publicada em iPhone/Safari, incluindo roda/espectro e conta-gotas do picker nativo quando disponibilizados pelo Safari/iOS. REG-055 só será marcada RESOLVIDA integralmente após esse teste físico. Nenhuma promoção autorizada.
 
 ## REG-052 — Fill visual dos sliders não corresponde à posição do thumb (ABERTO)
 

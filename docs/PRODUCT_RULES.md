@@ -1,5 +1,39 @@
 # PRODUCT_RULES
 
+## Regra canônica dos seletores de cor (REG-055, implementada na v8z4b32E9F5)
+
+Arquitetura definitiva de produto para os três seletores de cor do app (Fundo do
+projeto, Cor do texto, Fundo da caixa), esclarecida por Roberto após a tentativa
+`v8z4b32E9F4` (painel intermediário próprio) ter sido mergeada e REPROVADA
+fisicamente e revertida pela PR #508 (ver `docs/REGRESSIONS.md`, REG-055):
+
+1. **O painel de cor já existente é a superfície principal.** Não existe e não pode
+   ser criada nenhuma etapa/painel/modal/sheet intermediário entre o usuário e a
+   escolha de cor. É expressamente proibido recriar `#customColorPanel` ou qualquer
+   equivalente funcional.
+2. **O HEX é INLINE**, no mesmo painel onde o usuário já está — nunca uma segunda
+   tela. Formato canônico `#RRGGBB`; aceita entrada com ou sem `#`, normalizada;
+   sem suporte a alpha hexadecimal. Entrada inválida não aplica, não salva e não
+   cria swatch; não expõe mensagem técnica.
+3. **O "+" é uma AÇÃO, não um swatch e não um atalho para HEX ou painel.** Nos três
+   painéis, "+" significa exclusivamente abrir o `input[type=color]` nativo/picker
+   completo já existente daquele contexto (`openBgColorPicker()`,
+   `openTextColorPicker()`, `openTextBgColorPicker()`). O Arco não implementa roda,
+   espectro ou conta-gotas próprios; a responsabilidade do app é só disparar
+   corretamente o picker do sistema/browser, preservando toda a capacidade que ele
+   expuser (incluindo conta-gotas no Safari/iOS quando disponível).
+4. **Paleta pessoal de cores customizadas, browser-local e persistente**,
+   compartilhada pelos três contextos (Fundo do projeto, Cor do texto, Fundo da
+   caixa). Uma cor entra na paleta somente quando confirmada por escolha EFETIVA no
+   picker nativo (evento `change`) ou por HEX inline válido efetivamente aplicado —
+   nunca por abrir o picker sem escolher, por foco ou por digitação incompleta.
+5. **A paleta vive fora do projeto.** Não é propriedade do projeto, do Text Asset,
+   de Session Restore, do ProjectWorld nem de sync de conta/cloud; nunca é lida por
+   `buildProjectData`/Save/Load/Session Restore/serialização de asset. O projeto
+   continua salvando somente a cor efetivamente utilizada, como já fazia.
+6. **Sem sync/cloud.** A paleta é local ao browser/dispositivo; não há
+   sincronização entre contas ou dispositivos nesta regra.
+
 ## Regras E9E — criação na vista atual e WYSIWYG ao vivo (implementadas)
 
 Regras aprovadas e já IMPLEMENTADAS nesta E9E:

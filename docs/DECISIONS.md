@@ -1,5 +1,18 @@
 # DECISIONS
 
+## DEC-2026-08-21-01 — REG-055: rejeição do painel intermediário (E9F4), preservação do picker completo e paleta persistente compartilhada
+
+- **Data:** 2026-08-21. **Versão:** `v8z4b32E9F5` (PR própria).
+- **Assunto:** arquitetura definitiva dos três seletores de cor (Fundo do projeto, Cor do texto, Fundo da caixa) após a tentativa `v8z4b32E9F4` ter sido reprovada fisicamente.
+- **Classificação:** correção funcional/UX de regressão (REG-055). Sem Engine/curvas/timing/renderer; sem Preview/Export; sem produção.
+- **Contexto:** a `v8z4b32E9F4` (PR #507) introduziu um novo painel próprio do Arco (`#customColorPanel`), moveu a entrada hexadecimal para dentro dele e fez os três botões "+" abrirem esse painel em vez do `input[type=color]` nativo existente. Foi mergeada e **Roberto testou fisicamente em iPhone/Safari e REPROVOU**: a intenção nunca foi substituir o seletor completo existente nem criar um segundo painel de customização — a mudança reduziu o fluxo de seleção de cor (roda/espectro/conta-gotas do sistema) a um campo HEX isolado. A PR #508 reverteu integralmente a #507.
+- **Decisão A — rejeição definitiva da arquitetura de painel intermediário:** nenhum painel/modal/sheet criado pelo Arco pode se interpor entre o "+" e o picker nativo. `#customColorPanel` e qualquer equivalente funcional ficam proibidos nesta e em futuras correções de REG-055.
+- **Decisão B — preservação explícita do picker completo existente:** os três fluxos já existentes (`beginBgColorEdit`/`commitBgColorEdit`/`setBgColor`/`setBgColorHex`/`onBgHexText`; `openTextColorPicker()`; `openTextBgColorPicker()`) permanecem como caminho canônico, intocados. O "+" é sempre uma ação que abre o `input[type=color]` nativo daquele contexto (novo `openBgColorPicker()` para o Fundo do projeto segue o mesmo padrão já aprovado dos outros dois). O HEX é inline no painel já existente (novo em Cor do texto/Fundo da caixa; já existia no Fundo do projeto).
+- **Decisão C — paleta pessoal persistente compartilhada:** cores customizadas escolhidas pelo picker nativo ou por HEX válido entram em `customColorPalette`, persistida em `localStorage` (`arco_user_custom_colors_v1`), compartilhada pelos três contextos, e nunca lida por `buildProjectData`/Save/Load/Session Restore/serialização de Text Asset. Este requisito da E9F4 continua válido; apenas a infraestrutura de persistência foi reintroduzida, sem o painel rejeitado.
+- **Alternativa rejeitada:** reaplicar a E9F4 integralmente (painel único compartilhado pelos três contextos) — rejeitada por reproduzir exatamente a experiência reprovada fisicamente por Roberto.
+- **Status:** ativa; implementada e automatizada (gate `REG-055`), validação física pendente (iPhone/Safari, Roberto), incluindo roda/espectro e conta-gotas do picker nativo quando disponibilizados pelo Safari/iOS. Nenhuma promoção autorizada.
+- **Documento relacionado:** `docs/REGRESSIONS.md` (REG-055), `docs/PRODUCT_RULES.md` (regra canônica dos seletores de cor), `docs/TEST_CASES.md`, `docs/PROJECT_STATE.md`.
+
 ## DEC-2026-08-20-01 — REG-054: semântica única de alvos dos controles normais de transformação de Frame
 
 - **Data:** 2026-08-20. **Versão:** `v8z4b32E9F2` (PR própria).

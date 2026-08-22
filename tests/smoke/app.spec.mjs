@@ -3616,3 +3616,214 @@ test('REG-053 — painel de transformação em multi-seleção é invariante à 
   await reset();
   expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
 });
+
+// v8z4b32E9F5 — gate de REG-055. A v8z4b32E9F4 (PR #507) substituiu o fluxo de
+// seleção de cor EXISTENTE (Fundo do projeto, Cor do texto, Fundo da caixa) por um
+// painel intermediário próprio do Arco (#customColorPanel); foi mergeada e REPROVADA
+// fisicamente por Roberto em iPhone/Safari, e revertida integralmente pela PR #508.
+// A correção correta (E9F5) PRESERVA os três pickers/fluxos já existentes
+// (beginBgColorEdit/commitBgColorEdit/setBgColor/setBgColorHex/onBgHexText;
+// openTextColorPicker(); openTextBgColorPicker()) e acrescenta, SEM criar nenhum
+// painel/modal/sheet novo: (1) campo HEX inline no MESMO painel de cada contexto;
+// (2) "+" que continua sendo uma AÇÃO que abre o MESMO input[type=color] nativo já
+// existente; (3) uma paleta pessoal de cores customizadas, browser-local, persistente
+// e COMPARTILHADA pelos três contextos, nunca incluída no projeto salvo. Este gate usa
+// somente o fluxo público real (os mesmos elementos que o usuário toca) e falha na
+// base pré-E9F5 (sem HEX inline em Cor do texto/Fundo da caixa, sem paleta pessoal
+// persistente, sem infraestrutura customColorPalette/arco_user_custom_colors_v1).
+test('REG-055 — picker completo preservado, HEX inline e paleta pessoal persistente e compartilhada', async ({ page }) => {
+  test.setTimeout(180_000);
+  const errors = captureFatalErrors(page);
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.evaluate(() => { try { localStorage.removeItem('arco_user_custom_colors_v1'); } catch (e) {} });
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  // TESTE L — o painel intermediário rejeitado (E9F4) não existe, nem substituto funcional.
+  expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
+
+  // ── Helpers de fluxo público real ─────────────────────────────────────────
+  const bgPanel = page.locator('#panelBgColor');
+  const openBgPanel = async () => {
+    await page.locator('#modeAssetsBtn').click(); // 1º toque: entra em Modo Ativos
+    await expect(page.locator('body')).toHaveClass(/editor-assets/);
+    await page.locator('#modeAssetsBtn').click(); // 2º toque (modo já ativo): menu contextual
+    await expect(page.locator('#assetsModeContextMenu')).toHaveClass(/open/);
+    await page.locator('#assetsModeContextMenu .assets-menu-btn').filter({ hasText: 'Fundo' }).click();
+    await expect(bgPanel).toHaveClass(/show/);
+  };
+  // Espiona clique real no input[type=color] nativo (mesmo elemento já existente),
+  // provando que o "+" aciona ESSE input em vez de qualquer painel/modal próprio.
+  const spyClick = (selector) => page.evaluate((sel) => {
+    window.__spyClicks = window.__spyClicks || {};
+    window.__spyClicks[sel] = 0;
+    const el = document.querySelector(sel);
+    if (el) el.addEventListener('click', () => { window.__spyClicks[sel]++; }, { once: true });
+  }, selector);
+  const spyCount = (selector) => page.evaluate((sel) => (window.__spyClicks && window.__spyClicks[sel]) || 0, selector);
+  const dispatchInput = (locator, value) => locator.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, value);
+  const dispatchChange = (locator) => locator.evaluate((el) => { el.dispatchEvent(new Event('change', { bubbles: true })); });
+
+  // ── TESTE A — Fundo do projeto: presets, HEX inline, "+" aciona o picker nativo ──
+  await openBgPanel();
+  expect(await bgPanel.locator('#bgSwatches .bg-swatch').count()).toBeGreaterThan(0);
+  await expect(bgPanel.locator('#bgHexText')).toBeVisible();
+  const bgAddBtn = bgPanel.locator('#bgSwatches .bg-swatch-add');
+  await expect(bgAddBtn).toBeVisible();
+  const paletteBeforeBgPlus = await page.evaluate(() => customColorPalette.length);
+  await spyClick('#bgHexInput');
+  await bgAddBtn.click();
+  expect(await spyCount('#bgHexInput')).toBe(1);
+  expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
+  // Abrir o picker por si só (sem escolha efetiva) não muda a paleta — TESTE K.
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBeforeBgPlus);
+
+  // TESTE F — HEX inválido não aplica nem salva.
+  const bgBeforeInvalid = await page.evaluate(() => ({ bg: bgColor, palette: [...customColorPalette] }));
+  await dispatchInput(bgPanel.locator('#bgHexText'), 'zzzzzz');
+  await dispatchChange(bgPanel.locator('#bgHexText'));
+  expect(await page.evaluate(() => ({ bg: bgColor, palette: [...customColorPalette] }))).toEqual(bgBeforeInvalid);
+
+  // TESTE K — foco/digitação incompleta (com ou sem blur) nunca salva nem aplica.
+  await dispatchInput(bgPanel.locator('#bgHexText'), '#ab');
+  await dispatchChange(bgPanel.locator('#bgHexText'));
+  expect(await page.evaluate(() => ({ bg: bgColor, palette: [...customColorPalette] }))).toEqual(bgBeforeInvalid);
+
+  // TESTE E — HEX válido aplica ao contexto e entra na paleta pessoal (aceita sem "#").
+  await dispatchInput(bgPanel.locator('#bgHexText'), 'ff6b8a');
+  await dispatchChange(bgPanel.locator('#bgHexText'));
+  await expect.poll(() => page.evaluate(() => bgColor)).toBe('#ff6b8a');
+  expect(await page.evaluate(() => customColorPalette)).toContain('#ff6b8a');
+  expect(await page.evaluate(() => lastCustomColorSource)).toBe('hex');
+  expect(await page.evaluate(() => lastCustomColorContext)).toBe('bg');
+
+  // TESTE D — escolha pelo picker nativo real (input[type=color]) aplica e salva.
+  await dispatchInput(bgPanel.locator('#bgHexInput'), '#123456');
+  await dispatchChange(bgPanel.locator('#bgHexInput'));
+  await expect.poll(() => page.evaluate(() => bgColor)).toBe('#123456');
+  expect(await page.evaluate(() => customColorPalette)).toContain('#123456');
+  expect(await page.evaluate(() => lastCustomColorSource)).toBe('picker');
+
+  // TESTE I — deduplicação: mesma cor em maiúsculas/minúsculas/sem "#" é uma única entrada lógica.
+  const paletteCountBeforeDup = await page.evaluate(() => customColorPalette.length);
+  await dispatchInput(bgPanel.locator('#bgHexText'), 'FF6B8A');
+  await dispatchChange(bgPanel.locator('#bgHexText'));
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteCountBeforeDup);
+  expect(await page.evaluate(() => customColorDuplicatePrevented)).toBe(true);
+
+  // Volta o Fundo do projeto a um preset canônico — a cor pessoal permanece salva na
+  // paleta mesmo sem ser a cor efetivamente usada pelo projeto (usado pelo TESTE J).
+  // setBgColor() já fecha o painel (fluxo canônico existente), sem precisar de "×"/handle.
+  await bgPanel.locator('#bgSwatches .bg-swatch[data-color]').first().click();
+  await expect(bgPanel).not.toHaveClass(/show/);
+
+  // ── TESTE B — Cor do texto: HEX inline, "+" aciona openTextColorPicker() ──
+  const sheet = page.locator('#textCreationSheet');
+  await page.locator('#lowerAddOrSelectAllBtn').click();
+  await expect(page.locator('#assetsAddMenu')).toHaveClass(/open/);
+  await page.locator('#assetsMenuTextBtn').click();
+  await expect(sheet).toHaveClass(/open/);
+  await page.locator('#textCreationInput').fill('REG055');
+  await sheet.getByRole('tab', { name: 'Cor do texto', exact: true }).click();
+  expect(await sheet.locator('#textColorSwatches .text-swatch').count()).toBeGreaterThan(0);
+  await expect(page.locator('#textColorHexText')).toBeVisible();
+  const textColorAddBtn = sheet.locator('#textColorSwatches .text-swatch-add');
+  await expect(textColorAddBtn).toBeVisible();
+  const paletteBeforeTextPlus = await page.evaluate(() => customColorPalette.length);
+  await spyClick('#textCreationColor');
+  await textColorAddBtn.click();
+  expect(await spyCount('#textCreationColor')).toBe(1);
+  expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBeforeTextPlus);
+
+  // TESTE H (parte 1) — a cor pessoal salva pelo Fundo do projeto aparece aqui.
+  expect(await sheet.locator('#textColorSwatches [data-swatch-color="#ff6b8a"]').count()).toBeGreaterThan(0);
+
+  // HEX inline aplica SOMENTE aos glifos (WYSIWYG) e entra na paleta pessoal.
+  await dispatchInput(page.locator('#textColorHexText'), '00aabb');
+  await dispatchChange(page.locator('#textColorHexText'));
+  await expect.poll(() => page.evaluate(() => pendingTextDraft.color)).toBe('#00aabb');
+  expect(await page.evaluate(() => customColorPalette)).toContain('#00aabb');
+  // Não altera Fundo da caixa nem opacidade (glifos e fundo permanecem separados).
+  expect(await page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(false);
+
+  // HEX inválido não aplica nem salva (mesma semântica do Fundo do projeto).
+  const textColorBeforeInvalid = await page.evaluate(() => ({ color: pendingTextDraft.color, palette: [...customColorPalette] }));
+  await dispatchInput(page.locator('#textColorHexText'), 'nothex');
+  await dispatchChange(page.locator('#textColorHexText'));
+  expect(await page.evaluate(() => ({ color: pendingTextDraft.color, palette: [...customColorPalette] }))).toEqual(textColorBeforeInvalid);
+
+  // ── TESTE C — Fundo da caixa: "Sem cor" preservado, HEX inline, "+" aciona openTextBgColorPicker() ──
+  await sheet.getByRole('tab', { name: 'Fundo da caixa', exact: true }).click();
+  await expect(sheet.locator('#textBgSwatches [data-swatch-none]')).toHaveClass(/active/);
+  expect(await page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(false);
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeHidden();
+  await expect(page.locator('#textBoxBackgroundHexText')).toBeVisible();
+  const boxAddBtn = sheet.locator('#textBgSwatches .text-swatch-add');
+  await expect(boxAddBtn).toBeVisible();
+  const paletteBeforeBoxPlus = await page.evaluate(() => customColorPalette.length);
+  await spyClick('#textBoxBackgroundColor');
+  await boxAddBtn.click();
+  expect(await spyCount('#textBoxBackgroundColor')).toBe(1);
+  expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBeforeBoxPlus);
+
+  // TESTE H (parte 2) — as cores pessoais salvas em Fundo do projeto/Cor do texto aparecem aqui.
+  expect(await sheet.locator('#textBgSwatches [data-swatch-color="#ff6b8a"]').count()).toBeGreaterThan(0);
+  expect(await sheet.locator('#textBgSwatches [data-swatch-color="#00aabb"]').count()).toBeGreaterThan(0);
+
+  // Escolher cor por HEX habilita o fundo e revela a opacidade (regra E9F1 preservada).
+  await dispatchInput(page.locator('#textBoxBackgroundHexText'), '#334455');
+  await dispatchChange(page.locator('#textBoxBackgroundHexText'));
+  await expect.poll(() => page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(true);
+  expect(await page.evaluate(() => pendingTextDraft.boxBackgroundColor)).toBe('#334455');
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeVisible();
+  expect(await page.evaluate(() => customColorPalette)).toContain('#334455');
+
+  // "Sem cor" continua desligando o fundo e ocultando a opacidade; glifos preservados.
+  await sheet.locator('#textBgSwatches [data-swatch-none]').click();
+  await expect.poll(() => page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(false);
+  await expect(page.locator('#textEditorBgOpacityWrap')).toBeHidden();
+  expect(await page.evaluate(() => pendingTextDraft.color)).toBe('#00aabb');
+
+  // Cancelar descarta o draft (nenhum Text Asset chega a ser criado nesta PR de teste).
+  await sheet.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(sheet).not.toHaveClass(/open/);
+
+  // ── TESTE J — a paleta pessoal NUNCA entra no projeto salvo ──
+  const payload = await page.evaluate(() => JSON.stringify(buildProjectData(true)));
+  for (const needle of ['ff6b8a', '00aabb', '334455', 'arco_user_custom_colors', 'customColorPalette']) {
+    expect(payload.toLowerCase().includes(needle.toLowerCase()), `payload não deve conter "${needle}"`).toBe(false);
+  }
+
+  // ── TESTE G — persistência: sobrevive a um novo carregamento do app ──
+  const paletteBeforeReload = await page.evaluate(() => [...customColorPalette].sort());
+  expect(paletteBeforeReload.length).toBeGreaterThan(0);
+  // As interações reais desta PR podem ter agendado um checkpoint de Session
+  // Autosave (REG-034/036); limpar sessão/IndexedDB ANTES de recarregar evita o
+  // diálogo de recuperação de sessão — irrelevante para este gate de paleta pessoal,
+  // que testa apenas localStorage, nunca tocado por clearStartupStorage.
+  await clearStartupStorage(page);
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await expect(page.locator('#startupRecoveryDialog')).toBeHidden();
+  const paletteAfterReload = await page.evaluate(() => [...customColorPalette].sort());
+  expect(paletteAfterReload).toEqual(paletteBeforeReload);
+
+  // Abrir outro projeto (mesmo fluxo público de carregar um arquivo) preserva a MESMA
+  // paleta pessoal — ela não é propriedade do projeto nem do Text Asset.
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  expect(await page.evaluate(() => [...customColorPalette].sort())).toEqual(paletteBeforeReload);
+  await openBgPanel();
+  expect(await bgPanel.locator('#bgSwatches [data-color="#ff6b8a"]').count()).toBeGreaterThan(0);
+  await bgPanel.locator('.panel-handle').click();
+  await expect(bgPanel).not.toHaveClass(/show/);
+
+  expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
+  expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
+});
