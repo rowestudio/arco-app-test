@@ -4995,11 +4995,17 @@ body.asset-context-panel-open #toolbar{display:none !important;}
          renderTextEditorOptions/renderTextColorSwatches.
          v8z4b32E9F5 — REG-055: acrescenta paleta pessoal persistente compartilhada e
          campo HEX inline no MESMO painel.
-         v8z4b32E9F5-R1 — o próprio #textCreationColor (nunca clonado) é realocado
-         sobre o "+" via .color-trigger-wrap a cada render (renderTextColorSwatches),
-         tornando-se o alvo real do toque — nenhum painel novo, nenhum .click()
-         programático em input off-screen. -->
-    <div class="text-editor-panel" data-text-panel="color"><div id="textColorSwatches" class="text-swatch-row" role="group" aria-label="Cor do texto"></div><input id="textCreationColor" aria-label="Escolher outra cor do texto" class="color-trigger-input" type="color" value="#ffffff" onchange="addCustomColorToPalette(this.value,'picker','text-color')"><div class="text-hex-row"><input id="textColorHexText" type="text" maxlength="7" class="text-hex-input" aria-label="Hexadecimal da cor do texto" placeholder="#RRGGBB" oninput="onTextColorHexInput(this.value)" onchange="commitTextColorHex(this.value)"></div></div>
+         v8z4b32E9F5-R2 — REG-055: #textColorTriggerWrap/#textCreationColor são
+         declarados AQUI, uma única vez, como o ÚLTIMO filho estático de
+         #textColorSwatches. renderTextColorSwatches() só insere/remove os SWATCHES
+         dinâmicos (presets/paleta pessoal) via insertAdjacentHTML('beforebegin', …)
+         relativo a este wrapper — o wrapper e o input nativo NUNCA são
+         removidos/recriados/reparentados, nem mesmo durante os próprios eventos
+         'input' do picker (setTextColor → renderTextEditorOptions →
+         renderTextColorSwatches, disparado a cada frame do drag no picker nativo;
+         a R1 fazia exatamente isso via row.innerHTML+appendChild, quebrando a
+         interação enquanto o picker estava em uso). Nenhum painel novo. -->
+    <div class="text-editor-panel" data-text-panel="color"><div id="textColorSwatches" class="text-swatch-row" role="group" aria-label="Cor do texto"><span id="textColorTriggerWrap" class="color-trigger-wrap"><button type="button" class="text-swatch-add" aria-hidden="true" tabindex="-1">+</button><input id="textCreationColor" aria-label="Escolher outra cor do texto" class="color-trigger-input" type="color" value="#ffffff" onchange="addCustomColorToPalette(this.value,'picker','text-color')"></span></div><div class="text-hex-row"><input id="textColorHexText" type="text" maxlength="7" class="text-hex-input" aria-label="Hexadecimal da cor do texto" placeholder="#RRGGBB" oninput="onTextColorHexInput(this.value)" onchange="commitTextColorHex(this.value)"></div></div>
     <!-- v8z4b32E9F1 — Fundo da caixa: swatch "Sem cor / Transparente" (padrão) +
          mesma paleta neutra de Cor do texto + botão + (color picker). Escolher uma
          cor liga o fundo (boxBackgroundEnabled=true) e revela o slider de opacidade;
@@ -5007,11 +5013,11 @@ body.asset-context-panel-open #toolbar{display:none !important;}
          boxBackgroundOpacity, nunca a opacidade dos glifos.
          v8z4b32E9F5 — REG-055: acrescenta paleta pessoal persistente compartilhada e
          campo HEX inline no MESMO painel.
-         v8z4b32E9F5-R1 — o próprio #textBoxBackgroundColor (nunca clonado) é realocado
-         sobre o "+" via .color-trigger-wrap a cada render (renderTextBgSwatches),
-         tornando-se o alvo real do toque — nenhum painel novo, nenhum .click()
-         programático em input off-screen. -->
-    <div class="text-editor-panel" data-text-panel="background"><div class="text-bg-panel" role="group" aria-label="Fundo da caixa"><div id="textBgSwatches" class="text-swatch-row"></div><input id="textBoxBackgroundColor" class="color-trigger-input" type="color" value="#000000" aria-label="Escolher outra cor do fundo" onchange="addCustomColorToPalette(this.value,'picker','text-box-background')"><div class="text-hex-row"><input id="textBoxBackgroundHexText" type="text" maxlength="7" class="text-hex-input" aria-label="Hexadecimal do fundo da caixa" placeholder="#RRGGBB" oninput="onTextBgHexInput(this.value)" onchange="commitTextBgHex(this.value)"></div><div id="textEditorBgOpacityWrap" class="text-bg-opacity-row" hidden><svg class="text-bg-opacity-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-opacity"></use></svg><input id="textBoxBackgroundOpacity" class="text-box-opacity" type="range" min="0" max="100" step="1" value="70" aria-label="Opacidade do fundo"><span id="textBoxBackgroundOpacityValue" class="text-box-opacity-value">70%</span></div></div></div>
+         v8z4b32E9F5-R2 — REG-055: mesma correção de estabilidade do wrapper/input
+         nativo aplicada acima em Cor do texto, agora em #textBgTriggerWrap/
+         #textBoxBackgroundColor (último filho estático de #textBgSwatches);
+         renderTextBgSwatches() só toca os swatches dinâmicos. -->
+    <div class="text-editor-panel" data-text-panel="background"><div class="text-bg-panel" role="group" aria-label="Fundo da caixa"><div id="textBgSwatches" class="text-swatch-row"><span id="textBgTriggerWrap" class="color-trigger-wrap"><button type="button" class="text-swatch-add" aria-hidden="true" tabindex="-1">+</button><input id="textBoxBackgroundColor" class="color-trigger-input" type="color" value="#000000" aria-label="Escolher outra cor do fundo" onchange="addCustomColorToPalette(this.value,'picker','text-box-background')"></span></div><div class="text-hex-row"><input id="textBoxBackgroundHexText" type="text" maxlength="7" class="text-hex-input" aria-label="Hexadecimal do fundo da caixa" placeholder="#RRGGBB" oninput="onTextBgHexInput(this.value)" onchange="commitTextBgHex(this.value)"></div><div id="textEditorBgOpacityWrap" class="text-bg-opacity-row" hidden><svg class="text-bg-opacity-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-opacity"></use></svg><input id="textBoxBackgroundOpacity" class="text-box-opacity" type="range" min="0" max="100" step="1" value="70" aria-label="Opacidade do fundo"><span id="textBoxBackgroundOpacityValue" class="text-box-opacity-value">70%</span></div></div></div>
     <!-- v8z4b32E9F1 — Largura: [Auto compacto] [slider step 5] [valor]. Um único botão
          de modo (Auto). Mover o slider entra em fixed no MESMO gesto; Auto recalcula a
          medição canônica e re-sincroniza o slider sem sair de auto. Sem botão "Fixa"
@@ -5612,14 +5618,24 @@ body.asset-context-panel-open #toolbar{display:none !important;}
        v8z4b32E9F5-R1 — REG-055: a mesma linha passa a incluir a paleta pessoal
        persistente (customColorPalette) e um "+" cujo ALVO REAL de toque é o próprio
        input[type=color] nativo já existente (#bgHexInput), sobreposto pela primitiva
-       .color-trigger-wrap (ver renderProjectBgSwatches) — nunca um .click()
-       programático em input off-screen. O campo HEX permanece INLINE neste painel,
-       sem segunda tela, sem painel novo. -->
-  <div id="bgSwatches" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;"></div>
+       .color-trigger-wrap — nunca um .click() programático em input off-screen.
+       v8z4b32E9F5-R2 — REG-055: #bgColorTriggerWrap/#bgHexInput são declarados AQUI,
+       uma única vez, como o ÚLTIMO filho estático de #bgSwatches. renderProjectBgSwatches()
+       só insere/remove os SWATCHES dinâmicos (presets/paleta pessoal) via
+       insertAdjacentHTML('beforebegin', …) relativo a este wrapper — o wrapper e o
+       input nativo NUNCA são removidos/recriados/reparentados, nem mesmo durante os
+       próprios eventos 'input' do picker (setBgColorHex → syncBgColorUI →
+       renderProjectBgSwatches, disparado a cada frame do drag no picker nativo).
+       O campo HEX permanece INLINE neste painel, sem segunda tela, sem painel novo. -->
+  <div id="bgSwatches" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+    <span id="bgColorTriggerWrap" class="color-trigger-wrap">
+      <button type="button" class="bg-swatch-add" aria-hidden="true" tabindex="-1">+</button>
+      <input type="color" id="bgHexInput" value="#000000" class="color-trigger-input" aria-label="Escolher outra cor de fundo"
+        onpointerdown="beginBgColorEdit()" onfocus="beginBgColorEdit()" oninput="setBgColorHex(this.value)" onchange="commitBgColorEdit(this.value,'picker')">
+    </span>
+  </div>
   <div style="display:flex;align-items:center;gap:10px;">
     <span style="font-size:12px;color:var(--text3);flex-shrink:0;">Hexadecimal</span>
-    <input type="color" id="bgHexInput" value="#000000" class="color-trigger-input" aria-label="Escolher outra cor de fundo"
-      onpointerdown="beginBgColorEdit()" onfocus="beginBgColorEdit()" oninput="setBgColorHex(this.value)" onchange="commitBgColorEdit(this.value,'picker')">
     <input type="text" id="bgHexText" value="#000000" maxlength="7"
       style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;
              padding:8px 12px;font-size:14px;color:var(--text);font-family:monospace;"
@@ -15779,10 +15795,23 @@ function quickSwatchMarkup(color,label,active){return `<button type="button" cla
 // em REG-055) — o próprio #textCreationColor (nunca clonado) é REALOCADO a cada
 // render para dentro do wrapper .color-trigger-wrap sobre o "+", tornando-se o alvo
 // real do toque. Acrescenta a paleta pessoal persistente entre os presets e o "+".
-function renderTextColorSwatches(){const row=document.getElementById('textColorSwatches');if(!row||!pendingTextDraft)return;const input=document.getElementById('textCreationColor');const cur=String(pendingTextDraft.color||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);let html=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Cor '+n.label,n.value===cur)).join('');if(!inList&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Cor personalizada atual',true);html+=customColorPalette.filter(hex=>hex!==cur&&!PROJECT_BG_NEUTRALS.some(n=>n.value===hex)).map(hex=>quickSwatchMarkup(hex,'Cor pessoal '+hex,false)).join('');html+=`<span class="color-trigger-wrap"><button type="button" class="text-swatch-add" aria-hidden="true" tabindex="-1">+</button></span>`;row.innerHTML=html;const wrap=row.querySelector('.color-trigger-wrap');if(wrap&&input)wrap.appendChild(input);row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextColor(b.dataset.swatchColor)));const hexText=document.getElementById('textColorHexText');if(hexText&&document.activeElement!==hexText)hexText.value=cur||'';}
+// v8z4b32E9F5-R2 — REG-055: #textColorTriggerWrap/#textCreationColor são estáticos
+// (declarados uma única vez no HTML, último filho de #textColorSwatches). Esta
+// função NUNCA os toca: remove só os swatches dinâmicos anteriores (presets/paleta
+// pessoal) e insere os novos via insertAdjacentHTML('beforebegin', …) relativo ao
+// wrapper. A R1 fazia row.innerHTML=… + appendChild(input) a cada render — como
+// setTextColor() chama renderTextEditorOptions()→renderTextColorSwatches() a cada
+// evento 'input' do próprio picker nativo, isso removia e reinseria o input ATIVO
+// no DOM enquanto o usuário ainda estava interagindo com o picker, quebrando a
+// interação. O wrapper/input agora têm identidade e conexão ao DOM estáveis durante
+// toda a vida da interação.
+function renderTextColorSwatches(){const row=document.getElementById('textColorSwatches');const wrap=document.getElementById('textColorTriggerWrap');if(!row||!wrap||!pendingTextDraft)return;const cur=String(pendingTextDraft.color||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);Array.from(row.children).forEach(el=>{if(el!==wrap)el.remove();});let html=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Cor '+n.label,n.value===cur)).join('');if(!inList&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Cor personalizada atual',true);html+=customColorPalette.filter(hex=>hex!==cur&&!PROJECT_BG_NEUTRALS.some(n=>n.value===hex)).map(hex=>quickSwatchMarkup(hex,'Cor pessoal '+hex,false)).join('');wrap.insertAdjacentHTML('beforebegin',html);row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextColor(b.dataset.swatchColor)));const hexText=document.getElementById('textColorHexText');if(hexText&&document.activeElement!==hexText)hexText.value=cur||'';}
 // Paleta rápida de Fundo da caixa: "Sem cor/Transparente" + neutros + paleta pessoal + custom + botão +.
 // v8z4b32E9F5-R1 — mesma correção: #textBoxBackgroundColor realocado sobre o "+".
-function renderTextBgSwatches(){const row=document.getElementById('textBgSwatches');if(!row||!pendingTextDraft)return;const input=document.getElementById('textBoxBackgroundColor');const enabled=!!pendingTextDraft.boxBackgroundEnabled,cur=String(pendingTextDraft.boxBackgroundColor||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);let html=`<button type="button" class="text-swatch text-swatch-none${!enabled?' active':''}" data-swatch-none="1" aria-label="Sem cor" title="Transparente" aria-pressed="${!enabled?'true':'false'}"></button>`;html+=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Fundo '+n.label,enabled&&n.value===cur)).join('');if(enabled&&!inList&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Fundo personalizado atual',true);html+=customColorPalette.filter(hex=>hex!==cur&&!PROJECT_BG_NEUTRALS.some(n=>n.value===hex)).map(hex=>quickSwatchMarkup(hex,'Fundo pessoal '+hex,false)).join('');html+=`<span class="color-trigger-wrap"><button type="button" class="text-swatch-add" aria-hidden="true" tabindex="-1">+</button></span>`;row.innerHTML=html;const wrap=row.querySelector('.color-trigger-wrap');if(wrap&&input)wrap.appendChild(input);const noneBtn=row.querySelector('[data-swatch-none]');if(noneBtn)noneBtn.addEventListener('click',()=>setTextBoxBackground(null));row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextBoxBackground(b.dataset.swatchColor)));const hexText=document.getElementById('textBoxBackgroundHexText');if(hexText&&document.activeElement!==hexText)hexText.value=cur||'';}
+// v8z4b32E9F5-R2 — mesma correção de estabilidade: #textBgTriggerWrap/
+// #textBoxBackgroundColor são estáticos e nunca tocados aqui; só os swatches
+// dinâmicos ("Sem cor" + presets + paleta pessoal) são substituídos.
+function renderTextBgSwatches(){const row=document.getElementById('textBgSwatches');const wrap=document.getElementById('textBgTriggerWrap');if(!row||!wrap||!pendingTextDraft)return;const enabled=!!pendingTextDraft.boxBackgroundEnabled,cur=String(pendingTextDraft.boxBackgroundColor||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);Array.from(row.children).forEach(el=>{if(el!==wrap)el.remove();});let html=`<button type="button" class="text-swatch text-swatch-none${!enabled?' active':''}" data-swatch-none="1" aria-label="Sem cor" title="Transparente" aria-pressed="${!enabled?'true':'false'}"></button>`;html+=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Fundo '+n.label,enabled&&n.value===cur)).join('');if(enabled&&!inList&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Fundo personalizado atual',true);html+=customColorPalette.filter(hex=>hex!==cur&&!PROJECT_BG_NEUTRALS.some(n=>n.value===hex)).map(hex=>quickSwatchMarkup(hex,'Fundo pessoal '+hex,false)).join('');wrap.insertAdjacentHTML('beforebegin',html);const noneBtn=row.querySelector('[data-swatch-none]');if(noneBtn)noneBtn.addEventListener('click',()=>setTextBoxBackground(null));row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextBoxBackground(b.dataset.swatchColor)));const hexText=document.getElementById('textBoxBackgroundHexText');if(hexText&&document.activeElement!==hexText)hexText.value=cur||'';}
 // v8z4b32E9F5 — HEX inline da Cor do texto: aplica em tempo real (WYSIWYG) a cada
 // entrada válida; só salva na paleta pessoal no commit (blur/Enter) com HEX válido.
 function onTextColorHexInput(value){const norm=normalizeColorHex(value);if(norm)setTextColor(norm);}
@@ -42287,20 +42316,22 @@ function normalizeBgHex(hex) {
 // do editor). Markup/comportamento idênticos ao seletor aprovado (data-color,
 // setBgColor(this), title, contorno do branco); apenas elimina a lista hardcoded
 // duplicada. syncBgColorUI corrige o estado 'active' conforme a cor atual do projeto.
-// v8z4b32E9F5-R1 — REG-055 (correção de revisão): acrescenta a paleta pessoal
-// persistente (customColorPalette) entre os presets e o "+". A tentativa anterior
-// (v8z4b32E9F5 inicial) mantinha #bgHexInput 1×1/off-screen/pointer-events:none e
-// dependia de um .click() programático — exatamente o mecanismo de ativação que já
-// falhava fisicamente em REG-055. Agora o próprio #bgHexInput (nunca clonado, sempre
-// reaproveitado via appendChild) é REALOCADO para dentro do wrapper .color-trigger-wrap
-// sobre o botão "+" a cada render, tornando-se o alvo real do toque do usuário — sem
-// roda/espectro/conta-gotas próprios, sem painel novo.
+// v8z4b32E9F5-R2 — REG-055 (2ª correção de revisão): #bgColorTriggerWrap/#bgHexInput
+// são estáticos (declarados uma única vez no HTML, último filho de #bgSwatches).
+// A R1 fazia row.innerHTML=… + appendChild(bgInput) a cada render — reaproveitava o
+// MESMO input (nunca clonado), mas removia-o e reinseria-o no DOM a cada chamada, o
+// que quebraria a interação se disparado durante o próprio gesto do picker (mesmo
+// padrão problemático corrigido em Cor do texto/Fundo da caixa abaixo). Agora esta
+// função NUNCA toca o wrapper/input: remove só os swatches dinâmicos anteriores
+// (presets/paleta pessoal) e insere os novos via insertAdjacentHTML('beforebegin', …)
+// relativo ao wrapper, que permanece com identidade e conexão ao DOM estáveis.
 let projectBgSwatchesRendered = false;
 function renderProjectBgSwatches() {
   const row = document.getElementById('bgSwatches');
-  if (!row) return;
-  const bgInput = document.getElementById('bgHexInput');
+  const wrap = document.getElementById('bgColorTriggerWrap');
+  if (!row || !wrap) return;
   const cur = normalizeBgHex(bgColor) || DEFAULT_PROJECT_BG;
+  Array.from(row.children).forEach(el => { if (el !== wrap) el.remove(); });
   let html = PROJECT_BG_NEUTRALS.map(n => {
     const white = n.value === '#ffffff';
     return `<div class="bg-swatch" data-color="${n.value}" onclick="setBgColor('${n.value}',this)" style="background:${n.value};${white ? 'border-color:rgba(255,255,255,.3);' : ''}" title="${n.label}"></div>`;
@@ -42308,10 +42339,7 @@ function renderProjectBgSwatches() {
   html += customColorPalette.filter(hex => !PROJECT_BG_NEUTRALS.some(n => n.value === hex)).map(hex =>
     `<div class="bg-swatch" data-color="${hex}" onclick="setBgColor('${hex}',this)" style="background:${hex};" title="Cor pessoal ${hex}"></div>`
   ).join('');
-  html += `<span class="color-trigger-wrap"><button type="button" class="bg-swatch-add" aria-hidden="true" tabindex="-1">+</button></span>`;
-  row.innerHTML = html;
-  const wrap = row.querySelector('.color-trigger-wrap');
-  if (wrap && bgInput) wrap.appendChild(bgInput);
+  wrap.insertAdjacentHTML('beforebegin', html);
   projectBgSwatchesRendered = true;
   document.querySelectorAll('#bgSwatches .bg-swatch').forEach(c => {
     c.classList.toggle('active', (c.dataset.color || '').toLowerCase() === cur);

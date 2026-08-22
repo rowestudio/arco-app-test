@@ -3646,6 +3646,22 @@ test('REG-053 — painel de transformação em multi-seleção é invariante à 
 // público (só o disparo de eventos DOM reais nos próprios inputs nativos substitui
 // o toque físico, já que um agente headless não pode pilotar o picker do SO). Falha
 // na base pré-R1 (inputs 1×1/off-screen/pointer-events:none) e passa após a correção.
+//
+// v8z4b32E9F5-R2 — 2ª correção de revisão. A R1 tornou o input o alvo real do
+// toque, mas reposicionava-o via row.innerHTML=…+appendChild(input) A CADA render —
+// e setTextColor()/setTextBoxBackground() chamam renderTextEditorOptions() (que
+// re-renderiza os swatches) a cada evento 'input' do PRÓPRIO picker nativo. Ou
+// seja, o input ativo era removido e reinserido no DOM enquanto o usuário ainda
+// interagia com o picker, o que pode interromper a interação no iPhone/Safari.
+// R2 torna o wrapper/input ESTÁTICOS (declarados uma única vez no HTML, último
+// filho de cada linha de swatches); as funções de render só substituem os
+// swatches dinâmicos ao redor deles via insertAdjacentHTML('beforebegin', …),
+// nunca tocando o wrapper/input. Este gate acrescenta `assertColorTriggerNeverRemounted`
+// (MutationObserver no `childList` da linha, observando se o wrapper/input chegam
+// a aparecer em `removedNodes` durante a própria reação a 'input'/'change' —
+// checar só identidade `===` não bastaria, pois appendChild reaproveita o MESMO
+// objeto DOM) nos três contextos. Falha na base pré-R2 (remoção momentânea
+// detectada pelo observer) e passa após a correção.
 test('REG-055 — "+" aciona diretamente o input[type=color] nativo (alvo real de toque), HEX inline e paleta pessoal persistente e compartilhada', async ({ page }) => {
   test.setTimeout(180_000);
   const errors = captureFatalErrors(page);
@@ -3737,6 +3753,58 @@ test('REG-055 — "+" aciona diretamente o input[type=color] nativo (alvo real d
     expect(result.hitIsInput, `${label}: o ponto central tocável do "+" deve resolver exatamente para o input nativo (não para o botão visual nem outro elemento)`).toBe(true);
   };
 
+  // BLOQUEADOR (revisão 2) — o input nativo ativo não pode ser removido/recriado/
+  // reparentado em resposta aos SEUS PRÓPRIOS eventos ('input'/'change'), pois isso
+  // interrompe a interação com o picker enquanto ele está em uso (a 1ª correção de
+  // ativação já fazia disso — row.innerHTML + appendChild do MESMO input a cada
+  // render, disparado de dentro do próprio handler de 'input' do picker). Verificar
+  // apenas identidade de objeto (`===`) não pega esse bug, porque appendChild
+  // reaproveita o MESMO objeto DOM — por isso observamos via MutationObserver se o
+  // wrapper/input chegam a aparecer em `removedNodes` durante a ação, o que captura
+  // a remoção momentânea mesmo quando o objeto volta a ser o mesmo depois.
+  const assertColorTriggerNeverRemounted = async (rowSelector, wrapSelector, inputSelector, action, label) => {
+    await page.evaluate(({ rowSelector, wrapSelector, inputSelector }) => {
+      const row = document.querySelector(rowSelector);
+      const wrap = document.querySelector(wrapSelector);
+      const input = document.querySelector(inputSelector);
+      const probe = { removed: false, wrap, input, parentBefore: input ? input.parentElement : null };
+      const observer = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+          for (const n of m.removedNodes) {
+            if (n === wrap || n === input) probe.removed = true;
+          }
+        }
+      });
+      observer.observe(row, { childList: true, subtree: true });
+      window.__colorTriggerStabilityProbe = probe;
+      window.__colorTriggerStabilityObserver = observer;
+    }, { rowSelector, wrapSelector, inputSelector });
+
+    await action();
+
+    const result = await page.evaluate(({ inputSelector, wrapSelector }) => {
+      const probe = window.__colorTriggerStabilityProbe;
+      window.__colorTriggerStabilityObserver.disconnect();
+      const inputNow = document.querySelector(inputSelector);
+      const wrapNow = document.querySelector(wrapSelector);
+      return {
+        removedDuringUpdate: probe.removed,
+        sameInputNode: probe.input === inputNow,
+        sameWrapNode: probe.wrap === wrapNow,
+        inputConnected: inputNow ? inputNow.isConnected : false,
+        sameParent: inputNow ? inputNow.parentElement === probe.parentBefore : false,
+        parentIsWrap: inputNow && wrapNow ? inputNow.parentElement === wrapNow : false,
+      };
+    }, { inputSelector, wrapSelector });
+
+    expect(result.removedDuringUpdate, `${label}: o input/wrapper nativo NÃO pode ser removido do DOM ao reagir aos seus próprios eventos`).toBe(false);
+    expect(result.sameInputNode, `${label}: mesmo objeto DOM do input antes/depois`).toBe(true);
+    expect(result.sameWrapNode, `${label}: mesmo objeto DOM do wrapper antes/depois`).toBe(true);
+    expect(result.inputConnected, `${label}: input precisa permanecer conectado ao documento`).toBe(true);
+    expect(result.sameParent, `${label}: input não pode ser reparentado`).toBe(true);
+    expect(result.parentIsWrap, `${label}: input permanece filho do MESMO wrapper`).toBe(true);
+  };
+
   // ── TESTE A — Fundo do projeto: presets, HEX inline, "+" = input nativo real ──
   await openBgPanel();
   expect(await bgPanel.locator('#bgSwatches .bg-swatch').count()).toBeGreaterThan(0);
@@ -3769,10 +3837,15 @@ test('REG-055 — "+" aciona diretamente o input[type=color] nativo (alvo real d
 
   // TESTE D (Fundo do projeto, via PICKER) — despachar input/change reais no
   // PRÓPRIO input[type=color] nativo aplica a cor, mantém Undo/dirty e salva na
-  // paleta com source=picker/context=bg.
+  // paleta com source=picker/context=bg. Também prova que o próprio input/wrapper
+  // NÃO é removido/recriado ao reagir ao seu próprio 'input'/'change' (o novo
+  // #bgHexInput só entraria em customColorPalette pela 1ª vez com este HEX, o que
+  // força renderProjectBgSwatches() via refreshCustomColorPaletteConsumers()).
   const undoBeforeBgPicker = await page.evaluate(() => undoStack.length);
-  await dispatchInput(bgPanel.locator('#bgHexInput'), '#123456');
-  await dispatchChange(bgPanel.locator('#bgHexInput'));
+  await assertColorTriggerNeverRemounted('#bgSwatches', '#bgColorTriggerWrap', '#bgHexInput', async () => {
+    await dispatchInput(bgPanel.locator('#bgHexInput'), '#123456');
+    await dispatchChange(bgPanel.locator('#bgHexInput'));
+  }, 'Fundo do projeto');
   await expect.poll(() => page.evaluate(() => bgColor)).toBe('#123456');
   expect(await page.evaluate(() => customColorPalette)).toContain('#123456');
   expect(await page.evaluate(() => lastCustomColorSource)).toBe('picker');
@@ -3828,9 +3901,14 @@ test('REG-055 — "+" aciona diretamente o input[type=color] nativo (alvo real d
   // TESTE D (Cor do texto, via PICKER) — despachar input/change reais no PRÓPRIO
   // #textCreationColor muda pendingTextDraft.color, afeta SOMENTE os glifos (Fundo
   // da caixa intocado) e salva na paleta com source=picker/context=text-color.
+  // setTextColor() chama renderTextEditorOptions()→renderTextColorSwatches() a cada
+  // 'input' — exatamente o caminho que a correção de revisão (R1) quebrava ao
+  // remover/reinserir o próprio input ativo; provamos aqui que ele permanece.
   const boxBgBeforeTextPicker = await page.evaluate(() => ({ enabled: pendingTextDraft.boxBackgroundEnabled, color: pendingTextDraft.boxBackgroundColor }));
-  await dispatchInput(page.locator('#textCreationColor'), '#a1b2c3');
-  await dispatchChange(page.locator('#textCreationColor'));
+  await assertColorTriggerNeverRemounted('#textColorSwatches', '#textColorTriggerWrap', '#textCreationColor', async () => {
+    await dispatchInput(page.locator('#textCreationColor'), '#a1b2c3');
+    await dispatchChange(page.locator('#textCreationColor'));
+  }, 'Cor do texto');
   await expect.poll(() => page.evaluate(() => pendingTextDraft.color)).toBe('#a1b2c3');
   expect(await page.evaluate(() => customColorPalette)).toContain('#a1b2c3');
   expect(await page.evaluate(() => lastCustomColorSource)).toBe('picker');
@@ -3881,9 +3959,13 @@ test('REG-055 — "+" aciona diretamente o input[type=color] nativo (alvo real d
   // TESTE D (Fundo da caixa, via PICKER) — despachar input/change reais no PRÓPRIO
   // #textBoxBackgroundColor habilita o fundo, aplica a cor, revela a opacidade,
   // preserva os glifos e salva na paleta com source=picker/context=text-box-background.
+  // setTextBoxBackground() chama renderTextEditorOptions()→renderTextBgSwatches() a
+  // cada 'input' — mesmo caminho vulnerável de Cor do texto; provamos estabilidade.
   const glyphColorBeforeBoxPicker = await page.evaluate(() => pendingTextDraft.color);
-  await dispatchInput(page.locator('#textBoxBackgroundColor'), '#556677');
-  await dispatchChange(page.locator('#textBoxBackgroundColor'));
+  await assertColorTriggerNeverRemounted('#textBgSwatches', '#textBgTriggerWrap', '#textBoxBackgroundColor', async () => {
+    await dispatchInput(page.locator('#textBoxBackgroundColor'), '#556677');
+    await dispatchChange(page.locator('#textBoxBackgroundColor'));
+  }, 'Fundo da caixa');
   await expect.poll(() => page.evaluate(() => pendingTextDraft.boxBackgroundEnabled)).toBe(true);
   expect(await page.evaluate(() => pendingTextDraft.boxBackgroundColor)).toBe('#556677');
   await expect(page.locator('#textEditorBgOpacityWrap')).toBeVisible();
