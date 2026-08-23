@@ -44,8 +44,66 @@ async function enableTextBoxColor(page, color) {
 async function disableTextBox(page) {
   await page.locator('#textBgSwatches [data-swatch-none]').click();
 }
-async function setTextFixedWidthSlider(page, value) {
-  await page.locator('#textWidthSlider').evaluate((el, v) => { el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); }, value);
+// v8z4b32E9G — a edição manual de largura pelo painel (slider) foi substituída pelas
+// side width handles no Stage. dragTextWidthHandle aciona o fluxo público REAL: eventos
+// de pointer reais despachados na própria alça (.text-width-handle[data-asset-width-
+// handle]), a única forma pública de alterar largura agora. moves é uma lista de
+// deslocamentos [dx,dy] em pixels de TELA a partir do centro da alça (aplicados em
+// sequência, simulando vários pointermove de um mesmo gesto); cancel dispara
+// pointercancel em vez de pointerup ao final.
+// v8z4b32E9G-R2 — hardened per revisão: exige a alça REAL visível/interativa (nunca
+// aceita um elemento oculto/sem área por engano) e devolve snapshots do diagnóstico de
+// lifecycle em cada etapa do gesto (pointerdown/primeiro pointermove/todos os
+// pointermove/pointerup-ou-cancel), lidos pela MESMA função de resolução que o produto
+// usa (resolveActiveTextAssetForWidthDrag), para tornar um FAIL autoexplicativo sem
+// precisar de uma nova rodada só para instrumentar.
+async function dragTextWidthHandle(page, side, moves, { cancel = false } = {}) {
+  return await page.evaluate(({ side, moves, cancel }) => {
+    const selector = `.text-width-handle.show[data-asset-width-handle="${side}"]`;
+    const handle = document.querySelector(selector);
+    if (!handle) throw new Error('side width handle not visible: ' + selector);
+    const style = getComputedStyle(handle);
+    const rect0 = handle.getBoundingClientRect();
+    if (style.display === 'none' || rect0.width <= 0 || rect0.height <= 0) {
+      throw new Error('side width handle has no usable geometry: ' + JSON.stringify({ display: style.display, w: rect0.width, h: rect0.height }));
+    }
+    const cx = rect0.left + rect0.width / 2, cy = rect0.top + rect0.height / 2;
+    const pointerId = 7771;
+    const fire = (type, x, y) => handle.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId, pointerType: 'touch', isPrimary: true }));
+    const snapshot = () => {
+      const resolved = typeof resolveActiveTextAssetForWidthDrag === 'function' ? resolveActiveTextAssetForWidthDrag() : null;
+      return {
+        textWidthGestureActive: typeof textWidthDragState !== 'undefined' && !!textWidthDragState,
+        textWidthHandleSide: (typeof textWidthDragState !== 'undefined' && textWidthDragState) ? textWidthDragState.side : null,
+        assetTransformDragStateActive: typeof assetTransformDragState !== 'undefined' && !!assetTransformDragState,
+        selectedAssetId: typeof selectedAssetId !== 'undefined' && selectedAssetId != null ? String(selectedAssetId) : null,
+        boxWidth: resolved ? resolved.asset.boxWidth : null,
+        textBaseBoxWidth: resolved ? resolved.asset.textBaseBoxWidth : null,
+        boxWidthMode: resolved ? resolved.asset.boxWidthMode : null,
+      };
+    };
+    const diag = { beforeDown: snapshot() };
+    fire('pointerdown', cx, cy);
+    diag.afterDown = snapshot();
+    let lastX = cx, lastY = cy, firstMoveDiag = null;
+    moves.forEach(([dx, dy], i) => {
+      lastX = cx + dx; lastY = cy + (dy || 0);
+      fire('pointermove', lastX, lastY);
+      if (i === 0) firstMoveDiag = snapshot();
+    });
+    diag.afterFirstMove = firstMoveDiag;
+    diag.afterAllMoves = snapshot();
+    fire(cancel ? 'pointercancel' : 'pointerup', lastX, lastY);
+    diag.afterUp = snapshot();
+    return { startX: cx, startY: cy, diag };
+  }, { side, moves, cancel });
+}
+// Atalho para um único deslocamento horizontal (screen px); positivo estende a alça
+// para FORA da caixa em ambos os lados (direita cresce à direita, esquerda cresce à
+// esquerda), como o usuário percebe visualmente.
+async function dragTextWidthHandleBy(page, side, deltaPx, opts = {}) {
+  const dx = side === 'right' ? deltaPx : -deltaPx;
+  return dragTextWidthHandle(page, side, [[dx * 0.34, 0], [dx * 0.67, 0], [dx, 0]], opts);
 }
 
 async function seedRealSessionCheckpoint(page) {
@@ -1728,10 +1786,12 @@ test('E8Z — editor tipográfico e caixa usam fluxo público, isolam draft e bl
     { label:'Editar texto', text:'' }, { label:'Fonte', text:'' }, { label:'Estilo', text:'' },
     { label:'Alinhamento', text:'' }, { label:'Cor do texto', text:'' }, { label:'Fundo da caixa', text:'' }, { label:'Largura da caixa', text:'' },
   ]);
-  // v8z4b32E9F1 — o controle de largura (Auto + slider) vive no PAINEL de Largura, não
-  // sob o textarea: nenhum range de largura no painel de conteúdo; o slider fica no seu painel.
+  // v8z4b32E9G — o controle de largura deixou de existir no painel (nem slider nem
+  // stepper): a largura agora é editada diretamente no Stage pelas side width handles;
+  // o painel de Largura mantém somente o comando Auto, sem range algum.
   await expect(page.locator('[data-text-panel="text"] input[type="range"]')).toHaveCount(0);
-  await expect(page.locator('[data-text-panel="width"] #textWidthSlider')).toHaveCount(1);
+  await expect(page.locator('[data-text-panel="width"] input[type="range"]')).toHaveCount(0);
+  await expect(page.locator('[data-text-panel="width"] #textWidthAuto')).toHaveCount(1);
   const creationWithoutBox=await page.evaluate(()=>{const m=measureTextAsset(pendingTextDraft);return{enabled:pendingTextDraft.boxBackgroundEnabled,cx:pendingTextDraft.worldX+pendingTextDraft.worldW/2,cy:pendingTextDraft.worldY+pendingTextDraft.worldH/2,boxWidth:pendingTextDraft.boxWidth,lines:m.lines,geometry:serializeProjectAsset(pendingTextDraft,0,false)}});
   expect(creationWithoutBox.enabled).toBe(false);
   // v8z4b32E9F1 — ligar o fundo escolhendo uma cor (auto-enable) preserva wrapping e centro.
@@ -2026,8 +2086,8 @@ test('E9B — Text Asset acompanha seleção na paralaxe do Stage', async ({ pag
   // verificada acima.
   await page.evaluate(id=>{const a=assets.find(x=>String(x.id)===id),f=frames[0];a.worldX=(f.x+f.w/2)-a.worldW/2;a.worldY=(f.y+f.h/2)-a.worldH/2;renderProjectWorldExtraImages();renderAssetSelectionOverlay();},textId);
   await page.evaluate(()=>startPreview());await expect(page.locator('#previewScreen')).toHaveClass(/show/,{timeout:30_000});await expect.poll(()=>page.evaluate(()=>previewLoadingHiddenAfterFirstFrame),{timeout:30_000}).toBe(true);
-  const previewProof=await page.evaluate(id=>{if(animFrame)togglePreviewPlayback();const snapshot=renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id),audit=renderTransform.preview?.assets?.find(a=>String(a.id)===id),screen=document.getElementById('previewScreen'),overlay=document.getElementById('assetSelectOutline'),handles=document.querySelectorAll('.asset-corner-handle.show');return{snapshot,audit,overlayInsidePreview:!!(overlay&&screen.contains(overlay)),handlesInsidePreview:[...handles].some(h=>screen.contains(h)),loading:previewLoadingHiddenAfterFirstFrame}},textId);
-  expect(previewProof.snapshot).toMatchObject({id:textId,depth:-37,boxBackgroundEnabled:true});expect(previewProof.audit).toMatchObject({id:textId,drawn:true,intersectsCamera:true});expect(previewProof).toMatchObject({overlayInsidePreview:false,handlesInsidePreview:false,loading:true});await page.evaluate(()=>stopPreview());await expect(page.locator('body')).toHaveClass(/mode-editor/);
+  const previewProof=await page.evaluate(id=>{if(animFrame)togglePreviewPlayback();const snapshot=renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id),audit=renderTransform.preview?.assets?.find(a=>String(a.id)===id),screen=document.getElementById('previewScreen'),overlay=document.getElementById('assetSelectOutline'),handles=document.querySelectorAll('.asset-corner-handle.show'),widthHandles=document.querySelectorAll('.text-width-handle.show');return{snapshot,audit,overlayInsidePreview:!!(overlay&&screen.contains(overlay)),handlesInsidePreview:[...handles].some(h=>screen.contains(h)),widthHandlesInsidePreview:[...widthHandles].some(h=>screen.contains(h)),loading:previewLoadingHiddenAfterFirstFrame}},textId);
+  expect(previewProof.snapshot).toMatchObject({id:textId,depth:-37,boxBackgroundEnabled:true});expect(previewProof.audit).toMatchObject({id:textId,drawn:true,intersectsCamera:true});expect(previewProof).toMatchObject({overlayInsidePreview:false,handlesInsidePreview:false,widthHandlesInsidePreview:false,loading:true});await page.evaluate(()=>stopPreview());await expect(page.locator('body')).toHaveClass(/mode-editor/);
 });
 
 test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob depth', async ({ page }) => {
@@ -2091,18 +2151,21 @@ test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob dep
   expectHugsSelection(g);
   const autoWorldH = g.worldH;
 
-  // (c) Modo fixo (override manual): trava largura menor e força quebra automática.
+  // (c) Modo fixo (override manual): a E9G substituiu o slider pela side width handle
+  // no Stage — arrastar a alça DIREITA para dentro reduz a largura e trava o modo.
   await page.evaluate(id => startTextAssetEditing(assets.find(a => String(a.id) === id)), textId);
   await page.getByRole('tab', { name: 'Largura da caixa', exact: true }).click();
-  // v8z4b32E9F1 — mover o slider entra em 'fixed' no mesmo gesto (sem botão "Fixa"); o botão Auto perde o estado ativo.
-  await setTextFixedWidthSlider(page, 130);
+  const widthBeforeFix = (await geom(textId)).boxWidth;
+  await dragTextWidthHandleBy(page, 'right', -160);
   expect(await page.evaluate(() => pendingTextDraft.boxWidthMode)).toBe('fixed');
   await expect(page.locator('#textWidthAuto')).not.toHaveClass(/active/);
+  const fixedDraftWidth = await page.evaluate(() => pendingTextDraft.boxWidth);
+  expect(fixedDraftWidth).toBeLessThan(widthBeforeFix); // arrastar para dentro reduziu a largura lógica
   await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
   const undoBaseline = await page.evaluate(() => undoStack.length);
   g = await geom(textId);
   expect(g.mode).toBe('fixed');
-  expect(Math.abs(g.boxWidth - 130)).toBeLessThan(1.5);
+  expect(Math.abs(g.boxWidth - fixedDraftWidth)).toBeLessThan(1.5); // confirm preserva a largura do draft (não recentraliza)
   expect(g.worldW).toBeLessThan(longest); // quebra dentro da largura travada
   expect(g.worldH).toBeGreaterThan(autoWorldH); // mais linhas por causa da quebra
   expectHugsSelection(g);
@@ -2112,7 +2175,13 @@ test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob dep
   await expect.poll(() => page.evaluate(id => assets.find(a => String(a.id) === id).boxWidthMode, textId)).toBe('auto');
   await page.locator('#topBtnRedo').click();
   await expect.poll(() => page.evaluate(id => assets.find(a => String(a.id) === id).boxWidthMode, textId)).toBe('fixed');
-  expect(await page.evaluate(id => Math.abs(assets.find(a => String(a.id) === id).boxWidth - 130) < 1.5, textId)).toBe(true);
+  // v8z4b32E9G-R1 — correção de revisão: fixedDraftWidth é uma const do contexto
+  // Node/Playwright; não pode ser referenciada dentro do corpo de page.evaluate()
+  // (executa no browser, onde essa variável não existe). Lê o valor real via
+  // page.evaluate() e compara no lado Node, preservando a mesma prova (Undo → Auto,
+  // Redo → Fixed com exatamente a largura confirmada no draft).
+  const redoneBoxWidth = await page.evaluate(id => assets.find(a => String(a.id) === id).boxWidth, textId);
+  expect(Math.abs(redoneBoxWidth - fixedDraftWidth)).toBeLessThan(1.5);
 
   // (c) Persistência do modo/valor em Save/Load real.
   const downloadPromise = page.waitForEvent('download');
@@ -2125,7 +2194,7 @@ test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob dep
   expect(await page.evaluate(() => lastLoadError)).toBe('');
   const loaded = await page.evaluate(id => { const a = assets.find(x => String(x.id) === id); return { mode: a.boxWidthMode, boxWidth: a.boxWidth }; }, textId);
   expect(loaded.mode).toBe('fixed');
-  expect(Math.abs(loaded.boxWidth - 130)).toBeLessThan(1.5);
+  expect(Math.abs(loaded.boxWidth - serialized.boxWidth)).toBeLessThan(1.5);
 
   // Volta ao modo auto para a checagem de paridade sob depth com largura dinâmica.
   await page.locator('#modeAssetsBtn').click();
@@ -2193,8 +2262,9 @@ test('E9D — criação pública horizontal e editor tipográfico preserva draft
   await page.locator('#tbAssetReplace').click(); const before=await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,canonical:serializeProjectAsset(getSelectedAsset(),0,false),payload:buildProjectData(true)}));
   await sheet.getByRole('tab',{name:'Alinhamento',exact:true}).click();
   for(const alignment of ['Esquerda','Centro','Direita'])await sheet.getByRole('button',{name:`Alinhar ${alignment}`,exact:true}).click();
-  // v8z4b32E9F1 — Auto + slider: mover o slider entra em fixed e altera o valor; sem botão "Fixa" nem stepper −/+.
-  await sheet.getByRole('tab',{name:'Largura da caixa',exact:true}).click(); const widthBefore=await page.locator('#textWidthValue').textContent(); await setTextFixedWidthSlider(page,265); expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('fixed'); await expect(page.locator('#textWidthValue')).not.toHaveText(widthBefore);
+  // v8z4b32E9G — Auto + side width handle: arrastar a alça no Stage entra em fixed e
+  // altera a largura; sem slider, sem botão "Fixa", sem stepper −/+.
+  await sheet.getByRole('tab',{name:'Largura da caixa',exact:true}).click(); const widthBefore=await page.evaluate(()=>pendingTextDraft.boxWidth); await dragTextWidthHandleBy(page,'right',80); expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('fixed'); expect(await page.evaluate(()=>pendingTextDraft.boxWidth)).not.toBeCloseTo(widthBefore,0);
   await sheet.getByRole('tab',{name:'Editar texto',exact:true}).click(); await page.locator('#textCreationInput').fill('Texto draft'); const liveDraft=await page.evaluate(()=>textEditorDraftFields(pendingTextDraft)); await sheet.getByRole('button',{name:'Minimizar editor de texto',exact:true}).click(); await expect(sheet).not.toHaveClass(/open/);
   expect(await page.evaluate(()=>({undo:undoStack.length,rev:_sessionAutosaveQueuedRevision,canonical:serializeProjectAsset(getSelectedAsset(),0,false),payload:buildProjectData(true),draft:!!pendingTextDraft}))).toEqual({...before,draft:true});
   await page.locator('#tbAssetReplace').click(); await expect(page.locator('#textCreationInput')).toHaveValue('Texto draft'); expect(await page.evaluate(()=>textEditorDraftFields(pendingTextDraft))).toEqual(liveDraft); await sheet.getByRole('button',{name:'Cancelar',exact:true}).click();
@@ -2367,11 +2437,11 @@ test('E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo
       fontLabel: fontActive ? fontActive.textContent : '',
       styleLabel: styleActive ? styleActive.textContent : '',
       color: String(document.getElementById('textCreationColor').value).toLowerCase(),
-      // v8z4b32E9F1 — modo derivado do único botão Auto (ativo=auto, senão fixed);
-      // valor do slider em #textWidthValue; "fundo ligado" reflete pela visibilidade do
-      // slider de opacidade (só existe com fundo ligado).
+      // v8z4b32E9G — modo derivado do único botão Auto (ativo=auto, senão fixed); não
+      // há mais valor numérico de largura no painel (a largura em si vive só no Stage,
+      // pelas side width handles); "fundo ligado" reflete pela visibilidade do slider
+      // de opacidade (só existe com fundo ligado).
       widthMode: document.getElementById('textWidthAuto').classList.contains('active') ? 'auto' : 'fixed',
-      widthValue: Math.round(parseFloat(document.getElementById('textWidthValue').textContent)||0),
       bgPressed: String(!document.getElementById('textEditorBgOpacityWrap').hidden),
       bgColor: String(document.getElementById('textBoxBackgroundColor').value).toLowerCase(),
       bgOpacity: Math.round(parseFloat(document.getElementById('textBoxBackgroundOpacity').value)||0),
@@ -2408,7 +2478,6 @@ test('E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo
     expect(s.panel.align, `${label}: alinhamento do painel == draft.textAlign`).toBe(s.draft.textAlign);
     expect(s.panel.fontLabel, `${label}: fonte ativa == draft.fontKey`).toBe(s.expectedFontLabel);
     expect(s.panel.widthMode, `${label}: modo de largura == draft.boxWidthMode`).toBe(s.draft.boxWidthMode);
-    if (s.draft.boxWidthMode==='fixed') expect(s.panel.widthValue, `${label}: valor de largura fixa == draft.boxWidth`).toBe(s.draft.boxWidth);
     expect(s.panel.bgPressed, `${label}: toggle de fundo == draft.bgEnabled`).toBe(String(s.draft.bgEnabled));
     expect(s.panel.bgColor, `${label}: cor do fundo == draft.bgColor`).toBe(s.draft.bgColor);
     expect(s.panel.bgOpacity, `${label}: opacidade do fundo == draft.bgOpacity`).toBe(s.draft.bgOpacity);
@@ -2474,13 +2543,19 @@ test('E9E — WYSIWYG: painel, Stage, fundo, seleção e alças refletem o mesmo
   await sheet.getByRole('tab', { name:'Alinhamento', exact:true }).click();
   await sheet.getByRole('button', { name:'Alinhar Direita', exact:true }).click();
   await check('04 alinhar direita', false);
-  // 5. Auto → Fixa pelo slider (v8z4b32E9F1): mover o slider entra em fixed no mesmo gesto.
+  // 5. Auto → Fixa pela side width handle (v8z4b32E9G): arrastar a alça no Stage entra
+  // em fixed no mesmo gesto — a única forma pública de sair de Auto continua sendo um
+  // único gesto, só que agora no Stage em vez do painel.
   await sheet.getByRole('tab', { name:'Largura da caixa', exact:true }).click();
-  await setTextFixedWidthSlider(page, 150);
+  const widthStep5Before = await page.evaluate(()=>pendingTextDraft.boxWidth);
+  await dragTextWidthHandleBy(page, 'right', -60);
   expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('fixed');
+  expect(await page.evaluate(()=>pendingTextDraft.boxWidth)).not.toBeCloseTo(widthStep5Before, 0);
   await check('05 largura fixa', false);
-  // 6. modificar largura fixa (novo valor pelo slider)
-  await setTextFixedWidthSlider(page, 180);
+  // 6. modificar largura fixa (novo arrasto na mesma alça)
+  const widthStep6Before = await page.evaluate(()=>pendingTextDraft.boxWidth);
+  await dragTextWidthHandleBy(page, 'right', 40);
+  expect(await page.evaluate(()=>pendingTextDraft.boxWidth)).not.toBeCloseTo(widthStep6Before, 0);
   await check('06 aumentar largura', false);
   // 7. alterar fonte
   await sheet.getByRole('tab', { name:'Fonte', exact:true }).click();
@@ -2703,34 +2778,36 @@ test('E9F — editor de texto iconográfico neutro: rail, paleta, coral, gestos 
   expect(Math.abs(bgProof.bgAlpha - 0.4)).toBeLessThan(0.02); // opacidade pertence ao FUNDO
   expect(bgProof.glyphAlpha).toBe(1);                          // e NÃO reduz a opacidade dos glifos
 
-  // ---------- H) LARGURA Auto + slider (v8z4b32E9F1; E9C intacta por baixo) ----------
+  // ---------- H) LARGURA Auto + side width handle (v8z4b32E9G; E9C intacta por baixo) ----------
   await railTool('Largura da caixa').click();
   const widthPanel = sheet.locator('[data-text-panel="width"]');
   expect(await widthPanel.locator('#textWidthAuto').count()).toBe(1);       // único botão de modo: Auto
-  expect(await widthPanel.locator('#textWidthSlider').count()).toBe(1);     // slider de largura
+  expect(await widthPanel.locator('input[type="range"]').count()).toBe(0);  // sem slider de largura
   expect(await widthPanel.locator('#textWidthFixedMode').count()).toBe(0);  // sem botão "Fixa"
   expect(await widthPanel.locator('#textWidthFixedStepper').count()).toBe(0); // sem stepper −/+
   await expect(page.locator('#textWidthAuto')).toHaveClass(/active/);        // começa em Auto
-  const wBefore = await page.locator('#textWidthValue').textContent();
-  await setTextFixedWidthSlider(page, 170);                                  // mover o slider entra em fixed no mesmo gesto
+  const wBefore = await page.evaluate(()=>pendingTextDraft.boxWidth);
+  await dragTextWidthHandleBy(page, 'right', 60);                            // arrastar a alça entra em fixed no mesmo gesto
   expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('fixed');
   await expect(page.locator('#textWidthAuto')).not.toHaveClass(/active/);
-  await expect(page.locator('#textWidthValue')).not.toHaveText(wBefore);
+  expect(await page.evaluate(()=>pendingTextDraft.boxWidth)).not.toBeCloseTo(wBefore, 0);
   await page.locator('#textWidthAuto').click();                             // Auto volta para auto
   expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('auto');
   await expect(page.locator('#textWidthAuto')).toHaveClass(/active/);
 
-  // ---------- L) QUATRO ALÇAS (nenhuma alça lateral E9G) ----------
+  // ---------- L) QUATRO CORNER HANDLES + DUAS SIDE WIDTH HANDLES (E9G, Text Asset) ----------
   const handleAudit = await page.evaluate(() => {
     const sel = document.getElementById('assetSelectOutline');
     const shown = [...sel.querySelectorAll('.asset-corner-handle.show')].map(h => h.dataset.assetCorner).sort();
     const all = [...document.querySelectorAll('.asset-corner-handle')].map(h => h.dataset.assetCorner).sort();
-    const sideHandles = [...document.querySelectorAll('.asset-side-handle,.asset-width-handle,[data-asset-side]')].length;
-    return { shown, all, sideHandles };
+    const widthShown = [...sel.querySelectorAll('.text-width-handle.show')].map(h => h.dataset.assetWidthHandle).sort();
+    const widthAll = [...document.querySelectorAll('.text-width-handle')].map(h => h.dataset.assetWidthHandle).sort();
+    return { shown, all, widthShown, widthAll };
   });
   expect(handleAudit.shown).toEqual(['bl','br','tl','tr']);
   expect(handleAudit.all).toEqual(['bl','br','tl','tr']);
-  expect(handleAudit.sideHandles).toBe(0);
+  expect(handleAudit.widthShown).toEqual(['left','right']); // Text Asset ganha exatamente as duas side width handles (E9G)
+  expect(handleAudit.widthAll).toEqual(['left','right']);
 
   // ---------- I) MINIMIZAR POR GESTO VERTICAL preservando a propriedade ativa ----------
   // Abre uma propriedade DIFERENTE de 'text' antes de minimizar; ao reabrir o MESMO
@@ -3084,23 +3161,26 @@ test('E9F1 — refino do editor de texto: cabeçalho compacto, ícones, paletas,
   expect(Math.hypot(createProof.viewCenter.x - createProof.base.x, createProof.viewCenter.y - createProof.base.y)).toBeGreaterThan(2);
 
   // =========================================================================
-  // TESTE 9 — LARGURA AUTO + SLIDER (step 5; slider entra em fixed; Auto volta).
+  // TESTE 9 — LARGURA AUTO + SIDE WIDTH HANDLE (E9G: arrastar a alça entra em fixed;
+  // a lateral OPOSTA fica ancorada; Auto volta ao cálculo automático).
   // =========================================================================
   await page.locator('#textCreationInput').fill('Largura teste');
   await railTool('Largura da caixa').click();
   const widthPanel = sheet.locator('[data-text-panel="width"]');
   expect(await widthPanel.getByRole('button',{name:'Ajustar largura automaticamente',exact:true}).count()).toBe(1); // único botão de modo
-  expect(await widthPanel.locator('#textWidthSlider').count()).toBe(1);
-  expect(await widthPanel.locator('#textWidthValue').count()).toBe(1);
+  expect(await widthPanel.locator('input[type="range"]').count()).toBe(0); // sem slider de largura
   expect(await widthPanel.locator('#textWidthFixedMode').count()).toBe(0); // sem botão Fixa
   expect(await widthPanel.locator('#textWidthFixedStepper').count()).toBe(0); // sem −/+
-  expect(await page.locator('#textWidthSlider').getAttribute('step')).toBe('5');
   // Estado inicial Auto.
   expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('auto');
   await expect(page.locator('#textWidthAuto')).toHaveClass(/active/);
-  // Mover o slider → fixed, boxWidth muda, Auto perde ativo, seleção e quatro alças acompanham.
-  const widthBefore = await page.evaluate(()=>Math.round(pendingTextDraft.boxWidth));
-  await setTextFixedWidthSlider(page, 165);
+  // Arrastar a alça DIREITA → fixed, boxWidth muda, lateral ESQUERDA permanece ancorada,
+  // Auto perde ativo, seleção e as quatro corner handles acompanham.
+  const beforeDrag = await page.evaluate(() => {
+    const d = pendingTextDraft; const sel = document.getElementById('assetSelectOutline'); const sr = sel.getBoundingClientRect();
+    return { boxWidth: Math.round(d.boxWidth), leftEdge: sr.x };
+  });
+  await dragTextWidthHandleBy(page, 'right', 60);
   expect(await page.evaluate(()=>pendingTextDraft.boxWidthMode)).toBe('fixed');
   await expect(page.locator('#textWidthAuto')).not.toHaveClass(/active/);
   const fixedState = await page.evaluate(() => {
@@ -3108,15 +3188,21 @@ test('E9F1 — refino do editor de texto: cabeçalho compacto, ícones, paletas,
     const sel = document.getElementById('assetSelectOutline');
     const r = el.getBoundingClientRect(), sr = sel.getBoundingClientRect();
     const handles = [...sel.querySelectorAll('.asset-corner-handle.show')].map(h=>h.dataset.assetCorner).sort();
-    return { boxWidth: Math.round(d.boxWidth), parity:['x','y','width','height'].every(k=>Math.abs(r[k]-sr[k])<1.4), handles };
+    const widthHandles = [...sel.querySelectorAll('.text-width-handle.show')].map(h=>h.dataset.assetWidthHandle).sort();
+    return { boxWidth: Math.round(d.boxWidth), leftEdge: sr.x, parity:['x','y','width','height'].every(k=>Math.abs(r[k]-sr[k])<1.4), handles, widthHandles };
   });
-  expect(fixedState.boxWidth).not.toBe(widthBefore);      // boxWidth muda
-  expect(fixedState.boxWidth).toBe(165);
+  expect(fixedState.boxWidth).not.toBe(beforeDrag.boxWidth); // boxWidth muda
+  expect(fixedState.boxWidth).toBeGreaterThan(beforeDrag.boxWidth); // arrastar a direita para fora aumenta a largura
+  expect(Math.abs(fixedState.leftEdge - beforeDrag.leftEdge)).toBeLessThan(1.5); // lateral esquerda ancorada
   expect(fixedState.parity).toBe(true);                   // seleção acompanha (Stage reflow)
-  expect(fixedState.handles).toEqual(['bl','br','tl','tr']); // quatro alças acompanham
-  expect((await page.locator('#textWidthValue').textContent()).trim()).toBe('165');
-  // Diagnóstico: slider ativou fixed.
-  expect((await page.evaluate(()=>getTextEditorE9F1Diagnostics())).textEditorWidthSliderActivatedFixedMode).toBe(true);
+  expect(fixedState.handles).toEqual(['bl','br','tl','tr']); // quatro corner handles acompanham
+  expect(fixedState.widthHandles).toEqual(['left','right']); // as duas side width handles continuam presentes
+  // Diagnóstico: o gesto ativou fixed e preservou escala/ancoragem (REG-056/E9G).
+  const dragDiag = await page.evaluate(()=>getTextEditorE9F1Diagnostics());
+  expect(dragDiag.textWidthModeBefore).toBe('auto');
+  expect(dragDiag.textWidthModeAfter).toBe('fixed');
+  expect(dragDiag.textWidthScalePreserved).toBe(true);
+  expect(dragDiag.textWidthOppositeEdgeAnchored).toBe(true);
   // Tocar Auto → auto, ativo, medição automática canônica, sem salto indevido de centro.
   const centerBeforeAuto = await page.evaluate(()=>({x:pendingTextDraft.worldX+pendingTextDraft.worldW/2,y:pendingTextDraft.worldY+pendingTextDraft.worldH/2}));
   await page.locator('#textWidthAuto').click();
@@ -3131,19 +3217,22 @@ test('E9F1 — refino do editor de texto: cabeçalho compacto, ícones, paletas,
   expect(autoDiag.textEditorWidthHasPlusMinusStepper).toBe(false);
 
   // =========================================================================
-  // TESTE 10 — E9G NÃO VAZOU: exatamente quatro alças, nenhuma lateral.
+  // TESTE 10 — E9G: exatamente quatro corner handles + duas side width handles
+  // (Text Asset), sistemas distintos (REG-028 especializado).
   // =========================================================================
   const handleAudit = await page.evaluate(() => {
     const sel = document.getElementById('assetSelectOutline');
     return {
       shown: [...sel.querySelectorAll('.asset-corner-handle.show')].map(h=>h.dataset.assetCorner).sort(),
       all: [...document.querySelectorAll('.asset-corner-handle')].map(h=>h.dataset.assetCorner).sort(),
-      side: [...document.querySelectorAll('.asset-side-handle,.asset-width-handle,[data-asset-side]')].length,
+      widthShown: [...sel.querySelectorAll('.text-width-handle.show')].map(h=>h.dataset.assetWidthHandle).sort(),
+      widthAll: [...document.querySelectorAll('.text-width-handle')].map(h=>h.dataset.assetWidthHandle).sort(),
     };
   });
   expect(handleAudit.shown).toEqual(['bl','br','tl','tr']);
   expect(handleAudit.all).toEqual(['bl','br','tl','tr']);
-  expect(handleAudit.side).toBe(0);
+  expect(handleAudit.widthShown).toEqual(['left','right']);
+  expect(handleAudit.widthAll).toEqual(['left','right']);
 
   // =========================================================================
   // TESTE 11 — CANCEL / CONFIRM / MINIMIZE (proteção E9F/E9E reexecutada).
@@ -3180,6 +3269,346 @@ test('E9F1 — refino do editor de texto: cabeçalho compacto, ícones, paletas,
   expect(commitAfter.undo).toBe(commitBefore.undo + 1);
   expect(commitAfter.rev).toBe(commitBefore.rev + 1);
   expect(commitAfter.parity).toBe(true);
+});
+
+// v8z4b32E9G — gate central da manipulação direta de largura do Text Asset no Stage
+// por duas alças laterais (side width handles), substituindo a edição manual do
+// painel (slider), e da correção REG-056 (a faixa lógica de largura disponível não
+// pode diminuir só porque o Text Asset foi escalado). Cobre: contagem de alças por
+// tipo de ativo (imagem = 4+0, texto = 4+2), separação corner(escala)×side(largura),
+// ancoragem da lateral oposta sob rotação não trivial, gesto direto fora do editor =
+// exatamente 1 Undo/1 autosave, pointercancel restaura integralmente, Undo/Redo,
+// REG-056 (mesma faixa lógica de textBaseBoxWidth em 50/100/200%), clamp/no-op no
+// limite lógico (zero Undo/dirty/autosave, geometria intacta — distinto de um gesto
+// válido com delta real), fundo/padding acompanhando o reflow e Save/Load preservando
+// os campos relevantes.
+test('E9G — side width handles do Text Asset: largura direta no Stage separada de escala (REG-056)', async ({ page }, testInfo) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  await page.locator('#modeAssetsBtn').click();
+
+  await page.evaluate(() => startTextCreation());
+  await page.locator('#textCreationInput').fill('Largura E9G de teste');
+  await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
+  const id = await page.evaluate(() => String(getSelectedAsset().id));
+  const selectText = async () => {
+    const box = await page.locator(`.world-text-asset[data-asset-id="${id}"]`).boundingBox();
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    expect(await page.evaluate(() => String(selectedAssetId))).toBe(id);
+  };
+  const readAsset = () => page.evaluate(id => { const a = assets.find(x => String(x.id) === id); return { fontSize:a.fontSize, textBaseFontSize:a.textBaseFontSize, boxWidth:a.boxWidth, textBaseBoxWidth:a.textBaseBoxWidth, worldX:a.worldX, worldY:a.worldY, worldW:a.worldW, worldH:a.worldH, rotation:a.rotation, boxWidthMode:a.boxWidthMode, pct: getAssetContextScalePercent(a) }; }, id);
+  const setScalePercent = async pct => {
+    await page.locator('#tbAssetScale').click();
+    await page.locator('#assetContextSlider').fill(String(pct));
+    await page.locator('#assetContextSlider').dispatchEvent('change');
+    await expect(page.locator('#assetContextValue')).toHaveText(pct + '%');
+    await page.getByRole('button', { name: 'Voltar' }).click();
+  };
+
+  // v8z4b32E9G-R1 — correção de revisão (Blocker 2): a largura Auto do texto recém-
+  // criado nasce da medição natural do conteúdo, que pode ficar perto do limite lógico
+  // MÁXIMO dependendo da fixture/viewport — um drag de AUMENTO ali seria um clamp
+  // legítimo (no-op), não prova nem reprova a side handle. Prepara o Text Asset em
+  // Fixed com textBaseBoxWidth no MEIO da faixa lógica (folga real para crescer e para
+  // encolher nos dois sentidos), preservando a escala canônica (100% logo após a
+  // criação: boxWidth == textBaseBoxWidth). Estado de SETUP, não o comportamento sob
+  // teste — mesmo princípio já usado alhures neste arquivo para preparar precondições
+  // de largura fixa sem depender do slider/gesto público.
+  await page.evaluate(id => {
+    const a = assets.find(x => String(x.id) === id);
+    const bounds = getTextWidthLogicalBounds();
+    const mid = (bounds.min + bounds.max) / 2;
+    a.boxWidthMode = 'fixed';
+    a.textBaseBoxWidth = mid;
+    a.boxWidth = mid;
+    measureTextAsset(a);
+    renderProjectWorldExtraImages();
+    renderAssetSelectionOverlay();
+  }, id);
+
+  // ---------- A) contagem por tipo: imagem 4+0, Text Asset 4+2 ----------
+  const imageId = await page.evaluate(() => assets.find(a => a && a.type === 'image').id);
+  await page.evaluate(id => selectAssetById(id, 'e9g-test'), String(imageId));
+  const imageHandles = await page.evaluate(() => {
+    const sel = document.getElementById('assetSelectOutline');
+    return { corners: sel.querySelectorAll('.asset-corner-handle.show').length, width: sel.querySelectorAll('.text-width-handle.show').length };
+  });
+  expect(imageHandles).toEqual({ corners: 4, width: 0 });
+  await selectText();
+  const textHandles = await page.evaluate(() => {
+    const sel = document.getElementById('assetSelectOutline');
+    return {
+      corners: [...sel.querySelectorAll('.asset-corner-handle.show')].map(h => h.dataset.assetCorner).sort(),
+      width: [...sel.querySelectorAll('.text-width-handle.show')].map(h => h.dataset.assetWidthHandle).sort(),
+    };
+  });
+  expect(textHandles.corners).toEqual(['bl', 'br', 'tl', 'tr']);
+  expect(textHandles.width).toEqual(['left', 'right']);
+
+  // ---------- B) CORNER escala (fontSize+boxWidth juntos); SIDE nunca escala ----------
+  const beforeCorner = await readAsset();
+  const corner = page.locator('.asset-corner-handle[data-asset-corner="br"]');
+  const doCornerDrag = async () => {
+    const cornerBox = await corner.boundingBox();
+    await page.mouse.move(cornerBox.x + cornerBox.width / 2, cornerBox.y + cornerBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(cornerBox.x + 40, cornerBox.y + 40, { steps: 5 });
+    await page.mouse.up();
+  };
+  await doCornerDrag();
+  // v8z4b32E9G-R2 — DIAGNÓSTICO OBRIGATÓRIO: lifecycle do corner drag logo após o
+  // pointerup real, medido (não assumido) para descartar/confirmar estado residual de
+  // assetTransformDragState bloqueando o próximo gesto (side width handle).
+  const afterCornerUp = await page.evaluate(id => ({
+    assetTransformDragStateActive: typeof assetTransformDragState !== 'undefined' && !!assetTransformDragState,
+    selectedAssetId: typeof selectedAssetId !== 'undefined' && selectedAssetId != null ? String(selectedAssetId) : null,
+  }), id);
+  console.log('[E9G diag] afterCornerUp', JSON.stringify(afterCornerUp));
+  expect(afterCornerUp.assetTransformDragStateActive, 'assetTransformDragState deve ficar idle após pointerup real do corner').toBe(false);
+  expect(afterCornerUp.selectedAssetId).toBe(id);
+  const afterCorner1 = await readAsset();
+  expect(afterCorner1.fontSize).not.toBeCloseTo(beforeCorner.fontSize, 3); // corner altera a fonte
+  expect(afterCorner1.textBaseFontSize).toBeCloseTo(beforeCorner.textBaseFontSize, 5); // baseline não muda
+
+  // B-direto) sequência mais direta do usuário: escalar pelos cantos → SEM Undo →
+  // ajustar largura pela side handle já precisa funcionar, sem re-seleção nem reset
+  // escondido.
+  const beforeSideNoUndo = await readAsset();
+  const dragNoUndo = await dragTextWidthHandleBy(page, 'right', 60);
+  console.log('[E9G diag] side drag (corner sem Undo)', JSON.stringify(dragNoUndo.diag));
+  const afterSideNoUndo = await readAsset();
+  expect(afterSideNoUndo.boxWidth, `corner→SEM Undo→side deve mudar boxWidth; diag=${JSON.stringify(dragNoUndo.diag)}`).not.toBeCloseTo(beforeSideNoUndo.boxWidth, 0);
+  expect(afterSideNoUndo.fontSize).toBe(beforeSideNoUndo.fontSize); // side não escala mesmo empilhado sobre corner sem Undo
+  await page.locator('#topBtnUndo').click(); // desfaz o side drag
+  await page.locator('#topBtnUndo').click(); // desfaz o corner drag
+  expect(await readAsset()).toEqual(beforeCorner); // volta ao baseline limpo
+
+  // B-com-Undo) sequência relatada na revisão: corner drag → pointerup → Undo → side.
+  await doCornerDrag();
+  const afterCorner2 = await readAsset();
+  expect(afterCorner2.fontSize).not.toBeCloseTo(beforeCorner.fontSize, 3);
+  await page.locator('#topBtnUndo').click(); // desfaz só o corner drag
+  // DIAGNÓSTICO OBRIGATÓRIO: lifecycle logo após o Undo.
+  const afterUndo = await page.evaluate(id => {
+    const sel = document.getElementById('assetSelectOutline');
+    return {
+      assetTransformDragStateActive: typeof assetTransformDragState !== 'undefined' && !!assetTransformDragState,
+      selectedAssetId: typeof selectedAssetId !== 'undefined' && selectedAssetId != null ? String(selectedAssetId) : null,
+      cornerHandlesShown: sel ? sel.querySelectorAll('.asset-corner-handle.show').length : -1,
+      widthHandlesShown: sel ? sel.querySelectorAll('.text-width-handle.show').length : -1,
+    };
+  }, id);
+  console.log('[E9G diag] afterUndo', JSON.stringify(afterUndo));
+  expect(afterUndo.assetTransformDragStateActive, 'assetTransformDragState deve continuar idle após Undo').toBe(false);
+  expect(afterUndo.selectedAssetId).toBe(id);
+  expect(afterUndo.cornerHandlesShown).toBe(4);
+  expect(afterUndo.widthHandlesShown).toBe(2);
+
+  const beforeSide = await readAsset();
+  const preSideDrag = await page.evaluate(id => {
+    const resolved = typeof resolveActiveTextAssetForWidthDrag === 'function' ? resolveActiveTextAssetForWidthDrag() : null;
+    return {
+      boxWidth: resolved ? resolved.asset.boxWidth : null,
+      textBaseBoxWidth: resolved ? resolved.asset.textBaseBoxWidth : null,
+      selectedAssetId: typeof selectedAssetId !== 'undefined' && selectedAssetId != null ? String(selectedAssetId) : null,
+      assetTransformDragStateActive: typeof assetTransformDragState !== 'undefined' && !!assetTransformDragState,
+      textWidthDragStateActive: typeof textWidthDragState !== 'undefined' && !!textWidthDragState,
+    };
+  }, id);
+  console.log('[E9G diag] preSideDrag', JSON.stringify(preSideDrag));
+  const sideDrag = await dragTextWidthHandleBy(page, 'right', 60);
+  console.log('[E9G diag] side drag (após Undo do corner)', JSON.stringify(sideDrag.diag));
+  const afterSide = await readAsset();
+  expect(afterSide.fontSize).toBe(beforeSide.fontSize); // SIDE nunca muda fontSize
+  expect(afterSide.textBaseFontSize).toBe(beforeSide.textBaseFontSize);
+  expect(Math.abs(afterSide.pct - beforeSide.pct)).toBeLessThan(0.05); // escala% preservada
+  expect(afterSide.boxWidth, `largura mudou de verdade; preSideDrag=${JSON.stringify(preSideDrag)} diag=${JSON.stringify(sideDrag.diag)}`).not.toBeCloseTo(beforeSide.boxWidth, 0);
+  expect(afterSide.boxWidthMode).toBe('fixed'); // primeiro delta efetivo entra em fixed
+  // DIAGNÓSTICO OBRIGATÓRIO: estado pós-pointerup do produto (não só do helper).
+  const postSideProductDiag = await page.evaluate(() => getTextEditorE9F1Diagnostics());
+  console.log('[E9G diag] postSideProductDiag', JSON.stringify({
+    textWidthGestureActive: postSideProductDiag.textWidthGestureActive,
+    textWidthCurrentBoxWidth: postSideProductDiag.textWidthCurrentBoxWidth,
+    textWidthModeBefore: postSideProductDiag.textWidthModeBefore,
+    textWidthModeAfter: postSideProductDiag.textWidthModeAfter,
+    textWidthScalePreserved: postSideProductDiag.textWidthScalePreserved,
+    textWidthOppositeEdgeAnchored: postSideProductDiag.textWidthOppositeEdgeAnchored,
+  }));
+  expect(postSideProductDiag.textWidthGestureActive).toBe(false);
+  expect(postSideProductDiag.textWidthScalePreserved).toBe(true);
+  expect(postSideProductDiag.textWidthOppositeEdgeAnchored).toBe(true);
+
+  // ---------- C) gesto direto fora do editor = exatamente 1 Undo + 1 autosave ----------
+  const undoBefore = await page.evaluate(() => undoStack.length);
+  const revBefore = await page.evaluate(() => _sessionAutosaveQueuedRevision);
+  await dragTextWidthHandleBy(page, 'left', -30);
+  expect(await page.evaluate(() => undoStack.length)).toBe(undoBefore + 1);
+  expect(await page.evaluate(() => _sessionAutosaveQueuedRevision)).toBe(revBefore + 1);
+
+  // ---------- D) pointercancel restaura integralmente; zero Undo/autosave ----------
+  const preCancel = await readAsset();
+  const undoBeforeCancel = await page.evaluate(() => undoStack.length);
+  const revBeforeCancel = await page.evaluate(() => _sessionAutosaveQueuedRevision);
+  await dragTextWidthHandle(page, 'right', [[80, 0]], { cancel: true });
+  const postCancel = await readAsset();
+  expect(postCancel).toEqual(preCancel);
+  expect(await page.evaluate(() => undoStack.length)).toBe(undoBeforeCancel);
+  expect(await page.evaluate(() => _sessionAutosaveQueuedRevision)).toBe(revBeforeCancel);
+  expect((await page.evaluate(() => getTextEditorE9F1Diagnostics())).textWidthPointerCancelRestored).toBe(true);
+
+  // ---------- E) Undo/Redo restauram largura/posição/boxWidthMode ----------
+  const beforeUR = await readAsset();
+  await dragTextWidthHandleBy(page, 'right', 45);
+  const afterUR = await readAsset();
+  await page.locator('#topBtnUndo').click();
+  await expect.poll(readAsset).toEqual(beforeUR);
+  await page.locator('#topBtnRedo').click();
+  await expect.poll(readAsset).toEqual(afterUR);
+  await page.locator('#topBtnUndo').click(); // volta ao estado anterior ao passo E
+
+  // ---------- F) rotação não trivial: lateral oposta ancorada no World ----------
+  await page.locator('#tbAssetRotate').click();
+  await page.locator('#assetContextSlider').fill('45');
+  await page.locator('#assetContextSlider').dispatchEvent('change');
+  await expect(page.locator('#assetContextValue')).toHaveText('45°');
+  await page.getByRole('button', { name: 'Voltar' }).click();
+  const computeAnchor = (side, centerX, centerY, worldW, rotDeg) => {
+    const rot = rotDeg * Math.PI / 180, half = worldW / 2 * (side === 'right' ? -1 : 1);
+    return { x: centerX + half * Math.cos(rot), y: centerY + half * Math.sin(rot) };
+  };
+  const beforeRot = await readAsset();
+  const anchorBefore = computeAnchor('right', beforeRot.worldX + beforeRot.worldW / 2, beforeRot.worldY + beforeRot.worldH / 2, beforeRot.worldW, beforeRot.rotation);
+  await dragTextWidthHandleBy(page, 'right', 90);
+  const afterRot = await readAsset();
+  const anchorAfter = computeAnchor('right', afterRot.worldX + afterRot.worldW / 2, afterRot.worldY + afterRot.worldH / 2, afterRot.worldW, afterRot.rotation);
+  expect(afterRot.rotation).toBe(beforeRot.rotation); // rotação intocada
+  expect(afterRot.fontSize).toBe(beforeRot.fontSize); // fontSize intocado
+  expect(Math.abs(afterRot.pct - beforeRot.pct)).toBeLessThan(0.05); // escala% preservada
+  expect(afterRot.worldW).not.toBeCloseTo(beforeRot.worldW, 0); // largura mudou de verdade
+  expect(Math.hypot(anchorAfter.x - anchorBefore.x, anchorAfter.y - anchorBefore.y)).toBeLessThan(1); // lateral esquerda ancorada no World sob rotação
+  await page.locator('#topBtnUndo').click(); // desfaz o width drag rotacionado
+  await page.locator('#topBtnUndo').click(); // desfaz a rotação de 45°
+
+  // ---------- G) REG-056: mesma faixa LÓGICA de largura em 50/100/200% ----------
+  const bounds = await page.evaluate(() => getTextWidthLogicalBounds());
+  for (const scalePct of [50, 100, 200]) {
+    await setScalePercent(scalePct);
+    await expect.poll(async () => Math.round((await readAsset()).pct)).toBe(scalePct);
+    await dragTextWidthHandleBy(page, 'right', 3000); // arrasta até o limite lógico MÁXIMO
+    let s = await readAsset();
+    expect(s.textBaseBoxWidth).toBeCloseTo(bounds.max, 0); // MESMA faixa lógica em qualquer escala
+    expect(Number.isFinite(s.worldW) && s.worldW > 0).toBe(true);
+    expect(s.fontSize).toBeCloseTo(s.textBaseFontSize * (scalePct / 100), 3); // width drag não escala a fonte
+    await page.locator('#topBtnUndo').click();
+    await dragTextWidthHandleBy(page, 'right', -3000); // arrasta até o limite lógico MÍNIMO
+    s = await readAsset();
+    expect(s.textBaseBoxWidth).toBeCloseTo(bounds.min, 0);
+    expect(Number.isFinite(s.worldW) && s.worldW > 0).toBe(true);
+    await page.locator('#topBtnUndo').click();
+    await page.locator('#topBtnUndo').click(); // desfaz a mudança de escala desta iteração
+  }
+
+  // ---------- G2) CLAMP/NO-OP: gesto absorvido pelo limite lógico não altera
+  // geometria nem gera Undo/dirty/autosave — diferencia GESTO VÁLIDO COM DELTA
+  // (seções B/G acima) de GESTO CLAMPADO SEM ALTERAÇÃO (Blocker 3 da revisão) ----------
+  for (const boundKind of ['max', 'min']) {
+    await page.evaluate(({ id, boundKind }) => {
+      const a = assets.find(x => String(x.id) === id);
+      const bounds = getTextWidthLogicalBounds();
+      const target = boundKind === 'max' ? bounds.max : bounds.min;
+      a.boxWidthMode = 'fixed';
+      a.rotation = 0;
+      a.textBaseBoxWidth = target;
+      a.boxWidth = target;
+      measureTextAsset(a);
+      renderProjectWorldExtraImages();
+      renderAssetSelectionOverlay();
+    }, { id, boundKind });
+    const before = await readAsset();
+    const undoBeforeClamp = await page.evaluate(() => undoStack.length);
+    const revBeforeClamp = await page.evaluate(() => _sessionAutosaveQueuedRevision);
+    // No máximo, tenta crescer mais (extrapolaria); no mínimo, tenta encolher mais.
+    await dragTextWidthHandleBy(page, 'right', boundKind === 'max' ? 300 : -300);
+    const after = await readAsset();
+    expect(after.boxWidth).toBeCloseTo(before.boxWidth, 3);
+    expect(after.textBaseBoxWidth).toBeCloseTo(before.textBaseBoxWidth, 3);
+    expect(after.worldX).toBeCloseTo(before.worldX, 3);
+    expect(after.worldY).toBeCloseTo(before.worldY, 3);
+    expect(after.worldW).toBeCloseTo(before.worldW, 3);
+    expect(after.worldH).toBeCloseTo(before.worldH, 3);
+    expect(after.boxWidthMode).toBe(before.boxWidthMode); // sem mudança espúria de modo
+    expect(await page.evaluate(() => undoStack.length)).toBe(undoBeforeClamp); // clamp/no-op: 0 Undo
+    expect(await page.evaluate(() => _sessionAutosaveQueuedRevision)).toBe(revBeforeClamp); // 0 autosave
+  }
+
+  // ---------- H) fundo/padding acompanham o reflow; nada se descola ----------
+  await selectText();
+  await page.locator('#tbAssetReplace').click();
+  await page.getByRole('tab', { name: 'Fundo da caixa', exact: true }).click();
+  await enableTextBoxColor(page, '#224466');
+  await page.locator('#textBoxBackgroundOpacity').fill('55');
+  await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
+  const beforeBg = await page.evaluate(id => { const a = assets.find(x => String(x.id) === id), m = measureTextAsset({ ...a }); return { boxWidth:a.boxWidth, worldW:a.worldW, paddingX:m.paddingX, color:a.boxBackgroundColor, opacity:a.boxBackgroundOpacity }; }, id);
+  await dragTextWidthHandleBy(page, 'right', 55);
+  const afterBg = await page.evaluate(id => { const a = assets.find(x => String(x.id) === id), m = measureTextAsset({ ...a }); return { boxWidth:a.boxWidth, worldW:a.worldW, paddingX:m.paddingX, color:a.boxBackgroundColor, opacity:a.boxBackgroundOpacity }; }, id);
+  expect(afterBg.worldW).toBeCloseTo(afterBg.boxWidth + 2 * afterBg.paddingX, 1); // worldW = boxWidth + 2·paddingX
+  expect(afterBg.paddingX).toBeCloseTo(beforeBg.paddingX, 3); // padding não muda pelo width drag
+  expect(afterBg.color).toBe(beforeBg.color);
+  expect(afterBg.opacity).toBe(beforeBg.opacity);
+  const bgEl = page.locator(`.world-text-asset[data-asset-id="${id}"]`);
+  const bgRect = await bgEl.boundingBox();
+  const outlineRect = await page.locator('#assetSelectOutline').boundingBox();
+  for (const k of ['x', 'y', 'width', 'height']) expect(Math.abs(bgRect[k] - outlineRect[k])).toBeLessThan(1.5); // fundo acompanha o novo worldW sem descolar
+
+  // ---------- I) Save/Load preservam boxWidth/textBaseBoxWidth/boxWidthMode/rotation/posição ----------
+  const beforeSave = await readAsset();
+  const downloadPromise = page.waitForEvent('download');
+  await page.evaluate(() => doSaveDirect(true, 'e9g-width-handles'));
+  const download = await downloadPromise; const savedPath = await download.path(); expect(savedPath).toBeTruthy();
+  await page.locator('#projectFileInput').setInputFiles(savedPath);
+  await expect.poll(() => page.evaluate(() => loadSessionCompleted), { timeout: 30_000 }).toBe(true);
+  expect(await page.evaluate(() => lastLoadError)).toBe('');
+  const afterLoad = await readAsset();
+  expect(afterLoad).toEqual(beforeSave);
+
+  // ---------- J) caixa pequena em 390×797: as seis alças permanecem alcançáveis ----------
+  await page.locator('#modeAssetsBtn').click();
+  await page.evaluate(() => startTextCreation());
+  await page.locator('#textCreationInput').fill('R');
+  await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
+  const smallId = await page.evaluate(() => String(getSelectedAsset().id));
+  await page.evaluate(id => { const a = assets.find(x => String(x.id) === id); a.boxWidthMode = 'fixed'; a.boxWidth = 60; a.textBaseBoxWidth = 60; a.fontSize = 12; a.textBaseFontSize = 12; measureTextAsset(a); renderProjectWorldExtraImages(); renderAssetSelectionOverlay(); }, smallId);
+  const smallBox = await page.locator(`.world-text-asset[data-asset-id="${smallId}"]`).boundingBox();
+  await page.touchscreen.tap(smallBox.x + smallBox.width / 2, smallBox.y + smallBox.height / 2);
+  const smallHandles = await page.evaluate(() => {
+    const sel = document.getElementById('assetSelectOutline');
+    const rect = el => { const r = el.getBoundingClientRect(); return { x:r.x, y:r.y, w:r.width, h:r.height }; };
+    return {
+      corners: [...sel.querySelectorAll('.asset-corner-handle.show')].map(h => ({ c:h.dataset.assetCorner, ...rect(h) })),
+      width: [...sel.querySelectorAll('.text-width-handle.show')].map(h => ({ c:h.dataset.assetWidthHandle, ...rect(h) })),
+      viewportOverflow: document.documentElement.scrollWidth > 390,
+    };
+  });
+  expect(smallHandles.corners.map(h => h.c).sort()).toEqual(['bl', 'br', 'tl', 'tr']);
+  expect(smallHandles.width.map(h => h.c).sort()).toEqual(['left', 'right']);
+  expect(smallHandles.viewportOverflow).toBe(false);
+  for (const h of [...smallHandles.corners, ...smallHandles.width]) expect(h.w).toBeGreaterThan(0); // nenhuma alça com área nula/inalcançável
+
+  // ---------- K) Preview/Export nunca mostram as side width handles ----------
+  await page.evaluate(() => startPreview());
+  await expect(page.locator('#previewScreen')).toHaveClass(/show/, { timeout: 30_000 });
+  await expect.poll(() => page.evaluate(() => previewLoadingHiddenAfterFirstFrame), { timeout: 30_000 }).toBe(true);
+  const previewHandles = await page.evaluate(() => {
+    const screen = document.getElementById('previewScreen');
+    return [...document.querySelectorAll('.text-width-handle.show')].some(h => screen.contains(h));
+  });
+  expect(previewHandles).toBe(false);
+  await page.evaluate(() => stopPreview());
 });
 
 // v8z4b32E9F2 — gate de REG-054. Com 2+ Frames selecionados, os controles PÚBLICOS
