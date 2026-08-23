@@ -3910,12 +3910,15 @@ test('REG-055 — painel de Fundo do projeto permanece contido em 390×797 com p
   // para fora da área visível pelo crescimento da paleta pessoal).
   expect(geometry.panelTop).toBeGreaterThanOrEqual(-1);
   expect(geometry.panelBottom).toBeLessThanOrEqual(geometry.vh + 1);
-  // Alça, título e os dois campos de HEX (nativo + texto) permanecem alcançáveis
-  // dentro do viewport — nenhum foi empurrado para fora pelo crescimento da paleta.
+  // Alça, título e o campo HEX texto (abaixo da área de swatches) permanecem
+  // alcançáveis dentro do viewport SEM rolar — nenhum foi empurrado para fora pelo
+  // crescimento da paleta. O input[type=color] nativo ("+") agora faz parte da
+  // MESMA linha rolável dos swatches (arquitetura [presets][pessoais][+] — revisão
+  // de blocker 1), por isso é verificado separadamente abaixo via rolagem, não
+  // exigido visível sem rolar.
   for (const [label, top, bottom] of [
     ['alça', geometry.handleTop, geometry.handleBottom],
     ['título', geometry.titleTop, geometry.titleBottom],
-    ['HEX nativo', geometry.hexInputTop, geometry.hexInputBottom],
     ['HEX texto', geometry.hexTextTop, geometry.hexTextBottom],
   ]) {
     expect(top, `${label}: topo fora do viewport`).toBeGreaterThanOrEqual(-1);
@@ -3940,6 +3943,20 @@ test('REG-055 — painel de Fundo do projeto permanece contido em 390×797 com p
   });
   expect(lastSwatchReached).toBe(true);
 
+  // O "+" (input[type=color] nativo, último item da linha rolável) também é
+  // alcançável rolando a mesma área — permanece o alvo real de toque mesmo com
+  // 100+ cores pessoais, sem exigir um painel/scroll separado.
+  const plusTriggerReached = await page.evaluate(() => {
+    const swatches = document.getElementById('bgSwatches');
+    const wrap = document.getElementById('bgColorTriggerWrap');
+    wrap.scrollIntoView({ block: 'nearest' });
+    const sw = swatches.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+    return wr.top >= sw.top - 1 && wr.bottom <= sw.bottom + 1;
+  });
+  expect(plusTriggerReached).toBe(true);
+  await bgPanel.locator('#bgHexInput').scrollIntoViewIfNeeded();
+  await expect(bgPanel.locator('#bgHexInput')).toBeVisible();
+
   // Fechar o painel continua funcionando normalmente após o exercício de volume.
   await bgPanel.locator('.panel-handle').click();
   await expect(bgPanel).not.toHaveClass(/show/);
@@ -3950,5 +3967,203 @@ test('REG-055 — painel de Fundo do projeto permanece contido em 390×797 com p
   await page.locator('#assetsModeContextMenu .panel-close-check[aria-label="Fechar"]').click();
   await expect(page.locator('#assetsModeContextMenu')).not.toHaveClass(/open/);
 
+  expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
+});
+
+// v8z4b32E9F6-R1 — gate de REVISÃO (blocker 1 + consistência HEX/Enter) sobre a
+// v8z4b32E9F6. Blocker 1: a especificação exige a MESMA arquitetura visual
+// Safari-safe nos TRÊS contextos — [presets] [cores pessoais] [+] seguido de [HEX
+// inline] — sem deixar o Fundo do projeto como exceção com o antigo quadrado/input
+// de "Personalizar" visível como trigger. Este gate prova ESTRUTURALMENTE, nos TRÊS
+// contextos, que existe exatamente um "+" decorativo (não é um swatch de cor) e que
+// o input[type=color] nativo — nunca 1×1/off-screen, nunca aberto por .click()
+// programático — ocupa fisicamente a área do "+" e é o alvo real resolvido por
+// elementFromPoint, sem remontagem durante os próprios eventos do picker, e sem
+// abrir nenhum painel intermediário do Arco. Consistência HEX/Enter: a
+// documentação promete commit por Enter/blur/change — este gate prova que Enter
+// comita exatamente 1 cor e que um blur/change subsequente com o MESMO valor não
+// duplica, nos três campos HEX inline.
+test('REG-055 — os três "+" são o input[type=color] nativo real (alvo de toque), sem painel intermediário, e Enter confirma o HEX inline sem duplicar', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = captureFatalErrors(page);
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const dispatchInput = (locator, value) => locator.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, value);
+  const dispatchChange = (locator) => locator.evaluate((el) => { el.dispatchEvent(new Event('change', { bubbles: true })); });
+  const pressEnter = (locator) => locator.press('Enter');
+
+  // Prova ESTRUTURAL de que o "+" visual (pointer-events:none, decorativo) e o
+  // input[type=color] nativo — nunca 1×1/off-screen, nunca aberto por .click()
+  // programático — compartilham exatamente a mesma área física, e que o ponto
+  // central tocável resolve, via elementFromPoint, para o próprio input.
+  const assertPlusIsRealTouchTarget = async (rowSelector, wrapSelector, plusSelector, inputSelector, label) => {
+    await page.locator(wrapSelector).scrollIntoViewIfNeeded();
+    const result = await page.evaluate(({ rowSelector, wrapSelector, plusSelector, inputSelector }) => {
+      const row = document.querySelector(rowSelector);
+      const wrap = document.querySelector(wrapSelector);
+      const plus = document.querySelector(plusSelector);
+      const input = document.querySelector(inputSelector);
+      if (!row || !wrap || !plus || !input) return { ok: false };
+      const plusCountInRow = row.querySelectorAll(plusSelector).length;
+      const w = wrap.getBoundingClientRect();
+      const i = input.getBoundingClientRect();
+      const cx = w.left + w.width / 2, cy = w.top + w.height / 2;
+      const hit = document.elementFromPoint(cx, cy);
+      return {
+        ok: true,
+        plusCountInRow,
+        plusIsColorSwatch: plus.hasAttribute('data-color') || !!plus.dataset.swatchColor,
+        plusPointerEvents: getComputedStyle(plus).pointerEvents,
+        inputIsChildOfWrap: wrap.contains(input),
+        wrapRect: { x: w.left, y: w.top, w: w.width, h: w.height },
+        inputRect: { x: i.left, y: i.top, w: i.width, h: i.height },
+        inputType: input.type,
+        inputPointerEvents: getComputedStyle(input).pointerEvents,
+        hitIsInput: hit === input,
+        hitTag: hit ? hit.tagName : null,
+      };
+    }, { rowSelector, wrapSelector, plusSelector, inputSelector });
+    expect(result.ok, `${label}: linha/wrapper/"+"/input precisam existir no DOM`).toBe(true);
+    expect(result.plusCountInRow, `${label}: exatamente um "+" trigger visível`).toBe(1);
+    expect(result.plusIsColorSwatch, `${label}: o "+" NÃO pode ser um swatch de cor`).toBe(false);
+    expect(result.plusPointerEvents, `${label}: o "+" visual precisa ser puramente decorativo`).toBe('none');
+    expect(result.inputType, `${label}: alvo precisa ser input[type=color]`).toBe('color');
+    expect(result.inputIsChildOfWrap, `${label}: o input nativo precisa estar dentro do wrapper do "+"`).toBe(true);
+    expect(result.inputRect.w, `${label}: input não pode ser 1×1`).toBeGreaterThan(20);
+    expect(result.inputRect.h, `${label}: input não pode ser 1×1`).toBeGreaterThan(20);
+    expect(result.inputRect.x, `${label}: input não pode estar deslocado para fora da tela`).toBeGreaterThan(-1);
+    expect(result.inputRect.y, `${label}: input não pode estar deslocado para fora da tela`).toBeGreaterThan(-1);
+    expect(Math.abs(result.inputRect.x - result.wrapRect.x), `${label}: input deve cobrir a MESMA área do "+"`).toBeLessThan(1.5);
+    expect(Math.abs(result.inputRect.y - result.wrapRect.y), `${label}`).toBeLessThan(1.5);
+    expect(Math.abs(result.inputRect.w - result.wrapRect.w), `${label}`).toBeLessThan(1.5);
+    expect(Math.abs(result.inputRect.h - result.wrapRect.h), `${label}`).toBeLessThan(1.5);
+    expect(result.inputPointerEvents, `${label}: input precisa ser interativo (pointer-events != none)`).not.toBe('none');
+    expect(result.hitTag, `${label}: o ponto central tocável do "+" deve resolver para um <input>`).toBe('INPUT');
+    expect(result.hitIsInput, `${label}: deve resolver exatamente para o input nativo, não para o "+" visual`).toBe(true);
+  };
+
+  // Prova de que o wrapper/input NÃO é removido/recriado/reparentado ao reagir aos
+  // SEUS PRÓPRIOS eventos ('input'/'change') — MutationObserver detecta remoção
+  // momentânea mesmo quando o objeto DOM volta a ser o mesmo depois.
+  const assertNeverRemounted = async (rowSelector, wrapSelector, inputSelector, action, label) => {
+    await page.evaluate(({ rowSelector, wrapSelector, inputSelector }) => {
+      const row = document.querySelector(rowSelector);
+      const wrap = document.querySelector(wrapSelector);
+      const input = document.querySelector(inputSelector);
+      const probe = { removed: false, wrap, input };
+      const observer = new MutationObserver((mutations) => {
+        for (const m of mutations) for (const n of m.removedNodes) if (n === wrap || n === input) probe.removed = true;
+      });
+      observer.observe(row, { childList: true, subtree: true });
+      window.__triggerStabilityProbe = probe;
+      window.__triggerStabilityObserver = observer;
+    }, { rowSelector, wrapSelector, inputSelector });
+    await action();
+    const result = await page.evaluate(({ inputSelector, wrapSelector }) => {
+      const probe = window.__triggerStabilityProbe;
+      window.__triggerStabilityObserver.disconnect();
+      const inputNow = document.querySelector(inputSelector), wrapNow = document.querySelector(wrapSelector);
+      return { removedDuringUpdate: probe.removed, sameInputNode: probe.input === inputNow, sameWrapNode: probe.wrap === wrapNow, connected: inputNow ? inputNow.isConnected : false };
+    }, { inputSelector, wrapSelector });
+    expect(result.removedDuringUpdate, `${label}: input/wrapper não pode ser removido do DOM ao reagir aos seus próprios eventos`).toBe(false);
+    expect(result.sameInputNode, `${label}: mesmo objeto DOM do input antes/depois`).toBe(true);
+    expect(result.sameWrapNode, `${label}: mesmo objeto DOM do wrapper antes/depois`).toBe(true);
+    expect(result.connected, `${label}: input precisa permanecer conectado ao documento`).toBe(true);
+  };
+
+  // ── Fundo do projeto ──
+  await page.locator('#modeAssetsBtn').click();
+  await expect(page.locator('body')).toHaveClass(/editor-assets/);
+  await page.locator('#modeAssetsBtn').click();
+  await expect(page.locator('#assetsModeContextMenu')).toHaveClass(/open/);
+  await page.locator('#assetsModeContextMenu .assets-menu-btn').filter({ hasText: 'Fundo' }).click();
+  const bgPanel = page.locator('#panelBgColor');
+  await expect(bgPanel).toHaveClass(/show/);
+  await page.waitForFunction(() => {
+    const t = getComputedStyle(document.getElementById('panelBgColor')).transform;
+    return t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)';
+  }, { timeout: 5_000 });
+
+  await assertPlusIsRealTouchTarget('#bgSwatches', '#bgColorTriggerWrap', '#bgSwatches .bg-swatch-add', '#bgHexInput', 'Fundo do projeto');
+  // O antigo quadrado cinza/input "Personalizar" (visível fora do wrapper do "+",
+  // rotulado por texto ao lado) não permanece como trigger visual separado.
+  expect(await page.evaluate(() => document.body.textContent.includes('Personalizar'))).toBe(false);
+  expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
+  await assertNeverRemounted('#bgSwatches', '#bgColorTriggerWrap', '#bgHexInput', async () => {
+    await dispatchInput(bgPanel.locator('#bgHexInput'), '#a1a2a3');
+    await dispatchChange(bgPanel.locator('#bgHexInput'));
+  }, 'Fundo do projeto');
+
+  // Enter no HEX confirma exatamente 1 cor; blur/change subsequente com o MESMO
+  // valor não duplica.
+  let paletteBefore = await page.evaluate(() => customColorPalette.length);
+  const progressiveBg = '#a4b5c6';
+  for (let i = 1; i <= progressiveBg.length; i++) await dispatchInput(bgPanel.locator('#bgHexText'), progressiveBg.slice(0, i));
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore);
+  await pressEnter(bgPanel.locator('#bgHexText'));
+  await expect.poll(() => page.evaluate(() => bgColor)).toBe(progressiveBg);
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore + 1);
+  // blur em seguida (dispara 'change' nativo do navegador) não duplica.
+  await bgPanel.locator('#bgHexText').evaluate((el) => el.blur());
+  await dispatchChange(bgPanel.locator('#bgHexText'));
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore + 1);
+
+  await bgPanel.locator('.panel-handle').click();
+  await expect(bgPanel).not.toHaveClass(/show/);
+
+  // ── Cor do texto ──
+  const sheet = page.locator('#textCreationSheet');
+  await page.locator('#lowerAddOrSelectAllBtn').click();
+  await expect(page.locator('#assetsAddMenu')).toHaveClass(/open/);
+  await page.locator('#assetsMenuTextBtn').click();
+  await expect(sheet).toHaveClass(/open/);
+  await page.locator('#textCreationInput').fill('REG055R1');
+  await sheet.getByRole('tab', { name: 'Cor do texto', exact: true }).click();
+
+  await assertPlusIsRealTouchTarget('#textColorSwatches', '#textColorTriggerWrap', '#textColorSwatches .text-swatch-add', '#textCreationColor', 'Cor do texto');
+  await assertNeverRemounted('#textColorSwatches', '#textColorTriggerWrap', '#textCreationColor', async () => {
+    await dispatchInput(page.locator('#textCreationColor'), '#b1b2b3');
+    await dispatchChange(page.locator('#textCreationColor'));
+  }, 'Cor do texto');
+
+  paletteBefore = await page.evaluate(() => customColorPalette.length);
+  const progressiveTextColor = '#c7d8e9';
+  for (let i = 1; i <= progressiveTextColor.length; i++) await dispatchInput(page.locator('#textColorHexText'), progressiveTextColor.slice(0, i));
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore);
+  await pressEnter(page.locator('#textColorHexText'));
+  await expect.poll(() => page.evaluate(() => pendingTextDraft.color)).toBe(progressiveTextColor);
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore + 1);
+  await page.locator('#textColorHexText').evaluate((el) => el.blur());
+  await dispatchChange(page.locator('#textColorHexText'));
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore + 1);
+
+  // ── Fundo da caixa ──
+  await sheet.getByRole('tab', { name: 'Fundo da caixa', exact: true }).click();
+  await assertPlusIsRealTouchTarget('#textBgSwatches', '#textBgTriggerWrap', '#textBgSwatches .text-swatch-add', '#textBoxBackgroundColor', 'Fundo da caixa');
+  await assertNeverRemounted('#textBgSwatches', '#textBgTriggerWrap', '#textBoxBackgroundColor', async () => {
+    await dispatchInput(page.locator('#textBoxBackgroundColor'), '#c1c2c3');
+    await dispatchChange(page.locator('#textBoxBackgroundColor'));
+  }, 'Fundo da caixa');
+
+  paletteBefore = await page.evaluate(() => customColorPalette.length);
+  const progressiveTextBox = '#d9e0f1';
+  for (let i = 1; i <= progressiveTextBox.length; i++) await dispatchInput(page.locator('#textBoxBackgroundHexText'), progressiveTextBox.slice(0, i));
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore);
+  await pressEnter(page.locator('#textBoxBackgroundHexText'));
+  await expect.poll(() => page.evaluate(() => pendingTextDraft.boxBackgroundColor)).toBe(progressiveTextBox);
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore + 1);
+  await page.locator('#textBoxBackgroundHexText').evaluate((el) => el.blur());
+  await dispatchChange(page.locator('#textBoxBackgroundHexText'));
+  expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore + 1);
+
+  await sheet.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(sheet).not.toHaveClass(/open/);
+
+  expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
   expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
 });

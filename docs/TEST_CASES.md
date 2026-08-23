@@ -2,7 +2,7 @@
 
 ## TC-053 — Picker de cor do Arco: runaway palette, HEX inline, recovery da v1 e contenção do painel (REG-055)
 
-Dois gates em `tests/smoke/app.spec.mjs`, viewport iPhone **390 × 797**. Cobrem a nova tentativa de correção da REG-055 (`v8z4b32E9F6`) após as reprovações físicas da E9F4 (painel próprio) e da E9F5 (runaway palette).
+Três gates em `tests/smoke/app.spec.mjs`, viewport iPhone **390 × 797**. Cobrem a nova tentativa de correção da REG-055 (`v8z4b32E9F6`, revisada na `v8z4b32E9F6-R1` — mesma PR #511, mesma versão) após as reprovações físicas da E9F4 (painel próprio) e da E9F5 (runaway palette).
 
 **Gate 1 — `REG-055 — picker nativo não alimenta a paleta pessoal (runaway), HEX inline salva exatamente 1 cor por commit, v1 contaminada é descartada`:**
 
@@ -18,9 +18,17 @@ Dois gates em `tests/smoke/app.spec.mjs`, viewport iPhone **390 × 797**. Cobrem
 **Gate 2 — `REG-055 — painel de Fundo do projeto permanece contido em 390×797 com paleta pessoal volumosa (100+ cores)`:**
 
 - Semeia `arco_user_custom_colors_v2` com 120 cores válidas antes de carregar; abre o painel de Fundo do projeto (único dos três contextos cujos swatches crescem verticalmente — `flex-wrap`; Cor do texto/Fundo da caixa já rolam horizontalmente e não entram neste gate).
-- Exige: painel inteiro (`#panelBgColor`) contido no viewport 390×797; alça, título e os dois campos de HEX (nativo `#bgHexInput` e texto `#bgHexText`) dentro do viewport; a área de swatches (`#bgSwatches`) tem `scrollHeight > clientHeight` (overflow interno real) e altura visível bem menor que o viewport (não "engoliu" o painel); é possível chegar do primeiro ao último swatch rolando internamente; fechar o painel continua funcionando; Stage/layout externo não fica preso (outro painel abre normalmente em seguida).
+- Exige: painel inteiro (`#panelBgColor`) contido no viewport 390×797; alça, título e o campo HEX texto (`#bgHexText`) dentro do viewport SEM rolar; a área de swatches (`#bgSwatches`) tem `scrollHeight > clientHeight` (overflow interno real) e altura visível bem menor que o viewport (não "engoliu" o painel); é possível chegar do primeiro ao último swatch rolando internamente; o input nativo "+" (`#bgColorTriggerWrap`/`#bgHexInput`, desde a R1 dentro da MESMA linha rolável dos swatches) também é alcançável pela mesma rolagem; fechar o painel continua funcionando; Stage/layout externo não fica preso (outro painel abre normalmente em seguida).
+- **Ajuste de revisão (R1):** antes da R1 este gate exigia `#bgHexInput` sempre visível SEM rolar (quando ele vivia numa linha separada, "Personalizar" + input). Com a unificação de arquitetura do blocker 1 (o "+" passa a ser o último item da linha de swatches, igual aos outros dois contextos), essa exigência foi substituída por "alcançável rolando a mesma área dos swatches" — condição estruturalmente equivalente à do último swatch pessoal.
 
-**Não testado neste TC (fora do escopo automatizável):** a abertura efetiva da UI nativa de cores do Safari/iOS (roda/espectro/conta-gotas) — um agente headless não pode pilotar o picker do sistema operacional; a prova estrutural (Safari-safe: input real, não 1×1/off-screen, sem `.click()`) já é coberta pelos gates herdados `E9F`/`E9F1`. `tests/smoke/export.spec.mjs` (WebKit macOS) não executado no ambiente de desenvolvimento (WebKit ausente); os usos de `#textCreationColor`/`#textBoxBackgroundColor` nesse arquivo dependem apenas de IDs preservados nesta PR.
+**Gate 3 (R1) — `REG-055 — os três "+" são o input[type=color] nativo real (alvo de toque), sem painel intermediário, e Enter confirma o HEX inline sem duplicar`:**
+
+- **Prova estrutural do "+" unificado nos TRÊS contextos** (Fundo do projeto, Cor do texto, Fundo da caixa): exatamente um "+" visível por contexto; o "+" NÃO é um swatch de cor (sem `data-color`) e é puramente decorativo (`pointer-events:none`); o `input[type=color]` nativo ocupa fisicamente a MESMA área do "+" (tolerância 1.5px), não é 1×1, não está fora da tela, é interativo (`pointer-events != none`); `document.elementFromPoint` no centro do "+" resolve exatamente para o input nativo (nunca para o "+" visual nem outro elemento); tocar o trigger não abre `#customColorPanel` nem nenhum painel intermediário do Arco.
+- **Fundo do projeto especificamente:** o antigo texto "Personalizar" não existe mais em lugar nenhum do `document.body.textContent` visível.
+- **Estabilidade do DOM:** `MutationObserver` prova que wrapper/input não são removidos/recriados/reparentados ao reagir aos SEUS PRÓPRIOS eventos `input`/`change`, nos três contextos.
+- **Consistência HEX/Enter, nos três campos:** digitação progressiva não altera `customColorPalette.length`; pressionar Enter (`locator.press('Enter')`) aplica e soma exatamente `+1`; um `blur` seguido de `change` no MESMO valor não soma novamente (permanece `+1`, nunca `+2`).
+
+**Não testado neste TC (fora do escopo automatizável):** a abertura efetiva da UI nativa de cores do Safari/iOS (roda/espectro/conta-gotas) — um agente headless não pode pilotar o picker do sistema operacional; a prova estrutural (Safari-safe: input real, não 1×1/off-screen, sem `.click()`) é coberta pelo Gate 3 acima e pelos gates herdados `E9F`/`E9F1`. `tests/smoke/export.spec.mjs` (WebKit macOS) não executado no ambiente de desenvolvimento (WebKit ausente); os usos de `#textCreationColor`/`#textBoxBackgroundColor` nesse arquivo dependem apenas de IDs preservados nesta PR.
 
 ## TC-052 — Painel de transformação em multi-seleção é invariante à ordem das ações (REG-053)
 
