@@ -2,7 +2,15 @@
 
 Registro canônico da base auditada `v8z4b32E9C` e do plano aprovado de PRs funcionais que devem ocorrer **antes** de qualquer promoção para produção. Este documento é a fonte de verdade do plano pré-promoção; qualquer LLM, Codex ou desenvolvedor deve conseguir entender a sequência sem depender de conversa externa.
 
-Versionado por data. Última atualização: 2026-08-19.
+Versionado por data. Última atualização: 2026-08-23 (rollback da E9G).
+
+## Atualização 2026-08-23 — rollback da E9G após REG-057
+
+- A `v8z4b32E9G` (PR #512) chegou a ser **mergeada** na `main` de teste, implementando as side width handles descritas no item E9G abaixo e corrigindo REG-056 na origem. A build publicada foi **REPROVADA FISICAMENTE** por Roberto em iPhone/Safari: a primeira edição/confirmação/Preview de um Text Asset funcionou, mas a REEDIÇÃO do mesmo Text Asset depois de sair do Preview deixou de abrir o editor (**REG-057**, causa raiz ainda não comprovada).
+- Por gravidade e ausência de causa raiz comprovada, a PR #512 foi **revertida** (rollback funcional para `v8z4b32E9F6`, última base funcional conhecida) em vez de corrigida na mesma versão. Ver `docs/DECISIONS.md` (DEC-2026-08-23-02) e `docs/REGRESSIONS.md` (REG-056 volta a ABERTA/PENDENTE DE NOVA TENTATIVA; REG-057 registrada).
+- **REG-055 não foi afetada por este rollback**: o teste físico que a resolveu ("Tudo ok" no protocolo completo) ocorreu depois do merge da E9F6, é independente do código da E9G, e permanece RESOLVIDA FISICAMENTE.
+- O estado corrente após o rollback é funcionalmente idêntico ao estado "E9G — FUTURA" descrito abaixo (item 13), exceto pelo aprendizado adicional: qualquer nova tentativa da E9G deve validar fisicamente a sequência de reedição pós-Preview (ver `docs/TEST_CASES.md`, TC-054) pelas duas rotas públicas de reedição (toolbar "Editar"; duplo toque).
+- Nenhuma frente seguinte do roadmap (Layers/Profundidade, Engine Sprint) foi autorizada a avançar por causa deste rollback. Nenhuma promoção autorizada.
 
 ## Estado correto após a rodada de Texto (2026-08-19)
 
@@ -10,7 +18,7 @@ Versionado por data. Última atualização: 2026-08-19.
 - **E9E — mergeada e aprovada fisicamente** (PR #498, merge commit `4254ed370ecee64b7f98d411fe6994b8c4538ba5`; teste físico de Roberto em iPhone/Safari em 2026-08-18).
 - **E9F — mergeada** (PR #499, merge commit `82131049e52974a1922206c92bf573b9d2c78ff5`). Testada fisicamente por Roberto em iPhone/Safari: estrutura geral aprovada e maioria das funções operando, mas **NÃO aprovada visualmente como encerrada**. (Nota: a instrução da E9F1 citou o merge commit `7e3978…`, inexistente no git; a fonte oficial mostra `82131049…`.)
 - **E9F1 — MERGEADA, PUBLICADA e APROVADA fisicamente** (PR #500, merge commit `6739dbc018f335ad6b1faead6de4f4469e5ebf78`; build publicada e testada por Roberto em iPhone/Safari, **aprovada em 2026-08-19**). Refino visual/funcional localizado: cabeçalho compacto; ícone de Estilo B+I; ícone de Alinhamento dinâmico; paleta rápida de Cor do texto e de Fundo reutilizando a constante única `PROJECT_BG_NEUTRALS` + botão `+`; Fundo com "Sem cor/Transparente" e opacidade condicional; localização do VIEWPORT ao editar existente sem tocar geometria/Frames/ProjectWorld/Undo/autosave; Largura = Auto compacto + slider step 5. Não antecipa E9G. Rodada corretiva E9F1 encerrada.
-- **E9G — EM IMPLEMENTAÇÃO nesta PR** (`v8z4b32E9G`): alças laterais de largura no Stage, substituindo o slider manual; revisão de REG-028 executada (Text Asset ganha exatamente duas side width handles além das quatro corner handles; demais Assets permanecem com exatamente quatro); corrige também REG-056 (largura manual dependente da escala). Não marcar concluída/aprovada fisicamente antes do teste publicado.
+- **E9G — FUTURA** (alças laterais de largura no Stage; exige revisão de REG-028). Uma primeira tentativa (PR #512) foi mergeada e depois REVERTIDA em 2026-08-23 por reprovação física (REG-057); ver "Atualização 2026-08-23" acima.
 - **Camadas e Profundidade JÁ EXISTEM; a readequação da interface de Layers existente + a revisão visual do controle de Profundidade existente — não iniciada.** O app já possui múltiplos assets/Layers (seleção, visibilidade, ordenação, identidades persistentes) e profundidade/parallax básico; esta frente **não** cria Layers nem Profundidade do zero, e sim readequa a interface e revisa o controle já existentes.
 - **Engine Sprint — não iniciado.**
 
@@ -84,7 +92,7 @@ A PR de Texto foi subdividida na seguinte sequência aprovada. Registrar como pl
   - paleta aprovada aplicada aos tokens de UI: chrome `#24262B`, sheet `#303238`, controles `#393C43`, divisor `~#4A4D55`; **Ativos `#FF6B8A`**, Frames mantém o ciano existente `#04fff2`; `DEFAULT_PROJECT_BG` (`#3c3c3b`) intacto;
   - a aplicação global dessa filosofia neutra aos demais painéis fica para revisão visual posterior (não feita nesta PR);
   - não antecipa E9G (nenhuma alça lateral; exatamente quatro alças preservadas).
-- **E9G — manipulação direta da largura da caixa no Stage: EM IMPLEMENTAÇÃO nesta PR** (`v8z4b32E9G`). Largura direta no Stage por duas alças laterais específicas de Text Asset (side width handles), substituindo a edição manual de largura pelo slider da E9F1. Revisão explícita da proteção REG-028/exatamente quatro alças executada: a E9G é uma exceção deliberada e específica para Text Asset (quatro corner handles + duas side width handles = seis; todo outro Asset permanece com exatamente quatro). Corrige também REG-056 (largura manual dependente da escala visual). Validação física pendente; não marcar aprovada fisicamente antes do teste publicado.
+- **E9G — manipulação direta futura da largura da caixa no Stage (FUTURA, NÃO implementada).** Proposta aprovada de largura direta no Stage por alças laterais específicas de Text Asset; exige revisão explícita da proteção REG-028/exatamente quatro alças antes da implementação. Uma primeira tentativa (`v8z4b32E9G`, PR #512) foi mergeada e depois **REVERTIDA em 2026-08-23** por reprovação física da build publicada (REG-057: reedição de Text Asset não reabre o editor após Preview) — ver "Atualização 2026-08-23" no topo deste documento e `docs/REGRESSIONS.md`/`docs/DECISIONS.md`. Não implementar nesta PR (de rollback).
 - Somente depois dessa rodada de Texto avançar para a **readequação da interface de Layers existente + revisão visual do controle de Profundidade existente** (item 3; sistemas já existentes, não criados do zero) e, em seguida, para o **Engine Sprint** de Movimento inteligente/easing.
 
 ## 3. PR de Camadas e Profundidade

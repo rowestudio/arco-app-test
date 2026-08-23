@@ -1,92 +1,8 @@
 # PRODUCT_RULES
 
-## Regra E9G — largura direta do Text Asset no Stage por side width handles (REG-056; implementada)
+## Nota — E9G (side width handles) revertida (2026-08-23)
 
-Comportamento aprovado e IMPLEMENTADO na v8z4b32E9G. Substitui a edição MANUAL de
-largura do painel (slider da E9F1) por manipulação DIRETA no Stage, por duas alças
-laterais exclusivas do Text Asset. Não é correção do slider transitório — é sua
-substituição definitiva.
-
-1. **Quatro corner handles = ESCALA.** Continuam fazendo escala proporcional do Text
-   Asset inteiro (`boxWidth`/`fontSize` em relação a `textBaseBoxWidth`/
-   `textBaseFontSize`), exatamente como antes. `getAssetContextScalePercent()`
-   continua representando ESCALA, nunca largura manual. Não alteradas nesta versão.
-2. **Duas side width handles = LARGURA.** Existem **somente** para Text Asset (nunca
-   para imagem/outros tipos): uma no centro da lateral esquerda, uma no centro da
-   lateral direita, pertencendo visualmente ao mesmo sistema das quatro corner handles
-   (mesmo acento coral), mas em classe/DOM/handlers PRÓPRIOS
-   (`.text-width-handle`/`data-asset-width-handle`), nunca reaproveitando
-   `.asset-corner-handle`. Total visual/interativo do Text Asset selecionado = seis
-   alças (quatro corner + duas laterais); todo outro tipo de Asset permanece com
-   exatamente quatro.
-3. **Separação estrita corner×side:** as duas operações NUNCA alteram uma à outra.
-   Side width drag nunca toca `fontSize`, `textBaseFontSize`, percentual de escala,
-   `rotation`, `depth`, `zIndex`, texto, cor, fundo, opacidade, padding ou timing —
-   altera **somente** a largura lógica da caixa (`boxWidth`/`textBaseBoxWidth`) e o
-   wrapping/reflow decorrente.
-4. **Invariante central — width não muda scale:** no início do gesto, a escala
-   corrente (`boxWidth / textBaseBoxWidth` no início do drag) é capturada; durante todo
-   o drag, `textBaseBoxWidth` é recalculado de forma coerente para que
-   `boxWidth_novo / textBaseBoxWidth_novo` permaneça igual à escala capturada, dentro
-   de tolerância numérica. Um Text Asset em 50%, 100% ou 200% de escala continua
-   exatamente nesse percentual antes e depois do ajuste de largura.
-5. **Limite lógico, não físico (REG-056):** o clamp de largura opera sobre a largura
-   LÓGICA (`textBaseBoxWidth`, invariante à escala por definição — é a largura na
-   escala 100%, nunca tocada pelo corner-scale), não sobre `boxWidth` (largura física
-   já multiplicada pela escala corrente). Um mesmo Text Asset em 50%, 100% e 200% de
-   escala possui a MESMA faixa lógica de largura disponível; a disponibilidade lógica
-   de ampliação nunca diminui simplesmente porque o ativo foi escalado. Ver causa raiz
-   documentada em `docs/REGRESSIONS.md` (REG-056). Clamping nunca produz `NaN`,
-   `Infinity`, `boxWidth <= 0`, `textBaseBoxWidth <= 0` ou geometria inválida.
-6. **Geometria do drag — eixo local, nunca delta X bruto de tela:** o deslocamento do
-   pointer é projetado no eixo horizontal LOCAL do Text Asset considerando `rotation`,
-   reutilizando as transformações canônicas Stage↔World existentes (nenhum sistema de
-   coordenadas paralelo). Arrastar a alça DIREITA ancora a lateral ESQUERDA no World e
-   move a direita; arrastar a ESQUERDA ancora a DIREITA e move a esquerda; o centro se
-   desloca apenas o necessário ao longo do eixo X local. A coordenada vertical local do
-   centro permanece estável mesmo quando o reflow muda `worldH`.
-7. **Fundo e padding:** a side handle representa a borda EXTERNA visual da caixa
-   (`worldW = boxWidth + 2·paddingX`), mas modifica a largura CANÔNICA de conteúdo
-   (`boxWidth`); nunca absorve padding em `boxWidth`. `boxPaddingXEm`,
-   `boxPaddingYEm`, `boxBackgroundColor` e `boxBackgroundOpacity` nunca mudam por um
-   width drag.
-8. **Auto → Fixed no mesmo gesto:** o primeiro delta EFETIVO de qualquer side handle
-   define `boxWidthMode = 'fixed'` no mesmo gesto — sem exigir abrir painel, escolher
-   um segundo botão ou um segundo gesto. Undo desse gesto restaura também
-   `boxWidthMode = 'auto'` quando esse era o estado anterior (é o snapshot completo
-   pré-gesto, não um caso especial).
-9. **Painel "Largura" — só Auto:** a edição manual de largura (slider/valor
-   numérico/stepper) SAIU do painel. O item/ícone Largura na rail permanece somente
-   para o comando **Auto**, que retorna ao algoritmo canônico de largura automática,
-   mantém escala/rotation/posição-de-centro coerentes, não altera `fontSize` e segue as
-   regras de draft/Undo do contexto. Não existe segundo botão "Fixa": arrastar uma side
-   handle já é a ação explícita que entra em `fixed`. Duas formas concorrentes de
-   edição manual (Stage + slider) nunca coexistem (prevenção REG-028).
-10. **Draft do editor (E9E preservada):** quando o editor está aberto e o Text Asset
-    exibido corresponde a `pendingTextDraft`, o side width drag modifica O DRAFT — WYSIWYG
-    imediato (texto, fundo, seleção, seis handles, outline), zero Undo/zero autosave
-    durante o gesto, nada persistido no asset confirmado. `×` Cancelar restaura
-    largura/modo anteriores; `✓` Confirmar aplica ao mesmo ID com exatamente 1 Undo/1
-    revisão de autosave quando há mudança real — o commit usa o centro do PRÓPRIO
-    draft (não mais um recentro fixo pré-edição), para que a âncora estabelecida
-    durante o drag sobreviva ao commit.
-11. **Confirmado fora do editor:** um Text Asset simplesmente selecionado no Stage
-    (fora do editor) responde à side handle diretamente — WYSIWYG ao vivo durante
-    `pointermove`; no `pointerup` confirmado, exatamente 1 Undo e 1 revisão de
-    autosave para o gesto inteiro (nunca um Undo por `pointermove`).
-12. **`pointercancel`/perda de captura:** restaura o snapshot pré-gesto por completo —
-    escala, largura, posição e modo Auto/Fixed voltam ao estado anterior; zero
-    Undo/zero autosave. O gesto de largura nunca inicia escala, rotação, movimento do
-    ativo inteiro, pan do Stage ou transformação de canto.
-13. **Stage/Preview/Export:** as side width handles são UI de edição — nunca aparecem
-    em Preview/Export. A geometria confirmada do Text Asset (wrapping, fundo, padding,
-    rotação, tamanho) permanece idêntica semanticamente entre Stage, Preview e Export.
-14. **REG-028 especializada, não enfraquecida:** todo Asset não-texto mantém
-    exatamente quatro corner handles e ZERO side width handles. Nenhum handle legado
-    (`.asset-scale-handle`, `.asset-rotate-handle`, `.asset-transform-handle`) volta a
-    existir. O guardrail `scripts/qa/check-asset-transform-handles.mjs` foi
-    especializado (não simplesmente trocou "4" por "6") com self-tests próprios
-    positivos e negativos.
+Uma implementação da E9G (`v8z4b32E9G`, PR #512 — largura direta do Text Asset no Stage por duas side width handles, corrigindo REG-056 na origem) chegou a ser mergeada e foi **revertida** após a build publicada ser REPROVADA FISICAMENTE por Roberto (REG-057: reedição de Text Asset não reabre o editor após o ciclo edição → confirmação → Preview → sair do Preview). O código desta PR **não contém** side width handles; Text Asset mantém exatamente quatro corner handles, como qualquer outro Asset. O desenho de produto completo (invariantes width≠scale, limite lógico, geometria do drag) permanece registrado como referência histórica em `docs/DECISIONS.md` (DEC-2026-08-23-01, marcada SUPERADA/REVERTIDA) e como possibilidade futura aprovada em `docs/ROADMAP.md`/`docs/PRE_PROMOTION_RELEASE_PLAN.md`. Ver `docs/REGRESSIONS.md` (REG-056, REG-057) para o estado corrente.
 
 ## Regra canônica — picker de cor do Arco vs. paleta pessoal (E9F6, REG-055; implementada)
 
@@ -143,7 +59,7 @@ Comportamento aprovado e IMPLEMENTADO na v8z4b32E9F1 (correção localizada sobr
 6. **Fundo da caixa — escolher cor:** selecionar qualquer cor (swatch neutro, custom atual ou `+`) faz `boxBackgroundEnabled = true`, grava `boxBackgroundColor`, renderiza WYSIWYG imediatamente e **então** mostra o slider de opacidade. Voltar a "Sem cor" remove o fundo imediatamente e oculta o slider, sem alterar a opacidade dos glifos. O alfa controla **somente** `boxBackgroundOpacity`; nunca opacidade de glifo, de ativo, seleção ou alças.
 7. **Localização do viewport ao editar existente:** ao abrir o editor em `mode==='edit'`, a VISTA do editor é reposicionada por **pan de navegação canônico** (`computeEditorTransform → editorWorldToStage`, `editorPanX/Y`, `clampEditorPan`, `applyEditorZoom`) para manter o centro visual do Text Asset dentro da área de Stage realmente visível acima da sheet/teclado. A operação **não** move o asset (`worldX/worldY/worldW/worldH`, `rotation`, `depth`, `zIndex` inalterados), **não** altera Frames, curvas nem ProjectWorld, **não** dispara Undo nem agenda autosave, **não** altera o hash canônico e **preserva o zoom** (só translação, sem zoom automático agressivo). Usa a geometria REAL (`stage`, `#textCreationSheet`, `visualViewport`/teclado do Safari) com deadzone anti-jitter e reexecuta após abrir, após a estabilização do layout e a cada `resize` relevante de `visualViewport`. A E9E continua valendo: editar existente **não** recentraliza o ASSET; a E9F1 apenas localiza o VIEWPORT.
 8. **Criação de novo texto inalterada (E9E):** novo texto continua nascendo no centro da VISTA ATUAL, capturado antes do resize do teclado. A localização de edit não é reaproveitada para mudar o create.
-9. **Largura = Auto compacto + slider (SUPERADA pela E9G):** ~~existe **um** único botão de modo explícito (**Auto**, quadrado/compacto, `aria-label` "Ajustar largura automaticamente"), mais um slider (step 5, limites canônicos de largura) e o valor numérico compacto. Iniciar uma alteração efetiva pelo slider define `boxWidthMode = 'fixed'` **no mesmo gesto** e o botão Auto deixa de aparecer ativo. Tocar Auto volta a `boxWidthMode = 'auto'`, executa a medição canônica de auto-largura (wrap, +1 px E9D, `textBaseBoxWidth`, `measureTextAsset`, centro visual, WYSIWYG preservados) e re-sincroniza o slider **sem** sair de auto (distinção entre atualização programática do slider e input do usuário). **Não** existe botão "Fixa" grande nem stepper `−`/`+`; nenhum handler morto alcançável permanece.~~ A partir da v8z4b32E9G, o slider foi **removido** (não corrigido): a edição de largura passou a ser feita diretamente no Stage pelas duas side width handles do Text Asset (REG-056); o painel Largura mantém somente o comando Auto. Ver "Regra E9G" acima.
+9. **Largura = Auto compacto + slider:** existe **um** único botão de modo explícito (**Auto**, quadrado/compacto, `aria-label` "Ajustar largura automaticamente"), mais um slider (step 5, limites canônicos de largura) e o valor numérico compacto. Iniciar uma alteração efetiva pelo slider define `boxWidthMode = 'fixed'` **no mesmo gesto** e o botão Auto deixa de aparecer ativo. Tocar Auto volta a `boxWidthMode = 'auto'`, executa a medição canônica de auto-largura (wrap, +1 px E9D, `textBaseBoxWidth`, `measureTextAsset`, centro visual, WYSIWYG preservados) e re-sincroniza o slider **sem** sair de auto (distinção entre atualização programática do slider e input do usuário). **Não** existe botão "Fixa" grande nem stepper `−`/`+`; nenhum handler morto alcançável permanece.
 10. **E9G não antecipada:** exatamente quatro alças de transformação (`tl`, `tr`, `bl`, `br`); nenhuma alça lateral, drag lateral de largura ou conversão Auto→Fixa pelo Stage.
 
 ## Paleta de UI aprovada (v8z4b32E9F)
@@ -259,7 +175,7 @@ Comportamento aprovado e IMPLEMENTADO na v8z4b32E9F1 (correção localizada sobr
 
 ### Propriedade: Largura da caixa
 
-- A partir da v8z4b32E9G, mantém apenas o comando **Auto** (sem slider/stepper): a largura em si é editada diretamente no Stage pelas duas side width handles do Text Asset, exclusivas desse tipo de ativo. Ver "Regra E9G" no topo deste documento.
+- Mantém Auto/Fixa e, no modo Fixa, o stepper numérico (funcionalidade E9C intacta). E9G (alças laterais de largura no Stage) NÃO pertence a esta etapa.
 
 ### Cabeçalho e draft
 
