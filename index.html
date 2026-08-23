@@ -35689,7 +35689,15 @@ function handleStageAssetSelectPointer(e) {
   if (typeof twoFingerState !== 'undefined' && twoFingerState) return false;
   if (e.pointerType === 'touch' && e.isPrimary === false) return false;
   // Handles de transformação têm prioridade sobre seleção/movimento/pan.
-  if (e.target && e.target.closest && e.target.closest('.asset-corner-handle')) return false;
+  // v8z4b32E9G-R2 — as duas side width handles do Text Asset (.text-width-handle) são
+  // outro handle de transformação, exclusivo de Text Asset: sem esta exceção, este
+  // gatekeeper de CAPTURA (roda antes do listener de target da própria handle) fazia
+  // hit-test pelas coordenadas do pointerdown — fora do retângulo do texto, a 12px de
+  // distância — e reselecionava o asset por baixo (ex.: a imagem), consumindo o evento
+  // com stopImmediatePropagation antes de beginTextWidthDrag sequer rodar. Causa raiz
+  // real do FAIL medido no CI (não assetTransformDragState residual, que os
+  // diagnósticos desta mesma revisão confirmaram sempre idle).
+  if (e.target && e.target.closest && e.target.closest('.asset-corner-handle,.text-width-handle')) return false;
   // Não interceptar controles de UI sobre a área do Stage.
   if (e.target && e.target.closest && (
         e.target.closest('#editorZoomCtrl,#stageEyeShortcut') ||

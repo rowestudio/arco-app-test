@@ -319,6 +319,9 @@ expectCase(results, 'Asset transform handles: width handles not gated to Text As
 expectCase(results, 'Asset transform handles: width handle DOM creation removed fails', 'check-asset-transform-handles.mjs', 1, {
   env: { QA_ASSET_HANDLES_HTML: createAssetTransformHandlesFixture((html) => html.replace("['left','right'].forEach(function(side)", "['left','right'].forEach_disabled(function(side)")) },
 });
+expectCase(results, 'Asset transform handles: width handle not exempted from stage-tap select gatekeeper fails', 'check-asset-transform-handles.mjs', 1, {
+  env: { QA_ASSET_HANDLES_HTML: createAssetTransformHandlesFixture((html) => html.replace("e.target.closest('.asset-corner-handle,.text-width-handle')", "e.target.closest('.asset-corner-handle')")) },
+});
 
 expectCiCase(results, 'Mobile CI watchdog planning behavior passes', 'test-mobile-ci-watchdog.mjs', 0);
 

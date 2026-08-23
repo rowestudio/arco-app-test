@@ -106,4 +106,13 @@ requireExcludes('function onTextWidthSliderInput(', 'dead handler for the remove
 requireExcludes('function setTextDraftFixedWidth(', 'dead handler exclusive to the removed manual width slider');
 requireIncludes('id="textWidthAuto"', 'Auto width command preserved in the panel');
 
+// v8z4b32E9G-R2 — regressão real encontrada no WebKit CI: handleStageAssetSelectPointer
+// é um gatekeeper de CAPTURA em imageArea (roda ANTES do listener de target da própria
+// handle) que faz hit-test por coordenadas e reseleciona o asset por baixo, com
+// stopImmediatePropagation — .asset-corner-handle já era exemptado, mas
+// .text-width-handle não era, então um pointerdown na side handle era sequestrado antes
+// de beginTextWidthDrag sequer rodar (a alça ficava visível/"funcional" no DOM, mas o
+// gesto nunca começava). Trava explicitamente as DUAS exceções juntas nesse gatekeeper.
+requireIncludes("e.target.closest('.asset-corner-handle,.text-width-handle')", 'stage-tap select gatekeeper exempts both corner and width handles from hijacking pointerdown');
+
 console.log('Asset transform handle guardrail passed.');
