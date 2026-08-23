@@ -51,19 +51,51 @@ async function disableTextBox(page) {
 // deslocamentos [dx,dy] em pixels de TELA a partir do centro da alça (aplicados em
 // sequência, simulando vários pointermove de um mesmo gesto); cancel dispara
 // pointercancel em vez de pointerup ao final.
+// v8z4b32E9G-R2 — hardened per revisão: exige a alça REAL visível/interativa (nunca
+// aceita um elemento oculto/sem área por engano) e devolve snapshots do diagnóstico de
+// lifecycle em cada etapa do gesto (pointerdown/primeiro pointermove/todos os
+// pointermove/pointerup-ou-cancel), lidos pela MESMA função de resolução que o produto
+// usa (resolveActiveTextAssetForWidthDrag), para tornar um FAIL autoexplicativo sem
+// precisar de uma nova rodada só para instrumentar.
 async function dragTextWidthHandle(page, side, moves, { cancel = false } = {}) {
   return await page.evaluate(({ side, moves, cancel }) => {
-    const handle = document.querySelector(`.text-width-handle[data-asset-width-handle="${side}"]`);
-    if (!handle) throw new Error('side width handle not found: ' + side);
-    const rect = handle.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+    const selector = `.text-width-handle.show[data-asset-width-handle="${side}"]`;
+    const handle = document.querySelector(selector);
+    if (!handle) throw new Error('side width handle not visible: ' + selector);
+    const style = getComputedStyle(handle);
+    const rect0 = handle.getBoundingClientRect();
+    if (style.display === 'none' || rect0.width <= 0 || rect0.height <= 0) {
+      throw new Error('side width handle has no usable geometry: ' + JSON.stringify({ display: style.display, w: rect0.width, h: rect0.height }));
+    }
+    const cx = rect0.left + rect0.width / 2, cy = rect0.top + rect0.height / 2;
     const pointerId = 7771;
     const fire = (type, x, y) => handle.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId, pointerType: 'touch', isPrimary: true }));
+    const snapshot = () => {
+      const resolved = typeof resolveActiveTextAssetForWidthDrag === 'function' ? resolveActiveTextAssetForWidthDrag() : null;
+      return {
+        textWidthGestureActive: typeof textWidthDragState !== 'undefined' && !!textWidthDragState,
+        textWidthHandleSide: (typeof textWidthDragState !== 'undefined' && textWidthDragState) ? textWidthDragState.side : null,
+        assetTransformDragStateActive: typeof assetTransformDragState !== 'undefined' && !!assetTransformDragState,
+        selectedAssetId: typeof selectedAssetId !== 'undefined' && selectedAssetId != null ? String(selectedAssetId) : null,
+        boxWidth: resolved ? resolved.asset.boxWidth : null,
+        textBaseBoxWidth: resolved ? resolved.asset.textBaseBoxWidth : null,
+        boxWidthMode: resolved ? resolved.asset.boxWidthMode : null,
+      };
+    };
+    const diag = { beforeDown: snapshot() };
     fire('pointerdown', cx, cy);
-    let lastX = cx, lastY = cy;
-    for (const [dx, dy] of moves) { lastX = cx + dx; lastY = cy + (dy || 0); fire('pointermove', lastX, lastY); }
+    diag.afterDown = snapshot();
+    let lastX = cx, lastY = cy, firstMoveDiag = null;
+    moves.forEach(([dx, dy], i) => {
+      lastX = cx + dx; lastY = cy + (dy || 0);
+      fire('pointermove', lastX, lastY);
+      if (i === 0) firstMoveDiag = snapshot();
+    });
+    diag.afterFirstMove = firstMoveDiag;
+    diag.afterAllMoves = snapshot();
     fire(cancel ? 'pointercancel' : 'pointerup', lastX, lastY);
-    return { startX: cx, startY: cy };
+    diag.afterUp = snapshot();
+    return { startX: cx, startY: cy, diag };
   }, { side, moves, cancel });
 }
 // Atalho para um único deslocamento horizontal (screen px); positivo estende a alça
@@ -3321,24 +3353,95 @@ test('E9G — side width handles do Text Asset: largura direta no Stage separada
   // ---------- B) CORNER escala (fontSize+boxWidth juntos); SIDE nunca escala ----------
   const beforeCorner = await readAsset();
   const corner = page.locator('.asset-corner-handle[data-asset-corner="br"]');
-  const cornerBox = await corner.boundingBox();
-  await page.mouse.move(cornerBox.x + cornerBox.width / 2, cornerBox.y + cornerBox.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(cornerBox.x + 40, cornerBox.y + 40, { steps: 5 });
-  await page.mouse.up();
-  const afterCorner = await readAsset();
-  expect(afterCorner.fontSize).not.toBeCloseTo(beforeCorner.fontSize, 3); // corner altera a fonte
-  expect(afterCorner.textBaseFontSize).toBeCloseTo(beforeCorner.textBaseFontSize, 5); // baseline não muda
+  const doCornerDrag = async () => {
+    const cornerBox = await corner.boundingBox();
+    await page.mouse.move(cornerBox.x + cornerBox.width / 2, cornerBox.y + cornerBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(cornerBox.x + 40, cornerBox.y + 40, { steps: 5 });
+    await page.mouse.up();
+  };
+  await doCornerDrag();
+  // v8z4b32E9G-R2 — DIAGNÓSTICO OBRIGATÓRIO: lifecycle do corner drag logo após o
+  // pointerup real, medido (não assumido) para descartar/confirmar estado residual de
+  // assetTransformDragState bloqueando o próximo gesto (side width handle).
+  const afterCornerUp = await page.evaluate(id => ({
+    assetTransformDragStateActive: typeof assetTransformDragState !== 'undefined' && !!assetTransformDragState,
+    selectedAssetId: typeof selectedAssetId !== 'undefined' && selectedAssetId != null ? String(selectedAssetId) : null,
+  }), id);
+  console.log('[E9G diag] afterCornerUp', JSON.stringify(afterCornerUp));
+  expect(afterCornerUp.assetTransformDragStateActive, 'assetTransformDragState deve ficar idle após pointerup real do corner').toBe(false);
+  expect(afterCornerUp.selectedAssetId).toBe(id);
+  const afterCorner1 = await readAsset();
+  expect(afterCorner1.fontSize).not.toBeCloseTo(beforeCorner.fontSize, 3); // corner altera a fonte
+  expect(afterCorner1.textBaseFontSize).toBeCloseTo(beforeCorner.textBaseFontSize, 5); // baseline não muda
+
+  // B-direto) sequência mais direta do usuário: escalar pelos cantos → SEM Undo →
+  // ajustar largura pela side handle já precisa funcionar, sem re-seleção nem reset
+  // escondido.
+  const beforeSideNoUndo = await readAsset();
+  const dragNoUndo = await dragTextWidthHandleBy(page, 'right', 60);
+  console.log('[E9G diag] side drag (corner sem Undo)', JSON.stringify(dragNoUndo.diag));
+  const afterSideNoUndo = await readAsset();
+  expect(afterSideNoUndo.boxWidth, `corner→SEM Undo→side deve mudar boxWidth; diag=${JSON.stringify(dragNoUndo.diag)}`).not.toBeCloseTo(beforeSideNoUndo.boxWidth, 0);
+  expect(afterSideNoUndo.fontSize).toBe(beforeSideNoUndo.fontSize); // side não escala mesmo empilhado sobre corner sem Undo
+  await page.locator('#topBtnUndo').click(); // desfaz o side drag
+  await page.locator('#topBtnUndo').click(); // desfaz o corner drag
+  expect(await readAsset()).toEqual(beforeCorner); // volta ao baseline limpo
+
+  // B-com-Undo) sequência relatada na revisão: corner drag → pointerup → Undo → side.
+  await doCornerDrag();
+  const afterCorner2 = await readAsset();
+  expect(afterCorner2.fontSize).not.toBeCloseTo(beforeCorner.fontSize, 3);
   await page.locator('#topBtnUndo').click(); // desfaz só o corner drag
+  // DIAGNÓSTICO OBRIGATÓRIO: lifecycle logo após o Undo.
+  const afterUndo = await page.evaluate(id => {
+    const sel = document.getElementById('assetSelectOutline');
+    return {
+      assetTransformDragStateActive: typeof assetTransformDragState !== 'undefined' && !!assetTransformDragState,
+      selectedAssetId: typeof selectedAssetId !== 'undefined' && selectedAssetId != null ? String(selectedAssetId) : null,
+      cornerHandlesShown: sel ? sel.querySelectorAll('.asset-corner-handle.show').length : -1,
+      widthHandlesShown: sel ? sel.querySelectorAll('.text-width-handle.show').length : -1,
+    };
+  }, id);
+  console.log('[E9G diag] afterUndo', JSON.stringify(afterUndo));
+  expect(afterUndo.assetTransformDragStateActive, 'assetTransformDragState deve continuar idle após Undo').toBe(false);
+  expect(afterUndo.selectedAssetId).toBe(id);
+  expect(afterUndo.cornerHandlesShown).toBe(4);
+  expect(afterUndo.widthHandlesShown).toBe(2);
 
   const beforeSide = await readAsset();
-  await dragTextWidthHandleBy(page, 'right', 60);
+  const preSideDrag = await page.evaluate(id => {
+    const resolved = typeof resolveActiveTextAssetForWidthDrag === 'function' ? resolveActiveTextAssetForWidthDrag() : null;
+    return {
+      boxWidth: resolved ? resolved.asset.boxWidth : null,
+      textBaseBoxWidth: resolved ? resolved.asset.textBaseBoxWidth : null,
+      selectedAssetId: typeof selectedAssetId !== 'undefined' && selectedAssetId != null ? String(selectedAssetId) : null,
+      assetTransformDragStateActive: typeof assetTransformDragState !== 'undefined' && !!assetTransformDragState,
+      textWidthDragStateActive: typeof textWidthDragState !== 'undefined' && !!textWidthDragState,
+    };
+  }, id);
+  console.log('[E9G diag] preSideDrag', JSON.stringify(preSideDrag));
+  const sideDrag = await dragTextWidthHandleBy(page, 'right', 60);
+  console.log('[E9G diag] side drag (após Undo do corner)', JSON.stringify(sideDrag.diag));
   const afterSide = await readAsset();
   expect(afterSide.fontSize).toBe(beforeSide.fontSize); // SIDE nunca muda fontSize
   expect(afterSide.textBaseFontSize).toBe(beforeSide.textBaseFontSize);
   expect(Math.abs(afterSide.pct - beforeSide.pct)).toBeLessThan(0.05); // escala% preservada
-  expect(afterSide.boxWidth).not.toBeCloseTo(beforeSide.boxWidth, 0); // largura mudou de verdade
+  expect(afterSide.boxWidth, `largura mudou de verdade; preSideDrag=${JSON.stringify(preSideDrag)} diag=${JSON.stringify(sideDrag.diag)}`).not.toBeCloseTo(beforeSide.boxWidth, 0);
   expect(afterSide.boxWidthMode).toBe('fixed'); // primeiro delta efetivo entra em fixed
+  // DIAGNÓSTICO OBRIGATÓRIO: estado pós-pointerup do produto (não só do helper).
+  const postSideProductDiag = await page.evaluate(() => getTextEditorE9F1Diagnostics());
+  console.log('[E9G diag] postSideProductDiag', JSON.stringify({
+    textWidthGestureActive: postSideProductDiag.textWidthGestureActive,
+    textWidthCurrentBoxWidth: postSideProductDiag.textWidthCurrentBoxWidth,
+    textWidthModeBefore: postSideProductDiag.textWidthModeBefore,
+    textWidthModeAfter: postSideProductDiag.textWidthModeAfter,
+    textWidthScalePreserved: postSideProductDiag.textWidthScalePreserved,
+    textWidthOppositeEdgeAnchored: postSideProductDiag.textWidthOppositeEdgeAnchored,
+  }));
+  expect(postSideProductDiag.textWidthGestureActive).toBe(false);
+  expect(postSideProductDiag.textWidthScalePreserved).toBe(true);
+  expect(postSideProductDiag.textWidthOppositeEdgeAnchored).toBe(true);
 
   // ---------- C) gesto direto fora do editor = exatamente 1 Undo + 1 autosave ----------
   const undoBefore = await page.evaluate(() => undoStack.length);
