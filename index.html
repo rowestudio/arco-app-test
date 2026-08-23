@@ -36126,13 +36126,20 @@ function endTextWidthPointer(e, cancelled) {
     // confirmTextCreation, que agora recompõe o centro a partir do PRÓPRIO draft).
     return;
   }
+  // v8z4b32E9G-R1 — correção de revisão: um pointermove totalmente absorvido pelo
+  // clamp (ex.: já no limite lógico máximo/mínimo) não pode marcar o projeto
+  // dirty/agendar autosave nem mexer em Layers. `changed` é a única fonte de
+  // "alteração real" — nunca `ds.moved` (que só significa "houve pointermove válido").
+  // NO-OP clampado = zero Undo, zero dirty, zero revisão de autosave.
   const changed = Math.abs(asset.boxWidth - ds.startBoxWidth) > 0.01 || Math.abs(asset.worldX - (ds.startCenterX - ds.startWorldW / 2)) > 0.01 || Math.abs(asset.worldY - (ds.startCenterY - ds.startWorldH / 2)) > 0.01 || Math.abs(asset.worldW - ds.startWorldW) > 0.01 || Math.abs(asset.worldH - ds.startWorldH) > 0.01;
-  if (changed && ds.undoSnapshot && typeof pushUndoSnapshot === 'function') {
-    pushUndoSnapshot(ds.undoSnapshot);
-    lastUndoAction = 'textWidthDrag';
+  if (changed) {
+    if (ds.undoSnapshot && typeof pushUndoSnapshot === 'function') {
+      pushUndoSnapshot(ds.undoSnapshot);
+      lastUndoAction = 'textWidthDrag';
+    }
+    if (typeof markProjectDirty === 'function') markProjectDirty('text-width-drag');
+    if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
   }
-  if (typeof markProjectDirty === 'function') markProjectDirty('text-width-drag');
-  if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
 }
 
 // Contorno discreto do asset selecionado — overlay DOM dentro de #stageContent,

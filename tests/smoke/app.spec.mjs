@@ -2143,7 +2143,13 @@ test('E9C — Text Asset auto-largura ao conteúdo, modo fixo e paridade sob dep
   await expect.poll(() => page.evaluate(id => assets.find(a => String(a.id) === id).boxWidthMode, textId)).toBe('auto');
   await page.locator('#topBtnRedo').click();
   await expect.poll(() => page.evaluate(id => assets.find(a => String(a.id) === id).boxWidthMode, textId)).toBe('fixed');
-  expect(await page.evaluate(id => Math.abs(assets.find(a => String(a.id) === id).boxWidth - fixedDraftWidth) < 1.5, textId)).toBe(true);
+  // v8z4b32E9G-R1 — correção de revisão: fixedDraftWidth é uma const do contexto
+  // Node/Playwright; não pode ser referenciada dentro do corpo de page.evaluate()
+  // (executa no browser, onde essa variável não existe). Lê o valor real via
+  // page.evaluate() e compara no lado Node, preservando a mesma prova (Undo → Auto,
+  // Redo → Fixed com exatamente a largura confirmada no draft).
+  const redoneBoxWidth = await page.evaluate(id => assets.find(a => String(a.id) === id).boxWidth, textId);
+  expect(Math.abs(redoneBoxWidth - fixedDraftWidth)).toBeLessThan(1.5);
 
   // (c) Persistência do modo/valor em Save/Load real.
   const downloadPromise = page.waitForEvent('download');
@@ -3240,8 +3246,10 @@ test('E9F1 — refino do editor de texto: cabeçalho compacto, ícones, paletas,
 // tipo de ativo (imagem = 4+0, texto = 4+2), separação corner(escala)×side(largura),
 // ancoragem da lateral oposta sob rotação não trivial, gesto direto fora do editor =
 // exatamente 1 Undo/1 autosave, pointercancel restaura integralmente, Undo/Redo,
-// REG-056 (mesma faixa lógica de textBaseBoxWidth em 50/100/200%), fundo/padding
-// acompanhando o reflow e Save/Load preservando os campos relevantes.
+// REG-056 (mesma faixa lógica de textBaseBoxWidth em 50/100/200%), clamp/no-op no
+// limite lógico (zero Undo/dirty/autosave, geometria intacta — distinto de um gesto
+// válido com delta real), fundo/padding acompanhando o reflow e Save/Load preservando
+// os campos relevantes.
 test('E9G — side width handles do Text Asset: largura direta no Stage separada de escala (REG-056)', async ({ page }, testInfo) => {
   test.setTimeout(240_000);
   await page.setViewportSize({ width: 390, height: 797 });
@@ -3269,6 +3277,27 @@ test('E9G — side width handles do Text Asset: largura direta no Stage separada
     await expect(page.locator('#assetContextValue')).toHaveText(pct + '%');
     await page.getByRole('button', { name: 'Voltar' }).click();
   };
+
+  // v8z4b32E9G-R1 — correção de revisão (Blocker 2): a largura Auto do texto recém-
+  // criado nasce da medição natural do conteúdo, que pode ficar perto do limite lógico
+  // MÁXIMO dependendo da fixture/viewport — um drag de AUMENTO ali seria um clamp
+  // legítimo (no-op), não prova nem reprova a side handle. Prepara o Text Asset em
+  // Fixed com textBaseBoxWidth no MEIO da faixa lógica (folga real para crescer e para
+  // encolher nos dois sentidos), preservando a escala canônica (100% logo após a
+  // criação: boxWidth == textBaseBoxWidth). Estado de SETUP, não o comportamento sob
+  // teste — mesmo princípio já usado alhures neste arquivo para preparar precondições
+  // de largura fixa sem depender do slider/gesto público.
+  await page.evaluate(id => {
+    const a = assets.find(x => String(x.id) === id);
+    const bounds = getTextWidthLogicalBounds();
+    const mid = (bounds.min + bounds.max) / 2;
+    a.boxWidthMode = 'fixed';
+    a.textBaseBoxWidth = mid;
+    a.boxWidth = mid;
+    measureTextAsset(a);
+    renderProjectWorldExtraImages();
+    renderAssetSelectionOverlay();
+  }, id);
 
   // ---------- A) contagem por tipo: imagem 4+0, Text Asset 4+2 ----------
   const imageId = await page.evaluate(() => assets.find(a => a && a.type === 'image').id);
@@ -3379,6 +3408,39 @@ test('E9G — side width handles do Text Asset: largura direta no Stage separada
     expect(Number.isFinite(s.worldW) && s.worldW > 0).toBe(true);
     await page.locator('#topBtnUndo').click();
     await page.locator('#topBtnUndo').click(); // desfaz a mudança de escala desta iteração
+  }
+
+  // ---------- G2) CLAMP/NO-OP: gesto absorvido pelo limite lógico não altera
+  // geometria nem gera Undo/dirty/autosave — diferencia GESTO VÁLIDO COM DELTA
+  // (seções B/G acima) de GESTO CLAMPADO SEM ALTERAÇÃO (Blocker 3 da revisão) ----------
+  for (const boundKind of ['max', 'min']) {
+    await page.evaluate(({ id, boundKind }) => {
+      const a = assets.find(x => String(x.id) === id);
+      const bounds = getTextWidthLogicalBounds();
+      const target = boundKind === 'max' ? bounds.max : bounds.min;
+      a.boxWidthMode = 'fixed';
+      a.rotation = 0;
+      a.textBaseBoxWidth = target;
+      a.boxWidth = target;
+      measureTextAsset(a);
+      renderProjectWorldExtraImages();
+      renderAssetSelectionOverlay();
+    }, { id, boundKind });
+    const before = await readAsset();
+    const undoBeforeClamp = await page.evaluate(() => undoStack.length);
+    const revBeforeClamp = await page.evaluate(() => _sessionAutosaveQueuedRevision);
+    // No máximo, tenta crescer mais (extrapolaria); no mínimo, tenta encolher mais.
+    await dragTextWidthHandleBy(page, 'right', boundKind === 'max' ? 300 : -300);
+    const after = await readAsset();
+    expect(after.boxWidth).toBeCloseTo(before.boxWidth, 3);
+    expect(after.textBaseBoxWidth).toBeCloseTo(before.textBaseBoxWidth, 3);
+    expect(after.worldX).toBeCloseTo(before.worldX, 3);
+    expect(after.worldY).toBeCloseTo(before.worldY, 3);
+    expect(after.worldW).toBeCloseTo(before.worldW, 3);
+    expect(after.worldH).toBeCloseTo(before.worldH, 3);
+    expect(after.boxWidthMode).toBe(before.boxWidthMode); // sem mudança espúria de modo
+    expect(await page.evaluate(() => undoStack.length)).toBe(undoBeforeClamp); // clamp/no-op: 0 Undo
+    expect(await page.evaluate(() => _sessionAutosaveQueuedRevision)).toBe(revBeforeClamp); // 0 autosave
   }
 
   // ---------- H) fundo/padding acompanham o reflow; nada se descola ----------
