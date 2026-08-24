@@ -1,8 +1,13 @@
 # PRODUCT_RULES
 
-## Nota — E9G (side width handles) revertida (2026-08-23)
+## Nota — E9G/E9G1 (side width handles) revertidas DUAS vezes (2026-08-23 e 2026-08-24)
 
-Uma implementação da E9G (`v8z4b32E9G`, PR #512 — largura direta do Text Asset no Stage por duas side width handles, corrigindo REG-056 na origem) chegou a ser mergeada e foi **revertida** após a build publicada ser REPROVADA FISICAMENTE por Roberto (REG-057: reedição de Text Asset não reabre o editor após o ciclo edição → confirmação → Preview → sair do Preview). O código desta PR **não contém** side width handles; Text Asset mantém exatamente quatro corner handles, como qualquer outro Asset. O desenho de produto completo (invariantes width≠scale, limite lógico, geometria do drag) permanece registrado em `docs/DECISIONS.md` (DEC-2026-08-23-01, marcada SUPERADA/REVERTIDA) e como possibilidade futura aprovada em `docs/ROADMAP.md`/`docs/PRE_PROMOTION_RELEASE_PLAN.md`. Ver `docs/REGRESSIONS.md` (REG-056, REG-057) para o estado corrente.
+Duas implementações sucessivas da largura direta do Text Asset no Stage por duas side width handles (corrigindo REG-056 na origem) chegaram a ser mergeadas e foram **ambas revertidas** após reprovação física em iPhone/Safari:
+
+- `v8z4b32E9G` (PR #512): REPROVADA FISICAMENTE por REG-057 (reedição de Text Asset não reabre o editor após o ciclo edição → confirmação → Preview → sair do Preview); revertida em 2026-08-23.
+- `v8z4b32E9G1` (PR #514): reimplementou o mesmo desenho técnico sobre a base restaurada; REPROVADA FISICAMENTE por **REG-058** (após manipulação/edição de largura do Text Asset chegando ao limite, o Stage deixou de permitir edição/interação); revertida em 2026-08-24 (esta PR). A causa raiz de REG-058 NÃO foi comprovada — não afirmar pointer capture, clamp, overlay, listener ou side handle como causa sem evidência.
+
+O código corrente **não contém** side width handles nem qualquer infraestrutura específica da E9G/E9G1 (`.text-width-handle`, `beginTextWidthDrag`, `handleTextWidthPointerMove`, `endTextWidthPointer` ausentes); Text Asset mantém exatamente quatro corner handles, como qualquer outro Asset. O desenho de produto completo (invariantes width≠scale, limite lógico, geometria do drag) permanece registrado em `docs/DECISIONS.md` (DEC-2026-08-23-01 e DEC-2026-08-24-01, ambas marcadas SUPERADA/REVERTIDA) e como possibilidade futura em `docs/ROADMAP.md`/`docs/PRE_PROMOTION_RELEASE_PLAN.md` — uma nova tentativa exige investigação de causa raiz de AMBAS as reprovações físicas (REG-057 e REG-058) antes de reimplementar o mesmo desenho sem alteração. Ver `docs/REGRESSIONS.md` (REG-056, REG-057, REG-058) para o estado corrente. Esta PR de rollback não tentou corrigir REG-056 nem REG-058.
 
 ## Regra canônica — picker de cor do Arco vs. paleta pessoal (E9F6, REG-055; implementada)
 
