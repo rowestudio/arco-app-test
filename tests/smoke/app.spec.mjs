@@ -905,10 +905,11 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   const measureControls = (page, stepSelector, resetSelector) => page.evaluate(({ stepSelector, resetSelector }) => {
     const step = document.querySelector(stepSelector);
     const reset = document.querySelector(resetSelector);
-    const row = step?.parentElement;
-    const sliderRow = row?.previousElementSibling;
-    const slider = sliderRow?.querySelector('input[type="range"]');
-    const stack = row?.parentElement;
+    const assetPanel = step?.closest('#assetContextPanel');
+    const row = assetPanel?.querySelector('.asset-context-actions') || step?.parentElement;
+    const sliderRow = assetPanel?.querySelector('.asset-context-row') || row?.previousElementSibling;
+    const slider = assetPanel?.querySelector('#assetContextSlider') || sliderRow?.querySelector('input[type="range"]');
+    const stack = assetPanel?.querySelector('.asset-context-stack') || row?.parentElement;
     if (!step || !reset || !row || !slider || !sliderRow || !stack) throw new Error('controles contextuais não encontrados');
     const stepRect = step.getBoundingClientRect();
     const resetRect = reset.getBoundingClientRect();
@@ -4406,13 +4407,18 @@ test('E9H — Profundidade: régua -100/0/+100 + ticks, slider contínuo, -10/+1
   expect(await page.evaluate(() => Number.isFinite(getSelectedAsset().depth))).toBe(true);
 
   // Undo/autosave não multiplicam durante um gesto contínuo de arraste (1 Undo/gesto confirmado).
-  const dragUndoBefore = await page.evaluate(() => undoStack.length);
-  await page.locator('#assetContextSlider').dispatchEvent('pointerdown');
-  for (const v of [10, 20, 30, 40, 50]) {
-    await page.locator('#assetContextSlider').fill(String(v));
-  }
-  await page.locator('#assetContextSlider').dispatchEvent('change');
-  expect(await page.evaluate(() => undoStack.length)).toBe(dragUndoBefore + 1);
+  const dragBefore = await page.evaluate(() => ({ undo: undoStack.length, revision: _sessionAutosaveQueuedRevision }));
+  await page.locator('#assetContextSlider').evaluate((slider) => {
+    slider.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 901, pointerType: 'touch', isPrimary: true }));
+    for (const value of [10, 20, 30, 40, 50]) {
+      slider.value = String(value);
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    slider.dispatchEvent(new Event('change', { bubbles: true }));
+    slider.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 901, pointerType: 'touch', isPrimary: true }));
+  });
+  expect(await page.evaluate(() => undoStack.length)).toBe(dragBefore.undo + 1);
+  expect(await page.evaluate(() => _sessionAutosaveQueuedRevision)).toBe(dragBefore.revision + 1);
   expect(await page.evaluate(() => getSelectedAsset().depth)).toBe(50);
 
   // Save/Load (round-trip equivalente) preserva depth.

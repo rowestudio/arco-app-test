@@ -27,151 +27,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  apply-reviewed-e9h-patch:
-    name: Apply reviewed E9H blocker patch
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 516 && github.event.pull_request.head.ref == 'claude/v8z4b32e9h-layers-depth-gf58ay'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-      pull-requests: read
-    env:
-      QA_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-      QA_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      QA_PR_TITLE: ${{ github.event.pull_request.title }}
-      QA_PR_BODY: ${{ github.event.pull_request.body }}
-    steps:
-      - name: Check out exact PR branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
-
-      - name: Apply reviewed patch and restore workflow
-        shell: python
-        run: |
-          from pathlib import Path
-          import subprocess
-
-          EXPECTED_PARENT = '2db6dc1478194cf6cb8ed1169b07bb3c8ddf20dc'
-          CLEAN_TREE_REF = 'be1355348572aa68407a28439a123178eb5de756'
-
-          def git(*args, capture=False):
-              result = subprocess.run(['git', *args], check=True, text=True,
-                                      stdout=subprocess.PIPE if capture else None)
-              return result.stdout.strip() if capture else ''
-
-          parent = git('rev-parse', 'HEAD^', capture=True)
-          if parent != EXPECTED_PARENT:
-              raise SystemExit(f'unexpected executor parent: {parent}')
-
-          def replace_once(path, old, new):
-              p = Path(path)
-              text = p.read_text(encoding='utf-8')
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'{path}: expected exactly 1 match, found {count}')
-              p.write_text(text.replace(old, new, 1), encoding='utf-8')
-
-          replace_once(
-              'index.html',
-              "        e.target.closest('#editorZoomCtrl,#stageEyeShortcut') ||",
-              "        e.target.closest('#editorZoomCtrl,#stageEyeShortcut,#layersAffordance') ||",
-          )
-
-          old_e8u = chr(10).join([
-              '    const row = step?.parentElement;',
-              '    const sliderRow = row?.previousElementSibling;',
-              '    const slider = sliderRow?.querySelector(\'input[type="range"]\');',
-              '    const stack = row?.parentElement;',
-          ])
-          new_e8u = chr(10).join([
-              "    const assetPanel = step?.closest('#assetContextPanel');",
-              "    const row = assetPanel?.querySelector('.asset-context-actions') || step?.parentElement;",
-              "    const sliderRow = assetPanel?.querySelector('.asset-context-row') || row?.previousElementSibling;",
-              "    const slider = assetPanel?.querySelector('#assetContextSlider') || sliderRow?.querySelector('input[type=\"range\"]');",
-              "    const stack = assetPanel?.querySelector('.asset-context-stack') || row?.parentElement;",
-          ])
-          replace_once('tests/smoke/app.spec.mjs', old_e8u, new_e8u)
-
-          old_undo = chr(10).join([
-              '  const dragUndoBefore = await page.evaluate(() => undoStack.length);',
-              "  await page.locator('#assetContextSlider').dispatchEvent('pointerdown');",
-              '  for (const v of [10, 20, 30, 40, 50]) {',
-              "    await page.locator('#assetContextSlider').fill(String(v));",
-              '  }',
-              "  await page.locator('#assetContextSlider').dispatchEvent('change');",
-              '  expect(await page.evaluate(() => undoStack.length)).toBe(dragUndoBefore + 1);',
-          ])
-          new_undo = chr(10).join([
-              '  const dragBefore = await page.evaluate(() => ({ undo: undoStack.length, revision: _sessionAutosaveQueuedRevision }));',
-              "  await page.locator('#assetContextSlider').evaluate((slider) => {",
-              "    slider.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 901, pointerType: 'touch', isPrimary: true }));",
-              '    for (const value of [10, 20, 30, 40, 50]) {',
-              '      slider.value = String(value);',
-              "      slider.dispatchEvent(new Event('input', { bubbles: true }));",
-              '    }',
-              "    slider.dispatchEvent(new Event('change', { bubbles: true }));",
-              "    slider.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 901, pointerType: 'touch', isPrimary: true }));",
-              '  });',
-              '  expect(await page.evaluate(() => undoStack.length)).toBe(dragBefore.undo + 1);',
-              '  expect(await page.evaluate(() => _sessionAutosaveQueuedRevision)).toBe(dragBefore.revision + 1);',
-          ])
-          replace_once('tests/smoke/app.spec.mjs', old_undo, new_undo)
-
-          docs = Path('docs/PROJECT_STATE.md')
-          text = docs.read_text(encoding='utf-8')
-          marker = '# PROJECT_STATE\n\n'
-          heading = '## Atualização 2026-08-24 — correção dos blockers técnicos da PR #516 (mesma v8z4b32E9H)'
-          if not text.startswith(marker) or heading in text:
-              raise SystemExit('docs/PROJECT_STATE.md: unexpected pre-patch state')
-          block = chr(10).join([
-              heading,
-              '',
-              '- **Base da correção:** HEAD revisado `3474345bfa2d6787aec14e761be8a0b890f22443`, na mesma branch `claude/v8z4b32e9h-layers-depth-gf58ay` e na mesma PR #516; `APP_VERSION` e `APP_VERSION_NAME` permanecem `v8z4b32E9H`. O ambiente local do Codex não conseguiu consultar o remoto: `git fetch origin` foi bloqueado pelo proxy com HTTP 403 e as tentativas de acesso GitHub disponíveis naquela sessão não possuíam autenticação/integração suficiente. Externamente, antes da aplicação desta correção, a PR #516 foi confirmada ainda no HEAD `3474345bfa2d6787aec14e761be8a0b890f22443`. Os checks vinculados ao novo HEAD continuam pendentes até a publicação desta correção; nenhum merge ou promoção foi feito.',
-              '- **Causa comprovada da abertura de Camadas:** `#layersAffordance` fica sobre o Stage, mas não constava da lista de controles de UI ignorados por `handleStageAssetSelectPointer()`. O `pointerdown` era consumido pelo hit-test/movimento do asset com `stopImmediatePropagation()`, impedindo o `click` público e seu `toggleLayersPanel()`. A correção inclui explicitamente o affordance no mesmo guard já usado pelos demais controles do Stage; nenhuma função direta foi usada pelo gate para contornar a interação pública. O overflow não recebeu correção independente porque sua medição inválida era consequência da sheet fechada.',
-              '- **Causa comprovada do gate E8U:** o helper inferia slider/linhas por `parentElement` e `previousElementSibling`; a régua visual inserida pela E9H tornou essa posição incidental falsa. O gate mantém todas as verificações e agora resolve semanticamente `#assetContextPanel`, `.asset-context-row`, `.asset-context-actions`, `.asset-context-stack` e `#assetContextSlider`, preservando o caminho anterior para controles de Frames.',
-              '- **Classificação da falha de Undo:** artefato de modelagem do teste, não bug comprovado do aplicativo. Cada `locator.fill()` em range dispara uma alteração completa (`input` + `change`), encerrando a sessão em `commitAssetContextGesture()`; cinco `fill()` eram cinco commits. O gate agora representa um único gesto (`pointerdown`, cinco `input` intermediários, um `change` final e `pointerup`) e exige exatamente `+1` Undo e `+1` revisão de autosave.',
-              '- **Evidência local:** `git diff --check` e `node scripts/qa/run-self-tests.mjs` passaram (47/47 expectativas). O WebKit funcional foi iniciado, mas o ambiente não possui o executável Playwright WebKit (`webkit-2311/pw_run.sh`); por isso os 33/33, Real Export WebKit/macOS e Real H.264 devem ser executados pelos checks do novo HEAD exato. A `v8z4b32E9H` continua **NÃO aprovada fisicamente**; validação em iPhone/Safari por Roberto permanece pendente.',
-              '',
-              '',
-          ])
-          docs.write_text(marker + block + text[len(marker):], encoding='utf-8')
-
-          # Restore the canonical workflow from the clean branch tree before validation/commit.
-          git('checkout', CLEAN_TREE_REF, '--', '.github/workflows/smoke-tests.yml')
-
-      - name: Verify exact scope and static gates
-        shell: bash
-        run: |
-          set -euo pipefail
-          git diff --check
-          node scripts/qa/run-self-tests.mjs
-          node scripts/qa/check-repository-state.mjs
-          node scripts/qa/check-ui-leakage.mjs
-          node scripts/qa/check-project-os.mjs
-          node scripts/qa/check-markdown-links.mjs
-          node scripts/qa/check-app-version.mjs
-          actual="$(git diff --name-only be1355348572aa68407a28439a123178eb5de756 | sort | tr '\n' ' ')"
-          expected="docs/PROJECT_STATE.md index.html tests/smoke/app.spec.mjs "
-          test "$actual" = "$expected"
-
-      - name: Commit and push to same PR branch
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html tests/smoke/app.spec.mjs docs/PROJECT_STATE.md .github/workflows/smoke-tests.yml
-          git commit -m 'v8z4b32E9H — fix: corrige blockers técnicos da PR #516'
-          git push origin HEAD:claude/v8z4b32e9h-layers-depth-gf58ay
-
   webkit-smoke-tests:
     name: WebKit Smoke Tests
     runs-on: ubuntu-24.04
     # Bounded execution for WebKit/Linux so a hung install/download can never leave a
     # PR pending for hours. Normal runs (npm ci + WebKit install + functional smoke)
     # complete in a handful of minutes; 25 minutes is comfortably above that while
-    # remaining tens-of-minutes, not hours.
+    # remaining tens-of-minutes, not hours. The macOS export job uses its own 20m cap.
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -180,6 +42,10 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # Portable coreutils `timeout` bounds the WebKit install specifically. On a hang
+      # it exits 124 (non-zero), so the step FAILS with a real diagnostic — a bounded
+      # install never turns an error into a PASS. Exit status is preserved and there is
+      # no retry loop.
       - name: Install Playwright WebKit (bounded)
         run: timeout 12m npx playwright install --with-deps webkit
       - name: Run WebKit functional smoke through Preview
