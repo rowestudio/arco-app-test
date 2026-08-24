@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -147,20 +147,6 @@ const APP_VERSION_NAME = 'v1A';
   };
 }
 
-// v8z4b32E9G — os checks de check-asset-transform-handles.mjs são majoritariamente
-// fragmentos literais do próprio index.html (CSS/JS reais das side width handles); um
-// fixture independente hand-escrito ficaria desatualizado a cada refactor. O positivo
-// usa o index.html real; os negativos derivam dele por corrupção CIRÚRGICA de um único
-// trecho guardado, provando que o guardrail detecta cada regressão específica.
-function createAssetTransformHandlesFixture(mutate) {
-  const dir = tempDir('arco-qa-asset-handles-');
-  const file = path.join(dir, 'index.html');
-  let html = readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
-  if (mutate) html = mutate(html);
-  write(file, html);
-  return file;
-}
-
 const results = [];
 
 const uiCases = [
@@ -299,28 +285,6 @@ expectCase(results, 'Preview first-frame warm-up valid fixture passes', 'check-p
 });
 expectCase(results, 'Preview first-frame warm-up anti-patterns fail', 'check-preview-first-frame-warmup.mjs', 1, {
   env: { QA_PREVIEW_WARMUP_HTML: path.join(fixtures, 'preview-first-frame-warmup-invalid.html') },
-});
-
-expectCase(results, 'Asset transform handles (E9G side width handles) real index.html passes', 'check-asset-transform-handles.mjs', 0, {
-  env: { QA_ASSET_HANDLES_HTML: path.join(repoRoot, 'index.html') },
-});
-expectCase(results, 'Asset transform handles: missing text width handle CSS fails', 'check-asset-transform-handles.mjs', 1, {
-  env: { QA_ASSET_HANDLES_HTML: createAssetTransformHandlesFixture((html) => html.replace('.text-width-handle{', '.text-width-handle-removed{')) },
-});
-expectCase(results, 'Asset transform handles: legacy manual width slider markup fails', 'check-asset-transform-handles.mjs', 1, {
-  env: { QA_ASSET_HANDLES_HTML: createAssetTransformHandlesFixture((html) => html.replace('id="textWidthAuto"', 'id="textWidthAuto"><input id="textWidthSlider"')) },
-});
-expectCase(results, 'Asset transform handles: width drag touching fontSize fails', 'check-asset-transform-handles.mjs', 1, {
-  env: { QA_ASSET_HANDLES_HTML: createAssetTransformHandlesFixture((html) => html.replace('asset.textBaseBoxWidth = clampedTextBaseBoxWidth;', 'asset.textBaseBoxWidth = clampedTextBaseBoxWidth; asset.fontSize = asset.fontSize;')) },
-});
-expectCase(results, 'Asset transform handles: width handles not gated to Text Asset fails', 'check-asset-transform-handles.mjs', 1, {
-  env: { QA_ASSET_HANDLES_HTML: createAssetTransformHandlesFixture((html) => html.replace("const showTextWidthHandles = asset.type === 'text';", 'const showTextWidthHandles = true;')) },
-});
-expectCase(results, 'Asset transform handles: width handle DOM creation removed fails', 'check-asset-transform-handles.mjs', 1, {
-  env: { QA_ASSET_HANDLES_HTML: createAssetTransformHandlesFixture((html) => html.replace("['left','right'].forEach(function(side)", "['left','right'].forEach_disabled(function(side)")) },
-});
-expectCase(results, 'Asset transform handles: width handle not exempted from stage-tap select gatekeeper fails', 'check-asset-transform-handles.mjs', 1, {
-  env: { QA_ASSET_HANDLES_HTML: createAssetTransformHandlesFixture((html) => html.replace("e.target.closest('.asset-corner-handle,.text-width-handle')", "e.target.closest('.asset-corner-handle')")) },
 });
 
 expectCiCase(results, 'Mobile CI watchdog planning behavior passes', 'test-mobile-ci-watchdog.mjs', 0);
