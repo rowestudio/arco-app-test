@@ -1471,24 +1471,6 @@ body.recording #stageEyeShortcut{display:none;}
 .asset-corner-handle[data-asset-corner="tr"]{left:calc(100% + 12px);top:-12px;}
 .asset-corner-handle[data-asset-corner="bl"]{left:-12px;top:calc(100% + 12px);}
 .asset-corner-handle[data-asset-corner="br"]{left:calc(100% + 12px);top:calc(100% + 12px);}
-/* v8z4b32E9G1 — duas alças laterais EXCLUSIVAS de Text Asset (E9G1/REG-056): largura
-   lógica da caixa, nunca escala. Sistema próprio (.text-width-handle), nunca reaproveita
-   .asset-corner-handle — os quatro cantos continuam scale, inalterados (REG-028). */
-.text-width-handle{
-  position:absolute;width:14px;height:28px;margin-left:-7px;margin-top:-14px;
-  border-radius:7px;background:#ff6b8a;
-  box-shadow:0 1px 5px rgba(0,0,0,.28),0 0 0 1px rgba(255,255,255,.28) inset;
-  display:none;cursor:ew-resize;touch-action:none;pointer-events:auto;z-index:2;
-  transform:scale(var(--ez-inv,1));transform-origin:center center;
-  user-select:none;-webkit-user-select:none;
-}
-.text-width-handle.show{display:block;}
-.text-width-handle:active{cursor:grabbing;background:#FF6B8A;}
-.text-width-handle::before{content:'';position:absolute;left:50%;top:50%;
-  width:44px;height:44px;transform:translate(-50%,-50%);
-  background:transparent;border-radius:50%;}
-.text-width-handle[data-asset-width-handle="left"]{left:-12px;top:50%;}
-.text-width-handle[data-asset-width-handle="right"]{left:calc(100% + 12px);top:50%;}
 /* v8z4b30ZN — Botões de modo: área de toque adequada, ícones grandes, sem texto.
    Layout fixo: mesmo tamanho dos controles principais; slot sempre reservado. */
 .top-mode-toggle{display:flex;align-items:center;gap:2px;margin-right:2px;}
@@ -1655,14 +1637,15 @@ body.editor-assets.recording .frame{display:none !important;}
 .text-bg-opacity-row{display:flex;align-items:center;gap:10px;min-height:44px}.text-bg-opacity-row[hidden]{display:none}.text-bg-opacity-icon{width:20px;height:20px;flex:0 0 auto;color:var(--text2)}
 .text-box-opacity{min-width:100px;flex:1;accent-color:var(--text2)}.text-box-opacity-value{min-width:42px;color:var(--text2);font-size:13px;text-align:right}
 .text-editor-align{justify-content:center;margin-top:2px;gap:12px}
-/* v8z4b32E9G1 — largura deixou de ser edição manual do painel: o único comando restante
-   é Auto (recalcula a medição automática canônica). A largura em si é manipulada
-   diretamente no Stage pelas duas side width handles do Text Asset (ver
-   .text-width-handle). Sem slider, sem valor numérico manual, sem stepper −/+. */
+/* v8z4b32E9F1 — largura = [Auto compacto] [slider] [valor]. Um único botão de modo
+   explícito (Auto); mover o slider entra em fixed no mesmo gesto. Sem botão "Fixa"
+   grande e sem stepper −/+. */
 .text-width-row{display:flex;align-items:center;gap:12px;margin-top:2px;min-height:46px}
 .text-width-auto{flex:0 0 auto;display:grid;place-items:center;width:46px;height:46px;padding:0;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);color:var(--text2);cursor:pointer}
 .text-width-auto svg{width:24px;height:24px;display:block;color:currentColor}
 .text-width-auto.active{background:#ffffff;border-color:#ffffff;color:#24262B}
+.text-width-slider{flex:1;min-width:80px;accent-color:var(--text2)}
+.text-width-value{flex:0 0 auto;min-width:44px;color:var(--text2);font-size:13px;text-align:right}
 .world-text-asset{position:absolute;white-space:pre-wrap;tab-size:4;overflow-wrap:anywhere;pointer-events:none;box-sizing:border-box;transform-origin:50% 50%;}
 /* v8z4b30ZT — assetsModeMenu: modal de opções do Modo Ativos (segundo toque no ícone). */
 #assetsModeMenu{position:fixed;inset:0;z-index:331;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
@@ -5062,12 +5045,11 @@ body.asset-context-panel-open #toolbar{display:none !important;}
          #textBgTriggerWrap/#textBoxBackgroundColor (último filho estático de
          #textBgSwatches); acrescenta paleta pessoal persistente e HEX inline. -->
     <div class="text-editor-panel" data-text-panel="background"><div class="text-bg-panel" role="group" aria-label="Fundo da caixa"><div id="textBgSwatches" class="text-swatch-row"><span id="textBgTriggerWrap" class="color-trigger-wrap"><button type="button" class="text-swatch-add" aria-hidden="true" tabindex="-1">+</button><input id="textBoxBackgroundColor" class="color-trigger-input" type="color" value="#000000" aria-label="Escolher outra cor do fundo"></span></div><div class="text-hex-row"><input id="textBoxBackgroundHexText" type="text" maxlength="7" class="text-hex-input" aria-label="Hexadecimal do fundo da caixa" placeholder="#RRGGBB" oninput="onTextBgHexInput(this.value)" onchange="commitTextBgHex(this.value)" onkeydown="onTextBgHexKeydown(event)"></div><div id="textEditorBgOpacityWrap" class="text-bg-opacity-row" hidden><svg class="text-bg-opacity-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-opacity"></use></svg><input id="textBoxBackgroundOpacity" class="text-box-opacity" type="range" min="0" max="100" step="1" value="70" aria-label="Opacidade do fundo"><span id="textBoxBackgroundOpacityValue" class="text-box-opacity-value">70%</span></div></div></div>
-    <!-- v8z4b32E9G1 — Largura deixou de ser edição manual do painel (slider/stepper).
-         A largura da caixa agora é manipulada DIRETO no Stage pelas duas alças laterais
-         do Text Asset (side width handles); o painel mantém SOMENTE o comando Auto,
-         que recalcula a medição canônica de largura automática. Nenhum slider, nenhum
-         valor numérico manual, nenhum stepper — ver REG-056/PRODUCT_RULES. -->
-    <div class="text-editor-panel" data-text-panel="width"><div class="text-width-row" role="group" aria-label="Largura da caixa"><button id="textWidthAuto" class="text-width-auto" type="button" aria-label="Ajustar largura automaticamente" aria-pressed="true" onclick="setTextWidthAuto()"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-width-auto"></use></svg></button></div></div>
+    <!-- v8z4b32E9F1 — Largura: [Auto compacto] [slider step 5] [valor]. Um único botão
+         de modo (Auto). Mover o slider entra em fixed no MESMO gesto; Auto recalcula a
+         medição canônica e re-sincroniza o slider sem sair de auto. Sem botão "Fixa"
+         grande e sem stepper −/+. -->
+    <div class="text-editor-panel" data-text-panel="width"><div class="text-width-row" role="group" aria-label="Largura da caixa"><button id="textWidthAuto" class="text-width-auto" type="button" aria-label="Ajustar largura automaticamente" aria-pressed="true" onclick="setTextWidthAuto()"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-width-auto"></use></svg></button><input id="textWidthSlider" class="text-width-slider" type="range" min="40" max="600" step="5" value="220" aria-label="Largura da caixa" oninput="onTextWidthSliderInput(this.value)"><output id="textWidthValue" class="text-width-value">220</output></div></div>
   </div>
 </div>
 
@@ -7609,8 +7591,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9G1';
-const APP_VERSION_NAME = 'v8z4b32E9G1';
+const APP_VERSION = 'v8z4b32E9F6';
+const APP_VERSION_NAME = 'v8z4b32E9F6';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -15845,10 +15827,13 @@ function renderTextEditorOptions(){const font=document.getElementById('textEdito
  if(opacity&&value){opacity.value=String(Math.round(pendingTextDraft.boxBackgroundOpacity*100));value.textContent=opacity.value+'%';}
  // Slider de opacidade só existe quando o fundo está ligado (Sem cor não mostra alfa).
  if(opWrap)opWrap.hidden=!pendingTextDraft.boxBackgroundEnabled;
- // v8z4b32E9G1 — sem slider/valor manual: o painel Largura só reflete o estado Auto/Fixa
- // do botão único (a largura em si é editada pelas alças laterais no Stage).
- const autoButton=document.getElementById('textWidthAuto');
- if(autoButton){const auto=pendingTextDraft.boxWidthMode!=='fixed';autoButton.classList.toggle('active',auto);autoButton.setAttribute('aria-pressed',String(auto));}}
+ const autoButton=document.getElementById('textWidthAuto'),slider=document.getElementById('textWidthSlider'),widthValue=document.getElementById('textWidthValue');
+ if(autoButton&&slider&&widthValue){const auto=pendingTextDraft.boxWidthMode!=='fixed',maxW=Math.max(80,Math.ceil(Number(projectWorld.baseStageW)||Number(stageW)||600)),curW=Math.round(Math.max(40,Math.min(maxW,Number(pendingTextDraft.boxWidth)||220)));
+  autoButton.classList.toggle('active',auto);autoButton.setAttribute('aria-pressed',String(auto));
+  slider.min='40';slider.max=String(maxW);slider.step='5';
+  // Atualização PROGRAMÁTICA: setar .value não dispara 'input', então sincronizar o
+  // slider (inclusive após recalcular Auto) NÃO tira o modo Auto por si só.
+  slider.value=String(curW);widthValue.textContent=String(curW);}}
 // v8z4b32E9F1 — ícone de Alinhamento na rail reflete o textAlign REAL do draft/asset
 // (left/center/right), atualizado imediatamente quando o alinhamento muda. Fonte de
 // verdade é o próprio estado canônico; fallback defensivo 'left' para valor inválido.
@@ -15902,13 +15887,17 @@ function onTextBgHexKeydown(event){if(event.key!=='Enter')return;event.preventDe
 // re-sincroniza o slider, sem salto indevido de centro (measureTextEditorDraft
 // preserva o centro no modo auto). Um toque em Auto sempre resulta em boxWidthMode='auto'.
 function setTextWidthAuto(){if(!pendingTextDraft)return;textEditorWidthAutoButtonRestoredAutoMode=true;if(pendingTextDraft.boxWidthMode==='auto'){measureTextEditorDraft({preserveCenter:true});renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay();return;}setTextWidthMode('auto');}
+// v8z4b32E9F1 — INPUT DO USUÁRIO no slider: entra em 'fixed' no MESMO gesto (sem
+// exigir dois passos) e aplica a largura. Distinto da atualização programática do
+// slider (que apenas seta .value e não dispara 'input'), que não altera o modo.
+function onTextWidthSliderInput(value){if(!pendingTextDraft)return;if(pendingTextDraft.boxWidthMode!=='fixed'){textEditorWidthSliderActivatedFixedMode=true;pendingTextDraft.boxWidthMode='fixed';pendingTextDraft.boxWidth=Math.max(40,Number(pendingTextDraft.boxWidth)||220);pendingTextDraft.textBaseBoxWidth=Math.max(20,Number(pendingTextDraft.textBaseBoxWidth)||pendingTextDraft.boxWidth);normalizeTextAsset(pendingTextDraft);const autoButton=document.getElementById('textWidthAuto');if(autoButton){autoButton.classList.remove('active');autoButton.setAttribute('aria-pressed','false');}}const maxW=Math.max(80,Math.ceil(Number(projectWorld.baseStageW)||Number(stageW)||600)),v=Math.max(40,Math.min(maxW,Number(value)||40));setTextDraftFixedWidth(v);}
 // v8z4b32E9C — alterna o Text Asset entre largura automática (abraça o conteúdo,
 // linha mais longa) e largura fixa (trava a largura e mantém quebra automática +
 // Enter). Ao travar, preserva a largura visível atual como valor inicial.
-// v8z4b32E9G1 — a entrada em 'fixed' por edição MANUAL (slider) foi removida: a única
-// forma de sair de 'auto' passa a ser a alça lateral no Stage (beginTextWidthDrag) ou
-// esta função, chamada apenas pelo comando Auto→Fixa implícito do próprio drag.
 function setTextWidthMode(mode){if(!pendingTextDraft||!['auto','fixed'].includes(mode)||pendingTextDraft.boxWidthMode===mode)return;pendingTextDraft.boxWidthMode=mode;if(mode==='fixed'){pendingTextDraft.boxWidth=Math.max(40,Number(pendingTextDraft.boxWidth)||220);pendingTextDraft.textBaseBoxWidth=Math.max(20,Number(pendingTextDraft.textBaseBoxWidth)||pendingTextDraft.boxWidth)}normalizeTextAsset(pendingTextDraft);measureTextEditorDraft({preserveCenter:true});renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay()}
+function setTextDraftFixedWidth(value){if(!pendingTextDraft||pendingTextDraft.boxWidthMode!=='fixed')return;const v=Math.max(40,Number(value)||40),old=Number(pendingTextDraft.boxWidth)||v,oldBase=Number(pendingTextDraft.textBaseBoxWidth)||old;pendingTextDraft.boxWidth=v;
+ // Mudar a largura da caixa NÃO é "escala" de texto: mantém escala% preservando a proporção do baseline.
+ if(old>0)pendingTextDraft.textBaseBoxWidth=Math.max(20,oldBase*(v/old));measureTextEditorDraft({preserveCenter:true});const label=document.getElementById('textWidthValue');if(label)label.textContent=String(Math.round(v));renderProjectWorldExtraImages();renderAssetSelectionOverlay()}
 function measureTextEditorDraft(options){if(!pendingTextDraft)return;const preserveCenter=!!(options&&options.preserveCenter)||textEditorMode==='edit'||pendingTextDraft.boxWidthMode==='auto',cx=preserveCenter?pendingTextDraft.worldX+pendingTextDraft.worldW/2:null,cy=preserveCenter?pendingTextDraft.worldY+pendingTextDraft.worldH/2:null;measureTextAsset(pendingTextDraft);if(cx!=null)pendingTextDraft.worldX=cx-pendingTextDraft.worldW/2;if(cy!=null)pendingTextDraft.worldY=cy-pendingTextDraft.worldH/2;textEditorDraftPersistedDetected=assets.some(a=>a===pendingTextDraft||String(a&&a.id)===String(pendingTextDraft.id)&&textEditorMode==='create')}
 function updateTextDraft(field,value){if(!pendingTextDraft)return;pendingTextDraft[field]=value;normalizeTextAsset(pendingTextDraft);measureTextEditorDraft({preserveCenter:field==='boxBackgroundEnabled'});renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay()}
 function updateTextStyle(weight,style){if(!pendingTextDraft)return;pendingTextDraft.fontWeight=weight;pendingTextDraft.fontStyle=style;updateTextDraft('fontWeight',weight)}
@@ -16012,21 +16001,9 @@ function scheduleEnsureTextEditorTargetVisible(){
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', () => { if (pendingTextDraft && textEditorMode === 'edit') scheduleEnsureTextEditorTargetVisible(); });
 }
-// v8z4b32E9F1 — flag de diagnóstico do comando Auto (ainda válido na E9G1).
+// v8z4b32E9F1 — flags de diagnóstico do controle de largura (Auto/slider).
+let textEditorWidthSliderActivatedFixedMode = false;
 let textEditorWidthAutoButtonRestoredAutoMode = false;
-// v8z4b32E9G1 — diagnósticos observacionais das side width handles (largura direta no
-// Stage). Não expõem texto técnico na UI; refletem o estado REAL do gesto mais recente
-// (ativo ou já concluído), nunca um valor fixo só para "passar check".
-let textWidthLastGestureSide = null;
-let textWidthLastGestureModeBefore = null;
-let textWidthLastGestureModeAfter = null;
-let textWidthLastGestureStartBoxWidth = null;
-let textWidthLastGestureEndBoxWidth = null;
-let textWidthLastGestureStartScalePercent = null;
-let textWidthLastGestureEndScalePercent = null;
-let textWidthLastGestureScalePreserved = null;
-let textWidthLastGestureOppositeEdgeAnchored = null;
-let textWidthLastGesturePointerCancelRestored = false;
 // v8z4b32E9F1 — coletor de diagnósticos ÚTEIS da E9F1. Não expõe texto técnico na UI;
 // serve à auditoria/gate. Reflete estado REAL (não é diagnóstico só para "passar check").
 function getTextEditorE9F1Diagnostics(){
@@ -16069,24 +16046,12 @@ function getTextEditorE9F1Diagnostics(){
     textEditorViewportLocalizationChangedProjectWorld: false,
     textEditorViewportLocalizationCreatedUndo: false,
     textEditorViewportLocalizationScheduledAutosave: false,
-    // v8z4b32E9G1 — largura manual saiu do painel (nem slider nem stepper existem mais);
-    // a única edição de largura é a alça lateral no Stage ou o comando Auto.
     textEditorWidthUsesSlider: !!q('textWidthSlider'),
+    textEditorWidthSliderStep: q('textWidthSlider') ? Number(q('textWidthSlider').step) : null,
     textEditorWidthHasFixedButton: !!document.getElementById('textWidthFixedMode'),
     textEditorWidthHasPlusMinusStepper: !!document.getElementById('textWidthFixedStepper'),
+    textEditorWidthSliderActivatedFixedMode: textEditorWidthSliderActivatedFixedMode,
     textEditorWidthAutoButtonRestoredAutoMode: textEditorWidthAutoButtonRestoredAutoMode,
-    textWidthHandleCount: document.querySelectorAll('.text-width-handle.show').length,
-    textWidthHandleSide: textWidthDragState ? textWidthDragState.side : textWidthLastGestureSide,
-    textWidthGestureActive: !!textWidthDragState,
-    textWidthStartBoxWidth: textWidthDragState ? textWidthDragState.startBoxWidth : textWidthLastGestureStartBoxWidth,
-    textWidthCurrentBoxWidth: textWidthDragState ? textWidthDragState.currentBoxWidth : textWidthLastGestureEndBoxWidth,
-    textWidthStartScalePercent: textWidthDragState ? textWidthDragState.startScalePercent : textWidthLastGestureStartScalePercent,
-    textWidthCurrentScalePercent: textWidthDragState ? textWidthDragState.currentScalePercent : textWidthLastGestureEndScalePercent,
-    textWidthScalePreserved: textWidthDragState ? true : textWidthLastGestureScalePreserved,
-    textWidthOppositeEdgeAnchored: textWidthDragState ? true : textWidthLastGestureOppositeEdgeAnchored,
-    textWidthPointerCancelRestored: textWidthLastGesturePointerCancelRestored,
-    textWidthModeBefore: textWidthDragState ? textWidthDragState.modeBefore : textWidthLastGestureModeBefore,
-    textWidthModeAfter: textWidthDragState ? (pendingTextDraft && (textEditorMode==='create'||textEditorMode==='edit') ? pendingTextDraft.boxWidthMode : null) : textWidthLastGestureModeAfter,
   };
 }
 if (typeof window !== 'undefined') window.getTextEditorE9F1Diagnostics = getTextEditorE9F1Diagnostics;
@@ -16096,18 +16061,7 @@ function minimizeTextEditor(){if(!pendingTextDraft)return;auditTextCreationCanon
 function resetTextEditor(){pendingTextDraft=null;textCreationBaseline=null;textEditorMode=null;textEditorTargetAssetId=null;textEditorOpenSource=null;textEditorOriginalAsset=null;closeTextCreationSheet();renderProjectWorldExtraImages();renderAssetSelectionOverlay()}
 function cancelTextCreation(){if(!pendingTextDraft)return;auditTextCreationCanonicalState();textEditorCancelled=true;resetTextEditor()}
 function confirmTextCreation(){if(!pendingTextDraft)return;const value=document.getElementById('textCreationInput').value;if(!value.trim()){showStatus('Digite um texto para continuar.');setTextEditorTool('text');return}pendingTextDraft.text=value;normalizeTextAsset(pendingTextDraft);measureTextAsset(pendingTextDraft);auditTextCreationCanonicalState();
- if(textEditorMode==='edit'){const target=assets.find(a=>a&&String(a.id)===textEditorTargetAssetId);if(!target){resetTextEditor();return}const changed=JSON.stringify(textEditorDraftFields(target))!==JSON.stringify(textEditorDraftFields(pendingTextDraft));if(!changed){resetTextEditor();return}const before=captureState();
-  // v8z4b32E9G1 — o centro de recomposição passa a vir do PRÓPRIO draft, não mais do
-  // centro pré-edição do target. Para toda edição QUE NÃO seja um width drag, o draft
-  // preserva o centro original durante toda a sessão (measureTextEditorDraft com
-  // preserveCenter=true em modo 'edit'), então esse centro é numericamente idêntico ao
-  // antigo oldCenterX/oldCenterY — nenhuma mudança de resultado para Fonte/Cor/Estilo/
-  // Alinhamento/Fundo. Um width drag (beginTextWidthDrag/handleTextWidthPointerMove)
-  // define pendingTextDraft.worldX/worldY diretamente pela âncora da lateral oposta,
-  // SEM preserveCenter — usar o centro do draft aqui é o que permite essa âncora
-  // sobreviver ao commit em vez de saltar de volta ao centro pré-edição.
-  const centerX=pendingTextDraft.worldX+pendingTextDraft.worldW/2,centerY=pendingTextDraft.worldY+pendingTextDraft.worldH/2;
-  Object.assign(target,textEditorDraftFields(pendingTextDraft));normalizeTextAsset(target);measureTextAsset(target);target.worldX=centerX-target.worldW/2;target.worldY=centerY-target.worldH/2;pushUndoSnapshot(before);textEditorUndoEntriesCreated++;lastUndoAction='editTextAsset';textEditorCommitChangedOnlyTarget=true;markProjectDirty('editTextAsset');textEditorAutosaveRevisionsCreated++;textEditorConfirmed=true;const id=target.id;resetTextEditor();selectAssetById(id,'text-edit');renderLayersPanelList();invalidateProjectWorldComposite();return}
+ if(textEditorMode==='edit'){const target=assets.find(a=>a&&String(a.id)===textEditorTargetAssetId);if(!target){resetTextEditor();return}const changed=JSON.stringify(textEditorDraftFields(target))!==JSON.stringify(textEditorDraftFields(pendingTextDraft));if(!changed){resetTextEditor();return}const before=captureState(),oldCenterX=target.worldX+target.worldW/2,oldCenterY=target.worldY+target.worldH/2;Object.assign(target,textEditorDraftFields(pendingTextDraft));normalizeTextAsset(target);measureTextAsset(target);target.worldX=oldCenterX-target.worldW/2;target.worldY=oldCenterY-target.worldH/2;pushUndoSnapshot(before);textEditorUndoEntriesCreated++;lastUndoAction='editTextAsset';textEditorCommitChangedOnlyTarget=true;markProjectDirty('editTextAsset');textEditorAutosaveRevisionsCreated++;textEditorConfirmed=true;const id=target.id;resetTextEditor();selectAssetById(id,'text-edit');renderLayersPanelList();invalidateProjectWorldComposite();return}
  const before=captureState();assignPersistentLayerIdentity(pendingTextDraft);const confirmed=pendingTextDraft;assets.push(confirmed);pushUndoSnapshot(before);textEditorUndoEntriesCreated++;normalizeAssetZIndices();const id=confirmed.id;resetTextEditor();selectAssetById(id,'text-create');renderLayersPanelList();invalidateProjectWorldComposite();markProjectDirty('addTextAsset');textEditorAutosaveRevisionsCreated++;textEditorConfirmed=true}
 document.addEventListener('input',ev=>{if(!pendingTextDraft)return;
  // v8z4b32E9F1 — os pickers nativos (+ de Cor do texto e + de Fundo) chegam por
@@ -35689,15 +35643,7 @@ function handleStageAssetSelectPointer(e) {
   if (typeof twoFingerState !== 'undefined' && twoFingerState) return false;
   if (e.pointerType === 'touch' && e.isPrimary === false) return false;
   // Handles de transformação têm prioridade sobre seleção/movimento/pan.
-  // v8z4b32E9G1-R2 — as duas side width handles do Text Asset (.text-width-handle) são
-  // outro handle de transformação, exclusivo de Text Asset: sem esta exceção, este
-  // gatekeeper de CAPTURA (roda antes do listener de target da própria handle) fazia
-  // hit-test pelas coordenadas do pointerdown — fora do retângulo do texto, a 12px de
-  // distância — e reselecionava o asset por baixo (ex.: a imagem), consumindo o evento
-  // com stopImmediatePropagation antes de beginTextWidthDrag sequer rodar. Causa raiz
-  // real do FAIL medido no CI (não assetTransformDragState residual, que os
-  // diagnósticos desta mesma revisão confirmaram sempre idle).
-  if (e.target && e.target.closest && e.target.closest('.asset-corner-handle,.text-width-handle')) return false;
+  if (e.target && e.target.closest && e.target.closest('.asset-corner-handle')) return false;
   // Não interceptar controles de UI sobre a área do Stage.
   if (e.target && e.target.closest && (
         e.target.closest('#editorZoomCtrl,#stageEyeShortcut') ||
@@ -35972,184 +35918,6 @@ function endAssetTransformPointer(e, cancelled) {
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
 }
 
-// ===== v8z4b32E9G1 — SIDE WIDTH HANDLES (Text Asset apenas) =====
-// Duas alças (esquerda/direita) manipulam SOMENTE a largura lógica/reflow da caixa de
-// texto. Sistema DELIBERADAMENTE separado das quatro corner handles acima (que
-// continuam fazendo escala proporcional, INALTERADAS): nunca reaproveita
-// .asset-corner-handle nem beginAssetTransformDrag/handleAssetTransformPointerMove/
-// endAssetTransformPointer. Ver docs/PRODUCT_RULES.md (E9G1) e docs/REGRESSIONS.md
-// (REG-028, REG-056).
-let textWidthDragState = null;
-// Limite LÓGICO/base da largura (independente de escala) — REG-056: o slider antigo
-// clampava boxWidth (já multiplicado pela escala), então um texto em 200% tinha muito
-// menos faixa disponível que o mesmo texto em 50%. Aqui o clamp opera sobre
-// textBaseBoxWidth (largura na escala 100%, por definição invariante à escala atual),
-// então a MESMA faixa lógica fica disponível em qualquer escala.
-function getTextWidthLogicalBounds() {
-  return { min: 40, max: Math.max(80, Math.ceil(Number(projectWorld.baseStageW) || Number(stageW) || 600)) };
-}
-function resolveActiveTextAssetForWidthDrag() {
-  const draftActive = !!(pendingTextDraft && (textEditorMode === 'create' || textEditorMode === 'edit'));
-  const asset = draftActive ? pendingTextDraft : getSelectedAsset();
-  if (!asset || asset.type !== 'text') return null;
-  return { asset: asset, isDraft: draftActive };
-}
-function getTextWidthDragPointerWorld(e, asset) {
-  computeEditorTransform();
-  const sc = screenToStageCoord(e.clientX, e.clientY);
-  const wpVisual = editorStageToWorld(sc.x, sc.y);
-  const parallax = resolveAssetStageVisualGeometry(asset).parallaxOffset;
-  return { x: wpVisual.x - parallax.offsetX, y: wpVisual.y - parallax.offsetY };
-}
-function beginTextWidthDrag(e, side) {
-  if (assetTransformDragState || textWidthDragState) return;
-  const resolved = resolveActiveTextAssetForWidthDrag();
-  if (!resolved || !isAssetsMode()) return;
-  const asset = resolved.asset;
-  e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-  try { e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
-  textWidthLastGesturePointerCancelRestored = false;
-  const wp0 = getTextWidthDragPointerWorld(e, asset);
-  const paddingX = asset.boxBackgroundEnabled ? asset.fontSize * asset.boxPaddingXEm : 0;
-  const startBoxWidth = Math.max(1, Number(asset.boxWidth) || 1);
-  const startTextBaseBoxWidth = Number(asset.textBaseBoxWidth) > 0 ? Number(asset.textBaseBoxWidth) : startBoxWidth;
-  const scale0 = Number.isFinite(startBoxWidth / startTextBaseBoxWidth) && startBoxWidth / startTextBaseBoxWidth > 0 ? startBoxWidth / startTextBaseBoxWidth : 1;
-  const rot = (Number(asset.rotation) || 0) * Math.PI / 180;
-  textWidthDragState = {
-    pointerId: e.pointerId, side: side === 'left' ? 'left' : 'right', isDraft: resolved.isDraft, assetId: asset.id,
-    wp0: wp0, rot: rot, paddingX: paddingX, scale0: scale0,
-    startBoxWidth: startBoxWidth, startTextBaseBoxWidth: startTextBaseBoxWidth,
-    startWorldW: Number(asset.worldW) || (startBoxWidth + 2 * paddingX), startWorldH: Number(asset.worldH) || 1,
-    startCenterX: (asset.worldX || 0) + (asset.worldW || 0) / 2, startCenterY: (asset.worldY || 0) + (asset.worldH || 0) / 2,
-    modeBefore: asset.boxWidthMode === 'auto' ? 'auto' : 'fixed', modeFlipped: false, moved: false,
-    startScalePercent: scale0 * 100, currentBoxWidth: startBoxWidth, currentScalePercent: scale0 * 100,
-    undoSnapshot: resolved.isDraft ? null : captureState(),
-    draftSnapshot: resolved.isDraft ? {
-      worldX: asset.worldX, worldY: asset.worldY, worldW: asset.worldW, worldH: asset.worldH,
-      boxWidth: asset.boxWidth, textBaseBoxWidth: asset.textBaseBoxWidth, boxWidthMode: asset.boxWidthMode
-    } : null
-  };
-}
-function handleTextWidthPointerMove(e) {
-  const ds = textWidthDragState;
-  if (!ds || (e.pointerId != null && ds.pointerId != null && e.pointerId !== ds.pointerId)) return;
-  const asset = ds.isDraft ? pendingTextDraft : (Array.isArray(assets) ? assets : []).find(a => a && a.id === ds.assetId);
-  if (!asset || asset.type !== 'text') return;
-  e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-  const wp = getTextWidthDragPointerWorld(e, asset);
-  const dx = wp.x - ds.wp0.x, dy = wp.y - ds.wp0.y;
-  // Projeção do deslocamento do pointer (em World) no eixo horizontal LOCAL do Text
-  // Asset — nunca delta X bruto de tela, para funcionar igual sob rotação.
-  const localDx = dx * Math.cos(ds.rot) + dy * Math.sin(ds.rot);
-  const desiredWorldW = ds.side === 'right' ? ds.startWorldW + localDx : ds.startWorldW - localDx;
-  const desiredBoxWidth = desiredWorldW - 2 * ds.paddingX;
-  const desiredTextBaseBoxWidth = ds.scale0 > 0 ? desiredBoxWidth / ds.scale0 : desiredBoxWidth;
-  const bounds = getTextWidthLogicalBounds();
-  const clampedTextBaseBoxWidth = Math.min(bounds.max, Math.max(bounds.min, desiredTextBaseBoxWidth));
-  const clampedBoxWidth = Math.max(20, clampedTextBaseBoxWidth * ds.scale0);
-  if (!Number.isFinite(clampedBoxWidth) || !Number.isFinite(clampedTextBaseBoxWidth) || clampedBoxWidth <= 0 || clampedTextBaseBoxWidth <= 0) return;
-  if (Math.abs(clampedBoxWidth - ds.startBoxWidth) > 0.01 && !ds.modeFlipped) {
-    ds.modeFlipped = true;
-    asset.boxWidthMode = 'fixed';
-  }
-  asset.boxWidth = clampedBoxWidth;
-  asset.textBaseBoxWidth = clampedTextBaseBoxWidth;
-  // fontSize/textBaseFontSize NUNCA são tocados por este gesto (invariante central E9G1).
-  measureTextAsset(asset);
-  const widthChange = asset.worldW - ds.startWorldW;
-  const localXOffset = ds.side === 'right' ? widthChange / 2 : -widthChange / 2;
-  const newCenterX = ds.startCenterX + localXOffset * Math.cos(ds.rot);
-  const newCenterY = ds.startCenterY + localXOffset * Math.sin(ds.rot);
-  if (!Number.isFinite(newCenterX) || !Number.isFinite(newCenterY)) return;
-  asset.worldX = newCenterX - asset.worldW / 2;
-  asset.worldY = newCenterY - asset.worldH / 2;
-  ds.moved = true;
-  ds.currentBoxWidth = asset.boxWidth;
-  ds.currentScalePercent = asset.textBaseBoxWidth > 0 ? (asset.boxWidth / asset.textBaseBoxWidth * 100) : ds.startScalePercent;
-  if (ds.isDraft) {
-    renderTextEditorOptions();
-    renderProjectWorldExtraImages();
-    renderAssetSelectionOverlay();
-  } else {
-    invalidateProjectWorldComposite();
-    renderProjectWorldExtraImages();
-    renderAssetSelectionOverlay();
-    updateLowerTimelineMeta();
-  }
-}
-// Verifica, por medição real (não por declaração), se a lateral OPOSTA ao lado
-// arrastado ficou ancorada no World dentro de tolerância subpixel.
-function computeTextWidthAnchorPoint(side, centerX, centerY, worldW, rot) {
-  const half = worldW / 2 * (side === 'right' ? -1 : 1);
-  return { x: centerX + half * Math.cos(rot), y: centerY + half * Math.sin(rot) };
-}
-function endTextWidthPointer(e, cancelled) {
-  const ds = textWidthDragState;
-  if (!ds || (e && e.pointerId != null && ds.pointerId != null && e.pointerId !== ds.pointerId)) return;
-  try { e && e.currentTarget && e.currentTarget.releasePointerCapture && e.currentTarget.releasePointerCapture(ds.pointerId); } catch (_) {}
-  textWidthDragState = null;
-  const asset = ds.isDraft ? pendingTextDraft : (Array.isArray(assets) ? assets : []).find(a => a && a.id === ds.assetId);
-  if (cancelled) {
-    textWidthLastGesturePointerCancelRestored = true;
-    if (ds.moved && asset) {
-      if (ds.isDraft) {
-        Object.assign(asset, ds.draftSnapshot);
-      } else if (ds.undoSnapshot) {
-        restoreState(ds.undoSnapshot);
-      }
-    }
-    textWidthLastGestureSide = ds.side;
-    textWidthLastGestureModeBefore = ds.modeBefore;
-    textWidthLastGestureModeAfter = ds.modeBefore;
-    textWidthLastGestureStartBoxWidth = ds.startBoxWidth;
-    textWidthLastGestureEndBoxWidth = ds.startBoxWidth;
-    textWidthLastGestureStartScalePercent = ds.startScalePercent;
-    textWidthLastGestureEndScalePercent = ds.startScalePercent;
-    textWidthLastGestureScalePreserved = true;
-    textWidthLastGestureOppositeEdgeAnchored = true;
-    if (ds.isDraft) {
-      renderTextEditorOptions(); renderProjectWorldExtraImages(); renderAssetSelectionOverlay();
-    } else {
-      invalidateProjectWorldComposite(); renderProjectWorldExtraImages(); renderAssetSelectionOverlay(); updateLowerTimelineMeta();
-      if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
-    }
-    return;
-  }
-  if (!ds.moved || !asset) return;
-  const finalCenterX = asset.worldX + asset.worldW / 2, finalCenterY = asset.worldY + asset.worldH / 2;
-  const anchorStart = computeTextWidthAnchorPoint(ds.side, ds.startCenterX, ds.startCenterY, ds.startWorldW, ds.rot);
-  const anchorEnd = computeTextWidthAnchorPoint(ds.side, finalCenterX, finalCenterY, asset.worldW, ds.rot);
-  textWidthLastGestureSide = ds.side;
-  textWidthLastGestureModeBefore = ds.modeBefore;
-  textWidthLastGestureModeAfter = asset.boxWidthMode === 'auto' ? 'auto' : 'fixed';
-  textWidthLastGestureStartBoxWidth = ds.startBoxWidth;
-  textWidthLastGestureEndBoxWidth = asset.boxWidth;
-  textWidthLastGestureStartScalePercent = ds.startScalePercent;
-  textWidthLastGestureEndScalePercent = asset.textBaseBoxWidth > 0 ? (asset.boxWidth / asset.textBaseBoxWidth * 100) : ds.startScalePercent;
-  textWidthLastGestureScalePreserved = Math.abs(textWidthLastGestureEndScalePercent - ds.startScalePercent) < 0.05;
-  textWidthLastGestureOppositeEdgeAnchored = Math.hypot(anchorEnd.x - anchorStart.x, anchorEnd.y - anchorStart.y) < 0.5;
-  if (ds.isDraft) {
-    // v8z4b32E9E/E9G1 — draft: WYSIWYG já aplicado ao vivo; zero Undo, zero autosave
-    // enquanto não confirmado. O ✓ Confirmar aplica exatamente 1 Undo/1 autosave (via
-    // confirmTextCreation, que agora recompõe o centro a partir do PRÓPRIO draft).
-    return;
-  }
-  // v8z4b32E9G1-R1 — correção de revisão: um pointermove totalmente absorvido pelo
-  // clamp (ex.: já no limite lógico máximo/mínimo) não pode marcar o projeto
-  // dirty/agendar autosave nem mexer em Layers. `changed` é a única fonte de
-  // "alteração real" — nunca `ds.moved` (que só significa "houve pointermove válido").
-  // NO-OP clampado = zero Undo, zero dirty, zero revisão de autosave.
-  const changed = Math.abs(asset.boxWidth - ds.startBoxWidth) > 0.01 || Math.abs(asset.worldX - (ds.startCenterX - ds.startWorldW / 2)) > 0.01 || Math.abs(asset.worldY - (ds.startCenterY - ds.startWorldH / 2)) > 0.01 || Math.abs(asset.worldW - ds.startWorldW) > 0.01 || Math.abs(asset.worldH - ds.startWorldH) > 0.01;
-  if (changed) {
-    if (ds.undoSnapshot && typeof pushUndoSnapshot === 'function') {
-      pushUndoSnapshot(ds.undoSnapshot);
-      lastUndoAction = 'textWidthDrag';
-    }
-    if (typeof markProjectDirty === 'function') markProjectDirty('text-width-drag');
-    if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
-  }
-}
-
 // Contorno discreto do asset selecionado — overlay DOM dentro de #stageContent,
 // alinhado por editorWorldToStage. Some no Preview/Export (que usam canvas).
 function renderAssetSelectionOverlay() {
@@ -36173,7 +35941,6 @@ function renderAssetSelectionOverlay() {
     if (box) {
       box.style.display = 'none';
       box.querySelectorAll('.asset-corner-handle').forEach(function(h) { h.classList.remove('show'); });
-      box.querySelectorAll('.text-width-handle').forEach(function(h) { h.classList.remove('show'); });
     }
     assetScaleHandleVisible = false;
     assetRotateHandleVisible = false;
@@ -36225,18 +35992,6 @@ function renderAssetSelectionOverlay() {
       tab.addEventListener('pointercancel', function(ev) { endAssetTransformPointer(ev, true); });
       box.appendChild(tab);
     });
-    // v8z4b32E9G1 — duas side width handles, EXCLUSIVAS de Text Asset (REG-028
-    // especializado): sistema/classe/listeners próprios, nunca .asset-corner-handle.
-    ['left','right'].forEach(function(side) {
-      const wh = document.createElement('div');
-      wh.className = 'text-width-handle';
-      wh.dataset.assetWidthHandle = side;
-      wh.addEventListener('pointerdown', function(ev) { beginTextWidthDrag(ev, wh.dataset.assetWidthHandle); });
-      wh.addEventListener('pointermove', handleTextWidthPointerMove);
-      wh.addEventListener('pointerup', function(ev) { endTextWidthPointer(ev, false); });
-      wh.addEventListener('pointercancel', function(ev) { endTextWidthPointer(ev, true); });
-      box.appendChild(wh);
-    });
     stageContent.appendChild(box);
   }
   // v8z4b30ZZ — item 5/10: o contorno roxo de seleção fica acima do scrim de
@@ -36284,10 +36039,6 @@ function renderAssetSelectionOverlay() {
   });
   assetTransformVisualHandleCount = assetCornerTabs.length + box.querySelectorAll('.asset-scale-handle,.asset-rotate-handle').length;
   assetTransformDuplicateControlsDetected = assetTransformVisualHandleCount !== 4;
-  // v8z4b32E9G1 — side width handles: SOMENTE Text Asset (0 para qualquer outro tipo).
-  const textWidthHandles = box.querySelectorAll('.text-width-handle');
-  const showTextWidthHandles = asset.type === 'text';
-  textWidthHandles.forEach(function(h) { h.classList.toggle('show', showTextWidthHandles); });
   assetTransformActiveAssetId = String(asset.id);
   assetTransformGestureMode = assetTransformDragState ? (assetTransformDragState.mode || 'pending') : 'idle';
   // v8z4b30ZY — atualizar diagnóstico
