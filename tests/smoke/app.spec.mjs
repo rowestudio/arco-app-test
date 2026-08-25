@@ -4289,7 +4289,7 @@ test('E9H — Camadas: sheet parcial preserva seleção/ordem/visibilidade/troca
   await expect(page.locator(`#layersPanel .layers-item[data-asset-id="${textId}"] .layers-action-btn[title="Trocar"]`)).toHaveCount(0);
 
   // Excluir preserva o comportamento atual (delega a deleteSelectedAsset existente).
-  await page.locator('#layersAffordance').click();
+  // A sheet já deve continuar aberta: seleção/visibilidade/ordenação não a fecham.
   await expect(page.locator('#layersPanel')).toHaveClass(/show/);
   await page.locator(`#layersPanel .layers-item[data-asset-id="${textId}"] .layers-action-btn[title="Excluir"]`).click();
   await expect.poll(() => page.evaluate((id) => assets.some((a) => String(a.id) === id), textId)).toBe(false);
