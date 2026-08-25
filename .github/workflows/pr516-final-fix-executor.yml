@@ -1,0 +1,93 @@
+name: PR516 Final Fix Executor
+
+on:
+  push:
+    branches:
+      - 'claude/v8z4b32e9h-layers-depth-gf58ay'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr516-final-fix-executor
+  cancel-in-progress: false
+
+jobs:
+  apply-reviewed-patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact branch
+        uses: actions/checkout@v4
+        with:
+          ref: claude/v8z4b32e9h-layers-depth-gf58ay
+          fetch-depth: 0
+
+      - name: Verify executor parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "231d805987783d458c388eee9afe741648e90d05"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/pr516-final-fix-executor.yml"
+
+      - name: Apply reviewed E8U and E9H patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          index = Path('index.html')
+          s = index.read_text()
+
+          old_transform = """body.cust-expanded #lowerContextSheetShell,\nbody.asset-context-panel-open #lowerContextSheetShell,\nbody.align-submenu-open #lowerContextSheetShell{transform:translateY(5px);}\n"""
+          if s.count(old_transform) != 1:
+              raise SystemExit(f'unexpected transform block count: {s.count(old_transform)}')
+          s = s.replace(old_transform, '', 1)
+
+          old_depth = """body.asset-context-depth-open #lowerContextSheetShell,\nbody.asset-context-depth-open #lowerContextSlot{height:calc(var(--lower-context-panel-h) + 54px);}\n"""
+          new_depth = """body.asset-context-depth-open #lowerContextSlot{height:calc(var(--lower-context-panel-h) + 54px);}\n"""
+          if s.count(old_depth) != 1:
+              raise SystemExit(f'unexpected depth shell block count: {s.count(old_depth)}')
+          s = s.replace(old_depth, new_depth, 1)
+          index.write_text(s)
+
+          tests = Path('tests/smoke/app.spec.mjs')
+          t = tests.read_text()
+          old_test = """  // Excluir preserva o comportamento atual (delega a deleteSelectedAsset existente).\n  await page.locator('#layersAffordance').click();\n  await expect(page.locator('#layersPanel')).toHaveClass(/show/);\n"""
+          new_test = """  // Excluir preserva o comportamento atual (delega a deleteSelectedAsset existente).\n  // A sheet já deve continuar aberta: seleção/visibilidade/ordenação não a fecham.\n  await expect(page.locator('#layersPanel')).toHaveClass(/show/);\n"""
+          if t.count(old_test) != 1:
+              raise SystemExit(f'unexpected E9H gate block count: {t.count(old_test)}')
+          t = t.replace(old_test, new_test, 1)
+          tests.write_text(t)
+          PY
+
+          git diff --check
+
+      - name: Run static QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/qa/run-self-tests.mjs
+          node scripts/qa/check-repository-state.mjs
+          node scripts/qa/check-app-version.mjs
+          node scripts/qa/check-ui-leakage.mjs
+          node scripts/qa/check-project-os.mjs
+          node scripts/qa/check-markdown-links.mjs
+          node scripts/qa/check-canonical-asset-selection.mjs
+
+      - name: Commit patch and self-remove executor
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/pr516-final-fix-executor.yml
+          git add index.html tests/smoke/app.spec.mjs
+          git diff --cached --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "v8z4b32E9H — fix(layers): resolve final E8U and sheet gate blockers"
+          test "$(git diff --name-only 231d805987783d458c388eee9afe741648e90d05..HEAD | sort)" = $'index.html\ntests/smoke/app.spec.mjs'
+          git push origin HEAD:claude/v8z4b32e9h-layers-depth-gf58ay
