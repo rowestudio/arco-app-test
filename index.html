@@ -2396,7 +2396,7 @@ body.cust-expanded #lowerContextSheetShell,
 body.asset-context-panel-open #lowerContextSheetShell,
 body.align-submenu-open #lowerContextSheetShell{grid-column:1 / 3;grid-row:3 / 5;align-items:flex-start;padding:0;z-index:14;background:var(--context-sheet-bg);border-radius:16px 16px 0 0;overflow:visible;}
 body.cust-expanded #lowerContextSheetShell,
-body.asset-context-panel-open #lowerContextSheetShell{margin-bottom:calc(-5px - var(--lower-safe-bottom));}
+body.asset-context-panel-open #lowerContextSheetShell{height:calc(100% + 5px);}
 body.cust-expanded #lowerContextSlot,
 body.asset-context-panel-open #lowerContextSlot,
 body.align-submenu-open #lowerContextSlot{height:var(--lower-context-panel-h);align-items:flex-start;padding:0;background:transparent;overflow:visible;}
@@ -36368,7 +36368,15 @@ function renderLayersPanelList() {
     // O gesto público da linha deve chegar à seleção canônica mesmo quando o
     // ponto tocado coincide com a rail de ações; cada ação continua delegando
     // sua operação ao handler existente depois de selecionar a própria Layer.
-    item.addEventListener('pointerdown', _selAsset);
+    item.addEventListener('pointerdown', function(ev) {
+      if (ev.target && ev.target.closest && ev.target.closest('.layers-action-btn')) {
+        // Deixe o click do botão concluir sua ação antes de a seleção canônica
+        // reconstruir a lista da sheet.
+        setTimeout(_selAsset, 0);
+        return;
+      }
+      _selAsset();
+    });
     item.addEventListener('click', _selAsset);
     // v8z4b32E9H — Visibilidade: expõe o campo asset.visible já existente e já
     // respeitado pelo renderer/hit-test (assetIsHitTestable, filtros de render/export);
