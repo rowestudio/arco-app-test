@@ -61,7 +61,7 @@ Estados usados neste documento:
 ## 4. Layers
 
 - [Em evolução] Layers já existe: o app possui múltiplos assets/Layers com seleção, visibilidade, ordenação e identidades persistentes. A frente aprovada é **readequação da interface de Layers existente**, não criação do zero (ver `docs/PRE_PROMOTION_RELEASE_PLAN.md`).
-- [SUPERADA] ~~Painel de Layers permanente na lateral/sobre o Stage, visível durante o trabalho.~~ Formulação histórica **superada** pela decisão mais recente do `docs/PRE_PROMOTION_RELEASE_PLAN.md`: affordance compacto no Stage + **sheet parcial** de Camadas abrindo de baixo, com o Stage permanecendo visível (não um painel permanente na lateral/sobre o Stage). Preservada aqui para rastreabilidade histórica; não implementar a formulação superada.
+- [SUPERADAS/REVERTIDAS] Duas formulações históricas são preservadas apenas para rastreabilidade e **não são regra atual**: (1) painel permanente na lateral/sobre o Stage; (2) apresentação E9H com affordance compacto + sheet parcial. A E9H foi revertida e sua apresentação visualmente carregada foi superada. A decisão futura vigente é `DEC-2026-08-26-01`/`docs/PRE_PROMOTION_RELEASE_PLAN.md`: lista limpa e rolável; primeiro tap abre ações contextuais; scroll não abre; toque fora fecha; ordem antes da thumbnail; ações únicas; lock/unlock futuro. Nada disso está implementado neste rollback.
 - [Futuro] O painel deve permitir ver, selecionar, ordenar, ocultar e trocar ativos sem sair do contexto do Stage.
 - [Regra] Frames, curvas e HUD não entram na pilha visual dos ativos.
 
