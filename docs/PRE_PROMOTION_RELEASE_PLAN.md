@@ -119,17 +119,19 @@ Classificação: **readequação da interface de Layers existente + revisão vis
 
 ### Desenho aprovado — Camadas (readequação da interface existente)
 
-- No Modo Ativos, haverá um affordance compacto no Stage que representa a camada selecionada e oferece expandir.
-- Ele **não** reutiliza o ícone de visualização/referências já existente.
-- Expandir abre uma sheet parcial `Camadas` a partir de baixo.
-- Altura máxima aproximada de 40% do viewport, com rolagem vertical interna e Stage visível.
-- A sheet tem alça, título e `×` para fechar.
-- Cada camada mostra thumbnail ou ícone de tipo, nome, posição na pilha e profundidade, por exemplo `Camada 3 · Prof. +42`.
-- Tocar em uma camada altera a seleção do Stage, mas **não** fecha o painel.
-- Apenas fechar explicitamente encerra o painel.
-- Ações da camada selecionada no painel: visibilidade, frente, trás, trocar imagem quando aplicável, excluir e Profundidade.
-- A entrada `Camadas` deixa o menu inferior de Ativos.
-- Painel e affordance **não** entram em Preview nem Export e **não** alteram ProjectWorld.
+- No Modo Ativos, um affordance compacto no Stage expande a interface de Camadas; ele **não** reutiliza o ícone de visualização/referências já existente.
+- A interface expandida apresenta uma lista vertical limpa e rolável, seguindo a ordem da pilha.
+- Cada Layer prioriza, nesta ordem: número de ordem, thumbnail/ícone ligeiramente maior que na E9H e nome como texto principal.
+- Não exibir a formulação `Posição N de M · Prof. X` na linha da Layer.
+- Com a lista expandida, o primeiro **tap** normal em uma Layer seleciona essa Layer e abre imediatamente suas opções contextuais; não existe segundo toque, double tap ou long press como requisito.
+- Um gesto destinado a **scroll** apenas rola a lista e não abre ações acidentalmente.
+- Tocar em outra Layer troca imediatamente a seleção e o contexto de ações para ela.
+- Tocar fora da interface de Camadas, no Stage, fecha a lista e as opções sem alterar o projeto.
+- O cabeçalho mostra `Camadas`, a quantidade total de Layers e um fechamento visualmente compatível com os demais controles do app.
+- Profundidade aparece contextualmente como ícone antes do valor (`0`, `+30`, `−20`), nunca como texto corrido `Profundidade: X` ou `Prof. X`.
+- Existe **uma única área contextual de ações** para a Layer selecionada: visibilidade, subir, descer, profundidade, trocar imagem quando aplicável, travar/destravar e excluir.
+- Lock/unlock permanece **FUTURO/APROVADO** conforme `DEC-2026-08-26-01`; não está implementado neste rollback.
+- **Histórico superado/revertido:** a apresentação E9H com affordance + sheet parcial de aproximadamente 40% do viewport, fechamento somente explícito, toque apenas selecionando e linhas com posição/profundidade em texto permanece registrada apenas para rastreabilidade. Ela não é especificação ativa e não deve ser reimplementada como decisão vigente.
 
 ### Desenho aprovado — revisão visual do controle de Profundidade existente
 
