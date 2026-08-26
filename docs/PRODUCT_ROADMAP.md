@@ -1,5 +1,11 @@
 # Roadmap de Produto Recuperado
 
+## Atualização 2026-08-26 — rollback E9H
+
+- Camadas/Profundidade: **PENDENTES DE NOVA TENTATIVA** após reprovação física e rollback da `v8z4b32E9H` para `v8z4b32E9F6` (REG-059, causa não comprovada).
+- Próxima tentativa aprovada: lista limpa/rolável e ações contextuais únicas conforme `DEC-2026-08-26-01`; inclui lock/unlock canônico e persistido. Itens futuros, não implementados neste rollback.
+
+
 Este documento registra a recuperação das decisões de produto originadas nas conversas do projeto Arco Motion App. A lista abaixo preserva o inventário recuperado como fonte detalhada e rastreável do backlog de produto; não é um novo plano criado pelo Codex, não define prioridade, ordem de implementação, estimativas, datas ou versões futuras, e não autoriza implementação automática dos itens.
 
 Estados usados neste documento:
@@ -54,7 +60,7 @@ Estados usados neste documento:
 
 ## 4. Layers
 
-- [Em evolução — EM PR `v8z4b32E9H`] Layers já existe: o app possui múltiplos assets/Layers com seleção, visibilidade, ordenação e identidades persistentes. A frente aprovada é **readequação da interface de Layers existente**, não criação do zero (ver `docs/PRE_PROMOTION_RELEASE_PLAN.md`). Implementação: affordance compacto `#layersAffordance` no Stage (Modo Ativos) + sheet parcial `#layersPanel` a partir de baixo; validação física de Roberto pendente.
+- [Em evolução] Layers já existe: o app possui múltiplos assets/Layers com seleção, visibilidade, ordenação e identidades persistentes. A frente aprovada é **readequação da interface de Layers existente**, não criação do zero (ver `docs/PRE_PROMOTION_RELEASE_PLAN.md`).
 - [SUPERADA] ~~Painel de Layers permanente na lateral/sobre o Stage, visível durante o trabalho.~~ Formulação histórica **superada** pela decisão mais recente do `docs/PRE_PROMOTION_RELEASE_PLAN.md`: affordance compacto no Stage + **sheet parcial** de Camadas abrindo de baixo, com o Stage permanecendo visível (não um painel permanente na lateral/sobre o Stage). Preservada aqui para rastreabilidade histórica; não implementar a formulação superada.
 - [Futuro] O painel deve permitir ver, selecionar, ordenar, ocultar e trocar ativos sem sair do contexto do Stage.
 - [Regra] Frames, curvas e HUD não entram na pilha visual dos ativos.
@@ -97,7 +103,7 @@ Estados usados neste documento:
 
 ## 9. Profundidade e captura
 
-- [Em evolução — EM PR `v8z4b32E9H`] Profundidade básica/parallax translacional por ativo já existe, com distância relativa à câmera e paridade canônica entre Stage, Preview, Export e persistência. Revisão visual do controle já existente: régua com `−100`/`0`/`+100` numerados e oito ticks intermediários sem número, preenchimento bidirecional coral a partir do zero, botões `−10`/`+10` (substitui a formulação anterior de `−5`/`+5`). Validação física de Roberto pendente.
+- [Em evolução] Profundidade básica/parallax translacional por ativo já existe, com distância relativa à câmera e paridade canônica entre Stage, Preview, Export e persistência.
 - [Futuro] Vista Profundidade 0 / vista absoluta no Modo Ativos, separada do controle de profundidade já existente.
 - [Pesquisa] Evolução da distância para comportamento animável, preservando paridade entre Stage, Preview, Export e Save/Load.
 - [Pesquisa] Motion Take: gravar movimento virtual da câmera por toque, arrasto, pinch e rotação, convertendo-o em frames editáveis.
