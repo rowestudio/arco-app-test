@@ -2,7 +2,14 @@
 
 Registro canônico da base auditada `v8z4b32E9C` e do plano aprovado de PRs funcionais que devem ocorrer **antes** de qualquer promoção para produção. Este documento é a fonte de verdade do plano pré-promoção; qualquer LLM, Codex ou desenvolvedor deve conseguir entender a sequência sem depender de conversa externa.
 
-Versionado por data. Última atualização: 2026-08-24 (segundo rollback, da E9G1).
+Versionado por data. Última atualização: 2026-08-24 (v8z4b32E9H em PR — Camadas/Profundidade).
+
+## Atualização 2026-08-24 — v8z4b32E9H em PR: readequação de Camadas + revisão visual de Profundidade
+
+- Parte do HEAD remoto `1f449943692f9f525d760876a57f14ad077f1ebb` (merge da PR #515, rollback físico da E9G1/REG-058). A `v8z4b32E9F6` restaurada foi testada novamente por Roberto em iPhone/Safari e **aceita fisicamente como base de continuidade**; nesse mesmo teste, **REG-058 passou a RESOLVIDA FISICAMENTE PELO ROLLBACK/RESTAURAÇÃO DA E9F6** (mesmo tratamento de REG-057) — ver `docs/PROJECT_STATE.md`/`docs/REGRESSIONS.md`. REG-056 permanece ABERTA/PENDENTE; nenhuma tentativa de side width handles nesta PR.
+- Implementa o item 3 abaixo (**PR de Camadas e Profundidade**): readequação da interface de Layers já existente (affordance compacto + sheet parcial) e revisão visual do controle de Profundidade já existente (régua com três números + oito ticks intermediários, preenchimento bidirecional coral, botões `−10`/`+10`). Nenhuma lógica nova de Layers/depth foi criada.
+- **Decisão nova, substitui o plano anterior de `−5`/`+5` descrito na seção 3 (Desenho aprovado — Profundidade):** os botões rápidos de Profundidade passam a ser `−10`/`+10` (mais Reset para 0), documentado abaixo e em `docs/PRODUCT_RULES.md`/`docs/DECISIONS.md`. Esta é uma superação explícita, não um erro de implementação anterior — a seção 3 nunca havia sido implementada antes desta PR.
+- Testes automatizados novos em `tests/smoke/app.spec.mjs` (gates `E9H —`); execução local de WebKit/Chromium bloqueada pelo acesso de rede desta sessão (proxy recusa o host de download dos browsers). Checks obrigatórios do HEAD final da PR (QA Guardrails, Browser/WebKit Smoke Tests, Real Export Smoke) pertencem ao CI. Validação física de Roberto em iPhone/Safari para a `v8z4b32E9H` permanece pendente.
 
 ## Atualização 2026-08-24 — rollback da E9G1 (PR #514) após REG-058
 
@@ -28,7 +35,7 @@ Versionado por data. Última atualização: 2026-08-24 (segundo rollback, da E9G
 - **E9F — mergeada** (PR #499, merge commit `82131049e52974a1922206c92bf573b9d2c78ff5`). Testada fisicamente por Roberto em iPhone/Safari: estrutura geral aprovada e maioria das funções operando, mas **NÃO aprovada visualmente como encerrada**. (Nota: a instrução da E9F1 citou o merge commit `7e3978…`, inexistente no git; a fonte oficial mostra `82131049…`.)
 - **E9F1 — MERGEADA, PUBLICADA e APROVADA fisicamente** (PR #500, merge commit `6739dbc018f335ad6b1faead6de4f4469e5ebf78`; build publicada e testada por Roberto em iPhone/Safari, **aprovada em 2026-08-19**). Refino visual/funcional localizado: cabeçalho compacto; ícone de Estilo B+I; ícone de Alinhamento dinâmico; paleta rápida de Cor do texto e de Fundo reutilizando a constante única `PROJECT_BG_NEUTRALS` + botão `+`; Fundo com "Sem cor/Transparente" e opacidade condicional; localização do VIEWPORT ao editar existente sem tocar geometria/Frames/ProjectWorld/Undo/autosave; Largura = Auto compacto + slider step 5. Não antecipa E9G. Rodada corretiva E9F1 encerrada.
 - **E9G — FUTURA** (alças laterais de largura no Stage; exige revisão de REG-028). DUAS tentativas foram mergeadas e depois REVERTIDAS: PR #512 em 2026-08-23 por REG-057; PR #514 (`v8z4b32E9G1`) em 2026-08-24 por REG-058; ver "Atualização 2026-08-24" e "Atualização 2026-08-23" acima.
-- **Camadas e Profundidade JÁ EXISTEM; a readequação da interface de Layers existente + a revisão visual do controle de Profundidade existente — não iniciada.** O app já possui múltiplos assets/Layers (seleção, visibilidade, ordenação, identidades persistentes) e profundidade/parallax básico; esta frente **não** cria Layers nem Profundidade do zero, e sim readequa a interface e revisa o controle já existentes.
+- **Camadas e Profundidade JÁ EXISTEM; a readequação da interface de Layers existente + a revisão visual do controle de Profundidade existente — EM PR (`v8z4b32E9H`).** O app já possui múltiplos assets/Layers (seleção, visibilidade, ordenação, identidades persistentes) e profundidade/parallax básico; esta frente **não** cria Layers nem Profundidade do zero, e sim readequa a interface e revisa o controle já existentes. Ver "Atualização 2026-08-24 — v8z4b32E9H em PR" no topo deste documento; validação física de Roberto pendente.
 - **Engine Sprint — não iniciado.**
 
 Nenhuma etapa avança automaticamente; nenhuma promoção está autorizada.
@@ -108,6 +115,8 @@ A PR de Texto foi subdividida na seguinte sequência aprovada. Registrar como pl
 
 Classificação: **readequação da interface de Layers existente + revisão visual do controle de Profundidade existente.** Layers (múltiplos assets, seleção, visibilidade, ordenação e identidades persistentes) e Profundidade/parallax básico **já existem**; esta frente readequa a interface de acesso/organização e revisa visualmente o controle já implementado — **não** cria Layers nem Profundidade do zero.
 
+**Status: EM PR (`v8z4b32E9H`)**, ver "Atualização 2026-08-24 — v8z4b32E9H em PR" no topo deste documento. Validação física de Roberto pendente.
+
 ### Desenho aprovado — Camadas (readequação da interface existente)
 
 - No Modo Ativos, haverá um affordance compacto no Stage que representa a camada selecionada e oferece expandir.
@@ -129,7 +138,7 @@ Classificação: **readequação da interface de Layers existente + revisão vis
 - Quatro subdivisões de cada lado: `−80`, `−60`, `−40`, `−20`, `+20`, `+40`, `+60`, `+80`.
 - Marco zero visível.
 - Preenchimento bidirecional do zero até o thumb, tanto para valor negativo quanto positivo, no acento vigente do workspace Ativos **coral `#FF6B8A`**. (Sincronização documental com a identidade já aprovada da E9F; o roxo antigo de Ativos **não** deve ser reintroduzido — ver `docs/PRODUCT_RULES.md`.)
-- Controles `−5`, `+5` e Reset para zero.
+- **Controles `−10`, `+10` e Reset para zero.** Decisão nova registrada em 2026-08-24 (`v8z4b32E9H`), **SUPERA** a formulação anterior deste documento que mencionava `−5`/`+5` para Profundidade (essa formulação nunca havia sido implementada). Ver `docs/DECISIONS.md`.
 - `depth` continua independente de `zIndex`.
 - Valores finitos continuam persistindo.
 - Texto, fundo do texto, seleção, hit-test e alças devem acompanhar a paralaxe juntos no Stage.

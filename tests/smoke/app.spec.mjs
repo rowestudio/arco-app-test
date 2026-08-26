@@ -905,10 +905,11 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
   const measureControls = (page, stepSelector, resetSelector) => page.evaluate(({ stepSelector, resetSelector }) => {
     const step = document.querySelector(stepSelector);
     const reset = document.querySelector(resetSelector);
-    const row = step?.parentElement;
-    const sliderRow = row?.previousElementSibling;
-    const slider = sliderRow?.querySelector('input[type="range"]');
-    const stack = row?.parentElement;
+    const assetPanel = step?.closest('#assetContextPanel');
+    const row = assetPanel?.querySelector('.asset-context-actions') || step?.parentElement;
+    const sliderRow = assetPanel?.querySelector('.asset-context-row') || row?.previousElementSibling;
+    const slider = assetPanel?.querySelector('#assetContextSlider') || sliderRow?.querySelector('input[type="range"]');
+    const stack = assetPanel?.querySelector('.asset-context-stack') || row?.parentElement;
     if (!step || !reset || !row || !slider || !sliderRow || !stack) throw new Error('controles contextuais não encontrados');
     const stepRect = step.getBoundingClientRect();
     const resetRect = reset.getBoundingClientRect();
@@ -4166,4 +4167,269 @@ test('REG-055 — os três "+" são o input[type=color] nativo real (alvo de toq
 
   expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
   expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
+});
+
+// v8z4b32E9H — readequação da interface de Layers/Camadas existente + revisão visual do
+// controle de Profundidade existente. NÃO cria Layers nem Profundidade do zero: os gates
+// abaixo reutilizam as funções canônicas já cobertas por E9A/TC-044 (persistência,
+// independência depth×zIndex, Undo/autosave, Save/Load) e cobrem especificamente a NOVA
+// superfície de UI (affordance compacto, sheet parcial, régua visual, botões -10/+10).
+async function setupE9HAssetsProject(page) {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const proModal = page.locator('#proModal');
+  if (await proModal.isVisible()) await page.getByRole('button', { name: 'Dispensar', exact: true }).click();
+}
+
+test('E9H — Camadas: affordance compacto no Stage aparece só no Modo Ativos, fora de Preview/Export', async ({ page }) => {
+  test.setTimeout(60_000);
+  await setupE9HAssetsProject(page);
+
+  // Câmera/Frames: affordance não aparece.
+  await expect(page.locator('#layersAffordance')).toBeHidden();
+
+  // Modo Ativos: affordance aparece; NÃO é o mesmo elemento do ícone de
+  // visualização/referências (#stageEyeShortcut), nem o zoom (#editorZoomCtrl).
+  await page.locator('#modeAssetsBtn').click();
+  await expect(page.locator('#layersAffordance')).toBeVisible();
+  const distinctFromReferenceIcons = await page.evaluate(() => {
+    const affordance = document.getElementById('layersAffordance');
+    return affordance !== document.getElementById('stageEyeShortcut') && affordance !== document.getElementById('editorZoomCtrl');
+  });
+  expect(distinctFromReferenceIcons).toBe(true);
+
+  // Preview/Export: affordance não aparece (mesma regra de contexto de #stageEyeShortcut).
+  await page.evaluate(() => document.body.classList.add('previewing'));
+  await expect(page.locator('#layersAffordance')).toBeHidden();
+  await page.evaluate(() => document.body.classList.remove('previewing'));
+  await page.evaluate(() => document.body.classList.add('recording'));
+  await expect(page.locator('#layersAffordance')).toBeHidden();
+  await page.evaluate(() => document.body.classList.remove('recording'));
+  await expect(page.locator('#layersAffordance')).toBeVisible();
+});
+
+test('E9H — Camadas: sheet parcial preserva seleção/ordem/visibilidade/troca/exclusão já existentes', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message || String(error)));
+  await setupE9HAssetsProject(page);
+  await page.locator('#modeAssetsBtn').click();
+
+  // Segunda Layer (texto) para exercitar seleção/ordenação/exclusão com 2+ ativos.
+  await page.evaluate(() => startTextCreation());
+  await page.locator('#textCreationInput').fill('Camada de teste E9H');
+  await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
+  const textId = await page.evaluate(() => String(getSelectedAsset().id));
+  const imageId = await page.evaluate(() => String(assets.find((a) => a.type === 'image').id));
+
+  // Abre a sheet pelo affordance.
+  await page.locator('#layersAffordance').click();
+  await expect(page.locator('#layersPanel')).toHaveClass(/show/);
+  await expect(page.locator('#layersPanel')).toHaveAttribute('aria-hidden', 'false');
+  await expect(page.locator('#layersPanel .layers-title')).toHaveText('Camadas');
+
+  // Altura máxima ~40% do viewport; Stage permanece visível acima.
+  const budget = await page.evaluate(() => {
+    const inner = document.querySelector('#layersPanel .layers-sheet-inner');
+    const stage = document.getElementById('stage');
+    return {
+      innerHeight: inner.getBoundingClientRect().height,
+      viewportHeight: window.innerHeight,
+      stageVisibleHeight: stage.getBoundingClientRect().height,
+    };
+  });
+  expect(budget.innerHeight).toBeLessThanOrEqual(budget.viewportHeight * 0.4 + 4);
+  expect(budget.stageVisibleHeight).toBeGreaterThan(0);
+
+  // Lista compacta: thumbnail/ícone, nome, posição na pilha e profundidade atual.
+  const rows = page.locator('#layersPanel .layers-item');
+  await expect(rows).toHaveCount(2);
+  await expect(page.locator('#layersPanel .layers-item .layers-meta').first()).toContainText('Posição');
+  await expect(page.locator('#layersPanel .layers-item .layers-meta').first()).toContainText('Prof.');
+
+  // Selecionar uma Layer altera a seleção canônica e NÃO fecha a sheet.
+  await page.locator(`#layersPanel .layers-item[data-asset-id="${imageId}"]`).click();
+  await expect.poll(() => page.evaluate(() => String(selectedAssetId))).toBe(imageId);
+  await expect(page.locator('#layersPanel')).toHaveClass(/show/);
+  await expect(page.locator(`#layersPanel .layers-item[data-asset-id="${imageId}"]`)).toHaveClass(/selected/);
+  expect(await page.evaluate(() => document.getElementById('layersAffordance').classList.contains('has-selection'))).toBe(true);
+
+  await page.locator(`#layersPanel .layers-item[data-asset-id="${textId}"]`).click();
+  await expect.poll(() => page.evaluate(() => String(selectedAssetId))).toBe(textId);
+  await expect(page.locator('#layersPanel')).toHaveClass(/show/);
+
+  // Visibilidade continua funcionando (mesmo campo asset.visible já usado pelo renderer/hit-test).
+  const visBtn = page.locator(`#layersPanel .layers-item[data-asset-id="${textId}"] .layers-vis-btn`);
+  await visBtn.click();
+  await expect.poll(() => page.evaluate((id) => assets.find((a) => String(a.id) === id).visible, textId)).toBe(false);
+  await expect(visBtn).toHaveClass(/is-hidden/);
+  await visBtn.click();
+  await expect.poll(() => page.evaluate((id) => assets.find((a) => String(a.id) === id).visible, textId)).toBe(true);
+
+  // Frente/Trás altera SOMENTE ordem/zIndex, nunca depth.
+  await page.evaluate((id) => { assets.find((a) => String(a.id) === id).depth = 17; }, textId);
+  const beforeReorder = await page.evaluate((id) => {
+    const a = assets.find((x) => String(x.id) === id);
+    return { zIndex: a.zIndex, depth: a.depth };
+  }, textId);
+  await page.locator(`#layersPanel .layers-item[data-asset-id="${textId}"] .layers-action-btn[title="Descer"]`).click();
+  const afterReorder = await page.evaluate((id) => {
+    const a = assets.find((x) => String(x.id) === id);
+    return { zIndex: a.zIndex, depth: a.depth };
+  }, textId);
+  expect(afterReorder.zIndex).not.toBe(beforeReorder.zIndex);
+  expect(afterReorder.depth).toBe(beforeReorder.depth);
+
+  // Trocar imagem reaproveita o fluxo existente (onLayerReplaceClick/layerReplaceImageForAsset)
+  // e continua disponível SOMENTE na linha de asset do tipo imagem (não na de texto).
+  await expect(page.locator(`#layersPanel .layers-item[data-asset-id="${imageId}"] .layers-action-btn[title="Trocar"]`)).toHaveCount(1);
+  await expect(page.locator(`#layersPanel .layers-item[data-asset-id="${textId}"] .layers-action-btn[title="Trocar"]`)).toHaveCount(0);
+
+  // Excluir preserva o comportamento atual (delega a deleteSelectedAsset existente).
+  // A sheet já deve continuar aberta: seleção/visibilidade/ordenação não a fecham.
+  await expect(page.locator('#layersPanel')).toHaveClass(/show/);
+  await page.locator(`#layersPanel .layers-item[data-asset-id="${textId}"] .layers-action-btn[title="Excluir"]`).click();
+  await expect.poll(() => page.evaluate((id) => assets.some((a) => String(a.id) === id), textId)).toBe(false);
+  await expect(rows).toHaveCount(1);
+
+  // Fechar explicitamente encerra a sheet.
+  await page.locator('#layersPanel .layers-close').click();
+  await expect(page.locator('#layersPanel')).not.toHaveClass(/show/);
+  await expect(page.locator('#layersPanel')).toHaveAttribute('aria-hidden', 'true');
+
+  expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
+});
+
+test('E9H — Camadas: lista suporta overflow/scroll interno com muitas Layers e nome longo (390×797)', async ({ page }) => {
+  test.setTimeout(120_000);
+  await setupE9HAssetsProject(page);
+  await page.locator('#modeAssetsBtn').click();
+  for (let i = 0; i < 8; i++) {
+    await page.evaluate(() => startTextCreation());
+    await page.locator('#textCreationInput').fill('Camada com nome razoavelmente longo para testar truncamento número ' + i);
+    await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
+  }
+  await page.locator('#layersAffordance').click();
+  await expect(page.locator('#layersPanel .layers-item')).toHaveCount(9);
+  const overflow = await page.evaluate(() => {
+    const list = document.getElementById('layersList');
+    return { scrollHeight: list.scrollHeight, clientHeight: list.clientHeight, overflowY: getComputedStyle(list).overflowY };
+  });
+  expect(overflow.overflowY).toBe('auto');
+  expect(overflow.scrollHeight).toBeGreaterThan(overflow.clientHeight);
+  const nameEllipsis = await page.evaluate(() => getComputedStyle(document.querySelector('#layersPanel .layers-name')).textOverflow);
+  expect(nameEllipsis).toBe('ellipsis');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= 390)).toBe(true);
+});
+
+test('E9H — Profundidade: régua -100/0/+100 + ticks, slider contínuo, -10/+10, Reset, preenchimento bidirecional coral', async ({ page }) => {
+  test.setTimeout(120_000);
+  await setupE9HAssetsProject(page);
+  await page.evaluate(() => {
+    setEditorMode('assets', 'e9h-depth');
+    const asset = assets.find((a) => a.type === 'image');
+    selectAssetById(asset.id, 'e9h-depth');
+  });
+  await page.locator('#tbAssetDepth').click();
+  await expect(page.locator('#assetContextSlider')).toHaveAttribute('aria-label', 'Profundidade do ativo');
+  await expect(page.locator('#assetContextSlider')).toHaveAttribute('min', '-100');
+  await expect(page.locator('#assetContextSlider')).toHaveAttribute('max', '100');
+  await expect(page.locator('#assetContextDepthTitle')).toBeVisible();
+  await expect(page.locator('#assetContextDepthTitle')).toHaveText('Profundidade');
+
+  // Régua: só -100/0/+100 têm número; oito ticks intermediários sem número; 0 é destacado.
+  const ruler = await page.evaluate(() => {
+    const ticks = Array.from(document.querySelectorAll('#assetContextDepthRuler .depth-tick'));
+    return ticks.map((t) => ({ text: t.textContent.trim(), isZero: t.classList.contains('depth-tick-zero') }));
+  });
+  expect(ruler.length).toBe(11);
+  const labeled = ruler.filter((t) => t.text.length > 0).map((t) => t.text).sort();
+  expect(labeled).toEqual(['+100', '0', '−100'].sort());
+  expect(ruler.filter((t) => t.text.length === 0).length).toBe(8);
+  expect(ruler.find((t) => t.text === '0').isZero).toBe(true);
+  await expect(page.locator('#assetContextDepthRuler')).toBeVisible();
+
+  // Slider contínuo, sem snap: valor não múltiplo de 10 é aceito.
+  await page.locator('#assetContextSlider').dispatchEvent('pointerdown');
+  await page.locator('#assetContextSlider').fill('37');
+  await expect.poll(() => page.evaluate(() => getSelectedAsset().depth)).toBe(37);
+
+  // Preenchimento bidirecional a partir do zero: positivo preenche do zero (50%) para a direita.
+  const fillPositive = await page.evaluate(() => {
+    const s = document.getElementById('assetContextSlider');
+    return { a: parseFloat(s.style.getPropertyValue('--fill-a')), b: parseFloat(s.style.getPropertyValue('--fill-b')) };
+  });
+  expect(fillPositive.a).toBeCloseTo(50, 0);
+  expect(fillPositive.b).toBeGreaterThan(50);
+
+  await page.locator('#assetContextSlider').fill('-42');
+  const fillNegative = await page.evaluate(() => {
+    const s = document.getElementById('assetContextSlider');
+    return { a: parseFloat(s.style.getPropertyValue('--fill-a')), b: parseFloat(s.style.getPropertyValue('--fill-b')) };
+  });
+  expect(fillNegative.b).toBeCloseTo(50, 0);
+  expect(fillNegative.a).toBeLessThan(50);
+  await page.locator('#assetContextSlider').dispatchEvent('change');
+
+  // Coral vigente do workspace Ativos (#FF6B8A), sem reintroduzir roxo.
+  const accent = await page.evaluate(() => getComputedStyle(document.body).getPropertyValue('--accent').trim().toLowerCase());
+  expect(accent).toBe('#ff6b8a');
+
+  // Botões -10/+10 (decisão nova; substitui -5/+5) com semântica de 1 Undo por clique.
+  await expect(page.locator('#assetContextDepthMinus')).toBeVisible();
+  await expect(page.locator('#assetContextDepthMinus')).toHaveText('−10');
+  await expect(page.locator('#assetContextDepthPlus')).toBeVisible();
+  await expect(page.locator('#assetContextDepthPlus')).toHaveText('+10');
+  const undoBefore = await page.evaluate(() => undoStack.length);
+  await page.locator('#assetContextDepthPlus').click();
+  await expect.poll(() => page.evaluate(() => getSelectedAsset().depth)).toBe(-32);
+  expect(await page.evaluate(() => undoStack.length)).toBe(undoBefore + 1);
+  await page.locator('#assetContextDepthMinus').click();
+  await expect.poll(() => page.evaluate(() => getSelectedAsset().depth)).toBe(-42);
+  expect(await page.evaluate(() => undoStack.length)).toBe(undoBefore + 2);
+
+  // Clamp nos extremos (não cria snap de 10/20 no slider).
+  await page.evaluate(() => { getSelectedAsset().depth = 95; syncAssetContextPanel(); });
+  await page.locator('#assetContextDepthPlus').click();
+  await expect.poll(() => page.evaluate(() => getSelectedAsset().depth)).toBe(100);
+  await page.evaluate(() => { getSelectedAsset().depth = -95; syncAssetContextPanel(); });
+  await page.locator('#assetContextDepthMinus').click();
+  await expect.poll(() => page.evaluate(() => getSelectedAsset().depth)).toBe(-100);
+
+  // Reset -> 0; depth não altera zIndex.
+  const zBefore = await page.evaluate(() => getSelectedAsset().zIndex);
+  await page.locator('#assetContextReset').click();
+  await expect.poll(() => page.evaluate(() => getSelectedAsset().depth)).toBe(0);
+  expect(await page.evaluate(() => getSelectedAsset().zIndex)).toBe(zBefore);
+  expect(await page.evaluate(() => Number.isFinite(getSelectedAsset().depth))).toBe(true);
+
+  // Undo/autosave não multiplicam durante um gesto contínuo de arraste (1 Undo/gesto confirmado).
+  const dragBefore = await page.evaluate(() => ({ undo: undoStack.length, revision: _sessionAutosaveQueuedRevision }));
+  await page.locator('#assetContextSlider').evaluate((slider) => {
+    slider.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 901, pointerType: 'touch', isPrimary: true }));
+    for (const value of [10, 20, 30, 40, 50]) {
+      slider.value = String(value);
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    slider.dispatchEvent(new Event('change', { bubbles: true }));
+    slider.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 901, pointerType: 'touch', isPrimary: true }));
+  });
+  expect(await page.evaluate(() => undoStack.length)).toBe(dragBefore.undo + 1);
+  expect(await page.evaluate(() => _sessionAutosaveQueuedRevision)).toBe(dragBefore.revision + 1);
+  expect(await page.evaluate(() => getSelectedAsset().depth)).toBe(50);
+
+  // Save/Load (round-trip equivalente) preserva depth.
+  await page.evaluate(() => { getSelectedAsset().depth = 63; });
+  const roundTrip = await page.evaluate(async () => {
+    const id = String(getSelectedAsset().id);
+    const payload = buildProjectData(true);
+    const saved = payload.assets.find((a) => String(a.id) === id);
+    await new Promise((resolve, reject) => applyProjectData(payload, { origin: 'manual-load', onApplied: (ok) => (ok ? resolve() : reject(new Error('load falhou'))) }));
+    const loaded = assets.find((a) => String(a.id) === id);
+    return { saved: saved.depth, loaded: loaded.depth };
+  });
+  expect(roundTrip).toEqual({ saved: 63, loaded: 63 });
 });

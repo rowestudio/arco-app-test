@@ -54,7 +54,7 @@ Estados usados neste documento:
 
 ## 4. Layers
 
-- [Em evolução] Layers já existe: o app possui múltiplos assets/Layers com seleção, visibilidade, ordenação e identidades persistentes. A frente aprovada é **readequação da interface de Layers existente**, não criação do zero (ver `docs/PRE_PROMOTION_RELEASE_PLAN.md`).
+- [Em evolução — EM PR `v8z4b32E9H`] Layers já existe: o app possui múltiplos assets/Layers com seleção, visibilidade, ordenação e identidades persistentes. A frente aprovada é **readequação da interface de Layers existente**, não criação do zero (ver `docs/PRE_PROMOTION_RELEASE_PLAN.md`). Implementação: affordance compacto `#layersAffordance` no Stage (Modo Ativos) + sheet parcial `#layersPanel` a partir de baixo; validação física de Roberto pendente.
 - [SUPERADA] ~~Painel de Layers permanente na lateral/sobre o Stage, visível durante o trabalho.~~ Formulação histórica **superada** pela decisão mais recente do `docs/PRE_PROMOTION_RELEASE_PLAN.md`: affordance compacto no Stage + **sheet parcial** de Camadas abrindo de baixo, com o Stage permanecendo visível (não um painel permanente na lateral/sobre o Stage). Preservada aqui para rastreabilidade histórica; não implementar a formulação superada.
 - [Futuro] O painel deve permitir ver, selecionar, ordenar, ocultar e trocar ativos sem sair do contexto do Stage.
 - [Regra] Frames, curvas e HUD não entram na pilha visual dos ativos.
@@ -97,7 +97,7 @@ Estados usados neste documento:
 
 ## 9. Profundidade e captura
 
-- [Em evolução] Profundidade básica/parallax translacional por ativo já existe, com distância relativa à câmera e paridade canônica entre Stage, Preview, Export e persistência.
+- [Em evolução — EM PR `v8z4b32E9H`] Profundidade básica/parallax translacional por ativo já existe, com distância relativa à câmera e paridade canônica entre Stage, Preview, Export e persistência. Revisão visual do controle já existente: régua com `−100`/`0`/`+100` numerados e oito ticks intermediários sem número, preenchimento bidirecional coral a partir do zero, botões `−10`/`+10` (substitui a formulação anterior de `−5`/`+5`). Validação física de Roberto pendente.
 - [Futuro] Vista Profundidade 0 / vista absoluta no Modo Ativos, separada do controle de profundidade já existente.
 - [Pesquisa] Evolução da distância para comportamento animável, preservando paridade entre Stage, Preview, Export e Save/Load.
 - [Pesquisa] Motion Take: gravar movimento virtual da câmera por toque, arrasto, pinch e rotação, convertendo-o em frames editáveis.
