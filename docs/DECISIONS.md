@@ -1,6 +1,16 @@
 # DECISIONS
 
-## DEC-2026-08-24-03 — v8z4b32E9H: readequação de Camadas + revisão visual de Profundidade; base `v8z4b32E9F6` aceita fisicamente; REG-058 resolvida fisicamente pelo rollback; botões `−10`/`+10` substituem `−5`/`+5`
+## DEC-2026-08-26-01 — rollback da E9H e novo desenho futuro de Camadas (APROVADA)
+
+- **Decisão de rollback:** a PR #516 / `v8z4b32E9H`, já mergeada e publicada, foi reprovada fisicamente por REG-059 e deve ser revertida integralmente para `v8z4b32E9F6`, sem correção na mesma PR. A apresentação E9H de Camadas fica preservada no histórico, mas **SUPERADA**.
+- **Próxima tentativa de Camadas:** controle compacto no Stage expande lista vertical rolável na ordem da pilha. Com a lista aberta, o primeiro toque normal numa Layer seleciona e abre imediatamente suas opções; não há segundo toque, double tap ou long press. Gesto de scroll apenas rola. Tocar outra Layer troca seleção e ações. Tocar fora, no Stage, fecha lista/opções sem alterar o projeto.
+- **Lista/cabeçalho futuros:** cada linha prioriza ordem numérica **antes** de thumbnail/ícone (um pouco maior que na E9H) e nome; remover `Posição N de M · Prof. X` e botões repetidos. Cabeçalho mostra `Camadas`, total (`7 camadas`, por exemplo) e fechamento compatível com o app. Profundidade contextual usa ícone antes do valor (`0`, `+30`, `−20`), nunca texto corrido. Há uma única área de ações para a selecionada: visibilidade, subir, descer, profundidade, trocar imagem quando aplicável, travar/destravar e excluir.
+- **Lock/unlock futuro:** Layer travada permanece visível, no projeto, Camadas, Preview e Export, mas não pode ser selecionada pelo hit-test do Stage, movida, escalada, rotacionada ou editada diretamente; o toque pode alcançar Layer destravada elegível abaixo. No painel ela pode ser selecionada para inspeção/destravar, com estado indicado e destravar acessível. A trava será propriedade canônica do asset, default destravado, backward-compatible e integrada a Save/Load, Session Restore, Undo/Redo e autosave; são proibidos array/Set/localStorage paralelos, `selectedLockedAssetId` e segundo modelo de Assets.
+- **Limite desta decisão:** tudo acima é **FUTURO/APROVADO e NÃO IMPLEMENTADO neste rollback**. Engine Sprint não foi iniciado.
+
+
+
+## DEC-2026-08-24-03 — HISTÓRICA / SUPERADA / REVERTIDA — v8z4b32E9H: readequação de Camadas + revisão visual de Profundidade; base `v8z4b32E9F6` aceita fisicamente; REG-058 resolvida fisicamente pelo rollback; botões `−10`/`+10` substituem `−5`/`+5`
 
 - **Data:** 2026-08-24. **Versão:** `v8z4b32E9H` (PR própria, branch `claude/v8z4b32e9h-layers-depth-gf58ay`).
 - **Assunto:** três decisões distintas persistidas na mesma tarefa: (1) aceite físico da base restaurada; (2) readequação de interface de Layers/Camadas + revisão visual de Profundidade sobre sistemas já existentes; (3) substituição da decisão anterior de botões `−5`/`+5` de Profundidade por `−10`/`+10`.
@@ -13,7 +23,7 @@
 - **Alternativa rejeitada:** manter `−5`/`+5` por já estarem documentados — rejeitada porque a instrução desta tarefa supersede explicitamente essa formulação nunca implementada.
 - **Alternativa rejeitada:** reaproveitar `#stageEyeShortcut` para a entrada de Camadas — rejeitada explicitamente pelo desenho aprovado (ícones distintos, funções distintas).
 - **Alternativa rejeitada:** aumentar a altura de `#assetContextPanel` globalmente (afetando também `custBar`/`alignBarSubmenu` de Frames) para caber a régua de Profundidade — rejeitada; a altura extra é escopada por um marcador dedicado (`body.asset-context-depth-open`) que só afeta o kind `depth` do próprio `#assetContextPanel`, preservando Frames e os demais kinds (Escala/Rotação) intactos.
-- **Status:** ativa; PR aberta no repositório de teste aguardando revisão. `APP_VERSION = APP_VERSION_NAME = v8z4b32E9H`. Nenhum merge automático; nenhuma promoção autorizada; nenhuma aprovação física declarada antes do teste de Roberto.
+- **Status atual:** **HISTÓRICA / SUPERADA / REVERTIDA.** A implementação foi mergeada pela PR #516, publicada e a build E9H foi reprovada fisicamente por REG-059 em Profundidade. Camadas não apresentou regressão funcional grave comprovada, mas sua apresentação foi considerada visualmente carregada e superada. O rollback restaurou `v8z4b32E9F6`; esta decisão não está ativa e não autoriza reimplementar a E9H. A decisão futura vigente é `DEC-2026-08-26-01`.
 - **Documento relacionado:** `docs/PROJECT_STATE.md`, `docs/REGRESSIONS.md` (REG-056, REG-057, REG-058), `docs/PRODUCT_RULES.md` (Regra E9H), `docs/PRE_PROMOTION_RELEASE_PLAN.md` (seção 3), `docs/ROADMAP.md`, `docs/PRODUCT_ROADMAP.md`, `docs/TEST_CASES.md`, DEC-2026-08-24-02 (rollback que restaurou a base desta PR).
 
 ## DEC-2026-08-24-02 — ROLLBACK da E9G1 (PR #514) após REG-058; REG-056 permanece ABERTA; REG-057 preservada como resolvida fisicamente
