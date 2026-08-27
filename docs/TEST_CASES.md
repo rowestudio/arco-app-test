@@ -1,17 +1,16 @@
 # TEST_CASES
 
-## TC-055 — próxima tentativa de Camadas — GATE FUTURO, NÃO IMPLEMENTADO
+## TC-055 — Camadas + lock canônico (E9I)
 
 - Em iPhone/Safari, validar controle compacto → lista rolável na ordem da pilha; primeiro tap normal seleciona e abre opções contextuais; scroll apenas rola e não abre ações; tocar outra Layer troca seleção/ações; tocar fora no Stage fecha sem mutação.
 - Validar linha limpa com ordem antes de thumbnail/ícone maior e nome, sem `Posição N de M · Prof. X` nem ações repetidas; cabeçalho com título, quantidade e fechar; profundidade contextual em ícone + valor; uma única área de ações para a selecionada.
 - Validar lock/unlock canônico: Layer travada permanece em Stage/Preview/Export/projeto/lista, não responde a seleção/transformação/edição pelo Stage e permite hit-test alcançar Layer destravada abaixo; painel permite selecionar/inspecionar/destravar. Cobrir Save/Load, Session Restore, Undo/Redo, autosave, default destravado e projeto antigo.
-- **Estado:** especificação aprovada para futura implementação; este gate e a função não existem no rollback para `v8z4b32E9F6`.
+- **Estado:** implementado na E9I; o gate WebKit cobre lock, hit-test abaixo e persistência. Validação física em iPhone/Safari permanece obrigatória.
 
-## TC-056 — REG-059: alinhamento do zero de Profundidade — GATE FUTURO, NÃO IMPLEMENTADO
+## TC-056 — REG-059: Profundidade sem régua E9H (E9I)
 
 - Em iPhone/Safari, abrir o controle de Profundidade da futura tentativa, alterar o valor e executar Reset.
-- Exigir simultaneamente valor 0, thumb no zero real da trilha e tick/texto 0 geometricamente alinhado ao mesmo ponto, incluindo viewport 390 px e safe area aplicável.
-- Não codificar hipótese de causa no gate antes de investigação própria. **Estado:** REG-059 aberta; a régua E9H foi removida pelo rollback, portanto este gate é futuro.
+- Exigir valor 0 e thumb central no slider canônico; a nova UI exibe ícone + valor e não contém régua/tick textual independente. Não atribuir causa à REG-059 sem evidência. **Estado:** mitigação E9I pendente de validação física.
 
 
 ## TC-053 — Picker de cor do Arco: runaway palette, HEX inline, recovery da v1 e contenção do painel (REG-055)

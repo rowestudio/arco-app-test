@@ -4167,3 +4167,30 @@ test('REG-055 — os três "+" são o input[type=color] nativo real (alvo de toq
   expect(await page.evaluate(() => !!document.getElementById('customColorPanel'))).toBe(false);
   expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
 });
+
+test('E9I — Camadas canônicas: lock ignora hit-test e persiste', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9i-lock-test');
+    const stack = assets.filter(a => a && (a.type === 'image' || a.type === 'text'));
+    if (stack.length === 1) {
+      const clone = { ...stack[0], id: 'e9i-underlay', type: 'text', text: 'baixo', zIndex: Number(stack[0].zIndex) - 1, locked: false };
+      assets.push(clone);
+      stack.push(clone);
+    }
+    const top = stack.slice().sort((a, b) => Number(b.zIndex) - Number(a.zIndex))[0];
+    const beneath = stack.slice().sort((a, b) => Number(b.zIndex) - Number(a.zIndex))[1];
+    const x = top.worldX + top.worldW / 2, y = top.worldY + top.worldH / 2;
+    openLayersPanel();
+    const stageControl = !!document.getElementById('layersStageControl');
+    const listRows = document.querySelectorAll('#layersList .layers-item').length;
+    const hasLegacyRuler = !!document.getElementById('assetContextDepthRuler');
+    toggleAssetLock(top.id);
+    return { locked: top.locked, hit: hitTestAssetAtWorld(x, y)?.id, beneath: beneath.id,
+      saved: serializeProjectAsset(top, 0, false).locked, stageControl, listRows, hasLegacyRuler };
+  });
+  expect(result).toEqual({ locked: true, hit: result.beneath, beneath: result.beneath, saved: true, stageControl: true, listRows: 2, hasLegacyRuler: false });
+});
