@@ -4296,7 +4296,7 @@ test('E9K — tocar uma miniatura de Camadas seleciona a Layer pelo WebKit touch
   expect(await page.evaluate(() => String(selectedAssetId))).toBe(targetId);
 });
 
-test('E9K — pilha mostra somente miniaturas e abre detalhe vertical ao tocar', async ({ page }) => {
+test('E9L — miniatura abre faixa horizontal e ações não vazam para o Stage', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
@@ -4306,6 +4306,7 @@ test('E9K — pilha mostra somente miniaturas e abre detalhe vertical ao tocar',
     const source = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
     const target = { ...source, id: 'e9k-thumb-only-target', layerName: 'Camada de detalhe', zIndex: Number(source.zIndex) + 1, locked: false };
     assets.push(target);
+    for (let i = 0; i < 8; i += 1) assets.push({ ...source, id: `e9l-scroll-${i}`, layerName: `Camada de rolagem ${i}`, zIndex: Number(source.zIndex) - i - 1, locked: false });
     selectAssetById(source.id, 'e9k-thumb-only');
     return String(target.id);
   });
@@ -4319,15 +4320,68 @@ test('E9K — pilha mostra somente miniaturas e abre detalhe vertical ao tocar',
   expect(beforeTap).toEqual({ rowsAreThumbOnly: true, detailOpen: false });
 
   await page.locator(`#layersList .layers-item[data-asset-id="${targetId}"]`).tap();
-  const afterTap = await page.evaluate(() => {
+  const afterTap = await page.evaluate((id) => {
     const detail = document.getElementById('layersDetail');
+    const info = document.getElementById('layersDetailInfo');
     return {
       selectedId: String(selectedAssetId),
       detailAssetId: detail?.dataset.assetId || null,
       detailOpen: detail?.classList.contains('show') || false,
-      actionsVertical: getComputedStyle(document.getElementById('layersOptions')).flexDirection,
-      actionCount: document.querySelectorAll('#layersOptions .layers-action-btn').length,
+      actionsHorizontal: getComputedStyle(document.getElementById('layersOptions')).flexDirection,
+    detailBackground: getComputedStyle(detail).backgroundColor,
+    infoBackground: getComputedStyle(info).backgroundColor,
+    closeControlPresent: !!document.querySelector('#layersPanel .layers-close'),
+    actionRailIsAnchoredToThumb: (() => {
+      const thumb = document.querySelector(`#layersList .layers-item[data-asset-id="${id}"]`).getBoundingClientRect();
+      const rail = document.getElementById('layersOptions').getBoundingClientRect();
+      return Math.abs(((thumb.top + thumb.bottom) / 2) - ((rail.top + rail.bottom) / 2)) < 3;
+    })(),
+    actionCount: document.querySelectorAll('#layersOptions .layers-action-btn').length,
     };
+  }, targetId);
+  expect(afterTap).toEqual({
+    selectedId: targetId,
+    detailAssetId: targetId,
+    detailOpen: true,
+    actionsHorizontal: 'row',
+    detailBackground: 'rgba(0, 0, 0, 0)',
+    infoBackground: 'rgba(0, 0, 0, 0)',
+    closeControlPresent: false,
+    actionRailIsAnchoredToThumb: true,
+    actionCount: 7,
   });
-  expect(afterTap).toEqual({ selectedId: targetId, detailAssetId: targetId, detailOpen: true, actionsVertical: 'column', actionCount: 7 });
+
+  expect(await page.evaluate((id) => {
+    const list = document.getElementById('layersList');
+    list.scrollTop = 12;
+    list.dispatchEvent(new Event('scroll'));
+    const thumb = document.querySelector(`#layersList .layers-item[data-asset-id="${id}"]`).getBoundingClientRect();
+    const rail = document.getElementById('layersOptions').getBoundingClientRect();
+    return {
+      scrolled: list.scrollTop > 0,
+      selectedId: String(selectedAssetId),
+      railStillAnchored: Math.abs(((thumb.top + thumb.bottom) / 2) - ((rail.top + rail.bottom) / 2)) < 3,
+    };
+  }, targetId)).toEqual({ scrolled: true, selectedId: targetId, railStillAnchored: true });
+
+  const beforeVisibilityAction = await page.evaluate((id) => {
+    const asset = assets.find(a => String(a.id) === String(id));
+    return { selectedId: String(selectedAssetId), visible: asset.visible !== false, x: asset.worldX, y: asset.worldY, w: asset.worldW, h: asset.worldH };
+  }, targetId);
+  await page.locator('#layersOptions .layers-action-btn[aria-label="Visibilidade"]').tap();
+  expect(await page.evaluate((id) => {
+    const asset = assets.find(a => String(a.id) === String(id));
+    return { selectedId: String(selectedAssetId), visible: asset.visible !== false, x: asset.worldX, y: asset.worldY, w: asset.worldW, h: asset.worldH };
+  }, targetId)).toEqual({ ...beforeVisibilityAction, visible: false });
+  await page.locator('#layersOptions .layers-action-btn[aria-label="Visibilidade"]').tap();
+
+  await page.locator('#layersOptions .layers-action-btn[aria-label="Profundidade"]').tap();
+  expect(await page.evaluate(() => ({
+    selectedId: String(selectedAssetId),
+    depthOpen: assetContextPanelKind === 'depth',
+    layersOpen: document.getElementById('layersPanel').classList.contains('show'),
+  }))).toEqual({ selectedId: targetId, depthOpen: true, layersOpen: true });
+
+  await page.locator(`#layersList .layers-item[data-asset-id="${targetId}"]`).tap();
+  expect(await page.evaluate(() => document.getElementById('layersDetail').classList.contains('show'))).toBe(false);
 });

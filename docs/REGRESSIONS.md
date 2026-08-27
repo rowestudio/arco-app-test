@@ -2,6 +2,13 @@
 
 > Atualização 2026-08-26: a `v8z4b32E9H`/PR #516 foi mergeada, publicada e reprovada fisicamente; seu rollback restaura `v8z4b32E9F6`. **REG-052..REG-058 mantêm exatamente seus status anteriores.** A nova REG-059 é registrada abaixo sem hipótese de causa.
 
+## REG-061 — detalhe vertical de Camadas ocupa Stage e ações podem vazar interação (E9K; CORRIGIDA AUTOMATICAMENTE, validação física pendente)
+
+- **Relato físico (Roberto, iPhone/Safari):** a abertura da pilha E9K e a seleção por miniatura funcionaram. Porém o detalhe surgia como painel vertical grande; os ícones precisavam de uma faixa horizontal junto à miniatura, e havia relato de toque em ação repercutindo na imagem/seleção do Stage.
+- **Correção E9L:** detalhe horizontal sem caixa, nome fora do menu, ausência de fechar, valor de Profundidade no botão e olho vetorial mais legível. O segundo toque na mesma miniatura fecha somente o detalhe; os handlers das ações param propagação sem chamar `preventDefault()` antes do click WebKit.
+- **Causa do relato de vazamento:** não é atribuída como causa raiz sem reprodução física isolada. A E9L adiciona contenção explícita e cobertura de toque do botão de Profundidade.
+- **Status:** corrigida automaticamente; validação física em iPhone/Safari obrigatória antes de encerrar.
+
 ## REG-060 — miniaturas de Camadas não respondem ao toque (E9J; CORRIGIDA AUTOMATICAMENTE, validação física pendente)
 
 - **Relato físico (Roberto, iPhone/Safari):** a pilha de Camadas E9J aparecia no Stage, mas tocar uma Layer não a selecionava nem abria suas ações.

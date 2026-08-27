@@ -1710,10 +1710,14 @@ body.editor-assets.recording .frame{display:none !important;}
 body.editor-assets #layersStageControl{display:flex;}
 #layersPanel .layers-count{font-size:12px;color:var(--text3);}
 #layersPanel .layers-order{font-size:17px;font-weight:800;color:var(--accent);min-width:22px;text-align:center;}
-#layersPanel .layers-detail{position:absolute;right:72px;bottom:0;display:none;width:188px;padding:9px;background:rgba(22,22,26,.97);border:1px solid rgba(178,178,178,.28);border-radius:10px;box-shadow:0 5px 16px rgba(0,0,0,.28);box-sizing:border-box;}
-#layersPanel .layers-detail.show{display:flex;align-items:flex-start;gap:8px;}
-#layersPanel .layers-detail-info{flex:1 1 auto;min-width:0;font-size:13px;font-weight:700;color:#fff;line-height:1.25;overflow-wrap:anywhere;}
-#layersPanel .layers-options{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;}
+#layersPanel .layers-detail{position:absolute;right:72px;bottom:0;display:none;max-width:calc(100vw - 96px);padding:0;background:transparent;border:0;box-shadow:none;box-sizing:border-box;pointer-events:none;}
+#layersPanel .layers-detail.show{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+#layersPanel .layers-detail-info{min-width:0;max-width:100%;font-size:13px;font-weight:700;color:#fff;line-height:1.25;overflow-wrap:anywhere;text-shadow:0 1px 3px rgba(0,0,0,.85);background:transparent;}
+#layersPanel .layers-options{display:flex;flex-direction:row;gap:4px;max-width:100%;overflow-x:auto;overscroll-behavior:contain;pointer-events:auto;}
+#layersPanel .layers-options .layers-action-btn{width:32px;height:32px;min-width:32px;border-radius:8px;}
+#layersPanel .layers-options .layers-depth-action{width:auto;min-width:48px;padding:0 7px;font-size:12px;font-weight:700;gap:3px;}
+#layersPanel .layers-options .layers-visibility-action{color:rgba(255,255,255,.94);}
+#layersPanel .layers-options .layers-visibility-icon{width:18px;height:18px;display:block;pointer-events:none;}
 #stageContextOverlay{position:absolute;inset:0;pointer-events:none;z-index:130;}
 #pointModeMenu{position:absolute;left:50%;bottom:calc(10px + var(--safe-bottom));transform:translateX(-50%);z-index:130;display:none;gap:5px;padding:8px 10px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:calc(100% - 20px);align-items:center;pointer-events:auto;}
 .point-mode-btn{width:40px;height:40px;border:0;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:0;}
@@ -4219,10 +4223,6 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <button id="layersStageControl" type="button" aria-label="Camadas" onclick="event.stopPropagation();toggleLayersPanel()"><svg viewBox="0 0 24 24" width="20" height="20"><use href="#i-layers"></use></svg></button>
   <!-- v8z4b32E9J — a pilha sobe do próprio controle e sobrepõe somente o Stage. -->
   <div id="layersPanel" role="region" aria-label="Camadas" aria-hidden="true">
-    <div class="layers-head">
-      <div><div class="layers-title">Camadas</div><div class="layers-count" id="layersCount"></div></div>
-      <button type="button" class="layers-close" onclick="closeLayersPanel()" title="Fechar" aria-label="Fechar">✕</button>
-    </div>
     <div id="layersDetail" class="layers-detail" aria-live="polite">
       <div id="layersDetailInfo" class="layers-detail-info"></div>
       <div id="layersOptions" class="layers-options"></div>
@@ -7600,8 +7600,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9K';
-const APP_VERSION_NAME = 'v8z4b32E9K';
+const APP_VERSION = 'v8z4b32E9L';
+const APP_VERSION_NAME = 'v8z4b32E9L';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -36177,6 +36177,25 @@ function getAssetDisplayName(asset) {
   return asset && isValidLayerName(asset.layerName) ? asset.layerName : '';
 }
 let layersDetailAssetId = null;
+function positionLayersDetailAtSelectedThumb() {
+  const panel = document.getElementById('layersPanel');
+  const list = document.getElementById('layersList');
+  const detail = document.getElementById('layersDetail');
+  const options = document.getElementById('layersOptions');
+  if (!panel || !list || !detail || !options || !layersDetailAssetId || !detail.classList.contains('show')) return;
+  const item = Array.from(list.querySelectorAll('.layers-item')).find(function(row) {
+    return String(row.dataset.assetId) === String(layersDetailAssetId);
+  });
+  if (!item) return;
+  detail.style.bottom = 'auto';
+  detail.style.top = '0px';
+  const panelRect = panel.getBoundingClientRect();
+  const itemRect = item.getBoundingClientRect();
+  const detailRect = detail.getBoundingClientRect();
+  const railRect = options.getBoundingClientRect();
+  const railCenterOffset = (railRect.top + railRect.bottom) / 2 - detailRect.top;
+  detail.style.top = `${itemRect.top - panelRect.top + (itemRect.height / 2) - railCenterOffset}px`;
+}
 function renderLayersPanelList() {
   const list = document.getElementById('layersList');
   const count = document.getElementById('layersCount');
@@ -36215,6 +36234,11 @@ function renderLayersPanelList() {
       thumbWrap.appendChild(im);
     } else if (a.type === 'text') { thumbWrap.textContent = 'T'; thumbWrap.style.display='grid'; thumbWrap.style.placeItems='center'; thumbWrap.style.color=a.color; thumbWrap.style.fontWeight='700'; }
     item.addEventListener('click', function(){
+      if (layersDetailAssetId === String(a.id)) {
+        layersDetailAssetId = null;
+        renderLayersPanelList();
+        return;
+      }
       if (!isAssetsMode()) setEditorMode('assets', 'layersDetail');
       layersDetailAssetId = String(a.id);
       selectAssetById(a.id, 'layers');
@@ -36227,16 +36251,36 @@ function renderLayersPanelList() {
     detail.classList.add('show');
     detail.dataset.assetId = String(selected.id);
     if (detailInfo) detailInfo.textContent = getAssetDisplayName(selected) || 'Camada';
-    const action = (label, title, fn, disabled=false) => { const b=document.createElement('button'); b.type='button'; b.className='layers-action-btn'; b.textContent=label; b.title=title; b.setAttribute('aria-label',title); b.disabled=disabled; b.onclick=fn; options.appendChild(b); };
+    const action = (label, title, fn, disabled=false, className='') => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'layers-action-btn' + (className ? ` ${className}` : '');
+      b.innerHTML = label;
+      b.title = title;
+      b.setAttribute('aria-label', title);
+      b.disabled = disabled;
+      const stopLayerAction = function(e) { e.stopPropagation(); };
+      b.addEventListener('pointerdown', stopLayerAction);
+      b.addEventListener('touchstart', stopLayerAction, { passive: false });
+      b.addEventListener('click', function(e) { e.preventDefault(); stopLayerAction(e); fn(); });
+      options.appendChild(b);
+    };
     const zi = sorted.findIndex(a => String(a.id) === String(selected.id));
-    action(selected.visible === false ? '◉' : '◌', 'Visibilidade', () => { selected.visible = selected.visible === false; markProjectDirty('layer-visibility'); renderProjectWorldExtraImages(); renderLayersPanelList(); }, selected.locked);
+    const eyeIcon = selected.visible === false
+      ? '<svg class="layers-visibility-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M3 12s3.5-6 9-6c1.4 0 2.7.3 3.8.8M21 12s-3.5 6-9 6c-1.4 0-2.7-.3-3.8-.8M9.9 9.9a3 3 0 0 0 4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
+      : '<svg class="layers-visibility-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.7" fill="currentColor"/></svg>';
+    action(eyeIcon, 'Visibilidade', () => { selected.visible = selected.visible === false; markProjectDirty('layer-visibility'); renderProjectWorldExtraImages(); renderLayersPanelList(); }, selected.locked, 'layers-visibility-action');
     action('↑', 'Subir camada', () => layerMoveAssetUp(selected.id), selected.locked || zi === 0);
     action('↓', 'Descer camada', () => layerMoveAssetDown(selected.id), selected.locked || zi === sorted.length - 1);
-    action('≋', 'Profundidade', () => openAssetDepthPanel(), selected.locked);
+    const depth = Number.isFinite(Number(selected.depth)) ? Number(selected.depth) : 0;
+    const depthLabel = depth > 0 ? `+${depth}` : String(depth);
+    action(`<span aria-hidden="true">≋</span><span>${depthLabel}</span>`, 'Profundidade', () => openAssetDepthPanel(), selected.locked, 'layers-depth-action');
     if (selected.type === 'image') action('▧', 'Trocar imagem', () => layerReplaceImageForAsset(selected.id), selected.locked);
     action(selected.locked ? '🔓' : '🔒', selected.locked ? 'Destravar camada' : 'Travar camada', () => toggleAssetLock(selected.id));
     action('×', 'Excluir camada', () => deleteSelectedAsset(), selected.locked);
+    positionLayersDetailAtSelectedThumb();
   }
+  list.onscroll = positionLayersDetailAtSelectedThumb;
   updateCanonicalAssetSelectionDiagnostics();
 }
 

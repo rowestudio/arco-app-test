@@ -1,9 +1,17 @@
 # DECISIONS
 
-## DEC-2026-08-27-02 — E9K: miniaturas puras e detalhe vertical de Camada (APROVADA PARA IMPLEMENTAÇÃO)
+## DEC-2026-08-27-03 — E9L: detalhe horizontal de Camada (APROVADA PARA IMPLEMENTAÇÃO)
+
+- **Data:** 2026-08-27. **Versão:** `v8z4b32E9L`, PR funcional corretiva sobre a `main` que contém a E9K.
+- **Decisão de apresentação:** preserva a pilha de miniaturas E9K, cuja abertura e seleção foram aprovadas fisicamente por Roberto. O toque numa miniatura abre uma faixa horizontal compacta, projetada para a esquerda a partir daquela miniatura. Os botões ficam lado a lado; o nome da Layer fica acima, direto sobre o Stage, sem caixa de fundo; não há botão Fechar.
+- **Fechamento e profundidade:** tocar novamente a mesma miniatura fecha somente o detalhe; tocar outra muda o detalhe; tocar área vazia do Stage fecha a pilha pelo comportamento canônico. O botão de Profundidade mostra ícone e valor finito atual (`0`, `+30`, `−20`) e abre o mesmo controle contextual canônico para ajustar.
+- **Interação:** os botões de ação interrompem a propagação para o Stage, mas não cancelam o `click` WebKit do próprio botão. O olho usa glyph vetorial claro; lock/unlock e as demais ações existentes permanecem canônicos. Arrastar/segurar uma miniatura para reordenar continua fora desta PR.
+- **Fora do escopo:** Preview, Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine.
+
+## DEC-2026-08-27-02 — E9K: miniaturas puras e detalhe vertical de Camada (IMPLEMENTADA; detalhe superado pela E9L)
 
 - **Data:** 2026-08-27. **Versão:** `v8z4b32E9K`, em PR funcional corretiva sobre a `main` que contém E9I/E9J.
-- **Decisão de apresentação:** a pilha de Camadas mostra somente miniaturas, sem número, nome ou informação textual em cada preview. Tocar uma miniatura abre o detalhe da Layer: nome/informação contextual e ações canônicas em uma coluna vertical. O detalhe não aparece ao abrir a pilha; aparece somente após tocar a miniatura.
+- **Decisão de apresentação:** a pilha de Camadas mostra somente miniaturas, sem número, nome ou informação textual em cada preview. Tocar uma miniatura abre o detalhe da Layer. A formulação vertical foi superada pela DEC-2026-08-27-03/E9L. O detalhe não aparece ao abrir a pilha; aparece somente após tocar a miniatura.
 - **Relação com E9J:** esta decisão supersede a posição da área de ações definida para E9J; a aprovação visual E9I continua sendo o fallback seguro, mas a E9K passa a ser o desenho ativo em validação.
 - **Correção de REG-060:** o alvo `#layersPanel` passa a ser explicitamente excluído da navegação por toque do Stage. Antes disso, o `touchstart` global do Stage classificava a miniatura como viewport, chamava `preventDefault()` e o WebKit não emitia o `click` que seleciona a Layer.
 - **Preservação:** a seleção continua em `selectAssetById()`; lock/unlock e as ações existentes são reutilizados. Sem drag-and-drop de reordenação nesta etapa.
