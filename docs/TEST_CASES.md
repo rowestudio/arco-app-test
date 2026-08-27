@@ -1,10 +1,18 @@
 # TEST_CASES
 
+## TC-059 — Detalhe horizontal de Camadas (E9L / REG-061)
+
+- Em iPhone/Safari, abrir Camadas e tocar uma miniatura: a pilha continua somente com previews; o detalhe abre em faixa horizontal saindo da miniatura, com nome acima e sem caixa de fundo ou botão Fechar.
+- Confirmar que Profundidade mostra o valor atual no botão, abre o controle canônico e permite ajuste. Tocar a mesma miniatura fecha somente o detalhe; tocar outra troca o detalhe; tocar área vazia do Stage fecha a pilha sem alterar o projeto.
+- Tocar visibilidade, subir/descer, Profundidade, lock/unlock e excluir não pode selecionar, ampliar, mover ou transformar a imagem pelo Stage. Segurar/arrastar preview para reordenar não integra esta versão.
+- Evidência automatizada: gate E9L usa `tap()` WebKit real e exige faixa horizontal transparente, ausência de fechar, abertura de Profundidade sem perda da seleção e fechamento pelo segundo toque.
+- **Estado:** implementação automatizada; validação física obrigatória.
+
 ## TC-058 — Miniaturas e detalhe de Camadas (E9K / REG-060)
 
 - Em iPhone/Safari, abrir Camadas: cada item da pilha deve mostrar somente a miniatura, sem número nem nome ao lado.
-- Tocar uma miniatura deve selecionar a Layer e abrir seu detalhe com as informações e os ícones de ação alinhados verticalmente. Tocar outra miniatura troca o detalhe; rolar a pilha não reordena Layers.
-- Evidência automatizada: os gates E9K usam `tap()` em WebKit para provar a seleção de Layer e validam preview puro, detalhe aberto e ações em coluna.
+- Tocar uma miniatura deve selecionar a Layer e abrir seu detalhe. A formulação vertical foi superada pelo TC-059/E9L. Tocar outra miniatura troca o detalhe; rolar a pilha não reordena Layers.
+- Evidência automatizada: os gates E9K usam `tap()` em WebKit para provar a seleção de Layer e validam preview puro e detalhe aberto.
 - **Estado:** implementação automatizada; validação física obrigatória.
 
 ## TC-057 — Pilha de Camadas sobre o Stage (E9J; apresentação superada pela E9K)

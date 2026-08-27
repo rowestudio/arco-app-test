@@ -1,10 +1,18 @@
 # PROJECT_STATE
 
-## Atualização 2026-08-27 — E9K em preparação de PR (miniaturas e toque de Camadas)
+## Atualização 2026-08-27 — E9L em preparação de PR (detalhe horizontal de Camadas)
+
+- Base: `origin/main` após merge da PR #521/E9K, SHA `c54ba1132da0e0ab562cf3751fb0eb1e0cfd9be2`.
+- Retorno físico de Roberto: a abertura da pilha e a seleção por miniatura estão corretas na E9K. O detalhe vertical ocupa espaço excessivo; a E9L o substitui por faixa horizontal sem caixa, com nome sobre o Stage, sem botão Fechar e fechamento por novo toque na miniatura ou toque vazio no Stage.
+- Profundidade passa a expor o valor atual no próprio botão; ações param a propagação para o Stage sem impedir o click WebKit. Reordenamento por segurar/arrastar permanece futuro.
+- Fora do escopo: Preview, Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine. Validação física E9L permanece obrigatória; nenhuma promoção para produção.
+
+## Atualização 2026-08-27 — E9K mergeada (miniaturas e toque de Camadas; detalhe superado pela E9L)
 
 - Base: `origin/main` após merge das PRs #519 e #520, SHA `83d787f7088ac8215263bb0836f418be8a9be597`.
-- Escopo: pilha de Camadas com miniaturas puras; tocar uma miniatura abre detalhe contextual com ações verticais. Nenhuma informação acompanha os previews fechados.
+- Escopo: pilha de Camadas com miniaturas puras; tocar uma miniatura abre detalhe contextual. Nenhuma informação acompanha os previews fechados. A apresentação vertical do detalhe foi superada pela E9L.
 - REG-060: no WebKit/iPhone, o `touchstart` de navegação do Stage prevenia o click sintético dos itens dentro de `#layersPanel`; a exclusão explícita do painel restaura a seleção pelo toque.
+- A PR #521 foi mergeada na `main` de teste. Roberto confirmou fisicamente que abertura e seleção funcionam; a apresentação do detalhe segue para a E9L.
 - Fora do escopo: Preview, Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine.
 
 ## Atualização 2026-08-27 — E9J mergeada (pilha de Camadas no Stage; apresentação superada pela E9K)
