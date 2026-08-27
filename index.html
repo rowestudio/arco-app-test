@@ -1703,8 +1703,8 @@ body.editor-assets.recording .frame{display:none !important;}
 #layersPanel .layers-name{font-size:14px;font-weight:600;color:#fff;}
 /* v8z4b32E — botões de ação por linha no painel Layers */
 #layersPanel .layers-actions{display:flex;gap:4px;margin-left:auto;flex-shrink:0;}
-#layersPanel .layers-action-btn{width:36px;height:36px;border:0;border-radius:8px;background:rgba(255,255,255,.08);color:#fff;font-size:18px;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;padding:0;}
-#layersPanel .layers-action-btn:active{background:rgba(255,255,255,.18);}
+#layersPanel .layers-action-btn{width:36px;height:36px;border:0;border-radius:8px;background:#232328;color:#fff;font-size:18px;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;padding:0;}
+#layersPanel .layers-action-btn:active{background:#34343a;}
 #layersPanel .layers-action-btn:disabled{opacity:.28;pointer-events:none;}
 #layersStageControl{position:absolute;right:12px;bottom:12px;z-index:132;display:none;width:44px;height:44px;border:1px solid var(--border2);border-radius:50%;background:var(--surface);color:var(--accent);align-items:center;justify-content:center;pointer-events:auto;}
 body.editor-assets #layersStageControl{display:flex;}
@@ -1718,6 +1718,7 @@ body.editor-assets #layersStageControl{display:flex;}
 #layersPanel .layers-options .layers-depth-action{width:auto;min-width:48px;padding:0 7px;font-size:12px;font-weight:700;gap:3px;}
 #layersPanel .layers-options .layers-visibility-action{color:rgba(255,255,255,.94);}
 #layersPanel .layers-options .layers-visibility-icon{width:18px;height:18px;display:block;pointer-events:none;}
+#layersPanel .layers-options .layers-delete-icon{width:17px;height:17px;display:block;pointer-events:none;}
 #stageContextOverlay{position:absolute;inset:0;pointer-events:none;z-index:130;}
 #pointModeMenu{position:absolute;left:50%;bottom:calc(10px + var(--safe-bottom));transform:translateX(-50%);z-index:130;display:none;gap:5px;padding:8px 10px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:calc(100% - 20px);align-items:center;pointer-events:auto;}
 .point-mode-btn{width:40px;height:40px;border:0;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:0;}
@@ -7600,8 +7601,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9L';
-const APP_VERSION_NAME = 'v8z4b32E9L';
+const APP_VERSION = 'v8z4b32E9M';
+const APP_VERSION_NAME = 'v8z4b32E9M';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -16175,6 +16176,7 @@ function syncAssetContextPanel() {
   }
   if (assetContextPanelKind === 'rotation') { slider.min = -720; slider.max = 720; current = Number(asset.rotation) || 0; suffix = '°'; }
   slider.value = String(Math.max(Number(slider.min), Math.min(Number(slider.max), current)));
+  if (typeof updateSliderFill === 'function') updateSliderFill(slider);
   const contextLabel = assetContextPanelKind === 'scale' ? 'Escala' : assetContextPanelKind === 'rotation' ? 'Rotação' : 'Profundidade';
   slider.setAttribute('aria-label', contextLabel + ' do ativo');
   value.textContent = String(Math.round(current)) + suffix;
@@ -16244,7 +16246,10 @@ function setAssetContextValue(value) {
   const observedBeforeRect = observedTextDom ? observedTextDom.getBoundingClientRect() : null;
   const observedCanonicalBefore = observedTextDom ? JSON.stringify({ x:asset.worldX, y:asset.worldY, w:asset.worldW, h:asset.worldH, boxWidth:asset.boxWidth }) : null;
   beginAssetContextGesture();
-  if (assetContextPanelKind === 'depth') asset.depth = Math.max(-100, Math.min(100, next));
+  if (assetContextPanelKind === 'depth') {
+    asset.depth = Math.max(-100, Math.min(100, next));
+    syncLayersDetailDepthValue();
+  }
   if (assetContextPanelKind === 'rotation') asset.rotation = Math.max(-720, Math.min(720, next));
   if (assetContextPanelKind === 'scale' && assetContextGesture) {
     const clampedPct = Math.max(0.01, next);
@@ -36196,6 +36201,14 @@ function positionLayersDetailAtSelectedThumb() {
   const railCenterOffset = (railRect.top + railRect.bottom) / 2 - detailRect.top;
   detail.style.top = `${itemRect.top - panelRect.top + (itemRect.height / 2) - railCenterOffset}px`;
 }
+function syncLayersDetailDepthValue() {
+  const options = document.getElementById('layersOptions');
+  const asset = getSelectedAsset();
+  const value = options && options.querySelector('.layers-depth-value');
+  if (!asset || !value || String(layersDetailAssetId) !== String(asset.id)) return;
+  const depth = Number.isFinite(Number(asset.depth)) ? Number(asset.depth) : 0;
+  value.textContent = depth > 0 ? `+${depth}` : String(depth);
+}
 function renderLayersPanelList() {
   const list = document.getElementById('layersList');
   const count = document.getElementById('layersCount');
@@ -36274,10 +36287,10 @@ function renderLayersPanelList() {
     action('↓', 'Descer camada', () => layerMoveAssetDown(selected.id), selected.locked || zi === sorted.length - 1);
     const depth = Number.isFinite(Number(selected.depth)) ? Number(selected.depth) : 0;
     const depthLabel = depth > 0 ? `+${depth}` : String(depth);
-    action(`<span aria-hidden="true">≋</span><span>${depthLabel}</span>`, 'Profundidade', () => openAssetDepthPanel(), selected.locked, 'layers-depth-action');
+    action(`<span aria-hidden="true">≋</span><span class="layers-depth-value">${depthLabel}</span>`, 'Profundidade', () => openAssetDepthPanel(), selected.locked, 'layers-depth-action');
     if (selected.type === 'image') action('▧', 'Trocar imagem', () => layerReplaceImageForAsset(selected.id), selected.locked);
     action(selected.locked ? '🔓' : '🔒', selected.locked ? 'Destravar camada' : 'Travar camada', () => toggleAssetLock(selected.id));
-    action('×', 'Excluir camada', () => deleteSelectedAsset(), selected.locked);
+    action('<svg class="layers-delete-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash"></use></svg>', 'Excluir camada', () => deleteSelectedAsset(), selected.locked);
     positionLayersDetailAtSelectedThumb();
   }
   list.onscroll = positionLayersDetailAtSelectedThumb;

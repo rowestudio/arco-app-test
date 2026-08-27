@@ -1,10 +1,19 @@
 # PROJECT_STATE
 
-## Atualização 2026-08-27 — E9L em preparação de PR (detalhe horizontal de Camadas)
+## Atualização 2026-08-27 — E9M em preparação de PR (legibilidade e Profundidade ao vivo)
 
-- Base: `origin/main` após merge da PR #521/E9K, SHA `c54ba1132da0e0ab562cf3751fb0eb1e0cfd9be2`.
+- Base: `origin/main` após merge da PR #522/E9L, SHA `5b1d17d57b079c02c539396019765450804bd0ce`.
+- Retorno físico de Roberto na E9L: a abertura e a seleção da pilha estão corretas. O ajuste E9M torna opaca a faixa de ações, substitui o `×` de exclusão por lixeira e sincroniza imediatamente o valor da Profundidade na faixa e o fill do slider com o thumb durante o ajuste.
+- A análise confirmou somente a causa do fill desatualizado no painel atual: valor do input era alterado por código sem repintar `--fill`. Não atribui causa à REG-059 e não reintroduz sua régua/ticks.
+- A gradação `−100..+100` permanece registrada no plano histórico detalhado, mas está incompatível com a decisão vigente de não reutilizar a régua E9H enquanto REG-059 não tiver nova decisão e validação. Não integra E9M.
+- QA local: gates E9K/E9L/E9M passaram no WebKit móvel. A suíte completa também falha no gate herdado E8X (`beforeChanged`: esperado `0`, recebido `1653`); a mesma falha foi reproduzida em clone limpo da `main` remota `5b1d17d`, portanto não é atribuída à E9M nem corrigida nesta PR.
+- Fora do escopo: Preview, Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine. Validação física em iPhone/Safari permanece obrigatória; nenhuma promoção para produção.
+
+## Atualização 2026-08-27 — E9L mergeada (detalhe horizontal de Camadas)
+
+- Base: `origin/main` após merge da PR #521/E9K, SHA `c54ba1132da0e0ab562cf3751fb0eb1e0cfd9be2`; a PR #522/E9L foi posteriormente mergeada na `main` de teste em `5b1d17d57b079c02c539396019765450804bd0ce`.
 - Retorno físico de Roberto: a abertura da pilha e a seleção por miniatura estão corretas na E9K. O detalhe vertical ocupa espaço excessivo; a E9L o substitui por faixa horizontal sem caixa, com nome sobre o Stage, sem botão Fechar e fechamento por novo toque na miniatura ou toque vazio no Stage.
-- Profundidade passa a expor o valor atual no próprio botão; ações param a propagação para o Stage sem impedir o click WebKit. Reordenamento por segurar/arrastar permanece futuro.
+- Profundidade passa a expor o valor atual no próprio botão; ações param a propagação para o Stage sem impedir o click WebKit. Reordenamento por segurar/arrastar permanece futuro. A validação física apontou os refinamentos registrados na E9M.
 - Fora do escopo: Preview, Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine. Validação física E9L permanece obrigatória; nenhuma promoção para produção.
 
 ## Atualização 2026-08-27 — E9K mergeada (miniaturas e toque de Camadas; detalhe superado pela E9L)

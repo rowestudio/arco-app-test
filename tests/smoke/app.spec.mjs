@@ -4385,3 +4385,50 @@ test('E9L — miniatura abre faixa horizontal e ações não vazam para o Stage'
   await page.locator(`#layersList .layers-item[data-asset-id="${targetId}"]`).tap();
   expect(await page.evaluate(() => document.getElementById('layersDetail').classList.contains('show'))).toBe(false);
 });
+
+test('E9M — detalhe de Camadas é opaco, exclui por lixeira e sincroniza Profundidade ao vivo', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const targetId = await page.evaluate(() => {
+    setEditorMode('assets', 'e9m-depth-live');
+    const source = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    const target = { ...source, id: 'e9m-depth-live-target', layerName: 'Camada Profundidade', depth: 48, zIndex: Number(source.zIndex) + 1, locked: false };
+    assets.push(target);
+    selectAssetById(target.id, 'e9m-depth-live');
+    return String(target.id);
+  });
+
+  await page.locator('#layersStageControl').tap();
+  await page.locator(`#layersList .layers-item[data-asset-id="${targetId}"]`).tap();
+  expect(await page.evaluate(() => {
+    const firstAction = document.querySelector('#layersOptions .layers-action-btn');
+    const remove = document.querySelector('#layersOptions .layers-action-btn[aria-label="Excluir camada"]');
+    return {
+      actionBackground: getComputedStyle(firstAction).backgroundColor,
+      deleteIcon: remove?.querySelector('use')?.getAttribute('href') || null,
+      deleteText: remove?.textContent?.trim() || '',
+      detailDepth: document.querySelector('#layersOptions .layers-depth-value')?.textContent || null,
+    };
+  })).toEqual({ actionBackground: 'rgb(35, 35, 40)', deleteIcon: '#i-trash', deleteText: '', detailDepth: '+48' });
+
+  await page.locator('#layersOptions .layers-action-btn[aria-label="Profundidade"]').tap();
+  expect(await page.evaluate(() => ({
+    value: document.getElementById('assetContextValue').textContent,
+    slider: document.getElementById('assetContextSlider').value,
+    fill: document.getElementById('assetContextSlider').style.getPropertyValue('--fill'),
+  }))).toEqual({ value: '48', slider: '48', fill: '74%' });
+
+  expect(await page.evaluate((id) => {
+    const slider = document.getElementById('assetContextSlider');
+    slider.value = '-24';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+    return {
+      model: assets.find(a => String(a.id) === String(id)).depth,
+      value: document.getElementById('assetContextValue').textContent,
+      fill: slider.style.getPropertyValue('--fill'),
+      detailDepth: document.querySelector('#layersOptions .layers-depth-value')?.textContent || null,
+    };
+  }, targetId)).toEqual({ model: -24, value: '-24', fill: '38%', detailDepth: '-24' });
+});

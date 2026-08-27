@@ -2,6 +2,13 @@
 
 > Atualização 2026-08-26: a `v8z4b32E9H`/PR #516 foi mergeada, publicada e reprovada fisicamente; seu rollback restaura `v8z4b32E9F6`. **REG-052..REG-058 mantêm exatamente seus status anteriores.** A nova REG-059 é registrada abaixo sem hipótese de causa.
 
+## REG-062 — faixa de ações translúcida e Profundidade sem atualização imediata (E9L; CORRIGIDA AUTOMATICAMENTE, validação física pendente)
+
+- **Relato físico (Roberto, iPhone/Safari):** na faixa horizontal de Camadas, os ícones pareciam translúcidos sobre o asset; `×` confundia exclusão com fechamento; e, ao mover Profundidade, o valor da Layer só aparecia atualizado depois de fechar o painel. O fill do slider também podia divergir do thumb.
+- **Causa confirmada somente para o fill do painel atual:** `syncAssetContextPanel()` escrevia `slider.value` programaticamente sem chamar o repinte de `--fill`; por isso a trilha podia conservar o valor anterior. A causa da REG-059 não é inferida deste achado.
+- **Correção E9M:** ações com fundo opaco, ícone semântico de lixeira, atualização direta do valor aberto na faixa e repinte do fill após sincronização programática. Não altera limites, cálculo de profundidade, `zIndex`, Preview, Export ou persistência.
+- **Status:** corrigida automaticamente por gate WebKit; validação física em iPhone/Safari obrigatória antes de encerrar.
+
 ## REG-061 — detalhe vertical de Camadas ocupa Stage e ações podem vazar interação (E9K; CORRIGIDA AUTOMATICAMENTE, validação física pendente)
 
 - **Relato físico (Roberto, iPhone/Safari):** a abertura da pilha E9K e a seleção por miniatura funcionaram. Porém o detalhe surgia como painel vertical grande; os ícones precisavam de uma faixa horizontal junto à miniatura, e havia relato de toque em ação repercutindo na imagem/seleção do Stage.
@@ -108,8 +115,8 @@
 - **Relato físico (OPS-06):** em sliders de Escala e controles semelhantes observados no app, especialmente no workspace **Ativos**, a parte colorida/fill da track não corresponde corretamente à posição real do thumb e pode avançar além dele.
 - **Comportamento esperado:** o fill termina exatamente na posição visual correspondente ao valor/thumb; valor matemático e thumb permanecem coerentes; Ativos usa o acento coral vigente `#FF6B8A`; **não** alterar valor, limites ou matemática apenas para corrigir aparência.
 - **Classificação:** regressão visual / controle de UI.
-- **Causa:** a investigar (não presumir causa). Nenhuma solução declarada.
-- **Status:** **ABERTO** — não corrigido. Relatado em 2026-08-19 (OPS-06); registro documental, sem implementação nesta PR.
+- **Causa:** a investigar (não presumir causa). Na E9M foi comprovado somente um caso do painel de Profundidade: a escrita programática do valor não repintava `--fill`; isso não prova a causa de outros sliders.
+- **Status:** **ABERTO** — o caso de Profundidade E9M foi corrigido; os demais controles permanecem sem diagnóstico e sem declaração de solução.
 
 ## REG-053 — Painel de transformação com multi-seleção é cortado (RESOLVIDA FISICAMENTE na `v8z4b32E9F3`)
 
