@@ -1,9 +1,16 @@
 # PROJECT_STATE
 
-## Atualização 2026-08-27 — E9J em preparação de PR (pilha de Camadas no Stage)
+## Atualização 2026-08-27 — E9K em preparação de PR (miniaturas e toque de Camadas)
+
+- Base: `origin/main` após merge das PRs #519 e #520, SHA `83d787f7088ac8215263bb0836f418be8a9be597`.
+- Escopo: pilha de Camadas com miniaturas puras; tocar uma miniatura abre detalhe contextual com ações verticais. Nenhuma informação acompanha os previews fechados.
+- REG-060: no WebKit/iPhone, o `touchstart` de navegação do Stage prevenia o click sintético dos itens dentro de `#layersPanel`; a exclusão explícita do painel restaura a seleção pelo toque.
+- Fora do escopo: Preview, Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine.
+
+## Atualização 2026-08-27 — E9J mergeada (pilha de Camadas no Stage; apresentação superada pela E9K)
 
 - Base: `origin/main` após merge da PR #518 (`v8z4b32E9I`). Roberto aprovou visualmente a apresentação de Camadas E9I em iPhone/Safari; ela permanece o fallback seguro.
-- Escopo E9J: o ícone de Camadas passa a expandir uma pilha rolável sobre o Stage e acima do próprio ícone, sem modal central. Ações da Layer selecionada ficam acima das linhas; o arrasto da pilha só rola, sem drag-and-drop de reordenação nesta etapa. A seleção continua canônica por `selectAssetById()` e lock/unlock E9I permanece intacto.
+- Escopo E9J: o ícone de Camadas passou a expandir uma pilha rolável sobre o Stage e acima do próprio ícone, sem modal central. A apresentação de ações acima das linhas foi superada pela E9K; o arrasto da pilha só rola, sem drag-and-drop de reordenação nesta etapa. A seleção continua canônica por `selectAssetById()` e lock/unlock E9I permanece intacto.
 - Se houver necessidade de retornar à E9I, a ação visual indicada por Roberto é manter as ações de Camadas no topo da interface contextual, nunca abaixo da lista.
 - Fora do escopo: Preview, Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine. REG-059 segue sem causa atribuída; REG-058 não é reaberta.
 

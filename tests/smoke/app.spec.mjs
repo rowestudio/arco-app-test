@@ -4276,3 +4276,58 @@ test('E9J — Camadas expande sobre o Stage e deixa ações acima da pilha selec
     zOrderAfterScroll: beforeScroll.zOrder,
   });
 });
+
+test('E9K — tocar uma miniatura de Camadas seleciona a Layer pelo WebKit touch', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const targetId = await page.evaluate(() => {
+    setEditorMode('assets', 'e9k-touch-layer');
+    const source = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    const target = { ...source, id: 'e9k-touch-target', layerName: 'Camada tocável', zIndex: Number(source.zIndex) + 1, locked: false };
+    assets.push(target);
+    selectAssetById(source.id, 'e9k-touch-layer');
+    return String(target.id);
+  });
+
+  await page.locator('#layersStageControl').tap();
+  await page.locator(`#layersList .layers-item[data-asset-id="${targetId}"]`).tap();
+  expect(await page.evaluate(() => String(selectedAssetId))).toBe(targetId);
+});
+
+test('E9K — pilha mostra somente miniaturas e abre detalhe vertical ao tocar', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const targetId = await page.evaluate(() => {
+    setEditorMode('assets', 'e9k-thumb-only');
+    const source = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    const target = { ...source, id: 'e9k-thumb-only-target', layerName: 'Camada de detalhe', zIndex: Number(source.zIndex) + 1, locked: false };
+    assets.push(target);
+    selectAssetById(source.id, 'e9k-thumb-only');
+    return String(target.id);
+  });
+
+  await page.locator('#layersStageControl').tap();
+  const beforeTap = await page.evaluate(() => ({
+    rowsAreThumbOnly: [...document.querySelectorAll('#layersList .layers-item')].every(row =>
+      row.children.length === 1 && row.firstElementChild.classList.contains('layers-thumb')),
+    detailOpen: document.getElementById('layersDetail')?.classList.contains('show') || false,
+  }));
+  expect(beforeTap).toEqual({ rowsAreThumbOnly: true, detailOpen: false });
+
+  await page.locator(`#layersList .layers-item[data-asset-id="${targetId}"]`).tap();
+  const afterTap = await page.evaluate(() => {
+    const detail = document.getElementById('layersDetail');
+    return {
+      selectedId: String(selectedAssetId),
+      detailAssetId: detail?.dataset.assetId || null,
+      detailOpen: detail?.classList.contains('show') || false,
+      actionsVertical: getComputedStyle(document.getElementById('layersOptions')).flexDirection,
+      actionCount: document.querySelectorAll('#layersOptions .layers-action-btn').length,
+    };
+  });
+  expect(afterTap).toEqual({ selectedId: targetId, detailAssetId: targetId, detailOpen: true, actionsVertical: 'column', actionCount: 7 });
+});

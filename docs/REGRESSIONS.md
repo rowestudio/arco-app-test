@@ -2,6 +2,14 @@
 
 > Atualização 2026-08-26: a `v8z4b32E9H`/PR #516 foi mergeada, publicada e reprovada fisicamente; seu rollback restaura `v8z4b32E9F6`. **REG-052..REG-058 mantêm exatamente seus status anteriores.** A nova REG-059 é registrada abaixo sem hipótese de causa.
 
+## REG-060 — miniaturas de Camadas não respondem ao toque (E9J; CORRIGIDA AUTOMATICAMENTE, validação física pendente)
+
+- **Relato físico (Roberto, iPhone/Safari):** a pilha de Camadas E9J aparecia no Stage, mas tocar uma Layer não a selecionava nem abria suas ações.
+- **Causa comprovada:** `isStageViewportNavigationTarget()` tratava `#layersPanel` como parte navegável do Stage. O listener `touchstart` de `#imageArea` então executava `preventDefault()`, o que no WebKit impede a emissão do `click` sintético esperado pelos itens da Layer.
+- **Correção:** `#layersPanel` é excluído explicitamente da navegação de Stage; as miniaturas são botões reais e chamam a seleção canônica.
+- **Proteção:** gates E9K em `tests/smoke/app.spec.mjs` exercitam `tap()` WebKit real, seleção, previews sem texto e detalhe vertical.
+- **Status:** corrigida automaticamente; validação física em iPhone/Safari obrigatória antes de encerrar.
+
 ## REG-059 — zero visual da régua de Profundidade desalinhado (build publicada `v8z4b32E9H`; ABERTA, causa raiz NÃO comprovada)
 
 - **Relato físico (Roberto, iPhone/Safari):** após executar Reset, o valor exibido ficou em 0 e o thumb do slider ficou coerente com a posição central, porém a marcação textual/tick de 0 da régua visual ficou deslocada para a direita e não alinhada ao zero real da trilha.

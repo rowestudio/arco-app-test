@@ -1,8 +1,15 @@
 # TEST_CASES
 
-## TC-057 — Pilha de Camadas sobre o Stage (E9J)
+## TC-058 — Miniaturas e detalhe de Camadas (E9K / REG-060)
 
-- Em iPhone/Safari, selecionar um Asset no Stage e tocar o ícone de Camadas. A pilha deve abrir acima do ícone, sobre o Stage, sem modal central; a linha do Asset selecionado deve permanecer destacada e suas ações únicas aparecer acima das linhas.
+- Em iPhone/Safari, abrir Camadas: cada item da pilha deve mostrar somente a miniatura, sem número nem nome ao lado.
+- Tocar uma miniatura deve selecionar a Layer e abrir seu detalhe com as informações e os ícones de ação alinhados verticalmente. Tocar outra miniatura troca o detalhe; rolar a pilha não reordena Layers.
+- Evidência automatizada: os gates E9K usam `tap()` em WebKit para provar a seleção de Layer e validam preview puro, detalhe aberto e ações em coluna.
+- **Estado:** implementação automatizada; validação física obrigatória.
+
+## TC-057 — Pilha de Camadas sobre o Stage (E9J; apresentação superada pela E9K)
+
+- Em iPhone/Safari, selecionar um Asset no Stage e tocar o ícone de Camadas. A pilha deve abrir acima do ícone, sobre o Stage, sem modal central. A formulação E9J de ações acima das linhas foi substituída por TC-058/E9K.
 - Com muitas Layers, arrastar a lista apenas rola; não seleciona outra Layer nem reordena. Tocar uma linha troca a seleção/ações canônicas; tocar área vazia do Stage fecha a pilha sem mutar a seleção.
 - Evidência automatizada: gate `E9J — Camadas expande sobre o Stage e deixa ações acima da pilha selecionada` em `tests/smoke/app.spec.mjs` valida abertura pelo controle real, ancoragem em `#imageArea`, relação acima do ícone, ações antes da lista, rolagem programática e invariância da seleção/ordem. O gesto físico de arrasto permanece parte obrigatória da validação em iPhone/Safari.
 - **Estado:** implementação automatizada; validação física em iPhone/Safari obrigatória antes de recomendar merge.

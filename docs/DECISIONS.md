@@ -1,5 +1,14 @@
 # DECISIONS
 
+## DEC-2026-08-27-02 — E9K: miniaturas puras e detalhe vertical de Camada (APROVADA PARA IMPLEMENTAÇÃO)
+
+- **Data:** 2026-08-27. **Versão:** `v8z4b32E9K`, em PR funcional corretiva sobre a `main` que contém E9I/E9J.
+- **Decisão de apresentação:** a pilha de Camadas mostra somente miniaturas, sem número, nome ou informação textual em cada preview. Tocar uma miniatura abre o detalhe da Layer: nome/informação contextual e ações canônicas em uma coluna vertical. O detalhe não aparece ao abrir a pilha; aparece somente após tocar a miniatura.
+- **Relação com E9J:** esta decisão supersede a posição da área de ações definida para E9J; a aprovação visual E9I continua sendo o fallback seguro, mas a E9K passa a ser o desenho ativo em validação.
+- **Correção de REG-060:** o alvo `#layersPanel` passa a ser explicitamente excluído da navegação por toque do Stage. Antes disso, o `touchstart` global do Stage classificava a miniatura como viewport, chamava `preventDefault()` e o WebKit não emitia o `click` que seleciona a Layer.
+- **Preservação:** a seleção continua em `selectAssetById()`; lock/unlock e as ações existentes são reutilizados. Sem drag-and-drop de reordenação nesta etapa.
+- **Fora do escopo:** Preview, Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine.
+
 ## DEC-2026-08-27-01 — E9J: pilha de Camadas sobre o Stage, ancorada ao ícone (APROVADA PARA IMPLEMENTAÇÃO)
 
 - **Data:** 2026-08-27. **Versão:** `v8z4b32E9J`, em PR funcional própria sobre a `main` que contém a PR #518 (`v8z4b32E9I`).
