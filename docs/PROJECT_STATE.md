@@ -1,11 +1,18 @@
 # PROJECT_STATE
 
-## Atualização 2026-08-26 — E9I em PR (Camadas, Profundidade e lock canônico)
+## Atualização 2026-08-27 — E9J em preparação de PR (pilha de Camadas no Stage)
+
+- Base: `origin/main` após merge da PR #518 (`v8z4b32E9I`). Roberto aprovou visualmente a apresentação de Camadas E9I em iPhone/Safari; ela permanece o fallback seguro.
+- Escopo E9J: o ícone de Camadas passa a expandir uma pilha rolável sobre o Stage e acima do próprio ícone, sem modal central. Ações da Layer selecionada ficam acima das linhas; o arrasto da pilha só rola, sem drag-and-drop de reordenação nesta etapa. A seleção continua canônica por `selectAssetById()` e lock/unlock E9I permanece intacto.
+- Se houver necessidade de retornar à E9I, a ação visual indicada por Roberto é manter as ações de Camadas no topo da interface contextual, nunca abaixo da lista.
+- Fora do escopo: Preview, Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine. REG-059 segue sem causa atribuída; REG-058 não é reaberta.
+
+## Atualização 2026-08-26 — E9I mergeada (Camadas, Profundidade e lock canônico)
 
 - Base: `origin/main` pós-merge da PR #517, SHA `89fdf1488a93ae3625368f15bb1b92c66af588f0`; a base `v8z4b32E9F6` do rollback foi aprovada fisicamente por Roberto em iPhone/Safari. REG-058 permanece resolvida fisicamente pelo rollback/restauração, com causa raiz não comprovada.
 - Escopo: nova tentativa conforme DEC-2026-08-26-01. Camadas usa controle próprio no Stage, lista vertical rolável e uma única área de ações; `asset.locked` é propriedade canônica persistida e impede hit-test, movimento e transformação direta, preservando Stage/Preview/Export.
 - Profundidade preserva o slider canônico e exibe ícone + valor; a régua E9H não foi reutilizada. REG-059 continua sem causa atribuída e exige validação física.
-- Fora do escopo: Preview, Export, ProjectWorld, Save/Load além da persistência de lock, Frames, curvas, Text Asset e Engine. Nenhum merge ou produção.
+- Fora do escopo: Preview, Export, ProjectWorld, Save/Load além da persistência de lock, Frames, curvas, Text Asset e Engine. A PR #518 foi mergeada somente no repositório de teste; nenhuma produção.
 
 ## Atualização 2026-08-26 — ROLLBACK da E9H após REG-059 (`v8z4b32E9F6` restaurada)
 

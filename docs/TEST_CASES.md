@@ -1,11 +1,18 @@
 # TEST_CASES
 
+## TC-057 — Pilha de Camadas sobre o Stage (E9J)
+
+- Em iPhone/Safari, selecionar um Asset no Stage e tocar o ícone de Camadas. A pilha deve abrir acima do ícone, sobre o Stage, sem modal central; a linha do Asset selecionado deve permanecer destacada e suas ações únicas aparecer acima das linhas.
+- Com muitas Layers, arrastar a lista apenas rola; não seleciona outra Layer nem reordena. Tocar uma linha troca a seleção/ações canônicas; tocar área vazia do Stage fecha a pilha sem mutar a seleção.
+- Evidência automatizada: gate `E9J — Camadas expande sobre o Stage e deixa ações acima da pilha selecionada` em `tests/smoke/app.spec.mjs` valida abertura pelo controle real, ancoragem em `#imageArea`, relação acima do ícone, ações antes da lista, rolagem programática e invariância da seleção/ordem. O gesto físico de arrasto permanece parte obrigatória da validação em iPhone/Safari.
+- **Estado:** implementação automatizada; validação física em iPhone/Safari obrigatória antes de recomendar merge.
+
 ## TC-055 — Camadas + lock canônico (E9I)
 
 - Em iPhone/Safari, validar controle compacto → lista rolável na ordem da pilha; primeiro tap normal seleciona e abre opções contextuais; scroll apenas rola e não abre ações; tocar outra Layer troca seleção/ações; tocar fora no Stage fecha sem mutação.
 - Validar linha limpa com ordem antes de thumbnail/ícone maior e nome, sem `Posição N de M · Prof. X` nem ações repetidas; cabeçalho com título, quantidade e fechar; profundidade contextual em ícone + valor; uma única área de ações para a selecionada.
 - Validar lock/unlock canônico: Layer travada permanece em Stage/Preview/Export/projeto/lista, não responde a seleção/transformação/edição pelo Stage nem a ações diretas de toolbar/painel (trocar, profundidade, reordenação, exclusão ou visibilidade), e permite hit-test alcançar Layer destravada abaixo; painel permite selecionar/inspecionar/destravar. Cobrir Save/Load, Session Restore, Undo/Redo, autosave, default destravado e projeto antigo.
-- **Estado:** implementado na E9I; o gate WebKit cobre lock, hit-test abaixo e persistência. Validação física em iPhone/Safari permanece obrigatória.
+- **Estado:** implementado na E9I; o gate WebKit cobre lock, hit-test abaixo e persistência. A apresentação de Camadas E9I foi aprovada visualmente por Roberto em iPhone/Safari; a evolução E9J requer sua própria validação física.
 
 ## TC-056 — REG-059: Profundidade sem régua E9H (E9I)
 

@@ -1,8 +1,17 @@
 # DECISIONS
 
+## DEC-2026-08-27-01 — E9J: pilha de Camadas sobre o Stage, ancorada ao ícone (APROVADA PARA IMPLEMENTAÇÃO)
+
+- **Data:** 2026-08-27. **Versão:** `v8z4b32E9J`, em PR funcional própria sobre a `main` que contém a PR #518 (`v8z4b32E9I`).
+- **Assunto:** evolução localizada da apresentação de Camadas, sem reimplementar modelo, seleção, reordenação, lock/unlock ou Profundidade.
+- **Decisão:** tocar o ícone de Camadas no Stage expande uma pilha vertical sobre o próprio Stage, acima do ícone, sem modal central e sem quadro único que cubra o editor. A lista mantém rolagem nativa; arrastar a lista apenas rola nesta etapa, não reordena Layers. Quando já houver Asset selecionado, a pilha abre com a respectiva linha selecionada e as ações contextuais prontas. Tocar uma linha troca a seleção canônica por `selectAssetById()` e atualiza a única área de ações.
+- **Ações:** a área única de ações fica acima da pilha de linhas; não há ações repetidas em cada linha nem abaixo da lista. Continua usando as ações canônicas existentes, inclusive lock/unlock.
+- **Fallback aprovado:** Roberto aprovou visualmente a E9I em iPhone/Safari como fallback seguro. Se uma reversão futura retornar à apresentação E9I, as ações de Camadas deverão ficar na parte superior da interface contextual, não abaixo da lista.
+- **Fora do escopo:** Preview, Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine. Esta decisão não atribui causa à REG-059 nem reabre a REG-058.
+
 ## DEC-2026-08-26-01 — rollback da E9H e novo desenho futuro de Camadas (APROVADA)
 
-> **Implementação E9I (2026-08-26):** a nova tentativa foi implementada em PR funcional própria a partir da PR #517. `asset.locked` usa o campo canônico já serializado/hidratado, com default destravado, Undo/Redo e autosave pelo fluxo normal; o Stage ignora Layer travada no hit-test e bloqueia movimento/transformação. A UI não reutiliza a régua E9H: Profundidade preserva o slider canônico com ícone + valor. A aprovação física da base E9F6/rollback #517 e o status resolvido fisicamente de REG-058 foram preservados no Project OS. Validação física E9I permanece pendente.
+> **Implementação E9I (2026-08-26):** a nova tentativa foi implementada e mergeada pela PR #518. `asset.locked` usa o campo canônico já serializado/hidratado, com default destravado, Undo/Redo e autosave pelo fluxo normal; o Stage ignora Layer travada no hit-test e bloqueia movimento/transformação. A UI não reutiliza a régua E9H: Profundidade preserva o slider canônico com ícone + valor. A aprovação física da base E9F6/rollback #517 e o status resolvido fisicamente de REG-058 foram preservados no Project OS. Roberto aprovou visualmente a apresentação de Camadas E9I em iPhone/Safari; a evolução de apresentação E9J é registrada em DEC-2026-08-27-01.
 
 - **Decisão de rollback:** a PR #516 / `v8z4b32E9H`, já mergeada e publicada, foi reprovada fisicamente por REG-059 e deve ser revertida integralmente para `v8z4b32E9F6`, sem correção na mesma PR. A apresentação E9H de Camadas fica preservada no histórico, mas **SUPERADA**.
 - **Próxima tentativa de Camadas:** controle compacto no Stage expande lista vertical rolável na ordem da pilha. Com a lista aberta, o primeiro toque normal numa Layer seleciona e abre imediatamente suas opções; não há segundo toque, double tap ou long press. Gesto de scroll apenas rola. Tocar outra Layer troca seleção e ações. Tocar fora, no Stage, fecha lista/opções sem alterar o projeto.
