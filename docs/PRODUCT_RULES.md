@@ -2,7 +2,7 @@
 
 ## Estado implementado após rollback E9H (2026-08-26)
 
-A implementação funcional de Camadas/Profundidade da `v8z4b32E9H` foi integralmente revertida após REG-059, restaurando `v8z4b32E9F6`. Portanto, o código atual **não implementa** o affordance/sheet/apresentação E9H, a régua/fill/steps E9H, a nova UX futura nem lock/unlock. As regras futuras aprovadas estão em `docs/DECISIONS.md` e `docs/PRE_PROMOTION_RELEASE_PLAN.md`; não devem ser tratadas como comportamento disponível. As regras implementadas da base E9F6 abaixo permanecem canônicas.
+A implementação funcional de Camadas/Profundidade da `v8z4b32E9H` foi integralmente revertida após REG-059, restaurando `v8z4b32E9F6`. A E9I implementa a nova tentativa aprovada: controle próprio no Stage, lista vertical com uma área de ações e lock canônico por asset. A régua/fill/steps E9H não existem. Layer travada permanece renderizada e persistida, mas não participa do hit-test nem aceita movimento ou transformação direta; o painel permite selecioná-la e destravá-la.
 
 
 ## Nota — E9G/E9G1 (side width handles) revertidas DUAS vezes (2026-08-23 e 2026-08-24)

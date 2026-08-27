@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-26 — E9I em PR (Camadas, Profundidade e lock canônico)
+
+- Base: `origin/main` pós-merge da PR #517, SHA `89fdf1488a93ae3625368f15bb1b92c66af588f0`; a base `v8z4b32E9F6` do rollback foi aprovada fisicamente por Roberto em iPhone/Safari. REG-058 permanece resolvida fisicamente pelo rollback/restauração, com causa raiz não comprovada.
+- Escopo: nova tentativa conforme DEC-2026-08-26-01. Camadas usa controle próprio no Stage, lista vertical rolável e uma única área de ações; `asset.locked` é propriedade canônica persistida e impede hit-test, movimento e transformação direta, preservando Stage/Preview/Export.
+- Profundidade preserva o slider canônico e exibe ícone + valor; a régua E9H não foi reutilizada. REG-059 continua sem causa atribuída e exige validação física.
+- Fora do escopo: Preview, Export, ProjectWorld, Save/Load além da persistência de lock, Frames, curvas, Text Asset e Engine. Nenhum merge ou produção.
+
 ## Atualização 2026-08-26 — ROLLBACK da E9H após REG-059 (`v8z4b32E9F6` restaurada)
 
 - **Base:** verificação externa fornecida por Roberto confirmou `rowestudio/arco-app-test`/`main` em `ee7f8cabe67aed605ff4c1d68c8ce7f0e243c263`, merge da PR #516; localmente, o mesmo HEAD, assunto do merge e primeiro parent `1f449943692f9f525d760876a57f14ad077f1ebb` foram confirmados, sem alterações rastreadas. O clone não possui `origin`; essa limitação foi explicitamente aceita para esta operação.

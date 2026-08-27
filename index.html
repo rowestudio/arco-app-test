@@ -1706,6 +1706,11 @@ body.editor-assets.recording .frame{display:none !important;}
 #layersPanel .layers-action-btn{width:36px;height:36px;border:0;border-radius:8px;background:rgba(255,255,255,.08);color:#fff;font-size:18px;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;padding:0;}
 #layersPanel .layers-action-btn:active{background:rgba(255,255,255,.18);}
 #layersPanel .layers-action-btn:disabled{opacity:.28;pointer-events:none;}
+#layersStageControl{position:absolute;right:12px;bottom:12px;z-index:132;display:none;width:44px;height:44px;border:1px solid var(--border2);border-radius:50%;background:var(--surface);color:var(--accent);align-items:center;justify-content:center;pointer-events:auto;}
+body.editor-assets #layersStageControl{display:flex;}
+#layersPanel .layers-count{font-size:12px;color:var(--text3);}
+#layersPanel .layers-order{font-size:17px;font-weight:800;color:var(--accent);min-width:22px;text-align:center;}
+#layersPanel .layers-options{border-top:1px solid var(--border2);margin-top:10px;padding-top:10px;display:flex;gap:6px;flex-wrap:wrap;}
 #stageContextOverlay{position:absolute;inset:0;pointer-events:none;z-index:130;}
 #pointModeMenu{position:absolute;left:50%;bottom:calc(10px + var(--safe-bottom));transform:translateX(-50%);z-index:130;display:none;gap:5px;padding:8px 10px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:calc(100% - 20px);align-items:center;pointer-events:auto;}
 .point-mode-btn{width:40px;height:40px;border:0;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:0;}
@@ -4208,6 +4213,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
     <button class="point-mode-btn" data-action="apply-all" type="button" title="Armar Global"><svg class="point-mode-icon point-mode-icon--global" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-globe-2"></use></svg></button>
     </div>
   </div>
+  <button id="layersStageControl" type="button" aria-label="Camadas" onclick="event.stopPropagation();toggleLayersPanel()"><svg viewBox="0 0 24 24" width="20" height="20"><use href="#i-layers"></use></svg></button>
   <!-- Status toast fora do stage — não afetado pelo zoom de edição (v8z4b17y) -->
   <div class="status-bar" id="statusBar"></div>
   <!-- v8z4b30ZS — hint de modo (1ª entrada em cada modo) -->
@@ -4365,6 +4371,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <div class="asset-context-main context-control-stack">
     <div class="asset-context-row context-control-value-row">
       <input class="dur-slider" id="assetContextSlider" type="range" min="-100" max="100" step="1" value="0">
+      <span id="assetContextDepthIcon" aria-hidden="true" style="display:none"><svg viewBox="0 0 24 24" width="18" height="18"><use href="#i-layers"></use></svg></span>
       <span class="asset-context-value context-control-value" id="assetContextValue">0</span>
     </div>
     <div class="asset-context-actions context-control-actions">
@@ -4663,11 +4670,11 @@ body.asset-context-panel-open #toolbar{display:none !important;}
 <!-- v8z4b30ZJ — Painel básico de Layers (assets/imagens do ProjectWorld). -->
 <div id="layersPanel" role="dialog" aria-label="Camadas" aria-hidden="true">
   <div class="layers-head">
-    <div class="layers-title">LAYERS</div>
+    <div><div class="layers-title">Camadas</div><div class="layers-count" id="layersCount"></div></div>
     <button type="button" class="layers-close" onclick="closeLayersPanel()" title="Fechar" aria-label="Fechar">✕</button>
   </div>
-  <div class="layers-hint">Use ↑↓ para reordenar. Trocar substitui a imagem da camada.</div>
   <div id="layersList" class="layers-list"></div>
+  <div id="layersOptions" class="layers-options" aria-live="polite"></div>
 </div>
 <!-- v8z4b30ZK — Área contextual inferior do Modo Ativos. Sem funções avançadas
      nesta versão: indica o estado geral dos ativos ou o nome do asset selecionado. -->
@@ -5078,10 +5085,6 @@ body.asset-context-panel-open #toolbar{display:none !important;}
     <button type="button" class="assets-menu-btn" onclick="runAssetsContextMenuAction('insert')">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-up"></use></svg>
       Inserir imagem
-    </button>
-    <button type="button" class="assets-menu-btn" onclick="runAssetsContextMenuAction('layers')">
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-layers"></use></svg>
-      Layers
     </button>
     <button type="button" class="assets-menu-cancel" onclick="closeAssetsModeContextMenu()">Cancelar</button>
   </div>
@@ -7591,8 +7594,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9F6';
-const APP_VERSION_NAME = 'v8z4b32E9F6';
+const APP_VERSION = 'v8z4b32E9I';
+const APP_VERSION_NAME = 'v8z4b32E9I';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -15632,11 +15635,28 @@ function ensureAssetVisualDefaults(asset) {
   // Profundidade e independente da geometria canonica. Projetos anteriores
   // migram implicitamente para zero; valores nao finitos nunca chegam ao render.
   asset.depth = Number.isFinite(Number(asset.depth)) ? Number(asset.depth) : 0;
+  asset.locked = !!asset.locked;
   asset.crop = asset.crop || { enabled: false, x: 0, y: 0, w: 1, h: 1 };
   asset.frameStyle = asset.frameStyle || {
     enabled: false, strokeColor: '#ffffff', strokeWidth: 0, radius: 0, padding: 0, shadow: false
   };
   return asset;
+}
+function toggleAssetLock(assetId) {
+  const asset = (Array.isArray(assets) ? assets : []).find(a => a && String(a.id) === String(assetId));
+  if (!asset) return false;
+  const before = captureState();
+  asset.locked = !asset.locked;
+  pushUndoSnapshot(before);
+  markProjectDirty('layer-lock');
+  renderAssetSelectionOverlay();
+  renderLayersPanelList();
+  return asset.locked;
+}
+function blockLockedAssetEdit(asset) {
+  if (!asset || !asset.locked) return false;
+  showStatus('Destrave a camada para editar.');
+  return true;
 }
 
 const TEXT_ASSET_FONTS = Object.freeze({
@@ -16152,6 +16172,8 @@ function syncAssetContextPanel() {
   const contextLabel = assetContextPanelKind === 'scale' ? 'Escala' : assetContextPanelKind === 'rotation' ? 'Rotação' : 'Profundidade';
   slider.setAttribute('aria-label', contextLabel + ' do ativo');
   value.textContent = String(Math.round(current)) + suffix;
+  const depthIcon = document.getElementById('assetContextDepthIcon');
+  if (depthIcon) depthIcon.style.display = assetContextPanelKind === 'depth' ? 'inline-flex' : 'none';
   const neutral = assetContextPanelKind === 'scale' ? 100 : 0;
   reset.disabled = Math.abs(current - neutral) < 0.001;
   reset.style.opacity = reset.disabled ? '0.45' : '1';
@@ -16166,6 +16188,7 @@ function closeAssetContextPanel() {
 }
 function openAssetContextPanel(kind) {
   if (!isAssetsMode() || !getSelectedAsset()) { showStatus('Selecione uma imagem primeiro.'); return; }
+  if (getSelectedAsset().locked) { showStatus('Destrave a camada para editar.'); return; }
   closeAssetContextPanel();
   closeAll();
   assetContextPanelKind = kind === 'scale' || kind === 'rotation' ? kind : 'depth';
@@ -17568,23 +17591,24 @@ function isToolbarVisualStateConsistent() {
 }
 // v8z4b30ZL (fix v8z4b30ZQ) — atualiza estado visual das ferramentas de asset na 4ª linha.
 // Trocar/Excluir exigem asset selecionado; Frente/Trás seguem a posição na pilha.
-function runAssetPrimaryAction(){const asset=isAssetsMode()?getSelectedAsset():null;if(!asset)return showStatus('Selecione um ativo primeiro.');if(asset.type==='text')return startTextAssetEditing(asset,'toolbar');if(asset.type==='image')return startReplaceImageFlow();}
+function runAssetPrimaryAction(){const asset=isAssetsMode()?getSelectedAsset():null;if(!asset)return showStatus('Selecione um ativo primeiro.');if(blockLockedAssetEdit(asset))return;if(asset.type==='text')return startTextAssetEditing(asset,'toolbar');if(asset.type==='image')return startReplaceImageFlow();}
 function syncAssetToolbarState() {
   const toolbarAsset = isAssetsMode() ? getSelectedAsset() : null;
   const hasSel = !!toolbarAsset;
+  const canEdit = hasSel && !toolbarAsset.locked;
   const toolbarAssetId = toolbarAsset ? String(toolbarAsset.id) : '';
   const primary=document.getElementById('tbAssetReplace'); if(primary){const isText=hasSel&&toolbarAsset.type==='text';primary.querySelector('use').setAttribute('href',isText?'#i-mouse-pointer':'#i-image-down');primary.querySelector('.tb-lbl').textContent=isText?'Editar':'Trocar';primary.setAttribute('aria-label',isText?'Editar texto':'Trocar imagem');}
   ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetDelete'].forEach(function(id) {
     const el = document.getElementById(id);
     if (!el) return;
-    el.classList.toggle('asset-tool-disabled', !hasSel);
+    el.classList.toggle('asset-tool-disabled', !canEdit);
     el.dataset.assetId = toolbarAssetId;
   });
   const z = getAssetZOrderInfo();
   const fwd = document.getElementById('tbAssetForward');
-  if (fwd) { fwd.classList.toggle('asset-tool-disabled', !z.canForward); fwd.dataset.assetId = toolbarAssetId; }
+  if (fwd) { fwd.classList.toggle('asset-tool-disabled', !canEdit || !z.canForward); fwd.dataset.assetId = toolbarAssetId; }
   const bkw = document.getElementById('tbAssetBackward');
-  if (bkw) { bkw.classList.toggle('asset-tool-disabled', !z.canBackward); bkw.dataset.assetId = toolbarAssetId; }
+  if (bkw) { bkw.classList.toggle('asset-tool-disabled', !canEdit || !z.canBackward); bkw.dataset.assetId = toolbarAssetId; }
   updateCanonicalAssetSelectionDiagnostics();
 }
 // v8z4b30ZK — barra contextual legada (agora sempre oculta; substituída pelo toolbar).
@@ -17596,6 +17620,7 @@ function renderAssetsContextBar() {
 function deleteSelectedAsset() {
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para excluir.'); return; }
+  if (blockLockedAssetEdit(sel)) return;
   const selId = sel.id;
   const isMain = assets.length > 0 && assets[0] && assets[0].id === selId;
   if (isMain && assets.length === 1) {
@@ -17655,6 +17680,7 @@ function bringSelectedAssetForward() {
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para trazer à frente.'); return; }
+  if (blockLockedAssetEdit(sel)) return;
   const depthBeforeReorder = Number(sel.depth) || 0;
   normalizeAssetZIndices();
   const sorted = assets.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); });
@@ -17706,6 +17732,7 @@ function sendSelectedAssetBackward() {
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para enviar para trás.'); return; }
+  if (blockLockedAssetEdit(sel)) return;
   const depthBeforeReorder = Number(sel.depth) || 0;
   normalizeAssetZIndices();
   const sorted = assets.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); });
@@ -17757,6 +17784,7 @@ function layerMoveAssetUp(assetId) {
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
+  if (blockLockedAssetEdit(a)) return;
   const depthBeforeReorder = Number(a.depth) || 0;
   // v8z4b32E1 — ESCOPO 4: a linha acionada vira o asset selecionado, e assim
   // permanece após a reordenação (Stage/contorno/painel sincronizados).
@@ -17808,6 +17836,7 @@ function layerMoveAssetDown(assetId) {
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
+  if (blockLockedAssetEdit(a)) return;
   const depthBeforeReorder = Number(a.depth) || 0;
   // v8z4b32E1 — ESCOPO 4: a linha acionada vira o asset selecionado, e assim
   // permanece após a reordenação (Stage/contorno/painel sincronizados).
@@ -17858,6 +17887,8 @@ function layerMoveAssetDown(assetId) {
 // reaproveita mais startReplaceImageFlow() (que resolvia o alvo pela seleção/slot
 // e podia cair no fluxo de inserir). O alvo é EXCLUSIVAMENTE o assetId da linha.
 function layerReplaceImageForAsset(assetId) {
+  const asset = (Array.isArray(assets) ? assets : []).find(a => a && String(a.id) === String(assetId));
+  if (blockLockedAssetEdit(asset)) return;
   onLayerReplaceClick(assetId);
 }
 function onLayerReplaceClick(assetId) {
@@ -35601,6 +35632,7 @@ function hitTestAssetAtWorld(wx, wy) {
     const a = assets[i];
     if (!a || (a.type !== 'image' && a.type !== 'text')) continue;
     if (a.visible === false) continue;
+    if (a.locked) continue;
     if (!assetIsHitTestable(a)) continue;
     // v8z4b32E5 — hit-test usa o sub-retângulo VISUAL (getAssetVisualWorldRect),
     // não o worldRect cru: idêntico ao worldRect para extras; para img-1 evita
@@ -35646,7 +35678,7 @@ function handleStageAssetSelectPointer(e) {
   if (e.target && e.target.closest && e.target.closest('.asset-corner-handle')) return false;
   // Não interceptar controles de UI sobre a área do Stage.
   if (e.target && e.target.closest && (
-        e.target.closest('#editorZoomCtrl,#stageEyeShortcut') ||
+        e.target.closest('#editorZoomCtrl,#stageEyeShortcut,#layersStageControl') ||
         e.target.closest('.float-panel') ||
         e.target.closest('#layersPanel') ||
         e.target.closest('.top-bar') ||
@@ -35683,6 +35715,8 @@ function handleStageAssetSelectPointer(e) {
     _armAssetMove(e, hit, wp);
     return true;
   }
+  // Área vazia fecha Camadas sem mutar a seleção; fora disso, limpar seleção.
+  if (document.getElementById('layersPanel')?.classList.contains('show')) { closeLayersPanel(); return false; }
   // Área vazia: limpar seleção. NÃO bloquear o evento, para que o pan/navegação
   // do mundo (dois dedos / pan mode) continue funcionando normalmente.
   clearSelectedAsset();
@@ -35707,7 +35741,7 @@ let assetDragState = null;
 let lastCompletedTextTap = null;
 const TEXT_DOUBLE_TAP_MS = 360, TEXT_DOUBLE_TAP_DISTANCE = 22;
 function _armAssetMove(e, asset, worldPoint) {
-  if (!asset || !isAssetsMode()) return;
+  if (!asset || asset.locked || !isAssetsMode()) return;
   assetMoveStartedFromSelectedAsset = true;
   assetMoveInAssetsModeEnabled = true;
   assetMoveOnlyInAssetsMode = true;
@@ -35831,7 +35865,7 @@ function scaleSelectedAsset(factor) { activateAssetTransformMode('scale'); }
 function rotateSelectedAsset(deg) { activateAssetTransformMode('rotate'); }
 function beginAssetTransformDrag(e, corner) {
   const asset = getSelectedAsset();
-  if (!asset || !isAssetsMode()) return;
+  if (!asset || asset.locked || !isAssetsMode()) return;
   e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation();
   try { e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId); assetTransformPointerCaptured = true; } catch (_) {}
   computeEditorTransform();
@@ -36135,11 +36169,15 @@ function getAssetDisplayName(asset) {
 }
 function renderLayersPanelList() {
   const list = document.getElementById('layersList');
+  const count = document.getElementById('layersCount');
+  const options = document.getElementById('layersOptions');
   if (!list) return;
   const imgs = getSelectableImageAssets();
   // v8z4b30ZU — ordenar por zIndex decrescente para refletir a ordem visual real (topo→fundo)
   const sorted = imgs.slice().sort(function(a, b) { return ((b.zIndex||0) - (a.zIndex||0)); });
   list.innerHTML = '';
+  if (count) count.textContent = `${sorted.length} camada${sorted.length === 1 ? '' : 's'}`;
+  if (options) options.innerHTML = '';
   if (!sorted.length) {
     const empty = document.createElement('div');
     empty.className = 'layers-empty';
@@ -36152,6 +36190,7 @@ function renderLayersPanelList() {
     const item = document.createElement('div');
     item.className = 'layers-item' + (String(a.id) === String(selectedAssetId) ? ' selected' : '');
     item.dataset.assetId = String(a.id);
+    const order = document.createElement('div'); order.className = 'layers-order'; order.textContent = String(sorted.length - i);
     const thumbWrap = document.createElement('div');
     thumbWrap.className = 'layers-thumb';
     const src = getAssetThumbSrc(a);
@@ -36169,39 +36208,24 @@ function renderLayersPanelList() {
       selectAssetById(a.id, 'layers');
     };
     item.addEventListener('click', _selAsset);
-    // Botão Subir (aumenta zIndex → visual frente); sorted é decrescente, i=0 é o topo
-    const btnUp = document.createElement('button');
-    btnUp.type = 'button';
-    btnUp.className = 'layers-action-btn';
-    btnUp.title = 'Subir';
-    btnUp.textContent = '↑';
-    if (i === 0) btnUp.disabled = true;
-    btnUp.addEventListener('click', function(ev){ ev.stopPropagation(); layerMoveAssetUp(a.id); });
-    // Botão Descer (diminui zIndex → visual trás)
-    const btnDown = document.createElement('button');
-    btnDown.type = 'button';
-    btnDown.className = 'layers-action-btn';
-    btnDown.title = 'Descer';
-    btnDown.textContent = '↓';
-    if (i === sorted.length - 1) btnDown.disabled = true;
-    btnDown.addEventListener('click', function(ev){ ev.stopPropagation(); layerMoveAssetDown(a.id); });
-    // Botão Trocar
-    const btnReplace = document.createElement('button');
-    btnReplace.type = 'button';
-    btnReplace.className = 'layers-action-btn';
-    btnReplace.title = 'Trocar';
-    btnReplace.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image-up"></use></svg>';
-    btnReplace.addEventListener('click', function(ev){ ev.stopPropagation(); layerReplaceImageForAsset(a.id); });
-    const acts = document.createElement('div');
-    acts.className = 'layers-actions';
-    acts.appendChild(btnUp);
-    acts.appendChild(btnDown);
-    if (a.type === 'image') acts.appendChild(btnReplace);
+    item.addEventListener('click', function(){ renderLayersPanelList(); });
+    item.appendChild(order);
     item.appendChild(thumbWrap);
     item.appendChild(label);
-    item.appendChild(acts);
     list.appendChild(item);
   });
+  const selected = getSelectedAsset();
+  if (options && selected) {
+    const action = (label, fn, disabled=false) => { const b=document.createElement('button'); b.type='button'; b.className='layers-action-btn'; b.textContent=label; b.disabled=disabled; b.onclick=fn; options.appendChild(b); };
+    const zi = sorted.findIndex(a => String(a.id) === String(selected.id));
+    action(selected.visible === false ? '◉' : '◌', () => { selected.visible = selected.visible === false; markProjectDirty('layer-visibility'); renderProjectWorldExtraImages(); renderLayersPanelList(); }, selected.locked);
+    action('↑', () => layerMoveAssetUp(selected.id), selected.locked || zi === 0);
+    action('↓', () => layerMoveAssetDown(selected.id), selected.locked || zi === sorted.length - 1);
+    action('≋', () => openAssetDepthPanel(), selected.locked);
+    if (selected.type === 'image') action('▧', () => layerReplaceImageForAsset(selected.id), selected.locked);
+    action(selected.locked ? '🔓' : '🔒', () => toggleAssetLock(selected.id));
+    action('×', () => deleteSelectedAsset(), selected.locked);
+  }
   updateCanonicalAssetSelectionDiagnostics();
 }
 
