@@ -63,6 +63,7 @@ Cada PR funcional parte do HEAD remoto atualizado da `main` de teste, recebe nov
 - Presets simples de comportamento por ativo, separados da presença temporal.
 - Colar ativos diretamente no projeto.
 - Vista Profundidade 0 / vista absoluta no Modo Ativos, separada da profundidade/parallax básico já implementado.
+- Opção futura em Ajustes para ordenar automaticamente as Camadas pela Profundidade. O padrão atual continua com `depth` e `zIndex` independentes; a opção, quando especificada e implementada em PR funcional própria, deverá ser explícita, reversível e preservar a ordem manual quando desligada.
 - Formatos e, na sequência de prioridade indicada, grupos de frames; este registro não autoriza implementação.
 
 ## Ideias ainda não autorizadas
