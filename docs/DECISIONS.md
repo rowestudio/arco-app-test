@@ -1,5 +1,13 @@
 # DECISIONS
 
+## DEC-2026-08-27-04 — E9M: legibilidade e sincronização imediata da Profundidade
+
+- **Data:** 2026-08-27. **Versão:** `v8z4b32E9M`, correção funcional localizada sobre a `main` que contém a E9L.
+- **Decisão:** os botões da faixa horizontal de Camadas usam superfície opaca para leitura sobre qualquer asset; a ação destrutiva usa exclusivamente o símbolo de lixeira, nunca `×`. O valor de Profundidade da faixa é atualizado durante o arraste no painel contextual, sem fechar o painel.
+- **Correção visual do painel atual:** toda sincronização programática de `#assetContextSlider` repinta imediatamente o fill pelo mesmo valor efetivamente aplicado ao thumb. Não altera intervalo, steps, matemática de profundidade, ordem das Camadas ou a semântica independente de `depth` e `zIndex`.
+- **Limite explícito:** não reintroduz a régua, ticks, labels `−100/0/+100`, fill bidirecional ou steps E9H. Esse desenho histórico foi revertido após REG-059 e sua causa raiz segue não comprovada; qualquer retomada exige decisão funcional específica.
+- **Fora do escopo:** Preview, Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine.
+
 ## DEC-2026-08-27-03 — E9L: detalhe horizontal de Camada (APROVADA PARA IMPLEMENTAÇÃO)
 
 - **Data:** 2026-08-27. **Versão:** `v8z4b32E9L`, PR funcional corretiva sobre a `main` que contém a E9K.

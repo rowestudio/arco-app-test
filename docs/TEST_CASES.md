@@ -1,5 +1,13 @@
 # TEST_CASES
 
+## TC-060 — Faixa opaca e Profundidade sincronizada durante o ajuste (E9M / REG-062)
+
+- Em iPhone/Safari, abrir Camadas, tocar uma miniatura e confirmar que cada ação tem fundo opaco legível sobre imagem e texto. Excluir usa lixeira, não `×`.
+- Abrir Profundidade com valor positivo e negativo: o valor do botão da faixa deve acompanhar o arraste imediatamente, sem fechar o painel; o valor do painel, thumb e término do fill devem representar o mesmo valor.
+- Evidência automatizada: gate E9M em `tests/smoke/app.spec.mjs` usa `tap()` WebKit, verifica fundo opaco, SVG de lixeira e sincronização `modelo → painel → thumb → fill → faixa` para `+48` e `−24`.
+- **Limite:** não testa nem autoriza régua/ticks da E9H; REG-059 permanece sem causa atribuída.
+- **Estado:** implementação automatizada; validação física obrigatória.
+
 ## TC-059 — Detalhe horizontal de Camadas (E9L / REG-061)
 
 - Em iPhone/Safari, abrir Camadas e tocar uma miniatura: a pilha continua somente com previews; o detalhe abre em faixa horizontal saindo da miniatura, com nome acima e sem caixa de fundo ou botão Fechar.
