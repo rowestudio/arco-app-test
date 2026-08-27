@@ -15653,6 +15653,11 @@ function toggleAssetLock(assetId) {
   renderLayersPanelList();
   return asset.locked;
 }
+function blockLockedAssetEdit(asset) {
+  if (!asset || !asset.locked) return false;
+  showStatus('Destrave a camada para editar.');
+  return true;
+}
 
 const TEXT_ASSET_FONTS = Object.freeze({
   system:{label:'Sistema',family:'-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif'},
@@ -17586,23 +17591,24 @@ function isToolbarVisualStateConsistent() {
 }
 // v8z4b30ZL (fix v8z4b30ZQ) — atualiza estado visual das ferramentas de asset na 4ª linha.
 // Trocar/Excluir exigem asset selecionado; Frente/Trás seguem a posição na pilha.
-function runAssetPrimaryAction(){const asset=isAssetsMode()?getSelectedAsset():null;if(!asset)return showStatus('Selecione um ativo primeiro.');if(asset.type==='text')return startTextAssetEditing(asset,'toolbar');if(asset.type==='image')return startReplaceImageFlow();}
+function runAssetPrimaryAction(){const asset=isAssetsMode()?getSelectedAsset():null;if(!asset)return showStatus('Selecione um ativo primeiro.');if(blockLockedAssetEdit(asset))return;if(asset.type==='text')return startTextAssetEditing(asset,'toolbar');if(asset.type==='image')return startReplaceImageFlow();}
 function syncAssetToolbarState() {
   const toolbarAsset = isAssetsMode() ? getSelectedAsset() : null;
   const hasSel = !!toolbarAsset;
+  const canEdit = hasSel && !toolbarAsset.locked;
   const toolbarAssetId = toolbarAsset ? String(toolbarAsset.id) : '';
   const primary=document.getElementById('tbAssetReplace'); if(primary){const isText=hasSel&&toolbarAsset.type==='text';primary.querySelector('use').setAttribute('href',isText?'#i-mouse-pointer':'#i-image-down');primary.querySelector('.tb-lbl').textContent=isText?'Editar':'Trocar';primary.setAttribute('aria-label',isText?'Editar texto':'Trocar imagem');}
   ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetDelete'].forEach(function(id) {
     const el = document.getElementById(id);
     if (!el) return;
-    el.classList.toggle('asset-tool-disabled', !hasSel);
+    el.classList.toggle('asset-tool-disabled', !canEdit);
     el.dataset.assetId = toolbarAssetId;
   });
   const z = getAssetZOrderInfo();
   const fwd = document.getElementById('tbAssetForward');
-  if (fwd) { fwd.classList.toggle('asset-tool-disabled', !z.canForward); fwd.dataset.assetId = toolbarAssetId; }
+  if (fwd) { fwd.classList.toggle('asset-tool-disabled', !canEdit || !z.canForward); fwd.dataset.assetId = toolbarAssetId; }
   const bkw = document.getElementById('tbAssetBackward');
-  if (bkw) { bkw.classList.toggle('asset-tool-disabled', !z.canBackward); bkw.dataset.assetId = toolbarAssetId; }
+  if (bkw) { bkw.classList.toggle('asset-tool-disabled', !canEdit || !z.canBackward); bkw.dataset.assetId = toolbarAssetId; }
   updateCanonicalAssetSelectionDiagnostics();
 }
 // v8z4b30ZK — barra contextual legada (agora sempre oculta; substituída pelo toolbar).
@@ -17614,6 +17620,7 @@ function renderAssetsContextBar() {
 function deleteSelectedAsset() {
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para excluir.'); return; }
+  if (blockLockedAssetEdit(sel)) return;
   const selId = sel.id;
   const isMain = assets.length > 0 && assets[0] && assets[0].id === selId;
   if (isMain && assets.length === 1) {
@@ -17673,6 +17680,7 @@ function bringSelectedAssetForward() {
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para trazer à frente.'); return; }
+  if (blockLockedAssetEdit(sel)) return;
   const depthBeforeReorder = Number(sel.depth) || 0;
   normalizeAssetZIndices();
   const sorted = assets.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); });
@@ -17724,6 +17732,7 @@ function sendSelectedAssetBackward() {
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const sel = getSelectedAsset();
   if (!sel) { showStatus('Selecione uma imagem para enviar para trás.'); return; }
+  if (blockLockedAssetEdit(sel)) return;
   const depthBeforeReorder = Number(sel.depth) || 0;
   normalizeAssetZIndices();
   const sorted = assets.slice().sort(function(a,b){ return (a.zIndex||0)-(b.zIndex||0); });
@@ -17775,6 +17784,7 @@ function layerMoveAssetUp(assetId) {
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
+  if (blockLockedAssetEdit(a)) return;
   const depthBeforeReorder = Number(a.depth) || 0;
   // v8z4b32E1 — ESCOPO 4: a linha acionada vira o asset selecionado, e assim
   // permanece após a reordenação (Stage/contorno/painel sincronizados).
@@ -17826,6 +17836,7 @@ function layerMoveAssetDown(assetId) {
   lastReorderTargetAssetId = selectedIdBeforeReorder;
   const a = (Array.isArray(assets) ? assets : []).find(function(x){ return x.id === assetId; });
   if (!a) return;
+  if (blockLockedAssetEdit(a)) return;
   const depthBeforeReorder = Number(a.depth) || 0;
   // v8z4b32E1 — ESCOPO 4: a linha acionada vira o asset selecionado, e assim
   // permanece após a reordenação (Stage/contorno/painel sincronizados).
@@ -17876,6 +17887,8 @@ function layerMoveAssetDown(assetId) {
 // reaproveita mais startReplaceImageFlow() (que resolvia o alvo pela seleção/slot
 // e podia cair no fluxo de inserir). O alvo é EXCLUSIVAMENTE o assetId da linha.
 function layerReplaceImageForAsset(assetId) {
+  const asset = (Array.isArray(assets) ? assets : []).find(a => a && String(a.id) === String(assetId));
+  if (blockLockedAssetEdit(asset)) return;
   onLayerReplaceClick(assetId);
 }
 function onLayerReplaceClick(assetId) {
@@ -36205,7 +36218,7 @@ function renderLayersPanelList() {
   if (options && selected) {
     const action = (label, fn, disabled=false) => { const b=document.createElement('button'); b.type='button'; b.className='layers-action-btn'; b.textContent=label; b.disabled=disabled; b.onclick=fn; options.appendChild(b); };
     const zi = sorted.findIndex(a => String(a.id) === String(selected.id));
-    action(selected.visible === false ? '◉' : '◌', () => { selected.visible = selected.visible === false; markProjectDirty('layer-visibility'); renderProjectWorldExtraImages(); renderLayersPanelList(); });
+    action(selected.visible === false ? '◉' : '◌', () => { selected.visible = selected.visible === false; markProjectDirty('layer-visibility'); renderProjectWorldExtraImages(); renderLayersPanelList(); }, selected.locked);
     action('↑', () => layerMoveAssetUp(selected.id), selected.locked || zi === 0);
     action('↓', () => layerMoveAssetDown(selected.id), selected.locked || zi === sorted.length - 1);
     action('≋', () => openAssetDepthPanel(), selected.locked);

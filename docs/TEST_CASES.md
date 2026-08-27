@@ -4,7 +4,7 @@
 
 - Em iPhone/Safari, validar controle compacto → lista rolável na ordem da pilha; primeiro tap normal seleciona e abre opções contextuais; scroll apenas rola e não abre ações; tocar outra Layer troca seleção/ações; tocar fora no Stage fecha sem mutação.
 - Validar linha limpa com ordem antes de thumbnail/ícone maior e nome, sem `Posição N de M · Prof. X` nem ações repetidas; cabeçalho com título, quantidade e fechar; profundidade contextual em ícone + valor; uma única área de ações para a selecionada.
-- Validar lock/unlock canônico: Layer travada permanece em Stage/Preview/Export/projeto/lista, não responde a seleção/transformação/edição pelo Stage e permite hit-test alcançar Layer destravada abaixo; painel permite selecionar/inspecionar/destravar. Cobrir Save/Load, Session Restore, Undo/Redo, autosave, default destravado e projeto antigo.
+- Validar lock/unlock canônico: Layer travada permanece em Stage/Preview/Export/projeto/lista, não responde a seleção/transformação/edição pelo Stage nem a ações diretas de toolbar/painel (trocar, profundidade, reordenação, exclusão ou visibilidade), e permite hit-test alcançar Layer destravada abaixo; painel permite selecionar/inspecionar/destravar. Cobrir Save/Load, Session Restore, Undo/Redo, autosave, default destravado e projeto antigo.
 - **Estado:** implementado na E9I; o gate WebKit cobre lock, hit-test abaixo e persistência. Validação física em iPhone/Safari permanece obrigatória.
 
 ## TC-056 — REG-059: Profundidade sem régua E9H (E9I)

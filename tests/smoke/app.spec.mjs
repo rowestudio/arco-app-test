@@ -4194,3 +4194,27 @@ test('E9I — Camadas canônicas: lock ignora hit-test e persiste', async ({ pag
   });
   expect(result).toEqual({ locked: true, hit: result.beneath, beneath: result.beneath, saved: true, stageControl: true, listRows: 2, hasLegacyRuler: false });
 });
+
+test('E9I — lock bloqueia ações diretas da camada', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9i-lock-direct-actions');
+    const stack = assets.filter(a => a && (a.type === 'image' || a.type === 'text'));
+    if (stack.length === 1) assets.push({ ...stack[0], id: 'e9i-lock-underlay', type: 'text', text: 'baixo', zIndex: Number(stack[0].zIndex) - 1, locked: false });
+    const locked = assets.slice().sort((a, b) => Number(a.zIndex) - Number(b.zIndex))[0];
+    selectAssetById(locked.id, 'e9i-lock-direct-actions');
+    locked.locked = true;
+    const before = { count: assets.length, zIndex: locked.zIndex, undo: undoStack.length };
+    sendSelectedAssetBackward();
+    deleteSelectedAsset();
+    openAssetContextPanel('depth');
+    syncAssetToolbarState();
+    const toolbarDisabled = ['tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetDelete', 'tbAssetForward', 'tbAssetBackward']
+      .every(id => document.getElementById(id).classList.contains('asset-tool-disabled'));
+    return { count: assets.length, zIndex: locked.zIndex, undo: undoStack.length, panelOpen: assetContextPanelKind !== 'none', toolbarDisabled, before };
+  });
+  expect(result).toEqual({ ...result.before, panelOpen: false, toolbarDisabled: true, before: result.before });
+});
