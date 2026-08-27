@@ -8,7 +8,7 @@
 - **Classificação:** regressão física objetiva da implementação E9H de Profundidade. O painel de Camadas E9H não apresentou regressão funcional grave comprovada nesse teste, embora sua apresentação tenha sido considerada visualmente carregada e superada para a próxima tentativa.
 - **Causa raiz:** **NÃO COMPROVADA.** Não atribuir a largura de container, flexbox, campo de valor, cálculo percentual, CSS, transformação ou qualquer outra hipótese sem investigação e evidência próprias.
 - **Ação:** rollback funcional integral da PR #516, restaurando `v8z4b32E9F6`. Este rollback não investiga nem corrige REG-059; remove a régua E9H junto com toda a implementação funcional da PR #516.
-- **Tentativa E9I:** a nova UI não reintroduz a régua/tick independente da E9H; preserva o slider canônico e apresenta apenas ícone + valor. Não declara causa raiz. A validação física iPhone/Safari continua obrigatória.
+- **Tentativa E9I:** a nova UI não reintroduz a régua/tick independente da E9H; preserva o slider canônico e apresenta apenas ícone + valor. Não declara causa raiz. Roberto aprovou visualmente a apresentação de Camadas E9I em iPhone/Safari; a validação física específica de Profundidade/Reset continua obrigatória.
 - **Status:** **PENDENTE DE VALIDAÇÃO FÍSICA NA E9I.**
 
 

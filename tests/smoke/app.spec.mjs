@@ -4218,3 +4218,61 @@ test('E9I — lock bloqueia ações diretas da camada', async ({ page }) => {
   });
   expect(result).toEqual({ ...result.before, panelOpen: false, toolbarDisabled: true, before: result.before });
 });
+
+test('E9J — Camadas expande sobre o Stage e deixa ações acima da pilha selecionada', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const selectedId = await page.evaluate(() => {
+    setEditorMode('assets', 'e9j-stage-layers-stack');
+    const asset = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    for (let i = 1; i <= 12; i += 1) {
+      assets.push({ ...asset, id: `e9j-scroll-${i}`, layerName: `Camada de rolagem ${i}`, zIndex: Number(asset.zIndex) - i, locked: false });
+    }
+    selectAssetById(asset.id, 'e9j-stage-layers-stack');
+    return String(asset.id);
+  });
+
+  await page.locator('#layersStageControl').click();
+  const beforeScroll = await page.evaluate(() => ({
+    selectedId: String(selectedAssetId),
+    zOrder: assets.slice().sort((a, b) => Number(b.zIndex) - Number(a.zIndex)).map(a => String(a.id)),
+  }));
+  await page.locator('#layersList').evaluate((list) => {
+    list.scrollTop = 360;
+    list.dispatchEvent(new Event('scroll', { bubbles: true }));
+  });
+  const stack = await page.evaluate(() => {
+    const panel = document.getElementById('layersPanel');
+    const control = document.getElementById('layersStageControl');
+    const list = document.getElementById('layersList');
+    const options = document.getElementById('layersOptions');
+    const selected = document.querySelector('#layersList .layers-item.selected');
+    const panelRect = panel.getBoundingClientRect();
+    const controlRect = control.getBoundingClientRect();
+    return {
+      open: panel.classList.contains('show'),
+      parentId: panel.parentElement.id,
+      expandsAboveControl: panelRect.bottom <= controlRect.top + 1,
+      optionsBeforeList: Boolean(options.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING),
+      selectedId: selected?.dataset.assetId || null,
+      listScrollable: ['auto', 'scroll'].includes(getComputedStyle(list).overflowY),
+      scrolled: list.scrollTop > 0,
+      selectedAfterScroll: String(selectedAssetId),
+      zOrderAfterScroll: assets.slice().sort((a, b) => Number(b.zIndex) - Number(a.zIndex)).map(a => String(a.id)),
+    };
+  });
+
+  expect(stack).toEqual({
+    open: true,
+    parentId: 'imageArea',
+    expandsAboveControl: true,
+    optionsBeforeList: true,
+    selectedId,
+    listScrollable: true,
+    scrolled: true,
+    selectedAfterScroll: beforeScroll.selectedId,
+    zOrderAfterScroll: beforeScroll.zOrder,
+  });
+});
