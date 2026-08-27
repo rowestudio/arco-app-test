@@ -1675,7 +1675,7 @@ body.editor-assets.recording .frame{display:none !important;}
   position:absolute;
   right:12px;
   bottom:64px;
-  width:min(74vw,296px);
+  width:64px;
   max-height:calc(100% - 88px);
   z-index:131;
   display:none;
@@ -1693,12 +1693,12 @@ body.editor-assets.recording .frame{display:none !important;}
 #layersPanel .layers-title{font-size:12px;font-weight:800;letter-spacing:.14em;color:#fff;}
 #layersPanel .layers-close{width:32px;height:32px;border:0;border-radius:999px;background:transparent;color:#fff;font-size:16px;line-height:1;cursor:pointer;touch-action:manipulation;}
 #layersPanel .layers-hint{font-size:11px;line-height:1.3;color:rgba(255,255,255,.6);margin-bottom:10px;}
-#layersPanel .layers-list{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:8px;padding:2px 0;}
+#layersPanel .layers-list{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:8px;padding:2px 0;align-items:flex-end;}
 #layersPanel .layers-empty{font-size:13px;color:rgba(255,255,255,.55);padding:12px 4px;}
-#layersPanel .layers-item{display:flex;align-items:center;gap:12px;padding:8px;border:1px solid rgba(178,178,178,.28);border-radius:10px;background:rgba(29,29,34,.96);box-shadow:0 5px 16px rgba(0,0,0,.28);cursor:pointer;touch-action:manipulation;}
+#layersPanel .layers-item{width:60px;height:60px;display:flex;align-items:center;justify-content:center;padding:3px;border:1px solid rgba(178,178,178,.28);border-radius:10px;background:rgba(29,29,34,.96);box-shadow:0 5px 16px rgba(0,0,0,.28);cursor:pointer;touch-action:manipulation;box-sizing:border-box;}
 #layersPanel .layers-item:active{background:#26262c;}
 #layersPanel .layers-item.selected{border-color:rgba(120,190,255,.9);background:#22303f;}
-#layersPanel .layers-thumb{width:44px;height:44px;flex:0 0 auto;border-radius:6px;overflow:hidden;background:#0e0e11;display:flex;align-items:center;justify-content:center;}
+#layersPanel .layers-thumb{width:52px;height:52px;flex:0 0 auto;border-radius:7px;overflow:hidden;background:#0e0e11;display:flex;align-items:center;justify-content:center;}
 #layersPanel .layers-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
 #layersPanel .layers-name{font-size:14px;font-weight:600;color:#fff;}
 /* v8z4b32E — botões de ação por linha no painel Layers */
@@ -1710,7 +1710,10 @@ body.editor-assets.recording .frame{display:none !important;}
 body.editor-assets #layersStageControl{display:flex;}
 #layersPanel .layers-count{font-size:12px;color:var(--text3);}
 #layersPanel .layers-order{font-size:17px;font-weight:800;color:var(--accent);min-width:22px;text-align:center;}
-#layersPanel .layers-options{flex:0 0 auto;display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px;padding:7px;background:rgba(22,22,26,.96);border:1px solid rgba(178,178,178,.28);border-radius:10px;box-shadow:0 5px 16px rgba(0,0,0,.28);}
+#layersPanel .layers-detail{position:absolute;right:72px;bottom:0;display:none;width:188px;padding:9px;background:rgba(22,22,26,.97);border:1px solid rgba(178,178,178,.28);border-radius:10px;box-shadow:0 5px 16px rgba(0,0,0,.28);box-sizing:border-box;}
+#layersPanel .layers-detail.show{display:flex;align-items:flex-start;gap:8px;}
+#layersPanel .layers-detail-info{flex:1 1 auto;min-width:0;font-size:13px;font-weight:700;color:#fff;line-height:1.25;overflow-wrap:anywhere;}
+#layersPanel .layers-options{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;}
 #stageContextOverlay{position:absolute;inset:0;pointer-events:none;z-index:130;}
 #pointModeMenu{position:absolute;left:50%;bottom:calc(10px + var(--safe-bottom));transform:translateX(-50%);z-index:130;display:none;gap:5px;padding:8px 10px;border-radius:999px;background:var(--menu-bg);border:1px solid rgba(178,178,178,.32);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:calc(100% - 20px);align-items:center;pointer-events:auto;}
 .point-mode-btn{width:40px;height:40px;border:0;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:0;}
@@ -4220,7 +4223,10 @@ body.asset-context-panel-open #toolbar{display:none !important;}
       <div><div class="layers-title">Camadas</div><div class="layers-count" id="layersCount"></div></div>
       <button type="button" class="layers-close" onclick="closeLayersPanel()" title="Fechar" aria-label="Fechar">✕</button>
     </div>
-    <div id="layersOptions" class="layers-options" aria-live="polite"></div>
+    <div id="layersDetail" class="layers-detail" aria-live="polite">
+      <div id="layersDetailInfo" class="layers-detail-info"></div>
+      <div id="layersOptions" class="layers-options"></div>
+    </div>
     <div id="layersList" class="layers-list"></div>
   </div>
   <!-- Status toast fora do stage — não afetado pelo zoom de edição (v8z4b17y) -->
@@ -7594,8 +7600,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9J';
-const APP_VERSION_NAME = 'v8z4b32E9J';
+const APP_VERSION = 'v8z4b32E9K';
+const APP_VERSION_NAME = 'v8z4b32E9K';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -23043,6 +23049,7 @@ function cancelStageEditingForNavigation() {
 function isStageViewportNavigationTarget(target) {
   if (!target) return true;
   if (target.closest('#editorZoomCtrl,#stageEyeShortcut')) return false;
+  if (target.closest('#layersPanel')) return false;
   if (target.closest('#insertionActionBar')) return false;
   if (target.closest('.float-panel')) return false;
   if (target.closest('.settings-sheet')) return false;
@@ -36145,6 +36152,7 @@ function scrollSelectedLayerIntoView() {
 function openLayersPanel() {
   const panel = document.getElementById('layersPanel');
   if (!panel) return;
+  layersDetailAssetId = null;
   renderLayersPanelList();
   panel.classList.add('show');
   panel.setAttribute('aria-hidden', 'false');
@@ -36156,6 +36164,7 @@ function closeLayersPanel() {
   if (!panel) return;
   panel.classList.remove('show');
   panel.setAttribute('aria-hidden', 'true');
+  layersDetailAssetId = null;
 }
 function toggleLayersPanel() {
   const panel = document.getElementById('layersPanel');
@@ -36167,10 +36176,13 @@ function toggleLayersPanel() {
 function getAssetDisplayName(asset) {
   return asset && isValidLayerName(asset.layerName) ? asset.layerName : '';
 }
+let layersDetailAssetId = null;
 function renderLayersPanelList() {
   const list = document.getElementById('layersList');
   const count = document.getElementById('layersCount');
   const options = document.getElementById('layersOptions');
+  const detail = document.getElementById('layersDetail');
+  const detailInfo = document.getElementById('layersDetailInfo');
   if (!list) return;
   const imgs = getSelectableImageAssets();
   // v8z4b30ZU — ordenar por zIndex decrescente para refletir a ordem visual real (topo→fundo)
@@ -36178,6 +36190,8 @@ function renderLayersPanelList() {
   list.innerHTML = '';
   if (count) count.textContent = `${sorted.length} camada${sorted.length === 1 ? '' : 's'}`;
   if (options) options.innerHTML = '';
+  if (detail) { detail.classList.remove('show'); delete detail.dataset.assetId; }
+  if (detailInfo) detailInfo.textContent = '';
   if (!sorted.length) {
     const empty = document.createElement('div');
     empty.className = 'layers-empty';
@@ -36185,12 +36199,13 @@ function renderLayersPanelList() {
     list.appendChild(empty);
     return;
   }
-  // v8z4b32E — per-row buttons: Subir / Descer / Trocar
+  // E9K — a pilha mostra somente miniaturas; informações ficam no detalhe tocado.
   sorted.forEach((a, i) => {
-    const item = document.createElement('div');
+    const item = document.createElement('button');
+    item.type = 'button';
     item.className = 'layers-item' + (String(a.id) === String(selectedAssetId) ? ' selected' : '');
     item.dataset.assetId = String(a.id);
-    const order = document.createElement('div'); order.className = 'layers-order'; order.textContent = String(sorted.length - i);
+    item.setAttribute('aria-label', getAssetDisplayName(a) || `Camada ${sorted.length - i}`);
     const thumbWrap = document.createElement('div');
     thumbWrap.className = 'layers-thumb';
     const src = getAssetThumbSrc(a);
@@ -36199,32 +36214,28 @@ function renderLayersPanelList() {
       im.src = src; im.alt = ''; im.draggable = false;
       thumbWrap.appendChild(im);
     } else if (a.type === 'text') { thumbWrap.textContent = 'T'; thumbWrap.style.display='grid'; thumbWrap.style.placeItems='center'; thumbWrap.style.color=a.color; thumbWrap.style.fontWeight='700'; }
-    const label = document.createElement('div');
-    label.className = 'layers-name';
-    label.textContent = getAssetDisplayName(a);
-    // Toque na thumb/nome seleciona o asset
-    const _selAsset = function() {
-      if (!isAssetsMode()) setEditorMode('assets', 'layersPanelSelect');
+    item.addEventListener('click', function(){
+      if (!isAssetsMode()) setEditorMode('assets', 'layersDetail');
+      layersDetailAssetId = String(a.id);
       selectAssetById(a.id, 'layers');
-    };
-    item.addEventListener('click', _selAsset);
-    item.addEventListener('click', function(){ renderLayersPanelList(); });
-    item.appendChild(order);
+    });
     item.appendChild(thumbWrap);
-    item.appendChild(label);
     list.appendChild(item);
   });
-  const selected = getSelectedAsset();
-  if (options && selected) {
-    const action = (label, fn, disabled=false) => { const b=document.createElement('button'); b.type='button'; b.className='layers-action-btn'; b.textContent=label; b.disabled=disabled; b.onclick=fn; options.appendChild(b); };
+  const selected = sorted.find(a => String(a.id) === String(layersDetailAssetId)) || null;
+  if (options && detail && selected) {
+    detail.classList.add('show');
+    detail.dataset.assetId = String(selected.id);
+    if (detailInfo) detailInfo.textContent = getAssetDisplayName(selected) || 'Camada';
+    const action = (label, title, fn, disabled=false) => { const b=document.createElement('button'); b.type='button'; b.className='layers-action-btn'; b.textContent=label; b.title=title; b.setAttribute('aria-label',title); b.disabled=disabled; b.onclick=fn; options.appendChild(b); };
     const zi = sorted.findIndex(a => String(a.id) === String(selected.id));
-    action(selected.visible === false ? '◉' : '◌', () => { selected.visible = selected.visible === false; markProjectDirty('layer-visibility'); renderProjectWorldExtraImages(); renderLayersPanelList(); }, selected.locked);
-    action('↑', () => layerMoveAssetUp(selected.id), selected.locked || zi === 0);
-    action('↓', () => layerMoveAssetDown(selected.id), selected.locked || zi === sorted.length - 1);
-    action('≋', () => openAssetDepthPanel(), selected.locked);
-    if (selected.type === 'image') action('▧', () => layerReplaceImageForAsset(selected.id), selected.locked);
-    action(selected.locked ? '🔓' : '🔒', () => toggleAssetLock(selected.id));
-    action('×', () => deleteSelectedAsset(), selected.locked);
+    action(selected.visible === false ? '◉' : '◌', 'Visibilidade', () => { selected.visible = selected.visible === false; markProjectDirty('layer-visibility'); renderProjectWorldExtraImages(); renderLayersPanelList(); }, selected.locked);
+    action('↑', 'Subir camada', () => layerMoveAssetUp(selected.id), selected.locked || zi === 0);
+    action('↓', 'Descer camada', () => layerMoveAssetDown(selected.id), selected.locked || zi === sorted.length - 1);
+    action('≋', 'Profundidade', () => openAssetDepthPanel(), selected.locked);
+    if (selected.type === 'image') action('▧', 'Trocar imagem', () => layerReplaceImageForAsset(selected.id), selected.locked);
+    action(selected.locked ? '🔓' : '🔒', selected.locked ? 'Destravar camada' : 'Travar camada', () => toggleAssetLock(selected.id));
+    action('×', 'Excluir camada', () => deleteSelectedAsset(), selected.locked);
   }
   updateCanonicalAssetSelectionDiagnostics();
 }
