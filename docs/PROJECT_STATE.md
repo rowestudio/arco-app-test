@@ -1,5 +1,10 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-28 — E9U em preparação de PR
+
+- Retorno físico da E9T: as marcas lineares da régua de Profundidade ficaram visualmente excessivas. E9U remove todas as marcas e preserva somente os labels `−100`, `0` e `+100`, thumb, fill, `−5/+5` e Reset.
+- Seleção múltipla futura de Camadas para posição, escala e profundidade em grupo foi registrada no roadmap, sem implementação nesta PR. Nova validação física em iPhone/Safari continua obrigatória; produção intocada.
+
 ## Atualização 2026-08-28 — E9T em preparação de PR
 
 - A E9S foi mergeada na `main` de teste pela PR #529. O retorno físico posterior apontou ícone redundante no painel de Profundidade e marcas/rótulos pouco legíveis.

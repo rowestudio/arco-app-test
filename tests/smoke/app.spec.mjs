@@ -4481,7 +4481,7 @@ test('E9N — faixa canônica ampla e reordenação de Camada', async ({ page })
   expect(reordered.redone).toEqual(reordered.after);
 });
 
-test('E9S — profundidade tem régua canônica e passos de cinco', async ({ page }) => {
+test('E9U — profundidade mostra somente labels e passos de cinco', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
@@ -4501,32 +4501,20 @@ test('E9S — profundidade tem régua canônica e passos de cinco', async ({ pag
     const ticks = [...ruler.querySelectorAll('.depth-tick')];
     const labels = [...ruler.querySelectorAll('.depth-label')];
     const depthIcon = document.getElementById('assetContextDepthIcon');
-    const sliderRect = slider.getBoundingClientRect();
-    const tickCenters = [-100, 0, 100].map(value => {
-      const tick = ticks.find(item => item.classList.contains('major') && item.style.left === ({ '-100': '0%', '0': '50%', '100': '100%' })[value]);
-      const rect = tick.getBoundingClientRect();
-      return Math.abs((rect.left + rect.width / 2) - (sliderRect.left + sliderRect.width * ((value + 100) / 200))) < 1;
-    });
     return {
       slider: { min: slider.min, max: slider.max, value: slider.value },
       tickCount: ticks.length,
-      majorCount: ticks.filter(tick => tick.classList.contains('major')).length,
       labels: labels.map(label => label.textContent),
-      tickCentersAligned: tickCenters.every(Boolean),
       stepLabels: [...document.querySelectorAll('.asset-context-depth-step')].map(button => button.textContent.trim()),
       depthIconPresent: Boolean(depthIcon),
-      tickColor: getComputedStyle(ticks[1]).backgroundColor,
       labelColor: getComputedStyle(labels[1]).color,
     };
   })).toEqual({
     slider: { min: '-100', max: '100', value: '0' },
-    tickCount: 11,
-    majorCount: 3,
+    tickCount: 0,
     labels: ['-100', '0', '+100'],
-    tickCentersAligned: true,
     stepLabels: ['−5', '+5'],
     depthIconPresent: false,
-    tickColor: 'rgba(255, 255, 255, 0.72)',
     labelColor: 'rgba(255, 255, 255, 0.82)',
   });
 
@@ -4541,9 +4529,9 @@ test('E9S — profundidade tem régua canônica e passos de cinco', async ({ pag
     const wrap = document.querySelector('.asset-depth-slider-wrap');
     wrap.style.flex = '0 0 180px';
     const slider = document.getElementById('assetContextSlider');
-    const centerTick = [...document.querySelectorAll('#assetDepthRuler .depth-tick')].find(tick => tick.style.left === '50%');
+    const centerLabel = [...document.querySelectorAll('#assetDepthRuler .depth-label')].find(label => label.style.left === '50%');
     const sliderRect = slider.getBoundingClientRect();
-    const tickRect = centerTick.getBoundingClientRect();
-    return Math.abs((tickRect.left + tickRect.width / 2) - (sliderRect.left + sliderRect.width / 2)) < 1;
+    const labelRect = centerLabel.getBoundingClientRect();
+    return Math.abs((labelRect.left + labelRect.width / 2) - (sliderRect.left + sliderRect.width / 2)) < 1;
   })).toBe(true);
 });
