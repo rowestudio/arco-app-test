@@ -1,5 +1,16 @@
 # DECISIONS
 
+## DEC-2026-08-28-06 — Evidência mínima determinística do Export WebKit macOS
+
+- O job `Real Export Smoke (WebKit macOS)` mantém falha real do teste como falha do job, mas sempre gera um manifesto de evidência com SHA, ref, runner e tentativa antes do upload.
+- A correção trata exclusivamente o upload sem arquivos ocorrido após teste H.264 bem-sucedido; não altera Preview, Export, WebCodecs, UI ou versão do aplicativo.
+
+## DEC-2026-08-28-05 — E9S: régua e passos de Profundidade
+
+- Profundidade mantém intervalo canônico `−100..+100`; a régua e o fill derivam do mesmo cálculo normalizado do slider para marcas a cada 20 e labels `−100`, `0`, `+100`.
+- Botões `−5/+5` usam o mesmo caminho do slider, com Undo/autosave único. Setas de Camadas são removidas após aprovação física da E9R.
+- REG-059 não recebe causa atribuída; a validação física desta nova apresentação continua obrigatória.
+
 ## DEC-2026-08-28-04 — E9R: estabilidade de destino no reorder
 
 - Os centros da pilha são capturados no início do gesto; mudanças de destino exigem cruzar o ponto médio com margem de histerese. A prévia não muta o modelo e só o `pointerup` confirma ordem.

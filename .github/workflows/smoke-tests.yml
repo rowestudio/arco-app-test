@@ -82,6 +82,11 @@ jobs:
           echo "PR_HEAD_SHA=${{ github.event.pull_request.head.sha }}"
       - name: Run real H.264 Export smoke
         run: npx playwright test tests/smoke/export.spec.mjs --project=webkit-macos-export --workers=1 --retries=0
+      - name: Write WebKit macOS Export evidence manifest
+        if: always()
+        run: |
+          mkdir -p test-results/export-evidence
+          printf '{"workflow":"Real Export Smoke (WebKit macOS)","sha":"%s","ref":"%s","runner":"%s","attempt":"%s"}\n' "$GITHUB_SHA" "$GITHUB_REF" "$RUNNER_OS" "$GITHUB_RUN_ATTEMPT" > test-results/export-evidence/manifest.json
       - name: Upload WebKit macOS Export evidence
         if: always()
         uses: actions/upload-artifact@v4

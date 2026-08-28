@@ -2873,9 +2873,18 @@ body.asset-context-panel-open #toolbar{display:none !important;}
 #assetContextPanel .asset-context-back svg{width:26px;height:26px;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;display:block;}
 #assetContextPanel .asset-context-main{display:flex;flex:1;min-width:0;flex-direction:column;}
 #assetContextPanel .asset-context-scale-step,
-#assetContextPanel .asset-context-rotation-step{display:none;}
+#assetContextPanel .asset-context-rotation-step,
+#assetContextPanel .asset-context-depth-step{display:none;}
 #assetContextPanel[data-kind="scale"] .asset-context-scale-step,
 #assetContextPanel[data-kind="rotation"] .asset-context-rotation-step{display:flex;}
+#assetContextPanel[data-kind="depth"] .asset-context-depth-step{display:flex;}
+#assetContextPanel .asset-depth-slider-wrap{position:relative;flex:1;min-width:0;font-size:0;line-height:0;}
+#assetContextPanel .asset-depth-slider-wrap .dur-slider{display:block;width:100%;}
+#assetDepthRuler{display:none;position:relative;height:18px;}
+#assetContextPanel[data-kind="depth"] #assetDepthRuler{display:block;}
+#assetDepthRuler .depth-tick{position:absolute;top:1px;width:1px;height:6px;background:rgba(255,255,255,.45);transform:translateX(-50%);}
+#assetDepthRuler .depth-tick.major{height:9px;background:var(--accent);}
+#assetDepthRuler .depth-label{position:absolute;top:9px;transform:translateX(-50%);font-size:9px;color:var(--text3);white-space:nowrap;}
 #custBarTabs{
   background:var(--menu-bg) !important;
   background-image:none !important;
@@ -4394,7 +4403,10 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   </button>
   <div class="asset-context-main context-control-stack">
     <div class="asset-context-row context-control-value-row">
-      <input class="dur-slider" id="assetContextSlider" type="range" min="-100" max="100" step="1" value="0">
+      <div class="asset-depth-slider-wrap">
+        <input class="dur-slider" id="assetContextSlider" type="range" min="-100" max="100" step="1" value="0">
+        <div id="assetDepthRuler" aria-hidden="true"></div>
+      </div>
       <span id="assetContextDepthIcon" aria-hidden="true" style="display:none"><svg viewBox="0 0 24 24" width="18" height="18"><use href="#i-layers"></use></svg></span>
       <span class="asset-context-value context-control-value" id="assetContextValue">0</span>
     </div>
@@ -4403,6 +4415,8 @@ body.asset-context-panel-open #toolbar{display:none !important;}
       <button type="button" class="chip context-small-control asset-context-scale-step" id="assetContextScalePlus" onclick="stepAssetContextScale(5)">+5%</button>
       <button type="button" class="chip context-small-control asset-context-rotation-step" id="assetContextRotationMinus" onclick="stepAssetContextRotation(-5)">-5°</button>
       <button type="button" class="chip context-small-control asset-context-rotation-step" id="assetContextRotationPlus" onclick="stepAssetContextRotation(5)">+5°</button>
+      <button type="button" class="chip context-small-control asset-context-depth-step" onclick="stepAssetContextDepth(-5)">−5</button>
+      <button type="button" class="chip context-small-control asset-context-depth-step" onclick="stepAssetContextDepth(5)">+5</button>
       <button type="button" class="chip context-small-control" id="assetContextReset" onclick="resetAssetContextValue()" style="margin-left:auto;">Reset</button>
     </div>
   </div>
@@ -7609,8 +7623,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9R';
-const APP_VERSION_NAME = 'v8z4b32E9R';
+const APP_VERSION = 'v8z4b32E9S';
+const APP_VERSION_NAME = 'v8z4b32E9S';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -16190,6 +16204,7 @@ function syncAssetContextPanel() {
   value.textContent = String(Math.round(current)) + suffix;
   const depthIcon = document.getElementById('assetContextDepthIcon');
   if (depthIcon) depthIcon.style.display = assetContextPanelKind === 'depth' ? 'inline-flex' : 'none';
+  if (assetContextPanelKind === 'depth') renderAssetDepthRuler();
   const neutral = assetContextPanelKind === 'scale' ? 100 : 0;
   reset.disabled = Math.abs(current - neutral) < 0.001;
   reset.style.opacity = reset.disabled ? '0.45' : '1';
@@ -16217,6 +16232,22 @@ function openAssetContextPanel(kind) {
   syncAssetContextPanel();
 }
 function openAssetDepthPanel() { openAssetContextPanel('depth'); }
+function renderAssetDepthRuler() {
+  const ruler = document.getElementById('assetDepthRuler');
+  if (!ruler) return;
+  ruler.innerHTML = '';
+  for (let value = -100; value <= 100; value += 20) {
+    const position = getSliderFillPercent(value, -100, 100);
+    const tick = document.createElement('span'); tick.className = 'depth-tick' + (value === -100 || value === 0 || value === 100 ? ' major' : ''); tick.style.left = position + '%'; ruler.appendChild(tick);
+    if (value === -100 || value === 0 || value === 100) { const label = document.createElement('span'); label.className = 'depth-label'; label.style.left = position + '%'; label.textContent = value > 0 ? '+' + value : String(value); ruler.appendChild(label); }
+  }
+}
+function stepAssetContextDepth(delta) {
+  const asset = getSelectedAsset();
+  if (assetContextPanelKind !== 'depth' || !asset) return;
+  setAssetContextValue((Number(asset.depth) || 0) + Number(delta || 0));
+  commitAssetContextGesture();
+}
 function stepAssetContextScale(deltaPercent) {
   const asset = getSelectedAsset();
   if (assetContextPanelKind !== 'scale' || !asset) return;
@@ -27813,12 +27844,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // v8z4b16a — helpers de fill cyan/cinza.
+function getSliderFillPercent(value, min, max) {
+  const numericValue = parseFloat(value);
+  const numericMin = parseFloat(min) || 0;
+  const numericMax = parseFloat(max) || 100;
+  return (!isFinite(numericValue) || numericMax <= numericMin) ? 0 : Math.max(0, Math.min(100, ((numericValue - numericMin) / (numericMax - numericMin)) * 100));
+}
 function updateSliderFill(slider) {
   if (!slider) return;
-  const min = parseFloat(slider.min) || 0;
-  const max = parseFloat(slider.max) || 100;
-  const val = parseFloat(slider.value);
-  const pct = (!isFinite(val) || max <= min) ? 0 : Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+  const pct = getSliderFillPercent(slider.value, slider.min, slider.max);
   slider.style.setProperty('--fill', pct + '%');
 }
 function refreshSliderFills() {
@@ -36385,9 +36419,6 @@ function renderLayersPanelList() {
     };
     const eyeIcon = '<svg class="layers-action-icon layers-visibility-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"></use></svg>';
     action(eyeIcon, 'Visibilidade', () => { selected.visible = selected.visible === false; markProjectDirty('layer-visibility'); renderProjectWorldExtraImages(); renderLayersPanelList(); }, selected.locked, 'layers-visibility-action');
-    const zi = sorted.findIndex(function(asset) { return String(asset.id) === String(selected.id); });
-    action('↑', 'Subir camada', () => layerMoveAssetUp(selected.id), selected.locked || zi === 0);
-    action('↓', 'Descer camada', () => layerMoveAssetDown(selected.id), selected.locked || zi === sorted.length - 1);
     const depth = Number.isFinite(Number(selected.depth)) ? Number(selected.depth) : 0;
     const depthLabel = depth > 0 ? `+${depth}` : String(depth);
     action(`<svg class="layers-action-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layers"></use></svg><span class="layers-depth-value">${depthLabel}</span>`, 'Profundidade', () => openAssetDepthPanel(), selected.locked, 'layers-depth-action');

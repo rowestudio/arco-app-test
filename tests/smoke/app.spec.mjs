@@ -4348,7 +4348,7 @@ test('E9L — miniatura abre faixa horizontal e ações não vazam para o Stage'
     infoBackground: 'rgba(0, 0, 0, 0)',
     closeControlPresent: false,
     actionRailIsAnchoredToThumb: true,
-    actionCount: 6,
+    actionCount: 4,
   });
 
   expect(await page.evaluate((id) => {
@@ -4462,8 +4462,8 @@ test('E9N — faixa canônica ampla e reordenação de Camada', async ({ page })
       },
     };
   })).toEqual({
-    labels: ['Visibilidade', 'Subir camada', 'Descer camada', 'Profundidade', 'Travar camada', 'Excluir camada'],
-    targets: [{ width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }],
+    labels: ['Visibilidade', 'Profundidade', 'Travar camada', 'Excluir camada'],
+    targets: [{ width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }],
     canonicalSymbols: { visibility: '#i-eye', depth: '#i-layers', lock: '#i-lock', remove: '#i-trash' },
   });
   const reordered = await page.evaluate(({ dragged, target }) => {
@@ -4479,4 +4479,64 @@ test('E9N — faixa canônica ampla e reordenação de Camada', async ({ page })
   expect(reordered).toEqual(expect.objectContaining({ changed: true, selected: ids.dragged }));
   expect(reordered.undone).toEqual(reordered.before);
   expect(reordered.redone).toEqual(reordered.after);
+});
+
+test('E9S — profundidade tem régua canônica e passos de cinco', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const targetId = await page.evaluate(() => {
+    setEditorMode('assets', 'e9s-depth-ruler');
+    const asset = assets.find(item => item && (item.type === 'image' || item.type === 'text'));
+    asset.depth = 0;
+    selectAssetById(asset.id, 'e9s-depth-ruler');
+    return String(asset.id);
+  });
+
+  await page.evaluate(() => openAssetDepthPanel());
+  expect(await page.evaluate(() => {
+    const slider = document.getElementById('assetContextSlider');
+    const ruler = document.getElementById('assetDepthRuler');
+    const ticks = [...ruler.querySelectorAll('.depth-tick')];
+    const labels = [...ruler.querySelectorAll('.depth-label')];
+    const sliderRect = slider.getBoundingClientRect();
+    const tickCenters = [-100, 0, 100].map(value => {
+      const tick = ticks.find(item => item.classList.contains('major') && item.style.left === ({ '-100': '0%', '0': '50%', '100': '100%' })[value]);
+      const rect = tick.getBoundingClientRect();
+      return Math.abs((rect.left + rect.width / 2) - (sliderRect.left + sliderRect.width * ((value + 100) / 200))) < 1;
+    });
+    return {
+      slider: { min: slider.min, max: slider.max, value: slider.value },
+      tickCount: ticks.length,
+      majorCount: ticks.filter(tick => tick.classList.contains('major')).length,
+      labels: labels.map(label => label.textContent),
+      tickCentersAligned: tickCenters.every(Boolean),
+      stepLabels: [...document.querySelectorAll('.asset-context-depth-step')].map(button => button.textContent.trim()),
+    };
+  })).toEqual({
+    slider: { min: '-100', max: '100', value: '0' },
+    tickCount: 11,
+    majorCount: 3,
+    labels: ['-100', '0', '+100'],
+    tickCentersAligned: true,
+    stepLabels: ['−5', '+5'],
+  });
+
+  await page.locator('.asset-context-depth-step').filter({ hasText: '+5' }).tap();
+  expect(await page.evaluate((id) => assets.find(asset => String(asset.id) === id).depth, targetId)).toBe(5);
+  expect(await page.evaluate(() => { undo(); return assets.find(asset => String(asset.id) === String(selectedAssetId)).depth; })).toBe(0);
+  expect(await page.evaluate(() => { redo(); return assets.find(asset => String(asset.id) === String(selectedAssetId)).depth; })).toBe(5);
+  await page.locator('.asset-context-depth-step').filter({ hasText: '−5' }).tap();
+  expect(await page.evaluate((id) => assets.find(asset => String(asset.id) === id).depth, targetId)).toBe(0);
+
+  expect(await page.evaluate(() => {
+    const wrap = document.querySelector('.asset-depth-slider-wrap');
+    wrap.style.flex = '0 0 180px';
+    const slider = document.getElementById('assetContextSlider');
+    const centerTick = [...document.querySelectorAll('#assetDepthRuler .depth-tick')].find(tick => tick.style.left === '50%');
+    const sliderRect = slider.getBoundingClientRect();
+    const tickRect = centerTick.getBoundingClientRect();
+    return Math.abs((tickRect.left + tickRect.width / 2) - (sliderRect.left + sliderRect.width / 2)) < 1;
+  })).toBe(true);
 });
