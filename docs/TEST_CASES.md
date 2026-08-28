@@ -1,8 +1,8 @@
 # TEST_CASES
 
-## TC-065 — Régua e passos de Profundidade (E9U)
+## TC-065 — Régua e passos de Profundidade (E9V)
 
-- Em iPhone/Safari, Profundidade mostra somente os labels `−100`, `0` e `+100`, sem risquinhos lineares ou ícone redundante ao lado do valor. Thumb, fill, passos `−5/+5` e Reset permanecem coerentes após arraste.
+- Em iPhone/Safari, Profundidade mostra marcas cinza compactas a cada 20 pontos, acima dos labels `−100`, `0` e `+100`. Não há marca coral grande nem traço atrás dos números; thumb, fill, passos `−5/+5` e Reset permanecem coerentes após arraste.
 - O menu de Camadas não mostra Subir/Descer; reordenação direta E9R permanece disponível.
 
 ## TC-064 — Reordenação viva de Camadas (E9Q)

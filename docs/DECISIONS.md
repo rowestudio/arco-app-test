@@ -1,5 +1,10 @@
 # DECISIONS
 
+## DEC-2026-08-28-09 — E9V: marcas neutras acima dos labels de Profundidade
+
+- O esclarecimento físico da E9U preserva as 11 marcas da escala de `−100..+100` a cada 20 pontos, inclusive em `−100`, `0` e `+100`. Todas usam o mesmo cinza neutro e altura compacta, acima dos labels.
+- Somente as marcas coral grandes são removidas. Os labels `−100`, `0` e `+100` permanecem abaixo das marcas, sem sobreposição; thumb, fill, `−5/+5` e Reset não mudam.
+
 ## DEC-2026-08-28-08 — E9U: régua de Profundidade apenas com labels
 
 - Pelo retorno físico da E9T, a régua de Profundidade remove todas as marcas lineares, inclusive a marca coral central. Permanecem somente os labels `−100`, `0` e `+100`, o thumb, o fill, os passos `−5/+5` e Reset.

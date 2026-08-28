@@ -1,9 +1,9 @@
 # ROADMAP
 
-## Próxima PR de Profundidade — planejada, não implementada na E9N
+## Profundidade — implementada após E9N, com ajustes físicos E9V
 
 - Escala contínua `−100..+100`, marcas visuais a cada 20 pontos, labels `−100`, `0` e `+100`, e botões `−5/+5`.
-- Antes de implementar, a geometria de thumb, fill e marcas deve ter uma fonte única; REG-059 permanece aberta sem hipótese de causa. Esta etapa não integra a E9N.
+- Thumb, fill e marcas usam a mesma normalização do slider. O ajuste E9V preserva as marcas neutras a cada 20 pontos acima dos labels e remove somente as marcas coral grandes; REG-059 permanece sem hipótese de causa atribuída.
 
 ## Atualização 2026-08-26 — Camadas/Profundidade pendentes de nova tentativa após rollback E9H
 
