@@ -1,5 +1,10 @@
 # DECISIONS
 
+## DEC-2026-08-28-10 — E9W: trilhas verticais separadas na régua de Profundidade
+
+- As marcas neutras ficam numa trilha acima do slider; o slider ocupa a trilha central; os labels `−100`, `0` e `+100` ficam abaixo, com espaço físico entre eles. A marca coral não retorna.
+- O indicador central da timeline de Frames foi medido contra o eixo canônico e o chip ativo; esta PR não altera sua geometria sem evidência de desalinhamento reproduzível.
+
 ## DEC-2026-08-28-09 — E9V: marcas neutras acima dos labels de Profundidade
 
 - O esclarecimento físico da E9U preserva as 11 marcas da escala de `−100..+100` a cada 20 pontos, inclusive em `−100`, `0` e `+100`. Todas usam o mesmo cinza neutro e altura compacta, acima dos labels.

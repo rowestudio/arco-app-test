@@ -1,9 +1,9 @@
 # ROADMAP
 
-## Profundidade — implementada após E9N, com ajustes físicos E9V
+## Profundidade — implementada após E9N, com ajustes físicos E9W
 
 - Escala contínua `−100..+100`, marcas visuais a cada 20 pontos, labels `−100`, `0` e `+100`, e botões `−5/+5`.
-- Thumb, fill e marcas usam a mesma normalização do slider. O ajuste E9V preserva as marcas neutras a cada 20 pontos acima dos labels e remove somente as marcas coral grandes; REG-059 permanece sem hipótese de causa atribuída.
+- Thumb, fill e marcas usam a mesma normalização do slider. O ajuste E9W organiza as marcas neutras a cada 20 pontos acima do slider e os labels abaixo, removendo somente as marcas coral grandes; REG-059 permanece sem hipótese de causa atribuída.
 
 ## Atualização 2026-08-26 — Camadas/Profundidade pendentes de nova tentativa após rollback E9H
 

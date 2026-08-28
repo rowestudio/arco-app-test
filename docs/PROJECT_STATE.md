@@ -1,5 +1,10 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-28 — E9W em preparação de PR
+
+- Retorno físico da E9V: as marcas e os labels foram separados entre si, mas ainda ficavam no mesmo lado visual do slider. E9W estabelece três trilhas verticais: marcas neutras acima, slider no meio e labels abaixo.
+- A investigação do indicador central da timeline de Frames não alterou código: a medição automatizada atual o mantém no mesmo eixo do chip ativo. Qualquer correção futura exige caso reproduzível que mostre divergência dessa geometria. Produção intocada.
+
 ## Atualização 2026-08-28 — E9V em preparação de PR
 
 - Esclarecimento físico da E9U: a remoção solicitada era somente das marcas coral grandes. E9V restaura as marcas neutras a cada 20 pontos, inclusive nas três posições numeradas, mantendo-as acima dos labels `−100`, `0` e `+100`.
