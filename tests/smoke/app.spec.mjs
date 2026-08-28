@@ -4500,6 +4500,7 @@ test('E9S — profundidade tem régua canônica e passos de cinco', async ({ pag
     const ruler = document.getElementById('assetDepthRuler');
     const ticks = [...ruler.querySelectorAll('.depth-tick')];
     const labels = [...ruler.querySelectorAll('.depth-label')];
+    const depthIcon = document.getElementById('assetContextDepthIcon');
     const sliderRect = slider.getBoundingClientRect();
     const tickCenters = [-100, 0, 100].map(value => {
       const tick = ticks.find(item => item.classList.contains('major') && item.style.left === ({ '-100': '0%', '0': '50%', '100': '100%' })[value]);
@@ -4513,6 +4514,9 @@ test('E9S — profundidade tem régua canônica e passos de cinco', async ({ pag
       labels: labels.map(label => label.textContent),
       tickCentersAligned: tickCenters.every(Boolean),
       stepLabels: [...document.querySelectorAll('.asset-context-depth-step')].map(button => button.textContent.trim()),
+      depthIconPresent: Boolean(depthIcon),
+      tickColor: getComputedStyle(ticks[1]).backgroundColor,
+      labelColor: getComputedStyle(labels[1]).color,
     };
   })).toEqual({
     slider: { min: '-100', max: '100', value: '0' },
@@ -4521,6 +4525,9 @@ test('E9S — profundidade tem régua canônica e passos de cinco', async ({ pag
     labels: ['-100', '0', '+100'],
     tickCentersAligned: true,
     stepLabels: ['−5', '+5'],
+    depthIconPresent: false,
+    tickColor: 'rgba(255, 255, 255, 0.72)',
+    labelColor: 'rgba(255, 255, 255, 0.82)',
   });
 
   await page.locator('.asset-context-depth-step').filter({ hasText: '+5' }).tap();

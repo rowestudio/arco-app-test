@@ -1,5 +1,10 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-28 — E9T em preparação de PR
+
+- A E9S foi mergeada na `main` de teste pela PR #529. O retorno físico posterior apontou ícone redundante no painel de Profundidade e marcas/rótulos pouco legíveis.
+- E9T remove apenas o ícone redundante e reforça o contraste da régua; requer nova validação física em iPhone/Safari. Produção intocada.
+
 ## Atualização 2026-08-28 — E9S em preparação de PR
 
 - Após aprovação física E9R da reordenação direta, E9S remove Subir/Descer e evolui Profundidade com régua `−100..+100`, marcas de 20 e passos `−5/+5` no controle canônico.
