@@ -1,5 +1,10 @@
 # DECISIONS
 
+## DEC-2026-08-28-07 — E9T: legibilidade da régua de Profundidade
+
+- Após validação física da E9S, o ícone redundante ao lado do valor de Profundidade é removido e as marcas/rótulos da régua ganham contraste tipográfico suficiente sobre a superfície escura.
+- A alteração preserva o intervalo, as gradações, o cálculo de alinhamento, os passos `−5/+5`, Undo/Redo e os demais controles de Camadas.
+
 ## DEC-2026-08-28-06 — Evidência mínima determinística do Export WebKit macOS
 
 - O job `Real Export Smoke (WebKit macOS)` mantém falha real do teste como falha do job, mas sempre gera um manifesto de evidência com SHA, ref, runner e tentativa antes do upload.
