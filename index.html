@@ -1269,6 +1269,7 @@ body.recording #editorZoomCtrl,
 body.no-image #stageEyeShortcut,
 body.previewing #stageEyeShortcut,
 body.recording #stageEyeShortcut{display:none;}
+body.previewing #layersPanel,body.previewing #layersStageControl,body.recording #layersPanel,body.recording #layersStageControl{display:none !important;}
 #editorZoomCtrl .ezc-row,#stageEyeShortcut .ezc-row{
   display:flex;align-items:center;pointer-events:auto;
   background:rgba(28,28,30,.85);border:1px solid rgba(255,255,255,.18);
@@ -1695,6 +1696,7 @@ body.editor-assets.recording .frame{display:none !important;}
 #layersPanel .layers-hint{font-size:11px;line-height:1.3;color:rgba(255,255,255,.6);margin-bottom:10px;}
 #layersPanel .layers-list{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:8px;padding:2px 0;align-items:flex-end;}
 #layersPanel .layers-empty{font-size:13px;color:rgba(255,255,255,.55);padding:12px 4px;}
+#layersPanel{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
 #layersPanel .layers-item{width:60px;height:60px;display:flex;align-items:center;justify-content:center;padding:3px;border:1px solid rgba(178,178,178,.28);border-radius:10px;background:rgba(29,29,34,.96);box-shadow:0 5px 16px rgba(0,0,0,.28);cursor:pointer;touch-action:none;box-sizing:border-box;}
 #layersPanel .layers-item:active{background:#26262c;}
 #layersPanel .layers-item.reorder-dragging{opacity:.45;}
@@ -1715,8 +1717,8 @@ body.editor-assets #layersStageControl{display:flex;}
 #layersPanel .layers-detail.show{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
 #layersPanel .layers-detail-info{min-width:0;max-width:100%;font-size:13px;font-weight:700;color:#fff;line-height:1.25;overflow-wrap:anywhere;text-shadow:0 1px 3px rgba(0,0,0,.85);background:transparent;}
 #layersPanel .layers-options{display:flex;flex-direction:row;gap:4px;max-width:100%;overflow-x:auto;overscroll-behavior:contain;pointer-events:auto;}
-#layersPanel .layers-options .layers-action-btn{width:44px;height:44px;min-width:44px;border-radius:10px;}
-#layersPanel .layers-options .layers-depth-action{width:44px;padding:0;font-size:12px;font-weight:700;gap:2px;}
+#layersPanel .layers-options .layers-action-btn{width:60px;height:60px;min-width:60px;border-radius:10px;}
+#layersPanel .layers-options .layers-depth-action{width:60px;padding:0;font-size:12px;font-weight:700;gap:2px;}
 #layersPanel .layers-options .layers-visibility-action{color:rgba(255,255,255,.94);}
 #layersPanel .layers-options .layers-visibility-icon{width:18px;height:18px;display:block;pointer-events:none;}
 #layersPanel .layers-options .layers-delete-icon{width:17px;height:17px;display:block;pointer-events:none;}
@@ -7607,8 +7609,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9N';
-const APP_VERSION_NAME = 'v8z4b32E9N';
+const APP_VERSION = 'v8z4b32E9O';
+const APP_VERSION_NAME = 'v8z4b32E9O';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -18480,7 +18482,9 @@ function getSingleContextInfoLabel() {
     if (!asset) return null;
     const rot = formatContextInfoRotation(asset.rotation || 0);
     const scale = formatContextInfoScalePercent(getAssetContextScalePercent(asset));
-    return '<span class="context-info-group context-info-value">' + escapeHtml(getAssetContextIdentifier(asset)) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(scale) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(rot) + '</span>';
+    const depth = Number.isFinite(Number(asset.depth)) ? Number(asset.depth) : 0;
+    const depthLabel = depth > 0 ? '+' + depth : String(depth);
+    return '<span class="context-info-group context-info-value">' + escapeHtml(getAssetContextIdentifier(asset)) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">Prof. ' + escapeHtml(depthLabel) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(scale) + '</span><span class="context-info-sep">|</span><span class="context-info-group context-info-value">' + escapeHtml(rot) + '</span>';
   }
   if (!isAssetsMode() && bottomContextMode === 'frame' && activeIdx >= 0 && activeIdx < frameCount) {
     const rot = formatContextInfoRotation(frameRotations[activeIdx] || 0);
@@ -36327,6 +36331,7 @@ function renderLayersPanelList() {
       clearReorderGesture();
     });
     item.addEventListener('pointercancel', clearReorderGesture);
+    item.addEventListener('contextmenu', function(event) { event.preventDefault(); });
     item.appendChild(thumbWrap);
     list.appendChild(item);
   });
@@ -36351,6 +36356,9 @@ function renderLayersPanelList() {
     };
     const eyeIcon = '<svg class="layers-action-icon layers-visibility-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"></use></svg>';
     action(eyeIcon, 'Visibilidade', () => { selected.visible = selected.visible === false; markProjectDirty('layer-visibility'); renderProjectWorldExtraImages(); renderLayersPanelList(); }, selected.locked, 'layers-visibility-action');
+    const zi = sorted.findIndex(function(asset) { return String(asset.id) === String(selected.id); });
+    action('↑', 'Subir camada', () => layerMoveAssetUp(selected.id), selected.locked || zi === 0);
+    action('↓', 'Descer camada', () => layerMoveAssetDown(selected.id), selected.locked || zi === sorted.length - 1);
     const depth = Number.isFinite(Number(selected.depth)) ? Number(selected.depth) : 0;
     const depthLabel = depth > 0 ? `+${depth}` : String(depth);
     action(`<svg class="layers-action-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layers"></use></svg><span class="layers-depth-value">${depthLabel}</span>`, 'Profundidade', () => openAssetDepthPanel(), selected.locked, 'layers-depth-action');

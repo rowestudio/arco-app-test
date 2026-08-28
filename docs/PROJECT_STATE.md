@@ -1,5 +1,11 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-28 — E9O em preparação de PR (correção física de Camadas)
+
+- Base: `origin/main` após merge da PR #524/E9N, SHA `0cb729d80526fb07d94fe8290bebe4b8315eea2b`.
+- Relato físico de Roberto: Camadas apareceu indevidamente no Preview; pressão longa numa miniatura abriu o preview/folha nativa de compartilhamento; o arrasto não reordenou e as setas removidas impediram alternativa. E9O oculta a UI em Preview/Export, suprime o menu nativo, restaura Subir/Descer temporariamente, amplia ações a 60 px e inclui Profundidade na faixa inferior.
+- O arrasto permanece pendente de validação física; não é declarado aprovado. Fora do escopo: conteúdo de Preview/Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine. Produção intocada.
+
 ## Atualização 2026-08-27 — E9N em preparação de PR (Camadas: ações canônicas e arrasto)
 
 - Base: `origin/main` no merge da PR #523/E9M, SHA `4b493424c3cbab57b5bec4105f0273e87661e0a6`.
