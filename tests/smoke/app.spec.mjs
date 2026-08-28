@@ -4348,7 +4348,7 @@ test('E9L — miniatura abre faixa horizontal e ações não vazam para o Stage'
     infoBackground: 'rgba(0, 0, 0, 0)',
     closeControlPresent: false,
     actionRailIsAnchoredToThumb: true,
-    actionCount: 7,
+    actionCount: 4,
   });
 
   expect(await page.evaluate((id) => {
@@ -4431,4 +4431,52 @@ test('E9M — detalhe de Camadas é opaco, exclui por lixeira e sincroniza Profu
       detailDepth: document.querySelector('#layersOptions .layers-depth-value')?.textContent || null,
     };
   }, targetId)).toEqual({ model: -24, value: '-24', fill: '38%', detailDepth: '-24' });
+});
+
+test('E9N — faixa canônica ampla e reordenação de Camada', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const ids = await page.evaluate(() => {
+    setEditorMode('assets', 'e9n-canonical-drag');
+    const source = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    const dragged = { ...source, id: 'e9n-dragged', layerName: 'Camada arrastada', zIndex: 900, locked: false };
+    const target = { ...source, id: 'e9n-target', layerName: 'Camada destino', zIndex: 899, locked: false };
+    assets.push(dragged, target);
+    selectAssetById(dragged.id, 'e9n-canonical-drag');
+    return { dragged: String(dragged.id), target: String(target.id) };
+  });
+  await page.locator('#layersStageControl').tap();
+  await page.locator(`#layersList .layers-item[data-asset-id="${ids.dragged}"]`).tap();
+  expect(await page.evaluate(() => {
+    const actions = [...document.querySelectorAll('#layersOptions .layers-action-btn')];
+    return {
+      labels: actions.map(button => button.getAttribute('aria-label')),
+      targets: actions.map(button => { const rect = button.getBoundingClientRect(); return { width: rect.width, height: rect.height }; }),
+      canonicalSymbols: {
+        visibility: document.querySelector('#layersOptions [aria-label="Visibilidade"] use')?.getAttribute('href') || null,
+        depth: document.querySelector('#layersOptions [aria-label="Profundidade"] use')?.getAttribute('href') || null,
+        lock: document.querySelector('#layersOptions [aria-label="Travar camada"] use')?.getAttribute('href') || null,
+        remove: document.querySelector('#layersOptions [aria-label="Excluir camada"] use')?.getAttribute('href') || null,
+      },
+    };
+  })).toEqual({
+    labels: ['Visibilidade', 'Profundidade', 'Travar camada', 'Excluir camada'],
+    targets: [{ width: 44, height: 44 }, { width: 44, height: 44 }, { width: 44, height: 44 }, { width: 44, height: 44 }],
+    canonicalSymbols: { visibility: '#i-eye', depth: '#i-layers', lock: '#i-lock', remove: '#i-trash' },
+  });
+  const reordered = await page.evaluate(({ dragged, target }) => {
+    const before = assets.slice().sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)).map(a => String(a.id));
+    const changed = layerMoveAssetToIndex(dragged, before.indexOf(target));
+    const after = assets.slice().sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)).map(a => String(a.id));
+    undo();
+    const undone = assets.slice().sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)).map(a => String(a.id));
+    redo();
+    const redone = assets.slice().sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)).map(a => String(a.id));
+    return { changed, selected: String(selectedAssetId), before, after, undone, redone };
+  }, ids);
+  expect(reordered).toEqual(expect.objectContaining({ changed: true, selected: ids.dragged }));
+  expect(reordered.undone).toEqual(reordered.before);
+  expect(reordered.redone).toEqual(reordered.after);
 });

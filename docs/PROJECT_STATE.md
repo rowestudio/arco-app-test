@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-27 — E9N em preparação de PR (Camadas: ações canônicas e arrasto)
+
+- Base: `origin/main` no merge da PR #523/E9M, SHA `4b493424c3cbab57b5bec4105f0273e87661e0a6`.
+- Escopo: faixa horizontal reduzida a Visibilidade, Profundidade, Fixar/Desafixar e Excluir, com iconografia SVG canônica e alvos de 44 × 44 px. Trocar permanece no menu inferior; Subir/Descer foram substituídos por segurar/arrastar a miniatura para reordenar, preservando scroll normal e o bloqueio canônico.
+- Profundidade graduada `−100..+100` com marcas/steps foi registrada como próxima PR isolada e não entra nesta entrega. REG-059 segue sem causa atribuída.
+- QA local: E9L/E9M e as propriedades estruturais E9N passaram no WebKit móvel. O gesto completo de pressão longa/arrasto e a rolagem manual exigem validação física em iPhone/Safari; produção intocada.
+
 ## Atualização 2026-08-27 — E9M em preparação de PR (legibilidade e Profundidade ao vivo)
 
 - Base: `origin/main` após merge da PR #522/E9L, SHA `5b1d17d57b079c02c539396019765450804bd0ce`.

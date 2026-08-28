@@ -1,5 +1,11 @@
 # TEST_CASES
 
+## TC-061 — Faixa canônica e reordenação direta de Camadas (E9N)
+
+- Em iPhone/Safari, abrir Camadas e tocar uma miniatura: a faixa contém somente Visibilidade, Profundidade, Fixar/Desafixar e Excluir, com os símbolos canônicos do app e alvos de toque de pelo menos 44 × 44 px. Não contém Trocar, Subir ou Descer.
+- Segurar uma miniatura e arrastá-la para outra posição reordena a Layer; arrastar imediatamente apenas rola a lista. Layer travada não reordena. A seleção, a identidade e a Profundidade permanecem preservadas.
+- Evidência automatizada: gate E9N WebKit verifica as quatro ações, símbolos e alvos, e a mutação de ordem/Undo pelo helper canônico. Pressão longa/arrasto e rolagem manual exigem validação física em iPhone/Safari obrigatória.
+
 ## TC-060 — Faixa opaca e Profundidade sincronizada durante o ajuste (E9M / REG-062)
 
 - Em iPhone/Safari, abrir Camadas, tocar uma miniatura e confirmar que cada ação tem fundo opaco legível sobre imagem e texto. Excluir usa lixeira, não `×`.
