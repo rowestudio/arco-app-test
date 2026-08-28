@@ -1,5 +1,10 @@
 # DECISIONS
 
+## DEC-2026-08-28-06 — Evidência mínima determinística do Export WebKit macOS
+
+- O job `Real Export Smoke (WebKit macOS)` mantém falha real do teste como falha do job, mas sempre gera um manifesto de evidência com SHA, ref, runner e tentativa antes do upload.
+- A correção trata exclusivamente o upload sem arquivos ocorrido após teste H.264 bem-sucedido; não altera Preview, Export, WebCodecs, UI ou versão do aplicativo.
+
 ## DEC-2026-08-28-05 — E9S: régua e passos de Profundidade
 
 - Profundidade mantém intervalo canônico `−100..+100`; a régua e o fill derivam do mesmo cálculo normalizado do slider para marcas a cada 20 e labels `−100`, `0`, `+100`.
