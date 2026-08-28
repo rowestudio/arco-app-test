@@ -1,5 +1,10 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-28 — E9P em preparação de PR
+
+- Correção do retorno físico E9O: Stage não fechava Camadas ao tocar ativo; arrasto não tinha feedback; seleção estava azul; ações indisponíveis ficavam transparentes.
+- E9P fecha a UI de Camadas na captura de toque do Stage, usa coral de Ativos para seleção/arrasto e mantém fundos opacos. Validação física iPhone/Safari pendente; produção intocada.
+
 ## Atualização 2026-08-28 — E9O em preparação de PR (correção física de Camadas)
 
 - Base: `origin/main` após merge da PR #524/E9N, SHA `0cb729d80526fb07d94fe8290bebe4b8315eea2b`.

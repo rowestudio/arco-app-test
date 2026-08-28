@@ -1,5 +1,11 @@
 # TEST_CASES
 
+## TC-063 — Fechamento e feedback de Camadas (E9P)
+
+- Tocar um ativo ou área vazia do Stage com Camadas aberta fecha a pilha antes da interação do Stage.
+- A miniatura selecionada e em arrasto usa coral e acompanha o dedo; ações indisponíveis conservam fundo opaco e símbolo esmaecido.
+- Validação física obrigatória em iPhone/Safari.
+
 ## TC-062 — Correção física de Camadas (E9O)
 
 - Em Preview/Export, o controle e a pilha de Camadas não aparecem. Ao retornar ao editor, o controle reaparece normalmente.

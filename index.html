@@ -1699,8 +1699,8 @@ body.editor-assets.recording .frame{display:none !important;}
 #layersPanel{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
 #layersPanel .layers-item{width:60px;height:60px;display:flex;align-items:center;justify-content:center;padding:3px;border:1px solid rgba(178,178,178,.28);border-radius:10px;background:rgba(29,29,34,.96);box-shadow:0 5px 16px rgba(0,0,0,.28);cursor:pointer;touch-action:none;box-sizing:border-box;}
 #layersPanel .layers-item:active{background:#26262c;}
-#layersPanel .layers-item.reorder-dragging{opacity:.45;}
-#layersPanel .layers-item.selected{border-color:rgba(120,190,255,.9);background:#22303f;}
+#layersPanel .layers-item.reorder-dragging{opacity:.82;transform:translateY(var(--layers-drag-y,0));border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 55%,transparent),0 8px 20px rgba(0,0,0,.42);z-index:2;}
+#layersPanel .layers-item.selected{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--surface));}
 #layersPanel .layers-thumb{width:52px;height:52px;flex:0 0 auto;border-radius:7px;overflow:hidden;background:#0e0e11;display:flex;align-items:center;justify-content:center;}
 #layersPanel .layers-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
 #layersPanel .layers-name{font-size:14px;font-weight:600;color:#fff;}
@@ -1708,7 +1708,7 @@ body.editor-assets.recording .frame{display:none !important;}
 #layersPanel .layers-actions{display:flex;gap:4px;margin-left:auto;flex-shrink:0;}
 #layersPanel .layers-action-btn{width:36px;height:36px;border:0;border-radius:8px;background:#232328;color:#fff;font-size:18px;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;padding:0;}
 #layersPanel .layers-action-btn:active{background:#34343a;}
-#layersPanel .layers-action-btn:disabled{opacity:.28;pointer-events:none;}
+#layersPanel .layers-action-btn:disabled{opacity:1;pointer-events:none;color:rgba(255,255,255,.28);}
 #layersStageControl{position:absolute;right:12px;bottom:12px;z-index:132;display:none;width:44px;height:44px;border:1px solid var(--border2);border-radius:50%;background:var(--surface);color:var(--accent);align-items:center;justify-content:center;pointer-events:auto;}
 body.editor-assets #layersStageControl{display:flex;}
 #layersPanel .layers-count{font-size:12px;color:var(--text3);}
@@ -7609,8 +7609,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9O';
-const APP_VERSION_NAME = 'v8z4b32E9O';
+const APP_VERSION = 'v8z4b32E9P';
+const APP_VERSION_NAME = 'v8z4b32E9P';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -36205,6 +36205,13 @@ function closeLayersPanel() {
   panel.setAttribute('aria-hidden', 'true');
   layersDetailAssetId = null;
 }
+document.addEventListener('pointerdown', function(event) {
+  const panel = document.getElementById('layersPanel');
+  if (!panel || !panel.classList.contains('show')) return;
+  const target = event.target;
+  if (!target || target.closest('#layersPanel,#layersStageControl')) return;
+  if (target.closest('#imageArea')) closeLayersPanel();
+}, true);
 function toggleLayersPanel() {
   const panel = document.getElementById('layersPanel');
   if (!panel) return;
@@ -36299,6 +36306,7 @@ function renderLayersPanelList() {
     const clearReorderGesture = function() {
       if (reorderTimer) clearTimeout(reorderTimer);
       reorderTimer = null; reorderActive = false; reorderPointerId = null;
+      item.style.removeProperty('--layers-drag-y');
       item.classList.remove('reorder-dragging');
     };
     item.addEventListener('pointerdown', function(event) {
@@ -36313,6 +36321,7 @@ function renderLayersPanelList() {
         if (Math.abs(event.clientY - startY) > 8) { if (reorderTimer) clearTimeout(reorderTimer); reorderTimer = null; list.scrollTop = startScrollTop + startY - event.clientY; }
         event.preventDefault(); return;
       }
+      item.style.setProperty('--layers-drag-y', (event.clientY - startY) + 'px');
       event.preventDefault();
     }, { passive:false });
     item.addEventListener('pointerup', function(event) {
