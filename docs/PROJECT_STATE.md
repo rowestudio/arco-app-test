@@ -1,5 +1,10 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-28 — E9S em preparação de PR
+
+- Após aprovação física E9R da reordenação direta, E9S remove Subir/Descer e evolui Profundidade com régua `−100..+100`, marcas de 20 e passos `−5/+5` no controle canônico.
+- REG-059 permanece sem causa atribuída e requer validação física desta geometria. Produção intocada.
+
 ## Atualização 2026-08-28 — E9R em preparação de PR
 
 - Corrige oscilação/pulo físico E9Q: destino de drag agora é estável por centros congelados e histerese; nenhuma ordem muda durante a prévia.

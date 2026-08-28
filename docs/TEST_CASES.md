@@ -1,5 +1,10 @@
 # TEST_CASES
 
+## TC-065 — Régua e passos de Profundidade (E9S)
+
+- Em iPhone/Safari, Profundidade mostra `−100..+100`, marcas de 20, labels extremos/zero e passos `−5/+5`; thumb, fill e marca central permanecem coerentes após arraste e Reset.
+- O menu de Camadas não mostra Subir/Descer; reordenação direta E9R permanece disponível.
+
 ## TC-064 — Reordenação viva de Camadas (E9Q)
 
 - Pressão longa numa miniatura ativa reorder; itens abrem espaço ao cruzar; retorno ao ponto inicial cancela sem mutação; soltar em novo ponto confirma uma alteração e Undo/Redo a preservam.
