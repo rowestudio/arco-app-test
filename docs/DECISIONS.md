@@ -1,5 +1,12 @@
 # DECISIONS
 
+## DEC-2026-08-28-01 — E9O: correção física da E9N em Camadas
+
+- **Decisão:** Camadas é UI exclusiva do editor e fica oculta durante Preview/Export. A faixa inferior de Ativos passa a mostrar a profundidade finita atual junto da identificação já existente da Camada, escala e rotação.
+- **Reordenação:** enquanto o gesto pressão longa/arrasto não for aprovado fisicamente, Subir e Descer permanecem como controles temporários na faixa contextual. O toque longo em miniaturas não pode abrir a imagem nem a folha nativa de compartilhar/salvar.
+- **Tamanho:** ações contextuais passam a 60 × 60 px, igualando a dimensão da miniatura da Camada.
+- **Fora do escopo:** Preview/Export em seu conteúdo, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine.
+
 ## DEC-2026-08-27-05 — E9N: ações canônicas e reordenação direta de Camadas
 
 - **Data:** 2026-08-27. **Versão:** `v8z4b32E9N`, sobre a `main` que contém E9M.

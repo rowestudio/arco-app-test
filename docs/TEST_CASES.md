@@ -1,5 +1,12 @@
 # TEST_CASES
 
+## TC-062 — Correção física de Camadas (E9O)
+
+- Em Preview/Export, o controle e a pilha de Camadas não aparecem. Ao retornar ao editor, o controle reaparece normalmente.
+- A faixa inferior de Ativos mostra Camada, Profundidade, escala e rotação. A faixa contextual tem Visibilidade, Subir, Descer, Profundidade, Fixar/Desafixar e Excluir, todos de 60 × 60 px.
+- Segurar uma miniatura não abre o preview da imagem nem a folha de compartilhar/salvar do iPhone. Até nova validação do arrasto, Subir/Descer devem reordenar a Layer.
+- Validação física obrigatória em iPhone/Safari.
+
 ## TC-061 — Faixa canônica e reordenação direta de Camadas (E9N)
 
 - Em iPhone/Safari, abrir Camadas e tocar uma miniatura: a faixa contém somente Visibilidade, Profundidade, Fixar/Desafixar e Excluir, com os símbolos canônicos do app e alvos de toque de pelo menos 44 × 44 px. Não contém Trocar, Subir ou Descer.

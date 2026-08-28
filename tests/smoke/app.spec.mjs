@@ -4348,7 +4348,7 @@ test('E9L — miniatura abre faixa horizontal e ações não vazam para o Stage'
     infoBackground: 'rgba(0, 0, 0, 0)',
     closeControlPresent: false,
     actionRailIsAnchoredToThumb: true,
-    actionCount: 4,
+    actionCount: 6,
   });
 
   expect(await page.evaluate((id) => {
@@ -4462,8 +4462,8 @@ test('E9N — faixa canônica ampla e reordenação de Camada', async ({ page })
       },
     };
   })).toEqual({
-    labels: ['Visibilidade', 'Profundidade', 'Travar camada', 'Excluir camada'],
-    targets: [{ width: 44, height: 44 }, { width: 44, height: 44 }, { width: 44, height: 44 }, { width: 44, height: 44 }],
+    labels: ['Visibilidade', 'Subir camada', 'Descer camada', 'Profundidade', 'Travar camada', 'Excluir camada'],
+    targets: [{ width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }],
     canonicalSymbols: { visibility: '#i-eye', depth: '#i-layers', lock: '#i-lock', remove: '#i-trash' },
   });
   const reordered = await page.evaluate(({ dragged, target }) => {
