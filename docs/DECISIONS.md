@@ -1,5 +1,13 @@
 # DECISIONS
 
+## DEC-2026-08-27-05 — E9N: ações canônicas e reordenação direta de Camadas
+
+- **Data:** 2026-08-27. **Versão:** `v8z4b32E9N`, sobre a `main` que contém E9M.
+- **Decisão:** a faixa horizontal mantém somente Visibilidade, Profundidade, Fixar/Desafixar e Excluir. Todas usam os símbolos SVG canônicos do app e alvo de toque de 44 × 44 px. “Trocar” continua exclusivamente no menu inferior de Ativos; Subir/Descer são substituídos por segurar e arrastar a miniatura para reordenar.
+- **Interação:** arrasto iniciado antes da pressão longa preserva a rolagem normal da pilha. Layer travada não pode ser reordenada. A reordenação preserva a seleção canônica, identidade, `depth` e os limites protegidos desta frente.
+- **Profundidade futura registrada:** uma PR posterior e isolada poderá especificar escala `−100..+100`, marcas de 20 em 20, labels `−100/0/+100` e passos `−5/+5`. Não reutiliza a régua E9H sem um desenho em que thumb, fill e marcas derivem da mesma geometria; REG-059 continua sem causa atribuída.
+- **Fora do escopo:** Preview, Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine.
+
 ## DEC-2026-08-27-04 — E9M: legibilidade e sincronização imediata da Profundidade
 
 - **Data:** 2026-08-27. **Versão:** `v8z4b32E9M`, correção funcional localizada sobre a `main` que contém a E9L.

@@ -1,5 +1,10 @@
 # ROADMAP
 
+## Próxima PR de Profundidade — planejada, não implementada na E9N
+
+- Escala contínua `−100..+100`, marcas visuais a cada 20 pontos, labels `−100`, `0` e `+100`, e botões `−5/+5`.
+- Antes de implementar, a geometria de thumb, fill e marcas deve ter uma fonte única; REG-059 permanece aberta sem hipótese de causa. Esta etapa não integra a E9N.
+
 ## Atualização 2026-08-26 — Camadas/Profundidade pendentes de nova tentativa após rollback E9H
 
 - A PR #516 / `v8z4b32E9H` foi mergeada, publicada e reprovada fisicamente por REG-059; o rollback restaura `v8z4b32E9F6`. Camadas/Profundidade retornam a **PENDENTES DE NOVA TENTATIVA**.
