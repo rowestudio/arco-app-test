@@ -4,6 +4,7 @@
 
 - Após aprovação física E9R da reordenação direta, E9S remove Subir/Descer e evolui Profundidade com régua `−100..+100`, marcas de 20 e passos `−5/+5` no controle canônico.
 - REG-059 permanece sem causa atribuída e requer validação física desta geometria. Produção intocada.
+- QA E9S: o primeiro CI revelou que os passos de Profundidade estavam visíveis nos painéis de Escala/Rotação, quebrando a paridade E8U; a regra de exibição foi isolada por tipo de painel e E8U/E9S passaram localmente antes da nova execução de CI.
 
 ## Atualização 2026-08-28 — E9R em preparação de PR
 
