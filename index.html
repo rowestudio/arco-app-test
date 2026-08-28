@@ -7609,8 +7609,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9Q';
-const APP_VERSION_NAME = 'v8z4b32E9Q';
+const APP_VERSION = 'v8z4b32E9R';
+const APP_VERSION_NAME = 'v8z4b32E9R';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -36304,14 +36304,15 @@ function renderLayersPanelList() {
     let startY = 0;
     let startScrollTop = 0;
     let dragTargetIndex = -1;
+    let dragCenters = [];
     const previewReorderAt = function(clientY) {
       const rows = Array.from(list.querySelectorAll('.layers-item'));
       const fromIndex = rows.indexOf(item);
-      dragTargetIndex = rows.reduce(function(best, row, index) {
-        const rect = row.getBoundingClientRect();
-        const distance = Math.abs(clientY - ((rect.top + rect.bottom) / 2));
-        return distance < best.distance ? { distance:distance, index:index } : best;
-      }, { distance:Infinity, index:fromIndex }).index;
+      if (!dragCenters.length) dragCenters = rows.map(function(row) { const rect = row.getBoundingClientRect(); return (rect.top + rect.bottom) / 2; });
+      if (dragTargetIndex < 0) dragTargetIndex = fromIndex;
+      const hysteresis = 10;
+      while (dragTargetIndex < rows.length - 1 && clientY > ((dragCenters[dragTargetIndex] + dragCenters[dragTargetIndex + 1]) / 2) + hysteresis) dragTargetIndex += 1;
+      while (dragTargetIndex > 0 && clientY < ((dragCenters[dragTargetIndex - 1] + dragCenters[dragTargetIndex]) / 2) - hysteresis) dragTargetIndex -= 1;
       rows.forEach(function(row, index) {
         if (row === item) return;
         const movesUp = dragTargetIndex < fromIndex && index >= dragTargetIndex && index < fromIndex;
@@ -36323,6 +36324,7 @@ function renderLayersPanelList() {
       if (reorderTimer) clearTimeout(reorderTimer);
       reorderTimer = null; reorderActive = false; reorderPointerId = null;
       dragTargetIndex = -1;
+      dragCenters = [];
       Array.from(list.querySelectorAll('.layers-item')).forEach(function(row) { if (row !== item) row.style.transform = ''; });
       item.style.removeProperty('--layers-drag-y');
       item.classList.remove('reorder-dragging');
@@ -36330,6 +36332,7 @@ function renderLayersPanelList() {
     item.addEventListener('pointerdown', function(event) {
       if (a.locked || event.button > 0) return;
       startY = event.clientY; startScrollTop = list.scrollTop; reorderPointerId = event.pointerId;
+      dragCenters = Array.from(list.querySelectorAll('.layers-item')).map(function(row) { const rect = row.getBoundingClientRect(); return (rect.top + rect.bottom) / 2; });
       if (item.setPointerCapture) item.setPointerCapture(event.pointerId);
       reorderTimer = setTimeout(function() { reorderActive = true; item.classList.add('reorder-dragging'); }, 320);
     });
