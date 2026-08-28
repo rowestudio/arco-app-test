@@ -1,5 +1,10 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-28 — E9V em preparação de PR
+
+- Esclarecimento físico da E9U: a remoção solicitada era somente das marcas coral grandes. E9V restaura as marcas neutras a cada 20 pontos, inclusive nas três posições numeradas, mantendo-as acima dos labels `−100`, `0` e `+100`.
+- Thumb, fill, `−5/+5`, Reset, Camadas, Preview/Export, ProjectWorld, Save/Load, Frames, curvas, Text Asset e Engine permanecem preservados. Nova validação física em iPhone/Safari é obrigatória; produção intocada.
+
 ## Atualização 2026-08-28 — E9U em preparação de PR
 
 - Retorno físico da E9T: as marcas lineares da régua de Profundidade ficaram visualmente excessivas. E9U remove todas as marcas e preserva somente os labels `−100`, `0` e `+100`, thumb, fill, `−5/+5` e Reset.

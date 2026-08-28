@@ -4481,7 +4481,7 @@ test('E9N — faixa canônica ampla e reordenação de Camada', async ({ page })
   expect(reordered.redone).toEqual(reordered.after);
 });
 
-test('E9U — profundidade mostra somente labels e passos de cinco', async ({ page }) => {
+test('E9V — profundidade mostra marcas neutras e passos de cinco', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
@@ -4504,17 +4504,21 @@ test('E9U — profundidade mostra somente labels e passos de cinco', async ({ pa
     return {
       slider: { min: slider.min, max: slider.max, value: slider.value },
       tickCount: ticks.length,
+      tickPositions: ticks.map(tick => tick.style.left),
       labels: labels.map(label => label.textContent),
       stepLabels: [...document.querySelectorAll('.asset-context-depth-step')].map(button => button.textContent.trim()),
       depthIconPresent: Boolean(depthIcon),
+      tickColor: getComputedStyle(ticks[0]).backgroundColor,
       labelColor: getComputedStyle(labels[1]).color,
     };
   })).toEqual({
     slider: { min: '-100', max: '100', value: '0' },
-    tickCount: 0,
+    tickCount: 11,
+    tickPositions: ['0%', '10%', '20%', '30%', '40%', '50%', '60%', '70%', '80%', '90%', '100%'],
     labels: ['-100', '0', '+100'],
     stepLabels: ['−5', '+5'],
     depthIconPresent: false,
+    tickColor: 'rgba(255, 255, 255, 0.72)',
     labelColor: 'rgba(255, 255, 255, 0.82)',
   });
 

@@ -2882,6 +2882,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
 #assetContextPanel .asset-depth-slider-wrap .dur-slider{display:block;width:100%;}
 #assetDepthRuler{display:none;position:relative;height:18px;}
 #assetContextPanel[data-kind="depth"] #assetDepthRuler{display:block;}
+#assetDepthRuler .depth-tick{position:absolute;top:1px;width:1.5px;height:7px;background:rgba(255,255,255,.72);transform:translateX(-50%);}
 #assetDepthRuler .depth-label{position:absolute;top:9px;transform:translateX(-50%);font-size:10px;font-weight:600;color:rgba(255,255,255,.82);white-space:nowrap;}
 #custBarTabs{
   background:var(--menu-bg) !important;
@@ -7620,8 +7621,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9U';
-const APP_VERSION_NAME = 'v8z4b32E9U';
+const APP_VERSION = 'v8z4b32E9V';
+const APP_VERSION_NAME = 'v8z4b32E9V';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -16231,10 +16232,11 @@ function renderAssetDepthRuler() {
   const ruler = document.getElementById('assetDepthRuler');
   if (!ruler) return;
   ruler.innerHTML = '';
-  [-100, 0, 100].forEach(value => {
+  for (let value = -100; value <= 100; value += 20) {
     const position = getSliderFillPercent(value, -100, 100);
-    const label = document.createElement('span'); label.className = 'depth-label'; label.style.left = position + '%'; label.textContent = value > 0 ? '+' + value : String(value); ruler.appendChild(label);
-  });
+    const tick = document.createElement('span'); tick.className = 'depth-tick'; tick.style.left = position + '%'; ruler.appendChild(tick);
+    if (value === -100 || value === 0 || value === 100) { const label = document.createElement('span'); label.className = 'depth-label'; label.style.left = position + '%'; label.textContent = value > 0 ? '+' + value : String(value); ruler.appendChild(label); }
+  }
 }
 function stepAssetContextDepth(delta) {
   const asset = getSelectedAsset();
