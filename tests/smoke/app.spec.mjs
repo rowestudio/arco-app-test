@@ -4481,7 +4481,7 @@ test('E9N — faixa canônica ampla e reordenação de Camada', async ({ page })
   expect(reordered.redone).toEqual(reordered.after);
 });
 
-test('E9V — profundidade mostra marcas neutras e passos de cinco', async ({ page }) => {
+test('E9W — profundidade separa marcas, slider e labels', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
@@ -4510,6 +4510,8 @@ test('E9V — profundidade mostra marcas neutras e passos de cinco', async ({ pa
       depthIconPresent: Boolean(depthIcon),
       tickColor: getComputedStyle(ticks[0]).backgroundColor,
       labelColor: getComputedStyle(labels[1]).color,
+      ticksAboveSlider: ticks.every(tick => tick.getBoundingClientRect().bottom <= slider.getBoundingClientRect().top),
+      labelsBelowSlider: labels.every(label => label.getBoundingClientRect().top >= slider.getBoundingClientRect().bottom + 8),
     };
   })).toEqual({
     slider: { min: '-100', max: '100', value: '0' },
@@ -4520,6 +4522,8 @@ test('E9V — profundidade mostra marcas neutras e passos de cinco', async ({ pa
     depthIconPresent: false,
     tickColor: 'rgba(255, 255, 255, 0.72)',
     labelColor: 'rgba(255, 255, 255, 0.82)',
+    ticksAboveSlider: true,
+    labelsBelowSlider: true,
   });
 
   await page.locator('.asset-context-depth-step').filter({ hasText: '+5' }).tap();
