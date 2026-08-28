@@ -1,5 +1,10 @@
 # DECISIONS
 
+## DEC-2026-08-28-08 — E9U: régua de Profundidade apenas com labels
+
+- Pelo retorno físico da E9T, a régua de Profundidade remove todas as marcas lineares, inclusive a marca coral central. Permanecem somente os labels `−100`, `0` e `+100`, o thumb, o fill, os passos `−5/+5` e Reset.
+- Seleção múltipla de Camadas para posição, escala e profundidade em grupo é registrada no roadmap como evolução futura; não é implementada nesta versão.
+
 ## DEC-2026-08-28-07 — E9T: legibilidade da régua de Profundidade
 
 - Após validação física da E9S, o ícone redundante ao lado do valor de Profundidade é removido e as marcas/rótulos da régua ganham contraste tipográfico suficiente sobre a superfície escura.
