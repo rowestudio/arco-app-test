@@ -1,5 +1,9 @@
 # DECISIONS
 
+## DEC-2026-08-28-04 — E9R: estabilidade de destino no reorder
+
+- Os centros da pilha são capturados no início do gesto; mudanças de destino exigem cruzar o ponto médio com margem de histerese. A prévia não muta o modelo e só o `pointerup` confirma ordem.
+
 ## DEC-2026-08-28-03 — E9Q: reordenação viva de Camadas
 
 - Pressão longa inicia reorder visual: a miniatura acompanha o dedo e as demais abrem espaço em tempo real.

@@ -1,5 +1,9 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-28 — E9R em preparação de PR
+
+- Corrige oscilação/pulo físico E9Q: destino de drag agora é estável por centros congelados e histerese; nenhuma ordem muda durante a prévia.
+
 ## Atualização 2026-08-28 — E9Q em preparação de PR
 
 - Correção do retorno físico E9P: a miniatura seguia o dedo, mas a pilha não abria espaço nem mostrava o destino. E9Q introduz preview de reorder ao vivo e cancelamento sem mutação ao retornar à posição inicial.
