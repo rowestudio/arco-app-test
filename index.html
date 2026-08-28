@@ -1697,7 +1697,7 @@ body.editor-assets.recording .frame{display:none !important;}
 #layersPanel .layers-list{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:8px;padding:2px 0;align-items:flex-end;}
 #layersPanel .layers-empty{font-size:13px;color:rgba(255,255,255,.55);padding:12px 4px;}
 #layersPanel{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
-#layersPanel .layers-item{width:60px;height:60px;display:flex;align-items:center;justify-content:center;padding:3px;border:1px solid rgba(178,178,178,.28);border-radius:10px;background:rgba(29,29,34,.96);box-shadow:0 5px 16px rgba(0,0,0,.28);cursor:pointer;touch-action:none;box-sizing:border-box;}
+#layersPanel .layers-item{width:60px;height:60px;display:flex;align-items:center;justify-content:center;padding:3px;border:1px solid rgba(178,178,178,.28);border-radius:10px;background:rgba(29,29,34,.96);box-shadow:0 5px 16px rgba(0,0,0,.28);cursor:pointer;touch-action:none;box-sizing:border-box;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;}
 #layersPanel .layers-item:active{background:#26262c;}
 #layersPanel .layers-item.reorder-dragging{opacity:.82;transform:translateY(var(--layers-drag-y,0));border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 55%,transparent),0 8px 20px rgba(0,0,0,.42);z-index:2;}
 #layersPanel .layers-item.selected{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--surface));}
@@ -7609,8 +7609,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9P';
-const APP_VERSION_NAME = 'v8z4b32E9P';
+const APP_VERSION = 'v8z4b32E9Q';
+const APP_VERSION_NAME = 'v8z4b32E9Q';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -36303,9 +36303,27 @@ function renderLayersPanelList() {
     let reorderPointerId = null;
     let startY = 0;
     let startScrollTop = 0;
+    let dragTargetIndex = -1;
+    const previewReorderAt = function(clientY) {
+      const rows = Array.from(list.querySelectorAll('.layers-item'));
+      const fromIndex = rows.indexOf(item);
+      dragTargetIndex = rows.reduce(function(best, row, index) {
+        const rect = row.getBoundingClientRect();
+        const distance = Math.abs(clientY - ((rect.top + rect.bottom) / 2));
+        return distance < best.distance ? { distance:distance, index:index } : best;
+      }, { distance:Infinity, index:fromIndex }).index;
+      rows.forEach(function(row, index) {
+        if (row === item) return;
+        const movesUp = dragTargetIndex < fromIndex && index >= dragTargetIndex && index < fromIndex;
+        const movesDown = dragTargetIndex > fromIndex && index > fromIndex && index <= dragTargetIndex;
+        row.style.transform = movesUp ? 'translateY(68px)' : movesDown ? 'translateY(-68px)' : '';
+      });
+    };
     const clearReorderGesture = function() {
       if (reorderTimer) clearTimeout(reorderTimer);
       reorderTimer = null; reorderActive = false; reorderPointerId = null;
+      dragTargetIndex = -1;
+      Array.from(list.querySelectorAll('.layers-item')).forEach(function(row) { if (row !== item) row.style.transform = ''; });
       item.style.removeProperty('--layers-drag-y');
       item.classList.remove('reorder-dragging');
     };
@@ -36322,18 +36340,17 @@ function renderLayersPanelList() {
         event.preventDefault(); return;
       }
       item.style.setProperty('--layers-drag-y', (event.clientY - startY) + 'px');
+      previewReorderAt(event.clientY);
       event.preventDefault();
     }, { passive:false });
     item.addEventListener('pointerup', function(event) {
       if (event.pointerId !== reorderPointerId) return;
       if (reorderActive) {
         event.preventDefault(); item.dataset.suppressLayerClick = 'true';
-        const rows = Array.from(list.querySelectorAll('.layers-item'));
-        const targetIndex = rows.reduce(function(best, row, index) {
-          const rect = row.getBoundingClientRect();
-          return Math.abs(event.clientY - ((rect.top + rect.bottom) / 2)) < best.distance ? { distance: Math.abs(event.clientY - ((rect.top + rect.bottom) / 2)), index:index } : best;
-        }, { distance:Infinity, index:0 }).index;
-        clearReorderGesture(); layerMoveAssetToIndex(a.id, targetIndex);
+        previewReorderAt(event.clientY);
+        const targetIndex = dragTargetIndex;
+        clearReorderGesture();
+        if (targetIndex >= 0) layerMoveAssetToIndex(a.id, targetIndex);
         return;
       }
       if (item.hasPointerCapture && item.hasPointerCapture(event.pointerId)) item.releasePointerCapture(event.pointerId);
