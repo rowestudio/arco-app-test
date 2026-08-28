@@ -1,5 +1,10 @@
 # TEST_CASES
 
+## TC-064 — Reordenação viva de Camadas (E9Q)
+
+- Pressão longa numa miniatura ativa reorder; itens abrem espaço ao cruzar; retorno ao ponto inicial cancela sem mutação; soltar em novo ponto confirma uma alteração e Undo/Redo a preservam.
+- Validação física obrigatória em iPhone/Safari.
+
 ## TC-063 — Fechamento e feedback de Camadas (E9P)
 
 - Tocar um ativo ou área vazia do Stage com Camadas aberta fecha a pilha antes da interação do Stage.

@@ -1,5 +1,11 @@
 # DECISIONS
 
+## DEC-2026-08-28-03 — E9Q: reordenação viva de Camadas
+
+- Pressão longa inicia reorder visual: a miniatura acompanha o dedo e as demais abrem espaço em tempo real.
+- Voltar à posição original e soltar não altera a ordem. Somente soltar em outra posição confirma uma única mudança e um único Undo.
+- Subir/Descer permanecem até aprovação física deste gesto no iPhone/Safari.
+
 ## DEC-2026-08-28-02 — E9P: fechamento e feedback de Camadas
 
 - Tocar o Stage fora da UI de Camadas fecha pilha e detalhe antes de o Stage selecionar/manipular um ativo.

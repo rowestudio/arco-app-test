@@ -1,5 +1,10 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-28 — E9Q em preparação de PR
+
+- Correção do retorno físico E9P: a miniatura seguia o dedo, mas a pilha não abria espaço nem mostrava o destino. E9Q introduz preview de reorder ao vivo e cancelamento sem mutação ao retornar à posição inicial.
+- Setas permanecem até aprovação física. Produção intocada.
+
 ## Atualização 2026-08-28 — E9P em preparação de PR
 
 - Correção do retorno físico E9O: Stage não fechava Camadas ao tocar ativo; arrasto não tinha feedback; seleção estava azul; ações indisponíveis ficavam transparentes.
