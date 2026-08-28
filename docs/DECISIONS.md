@@ -1,5 +1,11 @@
 # DECISIONS
 
+## DEC-2026-08-28-02 — E9P: fechamento e feedback de Camadas
+
+- Tocar o Stage fora da UI de Camadas fecha pilha e detalhe antes de o Stage selecionar/manipular um ativo.
+- Durante pressão longa/arrasto, a miniatura selecionada usa o coral de Ativos e acompanha visualmente o dedo. A seleção de Camada também usa coral, não azul.
+- Ação indisponível mantém superfície opaca; somente seu símbolo fica esmaecido.
+
 ## DEC-2026-08-28-01 — E9O: correção física da E9N em Camadas
 
 - **Decisão:** Camadas é UI exclusiva do editor e fica oculta durante Preview/Export. A faixa inferior de Ativos passa a mostrar a profundidade finita atual junto da identificação já existente da Camada, escala e rotação.
