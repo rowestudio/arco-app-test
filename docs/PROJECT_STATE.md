@@ -6,6 +6,7 @@
 - REG-059 permanece sem causa atribuída e requer validação física desta geometria. Produção intocada.
 - QA E9S: o primeiro CI revelou que os passos de Profundidade estavam visíveis nos painéis de Escala/Rotação, quebrando a paridade E8U; a regra de exibição foi isolada por tipo de painel e E8U/E9S passaram localmente antes da nova execução de CI.
 - Infra de CI E9S: a segunda execução confirmou o Export H.264 real, mas falhou só no upload sem arquivos de evidência. O workflow passa a criar manifesto mínimo determinístico, sem mascarar eventual falha do teste de Export; aguarda nova execução do CI.
+- Revisão física E9S: o ícone redundante de Profundidade ao lado do valor foi removido; contraste das marcas e labels da régua foi elevado. Requer nova confirmação visual em iPhone/Safari.
 
 ## Atualização 2026-08-28 — E9R em preparação de PR
 
