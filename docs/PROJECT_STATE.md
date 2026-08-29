@@ -6,6 +6,12 @@
 - A validação automatizada WebKit cobre o clone de Camadas, a regressão da faixa canônica e a aceitação de HEIC/HEIF no clipboard e no novo projeto. O import registra MIME e alpha efetivamente decodificados; a validação física iPhone/Safari de um recorte HEIF permanece pendente. Esta entrada não declara aprovação ou promoção.
 - A correção complementar de HEIC/HEIF após o merge da PR #537 permanece em `v8z4b32E9Z` por `APP_VERSION_EXCEPTION`, pois não abre um novo release cut.
 
+## Atualização 2026-08-29 — investigação física HEIF com alpha
+
+- O arquivo original fornecido por Roberto foi inspecionado fora do app: `HEIC`, 552 × 619, com canal alpha presente. A cópia JPEG recebida pelo chat era uma conversão de transporte e não serve como evidência sobre o arquivo original.
+- A investigação identificou uma lacuna objetiva: o fluxo da imagem principal não persistia no asset nem mostrava no diagnóstico o MIME do `File` recebido e o alpha do bitmap efetivamente decodificado; o campo legado `lastImportedAssetMimeType` podia refletir uma inserção anterior.
+- A correção registra esses valores para imagem principal, inclusão e troca. Ela não converte HEIF para JPEG, não cria máscara artificial, nem altera Stage, Preview, Export ou ProjectWorld. A repetição física em iPhone/Safari continua obrigatória para distinguir uma eventual conversão do seletor do iOS de qualquer falha posterior no app.
+
 ## Atualização 2026-08-29 — RELEASE E9Y aprovada fisicamente e candidata de produção
 
 - A PR #535 foi mergeada na `main` de teste em `ffca487a5dc1ef081a29f2f53ba453d2c0599180`. `APP_VERSION` e `APP_VERSION_NAME` são `v8z4b32E9Y`.

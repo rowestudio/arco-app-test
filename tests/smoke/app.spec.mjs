@@ -4588,6 +4588,75 @@ test('E9Z — inserção registra alpha do bitmap decodificado', async ({ page }
   expect(result).toEqual({ mime: 'image/png', hasAlpha: true, lastMime: 'image/png', lastHasAlpha: true });
 });
 
+test('HEIF import — imagem principal registra o MIME recebido e alpha decodificado', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  const result = await page.evaluate(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d');
+    context.clearRect(0, 0, 64, 64);
+    context.fillStyle = '#ff3366';
+    context.fillRect(16, 16, 32, 32);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const file = new File([blob], 'recorte-alpha.png', { type: 'image/png' });
+    loadNewProjectImage(file);
+    await new Promise((resolve, reject) => {
+      const started = Date.now();
+      const timer = setInterval(() => {
+        const main = getMainImageAsset();
+        if (main && main.mimeType === 'image/png') { clearInterval(timer); resolve(); }
+        else if (Date.now() - started > 10_000) { clearInterval(timer); reject(new Error('timeout da imagem principal com alpha')); }
+      }, 25);
+    });
+    const main = getMainImageAsset();
+    return {
+      mime: main?.mimeType,
+      hasAlpha: main?.hasAlpha,
+      lastMime: lastImportedAssetMimeType,
+      lastHasAlpha: lastImportedAssetHasAlpha,
+      pipelineMime: imagePipelineMeta.originalMime,
+    };
+  });
+  expect(result).toEqual({
+    mime: 'image/png',
+    hasAlpha: true,
+    lastMime: 'image/png',
+    lastHasAlpha: true,
+    pipelineMime: 'image/png',
+  });
+});
+
+test('HEIF import — trocar imagem registra alpha pelo bitmap, não pelo MIME PNG', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const result = await page.evaluate(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d');
+    context.clearRect(0, 0, 64, 64);
+    context.fillStyle = '#ff3366';
+    context.fillRect(16, 16, 32, 32);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp'));
+    const file = new File([blob], 'recorte-alpha.webp', { type: 'image/webp' });
+    const target = getMainImageAsset();
+    replaceImageAssetInPlace(target, file, 'heif-alpha-test');
+    await new Promise((resolve, reject) => {
+      const started = Date.now();
+      const timer = setInterval(() => {
+        if (target.mimeType === 'image/webp') { clearInterval(timer); resolve(); }
+        else if (Date.now() - started > 10_000) { clearInterval(timer); reject(new Error('timeout da troca com alpha')); }
+      }, 25);
+    });
+    return { mime: target.mimeType, hasAlpha: target.hasAlpha, lastMime: lastImportedAssetMimeType, lastHasAlpha: lastImportedAssetHasAlpha };
+  });
+  expect(result).toEqual({ mime: 'image/webp', hasAlpha: true, lastMime: 'image/webp', lastHasAlpha: true });
+});
+
 test('E9W — profundidade separa marcas, slider e labels', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
