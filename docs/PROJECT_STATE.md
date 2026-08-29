@@ -1,10 +1,17 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-29 — v8z4b32E9AA em desenvolvimento: ações redundantes de Ativos/Layers
+
+- A ação **Profundidade** foi removida do detalhe de Camadas; o controle canônico continua disponível na toolbar inferior quando há um Ativo selecionado.
+- Na toolbar deslizante de Ativos, **Excluir** passa a ser a última ação, depois de **Frente** e **Trás**. Os handlers de profundidade, exclusão e reordenação permanecem os mesmos.
+- Esta alteração funcional recebe versão própria `v8z4b32E9AA`. A partir desta decisão, toda PR funcional deve receber `APP_VERSION` e build identificável inéditos; correções não reutilizam a versão já publicada para teste.
+- O smoke mobile cobre a ausência de Profundidade em Camadas, o controle pela toolbar inferior e a nova ordem; validação visual em iPhone/Safari real continua pendente.
+
 ## Atualização 2026-08-29 — E9Z em desenvolvimento: copiar, colar e duplicar ativos
 
 - A branch `codex/asset-clipboard-copy-paste` introduz duplicação de camada, cópia interna e colagem de ativo/imagem pelo menu `+` de Ativos. A versão funcional em desenvolvimento é `v8z4b32E9Z`.
 - A validação automatizada WebKit cobre o clone de Camadas, a regressão da faixa canônica e a aceitação de HEIC/HEIF no clipboard e no novo projeto. O import registra MIME e alpha efetivamente decodificados; a validação física iPhone/Safari de um recorte HEIF permanece pendente. Esta entrada não declara aprovação ou promoção.
-- A correção complementar de HEIC/HEIF após o merge da PR #537 permanece em `v8z4b32E9Z` por `APP_VERSION_EXCEPTION`, pois não abre um novo release cut.
+- Registro histórico: a correção complementar de HEIC/HEIF após o merge da PR #537 reutilizou `v8z4b32E9Z` por `APP_VERSION_EXCEPTION`. Essa prática foi descontinuada; toda correção funcional futura recebe versão inédita.
 
 ## Atualização 2026-08-29 — investigação física HEIF com alpha
 

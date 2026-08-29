@@ -4354,7 +4354,7 @@ test('E9L — miniatura abre faixa horizontal e ações não vazam para o Stage'
     infoBackground: 'rgba(0, 0, 0, 0)',
     closeControlPresent: false,
     actionRailIsAnchoredToThumb: true,
-    actionCount: 5,
+    actionCount: 4,
   });
 
   expect(await page.evaluate((id) => {
@@ -4381,7 +4381,7 @@ test('E9L — miniatura abre faixa horizontal e ações não vazam para o Stage'
   }, targetId)).toEqual({ ...beforeVisibilityAction, visible: false });
   await page.locator('#layersOptions .layers-action-btn[aria-label="Visibilidade"]').tap();
 
-  await page.locator('#layersOptions .layers-action-btn[aria-label="Profundidade"]').tap();
+  await page.locator('#tbAssetDepth').tap();
   expect(await page.evaluate(() => ({
     selectedId: String(selectedAssetId),
     depthOpen: assetContextPanelKind === 'depth',
@@ -4392,7 +4392,7 @@ test('E9L — miniatura abre faixa horizontal e ações não vazam para o Stage'
   expect(await page.evaluate(() => document.getElementById('layersDetail').classList.contains('show'))).toBe(false);
 });
 
-test('E9M — detalhe de Camadas é opaco, exclui por lixeira e sincroniza Profundidade ao vivo', async ({ page }) => {
+test('E9M — detalhe de Camadas é opaco, exclui por lixeira e deixa Profundidade na toolbar de Ativos', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
@@ -4415,11 +4415,11 @@ test('E9M — detalhe de Camadas é opaco, exclui por lixeira e sincroniza Profu
       actionBackground: getComputedStyle(firstAction).backgroundColor,
       deleteIcon: remove?.querySelector('use')?.getAttribute('href') || null,
       deleteText: remove?.textContent?.trim() || '',
-      detailDepth: document.querySelector('#layersOptions .layers-depth-value')?.textContent || null,
+      depthActionPresent: !!document.querySelector('#layersOptions .layers-action-btn[aria-label="Profundidade"]'),
     };
-  })).toEqual({ actionBackground: 'rgb(35, 35, 40)', deleteIcon: '#i-trash', deleteText: '', detailDepth: '+48' });
+  })).toEqual({ actionBackground: 'rgb(35, 35, 40)', deleteIcon: '#i-trash', deleteText: '', depthActionPresent: false });
 
-  await page.locator('#layersOptions .layers-action-btn[aria-label="Profundidade"]').tap();
+  await page.locator('#tbAssetDepth').tap();
   expect(await page.evaluate(() => ({
     value: document.getElementById('assetContextValue').textContent,
     slider: document.getElementById('assetContextSlider').value,
@@ -4434,12 +4434,12 @@ test('E9M — detalhe de Camadas é opaco, exclui por lixeira e sincroniza Profu
       model: assets.find(a => String(a.id) === String(id)).depth,
       value: document.getElementById('assetContextValue').textContent,
       fill: slider.style.getPropertyValue('--fill'),
-      detailDepth: document.querySelector('#layersOptions .layers-depth-value')?.textContent || null,
+      depthActionPresent: !!document.querySelector('#layersOptions .layers-action-btn[aria-label="Profundidade"]'),
     };
-  }, targetId)).toEqual({ model: -24, value: '-24', fill: '38%', detailDepth: '-24' });
+  }, targetId)).toEqual({ model: -24, value: '-24', fill: '38%', depthActionPresent: false });
 });
 
-test('E9N — faixa canônica ampla e reordenação de Camada', async ({ page }) => {
+test('E9AA — Camadas evita Profundidade redundante e Excluir encerra a toolbar de Ativos', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
@@ -4462,15 +4462,16 @@ test('E9N — faixa canônica ampla e reordenação de Camada', async ({ page })
       targets: actions.map(button => { const rect = button.getBoundingClientRect(); return { width: rect.width, height: rect.height }; }),
       canonicalSymbols: {
         visibility: document.querySelector('#layersOptions [aria-label="Visibilidade"] use')?.getAttribute('href') || null,
-        depth: document.querySelector('#layersOptions [aria-label="Profundidade"] use')?.getAttribute('href') || null,
         lock: document.querySelector('#layersOptions [aria-label="Travar camada"] use')?.getAttribute('href') || null,
         remove: document.querySelector('#layersOptions [aria-label="Excluir camada"] use')?.getAttribute('href') || null,
       },
+      assetToolbarOrder: [...document.querySelectorAll('#toolbar .ctx-asset')].map(item => item.id),
     };
   })).toEqual({
-    labels: ['Visibilidade', 'Profundidade', 'Travar camada', 'Duplicar camada', 'Excluir camada'],
-    targets: [{ width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }],
-    canonicalSymbols: { visibility: '#i-eye', depth: '#i-layers', lock: '#i-lock', remove: '#i-trash' },
+    labels: ['Visibilidade', 'Travar camada', 'Duplicar camada', 'Excluir camada'],
+    targets: [{ width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }],
+    canonicalSymbols: { visibility: '#i-eye', lock: '#i-lock', remove: '#i-trash' },
+    assetToolbarOrder: ['tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetCopy', 'tbAssetDuplicate', 'tbAssetForward', 'tbAssetBackward', 'tbAssetDelete'],
   });
   const reordered = await page.evaluate(({ dragged, target }) => {
     const before = assets.slice().sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)).map(a => String(a.id));
