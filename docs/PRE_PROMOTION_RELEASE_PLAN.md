@@ -1,5 +1,11 @@
 # PRE_PROMOTION_RELEASE_PLAN
 
+## Atualização 2026-08-29 — E9Y encerra o release cut; promoção autorizada por decisão de Roberto
+
+- A `v8z4b32E9Y` foi mergeada pela PR #535 na `main` de teste, commit `ffca487a5dc1ef081a29f2f53ba453d2c0599180`, publicada e aprovada fisicamente por Roberto em iPhone/Safari.
+- Para esta release, Roberto superou a ordem prévia que exigia Engine Sprint antes da promoção. Engine Sprint permanece não implementado e integra a próxima rodada de desenvolvimento; não bloqueia a promoção E9Y.
+- A sequência histórica abaixo permanece preservada para rastreabilidade, mas não é mais o bloqueio vigente desta promoção. A candidata de produção desta rodada é exatamente a E9Y aprovada, sem nova melhoria funcional antes da promoção.
+
 ## Atualização 2026-08-26 — rollback da E9H e próxima tentativa aprovada
 
 - A `v8z4b32E9H`/PR #516 foi mergeada, publicada e **REPROVADA FISICAMENTE** em iPhone/Safari por REG-059: Reset/value/thumb indicaram 0, mas o tick/texto 0 da régua ficou deslocado à direita. Causa raiz **NÃO COMPROVADA**.

@@ -1,10 +1,17 @@
 # PROJECT_STATE
 
-## Atualização 2026-08-28 — E9Y em preparação de PR
+## Atualização 2026-08-29 — RELEASE E9Y aprovada fisicamente e candidata de produção
+
+- A PR #535 foi mergeada na `main` de teste em `ffca487a5dc1ef081a29f2f53ba453d2c0599180`. `APP_VERSION` e `APP_VERSION_NAME` são `v8z4b32E9Y`.
+- A build publicada foi testada por Roberto em iPhone/Safari e aprovada visualmente: “Parece tudo certo visualmente.” O diagnóstico físico confirmou ProjectWorld pronto, Preview funcional, Export WebCodecs concluído com `exportSuccess = true` e nenhuma regressão visual relatada.
+- A `v8z4b32E9Y` fecha o release cut e é a candidata autorizada para a PR separada de promoção a `rowestudio/arco-app`. Esta aprovação não autoriza merge automático da promoção.
+- A decisão anterior que exigia Engine Sprint antes da promoção está superada para esta release: Engine Sprint não foi implementado, passa para a próxima rodada de desenvolvimento e não bloqueia a promoção E9Y. Nenhuma melhoria funcional nova deve entrar antes de sua promoção.
+
+## Atualização 2026-08-28 — E9Y em preparação de PR (histórico; superada pelo merge e aceite físico)
 
 - A validação física posterior à E9X mostrou que o tom residual abaixo dos painéis continuava diferente em Ativos e Frames. A correção E9X do `#lowerContextSlot` permanece registrada como pintura interna válida, mas não alcançava a área segura física fora do grid no Safari/iPhone.
 - A causa agora é comprovada por inspeção WebKit: nessa condição a faixa residual é pintada pelo `body` com o chrome `#24262B`. E9Y aplica `--context-sheet-bg` ao `body` apenas enquanto há painel contextual de Frame, Ativo ou multi-seleção aberto; ao fechar, o chrome retorna ao tom escuro normal.
-- O gate E8U passa a exigir tanto a superfície do slot quanto a superfície do `body` iguais ao sheet em todos os cinco painéis; a timeline, controles, acentos, Preview/Export, ProjectWorld, Save/Load, curvas, Text Asset e Engine permanecem fora do escopo. Nova validação física em iPhone/Safari é obrigatória; produção intocada.
+- O gate E8U passa a exigir tanto a superfície do slot quanto a superfície do `body` iguais ao sheet em todos os cinco painéis; a timeline, controles, acentos, Preview/Export, ProjectWorld, Save/Load, curvas, Text Asset e Engine permanecem fora do escopo. A validação física posterior da E9Y foi aprovada; este registro conserva somente o estado anterior à aprovação.
 
 ## Atualização 2026-08-28 — E9X em preparação de PR
 

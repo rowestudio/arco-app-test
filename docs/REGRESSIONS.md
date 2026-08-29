@@ -1,46 +1,48 @@
 # REGRESSIONS
 
+> Atualização 2026-08-29 — a E9Y/PR #535 foi publicada e aprovada fisicamente por Roberto em iPhone/Safari, sem regressão visual relatada; ProjectWorld, Preview e Export WebCodecs foram confirmados, com `exportSuccess = true`. REG-059..REG-063 recebem o estado físico abaixo sem inferir novas causas.
+
 > Atualização 2026-08-26: a `v8z4b32E9H`/PR #516 foi mergeada, publicada e reprovada fisicamente; seu rollback restaura `v8z4b32E9F6`. **REG-052..REG-058 mantêm exatamente seus status anteriores.** A nova REG-059 é registrada abaixo sem hipótese de causa.
 
-## REG-063 — área inferior residual revela tom diferente do bottom sheet (E9X reprovada fisicamente; E9Y corrigida automaticamente, validação física pendente)
+## REG-063 — área inferior residual revela tom diferente do bottom sheet (RESOLVIDA FISICAMENTE na E9Y)
 
 - **Relato físico (Roberto, iPhone/Safari):** os painéis contextuais que sobem de baixo tinham uma superfície cinza, mas a área inferior residual abaixo dos controles revelava um cinza diferente. Ocorre tanto em Ativos quanto em painéis de ajuste de Frames.
 - **E9X e retorno físico:** E9X tornou opaco o `#lowerContextSlot`, pintura interna compartilhada do sheet. Roberto retestou em iPhone/Safari e confirmou que a faixa residual continuava com tom diferente; portanto E9X não resolve integralmente esta regressão e não é declarada aprovada fisicamente.
 - **Causa comprovada por inspeção WebKit:** a faixa residual física fica fora do grid da timeline e é pintada pelo `body`, que permanecia em `#24262B` enquanto o sheet usava `#434247`. O slot transparente era um detalhe interno real, mas não era a causa suficiente da diferença visível até a borda segura.
 - **Correção E9Y:** `body.cust-expanded`, `body.asset-context-panel-open` e `body.align-submenu-open` recebem `--context-sheet-bg`, prolongando a superfície do sheet somente nos estados contextuais. Com o painel fechado, o `body` continua no chrome escuro normal. Timeline, controles, acentos e geometria não mudam.
 - **Proteção:** gate E8U exige agora igualdade entre o fundo computado do slot, do shell e do `body` nos painéis de Escala/Rotação de Frames, Escala/Rotação/Profundidade de Ativos, e preservação do chrome escuro após fechar.
-- **Status:** corrigida automaticamente na E9Y; validação física em iPhone/Safari obrigatória antes de encerrar. Produção não autorizada.
+- **Status:** RESOLVIDA FISICAMENTE na E9Y pela aprovação publicada de 2026-08-29. A causa comprovada permanece limitada à pintura do `body`; a aprovação não autoriza inferir causas adicionais.
 
-## REG-062 — faixa de ações translúcida e Profundidade sem atualização imediata (E9L; CORRIGIDA AUTOMATICAMENTE, validação física pendente)
+## REG-062 — faixa de ações translúcida e Profundidade sem atualização imediata (RESOLVIDA FISICAMENTE na E9Y)
 
 - **Relato físico (Roberto, iPhone/Safari):** na faixa horizontal de Camadas, os ícones pareciam translúcidos sobre o asset; `×` confundia exclusão com fechamento; e, ao mover Profundidade, o valor da Layer só aparecia atualizado depois de fechar o painel. O fill do slider também podia divergir do thumb.
 - **Causa confirmada somente para o fill do painel atual:** `syncAssetContextPanel()` escrevia `slider.value` programaticamente sem chamar o repinte de `--fill`; por isso a trilha podia conservar o valor anterior. A causa da REG-059 não é inferida deste achado.
 - **Correção E9M:** ações com fundo opaco, ícone semântico de lixeira, atualização direta do valor aberto na faixa e repinte do fill após sincronização programática. Não altera limites, cálculo de profundidade, `zIndex`, Preview, Export ou persistência.
-- **Status:** corrigida automaticamente por gate WebKit; validação física em iPhone/Safari obrigatória antes de encerrar.
+- **Status:** RESOLVIDA FISICAMENTE no aceite visual da E9Y. A causa confirmada permanece restrita ao repinte do fill; não se atribui causa à REG-059.
 
-## REG-061 — detalhe vertical de Camadas ocupa Stage e ações podem vazar interação (E9K; CORRIGIDA AUTOMATICAMENTE, validação física pendente)
+## REG-061 — detalhe vertical de Camadas ocupa Stage e ações podem vazar interação (RESOLVIDA FISICAMENTE na E9Y)
 
 - **Relato físico (Roberto, iPhone/Safari):** a abertura da pilha E9K e a seleção por miniatura funcionaram. Porém o detalhe surgia como painel vertical grande; os ícones precisavam de uma faixa horizontal junto à miniatura, e havia relato de toque em ação repercutindo na imagem/seleção do Stage.
 - **Correção E9L:** detalhe horizontal sem caixa, nome fora do menu, ausência de fechar, valor de Profundidade no botão e olho vetorial mais legível. O segundo toque na mesma miniatura fecha somente o detalhe; os handlers das ações param propagação sem chamar `preventDefault()` antes do click WebKit.
 - **Causa do relato de vazamento:** não é atribuída como causa raiz sem reprodução física isolada. A E9L adiciona contenção explícita e cobertura de toque do botão de Profundidade.
-- **Status:** corrigida automaticamente; validação física em iPhone/Safari obrigatória antes de encerrar.
+- **Status:** RESOLVIDA FISICAMENTE no aceite visual da E9Y, sem nova atribuição de causa além do registro histórico.
 
-## REG-060 — miniaturas de Camadas não respondem ao toque (E9J; CORRIGIDA AUTOMATICAMENTE, validação física pendente)
+## REG-060 — miniaturas de Camadas não respondem ao toque (RESOLVIDA FISICAMENTE na E9Y)
 
 - **Relato físico (Roberto, iPhone/Safari):** a pilha de Camadas E9J aparecia no Stage, mas tocar uma Layer não a selecionava nem abria suas ações.
 - **Causa comprovada:** `isStageViewportNavigationTarget()` tratava `#layersPanel` como parte navegável do Stage. O listener `touchstart` de `#imageArea` então executava `preventDefault()`, o que no WebKit impede a emissão do `click` sintético esperado pelos itens da Layer.
 - **Correção:** `#layersPanel` é excluído explicitamente da navegação de Stage; as miniaturas são botões reais e chamam a seleção canônica.
 - **Proteção:** gates E9K em `tests/smoke/app.spec.mjs` exercitam `tap()` WebKit real, seleção, previews sem texto e detalhe vertical.
-- **Status:** corrigida automaticamente; validação física em iPhone/Safari obrigatória antes de encerrar.
+- **Status:** RESOLVIDA FISICAMENTE no aceite visual da E9Y; a causa já comprovada permanece a descrita acima.
 
-## REG-059 — zero visual da régua de Profundidade desalinhado (build publicada `v8z4b32E9H`; ABERTA, causa raiz NÃO comprovada)
+## REG-059 — zero visual da régua de Profundidade desalinhado (RESOLVIDA FISICAMENTE na E9Y; causa raiz histórica não comprovada)
 
 - **Relato físico (Roberto, iPhone/Safari):** após executar Reset, o valor exibido ficou em 0 e o thumb do slider ficou coerente com a posição central, porém a marcação textual/tick de 0 da régua visual ficou deslocada para a direita e não alinhada ao zero real da trilha.
 - **Classificação:** regressão física objetiva da implementação E9H de Profundidade. O painel de Camadas E9H não apresentou regressão funcional grave comprovada nesse teste, embora sua apresentação tenha sido considerada visualmente carregada e superada para a próxima tentativa.
 - **Causa raiz:** **NÃO COMPROVADA.** Não atribuir a largura de container, flexbox, campo de valor, cálculo percentual, CSS, transformação ou qualquer outra hipótese sem investigação e evidência próprias.
 - **Ação:** rollback funcional integral da PR #516, restaurando `v8z4b32E9F6`. Este rollback não investiga nem corrige REG-059; remove a régua E9H junto com toda a implementação funcional da PR #516.
 - **Tentativa E9I:** a nova UI não reintroduz a régua/tick independente da E9H; preserva o slider canônico e apresenta apenas ícone + valor. Não declara causa raiz. Roberto aprovou visualmente a apresentação de Camadas E9I em iPhone/Safari; a validação física específica de Profundidade/Reset continua obrigatória.
-- **Status:** **PENDENTE DE VALIDAÇÃO FÍSICA NA E9I.**
+- **Status:** RESOLVIDA FISICAMENTE no aceite publicado da E9Y. A causa raiz da falha original da E9H continua NÃO COMPROVADA; a resolução não permite atribuí-la retroativamente.
 
 
 > Atualização 2026-08-24 (ROLLBACK da `v8z4b32E9G1`/PR #514 após REG-058, `v8z4b32E9F6` restaurada novamente): sete regressões, sete status distintos, não agrupáveis. **REG-052** permanece **ABERTA** e não corrigida. **REG-053** permanece **RESOLVIDA FISICAMENTE** (`v8z4b32E9F3`). **REG-054** permanece com validação física **PARCIAL** (`v8z4b32E9F2`). **REG-055** permanece **RESOLVIDA FISICAMENTE na `v8z4b32E9F6`** — fato anterior à E9G1, não afetado por este rollback. **REG-056** (largura manual do Text Asset dependente da escala) permanece **ABERTA/PENDENTE DE NOVA TENTATIVA**: a segunda implementação (`v8z4b32E9G1`/PR #514) foi mergeada, publicada e **REPROVADA FISICAMENTE** em iPhone/Safari — a nova experiência de largura não passou na validação física — e foi revertida por este rollback junto com o restante da E9G1; a causa raiz da própria REG-056 nunca foi refutada, só a implementação que tentava corrigi-la foi removida de novo. **REG-057** permanece **RESOLVIDA FISICAMENTE PELO ROLLBACK/RESTAURAÇÃO DA E9F6** — este fato físico (teste de Roberto na build publicada do primeiro rollback) é anterior à E9G1 e **NÃO é reaberto nem alterado por este segundo rollback**; a causa raiz da falha original da antiga `v8z4b32E9G` permanece NÃO comprovada. **REG-058** permanece **RESOLVIDA FISICAMENTE PELO ROLLBACK/RESTAURAÇÃO DA E9F6**: Roberto testou novamente a base restaurada, não reproduziu o sintoma e aceitou a `v8z4b32E9F6` como base funcional de continuidade; a causa raiz original permanece **NÃO comprovada** — nenhuma hipótese (pointer capture, clamp, overlay, listener, side handle ou outra) é afirmada como causa.
