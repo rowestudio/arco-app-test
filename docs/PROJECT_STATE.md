@@ -1,5 +1,11 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-28 — E9Y em preparação de PR
+
+- A validação física posterior à E9X mostrou que o tom residual abaixo dos painéis continuava diferente em Ativos e Frames. A correção E9X do `#lowerContextSlot` permanece registrada como pintura interna válida, mas não alcançava a área segura física fora do grid no Safari/iPhone.
+- A causa agora é comprovada por inspeção WebKit: nessa condição a faixa residual é pintada pelo `body` com o chrome `#24262B`. E9Y aplica `--context-sheet-bg` ao `body` apenas enquanto há painel contextual de Frame, Ativo ou multi-seleção aberto; ao fechar, o chrome retorna ao tom escuro normal.
+- O gate E8U passa a exigir tanto a superfície do slot quanto a superfície do `body` iguais ao sheet em todos os cinco painéis; a timeline, controles, acentos, Preview/Export, ProjectWorld, Save/Load, curvas, Text Asset e Engine permanecem fora do escopo. Nova validação física em iPhone/Safari é obrigatória; produção intocada.
+
 ## Atualização 2026-08-28 — E9X em preparação de PR
 
 - Retorno físico posterior à E9W: a superfície do painel contextual e a área inferior residual exibiam tons de cinza diferentes, tanto em Ativos quanto em Frames.

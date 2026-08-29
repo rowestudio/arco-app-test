@@ -1132,9 +1132,9 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
     expect(Math.abs(surface.panelRect.left - surface.slotRect.left)).toBeLessThan(1);
     expect(Math.abs(surface.panelRect.right - surface.slotRect.right)).toBeLessThan(1);
     expect(Math.abs(surface.panelRect.width - surface.slotRect.width)).toBeLessThan(1);
-    // v8z4b32E9F — paleta de UI aprovada: chrome principal passou de #3c3c3c para #24262B.
-    // As superfícies contextuais (#434247) e controles não foram redesenhados nesta rodada.
-    expect(surface.bodyBackground).toBe('rgb(36, 38, 43)');
+    // A safe-area pertence ao body no Safari/iPhone. Com o sheet contextual
+    // aberto, ela integra a mesma superfície e não pode revelar o chrome.
+    expect(surface.bodyBackground).toBe(surface.shellBackground);
     expect(surface.timelineBackground).toBe('rgb(36, 38, 43)');
     expect(surface.samples.map(({ color }) => color)).toEqual(Array(6).fill('rgb(67, 66, 71)'));
   }
@@ -1160,6 +1160,7 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
     'contextSheetImplicitRowCount: 0',
     'contextSheetUsesSingleSurface: true',
     'contextSheetUsesBodyHack: false',
+    'contextSheetBodySafeAreaSurface: true',
     'contextSheetUsesTimelineHack: false',
     'contextSheetUsesBodyBackgroundHack: false',
     'contextSheetUsesTimelineBackgroundHack: false',
