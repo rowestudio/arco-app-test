@@ -4,7 +4,7 @@
 
 - Duplicar em Camadas cria uma nova camada sobreposta, selecionada e desbloqueada. Duplicar na barra inferior cria a mesma cópia com leve deslocamento visual.
 - Copiar não altera o projeto. Colar fica exclusivamente no menu `+` de Ativos, usa a última cópia disponível no clipboard e nunca reutiliza silenciosamente uma cópia antiga após falha, permissão negada ou conteúdo incompatível.
-- Imagem externa colada entra pelo fluxo canônico de inserção; Stage, Preview e Export continuam usando o renderer existente.
+- Imagem externa colada entra pelo fluxo canônico de inserção; Stage, Preview e Export continuam usando o renderer existente. O import aceita PNG, JPEG, WebP, GIF, HEIC e HEIF quando o navegador consegue decodificá-los; o app registra o MIME recebido e verifica o alpha do bitmap decodificado, sem converter silenciosamente para JPEG.
 
 ## Estado implementado após rollback E9H (2026-08-26)
 

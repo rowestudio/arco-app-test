@@ -3,7 +3,8 @@
 ## Atualização 2026-08-29 — E9Z em desenvolvimento: copiar, colar e duplicar ativos
 
 - A branch `codex/asset-clipboard-copy-paste` introduz duplicação de camada, cópia interna e colagem de ativo/imagem pelo menu `+` de Ativos. A versão funcional em desenvolvimento é `v8z4b32E9Z`.
-- A validação automatizada WebKit cobre o clone de Camadas e a regressão da faixa canônica. A validação física iPhone/Safari permanece pendente; esta entrada não declara aprovação ou promoção.
+- A validação automatizada WebKit cobre o clone de Camadas, a regressão da faixa canônica e a aceitação de HEIC/HEIF no clipboard e no novo projeto. O import registra MIME e alpha efetivamente decodificados; a validação física iPhone/Safari de um recorte HEIF permanece pendente. Esta entrada não declara aprovação ou promoção.
+- A correção complementar de HEIC/HEIF após o merge da PR #537 permanece em `v8z4b32E9Z` por `APP_VERSION_EXCEPTION`, pois não abre um novo release cut.
 
 ## Atualização 2026-08-29 — RELEASE E9Y aprovada fisicamente e candidata de produção
 
