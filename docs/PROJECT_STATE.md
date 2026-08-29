@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-28 — E9X em preparação de PR
+
+- Retorno físico posterior à E9W: a superfície do painel contextual e a área inferior residual exibiam tons de cinza diferentes, tanto em Ativos quanto em Frames.
+- E9X torna opaco o slot estrutural que ocupa a parte inferior do sheet, usando o mesmo `--context-sheet-bg` do contêiner. A mudança é compartilhada pelos painéis de Frame, Escala/Rotação/Profundidade de Ativos e submenu de multi-seleção, sem mudar timeline, controles, acentos, Preview/Export, ProjectWorld, Save/Load, curvas, Text Asset ou Engine.
+- O gate WebKit agora exige que a camada de pintura do slot tenha a mesma cor do sheet em todos esses estados. Nova validação física em iPhone/Safari é obrigatória; produção intocada.
+- QA local: E8U, E9W, guardrail de versão, guardrail de alças e 47/47 self-tests passaram. A suíte WebKit completa reproduziu no gate herdado E8X a falha `beforeChanged` esperado `0`, recebido `1653`; esse caminho de Preview/Export não foi alterado nesta PR e não foi corrigido fora do escopo.
+
 ## Atualização 2026-08-28 — E9W em preparação de PR
 
 - Retorno físico da E9V: as marcas e os labels foram separados entre si, mas ainda ficavam no mesmo lado visual do slider. E9W estabelece três trilhas verticais: marcas neutras acima, slider no meio e labels abaixo.
