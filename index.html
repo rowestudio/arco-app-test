@@ -4726,7 +4726,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <span class="ac-label" id="assetsContextLabel">Toque numa imagem para selecionar</span>
 </div>
 <input type="file" id="projectFileInput" accept=".json" style="display:none;" onchange="loadProjectFromFile(event)">
-<input type="file" id="newProjectImageInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
+<input type="file" id="newProjectImageInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" style="display:none;">
 <!-- v8z4b30U — input de imagem do editor (Inserir/Trocar) em nível de topo, fora de
      qualquer container display:none, para que .click() funcione no iPhone/Safari. -->
 <input type="file" id="fileInput2" accept="image/*" style="display:none;">
@@ -17742,6 +17742,26 @@ function normalizeAssetZIndices() {
 // E9Z — clipboard transitório: nunca integra Save/Load, autosave ou Undo.
 const ARCO_ASSET_CLIPBOARD_MARKER = 'ARCO-ASSET/v1';
 let arcoAssetClipboardSnapshot = null;
+const ARCO_SUPPORTED_IMAGE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/heic', 'image/heif']);
+function isArcoSupportedImageMimeType(type) {
+  return ARCO_SUPPORTED_IMAGE_MIME_TYPES.has(String(type || '').toLowerCase());
+}
+function hasDecodedImageAlpha(image) {
+  try {
+    const width = Math.max(1, Math.min(64, image.naturalWidth || image.width || 1));
+    const height = Math.max(1, Math.min(64, image.naturalHeight || image.height || 1));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', { alpha: true, willReadFrequently: true });
+    if (!context) return false;
+    context.clearRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+    const pixels = context.getImageData(0, 0, width, height).data;
+    for (let i = 3; i < pixels.length; i += 4) if (pixels[i] < 255) return true;
+  } catch (_) {}
+  return false;
+}
 function cloneAssetForDuplicate(source, placement) {
   if (!source) return null;
   const clone = {...source, crop:source.crop?{...source.crop}:source.crop, frameStyle:source.frameStyle?{...source.frameStyle}:source.frameStyle};
@@ -17794,7 +17814,7 @@ async function pasteFromClipboard() {
   } catch (_) {}
   try {
     const items = await navigator.clipboard.read();
-    for (const item of items) for (const type of item.types) if (/^image\/(png|jpeg|webp|gif)$/.test(type)) {
+    for (const item of items) for (const type of item.types) if (isArcoSupportedImageMimeType(type)) {
       const blob = await item.getType(type);
       const file = new File([blob], 'imagem-colada.' + type.split('/')[1], {type});
       pendingImageAction = 'insertImage'; pendingImageTargetSlot = {key:'center',row:0,col:0}; pendingImageTargetAssetId = null;
@@ -28103,13 +28123,13 @@ function isSupportedNewProjectImage(file) {
   if (!file) return false;
   const type = (file.type || '').toLowerCase();
   const name = (file.name || '').toLowerCase();
-  const extOk = /\.(jpe?g|png|webp)$/.test(name);
-  const typeOk = /^(image\/jpeg|image\/png|image\/webp)$/.test(type);
+  const extOk = /\.(jpe?g|png|webp|heic|heif)$/.test(name);
+  const typeOk = /^(image\/jpeg|image\/png|image\/webp|image\/heic|image\/heif)$/.test(type);
   return typeOk || (!type && extOk);
 }
 
 function showNewProjectImageError() {
-  showStatus('Não foi possível abrir esta imagem. Use JPG, PNG ou WebP.');
+  showStatus('Não foi possível abrir esta imagem. Use JPG, PNG, WebP ou HEIF/HEIC.');
 }
 
 function clearCurrentProjectForNewFile() {
@@ -35483,7 +35503,7 @@ function performInsertImageAtSlot(slotKey, file) {
         locked: false,
         fitMode: 'contain',
         mimeType: file.type || '',
-        hasAlpha: /^image\/png$/i.test(file.type || ''),
+        hasAlpha: hasDecodedImageAlpha(img),
         // v8z4b30ZJ — defaults não destrutivos (crop/moldura futuros); enabled:false
         // não altera render/Preview/Export nesta versão.
         crop: { enabled: false, x: 0, y: 0, w: 1, h: 1 },
@@ -35527,6 +35547,8 @@ function performInsertImageAtSlot(slotKey, file) {
       lastAddedAssetId = asset.id;
       lastReplacedAssetId = null;
       slotOccupiedOnInsert = occupiedBefore;
+      lastImportedAssetMimeType = asset.mimeType || 'none';
+      lastImportedAssetHasAlpha = !!asset.hasAlpha;
       markProjectDirty('add-image-asset');
       if (window._arcoDebug) {
         console.info('[Arco ' + APP_VERSION + '] asset inserido no mundo:', { id: asset.id, slot: slotKey, occupiedBefore, zIndex: newZ,

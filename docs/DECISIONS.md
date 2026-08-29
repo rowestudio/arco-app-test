@@ -4,6 +4,7 @@
 
 - Roberto aprovou ações distintas: duplicar no painel Layers sem deslocamento, duplicar na barra inferior com deslocamento e colar somente no menu `+` de Ativos.
 - O clipboard do sistema determina a última cópia. Leitura incompatível ou negada não pode causar fallback silencioso para um ativo copiado anteriormente.
+- HEIC/HEIF passam a ser formatos aceitos quando o navegador os decodifica. O Arco não inventa transparência: registra o alpha observado e não achata a imagem para JPEG.
 
 ## DEC-2026-08-29-01 — release cut E9Y e promoção autorizada
 

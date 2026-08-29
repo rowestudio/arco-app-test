@@ -3,7 +3,7 @@
 ## Atualização 2026-08-29 — E9Z: duplicar, copiar e colar ativos
 
 - Implementado: duplicar uma camada no painel Layers no mesmo lugar; duplicar pelo menu inferior com deslocamento leve; copiar ativo e colar pelo menu `+` no centro da vista atual.
-- O menu `+` também recebe imagem do clipboard quando o navegador a disponibiliza. Grupos, múltiplos ativos e formatos além de imagem permanecem futuros.
+- O menu `+` também recebe imagem do clipboard quando o navegador a disponibiliza, incluindo HEIC/HEIF decodificáveis no Safari. Grupos, múltiplos ativos e formatos além de imagem permanecem futuros.
 
 ## Atualização 2026-08-29 — release cut E9Y e próximo ciclo
 

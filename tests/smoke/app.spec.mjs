@@ -4517,6 +4517,77 @@ test('E9Z — duplicar camada cria clone sobreposto, selecionado e reversível',
   }, sourceId)).toEqual(expect.objectContaining({ cloneLocked: false, sameGeometry: true, aboveSource: true }));
 });
 
+test('E9Z — Colar aceita HEIF/HEIC do clipboard sem redirecionar para JPEG', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const result = await page.evaluate(async () => {
+    const originalClipboard = navigator.clipboard;
+    const originalInsert = doInsertImageFromFile;
+    let captured = null;
+    try {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          readText: async () => '',
+          read: async () => [{
+            types: ['image/heic'],
+            getType: async () => new Blob(['heic-source'], { type: 'image/heic' }),
+          }],
+        },
+      });
+      doInsertImageFromFile = (file) => { captured = { type: file.type, name: file.name }; };
+      await pasteFromClipboard();
+      return {
+        captured,
+        acceptsHeic: isSupportedNewProjectImage(new File(['x'], 'recorte.heic', { type: 'image/heic' })),
+        acceptsHeif: isSupportedNewProjectImage(new File(['x'], 'recorte.heif', { type: 'image/heif' })),
+      };
+    } finally {
+      doInsertImageFromFile = originalInsert;
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: originalClipboard });
+    }
+  });
+  expect(result).toEqual({
+    captured: { type: 'image/heic', name: 'imagem-colada.heic' },
+    acceptsHeic: true,
+    acceptsHeif: true,
+  });
+});
+
+test('E9Z — inserção registra alpha do bitmap decodificado', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const result = await page.evaluate(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d');
+    context.clearRect(0, 0, 64, 64);
+    context.fillStyle = '#ff3366';
+    context.fillRect(16, 16, 32, 32);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const file = new File([blob], 'recorte-alpha.png', { type: 'image/png' });
+    pendingImageAction = 'insertImage';
+    pendingImageTargetSlot = { key: 'center', row: 0, col: 0 };
+    pendingImageTargetAssetId = null;
+    performInsertImageAtSlot('center', file);
+    await new Promise((resolve, reject) => {
+      const started = Date.now();
+      const timer = setInterval(() => {
+        if (lastAddedAssetId) { clearInterval(timer); resolve(); }
+        else if (Date.now() - started > 10_000) { clearInterval(timer); reject(new Error('timeout de inserção alpha')); }
+      }, 25);
+    });
+    const asset = assets.find(item => String(item.id) === String(lastAddedAssetId));
+    return { mime: asset?.mimeType, hasAlpha: asset?.hasAlpha, lastMime: lastImportedAssetMimeType, lastHasAlpha: lastImportedAssetHasAlpha };
+  });
+  expect(result).toEqual({ mime: 'image/png', hasAlpha: true, lastMime: 'image/png', lastHasAlpha: true });
+});
+
 test('E9W — profundidade separa marcas, slider e labels', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
