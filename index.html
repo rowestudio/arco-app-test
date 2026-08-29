@@ -28257,8 +28257,13 @@ function finishNewProjectImageLoad(file, dataUrl, tmp) {
       originalMime: file.type || ((String(dataUrl).match(/^data:([^;]+)/) || [])[1] || ''),
       sourceKind: 'newProjectImage',
       isEmbeddedBase64: false,
-      isHeic: false
+      isHeic: /heic|heif/i.test(file.type || dataUrl),
+      sourceFileName: file.name || '',
+      sourceFileBytes: Number(file.size) || 0,
+      decodedHasAlpha: hasDecodedImageAlpha(tmp)
     };
+    lastImportedAssetMimeType = imagePipelineMeta.originalMime || 'none';
+    lastImportedAssetHasAlpha = !!imagePipelineMeta.decodedHasAlpha;
     debugImagePipeline('new-project-image-dataurl');
     imgNatW = tmp.naturalWidth;
     imgNatH = tmp.naturalHeight;
@@ -28369,7 +28374,9 @@ function loadImage(file, onDoneCallback) {
       originalMime: originalMime || ((String(imageOriginalDataUrl).match(/^data:([^;]+)/) || [])[1] || ''),
       sourceKind,
       isEmbeddedBase64,
-      isHeic: /heic|heif/i.test(originalMime || imageOriginalDataUrl)
+      isHeic: /heic|heif/i.test(originalMime || imageOriginalDataUrl),
+      sourceFileName: file.name || '',
+      sourceFileBytes: Number(file.size) || 0
     };
     debugImagePipeline(isEmbeddedBase64 ? 'load-imagebase64-dataurl' : 'load-upload-dataurl');
     const tmp = new Image();
@@ -28381,6 +28388,9 @@ function loadImage(file, onDoneCallback) {
     tmp.onload = () => {
       imgNatW = tmp.naturalWidth;
       imgNatH = tmp.naturalHeight;
+      imagePipelineMeta.decodedHasAlpha = hasDecodedImageAlpha(tmp);
+      lastImportedAssetMimeType = imagePipelineMeta.originalMime || 'none';
+      lastImportedAssetHasAlpha = !!imagePipelineMeta.decodedHasAlpha;
       // v8z4b30M — Tarefa 1: original preservada para export; proxy reduzido
       // (se necessário) é o que vai para #imgEl/Stage.
       originalImageElement = tmp;
@@ -32775,6 +32785,11 @@ function syncFirstImageAsset(reason) {
     if (typeof a.zIndex !== 'number') a.zIndex = 0;
     a.visible  = true;
     a.locked   = false;
+    const sourceMime = String(imagePipelineMeta && imagePipelineMeta.originalMime || '').toLowerCase();
+    if (sourceMime) a.mimeType = sourceMime;
+    if (typeof (imagePipelineMeta && imagePipelineMeta.decodedHasAlpha) === 'boolean') {
+      a.hasAlpha = !!imagePipelineMeta.decodedHasAlpha;
+    }
     projectWorld.initialized = true;
     projectWorld.x = 0;
     projectWorld.y = 0;
@@ -33614,7 +33629,7 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
         target.worldH = newWorldH;
         target.fitMode = 'contain';
         target.mimeType = file.type || '';
-        target.hasAlpha = /^image\/png$/i.test(file.type || '');
+        target.hasAlpha = hasDecodedImageAlpha(img);
         lastImportedAssetMimeType = target.mimeType || 'none';
         lastImportedAssetHasAlpha = !!target.hasAlpha;
         target.name = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
@@ -33633,7 +33648,7 @@ function replaceImageAssetInPlace(target, file, requestedFrom) {
         target.worldH = newWorldH;
         target.fitMode = 'contain';
         target.mimeType = file.type || '';
-        target.hasAlpha = /^image\/png$/i.test(file.type || '');
+        target.hasAlpha = hasDecodedImageAlpha(img);
         lastImportedAssetMimeType = target.mimeType || 'none';
         lastImportedAssetHasAlpha = !!target.hasAlpha;
         target.name = (file.name || target.name || 'imagem').replace(/\.[^.]+$/, '');
@@ -40173,6 +40188,10 @@ function buildDiagnosticsText() {
       _pb('pngImportEnabled', !!pngImportEnabled);
       push('lastImportedAssetMimeType', lastImportedAssetMimeType || 'none');
       _pb('lastImportedAssetHasAlpha', !!lastImportedAssetHasAlpha);
+      push('currentImageSourceMime', imagePipelineMeta.originalMime || 'none');
+      push('currentImageSourceName', imagePipelineMeta.sourceFileName || 'none');
+      push('currentImageSourceBytes', Number(imagePipelineMeta.sourceFileBytes) || 0);
+      _pb('currentImageDecodedHasAlpha', !!imagePipelineMeta.decodedHasAlpha);
       _pb('pngAlphaPreservedInStage', !!pngAlphaPreservedInStage);
       _pb('pngAlphaPreservedInPreview', !!pngAlphaPreservedInPreview);
       _pb('pngAlphaPreservedInExport', !!pngAlphaPreservedInExport);
