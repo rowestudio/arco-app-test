@@ -1723,7 +1723,6 @@ body.editor-assets #layersStageControl{display:flex;}
 #layersPanel .layers-detail-info{min-width:0;max-width:100%;font-size:13px;font-weight:700;color:#fff;line-height:1.25;overflow-wrap:anywhere;text-shadow:0 1px 3px rgba(0,0,0,.85);background:transparent;}
 #layersPanel .layers-options{display:flex;flex-direction:row;gap:4px;max-width:100%;overflow-x:auto;overscroll-behavior:contain;pointer-events:auto;}
 #layersPanel .layers-options .layers-action-btn{width:60px;height:60px;min-width:60px;border-radius:10px;}
-#layersPanel .layers-options .layers-depth-action{width:60px;padding:0;font-size:12px;font-weight:700;gap:2px;}
 #layersPanel .layers-options .layers-visibility-action{color:rgba(255,255,255,.94);}
 #layersPanel .layers-options .layers-visibility-icon{width:18px;height:18px;display:block;pointer-events:none;}
 #layersPanel .layers-options .layers-delete-icon{width:17px;height:17px;display:block;pointer-events:none;}
@@ -4402,14 +4401,14 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <div class="tb-item ctx-only ctx-asset" id="tbAssetDuplicate" onclick="duplicateSelectedAssetFromToolbar()" aria-label="Duplicar ativo">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-copy"></use></svg><span class="tb-lbl">Duplicar</span>
   </div>
-  <div class="tb-item ctx-only ctx-asset" id="tbAssetDelete" onclick="isAssetsMode()&&getSelectedAsset()?deleteSelectedAsset():showStatus('Selecione uma imagem primeiro.')">
-    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-trash"></use></svg><span class="tb-lbl">Excluir</span>
-  </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetForward" onclick="isAssetsMode()?bringSelectedAssetForward():null">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-bring-forward"></use></svg><span class="tb-lbl">Frente</span>
   </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetBackward" onclick="isAssetsMode()?sendSelectedAssetBackward():null">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-send-backward"></use></svg><span class="tb-lbl">Trás</span>
+  </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetDelete" onclick="isAssetsMode()&&getSelectedAsset()?deleteSelectedAsset():showStatus('Selecione uma imagem primeiro.')">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-trash"></use></svg><span class="tb-lbl">Excluir</span>
   </div>
   </div>
 <div id="assetContextPanel" role="dialog" aria-modal="false" aria-label="Ajuste do ativo">
@@ -7641,8 +7640,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9Z';
-const APP_VERSION_NAME = 'v8z4b32E9Z';
+const APP_VERSION = 'v8z4b32E9AA';
+const APP_VERSION_NAME = 'v8z4b32E9AA';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -16303,7 +16302,6 @@ function setAssetContextValue(value) {
   beginAssetContextGesture();
   if (assetContextPanelKind === 'depth') {
     asset.depth = Math.max(-100, Math.min(100, next));
-    syncLayersDetailDepthValue();
   }
   if (assetContextPanelKind === 'rotation') asset.rotation = Math.max(-720, Math.min(720, next));
   if (assetContextPanelKind === 'scale' && assetContextGesture) {
@@ -36393,14 +36391,6 @@ function positionLayersDetailAtSelectedThumb() {
   const railCenterOffset = (railRect.top + railRect.bottom) / 2 - detailRect.top;
   detail.style.top = `${itemRect.top - panelRect.top + (itemRect.height / 2) - railCenterOffset}px`;
 }
-function syncLayersDetailDepthValue() {
-  const options = document.getElementById('layersOptions');
-  const asset = getSelectedAsset();
-  const value = options && options.querySelector('.layers-depth-value');
-  if (!asset || !value || String(layersDetailAssetId) !== String(asset.id)) return;
-  const depth = Number.isFinite(Number(asset.depth)) ? Number(asset.depth) : 0;
-  value.textContent = depth > 0 ? `+${depth}` : String(depth);
-}
 function renderLayersPanelList() {
   const list = document.getElementById('layersList');
   const count = document.getElementById('layersCount');
@@ -36536,9 +36526,6 @@ function renderLayersPanelList() {
     };
     const eyeIcon = '<svg class="layers-action-icon layers-visibility-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"></use></svg>';
     action(eyeIcon, 'Visibilidade', () => { selected.visible = selected.visible === false; markProjectDirty('layer-visibility'); renderProjectWorldExtraImages(); renderLayersPanelList(); }, selected.locked, 'layers-visibility-action');
-    const depth = Number.isFinite(Number(selected.depth)) ? Number(selected.depth) : 0;
-    const depthLabel = depth > 0 ? `+${depth}` : String(depth);
-    action(`<svg class="layers-action-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layers"></use></svg><span class="layers-depth-value">${depthLabel}</span>`, 'Profundidade', () => openAssetDepthPanel(), selected.locked, 'layers-depth-action');
     action('<svg class="layers-action-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-lock"></use></svg>', selected.locked ? 'Destravar camada' : 'Travar camada', () => toggleAssetLock(selected.id));
     action('<svg class="layers-action-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"></use></svg>', 'Duplicar camada', () => commitAssetDuplicate(selected, 'layer', 'layer-duplicate'));
     action('<svg class="layers-delete-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash"></use></svg>', 'Excluir camada', () => deleteSelectedAsset(), selected.locked);
