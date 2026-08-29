@@ -2,6 +2,14 @@
 
 > Atualização 2026-08-26: a `v8z4b32E9H`/PR #516 foi mergeada, publicada e reprovada fisicamente; seu rollback restaura `v8z4b32E9F6`. **REG-052..REG-058 mantêm exatamente seus status anteriores.** A nova REG-059 é registrada abaixo sem hipótese de causa.
 
+## REG-063 — área inferior residual revela tom diferente do bottom sheet (E9W; CORRIGIDA AUTOMATICAMENTE, validação física pendente)
+
+- **Relato físico (Roberto, iPhone/Safari):** os painéis contextuais que sobem de baixo tinham uma superfície cinza, mas a área inferior residual abaixo dos controles revelava um cinza diferente. Ocorre tanto em Ativos quanto em painéis de ajuste de Frames.
+- **Causa comprovada por inspeção WebKit:** o slot estrutural `#lowerContextSlot`, que preenche a região inferior compartilhada, permanecia com fundo transparente mesmo nos estados expandidos; assim, a pintura do chrome abaixo podia aparecer em vez de uma superfície explícita do sheet.
+- **Correção E9X:** nos estados contextuais de Frame, Ativo e multi-seleção, o slot recebe o mesmo token `--context-sheet-bg` do `#lowerContextSheetShell`. Não muda a cor da timeline, controles, acentos ou a geometria do painel.
+- **Proteção:** gate E8U exige agora igualdade entre o fundo computado do slot e o fundo do sheet nos painéis de Escala/Rotação de Frames, Escala/Rotação/Profundidade de Ativos.
+- **Status:** corrigida automaticamente; validação física em iPhone/Safari obrigatória antes de encerrar. Produção não autorizada.
+
 ## REG-062 — faixa de ações translúcida e Profundidade sem atualização imediata (E9L; CORRIGIDA AUTOMATICAMENTE, validação física pendente)
 
 - **Relato físico (Roberto, iPhone/Safari):** na faixa horizontal de Camadas, os ícones pareciam translúcidos sobre o asset; `×` confundia exclusão com fechamento; e, ao mover Profundidade, o valor da Layer só aparecia atualizado depois de fechar o painel. O fill do slider também podia divergir do thumb.

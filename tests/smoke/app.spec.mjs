@@ -88,6 +88,7 @@ async function sampleContextSheetToViewportBottom(page) {
     const controls = [...slot.querySelectorAll('.context-control-actions')].find((element) => element.getClientRects().length > 0);
     const controlsRect = controls?.getBoundingClientRect();
     const shellStyle = getComputedStyle(shell);
+    const slotStyle = getComputedStyle(slot);
     const timelineStyle = getComputedStyle(document.getElementById('midBar'));
     const bodyStyle = getComputedStyle(document.body);
     const panel = document.body.classList.contains('asset-context-panel-open')
@@ -126,6 +127,7 @@ async function sampleContextSheetToViewportBottom(page) {
       viewportBottom: window.innerHeight,
       shellSelector: '#lowerContextSheetShell',
       shellBackground: shellStyle.backgroundColor,
+      slotBackground: slotStyle.backgroundColor,
       slotRect: { left: slotRect.left, right: slotRect.right, width: slotRect.width },
       panelRect: { left: panelRect.left, right: panelRect.right, width: panelRect.width },
       parentChain,
@@ -1124,6 +1126,9 @@ test('E8U compacta controles e mantém paridade e superfície contextual contín
     expect(Math.abs(surface.rect.bottom - surface.viewportBottom)).toBeLessThan(1);
     expect(surface.shellSelector).toBe('#lowerContextSheetShell');
     expect(surface.shellBackground).toBe('rgb(67, 66, 71)');
+    // O slot é a camada de pintura contínua que permanece sob os controles
+    // e a safe-area; não pode revelar o chrome escuro quando o painel abre.
+    expect(surface.slotBackground).toBe(surface.shellBackground);
     expect(Math.abs(surface.panelRect.left - surface.slotRect.left)).toBeLessThan(1);
     expect(Math.abs(surface.panelRect.right - surface.slotRect.right)).toBeLessThan(1);
     expect(Math.abs(surface.panelRect.width - surface.slotRect.width)).toBeLessThan(1);
