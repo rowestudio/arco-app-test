@@ -1,5 +1,12 @@
 # ROADMAP
 
+## Atualização 2026-08-29 — release cut E9Y e próximo ciclo
+
+- A `v8z4b32E9Y`/PR #535 foi mergeada, publicada e aprovada fisicamente por Roberto em iPhone/Safari. É a candidata vigente para a promoção separada a produção.
+- Camadas e Profundidade básicas já estão implementadas no runtime aprovado da E9Y. Registros anteriores que as descrevem como pendentes pertencem ao histórico pré-E9Y e não definem o estado atual.
+- Engine Sprint permanece não implementado e passa para a próxima rodada de desenvolvimento. A ordem histórica que o colocava como bloqueador da promoção E9Y foi superada por decisão explícita de Roberto.
+- Nenhuma melhoria funcional nova deve entrar antes da promoção E9Y.
+
 ## Profundidade — implementada após E9N, com ajustes físicos E9W
 
 - Escala contínua `−100..+100`, marcas visuais a cada 20 pontos, labels `−100`, `0` e `+100`, e botões `−5/+5`.
@@ -93,3 +100,4 @@ Infraestrutura atual ou desejada, sem implicar implementação completa nesta PR
 - Staging fixo antes do merge.
 - Revisão automática/adversarial de PR.
 - Fixtures para curvas manuais, escala global, Load e Export WebCodecs.
+- [Pesquisa / Infraestrutura QA] Preview físico de PR no iPhone/Safari antes do merge: estudar URL HTTPS isolada por PR e HEAD SHA, identificável e exibida automaticamente na PR, que represente exatamente o SHA atual e invalide aprovação física anterior após novo HEAD. A solução deve evitar cache antigo de Safari/PWA, não sobrescrever a build estável da `main`, não usar credenciais de produção, expirar/remover o preview após fechar ou mergear e não depender de desktop local, token pessoal ou operação manual recorrente. Avaliar GitHub Actions com hosting isolado, subdomínio/namespace próprio ou equivalente, sem escolher fornecedor antes de spike técnico. A regra vigente permanece teste físico pós-merge; `docs/APPROVAL_WORKFLOW.md` só muda quando a infraestrutura for implementada e aprovada.

@@ -1,5 +1,11 @@
 # DECISIONS
 
+## DEC-2026-08-29-01 — release cut E9Y e promoção autorizada
+
+- A PR #535, `v8z4b32E9Y`, foi mergeada na `main` de teste em `ffca487a5dc1ef081a29f2f53ba453d2c0599180`, publicada e aprovada fisicamente por Roberto em iPhone/Safari. ProjectWorld, Preview e Export WebCodecs foram confirmados; `exportSuccess = true`.
+- A E9Y fecha esta release e é a fonte exata da PR separada de promoção para `rowestudio/arco-app`. Não criar versão, melhoria funcional ou merge automático durante a promoção.
+- A exigência histórica de Engine Sprint antes da promoção é superada exclusivamente para E9Y. Engine Sprint segue não implementado e passa à próxima rodada de desenvolvimento. Nenhuma melhoria funcional nova entra antes da promoção E9Y.
+
 ## DEC-2026-08-28-10 — E9W: trilhas verticais separadas na régua de Profundidade
 
 - As marcas neutras ficam numa trilha acima do slider; o slider ocupa a trilha central; os labels `−100`, `0` e `+100` ficam abaixo, com espaço físico entre eles. A marca coral não retorna.

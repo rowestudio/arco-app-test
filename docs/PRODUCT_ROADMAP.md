@@ -1,5 +1,10 @@
 # Roadmap de Produto Recuperado
 
+## Atualização 2026-08-29 — estado E9Y e pesquisa de integração
+
+- A `v8z4b32E9Y`/PR #535 está mergeada, publicada e aprovada fisicamente em iPhone/Safari. Camadas e Profundidade básicas compõem o runtime aprovado; formulações anteriores de “pendente de nova tentativa” permanecem históricas quando se referem a versões revertidas, não ao estado E9Y.
+- Engine Sprint permanece futuro para a próxima rodada de desenvolvimento. Ele não bloqueia a promoção E9Y por decisão explícita de Roberto.
+
 ## Atualização 2026-08-26 — rollback E9H
 
 - Camadas/Profundidade: **PENDENTES DE NOVA TENTATIVA** após reprovação física e rollback da `v8z4b32E9H` para `v8z4b32E9F6` (REG-059, causa não comprovada).
@@ -108,6 +113,13 @@ Estados usados neste documento:
 - [Pesquisa] Evolução da distância para comportamento animável, preservando paridade entre Stage, Preview, Export e Save/Load.
 - [Pesquisa] Motion Take: gravar movimento virtual da câmera por toque, arrasto, pinch e rotação, convertendo-o em frames editáveis.
 - [Pesquisa] Captura por acelerômetro/AR do iPhone, possivelmente como produto complementar.
+
+## Integrações de IA / MCP
+
+- [Pesquisa] Servidor MCP do Arco Motion App, vendor-neutral, para expor capacidades canônicas a ChatGPT, Claude e outros clientes compatíveis por uma camada comum: `Arco canonical project schema / JSON → Arco MCP Server → clientes MCP`.
+- [Pesquisa] O MVP opera sobre projeto Arco editável, não vídeo fechado. Recursos de leitura a estudar: `get_capabilities`, `get_project_schema`, `get_project`, `list_assets`, `list_layers`, `list_frames`, `list_segments`, `inspect_camera_path` e `get_export_settings`. Escritas futuras, em fase separada: criação/edição de projeto, frames, segmentos/easing, assets, transformações, profundidade, visibilidade, lock, texto, Layers, templates e retorno de JSON.
+- [Regra de arquitetura] Stage, Preview e Export continuam governados pelo renderer canônico; MCP não cria renderer paralelo, não simula Undo/Redo fora do modelo canônico, usa schema versionado, separa leitura de escrita, requer autenticação/permissões explícitas e menor privilégio, e nunca expõe segredos. Assets/binários exigem estudo próprio.
+- [Pesquisa em fases] O Arco atual é browser/client-side; um MCP remoto não controla automaticamente uma sessão aberta no Safari sem ponte adicional. Fase 1: projeto JSON editável. Fase 2: armazenamento/sync autenticado, se aprovado. Fase 3: eventual sincronização/controle de sessão ao vivo. Não implementar MCP nesta PR.
 
 ## 10. Escolha explícita ao encontrar checkpoint de sessão
 
