@@ -1,5 +1,10 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-29 — E9Z em desenvolvimento: copiar, colar e duplicar ativos
+
+- A branch `codex/asset-clipboard-copy-paste` introduz duplicação de camada, cópia interna e colagem de ativo/imagem pelo menu `+` de Ativos. A versão funcional em desenvolvimento é `v8z4b32E9Z`.
+- A validação automatizada WebKit cobre o clone de Camadas e a regressão da faixa canônica. A validação física iPhone/Safari permanece pendente; esta entrada não declara aprovação ou promoção.
+
 ## Atualização 2026-08-29 — RELEASE E9Y aprovada fisicamente e candidata de produção
 
 - A PR #535 foi mergeada na `main` de teste em `ffca487a5dc1ef081a29f2f53ba453d2c0599180`. `APP_VERSION` e `APP_VERSION_NAME` são `v8z4b32E9Y`.

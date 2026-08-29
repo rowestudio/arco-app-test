@@ -1,5 +1,10 @@
 # DECISIONS
 
+## DEC-2026-08-29-01 — E9Z: ações de duplicação e clipboard
+
+- Roberto aprovou ações distintas: duplicar no painel Layers sem deslocamento, duplicar na barra inferior com deslocamento e colar somente no menu `+` de Ativos.
+- O clipboard do sistema determina a última cópia. Leitura incompatível ou negada não pode causar fallback silencioso para um ativo copiado anteriormente.
+
 ## DEC-2026-08-29-01 — release cut E9Y e promoção autorizada
 
 - A PR #535, `v8z4b32E9Y`, foi mergeada na `main` de teste em `ffca487a5dc1ef081a29f2f53ba453d2c0599180`, publicada e aprovada fisicamente por Roberto em iPhone/Safari. ProjectWorld, Preview e Export WebCodecs foram confirmados; `exportSuccess = true`.

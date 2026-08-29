@@ -1,5 +1,11 @@
 # PRODUCT_RULES
 
+## Regra E9Z — copiar, colar e duplicar ativos
+
+- Duplicar em Camadas cria uma nova camada sobreposta, selecionada e desbloqueada. Duplicar na barra inferior cria a mesma cópia com leve deslocamento visual.
+- Copiar não altera o projeto. Colar fica exclusivamente no menu `+` de Ativos, usa a última cópia disponível no clipboard e nunca reutiliza silenciosamente uma cópia antiga após falha, permissão negada ou conteúdo incompatível.
+- Imagem externa colada entra pelo fluxo canônico de inserção; Stage, Preview e Export continuam usando o renderer existente.
+
 ## Estado implementado após rollback E9H (2026-08-26)
 
 A implementação funcional de Camadas/Profundidade da `v8z4b32E9H` foi integralmente revertida após REG-059, restaurando `v8z4b32E9F6`. A E9I implementa a nova tentativa aprovada: controle próprio no Stage, lista vertical com uma área de ações e lock canônico por asset. A régua/fill/steps E9H não existem. Layer travada permanece renderizada e persistida, mas não participa do hit-test nem aceita movimento ou transformação direta; o painel permite selecioná-la e destravá-la.
