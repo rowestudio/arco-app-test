@@ -4354,7 +4354,7 @@ test('E9L — miniatura abre faixa horizontal e ações não vazam para o Stage'
     infoBackground: 'rgba(0, 0, 0, 0)',
     closeControlPresent: false,
     actionRailIsAnchoredToThumb: true,
-    actionCount: 4,
+    actionCount: 5,
   });
 
   expect(await page.evaluate((id) => {
