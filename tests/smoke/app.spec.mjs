@@ -4354,7 +4354,7 @@ test('E9L — miniatura abre faixa horizontal e ações não vazam para o Stage'
     infoBackground: 'rgba(0, 0, 0, 0)',
     closeControlPresent: false,
     actionRailIsAnchoredToThumb: true,
-    actionCount: 4,
+    actionCount: 5,
   });
 
   expect(await page.evaluate((id) => {
@@ -4468,8 +4468,8 @@ test('E9N — faixa canônica ampla e reordenação de Camada', async ({ page })
       },
     };
   })).toEqual({
-    labels: ['Visibilidade', 'Profundidade', 'Travar camada', 'Excluir camada'],
-    targets: [{ width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }],
+    labels: ['Visibilidade', 'Profundidade', 'Travar camada', 'Duplicar camada', 'Excluir camada'],
+    targets: [{ width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }],
     canonicalSymbols: { visibility: '#i-eye', depth: '#i-layers', lock: '#i-lock', remove: '#i-trash' },
   });
   const reordered = await page.evaluate(({ dragged, target }) => {
@@ -4485,6 +4485,36 @@ test('E9N — faixa canônica ampla e reordenação de Camada', async ({ page })
   expect(reordered).toEqual(expect.objectContaining({ changed: true, selected: ids.dragged }));
   expect(reordered.undone).toEqual(reordered.before);
   expect(reordered.redone).toEqual(reordered.after);
+});
+
+test('E9Z — duplicar camada cria clone sobreposto, selecionado e reversível', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const sourceId = await page.evaluate(() => {
+    setEditorMode('assets', 'e9z-layer-duplicate');
+    const source = assets.find(asset => asset && (asset.type === 'image' || asset.type === 'text'));
+    if (!source) throw new Error('fixture sem ativo para duplicar');
+    source.locked = true;
+    selectAssetById(source.id, 'e9z-layer-duplicate');
+    return String(source.id);
+  });
+  await page.locator('#layersStageControl').tap();
+  await page.locator(`#layersList .layers-item[data-asset-id="${sourceId}"]`).tap();
+  await page.locator('#layersOptions .layers-action-btn[aria-label="Duplicar camada"]').tap();
+  expect(await page.evaluate((id) => {
+    const source = assets.find(asset => String(asset.id) === id);
+    const clone = getSelectedAsset();
+    return {
+      count: assets.length,
+      sourceId: String(source.id),
+      cloneId: String(clone.id),
+      cloneLocked: clone.locked,
+      sameGeometry: ['worldX', 'worldY', 'worldW', 'worldH', 'rotation', 'depth', 'visible'].every(key => clone[key] === source[key]),
+      aboveSource: Number(clone.zIndex) > Number(source.zIndex),
+    };
+  }, sourceId)).toEqual(expect.objectContaining({ cloneLocked: false, sameGeometry: true, aboveSource: true }));
 });
 
 test('E9W — profundidade separa marcas, slider e labels', async ({ page }) => {

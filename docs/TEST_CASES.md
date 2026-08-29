@@ -1,5 +1,12 @@
 # TEST_CASES
 
+## TC-051 — Copiar, colar e duplicar ativos (E9Z)
+
+- Pré-condição: projeto aberto no Modo Ativos com ao menos um ativo.
+- Passos: duplicar pelo painel Layers, duplicar pela barra inferior, copiar e colar pelo menu `+`; repetir com uma imagem copiada do sistema e com clipboard negado/incompatível.
+- Resultado esperado: a duplicação de Layers sobrepõe e seleciona o clone; a da barra desloca-o levemente; ambas criam um único Undo/Redo e o clone nasce desbloqueado. Colar só muta quando o clipboard atual contém ativo Arco compatível ou imagem; falhas não reutilizam cópia anterior. Preview, Export e Save/Load preservam os ativos pelo caminho canônico.
+- Ambiente: WebKit automatizado e validação física em iPhone/Safari antes de qualquer promoção.
+
 ## TC-066 — Superfície contextual contínua (E9Y / REG-063)
 
 - Em iPhone/Safari, abrir Escala ou Rotação de Frames e Escala, Rotação ou Profundidade de Ativos. A superfície do painel e toda a área inferior até a borda/safe-area devem ter o mesmo cinza contextual, sem faixa residual do chrome.

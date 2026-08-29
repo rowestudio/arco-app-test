@@ -3731,6 +3731,9 @@ body.asset-context-panel-open #toolbar{display:none !important;}
     <line x1="12" y1="4" x2="12" y2="20"/>
     <line x1="4" y1="12" x2="20" y2="12"/>
   </symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/>
+  </symbol>
   <symbol id="i-radius" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M20.34 17.52a10 10 0 1 0-2.82 2.82"/>
     <circle cx="19" cy="19" r="2"/>
@@ -4393,6 +4396,12 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <div class="tb-item ctx-only ctx-asset" id="tbAssetDepth" onclick="openAssetDepthPanel()">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-layers"></use></svg><span class="tb-lbl">Profundidade</span>
   </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetCopy" onclick="copySelectedAssetToClipboard()" aria-label="Copiar ativo">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-copy"></use></svg><span class="tb-lbl">Copiar</span>
+  </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetDuplicate" onclick="duplicateSelectedAssetFromToolbar()" aria-label="Duplicar ativo">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-copy"></use></svg><span class="tb-lbl">Duplicar</span>
+  </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetDelete" onclick="isAssetsMode()&&getSelectedAsset()?deleteSelectedAsset():showStatus('Selecione uma imagem primeiro.')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-trash"></use></svg><span class="tb-lbl">Excluir</span>
   </div>
@@ -5031,6 +5040,10 @@ body.asset-context-panel-open #toolbar{display:none !important;}
     <button type="button" class="assets-menu-btn" onclick="closeAssetsAddMenu();startInsertImageFlow();">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image"></use></svg>
       Nova imagem
+    </button>
+    <button id="assetsMenuPasteBtn" type="button" class="assets-menu-btn" onclick="pasteFromClipboard();">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-copy"></use></svg>
+      Colar
     </button>
     <button id="assetsMenuTextBtn" type="button" class="assets-menu-btn" onclick="closeAssetsAddMenu();startTextCreation();">
       <span aria-hidden="true" style="width:24px;text-align:center;font-size:21px;font-weight:700;">T</span>
@@ -7628,8 +7641,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9Y';
-const APP_VERSION_NAME = 'v8z4b32E9Y';
+const APP_VERSION = 'v8z4b32E9Z';
+const APP_VERSION_NAME = 'v8z4b32E9Z';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -17651,7 +17664,7 @@ function syncAssetToolbarState() {
   const canEdit = hasSel && !toolbarAsset.locked;
   const toolbarAssetId = toolbarAsset ? String(toolbarAsset.id) : '';
   const primary=document.getElementById('tbAssetReplace'); if(primary){const isText=hasSel&&toolbarAsset.type==='text';primary.querySelector('use').setAttribute('href',isText?'#i-mouse-pointer':'#i-image-down');primary.querySelector('.tb-lbl').textContent=isText?'Editar':'Trocar';primary.setAttribute('aria-label',isText?'Editar texto':'Trocar imagem');}
-  ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetDelete'].forEach(function(id) {
+  ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetDelete','tbAssetCopy','tbAssetDuplicate'].forEach(function(id) {
     const el = document.getElementById(id);
     if (!el) return;
     el.classList.toggle('asset-tool-disabled', !canEdit);
@@ -17725,6 +17738,70 @@ function normalizeAssetZIndices() {
   if (!Array.isArray(assets)) return;
   const byZ = assets.slice().sort(function(a, b) { return (a.zIndex||0) - (b.zIndex||0); });
   for (var k = 0; k < byZ.length; k++) byZ[k].zIndex = k + 1;
+}
+// E9Z — clipboard transitório: nunca integra Save/Load, autosave ou Undo.
+const ARCO_ASSET_CLIPBOARD_MARKER = 'ARCO-ASSET/v1';
+let arcoAssetClipboardSnapshot = null;
+function cloneAssetForDuplicate(source, placement) {
+  if (!source) return null;
+  const clone = {...source, crop:source.crop?{...source.crop}:source.crop, frameStyle:source.frameStyle?{...source.frameStyle}:source.frameStyle};
+  clone.id = (source.type === 'text' ? 'text-' : 'asset-') + Date.now() + '-' + Math.floor(Math.random() * 1000000);
+  clone.locked = false;
+  clone.zIndex = Math.max(0, ...assets.map(a => Number(a && a.zIndex) || 0)) + 1;
+  if (placement === 'toolbar') { clone.worldX = (Number(clone.worldX) || 0) + 16; clone.worldY = (Number(clone.worldY) || 0) + 16; }
+  if (placement === 'paste') {
+    const center = typeof getEditorViewCenterWorld === 'function' ? getEditorViewCenterWorld() : null;
+    if (center && Number.isFinite(center.x) && Number.isFinite(center.y)) {
+      clone.worldX = center.x - (Number(clone.worldW) || 0) / 2;
+      clone.worldY = center.y - (Number(clone.worldH) || 0) / 2;
+    }
+  }
+  assignPersistentLayerIdentity(clone);
+  if (clone.type === 'text') normalizeTextAsset(clone);
+  return clone;
+}
+function commitAssetDuplicate(source, placement, reason) {
+  if (!source) { showStatus('Selecione um ativo primeiro.'); return null; }
+  const before = captureState();
+  const clone = cloneAssetForDuplicate(source, placement);
+  if (!clone) return null;
+  assets.push(clone);
+  normalizeAssetZIndices();
+  pushUndoSnapshot(before);
+  selectAssetById(clone.id, 'duplicate');
+  if (typeof invalidateProjectWorldComposite === 'function') invalidateProjectWorldComposite();
+  if (typeof renderProjectWorldExtraImages === 'function') renderProjectWorldExtraImages();
+  if (typeof renderAll === 'function') renderAll();
+  if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+  if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
+  markProjectDirty(reason || 'duplicateAsset');
+  showStatus('Ativo duplicado.');
+  return clone;
+}
+function duplicateSelectedAssetFromToolbar() { return isAssetsMode() ? commitAssetDuplicate(getSelectedAsset(), 'toolbar', 'toolbar-duplicate') : null; }
+async function copySelectedAssetToClipboard() {
+  const source = isAssetsMode() ? getSelectedAsset() : null;
+  if (!source) { showStatus('Selecione um ativo primeiro.'); return; }
+  arcoAssetClipboardSnapshot = {...source, crop:source.crop?{...source.crop}:source.crop, frameStyle:source.frameStyle?{...source.frameStyle}:source.frameStyle};
+  try { await navigator.clipboard.writeText(ARCO_ASSET_CLIPBOARD_MARKER); showStatus('Ativo copiado.'); }
+  catch (_) { showStatus('Ativo copiado no Arco; o sistema não permitiu copiar.'); }
+}
+async function pasteFromClipboard() {
+  closeAssetsAddMenu();
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text === ARCO_ASSET_CLIPBOARD_MARKER && arcoAssetClipboardSnapshot) return commitAssetDuplicate(arcoAssetClipboardSnapshot, 'paste', 'clipboard-paste');
+  } catch (_) {}
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) for (const type of item.types) if (/^image\/(png|jpeg|webp|gif)$/.test(type)) {
+      const blob = await item.getType(type);
+      const file = new File([blob], 'imagem-colada.' + type.split('/')[1], {type});
+      pendingImageAction = 'insertImage'; pendingImageTargetSlot = {key:'center',row:0,col:0}; pendingImageTargetAssetId = null;
+      doInsertImageFromFile(file); return;
+    }
+  } catch (_) {}
+  showStatus('Não há imagem nem ativo Arco para colar.');
 }
 // v8z4b30ZL (fix v8z4b30ZM, fix v8z4b30ZO, fix v8z4b30ZU) — traz o asset selecionado uma posição para frente.
 function bringSelectedAssetForward() {
@@ -36426,6 +36503,7 @@ function renderLayersPanelList() {
     const depthLabel = depth > 0 ? `+${depth}` : String(depth);
     action(`<svg class="layers-action-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layers"></use></svg><span class="layers-depth-value">${depthLabel}</span>`, 'Profundidade', () => openAssetDepthPanel(), selected.locked, 'layers-depth-action');
     action('<svg class="layers-action-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-lock"></use></svg>', selected.locked ? 'Destravar camada' : 'Travar camada', () => toggleAssetLock(selected.id));
+    action('<svg class="layers-action-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"></use></svg>', 'Duplicar camada', () => commitAssetDuplicate(selected, 'layer', 'layer-duplicate'));
     action('<svg class="layers-delete-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash"></use></svg>', 'Excluir camada', () => deleteSelectedAsset(), selected.locked);
     positionLayersDetailAtSelectedThumb();
   }
