@@ -1,9 +1,9 @@
 # TEST_CASES
 
-## TC-066 — Superfície contextual contínua (E9X / REG-063)
+## TC-066 — Superfície contextual contínua (E9Y / REG-063)
 
 - Em iPhone/Safari, abrir Escala ou Rotação de Frames e Escala, Rotação ou Profundidade de Ativos. A superfície do painel e toda a área inferior até a borda/safe-area devem ter o mesmo cinza contextual, sem faixa residual do chrome.
-- Evidência automatizada: o gate E8U em WebKit verifica que `#lowerContextSlot` e `#lowerContextSheetShell` usam a mesma cor computada em todos os cinco estados. A timeline acima preserva seu cinza escuro e os acentos ciano/coral permanecem inalterados.
+- Evidência automatizada: o gate E8U em WebKit verifica que `#lowerContextSlot`, `#lowerContextSheetShell` e o `body` usam a mesma cor computada em todos os cinco estados; após fechar, o `body` volta ao chrome escuro. A timeline acima preserva seu cinza escuro e os acentos ciano/coral permanecem inalterados.
 - Validação física obrigatória em iPhone/Safari.
 
 ## TC-065 — Régua e passos de Profundidade (E9W)

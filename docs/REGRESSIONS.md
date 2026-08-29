@@ -2,13 +2,14 @@
 
 > Atualização 2026-08-26: a `v8z4b32E9H`/PR #516 foi mergeada, publicada e reprovada fisicamente; seu rollback restaura `v8z4b32E9F6`. **REG-052..REG-058 mantêm exatamente seus status anteriores.** A nova REG-059 é registrada abaixo sem hipótese de causa.
 
-## REG-063 — área inferior residual revela tom diferente do bottom sheet (E9W; CORRIGIDA AUTOMATICAMENTE, validação física pendente)
+## REG-063 — área inferior residual revela tom diferente do bottom sheet (E9X reprovada fisicamente; E9Y corrigida automaticamente, validação física pendente)
 
 - **Relato físico (Roberto, iPhone/Safari):** os painéis contextuais que sobem de baixo tinham uma superfície cinza, mas a área inferior residual abaixo dos controles revelava um cinza diferente. Ocorre tanto em Ativos quanto em painéis de ajuste de Frames.
-- **Causa comprovada por inspeção WebKit:** o slot estrutural `#lowerContextSlot`, que preenche a região inferior compartilhada, permanecia com fundo transparente mesmo nos estados expandidos; assim, a pintura do chrome abaixo podia aparecer em vez de uma superfície explícita do sheet.
-- **Correção E9X:** nos estados contextuais de Frame, Ativo e multi-seleção, o slot recebe o mesmo token `--context-sheet-bg` do `#lowerContextSheetShell`. Não muda a cor da timeline, controles, acentos ou a geometria do painel.
-- **Proteção:** gate E8U exige agora igualdade entre o fundo computado do slot e o fundo do sheet nos painéis de Escala/Rotação de Frames, Escala/Rotação/Profundidade de Ativos.
-- **Status:** corrigida automaticamente; validação física em iPhone/Safari obrigatória antes de encerrar. Produção não autorizada.
+- **E9X e retorno físico:** E9X tornou opaco o `#lowerContextSlot`, pintura interna compartilhada do sheet. Roberto retestou em iPhone/Safari e confirmou que a faixa residual continuava com tom diferente; portanto E9X não resolve integralmente esta regressão e não é declarada aprovada fisicamente.
+- **Causa comprovada por inspeção WebKit:** a faixa residual física fica fora do grid da timeline e é pintada pelo `body`, que permanecia em `#24262B` enquanto o sheet usava `#434247`. O slot transparente era um detalhe interno real, mas não era a causa suficiente da diferença visível até a borda segura.
+- **Correção E9Y:** `body.cust-expanded`, `body.asset-context-panel-open` e `body.align-submenu-open` recebem `--context-sheet-bg`, prolongando a superfície do sheet somente nos estados contextuais. Com o painel fechado, o `body` continua no chrome escuro normal. Timeline, controles, acentos e geometria não mudam.
+- **Proteção:** gate E8U exige agora igualdade entre o fundo computado do slot, do shell e do `body` nos painéis de Escala/Rotação de Frames, Escala/Rotação/Profundidade de Ativos, e preservação do chrome escuro após fechar.
+- **Status:** corrigida automaticamente na E9Y; validação física em iPhone/Safari obrigatória antes de encerrar. Produção não autorizada.
 
 ## REG-062 — faixa de ações translúcida e Profundidade sem atualização imediata (E9L; CORRIGIDA AUTOMATICAMENTE, validação física pendente)
 

@@ -1227,6 +1227,11 @@ html,body{
   /* prevent rubber-band scroll */
   position:fixed;width:100%;
 }
+/* A safe-area fica fora do grid da timeline no Safari/iPhone. Quando um
+   painel contextual está aberto, ela prolonga a mesma superfície do sheet. */
+body.cust-expanded,
+body.asset-context-panel-open,
+body.align-submenu-open{background:var(--context-sheet-bg);}
 .app{display:flex;flex-direction:column;height:100dvh;}
 
 /* IMAGE AREA — ocupa tudo do topo ao mid-bar */
@@ -7623,8 +7628,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9X';
-const APP_VERSION_NAME = 'v8z4b32E9X';
+const APP_VERSION = 'v8z4b32E9Y';
+const APP_VERSION_NAME = 'v8z4b32E9Y';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -38498,7 +38503,12 @@ function buildDiagnosticsText() {
   const _contextSheetBottomMatchesViewport = !!(_contextSheetShellRect && Math.abs(_contextSheetShellRect.bottom-window.innerHeight)<1);
   const _contextSheetBottomDelta = _contextSheetShellRect ? Math.abs(_contextSheetShellRect.bottom-window.innerHeight) : NaN;
   const _contextSheetHasCanonicalSurface = !!(_slotStyle && _slotStyle.backgroundColor === 'rgb(67, 66, 71)');
-  const _contextSheetUsesBodyBackgroundHack = !!(_contextSheetOpen && _bodyStyle.backgroundColor === 'rgb(67, 66, 71)');
+  const _contextSheetBodySafeAreaSurface = !!(_contextSheetOpen && _bodyStyle.backgroundColor === 'rgb(67, 66, 71)');
+  // A superfície do body é canônica somente nos estados que prolongam o
+  // sheet até a safe-area física do Safari/iPhone; fora deles seria hack.
+  const _contextSheetUsesBodyBackgroundHack = !!(_contextSheetOpen &&
+    _bodyStyle.backgroundColor === 'rgb(67, 66, 71)' &&
+    !document.body.matches('.cust-expanded,.asset-context-panel-open,.align-submenu-open'));
   const _contextSheetUsesTimelineBackgroundHack = !!(_contextSheetOpen && _midBarStyle && _midBarStyle.backgroundColor === 'rgb(67, 66, 71)');
   const _contextSheetPanelUsesSlotWidth = !!(_slotRect && _contextSheetPanelRect && Math.abs(_slotRect.left-_contextSheetPanelRect.left)<1 && Math.abs(_slotRect.right-_contextSheetPanelRect.right)<1);
   const _contextSheetSafeAreaAppliedCount = _contextSheetOpen && _contextSheetBottomMatchesViewport && _midBarStyle && parseFloat(_midBarStyle.paddingBottom) === 0 ? 1 : 0;
@@ -38540,6 +38550,7 @@ function buildDiagnosticsText() {
   push('contextSheetGridUnusedBlockSpace', Number.isFinite(_contextSheetGridUnusedBlockSpace) ? String(_contextSheetGridUnusedBlockSpace) : 'n/d');
   push('contextSheetUsesSingleSurface', String(_contextSheetUsesSingleSurface));
   push('contextSheetUsesBodyHack', String(_contextSheetUsesBodyBackgroundHack));
+  push('contextSheetBodySafeAreaSurface', String(_contextSheetBodySafeAreaSurface));
   push('contextSheetUsesTimelineHack', String(_contextSheetUsesTimelineBackgroundHack));
   push('contextSheetUsesBodyBackgroundHack', String(_contextSheetUsesBodyBackgroundHack));
   push('contextSheetUsesTimelineBackgroundHack', String(_contextSheetUsesTimelineBackgroundHack));
