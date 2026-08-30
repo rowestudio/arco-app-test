@@ -1,5 +1,13 @@
 # DECISIONS
 
+## DEC-2026-08-29-01 — Controles gerais ficam em Edição do projeto
+
+- **Data:** 2026-08-29.
+- **Decisão:** os botões de modo Câmera e Ativos têm uma única função: alternar o modo. As opções de visualização passam a ser abertas exclusivamente pelo ícone de olho do Stage. Formato, Fundo e Tremor Global ficam em Edição do projeto > Projeto > Aparência.
+- **Contexto:** o segundo toque no modo ativo escondia um submenu com ações de naturezas diferentes. Inserir imagem já tem entrada direta; Formato e Fundo são propriedades gerais do projeto, não do modo atual.
+- **Consequência:** a visualização continua contextual ao modo, mas controles gerais têm localização estável e única. A futura organização de easing e outras preferências pode subdividir Aparência quando houver volume suficiente.
+- **Status:** implementada tecnicamente na `v8z4b32E9AB`; validação física em iPhone/Safari permanece pendente e não há promoção para produção.
+
 ## DEC-2026-08-29-01 — E9Z: ações de duplicação e clipboard
 
 - Roberto aprovou ações distintas: duplicar no painel Layers sem deslocamento, duplicar na barra inferior com deslocamento e colar somente no menu `+` de Ativos.
