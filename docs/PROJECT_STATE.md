@@ -1,11 +1,11 @@
 # PROJECT_STATE
 
-## Atualização 2026-08-29 — v8z4b32E9AB em desenvolvimento: controles gerais do projeto
+## Atualização 2026-08-30 — v8z4b32E9AC em desenvolvimento: correção de interação dos controles gerais
 
 - Os botões **Câmera** e **Ativos** passam a apenas alternar o modo. O segundo toque não abre mais um submenu oculto.
-- O ícone de olho do Stage é a entrada única e explícita de **Visualização**: em Câmera, Mostrar tudo / Isolar frame / Esconder imagens; em Ativos, Mostrar/Esconder frames de referência.
-- O antigo painel “Edição de Tempo” passa a se chamar **Edição do projeto**, com abas **Tempo** e **Projeto**. Na seção **Aparência** da aba Projeto ficam Tremor Global, Formato e Fundo.
-- A alteração recebe a versão funcional inédita `v8z4b32E9AB`. Preview, Export, ProjectWorld, timeline, curvas e o motor permanecem fora do escopo.
+- O ícone de olho do Stage mantém a interação direta: em Câmera, alterna Mostrar tudo / Isolar frame / Esconder imagens; em Ativos, mostra/oculta frames de referência. Não abre painel.
+- O antigo painel “Edição de Tempo” passa a se chamar **Edição do projeto**, com abas **Tempo** e **Projeto**. Na seção **Aparência** da aba Projeto ficam Tremor Global, Formato e Fundo como controles inline; selecionar formato/cor não fecha Edição do projeto nem abre outra superfície.
+- A correção recebe a versão funcional inédita `v8z4b32E9AC`, substituindo a E9AB de teste. Preview, Export, ProjectWorld, timeline, curvas e o motor permanecem fora do escopo.
 - QA automatizado WebKit mobile: navegação de modo/olho/Projeto e regressões de Fundo (paleta extensa, HEX e seletor nativo) passaram. Validação física em iPhone/Safari continua pendente; produção não foi alterada.
 
 ## Atualização 2026-08-29 — v8z4b32E9AA em desenvolvimento: ações redundantes de Ativos/Layers

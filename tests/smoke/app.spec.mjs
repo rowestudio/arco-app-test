@@ -59,8 +59,7 @@ async function openProjectAppearance(page) {
 }
 async function openProjectBackgroundPanel(page) {
   await openProjectAppearance(page);
-  await page.locator('#projectBackgroundBtn').click();
-  await expect(page.locator('#panelBgColor')).toHaveClass(/show/);
+  await expect(page.locator('#panelBgColor')).toBeVisible();
 }
 
 async function seedRealSessionCheckpoint(page) {
@@ -3725,11 +3724,6 @@ test('REG-055 — picker nativo não alimenta a paleta pessoal (runaway), HEX in
   // ── TESTE A — Fundo do projeto: runaway do picker nativo ──
   await openProjectBackgroundPanel(page);
   const bgPanel = page.locator('#panelBgColor');
-  await expect(bgPanel).toHaveClass(/show/);
-  await page.waitForFunction(() => {
-    const t = getComputedStyle(document.getElementById('panelBgColor')).transform;
-    return t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)';
-  }, { timeout: 5_000 });
 
   let paletteBefore = await page.evaluate(() => customColorPalette.length);
   const undoBefore = await page.evaluate(() => undoStack.length);
@@ -3778,7 +3772,10 @@ test('REG-055 — picker nativo não alimenta a paleta pessoal (runaway), HEX in
   // paleta mesmo sem ser a cor efetivamente usada pelo projeto (usado pelo teste de
   // escopo abaixo: a paleta é browser-local, fora do payload do projeto salvo).
   await bgPanel.locator('#bgSwatches .bg-swatch[data-color]').first().click();
-  await expect(bgPanel).not.toHaveClass(/show/);
+  await expect(page.locator('#panelDuration')).toHaveClass(/show/);
+  await expect(page.locator('#durTabPrefs')).toBeVisible();
+  await page.locator('#panelDuration .panel-handle').click();
+  await expect(page.locator('#panelDuration')).not.toHaveClass(/show/);
 
   // ── TESTE B — Cor do texto: runaway + HEX inline ──
   const sheet = page.locator('#textCreationSheet');
@@ -3890,28 +3887,18 @@ test('REG-055 — painel de Fundo do projeto permanece contido em 390×797 com p
 
   await openProjectBackgroundPanel(page);
   const bgPanel = page.locator('#panelBgColor');
-  await expect(bgPanel).toHaveClass(/show/);
-  await page.waitForFunction(() => {
-    const t = getComputedStyle(document.getElementById('panelBgColor')).transform;
-    return t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)';
-  }, { timeout: 5_000 });
 
   expect(await bgPanel.locator('#bgSwatches .bg-swatch').count()).toBeGreaterThanOrEqual(100);
 
   const geometry = await page.evaluate(() => {
-    const vh = window.innerHeight;
-    const panel = document.getElementById('panelBgColor').getBoundingClientRect();
-    const handle = document.querySelector('#panelBgColor .panel-handle').getBoundingClientRect();
-    const title = document.querySelector('#panelBgColor .panel-title').getBoundingClientRect();
+    const projectPanel = document.getElementById('panelDuration').getBoundingClientRect();
     const hexInput = document.getElementById('bgHexInput').getBoundingClientRect();
     const hexText = document.getElementById('bgHexText').getBoundingClientRect();
     const swatches = document.getElementById('bgSwatches');
     const sw = swatches.getBoundingClientRect();
     return {
-      vh,
-      panelTop: panel.top, panelBottom: panel.bottom,
-      handleTop: handle.top, handleBottom: handle.bottom,
-      titleTop: title.top, titleBottom: title.bottom,
+      vh: window.innerHeight,
+      projectPanelTop: projectPanel.top, projectPanelBottom: projectPanel.bottom,
       hexInputTop: hexInput.top, hexInputBottom: hexInput.bottom,
       hexTextTop: hexText.top, hexTextBottom: hexText.bottom,
       swatchesTop: sw.top, swatchesBottom: sw.bottom, swatchesHeight: sw.height,
@@ -3919,24 +3906,10 @@ test('REG-055 — painel de Fundo do projeto permanece contido em 390×797 com p
       swatchesClientHeight: swatches.clientHeight,
     };
   });
-  // O painel inteiro permanece dentro do viewport (nunca é empurrado para cima e
-  // para fora da área visível pelo crescimento da paleta pessoal).
-  expect(geometry.panelTop).toBeGreaterThanOrEqual(-1);
-  expect(geometry.panelBottom).toBeLessThanOrEqual(geometry.vh + 1);
-  // Alça, título e o campo HEX texto (abaixo da área de swatches) permanecem
-  // alcançáveis dentro do viewport SEM rolar — nenhum foi empurrado para fora pelo
-  // crescimento da paleta. O input[type=color] nativo ("+") agora faz parte da
-  // MESMA linha rolável dos swatches (arquitetura [presets][pessoais][+] — revisão
-  // de blocker 1), por isso é verificado separadamente abaixo via rolagem, não
-  // exigido visível sem rolar.
-  for (const [label, top, bottom] of [
-    ['alça', geometry.handleTop, geometry.handleBottom],
-    ['título', geometry.titleTop, geometry.titleBottom],
-    ['HEX texto', geometry.hexTextTop, geometry.hexTextBottom],
-  ]) {
-    expect(top, `${label}: topo fora do viewport`).toBeGreaterThanOrEqual(-1);
-    expect(bottom, `${label}: base fora do viewport`).toBeLessThanOrEqual(geometry.vh + 1);
-  }
+  // A paleta não cria outro painel: o painel Projeto continua sendo a única
+  // superfície aberta, e seus controles permanecem alcançáveis por rolagem.
+  expect(geometry.projectPanelTop).toBeGreaterThanOrEqual(-1);
+  expect(geometry.projectPanelBottom).toBeLessThanOrEqual(798);
   // A área de SWATCHES (só ela) tem conteúdo maior que sua própria altura visível —
   // ou seja, existe overflow real contido internamente, não um painel que cresceu
   // para acomodar tudo.
@@ -3970,12 +3943,7 @@ test('REG-055 — painel de Fundo do projeto permanece contido em 390×797 com p
   await bgPanel.locator('#bgHexInput').scrollIntoViewIfNeeded();
   await expect(bgPanel.locator('#bgHexInput')).toBeVisible();
 
-  // Fechar o painel continua funcionando normalmente após o exercício de volume.
-  await bgPanel.locator('.panel-handle').click();
-  await expect(bgPanel).not.toHaveClass(/show/);
-
-  // Stage/layout externo não fica preso: outro painel abre normalmente em seguida.
-  await page.locator('.lower-global-duration').click();
+  // O painel Projeto segue aberto após o exercício de volume e fecha normalmente.
   await expect(page.locator('#panelDuration')).toHaveClass(/show/);
   await page.locator('#panelDuration .panel-handle').click();
   await expect(page.locator('#panelDuration')).not.toHaveClass(/show/);
@@ -4092,11 +4060,6 @@ test('REG-055 — os três "+" são o input[type=color] nativo real (alvo de toq
   // ── Fundo do projeto ──
   await openProjectBackgroundPanel(page);
   const bgPanel = page.locator('#panelBgColor');
-  await expect(bgPanel).toHaveClass(/show/);
-  await page.waitForFunction(() => {
-    const t = getComputedStyle(document.getElementById('panelBgColor')).transform;
-    return t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)';
-  }, { timeout: 5_000 });
 
   await assertPlusIsRealTouchTarget('#bgSwatches', '#bgColorTriggerWrap', '#bgSwatches .bg-swatch-add', '#bgHexInput', 'Fundo do projeto');
   // O antigo quadrado cinza/input "Personalizar" (visível fora do wrapper do "+",
@@ -4122,8 +4085,10 @@ test('REG-055 — os três "+" são o input[type=color] nativo real (alvo de toq
   await dispatchChange(bgPanel.locator('#bgHexText'));
   expect(await page.evaluate(() => customColorPalette.length)).toBe(paletteBefore + 1);
 
-  await bgPanel.locator('.panel-handle').click();
-  await expect(bgPanel).not.toHaveClass(/show/);
+  await expect(page.locator('#panelDuration')).toHaveClass(/show/);
+  await expect(page.locator('#durTabPrefs')).toBeVisible();
+  await page.locator('#panelDuration .panel-handle').click();
+  await expect(page.locator('#panelDuration')).not.toHaveClass(/show/);
 
   // ── Cor do texto ──
   const sheet = page.locator('#textCreationSheet');
@@ -4724,7 +4689,7 @@ test('E9W — profundidade separa marcas, slider e labels', async ({ page }) => 
   })).toBe(true);
 });
 
-test('E9AB — modos apenas alternam e Projeto reúne controles gerais', async ({ page }) => {
+test('E9AC — modos e olho mantêm interação direta; Projeto reúne controles inline', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
@@ -4733,38 +4698,32 @@ test('E9AB — modos apenas alternam e Projeto reúne controles gerais', async (
 
   // Repetir o toque no modo atual não abre mais um submenu oculto.
   await page.locator('#modeCameraBtn').tap();
-  await expect(page.locator('#cameraModeContextMenu')).not.toHaveClass(/open/);
+  await expect(page.locator('#cameraModeContextMenu')).toHaveCount(0);
 
-  // O olho é a entrada explícita para opções de visualização da Câmera.
+  // O olho mantém o atalho direto de visualização da Câmera, sem abrir sheet.
   await page.locator('#stageEyeShortcutBtn').tap();
-  await expect(page.locator('#cameraModeContextMenu')).toHaveClass(/open/);
-  await expect(page.locator('#cameraModeContextMenu .assets-menu-title')).toHaveText('Visualização');
-  await expect(page.locator('#cameraCtxFormatBtn')).toHaveCount(0);
-  await page.locator('#cameraModeContextMenu .panel-close-check').tap();
+  await expect.poll(() => page.evaluate(() => viewMode)).toBe(1);
+  await expect(page.locator('#cameraModeContextMenu')).toHaveCount(0);
 
-  // Em Ativos, o mesmo olho expõe somente a referência de frames.
+  // Em Ativos, o mesmo olho alterna diretamente a referência de frames.
   await page.locator('#modeAssetsBtn').tap();
   await expect(page.locator('body')).toHaveClass(/editor-assets/);
   await page.locator('#stageEyeShortcutBtn').tap();
-  await expect(page.locator('#assetsModeContextMenu')).toHaveClass(/open/);
-  await expect(page.locator('#assetsModeContextMenu .assets-menu-title')).toHaveText('Visualização');
-  await expect(page.locator('#assetsModeContextMenu .assets-menu-btn')).toHaveCount(1);
-  await page.locator('#assetsCtxFramesBtn').tap();
   await expect.poll(() => page.evaluate(() => worldModeShowFrames)).toBe(true);
+  await expect(page.locator('#assetsModeContextMenu')).toHaveCount(0);
 
-  // Projeto centraliza os controles gerais antes espalhados pelos menus de modo.
+  // Projeto mantém Formato e Fundo dentro da própria aba, sem empilhar painéis.
   await page.locator('.lower-global-duration').tap();
   await page.locator('#durTabBtnPrefs').tap();
   await expect(page.locator('#panelDuration .panel-title')).toHaveText('Edição do projeto');
   await expect(page.locator('#durTabBtnPrefs')).toHaveText('Projeto');
   await expect(page.locator('#durTabPrefs .dur-section-header').first()).toContainText('Aparência');
-  await expect(page.locator('#projectFormatBtn')).toBeVisible();
-  await expect(page.locator('#projectBackgroundBtn')).toBeVisible();
-  await page.locator('#projectFormatBtn').tap();
-  await expect(page.locator('#panelFormat')).toHaveClass(/show/);
-  await page.locator('#panelFormat .panel-handle').tap();
-  await page.locator('.lower-global-duration').tap();
-  await page.locator('#durTabBtnPrefs').tap();
-  await page.locator('#projectBackgroundBtn').tap();
-  await expect(page.locator('#panelBgColor')).toHaveClass(/show/);
+  await expect(page.locator('#durTabPrefs #formatChips')).toBeVisible();
+  await expect(page.locator('#durTabPrefs #bgSwatches')).toBeVisible();
+  await page.locator('#durTabPrefs #formatChips .fmt-row[data-ratio="1:1"]').tap();
+  await expect(page.locator('#panelDuration')).toHaveClass(/show/);
+  await expect(page.locator('#durTabPrefs')).toBeVisible();
+  await page.locator('#durTabPrefs #bgSwatches .bg-swatch').first().tap();
+  await expect(page.locator('#panelDuration')).toHaveClass(/show/);
+  await expect(page.locator('#durTabPrefs')).toBeVisible();
 });
