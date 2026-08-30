@@ -1,5 +1,14 @@
 # DECISIONS
 
+## DEC-2026-08-30-02 — Presença temporal de ativos é genérica, referencial e separada de efeitos
+
+- **Data:** 2026-08-30.
+- **Decisão:** imagens e textos terão presença temporal por Entrada e Saída, com âncoras de tempo do projeto, Frame ou evento de outro ativo, mais deslocamento em segundos. Opacidade manual é base persistente e não é substituída pela presença. A primeira etapa não expõe efeitos; futura animação reutilizará os mesmos gatilhos.
+- **Hierarquia:** padrões ficam em `Edição do projeto > Aparência`; o ativo selecionado recebe painel compacto `Animação`, com Entrada/Saída desligadas por padrão e expansão somente após ativação. `Aplicar a todos` sobrescreve overrides; `Aplicar aos sem ajuste individual` preserva-os.
+- **Integridade:** vínculos cíclicos são bloqueados. Ao excluir ativo referenciado, a confirmação converte dependências em tempos absolutos resolvidos, sem relink automático; Undo restaura os vínculos.
+- **Duração:** redimensionamento proporcional do projeto oferece, ligado por padrão, acompanhar tempos absolutos, offsets e futuras durações de efeitos; vínculos semânticos a Frames/Ativos permanecem vínculos.
+- **Status:** especificação aprovada em `docs/superpowers/specs/2026-08-30-asset-temporal-presence-design.md`; nenhuma implementação funcional é autorizada por este registro isoladamente.
+
 ## DEC-2026-08-30-01 — Cor sempre tem amostra inline; placeholder de texto mede sua própria largura
 
 - **Data:** 2026-08-30.
