@@ -1,5 +1,11 @@
 # DECISIONS
 
+## DEC-2026-08-30-01 — Cor sempre tem amostra inline; placeholder de texto mede sua própria largura
+
+- **Data:** 2026-08-30.
+- **Decisão:** o valor hexadecimal de uma cor não é a única representação visual: Fundo do projeto, Cor do texto e Fundo da caixa exibem uma amostra da cor ativa na mesma linha do campo, imediatamente antes do código. Não se cria uma linha adicional nem uma nova superfície. Para texto novo, `Texto...` é somente o preview de criação; o rascunho salvo continua vazio até a confirmação com conteúdo do usuário.
+- **Consequência:** paleta, picker e edição hexadecimal convergem na mesma cor apresentada. A caixa automática do rascunho reserva a largura do placeholder durante a criação, eliminando a quebra por caractere sem introduzir conteúdo falso em assets confirmados. Implementação técnica em `v8z4b32E9AD`; validação física iPhone/Safari ainda pendente.
+
 ## DEC-2026-08-29-01 — Controles gerais ficam em Edição do projeto
 
 - **Data:** 2026-08-29.
