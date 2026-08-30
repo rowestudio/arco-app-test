@@ -1,5 +1,11 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-30 — v8z4b32E9AD em desenvolvimento: amostra de cor e largura inicial de texto
+
+- Cada campo HEX de cor mostra a amostra ativa na própria linha, antes do código editável: Fundo do projeto, Cor do texto e Fundo da caixa. A amostra acompanha paleta, seletor nativo e edição/commit do HEX; o estado “Sem cor” do fundo da caixa continua transparente.
+- Ao criar um Text Asset vazio, o modelo permanece vazio e ainda exige conteúdo para confirmar. Apenas a geometria temporária passa a reservar a largura de `Texto...`, exatamente como o preview visível, evitando a pilha vertical de caracteres.
+- A correção funcional recebe a versão inédita `v8z4b32E9AD`. Preview, Export, ProjectWorld, Save/Load, timeline, curvas e motor permanecem fora do escopo. Os testes WebKit mobile cobrem as três amostras e a largura do rascunho; a validação física em iPhone/Safari continua pendente.
+
 ## Atualização 2026-08-30 — v8z4b32E9AC em desenvolvimento: correção de interação dos controles gerais
 
 - Os botões **Câmera** e **Ativos** passam a apenas alternar o modo. O segundo toque não abre mais um submenu oculto.

@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9AD — base v8z4b32E9AC. fix(project-colors/text-draft): cada campo HEX de Fundo do projeto, Cor do texto e Fundo da caixa passa a exibir, na mesma linha e antes do código editável, uma amostra do valor canônico ativo; a amostra é sincronizada por paleta, picker e commit HEX, e o estado Sem cor do fundo da caixa permanece explicitamente transparente. O rascunho vazio de novo texto continua vazio no modelo e exige conteúdo para confirmar, porém passa a medir o mesmo placeholder visual Texto... durante a criação, preservando largura automática horizontal e evitando empilhamento vertical de letras. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, assets de imagem e texto confirmado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AD. -->
 <!-- Arco Motion App — v8z4b32E9F6 — base v8z4b32E9F3 (PR #506), pulando v8z4b32E9F4
      (PR #507, painel próprio #customColorPanel, REPROVADA fisicamente e revertida pela
      PR #508) e v8z4b32E9F5 (PR #509, REPROVADA fisicamente e revertida pela PR #510).
@@ -1637,7 +1638,9 @@ body.editor-assets.recording .frame{display:none !important;}
    hierarquia; o slider de opacidade fica fisicamente dentro deste painel. */
 .text-bg-panel{display:flex;flex-direction:column;gap:12px;padding:2px 0}.text-bg-row{display:flex;align-items:center;gap:12px;min-height:44px}
 /* v8z4b32E9F6 — REG-055 (4): campo HEX inline compartilhado pelos três contextos. */
-.text-hex-row{display:flex;align-items:center;min-height:36px}
+.text-hex-row{display:flex;align-items:center;gap:8px;min-height:36px}
+.text-hex-current-color{flex:0 0 auto;width:36px;height:36px;box-sizing:border-box;border:2px solid rgba(255,255,255,.22);border-radius:8px;background:#000000;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.text-hex-current-color.is-transparent{background-color:#e6e6e6;background-image:linear-gradient(45deg,#9a9a9a 25%,transparent 25%),linear-gradient(-45deg,#9a9a9a 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#9a9a9a 75%),linear-gradient(-45deg,transparent 75%,#9a9a9a 75%);background-size:12px 12px;background-position:0 0,0 6px,6px -6px,-6px 0}
 .text-hex-input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:14px;color:var(--text);font-family:monospace;}
 .text-box-toggle{display:grid;place-items:center;width:46px;height:44px;padding:0;border:1px solid var(--border2);border-radius:12px;background:var(--surface2);color:var(--text2)}.text-box-toggle svg{width:22px;height:22px;display:block;color:currentColor}.text-box-toggle.active{background:#ffffff;border-color:#ffffff;color:#24262B}
 .text-bg-opacity-row{display:flex;align-items:center;gap:10px;min-height:44px}.text-bg-opacity-row[hidden]{display:none}.text-bg-opacity-icon{width:20px;height:20px;flex:0 0 auto;color:var(--text2)}
@@ -5088,7 +5091,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
          paleta pessoal persistente e o campo HEX inline no MESMO painel; picker
          input/change NUNCA chama addCustomColorToPalette (REG-055A) — só o commit
          HEX confirmado salva. -->
-    <div class="text-editor-panel" data-text-panel="color"><div id="textColorSwatches" class="text-swatch-row" role="group" aria-label="Cor do texto"><span id="textColorTriggerWrap" class="color-trigger-wrap"><button type="button" class="text-swatch-add" aria-hidden="true" tabindex="-1">+</button><input id="textCreationColor" aria-label="Escolher outra cor do texto" class="color-trigger-input" type="color" value="#ffffff"></span></div><div class="text-hex-row"><input id="textColorHexText" type="text" maxlength="7" class="text-hex-input" aria-label="Hexadecimal da cor do texto" placeholder="#RRGGBB" oninput="onTextColorHexInput(this.value)" onchange="commitTextColorHex(this.value)" onkeydown="onTextColorHexKeydown(event)"></div></div>
+    <div class="text-editor-panel" data-text-panel="color"><div id="textColorSwatches" class="text-swatch-row" role="group" aria-label="Cor do texto"><span id="textColorTriggerWrap" class="color-trigger-wrap"><button type="button" class="text-swatch-add" aria-hidden="true" tabindex="-1">+</button><input id="textCreationColor" aria-label="Escolher outra cor do texto" class="color-trigger-input" type="color" value="#ffffff"></span></div><div class="text-hex-row"><span id="textColorHexCurrentColor" class="text-hex-current-color" aria-hidden="true"></span><input id="textColorHexText" type="text" maxlength="7" class="text-hex-input" aria-label="Hexadecimal da cor do texto" placeholder="#RRGGBB" oninput="onTextColorHexInput(this.value)" onchange="commitTextColorHex(this.value)" onkeydown="onTextColorHexKeydown(event)"></div></div>
     <!-- v8z4b32E9F1 — Fundo da caixa: swatch "Sem cor / Transparente" (padrão) +
          mesma paleta neutra de Cor do texto + botão + (color picker). Escolher uma
          cor liga o fundo (boxBackgroundEnabled=true) e revela o slider de opacidade;
@@ -5097,7 +5100,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
          v8z4b32E9F6 — REG-055: mesma correção de ativação/estabilidade acima, agora em
          #textBgTriggerWrap/#textBoxBackgroundColor (último filho estático de
          #textBgSwatches); acrescenta paleta pessoal persistente e HEX inline. -->
-    <div class="text-editor-panel" data-text-panel="background"><div class="text-bg-panel" role="group" aria-label="Fundo da caixa"><div id="textBgSwatches" class="text-swatch-row"><span id="textBgTriggerWrap" class="color-trigger-wrap"><button type="button" class="text-swatch-add" aria-hidden="true" tabindex="-1">+</button><input id="textBoxBackgroundColor" class="color-trigger-input" type="color" value="#000000" aria-label="Escolher outra cor do fundo"></span></div><div class="text-hex-row"><input id="textBoxBackgroundHexText" type="text" maxlength="7" class="text-hex-input" aria-label="Hexadecimal do fundo da caixa" placeholder="#RRGGBB" oninput="onTextBgHexInput(this.value)" onchange="commitTextBgHex(this.value)" onkeydown="onTextBgHexKeydown(event)"></div><div id="textEditorBgOpacityWrap" class="text-bg-opacity-row" hidden><svg class="text-bg-opacity-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-opacity"></use></svg><input id="textBoxBackgroundOpacity" class="text-box-opacity" type="range" min="0" max="100" step="1" value="70" aria-label="Opacidade do fundo"><span id="textBoxBackgroundOpacityValue" class="text-box-opacity-value">70%</span></div></div></div>
+    <div class="text-editor-panel" data-text-panel="background"><div class="text-bg-panel" role="group" aria-label="Fundo da caixa"><div id="textBgSwatches" class="text-swatch-row"><span id="textBgTriggerWrap" class="color-trigger-wrap"><button type="button" class="text-swatch-add" aria-hidden="true" tabindex="-1">+</button><input id="textBoxBackgroundColor" class="color-trigger-input" type="color" value="#000000" aria-label="Escolher outra cor do fundo"></span></div><div class="text-hex-row"><span id="textBgHexCurrentColor" class="text-hex-current-color" aria-hidden="true"></span><input id="textBoxBackgroundHexText" type="text" maxlength="7" class="text-hex-input" aria-label="Hexadecimal do fundo da caixa" placeholder="#RRGGBB" oninput="onTextBgHexInput(this.value)" onchange="commitTextBgHex(this.value)" onkeydown="onTextBgHexKeydown(event)"></div><div id="textEditorBgOpacityWrap" class="text-bg-opacity-row" hidden><svg class="text-bg-opacity-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-opacity"></use></svg><input id="textBoxBackgroundOpacity" class="text-box-opacity" type="range" min="0" max="100" step="1" value="70" aria-label="Opacidade do fundo"><span id="textBoxBackgroundOpacityValue" class="text-box-opacity-value">70%</span></div></div></div>
     <!-- v8z4b32E9F1 — Largura: [Auto compacto] [slider step 5] [valor]. Um único botão
          de modo (Auto). Mover o slider entra em fixed no MESMO gesto; Auto recalcula a
          medição canônica e re-sincroniza o slider sem sair de auto. Sem botão "Fixa"
@@ -5397,6 +5400,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
         </span>
       </div>
       <div class="text-hex-row">
+        <span id="bgHexCurrentColor" class="text-hex-current-color" aria-hidden="true"></span>
         <input type="text" id="bgHexText" value="#000000" maxlength="7" class="text-hex-input" aria-label="Hexadecimal da cor de fundo" placeholder="#RRGGBB"
           onfocus="beginBgColorEdit()" oninput="onBgHexText(this.value)" onchange="commitBgColorEdit(this.value,'hex')" onkeydown="onBgHexKeydown(event)">
       </div>
@@ -7516,8 +7520,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AC';
-const APP_VERSION_NAME = 'v8z4b32E9AC';
+const APP_VERSION = 'v8z4b32E9AD';
+const APP_VERSION_NAME = 'v8z4b32E9AD';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -15721,13 +15725,13 @@ function wrapTextLines(ctx,text,maxWidth){const lines=[];String(text||'').split(
 // Largura natural do conteúdo: acompanha A LINHA MAIS LONGA, quebrando somente por
 // Enter (\n). Não usa boxWidth como limite — é a base do modo auto-largura.
 function measureTextNaturalWidth(ctx,text){let max=0;String(text==null?'':text).split('\n').forEach(function(paragraph){const w=ctx.measureText(paragraph.replace(/\t/g,'    ')).width;if(w>max)max=w});return max}
-function measureTextAsset(asset){normalizeTextAsset(asset);const canvas=measureTextAsset.canvas||(measureTextAsset.canvas=document.createElement('canvas')),ctx=canvas.getContext('2d');ctx.font=`${asset.fontStyle} ${asset.fontWeight} ${asset.fontSize}px ${asset.fontFamily}`;
+function measureTextAsset(asset,layoutText){normalizeTextAsset(asset);const isEmptyCreationDraft=asset===pendingTextDraft&&textEditorMode==='create'&&!asset.text,content=layoutText==null?(isEmptyCreationDraft?'Texto...':asset.text||''):String(layoutText),canvas=measureTextAsset.canvas||(measureTextAsset.canvas=document.createElement('canvas')),ctx=canvas.getContext('2d');ctx.font=`${asset.fontStyle} ${asset.fontWeight} ${asset.fontSize}px ${asset.fontFamily}`;
   if(asset.boxWidthMode==='auto'){
     // Largura derivada do conteúdo (linha mais longa). Usa a largura natural
     // crua: wrapTextLines reconstrói exatamente a mesma string e mede com o mesmo
     // ctx/fonte, então a comparação estrita (> maxWidth) nunca quebra a linha mais
     // longa. Manter o valor cru preserva a escala linear de boxWidth (fontSize).
-    const natural=measureTextNaturalWidth(ctx,asset.text||'');
+    const natural=measureTextNaturalWidth(ctx,content);
     // O DOM e o Canvas podem arredondar a mesma fonte em lados diferentes do
     // subpixel (observado sobretudo no Safari). Um pixel CSS canônico impede que
     // overflow-wrap:anywhere transforme a linha medida exatamente no limite em
@@ -15737,7 +15741,7 @@ function measureTextAsset(asset){normalizeTextAsset(asset);const canvas=measureT
     // largura é linear na fontSize, mantém escala% = fontSize/textBaseFontSize.
     if(asset.fontSize>0&&Number.isFinite(Number(asset.textBaseFontSize))&&Number(asset.textBaseFontSize)>0)asset.textBaseBoxWidth=Math.max(20,asset.boxWidth*(Number(asset.textBaseFontSize)/asset.fontSize));
   }
-  const lines=wrapTextLines(ctx,asset.text||'',asset.boxWidth),contentHeight=Math.max(asset.fontSize*asset.lineHeight,lines.length*asset.fontSize*asset.lineHeight),paddingX=asset.boxBackgroundEnabled?asset.fontSize*asset.boxPaddingXEm:0,paddingY=asset.boxBackgroundEnabled?asset.fontSize*asset.boxPaddingYEm:0;asset.worldW=asset.boxWidth+paddingX*2;asset.worldH=contentHeight+paddingY*2;return{lines,width:asset.boxWidth,height:asset.worldH,contentHeight,paddingX,paddingY}}
+  const lines=wrapTextLines(ctx,content,asset.boxWidth),contentHeight=Math.max(asset.fontSize*asset.lineHeight,lines.length*asset.fontSize*asset.lineHeight),paddingX=asset.boxBackgroundEnabled?asset.fontSize*asset.boxPaddingXEm:0,paddingY=asset.boxBackgroundEnabled?asset.fontSize*asset.boxPaddingYEm:0;asset.worldW=asset.boxWidth+paddingX*2;asset.worldH=contentHeight+paddingY*2;return{lines,width:asset.boxWidth,height:asset.worldH,contentHeight,paddingX,paddingY}}
 function createPendingTextAsset(centerWorld){const baseW=projectWorld.baseStageW||stageW||360,baseH=projectWorld.baseStageH||stageH||640,boxWidth=Math.max(120,Math.min(baseW*.72,320)),fontSize=Math.max(22,Math.min(42,baseW*.1));
  const asset=normalizeTextAsset({id:'text-'+Date.now()+'-'+Math.floor(Math.random()*1000),type:'text',text:'',color:TEXT_ASSET_DEFAULT_COLOR,fontKey:'system',fontWeight:400,fontStyle:'normal',worldX:0,worldY:0,worldW:boxWidth,boxWidth,worldH:fontSize*1.2,rotation:0,zIndex:Math.max(0,...assets.map(a=>Number(a&&a.zIndex)||0))+1,visible:true,fontSize,textBaseBoxWidth:boxWidth,textBaseFontSize:fontSize,lineHeight:1.2,textAlign:'center',depth:0,boxWidthMode:'auto'});
  // v8z4b32E9E — o novo Text Asset nasce centralizado na VISTA ATUAL do Stage:
@@ -15745,7 +15749,7 @@ function createPendingTextAsset(centerWorld){const baseW=projectWorld.baseStageW
  // centerWorld (centro da vista corrente em World, capturado antes do resize do
  // teclado). Sem vista válida, cai no centro da célula base do ProjectWorld
  // (comportamento pré-E9E). Nenhum offset visual artificial é introduzido.
- measureTextAsset(asset);
+ measureTextAsset(asset,'Texto...');
  const hasView=centerWorld&&Number.isFinite(centerWorld.x)&&Number.isFinite(centerWorld.y);
  const cx=hasView?centerWorld.x:baseW/2,cy=hasView?centerWorld.y:baseH/2;
  asset.worldX=cx-asset.worldW/2;asset.worldY=cy-asset.worldH/2;
@@ -15781,6 +15785,16 @@ function renderTextEditorOptions(){const font=document.getElementById('textEdito
 // verdade é o próprio estado canônico; fallback defensivo 'left' para valor inválido.
 function updateTextAlignRailIcon(){const use=document.getElementById('textAlignRailIcon');if(!use)return;const a=(pendingTextDraft&&['left','center','right'].includes(pendingTextDraft.textAlign))?pendingTextDraft.textAlign:'left';const icon='#i-align-text-'+a;use.setAttribute('href',icon);use.setAttribute('xlink:href',icon);}
 function quickSwatchMarkup(color,label,active){return `<button type="button" class="text-swatch${active?' active':''}" data-swatch-color="${color}" aria-label="${label}" title="${label}" aria-pressed="${active?'true':'false'}" style="background:${color};"></button>`;}
+// Uma única primitiva para os três editores: a linha HEX sempre mostra uma amostra
+// visual do mesmo valor canônico que o campo permite editar diretamente.
+function syncHexCurrentColorPreview(id, color, transparent) {
+  const preview = document.getElementById(id);
+  if (!preview) return;
+  const hex = normalizeColorHex(color) || '#000000';
+  preview.dataset.color = hex;
+  preview.style.backgroundColor = transparent ? '' : hex;
+  preview.classList.toggle('is-transparent', !!transparent);
+}
 // Paleta rápida de Cor do texto: neutros compartilhados + paleta pessoal + custom atual.
 // v8z4b32E9F6 — REG-055: #textColorTriggerWrap/#textCreationColor são estáticos
 // (declarados uma única vez no HTML, último filho de #textColorSwatches). Esta
@@ -15789,11 +15803,11 @@ function quickSwatchMarkup(color,label,active){return `<button type="button" cla
 // wrapper — o input nativo permanece conectado/estável mesmo quando esta função é
 // chamada a partir do próprio evento 'input' do picker (setTextColor→
 // renderTextEditorOptions→renderTextColorSwatches, a cada frame do drag).
-function renderTextColorSwatches(){const row=document.getElementById('textColorSwatches');const wrap=document.getElementById('textColorTriggerWrap');if(!row||!wrap||!pendingTextDraft)return;const cur=String(pendingTextDraft.color||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);Array.from(row.children).forEach(el=>{if(el!==wrap)el.remove();});let html=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Cor '+n.label,n.value===cur)).join('');if(!inList&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Cor personalizada atual',true);html+=customColorPalette.filter(hex=>hex!==cur&&!PROJECT_BG_NEUTRALS.some(n=>n.value===hex)).map(hex=>quickSwatchMarkup(hex,'Cor pessoal '+hex,false)).join('');wrap.insertAdjacentHTML('beforebegin',html);row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextColor(b.dataset.swatchColor)));const hexText=document.getElementById('textColorHexText');if(hexText&&document.activeElement!==hexText)hexText.value=cur||'';}
+function renderTextColorSwatches(){const row=document.getElementById('textColorSwatches');const wrap=document.getElementById('textColorTriggerWrap');if(!row||!wrap||!pendingTextDraft)return;const cur=String(pendingTextDraft.color||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);Array.from(row.children).forEach(el=>{if(el!==wrap)el.remove();});let html=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Cor '+n.label,n.value===cur)).join('');if(!inList&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Cor personalizada atual',true);html+=customColorPalette.filter(hex=>hex!==cur&&!PROJECT_BG_NEUTRALS.some(n=>n.value===hex)).map(hex=>quickSwatchMarkup(hex,'Cor pessoal '+hex,false)).join('');wrap.insertAdjacentHTML('beforebegin',html);row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextColor(b.dataset.swatchColor)));const hexText=document.getElementById('textColorHexText');if(hexText&&document.activeElement!==hexText)hexText.value=cur||'';syncHexCurrentColorPreview('textColorHexCurrentColor',cur,false);}
 // Paleta rápida de Fundo da caixa: "Sem cor/Transparente" + neutros + paleta pessoal + custom.
 // v8z4b32E9F6 — REG-055: mesma correção de estabilidade acima; #textBgTriggerWrap/
 // #textBoxBackgroundColor são estáticos e nunca tocados aqui.
-function renderTextBgSwatches(){const row=document.getElementById('textBgSwatches');const wrap=document.getElementById('textBgTriggerWrap');if(!row||!wrap||!pendingTextDraft)return;const enabled=!!pendingTextDraft.boxBackgroundEnabled,cur=String(pendingTextDraft.boxBackgroundColor||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);Array.from(row.children).forEach(el=>{if(el!==wrap)el.remove();});let html=`<button type="button" class="text-swatch text-swatch-none${!enabled?' active':''}" data-swatch-none="1" aria-label="Sem cor" title="Transparente" aria-pressed="${!enabled?'true':'false'}"></button>`;html+=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Fundo '+n.label,enabled&&n.value===cur)).join('');if(enabled&&!inList&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Fundo personalizado atual',true);html+=customColorPalette.filter(hex=>hex!==cur&&!PROJECT_BG_NEUTRALS.some(n=>n.value===hex)).map(hex=>quickSwatchMarkup(hex,'Fundo pessoal '+hex,false)).join('');wrap.insertAdjacentHTML('beforebegin',html);const noneBtn=row.querySelector('[data-swatch-none]');if(noneBtn)noneBtn.addEventListener('click',()=>setTextBoxBackground(null));row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextBoxBackground(b.dataset.swatchColor)));const hexText=document.getElementById('textBoxBackgroundHexText');if(hexText&&document.activeElement!==hexText)hexText.value=cur||'';}
+function renderTextBgSwatches(){const row=document.getElementById('textBgSwatches');const wrap=document.getElementById('textBgTriggerWrap');if(!row||!wrap||!pendingTextDraft)return;const enabled=!!pendingTextDraft.boxBackgroundEnabled,cur=String(pendingTextDraft.boxBackgroundColor||'').toLowerCase(),inList=PROJECT_BG_NEUTRALS.some(n=>n.value===cur);Array.from(row.children).forEach(el=>{if(el!==wrap)el.remove();});let html=`<button type="button" class="text-swatch text-swatch-none${!enabled?' active':''}" data-swatch-none="1" aria-label="Sem cor" title="Transparente" aria-pressed="${!enabled?'true':'false'}"></button>`;html+=PROJECT_BG_NEUTRALS.map(n=>quickSwatchMarkup(n.value,'Fundo '+n.label,enabled&&n.value===cur)).join('');if(enabled&&!inList&&/^#[0-9a-f]{6}$/.test(cur))html+=quickSwatchMarkup(cur,'Fundo personalizado atual',true);html+=customColorPalette.filter(hex=>hex!==cur&&!PROJECT_BG_NEUTRALS.some(n=>n.value===hex)).map(hex=>quickSwatchMarkup(hex,'Fundo pessoal '+hex,false)).join('');wrap.insertAdjacentHTML('beforebegin',html);const noneBtn=row.querySelector('[data-swatch-none]');if(noneBtn)noneBtn.addEventListener('click',()=>setTextBoxBackground(null));row.querySelectorAll('.text-swatch[data-swatch-color]').forEach(b=>b.addEventListener('click',()=>setTextBoxBackground(b.dataset.swatchColor)));const hexText=document.getElementById('textBoxBackgroundHexText');if(hexText&&document.activeElement!==hexText)hexText.value=cur||'';syncHexCurrentColorPreview('textBgHexCurrentColor',cur,!enabled);}
 // Cor do texto (glifos): muda o draft e o Stage imediatamente; WYSIWYG E9E preservado.
 // v8z4b32E9F6 — REG-055A: chamada pelo picker nativo (input global, ver
 // document.addEventListener('input', …) abaixo) e pelo HEX inline — em NENHUM dos
@@ -15840,7 +15854,7 @@ function setTextWidthMode(mode){if(!pendingTextDraft||!['auto','fixed'].includes
 function setTextDraftFixedWidth(value){if(!pendingTextDraft||pendingTextDraft.boxWidthMode!=='fixed')return;const v=Math.max(40,Number(value)||40),old=Number(pendingTextDraft.boxWidth)||v,oldBase=Number(pendingTextDraft.textBaseBoxWidth)||old;pendingTextDraft.boxWidth=v;
  // Mudar a largura da caixa NÃO é "escala" de texto: mantém escala% preservando a proporção do baseline.
  if(old>0)pendingTextDraft.textBaseBoxWidth=Math.max(20,oldBase*(v/old));measureTextEditorDraft({preserveCenter:true});const label=document.getElementById('textWidthValue');if(label)label.textContent=String(Math.round(v));renderProjectWorldExtraImages();renderAssetSelectionOverlay()}
-function measureTextEditorDraft(options){if(!pendingTextDraft)return;const preserveCenter=!!(options&&options.preserveCenter)||textEditorMode==='edit'||pendingTextDraft.boxWidthMode==='auto',cx=preserveCenter?pendingTextDraft.worldX+pendingTextDraft.worldW/2:null,cy=preserveCenter?pendingTextDraft.worldY+pendingTextDraft.worldH/2:null;measureTextAsset(pendingTextDraft);if(cx!=null)pendingTextDraft.worldX=cx-pendingTextDraft.worldW/2;if(cy!=null)pendingTextDraft.worldY=cy-pendingTextDraft.worldH/2;textEditorDraftPersistedDetected=assets.some(a=>a===pendingTextDraft||String(a&&a.id)===String(pendingTextDraft.id)&&textEditorMode==='create')}
+function measureTextEditorDraft(options){if(!pendingTextDraft)return;const preserveCenter=!!(options&&options.preserveCenter)||textEditorMode==='edit'||pendingTextDraft.boxWidthMode==='auto',cx=preserveCenter?pendingTextDraft.worldX+pendingTextDraft.worldW/2:null,cy=preserveCenter?pendingTextDraft.worldY+pendingTextDraft.worldH/2:null,layoutText=textEditorMode==='create'&&!pendingTextDraft.text?'Texto...':undefined;measureTextAsset(pendingTextDraft,layoutText);if(cx!=null)pendingTextDraft.worldX=cx-pendingTextDraft.worldW/2;if(cy!=null)pendingTextDraft.worldY=cy-pendingTextDraft.worldH/2;textEditorDraftPersistedDetected=assets.some(a=>a===pendingTextDraft||String(a&&a.id)===String(pendingTextDraft.id)&&textEditorMode==='create')}
 function updateTextDraft(field,value){if(!pendingTextDraft)return;pendingTextDraft[field]=value;normalizeTextAsset(pendingTextDraft);measureTextEditorDraft({preserveCenter:field==='boxBackgroundEnabled'});renderTextEditorOptions();renderProjectWorldExtraImages();renderAssetSelectionOverlay()}
 function updateTextStyle(weight,style){if(!pendingTextDraft)return;pendingTextDraft.fontWeight=weight;pendingTextDraft.fontStyle=style;updateTextDraft('fontWeight',weight)}
 function openTextEditor(mode,target,source){if(!isAssetsMode())return;if(pendingTextDraft){const sameEdit=mode==='edit'&&target&&String(target.id)===String(textEditorTargetAssetId),sameCreate=mode==='create'&&textEditorMode==='create';if(!sameEdit&&!sameCreate)return;const sheet=document.getElementById('textCreationSheet');sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');
@@ -42513,6 +42527,7 @@ function syncBgColorUI() {
   const ht = document.getElementById('bgHexText');
   if (hi) hi.value = hex;
   if (ht) ht.value = hex;
+  syncHexCurrentColorPreview('bgHexCurrentColor', hex, false);
 }
 function applyBgColorValue(hex, el) {
   const next = normalizeBgHex(hex);

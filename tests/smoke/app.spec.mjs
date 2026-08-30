@@ -4727,3 +4727,75 @@ test('E9AC — modos e olho mantêm interação direta; Projeto reúne controles
   await expect(page.locator('#panelDuration')).toHaveClass(/show/);
   await expect(page.locator('#durTabPrefs')).toBeVisible();
 });
+
+test('E9AD — a linha HEX exibe a amostra da cor ativa em Fundo e Texto', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  await openProjectBackgroundPanel(page);
+  await page.locator('#bgHexText').fill('#ffa57d');
+  await page.locator('#bgHexText').press('Enter');
+  await expect.poll(() => page.locator('#bgHexCurrentColor').evaluate(el => el.dataset.color)).toBe('#ffa57d');
+  await expect(page.locator('#bgHexCurrentColor')).toBeVisible();
+  await expect(page.locator('#bgHexCurrentColor')).toHaveCSS('background-color', 'rgb(255, 165, 125)');
+
+  await page.locator('#panelDuration .panel-handle').click();
+  await page.evaluate(() => startTextCreation());
+  await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
+  await page.getByRole('tab', { name: 'Cor do texto', exact: true }).click();
+  await page.locator('#textColorHexText').fill('#123456');
+  await page.locator('#textColorHexText').press('Enter');
+  await expect.poll(() => page.locator('#textColorHexCurrentColor').evaluate(el => el.dataset.color)).toBe('#123456');
+  await expect(page.locator('#textColorHexCurrentColor')).toHaveCSS('background-color', 'rgb(18, 52, 86)');
+
+  await page.getByRole('tab', { name: 'Fundo da caixa', exact: true }).click();
+  await page.locator('#textBoxBackgroundHexText').fill('#abcdef');
+  await page.locator('#textBoxBackgroundHexText').press('Enter');
+  await expect.poll(() => page.locator('#textBgHexCurrentColor').evaluate(el => el.dataset.color)).toBe('#abcdef');
+  await expect(page.locator('#textBgHexCurrentColor')).toHaveCSS('background-color', 'rgb(171, 205, 239)');
+
+  const sameRow = await page.evaluate(() => [
+    ['bgHexCurrentColor', 'bgHexText'],
+    ['textColorHexCurrentColor', 'textColorHexText'],
+    ['textBgHexCurrentColor', 'textBoxBackgroundHexText'],
+  ].every(([previewId, inputId]) => {
+    const preview = document.getElementById(previewId);
+    const input = document.getElementById(inputId);
+    return preview && input && preview.parentElement === input.parentElement && Math.abs(preview.getBoundingClientRect().top - input.getBoundingClientRect().top) < 2;
+  }));
+  expect(sameRow).toBe(true);
+});
+
+test('E9AD — o preview inicial de texto reserva largura para o placeholder', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  await page.locator('#modeAssetsBtn').tap();
+
+  await page.evaluate(() => startTextCreation());
+  await expect(page.locator('#textCreationSheet')).toHaveClass(/open/);
+
+  const draft = await page.evaluate(() => {
+    const asset = pendingTextDraft;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.font = `${asset.fontStyle} ${asset.fontWeight} ${asset.fontSize}px ${asset.fontFamily}`;
+    const previewWidth = ctx.measureText('Texto...').width;
+    const stageText = document.querySelector(`.world-text-asset[data-asset-id="${asset.id}"]`);
+    return {
+      text: asset.text,
+      boxWidth: asset.boxWidth,
+      previewWidth,
+      stageText: stageText?.textContent,
+    };
+  });
+
+  expect(draft.text).toBe('');
+  expect(draft.stageText).toBe('Texto...');
+  expect(draft.boxWidth).toBeGreaterThanOrEqual(draft.previewWidth);
+});
