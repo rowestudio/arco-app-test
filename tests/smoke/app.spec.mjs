@@ -47,6 +47,21 @@ async function disableTextBox(page) {
 async function setTextFixedWidthSlider(page, value) {
   await page.locator('#textWidthSlider').evaluate((el, v) => { el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); }, value);
 }
+async function openProjectAppearance(page) {
+  if (!await page.locator('body').evaluate((body) => body.classList.contains('editor-assets'))) {
+    await page.locator('#modeAssetsBtn').click();
+    await expect(page.locator('body')).toHaveClass(/editor-assets/);
+  }
+  await page.locator('.lower-global-duration').click();
+  await expect(page.locator('#panelDuration')).toHaveClass(/show/);
+  await page.locator('#durTabBtnPrefs').click();
+  await expect(page.locator('#durTabPrefs')).toBeVisible();
+}
+async function openProjectBackgroundPanel(page) {
+  await openProjectAppearance(page);
+  await page.locator('#projectBackgroundBtn').click();
+  await expect(page.locator('#panelBgColor')).toHaveClass(/show/);
+}
 
 async function seedRealSessionCheckpoint(page) {
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
@@ -3708,11 +3723,7 @@ test('REG-055 — picker nativo não alimenta a paleta pessoal (runaway), HEX in
   };
 
   // ── TESTE A — Fundo do projeto: runaway do picker nativo ──
-  await page.locator('#modeAssetsBtn').click();
-  await expect(page.locator('body')).toHaveClass(/editor-assets/);
-  await page.locator('#modeAssetsBtn').click();
-  await expect(page.locator('#assetsModeContextMenu')).toHaveClass(/open/);
-  await page.locator('#assetsModeContextMenu .assets-menu-btn').filter({ hasText: 'Fundo' }).click();
+  await openProjectBackgroundPanel(page);
   const bgPanel = page.locator('#panelBgColor');
   await expect(bgPanel).toHaveClass(/show/);
   await page.waitForFunction(() => {
@@ -3877,11 +3888,7 @@ test('REG-055 — painel de Fundo do projeto permanece contido em 390×797 com p
   await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
   await dismissProModalIfVisible(page);
 
-  await page.locator('#modeAssetsBtn').click();
-  await expect(page.locator('body')).toHaveClass(/editor-assets/);
-  await page.locator('#modeAssetsBtn').click();
-  await expect(page.locator('#assetsModeContextMenu')).toHaveClass(/open/);
-  await page.locator('#assetsModeContextMenu .assets-menu-btn').filter({ hasText: 'Fundo' }).click();
+  await openProjectBackgroundPanel(page);
   const bgPanel = page.locator('#panelBgColor');
   await expect(bgPanel).toHaveClass(/show/);
   await page.waitForFunction(() => {
@@ -3968,10 +3975,10 @@ test('REG-055 — painel de Fundo do projeto permanece contido em 390×797 com p
   await expect(bgPanel).not.toHaveClass(/show/);
 
   // Stage/layout externo não fica preso: outro painel abre normalmente em seguida.
-  await page.locator('#modeAssetsBtn').click();
-  await expect(page.locator('#assetsModeContextMenu')).toHaveClass(/open/);
-  await page.locator('#assetsModeContextMenu .panel-close-check[aria-label="Fechar"]').click();
-  await expect(page.locator('#assetsModeContextMenu')).not.toHaveClass(/open/);
+  await page.locator('.lower-global-duration').click();
+  await expect(page.locator('#panelDuration')).toHaveClass(/show/);
+  await page.locator('#panelDuration .panel-handle').click();
+  await expect(page.locator('#panelDuration')).not.toHaveClass(/show/);
 
   expect(errors, `erros fatais: ${errors.join(' | ')}`).toEqual([]);
 });
@@ -4083,11 +4090,7 @@ test('REG-055 — os três "+" são o input[type=color] nativo real (alvo de toq
   };
 
   // ── Fundo do projeto ──
-  await page.locator('#modeAssetsBtn').click();
-  await expect(page.locator('body')).toHaveClass(/editor-assets/);
-  await page.locator('#modeAssetsBtn').click();
-  await expect(page.locator('#assetsModeContextMenu')).toHaveClass(/open/);
-  await page.locator('#assetsModeContextMenu .assets-menu-btn').filter({ hasText: 'Fundo' }).click();
+  await openProjectBackgroundPanel(page);
   const bgPanel = page.locator('#panelBgColor');
   await expect(bgPanel).toHaveClass(/show/);
   await page.waitForFunction(() => {
@@ -4719,4 +4722,49 @@ test('E9W — profundidade separa marcas, slider e labels', async ({ page }) => 
     const labelRect = centerLabel.getBoundingClientRect();
     return Math.abs((labelRect.left + labelRect.width / 2) - (sliderRect.left + sliderRect.width / 2)) < 1;
   })).toBe(true);
+});
+
+test('E9AB — modos apenas alternam e Projeto reúne controles gerais', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  // Repetir o toque no modo atual não abre mais um submenu oculto.
+  await page.locator('#modeCameraBtn').tap();
+  await expect(page.locator('#cameraModeContextMenu')).not.toHaveClass(/open/);
+
+  // O olho é a entrada explícita para opções de visualização da Câmera.
+  await page.locator('#stageEyeShortcutBtn').tap();
+  await expect(page.locator('#cameraModeContextMenu')).toHaveClass(/open/);
+  await expect(page.locator('#cameraModeContextMenu .assets-menu-title')).toHaveText('Visualização');
+  await expect(page.locator('#cameraCtxFormatBtn')).toHaveCount(0);
+  await page.locator('#cameraModeContextMenu .panel-close-check').tap();
+
+  // Em Ativos, o mesmo olho expõe somente a referência de frames.
+  await page.locator('#modeAssetsBtn').tap();
+  await expect(page.locator('body')).toHaveClass(/editor-assets/);
+  await page.locator('#stageEyeShortcutBtn').tap();
+  await expect(page.locator('#assetsModeContextMenu')).toHaveClass(/open/);
+  await expect(page.locator('#assetsModeContextMenu .assets-menu-title')).toHaveText('Visualização');
+  await expect(page.locator('#assetsModeContextMenu .assets-menu-btn')).toHaveCount(1);
+  await page.locator('#assetsCtxFramesBtn').tap();
+  await expect.poll(() => page.evaluate(() => worldModeShowFrames)).toBe(true);
+
+  // Projeto centraliza os controles gerais antes espalhados pelos menus de modo.
+  await page.locator('.lower-global-duration').tap();
+  await page.locator('#durTabBtnPrefs').tap();
+  await expect(page.locator('#panelDuration .panel-title')).toHaveText('Edição do projeto');
+  await expect(page.locator('#durTabBtnPrefs')).toHaveText('Projeto');
+  await expect(page.locator('#durTabPrefs .dur-section-header').first()).toContainText('Aparência');
+  await expect(page.locator('#projectFormatBtn')).toBeVisible();
+  await expect(page.locator('#projectBackgroundBtn')).toBeVisible();
+  await page.locator('#projectFormatBtn').tap();
+  await expect(page.locator('#panelFormat')).toHaveClass(/show/);
+  await page.locator('#panelFormat .panel-handle').tap();
+  await page.locator('.lower-global-duration').tap();
+  await page.locator('#durTabBtnPrefs').tap();
+  await page.locator('#projectBackgroundBtn').tap();
+  await expect(page.locator('#panelBgColor')).toHaveClass(/show/);
 });
