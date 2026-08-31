@@ -5045,7 +5045,7 @@ test('E9AG — presença temporal: persistência, restauração e histórico can
   await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
   await dismissProModalIfVisible(page);
 
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const image = assets.find(asset => asset && asset.type === 'image');
     const frameId = frames[0].frameId;
     const defaults = {
@@ -5118,9 +5118,25 @@ test('E9AG — presença temporal: persistência, restauração e histórico can
     };
     assets.find(asset => asset && asset.id === image.id).presence = { mode: 'inherit' };
     const inheritedUsesRestoredDefaults = resolveAssetPresenceAt(image.id, 0).present;
+    assets.find(asset => asset && asset.id === image.id).presence = cloneAssetPresence(savedImage.presence);
 
-    applyProjectData(saved, { origin: 'session-autosave' });
+    await scheduleSessionAutosave('e9ag-temporal-presence', true);
+    await flushSessionAutosave();
+    while (_sessionAutosaveActiveWrites.size) await Promise.all([..._sessionAutosaveActiveWrites]);
+    const checkpoint = await readSessionCheckpoint();
+    const checkpointData = checkpoint ? JSON.parse(checkpoint.payload) : null;
+    projectAssetPresenceDefaults = { mode: 'custom' };
+    scaleSecondsWithProjectDuration = false;
+    assets.forEach(asset => { asset.presence = { mode: 'inherit' }; });
+    const restoredBySessionController = await restoreLastSessionAutosave();
     const sessionRestore = {
+      controller: restoredBySessionController,
+      checkpoint: checkpointData && {
+        defaults: checkpointData.assetPresenceDefaults,
+        scale: checkpointData.scaleSecondsWithProjectDuration,
+        image: checkpointData.assets.find(asset => asset && asset.id === image.id).presence,
+        text: checkpointData.assets.find(asset => asset && asset.id === text.id).presence,
+      },
       defaults: projectAssetPresenceDefaults,
       scale: scaleSecondsWithProjectDuration,
       image: assets.find(asset => asset && asset.id === image.id).presence,
@@ -5139,7 +5155,7 @@ test('E9AG — presença temporal: persistência, restauração e histórico can
       assets: assets.map(asset => asset.presence),
     };
 
-    return { saved, savedFrameIds, savedImage, savedText, canonicalChanged, captureRestored, undoRestored, redoRestored, manualLoad, inheritedUsesRestoredDefaults, sessionRestore, legacyRestored };
+    return { saved, savedFrameIds, savedImage, savedText, fingerprintDefaults: canonicalBefore.assetPresenceDefaults, fingerprintScale: canonicalBefore.scaleSecondsWithProjectDuration, canonicalChanged, captureRestored, undoRestored, redoRestored, manualLoad, inheritedUsesRestoredDefaults, sessionRestore, legacyRestored };
   });
 
   expect(result.saved.assetPresenceDefaults).toEqual({
@@ -5155,13 +5171,22 @@ test('E9AG — presença temporal: persistência, restauração e histórico can
     entry: { anchor: 'asset', anchorId: result.savedImage.id, assetEvent: 'entry', offset: { unit: 'projectFraction', value: 0.1 } },
     exit: { anchor: 'project', offset: { unit: 'seconds', value: 4.25 } },
   });
+  expect(result.fingerprintDefaults).toEqual(result.saved.assetPresenceDefaults);
+  expect(result.fingerprintScale).toBe(true);
   expect(result.canonicalChanged).toBe(true);
   expect(result.captureRestored).toEqual({ defaults: result.saved.assetPresenceDefaults, scale: true, image: result.savedImage.presence, text: result.savedText.presence });
   expect(result.undoRestored).toEqual({ defaults: result.saved.assetPresenceDefaults, text: result.savedText.presence });
   expect(result.redoRestored).toEqual({ defaults: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } } }, text: { mode: 'inherit' } });
   expect(result.manualLoad).toEqual({ frameIds: result.savedFrameIds, defaults: result.saved.assetPresenceDefaults, scale: true, image: result.savedImage.presence, text: result.savedText.presence });
   expect(result.inheritedUsesRestoredDefaults).toBe(false);
-  expect(result.sessionRestore).toEqual({ defaults: result.saved.assetPresenceDefaults, scale: true, image: result.savedImage.presence, text: result.savedText.presence });
+  expect(result.sessionRestore).toEqual({
+    controller: true,
+    checkpoint: { defaults: result.saved.assetPresenceDefaults, scale: true, image: result.savedImage.presence, text: result.savedText.presence },
+    defaults: result.saved.assetPresenceDefaults,
+    scale: true,
+    image: result.savedImage.presence,
+    text: result.savedText.presence,
+  });
   expect(result.legacyRestored.defaults).toEqual({ mode: 'custom' });
   expect(result.legacyRestored.scale).toBe(true);
   expect(result.legacyRestored.assets).toEqual(expect.arrayContaining([{ mode: 'inherit' }]));
