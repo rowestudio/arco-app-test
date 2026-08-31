@@ -1,5 +1,11 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-31 — presença temporal: desenho revisado; E9AF aprovada fisicamente
+
+- Roberto validou em iPhone/Safari a `v8z4b32E9AF` já mergeada pela PR #547: o modo mão permite pan de um dedo sem selecionar ou mover Frames/Ativos. A PR está em `1f343099255ac9dcc0d328317177b8274c624f0c`; produção permanece intocada.
+- A próxima frente em desenho é Presença Temporal de Ativos, separada de opacidade manual e de efeitos. Fora do intervalo, o editor preservará uma referência visual suavizada/tracejada; Preview e Export omitirão o asset. A especificação revisada está em `docs/superpowers/specs/2026-08-31-asset-temporal-presence-editor-reference-revision.md` e ainda requer plano e PR funcional próprios.
+- A autenticação GitHub CLI foi validada na rota normal de rede. Um status negativo executado em ambiente sem rede não é evidência de expiração de credencial; a verificação autenticada pela rota normal é a referência operacional.
+
 ## Atualização 2026-08-30 — v8z4b32E9AF em desenvolvimento: pan de um dedo pela mão
 
 - Com o ícone de mão ativo, um gesto de um dedo no Stage passa a deslocar a vista também quando o zoom dinâmico está abaixo ou igual a 100%; antes, uma guarda residual bloqueava esse intervalo.
