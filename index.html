@@ -15839,7 +15839,13 @@ function resolveAssetPresenceAt(assetId, projectTime, context) {
     entry: normalizeTemporalBoundary(rawPresence.entry),
     exit: normalizeTemporalBoundary(rawPresence.exit)
   };
-  const effective = ownPresence.mode === 'custom' ? ownPresence : defaults;
+  const effective = ownPresence.mode === 'custom'
+    ? ownPresence
+    : {
+        mode: 'custom',
+        ...(defaults.entry ? { entry: cloneProjectPresenceBoundaryForAsset(defaults.entry, id, state.source) } : {}),
+        ...(defaults.exit ? { exit: cloneProjectPresenceBoundaryForAsset(defaults.exit, id, state.source) } : {})
+      };
   const visiting = state.source.visitingAssetIds instanceof Set ? state.source.visitingAssetIds : new Set();
   if (visiting.has(id)) return { configured: !!(effective.entry || effective.exit), present: false, entryTime: null, exitTime: null, invalidReason: 'cycle' };
   visiting.add(id);
@@ -16007,20 +16013,22 @@ function cloneProjectPresenceDefaultsAsCustomPresence() {
   };
 }
 
-function cloneProjectPresenceBoundaryForAsset(boundary, assetId) {
+function cloneProjectPresenceBoundaryForAsset(boundary, assetId, context) {
   const normalized = normalizeTemporalBoundary(boundary);
   if (!normalized) return null;
   if (normalized.anchor !== 'asset' || String(normalized.anchorId || '') !== String(assetId || '')) {
     return normalized;
   }
-  const projectDuration = getTemporalProjectDuration({
-    frames: frames,
-    frameCount: frameCount,
-    segDurations: segDurations,
-    framePauses: framePauses,
-    assets: assets,
-    projectAssetPresenceDefaults: projectAssetPresenceDefaults
-  });
+  const projectDuration = getTemporalProjectDuration(context && typeof context === 'object'
+    ? context
+    : {
+        frames: frames,
+        frameCount: frameCount,
+        segDurations: segDurations,
+        framePauses: framePauses,
+        assets: assets,
+        projectAssetPresenceDefaults: projectAssetPresenceDefaults
+      });
   const baseTime = normalized.assetEvent === 'exit' ? projectDuration : 0;
   const offset = normalized.offset && normalized.offset.unit === 'projectFraction'
     ? Number(normalized.offset.value || 0) * projectDuration
@@ -16032,6 +16040,17 @@ function cloneProjectPresenceBoundaryForAsset(boundary, assetId) {
       value: baseTime + (Number.isFinite(offset) ? offset : 0)
     }
   });
+}
+
+function getCurrentTemporalPresenceContext() {
+  return {
+    frames: frames,
+    frameCount: frameCount,
+    segDurations: segDurations,
+    framePauses: framePauses,
+    assets: assets,
+    projectAssetPresenceDefaults: projectAssetPresenceDefaults
+  };
 }
 
 function applyTemporalPresenceMutation(reason, mutator) {
@@ -16201,7 +16220,8 @@ function ensureSelectedAssetPresenceForEditing(boundaryKey) {
   presence.mode = 'custom';
   if (!presence[boundaryKey]) {
     const defaults = normalizeProjectAssetPresenceDefaults(projectAssetPresenceDefaults);
-    presence[boundaryKey] = normalizeTemporalBoundary(defaults[boundaryKey]) || createTemporalBoundaryTemplate('project', String(asset.id), boundaryKey);
+    presence[boundaryKey] = cloneProjectPresenceBoundaryForAsset(defaults[boundaryKey], String(asset.id), getCurrentTemporalPresenceContext())
+      || createTemporalBoundaryTemplate('project', String(asset.id), boundaryKey);
   }
   asset.presence = presence;
   return asset;
@@ -16318,8 +16338,13 @@ function updateSelectedAssetPresenceTarget(boundaryKey) {
   applyTemporalPresenceMutation('asset-timing-target', function() {
     const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
     if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
-    workingAsset.presence[boundaryKey].anchorId = target.value || undefined;
+    const nextTargetId = target.value || undefined;
+    if (workingAsset.presence[boundaryKey].anchor === 'asset' && nextTargetId && wouldPresenceBoundaryCreateCycle(String(workingAsset.id), boundaryKey, nextTargetId)) {
+      return;
+    }
+    workingAsset.presence[boundaryKey].anchorId = nextTargetId;
   });
+  syncAssetTimingPanel();
 }
 function updateSelectedAssetPresenceAssetEvent(boundaryKey) {
   const eventSelect = document.getElementById('assetTiming' + capitalize(boundaryKey) + 'AssetEvent');

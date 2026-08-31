@@ -5967,6 +5967,128 @@ test('E9AG — presença temporal: controles ficam inline no projeto e compactos
   await expect(page.locator('#assetTimingExitAnchor')).toBeHidden();
 });
 
+test('E9AG — presença temporal: herança materializa auto-referência e revalida ciclo antes de persistir', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const ids = await page.evaluate(() => {
+    setEditorMode('assets', 'e9ag-inherit-materialize');
+    const image = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!image) throw new Error('fixture sem imagem');
+    const safeText = normalizeTextAsset({
+      id: 'e9ag-inherit-safe-text',
+      type: 'text',
+      text: 'Seguro',
+      color: '#ffffff',
+      worldX: 30,
+      worldY: 50,
+      worldW: 180,
+      worldH: 64,
+      boxWidth: 180,
+      presence: {
+        mode: 'custom',
+        entry: { anchor: 'project', offset: { unit: 'seconds', value: 0.25 } },
+      },
+    });
+    const cycleText = normalizeTextAsset({
+      id: 'e9ag-inherit-cycle-text',
+      type: 'text',
+      text: 'Ciclo',
+      color: '#ffffff',
+      worldX: 70,
+      worldY: 120,
+      worldW: 180,
+      worldH: 64,
+      boxWidth: 180,
+      presence: {
+        mode: 'custom',
+        entry: { anchor: 'asset', anchorId: String(image.id), assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } },
+      },
+    });
+    assignPersistentLayerIdentity(safeText);
+    assignPersistentLayerIdentity(cycleText);
+    assets.push(safeText, cycleText);
+    normalizeAssetZIndices();
+    image.presence = { mode: 'inherit' };
+    projectAssetPresenceDefaults = {
+      mode: 'custom',
+      entry: { anchor: 'asset', anchorId: String(image.id), assetEvent: 'entry', offset: { unit: 'seconds', value: 0.75 } },
+    };
+    selectAssetById(image.id, 'e9ag-inherit-materialize');
+    syncAssetToolbarState();
+    syncProjectPresenceControls();
+    renderAll();
+    return { imageId: String(image.id), safeTextId: safeText.id, cycleTextId: cycleText.id };
+  });
+
+  expect(await page.evaluate(({ imageId }) => {
+    const context = { assets, frames, frameCount, segDurations, framePauses, projectAssetPresenceDefaults };
+    const resolved = resolveAssetPresenceAt(imageId, 0, context);
+    return { entryTime: resolved.entryTime, invalidReason: resolved.invalidReason };
+  }, ids)).toEqual({ entryTime: 0.75, invalidReason: null });
+
+  await page.locator('#tbAssetTiming').click();
+  await page.locator('#assetTimingEntryEnabled').check();
+
+  expect(await page.evaluate(({ imageId }) => {
+    const asset = assets.find(candidate => candidate && String(candidate.id) === imageId);
+    const context = { assets, frames, frameCount, segDurations, framePauses, projectAssetPresenceDefaults };
+    return {
+      presence: structuredClone(asset.presence),
+      invalidReason: resolveAssetPresenceAt(imageId, 0, context).invalidReason,
+    };
+  }, ids)).toEqual({
+    presence: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 0.75 } },
+    },
+    invalidReason: null,
+  });
+
+  await page.locator('#assetTimingEntryAnchor').selectOption('asset');
+
+  expect(await page.evaluate(({ safeTextId, cycleTextId }) => {
+    const options = [...document.querySelectorAll('#assetTimingEntryTarget option')].map(option => option.value);
+    return {
+      safeListed: options.includes(safeTextId),
+      cycleListed: options.includes(cycleTextId),
+    };
+  }, ids)).toEqual({ safeListed: true, cycleListed: false });
+
+  await page.evaluate(({ cycleTextId }) => {
+    const select = document.getElementById('assetTimingEntryTarget');
+    if (!select) throw new Error('sem seletor de alvo');
+    const option = document.createElement('option');
+    option.value = cycleTextId;
+    option.textContent = 'Ciclo';
+    select.appendChild(option);
+    select.value = cycleTextId;
+    updateSelectedAssetPresenceTarget('entry');
+  }, ids);
+
+  expect(await page.evaluate(({ imageId, safeTextId }) => {
+    const asset = assets.find(candidate => candidate && String(candidate.id) === imageId);
+    const context = { assets, frames, frameCount, segDurations, framePauses, projectAssetPresenceDefaults };
+    return {
+      presence: structuredClone(asset.presence),
+      invalidReason: resolveAssetPresenceAt(imageId, 0, context).invalidReason,
+      selectedTarget: document.getElementById('assetTimingEntryTarget') && document.getElementById('assetTimingEntryTarget').value,
+      optionValues: [...document.querySelectorAll('#assetTimingEntryTarget option')].map(option => option.value),
+    };
+  }, ids)).toEqual({
+    presence: {
+      mode: 'custom',
+      entry: { anchor: 'asset', anchorId: ids.safeTextId, assetEvent: 'entry', offset: { unit: 'seconds', value: 0.75 } },
+    },
+    invalidReason: null,
+    selectedTarget: ids.safeTextId,
+    optionValues: [ids.safeTextId],
+  });
+});
+
 test('E9AG — presença temporal: aplicar global, preservar override e voltar para herança', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
