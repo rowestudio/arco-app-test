@@ -5,7 +5,8 @@
 - **Decisão:** a primeira implementação de presença temporal separa rigorosamente o instante em que o asset entra/sai da aparência editorial do Stage. Preview e Export omitem o asset fora do intervalo; no editor ele continua como referência suavizada com contorno neutro tracejado. Selecioná-lo conserva coral de Ativos e permite edição.
 - **Escopo:** transparência/opacidade manual e efeitos de entrada/saída não entram nesta frente. A marca editorial não é opacidade persistida, não altera geometria, profundidade, zIndex, hit-test canônico nem é renderizada em Preview/Export.
 - **Referências:** cada Entrada/Saída pode ancorar em tempo do projeto (fixo ou proporcional), `frameId` estável ou Entrada/Saída de outro asset, mais offset. Ciclos são inválidos; a exclusão de uma âncora converte os dependentes para o tempo resolvido após confirmação explícita.
-- **Registro:** detalhes e critérios de QA em `docs/superpowers/specs/2026-08-31-asset-temporal-presence-editor-reference-revision.md`. Esta decisão revisa o comportamento de Stage descrito no desenho de 2026-08-30 e não autoriza implementação isoladamente.
+- **Implementação:** executada na `v8z4b32E9AG` em PR funcional própria. O escopo implementado inclui resolvedor canônico, persistência, `frameId` estável, controles globais/individuais, referência editorial no Stage, filtro de Preview/Export e confirmação de exclusão de âncora.
+- **Registro:** detalhes e critérios de QA em `docs/superpowers/specs/2026-08-31-asset-temporal-presence-editor-reference-revision.md`. Esta decisão revisa o comportamento de Stage descrito no desenho de 2026-08-30; qualquer próxima etapa de opacidade manual ou efeitos exige nova frente.
 
 ## DEC-2026-08-30-04 — Mão é um modo explícito de navegação de um dedo
 

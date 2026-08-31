@@ -1,9 +1,18 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-31 — v8z4b32E9AG em desenvolvimento: presença temporal de Ativos
+
+- A `v8z4b32E9AG` implementa a primeira frente funcional de Presença Temporal de Ativos em branch própria sobre a `main` atual do repositório de teste. Produção permanece intocada.
+- Imagens e Text Assets passam a ter Entrada/Saída opcionais, herdando o padrão global de `Edição do projeto > Projeto > Aparência` ou usando override individual no painel `Animação` do Ativo. As âncoras aceitam tempo do projeto, `frameId` estável ou Entrada/Saída de outro ativo, com offset em segundos ou proporção do projeto.
+- No Stage, um ativo fora do intervalo continua presente como referência editorial suavizada/tracejada e pode ser selecionado/editado. Preview e Export omitem o ativo fora do intervalo usando o mesmo resolvedor canônico em tempo de projeto, sem depender do DOM.
+- Ao excluir um ativo usado como âncora temporal, o app exige confirmação e converte os dependentes para o tempo absoluto resolvido, sem relink automático. Undo restaura o estado anterior.
+- O diagnóstico observacional agora expõe o tempo de referência do Stage, a resolução do ativo selecionado e as contagens de ativos incluídos/omitidos por presença temporal em Preview e Export, sem alterar o renderer além da observação.
+- QA automatizado local desta frente: smoke WebKit focado E9AG `10/10` passou; a suíte WebKit completa ficou `55/57`, reproduzindo apenas os baselines herdados `E8X WebKit gate — TC-038 até Preview e composição real` e `E8W Session Restore preserva todos os Frames e Save não sincroniza geometria`. Validação física em iPhone/Safari continua obrigatória antes de merge/release; atenção especial à rolagem nativa do diálogo de dependências.
+
 ## Atualização 2026-08-31 — presença temporal: desenho revisado; E9AF aprovada fisicamente
 
 - Roberto validou em iPhone/Safari a `v8z4b32E9AF` já mergeada pela PR #547: o modo mão permite pan de um dedo sem selecionar ou mover Frames/Ativos. A PR está em `1f343099255ac9dcc0d328317177b8274c624f0c`; produção permanece intocada.
-- A próxima frente em desenho é Presença Temporal de Ativos, separada de opacidade manual e de efeitos. Fora do intervalo, o editor preservará uma referência visual suavizada/tracejada; Preview e Export omitirão o asset. A especificação revisada está em `docs/superpowers/specs/2026-08-31-asset-temporal-presence-editor-reference-revision.md` e ainda requer plano e PR funcional próprios.
+- A frente de Presença Temporal de Ativos foi posteriormente iniciada na `v8z4b32E9AG`, preservando a separação entre presença, opacidade manual e efeitos. A especificação revisada permanece em `docs/superpowers/specs/2026-08-31-asset-temporal-presence-editor-reference-revision.md`.
 - A autenticação GitHub CLI foi validada na rota normal de rede. Um status negativo executado em ambiente sem rede não é evidência de expiração de credencial; a verificação autenticada pela rota normal é a referência operacional.
 
 ## Atualização 2026-08-30 — v8z4b32E9AF em desenvolvimento: pan de um dedo pela mão

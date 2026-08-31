@@ -1,5 +1,16 @@
 # TEST_CASES
 
+## TC-067 — Presença temporal de Ativos (E9AG)
+
+- Pré-condição: projeto com pelo menos dois Frames, uma imagem e um Text Asset no Modo Ativos.
+- Passos: configurar padrão global em `Edição do projeto > Projeto > Aparência`; aplicar a todos e aplicar apenas aos sem ajuste individual; criar override individual em `Animação`; usar âncoras por tempo do projeto, Frame e Entrada/Saída de outro ativo; tentar ciclo/autorreferência; salvar/carregar e repetir após Session Restore.
+- Resultado esperado no editor: ativo fora do intervalo permanece visível como referência editorial suavizada/tracejada, selecionável e editável; selecionado conserva coral e alças. A referência não altera opacidade manual, geometria, profundidade, `zIndex`, ordem de Layers, Frames, curvas ou ProjectWorld.
+- Resultado esperado em Preview/Export: ativo fora do intervalo é omitido pelo resolvedor canônico em tempo de projeto, tanto imagem quanto texto; a ausência temporal não conta como erro de render nem quadro vazio quando outro conteúdo está presente. Preview e Export devem usar a mesma regra, sem depender do DOM do Stage.
+- Exclusão de âncora: excluir um ativo referenciado abre confirmação; Cancelar não muta; confirmar converte dependentes para tempo absoluto resolvido, sem relink automático, com Undo/Redo preservando os vínculos.
+- Duração proporcional: quando a preferência de acompanhar duração estiver ligada, offsets absolutos escalam junto com a duração total; âncoras semânticas por Frame/Ativo continuam semânticas.
+- Evidência automatizada: smoke WebKit mobile cobre resolvedor, controles, referência editorial no Stage, persistência e diálogo de dependências; smoke de Export cobre filtro de presença sem quadro vazio; self-tests precisam continuar verdes.
+- Validação física obrigatória em iPhone/Safari antes de merge/release, incluindo rolagem nativa do painel de dependências em tela pequena.
+
 ## TC-051 — Copiar, colar e duplicar ativos (E9Z)
 
 - Pré-condição: projeto aberto no Modo Ativos com ao menos um ativo.

@@ -1647,12 +1647,20 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
     projectShake = { enabled:false, intensity:0, frequency:1 };
     renderAll();
     const live = captureSessionFrameParitySnapshot();
+    const liveFramesAbsWithIds = frames.slice(0, frameCount).map((frame, index) => ({
+      frameId: frame.frameId,
+      ...live.canonicalState.framesAbs[index],
+    }));
+    const liveFramesNormWithIds = frames.slice(0, frameCount).map((frame, index) => ({
+      frameId: frame.frameId,
+      ...live.canonicalState.framesNorm[index],
+    }));
     clearTimeout(_sessionAutosaveTimer);
     const revision = ++_sessionAutosaveQueuedRevision;
     const written = await writeSessionAutosave(revision, _sessionAutosaveEpoch, true, 'webkit-e8w-roundtrip');
     const checkpoint = await readSessionCheckpoint();
     const payload = JSON.parse(checkpoint.payload);
-    return { live, written, checkpoint: {
+    return { live, liveFramesAbsWithIds, liveFramesNormWithIds, frameIds: frames.slice(0, frameCount).map(frame => frame.frameId), written, checkpoint: {
       framesAbs:payload.framesAbs, framesNorm:payload.framesNorm,
       frameRotations:payload.frameRotations, projectWorld:payload.projectWorld,
       curvesV2:payload.curvesV2, ctrlPts:payload.ctrlPts, segDurations:payload.segDurations,
@@ -1661,8 +1669,10 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
     }};
   });
   expect(beforeClose.written).toBe(true);
-  expect(beforeClose.checkpoint.framesAbs).toEqual(beforeClose.live.canonicalState.framesAbs);
-  expect(beforeClose.checkpoint.framesNorm).toEqual(beforeClose.live.canonicalState.framesNorm);
+  expect(beforeClose.frameIds.every(id => typeof id === 'string' && id.trim().length > 0)).toBe(true);
+  expect(new Set(beforeClose.frameIds).size).toBe(beforeClose.frameIds.length);
+  expect(beforeClose.checkpoint.framesAbs).toEqual(beforeClose.liveFramesAbsWithIds);
+  expect(beforeClose.checkpoint.framesNorm).toEqual(beforeClose.liveFramesNormWithIds);
   expect(beforeClose.checkpoint.projectWorld).toMatchObject(beforeClose.live.canonicalState.projectWorld);
   expect(beforeClose.checkpoint.curvesV2).toEqual(beforeClose.live.canonicalState.curvesV2);
   expect(beforeClose.checkpoint.assets).toEqual(beforeClose.live.canonicalState.assets);
@@ -1689,6 +1699,7 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
         w:camera.sw/sx, h:camera.sh/sy, rotation:camera.rot||0 };
     });
     return { snapshot, previewFrames, sequence:sessionRestoreSequence.map(entry=>entry.step),
+      frameIds: frames.slice(0, frameCount).map(frame => frame.frameId),
       coordinateSource:sessionRestoreFrameCoordinateSource,
       conversionCount:sessionRestoreNormToAbsConversionCount,
       doubleConversion:sessionRestoreDoubleFrameConversionDetected,
@@ -1704,6 +1715,7 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
     expectCloseGeometry(afterRestore.previewFrames[frame.index], frame.canonical, { frameIndex:frame.index, label:'preview' });
   }
   expect(afterRestore.coordinateSource).toBe('framesAbs');
+  expect(afterRestore.frameIds).toEqual(beforeClose.frameIds);
   expect(afterRestore.conversionCount).toBe(0);
   expect(afterRestore.doubleConversion).toBe(false);
   expect(afterRestore.invalidated.every(Boolean)).toBe(true);
@@ -4439,7 +4451,7 @@ test('E9AA — Camadas evita Profundidade redundante e Excluir encerra a toolbar
     labels: ['Visibilidade', 'Travar camada', 'Duplicar camada', 'Excluir camada'],
     targets: [{ width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }],
     canonicalSymbols: { visibility: '#i-eye', lock: '#i-lock', remove: '#i-trash' },
-    assetToolbarOrder: ['tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetCopy', 'tbAssetDuplicate', 'tbAssetForward', 'tbAssetBackward', 'tbAssetDelete'],
+    assetToolbarOrder: ['tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetCopy', 'tbAssetDuplicate', 'tbAssetForward', 'tbAssetBackward', 'tbAssetTiming', 'tbAssetDelete'],
   });
   const reordered = await page.evaluate(({ dragged, target }) => {
     const before = assets.slice().sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)).map(a => String(a.id));
@@ -4928,4 +4940,1305 @@ test('E9AF — mão arrasta a vista com um dedo abaixo de 100% sem selecionar at
   expect(moved.panDragAfterUp).toBe(false);
   expect(moved.activeFrame).toBe(before.activeFrame);
   expect(moved.frame).toBe(before.frame);
+});
+
+test('E9AG — presença temporal: referência no Stage preserva seleção e edição', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const setup = await page.evaluate(() => {
+    const image = assets.find(asset => asset && asset.type === 'image');
+    const frame = frames[activeIdx];
+    const stageTime = getProjectTimeAtFrameId(frame.frameId);
+    const text = normalizeTextAsset({
+      id: 'e9ag-stage-reference-text', type: 'text', text: 'Referência temporal', color: '#ffffff',
+      worldX: image.worldX + image.worldW * 0.3,
+      worldY: image.worldY + image.worldH * 0.3,
+      worldW: Math.min(260, image.worldW * 0.4), worldH: 72, boxWidth: Math.min(260, image.worldW * 0.4),
+      depth: -37,
+      presence: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: stageTime + 1 } } },
+    });
+    assignPersistentLayerIdentity(text);
+    text.zIndex = Math.max(...assets.map(asset => Number(asset?.zIndex) || 0)) + 1;
+    image.depth = 42;
+    image.presence = { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: stageTime + 1 } } };
+    assets.push(text);
+    normalizeAssetZIndices();
+    setEditorMode('camera', 'e9ag-stage-reference-test');
+    renderProjectWorldExtraImages();
+    const snapshot = asset => ({
+      id: String(asset.id), type: asset.type, worldX: asset.worldX, worldY: asset.worldY,
+      worldW: asset.worldW, worldH: asset.worldH, rotation: Number(asset.rotation) || 0,
+      depth: Number(asset.depth) || 0, zIndex: asset.zIndex, layerSequence: asset.layerSequence,
+    });
+    return {
+      imageId: String(image.id), textId: String(text.id), stageTime,
+      geometry: [snapshot(image), snapshot(text)],
+      layerOrder: assets.map(asset => ({ id: String(asset.id), zIndex: asset.zIndex, layerSequence: asset.layerSequence })),
+    };
+  });
+
+  const image = page.locator(`.world-extra-img[data-asset-id="${setup.imageId}"]`);
+  const text = page.locator(`.world-text-asset[data-asset-id="${setup.textId}"]`);
+  expect(await page.evaluate(() => isCameraMode())).toBe(true);
+  await expect(image).toHaveClass(/asset-temporal-reference/);
+  await expect(text).toHaveClass(/asset-temporal-reference/);
+  for (const locator of [image, text]) {
+    const presentation = await locator.evaluate(element => {
+      const style = getComputedStyle(element);
+      return { filter: style.filter, outlineStyle: style.outlineStyle, outlineColor: style.outlineColor };
+    });
+    expect(presentation.filter).not.toBe('none');
+    expect(presentation.outlineStyle).toBe('dashed');
+    expect(presentation.outlineColor).not.toContain('255, 107, 138');
+  }
+
+  await page.locator('#modeAssetsBtn').tap();
+  await expect(page.locator('body')).toHaveClass(/editor-assets/);
+  expect(await page.evaluate(() => {
+    const min = getEditorMinZoom();
+    editorZoomScale = Math.max(min + 0.05, min * 1.15);
+    editorPanX = 0;
+    editorPanY = 0;
+    clampEditorPan();
+    applyEditorZoom();
+    toggleEditorPanMode();
+    renderProjectWorldExtraImages();
+    return editorPanMode;
+  })).toBe(true);
+  await expect(image).toHaveClass(/asset-temporal-reference/);
+  await expect(text).toHaveClass(/asset-temporal-reference/);
+  await page.evaluate(() => resetEditorZoom());
+
+  const imagePoint = await page.evaluate(imageId => {
+    const element = document.querySelector(`.world-extra-img[data-asset-id="${CSS.escape(imageId)}"]`);
+    const rect = element.getBoundingClientRect();
+    for (const yFraction of [0.15, 0.85, 0.5]) {
+      for (const xFraction of [0.15, 0.85, 0.5]) {
+        const point = { x: rect.left + rect.width * xFraction, y: rect.top + rect.height * yFraction };
+        const stagePoint = screenToStageCoord(point.x, point.y);
+        const worldPoint = editorStageToWorld(stagePoint.x, stagePoint.y);
+        if (String(hitTestAssetAtWorld(worldPoint.x, worldPoint.y)?.id || '') === imageId) return point;
+      }
+    }
+    return null;
+  }, setup.imageId);
+  expect(imagePoint).not.toBeNull();
+  await page.touchscreen.tap(imagePoint.x, imagePoint.y);
+  await expect.poll(() => page.evaluate(() => String(selectedAssetId || ''))).toBe(setup.imageId);
+  await expect(image).toHaveClass(/asset-temporal-reference-selected/);
+  await expect(page.locator('#assetSelectOutline')).toBeVisible();
+  await expect(page.locator('#assetSelectOutline .asset-corner-handle.show')).toHaveCount(4);
+  expect(await page.locator('#assetSelectOutline').evaluate(element => getComputedStyle(element).borderTopColor)).toContain('255, 107, 138');
+
+  const textBox = await text.boundingBox();
+  expect(textBox).not.toBeNull();
+  await page.touchscreen.tap(textBox.x + textBox.width / 2, textBox.y + textBox.height / 2);
+  await expect.poll(() => page.evaluate(() => String(selectedAssetId || ''))).toBe(setup.textId);
+  await expect(text).toHaveClass(/asset-temporal-reference-selected/);
+  await expect(page.locator('#assetSelectOutline .asset-corner-handle.show')).toHaveCount(4);
+  await expect(page.locator('#tbAssetReplace')).toHaveAttribute('aria-label', 'Editar texto');
+
+  const present = await page.evaluate(({ imageId, textId, stageTime }) => {
+    const targets = assets.filter(asset => [imageId, textId].includes(String(asset.id)));
+    targets.forEach(asset => {
+      asset.presence = { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: stageTime - 1 } } };
+    });
+    renderProjectWorldExtraImages();
+    const snapshot = asset => ({
+      id: String(asset.id), type: asset.type, worldX: asset.worldX, worldY: asset.worldY,
+      worldW: asset.worldW, worldH: asset.worldH, rotation: Number(asset.rotation) || 0,
+      depth: Number(asset.depth) || 0, zIndex: asset.zIndex, layerSequence: asset.layerSequence,
+    });
+    return {
+      stageTime: getStagePresenceProjectTime(),
+      geometry: targets.map(snapshot),
+      layerOrder: assets.map(asset => ({ id: String(asset.id), zIndex: asset.zIndex, layerSequence: asset.layerSequence })),
+      selectable: targets.every(asset => getSelectableImageAssets().includes(asset) && assetIsHitTestable(asset)),
+      selected: String(selectedAssetId || ''),
+    };
+  }, setup);
+
+  expect(present.stageTime).toBe(setup.stageTime);
+  expect(present.geometry).toEqual(setup.geometry);
+  expect(present.layerOrder).toEqual(setup.layerOrder);
+  expect(present.selectable).toBe(true);
+  expect(present.selected).toBe(setup.textId);
+  await expect(image).not.toHaveClass(/asset-temporal-reference/);
+  await expect(text).not.toHaveClass(/asset-temporal-reference/);
+  await expect(text).not.toHaveClass(/asset-temporal-reference-selected/);
+  await expect(page.locator('#assetSelectOutline .asset-corner-handle.show')).toHaveCount(4);
+  await expect(page.locator('#tbAssetReplace')).toHaveAttribute('aria-label', 'Editar texto');
+});
+
+test('E9AG — presença temporal: Stage, Preview e Export concordam em single-image, multi-image e Text Asset por dois instantes', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(async () => {
+    const original = {
+      isProMode,
+      bgColor,
+      isPreviewing,
+      isRecording,
+      renderSessionSnapshot,
+      renderSessionActiveContext,
+      previewTransform: renderTransform.preview,
+      exportTransform: renderTransform.export,
+    };
+    const outputBg = '#010203';
+    const readEntry = (snapshot, id) => {
+      const image = Array.isArray(snapshot?.assets) ? snapshot.assets.find(asset => String(asset.id) === String(id)) : null;
+      if (image) return image;
+      return Array.isArray(snapshot?.textAssets) ? snapshot.textAssets.find(asset => String(asset.id) === String(id)) : null;
+    };
+    const parseHex = (hex) => {
+      const raw = String(hex || '').replace('#', '');
+      return raw.length === 6
+        ? { r: parseInt(raw.slice(0, 2), 16), g: parseInt(raw.slice(2, 4), 16), b: parseInt(raw.slice(4, 6), 16) }
+        : { r: 0, g: 0, b: 0 };
+    };
+    const countNonBackgroundPixels = (canvas, hex) => {
+      const { r, g, b } = parseHex(hex);
+      const data = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, canvas.width, canvas.height).data;
+      let count = 0;
+      for (let index = 0; index < data.length; index += 4) {
+        if (data[index + 3] === 0) continue;
+        if (data[index] !== r || data[index + 1] !== g || data[index + 2] !== b) count++;
+      }
+      return count;
+    };
+    const captureStageAt = (frameIndex, ids) => {
+      selectFrameContext(frameIndex, { _src: 'e9ag-render-parity-stage' });
+      setEditorMode('assets', 'e9ag-render-parity-stage');
+      renderProjectWorldExtraImages();
+      renderAssetSelectionOverlay();
+      const stageTime = getStagePresenceProjectTime();
+      const state = { stageTime, assets: {} };
+      ids.forEach(id => {
+        const asset = assets.find(candidate => candidate && String(candidate.id) === String(id));
+        const selector = asset?.type === 'text'
+          ? `.world-text-asset[data-asset-id="${CSS.escape(String(id))}"]`
+          : `.world-extra-img[data-asset-id="${CSS.escape(String(id))}"]`;
+        const element = document.querySelector(selector);
+        state.assets[id] = {
+          exists: !!element,
+          present: isAssetPresentAt(id, stageTime),
+          referenceClass: !!(element && element.classList.contains('asset-temporal-reference')),
+          selectedReferenceClass: !!(element && element.classList.contains('asset-temporal-reference-selected')),
+        };
+      });
+      return state;
+    };
+    const drawContextAt = async (context, t, frameIndex, ids) => {
+      renderSessionSnapshot = null;
+      renderSessionActiveContext = '';
+      renderTransform[context] = null;
+      const prepared = await prepareRenderSessionSnapshot(context);
+      const canvas = document.createElement('canvas');
+      canvas.width = 320;
+      canvas.height = 568;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const previousPreviewing = isPreviewing;
+      const previousRecording = isRecording;
+      try {
+        isPreviewing = context === 'preview';
+        isRecording = context === 'export';
+        const ok = drawAtT(ctx, t, canvas.width, canvas.height, frameCount, frameIndex, null, null);
+        const snapshot = renderSessionSnapshot;
+        const audit = renderTransform[context];
+        const snapshotEntries = {};
+        ids.forEach(id => {
+          const entry = readEntry(snapshot, id);
+          snapshotEntries[id] = entry
+            ? {
+                id: String(entry.id),
+                type: entry.type || (typeof entry.text === 'string' ? 'text' : 'image'),
+                present: entry.present,
+              }
+            : null;
+        });
+        return {
+          ok,
+          prepared,
+          drawnIds: Array.isArray(audit?.assets) ? audit.assets.map(asset => String(asset.id)) : [],
+          snapshotEntries,
+          nonBackgroundPixels: countNonBackgroundPixels(canvas, outputBg),
+          leakedEditorialClassText: JSON.stringify({
+            snapshotAssets: snapshot?.assets || [],
+            snapshotTextAssets: snapshot?.textAssets || [],
+            auditAssets: audit?.assets || [],
+          }).includes('asset-temporal-reference'),
+          previewDomLeakCount: document.querySelectorAll('#previewScreen .asset-temporal-reference, #previewScreen .asset-temporal-reference-selected').length,
+        };
+      } finally {
+        isPreviewing = previousPreviewing;
+        isRecording = previousRecording;
+      }
+    };
+
+    try {
+      if (frameCount < 2) throw new Error('fixture sem dois frames para os instantes do teste');
+      const main = assets.find(asset => asset && asset.type === 'image');
+      if (!main) throw new Error('fixture sem imagem principal');
+      const beforeFrameIndex = 0;
+      const afterFrameIndex = 1;
+      const beforeFrameId = frames[beforeFrameIndex]?.frameId;
+      const afterFrameId = frames[afterFrameIndex]?.frameId;
+      const beforeTime = getProjectTimeAtFrameId(beforeFrameId);
+      const afterTime = getProjectTimeAtFrameId(afterFrameId);
+      const fullDuration = totalDurationFull();
+      const beforeRenderT = fullDuration > 0 ? beforeTime / fullDuration : 0;
+      const afterRenderT = fullDuration > 0 ? afterTime / fullDuration : 0;
+      if (!Number.isFinite(beforeTime) || !Number.isFinite(afterTime) || !(afterTime > beforeTime)) {
+        throw new Error(`instantes inválidos: before=${beforeTime} after=${afterTime}`);
+      }
+
+      isProMode = true;
+      bgColor = outputBg;
+
+      const frameA = frames[beforeFrameIndex];
+      const frameB = frames[afterFrameIndex];
+      const centerX = ((frameA.x + frameA.w / 2) + (frameB.x + frameB.w / 2)) / 2;
+      const centerY = ((frameA.y + frameA.h / 2) + (frameB.y + frameB.h / 2)) / 2;
+      const baseWidth = Math.min(frameA.w, frameB.w) * 0.34;
+      const sourceAR = (Number(main.sourceW) > 0 && Number(main.sourceH) > 0) ? (main.sourceW / main.sourceH) : 1;
+      const baseHeight = baseWidth / Math.max(sourceAR, 0.1);
+      main.worldW = baseWidth;
+      main.worldH = baseHeight;
+      main.worldX = centerX - baseWidth * 0.88;
+      main.worldY = centerY - baseHeight * 0.54;
+
+      const textWidth = Math.min(frameA.w, frameB.w) * 0.72;
+      const text = normalizeTextAsset({
+        id: 'e9ag-preview-export-text',
+        type: 'text',
+        text: 'Presença temporal',
+        color: '#ffffff',
+        fontSize: 44,
+        worldW: textWidth,
+        worldH: 84,
+        boxWidth: textWidth,
+        worldX: centerX - textWidth / 2,
+        worldY: centerY + baseHeight * 0.18,
+        zIndex: Math.max(...assets.map(asset => Number(asset?.zIndex) || 0)) + 1,
+      });
+      assignPersistentLayerIdentity(text);
+      assets.push(text);
+      const delayedEntry = { anchor: 'frame', anchorId: afterFrameId, offset: { unit: 'seconds', value: 0 } };
+      main.presence = { mode: 'custom', entry: delayedEntry };
+      text.presence = { mode: 'custom', entry: delayedEntry };
+      normalizeAssetZIndices();
+      renderProjectWorldExtraImages();
+
+      const singleIds = [String(main.id), String(text.id)];
+      const single = {
+        beforeStage: captureStageAt(beforeFrameIndex, singleIds),
+        beforePreview: await drawContextAt('preview', beforeRenderT, beforeFrameIndex, singleIds),
+        beforeExport: await drawContextAt('export', beforeRenderT, beforeFrameIndex, singleIds),
+        afterStage: captureStageAt(afterFrameIndex, singleIds),
+        afterPreview: await drawContextAt('preview', afterRenderT, afterFrameIndex, singleIds),
+        afterExport: await drawContextAt('export', afterRenderT, afterFrameIndex, singleIds),
+      };
+
+      await ensureRenderableAssetSource(main, 'preview');
+      const extra = cloneAssetForDuplicate(main, 'toolbar');
+      if (!extra) throw new Error('não foi possível clonar o asset de imagem para o cenário multi-image');
+      if (!extra.src) {
+        const stageSrc = getAssetThumbSrc(main);
+        if (stageSrc) extra.src = stageSrc;
+      }
+      extra.worldX = centerX + baseWidth * 0.12;
+      extra.worldY = centerY - baseHeight * 0.46;
+      extra.zIndex = Math.max(...assets.map(asset => Number(asset?.zIndex) || 0)) + 1;
+      extra.presence = { mode: 'custom' };
+      assets.push(extra);
+      text.zIndex = Math.max(...assets.map(asset => Number(asset?.zIndex) || 0)) + 1;
+      normalizeAssetZIndices();
+      renderProjectWorldExtraImages();
+
+      const multiIds = [String(main.id), String(extra.id), String(text.id)];
+      const multi = {
+        beforeStage: captureStageAt(beforeFrameIndex, multiIds),
+        beforePreview: await drawContextAt('preview', beforeRenderT, beforeFrameIndex, multiIds),
+        beforeExport: await drawContextAt('export', beforeRenderT, beforeFrameIndex, multiIds),
+        afterStage: captureStageAt(afterFrameIndex, multiIds),
+        afterPreview: await drawContextAt('preview', afterRenderT, afterFrameIndex, multiIds),
+        afterExport: await drawContextAt('export', afterRenderT, afterFrameIndex, multiIds),
+      };
+
+      return {
+        beforeTime,
+        afterTime,
+        ids: { main: String(main.id), extra: String(extra.id), text: String(text.id) },
+        single,
+        multi,
+      };
+    } finally {
+      isProMode = original.isProMode;
+      bgColor = original.bgColor;
+      isPreviewing = original.isPreviewing;
+      isRecording = original.isRecording;
+      renderSessionSnapshot = original.renderSessionSnapshot;
+      renderSessionActiveContext = original.renderSessionActiveContext;
+      renderTransform.preview = original.previewTransform;
+      renderTransform.export = original.exportTransform;
+    }
+  });
+
+  expect(result.beforeTime).toBeLessThan(result.afterTime);
+
+  const expectStageState = (label, state, expected) => {
+    expect(state.stageTime, `${label}: Stage usa o instante esperado`).toBe(expected.stageTime);
+    Object.entries(expected.byId).forEach(([id, wants]) => {
+      expect(state.assets[id], `${label}: asset ${id} existe no Stage`).toBeTruthy();
+      expect(state.assets[id].exists, `${label}: DOM do Stage existe para ${id}`).toBe(true);
+      expect(state.assets[id].present, `${label}: present do Stage para ${id}`).toBe(wants.present);
+      expect(state.assets[id].referenceClass, `${label}: classe editorial no Stage para ${id}`).toBe(wants.referenceClass);
+      expect(state.assets[id].selectedReferenceClass, `${label}: classe editorial selecionada só aparece com seleção explícita`).toBe(false);
+    });
+  };
+  const expectRenderState = (label, state, expected) => {
+    expect(state.prepared?.ok, `${label}: snapshot preparado`).toBe(true);
+    expect(state.ok, `${label}: drawAtT retorna sucesso`).toBe(true);
+    expect(state.leakedEditorialClassText, `${label}: Preview/Export não recebem classes editoriais`).toBe(false);
+    expect(state.previewDomLeakCount, `${label}: Preview DOM não recebe classes editoriais`).toBe(0);
+    expect(state.drawnIds, `${label}: draw IDs`).toEqual(expected.drawnIds);
+    Object.entries(expected.snapshotPresence).forEach(([id, present]) => {
+      expect(state.snapshotEntries[id], `${label}: snapshot contém ${id}`).toBeTruthy();
+      expect(state.snapshotEntries[id].present, `${label}: snapshot present para ${id}`).toBe(present);
+    });
+    if (expected.nonBackgroundPixels === 'zero') {
+      expect(state.nonBackgroundPixels, `${label}: saída realmente vazia quando ninguém está presente`).toBe(0);
+    } else {
+      expect(state.nonBackgroundPixels, `${label}: saída não fica vazia quando há asset presente`).toBeGreaterThan(0);
+    }
+  };
+
+  expectStageState('single.before.stage', result.single.beforeStage, {
+    stageTime: result.beforeTime,
+    byId: {
+      [result.ids.main]: { present: false, referenceClass: true },
+      [result.ids.text]: { present: false, referenceClass: true },
+    },
+  });
+  expectRenderState('single.before.preview', result.single.beforePreview, {
+    drawnIds: [],
+    snapshotPresence: { [result.ids.main]: false, [result.ids.text]: false },
+    nonBackgroundPixels: 'zero',
+  });
+  expectRenderState('single.before.export', result.single.beforeExport, {
+    drawnIds: [],
+    snapshotPresence: { [result.ids.main]: false, [result.ids.text]: false },
+    nonBackgroundPixels: 'zero',
+  });
+
+  expectStageState('single.after.stage', result.single.afterStage, {
+    stageTime: result.afterTime,
+    byId: {
+      [result.ids.main]: { present: true, referenceClass: false },
+      [result.ids.text]: { present: true, referenceClass: false },
+    },
+  });
+  expectRenderState('single.after.preview', result.single.afterPreview, {
+    drawnIds: [result.ids.main, result.ids.text],
+    snapshotPresence: { [result.ids.main]: true, [result.ids.text]: true },
+    nonBackgroundPixels: 'nonzero',
+  });
+  expectRenderState('single.after.export', result.single.afterExport, {
+    drawnIds: [result.ids.main, result.ids.text],
+    snapshotPresence: { [result.ids.main]: true, [result.ids.text]: true },
+    nonBackgroundPixels: 'nonzero',
+  });
+
+  expectStageState('multi.before.stage', result.multi.beforeStage, {
+    stageTime: result.beforeTime,
+    byId: {
+      [result.ids.main]: { present: false, referenceClass: true },
+      [result.ids.extra]: { present: true, referenceClass: false },
+      [result.ids.text]: { present: false, referenceClass: true },
+    },
+  });
+  expectRenderState('multi.before.preview', result.multi.beforePreview, {
+    drawnIds: [result.ids.extra],
+    snapshotPresence: { [result.ids.main]: false, [result.ids.extra]: true, [result.ids.text]: false },
+    nonBackgroundPixels: 'nonzero',
+  });
+  expectRenderState('multi.before.export', result.multi.beforeExport, {
+    drawnIds: [result.ids.extra],
+    snapshotPresence: { [result.ids.main]: false, [result.ids.extra]: true, [result.ids.text]: false },
+    nonBackgroundPixels: 'nonzero',
+  });
+
+  expectStageState('multi.after.stage', result.multi.afterStage, {
+    stageTime: result.afterTime,
+    byId: {
+      [result.ids.main]: { present: true, referenceClass: false },
+      [result.ids.extra]: { present: true, referenceClass: false },
+      [result.ids.text]: { present: true, referenceClass: false },
+    },
+  });
+  expectRenderState('multi.after.preview', result.multi.afterPreview, {
+    drawnIds: [result.ids.main, result.ids.extra, result.ids.text],
+    snapshotPresence: { [result.ids.main]: true, [result.ids.extra]: true, [result.ids.text]: true },
+    nonBackgroundPixels: 'nonzero',
+  });
+  expectRenderState('multi.after.export', result.multi.afterExport, {
+    drawnIds: [result.ids.main, result.ids.extra, result.ids.text],
+    snapshotPresence: { [result.ids.main]: true, [result.ids.extra]: true, [result.ids.text]: true },
+    nonBackgroundPixels: 'nonzero',
+  });
+});
+
+test('E9AG — presença temporal: modelo canônico', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    const context = {
+      frames: [
+        { frameId: 'frame-first', x: 10, y: 20, w: 30, h: 40 },
+        { frameId: 'frame-second', x: 50, y: 60, w: 70, h: 80 },
+      ],
+      frameCount: 2,
+      segDurations: [4],
+      framePauses: [{ duration: 1 }, { duration: 2 }],
+      ctrlPts: [{ nx: 0.2, ny: 0.3, t: 0.5, perpX: 4, perpY: 5 }],
+      curvesV2: { version: 1, mode: 'cubic', frameHandles: { in: [null, { dx: -3, dy: -2, manual: true }], out: [{ dx: 3, dy: 2, manual: true }, null] } },
+      assets: [
+        { id: 'project-entry', worldX: 10, worldY: 20, worldW: 30, worldH: 40, depth: 2, zIndex: 3, visible: true,
+          presence: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } } } },
+        { id: 'frame-entry', worldX: 11, worldY: 21, worldW: 31, worldH: 41, depth: 3, zIndex: 4, visible: true,
+          presence: { mode: 'custom', entry: { anchor: 'frame', anchorId: 'frame-second', offset: { unit: 'seconds', value: -0.5 } } } },
+        { id: 'asset-entry', worldX: 12, worldY: 22, worldW: 32, worldH: 42, depth: 4, zIndex: 5, visible: true,
+          presence: { mode: 'custom', entry: { anchor: 'asset', anchorId: 'project-entry', assetEvent: 'entry', offset: { unit: 'projectFraction', value: 0.25 } }, exit: { anchor: 'project', offset: { unit: 'projectFraction', value: 0.75 } } } },
+      ],
+    };
+    const integrityContext = {
+      frames: context.frames,
+      frameCount: context.frameCount,
+      segDurations: context.segDurations,
+      framePauses: context.framePauses,
+      assets: [
+        { id: 'unbounded' },
+        { id: 'cycle-a',
+          presence: { mode: 'custom', entry: { anchor: 'asset', anchorId: 'cycle-b', assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } } } },
+        { id: 'cycle-b',
+          presence: { mode: 'custom', entry: { anchor: 'asset', anchorId: 'cycle-a', assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } } } },
+        { id: 'self-reference',
+          presence: { mode: 'custom', entry: { anchor: 'asset', anchorId: 'self-reference', assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } } } },
+        { id: 'missing-reference',
+          presence: { mode: 'custom', entry: { anchor: 'asset', anchorId: 'removed-asset', assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } } } },
+        { id: 'entry-after-exit',
+          presence: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 6 } }, exit: { anchor: 'project', offset: { unit: 'seconds', value: 5 } } } },
+      ],
+    };
+    const legacyPauseContext = {
+      frames: [{ frameId: 'legacy-first' }, { frameId: 'legacy-second' }, { frameId: 'legacy-third' }],
+      frameCount: 3,
+      segDurations: [2, 3],
+      framePauses: [{ duration: 1 }, { duration: 1 }, { duration: 0 }],
+      easeMode: 'pause',
+      pauseDuration: 999,
+    };
+    const legacyFrames = [{ x: 1, y: 2, w: 3, h: 4 }, { frameId: ' preserved whitespace ', x: 5, y: 6, w: 7, h: 8 }];
+    ensureFrameIds(legacyFrames);
+    const migratedFrameIds = legacyFrames.map(frame => frame.frameId);
+    ensureFrameIds(legacyFrames);
+    const before = JSON.stringify({
+      assets: context.assets.map(({ worldX, worldY, worldW, worldH, depth, zIndex, visible }) => ({ worldX, worldY, worldW, worldH, depth, zIndex, visible })),
+      frames: context.frames,
+      ctrlPts: context.ctrlPts,
+      curvesV2: context.curvesV2,
+    });
+    const frameTime = getProjectTimeAtFrameId('frame-second', context);
+    const projectBefore = resolveAssetPresenceAt('project-entry', 1.999, context);
+    const projectAt = resolveAssetPresenceAt('project-entry', 2, context);
+    const frameBefore = resolveAssetPresenceAt('frame-entry', 4.499, context);
+    const frameAt = resolveAssetPresenceAt('frame-entry', 4.5, context);
+    const assetBefore = resolveAssetPresenceAt('asset-entry', 3.749, context);
+    const assetAt = resolveAssetPresenceAt('asset-entry', 3.75, context);
+    const assetExit = resolveAssetPresenceAt('asset-entry', 5.25, context);
+    const unbounded = resolveAssetPresenceAt('unbounded', 6.999, integrityContext);
+    const cycle = resolveAssetPresenceAt('cycle-a', 0, integrityContext);
+    const selfReference = resolveAssetPresenceAt('self-reference', 0, integrityContext);
+    const missingReference = resolveAssetPresenceAt('missing-reference', 0, integrityContext);
+    const entryAfterExit = resolveAssetPresenceAt('entry-after-exit', 5.5, integrityContext);
+    const legacyPauseFrameTime = getProjectTimeAtFrameId('legacy-third', legacyPauseContext);
+    const after = JSON.stringify({
+      assets: context.assets.map(({ worldX, worldY, worldW, worldH, depth, zIndex, visible }) => ({ worldX, worldY, worldW, worldH, depth, zIndex, visible })),
+      frames: context.frames,
+      ctrlPts: context.ctrlPts,
+      curvesV2: context.curvesV2,
+    });
+    return { frameTime, projectBefore, projectAt, frameBefore, frameAt, assetBefore, assetAt, assetExit, unbounded, cycle, selfReference, missingReference, entryAfterExit, legacyPauseFrameTime, migratedFrameIds, preservedWhitespaceId: legacyFrames[1].frameId, frameIdsStable: migratedFrameIds.every((id, index) => id === legacyFrames[index].frameId), geometryUnchanged: before === after };
+  });
+
+  expect(result.frameTime).toBe(5);
+  expect(result.projectBefore.present).toBe(false);
+  expect(result.projectAt.present).toBe(true);
+  expect(result.frameBefore.present).toBe(false);
+  expect(result.frameAt.present).toBe(true);
+  expect(result.assetBefore.present).toBe(false);
+  expect(result.assetAt.present).toBe(true);
+  expect(result.assetExit.present).toBe(false);
+  expect(result.unbounded.present).toBe(true);
+  expect(result.cycle.invalidReason).toBe('cycle');
+  expect(result.selfReference.invalidReason).toBe('self-reference');
+  expect(result.missingReference.invalidReason).toBe('missing-reference');
+  expect(result.entryAfterExit.invalidReason).toBe('entry-after-exit');
+  expect(result.entryAfterExit.present).toBe(false);
+  expect(result.legacyPauseFrameTime).toBe(7);
+  expect(new Set(result.migratedFrameIds).size).toBe(2);
+  expect(result.preservedWhitespaceId).toBe(' preserved whitespace ');
+  expect(result.frameIdsStable).toBe(true);
+  expect(result.geometryUnchanged).toBe(true);
+});
+
+test('E9AG — presença temporal: persistência, restauração e histórico canônicos', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(async () => {
+    const image = assets.find(asset => asset && asset.type === 'image');
+    const frameId = frames[0].frameId;
+    const defaults = {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 0.75 } },
+      exit: { anchor: 'frame', anchorId: frameId, offset: { unit: 'projectFraction', value: 0.5 } },
+    };
+    const imagePresence = {
+      mode: 'custom',
+      entry: { anchor: 'frame', anchorId: frameId, offset: { unit: 'seconds', value: -0.25 } },
+    };
+    const textPresence = {
+      mode: 'custom',
+      entry: { anchor: 'asset', anchorId: image.id, assetEvent: 'entry', offset: { unit: 'projectFraction', value: 0.1 } },
+      exit: { anchor: 'project', offset: { unit: 'seconds', value: 4.25 } },
+    };
+    image.presence = imagePresence;
+    const text = normalizeTextAsset({
+      id: 'e9ag-text-presence', type: 'text', text: 'Presença temporal', color: '#ffffff',
+      worldX: 30, worldY: 40, worldW: 220, worldH: 64, boxWidth: 220,
+      presence: textPresence,
+    });
+    assets.push(text);
+    projectAssetPresenceDefaults = defaults;
+    scaleSecondsWithProjectDuration = true;
+
+    const snapshot = captureState();
+    const canonicalBefore = captureHistoryCanonicalFingerprint(snapshot);
+    const saved = buildProjectData(true);
+    const savedFrameIds = saved.framesNorm.map(frame => frame.frameId);
+    const savedImage = saved.assets.find(asset => asset && asset.id === image.id);
+    const savedText = saved.assets.find(asset => asset && asset.id === text.id);
+
+    projectAssetPresenceDefaults = { mode: 'custom' };
+    scaleSecondsWithProjectDuration = false;
+    image.presence = { mode: 'inherit' };
+    text.presence = { mode: 'inherit' };
+    const canonicalChanged = JSON.stringify(canonicalBefore) !== JSON.stringify(captureHistoryCanonicalFingerprint(captureState()));
+    restoreState(snapshot);
+    const captureRestored = {
+      defaults: projectAssetPresenceDefaults,
+      scale: scaleSecondsWithProjectDuration,
+      image: assets.find(asset => asset && asset.id === image.id).presence,
+      text: assets.find(asset => asset && asset.id === text.id).presence,
+    };
+
+    undoStack.length = 0;
+    redoStack.length = 0;
+    pushUndo();
+    projectAssetPresenceDefaults = { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } } };
+    assets.find(asset => asset && asset.id === text.id).presence = { mode: 'inherit' };
+    undo();
+    const undoRestored = {
+      defaults: projectAssetPresenceDefaults,
+      text: assets.find(asset => asset && asset.id === text.id).presence,
+    };
+    redo();
+    const redoRestored = {
+      defaults: projectAssetPresenceDefaults,
+      text: assets.find(asset => asset && asset.id === text.id).presence,
+    };
+
+    applyProjectData(saved);
+    const manualLoad = {
+      frameIds: frames.map(frame => frame.frameId),
+      defaults: projectAssetPresenceDefaults,
+      scale: scaleSecondsWithProjectDuration,
+      image: assets.find(asset => asset && asset.id === image.id).presence,
+      text: assets.find(asset => asset && asset.id === text.id).presence,
+    };
+    assets.find(asset => asset && asset.id === image.id).presence = { mode: 'inherit' };
+    const inheritedUsesRestoredDefaults = resolveAssetPresenceAt(image.id, 0).present;
+    assets.find(asset => asset && asset.id === image.id).presence = cloneAssetPresence(savedImage.presence);
+
+    await scheduleSessionAutosave('e9ag-temporal-presence', true);
+    await flushSessionAutosave();
+    while (_sessionAutosaveActiveWrites.size) await Promise.all([..._sessionAutosaveActiveWrites]);
+    const checkpoint = await readSessionCheckpoint();
+    const checkpointData = checkpoint ? JSON.parse(checkpoint.payload) : null;
+    projectAssetPresenceDefaults = { mode: 'custom' };
+    scaleSecondsWithProjectDuration = false;
+    assets.forEach(asset => { asset.presence = { mode: 'inherit' }; });
+    const restoredBySessionController = await restoreLastSessionAutosave();
+    const sessionRestore = {
+      controller: restoredBySessionController,
+      checkpoint: checkpointData && {
+        defaults: checkpointData.assetPresenceDefaults,
+        scale: checkpointData.scaleSecondsWithProjectDuration,
+        image: checkpointData.assets.find(asset => asset && asset.id === image.id).presence,
+        text: checkpointData.assets.find(asset => asset && asset.id === text.id).presence,
+      },
+      defaults: projectAssetPresenceDefaults,
+      scale: scaleSecondsWithProjectDuration,
+      image: assets.find(asset => asset && asset.id === image.id).presence,
+      text: assets.find(asset => asset && asset.id === text.id).presence,
+    };
+
+    const legacy = JSON.parse(JSON.stringify(saved));
+    delete legacy.assetPresenceDefaults;
+    delete legacy.projectAssetPresenceDefaults;
+    delete legacy.scaleSecondsWithProjectDuration;
+    legacy.assets.forEach(asset => { delete asset.presence; });
+    applyProjectData(legacy);
+    const legacyRestored = {
+      defaults: projectAssetPresenceDefaults,
+      scale: scaleSecondsWithProjectDuration,
+      assets: assets.map(asset => asset.presence),
+    };
+
+    return { saved, savedFrameIds, savedImage, savedText, fingerprintDefaults: canonicalBefore.assetPresenceDefaults, fingerprintScale: canonicalBefore.scaleSecondsWithProjectDuration, canonicalChanged, captureRestored, undoRestored, redoRestored, manualLoad, inheritedUsesRestoredDefaults, sessionRestore, legacyRestored };
+  });
+
+  expect(result.saved.assetPresenceDefaults).toEqual({
+    mode: 'custom',
+    entry: { anchor: 'project', offset: { unit: 'seconds', value: 0.75 } },
+    exit: { anchor: 'frame', anchorId: result.savedFrameIds[0], offset: { unit: 'projectFraction', value: 0.5 } },
+  });
+  expect(result.saved.scaleSecondsWithProjectDuration).toBe(true);
+  expect(result.savedFrameIds.every(Boolean)).toBe(true);
+  expect(result.savedImage.presence.mode).toBe('custom');
+  expect(result.savedText.presence).toEqual({
+    mode: 'custom',
+    entry: { anchor: 'asset', anchorId: result.savedImage.id, assetEvent: 'entry', offset: { unit: 'projectFraction', value: 0.1 } },
+    exit: { anchor: 'project', offset: { unit: 'seconds', value: 4.25 } },
+  });
+  expect(result.fingerprintDefaults).toEqual(result.saved.assetPresenceDefaults);
+  expect(result.fingerprintScale).toBe(true);
+  expect(result.canonicalChanged).toBe(true);
+  expect(result.captureRestored).toEqual({ defaults: result.saved.assetPresenceDefaults, scale: true, image: result.savedImage.presence, text: result.savedText.presence });
+  expect(result.undoRestored).toEqual({ defaults: result.saved.assetPresenceDefaults, text: result.savedText.presence });
+  expect(result.redoRestored).toEqual({ defaults: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } } }, text: { mode: 'inherit' } });
+  expect(result.manualLoad).toEqual({ frameIds: result.savedFrameIds, defaults: result.saved.assetPresenceDefaults, scale: true, image: result.savedImage.presence, text: result.savedText.presence });
+  expect(result.inheritedUsesRestoredDefaults).toBe(false);
+  expect(result.sessionRestore).toEqual({
+    controller: true,
+    checkpoint: { defaults: result.saved.assetPresenceDefaults, scale: true, image: result.savedImage.presence, text: result.savedText.presence },
+    defaults: result.saved.assetPresenceDefaults,
+    scale: true,
+    image: result.savedImage.presence,
+    text: result.savedText.presence,
+  });
+  expect(result.legacyRestored.defaults).toEqual({ mode: 'custom' });
+  expect(result.legacyRestored.scale).toBe(true);
+  expect(result.legacyRestored.assets).toEqual(expect.arrayContaining([{ mode: 'inherit' }]));
+});
+
+test('E9AG — presença temporal: duração escala somente offsets em segundos com a preferência ativa', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    const target = assets.find(asset => asset && asset.type === 'image');
+    const reference = {
+      id: 'e9ag-duration-reference', type: 'image', presence: {
+        mode: 'custom',
+        entry: { anchor: 'project', offset: { unit: 'seconds', value: 0 } },
+      },
+    };
+    assets.push(reference);
+    projectAssetPresenceDefaults = {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 1 } },
+      exit: { anchor: 'project', offset: { unit: 'projectFraction', value: 0.75 } },
+    };
+    target.presence = {
+      mode: 'custom',
+      entry: { anchor: 'frame', anchorId: frames[0].frameId, offset: { unit: 'seconds', value: -0.25 } },
+      exit: { anchor: 'asset', anchorId: reference.id, assetEvent: 'entry', offset: { unit: 'seconds', value: 0.5 } },
+    };
+    normalizeAssetPresence(target);
+    const movementTotal = segDurations.slice(0, Math.max(0, frameCount - 1)).reduce((sum, value) => sum + Number(value || 0), 0);
+
+    scaleSecondsWithProjectDuration = true;
+    scaleSegmentDurationsToTotal(movementTotal * 2);
+    const enabled = {
+      defaults: structuredClone(projectAssetPresenceDefaults),
+      target: structuredClone(target.presence),
+    };
+
+    scaleSecondsWithProjectDuration = false;
+    scaleSegmentDurationsToTotal(movementTotal * 3);
+    const disabled = {
+      defaults: structuredClone(projectAssetPresenceDefaults),
+      target: structuredClone(target.presence),
+    };
+    return { enabled, disabled };
+  });
+
+  expect(result.enabled.defaults).toEqual({
+    mode: 'custom',
+    entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } },
+    exit: { anchor: 'project', offset: { unit: 'projectFraction', value: 0.75 } },
+  });
+  expect(result.enabled.target).toEqual({
+    mode: 'custom',
+    entry: { anchor: 'frame', anchorId: expect.any(String), offset: { unit: 'seconds', value: -0.5 } },
+    exit: { anchor: 'asset', anchorId: 'e9ag-duration-reference', assetEvent: 'entry', offset: { unit: 'seconds', value: 1 } },
+  });
+  expect(result.disabled).toEqual(result.enabled);
+});
+
+test('E9AG — presença temporal: excluir âncora preserva tempos com Cancelar e Undo/Redo atômicos', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const setup = await page.evaluate(() => {
+    const anchor = assets.find(asset => asset && asset.type === 'image');
+    anchor.presence = {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 1 } },
+    };
+    const dependent = normalizeTextAsset({
+      id: 'e9ag-dependent', type: 'text', text: 'Dependente', color: '#ffffff',
+      worldX: 30, worldY: 40, worldW: 220, worldH: 64, boxWidth: 220,
+      presence: {
+        mode: 'custom',
+        entry: { anchor: 'asset', anchorId: anchor.id, assetEvent: 'entry', offset: { unit: 'seconds', value: 0.5 } },
+      },
+    });
+    assignPersistentLayerIdentity(dependent);
+    assets.push(dependent);
+    normalizeAssetZIndices();
+    const resolvedSecond = resolveAssetPresenceAt(dependent.id, 0).entryTime;
+    setEditorMode('assets', 'e9ag-delete-test');
+    selectAssetById(anchor.id, 'e9ag-delete-test');
+    renderLayersPanelList();
+    renderAll();
+    undoStack.length = 0;
+    redoStack.length = 0;
+    updateUndoRedoUI();
+    return {
+      anchorId: String(anchor.id),
+      anchorName: anchor.layerName,
+      dependentId: dependent.id,
+      dependentName: dependent.layerName,
+      count: assets.length,
+      resolvedSecond,
+      originalPresence: structuredClone(dependent.presence),
+    };
+  });
+
+  expect(setup.resolvedSecond).toBe(1.5);
+  await page.locator('#tbAssetDelete').click();
+  const dialog = page.getByRole('dialog', { name: /Excluir ativo vinculado/i });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText(setup.anchorName);
+  await expect(dialog).toContainText('1 limite vinculado');
+  await expect(dialog).toContainText(setup.dependentName);
+
+  await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect(await page.evaluate(({ anchorId, dependentId }) => ({
+    anchorExists: assets.some(asset => asset && String(asset.id) === anchorId),
+    presence: structuredClone(assets.find(asset => asset && String(asset.id) === dependentId).presence),
+    undo: undoStack.length,
+    redo: redoStack.length,
+  }), setup)).toEqual({ anchorExists: true, presence: setup.originalPresence, undo: 0, redo: 0 });
+
+  await page.locator('#tbAssetDelete').click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Excluir e preservar tempos', exact: true }).evaluate(button => {
+    button.click();
+    button.click();
+  });
+  await expect(dialog).toBeHidden();
+  expect(await page.evaluate(({ anchorId, dependentId }) => ({
+    anchorExists: assets.some(asset => asset && String(asset.id) === anchorId),
+    count: assets.length,
+    presence: structuredClone(assets.find(asset => asset && String(asset.id) === dependentId).presence),
+    undo: undoStack.length,
+    redo: redoStack.length,
+  }), setup)).toEqual({
+    anchorExists: false,
+    count: setup.count - 1,
+    presence: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: setup.resolvedSecond } } },
+    undo: 1,
+    redo: 0,
+  });
+
+  await page.locator('#topBtnUndo').click();
+  expect(await page.evaluate(({ anchorId, dependentId }) => ({
+    anchorExists: assets.some(asset => asset && String(asset.id) === anchorId),
+    count: assets.length,
+    presence: structuredClone(assets.find(asset => asset && String(asset.id) === dependentId).presence),
+    undo: undoStack.length,
+    redo: redoStack.length,
+  }), setup)).toEqual({ anchorExists: true, count: setup.count, presence: setup.originalPresence, undo: 0, redo: 1 });
+
+  await page.locator('#topBtnRedo').click();
+  expect(await page.evaluate(({ anchorId, dependentId }) => ({
+    anchorExists: assets.some(asset => asset && String(asset.id) === anchorId),
+    count: assets.length,
+    presence: structuredClone(assets.find(asset => asset && String(asset.id) === dependentId).presence),
+    undo: undoStack.length,
+    redo: redoStack.length,
+  }), setup)).toEqual({
+    anchorExists: false,
+    count: setup.count - 1,
+    presence: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: setup.resolvedSecond } } },
+    undo: 1,
+    redo: 0,
+  });
+});
+
+test('E9AG — presença temporal: diálogo com muitos vínculos mantém ações tocáveis em 390×797', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const setup = await page.evaluate(() => {
+    const anchor = assets.find(asset => asset && asset.type === 'image');
+    anchor.presence = { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 1 } } };
+    const dependentIds = [];
+    for (let index = 0; index < 18; index++) {
+      const dependent = normalizeTextAsset({
+        id: `e9ag-overflow-dependent-${index}`, type: 'text', text: `Dependente ${index + 1}`, color: '#ffffff',
+        worldX: 30 + index, worldY: 40 + index, worldW: 220, worldH: 64, boxWidth: 220,
+        presence: {
+          mode: 'custom',
+          entry: { anchor: 'asset', anchorId: anchor.id, assetEvent: 'entry', offset: { unit: 'seconds', value: index / 10 } },
+        },
+      });
+      assignPersistentLayerIdentity(dependent);
+      assets.push(dependent);
+      dependentIds.push(dependent.id);
+    }
+    normalizeAssetZIndices();
+    setEditorMode('assets', 'e9ag-overflow-test');
+    selectAssetById(anchor.id, 'e9ag-overflow-test');
+    renderLayersPanelList();
+    syncAssetToolbarState();
+    undoStack.length = 0;
+    redoStack.length = 0;
+    updateUndoRedoUI();
+    return { anchorId: String(anchor.id), dependentIds, count: assets.length };
+  });
+
+  const tap = async locator => {
+    await expect(locator).toBeVisible();
+    const box = await locator.boundingBox();
+    expect(box).not.toBeNull();
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+  };
+  const dialog = page.getByRole('dialog', { name: /Excluir ativo vinculado/i });
+  const cancel = dialog.getByRole('button', { name: 'Cancelar', exact: true });
+  const confirm = dialog.getByRole('button', { name: 'Excluir e preservar tempos', exact: true });
+
+  await page.locator('#tbAssetDelete').click();
+  await expect(dialog).toBeVisible();
+  const geometry = await dialog.evaluate(element => {
+    const card = element.querySelector('.reload-choice-card');
+    const list = element.querySelector('#assetTemporalDependencyList');
+    const actions = element.querySelector('.reload-choice-actions');
+    const cancelButton = element.querySelector('#assetTemporalDependencyCancel');
+    const confirmButton = element.querySelector('#assetTemporalDependencyConfirm');
+    const rect = node => {
+      const box = node.getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom, height: box.height };
+    };
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      card: rect(card),
+      list: { ...rect(list), clientHeight: list.clientHeight, scrollHeight: list.scrollHeight, overflowY: getComputedStyle(list).overflowY },
+      actions: rect(actions),
+      cancel: rect(cancelButton),
+      confirm: rect(confirmButton),
+    };
+  });
+  expect(geometry.viewport).toEqual({ width: 390, height: 797 });
+  expect(geometry.card.top).toBeGreaterThanOrEqual(19);
+  expect(geometry.card.bottom).toBeLessThanOrEqual(778);
+  expect(geometry.list.scrollHeight).toBeGreaterThan(geometry.list.clientHeight);
+  expect(geometry.list.overflowY).toBe('auto');
+  expect(geometry.actions.bottom).toBeLessThanOrEqual(geometry.card.bottom);
+  expect(geometry.cancel.height).toBeGreaterThanOrEqual(44);
+  expect(geometry.confirm.height).toBeGreaterThanOrEqual(44);
+
+  await tap(cancel);
+  await expect(dialog).toBeHidden();
+  expect(await page.evaluate(anchorId => ({
+    anchorExists: assets.some(asset => asset && String(asset.id) === anchorId),
+    undo: undoStack.length,
+  }), setup.anchorId)).toEqual({ anchorExists: true, undo: 0 });
+
+  await page.locator('#tbAssetDelete').click();
+  await expect(dialog).toBeVisible();
+  await tap(confirm);
+  await expect(dialog).toBeHidden();
+  expect(await page.evaluate(({ anchorId, dependentIds }) => ({
+    anchorExists: assets.some(asset => asset && String(asset.id) === anchorId),
+    converted: dependentIds.every(id => {
+      const dependent = assets.find(asset => asset && String(asset.id) === id);
+      return dependent && dependent.presence.entry.anchor === 'project' && dependent.presence.entry.offset.unit === 'seconds';
+    }),
+    undo: undoStack.length,
+  }), setup)).toEqual({ anchorExists: false, converted: true, undo: 1 });
+});
+
+test('E9AG — presença temporal: controles ficam inline no projeto e compactos no ativo', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  await openProjectAppearance(page);
+  await expect(page.locator('#projectPresenceDefaults')).toBeVisible();
+  await expect(page.locator('#projectPresenceEntryEnabled')).toBeVisible();
+  await expect(page.locator('#projectPresenceExitEnabled')).toBeVisible();
+  await page.locator('#projectPresenceEntryEnabled').check();
+  await expect(page.locator('#projectPresenceEntryAnchor')).toBeVisible();
+  await expect(page.locator('#projectPresenceEntryOffsetValue')).toBeVisible();
+  await expect(page.locator('#assetTimingApplyAll')).toBeVisible();
+  await expect(page.locator('#assetTimingApplyInherited')).toBeVisible();
+  await expect(page.locator('#durTabPrefs #formatChips')).toBeVisible();
+  await expect(page.locator('#durTabPrefs #bgSwatches')).toBeVisible();
+
+  await page.locator('#panelDuration .panel-handle').click();
+  await expect(page.locator('#panelDuration')).not.toHaveClass(/show/);
+
+  await page.evaluate(() => {
+    setEditorMode('assets', 'e9ag-controls-inline');
+    const asset = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!asset) throw new Error('fixture sem asset de imagem');
+    selectAssetById(asset.id, 'e9ag-controls-inline');
+    syncAssetToolbarState();
+    renderAll();
+  });
+
+  await expect(page.locator('#tbAssetTiming')).toBeVisible();
+  expect(await page.evaluate(() => [...document.querySelectorAll('#toolbar .ctx-asset')].map(item => item.id))).toEqual([
+    'tbAssetReplace',
+    'tbAssetScale',
+    'tbAssetRotate',
+    'tbAssetDepth',
+    'tbAssetCopy',
+    'tbAssetDuplicate',
+    'tbAssetForward',
+    'tbAssetBackward',
+    'tbAssetTiming',
+    'tbAssetDelete',
+  ]);
+
+  await page.locator('#tbAssetTiming').click();
+  await expect(page.locator('#assetTimingPanel')).toBeVisible();
+  await expect(page.locator('#assetContextPanel')).not.toHaveClass(/show/);
+  await expect(page.locator('#assetTimingUseProjectDefault')).toBeVisible();
+  await expect(page.locator('#assetTimingEntryEnabled')).toBeVisible();
+  await expect(page.locator('#assetTimingExitEnabled')).toBeVisible();
+  await expect(page.locator('#assetTimingEntryAnchor')).toBeHidden();
+  await expect(page.locator('#assetTimingExitAnchor')).toBeHidden();
+
+  await page.locator('#assetTimingEntryEnabled').check();
+  await expect(page.locator('#assetTimingEntryAnchor')).toBeVisible();
+  await expect(page.locator('#assetTimingEntryOffsetValue')).toBeVisible();
+  await expect(page.locator('#assetTimingExitAnchor')).toBeHidden();
+});
+
+test('E9AG — presença temporal: herança materializa auto-referência e revalida ciclo antes de persistir', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const ids = await page.evaluate(() => {
+    setEditorMode('assets', 'e9ag-inherit-materialize');
+    const image = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!image) throw new Error('fixture sem imagem');
+    const safeText = normalizeTextAsset({
+      id: 'e9ag-inherit-safe-text',
+      type: 'text',
+      text: 'Seguro',
+      color: '#ffffff',
+      worldX: 30,
+      worldY: 50,
+      worldW: 180,
+      worldH: 64,
+      boxWidth: 180,
+      presence: {
+        mode: 'custom',
+        entry: { anchor: 'project', offset: { unit: 'seconds', value: 0.25 } },
+      },
+    });
+    const cycleText = normalizeTextAsset({
+      id: 'e9ag-inherit-cycle-text',
+      type: 'text',
+      text: 'Ciclo',
+      color: '#ffffff',
+      worldX: 70,
+      worldY: 120,
+      worldW: 180,
+      worldH: 64,
+      boxWidth: 180,
+      presence: {
+        mode: 'custom',
+        entry: { anchor: 'asset', anchorId: String(image.id), assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } },
+      },
+    });
+    assignPersistentLayerIdentity(safeText);
+    assignPersistentLayerIdentity(cycleText);
+    assets.push(safeText, cycleText);
+    normalizeAssetZIndices();
+    image.presence = { mode: 'inherit' };
+    projectAssetPresenceDefaults = {
+      mode: 'custom',
+      entry: { anchor: 'asset', anchorId: String(image.id), assetEvent: 'entry', offset: { unit: 'seconds', value: 0.75 } },
+    };
+    selectAssetById(image.id, 'e9ag-inherit-materialize');
+    syncAssetToolbarState();
+    syncProjectPresenceControls();
+    renderAll();
+    return { imageId: String(image.id), safeTextId: safeText.id, cycleTextId: cycleText.id };
+  });
+
+  expect(await page.evaluate(({ imageId }) => {
+    const context = { assets, frames, frameCount, segDurations, framePauses, projectAssetPresenceDefaults };
+    const resolved = resolveAssetPresenceAt(imageId, 0, context);
+    return { entryTime: resolved.entryTime, invalidReason: resolved.invalidReason };
+  }, ids)).toEqual({ entryTime: 0.75, invalidReason: null });
+
+  await page.locator('#tbAssetTiming').click();
+  await page.locator('#assetTimingEntryEnabled').check();
+
+  expect(await page.evaluate(({ imageId }) => {
+    const asset = assets.find(candidate => candidate && String(candidate.id) === imageId);
+    const context = { assets, frames, frameCount, segDurations, framePauses, projectAssetPresenceDefaults };
+    return {
+      presence: structuredClone(asset.presence),
+      invalidReason: resolveAssetPresenceAt(imageId, 0, context).invalidReason,
+    };
+  }, ids)).toEqual({
+    presence: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 0.75 } },
+    },
+    invalidReason: null,
+  });
+
+  await page.locator('#assetTimingEntryAnchor').selectOption('asset');
+
+  expect(await page.evaluate(({ safeTextId, cycleTextId }) => {
+    const options = [...document.querySelectorAll('#assetTimingEntryTarget option')].map(option => option.value);
+    return {
+      safeListed: options.includes(safeTextId),
+      cycleListed: options.includes(cycleTextId),
+    };
+  }, ids)).toEqual({ safeListed: true, cycleListed: false });
+
+  await page.evaluate(({ cycleTextId }) => {
+    const select = document.getElementById('assetTimingEntryTarget');
+    if (!select) throw new Error('sem seletor de alvo');
+    const option = document.createElement('option');
+    option.value = cycleTextId;
+    option.textContent = 'Ciclo';
+    select.appendChild(option);
+    select.value = cycleTextId;
+    updateSelectedAssetPresenceTarget('entry');
+  }, ids);
+
+  expect(await page.evaluate(({ imageId, safeTextId }) => {
+    const asset = assets.find(candidate => candidate && String(candidate.id) === imageId);
+    const context = { assets, frames, frameCount, segDurations, framePauses, projectAssetPresenceDefaults };
+    return {
+      presence: structuredClone(asset.presence),
+      invalidReason: resolveAssetPresenceAt(imageId, 0, context).invalidReason,
+      selectedTarget: document.getElementById('assetTimingEntryTarget') && document.getElementById('assetTimingEntryTarget').value,
+      optionValues: [...document.querySelectorAll('#assetTimingEntryTarget option')].map(option => option.value),
+    };
+  }, ids)).toEqual({
+    presence: {
+      mode: 'custom',
+      entry: { anchor: 'asset', anchorId: ids.safeTextId, assetEvent: 'entry', offset: { unit: 'seconds', value: 0.75 } },
+    },
+    invalidReason: null,
+    selectedTarget: ids.safeTextId,
+    optionValues: [ids.safeTextId],
+  });
+});
+
+test('E9AG — presença temporal: aplicar global, preservar override e voltar para herança', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const ids = await page.evaluate(() => {
+    setEditorMode('assets', 'e9ag-controls-apply');
+    const image = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!image) throw new Error('fixture sem imagem');
+    image.presence = { mode: 'inherit' };
+    const text = normalizeTextAsset({
+      id: 'e9ag-controls-text',
+      type: 'text',
+      text: 'Override',
+      color: '#ffffff',
+      worldX: 40,
+      worldY: 60,
+      worldW: 180,
+      worldH: 64,
+      boxWidth: 180,
+      presence: {
+        mode: 'custom',
+        entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } },
+      },
+    });
+    assignPersistentLayerIdentity(text);
+    assets.push(text);
+    normalizeAssetZIndices();
+    selectAssetById(text.id, 'e9ag-controls-apply');
+    syncAssetToolbarState();
+    renderAll();
+    return { inheritId: String(image.id), overrideId: String(text.id) };
+  });
+
+  await openProjectAppearance(page);
+  await page.locator('#projectPresenceEntryEnabled').check();
+  await page.locator('#projectPresenceEntryOffsetValue').fill('0.5');
+  await page.locator('#projectPresenceEntryOffsetValue').press('Enter');
+  await page.locator('#assetTimingApplyInherited').click();
+
+  expect(await page.evaluate(({ inheritId, overrideId }) => ({
+    defaults: structuredClone(projectAssetPresenceDefaults),
+    inheritPresence: structuredClone(assets.find(asset => asset && String(asset.id) === inheritId).presence),
+    overridePresence: structuredClone(assets.find(asset => asset && String(asset.id) === overrideId).presence),
+  }), ids)).toEqual({
+    defaults: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 0.5 } },
+    },
+    inheritPresence: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 0.5 } },
+    },
+    overridePresence: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } },
+    },
+  });
+
+  await page.locator('#panelDuration .panel-handle').click();
+  await page.evaluate((overrideId) => {
+    selectAssetById(overrideId, 'e9ag-controls-apply-single');
+    syncAssetToolbarState();
+    renderAll();
+  }, ids.overrideId);
+  await page.locator('#tbAssetTiming').click();
+  await page.locator('#assetTimingUseProjectDefault').click();
+
+  expect(await page.evaluate(({ overrideId }) => structuredClone(assets.find(asset => asset && String(asset.id) === overrideId).presence), ids)).toEqual({ mode: 'inherit' });
+
+  await page.locator('#assetTimingPanel .asset-context-back').click();
+  await expect(page.locator('#assetTimingPanel')).not.toHaveClass(/show/);
+  await page.locator('.lower-global-duration').click();
+  await page.locator('#durTabBtnPrefs').click();
+  await page.locator('#projectPresenceEntryOffsetValue').fill('1.25');
+  await page.locator('#projectPresenceEntryOffsetValue').press('Enter');
+  await page.locator('#assetTimingApplyAll').click();
+
+  expect(await page.evaluate(({ inheritId, overrideId }) => ({
+    inheritPresence: structuredClone(assets.find(asset => asset && String(asset.id) === inheritId).presence),
+    overridePresence: structuredClone(assets.find(asset => asset && String(asset.id) === overrideId).presence),
+  }), ids)).toEqual({
+    inheritPresence: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 1.25 } },
+    },
+    overridePresence: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 1.25 } },
+    },
+  });
+
+  await page.evaluate(({ inheritId }) => {
+    projectAssetPresenceDefaults = {
+      mode: 'custom',
+      entry: { anchor: 'asset', anchorId: inheritId, assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } },
+    };
+    syncProjectPresenceControls();
+  }, ids);
+
+  expect(await page.evaluate(({ inheritId }) => {
+    const context = { assets, frames, frameCount, segDurations, framePauses, projectAssetPresenceDefaults };
+    const resolved = resolveAssetPresenceAt(inheritId, 0, context);
+    return {
+      present: resolved.present,
+      entryTime: resolved.entryTime,
+      invalidReason: resolved.invalidReason,
+    };
+  }, ids)).toEqual({
+    present: false,
+    entryTime: 1.25,
+    invalidReason: null,
+  });
+
+  await page.locator('#assetTimingApplyAll').click();
+
+  expect(await page.evaluate(({ inheritId, overrideId }) => {
+    const inheritAsset = assets.find(asset => asset && String(asset.id) === inheritId);
+    const overrideAsset = assets.find(asset => asset && String(asset.id) === overrideId);
+    const context = { assets, frames, frameCount, segDurations, framePauses, projectAssetPresenceDefaults };
+    return {
+      inheritPresence: structuredClone(inheritAsset.presence),
+      overridePresence: structuredClone(overrideAsset.presence),
+      inheritInvalidReason: resolveAssetPresenceAt(inheritId, 0, context).invalidReason,
+      overrideInvalidReason: resolveAssetPresenceAt(overrideId, 0, context).invalidReason,
+    };
+  }, ids)).toEqual({
+    inheritPresence: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 0 } },
+    },
+    overridePresence: {
+      mode: 'custom',
+      entry: { anchor: 'asset', anchorId: ids.inheritId, assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } },
+    },
+    inheritInvalidReason: null,
+    overrideInvalidReason: null,
+  });
 });
