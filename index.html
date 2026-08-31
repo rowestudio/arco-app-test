@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9AF — base v8z4b32E9AE. fix(editor-pan): com a mão ativa, um dedo arrasta a vista inclusive no zoom dinâmico abaixo ou igual a 100%, sem selecionar nem mover o Ativo sob o toque. Pinça e pan de dois dedos permanecem no caminho existente. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, geometria canônica e transformação de ativos/frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AF. -->
 <!-- Arco Motion App — v8z4b32E9AE — base v8z4b32E9AD. fix(editor-zoom): os botões −/+ passam a avançar e recuar incrementalmente também entre o mínimo dinâmico e 100%, sem tratar zoom sub-100 como reset. O pan existente é preservado e limitado pelos clamps canônicos; somente tocar no rótulo do zoom continua resetando explicitamente para 100% e pan zero. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, assets e geometria canônica. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AE. -->
 <!-- Arco Motion App — v8z4b32E9AD — base v8z4b32E9AC. fix(project-colors/text-draft): cada campo HEX de Fundo do projeto, Cor do texto e Fundo da caixa passa a exibir, na mesma linha e antes do código editável, uma amostra do valor canônico ativo; a amostra é sincronizada por paleta, picker e commit HEX, e o estado Sem cor do fundo da caixa permanece explicitamente transparente. O rascunho vazio de novo texto continua vazio no modelo e exige conteúdo para confirmar, porém passa a medir o mesmo placeholder visual Texto... durante a criação, preservando largura automática horizontal e evitando empilhamento vertical de letras. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, assets de imagem e texto confirmado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AD. -->
 <!-- Arco Motion App — v8z4b32E9F6 — base v8z4b32E9F3 (PR #506), pulando v8z4b32E9F4
@@ -7521,8 +7522,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AE';
-const APP_VERSION_NAME = 'v8z4b32E9AE';
+const APP_VERSION = 'v8z4b32E9AF';
+const APP_VERSION_NAME = 'v8z4b32E9AF';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -23283,7 +23284,8 @@ imageArea.addEventListener('touchcancel', e => {
   clearPendingStageGesture();
 });
 
-// Pan de edição — ativo apenas quando editorPanMode está ligado e zoom > 1
+// Pan de edição — ativo quando a mão está ligada, inclusive no zoom dinâmico
+// abaixo de 100%. O gesto de dois dedos continua sendo tratado separadamente.
 imageArea.addEventListener('pointerdown', (e) => {
   if (!isStageViewportNavigationTarget(e.target)) return;
   if (isStageNavigationActiveOrCoolingDown()) { e.preventDefault(); e.stopPropagation(); return; }
@@ -23318,7 +23320,7 @@ imageArea.addEventListener('pointerdown', (e) => {
     };
     return;
   }
-  if (isPreviewing || editorZoomScale <= 1 || !editorPanMode) return;
+  if (isPreviewing || !editorPanMode) return;
   // Ignorar controles do zoom flutuante (já têm stopPropagation)
   if (e.target.closest('#editorZoomCtrl,#stageEyeShortcut')) return;
   e.preventDefault();
@@ -23708,7 +23710,7 @@ function endDrag(e) {
     try { stage.releasePointerCapture?.(panDragState.pointerId); } catch(err) {}
     panDragState = null;
     // Restaurar cursor para grab (pan mode ainda ativo)
-    if (editorPanMode && editorZoomScale > 1) stage.style.cursor = 'grab';
+    if (editorPanMode) stage.style.cursor = 'grab';
     return;
   }
   if (dragState?.type === 'move') {
@@ -35625,6 +35627,9 @@ function handleStageAssetSelectPointer(e) {
   if (pendingTextDraft) return false;
   if (!isAssetsMode()) { assetMoveDisabledInCameraMode = true; return false; }
   if (typeof isPreviewing !== 'undefined' && isPreviewing) return false;
+  // Mão ativa: o gesto de um dedo pertence à navegação da vista, nunca à
+  // seleção ou ao movimento do Ativo que estiver sob o dedo.
+  if (editorPanMode) return false;
   // Não interceptar gestos de dois dedos (pinch/zoom continuam funcionando).
   if (typeof twoFingerState !== 'undefined' && twoFingerState) return false;
   if (e.pointerType === 'touch' && e.isPrimary === false) return false;

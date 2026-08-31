@@ -4862,3 +4862,70 @@ test('E9AE — botões de zoom avançam abaixo de 100% sem resetar a vista', asy
   await expect(page.locator('#ezLabel')).toHaveText('100%');
   expect(await page.evaluate(() => ({ panX: editorPanX, panY: editorPanY }))).toEqual({ panX: 0, panY: 0 });
 });
+
+test('E9AF — mão arrasta a vista com um dedo abaixo de 100% sem selecionar ativo', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  await page.locator('#modeAssetsBtn').tap();
+
+  const before = await page.evaluate(() => {
+    const min = getEditorMinZoom();
+    editorZoomScale = Math.max(min + 0.05, min * 1.15);
+    editorPanX = 0;
+    editorPanY = 0;
+    clampEditorPan();
+    applyEditorZoom();
+    clearSelectedAsset();
+    const target = document.querySelector('#stageContent img');
+    const rect = target.getBoundingClientRect();
+    return {
+      zoom: editorZoomScale,
+      panX: editorPanX,
+      panY: editorPanY,
+      activeFrame: activeIdx,
+      frame: JSON.stringify(frames[activeIdx]),
+      point: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
+    };
+  });
+  expect(before.zoom).toBeLessThan(1);
+
+  await page.locator('#ezBtnPan').tap();
+  await expect.poll(() => page.evaluate(() => editorPanMode)).toBe(true);
+
+  const moved = await page.evaluate(({ point }) => {
+    const stageEl = document.getElementById('stage');
+    const target = document.elementFromPoint(point.x, point.y);
+    const originalSetCapture = stageEl.setPointerCapture;
+    const originalReleaseCapture = stageEl.releasePointerCapture;
+    stageEl.setPointerCapture = () => {};
+    stageEl.releasePointerCapture = () => {};
+    const init = { bubbles: true, cancelable: true, pointerId: 914, pointerType: 'touch', isPrimary: true, clientX: point.x, clientY: point.y };
+    target.dispatchEvent(new PointerEvent('pointerdown', init));
+    window.dispatchEvent(new PointerEvent('pointermove', { ...init, clientX: point.x + 36, clientY: point.y - 28 }));
+    const state = {
+      panX: editorPanX,
+      panY: editorPanY,
+      selectedAssetId,
+      assetDragActive: Boolean(assetDragState),
+      panDragActive: Boolean(panDragState),
+      activeFrame: activeIdx,
+      frame: JSON.stringify(frames[activeIdx]),
+    };
+    window.dispatchEvent(new PointerEvent('pointerup', { ...init, clientX: point.x + 36, clientY: point.y - 28 }));
+    stageEl.setPointerCapture = originalSetCapture;
+    stageEl.releasePointerCapture = originalReleaseCapture;
+    return { ...state, panDragAfterUp: Boolean(panDragState) };
+  }, before);
+
+  expect(moved.panX).toBeGreaterThan(before.panX);
+  expect(moved.panY).toBeLessThan(before.panY);
+  expect(moved.selectedAssetId).toBeNull();
+  expect(moved.assetDragActive).toBe(false);
+  expect(moved.panDragActive).toBe(true);
+  expect(moved.panDragAfterUp).toBe(false);
+  expect(moved.activeFrame).toBe(before.activeFrame);
+  expect(moved.frame).toBe(before.frame);
+});

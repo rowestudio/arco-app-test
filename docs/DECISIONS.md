@@ -1,5 +1,11 @@
 # DECISIONS
 
+## DEC-2026-08-30-04 — Mão é um modo explícito de navegação de um dedo
+
+- **Decisão:** enquanto o ícone de mão estiver ativo, o gesto primário no Stage desloca somente a vista, em qualquer zoom permitido pelo editor. A precedência vale sobre seleção, movimento e edição de Frames/Ativos; o gesto de dois dedos continua preservado.
+- **Motivo:** o zoom dinâmico pode estar abaixo de 100%, e navegar por um dedo precisa manter a mesma semântica visual e de interação nesse intervalo, sem transformar um arraste em edição acidental.
+- **Consequência:** a ativação da mão não muda geometria canônica nem é persistida no projeto. Implementação técnica em `v8z4b32E9AF`; validação física iPhone/Safari permanece pendente.
+
 ## DEC-2026-08-30-03 — Zoom dinâmico não implica reset de navegação
 
 - **Data:** 2026-08-30.
