@@ -5355,3 +5355,100 @@ test('E9AG — presença temporal: excluir âncora preserva tempos com Cancelar 
     redo: 0,
   });
 });
+
+test('E9AG — presença temporal: diálogo com muitos vínculos mantém ações tocáveis em 390×797', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const setup = await page.evaluate(() => {
+    const anchor = assets.find(asset => asset && asset.type === 'image');
+    anchor.presence = { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 1 } } };
+    const dependentIds = [];
+    for (let index = 0; index < 18; index++) {
+      const dependent = normalizeTextAsset({
+        id: `e9ag-overflow-dependent-${index}`, type: 'text', text: `Dependente ${index + 1}`, color: '#ffffff',
+        worldX: 30 + index, worldY: 40 + index, worldW: 220, worldH: 64, boxWidth: 220,
+        presence: {
+          mode: 'custom',
+          entry: { anchor: 'asset', anchorId: anchor.id, assetEvent: 'entry', offset: { unit: 'seconds', value: index / 10 } },
+        },
+      });
+      assignPersistentLayerIdentity(dependent);
+      assets.push(dependent);
+      dependentIds.push(dependent.id);
+    }
+    normalizeAssetZIndices();
+    setEditorMode('assets', 'e9ag-overflow-test');
+    selectAssetById(anchor.id, 'e9ag-overflow-test');
+    renderLayersPanelList();
+    syncAssetToolbarState();
+    undoStack.length = 0;
+    redoStack.length = 0;
+    updateUndoRedoUI();
+    return { anchorId: String(anchor.id), dependentIds, count: assets.length };
+  });
+
+  const tap = async locator => {
+    await expect(locator).toBeVisible();
+    const box = await locator.boundingBox();
+    expect(box).not.toBeNull();
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+  };
+  const dialog = page.getByRole('dialog', { name: /Excluir ativo vinculado/i });
+  const cancel = dialog.getByRole('button', { name: 'Cancelar', exact: true });
+  const confirm = dialog.getByRole('button', { name: 'Excluir e preservar tempos', exact: true });
+
+  await page.locator('#tbAssetDelete').click();
+  await expect(dialog).toBeVisible();
+  const geometry = await dialog.evaluate(element => {
+    const card = element.querySelector('.reload-choice-card');
+    const list = element.querySelector('#assetTemporalDependencyList');
+    const actions = element.querySelector('.reload-choice-actions');
+    const cancelButton = element.querySelector('#assetTemporalDependencyCancel');
+    const confirmButton = element.querySelector('#assetTemporalDependencyConfirm');
+    const rect = node => {
+      const box = node.getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom, height: box.height };
+    };
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      card: rect(card),
+      list: { ...rect(list), clientHeight: list.clientHeight, scrollHeight: list.scrollHeight, overflowY: getComputedStyle(list).overflowY },
+      actions: rect(actions),
+      cancel: rect(cancelButton),
+      confirm: rect(confirmButton),
+    };
+  });
+  expect(geometry.viewport).toEqual({ width: 390, height: 797 });
+  expect(geometry.card.top).toBeGreaterThanOrEqual(19);
+  expect(geometry.card.bottom).toBeLessThanOrEqual(778);
+  expect(geometry.list.scrollHeight).toBeGreaterThan(geometry.list.clientHeight);
+  expect(geometry.list.overflowY).toBe('auto');
+  expect(geometry.actions.bottom).toBeLessThanOrEqual(geometry.card.bottom);
+  expect(geometry.cancel.height).toBeGreaterThanOrEqual(44);
+  expect(geometry.confirm.height).toBeGreaterThanOrEqual(44);
+
+  await tap(cancel);
+  await expect(dialog).toBeHidden();
+  expect(await page.evaluate(anchorId => ({
+    anchorExists: assets.some(asset => asset && String(asset.id) === anchorId),
+    undo: undoStack.length,
+  }), setup.anchorId)).toEqual({ anchorExists: true, undo: 0 });
+
+  await page.locator('#tbAssetDelete').click();
+  await expect(dialog).toBeVisible();
+  await tap(confirm);
+  await expect(dialog).toBeHidden();
+  expect(await page.evaluate(({ anchorId, dependentIds }) => ({
+    anchorExists: assets.some(asset => asset && String(asset.id) === anchorId),
+    converted: dependentIds.every(id => {
+      const dependent = assets.find(asset => asset && String(asset.id) === id);
+      return dependent && dependent.presence.entry.anchor === 'project' && dependent.presence.entry.offset.unit === 'seconds';
+    }),
+    undo: undoStack.length,
+  }), setup)).toEqual({ anchorExists: false, converted: true, undo: 1 });
+});
