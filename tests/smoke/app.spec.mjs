@@ -4799,3 +4799,66 @@ test('E9AD — o preview inicial de texto reserva largura para o placeholder', a
   expect(draft.stageText).toBe('Texto...');
   expect(draft.boxWidth).toBeGreaterThanOrEqual(draft.previewWidth);
 });
+
+test('E9AE — botões de zoom avançam abaixo de 100% sem resetar a vista', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const before = await page.evaluate(() => {
+    const min = getEditorMinZoom();
+    editorZoomScale = Math.max(min + 0.05, min * 1.15);
+    editorPanX = 31;
+    editorPanY = -27;
+    clampEditorPan();
+    applyEditorZoom();
+    return { zoom: editorZoomScale, panX: editorPanX, panY: editorPanY, min };
+  });
+  expect(before.zoom).toBeLessThan(1);
+
+  await page.locator('#ezBtnPlus').tap();
+  const plus = await page.evaluate(() => ({ zoom: editorZoomScale, panX: editorPanX, panY: editorPanY }));
+  expect(plus.zoom).toBeGreaterThan(before.zoom);
+  expect(plus.zoom).toBeLessThan(1);
+  expect(plus.panX).not.toBe(0);
+  expect(plus.panY).not.toBe(0);
+  await expect(page.locator('#ezLabel')).not.toHaveText('100%');
+
+  await page.locator('#ezBtnMinus').tap();
+  const minus = await page.evaluate(() => ({ zoom: editorZoomScale, panX: editorPanX, panY: editorPanY }));
+  expect(minus.zoom).toBeLessThan(plus.zoom);
+  expect(minus.panX).not.toBe(0);
+  expect(minus.panY).not.toBe(0);
+
+  const nearHundred = await page.evaluate(() => {
+    editorZoomScale = 0.99995;
+    editorPanX = 19;
+    editorPanY = -17;
+    clampEditorPan();
+    applyEditorZoom();
+    return { panX: editorPanX, panY: editorPanY };
+  });
+  await page.locator('#ezBtnPlus').tap();
+  expect(await page.evaluate(() => editorZoomScale)).toBe(1);
+  expect(await page.evaluate(() => editorPanX)).toBe(nearHundred.panX);
+  expect(await page.evaluate(() => editorPanY)).toBe(nearHundred.panY);
+
+  const atMinimum = await page.evaluate(() => {
+    editorZoomScale = getEditorMinZoom();
+    editorPanX = 23;
+    editorPanY = -21;
+    clampEditorPan();
+    applyEditorZoom();
+    return { zoom: editorZoomScale, panX: editorPanX, panY: editorPanY };
+  });
+  await expect(page.locator('#ezBtnMinus')).toBeDisabled();
+  expect(await page.evaluate(() => editorZoomScale)).toBe(atMinimum.zoom);
+  expect(await page.evaluate(() => editorPanX)).toBe(atMinimum.panX);
+  expect(await page.evaluate(() => editorPanY)).toBe(atMinimum.panY);
+
+  await page.locator('#ezLabel').tap();
+  await expect(page.locator('#ezLabel')).toHaveText('100%');
+  expect(await page.evaluate(() => ({ panX: editorPanX, panY: editorPanY }))).toEqual({ panX: 0, panY: 0 });
+});

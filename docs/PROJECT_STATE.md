@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-30 — v8z4b32E9AE em desenvolvimento: steps do zoom do Stage
+
+- Relato reproduzido em WebKit mobile: quando o zoom dinâmico estava abaixo de 100%, `+` saltava para 100% e `−` acionava o reset, apagando o pan da vista.
+- Os botões agora usam passos multiplicativos no intervalo entre o mínimo dinâmico e 100%, e os níveis discretos existentes acima de 100%. Cada passo preserva o pan canônico, sujeito apenas a `clampEditorPan()`.
+- O rótulo percentual é a única ação que reseta explicitamente a vista para 100% com pan zero. Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor e geometria canônica não foram alterados.
+- O smoke WebKit mobile dedicado reproduziu a falha antes da alteração e passou após ela. A validação física em iPhone/Safari continua pendente; produção não foi alterada.
+
 ## Atualização 2026-08-30 — v8z4b32E9AD em desenvolvimento: amostra de cor e largura inicial de texto
 
 - Cada campo HEX de cor mostra a amostra ativa na própria linha, antes do código editável: Fundo do projeto, Cor do texto e Fundo da caixa. A amostra acompanha paleta, seletor nativo e edição/commit do HEX; o estado “Sem cor” do fundo da caixa continua transparente.

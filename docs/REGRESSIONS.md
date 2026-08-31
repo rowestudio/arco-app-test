@@ -1,5 +1,12 @@
 # REGRESSIONS
 
+## REG-064 — botões de zoom resetavam a vista abaixo de 100% (CORRIGIDA TECNICAMENTE na E9AE)
+
+- **Relato/reprodução:** com mínimo de zoom dinâmico abaixo de 100%, o estado intermediário não estava em `ZOOM_LEVELS`, que começa em 100%. Assim, `+` selecionava 100% como próximo nível e `−` entrava no ramo de `resetEditorZoom()`, zerando também o pan.
+- **Correção E9AE:** `getNextEditorZoomStep()` e `getPreviousEditorZoomStep()` percorrem o intervalo sub-100 por fator incremental e conservam os níveis discretos acima de 100%. `_setEditorZoom()` limita escala e pan sem recentrar nem zerar a vista. O reset continua exclusivo de `resetEditorZoom()` pelo rótulo percentual.
+- **Proteção:** smoke WebKit mobile inicia com zoom dinâmico sub-100 e pan não nulo, verifica avanço sem chegar a 100%, recuo incremental e preservação do pan.
+- **Status:** CORRIGIDA TECNICAMENTE na `v8z4b32E9AE`; validação física publicada em iPhone/Safari permanece pendente. Não há promoção autorizada.
+
 > Atualização 2026-08-29 — a E9Y/PR #535 foi publicada e aprovada fisicamente por Roberto em iPhone/Safari, sem regressão visual relatada; ProjectWorld, Preview e Export WebCodecs foram confirmados, com `exportSuccess = true`. REG-059..REG-063 recebem o estado físico abaixo sem inferir novas causas.
 
 > Atualização 2026-08-26: a `v8z4b32E9H`/PR #516 foi mergeada, publicada e reprovada fisicamente; seu rollback restaura `v8z4b32E9F6`. **REG-052..REG-058 mantêm exatamente seus status anteriores.** A nova REG-059 é registrada abaixo sem hipótese de causa.
