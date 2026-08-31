@@ -5979,6 +5979,97 @@ test('E9AG — presença temporal: controles ficam inline no projeto e compactos
   await expect(page.locator('#assetTimingExitAnchor')).toBeHidden();
 });
 
+test('E9AH — Tempo do ativo só confirma a edição ao tocar em ✓', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const selectedId = await page.evaluate(() => {
+    setEditorMode('assets', 'e9ah-timing-sheet');
+    const asset = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!asset) throw new Error('fixture sem asset de imagem');
+    selectAssetById(asset.id, 'e9ah-timing-sheet');
+    syncAssetToolbarState();
+    renderAll();
+    return String(asset.id);
+  });
+
+  await page.locator('#tbAssetTiming').click();
+  await expect(page.locator('#assetTimingPanel')).toBeVisible();
+  await expect(page.locator('#assetTimingCancel')).toBeVisible();
+  await expect(page.locator('#assetTimingConfirm')).toBeVisible();
+
+  await page.locator('#assetTimingEntryEnabled').check();
+  expect(await page.evaluate(id => assets.find(asset => String(asset.id) === id).presence.mode, selectedId)).toBe('inherit');
+
+  await page.locator('#assetTimingCancel').click();
+  await expect(page.locator('#assetTimingPanel')).toBeHidden();
+  expect(await page.evaluate(id => ({
+    presence: assets.find(asset => String(asset.id) === id).presence.mode,
+    selected: String(selectedAssetId),
+  }), selectedId)).toEqual({ presence: 'inherit', selected: selectedId });
+
+  await page.locator('#tbAssetTiming').click();
+  await page.locator('#assetTimingEntryEnabled').check();
+  await page.locator('#assetTimingConfirm').click();
+  await expect(page.locator('#assetTimingPanel')).toBeHidden();
+  expect(await page.evaluate(id => ({
+    mode: assets.find(asset => String(asset.id) === id).presence.mode,
+    entryEnabled: !!assets.find(asset => String(asset.id) === id).presence.entry,
+    selected: String(selectedAssetId),
+  }), selectedId)).toEqual({ mode: 'custom', entryEnabled: true, selected: selectedId });
+});
+
+test('E9AH — folha de Tempo ocupa uma área de trabalho própria em 390×797', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  await page.evaluate(() => {
+    setEditorMode('assets', 'e9ah-timing-geometry');
+    const asset = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!asset) throw new Error('fixture sem asset de imagem');
+    selectAssetById(asset.id, 'e9ah-timing-geometry');
+    syncAssetToolbarState();
+    renderAll();
+  });
+  await page.locator('#tbAssetTiming').click();
+  await expect.poll(() => page.locator('#assetTimingPanel').evaluate(panel => Math.round(panel.getBoundingClientRect().bottom))).toBe(797);
+
+  const geometry = await page.locator('#assetTimingPanel').evaluate(panel => {
+    const rect = panel.getBoundingClientRect();
+    const scroll = panel.querySelector('.presence-scroll');
+    const cancel = panel.querySelector('#assetTimingCancel');
+    const confirm = panel.querySelector('#assetTimingConfirm');
+    const box = element => {
+      const r = element.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, height: r.height, width: r.width };
+    };
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      panel: box(panel),
+      scroll: { ...box(scroll), clientHeight: scroll.clientHeight, scrollHeight: scroll.scrollHeight, overflowY: getComputedStyle(scroll).overflowY },
+      cancel: box(cancel),
+      confirm: box(confirm),
+    };
+  });
+
+  expect(geometry.viewport).toEqual({ width: 390, height: 797 });
+  expect(geometry.panel.height).toBeGreaterThanOrEqual(440);
+  expect(geometry.panel.bottom).toBeGreaterThanOrEqual(792);
+  expect(geometry.panel.bottom).toBeLessThanOrEqual(797);
+  expect(geometry.scroll.overflowY).toBe('auto');
+  expect(geometry.scroll.bottom).toBeLessThanOrEqual(geometry.panel.bottom);
+  expect(geometry.cancel.height).toBeGreaterThanOrEqual(44);
+  expect(geometry.confirm.height).toBeGreaterThanOrEqual(44);
+});
+
 test('E9AG — presença temporal: herança materializa auto-referência e revalida ciclo antes de persistir', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
@@ -6053,10 +6144,7 @@ test('E9AG — presença temporal: herança materializa auto-referência e reval
       invalidReason: resolveAssetPresenceAt(imageId, 0, context).invalidReason,
     };
   }, ids)).toEqual({
-    presence: {
-      mode: 'custom',
-      entry: { anchor: 'project', offset: { unit: 'seconds', value: 0.75 } },
-    },
+    presence: { mode: 'inherit' },
     invalidReason: null,
   });
 
@@ -6080,6 +6168,8 @@ test('E9AG — presença temporal: herança materializa auto-referência e reval
     select.value = cycleTextId;
     updateSelectedAssetPresenceTarget('entry');
   }, ids);
+
+  await page.locator('#assetTimingConfirm').click();
 
   expect(await page.evaluate(({ imageId, safeTextId }) => {
     const asset = assets.find(candidate => candidate && String(candidate.id) === imageId);
@@ -6171,10 +6261,15 @@ test('E9AG — presença temporal: aplicar global, preservar override e voltar p
   await page.locator('#tbAssetTiming').click();
   await page.locator('#assetTimingUseProjectDefault').click();
 
+  expect(await page.evaluate(({ overrideId }) => structuredClone(assets.find(asset => asset && String(asset.id) === overrideId).presence), ids)).toEqual({
+    mode: 'custom',
+    entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } },
+  });
+
+  await page.locator('#assetTimingConfirm').click();
   expect(await page.evaluate(({ overrideId }) => structuredClone(assets.find(asset => asset && String(asset.id) === overrideId).presence), ids)).toEqual({ mode: 'inherit' });
 
-  await page.locator('#assetTimingPanel .asset-context-back').click();
-  await expect(page.locator('#assetTimingPanel')).not.toHaveClass(/show/);
+  await expect(page.locator('#assetTimingPanel')).toBeHidden();
   await page.locator('.lower-global-duration').click();
   await page.locator('#durTabBtnPrefs').click();
   await page.locator('#projectPresenceEntryOffsetValue').fill('1.25');

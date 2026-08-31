@@ -46,6 +46,7 @@ A arquitetura aprovada preserva um renderer único/canônico para evitar diverg�
 - Mudanças devem entrar por PR.
 - Produção (`rowestudio/arco-app`) só muda após aprovação explícita de Roberto.
 - O fluxo operacional é mobile-first: PRs abertas ou atualizadas por Codex remoto, GitHub App ou usuário humano devem receber evidência automática dos checks obrigatórios sem depender de desktop, terminal local, token pessoal ou execução manual recorrente.
+- Em ambientes remotos com sandbox, `gh auth status` só é conclusivo quando executado no mesmo contexto que fará as operações de rede: uma credencial antiga no sandbox não invalida automaticamente o login salvo no Keychain do host. Antes de pedir nova autorização a Roberto, validar no contexto autenticado com `gh auth status` e `gh api user --jq .login`; nunca ler, registrar ou expor tokens. Se ambos falharem no mesmo contexto, aí sim iniciar o login por dispositivo com o menor escopo necessário.
 
 ## Papéis
 

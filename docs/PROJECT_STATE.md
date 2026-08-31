@@ -13,7 +13,7 @@
 
 - Roberto validou em iPhone/Safari a `v8z4b32E9AF` já mergeada pela PR #547: o modo mão permite pan de um dedo sem selecionar ou mover Frames/Ativos. A PR está em `1f343099255ac9dcc0d328317177b8274c624f0c`; produção permanece intocada.
 - A frente de Presença Temporal de Ativos foi posteriormente iniciada na `v8z4b32E9AG`, preservando a separação entre presença, opacidade manual e efeitos. A especificação revisada permanece em `docs/superpowers/specs/2026-08-31-asset-temporal-presence-editor-reference-revision.md`.
-- A autenticação GitHub CLI foi validada na rota normal de rede. Um status negativo executado em ambiente sem rede não é evidência de expiração de credencial; a verificação autenticada pela rota normal é a referência operacional.
+- Em 2026-08-31, o GitHub CLI confirmou `rowestudio` no Keychain do host por `gh auth status` e `gh api user --jq .login`. A investigação isolou um falso negativo: o sandbox local via uma credencial antiga e inválida, enquanto o contexto que executa a rede usa a credencial válida do host. Regra operacional consolidada em `PROJECT_CONTEXT.md`: validar e executar operações GitHub no mesmo contexto autenticado antes de solicitar qualquer novo login; nenhum token ou código de dispositivo é persistido no Project OS.
 
 ## Atualização 2026-08-30 — v8z4b32E9AF em desenvolvimento: pan de um dedo pela mão
 
