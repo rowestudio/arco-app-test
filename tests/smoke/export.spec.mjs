@@ -77,3 +77,157 @@ test('WebKit macOS real Export — imagem com Text Asset E9D horizontal, caixa e
   expect(after.text).toMatchObject({id:before.text.id,text:content,color:'#ff3366',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right',worldX:before.text.worldX,worldY:before.text.worldY,worldW:before.text.worldW,depth:42,zIndex:before.text.zIndex});
   expect(after.frames).toEqual(before.frames); expect(after.world).toEqual(before.world); expect(after.order).toEqual(before.order); expect(errors).toEqual([]);
 });
+
+test('WebKit macOS real Export — presença temporal mantém o quadro não vazio quando outro asset continua presente', async ({page}, testInfo) => {
+  test.setTimeout(180_000);
+  const errors = await openProject(page);
+  await requireNativeH264(page);
+  await dismissProModalIfVisible(page);
+
+  const setup = await page.evaluate(async () => {
+    const original = { isProMode, bgColor, isPreviewing, isRecording, renderSessionSnapshot, renderSessionActiveContext, exportTransform: renderTransform.export };
+    const outputBg = '#010203';
+    const parseHex = (hex) => {
+      const raw = String(hex || '').replace('#', '');
+      return raw.length === 6
+        ? { r: parseInt(raw.slice(0, 2), 16), g: parseInt(raw.slice(2, 4), 16), b: parseInt(raw.slice(4, 6), 16) }
+        : { r: 0, g: 0, b: 0 };
+    };
+    const countNonBackgroundPixels = (canvas, hex) => {
+      const { r, g, b } = parseHex(hex);
+      const data = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, canvas.width, canvas.height).data;
+      let count = 0;
+      for (let index = 0; index < data.length; index += 4) {
+        if (data[index + 3] === 0) continue;
+        if (data[index] !== r || data[index + 1] !== g || data[index + 2] !== b) count++;
+      }
+      return count;
+    };
+    const readEntry = (snapshot, id) => {
+      const image = Array.isArray(snapshot?.assets) ? snapshot.assets.find(asset => String(asset.id) === String(id)) : null;
+      if (image) return image;
+      return Array.isArray(snapshot?.textAssets) ? snapshot.textAssets.find(asset => String(asset.id) === String(id)) : null;
+    };
+    const drawExportAt = async (t, frameIndex, ids) => {
+      renderSessionSnapshot = null;
+      renderSessionActiveContext = '';
+      renderTransform.export = null;
+      const prepared = await prepareRenderSessionSnapshot('export');
+      const canvas = document.createElement('canvas');
+      canvas.width = 320;
+      canvas.height = 568;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const previousPreviewing = isPreviewing;
+      const previousRecording = isRecording;
+      try {
+        isPreviewing = false;
+        isRecording = true;
+        const ok = drawAtT(ctx, t, canvas.width, canvas.height, frameCount, frameIndex, null, null);
+        return {
+          ok,
+          prepared,
+          drawnIds: Array.isArray(renderTransform.export?.assets) ? renderTransform.export.assets.map(asset => String(asset.id)) : [],
+          snapshot: Object.fromEntries(ids.map(id => {
+            const entry = readEntry(renderSessionSnapshot, id);
+            return [id, entry ? { present: entry.present, type: entry.type || (typeof entry.text === 'string' ? 'text' : 'image') } : null];
+          })),
+          nonBackgroundPixels: countNonBackgroundPixels(canvas, outputBg),
+          leakedEditorialClassText: JSON.stringify({
+            snapshotAssets: renderSessionSnapshot?.assets || [],
+            snapshotTextAssets: renderSessionSnapshot?.textAssets || [],
+            auditAssets: renderTransform.export?.assets || [],
+          }).includes('asset-temporal-reference'),
+        };
+      } finally {
+        isPreviewing = previousPreviewing;
+        isRecording = previousRecording;
+      }
+    };
+
+    try {
+      if (frameCount < 2) throw new Error('fixture sem dois frames para o teste de export');
+      const main = assets.find(asset => asset && asset.type === 'image');
+      if (!main) throw new Error('fixture sem imagem principal');
+      const beforeFrameIndex = 0;
+      const afterFrameIndex = 1;
+      const beforeTime = getProjectTimeAtFrameId(frames[beforeFrameIndex].frameId);
+      const afterFrameId = frames[afterFrameIndex].frameId;
+      if (!Number.isFinite(beforeTime)) throw new Error('instante inicial inválido');
+      isProMode = true;
+      bgColor = outputBg;
+
+      const frameA = frames[beforeFrameIndex];
+      const frameB = frames[afterFrameIndex];
+      const centerX = ((frameA.x + frameA.w / 2) + (frameB.x + frameB.w / 2)) / 2;
+      const centerY = ((frameA.y + frameA.h / 2) + (frameB.y + frameB.h / 2)) / 2;
+      const baseWidth = Math.min(frameA.w, frameB.w) * 0.34;
+      const sourceAR = (Number(main.sourceW) > 0 && Number(main.sourceH) > 0) ? (main.sourceW / main.sourceH) : 1;
+      const baseHeight = baseWidth / Math.max(sourceAR, 0.1);
+      main.worldW = baseWidth;
+      main.worldH = baseHeight;
+      main.worldX = centerX - baseWidth * 0.88;
+      main.worldY = centerY - baseHeight * 0.54;
+
+      await ensureRenderableAssetSource(main, 'export');
+      const extra = cloneAssetForDuplicate(main, 'toolbar');
+      if (!extra) throw new Error('falha ao clonar asset de imagem para export');
+      if (!extra.src) {
+        const stageSrc = getAssetThumbSrc(main);
+        if (stageSrc) extra.src = stageSrc;
+      }
+      extra.worldX = centerX + baseWidth * 0.12;
+      extra.worldY = centerY - baseHeight * 0.46;
+      extra.zIndex = Math.max(...assets.map(asset => Number(asset?.zIndex) || 0)) + 1;
+      extra.presence = { mode: 'custom' };
+      assets.push(extra);
+
+      const textWidth = Math.min(frameA.w, frameB.w) * 0.72;
+      const text = normalizeTextAsset({
+        id: 'e9ag-export-text',
+        type: 'text',
+        text: 'Export temporal',
+        color: '#ffffff',
+        fontSize: 44,
+        worldW: textWidth,
+        worldH: 84,
+        boxWidth: textWidth,
+        worldX: centerX - textWidth / 2,
+        worldY: centerY + baseHeight * 0.18,
+      });
+      assignPersistentLayerIdentity(text);
+      text.zIndex = Math.max(...assets.map(asset => Number(asset?.zIndex) || 0)) + 1;
+      assets.push(text);
+
+      const delayedEntry = { anchor: 'frame', anchorId: afterFrameId, offset: { unit: 'seconds', value: 0 } };
+      main.presence = { mode: 'custom', entry: delayedEntry };
+      text.presence = { mode: 'custom', entry: delayedEntry };
+      normalizeAssetZIndices();
+      renderProjectWorldExtraImages();
+
+      return {
+        before: await drawExportAt(beforeTime, beforeFrameIndex, [String(main.id), String(extra.id), String(text.id)]),
+        ids: { main: String(main.id), extra: String(extra.id), text: String(text.id) },
+      };
+    } finally {
+      isProMode = original.isProMode;
+      bgColor = original.bgColor;
+      isPreviewing = original.isPreviewing;
+      isRecording = original.isRecording;
+      renderSessionSnapshot = original.renderSessionSnapshot;
+      renderSessionActiveContext = original.renderSessionActiveContext;
+      renderTransform.export = original.exportTransform;
+    }
+  });
+
+  expect(setup.before.prepared?.ok).toBe(true);
+  expect(setup.before.ok).toBe(true);
+  expect(setup.before.snapshot[setup.ids.main]?.present).toBe(false);
+  expect(setup.before.snapshot[setup.ids.extra]?.present).toBe(true);
+  expect(setup.before.snapshot[setup.ids.text]?.present).toBe(false);
+  expect(setup.before.drawnIds).toEqual([setup.ids.extra]);
+  expect(setup.before.nonBackgroundPixels).toBeGreaterThan(0);
+  expect(setup.before.leakedEditorialClassText).toBe(false);
+
+  await exportRealMp4(page, testInfo, 'temporal-presence-other-asset-present');
+  expect(errors).toEqual([]);
+});

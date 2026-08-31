@@ -5062,6 +5062,328 @@ test('E9AG — presença temporal: referência no Stage preserva seleção e edi
   await expect(page.locator('#tbAssetReplace')).toHaveAttribute('aria-label', 'Editar texto');
 });
 
+test('E9AG — presença temporal: Stage, Preview e Export concordam em single-image, multi-image e Text Asset por dois instantes', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(async () => {
+    const original = {
+      isProMode,
+      bgColor,
+      isPreviewing,
+      isRecording,
+      renderSessionSnapshot,
+      renderSessionActiveContext,
+      previewTransform: renderTransform.preview,
+      exportTransform: renderTransform.export,
+    };
+    const outputBg = '#010203';
+    const readEntry = (snapshot, id) => {
+      const image = Array.isArray(snapshot?.assets) ? snapshot.assets.find(asset => String(asset.id) === String(id)) : null;
+      if (image) return image;
+      return Array.isArray(snapshot?.textAssets) ? snapshot.textAssets.find(asset => String(asset.id) === String(id)) : null;
+    };
+    const parseHex = (hex) => {
+      const raw = String(hex || '').replace('#', '');
+      return raw.length === 6
+        ? { r: parseInt(raw.slice(0, 2), 16), g: parseInt(raw.slice(2, 4), 16), b: parseInt(raw.slice(4, 6), 16) }
+        : { r: 0, g: 0, b: 0 };
+    };
+    const countNonBackgroundPixels = (canvas, hex) => {
+      const { r, g, b } = parseHex(hex);
+      const data = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, canvas.width, canvas.height).data;
+      let count = 0;
+      for (let index = 0; index < data.length; index += 4) {
+        if (data[index + 3] === 0) continue;
+        if (data[index] !== r || data[index + 1] !== g || data[index + 2] !== b) count++;
+      }
+      return count;
+    };
+    const captureStageAt = (frameIndex, ids) => {
+      selectFrameContext(frameIndex, { _src: 'e9ag-render-parity-stage' });
+      setEditorMode('assets', 'e9ag-render-parity-stage');
+      renderProjectWorldExtraImages();
+      renderAssetSelectionOverlay();
+      const stageTime = getStagePresenceProjectTime();
+      const state = { stageTime, assets: {} };
+      ids.forEach(id => {
+        const asset = assets.find(candidate => candidate && String(candidate.id) === String(id));
+        const selector = asset?.type === 'text'
+          ? `.world-text-asset[data-asset-id="${CSS.escape(String(id))}"]`
+          : `.world-extra-img[data-asset-id="${CSS.escape(String(id))}"]`;
+        const element = document.querySelector(selector);
+        state.assets[id] = {
+          exists: !!element,
+          present: isAssetPresentAt(id, stageTime),
+          referenceClass: !!(element && element.classList.contains('asset-temporal-reference')),
+          selectedReferenceClass: !!(element && element.classList.contains('asset-temporal-reference-selected')),
+        };
+      });
+      return state;
+    };
+    const drawContextAt = async (context, t, frameIndex, ids) => {
+      renderSessionSnapshot = null;
+      renderSessionActiveContext = '';
+      renderTransform[context] = null;
+      const prepared = await prepareRenderSessionSnapshot(context);
+      const canvas = document.createElement('canvas');
+      canvas.width = 320;
+      canvas.height = 568;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const previousPreviewing = isPreviewing;
+      const previousRecording = isRecording;
+      try {
+        isPreviewing = context === 'preview';
+        isRecording = context === 'export';
+        const ok = drawAtT(ctx, t, canvas.width, canvas.height, frameCount, frameIndex, null, null);
+        const snapshot = renderSessionSnapshot;
+        const audit = renderTransform[context];
+        const snapshotEntries = {};
+        ids.forEach(id => {
+          const entry = readEntry(snapshot, id);
+          snapshotEntries[id] = entry
+            ? {
+                id: String(entry.id),
+                type: entry.type || (typeof entry.text === 'string' ? 'text' : 'image'),
+                present: entry.present,
+              }
+            : null;
+        });
+        return {
+          ok,
+          prepared,
+          drawnIds: Array.isArray(audit?.assets) ? audit.assets.map(asset => String(asset.id)) : [],
+          snapshotEntries,
+          nonBackgroundPixels: countNonBackgroundPixels(canvas, outputBg),
+          leakedEditorialClassText: JSON.stringify({
+            snapshotAssets: snapshot?.assets || [],
+            snapshotTextAssets: snapshot?.textAssets || [],
+            auditAssets: audit?.assets || [],
+          }).includes('asset-temporal-reference'),
+          previewDomLeakCount: document.querySelectorAll('#previewScreen .asset-temporal-reference, #previewScreen .asset-temporal-reference-selected').length,
+        };
+      } finally {
+        isPreviewing = previousPreviewing;
+        isRecording = previousRecording;
+      }
+    };
+
+    try {
+      if (frameCount < 2) throw new Error('fixture sem dois frames para os instantes do teste');
+      const main = assets.find(asset => asset && asset.type === 'image');
+      if (!main) throw new Error('fixture sem imagem principal');
+      const beforeFrameIndex = 0;
+      const afterFrameIndex = 1;
+      const beforeFrameId = frames[beforeFrameIndex]?.frameId;
+      const afterFrameId = frames[afterFrameIndex]?.frameId;
+      const beforeTime = getProjectTimeAtFrameId(beforeFrameId);
+      const afterTime = getProjectTimeAtFrameId(afterFrameId);
+      const fullDuration = totalDurationFull();
+      const beforeRenderT = fullDuration > 0 ? beforeTime / fullDuration : 0;
+      const afterRenderT = fullDuration > 0 ? afterTime / fullDuration : 0;
+      if (!Number.isFinite(beforeTime) || !Number.isFinite(afterTime) || !(afterTime > beforeTime)) {
+        throw new Error(`instantes inválidos: before=${beforeTime} after=${afterTime}`);
+      }
+
+      isProMode = true;
+      bgColor = outputBg;
+
+      const frameA = frames[beforeFrameIndex];
+      const frameB = frames[afterFrameIndex];
+      const centerX = ((frameA.x + frameA.w / 2) + (frameB.x + frameB.w / 2)) / 2;
+      const centerY = ((frameA.y + frameA.h / 2) + (frameB.y + frameB.h / 2)) / 2;
+      const baseWidth = Math.min(frameA.w, frameB.w) * 0.34;
+      const sourceAR = (Number(main.sourceW) > 0 && Number(main.sourceH) > 0) ? (main.sourceW / main.sourceH) : 1;
+      const baseHeight = baseWidth / Math.max(sourceAR, 0.1);
+      main.worldW = baseWidth;
+      main.worldH = baseHeight;
+      main.worldX = centerX - baseWidth * 0.88;
+      main.worldY = centerY - baseHeight * 0.54;
+
+      const textWidth = Math.min(frameA.w, frameB.w) * 0.72;
+      const text = normalizeTextAsset({
+        id: 'e9ag-preview-export-text',
+        type: 'text',
+        text: 'Presença temporal',
+        color: '#ffffff',
+        fontSize: 44,
+        worldW: textWidth,
+        worldH: 84,
+        boxWidth: textWidth,
+        worldX: centerX - textWidth / 2,
+        worldY: centerY + baseHeight * 0.18,
+        zIndex: Math.max(...assets.map(asset => Number(asset?.zIndex) || 0)) + 1,
+      });
+      assignPersistentLayerIdentity(text);
+      assets.push(text);
+      const delayedEntry = { anchor: 'frame', anchorId: afterFrameId, offset: { unit: 'seconds', value: 0 } };
+      main.presence = { mode: 'custom', entry: delayedEntry };
+      text.presence = { mode: 'custom', entry: delayedEntry };
+      normalizeAssetZIndices();
+      renderProjectWorldExtraImages();
+
+      const singleIds = [String(main.id), String(text.id)];
+      const single = {
+        beforeStage: captureStageAt(beforeFrameIndex, singleIds),
+        beforePreview: await drawContextAt('preview', beforeRenderT, beforeFrameIndex, singleIds),
+        beforeExport: await drawContextAt('export', beforeRenderT, beforeFrameIndex, singleIds),
+        afterStage: captureStageAt(afterFrameIndex, singleIds),
+        afterPreview: await drawContextAt('preview', afterRenderT, afterFrameIndex, singleIds),
+        afterExport: await drawContextAt('export', afterRenderT, afterFrameIndex, singleIds),
+      };
+
+      await ensureRenderableAssetSource(main, 'preview');
+      const extra = cloneAssetForDuplicate(main, 'toolbar');
+      if (!extra) throw new Error('não foi possível clonar o asset de imagem para o cenário multi-image');
+      if (!extra.src) {
+        const stageSrc = getAssetThumbSrc(main);
+        if (stageSrc) extra.src = stageSrc;
+      }
+      extra.worldX = centerX + baseWidth * 0.12;
+      extra.worldY = centerY - baseHeight * 0.46;
+      extra.zIndex = Math.max(...assets.map(asset => Number(asset?.zIndex) || 0)) + 1;
+      extra.presence = { mode: 'custom' };
+      assets.push(extra);
+      text.zIndex = Math.max(...assets.map(asset => Number(asset?.zIndex) || 0)) + 1;
+      normalizeAssetZIndices();
+      renderProjectWorldExtraImages();
+
+      const multiIds = [String(main.id), String(extra.id), String(text.id)];
+      const multi = {
+        beforeStage: captureStageAt(beforeFrameIndex, multiIds),
+        beforePreview: await drawContextAt('preview', beforeRenderT, beforeFrameIndex, multiIds),
+        beforeExport: await drawContextAt('export', beforeRenderT, beforeFrameIndex, multiIds),
+        afterStage: captureStageAt(afterFrameIndex, multiIds),
+        afterPreview: await drawContextAt('preview', afterRenderT, afterFrameIndex, multiIds),
+        afterExport: await drawContextAt('export', afterRenderT, afterFrameIndex, multiIds),
+      };
+
+      return {
+        beforeTime,
+        afterTime,
+        ids: { main: String(main.id), extra: String(extra.id), text: String(text.id) },
+        single,
+        multi,
+      };
+    } finally {
+      isProMode = original.isProMode;
+      bgColor = original.bgColor;
+      isPreviewing = original.isPreviewing;
+      isRecording = original.isRecording;
+      renderSessionSnapshot = original.renderSessionSnapshot;
+      renderSessionActiveContext = original.renderSessionActiveContext;
+      renderTransform.preview = original.previewTransform;
+      renderTransform.export = original.exportTransform;
+    }
+  });
+
+  expect(result.beforeTime).toBeLessThan(result.afterTime);
+
+  const expectStageState = (label, state, expected) => {
+    expect(state.stageTime, `${label}: Stage usa o instante esperado`).toBe(expected.stageTime);
+    Object.entries(expected.byId).forEach(([id, wants]) => {
+      expect(state.assets[id], `${label}: asset ${id} existe no Stage`).toBeTruthy();
+      expect(state.assets[id].exists, `${label}: DOM do Stage existe para ${id}`).toBe(true);
+      expect(state.assets[id].present, `${label}: present do Stage para ${id}`).toBe(wants.present);
+      expect(state.assets[id].referenceClass, `${label}: classe editorial no Stage para ${id}`).toBe(wants.referenceClass);
+      expect(state.assets[id].selectedReferenceClass, `${label}: classe editorial selecionada só aparece com seleção explícita`).toBe(false);
+    });
+  };
+  const expectRenderState = (label, state, expected) => {
+    expect(state.prepared?.ok, `${label}: snapshot preparado`).toBe(true);
+    expect(state.ok, `${label}: drawAtT retorna sucesso`).toBe(true);
+    expect(state.leakedEditorialClassText, `${label}: Preview/Export não recebem classes editoriais`).toBe(false);
+    expect(state.previewDomLeakCount, `${label}: Preview DOM não recebe classes editoriais`).toBe(0);
+    expect(state.drawnIds, `${label}: draw IDs`).toEqual(expected.drawnIds);
+    Object.entries(expected.snapshotPresence).forEach(([id, present]) => {
+      expect(state.snapshotEntries[id], `${label}: snapshot contém ${id}`).toBeTruthy();
+      expect(state.snapshotEntries[id].present, `${label}: snapshot present para ${id}`).toBe(present);
+    });
+    if (expected.nonBackgroundPixels === 'zero') {
+      expect(state.nonBackgroundPixels, `${label}: saída realmente vazia quando ninguém está presente`).toBe(0);
+    } else {
+      expect(state.nonBackgroundPixels, `${label}: saída não fica vazia quando há asset presente`).toBeGreaterThan(0);
+    }
+  };
+
+  expectStageState('single.before.stage', result.single.beforeStage, {
+    stageTime: result.beforeTime,
+    byId: {
+      [result.ids.main]: { present: false, referenceClass: true },
+      [result.ids.text]: { present: false, referenceClass: true },
+    },
+  });
+  expectRenderState('single.before.preview', result.single.beforePreview, {
+    drawnIds: [],
+    snapshotPresence: { [result.ids.main]: false, [result.ids.text]: false },
+    nonBackgroundPixels: 'zero',
+  });
+  expectRenderState('single.before.export', result.single.beforeExport, {
+    drawnIds: [],
+    snapshotPresence: { [result.ids.main]: false, [result.ids.text]: false },
+    nonBackgroundPixels: 'zero',
+  });
+
+  expectStageState('single.after.stage', result.single.afterStage, {
+    stageTime: result.afterTime,
+    byId: {
+      [result.ids.main]: { present: true, referenceClass: false },
+      [result.ids.text]: { present: true, referenceClass: false },
+    },
+  });
+  expectRenderState('single.after.preview', result.single.afterPreview, {
+    drawnIds: [result.ids.main, result.ids.text],
+    snapshotPresence: { [result.ids.main]: true, [result.ids.text]: true },
+    nonBackgroundPixels: 'nonzero',
+  });
+  expectRenderState('single.after.export', result.single.afterExport, {
+    drawnIds: [result.ids.main, result.ids.text],
+    snapshotPresence: { [result.ids.main]: true, [result.ids.text]: true },
+    nonBackgroundPixels: 'nonzero',
+  });
+
+  expectStageState('multi.before.stage', result.multi.beforeStage, {
+    stageTime: result.beforeTime,
+    byId: {
+      [result.ids.main]: { present: false, referenceClass: true },
+      [result.ids.extra]: { present: true, referenceClass: false },
+      [result.ids.text]: { present: false, referenceClass: true },
+    },
+  });
+  expectRenderState('multi.before.preview', result.multi.beforePreview, {
+    drawnIds: [result.ids.extra],
+    snapshotPresence: { [result.ids.main]: false, [result.ids.extra]: true, [result.ids.text]: false },
+    nonBackgroundPixels: 'nonzero',
+  });
+  expectRenderState('multi.before.export', result.multi.beforeExport, {
+    drawnIds: [result.ids.extra],
+    snapshotPresence: { [result.ids.main]: false, [result.ids.extra]: true, [result.ids.text]: false },
+    nonBackgroundPixels: 'nonzero',
+  });
+
+  expectStageState('multi.after.stage', result.multi.afterStage, {
+    stageTime: result.afterTime,
+    byId: {
+      [result.ids.main]: { present: true, referenceClass: false },
+      [result.ids.extra]: { present: true, referenceClass: false },
+      [result.ids.text]: { present: true, referenceClass: false },
+    },
+  });
+  expectRenderState('multi.after.preview', result.multi.afterPreview, {
+    drawnIds: [result.ids.main, result.ids.extra, result.ids.text],
+    snapshotPresence: { [result.ids.main]: true, [result.ids.extra]: true, [result.ids.text]: true },
+    nonBackgroundPixels: 'nonzero',
+  });
+  expectRenderState('multi.after.export', result.multi.afterExport, {
+    drawnIds: [result.ids.main, result.ids.extra, result.ids.text],
+    snapshotPresence: { [result.ids.main]: true, [result.ids.extra]: true, [result.ids.text]: true },
+    nonBackgroundPixels: 'nonzero',
+  });
+});
+
 test('E9AG — presença temporal: modelo canônico', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);

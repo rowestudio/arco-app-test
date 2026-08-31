@@ -8486,8 +8486,12 @@ let knownProblemAssetStableAfterSaveLoad = true;
 // Per-frame accumulators (reiniciados a cada sessão de Preview/Export).
 let _rsPreviewDrawnCounts = [];
 let _rsExportDrawnCounts = [];
+let _rsPreviewExpectedPresentCounts = [];
+let _rsExportExpectedPresentCounts = [];
 let _rsPreviewImg1Frames = 0;
 let _rsExportImg1Frames = 0;
+let _rsPreviewExpectedImg1Frames = 0;
+let _rsExportExpectedImg1Frames = 0;
 let _rsPreviewKnownFrames = 0;
 let _rsPreviewTargetFrames = 0;
 let _rsExportKnownFrames = 0;
@@ -25082,7 +25086,7 @@ function drawAtTDirect(ctx, t, W, H, totalFrames, frameIdx, diagnostics, renderS
     return drawWorldToCanvas(ctx,
       { cx: st.cx, cy: st.cy, sw: st.sw, sh: st.sh, rot: st.rot },
       W, H,
-      { t, context: ctxName, mainSource: renderSourceOverride || canonicalSource, canonicalDims });
+      { t, projectTime: resolveRenderProjectTimeFromT(t), context: ctxName, mainSource: renderSourceOverride || canonicalSource, canonicalDims });
   }
 
   const sourceScaleX = canonicalDims.width > 0 ? renderDims.width / canonicalDims.width : 1;
@@ -34629,6 +34633,7 @@ async function prepareRenderSessionSnapshot(kind) {
         const check = (a && a.stableDrawableChecksum) || _arcoChecksumDrawableE7B(drawSrc);
         visible.push({
           id: String(a.id),
+          type: 'image',
           visible: true,
           zIndex: Number(a.zIndex) || 0,
           worldX: a.worldX || 0, worldY: a.worldY || 0,
@@ -34648,7 +34653,8 @@ async function prepareRenderSessionSnapshot(kind) {
           drawableAlphaChecksum: check.alpha || 0,
           drawableHasPixels: !!check.hasPixels,
           decodeReady: ready && !!check.hasPixels, imgReady: ready && !!check.hasPixels,
-          replaceEpoch: Number(a.replaceEpoch) || 0
+          replaceEpoch: Number(a.replaceEpoch) || 0,
+          presence: cloneAssetPresence(a.presence)
         });
       }
     const stale = visible.filter(v => {
@@ -34729,7 +34735,36 @@ async function prepareRenderSessionSnapshot(kind) {
     }
     visible.forEach(function(v){ try { Object.freeze(v); } catch (_e) {} });
     const textAssets = (Array.isArray(assets) ? assets : []).filter(a=>a&&a.type==='text'&&a.visible!==false).map(a=>Object.freeze({...serializeProjectAsset(a,0,false)}));
-    renderSessionSnapshot = { context, epoch: _renderSessionEpoch, assets: visible, textAssets:Object.freeze(textAssets), allReady };
+    const snapshotFrames = (Array.isArray(frames) ? frames.slice(0, frameCount) : []).map(function(frame) {
+      return frame ? { ...frame } : frame;
+    });
+    const snapshotSegDurations = Array.isArray(segDurations)
+      ? segDurations.slice(0, Math.max(0, frameCount - 1))
+      : [];
+    const snapshotFramePauses = (Array.isArray(framePauses) ? framePauses.slice(0, frameCount) : []).map(function(pause) {
+      return pause ? { ...pause } : { duration: 0 };
+    });
+    const snapshotDefaults = normalizeProjectAssetPresenceDefaults(projectAssetPresenceDefaults);
+    snapshotFrames.forEach(function(frame){ try { if (frame && typeof frame === 'object') Object.freeze(frame); } catch (_e) {} });
+    snapshotFramePauses.forEach(function(pause){ try { if (pause && typeof pause === 'object') Object.freeze(pause); } catch (_e) {} });
+    try { Object.freeze(snapshotFrames); } catch (_e) {}
+    try { Object.freeze(snapshotSegDurations); } catch (_e) {}
+    try { Object.freeze(snapshotFramePauses); } catch (_e) {}
+    try { Object.freeze(snapshotDefaults); } catch (_e) {}
+    renderSessionSnapshot = {
+      context,
+      epoch: _renderSessionEpoch,
+      assets: visible,
+      textAssets: Object.freeze(textAssets),
+      frames: snapshotFrames,
+      frameCount,
+      segDurations: snapshotSegDurations,
+      framePauses: snapshotFramePauses,
+      projectAssetPresenceDefaults: snapshotDefaults,
+      assetPresenceDefaults: snapshotDefaults,
+      scaleSecondsWithProjectDuration: scaleSecondsWithProjectDuration === true,
+      allReady
+    };
     try { Object.freeze(renderSessionSnapshot.assets); Object.freeze(renderSessionSnapshot); } catch (_e) {}
     renderSessionActiveContext = (context === 'preview' || context === 'export') ? context : '';
     if (context === 'preview') {
@@ -34760,7 +34795,7 @@ async function prepareRenderSessionSnapshot(kind) {
       renderSessionAllVisibleAssetsReadyBeforePreview = allReady;
       previewVisibleAssetsExpectedCount = visible.length;
       img1ExpectedPreviewFrameCount = 0;
-      _rsPreviewDrawnCounts = []; _rsPreviewImg1Frames = 0; _rsPreviewKnownFrames = 0; _rsPreviewTargetFrames = 0; _rsPreviewFrames = 0;
+      _rsPreviewDrawnCounts = []; _rsPreviewExpectedPresentCounts = []; _rsPreviewImg1Frames = 0; _rsPreviewExpectedImg1Frames = 0; _rsPreviewKnownFrames = 0; _rsPreviewTargetFrames = 0; _rsPreviewFrames = 0;
       projectWorldCompositeDirtyAtFirstPreviewFrame = false; compositeDirtyDuringPreview = false;
       assetSourceChangedDuringPreviewDetected = false; assetWorldRectChangedDuringPreviewDetected = false;
       assetMissingDuringPreviewDetected = false;
@@ -34777,7 +34812,7 @@ async function prepareRenderSessionSnapshot(kind) {
       renderSessionAllVisibleAssetsReadyBeforeExport = allReady;
       exportVisibleAssetsExpectedCount = visible.length;
       img1ExpectedExportFrameCount = 0;
-      _rsExportDrawnCounts = []; _rsExportImg1Frames = 0; _rsExportKnownFrames = 0; _rsExportTargetFrames = 0; _rsExportFrames = 0;
+      _rsExportDrawnCounts = []; _rsExportExpectedPresentCounts = []; _rsExportImg1Frames = 0; _rsExportExpectedImg1Frames = 0; _rsExportKnownFrames = 0; _rsExportTargetFrames = 0; _rsExportFrames = 0;
       projectWorldCompositeDirtyAtFirstExportFrame = false; compositeDirtyDuringExport = false;
       assetSourceChangedDuringExportDetected = false; assetWorldRectChangedDuringExportDetected = false;
       assetMissingDuringExportDetected = false;
@@ -34866,6 +34901,63 @@ function buildRenderSessionSnapshotE6(context) {
   return prepareRenderSessionSnapshot(context);
 }
 
+function buildRenderSessionTemporalPresenceContext(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return null;
+  const imageAssets = Array.isArray(snapshot.assets) ? snapshot.assets : [];
+  const textAssets = Array.isArray(snapshot.textAssets) ? snapshot.textAssets : [];
+  if (!imageAssets.length && !textAssets.length) return null;
+  return {
+    frames: Array.isArray(snapshot.frames) ? snapshot.frames : [],
+    frameCount: Number.isInteger(snapshot.frameCount)
+      ? snapshot.frameCount
+      : (Array.isArray(snapshot.frames) ? snapshot.frames.length : 0),
+    segDurations: Array.isArray(snapshot.segDurations) ? snapshot.segDurations : [],
+    framePauses: Array.isArray(snapshot.framePauses) ? snapshot.framePauses : [],
+    assets: imageAssets.concat(textAssets),
+    projectAssetPresenceDefaults: normalizeProjectAssetPresenceDefaults(snapshot.projectAssetPresenceDefaults || snapshot.assetPresenceDefaults),
+    assetPresenceDefaults: normalizeProjectAssetPresenceDefaults(snapshot.assetPresenceDefaults || snapshot.projectAssetPresenceDefaults),
+    scaleSecondsWithProjectDuration: snapshot.scaleSecondsWithProjectDuration !== false
+  };
+}
+
+function refreshRenderSessionSnapshotPresenceAt(projectTime, context) {
+  const time = Number(projectTime);
+  const snap = renderSessionSnapshot;
+  if (!(snap && (context === 'preview' || context === 'export') && snap.context === context && Number.isFinite(time))) {
+    return snap;
+  }
+  const temporalContext = buildRenderSessionTemporalPresenceContext(snap);
+  if (!temporalContext) return snap;
+  const nextAssets = (Array.isArray(snap.assets) ? snap.assets : []).map(function(asset) {
+    const present = isAssetPresentAt(asset.id, time, temporalContext);
+    const nextAsset = { ...asset, present };
+    try { Object.freeze(nextAsset); } catch (_e) {}
+    return nextAsset;
+  });
+  const nextTextAssets = (Array.isArray(snap.textAssets) ? snap.textAssets : []).map(function(asset) {
+    const present = isAssetPresentAt(asset.id, time, temporalContext);
+    const nextAsset = { ...asset, present };
+    try { Object.freeze(nextAsset); } catch (_e) {}
+    return nextAsset;
+  });
+  const nextSnapshot = {
+    ...snap,
+    assets: Object.freeze(nextAssets),
+    textAssets: Object.freeze(nextTextAssets)
+  };
+  try { Object.freeze(nextSnapshot); } catch (_e) {}
+  renderSessionSnapshot = nextSnapshot;
+  return nextSnapshot;
+}
+
+function resolveRenderProjectTimeFromT(t) {
+  const time = Number(t);
+  if (!Number.isFinite(time)) return time;
+  const fullDuration = totalDurationFull();
+  if (!Number.isFinite(fullDuration) || fullDuration <= 0) return 0;
+  return clamp01(time) * fullDuration;
+}
+
 
 // v8z4b32E6 — acumulação por frame durante Preview/Export (chamada por
 // drawWorldToCanvas). Compara o frame com o snapshot congelado; detecta troca de
@@ -34885,9 +34977,15 @@ function _accumulateRenderSessionFrameE6(context, renderAssets, drawnCount) {
   // Deteta troca de fonte/worldRect vs snapshot (assets já capturados não podem
   // mudar durante a sessão ativa).
   let srcChanged = false, rectChanged = false, missing = false, knownBlank = false, knownNonEmpty = false, knownHashStable = true;
+  let expectedPresentCount = 0;
+  let mainExpectedPresent = false;
   if (snap && Array.isArray(snap.assets)) {
     for (const sv of snap.assets) {
-      if (!drawnIds.has(sv.id)) { missing = true; continue; }
+      if (sv && sv.visible !== false && sv.present !== false) {
+        expectedPresentCount++;
+        if (mainId && String(sv.id) === mainId) mainExpectedPresent = true;
+      }
+      if (!drawnIds.has(sv.id)) { if (sv.present !== false) missing = true; continue; }
       const ra = (renderAssets || []).find(r => String(r.id) === sv.id);
       if (ra) {
         if (sv.drawSource && ra.src && ra.src !== sv.drawSource) srcChanged = true;
@@ -34907,8 +35005,11 @@ function _accumulateRenderSessionFrameE6(context, renderAssets, drawnCount) {
   if (isPreview) {
     _rsPreviewFrames++;
     _rsPreviewDrawnCounts.push(drawnCount);
+    _rsPreviewExpectedPresentCounts.push(expectedPresentCount);
     if (_rsPreviewDrawnCounts.length > 4000) _rsPreviewDrawnCounts.shift();
+    if (_rsPreviewExpectedPresentCounts.length > 4000) _rsPreviewExpectedPresentCounts.shift();
     if (mainId && drawnIds.has(mainId)) _rsPreviewImg1Frames++;
+    if (mainExpectedPresent) _rsPreviewExpectedImg1Frames++;
     if (drawnIds.has(KNOWN_PROBLEM_ASSET_ID)) _rsPreviewKnownFrames++;
     if (drawnIds.has(TARGET_RENDER_READINESS_ASSET_ID)) _rsPreviewTargetFrames++;
     if (drawnIds.has(KNOWN_PROBLEM_ASSET_ID) && !knownNonEmpty) knownProblemAssetDrawSourceNonEmptyInPreviewEveryFrame = false;
@@ -34922,8 +35023,11 @@ function _accumulateRenderSessionFrameE6(context, renderAssets, drawnCount) {
   } else {
     _rsExportFrames++;
     _rsExportDrawnCounts.push(drawnCount);
+    _rsExportExpectedPresentCounts.push(expectedPresentCount);
     if (_rsExportDrawnCounts.length > 20000) _rsExportDrawnCounts.shift();
+    if (_rsExportExpectedPresentCounts.length > 20000) _rsExportExpectedPresentCounts.shift();
     if (mainId && drawnIds.has(mainId)) _rsExportImg1Frames++;
+    if (mainExpectedPresent) _rsExportExpectedImg1Frames++;
     if (drawnIds.has(KNOWN_PROBLEM_ASSET_ID)) _rsExportKnownFrames++;
     if (drawnIds.has(TARGET_RENDER_READINESS_ASSET_ID)) _rsExportTargetFrames++;
     if (drawnIds.has(KNOWN_PROBLEM_ASSET_ID) && !knownNonEmpty) knownProblemAssetDrawSourceNonEmptyInExportEveryFrame = false;
@@ -34949,24 +35053,32 @@ function _finalizeRenderSessionDiagnosticsE6() {
     };
     const p = minMax(_rsPreviewDrawnCounts);
     const e = minMax(_rsExportDrawnCounts);
+    const pExpected = minMax(_rsPreviewExpectedPresentCounts);
+    const eExpected = minMax(_rsExportExpectedPresentCounts);
     previewMinAssetsDrawnPerFrame = p.min;
     previewMaxAssetsDrawnPerFrame = p.max;
     exportMinAssetsDrawnPerFrame = e.min;
     exportMaxAssetsDrawnPerFrame = e.max;
     previewVisibleAssetsDrawnEveryFrame = (_rsPreviewFrames === 0) ? true :
-      (p.min === previewVisibleAssetsExpectedCount && p.max === previewVisibleAssetsExpectedCount);
+      _rsPreviewDrawnCounts.every(function(count, index) {
+        return count >= Number(_rsPreviewExpectedPresentCounts[index] || 0);
+      });
     exportVisibleAssetsDrawnEveryFrame = (_rsExportFrames === 0) ? true :
-      (e.min === exportVisibleAssetsExpectedCount && e.max === exportVisibleAssetsExpectedCount);
+      _rsExportDrawnCounts.every(function(count, index) {
+        return count >= Number(_rsExportExpectedPresentCounts[index] || 0);
+      });
     targetProblemAssetDrawnInPreviewEveryFrame = (_rsPreviewFrames === 0) ? false : (_rsPreviewTargetFrames === _rsPreviewFrames);
     targetProblemAssetDrawnInExportEveryFrame = (_rsExportFrames === 0) ? false : (_rsExportTargetFrames === _rsExportFrames);
+    if (_rsPreviewExpectedPresentCounts.length) previewVisibleAssetsExpectedCount = pExpected.max;
+    if (_rsExportExpectedPresentCounts.length) exportVisibleAssetsExpectedCount = eExpected.max;
 
     // img-1.
     img1DrawnInPreviewFrameCount = _rsPreviewImg1Frames;
     img1DrawnInExportFrameCount = _rsExportImg1Frames;
-    img1ExpectedPreviewFrameCount = _rsPreviewFrames;
-    img1ExpectedExportFrameCount = _rsExportFrames;
-    img1MissingInPreviewDetected = (_rsPreviewFrames > 0 && _rsPreviewImg1Frames < _rsPreviewFrames);
-    img1MissingInExportDetected = (_rsExportFrames > 0 && _rsExportImg1Frames < _rsExportFrames);
+    img1ExpectedPreviewFrameCount = _rsPreviewExpectedImg1Frames;
+    img1ExpectedExportFrameCount = _rsExportExpectedImg1Frames;
+    img1MissingInPreviewDetected = (_rsPreviewExpectedImg1Frames > 0 && _rsPreviewImg1Frames < _rsPreviewExpectedImg1Frames);
+    img1MissingInExportDetected = (_rsExportExpectedImg1Frames > 0 && _rsExportImg1Frames < _rsExportExpectedImg1Frames);
     if (_rsPreviewFrames > 0) img1PreviewVisibleAfterReplace = !img1MissingInPreviewDetected;
     if (_rsExportFrames > 0) img1ExportVisibleAfterReplace = !img1MissingInExportDetected;
     try {
@@ -38047,9 +38159,13 @@ function getWorldRenderAssetRectSourcePx(a, canonicalDims) {
 // definido pelo chamador). Assets extras usam o elemento já decodificado;
 // quando ainda não decodificado, dispara a decodificação e o loop de Preview
 // redesenha nos frames seguintes (evita tela vazia por asset não carregado).
-function collectWorldRenderAssets(mainSource, canonicalDims, context) {
+function collectWorldRenderAssets(mainSource, canonicalDims, context, projectTime) {
   const out = [];
-  const snap = (context === 'preview' || context === 'export') ? renderSessionSnapshot : null;
+  const resolvedProjectTime = Number(projectTime);
+  const shouldFilterByPresence = (context === 'preview' || context === 'export') && Number.isFinite(resolvedProjectTime);
+  const snap = (context === 'preview' || context === 'export')
+    ? refreshRenderSessionSnapshotPresenceAt(resolvedProjectTime, context)
+    : null;
   if (snap && snap.context === context && Array.isArray(snap.assets)) {
     const currentIdsE7I = new Set(getCurrentImageAssetIdsE7I());
     const staleSnapAssetsE7I = snap.assets.filter(sv => sv && !currentIdsE7I.has(String(sv.id || '')));
@@ -38065,6 +38181,7 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context) {
     for (let i = 0; i < snap.assets.length; i++) {
       const sv = snap.assets[i];
       if (!sv || sv.visible === false) continue;
+      if (sv.present === false) continue;
       const src = sv.drawSource;
       if (!src || !(getImageSourceDimensions(src).width > 0)) { throw new Error('render-session-missing-drawable:' + sv.id); }
       const a = {
@@ -38084,7 +38201,11 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context) {
       if (!(rect.aw > 0) || !(rect.ah > 0)) { throw new Error('render-session-invalid-rect:' + sv.id); }
       out.push({ src, rect, zIndex: Number(sv.zIndex) || 0, id: sv.id, asset: a });
     }
-    (snap.textAssets || []).forEach(sv => { const a=normalizeTextAsset({...sv}); out.push({src:null,rect:getWorldRenderAssetRectSourcePx(a,canonicalDims),zIndex:Number(a.zIndex)||0,id:a.id,asset:a,type:'text'}); });
+    (snap.textAssets || []).forEach(sv => {
+      if (!sv || sv.visible === false || sv.present === false) return;
+      const a = normalizeTextAsset({ ...sv });
+      out.push({src:null,rect:getWorldRenderAssetRectSourcePx(a,canonicalDims),zIndex:Number(a.zIndex)||0,id:a.id,asset:a,type:'text'});
+    });
     out.sort((p, q) => p.zIndex - q.zIndex);
     if (context === 'preview') {
       img1PreviewPathParityFixEnabled = true;
@@ -38100,10 +38221,18 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context) {
   for (let i = 0; i < assets.length; i++) {
     const a = assets[i];
     if (!a || (a.type !== 'image' && a.type !== 'text')) continue;
-    if (a.type === 'text') { if(a.visible!==false){ const ta=normalizeTextAsset(a); measureTextAsset(ta); out.push({src:null,rect:getWorldRenderAssetRectSourcePx(ta,canonicalDims),zIndex:Number(ta.zIndex)||0,id:ta.id,asset:ta,type:'text'}); } continue; }
+    if (a.type === 'text') {
+      if (a.visible !== false && (!shouldFilterByPresence || isAssetPresentAt(a.id, resolvedProjectTime))) {
+        const ta = normalizeTextAsset(a);
+        measureTextAsset(ta);
+        out.push({src:null,rect:getWorldRenderAssetRectSourcePx(ta,canonicalDims),zIndex:Number(ta.zIndex)||0,id:ta.id,asset:ta,type:'text'});
+      }
+      continue;
+    }
     const isMain = !firstImageSeen;
     if (isMain) firstImageSeen = true;
     if (a.visible === false) continue;
+    if (shouldFilterByPresence && !isAssetPresentAt(a.id, resolvedProjectTime)) continue;
     let src = null;
     // v8z4b32E6 — RENDERER UNIFICADO do img-1. Quando o img-1 foi substituído com
     // commit canônico (a.e6CanonicalReplaced), ele usa a MESMA fonte crua do asset
@@ -38141,6 +38270,7 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context) {
 function drawWorldToCanvas(ctx, cam, outW, outH, options) {
   options = options || {};
   const context = options.context || 'world';
+  const projectTime = Number.isFinite(Number(options.projectTime)) ? Number(options.projectTime) : Number(options.t);
   let count = 0;
   try {
     const canonicalDims = options.canonicalDims || getImageSourceDimensions(getCanonicalRenderSource());
@@ -38153,7 +38283,7 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
     applyCanvasRenderQuality(ctx);
     const rot = cam.rot || 0;
     const cover = rotationCoverScaleForRect(outW, outH, rot);
-    const renderAssets = collectWorldRenderAssets(mainSource, canonicalDims, context);
+    const renderAssets = collectWorldRenderAssets(mainSource, canonicalDims, context, projectTime);
     count = renderAssets.length;
 
     ctx.clearRect(0, 0, outW, outH);
@@ -38340,7 +38470,7 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
     } catch (_e) {}
     try { refreshAssetSnapshotDiagnosticsE7I(); } catch (_e) {}
     lastWorldRenderError = '';
-    return count > 0;
+    return true;
   } catch (e) {
     lastWorldRenderError = (e && e.message) || String(e);
     renderWorldLastAssetCount = count;
