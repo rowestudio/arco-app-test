@@ -5191,3 +5191,167 @@ test('E9AG — presença temporal: persistência, restauração e histórico can
   expect(result.legacyRestored.scale).toBe(true);
   expect(result.legacyRestored.assets).toEqual(expect.arrayContaining([{ mode: 'inherit' }]));
 });
+
+test('E9AG — presença temporal: duração escala somente offsets em segundos com a preferência ativa', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    const target = assets.find(asset => asset && asset.type === 'image');
+    const reference = {
+      id: 'e9ag-duration-reference', type: 'image', presence: {
+        mode: 'custom',
+        entry: { anchor: 'project', offset: { unit: 'seconds', value: 0 } },
+      },
+    };
+    assets.push(reference);
+    projectAssetPresenceDefaults = {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 1 } },
+      exit: { anchor: 'project', offset: { unit: 'projectFraction', value: 0.75 } },
+    };
+    target.presence = {
+      mode: 'custom',
+      entry: { anchor: 'frame', anchorId: frames[0].frameId, offset: { unit: 'seconds', value: -0.25 } },
+      exit: { anchor: 'asset', anchorId: reference.id, assetEvent: 'entry', offset: { unit: 'seconds', value: 0.5 } },
+    };
+    normalizeAssetPresence(target);
+    const movementTotal = segDurations.slice(0, Math.max(0, frameCount - 1)).reduce((sum, value) => sum + Number(value || 0), 0);
+
+    scaleSecondsWithProjectDuration = true;
+    scaleSegmentDurationsToTotal(movementTotal * 2);
+    const enabled = {
+      defaults: structuredClone(projectAssetPresenceDefaults),
+      target: structuredClone(target.presence),
+    };
+
+    scaleSecondsWithProjectDuration = false;
+    scaleSegmentDurationsToTotal(movementTotal * 3);
+    const disabled = {
+      defaults: structuredClone(projectAssetPresenceDefaults),
+      target: structuredClone(target.presence),
+    };
+    return { enabled, disabled };
+  });
+
+  expect(result.enabled.defaults).toEqual({
+    mode: 'custom',
+    entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } },
+    exit: { anchor: 'project', offset: { unit: 'projectFraction', value: 0.75 } },
+  });
+  expect(result.enabled.target).toEqual({
+    mode: 'custom',
+    entry: { anchor: 'frame', anchorId: expect.any(String), offset: { unit: 'seconds', value: -0.5 } },
+    exit: { anchor: 'asset', anchorId: 'e9ag-duration-reference', assetEvent: 'entry', offset: { unit: 'seconds', value: 1 } },
+  });
+  expect(result.disabled).toEqual(result.enabled);
+});
+
+test('E9AG — presença temporal: excluir âncora preserva tempos com Cancelar e Undo/Redo atômicos', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const setup = await page.evaluate(() => {
+    const anchor = assets.find(asset => asset && asset.type === 'image');
+    anchor.presence = {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 1 } },
+    };
+    const dependent = normalizeTextAsset({
+      id: 'e9ag-dependent', type: 'text', text: 'Dependente', color: '#ffffff',
+      worldX: 30, worldY: 40, worldW: 220, worldH: 64, boxWidth: 220,
+      presence: {
+        mode: 'custom',
+        entry: { anchor: 'asset', anchorId: anchor.id, assetEvent: 'entry', offset: { unit: 'seconds', value: 0.5 } },
+      },
+    });
+    assignPersistentLayerIdentity(dependent);
+    assets.push(dependent);
+    normalizeAssetZIndices();
+    const resolvedSecond = resolveAssetPresenceAt(dependent.id, 0).entryTime;
+    setEditorMode('assets', 'e9ag-delete-test');
+    selectAssetById(anchor.id, 'e9ag-delete-test');
+    renderLayersPanelList();
+    renderAll();
+    undoStack.length = 0;
+    redoStack.length = 0;
+    updateUndoRedoUI();
+    return {
+      anchorId: String(anchor.id),
+      anchorName: anchor.layerName,
+      dependentId: dependent.id,
+      dependentName: dependent.layerName,
+      count: assets.length,
+      resolvedSecond,
+      originalPresence: structuredClone(dependent.presence),
+    };
+  });
+
+  expect(setup.resolvedSecond).toBe(1.5);
+  await page.locator('#tbAssetDelete').click();
+  const dialog = page.getByRole('dialog', { name: /Excluir ativo vinculado/i });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText(setup.anchorName);
+  await expect(dialog).toContainText('1 limite vinculado');
+  await expect(dialog).toContainText(setup.dependentName);
+
+  await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect(await page.evaluate(({ anchorId, dependentId }) => ({
+    anchorExists: assets.some(asset => asset && String(asset.id) === anchorId),
+    presence: structuredClone(assets.find(asset => asset && String(asset.id) === dependentId).presence),
+    undo: undoStack.length,
+    redo: redoStack.length,
+  }), setup)).toEqual({ anchorExists: true, presence: setup.originalPresence, undo: 0, redo: 0 });
+
+  await page.locator('#tbAssetDelete').click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Excluir e preservar tempos', exact: true }).evaluate(button => {
+    button.click();
+    button.click();
+  });
+  await expect(dialog).toBeHidden();
+  expect(await page.evaluate(({ anchorId, dependentId }) => ({
+    anchorExists: assets.some(asset => asset && String(asset.id) === anchorId),
+    count: assets.length,
+    presence: structuredClone(assets.find(asset => asset && String(asset.id) === dependentId).presence),
+    undo: undoStack.length,
+    redo: redoStack.length,
+  }), setup)).toEqual({
+    anchorExists: false,
+    count: setup.count - 1,
+    presence: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: setup.resolvedSecond } } },
+    undo: 1,
+    redo: 0,
+  });
+
+  await page.locator('#topBtnUndo').click();
+  expect(await page.evaluate(({ anchorId, dependentId }) => ({
+    anchorExists: assets.some(asset => asset && String(asset.id) === anchorId),
+    count: assets.length,
+    presence: structuredClone(assets.find(asset => asset && String(asset.id) === dependentId).presence),
+    undo: undoStack.length,
+    redo: redoStack.length,
+  }), setup)).toEqual({ anchorExists: true, count: setup.count, presence: setup.originalPresence, undo: 0, redo: 1 });
+
+  await page.locator('#topBtnRedo').click();
+  expect(await page.evaluate(({ anchorId, dependentId }) => ({
+    anchorExists: assets.some(asset => asset && String(asset.id) === anchorId),
+    count: assets.length,
+    presence: structuredClone(assets.find(asset => asset && String(asset.id) === dependentId).presence),
+    undo: undoStack.length,
+    redo: redoStack.length,
+  }), setup)).toEqual({
+    anchorExists: false,
+    count: setup.count - 1,
+    presence: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: setup.resolvedSecond } } },
+    undo: 1,
+    redo: 0,
+  });
+});

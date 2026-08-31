@@ -1401,6 +1401,10 @@ body.previewing #layersPanel,body.previewing #layersStageControl,body.recording 
 .reload-choice-action-title{display:block;font-size:15px;font-weight:750;line-height:1.25;}
 .reload-choice-action-help{display:block;margin-top:4px;color:var(--text3);font-size:12px;line-height:1.35;}
 .reload-choice-error{display:none;margin-top:12px;color:var(--text2);font-size:13px;line-height:1.4;}
+.asset-temporal-dependency-copy{margin:-4px 0 14px;color:var(--text2);font-size:14px;line-height:1.45;}
+.asset-temporal-dependency-list{display:flex;flex-direction:column;gap:6px;margin:0 0 16px;padding:0;list-style:none;color:var(--text1);font-size:13px;line-height:1.35;}
+.asset-temporal-dependency-list li{padding:9px 11px;border-radius:10px;background:var(--surface2);}
+.asset-temporal-dependency-confirm{border-color:rgba(255,107,138,.62);}
 .startup-recovery-help{margin:-8px 0 16px;color:var(--text3);font-size:13px;line-height:1.4;}
 .startup-recovery-busy{display:none;align-items:center;justify-content:center;gap:10px;margin-top:14px;color:var(--text2);font-size:13px;font-weight:700;line-height:1.3;}
 .startup-recovery-busy.show{display:flex;}
@@ -4705,6 +4709,21 @@ body.asset-context-panel-open #toolbar{display:none !important;}
       <span id="startupRecoveryBusyText"></span>
     </div>
     <div id="startupRecoveryError" class="reload-choice-error" role="status"></div>
+  </div>
+</div>
+<div id="assetTemporalDependencyDialog" class="reload-choice-backdrop" role="dialog" aria-modal="true" aria-label="Excluir ativo vinculado" aria-describedby="assetTemporalDependencyDescription" aria-hidden="true">
+  <div class="reload-choice-card">
+    <div id="assetTemporalDependencyTitle" class="reload-choice-title"></div>
+    <div id="assetTemporalDependencyDescription" class="asset-temporal-dependency-copy"></div>
+    <ul id="assetTemporalDependencyList" class="asset-temporal-dependency-list"></ul>
+    <div class="reload-choice-actions">
+      <button id="assetTemporalDependencyCancel" class="reload-choice-action" type="button" onclick="closeAssetTemporalDependencyDialog()">
+        <span class="reload-choice-action-title">Cancelar</span>
+      </button>
+      <button id="assetTemporalDependencyConfirm" class="reload-choice-action asset-temporal-dependency-confirm" type="button" onclick="confirmAssetTemporalDependencyDeletion()">
+        <span class="reload-choice-action-title">Excluir e preservar tempos</span>
+      </button>
+    </div>
   </div>
 </div>
 <!-- v8z4b30C — Painel de Diagnóstico técnico (temporário/discreto). Apenas leitura; não altera estado, Stage, frames, zoom/pan, Preview ou export. -->
@@ -15600,6 +15619,96 @@ function isAssetPresentAt(assetId, projectTime, context) {
   return resolveAssetPresenceAt(assetId, projectTime, context).present;
 }
 
+function scaleAssetPresenceSeconds(factor) {
+  const scale = Number(factor);
+  if (scaleSecondsWithProjectDuration !== true || !Number.isFinite(scale) || scale < 0) return false;
+  let changed = false;
+  const scaleBoundary = function(boundary) {
+    if (!boundary || !boundary.offset || boundary.offset.unit !== 'seconds') return;
+    const current = Number(boundary.offset.value);
+    if (!Number.isFinite(current)) return;
+    const next = current * scale;
+    if (Object.is(next, current)) return;
+    boundary.offset.value = next;
+    changed = true;
+  };
+  scaleBoundary(projectAssetPresenceDefaults && projectAssetPresenceDefaults.entry);
+  scaleBoundary(projectAssetPresenceDefaults && projectAssetPresenceDefaults.exit);
+  assets.forEach(function(asset) {
+    const presence = asset && asset.presence;
+    if (!presence || typeof presence !== 'object') return;
+    scaleBoundary(presence.entry);
+    scaleBoundary(presence.exit);
+  });
+  return changed;
+}
+
+function findTemporalDependents(assetId) {
+  const targetId = String(assetId);
+  const dependents = [];
+  const collect = function(ownerType, ownerId, ownerName, presence) {
+    if (!presence || typeof presence !== 'object') return;
+    ['entry', 'exit'].forEach(function(boundaryKey) {
+      const boundary = presence[boundaryKey];
+      if (!boundary || boundary.anchor !== 'asset' || String(boundary.anchorId) !== targetId) return;
+      dependents.push({ ownerType, ownerId, ownerName, boundaryKey });
+    });
+  };
+  collect('projectDefaults', null, 'Padrão do projeto', projectAssetPresenceDefaults);
+  assets.forEach(function(asset) {
+    if (!asset || String(asset.id) === targetId) return;
+    const presence = asset.presence;
+    if (!presence || presence.mode !== 'custom') return;
+    const fallbackName = asset.type === 'text' ? 'Texto' : 'Camada';
+    collect('asset', String(asset.id), asset.layerName || fallbackName, presence);
+  });
+  return dependents;
+}
+
+function getTemporalDependentBoundary(dependent) {
+  if (!dependent || !['entry', 'exit'].includes(dependent.boundaryKey)) return null;
+  if (dependent.ownerType === 'projectDefaults') {
+    return projectAssetPresenceDefaults && projectAssetPresenceDefaults[dependent.boundaryKey];
+  }
+  const owner = assets.find(function(asset) { return asset && String(asset.id) === String(dependent.ownerId); });
+  return owner && owner.presence ? owner.presence[dependent.boundaryKey] : null;
+}
+
+function convertTemporalDependentsToResolvedProjectTime(assetId, dependents) {
+  const targetId = String(assetId);
+  const links = Array.isArray(dependents) ? dependents : findTemporalDependents(targetId);
+  const resolvedBeforeMutation = links.map(function(dependent) {
+    const boundary = getTemporalDependentBoundary(dependent);
+    if (!boundary || boundary.anchor !== 'asset' || String(boundary.anchorId) !== targetId) {
+      return { dependent, time: null };
+    }
+    const resolved = resolveTemporalBoundary(boundary);
+    return { dependent, time: resolved && Number.isFinite(resolved.time) ? resolved.time : null };
+  });
+  let converted = 0;
+  let unresolved = 0;
+  resolvedBeforeMutation.forEach(function(item) {
+    if (!Number.isFinite(item.time)) {
+      unresolved++;
+      return;
+    }
+    const dependent = item.dependent;
+    const replacement = { anchor: 'project', offset: { unit: 'seconds', value: item.time } };
+    if (dependent.ownerType === 'projectDefaults') {
+      projectAssetPresenceDefaults[dependent.boundaryKey] = replacement;
+    } else {
+      const owner = assets.find(function(asset) { return asset && String(asset.id) === String(dependent.ownerId); });
+      if (!owner || !owner.presence) {
+        unresolved++;
+        return;
+      }
+      owner.presence[dependent.boundaryKey] = replacement;
+    }
+    converted++;
+  });
+  return { converted, unresolved, total: links.length };
+}
+
 function isPositiveLayerSequence(value) {
   return Number.isInteger(value) && value > 0;
 }
@@ -17672,40 +17781,70 @@ function renderAssetsContextBar() {
   // v8z4b30ZL — a 4ª linha do toolbar substitui este overlay. Apenas sincroniza estado.
   syncAssetToolbarState();
 }
-// v8z4b30ZL — exclui o asset atualmente selecionado do ProjectWorld.
-function deleteSelectedAsset() {
-  const sel = getSelectedAsset();
-  if (!sel) { showStatus('Selecione uma imagem para excluir.'); return; }
-  if (blockLockedAssetEdit(sel)) return;
-  const selId = sel.id;
-  const isMain = assets.length > 0 && assets[0] && assets[0].id === selId;
-  if (isMain && assets.length === 1) {
-    showStatus('Não é possível excluir a única imagem do projeto.');
-    return;
+let assetTemporalDependencyDialogState = null;
+function setAssetTemporalDependencyDialogBusy(busy) {
+  const cancel = document.getElementById('assetTemporalDependencyCancel');
+  const confirm = document.getElementById('assetTemporalDependencyConfirm');
+  if (cancel) cancel.disabled = !!busy;
+  if (confirm) confirm.disabled = !!busy;
+}
+function closeAssetTemporalDependencyDialog(force = false) {
+  if (!force && assetTemporalDependencyDialogState && assetTemporalDependencyDialogState.confirming) return;
+  const dialog = document.getElementById('assetTemporalDependencyDialog');
+  if (dialog) {
+    dialog.classList.remove('show');
+    dialog.setAttribute('aria-hidden', 'true');
   }
-  // v8z4b30ZY — diagnóstico de delete
+  assetTemporalDependencyDialogState = null;
+  setAssetTemporalDependencyDialogBusy(false);
+}
+function openAssetTemporalDependencyDialog(assetId, dependents) {
+  const asset = assets.find(function(candidate) { return candidate && String(candidate.id) === String(assetId); });
+  const links = Array.isArray(dependents) ? dependents.slice() : findTemporalDependents(assetId);
+  const dialog = document.getElementById('assetTemporalDependencyDialog');
+  if (!asset || !dialog || links.length === 0) return false;
+  const assetName = asset.layerName || (asset.type === 'text' ? 'Texto' : 'Camada');
+  const title = document.getElementById('assetTemporalDependencyTitle');
+  const description = document.getElementById('assetTemporalDependencyDescription');
+  const list = document.getElementById('assetTemporalDependencyList');
+  if (title) title.textContent = 'Excluir ' + assetName + '?';
+  if (description) {
+    const count = links.length;
+    description.textContent = count + (count === 1 ? ' limite vinculado será preservado no mesmo instante.' : ' limites vinculados serão preservados nos mesmos instantes.');
+  }
+  if (list) {
+    list.replaceChildren();
+    links.forEach(function(dependent) {
+      const item = document.createElement('li');
+      const boundaryName = dependent.boundaryKey === 'exit' ? 'Saída' : 'Entrada';
+      item.textContent = dependent.ownerName + ' — ' + boundaryName;
+      list.appendChild(item);
+    });
+  }
+  assetTemporalDependencyDialogState = { assetId: String(asset.id), dependents: links, confirming: false };
+  setAssetTemporalDependencyDialogBusy(false);
+  dialog.classList.add('show');
+  dialog.setAttribute('aria-hidden', 'false');
+  return true;
+}
+function deleteAssetById(assetId, historySnapshot) {
+  const selId = String(assetId);
+  const idx = assets.findIndex(function(asset) { return asset && String(asset.id) === selId; });
+  if (idx < 0) return false;
+  const sel = assets[idx];
   lastAssetDeleteAction = 'delete';
-  lastAssetDeletedId = String(selId);
+  lastAssetDeletedId = selId;
   assetDeletedVisualUpdateRan = false;
   projectWorldCompositeInvalidatedAfterAssetDelete = false;
   stageRedrawnAfterAssetDelete = false;
-  // v8z4b31A — item 4: capturar snapshot COMPLETO (captureState, com assets/
-  // projectWorld/imageSnapshot) antes de mutar. cloneProjectStateSnapshot REMOVIA
-  // assets[] do snapshot, então Undo/Redo de exclusão de asset não restauravam nem
-  // re-excluíam o asset corretamente. Com o snapshot completo, o ciclo
-  // Delete → Undo restore → Redo delete fecha (restoreState já restaura assets).
-  if (typeof captureState === 'function' && typeof pushUndoSnapshot === 'function') {
-    pushUndoSnapshot(captureState());
+  if (typeof pushUndoSnapshot === 'function') {
+    pushUndoSnapshot(historySnapshot || captureState());
   }
-  const idx = assets.findIndex(function(a) { return a && a.id === selId; });
-  if (idx < 0) return;
-  // Remove o elemento DOM extra (imagens extras têm .world-extra-img).
-  const domEl = document.querySelector('.world-extra-img[data-asset-id="' + selId + '"]');
+  const domEl = document.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(selId) + '"]');
   if (domEl) domEl.remove();
   if (isPositiveLayerSequence(sel.layerSequence)) deletedLayerSequences.add(sel.layerSequence);
   assets.splice(idx, 1);
   clearSelectedAsset();
-  // v8z4b30ZY — invalidar composite e redesenhar Stage imediatamente
   if (typeof invalidateProjectWorldComposite === 'function') {
     invalidateProjectWorldComposite();
     projectWorldCompositeInvalidatedAfterAssetDelete = true;
@@ -17720,6 +17859,41 @@ function deleteSelectedAsset() {
   stageRedrawnAfterAssetDelete = true;
   if (typeof markProjectDirty === 'function') markProjectDirty('deleteAsset');
   showStatus('Imagem excluída.');
+  return true;
+}
+function confirmAssetTemporalDependencyDeletion() {
+  const state = assetTemporalDependencyDialogState;
+  if (!state || state.confirming) return false;
+  const asset = assets.find(function(candidate) { return candidate && String(candidate.id) === state.assetId; });
+  if (!asset) {
+    closeAssetTemporalDependencyDialog(true);
+    return false;
+  }
+  state.confirming = true;
+  setAssetTemporalDependencyDialogBusy(true);
+  const before = captureState();
+  convertTemporalDependentsToResolvedProjectTime(state.assetId, state.dependents);
+  const deleted = deleteAssetById(state.assetId, before);
+  closeAssetTemporalDependencyDialog(true);
+  return deleted;
+}
+// v8z4b30ZL — exclui o asset atualmente selecionado do ProjectWorld.
+function deleteSelectedAsset() {
+  const sel = getSelectedAsset();
+  if (!sel) { showStatus('Selecione uma imagem para excluir.'); return; }
+  if (blockLockedAssetEdit(sel)) return;
+  const selId = sel.id;
+  const isMain = assets.length > 0 && assets[0] && assets[0].id === selId;
+  if (isMain && assets.length === 1) {
+    showStatus('Não é possível excluir a única imagem do projeto.');
+    return;
+  }
+  const dependents = findTemporalDependents(selId);
+  if (dependents.length > 0) {
+    openAssetTemporalDependencyDialog(selId, dependents);
+    return;
+  }
+  deleteAssetById(selId, captureState());
 }
 // v8z4b30ZM — normaliza os zIndex de todos os assets para valores únicos
 // (1, 2, 3, ...) mantendo a ordem relativa atual. Isso garante que Frente/Trás
@@ -29780,6 +29954,7 @@ function scaleSegmentDurationsToTotal(targetTotal, opts = {}) {
   const target = totalGuard.appliedTotalRawSec;
   const oldTotal = entries.reduce((sum, entry) => sum + entry.old, 0);
   const ratio = oldTotal > 0 ? target / oldTotal : 0;
+  if (oldTotal > 0) scaleAssetPresenceSeconds(ratio);
   const clampIndexes = [];
   let minimumClampApplied = false;
   let residualCorrectionApplied = false;
