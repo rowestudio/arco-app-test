@@ -1647,12 +1647,20 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
     projectShake = { enabled:false, intensity:0, frequency:1 };
     renderAll();
     const live = captureSessionFrameParitySnapshot();
+    const liveFramesAbsWithIds = frames.slice(0, frameCount).map((frame, index) => ({
+      frameId: frame.frameId,
+      ...live.canonicalState.framesAbs[index],
+    }));
+    const liveFramesNormWithIds = frames.slice(0, frameCount).map((frame, index) => ({
+      frameId: frame.frameId,
+      ...live.canonicalState.framesNorm[index],
+    }));
     clearTimeout(_sessionAutosaveTimer);
     const revision = ++_sessionAutosaveQueuedRevision;
     const written = await writeSessionAutosave(revision, _sessionAutosaveEpoch, true, 'webkit-e8w-roundtrip');
     const checkpoint = await readSessionCheckpoint();
     const payload = JSON.parse(checkpoint.payload);
-    return { live, written, checkpoint: {
+    return { live, liveFramesAbsWithIds, liveFramesNormWithIds, frameIds: frames.slice(0, frameCount).map(frame => frame.frameId), written, checkpoint: {
       framesAbs:payload.framesAbs, framesNorm:payload.framesNorm,
       frameRotations:payload.frameRotations, projectWorld:payload.projectWorld,
       curvesV2:payload.curvesV2, ctrlPts:payload.ctrlPts, segDurations:payload.segDurations,
@@ -1661,8 +1669,10 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
     }};
   });
   expect(beforeClose.written).toBe(true);
-  expect(beforeClose.checkpoint.framesAbs).toEqual(beforeClose.live.canonicalState.framesAbs);
-  expect(beforeClose.checkpoint.framesNorm).toEqual(beforeClose.live.canonicalState.framesNorm);
+  expect(beforeClose.frameIds.every(id => typeof id === 'string' && id.trim().length > 0)).toBe(true);
+  expect(new Set(beforeClose.frameIds).size).toBe(beforeClose.frameIds.length);
+  expect(beforeClose.checkpoint.framesAbs).toEqual(beforeClose.liveFramesAbsWithIds);
+  expect(beforeClose.checkpoint.framesNorm).toEqual(beforeClose.liveFramesNormWithIds);
   expect(beforeClose.checkpoint.projectWorld).toMatchObject(beforeClose.live.canonicalState.projectWorld);
   expect(beforeClose.checkpoint.curvesV2).toEqual(beforeClose.live.canonicalState.curvesV2);
   expect(beforeClose.checkpoint.assets).toEqual(beforeClose.live.canonicalState.assets);
@@ -1689,6 +1699,7 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
         w:camera.sw/sx, h:camera.sh/sy, rotation:camera.rot||0 };
     });
     return { snapshot, previewFrames, sequence:sessionRestoreSequence.map(entry=>entry.step),
+      frameIds: frames.slice(0, frameCount).map(frame => frame.frameId),
       coordinateSource:sessionRestoreFrameCoordinateSource,
       conversionCount:sessionRestoreNormToAbsConversionCount,
       doubleConversion:sessionRestoreDoubleFrameConversionDetected,
@@ -1704,6 +1715,7 @@ test('E8W Session Restore preserva todos os Frames e Save não sincroniza geomet
     expectCloseGeometry(afterRestore.previewFrames[frame.index], frame.canonical, { frameIndex:frame.index, label:'preview' });
   }
   expect(afterRestore.coordinateSource).toBe('framesAbs');
+  expect(afterRestore.frameIds).toEqual(beforeClose.frameIds);
   expect(afterRestore.conversionCount).toBe(0);
   expect(afterRestore.doubleConversion).toBe(false);
   expect(afterRestore.invalidated.every(Boolean)).toBe(true);
