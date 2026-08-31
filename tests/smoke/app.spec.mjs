@@ -4930,6 +4930,138 @@ test('E9AF — mão arrasta a vista com um dedo abaixo de 100% sem selecionar at
   expect(moved.frame).toBe(before.frame);
 });
 
+test('E9AG — presença temporal: referência no Stage preserva seleção e edição', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const setup = await page.evaluate(() => {
+    const image = assets.find(asset => asset && asset.type === 'image');
+    const frame = frames[activeIdx];
+    const stageTime = getProjectTimeAtFrameId(frame.frameId);
+    const text = normalizeTextAsset({
+      id: 'e9ag-stage-reference-text', type: 'text', text: 'Referência temporal', color: '#ffffff',
+      worldX: image.worldX + image.worldW * 0.3,
+      worldY: image.worldY + image.worldH * 0.3,
+      worldW: Math.min(260, image.worldW * 0.4), worldH: 72, boxWidth: Math.min(260, image.worldW * 0.4),
+      depth: -37,
+      presence: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: stageTime + 1 } } },
+    });
+    assignPersistentLayerIdentity(text);
+    text.zIndex = Math.max(...assets.map(asset => Number(asset?.zIndex) || 0)) + 1;
+    image.depth = 42;
+    image.presence = { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: stageTime + 1 } } };
+    assets.push(text);
+    normalizeAssetZIndices();
+    setEditorMode('camera', 'e9ag-stage-reference-test');
+    renderProjectWorldExtraImages();
+    const snapshot = asset => ({
+      id: String(asset.id), type: asset.type, worldX: asset.worldX, worldY: asset.worldY,
+      worldW: asset.worldW, worldH: asset.worldH, rotation: Number(asset.rotation) || 0,
+      depth: Number(asset.depth) || 0, zIndex: asset.zIndex, layerSequence: asset.layerSequence,
+    });
+    return {
+      imageId: String(image.id), textId: String(text.id), stageTime,
+      geometry: [snapshot(image), snapshot(text)],
+      layerOrder: assets.map(asset => ({ id: String(asset.id), zIndex: asset.zIndex, layerSequence: asset.layerSequence })),
+    };
+  });
+
+  const image = page.locator(`.world-extra-img[data-asset-id="${setup.imageId}"]`);
+  const text = page.locator(`.world-text-asset[data-asset-id="${setup.textId}"]`);
+  expect(await page.evaluate(() => isCameraMode())).toBe(true);
+  await expect(image).toHaveClass(/asset-temporal-reference/);
+  await expect(text).toHaveClass(/asset-temporal-reference/);
+  for (const locator of [image, text]) {
+    const presentation = await locator.evaluate(element => {
+      const style = getComputedStyle(element);
+      return { filter: style.filter, outlineStyle: style.outlineStyle, outlineColor: style.outlineColor };
+    });
+    expect(presentation.filter).not.toBe('none');
+    expect(presentation.outlineStyle).toBe('dashed');
+    expect(presentation.outlineColor).not.toContain('255, 107, 138');
+  }
+
+  await page.locator('#modeAssetsBtn').tap();
+  await expect(page.locator('body')).toHaveClass(/editor-assets/);
+  expect(await page.evaluate(() => {
+    const min = getEditorMinZoom();
+    editorZoomScale = Math.max(min + 0.05, min * 1.15);
+    editorPanX = 0;
+    editorPanY = 0;
+    clampEditorPan();
+    applyEditorZoom();
+    toggleEditorPanMode();
+    renderProjectWorldExtraImages();
+    return editorPanMode;
+  })).toBe(true);
+  await expect(image).toHaveClass(/asset-temporal-reference/);
+  await expect(text).toHaveClass(/asset-temporal-reference/);
+  await page.evaluate(() => resetEditorZoom());
+
+  const imagePoint = await page.evaluate(imageId => {
+    const element = document.querySelector(`.world-extra-img[data-asset-id="${CSS.escape(imageId)}"]`);
+    const rect = element.getBoundingClientRect();
+    for (const yFraction of [0.15, 0.85, 0.5]) {
+      for (const xFraction of [0.15, 0.85, 0.5]) {
+        const point = { x: rect.left + rect.width * xFraction, y: rect.top + rect.height * yFraction };
+        const stagePoint = screenToStageCoord(point.x, point.y);
+        const worldPoint = editorStageToWorld(stagePoint.x, stagePoint.y);
+        if (String(hitTestAssetAtWorld(worldPoint.x, worldPoint.y)?.id || '') === imageId) return point;
+      }
+    }
+    return null;
+  }, setup.imageId);
+  expect(imagePoint).not.toBeNull();
+  await page.touchscreen.tap(imagePoint.x, imagePoint.y);
+  await expect.poll(() => page.evaluate(() => String(selectedAssetId || ''))).toBe(setup.imageId);
+  await expect(image).toHaveClass(/asset-temporal-reference-selected/);
+  await expect(page.locator('#assetSelectOutline')).toBeVisible();
+  await expect(page.locator('#assetSelectOutline .asset-corner-handle.show')).toHaveCount(4);
+  expect(await page.locator('#assetSelectOutline').evaluate(element => getComputedStyle(element).borderTopColor)).toContain('255, 107, 138');
+
+  const textBox = await text.boundingBox();
+  expect(textBox).not.toBeNull();
+  await page.touchscreen.tap(textBox.x + textBox.width / 2, textBox.y + textBox.height / 2);
+  await expect.poll(() => page.evaluate(() => String(selectedAssetId || ''))).toBe(setup.textId);
+  await expect(text).toHaveClass(/asset-temporal-reference-selected/);
+  await expect(page.locator('#assetSelectOutline .asset-corner-handle.show')).toHaveCount(4);
+  await expect(page.locator('#tbAssetReplace')).toHaveAttribute('aria-label', 'Editar texto');
+
+  const present = await page.evaluate(({ imageId, textId, stageTime }) => {
+    const targets = assets.filter(asset => [imageId, textId].includes(String(asset.id)));
+    targets.forEach(asset => {
+      asset.presence = { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: stageTime - 1 } } };
+    });
+    renderProjectWorldExtraImages();
+    const snapshot = asset => ({
+      id: String(asset.id), type: asset.type, worldX: asset.worldX, worldY: asset.worldY,
+      worldW: asset.worldW, worldH: asset.worldH, rotation: Number(asset.rotation) || 0,
+      depth: Number(asset.depth) || 0, zIndex: asset.zIndex, layerSequence: asset.layerSequence,
+    });
+    return {
+      stageTime: getStagePresenceProjectTime(),
+      geometry: targets.map(snapshot),
+      layerOrder: assets.map(asset => ({ id: String(asset.id), zIndex: asset.zIndex, layerSequence: asset.layerSequence })),
+      selectable: targets.every(asset => getSelectableImageAssets().includes(asset) && assetIsHitTestable(asset)),
+      selected: String(selectedAssetId || ''),
+    };
+  }, setup);
+
+  expect(present.stageTime).toBe(setup.stageTime);
+  expect(present.geometry).toEqual(setup.geometry);
+  expect(present.layerOrder).toEqual(setup.layerOrder);
+  expect(present.selectable).toBe(true);
+  expect(present.selected).toBe(setup.textId);
+  await expect(image).not.toHaveClass(/asset-temporal-reference/);
+  await expect(text).not.toHaveClass(/asset-temporal-reference/);
+  await expect(text).not.toHaveClass(/asset-temporal-reference-selected/);
+  await expect(page.locator('#assetSelectOutline .asset-corner-handle.show')).toHaveCount(4);
+  await expect(page.locator('#tbAssetReplace')).toHaveAttribute('aria-label', 'Editar texto');
+});
+
 test('E9AG — presença temporal: modelo canônico', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);

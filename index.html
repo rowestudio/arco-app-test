@@ -1487,6 +1487,20 @@ body.previewing #layersPanel,body.previewing #layersStageControl,body.recording 
 .asset-corner-handle[data-asset-corner="tr"]{left:calc(100% + 12px);top:-12px;}
 .asset-corner-handle[data-asset-corner="bl"]{left:-12px;top:calc(100% + 12px);}
 .asset-corner-handle[data-asset-corner="br"]{left:calc(100% + 12px);top:calc(100% + 12px);}
+/* E9AG — referência temporal somente editorial no Stage. O conteúdo fora do
+   intervalo fica suavizado e mantém um contorno neutro tracejado; a seleção
+   canônica continua coral e independente desta apresentação. */
+.world-extra-img.asset-temporal-reference,
+.world-text-asset.asset-temporal-reference{
+  filter:grayscale(.72) saturate(.38) opacity(.5);
+  outline:2px dashed rgba(225,228,235,.72);
+  outline-offset:-2px;
+}
+.world-extra-img.asset-temporal-reference-selected,
+.world-text-asset.asset-temporal-reference-selected{
+  filter:grayscale(.58) saturate(.46) opacity(.62);
+  outline-color:rgba(239,241,245,.88);
+}
 /* v8z4b30ZN — Botões de modo: área de toque adequada, ícones grandes, sem texto.
    Layout fixo: mesmo tamanho dos controles principais; slot sempre reservado. */
 .top-mode-toggle{display:flex;align-items:center;gap:2px;margin-right:2px;}
@@ -15620,6 +15634,20 @@ function resolveAssetPresenceAt(assetId, projectTime, context) {
 
 function isAssetPresentAt(assetId, projectTime, context) {
   return resolveAssetPresenceAt(assetId, projectTime, context).present;
+}
+
+// Tempo editorial corrente do Stage: o mesmo Frame canônico compartilhado pela
+// timeline nos modos Câmera e Ativos, resolvido pelo frameId persistente.
+function getStagePresenceProjectTime() {
+  const preferredIndex = typeof getTimelineStageFocusIndex === 'function'
+    ? getTimelineStageFocusIndex()
+    : (typeof activeIdx === 'number' ? activeIdx : 0);
+  const fallbackIndex = typeof activeIdx === 'number' ? activeIdx : 0;
+  const frame = (Array.isArray(frames) && frames[preferredIndex]) ||
+    (Array.isArray(frames) && frames[fallbackIndex]);
+  if (!frame || typeof frame.frameId !== 'string') return 0;
+  const time = getProjectTimeAtFrameId(frame.frameId);
+  return Number.isFinite(time) ? time : 0;
 }
 
 function scaleAssetPresenceSeconds(factor) {
@@ -35813,6 +35841,13 @@ function renderProjectWorldExtraImages() {
   const sortedAll = allImageAssets.slice().sort(function(a, b){ return (a.zIndex||0) - (b.zIndex||0); });
   const mainAsset = allImageAssets[0]; // primeira imagem do projeto (img-1) — asset normal
   computeEditorTransform();
+  const stagePresenceProjectTime = getStagePresenceProjectTime();
+  const isTemporalReference = function(asset) {
+    const isPersistedAsset = Array.isArray(assets) && assets.some(function(candidate) {
+      return candidate && String(candidate.id) === String(asset && asset.id);
+    });
+    return !!(isPersistedAsset && asset && !isAssetPresentAt(asset.id, stagePresenceProjectTime));
+  };
   // Desativar a camada visual legada da imagem base: #imgEl fica oculto mas
   // permanece com src/dimensões para Preview/Export/canônica.
   if (typeof imgEl !== 'undefined' && imgEl) {
@@ -35848,6 +35883,7 @@ function renderProjectWorldExtraImages() {
     if (isMain) img1Drawn++;
     const img = document.createElement('img');
     img.className = 'world-extra-img';
+    if (isTemporalReference(a)) img.classList.add('asset-temporal-reference');
     img.draggable = false;
     img.alt = '';
     img.src = src;
@@ -35895,6 +35931,7 @@ function renderProjectWorldExtraImages() {
     recordSelectedStageParallaxOffset(a, visualRect);
     const p = editorWorldToStage(visualRect.x, visualRect.y, visualRect.w, visualRect.h);
     const el = document.createElement('div'); el.className='world-text-asset'; el.dataset.assetId=String(a.id);
+    if (isTemporalReference(a)) el.classList.add('asset-temporal-reference');
     el.textContent = a.text || (a === pendingTextDraft ? 'Texto...' : '');
     el.style.left=p.x+'px'; el.style.top=p.y+'px'; el.style.width=p.w+'px'; el.style.minHeight=p.h+'px'; el.style.padding=(m.paddingY*_editorTransform.scale)+'px '+(m.paddingX*_editorTransform.scale)+'px'; el.style.backgroundColor=a.boxBackgroundEnabled?hexToRgba(a.boxBackgroundColor,a.boxBackgroundOpacity):'transparent';
     el.style.color=a.color; el.style.fontFamily=a.fontFamily; el.style.fontWeight=String(a.fontWeight); el.style.fontStyle=a.fontStyle; el.style.fontSize=(a.fontSize*_editorTransform.scale)+'px'; el.style.lineHeight=String(a.lineHeight); el.style.textAlign=a.textAlign;
@@ -36337,6 +36374,9 @@ function renderAssetSelectionOverlay() {
   const show = isAssetsMode() && asset &&
                (typeof isPreviewing === 'undefined' || !isPreviewing) &&
                assetHasLoadedImage(asset) && asset.visible !== false;
+  stageContent.querySelectorAll('.asset-temporal-reference').forEach(function(element) {
+    element.classList.toggle('asset-temporal-reference-selected', !!(show && String(element.dataset.assetId) === String(asset.id)));
+  });
   // v8z4b30ZY — diagnóstico de seleção de asset
   const _selId = (typeof selectedAssetId !== 'undefined' && selectedAssetId) ? String(selectedAssetId) : 'none';
   selectedAssetIdExistsInAssets = _selId !== 'none' && Array.isArray(assets) && assets.some(function(a) { return a && a.id === selectedAssetId; });
