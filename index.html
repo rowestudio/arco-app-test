@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9AG — base v8z4b32E9AF. feat(assets): Presença Temporal de Ativos para imagem e texto, com Entrada/Saída opcionais ancoradas em projeto, frameId estável ou evento de outro ativo; padrões globais ficam em Edição do projeto e overrides no painel Animação do ativo. No Stage, ativos fora do intervalo permanecem como referência editorial suavizada/tracejada e continuam selecionáveis/editáveis; Preview e Export usam o mesmo resolvedor canônico em tempo de projeto para omiti-los do render, sem DOM. Exclusão de âncora referenciada exige confirmação e converte dependentes para tempo absoluto resolvido, preservando Undo. NÃO TOCADO: getStateAtT, câmera, WebCodecs, matemática de curvas/easing, ProjectWorld geométrico, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AG. -->
 <!-- Arco Motion App — v8z4b32E9AF — base v8z4b32E9AE. fix(editor-pan): com a mão ativa, um dedo arrasta a vista inclusive no zoom dinâmico abaixo ou igual a 100%, sem selecionar nem mover o Ativo sob o toque. Pinça e pan de dois dedos permanecem no caminho existente. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, geometria canônica e transformação de ativos/frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AF. -->
 <!-- Arco Motion App — v8z4b32E9AE — base v8z4b32E9AD. fix(editor-zoom): os botões −/+ passam a avançar e recuar incrementalmente também entre o mínimo dinâmico e 100%, sem tratar zoom sub-100 como reset. O pan existente é preservado e limitado pelos clamps canônicos; somente tocar no rótulo do zoom continua resetando explicitamente para 100% e pan zero. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, assets e geometria canônica. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AE. -->
 <!-- Arco Motion App — v8z4b32E9AD — base v8z4b32E9AC. fix(project-colors/text-draft): cada campo HEX de Fundo do projeto, Cor do texto e Fundo da caixa passa a exibir, na mesma linha e antes do código editável, uma amostra do valor canônico ativo; a amostra é sincronizada por paleta, picker e commit HEX, e o estado Sem cor do fundo da caixa permanece explicitamente transparente. O rascunho vazio de novo texto continua vazio no modelo e exige conteúdo para confirmar, porém passa a medir o mesmo placeholder visual Texto... durante a criação, preservando largura automática horizontal e evitando empilhamento vertical de letras. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, assets de imagem e texto confirmado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AD. -->
@@ -7788,8 +7789,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AF';
-const APP_VERSION_NAME = 'v8z4b32E9AF';
+const APP_VERSION = 'v8z4b32E9AG';
+const APP_VERSION_NAME = 'v8z4b32E9AG';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -37580,6 +37581,10 @@ let previewAssetsConsideredCount = 0;
 let previewAssetsDrawnCount = 0;
 let exportAssetsConsideredCount = 0;
 let exportAssetsDrawnCount = 0;
+let previewTemporalPresenceIncludedCount = 0;
+let previewTemporalPresenceOmittedCount = 0;
+let exportTemporalPresenceIncludedCount = 0;
+let exportTemporalPresenceOmittedCount = 0;
 let currentAssetsCount = 0;
 let currentAssetIds = '';
 let previewSnapshotAssetCount = 0;
@@ -38821,6 +38826,17 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context, projectTim
   const out = [];
   const resolvedProjectTime = Number(projectTime);
   const shouldFilterByPresence = (context === 'preview' || context === 'export') && Number.isFinite(resolvedProjectTime);
+  let temporalIncludedCount = 0;
+  let temporalOmittedCount = 0;
+  function finishTemporalPresenceCounts() {
+    if (context === 'preview') {
+      previewTemporalPresenceIncludedCount = temporalIncludedCount;
+      previewTemporalPresenceOmittedCount = temporalOmittedCount;
+    } else if (context === 'export') {
+      exportTemporalPresenceIncludedCount = temporalIncludedCount;
+      exportTemporalPresenceOmittedCount = temporalOmittedCount;
+    }
+  }
   const snap = (context === 'preview' || context === 'export')
     ? refreshRenderSessionSnapshotPresenceAt(resolvedProjectTime, context)
     : null;
@@ -38839,7 +38855,8 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context, projectTim
     for (let i = 0; i < snap.assets.length; i++) {
       const sv = snap.assets[i];
       if (!sv || sv.visible === false) continue;
-      if (sv.present === false) continue;
+      if (shouldFilterByPresence && sv.present === false) { temporalOmittedCount++; continue; }
+      if (shouldFilterByPresence) temporalIncludedCount++;
       const src = sv.drawSource;
       if (!src || !(getImageSourceDimensions(src).width > 0)) { throw new Error('render-session-missing-drawable:' + sv.id); }
       const a = {
@@ -38861,9 +38878,14 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context, projectTim
     }
     (snap.textAssets || []).forEach(sv => {
       if (!sv || sv.visible === false || sv.present === false) return;
+      if (shouldFilterByPresence) temporalIncludedCount++;
       const a = normalizeTextAsset({ ...sv });
       out.push({src:null,rect:getWorldRenderAssetRectSourcePx(a,canonicalDims),zIndex:Number(a.zIndex)||0,id:a.id,asset:a,type:'text'});
     });
+    if (shouldFilterByPresence) {
+      const omittedTextCount = (snap.textAssets || []).filter(function(sv) { return sv && sv.visible !== false && sv.present === false; }).length;
+      temporalOmittedCount += omittedTextCount;
+    }
     out.sort((p, q) => p.zIndex - q.zIndex);
     if (context === 'preview') {
       img1PreviewPathParityFixEnabled = true;
@@ -38872,6 +38894,7 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context, projectTim
       img1PreviewDoesNotUseLegacyMainImage = true;
       img1PreviewDoesNotUseGlobalImgNat = true;
     }
+    finishTemporalPresenceCounts();
     return out;
   }
   if (!Array.isArray(assets)) return out;
@@ -38880,7 +38903,10 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context, projectTim
     const a = assets[i];
     if (!a || (a.type !== 'image' && a.type !== 'text')) continue;
     if (a.type === 'text') {
-      if (a.visible !== false && (!shouldFilterByPresence || isAssetPresentAt(a.id, resolvedProjectTime))) {
+      if (a.visible !== false && shouldFilterByPresence && !isAssetPresentAt(a.id, resolvedProjectTime)) {
+        temporalOmittedCount++;
+      } else if (a.visible !== false && (!shouldFilterByPresence || isAssetPresentAt(a.id, resolvedProjectTime))) {
+        if (shouldFilterByPresence) temporalIncludedCount++;
         const ta = normalizeTextAsset(a);
         measureTextAsset(ta);
         out.push({src:null,rect:getWorldRenderAssetRectSourcePx(ta,canonicalDims),zIndex:Number(ta.zIndex)||0,id:ta.id,asset:ta,type:'text'});
@@ -38890,7 +38916,8 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context, projectTim
     const isMain = !firstImageSeen;
     if (isMain) firstImageSeen = true;
     if (a.visible === false) continue;
-    if (shouldFilterByPresence && !isAssetPresentAt(a.id, resolvedProjectTime)) continue;
+    if (shouldFilterByPresence && !isAssetPresentAt(a.id, resolvedProjectTime)) { temporalOmittedCount++; continue; }
+    if (shouldFilterByPresence) temporalIncludedCount++;
     let src = null;
     // v8z4b32E6 — RENDERER UNIFICADO do img-1. Quando o img-1 foi substituído com
     // commit canônico (a.e6CanonicalReplaced), ele usa a MESMA fonte crua do asset
@@ -38920,6 +38947,7 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context, projectTim
     out.push({ src, rect, zIndex: Number(a.zIndex) || 0, id: a.id, asset: a });
   }
   out.sort((p, q) => p.zIndex - q.zIndex);
+  finishTemporalPresenceCounts();
   return out;
 }
 
@@ -39893,6 +39921,50 @@ function buildDiagnosticsText() {
   push('textCreationKeyboardResizeChangedProjectWorld', String(textCreationKeyboardResizeChangedProjectWorld));
   push('textCreationKeyboardResizeChangedFrames', String(textCreationKeyboardResizeChangedFrames));
   push('textCreationKeyboardResizeChangedExistingAssets', String(textCreationKeyboardResizeChangedExistingAssets));
+  L.push('');
+
+  // v8z4b32E9AG — presença temporal de Ativos: diagnóstico observacional.
+  // A ausência por tempo é um estado esperado do projeto, não erro de render.
+  try {
+    const _stagePresenceTime = (typeof getStagePresenceProjectTime === 'function') ? getStagePresenceProjectTime() : null;
+    const _selectedTemporalAsset = (typeof getSelectedAsset === 'function') ? getSelectedAsset() : null;
+    const _selectedTemporalResolution = _selectedTemporalAsset
+      ? resolveAssetPresenceAt(_selectedTemporalAsset.id, _stagePresenceTime, {
+          frames,
+          frameCount,
+          segDurations,
+          framePauses,
+          assets,
+          projectAssetPresenceDefaults,
+          assetPresenceDefaults: projectAssetPresenceDefaults
+        })
+      : null;
+    const _presenceAssets = Array.isArray(assets) ? assets.filter(a => a && (a.type === 'image' || a.type === 'text')) : [];
+    const _customPresenceAssets = _presenceAssets.filter(a => a && a.presence && a.presence.mode === 'custom');
+    const _stageTemporalReferences = (typeof document !== 'undefined')
+      ? document.querySelectorAll('.asset-temporal-reference, .asset-temporal-reference-selected').length
+      : 0;
+    push('assetTemporalPresenceEnabled', 'true');
+    push('assetTemporalStageProjectTime', Number.isFinite(_stagePresenceTime) ? _diagFmtNum(_stagePresenceTime, 3) : 'n/d');
+    push('assetTemporalSelectedAssetId', _selectedTemporalAsset ? String(_selectedTemporalAsset.id) : 'none');
+    push('assetTemporalSelectedAssetConfigured', _selectedTemporalResolution ? String(_selectedTemporalResolution.configured) : 'n/d');
+    push('assetTemporalSelectedAssetPresent', _selectedTemporalResolution ? String(_selectedTemporalResolution.present) : 'n/d');
+    push('assetTemporalSelectedAssetEntryTime', _selectedTemporalResolution && Number.isFinite(_selectedTemporalResolution.entryTime) ? _diagFmtNum(_selectedTemporalResolution.entryTime, 3) : 'n/d');
+    push('assetTemporalSelectedAssetExitTime', _selectedTemporalResolution && Number.isFinite(_selectedTemporalResolution.exitTime) ? _diagFmtNum(_selectedTemporalResolution.exitTime, 3) : 'n/d');
+    push('assetTemporalSelectedAssetInvalidReason', (_selectedTemporalResolution && _selectedTemporalResolution.invalidReason) ? _selectedTemporalResolution.invalidReason : 'none');
+    push('assetTemporalProjectDefaults', JSON.stringify(normalizeProjectAssetPresenceDefaults(projectAssetPresenceDefaults)));
+    push('assetTemporalScaleSecondsWithProjectDuration', String(scaleSecondsWithProjectDuration === true));
+    push('assetTemporalCustomAssetCount', String(_customPresenceAssets.length));
+    push('assetTemporalStageReferenceCount', String(_stageTemporalReferences));
+    push('assetTemporalPreviewIncludedCount', String(previewTemporalPresenceIncludedCount));
+    push('assetTemporalPreviewOmittedCount', String(previewTemporalPresenceOmittedCount));
+    push('assetTemporalExportIncludedCount', String(exportTemporalPresenceIncludedCount));
+    push('assetTemporalExportOmittedCount', String(exportTemporalPresenceOmittedCount));
+    push('assetTemporalDependencyDialogOpen', String(!!assetTemporalDependencyDialogState));
+  } catch (_e) {
+    push('assetTemporalPresenceEnabled', 'true');
+    push('assetTemporalDiagnosticsError', (_e && _e.message) || String(_e));
+  }
   L.push('— timestamp: ' + new Date().toISOString());
   L.push('');
 
@@ -41775,6 +41847,10 @@ function buildDiagnosticsText() {
   push('previewAssetsDrawnCount', _diagFmtNum((typeof previewAssetsDrawnCount !== 'undefined') ? previewAssetsDrawnCount : 0));
   push('exportAssetsConsideredCount', _diagFmtNum((typeof exportAssetsConsideredCount !== 'undefined') ? exportAssetsConsideredCount : 0));
   push('exportAssetsDrawnCount', _diagFmtNum((typeof exportAssetsDrawnCount !== 'undefined') ? exportAssetsDrawnCount : 0));
+  push('previewTemporalPresenceIncludedCount', _diagFmtNum((typeof previewTemporalPresenceIncludedCount !== 'undefined') ? previewTemporalPresenceIncludedCount : 0));
+  push('previewTemporalPresenceOmittedCount', _diagFmtNum((typeof previewTemporalPresenceOmittedCount !== 'undefined') ? previewTemporalPresenceOmittedCount : 0));
+  push('exportTemporalPresenceIncludedCount', _diagFmtNum((typeof exportTemporalPresenceIncludedCount !== 'undefined') ? exportTemporalPresenceIncludedCount : 0));
+  push('exportTemporalPresenceOmittedCount', _diagFmtNum((typeof exportTemporalPresenceOmittedCount !== 'undefined') ? exportTemporalPresenceOmittedCount : 0));
   try { refreshAssetSnapshotDiagnosticsE7I(); updateMp4ReadyDiagnosticsE7I(); } catch (_e) {}
   push('currentAssetsCount', _diagFmtNum(currentAssetsCount));
   push('currentAssetIds', currentAssetIds || 'none');

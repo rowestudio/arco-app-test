@@ -211,7 +211,7 @@ Comportamento aprovado e IMPLEMENTADO na v8z4b32E9F1 (correção localizada sobr
 
 ### Trabalho futuro explícito
 
-- Continuam futuros e não devem ser declarados implementados: raio de canto ajustável, borda, cor da borda, opacidade da borda, espessura da borda, opacidade geral do ativo e animação. A presença temporal tem desenho aprovado, mas continua não implementada até sua PR funcional própria.
+- Continuam futuros e não devem ser declarados implementados: raio de canto ajustável, borda, cor da borda, opacidade da borda, espessura da borda, opacidade geral do ativo e animação. Presença temporal foi implementada como primeira frente funcional na `v8z4b32E9AG`, sem incluir efeitos de Entrada/Saída nem transparência manual do ativo.
 
 ## Caixa de texto canônica — E8Z
 
@@ -219,9 +219,13 @@ Comportamento aprovado e IMPLEMENTADO na v8z4b32E9F1 (correção localizada sobr
 - Cor e opacidade do fundo são independentes dos glifos. Padding fixo canônico é `0.50em` horizontal e `0.30em` vertical e deve persistir mesmo sem controle visível.
 - Padding customizável e fundo por linha são evoluções futuras. Presença temporal é função geral dos ativos e não se confunde com animação.
 
-## Presença temporal de ativos — desenho aprovado, não implementado
+## Presença temporal de ativos — E9AG implementada
 
 - Imagens e Text Assets compartilham Entrada e Saída referenciáveis ao tempo do projeto, a um Frame ou a outro ativo, com offset.
+- O padrão global vive em `Edição do projeto > Projeto > Aparência`. O override individual vive no painel `Animação` do Ativo selecionado. Entrada/Saída ficam recolhidas até serem ativadas, para não pesar a interface.
 - No editor, um ativo fora do intervalo permanece como referência visual suavizada e tracejada; selecioná-lo preserva o coral de Ativos e a edição. Preview e Export o omitem inteiramente fora do intervalo.
 - A referência editorial não é opacidade manual, não é persistida e não muda geometria, profundidade, `zIndex` ou ordem de Layers.
+- Âncoras por Frame usam `frameId` estável, não índice visual frágil. Âncoras por ativo podem mirar Entrada ou Saída do outro ativo; ciclos e autorreferência são inválidos.
+- Ao excluir ativo usado como âncora, não há relink automático: após confirmação, os dependentes assumem o tempo absoluto resolvido no projeto. Cancelar preserva tudo.
+- Ao alterar proporcionalmente a duração total do projeto, offsets em segundos acompanham a escala quando a preferência global estiver ligada; âncoras semânticas continuam vinculadas a Frames/Ativos.
 - Transparência manual e efeitos de Entrada/Saída são frentes posteriores e separadas. A regra completa está na DEC-2026-08-31-01 e na especificação correspondente.

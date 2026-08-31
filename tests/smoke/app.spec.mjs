@@ -4439,7 +4439,7 @@ test('E9AA — Camadas evita Profundidade redundante e Excluir encerra a toolbar
     labels: ['Visibilidade', 'Travar camada', 'Duplicar camada', 'Excluir camada'],
     targets: [{ width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }],
     canonicalSymbols: { visibility: '#i-eye', lock: '#i-lock', remove: '#i-trash' },
-    assetToolbarOrder: ['tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetCopy', 'tbAssetDuplicate', 'tbAssetForward', 'tbAssetBackward', 'tbAssetDelete'],
+    assetToolbarOrder: ['tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetCopy', 'tbAssetDuplicate', 'tbAssetForward', 'tbAssetBackward', 'tbAssetTiming', 'tbAssetDelete'],
   });
   const reordered = await page.evaluate(({ dragged, target }) => {
     const before = assets.slice().sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)).map(a => String(a.id));
@@ -6190,6 +6190,21 @@ test('E9AG — presença temporal: aplicar global, preservar override e voltar p
     };
     syncProjectPresenceControls();
   }, ids);
+
+  expect(await page.evaluate(({ inheritId }) => {
+    const context = { assets, frames, frameCount, segDurations, framePauses, projectAssetPresenceDefaults };
+    const resolved = resolveAssetPresenceAt(inheritId, 0, context);
+    return {
+      present: resolved.present,
+      entryTime: resolved.entryTime,
+      invalidReason: resolved.invalidReason,
+    };
+  }, ids)).toEqual({
+    present: false,
+    entryTime: 1.25,
+    invalidReason: null,
+  });
+
   await page.locator('#assetTimingApplyAll').click();
 
   expect(await page.evaluate(({ inheritId, overrideId }) => {
