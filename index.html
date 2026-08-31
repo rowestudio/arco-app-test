@@ -9491,8 +9491,8 @@ function ensureFrameIds(targetFrames) {
   const used = new Set();
   list.forEach(function(frame) {
     if (!frame || typeof frame !== 'object') return;
-    const candidate = typeof frame.frameId === 'string' ? frame.frameId.trim() : '';
-    if (candidate && !used.has(candidate)) {
+    const candidate = typeof frame.frameId === 'string' ? frame.frameId : null;
+    if (candidate !== null && candidate !== '' && !used.has(candidate)) {
       frame.frameId = candidate;
       used.add(candidate);
       return;
@@ -15474,20 +15474,11 @@ function getTemporalPresenceContext(context) {
   const contextSegments = Array.isArray(source.segDurations) ? source.segDurations : segDurations;
   const contextPauses = Array.isArray(source.framePauses) ? source.framePauses : framePauses;
   const contextAssets = Array.isArray(source.assets) ? source.assets : assets;
-  const fallbackDuration = Number.isFinite(Number(source.duration)) ? Number(source.duration) : duration;
-  const legacyPause = source.easeMode === 'pause' || (!Object.prototype.hasOwnProperty.call(source, 'easeMode') && easeMode === 'pause')
-    ? (Number.isFinite(Number(source.pauseDuration)) ? Number(source.pauseDuration) : pauseDuration)
-    : 0;
-  return { source, frames: contextFrames.slice(0, count), frameCount: count, segDurations: contextSegments, framePauses: contextPauses, assets: contextAssets, fallbackDuration, legacyPause };
+  return { source, frames: contextFrames.slice(0, count), frameCount: count, segDurations: contextSegments, framePauses: contextPauses, assets: contextAssets };
 }
 
 function getTemporalProjectDuration(context) {
   const state = getTemporalPresenceContext(context);
-  if (Number.isFinite(Number(state.source.projectDuration))) return Math.max(0, Number(state.source.projectDuration));
-  if (state.frameCount === 1) {
-    const onlyPause = Number(state.framePauses[0] && state.framePauses[0].duration);
-    return onlyPause > 0 ? onlyPause : Math.max(0, state.fallbackDuration || 0);
-  }
   let total = 0;
   for (let index = 0; index < state.frameCount; index++) {
     const pause = Number(state.framePauses[index] && state.framePauses[index].duration);
@@ -15496,8 +15487,7 @@ function getTemporalProjectDuration(context) {
     const segment = Number(state.segDurations[index]);
     total += Number.isFinite(segment) && segment >= 0
       ? segment
-      : Math.max(0, state.fallbackDuration / Math.max(1, state.frameCount - 1));
-    if (state.legacyPause > 0 && index < state.frameCount - 2) total += state.legacyPause;
+      : 0;
   }
   return total;
 }
@@ -15515,8 +15505,7 @@ function getProjectTimeAtFrameId(frameId, context) {
     const segment = Number(state.segDurations[index]);
     projectTime += Number.isFinite(segment) && segment >= 0
       ? segment
-      : Math.max(0, state.fallbackDuration / Math.max(1, state.frameCount - 1));
-    if (state.legacyPause > 0 && index < state.frameCount - 2) projectTime += state.legacyPause;
+      : 0;
   }
   return null;
 }
@@ -15576,7 +15565,10 @@ function resolveAssetPresenceAt(assetId, projectTime, context) {
   const entryResolved = effective.entry ? resolveTemporalBoundary(effective.entry, nestedContext) : { time: 0, invalidReason: null };
   const exitResolved = effective.exit ? resolveTemporalBoundary(effective.exit, nestedContext) : { time: getTemporalProjectDuration(nestedContext), invalidReason: null };
   visiting.delete(id);
-  const invalidReason = entryResolved.invalidReason || exitResolved.invalidReason || null;
+  const invalidReason = entryResolved.invalidReason || exitResolved.invalidReason ||
+    (Number.isFinite(entryResolved.time) && Number.isFinite(exitResolved.time) && entryResolved.time > exitResolved.time
+      ? 'entry-after-exit'
+      : null);
   const entryTime = entryResolved.time;
   const exitTime = exitResolved.time;
   const time = Number(projectTime);

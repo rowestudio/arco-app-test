@@ -4940,12 +4940,14 @@ test('E9AG — presença temporal: modelo canônico', async ({ page }) => {
   const result = await page.evaluate(() => {
     const context = {
       frames: [
-        { frameId: 'frame-first' },
-        { frameId: 'frame-second' },
+        { frameId: 'frame-first', x: 10, y: 20, w: 30, h: 40 },
+        { frameId: 'frame-second', x: 50, y: 60, w: 70, h: 80 },
       ],
       frameCount: 2,
       segDurations: [4],
       framePauses: [{ duration: 1 }, { duration: 2 }],
+      ctrlPts: [{ nx: 0.2, ny: 0.3, t: 0.5, perpX: 4, perpY: 5 }],
+      curvesV2: { version: 1, mode: 'cubic', frameHandles: { in: [null, { dx: -3, dy: -2, manual: true }], out: [{ dx: 3, dy: 2, manual: true }, null] } },
       assets: [
         { id: 'project-entry', worldX: 10, worldY: 20, worldW: 30, worldH: 40, depth: 2, zIndex: 3, visible: true,
           presence: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } } } },
@@ -4970,13 +4972,28 @@ test('E9AG — presença temporal: modelo canônico', async ({ page }) => {
           presence: { mode: 'custom', entry: { anchor: 'asset', anchorId: 'self-reference', assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } } } },
         { id: 'missing-reference',
           presence: { mode: 'custom', entry: { anchor: 'asset', anchorId: 'removed-asset', assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } } } },
+        { id: 'entry-after-exit',
+          presence: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 6 } }, exit: { anchor: 'project', offset: { unit: 'seconds', value: 5 } } } },
       ],
     };
-    const legacyFrames = [{ x: 1, y: 2, w: 3, h: 4 }, { x: 5, y: 6, w: 7, h: 8 }];
+    const legacyPauseContext = {
+      frames: [{ frameId: 'legacy-first' }, { frameId: 'legacy-second' }, { frameId: 'legacy-third' }],
+      frameCount: 3,
+      segDurations: [2, 3],
+      framePauses: [{ duration: 1 }, { duration: 1 }, { duration: 0 }],
+      easeMode: 'pause',
+      pauseDuration: 999,
+    };
+    const legacyFrames = [{ x: 1, y: 2, w: 3, h: 4 }, { frameId: ' preserved whitespace ', x: 5, y: 6, w: 7, h: 8 }];
     ensureFrameIds(legacyFrames);
     const migratedFrameIds = legacyFrames.map(frame => frame.frameId);
     ensureFrameIds(legacyFrames);
-    const before = JSON.stringify(context.assets.map(({ worldX, worldY, worldW, worldH, depth, zIndex, visible }) => ({ worldX, worldY, worldW, worldH, depth, zIndex, visible })));
+    const before = JSON.stringify({
+      assets: context.assets.map(({ worldX, worldY, worldW, worldH, depth, zIndex, visible }) => ({ worldX, worldY, worldW, worldH, depth, zIndex, visible })),
+      frames: context.frames,
+      ctrlPts: context.ctrlPts,
+      curvesV2: context.curvesV2,
+    });
     const frameTime = getProjectTimeAtFrameId('frame-second', context);
     const projectBefore = resolveAssetPresenceAt('project-entry', 1.999, context);
     const projectAt = resolveAssetPresenceAt('project-entry', 2, context);
@@ -4989,8 +5006,15 @@ test('E9AG — presença temporal: modelo canônico', async ({ page }) => {
     const cycle = resolveAssetPresenceAt('cycle-a', 0, integrityContext);
     const selfReference = resolveAssetPresenceAt('self-reference', 0, integrityContext);
     const missingReference = resolveAssetPresenceAt('missing-reference', 0, integrityContext);
-    const after = JSON.stringify(context.assets.map(({ worldX, worldY, worldW, worldH, depth, zIndex, visible }) => ({ worldX, worldY, worldW, worldH, depth, zIndex, visible })));
-    return { frameTime, projectBefore, projectAt, frameBefore, frameAt, assetBefore, assetAt, assetExit, unbounded, cycle, selfReference, missingReference, migratedFrameIds, frameIdsStable: migratedFrameIds.every((id, index) => id === legacyFrames[index].frameId), geometryUnchanged: before === after };
+    const entryAfterExit = resolveAssetPresenceAt('entry-after-exit', 5.5, integrityContext);
+    const legacyPauseFrameTime = getProjectTimeAtFrameId('legacy-third', legacyPauseContext);
+    const after = JSON.stringify({
+      assets: context.assets.map(({ worldX, worldY, worldW, worldH, depth, zIndex, visible }) => ({ worldX, worldY, worldW, worldH, depth, zIndex, visible })),
+      frames: context.frames,
+      ctrlPts: context.ctrlPts,
+      curvesV2: context.curvesV2,
+    });
+    return { frameTime, projectBefore, projectAt, frameBefore, frameAt, assetBefore, assetAt, assetExit, unbounded, cycle, selfReference, missingReference, entryAfterExit, legacyPauseFrameTime, migratedFrameIds, preservedWhitespaceId: legacyFrames[1].frameId, frameIdsStable: migratedFrameIds.every((id, index) => id === legacyFrames[index].frameId), geometryUnchanged: before === after };
   });
 
   expect(result.frameTime).toBe(5);
@@ -5005,7 +5029,11 @@ test('E9AG — presença temporal: modelo canônico', async ({ page }) => {
   expect(result.cycle.invalidReason).toBe('cycle');
   expect(result.selfReference.invalidReason).toBe('self-reference');
   expect(result.missingReference.invalidReason).toBe('missing-reference');
+  expect(result.entryAfterExit.invalidReason).toBe('entry-after-exit');
+  expect(result.entryAfterExit.present).toBe(false);
+  expect(result.legacyPauseFrameTime).toBe(7);
   expect(new Set(result.migratedFrameIds).size).toBe(2);
+  expect(result.preservedWhitespaceId).toBe(' preserved whitespace ');
   expect(result.frameIdsStable).toBe(true);
   expect(result.geometryUnchanged).toBe(true);
 });

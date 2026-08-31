@@ -66,3 +66,44 @@
 ## Commit
 
 - `feat: add canonical asset temporal presence resolver` (este relatório é versionado no mesmo commit isolado).
+
+## Fix round 1
+
+### Mudanças
+
+- O cálculo de chegada e duração temporal removeu todos os fallbacks a `duration`, `easeMode` e `pauseDuration`. Agora soma exclusivamente `segDurations` e `framePauses` do contexto canônico; a pausa legada não altera nenhum instante resolvido.
+- `ensureFrameIds()` deixou de aplicar `trim()`: um `frameId` existente e único é preservado byte a byte, inclusive whitespace; somente valor ausente, vazio ou duplicado recebe ID novo.
+- `resolveAssetPresenceAt()` agora devolve `invalidReason: 'entry-after-exit'` e `present: false` quando a Entrada resolvida é posterior à Saída.
+- O gate E9AG passou a capturar também Frames, `ctrlPts` e `curvesV2` antes/depois da resolução, além de cobrir `entry-after-exit`, ID com whitespace e a invariância perante uma pausa legada grande.
+
+### Comandos e resultados
+
+1. RED do contrato novo:
+
+   ```text
+   npx playwright test tests/smoke/app.spec.mjs --project=webkit-mobile-smoke --workers=1 --retries=0 -g "E9AG — presença temporal: modelo canônico"
+   FAILED: Expected "entry-after-exit", Received null
+   ```
+
+2. Gate focado após o fix:
+
+   ```text
+   npx playwright test tests/smoke/app.spec.mjs --project=webkit-mobile-smoke --workers=1 --retries=0 -g "E9AG — presença temporal: modelo canônico"
+   1 passed
+   ```
+
+3. Regressão adjacente:
+
+   ```text
+   npx playwright test tests/smoke/app.spec.mjs --project=webkit-mobile-smoke --workers=1 --retries=0 -g "E9AF|E9AG"
+   2 passed
+   ```
+
+4. Inspeção estática e whitespace:
+
+   ```text
+   sed -n '15445,15595p' index.html | rg -n "duration|easeMode|pauseDuration|legacyPause|_segGlobalTimeWindow30ZC" || true
+   git diff --check
+   ```
+
+   A inspeção encontrou somente as leituras esperadas de `framePauses`; o diff não apresentou erros de whitespace.
