@@ -1,5 +1,11 @@
 # PROJECT_STATE
 
+## Atualização 2026-08-30 — v8z4b32E9AF em desenvolvimento: pan de um dedo pela mão
+
+- Com o ícone de mão ativo, um gesto de um dedo no Stage passa a deslocar a vista também quando o zoom dinâmico está abaixo ou igual a 100%; antes, uma guarda residual bloqueava esse intervalo.
+- No Modo Ativos, a mão tem precedência sobre o hit-test: tocar/arrastar sobre uma imagem não seleciona nem move a camada. A pinça e o pan de dois dedos permanecem no fluxo existente.
+- O smoke WebKit mobile dedicado falhou na base E9AE e passou após a alteração. Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor e geometria canônica não foram alterados. Validação física iPhone/Safari permanece pendente; produção não foi alterada.
+
 ## Atualização 2026-08-30 — v8z4b32E9AE em desenvolvimento: steps do zoom do Stage
 
 - Relato reproduzido em WebKit mobile: quando o zoom dinâmico estava abaixo de 100%, `+` saltava para 100% e `−` acionava o reset, apagando o pan da vista.

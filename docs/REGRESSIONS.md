@@ -1,5 +1,13 @@
 # REGRESSIONS
 
+## REG-065 — mão não iniciava pan de um dedo em zoom dinâmico sub-100 (CORRIGIDA TECNICAMENTE na E9AF)
+
+- **Relato físico:** após ativar o ícone de mão, o Stage não se movia com um dedo; o gesto ainda podia selecionar ou armar o movimento de um Ativo.
+- **Causa comprovada:** o listener de início do pan exigia `editorZoomScale > 1`, embora o editor permita zoom dinâmico abaixo de 100%. No Modo Ativos, o hit-test de captura também não cedia o gesto quando `editorPanMode` estava ativo.
+- **Correção E9AF:** o pan de mão passa a aceitar qualquer zoom permitido; o seletor/movimentador de Ativos retorna sem consumir o ponteiro quando a mão está ativa. Pinça e pan de dois dedos não foram modificados.
+- **Teste preventivo:** smoke WebKit mobile `E9AF — mão arrasta a vista com um dedo abaixo de 100% sem selecionar ativo` falha na E9AE e passa com a correção; verifica pan, ausência de seleção/movimento de Ativo, ausência de mutação do Frame e encerramento do gesto.
+- **Status:** CORRIGIDA TECNICAMENTE na `v8z4b32E9AF`; validação física publicada em iPhone/Safari permanece pendente. Não há promoção autorizada.
+
 ## REG-064 — botões de zoom resetavam a vista abaixo de 100% (CORRIGIDA TECNICAMENTE na E9AE)
 
 - **Relato/reprodução:** com mínimo de zoom dinâmico abaixo de 100%, o estado intermediário não estava em `ZOOM_LEVELS`, que começa em 100%. Assim, `+` selecionava 100% como próximo nível e `−` entrava no ramo de `resetEditorZoom()`, zerando também o pan.
