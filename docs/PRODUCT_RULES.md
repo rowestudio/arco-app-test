@@ -211,10 +211,17 @@ Comportamento aprovado e IMPLEMENTADO na v8z4b32E9F1 (correção localizada sobr
 
 ### Trabalho futuro explícito
 
-- Continuam futuros e não devem ser declarados implementados: raio de canto ajustável, borda, cor da borda, opacidade da borda, espessura da borda, opacidade geral do ativo, presença temporal e animação.
+- Continuam futuros e não devem ser declarados implementados: raio de canto ajustável, borda, cor da borda, opacidade da borda, espessura da borda, opacidade geral do ativo e animação. A presença temporal tem desenho aprovado, mas continua não implementada até sua PR funcional própria.
 
 ## Caixa de texto canônica — E8Z
 
 - Text Assets usam `boxStyle: "block"`; o fundo nasce desligado e, quando ligado, envolve todas as linhas sem alterar a largura de composição (`boxWidth`).
 - Cor e opacidade do fundo são independentes dos glifos. Padding fixo canônico é `0.50em` horizontal e `0.30em` vertical e deve persistir mesmo sem controle visível.
 - Padding customizável e fundo por linha são evoluções futuras. Presença temporal é função geral dos ativos e não se confunde com animação.
+
+## Presença temporal de ativos — desenho aprovado, não implementado
+
+- Imagens e Text Assets compartilham Entrada e Saída referenciáveis ao tempo do projeto, a um Frame ou a outro ativo, com offset.
+- No editor, um ativo fora do intervalo permanece como referência visual suavizada e tracejada; selecioná-lo preserva o coral de Ativos e a edição. Preview e Export o omitem inteiramente fora do intervalo.
+- A referência editorial não é opacidade manual, não é persistida e não muda geometria, profundidade, `zIndex` ou ordem de Layers.
+- Transparência manual e efeitos de Entrada/Saída são frentes posteriores e separadas. A regra completa está na DEC-2026-08-31-01 e na especificação correspondente.
