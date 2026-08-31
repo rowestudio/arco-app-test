@@ -5037,3 +5037,132 @@ test('E9AG — presença temporal: modelo canônico', async ({ page }) => {
   expect(result.frameIdsStable).toBe(true);
   expect(result.geometryUnchanged).toBe(true);
 });
+
+test('E9AG — presença temporal: persistência, restauração e histórico canônicos', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    const image = assets.find(asset => asset && asset.type === 'image');
+    const frameId = frames[0].frameId;
+    const defaults = {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 0.75 } },
+      exit: { anchor: 'frame', anchorId: frameId, offset: { unit: 'projectFraction', value: 0.5 } },
+    };
+    const imagePresence = {
+      mode: 'custom',
+      entry: { anchor: 'frame', anchorId: frameId, offset: { unit: 'seconds', value: -0.25 } },
+    };
+    const textPresence = {
+      mode: 'custom',
+      entry: { anchor: 'asset', anchorId: image.id, assetEvent: 'entry', offset: { unit: 'projectFraction', value: 0.1 } },
+      exit: { anchor: 'project', offset: { unit: 'seconds', value: 4.25 } },
+    };
+    image.presence = imagePresence;
+    const text = normalizeTextAsset({
+      id: 'e9ag-text-presence', type: 'text', text: 'Presença temporal', color: '#ffffff',
+      worldX: 30, worldY: 40, worldW: 220, worldH: 64, boxWidth: 220,
+      presence: textPresence,
+    });
+    assets.push(text);
+    projectAssetPresenceDefaults = defaults;
+    scaleSecondsWithProjectDuration = true;
+
+    const snapshot = captureState();
+    const canonicalBefore = captureHistoryCanonicalFingerprint(snapshot);
+    const saved = buildProjectData(true);
+    const savedFrameIds = saved.framesNorm.map(frame => frame.frameId);
+    const savedImage = saved.assets.find(asset => asset && asset.id === image.id);
+    const savedText = saved.assets.find(asset => asset && asset.id === text.id);
+
+    projectAssetPresenceDefaults = { mode: 'custom' };
+    scaleSecondsWithProjectDuration = false;
+    image.presence = { mode: 'inherit' };
+    text.presence = { mode: 'inherit' };
+    const canonicalChanged = JSON.stringify(canonicalBefore) !== JSON.stringify(captureHistoryCanonicalFingerprint(captureState()));
+    restoreState(snapshot);
+    const captureRestored = {
+      defaults: projectAssetPresenceDefaults,
+      scale: scaleSecondsWithProjectDuration,
+      image: assets.find(asset => asset && asset.id === image.id).presence,
+      text: assets.find(asset => asset && asset.id === text.id).presence,
+    };
+
+    undoStack.length = 0;
+    redoStack.length = 0;
+    pushUndo();
+    projectAssetPresenceDefaults = { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } } };
+    assets.find(asset => asset && asset.id === text.id).presence = { mode: 'inherit' };
+    undo();
+    const undoRestored = {
+      defaults: projectAssetPresenceDefaults,
+      text: assets.find(asset => asset && asset.id === text.id).presence,
+    };
+    redo();
+    const redoRestored = {
+      defaults: projectAssetPresenceDefaults,
+      text: assets.find(asset => asset && asset.id === text.id).presence,
+    };
+
+    applyProjectData(saved);
+    const manualLoad = {
+      frameIds: frames.map(frame => frame.frameId),
+      defaults: projectAssetPresenceDefaults,
+      scale: scaleSecondsWithProjectDuration,
+      image: assets.find(asset => asset && asset.id === image.id).presence,
+      text: assets.find(asset => asset && asset.id === text.id).presence,
+    };
+    assets.find(asset => asset && asset.id === image.id).presence = { mode: 'inherit' };
+    const inheritedUsesRestoredDefaults = resolveAssetPresenceAt(image.id, 0).present;
+
+    applyProjectData(saved, { origin: 'session-autosave' });
+    const sessionRestore = {
+      defaults: projectAssetPresenceDefaults,
+      scale: scaleSecondsWithProjectDuration,
+      image: assets.find(asset => asset && asset.id === image.id).presence,
+      text: assets.find(asset => asset && asset.id === text.id).presence,
+    };
+
+    const legacy = JSON.parse(JSON.stringify(saved));
+    delete legacy.assetPresenceDefaults;
+    delete legacy.projectAssetPresenceDefaults;
+    delete legacy.scaleSecondsWithProjectDuration;
+    legacy.assets.forEach(asset => { delete asset.presence; });
+    applyProjectData(legacy);
+    const legacyRestored = {
+      defaults: projectAssetPresenceDefaults,
+      scale: scaleSecondsWithProjectDuration,
+      assets: assets.map(asset => asset.presence),
+    };
+
+    return { saved, savedFrameIds, savedImage, savedText, canonicalChanged, captureRestored, undoRestored, redoRestored, manualLoad, inheritedUsesRestoredDefaults, sessionRestore, legacyRestored };
+  });
+
+  expect(result.saved.assetPresenceDefaults).toEqual({
+    mode: 'custom',
+    entry: { anchor: 'project', offset: { unit: 'seconds', value: 0.75 } },
+    exit: { anchor: 'frame', anchorId: result.savedFrameIds[0], offset: { unit: 'projectFraction', value: 0.5 } },
+  });
+  expect(result.saved.scaleSecondsWithProjectDuration).toBe(true);
+  expect(result.savedFrameIds.every(Boolean)).toBe(true);
+  expect(result.savedImage.presence.mode).toBe('custom');
+  expect(result.savedText.presence).toEqual({
+    mode: 'custom',
+    entry: { anchor: 'asset', anchorId: result.savedImage.id, assetEvent: 'entry', offset: { unit: 'projectFraction', value: 0.1 } },
+    exit: { anchor: 'project', offset: { unit: 'seconds', value: 4.25 } },
+  });
+  expect(result.canonicalChanged).toBe(true);
+  expect(result.captureRestored).toEqual({ defaults: result.saved.assetPresenceDefaults, scale: true, image: result.savedImage.presence, text: result.savedText.presence });
+  expect(result.undoRestored).toEqual({ defaults: result.saved.assetPresenceDefaults, text: result.savedText.presence });
+  expect(result.redoRestored).toEqual({ defaults: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } } }, text: { mode: 'inherit' } });
+  expect(result.manualLoad).toEqual({ frameIds: result.savedFrameIds, defaults: result.saved.assetPresenceDefaults, scale: true, image: result.savedImage.presence, text: result.savedText.presence });
+  expect(result.inheritedUsesRestoredDefaults).toBe(false);
+  expect(result.sessionRestore).toEqual({ defaults: result.saved.assetPresenceDefaults, scale: true, image: result.savedImage.presence, text: result.savedText.presence });
+  expect(result.legacyRestored.defaults).toEqual({ mode: 'custom' });
+  expect(result.legacyRestored.scale).toBe(true);
+  expect(result.legacyRestored.assets).toEqual(expect.arrayContaining([{ mode: 'inherit' }]));
+});

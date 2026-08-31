@@ -14906,7 +14906,9 @@ function captureState() {
     // principal (sem duplicar base64/bitmaps), para que undo/redo restaure
     // "adicionar nova imagem" e "substituir imagem atual" pelo mecanismo
     // de undo já existente.
-    assets: assets.map(a => ({...a})),
+    assets: assets.map(a => ({...a, presence: cloneAssetPresence(a && a.presence)})),
+    assetPresenceDefaults: normalizeProjectAssetPresenceDefaults(projectAssetPresenceDefaults),
+    scaleSecondsWithProjectDuration: scaleSecondsWithProjectDuration === true,
     nextLayerSequence,
     projectWorld: {...projectWorld},
     imageSnapshot: {
@@ -14969,6 +14971,8 @@ function cloneProjectStateSnapshot(state) {
     rotationEasingMode: state.rotationEasingMode,
     scaleEasingMode: state.scaleEasingMode,
     curvesV2: cloneCurvesV2(state.curvesV2 || null),
+    assetPresenceDefaults: normalizeProjectAssetPresenceDefaults(state.assetPresenceDefaults || state.projectAssetPresenceDefaults),
+    scaleSecondsWithProjectDuration: state.scaleSecondsWithProjectDuration !== false,
   };
 }
 
@@ -15000,7 +15004,8 @@ function captureHistoryCanonicalFingerprint(state) {
       layerName:a.layerName||'', layerNameSource:a.layerNameSource||'automatic', originalFileName:a.originalFileName||'',
       worldX:Number(a.worldX)||0, worldY:Number(a.worldY)||0, worldW:Number(a.worldW)||0, worldH:Number(a.worldH)||0,
       rotation:Number(a.rotation)||0, depth:Number.isFinite(Number(a.depth))?Number(a.depth):0, zIndex:Number(a.zIndex)||0,
-      visible:a.visible!==false, locked:!!a.locked, crop:a.crop?{...a.crop}:null, frameStyle:a.frameStyle?{...a.frameStyle}:null
+      visible:a.visible!==false, locked:!!a.locked, crop:a.crop?{...a.crop}:null, frameStyle:a.frameStyle?{...a.frameStyle}:null,
+      presence:cloneAssetPresence(a.presence)
     };
     if (a.type === 'text') return {...common,
       text:typeof a.text==='string'?a.text:'', color:a.color, fontKey:a.fontKey||'system', fontFamily:a.fontFamily||TEXT_ASSET_FONT_FAMILY,
@@ -15033,6 +15038,8 @@ function historyCanonicalStateEquals(a, b) {
 }
 
 function restoreState(state) {
+  projectAssetPresenceDefaults = normalizeProjectAssetPresenceDefaults(state.assetPresenceDefaults || state.projectAssetPresenceDefaults);
+  scaleSecondsWithProjectDuration = state.scaleSecondsWithProjectDuration !== false;
   frames.length = 0;
   state.frames.forEach(f => frames.push({...f}));
   ensureFrameIds();
@@ -15149,7 +15156,7 @@ function restoreState(state) {
   // base64/bitmaps — apenas reaponta para os objetos já decodificados.
   if (Array.isArray(state.assets)) {
     assets.length = 0;
-    state.assets.forEach(a => { const restored=ensureAssetVisualDefaults({...a}); assets.push(restored.type==='text'?normalizeTextAsset(restored):restored); });
+    state.assets.forEach(a => { const restored=ensureAssetVisualDefaults({...a, presence:cloneAssetPresence(a && a.presence)}); normalizeAssetPresence(restored); assets.push(restored.type==='text'?normalizeTextAsset(restored):restored); });
     migratePersistentLayerIdentities(assets, Math.max(nextLayerSequence, state.nextLayerSequence || 1));
   }
   if (state.projectWorld) {
@@ -15417,6 +15424,8 @@ function getEditorViewCenterWorld() {
 }
 let assets = []; // { id, type:'image', layerSequence, layerName, layerNameSource, originalFileName, ... }
 let nextLayerSequence = 1;
+let projectAssetPresenceDefaults = { mode: 'custom' };
+let scaleSecondsWithProjectDuration = true;
 const deletedLayerSequences = new Set();
 let deletedLayerSequenceReused = false;
 let layerIdentityPreservedAfterReorder = true;
@@ -15466,8 +15475,16 @@ function normalizeAssetPresence(asset) {
   return asset;
 }
 
+function cloneAssetPresence(value) {
+  const holder = { presence: value };
+  normalizeAssetPresence(holder);
+  return holder.presence;
+}
+
 function getTemporalPresenceContext(context) {
-  const source = context && typeof context === 'object' ? context : {};
+  const source = context && typeof context === 'object'
+    ? context
+    : { projectAssetPresenceDefaults };
   const contextFrames = Array.isArray(source.frames) ? source.frames : frames;
   const contextFrameCount = Number.isInteger(source.frameCount) ? source.frameCount : frameCount;
   const count = Math.max(0, Math.min(contextFrames.length, contextFrameCount));
@@ -28117,6 +28134,8 @@ function clearCurrentProjectForNewFile() {
   syncBgColorUI();
   // v8z4b30D — limpa o modelo interno preparatório (será reespelhado ao carregar imagem).
   if (Array.isArray(assets)) assets.length = 0;
+  projectAssetPresenceDefaults = { mode: 'custom' };
+  scaleSecondsWithProjectDuration = true;
   nextLayerSequence = 1;
   deletedLayerSequences.clear();
   deletedLayerSequenceReused = false;
@@ -30802,7 +30821,8 @@ function serializeProjectAsset(a, idx, includeImages) {
       worldW:a.worldW, worldH:a.worldH, boxWidth:a.boxWidth, boxWidthMode:a.boxWidthMode==='auto'?'auto':'fixed', rotation:a.rotation||0, depth:Number.isFinite(Number(a.depth))?Number(a.depth):0, zIndex:a.zIndex||0,
       visible:a.visible!==false, locked:!!a.locked, textAlign:a.textAlign, fontSize:a.fontSize, lineHeight:a.lineHeight,
       textBaseBoxWidth:a.textBaseBoxWidth, textBaseFontSize:a.textBaseFontSize, boxStyle:a.boxStyle, boxBackgroundEnabled:a.boxBackgroundEnabled, boxBackgroundColor:a.boxBackgroundColor, boxBackgroundOpacity:a.boxBackgroundOpacity, boxPaddingXEm:a.boxPaddingXEm, boxPaddingYEm:a.boxPaddingYEm,
-      fontKey:a.fontKey, fontFamily:a.fontFamily, fontWeight:a.fontWeight, fontStyle:a.fontStyle, textAlign:a.textAlign };
+      fontKey:a.fontKey, fontFamily:a.fontFamily, fontWeight:a.fontWeight, fontStyle:a.fontStyle, textAlign:a.textAlign,
+      presence:cloneAssetPresence(a.presence) };
   }
   const canonicalSrc = _assetPersistentSourceE8E(a);
   const out = {
@@ -30827,6 +30847,7 @@ function serializeProjectAsset(a, idx, includeImages) {
     fitMode: a.fitMode || 'contain',
     mimeType: a.mimeType || a.typeMime || '',
     hasAlpha: !!a.hasAlpha,
+    presence: cloneAssetPresence(a.presence),
   };
   if (includeImages && out.type === 'image') {
     const src = canonicalSrc;
@@ -30958,6 +30979,8 @@ function buildProjectData(includeImages) {
   return {
     version: APP_VERSION,
     currentRatio, duration, bgColor, bgColorUserSet, easeAmount, easeMode,
+    assetPresenceDefaults: normalizeProjectAssetPresenceDefaults(projectAssetPresenceDefaults),
+    scaleSecondsWithProjectDuration: scaleSecondsWithProjectDuration === true,
     pauseDuration, loopEnabled, frameCount, activeIdx,
     imageAR, imageARLabel, framesNorm,
     framesAbs, // v8z4b30W — coordenadas absolutas do mundo para ProjectWorld
@@ -32342,6 +32365,8 @@ function applyFrameData(data, loadOptions = {}) {
   clearFrameMultiSelectState();
   if (window.__ARCO_LOAD_VISUAL_DIAG__) window.__ARCO_LOAD_VISUAL_DIAG__.__capturePhase('beforeProjectApply'); // v8z4b30ZE diag
   data = migrateLegacyProjectData(data);
+  projectAssetPresenceDefaults = normalizeProjectAssetPresenceDefaults(data.assetPresenceDefaults || data.projectAssetPresenceDefaults);
+  scaleSecondsWithProjectDuration = data.scaleSecondsWithProjectDuration !== false;
   // v8z4b24a — reset zoom/pan de edição ao carregar projeto (não é dado do projeto)
   resetEditorZoom();
   // Não dispara pushUndo — carregar projeto não deve sujar a pilha de undo
@@ -32876,6 +32901,8 @@ function restoreProjectAssetsFromData(data) {
 
     const savedAssets = Array.isArray(data.assets) ? data.assets : [];
     const savedImageAssets = savedAssets.filter(a => a && a.type === 'image');
+    const savedPrimaryPresence = savedImageAssets[0] ? savedImageAssets[0].presence : null;
+    if (primary) primary.presence = cloneAssetPresence(savedPrimaryPresence);
     migratePersistentLayerIdentities(savedAssets, data.nextLayerSequence);
 
     if (savedImageAssets.length > 0) {
@@ -33004,6 +33031,7 @@ function restoreProjectAssetsFromData(data) {
           fitMode: sa.fitMode || 'contain',
           mimeType: sa.mimeType || '',
           hasAlpha: !!sa.hasAlpha,
+          presence: cloneAssetPresence(sa.presence),
           // v8z4b30ZJ — defaults não destrutivos; projetos antigos sem estes
           // campos (ou sem zIndex) carregam normalmente. enabled:false = sem efeito.
           crop: sa.crop || { enabled: false, x: 0, y: 0, w: 1, h: 1 },
@@ -33031,7 +33059,8 @@ function restoreProjectAssetsFromData(data) {
           rotation:Number(sa.rotation)||0, depth:Number.isFinite(Number(sa.depth))?Number(sa.depth):0, zIndex:Number(sa.zIndex)||0, visible:sa.visible!==false, locked:!!sa.locked,
           textAlign:sa.textAlign, fontKey:sa.fontKey, fontWeight:sa.fontWeight, fontStyle:sa.fontStyle, fontSize:Number(sa.fontSize)||36, lineHeight:Number(sa.lineHeight)||1.2,
           textBaseBoxWidth:Number(sa.textBaseBoxWidth)||Number(sa.worldW)||Number(sa.boxWidth)||220,
-          textBaseFontSize:Number(sa.textBaseFontSize)||Number(sa.fontSize)||36, boxStyle:sa.boxStyle, boxBackgroundEnabled:sa.boxBackgroundEnabled, boxBackgroundColor:sa.boxBackgroundColor, boxBackgroundOpacity:sa.boxBackgroundOpacity, boxPaddingXEm:sa.boxPaddingXEm, boxPaddingYEm:sa.boxPaddingYEm });
+          textBaseFontSize:Number(sa.textBaseFontSize)||Number(sa.fontSize)||36, boxStyle:sa.boxStyle, boxBackgroundEnabled:sa.boxBackgroundEnabled, boxBackgroundColor:sa.boxBackgroundColor, boxBackgroundOpacity:sa.boxBackgroundOpacity, boxPaddingXEm:sa.boxPaddingXEm, boxPaddingYEm:sa.boxPaddingYEm,
+          presence:cloneAssetPresence(sa.presence) });
         assignPersistentLayerIdentity(textAsset); measureTextAsset(textAsset); assets.push(textAsset);
         if(legacyTextBox)textBoxLegacyMigrationOk=textAsset.boxBackgroundEnabled===false&&Math.abs(textAsset.worldX-legacyGeometry.x)<.001&&Math.abs(textAsset.worldY-legacyGeometry.y)<.001&&Math.abs(textAsset.worldW-legacyGeometry.w)<.001&&(!legacyGeometry.h||Math.abs(textAsset.worldH-legacyGeometry.h)<.001);
       });
@@ -33041,6 +33070,7 @@ function restoreProjectAssetsFromData(data) {
     }
 
     migratePersistentLayerIdentities(assets, nextLayerSequence);
+    assets.forEach(normalizeAssetPresence);
     assets.filter(a=>a&&a.type==='text').forEach(a=>assignPersistentLayerIdentity(a));
     const savedIdentityById = captureLayerIdentityByAssetId(savedImageAssets);
     layerIdentityPreservedAfterSaveLoad = assets.filter(a => a && a.type === 'image').every(a =>
