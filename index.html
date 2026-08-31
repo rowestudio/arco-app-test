@@ -9477,6 +9477,34 @@ let projectResetBaseline = null;
 // Frame AR is always ratioMap[currentRatio]
 const frames = [];
 
+// IDs estáveis de Frame são parte do modelo salvo. Índices da timeline continuam
+// sendo apenas apresentação e jamais são usados como âncora temporal.
+function newFrameId() {
+  const randomPart = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+    ? crypto.randomUUID()
+    : (Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10));
+  return 'frame-' + randomPart;
+}
+
+function ensureFrameIds(targetFrames) {
+  const list = Array.isArray(targetFrames) ? targetFrames : frames;
+  const used = new Set();
+  list.forEach(function(frame) {
+    if (!frame || typeof frame !== 'object') return;
+    const candidate = typeof frame.frameId === 'string' ? frame.frameId.trim() : '';
+    if (candidate && !used.has(candidate)) {
+      frame.frameId = candidate;
+      used.add(candidate);
+      return;
+    }
+    let nextId = newFrameId();
+    while (used.has(nextId)) nextId = newFrameId();
+    frame.frameId = nextId;
+    used.add(nextId);
+  });
+  return list;
+}
+
 // Per-frame rotation in degrees
 const frameRotations = [];
 
@@ -14813,12 +14841,14 @@ const undoStack = [];
 const redoStack = [];
 
 function captureState() {
+  ensureFrameIds();
   const frameSpace = getCanonicalFrameCoordinateDimensions();
   const framesNorm = frames.slice(0, frameCount).map(f => ({
     nx: f.x / frameSpace.width,
     ny: f.y / frameSpace.height,
     nw: f.w / frameSpace.width,
     nh: f.h / frameSpace.height,
+    frameId: f.frameId,
     pointMode: f.pointMode || POINT_MODE_DEFAULT
   }));
   const imageAR = imgNatW && imgNatH ? imgNatW / imgNatH : null;
@@ -15005,6 +15035,7 @@ function historyCanonicalStateEquals(a, b) {
 function restoreState(state) {
   frames.length = 0;
   state.frames.forEach(f => frames.push({...f}));
+  ensureFrameIds();
   frameRotations.length = 0;
   state.frameRotations.forEach(r => frameRotations.push(r));
   ctrlPts.length = 0;
@@ -15390,6 +15421,172 @@ const deletedLayerSequences = new Set();
 let deletedLayerSequenceReused = false;
 let layerIdentityPreservedAfterReorder = true;
 let layerIdentityPreservedAfterSaveLoad = true;
+
+// ─── Presença temporal de Ativos (modelo/resolução; sem render nesta etapa) ───
+// Os normalizadores mutam somente o objeto explicitamente entregue. O resolvedor
+// abaixo trabalha sempre sobre cópias e não chama estes normalizadores no estado
+// canônico.
+function normalizeTemporalBoundary(value) {
+  if (!value || typeof value !== 'object' || value.enabled === false) return null;
+  const anchor = ['project', 'frame', 'asset'].includes(value.anchor) ? value.anchor : 'project';
+  const anchorId = typeof value.anchorId === 'string' && value.anchorId.trim() ? value.anchorId.trim() : null;
+  if ((anchor === 'frame' || anchor === 'asset') && !anchorId) return null;
+  const offset = value.offset && typeof value.offset === 'object' ? value.offset : {};
+  return {
+    anchor,
+    ...(anchorId ? { anchorId } : {}),
+    ...(anchor === 'asset' ? { assetEvent: value.assetEvent === 'exit' ? 'exit' : 'entry' } : {}),
+    offset: {
+      unit: offset.unit === 'projectFraction' ? 'projectFraction' : 'seconds',
+      value: Number.isFinite(Number(offset.value)) ? Number(offset.value) : 0
+    }
+  };
+}
+
+function normalizeProjectAssetPresenceDefaults(value) {
+  const raw = value && typeof value === 'object' ? value : {};
+  return {
+    mode: 'custom',
+    ...(normalizeTemporalBoundary(raw.entry) ? { entry: normalizeTemporalBoundary(raw.entry) } : {}),
+    ...(normalizeTemporalBoundary(raw.exit) ? { exit: normalizeTemporalBoundary(raw.exit) } : {})
+  };
+}
+
+function normalizeAssetPresence(asset) {
+  if (!asset || typeof asset !== 'object') return asset;
+  const raw = asset.presence && typeof asset.presence === 'object' ? asset.presence : {};
+  const mode = raw.mode === 'custom' ? 'custom' : 'inherit';
+  const entry = normalizeTemporalBoundary(raw.entry);
+  const exit = normalizeTemporalBoundary(raw.exit);
+  asset.presence = {
+    mode,
+    ...(entry ? { entry } : {}),
+    ...(exit ? { exit } : {})
+  };
+  return asset;
+}
+
+function getTemporalPresenceContext(context) {
+  const source = context && typeof context === 'object' ? context : {};
+  const contextFrames = Array.isArray(source.frames) ? source.frames : frames;
+  const contextFrameCount = Number.isInteger(source.frameCount) ? source.frameCount : frameCount;
+  const count = Math.max(0, Math.min(contextFrames.length, contextFrameCount));
+  const contextSegments = Array.isArray(source.segDurations) ? source.segDurations : segDurations;
+  const contextPauses = Array.isArray(source.framePauses) ? source.framePauses : framePauses;
+  const contextAssets = Array.isArray(source.assets) ? source.assets : assets;
+  const fallbackDuration = Number.isFinite(Number(source.duration)) ? Number(source.duration) : duration;
+  const legacyPause = source.easeMode === 'pause' || (!Object.prototype.hasOwnProperty.call(source, 'easeMode') && easeMode === 'pause')
+    ? (Number.isFinite(Number(source.pauseDuration)) ? Number(source.pauseDuration) : pauseDuration)
+    : 0;
+  return { source, frames: contextFrames.slice(0, count), frameCount: count, segDurations: contextSegments, framePauses: contextPauses, assets: contextAssets, fallbackDuration, legacyPause };
+}
+
+function getTemporalProjectDuration(context) {
+  const state = getTemporalPresenceContext(context);
+  if (Number.isFinite(Number(state.source.projectDuration))) return Math.max(0, Number(state.source.projectDuration));
+  if (state.frameCount === 1) {
+    const onlyPause = Number(state.framePauses[0] && state.framePauses[0].duration);
+    return onlyPause > 0 ? onlyPause : Math.max(0, state.fallbackDuration || 0);
+  }
+  let total = 0;
+  for (let index = 0; index < state.frameCount; index++) {
+    const pause = Number(state.framePauses[index] && state.framePauses[index].duration);
+    if (Number.isFinite(pause) && pause > 0) total += pause;
+    if (index >= state.frameCount - 1) continue;
+    const segment = Number(state.segDurations[index]);
+    total += Number.isFinite(segment) && segment >= 0
+      ? segment
+      : Math.max(0, state.fallbackDuration / Math.max(1, state.frameCount - 1));
+    if (state.legacyPause > 0 && index < state.frameCount - 2) total += state.legacyPause;
+  }
+  return total;
+}
+
+function getProjectTimeAtFrameId(frameId, context) {
+  const state = getTemporalPresenceContext(context);
+  const id = typeof frameId === 'string' ? frameId : '';
+  let projectTime = 0;
+  for (let index = 0; index < state.frameCount; index++) {
+    const frame = state.frames[index];
+    if (frame && frame.frameId === id) return projectTime;
+    const pause = Number(state.framePauses[index] && state.framePauses[index].duration);
+    if (Number.isFinite(pause) && pause > 0) projectTime += pause;
+    if (index >= state.frameCount - 1) continue;
+    const segment = Number(state.segDurations[index]);
+    projectTime += Number.isFinite(segment) && segment >= 0
+      ? segment
+      : Math.max(0, state.fallbackDuration / Math.max(1, state.frameCount - 1));
+    if (state.legacyPause > 0 && index < state.frameCount - 2) projectTime += state.legacyPause;
+  }
+  return null;
+}
+
+function resolveTemporalBoundary(boundary, context) {
+  const normalized = normalizeTemporalBoundary(boundary);
+  if (!normalized) return { time: null, invalidReason: 'invalid-boundary' };
+  const state = getTemporalPresenceContext(context);
+  const projectDuration = getTemporalProjectDuration(context);
+  let baseTime = 0;
+  if (normalized.anchor === 'frame') {
+    baseTime = getProjectTimeAtFrameId(normalized.anchorId, context);
+    if (!Number.isFinite(baseTime)) return { time: null, invalidReason: 'missing-reference' };
+  } else if (normalized.anchor === 'asset') {
+    const resolver = state.source.__resolveAssetBoundary;
+    const assetResult = typeof resolver === 'function'
+      ? resolver(normalized.anchorId, normalized.assetEvent)
+      : (function() {
+          const result = resolveAssetPresenceAt(normalized.anchorId, 0, state.source);
+          const time = normalized.assetEvent === 'exit' ? result.exitTime : result.entryTime;
+          return Number.isFinite(time) ? { time, invalidReason: null } : { time: null, invalidReason: result.invalidReason || 'missing-reference' };
+        })();
+    if (!assetResult || !Number.isFinite(assetResult.time)) return { time: null, invalidReason: assetResult && assetResult.invalidReason ? assetResult.invalidReason : 'missing-reference' };
+    baseTime = assetResult.time;
+  }
+  const offset = normalized.offset.unit === 'projectFraction'
+    ? normalized.offset.value * projectDuration
+    : normalized.offset.value;
+  return { time: baseTime + offset, invalidReason: null };
+}
+
+function resolveAssetPresenceAt(assetId, projectTime, context) {
+  const state = getTemporalPresenceContext(context);
+  const id = String(assetId);
+  const asset = state.assets.find(function(candidate) { return candidate && String(candidate.id) === id; });
+  if (!asset) return { configured: false, present: false, entryTime: null, exitTime: null, invalidReason: 'missing-asset' };
+  const defaults = normalizeProjectAssetPresenceDefaults(state.source.projectAssetPresenceDefaults || state.source.assetPresenceDefaults);
+  const rawPresence = asset.presence && typeof asset.presence === 'object' ? asset.presence : {};
+  const ownPresence = {
+    mode: rawPresence.mode === 'custom' ? 'custom' : 'inherit',
+    entry: normalizeTemporalBoundary(rawPresence.entry),
+    exit: normalizeTemporalBoundary(rawPresence.exit)
+  };
+  const effective = ownPresence.mode === 'custom' ? ownPresence : defaults;
+  const visiting = state.source.visitingAssetIds instanceof Set ? state.source.visitingAssetIds : new Set();
+  if (visiting.has(id)) return { configured: !!(effective.entry || effective.exit), present: false, entryTime: null, exitTime: null, invalidReason: 'cycle' };
+  visiting.add(id);
+  const nestedContext = { ...state.source, visitingAssetIds: visiting };
+  nestedContext.__resolveAssetBoundary = function(referenceId, eventName) {
+    const reference = String(referenceId);
+    if (reference === id) return { time: null, invalidReason: 'self-reference' };
+    if (!state.assets.some(function(candidate) { return candidate && String(candidate.id) === reference; })) return { time: null, invalidReason: 'missing-reference' };
+    const resolved = resolveAssetPresenceAt(reference, projectTime, nestedContext);
+    const time = eventName === 'exit' ? resolved.exitTime : resolved.entryTime;
+    return Number.isFinite(time) ? { time, invalidReason: null } : { time: null, invalidReason: resolved.invalidReason || 'missing-reference' };
+  };
+  const entryResolved = effective.entry ? resolveTemporalBoundary(effective.entry, nestedContext) : { time: 0, invalidReason: null };
+  const exitResolved = effective.exit ? resolveTemporalBoundary(effective.exit, nestedContext) : { time: getTemporalProjectDuration(nestedContext), invalidReason: null };
+  visiting.delete(id);
+  const invalidReason = entryResolved.invalidReason || exitResolved.invalidReason || null;
+  const entryTime = entryResolved.time;
+  const exitTime = exitResolved.time;
+  const time = Number(projectTime);
+  const present = !invalidReason && Number.isFinite(time) && time >= entryTime && time < exitTime;
+  return { configured: !!(effective.entry || effective.exit), present, entryTime, exitTime, invalidReason };
+}
+
+function isAssetPresentAt(assetId, projectTime, context) {
+  return resolveAssetPresenceAt(assetId, projectTime, context).present;
+}
 
 function isPositiveLayerSequence(value) {
   return Number.isInteger(value) && value > 0;
@@ -19988,7 +20185,8 @@ function addFrame() {
   frames[i] = {
     x: Math.min(stageW - prev.w, prev.x + dx),
     y: Math.min(stageH - prev.h, prev.y + dy),
-    w: prev.w, h: prev.h
+    w: prev.w, h: prev.h,
+    frameId: newFrameId()
   };
   clampFrame(i);
 
@@ -20431,7 +20629,7 @@ function applyLocalInsertFinalization(statusText) {
 function confirmAssistedFrameInsertion() {
   if (!isInsertingFrame || !pendingFrameInsert || !ghostFrame) return;
   const pending = pendingFrameInsert;
-  const newFrame = { x: ghostFrame.x, y: ghostFrame.y, w: ghostFrame.w, h: ghostFrame.h };
+  const newFrame = { x: ghostFrame.x, y: ghostFrame.y, w: ghostFrame.w, h: ghostFrame.h, frameId: newFrameId() };
   const newRot = ghostFrame.rotation || 0;
 
   // v8z4b23a — primeiro frame: criar F1 real e inicializar projeto com 1 frame.
@@ -28009,7 +28207,7 @@ function createInitialFrameForNewImageProject() {
   syncRatioUI();
   const pending = buildFirstFrameInsertion();
   const initial = pending ? pending.frame : { x: stageW * 0.225, y: stageH * 0.225, w: stageW * 0.55, h: stageH * 0.55 / ratioMap[currentRatio] };
-  frames.push({ ...initial, pointMode: POINT_MODE_DEFAULT });
+  frames.push({ ...initial, pointMode: POINT_MODE_DEFAULT, frameId: newFrameId() });
   frameRotations.push(0);
   frameLocked.push(false);
   framePauses.push({ duration: 0 });
@@ -28523,6 +28721,8 @@ function normalizeFramesToCurrentFormat(reason) {
 }
 
 function normalizeProjectArrays() {
+  ensureFrameIds();
+  assets.forEach(normalizeAssetPresence);
   const segs = Math.max(0, frameCount - 1);
   while (segEasings.length < segs) segEasings.push('linear');
   segEasings.length = segs;
@@ -29363,6 +29563,7 @@ function applyTemplate(type) {
     createFrameDOM(0); createFrameDOM(1);
     clampFrame(0); clampFrame(1);
     frameCount = 2;
+    ensureFrameIds();
     createCtrlDOM(0);
     // Ctrl-pt no centro — linha reta entre os dois frames sobrepostos
     ctrlPts[0] = { nx: frameCX(0)/stageW, ny: frameCY(0)/stageH, t:0.5, perpX:0, perpY:0 };
@@ -29420,6 +29621,7 @@ function applyTemplate(type) {
     }
     baseFrameW = fw;
     frameCount = nFrames;
+    ensureFrameIds();
 
     // Ctrl-pts tangentes para os 7 segmentos reais (F1→F2 ... F7→F8)
     for (let i = 0; i < nFrames - 1; i++) {
@@ -29460,6 +29662,7 @@ function applyTemplate(type) {
   createFrameDOM(0); createFrameDOM(1);
   clampFrame(0); clampFrame(1);
   frameCount = 2;
+  ensureFrameIds();
   createCtrlDOM(0);
   ctrlPts[0] = {
     nx: (frameCX(0)/stageW + frameCX(1)/stageW)/2,
@@ -30720,11 +30923,13 @@ function buildProjectData(includeImages) {
   // v8z4b20d: garantir que todos os arrays por trecho têm exatamente frameCount-1
   // entradas antes de serializar (corrige segBlurSettings curto como o bug reportado).
   ensureSegmentArraysIntegrity();
+  ensureFrameIds();
   ensureProjectShake(); // v8z4b29BO — normaliza o Tremor Global antes de serializar.
   const frameSpace = getCanonicalFrameCoordinateDimensions();
   const framesNorm = frames.slice(0, frameCount).map(f => ({
     nx: f.x / frameSpace.width, ny: f.y / frameSpace.height,
-    nw: f.w / frameSpace.width, nh: f.h / frameSpace.height
+    nw: f.w / frameSpace.width, nh: f.h / frameSpace.height,
+    frameId: f.frameId
   }));
   // v8z4b30W — para ProjectWorld com múltiplas imagens, salvar também coordenadas
   // absolutas do mundo. Garante que nx/ny negativos (frames em slots laterais) não
@@ -30734,7 +30939,8 @@ function buildProjectData(includeImages) {
   const framesAbs = _isWorldSave
     ? frames.slice(0, frameCount).map((f, i) => ({
         x: f.x, y: f.y, w: f.w, h: f.h,
-        rotation: (Array.isArray(frameRotations) ? (frameRotations[i] || 0) : 0)
+        rotation: (Array.isArray(frameRotations) ? (frameRotations[i] || 0) : 0),
+        frameId: f.frameId
       }))
     : null;
   // v8z4b30W — diagnóstico de save de frames
@@ -32240,7 +32446,7 @@ function applyFrameData(data, loadOptions = {}) {
       if (typeof recordSessionRestoreStep === 'function') recordSessionRestoreStep('frames-absolute-restored');
     }
     const rawSnap = data.framesAbs.slice(0, 20).map(function(f){ return {rawX: f.x, rawY: f.y, rawW: f.w, rawH: f.h, rawRotation: f.rotation || 0}; });
-    data.framesAbs.forEach(function(f){ frames.push({x: f.x, y: f.y, w: f.w, h: f.h}); });
+    data.framesAbs.forEach(function(f){ frames.push({x: f.x, y: f.y, w: f.w, h: f.h, frameId: f.frameId}); });
     const resSnap = frames.slice(0, 20).map(function(f, i){
       return {restoredX: f.x, restoredY: f.y, restoredW: f.w, restoredH: f.h,
               deltaRawToPostLoadX: f.x - (rawSnap[i]||{rawX:f.x}).rawX,
@@ -32283,7 +32489,7 @@ function applyFrameData(data, loadOptions = {}) {
         fx = Math.max(0, Math.min(stageW - fw, cx - fw / 2));
         fy = Math.max(0, Math.min(stageH - fh, cy - fh / 2));
       }
-      frames.push({x: fx, y: fy, w: fw, h: fh});
+      frames.push({x: fx, y: fy, w: fw, h: fh, frameId: f.frameId});
     });
 
     // v8z4b30W — snapshot restored e verificação de mudança
@@ -32309,6 +32515,7 @@ function applyFrameData(data, loadOptions = {}) {
     framesRawLoadedCount = data.frames.length;
     data.frames.forEach(function(f){ frames.push({...f}); });
   }
+  ensureFrameIds();
   frames.forEach((f, i) => {
     const fromNorm = data.framesNorm && data.framesNorm[i] && data.framesNorm[i].pointMode;
     const fromList = Array.isArray(data.pointModes) ? data.pointModes[i] : null;

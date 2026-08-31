@@ -4929,3 +4929,83 @@ test('E9AF — mão arrasta a vista com um dedo abaixo de 100% sem selecionar at
   expect(moved.activeFrame).toBe(before.activeFrame);
   expect(moved.frame).toBe(before.frame);
 });
+
+test('E9AG — presença temporal: modelo canônico', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    const context = {
+      frames: [
+        { frameId: 'frame-first' },
+        { frameId: 'frame-second' },
+      ],
+      frameCount: 2,
+      segDurations: [4],
+      framePauses: [{ duration: 1 }, { duration: 2 }],
+      assets: [
+        { id: 'project-entry', worldX: 10, worldY: 20, worldW: 30, worldH: 40, depth: 2, zIndex: 3, visible: true,
+          presence: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } } } },
+        { id: 'frame-entry', worldX: 11, worldY: 21, worldW: 31, worldH: 41, depth: 3, zIndex: 4, visible: true,
+          presence: { mode: 'custom', entry: { anchor: 'frame', anchorId: 'frame-second', offset: { unit: 'seconds', value: -0.5 } } } },
+        { id: 'asset-entry', worldX: 12, worldY: 22, worldW: 32, worldH: 42, depth: 4, zIndex: 5, visible: true,
+          presence: { mode: 'custom', entry: { anchor: 'asset', anchorId: 'project-entry', assetEvent: 'entry', offset: { unit: 'projectFraction', value: 0.25 } }, exit: { anchor: 'project', offset: { unit: 'projectFraction', value: 0.75 } } } },
+      ],
+    };
+    const integrityContext = {
+      frames: context.frames,
+      frameCount: context.frameCount,
+      segDurations: context.segDurations,
+      framePauses: context.framePauses,
+      assets: [
+        { id: 'unbounded' },
+        { id: 'cycle-a',
+          presence: { mode: 'custom', entry: { anchor: 'asset', anchorId: 'cycle-b', assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } } } },
+        { id: 'cycle-b',
+          presence: { mode: 'custom', entry: { anchor: 'asset', anchorId: 'cycle-a', assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } } } },
+        { id: 'self-reference',
+          presence: { mode: 'custom', entry: { anchor: 'asset', anchorId: 'self-reference', assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } } } },
+        { id: 'missing-reference',
+          presence: { mode: 'custom', entry: { anchor: 'asset', anchorId: 'removed-asset', assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } } } },
+      ],
+    };
+    const legacyFrames = [{ x: 1, y: 2, w: 3, h: 4 }, { x: 5, y: 6, w: 7, h: 8 }];
+    ensureFrameIds(legacyFrames);
+    const migratedFrameIds = legacyFrames.map(frame => frame.frameId);
+    ensureFrameIds(legacyFrames);
+    const before = JSON.stringify(context.assets.map(({ worldX, worldY, worldW, worldH, depth, zIndex, visible }) => ({ worldX, worldY, worldW, worldH, depth, zIndex, visible })));
+    const frameTime = getProjectTimeAtFrameId('frame-second', context);
+    const projectBefore = resolveAssetPresenceAt('project-entry', 1.999, context);
+    const projectAt = resolveAssetPresenceAt('project-entry', 2, context);
+    const frameBefore = resolveAssetPresenceAt('frame-entry', 4.499, context);
+    const frameAt = resolveAssetPresenceAt('frame-entry', 4.5, context);
+    const assetBefore = resolveAssetPresenceAt('asset-entry', 3.749, context);
+    const assetAt = resolveAssetPresenceAt('asset-entry', 3.75, context);
+    const assetExit = resolveAssetPresenceAt('asset-entry', 5.25, context);
+    const unbounded = resolveAssetPresenceAt('unbounded', 6.999, integrityContext);
+    const cycle = resolveAssetPresenceAt('cycle-a', 0, integrityContext);
+    const selfReference = resolveAssetPresenceAt('self-reference', 0, integrityContext);
+    const missingReference = resolveAssetPresenceAt('missing-reference', 0, integrityContext);
+    const after = JSON.stringify(context.assets.map(({ worldX, worldY, worldW, worldH, depth, zIndex, visible }) => ({ worldX, worldY, worldW, worldH, depth, zIndex, visible })));
+    return { frameTime, projectBefore, projectAt, frameBefore, frameAt, assetBefore, assetAt, assetExit, unbounded, cycle, selfReference, missingReference, migratedFrameIds, frameIdsStable: migratedFrameIds.every((id, index) => id === legacyFrames[index].frameId), geometryUnchanged: before === after };
+  });
+
+  expect(result.frameTime).toBe(5);
+  expect(result.projectBefore.present).toBe(false);
+  expect(result.projectAt.present).toBe(true);
+  expect(result.frameBefore.present).toBe(false);
+  expect(result.frameAt.present).toBe(true);
+  expect(result.assetBefore.present).toBe(false);
+  expect(result.assetAt.present).toBe(true);
+  expect(result.assetExit.present).toBe(false);
+  expect(result.unbounded.present).toBe(true);
+  expect(result.cycle.invalidReason).toBe('cycle');
+  expect(result.selfReference.invalidReason).toBe('self-reference');
+  expect(result.missingReference.invalidReason).toBe('missing-reference');
+  expect(new Set(result.migratedFrameIds).size).toBe(2);
+  expect(result.frameIdsStable).toBe(true);
+  expect(result.geometryUnchanged).toBe(true);
+});
