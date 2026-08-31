@@ -1,5 +1,12 @@
 # DECISIONS
 
+## DEC-2026-08-30-03 — Zoom dinâmico não implica reset de navegação
+
+- **Data:** 2026-08-30.
+- **Decisão:** os botões de zoom do Stage percorrem passos incrementais também abaixo de 100%, respeitando `getEditorMinZoom()`. Um passo de zoom preserva o pan corrente, limitado somente pelo clamp canônico.
+- **Regra de interação:** resetar para 100% e pan zero exige a ação explícita no rótulo percentual; `−` no mínimo fica desabilitado e nunca executa reset implícito.
+- **Consequência:** o controle distingue navegação incremental de reset, inclusive quando o ProjectWorld reduz o mínimo dinâmico. Implementação técnica em `v8z4b32E9AE`; validação física iPhone/Safari permanece pendente.
+
 ## DEC-2026-08-30-02 — Presença temporal de ativos é genérica, referencial e separada de efeitos
 
 - **Data:** 2026-08-30.

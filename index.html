@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9AE — base v8z4b32E9AD. fix(editor-zoom): os botões −/+ passam a avançar e recuar incrementalmente também entre o mínimo dinâmico e 100%, sem tratar zoom sub-100 como reset. O pan existente é preservado e limitado pelos clamps canônicos; somente tocar no rótulo do zoom continua resetando explicitamente para 100% e pan zero. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, assets e geometria canônica. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AE. -->
 <!-- Arco Motion App — v8z4b32E9AD — base v8z4b32E9AC. fix(project-colors/text-draft): cada campo HEX de Fundo do projeto, Cor do texto e Fundo da caixa passa a exibir, na mesma linha e antes do código editável, uma amostra do valor canônico ativo; a amostra é sincronizada por paleta, picker e commit HEX, e o estado Sem cor do fundo da caixa permanece explicitamente transparente. O rascunho vazio de novo texto continua vazio no modelo e exige conteúdo para confirmar, porém passa a medir o mesmo placeholder visual Texto... durante a criação, preservando largura automática horizontal e evitando empilhamento vertical de letras. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, assets de imagem e texto confirmado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AD. -->
 <!-- Arco Motion App — v8z4b32E9F6 — base v8z4b32E9F3 (PR #506), pulando v8z4b32E9F4
      (PR #507, painel próprio #customColorPanel, REPROVADA fisicamente e revertida pela
@@ -7520,8 +7521,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AD';
-const APP_VERSION_NAME = 'v8z4b32E9AD';
+const APP_VERSION = 'v8z4b32E9AE';
+const APP_VERSION_NAME = 'v8z4b32E9AE';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -22896,39 +22897,40 @@ function resetEditorZoom() {
 
 function zoomEditorIn() {
   if (!hasImageLoaded() || isPreviewing) return;
-  const idx = ZOOM_LEVELS.indexOf(editorZoomScale);
-  if (idx >= ZOOM_LEVELS.length - 1) return;
-  // Se não está em nível exato (por algum motivo), sobe para próximo acima
-  const nextIdx = idx >= 0 ? idx + 1 : ZOOM_LEVELS.findIndex(l => l > editorZoomScale);
-  if (nextIdx < 0 || nextIdx >= ZOOM_LEVELS.length) return;
-  _setEditorZoom(ZOOM_LEVELS[nextIdx]);
+  _setEditorZoom(getNextEditorZoomStep(editorZoomScale));
 }
 
 function zoomEditorOut() {
   if (!hasImageLoaded() || isPreviewing) return;
-  const idx = ZOOM_LEVELS.indexOf(editorZoomScale);
-  if (idx <= 0) { resetEditorZoom(); return; }
-  _setEditorZoom(ZOOM_LEVELS[idx - 1]);
+  _setEditorZoom(getPreviousEditorZoomStep(editorZoomScale));
+}
+
+function getNextEditorZoomStep(current) {
+  const min = getEditorMinZoom();
+  const normalized = Math.max(min, Math.min(MAX_EDITOR_ZOOM, Number(current) || min));
+  if (normalized < 1) return Math.min(1, normalized * 1.25);
+  const next = ZOOM_LEVELS.find(level => level > normalized + 1e-4);
+  return Math.min(MAX_EDITOR_ZOOM, next ?? normalized * 1.25);
+}
+
+function getPreviousEditorZoomStep(current) {
+  const min = getEditorMinZoom();
+  const normalized = Math.max(min, Math.min(MAX_EDITOR_ZOOM, Number(current) || min));
+  if (normalized <= min + 1e-4) return min;
+  if (normalized <= 1 + 1e-4) return Math.max(min, normalized / 1.25);
+  const previous = ZOOM_LEVELS.filter(level => level < normalized - 1e-4).pop();
+  return Math.max(min, previous ?? normalized / 1.25);
 }
 
 function _setEditorZoom(newScale) {
-  editorZoomScale = newScale;
-  if (editorZoomScale <= 1) {
-    editorZoomScale = 1;
-    editorPanX = 0;
-    editorPanY = 0;
-    editorPanMode = false;
-  } else {
-    // Centralizar a vista no centro do stage
-    editorPanX = -(stageW * (editorZoomScale - 1)) / 2;
-    editorPanY = -(stageH * (editorZoomScale - 1)) / 2;
-    clampEditorPan();
-  }
+  const min = getEditorMinZoom();
+  editorZoomScale = Math.max(min, Math.min(MAX_EDITOR_ZOOM, Number(newScale) || min));
+  clampEditorPan();
   applyEditorZoom();
 }
 
 function toggleEditorPanMode() {
-  if (editorZoomScale <= 1) return;
+  if (editorZoomScale === 1 && editorPanX === 0 && editorPanY === 0) return;
   editorPanMode = !editorPanMode;
   applyEditorZoom();
 }
