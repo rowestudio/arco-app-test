@@ -78,6 +78,98 @@ test('WebKit macOS real Export — imagem com Text Asset E9D horizontal, caixa e
   expect(after.frames).toEqual(before.frames); expect(after.world).toEqual(before.world); expect(after.order).toEqual(before.order); expect(errors).toEqual([]);
 });
 
+test('WebKit Export — renderFrameSafely não faz fallback em imagem única ausente por presença temporal', async ({page}) => {
+  test.setTimeout(90_000);
+  const errors = await openProject(page);
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(async () => {
+    const original = { isProMode, bgColor, isPreviewing, isRecording, renderSessionSnapshot, renderSessionActiveContext, exportTransform: renderTransform.export };
+    const outputBg = '#010203';
+    const parseHex = (hex) => {
+      const raw = String(hex || '').replace('#', '');
+      return raw.length === 6
+        ? { r: parseInt(raw.slice(0, 2), 16), g: parseInt(raw.slice(2, 4), 16), b: parseInt(raw.slice(4, 6), 16) }
+        : { r: 0, g: 0, b: 0 };
+    };
+    const countNonBackgroundPixels = (canvas, hex) => {
+      const { r, g, b } = parseHex(hex);
+      const data = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, canvas.width, canvas.height).data;
+      let count = 0;
+      for (let index = 0; index < data.length; index += 4) {
+        if (data[index + 3] === 0) continue;
+        if (data[index] !== r || data[index + 1] !== g || data[index + 2] !== b) count++;
+      }
+      return count;
+    };
+    try {
+      const imageAssets = assets.filter(asset => asset && asset.type === 'image');
+      if (!imageAssets.length) throw new Error('fixture sem imagem para export');
+      assets = [imageAssets[0]];
+      const main = assets[0];
+      if (frameCount < 2 || !frames[0]?.frameId || !frames[1]?.frameId) throw new Error('fixture sem dois frames com frameId');
+      const beforeTime = getProjectTimeAtFrameId(frames[0].frameId);
+      const fullDuration = totalDurationFull();
+      if (!Number.isFinite(beforeTime) || !(fullDuration > 0)) throw new Error('tempo de projeto inválido');
+      main.presence = {
+        mode: 'custom',
+        entry: { anchor: 'frame', anchorId: frames[1].frameId, offset: { unit: 'seconds', value: 0 } }
+      };
+      normalizeAssetZIndices();
+      isProMode = true;
+      bgColor = outputBg;
+      isPreviewing = false;
+      isRecording = true;
+      renderSessionSnapshot = null;
+      renderSessionActiveContext = '';
+      renderTransform.export = null;
+      exportFallbackToSingleImage = false;
+      exportFallbackReason = '';
+      exportTemporalPresenceIncludedCount = 0;
+      exportTemporalPresenceOmittedCount = 0;
+      const prepared = await prepareRenderSessionSnapshot('export');
+      const canvas = document.createElement('canvas');
+      canvas.width = 320;
+      canvas.height = 568;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const ok = renderFrameSafely(ctx, canvas, beforeTime / fullDuration, canvas.width, canvas.height, frameCount, 0, { rejectBlank: true });
+      const snapMain = Array.isArray(renderSessionSnapshot?.assets)
+        ? renderSessionSnapshot.assets.find(asset => String(asset.id) === String(main.id))
+        : null;
+      return {
+        ok,
+        prepared,
+        fallbackToSingleImage: exportFallbackToSingleImage,
+        fallbackReason: exportFallbackReason,
+        snapshotPresent: snapMain ? snapMain.present : null,
+        drawnIds: Array.isArray(renderTransform.export?.assets) ? renderTransform.export.assets.map(asset => String(asset.id)) : [],
+        included: exportTemporalPresenceIncludedCount,
+        omitted: exportTemporalPresenceOmittedCount,
+        nonBackgroundPixels: countNonBackgroundPixels(canvas, outputBg),
+      };
+    } finally {
+      isProMode = original.isProMode;
+      bgColor = original.bgColor;
+      isPreviewing = original.isPreviewing;
+      isRecording = original.isRecording;
+      renderSessionSnapshot = original.renderSessionSnapshot;
+      renderSessionActiveContext = original.renderSessionActiveContext;
+      renderTransform.export = original.exportTransform;
+    }
+  });
+
+  expect(result.prepared?.ok).toBe(true);
+  expect(result.ok).toBe(true);
+  expect(result.snapshotPresent).toBe(false);
+  expect(result.drawnIds).toEqual([]);
+  expect(result.included).toBe(0);
+  expect(result.omitted).toBe(1);
+  expect(result.nonBackgroundPixels).toBe(0);
+  expect(result.fallbackToSingleImage).toBe(false);
+  expect(result.fallbackReason).not.toBe('blank-frame-after-render');
+  expect(errors).toEqual([]);
+});
+
 test('WebKit macOS real Export — presença temporal mantém o quadro não vazio quando outro asset continua presente', async ({page}, testInfo) => {
   test.setTimeout(180_000);
   const errors = await openProject(page);

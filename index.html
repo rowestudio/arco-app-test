@@ -25157,6 +25157,21 @@ function renderUniversalFallback(ctx, canvas, t, W, H, frameIdx, reason, diagnos
   }
 }
 
+function getCurrentRenderTemporalContext() {
+  if (typeof isRecording !== 'undefined' && isRecording) return 'export';
+  if (typeof isPreviewing !== 'undefined' && isPreviewing) return 'preview';
+  return '';
+}
+
+function isTemporalPresenceExpectedBlankFrame(context) {
+  if (context !== 'preview' && context !== 'export') return false;
+  const included = context === 'export' ? exportTemporalPresenceIncludedCount : previewTemporalPresenceIncludedCount;
+  const omitted = context === 'export' ? exportTemporalPresenceOmittedCount : previewTemporalPresenceOmittedCount;
+  const audit = renderTransform && renderTransform[context];
+  const drawn = Array.isArray(audit && audit.assets) ? audit.assets.length : 0;
+  return Number(omitted) > 0 && Number(included) === 0 && drawn === 0;
+}
+
 function renderFrameSafely(ctx, canvas, t, W, H, totalFrames, frameIdx, options = {}) {
   // v8z4b30ZC — marca de tempo observacional (não altera render).
   const _trace30ZCt0 = (typeof TRACE_30ZC_ENABLED !== 'undefined' && TRACE_30ZC_ENABLED) ? performance.now() : 0;
@@ -25195,8 +25210,14 @@ function renderFrameSafely(ctx, canvas, t, W, H, totalFrames, frameIdx, options 
     if (isRecording) { exportFallbackToSingleImage = true; exportFallbackReason = diagnostics.reason || 'render-returned-false'; }
   }
   if (ok && options.rejectBlank && !multiWorld && isExportFrameLikelyBlank(ctx, canvas, getProjectBackgroundColor())) {
-    ok = renderUniversalFallback(ctx, canvas, t, W, H, frameIdx, 'blank-frame-after-render', diagnostics);
-    if (isRecording) { exportFallbackToSingleImage = true; exportFallbackReason = 'blank-frame-after-render'; }
+    const temporalBlank = isTemporalPresenceExpectedBlankFrame(getCurrentRenderTemporalContext());
+    if (temporalBlank) {
+      diagnostics.reason = 'temporal-presence-blank-frame';
+      diagnostics.temporalPresenceExpectedBlankFrame = true;
+    } else {
+      ok = renderUniversalFallback(ctx, canvas, t, W, H, frameIdx, 'blank-frame-after-render', diagnostics);
+      if (isRecording) { exportFallbackToSingleImage = true; exportFallbackReason = 'blank-frame-after-render'; }
+    }
   }
   if (!ok) logExportError(frameIdx, t, W, H, new Error(diagnostics.reason || 'render-frame-failed'), diagnostics);
   // v8z4b30ZC — registro observacional de trilha de câmera (Preview/Export).
