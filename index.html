@@ -2916,6 +2916,52 @@ body.asset-context-panel-open #toolbar{display:none !important;}
 #assetContextPanel[data-kind="depth"] #assetDepthRuler{display:block;}
 #assetDepthRuler .depth-tick{position:absolute;top:1px;width:1.5px;height:7px;background:rgba(255,255,255,.72);transform:translateX(-50%);}
 #assetDepthRuler .depth-label{position:absolute;top:28px;transform:translateX(-50%);font-size:10px;font-weight:600;color:rgba(255,255,255,.82);white-space:nowrap;}
+#assetTimingPanel{
+  display:none;flex:1 1 auto;flex-direction:column;gap:10px;height:100%;
+  box-sizing:border-box;padding:10px 14px max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px);
+  background:var(--context-sheet-bg);border-top:.5px solid rgba(255,255,255,.12);border-radius:16px 16px 0 0;pointer-events:none;
+  overflow:hidden;
+}
+#assetTimingPanel.show{display:flex;pointer-events:auto;}
+#assetTimingPanel .asset-context-back{
+  flex:0 0 44px;align-self:flex-start;min-width:44px;min-height:44px;padding:0 4px;margin:0;
+  color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  background:transparent;border:none;border-radius:8px;-webkit-user-select:none;user-select:none;
+}
+#assetTimingPanel .asset-context-back:active{background:rgba(255,255,255,0.08);opacity:.85;}
+#assetTimingPanel .asset-context-back svg{width:26px;height:26px;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;display:block;}
+.presence-card{display:flex;flex-direction:column;gap:12px;padding:12px;border-radius:14px;background:var(--surface2);border:1px solid rgba(255,255,255,.08);}
+.presence-card + .presence-card{margin-top:12px;}
+.presence-heading{font-size:14px;font-weight:700;color:#fff;letter-spacing:.01em;}
+.presence-subtitle{font-size:11px;color:var(--text3);margin:0;}
+.presence-boundary{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);}
+.presence-boundary-toggle{display:flex;align-items:center;gap:10px;justify-content:space-between;}
+.presence-boundary-toggle label{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:#fff;cursor:pointer;}
+.presence-boundary-toggle input[type="checkbox"]{width:18px;height:18px;margin:0;accent-color:var(--accent);}
+.presence-boundary-fields{display:none;flex-direction:column;gap:8px;}
+.presence-boundary-fields.show{display:flex;}
+.presence-inline-row{display:flex;align-items:center;gap:8px;min-width:0;}
+.presence-inline-row > label{flex:0 0 72px;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;}
+.presence-select,
+.presence-number{
+  min-width:0;flex:1 1 auto;height:40px;border-radius:10px;border:1px solid rgba(255,255,255,.12);
+  background:var(--surface3);color:#fff;padding:0 12px;font-size:14px;box-sizing:border-box;
+}
+.presence-select:disabled,
+.presence-number:disabled{opacity:.55;}
+.presence-action-row{display:flex;gap:8px;flex-wrap:wrap;}
+.presence-action-btn{
+  flex:1 1 140px;min-height:40px;border:none;border-radius:10px;background:var(--surface3);color:#fff;
+  font-size:13px;font-weight:600;padding:10px 12px;cursor:pointer;
+}
+.presence-action-btn:active{background:rgba(255,255,255,.12);}
+.presence-secondary-btn{
+  align-self:flex-start;min-height:40px;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#fff;
+  font-size:13px;font-weight:600;padding:10px 12px;cursor:pointer;
+}
+.presence-secondary-btn:disabled{opacity:.45;cursor:default;}
+.presence-hint{font-size:11px;color:var(--text3);margin:0;}
+.presence-scroll{display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:2px;}
 #custBarTabs{
   background:var(--menu-bg) !important;
   background-image:none !important;
@@ -4433,6 +4479,9 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <div class="tb-item ctx-only ctx-asset" id="tbAssetBackward" onclick="isAssetsMode()?sendSelectedAssetBackward():null">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-send-backward"></use></svg><span class="tb-lbl">Trás</span>
   </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetTiming" onclick="openAssetTimingPanel()">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-clock"></use></svg><span class="tb-lbl">Tempo</span>
+  </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetDelete" onclick="isAssetsMode()&&getSelectedAsset()?deleteSelectedAsset():showStatus('Selecione uma imagem primeiro.')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-trash"></use></svg><span class="tb-lbl">Excluir</span>
   </div>
@@ -4457,6 +4506,95 @@ body.asset-context-panel-open #toolbar{display:none !important;}
       <button type="button" class="chip context-small-control asset-context-depth-step" onclick="stepAssetContextDepth(-5)">−5</button>
       <button type="button" class="chip context-small-control asset-context-depth-step" onclick="stepAssetContextDepth(5)">+5</button>
       <button type="button" class="chip context-small-control" id="assetContextReset" onclick="resetAssetContextValue()" style="margin-left:auto;">Reset</button>
+    </div>
+  </div>
+</div>
+<div id="assetTimingPanel" role="dialog" aria-modal="false" aria-label="Tempo do ativo">
+  <button type="button" class="asset-context-back" onclick="closeAssetContextPanel()" aria-label="Voltar">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <div class="presence-scroll">
+    <div class="presence-card">
+      <div class="presence-heading">Tempo</div>
+      <p class="presence-subtitle">Ajuste este ativo individualmente ou volte a usar o padrão do projeto.</p>
+      <button type="button" class="presence-secondary-btn" id="assetTimingUseProjectDefault" onclick="resetSelectedAssetPresenceToProjectDefault()">Usar padrão do projeto</button>
+    </div>
+    <div class="presence-card">
+      <div class="presence-boundary">
+        <div class="presence-boundary-toggle">
+          <label for="assetTimingEntryEnabled"><input type="checkbox" id="assetTimingEntryEnabled" onchange="toggleSelectedAssetPresenceBoundary('entry', this.checked)">Entrada</label>
+        </div>
+        <div id="assetTimingEntryFields" class="presence-boundary-fields">
+          <div class="presence-inline-row">
+            <label for="assetTimingEntryAnchor">Referência</label>
+            <select id="assetTimingEntryAnchor" class="presence-select" onchange="updateSelectedAssetPresenceAnchor('entry')">
+              <option value="project">Projeto</option>
+              <option value="frame">Frame</option>
+              <option value="asset">Ativo</option>
+            </select>
+          </div>
+          <div class="presence-inline-row">
+            <label for="assetTimingEntryTarget">Alvo</label>
+            <select id="assetTimingEntryTarget" class="presence-select" onchange="updateSelectedAssetPresenceTarget('entry')"></select>
+          </div>
+          <div class="presence-inline-row">
+            <label for="assetTimingEntryAssetEvent">Evento</label>
+            <select id="assetTimingEntryAssetEvent" class="presence-select" onchange="updateSelectedAssetPresenceAssetEvent('entry')">
+              <option value="entry">Entrada</option>
+              <option value="exit">Saída</option>
+            </select>
+          </div>
+          <div class="presence-inline-row">
+            <label for="assetTimingEntryOffsetUnit">Medida</label>
+            <select id="assetTimingEntryOffsetUnit" class="presence-select" onchange="updateSelectedAssetPresenceOffsetUnit('entry')">
+              <option value="seconds">Segundos</option>
+              <option value="projectFraction">Proporção do projeto</option>
+            </select>
+          </div>
+          <div class="presence-inline-row">
+            <label for="assetTimingEntryOffsetValue">Valor</label>
+            <input type="number" id="assetTimingEntryOffsetValue" class="presence-number" step="0.1" value="0" oninput="previewSelectedAssetPresenceOffsetValue('entry', this.value)" onchange="commitSelectedAssetPresenceOffsetValue('entry', this.value)" onkeydown="commitSelectedAssetPresenceOffsetKeydown(event, 'entry')">
+          </div>
+        </div>
+      </div>
+      <div class="presence-boundary">
+        <div class="presence-boundary-toggle">
+          <label for="assetTimingExitEnabled"><input type="checkbox" id="assetTimingExitEnabled" onchange="toggleSelectedAssetPresenceBoundary('exit', this.checked)">Saída</label>
+        </div>
+        <div id="assetTimingExitFields" class="presence-boundary-fields">
+          <div class="presence-inline-row">
+            <label for="assetTimingExitAnchor">Referência</label>
+            <select id="assetTimingExitAnchor" class="presence-select" onchange="updateSelectedAssetPresenceAnchor('exit')">
+              <option value="project">Projeto</option>
+              <option value="frame">Frame</option>
+              <option value="asset">Ativo</option>
+            </select>
+          </div>
+          <div class="presence-inline-row">
+            <label for="assetTimingExitTarget">Alvo</label>
+            <select id="assetTimingExitTarget" class="presence-select" onchange="updateSelectedAssetPresenceTarget('exit')"></select>
+          </div>
+          <div class="presence-inline-row">
+            <label for="assetTimingExitAssetEvent">Evento</label>
+            <select id="assetTimingExitAssetEvent" class="presence-select" onchange="updateSelectedAssetPresenceAssetEvent('exit')">
+              <option value="entry">Entrada</option>
+              <option value="exit">Saída</option>
+            </select>
+          </div>
+          <div class="presence-inline-row">
+            <label for="assetTimingExitOffsetUnit">Medida</label>
+            <select id="assetTimingExitOffsetUnit" class="presence-select" onchange="updateSelectedAssetPresenceOffsetUnit('exit')">
+              <option value="seconds">Segundos</option>
+              <option value="projectFraction">Proporção do projeto</option>
+            </select>
+          </div>
+          <div class="presence-inline-row">
+            <label for="assetTimingExitOffsetValue">Valor</label>
+            <input type="number" id="assetTimingExitOffsetValue" class="presence-number" step="0.1" value="0" oninput="previewSelectedAssetPresenceOffsetValue('exit', this.value)" onchange="commitSelectedAssetPresenceOffsetValue('exit', this.value)" onkeydown="commitSelectedAssetPresenceOffsetKeydown(event, 'exit')">
+          </div>
+        </div>
+      </div>
+      <p class="presence-hint">Os detalhes só aparecem quando Entrada ou Saída são ativados.</p>
     </div>
   </div>
 </div>
@@ -5414,8 +5552,100 @@ body.asset-context-panel-open #toolbar{display:none !important;}
             <span id="tremorGlobalFreqVal" style="font-size:11px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;flex-shrink:0;">Lenta</span>
           </div>
         </div>
-      </div>
+    </div>
       <p class="prefs-note">O Tremor por trecho (Global / Desligado / Personalizado) continua no painel de Movimento do trecho.</p>
+    </div>
+
+    <div id="projectPresenceDefaults" class="dur-section-body" style="padding-top:8px;margin-bottom:14px;">
+      <div class="dur-section-header"><span>Tempo dos ativos</span></div>
+      <div class="presence-card">
+        <p class="presence-subtitle">Define o padrão do projeto para entrada e saída dos ativos.</p>
+        <div class="presence-boundary">
+          <div class="presence-boundary-toggle">
+            <label for="projectPresenceEntryEnabled"><input type="checkbox" id="projectPresenceEntryEnabled" onchange="toggleProjectPresenceBoundary('entry', this.checked)">Entrada</label>
+          </div>
+          <div id="projectPresenceEntryFields" class="presence-boundary-fields">
+            <div class="presence-inline-row">
+              <label for="projectPresenceEntryAnchor">Referência</label>
+              <select id="projectPresenceEntryAnchor" class="presence-select" onchange="updateProjectPresenceAnchor('entry')">
+                <option value="project">Projeto</option>
+                <option value="frame">Frame</option>
+                <option value="asset">Ativo</option>
+              </select>
+            </div>
+            <div class="presence-inline-row">
+              <label for="projectPresenceEntryTarget">Alvo</label>
+              <select id="projectPresenceEntryTarget" class="presence-select" onchange="updateProjectPresenceTarget('entry')"></select>
+            </div>
+            <div class="presence-inline-row">
+              <label for="projectPresenceEntryAssetEvent">Evento</label>
+              <select id="projectPresenceEntryAssetEvent" class="presence-select" onchange="updateProjectPresenceAssetEvent('entry')">
+                <option value="entry">Entrada</option>
+                <option value="exit">Saída</option>
+              </select>
+            </div>
+            <div class="presence-inline-row">
+              <label for="projectPresenceEntryOffsetUnit">Medida</label>
+              <select id="projectPresenceEntryOffsetUnit" class="presence-select" onchange="updateProjectPresenceOffsetUnit('entry')">
+                <option value="seconds">Segundos</option>
+                <option value="projectFraction">Proporção do projeto</option>
+              </select>
+            </div>
+            <div class="presence-inline-row">
+              <label for="projectPresenceEntryOffsetValue">Valor</label>
+              <input type="number" id="projectPresenceEntryOffsetValue" class="presence-number" step="0.1" value="0" oninput="previewProjectPresenceOffsetValue('entry', this.value)" onchange="commitProjectPresenceOffsetValue('entry', this.value)" onkeydown="commitProjectPresenceOffsetKeydown(event, 'entry')">
+            </div>
+          </div>
+        </div>
+        <div class="presence-boundary">
+          <div class="presence-boundary-toggle">
+            <label for="projectPresenceExitEnabled"><input type="checkbox" id="projectPresenceExitEnabled" onchange="toggleProjectPresenceBoundary('exit', this.checked)">Saída</label>
+          </div>
+          <div id="projectPresenceExitFields" class="presence-boundary-fields">
+            <div class="presence-inline-row">
+              <label for="projectPresenceExitAnchor">Referência</label>
+              <select id="projectPresenceExitAnchor" class="presence-select" onchange="updateProjectPresenceAnchor('exit')">
+                <option value="project">Projeto</option>
+                <option value="frame">Frame</option>
+                <option value="asset">Ativo</option>
+              </select>
+            </div>
+            <div class="presence-inline-row">
+              <label for="projectPresenceExitTarget">Alvo</label>
+              <select id="projectPresenceExitTarget" class="presence-select" onchange="updateProjectPresenceTarget('exit')"></select>
+            </div>
+            <div class="presence-inline-row">
+              <label for="projectPresenceExitAssetEvent">Evento</label>
+              <select id="projectPresenceExitAssetEvent" class="presence-select" onchange="updateProjectPresenceAssetEvent('exit')">
+                <option value="entry">Entrada</option>
+                <option value="exit">Saída</option>
+              </select>
+            </div>
+            <div class="presence-inline-row">
+              <label for="projectPresenceExitOffsetUnit">Medida</label>
+              <select id="projectPresenceExitOffsetUnit" class="presence-select" onchange="updateProjectPresenceOffsetUnit('exit')">
+                <option value="seconds">Segundos</option>
+                <option value="projectFraction">Proporção do projeto</option>
+              </select>
+            </div>
+            <div class="presence-inline-row">
+              <label for="projectPresenceExitOffsetValue">Valor</label>
+              <input type="number" id="projectPresenceExitOffsetValue" class="presence-number" step="0.1" value="0" oninput="previewProjectPresenceOffsetValue('exit', this.value)" onchange="commitProjectPresenceOffsetValue('exit', this.value)" onkeydown="commitProjectPresenceOffsetKeydown(event, 'exit')">
+            </div>
+          </div>
+        </div>
+        <div class="presence-inline-row">
+          <label for="projectPresenceScaleSeconds">Escala</label>
+          <select id="projectPresenceScaleSeconds" class="presence-select" onchange="toggleProjectPresenceScaleSeconds(this.value)">
+            <option value="scale">Acompanhar segundos no redimensionamento</option>
+            <option value="fixed">Manter segundos fixos</option>
+          </select>
+        </div>
+        <div class="presence-action-row">
+          <button type="button" class="presence-action-btn" id="assetTimingApplyAll" onclick="applyProjectPresenceDefaultsToAssets('all')">Aplicar a todos</button>
+          <button type="button" class="presence-action-btn" id="assetTimingApplyInherited" onclick="applyProjectPresenceDefaultsToAssets('inherit-only')">Aplicar aos sem ajuste individual</button>
+        </div>
+      </div>
     </div>
 
     <div id="panelFormat" class="dur-section-body" style="padding-top:8px;margin-bottom:14px;">
@@ -15744,6 +15974,404 @@ function convertTemporalDependentsToResolvedProjectTime(assetId, dependents) {
   return { converted, unresolved, total: links.length };
 }
 
+function createTemporalBoundaryTemplate(anchor, ownerAssetId, boundaryKey) {
+  const nextAnchor = anchor === 'frame' || anchor === 'asset' ? anchor : 'project';
+  const boundary = {
+    anchor: nextAnchor,
+    offset: { unit: 'seconds', value: 0 }
+  };
+  if (nextAnchor === 'frame') {
+    const firstFrame = Array.isArray(frames) ? frames.find(function(frame) {
+      return frame && typeof frame.frameId === 'string' && frame.frameId;
+    }) : null;
+    if (firstFrame) boundary.anchorId = firstFrame.frameId;
+  }
+  if (nextAnchor === 'asset') {
+    const firstAsset = listPresenceAssetOptions(ownerAssetId, boundaryKey).find(function(option) {
+      return option && option.value;
+    });
+    if (firstAsset) {
+      boundary.anchorId = firstAsset.value;
+      boundary.assetEvent = 'entry';
+    }
+  }
+  return normalizeTemporalBoundary(boundary);
+}
+
+function cloneProjectPresenceDefaultsAsCustomPresence() {
+  const defaults = normalizeProjectAssetPresenceDefaults(projectAssetPresenceDefaults);
+  return {
+    mode: 'custom',
+    ...(defaults.entry ? { entry: normalizeTemporalBoundary(defaults.entry) } : {}),
+    ...(defaults.exit ? { exit: normalizeTemporalBoundary(defaults.exit) } : {})
+  };
+}
+
+function cloneProjectPresenceBoundaryForAsset(boundary, assetId) {
+  const normalized = normalizeTemporalBoundary(boundary);
+  if (!normalized) return null;
+  if (normalized.anchor !== 'asset' || String(normalized.anchorId || '') !== String(assetId || '')) {
+    return normalized;
+  }
+  const projectDuration = getTemporalProjectDuration({
+    frames: frames,
+    frameCount: frameCount,
+    segDurations: segDurations,
+    framePauses: framePauses,
+    assets: assets,
+    projectAssetPresenceDefaults: projectAssetPresenceDefaults
+  });
+  const baseTime = normalized.assetEvent === 'exit' ? projectDuration : 0;
+  const offset = normalized.offset && normalized.offset.unit === 'projectFraction'
+    ? Number(normalized.offset.value || 0) * projectDuration
+    : Number(normalized.offset && normalized.offset.value || 0);
+  return normalizeTemporalBoundary({
+    anchor: 'project',
+    offset: {
+      unit: 'seconds',
+      value: baseTime + (Number.isFinite(offset) ? offset : 0)
+    }
+  });
+}
+
+function applyTemporalPresenceMutation(reason, mutator) {
+  const before = captureState();
+  mutator();
+  const after = captureState();
+  const changed = !historyCanonicalStateEquals(before, after);
+  if (changed) {
+    pushUndoSnapshot(before);
+    lastUndoAction = 'assetTemporalPresence';
+    markProjectDirty(reason || 'asset-temporal-presence');
+  }
+  syncProjectPresenceControls();
+  syncAssetTimingPanel();
+  if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+  if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
+  if (typeof renderAll === 'function') renderAll();
+  return changed;
+}
+
+function getPresenceAssetDisplayName(asset) {
+  if (!asset) return 'Ativo';
+  if (typeof asset.layerName === 'string' && asset.layerName.trim()) return asset.layerName.trim();
+  if (asset.type === 'text') return 'Texto';
+  return 'Camada';
+}
+
+function wouldPresenceBoundaryCreateCycle(targetAssetId, boundaryKey, candidateAssetId) {
+  const targetId = String(targetAssetId || '');
+  const candidateId = String(candidateAssetId || '');
+  if (!targetId || !candidateId || targetId === candidateId) return true;
+  try {
+    const contextAssets = (Array.isArray(assets) ? assets : []).map(function(asset) {
+      if (!asset) return asset;
+      const copy = { ...asset, presence: cloneAssetPresence(asset.presence) };
+      if (String(copy.id) === targetId) {
+        const nextPresence = cloneAssetPresence(copy.presence);
+        nextPresence.mode = 'custom';
+        nextPresence[boundaryKey] = normalizeTemporalBoundary({
+          anchor: 'asset',
+          anchorId: candidateId,
+          assetEvent: 'entry',
+          offset: { unit: 'seconds', value: 0 }
+        });
+        copy.presence = nextPresence;
+      }
+      return copy;
+    });
+    const resolved = resolveAssetPresenceAt(targetId, 0, {
+      assets: contextAssets,
+      frames: frames,
+      frameCount: frameCount,
+      segDurations: segDurations,
+      framePauses: framePauses,
+      projectAssetPresenceDefaults: projectAssetPresenceDefaults
+    });
+    return resolved && (resolved.invalidReason === 'cycle' || resolved.invalidReason === 'self-reference');
+  } catch (_) {
+    return true;
+  }
+}
+
+function listPresenceAssetOptions(ownerAssetId, boundaryKey) {
+  return (Array.isArray(assets) ? assets : []).filter(function(asset) {
+    if (!asset || (asset.type !== 'image' && asset.type !== 'text')) return false;
+    if (ownerAssetId == null || ownerAssetId === '') return true;
+    const assetId = String(asset.id);
+    if (assetId === String(ownerAssetId)) return false;
+    return !wouldPresenceBoundaryCreateCycle(ownerAssetId, boundaryKey, assetId);
+  }).map(function(asset) {
+    return { value: String(asset.id), label: getPresenceAssetDisplayName(asset) };
+  });
+}
+
+function populatePresenceTargetSelect(selectId, anchor, selectedValue, ownerAssetId, boundaryKey) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const options = anchor === 'frame'
+    ? (Array.isArray(frames) ? frames.map(function(frame, index) {
+        return frame && frame.frameId
+          ? { value: String(frame.frameId), label: 'Frame ' + (index + 1) }
+          : null;
+      }).filter(Boolean) : [])
+    : anchor === 'asset'
+      ? listPresenceAssetOptions(ownerAssetId, boundaryKey)
+      : [];
+  const placeholder = anchor === 'frame' ? 'Sem frames disponíveis'
+    : anchor === 'asset' ? 'Sem ativos disponíveis'
+    : 'Sem alvo necessário';
+  select.innerHTML = '';
+  if (!options.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = placeholder;
+    select.appendChild(option);
+    select.value = '';
+    select.disabled = true;
+    return;
+  }
+  options.forEach(function(item) {
+    const option = document.createElement('option');
+    option.value = item.value;
+    option.textContent = item.label;
+    select.appendChild(option);
+  });
+  select.disabled = false;
+  const fallback = options[0] ? options[0].value : '';
+  select.value = options.some(function(item) { return item.value === selectedValue; }) ? selectedValue : fallback;
+}
+
+function capitalize(value) {
+  const text = String(value || '');
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+}
+
+function syncPresenceBoundaryFieldBlock(prefix, boundaryKey, boundary, ownerAssetId) {
+  const fields = document.getElementById(prefix + capitalize(boundaryKey) + 'Fields');
+  const anchorEl = document.getElementById(prefix + capitalize(boundaryKey) + 'Anchor');
+  const targetEl = document.getElementById(prefix + capitalize(boundaryKey) + 'Target');
+  const eventEl = document.getElementById(prefix + capitalize(boundaryKey) + 'AssetEvent');
+  const unitEl = document.getElementById(prefix + capitalize(boundaryKey) + 'OffsetUnit');
+  const valueEl = document.getElementById(prefix + capitalize(boundaryKey) + 'OffsetValue');
+  const targetRow = targetEl ? targetEl.closest('.presence-inline-row') : null;
+  const eventRow = eventEl ? eventEl.closest('.presence-inline-row') : null;
+  const enabled = !!boundary;
+  if (fields) fields.classList.toggle('show', enabled);
+  if (!enabled) return;
+  if (anchorEl) anchorEl.value = boundary.anchor || 'project';
+  populatePresenceTargetSelect(prefix + capitalize(boundaryKey) + 'Target', boundary.anchor || 'project', boundary.anchorId || '', ownerAssetId, boundaryKey);
+  if (targetRow) targetRow.style.display = boundary.anchor === 'project' ? 'none' : '';
+  if (eventRow) eventRow.style.display = boundary.anchor === 'asset' ? '' : 'none';
+  if (eventEl) eventEl.value = boundary.assetEvent === 'exit' ? 'exit' : 'entry';
+  if (unitEl) unitEl.value = boundary.offset && boundary.offset.unit === 'projectFraction' ? 'projectFraction' : 'seconds';
+  if (valueEl) valueEl.value = Number.isFinite(Number(boundary.offset && boundary.offset.value)) ? String(Number(boundary.offset.value)) : '0';
+}
+
+function syncProjectPresenceControls() {
+  const defaults = normalizeProjectAssetPresenceDefaults(projectAssetPresenceDefaults);
+  const entryEnabled = document.getElementById('projectPresenceEntryEnabled');
+  const exitEnabled = document.getElementById('projectPresenceExitEnabled');
+  const scaleMode = document.getElementById('projectPresenceScaleSeconds');
+  if (entryEnabled) entryEnabled.checked = !!defaults.entry;
+  if (exitEnabled) exitEnabled.checked = !!defaults.exit;
+  if (scaleMode) scaleMode.value = scaleSecondsWithProjectDuration === false ? 'fixed' : 'scale';
+  syncPresenceBoundaryFieldBlock('projectPresence', 'entry', defaults.entry || null, null);
+  syncPresenceBoundaryFieldBlock('projectPresence', 'exit', defaults.exit || null, null);
+}
+
+function syncAssetTimingPanel() {
+  const asset = getSelectedAsset();
+  const useDefaultBtn = document.getElementById('assetTimingUseProjectDefault');
+  const entryEnabled = document.getElementById('assetTimingEntryEnabled');
+  const exitEnabled = document.getElementById('assetTimingExitEnabled');
+  const rawPresence = asset ? cloneAssetPresence(asset.presence) : { mode: 'inherit' };
+  const ownPresence = rawPresence && rawPresence.mode === 'custom' ? rawPresence : { mode: 'inherit' };
+  if (useDefaultBtn) useDefaultBtn.disabled = !asset || ownPresence.mode !== 'custom';
+  if (entryEnabled) entryEnabled.checked = !!ownPresence.entry;
+  if (exitEnabled) exitEnabled.checked = !!ownPresence.exit;
+  syncPresenceBoundaryFieldBlock('assetTiming', 'entry', ownPresence.entry || null, asset ? String(asset.id) : '');
+  syncPresenceBoundaryFieldBlock('assetTiming', 'exit', ownPresence.exit || null, asset ? String(asset.id) : '');
+}
+
+function ensureSelectedAssetPresenceForEditing(boundaryKey) {
+  const asset = getSelectedAsset();
+  if (!asset) return null;
+  const presence = cloneAssetPresence(asset.presence);
+  presence.mode = 'custom';
+  if (!presence[boundaryKey]) {
+    const defaults = normalizeProjectAssetPresenceDefaults(projectAssetPresenceDefaults);
+    presence[boundaryKey] = normalizeTemporalBoundary(defaults[boundaryKey]) || createTemporalBoundaryTemplate('project', String(asset.id), boundaryKey);
+  }
+  asset.presence = presence;
+  return asset;
+}
+
+function toggleProjectPresenceBoundary(boundaryKey, enabled) {
+  applyTemporalPresenceMutation('project-presence-defaults', function() {
+    if (enabled) projectAssetPresenceDefaults[boundaryKey] = projectAssetPresenceDefaults[boundaryKey] || createTemporalBoundaryTemplate('project', null, boundaryKey);
+    else delete projectAssetPresenceDefaults[boundaryKey];
+  });
+}
+function toggleProjectPresenceScaleSeconds(value) {
+  applyTemporalPresenceMutation('project-presence-scale-mode', function() {
+    scaleSecondsWithProjectDuration = value !== 'fixed';
+  });
+}
+function updateProjectPresenceAnchor(boundaryKey) {
+  const select = document.getElementById('projectPresence' + capitalize(boundaryKey) + 'Anchor');
+  const anchor = select ? select.value : 'project';
+  applyTemporalPresenceMutation('project-presence-defaults', function() {
+    const current = projectAssetPresenceDefaults[boundaryKey] || createTemporalBoundaryTemplate(anchor, null, boundaryKey);
+    projectAssetPresenceDefaults[boundaryKey] = createTemporalBoundaryTemplate(anchor, null, boundaryKey) || current;
+    projectAssetPresenceDefaults[boundaryKey].offset = current.offset && typeof current.offset === 'object'
+      ? { ...current.offset }
+      : { unit: 'seconds', value: 0 };
+  });
+}
+function updateProjectPresenceTarget(boundaryKey) {
+  const target = document.getElementById('projectPresence' + capitalize(boundaryKey) + 'Target');
+  applyTemporalPresenceMutation('project-presence-defaults', function() {
+    if (!projectAssetPresenceDefaults[boundaryKey]) return;
+    projectAssetPresenceDefaults[boundaryKey].anchorId = target ? target.value || undefined : undefined;
+  });
+}
+function updateProjectPresenceAssetEvent(boundaryKey) {
+  const eventSelect = document.getElementById('projectPresence' + capitalize(boundaryKey) + 'AssetEvent');
+  applyTemporalPresenceMutation('project-presence-defaults', function() {
+    if (!projectAssetPresenceDefaults[boundaryKey]) return;
+    projectAssetPresenceDefaults[boundaryKey].assetEvent = eventSelect && eventSelect.value === 'exit' ? 'exit' : 'entry';
+  });
+}
+function updateProjectPresenceOffsetUnit(boundaryKey) {
+  const unitSelect = document.getElementById('projectPresence' + capitalize(boundaryKey) + 'OffsetUnit');
+  applyTemporalPresenceMutation('project-presence-defaults', function() {
+    if (!projectAssetPresenceDefaults[boundaryKey]) return;
+    if (!projectAssetPresenceDefaults[boundaryKey].offset) projectAssetPresenceDefaults[boundaryKey].offset = { unit: 'seconds', value: 0 };
+    projectAssetPresenceDefaults[boundaryKey].offset.unit = unitSelect && unitSelect.value === 'projectFraction' ? 'projectFraction' : 'seconds';
+  });
+}
+function previewProjectPresenceOffsetValue() {}
+function commitProjectPresenceOffsetValue(boundaryKey, rawValue) {
+  const value = Number(rawValue);
+  applyTemporalPresenceMutation('project-presence-defaults', function() {
+    if (!projectAssetPresenceDefaults[boundaryKey]) return;
+    if (!projectAssetPresenceDefaults[boundaryKey].offset) projectAssetPresenceDefaults[boundaryKey].offset = { unit: 'seconds', value: 0 };
+    projectAssetPresenceDefaults[boundaryKey].offset.value = Number.isFinite(value) ? value : 0;
+  });
+}
+function commitProjectPresenceOffsetKeydown(event, boundaryKey) {
+  if (!event || event.key !== 'Enter') return;
+  event.preventDefault();
+  commitProjectPresenceOffsetValue(boundaryKey, event.currentTarget && event.currentTarget.value);
+  if (event.currentTarget && typeof event.currentTarget.blur === 'function') event.currentTarget.blur();
+}
+
+function openAssetTimingPanel() {
+  const asset = isAssetsMode() ? getSelectedAsset() : null;
+  if (!asset) { showStatus('Selecione um ativo primeiro.'); return; }
+  if (blockLockedAssetEdit(asset)) return;
+  closeAssetContextPanel();
+  closeAll();
+  assetContextPanelKind = 'timing';
+  const panel = document.getElementById('assetTimingPanel');
+  if (panel) { panel.style.display = 'flex'; panel.style.pointerEvents = 'auto'; panel.classList.add('show'); }
+  document.body.classList.add('asset-context-panel-open');
+  syncAssetTimingPanel();
+}
+
+function resetSelectedAssetPresenceToProjectDefault() {
+  const asset = getSelectedAsset();
+  if (!asset) return;
+  applyTemporalPresenceMutation('asset-timing-reset', function() {
+    asset.presence = { mode: 'inherit' };
+  });
+}
+
+function toggleSelectedAssetPresenceBoundary(boundaryKey, enabled) {
+  const asset = getSelectedAsset();
+  if (!asset) return;
+  applyTemporalPresenceMutation('asset-timing-boundary', function() {
+    const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
+    if (!workingAsset) return;
+    if (enabled) workingAsset.presence[boundaryKey] = workingAsset.presence[boundaryKey] || createTemporalBoundaryTemplate('project', String(workingAsset.id), boundaryKey);
+    else delete workingAsset.presence[boundaryKey];
+  });
+}
+function updateSelectedAssetPresenceAnchor(boundaryKey) {
+  const asset = getSelectedAsset();
+  const select = document.getElementById('assetTiming' + capitalize(boundaryKey) + 'Anchor');
+  if (!asset || !select) return;
+  applyTemporalPresenceMutation('asset-timing-anchor', function() {
+    const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
+    if (!workingAsset) return;
+    const current = workingAsset.presence[boundaryKey];
+    const next = createTemporalBoundaryTemplate(select.value, String(workingAsset.id), boundaryKey) || current;
+    if (current && current.offset) next.offset = { ...current.offset };
+    workingAsset.presence[boundaryKey] = next;
+  });
+}
+function updateSelectedAssetPresenceTarget(boundaryKey) {
+  const asset = getSelectedAsset();
+  const target = document.getElementById('assetTiming' + capitalize(boundaryKey) + 'Target');
+  if (!asset || !target) return;
+  applyTemporalPresenceMutation('asset-timing-target', function() {
+    const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
+    if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
+    workingAsset.presence[boundaryKey].anchorId = target.value || undefined;
+  });
+}
+function updateSelectedAssetPresenceAssetEvent(boundaryKey) {
+  const eventSelect = document.getElementById('assetTiming' + capitalize(boundaryKey) + 'AssetEvent');
+  applyTemporalPresenceMutation('asset-timing-event', function() {
+    const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
+    if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
+    workingAsset.presence[boundaryKey].assetEvent = eventSelect && eventSelect.value === 'exit' ? 'exit' : 'entry';
+  });
+}
+function updateSelectedAssetPresenceOffsetUnit(boundaryKey) {
+  const unitSelect = document.getElementById('assetTiming' + capitalize(boundaryKey) + 'OffsetUnit');
+  applyTemporalPresenceMutation('asset-timing-offset-unit', function() {
+    const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
+    if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
+    if (!workingAsset.presence[boundaryKey].offset) workingAsset.presence[boundaryKey].offset = { unit: 'seconds', value: 0 };
+    workingAsset.presence[boundaryKey].offset.unit = unitSelect && unitSelect.value === 'projectFraction' ? 'projectFraction' : 'seconds';
+  });
+}
+function previewSelectedAssetPresenceOffsetValue() {}
+function commitSelectedAssetPresenceOffsetValue(boundaryKey, rawValue) {
+  const value = Number(rawValue);
+  applyTemporalPresenceMutation('asset-timing-offset-value', function() {
+    const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
+    if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
+    if (!workingAsset.presence[boundaryKey].offset) workingAsset.presence[boundaryKey].offset = { unit: 'seconds', value: 0 };
+    workingAsset.presence[boundaryKey].offset.value = Number.isFinite(value) ? value : 0;
+  });
+}
+function commitSelectedAssetPresenceOffsetKeydown(event, boundaryKey) {
+  if (!event || event.key !== 'Enter') return;
+  event.preventDefault();
+  commitSelectedAssetPresenceOffsetValue(boundaryKey, event.currentTarget && event.currentTarget.value);
+  if (event.currentTarget && typeof event.currentTarget.blur === 'function') event.currentTarget.blur();
+}
+
+function applyProjectPresenceDefaultsToAssets(mode) {
+  applyTemporalPresenceMutation(mode === 'all' ? 'asset-timing-apply-all' : 'asset-timing-apply-inherited', function() {
+    const nextPresence = cloneProjectPresenceDefaultsAsCustomPresence();
+    (Array.isArray(assets) ? assets : []).forEach(function(asset) {
+      if (!asset || (asset.type !== 'image' && asset.type !== 'text')) return;
+      if (mode !== 'all' && asset.presence && asset.presence.mode === 'custom') return;
+      const entry = cloneProjectPresenceBoundaryForAsset(nextPresence.entry, asset.id);
+      const exit = cloneProjectPresenceBoundaryForAsset(nextPresence.exit, asset.id);
+      asset.presence = {
+        mode: 'custom',
+        ...(entry ? { entry } : {}),
+        ...(exit ? { exit } : {})
+      };
+    });
+  });
+}
+
 function isPositiveLayerSequence(value) {
   return Number.isInteger(value) && value > 0;
 }
@@ -15901,6 +16529,7 @@ function selectAssetById(assetId, source) {
   // v8z4b30ZU — atualizar toolbar imediatamente ao selecionar asset.
   if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
   if (typeof syncAssetDepthPanel === 'function') syncAssetDepthPanel();
+  if (typeof syncAssetTimingPanel === 'function') syncAssetTimingPanel();
   if (typeof updateLowerTimelineMeta === 'function') updateLowerTimelineMeta();
   if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
   updateCanonicalAssetSelectionDiagnostics();
@@ -16475,6 +17104,8 @@ function closeAssetContextPanel() {
   assetContextPanelKind = 'none';
   const panel = document.getElementById('assetContextPanel');
   if (panel) { panel.classList.remove('show'); panel.style.display = 'none'; panel.style.pointerEvents = 'none'; }
+  const timingPanel = document.getElementById('assetTimingPanel');
+  if (timingPanel) { timingPanel.classList.remove('show'); timingPanel.style.display = 'none'; timingPanel.style.pointerEvents = 'none'; }
   document.body.classList.remove('asset-context-panel-open');
 }
 function openAssetContextPanel(kind) {
@@ -17798,7 +18429,7 @@ function syncAssetToolbarState() {
   const canEdit = hasSel && !toolbarAsset.locked;
   const toolbarAssetId = toolbarAsset ? String(toolbarAsset.id) : '';
   const primary=document.getElementById('tbAssetReplace'); if(primary){const isText=hasSel&&toolbarAsset.type==='text';primary.querySelector('use').setAttribute('href',isText?'#i-mouse-pointer':'#i-image-down');primary.querySelector('.tb-lbl').textContent=isText?'Editar':'Trocar';primary.setAttribute('aria-label',isText?'Editar texto':'Trocar imagem');}
-  ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetDelete','tbAssetCopy','tbAssetDuplicate'].forEach(function(id) {
+  ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetTiming','tbAssetDelete','tbAssetCopy','tbAssetDuplicate'].forEach(function(id) {
     const el = document.getElementById(id);
     if (!el) return;
     el.classList.toggle('asset-tool-disabled', !canEdit);
@@ -17809,6 +18440,7 @@ function syncAssetToolbarState() {
   if (fwd) { fwd.classList.toggle('asset-tool-disabled', !canEdit || !z.canForward); fwd.dataset.assetId = toolbarAssetId; }
   const bkw = document.getElementById('tbAssetBackward');
   if (bkw) { bkw.classList.toggle('asset-tool-disabled', !canEdit || !z.canBackward); bkw.dataset.assetId = toolbarAssetId; }
+  if (assetContextPanelKind === 'timing' && !toolbarAsset) closeAssetContextPanel();
   updateCanonicalAssetSelectionDiagnostics();
 }
 // v8z4b30ZK — barra contextual legada (agora sempre oculta; substituída pelo toolbar).
@@ -30775,6 +31407,7 @@ function switchDurTab(tab) {
     // Reflete o estado atual nos controles reposicionados (modo de tempo + Tremor Global).
     syncTimingModeUI();
     if (typeof syncTremorPanel === 'function') syncTremorPanel();
+    if (typeof syncProjectPresenceControls === 'function') syncProjectPresenceControls();
   } else if (typeof syncDurationSectionsUI === 'function') {
     // Garante a sequência Cena 1 montada e atualizada.
     syncDurationSectionsUI();

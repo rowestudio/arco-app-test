@@ -5906,3 +5906,190 @@ test('E9AG — presença temporal: diálogo com muitos vínculos mantém ações
     undo: undoStack.length,
   }), setup)).toEqual({ anchorExists: false, converted: true, undo: 1 });
 });
+
+test('E9AG — presença temporal: controles ficam inline no projeto e compactos no ativo', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  await openProjectAppearance(page);
+  await expect(page.locator('#projectPresenceDefaults')).toBeVisible();
+  await expect(page.locator('#projectPresenceEntryEnabled')).toBeVisible();
+  await expect(page.locator('#projectPresenceExitEnabled')).toBeVisible();
+  await page.locator('#projectPresenceEntryEnabled').check();
+  await expect(page.locator('#projectPresenceEntryAnchor')).toBeVisible();
+  await expect(page.locator('#projectPresenceEntryOffsetValue')).toBeVisible();
+  await expect(page.locator('#assetTimingApplyAll')).toBeVisible();
+  await expect(page.locator('#assetTimingApplyInherited')).toBeVisible();
+  await expect(page.locator('#durTabPrefs #formatChips')).toBeVisible();
+  await expect(page.locator('#durTabPrefs #bgSwatches')).toBeVisible();
+
+  await page.locator('#panelDuration .panel-handle').click();
+  await expect(page.locator('#panelDuration')).not.toHaveClass(/show/);
+
+  await page.evaluate(() => {
+    setEditorMode('assets', 'e9ag-controls-inline');
+    const asset = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!asset) throw new Error('fixture sem asset de imagem');
+    selectAssetById(asset.id, 'e9ag-controls-inline');
+    syncAssetToolbarState();
+    renderAll();
+  });
+
+  await expect(page.locator('#tbAssetTiming')).toBeVisible();
+  expect(await page.evaluate(() => [...document.querySelectorAll('#toolbar .ctx-asset')].map(item => item.id))).toEqual([
+    'tbAssetReplace',
+    'tbAssetScale',
+    'tbAssetRotate',
+    'tbAssetDepth',
+    'tbAssetCopy',
+    'tbAssetDuplicate',
+    'tbAssetForward',
+    'tbAssetBackward',
+    'tbAssetTiming',
+    'tbAssetDelete',
+  ]);
+
+  await page.locator('#tbAssetTiming').click();
+  await expect(page.locator('#assetTimingPanel')).toBeVisible();
+  await expect(page.locator('#assetContextPanel')).not.toHaveClass(/show/);
+  await expect(page.locator('#assetTimingUseProjectDefault')).toBeVisible();
+  await expect(page.locator('#assetTimingEntryEnabled')).toBeVisible();
+  await expect(page.locator('#assetTimingExitEnabled')).toBeVisible();
+  await expect(page.locator('#assetTimingEntryAnchor')).toBeHidden();
+  await expect(page.locator('#assetTimingExitAnchor')).toBeHidden();
+
+  await page.locator('#assetTimingEntryEnabled').check();
+  await expect(page.locator('#assetTimingEntryAnchor')).toBeVisible();
+  await expect(page.locator('#assetTimingEntryOffsetValue')).toBeVisible();
+  await expect(page.locator('#assetTimingExitAnchor')).toBeHidden();
+});
+
+test('E9AG — presença temporal: aplicar global, preservar override e voltar para herança', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const ids = await page.evaluate(() => {
+    setEditorMode('assets', 'e9ag-controls-apply');
+    const image = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!image) throw new Error('fixture sem imagem');
+    image.presence = { mode: 'inherit' };
+    const text = normalizeTextAsset({
+      id: 'e9ag-controls-text',
+      type: 'text',
+      text: 'Override',
+      color: '#ffffff',
+      worldX: 40,
+      worldY: 60,
+      worldW: 180,
+      worldH: 64,
+      boxWidth: 180,
+      presence: {
+        mode: 'custom',
+        entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } },
+      },
+    });
+    assignPersistentLayerIdentity(text);
+    assets.push(text);
+    normalizeAssetZIndices();
+    selectAssetById(text.id, 'e9ag-controls-apply');
+    syncAssetToolbarState();
+    renderAll();
+    return { inheritId: String(image.id), overrideId: String(text.id) };
+  });
+
+  await openProjectAppearance(page);
+  await page.locator('#projectPresenceEntryEnabled').check();
+  await page.locator('#projectPresenceEntryOffsetValue').fill('0.5');
+  await page.locator('#projectPresenceEntryOffsetValue').press('Enter');
+  await page.locator('#assetTimingApplyInherited').click();
+
+  expect(await page.evaluate(({ inheritId, overrideId }) => ({
+    defaults: structuredClone(projectAssetPresenceDefaults),
+    inheritPresence: structuredClone(assets.find(asset => asset && String(asset.id) === inheritId).presence),
+    overridePresence: structuredClone(assets.find(asset => asset && String(asset.id) === overrideId).presence),
+  }), ids)).toEqual({
+    defaults: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 0.5 } },
+    },
+    inheritPresence: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 0.5 } },
+    },
+    overridePresence: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 2 } },
+    },
+  });
+
+  await page.locator('#panelDuration .panel-handle').click();
+  await page.evaluate((overrideId) => {
+    selectAssetById(overrideId, 'e9ag-controls-apply-single');
+    syncAssetToolbarState();
+    renderAll();
+  }, ids.overrideId);
+  await page.locator('#tbAssetTiming').click();
+  await page.locator('#assetTimingUseProjectDefault').click();
+
+  expect(await page.evaluate(({ overrideId }) => structuredClone(assets.find(asset => asset && String(asset.id) === overrideId).presence), ids)).toEqual({ mode: 'inherit' });
+
+  await page.locator('#assetTimingPanel .asset-context-back').click();
+  await expect(page.locator('#assetTimingPanel')).not.toHaveClass(/show/);
+  await page.locator('.lower-global-duration').click();
+  await page.locator('#durTabBtnPrefs').click();
+  await page.locator('#projectPresenceEntryOffsetValue').fill('1.25');
+  await page.locator('#projectPresenceEntryOffsetValue').press('Enter');
+  await page.locator('#assetTimingApplyAll').click();
+
+  expect(await page.evaluate(({ inheritId, overrideId }) => ({
+    inheritPresence: structuredClone(assets.find(asset => asset && String(asset.id) === inheritId).presence),
+    overridePresence: structuredClone(assets.find(asset => asset && String(asset.id) === overrideId).presence),
+  }), ids)).toEqual({
+    inheritPresence: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 1.25 } },
+    },
+    overridePresence: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 1.25 } },
+    },
+  });
+
+  await page.evaluate(({ inheritId }) => {
+    projectAssetPresenceDefaults = {
+      mode: 'custom',
+      entry: { anchor: 'asset', anchorId: inheritId, assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } },
+    };
+    syncProjectPresenceControls();
+  }, ids);
+  await page.locator('#assetTimingApplyAll').click();
+
+  expect(await page.evaluate(({ inheritId, overrideId }) => {
+    const inheritAsset = assets.find(asset => asset && String(asset.id) === inheritId);
+    const overrideAsset = assets.find(asset => asset && String(asset.id) === overrideId);
+    const context = { assets, frames, frameCount, segDurations, framePauses, projectAssetPresenceDefaults };
+    return {
+      inheritPresence: structuredClone(inheritAsset.presence),
+      overridePresence: structuredClone(overrideAsset.presence),
+      inheritInvalidReason: resolveAssetPresenceAt(inheritId, 0, context).invalidReason,
+      overrideInvalidReason: resolveAssetPresenceAt(overrideId, 0, context).invalidReason,
+    };
+  }, ids)).toEqual({
+    inheritPresence: {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 0 } },
+    },
+    overridePresence: {
+      mode: 'custom',
+      entry: { anchor: 'asset', anchorId: ids.inheritId, assetEvent: 'entry', offset: { unit: 'seconds', value: 0 } },
+    },
+    inheritInvalidReason: null,
+    overrideInvalidReason: null,
+  });
+});
