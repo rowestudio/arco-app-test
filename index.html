@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9AH — base v8z4b32E9AG. fix(asset-timing-sheet): o painel Tempo do ativo deixa de herdar a altura compacta do contexto e passa a ser uma folha própria, alta e rolável, ancorada na borda inferior. As edições agora são um rascunho: × descarta e ✓ confirma em uma única operação de histórico/autosave, sem perder a seleção. NÃO TOCADO: resolvedor temporal, getStateAtT, câmera, WebCodecs, Preview, Export, geometria do ProjectWorld, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AH. -->
 <!-- Arco Motion App — v8z4b32E9AG — base v8z4b32E9AF. feat(assets): Presença Temporal de Ativos para imagem e texto, com Entrada/Saída opcionais ancoradas em projeto, frameId estável ou evento de outro ativo; padrões globais ficam em Edição do projeto e overrides no painel Animação do ativo. No Stage, ativos fora do intervalo permanecem como referência editorial suavizada/tracejada e continuam selecionáveis/editáveis; Preview e Export usam o mesmo resolvedor canônico em tempo de projeto para omiti-los do render, sem DOM. Exclusão de âncora referenciada exige confirmação e converte dependentes para tempo absoluto resolvido, preservando Undo. NÃO TOCADO: getStateAtT, câmera, WebCodecs, matemática de curvas/easing, ProjectWorld geométrico, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AG. -->
 <!-- Arco Motion App — v8z4b32E9AF — base v8z4b32E9AE. fix(editor-pan): com a mão ativa, um dedo arrasta a vista inclusive no zoom dinâmico abaixo ou igual a 100%, sem selecionar nem mover o Ativo sob o toque. Pinça e pan de dois dedos permanecem no caminho existente. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, geometria canônica e transformação de ativos/frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AF. -->
 <!-- Arco Motion App — v8z4b32E9AE — base v8z4b32E9AD. fix(editor-zoom): os botões −/+ passam a avançar e recuar incrementalmente também entre o mínimo dinâmico e 100%, sem tratar zoom sub-100 como reset. O pan existente é preservado e limitado pelos clamps canônicos; somente tocar no rótulo do zoom continua resetando explicitamente para 100% e pan zero. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, assets e geometria canônica. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AE. -->
@@ -2918,19 +2919,21 @@ body.asset-context-panel-open #toolbar{display:none !important;}
 #assetDepthRuler .depth-tick{position:absolute;top:1px;width:1.5px;height:7px;background:rgba(255,255,255,.72);transform:translateX(-50%);}
 #assetDepthRuler .depth-label{position:absolute;top:28px;transform:translateX(-50%);font-size:10px;font-weight:600;color:rgba(255,255,255,.82);white-space:nowrap;}
 #assetTimingPanel{
-  display:none;flex:1 1 auto;flex-direction:column;gap:10px;height:100%;
-  box-sizing:border-box;padding:10px 14px max(calc(env(safe-area-inset-bottom, 4px) - 26px), 6px);
-  background:var(--context-sheet-bg);border-top:.5px solid rgba(255,255,255,.12);border-radius:16px 16px 0 0;pointer-events:none;
-  overflow:hidden;
+  display:none;position:fixed;left:0;right:0;bottom:0;z-index:240;
+  flex-direction:column;gap:0;height:min(58dvh,460px);min-height:min(48dvh,380px);
+  box-sizing:border-box;padding:0 18px calc(14px + env(safe-area-inset-bottom));
+  background:var(--surface);border-top:.5px solid rgba(255,255,255,.12);border-radius:20px 20px 0 0;pointer-events:none;
+  box-shadow:0 -5px 30px rgba(0,0,0,.35);overflow:hidden;overscroll-behavior:contain;
 }
-#assetTimingPanel.show{display:flex;pointer-events:auto;}
-#assetTimingPanel .asset-context-back{
-  flex:0 0 44px;align-self:flex-start;min-width:44px;min-height:44px;padding:0 4px;margin:0;
-  color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;
-  background:transparent;border:none;border-radius:8px;-webkit-user-select:none;user-select:none;
-}
-#assetTimingPanel .asset-context-back:active{background:rgba(255,255,255,0.08);opacity:.85;}
-#assetTimingPanel .asset-context-back svg{width:26px;height:26px;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;display:block;}
+#assetTimingPanel.show{display:flex;pointer-events:auto;animation:asset-timing-sheet-enter .18s ease-out;}
+@keyframes asset-timing-sheet-enter{from{transform:translateY(28px);opacity:.72}to{transform:translateY(0);opacity:1}}
+.asset-timing-sheet-drag{display:block;flex:0 0 18px;width:52px;height:18px;margin:0 auto;border:0;background:transparent;position:relative;pointer-events:none;}
+.asset-timing-sheet-drag:after{content:"";position:absolute;left:8px;right:8px;top:7px;height:4px;border-radius:3px;background:var(--border2);}
+.asset-timing-sheet-header{display:flex;align-items:center;justify-content:space-between;flex:0 0 44px;min-height:44px;}
+.asset-timing-sheet-header button{min-width:44px;min-height:44px;padding:0;border:0;background:transparent;font-size:28px;font-weight:700;line-height:1;cursor:pointer;}
+#assetTimingCancel{color:var(--text2);text-align:left;}
+#assetTimingConfirm{color:var(--accent);text-align:right;}
+#assetTimingPanel .presence-scroll{flex:1 1 auto;padding-bottom:2px;}
 .presence-card{display:flex;flex-direction:column;gap:12px;padding:12px;border-radius:14px;background:var(--surface2);border:1px solid rgba(255,255,255,.08);}
 .presence-card + .presence-card{margin-top:12px;}
 .presence-heading{font-size:14px;font-weight:700;color:#fff;letter-spacing:.01em;}
@@ -4510,10 +4513,12 @@ body.asset-context-panel-open #toolbar{display:none !important;}
     </div>
   </div>
 </div>
-<div id="assetTimingPanel" role="dialog" aria-modal="false" aria-label="Tempo do ativo">
-  <button type="button" class="asset-context-back" onclick="closeAssetContextPanel()" aria-label="Voltar">
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="15 18 9 12 15 6"/></svg>
-  </button>
+<div id="assetTimingPanel" role="dialog" aria-modal="true" aria-label="Tempo do ativo">
+  <div class="asset-timing-sheet-drag" aria-hidden="true"></div>
+  <div class="asset-timing-sheet-header">
+    <button id="assetTimingCancel" type="button" aria-label="Cancelar alterações de tempo" onclick="cancelAssetTimingPanel()">×</button>
+    <button id="assetTimingConfirm" type="button" aria-label="Confirmar alterações de tempo" onclick="confirmAssetTimingPanel()">✓</button>
+  </div>
   <div class="presence-scroll">
     <div class="presence-card">
       <div class="presence-heading">Tempo</div>
@@ -7789,8 +7794,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AG';
-const APP_VERSION_NAME = 'v8z4b32E9AG';
+const APP_VERSION = 'v8z4b32E9AH';
+const APP_VERSION_NAME = 'v8z4b32E9AH';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -15754,6 +15759,8 @@ function cloneAssetPresence(value) {
   normalizeAssetPresence(holder);
   return holder.presence;
 }
+let assetTimingDraft = null;
+let assetTimingDraftAssetId = null;
 
 function getTemporalPresenceContext(context) {
   const source = context && typeof context === 'object'
@@ -16205,7 +16212,8 @@ function syncAssetTimingPanel() {
   const useDefaultBtn = document.getElementById('assetTimingUseProjectDefault');
   const entryEnabled = document.getElementById('assetTimingEntryEnabled');
   const exitEnabled = document.getElementById('assetTimingExitEnabled');
-  const rawPresence = asset ? cloneAssetPresence(asset.presence) : { mode: 'inherit' };
+  const usesDraft = asset && assetTimingDraft && String(asset.id) === String(assetTimingDraftAssetId);
+  const rawPresence = usesDraft ? cloneAssetPresence(assetTimingDraft) : asset ? cloneAssetPresence(asset.presence) : { mode: 'inherit' };
   const ownPresence = rawPresence && rawPresence.mode === 'custom' ? rawPresence : { mode: 'inherit' };
   if (useDefaultBtn) useDefaultBtn.disabled = !asset || ownPresence.mode !== 'custom';
   if (entryEnabled) entryEnabled.checked = !!ownPresence.entry;
@@ -16217,15 +16225,17 @@ function syncAssetTimingPanel() {
 function ensureSelectedAssetPresenceForEditing(boundaryKey) {
   const asset = getSelectedAsset();
   if (!asset) return null;
-  const presence = cloneAssetPresence(asset.presence);
-  presence.mode = 'custom';
-  if (!presence[boundaryKey]) {
+  if (!assetTimingDraft || String(asset.id) !== String(assetTimingDraftAssetId)) {
+    assetTimingDraft = cloneAssetPresence(asset.presence);
+    assetTimingDraftAssetId = String(asset.id);
+  }
+  assetTimingDraft.mode = 'custom';
+  if (!assetTimingDraft[boundaryKey]) {
     const defaults = normalizeProjectAssetPresenceDefaults(projectAssetPresenceDefaults);
-    presence[boundaryKey] = cloneProjectPresenceBoundaryForAsset(defaults[boundaryKey], String(asset.id), getCurrentTemporalPresenceContext())
+    assetTimingDraft[boundaryKey] = cloneProjectPresenceBoundaryForAsset(defaults[boundaryKey], String(asset.id), getCurrentTemporalPresenceContext())
       || createTemporalBoundaryTemplate('project', String(asset.id), boundaryKey);
   }
-  asset.presence = presence;
-  return asset;
+  return { id: asset.id, presence: assetTimingDraft };
 }
 
 function toggleProjectPresenceBoundary(boundaryKey, enabled) {
@@ -16295,84 +16305,83 @@ function openAssetTimingPanel() {
   closeAssetContextPanel();
   closeAll();
   assetContextPanelKind = 'timing';
+  assetTimingDraftAssetId = String(asset.id);
+  assetTimingDraft = cloneAssetPresence(asset.presence);
   const panel = document.getElementById('assetTimingPanel');
   if (panel) { panel.style.display = 'flex'; panel.style.pointerEvents = 'auto'; panel.classList.add('show'); }
   document.body.classList.add('asset-context-panel-open');
+  document.body.classList.add('asset-timing-sheet-open');
   syncAssetTimingPanel();
+}
+
+function cancelAssetTimingPanel() { closeAssetContextPanel(); }
+function confirmAssetTimingPanel() {
+  const asset = getSelectedAsset();
+  const draft = asset && assetTimingDraft && String(asset.id) === String(assetTimingDraftAssetId)
+    ? cloneAssetPresence(assetTimingDraft)
+    : null;
+  if (!asset || !draft) { closeAssetContextPanel(); return; }
+  applyTemporalPresenceMutation('asset-timing-confirm', function() { asset.presence = draft; });
+  closeAssetContextPanel();
 }
 
 function resetSelectedAssetPresenceToProjectDefault() {
   const asset = getSelectedAsset();
   if (!asset) return;
-  applyTemporalPresenceMutation('asset-timing-reset', function() {
-    asset.presence = { mode: 'inherit' };
-  });
+  assetTimingDraftAssetId = String(asset.id);
+  assetTimingDraft = { mode: 'inherit' };
+  syncAssetTimingPanel();
 }
 
 function toggleSelectedAssetPresenceBoundary(boundaryKey, enabled) {
-  const asset = getSelectedAsset();
-  if (!asset) return;
-  applyTemporalPresenceMutation('asset-timing-boundary', function() {
-    const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
-    if (!workingAsset) return;
-    if (enabled) workingAsset.presence[boundaryKey] = workingAsset.presence[boundaryKey] || createTemporalBoundaryTemplate('project', String(workingAsset.id), boundaryKey);
-    else delete workingAsset.presence[boundaryKey];
-  });
+  const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
+  if (!workingAsset) return;
+  if (enabled) workingAsset.presence[boundaryKey] = workingAsset.presence[boundaryKey] || createTemporalBoundaryTemplate('project', String(workingAsset.id), boundaryKey);
+  else delete workingAsset.presence[boundaryKey];
+  syncAssetTimingPanel();
 }
 function updateSelectedAssetPresenceAnchor(boundaryKey) {
-  const asset = getSelectedAsset();
   const select = document.getElementById('assetTiming' + capitalize(boundaryKey) + 'Anchor');
-  if (!asset || !select) return;
-  applyTemporalPresenceMutation('asset-timing-anchor', function() {
-    const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
-    if (!workingAsset) return;
-    const current = workingAsset.presence[boundaryKey];
-    const next = createTemporalBoundaryTemplate(select.value, String(workingAsset.id), boundaryKey) || current;
-    if (current && current.offset) next.offset = { ...current.offset };
-    workingAsset.presence[boundaryKey] = next;
-  });
+  const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
+  if (!workingAsset || !select) return;
+  const current = workingAsset.presence[boundaryKey];
+  const next = createTemporalBoundaryTemplate(select.value, String(workingAsset.id), boundaryKey) || current;
+  if (current && current.offset) next.offset = { ...current.offset };
+  workingAsset.presence[boundaryKey] = next;
+  syncAssetTimingPanel();
 }
 function updateSelectedAssetPresenceTarget(boundaryKey) {
-  const asset = getSelectedAsset();
   const target = document.getElementById('assetTiming' + capitalize(boundaryKey) + 'Target');
-  if (!asset || !target) return;
-  applyTemporalPresenceMutation('asset-timing-target', function() {
-    const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
-    if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
-    const nextTargetId = target.value || undefined;
-    if (workingAsset.presence[boundaryKey].anchor === 'asset' && nextTargetId && wouldPresenceBoundaryCreateCycle(String(workingAsset.id), boundaryKey, nextTargetId)) {
-      return;
-    }
-    workingAsset.presence[boundaryKey].anchorId = nextTargetId;
-  });
+  const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
+  if (!workingAsset || !workingAsset.presence[boundaryKey] || !target) return;
+  const nextTargetId = target.value || undefined;
+  if (workingAsset.presence[boundaryKey].anchor === 'asset' && nextTargetId && wouldPresenceBoundaryCreateCycle(String(workingAsset.id), boundaryKey, nextTargetId)) return;
+  workingAsset.presence[boundaryKey].anchorId = nextTargetId;
   syncAssetTimingPanel();
 }
 function updateSelectedAssetPresenceAssetEvent(boundaryKey) {
   const eventSelect = document.getElementById('assetTiming' + capitalize(boundaryKey) + 'AssetEvent');
-  applyTemporalPresenceMutation('asset-timing-event', function() {
-    const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
-    if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
-    workingAsset.presence[boundaryKey].assetEvent = eventSelect && eventSelect.value === 'exit' ? 'exit' : 'entry';
-  });
+  const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
+  if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
+  workingAsset.presence[boundaryKey].assetEvent = eventSelect && eventSelect.value === 'exit' ? 'exit' : 'entry';
+  syncAssetTimingPanel();
 }
 function updateSelectedAssetPresenceOffsetUnit(boundaryKey) {
   const unitSelect = document.getElementById('assetTiming' + capitalize(boundaryKey) + 'OffsetUnit');
-  applyTemporalPresenceMutation('asset-timing-offset-unit', function() {
-    const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
-    if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
-    if (!workingAsset.presence[boundaryKey].offset) workingAsset.presence[boundaryKey].offset = { unit: 'seconds', value: 0 };
-    workingAsset.presence[boundaryKey].offset.unit = unitSelect && unitSelect.value === 'projectFraction' ? 'projectFraction' : 'seconds';
-  });
+  const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
+  if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
+  if (!workingAsset.presence[boundaryKey].offset) workingAsset.presence[boundaryKey].offset = { unit: 'seconds', value: 0 };
+  workingAsset.presence[boundaryKey].offset.unit = unitSelect && unitSelect.value === 'projectFraction' ? 'projectFraction' : 'seconds';
+  syncAssetTimingPanel();
 }
 function previewSelectedAssetPresenceOffsetValue() {}
 function commitSelectedAssetPresenceOffsetValue(boundaryKey, rawValue) {
   const value = Number(rawValue);
-  applyTemporalPresenceMutation('asset-timing-offset-value', function() {
-    const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
-    if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
-    if (!workingAsset.presence[boundaryKey].offset) workingAsset.presence[boundaryKey].offset = { unit: 'seconds', value: 0 };
-    workingAsset.presence[boundaryKey].offset.value = Number.isFinite(value) ? value : 0;
-  });
+  const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
+  if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
+  if (!workingAsset.presence[boundaryKey].offset) workingAsset.presence[boundaryKey].offset = { unit: 'seconds', value: 0 };
+  workingAsset.presence[boundaryKey].offset.value = Number.isFinite(value) ? value : 0;
+  syncAssetTimingPanel();
 }
 function commitSelectedAssetPresenceOffsetKeydown(event, boundaryKey) {
   if (!event || event.key !== 'Enter') return;
@@ -17127,12 +17136,17 @@ function syncAssetContextPanel() {
 function syncAssetDepthPanel() { syncAssetContextPanel(); }
 function closeAssetContextPanel() {
   commitAssetContextGesture();
+  if (assetContextPanelKind === 'timing') {
+    assetTimingDraft = null;
+    assetTimingDraftAssetId = null;
+  }
   assetContextPanelKind = 'none';
   const panel = document.getElementById('assetContextPanel');
   if (panel) { panel.classList.remove('show'); panel.style.display = 'none'; panel.style.pointerEvents = 'none'; }
   const timingPanel = document.getElementById('assetTimingPanel');
   if (timingPanel) { timingPanel.classList.remove('show'); timingPanel.style.display = 'none'; timingPanel.style.pointerEvents = 'none'; }
   document.body.classList.remove('asset-context-panel-open');
+  document.body.classList.remove('asset-timing-sheet-open');
 }
 function openAssetContextPanel(kind) {
   if (!isAssetsMode() || !getSelectedAsset()) { showStatus('Selecione uma imagem primeiro.'); return; }
