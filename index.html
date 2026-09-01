@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E9AH — base v8z4b32E9AG. fix(asset-timing-sheet): o painel Tempo do ativo deixa de herdar a altura compacta do contexto e passa a ser uma folha própria, alta e rolável, ancorada na borda inferior. As edições agora são um rascunho: × descarta e ✓ confirma em uma única operação de histórico/autosave, sem perder a seleção. NÃO TOCADO: resolvedor temporal, getStateAtT, câmera, WebCodecs, Preview, Export, geometria do ProjectWorld, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AH. -->
+<!-- Arco Motion App — v8z4b32E9AL — base v8z4b32E9AK. fix(asset-temporal-presence): a duração temporal da presença passa a incluir o trecho de fechamento quando Loop está ativo, no estado ao vivo e no snapshot congelado de Preview/Export. Assim, ativos sem saída explícita permanecem presentes durante o retorno N→1. NÃO TOCADO: getStateAtT, câmera, WebCodecs, geometria do ProjectWorld, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AL. -->
 <!-- Arco Motion App — v8z4b32E9AG — base v8z4b32E9AF. feat(assets): Presença Temporal de Ativos para imagem e texto, com Entrada/Saída opcionais ancoradas em projeto, frameId estável ou evento de outro ativo; padrões globais ficam em Edição do projeto e overrides no painel Animação do ativo. No Stage, ativos fora do intervalo permanecem como referência editorial suavizada/tracejada e continuam selecionáveis/editáveis; Preview e Export usam o mesmo resolvedor canônico em tempo de projeto para omiti-los do render, sem DOM. Exclusão de âncora referenciada exige confirmação e converte dependentes para tempo absoluto resolvido, preservando Undo. NÃO TOCADO: getStateAtT, câmera, WebCodecs, matemática de curvas/easing, ProjectWorld geométrico, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AG. -->
 <!-- Arco Motion App — v8z4b32E9AF — base v8z4b32E9AE. fix(editor-pan): com a mão ativa, um dedo arrasta a vista inclusive no zoom dinâmico abaixo ou igual a 100%, sem selecionar nem mover o Ativo sob o toque. Pinça e pan de dois dedos permanecem no caminho existente. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, geometria canônica e transformação de ativos/frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AF. -->
 <!-- Arco Motion App — v8z4b32E9AE — base v8z4b32E9AD. fix(editor-zoom): os botões −/+ passam a avançar e recuar incrementalmente também entre o mínimo dinâmico e 100%, sem tratar zoom sub-100 como reset. O pan existente é preservado e limitado pelos clamps canônicos; somente tocar no rótulo do zoom continua resetando explicitamente para 100% e pan zero. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, assets e geometria canônica. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AE. -->
@@ -2300,11 +2300,12 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .lower-add-pill:active{filter:brightness(.92);}
 .lower-add-pill svg{width:34px;height:34px;display:block;stroke-width:3.4;}
 .lower-add-pill .select-all-icon{display:none;}
-.lower-times{display:flex;align-items:center;gap:0;overflow-x:hidden;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;width:100%;height:100%;padding:0 calc(50% - 18px);box-sizing:border-box;scroll-behavior:auto;pointer-events:none;}
+.lower-times{display:flex;align-items:center;gap:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;width:100%;height:100%;padding:0 calc(50% - 18px);box-sizing:border-box;scroll-behavior:auto;pointer-events:none;}
 .lower-times::-webkit-scrollbar{display:none;}
 .lower-time-chip{flex:0 0 auto;text-align:center;font-size:10px;font-weight:500;color:#b2b2b2;line-height:1;border-radius:999px;padding:2px 0;background:transparent;}
 .lower-time-chip.pause{width:36px;color:#b2b2b2;}
 .lower-time-chip.segment{width:24px;color:#b2b2b2;font-weight:500;}
+.lower-time-chip.timeline-end-spacer{width:24px;visibility:hidden;}
 .lower-time-chip.active{color:var(--accent);font-weight:500;}
 .lower-timeline-slot{position:relative;overflow:visible;--lower-timeline-center-x:50%;}
 .lower-timeline-slot::before,.lower-timeline-slot::after{content:"";position:absolute;left:var(--lower-timeline-center-x);transform:translateX(-50%);z-index:2;pointer-events:none;width:6px;height:6px;border:0;border-radius:50%;background:rgba(255,176,0,.82);}
@@ -4471,6 +4472,9 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <div class="tb-item ctx-only ctx-asset" id="tbAssetDepth" onclick="openAssetDepthPanel()">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-layers"></use></svg><span class="tb-lbl">Profundidade</span>
   </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetTiming" onclick="openAssetTimingPanel()">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-clock"></use></svg><span class="tb-lbl">Tempo</span>
+  </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetCopy" onclick="copySelectedAssetToClipboard()" aria-label="Copiar ativo">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-copy"></use></svg><span class="tb-lbl">Copiar</span>
   </div>
@@ -4482,9 +4486,6 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetBackward" onclick="isAssetsMode()?sendSelectedAssetBackward():null">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-send-backward"></use></svg><span class="tb-lbl">Trás</span>
-  </div>
-  <div class="tb-item ctx-only ctx-asset" id="tbAssetTiming" onclick="openAssetTimingPanel()">
-    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-clock"></use></svg><span class="tb-lbl">Tempo</span>
   </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetDelete" onclick="isAssetsMode()&&getSelectedAsset()?deleteSelectedAsset():showStatus('Selecione uma imagem primeiro.')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-trash"></use></svg><span class="tb-lbl">Excluir</span>
@@ -4551,52 +4552,26 @@ body.asset-context-panel-open #toolbar{display:none !important;}
             </select>
           </div>
           <div class="presence-inline-row">
-            <label for="assetTimingEntryOffsetUnit">Medida</label>
-            <select id="assetTimingEntryOffsetUnit" class="presence-select" onchange="updateSelectedAssetPresenceOffsetUnit('entry')">
-              <option value="seconds">Segundos</option>
-              <option value="projectFraction">Proporção do projeto</option>
+            <label for="assetTimingEntryOffsetDirection">Em relação</label>
+            <select id="assetTimingEntryOffsetDirection" class="presence-select" onchange="updateSelectedAssetPresenceOffsetDirection('entry')">
+              <option value="before">Antes</option>
+              <option value="after">Depois</option>
             </select>
           </div>
           <div class="presence-inline-row">
-            <label for="assetTimingEntryOffsetValue">Valor</label>
-            <input type="number" id="assetTimingEntryOffsetValue" class="presence-number" step="0.1" value="0" oninput="previewSelectedAssetPresenceOffsetValue('entry', this.value)" onchange="commitSelectedAssetPresenceOffsetValue('entry', this.value)" onkeydown="commitSelectedAssetPresenceOffsetKeydown(event, 'entry')">
+            <label for="assetTimingEntryOffsetValue">Quanto</label>
+            <input type="number" id="assetTimingEntryOffsetValue" class="presence-number" min="0" step="0.1" value="0" oninput="previewSelectedAssetPresenceOffsetValue('entry', this.value)" onchange="commitSelectedAssetPresenceOffsetValue('entry', this.value)" onkeydown="commitSelectedAssetPresenceOffsetKeydown(event, 'entry')">
           </div>
         </div>
       </div>
       <div class="presence-boundary">
         <div class="presence-boundary-toggle">
-          <label for="assetTimingExitEnabled"><input type="checkbox" id="assetTimingExitEnabled" onchange="toggleSelectedAssetPresenceBoundary('exit', this.checked)">Saída</label>
+          <label for="assetTimingDurationEnabled"><input type="checkbox" id="assetTimingDurationEnabled" onchange="toggleSelectedAssetPresenceDuration(this.checked)">Tempo de permanência</label>
         </div>
-        <div id="assetTimingExitFields" class="presence-boundary-fields">
+        <div id="assetTimingDurationFields" class="presence-boundary-fields">
           <div class="presence-inline-row">
-            <label for="assetTimingExitAnchor">Referência</label>
-            <select id="assetTimingExitAnchor" class="presence-select" onchange="updateSelectedAssetPresenceAnchor('exit')">
-              <option value="project">Projeto</option>
-              <option value="frame">Frame</option>
-              <option value="asset">Ativo</option>
-            </select>
-          </div>
-          <div class="presence-inline-row">
-            <label for="assetTimingExitTarget">Alvo</label>
-            <select id="assetTimingExitTarget" class="presence-select" onchange="updateSelectedAssetPresenceTarget('exit')"></select>
-          </div>
-          <div class="presence-inline-row">
-            <label for="assetTimingExitAssetEvent">Evento</label>
-            <select id="assetTimingExitAssetEvent" class="presence-select" onchange="updateSelectedAssetPresenceAssetEvent('exit')">
-              <option value="entry">Entrada</option>
-              <option value="exit">Saída</option>
-            </select>
-          </div>
-          <div class="presence-inline-row">
-            <label for="assetTimingExitOffsetUnit">Medida</label>
-            <select id="assetTimingExitOffsetUnit" class="presence-select" onchange="updateSelectedAssetPresenceOffsetUnit('exit')">
-              <option value="seconds">Segundos</option>
-              <option value="projectFraction">Proporção do projeto</option>
-            </select>
-          </div>
-          <div class="presence-inline-row">
-            <label for="assetTimingExitOffsetValue">Valor</label>
-            <input type="number" id="assetTimingExitOffsetValue" class="presence-number" step="0.1" value="0" oninput="previewSelectedAssetPresenceOffsetValue('exit', this.value)" onchange="commitSelectedAssetPresenceOffsetValue('exit', this.value)" onkeydown="commitSelectedAssetPresenceOffsetKeydown(event, 'exit')">
+            <label for="assetTimingDurationValue">Duração</label>
+            <input type="number" id="assetTimingDurationValue" class="presence-number" min="0" step="0.1" value="0" onchange="commitSelectedAssetPresenceDurationValue(this.value)" onkeydown="commitSelectedAssetPresenceDurationKeydown(event)">
           </div>
         </div>
       </div>
@@ -5591,52 +5566,26 @@ body.asset-context-panel-open #toolbar{display:none !important;}
               </select>
             </div>
             <div class="presence-inline-row">
-              <label for="projectPresenceEntryOffsetUnit">Medida</label>
-              <select id="projectPresenceEntryOffsetUnit" class="presence-select" onchange="updateProjectPresenceOffsetUnit('entry')">
-                <option value="seconds">Segundos</option>
-                <option value="projectFraction">Proporção do projeto</option>
+              <label for="projectPresenceEntryOffsetDirection">Em relação</label>
+              <select id="projectPresenceEntryOffsetDirection" class="presence-select" onchange="updateProjectPresenceOffsetDirection('entry')">
+                <option value="before">Antes</option>
+                <option value="after">Depois</option>
               </select>
             </div>
             <div class="presence-inline-row">
-              <label for="projectPresenceEntryOffsetValue">Valor</label>
-              <input type="number" id="projectPresenceEntryOffsetValue" class="presence-number" step="0.1" value="0" oninput="previewProjectPresenceOffsetValue('entry', this.value)" onchange="commitProjectPresenceOffsetValue('entry', this.value)" onkeydown="commitProjectPresenceOffsetKeydown(event, 'entry')">
+              <label for="projectPresenceEntryOffsetValue">Quanto</label>
+              <input type="number" id="projectPresenceEntryOffsetValue" class="presence-number" min="0" step="0.1" value="0" oninput="previewProjectPresenceOffsetValue('entry', this.value)" onchange="commitProjectPresenceOffsetValue('entry', this.value)" onkeydown="commitProjectPresenceOffsetKeydown(event, 'entry')">
             </div>
           </div>
         </div>
         <div class="presence-boundary">
           <div class="presence-boundary-toggle">
-            <label for="projectPresenceExitEnabled"><input type="checkbox" id="projectPresenceExitEnabled" onchange="toggleProjectPresenceBoundary('exit', this.checked)">Saída</label>
+            <label for="projectPresenceDurationEnabled"><input type="checkbox" id="projectPresenceDurationEnabled" onchange="toggleProjectPresenceDuration(this.checked)">Tempo de permanência</label>
           </div>
-          <div id="projectPresenceExitFields" class="presence-boundary-fields">
+          <div id="projectPresenceDurationFields" class="presence-boundary-fields">
             <div class="presence-inline-row">
-              <label for="projectPresenceExitAnchor">Referência</label>
-              <select id="projectPresenceExitAnchor" class="presence-select" onchange="updateProjectPresenceAnchor('exit')">
-                <option value="project">Projeto</option>
-                <option value="frame">Frame</option>
-                <option value="asset">Ativo</option>
-              </select>
-            </div>
-            <div class="presence-inline-row">
-              <label for="projectPresenceExitTarget">Alvo</label>
-              <select id="projectPresenceExitTarget" class="presence-select" onchange="updateProjectPresenceTarget('exit')"></select>
-            </div>
-            <div class="presence-inline-row">
-              <label for="projectPresenceExitAssetEvent">Evento</label>
-              <select id="projectPresenceExitAssetEvent" class="presence-select" onchange="updateProjectPresenceAssetEvent('exit')">
-                <option value="entry">Entrada</option>
-                <option value="exit">Saída</option>
-              </select>
-            </div>
-            <div class="presence-inline-row">
-              <label for="projectPresenceExitOffsetUnit">Medida</label>
-              <select id="projectPresenceExitOffsetUnit" class="presence-select" onchange="updateProjectPresenceOffsetUnit('exit')">
-                <option value="seconds">Segundos</option>
-                <option value="projectFraction">Proporção do projeto</option>
-              </select>
-            </div>
-            <div class="presence-inline-row">
-              <label for="projectPresenceExitOffsetValue">Valor</label>
-              <input type="number" id="projectPresenceExitOffsetValue" class="presence-number" step="0.1" value="0" oninput="previewProjectPresenceOffsetValue('exit', this.value)" onchange="commitProjectPresenceOffsetValue('exit', this.value)" onkeydown="commitProjectPresenceOffsetKeydown(event, 'exit')">
+              <label for="projectPresenceDurationValue">Duração</label>
+              <input type="number" id="projectPresenceDurationValue" class="presence-number" min="0" step="0.1" value="0" onchange="commitProjectPresenceDurationValue(this.value)" onkeydown="commitProjectPresenceDurationKeydown(event)">
             </div>
           </div>
         </div>
@@ -7794,8 +7743,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AH';
-const APP_VERSION_NAME = 'v8z4b32E9AH';
+const APP_VERSION = 'v8z4b32E9AL';
+const APP_VERSION_NAME = 'v8z4b32E9AL';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -15731,11 +15680,19 @@ function normalizeTemporalBoundary(value) {
   };
 }
 
+function normalizeTemporalDuration(value) {
+  if (!value || typeof value !== 'object') return null;
+  const rawValue = Number(value.value);
+  if (!Number.isFinite(rawValue) || rawValue < 0) return null;
+  return { unit: value.unit === 'projectFraction' ? 'projectFraction' : 'seconds', value: rawValue };
+}
+
 function normalizeProjectAssetPresenceDefaults(value) {
   const raw = value && typeof value === 'object' ? value : {};
   return {
     mode: 'custom',
     ...(normalizeTemporalBoundary(raw.entry) ? { entry: normalizeTemporalBoundary(raw.entry) } : {}),
+    ...(normalizeTemporalDuration(raw.duration) ? { duration: normalizeTemporalDuration(raw.duration) } : {}),
     ...(normalizeTemporalBoundary(raw.exit) ? { exit: normalizeTemporalBoundary(raw.exit) } : {})
   };
 }
@@ -15745,10 +15702,12 @@ function normalizeAssetPresence(asset) {
   const raw = asset.presence && typeof asset.presence === 'object' ? asset.presence : {};
   const mode = raw.mode === 'custom' ? 'custom' : 'inherit';
   const entry = normalizeTemporalBoundary(raw.entry);
+  const duration = normalizeTemporalDuration(raw.duration);
   const exit = normalizeTemporalBoundary(raw.exit);
   asset.presence = {
     mode,
     ...(entry ? { entry } : {}),
+    ...(duration ? { duration } : {}),
     ...(exit ? { exit } : {})
   };
   return asset;
@@ -15765,14 +15724,16 @@ let assetTimingDraftAssetId = null;
 function getTemporalPresenceContext(context) {
   const source = context && typeof context === 'object'
     ? context
-    : { projectAssetPresenceDefaults };
+    : { projectAssetPresenceDefaults, loopEnabled, loopDuration };
   const contextFrames = Array.isArray(source.frames) ? source.frames : frames;
   const contextFrameCount = Number.isInteger(source.frameCount) ? source.frameCount : frameCount;
   const count = Math.max(0, Math.min(contextFrames.length, contextFrameCount));
   const contextSegments = Array.isArray(source.segDurations) ? source.segDurations : segDurations;
   const contextPauses = Array.isArray(source.framePauses) ? source.framePauses : framePauses;
   const contextAssets = Array.isArray(source.assets) ? source.assets : assets;
-  return { source, frames: contextFrames.slice(0, count), frameCount: count, segDurations: contextSegments, framePauses: contextPauses, assets: contextAssets };
+  const contextLoopEnabled = source.loopEnabled === true;
+  const contextLoopDuration = Number(source.loopDuration);
+  return { source, frames: contextFrames.slice(0, count), frameCount: count, segDurations: contextSegments, framePauses: contextPauses, assets: contextAssets, loopEnabled: contextLoopEnabled, loopDuration: contextLoopDuration };
 }
 
 function getTemporalProjectDuration(context) {
@@ -15786,6 +15747,9 @@ function getTemporalProjectDuration(context) {
     total += Number.isFinite(segment) && segment >= 0
       ? segment
       : 0;
+  }
+  if (state.loopEnabled && state.frameCount >= 2 && Number.isFinite(state.loopDuration) && state.loopDuration > 0) {
+    total += state.loopDuration;
   }
   return total;
 }
@@ -15845,14 +15809,16 @@ function resolveAssetPresenceAt(assetId, projectTime, context) {
   const ownPresence = {
     mode: rawPresence.mode === 'custom' ? 'custom' : 'inherit',
     entry: normalizeTemporalBoundary(rawPresence.entry),
+    duration: normalizeTemporalDuration(rawPresence.duration),
     exit: normalizeTemporalBoundary(rawPresence.exit)
   };
   const effective = ownPresence.mode === 'custom'
     ? ownPresence
     : {
-        mode: 'custom',
-        ...(defaults.entry ? { entry: cloneProjectPresenceBoundaryForAsset(defaults.entry, id, state.source) } : {}),
-        ...(defaults.exit ? { exit: cloneProjectPresenceBoundaryForAsset(defaults.exit, id, state.source) } : {})
+      mode: 'custom',
+      ...(defaults.entry ? { entry: cloneProjectPresenceBoundaryForAsset(defaults.entry, id, state.source) } : {}),
+      ...(defaults.duration ? { duration: normalizeTemporalDuration(defaults.duration) } : {}),
+      ...(defaults.exit ? { exit: cloneProjectPresenceBoundaryForAsset(defaults.exit, id, state.source) } : {})
       };
   const visiting = state.source.visitingAssetIds instanceof Set ? state.source.visitingAssetIds : new Set();
   if (visiting.has(id)) return { configured: !!(effective.entry || effective.exit), present: false, entryTime: null, exitTime: null, invalidReason: 'cycle' };
@@ -15867,7 +15833,13 @@ function resolveAssetPresenceAt(assetId, projectTime, context) {
     return Number.isFinite(time) ? { time, invalidReason: null } : { time: null, invalidReason: resolved.invalidReason || 'missing-reference' };
   };
   const entryResolved = effective.entry ? resolveTemporalBoundary(effective.entry, nestedContext) : { time: 0, invalidReason: null };
-  const exitResolved = effective.exit ? resolveTemporalBoundary(effective.exit, nestedContext) : { time: getTemporalProjectDuration(nestedContext), invalidReason: null };
+  const duration = normalizeTemporalDuration(effective.duration);
+  const durationSeconds = duration
+    ? (duration.unit === 'projectFraction' ? duration.value * getTemporalProjectDuration(nestedContext) : duration.value)
+    : null;
+  const exitResolved = Number.isFinite(durationSeconds)
+    ? { time: Number.isFinite(entryResolved.time) ? entryResolved.time + durationSeconds : null, invalidReason: Number.isFinite(entryResolved.time) ? null : entryResolved.invalidReason || 'invalid-entry' }
+    : (effective.exit ? resolveTemporalBoundary(effective.exit, nestedContext) : { time: getTemporalProjectDuration(nestedContext), invalidReason: null });
   visiting.delete(id);
   const invalidReason = entryResolved.invalidReason || exitResolved.invalidReason ||
     (Number.isFinite(entryResolved.time) && Number.isFinite(exitResolved.time) && entryResolved.time > exitResolved.time
@@ -15876,7 +15848,12 @@ function resolveAssetPresenceAt(assetId, projectTime, context) {
   const entryTime = entryResolved.time;
   const exitTime = exitResolved.time;
   const time = Number(projectTime);
-  const present = !invalidReason && Number.isFinite(time) && time >= entryTime && time < exitTime;
+  // A saída implícita é o próprio fim do projeto. O último Frame pode coincidir
+  // com esse instante (quando não há pausa final); nesse caso a Entrada ancorada
+  // nele deve ficar visível no Stage. Saídas configuradas continuam exclusivas.
+  const isImplicitProjectEnd = !effective.exit;
+  const present = !invalidReason && Number.isFinite(time) && time >= entryTime &&
+    (time < exitTime || (isImplicitProjectEnd && time === exitTime));
   return { configured: !!(effective.entry || effective.exit), present, entryTime, exitTime, invalidReason };
 }
 
@@ -15898,6 +15875,21 @@ function getStagePresenceProjectTime() {
   return Number.isFinite(time) ? time : 0;
 }
 
+// A troca de frame redesenha overlays por renderAll(), mas não precisa recriar
+// a pilha de assets. Atualiza somente a marca editorial de presença para que o
+// Stage não conserve a transparência calculada no frame anterior.
+function refreshStageTemporalReferencePresentation() {
+  if (typeof stageContent === 'undefined' || !stageContent || !Array.isArray(assets)) return;
+  const projectTime = getStagePresenceProjectTime();
+  stageContent.querySelectorAll('.world-extra-img[data-asset-id],.world-text-asset[data-asset-id]').forEach(function(element) {
+    const assetId = String(element.dataset.assetId || '');
+    const asset = assets.find(function(candidate) { return candidate && String(candidate.id) === assetId; });
+    const isReference = !!(asset && !isAssetPresentAt(asset.id, projectTime));
+    element.classList.toggle('asset-temporal-reference', isReference);
+    if (!isReference) element.classList.remove('asset-temporal-reference-selected');
+  });
+}
+
 function scaleAssetPresenceSeconds(factor) {
   const scale = Number(factor);
   if (scaleSecondsWithProjectDuration !== true || !Number.isFinite(scale) || scale < 0) return false;
@@ -15913,11 +15905,13 @@ function scaleAssetPresenceSeconds(factor) {
   };
   scaleBoundary(projectAssetPresenceDefaults && projectAssetPresenceDefaults.entry);
   scaleBoundary(projectAssetPresenceDefaults && projectAssetPresenceDefaults.exit);
+  scaleBoundary(projectAssetPresenceDefaults && projectAssetPresenceDefaults.duration ? { offset: projectAssetPresenceDefaults.duration } : null);
   assets.forEach(function(asset) {
     const presence = asset && asset.presence;
     if (!presence || typeof presence !== 'object') return;
     scaleBoundary(presence.entry);
     scaleBoundary(presence.exit);
+    scaleBoundary(presence.duration ? { offset: presence.duration } : null);
   });
   return changed;
 }
@@ -16017,6 +16011,7 @@ function cloneProjectPresenceDefaultsAsCustomPresence() {
   return {
     mode: 'custom',
     ...(defaults.entry ? { entry: normalizeTemporalBoundary(defaults.entry) } : {}),
+    ...(defaults.duration ? { duration: normalizeTemporalDuration(defaults.duration) } : {}),
     ...(defaults.exit ? { exit: normalizeTemporalBoundary(defaults.exit) } : {})
   };
 }
@@ -16034,6 +16029,8 @@ function cloneProjectPresenceBoundaryForAsset(boundary, assetId, context) {
         frameCount: frameCount,
         segDurations: segDurations,
         framePauses: framePauses,
+        loopEnabled: loopEnabled,
+        loopDuration: loopDuration,
         assets: assets,
         projectAssetPresenceDefaults: projectAssetPresenceDefaults
       });
@@ -16056,6 +16053,8 @@ function getCurrentTemporalPresenceContext() {
     frameCount: frameCount,
     segDurations: segDurations,
     framePauses: framePauses,
+    loopEnabled: loopEnabled,
+    loopDuration: loopDuration,
     assets: assets,
     projectAssetPresenceDefaults: projectAssetPresenceDefaults
   };
@@ -16113,6 +16112,8 @@ function wouldPresenceBoundaryCreateCycle(targetAssetId, boundaryKey, candidateA
       frameCount: frameCount,
       segDurations: segDurations,
       framePauses: framePauses,
+      loopEnabled: loopEnabled,
+      loopDuration: loopDuration,
       projectAssetPresenceDefaults: projectAssetPresenceDefaults
     });
     return resolved && (resolved.invalidReason === 'cycle' || resolved.invalidReason === 'self-reference');
@@ -16174,15 +16175,34 @@ function capitalize(value) {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
 }
 
+function getPresenceOffsetDirection(prefix, boundaryKey) {
+  const directionEl = document.getElementById(prefix + capitalize(boundaryKey) + 'OffsetDirection');
+  return directionEl && directionEl.value === 'before' ? 'before' : 'after';
+}
+
+function getSignedPresenceOffsetValue(prefix, boundaryKey, rawValue) {
+  const magnitude = Math.abs(Number(rawValue));
+  if (!Number.isFinite(magnitude)) return 0;
+  return getPresenceOffsetDirection(prefix, boundaryKey) === 'before' ? -magnitude : magnitude;
+}
+
+function getPresenceOffsetSecondsForEditor(boundary) {
+  const offset = boundary && boundary.offset ? boundary.offset : { unit: 'seconds', value: 0 };
+  const value = Number(offset.value);
+  if (!Number.isFinite(value)) return 0;
+  return offset.unit === 'projectFraction' ? value * getTemporalProjectDuration() : value;
+}
+
 function syncPresenceBoundaryFieldBlock(prefix, boundaryKey, boundary, ownerAssetId) {
   const fields = document.getElementById(prefix + capitalize(boundaryKey) + 'Fields');
   const anchorEl = document.getElementById(prefix + capitalize(boundaryKey) + 'Anchor');
   const targetEl = document.getElementById(prefix + capitalize(boundaryKey) + 'Target');
   const eventEl = document.getElementById(prefix + capitalize(boundaryKey) + 'AssetEvent');
-  const unitEl = document.getElementById(prefix + capitalize(boundaryKey) + 'OffsetUnit');
+  const directionEl = document.getElementById(prefix + capitalize(boundaryKey) + 'OffsetDirection');
   const valueEl = document.getElementById(prefix + capitalize(boundaryKey) + 'OffsetValue');
   const targetRow = targetEl ? targetEl.closest('.presence-inline-row') : null;
   const eventRow = eventEl ? eventEl.closest('.presence-inline-row') : null;
+  const directionRow = directionEl ? directionEl.closest('.presence-inline-row') : null;
   const enabled = !!boundary;
   if (fields) fields.classList.toggle('show', enabled);
   if (!enabled) return;
@@ -16190,36 +16210,45 @@ function syncPresenceBoundaryFieldBlock(prefix, boundaryKey, boundary, ownerAsse
   populatePresenceTargetSelect(prefix + capitalize(boundaryKey) + 'Target', boundary.anchor || 'project', boundary.anchorId || '', ownerAssetId, boundaryKey);
   if (targetRow) targetRow.style.display = boundary.anchor === 'project' ? 'none' : '';
   if (eventRow) eventRow.style.display = boundary.anchor === 'asset' ? '' : 'none';
+  if (directionRow) directionRow.style.display = boundary.anchor === 'project' ? 'none' : '';
   if (eventEl) eventEl.value = boundary.assetEvent === 'exit' ? 'exit' : 'entry';
-  if (unitEl) unitEl.value = boundary.offset && boundary.offset.unit === 'projectFraction' ? 'projectFraction' : 'seconds';
-  if (valueEl) valueEl.value = Number.isFinite(Number(boundary.offset && boundary.offset.value)) ? String(Number(boundary.offset.value)) : '0';
+  const offsetValue = getPresenceOffsetSecondsForEditor(boundary);
+  if (directionEl) directionEl.value = Number.isFinite(offsetValue) && offsetValue < 0 ? 'before' : 'after';
+  if (valueEl) valueEl.value = Number.isFinite(offsetValue) ? String(Math.abs(offsetValue)) : '0';
+}
+
+function syncPresenceDurationFieldBlock(prefix, duration) {
+  const fields = document.getElementById(prefix + 'DurationFields');
+  const valueEl = document.getElementById(prefix + 'DurationValue');
+  if (fields) fields.classList.toggle('show', !!duration);
+  if (valueEl) valueEl.value = duration ? String(Math.max(0, getPresenceOffsetSecondsForEditor({ offset: duration }))) : '0';
 }
 
 function syncProjectPresenceControls() {
   const defaults = normalizeProjectAssetPresenceDefaults(projectAssetPresenceDefaults);
   const entryEnabled = document.getElementById('projectPresenceEntryEnabled');
-  const exitEnabled = document.getElementById('projectPresenceExitEnabled');
+  const durationEnabled = document.getElementById('projectPresenceDurationEnabled');
   const scaleMode = document.getElementById('projectPresenceScaleSeconds');
   if (entryEnabled) entryEnabled.checked = !!defaults.entry;
-  if (exitEnabled) exitEnabled.checked = !!defaults.exit;
+  if (durationEnabled) durationEnabled.checked = !!defaults.duration;
   if (scaleMode) scaleMode.value = scaleSecondsWithProjectDuration === false ? 'fixed' : 'scale';
   syncPresenceBoundaryFieldBlock('projectPresence', 'entry', defaults.entry || null, null);
-  syncPresenceBoundaryFieldBlock('projectPresence', 'exit', defaults.exit || null, null);
+  syncPresenceDurationFieldBlock('projectPresence', defaults.duration || null);
 }
 
 function syncAssetTimingPanel() {
   const asset = getSelectedAsset();
   const useDefaultBtn = document.getElementById('assetTimingUseProjectDefault');
   const entryEnabled = document.getElementById('assetTimingEntryEnabled');
-  const exitEnabled = document.getElementById('assetTimingExitEnabled');
+  const durationEnabled = document.getElementById('assetTimingDurationEnabled');
   const usesDraft = asset && assetTimingDraft && String(asset.id) === String(assetTimingDraftAssetId);
   const rawPresence = usesDraft ? cloneAssetPresence(assetTimingDraft) : asset ? cloneAssetPresence(asset.presence) : { mode: 'inherit' };
   const ownPresence = rawPresence && rawPresence.mode === 'custom' ? rawPresence : { mode: 'inherit' };
   if (useDefaultBtn) useDefaultBtn.disabled = !asset || ownPresence.mode !== 'custom';
   if (entryEnabled) entryEnabled.checked = !!ownPresence.entry;
-  if (exitEnabled) exitEnabled.checked = !!ownPresence.exit;
+  if (durationEnabled) durationEnabled.checked = !!ownPresence.duration;
   syncPresenceBoundaryFieldBlock('assetTiming', 'entry', ownPresence.entry || null, asset ? String(asset.id) : '');
-  syncPresenceBoundaryFieldBlock('assetTiming', 'exit', ownPresence.exit || null, asset ? String(asset.id) : '');
+  syncPresenceDurationFieldBlock('assetTiming', ownPresence.duration || null);
 }
 
 function ensureSelectedAssetPresenceForEditing(boundaryKey) {
@@ -16243,6 +16272,22 @@ function toggleProjectPresenceBoundary(boundaryKey, enabled) {
     if (enabled) projectAssetPresenceDefaults[boundaryKey] = projectAssetPresenceDefaults[boundaryKey] || createTemporalBoundaryTemplate('project', null, boundaryKey);
     else delete projectAssetPresenceDefaults[boundaryKey];
   });
+}
+function toggleProjectPresenceDuration(enabled) {
+  applyTemporalPresenceMutation('project-presence-duration', function() {
+    if (enabled) projectAssetPresenceDefaults.duration = projectAssetPresenceDefaults.duration || { unit: 'seconds', value: 0 };
+    else delete projectAssetPresenceDefaults.duration;
+  });
+}
+function commitProjectPresenceDurationValue(rawValue) {
+  const value = Math.max(0, Number(rawValue) || 0);
+  applyTemporalPresenceMutation('project-presence-duration', function() { projectAssetPresenceDefaults.duration = { unit: 'seconds', value }; });
+}
+function commitProjectPresenceDurationKeydown(event) {
+  if (!event || event.key !== 'Enter') return;
+  event.preventDefault();
+  commitProjectPresenceDurationValue(event.currentTarget && event.currentTarget.value);
+  if (event.currentTarget && typeof event.currentTarget.blur === 'function') event.currentTarget.blur();
 }
 function toggleProjectPresenceScaleSeconds(value) {
   applyTemporalPresenceMutation('project-presence-scale-mode', function() {
@@ -16282,13 +16327,19 @@ function updateProjectPresenceOffsetUnit(boundaryKey) {
     projectAssetPresenceDefaults[boundaryKey].offset.unit = unitSelect && unitSelect.value === 'projectFraction' ? 'projectFraction' : 'seconds';
   });
 }
+function updateProjectPresenceOffsetDirection(boundaryKey) {
+  const boundary = projectAssetPresenceDefaults[boundaryKey];
+  if (!boundary || Math.abs(getPresenceOffsetSecondsForEditor(boundary)) < 0.000001) return;
+  applyTemporalPresenceMutation('project-presence-defaults', function() {
+    projectAssetPresenceDefaults[boundaryKey].offset = { unit: 'seconds', value: getSignedPresenceOffsetValue('projectPresence', boundaryKey, getPresenceOffsetSecondsForEditor(boundary)) };
+  });
+}
 function previewProjectPresenceOffsetValue() {}
 function commitProjectPresenceOffsetValue(boundaryKey, rawValue) {
-  const value = Number(rawValue);
   applyTemporalPresenceMutation('project-presence-defaults', function() {
     if (!projectAssetPresenceDefaults[boundaryKey]) return;
     if (!projectAssetPresenceDefaults[boundaryKey].offset) projectAssetPresenceDefaults[boundaryKey].offset = { unit: 'seconds', value: 0 };
-    projectAssetPresenceDefaults[boundaryKey].offset.value = Number.isFinite(value) ? value : 0;
+    projectAssetPresenceDefaults[boundaryKey].offset = { unit: 'seconds', value: getSignedPresenceOffsetValue('projectPresence', boundaryKey, rawValue) };
   });
 }
 function commitProjectPresenceOffsetKeydown(event, boundaryKey) {
@@ -16340,6 +16391,25 @@ function toggleSelectedAssetPresenceBoundary(boundaryKey, enabled) {
   else delete workingAsset.presence[boundaryKey];
   syncAssetTimingPanel();
 }
+function toggleSelectedAssetPresenceDuration(enabled) {
+  const workingAsset = ensureSelectedAssetPresenceForEditing('entry');
+  if (!workingAsset) return;
+  if (enabled) workingAsset.presence.duration = workingAsset.presence.duration || { unit: 'seconds', value: 0 };
+  else delete workingAsset.presence.duration;
+  syncAssetTimingPanel();
+}
+function commitSelectedAssetPresenceDurationValue(rawValue) {
+  const workingAsset = ensureSelectedAssetPresenceForEditing('entry');
+  if (!workingAsset) return;
+  workingAsset.presence.duration = { unit: 'seconds', value: Math.max(0, Number(rawValue) || 0) };
+  syncAssetTimingPanel();
+}
+function commitSelectedAssetPresenceDurationKeydown(event) {
+  if (!event || event.key !== 'Enter') return;
+  event.preventDefault();
+  commitSelectedAssetPresenceDurationValue(event.currentTarget && event.currentTarget.value);
+  if (event.currentTarget && typeof event.currentTarget.blur === 'function') event.currentTarget.blur();
+}
 function updateSelectedAssetPresenceAnchor(boundaryKey) {
   const select = document.getElementById('assetTiming' + capitalize(boundaryKey) + 'Anchor');
   const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
@@ -16374,13 +16444,20 @@ function updateSelectedAssetPresenceOffsetUnit(boundaryKey) {
   workingAsset.presence[boundaryKey].offset.unit = unitSelect && unitSelect.value === 'projectFraction' ? 'projectFraction' : 'seconds';
   syncAssetTimingPanel();
 }
+function updateSelectedAssetPresenceOffsetDirection(boundaryKey) {
+  const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
+  if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
+  const boundary = workingAsset.presence[boundaryKey];
+  if (Math.abs(getPresenceOffsetSecondsForEditor(boundary)) < 0.000001) return;
+  workingAsset.presence[boundaryKey].offset = { unit: 'seconds', value: getSignedPresenceOffsetValue('assetTiming', boundaryKey, getPresenceOffsetSecondsForEditor(boundary)) };
+  syncAssetTimingPanel();
+}
 function previewSelectedAssetPresenceOffsetValue() {}
 function commitSelectedAssetPresenceOffsetValue(boundaryKey, rawValue) {
-  const value = Number(rawValue);
   const workingAsset = ensureSelectedAssetPresenceForEditing(boundaryKey);
   if (!workingAsset || !workingAsset.presence[boundaryKey]) return;
   if (!workingAsset.presence[boundaryKey].offset) workingAsset.presence[boundaryKey].offset = { unit: 'seconds', value: 0 };
-  workingAsset.presence[boundaryKey].offset.value = Number.isFinite(value) ? value : 0;
+  workingAsset.presence[boundaryKey].offset = { unit: 'seconds', value: getSignedPresenceOffsetValue('assetTiming', boundaryKey, rawValue) };
   syncAssetTimingPanel();
 }
 function commitSelectedAssetPresenceOffsetKeydown(event, boundaryKey) {
@@ -16397,10 +16474,12 @@ function applyProjectPresenceDefaultsToAssets(mode) {
       if (!asset || (asset.type !== 'image' && asset.type !== 'text')) return;
       if (mode !== 'all' && asset.presence && asset.presence.mode === 'custom') return;
       const entry = cloneProjectPresenceBoundaryForAsset(nextPresence.entry, asset.id);
+      const duration = normalizeTemporalDuration(nextPresence.duration);
       const exit = cloneProjectPresenceBoundaryForAsset(nextPresence.exit, asset.id);
       asset.presence = {
         mode: 'custom',
         ...(entry ? { entry } : {}),
+        ...(duration ? { duration } : {}),
         ...(exit ? { exit } : {})
       };
     });
@@ -19206,7 +19285,12 @@ function getLowerTimelineCanonicalAxisX() {
   const pillsEl = document.getElementById('pillsRow');
   if (!pillsEl || !pillsEl.getBoundingClientRect) return null;
   const rect = pillsEl.getBoundingClientRect();
-  return rect.left + rect.width / 2;
+  // A centralização da timeline usa a área rolável interna. Em WebKit, a
+  // largura visual da pill row ainda inclui o inset esquerdo do slot; usar
+  // rect.width deixava os marcadores 5 px à direita do centro das pills.
+  const host = pillsEl.closest('.lower-main');
+  const insetLeft = host ? (parseFloat(getComputedStyle(host).paddingLeft) || 0) : 0;
+  return rect.left + pillsEl.clientWidth / 2 - insetLeft;
 }
 function syncLowerTimelineCenterMarkers() {
   const slotEl = document.querySelector('.lower-timeline-slot');
@@ -19540,6 +19624,15 @@ function updateLowerTimelineMeta() {
       pause.className = 'lower-time-chip pause' + (i === getTimelineStageFocusIndex() ? ' active' : '');
       pause.textContent = formatLowerTimeValue(framePauses[i]?.duration || 0, false);
       timesEl.appendChild(pause);
+    }
+    // O trecho de fechamento cria uma ease pill depois do último Frame. O
+    // espaçador equivalente mantém a largura/scroll da faixa de tempos igual
+    // à da timeline, inclusive quando o último Frame está centralizado.
+    if (loopEnabled && frameCount >= 2) {
+      const endSpacer = document.createElement('span');
+      endSpacer.className = 'lower-time-chip timeline-end-spacer';
+      endSpacer.setAttribute('aria-hidden', 'true');
+      timesEl.appendChild(endSpacer);
     }
     const pillsEl = document.getElementById('pillsRow');
     if (pillsEl) timesEl.scrollLeft = pillsEl.scrollLeft;
@@ -22069,6 +22162,7 @@ function renderAll() {
   updateDimOverlay();
 
   // v8z4b30ZJ — manter o contorno de seleção alinhado ao novo transform/Stage.
+  refreshStageTemporalReferencePresentation();
   renderAssetSelectionOverlay();
   if (typeof refreshAssetStageVisualGeometry === 'function') {
     refreshAssetStageVisualGeometry('active-frame-geometry-change');
@@ -35454,6 +35548,8 @@ async function prepareRenderSessionSnapshot(kind) {
       frameCount,
       segDurations: snapshotSegDurations,
       framePauses: snapshotFramePauses,
+      loopEnabled: loopEnabled === true,
+      loopDuration: Number(loopDuration),
       projectAssetPresenceDefaults: snapshotDefaults,
       assetPresenceDefaults: snapshotDefaults,
       scaleSecondsWithProjectDuration: scaleSecondsWithProjectDuration === true,
@@ -35607,6 +35703,8 @@ function buildRenderSessionTemporalPresenceContext(snapshot) {
       : (Array.isArray(snapshot.frames) ? snapshot.frames.length : 0),
     segDurations: Array.isArray(snapshot.segDurations) ? snapshot.segDurations : [],
     framePauses: Array.isArray(snapshot.framePauses) ? snapshot.framePauses : [],
+    loopEnabled: snapshot.loopEnabled === true,
+    loopDuration: Number(snapshot.loopDuration),
     assets: imageAssets.concat(textAssets),
     projectAssetPresenceDefaults: normalizeProjectAssetPresenceDefaults(snapshot.projectAssetPresenceDefaults || snapshot.assetPresenceDefaults),
     assetPresenceDefaults: normalizeProjectAssetPresenceDefaults(snapshot.assetPresenceDefaults || snapshot.projectAssetPresenceDefaults),
@@ -39969,6 +40067,8 @@ function buildDiagnosticsText() {
           frameCount,
           segDurations,
           framePauses,
+          loopEnabled,
+          loopDuration,
           assets,
           projectAssetPresenceDefaults,
           assetPresenceDefaults: projectAssetPresenceDefaults

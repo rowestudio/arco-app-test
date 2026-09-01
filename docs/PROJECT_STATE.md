@@ -1,10 +1,29 @@
 # PROJECT_STATE
 
-## Atualização 2026-09-01 — OPS-05 em preparação: preview público por PR
+## Atualização 2026-09-01 — OPS-05: preview público por PR
 
-- A publicação atual do GitHub Pages usa `main` e não oferece URL isolada por Pull Request. A PR operacional OPS-05 introduz publicação estática em `gh-pages`: raiz para `main` e `previews/pr-<n>/` para cada PR interna.
-- O fluxo previsto é PR aberta → preview com stamp do SHA → validação física de Roberto no iPhone/Safari → correções na mesma PR/mesmo URL → merge somente após aprovação. A PR funcional #551 permanece aberta enquanto a infraestrutura não estiver ativa.
-- A configuração da origem do Pages para `gh-pages` e o primeiro dispatch da #551 só ocorrem depois de a PR operacional ser revisada e mergeada; produção permanece intocada.
+- A OPS-05 está mergeada e publica estáticos em `gh-pages`: raiz para `main` e `previews/pr-<n>/` para cada PR interna.
+- O fluxo ativo é PR aberta → preview com stamp do SHA → validação física de Roberto no iPhone/Safari → correções na mesma PR/mesmo URL → merge somente após aprovação. A PR #551 usa essa infraestrutura.
+- A origem do Pages está configurada para `gh-pages`; produção permanece intocada.
+
+## Atualização 2026-09-01 — v8z4b32E9AL: presença temporal no retorno do Loop
+
+- O Preview/Export usam a mesma duração temporal da presença de ativos inclusive durante o trecho de fechamento N→1 do Loop. Antes, o relógio de render incluía esse segundo trecho, mas o resolvedor encerrava ativos herdados no último Frame normal e os omitía durante o retorno.
+- O estado ao vivo e o snapshot congelado de render carregam `loopEnabled` e `loopDuration`, evitando que uma alteração posterior do projeto reinterprete a presença durante Preview/Export.
+- QA automatizado WebKit: o novo caso E9AL reproduz o ativo omitido no trecho do loop antes da correção e verifica que ele segue incluído depois. Validação física iPhone/Safari permanece necessária antes de merge.
+
+## Atualização 2026-09-01 — v8z4b32E9AK em desenvolvimento: tempo de ativo contextual
+
+- Na toolbar de Ativos, **Tempo** passa a seguir imediatamente **Profundidade**. Excluir continua a última ação.
+- Em presença temporal, **Antes/Depois** só é oferecido quando a Entrada usa referência móvel (Frame ou Ativo). A referência Projeto é um instante absoluto e não apresenta direção redundante.
+- QA local: smoke WebKit dedicado E9AK passou; validação física no preview da PR #551 continua necessária antes de merge.
+
+## Atualização 2026-09-01 — E9AJ: permanência temporal derivada da Entrada
+
+- A saída independente deixa de ser oferecida para novos ajustes de presença temporal. O modelo passa a aceitar `duration` opcional: a saída efetiva é sempre `Entrada + Tempo de permanência`.
+- Sem duração configurada, o ativo permanece visível até o fim do projeto. Projetos legados que já possuem uma saída explícita continuam sendo resolvidos de modo compatível, sem descarte de dados.
+- A futura escolha de redimensionar proporcionalmente o projeto afeta apenas a escala dessa duração em segundos; não altera a âncora semântica da Entrada.
+- QA local: smoke WebKit E9AG/E9AH/E9AI/E9AJ executado antes da revisão final; validação física iPhone/Safari permanece obrigatória antes de merge.
 
 ## Atualização 2026-08-31 — v8z4b32E9AG em desenvolvimento: presença temporal de Ativos
 

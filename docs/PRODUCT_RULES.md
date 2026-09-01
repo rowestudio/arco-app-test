@@ -221,11 +221,12 @@ Comportamento aprovado e IMPLEMENTADO na v8z4b32E9F1 (correção localizada sobr
 
 ## Presença temporal de ativos — E9AG implementada
 
-- Imagens e Text Assets compartilham Entrada e Saída referenciáveis ao tempo do projeto, a um Frame ou a outro ativo, com offset.
+- Imagens e Text Assets compartilham uma Entrada referenciável ao tempo do projeto, a um Frame ou a outro ativo, com offset. A saída, quando necessária, é derivada por um Tempo de permanência opcional contado sempre a partir dessa Entrada.
+- Referência Projeto representa um instante absoluto e não oferece controle Antes/Depois. Referências Frame e Ativo podem expor Antes/Depois para definir o offset relativo à sua âncora móvel.
 - O padrão global vive em `Edição do projeto > Projeto > Aparência`. O override individual vive no painel `Animação` do Ativo selecionado. Entrada/Saída ficam recolhidas até serem ativadas, para não pesar a interface.
 - No editor, um ativo fora do intervalo permanece como referência visual suavizada e tracejada; selecioná-lo preserva o coral de Ativos e a edição. Preview e Export o omitem inteiramente fora do intervalo.
 - A referência editorial não é opacidade manual, não é persistida e não muda geometria, profundidade, `zIndex` ou ordem de Layers.
 - Âncoras por Frame usam `frameId` estável, não índice visual frágil. Âncoras por ativo podem mirar Entrada ou Saída do outro ativo; ciclos e autorreferência são inválidos.
 - Ao excluir ativo usado como âncora, não há relink automático: após confirmação, os dependentes assumem o tempo absoluto resolvido no projeto. Cancelar preserva tudo.
-- Ao alterar proporcionalmente a duração total do projeto, offsets em segundos acompanham a escala quando a preferência global estiver ligada; âncoras semânticas continuam vinculadas a Frames/Ativos.
+- Ao alterar proporcionalmente a duração total do projeto, offsets e permanências em segundos acompanham a escala quando a escolha contextual estiver ligada; âncoras semânticas continuam vinculadas a Frames/Ativos.
 - Transparência manual e efeitos de Entrada/Saída são frentes posteriores e separadas. A regra completa está na DEC-2026-08-31-01 e na especificação correspondente.

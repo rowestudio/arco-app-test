@@ -1,5 +1,13 @@
 # REGRESSIONS
 
+## REG-066 — Preview omite ativos durante o trecho de fechamento do Loop
+
+- **Relato físico:** ao ativar Loop, imagens que deveriam permanecer visíveis desaparecem durante o retorno do último Frame ao primeiro no Preview.
+- **Causa comprovada:** `resolveRenderProjectTimeFromT()` usa a duração completa do Preview, incluindo `loopDuration`, mas `getTemporalProjectDuration()` encerrava a presença implícita no fim dos segmentos normais. Assim, no trecho N→1 o tempo consultado era maior que a saída implícita do ativo.
+- **Correção E9AL:** a duração temporal inclui o trecho de loop quando ativo, e o snapshot de Preview/Export congela `loopEnabled` e `loopDuration` junto com Frames, pausas e segmentos.
+- **Teste preventivo:** smoke WebKit `E9AL — Preview mantém ativos herdados durante o trecho de loop` reproduz o trecho intermediário N→1 e verifica renderização real sem omissão.
+- **Status:** corrigida tecnicamente na `v8z4b32E9AL`; validação física iPhone/Safari permanece pendente.
+
 ## REG-065 — mão não iniciava pan de um dedo em zoom dinâmico sub-100 (RESOLVIDA FISICAMENTE na E9AF)
 
 - **Relato físico:** após ativar o ícone de mão, o Stage não se movia com um dedo; o gesto ainda podia selecionar ou armar o movimento de um Ativo.
