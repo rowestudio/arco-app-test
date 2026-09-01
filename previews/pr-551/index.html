@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E9AK — base v8z4b32E9AJ. fix(asset-timing): Tempo passa a seguir imediatamente Profundidade na toolbar de Ativos; Antes/Depois é mostrado apenas para referências móveis (Frame/Ativo), pois o tempo do Projeto é absoluto. NÃO TOCADO: getStateAtT, câmera, WebCodecs, Preview, Export, geometria do ProjectWorld, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AK. -->
+<!-- Arco Motion App — v8z4b32E9AL — base v8z4b32E9AK. fix(asset-temporal-presence): a duração temporal da presença passa a incluir o trecho de fechamento quando Loop está ativo, no estado ao vivo e no snapshot congelado de Preview/Export. Assim, ativos sem saída explícita permanecem presentes durante o retorno N→1. NÃO TOCADO: getStateAtT, câmera, WebCodecs, geometria do ProjectWorld, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AL. -->
 <!-- Arco Motion App — v8z4b32E9AG — base v8z4b32E9AF. feat(assets): Presença Temporal de Ativos para imagem e texto, com Entrada/Saída opcionais ancoradas em projeto, frameId estável ou evento de outro ativo; padrões globais ficam em Edição do projeto e overrides no painel Animação do ativo. No Stage, ativos fora do intervalo permanecem como referência editorial suavizada/tracejada e continuam selecionáveis/editáveis; Preview e Export usam o mesmo resolvedor canônico em tempo de projeto para omiti-los do render, sem DOM. Exclusão de âncora referenciada exige confirmação e converte dependentes para tempo absoluto resolvido, preservando Undo. NÃO TOCADO: getStateAtT, câmera, WebCodecs, matemática de curvas/easing, ProjectWorld geométrico, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AG. -->
 <!-- Arco Motion App — v8z4b32E9AF — base v8z4b32E9AE. fix(editor-pan): com a mão ativa, um dedo arrasta a vista inclusive no zoom dinâmico abaixo ou igual a 100%, sem selecionar nem mover o Ativo sob o toque. Pinça e pan de dois dedos permanecem no caminho existente. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, geometria canônica e transformação de ativos/frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AF. -->
 <!-- Arco Motion App — v8z4b32E9AE — base v8z4b32E9AD. fix(editor-zoom): os botões −/+ passam a avançar e recuar incrementalmente também entre o mínimo dinâmico e 100%, sem tratar zoom sub-100 como reset. O pan existente é preservado e limitado pelos clamps canônicos; somente tocar no rótulo do zoom continua resetando explicitamente para 100% e pan zero. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, assets e geometria canônica. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AE. -->
@@ -7743,8 +7743,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AK';
-const APP_VERSION_NAME = 'v8z4b32E9AK';
+const APP_VERSION = 'v8z4b32E9AL';
+const APP_VERSION_NAME = 'v8z4b32E9AL';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -15724,14 +15724,16 @@ let assetTimingDraftAssetId = null;
 function getTemporalPresenceContext(context) {
   const source = context && typeof context === 'object'
     ? context
-    : { projectAssetPresenceDefaults };
+    : { projectAssetPresenceDefaults, loopEnabled, loopDuration };
   const contextFrames = Array.isArray(source.frames) ? source.frames : frames;
   const contextFrameCount = Number.isInteger(source.frameCount) ? source.frameCount : frameCount;
   const count = Math.max(0, Math.min(contextFrames.length, contextFrameCount));
   const contextSegments = Array.isArray(source.segDurations) ? source.segDurations : segDurations;
   const contextPauses = Array.isArray(source.framePauses) ? source.framePauses : framePauses;
   const contextAssets = Array.isArray(source.assets) ? source.assets : assets;
-  return { source, frames: contextFrames.slice(0, count), frameCount: count, segDurations: contextSegments, framePauses: contextPauses, assets: contextAssets };
+  const contextLoopEnabled = source.loopEnabled === true;
+  const contextLoopDuration = Number(source.loopDuration);
+  return { source, frames: contextFrames.slice(0, count), frameCount: count, segDurations: contextSegments, framePauses: contextPauses, assets: contextAssets, loopEnabled: contextLoopEnabled, loopDuration: contextLoopDuration };
 }
 
 function getTemporalProjectDuration(context) {
@@ -15745,6 +15747,9 @@ function getTemporalProjectDuration(context) {
     total += Number.isFinite(segment) && segment >= 0
       ? segment
       : 0;
+  }
+  if (state.loopEnabled && state.frameCount >= 2 && Number.isFinite(state.loopDuration) && state.loopDuration > 0) {
+    total += state.loopDuration;
   }
   return total;
 }
@@ -16024,6 +16029,8 @@ function cloneProjectPresenceBoundaryForAsset(boundary, assetId, context) {
         frameCount: frameCount,
         segDurations: segDurations,
         framePauses: framePauses,
+        loopEnabled: loopEnabled,
+        loopDuration: loopDuration,
         assets: assets,
         projectAssetPresenceDefaults: projectAssetPresenceDefaults
       });
@@ -16046,6 +16053,8 @@ function getCurrentTemporalPresenceContext() {
     frameCount: frameCount,
     segDurations: segDurations,
     framePauses: framePauses,
+    loopEnabled: loopEnabled,
+    loopDuration: loopDuration,
     assets: assets,
     projectAssetPresenceDefaults: projectAssetPresenceDefaults
   };
@@ -16103,6 +16112,8 @@ function wouldPresenceBoundaryCreateCycle(targetAssetId, boundaryKey, candidateA
       frameCount: frameCount,
       segDurations: segDurations,
       framePauses: framePauses,
+      loopEnabled: loopEnabled,
+      loopDuration: loopDuration,
       projectAssetPresenceDefaults: projectAssetPresenceDefaults
     });
     return resolved && (resolved.invalidReason === 'cycle' || resolved.invalidReason === 'self-reference');
@@ -35537,6 +35548,8 @@ async function prepareRenderSessionSnapshot(kind) {
       frameCount,
       segDurations: snapshotSegDurations,
       framePauses: snapshotFramePauses,
+      loopEnabled: loopEnabled === true,
+      loopDuration: Number(loopDuration),
       projectAssetPresenceDefaults: snapshotDefaults,
       assetPresenceDefaults: snapshotDefaults,
       scaleSecondsWithProjectDuration: scaleSecondsWithProjectDuration === true,
@@ -35690,6 +35703,8 @@ function buildRenderSessionTemporalPresenceContext(snapshot) {
       : (Array.isArray(snapshot.frames) ? snapshot.frames.length : 0),
     segDurations: Array.isArray(snapshot.segDurations) ? snapshot.segDurations : [],
     framePauses: Array.isArray(snapshot.framePauses) ? snapshot.framePauses : [],
+    loopEnabled: snapshot.loopEnabled === true,
+    loopDuration: Number(snapshot.loopDuration),
     assets: imageAssets.concat(textAssets),
     projectAssetPresenceDefaults: normalizeProjectAssetPresenceDefaults(snapshot.projectAssetPresenceDefaults || snapshot.assetPresenceDefaults),
     assetPresenceDefaults: normalizeProjectAssetPresenceDefaults(snapshot.assetPresenceDefaults || snapshot.projectAssetPresenceDefaults),
@@ -40052,6 +40067,8 @@ function buildDiagnosticsText() {
           frameCount,
           segDurations,
           framePauses,
+          loopEnabled,
+          loopDuration,
           assets,
           projectAssetPresenceDefaults,
           assetPresenceDefaults: projectAssetPresenceDefaults

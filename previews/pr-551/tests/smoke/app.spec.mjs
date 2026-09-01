@@ -6236,6 +6236,59 @@ test('E9AJ — permanência deriva a saída sempre a partir da entrada', async (
   expect(resolved.resolution.exitTime - resolved.resolution.entryTime).toBeCloseTo(2, 6);
 });
 
+test('E9AL — Preview mantém ativos herdados durante o trecho de loop', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const observation = await page.evaluate(async () => {
+    loopEnabled = true;
+    loopDuration = 1;
+    finishMode = 'loop';
+    ensureSegDurations();
+    const asset = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!asset) throw new Error('fixture sem imagem');
+    const normalDuration = totalDuration();
+    const temporalDuration = getTemporalProjectDuration();
+    const previewDuration = totalDurationFull();
+    const timeInsideLoop = normalDuration + ((previewDuration - normalDuration) / 2);
+    const snapshotPreparation = await prepareRenderSessionSnapshot('preview');
+    if (!snapshotPreparation || !snapshotPreparation.ok) throw new Error('snapshot de Preview indisponível');
+    const snapshotContext = buildRenderSessionTemporalPresenceContext(renderSessionSnapshot);
+    loopEnabled = false;
+    loopDuration = 0;
+    const frozenSnapshotDuration = getTemporalProjectDuration(snapshotContext);
+    loopEnabled = true;
+    loopDuration = 1;
+    const canvas = document.createElement('canvas');
+    canvas.width = 390;
+    canvas.height = 693;
+    const context = canvas.getContext('2d');
+    isPreviewing = true;
+    drawAtT(context, timeInsideLoop / previewDuration, canvas.width, canvas.height, 60, 58);
+    isPreviewing = false;
+    return {
+      normalDuration,
+      temporalDuration,
+      previewDuration,
+      frozenSnapshotDuration,
+      resolved: resolveAssetPresenceAt(asset.id, timeInsideLoop),
+      previewIncluded: previewTemporalPresenceIncludedCount,
+      previewOmitted: previewTemporalPresenceOmittedCount,
+    };
+  });
+
+  expect(observation.previewDuration).toBeGreaterThan(observation.normalDuration);
+  expect(observation.temporalDuration, JSON.stringify(observation)).toBeCloseTo(observation.previewDuration, 6);
+  expect(observation.frozenSnapshotDuration, JSON.stringify(observation)).toBeCloseTo(observation.previewDuration, 6);
+  expect(observation.previewOmitted, JSON.stringify(observation)).toBe(0);
+  expect(observation.previewIncluded, JSON.stringify(observation)).toBeGreaterThan(0);
+  expect(observation.resolved.present, JSON.stringify(observation)).toBe(true);
+});
+
 test('E9AK — Tempo vem após Profundidade e Antes/Depois só aparece para referência móvel', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 797 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
