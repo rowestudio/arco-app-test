@@ -222,6 +222,7 @@ Comportamento aprovado e IMPLEMENTADO na v8z4b32E9F1 (correção localizada sobr
 ## Presença temporal de ativos — E9AG implementada
 
 - Imagens e Text Assets compartilham uma Entrada referenciável ao tempo do projeto, a um Frame ou a outro ativo, com offset. A saída, quando necessária, é derivada por um Tempo de permanência opcional contado sempre a partir dessa Entrada.
+- Referência Projeto representa um instante absoluto e não oferece controle Antes/Depois. Referências Frame e Ativo podem expor Antes/Depois para definir o offset relativo à sua âncora móvel.
 - O padrão global vive em `Edição do projeto > Projeto > Aparência`. O override individual vive no painel `Animação` do Ativo selecionado. Entrada/Saída ficam recolhidas até serem ativadas, para não pesar a interface.
 - No editor, um ativo fora do intervalo permanece como referência visual suavizada e tracejada; selecioná-lo preserva o coral de Ativos e a edição. Preview e Export o omitem inteiramente fora do intervalo.
 - A referência editorial não é opacidade manual, não é persistida e não muda geometria, profundidade, `zIndex` ou ordem de Layers.

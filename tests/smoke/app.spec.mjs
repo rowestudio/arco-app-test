@@ -4451,7 +4451,7 @@ test('E9AA — Camadas evita Profundidade redundante e Excluir encerra a toolbar
     labels: ['Visibilidade', 'Travar camada', 'Duplicar camada', 'Excluir camada'],
     targets: [{ width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }],
     canonicalSymbols: { visibility: '#i-eye', lock: '#i-lock', remove: '#i-trash' },
-    assetToolbarOrder: ['tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetCopy', 'tbAssetDuplicate', 'tbAssetForward', 'tbAssetBackward', 'tbAssetTiming', 'tbAssetDelete'],
+    assetToolbarOrder: ['tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetTiming', 'tbAssetCopy', 'tbAssetDuplicate', 'tbAssetForward', 'tbAssetBackward', 'tbAssetDelete'],
   });
   const reordered = await page.evaluate(({ dragged, target }) => {
     const before = assets.slice().sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)).map(a => String(a.id));
@@ -5994,11 +5994,11 @@ test('E9AG — presença temporal: controles ficam inline no projeto e compactos
     'tbAssetScale',
     'tbAssetRotate',
     'tbAssetDepth',
+    'tbAssetTiming',
     'tbAssetCopy',
     'tbAssetDuplicate',
     'tbAssetForward',
     'tbAssetBackward',
-    'tbAssetTiming',
     'tbAssetDelete',
   ]);
 
@@ -6234,6 +6234,35 @@ test('E9AJ — permanência deriva a saída sempre a partir da entrada', async (
   expect(resolved.presence.exit).toBeUndefined();
   expect(resolved.presence.duration).toEqual({ unit: 'seconds', value: 2 });
   expect(resolved.resolution.exitTime - resolved.resolution.entryTime).toBeCloseTo(2, 6);
+});
+
+test('E9AK — Tempo vem após Profundidade e Antes/Depois só aparece para referência móvel', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  await page.evaluate(() => {
+    setEditorMode('assets', 'e9ak-toolbar-and-offset');
+    const asset = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!asset) throw new Error('fixture sem imagem');
+    selectAssetById(asset.id, 'e9ak-toolbar-and-offset');
+    syncAssetToolbarState();
+  });
+  expect(await page.evaluate(() => [...document.querySelectorAll('#toolbar .ctx-asset')].map(item => item.id))).toEqual([
+    'tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetTiming',
+    'tbAssetCopy', 'tbAssetDuplicate', 'tbAssetForward', 'tbAssetBackward', 'tbAssetDelete'
+  ]);
+
+  await page.locator('#tbAssetTiming').click();
+  await page.locator('#assetTimingEntryEnabled').check();
+  await expect(page.locator('#assetTimingEntryOffsetDirection')).toBeHidden();
+  await page.locator('#assetTimingEntryAnchor').selectOption('frame');
+  await expect(page.locator('#assetTimingEntryOffsetDirection')).toBeVisible();
+  await page.locator('#assetTimingEntryAnchor').selectOption('project');
+  await expect(page.locator('#assetTimingEntryOffsetDirection')).toBeHidden();
 });
 
 test('E9AG — presença temporal: herança materializa auto-referência e revalida ciclo antes de persistir', async ({ page }) => {

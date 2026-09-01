@@ -6,6 +6,12 @@
 - O fluxo previsto é PR aberta → preview com stamp do SHA → validação física de Roberto no iPhone/Safari → correções na mesma PR/mesmo URL → merge somente após aprovação. A PR funcional #551 permanece aberta enquanto a infraestrutura não estiver ativa.
 - A configuração da origem do Pages para `gh-pages` e o primeiro dispatch da #551 só ocorrem depois de a PR operacional ser revisada e mergeada; produção permanece intocada.
 
+## Atualização 2026-09-01 — v8z4b32E9AK em desenvolvimento: tempo de ativo contextual
+
+- Na toolbar de Ativos, **Tempo** passa a seguir imediatamente **Profundidade**. Excluir continua a última ação.
+- Em presença temporal, **Antes/Depois** só é oferecido quando a Entrada usa referência móvel (Frame ou Ativo). A referência Projeto é um instante absoluto e não apresenta direção redundante.
+- QA local: smoke WebKit dedicado E9AK passou; validação física no preview da PR #551 continua necessária antes de merge.
+
 ## Atualização 2026-09-01 — E9AJ: permanência temporal derivada da Entrada
 
 - A saída independente deixa de ser oferecida para novos ajustes de presença temporal. O modelo passa a aceitar `duration` opcional: a saída efetiva é sempre `Entrada + Tempo de permanência`.
