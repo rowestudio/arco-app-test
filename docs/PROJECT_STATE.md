@@ -6,6 +6,13 @@
 - O fluxo previsto é PR aberta → preview com stamp do SHA → validação física de Roberto no iPhone/Safari → correções na mesma PR/mesmo URL → merge somente após aprovação. A PR funcional #551 permanece aberta enquanto a infraestrutura não estiver ativa.
 - A configuração da origem do Pages para `gh-pages` e o primeiro dispatch da #551 só ocorrem depois de a PR operacional ser revisada e mergeada; produção permanece intocada.
 
+## Atualização 2026-09-01 — E9AJ: permanência temporal derivada da Entrada
+
+- A saída independente deixa de ser oferecida para novos ajustes de presença temporal. O modelo passa a aceitar `duration` opcional: a saída efetiva é sempre `Entrada + Tempo de permanência`.
+- Sem duração configurada, o ativo permanece visível até o fim do projeto. Projetos legados que já possuem uma saída explícita continuam sendo resolvidos de modo compatível, sem descarte de dados.
+- A futura escolha de redimensionar proporcionalmente o projeto afeta apenas a escala dessa duração em segundos; não altera a âncora semântica da Entrada.
+- QA local: smoke WebKit E9AG/E9AH/E9AI/E9AJ executado antes da revisão final; validação física iPhone/Safari permanece obrigatória antes de merge.
+
 ## Atualização 2026-08-31 — v8z4b32E9AG em desenvolvimento: presença temporal de Ativos
 
 - A `v8z4b32E9AG` implementa a primeira frente funcional de Presença Temporal de Ativos em branch própria sobre a `main` atual do repositório de teste. Produção permanece intocada.

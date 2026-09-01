@@ -5074,6 +5074,44 @@ test('E9AG — presença temporal: referência no Stage preserva seleção e edi
   await expect(page.locator('#tbAssetReplace')).toHaveAttribute('aria-label', 'Editar texto');
 });
 
+test('E9AI — trocar para o último frame recompõe a referência temporal do Stage', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const setup = await page.evaluate(() => {
+    if (frameCount < 2) throw new Error('fixture sem sequência para a troca de frame');
+    const asset = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!asset) throw new Error('fixture sem imagem');
+    const lastFrame = frames[frameCount - 1];
+    asset.presence = {
+      mode: 'custom',
+      entry: { anchor: 'frame', anchorId: lastFrame.frameId, offset: { unit: 'seconds', value: 0 } }
+    };
+    selectFrameContext(0, { _src: 'e9ai-initial-frame' });
+    renderAll();
+    return { assetId: String(asset.id), lastFrameIndex: frameCount - 1 };
+  });
+
+  const asset = page.locator(`.world-extra-img[data-asset-id="${setup.assetId}"]`);
+  await expect(asset).toHaveClass(/asset-temporal-reference/);
+
+  await page.evaluate(() => {
+    selectFrameContext(frameCount - 1, { _src: 'e9ai-last-frame' });
+    renderAll();
+  });
+  const finalPresence = await page.evaluate(id => {
+    const time = getStagePresenceProjectTime();
+    const resolved = resolveAssetPresenceAt(id, time);
+    return { activeIdx, time, resolvedPresent: resolved.present, entryTime: resolved.entryTime };
+  }, setup.assetId);
+  expect(finalPresence.activeIdx).toBe(setup.lastFrameIndex);
+  expect(finalPresence.resolvedPresent, JSON.stringify(finalPresence)).toBe(true);
+  await expect(asset).not.toHaveClass(/asset-temporal-reference/);
+});
+
 test('E9AG — presença temporal: Stage, Preview e Export concordam em single-image, multi-image e Text Asset por dois instantes', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
@@ -5929,7 +5967,7 @@ test('E9AG — presença temporal: controles ficam inline no projeto e compactos
   await openProjectAppearance(page);
   await expect(page.locator('#projectPresenceDefaults')).toBeVisible();
   await expect(page.locator('#projectPresenceEntryEnabled')).toBeVisible();
-  await expect(page.locator('#projectPresenceExitEnabled')).toBeVisible();
+  await expect(page.locator('#projectPresenceDurationEnabled')).toBeVisible();
   await page.locator('#projectPresenceEntryEnabled').check();
   await expect(page.locator('#projectPresenceEntryAnchor')).toBeVisible();
   await expect(page.locator('#projectPresenceEntryOffsetValue')).toBeVisible();
@@ -5969,14 +6007,14 @@ test('E9AG — presença temporal: controles ficam inline no projeto e compactos
   await expect(page.locator('#assetContextPanel')).not.toHaveClass(/show/);
   await expect(page.locator('#assetTimingUseProjectDefault')).toBeVisible();
   await expect(page.locator('#assetTimingEntryEnabled')).toBeVisible();
-  await expect(page.locator('#assetTimingExitEnabled')).toBeVisible();
+  await expect(page.locator('#assetTimingDurationEnabled')).toBeVisible();
   await expect(page.locator('#assetTimingEntryAnchor')).toBeHidden();
-  await expect(page.locator('#assetTimingExitAnchor')).toBeHidden();
+  await expect(page.locator('#assetTimingDurationValue')).toBeHidden();
 
   await page.locator('#assetTimingEntryEnabled').check();
   await expect(page.locator('#assetTimingEntryAnchor')).toBeVisible();
   await expect(page.locator('#assetTimingEntryOffsetValue')).toBeVisible();
-  await expect(page.locator('#assetTimingExitAnchor')).toBeHidden();
+  await expect(page.locator('#assetTimingDurationValue')).toBeHidden();
 });
 
 test('E9AH — Tempo do ativo só confirma a edição ao tocar em ✓', async ({ page }) => {
@@ -6068,6 +6106,134 @@ test('E9AH — folha de Tempo ocupa uma área de trabalho própria em 390×797',
   expect(geometry.scroll.bottom).toBeLessThanOrEqual(geometry.panel.bottom);
   expect(geometry.cancel.height).toBeGreaterThanOrEqual(44);
   expect(geometry.confirm.height).toBeGreaterThanOrEqual(44);
+});
+
+test('E9AI — tempos parciais acompanham Frames e trechos até o final da timeline', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const geometry = await page.evaluate(() => {
+    // O trecho de fechamento acrescenta uma ease pill ao fim. É o caso em que
+    // a faixa de tempos não pode ter um scrollWidth menor que a timeline.
+    frames.splice(3);
+    frameCount = frames.length;
+    framePauses.splice(frameCount);
+    segDurations.splice(frameCount - 1);
+    segEasings.splice(frameCount - 1);
+    loopEnabled = true;
+    activeIdx = frameCount - 1;
+    const lastFrameIndex = frameCount - 1;
+    lowerTimelineCenterFrameIndex = -1;
+    renderAll();
+    centerLowerTimelineOnFrame(0, false);
+
+    const center = (element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.left + rect.width / 2;
+    };
+    const timelineSlot = document.querySelector('.lower-timeline-slot');
+    const slotRect = timelineSlot.getBoundingClientRect();
+    const markerX = () => slotRect.left + parseFloat(getComputedStyle(timelineSlot).getPropertyValue('--lower-timeline-center-x'));
+    const firstMarkerDelta = markerX() - center(document.querySelector('#pillsRow .fp[data-frame-index="0"]'));
+    centerLowerTimelineOnFrame(lastFrameIndex, false);
+    const times = [...document.querySelectorAll('#lowerPartialTimes .lower-time-chip')];
+    const framesEls = [...document.querySelectorAll('#pillsRow .fp')];
+    const easeEls = [...document.querySelectorAll('#pillsRow .ease-fp')];
+    const pillsEl = document.getElementById('pillsRow');
+    const pillsRect = pillsEl.getBoundingClientRect();
+    const pauses = times.filter(element => element.classList.contains('pause'));
+    const segments = times.filter(element => element.classList.contains('segment') && !element.classList.contains('timeline-end-spacer'));
+    return {
+      pauseDeltas: pauses.map((element, index) => center(element) - center(framesEls[index])),
+      segmentDeltas: segments.map((element, index) => center(element) - center(easeEls[index])),
+      pillsScrollLeft: document.getElementById('pillsRow').scrollLeft,
+      timesScrollLeft: document.getElementById('lowerPartialTimes').scrollLeft,
+      pillsScrollWidth: document.getElementById('pillsRow').scrollWidth,
+      timesScrollWidth: document.getElementById('lowerPartialTimes').scrollWidth,
+      markerDelta: markerX() - center(framesEls[frameCount - 1]),
+      firstMarkerDelta,
+      markerX: markerX(),
+      lastFrameCenter: center(framesEls[frameCount - 1]),
+      pillsRect: { left: pillsRect.left, width: pillsRect.width, clientWidth: pillsEl.clientWidth, scrollLeft: pillsEl.scrollLeft },
+    };
+  });
+
+  expect(Math.abs(geometry.pillsScrollLeft - geometry.timesScrollLeft)).toBeLessThanOrEqual(0.5);
+  expect(geometry.timesScrollWidth).toBeGreaterThanOrEqual(geometry.pillsScrollWidth);
+  expect(Math.abs(geometry.markerDelta), JSON.stringify(geometry)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(geometry.firstMarkerDelta), JSON.stringify(geometry)).toBeLessThanOrEqual(0.5);
+  for (const delta of [...geometry.pauseDeltas, ...geometry.segmentDeltas]) {
+    expect(Math.abs(delta)).toBeLessThanOrEqual(0.5);
+  }
+});
+
+test('E9AI — Entrada permite escolher Antes ou Depois da referência', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const assetId = await page.evaluate(() => {
+    setEditorMode('assets', 'e9ai-before-after');
+    const asset = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!asset) throw new Error('fixture sem imagem');
+    selectAssetById(asset.id, 'e9ai-before-after');
+    syncAssetToolbarState();
+    return String(asset.id);
+  });
+  await page.locator('#tbAssetTiming').click();
+  await page.locator('#assetTimingEntryEnabled').check();
+  await page.locator('#assetTimingEntryAnchor').selectOption('frame');
+  await page.locator('#assetTimingEntryOffsetDirection').selectOption('before');
+  await page.locator('#assetTimingEntryOffsetValue').fill('1');
+  await page.locator('#assetTimingEntryOffsetValue').press('Enter');
+  expect(await page.evaluate(id => assets.find(asset => String(asset.id) === id).presence, assetId)).toEqual({ mode: 'inherit' });
+  expect(await page.evaluate(() => assetTimingDraft.entry.offset.value)).toBe(-1);
+
+  await page.locator('#assetTimingEntryOffsetDirection').selectOption('after');
+  await page.locator('#assetTimingEntryOffsetValue').fill('0.5');
+  await page.locator('#assetTimingEntryOffsetValue').press('Enter');
+  expect(await page.evaluate(() => assetTimingDraft.entry.offset.value)).toBe(0.5);
+});
+
+test('E9AJ — permanência deriva a saída sempre a partir da entrada', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  await page.evaluate(() => {
+    setEditorMode('assets', 'e9aj-duration');
+    const asset = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!asset) throw new Error('fixture sem imagem');
+    selectAssetById(asset.id, 'e9aj-duration');
+    syncAssetToolbarState();
+  });
+  await page.locator('#tbAssetTiming').click();
+  await page.locator('#assetTimingEntryEnabled').check();
+  await page.locator('#assetTimingDurationEnabled').check();
+  await page.locator('#assetTimingDurationValue').fill('2');
+  await page.locator('#assetTimingDurationValue').press('Enter');
+  await page.locator('#assetTimingConfirm').click();
+
+  const resolved = await page.evaluate(() => {
+    const asset = assets.find(candidate => candidate && candidate.type === 'image');
+    return {
+      presence: asset.presence,
+      resolution: resolveAssetPresenceAt(asset.id, 0)
+    };
+  });
+  expect(resolved.presence.exit).toBeUndefined();
+  expect(resolved.presence.duration).toEqual({ unit: 'seconds', value: 2 });
+  expect(resolved.resolution.exitTime - resolved.resolution.entryTime).toBeCloseTo(2, 6);
 });
 
 test('E9AG — presença temporal: herança materializa auto-referência e revalida ciclo antes de persistir', async ({ page }) => {
