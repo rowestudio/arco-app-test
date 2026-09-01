@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E9AJ — base v8z4b32E9AH. feat(asset-timing): Entrada usa âncora semântica e offset Antes/Depois; Tempo de permanência opcional deriva a saída sempre a partir da Entrada, eliminando inversão temporal. Stage recompõe referências ao trocar Frame e os tempos da timeline acompanham a faixa rolável. NÃO TOCADO: getStateAtT, câmera, WebCodecs, Preview, Export, geometria do ProjectWorld, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AJ. -->
+<!-- Arco Motion App — v8z4b32E9AK — base v8z4b32E9AJ. fix(asset-timing): Tempo passa a seguir imediatamente Profundidade na toolbar de Ativos; Antes/Depois é mostrado apenas para referências móveis (Frame/Ativo), pois o tempo do Projeto é absoluto. NÃO TOCADO: getStateAtT, câmera, WebCodecs, Preview, Export, geometria do ProjectWorld, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AK. -->
 <!-- Arco Motion App — v8z4b32E9AG — base v8z4b32E9AF. feat(assets): Presença Temporal de Ativos para imagem e texto, com Entrada/Saída opcionais ancoradas em projeto, frameId estável ou evento de outro ativo; padrões globais ficam em Edição do projeto e overrides no painel Animação do ativo. No Stage, ativos fora do intervalo permanecem como referência editorial suavizada/tracejada e continuam selecionáveis/editáveis; Preview e Export usam o mesmo resolvedor canônico em tempo de projeto para omiti-los do render, sem DOM. Exclusão de âncora referenciada exige confirmação e converte dependentes para tempo absoluto resolvido, preservando Undo. NÃO TOCADO: getStateAtT, câmera, WebCodecs, matemática de curvas/easing, ProjectWorld geométrico, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AG. -->
 <!-- Arco Motion App — v8z4b32E9AF — base v8z4b32E9AE. fix(editor-pan): com a mão ativa, um dedo arrasta a vista inclusive no zoom dinâmico abaixo ou igual a 100%, sem selecionar nem mover o Ativo sob o toque. Pinça e pan de dois dedos permanecem no caminho existente. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, geometria canônica e transformação de ativos/frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AF. -->
 <!-- Arco Motion App — v8z4b32E9AE — base v8z4b32E9AD. fix(editor-zoom): os botões −/+ passam a avançar e recuar incrementalmente também entre o mínimo dinâmico e 100%, sem tratar zoom sub-100 como reset. O pan existente é preservado e limitado pelos clamps canônicos; somente tocar no rótulo do zoom continua resetando explicitamente para 100% e pan zero. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, assets e geometria canônica. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AE. -->
@@ -4472,6 +4472,9 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <div class="tb-item ctx-only ctx-asset" id="tbAssetDepth" onclick="openAssetDepthPanel()">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-layers"></use></svg><span class="tb-lbl">Profundidade</span>
   </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetTiming" onclick="openAssetTimingPanel()">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-clock"></use></svg><span class="tb-lbl">Tempo</span>
+  </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetCopy" onclick="copySelectedAssetToClipboard()" aria-label="Copiar ativo">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-copy"></use></svg><span class="tb-lbl">Copiar</span>
   </div>
@@ -4483,9 +4486,6 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetBackward" onclick="isAssetsMode()?sendSelectedAssetBackward():null">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-send-backward"></use></svg><span class="tb-lbl">Trás</span>
-  </div>
-  <div class="tb-item ctx-only ctx-asset" id="tbAssetTiming" onclick="openAssetTimingPanel()">
-    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-clock"></use></svg><span class="tb-lbl">Tempo</span>
   </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetDelete" onclick="isAssetsMode()&&getSelectedAsset()?deleteSelectedAsset():showStatus('Selecione uma imagem primeiro.')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-trash"></use></svg><span class="tb-lbl">Excluir</span>
@@ -7743,8 +7743,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AJ';
-const APP_VERSION_NAME = 'v8z4b32E9AJ';
+const APP_VERSION = 'v8z4b32E9AK';
+const APP_VERSION_NAME = 'v8z4b32E9AK';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -16191,6 +16191,7 @@ function syncPresenceBoundaryFieldBlock(prefix, boundaryKey, boundary, ownerAsse
   const valueEl = document.getElementById(prefix + capitalize(boundaryKey) + 'OffsetValue');
   const targetRow = targetEl ? targetEl.closest('.presence-inline-row') : null;
   const eventRow = eventEl ? eventEl.closest('.presence-inline-row') : null;
+  const directionRow = directionEl ? directionEl.closest('.presence-inline-row') : null;
   const enabled = !!boundary;
   if (fields) fields.classList.toggle('show', enabled);
   if (!enabled) return;
@@ -16198,6 +16199,7 @@ function syncPresenceBoundaryFieldBlock(prefix, boundaryKey, boundary, ownerAsse
   populatePresenceTargetSelect(prefix + capitalize(boundaryKey) + 'Target', boundary.anchor || 'project', boundary.anchorId || '', ownerAssetId, boundaryKey);
   if (targetRow) targetRow.style.display = boundary.anchor === 'project' ? 'none' : '';
   if (eventRow) eventRow.style.display = boundary.anchor === 'asset' ? '' : 'none';
+  if (directionRow) directionRow.style.display = boundary.anchor === 'project' ? 'none' : '';
   if (eventEl) eventEl.value = boundary.assetEvent === 'exit' ? 'exit' : 'entry';
   const offsetValue = getPresenceOffsetSecondsForEditor(boundary);
   if (directionEl) directionEl.value = Number.isFinite(offsetValue) && offsetValue < 0 ? 'before' : 'after';
