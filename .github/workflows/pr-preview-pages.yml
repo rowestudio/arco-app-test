@@ -1,0 +1,107 @@
+name: PR Preview Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull Request number to publish
+        required: true
+        type: string
+      sha:
+        description: Exact PR head SHA to publish
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: pr-preview-pages-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event_name != 'pull_request_target' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve source revision
+        id: source
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request_target" ]; then
+            echo "ref=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+            echo "pr=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "ref=${{ inputs.sha }}" >> "$GITHUB_OUTPUT"
+            echo "pr=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "pr=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out exact app source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.source.outputs.ref }}
+          path: source
+          persist-credentials: false
+
+      - name: Prepare gh-pages branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" pages
+          cd pages
+          if git ls-remote --exit-code origin gh-pages >/dev/null 2>&1; then
+            git checkout gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rf . >/dev/null 2>&1 || true
+            touch .nojekyll
+            git add .nojekyll
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'chore: initialize Pages preview branch'
+            git push origin gh-pages
+          fi
+
+      - name: Publish main or isolated PR preview
+        env:
+          PR_NUMBER: ${{ steps.source.outputs.pr }}
+          SOURCE_SHA: ${{ steps.source.outputs.ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "$PR_NUMBER" ]; then
+            TARGET_DIR="previews/pr-${PR_NUMBER}"
+            mkdir -p "pages/${TARGET_DIR}"
+            rsync -a --delete --exclude '.git' --exclude '.github' --exclude 'docs' source/ "pages/${TARGET_DIR}/"
+          else
+            TARGET_DIR="."
+            rsync -a --delete --exclude '.git' --exclude '.github' --exclude 'docs' --exclude 'previews' source/ pages/
+          fi
+          printf 'sha=%s\nref=%s\npr=%s\npublished_at=%s\n' "$SOURCE_SHA" "$SOURCE_SHA" "${PR_NUMBER:-main}" "$(date -u +%FT%TZ)" > "pages/${TARGET_DIR}/pages-deploy-stamp.txt"
+          touch pages/.nojekyll
+          cd pages
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No Pages content change to publish.'
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "pages: publish ${PR_NUMBER:+PR #${PR_NUMBER} }${SOURCE_SHA}"
+          git push origin gh-pages
+
+      - name: Report preview URL
+        env:
+          PR_NUMBER: ${{ steps.source.outputs.pr }}
+        shell: bash
+        run: |
+          if [ -n "$PR_NUMBER" ]; then
+            echo "Preview: https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/previews/pr-${PR_NUMBER}/" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Main preview: https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/" >> "$GITHUB_STEP_SUMMARY"
+          fi
