@@ -20,6 +20,14 @@
 - Manter `pages-deploy-stamp.txt` ou mecanismo equivalente de rastreabilidade.
 - Não promover nesta tarefa.
 
+## Preview de PR antes de merge
+
+- O Pages do repositório de teste usa a branch `gh-pages` como origem de publicação. A raiz dessa branch recebe a `main`; cada PR interna recebe somente `previews/pr-<n>/`.
+- Após o merge da PR operacional que instala o workflow, configurar uma única vez o Pages para a branch `gh-pages` no caminho `/`. A configuração não altera o repositório de produção.
+- O workflow `PR Preview Pages` publica automaticamente PRs novas/atualizadas. Para uma PR que já estava aberta antes do workflow, usar `workflow_dispatch`, informando seu número e o SHA exato do HEAD.
+- Antes de enviar o link para teste físico, conferir `previews/pr-<n>/pages-deploy-stamp.txt`: o campo `sha` deve ser igual ao HEAD atual da PR. Um preview de SHA anterior não aprova um commit novo.
+- Corrigir uma PR aprovada parcialmente significa enviar novo commit para a mesma PR e repetir o teste no mesmo URL; abrir outra PR só é necessário após o merge ou quando o escopo realmente for separado.
+
 ## Versionamento histórico reconciliado
 
 Regras antigas de tags, branches e commits em `docs/versioning.md` foram obsoletadas como fonte operacional. A regra vigente é:

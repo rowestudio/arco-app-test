@@ -23,6 +23,14 @@
 - Não contratar nem configurar serviço externo nesta PR.
 - Checks de PR devem validar o HEAD SHA atual. Resultado de SHA anterior não libera SHA novo.
 
+## OPS-05 Preview público por Pull Request
+
+- Antes do merge, cada PR interna pode ser publicada em `https://rowestudio.github.io/arco-app-test/previews/pr-<n>/` para validação física no iPhone/Safari.
+- A URL é estável por número de PR e é atualizada a cada SHA novo; a revisão física deve conferir o `pages-deploy-stamp.txt` do preview para garantir que o SHA publicado é o HEAD da PR.
+- A raiz `https://rowestudio.github.io/arco-app-test/` continua representando a `main`; previews nunca a sobrescrevem.
+- PRs de forks não são publicadas. O workflow não executa código da PR: somente faz checkout do SHA e copia arquivos estáticos para o diretório isolado.
+- WebKit/CI continuam complementares. A aprovação física no preview é pré-requisito para recomendar merge de alteração visual/funcional.
+
 ## OPS-03 smoke tests WebKit iniciais
 
 - A OPS-03 adiciona uma suíte mínima automatizada com Playwright usando somente WebKit para abrir o Arco Motion servido localmente.

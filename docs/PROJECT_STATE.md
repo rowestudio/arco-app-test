@@ -1,5 +1,11 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-01 — OPS-05 em preparação: preview público por PR
+
+- A publicação atual do GitHub Pages usa `main` e não oferece URL isolada por Pull Request. A PR operacional OPS-05 introduz publicação estática em `gh-pages`: raiz para `main` e `previews/pr-<n>/` para cada PR interna.
+- O fluxo previsto é PR aberta → preview com stamp do SHA → validação física de Roberto no iPhone/Safari → correções na mesma PR/mesmo URL → merge somente após aprovação. A PR funcional #551 permanece aberta enquanto a infraestrutura não estiver ativa.
+- A configuração da origem do Pages para `gh-pages` e o primeiro dispatch da #551 só ocorrem depois de a PR operacional ser revisada e mergeada; produção permanece intocada.
+
 ## Atualização 2026-08-31 — v8z4b32E9AG em desenvolvimento: presença temporal de Ativos
 
 - A `v8z4b32E9AG` implementa a primeira frente funcional de Presença Temporal de Ativos em branch própria sobre a `main` atual do repositório de teste. Produção permanece intocada.
