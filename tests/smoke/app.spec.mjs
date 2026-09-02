@@ -6088,6 +6088,7 @@ test('E9AG — presença temporal: controles ficam inline no projeto e compactos
     'tbAssetRotate',
     'tbAssetDepth',
     'tbAssetTiming',
+    'tbAssetOpacity',
     'tbAssetCopy',
     'tbAssetDuplicate',
     'tbAssetForward',
