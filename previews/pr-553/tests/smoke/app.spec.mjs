@@ -358,6 +358,25 @@ test('E9AM — opacidade individual preserva presença e renderiza no Stage', as
     return { preview: render('preview'), export: render('export') };
   }, selectedId)).toEqual({ preview: 0.4, export: 0.4 });
 
+  expect(await page.evaluate(async (id) => {
+    const state = getStateAtT(0);
+    const renderFrozenSession = async (context) => {
+      renderSessionSnapshot = null;
+      const prepared = await prepareRenderSessionSnapshot(context);
+      const canvas = document.createElement('canvas');
+      canvas.width = 320; canvas.height = 568;
+      drawWorldToCanvas(canvas.getContext('2d'), { cx: state.cx, cy: state.cy, sw: state.sw, sh: state.sh, rot: state.rot }, 320, 568, {
+        context, t: 0, projectTime: 0, mainSource: getCanonicalRenderSource(), canonicalDims: getImageSourceDimensions(getCanonicalRenderSource())
+      });
+      const snapshot = renderSessionSnapshot?.assets.find((asset) => asset.id === id);
+      return { prepared: prepared.ok, snapshotOpacity: snapshot?.opacity, alpha: renderTransform[context]?.assets.find((entry) => entry.id === id)?.alphaUsed };
+    };
+    return { preview: await renderFrozenSession('preview'), export: await renderFrozenSession('export') };
+  }, selectedId)).toEqual({
+    preview: { prepared: true, snapshotOpacity: 0.4, alpha: 0.4 },
+    export: { prepared: true, snapshotOpacity: 0.4, alpha: 0.4 },
+  });
+
   await page.locator('#assetContextReset').click();
   expect(await page.evaluate((id) => {
     const read = () => assets.find((asset) => String(asset.id) === id).opacity;
