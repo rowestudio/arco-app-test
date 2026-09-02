@@ -1,5 +1,24 @@
 # DECISIONS
 
+## DEC-2026-09-02-03 — Retorno do MP4 reusa o snapshot canônico no contexto Preview
+
+- **Decisão:** ao terminar um MP4, o renderer não cai para assets ao vivo para reiniciar o Preview. O snapshot estável recém-validado pelo Export é transferido para o contexto `preview`, e a presença temporal é resolvida novamente pelo relógio do Preview.
+- **Motivo:** Export correto não garante retorno de Preview correto se os contextos divergirem; imagens e Text Assets precisam manter a mesma fonte canônica de renderização na transição.
+- **Consequência:** o arquivo concluído não é modificado, e a reentrada não altera Frames, ProjectWorld, geometria, opacidade manual, timing ou estado persistido. Implementação técnica na `v8z4b32E9AO`; validação física em iPhone/Safari ainda é obrigatória.
+
+## DEC-2026-09-02-02 — Snapshot de render inclui toda a aparência manual do ativo
+
+- **Decisão:** o snapshot imutável de Preview/Export deve carregar `asset.opacity` de imagens, além da fonte, geometria, rotação, profundidade e presença já congeladas. A entrada intermediária de desenho conserva o mesmo valor.
+- **Motivo:** Stage usa o modelo vivo, mas Preview e Export usam snapshot. Omitir um atributo visual nesse limite cria divergência temporal e torna o arquivo exportado diferente do editor.
+- **Escopo:** a correção não altera câmera, timing, loop, WebCodecs, geometria, presença temporal, opacidade própria do fundo de texto ou qualquer regra global futura.
+
+## DEC-2026-09-02-01 — Opacidade manual é baseline individual do ativo
+
+- **Decisão:** imagens e Text Assets passam a ter `asset.opacity` canônica, individual e persistente, limitada a 0–1 e iniciada em 1. O controle aparece em Ativos imediatamente após **Tempo**, com slider 0–100% e Reset em 100%.
+- **Semântica:** presença temporal decide se o ativo participa do instante; opacidade manual decide seu alpha somente quando ele participa. No texto, a opacidade manual reduz glifos e fundo como conjunto; a opacidade específica do fundo continua sendo seu alpha interno.
+- **Paridade e evolução:** Stage, Preview, Export, Save/Load, Session Restore e Undo/Redo usam o mesmo baseline. Efeitos globais futuros devem multiplicar esse valor — nunca substituir `asset.opacity`.
+- **Escopo:** sem controle global de opacidade e sem efeitos de entrada/saída nesta frente.
+
 ## DEC-2026-08-31-01 — Presença temporal mantém referência editorial fora do intervalo
 
 - **Decisão:** a primeira implementação de presença temporal separa rigorosamente o instante em que o asset entra/sai da aparência editorial do Stage. Preview e Export omitem o asset fora do intervalo; no editor ele continua como referência suavizada com contorno neutro tracejado. Selecioná-lo conserva coral de Ativos e permite edição.

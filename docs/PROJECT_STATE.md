@@ -1,5 +1,25 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-02 — v8z4b32E9AO: Text Asset no retorno do Preview após MP4
+
+- Relato físico na E9AN: o MP4 preservava o texto, mas ao concluir a geração e retomar o Preview o Text Asset desaparecia.
+- Causa comprovada: a finalização iniciava o Preview com `renderSessionSnapshot.context === 'export'`. O Preview passava a desenhar pelo caminho ao vivo, em vez de reentrar no snapshot canônico e reavaliar a presença temporal no seu próprio relógio.
+- Correção: o snapshot estável concluído pelo Export é transferido explicitamente ao contexto Preview antes do loop de retorno. Imagens e Text Assets continuam congelados; a presença é recalculada por quadro no tempo do Preview. O MP4 já concluído não é alterado.
+- QA WebKit real: o caso de H.264 com Text Asset falhava ao exigir `context: 'preview'` depois do MP4 e passa após a transferência. Validação física em iPhone/Safari continua obrigatória antes de merge; produção permanece intocada.
+
+## Atualização 2026-09-02 — v8z4b32E9AN: opacidade de imagem no snapshot de Preview/Export
+
+- Relato físico na E9AM: o Stage refletia a transparência, mas Preview só a mostrava depois de salvar e o arquivo exportado permanecia opaco.
+- Causa comprovada: o snapshot congelado de imagens preservava fonte, geometria, rotação, profundidade e presença, mas descartava `opacity`; na conversão para o asset de desenho o fallback resultava em 100%.
+- Correção: `opacity` é congelada e repassada no caminho de imagem de Preview e Export. O novo smoke reproduz ambos os destinos pelo snapshot real e confirma `0,4` no snapshot e no alpha efetivamente usado pelo Canvas.
+- Produção permanece intocada. A validação física no preview da mesma PR continua obrigatória antes de merge.
+
+## Atualização 2026-09-02 — v8z4b32E9AM em desenvolvimento: opacidade individual de ativos
+
+- O Modo Ativos passa a oferecer **Opacidade** após **Tempo**, para imagens e textos: slider manual de 0–100% e Reset em 100%.
+- O valor é independente da presença temporal e é preservado por histórico, Save/Load e Session Restore. Stage, Preview e Export aplicam a mesma opacidade; no texto, ela multiplica glifos e fundo sem alterar o alpha próprio do fundo.
+- Não há opacidade global nem efeito de entrada/saída nesta PR. A validação física em iPhone/Safari continua obrigatória antes de merge; produção não foi alterada.
+
 ## Atualização 2026-09-01 — OPS-05: preview público por PR
 
 - A OPS-05 está mergeada e publica estáticos em `gh-pages`: raiz para `main` e `previews/pr-<n>/` para cada PR interna.

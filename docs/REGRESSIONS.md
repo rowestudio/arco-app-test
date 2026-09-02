@@ -1,5 +1,21 @@
 # REGRESSIONS
 
+## REG-068 — Preview pós-MP4 perde o contexto canônico de Text Assets
+
+- **Relato físico:** o MP4 contém o Text Asset corretamente, mas o Preview que retoma logo após a geração pode deixá-lo ausente.
+- **Causa comprovada:** `finishExport()` reativava o loop do Preview sem transferir o `renderSessionSnapshot` do contexto `export` para `preview`. O filtro de presença do Preview deixava de consumir o snapshot estável, abrindo divergência especialmente para Text Assets temporais.
+- **Correção E9AO:** `handoffCompletedExportSnapshotToPreview()` cria o snapshot equivalente no contexto `preview` antes do primeiro quadro do retorno. `refreshRenderSessionSnapshotPresenceAt()` continua sendo a fonte única da presença por instante; o arquivo MP4 já pronto permanece imutável.
+- **Teste preventivo:** o teste WebKit de H.264 cria um Text Asset real, gera MP4 e exige que o primeiro ciclo pós-export tenha o Text Asset desenhado e `renderSessionSnapshot.context === 'preview'`. Falha antes da correção com `context: 'export'`.
+- **Status:** corrigida tecnicamente na `v8z4b32E9AO`; validação física iPhone/Safari pendente antes do merge.
+
+## REG-067 — Opacidade manual não pode ser perdida nem substituir presença temporal
+
+- **Relato físico:** na E9AM, o Stage aplicava a transparência, o Preview só podia refletir o valor após salvar e o arquivo exportado continuava opaco.
+- **Causa comprovada:** o snapshot congelado de imagem de Preview/Export omitia `opacity`; a conversão do snapshot em asset de desenho também não a repassava, acionando o fallback de 100% no Canvas.
+- **Prevenção E9AN:** `asset.opacity` é normalizada, serializada e agora congelada/repassada no snapshot de imagens. A presença temporal continua o filtro anterior ao desenho; textos preservam a própria serialização de snapshot.
+- **Teste preventivo:** smoke E9AM aplica 40%, reproduz Preview e Export pelo `prepareRenderSessionSnapshot()` real e confirma `snapshotOpacity` e `alphaUsed` iguais a `0,4` nos dois destinos.
+- **Status:** corrigida tecnicamente na `v8z4b32E9AN`; validação física iPhone/Safari pendente.
+
 ## REG-066 — Preview omite ativos durante o trecho de fechamento do Loop
 
 - **Relato físico:** ao ativar Loop, imagens que deveriam permanecer visíveis desaparecem durante o retorno do último Frame ao primeiro no Preview.
