@@ -1,5 +1,12 @@
 # REGRESSIONS
 
+## REG-067 — Opacidade manual não pode ser perdida nem substituir presença temporal
+
+- **Risco:** o slider individual alterar presença, geometria, ordem de camadas ou seleção; desaparecer no Preview/Export; ou o fundo de texto ignorar a opacidade manual.
+- **Prevenção E9AM:** `asset.opacity` é normalizada e serializada para imagens e textos; o renderer de Stage e o canvas compartilhado de Preview/Export usam o mesmo baseline. A presença temporal continua o filtro anterior ao desenho.
+- **Teste preventivo:** smoke E9AM seleciona imagem no Modo Ativos, aplica 40%, confirma DOM do Stage, preservação de presença e serialização canônica. A suíte existente protege toolbar, seleção, persistência e renderizadores.
+- **Status:** em validação técnica na `v8z4b32E9AM`; validação física iPhone/Safari pendente.
+
 ## REG-066 — Preview omite ativos durante o trecho de fechamento do Loop
 
 - **Relato físico:** ao ativar Loop, imagens que deveriam permanecer visíveis desaparecem durante o retorno do último Frame ao primeiro no Preview.

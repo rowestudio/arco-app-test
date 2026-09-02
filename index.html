@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9AM — feat(asset-opacity): baseline manual individual 0–100% para imagens e textos, pelo controle Opacidade após Tempo na toolbar de Ativos; independente de presença temporal; persiste em Save/Load, sessão e histórico; Stage, Preview e Export multiplicam a mesma fonte canônica. Para textos, reduz glifos e fundo juntos, preservando a opacidade própria do fundo como alpha interno. base v8z4b32E9AL. -->
 <!-- Arco Motion App — v8z4b32E9AL — base v8z4b32E9AK. fix(asset-temporal-presence): a duração temporal da presença passa a incluir o trecho de fechamento quando Loop está ativo, no estado ao vivo e no snapshot congelado de Preview/Export. Assim, ativos sem saída explícita permanecem presentes durante o retorno N→1. NÃO TOCADO: getStateAtT, câmera, WebCodecs, geometria do ProjectWorld, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AL. -->
 <!-- Arco Motion App — v8z4b32E9AG — base v8z4b32E9AF. feat(assets): Presença Temporal de Ativos para imagem e texto, com Entrada/Saída opcionais ancoradas em projeto, frameId estável ou evento de outro ativo; padrões globais ficam em Edição do projeto e overrides no painel Animação do ativo. No Stage, ativos fora do intervalo permanecem como referência editorial suavizada/tracejada e continuam selecionáveis/editáveis; Preview e Export usam o mesmo resolvedor canônico em tempo de projeto para omiti-los do render, sem DOM. Exclusão de âncora referenciada exige confirmação e converte dependentes para tempo absoluto resolvido, preservando Undo. NÃO TOCADO: getStateAtT, câmera, WebCodecs, matemática de curvas/easing, ProjectWorld geométrico, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AG. -->
 <!-- Arco Motion App — v8z4b32E9AF — base v8z4b32E9AE. fix(editor-pan): com a mão ativa, um dedo arrasta a vista inclusive no zoom dinâmico abaixo ou igual a 100%, sem selecionar nem mover o Ativo sob o toque. Pinça e pan de dois dedos permanecem no caminho existente. NÃO TOCADO: Preview, Export, ProjectWorld, Save/Load, timeline, curvas, motor, geometria canônica e transformação de ativos/frames. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AF. -->
@@ -4475,6 +4476,9 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <div class="tb-item ctx-only ctx-asset" id="tbAssetTiming" onclick="openAssetTimingPanel()">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-clock"></use></svg><span class="tb-lbl">Tempo</span>
   </div>
+  <div class="tb-item ctx-only ctx-asset" id="tbAssetOpacity" onclick="openAssetContextPanel('opacity')">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-opacity"></use></svg><span class="tb-lbl">Opacidade</span>
+  </div>
   <div class="tb-item ctx-only ctx-asset" id="tbAssetCopy" onclick="copySelectedAssetToClipboard()" aria-label="Copiar ativo">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-copy"></use></svg><span class="tb-lbl">Copiar</span>
   </div>
@@ -7743,8 +7747,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AL';
-const APP_VERSION_NAME = 'v8z4b32E9AL';
+const APP_VERSION = 'v8z4b32E9AM';
+const APP_VERSION_NAME = 'v8z4b32E9AM';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -15228,7 +15232,7 @@ function captureHistoryCanonicalFingerprint(state) {
       id:a.id, type:a.type||'image', name:a.name||'', layerSequence:a.layerSequence,
       layerName:a.layerName||'', layerNameSource:a.layerNameSource||'automatic', originalFileName:a.originalFileName||'',
       worldX:Number(a.worldX)||0, worldY:Number(a.worldY)||0, worldW:Number(a.worldW)||0, worldH:Number(a.worldH)||0,
-      rotation:Number(a.rotation)||0, depth:Number.isFinite(Number(a.depth))?Number(a.depth):0, zIndex:Number(a.zIndex)||0,
+      rotation:Number(a.rotation)||0, depth:Number.isFinite(Number(a.depth))?Number(a.depth):0, opacity:Math.max(0,Math.min(1,Number.isFinite(Number(a.opacity))?Number(a.opacity):1)), zIndex:Number(a.zIndex)||0,
       visible:a.visible!==false, locked:!!a.locked, crop:a.crop?{...a.crop}:null, frameStyle:a.frameStyle?{...a.frameStyle}:null,
       presence:cloneAssetPresence(a.presence)
     };
@@ -16659,6 +16663,7 @@ function ensureAssetVisualDefaults(asset) {
   // Profundidade e independente da geometria canonica. Projetos anteriores
   // migram implicitamente para zero; valores nao finitos nunca chegam ao render.
   asset.depth = Number.isFinite(Number(asset.depth)) ? Number(asset.depth) : 0;
+  asset.opacity = Math.max(0, Math.min(1, Number.isFinite(Number(asset.opacity)) ? Number(asset.opacity) : 1));
   asset.locked = !!asset.locked;
   asset.crop = asset.crop || { enabled: false, x: 0, y: 0, w: 1, h: 1 };
   asset.frameStyle = asset.frameStyle || {
@@ -16798,7 +16803,7 @@ function hexToRgba(hex,alpha){const n=parseInt(String(hex).slice(1),16);return `
 let pendingTextDraft = null, textCreationBaseline = null, textEditorMode = null, textEditorTargetAssetId = null, textEditorOpenSource = null, textEditorActiveTool = 'text', textEditorOriginalAsset = null;
 let textAssetStageRendered=false,textAssetPreviewRendered=false,textAssetExportRendered=false,textAssetSaveLoadParityOk=null,textAssetSessionRestoreParityOk=null;
 let textBoxStageSnapshot=null,textBoxPreviewSnapshot=null,textBoxExportSnapshot=null,textBoxOpacityDoesNotAffectGlyphs=null,textBoxLegacyMigrationOk=null;
-function captureTextBoxRenderSnapshot(a){if(!a||a.type!=='text')return null;normalizeTextAsset(a);const m=measureTextAsset({...a});return{id:String(a.id),boxStyle:a.boxStyle,enabled:a.boxBackgroundEnabled,color:a.boxBackgroundColor,opacity:a.boxBackgroundOpacity,boxWidth:a.boxWidth,worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,paddingX:m.paddingX,paddingY:m.paddingY,text:a.text,colorText:a.color,fontSize:a.fontSize,rotation:a.rotation}}
+function captureTextBoxRenderSnapshot(a){if(!a||a.type!=='text')return null;normalizeTextAsset(a);const m=measureTextAsset({...a});return{id:String(a.id),boxStyle:a.boxStyle,enabled:a.boxBackgroundEnabled,color:a.boxBackgroundColor,opacity:a.boxBackgroundOpacity,assetOpacity:a.opacity,boxWidth:a.boxWidth,worldX:a.worldX,worldY:a.worldY,worldW:a.worldW,worldH:a.worldH,paddingX:m.paddingX,paddingY:m.paddingY,text:a.text,colorText:a.color,fontSize:a.fontSize,rotation:a.rotation}}
 let textCreationKeyboardResizeChangedProjectWorld=false,textCreationKeyboardResizeChangedFrames=false,textCreationKeyboardResizeChangedExistingAssets=false;
 let textEditorConfirmed=false,textEditorCancelled=false,textEditorCommitChangedOnlyTarget=false,textEditorUndoEntriesCreated=0,textEditorAutosaveRevisionsCreated=0,textEditorDoubleTapDetected=false,textEditorSingleTapOpenedKeyboard=false,textEditorDraftPersistedDetected=false;
 let textEditorStagePreviewExportParityOk=false,textEditorSaveLoadParityOk=false,textEditorSessionRestoreParityOk=false;
@@ -16817,7 +16822,7 @@ function normalizeTextAsset(asset) {
   // dela). Ausência/valor inválido migra para 'fixed', preservando a geometria de
   // projetos legados; measureTextAsset é o único ponto que deriva a largura no auto.
   asset.boxWidthMode=asset.boxWidthMode==='auto'?'auto':'fixed';
-  asset.depth=Number.isFinite(Number(asset.depth))?Number(asset.depth):0; asset.visible=asset.visible!==false; asset.rotation=Number(asset.rotation)||0; return asset;
+  asset.depth=Number.isFinite(Number(asset.depth))?Number(asset.depth):0; asset.opacity=Math.max(0,Math.min(1,Number.isFinite(Number(asset.opacity))?Number(asset.opacity):1)); asset.visible=asset.visible!==false; asset.rotation=Number(asset.rotation)||0; return asset;
 }
 function wrapTextLines(ctx,text,maxWidth){const lines=[];String(text||'').split('\n').forEach(paragraph=>{const words=paragraph.match(/[^\S\n]+|[^\s]+/g)||[];if(!words.length){lines.push('');return}let line='';words.forEach(word=>{const w=word.replace(/\t/g,'    ');let candidate=line+w;if(line&&ctx.measureText(candidate).width>maxWidth){lines.push(line);line=w}else line=candidate;while(ctx.measureText(line).width>maxWidth&&line.length>1){let cut=line.length-1;while(cut>1&&ctx.measureText(line.slice(0,cut)).width>maxWidth)cut--;lines.push(line.slice(0,cut));line=line.slice(cut)}});lines.push(line)});return lines.length?lines:['']}
 // Largura natural do conteúdo: acompanha A LINHA MAIS LONGA, quebrando somente por
@@ -16841,7 +16846,7 @@ function measureTextAsset(asset,layoutText){normalizeTextAsset(asset);const isEm
   }
   const lines=wrapTextLines(ctx,content,asset.boxWidth),contentHeight=Math.max(asset.fontSize*asset.lineHeight,lines.length*asset.fontSize*asset.lineHeight),paddingX=asset.boxBackgroundEnabled?asset.fontSize*asset.boxPaddingXEm:0,paddingY=asset.boxBackgroundEnabled?asset.fontSize*asset.boxPaddingYEm:0;asset.worldW=asset.boxWidth+paddingX*2;asset.worldH=contentHeight+paddingY*2;return{lines,width:asset.boxWidth,height:asset.worldH,contentHeight,paddingX,paddingY}}
 function createPendingTextAsset(centerWorld){const baseW=projectWorld.baseStageW||stageW||360,baseH=projectWorld.baseStageH||stageH||640,boxWidth=Math.max(120,Math.min(baseW*.72,320)),fontSize=Math.max(22,Math.min(42,baseW*.1));
- const asset=normalizeTextAsset({id:'text-'+Date.now()+'-'+Math.floor(Math.random()*1000),type:'text',text:'',color:TEXT_ASSET_DEFAULT_COLOR,fontKey:'system',fontWeight:400,fontStyle:'normal',worldX:0,worldY:0,worldW:boxWidth,boxWidth,worldH:fontSize*1.2,rotation:0,zIndex:Math.max(0,...assets.map(a=>Number(a&&a.zIndex)||0))+1,visible:true,fontSize,textBaseBoxWidth:boxWidth,textBaseFontSize:fontSize,lineHeight:1.2,textAlign:'center',depth:0,boxWidthMode:'auto'});
+ const asset=normalizeTextAsset({id:'text-'+Date.now()+'-'+Math.floor(Math.random()*1000),type:'text',text:'',color:TEXT_ASSET_DEFAULT_COLOR,fontKey:'system',fontWeight:400,fontStyle:'normal',worldX:0,worldY:0,worldW:boxWidth,boxWidth,worldH:fontSize*1.2,rotation:0,zIndex:Math.max(0,...assets.map(a=>Number(a&&a.zIndex)||0))+1,visible:true,fontSize,textBaseBoxWidth:boxWidth,textBaseFontSize:fontSize,lineHeight:1.2,textAlign:'center',depth:0,opacity:1,boxWidthMode:'auto'});
  // v8z4b32E9E — o novo Text Asset nasce centralizado na VISTA ATUAL do Stage:
  // mede a geometria REAL do draft e faz seu centro geométrico coincidir com
  // centerWorld (centro da vista corrente em World, capturado antes do resize do
@@ -17202,13 +17207,14 @@ function syncAssetContextPanel() {
       Math.abs((baseline.height * current / 100) - (Number(visualRect.h) || 0)) < 0.01);
   }
   if (assetContextPanelKind === 'rotation') { slider.min = -720; slider.max = 720; current = Number(asset.rotation) || 0; suffix = '°'; }
+  if (assetContextPanelKind === 'opacity') { slider.min = 0; slider.max = 100; current = (Number(asset.opacity) || 0) * 100; suffix = '%'; }
   slider.value = String(Math.max(Number(slider.min), Math.min(Number(slider.max), current)));
   if (typeof updateSliderFill === 'function') updateSliderFill(slider);
-  const contextLabel = assetContextPanelKind === 'scale' ? 'Escala' : assetContextPanelKind === 'rotation' ? 'Rotação' : 'Profundidade';
+  const contextLabel = assetContextPanelKind === 'scale' ? 'Escala' : assetContextPanelKind === 'rotation' ? 'Rotação' : assetContextPanelKind === 'opacity' ? 'Opacidade' : 'Profundidade';
   slider.setAttribute('aria-label', contextLabel + ' do ativo');
   value.textContent = String(Math.round(current)) + suffix;
   if (assetContextPanelKind === 'depth') renderAssetDepthRuler();
-  const neutral = assetContextPanelKind === 'scale' ? 100 : 0;
+  const neutral = assetContextPanelKind === 'scale' || assetContextPanelKind === 'opacity' ? 100 : 0;
   reset.disabled = Math.abs(current - neutral) < 0.001;
   reset.style.opacity = reset.disabled ? '0.45' : '1';
 }
@@ -17232,7 +17238,7 @@ function openAssetContextPanel(kind) {
   if (getSelectedAsset().locked) { showStatus('Destrave a camada para editar.'); return; }
   closeAssetContextPanel();
   closeAll();
-  assetContextPanelKind = kind === 'scale' || kind === 'rotation' ? kind : 'depth';
+  assetContextPanelKind = kind === 'scale' || kind === 'rotation' || kind === 'opacity' ? kind : 'depth';
   const panel = document.getElementById('assetContextPanel');
   if (panel) { panel.style.display = 'flex'; panel.style.pointerEvents = 'auto'; panel.dataset.kind = assetContextPanelKind; panel.classList.add('show'); }
   document.body.classList.add('asset-context-panel-open');
@@ -17280,7 +17286,7 @@ function beginAssetContextGesture() {
     startBoxWidth: asset.type === 'text' ? Number(asset.boxWidth) || Number(asset.worldW) || 1 : null,
     startFontSize: asset.type === 'text' ? Number(asset.fontSize) || 36 : null,
     startX: Number(asset.worldX) || 0, startY: Number(asset.worldY) || 0,
-    startScale: getAssetContextScalePercent(asset), startZIndex: asset.zIndex, startDepth: Number(asset.depth) || 0,
+    startScale: getAssetContextScalePercent(asset), startZIndex: asset.zIndex, startDepth: Number(asset.depth) || 0, startOpacity: Number(asset.opacity),
     scaleBaselineW: baseline.width, scaleBaselineH: baseline.height, scaleBaselineValid: baseline.valid,
     startVisualW: Number(visualRect && visualRect.w) || Number(asset.worldW) || 1,
     startVisualH: Number(visualRect && visualRect.h) || Number(asset.worldH) || 1,
@@ -17298,6 +17304,7 @@ function setAssetContextValue(value) {
   if (assetContextPanelKind === 'depth') {
     asset.depth = Math.max(-100, Math.min(100, next));
   }
+  if (assetContextPanelKind === 'opacity') asset.opacity = Math.max(0, Math.min(1, next / 100));
   if (assetContextPanelKind === 'rotation') asset.rotation = Math.max(-720, Math.min(720, next));
   if (assetContextPanelKind === 'scale' && assetContextGesture) {
     const clampedPct = Math.max(0.01, next);
@@ -17347,13 +17354,13 @@ function commitAssetContextGesture() {
   if (!gesture) return;
   const asset = assets.find(a => a && String(a.id) === gesture.assetId);
   const before = gesture.snapshot.assets.find(a => a && String(a.id) === gesture.assetId);
-  const changed = !!(asset && before && JSON.stringify({x:asset.worldX,y:asset.worldY,w:asset.worldW,h:asset.worldH,r:asset.rotation,d:asset.depth}) !== JSON.stringify({x:before.worldX,y:before.worldY,w:before.worldW,h:before.worldH,r:before.rotation,d:before.depth}));
+  const changed = !!(asset && before && JSON.stringify({x:asset.worldX,y:asset.worldY,w:asset.worldW,h:asset.worldH,r:asset.rotation,d:asset.depth,o:asset.opacity}) !== JSON.stringify({x:before.worldX,y:before.worldY,w:before.worldW,h:before.worldH,r:before.rotation,d:before.depth,o:before.opacity}));
   if (asset && gesture.kind === 'depth') assetDepthChangedZIndex = asset.zIndex !== gesture.startZIndex;
   if (changed) { pushUndoSnapshot(gesture.snapshot); markProjectDirty('asset-' + gesture.kind); }
   assetContextGesture = null;
 }
 function resetAssetContextValue() {
-  setAssetContextValue(assetContextPanelKind === 'scale' ? 100 : 0);
+  setAssetContextValue(assetContextPanelKind === 'scale' || assetContextPanelKind === 'opacity' ? 100 : 0);
   if (assetContextPanelKind === 'scale') {
     const asset = getSelectedAsset();
     const baseline = getAssetScaleBaselineWorldSize(asset);
@@ -18548,7 +18555,7 @@ function syncAssetToolbarState() {
   const canEdit = hasSel && !toolbarAsset.locked;
   const toolbarAssetId = toolbarAsset ? String(toolbarAsset.id) : '';
   const primary=document.getElementById('tbAssetReplace'); if(primary){const isText=hasSel&&toolbarAsset.type==='text';primary.querySelector('use').setAttribute('href',isText?'#i-mouse-pointer':'#i-image-down');primary.querySelector('.tb-lbl').textContent=isText?'Editar':'Trocar';primary.setAttribute('aria-label',isText?'Editar texto':'Trocar imagem');}
-  ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetTiming','tbAssetDelete','tbAssetCopy','tbAssetDuplicate'].forEach(function(id) {
+  ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetTiming','tbAssetOpacity','tbAssetDelete','tbAssetCopy','tbAssetDuplicate'].forEach(function(id) {
     const el = document.getElementById(id);
     if (!el) return;
     el.classList.toggle('asset-tool-disabled', !canEdit);
@@ -31819,7 +31826,7 @@ function serializeProjectAsset(a, idx, includeImages) {
     normalizeTextAsset(a); measureTextAsset(a);
     return { id:a.id, type:'text', name:a.name||'', layerSequence:a.layerSequence, layerName:a.layerName,
       layerNameSource:a.layerNameSource||'automatic', text:a.text, color:a.color, worldX:a.worldX, worldY:a.worldY,
-      worldW:a.worldW, worldH:a.worldH, boxWidth:a.boxWidth, boxWidthMode:a.boxWidthMode==='auto'?'auto':'fixed', rotation:a.rotation||0, depth:Number.isFinite(Number(a.depth))?Number(a.depth):0, zIndex:a.zIndex||0,
+      worldW:a.worldW, worldH:a.worldH, boxWidth:a.boxWidth, boxWidthMode:a.boxWidthMode==='auto'?'auto':'fixed', rotation:a.rotation||0, depth:Number.isFinite(Number(a.depth))?Number(a.depth):0, opacity:Math.max(0,Math.min(1,Number.isFinite(Number(a.opacity))?Number(a.opacity):1)), zIndex:a.zIndex||0,
       visible:a.visible!==false, locked:!!a.locked, textAlign:a.textAlign, fontSize:a.fontSize, lineHeight:a.lineHeight,
       textBaseBoxWidth:a.textBaseBoxWidth, textBaseFontSize:a.textBaseFontSize, boxStyle:a.boxStyle, boxBackgroundEnabled:a.boxBackgroundEnabled, boxBackgroundColor:a.boxBackgroundColor, boxBackgroundOpacity:a.boxBackgroundOpacity, boxPaddingXEm:a.boxPaddingXEm, boxPaddingYEm:a.boxPaddingYEm,
       fontKey:a.fontKey, fontFamily:a.fontFamily, fontWeight:a.fontWeight, fontStyle:a.fontStyle, textAlign:a.textAlign,
@@ -31842,6 +31849,7 @@ function serializeProjectAsset(a, idx, includeImages) {
     worldH: a.worldH || 0,
     rotation: a.rotation || 0,
     depth: Number.isFinite(Number(a.depth)) ? Number(a.depth) : 0,
+    opacity: Math.max(0, Math.min(1, Number.isFinite(Number(a.opacity)) ? Number(a.opacity) : 1)),
     zIndex: a.zIndex || 0,
     visible: a.visible !== false,
     locked: !!a.locked,
@@ -33914,6 +33922,7 @@ function restoreProjectAssetsFromData(data) {
         primary.layerNameSource = savedPrimaryIdentity.layerNameSource;
         primary.originalFileName = savedPrimaryIdentity.originalFileName || '';
         primary.depth = Number.isFinite(Number(savedPrimaryIdentity.depth)) ? Number(savedPrimaryIdentity.depth) : 0;
+        primary.opacity = Math.max(0, Math.min(1, Number.isFinite(Number(savedPrimaryIdentity.opacity)) ? Number(savedPrimaryIdentity.opacity) : 1));
       }
       // v8z4b30N — baseStageW/H definem a grade 3x3 usada para posicionar os
       // assets adicionais. Restaurar os valores salvos mantém worldX/Y/W/H
@@ -34026,6 +34035,7 @@ function restoreProjectAssetsFromData(data) {
           worldH: sa.worldH || 0,
           rotation: sa.rotation || 0,
           depth: Number.isFinite(Number(sa.depth)) ? Number(sa.depth) : 0,
+          opacity: Math.max(0, Math.min(1, Number.isFinite(Number(sa.opacity)) ? Number(sa.opacity) : 1)),
           zIndex: sa.zIndex != null ? sa.zIndex : assets.length,
           visible: sa.visible !== false,
           locked: !!sa.locked,
@@ -34057,7 +34067,7 @@ function restoreProjectAssetsFromData(data) {
           name:sa.name||'', layerSequence:sa.layerSequence, layerName:sa.layerName, layerNameSource:sa.layerNameSource||'automatic',
           text:sa.text||'', color:sa.color, worldX:Number(sa.worldX)||0, worldY:Number(sa.worldY)||0,
           worldW:Number(sa.worldW)||Number(sa.boxWidth)||220, worldH:Number(sa.worldH)||0, boxWidth:Number(sa.boxWidth)||Number(sa.worldW)||220, boxWidthMode:sa.boxWidthMode==='auto'?'auto':'fixed',
-          rotation:Number(sa.rotation)||0, depth:Number.isFinite(Number(sa.depth))?Number(sa.depth):0, zIndex:Number(sa.zIndex)||0, visible:sa.visible!==false, locked:!!sa.locked,
+          rotation:Number(sa.rotation)||0, depth:Number.isFinite(Number(sa.depth))?Number(sa.depth):0, opacity:Math.max(0,Math.min(1,Number.isFinite(Number(sa.opacity))?Number(sa.opacity):1)), zIndex:Number(sa.zIndex)||0, visible:sa.visible!==false, locked:!!sa.locked,
           textAlign:sa.textAlign, fontKey:sa.fontKey, fontWeight:sa.fontWeight, fontStyle:sa.fontStyle, fontSize:Number(sa.fontSize)||36, lineHeight:Number(sa.lineHeight)||1.2,
           textBaseBoxWidth:Number(sa.textBaseBoxWidth)||Number(sa.worldW)||Number(sa.boxWidth)||220,
           textBaseFontSize:Number(sa.textBaseFontSize)||Number(sa.fontSize)||36, boxStyle:sa.boxStyle, boxBackgroundEnabled:sa.boxBackgroundEnabled, boxBackgroundColor:sa.boxBackgroundColor, boxBackgroundOpacity:sa.boxBackgroundOpacity, boxPaddingXEm:sa.boxPaddingXEm, boxPaddingYEm:sa.boxPaddingYEm,
@@ -36816,8 +36826,10 @@ function renderProjectWorldExtraImages() {
     img.style.pointerEvents = 'none';
     img.style.userSelect = 'none';
     img.style.webkitUserDrag = 'none';
-    // v8z4b30V/32C — viewMode só se aplica no Modo Câmera; Modo Ativos mostra tudo.
-    if (!_inAssetsMode && typeof viewMode !== 'undefined' && viewMode === 2) img.style.opacity = '0.06';
+    // A opacidade manual é independente da presença temporal e do modo de mapa.
+    // No mapa, o atenuador existente multiplica o baseline em vez de sobrescrevê-lo.
+    const manualOpacity = Math.max(0, Math.min(1, Number.isFinite(Number(a.opacity)) ? Number(a.opacity) : 1));
+    img.style.opacity = String((!_inAssetsMode && typeof viewMode !== 'undefined' && viewMode === 2) ? manualOpacity * 0.06 : manualOpacity);
     // Posição global na pilha ordenada (índice 0 = fundo). Cap na banda de assets
     // para nunca invadir as bandas de curvas (18) / frames (20–30) no Modo Câmera.
     const _z = Math.min(compositionRankById.get(String(a.id)) || 1, CAMERA_ASSET_BAND_MAX);
@@ -36839,9 +36851,9 @@ function renderProjectWorldExtraImages() {
     el.textContent = a.text || (a === pendingTextDraft ? 'Texto...' : '');
     el.style.left=p.x+'px'; el.style.top=p.y+'px'; el.style.width=p.w+'px'; el.style.minHeight=p.h+'px'; el.style.padding=(m.paddingY*_editorTransform.scale)+'px '+(m.paddingX*_editorTransform.scale)+'px'; el.style.backgroundColor=a.boxBackgroundEnabled?hexToRgba(a.boxBackgroundColor,a.boxBackgroundOpacity):'transparent';
     el.style.color=a.color; el.style.fontFamily=a.fontFamily; el.style.fontWeight=String(a.fontWeight); el.style.fontStyle=a.fontStyle; el.style.fontSize=(a.fontSize*_editorTransform.scale)+'px'; el.style.lineHeight=String(a.lineHeight); el.style.textAlign=a.textAlign;
-    el.style.transform=(Number(a.rotation)||0)?`rotate(${Number(a.rotation)}deg)`:''; el.style.zIndex=String(Math.min(compositionRankById.get(String(a.id))||1,CAMERA_ASSET_BAND_MAX));
+    el.style.transform=(Number(a.rotation)||0)?`rotate(${Number(a.rotation)}deg)`:''; el.style.opacity=String(Math.max(0,Math.min(1,Number.isFinite(Number(a.opacity))?Number(a.opacity):1))); el.style.zIndex=String(Math.min(compositionRankById.get(String(a.id))||1,CAMERA_ASSET_BAND_MAX));
     stageContent.insertBefore(el,imgEl); textAssetStageRendered = textAssetStageRendered || a !== pendingTextDraft;
-    if(a!==pendingTextDraft){textBoxStageSnapshot=captureTextBoxRenderSnapshot(a);const computed=getComputedStyle(el),alphaMatch=!a.boxBackgroundEnabled||Math.abs((Number(computed.backgroundColor.match(/[\d.]+(?=\))/)?.[0])||1)-a.boxBackgroundOpacity)<.011;textBoxOpacityDoesNotAffectGlyphs=computed.opacity==='1'&&alphaMatch}
+    if(a!==pendingTextDraft){textBoxStageSnapshot=captureTextBoxRenderSnapshot(a);const computed=getComputedStyle(el),alphaMatch=!a.boxBackgroundEnabled||Math.abs((Number(computed.backgroundColor.match(/[\d.]+(?=\))/)?.[0])||1)-a.boxBackgroundOpacity)<.011,manualAlpha=Math.max(0,Math.min(1,Number.isFinite(Number(a.opacity))?Number(a.opacity):1));textBoxOpacityDoesNotAffectGlyphs=Math.abs(Number(computed.opacity)-manualAlpha)<.011&&alphaMatch}
   });
   // Diagnóstico de ordem/posição da img-1.
   computedWorldExtraZIndexes = _zlist.join(',');
@@ -39151,12 +39163,15 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
         }
         const drawX = r.ax + parallax.offsetX;
         const drawY = r.ay + parallax.offsetY;
+        const manualOpacity = Math.max(0, Math.min(1, Number.isFinite(Number(renderAssets[i].asset && renderAssets[i].asset.opacity)) ? Number(renderAssets[i].asset.opacity) : 1));
+        ctx.save();
+        ctx.globalAlpha = manualOpacity;
         if (renderAssets[i].type === 'text' || renderAssets[i].asset.type === 'text') {
           const ta=normalizeTextAsset(renderAssets[i].asset), scaleX=(canonicalDims.width||1)/(projectWorld.baseStageW||1);
           ctx.save(); ctx.translate(drawX+r.aw/2,drawY+r.ah/2); ctx.rotate((r.rotation||0)*Math.PI/180);
           const paddingX=ta.boxBackgroundEnabled?ta.fontSize*ta.boxPaddingXEm*scaleX:0,paddingY=ta.boxBackgroundEnabled?ta.fontSize*ta.boxPaddingYEm*scaleX:0,contentW=ta.boxWidth*scaleX;
-          if(ta.boxBackgroundEnabled){ctx.save();ctx.globalAlpha=ta.boxBackgroundOpacity;ctx.fillStyle=ta.boxBackgroundColor;ctx.fillRect(-r.aw/2,-r.ah/2,r.aw,r.ah);ctx.restore()}
-          ctx.font=`${ta.fontStyle} ${ta.fontWeight} ${ta.fontSize*scaleX}px ${ta.fontFamily}`; ctx.fillStyle=ta.color; ctx.globalAlpha=1; ctx.textBaseline='top'; ctx.textAlign=ta.textAlign;
+          if(ta.boxBackgroundEnabled){ctx.save();ctx.globalAlpha=manualOpacity*ta.boxBackgroundOpacity;ctx.fillStyle=ta.boxBackgroundColor;ctx.fillRect(-r.aw/2,-r.ah/2,r.aw,r.ah);ctx.restore()}
+          ctx.font=`${ta.fontStyle} ${ta.fontWeight} ${ta.fontSize*scaleX}px ${ta.fontFamily}`; ctx.fillStyle=ta.color; ctx.globalAlpha=manualOpacity; ctx.textBaseline='top'; ctx.textAlign=ta.textAlign;
           const lines=wrapTextLines(ctx,ta.text,contentW), lh=ta.fontSize*ta.lineHeight*scaleX, tx=ta.textAlign==='left'?-contentW/2:(ta.textAlign==='right'?contentW/2:0);
           lines.forEach((line,li)=>ctx.fillText(line,tx,-r.ah/2+paddingY+li*lh)); ctx.restore();
           if(context==='preview'){textAssetPreviewRendered=true;textBoxPreviewSnapshot=captureTextBoxRenderSnapshot(ta)} if(context==='export'){textAssetExportRendered=true;textBoxExportSnapshot=captureTextBoxRenderSnapshot(ta)}
@@ -39169,6 +39184,7 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
         } else {
           drawCoverImage(ctx, renderAssets[i].src, drawX, drawY, r.aw, r.ah);
         }
+        ctx.restore();
         drawnCount++;
       }
     } finally {
@@ -39232,7 +39248,7 @@ function drawWorldToCanvas(ctx, cam, outW, outH, options) {
           culled: false, cullingReason: 'none',
           intersectsCamera: (maxX > 0 && minX < outW && maxY > 0 && minY < outH),
           screenX: minX, screenY: minY, screenW: sw2, screenH: sh2, screenArea: Math.max(0, sw2) * Math.max(0, sh2),
-          alphaUsed: 1, imageReady: ready, decodeReady: ready,
+          alphaUsed: Math.max(0, Math.min(1, Number.isFinite(Number(a.opacity)) ? Number(a.opacity) : 1)), imageReady: ready, decodeReady: ready,
           naturalW: ready ? dims.width : 0, naturalH: ready ? dims.height : 0
         });
       }

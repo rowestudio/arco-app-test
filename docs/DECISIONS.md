@@ -1,5 +1,12 @@
 # DECISIONS
 
+## DEC-2026-09-02-01 — Opacidade manual é baseline individual do ativo
+
+- **Decisão:** imagens e Text Assets passam a ter `asset.opacity` canônica, individual e persistente, limitada a 0–1 e iniciada em 1. O controle aparece em Ativos imediatamente após **Tempo**, com slider 0–100% e Reset em 100%.
+- **Semântica:** presença temporal decide se o ativo participa do instante; opacidade manual decide seu alpha somente quando ele participa. No texto, a opacidade manual reduz glifos e fundo como conjunto; a opacidade específica do fundo continua sendo seu alpha interno.
+- **Paridade e evolução:** Stage, Preview, Export, Save/Load, Session Restore e Undo/Redo usam o mesmo baseline. Efeitos globais futuros devem multiplicar esse valor — nunca substituir `asset.opacity`.
+- **Escopo:** sem controle global de opacidade e sem efeitos de entrada/saída nesta frente.
+
 ## DEC-2026-08-31-01 — Presença temporal mantém referência editorial fora do intervalo
 
 - **Decisão:** a primeira implementação de presença temporal separa rigorosamente o instante em que o asset entra/sai da aparência editorial do Stage. Preview e Export omitem o asset fora do intervalo; no editor ele continua como referência suavizada com contorno neutro tracejado. Selecioná-lo conserva coral de Ativos e permite edição.

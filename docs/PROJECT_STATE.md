@@ -1,5 +1,11 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-02 — v8z4b32E9AM em desenvolvimento: opacidade individual de ativos
+
+- O Modo Ativos passa a oferecer **Opacidade** após **Tempo**, para imagens e textos: slider manual de 0–100% e Reset em 100%.
+- O valor é independente da presença temporal e é preservado por histórico, Save/Load e Session Restore. Stage, Preview e Export aplicam a mesma opacidade; no texto, ela multiplica glifos e fundo sem alterar o alpha próprio do fundo.
+- Não há opacidade global nem efeito de entrada/saída nesta PR. A validação física em iPhone/Safari continua obrigatória antes de merge; produção não foi alterada.
+
 ## Atualização 2026-09-01 — OPS-05: preview público por PR
 
 - A OPS-05 está mergeada e publica estáticos em `gh-pages`: raiz para `main` e `previews/pr-<n>/` para cada PR interna.
