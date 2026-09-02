@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-02 — v8z4b32E9AN: opacidade de imagem no snapshot de Preview/Export
+
+- Relato físico na E9AM: o Stage refletia a transparência, mas Preview só a mostrava depois de salvar e o arquivo exportado permanecia opaco.
+- Causa comprovada: o snapshot congelado de imagens preservava fonte, geometria, rotação, profundidade e presença, mas descartava `opacity`; na conversão para o asset de desenho o fallback resultava em 100%.
+- Correção: `opacity` é congelada e repassada no caminho de imagem de Preview e Export. O novo smoke reproduz ambos os destinos pelo snapshot real e confirma `0,4` no snapshot e no alpha efetivamente usado pelo Canvas.
+- Produção permanece intocada. A validação física no preview da mesma PR continua obrigatória antes de merge.
+
 ## Atualização 2026-09-02 — v8z4b32E9AM em desenvolvimento: opacidade individual de ativos
 
 - O Modo Ativos passa a oferecer **Opacidade** após **Tempo**, para imagens e textos: slider manual de 0–100% e Reset em 100%.

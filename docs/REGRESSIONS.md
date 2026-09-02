@@ -2,10 +2,11 @@
 
 ## REG-067 — Opacidade manual não pode ser perdida nem substituir presença temporal
 
-- **Risco:** o slider individual alterar presença, geometria, ordem de camadas ou seleção; desaparecer no Preview/Export; ou o fundo de texto ignorar a opacidade manual.
-- **Prevenção E9AM:** `asset.opacity` é normalizada e serializada para imagens e textos; o renderer de Stage e o canvas compartilhado de Preview/Export usam o mesmo baseline. A presença temporal continua o filtro anterior ao desenho.
-- **Teste preventivo:** smoke E9AM seleciona imagem no Modo Ativos, aplica 40%, confirma DOM do Stage, preservação de presença e serialização canônica. A suíte existente protege toolbar, seleção, persistência e renderizadores.
-- **Status:** em validação técnica na `v8z4b32E9AM`; validação física iPhone/Safari pendente.
+- **Relato físico:** na E9AM, o Stage aplicava a transparência, o Preview só podia refletir o valor após salvar e o arquivo exportado continuava opaco.
+- **Causa comprovada:** o snapshot congelado de imagem de Preview/Export omitia `opacity`; a conversão do snapshot em asset de desenho também não a repassava, acionando o fallback de 100% no Canvas.
+- **Prevenção E9AN:** `asset.opacity` é normalizada, serializada e agora congelada/repassada no snapshot de imagens. A presença temporal continua o filtro anterior ao desenho; textos preservam a própria serialização de snapshot.
+- **Teste preventivo:** smoke E9AM aplica 40%, reproduz Preview e Export pelo `prepareRenderSessionSnapshot()` real e confirma `snapshotOpacity` e `alphaUsed` iguais a `0,4` nos dois destinos.
+- **Status:** corrigida tecnicamente na `v8z4b32E9AN`; validação física iPhone/Safari pendente.
 
 ## REG-066 — Preview omite ativos durante o trecho de fechamento do Loop
 

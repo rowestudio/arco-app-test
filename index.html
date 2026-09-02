@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9AN — fix(asset-opacity): o snapshot congelado de Preview/Export preserva `opacity` de imagens e a repassa ao asset de desenho; antes, Stage usava o valor ao vivo mas o snapshot perdia o campo e ambos os destinos renderizavam 100%. Textos já eram serializados no snapshot e permanecem inalterados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AN. -->
 <!-- Arco Motion App — v8z4b32E9AM — feat(asset-opacity): baseline manual individual 0–100% para imagens e textos, pelo controle Opacidade após Tempo na toolbar de Ativos; independente de presença temporal; persiste em Save/Load, sessão e histórico; Stage, Preview e Export multiplicam a mesma fonte canônica. Para textos, reduz glifos e fundo juntos, preservando a opacidade própria do fundo como alpha interno. base v8z4b32E9AL. -->
 <!-- Arco Motion App — v8z4b32E9AL — base v8z4b32E9AK. fix(asset-temporal-presence): a duração temporal da presença passa a incluir o trecho de fechamento quando Loop está ativo, no estado ao vivo e no snapshot congelado de Preview/Export. Assim, ativos sem saída explícita permanecem presentes durante o retorno N→1. NÃO TOCADO: getStateAtT, câmera, WebCodecs, geometria do ProjectWorld, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AL. -->
 <!-- Arco Motion App — v8z4b32E9AG — base v8z4b32E9AF. feat(assets): Presença Temporal de Ativos para imagem e texto, com Entrada/Saída opcionais ancoradas em projeto, frameId estável ou evento de outro ativo; padrões globais ficam em Edição do projeto e overrides no painel Animação do ativo. No Stage, ativos fora do intervalo permanecem como referência editorial suavizada/tracejada e continuam selecionáveis/editáveis; Preview e Export usam o mesmo resolvedor canônico em tempo de projeto para omiti-los do render, sem DOM. Exclusão de âncora referenciada exige confirmação e converte dependentes para tempo absoluto resolvido, preservando Undo. NÃO TOCADO: getStateAtT, câmera, WebCodecs, matemática de curvas/easing, ProjectWorld geométrico, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AG. -->
@@ -7747,8 +7748,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AM';
-const APP_VERSION_NAME = 'v8z4b32E9AM';
+const APP_VERSION = 'v8z4b32E9AN';
+const APP_VERSION_NAME = 'v8z4b32E9AN';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -35437,6 +35438,7 @@ async function prepareRenderSessionSnapshot(kind) {
           worldX: a.worldX || 0, worldY: a.worldY || 0,
           worldW: a.worldW || 0, worldH: a.worldH || 0,
           depth: Number.isFinite(Number(a.depth)) ? Number(a.depth) : 0,
+          opacity: Math.max(0, Math.min(1, Number.isFinite(Number(a.opacity)) ? Number(a.opacity) : 1)),
           sourceW: a.sourceW || 0, sourceH: a.sourceH || 0,
           rotation: Number(a.rotation) || 0,
           mimeType: a.mimeType || '', hasAlpha: !!a.hasAlpha,
@@ -39014,6 +39016,7 @@ function collectWorldRenderAssets(mainSource, canonicalDims, context, projectTim
         sourceW: sv.sourceW, sourceH: sv.sourceH,
         rotation: Number(sv.rotation) || 0,
         depth: Number.isFinite(Number(sv.depth)) ? Number(sv.depth) : 0,
+        opacity: Math.max(0, Math.min(1, Number.isFinite(Number(sv.opacity)) ? Number(sv.opacity) : 1)),
         drawSource: src,
         e6CanonicalReplaced: true
       };

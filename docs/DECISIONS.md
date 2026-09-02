@@ -1,5 +1,11 @@
 # DECISIONS
 
+## DEC-2026-09-02-02 — Snapshot de render inclui toda a aparência manual do ativo
+
+- **Decisão:** o snapshot imutável de Preview/Export deve carregar `asset.opacity` de imagens, além da fonte, geometria, rotação, profundidade e presença já congeladas. A entrada intermediária de desenho conserva o mesmo valor.
+- **Motivo:** Stage usa o modelo vivo, mas Preview e Export usam snapshot. Omitir um atributo visual nesse limite cria divergência temporal e torna o arquivo exportado diferente do editor.
+- **Escopo:** a correção não altera câmera, timing, loop, WebCodecs, geometria, presença temporal, opacidade própria do fundo de texto ou qualquer regra global futura.
+
 ## DEC-2026-09-02-01 — Opacidade manual é baseline individual do ativo
 
 - **Decisão:** imagens e Text Assets passam a ter `asset.opacity` canônica, individual e persistente, limitada a 0–1 e iniciada em 1. O controle aparece em Ativos imediatamente após **Tempo**, com slider 0–100% e Reset em 100%.
