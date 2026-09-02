@@ -1,0 +1,827 @@
+## Roadmap registrado em v8z4b29g — próxima frente de motor
+
+- Após estabilizar a interface v8z4b29g, revisar o motor de movimento em etapa separada, sem implementação nesta versão.
+- Avaliar velocidade constante: percepção de velocidade uniforme, relação entre curvas, distância percorrida e duração.
+- Estudar escala como variável de movimento: influência temporal de variações fortes de zoom e suavização de acelerações visuais estranhas.
+- Estudar rotação como variável de movimento: evitar trancos, avaliar easing próprio ou integração ao movimento inteligente.
+- Revisar movimento inteligente em conjunto com posição, escala, rotação, curva, duração e pausas.
+- Não implementado em v8z4b29g: nenhuma alteração de motor, Preview, MP4/export, curva, timing, escala, rotação ou JSON.
+
+## Roadmap registrado em v8z4b29f — área inferior
+
+- Avaliar futuramente uma estrutura inferior em quatro faixas: tempo, frames/trechos, informação/ações do item ativo e ferramentas contextuais.
+- Avaliar se a faixa contextual inferior atual deve ser reduzida ou eliminada em versões futuras.
+- Nesta versão, não foi implementada faixa de tempo, nova faixa de informações, eliminação da faixa contextual inferior, redesenho da timeline ou arquitetura nova.
+
+## Roadmap registrado em v8z4b29e — área inferior
+
+- Avaliar futuramente uma estrutura inferior em quatro faixas: tempo, frames/trechos, informação/ações do item ativo e ferramentas contextuais.
+- Avaliar se a faixa contextual inferior atual deve ser reduzida ou eliminada em versões futuras.
+- Para Trecho, avaliar se `Movimento` deve permanecer como ação principal.
+- Manter a possibilidade de menu contextual no Stage para Frame.
+- Não implementado em v8z4b29e: nenhuma nova faixa de tempo, nenhuma nova faixa de informações, nenhuma eliminação da faixa contextual inferior e nenhuma mudança estrutural da timeline.
+
+# Roadmap técnico/produto — pós-checkpoint v8z4b25h
+
+## Checkpoint funcional preservado
+
+- v8z4b25h aprovada funcionalmente como checkpoint interno.
+- Não é release comercial.
+- v8z4b25g foi a base aprovada anterior.
+- v8z4b25h substitui v8z4b25g como checkpoint estável atual porque inclui a correção do bloqueio de ações externas durante frame novo pendente/assistido.
+- Deve servir como base segura antes das próximas evoluções de curva, seleção múltipla, aplicação em lote e nova interface.
+- Deve permanecer disponível como ponto de retorno caso próximas versões quebrem curva, loop, Preview, MP4, JSON, inserção assistida de frame ou gestos no iPhone/Safari.
+
+## Roadmap atualizado
+
+### 1. Curvas — edição direta pela linha
+
+- Permitir puxar a curva pela própria linha/segmento, em lógica parecida com Illustrator.
+- Criar área invisível de toque maior ao redor da curva para iPhone/Safari.
+- A linha visual pode continuar fina, mas a hit area precisa ser confortável para toque.
+- A edição deve afetar apenas o segmento correspondente, sem efeitos colaterais inesperados nos demais segmentos.
+- Definir regra clara para quando puxar a linha deve abrir handles em pontos que estejam em Canto.
+- Preservar Loop, Undo/Redo e gestos de zoom/pan com dois dedos.
+- Tratar como nova interação de curva, com risco médio/alto.
+- Implementar em versão separada, nunca junto com refatoração visual grande.
+
+### 2. Seleção múltipla de frames
+
+**Status v8z4b27h:** Rotação/Escala multi-select aplicam deltas relativos com Stage ao vivo e Undo consolidado; Selecionar todos fica separado da faixa rolável com reset de scroll; Distribuir/Mover/Alinhar usam ícones Lucide via sprite; Alinhar/Distribuir usam bounds visuais transformados para frames rotacionados. Mantidos fora do escopo motor, Preview, MP4, JSON, curvas, zoom/pan e ghost frame.
+
+- Permitir selecionar vários frames.
+- Destacar visualmente frames selecionados.
+- Permitir aplicar o mesmo modo de ponto/curva aos frames selecionados:
+  - Canto;
+  - Simétrico;
+  - Assimétrico;
+  - Desconectado.
+- A ação em múltiplos frames deve entrar no Undo como uma única ação.
+- Diferenciar claramente frame ativo de frames selecionados.
+- Não quebrar seleção individual atual.
+- Não conflitar com zoom/pan de dois dedos no iPhone/Safari.
+- Esta função é base importante para a futura interface.
+
+### 3. Aplicação em lote / global de ajustes
+
+- Criar base para aplicar ajustes a todos os frames ou apenas aos frames selecionados.
+- Diferenciar claramente:
+  - Global = todos os frames;
+  - Selecionados = somente frames escolhidos.
+- Possíveis ajustes futuros:
+  - escala;
+  - posição;
+  - rotação;
+  - duração;
+  - pausa;
+  - modo de curva;
+  - suavidade/easing, quando a estrutura estiver madura.
+- Não implementar todos os controles de uma vez.
+- Começar por ações simples e seguras.
+- Registrar cada aplicação em lote como uma única ação de Undo.
+
+### 4. Exportação de imagem estática
+
+- Permitir exportar projeto com 1 frame como imagem/crop estático.
+- Respeitar formato, posição, escala e rotação do F1.
+- Projeto com 1 frame deve funcionar como ferramenta de crop/enquadramento.
+- Futuramente permitir exportar imagem do instante pausado no Preview.
+- A exportação deve usar renderização em resolução final, não simples print da tela.
+
+### 5. Preview / visualização
+
+- Mostrar sequência de frames durante o Preview, com destaque sincronizado ao play.
+- Permitir identificar trecho/frame atual durante a reprodução.
+- Estudar pause em um ponto específico e exportação daquele instante como imagem.
+- Estudar play de trecho isolado entre um frame e o próximo.
+
+### 6. Modo Trajeto
+
+- Criar modo visual no Stage em que o retângulo/câmera caminha pela imagem.
+- Usar o mesmo cálculo da animação, mas sem entrar no Preview final.
+- Servir como ferramenta de diagnóstico para movimento, curva, pausas, loop e sequência.
+- Não exportar vídeo nesse modo; é uma visualização de edição.
+
+### 7. Navegação de frames
+
+- Estudar faixa de frames deslizante.
+- Destacar frame central/ativo.
+- Melhorar uso com muitos frames.
+- Estudar modos de visualização:
+  - mostrar todos;
+  - mostrar próximos;
+  - mostrar selecionados.
+- Preparar essa lógica para a próxima interface.
+
+### 8. Movimento inteligente e easing
+
+- Estudar movimento inteligente por segmento/trecho.
+- Manter controles avançados de easing escondidos enquanto Movimento Inteligente estiver ligado.
+- Exibir controles manuais apenas quando Movimento Inteligente estiver desligado.
+- Estudar intensidade de easing como recurso futuro.
+- Evitar expor muitos sliders neste momento.
+
+### 9. Nova interface / UI v8z5
+
+- Criar protótipo visual separado antes de integrar ao app real.
+- Não redesenhar diretamente dentro da v8z4b25h.
+- Usar a v8z4b25h como base funcional preservada.
+- Revisar hierarquia dos menus inferiores.
+- Revisar ícones, peso de traço, espaçamentos e linguagem visual.
+- Organizar melhor:
+  - frames;
+  - curva;
+  - duração;
+  - preview;
+  - exportação;
+  - seleção múltipla;
+  - ações globais/em lote.
+- Manter foco obrigatório em iPhone/Safari.
+
+### 10. Múltiplas imagens / layers
+
+- Registrar como visão futura maior, não para implementação imediata.
+- Evitar implementar troca de imagem por frame na linha atual.
+- Direção preferencial futura: Stage expandido com múltiplas imagens/layers, em vez de simples troca de imagem por frame.
+- Reconhecer que isso pode virar módulo avançado ou outro produto mais focado em animação.
+- Não deixar essa frente contaminar a estabilização atual do app principal.
+
+## Sugestão de sequência futura após a consolidação
+
+- v8z4b26a: seleção múltipla de frames + aplicar modo de curva em lote.
+- v8z4b26b: remover Sel + mostrar seleção múltipla no Stage.
+- v8z4b26c: aplicação em lote/global de ajustes simples.
+- v8z4b26d: separação visual entre seleção simples e seleção múltipla.
+- v8z4b26e: limpeza de marcação residual ao desselecionar frames.
+- v8z4b27a: menu próprio de seleção múltipla com Pausa, Escala, Rotação e Posição.
+- v8z4b27b: Pausa em lote com slider decimal sem incrementos fixos.
+- v8z4b27c: Pausa em lote simplificada com indicação dos frames afetados e sem ações redundantes.
+- v8z4b27d: Pausa contextual direta, menu com 1 frame selecionado, Selecionar todos, Undo/Redo da cor de fundo e overlay normal menos escuro.
+- v8z5-prototype: protótipo visual separado da nova interface.
+- v8z5a: primeira integração real da nova interface aprovada.
+
+## Próximas funções registradas em v8z4b27d — não implementadas nesta versão
+
+- Transformação direta de grupo no Stage: mover, escalar e rotacionar vários frames como grupo, com possível moldura/handles de grupo em versão experimental e separação clara dos ajustes em lote por menu.
+- Adicionar pausa aos selecionados: painel/modo separado para somar valor à pausa atual de cada frame selecionado, preservando diferenças e registrando Undo único.
+- Undo/Redo de troca de imagem: avaliar memória no iPhone/Safari e guardar imagem anterior/nova sem estourar memória.
+- Velocidade constante perceptiva: estudar sensação de velocidade considerando posição, escala e rotação, inclusive deslocamento médio dos cantos em zoom/rotação fortes.
+
+---
+
+# Roadmap
+
+## Objetivo imediato — v8z4b22c (concluído)
+
+Correção restrita da exclusividade de interação do ghost frame.
+
+- ✅ Interação do ghost usa um único modo ativo por gesto.
+- ✅ Handler de escala/rotação não aciona movimento simultâneo.
+- ✅ Scale/rotate usam o centro atual do ghost após drag.
+- ✅ Stage ignora eventos iniciados em controles do ghost.
+
+---
+
+## Objetivo imediato — v8z4b22b (concluído)
+
+Correção restrita da UX e funcionamento do modo assisted frame insertion.
+
+- ✅ OK/Cancelar do ghost funcionam.
+- ✅ OK/Cancelar ficam dentro do ghost, próximos ao centro.
+- ✅ Ghost permite ajustar posição, escala e rotação antes de confirmar.
+- ✅ Confirmação gera undo único e JSON não salva estado transitório.
+
+---
+
+## Objetivo imediato — v8z4b22a (concluído)
+
+Assisted Frame Insertion. Base: v8z4b21e.
+
+- ✅ Botão `+` entra em modo temporário de posicionamento assistido.
+- ✅ Frame definitivo não é criado no primeiro toque do `+`.
+- ✅ Ghost frame translúcido aparece no Stage com rótulo do futuro frame.
+- ✅ Toque e drag no Stage reposicionam o ghost.
+- ✅ OK confirma a inserção e cria uma única entrada de undo.
+- ✅ Cancelar remove o ghost sem alterar `frameCount`, curvesV2, durações ou undo.
+- ✅ Inserção entre frames divide localmente o trecho original.
+- ✅ De Casteljau preserva a cúbica quando o ghost sugerido é aceito sem mover.
+- ✅ Ghost movido livremente gera handles locais padrão de 1/3 da corda.
+- ✅ Inserção com loop ativo adiciona o novo frame antes do fechamento; loop passa a ser novo último→F1.
+- ✅ Preview, MP4/export, Movimento inteligente, Reset Project e Reset Curves preservados sem alteração funcional.
+- ✅ JSON salva `version: v8z4b22a` e não salva estado transitório do ghost/insertion.
+
+### Próximas ideias registradas (não implementadas nesta versão)
+
+#### Direct Curve Drag
+
+- Usuário poderá puxar a própria curva do trecho.
+- App ajustará OUT do frame inicial e IN do frame final simultaneamente.
+- Não cria midpoint permanente.
+- Comportamento inspirado no Illustrator.
+- **Não implementado na v8z4b22a.**
+
+#### Path/Insert Tool
+
+- Usuário ativa uma ferramenta de inserção/path.
+- Toques sucessivos no Stage criam vários frames em sequência.
+- Pode evoluir para desenho de path/frames.
+- **Não implementado na v8z4b22a.**
+
+#### Tela inicial com movimento livre
+
+- Avaliar começar com 1 frame.
+- Avaliar começar com 0 frames.
+- Avaliar escolha entre template e movimento livre.
+- **Não implementado na v8z4b22a.**
+
+---
+
+## Objetivo imediato — v8z4b21e (concluído)
+
+Correção do Movimento inteligente com loop usando vizinhança local real. Base: v8z4b21d.
+
+- ✅ Loop volta a participar do Movimento inteligente como vizinho real de F1 e do último frame.
+- ✅ Trechos normais não usam mais `suppressLoop=true` como regra global.
+- ✅ F1→F2 considera o loop como vizinho anterior quando Loop está ativo.
+- ✅ Último trecho normal considera o loop como vizinho posterior quando Loop está ativo.
+- ✅ Trechos internos, como F2→F3 em projeto com 4 frames, não recebem interferência direta do loop.
+- ✅ Trecho de loop usa o trecho normal anterior ao último frame e F1→F2 como vizinhos.
+- ✅ Limiter monotônico de slopes (`m0+m1 <= 3`) permanece como proteção contra falsa parada, overshoot e quase-hold.
+- ✅ Reset Project preservado sem alteração funcional.
+- ✅ Reset Curves com curvesV2 preservado sem alteração funcional.
+- ✅ Handles OUT/IN independentes preservados sem alteração.
+- ✅ Preview e MP4 continuam usando cálculo compartilhado via `getStateAtT`.
+- ✅ JSON continua salvando curvesV2; versão salva → v8z4b21e.
+- ✅ Direct Curve Drag e Assisted Frame Insertion continuam futuros, sem implementação.
+
+### Próximas ideias registradas (não implementadas nesta versão)
+
+#### Direct Curve Drag
+
+- Usuário puxa a própria curva do trecho.
+- App ajusta o handle OUT do frame inicial e o handle IN do frame final simultaneamente.
+- Não cria midpoint permanente.
+- Comportamento inspirado no Illustrator.
+- **Não implementar agora.** Registrado para decisão futura de produto.
+
+#### Assisted Frame Insertion
+
+- Ao adicionar frame, mostrar um frame fantasma no Stage antes de confirmar.
+- Usuário posiciona no Stage antes da criação definitiva.
+- Só depois calcular handles.
+- Objetivo: evitar distorção de handles após mover frame recém-criado.
+- **Não implementar agora.** Registrado para decisão futura de UX/produto.
+
+---
+
+## Objetivo imediato — v8z4b21d (concluído)
+
+Correção do Reset Project e continuidade do Movimento inteligente no loop. Base: v8z4b21c.
+
+- ✅ Reset Project restaura snapshot profundo do projeto carregado na sessão.
+- ✅ Projeto novo/template inicial captura baseline próprio após criação.
+- ✅ Salvar JSON não altera o baseline de reset.
+- ✅ Reset Project cria uma única entrada de undo quando há mudança.
+- ✅ Undo/Redo do Reset Project funciona sem resetar para template padrão.
+- ✅ Trechos normais mantêm `suppressLoop=true`, preservando a correção contra falsa parada.
+- ✅ Trecho de loop continua participando do Movimento inteligente localmente.
+- ✅ Smart movement usa limiter monotônico de slopes (`m0+m1 <= 3`) para evitar overshoot/quase-hold.
+- ✅ Reset Curves com curvesV2 preservado.
+- ✅ Handles OUT/IN independentes preservados sem alteração.
+- ✅ Preview e MP4 usam o mesmo cálculo corrigido.
+- ✅ JSON continua salvando curvesV2; versão salva → v8z4b21d.
+- ✅ Direct Curve Drag e Assisted Frame Insertion registrados como futuros, sem implementação.
+
+### Próximas ideias registradas (não implementadas nesta versão)
+
+#### Direct Curve Drag
+
+- Usuário puxa a própria curva do trecho.
+- App ajusta o handle OUT do frame inicial e o handle IN do frame final simultaneamente.
+- Não cria midpoint permanente.
+- Comportamento inspirado no Illustrator.
+- **Não implementar agora.** Registrado para decisão futura de produto.
+
+#### Assisted Frame Insertion
+
+- Ao adicionar frame, mostrar um frame fantasma no Stage antes de confirmar.
+- Usuário posiciona no Stage antes da criação definitiva.
+- Só depois calcular handles.
+- Objetivo: evitar distorção de handles após mover frame recém-criado.
+- **Não implementar agora.** Registrado para decisão futura de UX/produto.
+
+---
+
+## Objetivo imediato — v8z4b21c (concluído)
+
+Correção do Movimento inteligente com loop e do Reset Curves para curvesV2. Base: v8z4b21b.
+
+- ✅ `_smartFrameVelocity` aceita parâmetro `suppressLoop` para isolar trecho de loop do easing normal.
+- ✅ `computeSmartMovementProgress` passa `suppressLoop=true` para trechos normais — loop curto não contamina easing.
+- ✅ Falsa parada/ease indevido causado por `loopDuration` curto em trechos normais eliminado.
+- ✅ Caso mínimo confirmado: 2 frames / 4s / loop 1s / smart movement / framePauses zero → sem parada falsa.
+- ✅ `resetSegmentCurve` reseta `curvesV2.frameHandles.out` e `.in` com handles 1/3 da corda.
+- ✅ Reset Curves exibe curva padrão no Stage imediatamente após o reset.
+- ✅ Undo/Redo do Reset Curves preserva/restaura handles curvesV2 (via `captureState`/`restoreState` existentes).
+- ✅ Segmento de loop em si mantém continuidade com trechos normais (usa `suppressLoop=false`).
+- ✅ Velocidade constante continua funcionando.
+- ✅ Handles OUT/IN independentes da v8z4b21a preservados sem alteração.
+- ✅ Preview e MP4 usam o mesmo cálculo corrigido (via `getStateAtT`).
+- ✅ JSON continua salvando curvesV2; versão salva → v8z4b21c.
+- ✅ Direct Curve Drag e Assisted Frame Insertion registrados como futuros, sem implementação.
+
+### Próximas ideias registradas (não implementadas nesta versão)
+
+#### Direct Curve Drag
+
+- Usuário puxa a própria curva do trecho (o arco visível no Stage), não um handle separado.
+- App ajusta automaticamente o handle OUT do frame inicial **e** o handle IN do frame final do trecho.
+- Comportamento inspirado no Illustrator: puxar a curva manipula os dois handles do trecho.
+- **Não cria midpoint permanente.**
+- **Não volta ao ctrlPt legado como UI.**
+- Implementação requer:
+  - Detectar toque sobre o arco da curva cúbica.
+  - Calcular o ponto mais próximo na curva (inverse lookup por comprimento de arco).
+  - Ajustar OUT e IN do trecho proporcionalmente ao deslocamento do arrasto.
+- **Não implementar agora.** Registrado para decisão futura de produto.
+
+#### Assisted Frame Insertion
+
+- Ao adicionar novo frame, mostrar um **frame fantasma** no Stage antes de confirmar.
+- Usuário posiciona o frame fantasma exatamente onde quer, via drag.
+- Só depois de posicionar, confirmar a criação do frame.
+- Objetivo: evitar distorção de curvas quando o frame nasce em uma posição e depois é movido.
+- Com posição final conhecida antes da criação, os handles podem ser calculados diretamente.
+- **Não implementar agora.** Registrado para decisão futura de UX/produto.
+
+---
+
+## Objetivo anterior — v8z4b21b (concluído)
+
+Correção do Movimento inteligente aplicado a curvesV2/Bézier cúbica. Base: v8z4b21a.
+
+- ✅ `measureSegmentCurveLength` usa Bézier cúbica real (curvesV2) para medir arco quando curvesV2 ativo.
+- ✅ `measureLoopCurveLength` usa Bézier cúbica real (curvesV2) para medir arco do trecho de loop quando curvesV2 ativo.
+- ✅ Fallback quadrático preservado para projetos sem curvesV2.
+- ✅ Falsa parada/ease indevido do Movimento inteligente em curvesV2 eliminado.
+- ✅ Velocidade constante continua funcionando.
+- ✅ Preview e MP4 usam o mesmo cálculo corrigido.
+- ✅ Handles OUT/IN independentes da v8z4b21a preservados sem alteração.
+- ✅ JSON continua salvando curvesV2; versão salva → v8z4b21b.
+
+### Próximas ideias registradas (não implementadas nesta versão)
+
+#### Direct Curve Drag
+
+- Usuário puxa a própria curva do trecho (o arco visível no Stage), não um handle separado.
+- App ajusta automaticamente o handle OUT do frame inicial **e** o handle IN do frame final do trecho.
+- Comportamento inspirado no Illustrator: puxar a curva manipula os dois handles do trecho.
+- **Não cria midpoint permanente.**
+- **Não volta ao ctrlPt legado como UI.**
+- Implementação requer:
+  - Detectar toque sobre o arco da curva cúbica.
+  - Calcular o ponto mais próximo na curva (inverse lookup por comprimento de arco).
+  - Ajustar OUT e IN do trecho proporcionalmente ao deslocamento do arrasto.
+- **Não implementar agora.** Registrado para decisão futura de produto.
+
+#### Assisted Frame Insertion
+
+- Ao adicionar novo frame, mostrar um **frame fantasma** no Stage antes de confirmar.
+- Usuário posiciona o frame fantasma exatamente onde quer, via drag.
+- Só depois de posicionar, confirmar a criação do frame.
+- Objetivo: evitar distorção de curvas quando o frame nasce em uma posição e depois é movido.
+- Com posição final conhecida antes da criação, os handles podem ser calculados diretamente.
+- **Não implementar agora.** Registrado para decisão futura de UX/produto.
+
+---
+
+## Objetivo anterior — v8z4b21a (concluído)
+
+- ✅ Criar schema `curvesV2` com `{ version: 1, mode: 'cubic', frameHandles: { in: [...], out: [...] } }`.
+- ✅ Converter ctrlPts legados (quadráticos) para curvesV2 via C1=P0+2/3*(Q-P0), C2=P3+2/3*(Q-P3).
+- ✅ curvesV2 é a fonte de verdade; ctrlPts mantido apenas como fallback.
+- ✅ `drawBezier` usa SVG `M P0 C C1 C2 P3` (cúbico) em vez de `Q` (quadrático).
+- ✅ Preview e MP4 usam Bézier cúbica real B(t) = (1-t)³P0 + 3(1-t)²t·C1 + 3(1-t)t²·C2 + t³P3.
+- ✅ Dois handles independentes por trecho: OUT[i] = saída do frame i, IN[i] = entrada do frame i.
+- ✅ Arrastar OUT[i] altera apenas `frameHandles.out[i]`; arrastar IN[i] altera apenas `frameHandles.in[i]`.
+- ✅ Handles em modo livre/Angular por padrão (sem Smooth, sem menu contextual).
+- ✅ Midpoint oculto; ctrl-pt legado oculto.
+- ✅ JSON salva curvesV2; versão atualizada para v8z4b21a.
+- ✅ Abrir arquivos antigos sem curvesV2 → auto-converter de ctrlPts; projetos antigos não quebram.
+- ✅ Inserir frame usa subdivisão De Casteljau para preservar forma visual da curva.
+- ✅ Deletar/remover frame sincroniza arrays in/out corretamente.
+- ✅ Templates resetam curvesV2 corretamente ao aplicar novo template.
+- ✅ Undo/Redo preserva curvesV2 (via cloneCurvesV2 em captureState/restoreState).
+- ✅ Vetores relativos `{dx, dy}` por frame → handles acompanham frame automaticamente ao mover.
+
+### Limitações conhecidas desta versão (v8z4b21a)
+
+- **Smooth/Angular toggle:** não implementado nesta versão (escopo restrito a modo livre).
+- **Pen Tool:** fora do escopo desta versão.
+- **Menu contextual de handles:** não implementado.
+- **Ghost handles de loop:** não atualizado para curvesV2 (loopCtrlPt permanece legado).
+
+## Objetivo anterior — v8z4b20d (concluído)
+
+- ✅ Corrigir sincronização visual dos handles ao mover frame (handle não fica mais parado).
+- ✅ Estender `syncCtrlPtsForFrame` para processar `loopCtrlPt` via `t/perpX/perpY` quando F1 ou último frame é movido.
+- ✅ Armazenar `t/perpX/perpY` em `loopCtrlPt` ao editar handle de loop via `applyFrameConnectedHandleEdit`.
+- ✅ Reduzir threshold de 8px para 2px em `getFrameHandleGeometryForTarget` para ctrl pts manuais.
+- ✅ Criar `ensureSegmentArraysIntegrity()` — normaliza todos os arrays por trecho.
+- ✅ Corrigir `deleteActiveFrame`: fazer splice em `segBlurSettings` + chamar `ensureSegmentArraysIntegrity()`.
+- ✅ Chamar `ensureSegmentArraysIntegrity()` em `buildProjectData` e `applyFrameData`.
+- ✅ Ghost handles não-interativos (28% opacidade) para o lado complementar do trecho ativo.
+- ✅ Edição local por trecho (segment-local editing da v8z4b20c) preservada.
+- ✅ Midpoint oculto; ctrl-pt legado oculto; JSON schema inalterado.
+
+### Limitações conhecidas desta versão (v8z4b20d)
+
+- **Ghost handles e independência de handles:** os ghost handles mostram o outro lado do trecho, mas IN de um frame e OUT do vizinho ainda representam o **mesmo** `ctrlPt` legado. Não são handles independentes reais — não há curvesV2 nem schema novo.
+- **Ghost handles de loop:** não implementados nesta versão para evitar complexidade extra.
+- **Modo Angular/Suavizar:** ainda não implementado.
+- **Handles independentes por trecho real:** requer curvesV2/cúbico (futuro).
+
+## Objetivo anterior — v8z4b20c (concluído)
+
+- ✅ Corrigir exibição de handles para endpoints e loop (F1, último frame, com/sem loop).
+- ✅ Handles baseados em trechos conectados, não apenas em frame intermediário.
+- ✅ Segment-local editing: cada handle edita apenas o trecho conectado.
+- ✅ Desativar atualização automática dos dois trechos vizinhos por drag.
+- ✅ Handles de loop em F1 (IN) e último frame (OUT) via `loopCtrlPt`.
+- ✅ Helpers `getFrameConnectedHandleTargets`, `getFrameHandleGeometry`, `applyFrameConnectedHandleEdit`.
+- ✅ Midpoint oculto; ctrl-pt legado oculto; JSON schema inalterado.
+- ✅ Bugfix mover frame preservado (v8z4b19z).
+
+## Objetivo anterior — v8z4b20b (concluído)
+
+- ✅ Substituir handle único simétrico por dois handles: IN handle (entrada) e OUT handle (saída).
+- ✅ Modo suave/linkado por padrão (os dois ctrlPts atualizados em 180° ao arrastar qualquer handle).
+- ✅ Geometria derivada dos ctrlPts reais via `getActiveFrameInOutHandleGeometry()`.
+- ✅ Força por distância preservada (v8z4b19z).
+- ✅ Bugfix mover frame preservado (v8z4b19z).
+- ✅ JSON schema inalterado.
+- ✅ Handles não aparecem em F1, último frame, loop, Preview, isoMode.
+- ✅ Midpoint continua oculto; ctrl-pt legado continua oculto.
+
+## Objetivo anterior — v8z4b20a (concluído)
+
+- ✅ Ocultar midpoint automático da UI principal.
+- ✅ Manter midpoint apenas como recurso interno/legado/fallback.
+- ✅ Manter handle de frame da v8z4b19z como ferramenta visível principal de curva.
+- ✅ Registrar no ROADMAP o modelo futuro de âncoras e handles.
+- ✅ JSON schema inalterado.
+
+## Objetivo anterior — v8z4b19z (concluído)
+
+- ✅ Corrigir reset da tangente/curva ao mover frames.
+- ✅ Diferenciar visualmente handle de frame (losango) do midpoint pathPoint (círculo).
+- ✅ Distância do handle controla força da tangente.
+- ✅ `getFrameTangentGeometry()` substitui `getFrameTangentDir()`.
+- ✅ JSON schema inalterado.
+
+## Decisão de produto consolidada — v8z4b20a
+
+O midpoint automático NÃO é ferramenta principal da interface.
+Ele cria dois sistemas concorrentes (midpoint do trecho + handles do frame),
+o que não é desejado para a interface final.
+
+**O sistema final será baseado em:**
+- Frames como âncoras principais de câmera.
+- Handles de entrada e saída nos frames.
+- Estados Angular / Suavizar / Reta / Remover.
+- Pontos auxiliares criados explicitamente pelo usuário quando necessário.
+- Ferramenta futura Pen/Patch para trajetórias vetoriais.
+- Ferramenta futura de desenho livre com dedo.
+
+**"Puxar a curva" no futuro:**
+- É uma metáfora para ajustar handles — não midpoint persistente e concorrente.
+- Midpoint automático pode existir como legado/fallback interno, mas não como controle normal.
+
+## Modelo futuro de curva — âncoras e handles
+
+### Arquitetura geral
+
+- **Frames são âncoras principais de câmera** (anchor points).
+- Cada frame poderá ter **handle de entrada** e **handle de saída**.
+- Os handles controlam a tangência da curva de Bézier que passa pelo frame.
+
+### Modos de handle
+
+**1. Suavizar / Arredondar (modo padrão):**
+- Handles de entrada e saída vinculados em 180° (colineares).
+- Passagem contínua e suave pelo frame (C1 continuity).
+- Mover um handle realinha automaticamente o oposto.
+- Comportamento similar ao Illustrator "smooth anchor".
+
+**2. Angular / Livre:**
+- Handles de entrada e saída independentes.
+- Permite ângulo reto, agudo, obtuso ou quebra narrativa entre segmentos.
+- Mover um handle não altera o oposto.
+- Comportamento similar ao Illustrator "corner anchor".
+
+### Ações contextuais futuras (inspiradas no Illustrator para iPad)
+
+| Ação | Efeito |
+|---|---|
+| **Suavizar / Arredondar** | Transforma o frame em âncora suave; alinha handles em 180°. |
+| **Angular** | Transforma o frame em âncora angular; handles independentes. |
+| **Reta** | Neutraliza handles do frame; segmentos vizinhos ficam retos. |
+| **Remover** | Remove o ponto; une os trechos (só para pontos auxiliares). |
+
+**Regras:**
+- Para **frame real**, "Remover" é ação estrutural de frame (excluir frame) — tratar com cuidado.
+- Para **ponto auxiliar**, "Remover" remove o ponto do caminho e une os trechos.
+- "Reta" neutraliza handles sem necessariamente remover o frame.
+- "Suavizar" e "Angular" alteram apenas o modo do handle, sem mover âncora.
+
+### Estado atual (v8z4b20d)
+
+- **Frame IN/OUT handles (v8z4b20c/d):** handles visíveis para qualquer frame com trecho conectado:
+  - **IN handle** (`.frame-in-handle`): controla o trecho de entrada; âmbar (normal) ou roxo (loop).
+  - **OUT handle** (`.frame-out-handle`): controla o trecho de saída; âmbar (normal) ou roxo (loop).
+  - **Ghost handles (v8z4b20d):** lado complementar do trecho ativo mostrado com 28% de opacidade, `pointer-events: none`. Não interativos, apenas indicação visual.
+  - **Segment-local editing:** cada handle edita apenas o trecho diretamente conectado.
+  - Modo Angular/Livre: **ainda não implementado** — roadmap futuro.
+  - Suavização automática de dois trechos (modo linkado): **desativada** — roadmap futuro.
+- **Handles de loop (v8z4b20c/d):** F1 com loop mostra IN handle (→ `loopCtrlPt`);
+  último frame com loop mostra OUT handle (→ `loopCtrlPt`).
+  - **Handle de loop acompanha frame (v8z4b20d):** ao mover F1 ou último frame, `loopCtrlPt` é recalculado via `t/perpX/perpY`. Ghost de loop: não implementado nesta versão.
+- **Loop ctrl-pt (`cpt_loop`):** oculto quando handles de loop estão disponíveis.
+- **Frame tangent handle (v8z4b19z):** ocultado; substituído pelos dois handles IN/OUT.
+- **Midpoint pathPoint:** demovido da UI principal (v8z4b20a); mantido internamente.
+- **ctrl-pt/losango legado:** não exibido como controle principal para segmentos normais.
+- **ensureSegmentArraysIntegrity() (v8z4b20d):** normaliza todos os arrays por trecho (ctrlPts, ctrlPtManual, segBlurSettings, segDurations, rotEasings, scaleEasings) para exatamente frameCount-1 entradas.
+
+### Limitações do schema legado (v8z4b20c/d)
+
+No schema atual, cada trecho normal possui apenas um `ctrlPt`:
+- `ctrlPts[segIndex]` controla todo o trecho.
+- O handle OUT de F4 e o handle IN de F5 são dois acessos ao mesmo `ctrlPts[segIndex]` do trecho F4→F5.
+- Os ghost handles mostram o outro lado do trecho, mas **não são handles independentes**.
+- Ao editar um, o outro refletirá a mesma posição ao selecionar o frame vizinho — comportamento esperado.
+- Independência real de handles (tangentes de entrada e saída separadas) exige modelo futuro `curvesV2` ou cúbico.
+
+### Próximos passos de handles (futuro, não imediato)
+
+- **v8z4b20d (concluído):** sincronização de handles ao mover frame; ghost handles complementares; normalização de arrays por trecho (`ensureSegmentArraysIntegrity`).
+- **Modo Angular/Livre real:** handles independentes por trecho; menu contextual Suavizar/Angular/Reta/Remover.
+- **Menu contextual** estilo Illustrator para iPad: ações por toque longo no frame ativo.
+- Implementar ação "Reta" (neutralizar handles).
+- **Suavizar automático entre frames (modo linkado):** ação explícita futura — desativado em v8z4b20c para evitar interferência entre frames.
+- **Ghost handles de loop:** visualização complementar do trecho de loop ao selecionar F1 ou último frame — não implementado em v8z4b20d, registrado para versão futura.
+- Reset local da curva do frame ativo.
+- Reset global de curvas.
+- Handles independentes persistidos no JSON (novo schema `curvesV2`, nova versão maior).
+- **Ponto auxiliar / frame falso:** criar ponto no meio de um trecho sem duplicar frame real.
+- **Pen / Patch Tool:** construção vetorial do caminho.
+- **Desenho livre com dedo:** traço livre → frames com handles suaves.
+- Bug: _file.json sem imageBase64 para fase de UI/carregamento.
+- Velocidade composta (ease de velocidade além de ease de curva).
+- Preservação de proporções internas de tempos.
+
+## Pontos auxiliares / frame falso
+
+Se o usuário precisar controlar o meio de um trecho:
+- Deve criar um **ponto auxiliar** (ou "frame de passagem") explicitamente.
+- Esse ponto auxiliar será editável e poderá ter handles próprios.
+- Não deve ser midpoint automático permanente.
+- "Remover" em ponto auxiliar une os segmentos sem excluir frames adjacentes.
+- **Não implementado nesta versão** — requer UI de criação e ferramenta de inserção.
+
+## Ferramentas futuras de construção de movimento
+
+### 1. Pen / Patch Tool
+
+Inspirado no Illustrator Pen Tool, adaptado para iPhone/Safari.
+
+- Usuário toca/clica para criar ponto/frame (âncora).
+- Usuário toca/clica e **arrasta** para criar frame com handles (tangente).
+- Cada ponto nasce como frame por padrão (âncora com tempo) até o usuário indicar o contrário.
+- Frame criado pode ser promovido a ponto de passagem sem tempo próprio (auxiliar).
+- Comportamento de handle ao criar: arrastar define direção e comprimento da tangente de saída.
+- Handle de entrada no ponto seguinte é o oposto do de saída (modo suave por padrão).
+
+### 2. Desenho livre com dedo
+
+- Usuário **desenha livremente** o movimento de câmera no Stage com o dedo.
+- App **interpreta o traço** automaticamente.
+- App **cria pontos/frames editáveis** ao longo do traço.
+- Usuário **refina** depois com handles, Angular/Suavizar, Reta/Remover.
+- Pós-processamento: simplificação do traço (redução de pontos redundantes).
+- Resultado: frames editáveis com handles suaves derivados da curvatura do traço.
+
+**Fluxo:**
+1. Usuário ativa modo de desenho livre.
+2. Usuário desenha o caminho desejado da câmera.
+3. App exibe prévia dos frames gerados.
+4. Usuário confirma ou descarta.
+5. Frames gerados entram no editor normal (handles, Undo/Redo, etc.).
+
+## Próximo passo
+
+## v8z3v — Estabilização mínima
+
+- Corrigir escala global resetando curvas no Template Circular.
+- Ajustar Fixar ativo para destaque vermelho.
+- Validar export WebCodecs após as correções.
+- Não mexer em motor, easing, curva ou UI estrutural.
+
+## v8z3w — Interação de curva
+
+- Aumentar área de toque da bolinha de edição da curva.
+- Reforçar preferência pela edição da curva direto no Stage.
+- Ao inserir frame entre dois frames, posicionar o novo frame sobre a curva existente.
+- Preservar curva ao alterar escala após carregar projeto.
+
+## v8z3x — Suavização inteligente
+
+- Botão “Suavizar curva”.
+- Easing automático de rotação.
+- Amaciamento automático de escala entre segmentos.
+- Avaliar como mostrar esses controles sem sobrecarregar a UI.
+
+## Futuro — Zoom assistido por frame ativo
+
+- Ao selecionar frame muito pequeno, o app pode aproximar automaticamente a região do frame.
+- Ao tocar fora ou selecionar outro frame, pode retornar ao zoom 100%.
+- Deve respeitar zoom manual do usuário (não sobrescrever se ele já ajustou).
+- No modo normal, o zoom continua contextual (comportamento atual, aprovado em v8z4b18b).
+- No Modo Mapa/Curvas, o zoom pode ficar sempre visível por ser um modo de precisão.
+
+## Futuro — Modo Mapa / Curvas — edição avançada de trajetória
+
+O Modo Mapa atual deve evoluir para um modo de edição de trajetória mais completo.
+Esse modo pode incorporar o futuro Modo Curvas, sendo tratados como um único modo de precisão.
+
+### Zoom e navegação
+
+- O zoom de edição deve ficar sempre disponível nesse modo.
+- A ferramenta de pan (mãozinha) deve ficar disponível sempre que houver zoom ativo.
+
+### Opacidade da imagem-base
+
+- Deve existir controle de opacidade da imagem-base/fundo nesse modo.
+- A opacidade ajuda a destacar curvas, frames, pontos e trajetória sobre o fundo.
+- O controle de opacidade é apenas visual/editorial: não altera Preview, MP4 nem JSON da animação.
+
+### Destaque visual de curvas
+
+- Curvas devem ter maior destaque visual nesse modo em relação ao modo normal.
+
+### Evoluções futuras desse modo (não imediato)
+
+- Pontos-guia de curva.
+- Conversão frame ↔ ponto-guia.
+- Handles de tangência local (bezier handles).
+
+## Futuro — Evolução do modelo runtime de curva (v8z4b19c+)
+
+O `buildRuntimeCurveModel` introduzido na v8z4b19c e ampliado na v8z4b19e já
+inclui o contrato runtime completo de `pathPoints`, `handles` e `capabilities`.
+O modelo está preparado para receber implementação real futura sem quebrar
+compatibilidade. Nenhum desses itens está ativo — são apenas contrato vazio.
+
+### Estado atual (v8z4b20a)
+
+- **Frame tangent handle (v8z4b19z, foco atual):** handle losango/diamante âmbar (`.frame-tangent-dot`) no frame ativo intermediário; conectado por linha tracejada âmbar (braço de tangente); drag ajusta `ctrlPts[fi-1]` e `ctrlPts[fi]` simultâneamente para passagem suave C1-ish; distância do handle controla força da tangente; tangente preservada ao mover frame (`getFrameTangentGeometry()` + `applyFrameTangentEdit()` com t/perpX/perpY); undo lazy; JSON schema inalterado.
+- **Midpoint pathPoint — DEMOVIDO da UI principal (v8z4b20a):** midpoint pathPoint permanece apenas como recurso interno/legado/fallback; nunca renderizado como controle normal; `display:'none'` sempre; `pointer-events:none`; código de pipeline guardado preservado (`buildRuntimeCurveModel`, `simulateRuntimePathPointEdit`, etc.).
+- **ctrl-pt/losango legado — não reexibido como controle principal (v8z4b20a):** sempre com `opacity:0 + pointer-events:none` em segmentos normais; loop ctrl-pt mantido interativo (sem handle alternativo para loop).
+- **Legacy curvePuller/losango (v8z4b19x):** histórico — foi oculto quando midpoint estava ativo; agora (v8z4b20a) também midpoint foi ocultado, e ctrl-pt nunca reaparece como primário.
+- `pathPoints` contém um `pathPoint` derivado em `t=0.5` — amostra real da trajetória atual, calculada pela mesma fórmula quadrática. Não editável, não renderizado, não persistido no JSON.
+- `handles: []` — contrato runtime vazio; campo presente mas sem conteúdo.
+- `capabilities: { supportsPathPoints: false, supportsHandles: false }` — modo ativo: `legacyQuadratic`.
+- `spans[]` — dois `quadraticSpan` derivados representando a curva legada dividida em dois sub-spans por De Casteljau em `t=0.5`. Apenas runtime: não persistidos, não renderizados, não editáveis. Introduzidos na v8z4b19h.
+  - `spans[0]` (`derivedFirstHalf`): P0 → M com controle A = lerp(P0,C,0.5).
+  - `spans[1]` (`derivedSecondHalf`): M → P1 com controle B = lerp(C,P1,0.5).
+  - M coincide com `pathPoints[0]` (derivedMidpoint).
+  - Propriedade: `span1(s) = B_orig(s/2)` e `span2(s) = B_orig(0.5+s/2)`.
+- `evaluateSegmentPath()` continua com resultado matematicamente idêntico à v8z4b19l.
+- Nenhum campo novo persiste no JSON.
+- O `pathPoint` derivado NÃO tem UI, NÃO é editável e NÃO altera a trajetória.
+- Os spans derivados NÃO têm UI, NÃO são editáveis, NÃO alteram a trajetória.
+- `evaluateRuntimeCurveModel()` usa `spans` como caminho preferencial (v8z4b19l), com fallback para `evaluateRuntimeLegacyQuadratic()`. Resultado matemático idêntico.
+- `isValidRuntimePoint(pt)` — valida x/y finitos. Introduzido na v8z4b19l.
+- `evaluateRuntimeLegacyQuadratic(model, t)` — lógica legacyQuadratic anterior, extraída como fallback explícito. Introduzido na v8z4b19l.
+- `validateDerivedRuntimePathPoint(model)` — diagnóstico passivo: confirma coerência matemática entre `pathPoint` derivado e `evaluateRuntimeCurveModel(model, 0.5)`, com conversão explícita de unidades (normalizado → pixels). Introduzido na v8z4b19g.
+- `diagnoseRuntimeCurveSegment(segIndex)` — encapsula diagnóstico por segmento. Introduzido na v8z4b19g.
+- `diagnoseRuntimeCurveModel()` — agrega diagnóstico de todos os segmentos ativos. Introduzido na v8z4b19g.
+- `lerpPointNormalized(a, b, t)` — lerp normalizado para divisão De Casteljau. Introduzido na v8z4b19h.
+- `splitLegacyQuadraticAtMidpoint(start, control, end)` — divisão De Casteljau em t=0.5. Introduzido na v8z4b19h.
+- `validateDerivedRuntimeSpans(model)` — diagnóstico passivo dos spans derivados: verifica midpoint match e reconstituição por amostragem. Introduzido na v8z4b19h.
+- `deriveLegacyCurvePullerFromMidpoint(start, midpoint, end)` — inversão da Bézier quadrática: C = 2·M − 0.5·P0 − 0.5·P1. Entrada/saída em normalizado (0–1). Introduzido na v8z4b19m.
+- `deriveLegacyCurvePullerFromRuntimePathPoint(model, pathPoint)` — wrapper: extrai anchors do runtime model e deriva curvePuller equivalente do pathPoint runtime. Introduzido na v8z4b19m.
+- `compareDerivedPullerWithRuntimeControl(model)` — diagnóstico passivo: compara curvePuller derivado do pathPoints[0] com controls[0]; retorna delta normalizado e delta em pixels. Por construção, delta deve ser zero. Introduzido na v8z4b19m.
+- `cloneRuntimeCurveModelLight(model)` — clone leve e independente do runtime model; todos os campos copiados por valor; base para simulação de edição. Introduzido na v8z4b19p.
+- `createRuntimeCurveModelWithCandidatePuller(model, candidatePuller)` — cópia runtime com controls[0] substituído pelo candidatePuller; pathPoints e spans recalculados internamente; o campo `candidate: true` marca o controle como hipotético; não altera model original, ctrlPts nem loopCtrlPt. Introduzido na v8z4b19p.
+- `simulateRuntimePathPointEdit(model, pathPoint, nextPoint)` — simula o efeito de mover pathPoint para nextPoint: deriva curvePuller candidato via `C = 2·M − 0.5·P0 − 0.5·P1`, constrói previewModel (cópia runtime com candidato), calcula delta entre curvePullers original e candidato. Sem UI, sem persistência, sem renderização. Introduzido na v8z4b19p.
+- `compareSimulatedPathPointEdit(model, proposedPathPoint)` — diagnóstico passivo: simula edição e amostra curva original vs simulada em 9 pontos; retorna deltas em pixels e normalizado por amostra; sem UI, sem persistência, sem renderização. Introduzido na v8z4b19p.
+- **Pipeline runtime de edição simulada preparado (v8z4b19p):** o fluxo `pathPoint movido → deriveLegacyCurvePullerFromMidpoint() → curvePuller candidato → previewModel` está implementado e validável em runtime. Sem UI e sem persistência nesta versão. O schema persistido continua sendo `ctrlPts / ctrlPtManual / loopCtrlPt`.
+- `runtimeCurvePullerToLegacyCtrlPt(candidatePuller, fallbackCtrlPt)` — converte curvePuller runtime `{ x, y }` para shape legado `{ nx, ny, t, perpX, perpY }`; preserva `t/perpX/perpY` do ctrlPt atual; apenas prepara objeto, não aplica. Introduzido na v8z4b19q.
+- `createLegacyCurvePatchFromSimulatedPathPointEdit(target, simulation)` — constrói patch candidato indicando `ctrlPts[segIndex]` ou `loopCtrlPt` que seria alterado; `applied: false` sempre; não altera estado real. Introduzido na v8z4b19q.
+- `validateLegacyCurvePatchCandidate(patch)` — valida estrutura e campos do patch candidato; retorna `{ ok, reason, checks }`; não altera estado. Introduzido na v8z4b19q.
+- `createSimulatedPathPointEditPatch(model, target, pathPoint, nextPoint)` — função de alto nível: simula edição → monta patch → valida; retorna `{ ok, reason, simulation, patch, patchValid }`; não aplica nada. Introduzido na v8z4b19q.
+- `compareLegacyPatchCandidateWithCurrentControl(model, patch)` — diagnóstico passivo: compara `patch.value` com controle atual do schema persistido; retorna delta em normalizado e pixels; não altera estado. Introduzido na v8z4b19q.
+- **Pipeline de patch legado candidato preparado (v8z4b19q):** o fluxo completo `pathPoint movido → simulateRuntimePathPointEdit() → curvePuller candidato → legacy curve patch candidate` está implementado. O patch identifica exatamente `ctrlPts[segIndex]` ou `loopCtrlPt` e o valor candidato em formato `{ nx, ny, t, perpX, perpY }`. Sem UI, sem aplicação real e sem persistência nesta versão. O schema persistido continua sendo `ctrlPts / ctrlPtManual / loopCtrlPt`.
+- `cloneLegacyCurveStateForPatch()` — cópia leve e independente dos campos legados de curva (`ctrlPts`, `ctrlPtManual`, `loopCtrlPt`, `loopEnabled`); deep copy campo a campo; sem ref. mutável; sem alteração de estado global. Introduzido na v8z4b19r.
+- `applyLegacyCurvePatchCandidateToDraft(draftState, patch)` — aplica patch validado em `draftState` (clone); substitui `ctrlPts[index]` ou `loopCtrlPt` no draft; marca `ctrlPtManual[index] = true` no draft; não altera estado real; não chama `pushUndo`/`markProjectDirty`/`renderAll`. Introduzido na v8z4b19r.
+- `createLegacyCurvePatchApplicationDraft(patch)` — função de alto nível: valida patch → clona estado antes e depois → aplica patch no clone `after` → retorna `{ ok, patchValid, before, after, appliedField, appliedIndex, appliedToDraft: true, appliedToRealState: false }`; estado real intocável. Introduzido na v8z4b19r.
+- `validateLegacyCurvePatchApplicationDraft(result)` — verifica integridade do draft: `result.ok`, `before`/`after` existem, `appliedToDraft === true`, `appliedToRealState === false`, estado real não foi mutado, arrays com tamanhos coerentes; retorna `{ ok, reason, checks }`. Introduzido na v8z4b19r.
+- `compareLegacyCurvePatchDraftWithCurrentState(result)` — diagnóstico passivo: compara `before`/`after` do draft; indica índice alterado e delta (`dNx`, `dNy`, `distNorm`); confirma que estado real permanece igual; não altera nada. Introduzido na v8z4b19r.
+- **Draft applier de patch legado preparado (v8z4b19r):** existe um aplicador guardado/interno capaz de produzir uma cópia/draft do estado de curvas com o patch aplicado, sem mutar o estado real. Sem UI, sem aplicação real, sem persistência nova.
+- `validateRealCurvePatchApplicationOptions(options)` — valida e normaliza opções para `applyLegacyCurvePatchCandidateToRealState`; garante que `allowRealMutation` só é `true` se explicitamente definido; todos os defaults são seguros (false); não altera estado. Introduzido na v8z4b19s.
+- `applyLegacyCurvePatchCandidateToRealState(patch, options)` — **aplicador real guardado**: por padrão retorna `{ ok: false, reason: 'real-mutation-disabled' }` sem alterar nada; quando `allowRealMutation: true` (não usado nesta versão), aplica patch em `ctrlPts[index]` ou `loopCtrlPt` e opcionalmente chama `pushUndo`/`markProjectDirty`/`renderAll`; não conectado a UI/Stage/Preview/gesto/save/load nesta versão. Introduzido na v8z4b19s.
+- `dryRunApplyLegacyCurvePatchCandidate(patch)` — dry-run explícito: valida patch, gera draft, valida draft, compara before/after; confirma `appliedToRealState: false`; não altera estado real. Introduzido na v8z4b19s.
+- `compareRealCurveStateSnapshot(before, after)` — diagnóstico passivo de dois snapshots de `cloneLegacyCurveStateForPatch()`; compara `ctrlPts` e `loopCtrlPt`; retorna `{ ok, unchanged, deltas }`; não altera estado. Introduzido na v8z4b19s.
+- **Aplicador real guardado preparado (v8z4b19s):** `applyLegacyCurvePatchCandidateToRealState` existe como helper interno guardado, com guarda forte (`allowRealMutation: false` por padrão), sem conexão com nenhum fluxo público. Tempos/proporções continuam apenas no roadmap futuro. Velocidade composta continua apenas no roadmap futuro. Criação de frame seguindo curva de loop registrada como roadmap futuro (ver abaixo).
+- `runInternalCurvePatchSelfTestForModel(model, options)` — harness interno principal: valida o pipeline completo de patch de curva (simulação → patch → validação → dry-run → apply com guarda → snapshot antes/depois) sem mutação real; `allowRealMutation: false` sempre; confirma `guardOk`, `realStateUnchanged`, `appliedToRealState: false`; não conectado a UI/Stage/Preview/gesto/save/load; não chama pushUndo/markProjectDirty/renderAll. Introduzido na v8z4b19t.
+- `runInternalCurvePatchSelfTestForSegment(segIndex, proposedOffset)` — harness para segmento normal: constrói runtime model via `buildRuntimeCurveModel()` e delega a `runInternalCurvePatchSelfTestForModel()`; não altera estado. Introduzido na v8z4b19t.
+- `runInternalCurvePatchSelfTestForLoop(proposedOffset)` — harness para curva de loop: roda self-test no loop se ativo; retorna `{ ok: false, reason: 'loop-disabled' }` se loop inativo; não altera estado. Introduzido na v8z4b19t.
+- `runInternalCurvePatchSelfTestSuite()` — suite completa: roda self-test em segmento normal + loop (se ativo); retorna resumo com `segmentResult`, `loopResult`, `summary`; **não roda automaticamente** em nenhum fluxo público. Introduzido na v8z4b19t.
+- **Self-test interno do pipeline de patch preparado (v8z4b19t):** o harness `runInternalCurvePatchSelfTestSuite()` valida o pipeline completo `pathPoint → simulação → patch candidato → dry-run → apply guardado` sem mutação real. Disponível em `window.__arcoInternalDiag.curvePatchSelfTest` apenas para diagnóstico de desenvolvimento.
+- `createLegacyCurvePatchFromCurrentCurveEdit(target, nextCtrlPt)` — monta patch candidato compatível com `validateLegacyCurvePatchCandidate()` a partir de `{ nx, ny, t, perpX, perpY }` já calculados durante edição de curva; `applied: false` sempre; não altera estado. Introduzido na v8z4b19u.
+- `applyExistingCurveEditViaPatch(target, nextCtrlPt, options)` — roteia edição de curva existente pelo aplicador guardado: cria patch → valida → aplica com `allowRealMutation: true`; pushUndo/markDirty/render gerenciados externamente pelo chamador. Introduzido na v8z4b19u.
+- **Edição de curva existente agora passa pelo aplicador guardado (v8z4b19u):** `setSegmentTrajectoryPoint()` usa `applyExistingCurveEditViaPatch()` em vez de `setSegmentCurve()` direto; curvas normais e curva de loop incluídas; comportamento visual idêntico à v8z4b19t; Undo/Redo/markDirty/render preservados; JSON schema inalterado; nenhum campo novo.
+- **Midpoint pathPoint editável implementado (v8z4b19v):** `pathPoints[0]` (em `t=0.5`) agora é visível como círculo branco arrastável sobre curvas ativas; drag usa `simulateRuntimePathPointEdit()` → `createLegacyCurvePatchFromSimulatedPathPointEdit()` → `validateLegacyCurvePatchCandidate()` → `applyLegacyCurvePatchCandidateToRealState(patch, { allowRealMutation: true })`; loop também suportado; curvePuller legado preservado; JSON schema inalterado; nenhum campo novo.
+- **Midpoint pathPoint elevado a controle principal (v8z4b19w):** z-index elevado para 76 (supera ctrl-pt em 75); `ctrl-pt`/losango recebe `pointer-events: none` + `opacity: 0.38` quando midpoint pathPoint está ativo no segmento — fica visível mas não intercepta gestos; loop corrigido da mesma forma (`loopEl` vira secundário quando `midpt_loop` está visível); `.mid-pathpt` adicionado ao whitelist do `attachImageAreaCloseHandler()`; pipeline guardado preservado; JSON schema inalterado; nenhum campo novo.
+- **Reset global de curvas registrado como roadmap futuro:** não implementado; avaliar integração com o pipeline guardado quando a UI estiver pronta.
+- **Bug de `_file.json` sem `imageBase64`** mantido apenas no ROADMAP (fase UI/carregamento futura). Tempos/proporções mantidos no roadmap futuro. Velocidade composta mantida no roadmap futuro. Criação de frame seguindo curva de loop mantida no roadmap futuro.
+
+### Próximos passos (futuros, não imediatos)
+
+- **Handles independentes de entrada e saída no frame:** separar tangente de chegada e saída no frame ativo (atualmente simétrica); requer UI de alternância entre tangente simétrica e assimétrica.
+- **Handles em F1/último frame com loop:** estender o frame tangent handle para o primeiro e último frame quando loop está ativo; tangente de chegada/saída do segmento de loop.
+- **Reset local da curva do frame:** desfazer ajuste de tangente do frame ativo específico, restaurando curvePuller dos dois segmentos adjacentes para posição automática.
+- **Handles/tangentes estilo Illustrator em frameAnchors e pathPoints:** controles de tangência; requer `mode = 'vectorAnchors'` e avaliador Bézier cúbico.
+- **Handles nos frames:** suporte a tangentes diretamente associadas a frameAnchors.
+- **Handles nos pathPoints:** suporte a tangentes diretamente associadas a pathPoints.
+- **Múltiplos pathPoints por trecho:** adicionar pontos de passagem além do midpoint em t=0.5 (ex: t=0.25, t=0.75); requer modelo de edição mais completo.
+- **Modo caneta / criação de trajetória vetorial:** clicar cria frame; clicar e arrastar cria handle; modo desenho livre.
+- **Reset global de curvas:** resetar todos os `ctrlPts` + `loopCtrlPt` para posição padrão; conectar ao pipeline guardado; preservar Undo/Redo.
+- **Bug `_file.json` sem `imageBase64`:** arquivos salvos sem imagem não têm `imageBase64`; ao reabrir, app deve tratar ausência sem erro ou campo fantasma.
+- **Preservação de proporções internas dos tempos:** ao alterar duração total, preservar proporções relativas dos `segDurations`; requer UI de confirmação.
+- **Velocidade composta:** combinação de easing + velocidade relativa por segmento; requer modelo de controle por trecho.
+- **Criação de frame seguindo curva de loop:** inserir novo frame ao longo da trajetória do loop; posição inicial derivada da curva, não do centro do stage.
+- Adicionar `pathPoints` reais como pontos de passagem sem tempo próprio.
+- Adicionar `handles` de tangência para controle Bézier cúbico.
+- Implementar `mode = 'vectorAnchors'` com avaliador Bézier cúbico.
+- Schema JSON versionado para persistir `pathPoints` e `handles`.
+- Migração controlada de `legacyQuadratic` → `vectorAnchors`.
+
+### Nota sobre movimento inteligente
+
+Movimento inteligente pode continuar como configuração global, mas futuramente
+pode haver exceções ou parcialidade por trecho ou por passagem de frame.
+Não implementar enquanto o conceito ainda não estiver fechado.
+
+## Futuro — Ferramenta de caneta / criação de trajetória vetorial
+
+Decisão de produto registrada em v8z4b18k. Não implementado ainda.
+
+- Modo criar frames: clicar cria frame; clicar e arrastar cria frame com tangência.
+- Modo criar pontos de passagem (pathPoints): clicar cria ponto; clicar e arrastar cria handle.
+- Modo desenho livre: o app interpreta o traçado e sugere pontos e/ou frames.
+- Ao deletar frame: oferecer opção de converter em ponto de passagem.
+- Conversão ponto de passagem ↔ frame: em ambas as direções.
+- Edição de handles: transformar ponto suave em canto e vice-versa.
+- Desenho livre poderá gerar pontos e/ou frames após confirmação e escolha do tempo total.
+- curvePuller (legado) coexiste com pathPoints; migração somente ao entrar no modo vetorial.
+
+## Futuro — Criação de frame seguindo curva de loop
+
+Registrado em v8z4b19r. Não implementado ainda.
+
+- Ao ativar loop, oferecer opção de criar novo frame posicionado automaticamente
+  sobre a curva de loop, em um ponto de passagem calculado pela trajetória ativa.
+- O novo frame deve seguir a curvatura do segmento de loop (avaliado via
+  `evaluateSegmentPath` no segmento de loop).
+- Sem alteração de schema: o novo frame seria um frame comum, inserido no array
+  de frames; a curva de loop seria automaticamente recalculada/ajustada.
+- Não implementar enquanto o modelo de edição de pathPoint não estiver finalizado.
+
+## Futuro — Modo de ajuste global de transformação
+
+Registrado em v8z4b19b. Não implementado ainda.
+
+- Permitir aplicar escala, deslocamento e rotação a todos os frames do projeto de uma vez.
+- Diferente de ajuste local de frame individual.
+- Diferente de seleção múltipla de frames.
+- Deve retornar na fase de interface, após estabilização do motor atual.
+
+## v9 — Interface final
+
+- Nova interface completa.
+- Home com arquivos recentes, se houver wrapper nativo.
+- Menu contextual de frame/segmento.
+- Visualização temporal interativa.
+- Leitura visual de velocidade no trajeto.
+- Refinamentos de overlay, painéis e microinterações.
+
+### Registro v8z4b27f — itens futuros sem implementação
+
+- Play/Preview acessível com menu de seleção múltipla aberto; tratar como ajuste futuro de UX.
+- Transformação direta de grupo no Stage.
+- Edição global de frames.
+- Adicionar/Subtrair pausa aos selecionados.
+- Undo/Redo de troca de imagem.
+- Loop ida e volta/ping-pong.
+- Velocidade constante perceptiva considerando posição, escala e rotação.
