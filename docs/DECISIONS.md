@@ -1,5 +1,11 @@
 # DECISIONS
 
+## DEC-2026-09-02-03 — Retorno do MP4 reusa o snapshot canônico no contexto Preview
+
+- **Decisão:** ao terminar um MP4, o renderer não cai para assets ao vivo para reiniciar o Preview. O snapshot estável recém-validado pelo Export é transferido para o contexto `preview`, e a presença temporal é resolvida novamente pelo relógio do Preview.
+- **Motivo:** Export correto não garante retorno de Preview correto se os contextos divergirem; imagens e Text Assets precisam manter a mesma fonte canônica de renderização na transição.
+- **Consequência:** o arquivo concluído não é modificado, e a reentrada não altera Frames, ProjectWorld, geometria, opacidade manual, timing ou estado persistido. Implementação técnica na `v8z4b32E9AO`; validação física em iPhone/Safari ainda é obrigatória.
+
 ## DEC-2026-09-02-02 — Snapshot de render inclui toda a aparência manual do ativo
 
 - **Decisão:** o snapshot imutável de Preview/Export deve carregar `asset.opacity` de imagens, além da fonte, geometria, rotação, profundidade e presença já congeladas. A entrada intermediária de desenho conserva o mesmo valor.

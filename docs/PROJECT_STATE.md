@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-02 — v8z4b32E9AO: Text Asset no retorno do Preview após MP4
+
+- Relato físico na E9AN: o MP4 preservava o texto, mas ao concluir a geração e retomar o Preview o Text Asset desaparecia.
+- Causa comprovada: a finalização iniciava o Preview com `renderSessionSnapshot.context === 'export'`. O Preview passava a desenhar pelo caminho ao vivo, em vez de reentrar no snapshot canônico e reavaliar a presença temporal no seu próprio relógio.
+- Correção: o snapshot estável concluído pelo Export é transferido explicitamente ao contexto Preview antes do loop de retorno. Imagens e Text Assets continuam congelados; a presença é recalculada por quadro no tempo do Preview. O MP4 já concluído não é alterado.
+- QA WebKit real: o caso de H.264 com Text Asset falhava ao exigir `context: 'preview'` depois do MP4 e passa após a transferência. Validação física em iPhone/Safari continua obrigatória antes de merge; produção permanece intocada.
+
 ## Atualização 2026-09-02 — v8z4b32E9AN: opacidade de imagem no snapshot de Preview/Export
 
 - Relato físico na E9AM: o Stage refletia a transparência, mas Preview só a mostrava depois de salvar e o arquivo exportado permanecia opaco.

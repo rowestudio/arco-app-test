@@ -1,5 +1,13 @@
 # TEST_CASES
 
+## TC-069 — Retorno ao Preview após exportação com Text Asset (E9AO)
+
+- Pré-condição: projeto com imagem e Text Asset visível, inclusive com presença temporal configurável.
+- Passos: abrir o Preview, gerar e salvar um MP4, aguardar a tela voltar ao Preview e deixar o playback reiniciar.
+- Resultado esperado: o MP4 preserva o texto e o Preview pós-export volta a mostrá-lo quando o relógio de presença o considera presente. O retorno usa o contexto Preview, não o contexto Export; imagens, opacidade manual, presença temporal, Frames e ProjectWorld permanecem inalterados.
+- Evidência automatizada: WebKit/H.264 gera MP4 real com Text Asset e verifica o primeiro ciclo de Preview pós-export pelo renderer canônico.
+- Validação física obrigatória em iPhone/Safari antes de merge.
+
 ## TC-068 — Opacidade individual de Ativos (E9AM)
 
 - Pré-condição: projeto com imagem e Text Asset no Modo Ativos, incluindo um ativo com presença temporal customizada.
