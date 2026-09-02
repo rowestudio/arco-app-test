@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9AO — fix(post-export-preview-text): ao concluir um MP4, o snapshot estável que acabou de atender o Export é transferido explicitamente para o contexto Preview antes de reiniciar o playback. Assim a presença temporal de imagens e Text Assets é reavaliada pelo relógio do Preview, sem cair no caminho vivo e sem alterar o MP4 já gerado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AO. -->
 <!-- Arco Motion App — v8z4b32E9AN — fix(asset-opacity): o snapshot congelado de Preview/Export preserva `opacity` de imagens e a repassa ao asset de desenho; antes, Stage usava o valor ao vivo mas o snapshot perdia o campo e ambos os destinos renderizavam 100%. Textos já eram serializados no snapshot e permanecem inalterados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AN. -->
 <!-- Arco Motion App — v8z4b32E9AM — feat(asset-opacity): baseline manual individual 0–100% para imagens e textos, pelo controle Opacidade após Tempo na toolbar de Ativos; independente de presença temporal; persiste em Save/Load, sessão e histórico; Stage, Preview e Export multiplicam a mesma fonte canônica. Para textos, reduz glifos e fundo juntos, preservando a opacidade própria do fundo como alpha interno. base v8z4b32E9AL. -->
 <!-- Arco Motion App — v8z4b32E9AL — base v8z4b32E9AK. fix(asset-temporal-presence): a duração temporal da presença passa a incluir o trecho de fechamento quando Loop está ativo, no estado ao vivo e no snapshot congelado de Preview/Export. Assim, ativos sem saída explícita permanecem presentes durante o retorno N→1. NÃO TOCADO: getStateAtT, câmera, WebCodecs, geometria do ProjectWorld, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AL. -->
@@ -7748,8 +7749,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AN';
-const APP_VERSION_NAME = 'v8z4b32E9AN';
+const APP_VERSION = 'v8z4b32E9AO';
+const APP_VERSION_NAME = 'v8z4b32E9AO';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -27317,6 +27318,7 @@ async function startRecord() {
 
       // Volta para playback do preview na mesma resolução final segura do formato.
       isPreviewing = true;
+      handoffCompletedExportSnapshotToPreview();
       pausedElapsed = 0;
       animStart = null;
       resetPreviewClock(); // v8z4b30ZH — reinicia o relógio visual limitado do Preview
@@ -35752,6 +35754,27 @@ function refreshRenderSessionSnapshotPresenceAt(projectTime, context) {
   try { Object.freeze(nextSnapshot); } catch (_e) {}
   renderSessionSnapshot = nextSnapshot;
   return nextSnapshot;
+}
+
+// O MP4 já terminou de consumir este snapshot estável. Ao voltar diretamente
+// para o Preview, preserve a mesma fonte congelada, mas troque explicitamente
+// o contexto para que o resolvedor de presença do Preview volte a avaliar
+// imagens e Text Assets no seu próprio relógio.
+function handoffCompletedExportSnapshotToPreview() {
+  const snapshot = renderSessionSnapshot;
+  if (!snapshot || snapshot.context !== 'export') return false;
+  const previewSnapshot = { ...snapshot, context: 'preview' };
+  try { Object.freeze(previewSnapshot); } catch (_e) {}
+  renderSessionSnapshot = previewSnapshot;
+  renderSessionActiveContext = 'preview';
+  previewSnapshotAssetCount = Array.isArray(previewSnapshot.assets) ? previewSnapshot.assets.length : 0;
+  previewSnapshotAssetIds = previewSnapshotAssetCount
+    ? previewSnapshot.assets.map(asset => String(asset.id || '')).join(',')
+    : 'none';
+  renderSessionSnapshotBuiltBeforePreview = true;
+  renderSessionSnapshotFrozenDuringPreview = true;
+  renderSessionPreviewUsesSnapshotOnly = true;
+  return true;
 }
 
 function resolveRenderProjectTimeFromT(t) {
