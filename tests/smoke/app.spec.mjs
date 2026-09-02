@@ -303,6 +303,118 @@ test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', asyn
   expect(capturedErrors, `erro JS capturado durante a abertura:\n${capturedErrors.join('\n')}`).toEqual([]);
 });
 
+test('E9AM — opacidade individual preserva presença e renderiza no Stage', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+
+  const selectedId = await page.evaluate(() => {
+    setEditorMode('assets');
+    const asset = assets.find(item => item && item.type === 'image');
+    if (!asset) throw new Error('fixture sem imagem');
+    asset.presence = { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 0 } } };
+    selectAssetById(asset.id, 'e9am-opacity');
+    renderAll();
+    return String(asset.id);
+  });
+
+  await expect(page.locator('#tbAssetOpacity')).toBeVisible();
+  await page.locator('#tbAssetOpacity').click();
+  await expect(page.locator('#assetContextPanel')).toHaveClass(/show/);
+  await page.locator('#assetContextSlider').evaluate((input) => {
+    input.value = '40';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+
+  expect(await page.evaluate(id => {
+    const asset = assets.find(item => item && String(item.id) === id);
+    const element = document.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(id) + '"]');
+    return {
+      opacity: asset.opacity,
+      presence: structuredClone(asset.presence),
+      stageOpacity: element && element.style.opacity,
+      serializedOpacity: serializeProjectAsset(asset, 0, false).opacity,
+    };
+  }, selectedId)).toEqual({
+    opacity: 0.4,
+    presence: { mode: 'custom', entry: { anchor: 'project', offset: { unit: 'seconds', value: 0 } } },
+    stageOpacity: '0.4',
+    serializedOpacity: 0.4,
+  });
+
+  expect(await page.evaluate((id) => {
+    const state = getStateAtT(0);
+    const render = (context) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 320; canvas.height = 568;
+      drawWorldToCanvas(canvas.getContext('2d'), { cx: state.cx, cy: state.cy, sw: state.sw, sh: state.sh, rot: state.rot }, 320, 568, {
+        context, t: 0, projectTime: 0, mainSource: getCanonicalRenderSource(), canonicalDims: getImageSourceDimensions(getCanonicalRenderSource())
+      });
+      return renderTransform[context].assets.find((entry) => entry.id === id)?.alphaUsed;
+    };
+    return { preview: render('preview'), export: render('export') };
+  }, selectedId)).toEqual({ preview: 0.4, export: 0.4 });
+
+  expect(await page.evaluate(async (id) => {
+    const state = getStateAtT(0);
+    const renderFrozenSession = async (context) => {
+      renderSessionSnapshot = null;
+      const prepared = await prepareRenderSessionSnapshot(context);
+      const canvas = document.createElement('canvas');
+      canvas.width = 320; canvas.height = 568;
+      drawWorldToCanvas(canvas.getContext('2d'), { cx: state.cx, cy: state.cy, sw: state.sw, sh: state.sh, rot: state.rot }, 320, 568, {
+        context, t: 0, projectTime: 0, mainSource: getCanonicalRenderSource(), canonicalDims: getImageSourceDimensions(getCanonicalRenderSource())
+      });
+      const snapshot = renderSessionSnapshot?.assets.find((asset) => asset.id === id);
+      return { prepared: prepared.ok, snapshotOpacity: snapshot?.opacity, alpha: renderTransform[context]?.assets.find((entry) => entry.id === id)?.alphaUsed };
+    };
+    return { preview: await renderFrozenSession('preview'), export: await renderFrozenSession('export') };
+  }, selectedId)).toEqual({
+    preview: { prepared: true, snapshotOpacity: 0.4, alpha: 0.4 },
+    export: { prepared: true, snapshotOpacity: 0.4, alpha: 0.4 },
+  });
+
+  await page.locator('#assetContextReset').click();
+  expect(await page.evaluate((id) => {
+    const read = () => assets.find((asset) => String(asset.id) === id).opacity;
+    const reset = read(); undo(); const undone = read(); redo(); const redone = read();
+    return { reset, undone, redone };
+  }, selectedId)).toEqual({ reset: 1, undone: 0.4, redone: 1 });
+});
+
+test('E9AM — opacidade manual do texto multiplica glifos e fundo no render canônico', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  const textId = await page.evaluate(() => {
+    setEditorMode('assets');
+    const text = normalizeTextAsset({
+      id: 'e9am-text-opacity', type: 'text', name: 'Texto alpha', text: 'Opacidade', color: '#ffffff',
+      fontKey: 'system', fontWeight: 400, fontStyle: 'normal', textAlign: 'center', fontSize: 30, lineHeight: 1.2,
+      boxWidth: 190, boxWidthMode: 'fixed', textBaseBoxWidth: 190, textBaseFontSize: 30,
+      boxBackgroundEnabled: true, boxBackgroundColor: '#000000', boxBackgroundOpacity: .5, boxPaddingXEm: .5, boxPaddingYEm: .3,
+      worldX: 60, worldY: 100, worldW: 190, worldH: 50, rotation: 0, depth: 0, opacity: 1, zIndex: 99, visible: true
+    });
+    measureTextAsset(text); assets.push(text); selectAssetById(text.id, 'e9am-text-opacity'); renderAll(); return text.id;
+  });
+  await page.locator('#tbAssetOpacity').click();
+  await page.locator('#assetContextSlider').evaluate((input) => { input.value = '65'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  expect(await page.evaluate((id) => {
+    const text = assets.find((asset) => String(asset.id) === id);
+    const stage = document.querySelector('.world-text-asset[data-asset-id="' + CSS.escape(id) + '"]');
+    const state = getStateAtT(0), canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 568;
+    drawWorldToCanvas(canvas.getContext('2d'), { cx: state.cx, cy: state.cy, sw: state.sw, sh: state.sh, rot: state.rot }, 320, 568, {
+      context: 'preview', t: 0, projectTime: 0, mainSource: getCanonicalRenderSource(), canonicalDims: getImageSourceDimensions(getCanonicalRenderSource())
+    });
+    return { opacity: text.opacity, stageOpacity: stage?.style.opacity, background: stage?.style.backgroundColor, previewAlpha: renderTransform.preview.assets.find((entry) => entry.id === id)?.alphaUsed };
+  }, textId)).toEqual({ opacity: .65, stageOpacity: '0.65', background: 'rgba(0, 0, 0, 0.5)', previewAlpha: .65 });
+});
+
 test('E8X WebKit gate — TC-038 até Preview e composição real', async ({ page }) => {
   test.setTimeout(240_000);
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
@@ -4198,7 +4310,7 @@ test('E9I — lock bloqueia ações diretas da camada', async ({ page }) => {
     deleteSelectedAsset();
     openAssetContextPanel('depth');
     syncAssetToolbarState();
-    const toolbarDisabled = ['tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetDelete', 'tbAssetForward', 'tbAssetBackward']
+    const toolbarDisabled = ['tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetTiming', 'tbAssetOpacity', 'tbAssetDelete', 'tbAssetForward', 'tbAssetBackward']
       .every(id => document.getElementById(id).classList.contains('asset-tool-disabled'));
     return { count: assets.length, zIndex: locked.zIndex, undo: undoStack.length, panelOpen: assetContextPanelKind !== 'none', toolbarDisabled, before };
   });
@@ -4451,7 +4563,7 @@ test('E9AA — Camadas evita Profundidade redundante e Excluir encerra a toolbar
     labels: ['Visibilidade', 'Travar camada', 'Duplicar camada', 'Excluir camada'],
     targets: [{ width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }, { width: 60, height: 60 }],
     canonicalSymbols: { visibility: '#i-eye', lock: '#i-lock', remove: '#i-trash' },
-    assetToolbarOrder: ['tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetTiming', 'tbAssetCopy', 'tbAssetDuplicate', 'tbAssetForward', 'tbAssetBackward', 'tbAssetDelete'],
+    assetToolbarOrder: ['tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetTiming', 'tbAssetOpacity', 'tbAssetCopy', 'tbAssetDuplicate', 'tbAssetForward', 'tbAssetBackward', 'tbAssetDelete'],
   });
   const reordered = await page.evaluate(({ dragged, target }) => {
     const before = assets.slice().sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)).map(a => String(a.id));
@@ -5995,6 +6107,7 @@ test('E9AG — presença temporal: controles ficam inline no projeto e compactos
     'tbAssetRotate',
     'tbAssetDepth',
     'tbAssetTiming',
+    'tbAssetOpacity',
     'tbAssetCopy',
     'tbAssetDuplicate',
     'tbAssetForward',
@@ -6305,7 +6418,7 @@ test('E9AK — Tempo vem após Profundidade e Antes/Depois só aparece para refe
     syncAssetToolbarState();
   });
   expect(await page.evaluate(() => [...document.querySelectorAll('#toolbar .ctx-asset')].map(item => item.id))).toEqual([
-    'tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetTiming',
+    'tbAssetReplace', 'tbAssetScale', 'tbAssetRotate', 'tbAssetDepth', 'tbAssetTiming', 'tbAssetOpacity',
     'tbAssetCopy', 'tbAssetDuplicate', 'tbAssetForward', 'tbAssetBackward', 'tbAssetDelete'
   ]);
 

@@ -73,6 +73,10 @@ test('WebKit macOS real Export — imagem com Text Asset E9D horizontal, caixa e
   const before=await page.evaluate(() => {const text=getSelectedAsset(),m=measureTextAsset({...text});return{text:serializeProjectAsset(text,0,false),lines:m.lines,frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld),order:assets.slice().sort((a,b)=>a.zIndex-b.zIndex).map(a=>String(a.id))}});
   expect(before.text).toMatchObject({text:content,color:'#ff3366',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right',depth:42,boxStyle:'block',boxBackgroundEnabled:true,boxBackgroundColor:'#112233',boxBackgroundOpacity:.65}); expect(before.lines).toEqual(['Texto']); expect(before.text.worldW).toBeGreaterThan(before.text.boxWidth);
   await exportRealMp4(page,testInfo,'image-text-e9d');
+  await expect.poll(async () => page.evaluate(id => {
+    const rendered = (renderTransform.preview?.assets || []).find(asset => String(asset.id) === String(id));
+    return rendered ? { context: renderSessionSnapshot?.context, id: rendered.id, drawn: rendered.drawn, alpha: rendered.alphaUsed } : null;
+  }, String(before.text.id)), { timeout: 15_000 }).toMatchObject({ context: 'preview', id: before.text.id, drawn: true, alpha: 1 });
   const after=await page.evaluate(id=>({text:renderSessionSnapshot?.textAssets?.find(a=>String(a.id)===id),frames:structuredClone(frames.slice(0,frameCount)),world:structuredClone(projectWorld),order:assets.slice().sort((a,b)=>a.zIndex-b.zIndex).map(a=>String(a.id))}),String(before.text.id));
   expect(after.text).toMatchObject({id:before.text.id,text:content,color:'#ff3366',fontKey:'serif',fontWeight:700,fontStyle:'italic',textAlign:'right',worldX:before.text.worldX,worldY:before.text.worldY,worldW:before.text.worldW,depth:42,zIndex:before.text.zIndex});
   expect(after.frames).toEqual(before.frames); expect(after.world).toEqual(before.world); expect(after.order).toEqual(before.order); expect(errors).toEqual([]);
