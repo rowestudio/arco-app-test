@@ -951,7 +951,7 @@
 ╚══════════════════════════════════════════════════════╝
 -->
 <!-- Arco Motion App — v8z4b32E9AO — fix(post-export-preview-text): ao concluir um MP4, o snapshot estável que acabou de atender o Export é transferido explicitamente para o contexto Preview antes de reiniciar o playback. Assim a presença temporal de imagens e Text Assets é reavaliada pelo relógio do Preview, sem cair no caminho vivo e sem alterar o MP4 já gerado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AO. -->
-<!-- Arco Motion App — v8z4b32E9AQ — fix(stage-frames-play): o controle verde Frames mantém Stage/câmera imóveis e anima uma moldura editorial transitória pela posição, escala e rotação do sampler canônico. Stop limpa a moldura; Preview, MP4, projeto, Undo e autosave permanecem inalterados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AQ. -->
+<!-- Arco Motion App — v8z4b32E9AR — feat(stage-frames-play): Frames mantém Stage/câmera imóveis, percorre o relógio canônico com moldura laranja e destaca em ciano cada Frame alcançado, sem mutar o projeto. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AR. -->
 <!-- Arco Motion App — v8z4b32E9AN — fix(asset-opacity): o snapshot congelado de Preview/Export preserva `opacity` de imagens e a repassa ao asset de desenho; antes, Stage usava o valor ao vivo mas o snapshot perdia o campo e ambos os destinos renderizavam 100%. Textos já eram serializados no snapshot e permanecem inalterados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AN. -->
 <!-- Arco Motion App — v8z4b32E9AM — feat(asset-opacity): baseline manual individual 0–100% para imagens e textos, pelo controle Opacidade após Tempo na toolbar de Ativos; independente de presença temporal; persiste em Save/Load, sessão e histórico; Stage, Preview e Export multiplicam a mesma fonte canônica. Para textos, reduz glifos e fundo juntos, preservando a opacidade própria do fundo como alpha interno. base v8z4b32E9AL. -->
 <!-- Arco Motion App — v8z4b32E9AL — base v8z4b32E9AK. fix(asset-temporal-presence): a duração temporal da presença passa a incluir o trecho de fechamento quando Loop está ativo, no estado ao vivo e no snapshot congelado de Preview/Export. Assim, ativos sem saída explícita permanecem presentes durante o retorno N→1. NÃO TOCADO: getStateAtT, câmera, WebCodecs, geometria do ProjectWorld, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AL. -->
@@ -2241,11 +2241,13 @@ body.no-image #stageFrameMenu{display:none !important;}
 #toolbar.contextual-toolbar{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;align-items:stretch;gap:6px;padding-left:6px;padding-right:6px;touch-action:pan-x;}
 #toolbar.contextual-toolbar::-webkit-scrollbar{display:none;}
 #toolbar.contextual-toolbar .tb-item{flex:0 0 68px;min-width:68px;min-height:44px;justify-content:center;gap:3px;padding:0 4px;}
-#toolbar.contextual-toolbar .stage-frames-play{border:0;background:transparent;color:#39d98a;}
-#toolbar.contextual-toolbar .stage-frames-play .tb-icon,#toolbar.contextual-toolbar .stage-frames-play .tb-lbl{color:#39d98a;}
-#toolbar.contextual-toolbar .stage-frames-play.is-playing{background:rgba(57,217,138,.14);}
+#toolbar.contextual-toolbar .stage-frames-play,#toolbar.contextual-toolbar .stage-frames-play.is-playing{border:0;background:transparent;box-shadow:none;color:#ff9500;}
+#toolbar.contextual-toolbar .stage-frames-play .tb-icon,#toolbar.contextual-toolbar .stage-frames-play .tb-lbl{color:#ff9500;}
 .stage-frames-playback-frame{position:absolute;box-sizing:border-box;pointer-events:none;z-index:86;overflow:visible;}
-.stage-frames-playback-frame-visual{position:absolute;inset:0;box-sizing:border-box;transform-origin:center center;border:3px solid #39d98a;border-radius:10px;box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(57,217,138,.34);}
+.stage-frames-playback-frame-visual{position:absolute;inset:0;box-sizing:border-box;transform-origin:center center;border:3px solid #ff9500;border-radius:10px;box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.34);}
+.stage-frames-playback-frame-visual.is-arrived{border-color:#04fff2;box-shadow:0 0 12px rgba(0,0,0,.42),0 0 12px rgba(4,255,242,.42);}
+#stage .frame.stage-frames-playback-arrived .frame-border{border-color:#04fff2!important;}
+#pillsRow [data-frame-index].stage-frames-playback-arrived{border-color:#04fff2!important;color:#04fff2!important;box-shadow:0 0 10px rgba(4,255,242,.34);}
 #toolbar.contextual-toolbar .ctx-only{display:none;}
 body.bottom-context-frame #toolbar.contextual-toolbar .ctx-frame,
 body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:flex;}
@@ -7758,8 +7760,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AQ';
-const APP_VERSION_NAME = 'v8z4b32E9AQ';
+const APP_VERSION = 'v8z4b32E9AR';
+const APP_VERSION_NAME = 'v8z4b32E9AR';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -24038,7 +24040,7 @@ function refreshEditorViewVisualOverlays() {
   }
 }
 
-let stageFramesPlayback = { running: false, startFrameIndex: -1, projectTime: 0, raf: 0, startedAt: 0, startProjectTime: 0 };
+let stageFramesPlayback = { running: false, startFrameIndex: -1, projectTime: 0, raf: 0, startedAt: 0, startProjectTime: 0, currentFrameIndex: -1, arrivalFrameIndex: -1 };
 let stageFramesPlaybackRequestedFrameIndex = null;
 
 function captureStageFramesPlaybackStart(event) {
@@ -24075,7 +24077,52 @@ function removeStageFramesPlaybackFrame() {
   if (el) el.remove();
 }
 
-function renderStageFramesPlaybackFrame(state) {
+function getStageFramesPlaybackPresentation(projectTime, fullDuration) {
+  const info = getSegAndLocalTAtTime(Math.max(0, Math.min(1, projectTime / Math.max(0.001, fullDuration))));
+  if (info.isLoopSeg) return { frameIndex: Math.max(0, frameCount - 1), arrived: false };
+  if (info.isPause) {
+    return { frameIndex: Math.max(0, Math.min(frameCount - 1, info.localT >= 1 ? info.seg + 1 : info.seg)), arrived: true };
+  }
+  if (info.localT >= 0.9995) {
+    return { frameIndex: Math.max(0, Math.min(frameCount - 1, info.seg + 1)), arrived: true };
+  }
+  return { frameIndex: Math.max(0, Math.min(frameCount - 1, info.seg)), arrived: false };
+}
+
+function clearStageFramesPlaybackArrivalFeedback() {
+  document.querySelectorAll('.stage-frames-playback-arrived').forEach(el => el.classList.remove('stage-frames-playback-arrived'));
+}
+
+function revealStageFramesPlaybackTimelineFrame(frameIndex) {
+  const pillsEl = document.getElementById('pillsRow');
+  const timesEl = document.getElementById('lowerPartialTimes');
+  const pill = pillsEl ? pillsEl.querySelector('[data-frame-index="' + frameIndex + '"]') : null;
+  if (!pillsEl || !pill) return;
+  const nextScroll = Math.min(Math.max(0, pillsEl.scrollWidth - pillsEl.clientWidth), Math.max(0, pill.offsetLeft + pill.offsetWidth / 2 - pillsEl.clientWidth / 2));
+  lowerTimelineProgrammaticScrollUntil = Date.now() + 120;
+  isLowerTimelineProgrammaticCentering = true;
+  pillsEl.scrollLeft = nextScroll;
+  if (timesEl) timesEl.scrollLeft = nextScroll;
+  requestAnimationFrame(() => { isLowerTimelineProgrammaticCentering = false; });
+}
+
+function updateStageFramesPlaybackPresentation(presentation) {
+  const frameIndex = presentation ? presentation.frameIndex : -1;
+  const arrived = !!(presentation && presentation.arrived && frameIndex >= 0);
+  const isNewArrival = arrived && stageFramesPlayback.arrivalFrameIndex !== frameIndex;
+  clearStageFramesPlaybackArrivalFeedback();
+  if (arrived) {
+    const frameEl = getFrameEl(frameIndex);
+    const pillEl = document.querySelector('#pillsRow [data-frame-index="' + frameIndex + '"]');
+    if (frameEl) frameEl.classList.add('stage-frames-playback-arrived');
+    if (pillEl) pillEl.classList.add('stage-frames-playback-arrived');
+  }
+  stageFramesPlayback.currentFrameIndex = frameIndex;
+  stageFramesPlayback.arrivalFrameIndex = arrived ? frameIndex : -1;
+  if (isNewArrival) revealStageFramesPlaybackTimelineFrame(frameIndex);
+}
+
+function renderStageFramesPlaybackFrame(state, presentation) {
   const space = getCanonicalFrameCoordinateDimensions();
   if (!state || !space || imgNatW <= 0 || imgNatH <= 0) return false;
   let el = document.getElementById('stageFramesPlaybackFrame');
@@ -24101,7 +24148,9 @@ function renderStageFramesPlaybackFrame(state) {
   if (visual) {
     visual.style.transform = `rotate(${state.rot || 0}deg)`;
     visual.style.borderWidth = (3 / editorZoomScale) + 'px';
+    visual.classList.toggle('is-arrived', !!(presentation && presentation.arrived));
   }
+  el.dataset.state = presentation && presentation.arrived ? 'arrived' : 'moving';
   return true;
 }
 
@@ -24109,6 +24158,9 @@ function stopStageFramesPlayback() {
   if (stageFramesPlayback.raf) cancelAnimationFrame(stageFramesPlayback.raf);
   stageFramesPlayback.raf = 0;
   stageFramesPlayback.running = false;
+  clearStageFramesPlaybackArrivalFeedback();
+  stageFramesPlayback.currentFrameIndex = -1;
+  stageFramesPlayback.arrivalFrameIndex = -1;
   removeStageFramesPlaybackFrame();
   updateStageFramesPlaybackControl();
 }
@@ -24121,9 +24173,11 @@ function startStageFramesPlayback() {
     Number.isInteger(requestedFrameIndex) ? requestedFrameIndex : activeIdx));
   const fullDuration = Math.max(0.001, totalDurationFull());
   const startProjectTime = getStageFramesProjectTimeAtFrame(startFrameIndex);
-  stageFramesPlayback = { running: true, startFrameIndex, projectTime: startProjectTime, raf: 0, startedAt: performance.now(), startProjectTime };
+  stageFramesPlayback = { running: true, startFrameIndex, projectTime: startProjectTime, raf: 0, startedAt: performance.now(), startProjectTime, currentFrameIndex: -1, arrivalFrameIndex: -1 };
   removeStageFramesPlaybackFrame();
-  renderStageFramesPlaybackFrame(getStateAtT(Math.max(0, Math.min(1, startProjectTime / fullDuration))));
+  const initialPresentation = getStageFramesPlaybackPresentation(startProjectTime, fullDuration);
+  updateStageFramesPlaybackPresentation(initialPresentation);
+  renderStageFramesPlaybackFrame(getStateAtT(Math.max(0, Math.min(1, startProjectTime / fullDuration))), initialPresentation);
   updateStageFramesPlaybackControl();
   const step = function(now) {
     if (!stageFramesPlayback.running) return;
@@ -24131,7 +24185,9 @@ function startStageFramesPlayback() {
     const projectTime = Math.min(fullDuration, stageFramesPlayback.startProjectTime + elapsed);
     stageFramesPlayback.projectTime = projectTime;
     const state = getStateAtT(Math.max(0, Math.min(1, projectTime / fullDuration)));
-    renderStageFramesPlaybackFrame(state);
+    const presentation = getStageFramesPlaybackPresentation(projectTime, fullDuration);
+    updateStageFramesPlaybackPresentation(presentation);
+    renderStageFramesPlaybackFrame(state, presentation);
     if (projectTime >= fullDuration) { stopStageFramesPlayback(); return; }
     stageFramesPlayback.raf = requestAnimationFrame(step);
   };
