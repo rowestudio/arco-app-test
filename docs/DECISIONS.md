@@ -1,8 +1,9 @@
 # DECISIONS
 
-## DEC-2026-09-03-01 — Play verde de Frames anima moldura editorial com viewport imóvel
+## DEC-2026-09-03-01 — Play de Frames anima moldura editorial temporal com viewport imóvel
 
-- **Decisão:** o controle verde **Frames**, visível apenas no Modo Frames, cria uma moldura temporária na geometria do Frame ativo e a anima pelos Frames posteriores. Posição, escala e rotação vêm do sampler temporal canônico; o Stage e sua câmera permanecem imóveis.
+- **Decisão:** o controle **Frames**, visível apenas no Modo Frames, cria uma moldura temporária na geometria do Frame ativo e a anima pelos Frames posteriores. O botão permanece sem borda, fundo, caixa ou pill; laranja enquanto percorre e ciano ao chegar. Posição, escala, rotação e chegada vêm do sampler temporal canônico; o Stage e sua câmera permanecem imóveis.
+- **Timeline:** a chegada destaca e revela a pill do Frame sem alterar `activeIdx` ou a seleção canônica. Pausas configuradas sustentam naturalmente o ciano; sem pausa, o destaque não adiciona duração artificial.
 - **Limite editorial:** a moldura pode sair da vista e não recentraliza o viewport. Não é persistida, selecionável nem incluída em Preview/Export. Stop, troca de modo ou abertura do Preview interrompem e removem o elemento.
 - **Integridade:** a execução não escreve em Frames, curvas, timing, projeto, Undo/Redo ou autosave. Preview e MP4 mantêm seus fluxos canônicos sem reutilizar a moldura DOM editorial.
 - **Substitui:** `DEC-2026-09-02-04`, cuja interpretação de “navegação visual do editor” estava incorreta.

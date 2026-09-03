@@ -1,8 +1,10 @@
 # PRODUCT_RULES
 
-## Regra E9AQ — Play de Frames é uma moldura editorial, não movimento de câmera
+## Regra E9AR — Play de Frames: moldura editorial temporal, sem movimento de câmera
 
-- No Modo Frames, o controle verde **Frames** anima somente uma moldura transitória da geometria do Frame ativo para os posteriores, usando a interpolação, as curvas e o timing canônicos já existentes.
+- No Modo Frames, o controle **Frames** não tem borda, fundo, caixa ou pill, inclusive enquanto assume Stop. Ícone/rótulo e moldura são laranja `#ff9500` durante o deslocamento.
+- Ao alcançar um Frame, a moldura transitória, o Frame e sua pill correspondente ficam em ciano `#04fff2`. A timeline apenas revela essa passagem: `activeIdx` e a seleção canônica não são substituídos.
+- A chegada é calculada pelo mesmo relógio de segmentos, pausas por Frame, pausa global, curvas e Loop. Não se cria pausa, duração ou tempo visual artificial para sustentar o destaque.
 - A vista editorial é invariante: pan, zoom, transformação e posição do viewport não mudam. A moldura pode sair da vista e nunca provoca centralização automática.
 - A moldura não é Frame real nem dado do projeto: não participa de seleção, hit-test, Undo/Redo, autosave, Save/Load, Preview ou MP4. Stop e qualquer saída desse contexto interrompem e limpam o elemento transitório.
 

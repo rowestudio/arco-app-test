@@ -1,9 +1,16 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-03 — v8z4b32E9AR: estados visuais do Play de Frames
+
+- Durante o deslocamento, a moldura editorial e o controle **Frames** usam laranja. O botão continua sem borda, fundo, caixa ou pill, inclusive enquanto vira Stop.
+- Ao alcançar cada Frame, a moldura e o Frame/pill correspondente recebem ciano `#04fff2`; a timeline revela esse Frame sem trocar a seleção canônica nem alterar o Stage.
+- A troca visual deriva exclusivamente do relógio temporal canônico: duração dos segmentos, pausas por Frame, pausa global, curvas e Loop. Não cria pausa nem tempo artificial.
+- O smoke WebKit E9AR cobre cor, ausência de caixa, chegada durante pausa real e destaque de Frame/timeline. Validação física em iPhone/Safari permanece obrigatória antes de merge; produção permanece intocada.
+
 ## Atualização 2026-09-03 — v8z4b32E9AQ: moldura transitória no Play de Frames
 
 - Roberto corrigiu a especificação da E9AP: **Frames não navega a câmera nem move o Stage**. Pan, zoom, transform e posição do viewport permanecem visual e geometricamente imóveis durante toda a execução.
-- O controle verde **Frames** cria uma única moldura editorial transitória a partir do Frame ativo. A moldura percorre os Frames posteriores usando o relógio, curvas e sampler canônicos, refletindo posição, escala e rotação; pode sair da vista sem recentralização automática.
+- O controle originalmente verde **Frames** cria uma única moldura editorial transitória a partir do Frame ativo. A moldura percorre os Frames posteriores usando o relógio, curvas e sampler canônicos, refletindo posição, escala e rotação; pode sair da vista sem recentralização automática.
 - Stop, troca de modo e abertura do Preview cancelam a execução e removem a moldura. Frames reais, curvas, timing, projeto, Undo/Redo, autosave, Preview e MP4 não são modificados.
 - A regressão E9AQ cobre contrato estático e comportamento WebKit; validação física em iPhone/Safari permanece obrigatória antes de merge. Produção permanece intocada.
 

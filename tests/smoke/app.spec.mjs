@@ -6808,3 +6808,42 @@ test('E9AQ — Play Frames anima moldura transitória sem mover Stage/câmera ne
   await expect(page.locator('#stageFramesPlaybackFrame')).toHaveCount(0);
   expect(await snapshot()).toEqual(before);
 });
+
+test('E9AR — Play Frames usa laranja em movimento e destaca em azul o Frame alcançado no tempo canônico', async ({ page }) => {
+  const source = fs.readFileSync(path.resolve('index.html'), 'utf8');
+  const playbackCss = source.slice(
+    source.indexOf('#toolbar.contextual-toolbar .stage-frames-play'),
+    source.indexOf('#toolbar.contextual-toolbar .ctx-only'),
+  );
+  expect(playbackCss).toContain('color:#ff9500');
+  expect(playbackCss).toContain('border:3px solid #ff9500');
+  expect(playbackCss).toContain('.is-arrived');
+  expect(playbackCss).toContain('#04fff2');
+  expect(playbackCss).not.toContain('#39d98a');
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  await page.evaluate(() => {
+    setEditorMode('camera', 'e9ar-playback-arrival');
+    activeIdx = 0;
+    loopEnabled = false;
+    segDurations[0] = 0.08;
+    framePauses[0] = { duration: 0 };
+    framePauses[1] = { duration: 0.35 };
+    renderAll();
+  });
+
+  const control = page.locator('#tbStageFramesPlay');
+  await control.click();
+  await expect.poll(() => page.evaluate(() => stageFramesPlayback.currentFrameIndex), { timeout: 2_000 }).toBe(1);
+  await expect(page.locator('#stageFramesPlaybackFrame')).toHaveAttribute('data-state', 'arrived');
+  await expect(page.locator('#frm_1')).toHaveClass(/stage-frames-playback-arrived/);
+  await expect(page.locator('#pillsRow [data-frame-index="1"]')).toHaveClass(/stage-frames-playback-arrived/);
+  await expect(page.locator('#tbStageFramesPlay')).toHaveCSS('border-top-width', '0px');
+  await expect(page.locator('#tbStageFramesPlay')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await control.click();
+});
