@@ -1,5 +1,10 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-02 — v8z4b32E9AP: Play de Frames no Stage
+
+- O Modo Frames recebe o controle verde **Frames** na toolbar contextual inferior. Ele começa no Frame ativo, percorre o Stage pelo tempo/curvas existentes e vira Stop durante a execução.
+- É uma ferramenta diagnóstica isolada: não abre Preview, não exporta, não cria Undo/autosave e não altera Frames, duração, pausas, curvas ou Save/Load. A toolbar continua rolável horizontalmente no iPhone.
+
 ## Atualização 2026-09-02 — v8z4b32E9AO: Text Asset no retorno do Preview após MP4
 
 - Relato físico na E9AN: o MP4 preservava o texto, mas ao concluir a geração e retomar o Preview o Text Asset desaparecia.

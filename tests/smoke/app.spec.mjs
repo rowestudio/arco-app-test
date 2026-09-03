@@ -6698,3 +6698,32 @@ test('E9AG — presença temporal: aplicar global, preservar override e voltar p
     overrideInvalidReason: null,
   });
 });
+
+test('E9AP — Play Frames percorre o Stage a partir do Frame ativo e para sem mutar o projeto', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const before = await page.evaluate(() => {
+    setEditorMode('camera', 'e9ap-stage-play');
+    activeIdx = Math.min(1, Math.max(0, frameCount - 1));
+    renderAll();
+    return JSON.stringify({ frames, frameRotations, segDurations, framePauses });
+  });
+
+  const control = page.locator('#tbStageFramesPlay');
+  await expect(control).toBeVisible();
+  await expect(control).toHaveText('Frames');
+  await control.click();
+  await expect(page.locator('body')).toHaveClass(/stage-frames-playing/);
+  await expect(control).toHaveAttribute('aria-label', 'Parar reprodução de Frames');
+
+  await expect.poll(() => page.evaluate(() => stageFramesPlayback.startFrameIndex), { timeout: 2_000 }).toBe(1);
+  await expect.poll(() => page.evaluate(() => stageFramesPlayback.projectTime), { timeout: 2_000 }).toBeGreaterThan(0);
+
+  await control.click();
+  await expect(page.locator('body')).not.toHaveClass(/stage-frames-playing/);
+  expect(await page.evaluate(() => JSON.stringify({ frames, frameRotations, segDurations, framePauses }))).toBe(before);
+});

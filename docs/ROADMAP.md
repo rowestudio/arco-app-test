@@ -1,5 +1,11 @@
 # ROADMAP
 
+## Próxima frente aprovada — E9AP: Play de Frames no Stage
+
+- No Modo Frames, um controle verde **Frames** na toolbar contextual inferior reproduz somente a navegação diagnóstica do Stage, a partir do Frame ativo.
+- O mesmo controle vira Stop e a reprodução também termina ao concluir o ciclo até o fim do projeto. Não substitui o Play rosa de Preview, não gera MP4 e não altera dados do projeto.
+- A toolbar contextual deve permanecer em uma única linha com rolagem horizontal no iPhone; o controle não aparece no Modo Ativos.
+
 ## Atualização 2026-08-29 — E9Z: duplicar, copiar e colar ativos
 
 - Implementado: duplicar uma camada no painel Layers no mesmo lugar; duplicar pelo menu inferior com deslocamento leve; copiar ativo e colar pelo menu `+` no centro da vista atual.

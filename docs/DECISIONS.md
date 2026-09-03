@@ -1,5 +1,10 @@
 # DECISIONS
 
+## DEC-2026-09-02-04 — Play verde de Frames é diagnóstico local do Stage
+
+- **Decisão:** o controle verde **Frames**, visível apenas no Modo Frames, inicia no Frame ativo e percorre o Stage até o fim do ciclo ou até Stop. O Play rosa permanente continua reservado ao Preview final.
+- **Consequência:** a execução usa o sampler temporal existente apenas para navegação visual do editor; não abre Preview, não entra no pipeline de Export e não persiste Frames, durações, pausas, curvas, Undo ou autosave.
+
 ## DEC-2026-09-02-03 — Retorno do MP4 reusa o snapshot canônico no contexto Preview
 
 - **Decisão:** ao terminar um MP4, o renderer não cai para assets ao vivo para reiniciar o Preview. O snapshot estável recém-validado pelo Export é transferido para o contexto `preview`, e a presença temporal é resolvida novamente pelo relógio do Preview.

@@ -951,6 +951,7 @@
 ╚══════════════════════════════════════════════════════╝
 -->
 <!-- Arco Motion App — v8z4b32E9AO — fix(post-export-preview-text): ao concluir um MP4, o snapshot estável que acabou de atender o Export é transferido explicitamente para o contexto Preview antes de reiniciar o playback. Assim a presença temporal de imagens e Text Assets é reavaliada pelo relógio do Preview, sem cair no caminho vivo e sem alterar o MP4 já gerado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AO. -->
+<!-- Arco Motion App — v8z4b32E9AP — feat(stage-frames-play): no Modo Frames, o controle verde Frames percorre o Stage a partir do Frame ativo usando o relógio e o sampler canônicos, sem abrir Preview, gerar MP4, gravar projeto ou criar Undo. O mesmo controle vira Stop; a toolbar contextual permanece rolável horizontalmente. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AP. -->
 <!-- Arco Motion App — v8z4b32E9AN — fix(asset-opacity): o snapshot congelado de Preview/Export preserva `opacity` de imagens e a repassa ao asset de desenho; antes, Stage usava o valor ao vivo mas o snapshot perdia o campo e ambos os destinos renderizavam 100%. Textos já eram serializados no snapshot e permanecem inalterados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AN. -->
 <!-- Arco Motion App — v8z4b32E9AM — feat(asset-opacity): baseline manual individual 0–100% para imagens e textos, pelo controle Opacidade após Tempo na toolbar de Ativos; independente de presença temporal; persiste em Save/Load, sessão e histórico; Stage, Preview e Export multiplicam a mesma fonte canônica. Para textos, reduz glifos e fundo juntos, preservando a opacidade própria do fundo como alpha interno. base v8z4b32E9AL. -->
 <!-- Arco Motion App — v8z4b32E9AL — base v8z4b32E9AK. fix(asset-temporal-presence): a duração temporal da presença passa a incluir o trecho de fechamento quando Loop está ativo, no estado ao vivo e no snapshot congelado de Preview/Export. Assim, ativos sem saída explícita permanecem presentes durante o retorno N→1. NÃO TOCADO: getStateAtT, câmera, WebCodecs, geometria do ProjectWorld, opacidade manual, efeitos de entrada/saída e produção. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AL. -->
@@ -2240,6 +2241,9 @@ body.no-image #stageFrameMenu{display:none !important;}
 #toolbar.contextual-toolbar{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;align-items:stretch;gap:6px;padding-left:6px;padding-right:6px;touch-action:pan-x;}
 #toolbar.contextual-toolbar::-webkit-scrollbar{display:none;}
 #toolbar.contextual-toolbar .tb-item{flex:0 0 68px;min-width:68px;min-height:44px;justify-content:center;gap:3px;padding:0 4px;}
+#toolbar.contextual-toolbar .stage-frames-play{border:0;background:transparent;color:#39d98a;}
+#toolbar.contextual-toolbar .stage-frames-play .tb-icon,#toolbar.contextual-toolbar .stage-frames-play .tb-lbl{color:#39d98a;}
+#toolbar.contextual-toolbar .stage-frames-play.is-playing{background:rgba(57,217,138,.14);}
 #toolbar.contextual-toolbar .ctx-only{display:none;}
 body.bottom-context-frame #toolbar.contextual-toolbar .ctx-frame,
 body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:flex;}
@@ -4438,6 +4442,9 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <div id="lowerContextSlot">
 <!-- BOTTOM TOOLBAR -->
 <div class="toolbar show contextual-toolbar" id="toolbar">
+  <button class="tb-item ctx-only ctx-frame stage-frames-play" id="tbStageFramesPlay" type="button" onclick="toggleStageFramesPlayback()" aria-label="Reproduzir Frames" title="Reproduzir Frames">
+    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-play"></use></svg><span class="tb-lbl">Frames</span>
+  </button>
   <div class="tb-item ctx-only ctx-common" onclick="openPanel('Duration')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-director-chair"></use></svg><span class="tb-lbl">Duração</span>
   </div>
@@ -7749,8 +7756,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AO';
-const APP_VERSION_NAME = 'v8z4b32E9AO';
+const APP_VERSION = 'v8z4b32E9AP';
+const APP_VERSION_NAME = 'v8z4b32E9AP';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -18258,6 +18265,7 @@ function locateAssetsModeSegmentRef(seg) {
 // selectFrameContext) seja sempre re-sincronizado ao chamar o roteador central.
 function setEditorMode(mode, source) {
   const next = (mode === 'assets') ? 'assets' : 'camera';
+  if (next !== 'camera' && typeof stopStageFramesPlayback === 'function') stopStageFramesPlayback();
   // v8z4b30ZR — instrumentação da transição (sempre, mesmo sem mudança real).
   setModeCallCount++;
   lastModeRequested = next;
@@ -24026,6 +24034,75 @@ function refreshEditorViewVisualOverlays() {
   if (typeof isAssetsMode === 'function' && isAssetsMode() && typeof refreshAssetStageVisualGeometry === 'function') {
     refreshAssetStageVisualGeometry('renderAll');
   }
+}
+
+let stageFramesPlayback = { running: false, startFrameIndex: -1, projectTime: 0, raf: 0, startedAt: 0, startProjectTime: 0 };
+
+function updateStageFramesPlaybackControl() {
+  const control = document.getElementById('tbStageFramesPlay');
+  const playing = !!stageFramesPlayback.running;
+  if (document.body) document.body.classList.toggle('stage-frames-playing', playing);
+  if (!control) return;
+  control.classList.toggle('is-playing', playing);
+  control.setAttribute('aria-label', playing ? 'Parar reprodução de Frames' : 'Reproduzir Frames');
+  control.title = playing ? 'Parar reprodução de Frames' : 'Reproduzir Frames';
+  const use = control.querySelector('use');
+  if (use) use.setAttribute('href', playing ? '#i-stop' : '#i-play');
+}
+
+function getStageFramesProjectTimeAtFrame(frameIndex) {
+  const target = Math.max(0, Math.min(Math.max(0, frameCount - 1), Number(frameIndex) || 0));
+  ensureSegDurations();
+  let seconds = 0;
+  for (let seg = 0; seg < target; seg++) {
+    seconds += Number(framePauses[seg]?.duration) || 0;
+    seconds += Number(segDurations[seg]) || 0;
+    if (easeMode === 'pause' && pauseDuration > 0 && seg < frameCount - 2) seconds += pauseDuration;
+  }
+  return seconds;
+}
+
+function stopStageFramesPlayback() {
+  if (stageFramesPlayback.raf) cancelAnimationFrame(stageFramesPlayback.raf);
+  stageFramesPlayback.raf = 0;
+  stageFramesPlayback.running = false;
+  updateStageFramesPlaybackControl();
+}
+
+function startStageFramesPlayback() {
+  if (!isCameraMode() || isPreviewing || frameCount < 2) return false;
+  const startFrameIndex = Math.max(0, Math.min(frameCount - 1, activeIdx));
+  const fullDuration = Math.max(0.001, totalDurationFull());
+  const startProjectTime = getStageFramesProjectTimeAtFrame(startFrameIndex);
+  stageFramesPlayback = { running: true, startFrameIndex, projectTime: startProjectTime, raf: 0, startedAt: performance.now(), startProjectTime };
+  updateStageFramesPlaybackControl();
+  const step = function(now) {
+    if (!stageFramesPlayback.running) return;
+    const elapsed = Math.max(0, (now - stageFramesPlayback.startedAt) / 1000);
+    const projectTime = Math.min(fullDuration, stageFramesPlayback.startProjectTime + elapsed);
+    stageFramesPlayback.projectTime = projectTime;
+    const state = getStateAtT(Math.max(0, Math.min(1, projectTime / fullDuration)));
+    const space = getCanonicalFrameCoordinateDimensions();
+    if (state && space && imgNatW > 0 && imgNatH > 0) {
+      computeEditorTransform();
+      const worldX = state.cx * space.width / imgNatW;
+      const worldY = state.cy * space.height / imgNatH;
+      const point = editorWorldToStage(worldX, worldY, 0, 0);
+      editorPanX = stageW / 2 - point.x * editorZoomScale;
+      editorPanY = stageH / 2 - point.y * editorZoomScale;
+      clampEditorPan();
+      applyEditorZoom();
+    }
+    if (projectTime >= fullDuration) { stopStageFramesPlayback(); return; }
+    stageFramesPlayback.raf = requestAnimationFrame(step);
+  };
+  stageFramesPlayback.raf = requestAnimationFrame(step);
+  return true;
+}
+
+function toggleStageFramesPlayback() {
+  if (stageFramesPlayback.running) stopStageFramesPlayback();
+  else startStageFramesPlayback();
 }
 
 function applyEditorZoom() {
