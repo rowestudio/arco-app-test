@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import fs from 'node:fs';
 import path from 'node:path';
 import { dismissProModalIfVisible } from './ui-helpers.mjs';
 
@@ -6699,19 +6700,84 @@ test('E9AG — presença temporal: aplicar global, preservar override e voltar p
   });
 });
 
-test('E9AP — Play Frames percorre o Stage a partir do Frame ativo e para sem mutar o projeto', async ({ page }) => {
+test('E9AQ — contrato do Play Frames usa moldura transitória e não escreve na câmera', async () => {
+  const source = fs.readFileSync(path.resolve('index.html'), 'utf8');
+  const playbackBlock = source.slice(
+    source.indexOf('function startStageFramesPlayback()'),
+    source.indexOf('function toggleStageFramesPlayback()'),
+  );
+  expect(source).toContain("el.id = 'stageFramesPlaybackFrame'");
+  expect(playbackBlock).not.toContain('editorPanX =');
+  expect(playbackBlock).not.toContain('editorPanY =');
+  expect(playbackBlock).not.toContain('applyEditorZoom()');
+});
+
+test('E9AQ — Play Frames anima moldura transitória sem mover Stage/câmera nem mutar projeto', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
   await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
   await dismissProModalIfVisible(page);
 
-  const before = await page.evaluate(() => {
-    setEditorMode('camera', 'e9ap-stage-play');
-    activeIdx = Math.min(1, Math.max(0, frameCount - 1));
+  await page.evaluate(() => {
+    setEditorMode('camera', 'e9aq-stage-playback-frame');
+    activeIdx = 0;
+    const space = getCanonicalFrameCoordinateDimensions();
+    frames[0] = { x: space.width * 0.08, y: space.height * 0.12, w: space.width * 0.34, h: space.height * 0.30 };
+    frames[1] = { x: space.width * 0.52, y: space.height * 0.48, w: space.width * 0.20, h: space.height * 0.18 };
+    frameRotations[0] = -8;
+    frameRotations[1] = 34;
+    segDurations[0] = 2;
     renderAll();
-    return JSON.stringify({ frames, frameRotations, segDurations, framePauses });
+    editorZoomScale = 1.35;
+    editorPanX = -73;
+    editorPanY = 41;
+    applyEditorZoom();
   });
+  await page.waitForTimeout(1_700);
+
+  const snapshot = () => page.evaluate(() => ({
+    camera: {
+      panX: editorPanX,
+      panY: editorPanY,
+      zoom: editorZoomScale,
+      transform: stageContent.style.transform,
+      stageRect: (() => {
+        const rect = stage.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      })(),
+      contentRect: (() => {
+        const rect = stageContent.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      })(),
+    },
+    project: JSON.stringify(buildProjectData()),
+    undo: JSON.stringify(undoStack),
+    redo: JSON.stringify(redoStack),
+    autosave: localStorage.getItem(AUTOSAVE_KEY),
+    sessionAutosave: {
+      queued: _sessionAutosaveQueuedRevision,
+      committed: _sessionAutosaveCommittedRevision,
+      epoch: _sessionAutosaveEpoch,
+    },
+    previewing: isPreviewing,
+    recording: isRecording,
+  }));
+
+  const readPlaybackFrame = () => page.evaluate(() => {
+    const el = document.getElementById('stageFramesPlaybackFrame');
+    if (!el) return null;
+    const visual = el.querySelector('.stage-frames-playback-frame-visual');
+    return {
+      left: parseFloat(el.style.left),
+      top: parseFloat(el.style.top),
+      width: parseFloat(el.style.width),
+      height: parseFloat(el.style.height),
+      transform: visual?.style.transform || '',
+    };
+  });
+
+  const before = await snapshot();
 
   const control = page.locator('#tbStageFramesPlay');
   await expect(control).toBeVisible();
@@ -6720,11 +6786,25 @@ test('E9AP — Play Frames percorre o Stage a partir do Frame ativo e para sem m
   await control.click();
   await expect(page.locator('body')).toHaveClass(/stage-frames-playing/);
   await expect(control).toHaveAttribute('aria-label', 'Parar reprodução de Frames');
+  await expect(page.locator('#stageFramesPlaybackFrame')).toBeVisible();
 
   await expect.poll(() => page.evaluate(() => stageFramesPlayback.startFrameIndex), { timeout: 2_000 }).toBe(selectedFrameAtTap);
   await expect.poll(() => page.evaluate(() => stageFramesPlayback.projectTime), { timeout: 2_000 }).toBeGreaterThan(0);
+  const initialFrame = await readPlaybackFrame();
+  expect((await snapshot()).camera).toEqual(before.camera);
+
+  await page.waitForTimeout(350);
+  const animatedFrame = await readPlaybackFrame();
+  expect(animatedFrame).not.toBeNull();
+  expect(Math.abs(animatedFrame.left - initialFrame.left)).toBeGreaterThan(1);
+  expect(Math.abs(animatedFrame.top - initialFrame.top)).toBeGreaterThan(1);
+  expect(Math.abs(animatedFrame.width - initialFrame.width)).toBeGreaterThan(1);
+  expect(Math.abs(animatedFrame.height - initialFrame.height)).toBeGreaterThan(1);
+  expect(animatedFrame.transform).not.toBe(initialFrame.transform);
+  expect((await snapshot()).camera).toEqual(before.camera);
 
   await control.click();
   await expect(page.locator('body')).not.toHaveClass(/stage-frames-playing/);
-  expect(await page.evaluate(() => JSON.stringify({ frames, frameRotations, segDurations, framePauses }))).toBe(before);
+  await expect(page.locator('#stageFramesPlaybackFrame')).toHaveCount(0);
+  expect(await snapshot()).toEqual(before);
 });
