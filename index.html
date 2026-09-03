@@ -4442,7 +4442,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <div id="lowerContextSlot">
 <!-- BOTTOM TOOLBAR -->
 <div class="toolbar show contextual-toolbar" id="toolbar">
-  <button class="tb-item ctx-only ctx-frame stage-frames-play" id="tbStageFramesPlay" type="button" onclick="toggleStageFramesPlayback()" aria-label="Reproduzir Frames" title="Reproduzir Frames">
+  <button class="tb-item ctx-only ctx-frame stage-frames-play" id="tbStageFramesPlay" type="button" onpointerdown="captureStageFramesPlaybackStart(event)" ontouchstart="captureStageFramesPlaybackStart(event)" onmousedown="captureStageFramesPlaybackStart(event)" onclick="toggleStageFramesPlayback()" aria-label="Reproduzir Frames" title="Reproduzir Frames">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-play"></use></svg><span class="tb-lbl">Frames</span>
   </button>
   <div class="tb-item ctx-only ctx-common" onclick="openPanel('Duration')">
@@ -24037,6 +24037,12 @@ function refreshEditorViewVisualOverlays() {
 }
 
 let stageFramesPlayback = { running: false, startFrameIndex: -1, projectTime: 0, raf: 0, startedAt: 0, startProjectTime: 0 };
+let stageFramesPlaybackRequestedFrameIndex = null;
+
+function captureStageFramesPlaybackStart(event) {
+  if (event) event.stopPropagation();
+  stageFramesPlaybackRequestedFrameIndex = Number.isInteger(activeIdx) ? activeIdx : 0;
+}
 
 function updateStageFramesPlaybackControl() {
   const control = document.getElementById('tbStageFramesPlay');
@@ -24071,7 +24077,10 @@ function stopStageFramesPlayback() {
 
 function startStageFramesPlayback() {
   if (!isCameraMode() || isPreviewing || frameCount < 2) return false;
-  const startFrameIndex = Math.max(0, Math.min(frameCount - 1, activeIdx));
+  const requestedFrameIndex = stageFramesPlaybackRequestedFrameIndex;
+  stageFramesPlaybackRequestedFrameIndex = null;
+  const startFrameIndex = Math.max(0, Math.min(frameCount - 1,
+    Number.isInteger(requestedFrameIndex) ? requestedFrameIndex : activeIdx));
   const fullDuration = Math.max(0.001, totalDurationFull());
   const startProjectTime = getStageFramesProjectTimeAtFrame(startFrameIndex);
   stageFramesPlayback = { running: true, startFrameIndex, projectTime: startProjectTime, raf: 0, startedAt: performance.now(), startProjectTime };

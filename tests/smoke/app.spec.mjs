@@ -6716,11 +6716,12 @@ test('E9AP — Play Frames percorre o Stage a partir do Frame ativo e para sem m
   const control = page.locator('#tbStageFramesPlay');
   await expect(control).toBeVisible();
   await expect(control).toHaveText('Frames');
+  const selectedFrameAtTap = await page.evaluate(() => activeIdx);
   await control.click();
   await expect(page.locator('body')).toHaveClass(/stage-frames-playing/);
   await expect(control).toHaveAttribute('aria-label', 'Parar reprodução de Frames');
 
-  await expect.poll(() => page.evaluate(() => stageFramesPlayback.startFrameIndex), { timeout: 2_000 }).toBe(1);
+  await expect.poll(() => page.evaluate(() => stageFramesPlayback.startFrameIndex), { timeout: 2_000 }).toBe(selectedFrameAtTap);
   await expect.poll(() => page.evaluate(() => stageFramesPlayback.projectTime), { timeout: 2_000 }).toBeGreaterThan(0);
 
   await control.click();
