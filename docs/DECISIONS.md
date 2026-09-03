@@ -1,9 +1,15 @@
 # DECISIONS
 
-## DEC-2026-09-02-04 — Play verde de Frames é diagnóstico local do Stage
+## DEC-2026-09-03-01 — Play verde de Frames anima moldura editorial com viewport imóvel
 
-- **Decisão:** o controle verde **Frames**, visível apenas no Modo Frames, inicia no Frame ativo e percorre o Stage até o fim do ciclo ou até Stop. O Play rosa permanente continua reservado ao Preview final.
-- **Consequência:** a execução usa o sampler temporal existente apenas para navegação visual do editor; não abre Preview, não entra no pipeline de Export e não persiste Frames, durações, pausas, curvas, Undo ou autosave.
+- **Decisão:** o controle verde **Frames**, visível apenas no Modo Frames, cria uma moldura temporária na geometria do Frame ativo e a anima pelos Frames posteriores. Posição, escala e rotação vêm do sampler temporal canônico; o Stage e sua câmera permanecem imóveis.
+- **Limite editorial:** a moldura pode sair da vista e não recentraliza o viewport. Não é persistida, selecionável nem incluída em Preview/Export. Stop, troca de modo ou abertura do Preview interrompem e removem o elemento.
+- **Integridade:** a execução não escreve em Frames, curvas, timing, projeto, Undo/Redo ou autosave. Preview e MP4 mantêm seus fluxos canônicos sem reutilizar a moldura DOM editorial.
+- **Substitui:** `DEC-2026-09-02-04`, cuja interpretação de “navegação visual do editor” estava incorreta.
+
+## DEC-2026-09-02-04 — Play verde de Frames como navegação do Stage (SUPERADA)
+
+- **Estado:** superada em 2026-09-03 pela correção de especificação de Roberto. O registro histórico não autoriza mover pan/zoom/viewport; vale `DEC-2026-09-03-01`.
 
 ## DEC-2026-09-02-03 — Retorno do MP4 reusa o snapshot canônico no contexto Preview
 

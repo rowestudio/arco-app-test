@@ -1,5 +1,13 @@
 # REGRESSIONS
 
+## REG-069 — Play de Frames movia o viewport em vez de animar moldura transitória
+
+- **Relato/especificação corrigida:** acionar o controle verde **Frames** deve manter Stage/câmera visual e geometricamente imóveis e deslocar, escalar e girar uma moldura editorial temporária entre os Frames.
+- **Causa comprovada:** `startStageFramesPlayback()` convertia apenas o centro amostrado em pan e escrevia `editorPanX/editorPanY`, seguido de `applyEditorZoom()`. Não existia elemento de moldura transitória e `sw`, `sh` e `rot` do sampler eram ignorados na visualização editorial.
+- **Correção E9AQ:** o loop preserva o relógio e `getStateAtT()`, mas converte `cx/cy/sw/sh/rot` em geometria de um único DOM editorial não interativo dentro do Stage. Stop remove o elemento; não há escrita de pan/zoom nem recentralização.
+- **Teste preventivo:** contrato estático bloqueia novas escritas de câmera no loop; smoke WebKit fixa pan/zoom não triviais, exige mudança de posição/tamanho/rotação da moldura e compara projeto, Undo/Redo, autosave, Preview e gravação antes/depois do Stop.
+- **Status:** corrigida tecnicamente na `v8z4b32E9AQ`; validação física iPhone/Safari pendente antes de merge.
+
 ## REG-068 — Preview pós-MP4 perde o contexto canônico de Text Assets
 
 - **Relato físico:** o MP4 contém o Text Asset corretamente, mas o Preview que retoma logo após a geração pode deixá-lo ausente.

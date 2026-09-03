@@ -1,5 +1,11 @@
 # PRODUCT_RULES
 
+## Regra E9AQ — Play de Frames é uma moldura editorial, não movimento de câmera
+
+- No Modo Frames, o controle verde **Frames** anima somente uma moldura transitória da geometria do Frame ativo para os posteriores, usando a interpolação, as curvas e o timing canônicos já existentes.
+- A vista editorial é invariante: pan, zoom, transformação e posição do viewport não mudam. A moldura pode sair da vista e nunca provoca centralização automática.
+- A moldura não é Frame real nem dado do projeto: não participa de seleção, hit-test, Undo/Redo, autosave, Save/Load, Preview ou MP4. Stop e qualquer saída desse contexto interrompem e limpam o elemento transitório.
+
 ## Regra E9Z — copiar, colar e duplicar ativos
 
 - Duplicar em Camadas cria uma nova camada sobreposta, selecionada e desbloqueada. Duplicar na barra inferior cria a mesma cópia com leve deslocamento visual.

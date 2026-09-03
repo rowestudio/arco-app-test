@@ -1,9 +1,9 @@
 # ROADMAP
 
-## Próxima frente aprovada — E9AP: Play de Frames no Stage
+## Frente em validação — E9AQ: moldura transitória no Play de Frames
 
-- No Modo Frames, um controle verde **Frames** na toolbar contextual inferior reproduz somente a navegação diagnóstica do Stage, a partir do Frame ativo.
-- O mesmo controle vira Stop e a reprodução também termina ao concluir o ciclo até o fim do projeto. Não substitui o Play rosa de Preview, não gera MP4 e não altera dados do projeto.
+- A interpretação E9AP de navegação do Stage foi superada. No Modo Frames, o controle verde **Frames** mantém o viewport imóvel e anima uma moldura editorial transitória, a partir do Frame ativo, pela posição, escala e rotação do sampler canônico.
+- O mesmo controle vira Stop e a execução termina ao concluir o ciclo até o fim do projeto. A moldura pode sair da vista sem centralização e é removida no Stop. Não substitui o Play rosa de Preview, não gera MP4 e não altera dados do projeto, Undo/Redo ou autosave.
 - A toolbar contextual deve permanecer em uma única linha com rolagem horizontal no iPhone; o controle não aparece no Modo Ativos.
 
 ## Atualização 2026-08-29 — E9Z: duplicar, copiar e colar ativos

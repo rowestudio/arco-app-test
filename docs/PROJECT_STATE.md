@@ -1,9 +1,15 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-03 — v8z4b32E9AQ: moldura transitória no Play de Frames
+
+- Roberto corrigiu a especificação da E9AP: **Frames não navega a câmera nem move o Stage**. Pan, zoom, transform e posição do viewport permanecem visual e geometricamente imóveis durante toda a execução.
+- O controle verde **Frames** cria uma única moldura editorial transitória a partir do Frame ativo. A moldura percorre os Frames posteriores usando o relógio, curvas e sampler canônicos, refletindo posição, escala e rotação; pode sair da vista sem recentralização automática.
+- Stop, troca de modo e abertura do Preview cancelam a execução e removem a moldura. Frames reais, curvas, timing, projeto, Undo/Redo, autosave, Preview e MP4 não são modificados.
+- A regressão E9AQ cobre contrato estático e comportamento WebKit; validação física em iPhone/Safari permanece obrigatória antes de merge. Produção permanece intocada.
+
 ## Atualização 2026-09-02 — v8z4b32E9AP: Play de Frames no Stage
 
-- O Modo Frames recebe o controle verde **Frames** na toolbar contextual inferior. Ele começa no Frame ativo, percorre o Stage pelo tempo/curvas existentes e vira Stop durante a execução.
-- É uma ferramenta diagnóstica isolada: não abre Preview, não exporta, não cria Undo/autosave e não altera Frames, duração, pausas, curvas ou Save/Load. A toolbar continua rolável horizontalmente no iPhone.
+- Registro histórico da primeira implementação, cuja interpretação como navegação do Stage foi **superada** pela especificação corrigida da E9AQ acima.
 
 ## Atualização 2026-09-02 — v8z4b32E9AO: Text Asset no retorno do Preview após MP4
 
