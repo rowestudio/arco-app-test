@@ -1,5 +1,10 @@
 # ROADMAP
 
+## Atualização 2026-09-03 — itens futuros após E9AP
+
+- **Tremor global em Frame parado:** pesquisar e especificar como o tremor global deve atuar quando o projeto tem um único Frame estático; não implementado nesta PR.
+- **Exportar Frame único como imagem:** pesquisar e especificar uma opção explícita de exportar projeto de Frame único como imagem; não implementada nesta PR.
+
 ## Atualização 2026-08-29 — E9Z: duplicar, copiar e colar ativos
 
 - Implementado: duplicar uma camada no painel Layers no mesmo lugar; duplicar pelo menu inferior com deslocamento leve; copiar ativo e colar pelo menu `+` no centro da vista atual.

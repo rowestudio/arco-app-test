@@ -6349,6 +6349,80 @@ test('E9AJ — permanência deriva a saída sempre a partir da entrada', async (
   expect(resolved.resolution.exitTime - resolved.resolution.entryTime).toBeCloseTo(2, 6);
 });
 
+test('E9AP — Frame único estático mantém o asset em Preview e MP4 durante toda a duração efetiva', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const observation = await page.evaluate(async () => {
+    frames.splice(1);
+    frameCount = frames.length;
+    segDurations.splice(0);
+    framePauses.splice(0, framePauses.length, { duration: 0 });
+    loopEnabled = false;
+    loopDuration = 0;
+    duration = 4;
+    const asset = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!asset) throw new Error('fixture sem imagem');
+    asset.presence = {
+      mode: 'custom',
+      entry: { anchor: 'project', offset: { unit: 'seconds', value: 0 } },
+    };
+    const camera = {
+      cx: frames[0].x + frames[0].w / 2,
+      cy: frames[0].y + frames[0].h / 2,
+      sw: frames[0].w,
+      sh: frames[0].h,
+      rot: 0,
+    };
+    const render = async (context) => {
+      renderSessionSnapshot = null;
+      const prepared = await prepareRenderSessionSnapshot(context);
+      if (!prepared || !prepared.ok) throw new Error('snapshot ' + context + ' indisponível');
+      const snapshotContext = buildRenderSessionTemporalPresenceContext(renderSessionSnapshot);
+      const samples = [0, 2, 4].map(projectTime => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 390;
+        canvas.height = 693;
+        drawWorldToCanvas(canvas.getContext('2d'), camera, canvas.width, canvas.height, {
+          context,
+          projectTime,
+          mainSource: getCanonicalRenderSource(),
+          canonicalDims: getImageSourceDimensions(getCanonicalRenderSource()),
+        });
+        const audit = renderTransform[context]?.assets.find(entry => String(entry.id) === String(asset.id));
+        return { projectTime, present: isAssetPresentAt(asset.id, projectTime, snapshotContext), drawn: !!audit?.drawn };
+      });
+      return { temporalDuration: getTemporalProjectDuration(snapshotContext), samples };
+    };
+    const twoFrameDuration = getTemporalProjectDuration({
+      frames: [{ frameId: 'f1' }, { frameId: 'f2' }], frameCount: 2,
+      segDurations: [3], framePauses: [{ duration: 1 }, { duration: 2 }], assets: [],
+    });
+    return {
+      playbackDuration: getDurationParts().total,
+      twoFrameDuration,
+      preview: await render('preview'),
+      export: await render('export'),
+    };
+  });
+
+  expect(observation.playbackDuration, JSON.stringify(observation)).toBe(4);
+  expect(observation.twoFrameDuration, JSON.stringify(observation)).toBe(6);
+  expect(observation.preview).toEqual({
+    temporalDuration: 4,
+    samples: [
+      { projectTime: 0, present: true, drawn: true },
+      { projectTime: 2, present: true, drawn: true },
+      { projectTime: 4, present: true, drawn: true },
+    ],
+  });
+  expect(observation.export).toEqual(observation.preview);
+});
+
 test('E9AL — Preview mantém ativos herdados durante o trecho de loop', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 797 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
