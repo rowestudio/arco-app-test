@@ -6928,6 +6928,7 @@ test('E9AU — Play Frames reinicia do primeiro sem Loop, repete com Loop e qual
     renderAll();
   });
   await control.click();
+  await expect.poll(() => page.evaluate(() => stageFramesPlayback.loopEnabled), { timeout: 1_000 }).toBe(true);
   await page.waitForTimeout(700);
   await expect(page.locator('body')).toHaveClass(/stage-frames-playing/);
   await page.locator('#ezBtnPlus').click();

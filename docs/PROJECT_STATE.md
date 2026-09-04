@@ -4,7 +4,7 @@
 
 - O retorno físico da E9AV mostrou três falhas objetivas: Play/Stop ainda aparentavam borda, o marcador azul não era visível na chegada e tocar no Stage ou fora de controles não interrompia a demonstração.
 - Causas comprovadas: o botão ainda herdava a célula contextual genérica `.tb-item`; o marcador ciano tinha `z-index:87`, abaixo dos Frames reais; e o listener de interrupção filtrava apenas alvos que fossem outros controles.
-- A E9AW usa um botão isolado da célula genérica, mantém o marcador ciano em camada `1002` acima dos Frames reais e interrompe por `pointerdown`/`touchstart` em qualquer ponto fora de Play/Stop. Stop continua selecionando o último Frame alcançado. A moldura laranja, Stage/câmera, curvas, timing, Preview, MP4, Undo/Redo e autosave não mudam.
+- A E9AW usa um botão isolado da célula genérica, mantém o marcador ciano em camada `1002` acima dos Frames reais e interrompe por `pointerdown`/`touchstart` em qualquer ponto fora de Play/Stop. Stop continua selecionando o último Frame alcançado. O estado de Loop também é congelado ao iniciar a demonstração; atualizações assíncronas do projeto não podem encerrar um ciclo em andamento. A moldura laranja, Stage/câmera, curvas, timing, Preview, MP4, Undo/Redo e autosave não mudam.
 - Smoke WebKit E9AQ/E9AV/E9AU/E9AW passou localmente. A validação física iPhone/Safari do preview da PR #554 continua obrigatória antes de merge; produção permanece intocada.
 
 ## Atualização operacional 2026-09-04 — rotas GitHub separadas e verificáveis
