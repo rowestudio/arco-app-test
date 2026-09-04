@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-04 — v8z4b32E9AV: chegada independente no Play de Frames
+
+- O retorno físico da E9AU esclareceu a diferença essencial: a moldura laranja estava ficando azul e parecia parar ao chegar ao Frame. Isso não representa o percurso pedido.
+- A E9AV mantém a moldura editorial sempre laranja e contínua. Ao atravessar um Frame, um segundo elemento, ciano e breve, pisca exatamente sobre esse Frame; depois desaparece sem alterar a moldura em movimento nem deixar o Frame real marcado.
+- Play/Stop recebem remoção reforçada no próprio elemento do botão, além do CSS: `border:0`, `outline:0`, fundo transparente, sem sombra nem aparência nativa. O ícone sólido permanece ciano.
+- Smoke WebKit E9AV foi escrito para falhar sem o marcador independente e passou após a separação. Validação física no iPhone/Safari e checks do HEAD atual da PR #554 continuam obrigatórios antes de merge. Produção permanece intocada.
+
 ## Atualização 2026-09-04 — v8z4b32E9AU: pulso de chegada, Loop e parada editorial no Play de Frames
 
 - O retorno físico da E9AT confirmou a animação, mas identificou que a chegada permanecia marcada, a borda do botão ainda era perceptível e Play não tinha regras completas para Loop, reinício e interrupção externa.

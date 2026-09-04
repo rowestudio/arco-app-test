@@ -1,5 +1,11 @@
 # DECISIONS
 
+## DEC-2026-09-04-02 — Play de Frames separa trajetória e marca de chegada
+
+- **Decisão:** a moldura que percorre o Stage é sempre laranja e não interrompe nem muda de cor na chegada. O azul é um marcador visual independente, temporário e posicionado sobre o Frame alcançado.
+- **Razão:** a mudança de cor da própria moldura parecia uma parada e misturava a informação de movimento com a de chegada. A separação preserva continuidade e deixa cada passagem identificável.
+- **Controle:** Play/Stop mantêm ícone ciano sólido e eliminam também a caixa diretamente no elemento do botão, além dos estados CSS de foco/pressão.
+
 ## DEC-2026-09-04-01 — Play de Frames usa chegada transitória e ciclo editorial explícito
 
 - **Decisão:** durante Play de Frames, a seleção canônica acompanha o percurso para sincronizar Stage/timeline, porém sua apresentação é apenas uma piscada ciano de chegada. Nenhum Frame real fica marcado entre passagens; ao parar, o último alcançado passa a ser a seleção visível persistente.

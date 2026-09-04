@@ -1,5 +1,11 @@
 # PRODUCT_RULES
 
+## Regra E9AV — chegada do Play de Frames é marca independente
+
+- A moldura editorial permanece laranja `#ff9500` e continua a se mover inclusive ao cruzar um Frame; ela nunca vira azul nem para para indicar chegada.
+- Cada chegada cria somente um marcador ciano `#04fff2` separado, sobre a geometria do Frame atravessado e por fração curta de segundo. Ao sumir, não deixa borda azul nem seleção visual persistente no Frame real.
+- Play e Stop seguem sólidos em ciano e não podem ter borda, outline, fundo, caixa, pill, sombra ou aparência nativa perceptível.
+
 ## Regra E9AU — Play de Frames: pulso de chegada, Loop e parada editorial
 
 - No Modo Frames, o controle **Frames** não tem borda, contorno, fundo, caixa ou pill, inclusive enquanto assume Stop. Play e Stop são ícones sólidos em ciano `#04fff2`; somente a moldura editorial é laranja `#ff9500` durante o deslocamento.
