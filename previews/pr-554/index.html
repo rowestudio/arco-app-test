@@ -2251,7 +2251,8 @@ body.no-image #stageFrameMenu{display:none !important;}
 .stage-frames-playback-frame{position:absolute;box-sizing:border-box;pointer-events:none;z-index:86;overflow:visible;}
 .stage-frames-playback-frame-visual{position:absolute;inset:0;box-sizing:border-box;transform-origin:center center;border:3px solid #ff9500;border-radius:10px;box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.34);}
 .stage-frames-playback-arrival-flash{position:absolute;box-sizing:border-box;pointer-events:none;z-index:1002;overflow:visible;}
-.stage-frames-playback-arrival-flash-visual{position:absolute;inset:0;box-sizing:border-box;transform-origin:center center;border:3px solid #04fff2;border-radius:10px;box-shadow:0 0 12px rgba(0,0,0,.42),0 0 12px rgba(4,255,242,.42);}
+.stage-frames-playback-arrival-flash-visual{position:absolute;inset:0;box-sizing:border-box;transform-origin:center center;border:5px solid #04fff2;border-radius:10px;box-shadow:0 0 14px rgba(0,0,0,.52),0 0 20px rgba(4,255,242,.82);}
+.frame.stage-frames-playback-arrival .frame-border{border-color:#04fff2!important;box-shadow:0 0 18px rgba(4,255,242,.86)!important;}
 #pillsRow [data-frame-index].stage-frames-playback-current{border-color:#04fff2!important;color:#04fff2!important;box-shadow:0 0 8px rgba(4,255,242,.26);}
 #pillsRow [data-frame-index].stage-frames-playback-arrived{border-color:#04fff2!important;color:#04fff2!important;box-shadow:0 0 10px rgba(4,255,242,.34);}
 #toolbar.contextual-toolbar .ctx-only{display:none;}
@@ -4455,9 +4456,9 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <div id="lowerContextSlot">
 <!-- BOTTOM TOOLBAR -->
 <div class="toolbar show contextual-toolbar" id="toolbar">
-  <button class="ctx-only ctx-frame stage-frames-play stage-frames-play-plain" id="tbStageFramesPlay" type="button" onpointerdown="captureStageFramesPlaybackStart(event)" ontouchstart="captureStageFramesPlaybackStart(event)" onmousedown="captureStageFramesPlaybackStart(event)" onclick="toggleStageFramesPlayback()" aria-label="Reproduzir Frames" title="Reproduzir Frames">
+  <div class="ctx-only ctx-frame stage-frames-play stage-frames-play-plain" id="tbStageFramesPlay" role="button" tabindex="0" onpointerdown="captureStageFramesPlaybackStart(event)" ontouchstart="captureStageFramesPlaybackStart(event)" onmousedown="captureStageFramesPlaybackStart(event)" onclick="toggleStageFramesPlayback()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleStageFramesPlayback();}" aria-label="Reproduzir Frames" title="Reproduzir Frames">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-play"></use></svg><span class="tb-lbl">Frames</span>
-  </button>
+  </div>
   <div class="tb-item ctx-only ctx-common" onclick="openPanel('Duration')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-director-chair"></use></svg><span class="tb-lbl">Duração</span>
   </div>
@@ -24132,14 +24133,15 @@ function applyStageFramesPlaybackTransientFrameFeedback() {
     if (!el) continue;
     const borderEl = el.querySelector('.frame-border');
     const numEl = el.querySelector('.frame-num');
+    const isArrival = i === stageFramesPlayback.arrivalFrameIndex;
     el.classList.remove('active', 'multi-selected');
-    el.classList.remove('stage-frames-playback-arrival');
+    el.classList.toggle('stage-frames-playback-arrival', isArrival);
     el.style.opacity = '0.88';
-    el.style.zIndex = '20';
+    el.style.zIndex = isArrival ? '1003' : '20';
     if (borderEl && !frameLocked[i]) {
-      borderEl.style.borderColor = FRAME_COLORS.distant.border;
-      borderEl.style.borderWidth = (3 * invZ) + 'px';
-      borderEl.style.boxShadow = 'none';
+      borderEl.style.borderColor = isArrival ? '#04fff2' : FRAME_COLORS.distant.border;
+      borderEl.style.borderWidth = ((isArrival ? 5 : 3) * invZ) + 'px';
+      borderEl.style.boxShadow = isArrival ? ('0 0 ' + (18 * invZ) + 'px rgba(4,255,242,.86)') : 'none';
     }
     if (numEl) {
       numEl.style.color = '';
@@ -24194,7 +24196,7 @@ function updateStageFramesPlaybackPresentation(presentation, now = performance.n
   const changedFrame = frameIndex >= 0 && previousFrameIndex >= 0 && frameIndex !== previousFrameIndex;
   if (changedFrame) {
     // O pulso só dá legibilidade à chegada; o relógio e a geometria não param.
-    stageFramesPlayback.arrivalPulseUntil = now + 320;
+    stageFramesPlayback.arrivalPulseUntil = now + 520;
   }
   // Chegadas são só uma piscada: a pausa temporal não mantém o Frame marcado.
   const arrived = frameIndex >= 0 && now < stageFramesPlayback.arrivalPulseUntil;
@@ -24203,7 +24205,6 @@ function updateStageFramesPlaybackPresentation(presentation, now = performance.n
   stageFramesPlayback.arrivalFrameIndex = arrived ? frameIndex : -1;
   if (shouldRevealTimeline) {
     commitFilmSelection(frameIndex, -1, 'stage-frames-playback-progress');
-    renderAll();
   }
   applyStageFramesPlaybackTransientFrameFeedback();
   applyTimelinePillFocusClasses();
