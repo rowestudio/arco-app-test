@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-04 — v8z4b32E9AZ: Play Frames segue o relógio do projeto
+
+- Retorno físico da E9AX: a atenuação visual ainda ficava um Frame atrasada e a faixa inferior saltava de chegada em chegada, em vez de representar o tempo real de cada trecho.
+- Correção: quando a moldura atinge um Frame, ele recebe o pulso ciano de 360 ms e logo passa a 28% de opacidade. A timeline inferior agora calcula sua posição a cada atualização a partir do mesmo `projectTime` da moldura; por isso percorre uma transição de três segundos em três segundos e permanece no Frame durante pausas reais.
+- O Stage, Preview, MP4, Frames persistidos, curvas, Undo/Redo e autosave não são alterados. O relato de que ativos com profundidade saltam entre Frames foi isolado como pendência separada de parallax contínuo do Stage; não foi incorporado silenciosamente nesta correção.
+- QA WebKit: E9AV, E9AX e o novo gate E9AZ falharam antes da alteração e passaram depois. Validação física no preview da PR #554 continua obrigatória antes de merge; produção permanece intocada.
+
 ## Atualização 2026-09-04 — v8z4b32E9AX: Frames já percorridos e foco do controle
 
 - O retorno físico posterior mostrou duas pendências: os Frames já percorridos permaneciam tão presentes quanto os futuros, e o controle Frames ainda recebia foco nativo no Safari, mantendo aparência de borda apesar do CSS sem caixa.

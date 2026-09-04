@@ -951,6 +951,7 @@
 ╚══════════════════════════════════════════════════════╝
 -->
 <!-- Arco Motion App — v8z4b32E9AO — fix(post-export-preview-text): ao concluir um MP4, o snapshot estável que acabou de atender o Export é transferido explicitamente para o contexto Preview antes de reiniciar o playback. Assim a presença temporal de imagens e Text Assets é reavaliada pelo relógio do Preview, sem cair no caminho vivo e sem alterar o MP4 já gerado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AO. -->
+<!-- Arco Motion App — v8z4b32E9AZ — fix(stage-frames-play-clock): o Frame atingido fica secundário logo após o pulso ciano curto; a faixa de Frames percorre cada trecho no mesmo relógio de duração, interpolação e pausa da moldura editorial, sem saltar de chegada em chegada. Stage/câmera, Preview, MP4, geometria persistida, curvas e Undo/Redo permanecem intocados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AZ. -->
 <!-- Arco Motion App — v8z4b32E9AX — fix(stage-frames-play-past-and-focus): Frames já percorridos ficam visualmente secundários durante o ciclo editorial; N→1 reinicia essa leitura. Frames deixa de receber foco tabulável, eliminando o anel nativo percebido como borda no Safari. Stage/câmera, Preview, MP4 e o relógio canônico não mudam. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AX. -->
 <!-- Arco Motion App — v8z4b32E9AW — fix(stage-frames-play-physical-arrival-stop): Play/Stop Frames deixa de herdar a célula visual genérica; o marcador ciano de chegada ocupa camada acima dos Frames reais; qualquer toque fora de Play/Stop interrompe e mantém o último Frame alcançado. A moldura editorial laranja, Stage/câmera, curvas, timing, Preview, MP4, Undo/Redo e autosave permanecem intocados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AW. -->
 <!-- Arco Motion App — v8z4b32E9AV — fix(stage-frames-play-independent-arrival-flash): a moldura editorial permanece laranja e contínua durante todo o percurso; a chegada recebe marcador ciano separado e breve sobre o Frame atingido, sem parar nem recolorir a moldura em movimento. Play/Stop usam o próprio botão sem borda, outline, fundo, caixa ou aparência nativa. Stage/câmera, curvas, timing, Preview, MP4, Undo/Redo e autosave permanecem intocados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AV. -->
@@ -7771,8 +7772,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AX';
-const APP_VERSION_NAME = 'v8z4b32E9AX';
+const APP_VERSION = 'v8z4b32E9AZ';
+const APP_VERSION_NAME = 'v8z4b32E9AZ';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -24065,7 +24066,7 @@ function refreshEditorViewVisualOverlays() {
   }
 }
 
-let stageFramesPlayback = { running: false, startFrameIndex: -1, projectTime: 0, raf: 0, startedAt: 0, startProjectTime: 0, loopEnabled: false, currentFrameIndex: -1, arrivalFrameIndex: -1, arrivalPulseUntil: 0, passedFrameIndexes: new Set(), lastStoppedFrameIndex: -1 };
+let stageFramesPlayback = { running: false, startFrameIndex: -1, projectTime: 0, fullDuration: 0, raf: 0, startedAt: 0, startProjectTime: 0, loopEnabled: false, currentFrameIndex: -1, arrivalFrameIndex: -1, arrivalPulseUntil: 0, passedFrameIndexes: new Set(), lastStoppedFrameIndex: -1 };
 let stageFramesPlaybackRequestedFrameIndex = null;
 
 function captureStageFramesPlaybackStart(event) {
@@ -24187,10 +24188,56 @@ function renderStageFramesPlaybackArrivalFlash() {
   return true;
 }
 
-function revealStageFramesPlaybackTimelineFrame(frameIndex) {
-  // Usa o mesmo trilho animado da timeline, apenas mais lento para o usuário
-  // conseguir acompanhar o Frame corrente durante a reprodução editorial.
-  centerLowerTimelineOnFrame(frameIndex, true, 520);
+function getStageFramesPlaybackTimelineFrameScroll(frameIndex, pillsEl) {
+  const pill = pillsEl && pillsEl.querySelector('[data-frame-index="' + frameIndex + '"]');
+  if (!pill) return 0;
+  const maxScroll = Math.max(0, pillsEl.scrollWidth - pillsEl.clientWidth);
+  return Math.min(maxScroll, Math.max(0, pill.offsetLeft + pill.offsetWidth / 2 - pillsEl.clientWidth / 2));
+}
+
+function syncStageFramesPlaybackTimeline() {
+  if (!stageFramesPlayback || !stageFramesPlayback.running || frameCount < 2) return;
+  const pillsEl = document.getElementById('pillsRow');
+  const timesEl = document.getElementById('lowerPartialTimes');
+  if (!pillsEl || !timesEl) return;
+  const fullDuration = Math.max(0.001, Number(stageFramesPlayback.fullDuration) || totalDurationFull());
+  const projectTime = Math.max(0, Math.min(fullDuration, Number(stageFramesPlayback.projectTime) || 0));
+  const info = getSegAndLocalTAtTime(projectTime / fullDuration);
+  let fromIndex = 0;
+  let toIndex = 0;
+  let localT = 0;
+  if (info.isLoopSeg) {
+    fromIndex = Math.max(0, frameCount - 1);
+    toIndex = 0;
+    localT = clamp01(info.localT);
+  } else if (info.isPause) {
+    fromIndex = Math.max(0, Math.min(frameCount - 1, info.localT >= 1 ? info.seg + 1 : info.seg));
+    toIndex = fromIndex;
+  } else {
+    fromIndex = Math.max(0, Math.min(frameCount - 1, info.seg));
+    toIndex = Math.max(0, Math.min(frameCount - 1, info.seg + 1));
+    localT = clamp01(info.localT);
+  }
+  const fromScroll = getStageFramesPlaybackTimelineFrameScroll(fromIndex, pillsEl);
+  const toScroll = getStageFramesPlaybackTimelineFrameScroll(toIndex, pillsEl);
+  const nextScroll = fromScroll + (toScroll - fromScroll) * localT;
+  // O scroll acompanha o mesmo t do percurso: não usa easing nem animação própria.
+  // Enquanto o Play Frames está ativo, os eventos de scroll não podem reescrever
+  // a seleção canônica por baixo da reprodução.
+  isLowerTimelineProgrammaticCentering = true;
+  lowerTimelineProgrammaticScrollUntil = Date.now() + 120;
+  setLowerTimelineScroll(pillsEl, nextScroll);
+  setLowerTimelineScroll(timesEl, nextScroll);
+  syncLowerTimelineCenterMarkers();
+}
+
+function cancelStageFramesPlaybackTimelineAnimation() {
+  if (lowerTimelineScrollAnimFrame) cancelAnimationFrame(lowerTimelineScrollAnimFrame);
+  if (lowerTimelineProgrammaticScrollTimer) clearTimeout(lowerTimelineProgrammaticScrollTimer);
+  if (lowerTimelineSnapTimer) clearTimeout(lowerTimelineSnapTimer);
+  lowerTimelineScrollAnimFrame = 0;
+  lowerTimelineProgrammaticScrollTimer = 0;
+  lowerTimelineSnapTimer = 0;
 }
 
 function updateStageFramesPlaybackPresentation(presentation, now = performance.now()) {
@@ -24199,11 +24246,13 @@ function updateStageFramesPlaybackPresentation(presentation, now = performance.n
   const changedFrame = frameIndex >= 0 && previousFrameIndex >= 0 && frameIndex !== previousFrameIndex;
   if (changedFrame) {
     // O pulso só dá legibilidade à chegada; o relógio e a geometria não param.
-    stageFramesPlayback.arrivalPulseUntil = now + 520;
+    stageFramesPlayback.arrivalPulseUntil = now + 360;
     if (!(stageFramesPlayback.passedFrameIndexes instanceof Set)) stageFramesPlayback.passedFrameIndexes = new Set();
     // N→1 inicia uma nova leitura visual: os Frames futuros voltam a neutros.
     if (frameIndex < previousFrameIndex) stageFramesPlayback.passedFrameIndexes.clear();
-    else stageFramesPlayback.passedFrameIndexes.add(previousFrameIndex);
+    // Assim que a moldura alcança um Frame, ele já deixa de ser foco editorial.
+    // A chegada ainda prevalece visualmente durante o pulso ciano curto.
+    stageFramesPlayback.passedFrameIndexes.add(frameIndex);
   }
   // Chegadas são só uma piscada: a pausa temporal não mantém o Frame marcado.
   const arrived = frameIndex >= 0 && now < stageFramesPlayback.arrivalPulseUntil;
@@ -24216,7 +24265,7 @@ function updateStageFramesPlaybackPresentation(presentation, now = performance.n
   applyStageFramesPlaybackTransientFrameFeedback();
   applyTimelinePillFocusClasses();
   renderStageFramesPlaybackArrivalFlash();
-  if (shouldRevealTimeline) revealStageFramesPlaybackTimelineFrame(frameIndex);
+  syncStageFramesPlaybackTimeline();
 }
 
 function renderStageFramesPlaybackFrame(state, presentation) {
@@ -24266,6 +24315,9 @@ function stopStageFramesPlayback(options = {}) {
   stageFramesPlayback.currentFrameIndex = -1;
   stageFramesPlayback.arrivalFrameIndex = -1;
   stageFramesPlayback.arrivalPulseUntil = 0;
+  cancelStageFramesPlaybackTimelineAnimation();
+  lowerTimelineProgrammaticScrollUntil = 0;
+  isLowerTimelineProgrammaticCentering = false;
   removeStageFramesPlaybackFrame();
   removeStageFramesPlaybackArrivalFlash();
   updateStageFramesPlaybackControl();
@@ -24300,7 +24352,8 @@ function startStageFramesPlayback() {
   if (!playbackLoopEnabled && startFrameIndex === frameCount - 1) startFrameIndex = 0;
   const fullDuration = Math.max(0.001, totalDurationFull());
   const startProjectTime = getStageFramesProjectTimeAtFrame(startFrameIndex);
-  stageFramesPlayback = { running: true, startFrameIndex, projectTime: startProjectTime, raf: 0, startedAt: performance.now(), startProjectTime, loopEnabled: playbackLoopEnabled, currentFrameIndex: -1, arrivalFrameIndex: -1, arrivalPulseUntil: 0, passedFrameIndexes: new Set(), lastStoppedFrameIndex: -1 };
+  cancelStageFramesPlaybackTimelineAnimation();
+  stageFramesPlayback = { running: true, startFrameIndex, projectTime: startProjectTime, fullDuration, raf: 0, startedAt: performance.now(), startProjectTime, loopEnabled: playbackLoopEnabled, currentFrameIndex: -1, arrivalFrameIndex: -1, arrivalPulseUntil: 0, passedFrameIndexes: new Set(), lastStoppedFrameIndex: -1 };
   removeStageFramesPlaybackFrame();
   suppressStageFramesPlaybackSelectionVisuals();
   const initialPresentation = getStageFramesPlaybackPresentation(startProjectTime, fullDuration);
