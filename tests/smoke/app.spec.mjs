@@ -6809,17 +6809,18 @@ test('E9AQ — Play Frames anima moldura transitória sem mover Stage/câmera ne
   expect(await snapshot()).toEqual(before);
 });
 
-test('E9AR — Play Frames usa laranja em movimento e destaca em azul o Frame alcançado no tempo canônico', async ({ page }) => {
+test('E9AS — Play Frames mantém o controle ciano, limpa a seleção e acompanha cada Frame na timeline', async ({ page }) => {
   const source = fs.readFileSync(path.resolve('index.html'), 'utf8');
   const playbackCss = source.slice(
     source.indexOf('#toolbar.contextual-toolbar .stage-frames-play'),
     source.indexOf('#toolbar.contextual-toolbar .ctx-only'),
   );
-  expect(playbackCss).toContain('color:#ff9500');
+  expect(playbackCss).toContain('color:#04fff2');
   expect(playbackCss).toContain('border:3px solid #ff9500');
   expect(playbackCss).toContain('.is-arrived');
   expect(playbackCss).toContain('#04fff2');
   expect(playbackCss).not.toContain('#39d98a');
+  expect(source).toContain('symbol id="i-stop-solid"');
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
@@ -6838,12 +6839,23 @@ test('E9AR — Play Frames usa laranja em movimento e destaca em azul o Frame al
   });
 
   const control = page.locator('#tbStageFramesPlay');
+  const selectedFrameAtStart = await page.evaluate(() => activeIdx);
   await control.click();
+  await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 2_000 }).toBe(selectedFrameAtStart);
+  await expect(control.locator('use')).toHaveAttribute('href', '#i-stop-solid');
+  await expect(control.locator('svg')).toHaveCSS('color', 'rgb(4, 255, 242)');
+  await expect(page.locator('#frm_0')).not.toHaveClass(/active/);
+  await expect(page.locator('#pillsRow [data-frame-index="0"]')).toHaveClass(/stage-frames-playback-current/);
   await expect.poll(() => page.evaluate(() => stageFramesPlayback.currentFrameIndex), { timeout: 2_000 }).toBe(1);
   await expect(page.locator('#stageFramesPlaybackFrame')).toHaveAttribute('data-state', 'arrived');
-  await expect(page.locator('#frm_1')).toHaveClass(/stage-frames-playback-arrived/);
+  await expect(page.locator('#frm_1')).not.toHaveClass(/active/);
+  await expect(page.locator('#pillsRow [data-frame-index="0"]')).not.toHaveClass(/stage-frames-playback-current/);
+  await expect(page.locator('#pillsRow [data-frame-index="1"]')).toHaveClass(/stage-frames-playback-current/);
   await expect(page.locator('#pillsRow [data-frame-index="1"]')).toHaveClass(/stage-frames-playback-arrived/);
   await expect(page.locator('#tbStageFramesPlay')).toHaveCSS('border-top-width', '0px');
   await expect(page.locator('#tbStageFramesPlay')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  const frameAtStop = await page.evaluate(() => stageFramesPlayback.currentFrameIndex);
   await control.click();
+  await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 2_000 }).toBe(frameAtStop);
+  await expect(page.locator('#frm_' + frameAtStop)).toHaveClass(/active/);
 });

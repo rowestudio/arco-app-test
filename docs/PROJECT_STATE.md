@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-04 — v8z4b32E9AS: feedback físico do Play de Frames
+
+- O retorno físico da E9AR mostrou três erros de apresentação: o controle **Frames** havia ficado laranja, a chegada não ficava legível como ciano e a timeline não acompanhava o percurso.
+- Na E9AS, Play e Stop de **Frames** permanecem ícones sólidos em ciano `#04fff2`, sem borda, fundo ou pill. Só a moldura editorial fica laranja entre Frames e ciano ao alcançar cada Frame; um pulso visual curto torna a chegada perceptível sem mudar o relógio, duração, pausa ou geometria.
+- Ao iniciar, a seleção de Frame é limpa apenas na apresentação. A barra inferior usa um foco transitório e avança Frame a Frame sem movimentar Stage, câmera ou viewport; tocar Stop seleciona o Frame corrente. Cancelamentos por troca de modo ou Preview continuam sem trocar seleção.
+- Smoke WebKit E9AQ/E9AS passou localmente. Validação física em iPhone/Safari e checks do HEAD da PR permanecem obrigatórios antes de merge; produção permanece intocada.
+
 ## Atualização 2026-09-03 — v8z4b32E9AR: estados visuais do Play de Frames
 
 - Durante o deslocamento, a moldura editorial e o controle **Frames** usam laranja. O botão continua sem borda, fundo, caixa ou pill, inclusive enquanto vira Stop.

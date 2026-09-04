@@ -1,12 +1,12 @@
 # TEST_CASES
 
-## TC-070 — Moldura transitória temporal do Play de Frames (E9AQ/E9AR / REG-069)
+## TC-070 — Moldura transitória temporal do Play de Frames (E9AQ/E9AS / REG-069)
 
 - Pré-condição: projeto com pelo menos dois Frames de geometrias e rotações diferentes, Frame inicial selecionado e Stage com pan/zoom não triviais.
 - Passos: tocar **Frames**, observar a transição até Frames posteriores e tocar Stop durante a execução. Repetir com uma trajetória cuja moldura saia da área visível e com pausa configurada no Frame de chegada.
-- Resultado esperado: o botão não cria borda/fundo/pill; laranja em movimento. Stage, pan, zoom, transform e viewport permanecem imóveis; uma única moldura temporária se desloca, escala e gira pelo timing/interpolação/curvas existentes. Ao alcançar um Frame, moldura, Frame e pill ficam ciano; a timeline o revela sem mudar a seleção. Não há centralização automática ou duração artificial. Stop interrompe imediatamente e remove a moldura.
+- Resultado esperado: o botão não cria borda/fundo/pill; Play e Stop são sólidos em ciano. Stage, pan, zoom, transform e viewport permanecem imóveis; uma única moldura temporária laranja se desloca, escala e gira pelo timing/interpolação/curvas existentes. Ao alcançar um Frame, a moldura e a pill ficam ciano; a seleção visual dos Frames reais desaparece e a timeline avança Frame a Frame. Stop interrompe imediatamente, remove a moldura e seleciona o Frame corrente; cancelamentos de contexto não selecionam outro Frame. Não há centralização automática ou duração temporal artificial.
 - Integridade: Frames reais, curvas, durações, pausas, projeto, Undo/Redo e autosave permanecem idênticos; Preview e MP4 não exibem nem consomem a moldura editorial.
-- Evidência automatizada: contrato estático e smoke WebKit mobile E9AQ/E9AR em `tests/smoke/app.spec.mjs`. Validação física obrigatória em iPhone/Safari antes de merge.
+- Evidência automatizada: contrato estático e smoke WebKit mobile E9AQ/E9AS em `tests/smoke/app.spec.mjs`. Validação física obrigatória em iPhone/Safari antes de merge.
 
 ## TC-069 — Retorno ao Preview após exportação com Text Asset (E9AO)
 

@@ -1,10 +1,11 @@
 # PRODUCT_RULES
 
-## Regra E9AR — Play de Frames: moldura editorial temporal, sem movimento de câmera
+## Regra E9AS — Play de Frames: moldura editorial temporal, sem movimento de câmera
 
-- No Modo Frames, o controle **Frames** não tem borda, fundo, caixa ou pill, inclusive enquanto assume Stop. Ícone/rótulo e moldura são laranja `#ff9500` durante o deslocamento.
-- Ao alcançar um Frame, a moldura transitória, o Frame e sua pill correspondente ficam em ciano `#04fff2`. A timeline apenas revela essa passagem: `activeIdx` e a seleção canônica não são substituídos.
-- A chegada é calculada pelo mesmo relógio de segmentos, pausas por Frame, pausa global, curvas e Loop. Não se cria pausa, duração ou tempo visual artificial para sustentar o destaque.
+- No Modo Frames, o controle **Frames** não tem borda, fundo, caixa ou pill, inclusive enquanto assume Stop. Play e Stop são ícones sólidos em ciano `#04fff2`; somente a moldura editorial é laranja `#ff9500` durante o deslocamento.
+- Ao alcançar um Frame, a moldura transitória e a pill correspondente ficam em ciano `#04fff2`. A seleção visual dos Frames reais fica limpa enquanto o play está ativo; a barra inferior avança por cada Frame sem substituir `activeIdx` nem a seleção canônica.
+- A chegada é calculada pelo mesmo relógio de segmentos, pausas por Frame, pausa global, curvas e Loop. Um pulso exclusivamente visual torna a chegada legível; não cria pausa, duração, escrita de tempo ou alteração de geometria.
+- Stop explícito seleciona o Frame que estiver corrente naquele instante. Cancelar por troca de modo, abertura de Preview ou outra saída de contexto não altera a seleção.
 - A vista editorial é invariante: pan, zoom, transformação e posição do viewport não mudam. A moldura pode sair da vista e nunca provoca centralização automática.
 - A moldura não é Frame real nem dado do projeto: não participa de seleção, hit-test, Undo/Redo, autosave, Save/Load, Preview ou MP4. Stop e qualquer saída desse contexto interrompem e limpam o elemento transitório.
 
