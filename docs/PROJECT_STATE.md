@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-04 — v8z4b32E9AU: pulso de chegada, Loop e parada editorial no Play de Frames
+
+- O retorno físico da E9AT confirmou a animação, mas identificou que a chegada permanecia marcada, a borda do botão ainda era perceptível e Play não tinha regras completas para Loop, reinício e interrupção externa.
+- A E9AU torna Play/Stop de **Frames** absolutamente sem borda, fundo, outline, caixa ou pseudo-elemento. Durante o percurso, Frames reais ficam neutros; cada chegada recebe somente um pulso ciano curto no Stage e na timeline, depois volta ao normal.
+- A seleção canônica e a timeline continuam acompanhando cada chegada, sem mover Stage/câmera. Stop preserva o último alcançado. Sem Loop, acionar Play no último Frame inicia a rota no primeiro; com Loop, o percurso N→1 fecha e recomeça continuamente.
+- Qualquer outro botão, campo ou controle interrompe imediatamente a demonstração e preserva o último Frame alcançado como seleção; só **Frames** retoma a execução. Smoke WebKit E9AU passou localmente; validação física no iPhone/Safari e checks do novo HEAD continuam obrigatórios antes de merge. Produção permanece intocada.
+
 ## Atualização 2026-09-04 — v8z4b32E9AT: seleção e rolagem no Play de Frames
 
 - O retorno físico da E9AS identificou três pendências: ainda havia aparência de borda no botão, o último Frame anterior permanecia selecionado durante o percurso e a timeline mudava de Frame por salto brusco.

@@ -1,11 +1,11 @@
 # PRODUCT_RULES
 
-## Regra E9AT — Play de Frames: moldura editorial temporal, seleção acompanhada e câmera imóvel
+## Regra E9AU — Play de Frames: pulso de chegada, Loop e parada editorial
 
 - No Modo Frames, o controle **Frames** não tem borda, contorno, fundo, caixa ou pill, inclusive enquanto assume Stop. Play e Stop são ícones sólidos em ciano `#04fff2`; somente a moldura editorial é laranja `#ff9500` durante o deslocamento.
-- Ao alcançar um Frame, a moldura transitória e a pill correspondente ficam em ciano `#04fff2`. A seleção real acompanha cada Frame alcançado e a barra inferior se desloca suavemente, Frame a Frame; Stop mantém selecionado o último Frame alcançado.
+- Ao alcançar um Frame, a moldura transitória e a pill correspondente ficam em ciano `#04fff2` somente como pulso breve; em seguida, os Frames reais voltam ao estado neutro. A seleção canônica e a barra inferior acompanham cada passagem, mas não permanecem visualmente marcadas durante o percurso. Stop mantém selecionado o último Frame alcançado.
 - A chegada é calculada pelo mesmo relógio de segmentos, pausas por Frame, pausa global, curvas e Loop. Um pulso exclusivamente visual torna a chegada legível; não cria pausa, duração, escrita de tempo ou alteração de geometria.
-- Stop explícito seleciona o Frame que estiver corrente naquele instante. Cancelar por troca de modo, abertura de Preview ou outra saída de contexto não altera a seleção.
+- Stop explícito ou qualquer outro botão, campo ou controle seleciona o Frame corrente naquele instante e interrompe a demonstração. Somente **Frames** pode retomá-la. Sem Loop, Play no último Frame reinicia no primeiro; com Loop, o trecho N→1 fecha e reinicia continuamente.
 - A vista editorial é invariante: pan, zoom, transformação e posição do viewport não mudam. A moldura pode sair da vista e nunca provoca centralização automática.
 - A moldura não é Frame real nem dado do projeto: não participa de seleção, hit-test, Undo/Redo, autosave, Save/Load, Preview ou MP4. Stop e qualquer saída desse contexto interrompem e limpam o elemento transitório.
 

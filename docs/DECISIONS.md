@@ -1,5 +1,11 @@
 # DECISIONS
 
+## DEC-2026-09-04-01 — Play de Frames usa chegada transitória e ciclo editorial explícito
+
+- **Decisão:** durante Play de Frames, a seleção canônica acompanha o percurso para sincronizar Stage/timeline, porém sua apresentação é apenas uma piscada ciano de chegada. Nenhum Frame real fica marcado entre passagens; ao parar, o último alcançado passa a ser a seleção visível persistente.
+- **Ciclo:** sem Loop, Play iniciado no último Frame reinicia no primeiro. Com Loop, o trecho canônico N→1 é visualizado e a execução recomeça no primeiro sem parar. Se o usuário tocar em qualquer outro controle, a demonstração para e preserva o último Frame alcançado; somente o próprio controle **Frames** retoma.
+- **Escopo:** a regra não altera duração, pausas, curvas, `getStateAtT`, Preview, Export, MP4, Stage/câmera, Undo/Redo ou autosave. O botão de Play/Stop é sempre ciano sólido e sem borda/fundo/outline.
+
 ## DEC-2026-09-03-01 — Play de Frames anima moldura editorial temporal com viewport imóvel
 
 - **Decisão:** o controle **Frames**, visível apenas no Modo Frames, cria uma moldura temporária na geometria do Frame ativo e a anima pelos Frames posteriores. O botão permanece ciano, sem borda, fundo, caixa ou pill; a moldura é laranja enquanto percorre e ciano ao chegar. Posição, escala, rotação e chegada vêm do sampler temporal canônico; o Stage e sua câmera permanecem imóveis.
