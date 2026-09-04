@@ -6,6 +6,7 @@
 - Na E9AT, Play e Stop anulam também `outline`, aparência nativa e estado de foco/pressionado. Ao iniciar e a cada chegada, a seleção canônica acompanha o Frame corrente; ao tocar Stop, esse último Frame permanece selecionado.
 - A barra inferior usa a mesma centralização animada da timeline, com 520 ms por passagem, para que o percurso fique perceptível sem mover o Stage ou a câmera. Smoke WebKit E9AQ/E9AT passou localmente; nova validação física iPhone/Safari e checks do HEAD são obrigatórios antes de merge.
 - **QA separado:** a suíte WebKit completa local encontrou E8X de composição de texto com expectativa pré-existente divergente (`beforeChanged`: esperado `0`, recebido `1653`); a PR anterior havia passado esse mesmo teste no CI. Não houve alteração de código de texto nesta frente: revalidar no CI e abrir triagem própria se reaparecer.
+- **Estabilização CI E9AT:** o primeiro WebKit remoto do HEAD E9AT aprovou 69/70, mas o caso novo observava o Frame inicial após um trecho artificial de `0,08 s` e fixava `activeIdx` diretamente, permitindo que a centralização pendente do cenário completo o substituísse. O teste agora seleciona o Frame pela pill real e mantém duração/pausa suficientes para verificar seleção inicial, passagem, chegada ciano e Stop; nenhuma regra funcional adicional foi alterada nesta estabilização.
 
 ## Atualização 2026-09-04 — v8z4b32E9AS: feedback físico do Play de Frames
 
