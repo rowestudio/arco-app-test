@@ -951,6 +951,7 @@
 ╚══════════════════════════════════════════════════════╝
 -->
 <!-- Arco Motion App — v8z4b32E9AO — fix(post-export-preview-text): ao concluir um MP4, o snapshot estável que acabou de atender o Export é transferido explicitamente para o contexto Preview antes de reiniciar o playback. Assim a presença temporal de imagens e Text Assets é reavaliada pelo relógio do Preview, sem cair no caminho vivo e sem alterar o MP4 já gerado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AO. -->
+<!-- Arco Motion App — v8z4b32E9AW — fix(stage-frames-play-physical-arrival-stop): Play/Stop Frames deixa de herdar a célula visual genérica; o marcador ciano de chegada ocupa camada acima dos Frames reais; qualquer toque fora de Play/Stop interrompe e mantém o último Frame alcançado. A moldura editorial laranja, Stage/câmera, curvas, timing, Preview, MP4, Undo/Redo e autosave permanecem intocados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AW. -->
 <!-- Arco Motion App — v8z4b32E9AV — fix(stage-frames-play-independent-arrival-flash): a moldura editorial permanece laranja e contínua durante todo o percurso; a chegada recebe marcador ciano separado e breve sobre o Frame atingido, sem parar nem recolorir a moldura em movimento. Play/Stop usam o próprio botão sem borda, outline, fundo, caixa ou aparência nativa. Stage/câmera, curvas, timing, Preview, MP4, Undo/Redo e autosave permanecem intocados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AV. -->
 <!-- Arco Motion App — v8z4b32E9AU — fix(stage-frames-play-pulse-loop-stop): Play/Stop Frames anulam de forma absoluta borda/fundo/outline; chegada ciano é pulso breve, sem manter seleção visual; Loop segue continuamente N→1→N; sem Loop, Play no último Frame reinicia em 1; qualquer outro controle interrompe e preserva o último Frame alcançado. Stage/câmera, curvas, timing, Preview, MP4, Undo/Redo e autosave permanecem intocados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AU. -->
 <!-- Arco Motion App — v8z4b32E9AS — fix(stage-frames-play-feedback): o controle Frames volta a ciano e sem caixa; somente a moldura editorial é laranja entre Frames e ciano na chegada. Durante o play, a seleção real fica visualmente limpa e a timeline avança por cada Frame; Stop explícito seleciona o Frame corrente sem mover Stage/câmera. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AS. -->
@@ -2243,13 +2244,13 @@ body.no-image #stageFrameMenu{display:none !important;}
 #toolbar.contextual-toolbar{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;align-items:stretch;gap:6px;padding-left:6px;padding-right:6px;touch-action:pan-x;}
 #toolbar.contextual-toolbar::-webkit-scrollbar{display:none;}
 #toolbar.contextual-toolbar .tb-item{flex:0 0 68px;min-width:68px;min-height:44px;justify-content:center;gap:3px;padding:0 4px;}
-#toolbar.contextual-toolbar #tbStageFramesPlay,#toolbar.contextual-toolbar #tbStageFramesPlay.is-playing{border:0!important;background:transparent!important;box-shadow:none!important;outline:0!important;border-radius:0!important;-webkit-appearance:none!important;appearance:none!important;-webkit-tap-highlight-color:transparent;color:#04fff2;}
-#toolbar.contextual-toolbar #tbStageFramesPlay:active,#toolbar.contextual-toolbar #tbStageFramesPlay:focus,#toolbar.contextual-toolbar #tbStageFramesPlay:focus-visible{border:0!important;background:transparent!important;box-shadow:none!important;outline:0!important;}
+#toolbar.contextual-toolbar #tbStageFramesPlay,#toolbar.contextual-toolbar #tbStageFramesPlay.is-playing{flex:0 0 68px;min-width:68px;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0!important;margin:0;border:0!important;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;outline:0!important;border-radius:0!important;-webkit-appearance:none!important;appearance:none!important;-webkit-tap-highlight-color:transparent;color:#04fff2;-webkit-user-select:none;user-select:none;}
+#toolbar.contextual-toolbar #tbStageFramesPlay:active,#toolbar.contextual-toolbar #tbStageFramesPlay:focus,#toolbar.contextual-toolbar #tbStageFramesPlay:focus-visible{border:0!important;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;outline:0!important;}
 #toolbar.contextual-toolbar #tbStageFramesPlay::before,#toolbar.contextual-toolbar #tbStageFramesPlay::after{display:none!important;}
 #toolbar.contextual-toolbar .stage-frames-play .tb-icon,#toolbar.contextual-toolbar .stage-frames-play .tb-lbl{color:#04fff2;}
 .stage-frames-playback-frame{position:absolute;box-sizing:border-box;pointer-events:none;z-index:86;overflow:visible;}
 .stage-frames-playback-frame-visual{position:absolute;inset:0;box-sizing:border-box;transform-origin:center center;border:3px solid #ff9500;border-radius:10px;box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.34);}
-.stage-frames-playback-arrival-flash{position:absolute;box-sizing:border-box;pointer-events:none;z-index:87;overflow:visible;}
+.stage-frames-playback-arrival-flash{position:absolute;box-sizing:border-box;pointer-events:none;z-index:1002;overflow:visible;}
 .stage-frames-playback-arrival-flash-visual{position:absolute;inset:0;box-sizing:border-box;transform-origin:center center;border:3px solid #04fff2;border-radius:10px;box-shadow:0 0 12px rgba(0,0,0,.42),0 0 12px rgba(4,255,242,.42);}
 #pillsRow [data-frame-index].stage-frames-playback-current{border-color:#04fff2!important;color:#04fff2!important;box-shadow:0 0 8px rgba(4,255,242,.26);}
 #pillsRow [data-frame-index].stage-frames-playback-arrived{border-color:#04fff2!important;color:#04fff2!important;box-shadow:0 0 10px rgba(4,255,242,.34);}
@@ -4454,7 +4455,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
   <div id="lowerContextSlot">
 <!-- BOTTOM TOOLBAR -->
 <div class="toolbar show contextual-toolbar" id="toolbar">
-  <button class="tb-item ctx-only ctx-frame stage-frames-play" id="tbStageFramesPlay" type="button" style="border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;-webkit-appearance:none!important;appearance:none!important;" onpointerdown="captureStageFramesPlaybackStart(event)" ontouchstart="captureStageFramesPlaybackStart(event)" onmousedown="captureStageFramesPlaybackStart(event)" onclick="toggleStageFramesPlayback()" aria-label="Reproduzir Frames" title="Reproduzir Frames">
+  <button class="ctx-only ctx-frame stage-frames-play stage-frames-play-plain" id="tbStageFramesPlay" type="button" onpointerdown="captureStageFramesPlaybackStart(event)" ontouchstart="captureStageFramesPlaybackStart(event)" onmousedown="captureStageFramesPlaybackStart(event)" onclick="toggleStageFramesPlayback()" aria-label="Reproduzir Frames" title="Reproduzir Frames">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-play"></use></svg><span class="tb-lbl">Frames</span>
   </button>
   <div class="tb-item ctx-only ctx-common" onclick="openPanel('Duration')">
@@ -7768,8 +7769,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AV';
-const APP_VERSION_NAME = 'v8z4b32E9AV';
+const APP_VERSION = 'v8z4b32E9AW';
+const APP_VERSION_NAME = 'v8z4b32E9AW';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -24319,26 +24320,26 @@ function toggleStageFramesPlayback() {
   else startStageFramesPlayback();
 }
 
-// Durante a demonstração editorial, qualquer outro controle conclui a visualização
-// no último Frame alcançado. Play/Stop permanecem os únicos controles que a retomam.
-document.addEventListener('pointerdown', function(event) {
+// Durante a demonstração editorial, qualquer toque fora do próprio Play/Stop
+// conclui a visualização no último Frame alcançado.
+function interruptStageFramesPlaybackFromExternalInteraction(event) {
   if (!stageFramesPlayback || !stageFramesPlayback.running) return;
   const target = event.target instanceof Element ? event.target : null;
   if (!target || target.closest('#tbStageFramesPlay')) return;
-  if (target.closest('button,.tb-item,.top-btn,.fmt-row,[role="button"],input,select,textarea,a[href]')) {
-    const frameIndexAtInterruption = stageFramesPlayback.currentFrameIndex;
-    stopStageFramesPlayback({ selectCurrentFrame: true });
-    // O comando tocado ainda pode trocar de modo/painel e recalcular a mira da
-    // timeline. Reaplicar no próximo frame preserva o último Frame alcançado.
-    requestAnimationFrame(() => {
-      if (!stageFramesPlayback.running && frameIndexAtInterruption >= 0 && frameIndexAtInterruption < frameCount) {
-        commitFilmSelection(frameIndexAtInterruption, -1, 'stage-frames-playback-external-stop');
-        applyStageTimelineFocusVisuals();
-        refreshActiveFrameVisuals();
-      }
-    });
-  }
-}, true);
+  const frameIndexAtInterruption = stageFramesPlayback.currentFrameIndex;
+  stopStageFramesPlayback({ selectCurrentFrame: true });
+  // O toque ainda pode trocar de modo/painel e recalcular a mira da timeline.
+  // Reaplicar no próximo frame preserva o último Frame alcançado.
+  requestAnimationFrame(() => {
+    if (!stageFramesPlayback.running && frameIndexAtInterruption >= 0 && frameIndexAtInterruption < frameCount) {
+      commitFilmSelection(frameIndexAtInterruption, -1, 'stage-frames-playback-external-stop');
+      applyStageTimelineFocusVisuals();
+      refreshActiveFrameVisuals();
+    }
+  });
+}
+document.addEventListener('pointerdown', interruptStageFramesPlaybackFromExternalInteraction, true);
+document.addEventListener('touchstart', interruptStageFramesPlaybackFromExternalInteraction, { capture:true, passive:true });
 
 function applyEditorZoom() {
   // v8z4b24a — aplicar transform em qualquer zoom (inclusive < 1, via gesto de pinça)
