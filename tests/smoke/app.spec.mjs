@@ -6909,6 +6909,48 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e pisca um mar
   await expect(page.locator('#frm_' + frameAtStop)).toHaveClass(/active/);
 });
 
+test('E9AX — Play Frames reduz somente os Frames já percorridos', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  await page.evaluate(() => {
+    setEditorMode('camera', 'e9ax-past-frames');
+    loopEnabled = false;
+    segDurations[0] = 1.2;
+    framePauses[0] = { duration: 0 };
+    renderAll();
+  });
+  await page.locator('#pillsRow [data-frame-index="0"]').click();
+  await page.locator('#tbStageFramesPlay').click();
+  await page.evaluate(() => {
+    if (stageFramesPlayback.raf) cancelAnimationFrame(stageFramesPlayback.raf);
+    stageFramesPlayback.raf = 0;
+    stageFramesPlayback.currentFrameIndex = 0;
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: true }, performance.now());
+  });
+  await expect(page.locator('#frm_0')).toHaveClass(/stage-frames-playback-past/);
+  await expect(page.locator('#frm_0')).toHaveCSS('opacity', '0.28');
+  await expect(page.locator('#frm_1')).not.toHaveClass(/stage-frames-playback-past/);
+  await expect(page.locator('#frm_1')).toHaveClass(/stage-frames-playback-arrival/);
+});
+
+test('E9AY — controle Frames não conserva foco nativo que desenhe borda no Safari', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  await page.evaluate(() => setEditorMode('camera', 'e9ay-frames-control'));
+  const control = page.locator('#tbStageFramesPlay');
+  await expect(control).toBeVisible();
+  await expect(control).not.toHaveAttribute('tabindex');
+  await expect(control).toHaveCSS('border-top-width', '0px');
+  await expect(control).toHaveCSS('outline-style', 'none');
+  await expect(control).toHaveCSS('box-shadow', 'none');
+});
+
 test('E9AU — Play Frames reinicia do primeiro sem Loop, repete com Loop e qualquer outro controle interrompe', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);

@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-04 — v8z4b32E9AX: Frames já percorridos e foco do controle
+
+- O retorno físico posterior mostrou duas pendências: os Frames já percorridos permaneciam tão presentes quanto os futuros, e o controle Frames ainda recebia foco nativo no Safari, mantendo aparência de borda apesar do CSS sem caixa.
+- Durante o Play Frames, somente os Frames efetivamente já deixados para trás no ciclo atual recebem opacidade de 28%. O Frame de chegada preserva o pulso ciano e os Frames futuros ficam neutros. No retorno N→1, essa leitura visual recomeça para não deixar a nova trajetória inteiramente esmaecida.
+- O controle Frames deixa de expor `tabindex`: conserva o mesmo toque/click e semântica de botão, mas não mantém foco tabulável que possa renderizar o anel nativo do Safari. Stage/câmera, relógio temporal, Preview, MP4, Undo/Redo e autosave não mudam.
+- QA WebKit: os novos gates E9AX (opacidade somente do percurso já feito) e E9AY (controle sem foco nativo) falharam antes da alteração e passaram depois; a validação física no preview da PR #554 continua obrigatória antes de merge. Produção permanece intocada.
+
 ## Atualização 2026-09-04 — v8z4b32E9AW: chegada física e interrupção global do Play de Frames
 
 - O retorno físico da E9AV mostrou três falhas objetivas: Play/Stop ainda aparentavam borda, o marcador azul não era visível na chegada e tocar no Stage ou fora de controles não interrompia a demonstração. O retorno posterior também identificou redesenho integral no cruzamento de Frames, que criava uma pausa/pulo mesmo com pausas temporais zeradas.
