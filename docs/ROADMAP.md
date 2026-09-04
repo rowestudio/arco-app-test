@@ -1,9 +1,9 @@
 # ROADMAP
 
-## Frente em validação — E9AV: moldura temporal no Play de Frames
+## Frente em validação — E9AW: moldura temporal no Play de Frames
 
 - A interpretação E9AP de navegação do Stage foi superada. No Modo Frames, o controle **Frames** ciano e sem borda, contorno ou fundo mantém o viewport imóvel e anima uma moldura editorial transitória, a partir do Frame ativo, pela posição, escala e rotação do sampler canônico. A moldura é laranja continuamente; ao alcançar cada Frame, um marcador ciano separado pisca sobre ele. A seleção canônica e a timeline acompanham suavemente cada passagem, mas os Frames reais voltam a neutro.
-- O mesmo controle vira Stop. Sem Loop, Play no último Frame reinicia no primeiro; com Loop, o trecho N→1 fecha e recomeça continuamente. Outro controle interrompe e preserva a seleção do último Frame alcançado. A moldura pode sair da vista sem centralização e é removida no Stop. Não substitui o Play rosa de Preview, não gera MP4 e não altera dados de movimento, Undo/Redo ou autosave.
+- O mesmo controle vira Stop. Sem Loop, Play no último Frame reinicia no primeiro; com Loop, o trecho N→1 fecha e recomeça continuamente. Qualquer toque fora do próprio Play/Stop, inclusive no Stage, interrompe e preserva a seleção do último Frame alcançado. A moldura pode sair da vista sem centralização e é removida no Stop. Não substitui o Play rosa de Preview, não gera MP4 e não altera dados de movimento, Undo/Redo ou autosave.
 - A toolbar contextual deve permanecer em uma única linha com rolagem horizontal no iPhone; o controle não aparece no Modo Ativos.
 
 ## Atualização 2026-08-29 — E9Z: duplicar, copiar e colar ativos

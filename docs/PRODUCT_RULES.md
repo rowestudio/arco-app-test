@@ -1,5 +1,11 @@
 # PRODUCT_RULES
 
+## Regra E9AW — Play de Frames precisa de presença física e parada global
+
+- Play e Stop não podem herdar a célula genérica `.tb-item`: são ícone e label ciano sem borda, caixa, fundo, pill, outline, sombra ou estado pressionado perceptível.
+- A piscada ciano de chegada deve estar em camada visual acima dos Frames reais, sem bloquear seus gestos; existir no DOM sem estar visível não satisfaz a regra.
+- Qualquer toque fora do próprio Play/Stop — inclusive Stage, área vazia, timeline ou outro controle — interrompe o Play de Frames e mantém selecionado o último Frame alcançado.
+
 ## Regra E9AV — chegada do Play de Frames é marca independente
 
 - A moldura editorial permanece laranja `#ff9500` e continua a se mover inclusive ao cruzar um Frame; ela nunca vira azul nem para para indicar chegada.

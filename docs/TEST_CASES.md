@@ -1,12 +1,12 @@
 # TEST_CASES
 
-## TC-070 — Moldura transitória temporal do Play de Frames (E9AQ/E9AV / REG-069)
+## TC-070 — Moldura transitória temporal do Play de Frames (E9AQ/E9AW / REG-069)
 
 - Pré-condição: projeto com pelo menos dois Frames de geometrias e rotações diferentes, Frame inicial selecionado e Stage com pan/zoom não triviais.
-- Passos: tocar **Frames**, observar a transição até Frames posteriores e tocar Stop durante a execução. Repetir com uma trajetória cuja moldura saia da área visível, com pausa no Frame de chegada, sem Loop a partir do último Frame, com Loop e tocando outro controle durante o percurso.
-- Resultado esperado: o botão não cria borda, contorno, fundo ou pill; Play e Stop são sólidos em ciano. Stage, pan, zoom, transform e viewport permanecem imóveis; uma única moldura temporária laranja se desloca, escala e gira pelo timing/interpolação/curvas existentes e não para nem fica azul ao chegar. Ao alcançar um Frame, um marcador ciano independente pisca brevemente sobre esse Frame; o Frame real volta a neutro até a próxima chegada. A seleção canônica e timeline avançam suavemente. Stop ou outro controle interrompe, remove a moldura e mantém selecionado o último Frame alcançado. Sem Loop, Play no último reinicia em 1; com Loop, N→1→N continua. Não há centralização automática ou duração temporal artificial.
+- Passos: tocar **Frames**, observar a transição até Frames posteriores e tocar Stop durante a execução. Repetir com uma trajetória cuja moldura saia da área visível, com pausa no Frame de chegada, sem Loop a partir do último Frame, com Loop e tocando no Stage, em área vazia, timeline e outro controle durante o percurso.
+- Resultado esperado: o botão não cria borda, contorno, fundo ou pill e não herda a célula contextual genérica; Play e Stop são sólidos em ciano. Stage, pan, zoom, transform e viewport permanecem imóveis; uma única moldura temporária laranja se desloca, escala e gira pelo timing/interpolação/curvas existentes e não para nem fica azul ao chegar. Ao alcançar um Frame, um marcador ciano independente pisca brevemente **acima do Frame real**; o Frame real volta a neutro até a próxima chegada. A seleção canônica e timeline avançam suavemente. Stop ou qualquer toque fora de Play/Stop interrompe, remove a moldura e mantém selecionado o último Frame alcançado. Sem Loop, Play no último reinicia em 1; com Loop, N→1→N continua. Não há centralização automática ou duração temporal artificial.
 - Integridade: Frames reais, curvas, durações, pausas, projeto, Undo/Redo e autosave permanecem idênticos; Preview e MP4 não exibem nem consomem a moldura editorial.
-- Evidência automatizada: contrato estático e smoke WebKit mobile E9AQ/E9AV em `tests/smoke/app.spec.mjs`. Validação física obrigatória em iPhone/Safari antes de merge.
+- Evidência automatizada: contrato estático e smoke WebKit mobile E9AQ/E9AV/E9AU/E9AW em `tests/smoke/app.spec.mjs`. Validação física obrigatória em iPhone/Safari antes de merge.
 
 ## TC-069 — Retorno ao Preview após exportação com Text Asset (E9AO)
 

@@ -6891,7 +6891,8 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e pisca um mar
   await expect(page.locator('#frm_1')).not.toHaveClass(/stage-frames-playback-arrival/);
   await expect(page.locator('#tbStageFramesPlay')).toHaveCSS('border-top-width', '0px');
   await expect(page.locator('#tbStageFramesPlay')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-  await expect(page.locator('#tbStageFramesPlay')).toHaveAttribute('style', /border:0!important/);
+  await expect(page.locator('#tbStageFramesPlay')).toHaveClass(/stage-frames-play-plain/);
+  await expect(page.locator('#tbStageFramesPlay')).not.toHaveClass(/tb-item/);
   const frameAtStop = await page.evaluate(() => stageFramesPlayback.currentFrameIndex);
   await control.click();
   await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 2_000 }).toBe(frameAtStop);
@@ -6933,4 +6934,50 @@ test('E9AU — Play Frames reinicia do primeiro sem Loop, repete com Loop e qual
   await expect(page.locator('body')).not.toHaveClass(/stage-frames-playing/);
   const lastStoppedFrameIndex = await page.evaluate(() => stageFramesPlayback.lastStoppedFrameIndex);
   await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 1_000 }).toBe(lastStoppedFrameIndex);
+});
+
+test('E9AW — Play Frames não herda superfície, pisca acima do frame e interrompe por toque no Stage', async ({ page }) => {
+  const source = fs.readFileSync(path.resolve('index.html'), 'utf8');
+  const playbackCss = source.slice(
+    source.indexOf('#toolbar.contextual-toolbar #tbStageFramesPlay'),
+    source.indexOf('#toolbar.contextual-toolbar .ctx-only'),
+  );
+  // O botão não pode usar a célula genérica que desenha uma superfície arredondada.
+  expect(source).toContain('stage-frames-play-plain');
+  // A chegada precisa estar acima das molduras reais do filme (z-index 1000).
+  expect(playbackCss).toContain('z-index:1002');
+  // A interrupção é global; não pode depender de o alvo ser outro botão.
+  expect(source).toContain('function interruptStageFramesPlaybackFromExternalInteraction');
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  await page.evaluate(() => {
+    setEditorMode('camera', 'e9aw-global-interrupt');
+    loopEnabled = false;
+    segDurations[0] = 1.2;
+    framePauses[0] = { duration: 0 };
+    framePauses[1] = { duration: 0 };
+    selectFrameContext(0, { source: 'e9aw-start' });
+    renderAll();
+  });
+
+  const control = page.locator('#tbStageFramesPlay');
+  await expect(control).not.toHaveClass(/tb-item/);
+  await control.click();
+  await expect(page.locator('body')).toHaveClass(/stage-frames-playing/);
+
+  // Dispara a mesma transição que o relógio chama, sem fabricar o elemento do flash.
+  await page.evaluate(() => {
+    stageFramesPlayback.currentFrameIndex = 0;
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: true }, performance.now());
+  });
+  await expect(page.locator('#stageFramesPlaybackArrivalFlash')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => Number(getComputedStyle(document.getElementById('stageFramesPlaybackArrivalFlash')).zIndex))).toBeGreaterThan(1000);
+
+  await page.locator('#imageArea').click({ position: { x: 8, y: 8 } });
+  await expect(page.locator('body')).not.toHaveClass(/stage-frames-playing/);
 });

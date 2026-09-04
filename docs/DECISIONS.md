@@ -1,5 +1,11 @@
 # DECISIONS
 
+## DEC-2026-09-04-03 — GitHub operacional usa rotas canônicas, não um único token local
+
+- **Decisão:** Git HTTPS autenticado pelo Keychain do Mac é a rota para fetch/push; a conexão GitHub do ChatGPT é a rota para PRs, checks e metadados. Ambas devem ser verificadas em operações reais antes de editar/publicar.
+- **Motivo:** o `gh` local pode reter um token OAuth inválido embora Git HTTPS e a conexão GitHub estejam válidos. Transformar essa falha auxiliar em exigência de novo login interrompe o fluxo mobile-first sem aumentar a segurança.
+- **Regra:** `gh` local só é necessário quando uma ação não existir nas rotas canônicas. Seu erro isolado não justifica pedir login a Roberto; bloqueio real exige falha da rota Git e da conexão GitHub. Tokens nunca são lidos, expostos, gravados ou alterados pelo fluxo.
+
 ## DEC-2026-09-04-02 — Play de Frames separa trajetória e marca de chegada
 
 - **Decisão:** a moldura que percorre o Stage é sempre laranja e não interrompe nem muda de cor na chegada. O azul é um marcador visual independente, temporário e posicionado sobre o Frame alcançado.
