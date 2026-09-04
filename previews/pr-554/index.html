@@ -951,6 +951,7 @@
 ╚══════════════════════════════════════════════════════╝
 -->
 <!-- Arco Motion App — v8z4b32E9AO — fix(post-export-preview-text): ao concluir um MP4, o snapshot estável que acabou de atender o Export é transferido explicitamente para o contexto Preview antes de reiniciar o playback. Assim a presença temporal de imagens e Text Assets é reavaliada pelo relógio do Preview, sem cair no caminho vivo e sem alterar o MP4 já gerado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AO. -->
+<!-- Arco Motion App — v8z4b32E9AT — fix(stage-frames-play-selection): Play/Stop Frames remove definitivamente aparência de contorno do botão e faz a seleção canônica acompanhar o Frame alcançado; a timeline usa o mesmo trilho animado, em velocidade editorial, para tornar cada passagem perceptível. Stage/câmera, curvas, timing, Preview, MP4, Undo/Redo e autosave permanecem intocados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AT. -->
 <!-- Arco Motion App — v8z4b32E9AS — fix(stage-frames-play-feedback): o controle Frames volta a ciano e sem caixa; somente a moldura editorial é laranja entre Frames e ciano na chegada. Durante o play, a seleção real fica visualmente limpa e a timeline avança por cada Frame; Stop explícito seleciona o Frame corrente sem mover Stage/câmera. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AS. -->
 <!-- Arco Motion App — v8z4b32E9AN — fix(asset-opacity): o snapshot congelado de Preview/Export preserva `opacity` de imagens e a repassa ao asset de desenho; antes, Stage usava o valor ao vivo mas o snapshot perdia o campo e ambos os destinos renderizavam 100%. Textos já eram serializados no snapshot e permanecem inalterados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AN. -->
 <!-- Arco Motion App — v8z4b32E9AM — feat(asset-opacity): baseline manual individual 0–100% para imagens e textos, pelo controle Opacidade após Tempo na toolbar de Ativos; independente de presença temporal; persiste em Save/Load, sessão e histórico; Stage, Preview e Export multiplicam a mesma fonte canônica. Para textos, reduz glifos e fundo juntos, preservando a opacidade própria do fundo como alpha interno. base v8z4b32E9AL. -->
@@ -2241,7 +2242,8 @@ body.no-image #stageFrameMenu{display:none !important;}
 #toolbar.contextual-toolbar{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;align-items:stretch;gap:6px;padding-left:6px;padding-right:6px;touch-action:pan-x;}
 #toolbar.contextual-toolbar::-webkit-scrollbar{display:none;}
 #toolbar.contextual-toolbar .tb-item{flex:0 0 68px;min-width:68px;min-height:44px;justify-content:center;gap:3px;padding:0 4px;}
-#toolbar.contextual-toolbar .stage-frames-play,#toolbar.contextual-toolbar .stage-frames-play.is-playing{border:0;background:transparent;box-shadow:none;color:#04fff2;}
+#toolbar.contextual-toolbar .stage-frames-play,#toolbar.contextual-toolbar .stage-frames-play.is-playing{border:0;background:transparent;box-shadow:none;outline:0;border-radius:0;-webkit-appearance:none;appearance:none;color:#04fff2;}
+#toolbar.contextual-toolbar .stage-frames-play:active,#toolbar.contextual-toolbar .stage-frames-play:focus,#toolbar.contextual-toolbar .stage-frames-play:focus-visible{border:0;background:transparent;box-shadow:none;outline:0;}
 #toolbar.contextual-toolbar .stage-frames-play .tb-icon,#toolbar.contextual-toolbar .stage-frames-play .tb-lbl{color:#04fff2;}
 .stage-frames-playback-frame{position:absolute;box-sizing:border-box;pointer-events:none;z-index:86;overflow:visible;}
 .stage-frames-playback-frame-visual{position:absolute;inset:0;box-sizing:border-box;transform-origin:center center;border:3px solid #ff9500;border-radius:10px;box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.34);}
@@ -7763,8 +7765,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AS';
-const APP_VERSION_NAME = 'v8z4b32E9AS';
+const APP_VERSION = 'v8z4b32E9AT';
+const APP_VERSION_NAME = 'v8z4b32E9AT';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -19701,7 +19703,7 @@ function finishLowerTimelineProgrammaticCenter(fi, scrollLeft, pillsEl, timesEl)
   updateAssetsModeReferenceFromTimelineCenter('programmaticCenter');
   applyStageTimelineFocusVisuals();
 }
-function centerLowerTimelineOnFrame(fi, smooth = true) {
+function centerLowerTimelineOnFrame(fi, smooth = true, durationMs = 360) {
   if (isMultiSelectionActive()) return;
   const pillsEl = document.getElementById('pillsRow');
   const timesEl = document.getElementById('lowerPartialTimes');
@@ -19728,7 +19730,7 @@ function centerLowerTimelineOnFrame(fi, smooth = true) {
     finishLowerTimelineProgrammaticCenter(fi, nextScroll, pillsEl, timesEl);
     return;
   }
-  const duration = 360;
+  const duration = Math.max(0, Number(durationMs) || 360);
   const startedAt = performance.now();
   lowerTimelineProgrammaticScrollUntil = Date.now() + duration + 80;
   const step = (now) => {
@@ -24104,16 +24106,9 @@ function clearStageFramesPlaybackArrivalFeedback() {
 }
 
 function revealStageFramesPlaybackTimelineFrame(frameIndex) {
-  const pillsEl = document.getElementById('pillsRow');
-  const timesEl = document.getElementById('lowerPartialTimes');
-  const pill = pillsEl ? pillsEl.querySelector('[data-frame-index="' + frameIndex + '"]') : null;
-  if (!pillsEl || !pill) return;
-  const nextScroll = Math.min(Math.max(0, pillsEl.scrollWidth - pillsEl.clientWidth), Math.max(0, pill.offsetLeft + pill.offsetWidth / 2 - pillsEl.clientWidth / 2));
-  lowerTimelineProgrammaticScrollUntil = Date.now() + 360;
-  isLowerTimelineProgrammaticCentering = true;
-  pillsEl.scrollLeft = nextScroll;
-  if (timesEl) timesEl.scrollLeft = nextScroll;
-  requestAnimationFrame(() => { isLowerTimelineProgrammaticCentering = false; });
+  // Usa o mesmo trilho animado da timeline, apenas mais lento para o usuário
+  // conseguir acompanhar o Frame corrente durante a reprodução editorial.
+  centerLowerTimelineOnFrame(frameIndex, true, 520);
 }
 
 function updateStageFramesPlaybackPresentation(presentation, now = performance.now()) {
@@ -24128,6 +24123,10 @@ function updateStageFramesPlaybackPresentation(presentation, now = performance.n
   const shouldRevealTimeline = frameIndex >= 0 && frameIndex !== previousFrameIndex;
   stageFramesPlayback.currentFrameIndex = frameIndex;
   stageFramesPlayback.arrivalFrameIndex = arrived ? frameIndex : -1;
+  if (shouldRevealTimeline) {
+    commitFilmSelection(frameIndex, -1, 'stage-frames-playback-progress');
+    renderAll();
+  }
   applyTimelinePillFocusClasses();
   if (shouldRevealTimeline) revealStageFramesPlaybackTimelineFrame(frameIndex);
 }
@@ -24187,13 +24186,9 @@ function stopStageFramesPlayback(options = {}) {
 }
 
 function suppressStageFramesPlaybackSelectionVisuals() {
+  // A seleção canônica acompanha a reprodução; somente os controles auxiliares
+  // de edição são ocultados para não competir com a moldura transitória.
   selectedFrames.clear();
-  for (let i = 0; i < frameCount; i++) {
-    const frameEl = getFrameEl(i);
-    if (!frameEl) continue;
-    frameEl.classList.remove('active');
-    clearFrameSelectionVisuals(frameEl);
-  }
   if (globalHandleEl) globalHandleEl.classList.remove('show');
   if (cornerHandleEls) cornerHandleEls.forEach(handle => handle.classList.remove('show'));
 }
