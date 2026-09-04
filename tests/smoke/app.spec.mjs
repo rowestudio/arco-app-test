@@ -6822,7 +6822,7 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e pisca um mar
   expect(source).toContain("el.id = 'stageFramesPlaybackArrivalFlash'");
   expect(source).toContain('renderStageFramesPlaybackArrivalFlash();');
   expect(playbackCss).toContain('.stage-frames-playback-arrival-flash-visual');
-  expect(playbackCss).not.toContain('.stage-frames-playback-frame-visual.is-arrived');
+  expect(playbackCss).toContain('.frame.stage-frames-playback-arrival .frame-border');
   expect(playbackCss).toContain('#04fff2');
   expect(playbackCss).not.toContain('#39d98a');
   expect(source).toContain('symbol id="i-stop-solid"');
@@ -6877,15 +6877,17 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e pisca um mar
   });
   await expect(page.locator('#pillsRow [data-frame-index="0"]')).not.toHaveClass(/stage-frames-playback-current/);
   await page.evaluate(() => {
-    stageFramesPlayback.arrivalFrameIndex = 1;
-    stageFramesPlayback.arrivalPulseUntil = performance.now() + 320;
-    renderStageFramesPlaybackArrivalFlash();
+    stageFramesPlayback.currentFrameIndex = 0;
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: true }, performance.now());
   });
   await expect(page.locator('#stageFramesPlaybackArrivalFlash')).toBeVisible();
   await expect(page.locator('#stageFramesPlaybackArrivalFlash .stage-frames-playback-arrival-flash-visual')).toHaveCSS('border-top-color', 'rgb(4, 255, 242)');
+  await expect(page.locator('#frm_1')).toHaveClass(/stage-frames-playback-arrival/);
+  await expect(page.locator('#frm_1 .frame-border')).toHaveCSS('border-top-color', 'rgb(4, 255, 242)');
   await expect(page.locator('#stageFramesPlaybackFrame')).toHaveAttribute('data-state', 'moving');
-  expect(source).toContain('arrivalPulseUntil = now + 320');
-  await page.waitForTimeout(380);
+  expect(source).toContain('arrivalPulseUntil = now + 520');
+  expect(source).not.toContain("commitFilmSelection(frameIndex, -1, 'stage-frames-playback-progress');\n    renderAll();");
+  await page.waitForTimeout(580);
   await expect(page.locator('#stageFramesPlaybackArrivalFlash')).toHaveCount(0);
   await expect(page.locator('#pillsRow [data-frame-index="1"]')).not.toHaveClass(/stage-frames-playback-arrived/);
   await expect(page.locator('#frm_1')).not.toHaveClass(/stage-frames-playback-arrival/);
