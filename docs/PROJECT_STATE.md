@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-04 — v8z4b32E9AT: seleção e rolagem no Play de Frames
+
+- O retorno físico da E9AS identificou três pendências: ainda havia aparência de borda no botão, o último Frame anterior permanecia selecionado durante o percurso e a timeline mudava de Frame por salto brusco.
+- Na E9AT, Play e Stop anulam também `outline`, aparência nativa e estado de foco/pressionado. Ao iniciar e a cada chegada, a seleção canônica acompanha o Frame corrente; ao tocar Stop, esse último Frame permanece selecionado.
+- A barra inferior usa a mesma centralização animada da timeline, com 520 ms por passagem, para que o percurso fique perceptível sem mover o Stage ou a câmera. Smoke WebKit E9AQ/E9AT passou localmente; nova validação física iPhone/Safari e checks do HEAD são obrigatórios antes de merge.
+- **QA separado:** a suíte WebKit completa local encontrou E8X de composição de texto com expectativa pré-existente divergente (`beforeChanged`: esperado `0`, recebido `1653`); a PR anterior havia passado esse mesmo teste no CI. Não houve alteração de código de texto nesta frente: revalidar no CI e abrir triagem própria se reaparecer.
+
 ## Atualização 2026-09-04 — v8z4b32E9AS: feedback físico do Play de Frames
 
 - O retorno físico da E9AR mostrou três erros de apresentação: o controle **Frames** havia ficado laranja, a chegada não ficava legível como ciano e a timeline não acompanhava o percurso.

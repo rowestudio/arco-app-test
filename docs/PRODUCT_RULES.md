@@ -1,9 +1,9 @@
 # PRODUCT_RULES
 
-## Regra E9AS — Play de Frames: moldura editorial temporal, sem movimento de câmera
+## Regra E9AT — Play de Frames: moldura editorial temporal, seleção acompanhada e câmera imóvel
 
-- No Modo Frames, o controle **Frames** não tem borda, fundo, caixa ou pill, inclusive enquanto assume Stop. Play e Stop são ícones sólidos em ciano `#04fff2`; somente a moldura editorial é laranja `#ff9500` durante o deslocamento.
-- Ao alcançar um Frame, a moldura transitória e a pill correspondente ficam em ciano `#04fff2`. A seleção visual dos Frames reais fica limpa enquanto o play está ativo; a barra inferior avança por cada Frame sem substituir `activeIdx` nem a seleção canônica.
+- No Modo Frames, o controle **Frames** não tem borda, contorno, fundo, caixa ou pill, inclusive enquanto assume Stop. Play e Stop são ícones sólidos em ciano `#04fff2`; somente a moldura editorial é laranja `#ff9500` durante o deslocamento.
+- Ao alcançar um Frame, a moldura transitória e a pill correspondente ficam em ciano `#04fff2`. A seleção real acompanha cada Frame alcançado e a barra inferior se desloca suavemente, Frame a Frame; Stop mantém selecionado o último Frame alcançado.
 - A chegada é calculada pelo mesmo relógio de segmentos, pausas por Frame, pausa global, curvas e Loop. Um pulso exclusivamente visual torna a chegada legível; não cria pausa, duração, escrita de tempo ou alteração de geometria.
 - Stop explícito seleciona o Frame que estiver corrente naquele instante. Cancelar por troca de modo, abertura de Preview ou outra saída de contexto não altera a seleção.
 - A vista editorial é invariante: pan, zoom, transformação e posição do viewport não mudam. A moldura pode sair da vista e nunca provoca centralização automática.

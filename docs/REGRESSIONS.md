@@ -5,9 +5,9 @@
 - **Relato/especificação corrigida:** acionar o controle **Frames** deve manter Stage/câmera visual e geometricamente imóveis e deslocar, escalar e girar uma moldura editorial temporária entre os Frames.
 - **Causa comprovada:** `startStageFramesPlayback()` convertia apenas o centro amostrado em pan e escrevia `editorPanX/editorPanY`, seguido de `applyEditorZoom()`. Não existia elemento de moldura transitória e `sw`, `sh` e `rot` do sampler eram ignorados na visualização editorial.
 - **Retorno físico E9AR:** o controle tornou-se laranja indevidamente, a chegada ciano não era legível e a timeline não acompanhava os Frames, deixando o percurso sem referência; a seleção real também não era limpa visualmente ao iniciar.
-- **Correção E9AQ/E9AS:** o loop preserva o relógio e `getStateAtT()`, mas converte `cx/cy/sw/sh/rot` em geometria de um único DOM editorial não interativo dentro do Stage. O controle continua ciano; a moldura é laranja em movimento e ciano na chegada. A timeline recebe foco transitório por Frame, sem escrita em `activeIdx`, Stage/câmera ou projeto; Stop explícito seleciona o Frame corrente e remove o elemento.
-- **Teste preventivo:** contrato estático bloqueia novas escritas de câmera no loop; smoke WebKit fixa pan/zoom não triviais, exige mudança de posição/tamanho/rotação, botão ciano sem caixa, seleção real visualmente limpa, avanço da pill por Frame e chegada ciano, além de comparar projeto, Undo/Redo, autosave, Preview e gravação antes/depois do Stop.
-- **Status:** corrigida tecnicamente na `v8z4b32E9AS`; validação física iPhone/Safari pendente antes de merge.
+- **Correção E9AQ/E9AT:** o loop preserva o relógio e `getStateAtT()`, mas converte `cx/cy/sw/sh/rot` em geometria de um único DOM editorial não interativo dentro do Stage. O controle continua ciano, sem borda, contorno ou aparência nativa; a moldura é laranja em movimento e ciano na chegada. A seleção canônica acompanha cada Frame alcançado e o Stop preserva o último; a timeline usa rolagem animada, sem mover Stage/câmera ou projeto.
+- **Teste preventivo:** contrato estático bloqueia novas escritas de câmera no loop; smoke WebKit fixa pan/zoom não triviais, exige mudança de posição/tamanho/rotação, botão ciano sem caixa, seleção do Frame alcançado, avanço suave da pill e chegada ciano, além de comparar projeto, Undo/Redo, autosave, Preview e gravação antes/depois do Stop.
+- **Status:** corrigida tecnicamente na `v8z4b32E9AT`; validação física iPhone/Safari pendente antes de merge.
 
 ## REG-068 — Preview pós-MP4 perde o contexto canônico de Text Assets
 
