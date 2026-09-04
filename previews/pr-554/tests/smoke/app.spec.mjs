@@ -6826,7 +6826,7 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e pisca um mar
   expect(playbackCss).toContain('#04fff2');
   expect(playbackCss).not.toContain('#39d98a');
   expect(source).toContain('symbol id="i-stop-solid"');
-  expect(source).toContain('centerLowerTimelineOnFrame(frameIndex, true, 520);');
+  expect(source).toContain('syncStageFramesPlaybackTimeline();');
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
@@ -6891,10 +6891,10 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e pisca um mar
   await expect(page.locator('#frm_1')).toHaveClass(/stage-frames-playback-arrival/);
   await expect(page.locator('#frm_1 .frame-border')).toHaveCSS('border-top-color', 'rgb(4, 255, 242)');
   await expect(page.locator('#stageFramesPlaybackFrame')).toHaveAttribute('data-state', 'moving');
-  expect(source).toContain('arrivalPulseUntil = now + 520');
+  expect(source).toContain('arrivalPulseUntil = now + 360');
   expect(source).not.toContain("commitFilmSelection(frameIndex, -1, 'stage-frames-playback-progress');\n    renderAll();");
   await page.evaluate(() => {
-    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: false }, performance.now() + 600);
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: false }, performance.now() + 400);
   });
   await expect(page.locator('#stageFramesPlaybackArrivalFlash')).toHaveCount(0);
   await expect(page.locator('#pillsRow [data-frame-index="1"]')).not.toHaveClass(/stage-frames-playback-arrived/);
@@ -6909,7 +6909,7 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e pisca um mar
   await expect(page.locator('#frm_' + frameAtStop)).toHaveClass(/active/);
 });
 
-test('E9AX — Play Frames reduz somente os Frames já percorridos', async ({ page }) => {
+test('E9AX — Play Frames reduz o Frame assim que a chegada termina', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
@@ -6930,10 +6930,53 @@ test('E9AX — Play Frames reduz somente os Frames já percorridos', async ({ pa
     stageFramesPlayback.currentFrameIndex = 0;
     updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: true }, performance.now());
   });
-  await expect(page.locator('#frm_0')).toHaveClass(/stage-frames-playback-past/);
-  await expect(page.locator('#frm_0')).toHaveCSS('opacity', '0.28');
-  await expect(page.locator('#frm_1')).not.toHaveClass(/stage-frames-playback-past/);
+  await expect(page.locator('#frm_0')).not.toHaveClass(/stage-frames-playback-past/);
+  await expect(page.locator('#frm_1')).toHaveClass(/stage-frames-playback-past/);
   await expect(page.locator('#frm_1')).toHaveClass(/stage-frames-playback-arrival/);
+  await expect(page.locator('#frm_1')).toHaveCSS('opacity', '1');
+  await page.evaluate(() => {
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: false }, performance.now() + 400);
+  });
+  await expect(page.locator('#frm_1')).not.toHaveClass(/stage-frames-playback-arrival/);
+  await expect(page.locator('#frm_1')).toHaveCSS('opacity', '0.28');
+});
+
+test('E9AZ — Play Frames desloca a timeline no mesmo relógio do trecho', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  await page.evaluate(() => {
+    setEditorMode('camera', 'e9az-timeline-clock');
+    loopEnabled = false;
+    segDurations[0] = 3;
+    framePauses[0] = { duration: 0 };
+    renderAll();
+  });
+  await page.locator('#pillsRow [data-frame-index="0"]').click();
+  await page.locator('#tbStageFramesPlay').click();
+  const clockScroll = await page.evaluate(() => {
+    if (stageFramesPlayback.raf) cancelAnimationFrame(stageFramesPlayback.raf);
+    if (lowerTimelineScrollAnimFrame) cancelAnimationFrame(lowerTimelineScrollAnimFrame);
+    if (lowerTimelineProgrammaticScrollTimer) clearTimeout(lowerTimelineProgrammaticScrollTimer);
+    lowerTimelineScrollAnimFrame = 0;
+    lowerTimelineProgrammaticScrollTimer = 0;
+    lowerTimelineProgrammaticScrollUntil = 0;
+    isLowerTimelineProgrammaticCentering = false;
+    const pills = document.getElementById('pillsRow');
+    const times = document.getElementById('lowerPartialTimes');
+    pills.scrollLeft = 0;
+    times.scrollLeft = 0;
+    stageFramesPlayback.raf = 0;
+    stageFramesPlayback.currentFrameIndex = 0;
+    stageFramesPlayback.projectTime = 1.5;
+    stageFramesPlayback.fullDuration = totalDurationFull();
+    updateStageFramesPlaybackPresentation({ frameIndex: 0, arrived: false }, performance.now());
+    return { pills: pills.scrollLeft, times: times.scrollLeft };
+  });
+  expect(clockScroll.pills).toBeGreaterThan(1);
+  expect(clockScroll.times).toBeCloseTo(clockScroll.pills, 3);
 });
 
 test('E9AY — controle Frames não conserva foco nativo que desenhe borda no Safari', async ({ page }) => {
