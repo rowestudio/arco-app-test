@@ -6832,26 +6832,46 @@ test('E9AT — Play Frames acompanha a seleção visual, não deixa borda no bot
 
   await page.evaluate(() => {
     setEditorMode('camera', 'e9ar-playback-arrival');
-    activeIdx = 0;
     loopEnabled = false;
-    segDurations[0] = 0.08;
+    // Duração deliberadamente longa: o cenário precisa observar a seleção
+    // inicial antes da passagem para o próximo Frame, inclusive no CI completo.
+    segDurations[0] = 1.2;
     framePauses[0] = { duration: 0 };
-    framePauses[1] = { duration: 0.35 };
+    framePauses[1] = { duration: 2 };
     renderAll();
   });
 
+  // Seleção real por pill: escrever activeIdx diretamente deixa uma centralização
+  // pendente de outro teste sobrescrever o início antes do toque em Frames.
+  await page.locator('#pillsRow [data-frame-index="0"]').click();
+  await expect(page.locator('#frm_0')).toHaveClass(/active/);
   const control = page.locator('#tbStageFramesPlay');
   const selectedFrameAtStart = await page.evaluate(() => activeIdx);
   await control.click();
   await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 2_000 }).toBe(selectedFrameAtStart);
   await expect(control.locator('use')).toHaveAttribute('href', '#i-stop-solid');
   await expect(control.locator('svg')).toHaveCSS('color', 'rgb(4, 255, 242)');
-  await expect(page.locator('#frm_0')).toHaveClass(/active/);
+  await expect.poll(() => page.evaluate(() => ({
+    activeIdx,
+    currentFrameIndex: stageFramesPlayback.currentFrameIndex,
+    stageFrameIsActive: document.getElementById('frm_0')?.classList.contains('active') || false,
+  })), { timeout: 800 }).toEqual({
+    activeIdx: 0,
+    currentFrameIndex: 0,
+    stageFrameIsActive: true,
+  });
   await expect(page.locator('#pillsRow [data-frame-index="0"]')).toHaveClass(/stage-frames-playback-current/);
   await expect.poll(() => page.evaluate(() => stageFramesPlayback.currentFrameIndex), { timeout: 2_000 }).toBe(1);
   await expect(page.locator('#stageFramesPlaybackFrame')).toHaveAttribute('data-state', 'arrived');
-  await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 2_000 }).toBe(1);
-  await expect(page.locator('#frm_1')).toHaveClass(/active/);
+  await expect.poll(() => page.evaluate(() => ({
+    activeIdx,
+    currentFrameIndex: stageFramesPlayback.currentFrameIndex,
+    stageFrameIsActive: document.getElementById('frm_1')?.classList.contains('active') || false,
+  })), { timeout: 2_000 }).toEqual({
+    activeIdx: 1,
+    currentFrameIndex: 1,
+    stageFrameIsActive: true,
+  });
   await expect(page.locator('#pillsRow [data-frame-index="0"]')).not.toHaveClass(/stage-frames-playback-current/);
   await expect(page.locator('#pillsRow [data-frame-index="1"]')).toHaveClass(/stage-frames-playback-current/);
   await expect(page.locator('#pillsRow [data-frame-index="1"]')).toHaveClass(/stage-frames-playback-arrived/);
