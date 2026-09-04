@@ -6809,14 +6809,15 @@ test('E9AQ — Play Frames anima moldura transitória sem mover Stage/câmera ne
   expect(await snapshot()).toEqual(before);
 });
 
-test('E9AT — Play Frames acompanha a seleção visual, não deixa borda no botão e rola a timeline suavemente', async ({ page }) => {
+test('E9AU — Play Frames pisca a chegada, não mantém seleção durante o percurso e para no último alcançado', async ({ page }) => {
   const source = fs.readFileSync(path.resolve('index.html'), 'utf8');
   const playbackCss = source.slice(
-    source.indexOf('#toolbar.contextual-toolbar .stage-frames-play'),
+    source.indexOf('#toolbar.contextual-toolbar #tbStageFramesPlay'),
     source.indexOf('#toolbar.contextual-toolbar .ctx-only'),
   );
   expect(playbackCss).toContain('color:#04fff2');
-  expect(playbackCss).toContain('outline:0');
+  expect(playbackCss).toContain('outline:none!important');
+  expect(playbackCss).toContain('border:none!important');
   expect(playbackCss).toContain('border:3px solid #ff9500');
   expect(playbackCss).toContain('.is-arrived');
   expect(playbackCss).toContain('#04fff2');
@@ -6858,11 +6859,10 @@ test('E9AT — Play Frames acompanha a seleção visual, não deixa borda no bot
   })), { timeout: 800 }).toEqual({
     activeIdx: 0,
     currentFrameIndex: 0,
-    stageFrameIsActive: true,
+    stageFrameIsActive: false,
   });
-  await expect(page.locator('#pillsRow [data-frame-index="0"]')).toHaveClass(/stage-frames-playback-current/);
+  await expect(page.locator('#pillsRow [data-frame-index="0"]')).not.toHaveClass(/stage-frames-playback-current/);
   await expect.poll(() => page.evaluate(() => stageFramesPlayback.currentFrameIndex), { timeout: 2_000 }).toBe(1);
-  await expect(page.locator('#stageFramesPlaybackFrame')).toHaveAttribute('data-state', 'arrived');
   await expect.poll(() => page.evaluate(() => ({
     activeIdx,
     currentFrameIndex: stageFramesPlayback.currentFrameIndex,
@@ -6870,15 +6870,54 @@ test('E9AT — Play Frames acompanha a seleção visual, não deixa borda no bot
   })), { timeout: 2_000 }).toEqual({
     activeIdx: 1,
     currentFrameIndex: 1,
-    stageFrameIsActive: true,
+    stageFrameIsActive: false,
   });
   await expect(page.locator('#pillsRow [data-frame-index="0"]')).not.toHaveClass(/stage-frames-playback-current/);
-  await expect(page.locator('#pillsRow [data-frame-index="1"]')).toHaveClass(/stage-frames-playback-current/);
-  await expect(page.locator('#pillsRow [data-frame-index="1"]')).toHaveClass(/stage-frames-playback-arrived/);
+  expect(source).toContain('arrivalPulseUntil = now + 320');
+  await page.waitForTimeout(380);
+  await expect(page.locator('#pillsRow [data-frame-index="1"]')).not.toHaveClass(/stage-frames-playback-arrived/);
+  await expect(page.locator('#frm_1')).not.toHaveClass(/stage-frames-playback-arrival/);
   await expect(page.locator('#tbStageFramesPlay')).toHaveCSS('border-top-width', '0px');
   await expect(page.locator('#tbStageFramesPlay')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   const frameAtStop = await page.evaluate(() => stageFramesPlayback.currentFrameIndex);
   await control.click();
   await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 2_000 }).toBe(frameAtStop);
   await expect(page.locator('#frm_' + frameAtStop)).toHaveClass(/active/);
+});
+
+test('E9AU — Play Frames reinicia do primeiro sem Loop, repete com Loop e qualquer outro controle interrompe', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  await page.evaluate(() => {
+    setEditorMode('camera');
+    loopEnabled = false;
+    for (let i = 0; i < Math.max(0, frameCount - 1); i++) {
+      segDurations[i] = 0.12;
+      framePauses[i] = { enabled: false, duration: 0 };
+    }
+    selectFrameContext(frameCount - 1, { source: 'e9au-no-loop-last' });
+    renderAll();
+  });
+  const control = page.locator('#tbStageFramesPlay');
+  await control.click();
+  await expect.poll(() => page.evaluate(() => stageFramesPlayback.startFrameIndex), { timeout: 1_000 }).toBe(0);
+  await control.click();
+
+  await page.evaluate(() => {
+    loopEnabled = true;
+    loopDuration = 0.08;
+    for (let i = 0; i < Math.max(0, frameCount - 1); i++) segDurations[i] = 0.06;
+    selectFrameContext(frameCount - 1, { source: 'e9au-loop-last' });
+    renderAll();
+  });
+  await control.click();
+  await page.waitForTimeout(700);
+  await expect(page.locator('body')).toHaveClass(/stage-frames-playing/);
+  await page.locator('#ezBtnPlus').click();
+  await expect(page.locator('body')).not.toHaveClass(/stage-frames-playing/);
+  const lastStoppedFrameIndex = await page.evaluate(() => stageFramesPlayback.lastStoppedFrameIndex);
+  await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 1_000 }).toBe(lastStoppedFrameIndex);
 });
