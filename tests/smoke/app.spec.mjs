@@ -6931,7 +6931,11 @@ test('E9AU — Play Frames reinicia do primeiro sem Loop, repete com Loop e qual
   await expect.poll(() => page.evaluate(() => stageFramesPlayback.loopEnabled), { timeout: 1_000 }).toBe(true);
   await page.waitForTimeout(700);
   await expect(page.locator('body')).toHaveClass(/stage-frames-playing/);
-  await page.locator('#ezBtnPlus').click();
+  // O controle externo precisa existir visualmente no modo Frames. O zoom
+  // pode ficar oculto em telas compactas; a troca de modo é sempre acessível.
+  const externalControl = page.locator('#modeAssetsBtn');
+  await expect(externalControl).toBeVisible();
+  await externalControl.click();
   await expect(page.locator('body')).not.toHaveClass(/stage-frames-playing/);
   const lastStoppedFrameIndex = await page.evaluate(() => stageFramesPlayback.lastStoppedFrameIndex);
   await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 1_000 }).toBe(lastStoppedFrameIndex);
