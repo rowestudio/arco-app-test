@@ -18278,7 +18278,11 @@ function locateAssetsModeSegmentRef(seg) {
 // selectFrameContext) seja sempre re-sincronizado ao chamar o roteador central.
 function setEditorMode(mode, source) {
   const next = (mode === 'assets') ? 'assets' : 'camera';
-  if (next !== 'camera' && typeof stopStageFramesPlayback === 'function') stopStageFramesPlayback();
+  // Trocar de modo também é uma interrupção explícita da demonstração. Mantém
+  // o último Frame alcançado, como qualquer outro controle externo.
+  if (next !== 'camera' && typeof stopStageFramesPlayback === 'function') {
+    stopStageFramesPlayback({ selectCurrentFrame: true });
+  }
   // v8z4b30ZR — instrumentação da transição (sempre, mesmo sem mudança real).
   setModeCallCount++;
   lastModeRequested = next;
@@ -24242,10 +24246,14 @@ function renderStageFramesPlaybackFrame(state, presentation) {
 function stopStageFramesPlayback(options = {}) {
   const selectCurrentFrame = !!options.selectCurrentFrame;
   const frameIndexAtStop = stageFramesPlayback.currentFrameIndex;
+  const hasCurrentPlaybackFrame = Number.isInteger(frameIndexAtStop) &&
+    frameIndexAtStop >= 0 && frameIndexAtStop < frameCount;
   if (stageFramesPlayback.raf) cancelAnimationFrame(stageFramesPlayback.raf);
   stageFramesPlayback.raf = 0;
   stageFramesPlayback.running = false;
-  stageFramesPlayback.lastStoppedFrameIndex = frameIndexAtStop;
+  // Paradas encadeadas (por exemplo, toque externo seguido por troca de modo)
+  // não podem apagar o Frame que a primeira parada já preservou.
+  if (hasCurrentPlaybackFrame) stageFramesPlayback.lastStoppedFrameIndex = frameIndexAtStop;
   clearStageFramesPlaybackArrivalFeedback();
   stageFramesPlayback.currentFrameIndex = -1;
   stageFramesPlayback.arrivalFrameIndex = -1;
@@ -24253,7 +24261,7 @@ function stopStageFramesPlayback(options = {}) {
   removeStageFramesPlaybackFrame();
   removeStageFramesPlaybackArrivalFlash();
   updateStageFramesPlaybackControl();
-  if (selectCurrentFrame && frameIndexAtStop >= 0 && frameIndexAtStop < frameCount) {
+  if (selectCurrentFrame && hasCurrentPlaybackFrame) {
     commitFilmSelection(frameIndexAtStop, -1, 'stage-frames-playback-stop');
     applyStageTimelineFocusVisuals();
     refreshActiveFrameVisuals();
