@@ -24059,7 +24059,7 @@ function refreshEditorViewVisualOverlays() {
   }
 }
 
-let stageFramesPlayback = { running: false, startFrameIndex: -1, projectTime: 0, raf: 0, startedAt: 0, startProjectTime: 0, currentFrameIndex: -1, arrivalFrameIndex: -1, arrivalPulseUntil: 0, lastStoppedFrameIndex: -1 };
+let stageFramesPlayback = { running: false, startFrameIndex: -1, projectTime: 0, raf: 0, startedAt: 0, startProjectTime: 0, loopEnabled: false, currentFrameIndex: -1, arrivalFrameIndex: -1, arrivalPulseUntil: 0, lastStoppedFrameIndex: -1 };
 let stageFramesPlaybackRequestedFrameIndex = null;
 
 function captureStageFramesPlaybackStart(event) {
@@ -24274,13 +24274,17 @@ function startStageFramesPlayback() {
   if (!isCameraMode() || isPreviewing || frameCount < 2) return false;
   const requestedFrameIndex = stageFramesPlaybackRequestedFrameIndex;
   stageFramesPlaybackRequestedFrameIndex = null;
+  // A execução recebe uma política de finalização estável. Qualquer outro
+  // controle já a interrompe; uma atualização assíncrona do projeto não pode
+  // desligar um loop que já está em curso.
+  const playbackLoopEnabled = loopEnabled === true;
   let startFrameIndex = Math.max(0, Math.min(frameCount - 1,
     Number.isInteger(requestedFrameIndex) ? requestedFrameIndex : activeIdx));
   // Após terminar naturalmente sem Loop, Play no último Frame reinicia a rota.
-  if (!loopEnabled && startFrameIndex === frameCount - 1) startFrameIndex = 0;
+  if (!playbackLoopEnabled && startFrameIndex === frameCount - 1) startFrameIndex = 0;
   const fullDuration = Math.max(0.001, totalDurationFull());
   const startProjectTime = getStageFramesProjectTimeAtFrame(startFrameIndex);
-  stageFramesPlayback = { running: true, startFrameIndex, projectTime: startProjectTime, raf: 0, startedAt: performance.now(), startProjectTime, currentFrameIndex: -1, arrivalFrameIndex: -1, arrivalPulseUntil: 0, lastStoppedFrameIndex: -1 };
+  stageFramesPlayback = { running: true, startFrameIndex, projectTime: startProjectTime, raf: 0, startedAt: performance.now(), startProjectTime, loopEnabled: playbackLoopEnabled, currentFrameIndex: -1, arrivalFrameIndex: -1, arrivalPulseUntil: 0, lastStoppedFrameIndex: -1 };
   removeStageFramesPlaybackFrame();
   suppressStageFramesPlaybackSelectionVisuals();
   const initialPresentation = getStageFramesPlaybackPresentation(startProjectTime, fullDuration);
@@ -24297,7 +24301,7 @@ function startStageFramesPlayback() {
     updateStageFramesPlaybackPresentation(presentation);
     renderStageFramesPlaybackFrame(state, presentation);
     if (projectTime >= fullDuration) {
-      if (loopEnabled) {
+      if (stageFramesPlayback.loopEnabled) {
         // O ciclo N→1 já foi exibido pelo sampler. Recomeçar do Frame 1 sem parar
         // preserva o feedback editorial e mantém a reprodução contínua.
         stageFramesPlayback.startedAt = now;
