@@ -6887,6 +6887,11 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e transforma o
     stageFrameIsActive: false,
   });
   await expect(page.locator('#pillsRow [data-frame-index="0"]')).not.toHaveClass(/stage-frames-playback-current/);
+  // A chegada também fica legível na faixa inferior, mas somente pela borda
+  // ciano transitória: não recebe active/selected nem controla o relógio.
+  await expect(page.locator('#pillsRow [data-frame-index="1"]')).toHaveClass(/stage-frames-playback-arrived/);
+  await expect(page.locator('#pillsRow [data-frame-index="1"]')).toHaveCSS('border-top-color', 'rgb(4, 255, 242)');
+  await expect(page.locator('#pillsRow [data-frame-index="1"]')).not.toHaveClass(/active|selected/);
   await expect(page.locator('#frm_1')).toHaveClass(/stage-frames-playback-arrival/);
   await expect(page.locator('#frm_1 .frame-border')).toHaveCSS('border-top-color', 'rgb(4, 255, 242)');
   await expect(page.locator('#stageFramesPlaybackFrame')).toHaveAttribute('data-state', 'moving');

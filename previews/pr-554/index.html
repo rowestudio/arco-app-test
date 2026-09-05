@@ -950,7 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
-<!-- Arco Motion App — v8z4b32E9BC — fix(stage-frames-play-arrival): ao alcançar um Frame, a própria referência fixa troca de laranja para ciano e se converte gradualmente em cinza, sem halo/segunda moldura e sem retenção visual na timeline. Play/Stop usa SVG exclusivo sólido, sem use/stroke herdado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9BC. -->
+<!-- Arco Motion App — v8z4b32E9BD — fix(stage-frames-play-timeline-arrival): ao alcançar um Frame, a própria referência fixa troca de laranja para ciano e se converte gradualmente em cinza, sem halo/segunda moldura. A pill correspondente recebe somente borda ciano durante a mesma janela de chegada, sem foco, seleção, preenchimento, halo ou pausa no relógio. Play/Stop usa SVG exclusivo sólido, sem use/stroke herdado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9BD. -->
 <!-- Arco Motion App — v8z4b32E9BB — fix(stage-frames-play-continuity): Play Frames não reconstrói os assets nas chegadas, portanto a moldura laranja continua no relógio canônico mesmo com pausa zero. O Frame atingido recebe azul ciano que se dissolve durante 360 ms e então preserva apenas a referência secundária; o ícone sólido Play/Stop elimina também o stroke herdado da toolbar. APP_VERSION = APP_VERSION_NAME = v8z4b32E9BB. -->
 <!-- Arco Motion App — v8z4b32E9AO — fix(post-export-preview-text): ao concluir um MP4, o snapshot estável que acabou de atender o Export é transferido explicitamente para o contexto Preview antes de reiniciar o playback. Assim a presença temporal de imagens e Text Assets é reavaliada pelo relógio do Preview, sem cair no caminho vivo e sem alterar o MP4 já gerado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AO. -->
 <!-- Arco Motion App — v8z4b32E9AZ — fix(stage-frames-play-clock): o Frame atingido fica secundário logo após o pulso ciano curto; a faixa de Frames percorre cada trecho no mesmo relógio de duração, interpolação e pausa da moldura editorial, sem saltar de chegada em chegada. Stage/câmera, Preview, MP4, geometria persistida, curvas e Undo/Redo permanecem intocados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AZ. -->
@@ -2337,6 +2337,8 @@ body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:fle
 .mid-bar.timeline-grid .fp.active{background:var(--menu-bg);color:var(--text);border-color:var(--accent);box-shadow:0 0 0 1px rgba(4,255,242,.55) inset,0 0 10px rgba(4,255,242,.18);}
 .mid-bar.timeline-grid .fp.selected{border-color:#ff9500;box-shadow:0 0 0 1px rgba(255,149,0,.42) inset;background:var(--menu-bg);color:#ff9500;}
 .mid-bar.timeline-grid .fp.active.selected{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 1px rgba(4,255,242,.55) inset,0 0 10px rgba(4,255,242,.18);}
+/* E9BD — chegada no Play Frames: borda ciano breve, sem foco, preenchimento ou halo. */
+.mid-bar.timeline-grid .fp.stage-frames-playback-arrived{border-color:#04fff2 !important;box-shadow:none !important;}
 .mid-bar.timeline-grid .ease-fp{position:relative;flex:0 0 24px;width:24px;min-width:24px;height:44px;border:0;border-radius:0;background:transparent;overflow:visible;margin:0;}
 .mid-bar.timeline-grid .ease-fp::before{content:"";position:absolute;left:-5px;right:-5px;top:50%;height:3px;border-radius:999px;background:#b2b2b2;transform:translateY(-50%);}
 .mid-bar.timeline-grid .ease-fp::after{content:"";position:absolute;left:-7px;right:-7px;top:50%;height:34px;transform:translateY(-50%);}
@@ -7772,8 +7774,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9BC';
-const APP_VERSION_NAME = 'v8z4b32E9BC';
+const APP_VERSION = 'v8z4b32E9BD';
+const APP_VERSION_NAME = 'v8z4b32E9BD';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -19435,6 +19437,7 @@ function applyTimelinePillFocusClasses() {
   if (!pillsEl) return;
   const stageFramesPlaying = !!(stageFramesPlayback && stageFramesPlayback.running && typeof isCameraMode === 'function' && isCameraMode());
   const playbackFrameIndex = stageFramesPlaying ? stageFramesPlayback.currentFrameIndex : -1;
+  const playbackArrivalFrameIndex = stageFramesPlaying ? stageFramesPlayback.arrivalFrameIndex : -1;
   const focusIdx = stageFramesPlaying ? -1 : getTimelineStageFocusIndex();
   const multiSelectionActive = isMultiSelectionActive();
   // v8z4b30ZY — em Modo Ativos, só o frame de referência recebe destaque.
@@ -19450,9 +19453,9 @@ function applyTimelinePillFocusClasses() {
     el.classList.toggle('active', isFocus);
     el.classList.toggle('selected', isMulti || (isSelected && !isFocus));
     el.classList.remove('stage-frames-playback-current');
-    // A timeline só segue o relógio. O azul que se dissolve é exclusivo do
-    // Frame físico no Stage, para não sugerir uma pausa que não existe.
-    el.classList.remove('stage-frames-playback-arrived');
+    // A chegada usa a mesma janela visual breve do Stage. Ela não recebe foco
+    // nem seleção: a borda só torna a passagem legível sem sugerir uma pausa.
+    el.classList.toggle('stage-frames-playback-arrived', idx === playbackArrivalFrameIndex);
     if (isFocus) highlightCount++;
     if (frameLocked[idx]) el.style.color = '#f5c518';
     else if (isMulti || (isSelected && !isFocus)) el.style.color = '#ff9500';
