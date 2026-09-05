@@ -1,5 +1,11 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-05 — E9BF: ações manuais separadas de Movimento Inteligente
+
+- Decisão de UX aprovada por Roberto: o globo “Aplicar a todos” não pode ficar ao lado de Movimento Inteligente, pois o modo atual é global por canal e não possui exceção local por trecho.
+- A interface E9BF deixa o toggle sozinho. Ao desligá-lo, as ações manuais aparecem abaixo: o globo do canal aberto e “Aplicar aos 3”, na mesma linha. Nenhuma regra do motor, Preview, Export, timing ou persistência é alterada.
+- A possibilidade futura de Inteligente global com override manual por trecho foi registrada no roadmap; validação física iPhone/Safari desta reorganização permanece obrigatória antes de merge.
+
 ## Atualização 2026-09-04 — REG-070 aberta: edição no Stage reinicia PWA no iPhone/Safari
 
 - Roberto relatou reinicialização do PWA ao escalar, mover ou rotacionar Frames (pela alça e pelo menu contextual), ao mover Ativos e ao voltar de Configurações. O sintoma não depende de Frame específico nem de zoom alto.

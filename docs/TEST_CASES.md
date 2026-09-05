@@ -1,5 +1,12 @@
 # TEST_CASES
 
+## TC-071 — Ações manuais do Movimento não simulam escopo local inexistente (E9BF)
+
+- Pré-condição: abrir o painel Movimento de um trecho em qualquer canal (Velocidade, Rotação ou Escala).
+- Passos: ligar o modo Inteligente do canal; depois desligá-lo e conferir as ações inferiores.
+- Resultado esperado: com Inteligente ligado, não existe globo ao lado do toggle nem linha de easing manual. Com ele desligado, o globo “Aplicar a todos os trechos” aparece na mesma linha de “Aplicar aos 3”; somente o globo do canal aberto fica visível. O globo aplica o próximo easing manual a todos os trechos, e não altera o escopo global do modo Inteligente.
+- Evidência automatizada: smoke WebKit E9BF em `tests/smoke/app.spec.mjs`. Validação física obrigatória em iPhone/Safari antes de merge.
+
 ## TC-070 — Moldura transitória temporal do Play de Frames (E9AQ/E9AW / REG-069)
 
 - Pré-condição: projeto com pelo menos dois Frames de geometrias e rotações diferentes, Frame inicial selecionado e Stage com pan/zoom não triviais.
