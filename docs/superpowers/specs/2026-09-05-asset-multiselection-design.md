@@ -19,8 +19,9 @@ Camadas. A experiência não cria um grupo persistente no projeto.
   Ativo; toque simples em uma camada já incluída a remove.
 - Tocar e segurar novamente o Ativo que iniciou a seleção anula toda a seleção.
 - Tocar em área vazia também encerra a seleção.
-- Stage e painel de Camadas refletem o mesmo conjunto canônico de IDs; o Stage
-  não inicia a seleção múltipla.
+- Stage e painel de Camadas refletem o mesmo conjunto canônico de IDs e um modo
+  temporário explícito, que já está ativo com apenas o primeiro ID; o Stage não
+  inicia a seleção múltipla.
 - Imagens e Text Assets participam juntos. A edição de conteúdo de texto
   continua possível somente com seleção única.
 

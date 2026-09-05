@@ -4,7 +4,7 @@
 
 **Goal:** Implement temporary multi-selection of image and text assets from Layers, with collective Stage transforms, relative contextual transforms, collective ordering, and alpha-aware image hit-testing.
 
-**Architecture:** Add asset selection state independent of Frame `selectedFrames`: ordered asset IDs plus the initiating anchor. Stage, Layers and contextual panels consume that state; no persistent group is added to project data. Collective gestures snapshot every member once, mutate assets atomically, and leave Preview/Export on their existing canonical asset model.
+**Architecture:** Add asset selection state independent of Frame `selectedFrames`: ordered asset IDs, the initiating anchor, and an explicit temporary selection-mode flag. The flag is active already with the first selected ID, so the next simple tap adds/removes instead of replacing it. Stage, Layers and contextual panels consume that state; no persistent group is added to project data. Collective gestures snapshot every member once, mutate assets atomically, and leave Preview/Export on their existing canonical asset model.
 
 **Tech Stack:** Vanilla DOM/Pointer Events in `index.html`; existing state snapshots/Undo/Redo/autosave; Playwright WebKit in `tests/smoke/app.spec.mjs`.
 
@@ -32,11 +32,11 @@
 
 **Files:** Modify `index.html` near `selectedAssetId`, `selectAssetById()`, `clearSelectedAsset()`, `renderLayersPanelList()` and `updateCanonicalAssetSelectionDiagnostics()`; modify `tests/smoke/app.spec.mjs`.
 
-**Interfaces:** Produce `selectedAssetIds: Set<string>`, `assetMultiSelectionAnchorId: string|null`, `isAssetMultiSelectionActive()`, `getSelectedAssets()`, `beginAssetMultiSelection(assetId)`, `toggleAssetMultiSelection(assetId)`, and `clearAssetMultiSelection(reason)`.
+**Interfaces:** Produce `selectedAssetIds: Set<string>`, `assetMultiSelectionModeActive: boolean`, `assetMultiSelectionAnchorId: string|null`, `isAssetMultiSelectionModeActive()`, `isAssetMultiSelectionActive()`, `getSelectedAssets()`, `beginAssetMultiSelection(assetId)`, `toggleAssetMultiSelection(assetId)`, and `clearAssetMultiSelection(reason)`. The mode function is true for the first held asset; the active group function is true only for two or more members.
 
-- [ ] **Step 1: Write the failing selection-state test.** Add an E9BG test that loads `projectFixture`, enters Assets mode, starts selection with one valid ID, toggles two more, removes one, clears, and expects ordered IDs, `selectedAssetId === assetMultiSelectionAnchorId`, then empty IDs and null anchor.
+- [ ] **Step 1: Write the failing selection-state test.** Add an E9BG test that loads `projectFixture`, enters Assets mode, starts selection with one valid ID, asserts mode true and group false, toggles two more, removes one, clears, and expects ordered IDs, `selectedAssetId === assetMultiSelectionAnchorId`, then mode false, empty IDs and null anchor.
 - [ ] **Step 2: Verify it fails.** Run `npx playwright test tests/smoke/app.spec.mjs --project=webkit --grep "E9BG: asset multiselection state"`. Expected: `beginAssetMultiSelection is not defined`.
-- [ ] **Step 3: Implement minimal state.** Define the state adjacent to `selectedAssetId`; resolve IDs only against live unlocked image/text assets; make the anchor the legacy `selectedAssetId`; update Layer rows and Stage overlay without `markProjectDirty()`. If the anchor is removed, clear the complete set.
+- [ ] **Step 3: Implement minimal state.** Define the state adjacent to `selectedAssetId`; resolve IDs only against live unlocked image/text assets; make the anchor the legacy `selectedAssetId`; set `assetMultiSelectionModeActive=true` in `beginAssetMultiSelection`; update Layer rows and Stage overlay without `markProjectDirty()`. If the anchor is removed, clear the complete set. `isAssetMultiSelectionModeActive()` reads the explicit flag, while `isAssetMultiSelectionActive()` requires mode active and at least two IDs.
 - [ ] **Step 4: Verify state and existing Layers selection.** Run `npx playwright test tests/smoke/app.spec.mjs --project=webkit --grep "E9BG: asset multiselection state|asset.*select|Layers"`. Expected: PASS.
 - [ ] **Step 5: Commit.** Run `git add index.html tests/smoke/app.spec.mjs && git commit -m "feat: add asset multiselection state"`.
 
