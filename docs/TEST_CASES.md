@@ -1,5 +1,13 @@
 # TEST_CASES
 
+## TC-070 — Moldura transitória temporal do Play de Frames (E9AQ/E9AW / REG-069)
+
+- Pré-condição: projeto com pelo menos dois Frames de geometrias e rotações diferentes, Frame inicial selecionado e Stage com pan/zoom não triviais.
+- Passos: tocar **Frames**, observar a transição até Frames posteriores e tocar Stop durante a execução. Repetir com uma trajetória cuja moldura saia da área visível, com pausa no Frame de chegada, sem Loop a partir do último Frame, com Loop e tocando no Stage, em área vazia, timeline e outro controle durante o percurso.
+- Resultado esperado: o botão não cria borda, contorno, fundo ou pill, não herda a célula contextual genérica e não mantém foco tabulável que produza anel nativo; Play e Stop são `path`/`rect` sólidos próprios em ciano, sem `<use>` nem `stroke` de SVG. Stage, pan, zoom, transform e viewport permanecem imóveis; uma única moldura temporária laranja se desloca, escala e gira pelo timing/interpolação/curvas existentes e não para nem fica azul ao chegar. Ao alcançar um Frame, **o próprio Frame fixo** troca de azul ciano para cinza continuamente por cerca de 360 ms, sem halo, sombra ou segunda moldura, antes de a referência ficar a 28%; na mesma janela, a pill correspondente mostra somente borda ciano, sem seleção, preenchimento, halo ou retenção. A moldura laranja continua sem pausa, salto ou reconstrução de assets/Stage, inclusive quando a pausa do Frame é zero. Frames futuros permanecem neutros; em N→1 essa leitura visual recomeça. A seleção canônica avança pelas chegadas, enquanto a faixa inferior acompanha continuamente o mesmo relógio do trecho: uma duração de três segundos leva três segundos para percorrer a distância entre os chips e uma pausa real mantém o chip parado. Stop ou qualquer toque fora de Play/Stop interrompe, remove a moldura e mantém selecionado o último Frame alcançado. Sem Loop, Play no último reinicia em 1; com Loop, N→1→N continua usando a decisão de Loop congelada no início do Play. Play Frames é diagnóstico de Frames e não anima Ativos por profundidade/parallax. Não há centralização automática ou duração temporal artificial.
+- Integridade: Frames reais, curvas, durações, pausas, projeto, Undo/Redo e autosave permanecem idênticos; Preview e MP4 não exibem nem consomem a moldura editorial.
+- Evidência automatizada: contrato estático e smoke WebKit mobile E9AQ/E9AV/E9AU/E9AW/E9AX/E9AY/E9AZ/E9BA em `tests/smoke/app.spec.mjs`. Validação física obrigatória em iPhone/Safari antes de merge.
+
 ## TC-070 — Presença temporal em projeto estático de Frame único (E9AP)
 
 - Pré-condição: projeto com um único Frame, sem pausas, sem segmentos e com ativo de imagem presente desde o início, sem saída explícita.

@@ -1,5 +1,40 @@
 # DECISIONS
 
+## DEC-2026-09-05-01 — chegada do Play Frames também marca a pill, sem reter a timeline
+
+- **Decisão:** na mesma janela breve em que o Frame atravessado fica ciano, a pill correspondente recebe apenas borda ciano. Ela não vira `active`/`selected`, não recebe preenchimento ou halo e não altera scroll, duração, pausa, curva ou relógio.
+- **Escopo:** Play Frames permanece um diagnóstico visual de Frames; a profundidade/parallax dos Ativos fica deliberadamente fora desta visualização. Preview, MP4, câmera, Stage, renderer, persistência e modelo temporal não mudam.
+
+## DEC-2026-09-04-03 — GitHub operacional usa rotas canônicas, não um único token local
+
+- **Decisão:** Git HTTPS autenticado pelo Keychain do Mac é a rota para fetch/push; a conexão GitHub do ChatGPT é a rota para PRs, checks e metadados. Ambas devem ser verificadas em operações reais antes de editar/publicar.
+- **Motivo:** o `gh` local pode reter um token OAuth inválido embora Git HTTPS e a conexão GitHub estejam válidos. Transformar essa falha auxiliar em exigência de novo login interrompe o fluxo mobile-first sem aumentar a segurança.
+- **Regra:** `gh` local só é necessário quando uma ação não existir nas rotas canônicas. Seu erro isolado não justifica pedir login a Roberto; bloqueio real exige falha da rota Git e da conexão GitHub. Tokens nunca são lidos, expostos, gravados ou alterados pelo fluxo.
+
+## DEC-2026-09-04-02 — Play de Frames separa trajetória e marca de chegada
+
+- **Decisão:** a moldura que percorre o Stage é sempre laranja e não interrompe nem muda de cor na chegada. O azul é um marcador visual independente, temporário e posicionado sobre o Frame alcançado.
+- **Razão:** a mudança de cor da própria moldura parecia uma parada e misturava a informação de movimento com a de chegada. A separação preserva continuidade e deixa cada passagem identificável.
+- **Controle:** Play/Stop mantêm ícone ciano sólido e eliminam também a caixa diretamente no elemento do botão, além dos estados CSS de foco/pressão.
+
+## DEC-2026-09-04-01 — Play de Frames usa chegada transitória e ciclo editorial explícito
+
+- **Decisão:** durante Play de Frames, a seleção canônica acompanha o percurso para sincronizar Stage/timeline, porém sua apresentação é apenas uma piscada ciano de chegada. Nenhum Frame real fica marcado entre passagens; ao parar, o último alcançado passa a ser a seleção visível persistente.
+- **Ciclo:** sem Loop, Play iniciado no último Frame reinicia no primeiro. Com Loop, o trecho canônico N→1 é visualizado e a execução recomeça no primeiro sem parar. Se o usuário tocar em qualquer outro controle, a demonstração para e preserva o último Frame alcançado; somente o próprio controle **Frames** retoma.
+- **Escopo:** a regra não altera duração, pausas, curvas, `getStateAtT`, Preview, Export, MP4, Stage/câmera, Undo/Redo ou autosave. O botão de Play/Stop é sempre ciano sólido e sem borda/fundo/outline.
+
+## DEC-2026-09-03-01 — Play de Frames anima moldura editorial temporal com viewport imóvel
+
+- **Decisão:** o controle **Frames**, visível apenas no Modo Frames, cria uma moldura temporária na geometria do Frame ativo e a anima pelos Frames posteriores. O botão permanece ciano, sem borda, fundo, caixa ou pill; a moldura é laranja enquanto percorre e ciano ao chegar. Posição, escala, rotação e chegada vêm do sampler temporal canônico; o Stage e sua câmera permanecem imóveis.
+- **Timeline:** ao iniciar e a cada chegada, a seleção canônica acompanha o Frame corrente. A barra inferior usa rolagem animada e avança por cada Frame; Stop explícito preserva o último Frame como seleção canônica, enquanto cancelamentos de contexto não trocam a seleção. Um pulso visual de chegada não altera o relógio, pausa ou duração.
+- **Limite editorial:** a moldura pode sair da vista e não recentraliza o viewport. Não é persistida, selecionável nem incluída em Preview/Export. Stop, troca de modo ou abertura do Preview interrompem e removem o elemento.
+- **Integridade:** a execução não escreve em Frames, curvas, timing, projeto, Undo/Redo ou autosave. Preview e MP4 mantêm seus fluxos canônicos sem reutilizar a moldura DOM editorial.
+- **Substitui:** `DEC-2026-09-02-04`, cuja interpretação de “navegação visual do editor” estava incorreta.
+
+## DEC-2026-09-02-04 — Play verde de Frames como navegação do Stage (SUPERADA)
+
+- **Estado:** superada em 2026-09-03 pela correção de especificação de Roberto. O registro histórico não autoriza mover pan/zoom/viewport; vale `DEC-2026-09-03-01`.
+
 ## DEC-2026-09-03-01 — Presença temporal usa a duração efetiva do projeto de Frame único
 
 - **Decisão:** quando um projeto possui exatamente um Frame sem pausa, a presença temporal de ativos usa a mesma duração estática efetiva do playback (`duration`, com fallback de 4 s) em Preview e MP4.
