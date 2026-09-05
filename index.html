@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9BB — fix(stage-frames-play-continuity): Play Frames não reconstrói os assets nas chegadas, portanto a moldura laranja continua no relógio canônico mesmo com pausa zero. O Frame atingido recebe azul ciano que se dissolve durante 360 ms e então preserva apenas a referência secundária; o ícone sólido Play/Stop elimina também o stroke herdado da toolbar. APP_VERSION = APP_VERSION_NAME = v8z4b32E9BB. -->
 <!-- Arco Motion App — v8z4b32E9AO — fix(post-export-preview-text): ao concluir um MP4, o snapshot estável que acabou de atender o Export é transferido explicitamente para o contexto Preview antes de reiniciar o playback. Assim a presença temporal de imagens e Text Assets é reavaliada pelo relógio do Preview, sem cair no caminho vivo e sem alterar o MP4 já gerado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AO. -->
 <!-- Arco Motion App — v8z4b32E9AZ — fix(stage-frames-play-clock): o Frame atingido fica secundário logo após o pulso ciano curto; a faixa de Frames percorre cada trecho no mesmo relógio de duração, interpolação e pausa da moldura editorial, sem saltar de chegada em chegada. Stage/câmera, Preview, MP4, geometria persistida, curvas e Undo/Redo permanecem intocados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AZ. -->
 <!-- Arco Motion App — v8z4b32E9AX — fix(stage-frames-play-past-and-focus): Frames já percorridos ficam visualmente secundários durante o ciclo editorial; N→1 reinicia essa leitura. Frames deixa de receber foco tabulável, eliminando o anel nativo percebido como borda no Safari. Stage/câmera, Preview, MP4 e o relógio canônico não mudam. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AX. -->
@@ -2249,12 +2250,13 @@ body.no-image #stageFrameMenu{display:none !important;}
 #toolbar.contextual-toolbar #tbStageFramesPlay,#toolbar.contextual-toolbar #tbStageFramesPlay.is-playing{flex:0 0 68px;min-width:68px;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0!important;margin:0;border:0!important;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;outline:0!important;border-radius:0!important;-webkit-appearance:none!important;appearance:none!important;-webkit-tap-highlight-color:transparent;color:#04fff2;-webkit-user-select:none;user-select:none;}
 #toolbar.contextual-toolbar #tbStageFramesPlay:active,#toolbar.contextual-toolbar #tbStageFramesPlay:focus,#toolbar.contextual-toolbar #tbStageFramesPlay:focus-visible{border:0!important;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;outline:0!important;}
 #toolbar.contextual-toolbar #tbStageFramesPlay::before,#toolbar.contextual-toolbar #tbStageFramesPlay::after{display:none!important;}
-#toolbar.contextual-toolbar .stage-frames-play .tb-icon,#toolbar.contextual-toolbar .stage-frames-play .tb-lbl{color:#04fff2;}
+#toolbar.contextual-toolbar .stage-frames-play .tb-icon{color:#04fff2!important;stroke:none!important;fill:currentColor!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;}
+#toolbar.contextual-toolbar .stage-frames-play .tb-icon use{stroke:none!important;fill:currentColor!important;}
+#toolbar.contextual-toolbar .stage-frames-play .tb-lbl{color:#04fff2;}
 .stage-frames-playback-frame{position:absolute;box-sizing:border-box;pointer-events:none;z-index:86;overflow:visible;}
 .stage-frames-playback-frame-visual{position:absolute;inset:0;box-sizing:border-box;transform-origin:center center;border:3px solid #ff9500;border-radius:10px;box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.34);}
 .stage-frames-playback-arrival-flash{position:absolute;box-sizing:border-box;pointer-events:none;z-index:1002;overflow:visible;}
 .stage-frames-playback-arrival-flash-visual{position:absolute;inset:0;box-sizing:border-box;transform-origin:center center;border:5px solid #04fff2;border-radius:10px;box-shadow:0 0 14px rgba(0,0,0,.52),0 0 20px rgba(4,255,242,.82);}
-.frame.stage-frames-playback-arrival .frame-border{border-color:#04fff2!important;box-shadow:0 0 18px rgba(4,255,242,.86)!important;}
 #pillsRow [data-frame-index].stage-frames-playback-current{border-color:#04fff2!important;color:#04fff2!important;box-shadow:0 0 8px rgba(4,255,242,.26);}
 #pillsRow [data-frame-index].stage-frames-playback-arrived{border-color:#04fff2!important;color:#04fff2!important;box-shadow:0 0 10px rgba(4,255,242,.34);}
 #toolbar.contextual-toolbar .ctx-only{display:none;}
@@ -7772,8 +7774,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9AZ';
-const APP_VERSION_NAME = 'v8z4b32E9AZ';
+const APP_VERSION = 'v8z4b32E9BB';
+const APP_VERSION_NAME = 'v8z4b32E9BB';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -9083,7 +9085,11 @@ function commitFilmSelection(frameIndex, segmentIndex, source) {
   filmSelection.source = source || 'unknown';
   filmSelection.updatedAt = Date.now();
   syncEditorFrameTargetsToCanonical(source || 'commitFilmSelection');
-  if (filmSelection.frameIndex !== previousFrameIndex && typeof refreshAssetStageVisualGeometry === 'function') {
+  // Durante o Play Frames, a seleção avança para informar a timeline, mas não
+  // pode reconstruir a pilha de assets a cada chegada: isso introduz uma pausa
+  // visível na moldura mesmo quando o Frame não tem pausa temporal.
+  const isStageFramesPlaybackProgress = source === 'stage-frames-playback-progress';
+  if (filmSelection.frameIndex !== previousFrameIndex && !isStageFramesPlaybackProgress && typeof refreshAssetStageVisualGeometry === 'function') {
     refreshAssetStageVisualGeometry(source || 'frame-change');
   }
   return filmSelection;
@@ -24066,7 +24072,7 @@ function refreshEditorViewVisualOverlays() {
   }
 }
 
-let stageFramesPlayback = { running: false, startFrameIndex: -1, projectTime: 0, fullDuration: 0, raf: 0, startedAt: 0, startProjectTime: 0, loopEnabled: false, currentFrameIndex: -1, arrivalFrameIndex: -1, arrivalPulseUntil: 0, passedFrameIndexes: new Set(), lastStoppedFrameIndex: -1 };
+let stageFramesPlayback = { running: false, startFrameIndex: -1, projectTime: 0, fullDuration: 0, raf: 0, startedAt: 0, startProjectTime: 0, loopEnabled: false, currentFrameIndex: -1, arrivalFrameIndex: -1, arrivalFadeStartedAt: 0, arrivalPulseUntil: 0, passedFrameIndexes: new Set(), lastStoppedFrameIndex: -1 };
 let stageFramesPlaybackRequestedFrameIndex = null;
 
 function captureStageFramesPlaybackStart(event) {
@@ -24127,7 +24133,14 @@ function clearStageFramesPlaybackArrivalFeedback() {
   removeStageFramesPlaybackArrivalFlash();
 }
 
-function applyStageFramesPlaybackTransientFrameFeedback() {
+function getStageFramesPlaybackArrivalOpacity(now = performance.now()) {
+  const startedAt = Number(stageFramesPlayback?.arrivalFadeStartedAt) || 0;
+  const until = Number(stageFramesPlayback?.arrivalPulseUntil) || 0;
+  if (!startedAt || until <= startedAt) return 0;
+  return Math.max(0, Math.min(1, (until - now) / (until - startedAt)));
+}
+
+function applyStageFramesPlaybackTransientFrameFeedback(arrivalOpacity = getStageFramesPlaybackArrivalOpacity()) {
   if (!stageFramesPlayback || !stageFramesPlayback.running) return;
   const invZ = 1 / editorZoomScale;
   for (let i = 0; i < frameCount; i++) {
@@ -24140,12 +24153,12 @@ function applyStageFramesPlaybackTransientFrameFeedback() {
     el.classList.remove('active', 'multi-selected');
     el.classList.toggle('stage-frames-playback-arrival', isArrival);
     el.classList.toggle('stage-frames-playback-past', isPast);
-    el.style.opacity = isArrival ? '1' : (isPast ? '0.28' : '0.88');
+    el.style.opacity = isArrival ? String(Math.max(0.28, arrivalOpacity)) : (isPast ? '0.28' : '0.88');
     el.style.zIndex = isArrival ? '1003' : (isPast ? '18' : '20');
     if (borderEl && !frameLocked[i]) {
-      borderEl.style.borderColor = isArrival ? '#04fff2' : FRAME_COLORS.distant.border;
+      borderEl.style.borderColor = isArrival ? ('rgba(4,255,242,' + arrivalOpacity + ')') : FRAME_COLORS.distant.border;
       borderEl.style.borderWidth = ((isArrival ? 5 : 3) * invZ) + 'px';
-      borderEl.style.boxShadow = isArrival ? ('0 0 ' + (18 * invZ) + 'px rgba(4,255,242,.86)') : 'none';
+      borderEl.style.boxShadow = isArrival ? ('0 0 ' + (18 * invZ) + 'px rgba(4,255,242,' + (0.86 * arrivalOpacity) + ')') : 'none';
     }
     if (numEl) {
       numEl.style.color = '';
@@ -24158,7 +24171,7 @@ function applyStageFramesPlaybackTransientFrameFeedback() {
   if (cornerHandleEls) cornerHandleEls.forEach(handle => handle.classList.remove('show'));
 }
 
-function renderStageFramesPlaybackArrivalFlash() {
+function renderStageFramesPlaybackArrivalFlash(arrivalOpacity = getStageFramesPlaybackArrivalOpacity()) {
   const frameIndex = stageFramesPlayback && stageFramesPlayback.arrivalFrameIndex;
   const sourceFrame = Number.isInteger(frameIndex) ? frames[frameIndex] : null;
   if (!stageFramesPlayback || !stageFramesPlayback.running || !sourceFrame) {
@@ -24180,6 +24193,7 @@ function renderStageFramesPlaybackArrivalFlash() {
   el.style.top = frame.y + 'px';
   el.style.width = frame.w + 'px';
   el.style.height = frame.h + 'px';
+  el.style.opacity = String(arrivalOpacity);
   const visual = el.querySelector('.stage-frames-playback-arrival-flash-visual');
   if (visual) {
     visual.style.transform = `rotate(${frameRotations[frameIndex] || 0}deg)`;
@@ -24245,7 +24259,8 @@ function updateStageFramesPlaybackPresentation(presentation, now = performance.n
   const previousFrameIndex = stageFramesPlayback.currentFrameIndex;
   const changedFrame = frameIndex >= 0 && previousFrameIndex >= 0 && frameIndex !== previousFrameIndex;
   if (changedFrame) {
-    // O pulso só dá legibilidade à chegada; o relógio e a geometria não param.
+    // A chegada vira uma luz que se dissolve; o relógio e a geometria não param.
+    stageFramesPlayback.arrivalFadeStartedAt = now;
     stageFramesPlayback.arrivalPulseUntil = now + 360;
     if (!(stageFramesPlayback.passedFrameIndexes instanceof Set)) stageFramesPlayback.passedFrameIndexes = new Set();
     // N→1 inicia uma nova leitura visual: os Frames futuros voltam a neutros.
@@ -24256,15 +24271,16 @@ function updateStageFramesPlaybackPresentation(presentation, now = performance.n
   }
   // Chegadas são só uma piscada: a pausa temporal não mantém o Frame marcado.
   const arrived = frameIndex >= 0 && now < stageFramesPlayback.arrivalPulseUntil;
+  const arrivalOpacity = arrived ? getStageFramesPlaybackArrivalOpacity(now) : 0;
   const shouldRevealTimeline = frameIndex >= 0 && frameIndex !== previousFrameIndex;
   stageFramesPlayback.currentFrameIndex = frameIndex;
   stageFramesPlayback.arrivalFrameIndex = arrived ? frameIndex : -1;
   if (shouldRevealTimeline) {
     commitFilmSelection(frameIndex, -1, 'stage-frames-playback-progress');
   }
-  applyStageFramesPlaybackTransientFrameFeedback();
+  applyStageFramesPlaybackTransientFrameFeedback(arrivalOpacity);
   applyTimelinePillFocusClasses();
-  renderStageFramesPlaybackArrivalFlash();
+  renderStageFramesPlaybackArrivalFlash(arrivalOpacity);
   syncStageFramesPlaybackTimeline();
 }
 
@@ -24314,6 +24330,7 @@ function stopStageFramesPlayback(options = {}) {
   clearStageFramesPlaybackArrivalFeedback();
   stageFramesPlayback.currentFrameIndex = -1;
   stageFramesPlayback.arrivalFrameIndex = -1;
+  stageFramesPlayback.arrivalFadeStartedAt = 0;
   stageFramesPlayback.arrivalPulseUntil = 0;
   cancelStageFramesPlaybackTimelineAnimation();
   lowerTimelineProgrammaticScrollUntil = 0;
@@ -24353,7 +24370,7 @@ function startStageFramesPlayback() {
   const fullDuration = Math.max(0.001, totalDurationFull());
   const startProjectTime = getStageFramesProjectTimeAtFrame(startFrameIndex);
   cancelStageFramesPlaybackTimelineAnimation();
-  stageFramesPlayback = { running: true, startFrameIndex, projectTime: startProjectTime, fullDuration, raf: 0, startedAt: performance.now(), startProjectTime, loopEnabled: playbackLoopEnabled, currentFrameIndex: -1, arrivalFrameIndex: -1, arrivalPulseUntil: 0, passedFrameIndexes: new Set(), lastStoppedFrameIndex: -1 };
+  stageFramesPlayback = { running: true, startFrameIndex, projectTime: startProjectTime, fullDuration, raf: 0, startedAt: performance.now(), startProjectTime, loopEnabled: playbackLoopEnabled, currentFrameIndex: -1, arrivalFrameIndex: -1, arrivalFadeStartedAt: 0, arrivalPulseUntil: 0, passedFrameIndexes: new Set(), lastStoppedFrameIndex: -1 };
   removeStageFramesPlaybackFrame();
   suppressStageFramesPlaybackSelectionVisuals();
   const initialPresentation = getStageFramesPlaybackPresentation(startProjectTime, fullDuration);

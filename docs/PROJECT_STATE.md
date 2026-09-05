@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-04 — v8z4b32E9BB: chegada contínua e dissolução no Play Frames
+
+- Novo retorno físico da E9AZ: apesar da timeline já percorrer o tempo corretamente, a moldura laranja ainda parecia pausar ao cruzar um Frame com pausa zero; o controle Play/Stop ainda podia exibir um contorno no próprio símbolo; e o pulso azul deveria se dissolver, não piscar abruptamente.
+- Causa comprovada da pausa: `commitFilmSelection(..., 'stage-frames-playback-progress')` ainda chamava `refreshAssetStageVisualGeometry()` a cada chegada. Essa reconstrução da pilha de assets concorria com o RAF da moldura. A cor da chegada fixa também estava presa por uma regra CSS `!important`, impedindo a atenuação gradual.
+- Correção: o avanço editorial da seleção preserva a atualização da timeline, mas não reconstrói assets durante o Play Frames. A chegada cria um azul ciano de opacidade 1 que decai linearmente por 360 ms no Frame e na luz auxiliar; a moldura permanece laranja e segue o relógio canônico. O SVG sólido Play/Stop passa a anular explicitamente o `stroke` herdado pela toolbar, sem criar caixa, borda ou pill.
+- QA automatizado: E9BA foi escrito para falhar com a reconstrução e exige zero chamadas a `refreshAssetStageVisualGeometry()` em uma chegada, além de confirmar a dissolução intermediária. E9AV também exige `stroke:none` no SVG. Validação física no preview da PR #554 continua obrigatória antes de merge; produção permanece intocada.
+
 ## Atualização 2026-09-04 — v8z4b32E9AZ: Play Frames segue o relógio do projeto
 
 - Retorno físico da E9AX: a atenuação visual ainda ficava um Frame atrasada e a faixa inferior saltava de chegada em chegada, em vez de representar o tempo real de cada trecho.
