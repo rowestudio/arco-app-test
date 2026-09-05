@@ -7315,3 +7315,44 @@ test('E9AW — Play Frames não herda superfície, transforma o Frame sem halo e
   await page.locator('#imageArea').click({ position: { x: 8, y: 8 } });
   await expect(page.locator('body')).not.toHaveClass(/stage-frames-playing/);
 });
+
+test('E9BG: asset multiselection state keeps the held anchor before a group exists', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9bg-test');
+    const base = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    for (let index = 1; index <= 2; index++) {
+      const clone = { ...base, id: `e9bg-selection-${index}`, zIndex: (Number(base.zIndex) || 0) + index };
+      assets.push(clone);
+    }
+    const ids = assets.filter(a => a && (a.type === 'image' || a.type === 'text')).slice(0, 3).map(a => String(a.id));
+    if (!beginAssetMultiSelection(ids[0])) throw new Error('could not begin asset multiselection');
+    const first = {
+      ids: [...selectedAssetIds],
+      mode: assetMultiSelectionModeActive,
+      group: isAssetMultiSelectionActive(),
+      anchor: assetMultiSelectionAnchorId,
+      active: selectedAssetId,
+    };
+    toggleAssetMultiSelection(ids[1]);
+    toggleAssetMultiSelection(ids[2]);
+    toggleAssetMultiSelection(ids[1]);
+    const afterToggle = [...selectedAssetIds];
+    clearAssetMultiSelection('e9bg-test');
+    return { first, afterToggle, afterClear: [...selectedAssetIds], modeAfter: assetMultiSelectionModeActive, anchorAfter: assetMultiSelectionAnchorId };
+  });
+
+  expect(result.first.ids).toHaveLength(1);
+  expect(result.first.mode).toBe(true);
+  expect(result.first.group).toBe(false);
+  expect(result.first.anchor).toBe(result.first.active);
+  expect(result.afterToggle).toHaveLength(2);
+  expect(result.afterClear).toEqual([]);
+  expect(result.modeAfter).toBe(false);
+  expect(result.anchorAfter).toBeNull();
+});

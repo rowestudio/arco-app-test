@@ -16617,6 +16617,12 @@ let activeSlotSelection = null; // último slot escolhido no seletor 3x3 (diagn�
 // projeto volta a null) e NUNCA aparece em Preview/Export.
 // ═══════════════════════════════════════
 let selectedAssetId = null;   // null | string — asset atualmente selecionado
+// E9BG — seleção múltipla de Ativos é estado editorial temporário. O modo
+// precisa existir já com o primeiro Ativo, pois o próximo toque em Camadas deve
+// adicionar/remover em vez de substituir a seleção única.
+let selectedAssetIds = new Set();
+let assetMultiSelectionModeActive = false;
+let assetMultiSelectionAnchorId = null;
 let editorMode = 'camera';    // 'camera' (frames/câmera) | 'assets' (mundo/imagens)
 
 // v8z4b30ZR — instrumentação da TRANSIÇÃO de modo (diagnóstico verificável).
@@ -16668,6 +16674,11 @@ function getSelectedAsset() {
 // selectedImageAssetId existe apenas para compatibilidade com o fluxo legado de
 // troca de imagem e sempre deriva desta seleção, nunca funciona em paralelo.
 function selectAssetById(assetId, source) {
+  if (!String(source || '').startsWith('asset-multi')) {
+    selectedAssetIds.clear();
+    assetMultiSelectionModeActive = false;
+    assetMultiSelectionAnchorId = null;
+  }
   const requestedId = assetId == null ? null : String(assetId);
   const asset = requestedId == null || !Array.isArray(assets) ? null : assets.find(function(candidate) {
     return candidate && String(candidate.id) === requestedId;
@@ -16698,6 +16709,53 @@ function selectAssetById(assetId, source) {
 }
 function setSelectedAsset(assetId, source) { return selectAssetById(assetId, source || 'legacy'); }
 function clearSelectedAsset(source) { return selectAssetById(null, source || 'clear'); }
+function isAssetMultiSelectionModeActive() { return assetMultiSelectionModeActive === true; }
+function isAssetMultiSelectionActive() { return assetMultiSelectionModeActive === true && selectedAssetIds.size > 1; }
+function getSelectedAssets() {
+  const byId = new Map((Array.isArray(assets) ? assets : []).filter(Boolean).map(function(asset) { return [String(asset.id), asset]; }));
+  return Array.from(selectedAssetIds).map(function(id) { return byId.get(String(id)); }).filter(Boolean);
+}
+function _getSelectableAssetById(assetId) {
+  return (Array.isArray(assets) ? assets : []).find(function(asset) {
+    return asset && (asset.type === 'image' || asset.type === 'text') && asset.visible !== false && !asset.locked && String(asset.id) === String(assetId);
+  }) || null;
+}
+function _refreshAssetMultiSelectionPresentation() {
+  renderAssetSelectionOverlay();
+  if (typeof renderLayersPanelList === 'function') renderLayersPanelList();
+  if (typeof syncAssetToolbarState === 'function') syncAssetToolbarState();
+  updateCanonicalAssetSelectionDiagnostics();
+}
+function beginAssetMultiSelection(assetId) {
+  const asset = _getSelectableAssetById(assetId);
+  if (!asset) return false;
+  selectedAssetIds = new Set([String(asset.id)]);
+  assetMultiSelectionModeActive = true;
+  assetMultiSelectionAnchorId = String(asset.id);
+  selectAssetById(asset.id, 'asset-multi-begin');
+  _refreshAssetMultiSelectionPresentation();
+  return true;
+}
+function clearAssetMultiSelection(reason) {
+  const hadMode = assetMultiSelectionModeActive || selectedAssetIds.size > 0 || assetMultiSelectionAnchorId != null;
+  selectedAssetIds.clear();
+  assetMultiSelectionModeActive = false;
+  assetMultiSelectionAnchorId = null;
+  selectAssetById(null, 'asset-multi-clear');
+  if (hadMode) _refreshAssetMultiSelectionPresentation();
+  return hadMode;
+}
+function toggleAssetMultiSelection(assetId) {
+  if (!assetMultiSelectionModeActive) return beginAssetMultiSelection(assetId);
+  const id = String(assetId);
+  if (id === String(assetMultiSelectionAnchorId || '')) return clearAssetMultiSelection('anchor-toggle');
+  const asset = _getSelectableAssetById(id);
+  if (!asset) return false;
+  if (selectedAssetIds.has(id)) selectedAssetIds.delete(id);
+  else selectedAssetIds.add(id);
+  _refreshAssetMultiSelectionPresentation();
+  return true;
+}
 
 // v8z4b30ZJ — defaults não destrutivos para tratar o asset como caixa visual
 // futura (crop/moldura). Com enabled:false NÃO alteram aparência/Preview/Export.
