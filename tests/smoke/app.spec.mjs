@@ -7315,3 +7315,211 @@ test('E9AW — Play Frames não herda superfície, transforma o Frame sem halo e
   await page.locator('#imageArea').click({ position: { x: 8, y: 8 } });
   await expect(page.locator('body')).not.toHaveClass(/stage-frames-playing/);
 });
+
+test('E9BG: asset multiselection state keeps the held anchor before a group exists', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9bg-test');
+    const base = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    for (let index = 1; index <= 2; index++) {
+      const clone = { ...base, id: `e9bg-selection-${index}`, zIndex: (Number(base.zIndex) || 0) + index };
+      assets.push(clone);
+    }
+    const ids = assets.filter(a => a && (a.type === 'image' || a.type === 'text')).slice(0, 3).map(a => String(a.id));
+    if (!beginAssetMultiSelection(ids[0])) throw new Error('could not begin asset multiselection');
+    const first = {
+      ids: [...selectedAssetIds],
+      mode: assetMultiSelectionModeActive,
+      group: isAssetMultiSelectionActive(),
+      anchor: assetMultiSelectionAnchorId,
+      active: selectedAssetId,
+    };
+    toggleAssetMultiSelection(ids[1]);
+    toggleAssetMultiSelection(ids[2]);
+    toggleAssetMultiSelection(ids[1]);
+    const afterToggle = [...selectedAssetIds];
+    clearAssetMultiSelection('e9bg-test');
+    return { first, afterToggle, afterClear: [...selectedAssetIds], modeAfter: assetMultiSelectionModeActive, anchorAfter: assetMultiSelectionAnchorId };
+  });
+
+  expect(result.first.ids).toHaveLength(1);
+  expect(result.first.mode).toBe(true);
+  expect(result.first.group).toBe(false);
+  expect(result.first.anchor).toBe(result.first.active);
+  expect(result.afterToggle).toHaveLength(2);
+  expect(result.afterClear).toEqual([]);
+  expect(result.modeAfter).toBe(false);
+  expect(result.anchorAfter).toBeNull();
+});
+
+test('E9BG: group layer reorder preserves selected member order', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9bg-order-test');
+    const base = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    const seeded = [0, 1, 2, 3].map(index => ({ ...base, id: `e9bg-order-${index}`, zIndex: index }));
+    assets = seeded;
+    beginAssetMultiSelection(seeded[0].id);
+    toggleAssetMultiSelection(seeded[2].id);
+    const changed = moveSelectedAssetsToLayerIndex(0);
+    const ordered = assets.slice().sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)).map(a => String(a.id));
+    return { changed, ordered, selected: [...selectedAssetIds] };
+  });
+
+  expect(result.changed).toBe(true);
+  expect(result.ordered.slice(0, 2)).toEqual(['e9bg-order-2', 'e9bg-order-0']);
+  expect(result.selected).toEqual(['e9bg-order-0', 'e9bg-order-2']);
+});
+
+test('E9BG: group move applies one world delta to every selected asset', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9bg-move-test');
+    const base = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    const first = { ...base, id: 'e9bg-move-a', worldX: 10, worldY: 20, worldW: 40, worldH: 50, zIndex: 0 };
+    const second = { ...base, id: 'e9bg-move-b', worldX: 100, worldY: 120, worldW: 60, worldH: 70, zIndex: 1 };
+    assets = [first, second];
+    beginAssetMultiSelection(first.id);
+    toggleAssetMultiSelection(second.id);
+    const geometry = getAssetMultiSelectionGeometry();
+    const changed = applyAssetMultiMove(25, -15);
+    return { geometry, changed, first: { x: first.worldX, y: first.worldY }, second: { x: second.worldX, y: second.worldY } };
+  });
+
+  expect(result.geometry.w).toBeGreaterThan(0);
+  expect(result.geometry.h).toBeGreaterThan(0);
+  expect(result.changed).toBe(true);
+  expect(result.first).toEqual({ x: 35, y: 5 });
+  expect(result.second).toEqual({ x: 125, y: 105 });
+});
+
+test('E9BG: group transforms preserve each asset depth and relative group geometry', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9bg-transform-test');
+    const base = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    const first = { ...base, id: 'e9bg-transform-a', worldX: 10, worldY: 20, worldW: 40, worldH: 50, depth: 0, rotation: 0, zIndex: 0 };
+    const second = { ...base, id: 'e9bg-transform-b', worldX: 110, worldY: 20, worldW: 40, worldH: 50, depth: 52, rotation: 0, zIndex: 1 };
+    assets = [first, second];
+    beginAssetMultiSelection(first.id);
+    toggleAssetMultiSelection(second.id);
+    const group = getAssetMultiSelectionGeometry();
+    const snapshot = captureAssetMultiVisualSnapshot();
+    const scaled = applyAssetMultiScaleFromSnapshot(snapshot, group, 1.5);
+    const afterScale = { first: { x:first.worldX, y:first.worldY, w:first.worldW, h:first.worldH, depth:first.depth }, second: { x:second.worldX, y:second.worldY, w:second.worldW, h:second.worldH, depth:second.depth } };
+    const rotationSnapshot = captureAssetMultiVisualSnapshot();
+    const rotationGroup = getAssetMultiSelectionGeometry();
+    const rotated = applyAssetMultiRotationFromSnapshot(rotationSnapshot, rotationGroup, 90);
+    return { scaled, rotated, afterScale, rotations: [first.rotation, second.rotation], depths: [first.depth, second.depth] };
+  });
+
+  expect(result.scaled).toBe(true);
+  expect(result.rotated).toBe(true);
+  expect(result.afterScale.first.w).toBeCloseTo(60, 5);
+  expect(result.afterScale.second.w).toBeCloseTo(60, 5);
+  expect(result.depths).toEqual([0, 52]);
+  expect(result.rotations).toEqual([90, 90]);
+});
+
+test('E9BG: group front and back preserve the selected stack order', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9bg-step-test');
+    const base = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    assets = [0, 1, 2, 3].map(index => ({ ...base, id: `e9bg-step-${index}`, zIndex: index + 1 }));
+    beginAssetMultiSelection('e9bg-step-1');
+    toggleAssetMultiSelection('e9bg-step-2');
+    const forward = moveSelectedAssetGroupByLayerStep(1);
+    const afterForward = assets.slice().sort((a, b) => a.zIndex - b.zIndex).map(a => a.id);
+    const backward = moveSelectedAssetGroupByLayerStep(-1);
+    const afterBackward = assets.slice().sort((a, b) => a.zIndex - b.zIndex).map(a => a.id);
+    return { forward, backward, afterForward, afterBackward };
+  });
+  expect(result.forward).toBe(true);
+  expect(result.afterForward).toEqual(['e9bg-step-0', 'e9bg-step-3', 'e9bg-step-1', 'e9bg-step-2']);
+  expect(result.backward).toBe(true);
+  expect(result.afterBackward).toEqual(['e9bg-step-0', 'e9bg-step-1', 'e9bg-step-2', 'e9bg-step-3']);
+});
+
+test('E9BG: transparent image pixels let the Stage hit-test reach the lower asset', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  const result = await page.evaluate(async () => {
+    setEditorMode('assets', 'e9bg-alpha-hit-test');
+    const base = assets.find(a => a && a.type === 'image');
+    const opaqueSvg = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#00f"/></svg>');
+    const transparentSvg = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="20" fill="#f00"/></svg>');
+    const lower = { ...base, id:'e9bg-alpha-lower', worldX:0, worldY:0, worldW:100, worldH:100, zIndex:1, src:opaqueSvg, _img:null };
+    const upper = { ...base, id:'e9bg-alpha-upper', worldX:0, worldY:0, worldW:100, worldH:100, zIndex:2, src:transparentSvg, _img:null };
+    assets = [lower, upper]; renderProjectWorldExtraImages();
+    await new Promise(resolve => setTimeout(resolve, 80));
+    const rect = resolveAssetStageVisualGeometry(upper).visualRect;
+    return { corner:hitTestAssetAtWorld(rect.x + 5, rect.y + 5)?.id || null, center:hitTestAssetAtWorld(rect.x + rect.w / 2, rect.y + rect.h / 2)?.id || null };
+  });
+  expect(result.corner).toBe('e9bg-alpha-lower');
+  expect(result.center).toBe('e9bg-alpha-upper');
+});
+
+test('E9BG: contextual scale and rotation affect an asset group only', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9bg-context-group');
+    const base = assets.find(a => a && a.type === 'image');
+    const first = { ...base, id:'e9bg-context-a', worldX:0, worldY:0, worldW:40, worldH:40, zIndex:1, depth:0, opacity:.4 };
+    const second = { ...base, id:'e9bg-context-b', worldX:100, worldY:0, worldW:40, worldH:40, zIndex:2, depth:25, opacity:.8 };
+    assets = [first, second]; beginAssetMultiSelection(first.id); toggleAssetMultiSelection(second.id);
+    renderLayersPanelList();
+    const selectedRows = [...document.querySelectorAll('#layersList .layers-item.multi-selected')].map(row => row.dataset.assetId).sort();
+    const undoBefore = undoStack.length;
+    openAssetContextPanel('scale'); setAssetContextValue(150); commitAssetContextGesture();
+    const undoAfterScale = undoStack.length;
+    openAssetContextPanel('rotation'); setAssetContextValue(90); commitAssetContextGesture();
+    const undoAfterRotation = undoStack.length;
+    undo();
+    const afterUndoRotation = assets.filter(a => a && a.id.startsWith('e9bg-context-')).map(a => a.rotation);
+    undo();
+    const afterUndoScale = assets.filter(a => a && a.id.startsWith('e9bg-context-')).map(a => a.worldW);
+    return { sizes:[first.worldW, second.worldW], rotations:[first.rotation, second.rotation], depths:[first.depth, second.depth], opacity:[first.opacity, second.opacity], depthDisabled:document.getElementById('tbAssetDepth').classList.contains('asset-tool-disabled'), opacityDisabled:document.getElementById('tbAssetOpacity').classList.contains('asset-tool-disabled'), selectedRows, undoBefore, undoAfterScale, undoAfterRotation, afterUndoRotation, afterUndoScale };
+  });
+  expect(result.selectedRows).toEqual(['e9bg-context-a', 'e9bg-context-b']);
+  expect(result.undoAfterScale).toBe(result.undoBefore + 1);
+  expect(result.undoAfterRotation).toBe(result.undoAfterScale + 1);
+  expect(result.afterUndoRotation).toEqual([0, 0]);
+  expect(result.afterUndoScale[0]).toBeCloseTo(40, 5);
+  expect(result.afterUndoScale[1]).toBeCloseTo(40, 5);
+  expect(result.depths).toEqual([0, 25]);
+  expect(result.opacity).toEqual([.4, .8]);
+  expect(result.depthDisabled).toBe(true);
+  expect(result.opacityDisabled).toBe(true);
+});

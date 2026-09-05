@@ -1,5 +1,12 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-05 — seleção múltipla de Ativos aprovada para próxima frente
+
+- Roberto aprovou uma seleção múltipla temporária de imagens e Text Assets iniciada exclusivamente no painel de Camadas: toque prolongado sem arrastar escolhe o primeiro; toques simples ajustam o conjunto; segurar novamente o Ativo inicial ou tocar fora o encerra.
+- O Stage transforma o conjunto por caixa coletiva (mover, escala e rotação); ações contextuais aplicam escala/rotação relativas por Ativo; Frente/Trás e drag no painel reordenam o conjunto preservando sua ordem interna. Transparência de imagens deve deixar o toque alcançar o Ativo abaixo; texto mantém hit-test por caixa.
+- A caixa coletiva no Stage deve usar a geometria visual resolvida, incluindo parallax por profundidade, e converter a edição de volta para a geometria canônica de cada Ativo sem mudar profundidade.
+- A funcionalidade ainda não foi implementada. Especificação aprovada: `docs/superpowers/specs/2026-09-05-asset-multiselection-design.md`.
+
 ## Atualização 2026-09-05 — E9BF: ações manuais separadas de Movimento Inteligente
 
 - Decisão de UX aprovada por Roberto: o globo “Aplicar a todos” não pode ficar ao lado de Movimento Inteligente, pois o modo atual é global por canal e não possui exceção local por trecho.
@@ -789,3 +796,13 @@ A cobertura permanente separa capacidade funcional de Text Asset (WebKit/Linux a
 - A E8Z adiciona ao Text Asset a caixa canônica `block`, com fundo sólido opcional, opacidade independente e padding fixo em `em`, preservando wrapping e centro ao alternar o fundo.
 - Stage e o compositor Canvas compartilhado por Preview/Export usam o mesmo modelo persistido. Padding customizável, estilos por linha, presença temporal e animação permanecem futuros e separados.
 - A revisão geral de interface/contraste permanece tarefa separada e não bloqueia esta entrega funcional.
+
+## Atualização 2026-09-05 — v8z4b32E9BG em PR
+
+- Seleção múltipla de Assets começa exclusivamente por toque longo sem arrastar no painel Camadas; toques simples compõem ou removem a seleção e novo toque longo no ativo âncora limpa o grupo.
+- O Stage exibe uma única moldura de grupo e aplica mover, escala uniforme e rotação coletiva pela geometria visual resolvida, incluindo paralaxe. Cada ativo mantém `depth`, opacidade, timing, visibilidade e identidade de camada próprios.
+- Frente/Trás deslocam as camadas selecionadas uma posição, sem inverter a ordem interna; arrastar em Camadas reposiciona o grupo. Imagens PNG com pixel transparente deixam o hit-test alcançar o ativo abaixo; texto segue com caixa retangular selecionável.
+- Os controles contextuais de Escala e Rotação também aplicam ao grupo. Profundidade, Opacidade, Tempo, troca, cópia, duplicação e exclusão ficam explicitamente individuais durante multi-seleção.
+- Evidência automatizada: sete casos E9BG passam em `webkit-mobile-smoke`. Validação visual em iPhone/Safari e publicação de preview continuam obrigatórias antes de merge; produção não está autorizada.
+- Revisão da PR #558: a seleção múltipla recebe marcação explícita em cada miniatura de Camadas; Escala e Rotação contextuais do grupo registram um Undo por gesto e restauram os ativos afetados. Cobertura E9BG inclui ambos os casos.
+- Correção de gate da PR #558: fora da multi-seleção, o bloqueio de camada volta a avaliar o Ativo selecionado individualmente; painel contextual e ferramentas permanecem indisponíveis para camada bloqueada. Teste E9I e os sete testes E9BG passam localmente em WebKit.
