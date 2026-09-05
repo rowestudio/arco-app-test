@@ -804,3 +804,4 @@ A cobertura permanente separa capacidade funcional de Text Asset (WebKit/Linux a
 - Frente/Trás deslocam as camadas selecionadas uma posição, sem inverter a ordem interna; arrastar em Camadas reposiciona o grupo. Imagens PNG com pixel transparente deixam o hit-test alcançar o ativo abaixo; texto segue com caixa retangular selecionável.
 - Os controles contextuais de Escala e Rotação também aplicam ao grupo. Profundidade, Opacidade, Tempo, troca, cópia, duplicação e exclusão ficam explicitamente individuais durante multi-seleção.
 - Evidência automatizada: sete casos E9BG passam em `webkit-mobile-smoke`. Validação visual em iPhone/Safari e publicação de preview continuam obrigatórias antes de merge; produção não está autorizada.
+- Revisão da PR #558: a seleção múltipla recebe marcação explícita em cada miniatura de Camadas; Escala e Rotação contextuais do grupo registram um Undo por gesto e restauram os ativos afetados. Cobertura E9BG inclui ambos os casos.
