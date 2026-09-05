@@ -1,5 +1,20 @@
 # REGRESSIONS
 
+## REG-070 — mutações de geometria ou retorno de Configurações reiniciam o PWA no iPhone/Safari
+
+- **Relato físico:** editar Frames ou Ativos no Stage pode encerrar e reiniciar o aplicativo: escalar (alça ou menu contextual), mover e rotacionar Frames, mover Ativos e retornar do menu Configurações. O problema ocorre com Frames diferentes e também sem zoom alto.
+- **Mecanismo confirmado / causa física ainda a validar:** `renderProjectWorldExtraImages()` removia e recriava todos os `<img>` e Text Assets do Stage em cada recomposição. Gestos contínuos e o retorno de painéis acionam essa recomposição repetidamente, reiniciando decode/composição de fontes grandes no Safari. A validação física ainda precisa confirmar que a eliminação desse ciclo remove a reinicialização do PWA.
+- **Correção E9AR:** reutilizar o nó DOM de cada asset quando sua identidade e fonte não mudam; atualizar somente geometria, opacidade, ordem e estilo. Nós que não correspondem mais a assets ativos continuam removidos apenas para assets apagados, invisíveis ou drafts encerrados.
+- **Correção complementar E9AR:** nós reutilizados removem a classe transitória de referência selecionada quando o ativo volta a estar presente; o carregamento de projeto também limpa a observação diagnóstica vinculada ao DOM anterior. Isso preserva a semântica visual e diagnóstica que antes era obtida pela recriação do nó.
+- **Teste preventivo:** smoke REG-070 exige estabilidade de identidade dos nós visuais após várias mutações de Frame e após mutação de Ativo.
+- **Status:** correção técnica em desenvolvimento; validação física iPhone/Safari obrigatória antes de merge.
+
+## REG-071 — Frame sobreposto impede selecionar a borda visível do Frame atrás
+
+- **Relato físico:** quando um Frame grande está à frente, ele captura o toque sobre Frames atrás, inclusive onde a borda/área do Frame de trás ainda está visível; isso impede a edição precisa.
+- **Regra aprovada:** toda borda ou geometria de Frame visualmente exposta deve permanecer selecionável sem mover o Frame que está à frente. A experiência em regiões completamente cobertas não está definida; não implementar ciclo automático, troca de z-index ou seleção arbitrária sem decisão explícita.
+- **Status:** aberta, separada da REG-070 para não misturar a correção de estabilidade do PWA com mudança de hit-test.
+
 ## REG-072 — lentidão percebida ao mover elementos no Stage
 
 - **Relato físico (Roberto, iPhone/Safari/PWA):** após a interrupção das reinicializações observadas antes, o movimento de elementos no Stage ainda parece lento.

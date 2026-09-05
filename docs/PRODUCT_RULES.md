@@ -1,5 +1,10 @@
 # PRODUCT_RULES
 
+## Frames sobrepostos (REG-071)
+
+- Uma borda ou geometria de Frame que esteja visivelmente exposta deve ser selecionável mesmo quando outro Frame maior está à frente.
+- Para uma região completamente coberta, nenhuma regra de ciclo automático, mudança de ordem ou seleção arbitrária é inferida sem nova decisão de produto.
+
 ## Regra REG-071 — seleção de Frames sobrepostos preserva alcance de edição
 
 - Um Frame grande à frente não pode tornar um Frame atrás inalcançável quando a borda ou outra geometria visível do alvo está exposta. A interação direta no Stage deve permitir selecionar o Frame visível pretendido sem mover antes o Frame de cima.
