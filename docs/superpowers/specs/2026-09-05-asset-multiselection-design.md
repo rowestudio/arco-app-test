@@ -27,8 +27,10 @@ Camadas. A experiência não cria um grupo persistente no projeto.
 
 ## Transformação no Stage
 
-O Stage apresenta uma única caixa coletiva, calculada como a união visual dos
-Ativos selecionados, com um único sistema de abas/alças.
+O Stage apresenta uma única caixa coletiva, calculada como a união da geometria
+visual já resolvida dos Ativos selecionados (incluindo parallax de profundidade),
+com um único sistema de abas/alças. Cada gesto é convertido de volta para a
+geometria canônica própria de cada Ativo, sem alterar sua profundidade.
 
 - Movimento aplica a mesma translação a todos os Ativos.
 - Escala é uniforme em torno do centro da caixa coletiva: posições, dimensões e

@@ -16715,6 +16715,52 @@ function getSelectedAssets() {
   const byId = new Map((Array.isArray(assets) ? assets : []).filter(Boolean).map(function(asset) { return [String(asset.id), asset]; }));
   return Array.from(selectedAssetIds).map(function(id) { return byId.get(String(id)); }).filter(Boolean);
 }
+function getAssetMultiSelectionGeometry() {
+  const selected = getSelectedAssets();
+  if (!selected.length) return null;
+  let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+  selected.forEach(function(asset) {
+    const rect = resolveAssetStageVisualGeometry(asset).visualRect;
+    left = Math.min(left, rect.x);
+    top = Math.min(top, rect.y);
+    right = Math.max(right, rect.x + rect.w);
+    bottom = Math.max(bottom, rect.y + rect.h);
+  });
+  if (![left, top, right, bottom].every(Number.isFinite) || right <= left || bottom <= top) return null;
+  return { x: left, y: top, w: right - left, h: bottom - top, cx: (left + right) / 2, cy: (top + bottom) / 2 };
+}
+function captureAssetMultiVisualSnapshot() {
+  return getSelectedAssets().map(function(asset) {
+    const resolved = resolveAssetStageVisualGeometry(asset);
+    return {
+      assetId: String(asset.id),
+      worldX: Number(asset.worldX) || 0,
+      worldY: Number(asset.worldY) || 0,
+      visualX: Number(resolved.visualRect.x) || 0,
+      visualY: Number(resolved.visualRect.y) || 0,
+      parallaxOffsetX: Number(resolved.parallaxOffset.offsetX) || 0,
+      parallaxOffsetY: Number(resolved.parallaxOffset.offsetY) || 0
+    };
+  });
+}
+function applyAssetMultiMoveFromSnapshot(snapshot, deltaX, deltaY) {
+  if (!Array.isArray(snapshot) || !snapshot.length || !Number.isFinite(deltaX) || !Number.isFinite(deltaY)) return false;
+  let changed = false;
+  snapshot.forEach(function(start) {
+    const asset = _getSelectableAssetById(start.assetId);
+    if (!asset) return;
+    // O deslocamento é medido na geometria VISUAL (já com paralaxe). A escrita
+    // volta ao modelo canônico sem tocar na profundidade do asset.
+    asset.worldX = start.worldX + deltaX;
+    asset.worldY = start.worldY + deltaY;
+    changed = true;
+  });
+  return changed;
+}
+function applyAssetMultiMove(deltaX, deltaY) {
+  if (!isAssetMultiSelectionActive() || !Number.isFinite(deltaX) || !Number.isFinite(deltaY)) return false;
+  return applyAssetMultiMoveFromSnapshot(captureAssetMultiVisualSnapshot(), deltaX, deltaY);
+}
 function _getSelectableAssetById(assetId) {
   return (Array.isArray(assets) ? assets : []).find(function(asset) {
     return asset && (asset.type === 'image' || asset.type === 'text') && asset.visible !== false && !asset.locked && String(asset.id) === String(assetId);
@@ -37532,7 +37578,8 @@ function handleStageAssetSelectPointer(e) {
     e.preventDefault();
     e.stopPropagation();
     if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-    selectAssetById(hit.id, 'stage');
+    const preserveGroup = isAssetMultiSelectionActive() && selectedAssetIds.has(String(hit.id));
+    if (!preserveGroup) selectAssetById(hit.id, 'stage');
     const _main = getMainImageAsset();
     if (_main && hit.id === _main.id) stageTapSelectedBaseAssetId = String(hit.id);
     else stageTapSelectedNewAssetId = String(hit.id);
@@ -37547,7 +37594,8 @@ function handleStageAssetSelectPointer(e) {
   if (document.getElementById('layersPanel')?.classList.contains('show')) { closeLayersPanel(); return false; }
   // Área vazia: limpar seleção. NÃO bloquear o evento, para que o pan/navegação
   // do mundo (dois dedos / pan mode) continue funcionando normalmente.
-  clearSelectedAsset();
+  if (isAssetMultiSelectionModeActive()) clearAssetMultiSelection('stage-empty');
+  else clearSelectedAsset();
   emptyStageDragStillPansWorld = true;
   // v8z4b30ZZ — item 2: tocar no Stage NÃO desliga mais as referências.
   // A visibilidade de referências só alterna pelo ícone do Modo Ativos.
@@ -37574,6 +37622,7 @@ function _armAssetMove(e, asset, worldPoint) {
   assetMoveInAssetsModeEnabled = true;
   assetMoveOnlyInAssetsMode = true;
   try { imageArea.setPointerCapture && imageArea.setPointerCapture(e.pointerId); } catch (_) {}
+  const groupSnapshot = isAssetMultiSelectionActive() && selectedAssetIds.has(String(asset.id)) ? captureAssetMultiVisualSnapshot() : null;
   assetDragState = {
     pointerId: e.pointerId,
     assetId: asset.id,
@@ -37584,6 +37633,7 @@ function _armAssetMove(e, asset, worldPoint) {
     startAssetY: asset.worldY || 0,
     startWorldX: worldPoint.x,
     startWorldY: worldPoint.y,
+    groupSnapshot: groupSnapshot,
     moved: false,
     undoSnapshot: null
   };
@@ -37609,14 +37659,21 @@ function handleStageAssetMovePointer(e) {
   e.preventDefault();
   if (e.stopPropagation) e.stopPropagation();
   if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-  const asset = (Array.isArray(assets) ? assets : []).find(function(a){ return a && a.id === assetDragState.assetId; });
-  if (!asset) return;
   computeEditorTransform();
   const sc = screenToStageCoord(e.clientX, e.clientY);
   const wp = editorStageToWorld(sc.x, sc.y);
-  // Delta em coordenadas de MUNDO — APENAS X/Y.
-  asset.worldX = assetDragState.startAssetX + (wp.x - assetDragState.startWorldX);
-  asset.worldY = assetDragState.startAssetY + (wp.y - assetDragState.startWorldY);
+  // Delta em coordenadas de MUNDO. Para grupo, cada asset parte da sua geometria
+  // visual resolvida, mantendo profundidade e coordenadas canônicas independentes.
+  const deltaX = wp.x - assetDragState.startWorldX;
+  const deltaY = wp.y - assetDragState.startWorldY;
+  if (assetDragState.groupSnapshot) {
+    applyAssetMultiMoveFromSnapshot(assetDragState.groupSnapshot, deltaX, deltaY);
+  } else {
+    const asset = (Array.isArray(assets) ? assets : []).find(function(a){ return a && a.id === assetDragState.assetId; });
+    if (!asset) return;
+    asset.worldX = assetDragState.startAssetX + deltaX;
+    asset.worldY = assetDragState.startAssetY + deltaY;
+  }
   invalidateProjectWorldComposite();
   assetMoveInvalidatedComposite = true;
   renderProjectWorldExtraImages();
@@ -37648,7 +37705,7 @@ function endStageAssetMovePointer(e, cancelled = false) {
   if (ds.undoSnapshot && typeof pushUndoSnapshot === 'function') {
     pushUndoSnapshot(ds.undoSnapshot);
     assetMoveUndoRegistered = true;
-    lastUndoAction = 'moveImageAsset';
+    lastUndoAction = ds.groupSnapshot ? 'moveAssetGroup' : 'moveImageAsset';
   }
   if (asset) {
     lastAssetMoveId = String(asset.id);

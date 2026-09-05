@@ -5,6 +5,7 @@
 - **Decisão:** a primeira entrega de seleção múltipla abrange imagens e Text Assets. Ela nasce no painel de Camadas por toque prolongado sem arrasto, e mantém um conjunto canônico temporário — não cria grupo persistido no projeto.
 - **Interação:** toques simples acrescentam/removem Ativos; segurar de novo o Ativo inicial ou tocar fora encerra o conjunto. O Stage apresenta uma caixa coletiva para mover, escalar e rotacionar todos em torno de seu centro. Pelo painel contextual, escala e rotação aplicam ajustes relativos a cada Ativo em torno do respectivo centro.
 - **Ordem:** Frente/Trás movem o conjunto uma posição na pilha preservando sua ordem interna; arrastar uma Camada selecionada reposiciona toda a seleção.
+- **Parallax:** no Stage, a caixa coletiva e seus gestos usam a posição visual resolvida de cada Ativo, incluindo o parallax de profundidade; o resultado é convertido de volta para a geometria canônica individual sem mudar `depth`.
 - **Limite:** opacidade, profundidade, visibilidade, timing e efeitos coletivos ficam fora da primeira entrega. Preview, Export, Frames, curvas, timing e ProjectWorld não mudam. O desenho completo está em `docs/superpowers/specs/2026-09-05-asset-multiselection-design.md`.
 
 ## DEC-2026-09-05-02 — ações globais somente no modo manual do Movimento

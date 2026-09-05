@@ -7380,3 +7380,30 @@ test('E9BG: group layer reorder preserves selected member order', async ({ page 
   expect(result.ordered.slice(0, 2)).toEqual(['e9bg-order-2', 'e9bg-order-0']);
   expect(result.selected).toEqual(['e9bg-order-0', 'e9bg-order-2']);
 });
+
+test('E9BG: group move applies one world delta to every selected asset', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9bg-move-test');
+    const base = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    const first = { ...base, id: 'e9bg-move-a', worldX: 10, worldY: 20, worldW: 40, worldH: 50, zIndex: 0 };
+    const second = { ...base, id: 'e9bg-move-b', worldX: 100, worldY: 120, worldW: 60, worldH: 70, zIndex: 1 };
+    assets = [first, second];
+    beginAssetMultiSelection(first.id);
+    toggleAssetMultiSelection(second.id);
+    const geometry = getAssetMultiSelectionGeometry();
+    const changed = applyAssetMultiMove(25, -15);
+    return { geometry, changed, first: { x: first.worldX, y: first.worldY }, second: { x: second.worldX, y: second.worldY } };
+  });
+
+  expect(result.geometry.w).toBeGreaterThan(0);
+  expect(result.geometry.h).toBeGreaterThan(0);
+  expect(result.changed).toBe(true);
+  expect(result.first).toEqual({ x: 35, y: 5 });
+  expect(result.second).toEqual({ x: 125, y: 105 });
+});

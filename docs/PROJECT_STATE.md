@@ -4,6 +4,7 @@
 
 - Roberto aprovou uma seleção múltipla temporária de imagens e Text Assets iniciada exclusivamente no painel de Camadas: toque prolongado sem arrastar escolhe o primeiro; toques simples ajustam o conjunto; segurar novamente o Ativo inicial ou tocar fora o encerra.
 - O Stage transforma o conjunto por caixa coletiva (mover, escala e rotação); ações contextuais aplicam escala/rotação relativas por Ativo; Frente/Trás e drag no painel reordenam o conjunto preservando sua ordem interna. Transparência de imagens deve deixar o toque alcançar o Ativo abaixo; texto mantém hit-test por caixa.
+- A caixa coletiva no Stage deve usar a geometria visual resolvida, incluindo parallax por profundidade, e converter a edição de volta para a geometria canônica de cada Ativo sem mudar profundidade.
 - A funcionalidade ainda não foi implementada. Especificação aprovada: `docs/superpowers/specs/2026-09-05-asset-multiselection-design.md`.
 
 ## Atualização 2026-09-05 — E9BF: ações manuais separadas de Movimento Inteligente
