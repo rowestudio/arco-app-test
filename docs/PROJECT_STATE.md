@@ -1,8 +1,8 @@
 # PROJECT_STATE
 
-## Atualização 2026-09-05 — regressão aberta: escala de Frame reinicia o PWA
+## Atualização 2026-09-05 — regressão aberta: mutações de geometria de Frame reiniciam o PWA
 
-- Roberto relatou reinicializações completas do PWA em iPhone/Safari ao tentar ampliar Frames na `v8z4b32E9BC`, incluindo Frame 1 e outro Frame. A rotação funciona; a falha também foi reproduzida sem zoom, portanto zoom alto não é condição necessária. O diagnóstico anterior conserva geometria finita e ausência de exceção; ainda não há causa demonstrada para a reinicialização.
+- Roberto relatou reinicializações completas do PWA em iPhone/Safari ao ampliar Frames na `v8z4b32E9BC`, incluindo Frame 1 e outro Frame, e também ao mover um Frame. A rotação funciona; a falha também foi reproduzida sem zoom, portanto zoom alto não é condição necessária. O diagnóstico anterior conserva geometria finita e ausência de exceção; ainda não há causa demonstrada para a reinicialização.
 - A mesma reinicialização também ocorre pelo painel contextual de Escala, excluindo a alça como causa única. A REG-071 foi aberta em paralelo: em Frames sobrepostos, o Frame à frente captura a seleção e deixa os demais inalcançáveis; a regra aprovada é preservar seleção pela geometria/borda visível do alvo. Não houve mudança funcional, nova versão, merge ou promoção decorrente destes registros.
 
 ## Atualização 2026-09-04 — v8z4b32E9BC: chegada sem halo e timeline sem retenção visual
