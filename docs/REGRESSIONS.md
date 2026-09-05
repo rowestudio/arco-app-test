@@ -1,5 +1,13 @@
 # REGRESSIONS
 
+## REG-069 — Frame único estático omitia ativos após o instante inicial
+
+- **Relato:** em projeto com um único Frame e sem pausas/segmentos, Preview e MP4 mostravam o Frame no início e depois somente o fundo cinza.
+- **Causa comprovada:** `getDurationParts()` aplicava a duração estática efetiva de 4 s, enquanto `getTemporalProjectDuration()` somava apenas segmentos, pausas e Loop e retornava 0 s. A saída implícita do ativo, portanto, era 0 s.
+- **Correção E9AP:** a duração temporal recebe o mesmo fallback estático somente para um Frame sem duração somada; `duration` é congelada no snapshot de Preview/Export e reconstituída no contexto temporal de render.
+- **Teste preventivo:** smoke WebKit `E9AP — Frame único estático mantém o asset em Preview e MP4 durante toda a duração efetiva` verifica presença e desenho reais em 0, 2 e 4 s para ambos os destinos, além de preservar o cálculo de dois Frames.
+- **Status:** corrigida tecnicamente na `v8z4b32E9AP`; validação física em iPhone/Safari permanece pendente antes de merge.
+
 ## REG-068 — Preview pós-MP4 perde o contexto canônico de Text Assets
 
 - **Relato físico:** o MP4 contém o Text Asset corretamente, mas o Preview que retoma logo após a geração pode deixá-lo ausente.
