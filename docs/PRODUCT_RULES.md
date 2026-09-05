@@ -1,5 +1,10 @@
 # PRODUCT_RULES
 
+## Regra REG-071 — seleção de Frames sobrepostos preserva alcance de edição
+
+- Um Frame grande à frente não pode tornar um Frame atrás inalcançável quando a borda ou outra geometria visível do alvo está exposta. A interação direta no Stage deve permitir selecionar o Frame visível pretendido sem mover antes o Frame de cima.
+- Esta regra não define ainda seleção em uma área de sobreposição total, ciclo automático de Frames, nem mudança de z-index; essas alternativas exigem decisão explícita antes de implementação.
+
 ## Regra E9AW — Play de Frames precisa de presença física e parada global
 
 - Play e Stop não podem herdar a célula genérica `.tb-item`: são ícone e label ciano sem borda, caixa, fundo, pill, outline, sombra ou estado pressionado perceptível.

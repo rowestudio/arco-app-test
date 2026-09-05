@@ -3,11 +3,19 @@
 ## REG-070 — escala de Frames reinicia o PWA no iPhone/Safari
 
 - **Relato físico (Roberto, iPhone/Safari/PWA):** na `v8z4b32E9BC`, a rotação do Frame 1 funcionou, mas a tentativa de ampliá-lo reiniciou integralmente o aplicativo em tentativas repetidas. A mesma reinicialização foi relatada ao escalar outro Frame, portanto não é específica do Frame 1. O primeiro relato ocorreu em zoom alto; a reprodução posterior ocorreu também sem zoom. Portanto, zoom alto pode tornar o problema mais evidente, mas não é condição necessária.
+- **Canal adicional confirmado:** a mesma reinicialização ocorre ao ampliar pelo painel contextual de Frames. Assim, a falha não está limitada à alça direta nem à decisão de gesto escala×rotação.
 - **Condições observadas:** Modo Frames, 8 Frames. No primeiro diagnóstico, Frame 7 estava ativo (índice 6), zoom `2,5534` dentro do limite permitido de `4`, pan `(-294,15, -218,35)`, Frame finito de `233,21 × 414,60` no ProjectWorld, rotação `6,5°`, proxy editorial `1375 × 2048` e `memoryRiskLevel: medium`. O diagnóstico não indica `NaN`/`Infinity`, corrupção de Frame, divergência de câmera/parallax ou autosave em voo. Não há exceção, stack trace nem erro de Safari disponível.
 - **Causa:** não comprovada para a reinicialização. A diferença entre rotação funcional e escala que reinicia o PWA, agora em mais de um Frame, torna o caminho compartilhado de escala o alvo prioritário; não atribuir o evento ao zoom, à memória, à moldura do Play de Frames ou a outro subsistema sem reprodução instrumentada.
 - **Achado estático confirmado (não é ainda a causa da reinicialização):** a alça visual é posicionada por `getFrameScreenGeometry()` no espaço Stage após `editorWorldToStage()`, enquanto o início da transformação contínua usa `getFrameCenter()`/`getRawHandlePosForFrame()` no espaço ProjectWorld e o movimento chega convertido por `screenToStageCoord()` no espaço Stage. Quando `projectWorld.baseStage` diverge do Stage — como no diagnóstico — a decisão escala×rotação compara coordenadas incompatíveis. Isso explica a seleção inadequada de rotação ao tentar escalar; a relação desse erro com a reinicialização ainda exige captura controlada.
 - **Próxima investigação obrigatória:** reproduzir separadamente escala, rotação e movimento do Frame 1 com e sem zoom no Safari/iPhone; instrumentar os limites entre gesto de escala, atualização de overlay/scrim, renderização e autosave sem alterar o comportamento; criar caso de regressão antes de qualquer correção funcional.
 - **Status:** ABERTA. Não misturar com ajustes do Play Frames; nenhuma correção foi aplicada neste registro.
+
+## REG-071 — Frame sobreposto bloqueia seleção dos Frames atrás
+
+- **Relato físico (Roberto, iPhone/Safari/PWA):** quando há um Frame grande à frente, o toque no Stage seleciona somente ele; os Frames atrás deixam de ser alcançáveis para edição. O comportamento foi percebido como regressão, sem confirmação ainda do commit que o introduziu.
+- **Regra de UX confirmada:** sobreposição não pode tornar Frames atrás inalcançáveis. A seleção direta deve respeitar áreas expostas e, especialmente, a borda/geometria visível do Frame alvo, sem exigir que o usuário mova o Frame de cima para trabalhar no de baixo. O comportamento preciso para uma área de sobreposição total será definido durante a reprodução, sem inventar ciclo de seleção ou alterar a hierarquia visual sem decisão explícita.
+- **Próxima investigação obrigatória:** construir fixture de ao menos dois Frames sobrepostos, testar toque na borda exposta do Frame de trás e mapear `pointer-events`, ordem DOM e hit-test entre `.drag-zone`, moldura e overlays. Comparar com a regra aprovada antes da regressão, se localizada.
+- **Status:** ABERTA. Independente da REG-070 e do Play Frames.
 
 ## REG-069 — Play de Frames movia o viewport em vez de animar moldura transitória
 
