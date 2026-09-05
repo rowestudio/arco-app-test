@@ -35,6 +35,12 @@
 
 - **Estado:** superada em 2026-09-03 pela correção de especificação de Roberto. O registro histórico não autoriza mover pan/zoom/viewport; vale `DEC-2026-09-03-01`.
 
+## DEC-2026-09-03-01 — Presença temporal usa a duração efetiva do projeto de Frame único
+
+- **Decisão:** quando um projeto possui exatamente um Frame sem pausa, a presença temporal de ativos usa a mesma duração estática efetiva do playback (`duration`, com fallback de 4 s) em Preview e MP4.
+- **Motivo:** esse projeto não possui segmentos para somar, mas continua tendo duração de exibição. Resolver a presença como 0 s fazia ativos sem saída explícita existirem somente no instante inicial.
+- **Consequência:** a duração é congelada no snapshot de render junto dos demais dados temporais. Projetos com dois ou mais Frames conservam o cálculo existente; tremor e a exportação de imagem ficam fora desta decisão.
+
 ## DEC-2026-09-02-03 — Retorno do MP4 reusa o snapshot canônico no contexto Preview
 
 - **Decisão:** ao terminar um MP4, o renderer não cai para assets ao vivo para reiniciar o Preview. O snapshot estável recém-validado pelo Export é transferido para o contexto `preview`, e a presença temporal é resolvida novamente pelo relógio do Preview.

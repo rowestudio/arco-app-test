@@ -952,6 +952,7 @@
 -->
 <!-- Arco Motion App — v8z4b32E9BD — fix(stage-frames-play-timeline-arrival): ao alcançar um Frame, a própria referência fixa troca de laranja para ciano e se converte gradualmente em cinza, sem halo/segunda moldura. A pill correspondente recebe somente borda ciano durante a mesma janela de chegada, sem foco, seleção, preenchimento, halo ou pausa no relógio. Play/Stop usa SVG exclusivo sólido, sem use/stroke herdado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9BD. -->
 <!-- Arco Motion App — v8z4b32E9BB — fix(stage-frames-play-continuity): Play Frames não reconstrói os assets nas chegadas, portanto a moldura laranja continua no relógio canônico mesmo com pausa zero. O Frame atingido recebe azul ciano que se dissolve durante 360 ms e então preserva apenas a referência secundária; o ícone sólido Play/Stop elimina também o stroke herdado da toolbar. APP_VERSION = APP_VERSION_NAME = v8z4b32E9BB. -->
+<!-- Arco Motion App — v8z4b32E9AP — fix(single-frame-temporal-presence): Frame único sem pausas usa a mesma duração efetiva estática em presença temporal, Preview e MP4; o snapshot congela essa duração. Projetos com 2+ Frames, tremor e exportação de imagem não mudam. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AP. -->
 <!-- Arco Motion App — v8z4b32E9AO — fix(post-export-preview-text): ao concluir um MP4, o snapshot estável que acabou de atender o Export é transferido explicitamente para o contexto Preview antes de reiniciar o playback. Assim a presença temporal de imagens e Text Assets é reavaliada pelo relógio do Preview, sem cair no caminho vivo e sem alterar o MP4 já gerado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AO. -->
 <!-- Arco Motion App — v8z4b32E9AZ — fix(stage-frames-play-clock): o Frame atingido fica secundário logo após o pulso ciano curto; a faixa de Frames percorre cada trecho no mesmo relógio de duração, interpolação e pausa da moldura editorial, sem saltar de chegada em chegada. Stage/câmera, Preview, MP4, geometria persistida, curvas e Undo/Redo permanecem intocados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AZ. -->
 <!-- Arco Motion App — v8z4b32E9AX — fix(stage-frames-play-past-and-focus): Frames já percorridos ficam visualmente secundários durante o ciclo editorial; N→1 reinicia essa leitura. Frames deixa de receber foco tabulável, eliminando o anel nativo percebido como borda no Safari. Stage/câmera, Preview, MP4 e o relógio canônico não mudam. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AX. -->
@@ -15759,7 +15760,7 @@ let assetTimingDraftAssetId = null;
 function getTemporalPresenceContext(context) {
   const source = context && typeof context === 'object'
     ? context
-    : { projectAssetPresenceDefaults, loopEnabled, loopDuration };
+    : { projectAssetPresenceDefaults, loopEnabled, loopDuration, duration };
   const contextFrames = Array.isArray(source.frames) ? source.frames : frames;
   const contextFrameCount = Number.isInteger(source.frameCount) ? source.frameCount : frameCount;
   const count = Math.max(0, Math.min(contextFrames.length, contextFrameCount));
@@ -15785,6 +15786,12 @@ function getTemporalProjectDuration(context) {
   }
   if (state.loopEnabled && state.frameCount >= 2 && Number.isFinite(state.loopDuration) && state.loopDuration > 0) {
     total += state.loopDuration;
+  }
+  // Frame único não possui segmento temporal. A presença precisa usar a mesma
+  // duração efetiva do playback estático, inclusive no snapshot de Preview/MP4.
+  if (state.frameCount === 1 && total <= 0) {
+    const fallback = Number(state.source.duration);
+    return Number.isFinite(fallback) && fallback > 0 ? fallback : 4;
   }
   return total;
 }
@@ -35942,6 +35949,7 @@ async function prepareRenderSessionSnapshot(kind) {
       framePauses: snapshotFramePauses,
       loopEnabled: loopEnabled === true,
       loopDuration: Number(loopDuration),
+      duration: Number(duration),
       projectAssetPresenceDefaults: snapshotDefaults,
       assetPresenceDefaults: snapshotDefaults,
       scaleSecondsWithProjectDuration: scaleSecondsWithProjectDuration === true,
@@ -36097,6 +36105,7 @@ function buildRenderSessionTemporalPresenceContext(snapshot) {
     framePauses: Array.isArray(snapshot.framePauses) ? snapshot.framePauses : [],
     loopEnabled: snapshot.loopEnabled === true,
     loopDuration: Number(snapshot.loopDuration),
+    duration: Number(snapshot.duration),
     assets: imageAssets.concat(textAssets),
     projectAssetPresenceDefaults: normalizeProjectAssetPresenceDefaults(snapshot.projectAssetPresenceDefaults || snapshot.assetPresenceDefaults),
     assetPresenceDefaults: normalizeProjectAssetPresenceDefaults(snapshot.assetPresenceDefaults || snapshot.projectAssetPresenceDefaults),

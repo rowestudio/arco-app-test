@@ -11,6 +11,11 @@
 - O mesmo controle vira Stop. Sem Loop, Play no último Frame reinicia no primeiro; com Loop, o trecho N→1 fecha e recomeça continuamente. Qualquer toque fora do próprio Play/Stop, inclusive no Stage, interrompe e preserva a seleção do último Frame alcançado. A moldura pode sair da vista sem centralização e é removida no Stop. Não substitui o Play rosa de Preview, não gera MP4 e não altera dados de movimento, Undo/Redo ou autosave.
 - A toolbar contextual deve permanecer em uma única linha com rolagem horizontal no iPhone; o controle não aparece no Modo Ativos.
 
+## Atualização 2026-09-03 — itens futuros após E9AP
+
+- **Tremor global em Frame parado:** pesquisar e especificar como o tremor global deve atuar quando o projeto tem um único Frame estático; não implementado nesta PR.
+- **Exportar Frame único como imagem:** pesquisar e especificar uma opção explícita de exportar projeto de Frame único como imagem; não implementada nesta PR.
+
 ## Atualização 2026-08-29 — E9Z: duplicar, copiar e colar ativos
 
 - Implementado: duplicar uma camada no painel Layers no mesmo lugar; duplicar pelo menu inferior com deslocamento leve; copiar ativo e colar pelo menu `+` no centro da vista atual.

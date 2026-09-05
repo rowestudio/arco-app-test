@@ -102,6 +102,13 @@
 
 - Registro histórico da primeira implementação, cuja interpretação como navegação do Stage foi **superada** pela especificação corrigida da E9AQ acima.
 
+## Atualização 2026-09-03 — v8z4b32E9AP: presença temporal no projeto estático de Frame único
+
+- A regressão de Frame único sem pausas/segmentos foi reproduzida no smoke WebKit: a duração efetiva de playback era 4 s, mas a presença temporal resolvia 0 s e omitia o ativo depois de t=0 no Preview/MP4.
+- A correção mínima faz a presença usar a mesma duração estática efetiva somente nesse caso e congela `duration` no snapshot de Preview/Export. Projetos com 2+ Frames conservam segmentos/pausas/Loop; tremor e exportação de imagem não foram alterados.
+- O novo smoke E9AP verifica o asset em 0, 2 e 4 s nos dois destinos e preserva a duração conhecida de dois Frames. Validação física em iPhone/Safari continua obrigatória antes de merge; produção permanece intocada.
+- Itens futuros registrados em `docs/ROADMAP.md`, sem implementação: tremor global aplicável a Frame parado e opção de exportar projeto de Frame único como imagem.
+
 ## Atualização 2026-09-02 — v8z4b32E9AO: Text Asset no retorno do Preview após MP4
 
 - Relato físico na E9AN: o MP4 preservava o texto, mas ao concluir a geração e retomar o Preview o Text Asset desaparecia.
