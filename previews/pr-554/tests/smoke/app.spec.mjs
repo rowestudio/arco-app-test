@@ -6901,6 +6901,7 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e transforma o
     updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: false }, performance.now() + 400);
   });
   await expect(page.locator('#pillsRow [data-frame-index="1"]')).not.toHaveClass(/stage-frames-playback-arrived/);
+  await expect(page.locator('#pillsRow [data-frame-index="1"]')).not.toHaveCSS('border-top-color', 'rgb(4, 255, 242)');
   await expect(page.locator('#frm_1')).not.toHaveClass(/stage-frames-playback-arrival/);
   await expect(page.locator('#tbStageFramesPlay')).toHaveCSS('border-top-width', '0px');
   await expect(page.locator('#tbStageFramesPlay')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
