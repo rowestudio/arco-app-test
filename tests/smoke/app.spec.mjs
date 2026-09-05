@@ -304,6 +304,57 @@ test('smoke test: abre o Arco Motion sem erro JS e captura render inicial', asyn
   expect(capturedErrors, `erro JS capturado durante a abertura:\n${capturedErrors.join('\n')}`).toEqual([]);
 });
 
+test('E9BF — ações manuais do Movimento ficam separadas do toggle Inteligente', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 797 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+
+  await page.evaluate(() => {
+    setEditorMode('camera', 'e9bf-smart-motion-actions');
+    _activeEaseChannel = 'movement';
+    setMovementEasingMode('smart');
+    initEasePanel();
+  });
+
+  await expect(page.locator('#movChannelActions #easeGlobeLock')).toHaveCount(0);
+  await expect(page.locator('#applyAllChannelsWrap')).toBeHidden();
+
+  await page.evaluate(() => {
+    setMovementEasingMode('manual');
+    initEasePanel();
+  });
+
+  const manualActions = page.locator('#applyAllChannelsWrap');
+  await expect(manualActions).toBeVisible();
+  await expect(manualActions.locator('#easeGlobeLock')).toHaveCount(1);
+  await expect(manualActions.locator('#easeGlobeLock')).toBeVisible();
+  await expect(manualActions.locator('#btnApplyAllChannels')).toBeVisible();
+  expect(await manualActions.locator('#easeGlobeLock').evaluate((globe) => {
+    const button = globe.parentElement.querySelector('#btnApplyAllChannels');
+    return globe.getBoundingClientRect().top === button.getBoundingClientRect().top;
+  })).toBe(true);
+
+  expect(await page.evaluate(() => {
+    updateSegGlobalButton();
+    return document.getElementById('segTimeGlobeLock').style.display;
+  })).not.toBe('none');
+
+  for (const channel of ['rotation', 'scale']) {
+    const activeGlobe = channel === 'rotation' ? '#easeGlobeRot' : '#easeGlobeScale';
+    await page.evaluate((active) => {
+      setEasePanelChannel(active);
+      if (active === 'rotation') setRotationEasingMode('manual');
+      else setScaleEasingMode('manual');
+      initEasePanel();
+    }, channel);
+    await expect(manualActions).toBeVisible();
+    await expect(manualActions.locator(activeGlobe)).toBeVisible();
+    await expect(manualActions.locator('.ease-global-manual-action:visible')).toHaveCount(1);
+  }
+});
+
 test('E9AM — opacidade individual preserva presença e renderiza no Stage', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 797 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
