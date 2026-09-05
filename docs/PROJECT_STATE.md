@@ -1,8 +1,8 @@
 # PROJECT_STATE
 
-## Atualização 2026-09-05 — regressão aberta: reinicialização ao editar Frame em zoom alto
+## Atualização 2026-09-05 — regressão aberta: escala de Frame reinicia o PWA
 
-- Roberto relatou três reinicializações completas do PWA em iPhone/Safari ao tentar editar um Frame com zoom alto na `v8z4b32E9BC`. O diagnóstico imediatamente anterior conserva geometria finita, zoom `2,5534` (máximo `4`), Frame 7 ativo e ausência de exceção; portanto ainda não há causa demonstrada.
+- Roberto relatou reinicializações completas do PWA em iPhone/Safari ao tentar ampliar o Frame 1 na `v8z4b32E9BC`. A rotação do mesmo Frame funciona; a falha também foi reproduzida sem zoom, portanto zoom alto não é condição necessária. O diagnóstico anterior conserva geometria finita e ausência de exceção; ainda não há causa demonstrada para a reinicialização.
 - `REG-070` registra as condições e exige reprodução isolada por gesto antes de qualquer correção. Não houve mudança funcional, nova versão, merge ou promoção decorrente deste registro.
 
 ## Atualização 2026-09-04 — v8z4b32E9BC: chegada sem halo e timeline sem retenção visual
