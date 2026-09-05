@@ -1,5 +1,13 @@
 # TEST_CASES
 
+## TC-072 — Seleção de borda exposta em Frames sobrepostos (REG-071)
+
+- Pré-condição: Modo Câmera com dois Frames sobrepostos; o Frame maior está selecionado e sua caixa retangular cobre uma borda do Frame menor, cuja borda permanece visualmente exposta.
+- Passos: tocar diretamente essa borda do Frame não ativo sem mover o Frame maior.
+- Resultado esperado: o Frame da borda tocada torna-se a seleção canônica. O gesto não altera a ordem visual, não cria ciclo de seleção e não escolhe um Frame em área sem geometria exposta. Controles de curva e alças do Frame já selecionado continuam recebendo seus próprios gestos.
+- Evidência automatizada: smoke WebKit reproduz a captura anterior pela caixa do Frame ativo e verifica a seleção do alvo pela borda exposta.
+- Validação física obrigatória em iPhone/Safari antes de merge.
+
 ## TC-071 — Ações manuais do Movimento não simulam escopo local inexistente (E9BF)
 
 - Pré-condição: abrir o painel Movimento de um trecho em qualquer canal (Velocidade, Rotação ou Escala).
