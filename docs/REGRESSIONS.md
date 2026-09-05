@@ -16,7 +16,7 @@
 - **Status:** aberta, separada da REG-070 para não misturar a correção de estabilidade do PWA com mudança de hit-test.
 - **Diagnóstico E9BH:** a captura nativa resolve o gesto para a caixa retangular de `.frame`; `renderAll()` coloca o foco ativo na banda `z-index:30`, acima dos demais em `20/25`. Como não existe resolução geométrica de borda exposta antes dos listeners de seleção/movimento, o Frame maior à frente recebe o gesto inclusive quando a borda do alvo permanece visível.
 - **Prevenção E9BH:** smoke WebKit com dois Frames sobrepostos toca uma borda exposta do Frame não ativo, ainda coberta pela caixa do Frame ativo, e exige seleção do alvo. O roteador preserva a prioridade dos controles de curva/alças do Frame ativo e não define comportamento para geometria inteiramente coberta.
-- **Status:** corrigida tecnicamente na `v8z4b32E9BH`; validação física iPhone/Safari e checks remotos do HEAD da PR pendentes antes de merge.
+- **Status:** corrigida tecnicamente na `v8z4b32E9BH` pela PR #559; validação física iPhone/Safari e checks remotos do HEAD da PR pendentes antes de merge.
 
 ## REG-072 — lentidão percebida ao mover elementos no Stage
 

@@ -4,7 +4,7 @@
 
 - A `main` atual é o merge commit `31e6c2e0631196496998a082168609694a819820` da PR #558 (`v8z4b32E9BG`). Roberto aprovou fisicamente a seleção múltipla de Ativos, inclusive rotação coletiva pelo menu e Undo; Preview publish, Static QA, WebKit Smoke e Real Export Smoke WebKit macOS passaram. Produção continua fora de escopo.
 - A próxima frente isolada é a REG-071, em branch própria a partir dessa `main`. O diagnóstico estático confirma que `.frame` captura ponteiro pela caixa retangular inteira e que o foco ativo recebe `z-index:30`; assim, um Frame grande à frente recebe o gesto mesmo onde a borda de outro Frame continua visível. Ainda não há hit-test específico para essa borda.
-- A correção técnica introduz hit-test de borda com tolerância física para toque e só seleciona quando existe exatamente um alvo não ativo; ela não cria ciclo automático nem troca ordem. Seleção múltipla de Ativos, Preview, Export e produção permanecem intocados. Controles de curva e alças do Frame já selecionado mantêm prioridade. O smoke WebKit REG-071 passou; validação física iPhone/Safari e checks remotos do HEAD da PR seguem obrigatórios antes de merge.
+- A correção técnica está na PR #559, commit `0b54e3e`, e introduz hit-test de borda com tolerância física para toque, selecionando somente quando existe exatamente um alvo não ativo. Ela não cria ciclo automático nem troca ordem. Seleção múltipla de Ativos, Preview, Export e produção permanecem intocados. Controles de curva e alças do Frame já selecionado mantêm prioridade. O smoke WebKit REG-071 passou; validação física iPhone/Safari e checks remotos do HEAD da PR seguem obrigatórios antes de merge.
 
 ## Atualização 2026-09-05 — seleção múltipla de Ativos implementada e aprovada fisicamente
 
