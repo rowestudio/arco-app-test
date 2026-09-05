@@ -7440,3 +7440,27 @@ test('E9BG: group transforms preserve each asset depth and relative group geomet
   expect(result.depths).toEqual([0, 52]);
   expect(result.rotations).toEqual([90, 90]);
 });
+
+test('E9BG: group front and back preserve the selected stack order', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9bg-step-test');
+    const base = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    assets = [0, 1, 2, 3].map(index => ({ ...base, id: `e9bg-step-${index}`, zIndex: index + 1 }));
+    beginAssetMultiSelection('e9bg-step-1');
+    toggleAssetMultiSelection('e9bg-step-2');
+    const forward = moveSelectedAssetGroupByLayerStep(1);
+    const afterForward = assets.slice().sort((a, b) => a.zIndex - b.zIndex).map(a => a.id);
+    const backward = moveSelectedAssetGroupByLayerStep(-1);
+    const afterBackward = assets.slice().sort((a, b) => a.zIndex - b.zIndex).map(a => a.id);
+    return { forward, backward, afterForward, afterBackward };
+  });
+  expect(result.forward).toBe(true);
+  expect(result.afterForward).toEqual(['e9bg-step-0', 'e9bg-step-3', 'e9bg-step-1', 'e9bg-step-2']);
+  expect(result.backward).toBe(true);
+  expect(result.afterBackward).toEqual(['e9bg-step-0', 'e9bg-step-1', 'e9bg-step-2', 'e9bg-step-3']);
+});

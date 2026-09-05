@@ -18987,7 +18987,44 @@ async function pasteFromClipboard() {
   showStatus('Não há imagem nem ativo Arco para colar.');
 }
 // v8z4b30ZL (fix v8z4b30ZM, fix v8z4b30ZO, fix v8z4b30ZU) — traz o asset selecionado uma posição para frente.
+function moveSelectedAssetGroupByLayerStep(direction) {
+  if (!isAssetMultiSelectionActive()) return false;
+  const selectedIds = new Set(Array.from(selectedAssetIds).map(String));
+  if (getSelectedAssets().some(function(asset) { return asset.locked; })) return false;
+  normalizeAssetZIndices();
+  const ordered = assets.slice().filter(Boolean).sort(function(a, b) { return (a.zIndex || 0) - (b.zIndex || 0); });
+  const before = ordered.slice();
+  if (direction > 0) {
+    for (let index = ordered.length - 2; index >= 0; index--) {
+      if (selectedIds.has(String(ordered[index].id)) && !selectedIds.has(String(ordered[index + 1].id))) {
+        const swap = ordered[index]; ordered[index] = ordered[index + 1]; ordered[index + 1] = swap;
+      }
+    }
+  } else {
+    for (let index = 1; index < ordered.length; index++) {
+      if (selectedIds.has(String(ordered[index].id)) && !selectedIds.has(String(ordered[index - 1].id))) {
+        const swap = ordered[index]; ordered[index] = ordered[index - 1]; ordered[index - 1] = swap;
+      }
+    }
+  }
+  if (ordered.every(function(asset, index) { return asset === before[index]; })) return false;
+  const snapshot = captureState();
+  ordered.forEach(function(asset, index) { asset.zIndex = index + 1; });
+  pushUndoSnapshot(snapshot);
+  lastAssetReorderAction = direction > 0 ? 'forward-group' : 'backward-group';
+  lastUndoAction = direction > 0 ? 'bringAssetGroupForward' : 'sendAssetGroupBackward';
+  markProjectDirty(direction > 0 ? 'frente-grupo' : 'trás-grupo');
+  invalidateProjectWorldComposite();
+  renderProjectWorldExtraImages(); renderAll(); renderAssetSelectionOverlay(); renderLayersPanelList(); syncAssetToolbarState();
+  restackFilmEditorLayers('asset-group-reorder');
+  return true;
+}
 function bringSelectedAssetForward() {
+  if (isAssetMultiSelectionActive()) {
+    if (!moveSelectedAssetGroupByLayerStep(1)) showStatus('As camadas selecionadas já estão na frente.');
+    else showStatus('Camadas movidas para frente.');
+    return;
+  }
   const selectedIdBeforeReorder = selectedAssetId == null ? null : String(selectedAssetId);
   const layerIdentityBeforeReorder = captureLayerIdentityByAssetId(assets);
   lastReorderTargetAssetId = selectedIdBeforeReorder;
@@ -19040,6 +19077,11 @@ function bringSelectedAssetForward() {
 }
 // v8z4b30ZL (fix v8z4b30ZM, fix v8z4b30ZO, fix v8z4b30ZU) — envia o asset selecionado uma posição para trás.
 function sendSelectedAssetBackward() {
+  if (isAssetMultiSelectionActive()) {
+    if (!moveSelectedAssetGroupByLayerStep(-1)) showStatus('As camadas selecionadas já estão atrás de tudo.');
+    else showStatus('Camadas movidas para trás.');
+    return;
+  }
   const selectedIdBeforeReorder = selectedAssetId == null ? null : String(selectedAssetId);
   const layerIdentityBeforeReorder = captureLayerIdentityByAssetId(assets);
   lastReorderTargetAssetId = selectedIdBeforeReorder;
