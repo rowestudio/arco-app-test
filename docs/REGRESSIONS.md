@@ -1,5 +1,13 @@
 # REGRESSIONS
 
+## REG-070 — edição de Frame em zoom alto reinicia o PWA no iPhone/Safari
+
+- **Relato físico (Roberto, iPhone/Safari/PWA):** na `v8z4b32E9BC`, ao tentar editar um Frame com zoom alto, o aplicativo reiniciou integralmente em três tentativas. O diagnóstico foi coletado antes da reinicialização; não há exceção, stack trace nem erro de Safari disponível.
+- **Condições observadas:** Modo Frames, 8 Frames, Frame 7 ativo (índice 6), zoom `2,5534` dentro do limite permitido de `4`, pan `(-294,15, -218,35)`, Frame finito de `233,21 × 414,60` no ProjectWorld, rotação `6,5°`, proxy editorial `1375 × 2048` e `memoryRiskLevel: medium`. O diagnóstico não indica `NaN`/`Infinity`, corrupção de Frame, divergência de câmera/parallax ou autosave em voo.
+- **Causa:** não comprovada. O relato não autoriza atribuir a reinicialização ao zoom, à memória, à moldura do Play de Frames ou a qualquer subsistema isolado antes de reprodução controlada e captura do ponto de falha.
+- **Próxima investigação obrigatória:** reproduzir separadamente mover, escalar e rotacionar um Frame em zoom alto no Safari/iPhone; instrumentar os limites entre gesto, atualização de overlay/scrim, renderização e autosave sem alterar o comportamento; comparar com a edição do mesmo Frame em zoom normal. Criar caso de regressão antes de qualquer correção funcional.
+- **Status:** ABERTA. Não misturar com ajustes do Play Frames; nenhuma correção foi aplicada neste registro.
+
 ## REG-069 — Play de Frames movia o viewport em vez de animar moldura transitória
 
 - **Relato/especificação corrigida:** acionar o controle **Frames** deve manter Stage/câmera visual e geometricamente imóveis e deslocar, escalar e girar uma moldura editorial temporária entre os Frames.
