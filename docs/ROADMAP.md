@@ -1,5 +1,11 @@
 # ROADMAP
 
+## Próxima frente aprovada — seleção múltipla de Ativos
+
+- Roberto aprovou o desenho de seleção múltipla temporária para imagens e Text Assets: entrada pelo painel de Camadas, transformação coletiva no Stage, ajustes contextuais relativos e reordenação como conjunto.
+- A primeira entrega fica limitada a mover, escala, rotação e ordem de Camadas. Opacidade, profundidade, visibilidade, timing e efeitos coletivos permanecem evolução posterior.
+- Especificação canônica: `docs/superpowers/specs/2026-09-05-asset-multiselection-design.md`.
+
 ## Pesquisa futura — ícone e posicionamento do Play de Frames
 
 - Referência visual registrada por Roberto: ícone Lucide `gallery-vertical-end` (imagem recebida em 2026-09-05) como possibilidade para substituir o controle atual de Play Frames.
@@ -97,7 +103,7 @@ Cada PR funcional parte do HEAD remoto atualizado da `main` de teste, recebe nov
 - Colar ativos diretamente no projeto.
 - Vista Profundidade 0 / vista absoluta no Modo Ativos, separada da profundidade/parallax básico já implementado.
 - Opção futura em Ajustes para ordenar automaticamente as Camadas pela Profundidade. O padrão atual continua com `depth` e `zIndex` independentes; a opção, quando especificada e implementada em PR funcional própria, deverá ser explícita, reversível e preservar a ordem manual quando desligada.
-- Seleção múltipla futura de Camadas para aplicar posição, escala e profundidade em grupo. Exige desenho próprio de interação, locks, Undo/Redo consolidado, Save/Load e validação física; não está implementada nesta PR.
+- Seleção múltipla de Camadas: desenho aprovado para posição, escala, rotação e ordem na primeira entrega; ver a frente aprovada e a especificação de 2026-09-05. Profundidade e demais efeitos coletivos continuam futuros.
 - Formatos e, na sequência de prioridade indicada, grupos de frames; este registro não autoriza implementação.
 
 ## Ideias ainda não autorizadas

@@ -1,5 +1,12 @@
 # PRODUCT_RULES
 
+## Regra — seleção múltipla de Ativos
+
+- A seleção múltipla começa no painel de Camadas por toque prolongado sem arrastar; o Stage apenas transforma o conjunto já selecionado.
+- O conjunto é temporário, inclui imagens e Text Assets, e não é persistido em Save/Load ou Session Restore.
+- Uma caixa coletiva no Stage move, escala e rotaciona todos os Ativos como um elemento; no painel contextual, escala e rotação são ajustes relativos aplicados individualmente.
+- Frente/Trás e drag no painel de Camadas preservam a ordem interna do conjunto. Opacidade, profundidade, visibilidade, timing e efeitos coletivos não pertencem a esta primeira entrega.
+
 ## Regra E9BF — ações manuais não podem parecer escopo do Movimento Inteligente
 
 - Movimento Inteligente é atualmente um modo global por canal; o seu toggle não oferece override local por trecho.

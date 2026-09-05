@@ -1,5 +1,11 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-05 — seleção múltipla de Ativos aprovada para próxima frente
+
+- Roberto aprovou uma seleção múltipla temporária de imagens e Text Assets iniciada exclusivamente no painel de Camadas: toque prolongado sem arrastar escolhe o primeiro; toques simples ajustam o conjunto; segurar novamente o Ativo inicial ou tocar fora o encerra.
+- O Stage transforma o conjunto por caixa coletiva (mover, escala e rotação); ações contextuais aplicam escala/rotação relativas por Ativo; Frente/Trás e drag no painel reordenam o conjunto preservando sua ordem interna. Transparência de imagens deve deixar o toque alcançar o Ativo abaixo; texto mantém hit-test por caixa.
+- A funcionalidade ainda não foi implementada. Especificação aprovada: `docs/superpowers/specs/2026-09-05-asset-multiselection-design.md`.
+
 ## Atualização 2026-09-05 — E9BF: ações manuais separadas de Movimento Inteligente
 
 - Decisão de UX aprovada por Roberto: o globo “Aplicar a todos” não pode ficar ao lado de Movimento Inteligente, pois o modo atual é global por canal e não possui exceção local por trecho.
