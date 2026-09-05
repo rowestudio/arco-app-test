@@ -17440,7 +17440,8 @@ function closeAssetContextPanel() {
 }
 function openAssetContextPanel(kind) {
   if (!isAssetsMode() || !getSelectedAsset()) { showStatus('Selecione uma imagem primeiro.'); return; }
-  if (getSelectedAssets().some(function(asset) { return asset.locked; })) { showStatus('Destrave as camadas para editar.'); return; }
+  const targetAssets = isAssetMultiSelectionActive() ? getSelectedAssets() : [getSelectedAsset()];
+  if (targetAssets.some(function(asset) { return asset && asset.locked; })) { showStatus('Destrave as camadas para editar.'); return; }
   if (isAssetMultiSelectionActive() && !['scale', 'rotation'].includes(kind)) { showStatus('Esta ação permanece individual.'); return; }
   closeAssetContextPanel();
   closeAll();
@@ -18786,7 +18787,8 @@ function syncAssetToolbarState() {
   const toolbarAsset = isAssetsMode() ? getSelectedAsset() : null;
   const hasSel = !!toolbarAsset;
   const groupActive = isAssetMultiSelectionActive();
-  const canEdit = hasSel && getSelectedAssets().every(function(asset) { return !asset.locked; });
+  const editableAssets = groupActive ? getSelectedAssets() : (toolbarAsset ? [toolbarAsset] : []);
+  const canEdit = hasSel && editableAssets.length > 0 && editableAssets.every(function(asset) { return !asset.locked; });
   const toolbarAssetId = toolbarAsset ? String(toolbarAsset.id) : '';
   const primary=document.getElementById('tbAssetReplace'); if(primary){const isText=hasSel&&toolbarAsset.type==='text';primary.querySelector('use').setAttribute('href',isText?'#i-mouse-pointer':'#i-image-down');primary.querySelector('.tb-lbl').textContent=isText?'Editar':'Trocar';primary.setAttribute('aria-label',isText?'Editar texto':'Trocar imagem');}
   ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetTiming','tbAssetOpacity','tbAssetDelete','tbAssetCopy','tbAssetDuplicate'].forEach(function(id) {
