@@ -7356,3 +7356,27 @@ test('E9BG: asset multiselection state keeps the held anchor before a group exis
   expect(result.modeAfter).toBe(false);
   expect(result.anchorAfter).toBeNull();
 });
+
+test('E9BG: group layer reorder preserves selected member order', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9bg-order-test');
+    const base = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    const seeded = [0, 1, 2, 3].map(index => ({ ...base, id: `e9bg-order-${index}`, zIndex: index }));
+    assets = seeded;
+    beginAssetMultiSelection(seeded[0].id);
+    toggleAssetMultiSelection(seeded[2].id);
+    const changed = moveSelectedAssetsToLayerIndex(0);
+    const ordered = assets.slice().sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)).map(a => String(a.id));
+    return { changed, ordered, selected: [...selectedAssetIds] };
+  });
+
+  expect(result.changed).toBe(true);
+  expect(result.ordered.slice(0, 2)).toEqual(['e9bg-order-2', 'e9bg-order-0']);
+  expect(result.selected).toEqual(['e9bg-order-0', 'e9bg-order-2']);
+});

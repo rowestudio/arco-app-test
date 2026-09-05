@@ -37988,6 +37988,32 @@ function layerMoveAssetToIndex(assetId, targetIndex) {
   showStatus('Camada reordenada.');
   return true;
 }
+function moveSelectedAssetsToLayerIndex(targetIndex) {
+  if (!isAssetMultiSelectionActive()) return false;
+  const selectedIds = new Set(Array.from(selectedAssetIds).map(String));
+  const selected = getSelectedAssets().filter(function(asset) { return selectedIds.has(String(asset.id)); });
+  if (selected.length < 2) return false;
+  if (selected.some(function(asset) { return asset.locked; })) return false;
+  normalizeAssetZIndices();
+  const ordered = assets.slice().filter(Boolean).sort(function(a, b) { return (b.zIndex || 0) - (a.zIndex || 0); });
+  const members = ordered.filter(function(asset) { return selectedIds.has(String(asset.id)); });
+  const remaining = ordered.filter(function(asset) { return !selectedIds.has(String(asset.id)); });
+  const insertionIndex = Math.max(0, Math.min(remaining.length, Number(targetIndex) || 0));
+  const next = remaining.slice();
+  next.splice(insertionIndex, 0, ...members);
+  if (next.every(function(asset, index) { return asset === ordered[index]; })) return false;
+  const before = captureState();
+  next.forEach(function(asset, index) { asset.zIndex = next.length - index - 1; });
+  pushUndoSnapshot(before);
+  markProjectDirty('asset-multi-layer-reorder');
+  renderProjectWorldExtraImages();
+  renderAssetSelectionOverlay();
+  renderLayersPanelList();
+  restackFilmEditorLayers('asset-multi-layer-reorder');
+  assetHitTestOrderRebuiltAfterReorder = true;
+  showStatus('Camadas reordenadas.');
+  return true;
+}
 function scrollSelectedLayerIntoView() {
   const panel = document.getElementById('layersPanel');
   if (!panel || !panel.classList.contains('show') || selectedAssetId == null) return;
@@ -38077,7 +38103,8 @@ function renderLayersPanelList() {
   sorted.forEach((a, i) => {
     const item = document.createElement('button');
     item.type = 'button';
-    item.className = 'layers-item' + (String(a.id) === String(selectedAssetId) ? ' selected' : '');
+    const isAssetMultiSelected = assetMultiSelectionModeActive && selectedAssetIds.has(String(a.id));
+    item.className = 'layers-item' + (String(a.id) === String(selectedAssetId) ? ' selected' : '') + (isAssetMultiSelected ? ' multi-selected' : '');
     item.dataset.assetId = String(a.id);
     item.setAttribute('aria-label', getAssetDisplayName(a) || `Camada ${sorted.length - i}`);
     const thumbWrap = document.createElement('div');
@@ -38090,6 +38117,11 @@ function renderLayersPanelList() {
     } else if (a.type === 'text') { thumbWrap.textContent = 'T'; thumbWrap.style.display='grid'; thumbWrap.style.placeItems='center'; thumbWrap.style.color=a.color; thumbWrap.style.fontWeight='700'; }
     item.addEventListener('click', function(){
       if (item.dataset.suppressLayerClick === 'true') { delete item.dataset.suppressLayerClick; return; }
+      if (assetMultiSelectionModeActive) {
+        layersDetailAssetId = null;
+        toggleAssetMultiSelection(a.id);
+        return;
+      }
       if (layersDetailAssetId === String(a.id)) {
         layersDetailAssetId = null;
         renderLayersPanelList();
@@ -38106,6 +38138,7 @@ function renderLayersPanelList() {
     let startScrollTop = 0;
     let dragTargetIndex = -1;
     let dragCenters = [];
+    let reorderMoved = false;
     const previewReorderAt = function(clientY) {
       const rows = Array.from(list.querySelectorAll('.layers-item'));
       const fromIndex = rows.indexOf(item);
@@ -38124,6 +38157,7 @@ function renderLayersPanelList() {
     const clearReorderGesture = function() {
       if (reorderTimer) clearTimeout(reorderTimer);
       reorderTimer = null; reorderActive = false; reorderPointerId = null;
+      reorderMoved = false;
       dragTargetIndex = -1;
       dragCenters = [];
       Array.from(list.querySelectorAll('.layers-item')).forEach(function(row) { if (row !== item) row.style.transform = ''; });
@@ -38135,7 +38169,17 @@ function renderLayersPanelList() {
       startY = event.clientY; startScrollTop = list.scrollTop; reorderPointerId = event.pointerId;
       dragCenters = Array.from(list.querySelectorAll('.layers-item')).map(function(row) { const rect = row.getBoundingClientRect(); return (rect.top + rect.bottom) / 2; });
       if (item.setPointerCapture) item.setPointerCapture(event.pointerId);
-      reorderTimer = setTimeout(function() { reorderActive = true; item.classList.add('reorder-dragging'); }, 320);
+      reorderTimer = setTimeout(function() {
+        if (!assetMultiSelectionModeActive) {
+          beginAssetMultiSelection(a.id);
+          item.dataset.suppressLayerClick = 'true';
+          return;
+        }
+        if (selectedAssetIds.has(String(a.id))) {
+          reorderActive = true;
+          item.classList.add('reorder-dragging');
+        }
+      }, 320);
     });
     item.addEventListener('pointermove', function(event) {
       if (event.pointerId !== reorderPointerId) return;
@@ -38143,6 +38187,7 @@ function renderLayersPanelList() {
         if (Math.abs(event.clientY - startY) > 8) { if (reorderTimer) clearTimeout(reorderTimer); reorderTimer = null; list.scrollTop = startScrollTop + startY - event.clientY; }
         event.preventDefault(); return;
       }
+      if (Math.abs(event.clientY - startY) > 8) reorderMoved = true;
       item.style.setProperty('--layers-drag-y', (event.clientY - startY) + 'px');
       previewReorderAt(event.clientY);
       event.preventDefault();
@@ -38153,8 +38198,13 @@ function renderLayersPanelList() {
         event.preventDefault(); item.dataset.suppressLayerClick = 'true';
         previewReorderAt(event.clientY);
         const targetIndex = dragTargetIndex;
+        const cancelSelection = !reorderMoved && String(a.id) === String(assetMultiSelectionAnchorId || '');
         clearReorderGesture();
-        if (targetIndex >= 0) layerMoveAssetToIndex(a.id, targetIndex);
+        if (cancelSelection) { clearAssetMultiSelection('anchor-hold'); return; }
+        if (targetIndex >= 0) {
+          if (isAssetMultiSelectionActive()) moveSelectedAssetsToLayerIndex(targetIndex);
+          else layerMoveAssetToIndex(a.id, targetIndex);
+        }
         return;
       }
       if (item.hasPointerCapture && item.hasPointerCapture(event.pointerId)) item.releasePointerCapture(event.pointerId);
