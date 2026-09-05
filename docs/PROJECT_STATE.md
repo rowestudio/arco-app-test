@@ -796,3 +796,11 @@ A cobertura permanente separa capacidade funcional de Text Asset (WebKit/Linux a
 - A E8Z adiciona ao Text Asset a caixa canônica `block`, com fundo sólido opcional, opacidade independente e padding fixo em `em`, preservando wrapping e centro ao alternar o fundo.
 - Stage e o compositor Canvas compartilhado por Preview/Export usam o mesmo modelo persistido. Padding customizável, estilos por linha, presença temporal e animação permanecem futuros e separados.
 - A revisão geral de interface/contraste permanece tarefa separada e não bloqueia esta entrega funcional.
+
+## Atualização 2026-09-05 — v8z4b32E9BG em PR
+
+- Seleção múltipla de Assets começa exclusivamente por toque longo sem arrastar no painel Camadas; toques simples compõem ou removem a seleção e novo toque longo no ativo âncora limpa o grupo.
+- O Stage exibe uma única moldura de grupo e aplica mover, escala uniforme e rotação coletiva pela geometria visual resolvida, incluindo paralaxe. Cada ativo mantém `depth`, opacidade, timing, visibilidade e identidade de camada próprios.
+- Frente/Trás deslocam as camadas selecionadas uma posição, sem inverter a ordem interna; arrastar em Camadas reposiciona o grupo. Imagens PNG com pixel transparente deixam o hit-test alcançar o ativo abaixo; texto segue com caixa retangular selecionável.
+- Os controles contextuais de Escala e Rotação também aplicam ao grupo. Profundidade, Opacidade, Tempo, troca, cópia, duplicação e exclusão ficam explicitamente individuais durante multi-seleção.
+- Evidência automatizada: sete casos E9BG passam em `webkit-mobile-smoke`. Validação visual em iPhone/Safari e publicação de preview continuam obrigatórias antes de merge; produção não está autorizada.

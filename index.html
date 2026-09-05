@@ -7780,8 +7780,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9BF';
-const APP_VERSION_NAME = 'v8z4b32E9BF';
+const APP_VERSION = 'v8z4b32E9BG';
+const APP_VERSION_NAME = 'v8z4b32E9BG';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -17385,13 +17385,15 @@ let assetScaleResetReturnsCanonical100Percent = null;
 let assetScaleResetGeometryMatchesBaseline = null;
 function syncAssetContextPanel() {
   const asset = getSelectedAsset();
+  const groupActive = isAssetMultiSelectionActive();
   const slider = document.getElementById('assetContextSlider');
   const value = document.getElementById('assetContextValue');
   const reset = document.getElementById('assetContextReset');
   if (!asset || !slider || assetContextPanelKind === 'none') return;
   let current = 0, suffix = '';
   if (assetContextPanelKind === 'depth') { slider.min = -100; slider.max = 100; current = Number(asset.depth) || 0; }
-  if (assetContextPanelKind === 'scale') {
+  if (groupActive && assetContextPanelKind === 'scale') { slider.min = 20; slider.max = 300; current = 100; suffix = '%'; }
+  else if (assetContextPanelKind === 'scale') {
     slider.min = Math.min(20, Math.floor(getAssetContextScalePercent(asset)));
     slider.max = Math.max(300, Math.ceil(getAssetContextScalePercent(asset)));
     current = getAssetContextScalePercent(asset);
@@ -17407,12 +17409,13 @@ function syncAssetContextPanel() {
       Math.abs((baseline.width * current / 100) - (Number(visualRect.w) || 0)) < 0.01 &&
       Math.abs((baseline.height * current / 100) - (Number(visualRect.h) || 0)) < 0.01);
   }
-  if (assetContextPanelKind === 'rotation') { slider.min = -720; slider.max = 720; current = Number(asset.rotation) || 0; suffix = '°'; }
+  if (groupActive && assetContextPanelKind === 'rotation') { slider.min = -720; slider.max = 720; current = 0; suffix = '°'; }
+  else if (assetContextPanelKind === 'rotation') { slider.min = -720; slider.max = 720; current = Number(asset.rotation) || 0; suffix = '°'; }
   if (assetContextPanelKind === 'opacity') { slider.min = 0; slider.max = 100; current = (Number(asset.opacity) || 0) * 100; suffix = '%'; }
   slider.value = String(Math.max(Number(slider.min), Math.min(Number(slider.max), current)));
   if (typeof updateSliderFill === 'function') updateSliderFill(slider);
   const contextLabel = assetContextPanelKind === 'scale' ? 'Escala' : assetContextPanelKind === 'rotation' ? 'Rotação' : assetContextPanelKind === 'opacity' ? 'Opacidade' : 'Profundidade';
-  slider.setAttribute('aria-label', contextLabel + ' do ativo');
+  slider.setAttribute('aria-label', contextLabel + (groupActive ? ' dos ativos selecionados' : ' do ativo'));
   value.textContent = String(Math.round(current)) + suffix;
   if (assetContextPanelKind === 'depth') renderAssetDepthRuler();
   const neutral = assetContextPanelKind === 'scale' || assetContextPanelKind === 'opacity' ? 100 : 0;
@@ -17436,7 +17439,8 @@ function closeAssetContextPanel() {
 }
 function openAssetContextPanel(kind) {
   if (!isAssetsMode() || !getSelectedAsset()) { showStatus('Selecione uma imagem primeiro.'); return; }
-  if (getSelectedAsset().locked) { showStatus('Destrave a camada para editar.'); return; }
+  if (getSelectedAssets().some(function(asset) { return asset.locked; })) { showStatus('Destrave as camadas para editar.'); return; }
+  if (isAssetMultiSelectionActive() && !['scale', 'rotation'].includes(kind)) { showStatus('Esta ação permanece individual.'); return; }
   closeAssetContextPanel();
   closeAll();
   assetContextPanelKind = kind === 'scale' || kind === 'rotation' || kind === 'opacity' ? kind : 'depth';
@@ -17468,13 +17472,13 @@ function stepAssetContextDepth(delta) {
 function stepAssetContextScale(deltaPercent) {
   const asset = getSelectedAsset();
   if (assetContextPanelKind !== 'scale' || !asset) return;
-  setAssetContextValue(getAssetContextScalePercent(asset) + Number(deltaPercent || 0));
+  setAssetContextValue((isAssetMultiSelectionActive() ? 100 : getAssetContextScalePercent(asset)) + Number(deltaPercent || 0));
   commitAssetContextGesture();
 }
 function stepAssetContextRotation(delta) {
   const asset = getSelectedAsset();
   if (assetContextPanelKind !== 'rotation' || !asset) return;
-  setAssetContextValue((Number(asset.rotation) || 0) + Number(delta || 0));
+  setAssetContextValue((isAssetMultiSelectionActive() ? 0 : (Number(asset.rotation) || 0)) + Number(delta || 0));
   commitAssetContextGesture();
 }
 function beginAssetContextGesture() {
@@ -17482,7 +17486,8 @@ function beginAssetContextGesture() {
   if (!asset || assetContextGesture) return;
   const baseline = getAssetScaleBaselineWorldSize(asset);
   const visualRect = (typeof getAssetVisualWorldRect === 'function') ? getAssetVisualWorldRect(asset) : asset;
-  assetContextGesture = { snapshot: captureState(), assetId: String(asset.id), kind: assetContextPanelKind,
+  const group = isAssetMultiSelectionActive() && (assetContextPanelKind === 'scale' || assetContextPanelKind === 'rotation') ? getAssetMultiSelectionGeometry() : null;
+  assetContextGesture = { snapshot: captureState(), assetId: String(asset.id), kind: assetContextPanelKind, group: group, groupSnapshot: group ? captureAssetMultiVisualSnapshot() : null,
     startW: Number(asset.worldW) || 1, startH: Number(asset.worldH) || 1,
     startBoxWidth: asset.type === 'text' ? Number(asset.boxWidth) || Number(asset.worldW) || 1 : null,
     startFontSize: asset.type === 'text' ? Number(asset.fontSize) || 36 : null,
@@ -17502,6 +17507,12 @@ function setAssetContextValue(value) {
   const observedBeforeRect = observedTextDom ? observedTextDom.getBoundingClientRect() : null;
   const observedCanonicalBefore = observedTextDom ? JSON.stringify({ x:asset.worldX, y:asset.worldY, w:asset.worldW, h:asset.worldH, boxWidth:asset.boxWidth }) : null;
   beginAssetContextGesture();
+  if (assetContextGesture && assetContextGesture.groupSnapshot) {
+    if (assetContextPanelKind === 'scale') applyAssetMultiScaleFromSnapshot(assetContextGesture.groupSnapshot, assetContextGesture.group, Math.max(0.01, next) / 100);
+    if (assetContextPanelKind === 'rotation') applyAssetMultiRotationFromSnapshot(assetContextGesture.groupSnapshot, assetContextGesture.group, next);
+    syncAssetContextPanel(); invalidateProjectWorldComposite(); refreshAssetStageVisualGeometry('asset-context-group-value'); updateLowerTimelineMeta();
+    return;
+  }
   if (assetContextPanelKind === 'depth') {
     asset.depth = Math.max(-100, Math.min(100, next));
   }
@@ -17553,6 +17564,10 @@ function setAssetContextValue(value) {
 function commitAssetContextGesture() {
   const gesture = assetContextGesture;
   if (!gesture) return;
+  if (gesture.groupSnapshot) {
+    if (!projectStateEquals(gesture.snapshot, captureState())) { pushUndoSnapshot(gesture.snapshot); markProjectDirty('asset-group-' + gesture.kind); }
+    assetContextGesture = null; renderProjectWorldExtraImages(); renderAssetSelectionOverlay(); renderLayersPanelList(); return;
+  }
   const asset = assets.find(a => a && String(a.id) === gesture.assetId);
   const before = gesture.snapshot.assets.find(a => a && String(a.id) === gesture.assetId);
   const changed = !!(asset && before && JSON.stringify({x:asset.worldX,y:asset.worldY,w:asset.worldW,h:asset.worldH,r:asset.rotation,d:asset.depth,o:asset.opacity}) !== JSON.stringify({x:before.worldX,y:before.worldY,w:before.worldW,h:before.worldH,r:before.rotation,d:before.depth,o:before.opacity}));
@@ -18758,13 +18773,15 @@ function runAssetPrimaryAction(){const asset=isAssetsMode()?getSelectedAsset():n
 function syncAssetToolbarState() {
   const toolbarAsset = isAssetsMode() ? getSelectedAsset() : null;
   const hasSel = !!toolbarAsset;
-  const canEdit = hasSel && !toolbarAsset.locked;
+  const groupActive = isAssetMultiSelectionActive();
+  const canEdit = hasSel && getSelectedAssets().every(function(asset) { return !asset.locked; });
   const toolbarAssetId = toolbarAsset ? String(toolbarAsset.id) : '';
   const primary=document.getElementById('tbAssetReplace'); if(primary){const isText=hasSel&&toolbarAsset.type==='text';primary.querySelector('use').setAttribute('href',isText?'#i-mouse-pointer':'#i-image-down');primary.querySelector('.tb-lbl').textContent=isText?'Editar':'Trocar';primary.setAttribute('aria-label',isText?'Editar texto':'Trocar imagem');}
   ['tbAssetReplace','tbAssetScale','tbAssetRotate','tbAssetDepth','tbAssetTiming','tbAssetOpacity','tbAssetDelete','tbAssetCopy','tbAssetDuplicate'].forEach(function(id) {
     const el = document.getElementById(id);
     if (!el) return;
-    el.classList.toggle('asset-tool-disabled', !canEdit);
+    const individualOnly = ['tbAssetReplace','tbAssetDepth','tbAssetTiming','tbAssetOpacity','tbAssetDelete','tbAssetCopy','tbAssetDuplicate'].includes(id);
+    el.classList.toggle('asset-tool-disabled', !canEdit || (groupActive && individualOnly));
     el.dataset.assetId = toolbarAssetId;
   });
   const z = getAssetZOrderInfo();
@@ -37580,6 +37597,28 @@ function assetIsHitTestable(a) {
   }
   return false;
 }
+const assetAlphaHitCanvas = document.createElement('canvas');
+assetAlphaHitCanvas.width = 1; assetAlphaHitCanvas.height = 1;
+const assetAlphaHitContext = assetAlphaHitCanvas.getContext('2d', { alpha: true, willReadFrequently: true });
+function assetImageHitIsOpaque(asset, visualRect, localX, localY) {
+  // Texto é deliberadamente retangular: seu conteúdo pode ser editado mesmo no
+  // espaço vazio da caixa. Para imagem, alpha zero deixa o toque atravessar.
+  if (!asset || asset.type !== 'image') return true;
+  const element = document.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(String(asset.id)) + '"]');
+  const source = element && element.complete && element.naturalWidth > 0 ? element : (asset._img && asset._img.complete ? asset._img : null);
+  if (!source || !assetAlphaHitContext || !visualRect || visualRect.w <= 0 || visualRect.h <= 0) return true;
+  try {
+    const sourceX = Math.max(0, Math.min((source.naturalWidth || source.width) - 1, Math.floor((localX / visualRect.w) * (source.naturalWidth || source.width))));
+    const sourceY = Math.max(0, Math.min((source.naturalHeight || source.height) - 1, Math.floor((localY / visualRect.h) * (source.naturalHeight || source.height))));
+    assetAlphaHitContext.clearRect(0, 0, 1, 1);
+    assetAlphaHitContext.drawImage(source, sourceX, sourceY, 1, 1, 0, 0, 1, 1);
+    return assetAlphaHitContext.getImageData(0, 0, 1, 1).data[3] > 8;
+  } catch (_) {
+    // Fontes que não permitem leitura de pixel permanecem selecionáveis por
+    // retângulo; nunca bloqueamos edição por limitação do navegador.
+    return true;
+  }
+}
 // Hit-test em coordenadas de MUNDO. Retorna o asset de maior zIndex sob o ponto
 // (fallback: ordem do array — último desenhado fica acima). Ignora assets sem
 // imagem carregada e invisíveis (slots vazios nunca entram em assets).
@@ -37612,7 +37651,8 @@ function hitTestAssetAtWorld(wx, wy) {
     const dx = wx - cx, dy = wy - cy;
     const lx = rot ? (cx + dx * Math.cos(-rot) - dy * Math.sin(-rot)) : wx;
     const ly = rot ? (cy + dx * Math.sin(-rot) + dy * Math.cos(-rot)) : wy;
-    const inside = lx >= x && lx <= x + w && ly >= y && ly <= y + h;
+    const insideRect = lx >= x && lx <= x + w && ly >= y && ly <= y + h;
+    const inside = insideRect && assetImageHitIsOpaque(a, _vr, lx - x, ly - y);
     if (inside) {
       lastAssetHitTestCandidates.push({ id: a.id, zIndex: a.zIndex, idx: i });
     }

@@ -7464,3 +7464,50 @@ test('E9BG: group front and back preserve the selected stack order', async ({ pa
   expect(result.backward).toBe(true);
   expect(result.afterBackward).toEqual(['e9bg-step-0', 'e9bg-step-1', 'e9bg-step-2', 'e9bg-step-3']);
 });
+
+test('E9BG: transparent image pixels let the Stage hit-test reach the lower asset', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  const result = await page.evaluate(async () => {
+    setEditorMode('assets', 'e9bg-alpha-hit-test');
+    const base = assets.find(a => a && a.type === 'image');
+    const opaqueSvg = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#00f"/></svg>');
+    const transparentSvg = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="20" fill="#f00"/></svg>');
+    const lower = { ...base, id:'e9bg-alpha-lower', worldX:0, worldY:0, worldW:100, worldH:100, zIndex:1, src:opaqueSvg, _img:null };
+    const upper = { ...base, id:'e9bg-alpha-upper', worldX:0, worldY:0, worldW:100, worldH:100, zIndex:2, src:transparentSvg, _img:null };
+    assets = [lower, upper]; renderProjectWorldExtraImages();
+    await new Promise(resolve => setTimeout(resolve, 80));
+    const rect = resolveAssetStageVisualGeometry(upper).visualRect;
+    return { corner:hitTestAssetAtWorld(rect.x + 5, rect.y + 5)?.id || null, center:hitTestAssetAtWorld(rect.x + rect.w / 2, rect.y + rect.h / 2)?.id || null };
+  });
+  expect(result.corner).toBe('e9bg-alpha-lower');
+  expect(result.center).toBe('e9bg-alpha-upper');
+});
+
+test('E9BG: contextual scale and rotation affect an asset group only', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9bg-context-group');
+    const base = assets.find(a => a && a.type === 'image');
+    const first = { ...base, id:'e9bg-context-a', worldX:0, worldY:0, worldW:40, worldH:40, zIndex:1, depth:0, opacity:.4 };
+    const second = { ...base, id:'e9bg-context-b', worldX:100, worldY:0, worldW:40, worldH:40, zIndex:2, depth:25, opacity:.8 };
+    assets = [first, second]; beginAssetMultiSelection(first.id); toggleAssetMultiSelection(second.id);
+    openAssetContextPanel('scale'); setAssetContextValue(150); commitAssetContextGesture();
+    openAssetContextPanel('rotation'); setAssetContextValue(90); commitAssetContextGesture();
+    return { sizes:[first.worldW, second.worldW], rotations:[first.rotation, second.rotation], depths:[first.depth, second.depth], opacity:[first.opacity, second.opacity], depthDisabled:document.getElementById('tbAssetDepth').classList.contains('asset-tool-disabled'), opacityDisabled:document.getElementById('tbAssetOpacity').classList.contains('asset-tool-disabled') };
+  });
+  expect(result.sizes[0]).toBeCloseTo(60, 5);
+  expect(result.sizes[1]).toBeCloseTo(60, 5);
+  expect(result.rotations).toEqual([90, 90]);
+  expect(result.depths).toEqual([0, 25]);
+  expect(result.opacity).toEqual([.4, .8]);
+  expect(result.depthDisabled).toBe(true);
+  expect(result.opacityDisabled).toBe(true);
+});
