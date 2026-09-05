@@ -1,0 +1,55 @@
+<script>
+let previewPreparing=false,isPreviewing=false,isRecording=false,exportPreparing=false;
+function isSessionAutosaveBlockedByPlayback(){return !!(previewPreparing || isPreviewing || isRecording || exportPreparing)}
+function suspendSessionAutosaveForPlayback(){}
+function resumeDeferredSessionAutosaveAfterPlayback(){}
+function deferSessionAutosaveBecausePlayback(){}
+function buildCompleteSessionProjectData(){return {}}
+function sessionPayloadChecksum(){return ''}
+async function putSessionCheckpoint(checkpoint,mandatoryFlush,epoch){if(!mandatoryFlush&&isSessionAutosaveBlockedByPlayback()){deferSessionAutosaveBecausePlayback(checkpoint.revision, epoch, 'blocked-before-indexeddb');return}}
+async function writeSessionAutosave(revision, epoch, mandatoryFlush = false, reason = ''){if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) return;const data = buildCompleteSessionProjectData();if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) return;const payload = JSON.stringify(data);if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) return;const checksum = sessionPayloadChecksum(payload);if (!mandatoryFlush && isSessionAutosaveBlockedByPlayback()) return;await putSessionCheckpoint({revision,epoch,payload,checksum},mandatoryFlush)}
+function flushSessionAutosave(){writeSessionAutosave(revision, _sessionAutosaveEpoch, true, 'safety-flush')}
+function startPreview(){suspendSessionAutosaveForPlayback('preview-start');previewPreparing = true;}
+function stopPreview(){resumeDeferredSessionAutosaveAfterPlayback();}
+function ensureGlobalHandle(){
+  if (isPreviewing) return;
+  handleDragState = { fi, startW: frames[fi].w, startRot: frameRotations[fi] || 0, initialRot: frameRotations[fi] || 0, mode: null, undoCaptured: false };
+  frames[fi].w = nw; frames[fi].h = nh; frameRotations[fi] = deg;
+  const endHandle = e => {
+    const completedHandleDrag = handleDragState;
+    if (completedHandleDrag.isGhost) { renderGhostFrame(); }
+    else {
+      const frameTransformChanged = completedHandleDrag.mode === 'scale' ? frames[completedHandleDrag.fi].w !== completedHandleDrag.startW : completedHandleDrag.mode === 'rotate' ? frameRotations[completedHandleDrag.fi] !== completedHandleDrag.initialRot : false;
+      if (completedHandleDrag.undoCaptured && frameTransformChanged) markProjectDirty('frame-transform');
+    }
+    handleDragState = null;
+  };
+}
+function ensureCornerHandles(){
+  if (isInsertingFrame && ghostFrame) handleDragState = { isGhost: true, startRot: ghostFrame.rotation || 0 };
+  if (isInsertingFrame || isPreviewing) return;
+  handleDragState = { fi, startW: frames[fi].w, startRot: frameRotations[fi] || 0, mode: null, undoCaptured: false };
+  globalHandleEl.dispatchEvent(new PointerEvent('pointermove'));
+  globalHandleEl.dispatchEvent(new PointerEvent('pointerup'));
+}
+function startRecord(){
+  if (!recCanvasValid) { console.warn('recCanvas com dimensões inválidas'); isRecording = false; resumeDeferredSessionAutosaveAfterPlayback(); return; }
+}
+function finishExport(){try { restoreUi(); } catch (cleanupErr) { isRecording = false; resumeDeferredSessionAutosaveAfterPlayback(); }}
+function resetPreviewAndExportStateForImageChange(){isRecording = false;exportPreparing = false;resumeDeferredSessionAutosaveAfterPlayback();}
+function resetAll(){
+  isRecording = false; exportPreparing = false; resumeDeferredSessionAutosaveAfterPlayback(); if (!imgNatW) return;
+  const stateBeforeProjectReset = captureState();
+  if (_projectNewFromImage) { restoreState(projectResetBaseline); if (!projectStateEquals(stateBeforeProjectReset, captureState())) markProjectDirty('project-reset'); return; }
+  const prevState = captureState(); if (projectStateEquals(prevState, projectResetBaseline)) return;
+  restoreState(cloneProjectStateSnapshot(projectResetBaseline)); normalizeProjectArrays(); markProjectDirty('project-reset');
+}
+function selectFormat(chip){
+  const nextRatio = chip.dataset.ratio; const formatChanged = nextRatio !== currentRatio;
+  if (!imgNatW || !formatChanged) return; pushUndo(); currentRatio = nextRatio; frames = normalizeFrames(); normalizeProjectArrays(); markProjectDirty('format-change');
+}
+function auditedPersistentCommands(){
+  markProjectDirty('template'); markProjectDirty('add-frame'); markProjectDirty('remove-frame'); markProjectDirty('delete-frame'); markProjectDirty('invert-frames'); markProjectDirty('loop-toggle'); markProjectDirty('frame-lock'); markProjectDirty('background-color'); markProjectDirty('movement-easing-mode'); markProjectDirty('reset-all-curves'); markProjectDirty('frame-pause-reset-all'); markProjectDirty('deleteAsset'); markProjectDirty('replace-image-asset'); markProjectDirty('add-image-asset'); markProjectDirty('layerUp'); markProjectDirty('layerDown');
+}
+document.addEventListener('visibilitychange',()=>{});window.addEventListener('pagehide', flushSessionAutosave);
+</script>
