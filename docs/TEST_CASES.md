@@ -1,5 +1,12 @@
 # TEST_CASES
 
+## TC-070 — Presença temporal em projeto estático de Frame único (E9AP)
+
+- Pré-condição: projeto com um único Frame, sem pausas, sem segmentos e com ativo de imagem presente desde o início, sem saída explícita.
+- Passos: abrir Preview e gerar MP4; verificar os instantes 0 s, metade e fim da duração estática efetiva.
+- Resultado esperado: o ativo segue presente e desenhado em Preview e MP4 durante toda a duração, inclusive no instante final. O snapshot de cada destino conserva a duração temporal efetiva; dois ou mais Frames mantêm seu cálculo por segmentos e pausas.
+- Validação física obrigatória em iPhone/Safari: criar/abrir projeto de um Frame sem pausa, confirmar o asset no início, meio e final do Preview e do MP4 baixado.
+
 ## TC-069 — Retorno ao Preview após exportação com Text Asset (E9AO)
 
 - Pré-condição: projeto com imagem e Text Asset visível, inclusive com presença temporal configurável.

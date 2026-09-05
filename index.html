@@ -951,6 +951,7 @@
 ╚══════════════════════════════════════════════════════╝
 -->
 <!-- Arco Motion App — v8z4b32E9AR — fix(stage-dom-stability/REG-070): a recomposição do Stage reutiliza os nós visuais de imagens e textos quando a fonte permanece a mesma, atualizando apenas geometria e estilo. Isto evita reiniciar decode/composição a cada gesto de Frame, movimento de Ativo ou retorno de painel no Safari/iPhone. Preview, Export e modelo canônico não são alterados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AR. -->
+<!-- Arco Motion App — v8z4b32E9AP — fix(single-frame-temporal-presence): Frame único sem pausas usa a mesma duração efetiva estática em presença temporal, Preview e MP4; o snapshot congela essa duração. Projetos com 2+ Frames, tremor e exportação de imagem não mudam. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AP. -->
 <!-- Arco Motion App — v8z4b32E9AO — fix(post-export-preview-text): ao concluir um MP4, o snapshot estável que acabou de atender o Export é transferido explicitamente para o contexto Preview antes de reiniciar o playback. Assim a presença temporal de imagens e Text Assets é reavaliada pelo relógio do Preview, sem cair no caminho vivo e sem alterar o MP4 já gerado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AO. -->
 <!-- Arco Motion App — v8z4b32E9AN — fix(asset-opacity): o snapshot congelado de Preview/Export preserva `opacity` de imagens e a repassa ao asset de desenho; antes, Stage usava o valor ao vivo mas o snapshot perdia o campo e ambos os destinos renderizavam 100%. Textos já eram serializados no snapshot e permanecem inalterados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AN. -->
 <!-- Arco Motion App — v8z4b32E9AM — feat(asset-opacity): baseline manual individual 0–100% para imagens e textos, pelo controle Opacidade após Tempo na toolbar de Ativos; independente de presença temporal; persiste em Save/Load, sessão e histórico; Stage, Preview e Export multiplicam a mesma fonte canônica. Para textos, reduz glifos e fundo juntos, preservando a opacidade própria do fundo como alpha interno. base v8z4b32E9AL. -->
@@ -15731,7 +15732,7 @@ let assetTimingDraftAssetId = null;
 function getTemporalPresenceContext(context) {
   const source = context && typeof context === 'object'
     ? context
-    : { projectAssetPresenceDefaults, loopEnabled, loopDuration };
+    : { projectAssetPresenceDefaults, loopEnabled, loopDuration, duration };
   const contextFrames = Array.isArray(source.frames) ? source.frames : frames;
   const contextFrameCount = Number.isInteger(source.frameCount) ? source.frameCount : frameCount;
   const count = Math.max(0, Math.min(contextFrames.length, contextFrameCount));
@@ -15757,6 +15758,12 @@ function getTemporalProjectDuration(context) {
   }
   if (state.loopEnabled && state.frameCount >= 2 && Number.isFinite(state.loopDuration) && state.loopDuration > 0) {
     total += state.loopDuration;
+  }
+  // Frame único não possui segmento temporal. A presença precisa usar a mesma
+  // duração efetiva do playback estático, inclusive no snapshot de Preview/MP4.
+  if (state.frameCount === 1 && total <= 0) {
+    const fallback = Number(state.source.duration);
+    return Number.isFinite(fallback) && fallback > 0 ? fallback : 4;
   }
   return total;
 }
@@ -35565,6 +35572,7 @@ async function prepareRenderSessionSnapshot(kind) {
       framePauses: snapshotFramePauses,
       loopEnabled: loopEnabled === true,
       loopDuration: Number(loopDuration),
+      duration: Number(duration),
       projectAssetPresenceDefaults: snapshotDefaults,
       assetPresenceDefaults: snapshotDefaults,
       scaleSecondsWithProjectDuration: scaleSecondsWithProjectDuration === true,
@@ -35720,6 +35728,7 @@ function buildRenderSessionTemporalPresenceContext(snapshot) {
     framePauses: Array.isArray(snapshot.framePauses) ? snapshot.framePauses : [],
     loopEnabled: snapshot.loopEnabled === true,
     loopDuration: Number(snapshot.loopDuration),
+    duration: Number(snapshot.duration),
     assets: imageAssets.concat(textAssets),
     projectAssetPresenceDefaults: normalizeProjectAssetPresenceDefaults(snapshot.projectAssetPresenceDefaults || snapshot.assetPresenceDefaults),
     assetPresenceDefaults: normalizeProjectAssetPresenceDefaults(snapshot.assetPresenceDefaults || snapshot.projectAssetPresenceDefaults),
