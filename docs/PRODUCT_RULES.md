@@ -1,5 +1,11 @@
 # PRODUCT_RULES
 
+## Regra E9BF — ações manuais não podem parecer escopo do Movimento Inteligente
+
+- Movimento Inteligente é atualmente um modo global por canal; o seu toggle não oferece override local por trecho.
+- Portanto, o globo “Aplicar a todos” não aparece ao lado desse toggle. Ele só aparece nas ações manuais, junto de “Aplicar aos 3”, e somente quando o canal ativo está em modo manual.
+- A futura evolução para Inteligente local por trecho exige desenho e PR próprios; esta regra apenas evita comunicar uma capacidade ainda inexistente.
+
 ## Frames sobrepostos (REG-071)
 
 - Uma borda ou geometria de Frame que esteja visivelmente exposta deve ser selecionável mesmo quando outro Frame maior está à frente.

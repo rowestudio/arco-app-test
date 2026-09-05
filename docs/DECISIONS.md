@@ -1,5 +1,11 @@
 # DECISIONS
 
+## DEC-2026-09-05-02 — ações globais somente no modo manual do Movimento
+
+- **Decisão:** enquanto Movimento Inteligente for global por canal, o globo “Aplicar a todos” deixa a linha do toggle e passa para a mesma linha de “Aplicar aos 3”. A linha só aparece quando o canal aberto está em manual.
+- **Motivo:** ao lado de “Movimento inteligente”, o globo parecia oferecer uma escolha global/local que o produto não possui.
+- **Limite e evolução:** esta alteração não cria override local nem muda o motor. A possibilidade de Inteligente global com exceção manual por trecho fica no roadmap para Engine Sprint própria.
+
 ## DEC-2026-09-05-01 — chegada do Play Frames também marca a pill, sem reter a timeline
 
 - **Decisão:** na mesma janela breve em que o Frame atravessado fica ciano, a pill correspondente recebe apenas borda ciano. Ela não vira `active`/`selected`, não recebe preenchimento ou halo e não altera scroll, duração, pausa, curva ou relógio.
