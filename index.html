@@ -16736,12 +16736,66 @@ function captureAssetMultiVisualSnapshot() {
       assetId: String(asset.id),
       worldX: Number(asset.worldX) || 0,
       worldY: Number(asset.worldY) || 0,
+      worldW: Number(asset.worldW) || 1,
+      worldH: Number(asset.worldH) || 1,
+      boxWidth: asset.type === 'text' ? (Number(asset.boxWidth) || Number(asset.worldW) || 1) : null,
+      fontSize: asset.type === 'text' ? (Number(asset.fontSize) || 36) : null,
+      rotation: Number(asset.rotation) || 0,
       visualX: Number(resolved.visualRect.x) || 0,
       visualY: Number(resolved.visualRect.y) || 0,
+      visualW: Number(resolved.visualRect.w) || Number(asset.worldW) || 1,
+      visualH: Number(resolved.visualRect.h) || Number(asset.worldH) || 1,
       parallaxOffsetX: Number(resolved.parallaxOffset.offsetX) || 0,
       parallaxOffsetY: Number(resolved.parallaxOffset.offsetY) || 0
     };
   });
+}
+function applyAssetMultiScaleFromSnapshot(snapshot, group, factor) {
+  if (!Array.isArray(snapshot) || !snapshot.length || !group || !Number.isFinite(factor) || factor <= 0) return false;
+  let changed = false;
+  snapshot.forEach(function(start) {
+    const asset = _getSelectableAssetById(start.assetId);
+    if (!asset) return;
+    const visualCenterX = start.visualX + start.visualW / 2;
+    const visualCenterY = start.visualY + start.visualH / 2;
+    const visualW = start.visualW * factor;
+    const visualH = start.visualH * factor;
+    const nextVisualCenterX = group.cx + (visualCenterX - group.cx) * factor;
+    const nextVisualCenterY = group.cy + (visualCenterY - group.cy) * factor;
+    asset.worldW = start.worldW * factor;
+    asset.worldH = start.worldH * factor;
+    if (asset.type === 'text') {
+      asset.boxWidth = start.boxWidth * factor;
+      asset.fontSize = start.fontSize * factor;
+      measureTextAsset(asset);
+    }
+    const actualW = Number(asset.worldW) || visualW;
+    const actualH = Number(asset.worldH) || visualH;
+    asset.worldX = start.worldX + (nextVisualCenterX - visualCenterX) - (actualW - start.worldW) / 2;
+    asset.worldY = start.worldY + (nextVisualCenterY - visualCenterY) - (actualH - start.worldH) / 2;
+    changed = true;
+  });
+  return changed;
+}
+function applyAssetMultiRotationFromSnapshot(snapshot, group, degrees) {
+  if (!Array.isArray(snapshot) || !snapshot.length || !group || !Number.isFinite(degrees)) return false;
+  const radians = degrees * Math.PI / 180;
+  const cos = Math.cos(radians), sin = Math.sin(radians);
+  let changed = false;
+  snapshot.forEach(function(start) {
+    const asset = _getSelectableAssetById(start.assetId);
+    if (!asset) return;
+    const visualCenterX = start.visualX + start.visualW / 2;
+    const visualCenterY = start.visualY + start.visualH / 2;
+    const dx = visualCenterX - group.cx, dy = visualCenterY - group.cy;
+    const nextCenterX = group.cx + dx * cos - dy * sin;
+    const nextCenterY = group.cy + dx * sin + dy * cos;
+    asset.worldX = start.worldX + (nextCenterX - visualCenterX);
+    asset.worldY = start.worldY + (nextCenterY - visualCenterY);
+    asset.rotation = normalizeAssetRotation(start.rotation + degrees);
+    changed = true;
+  });
+  return changed;
 }
 function applyAssetMultiMoveFromSnapshot(snapshot, deltaX, deltaY) {
   if (!Array.isArray(snapshot) || !snapshot.length || !Number.isFinite(deltaX) || !Number.isFinite(deltaY)) return false;
@@ -37756,10 +37810,12 @@ function beginAssetTransformDrag(e, corner) {
   computeEditorTransform();
   const sc = screenToStageCoord(e.clientX, e.clientY);
   const wpVisual = editorStageToWorld(sc.x, sc.y);
+  const multi = isAssetMultiSelectionActive();
+  const group = multi ? getAssetMultiSelectionGeometry() : null;
   const parallax = resolveAssetStageVisualGeometry(asset).parallaxOffset;
   const wp = { x: wpVisual.x - parallax.offsetX, y: wpVisual.y - parallax.offsetY };
-  const cx = (asset.worldX || 0) + (asset.worldW || 0) / 2;
-  const cy = (asset.worldY || 0) + (asset.worldH || 0) / 2;
+  const cx = group ? group.cx : (asset.worldX || 0) + (asset.worldW || 0) / 2;
+  const cy = group ? group.cy : (asset.worldY || 0) + (asset.worldH || 0) / 2;
   assetTransformMode = 'pending';
   assetTransformDragState = {
     pointerId: e.pointerId, corner: corner || 'br', mode: null, assetId: asset.id, undoSnapshot: captureState(), moved: false,
@@ -37768,8 +37824,9 @@ function beginAssetTransformDrag(e, corner) {
     startBoxWidth: asset.type === 'text' ? (Number(asset.boxWidth) || Number(asset.worldW) || 1) : null,
     startFontSize: asset.type === 'text' ? (Number(asset.fontSize) || 36) : null,
     startRotation: Number(asset.rotation) || 0, cx, cy,
-    initDist: Math.max(1, Math.hypot(wp.x - cx, wp.y - cy)),
-    initAngle: Math.atan2(wp.y - cy, wp.x - cx), clamped: false
+    group: group, groupSnapshot: multi ? captureAssetMultiVisualSnapshot() : null,
+    initDist: Math.max(1, Math.hypot(wpVisual.x - cx, wpVisual.y - cy)),
+    initAngle: Math.atan2(wpVisual.y - cy, wpVisual.x - cx), clamped: false
   };
 }
 function handleAssetTransformPointerMove(e) {
@@ -37783,7 +37840,8 @@ function handleAssetTransformPointerMove(e) {
   const wpVisual = editorStageToWorld(sc.x, sc.y);
   const parallax = resolveAssetStageVisualGeometry(asset).parallaxOffset;
   const wp = { x: wpVisual.x - parallax.offsetX, y: wpVisual.y - parallax.offsetY };
-  const dx = wp.x - ds.cx, dy = wp.y - ds.cy;
+  const gesturePoint = ds.group ? wpVisual : wp;
+  const dx = gesturePoint.x - ds.cx, dy = gesturePoint.y - ds.cy;
   const dist = Math.max(1, Math.hypot(dx, dy));
   const currentAngle = Math.atan2(dy, dx);
   if (!ds.mode) {
@@ -37797,7 +37855,9 @@ function handleAssetTransformPointerMove(e) {
     const minF = Math.max(1 / Math.max(1, ds.startW), 1 / Math.max(1, ds.startH));
     if (f < minF) { f = minF; ds.clamped = true; }
     const nw = ds.startW * f, nh = ds.startH * f;
-    if (Number.isFinite(nw) && Number.isFinite(nh) && nw > 0 && nh > 0) {
+    if (ds.groupSnapshot && ds.group) {
+      applyAssetMultiScaleFromSnapshot(ds.groupSnapshot, ds.group, f);
+    } else if (Number.isFinite(nw) && Number.isFinite(nh) && nw > 0 && nh > 0) {
       asset.worldW = nw; asset.worldH = nh; asset.worldX = ds.cx - nw / 2; asset.worldY = ds.cy - nh / 2;
       if (asset.type === 'text') {
         asset.boxWidth = ds.startBoxWidth * f;
@@ -37808,7 +37868,8 @@ function handleAssetTransformPointerMove(e) {
     } else { assetScaleProducedInvalidGeometry = true; }
   } else if (ds.mode === 'rotate') {
     let delta = getIncrementalAngleDelta(currentAngle, ds.initAngle);
-    asset.rotation = normalizeAssetRotation(ds.startRotation + delta * 180 / Math.PI);
+    if (ds.groupSnapshot && ds.group) applyAssetMultiRotationFromSnapshot(ds.groupSnapshot, ds.group, delta * 180 / Math.PI);
+    else asset.rotation = normalizeAssetRotation(ds.startRotation + delta * 180 / Math.PI);
     assetRotationNormalized = true;
   }
   ds.moved = true;
@@ -37849,8 +37910,9 @@ function renderAssetSelectionOverlay() {
   // da ordem de chamada do ciclo de render.
   const _draftActive = !!(pendingTextDraft && (textEditorMode === 'create' || textEditorMode === 'edit'));
   const asset = _draftActive ? pendingTextDraft : getSelectedAsset();
+  const group = !_draftActive && isAssetMultiSelectionActive() ? getAssetMultiSelectionGeometry() : null;
   if (_draftActive && asset && asset.type === 'text') measureTextAsset(asset);
-  const show = isAssetsMode() && asset &&
+  const show = isAssetsMode() && asset && (!isAssetMultiSelectionActive() || !!group) &&
                (typeof isPreviewing === 'undefined' || !isPreviewing) &&
                assetHasLoadedImage(asset) && asset.visible !== false;
   stageContent.querySelectorAll('.asset-temporal-reference').forEach(function(element) {
@@ -37895,7 +37957,7 @@ function renderAssetSelectionOverlay() {
   // não o worldRect cru — idêntico ao worldRect para extras; para img-1 evita a
   // moldura ficar maior que a imagem real dentro da célula intacta do ProjectWorld.
   const _resolvedGeometry = resolveAssetStageVisualGeometry(asset);
-  const _vr = _resolvedGeometry.visualRect;
+  const _vr = group || _resolvedGeometry.visualRect;
   const p = editorWorldToStage(_vr.x, _vr.y, _vr.w, _vr.h);
   if (!box) {
     box = document.createElement('div');
@@ -37920,13 +37982,14 @@ function renderAssetSelectionOverlay() {
   // referência (mas abaixo dos frames de câmera), permanecendo sempre legível.
   box.style.zIndex = String(ASSET_SELECT_OUTLINE_Z);
   box.style.display = 'block';
-  box.dataset.assetId = String(asset.id);
+  box.dataset.assetId = group ? 'asset-multi-group' : String(asset.id);
+  box.dataset.assetMultiGroup = group ? 'true' : 'false';
   box.style.left = p.x + 'px';
   box.style.top = p.y + 'px';
   box.style.width = p.w + 'px';
   box.style.height = p.h + 'px';
   box.style.transformOrigin = '50% 50%';
-  box.style.transform = (Number(asset.rotation) || 0) ? ('rotate(' + (Number(asset.rotation) || 0) + 'deg)') : '';
+  box.style.transform = group ? '' : ((Number(asset.rotation) || 0) ? ('rotate(' + (Number(asset.rotation) || 0) + 'deg)') : '');
   box.querySelectorAll('.asset-scale-handle,.asset-rotate-handle').forEach(function(h) { h.remove(); });
   const assetCornerTabs = box.querySelectorAll('.asset-corner-handle');
   assetCornerTabs.forEach(function(h) { h.classList.add('show'); });
@@ -37940,7 +38003,7 @@ function renderAssetSelectionOverlay() {
   assetCornerTabsExist = assetCornerTabs.length > 0;
   assetCornerTabsCount = assetCornerTabs.length;
   assetCornerTabsVisible = assetCornerTabs.length === 4 && box.style.display !== 'none';
-  assetCornerTabsAssetId = String(asset.id);
+  assetCornerTabsAssetId = group ? 'asset-multi-group' : String(asset.id);
   assetCornerTabsUseAssetGeometry = true;
   assetCornerTabsUsePurpleIdentity = true;
   assetCornerTabsPointerEventsDisabled = Array.prototype.every.call(assetCornerTabs, function(h) { return getComputedStyle(h).pointerEvents === 'none'; });
@@ -37961,11 +38024,11 @@ function renderAssetSelectionOverlay() {
   });
   assetTransformVisualHandleCount = assetCornerTabs.length + box.querySelectorAll('.asset-scale-handle,.asset-rotate-handle').length;
   assetTransformDuplicateControlsDetected = assetTransformVisualHandleCount !== 4;
-  assetTransformActiveAssetId = String(asset.id);
+  assetTransformActiveAssetId = group ? 'asset-multi-group' : String(asset.id);
   assetTransformGestureMode = assetTransformDragState ? (assetTransformDragState.mode || 'pending') : 'idle';
   // v8z4b30ZY — atualizar diagnóstico
   assetSelectionOutlineVisible = true;
-  assetSelectionOutlineAssetId = String(asset.id);
+  assetSelectionOutlineAssetId = group ? 'asset-multi-group' : String(asset.id);
   assetSelectionOutlineUsesAssetGeometry = true;
   assetSelectionOutlineIssue = '';
   selectedAssetVisualFeedbackConsistent = true;

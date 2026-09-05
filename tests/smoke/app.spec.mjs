@@ -7407,3 +7407,36 @@ test('E9BG: group move applies one world delta to every selected asset', async (
   expect(result.first).toEqual({ x: 35, y: 5 });
   expect(result.second).toEqual({ x: 125, y: 105 });
 });
+
+test('E9BG: group transforms preserve each asset depth and relative group geometry', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    setEditorMode('assets', 'e9bg-transform-test');
+    const base = assets.find(a => a && (a.type === 'image' || a.type === 'text'));
+    const first = { ...base, id: 'e9bg-transform-a', worldX: 10, worldY: 20, worldW: 40, worldH: 50, depth: 0, rotation: 0, zIndex: 0 };
+    const second = { ...base, id: 'e9bg-transform-b', worldX: 110, worldY: 20, worldW: 40, worldH: 50, depth: 52, rotation: 0, zIndex: 1 };
+    assets = [first, second];
+    beginAssetMultiSelection(first.id);
+    toggleAssetMultiSelection(second.id);
+    const group = getAssetMultiSelectionGeometry();
+    const snapshot = captureAssetMultiVisualSnapshot();
+    const scaled = applyAssetMultiScaleFromSnapshot(snapshot, group, 1.5);
+    const afterScale = { first: { x:first.worldX, y:first.worldY, w:first.worldW, h:first.worldH, depth:first.depth }, second: { x:second.worldX, y:second.worldY, w:second.worldW, h:second.worldH, depth:second.depth } };
+    const rotationSnapshot = captureAssetMultiVisualSnapshot();
+    const rotationGroup = getAssetMultiSelectionGeometry();
+    const rotated = applyAssetMultiRotationFromSnapshot(rotationSnapshot, rotationGroup, 90);
+    return { scaled, rotated, afterScale, rotations: [first.rotation, second.rotation], depths: [first.depth, second.depth] };
+  });
+
+  expect(result.scaled).toBe(true);
+  expect(result.rotated).toBe(true);
+  expect(result.afterScale.first.w).toBeCloseTo(60, 5);
+  expect(result.afterScale.second.w).toBeCloseTo(60, 5);
+  expect(result.depths).toEqual([0, 52]);
+  expect(result.rotations).toEqual([90, 90]);
+});
