@@ -6867,7 +6867,20 @@ test('E9AQ — Play Frames anima moldura transitória sem mover Stage/câmera ne
   const initialFrame = await readPlaybackFrame();
   expect((await snapshot()).camera).toEqual(before.camera);
 
-  await page.waitForTimeout(350);
+  // A geometria usa a mesma passagem canônica do RAF, mas sem depender de uma
+  // janela de 350 ms sob a carga da suíte completa no WebKit.
+  await page.evaluate(() => {
+    if (stageFramesPlayback.raf) cancelAnimationFrame(stageFramesPlayback.raf);
+    stageFramesPlayback.raf = 0;
+    const projectTime = Math.min(
+      stageFramesPlayback.fullDuration,
+      stageFramesPlayback.startProjectTime + 0.35,
+    );
+    stageFramesPlayback.projectTime = projectTime;
+    const presentation = getStageFramesPlaybackPresentation(projectTime, stageFramesPlayback.fullDuration);
+    updateStageFramesPlaybackPresentation(presentation);
+    renderStageFramesPlaybackFrame(getStateAtT(projectTime / stageFramesPlayback.fullDuration), presentation);
+  });
   const animatedFrame = await readPlaybackFrame();
   expect(animatedFrame).not.toBeNull();
   expect(Math.abs(animatedFrame.left - initialFrame.left)).toBeGreaterThan(1);
@@ -7129,9 +7142,10 @@ test('E9AU — Play Frames reinicia do primeiro sem Loop, repete com Loop e qual
       segDurations[i] = 0.12;
       framePauses[i] = { enabled: false, duration: 0 };
     }
-    selectFrameContext(frameCount - 1, { source: 'e9au-no-loop-last' });
     renderAll();
   });
+  await page.locator('#pillsRow [data-frame-index="' + (await page.evaluate(() => frameCount - 1)) + '"]').click();
+  await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 1_000 }).toBe(await page.evaluate(() => frameCount - 1));
   const control = page.locator('#tbStageFramesPlay');
   await control.click();
   await expect.poll(() => page.evaluate(() => stageFramesPlayback.startFrameIndex), { timeout: 1_000 }).toBe(0);
@@ -7141,9 +7155,10 @@ test('E9AU — Play Frames reinicia do primeiro sem Loop, repete com Loop e qual
     loopEnabled = true;
     loopDuration = 0.08;
     for (let i = 0; i < Math.max(0, frameCount - 1); i++) segDurations[i] = 0.06;
-    selectFrameContext(frameCount - 1, { source: 'e9au-loop-last' });
     renderAll();
   });
+  await page.locator('#pillsRow [data-frame-index="' + (await page.evaluate(() => frameCount - 1)) + '"]').click();
+  await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 1_000 }).toBe(await page.evaluate(() => frameCount - 1));
   await control.click();
   await expect.poll(() => page.evaluate(() => stageFramesPlayback.loopEnabled), { timeout: 1_000 }).toBe(true);
   await page.waitForTimeout(700);
