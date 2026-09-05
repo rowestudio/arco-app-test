@@ -1747,6 +1747,7 @@ body.editor-assets.recording .frame{display:none !important;}
 #layersPanel .layers-item:active{background:#26262c;}
 #layersPanel .layers-item.reorder-dragging{opacity:.82;transform:translateY(var(--layers-drag-y,0));border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 55%,transparent),0 8px 20px rgba(0,0,0,.42);z-index:2;}
 #layersPanel .layers-item.selected{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--surface));}
+#layersPanel .layers-item.multi-selected{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--surface));box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 48%,transparent),0 5px 16px rgba(0,0,0,.28);}
 #layersPanel .layers-thumb{width:52px;height:52px;flex:0 0 auto;border-radius:7px;overflow:hidden;background:#0e0e11;display:flex;align-items:center;justify-content:center;}
 #layersPanel .layers-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
 #layersPanel .layers-name{font-size:14px;font-weight:600;color:#fff;}
@@ -17565,7 +17566,18 @@ function commitAssetContextGesture() {
   const gesture = assetContextGesture;
   if (!gesture) return;
   if (gesture.groupSnapshot) {
-    if (!projectStateEquals(gesture.snapshot, captureState())) { pushUndoSnapshot(gesture.snapshot); markProjectDirty('asset-group-' + gesture.kind); }
+    const changed = gesture.groupSnapshot.some(function(start) {
+      const asset = assets.find(function(candidate) { return candidate && String(candidate.id) === String(start.assetId); });
+      return !!asset && (
+        Math.abs((Number(asset.worldX) || 0) - start.worldX) > 0.001 ||
+        Math.abs((Number(asset.worldY) || 0) - start.worldY) > 0.001 ||
+        Math.abs((Number(asset.worldW) || 0) - start.worldW) > 0.001 ||
+        Math.abs((Number(asset.worldH) || 0) - start.worldH) > 0.001 ||
+        Math.abs((Number(asset.rotation) || 0) - start.rotation) > 0.001 ||
+        (asset.type === 'text' && (Math.abs((Number(asset.boxWidth) || 0) - (Number(start.boxWidth) || 0)) > 0.001 || Math.abs((Number(asset.fontSize) || 0) - (Number(start.fontSize) || 0)) > 0.001))
+      );
+    });
+    if (changed) { pushUndoSnapshot(gesture.snapshot); markProjectDirty('asset-group-' + gesture.kind); }
     assetContextGesture = null; renderProjectWorldExtraImages(); renderAssetSelectionOverlay(); renderLayersPanelList(); return;
   }
   const asset = assets.find(a => a && String(a.id) === gesture.assetId);
