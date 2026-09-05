@@ -5225,6 +5225,46 @@ test('E9AI — trocar para o último frame recompõe a referência temporal do S
   await expect(asset).not.toHaveClass(/asset-temporal-reference/);
 });
 
+// REG-070 — uma transformação contínua no Stage não pode recriar as imagens/textos
+// do editor a cada amostra. No Safari/iPhone isto faz os decoders e a composição
+// reiniciarem repetidamente e pode encerrar o PWA durante mover/escalar/rotacionar.
+test('REG-070 mantém os nós visuais de assets estáveis durante mutações contínuas do Stage', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const result = await page.evaluate(() => {
+    const tracked = [...document.querySelectorAll('.world-extra-img,.world-text-asset')];
+    if (!tracked.length) throw new Error('fixture sem nós visuais de assets');
+    const byId = new Map(tracked.map(node => [node.dataset.assetId, node]));
+    const frame = frames[activeIdx];
+    if (!frame) throw new Error('frame ativo ausente');
+    const asset = assets.find(candidate => candidate && candidate.type === 'image');
+    if (!asset) throw new Error('fixture sem asset de imagem');
+
+    // Caminho que Frame mover/escalar/rotacionar percorre: renderAll().
+    for (let step = 0; step < 12; step += 1) {
+      frame.x += 0.15;
+      frame.y += 0.1;
+      renderAll();
+    }
+    const stableAfterFrameMutation = [...byId.entries()].every(([id, node]) =>
+      document.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(id) + '"],.world-text-asset[data-asset-id="' + CSS.escape(id) + '"]') === node);
+
+    // Caminho que mover Ativo percorre: renderProjectWorldExtraImages().
+    asset.worldX += 0.25;
+    renderProjectWorldExtraImages();
+    const stableAfterAssetMutation = [...byId.entries()].every(([id, node]) =>
+      document.querySelector('.world-extra-img[data-asset-id="' + CSS.escape(id) + '"],.world-text-asset[data-asset-id="' + CSS.escape(id) + '"]') === node);
+    return { stableAfterFrameMutation, stableAfterAssetMutation };
+  });
+
+  expect(result.stableAfterFrameMutation).toBe(true);
+  expect(result.stableAfterAssetMutation).toBe(true);
+});
+
 test('E9AG — presença temporal: Stage, Preview e Export concordam em single-image, multi-image e Text Asset por dois instantes', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);

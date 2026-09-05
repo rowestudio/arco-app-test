@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9AR — fix(stage-dom-stability/REG-070): a recomposição do Stage reutiliza os nós visuais de imagens e textos quando a fonte permanece a mesma, atualizando apenas geometria e estilo. Isto evita reiniciar decode/composição a cada gesto de Frame, movimento de Ativo ou retorno de painel no Safari/iPhone. Preview, Export e modelo canônico não são alterados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AR. -->
 <!-- Arco Motion App — v8z4b32E9BD — fix(stage-frames-play-timeline-arrival): ao alcançar um Frame, a própria referência fixa troca de laranja para ciano e se converte gradualmente em cinza, sem halo/segunda moldura. A pill correspondente recebe somente borda ciano durante a mesma janela de chegada, sem foco, seleção, preenchimento, halo ou pausa no relógio. Play/Stop usa SVG exclusivo sólido, sem use/stroke herdado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9BD. -->
 <!-- Arco Motion App — v8z4b32E9BB — fix(stage-frames-play-continuity): Play Frames não reconstrói os assets nas chegadas, portanto a moldura laranja continua no relógio canônico mesmo com pausa zero. O Frame atingido recebe azul ciano que se dissolve durante 360 ms e então preserva apenas a referência secundária; o ícone sólido Play/Stop elimina também o stroke herdado da toolbar. APP_VERSION = APP_VERSION_NAME = v8z4b32E9BB. -->
 <!-- Arco Motion App — v8z4b32E9AP — fix(single-frame-temporal-presence): Frame único sem pausas usa a mesma duração efetiva estática em presença temporal, Preview e MP4; o snapshot congela essa duração. Projetos com 2+ Frames, tremor e exportação de imagem não mudam. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AP. -->
@@ -7775,8 +7776,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9BD';
-const APP_VERSION_NAME = 'v8z4b32E9BD';
+const APP_VERSION = 'v8z4b32E9AR';
+const APP_VERSION_NAME = 'v8z4b32E9AR';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -33524,6 +33525,7 @@ function applyProjectData(data, loadOptions = {}) {
   deletedLayerSequences.clear();
   deletedLayerSequenceReused = false;
   layerIdentityPreservedAfterSaveLoad = true;
+  textAssetStageMovementObservation = null;
   const token = ++loadSessionToken;
   loadSessionStarted = true;
   loadSessionCompleted = false;
@@ -37136,12 +37138,22 @@ function performInsertImageAtSlot(slotKey, file) {
 function renderProjectWorldExtraImages() {
   if (typeof stageContent === 'undefined' || !stageContent) return;
   const old = stageContent.querySelectorAll('.world-extra-img,.world-text-asset');
-  old.forEach(el => el.remove());
+  // REG-070: durante gestos contínuos, o Stage pode ser redesenhado dezenas de
+  // vezes por segundo. Recriar <img> a cada chamada reinicia o ciclo de decode e
+  // composição no Safari, mesmo quando a fonte não mudou. Reutilizar o nó visual
+  // preserva a mesma geometria canônica, mas evita essa pressão de memória.
+  const existingByKey = new Map();
+  old.forEach(function(el) {
+    const id = el.dataset ? el.dataset.assetId : '';
+    if (id) existingByKey.set((el.classList.contains('world-text-asset') ? 'text:' : 'image:') + id, el);
+  });
+  const reusedNodes = new Set();
   const allImageAssets = Array.isArray(assets) ? assets.filter(function(a){ return a && a.type === 'image'; }) : [];
   // Sem mundo inicializado OU sem nenhuma imagem: estado transitório — manter o
   // #imgEl visível (fallback legado) para não deixar o Stage em branco enquanto
   // syncFirstImageAsset() ainda não criou o asset.
   if (!projectWorld.initialized || !projectWorld.baseStageW || !projectWorld.baseStageH || allImageAssets.length === 0) {
+    old.forEach(el => el.remove());
     if (typeof imgEl !== 'undefined' && imgEl) {
       imgEl.style.visibility = '';
       imgEl.style.position = '';
@@ -37207,13 +37219,22 @@ function renderProjectWorldExtraImages() {
     if (!src) return;
     const isMain = (a === mainAsset);
     if (isMain) img1Drawn++;
-    const img = document.createElement('img');
-    img.className = 'world-extra-img';
-    if (isTemporalReference(a)) img.classList.add('asset-temporal-reference');
-    img.draggable = false;
-    img.alt = '';
-    img.src = src;
-    img.onload = function() { restackFilmEditorLayers('asset-image-onload'); };
+    const nodeKey = 'image:' + String(a.id);
+    let img = existingByKey.get(nodeKey);
+    if (!img) {
+      img = document.createElement('img');
+      img.className = 'world-extra-img';
+      img.draggable = false;
+      img.alt = '';
+      img.onload = function() { restackFilmEditorLayers('asset-image-onload'); };
+    }
+    const isTemporalReferenceAsset = isTemporalReference(a);
+    img.classList.toggle('asset-temporal-reference', isTemporalReferenceAsset);
+    if (!isTemporalReferenceAsset) img.classList.remove('asset-temporal-reference-selected');
+    if (img._arcoAssetSource !== src) {
+      img._arcoAssetSource = src;
+      img.src = src;
+    }
     img.style.position = 'absolute';
     // v8z4b32E5 — usa o sub-retângulo VISUAL (getAssetVisualWorldRect: fit contain
     // de sourceW/H dentro de worldW/H) em vez do worldRect cru. Para extras isto é
@@ -37248,8 +37269,9 @@ function renderProjectWorldExtraImages() {
     img.style.zIndex = String(_z);
     _zlist.push((isMain ? 'img1:' : '') + _z);
     img.dataset.assetId = String(a.id);
-    if (isMain) img.dataset.mainImage = '1';
+    if (isMain) img.dataset.mainImage = '1'; else delete img.dataset.mainImage;
     stageContent.insertBefore(img, imgEl);
+    reusedNodes.add(img);
   });
   visualAssets.forEach(function(a) {
     if (a.type !== 'text' || a.visible === false) return;
@@ -37258,15 +37280,24 @@ function renderProjectWorldExtraImages() {
     const visualRect = resolvedGeometry.visualRect;
     recordSelectedStageParallaxOffset(a, visualRect);
     const p = editorWorldToStage(visualRect.x, visualRect.y, visualRect.w, visualRect.h);
-    const el = document.createElement('div'); el.className='world-text-asset'; el.dataset.assetId=String(a.id);
-    if (isTemporalReference(a)) el.classList.add('asset-temporal-reference');
+    const nodeKey = 'text:' + String(a.id);
+    let el = existingByKey.get(nodeKey);
+    if (!el) { el = document.createElement('div'); el.className='world-text-asset'; }
+    el.dataset.assetId=String(a.id);
+    const isTemporalReferenceAsset = isTemporalReference(a);
+    el.classList.toggle('asset-temporal-reference', isTemporalReferenceAsset);
+    if (!isTemporalReferenceAsset) el.classList.remove('asset-temporal-reference-selected');
     el.textContent = a.text || (a === pendingTextDraft ? 'Texto...' : '');
     el.style.left=p.x+'px'; el.style.top=p.y+'px'; el.style.width=p.w+'px'; el.style.minHeight=p.h+'px'; el.style.padding=(m.paddingY*_editorTransform.scale)+'px '+(m.paddingX*_editorTransform.scale)+'px'; el.style.backgroundColor=a.boxBackgroundEnabled?hexToRgba(a.boxBackgroundColor,a.boxBackgroundOpacity):'transparent';
     el.style.color=a.color; el.style.fontFamily=a.fontFamily; el.style.fontWeight=String(a.fontWeight); el.style.fontStyle=a.fontStyle; el.style.fontSize=(a.fontSize*_editorTransform.scale)+'px'; el.style.lineHeight=String(a.lineHeight); el.style.textAlign=a.textAlign;
     el.style.transform=(Number(a.rotation)||0)?`rotate(${Number(a.rotation)}deg)`:''; el.style.opacity=String(Math.max(0,Math.min(1,Number.isFinite(Number(a.opacity))?Number(a.opacity):1))); el.style.zIndex=String(Math.min(compositionRankById.get(String(a.id))||1,CAMERA_ASSET_BAND_MAX));
-    stageContent.insertBefore(el,imgEl); textAssetStageRendered = textAssetStageRendered || a !== pendingTextDraft;
+    stageContent.insertBefore(el,imgEl); reusedNodes.add(el); textAssetStageRendered = textAssetStageRendered || a !== pendingTextDraft;
     if(a!==pendingTextDraft){textBoxStageSnapshot=captureTextBoxRenderSnapshot(a);const computed=getComputedStyle(el),alphaMatch=!a.boxBackgroundEnabled||Math.abs((Number(computed.backgroundColor.match(/[\d.]+(?=\))/)?.[0])||1)-a.boxBackgroundOpacity)<.011,manualAlpha=Math.max(0,Math.min(1,Number.isFinite(Number(a.opacity))?Number(a.opacity):1));textBoxOpacityDoesNotAffectGlyphs=Math.abs(Number(computed.opacity)-manualAlpha)<.011&&alphaMatch}
   });
+  // Remove somente os nós que não pertencem mais à composição atual (asset
+  // apagado, invisível ou rascunho encerrado). Nos casos normais de mover,
+  // escalar, rotacionar ou fechar Configurações, nenhum nó é destruído.
+  old.forEach(function(el) { if (!reusedNodes.has(el)) el.remove(); });
   // Diagnóstico de ordem/posição da img-1.
   computedWorldExtraZIndexes = _zlist.join(',');
   img1DrawnOnlyOnce = (img1Drawn === 1);
