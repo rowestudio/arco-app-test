@@ -6809,7 +6809,7 @@ test('E9AQ — Play Frames anima moldura transitória sem mover Stage/câmera ne
   expect(await snapshot()).toEqual(before);
 });
 
-test('E9AV — Play Frames mantém a moldura laranja em movimento e pisca um marcador azul independente na chegada', async ({ page }) => {
+test('E9AV — Play Frames mantém a moldura laranja em movimento e dissolve um marcador azul independente na chegada', async ({ page }) => {
   const source = fs.readFileSync(path.resolve('index.html'), 'utf8');
   const playbackCss = source.slice(
     source.indexOf('#toolbar.contextual-toolbar #tbStageFramesPlay'),
@@ -6820,9 +6820,9 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e pisca um mar
   expect(playbackCss).toContain('border:0!important');
   expect(playbackCss).toContain('border:3px solid #ff9500');
   expect(source).toContain("el.id = 'stageFramesPlaybackArrivalFlash'");
-  expect(source).toContain('renderStageFramesPlaybackArrivalFlash();');
+  expect(source).toContain('renderStageFramesPlaybackArrivalFlash(arrivalOpacity);');
   expect(playbackCss).toContain('.stage-frames-playback-arrival-flash-visual');
-  expect(playbackCss).toContain('.frame.stage-frames-playback-arrival .frame-border');
+  expect(source).toContain("borderEl.style.borderColor = isArrival ? ('rgba(4,255,242,' + arrivalOpacity + ')')");
   expect(playbackCss).toContain('#04fff2');
   expect(playbackCss).not.toContain('#39d98a');
   expect(source).toContain('symbol id="i-stop-solid"');
@@ -6855,6 +6855,7 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e pisca um mar
   await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 2_000 }).toBe(selectedFrameAtStart);
   await expect(control.locator('use')).toHaveAttribute('href', '#i-stop-solid');
   await expect(control.locator('svg')).toHaveCSS('color', 'rgb(4, 255, 242)');
+  await expect(control.locator('svg')).toHaveCSS('stroke', 'none');
   await expect.poll(() => page.evaluate(() => ({
     activeIdx,
     currentFrameIndex: stageFramesPlayback.currentFrameIndex,
@@ -6977,6 +6978,50 @@ test('E9AZ — Play Frames desloca a timeline no mesmo relógio do trecho', asyn
   });
   expect(clockScroll.pills).toBeGreaterThan(1);
   expect(clockScroll.times).toBeCloseTo(clockScroll.pills, 3);
+});
+
+test('E9BA — chegada não reconstrói assets, e a marca ciano se dissolve sem pausar a moldura', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  const result = await page.evaluate(() => {
+    loopEnabled = false;
+    segDurations[0] = 1.2;
+    framePauses[0] = { duration: 0 };
+    const originalRefresh = refreshAssetStageVisualGeometry;
+    let refreshCalls = 0;
+    refreshAssetStageVisualGeometry = () => { refreshCalls++; };
+    // Não inicia o RAF: este é o ponto determinístico de uma chegada já
+    // amostrada pelo relógio, sem deixar uma animação concorrente no runner.
+    stageFramesPlayback = {
+      running: true,
+      currentFrameIndex: 0,
+      arrivalFrameIndex: -1,
+      arrivalFadeStartedAt: 0,
+      arrivalPulseUntil: 0,
+      passedFrameIndexes: new Set(),
+      projectTime: 0,
+      fullDuration: Math.max(0.001, totalDurationFull()),
+      loopEnabled: false,
+      raf: 0,
+    };
+    const startedAt = performance.now();
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: true }, startedAt);
+    const flash = document.getElementById('stageFramesPlaybackArrivalFlash');
+    const startOpacity = Number(flash?.style.opacity || 0);
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: false }, startedAt + 180);
+    const midOpacity = Number(flash?.style.opacity || 0);
+    refreshAssetStageVisualGeometry = originalRefresh;
+    stageFramesPlayback.running = false;
+    clearStageFramesPlaybackArrivalFeedback();
+    return { refreshCalls, startOpacity, midOpacity };
+  });
+  expect(result.refreshCalls).toBe(0);
+  expect(result.startOpacity).toBeCloseTo(1, 3);
+  expect(result.midOpacity).toBeGreaterThan(0);
+  expect(result.midOpacity).toBeLessThan(result.startOpacity);
 });
 
 test('E9AY — controle Frames não conserva foco nativo que desenhe borda no Safari', async ({ page }) => {
