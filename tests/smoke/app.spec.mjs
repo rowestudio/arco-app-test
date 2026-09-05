@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import fs from 'node:fs';
 import path from 'node:path';
 import { dismissProModalIfVisible } from './ui-helpers.mjs';
 
@@ -6771,4 +6772,455 @@ test('E9AG — presença temporal: aplicar global, preservar override e voltar p
     inheritInvalidReason: null,
     overrideInvalidReason: null,
   });
+});
+
+test('E9AQ — contrato do Play Frames usa moldura transitória e não escreve na câmera', async () => {
+  const source = fs.readFileSync(path.resolve('index.html'), 'utf8');
+  const playbackBlock = source.slice(
+    source.indexOf('function startStageFramesPlayback()'),
+    source.indexOf('function toggleStageFramesPlayback()'),
+  );
+  expect(source).toContain("el.id = 'stageFramesPlaybackFrame'");
+  expect(playbackBlock).not.toContain('editorPanX =');
+  expect(playbackBlock).not.toContain('editorPanY =');
+  expect(playbackBlock).not.toContain('applyEditorZoom()');
+});
+
+test('E9AQ — Play Frames anima moldura transitória sem mover Stage/câmera nem mutar projeto', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  await page.evaluate(() => {
+    setEditorMode('camera', 'e9aq-stage-playback-frame');
+    activeIdx = 0;
+    const space = getCanonicalFrameCoordinateDimensions();
+    frames[0] = { x: space.width * 0.08, y: space.height * 0.12, w: space.width * 0.34, h: space.height * 0.30 };
+    frames[1] = { x: space.width * 0.52, y: space.height * 0.48, w: space.width * 0.20, h: space.height * 0.18 };
+    frameRotations[0] = -8;
+    frameRotations[1] = 34;
+    segDurations[0] = 2;
+    renderAll();
+    editorZoomScale = 1.35;
+    editorPanX = -73;
+    editorPanY = 41;
+    applyEditorZoom();
+  });
+  await page.waitForTimeout(1_700);
+
+  const snapshot = () => page.evaluate(() => ({
+    camera: {
+      panX: editorPanX,
+      panY: editorPanY,
+      zoom: editorZoomScale,
+      transform: stageContent.style.transform,
+      stageRect: (() => {
+        const rect = stage.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      })(),
+      contentRect: (() => {
+        const rect = stageContent.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      })(),
+    },
+    project: JSON.stringify(buildProjectData()),
+    undo: JSON.stringify(undoStack),
+    redo: JSON.stringify(redoStack),
+    autosave: localStorage.getItem(AUTOSAVE_KEY),
+    sessionAutosave: {
+      queued: _sessionAutosaveQueuedRevision,
+      committed: _sessionAutosaveCommittedRevision,
+      epoch: _sessionAutosaveEpoch,
+    },
+    previewing: isPreviewing,
+    recording: isRecording,
+  }));
+
+  const readPlaybackFrame = () => page.evaluate(() => {
+    const el = document.getElementById('stageFramesPlaybackFrame');
+    if (!el) return null;
+    const visual = el.querySelector('.stage-frames-playback-frame-visual');
+    return {
+      left: parseFloat(el.style.left),
+      top: parseFloat(el.style.top),
+      width: parseFloat(el.style.width),
+      height: parseFloat(el.style.height),
+      transform: visual?.style.transform || '',
+    };
+  });
+
+  const before = await snapshot();
+
+  const control = page.locator('#tbStageFramesPlay');
+  await expect(control).toBeVisible();
+  await expect(control).toHaveText('Frames');
+  const selectedFrameAtTap = await page.evaluate(() => activeIdx);
+  await control.click();
+  await expect(page.locator('body')).toHaveClass(/stage-frames-playing/);
+  await expect(control).toHaveAttribute('aria-label', 'Parar reprodução de Frames');
+  await expect(page.locator('#stageFramesPlaybackFrame')).toBeVisible();
+
+  await expect.poll(() => page.evaluate(() => stageFramesPlayback.startFrameIndex), { timeout: 2_000 }).toBe(selectedFrameAtTap);
+  await expect.poll(() => page.evaluate(() => stageFramesPlayback.projectTime), { timeout: 2_000 }).toBeGreaterThan(0);
+  const initialFrame = await readPlaybackFrame();
+  expect((await snapshot()).camera).toEqual(before.camera);
+
+  // A geometria usa a mesma passagem canônica do RAF, mas sem depender de uma
+  // janela de 350 ms sob a carga da suíte completa no WebKit.
+  await page.evaluate(() => {
+    if (stageFramesPlayback.raf) cancelAnimationFrame(stageFramesPlayback.raf);
+    stageFramesPlayback.raf = 0;
+    const projectTime = Math.min(
+      stageFramesPlayback.fullDuration,
+      stageFramesPlayback.startProjectTime + 0.35,
+    );
+    stageFramesPlayback.projectTime = projectTime;
+    const presentation = getStageFramesPlaybackPresentation(projectTime, stageFramesPlayback.fullDuration);
+    updateStageFramesPlaybackPresentation(presentation);
+    renderStageFramesPlaybackFrame(getStateAtT(projectTime / stageFramesPlayback.fullDuration), presentation);
+  });
+  const animatedFrame = await readPlaybackFrame();
+  expect(animatedFrame).not.toBeNull();
+  expect(Math.abs(animatedFrame.left - initialFrame.left)).toBeGreaterThan(1);
+  expect(Math.abs(animatedFrame.top - initialFrame.top)).toBeGreaterThan(1);
+  expect(Math.abs(animatedFrame.width - initialFrame.width)).toBeGreaterThan(1);
+  expect(Math.abs(animatedFrame.height - initialFrame.height)).toBeGreaterThan(1);
+  expect(animatedFrame.transform).not.toBe(initialFrame.transform);
+  expect((await snapshot()).camera).toEqual(before.camera);
+
+  await control.click();
+  await expect(page.locator('body')).not.toHaveClass(/stage-frames-playing/);
+  await expect(page.locator('#stageFramesPlaybackFrame')).toHaveCount(0);
+  expect(await snapshot()).toEqual(before);
+});
+
+test('E9AV — Play Frames mantém a moldura laranja em movimento e transforma o Frame atingido em azul que se dissolve', async ({ page }) => {
+  const source = fs.readFileSync(path.resolve('index.html'), 'utf8');
+  const playbackCss = source.slice(
+    source.indexOf('#toolbar.contextual-toolbar #tbStageFramesPlay'),
+    source.indexOf('#toolbar.contextual-toolbar .ctx-only'),
+  );
+  expect(playbackCss).toContain('color:#04fff2');
+  expect(playbackCss).toContain('outline:0!important');
+  expect(playbackCss).toContain('border:0!important');
+  expect(playbackCss).toContain('border:3px solid #ff9500');
+  expect(source).not.toContain("el.id = 'stageFramesPlaybackArrivalFlash'");
+  expect(playbackCss).not.toContain('.stage-frames-playback-arrival-flash');
+  expect(source).toContain('function getStageFramesPlaybackArrivalColor(arrivalOpacity)');
+  expect(playbackCss).toContain('#04fff2');
+  expect(playbackCss).not.toContain('#39d98a');
+  expect(source).toContain("<rect x=\"6\" y=\"6\" width=\"12\" height=\"12\" rx=\"1.5\"/>");
+  expect(source).toContain('syncStageFramesPlaybackTimeline();');
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  await page.evaluate(() => {
+    setEditorMode('camera', 'e9ar-playback-arrival');
+    loopEnabled = false;
+    // Duração deliberadamente longa: o cenário precisa observar a seleção
+    // inicial antes da passagem para o próximo Frame, inclusive no CI completo.
+    segDurations[0] = 1.2;
+    framePauses[0] = { duration: 0 };
+    framePauses[1] = { duration: 2 };
+    renderAll();
+  });
+
+  // Seleção real por pill: escrever activeIdx diretamente deixa uma centralização
+  // pendente de outro teste sobrescrever o início antes do toque em Frames.
+  await page.locator('#pillsRow [data-frame-index="0"]').click();
+  await expect(page.locator('#frm_0')).toHaveClass(/active/);
+  const control = page.locator('#tbStageFramesPlay');
+  const selectedFrameAtStart = await page.evaluate(() => activeIdx);
+  await control.click();
+  await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 2_000 }).toBe(selectedFrameAtStart);
+  await expect(control.locator('use')).toHaveCount(0);
+  await expect(control.locator('rect')).toHaveCount(1);
+  await expect(control.locator('svg')).toHaveCSS('color', 'rgb(4, 255, 242)');
+  await expect(control.locator('svg')).toHaveCSS('stroke', 'none');
+  await expect.poll(() => page.evaluate(() => ({
+    activeIdx,
+    currentFrameIndex: stageFramesPlayback.currentFrameIndex,
+    stageFrameIsActive: document.getElementById('frm_0')?.classList.contains('active') || false,
+  })), { timeout: 800 }).toEqual({
+    activeIdx: 0,
+    currentFrameIndex: 0,
+    stageFrameIsActive: false,
+  });
+  await expect(page.locator('#pillsRow [data-frame-index="0"]')).not.toHaveClass(/stage-frames-playback-current/);
+  // A passagem visual não pode depender do relógio real do runner WebKit sob a
+  // carga da suíte completa. Executa a mesma transição canônica chamada pelo
+  // relógio e verifica que ela preserva a moldura em movimento, sem renderAll.
+  // Suspende só o RAF desta asserção: se ele avançar enquanto o teste lê o DOM,
+  // a chegada real seguinte pode substituir a piscada que está sendo medida.
+  await page.evaluate(() => {
+    if (stageFramesPlayback.raf) cancelAnimationFrame(stageFramesPlayback.raf);
+    stageFramesPlayback.raf = 0;
+    stageFramesPlayback.currentFrameIndex = 0;
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: true }, performance.now());
+  });
+  await expect.poll(() => page.evaluate(() => ({
+    activeIdx,
+    currentFrameIndex: stageFramesPlayback.currentFrameIndex,
+    stageFrameIsActive: document.getElementById('frm_1')?.classList.contains('active') || false,
+  })), { timeout: 2_000 }).toEqual({
+    activeIdx: 1,
+    currentFrameIndex: 1,
+    stageFrameIsActive: false,
+  });
+  await expect(page.locator('#pillsRow [data-frame-index="0"]')).not.toHaveClass(/stage-frames-playback-current/);
+  // A chegada também fica legível na faixa inferior, mas somente pela borda
+  // ciano transitória: não recebe active/selected nem controla o relógio.
+  await expect(page.locator('#pillsRow [data-frame-index="1"]')).toHaveClass(/stage-frames-playback-arrived/);
+  await expect(page.locator('#pillsRow [data-frame-index="1"]')).toHaveCSS('border-top-color', 'rgb(4, 255, 242)');
+  await expect(page.locator('#pillsRow [data-frame-index="1"]')).not.toHaveClass(/active|selected/);
+  await expect(page.locator('#frm_1')).toHaveClass(/stage-frames-playback-arrival/);
+  await expect(page.locator('#frm_1 .frame-border')).toHaveCSS('border-top-color', 'rgb(4, 255, 242)');
+  await expect(page.locator('#stageFramesPlaybackFrame')).toHaveAttribute('data-state', 'moving');
+  expect(source).toContain('arrivalPulseUntil = now + 360');
+  expect(source).not.toContain("commitFilmSelection(frameIndex, -1, 'stage-frames-playback-progress');\n    renderAll();");
+  await page.evaluate(() => {
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: false }, performance.now() + 400);
+  });
+  await expect(page.locator('#pillsRow [data-frame-index="1"]')).not.toHaveClass(/stage-frames-playback-arrived/);
+  await expect(page.locator('#pillsRow [data-frame-index="1"]')).not.toHaveCSS('border-top-color', 'rgb(4, 255, 242)');
+  await expect(page.locator('#frm_1')).not.toHaveClass(/stage-frames-playback-arrival/);
+  await expect(page.locator('#tbStageFramesPlay')).toHaveCSS('border-top-width', '0px');
+  await expect(page.locator('#tbStageFramesPlay')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(page.locator('#tbStageFramesPlay')).toHaveClass(/stage-frames-play-plain/);
+  await expect(page.locator('#tbStageFramesPlay')).not.toHaveClass(/tb-item/);
+  const frameAtStop = await page.evaluate(() => stageFramesPlayback.currentFrameIndex);
+  await control.click();
+  await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 2_000 }).toBe(frameAtStop);
+  await expect(page.locator('#frm_' + frameAtStop)).toHaveClass(/active/);
+});
+
+test('E9AX — Play Frames reduz o Frame assim que a chegada termina', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  await page.evaluate(() => {
+    setEditorMode('camera', 'e9ax-past-frames');
+    loopEnabled = false;
+    segDurations[0] = 1.2;
+    framePauses[0] = { duration: 0 };
+    renderAll();
+  });
+  await page.locator('#pillsRow [data-frame-index="0"]').click();
+  await page.locator('#tbStageFramesPlay').click();
+  await page.evaluate(() => {
+    if (stageFramesPlayback.raf) cancelAnimationFrame(stageFramesPlayback.raf);
+    stageFramesPlayback.raf = 0;
+    stageFramesPlayback.currentFrameIndex = 0;
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: true }, performance.now());
+  });
+  await expect(page.locator('#frm_0')).not.toHaveClass(/stage-frames-playback-past/);
+  await expect(page.locator('#frm_1')).toHaveClass(/stage-frames-playback-past/);
+  await expect(page.locator('#frm_1')).toHaveClass(/stage-frames-playback-arrival/);
+  await expect(page.locator('#frm_1')).toHaveCSS('opacity', '1');
+  await page.evaluate(() => {
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: false }, performance.now() + 400);
+  });
+  await expect(page.locator('#frm_1')).not.toHaveClass(/stage-frames-playback-arrival/);
+  await expect(page.locator('#frm_1')).toHaveCSS('opacity', '0.28');
+});
+
+test('E9AZ — Play Frames desloca a timeline no mesmo relógio do trecho', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  await page.evaluate(() => {
+    setEditorMode('camera', 'e9az-timeline-clock');
+    loopEnabled = false;
+    segDurations[0] = 3;
+    framePauses[0] = { duration: 0 };
+    renderAll();
+  });
+  await page.locator('#pillsRow [data-frame-index="0"]').click();
+  await page.locator('#tbStageFramesPlay').click();
+  const clockScroll = await page.evaluate(() => {
+    if (stageFramesPlayback.raf) cancelAnimationFrame(stageFramesPlayback.raf);
+    if (lowerTimelineScrollAnimFrame) cancelAnimationFrame(lowerTimelineScrollAnimFrame);
+    if (lowerTimelineProgrammaticScrollTimer) clearTimeout(lowerTimelineProgrammaticScrollTimer);
+    lowerTimelineScrollAnimFrame = 0;
+    lowerTimelineProgrammaticScrollTimer = 0;
+    lowerTimelineProgrammaticScrollUntil = 0;
+    isLowerTimelineProgrammaticCentering = false;
+    const pills = document.getElementById('pillsRow');
+    const times = document.getElementById('lowerPartialTimes');
+    pills.scrollLeft = 0;
+    times.scrollLeft = 0;
+    stageFramesPlayback.raf = 0;
+    stageFramesPlayback.currentFrameIndex = 0;
+    stageFramesPlayback.projectTime = 1.5;
+    stageFramesPlayback.fullDuration = totalDurationFull();
+    updateStageFramesPlaybackPresentation({ frameIndex: 0, arrived: false }, performance.now());
+    return { pills: pills.scrollLeft, times: times.scrollLeft };
+  });
+  expect(clockScroll.pills).toBeGreaterThan(1);
+  expect(clockScroll.times).toBeCloseTo(clockScroll.pills, 3);
+});
+
+test('E9BA — chegada não reconstrói assets, e o Frame azul se converte em cinza sem halo', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  const result = await page.evaluate(() => {
+    loopEnabled = false;
+    segDurations[0] = 1.2;
+    framePauses[0] = { duration: 0 };
+    const originalRefresh = refreshAssetStageVisualGeometry;
+    let refreshCalls = 0;
+    refreshAssetStageVisualGeometry = () => { refreshCalls++; };
+    // Não inicia o RAF: este é o ponto determinístico de uma chegada já
+    // amostrada pelo relógio, sem deixar uma animação concorrente no runner.
+    stageFramesPlayback = {
+      running: true,
+      currentFrameIndex: 0,
+      arrivalFrameIndex: -1,
+      arrivalFadeStartedAt: 0,
+      arrivalPulseUntil: 0,
+      passedFrameIndexes: new Set(),
+      projectTime: 0,
+      fullDuration: Math.max(0.001, totalDurationFull()),
+      loopEnabled: false,
+      raf: 0,
+    };
+    const startedAt = performance.now();
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: true }, startedAt);
+    const border = document.querySelector('#frm_1 .frame-border');
+    const startColor = border?.style.borderColor || '';
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: false }, startedAt + 180);
+    const midColor = border?.style.borderColor || '';
+    refreshAssetStageVisualGeometry = originalRefresh;
+    stageFramesPlayback.running = false;
+    clearStageFramesPlaybackArrivalFeedback();
+    return { refreshCalls, startColor, midColor };
+  });
+  expect(result.refreshCalls).toBe(0);
+  expect(result.startColor).toBe('rgb(4, 255, 242)');
+  expect(result.midColor).not.toBe(result.startColor);
+  expect(result.midColor).not.toContain('4, 255, 242, 1');
+});
+
+test('E9AY — controle Frames não conserva foco nativo que desenhe borda no Safari', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  await page.evaluate(() => setEditorMode('camera', 'e9ay-frames-control'));
+  const control = page.locator('#tbStageFramesPlay');
+  await expect(control).toBeVisible();
+  await expect(control).not.toHaveAttribute('tabindex');
+  await expect(control).toHaveCSS('border-top-width', '0px');
+  await expect(control).toHaveCSS('outline-style', 'none');
+  await expect(control).toHaveCSS('box-shadow', 'none');
+});
+
+test('E9AU — Play Frames reinicia do primeiro sem Loop, repete com Loop e qualquer outro controle interrompe', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+  await page.evaluate(() => {
+    setEditorMode('camera');
+    loopEnabled = false;
+    for (let i = 0; i < Math.max(0, frameCount - 1); i++) {
+      segDurations[i] = 0.12;
+      framePauses[i] = { enabled: false, duration: 0 };
+    }
+    renderAll();
+  });
+  await page.locator('#pillsRow [data-frame-index="' + (await page.evaluate(() => frameCount - 1)) + '"]').click();
+  await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 1_000 }).toBe(await page.evaluate(() => frameCount - 1));
+  const control = page.locator('#tbStageFramesPlay');
+  await control.click();
+  await expect.poll(() => page.evaluate(() => stageFramesPlayback.startFrameIndex), { timeout: 1_000 }).toBe(0);
+  await control.click();
+
+  await page.evaluate(() => {
+    loopEnabled = true;
+    loopDuration = 0.08;
+    for (let i = 0; i < Math.max(0, frameCount - 1); i++) segDurations[i] = 0.06;
+    renderAll();
+  });
+  await page.locator('#pillsRow [data-frame-index="' + (await page.evaluate(() => frameCount - 1)) + '"]').click();
+  await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 1_000 }).toBe(await page.evaluate(() => frameCount - 1));
+  await control.click();
+  await expect.poll(() => page.evaluate(() => stageFramesPlayback.loopEnabled), { timeout: 1_000 }).toBe(true);
+  await page.waitForTimeout(700);
+  await expect(page.locator('body')).toHaveClass(/stage-frames-playing/);
+  // O controle externo precisa existir visualmente no modo Frames. O zoom
+  // pode ficar oculto em telas compactas; a troca de modo é sempre acessível.
+  const externalControl = page.locator('#modeAssetsBtn');
+  await expect(externalControl).toBeVisible();
+  await externalControl.click();
+  await expect(page.locator('body')).not.toHaveClass(/stage-frames-playing/);
+  const lastStoppedFrameIndex = await page.evaluate(() => stageFramesPlayback.lastStoppedFrameIndex);
+  await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 1_000 }).toBe(lastStoppedFrameIndex);
+});
+
+test('E9AW — Play Frames não herda superfície, transforma o Frame sem halo e interrompe por toque no Stage', async ({ page }) => {
+  const source = fs.readFileSync(path.resolve('index.html'), 'utf8');
+  const playbackCss = source.slice(
+    source.indexOf('#toolbar.contextual-toolbar #tbStageFramesPlay'),
+    source.indexOf('#toolbar.contextual-toolbar .ctx-only'),
+  );
+  // O botão não pode usar a célula genérica que desenha uma superfície arredondada.
+  expect(source).toContain('stage-frames-play-plain');
+  // A chegada não pode recriar uma segunda moldura/halo sobre o Frame real.
+  expect(playbackCss).not.toContain('stage-frames-playback-arrival-flash');
+  // A interrupção é global; não pode depender de o alvo ser outro botão.
+  expect(source).toContain('function interruptStageFramesPlaybackFromExternalInteraction');
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  await page.evaluate(() => {
+    setEditorMode('camera', 'e9aw-global-interrupt');
+    loopEnabled = false;
+    segDurations[0] = 1.2;
+    framePauses[0] = { duration: 0 };
+    framePauses[1] = { duration: 0 };
+    selectFrameContext(0, { source: 'e9aw-start' });
+    renderAll();
+  });
+
+  const control = page.locator('#tbStageFramesPlay');
+  await expect(control).not.toHaveClass(/tb-item/);
+  await control.click();
+  await expect(page.locator('body')).toHaveClass(/stage-frames-playing/);
+
+  // Dispara a mesma transição que o relógio chama: somente o Frame real muda.
+  const arrival = await page.evaluate(() => {
+    stageFramesPlayback.currentFrameIndex = 0;
+    updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: true }, performance.now());
+    const border = document.querySelector('#frm_1 .frame-border');
+    return {
+      color: border ? getComputedStyle(border).borderTopColor : '',
+      arrival: document.getElementById('frm_1')?.classList.contains('stage-frames-playback-arrival') || false,
+    };
+  });
+  await expect(page.locator('#stageFramesPlaybackArrivalFlash')).toHaveCount(0);
+  expect(arrival.arrival).toBe(true);
+  expect(arrival.color).toBe('rgb(4, 255, 242)');
+
+  await page.locator('#imageArea').click({ position: { x: 8, y: 8 } });
+  await expect(page.locator('body')).not.toHaveClass(/stage-frames-playing/);
 });
