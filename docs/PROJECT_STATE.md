@@ -1,5 +1,11 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-04 — REG-070 aberta: edição no Stage reinicia PWA no iPhone/Safari
+
+- Roberto relatou reinicialização do PWA ao escalar, mover ou rotacionar Frames (pela alça e pelo menu contextual), ao mover Ativos e ao voltar de Configurações. O sintoma não depende de Frame específico nem de zoom alto.
+- A investigação isolou uma reconstrução integral dos nós visuais de imagens e textos a cada recomposição do Stage. A correção E9AR em desenvolvimento passa a reutilizar os nós estáveis e atualizar apenas seus atributos visuais; Preview, Export e o modelo canônico não entram no escopo.
+- A validação física iPhone/Safari continua obrigatória. A regressão independente de seleção de Frames sobrepostos está registrada como REG-071.
+
 ## Atualização 2026-09-02 — v8z4b32E9AO: Text Asset no retorno do Preview após MP4
 
 - Relato físico na E9AN: o MP4 preservava o texto, mas ao concluir a geração e retomar o Preview o Text Asset desaparecia.

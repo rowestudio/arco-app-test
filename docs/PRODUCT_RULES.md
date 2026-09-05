@@ -1,5 +1,10 @@
 # PRODUCT_RULES
 
+## Frames sobrepostos (REG-071)
+
+- Uma borda ou geometria de Frame que esteja visivelmente exposta deve ser selecionável mesmo quando outro Frame maior está à frente.
+- Para uma região completamente coberta, nenhuma regra de ciclo automático, mudança de ordem ou seleção arbitrária é inferida sem nova decisão de produto.
+
 ## Regra E9Z — copiar, colar e duplicar ativos
 
 - Duplicar em Camadas cria uma nova camada sobreposta, selecionada e desbloqueada. Duplicar na barra inferior cria a mesma cópia com leve deslocamento visual.
