@@ -33147,6 +33147,7 @@ function applyProjectData(data, loadOptions = {}) {
   deletedLayerSequences.clear();
   deletedLayerSequenceReused = false;
   layerIdentityPreservedAfterSaveLoad = true;
+  textAssetStageMovementObservation = null;
   const token = ++loadSessionToken;
   loadSessionStarted = true;
   loadSessionCompleted = false;
@@ -36849,7 +36850,9 @@ function renderProjectWorldExtraImages() {
       img.alt = '';
       img.onload = function() { restackFilmEditorLayers('asset-image-onload'); };
     }
-    img.classList.toggle('asset-temporal-reference', isTemporalReference(a));
+    const isTemporalReferenceAsset = isTemporalReference(a);
+    img.classList.toggle('asset-temporal-reference', isTemporalReferenceAsset);
+    if (!isTemporalReferenceAsset) img.classList.remove('asset-temporal-reference-selected');
     if (img._arcoAssetSource !== src) {
       img._arcoAssetSource = src;
       img.src = src;
@@ -36903,7 +36906,9 @@ function renderProjectWorldExtraImages() {
     let el = existingByKey.get(nodeKey);
     if (!el) { el = document.createElement('div'); el.className='world-text-asset'; }
     el.dataset.assetId=String(a.id);
-    el.classList.toggle('asset-temporal-reference', isTemporalReference(a));
+    const isTemporalReferenceAsset = isTemporalReference(a);
+    el.classList.toggle('asset-temporal-reference', isTemporalReferenceAsset);
+    if (!isTemporalReferenceAsset) el.classList.remove('asset-temporal-reference-selected');
     el.textContent = a.text || (a === pendingTextDraft ? 'Texto...' : '');
     el.style.left=p.x+'px'; el.style.top=p.y+'px'; el.style.width=p.w+'px'; el.style.minHeight=p.h+'px'; el.style.padding=(m.paddingY*_editorTransform.scale)+'px '+(m.paddingX*_editorTransform.scale)+'px'; el.style.backgroundColor=a.boxBackgroundEnabled?hexToRgba(a.boxBackgroundColor,a.boxBackgroundOpacity):'transparent';
     el.style.color=a.color; el.style.fontFamily=a.fontFamily; el.style.fontWeight=String(a.fontWeight); el.style.fontStyle=a.fontStyle; el.style.fontSize=(a.fontSize*_editorTransform.scale)+'px'; el.style.lineHeight=String(a.lineHeight); el.style.textAlign=a.textAlign;
