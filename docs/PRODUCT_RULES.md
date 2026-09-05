@@ -14,8 +14,13 @@
 ## Regra E9AV — chegada do Play de Frames é marca independente
 
 - A moldura editorial permanece laranja `#ff9500` e continua a se mover inclusive ao cruzar um Frame; ela nunca vira azul nem para para indicar chegada.
-- Cada chegada cria somente um marcador ciano `#04fff2` separado, sobre a geometria do Frame atravessado e por fração curta de segundo. Ao sumir, não deixa borda azul nem seleção visual persistente no Frame real.
+- Cada chegada cria marcador ciano `#04fff2` separado, sobre a geometria do Frame atravessado e por fração curta de segundo. Na mesma janela, a pill correspondente pode mostrar apenas a borda ciano; ela não ganha seleção, preenchimento, halo, foco, pausa nem relógio próprio.
 - Play e Stop seguem sólidos em ciano e não podem ter borda, outline, fundo, caixa, pill, sombra ou aparência nativa perceptível.
+
+## Regra E9BD — Play Frames é diagnóstico de Frames, não preview de profundidade
+
+- Play Frames mostra a moldura temporal dos Frames e sua chegada na faixa inferior; não anima Ativos por profundidade/parallax.
+- A decisão preserva o diagnóstico aproximado sem alterar a câmera/viewport, Preview, MP4, renderer, geometria ou dados persistidos.
 
 ## Regra E9AU — Play de Frames: pulso de chegada, Loop e parada editorial
 

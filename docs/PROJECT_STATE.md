@@ -1,5 +1,16 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-05 — v8z4b32E9BD: chegada também legível na faixa do Play Frames
+
+- Decisão de UX aprovada por Roberto: ao cruzar um Frame no Play Frames, a pill correspondente pode receber **somente uma borda ciano breve**. Não recebe `active`, `selected`, preenchimento, halo, rolagem própria, pausa nem alteração do relógio; a faixa continua interpolando pelo mesmo `projectTime` do percurso.
+- Escopo congelado: Play Frames continua sendo uma visualização editorial aproximada de Frames. Ele não aplica profundidade/parallax de Ativos e não altera Stage/câmera, Preview, MP4, modelo persistido, curvas, timing, Undo/Redo ou autosave.
+- QA: E9AV passa a exigir o estado transitório e a cor da borda em WebKit. Validação física iPhone/Safari da atualização da PR #554 permanece obrigatória antes de merge.
+
+## Atualização 2026-09-05 — observação física de estabilidade e pendência de desempenho
+
+- Roberto informou que a reinicialização durante edição geométrica não voltou a ocorrer no build atualmente testado. O relato ainda não identifica o artefato/commit exato responsável, portanto não confirma por si só a causa ou a validação da correção proposta para REG-070.
+- Permanece uma percepção de lentidão ao mover elementos no Stage. A REG-072 registra a investigação de desempenho separadamente; não atribuir à memória sem medição/reprodução.
+
 ## Atualização 2026-09-05 — regressão aberta: mutações geométricas no Stage reiniciam o PWA
 
 - Roberto relatou reinicializações completas do PWA em iPhone/Safari ao ampliar, mover e rotacionar Frames na `v8z4b32E9BC`, incluindo Frame 1 e outro Frame, e também ao mover Ativos no Stage. A falha também foi reproduzida sem zoom, portanto zoom alto não é condição necessária. O diagnóstico anterior conserva geometria finita e ausência de exceção; ainda não há causa demonstrada para a reinicialização.

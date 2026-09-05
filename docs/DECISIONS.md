@@ -1,5 +1,10 @@
 # DECISIONS
 
+## DEC-2026-09-05-01 — chegada do Play Frames também marca a pill, sem reter a timeline
+
+- **Decisão:** na mesma janela breve em que o Frame atravessado fica ciano, a pill correspondente recebe apenas borda ciano. Ela não vira `active`/`selected`, não recebe preenchimento ou halo e não altera scroll, duração, pausa, curva ou relógio.
+- **Escopo:** Play Frames permanece um diagnóstico visual de Frames; a profundidade/parallax dos Ativos fica deliberadamente fora desta visualização. Preview, MP4, câmera, Stage, renderer, persistência e modelo temporal não mudam.
+
 ## DEC-2026-09-04-03 — GitHub operacional usa rotas canônicas, não um único token local
 
 - **Decisão:** Git HTTPS autenticado pelo Keychain do Mac é a rota para fetch/push; a conexão GitHub do ChatGPT é a rota para PRs, checks e metadados. Ambas devem ser verificadas em operações reais antes de editar/publicar.
