@@ -46,7 +46,7 @@ A arquitetura aprovada preserva um renderer único/canônico para evitar diverg�
 - Mudanças devem entrar por PR.
 - Produção (`rowestudio/arco-app`) só muda após aprovação explícita de Roberto.
 - O fluxo operacional é mobile-first: PRs abertas ou atualizadas por Codex remoto, GitHub App ou usuário humano devem receber evidência automática dos checks obrigatórios sem depender de desktop, terminal local, token pessoal ou execução manual recorrente.
-- Em ambientes remotos com sandbox, `gh auth status` só é conclusivo quando executado no mesmo contexto que fará as operações de rede: uma credencial antiga no sandbox não invalida automaticamente o login salvo no Keychain do host. Antes de pedir nova autorização a Roberto, validar no contexto autenticado com `gh auth status` e `gh api user --jq .login`; nunca ler, registrar ou expor tokens. Se ambos falharem no mesmo contexto, aí sim iniciar o login por dispositivo com o menor escopo necessário.
+- A autenticação tem duas rotas canônicas, ambas verificáveis sem expor credenciais: Git HTTPS do Keychain do Mac para fetch/push e conexão GitHub do ChatGPT para PRs, checks e metadados. Um token inválido apenas no `gh` local é falha auxiliar e não invalida essas rotas nem justifica pedir novo login a Roberto. Antes de pedir autorização, provar a rota Git por operação somente leitura (`git ls-remote`) e a rota GitHub pelo perfil/PR no conector; só uma falha conjunta dessas rotas configura bloqueio real. Nunca ler, registrar, alterar ou expor tokens.
 
 ## Papéis
 

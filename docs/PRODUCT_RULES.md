@@ -1,5 +1,36 @@
 # PRODUCT_RULES
 
+## Regra REG-071 — seleção de Frames sobrepostos preserva alcance de edição
+
+- Um Frame grande à frente não pode tornar um Frame atrás inalcançável quando a borda ou outra geometria visível do alvo está exposta. A interação direta no Stage deve permitir selecionar o Frame visível pretendido sem mover antes o Frame de cima.
+- Esta regra não define ainda seleção em uma área de sobreposição total, ciclo automático de Frames, nem mudança de z-index; essas alternativas exigem decisão explícita antes de implementação.
+
+## Regra E9AW — Play de Frames precisa de presença física e parada global
+
+- Play e Stop não podem herdar a célula genérica `.tb-item`: são ícone e label ciano sem borda, caixa, fundo, pill, outline, sombra ou estado pressionado perceptível.
+- A piscada ciano de chegada deve estar em camada visual acima dos Frames reais, sem bloquear seus gestos; existir no DOM sem estar visível não satisfaz a regra.
+- Qualquer toque fora do próprio Play/Stop — inclusive Stage, área vazia, timeline ou outro controle — interrompe o Play de Frames e mantém selecionado o último Frame alcançado.
+
+## Regra E9AV — chegada do Play de Frames é marca independente
+
+- A moldura editorial permanece laranja `#ff9500` e continua a se mover inclusive ao cruzar um Frame; ela nunca vira azul nem para para indicar chegada.
+- Cada chegada cria marcador ciano `#04fff2` separado, sobre a geometria do Frame atravessado e por fração curta de segundo. Na mesma janela, a pill correspondente pode mostrar apenas a borda ciano; ela não ganha seleção, preenchimento, halo, foco, pausa nem relógio próprio.
+- Play e Stop seguem sólidos em ciano e não podem ter borda, outline, fundo, caixa, pill, sombra ou aparência nativa perceptível.
+
+## Regra E9BD — Play Frames é diagnóstico de Frames, não preview de profundidade
+
+- Play Frames mostra a moldura temporal dos Frames e sua chegada na faixa inferior; não anima Ativos por profundidade/parallax.
+- A decisão preserva o diagnóstico aproximado sem alterar a câmera/viewport, Preview, MP4, renderer, geometria ou dados persistidos.
+
+## Regra E9AU — Play de Frames: pulso de chegada, Loop e parada editorial
+
+- No Modo Frames, o controle **Frames** não tem borda, contorno, fundo, caixa ou pill, inclusive enquanto assume Stop. Play e Stop são ícones sólidos em ciano `#04fff2`; somente a moldura editorial é laranja `#ff9500` durante o deslocamento.
+- Ao alcançar um Frame, a moldura transitória e a pill correspondente ficam em ciano `#04fff2` somente como pulso breve; em seguida, os Frames reais voltam ao estado neutro. A seleção canônica e a barra inferior acompanham cada passagem, mas não permanecem visualmente marcadas durante o percurso. Stop mantém selecionado o último Frame alcançado.
+- A chegada é calculada pelo mesmo relógio de segmentos, pausas por Frame, pausa global, curvas e Loop. Um pulso exclusivamente visual torna a chegada legível; não cria pausa, duração, escrita de tempo ou alteração de geometria.
+- Stop explícito ou qualquer outro botão, campo ou controle seleciona o Frame corrente naquele instante e interrompe a demonstração. Somente **Frames** pode retomá-la. Sem Loop, Play no último Frame reinicia no primeiro; com Loop, o trecho N→1 fecha e reinicia continuamente.
+- A vista editorial é invariante: pan, zoom, transformação e posição do viewport não mudam. A moldura pode sair da vista e nunca provoca centralização automática.
+- A moldura não é Frame real nem dado do projeto: não participa de seleção, hit-test, Undo/Redo, autosave, Save/Load, Preview ou MP4. Stop e qualquer saída desse contexto interrompem e limpam o elemento transitório.
+
 ## Regra E9Z — copiar, colar e duplicar ativos
 
 - Duplicar em Camadas cria uma nova camada sobreposta, selecionada e desbloqueada. Duplicar na barra inferior cria a mesma cópia com leve deslocamento visual.

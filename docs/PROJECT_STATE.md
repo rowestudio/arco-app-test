@@ -1,5 +1,107 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-05 — v8z4b32E9BD: chegada também legível na faixa do Play Frames
+
+- Decisão de UX aprovada por Roberto: ao cruzar um Frame no Play Frames, a pill correspondente pode receber **somente uma borda ciano breve**. Não recebe `active`, `selected`, preenchimento, halo, rolagem própria, pausa nem alteração do relógio; a faixa continua interpolando pelo mesmo `projectTime` do percurso.
+- Escopo congelado: Play Frames continua sendo uma visualização editorial aproximada de Frames. Ele não aplica profundidade/parallax de Ativos e não altera Stage/câmera, Preview, MP4, modelo persistido, curvas, timing, Undo/Redo ou autosave.
+- QA: E9AV passa a exigir o estado transitório e a cor da borda em WebKit. Validação física iPhone/Safari da atualização da PR #554 permanece obrigatória antes de merge.
+
+## Atualização 2026-09-05 — observação física de estabilidade e pendência de desempenho
+
+- Roberto informou que a reinicialização durante edição geométrica não voltou a ocorrer no build atualmente testado. O relato ainda não identifica o artefato/commit exato responsável, portanto não confirma por si só a causa ou a validação da correção proposta para REG-070.
+- Permanece uma percepção de lentidão ao mover elementos no Stage. A REG-072 registra a investigação de desempenho separadamente; não atribuir à memória sem medição/reprodução.
+
+## Atualização 2026-09-05 — regressão aberta: mutações geométricas no Stage reiniciam o PWA
+
+- Roberto relatou reinicializações completas do PWA em iPhone/Safari ao ampliar, mover e rotacionar Frames na `v8z4b32E9BC`, incluindo Frame 1 e outro Frame, e também ao mover Ativos no Stage. A falha também foi reproduzida sem zoom, portanto zoom alto não é condição necessária. O diagnóstico anterior conserva geometria finita e ausência de exceção; ainda não há causa demonstrada para a reinicialização.
+- A mesma reinicialização também ocorre pelo painel contextual de Escala, excluindo a alça como causa única. A REG-071 foi aberta em paralelo: em Frames sobrepostos, o Frame à frente captura a seleção e deixa os demais inalcançáveis; a regra aprovada é preservar seleção pela geometria/borda visível do alvo. Não houve mudança funcional, nova versão, merge ou promoção decorrente destes registros.
+
+## Atualização 2026-09-04 — v8z4b32E9BC: chegada sem halo e timeline sem retenção visual
+
+- Novo retorno físico da E9BB: o halo em torno do Frame azul é excessivo; a chegada desejada é a própria referência fixa trocar de laranja para ciano e se converter suavemente em cinza. Também persistia uma aparente parada na timeline sem pausa real, e o ícone Play Frames ainda podia parecer contornado.
+- Correção: o elemento auxiliar de flash é removido. O Frame atingido usa uma interpolação de cor ciano→cinza durante 360 ms, sem sombra; a moldura transitória laranja permanece contínua. O chip da timeline não recebe mais estado azul de chegada: ele apenas acompanha continuamente `projectTime`, evitando sugerir retenção inexistente. Play/Stop agora troca entre `path` e `rect` SVG próprios, sem `<use>` ou `stroke` herdado.
+- QA prevista: E9AV protege a ausência do halo e confirma o novo SVG; E9BA verifica ciano inicial, cor intermediária distinta e zero reconstruções de assets. Validação física no preview da PR #554 continua obrigatória antes de merge; produção permanece intocada.
+
+## Atualização 2026-09-04 — v8z4b32E9BB: chegada contínua e dissolução no Play Frames
+
+- Novo retorno físico da E9AZ: apesar da timeline já percorrer o tempo corretamente, a moldura laranja ainda parecia pausar ao cruzar um Frame com pausa zero; o controle Play/Stop ainda podia exibir um contorno no próprio símbolo; e o pulso azul deveria se dissolver, não piscar abruptamente.
+- Causa comprovada da pausa: `commitFilmSelection(..., 'stage-frames-playback-progress')` ainda chamava `refreshAssetStageVisualGeometry()` a cada chegada. Essa reconstrução da pilha de assets concorria com o RAF da moldura. A cor da chegada fixa também estava presa por uma regra CSS `!important`, impedindo a atenuação gradual.
+- Correção: o avanço editorial da seleção preserva a atualização da timeline, mas não reconstrói assets durante o Play Frames. A chegada cria um azul ciano de opacidade 1 que decai linearmente por 360 ms no Frame e na luz auxiliar; a moldura permanece laranja e segue o relógio canônico. O SVG sólido Play/Stop passa a anular explicitamente o `stroke` herdado pela toolbar, sem criar caixa, borda ou pill.
+- QA automatizado: E9BA foi escrito para falhar com a reconstrução e exige zero chamadas a `refreshAssetStageVisualGeometry()` em uma chegada, além de confirmar a dissolução intermediária. E9AV também exige `stroke:none` no SVG. Validação física no preview da PR #554 continua obrigatória antes de merge; produção permanece intocada.
+
+## Atualização 2026-09-04 — v8z4b32E9AZ: Play Frames segue o relógio do projeto
+
+- Retorno físico da E9AX: a atenuação visual ainda ficava um Frame atrasada e a faixa inferior saltava de chegada em chegada, em vez de representar o tempo real de cada trecho.
+- Correção: quando a moldura atinge um Frame, ele recebe o pulso ciano de 360 ms e logo passa a 28% de opacidade. A timeline inferior agora calcula sua posição a cada atualização a partir do mesmo `projectTime` da moldura; por isso percorre uma transição de três segundos em três segundos e permanece no Frame durante pausas reais.
+- O Stage, Preview, MP4, Frames persistidos, curvas, Undo/Redo e autosave não são alterados. O relato de que ativos com profundidade saltam entre Frames foi isolado como pendência separada de parallax contínuo do Stage; não foi incorporado silenciosamente nesta correção.
+- QA WebKit: E9AV, E9AX e o novo gate E9AZ falharam antes da alteração e passaram depois. Validação física no preview da PR #554 continua obrigatória antes de merge; produção permanece intocada.
+
+## Atualização 2026-09-04 — v8z4b32E9AX: Frames já percorridos e foco do controle
+
+- O retorno físico posterior mostrou duas pendências: os Frames já percorridos permaneciam tão presentes quanto os futuros, e o controle Frames ainda recebia foco nativo no Safari, mantendo aparência de borda apesar do CSS sem caixa.
+- Durante o Play Frames, somente os Frames efetivamente já deixados para trás no ciclo atual recebem opacidade de 28%. O Frame de chegada preserva o pulso ciano e os Frames futuros ficam neutros. No retorno N→1, essa leitura visual recomeça para não deixar a nova trajetória inteiramente esmaecida.
+- O controle Frames deixa de expor `tabindex`: conserva o mesmo toque/click e semântica de botão, mas não mantém foco tabulável que possa renderizar o anel nativo do Safari. Stage/câmera, relógio temporal, Preview, MP4, Undo/Redo e autosave não mudam.
+- QA WebKit: os novos gates E9AX (opacidade somente do percurso já feito) e E9AY (controle sem foco nativo) falharam antes da alteração e passaram depois; a validação física no preview da PR #554 continua obrigatória antes de merge. Produção permanece intocada.
+
+## Atualização 2026-09-04 — v8z4b32E9AW: chegada física e interrupção global do Play de Frames
+
+- O retorno físico da E9AV mostrou três falhas objetivas: Play/Stop ainda aparentavam borda, o marcador azul não era visível na chegada e tocar no Stage ou fora de controles não interrompia a demonstração. O retorno posterior também identificou redesenho integral no cruzamento de Frames, que criava uma pausa/pulo mesmo com pausas temporais zeradas.
+- Causas comprovadas: o botão ainda herdava a célula contextual genérica `.tb-item`; o marcador ciano tinha `z-index:87`, abaixo dos Frames reais; e o listener de interrupção filtrava apenas alvos que fossem outros controles.
+- A E9AW usa controle sem aparência nativa, mantém o marcador ciano diretamente no Frame atingido e interrompe por `pointerdown`/`touchstart` em qualquer ponto fora de Play/Stop. A luz azul dura 520 ms e não recolore nem interrompe a moldura laranja. A atualização de seleção/timeline não chama mais `renderAll()` durante a animação, preservando movimento contínuo. Stop continua selecionando o último Frame alcançado, inclusive se o controle acionado encadear uma segunda parada durante a troca de modo. O estado de Loop também é congelado ao iniciar a demonstração; atualizações assíncronas do projeto não podem encerrar um ciclo em andamento. Stage/câmera, curvas, timing, Preview, MP4, Undo/Redo e autosave não mudam.
+- Smoke WebKit E9AQ/E9AV/E9AU/E9AW passou localmente. A chegada E9AV é exercitada pela mesma transição canônica do relógio, com o RAF suspenso apenas durante a leitura do pulso: isso elimina a dependência artificial de uma janela fixa de dois segundos do runner, sem substituir o teste do percurso real. A validação física iPhone/Safari do preview da PR #554 continua obrigatória antes de merge; produção permanece intocada.
+
+## Atualização operacional 2026-09-04 — rotas GitHub separadas e verificáveis
+
+- Foi comprovado que o `gh` local pode manter um token inválido enquanto o Git HTTPS do Mac continua autenticado pelo Keychain e a conexão GitHub do ChatGPT continua válida como `rowestudio`. Isso não é causado pelo iPhone nem pelo repouso do Mac.
+- A operação passa a validar o Git HTTPS para branch/push e a conexão GitHub do ChatGPT para PR/checks. O `gh` local é auxiliar e não deve disparar novo login de Roberto quando essas duas rotas canônicas estiverem válidas; a regra detalhada está em `PROJECT_CONTEXT.md` e `DECISIONS.md`.
+
+## Atualização 2026-09-04 — v8z4b32E9AV: chegada independente no Play de Frames
+
+- O retorno físico da E9AU esclareceu a diferença essencial: a moldura laranja estava ficando azul e parecia parar ao chegar ao Frame. Isso não representa o percurso pedido.
+- A E9AV mantém a moldura editorial sempre laranja e contínua. Ao atravessar um Frame, um segundo elemento, ciano e breve, pisca exatamente sobre esse Frame; depois desaparece sem alterar a moldura em movimento nem deixar o Frame real marcado.
+- Play/Stop recebem remoção reforçada no próprio elemento do botão, além do CSS: `border:0`, `outline:0`, fundo transparente, sem sombra nem aparência nativa. O ícone sólido permanece ciano.
+- Smoke WebKit E9AV foi escrito para falhar sem o marcador independente e passou após a separação. Validação física no iPhone/Safari e checks do HEAD atual da PR #554 continuam obrigatórios antes de merge. Produção permanece intocada.
+
+## Atualização 2026-09-04 — v8z4b32E9AU: pulso de chegada, Loop e parada editorial no Play de Frames
+
+- O retorno físico da E9AT confirmou a animação, mas identificou que a chegada permanecia marcada, a borda do botão ainda era perceptível e Play não tinha regras completas para Loop, reinício e interrupção externa.
+- A E9AU torna Play/Stop de **Frames** absolutamente sem borda, fundo, outline, caixa ou pseudo-elemento. Durante o percurso, Frames reais ficam neutros; cada chegada recebe somente um pulso ciano curto no Stage e na timeline, depois volta ao normal.
+- A seleção canônica e a timeline continuam acompanhando cada chegada, sem mover Stage/câmera. Stop preserva o último alcançado. Sem Loop, acionar Play no último Frame inicia a rota no primeiro; com Loop, o percurso N→1 fecha e recomeça continuamente.
+- Qualquer outro botão, campo ou controle interrompe imediatamente a demonstração e preserva o último Frame alcançado como seleção; só **Frames** retoma a execução. Smoke WebKit E9AU passou localmente; validação física no iPhone/Safari e checks do novo HEAD continuam obrigatórios antes de merge. Produção permanece intocada.
+
+## Atualização 2026-09-04 — v8z4b32E9AT: seleção e rolagem no Play de Frames
+
+- O retorno físico da E9AS identificou três pendências: ainda havia aparência de borda no botão, o último Frame anterior permanecia selecionado durante o percurso e a timeline mudava de Frame por salto brusco.
+- Na E9AT, Play e Stop anulam também `outline`, aparência nativa e estado de foco/pressionado. Ao iniciar e a cada chegada, a seleção canônica acompanha o Frame corrente; ao tocar Stop, esse último Frame permanece selecionado.
+- A barra inferior usa a mesma centralização animada da timeline, com 520 ms por passagem, para que o percurso fique perceptível sem mover o Stage ou a câmera. Smoke WebKit E9AQ/E9AT passou localmente; nova validação física iPhone/Safari e checks do HEAD são obrigatórios antes de merge.
+- **QA separado:** a suíte WebKit completa local encontrou E8X de composição de texto com expectativa pré-existente divergente (`beforeChanged`: esperado `0`, recebido `1653`); a PR anterior havia passado esse mesmo teste no CI. Não houve alteração de código de texto nesta frente: revalidar no CI e abrir triagem própria se reaparecer.
+- **Estabilização CI E9AT:** o primeiro WebKit remoto do HEAD E9AT aprovou 69/70, mas o caso novo observava o Frame inicial após um trecho artificial de `0,08 s` e fixava `activeIdx` diretamente, permitindo que a centralização pendente do cenário completo o substituísse. O teste agora seleciona o Frame pela pill real e mantém duração/pausa suficientes para verificar seleção inicial, passagem, chegada ciano e Stop; nenhuma regra funcional adicional foi alterada nesta estabilização.
+
+## Atualização 2026-09-04 — v8z4b32E9AS: feedback físico do Play de Frames
+
+- O retorno físico da E9AR mostrou três erros de apresentação: o controle **Frames** havia ficado laranja, a chegada não ficava legível como ciano e a timeline não acompanhava o percurso.
+- Na E9AS, Play e Stop de **Frames** permanecem ícones sólidos em ciano `#04fff2`, sem borda, fundo ou pill. Só a moldura editorial fica laranja entre Frames e ciano ao alcançar cada Frame; um pulso visual curto torna a chegada perceptível sem mudar o relógio, duração, pausa ou geometria.
+- Ao iniciar, a seleção de Frame é limpa apenas na apresentação. A barra inferior usa um foco transitório e avança Frame a Frame sem movimentar Stage, câmera ou viewport; tocar Stop seleciona o Frame corrente. Cancelamentos por troca de modo ou Preview continuam sem trocar seleção.
+- Smoke WebKit E9AQ/E9AS passou localmente. Validação física em iPhone/Safari e checks do HEAD da PR permanecem obrigatórios antes de merge; produção permanece intocada.
+
+## Atualização 2026-09-03 — v8z4b32E9AR: estados visuais do Play de Frames
+
+- Durante o deslocamento, a moldura editorial e o controle **Frames** usam laranja. O botão continua sem borda, fundo, caixa ou pill, inclusive enquanto vira Stop.
+- Ao alcançar cada Frame, a moldura e o Frame/pill correspondente recebem ciano `#04fff2`; a timeline revela esse Frame sem trocar a seleção canônica nem alterar o Stage.
+- A troca visual deriva exclusivamente do relógio temporal canônico: duração dos segmentos, pausas por Frame, pausa global, curvas e Loop. Não cria pausa nem tempo artificial.
+- O smoke WebKit E9AR cobre cor, ausência de caixa, chegada durante pausa real e destaque de Frame/timeline. Validação física em iPhone/Safari permanece obrigatória antes de merge; produção permanece intocada.
+
+## Atualização 2026-09-03 — v8z4b32E9AQ: moldura transitória no Play de Frames
+
+- Roberto corrigiu a especificação da E9AP: **Frames não navega a câmera nem move o Stage**. Pan, zoom, transform e posição do viewport permanecem visual e geometricamente imóveis durante toda a execução.
+- O controle originalmente verde **Frames** cria uma única moldura editorial transitória a partir do Frame ativo. A moldura percorre os Frames posteriores usando o relógio, curvas e sampler canônicos, refletindo posição, escala e rotação; pode sair da vista sem recentralização automática.
+- Stop, troca de modo e abertura do Preview cancelam a execução e removem a moldura. Frames reais, curvas, timing, projeto, Undo/Redo, autosave, Preview e MP4 não são modificados.
+- A regressão E9AQ cobre contrato estático e comportamento WebKit; validação física em iPhone/Safari permanece obrigatória antes de merge. Produção permanece intocada.
+
+## Atualização 2026-09-02 — v8z4b32E9AP: Play de Frames no Stage
+
+- Registro histórico da primeira implementação, cuja interpretação como navegação do Stage foi **superada** pela especificação corrigida da E9AQ acima.
+
 ## Atualização 2026-09-03 — v8z4b32E9AP: presença temporal no projeto estático de Frame único
 
 - A regressão de Frame único sem pausas/segmentos foi reproduzida no smoke WebKit: a duração efetiva de playback era 4 s, mas a presença temporal resolvia 0 s e omitia o ativo depois de t=0 no Preview/MP4.
