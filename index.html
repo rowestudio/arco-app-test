@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9BC — fix(stage-frames-play-arrival): ao alcançar um Frame, a própria referência fixa troca de laranja para ciano e se converte gradualmente em cinza, sem halo/segunda moldura e sem retenção visual na timeline. Play/Stop usa SVG exclusivo sólido, sem use/stroke herdado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9BC. -->
 <!-- Arco Motion App — v8z4b32E9BB — fix(stage-frames-play-continuity): Play Frames não reconstrói os assets nas chegadas, portanto a moldura laranja continua no relógio canônico mesmo com pausa zero. O Frame atingido recebe azul ciano que se dissolve durante 360 ms e então preserva apenas a referência secundária; o ícone sólido Play/Stop elimina também o stroke herdado da toolbar. APP_VERSION = APP_VERSION_NAME = v8z4b32E9BB. -->
 <!-- Arco Motion App — v8z4b32E9AO — fix(post-export-preview-text): ao concluir um MP4, o snapshot estável que acabou de atender o Export é transferido explicitamente para o contexto Preview antes de reiniciar o playback. Assim a presença temporal de imagens e Text Assets é reavaliada pelo relógio do Preview, sem cair no caminho vivo e sem alterar o MP4 já gerado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AO. -->
 <!-- Arco Motion App — v8z4b32E9AZ — fix(stage-frames-play-clock): o Frame atingido fica secundário logo após o pulso ciano curto; a faixa de Frames percorre cada trecho no mesmo relógio de duração, interpolação e pausa da moldura editorial, sem saltar de chegada em chegada. Stage/câmera, Preview, MP4, geometria persistida, curvas e Undo/Redo permanecem intocados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AZ. -->
@@ -2251,14 +2252,11 @@ body.no-image #stageFrameMenu{display:none !important;}
 #toolbar.contextual-toolbar #tbStageFramesPlay:active,#toolbar.contextual-toolbar #tbStageFramesPlay:focus,#toolbar.contextual-toolbar #tbStageFramesPlay:focus-visible{border:0!important;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;outline:0!important;}
 #toolbar.contextual-toolbar #tbStageFramesPlay::before,#toolbar.contextual-toolbar #tbStageFramesPlay::after{display:none!important;}
 #toolbar.contextual-toolbar .stage-frames-play .tb-icon{color:#04fff2!important;stroke:none!important;fill:currentColor!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;}
-#toolbar.contextual-toolbar .stage-frames-play .tb-icon use{stroke:none!important;fill:currentColor!important;}
+#toolbar.contextual-toolbar .stage-frames-play .tb-icon *{stroke:none!important;fill:#04fff2!important;}
 #toolbar.contextual-toolbar .stage-frames-play .tb-lbl{color:#04fff2;}
 .stage-frames-playback-frame{position:absolute;box-sizing:border-box;pointer-events:none;z-index:86;overflow:visible;}
 .stage-frames-playback-frame-visual{position:absolute;inset:0;box-sizing:border-box;transform-origin:center center;border:3px solid #ff9500;border-radius:10px;box-shadow:0 0 12px rgba(0,0,0,.42),0 0 10px rgba(255,149,0,.34);}
-.stage-frames-playback-arrival-flash{position:absolute;box-sizing:border-box;pointer-events:none;z-index:1002;overflow:visible;}
-.stage-frames-playback-arrival-flash-visual{position:absolute;inset:0;box-sizing:border-box;transform-origin:center center;border:5px solid #04fff2;border-radius:10px;box-shadow:0 0 14px rgba(0,0,0,.52),0 0 20px rgba(4,255,242,.82);}
 #pillsRow [data-frame-index].stage-frames-playback-current{border-color:#04fff2!important;color:#04fff2!important;box-shadow:0 0 8px rgba(4,255,242,.26);}
-#pillsRow [data-frame-index].stage-frames-playback-arrived{border-color:#04fff2!important;color:#04fff2!important;box-shadow:0 0 10px rgba(4,255,242,.34);}
 #toolbar.contextual-toolbar .ctx-only{display:none;}
 body.bottom-context-frame #toolbar.contextual-toolbar .ctx-frame,
 body.bottom-context-segment #toolbar.contextual-toolbar .ctx-segment{display:flex;}
@@ -4461,7 +4459,7 @@ body.asset-context-panel-open #toolbar{display:none !important;}
 <!-- BOTTOM TOOLBAR -->
 <div class="toolbar show contextual-toolbar" id="toolbar">
   <div class="ctx-only ctx-frame stage-frames-play stage-frames-play-plain" id="tbStageFramesPlay" role="button" onpointerdown="captureStageFramesPlaybackStart(event)" ontouchstart="captureStageFramesPlaybackStart(event)" onmousedown="captureStageFramesPlaybackStart(event)" onclick="toggleStageFramesPlayback()" aria-label="Reproduzir Frames" title="Reproduzir Frames">
-    <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-play"></use></svg><span class="tb-lbl">Frames</span>
+    <svg class="tb-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.25c0-1.02 1.12-1.64 1.98-1.1l8.03 5.05a3.3 3.3 0 0 1 0 5.6L9.98 19.85A1.3 1.3 0 0 1 8 18.75V5.25Z"/></svg><span class="tb-lbl">Frames</span>
   </div>
   <div class="tb-item ctx-only ctx-common" onclick="openPanel('Duration')">
     <svg class="tb-icon" viewBox="0 0 24 24"><use href="#i-director-chair"></use></svg><span class="tb-lbl">Duração</span>
@@ -7774,8 +7772,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9BB';
-const APP_VERSION_NAME = 'v8z4b32E9BB';
+const APP_VERSION = 'v8z4b32E9BC';
+const APP_VERSION_NAME = 'v8z4b32E9BC';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -19452,7 +19450,9 @@ function applyTimelinePillFocusClasses() {
     el.classList.toggle('active', isFocus);
     el.classList.toggle('selected', isMulti || (isSelected && !isFocus));
     el.classList.remove('stage-frames-playback-current');
-    el.classList.toggle('stage-frames-playback-arrived', stageFramesPlaying && idx === stageFramesPlayback.arrivalFrameIndex);
+    // A timeline só segue o relógio. O azul que se dissolve é exclusivo do
+    // Frame físico no Stage, para não sugerir uma pausa que não existe.
+    el.classList.remove('stage-frames-playback-arrived');
     if (isFocus) highlightCount++;
     if (frameLocked[idx]) el.style.color = '#f5c518';
     else if (isMulti || (isSelected && !isFocus)) el.style.color = '#ff9500';
@@ -24088,8 +24088,10 @@ function updateStageFramesPlaybackControl() {
   control.classList.toggle('is-playing', playing);
   control.setAttribute('aria-label', playing ? 'Parar reprodução de Frames' : 'Reproduzir Frames');
   control.title = playing ? 'Parar reprodução de Frames' : 'Reproduzir Frames';
-  const use = control.querySelector('use');
-  if (use) use.setAttribute('href', playing ? '#i-stop-solid' : '#i-play');
+  const icon = control.querySelector('.tb-icon');
+  if (icon) icon.innerHTML = playing
+    ? '<rect x="6" y="6" width="12" height="12" rx="1.5"/>'
+    : '<path d="M8 5.25c0-1.02 1.12-1.64 1.98-1.1l8.03 5.05a3.3 3.3 0 0 1 0 5.6L9.98 19.85A1.3 1.3 0 0 1 8 18.75V5.25Z"/>';
 }
 
 function getStageFramesProjectTimeAtFrame(frameIndex) {
@@ -24109,11 +24111,6 @@ function removeStageFramesPlaybackFrame() {
   if (el) el.remove();
 }
 
-function removeStageFramesPlaybackArrivalFlash() {
-  const el = document.getElementById('stageFramesPlaybackArrivalFlash');
-  if (el) el.remove();
-}
-
 function getStageFramesPlaybackPresentation(projectTime, fullDuration) {
   const info = getSegAndLocalTAtTime(Math.max(0, Math.min(1, projectTime / Math.max(0.001, fullDuration))));
   if (info.isLoopSeg) return { frameIndex: Math.max(0, frameCount - 1), arrived: false };
@@ -24130,7 +24127,6 @@ function clearStageFramesPlaybackArrivalFeedback() {
   document.querySelectorAll('.stage-frames-playback-arrived,.stage-frames-playback-current,.stage-frames-playback-arrival,.stage-frames-playback-past').forEach(el => {
     el.classList.remove('stage-frames-playback-arrived', 'stage-frames-playback-current', 'stage-frames-playback-arrival', 'stage-frames-playback-past');
   });
-  removeStageFramesPlaybackArrivalFlash();
 }
 
 function getStageFramesPlaybackArrivalOpacity(now = performance.now()) {
@@ -24138,6 +24134,12 @@ function getStageFramesPlaybackArrivalOpacity(now = performance.now()) {
   const until = Number(stageFramesPlayback?.arrivalPulseUntil) || 0;
   if (!startedAt || until <= startedAt) return 0;
   return Math.max(0, Math.min(1, (until - now) / (until - startedAt)));
+}
+
+function getStageFramesPlaybackArrivalColor(arrivalOpacity) {
+  const mix = Math.max(0, Math.min(1, Number(arrivalOpacity) || 0));
+  const mixChannel = (gray, cyan) => Math.round(gray + (cyan - gray) * mix);
+  return 'rgba(' + mixChannel(220, 4) + ',' + mixChannel(220, 255) + ',' + mixChannel(220, 242) + ',' + (0.72 + 0.28 * mix) + ')';
 }
 
 function applyStageFramesPlaybackTransientFrameFeedback(arrivalOpacity = getStageFramesPlaybackArrivalOpacity()) {
@@ -24156,9 +24158,9 @@ function applyStageFramesPlaybackTransientFrameFeedback(arrivalOpacity = getStag
     el.style.opacity = isArrival ? String(Math.max(0.28, arrivalOpacity)) : (isPast ? '0.28' : '0.88');
     el.style.zIndex = isArrival ? '1003' : (isPast ? '18' : '20');
     if (borderEl && !frameLocked[i]) {
-      borderEl.style.borderColor = isArrival ? ('rgba(4,255,242,' + arrivalOpacity + ')') : FRAME_COLORS.distant.border;
+      borderEl.style.borderColor = isArrival ? getStageFramesPlaybackArrivalColor(arrivalOpacity) : FRAME_COLORS.distant.border;
       borderEl.style.borderWidth = ((isArrival ? 5 : 3) * invZ) + 'px';
-      borderEl.style.boxShadow = isArrival ? ('0 0 ' + (18 * invZ) + 'px rgba(4,255,242,' + (0.86 * arrivalOpacity) + ')') : 'none';
+      borderEl.style.boxShadow = 'none';
     }
     if (numEl) {
       numEl.style.color = '';
@@ -24169,37 +24171,6 @@ function applyStageFramesPlaybackTransientFrameFeedback(arrivalOpacity = getStag
   }
   if (globalHandleEl) globalHandleEl.classList.remove('show');
   if (cornerHandleEls) cornerHandleEls.forEach(handle => handle.classList.remove('show'));
-}
-
-function renderStageFramesPlaybackArrivalFlash(arrivalOpacity = getStageFramesPlaybackArrivalOpacity()) {
-  const frameIndex = stageFramesPlayback && stageFramesPlayback.arrivalFrameIndex;
-  const sourceFrame = Number.isInteger(frameIndex) ? frames[frameIndex] : null;
-  if (!stageFramesPlayback || !stageFramesPlayback.running || !sourceFrame) {
-    removeStageFramesPlaybackArrivalFlash();
-    return false;
-  }
-  let el = document.getElementById('stageFramesPlaybackArrivalFlash');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'stageFramesPlaybackArrivalFlash';
-    el.className = 'stage-frames-playback-arrival-flash';
-    el.setAttribute('aria-hidden', 'true');
-    el.innerHTML = '<div class="stage-frames-playback-arrival-flash-visual"></div>';
-    stageInsertBefore(el, bezierSvg);
-  }
-  computeEditorTransform();
-  const frame = editorWorldToStage(sourceFrame.x, sourceFrame.y, sourceFrame.w, sourceFrame.h);
-  el.style.left = frame.x + 'px';
-  el.style.top = frame.y + 'px';
-  el.style.width = frame.w + 'px';
-  el.style.height = frame.h + 'px';
-  el.style.opacity = String(arrivalOpacity);
-  const visual = el.querySelector('.stage-frames-playback-arrival-flash-visual');
-  if (visual) {
-    visual.style.transform = `rotate(${frameRotations[frameIndex] || 0}deg)`;
-    visual.style.borderWidth = (3 / editorZoomScale) + 'px';
-  }
-  return true;
 }
 
 function getStageFramesPlaybackTimelineFrameScroll(frameIndex, pillsEl) {
@@ -24280,7 +24251,6 @@ function updateStageFramesPlaybackPresentation(presentation, now = performance.n
   }
   applyStageFramesPlaybackTransientFrameFeedback(arrivalOpacity);
   applyTimelinePillFocusClasses();
-  renderStageFramesPlaybackArrivalFlash(arrivalOpacity);
   syncStageFramesPlaybackTimeline();
 }
 
@@ -24336,7 +24306,6 @@ function stopStageFramesPlayback(options = {}) {
   lowerTimelineProgrammaticScrollUntil = 0;
   isLowerTimelineProgrammaticCentering = false;
   removeStageFramesPlaybackFrame();
-  removeStageFramesPlaybackArrivalFlash();
   updateStageFramesPlaybackControl();
   if (selectCurrentFrame && hasCurrentPlaybackFrame) {
     commitFilmSelection(frameIndexAtStop, -1, 'stage-frames-playback-stop');

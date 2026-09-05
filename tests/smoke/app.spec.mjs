@@ -6809,7 +6809,7 @@ test('E9AQ — Play Frames anima moldura transitória sem mover Stage/câmera ne
   expect(await snapshot()).toEqual(before);
 });
 
-test('E9AV — Play Frames mantém a moldura laranja em movimento e dissolve um marcador azul independente na chegada', async ({ page }) => {
+test('E9AV — Play Frames mantém a moldura laranja em movimento e transforma o Frame atingido em azul que se dissolve', async ({ page }) => {
   const source = fs.readFileSync(path.resolve('index.html'), 'utf8');
   const playbackCss = source.slice(
     source.indexOf('#toolbar.contextual-toolbar #tbStageFramesPlay'),
@@ -6819,13 +6819,12 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e dissolve um 
   expect(playbackCss).toContain('outline:0!important');
   expect(playbackCss).toContain('border:0!important');
   expect(playbackCss).toContain('border:3px solid #ff9500');
-  expect(source).toContain("el.id = 'stageFramesPlaybackArrivalFlash'");
-  expect(source).toContain('renderStageFramesPlaybackArrivalFlash(arrivalOpacity);');
-  expect(playbackCss).toContain('.stage-frames-playback-arrival-flash-visual');
-  expect(source).toContain("borderEl.style.borderColor = isArrival ? ('rgba(4,255,242,' + arrivalOpacity + ')')");
+  expect(source).not.toContain("el.id = 'stageFramesPlaybackArrivalFlash'");
+  expect(playbackCss).not.toContain('.stage-frames-playback-arrival-flash');
+  expect(source).toContain('function getStageFramesPlaybackArrivalColor(arrivalOpacity)');
   expect(playbackCss).toContain('#04fff2');
   expect(playbackCss).not.toContain('#39d98a');
-  expect(source).toContain('symbol id="i-stop-solid"');
+  expect(source).toContain("<rect x=\"6\" y=\"6\" width=\"12\" height=\"12\" rx=\"1.5\"/>");
   expect(source).toContain('syncStageFramesPlaybackTimeline();');
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
@@ -6853,7 +6852,8 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e dissolve um 
   const selectedFrameAtStart = await page.evaluate(() => activeIdx);
   await control.click();
   await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 2_000 }).toBe(selectedFrameAtStart);
-  await expect(control.locator('use')).toHaveAttribute('href', '#i-stop-solid');
+  await expect(control.locator('use')).toHaveCount(0);
+  await expect(control.locator('rect')).toHaveCount(1);
   await expect(control.locator('svg')).toHaveCSS('color', 'rgb(4, 255, 242)');
   await expect(control.locator('svg')).toHaveCSS('stroke', 'none');
   await expect.poll(() => page.evaluate(() => ({
@@ -6887,8 +6887,6 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e dissolve um 
     stageFrameIsActive: false,
   });
   await expect(page.locator('#pillsRow [data-frame-index="0"]')).not.toHaveClass(/stage-frames-playback-current/);
-  await expect(page.locator('#stageFramesPlaybackArrivalFlash')).toBeVisible();
-  await expect(page.locator('#stageFramesPlaybackArrivalFlash .stage-frames-playback-arrival-flash-visual')).toHaveCSS('border-top-color', 'rgb(4, 255, 242)');
   await expect(page.locator('#frm_1')).toHaveClass(/stage-frames-playback-arrival/);
   await expect(page.locator('#frm_1 .frame-border')).toHaveCSS('border-top-color', 'rgb(4, 255, 242)');
   await expect(page.locator('#stageFramesPlaybackFrame')).toHaveAttribute('data-state', 'moving');
@@ -6897,7 +6895,6 @@ test('E9AV — Play Frames mantém a moldura laranja em movimento e dissolve um 
   await page.evaluate(() => {
     updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: false }, performance.now() + 400);
   });
-  await expect(page.locator('#stageFramesPlaybackArrivalFlash')).toHaveCount(0);
   await expect(page.locator('#pillsRow [data-frame-index="1"]')).not.toHaveClass(/stage-frames-playback-arrived/);
   await expect(page.locator('#frm_1')).not.toHaveClass(/stage-frames-playback-arrival/);
   await expect(page.locator('#tbStageFramesPlay')).toHaveCSS('border-top-width', '0px');
@@ -6980,7 +6977,7 @@ test('E9AZ — Play Frames desloca a timeline no mesmo relógio do trecho', asyn
   expect(clockScroll.times).toBeCloseTo(clockScroll.pills, 3);
 });
 
-test('E9BA — chegada não reconstrói assets, e a marca ciano se dissolve sem pausar a moldura', async ({ page }) => {
+test('E9BA — chegada não reconstrói assets, e o Frame azul se converte em cinza sem halo', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await clearStartupStorage(page);
   await page.locator('#projectFileInput').setInputFiles(projectFixture);
@@ -7009,19 +7006,19 @@ test('E9BA — chegada não reconstrói assets, e a marca ciano se dissolve sem 
     };
     const startedAt = performance.now();
     updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: true }, startedAt);
-    const flash = document.getElementById('stageFramesPlaybackArrivalFlash');
-    const startOpacity = Number(flash?.style.opacity || 0);
+    const border = document.querySelector('#frm_1 .frame-border');
+    const startColor = border?.style.borderColor || '';
     updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: false }, startedAt + 180);
-    const midOpacity = Number(flash?.style.opacity || 0);
+    const midColor = border?.style.borderColor || '';
     refreshAssetStageVisualGeometry = originalRefresh;
     stageFramesPlayback.running = false;
     clearStageFramesPlaybackArrivalFeedback();
-    return { refreshCalls, startOpacity, midOpacity };
+    return { refreshCalls, startColor, midColor };
   });
   expect(result.refreshCalls).toBe(0);
-  expect(result.startOpacity).toBeCloseTo(1, 3);
-  expect(result.midOpacity).toBeGreaterThan(0);
-  expect(result.midOpacity).toBeLessThan(result.startOpacity);
+  expect(result.startColor).toBe('rgb(4, 255, 242)');
+  expect(result.midColor).not.toBe(result.startColor);
+  expect(result.midColor).not.toContain('4, 255, 242, 1');
 });
 
 test('E9AY — controle Frames não conserva foco nativo que desenhe borda no Safari', async ({ page }) => {
@@ -7081,7 +7078,7 @@ test('E9AU — Play Frames reinicia do primeiro sem Loop, repete com Loop e qual
   await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 1_000 }).toBe(lastStoppedFrameIndex);
 });
 
-test('E9AW — Play Frames não herda superfície, pisca acima do frame e interrompe por toque no Stage', async ({ page }) => {
+test('E9AW — Play Frames não herda superfície, transforma o Frame sem halo e interrompe por toque no Stage', async ({ page }) => {
   const source = fs.readFileSync(path.resolve('index.html'), 'utf8');
   const playbackCss = source.slice(
     source.indexOf('#toolbar.contextual-toolbar #tbStageFramesPlay'),
@@ -7089,8 +7086,8 @@ test('E9AW — Play Frames não herda superfície, pisca acima do frame e interr
   );
   // O botão não pode usar a célula genérica que desenha uma superfície arredondada.
   expect(source).toContain('stage-frames-play-plain');
-  // A chegada precisa estar acima das molduras reais do filme (z-index 1000).
-  expect(playbackCss).toContain('z-index:1002');
+  // A chegada não pode recriar uma segunda moldura/halo sobre o Frame real.
+  expect(playbackCss).not.toContain('stage-frames-playback-arrival-flash');
   // A interrupção é global; não pode depender de o alvo ser outro botão.
   expect(source).toContain('function interruptStageFramesPlaybackFromExternalInteraction');
 
@@ -7115,13 +7112,19 @@ test('E9AW — Play Frames não herda superfície, pisca acima do frame e interr
   await control.click();
   await expect(page.locator('body')).toHaveClass(/stage-frames-playing/);
 
-  // Dispara a mesma transição que o relógio chama, sem fabricar o elemento do flash.
-  await page.evaluate(() => {
+  // Dispara a mesma transição que o relógio chama: somente o Frame real muda.
+  const arrival = await page.evaluate(() => {
     stageFramesPlayback.currentFrameIndex = 0;
     updateStageFramesPlaybackPresentation({ frameIndex: 1, arrived: true }, performance.now());
+    const border = document.querySelector('#frm_1 .frame-border');
+    return {
+      color: border ? getComputedStyle(border).borderTopColor : '',
+      arrival: document.getElementById('frm_1')?.classList.contains('stage-frames-playback-arrival') || false,
+    };
   });
-  await expect(page.locator('#stageFramesPlaybackArrivalFlash')).toBeVisible();
-  await expect.poll(() => page.evaluate(() => Number(getComputedStyle(document.getElementById('stageFramesPlaybackArrivalFlash')).zIndex))).toBeGreaterThan(1000);
+  await expect(page.locator('#stageFramesPlaybackArrivalFlash')).toHaveCount(0);
+  expect(arrival.arrival).toBe(true);
+  expect(arrival.color).toBe('rgb(4, 255, 242)');
 
   await page.locator('#imageArea').click({ position: { x: 8, y: 8 } });
   await expect(page.locator('body')).not.toHaveClass(/stage-frames-playing/);

@@ -1,5 +1,11 @@
 # PROJECT_STATE
 
+## Atualização 2026-09-04 — v8z4b32E9BC: chegada sem halo e timeline sem retenção visual
+
+- Novo retorno físico da E9BB: o halo em torno do Frame azul é excessivo; a chegada desejada é a própria referência fixa trocar de laranja para ciano e se converter suavemente em cinza. Também persistia uma aparente parada na timeline sem pausa real, e o ícone Play Frames ainda podia parecer contornado.
+- Correção: o elemento auxiliar de flash é removido. O Frame atingido usa uma interpolação de cor ciano→cinza durante 360 ms, sem sombra; a moldura transitória laranja permanece contínua. O chip da timeline não recebe mais estado azul de chegada: ele apenas acompanha continuamente `projectTime`, evitando sugerir retenção inexistente. Play/Stop agora troca entre `path` e `rect` SVG próprios, sem `<use>` ou `stroke` herdado.
+- QA prevista: E9AV protege a ausência do halo e confirma o novo SVG; E9BA verifica ciano inicial, cor intermediária distinta e zero reconstruções de assets. Validação física no preview da PR #554 continua obrigatória antes de merge; produção permanece intocada.
+
 ## Atualização 2026-09-04 — v8z4b32E9BB: chegada contínua e dissolução no Play Frames
 
 - Novo retorno físico da E9AZ: apesar da timeline já percorrer o tempo corretamente, a moldura laranja ainda parecia pausar ao cruzar um Frame com pausa zero; o controle Play/Stop ainda podia exibir um contorno no próprio símbolo; e o pulso azul deveria se dissolver, não piscar abruptamente.
