@@ -7781,8 +7781,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9BG';
-const APP_VERSION_NAME = 'v8z4b32E9BG';
+const APP_VERSION = 'v8z4b32E9BH';
+const APP_VERSION_NAME = 'v8z4b32E9BH';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -20624,6 +20624,49 @@ function pointInRotatedFrame(i, px, py) {
   return Math.abs(lx) <= f.w / 2 && Math.abs(ly) <= f.h / 2;
 }
 
+// REG-071 — o elemento DOM do Frame ocupa toda a caixa retangular, mas somente
+// sua borda é a geometria visual disponível para alcançar outro Frame. O hit
+// area é físico (18 px), convertido para World, para manter toque confiável no
+// Safari sem criar ciclo automático em regiões sem borda exposta.
+function isPointOnFrameBorder(i, px, py) {
+  const f = frames[i];
+  if (!f || !Number.isFinite(px) || !Number.isFinite(py)) return false;
+  const rot = -(frameRotations[i] || 0) * Math.PI / 180;
+  const { cx, cy } = getFrameCenter(i);
+  const dx = px - cx, dy = py - cy;
+  const lx = dx * Math.cos(rot) - dy * Math.sin(rot);
+  const ly = dx * Math.sin(rot) + dy * Math.cos(rot);
+  const visualScale = Math.max(.01, Number(_editorTransform?.scale) || 1);
+  const tolerance = 18 / visualScale;
+  const halfW = f.w / 2, halfH = f.h / 2;
+  if (Math.abs(lx) > halfW + tolerance || Math.abs(ly) > halfH + tolerance) return false;
+  return Math.abs(Math.abs(lx) - halfW) <= tolerance || Math.abs(Math.abs(ly) - halfH) <= tolerance;
+}
+
+function selectExposedRearFrameBorderFromPointer(e) {
+  if (isInsertingFrame || isPreviewing || editorPanMode || isStageNavigationActiveOrCoolingDown()) return false;
+  if (typeof isAssetsMode === 'function' && isAssetsMode()) return false;
+  if (e.isPrimary === false) return false;
+  // Curvas e alças do Frame em edição preservam a sua própria prioridade.
+  if (e.target?.closest?.('.corner-handle,.global-handle,.ctrl-pt,.frame-in-handle,.frame-out-handle,#stageFrameMenu')) return false;
+  const pos = getPos(e);
+  const point = screenToStageCoord(pos.x, pos.y);
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return false;
+  // A borda do Frame já ativo tem precedência; não há ciclo automático nela.
+  if (isPointOnFrameBorder(activeIdx, point.x, point.y)) return false;
+  const candidates = [];
+  for (let i = 0; i < frameCount; i++) {
+    if (i !== activeIdx && isPointOnFrameBorder(i, point.x, point.y)) candidates.push(i);
+  }
+  if (candidates.length !== 1) return false;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  clearPendingStageGesture();
+  selectFrameContext(candidates[0], { showStageMenu: true, centerTimeline: true });
+  renderAll();
+  return true;
+}
+
 function segmentsIntersect(a, b, c, d) {
   const cross = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
   const onSeg = (p, q, r) => Math.min(p.x, r.x) <= q.x && q.x <= Math.max(p.x, r.x) && Math.min(p.y, r.y) <= q.y && q.y <= Math.max(p.y, r.y);
@@ -24961,6 +25004,9 @@ function startCtrlDrag(seg) {
 // impede o drag). Pinch/zoom de dois dedos continua via touchstart (não afetado).
 imageArea.addEventListener('pointerdown', (e) => {
   try { handleStageAssetSelectPointer(e); } catch (_) {}
+}, true);
+stageContent.addEventListener('pointerdown', (e) => {
+  try { selectExposedRearFrameBorderFromPointer(e); } catch (_) {}
 }, true);
 // v8z4b32E1 — ESCOPO 5: movimento X/Y do asset selecionado (capture, antes do
 // pan/edição). O pointerup/cancel encerra o gesto e registra o undo.
