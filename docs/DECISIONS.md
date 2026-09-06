@@ -1,5 +1,11 @@
 # DECISIONS
 
+## DEC-2026-09-06-01 — Borda exposta preserva a seleção direta de Frames sobrepostos
+
+- **Decisão:** no Modo Frames, tocar uma borda geometricamente visível de um Frame que está atrás seleciona esse Frame antes de iniciar o arrasto da área transparente do Frame superior.
+- **Prioridades e limites:** uma interseção com a própria borda do Frame superior mantém o alvo superior; áreas inteiramente cobertas não ganham ciclo nem seleção arbitrária. Controles/alças de curva, multi-seleção e a hierarquia visual atual permanecem prioritários e inalterados.
+- **Escopo:** a decisão altera apenas o hit-test editorial de seleção. Não muda Frames persistidos, curvas, Preview, Export, ProjectWorld, timing, Undo/Redo ou z-index.
+
 ## DEC-2026-09-05-03 — Seleção múltipla de Ativos é temporária e transforma o conjunto
 
 - **Decisão:** a primeira entrega de seleção múltipla abrange imagens e Text Assets. Ela nasce no painel de Camadas por toque prolongado sem arrasto, e mantém um conjunto canônico temporário — não cria grupo persistido no projeto.
