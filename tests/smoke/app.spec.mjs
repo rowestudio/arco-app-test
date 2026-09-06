@@ -3385,6 +3385,55 @@ test('E9F1 — refino do editor de texto: cabeçalho compacto, ícones, paletas,
 // travados preservam a regra de lock; a operação por gesto de slider gera 1 Undo
 // consolidado. Este gate FALHA na main pré-correção (só o Frame ativo muda) e passa
 // após a correção da resolução de targets na origem (getNormalTransformTargets).
+// REG-071 — a drag-zone do Frame à frente é transparente visualmente, porém antes
+// capturava o toque inteiro. Uma borda de Frame atrás que continua visível deve ganhar
+// a seleção sem iniciar movimento do Frame superior. A fixture força o ponto de toque
+// a ficar no interior da drag-zone superior e exatamente na borda esquerda exposta do
+// Frame de trás, mantendo o caso independente de ordem de carregamento do projeto.
+test('REG-071 — borda exposta de Frame atrás seleciona o alvo sem mover o Frame da frente', async ({ page }) => {
+  const errors = captureFatalErrors(page);
+  await page.goto('/', { waitUntil:'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout:30_000 });
+  await dismissProModalIfVisible(page);
+
+  const hit = await page.evaluate(() => {
+    setEditorMode('camera', 'reg071-fixture');
+    clearMultiSelect();
+    frames[0] = { ...frames[0], x:110, y:130, w:90, h:130 };
+    frames[1] = { ...frames[1], x:65, y:65, w:220, h:300 };
+    frameRotations[0] = 0;
+    frameRotations[1] = 0;
+    activeIdx = 1;
+    renderAll();
+
+    const rear = getFrameScreenGeometry(0);
+    const p = {
+      x:(rear.topLeft.x + rear.bottomLeft.x) / 2,
+      y:(rear.topLeft.y + rear.bottomLeft.y) / 2,
+    };
+    const rect = stageContent.getBoundingClientRect();
+    const clientX = rect.left + p.x * editorZoomScale;
+    const clientY = rect.top + p.y * editorZoomScale;
+    const frontZone = document.querySelector('.drag-zone[data-fi="1"]');
+    const resolved = resolveExposedFrameBorderTarget(1, clientX, clientY);
+    frontZone.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles:true, cancelable:true, pointerId:971, pointerType:'touch', clientX, clientY,
+    }));
+    return {
+      activeIdx,
+      dragFrame: dragState ? dragState.fi : null,
+      resolved,
+    };
+  });
+
+  expect(hit.resolved).toBe(0);
+  expect(hit.activeIdx).toBe(0);
+  expect(hit.dragFrame).toBeNull();
+  expect(errors).toEqual([]);
+});
+
 test('REG-054 — multi-seleção de Frames aplica Posição/Escala/Rotação a todos os selecionados sem Global', async ({ page }) => {
   test.setTimeout(180_000);
   const errors = captureFatalErrors(page);

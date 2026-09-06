@@ -13,7 +13,10 @@
 
 - **Relato físico:** quando um Frame grande está à frente, ele captura o toque sobre Frames atrás, inclusive onde a borda/área do Frame de trás ainda está visível; isso impede a edição precisa.
 - **Regra aprovada:** toda borda ou geometria de Frame visualmente exposta deve permanecer selecionável sem mover o Frame que está à frente. A experiência em regiões completamente cobertas não está definida; não implementar ciclo automático, troca de z-index ou seleção arbitrária sem decisão explícita.
-- **Status:** aberta, separada da REG-070 para não misturar a correção de estabilidade do PWA com mudança de hit-test.
+- **Correção E9BH:** antes de iniciar o arrasto da `.drag-zone` que recebeu o toque, o Stage mede a distância até as bordas rotacionadas dos Frames visualmente abaixo. Uma borda exposta dentro da tolerância tátil seleciona esse alvo diretamente e não arma o movimento do Frame superior. O cálculo usa a mesma geometria visual do Stage, preservando pan, zoom e rotação.
+- **Limites preservados:** se o toque também está sobre a própria borda do Frame superior, ele continua prioritário; regiões totalmente cobertas continuam sem ciclo automático; multi-seleção, alças e controles de curvas mantêm seu fluxo existente, sem troca de z-index.
+- **Teste preventivo:** smoke WebKit mobile `REG-071 — borda exposta de Frame atrás seleciona o alvo sem mover o Frame da frente` constrói dois Frames sobrepostos e exige a seleção do Frame traseiro pelo ponto de borda exposta, sem iniciar drag no superior.
+- **Status:** corrigida tecnicamente na `v8z4b32E9BH`; validação física iPhone/Safari pendente antes de merge.
 
 ## REG-072 — lentidão percebida ao mover elementos no Stage
 
@@ -33,12 +36,12 @@
 - **Observação posterior:** Roberto informou que a reinicialização não voltou a ocorrer no build atual; o artefato/commit não foi identificado, portanto a causa e a validação específica desta REG continuam pendentes. A lentidão percebida é registrada separadamente na REG-072.
 - **Status:** ABERTA. Não misturar com ajustes do Play Frames; nenhuma correção foi atribuída a esta REG sem evidência de build.
 
-## REG-071 — Frame sobreposto bloqueia seleção dos Frames atrás
+## Histórico consolidado — REG-071: Frame sobreposto bloqueava seleção dos Frames atrás
 
 - **Relato físico (Roberto, iPhone/Safari/PWA):** quando há um Frame grande à frente, o toque no Stage seleciona somente ele; os Frames atrás deixam de ser alcançáveis para edição. O comportamento foi percebido como regressão, sem confirmação ainda do commit que o introduziu.
 - **Regra de UX confirmada:** sobreposição não pode tornar Frames atrás inalcançáveis. A seleção direta deve respeitar áreas expostas e, especialmente, a borda/geometria visível do Frame alvo, sem exigir que o usuário mova o Frame de cima para trabalhar no de baixo. O comportamento preciso para uma área de sobreposição total será definido durante a reprodução, sem inventar ciclo de seleção ou alterar a hierarquia visual sem decisão explícita.
 - **Próxima investigação obrigatória:** construir fixture de ao menos dois Frames sobrepostos, testar toque na borda exposta do Frame de trás e mapear `pointer-events`, ordem DOM e hit-test entre `.drag-zone`, moldura e overlays. Comparar com a regra aprovada antes da regressão, se localizada.
-- **Status:** ABERTA. Independente da REG-070 e do Play Frames.
+- **Status histórico:** consolidado no registro REG-071 no início deste documento. A correção técnica E9BH e a validação física pendente estão registradas lá.
 
 ## REG-069 — Play de Frames movia o viewport em vez de animar moldura transitória
 

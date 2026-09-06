@@ -19,6 +19,11 @@
 - A investigação isolou uma reconstrução integral dos nós visuais de imagens e textos a cada recomposição do Stage. A correção E9AR em desenvolvimento passa a reutilizar os nós estáveis e atualizar apenas seus atributos visuais; Preview, Export e o modelo canônico não entram no escopo.
 - A validação física iPhone/Safari continua obrigatória. A regressão independente de seleção de Frames sobrepostos está registrada como REG-071.
 
+## Atualização 2026-09-06 — v8z4b32E9BH: seleção de borda exposta em Frames sobrepostos
+
+- REG-071 recebeu correção técnica isolada: antes de a `.drag-zone` de um Frame superior armar movimento, a borda visível de um Frame abaixo pode resolver a seleção. O hit-test usa a geometria rotacionada já renderizada e tolerância em pixels de tela, preservando pan/zoom.
+- Não há ciclo em áreas totalmente cobertas, alteração de z-index, nem mudança em curvas, multi-seleção, Preview, Export, ProjectWorld, timing, Undo/Redo ou persistência. O smoke WebKit cobre o alvo traseiro e a ausência de drag no alvo superior; validação física em iPhone/Safari permanece necessária antes de merge.
+
 ## Atualização 2026-09-05 — v8z4b32E9BD: chegada também legível na faixa do Play Frames
 
 - Decisão de UX aprovada por Roberto: ao cruzar um Frame no Play Frames, a pill correspondente pode receber **somente uma borda ciano breve**. Não recebe `active`, `selected`, preenchimento, halo, rolagem própria, pausa nem alteração do relógio; a faixa continua interpolando pelo mesmo `projectTime` do percurso.

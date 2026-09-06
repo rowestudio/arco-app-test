@@ -950,6 +950,7 @@
 ║    + Controles de blur no painel Transições          ║
 ╚══════════════════════════════════════════════════════╝
 -->
+<!-- Arco Motion App — v8z4b32E9BH — fix(frames/REG-071): no Modo Frames, uma borda de Frame visualmente exposta permanece selecionável mesmo quando a drag-zone transparente de um Frame acima recebe o toque. O hit-test mede as bordas rotacionadas no espaço visual do Stage e conserva tolerância tátil durante pan/zoom; interseções da própria borda superior, multi-seleção, controles de curva, alças, z-index e áreas totalmente cobertas preservam o comportamento anterior. Preview, Export, ProjectWorld, curvas, timing, undo e persistência não mudam. APP_VERSION = APP_VERSION_NAME = v8z4b32E9BH. -->
 <!-- Arco Motion App — v8z4b32E9AR — fix(stage-dom-stability/REG-070): a recomposição do Stage reutiliza os nós visuais de imagens e textos quando a fonte permanece a mesma, atualizando apenas geometria e estilo. Isto evita reiniciar decode/composição a cada gesto de Frame, movimento de Ativo ou retorno de painel no Safari/iPhone. Preview, Export e modelo canônico não são alterados. APP_VERSION = APP_VERSION_NAME = v8z4b32E9AR. -->
 <!-- Arco Motion App — v8z4b32E9BD — fix(stage-frames-play-timeline-arrival): ao alcançar um Frame, a própria referência fixa troca de laranja para ciano e se converte gradualmente em cinza, sem halo/segunda moldura. A pill correspondente recebe somente borda ciano durante a mesma janela de chegada, sem foco, seleção, preenchimento, halo ou pausa no relógio. Play/Stop usa SVG exclusivo sólido, sem use/stroke herdado. APP_VERSION = APP_VERSION_NAME = v8z4b32E9BD. -->
 <!-- Arco Motion App — v8z4b32E9BB — fix(stage-frames-play-continuity): Play Frames não reconstrói os assets nas chegadas, portanto a moldura laranja continua no relógio canônico mesmo com pausa zero. O Frame atingido recebe azul ciano que se dissolve durante 360 ms e então preserva apenas a referência secundária; o ícone sólido Play/Stop elimina também o stroke herdado da toolbar. APP_VERSION = APP_VERSION_NAME = v8z4b32E9BB. -->
@@ -7781,8 +7782,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 // CONSTANTS & STATE
 // ═══════════════════════════════════════
 const MAX_FRAMES = 30;
-const APP_VERSION = 'v8z4b32E9BG';
-const APP_VERSION_NAME = 'v8z4b32E9BG';
+const APP_VERSION = 'v8z4b32E9BH';
+const APP_VERSION_NAME = 'v8z4b32E9BH';
 let parallaxOffsetsByContext = { stage: null, preview: null, export: null };
 let textAssetStageMovementObservation = null;
 let parallaxChangedCanonicalAssetGeometry = false;
@@ -20624,6 +20625,63 @@ function pointInRotatedFrame(i, px, py) {
   return Math.abs(lx) <= f.w / 2 && Math.abs(ly) <= f.h / 2;
 }
 
+// REG-071 — a drag-zone de um Frame é transparente e cobre sua área interna.
+// Antes de armar o movimento do alvo superior, a borda geometricamente visível de
+// um Frame abaixo continua tendo prioridade. Tudo é medido no mesmo espaço visual
+// de getFrameScreenGeometry (stageContent antes do zoom CSS), portanto a tolerância
+// permanece tátil/constante em pixels mesmo com pan, zoom e rotação.
+function pointToSegmentDistance(px, py, a, b) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq <= 0.000001) return Math.hypot(px - a.x, py - a.y);
+  const t = Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / lenSq));
+  return Math.hypot(px - (a.x + dx * t), py - (a.y + dy * t));
+}
+
+function getFrameBorderDistanceAtStagePoint(fi, point) {
+  const geometry = getFrameScreenGeometry(fi);
+  if (!geometry || !point) return Infinity;
+  const corners = geometry.corners;
+  let nearest = Infinity;
+  for (let edge = 0; edge < corners.length; edge++) {
+    nearest = Math.min(nearest, pointToSegmentDistance(point.x, point.y, corners[edge], corners[(edge + 1) % corners.length]));
+  }
+  return nearest;
+}
+
+function getFrameVisualStackRank(fi) {
+  const el = getFrameEl(fi);
+  if (!el || !el.parentElement) return -Infinity;
+  const z = Number.parseInt(getComputedStyle(el).zIndex, 10);
+  const siblings = Array.from(el.parentElement.children);
+  return (Number.isFinite(z) ? z : 0) * 10000 + siblings.indexOf(el);
+}
+
+function resolveExposedFrameBorderTarget(frontFi, clientX, clientY) {
+  if (editorMode !== 'camera' || !frames[frontFi] || !Number.isFinite(clientX) || !Number.isFinite(clientY)) return -1;
+  const point = screenToStageCoord(clientX, clientY);
+  const tolerance = 16 / Math.max(editorZoomScale || 1, 0.1);
+  // Em uma interseção de bordas, o Frame que já recebeu o evento conserva prioridade.
+  if (getFrameBorderDistanceAtStagePoint(frontFi, point) <= tolerance) return -1;
+  const frontRank = getFrameVisualStackRank(frontFi);
+  let target = -1;
+  let nearest = Infinity;
+  let rank = -Infinity;
+  for (let i = 0; i < frameCount; i++) {
+    if (i === frontFi || !frames[i] || getFrameVisualStackRank(i) >= frontRank) continue;
+    const distance = getFrameBorderDistanceAtStagePoint(i, point);
+    if (distance > tolerance) continue;
+    const candidateRank = getFrameVisualStackRank(i);
+    if (distance < nearest || (Math.abs(distance - nearest) < 0.001 && candidateRank > rank)) {
+      target = i;
+      nearest = distance;
+      rank = candidateRank;
+    }
+  }
+  return target;
+}
+
 function segmentsIntersect(a, b, c, d) {
   const cross = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
   const onSeg = (p, q, r) => Math.min(p.x, r.x) <= q.x && q.x <= Math.max(p.x, r.x) && Math.min(p.y, r.y) <= q.y && q.y <= Math.max(p.y, r.y);
@@ -24887,6 +24945,16 @@ function startMove(e) {
     toggleFrameSelection(fi, true);
     return;
   }
+  const pos = getPos(e);
+  const exposedTarget = resolveExposedFrameBorderTarget(fi, pos.x, pos.y);
+  if (exposedTarget >= 0) {
+    e.preventDefault();
+    e.stopPropagation();
+    clearPendingStageGesture();
+    selectFrameContext(exposedTarget, { showStageMenu: true, centerTimeline: true });
+    renderAll();
+    return;
+  }
   if (frameLocked[fi]) return; // frame travado: ignorar completamente
   e.preventDefault(); e.stopPropagation();
   if (bottomContextMode === 'segment') {
@@ -24895,7 +24963,6 @@ function startMove(e) {
   }
   e.currentTarget.setPointerCapture?.(e.pointerId);
   if (frameLocked[fi]) return;
-  const pos = getPos(e);
   const sc = screenToStageCoord(pos.x, pos.y);
   gestureState.mode = 'pendingSingleTouch';
   gestureState.pendingTarget = { kind: 'frame', fi, pointerId: e.pointerId, sx: pos.x, sy: pos.y };
