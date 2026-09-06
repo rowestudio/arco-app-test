@@ -1,5 +1,10 @@
 # ROADMAP
 
+## Prioridade de estabilidade antes da seleção de Frames sobrepostos
+
+- A REG-070 permanece aberta: no Modo Frames, o Stage apresenta o deslocamento visual de profundidade/parallax durante a edição e Roberto relatou reinicialização do PWA após algumas manipulações. A associação é observacional, não uma causa comprovada; a próxima investigação deve reproduzir e instrumentar essa condição antes de qualquer correção de desempenho ou alteração ampla do parallax.
+- A REG-071 (seleção de Frames sobrepostos pela borda/área visível) segue como frente funcional separada. Não deve absorver nem mascarar a investigação de estabilidade da REG-070.
+
 ## Próxima frente aprovada — seleção múltipla de Ativos
 
 - Roberto aprovou o desenho de seleção múltipla temporária para imagens e Text Assets: entrada pelo painel de Camadas, transformação coletiva no Stage, ajustes contextuais relativos e reordenação como conjunto.
