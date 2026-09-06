@@ -7523,3 +7523,39 @@ test('E9BG: contextual scale and rotation affect an asset group only', async ({ 
   expect(result.depthDisabled).toBe(true);
   expect(result.opacityDisabled).toBe(true);
 });
+
+test('E9BH / REG-071: a visible rear Frame border remains selectable through the active Frame box', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await clearStartupStorage(page);
+  await page.locator('#projectFileInput').setInputFiles(projectFixture);
+  await expect(page.locator('body')).toHaveClass(/mode-editor/, { timeout: 30_000 });
+  await dismissProModalIfVisible(page);
+
+  const rearBorderPoint = await page.evaluate(() => {
+    setEditorMode('camera', 'e9bh-overlap-fixture');
+    frameCount = 2;
+    frames[0] = { ...frames[0], x: 40, y: 60, w: 260, h: 250 };
+    frames[1] = { ...frames[1], x: 230, y: 120, w: 150, h: 160 };
+    frameRotations[0] = 0;
+    frameRotations[1] = 0;
+    frameLocked[0] = false;
+    frameLocked[1] = false;
+    selectedFrames.clear();
+    selectFrameContext(0, { centerTimeline: false });
+    renderAll();
+    const rear = document.getElementById('frm_1').getBoundingClientRect();
+    const front = document.getElementById('frm_0').getBoundingClientRect();
+    const point = [.2, .35, .5, .65, .8].map(fraction => ({ x: rear.left + 2, y: rear.top + rear.height * fraction })).find(candidate => {
+      const target = document.elementFromPoint(candidate.x, candidate.y);
+      return candidate.x >= front.left && candidate.x <= front.right && candidate.y >= front.top && candidate.y <= front.bottom
+        && !target?.closest('.corner-handle,.global-handle,.ctrl-pt,.frame-in-handle,.frame-out-handle,[id^="frame_"]');
+    });
+    if (!point) {
+      throw new Error('fixture REG-071 não posicionou a borda traseira sob a caixa do Frame ativo');
+    }
+    return point;
+  });
+
+  await page.mouse.click(rearBorderPoint.x, rearBorderPoint.y);
+  await expect.poll(() => page.evaluate(() => activeIdx), { timeout: 1_000 }).toBe(1);
+});
